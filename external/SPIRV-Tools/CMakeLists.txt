@@ -10,9 +10,9 @@ cmake_minimum_required(VERSION 2.8.12)
 
 message(STATUS "============================ SPIRV-Tools project ============================")
 
-if(IGC_OPTION__VC_INTRINSICS_MODE STREQUAL PREBUILDS_MODE_NAME)
+if(IGC_OPTION__SPIRV_TOOLS_MODE STREQUAL PREBUILDS_MODE_NAME)
 
- message(STATUS "[SPIRV-Tools] : IGC_OPTION__VC_INTRINSICS_MODE set to Prebuilds")
+ message(STATUS "[SPIRV-Tools] : IGC_OPTION__SPIRV_TOOLS_MODE set to Prebuilds")
  OPTION(IGC__OPTION_USE_PREINSTALLED_SPRIV_HEADERS OFF)
 
  if(IGC_OPTION__USE_PREINSTALLED_SPRIV_HEADERS)
@@ -37,7 +37,7 @@ if(IGC_OPTION__VC_INTRINSICS_MODE STREQUAL PREBUILDS_MODE_NAME)
  set(IGC_BUILD__PROJ__SPIRV-Tools SPIRV-Tools-static)
 
 else() #By default use build from sources
- message(STATUS "[SPIRV-Tools] : IGC_OPTION__VC_INTRINSICS_MODE set to Source")
+ message(STATUS "[SPIRV-Tools] : IGC_OPTION__SPIRV_TOOLS_MODE set to Source")
  message(STATUS "[SPIRV-Tools] : IGC_OPTION__USE_PREINSTALLED_SPRIV_HEADERS set to ON")
  message(STATUS "[SPIRV-Tools] : Using preinstalled packages")
  message(STATUS "[SPIRV-Tools] : Current source dir: ${CMAKE_CURRENT_SOURCE_DIR}")
