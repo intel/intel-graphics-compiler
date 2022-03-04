@@ -660,14 +660,14 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
 
   // Trampoline insertion.
   if (Subtarget.isOCLRuntime()) {
-    auto AddFuncInternalization = [](const PassManagerBuilder &Builder,
+    auto AddTrampolineInsertion = [](const PassManagerBuilder &Builder,
                                      PassManagerBase &PM) {
       PM.add(createGenXTrampolineInsertionPass());
     };
     PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
-                           AddFuncInternalization);
+                           AddTrampolineInsertion);
     PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
-                           AddFuncInternalization);
+                           AddTrampolineInsertion);
   }
 
   // Have to internalize functions before CM implicit parameters as all
