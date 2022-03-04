@@ -619,7 +619,8 @@ void CShader::AllocateNOSConstants(uint& offset)
     for (auto I = pushInfo.constantReg.begin(), E = pushInfo.constantReg.end(); I != E; I++) {
         CVariable* var = GetSymbol(m_argListCache[I->second]);
         AllocateInput(var, offset + I->first * SIZE_DWORD, 0, encoder.IsCodePatchCandidate());
-        maxConstantPushed = std::max(maxConstantPushed, I->first + 1);
+        uint numConstantsPushed = int_cast<uint>(llvm::divideCeil(var->GetSize(), SIZE_DWORD));
+        maxConstantPushed = std::max(maxConstantPushed, I->first + numConstantsPushed);
     }
     maxConstantPushed = iSTD::Max(maxConstantPushed, static_cast<uint>(m_ModuleMetadata->MinNOSPushConstantSize));
     m_NOSBufferSize = iSTD::Align(maxConstantPushed * SIZE_DWORD, getGRFSize());
