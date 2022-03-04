@@ -36,6 +36,18 @@ void G4_SrcRegRegion::computePReg()
 
             dcl->setGRFBaseOffset(linearizedStart);
         }
+
+        if (baseVar->getPhyReg()->isA0())
+        {
+            G4_Declare* dcl = baseVar->getDeclare();
+
+            subRegNum = baseVar->getPhyRegOff();
+
+            unsigned int linearizedStart = subRegNum * TypeSize(ADDR_REG_TYPE);
+
+            dcl->setGRFBaseOffset(linearizedStart);
+        }
+
     }
 }
 
@@ -62,6 +74,17 @@ void G4_DstRegRegion::computePReg()
             }
 
             unsigned int linearizedStart = (regNum * numEltPerGRF<Type_UB>()) + (subRegNum *  thisOpSize);
+
+            dcl->setGRFBaseOffset(linearizedStart);
+        }
+
+        if (baseVar->getPhyReg()->isA0())
+        {
+            G4_Declare* dcl = baseVar->getDeclare();
+
+            subRegNum = baseVar->getPhyRegOff();
+
+            unsigned int linearizedStart = subRegNum * TypeSize(ADDR_REG_TYPE);
 
             dcl->setGRFBaseOffset(linearizedStart);
         }
