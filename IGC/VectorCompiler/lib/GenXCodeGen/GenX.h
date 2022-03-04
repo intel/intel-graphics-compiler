@@ -82,6 +82,7 @@ FunctionPass *createGenXPrologEpilogInsertionPass();
 FunctionPass *createGenXLegalizationPass();
 ModulePass *createGenXEmulatePass();
 ModulePass *createGenXEmulationImportPass();
+ModulePass *createGenXEmulationModulePreparePass();
 FunctionPass *createGenXDeadVectorRemovalPass();
 FunctionPass *createGenXPatternMatchPass();
 FunctionPass *createGenXPostLegalizationPass();

@@ -69,10 +69,6 @@ static cl::opt<std::string>
     FGDumpsPrefix("vc-fg-dump-prefix", cl::init(""), cl::Hidden,
                   cl::desc("prefix to use for FG dumps"));
 
-static cl::opt<bool> ExperimentalEnforceLateEmulationImports(
-    "vc-experimental-emulation-late-imports", cl::init(false), cl::Hidden,
-    cl::desc("Import of some emulation BiF shall be deferred (experimental)"));
-
 static cl::opt<bool> EmitVLoadStore(
     "genx-emit-vldst", cl::init(true), cl::Hidden,
     cl::desc("Emit load/store intrinsic calls for pass-by-ref arguments"));
@@ -296,6 +292,9 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   // LowerAggrCopies and InfoAddressSpace
   vc::addPass(PM, createTargetTransformInfoWrapperPass(getTargetIRAnalysis()));
 
+  if (BackendConfig.isBiFEmulationCompilation())
+    vc::addPass(PM, createGenXEmulationModulePreparePass());
+
   vc::addPass(PM, createSROAPass());
   vc::addPass(PM, createEarlyCSEPass());
   vc::addPass(PM, createLowerExpectIntrinsicPass());
@@ -443,20 +442,14 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(
       PM, createGenXFuncBalingPass(BalingKind::BK_Legalization, &Subtarget));
 
-  // BIF compilation mode stops here.
-  // TODO: currently, we do not have mechanism to remove redundant functions
-  //       from emulation BiF. EmulationImportPass should be extended otherwise
-  //       legalization will fail.
-  if (BackendConfig.isBiFEmulationCompilation())
-    return false;
-  if (!ExperimentalEnforceLateEmulationImports)
-    vc::addPass(PM, createGenXEmulationImportPass());
-
   /// .. include:: GenXLegalization.cpp
   vc::addPass(PM, createGenXLegalizationPass());
 
-  if (ExperimentalEnforceLateEmulationImports)
-    vc::addPass(PM, createGenXEmulationImportPass());
+  // emulation BiF compilation mode stops here.
+  if (BackendConfig.isBiFEmulationCompilation())
+    return false;
+
+  vc::addPass(PM, createGenXEmulationImportPass());
   /// .. include:: GenXEmulate.cpp
   vc::addPass(PM, createGenXEmulatePass());
   /// .. include:: GenXPromoteStatefulToBindless.cpp

@@ -92,9 +92,6 @@ static constexpr int VCRoundingRTZ = 3 << 4;
 
 namespace {
 
-static cl::opt<bool> OptDbgOnlyDisableDivremEmulation(
-    "vc-dbgonly-emu-disable-divrem", cl::init(false), cl::Hidden,
-    cl::desc("do not load divrem emulation functions"));
 // Currenly, we have no guarantee that each and every genx intrinsic
 // is emulated. Only the most frequently encounted are.
 // This flag is to help finding such undetected cases.
@@ -1890,33 +1887,43 @@ ModulePass *llvm::createGenXEmulatePass() {
 }
 
 namespace {
-class GenXEmulationImport : public ModulePass {
+
+// The purpose of GenXEmulationModulePrepare is to process an input
+// module that is expected to represent the emulation library in the following
+// manner:
+// 1. Identify primary functions (the ones that are directly used for
+// emulation) and mark those with vc::FunctionMD::VCEmulationRoutine and
+// appropriate rounding attributes (derived from the name of such functions)
+// 2. Purge those functions that are not required for the current Subtarget.
+// This pass is expected to be run only in a special "BiFEmulationCompilation"
+// mode (that is during BiF precompilation process).
+class GenXEmulationModulePrepare : public ModulePass {
 public:
   static char ID;
 
-  explicit GenXEmulationImport() : ModulePass(ID) {}
-  StringRef getPassName() const override { return "GenX Emulation BiF Import"; }
+  GenXEmulationModulePrepare() : ModulePass(ID) {}
+  StringRef getPassName() const override {
+    return "GenX Emulation Module Prepare";
+  }
+
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<TargetPassConfig>();
     AU.addRequired<GenXBackendConfig>();
   }
+
   bool runOnModule(Module &M) override {
-    if (OptDbgOnlyDisableDivremEmulation)
-      return false;
     const GenXSubtarget &ST = getAnalysis<TargetPassConfig>()
                                   .getTM<GenXTargetMachine>()
                                   .getGenXSubtarget();
+    for (Function &F : M) {
+      if (!IsLibraryFunction(F)) {
+        continue;
+      }
+      F.addFnAttr(vc::FunctionMD::VCEmulationRoutine);
+      DeriveRoundingAttributes(F);
+    }
 
-    auto ModEmuFun =
-        LoadEmuFunLib(M.getContext(), M.getDataLayout(), M.getTargetTriple());
-    if (!ModEmuFun)
-      return false;
-
-    PurgeUnneededEmulationFunctions(*ModEmuFun, ST);
-
-    if (Linker::linkModules(M, std::move(ModEmuFun)))
-      report_fatal_error("Error linking emulation routines");
-
+    PurgeUnneededEmulationFunctions(M, ST);
     return true;
   }
 
@@ -2021,7 +2028,33 @@ private:
       return;
     }
   }
+};
 
+// The purpose of GenXEmulationImport is just to load platform-specific
+// emulation library and link it into the currently processed module
+class GenXEmulationImport : public ModulePass {
+public:
+  static char ID;
+
+  explicit GenXEmulationImport() : ModulePass(ID) {}
+  StringRef getPassName() const override { return "GenX Emulation BiF Import"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<TargetPassConfig>();
+    AU.addRequired<GenXBackendConfig>();
+  }
+  bool runOnModule(Module &M) override {
+    auto ModEmuFun =
+        LoadEmuFunLib(M.getContext(), M.getDataLayout(), M.getTargetTriple());
+    if (!ModEmuFun)
+      return false;
+
+    if (Linker::linkModules(M, std::move(ModEmuFun)))
+      report_fatal_error("Error linking emulation routines");
+
+    return true;
+  }
+
+private:
   std::unique_ptr<Module> LoadEmuFunLib(LLVMContext &Ctx, const DataLayout &DL,
                                         const std::string &Triple) {
 
@@ -2037,22 +2070,16 @@ private:
     BiFModule->setDataLayout(DL);
     BiFModule->setTargetTriple(Triple);
 
-    for (Function &F : *BiFModule) {
-      if (!IsLibraryFunction(F))
-        continue;
-
-      F.addFnAttr(vc::FunctionMD::VCEmulationRoutine);
-      DeriveRoundingAttributes(F);
-    }
-
     return BiFModule;
   }
 };
 } // namespace
 
+char GenXEmulationModulePrepare::ID = 0;
 char GenXEmulationImport::ID = 0;
 
 namespace llvm {
+void initializeGenXEmulationModulePreparePass(PassRegistry &);
 void initializeGenXEmulationImportPass(PassRegistry &);
 }
 INITIALIZE_PASS_BEGIN(GenXEmulationImport, "GenXEmulationImport",
@@ -2062,4 +2089,13 @@ INITIALIZE_PASS_END(GenXEmulationImport, "GenXEmulationImport",
 ModulePass *llvm::createGenXEmulationImportPass() {
   initializeGenXEmulationImportPass(*PassRegistry::getPassRegistry());
   return new GenXEmulationImport;
+}
+
+INITIALIZE_PASS_BEGIN(GenXEmulationModulePrepare, "GenXEmulationModulePrepare",
+                      "GenXEmulationModulePrepare", false, false)
+INITIALIZE_PASS_END(GenXEmulationModulePrepare, "GenXEmulationModulePrepare",
+                    "GenXEmulationModulePrepare", false, false)
+ModulePass *llvm::createGenXEmulationModulePreparePass() {
+  initializeGenXEmulationModulePreparePass(*PassRegistry::getPassRegistry());
+  return new GenXEmulationModulePrepare;
 }
