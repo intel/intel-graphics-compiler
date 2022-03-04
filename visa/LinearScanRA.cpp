@@ -1234,10 +1234,10 @@ void LinearScanRA::setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declar
 
     if (dcl->isLiveIn() && dcl->isOutput() && !lr->isGRFRegAssigned())
     {
+        lr->setFirstRef(curInst, 0);
+        lr->setLastRef(curInst, lastInstLexID * 2 + 1);
         if (!lr->isPushedToIntervalList())
         {
-            lr->setFirstRef(curInst, 0);
-            lr->setLastRef(curInst, lastInstLexID * 2 + 1);
             liveThroughIntervals.push_back(lr);
             lr->setPushed(true);
         }
@@ -1337,10 +1337,10 @@ void LinearScanRA::setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcId
 
     if (dcl->isLiveIn() && dcl->isOutput() && !lr->isGRFRegAssigned())
     {
+        lr->setFirstRef(curInst, 0);
+        lr->setLastRef(curInst, lastInstLexID * 2 + 1);
         if (!lr->isPushedToIntervalList())
         {
-            lr->setFirstRef(curInst, 0);
-            lr->setLastRef(curInst, lastInstLexID * 2 + 1);
             liveThroughIntervals.push_back(lr);
             lr->setPushed(true);
         }
