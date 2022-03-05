@@ -1906,6 +1906,12 @@ namespace IGC
             }
         }
 
+        // Disable EU Fusion.
+        if (IGC_IS_FLAG_ENABLED(DisableEuFusion) || m_Context->m_InternalOptions.DisableEUFusion)
+        {
+            m_kernelInfo.m_executionEnivronment.RequireDisableEUFusion = true;
+        }
+
         // ToDo: we should avoid passing all three dimensions of local id
         if (m_kernelInfo.m_threadPayload.HasLocalIDx ||
             m_kernelInfo.m_threadPayload.HasLocalIDy ||

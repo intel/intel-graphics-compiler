@@ -896,6 +896,12 @@ namespace IGC
             {
                 AllowRelocAdd = false;
             }
+            // -cl-intel-disableEUFusion
+            // -ze-intel-disableEUFusion
+            else if (suffix.equals("-disableEUFusion"))
+            {
+                DisableEUFusion = true;
+            }
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);

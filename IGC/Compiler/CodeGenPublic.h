@@ -1753,6 +1753,8 @@ namespace IGC
             bool IntelForceInt32DivRemEmu = false;
             bool IntelForceInt32DivRemEmuSP = false;
             bool IntelForceDisable4GBBuffer = false;
+            // user-controled option to disable EU Fusion
+            bool DisableEUFusion = false;
 
             bool AllowRelocAdd = true;
 

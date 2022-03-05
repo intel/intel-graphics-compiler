@@ -936,6 +936,9 @@ void DebugPatchList(
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tSIMDInfo = %lld\n",
                     pPatchItem->SIMDInfo);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tRequireDisableEUFusion = %s\n",
+                    pPatchItem->RequireDisableEUFusion ? "true" : "false");
             }
             break;
 
