@@ -13,7 +13,7 @@ set(LLVM_COMPONENTS
   Analysis
 )
 
-vc_get_llvm_targets(LLVM_LIBS ${LLVM_COMPONENTS})
+igc_get_llvm_targets(LLVM_LIBS ${LLVM_COMPONENTS})
 add_library(VCInternalIntrinsics
   InternalIntrinsics.cpp
 )
