@@ -239,6 +239,7 @@ bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
     if (NeedCloning && !F->hasFnAttribute(TypeToAttr(Type))) {
       ValueToValueMapTy VMap;
       Function *ClonedFunc = CloneFunction(F, VMap);
+      ClonedFunc->setName(F->getName() + "." + curGr->getHead()->getName());
       LLVM_DEBUG(dbgs() << "Cloning: " << ClonedFunc->getName() << "\n");
 
       result = true;
