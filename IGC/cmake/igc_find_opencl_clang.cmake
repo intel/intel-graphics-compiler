@@ -11,6 +11,10 @@
 #2. CCLANG_BUILD_PREBUILDS - use prebuilded opencl-clang toolchain
 #   CCLANG_BUILD_PREBUILDS_DIR - set path to prebuilt cclang folder
 #3. CCLANG_BUILD_INTREE_LLVM - use sources of opencl-clang toolchain
+#
+# If defined CCLANG_INSTALL_PREBUILDS_DIR, opencl-clang will be force
+# installed from the given location. BiF compilation still follows
+# scheme above
 
 if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
   set(COMMON_CLANG_LIBRARY_NAME opencl-clang)
@@ -81,7 +85,11 @@ if(CCLANG_FROM_SYSTEM)
   find_library(SYSTEM_COMMON_CLANG ${COMMON_CLANG_LIBRARY_NAME})
 
   add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
-  set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${SYSTEM_COMMON_CLANG}")
+  if(DEFINED CCLANG_INSTALL_PREBUILDS_DIR)
+    set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_INSTALL_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+  else()
+    set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${SYSTEM_COMMON_CLANG}")
+  endif()
   find_program(CLANG_GE7 clang-${LLVM_VERSION_MAJOR})
   if(CLANG_GE7)
     message(STATUS "[IGC] Found clang-${LLVM_VERSION_MAJOR} executable: ${CLANG_GE7}")
@@ -128,7 +136,12 @@ elseif(${CCLANG_BUILD_PREBUILDS})
   if(${LLVM_PACKAGE_VERSION} VERSION_GREATER ${CLANG_TOOL_VERSION} OR
      ${LLVM_PACKAGE_VERSION} EQUAL ${CLANG_TOOL_VERSION})
     add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
-    set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_BUILD_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+
+    if(DEFINED CCLANG_INSTALL_PREBUILDS_DIR)
+      set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_INSTALL_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+    else()
+      set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_BUILD_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+    endif()
 
     add_executable(clang-tool IMPORTED GLOBAL)
     set_property(TARGET clang-tool PROPERTY "IMPORTED_LOCATION" "${CLANG_TOOL_PATH}")
@@ -141,8 +154,12 @@ elseif(${CCLANG_BUILD_PREBUILDS})
 #3. CCLANG_BUILD_INTREE_LLVM - use sources of opencl-clang toolchain
 elseif(${CCLANG_BUILD_INTREE_LLVM})
   message(STATUS "[IGC] : opencl-clang will be taken from sources")
-
-  add_library(opencl-clang-lib ALIAS ${COMMON_CLANG_LIBRARY_NAME})
+  if(DEFINED CCLANG_INSTALL_PREBUILDS_DIR)
+    add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
+    set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_INSTALL_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+  else()
+    add_library(opencl-clang-lib ALIAS ${COMMON_CLANG_LIBRARY_NAME})
+  endif()
   add_executable(clang-tool ALIAS clang)
   get_target_property(CLANG_SOURCE_DIR clang SOURCE_DIR)
   set(opencl-header "${CLANG_SOURCE_DIR}/../../lib/Headers/opencl-c.h")
