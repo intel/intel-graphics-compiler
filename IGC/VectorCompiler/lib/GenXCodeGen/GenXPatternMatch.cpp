@@ -2802,12 +2802,11 @@ static Constant *getFloorLog2(const Constant *C) {
       Elts.push_back(Log2);
     }
     return ConstantVector::get(Elts);
-  } else {
-    Type *Ty = C->getType();
-    const ConstantInt *Elt = cast<ConstantInt>(C);
-    const APInt Val = Elt->getValue();
-    return ConstantInt::get(Ty->getScalarType(), Val.logBase2());
   }
+  Type *Ty = C->getType();
+  const ConstantInt *Elt = cast<ConstantInt>(C);
+  const APInt Val = Elt->getValue();
+  return ConstantInt::get(Ty->getScalarType(), Val.logBase2());
 }
 
 enum class DivRemOptimize {
@@ -2838,82 +2837,72 @@ static DivRemOptimize isSuitableUDivURemOperand(Value *Operand) {
   return DivRemOptimize::Not;
 }
 
-// a helper routine for decomposeSdivPow2, decomposeSremPow2
-// return true if Value is constant data power 2 value
-// input operand - value
-bool isSuitableSdivSremPow2Operand(const Value *Operand) {
-  IGC_ASSERT_MESSAGE(Operand, "nullptr in isSuitableSdivSremPow2Operand");
-  if (!isa<Constant>(Operand)) // constant data vector or constant
-    return false;
+// Check if unsigned SDiv/URem can be optimized,
+// based on its divisor \p Operand.
+static DivRemOptimize isSuitableSDivSRemOperand(Value *Operand) {
+  IGC_ASSERT(Operand);
+  // Constant data vector or constant.
+  if (!isa<Constant>(Operand))
+    return DivRemOptimize::Not;
+  Type *OperandTy = Operand->getType();
+  // TODO support i8, i16 & i64 cases
+  // i8, i16 - by creating zext/sext to i32
+  // i64 - just turning on the same pattern as i32 width,
+  //  as emulation for shift and add much faster than emulation division.
+  // Not int and not vector of int, or width wrong( not 32).
+  if (!OperandTy->isIntOrIntVectorTy(genx::DWordBits))
+    return DivRemOptimize::Not;
   if (PatternMatch::match(Operand, PatternMatch::m_Negative()))
-    return false; // the second operand is negative
-
-  if (!Operand->getType()->isIntOrIntVectorTy(genx::DWordBits))
-    return false; // not int and not vector of int, or width wrong
-  Type *InstElementTy = Operand->getType()->getScalarType();
-  IGC_ASSERT_MESSAGE(
-      InstElementTy,
-      "ERROR: logic error in is isSuitableSdivSremPow2DecomposeInst");
-  return PatternMatch::match(Operand, PatternMatch::m_Power2());
+    return DivRemOptimize::Not;
+  if (!PatternMatch::match(Operand, PatternMatch::m_Power2()))
+    return DivRemOptimize::Not;
+  return DivRemOptimize::Pow2;
 }
 
-// optimization path if second operand of sdiv is power of 2
-// input:
-// Sdiv - only sdiv binary operator, second operand of which is ConstantVector
-//  or ConstantInt
-// Optimization for positive y:
+// Optimization for signed x / 2^p.
+// if 2^p positite value
 // intWidth = 32
 // x / y = ashr( x + lshr( ashr(x, intWidth - 1), intWidth - log2(y)), log2(y))
-static void decomposeSdivPow2(BinaryOperator &Sdiv) {
-  IGC_ASSERT_MESSAGE(Sdiv.getOpcode() == Instruction::SDiv,
-                     "Error: try to decompose sdiv for not sdiv instruction");
-  IGC_ASSERT_MESSAGE(
-      isSuitableSdivSremPow2Operand(Sdiv.getOperand(1)),
-      "Error: try to decompose sdiv for not suitable instruction");
+static void decomposeSDivPow2(BinaryOperator &SDivOp) {
+  IGC_ASSERT(SDivOp.getOpcode() == Instruction::SDiv);
+  Value *Dividend = SDivOp.getOperand(0);
+  IGC_ASSERT(isSuitableSDivSRemOperand(SDivOp.getOperand(1)) ==
+             DivRemOptimize::Pow2);
+  Constant *Divisor = cast<Constant>(SDivOp.getOperand(1));
 
-  const Twine Name = "genxSdivOpt";
-  Value *Op0 = Sdiv.getOperand(0);
-  Constant *Op1 = cast<Constant>(Sdiv.getOperand(1));
+  IRBuilder<> Builder{&SDivOp};
 
-  Type *SdivTy = Sdiv.getType();
-  Type *ElementTy = SdivTy->getScalarType();
-  IGC_ASSERT_MESSAGE(ElementTy, "ERROR: logic error in decomposeSdivPow2");
+  const char *Name = "genxSdivOpt";
+  Type *OperationTy = Dividend->getType();
+  Type *ElementTy = OperationTy->getScalarType();
+  IGC_ASSERT(ElementTy);
   unsigned ElementBitWidth = ElementTy->getIntegerBitWidth();
-  unsigned OperandWidth =
-      SdivTy->isVectorTy()
-          ? cast<IGCLLVM::FixedVectorType>(SdivTy)->getNumElements()
-          : 0;
-
-  IRBuilder<> Builder(&Sdiv);
-
-  auto createConstant = [](unsigned int OperandWidth, Type *Ty, int Value) {
-    return OperandWidth != 0 ?
-        ConstantDataVector::getSplat(OperandWidth, ConstantInt::get(Ty, Value)) :
-        ConstantInt::get(Ty, Value);
-  };
 
   Constant *VecSignBit =
-      createConstant(OperandWidth, ElementTy, ElementBitWidth - 1);
+      Constant::getIntegerValue(OperationTy, APInt{32, ElementBitWidth - 1});
   Constant *VecBitWidth =
-      createConstant(OperandWidth, ElementTy, ElementBitWidth);
+      Constant::getIntegerValue(OperationTy, APInt{32, ElementBitWidth});
 
-  Constant *Log2Op1 = getFloorLog2(Op1);
-  IGC_ASSERT_MESSAGE(Log2Op1 != nullptr, "getLog2 return nullptr");
+  Constant *Log2Divisor = getFloorLog2(Divisor);
+  IGC_ASSERT(Log2Divisor != nullptr);
 
-  Value *ShiftSize = Builder.CreateSub(VecBitWidth, Log2Op1, Name);
+  Value *ShiftSize = Builder.CreateSub(VecBitWidth, Log2Divisor, Name);
   // if op0 is negative, Signdetect all ones, else all zeros
-  Value *SignDetect = Builder.CreateAShr(Op0, VecSignBit, Name);
+  Value *SignDetect = Builder.CreateAShr(Dividend, VecSignBit, Name);
   Value *Addition = Builder.CreateLShr(SignDetect, ShiftSize, Name);
-  Value *NewRhs = Builder.CreateAdd(Op0, Addition, Name);
-  Value *Answer = Builder.CreateAShr(NewRhs, Log2Op1, Name);
-  Sdiv.replaceAllUsesWith(Answer);
+  Value *NewRhs = Builder.CreateAdd(Dividend, Addition, Name);
+  Value *Res = Builder.CreateAShr(NewRhs, Log2Divisor);
+  SDivOp.replaceAllUsesWith(Res);
+  Res->takeName(&SDivOp);
 }
 
 void GenXPatternMatch::visitSDiv(BinaryOperator &I) {
-  if (isSuitableSdivSremPow2Operand(I.getOperand(1))) {
-    decomposeSdivPow2(I);
-    Changed = true;
-  }
+  auto CheckRes = isSuitableSDivSRemOperand(I.getOperand(1));
+  if (CheckRes == DivRemOptimize::Not)
+    return;
+  IGC_ASSERT(CheckRes == DivRemOptimize::Pow2);
+  decomposeSDivPow2(I);
+  Changed = true;
 }
 
 // Optimization for unsigned x / 2^p.
@@ -2942,38 +2931,36 @@ void GenXPatternMatch::visitUDiv(BinaryOperator &I) {
   return decomposeUDivPow2(I);
 }
 
-// Srem - only srem binary operator
-// suppose that later sdiv operation will be optimized by decomposeSdivPow2
+// Optimization for signed x % 2^p.
+// 2^p is positive value
 // x % y = x - y * (x / y)
-static void decomposeSremPow2(BinaryOperator &Srem) {
-  IGC_ASSERT_MESSAGE(Srem.getOpcode() == Instruction::SRem,
-                     "Error: try to decomposeSrem not srem");
-  IGC_ASSERT_MESSAGE(isSuitableSdivSremPow2Operand(Srem.getOperand(1)),
-                     "Error: try to decomposeSrem for not suitable Operand 1");
-  const Twine Name = "genxSremOpt";
-  Value *Op0 = Srem.getOperand(0);
-  Constant *Op1 = cast<Constant>(Srem.getOperand(1));
+static void decomposeSRemPow2(BinaryOperator &SRemOp) {
+  IGC_ASSERT(SRemOp.getOpcode() == Instruction::SRem);
+  Value *Dividend = SRemOp.getOperand(0);
+  IGC_ASSERT(isSuitableSDivSRemOperand(SRemOp.getOperand(1)) ==
+             DivRemOptimize::Pow2);
+  Constant *Divisor = cast<Constant>(SRemOp.getOperand(1));
 
-  Type *SremTy = Srem.getType();
-  IGC_ASSERT_MESSAGE(SremTy, "ERROR: logic error in decomposeSremPow2");
+  IRBuilder<> Builder{&SRemOp};
 
-  IRBuilder<> Builder(&Srem);
+  const char *Name = "genxSremOpt";
+  Value *Sdiv = Builder.CreateSDiv(Dividend, Divisor, Name);
+  Value *MulRes = Builder.CreateMul(Sdiv, Divisor, Name);
+  Value *Res = Builder.CreateSub(Dividend, MulRes);
 
-  Value *Sdiv = Builder.CreateSDiv(Op0, Op1, Name);
-  Value *MulRes = Builder.CreateMul(Sdiv, Op1, Name);
-  Value *Result = Builder.CreateSub(Op0, MulRes, Name);
+  decomposeSDivPow2(*cast<BinaryOperator>(Sdiv));
 
-  // optimize sdiv
-  decomposeSdivPow2(*cast<BinaryOperator>(Sdiv));
-
-  Srem.replaceAllUsesWith(Result);
+  SRemOp.replaceAllUsesWith(Res);
+  Res->takeName(&SRemOp);
 }
 
 void GenXPatternMatch::visitSRem(BinaryOperator &I) {
-  if (isSuitableSdivSremPow2Operand(I.getOperand(1))) {
-    decomposeSremPow2(I);
-    Changed = true;
-  }
+  auto CheckRes = isSuitableSDivSRemOperand(I.getOperand(1));
+  if (CheckRes == DivRemOptimize::Not)
+    return;
+  IGC_ASSERT(CheckRes == DivRemOptimize::Pow2);
+  decomposeSRemPow2(I);
+  Changed = true;
 }
 
 // Optimization for unsigned x % 2^p.
