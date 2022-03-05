@@ -391,11 +391,11 @@ void DDD::getBucketsForIndirectOperand(G4_INST* inst,
 
         uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
         uint32_t regOff = var->getPhyRegOff();
-        int linearizedStart = regNum * numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType());
+        int linearizedStart = regNum * kernel->numEltPerGRF<Type_UB>() + regOff * TypeSize(dcl->getElemType());
         int linearizedEnd = linearizedStart + dcl->getByteSize() - 1;
 
-        int startingBucket = linearizedStart / numEltPerGRF<Type_UB>();
-        int endingBucket = linearizedEnd / numEltPerGRF<Type_UB>();
+        int startingBucket = linearizedStart / kernel->numEltPerGRF<Type_UB>();
+        int endingBucket = linearizedEnd / kernel->numEltPerGRF<Type_UB>();
         Mask mask(linearizedStart, linearizedEnd, false, opnd->getAccRegSel());
         int numBuckets = endingBucket - startingBucket + 1;
         for (int j = startingBucket; j < (startingBucket + numBuckets); j++)
