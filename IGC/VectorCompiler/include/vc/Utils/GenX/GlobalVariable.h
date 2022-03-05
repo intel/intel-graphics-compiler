@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#ifndef VC_UTILS_GENX_GLOBALVARIABLE_H
+#define VC_UTILS_GENX_GLOBALVARIABLE_H
+
 namespace llvm {
 class GlobalVariable;
 class Value;
@@ -30,3 +33,5 @@ const llvm::GlobalVariable *
 getUnderlyingGlobalVariable(const llvm::LoadInst *LI);
 
 } // namespace vc
+
+#endif // VC_UTILS_GENX_GLOBALVARIABLE_H
