@@ -2002,7 +2002,7 @@
     },
     "genx_smadw": {
       "opc": "ISA_MADW",
-      "exec_size": [ "EXECSIZE"],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -2011,7 +2011,7 @@
     },
     "genx_umadw": {
       "opc": "ISA_MADW",
-      "exec_size": [ "EXECSIZE"],
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
