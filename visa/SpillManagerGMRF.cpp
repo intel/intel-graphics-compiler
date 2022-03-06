@@ -3670,6 +3670,10 @@ G4_Declare* SpillManagerGRF::getOrCreateAddrSpillFillDcl(G4_RegVar* addrDcl, G4_
     {
         G4_AddrExp* addrExp = pt.exp;
         G4_Declare* dcl = addrExp->getRegVar()->getDeclare();
+        while (dcl->getAliasDeclare())
+        {
+            dcl = dcl->getAliasDeclare();
+        }
 
         //The variable V is spilled
         if (dcl == spilledAddrTakenDcl)
