@@ -33,8 +33,8 @@ if(IGC_OPTION__VC_INTRINSICS_MODE STREQUAL PREBUILDS_MODE_NAME)
  set(IGC_BUILD__SPIRV-Tools_DIR "${SPIRV-Tools_ROOT_DIR}")
 
  set(INCLUDE_DIRS_LIST "${SPIRV-Tools_ROOT_DIR}/include" "${SPIRV-Headers_INCLUDE_DIR}")
- set_target_properties(SPIRV-Tools-static PROPERTIES INCLUDE_DIRECTORIES "${INCLUDE_DIRS_LIST}")
- set(IGC_BUILD__PROJ__SPIRV-Tools SPIRV-Tools-static)
+ set_target_properties(SPIRV-Tools PROPERTIES INCLUDE_DIRECTORIES "${INCLUDE_DIRS_LIST}")
+ set(IGC_BUILD__PROJ__SPIRV-Tools SPIRV-Tools)
 
 else() #By default use build from sources
  message(STATUS "[SPIRV-Tools] : IGC_OPTION__VC_INTRINSICS_MODE set to Source")
