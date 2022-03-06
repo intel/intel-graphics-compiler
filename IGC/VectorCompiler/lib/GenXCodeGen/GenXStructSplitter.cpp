@@ -14,13 +14,15 @@ SPDX-License-Identifier: MIT
 /// eg. {vec3f, vec3f, f, vec5i} will become {vec3f, vec3f, f} {vec5i}.
 ///
 /// It does in 2 main steps:
-/// 1. Resolves which structs can be splitted and splits it.
+/// 1. Resolves which structs can be split and splits it.
 ///   a. Collects all structs.
-///   b. Creates DependencyGraph of struct usage.
-///       Which structs contain which structs.
-///   c. Splits structs.
+///   b. Creates DependencyGraph (DAG) of struct usage.
+///       Contains information about nested structures.
+///   c. Splits structures starting from the nodes that have no output.
 /// 2. Replaces all structures if it is possible.
 ///   a. Replaces allocas.
+///     I. Generates new allocas.
+///     II. Updates debug information.
 ///   b. Replaces all uses of allocas (GEP and PTI).
 ///     I. Replace all uses of GEP and PTI.
 ///
@@ -34,18 +36,27 @@ SPDX-License-Identifier: MIT
 ///   Ai ai;
 ///   Af af;
 ///   int i = ai.int;
+/// With unwrapping optimization (The unique-type element is
+/// extracted from structure):
+///   Ai is a int;
+///   Af is a float;
+///   Ai ai;
+///   Af af;
+///   int i = ai;
 ///
 /// Limitations:
 ///   1. Structure contains array of complex structs.
 ///   2. Structure is allocated as an array.
 ///   3. Structure contains prohibitted structure.
 ///   4. Structure using instruction is not GEP, PTI, alloca.
+///       Except pattern: alloca->bitcast->lifetime.start/end
+///       This unstructions are ignored.
 ///   5. Users of the PTI not add, insertelement, shufflevector, read/write.
 ///   6. Pointer of the structure goes in function (except read/write).
-///   7. Pointer offset from the begging of the structure covers different
+///   7. Pointer offset from the beginning of the structure covers different
 ///      types.
-///   8. Pointer offset from the begging of the structure covers unsequential
-///      splitted structs.
+///   8. Pointer offset from the beginning of the structure covers unsequential
+///      split structs.
 ///
 //===----------------------------------------------------------------------===//
 
@@ -124,7 +135,7 @@ static Type *getArrayFreeTy(Type *Ty);
 static Type *getBaseTy(Type *Ty);
 static char const *getTypePrefix(Type &Ty);
 
-// Class to do first analysis and ban all structures, which cannot be splitted
+// Class to do first analysis and ban all structures, which cannot be split
 // at advance. It bans structures containing array of complex structs. It bans
 // structures containing banned structs.
 class StructFilter {
@@ -148,11 +159,11 @@ public:
 // A : { f, [5 x f] }
 // B : { i, [5 x i] }
 // D : { A, B }
-// Where A,B,C,D are structs; f,i - base unsplitted types.
+// Where A,B,C,D are structs; f,i - base unsplit types.
 class DependencyGraph {
 public:
   //***************************************
-  // Part responsible for types definition
+  // Part responsible for types definition.
   //***************************************
 
   // Helper structure contains split struct or unwrapped type and position of
@@ -177,11 +188,12 @@ public:
     void print(raw_ostream &os = llvm::errs()) const;
   };
 
-  // Helped class contains array of Types and Indices on which Type is placed.
-  // It is used for keeping elements of structure within the same subtype.
+  // Helper class contains array of Types and Indices where Type is placed.
+  // Position of the element in the array defines element's position in the
+  // split structure.
   class SElementsOfType {
     std::vector<Type *> Types;
-    // vector of Indices correspondence to vector of Types
+    // vector of Indices corresponding to vector of Types.
     std::vector<unsigned> IndicesOfTypes;
 
   public:
@@ -197,15 +209,15 @@ public:
 
     std::vector<Type *> const &getTypesArray() const { return Types; }
 
-    using TypeIt = std::vector<Type *>::iterator;
-    using IdxIt = std::vector<unsigned>::iterator;
-    using TypeItConst = std::vector<Type *>::const_iterator;
-    using IdxItConst = std::vector<unsigned>::const_iterator;
+    using ty_iterator = std::vector<Type *>::iterator;
+    using idx_iterator = std::vector<unsigned>::iterator;
+    using const_ty_iterator = std::vector<Type *>::const_iterator;
+    using const_idx_iterator = std::vector<unsigned>::const_iterator;
 
     // Iterator for SElementsOfType to be able to iterate over a range of
     // Types and IndicesOfTypes simultaneously.
-    using value_type =
-        std::pair<TypeItConst::value_type, IdxItConst::value_type>;
+    using value_type = std::pair<const_ty_iterator::value_type,
+                                 const_idx_iterator::value_type>;
     struct const_iterator {
       using iterator_category = std::forward_iterator_tag;
       using difference_type = std::ptrdiff_t;
@@ -216,7 +228,7 @@ public:
                       // that value pointed by iterator wont be changed, so
                       // copy of pair is not crusual.
       const_iterator() = delete;
-      const_iterator(TypeItConst TyItIn, IdxItConst IdxItIn);
+      const_iterator(const_ty_iterator TyItIn, const_idx_iterator IdxItIn);
       reference operator*() const;
       const_iterator &operator++();
       const_iterator operator++(int);
@@ -228,18 +240,18 @@ public:
                              const const_iterator &RHS);
 
     private:
-      TypeItConst TyIt;
-      IdxItConst IdxIt;
+      const_ty_iterator TyIt;
+      const_idx_iterator IdxIt;
     };
 
-    TypeIt ty_begin() { return Types.begin(); }
-    TypeItConst ty_begin() const { return Types.begin(); }
-    TypeIt ty_end() { return Types.end(); }
-    TypeItConst ty_end() const { return Types.end(); }
-    IdxIt idx_begin() { return IndicesOfTypes.begin(); }
-    IdxItConst idx_begin() const { return IndicesOfTypes.begin(); }
-    IdxIt idx_end() { return IndicesOfTypes.end(); }
-    IdxItConst idx_end() const { return IndicesOfTypes.end(); }
+    ty_iterator ty_begin() { return Types.begin(); }
+    const_ty_iterator ty_begin() const { return Types.begin(); }
+    ty_iterator ty_end() { return Types.end(); }
+    const_ty_iterator ty_end() const { return Types.end(); }
+    idx_iterator idx_begin() { return IndicesOfTypes.begin(); }
+    const_idx_iterator idx_begin() const { return IndicesOfTypes.begin(); }
+    idx_iterator idx_end() { return IndicesOfTypes.end(); }
+    const_idx_iterator idx_end() const { return IndicesOfTypes.end(); }
     const_iterator begin() const {
       return const_iterator{Types.begin(), IndicesOfTypes.begin()};
     }
@@ -250,15 +262,15 @@ public:
     auto types() const { return make_range(ty_begin(), ty_end()); }
 
     void emplace_back(Type &Ty, unsigned Index);
-    void push_back(value_type const &Elm);
-    void emplace_back(SElement const &Elm);
+    void push_back(value_type const &Elem);
+    void emplace_back(SElement const &Elem);
 
     void print(raw_ostream &Os = llvm::errs()) const;
   };
 
   // The SMap is a full collection of Structs in Module within the
   // complete information about types and elements which are used in structure.
-  // The STypes is a full information about elements used in Struct
+  // The STypes is a full information about elements used in Struct.
   // The Idea is to separate all elements by their baseType.
   // SMap looks like:
   // StructType : (BaseTy: <ElementType, IndexOfElement> <,> ...)
@@ -272,14 +284,14 @@ public:
   using STypes = std::unordered_map<Type *, SElementsOfType>;
   using SMap = std::unordered_map<StructType *, STypes>;
 
-  // The typedefs bellow are a full information about struct's transformation.
-  // The idea is to generate map between Old struct's elements and new splitted
-  // struct's elements Index of the element in InitSTy is index of
-  // VecOfNewIndiciesDefinition and Index of the element of SplittedSTy will be
+  // The typedefs bellow are full information about struct's transformation.
+  // The idea is to generate map between old struct's elements and new split
+  // struct's elements. Index of the element in InitSTy is index of
+  // ElemMapping and Index of the element of SplitSTy will be
   // put according the InitSTy's element index. VecOfStructInfo looks like:
-  // InitSTy : (SplittedSTy, Index) (,) <- at position=0
-  //           (,)                      <- at position=1
-  // FE. splitting of structs D and C:
+  // InitSTy : (SplitSTy, Index) (,) <- at position=0
+  //           (,)                   <- at position=1
+  // eg. splitting of structs D and C:
   // D : (Df, 0)
   //     (Di, 0)
   // C : (Cf, 0)
@@ -287,30 +299,32 @@ public:
   //     (Cf, 1)
   //     (Ci, 1)
   //     (Cf, 2) (Ci, 2)
-  // And SMap in that case also contains
+  // And SMap in that case also contains:
   // Ci : (i: <i, 0> <[5xB], 1> <Di, 2)
   // Cf : (f: <[5xA], 0> <f, 1> <Df, 2)
   // Df : (f: <A, 0>)
   // Di : (i: <B, 0>)
-  // List of new structs which are on place of old unsplitted struct
-  using ListOfSplittedElements = std::list<SElement>;
-  // Vector of new structs elements. Position of element is corresponsible with
-  // the index of this element in unsplitted structure
-  using VecOfNewIndiciesDefinition = std::vector<ListOfSplittedElements>;
-  // All collection of new elements
-  using InfoAboutSplittedStruct =
-      std::pair<StructType *, VecOfNewIndiciesDefinition>;
-  // Info about all structs to be splitted.
-  // Vector has been chosen to save the chronology of transformation.
-  using VecOfStructInfo = std::vector<InfoAboutSplittedStruct>;
+  // List of new elements which are on place of old unsplit struct.
+  // Several elements can apply one place if one unsplit element is split to
+  // several.
+  using ListOfSplitElements = std::list<SElement>;
+  // Vector of new structs elements. The position of the element is in
+  // accordance with the index of this element in unsplit structure.
+  using ElemMapping = std::vector<ListOfSplitElements>;
+  // All collection of new elements.
+  using InfoAboutSplitStruct = std::pair<StructType *, ElemMapping>;
+  // Info about all structs to be split.
+  // Vector has been chosen to save the transformation chronology.
+  using VecOfStructInfo = std::vector<InfoAboutSplitStruct>;
 
 private:
   LLVMContext &Ctx;
 
   SMap AllStructs;
-  VecOfStructInfo SplittedStructs;
+  VecOfStructInfo SplitStructs;
 
-  // A helped map for fast access to necessary structure transformation.
+  // A helping map for fast access to necessary structure transformation.
+  // Uses reverse_iterator, because VecOfStructInfo is processed backwards.
   std::unordered_map<StructType *, VecOfStructInfo::const_reverse_iterator>
       InfoToMerge;
 
@@ -319,15 +333,18 @@ private:
   class Node {
     StructType *STy{nullptr};
 
-    // During the Graph transformation unsplitted stucts will be generated.
-    // FE struct C_BS will be generated:
-    // C_BS : { [5 x A], i, f, [5 x B], Df, Di }
-    // But C_BS is the same C struct in terms of dependencies,
-    // so PreviousNames set contains all previouse Node representaions.
+    // During the Graph transformation intermediate unsplit stucts will be
+    // generated.
+    // eg: structure C_BS will be generated
+    //  C_BS : { [5 x A], i, f, [5 x B], Df, Di }.
+    // But C_BS is the same C structure in terms of dependencies,
+    // so PreviousNames set contains all previous Node representations.
     std::unordered_set<StructType *> PreviousNames;
-    // FE C has childrens A, B, D
+    // eg. C has children A, B, D
+    // C contains structures A, B, D.
     std::unordered_set<Node *> ChildSTys;
-    // FE A has parents D, C
+    // eg. A has parents D, C.
+    // A is contained by structures D, C.
     std::unordered_set<Node *> ParentSTys;
 
   public:
@@ -338,22 +355,22 @@ private:
     void insertParent(Node &ParentNode);
     void insertChild(Node &ChildNode);
     void eraseChild(Node &ChildNode);
-    bool isContainsStruct(StructType &InSTy) const;
+    bool containsStruct(StructType &InSTy) const;
     void substitute(StructType &InSTy);
 
     StructType *getType() const { return STy; }
 
-    using NodeIt = std::unordered_set<Node *>::iterator;
-    using NodeIt_const = std::unordered_set<Node *>::const_iterator;
-    NodeIt parent_begin() { return ParentSTys.begin(); }
-    NodeIt_const parent_begin() const { return ParentSTys.begin(); }
-    NodeIt parent_end() { return ParentSTys.end(); }
-    NodeIt_const parent_end() const { return ParentSTys.end(); }
+    using iterator = std::unordered_set<Node *>::iterator;
+    using const_iterator = std::unordered_set<Node *>::const_iterator;
+    iterator parent_begin() { return ParentSTys.begin(); }
+    const_iterator parent_begin() const { return ParentSTys.begin(); }
+    iterator parent_end() { return ParentSTys.end(); }
+    const_iterator parent_end() const { return ParentSTys.end(); }
 
-    NodeIt child_begin() { return ChildSTys.begin(); }
-    NodeIt_const child_begin() const { return ChildSTys.begin(); }
-    NodeIt child_end() { return ChildSTys.end(); }
-    NodeIt_const child_end() const { return ChildSTys.end(); }
+    iterator child_begin() { return ChildSTys.begin(); }
+    const_iterator child_begin() const { return ChildSTys.begin(); }
+    iterator child_end() { return ChildSTys.end(); }
+    const_iterator child_end() const { return ChildSTys.end(); }
 
     void dump(int tab, raw_ostream &os = llvm::errs()) const;
   };
@@ -369,14 +386,14 @@ private:
   NodeMemoryManager NodeMM;
 
   //***************************************
-  // Part responsible for graph handling
+  // Part responsible for graph handling.
   //***************************************
 
   // Heads contains all Nodes that have no parents.
   std::vector<Node *> Heads;
   void generateGraph();
 
-  // Helped type is used to track if Node already placed in Graph
+  // Helper type that is used to track Nodes placement in Graph.
   using NodeTracker = std::unordered_map<StructType *, Node *>;
   Node *createNode(StructType &STy, NodeTracker &Inserted);
   void processNode(Node &SNode);
@@ -384,41 +401,40 @@ private:
                     ArrayRef<Type *> NewReplaceStructs);
   void recreateGraph();
 
-  //***************************************
-  // Part responsible for records collection and handling
-  //***************************************
+  //************************************************************
+  // Part responsible for recording information about structures
+  // and tracking transformation.
+  //************************************************************
 
   void setInfoAboutStructure(StructType &STy);
   void mergeStructGenerationInfo();
-  StructType *
-  checkAbilityToMerge(VecOfNewIndiciesDefinition const &NewSTypes) const;
+  StructType *checkAbilityToMerge(const ElemMapping &NewSTypes) const;
 
 public:
   DependencyGraph(Module &M, StructFilter const &Filter);
   void run();
 
   //***************************************
-  // Part responsible for info accessing
+  // Part responsible for info accessing.
   //***************************************
   bool isPlain(StructType &STy) const;
   bool isStructProcessed(StructType &STy) const;
   STypes const &getStructComponens(StructType &STy) const;
   Type *getPlainSubTy(StructType &STy) const;
-  VecOfNewIndiciesDefinition const &
-  getVecOfStructIdxMapping(StructType &STy) const;
-  ListOfSplittedElements const &getElementsListOfSTyAtIdx(StructType &STy,
-                                                          unsigned Idx) const;
-  std::vector<Type *> getUniqueSplittedTypes(StructType &STy) const;
+  const ElemMapping &getElemMappingFor(StructType &STy) const;
+  ListOfSplitElements const &getElementsListOfSTyAtIdx(StructType &STy,
+                                                       unsigned Idx) const;
+  std::vector<Type *> getUniqueSplitTypes(StructType &STy) const;
   //***************************************
-  // Part responsible for dumping
+  // Part responsible for dumping.
   //***************************************
   void printData(raw_ostream &os = llvm::errs()) const;
   void print(raw_ostream &os = llvm::errs()) const;
-  void printDump(raw_ostream &os = llvm::errs()) const;
+  void printGraph(raw_ostream &os = llvm::errs()) const;
   void printGeneration(raw_ostream &os) const;
 };
 
-// Class to handle all instructions that are use splitted structs.
+// This class handles all instructions that use split structs.
 class Substituter : public InstVisitor<Substituter> {
   LLVMContext &Ctx;
   DataLayout const &DL;
@@ -428,7 +444,7 @@ class Substituter : public InstVisitor<Substituter> {
 
   std::vector<AllocaInst *> Allocas;
   // Contains all instruction to substitute.
-  using VecOfInstructionSubstitution =
+  using InstsToSubstitute =
       std::vector<std::pair<Instruction *, Instruction *>>;
   // Contains map of instructions and base type this instruction operates.
   using TypeToInstrMap = std::unordered_map<Type *, Instruction *>;
@@ -439,7 +455,7 @@ class Substituter : public InstVisitor<Substituter> {
                      AllocaInst &NewAI, DbgDeclareInst &DbgDeclare);
   TypeToInstrMap generateNewAllocas(AllocaInst &OldInst);
   AllocaInst *generateAlloca(AllocaInst &AI,
-                             const DependencyGraph::SElement &TyElm);
+                             const DependencyGraph::SElement &TyElem);
   Instruction *generateNewGEPs(GetElementPtrInst &GEPI, Type &DestSTy,
                                DependencyGraph::SElementsOfType const &IdxPath,
                                TypeToInstrMap const &NewInstr,
@@ -454,9 +470,9 @@ class Substituter : public InstVisitor<Substituter> {
   static Optional<uint64_t> processAddInst(Instruction &I, BinaryOperator &BO);
 
   bool processGEP(GetElementPtrInst &GEPI, TypeToInstrMap const &NewInstr,
-                  VecOfInstructionSubstitution /*OUT*/ &InstToInst);
+                  InstsToSubstitute /*OUT*/ &InstToInst);
   bool processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
-                  VecOfInstructionSubstitution /*OUT*/ &InstToInst);
+                  InstsToSubstitute /*OUT*/ &InstToInst);
   static bool processPTIsUses(Instruction &I, uint64_t /*OUT*/ &MaxPtrOffset);
 
 public:
@@ -477,11 +493,11 @@ bool GenXStructSplitter::runOnModule(Module &M) {
 }
 
 //__________________________________________________________________
-//          Block of StructFilter definition
+//          Block of StructFilter definition.
 //__________________________________________________________________
 
 //
-//  Performs checking of module for banned structs.
+// Performs module checking for banned structs.
 //
 StructFilter::StructFilter(Module &M) {
   std::list<StructType *> NotBannedYet;
@@ -503,15 +519,15 @@ StructFilter::StructFilter(Module &M) {
 }
 
 //
-//  Returns true if STy is banned and false - if not.
+//  Returns true if STy is banned, overwise - false.
 //
 bool StructFilter::isStructBanned(StructType &STy) const {
   return BannedStructs.find(&STy) != BannedStructs.end();
 }
 
 //
-//  Checks if structure has array of complex type.
-//  Returns true if has not got.
+//  Checks if structure contains array or vector of complex type.
+//  Returns true if it does not.
 //
 bool StructFilter::checkForArrayOfComplicatedStructs(StructType &STy) const {
   auto IsSequential = [](Type &Ty) {
@@ -519,22 +535,22 @@ bool StructFilter::checkForArrayOfComplicatedStructs(StructType &STy) const {
   };
 
   return !std::any_of(
-      STy.elements().begin(), STy.elements().end(), [IsSequential](Type *Elm) {
-        Type *BaseTy = getArrayFreeTy(Elm);
+      STy.elements().begin(), STy.elements().end(), [IsSequential](Type *Elem) {
+        Type *BaseTy = getArrayFreeTy(Elem);
         if (StructType *SBTy = dyn_cast<StructType>(BaseTy))
-          return IsSequential(*Elm) && BaseTy == getBaseTy(SBTy);
+          return IsSequential(*Elem) && BaseTy == getBaseTy(SBTy);
         return false;
       });
 }
 
 //
-//  Checks if structure has element of banned struct.
-//  Returns true if has not got.
+//  Checks if structure contains an element of a banned struct.
+//  Returns true if it does not.
 //
 bool StructFilter::checkForElementOfBannedStruct(StructType &STy) const {
   return !std::any_of(STy.elements().begin(), STy.elements().end(),
-                      [this](Type *Elm) {
-                        Type *BaseTy = getArrayFreeTy(Elm);
+                      [this](Type *Elem) {
+                        Type *BaseTy = getArrayFreeTy(Elem);
                         if (StructType *SBTy = dyn_cast<StructType>(BaseTy))
                           return isStructBanned(*SBTy);
                         return false;
@@ -542,7 +558,7 @@ bool StructFilter::checkForElementOfBannedStruct(StructType &STy) const {
 }
 
 //__________________________________________________________________
-//          Block of DependencyGraph definition
+//          Block of DependencyGraph definition.
 //__________________________________________________________________
 
 //
@@ -556,9 +572,10 @@ Type *DependencyGraph::getPlainSubTy(StructType &STy) const {
 
 //
 //  * Determines if structure STy is plain:
-//     contains in AllStruct
-//     and there is only one baseTy
-//  * Works unobvious for structs like: C1: { C2 }
+//     is contained in AllStruct
+//     and there is only one baseTy.
+//  * Works not intuitive for structs like: C1: { C2 }
+//     returns true even though C2 can be complicated.
 //
 bool DependencyGraph::isPlain(StructType &STy) const {
   auto FindIt = AllStructs.find(&STy);
@@ -567,7 +584,7 @@ bool DependencyGraph::isPlain(StructType &STy) const {
 
 //
 //  Checks if Struct has been processed, so info about it exists in InfoToMerge.
-//  Returns true if record about struct exists, false - conversely.
+//  Returns true if record about struct exists, otherwise - false.
 //
 bool DependencyGraph::isStructProcessed(StructType &STy) const {
   return InfoToMerge.find(&STy) != InfoToMerge.end();
@@ -575,7 +592,7 @@ bool DependencyGraph::isStructProcessed(StructType &STy) const {
 
 //
 //  Gets the element's information of the struct.
-//  Assertion if struct's info has not been collected.
+//  Requires structure to be processed before.
 //
 DependencyGraph::STypes const &
 DependencyGraph::getStructComponens(StructType &STy) const {
@@ -590,8 +607,8 @@ DependencyGraph::getStructComponens(StructType &STy) const {
 //  Gets vector of elements substitution of old struct with new substructs'
 //  elements.
 //
-DependencyGraph::VecOfNewIndiciesDefinition const &
-DependencyGraph::getVecOfStructIdxMapping(StructType &STy) const {
+DependencyGraph::ElemMapping const &
+DependencyGraph::getElemMappingFor(StructType &STy) const {
   auto FindIt = InfoToMerge.find(&STy);
   IGC_ASSERT_MESSAGE(
       FindIt != InfoToMerge.end(),
@@ -600,13 +617,13 @@ DependencyGraph::getVecOfStructIdxMapping(StructType &STy) const {
 }
 
 //
-//  Gets element's list which substitutes splitted struct's(STy) element at
+//  Gets element's list which substitutes split struct's(STy) element at
 //  index(Idx).
 //
-DependencyGraph::ListOfSplittedElements const &
+DependencyGraph::ListOfSplitElements const &
 DependencyGraph::getElementsListOfSTyAtIdx(StructType &STy,
                                            unsigned Idx) const {
-  VecOfNewIndiciesDefinition const &VecOfSTy = getVecOfStructIdxMapping(STy);
+  ElemMapping const &VecOfSTy = getElemMappingFor(STy);
   IGC_ASSERT_MESSAGE(Idx < VecOfSTy.size(),
                      "Attempt to get element out of borders.");
   return VecOfSTy.at(Idx);
@@ -616,23 +633,23 @@ DependencyGraph::getElementsListOfSTyAtIdx(StructType &STy,
 // Gets unique types into which the structure STy is split.
 //
 std::vector<Type *>
-DependencyGraph::getUniqueSplittedTypes(StructType &STy) const {
-  std::unordered_set<Type *> UniqueSplittedTypes;
+DependencyGraph::getUniqueSplitTypes(StructType &STy) const {
+  std::unordered_set<Type *> UniqueSplitTypes;
   // Vector is for determination of structs order.
-  std::vector<Type *> UniqueSplittedTypesInOrder;
+  std::vector<Type *> UniqueSplitTypesInOrder;
   // Gets unique substructs.
-  for (auto &&ListOfBaseTys : getVecOfStructIdxMapping(STy))
+  for (auto &&ListOfBaseTys : getElemMappingFor(STy))
     for (auto &&BaseTy : ListOfBaseTys) {
-      auto [It, IsInserted] = UniqueSplittedTypes.emplace(BaseTy.getTy());
+      auto [It, IsInserted] = UniqueSplitTypes.emplace(BaseTy.getTy());
       if (IsInserted)
-        UniqueSplittedTypesInOrder.push_back(BaseTy.getTy());
+        UniqueSplitTypesInOrder.push_back(BaseTy.getTy());
     }
-  return UniqueSplittedTypesInOrder;
+  return UniqueSplitTypesInOrder;
 }
 
 //
 //  * By AllStructs info generates dependency graph of structs.
-//  * FE generates smth like this:
+//  * eg. generates smth like this:
 //    C -----> A
 //     \     /
 //      \-> D
@@ -643,17 +660,17 @@ void DependencyGraph::generateGraph() {
   LLVM_DEBUG(dbgs() << "Graph generating begin.\n");
   NodeTracker Inserted;
   Heads.reserve(AllStructs.size());
-  for (auto &&[STy, ChildrensBaseTys] : AllStructs) {
+  for (auto &&[STy, _] : AllStructs) {
     if (Inserted.find(STy) != Inserted.end())
       // If already in graph -> skip
       continue;
     Heads.push_back(createNode(*STy, Inserted));
   }
 
-  // During Graph creation where can be similar case: (C and D are heads)
+  // During Graph creation a similar case can occur: (C and D are heads)
   // C -> D ..
   // D -> A
-  // So we want to remove D as it has parent=C
+  // Removes D as it has parent=C.
   // Cleanup Heads. Erase all entities with parent
   Heads.erase(
       std::remove_if(Heads.begin(), Heads.end(),
@@ -669,7 +686,7 @@ DependencyGraph::Node *DependencyGraph::createNode(StructType &STy,
   LLVM_DEBUG(dbgs() << "Creating node for struct: " << STy << "\n");
   auto FindIt = Inserted.find(&STy);
   if (FindIt != Inserted.end()) {
-    // This can occur when Struct has an processed child element.
+    // This can occur when Struct has a processed child element.
     // Parent will be automatically set right after this function.
     // Later clean-up heads. This node will be erased as it has parents.
     Node *node = FindIt->second;
@@ -693,15 +710,15 @@ DependencyGraph::Node *DependencyGraph::createNode(StructType &STy,
 }
 
 //
-//  * Processes the bottom node. Assume that this node has no children
+//  * Processes the bottom node. Assumes that this node has no children
 //    so all elements in this struct are plain.
-//  * Splits this struct into plain substructs and recreates parents node.
-//  * Eventually deletes this node from graph and releases memory as
-//    after processing struct will be splitted to plain substructs
-//    and parents node will no longer needed to track it.
+//  * Splits this struct into plain substructs and recreates parent nodes.
+//  * Eventually deletes this node from graph as
+//    after processing struct will be split to plain substructs
+//    and parent nodes will no longer need to track it.
 //  * While processing nodes graph will self destruct.
 //  * Info about all structs in Module (AllStructs) will be updated.
-//  * Info about structs transformation (SplittedStructs) will be updated.
+//  * Info about structs transformation (SplitStructs) will be updated.
 //
 void DependencyGraph::processNode(Node &SNode) {
   // Go to the bottom of the graph.
@@ -710,13 +727,13 @@ void DependencyGraph::processNode(Node &SNode) {
 
   LLVM_DEBUG(dbgs() << "Processing node for struct: " << *SNode.getType()
                     << "\n");
-  // Splitting always gets a plain type, so graph will be changed any way
+  // Splitting always gets a plain type, so graph will be changed anyway.
   if (StructType *OldSTy = SNode.getType()) {
-    // Splitting
+    // Splitting.
     STypes const &Types = getStructComponens(*OldSTy);
-    // Indices of unsplitted struct will be matched with indices of elemetnts of
-    // new splitted structs.
-    VecOfNewIndiciesDefinition IndicesMap(OldSTy->getNumElements());
+    // Indices of unsplit struct will be matched with indices of elements of
+    // new split structs.
+    ElemMapping IndicesMap(OldSTy->getNumElements());
 
     // First initialization with zeros as pos in vector will be Index of
     // Element.
@@ -735,15 +752,14 @@ void DependencyGraph::processNode(Node &SNode) {
       } else if (!isPlain(*OldSTy)) {
         StructType *NewPlainStruct = StructType::create(
             Ctx, Elements.getTypesArray(),
-            Twine(OldSTyName + "." + getTypePrefix(*BaseTy) + ".splitted")
-                .str());
+            Twine(OldSTyName + "." + getTypePrefix(*BaseTy) + ".split").str());
         NewPlainType = NewPlainStruct;
         // Update AllStructs info.
         setInfoAboutStructure(*NewPlainStruct);
         // Match old elements with new elements.
-        for (auto ElmIndex : enumerate(Elements.indices()))
-          IndicesMap[ElmIndex.value()].emplace_back(NewPlainStruct,
-                                                    ElmIndex.index());
+        for (auto ElemIndex : enumerate(Elements.indices()))
+          IndicesMap[ElemIndex.value()].emplace_back(NewPlainStruct,
+                                                     ElemIndex.index());
       } else
         // Plain structs with more than 1 elements -> skip as there is nothing
         // to do.
@@ -764,23 +780,25 @@ void DependencyGraph::processNode(Node &SNode) {
         llvm::remove_if(GeneratedTypesInOrder, [](Type *Ty) { return !Ty; }),
         GeneratedTypesInOrder.end());
 
-    // Do if there is splitting or simplification.
+    // Remakes parents if there is splitting or simplification.
     if (GeneratedTypesInOrder.size()) {
-      // Update SplittedStructs
-      SplittedStructs.emplace_back(OldSTy, std::move(IndicesMap));
+      // Updates SplitStructs.
+      SplitStructs.emplace_back(OldSTy, std::move(IndicesMap));
 
-      // Remake parent Node.
-      // As D will be splitted to Di,Df so C(parent) has to be splitted to
-      // Ci,Cf. It will be done in 3 steps: 1st: Create new struct before
-      // splitting: C_BS : {Ci, Cf} 2nd: Substitute struct C in Node represented
-      // this struct to C_BS 3rd: When D processing will be changed, C(C_BS)
-      // will be automatically splitted to Ci,Cf as Node responsible for C(C_BS)
-      // will no longer have childrens.
+      // Remakes parent Node.
+      // As D will be split to Di,Df so C(parent) has to be split to
+      // Ci,Cf. It will be done in 3 steps:
+      // 1st: Creates intermediate struct before splitting:
+      //   C_BS : {Ci, Cf}
+      // 2nd: Substitutes struct C to C_BS in Node responsible for C.
+      // 3rd: When D processing is done, C(C_BS) will be
+      //      automatically split to Ci,Cf as Node responsible
+      //      for C(C_BS) will no longer have children.
       // In this case there will be a record in transformation info:
       //  D     -> Di, Df
       //  C     -> C_BS
       //  C_BS  -> Ci, Cf
-      // so transformation C->C_BS->Ci,Cf can be merged to C->Ci,Cf
+      // Therefore, transformation C->C_BS->Ci,Cf can be merged to C->Ci,Cf
       //
       // In case of simplification: type will be substituted directly, without
       // structure.
@@ -792,19 +810,19 @@ void DependencyGraph::processNode(Node &SNode) {
     }
   }
 
-  // Remove dependencies.
+  // Removes dependencies.
   std::for_each(SNode.parent_begin(), SNode.parent_end(),
                 [&SNode](Node *ParentNode) { ParentNode->eraseChild(SNode); });
 }
 
 //
-//  * Creates unsplitted struct with new element's types generated from child
+//  * Creates unsplit struct with new element's types generated from child
 //    Node.
-//  * As D splitted to Di,Df, structure C has to change element D to Di,Df and
-//    splits later. So after this function in Node responsible for C, will
-//    be placed new structure C_BS and later C_BS will be processed.
-//  * SNode - current parent node to be changed
-//  * SNodeToChange - child node that already has been changed
+//  * As D is split to Di,Df, structure C has to change element D to Di,Df and
+//    splits later. remakeParent substitutes structure C in SNode with structure
+//    C_BS that contains Di,Df.
+//  * SNode - current parent node to be changed.
+//  * SNodeToChange - child node that already has been changed.
 //
 void DependencyGraph::remakeParent(Node &SNode, Node &SNodeToChange,
                                    ArrayRef<Type *> NewReplaceTypes) {
@@ -816,29 +834,29 @@ void DependencyGraph::remakeParent(Node &SNode, Node &SNodeToChange,
   unsigned const NewMaxSize = NumElements + NewReplaceTypes.size() - 1;
   std::vector<Type *> NewElements;
   NewElements.reserve(NewMaxSize);
-  // First create an empty struct
-  // Later setBody with elements. It is for completing VecOfStructInfo
+  // First create an empty structure.
+  // Later setBody with elements. It is for completing VecOfStructInfo.
   StructType *BeforeSplitingS = StructType::create(
       CurrentS->getContext(), Twine(CurrentSName + "_BS").str());
-  VecOfNewIndiciesDefinition NewIndices(NumElements);
+  ElemMapping NewIndices(NumElements);
   unsigned Index{0};
   unsigned ExpandIndicies{0};
-  for (auto &&Elm : CurrentS->elements()) {
-    if (StructType *SElm = dyn_cast<StructType>(Elm);
-        SElm && SNodeToChange.isContainsStruct(*SElm)) {
-      // If element of structure is splitted element, then we need to replace
+  for (auto &&Elem : CurrentS->elements()) {
+    if (StructType *SElem = dyn_cast<StructType>(Elem);
+        SElem && SNodeToChange.containsStruct(*SElem)) {
+      // If element of structure is split element, then we need to replace
       // this element with new.
       for (auto &&NewSTy : NewReplaceTypes) {
         NewElements.emplace_back(NewSTy);
         NewIndices[Index].emplace_back(BeforeSplitingS,
                                        Index + ExpandIndicies++);
       }
-      // The Index will be inc, so there is no need of extra offset
+      // The Index will be inc, so there is no need of extra offset.
       --ExpandIndicies;
     } else {
       // If element of structure is not changed, then just copies info about it
       // and places right indices.
-      NewElements.emplace_back(Elm);
+      NewElements.emplace_back(Elem);
       NewIndices[Index].emplace_back(BeforeSplitingS, Index + ExpandIndicies);
     }
     ++Index;
@@ -846,11 +864,11 @@ void DependencyGraph::remakeParent(Node &SNode, Node &SNodeToChange,
 
   BeforeSplitingS->setBody(NewElements);
 
-  // Updates AllStructs and SplittedStructs info.
+  // Updates AllStructs and SplitStructs info.
   setInfoAboutStructure(*BeforeSplitingS);
-  SplittedStructs.emplace_back(CurrentS, std::move(NewIndices));
+  SplitStructs.emplace_back(CurrentS, std::move(NewIndices));
 
-  // Substitutes structure in Node
+  // Substitutes structure in Node.
   SNode.substitute(*BeforeSplitingS);
 }
 
@@ -872,23 +890,23 @@ void DependencyGraph::setInfoAboutStructure(StructType &STy) {
   STypes BaseTypes;
   unsigned Index{0};
   unsigned const NumElements = STy.getNumElements();
-  // SElementsOfType reservs memory to avoid reallocations and easy access
-  // Will be more memory overhead
-  for (auto &&Elm : STy.elements()) {
-    Type *BaseTy = getBaseTy(Elm);
-    // BaseTy can be structure in AllStructs, so we get info from AllStructs
+  // Puts each element and its index according to the base type.
+  for (auto &&Elem : STy.elements()) {
+    Type *BaseTy = getBaseTy(Elem);
+    // BaseTy can be a structure in AllStructs, so we get the info from
+    // AllStructs.
     if (StructType *SBTy = dyn_cast<StructType>(BaseTy))
       BaseTy = getPlainSubTy(*SBTy);
 
     auto FindIt = BaseTypes.find(BaseTy);
     if (FindIt == BaseTypes.end()) {
-      // If there is no entity with baseTy, creates it with preallocated array
+      // If there is no entity with baseTy, creates it with preallocated array.
       auto [It, IsInserted] =
           BaseTypes.emplace(BaseTy, SElementsOfType{NumElements});
-      It->second.emplace_back(*Elm, Index++);
+      It->second.emplace_back(*Elem, Index++);
     } else
-      // If there is an entity with baseTy, inserts it into array
-      FindIt->second.emplace_back(*Elm, Index++);
+      // If there is an entity with baseTy, inserts it into array.
+      FindIt->second.emplace_back(*Elem, Index++);
   }
 
   auto [It, IsInserted] = AllStructs.emplace(&STy, std::move(BaseTypes));
@@ -903,27 +921,26 @@ void DependencyGraph::setInfoAboutStructure(StructType &STy) {
 //
 void DependencyGraph::mergeStructGenerationInfo() {
   LLVM_DEBUG(dbgs() << "Merging structs.\n");
-  for (auto It = SplittedStructs.rbegin(), End = SplittedStructs.rend();
-       It != End; ++It) {
+  for (auto It = SplitStructs.rbegin(), End = SplitStructs.rend(); It != End;
+       ++It) {
     StructType &SToMerge = *It->first;
-    VecOfNewIndiciesDefinition &InfoAboutS = It->second;
+    ElemMapping &InfoAboutS = It->second;
 
     if (StructType *SToMergeWith = checkAbilityToMerge(InfoAboutS)) {
       LLVM_DEBUG(dbgs() << "Able to merge: " << SToMerge << "\n\tWith "
                         << *SToMergeWith << "\n");
 
-      VecOfNewIndiciesDefinition const &InfoAboutTemporaryS =
-          getVecOfStructIdxMapping(*SToMergeWith);
+      ElemMapping const &InfoAboutTemporaryS = getElemMappingFor(*SToMergeWith);
       // Every element of the structure SToMerge will be substituted with
       // element from the structure SToMergeWith and/or new elements from
       // SToMergeWith will be placed in SToMerge.
-      for (ListOfSplittedElements &ElementsList : InfoAboutS) {
+      for (ListOfSplitElements &ElementsList : InfoAboutS) {
         for (SElement &Element : ElementsList) {
           IGC_ASSERT_MESSAGE(!Element.isUnwrapped(),
                              "Attempt to merge unwrapped type.");
           IGC_ASSERT_MESSAGE(Element.getIndex() < InfoAboutTemporaryS.size(),
                              "Attempt to get element out of borders.");
-          ListOfSplittedElements const &NewElement =
+          ListOfSplitElements const &NewElement =
               InfoAboutTemporaryS.at(Element.getIndex());
 
           auto EIt = NewElement.rbegin();
@@ -932,7 +949,7 @@ void DependencyGraph::mergeStructGenerationInfo() {
           // Pushes front new element not to invalidate iterations.
           // Iterates from end to begin (rbegin to rend) to keep order of
           // elements.
-          // FE, merges information
+          // eg. merges information
           // G    : (G_BS, 0) (...)
           //        (...)
           // G_BS : (SomeS, 5) (Gf, 0) (Gi, 0)
@@ -969,26 +986,25 @@ void DependencyGraph::mergeStructGenerationInfo() {
 //            (Cf, 2)
 //            (Ci, 2)
 //
-StructType *DependencyGraph::checkAbilityToMerge(
-    VecOfNewIndiciesDefinition const &NewSTypes) const {
+StructType *
+DependencyGraph::checkAbilityToMerge(ElemMapping const &NewSTypes) const {
   IGC_ASSERT_MESSAGE(NewSTypes.size(), "Merging empty structs.");
   IGC_ASSERT_MESSAGE(NewSTypes.begin()->size(), "Merging empty structs.");
-  auto FirstElm = NewSTypes.begin()->begin();
-  if (FirstElm->isUnwrapped())
+  auto FirstElem = NewSTypes.begin()->begin();
+  if (FirstElem->isUnwrapped())
     return nullptr;
-  StructType *STyToCheck = FirstElm->getStructTy();
+  StructType *STyToCheck = FirstElem->getStructTy();
 
   // Checks that all split structs are same. It is the main criteria for
   // iterations of splitting to be merged.
-  bool AreSameStructs =
-      std::all_of(NewSTypes.begin(), NewSTypes.end(),
-                  [STyToCheck](auto &&SplittedElements) {
-                    return std::all_of(
-                        SplittedElements.begin(), SplittedElements.end(),
-                        [STyToCheck](auto &&Element) {
-                          return Element.getStructTyIfPossible() == STyToCheck;
-                        });
-                  });
+  bool AreSameStructs = std::all_of(
+      NewSTypes.begin(), NewSTypes.end(), [STyToCheck](auto &&SplitElements) {
+        return std::all_of(SplitElements.begin(), SplitElements.end(),
+                           [STyToCheck](auto &&Element) {
+                             return Element.getStructTyIfPossible() ==
+                                    STyToCheck;
+                           });
+      });
 
   if (AreSameStructs && isStructProcessed(*STyToCheck))
     return STyToCheck;
@@ -1015,12 +1031,12 @@ void DependencyGraph::run() {
 }
 
 //__________________________________________________________________
-//          Block of Substituter definition
+//          Block of Substituter definition.
 //__________________________________________________________________
 
 //
 //  Collects all information of structs, allocas and launches struct splittting,
-//    based on this information.
+//  based on this information.
 //
 Substituter::Substituter(Module &M)
     : Ctx{M.getContext()}, DL{M.getDataLayout()}, Filter{M}, Graph{M, Filter},
@@ -1028,7 +1044,7 @@ Substituter::Substituter(Module &M)
   Graph.run();
   LLVM_DEBUG(Graph.print(dbgs()));
 
-  // visit should be after graph processing
+  // Visit should be after graph processing.
   visit(M);
 }
 
@@ -1039,10 +1055,6 @@ void Substituter::visitAllocaInst(AllocaInst &AI) {
   if (StructType *STy = dyn_cast<StructType>(AI.getAllocatedType()))
     if (Graph.isStructProcessed(*STy)) {
       LLVM_DEBUG(dbgs() << "Collecting alloca to replace: " << AI << "\n");
-      // In case if struct S marked to be splitted, but there is
-      // alloca [5 x %struct.C] then skip.
-      // Gets only allocas which will be splitted
-      // InfoToMerge contains this info
       Allocas.emplace_back(&AI);
     }
 }
@@ -1060,7 +1072,7 @@ Substituter::generateNewAllocas(AllocaInst &OldInst) {
   std::unordered_set<Type *> UniqueSplitTypes;
   TypeToInstrMap NewInstructions;
 
-  for (auto &&ListOfBaseTys : Graph.getVecOfStructIdxMapping(STy))
+  for (auto &&ListOfBaseTys : Graph.getElemMappingFor(STy))
     for (auto &&BaseTy : ListOfBaseTys) {
       Type *NewTy = BaseTy.getTy();
       auto [_, IsTypeInserted] = UniqueSplitTypes.emplace(NewTy);
@@ -1121,15 +1133,15 @@ static DbgDeclareInst *getDbgDeclare(Value &Val) {
 }
 
 //
-// Generates new alloca for TyElm to replace AI - the old one.
-// For TyElm generates DI.
+// Generates new alloca for TyElem to replace AI - the old one.
+// For TyElem generates DI.
 //
 AllocaInst *
 Substituter::generateAlloca(AllocaInst &AI,
-                            const DependencyGraph::SElement &TyElm) {
+                            const DependencyGraph::SElement &TyElem) {
   IRBuilder<> IRB{&AI};
 
-  Type *NewTy = TyElm.getTy();
+  Type *NewTy = TyElem.getTy();
   AllocaInst &NewAI = *IRB.CreateAlloca(
       NewTy, 0, AI.getName() + "." + getTypePrefix(*getBaseTy(NewTy)));
   NewAI.setAlignment(IGCLLVM::getAlign(AI));
@@ -1142,10 +1154,10 @@ Substituter::generateAlloca(AllocaInst &AI,
   // - base type, non-split struct (also base type).
   // - split struct (for each element to generate DI).
   std::vector<Type *> TypesToGenerateDI;
-  if (TyElm.isUnwrapped()) {
+  if (TyElem.isUnwrapped()) {
     TypesToGenerateDI.push_back(NewTy);
   } else {
-    StructType &STy = *TyElm.getStructTy();
+    StructType &STy = *TyElem.getStructTy();
     llvm::copy(STy.elements(), std::back_inserter(TypesToGenerateDI));
   }
   updateDbgInfo(TypesToGenerateDI, AI, NewAI, *DbgDeclare);
@@ -1158,22 +1170,22 @@ Substituter::generateAlloca(AllocaInst &AI,
 // found. FirstMatch is for search regardless of index. Finds the firts match of
 // type.
 //
-static bool isElementInList(const DependencyGraph::ListOfSplittedElements &List,
+static bool isElementInList(const DependencyGraph::ListOfSplitElements &List,
                             Type *Ty, unsigned Idx, bool FirstMatch) {
-  auto ListIt =
-      std::find_if(List.begin(), List.end(),
-                   [Idx, Ty, FirstMatch](const DependencyGraph::SElement &Elm) {
-                     // FirstMatch is needed only for searching in
-                     // substructures, where the first occurrence of type is to
-                     // be found.
-                     if (FirstMatch)
-                       return Elm.getTy() == Ty;
-                     // If element is unwrapped -> only checks on types match.
-                     // If element is not unwrapped -> additionaly checks Index.
-                     return Elm.getTy() == Ty &&
-                            (Elm.isUnwrapped() ||
-                             !Elm.isUnwrapped() && Elm.getIndex() == Idx);
-                   });
+  auto ListIt = std::find_if(
+      List.begin(), List.end(),
+      [Idx, Ty, FirstMatch](const DependencyGraph::SElement &Elem) {
+        // FirstMatch is needed only for searching in
+        // substructures, where the first occurrence of type is to
+        // be found.
+        if (FirstMatch)
+          return Elem.getTy() == Ty;
+        // If element is unwrapped -> only checks on types match.
+        // If element is not unwrapped -> additionaly checks Index.
+        return Elem.getTy() == Ty &&
+               (Elem.isUnwrapped() ||
+                !Elem.isUnwrapped() && Elem.getIndex() == Idx);
+      });
   return ListIt != List.end();
 }
 
@@ -1181,9 +1193,8 @@ static bool isElementInList(const DependencyGraph::ListOfSplittedElements &List,
 // Finds record in IdxMap of Ty placed on Idx position.
 // FirstMatch is for search regardless of index.
 //
-static auto
-findRecord(const DependencyGraph::VecOfNewIndiciesDefinition &IdxMap, Type *Ty,
-           unsigned Idx, bool FirstMatch) {
+static auto findRecord(const DependencyGraph::ElemMapping &IdxMap, Type *Ty,
+                       unsigned Idx, bool FirstMatch) {
   auto FindIt = std::find_if(
       IdxMap.begin(), IdxMap.end(), [&Ty, &Idx, FirstMatch](auto &&List) {
         return isElementInList(List, Ty, Idx, FirstMatch);
@@ -1226,12 +1237,10 @@ void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
 
   Type *NewTy = NewAI.getAllocatedType();
 
-  using VecOfNewIndiciesDefinition =
-      DependencyGraph::VecOfNewIndiciesDefinition;
+  using ElemMapping = DependencyGraph::ElemMapping;
   using SElement = DependencyGraph::SElement;
   StructType &STy = *cast<StructType>(AI.getAllocatedType());
-  const VecOfNewIndiciesDefinition &IdxMap =
-      Graph.getVecOfStructIdxMapping(STy);
+  const ElemMapping &IdxMap = Graph.getElemMappingFor(STy);
 
   // For each element of the new structure generates DI.
   for (auto &&TypeEnum : enumerate(TypesToGenerateDI)) {
@@ -1239,14 +1248,14 @@ void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
 
     // Type and position of the element.
     Type *TyToGenDI = TypeEnum.value();
-    unsigned ElmIdx = TypeEnum.index();
+    unsigned ElemIdx = TypeEnum.index();
 
     auto getOffsetInBits = [this](unsigned Idx, StructType *STy) {
       return DL.getStructLayout(STy)->getElementOffsetInBits(Idx);
     };
 
     // Finds original type from which element came.
-    auto VecIt = findRecord(IdxMap, NewTy, ElmIdx, false);
+    auto VecIt = findRecord(IdxMap, NewTy, ElemIdx, false);
     unsigned IdxOfOrigStruct = VecIt - IdxMap.begin();
     Type *OrigTy = STy.getElementType(IdxOfOrigStruct);
 
@@ -1254,8 +1263,7 @@ void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
     // has to be calculated.
     if (StructType *OrigSTy = dyn_cast<StructType>(OrigTy);
         OrigSTy && Graph.isStructProcessed(*OrigSTy)) {
-      const VecOfNewIndiciesDefinition &SubSIdxMap =
-          Graph.getVecOfStructIdxMapping(*OrigSTy);
+      const ElemMapping &SubSIdxMap = Graph.getElemMappingFor(*OrigSTy);
       // Offset from OrigStruct + Offset from SubStruct.
       auto SubSVecIt =
           findRecord(SubSIdxMap, TyToGenDI, /*does not matter*/ 0, true);
@@ -1263,7 +1271,7 @@ void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
       Offset = getOffsetInBits(IdxOfOrigStruct, &STy) +
                getOffsetInBits(IdxOfSubStruct, OrigSTy);
     } else
-      // Offset from OrigStruct
+      // Offset from OrigStruct.
       Offset = getOffsetInBits(IdxOfOrigStruct, &STy);
 
     auto FragExpr = DIExpression::createFragmentExpression(
@@ -1285,7 +1293,7 @@ static Instruction *findProperInstruction(
   auto FindInstrIt = NewInstr.find(Ty);
   IGC_ASSERT_MESSAGE(
       FindInstrIt != NewInstr.end(),
-      "Cannot find instruction according to splitted structure type.");
+      "Cannot find instruction according to split structure type.");
   return FindInstrIt->second;
 }
 
@@ -1295,7 +1303,7 @@ static Instruction *findProperInstruction(
 //  PlainType - the result type of new gep work.
 //  IdxPath - the sequence of indices to recive needed type.
 //  NewInstr - instruction map to set proper uses.
-//  PlainTyIdx - index of the first plain type..
+//  PlainTyIdx - index of the first plain type.
 //
 Instruction *
 Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
@@ -1303,7 +1311,7 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
                              TypeToInstrMap const &NewInstr,
                              unsigned PlainTyIdx) const {
   using SElement = DependencyGraph::SElement;
-  using ListOfSplittedElements = DependencyGraph::ListOfSplittedElements;
+  using ListOfSplitElements = DependencyGraph::ListOfSplitElements;
   using SElementsOfType = DependencyGraph::SElementsOfType;
   LLVM_DEBUG(dbgs() << "Generating GEP to replace: " << GEPI << "\n");
   IGC_ASSERT_MESSAGE(PlainTyIdx <= IdxPath.size(),
@@ -1313,16 +1321,16 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
 
   // Generates new indices path till PlainTyIdx.
   std::for_each(IdxPath.begin(), IdxPath.begin() + PlainTyIdx,
-                [&PlainType, &LocalIdxPath, this](auto &&Elm) {
-                  auto [Ty, Idx] = Elm;
+                [&PlainType, &LocalIdxPath, this](auto &&Elem) {
+                  auto [Ty, Idx] = Elem;
                   StructType *STy = cast<StructType>(Ty);
-                  ListOfSplittedElements const &ListOfPossibleTypes =
+                  ListOfSplitElements const &ListOfPossibleTypes =
                       Graph.getElementsListOfSTyAtIdx(*STy, Idx);
 
                   auto FindIt = std::find_if(
                       ListOfPossibleTypes.begin(), ListOfPossibleTypes.end(),
-                      [&PlainType](auto &&PosElm) {
-                        Type *PossibleTy = PosElm.getTy();
+                      [&PlainType](auto &&PosElem) {
+                        Type *PossibleTy = PosElem.getTy();
                         // For now getBaseTy is similar to getting type from
                         // structure info, but in further it may be different
                         // while processing arrays and vectors of structures.
@@ -1359,7 +1367,7 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
 
   IRBuilder<> IRB{&GEPI};
   Instruction *NewGEP = cast<Instruction>(
-      IRB.CreateGEP(Inserted, ToInsert, IdxList, GEPI.getName() + ".splitted"));
+      IRB.CreateGEP(Inserted, ToInsert, IdxList, GEPI.getName() + ".split"));
 
   LLVM_DEBUG(dbgs() << "Instruction has been created: " << *NewGEP << "\n");
 
@@ -1389,7 +1397,7 @@ bool Substituter::processAlloca(AllocaInst &Alloca) {
 
   TypeToInstrMap NewInstrs = generateNewAllocas(Alloca);
 
-  VecOfInstructionSubstitution InstToInst;
+  InstsToSubstitute InstToInst;
 
   for (GetElementPtrInst *GEP : UsesGEP)
     if (!processGEP(*GEP, NewInstrs, InstToInst))
@@ -1406,7 +1414,7 @@ bool Substituter::processAlloca(AllocaInst &Alloca) {
 
 //
 // Retrieves information of Type gotten within each index access.
-// FE:
+// eg.
 //  %a = gep C, 0, 4, 0
 //  (C, 4) -> D
 //  (D, 0) -> A
@@ -1418,14 +1426,14 @@ Substituter::getIndicesPath(GetElementPtrInst &GEPI) {
   std::vector<Type *> GottenTypeArr;
   GottenTypeArr.reserve(Size);
 
-  // Skip first operator as it always 0 to rename poiterTy and get to structTy
+  // Skips first operator as it always 0 to deref poiterTy and get to structTy.
   Type *CurrentType = GEPI.getSourceElementType();
   for (auto It = GEPI.idx_begin() + 1, End = GEPI.idx_end(); It != End; ++It) {
     Value *VIdx = *It;
     if (Constant *CIdx = dyn_cast<Constant>(VIdx)) {
       APInt const &Int = CIdx->getUniqueInteger();
       // Naive assumption that all indices are unsigned greater then zero and
-      // scalar
+      // scalar.
       uint64_t Idx = Int.getZExtValue();
 
       // This approach can fail in case of dynamic indices.
@@ -1459,8 +1467,8 @@ Substituter::getInstUses(Instruction &I) {
   UsesGEP.reserve(I.getNumUses());
   UsesPTI.reserve(I.getNumUses());
   for (auto const &U : I.uses())
-    if (GetElementPtrInst *I = dyn_cast<GetElementPtrInst>(U.getUser()))
-      UsesGEP.push_back(I);
+    if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(U.getUser()))
+      UsesGEP.push_back(GEP);
     else if (PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(U.getUser()))
       UsesPTI.push_back(PTI);
     else if (BitCastInst *BC = dyn_cast<BitCastInst>(U.getUser())) {
@@ -1488,11 +1496,11 @@ Substituter::getInstUses(Instruction &I) {
 }
 
 //
-//  * Generates new instructions that use splitted struct.
-//  * In case if result of old instruction is a struct to be splitted, then
-//    generates new instructions and results of them are splitted structs.
-//  * In case if result of old instruction is unsplitted struct or data,
-//    when just generate new instruction with proper access indecies.
+//  * Generates new instructions that use split struct.
+//  * If result of old instruction is a struct to be split:
+//    generates new instructions and results of them are split structs.
+//  * If result of old instruction is unsplit struct or data:
+//    just generates new instruction with proper access indices.
 //  * FE1: %d = gep C, 0, 4
 //     -> %di = gep Ci, 0, 2
 //     -> %df = gep Cf, 0, 1
@@ -1501,10 +1509,10 @@ Substituter::getInstUses(Instruction &I) {
 //
 bool Substituter::processGEP(GetElementPtrInst &GEPI,
                              TypeToInstrMap const &NewInstr,
-                             VecOfInstructionSubstitution /*OUT*/ &InstToInst) {
+                             InstsToSubstitute /*OUT*/ &InstToInst) {
   LLVM_DEBUG(dbgs() << "Processing uses of instruction: " << GEPI << "\n");
   using SElement = DependencyGraph::SElement;
-  using ListOfSplittedElements = DependencyGraph::ListOfSplittedElements;
+  using ListOfSplitElements = DependencyGraph::ListOfSplitElements;
   auto IndicesPath = getIndicesPath(GEPI);
   if (!IndicesPath)
     return false;
@@ -1514,8 +1522,8 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
       IdxPath.size() == Size,
       "IdxPath and GottenTypeArr must be consistent with each other.");
 
-  // Find the first index of plain type.
-  // All indices after PlaintTyIdx can be just copied.
+  // Finds the first index of plain type.
+  // All indices after PlaintTyIdx can be copied.
   auto FindIt = std::find_if(GottenTypeArr.begin(), GottenTypeArr.end(),
                              [this](Type *Ty) {
                                StructType *STy = dyn_cast<StructType>(Ty);
@@ -1530,13 +1538,13 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
       return false;
     auto [UsesGEP, UsesPTI] = std::move(InstUses.getValue());
 
-    // That means that we getting splitted struct so we need to create GEPs.
-    // STyToBeSplitted is the result of instruction.
+    // That means that we are getting split struct so we need to create GEPs.
+    // STyToBeSplit is the result of the instruction.
     Type *PrevType = IdxPath.getTyAt(Size - 1);
     unsigned Idx = IdxPath.getIdxAt(Size - 1);
-    StructType *STyToBeSplitted = cast<StructType>(PrevType);
-    ListOfSplittedElements const &ListOfPossibleTypes =
-        Graph.getElementsListOfSTyAtIdx(*STyToBeSplitted, Idx);
+    StructType *STyToBeSplit = cast<StructType>(PrevType);
+    ListOfSplitElements const &ListOfPossibleTypes =
+        Graph.getElementsListOfSTyAtIdx(*STyToBeSplit, Idx);
 
     TypeToInstrMap NewInstructions;
     NewInstructions.reserve(ListOfPossibleTypes.size());
@@ -1563,10 +1571,10 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
   } else {
     Type *PrevType = IdxPath.getTyAt(PlainTyIdx);
     unsigned Idx = IdxPath.getIdxAt(PlainTyIdx);
-    StructType *STyToBeSplitted = cast<StructType>(PrevType);
+    StructType *STyToBeSplit = cast<StructType>(PrevType);
     IGC_ASSERT_MESSAGE(
-        Graph.getElementsListOfSTyAtIdx(*STyToBeSplitted, Idx).size() == 1,
-        "Access to element of Struct does not get unsplitted type.");
+        Graph.getElementsListOfSTyAtIdx(*STyToBeSplit, Idx).size() == 1,
+        "Access to element of Struct does not get unsplit type.");
     Type *PlainType = getBaseTy(GottenTypeArr[PlainTyIdx]);
     Instruction *ToInsert =
         generateNewGEPs(GEPI, *PlainType, IdxPath, NewInstr, PlainTyIdx + 1);
@@ -1576,13 +1584,13 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
 }
 
 //
-//  Checks if accessing by ptr covers one unsplitted block and substitutes
+//  Checks if accessing by ptr covers one unsplit block and substitutes
 //  struct. Tracks max offset of ptr until ptr goes to function. If function is
-//  read/write, then check if max offset lies within unsplited block. If it
-//  does, then substitutes struct. Overwise we cannot split struct.
+//  read/write, then checks if max offset lies within unsplit block. If it
+//  does, then substitutes the struct. Overwise we cannot split the struct.
 //
 bool Substituter::processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
-                             VecOfInstructionSubstitution /*OUT*/ &InstToInst) {
+                             InstsToSubstitute /*OUT*/ &InstToInst) {
 
   StructType *STy = dyn_cast<StructType>(
       PTI.getPointerOperand()->getType()->getPointerElementType());
@@ -1592,35 +1600,35 @@ bool Substituter::processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
   if (!processPTIsUses(PTI, MaxPtrOffset))
     return false;
 
-  // If MaxPtrOffset covers elements, which will be laid sequitially within one
-  // new struct, then we can substiture PTI with new PTI;
-  unsigned IdxOfOldElm{0};
+  // If MaxPtrOffset covers elements, which will be laid sequentially within one
+  // new struct, then we can substitute PTI with new PTI.
+  unsigned IdxOfOldElem{0};
   Type *SplitTy{nullptr};
-  unsigned IdxOfSplittedStructElm{0};
-  DependencyGraph::VecOfNewIndiciesDefinition const &IdxMapping =
-      Graph.getVecOfStructIdxMapping(*STy);
-  for (auto &&Elm : STy->elements()) {
-    IGC_ASSERT_MESSAGE(IdxOfOldElm < IdxMapping.size(),
+  unsigned IdxOfSplitStructElem{0};
+  DependencyGraph::ElemMapping const &IdxMapping =
+      Graph.getElemMappingFor(*STy);
+  for (auto &&Elem : STy->elements()) {
+    IGC_ASSERT_MESSAGE(IdxOfOldElem < IdxMapping.size(),
                        "Attempt to get element out of borders.");
-    DependencyGraph::ListOfSplittedElements const &ListOfElements =
-        IdxMapping.at(IdxOfOldElm++);
-    for (auto &&NewElm : ListOfElements) {
+    DependencyGraph::ListOfSplitElements const &ListOfElements =
+        IdxMapping.at(IdxOfOldElem++);
+    for (auto &&NewElem : ListOfElements) {
       if (!SplitTy) {
         // The head of sequential check.
-        SplitTy = NewElm.getTy();
-        IdxOfSplittedStructElm = 0;
-        if (!NewElm.isUnwrapped() && NewElm.getIndex()) {
+        SplitTy = NewElem.getTy();
+        IdxOfSplitStructElem = 0;
+        if (!NewElem.isUnwrapped() && NewElem.getIndex()) {
           // A {i32, float}
           // Af {float} <- prohibited
           // Ai {i32}   <- allowed
           LLVM_DEBUG(dbgs() << "WARN:: Struct (" << *STy
-                            << ") cannot be splitted as the first element of "
-                               "the splitted struct has to be the first "
+                            << ") cannot be split as the first element of "
+                               "the split struct has to be the first "
                                "element of the original struct!\n");
           return false;
         }
       } else {
-        if (NewElm.isUnwrapped()) {
+        if (NewElem.isUnwrapped()) {
           // Ai { Bi, i32 };
           // ptr = &Ai;
           // ptr += sizeof(bi);
@@ -1628,22 +1636,22 @@ bool Substituter::processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
           // Unwrapped type can be only an the first position.
           LLVM_DEBUG(dbgs()
                      << "WARN:: Struct (" << *STy
-                     << ") cannot be splitted as pointer offset covers "
+                     << ") cannot be split as pointer offset covers "
                         "unsequential types and base type("
-                     << *NewElm.getTy() << ") can be only in the begining.\n");
+                     << *NewElem.getTy() << ") can be only in the begining.\n");
           return false;
         }
-        if (NewElm.getTy() != SplitTy) {
+        if (NewElem.getTy() != SplitTy) {
           // A {i32, i32, float}; Offset = 8byte
-          // Prohibited as offset covers i32 and float
+          // Prohibited as offset covers i32 and float.
           LLVM_DEBUG(dbgs() << "WARN:: Struct (" << *STy
-                            << ") cannot be splitted as pointer offset covers "
-                               "different splitted types.\n");
+                            << ") cannot be split as pointer offset covers "
+                               "different split types.\n");
           return false;
         }
-        if (NewElm.getIndex() != ++IdxOfSplittedStructElm) {
+        if (NewElem.getIndex() != ++IdxOfSplitStructElem) {
           LLVM_DEBUG(dbgs() << "WARN:: Struct (" << *STy
-                            << ") cannot be splitted as pointer offset covers "
+                            << ") cannot be split as pointer offset covers "
                                "unsequential types.\n");
           return false;
         }
@@ -1652,15 +1660,16 @@ bool Substituter::processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
 
     if (!MaxPtrOffset)
       break;
-    uint64_t const SizeOfElm = DL.getTypeAllocSizeInBits(Elm) / genx::ByteBits;
-    MaxPtrOffset = SizeOfElm > MaxPtrOffset ? 0 : MaxPtrOffset - SizeOfElm;
+    uint64_t const SizeOfElem =
+        DL.getTypeAllocSizeInBits(Elem) / genx::ByteBits;
+    MaxPtrOffset = SizeOfElem > MaxPtrOffset ? 0 : MaxPtrOffset - SizeOfElem;
   }
 
   Instruction *ToInsert = findProperInstruction(getBaseTy(SplitTy), NewInstr);
 
   IRBuilder<> IRB{&PTI};
   Value *NewPTI =
-      IRB.CreatePtrToInt(ToInsert, PTI.getType(), PTI.getName() + ".splitted");
+      IRB.CreatePtrToInt(ToInsert, PTI.getType(), PTI.getName() + ".split");
 
   LLVM_DEBUG(dbgs() << "New Instruction has been created: " << *NewPTI << "\n");
   InstToInst.emplace_back(cast<Instruction>(&PTI), cast<Instruction>(NewPTI));
@@ -1729,11 +1738,11 @@ bool Substituter::processPTIsUses(Instruction &I,
       LocalPtrOffset = std::max(LocalPtrOffset, Offset.getValue());
     } else if (GenXIntrinsic::isGenXIntrinsic(User) &&
                User->mayReadOrWriteMemory()) {
-      // We can read/write from/to unsplitted block.
+      // We can read/write from/to unsplit block.
       continue;
     } else if (User->getOpcode() != Instruction::ShuffleVector &&
                User->getOpcode() != Instruction::InsertElement) {
-      // There extensions are to fit the pattern of using ptrtoint:
+      // These extensions are to fit the pattern of using ptrtoint:
       // %pti = ptrtoint %StructTy* %ray to i64
       // %base = insertelement <16 x i64> undef, i64 %pti, i32 0
       // %shuffle = shufflevector <16 x i64> %base, <16 x i64> undef, <16 x i32>
@@ -1744,7 +1753,7 @@ bool Substituter::processPTIsUses(Instruction &I,
       return false;
     }
 
-    // Do next processings
+    // Does next processing.
     if (!processPTIsUses(*User, LocalPtrOffset))
       return false;
   }
@@ -1753,7 +1762,7 @@ bool Substituter::processPTIsUses(Instruction &I,
 }
 
 //__________________________________________________________________
-//          Block of SElement definition
+//          Block of SElement definition.
 //__________________________________________________________________
 DependencyGraph::SElement::SElement(StructType *const &InTy,
                                     unsigned InIndex)
@@ -1787,14 +1796,14 @@ bool DependencyGraph::SElement::isUnwrapped() const {
 }
 
 //__________________________________________________________________
-//          Block of SElementsOfType definition
+//          Block of SElementsOfType definition.
 //__________________________________________________________________
 DependencyGraph::SElementsOfType::SElementsOfType(unsigned Size) {
   Types.reserve(Size);
   IndicesOfTypes.reserve(Size);
 };
 
-// Automaticaly matches Types with sequential Indices
+// Automaticaly matches Types with sequential Indices.
 DependencyGraph::SElementsOfType::SElementsOfType(
     std::vector<Type *> const &InTypes)
     : Types{InTypes}, IndicesOfTypes(Types.size()) {
@@ -1806,15 +1815,15 @@ void DependencyGraph::SElementsOfType::emplace_back(Type &Ty, unsigned Index) {
   IndicesOfTypes.emplace_back(Index);
 }
 
-void DependencyGraph::SElementsOfType::push_back(value_type const &Elm) {
-  emplace_back(*Elm.first, Elm.second);
+void DependencyGraph::SElementsOfType::push_back(value_type const &Elem) {
+  emplace_back(*Elem.first, Elem.second);
 }
 
-void DependencyGraph::SElementsOfType::emplace_back(SElement const &Elm) {
+void DependencyGraph::SElementsOfType::emplace_back(SElement const &Elem) {
   IGC_ASSERT_MESSAGE(
-      !Elm.isUnwrapped(),
+      !Elem.isUnwrapped(),
       "Element is unwrapped and cannot be placed in indices chain.");
-  emplace_back(*Elm.getTy(), Elm.getIndex());
+  emplace_back(*Elem.getTy(), Elem.getIndex());
 }
 
 unsigned DependencyGraph::SElementsOfType::size() const {
@@ -1851,7 +1860,7 @@ DependencyGraph::SElementsOfType::at(unsigned Index) const {
 //          Block of const_iterator definition for SElementsOfType
 //__________________________________________________________________
 DependencyGraph::SElementsOfType::const_iterator::const_iterator(
-    TypeItConst TyItIn, IdxItConst IdxItIn)
+    const_ty_iterator TyItIn, const_idx_iterator IdxItIn)
     : TyIt{TyItIn}, IdxIt{IdxItIn} {}
 
 DependencyGraph::SElementsOfType::const_iterator::reference
@@ -1892,11 +1901,11 @@ bool operator!=(const DependencyGraph::SElementsOfType::const_iterator &LHS,
 };
 
 //__________________________________________________________________
-//          Block of Node definition
+//          Block of Node definition.
 //__________________________________________________________________
 void DependencyGraph::Node::insertParent(Node &ParentNode) {
   auto &&[It, IsInserted] = ParentSTys.emplace(&ParentNode);
-  // Insertion may not occur in simillar case like insertChild
+  // Insertion may not occur in similar case like insertChild.
 }
 
 void DependencyGraph::Node::insertChild(Node &ChildNode) {
@@ -1904,8 +1913,8 @@ void DependencyGraph::Node::insertChild(Node &ChildNode) {
   // Insertion may not occur if there is a dependency like : G {C, C};
 }
 
-// Checks of STy is previouse definition of the Node.
-bool DependencyGraph::Node::isContainsStruct(StructType &InSTy) const {
+// Checks if STy is one of the Node definitions.
+bool DependencyGraph::Node::containsStruct(StructType &InSTy) const {
   return (STy == &InSTy) ? true
                          : PreviousNames.find(&InSTy) != PreviousNames.end();
 }
@@ -1922,7 +1931,7 @@ void DependencyGraph::Node::eraseChild(Node &ChildNode) {
 }
 
 //__________________________________________________________________
-//          Block of NodeMemoryManager definition
+//          Block of NodeMemoryManager definition.
 //__________________________________________________________________
 DependencyGraph::NodeMemoryManager::NodeMemoryManager(Module &M) {
   Nodes.reserve(M.getIdentifiedStructTypes().size());
@@ -1943,21 +1952,21 @@ Type *getBaseTy(Type *Ty) {
 
   Type *BaseTy{getArrayFreeTy(Ty)};
   while (StructType *STy = dyn_cast<StructType>(BaseTy)) {
-    // If empty struct
+    // Empty structure.
     if (!STy->getNumElements())
       return STy;
 
     BaseTy = getBaseTy(*STy->element_begin());
-    // Check that all elements in struct are the same type/subtype
-    for (auto &&Elm : STy->elements())
-      if (BaseTy != getBaseTy(Elm))
+    // Check that all elements in struct are the same type/subtype.
+    for (auto &&Elem : STy->elements())
+      if (BaseTy != getBaseTy(Elem))
         return STy;
   }
   return BaseTy;
 }
 
 //
-//  Retrieves base type of the array
+//  Retrieves base type of array or vector.
 //
 Type *getArrayFreeTy(Type *Ty) {
   IGC_ASSERT(Ty);
@@ -2010,7 +2019,7 @@ char const *getTypePrefix(Type &Ty) {
 }
 
 //__________________________________________________________________
-//          Block of data printing
+//          Block of data printing.
 //__________________________________________________________________
 void StructFilter::print(raw_ostream &Os) const {
   Os << "Banned structs:\n";
@@ -2042,7 +2051,7 @@ void DependencyGraph::Node::dump(int Tab, raw_ostream &Os) const {
   if (!ChildSTys.empty()) {
     for (int i = 0; i != Tab; ++i)
       Os << "    ";
-    Os << "With childs\n";
+    Os << "With children\n";
   }
   for (auto Child : ChildSTys)
     Child->dump(Tab, Os);
@@ -2065,13 +2074,13 @@ void DependencyGraph::print(raw_ostream &Os) const {
   Os << "Data:\n";
   printData(Os);
   Os << "\nGraph:\n";
-  printDump(Os);
+  printGraph(Os);
   Os << "\nGenerations:\n";
   printGeneration(Os);
   Os << "\\_________________________________/\n";
 }
 
-void DependencyGraph::printDump(raw_ostream &Os) const {
+void DependencyGraph::printGraph(raw_ostream &Os) const {
   for (auto Head : Heads) {
     Os << "Head:\n";
     Head->dump(1, Os);
@@ -2079,12 +2088,12 @@ void DependencyGraph::printDump(raw_ostream &Os) const {
 }
 
 void DependencyGraph::printGeneration(raw_ostream &Os) const {
-  for (auto &&SplittedStruct : SplittedStructs) {
-    Os << "Splitted struct: " << *SplittedStruct.first << " to: \n";
-    for (auto &&ChangedTo : SplittedStruct.second) {
-      for (auto &&Elm : ChangedTo) {
+  for (auto &&SplitStruct : SplitStructs) {
+    Os << "Split struct: " << *SplitStruct.first << " to: \n";
+    for (auto &&ChangedTo : SplitStruct.second) {
+      for (auto &&Elem : ChangedTo) {
         Os << "  ";
-        Elm.print(Os);
+        Elem.print(Os);
         Os << ",  ";
       }
       Os << "\n";
