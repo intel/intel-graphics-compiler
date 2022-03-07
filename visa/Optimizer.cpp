@@ -8556,10 +8556,54 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
 
         const bool useInlineData = builder.getOption(vISA_useInlineData);
-        const uint32_t startGRF = kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
 
-        uint32_t crossThreadLoadStart = 0;
+        // preparation of thread payload size and start offsets
+        const uint32_t perThreadLoadStartGRF = kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
+        int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
+        uint32_t numPerThreadGRF = PTIS / kernel.numEltPerGRF<Type_UB>();
+        uint32_t crossThreadLoadStart = 0; // register file (grf) offset in byte
+        uint32_t crossThreadLoadStartGRF = 0; // grf number
+        // cross thread size (not including inlinedata size and alignement)
         const uint32_t loadedCrossThreadInputSize = findLoadedInputSize(crossThreadLoadStart);
+        // final cross thread size to be loaded
+        uint32_t numCrossThreadGRF = 0;
+        // payload memory offset of where local id should be loaded from
+        uint32_t localIDsOffset = 0;
+        int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
+        if (CTIS < 0)
+        {
+            // per-thread payload vars
+            // N = inlinedata size
+            // Payload is aligned to grf size,
+            // if inlinedata is used, runtime puts first N bytes of payload in inlinedata.
+            // Rest of payload is shifted in the buffer by N bytes.
+            // So payload args which start at N offset, now start at 0 offset.
+            // Because of this we need to calculate localID offset:
+            const uint32_t inlineDataSize = builder.getInlineDataSize();
+            uint32_t correction = useInlineData ? inlineDataSize : 0;
+            localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, kernel.getGRFSize());
+            localIDsOffset -= useInlineData ? inlineDataSize : 0;
+
+            // cross-thread payload vars
+            numCrossThreadGRF = AlignUp(loadedCrossThreadInputSize, kernel.getGRFSize()) / kernel.numEltPerGRF<Type_UB>();
+            crossThreadLoadStartGRF = crossThreadLoadStart / kernel.getGRFSize();
+        }
+        else
+        {
+            // per-thread payload vars
+            localIDsOffset = CTIS;
+            localIDsOffset -= useInlineData ? kernel.getGRFSize() : 0;
+
+            // cross-thread payload vars
+            numCrossThreadGRF = CTIS / kernel.numEltPerGRF<Type_UB>();
+            crossThreadLoadStartGRF = perThreadLoadStartGRF + numPerThreadGRF;
+            if (useInlineData)
+            {
+                // first GRF of cross-thread data is already loaded
+                crossThreadLoadStartGRF++;
+                numCrossThreadGRF--;
+            }
+        }
 
         std::vector<G4_INST*> instBuffer;
 
@@ -8777,33 +8821,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // forward start label is 64B aligned.
         if (builder.needsToLoadLocalID())
         {
-            const int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
-            const int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
-            const uint32_t inlineDataSize = builder.getInlineDataSize();
-
-            uint32_t numPerThreadGRF = PTIS / kernel.numEltPerGRF<Type_UB>();
-
-            uint32_t localIDsOffset = 0;
-
-            if (CTIS < 0)
-            {
-                uint32_t correction = useInlineData ? inlineDataSize : 0;
-                // N = inlinedata size
-                // Payload is aligned to grf size,
-                // if inlinedata is used, runtime puts first N bytes of payload in inlinedata.
-                // Rest of payload is shifted in the buffer by N bytes.
-                // So payload args which start at N offset, now start at 0 offset.
-                // Because of this we need to calculate localID offset:
-                localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, kernel.getGRFSize());
-                localIDsOffset -= useInlineData ? inlineDataSize : 0;
-            }
-            else
-            {
-                localIDsOffset = CTIS;
-                localIDsOffset -= useInlineData ? kernel.getGRFSize() : 0;
-            }
-
-
             instBuffer.push_back(getLabel("per_thread_prolog"));
 
             // compute per-thread starting address (r127.2)
@@ -8873,18 +8890,18 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
             if (useInlineData)
             {
-                // copy inline data GRF
+                // copy inline data to the first GRF of cross-thread-data
                 // (W) mov (8) r4.0:ud r1.0:ud
-                moveGRF(startGRF + numPerThreadGRF, startGRF);
+                moveGRF(perThreadLoadStartGRF + numPerThreadGRF, perThreadLoadStartGRF);
             }
 
             if (useLSC)
             {
-                loadFromMemoryLSC(rtail, startGRF, numPerThreadGRF);
+                loadFromMemoryLSC(rtail, perThreadLoadStartGRF, numPerThreadGRF);
             }
             else
             {
-                loadFromMemory(rtail, startGRF, numPerThreadGRF);
+                loadFromMemory(rtail, perThreadLoadStartGRF, numPerThreadGRF);
             }
             perThreadBB = kernel.fg.createNewBB();
             perThreadBB->insert(perThreadBB->begin(), instBuffer.begin(), instBuffer.end());
@@ -8925,37 +8942,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             // and it will be either at R1 (if local id is not auto-generated) or
             // R1 + sizeof(local id) (if local id is auto-generated).
             {
-                int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
-                int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
-
-                uint32_t numPerThreadGRF = PTIS / kernel.numEltPerGRF<Type_UB>();
-                uint32_t numCrossThreadGRF = 0;
-                uint32_t crossThreadStart = 0;
-
-                if (CTIS < 0)
-                {
-                    numCrossThreadGRF = AlignUp(loadedCrossThreadInputSize, kernel.getGRFSize()) / kernel.numEltPerGRF<Type_UB>();
-                    crossThreadStart = crossThreadLoadStart / kernel.getGRFSize();
-                }
-                else
-                {
-                    numCrossThreadGRF = CTIS / kernel.numEltPerGRF<Type_UB>();
-                    crossThreadStart = startGRF + numPerThreadGRF;
-                    if (useInlineData)
-                    {
-                        // first GRF of cross-thread data is already loaded
-                        crossThreadStart++;
-                        numCrossThreadGRF--;
-                    }
-                }
-
                 if (useLSC)
                 {
-                    loadFromMemoryLSC(rtail, crossThreadStart, numCrossThreadGRF);
+                    loadFromMemoryLSC(rtail, crossThreadLoadStartGRF, numCrossThreadGRF);
                 }
                 else
                 {
-                    loadFromMemory(rtail, crossThreadStart, numCrossThreadGRF);
+                    loadFromMemory(rtail, crossThreadLoadStartGRF, numCrossThreadGRF);
                 }
             }
 
