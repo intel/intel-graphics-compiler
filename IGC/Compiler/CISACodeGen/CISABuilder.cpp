@@ -561,6 +561,74 @@ namespace IGC
         }
     }
 
+    void CEncoder::TypedAtomic(
+        AtomicOp atomic_op,
+        CVariable* dst,
+        const ResourceDescriptor& resource,
+        CVariable* pU,
+        CVariable* pV,
+        CVariable* pR,
+        CVariable* src0,
+        CVariable* src1,
+        CVariable* lod,
+        bool is16Bit)
+    {
+        VISAAtomicOps subOp = convertAtomicOpEnumToVisa(atomic_op);
+        VISA_PredOpnd* pred = GetFlagOperand(m_encoderState.m_flag);
+        VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
+        VISA_Exec_Size executionSize = visaExecSize(m_encoderState.m_simdSize);
+
+        VISA_StateOpndHandle* pSurfStateOpndHandle = GetVISASurfaceOpnd(resource);
+
+        if (pU && pU->GetType() != ISA_TYPE_UD)
+            pU = m_program->BitCast(pU, ISA_TYPE_UD);
+        if (pV && pV->GetType() != ISA_TYPE_UD)
+            pV = m_program->BitCast(pV, ISA_TYPE_UD);
+        if (pR && pR->GetType() != ISA_TYPE_UD)
+            pR = m_program->BitCast(pR, ISA_TYPE_UD);
+
+        VISA_RawOpnd* pUOpnd = GetRawSource(pU);
+        VISA_RawOpnd* pVOpnd = GetRawSource(pV);
+        VISA_RawOpnd* pROpnd = GetRawSource(pR);
+
+        VISA_Type type = ISA_TYPE_UD;
+        if (atomic_op == EATOMIC_IMAX || atomic_op == EATOMIC_IMIN)
+            type = ISA_TYPE_D;
+
+        if (dst && dst->GetType() != type)
+            dst = m_program->BitCast(dst, type);
+        if (src0 && src0->GetType() != type)
+            src0 = m_program->BitCast(src0, type);
+        if (src1 && src1->GetType() != type)
+            src1 = m_program->BitCast(src1, type);
+
+        VISA_RawOpnd* pDst = GetRawDestination(dst);
+        VISA_RawOpnd* pSrc0 = GetRawSource(src0);
+        VISA_RawOpnd* pSrc1 = GetRawSource(src1);
+
+        // See DwordAtomicRaw for explanation why we need this
+        if (atomic_op == EATOMIC_CMPXCHG) {
+            std::swap(pSrc0, pSrc1);
+        }
+
+        VISA_RawOpnd* pLOD = GetRawSource(lod);
+
+        V(vKernel->AppendVISA3dTypedAtomic(
+            subOp,
+            is16Bit,
+            pred,
+            emask,
+            executionSize,
+            pSurfStateOpndHandle,
+            pUOpnd,
+            pVOpnd,
+            pROpnd,
+            pLOD,
+            pSrc0,
+            pSrc1,
+            pDst));
+    }
+
     void CEncoder::Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* src1)
     {
         VISA_Cond_Mod subOp = ConvertCondModToVisaType(p);

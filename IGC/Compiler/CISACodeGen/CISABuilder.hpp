@@ -150,6 +150,17 @@ namespace IGC
         void AtomicRawA64(AtomicOp atomic_op, const ResourceDescriptor& resource, CVariable* dst,
             CVariable* elem_offset, CVariable* src0, CVariable* src1,
             unsigned short bitwidth);
+        void TypedAtomic(
+            AtomicOp atomic_op,
+            CVariable* dst,
+            const ResourceDescriptor& resource,
+            CVariable* pU,
+            CVariable* pV,
+            CVariable* pR,
+            CVariable* src0,
+            CVariable* src1,
+            CVariable* lod,
+            bool is16Bit = false);
         void Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* src1);
         void Select(CVariable* flag, CVariable* dst, CVariable* src0, CVariable* src1);
         void GenericAlu(e_opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2 = nullptr);

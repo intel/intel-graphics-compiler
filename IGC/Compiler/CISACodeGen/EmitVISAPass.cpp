@@ -14441,6 +14441,9 @@ void EmitPass::emitScalarAtomics(
     ResourceDescriptor& resource,
     AtomicOp atomic_op,
     CVariable* pDstAddr,
+    CVariable* pU,
+    CVariable* pV,
+    CVariable* pR,
     CVariable* pSrc,
     bool isA64,
     int bitWidth)
@@ -14536,15 +14539,34 @@ void EmitPass::emitScalarAtomics(
         emitReductionAll(op, identityValue, type, negateSrc, pSrc, pFinalAtomicSrcVal);
     }
 
-    if (pDstAddr->IsImmediate())
+    auto moveToReg = [&](CVariable*& pVar)
     {
-        CVariable* pDstAddrCopy = m_currShader->GetNewVariable(
-            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE);
+        CVariable* pVarCopy = m_currShader->GetNewVariable(1, pVar->GetType(), EALIGN_GRF, true, pVar->getName());
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
-        m_encoder->Copy(pDstAddrCopy, pDstAddr);
+        m_encoder->Copy(pVarCopy, pVar);
         m_encoder->Push();
-        pDstAddr = pDstAddrCopy;
+        pVar = pVarCopy;
+    };
+
+    if (pDstAddr && pDstAddr->IsImmediate())
+    {
+        moveToReg(pDstAddr);
+    }
+
+    if (pU && pU->IsImmediate())
+    {
+        moveToReg(pU);
+    }
+
+    if (pV && pV->IsImmediate())
+    {
+        moveToReg(pV);
+    }
+
+    if (pR && pR->IsImmediate())
+    {
+        moveToReg(pR);
     }
 
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
@@ -14588,6 +14610,11 @@ void EmitPass::emitScalarAtomics(
                 pFinalAtomicSrcVal, nullptr,
                 bitWidth);
         }
+        else if (pU || pV || pR)
+        {
+            m_encoder->TypedAtomic(uniformAtomicOp, pReturnVal, resource, pU, pV, pR,
+                pFinalAtomicSrcVal, nullptr /*src1*/, nullptr /*lod*/, bitWidth == 16);
+        }
         else
         {
             m_encoder->DwordAtomicRaw(
@@ -14629,28 +14656,46 @@ void EmitPass::emitScalarAtomicLoad(
     llvm::Instruction* pInst,
     ResourceDescriptor& resource,
     CVariable* pDstAddr,
+    CVariable* pU,
+    CVariable* pV,
+    CVariable* pR,
     CVariable* pSrc,
     bool isA64,
     int bitWidth)
 {
-    if (pDstAddr->IsImmediate())
+    auto moveToReg = [&](CVariable*& pVar)
     {
-        CVariable* pDstAddrCopy = m_currShader->GetNewVariable(1, pDstAddr->GetType(), EALIGN_GRF, true, pDstAddr->getName());
+        CVariable* pVarCopy = m_currShader->GetNewVariable(1, pVar->GetType(), EALIGN_GRF, true, pVar->getName());
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
-        m_encoder->Copy(pDstAddrCopy, pDstAddr);
+        m_encoder->Copy(pVarCopy, pVar);
         m_encoder->Push();
-        pDstAddr = pDstAddrCopy;
+        pVar = pVarCopy;
+    };
+
+    if (pDstAddr && pDstAddr->IsImmediate())
+    {
+        moveToReg(pDstAddr);
+    }
+
+    if (pU && pU->IsImmediate())
+    {
+        moveToReg(pU);
+    }
+
+    if (pV && pV->IsImmediate())
+    {
+        moveToReg(pV);
+    }
+
+    if (pR && pR->IsImmediate())
+    {
+        moveToReg(pR);
     }
 
     {
         // pSrc is imm zero
-        CVariable* pSrcCopy = m_currShader->GetNewVariable(1, pSrc->GetType(), EALIGN_GRF, true, pSrc->getName());
-        m_encoder->SetSimdSize(SIMDMode::SIMD1);
-        m_encoder->SetNoMask();
-        m_encoder->Copy(pSrcCopy, pSrc);
-        m_encoder->Push();
-        pSrc = pSrcCopy;
+        moveToReg(pSrc);
     }
 
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
@@ -14687,6 +14732,11 @@ void EmitPass::emitScalarAtomicLoad(
                 atomicDst, pDstAddr,
                 pSrc, nullptr,
                 bitWidth);
+        }
+        else if (pU || pV || pR)
+        {
+            m_encoder->TypedAtomic(EATOMIC_OR, atomicDst, resource, pU, pV, pR,
+                pSrc, nullptr /*src1*/, nullptr /*lod*/, bitWidth == 16);
         }
         else
         {
@@ -14736,7 +14786,8 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
 
                 bool isAddAtomic = atomic_op == EATOMIC_IADD ||
                     atomic_op == EATOMIC_INC ||
-                    atomic_op == EATOMIC_SUB;
+                    atomic_op == EATOMIC_SUB ||
+                    atomic_op == EATOMIC_DEC;
                 bool isMinMaxAtomic =
                     atomic_op == EATOMIC_UMAX ||
                     atomic_op == EATOMIC_UMIN ||
@@ -14746,6 +14797,44 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
                 // capture the special case of atomic_or with 0 (it's used to simulate atomic_load)
                 bool isOrWith0Atomic = atomic_op == EATOMIC_OR &&
                     isa<ConstantInt>(pInst->getOperand(2)) && cast<ConstantInt>(pInst->getOperand(2))->isZero();
+
+                if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrWith0Atomic)
+                    return true;
+            }
+        }
+        if (id == GenISAIntrinsic::GenISA_intatomictyped)
+        {
+            if (IGC_IS_FLAG_DISABLED(EnableScalarTypedAtomics))
+                return false;
+
+            llvm::Value* pllU = pInst->getOperand(1);
+            llvm::Value* pllV = pInst->getOperand(2);
+            llvm::Value* pllR = pInst->getOperand(3);
+
+            CVariable* pU = GetSymbol(pllU);
+            CVariable* pV = GetSymbol(pllV);
+            CVariable* pR = GetSymbol(pllR);
+
+            // mostly care for pU nonzero, rest undef; but other's are good as well
+            if ((pU->IsUniform() || pU->IsUndef())
+                && (pV->IsUniform() || pV->IsUndef())
+                && (pR->IsUniform() || pR->IsUndef()))
+            {
+                AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(5))->getZExtValue());
+
+                bool isAddAtomic = atomic_op == EATOMIC_IADD ||
+                    atomic_op == EATOMIC_INC ||
+                    atomic_op == EATOMIC_SUB ||
+                    atomic_op == EATOMIC_DEC;
+                bool isMinMaxAtomic =
+                    atomic_op == EATOMIC_UMAX ||
+                    atomic_op == EATOMIC_UMIN ||
+                    atomic_op == EATOMIC_IMIN ||
+                    atomic_op == EATOMIC_IMAX;
+
+                // capture the special case of atomic_or with 0 (it's used to simulate atomic_load)
+                bool isOrWith0Atomic = atomic_op == EATOMIC_OR &&
+                    isa<ConstantInt>(pInst->getOperand(4)) && cast<ConstantInt>(pInst->getOperand(4))->isZero();
 
                 if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrWith0Atomic)
                     return true;
@@ -14870,11 +14959,11 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         if (atomic_op == EATOMIC_OR)
         {
             // special case of atomic_load
-            emitScalarAtomicLoad(pInsn, resource, pDstAddr, pSrc0, isA64, bitwidth);
+            emitScalarAtomicLoad(pInsn, resource, pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/, pSrc0, isA64, bitwidth);
         }
         else
         {
-            emitScalarAtomics(pInsn, resource, atomic_op, pDstAddr, pSrc0, isA64, bitwidth);
+            emitScalarAtomics(pInsn, resource, atomic_op, pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/, pSrc0, isA64, bitwidth);
             ResetVMask();
         }
         return;
@@ -15063,7 +15152,6 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
     if (atomic_op != EATOMIC_INC && atomic_op != EATOMIC_DEC)
     {
         pSrc0 = GetSymbol(pllSrc0);
-        pSrc0 = UnpackOrBroadcastIfUniform(pSrc0);
     }
 
     ResourceDescriptor resource = GetResourceVariable(pllbuffer);
@@ -15072,72 +15160,53 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
     CVariable* pV = GetSymbol(pllV);
     CVariable* pR = GetSymbol(pllR);
 
-    pU = BroadcastIfUniform(pU);
-    pV = BroadcastIfUniform(pV);
-    pR = BroadcastIfUniform(pR);
+    unsigned bitwidth = pInsn->getType()->getScalarSizeInBits();
 
-    if (m_currShader->GetIsUniform(pInsn))
+    if (IsUniformAtomic(pInsn))
     {
-        IGC_ASSERT_MESSAGE(0, "Uniform DWordAtomicTyped not implemented yet");
+        pU = ReAlignUniformVariable(pU, EALIGN_GRF);
+        pV = ReAlignUniformVariable(pV, EALIGN_GRF);
+        pR = ReAlignUniformVariable(pR, EALIGN_GRF);
+
+        if (atomic_op == EATOMIC_OR)
+        {
+            // special case of atomic_load
+            emitScalarAtomicLoad(pInsn, resource, nullptr /*pDstAddr*/, pU, pV, pR, pSrc0, false /*isA64*/, bitwidth);
+        }
+        else
+        {
+            emitScalarAtomics(pInsn, resource, atomic_op, nullptr /*pDstAddr*/, pU, pV, pR, pSrc0, false /*isA64*/, bitwidth);
+        }
     }
     else
     {
+        pU = BroadcastIfUniform(pU);
+        pV = BroadcastIfUniform(pV);
+        pR = BroadcastIfUniform(pR);
+
+        if (pSrc0)
+        {
+            pSrc0 = UnpackOrBroadcastIfUniform(pSrc0);
+        }
+
         uint addrDimension = 3;
         while (addrDimension > 1 && isUndefOrConstInt0(pInsn->getOperand(addrDimension)))
         {
             addrDimension--;
         }
 
-        TODO("Adding headers to atomic typed ops is a workaround, verify if this is needed");
-        const bool headerPresent = true;
+        const bool is16Bit = (bitwidth == 16);
 
-        const uint parameterLength =
-            addrDimension + (pSrc0 != nullptr) + (pSrc1 != nullptr) + headerPresent;
-
-        auto hw_atomic_op_enum = getHwAtomicOpEnum(atomic_op);
-        uint responseLength = returnsImmValue;
-
-        unsigned int bti = 0;
-        if (resource.m_surfaceType == ESURFACE_BINDLESS)
-        {
-            bti = BINDLESS_BTI;
-        }
-        else if (resource.m_resource->IsImmediate())
-        {
-            bti = (uint)resource.m_resource->GetImmediateValue();
-        }
-
-        const bool is16Bit = (pInsn->getType()->getScalarSizeInBits() == 16);
-        const auto messageType = is16Bit ?
-            EU_GEN12_DATA_CACHE_1_MESSAGE_TYPE_WORD_TYPED_ATOMIC_INTEGER :
-            EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_TYPED_ATOMIC_OPERATION;
-
-        uint messageSpecificControl = encodeMessageDescriptorForAtomicUnaryOp(
-            parameterLength,
-            responseLength,
-            headerPresent,
-            messageType,
-            returnsImmValue,
-            m_currShader->m_SIMDSize,
-            hw_atomic_op_enum,
-            bti);
-
-        CVariable* pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_D);
-        CVariable* exDesc =
-            m_currShader->ImmToVariable(EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, ISA_TYPE_D);
-        if (resource.m_surfaceType == ESURFACE_BINDLESS)
-        {
-            CVariable* temp = m_currShader->GetNewVariable(resource.m_resource);
-            m_encoder->Add(temp, resource.m_resource, exDesc);
-            m_encoder->Push();
-
-            exDesc = temp;
-        }
         CVariable* tempdst = returnsImmValue ?
             m_currShader->GetNewVariable(
                 numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, CName::NONE) :
             nullptr;
-        CVariable* pPayload[2] = { nullptr, nullptr };
+
+        CVariable* splitpU[2] = { nullptr, nullptr };
+        CVariable* splitpV[2] = { nullptr, nullptr };
+        CVariable* splitpR[2] = { nullptr, nullptr };
+        CVariable* splitpSrc0[2] = { nullptr, nullptr };
+        CVariable* splitpSrc1[2] = { nullptr, nullptr };
 
         const unsigned int numLanesForSimd8 = numLanes(SIMDMode::SIMD8);
         IGC_ASSERT(numLanesForSimd8);
@@ -15145,24 +15214,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
 
         for (uint i = 0; i < loopIter; ++i)
         {
-            pPayload[i] = m_currShader->GetNewVariable(
-                parameterLength * numLanes(SIMDMode::SIMD8),
-                ISA_TYPE_F,
-                EALIGN_GRF,
-                CName::NONE);
-
-            int writeIndex = 0;
-            if (headerPresent)
-            {
-                m_encoder->SetSimdSize(SIMDMode::SIMD1);
-                m_encoder->SetDstSubReg(7);
-                m_encoder->SetNoMask();
-                m_encoder->Copy(pPayload[i], m_currShader->ImmToVariable(0xFF, ISA_TYPE_D));
-                m_encoder->Push();
-                ++writeIndex;
-            }
-
-            auto CopyVar = [&](CVariable* pVar)
+            auto CopyVar = [&](CVariable* pVar, CVariable* dst)
             {
                 m_encoder->SetSimdSize(SIMDMode::SIMD8);
                 m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
@@ -15170,50 +15222,74 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
                 {
                     m_encoder->SetSrcSubVar(0, i);
                 }
-                m_encoder->SetDstSubVar(writeIndex);
-                m_encoder->Copy(pPayload[i], pVar);
+                m_encoder->Copy(dst, pVar);
                 m_encoder->Push();
-                ++writeIndex;
             };
 
-            CopyVar(pU);
+            splitpU[i] = m_currShader->GetNewVariable(
+                numLanes(SIMDMode::SIMD8),
+                ISA_TYPE_UD,
+                EALIGN_GRF,
+                CName::NONE);
+
+            CopyVar(pU, splitpU[i]);
 
             if (addrDimension > 1)
-                CopyVar(pV);
+            {
+                splitpV[i] = m_currShader->GetNewVariable(
+                    numLanes(SIMDMode::SIMD8),
+                    ISA_TYPE_UD,
+                    EALIGN_GRF,
+                    CName::NONE);
+
+                CopyVar(pV, splitpV[i]);
+            }
 
             if (addrDimension > 2)
-                CopyVar(pR);
+            {
+                splitpR[i] = m_currShader->GetNewVariable(
+                    numLanes(SIMDMode::SIMD8),
+                    ISA_TYPE_UD,
+                    EALIGN_GRF,
+                    CName::NONE);
+
+                CopyVar(pR, splitpR[i]);
+            }
 
             if (pSrc0)
-                CopyVar(pSrc0);
+            {
+                splitpSrc0[i] = m_currShader->GetNewVariable(
+                    numLanes(SIMDMode::SIMD8),
+                    ISA_TYPE_UD,
+                    EALIGN_GRF,
+                    CName::NONE);
+
+                CopyVar(pSrc0, splitpSrc0[i]);
+            }
 
             if (pSrc1)
-                CopyVar(pSrc1);
+            {
+                splitpSrc1[i] = m_currShader->GetNewVariable(
+                    numLanes(SIMDMode::SIMD8),
+                    ISA_TYPE_UD,
+                    EALIGN_GRF,
+                    CName::NONE);
+
+                CopyVar(pSrc1, splitpSrc1[i]);
+            }
         }
 
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
-        if (resource.m_surfaceType == ESURFACE_BINDLESS && !exDesc->IsUniform())
-        {
-            exDesc = UniformCopy(exDesc);
-        }
-        if (resource.m_surfaceType == ESURFACE_NORMAL && !resource.m_resource->IsImmediate())
-        {
-            CVariable* indirectMess = m_currShader->GetNewVariable(
-                1, ISA_TYPE_UD, EALIGN_DWORD, true, CName::NONE);
-            m_encoder->Or(indirectMess, pMessDesc, resource.m_resource);
-            m_encoder->Push();
-            pMessDesc = indirectMess;
-        }
         for (uint i = 0; i < loopIter; ++i)
         {
             m_encoder->SetPredicate(flag);
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
             m_encoder->SetDstSubVar(i);
-            m_encoder->Send(tempdst, pPayload[i],
-                EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, exDesc, pMessDesc);
+            m_encoder->TypedAtomic(atomic_op, tempdst, resource,
+                splitpU[i], splitpV[i], splitpR[i], splitpSrc0[i], splitpSrc1[i], nullptr /*lod*/, is16Bit);
             m_encoder->Push();
         }
         ResourceLoopBackEdge(needLoop, flag, label);

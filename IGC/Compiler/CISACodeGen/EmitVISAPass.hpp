@@ -255,6 +255,9 @@ public:
         ResourceDescriptor& resource,
         AtomicOp atomic_op,
         CVariable* pDstAddr,
+        CVariable* pU,
+        CVariable* pV,
+        CVariable* pR,
         CVariable* pSrc,
         bool isA64,
         int bitSize);
@@ -263,6 +266,9 @@ public:
         llvm::Instruction* pInst,
         ResourceDescriptor& resource,
         CVariable* pDstAddr,
+        CVariable* pU,
+        CVariable* pV,
+        CVariable* pR,
         CVariable* pSrc,
         bool isA64,
         int bitSize);
