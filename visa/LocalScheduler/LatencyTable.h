@@ -26,7 +26,8 @@ namespace vISA
         IVB_PIPELINE_LENGTH     = 14,
         EDGE_LATENCY_MATH       = 22,
         EDGE_LATENCY_MATH_TYPE2 = 30,
-        EDGE_LATENCY_SEND_WAR   = 36
+        EDGE_LATENCY_SEND_WAR   = 36,
+        WAR_SEND_LATENCY        = 12    // Latency between an inst and previous send which the inst has WAR dependency to the send
     };
 
     //
