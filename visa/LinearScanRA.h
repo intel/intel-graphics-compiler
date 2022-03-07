@@ -127,6 +127,7 @@ namespace vISA
         void calculateLiveInIntervals(G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals);
         void calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
         void calculateLiveOutIntervals(G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals);
+        void calculateLiveThroughIntervals();
         void calculateLiveIntervalsGlobal(G4_BB* bb, std::vector<LSLiveRange*>& liveIntervals, std::vector<LSLiveRange*>& eotLiveIntervals);
         void printLiveIntervals(std::vector<LSLiveRange*>& liveIntervals);
         void printSpillLiveIntervals(std::list<LSLiveRange*>& liveIntervals);

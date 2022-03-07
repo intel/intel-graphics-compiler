@@ -944,6 +944,8 @@ int LinearScanRA::linearScanRA()
         eotLiveIntervals.clear();
         unsigned latestLexID = 0;
 
+        //Some live through intervals are implicit
+        calculateLiveThroughIntervals();
         for (auto bb : kernel.fg)
         {
             calculateLiveIntervalsGlobal(bb, globalLiveIntervals, eotLiveIntervals);
@@ -975,11 +977,15 @@ int LinearScanRA::linearScanRA()
         COUT_ERROR << "===== preAssignedLiveIntervals============" << std::endl;
         printLiveIntervals(preAssignedLiveIntervals);
 #endif
+        // Copy over alignment for vars inserted by RA
+        gra.copyMissingAlignment();
+
         PhyRegsManager pregManager(builder, initPregs, doBCR);
         globalLinearScan ra(gra, &l, globalLiveIntervals, &preAssignedLiveIntervals, inputIntervals, pregManager,
             mem, numRegLRA, numRowsEOT, latestLexID,
             doBCR, highInternalConflict);
 
+        //Run linear scan RA
         bool success = ra.runLinearScan(builder, globalLiveIntervals, spillLRs);
 
         auto underSpillThreshold = [this](int numSpill, int asmCount)
@@ -1055,6 +1061,29 @@ int LinearScanRA::linearScanRA()
             COUT_ERROR << "===== printSpillLiveIntervals============" << std::endl;
             printSpillLiveIntervals(spillLRs);
 #endif
+            if (builder.hasScratchSurface() && !hasStackCall &&
+                (nextSpillOffset + globalScratchOffset) > SCRATCH_MSG_LIMIT)
+            {
+                // create temp variable to store old a0.2 - this is marked as live-in and live-out.
+                // because the variable is emitted only post RA to preserve old value of a0.2.
+                G4_Declare * a0Dcl = kernel.fg.builder->getOldA0Dot2Temp();
+                LSLiveRange* lr = gra.getLSLR(a0Dcl);
+                if (!lr)
+                {
+                    lr = CreateLocalLiveRange(a0Dcl);
+                    globalDeclares.push_back(a0Dcl);
+                }
+            }
+            else if (gra.useLscForNonStackCallSpillFill) {
+                G4_Declare* a0Dcl = kernel.fg.builder->getOldA0Dot2Temp();
+                LSLiveRange* lr = gra.getLSLR(a0Dcl);
+                if (!lr)
+                {
+                    lr = CreateLocalLiveRange(a0Dcl);
+                    globalDeclares.push_back(a0Dcl);
+                }
+            }
+
 
             // update jit metadata information for spill
             if (auto jitInfo = builder.getJitInfo())
@@ -1793,6 +1822,33 @@ void LinearScanRA::calculateLiveOutIntervals(G4_BB* bb, std::vector<LSLiveRange*
 
     return;
 }
+
+void LinearScanRA::calculateLiveThroughIntervals()
+{
+    for (auto dcl : globalDeclares)
+    {
+        if (dcl->getAliasDeclare() != NULL ||
+            dcl->getRegFile() == G4_INPUT ||
+            dcl->isSpilled())
+            continue;
+
+        LSLiveRange* lr = gra.getLSLR(dcl);
+        if (lr &&
+            dcl->isInput() && dcl->isOutput() && !lr->isGRFRegAssigned())
+        {
+            lr->setFirstRef(nullptr, 0);
+            lr->setLastRef(nullptr, lastInstLexID * 2 + 1);
+            if (!lr->isPushedToIntervalList())
+            {
+                liveThroughIntervals.push_back(lr);
+                lr->setPushed(true);
+            }
+        }
+    }
+
+    return;
+}
+
 
 //
 // Live intervals:
