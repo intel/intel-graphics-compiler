@@ -1228,11 +1228,14 @@ static void checkCPSEnable(VISASampler3DSubOpCode op,
     ASSERT_USER(execSize == 8 || execSize == 16,
         "CPS LOD Compensation Enable only valid for SIMD8* or SIMD16*");
 
-    ASSERT_USER(op == VISA_3D_SAMPLE ||
+    bool isCPSAvailable =
+        op == VISA_3D_SAMPLE ||
         op == VISA_3D_SAMPLE_B ||
         op == VISA_3D_SAMPLE_C ||
         op == VISA_3D_SAMPLE_B_C ||
-        op == VISA_3D_LOD,
+        op == VISA_3D_LOD;
+
+    ASSERT_USER(isCPSAvailable,
         "CPD LOD Compensation Enable only available for "
         "sample, sample_b, sample_bc, sample_c and LOD");
 }

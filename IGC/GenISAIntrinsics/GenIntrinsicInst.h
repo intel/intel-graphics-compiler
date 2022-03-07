@@ -416,6 +416,19 @@ public:
         }
         return false;
     }
+
+    unsigned int getBiasIndex() const
+    {
+        unsigned int shift = hasRef() ? 1 : 0;
+        return hasBias() ? shift : std::numeric_limits<unsigned int>::max();
+    }
+
+    Value* getBiasValue() const
+    {
+        unsigned int index = getBiasIndex();
+        return hasBias() ? getOperand(index) : nullptr;
+    }
+
     bool hasLod() const
     {
         switch (getIntrinsicID())
@@ -427,6 +440,35 @@ public:
             break;
         }
         return false;
+    }
+
+    unsigned int getLodIndex() const
+    {
+        unsigned int shift = hasRef() ? 1 : 0;
+        return hasLod() ? shift : std::numeric_limits<unsigned int>::max();
+    }
+
+    Value* getLodValue() const
+    {
+        unsigned int index = getLodIndex();
+        return hasLod() ? getOperand(index) : nullptr;
+    }
+
+    bool hasImmediateOffsets() const
+    {
+        return true;
+    }
+
+    unsigned int getImmediateOffsetsIndex() const
+    {
+        return hasImmediateOffsets() ?
+            getNumOperands() - 4 : std::numeric_limits<unsigned int>::max();
+    }
+
+    Value* getImmediateOffsetsValue(unsigned int coordIndex) const
+    {
+        unsigned int operandCoordIndex = getImmediateOffsetsIndex() + coordIndex;
+        return hasImmediateOffsets() ? getOperand(operandCoordIndex) : nullptr;
     }
 
     inline Value* getSamplerValue() const

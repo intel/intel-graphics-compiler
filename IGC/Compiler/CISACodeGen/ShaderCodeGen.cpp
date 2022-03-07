@@ -358,7 +358,7 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // Instruction combining may merge instruction back into unsupported intrinsics.
     // We have to split these for codegen.
     mpm.add(createReplaceUnsupportedIntrinsicsPass());
-    
+
     mpm.add(createFixInvalidFuncNamePass());
 
     // collect stats after all the optimization. This info can be dumped to the cos file
