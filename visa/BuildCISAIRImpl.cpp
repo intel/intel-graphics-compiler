@@ -1569,6 +1569,8 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 kernel->CopyVars(mainKernel);
                 kernel->getKernel()->Declares = mainKernel->getKernel()->Declares;
                 kernel->getIRBuilder()->setInputR1(mainKernel->getIRBuilder()->getInputR1());
+                kernel->getIRBuilder()->setRealR0(mainKernel->getIRBuilder()->getRealR0());
+                kernel->getIRBuilder()->setBuiltInR0(mainKernel->getIRBuilder()->getBuiltinR0());
                 // Set payload LiveOuts to be output
                 uint32_t inputCount = mainKernel->getIRBuilder()->getInputCount();
                 for (unsigned int id = 0; id < inputCount; id++)
@@ -1582,7 +1584,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                     vISA::G4_Declare* dcl = input_info->dcl;
                     if (dcl->isPayloadLiveOut())
                     {
-                        dcl->setLiveOut();
+                        dcl->getRootDeclare()->setLiveOut();
                     }
                 }
                 mainKernel->getIRBuilder()->getRealR0()->setLiveOut();

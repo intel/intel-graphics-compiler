@@ -811,7 +811,8 @@ IR_Builder::IR_Builder(
 {
     num_temp_dcl = 0;
     kernel.setBuilder(this); // kernel needs pointer to the builder
-    createBuiltinDecls();
+    if (!getIsPayload())
+        createBuiltinDecls();
 
     sampler8x8_group_id = 0;
 
@@ -827,7 +828,8 @@ IR_Builder::IR_Builder(
 
     fcPatchInfo = NULL;
 
-    createPreDefinedVars();
+    if (!getIsPayload())
+        createPreDefinedVars();
 }
 
 
