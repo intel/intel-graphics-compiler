@@ -1742,6 +1742,10 @@ namespace IGC
             // Local IDs are non-uniform and may have two instances in SIMD32 mode
             int numAllocInstances = arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ? m_numberInstance : 1;
 
+            if (arg.getArgType() == KernelArg::ArgType::RT_STACK_ID) {
+              numAllocInstances = m_numberInstance;
+            }
+
             auto allocSize = arg.getAllocateSize();
 
             if (!IsUnusedArg && !isRuntimeValue)
@@ -1751,6 +1755,22 @@ namespace IGC
                     // Align on the desired alignment for this argument
                     auto alignment = arg.getAlignment();
 
+                    // FIXME: move alignment checks to implicit arg creation
+                    if ((arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ||
+                         arg.getArgType() == KernelArg::ArgType::RT_STACK_ID) &&
+                        m_Platform->getGRFSize() == 64)
+                    {
+                        alignment = 64;
+                        // generate a single SIMD32 variable in this case
+                        if (m_dispatchSize == SIMDMode::SIMD16 && m_Platform->getGRFSize() == 64)
+                        {
+                            allocSize = 64;
+                        }
+                        else
+                        {
+                            allocSize = PVCLSCEnabled() ? 64 : 32;
+                        }
+                    }
                     offset = iSTD::Align(offset, alignment);
 
                     // Arguments larger than a GRF must be at least GRF-aligned.
@@ -1788,6 +1808,7 @@ namespace IGC
 
                         if (useInlineData && !inlineDataProcessed &&
                             arg.getArgType() != KernelArg::ArgType::IMPLICIT_LOCAL_IDS &&
+                            arg.getArgType() != KernelArg::ArgType::RT_STACK_ID &&
                             arg.getArgType() != KernelArg::ArgType::IMPLICIT_R0)
                         {
                             // Calc if we can fit this arg in inlinedata:
@@ -1809,6 +1830,7 @@ namespace IGC
 
                                 // numAllocInstances can be greater than 1, only when:
                                 // artype == IMPLICIT_LOCAL_IDS
+                                // or argtype == RT_STACK_ID,
                                 // so there is no need to handle it here
 
                                 // current arg is first to be loaded (it does not come in inlinedata)
@@ -2049,6 +2071,7 @@ namespace IGC
 
             m_kernelInfo.m_executionEnivronment.CompiledSubGroupsNumber = funcMD.CompiledSubGroupsNumber;
 
+            m_kernelInfo.m_executionEnivronment.HasRTCalls = funcMD.hasSyncRTCalls;
         }
 
         m_kernelInfo.m_executionEnivronment.HasGlobalAtomics = GetHasGlobalAtomics();
@@ -2491,6 +2514,19 @@ namespace IGC
             m_Context->SetSIMDInfo(SIMD_RETRY, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
         }
 
+        // Currently the FunctionMetaData is being looked up solely in order to get the hasSyncRTCalls
+        // If we would need to get some non-raytracing related field out of the FunctionMetaData,
+        // then we can move the lookup out of the #if and just leave the bool hasSyncRTCalls inside.
+        auto& FuncMap = m_Context->getModuleMetaData()->FuncMD;
+        // we want to check the setting for the associated kernel
+        auto FuncIter = FuncMap.find(entry);
+        if (FuncIter == FuncMap.end()) {  // wasn't able to find the meta data for the passed in llvm::Function!
+            // All of the kernels should have an entry in the map.
+            IGC_ASSERT(0);
+            return false;
+        }
+        const FunctionMetaData& funcMD = FuncIter->second;
+        bool hasSyncRTCalls = funcMD.hasSyncRTCalls;  // if the function/kernel has sync raytracing calls
 
         //If forced SIMD Mode (by driver or regkey), then:
         // 1. Compile only that SIMD mode and nothing else
@@ -2504,15 +2540,16 @@ namespace IGC
                 // These statements are basically equivalent to (simdMode == forcedSIMDSize)
                 (simdMode == SIMDMode::SIMD8 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 8)   ||
                 (simdMode == SIMDMode::SIMD16 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 16) ||
-                (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
+                // if we want to compile SIMD32, we need to be lacking any raytracing calls; raytracing doesn't support SIMD16
+                (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 32 && !hasSyncRTCalls)
             );
         }
 
-        SIMDStatus simdStatus = checkSIMDCompileConds(simdMode, EP, F);
+        SIMDStatus simdStatus = checkSIMDCompileConds(simdMode, EP, F, hasSyncRTCalls);
 
         if (m_Context->platform.getMinDispatchMode() == SIMDMode::SIMD16)
         {
-            simdStatus = checkSIMDCompileCondsPVC(simdMode, EP, F);
+            simdStatus = checkSIMDCompileCondsPVC(simdMode, EP, F, hasSyncRTCalls);
         }
 
         // Func and Perf checks pass, compile this SIMD
@@ -2535,7 +2572,7 @@ namespace IGC
         return simdStatus == SIMDStatus::SIMD_PASS;
     }
 
-    SIMDStatus COpenCLKernel::checkSIMDCompileCondsPVC(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
+    SIMDStatus COpenCLKernel::checkSIMDCompileCondsPVC(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls)
     {
         if (simdMode == SIMDMode::SIMD8)
         {
@@ -2590,6 +2627,12 @@ namespace IGC
             pCtx->getModuleMetaData()->csInfo.forcedSIMDSize = (unsigned char)numLanes(SIMDMode::SIMD16);
         }
 
+        if (simdMode == SIMDMode::SIMD32 && hasSyncRTCalls) {
+            return SIMDStatus::SIMD_FUNC_FAIL;
+        }
+        else if (simdMode == SIMDMode::SIMD16 && hasSyncRTCalls) {
+            return SIMDStatus::SIMD_PASS;
+        }
 
         if (simd_size)
         {
@@ -2657,7 +2700,7 @@ namespace IGC
         return m_annotatedNumThreads;
     }
 
-    SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
+    SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls)
     {
         CShader* simd8Program = m_parent->GetShader(SIMDMode::SIMD8);
         CShader* simd16Program = m_parent->GetShader(SIMDMode::SIMD16);
@@ -2773,7 +2816,12 @@ namespace IGC
                     return SIMDStatus::SIMD_FUNC_FAIL;
                 }
                 else {
-                    EP.m_canAbortOnSpill = false;
+                    if (hasSyncRTCalls) {
+                        return SIMDStatus::SIMD_FUNC_FAIL;  // SIMD32 unsupported with raytracing calls
+                    }
+                    else {  // simdMode == SIMDMode::SIMD32 && !hasSyncRTCalls
+                        EP.m_canAbortOnSpill = false;
+                    }
                 }
                 break;
             default:
@@ -2802,6 +2850,12 @@ namespace IGC
                 return SIMDStatus::SIMD_PASS;
             }
 
+            if (hasSyncRTCalls) {
+                // If we get all the way to here, then set it to the preferred SIMD size for Ray Tracing.
+                SIMDMode mode = SIMDMode::UNKNOWN;
+                mode = m_Context->platform.getPreferredRayTracingSIMDSize();
+                return (mode == simdMode) ? SIMDStatus::SIMD_PASS : SIMDStatus::SIMD_FUNC_FAIL;
+            }
 
             if (groupSize != 0 && groupSize <= 16)
             {

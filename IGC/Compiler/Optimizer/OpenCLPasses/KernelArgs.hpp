@@ -59,6 +59,7 @@ namespace IGC
 
             IMPLICIT_PRINTF_BUFFER,
             IMPLICIT_SYNC_BUFFER,
+            IMPLICIT_RT_GLOBAL_BUFFER,
 
             IMPLICIT_BUFFER_OFFSET,
 
@@ -106,6 +107,9 @@ namespace IGC
             IMPLICIT_PRIVATE_MEMORY_STATELESS_SIZE,
 
             IMPLICIT_LOCAL_IDS,
+
+            // Raytracing args
+            RT_STACK_ID,
 
             // STAGE_IN_GRID runtime values
             IMPLICIT_STAGE_IN_GRID_ORIGIN,

@@ -345,6 +345,10 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg& arg) const
         return KernelArg::ArgType::IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_SIZE;
     case ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE:
         return KernelArg::ArgType::IMPLICIT_PRIVATE_MEMORY_STATELESS_SIZE;
+    case ImplicitArg::RT_STACK_ID:
+        return KernelArg::ArgType::RT_STACK_ID;
+    case ImplicitArg::RT_GLOBAL_BUFFER_POINTER:
+        return KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER;
     case ImplicitArg::BINDLESS_OFFSET:
         return KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET;
 
@@ -678,6 +682,7 @@ std::map<KernelArg::ArgType, iOpenCL::DATA_PARAMETER_TOKEN> initArgTypeTokenMap(
     std::map<KernelArg::ArgType, iOpenCL::DATA_PARAMETER_TOKEN> map
     {
        { KernelArg::ArgType::IMPLICIT_LOCAL_IDS, iOpenCL::DATA_PARAMETER_LOCAL_ID },
+       { KernelArg::ArgType::RT_STACK_ID, iOpenCL::DATA_PARAMETER_RT_STACK_ID },
        { KernelArg::ArgType::IMPLICIT_WORK_DIM, iOpenCL::DATA_PARAMETER_WORK_DIMENSIONS },
        { KernelArg::ArgType::IMPLICIT_NUM_GROUPS, iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS },
        { KernelArg::ArgType::IMPLICIT_GLOBAL_SIZE, iOpenCL::DATA_PARAMETER_GLOBAL_WORK_SIZE },
@@ -783,6 +788,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_PRIVATE_BASE,
             KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER,
             KernelArg::ArgType::IMPLICIT_SYNC_BUFFER,
+            KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER,
             KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET,
             KernelArg::ArgType::IMPLICIT_WORK_DIM,
             KernelArg::ArgType::IMPLICIT_NUM_GROUPS,
@@ -829,6 +835,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_PRIVATE_MEMORY_STATELESS_SIZE,
 
             KernelArg::ArgType::R1,
+            KernelArg::ArgType::RT_STACK_ID,
             KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
 
             KernelArg::ArgType::IMPLICIT_ARG_BUFFER,
@@ -886,6 +893,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_R0,
 
             KernelArg::ArgType::R1,
+            KernelArg::ArgType::RT_STACK_ID,
             KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
 
             KernelArg::ArgType::RUNTIME_VALUE,
@@ -902,6 +910,7 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
             KernelArg::ArgType::IMPLICIT_PRIVATE_BASE,
             KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER,
             KernelArg::ArgType::IMPLICIT_SYNC_BUFFER,
+            KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER,
             KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET,
             KernelArg::ArgType::IMPLICIT_WORK_DIM,
             KernelArg::ArgType::IMPLICIT_NUM_GROUPS,
