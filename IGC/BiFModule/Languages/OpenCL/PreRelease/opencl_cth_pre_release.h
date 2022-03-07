@@ -1713,3 +1713,203 @@ long16 __attribute__((overloadable)) intel_bfrev(long16 base);
 #ifdef cl_intel_subgroups_ballot
 uint intel_sub_group_ballot(bool p);
 #endif
+
+
+#ifdef cl_khr_fp16
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+#endif
+
+#ifdef cl_intel_subgroup_matrix_multiply_accumulate
+
+/**** SIMD8 ****/
+
+// 8-bit and 8-bit matrices:
+int   __attribute__((overloadable)) intel_sub_group_i8_i8_matrix_mad_k32(int   a, int8  b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_i8_i8_matrix_mad_k32(int2  a, int8  b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_i8_i8_matrix_mad_k32(int4  a, int8  b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_i8_i8_matrix_mad_k32(int8  a, int8  b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_i8_u8_matrix_mad_k32(int   a, uint8 b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_i8_u8_matrix_mad_k32(int2  a, uint8 b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_i8_u8_matrix_mad_k32(int4  a, uint8 b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_i8_u8_matrix_mad_k32(int8  a, uint8 b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_u8_i8_matrix_mad_k32(uint  a, int8  b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_u8_i8_matrix_mad_k32(uint2 a, int8  b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_u8_i8_matrix_mad_k32(uint4 a, int8  b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_u8_i8_matrix_mad_k32(uint8 a, int8  b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(uint  a, uint8 b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(uint2 a, uint8 b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(uint4 a, uint8 b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(uint8 a, uint8 b, int8 acc);
+
+// bfloat16 and bfloat16 matrices:
+float   __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int  a, int8 b, float  acc);
+float2  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int2 a, int8 b, float2 acc);
+float4  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int4 a, int8 b, float4 acc);
+float8  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int8 a, int8 b, float8 acc);
+
+// fp16 and fp16 matrices:
+float   __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(int  a, int8 b, float  acc);
+float2  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(int2 a, int8 b, float2 acc);
+float4  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(int4 a, int8 b, float4 acc);
+float8  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(int8 a, int8 b, float8 acc);
+
+
+/**** SIMD16 ****/
+
+// 8-bit and 8-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i8_i8_matrix_mad_k32(short a, int8 b, int acc);   // M = 1
+int2 __attribute__((overloadable)) intel_sub_group_i8_i8_matrix_mad_k32(short2 a, int8 b, int2 acc); // M = 2
+int4 __attribute__((overloadable)) intel_sub_group_i8_i8_matrix_mad_k32(short4 a, int8 b, int4 acc); // M = 4
+int8 __attribute__((overloadable)) intel_sub_group_i8_i8_matrix_mad_k32(short8 a, int8 b, int8 acc); // M = 8
+
+int  __attribute__((overloadable)) intel_sub_group_i8_u8_matrix_mad_k32(short a, uint8 b, int acc); // ...
+int2 __attribute__((overloadable)) intel_sub_group_i8_u8_matrix_mad_k32(short2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i8_u8_matrix_mad_k32(short4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i8_u8_matrix_mad_k32(short8 a, uint8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u8_i8_matrix_mad_k32(ushort a, int8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u8_i8_matrix_mad_k32(ushort2 a, int8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u8_i8_matrix_mad_k32(ushort4 a, int8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u8_i8_matrix_mad_k32(ushort8 a, int8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(ushort a, uint8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(ushort2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(ushort4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(ushort8 a, uint8 b, int8 acc);
+
+// bfloat16 and bfloat16 matrices,
+// float acc, float return type:
+float  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short a, int8 b, float acc);
+float2 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short8 a, int8 b, float8 acc);
+
+// fp16 and fp16 matrices,
+// float acc, float return type:
+float  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short a, int8 b, float acc);
+float2 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short8 a, int8 b, float8 acc);
+
+#ifdef cl_intel_subgroup_matrix_multiply_accumulate_tf32
+
+// A: half of tfloat32 B: tfloat32 ACC: float DST: float
+float  __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(short  a, int8 b, float  acc);
+float2 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(short8 a, int8 b, float8 acc);
+
+#endif // cl_intel_subgroup_matrix_multiply_accumulate_tf32
+#endif // cl_intel_subgroup_matrix_multiply_accumulate
+
+#ifdef cl_intel_subgroup_split_matrix_multiply_accumulate
+
+/// split matrix (dpasw, simd8 only)
+int2 __attribute__((overloadable)) intel_sub_group_i8_i8_split_matrix_mad_k32(int   a, int8  b, int2 acc);  // M = 2
+int4 __attribute__((overloadable)) intel_sub_group_i8_i8_split_matrix_mad_k32(int2  a, int8  b, int4 acc);  // M = 4
+int8 __attribute__((overloadable)) intel_sub_group_i8_i8_split_matrix_mad_k32(int4  a, int8  b, int8 acc);  // M = 8
+
+int2 __attribute__((overloadable)) intel_sub_group_i8_u8_split_matrix_mad_k32(int   a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i8_u8_split_matrix_mad_k32(int2  a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i8_u8_split_matrix_mad_k32(int4  a, uint8 b, int8 acc);
+
+int2 __attribute__((overloadable)) intel_sub_group_u8_i8_split_matrix_mad_k32(uint  a, int8  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u8_i8_split_matrix_mad_k32(uint2 a, int8  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u8_i8_split_matrix_mad_k32(uint4 a, int8  b, int8 acc);
+
+int2 __attribute__((overloadable)) intel_sub_group_u8_u8_split_matrix_mad_k32(uint  a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u8_u8_split_matrix_mad_k32(uint2 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u8_u8_split_matrix_mad_k32(uint4 a, uint8 b, int8 acc);
+
+// bfloat16 and bfloat16 matrices:
+float2 __attribute__((overloadable)) intel_sub_group_bf16_bf16_split_matrix_mad_k16(int  a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_bf16_bf16_split_matrix_mad_k16(int2 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_split_matrix_mad_k16(int4 a, int8 b, float8 acc);
+
+// fp16 and fp16 matrices:
+float2 __attribute__((overloadable)) intel_sub_group_f16_f16_split_matrix_mad_k16(int  a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_f16_f16_split_matrix_mad_k16(int2 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_f16_f16_split_matrix_mad_k16(int4 a, int8 b, float8 acc);
+
+#endif // cl_intel_subgroup_split_matrix_multiply_accumulate
+
+//atomic fadd/fsub
+#if defined(cl_intel_global_float_atomics)
+float __attribute__((overloadable)) atom_add(volatile __global float *p, float val);
+float __attribute__((overloadable)) atomic_add(volatile __global float *p, float val);
+float __attribute__((overloadable)) atom_sub(volatile __global float *p, float val);
+float __attribute__((overloadable)) atomic_sub(volatile __global float *p, float val);
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+float __attribute__((overloadable)) atomic_fetch_add(volatile __global atomic_float *object, float operand);
+float __attribute__((overloadable)) atomic_fetch_add_explicit(volatile __global atomic_float *object, float operand, memory_order order);
+float __attribute__((overloadable)) atomic_fetch_add_explicit(volatile __global atomic_float *object, float operand, memory_order order, memory_scope scope);
+float __attribute__((overloadable)) atomic_fetch_sub(volatile __global atomic_float *object, float operand);
+float __attribute__((overloadable)) atomic_fetch_sub_explicit(volatile __global atomic_float *object, float operand, memory_order order);
+float __attribute__((overloadable)) atomic_fetch_sub_explicit(volatile __global atomic_float *object, float operand, memory_order order, memory_scope scope);
+#endif // CL_VERSION_2_0
+#endif //defined(cl_intel_global_float_atomics)
+
+#if defined(cl_intel_pvc_rt_validation)
+
+struct rtglobals_t;
+typedef __global struct rtglobals_t *rtglobals_t;
+struct rtfence_t;
+typedef __private struct rtfence_t *rtfence_t;
+
+void *intel_get_rt_stack(rtglobals_t rt_dispatch_globals);
+
+void *intel_get_thread_btd_stack(rtglobals_t rt_dispatch_globals);
+
+void *intel_get_global_btd_stack(rtglobals_t rt_dispatch_globals);
+
+rtfence_t intel_dispatch_trace_ray_query(
+    rtglobals_t rt_dispatch_globals, uint bvh_level, uint traceRayCtrl);
+
+void intel_rt_sync(rtfence_t fence);
+
+global void* intel_get_implicit_dispatch_globals();
+
+#endif // defined(cl_intel_pvc_rt_validation)
+
+#ifdef cl_intel_subgroup_extended_block_read
+ushort2  intel_subgroup_block_read_u8_m1k32v2(__global void *base_address, int width, int height, int pitch, int2 coord);
+ushort4  intel_subgroup_block_read_u8_m2k32v2(__global void *base_address, int width, int height, int pitch, int2 coord);
+ushort8  intel_subgroup_block_read_u8_m4k32v2(__global void *base_address, int width, int height, int pitch, int2 coord);
+ushort16 intel_subgroup_block_read_u8_m8k32v2(__global void *base_address, int width, int height, int pitch, int2 coord);
+ushort2  intel_subgroup_block_read_u16_m1k16v2(__global void *base_address, int width, int height, int pitch, int2 coord);
+ushort4  intel_subgroup_block_read_u16_m2k16v2(__global void *base_address, int width, int height, int pitch, int2 coord);
+ushort8  intel_subgroup_block_read_u16_m4k16v2(__global void *base_address, int width, int height, int pitch, int2 coord);
+ushort16 intel_subgroup_block_read_u16_m8k16v2(__global void *base_address, int width, int height, int pitch, int2 coord);
+uint8    intel_subgroup_block_read_transform_u8_k32(__global void *base_address, int width, int height, int pitch, int2 coord);
+uint8    intel_subgroup_block_read_transform_u16_k16(__global void *base_address, int width, int height, int pitch, int2 coord);
+uint8    intel_subgroup_block_read_transpose_u32_k8(__global void *base_address, int width, int height, int pitch, int2 coord);
+
+#endif //defined(cl_intel_subgroup_extended_block_read)
+
+void global_barrier();
+
+//
+// Named Barriers definitions
+//
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+#ifndef NAMED_BARRIER_STRUCT_TYPE
+#define NAMED_BARRIER_STRUCT_TYPE
+typedef struct
+{
+    int count;
+    int orig_count;
+    int inc;
+} __namedBarrier;
+#endif // NAMED_BARRIER_STRUCT_TYPE
+typedef __namedBarrier NamedBarrier_t;
+
+local NamedBarrier_t* __attribute__((overloadable)) named_barrier_init(int count);
+
+void __attribute__((overloadable)) work_group_named_barrier(local NamedBarrier_t *barrier, cl_mem_fence_flags flags);
+
+void __attribute__((overloadable)) work_group_named_barrier(local NamedBarrier_t *barrier, cl_mem_fence_flags flags, memory_scope scope);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
