@@ -11224,9 +11224,9 @@ void Optimizer::split4GRFVars()
         G4_Type Ty = splitDcl->getElemType();
         unsigned NElts = splitDcl->getTotalElems();
         std::string varName(splitDcl->getName());
-        auto DclLow = builder.createTempVar(NElts / 2, Ty, GRFALIGN,
+        auto DclLow = builder.createTempVar(NElts / 2, Ty, builder.getGRFAlign(),
             (varName + "Lo").c_str(), false);
-        auto DclHi = builder.createTempVar(NElts / 2, Ty, GRFALIGN,
+        auto DclHi = builder.createTempVar(NElts / 2, Ty, builder.getGRFAlign(),
             (varName + "Hi").c_str(), false);
         DclMap[splitDcl] = new DclMapInfo(DclLow, DclHi);
         //std::cerr << "split " << splitDcl->getName() << " into (" <<
@@ -15206,7 +15206,7 @@ void Optimizer::applyFusedCallWA()
         //     Note that both operands of call need to be GRF aligned due to bug. With calla, we need to
         //     create grf-aligned sTargetDecl. With call, the relative ip temp, created later as I5Target,
         //     will be grf-aligned, thus, sTargetDecl here does not need to be grf-aligned.
-        G4_SubReg_Align calleeAlign = builder.supportCallaRegSrc() ? GRFALIGN : Any;
+        G4_SubReg_Align calleeAlign = builder.supportCallaRegSrc() ? builder.getGRFAlign() : Any;
         G4_Declare* sTargetDecl = builder.createTempVar(1, Type_UD, calleeAlign, "smallEUTarget");
         G4_DstRegRegion* I3_Dst = builder.createDst(sTargetDecl->getRegVar(), 0, 0, 1, Type_UD);
         G4_SrcRegRegion* I3_Src0 = builder.createSrc(V_cr0, 0, 2, builder.getRegionScalar(), Type_UD);
@@ -15271,7 +15271,7 @@ void Optimizer::applyFusedCallWA()
             G4_SrcRegRegion* I4_Src1 = builder.createSrc(sTargetDecl->getRegVar(), 0, 0, builder.getRegionScalar(), Type_D);
             G4_INST* I4_ip_start = builder.createBinOp(G4_add, g4::SIMD1, I4_Dst, I4_Src0, I4_Src1, InstOpt_WriteEnable, false);
 
-            G4_Declare* I4Target = builder.createTempVar(1, Type_D, GRFALIGN, "rSmallEUTarget");
+            G4_Declare* I4Target = builder.createTempVar(1, Type_D, builder.getGRFAlign(), "rSmallEUTarget");
             G4_DstRegRegion* I4_pDst = builder.createDst(I4Target->getRegVar(), 0, 0, 1, Type_D);
             G4_SrcRegRegion* I4_pSrc0 = builder.createSrc(I4_IP->getRegVar(), 0, 0, builder.getRegionScalar(), Type_D);
             G4_Imm* I4_pSrc1 = builder.createImm(0x33333333, Type_D);  // to be patched later
@@ -15287,7 +15287,7 @@ void Optimizer::applyFusedCallWA()
             G4_SrcRegRegion* I5_Src1 = builder.createSrc(Target->getBase(), 0, 0, builder.getRegionScalar(), Type_D);
             G4_INST* I5_ip_start = builder.createBinOp(G4_add, g4::SIMD1, I5_Dst, I5_Src0, I5_Src1, InstOpt_WriteEnable, false);
 
-            G4_Declare* I5Target = builder.createTempVar(1, Type_D, GRFALIGN, "rBigEUTarget");
+            G4_Declare* I5Target = builder.createTempVar(1, Type_D, builder.getGRFAlign(), "rBigEUTarget");
             G4_DstRegRegion* I5_pDst = builder.createDst(I5Target->getRegVar(), 0, 0, 1, Type_D);
             G4_SrcRegRegion* I5_pSrc0 = builder.createSrc(I5_IP->getRegVar(), 0, 0, builder.getRegionScalar(), Type_D);
             G4_Imm* I5_pSrc1 = builder.createImm(0x33333333, Type_D);  // to be patched later

@@ -83,8 +83,7 @@ static void CopySrcToMsgPayload(
     G4_Declare *msg, unsigned msgRegOff,
     G4_SrcRegRegion *src, unsigned srcRegOff)
 {
-    uint32_t numRegs = (src->getElemSize() * execSize) /
-        COMMON_ISA_GRF_REG_SIZE;
+    uint32_t numRegs = (src->getElemSize() * execSize) / IRB->getGRFSize();
     if (numRegs == 0)
     {
         // always copy at least one GRF
@@ -146,8 +145,7 @@ static void Copy_Source_To_Payload(
 
     unsigned srcRegOff = 0;
     G4_ExecSize batchSize = std::min(batchExSize, execSize);
-    uint32_t numSrcRegs = (source->getElemSize() * batchSize) /
-        COMMON_ISA_GRF_REG_SIZE;
+    uint32_t numSrcRegs = (source->getElemSize() * batchSize) / IRB->getGRFSize();
     if (numSrcRegs == 0)
     {
         // always copy at least one GRF
@@ -193,11 +191,11 @@ void IR_Builder::preparePayload(
 
         unsigned regionSize = srcs[i].execSize * srcReg->getTypeSize();
 
-        if (regionSize < COMMON_ISA_GRF_REG_SIZE) {
+        if (regionSize < getGRFSize()) {
             // FIXME: Need a better solution to decouple the value type from
             // the container type to generate better COPY if required.
             // round up to 1 GRF
-            regionSize = COMMON_ISA_GRF_REG_SIZE;
+            regionSize = getGRFSize();
         }
 
         if (srcDcl == dcls[current]) {
@@ -268,11 +266,11 @@ void IR_Builder::preparePayload(
     for (; i != len; ++i) {
         G4_SrcRegRegion *srcReg = srcs[i].opnd;
         unsigned regionSize = srcs[i].execSize * srcReg->getTypeSize();
-        if (regionSize < COMMON_ISA_GRF_REG_SIZE) {
+        if (regionSize < getGRFSize()) {
             // FIXME: Need a better solution to decouple the value type from
             // the container type to generate better COPY if required.
             // round up to 1 GRF
-            regionSize = COMMON_ISA_GRF_REG_SIZE;
+            regionSize = getGRFSize();
         }
         msgSizes[current] += regionSize;
     }

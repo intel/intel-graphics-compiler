@@ -269,7 +269,7 @@ int IR_Builder::translateVISAOwordLoadInst(
     bool unaligned = (opcode == ISA_OWORD_LD_UNALIGNED);
 
     // create dcl for VX
-    G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+    G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 
     if (isStatelessSurface(surface))
     {
@@ -432,7 +432,7 @@ int IR_Builder::translateVISAOwordStoreInst(
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (forceSplitSend || useSends())
     {
-        G4_Declare *headerDcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *headerDcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 
         if (isStatelessSurface(surface))
         {
@@ -463,7 +463,7 @@ int IR_Builder::translateVISAOwordStoreInst(
     }
     else
     {
-        uint32_t temp =  obj_size/TypeSize(Type_UD) + GENX_DATAPORT_IO_SZ;
+        uint32_t temp =  obj_size/TypeSize(Type_UD) + getGenxDataportIOSize();
 
         G4_Declare *dcl = createSendPayloadDcl(temp, Type_UD);
 
@@ -589,7 +589,7 @@ int IR_Builder::translateVISAGatherInst(
         // From SKL, SLM messages forbid message header. Recalculate offset by
         // adding global offset and force headerLess.
         G4_Declare *dcl = createSendPayloadDcl(numElt, eltOffOpnd->getType());
-        dcl->setSubRegAlign(GRFALIGN);
+        dcl->setSubRegAlign(getGRFAlign());
         G4_DstRegRegion *newEltOffOpnd = createDstRegRegion(dcl, 1);
         createBinOp(G4_add, G4_ExecSize(numElt), newEltOffOpnd, eltOffOpnd, gOffOpnd, instOpt, true);
         eltOffOpnd = createSrcRegRegion(dcl, numElt == 1 ? getRegionScalar() : getRegionStride1());
@@ -605,17 +605,17 @@ int IR_Builder::translateVISAGatherInst(
 
     G4_Declare *header = 0;
     G4_Declare *offset = createSendPayloadDcl(numElt, Type_UD);
-    offset->setSubRegAlign(GRFALIGN);
+    offset->setSubRegAlign(getGRFAlign());
 
     if (useSplitSend)
     {
         ASSERT_USER(!headerLess, "SplitSend should not be used when header is not required!");
         // Without header, it's unnecessary to split the message.
-        header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        header = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
     }
     else if (!headerLess)
     {
-        header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + effectiveNumElt, Type_UD);
+        header = createSendPayloadDcl(getGenxDataportIOSize() + effectiveNumElt, Type_UD);
         offset->setAliasDeclare(header, numEltPerGRF<Type_UB>());
     }
 
@@ -729,8 +729,8 @@ int IR_Builder::translateVISAGatherInst(
         G4_SrcRegRegion *m1 = createSrcRegRegion(offset, getRegionStride1());
         createSplitSendInst(pred, d,
             m0, 1,
-            m1, effectiveNumElt / GENX_DATAPORT_IO_SZ,
-            effectiveNumElt / GENX_DATAPORT_IO_SZ,
+            m1, effectiveNumElt / getGenxDataportIOSize(),
+            effectiveNumElt / getGenxDataportIOSize(),
             G4_ExecSize(numElt),
             temp,
             tf_id, true,
@@ -743,8 +743,8 @@ int IR_Builder::translateVISAGatherInst(
             pred,
             d,
             msgSrcOpnd,
-            headerLess ? effectiveNumElt/GENX_DATAPORT_IO_SZ : effectiveNumElt/GENX_DATAPORT_IO_SZ + 1,
-            effectiveNumElt/GENX_DATAPORT_IO_SZ,
+            headerLess ? effectiveNumElt/getGenxDataportIOSize() : effectiveNumElt/getGenxDataportIOSize() + 1,
+            effectiveNumElt/getGenxDataportIOSize(),
             G4_ExecSize(numElt),
             temp,
             tf_id,
@@ -875,7 +875,7 @@ int IR_Builder::translateVISAScatterInst(
     {
         // mov (8)      VX(0,0)<1>,  r0:ud
         // add dcl for VX
-        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + effectiveNumElt * 2, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize() + effectiveNumElt * 2, Type_UD);
 
         if (isStatelessSurface(surface)) {
             // Build stateless surface message header.
@@ -960,8 +960,8 @@ int IR_Builder::translateVISAScatterInst(
         pred,
         post_dst_opnd,
         msgSrcOpnd,
-        headerLess ? effectiveNumElt/GENX_DATAPORT_IO_SZ * 2 :
-        effectiveNumElt/GENX_DATAPORT_IO_SZ * 2 + 1,
+        headerLess ? effectiveNumElt/getGenxDataportIOSize() * 2 :
+        effectiveNumElt/getGenxDataportIOSize() * 2 + 1,
         0,
         G4_ExecSize(numElt),
         temp,
@@ -1051,11 +1051,11 @@ int IR_Builder::translateVISAGather4Inst(
     if (surface && isStatelessSurface(surface) && needsA32MsgHeader())
     {
         // Header is required to work around a HW issue on pre-SKL devices.
-        hdrSize = GENX_DATAPORT_IO_SZ;
+        hdrSize = getGenxDataportIOSize();
         if (useSplitSend) {
-            header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+            header = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
         } else {
-            header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + numElt, Type_UD);
+            header = createSendPayloadDcl(getGenxDataportIOSize() + numElt, Type_UD);
             offset->setAliasDeclare(header, numEltPerGRF<Type_UB>());
         }
     } else {
@@ -1076,7 +1076,7 @@ int IR_Builder::translateVISAGather4Inst(
     // shl (esize) offset<1>:ud elt_off<8;8,1>:ud 2:uw
     G4_DstRegRegion* dst1_opnd = createDst(offset->getRegVar(), 0, 0, 1, offset->getElemType());
 
-    G4_Declare *tmp_dcl = createTempVar(numElt, Type_UD, GRFALIGN);
+    G4_Declare *tmp_dcl = createTempVar(numElt, Type_UD, getGRFAlign());
     G4_DstRegRegion* dst3_opnd = createDst(tmp_dcl->getRegVar(), 0, 0, 1, tmp_dcl->getElemType());
 
     createBinOp(G4_shl, G4_ExecSize(numElt), dst3_opnd, eltOffOpnd, createImm(2, Type_UW), instOpt, true);
@@ -1147,8 +1147,8 @@ int IR_Builder::translateVISAGather4Inst(
         G4_SrcRegRegion *m0 = createSrcRegRegion(header, getRegionStride1());
         G4_SrcRegRegion *m1 = createSrcRegRegion(offset, getRegionStride1());
         createSplitSendInst(NULL, d,
-            m0, 1, m1, numElt / GENX_DATAPORT_IO_SZ,
-            (numElt / GENX_DATAPORT_IO_SZ)* num_channel,
+            m0, 1, m1, numElt / getGenxDataportIOSize(),
+            (numElt / getGenxDataportIOSize())* num_channel,
             G4_ExecSize(numElt), temp, tf_id, hdrSize != 0,
             SendAccess::READ_ONLY,
             surface, NULL, instOpt, false);
@@ -1160,8 +1160,8 @@ int IR_Builder::translateVISAGather4Inst(
             NULL,
             d,
             payload,
-            (hdrSize + numElt)/GENX_DATAPORT_IO_SZ,
-            (numElt/GENX_DATAPORT_IO_SZ) * num_channel,
+            (hdrSize + numElt)/getGenxDataportIOSize(),
+            (numElt/getGenxDataportIOSize()) * num_channel,
             G4_ExecSize(numElt),
             temp,
             tf_id,
@@ -1240,16 +1240,16 @@ int IR_Builder::translateVISAScatter4Inst(
     if (surface && isStatelessSurface(surface) && needsA32MsgHeader())
     {
         // Header is required to work around a HW issue on pre-SKL devices.
-        hdrSize = GENX_DATAPORT_IO_SZ;
+        hdrSize = getGenxDataportIOSize();
         offset = createSendPayloadDcl(numElt, Type_UD);
         if (useSplitSend) {
             // When header is required, we split the message as
             // (header, offset + data) if split-send is supported.
-            header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+            header = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
             offset = createSendPayloadDcl(payload_size, Type_UD);
             data->setAliasDeclare(offset, (numElt/8) * numEltPerGRF<Type_UB>());
         } else {
-            header = createSendPayloadDcl(GENX_DATAPORT_IO_SZ + payload_size, Type_UD);
+            header = createSendPayloadDcl(getGenxDataportIOSize() + payload_size, Type_UD);
             offset->setAliasDeclare(header, numEltPerGRF<Type_UB>());
             data->setAliasDeclare(header, numEltPerGRF<Type_UB>() * ((numElt/8) + 1));
         }
@@ -1293,7 +1293,7 @@ int IR_Builder::translateVISAScatter4Inst(
 
     G4_DstRegRegion* dst1_opnd = createDst(offset->getRegVar(), 0, 0, 1, offset->getElemType());
 
-    G4_Declare *tmp_dcl = createTempVar(numElt, Type_UD, GRFALIGN);
+    G4_Declare *tmp_dcl = createTempVar(numElt, Type_UD, getGRFAlign());
     G4_DstRegRegion* dst3_opnd = createDst(tmp_dcl->getRegVar(), 0, 0, 1, tmp_dcl->getElemType());
 
     createBinOp(G4_shl, G4_ExecSize(numElt), dst3_opnd, eltOffOpnd, createImm(2, Type_UW), instOpt, true);
@@ -1360,12 +1360,12 @@ int IR_Builder::translateVISAScatter4Inst(
             m0 = createSrcRegRegion(header, getRegionStride1());
             m0Len = 1;
             m1 = createSrcRegRegion(offset, getRegionStride1());
-            m1Len = payload_size / GENX_DATAPORT_IO_SZ;
+            m1Len = payload_size / getGenxDataportIOSize();
         } else {
             m0 = createSrcRegRegion(offset, getRegionStride1());
-            m0Len = numElt / GENX_DATAPORT_IO_SZ;
+            m0Len = numElt / getGenxDataportIOSize();
             m1 = createSrcRegRegion(data, getRegionStride1());
-            m1Len = data_size / GENX_DATAPORT_IO_SZ;
+            m1Len = data_size / getGenxDataportIOSize();
         }
         createSplitSendInst(NULL, post_dst_opnd,
             m0, m0Len, m1, m1Len, 0,
@@ -1382,7 +1382,7 @@ int IR_Builder::translateVISAScatter4Inst(
             NULL,
             post_dst_opnd,
             payload,
-            (numElt * (num_channel + 1) + hdrSize)/GENX_DATAPORT_IO_SZ,
+            (numElt * (num_channel + 1) + hdrSize)/getGenxDataportIOSize(),
             0,
             G4_ExecSize(numElt),
             temp,
@@ -1477,7 +1477,7 @@ int IR_Builder::translateVISADwordAtomicInst(
 
     bool useHeader = needsA32MsgHeader() && surface && isStatelessSurface(surface);
     if (useHeader) {
-        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 
         BuildMH1_A32_PSM(this, dcl);
 
@@ -1533,7 +1533,7 @@ int IR_Builder::translateVISADwordAtomicInst(
     MD |= (hasRet ? 1 : 0) << 13;
     MD |= subOpc << 8;
 
-    unsigned resLen = hasRet ? (exSize / GENX_DATAPORT_IO_SZ) : 0;
+    unsigned resLen = hasRet ? (exSize / getGenxDataportIOSize()) : 0;
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
@@ -1662,7 +1662,7 @@ int IR_Builder::translateVISAGather4TypedInst(
     if (hasHeader)
     {
         // Build header
-        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
         BuildMH1_BTS_PSM(this, dcl);
 
         // Append header
@@ -1748,7 +1748,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
     if (hasHeader)
     {
         // Build header
-        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
         BuildMH1_BTS_PSM(this, dcl);
 
         // Append header
@@ -2074,7 +2074,7 @@ int IR_Builder::translateGather4Inst(
     unsigned len = 0;
 
     if (useHeader) {
-        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 
         BuildMH1_A32_PSM(this, dcl);
 
@@ -2103,7 +2103,7 @@ int IR_Builder::translateGather4Inst(
     MD |= (execSize == EXEC_SIZE_8 ? MDC_SM3_SIMD8 : MDC_SM3_SIMD16) << 12;
     MD |= chMask.getHWEncoding() << 8;
 
-    unsigned resLen = (exSize / GENX_DATAPORT_IO_SZ) *
+    unsigned resLen = (exSize / getGenxDataportIOSize()) *
         chMask.getNumEnabledChannels();
 
     bool forceSplitSend = shouldForceSplitSend(surface);
@@ -2175,7 +2175,7 @@ int IR_Builder::translateScatter4Inst(
     unsigned len = 0;
 
     if (useHeader) {
-        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 
         // TODO: Get PSM supported on demand.
         BuildMH1_A32_PSM(this, dcl);
@@ -2365,7 +2365,7 @@ int IR_Builder::translateByteGatherInst(
     unsigned len = 0;
 
     if (useHeader) {
-        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 
         // TODO: Get BTS supported on demand.
         BuildMH_A32_GO(this, dcl);
@@ -2394,7 +2394,7 @@ int IR_Builder::translateByteGatherInst(
     MD |= numBlocks << 10;
     MD |= (execSize == EXEC_SIZE_8 ? MDC_SM2_SIMD8 : MDC_SM2_SIMD16) << 8;
 
-    unsigned resLen = (exSize / GENX_DATAPORT_IO_SZ) * numBatch;
+    unsigned resLen = (exSize / getGenxDataportIOSize()) * numBatch;
     bool forceSplitSend = shouldForceSplitSend(surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
@@ -2475,7 +2475,7 @@ int IR_Builder::translateByteScatterInst(
     unsigned len = 0;
 
     if (useHeader) {
-        G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 
         // TODO: Get BTS supported on demand.
         BuildMH_A32_GO(this, dcl);
@@ -2557,7 +2557,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     unsigned numOword = Get_VISA_Oword_Num(size);
-    G4_Declare* dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+    G4_Declare* dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
     if (noInt64())
     {
         G4_SrcRegRegion *region = address->asSrcRegRegion();
@@ -2579,7 +2579,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
     }
     else
     {
-        G4_Declare* dclAsUQ = createSendPayloadDcl(GENX_DATAPORT_IO_SZ / 2, Type_UQ);
+        G4_Declare* dclAsUQ = createSendPayloadDcl(getGenxDataportIOSize() / 2, Type_UQ);
         dclAsUQ->setAliasDeclare(dcl, 0);
         createMovInst(dclAsUQ, 0, 0, g4::SIMD1, NULL, NULL, address, true);
     }
@@ -2622,7 +2622,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
         sendExecSize = g4::SIMD8;
     }
 
-    G4_Declare* dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+    G4_Declare* dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
     if (noInt64())
     {
         G4_SrcRegRegion *region = address->asSrcRegRegion();
@@ -2642,7 +2642,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
             region->getRegion(), Type_UD);
         createMovInst(dcl, 0, 1, g4::SIMD1, NULL, NULL, tmp, true);
     } else {
-        G4_Declare* dclAsUQ = createSendPayloadDcl(GENX_DATAPORT_IO_SZ / 2, Type_UQ);
+        G4_Declare* dclAsUQ = createSendPayloadDcl(getGenxDataportIOSize() / 2, Type_UQ);
         dclAsUQ->setAliasDeclare(dcl, 0);
         createMovInst(dclAsUQ, 0, 0, g4::SIMD1, NULL, NULL, address, true);
     }
@@ -3102,7 +3102,7 @@ int IR_Builder::translateSVMGather4Inst(
     FC |= chMask.getHWEncoding() << 8;
     FC |= getA64BTI();
 
-    unsigned resLen = (exSize / GENX_DATAPORT_IO_SZ) *
+    unsigned resLen = (exSize / getGenxDataportIOSize()) *
         chMask.getNumEnabledChannels();
     if (msgs[1] == 0) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");

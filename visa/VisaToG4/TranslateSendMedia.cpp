@@ -76,7 +76,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 
     /* mov (8)      VX(0,0)<1>,  r0:ud  */
     // add dcl for VX
-    G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+    G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 
     // create MOV inst
     createMovR0Inst(dcl, 0, 0, true);
@@ -133,7 +133,7 @@ int IR_Builder::translateVISAMediaLoadInst(
     {
         original_dst = dstOpnd;
         new_dcl = createTempVar(numEltPerGRF<Type_UB>()/TypeSize(Type_UD),
-            Type_UD, GRFALIGN);
+            Type_UD, getGRFAlign());
         G4_DstRegRegion* tmp_dst_opnd = createDst(
             new_dcl->getRegVar(),
             0,
@@ -157,7 +157,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 
     temp += planeID;
 
-    G4_ExecSize send_exec_size(GENX_DATAPORT_IO_SZ);
+    G4_ExecSize send_exec_size(getGenxDataportIOSize());
     if (IS_WTYPE(d->getType()))
     {
         send_exec_size *= 2;
@@ -183,7 +183,7 @@ int IR_Builder::translateVISAMediaLoadInst(
     {
         G4_Declare *new_dcl2 = createTempVar(
             numEltPerGRF<Type_UB>()/original_dst->getTypeSize(),
-            original_dst->getType(), GRFALIGN);
+            original_dst->getType(), getGRFAlign());
 
         new_dcl2->setAliasDeclare(new_dcl, 0);
 
@@ -292,7 +292,7 @@ int IR_Builder::translateVISAMediaStoreInst(
     if (forceSplitSend || useSends())
     {
         // use split send
-        G4_Declare *headerDcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *headerDcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
         createMovR0Inst(headerDcl, 0, 0, true);
         /* mov (1)      VX(0,2)<1>,    CONST[R,C]  */
         uint32_t temp = (blockHeight - 1) << 16 | (blockWidth - 1);
@@ -325,7 +325,7 @@ int IR_Builder::translateVISAMediaStoreInst(
     }
     else
     {
-        uint32_t temp =  new_obj_size/TypeSize(Type_UD) + GENX_DATAPORT_IO_SZ;
+        uint32_t temp =  new_obj_size/TypeSize(Type_UD) + getGenxDataportIOSize();
 
         G4_Declare *dcl = createSendPayloadDcl(temp, Type_UD);
 
@@ -363,7 +363,7 @@ int IR_Builder::translateVISAMediaStoreInst(
             payload,
             ((obj_size - 1) / numEltPerGRF<Type_UB>() + 1) + 1,
             0,
-            G4_ExecSize(GENX_DATAPORT_IO_SZ),
+            G4_ExecSize(getGenxDataportIOSize()),
             funcCtrl,
             SFID::DP_DC1,
             1,
@@ -489,9 +489,9 @@ int IR_Builder::translateVISAVmeImeInst(
         NULL,
         d,
         payload,
-        input_size_dw / GENX_DATAPORT_IO_SZ,
+        input_size_dw / getGenxDataportIOSize(),
         regs2rcv,
-        G4_ExecSize(GENX_DATAPORT_IO_SZ),
+        G4_ExecSize(getGenxDataportIOSize()),
         temp,
         SFID::VME,
         true,
@@ -555,9 +555,9 @@ int IR_Builder::translateVISAVmeSicInst(
         NULL,
         d,
         payload,
-        input_size_dw / GENX_DATAPORT_IO_SZ,
+        input_size_dw / getGenxDataportIOSize(),
         regs2rcv,
-        G4_ExecSize(GENX_DATAPORT_IO_SZ),
+        G4_ExecSize(getGenxDataportIOSize()),
         temp,
         SFID::CRE,
         true,
@@ -656,9 +656,9 @@ int IR_Builder::translateVISAVmeFbrInst(
         NULL,
         d,
         payload,
-        input_size_dw / GENX_DATAPORT_IO_SZ,
+        input_size_dw / getGenxDataportIOSize(),
         regs2rcv,
-        G4_ExecSize(GENX_DATAPORT_IO_SZ),
+        G4_ExecSize(getGenxDataportIOSize()),
         temp,
         SFID::CRE,
         true,  //head_present?
@@ -710,9 +710,9 @@ int IR_Builder::translateVISAVmeIdmInst(
         NULL,
         d,
         payload,
-        input_size_dw / GENX_DATAPORT_IO_SZ,
+        input_size_dw / getGenxDataportIOSize(),
         regs2rcv,
-        G4_ExecSize(GENX_DATAPORT_IO_SZ),
+        G4_ExecSize(getGenxDataportIOSize()),
         temp,
         SFID::VME,
         true,
@@ -738,9 +738,9 @@ int IR_Builder::translateVISASamplerVAGenericInst(
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    G4_Declare* dcl  = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ, Type_UD);
-    G4_Declare *dcl1 = createSendPayloadDcl(8,                      Type_UD);
-    G4_Declare *dclF = createSendPayloadDcl(8,                      Type_F);
+    G4_Declare* dcl  = createSendPayloadDcl(2 * getGenxSamplerIOSize(), Type_UD);
+    G4_Declare *dcl1 = createSendPayloadDcl(8,                          Type_UD);
+    G4_Declare *dclF = createSendPayloadDcl(8,                          Type_F);
     dcl1->setAliasDeclare (dcl, numEltPerGRF<Type_UB>());
     dclF->setAliasDeclare (dcl, numEltPerGRF<Type_UB>());
 
@@ -971,7 +971,7 @@ int IR_Builder::translateVISAAvsInst(
         unsigned obj_size = number_elements_returned*numEnabledChannels*TypeSize(output_type);
         // mov (8)      VX(0,0)<1>,  r0:ud
         // add dcl for VX
-        G4_Declare *dcl = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ, Type_UD);
+        G4_Declare *dcl = createSendPayloadDcl(2 * getGenxSamplerIOSize(), Type_UD);
 
         // mov  VX(0,0)<1>, r0
         createMovR0Inst(dcl, 0, 0, true);
@@ -980,14 +980,14 @@ int IR_Builder::translateVISAAvsInst(
         cmask += cntrl << 18;
         createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(cmask, Type_UD), true);
 
-        G4_Declare *dcl1 = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_F);
+        G4_Declare *dcl1 = createSendPayloadDcl(getGenxDataportIOSize(), Type_F);
         dcl1->setAliasDeclare(dcl, numEltPerGRF<Type_UB>());
 
         /*
         Keeping destination type as UD, otherwise w-->f conversion happens,
         which affects the results.
         */
-        G4_Declare *dcl1_ud = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        G4_Declare *dcl1_ud = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
         dcl1_ud->setAliasDeclare(dcl, numEltPerGRF<Type_UB>());
 
         // mov  (1)     VA(0,0)<1>,  v2d
@@ -1132,18 +1132,18 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     if ((sub_opcode == VA_OP_CODE_1PIXEL_CONVOLVE && mode == VA_CONV_16x1) ||
         sub_opcode == ISA_HDC_1PIXELCONV)
     {
-        dcl = createSendPayloadDcl(4 * GENX_SAMPLER_IO_SZ , Type_UD);
+        dcl = createSendPayloadDcl(4 * getGenxSamplerIOSize() , Type_UD);
         //16 pairs of x,y coordinates
         dcl_offsets = createSendPayloadDcl(32                      , Type_W);
         dcl_offsets->setAliasDeclare(dcl, numEltPerGRF<Type_UB>() * 2);
         reg_to_send = 4;
     }
     else
-        dcl = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ , Type_UD);
+        dcl = createSendPayloadDcl(2 * getGenxSamplerIOSize() , Type_UD);
 
-    G4_Declare *dcl_payload_UD = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
-    G4_Declare *dcl_payload_F = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_F);
-    G4_Declare *dcl_payload_UW = createSendPayloadDcl(GENX_DATAPORT_IO_SZ * 2, Type_UW);
+    G4_Declare *dcl_payload_UD = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
+    G4_Declare *dcl_payload_F = createSendPayloadDcl(getGenxDataportIOSize(), Type_F);
+    G4_Declare *dcl_payload_UW = createSendPayloadDcl(getGenxDataportIOSize() * 2, Type_UW);
 
     dcl_payload_UD->setAliasDeclare (dcl,  numEltPerGRF<Type_UB>());
     dcl_payload_F->setAliasDeclare (dcl, numEltPerGRF<Type_UB>());

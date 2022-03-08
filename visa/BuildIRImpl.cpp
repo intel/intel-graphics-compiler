@@ -104,7 +104,7 @@ G4_Declare* DeclarePool::createDeclare(
     {
         if ((unsigned int)nElems * nRows * TypeSize(ty) >= irb.numEltPerGRF<Type_UB>())
         {
-            dcl->setSubRegAlign(GRFALIGN);
+            dcl->setSubRegAlign(irb.getGRFAlign());
         }
         else
         {
@@ -337,7 +337,7 @@ bool IR_Builder::isOpndAligned(
                         // component wise and may need to consider checking
                         // the accumulated result.
                         if ((AliasOffset % align_byte) != 0 ||
-                            (Dcl && Dcl->getSubRegAlign() != GRFALIGN &&
+                            (Dcl && Dcl->getSubRegAlign() != getGRFAlign() &&
                                 Dcl->getSubRegAlign() != Sixteen_Word &&
                                 Dcl->getSubRegAlign() != Eight_Word) ||
                             AE->getOffset() % align_byte != 0) {
@@ -719,7 +719,7 @@ void IR_Builder::createBuiltinDecls()
 
     // builtinR0 either gets allocated to r0 or to a different
     // register depending on conditions in RA.
-    builtinR0 = createTempVar(numR0DW, Type_UD, GRFALIGN, "R0_Copy");
+    builtinR0 = createTempVar(numR0DW, Type_UD, getGRFAlign(), "R0_Copy");
     builtinR0->setDoNotSpill();
     builtinR0->setBuiltin();
 
@@ -762,7 +762,7 @@ G4_Declare* IR_Builder::getSpillFillHeader()
 {
     if (!spillFillHeader)
     {
-        spillFillHeader = createTempVar(1, Type_UD, GRFALIGN, "spillHeader");
+        spillFillHeader = createTempVar(1, Type_UD, getGRFAlign(), "spillHeader");
         spillFillHeader->setLiveOut();
         spillFillHeader->setLiveIn();
         spillFillHeader->setDoNotSpill();
@@ -2753,7 +2753,7 @@ G4_SendDescRaw* IR_Builder::createLscMsgDesc(
         // ceil[ SIMT32*dataSize(b)/512(b/REG) ] * vecSize
         //   units = (b/b*REG) = REG
         dataRegs = std::max<uint32_t>(1,
-            execSize*dataSizeBits / 8 / COMMON_ISA_GRF_REG_SIZE)*vecSize;
+            execSize*dataSizeBits / 8 / getGRFSize())*vecSize;
     }
     else
     { // if (shape.transpose == LSC_DATA_TRANSPOSE) {
@@ -2761,8 +2761,8 @@ G4_SendDescRaw* IR_Builder::createLscMsgDesc(
            // So the data size is the SIMD size (ExecSize) times the number of
            // registers consumed by each vector sequence (always a full
            // register number per seq).
-        uint32_t regsPerVec = vecSize * dataSizeBits / 8 / COMMON_ISA_GRF_REG_SIZE;
-        if (vecSize*dataSizeBits / 8 % COMMON_ISA_GRF_REG_SIZE)
+        uint32_t regsPerVec = vecSize * dataSizeBits / 8 / getGRFSize();
+        if (vecSize*dataSizeBits / 8 % getGRFSize())
             regsPerVec++; // pad out to full reg
         dataRegs = regsPerVec * execSize;
     }
@@ -3025,7 +3025,7 @@ void IR_Builder::createMovR0Inst(G4_Declare* dcl, short regOff, short subregOff,
     G4_SrcRegRegion* r0_src_opnd = createSrcRegRegion(builtinR0, getRegionStride1());
     // create inst
     createMov(
-        G4_ExecSize(GENX_DATAPORT_IO_SZ),
+        G4_ExecSize(getGenxDataportIOSize()),
         dst1_opnd,
         r0_src_opnd,
         (use_nomask ? InstOpt_WriteEnable | options : options),
@@ -3669,11 +3669,11 @@ void IR_Builder::doSimplification(G4_INST *inst)
                     Op1->isImm() && Op1->getType() == Type_UV) {
                     // Immeidates in 'uv' ensures each element is a
                     // byte-offset within half-GRF.
-                    G4_SubReg_Align SubAlign = GRFALIGN;
+                    G4_SubReg_Align SubAlign = getGRFAlign();
                     if (SrcSizeInBytes <= numEltPerGRF<Type_UB>()/2u)
                         SubAlign = (G4_SubReg_Align)(numEltPerGRF<Type_UW>()/2);
                     inst->setOpcode(G4_movi);
-                    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != GRFALIGN)
+                    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != getGRFAlign())
                     {
                         Dcl->setSubRegAlign(SubAlign);
                     }

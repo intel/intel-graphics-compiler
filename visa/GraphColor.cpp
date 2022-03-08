@@ -5397,7 +5397,7 @@ void Augmentation::augmentIntfGraph()
 #endif
                 gra.evenAlign();
             }
-            gra.updateSubRegAlignment(GRFALIGN);
+            gra.updateSubRegAlignment(kernel.getGRFAlign());
         }
 
         // Clear information calculated in this iteration of RA so
@@ -7540,7 +7540,7 @@ bool GraphColor::regAlloc(
             //
             if (dcl->getNumRows() > 1)
             {
-                gra.setSubRegAlign(lrs[i]->getVar()->getDeclare(), GRFALIGN);
+                gra.setSubRegAlign(lrs[i]->getVar()->getDeclare(), kernel.getGRFAlign());
             }
             //
             // single-row
@@ -7951,8 +7951,8 @@ void GlobalRA::saveRegs(
         // sends (8) null<1>:ud    r126.0    r1.0 ...
         G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
         unsigned messageLength = GlobalRA::owordToGRFSize(owordSize, builder);
-        G4_Declare* msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
-            Type_UD, GRFALIGN, StackCallStr);
+        G4_Declare* msgDcl = builder.createTempVar(messageLength * builder.getGenxDataportIOSize(),
+            Type_UD, builder.getGRFAlign(), StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         auto sendSrc2 = builder.createSrc(msgDcl->getRegVar(), 0, 0,
             builder.getRegionStride1(), Type_UD);
@@ -8047,8 +8047,8 @@ void GlobalRA::restoreRegs(
     {
         G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
         unsigned responseLength = GlobalRA::owordToGRFSize(owordSize, builder);
-        G4_Declare* dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
-            Type_UD, GRFALIGN, StackCallStr);
+        G4_Declare* dstDcl = builder.createTempVar(responseLength * builder.getGenxDataportIOSize(),
+            Type_UD, builder.getGRFAlign(), StackCallStr);
         if (caller)
         {
             kernel.callerRestoreDecls.push_back(dstDcl);
@@ -12497,7 +12497,7 @@ void GlobalRA::fixAlignment()
                 {
                     if (!var->isPhyRegAssigned())
                     {
-                        setSubRegAlign(dst->getTopDcl(), GRFALIGN);
+                        setSubRegAlign(dst->getTopDcl(), builder.getGRFAlign());
                     }
                 }
 
@@ -12506,7 +12506,7 @@ void GlobalRA::fixAlignment()
                 {
                     if (inst->isAccSrcInst())
                     {
-                        setSubRegAlign(dst->getTopDcl(), var->getDeclare()->getRegFile() != G4_ADDRESS ? GRFALIGN : Eight_Word);
+                        setSubRegAlign(dst->getTopDcl(), var->getDeclare()->getRegFile() != G4_ADDRESS ? builder.getGRFAlign() : Eight_Word);
                     }
                 }
             }

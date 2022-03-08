@@ -1641,7 +1641,7 @@ void G4_BB::addSamplerFlushBeforeEOT()
         G4_SrcRegRegion* sendMsgOpnd = builder->createSrcRegRegion(
             builder->getBuiltinR0(),
             builder->getRegionStride1());
-        G4_Declare *tmpDest = builder->createTempVar(g4::SIMD8, Type_UD, GRFALIGN);
+        G4_Declare *tmpDest = builder->createTempVar(g4::SIMD8, Type_UD, builder->getGRFAlign());
         tmpDest->setDoNotSpill();
         G4_DstRegRegion* sendMsgDst = builder->createDstRegRegion(tmpDest, 1);
         auto msgDesc = builder->createSyncMsgDesc(SFID::SAMPLER, desc);

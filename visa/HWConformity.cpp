@@ -53,12 +53,12 @@ static bool isCompressedInst(G4_INST* inst) {
 
 G4_SubReg_Align HWConformity::getDclAlignment(int opndBytes, G4_INST* inst, bool isScalar)
 {
-    auto subAlign = Get_G4_SubRegAlign_From_Size((uint16_t)opndBytes, builder.getPlatform());
+    auto subAlign = Get_G4_SubRegAlign_From_Size((uint16_t)opndBytes, builder.getPlatform(), builder.getGRFAlign());
     bool hasAccSrc = inst->hasACCSrc();
 
-    if (hasAccSrc && subAlign < GRFALIGN)
+    if (hasAccSrc && subAlign < builder.getGRFAlign())
     {
-        subAlign = GRFALIGN;
+        subAlign = builder.getGRFAlign();
     }
 
     if (!isScalar)
@@ -70,7 +70,7 @@ G4_SubReg_Align HWConformity::getDclAlignment(int opndBytes, G4_INST* inst, bool
         }
         if (inst->isMath())
         {
-            subAlign = GRFALIGN;
+            subAlign = builder.getGRFAlign();
         }
     }
 
@@ -295,7 +295,7 @@ G4_SrcRegRegion* HWConformity::insertCopyAtBBEntry(G4_BB* bb, G4_ExecSize execSi
         return nullptr;
     }
 
-    G4_Declare* dcl = builder.createTempVar(execSize, origSrc->getType(), GRFALIGN);
+    G4_Declare* dcl = builder.createTempVar(execSize, origSrc->getType(), builder.getGRFAlign());
     dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(regNum), 0);
     G4_SrcModifier modifier = origSrc->getModifier();
     origSrc->setModifier(Mod_src_undef);
@@ -712,13 +712,13 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
             if (!builder.isOpndAligned(dst, kernel.numEltPerGRF<Type_UB>()))
             {
                 mov_dst = true;
-                replaceDst(it, dst->getType(), GRFALIGN);
+                replaceDst(it, dst->getType(), builder.getGRFAlign());
             }
             if (src0 && !src0->isNullReg() && src0->getType() == Type_HF)
             {
                 if (!builder.isOpndAligned(src0, kernel.numEltPerGRF<Type_UB>()))
                 {
-                    G4_Operand* newSrc0 = insertMovBefore(it, 0, src0->getType(), bb, GRFALIGN);
+                    G4_Operand* newSrc0 = insertMovBefore(it, 0, src0->getType(), bb, builder.getGRFAlign());
                     inst->setSrc(newSrc0, 0);
                 }
             }
@@ -727,7 +727,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
             {
                 if (!builder.isOpndAligned(src0, kernel.numEltPerGRF<Type_UB>()))
                 {
-                    G4_Operand* newSrc0 = insertMovBefore(it, 1, src0->getType(), bb, GRFALIGN);
+                    G4_Operand* newSrc0 = insertMovBefore(it, 1, src0->getType(), bb, builder.getGRFAlign());
                     inst->setSrc(newSrc0, 1);
                 }
             }
@@ -1291,7 +1291,7 @@ void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB* bb)
         G4_DstRegRegion* dst = inst->getDst();
         if (!isGoodAlign1TernaryDst(inst))
         {
-            auto alignment = builder.noSrc2Regioning() ? GRFALIGN : Four_Word;
+            auto alignment = builder.noSrc2Regioning() ? builder.getGRFAlign() : Four_Word;
             replaceDst(iter, dst->getType(), alignment);
         }
 
@@ -2047,7 +2047,7 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB* bb)
     {
         if (!builder.isOpndAligned(dst, kernel.numEltPerGRF<Type_UB>()))
         {
-            inst->setDest(insertMovAfter(iter, dst, dst->getType(), bb, GRFALIGN));
+            inst->setDest(insertMovAfter(iter, dst, dst->getType(), bb, builder.getGRFAlign()));
             changed = true;
         }
     }
@@ -2201,7 +2201,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
             !builder.isOpndAligned(origDst, builder.getGRFSize()))
         {
             // macl dst must be grf-aligned, packed D/UD as it is also used for the implicit acc source's region
-            G4_DstRegRegion* tmpDst = insertMovAfter(it, origDst, tmpType, bb, GRFALIGN);
+            G4_DstRegRegion* tmpDst = insertMovAfter(it, origDst, tmpType, bb, builder.getGRFAlign());
             mulInst->setDest(tmpDst);
         }
 
@@ -2248,7 +2248,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB* bb)
             !builder.isOpndAligned(origDst, builder.getGRFSize()))
         {
             // macl dst must be grf-aligned, packed D/UD as it is also used for the implicit acc source's region
-            G4_DstRegRegion* tmpDst = insertMovAfter(machIter, origDst, tmpType, bb, GRFALIGN);
+            G4_DstRegRegion* tmpDst = insertMovAfter(machIter, origDst, tmpType, bb, builder.getGRFAlign());
             maclInst->setDest(tmpDst);
         }
     }
@@ -2575,7 +2575,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER& i, G4_BB* bb)
         G4_Declare* dcl = builder.createTempVar(
             execSize,
             tmp_type,
-            GRFALIGN);
+            builder.getGRFAlign());
 
         G4_DstRegRegion* tmp_dst_opnd = builder.createDst(
             dcl->getRegVar(),
@@ -2758,7 +2758,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER& i, G4_BB* bb)
             !builder.isOpndAligned(dst, builder.getGRFSize()))
         {
             // add a tmp mov
-            inst->setDest(insertMovAfter(i, dst, dst->getType(), bb, GRFALIGN));
+            inst->setDest(insertMovAfter(i, dst, dst->getType(), bb, builder.getGRFAlign()));
             end_iter++;
         }
 
@@ -3417,7 +3417,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
 
                     int numDwords = rightBound / TypeSize(Type_UD);
                     numDwords = Round_Up_Pow2(numDwords);
-                    G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), GRFALIGN);
+                    G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), builder.getGRFAlign());
                     // new source's region varies depending on whether it's VxH or 1x1
                     const RegionDesc* newRegion = region->isRegionWH() ? builder.getRegionStride1() : region;
                     copyDwordsIndirect(tmpSrc, srcAsRegion, numDwords, bb, iter);
@@ -3430,7 +3430,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                     // use the good ol' insertMovBefore
                     G4_Operand* tmpSrc = insertMovBefore(iter, i, src->getType(), bb);
                     G4_Declare* tmpSrcDcl = tmpSrc->getTopDcl();
-                    tmpSrcDcl->setSubRegAlign(GRFALIGN);
+                    tmpSrcDcl->setSubRegAlign(builder.getGRFAlign());
                     inst->setSrc(tmpSrc, i);
                 }
             }
@@ -3468,7 +3468,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                     }
                     MUST_BE_TRUE(multFactor != 8, "does not support 64b operation with byte source");
                     G4_Declare* tmp = builder.createTempVar(exSize * multFactor,
-                        tmpType, GRFALIGN);
+                        tmpType, builder.getGRFAlign());
                     G4_DstRegRegion* tmpDst = builder.createDstRegRegion(tmp, multFactor);
                     G4_INST* movInst = builder.createMov(inst->getExecSize(), tmpDst, src, inst->getOption(), false);
                     bb->insertBefore(iter, movInst);
@@ -3507,7 +3507,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                         // add (2) ... r10.0<4;2,2>:q
                         int numDwords = (src->getRightBound() - src->getLeftBound() + 1) / TypeSize(Type_UD);
                         numDwords = Round_Up_Pow2(numDwords);
-                        G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), GRFALIGN);
+                        G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), builder.getGRFAlign());
                         copyDwords(tmpSrc, 0, src->getTopDcl(), src->getLeftBound(), numDwords, bb, iter);
                         G4_SrcRegRegion* tmpSrcOpnd = builder.createSrcRegRegion(srcAsRegion->getModifier(),
                             Direct, tmpSrc->getRegVar(), 0, 0, srcAsRegion->getRegion(), tmpSrc->getElemType());
@@ -3518,7 +3518,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                         // use the good ol' insertMovBefore
                         G4_Operand* tmpSrc = insertMovBefore(iter, i, src->getType(), bb);
                         G4_Declare* tmpSrcDcl = tmpSrc->getTopDcl();
-                        tmpSrcDcl->setSubRegAlign(GRFALIGN);
+                        tmpSrcDcl->setSubRegAlign(builder.getGRFAlign());
                         inst->setSrc(tmpSrc, i);
                     }
                 }
@@ -3602,7 +3602,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                     // mov (8) r1.4<1>:ud r3.0<1;1,0>:ud {NoMask}
                     int numDwords = (dst->getRightBound() - dst->getLeftBound() + 1) / TypeSize(Type_UD);
                     numDwords = Round_Up_Pow2(numDwords);
-                    G4_Declare* tmpDst = builder.createTempVar(numDwords / 2, dst->getType(), GRFALIGN);
+                    G4_Declare* tmpDst = builder.createTempVar(numDwords / 2, dst->getType(), builder.getGRFAlign());
                     if (numDwords > execSize * 2)
                     {
                         // dst is not packed, need a move to pre-load the dst value into tmp
@@ -3618,7 +3618,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB* bb)
                     // use the good ol' insertMoveAfter
                     G4_DstRegRegion* tmpDst = insertMovAfter(iter, dst, dst->getType(), bb);
                     G4_Declare* tmpDstDcl = tmpDst->getTopDcl();
-                    tmpDstDcl->setSubRegAlign(GRFALIGN);
+                    tmpDstDcl->setSubRegAlign(builder.getGRFAlign());
                     inst->setDest(tmpDst);
                     if (dst->getTypeSize() == 8)
                     {
@@ -4316,7 +4316,7 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
     {
         if (mustDoMad)
         {
-            auto alignment = builder.noSrc2Regioning() ? GRFALIGN : Four_Word;
+            auto alignment = builder.noSrc2Regioning() ? builder.getGRFAlign() : Four_Word;
             inst->setDest(insertMovAfter(iter, inst->getDst(), inst->getDst()->getType(), bb, alignment));
         }
         else
@@ -4368,7 +4368,7 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
                     G4_Type type = (IS_SIGNED_INT(src->getType()) || hasModMinus) ? Type_W : Type_UW;
                     auto dstStrideInBytes = inst->getDst()->getHorzStride() * TypeSize(inst->getDst()->getType());
                     uint16_t stride = (uint16_t)(dstStrideInBytes / TypeSize(type));
-                    inst->setSrc(insertMovBefore(iter, k, type, bb, stride, GRFALIGN), k);
+                    inst->setSrc(insertMovBefore(iter, k, type, bb, stride, builder.getGRFAlign()), k);
                 }
                 else
                 {
@@ -4459,7 +4459,7 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
                     // MAD DF does not support .r, so we have to broadcast the value
                     // '.r' on MAD HF on BDW is not a replication of that
                     // scalar element but a pair of half.
-                    auto align = type == Type_HF ? GRFALIGN : Eight_Word;
+                    auto align = type == Type_HF ? builder.getGRFAlign() : Eight_Word;
                     broadcast(bb, iter, k, align);
                 }
                 // No need to insert mov for replicated DF src with <2;2,0> region,
@@ -4973,7 +4973,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
             if ((unsigned)inst->getExecSize() * dst->getTypeSize() > kernel.numEltPerGRF<Type_UB>())
             {
                 // align to GRF
-                sad2TmpSubAlign = GRFALIGN;
+                sad2TmpSubAlign = builder.getGRFAlign();
             }
             // create a new temp variable as sad2's destination
             G4_Declare* sad2Tmp = builder.createTempVar(inst->getExecSize(), dst->getType(), sad2TmpSubAlign);
@@ -5082,7 +5082,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
         uint16_t offset = 0;
         if (!builder.isOpndAligned(inst->getDst(), offset, kernel.numEltPerGRF<Type_UB>()))
         {
-            replaceDst(i, inst->getDst()->getType(), GRFALIGN);
+            replaceDst(i, inst->getDst()->getType(), builder.getGRFAlign());
         }
 
         G4_Operand* src0 = inst->getSrc(0);
@@ -5120,7 +5120,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
               type = Type_UD;
             }
 
-            G4_Declare* dcl = builder.createTempVar(rows * builder.getNativeExecSize(), type, GRFALIGN);
+            G4_Declare* dcl = builder.createTempVar(rows * builder.getNativeExecSize(), type, builder.getGRFAlign());
             const RegionDesc* region = builder.getRegionStride1();
             for (uint16_t idx = 0; idx != rows; ++idx) {
               G4_SrcRegRegion* src = builder.createSrc(base, baseOff + idx, baseSubOff + 0, region, type);
@@ -5143,7 +5143,7 @@ void HWConformity::fixSendInst(G4_BB* bb)
             // src1 may be null because some messages (e.g., CPS) require split send
             if (!builder.isOpndAligned(inst->getSrc(1), kernel.numEltPerGRF<Type_UB>()))
             {
-                inst->setSrc(insertMovBefore(i, 1, inst->getSrc(1)->getType(), bb, GRFALIGN), 1);
+                inst->setSrc(insertMovBefore(i, 1, inst->getSrc(1)->getType(), bb, builder.getGRFAlign()), 1);
             }
             G4_Operand* src1 = inst->getSrc(1);
             G4_Declare* src1TopDcl = src1->getTopDcl();
@@ -5482,7 +5482,7 @@ void HWConformity::fixCalla(INST_LIST_ITER it, G4_BB *bb)
         return;
 
     // insert a mov before fcall(calla) to mov src to a grf aligned reg
-    replaceSrc(it, 0, src0->getType(), bb, GRFALIGN);
+    replaceSrc(it, 0, src0->getType(), bb, builder.getGRFAlign());
 }
 
 void HWConformity::replaceHFBFwithFloat(INST_LIST_ITER it, G4_BB* bb)
@@ -5895,7 +5895,7 @@ void HWConformity::conformBB(G4_BB* bb)
                     auto src = inst->getSrc(i);
                     if (!IS_QTYPE(src->getType()) && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegion()->isScalar())
                     {
-                        inst->setSrc(insertMovBefore(it, i, IS_SIGNED_INT(src->getType()) ? Type_Q : Type_UQ, bb, GRFALIGN), i);
+                        inst->setSrc(insertMovBefore(it, i, IS_SIGNED_INT(src->getType()) ? Type_Q : Type_UQ, bb, builder.getGRFAlign()), i);
                     }
                 }
             }
@@ -6328,7 +6328,7 @@ void HWConformity::fixBFMixedMode()
                         // Insert bf->f, which is just a left-shift.
                         uint32_t nelts = (uint32_t)(srcReg->getRegion()->isScalar() ? g4::SIMD1 : currES);
                         G4_Declare* newDcl = builder.createTempVar(nelts,
-                            Type_UD, (nelts == 1) ? Even_Word : GRFALIGN, "cvtF", false);
+                            Type_UD, (nelts == 1) ? Even_Word : builder.getGRFAlign(), "cvtF", false);
                         G4_DstRegRegion* newDst = builder.createDst(newDcl->getRegVar(), Type_UD);
                         srcReg->setType(builder, Type_UW);
                         G4_INST* shlInst = builder.createBinOp(G4_shl,
@@ -6391,7 +6391,7 @@ void HWConformity::fixBFMixedMode()
                     continue;
                 }
 
-                G4_Operand* newSrc = insertMovBefore(II, i, sReg->getType(), bb, GRFALIGN);
+                G4_Operand* newSrc = insertMovBefore(II, i, sReg->getType(), bb, builder.getGRFAlign());
                 Inst->setSrc(newSrc, i);
             }
 
@@ -6412,7 +6412,7 @@ void HWConformity::fixBFMixedMode()
             if (!(isPackedDst || isUnpackedDst))
             {
                 // case 5 Unpacked bfloat16 destination with stride 2 when register offset is 0 or 1.
-                G4_DstRegRegion* newDst = insertMovAfter(II, dst, dst->getType(), bb, GRFALIGN);
+                G4_DstRegRegion* newDst = insertMovAfter(II, dst, dst->getType(), bb, builder.getGRFAlign());
                 Inst->setDest(newDst);
 
                 auto movII = std::next(II);
@@ -7417,7 +7417,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
         {
             // src0 needs a temp
             G4_Declare* tmpDcl = builder.createTempVar(4, Type_F,
-                GRFALIGN);
+                builder.getGRFAlign());
 
             // Before:
             // pln (16) dst, (mod)src0, src1
@@ -7814,11 +7814,11 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
                     {
                         if (!builder.isOpndAligned(inst->getDst(), kernel.numEltPerGRF<Type_UB>()))
                         {
-                            replaceDst(instIter, Type_F, GRFALIGN);
+                            replaceDst(instIter, Type_F, builder.getGRFAlign());
                         }
                         if (!builder.isOpndAligned(inst->getSrc(2), kernel.numEltPerGRF<Type_UB>()))
                         {
-                            inst->setSrc(insertMovBefore(instIter, 2, inst->getSrc(2)->getType(), bb, GRFALIGN), 2);
+                            inst->setSrc(insertMovBefore(instIter, 2, inst->getSrc(2)->getType(), bb, builder.getGRFAlign()), 2);
                         }
                     }
                 }
@@ -7962,12 +7962,12 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
                 srcTy = Type_F;
             }
         }
-        inst->setSrc(insertMovBefore(it, srcPos, srcTy, bb, GRFALIGN), srcPos);
+        inst->setSrc(insertMovBefore(it, srcPos, srcTy, bb, builder.getGRFAlign()), srcPos);
 
         // Check if dst stride aligns with src2.
         if (dstEltSz != TypeSize(srcTy))
         {
-            replaceDst(it, inst->getDst()->getType(), GRFALIGN);
+            replaceDst(it, inst->getDst()->getType(), builder.getGRFAlign());
         }
     }
 }
@@ -8486,7 +8486,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
     if (dst->getRegAccess() == Direct && !isSpecialMixModeDst &&
         (!builder.isOpndAligned(dst, dstAlign) || dstStride != execTyWidth))
     {
-        inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, GRFALIGN));
+        inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, builder.getGRFAlign()));
         if (IS_TYPE_FLOAT_ALL(dst->getType()) || dst->getTypeSize() == 8)
         {
             // the move may need more fixing
@@ -8498,7 +8498,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
         // Since we can't know if an indirect dst is aligned or not,
         // The proper fix is to insert a move then change its type to int.
         // FIXME: not sure how to handle fp64 yet
-        inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, GRFALIGN));
+        inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, builder.getGRFAlign()));
         // the move may need more fixing
         fixUnalignedRegions(std::next(it), bb);
     }
@@ -8557,7 +8557,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
             stride = stride / 2;
             newSrcTy = tmpTy;
         }
-        auto tmp = builder.createTempVar(inst->getExecSize() * stride, tmpTy, GRFALIGN);
+        auto tmp = builder.createTempVar(inst->getExecSize() * stride, tmpTy, builder.getGRFAlign());
         auto movSrc = builder.createSrcRegRegion(*src);
         movSrc->setModifier(Mod_src_undef);
         movSrc->setType(builder, movSrcTy);
@@ -8651,7 +8651,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         if (!inst->getSrc(0)->asSrcRegRegion()->checkGRFAlign(builder) || //case 3
             (inst->getSrc(0)->getType() == Type_UB && !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()))) // case 2
         {
-            inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, GRFALIGN), 0);
+            inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, builder.getGRFAlign()), 0);
             G4_INST* newMovInst = *(std::prev(i));
             if (newMovInst->getSrc(0)->getType() == Type_HF)
             {
@@ -8673,7 +8673,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         // (W)  mov (1|M0)   r10.0<1>:ub    r20.0<0;1,0>:ub
         if (inst->getExecSize() == g4::SIMD1 && inst->getDst()->getType() == Type_UB)  //case 1.1
         {
-            G4_Declare* dcl = builder.createTempVar(2, Type_UB, GRFALIGN);
+            G4_Declare* dcl = builder.createTempVar(2, Type_UB, builder.getGRFAlign());
             G4_SrcRegRegion* srcRegion = builder.createSrcRegRegion(dcl, builder.getRegionScalar());
             uint32_t newOption = InstOpt_WriteEnable | inst->getMaskOption();
             G4_INST* newMovInst = builder.createMov(g4::SIMD1, inst->getDst(), srcRegion, newOption, false);
@@ -8687,7 +8687,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         if ((inst->getDst()->getType() == Type_UB && inst->getDst()->getHorzStride() != 1) ||  //case 2
             !inst->getDst()->checkGRFAlign(builder))  // case 3
         {
-            replaceDst(i, inst->getDst()->getType(), GRFALIGN);
+            replaceDst(i, inst->getDst()->getType(), builder.getGRFAlign());
             G4_INST* newMovInst = *(std::next(i));
             if (newMovInst->getDst()->getType() == Type_HF)
             {
@@ -8856,7 +8856,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
         }
         uint32_t offset = 0;
         auto rootDcl = dcl->getRootDeclare(offset);
-        return rootDcl->getSubRegAlign() >= GRFALIGN && (offset % builder.getGRFSize() == 0);
+        return rootDcl->getSubRegAlign() >= builder.getGRFAlign() && (offset % builder.getGRFSize() == 0);
     };
 
     bool needFix = false;
@@ -9141,7 +9141,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
         // to shift the location of packed bytes or words after packing.
         if (dstAligned && (tempSize <= (unsigned short)(builder.getGRFSize() * 2)))
         {
-            G4_Declare* unpackDcl = builder.createTempVar(tempSize, dstTy, GRFALIGN);
+            G4_Declare* unpackDcl = builder.createTempVar(tempSize, dstTy, builder.getGRFAlign());
 
             G4_SrcRegRegion* unpackSrc = builder.createSrc(
                 unpackDcl->getRegVar(),
@@ -9185,7 +9185,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
                 // use dword destination to avoid read-modify-write
                 G4_Declare* tmpDstDcl =
                     builder.createTempVar(tempSize / scale,
-                    (dstTy == Type_UB) ? Type_UD : Type_D, GRFALIGN);
+                    (dstTy == Type_UB) ? Type_UD : Type_D, builder.getGRFAlign());
                 tmpDstDcl->setAliasDeclare(unpackDcl, 0);
                 auto tmpDst = builder.createDst(
                     tmpDstDcl->getRegVar(),
@@ -9198,7 +9198,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
         }
         else
         {
-            G4_Declare* unpackDcl = builder.createTempVar(inst->getExecSize() * scale, dstTy, GRFALIGN);
+            G4_Declare* unpackDcl = builder.createTempVar(inst->getExecSize() * scale, dstTy, builder.getGRFAlign());
             G4_SrcRegRegion* unpackSrc = builder.createSrcRegRegion(unpackDcl, unpackRegion);
             G4_Predicate* pred = NULL;
             if (inst->opcode() != G4_sel)
@@ -9212,7 +9212,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
             pos++;
             auto dstride = dst->getHorzStride();
             const RegionDesc* shiftRegion = builder.createRegionDesc(dstride, 1, 0);
-            G4_Declare* shiftDcl = builder.createTempVar(inst->getExecSize() * dstride, dstTy, GRFALIGN);
+            G4_Declare* shiftDcl = builder.createTempVar(inst->getExecSize() * dstride, dstTy, builder.getGRFAlign());
             G4_SrcRegRegion* shiftSrc = builder.createSrcRegRegion(shiftDcl, shiftRegion);
             auto packTmp = builder.createDstRegRegion(shiftDcl, dstride);
             // pack
@@ -9235,7 +9235,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
                 // situations we use dword-tmp to reduce byte-read-mod-write
                 G4_Declare* tmpDstDcl =
                     builder.createTempVar(inst->getExecSize(),
-                    (dstTy == Type_UB) ? Type_UD : Type_D, GRFALIGN);
+                    (dstTy == Type_UB) ? Type_UD : Type_D, builder.getGRFAlign());
                 tmpDstDcl->setAliasDeclare(unpackDcl, 0);
                 inst->setDest(builder.createDstRegRegion(tmpDstDcl, 1));
             }
@@ -9263,7 +9263,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
     if (!dst->checkGRFAlign(builder) ||                // case 2
         (Packed && dst->getHorzStride() != 1))  // case 3
     {
-        G4_Declare* dcl = builder.createTempVar(execsize, dst->getType(), GRFALIGN);
+        G4_Declare* dcl = builder.createTempVar(execsize, dst->getType(), builder.getGRFAlign());
         G4_SrcRegRegion* srcRegion = builder.createSrcRegRegion(
             dcl,
             execsize == 1 ? builder.getRegionScalar() : builder.getRegionStride1());
@@ -9281,7 +9281,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
         !opnd0->asSrcRegRegion()->checkGRFAlign(builder) ||  // case 2
         (Packed && !opnd0->asSrcRegRegion()->getRegion()->isContiguous(execsize))) // case 3
     {
-        G4_Operand* newSrc0 = insertMovBefore(it, 0, opnd0->getType(), bb, GRFALIGN);
+        G4_Operand* newSrc0 = insertMovBefore(it, 0, opnd0->getType(), bb, builder.getGRFAlign());
         inst->setSrc(newSrc0, 0);
         G4_INST* newMovInst = *(std::prev(it));
         newMovInst->setNoMask(true);
@@ -9293,7 +9293,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
         (!opnd1->asSrcRegRegion()->checkGRFAlign(builder) || // case 2
          (Packed && !opnd1->asSrcRegRegion()->getRegion()->isContiguous(execsize)))) // case 3
     {
-        G4_Operand* newSrc1 = insertMovBefore(it, 1, opnd1->getType(), bb, GRFALIGN);
+        G4_Operand* newSrc1 = insertMovBefore(it, 1, opnd1->getType(), bb, builder.getGRFAlign());
         inst->setSrc(newSrc1, 1);
         G4_INST* newMovInst = *(std::prev(it));
         newMovInst->setNoMask(true);
@@ -9402,10 +9402,10 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
         int dstLowGRFNum = (int)std::ceil((float)(execSize * dst->getExecTypeSize()) / builder.getGRFSize());
         int dstTotalGRFNum = dstLowGRFNum * 2;
 
-        G4_Declare* newDstDcl = builder.createTempVar(kernel.numEltPerGRF(dst->getType()) * dstTotalGRFNum, dst->getType(), GRFALIGN);
+        G4_Declare* newDstDcl = builder.createTempVar(kernel.numEltPerGRF(dst->getType()) * dstTotalGRFNum, dst->getType(), builder.getGRFAlign());
 
         // add a tmp mov for low results in dst
-        G4_Declare* lowMovSrcDcl = builder.createTempVar(kernel.numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), GRFALIGN);
+        G4_Declare* lowMovSrcDcl = builder.createTempVar(kernel.numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), builder.getGRFAlign());
         lowMovSrcDcl->setAliasDeclare(newDstDcl, 0);
         G4_SrcRegRegion* lowMovSrc = builder.createSrcRegRegion(lowMovSrcDcl, builder.getRegionStride1());
         auto dstLow = builder.createDst(dst->getBase(), dst->getRegOff(), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
@@ -9416,7 +9416,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
         maintainDU4TempMov(madwInst, lowMovInst);
 
         // add a tmp mov for high results in dst
-        G4_Declare* hiMovSrcDcl = builder.createTempVar(kernel.numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), GRFALIGN);
+        G4_Declare* hiMovSrcDcl = builder.createTempVar(kernel.numEltPerGRF(dst->getType()) * dstLowGRFNum, dst->getType(), builder.getGRFAlign());
         hiMovSrcDcl->setAliasDeclare(newDstDcl, dstLowGRFNum * builder.getGRFSize());
         G4_SrcRegRegion* hiMovSrc = builder.createSrcRegRegion(hiMovSrcDcl, builder.getRegionStride1());
         auto dstHi = builder.createDst(dst->getBase(), dst->getRegOff() + dstLowGRFNum, dst->getSubRegOff(), dst->getHorzStride(), dst->getType());

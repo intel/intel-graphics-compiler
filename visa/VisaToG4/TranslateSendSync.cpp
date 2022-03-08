@@ -165,7 +165,7 @@ void IR_Builder::generateNamedBarrier(
     };
     payload.payload.type = getVal(type);
 
-    G4_Declare* header = createTempVar(8, Type_UD, GRFALIGN);
+    G4_Declare* header = createTempVar(8, Type_UD, getGRFAlign());
     if (barrierId->isImm())
     {
         payload.payload.id = (uint8_t)barrierId->asImm()->getInt();
@@ -207,7 +207,7 @@ void IR_Builder::generateNamedBarrier(
 
 void IR_Builder::generateNamedBarrier(G4_Operand* barrierId, G4_SrcRegRegion* threadCount)
 {
-    G4_Declare* header = createTempVar(8, Type_UD, GRFALIGN);
+    G4_Declare* header = createTempVar(8, Type_UD, getGRFAlign());
 
     // mov (1) Hdr.2<1>:ud 0x0
     // mov (2) Hdr.10<1>:ub threadcount:ub
@@ -246,7 +246,7 @@ void IR_Builder::generateSingleBarrier()
     // This SIMD2 byte move is broadcasting the thread group size
     // from the r0 header into both the producer and consumer slots.
     //   Hdr.2:d[31:24,23:16]
-    G4_Declare* header = createTempVar(8, Type_UD, GRFALIGN);
+    G4_Declare* header = createTempVar(8, Type_UD, getGRFAlign());
     auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
     auto src = createImm(0, Type_UD);
     createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
@@ -437,7 +437,7 @@ void IR_Builder::generateBarrierSend()
     int desc = (0x1 << 25) + 0x4;
 
     //get barrier id
-    G4_Declare *dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+    G4_Declare *dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
 
     G4_SrcRegRegion* r0_src_opnd = createSrc(
         builtinR0->getRegVar(),

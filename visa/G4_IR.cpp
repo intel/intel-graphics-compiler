@@ -5329,7 +5329,7 @@ bool G4_DstRegRegion::checkGRFAlign(const IR_Builder& builder) const
                     return false;
                 }
 
-                if (aliasdcl->getSubRegAlign() >= GRFALIGN ||
+                if (aliasdcl->getSubRegAlign() >= builder.getGRFAlign() ||
                     aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= (int)builder.numEltPerGRF<Type_UB>()) {
                     return true;
                 }
@@ -5393,7 +5393,7 @@ static bool regionHasFixedSubreg(const IR_Builder& builder, G4_Operand* opnd, ui
     G4_Declare *rootDcl = base->asRegVar()->getDeclare()->getRootDeclare(subregByte);
     subregByte += subRegOff * TypeSize(opnd->getType());
 
-    if (rootDcl->getSubRegAlign() < GRFALIGN)
+    if (rootDcl->getSubRegAlign() < builder.getGRFAlign())
     {
         return false;
     }
@@ -6797,7 +6797,7 @@ bool G4_SrcRegRegion::checkGRFAlign(const IR_Builder& builder) {
                     return false;
                 }
 
-                if (aliasdcl->getSubRegAlign() >= GRFALIGN ||
+                if (aliasdcl->getSubRegAlign() >= builder.getGRFAlign() ||
                     aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= (int)builder.numEltPerGRF<Type_UB>()) {
                         return true;
                 }

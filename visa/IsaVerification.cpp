@@ -352,7 +352,7 @@ void vISAVerifier::verifyVariableDecl(
             break; // Prevent gcc warning
     }
 
-    REPORT_HEADER(options, var->num_elements != 0 && var->num_elements <= COMMON_ISA_MAX_VARIABLE_SIZE,
+    REPORT_HEADER(options, var->num_elements != 0 && var->num_elements <= irBuilder->getMaxVariableSize(),
                   "V%d's number of elements(%d) is out of range: %s",
                   declID + numPreDefinedVars, var->num_elements,
                   declError.c_str());
@@ -624,24 +624,24 @@ void vISAVerifier::verifyRegion(
                 ISA_Inst_Table[opcode].type != ISA_Inst_Compare &&
                 ISA_Inst_Table[opcode].type != ISA_Inst_Arith)
             {
-                REPORT_INSTRUCTION(options, (COMMON_ISA_GRF_REG_SIZE * 2u) > last_region_elt_byte,
+                REPORT_INSTRUCTION(options, (irBuilder->getGRFSize() * 2u) > last_region_elt_byte,
                     "CISA operand region access out of 2 GRF boundary (within %d bytes): %d",
-                    (COMMON_ISA_GRF_REG_SIZE * 2),
+                    (irBuilder->getGRFSize() * 2),
                     last_region_elt_byte);
 
                 // check if the operand may touch more than 2 GRFs due to bad alignment
                 unsigned startByte = getStartByteOffset(header, var, numPreDefinedVars) +
-                    row_offset * COMMON_ISA_GRF_REG_SIZE +
+                    row_offset * irBuilder->getGRFSize() +
                     col_offset * CISATypeTable[var->getType()].typeSize;
                 unsigned endByte = startByte + last_region_elt_byte;
-                unsigned startGRF = startByte / COMMON_ISA_GRF_REG_SIZE;
-                unsigned endGRF = endByte / COMMON_ISA_GRF_REG_SIZE;
+                unsigned startGRF = startByte / irBuilder->getGRFSize();
+                unsigned endGRF = endByte / irBuilder->getGRFSize();
                 REPORT_INSTRUCTION(options, endGRF == startGRF || endGRF == (startGRF + 1),
                     "CISA operand accesses more than 2 GRF due to mis-alignment: start byte offset = %d, end byte offset = %d",
                     startByte, endByte);
             }
 
-            unsigned firstElementIndex = row_offset * COMMON_ISA_GRF_REG_SIZE + col_offset;
+            unsigned firstElementIndex = row_offset * irBuilder->getGRFSize() + col_offset;
 
             for (int i = 0; i < exec_sz / width_val; i++)
             {
@@ -657,7 +657,7 @@ void vISAVerifier::verifyRegion(
                         std::cout << "An access should not exceed the declared allocation size: " << var_size << "\n";
                         std::cout << "  The access fails the following check to determine correct bounds (see CISA manual section 5.1 Region-based Addressing):\n";
                         std::cout << "  (row_offset * GRF_SIZE + col_offset) + (((i * v_stride) + (j * h_stride)) * type_size) <= type_size * num_elements:\n";
-                        std::cout << "(" << (int)row_offset << " * "<< COMMON_ISA_GRF_REG_SIZE << " + "<< (int)col_offset << ") + (((" <<
+                        std::cout << "(" << (int)row_offset << " * "<< irBuilder->getGRFSize() << " + "<< (int)col_offset << ") + (((" <<
                             i << " * " << v_stride_val <<") + (" << j <<" * " << h_stride_val << ")) * " << VN_size <<
                             ") <= " << VN_size << " * " << num_elements << "\n";
                         std::cout << "Violating Instruction: " <<
@@ -875,7 +875,7 @@ void vISAVerifier::verifyVectorOperand(
         {
             if (operand_index < numPreDefinedVars)
             {
-                uint32_t byteOffset = opnd.opnd_val.gen_opnd.row_offset * COMMON_ISA_GRF_REG_SIZE +
+                uint32_t byteOffset = opnd.opnd_val.gen_opnd.row_offset * irBuilder->getGRFSize() +
                     opnd.opnd_val.gen_opnd.col_offset *
                     Get_VISA_Type_Size(getPredefinedVarType(mapExternalToInternalPreDefVar(operand_index)));
                 REPORT_INSTRUCTION(options, isReadWritePreDefinedVar(isaHeader, operand_index, byteOffset), "Not allowed to write to a read only variable");
@@ -3186,6 +3186,7 @@ struct LscInstVerifier {
     const common_isa_header          &isaHeader;
     const print_format_provider_t*    header;
     const CISA_INST*                  inst;
+    const IR_Builder&                 builder;
     std::stringstream                 errorStream;
     Options                          *options;
     int                               execSize;
@@ -3195,19 +3196,18 @@ struct LscInstVerifier {
     LSC_SFID                          sfid;
 
     int                               currOpIx = 0;
-    TARGET_PLATFORM                   platform;
 
     LscInstVerifier(
         const common_isa_header& _isaHeader,
         const print_format_provider_t* _header,
         const CISA_INST* _inst,
-        Options *_options,
-        TARGET_PLATFORM _platform)
+        const IR_Builder& _builder,
+        Options *_options)
         : isaHeader(_isaHeader)
         , header(_header)
         , inst(_inst)
+        , builder(_builder)
         , options(_options)
-        , platform(_platform)
     {
         if (_inst->opcode == ISA_LSC_FENCE) {
             subOp = LSC_FENCE;
@@ -3446,7 +3446,7 @@ struct LscInstVerifier {
             return;
 
         // data payloads cannot be more than 8 registers
-        const uint32_t BYTES_PER_REG = COMMON_ISA_GRF_REG_SIZE;
+        const uint32_t BYTES_PER_REG = builder.getGRFSize();
         int dataRegs = 0;
         if (transposed) {
             // must be SIMD1 (whether they had that right or not, it will be)
@@ -3906,7 +3906,7 @@ void vISAVerifier::verifyInstructionLsc(const CISA_INST *inst)
 {
     // This mostly comes from: https://gfxspecs.intel.com/Predator/Home/Index/53578
     // But there's also a spreadsheet floating around
-    LscInstVerifier verifier(isaHeader, header, inst, options, irBuilder->getPlatform());
+    LscInstVerifier verifier(isaHeader, header, inst, *irBuilder, options);
     verifier.verify();
     if (verifier.errorStream.tellp() > 0) {
         std::stringstream ss;

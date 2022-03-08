@@ -232,6 +232,11 @@ public:
     template <G4_Type T>
     unsigned numEltPerGRF() const {return platformInfo.numEltPerGRF<T>();}
     unsigned numEltPerGRF(G4_Type t) const {return platformInfo.numEltPerGRF(t);}
+    unsigned getMaxVariableSize() const {return platformInfo.getMaxVariableSize();}
+    G4_SubReg_Align getGRFAlign() const {return platformInfo.getGRFAlign();}
+    G4_SubReg_Align getHalfGRFAlign() const {return platformInfo.getHalfGRFAlign();}
+    unsigned getGenxDataportIOSize() const {return platformInfo.getGenxDataportIOSize();}
+    unsigned getGenxSamplerIOSize() const {return platformInfo.getGenxSamplerIOSize();}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 

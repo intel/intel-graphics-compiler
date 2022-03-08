@@ -73,10 +73,9 @@ static int alignUp(int a, int n) {
 static int lscBlock2dComputeDataRegs(
     LSC_OP op,
     LSC_DATA_SHAPE_BLOCK2D dataShape2d,
+    int BYTES_PER_REG,
     int dataSizeBits)
 {
-    const static int BYTES_PER_REG = COMMON_ISA_GRF_REG_SIZE;
-
     auto roundUpToPowerOf2 =
         [] (int n) {
         while (n & (n-1))
@@ -144,7 +143,7 @@ int IR_Builder::translateLscUntypedInst(
     const G4_ExecSize execSize = toExecSize(visaExecSize);
     const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
 
-    const static uint32_t BYTES_PER_REG = COMMON_ISA_GRF_REG_SIZE;
+    const static uint32_t BYTES_PER_REG = getGRFSize();
 
     if (addrInfo.type == LSC_ADDR_TYPE_ARG) {
         // Translate argument loads to platform specific logic
@@ -429,7 +428,7 @@ int IR_Builder::translateLscUntypedInst(
         if (addrDcl) {
             auto addrRegSize = addrDcl->getElemSize() * addrDcl->getTotalElems();
             auto visaAddrRegsInDcl =
-                std::max<int>(addrRegSize / COMMON_ISA_GRF_REG_SIZE, 1);
+                std::max<int>(addrRegSize / getGRFSize(), 1);
             checkDeclSize("address", addrDcl, visaAddrRegsInDcl, addrRegs);
         }
 
@@ -441,7 +440,7 @@ int IR_Builder::translateLscUntypedInst(
             check(dstDcl != nullptr, "cannot find declaration for data register");
             unsigned dataRegBytes = dstDcl->getTotalElems() * dstDcl->getElemSize();
             auto visaRegsInDcl =
-                std::max<int>(dataRegBytes / COMMON_ISA_GRF_REG_SIZE, 1);
+                std::max<int>(dataRegBytes / getGRFSize(), 1);
             checkDeclSize("data", dstDcl, visaRegsInDcl, dstLen);
         }
     }
@@ -525,7 +524,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
         lscBuildBlock2DPayload(dataShape2D, pred, src0Addrs);
 
     uint32_t dataRegs =
-        lscBlock2dComputeDataRegs(op, dataShape2D, dataSizeBits);
+        lscBlock2dComputeDataRegs(op, dataShape2D, getGRFSize(), dataSizeBits);
     uint32_t addrRegs = 1;
 
     int src1Len = 0;
@@ -607,7 +606,7 @@ int IR_Builder::translateLscTypedInst(
 
     int status = VISA_SUCCESS;
 
-    const uint32_t BYTES_PER_GRF = COMMON_ISA_GRF_REG_SIZE;
+    const uint32_t BYTES_PER_GRF = getGRFSize();
 
     const G4_ExecSize execSize = toExecSize(execSizeEnum);
     const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
@@ -922,7 +921,7 @@ G4_SrcRegRegion *IR_Builder::lscBuildStridedPayload(
     G4_Operand          *src0AddrStride,
     int dataSizeBytes, int vecSize, bool transposed)
 {
-    const uint32_t BYTES_PER_REG = COMMON_ISA_GRF_REG_SIZE;
+    const uint32_t BYTES_PER_REG = getGRFSize();
     // We've been passed in a single value for the address, and we
     // have to generate the address payload register from that value
     // along with the pitch.
@@ -1022,7 +1021,7 @@ G4_SrcRegRegion *IR_Builder::lscBuildBlock2DPayload(
     //   mov (M1_NM,1) ADDR(0,1):d   src0AddrY
     //   mov (M1_NM,1) ADDR(0,1):uq  ((blockWidth << 32)|blockHeight):uq
     //   mov (M1_NM,1) ADDR(0,4):d   arrayLen:uw
-    const uint32_t BYTES_PER_REG = COMMON_ISA_GRF_REG_SIZE;
+    const uint32_t BYTES_PER_REG = getGRFSize();
     G4_Declare *addrTmpDeclUd = createSendPayloadDcl(BYTES_PER_REG/4, Type_UD);
     G4_Declare *addrTmpDeclUq = createSendPayloadDcl(BYTES_PER_REG/8, Type_UQ);
     addrTmpDeclUq->setAliasDeclare(addrTmpDeclUd, 0);
@@ -1279,7 +1278,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd(
     }
 
     // we can do this in one instruction
-    G4_Declare *result = createTempVar(execSize, srcType, GRFALIGN);
+    G4_Declare *result = createTempVar(execSize, srcType, getGRFAlign());
     G4_DstRegRegion *dst = createDst(result->getRegVar(), srcType);
     const auto *srcRgn = execSize == g4::SIMD1 ? getRegionScalar() : getRegionStride1();
     G4_Operand *immOp = createImmWithLowerType(addImm64, srcType);
@@ -1306,7 +1305,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosNative(
     MUST_BE_TRUE(
         srcType == Type_UQ || srcType == Type_Q,
         "this function only supports Q/UQ types");
-    G4_Declare *result = createTempVar(execSize, srcType, GRFALIGN);
+    G4_Declare *result = createTempVar(execSize, srcType, getGRFAlign());
     G4_DstRegRegion *dst =
         createDst(result->getRegVar(), 0, 0, 1, Type_Q);
     MUST_BE_TRUE(
@@ -1364,7 +1363,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(
     // (W) addX (..|M0) TMP1<1>   SRC.1<2>  [HI32(imm64)] acc0
     // (P) mov  (..|MX) DST.0<2>  TMP1.0<1> // mux it back out
     // (P) mov  (..|MX) DST.1<2>  TMP2.0<1>
-    G4_Declare *result = createTempVar(execSize, srcType, GRFALIGN);
+    G4_Declare *result = createTempVar(execSize, srcType, getGRFAlign());
     //
     VISA_EMask_Ctrl passExecCtrl = execCtrl;
     const G4_ExecSize passExecSize = std::min<G4_ExecSize>(execSize, getNativeExecSize());
@@ -1380,7 +1379,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(
         // e.g. someone tries to do a SIMD32 starting at M16
         MUST_BE_TRUE(passExecCtrl != vISA_NUM_EMASK, "invalid exec mask");
         //
-        G4_Declare *TMP_LO32 = createTempVar(passExecSize, Type_UD, GRFALIGN);
+        G4_Declare *TMP_LO32 = createTempVar(passExecSize, Type_UD, getGRFAlign());
         G4_DstRegRegion *dstAddcLo =
             createDst(TMP_LO32->getRegVar(), 0, 0, 1, Type_UD);
         G4_SrcRegRegion *srcAddcLo = getSrcReg32(pass, 0);
@@ -1392,7 +1391,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(
         G4_DstRegRegion *dstAcc0 = createDst(phyregpool.getAcc0Reg(), 0, 0, 1, Type_UD);
         addLoInst->setImplAccDst(dstAcc0);
         //
-        G4_Declare *TMP_HI32 = createTempVar(passExecSize, Type_UD, GRFALIGN);
+        G4_Declare *TMP_HI32 = createTempVar(passExecSize, Type_UD, getGRFAlign());
         G4_DstRegRegion *dstAddHi =
             createDst(TMP_HI32->getRegVar(), 0, 0, 1, Type_UD);
         G4_SrcRegRegion *srcAddHi = getSrcReg32(pass, 1);

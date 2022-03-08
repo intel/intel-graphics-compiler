@@ -657,6 +657,11 @@ public:
     template <G4_Type T>
     unsigned numEltPerGRF() const {return kernel.numEltPerGRF<T>();}
     unsigned numEltPerGRF(G4_Type t) const {return kernel.numEltPerGRF(t);}
+    unsigned getMaxVariableSize() const {return kernel.getMaxVariableSize();}
+    G4_SubReg_Align getGRFAlign() const {return kernel.getGRFAlign();}
+    G4_SubReg_Align getHalfGRFAlign() const {return kernel.getHalfGRFAlign();}
+    unsigned getGenxDataportIOSize() const {return kernel.getGenxDataportIOSize();}
+    unsigned getGenxSamplerIOSize() const {return kernel.getGenxSamplerIOSize();}
     FINALIZER_INFO* getJitInfo() {return metaData;}
     CompilerStats &getcompilerStats() {return compilerStats;}
 

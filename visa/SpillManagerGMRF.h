@@ -125,7 +125,7 @@ public:
     }
 
     static std::tuple<uint32_t, G4_ExecSize> createSpillSendMsgDescOWord(
-        unsigned int height);
+        const IR_Builder& builder, unsigned int height);
 
 private:
     G4_Declare* getOrCreateAddrSpillFillDcl(G4_RegVar* addrDcl, G4_Declare* spilledAddrTakenDcl, G4_Kernel* kernel);

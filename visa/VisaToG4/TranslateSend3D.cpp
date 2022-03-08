@@ -111,7 +111,7 @@ int IR_Builder::translateVISASampleInfoInst(
     else
     {
         useHeader = false;
-        msg = createTempVar(getNativeExecSize(), Type_UD, GRFALIGN);
+        msg = createTempVar(getNativeExecSize(), Type_UD, getGRFAlign());
         G4_DstRegRegion *dst = createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
         G4_Imm* src0Imm = createImm(0, Type_UD);
         (void) createMov(getNativeExecSize(), dst, src0Imm, InstOpt_WriteEnable, true);
@@ -204,7 +204,7 @@ int IR_Builder::translateVISAResInfoInst(
     {
         unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/TypeSize(Type_F);
         msg = createSendPayloadDcl(numElts, Type_UD);
-        payloadUD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_UD);
+        payloadUD = createSendPayloadDcl(numElts - (useHeader ? getGenxSamplerIOSize() : 0), Type_UD);
         payloadUD->setAliasDeclare(msg, useHeader ? numEltPerGRF<Type_UB>() : 0);
 
         if (useHeader)
@@ -362,7 +362,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
         {
             unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/TypeSize(Type_F);
             // we can use the urb handle directly since URB write will not modify its header
-            //msg = createSendPayloadDcl(GENX_SAMPLER_IO_SZ, Type_UD);
+            //msg = createSendPayloadDcl(getGenxSamplerIOSize(), Type_UD);
             payloadUD = createSendPayloadDcl(numElts, Type_UD);
             payloadF = createSendPayloadDcl(numElts, Type_F);
             payloadD = createSendPayloadDcl(numElts, Type_D);
@@ -376,9 +376,9 @@ int IR_Builder::translateVISAURBWrite3DInst(
         msg = createSendPayloadDcl(numElts, Type_UD);
         if (numRows > 1)
         {
-            payloadUD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_UD);
-            payloadF = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_F);
-            payloadD = createSendPayloadDcl(numElts - (useHeader ? GENX_SAMPLER_IO_SZ : 0), Type_D);
+            payloadUD = createSendPayloadDcl(numElts - (useHeader ? getGenxSamplerIOSize() : 0), Type_UD);
+            payloadF = createSendPayloadDcl(numElts - (useHeader ? getGenxSamplerIOSize() : 0), Type_F);
+            payloadD = createSendPayloadDcl(numElts - (useHeader ? getGenxSamplerIOSize() : 0), Type_D);
             payloadUD->setAliasDeclare(msg, useHeader ? numEltPerGRF<Type_UB>() : 0);
             payloadF->setAliasDeclare(msg, useHeader ? numEltPerGRF<Type_UB>() : 0);
             payloadD->setAliasDeclare(msg, useHeader ? numEltPerGRF<Type_UB>() : 0);
@@ -645,7 +645,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         unsigned int numElts = numRows * numEltPerGRF<Type_UB>()/TypeSize(Type_F);
         //creating enough space for header + payload
         msg = createSendPayloadDcl(numElts, Type_UD);
-        msgF = createSendPayloadDcl(GENX_SAMPLER_IO_SZ * 2, Type_F);
+        msgF = createSendPayloadDcl(getGenxSamplerIOSize() * 2, Type_F);
         msgF->setAliasDeclare(msg, 0);
 
         //creating payload declarations.
@@ -1376,7 +1376,7 @@ int IR_Builder::splitSampleInst(
     G4_ExecSize execSize = getNativeExecSize();
     uint16_t numElts = numRows * numEltPerGRF<Type_F>();
     G4_Declare* payloadF = createSendPayloadDcl(numElts, Type_F);
-    G4_Declare* payloadUD = createTempVar(numElts, Type_UD, GRFALIGN);
+    G4_Declare* payloadUD = createTempVar(numElts, Type_UD, getGRFAlign());
     payloadUD->setAliasDeclare(payloadF, 0);
     G4_SrcRegRegion* srcToUse = createSrc(payloadUD->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
 
@@ -1516,15 +1516,15 @@ int IR_Builder::splitSampleInst(
         if (pixelNullMaskEnable)
         {
             unsigned int numElts = tempDstDcl->getNumElems() * tempDstDcl->getNumRows();
-            tempDstUD = createTempVar(numElts, Type_UD, GRFALIGN);
+            tempDstUD = createTempVar(numElts, Type_UD, getGRFAlign());
             tempDstUD->setAliasDeclare(tempDstDcl, 0);
 
             numElts = tempDstDcl2->getNumElems() * tempDstDcl2->getNumRows();
-            tempDst2UD = createTempVar(numElts, Type_UD, GRFALIGN);
+            tempDst2UD = createTempVar(numElts, Type_UD, getGRFAlign());
             tempDst2UD->setAliasDeclare(tempDstDcl2, 0);
 
             numElts = originalDstDcl->getNumElems() * originalDstDcl->getNumRows();
-            origDstUD = createTempVar(numElts, Type_UD, GRFALIGN);
+            origDstUD = createTempVar(numElts, Type_UD, getGRFAlign());
             origDstUD->setAliasDeclare(originalDstDcl, 0);
         }
 
@@ -1557,7 +1557,7 @@ int IR_Builder::splitSampleInst(
         /**************** SECOND HALF OF THE SEND *********************/
         // re-create payload declare so the two sends may be issued independently
         G4_Declare* payloadF = createSendPayloadDcl(numElts, Type_F);
-        G4_Declare* payloadUD = createTempVar(numElts, Type_UD, GRFALIGN);
+        G4_Declare* payloadUD = createTempVar(numElts, Type_UD, getGRFAlign());
         payloadUD->setAliasDeclare(payloadF, 0);
 
         // even though we only use lower half of the GRF, we have to allocate full GRF
@@ -1760,7 +1760,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
             // createSamplerHeader() message overwrites the sampler states
             // pointer in the header -> cannot use the cached value in this
             // case.
-            dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+            dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
             dcl->setCapableOfReuse();
             G4_SrcRegRegion* src = createSrc(builtinSamplerHeader->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
             createMovInst(dcl, 0, 0, g4::SIMD8, NULL, NULL, src, false, dbgOpt);
@@ -1768,7 +1768,7 @@ G4_Declare* IR_Builder::getSamplerHeader(bool isBindlessSampler, bool samplerInd
     }
     else
     {
-        dcl = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_UD);
+        dcl = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
         dcl->setCapableOfReuse();
         createMovR0Inst(dcl, 0, 0, true, dbgOpt);
         if (hasBindlessSampler() && !isBindlessSampler)
@@ -2261,7 +2261,7 @@ int IR_Builder::translateVISASamplerNormInst(
 
     // mov (8)      VX(0,0)<1>,  r0:ud
     // add dcl for VX
-    G4_Declare *dcl = createSendPayloadDcl(2 * GENX_SAMPLER_IO_SZ, Type_UD);
+    G4_Declare *dcl = createSendPayloadDcl(2 * getGenxSamplerIOSize(), Type_UD);
 
     // mov  VX(0,0)<1>, r0
     createMovR0Inst(dcl, 0, 0);
@@ -2269,7 +2269,7 @@ int IR_Builder::translateVISASamplerNormInst(
     unsigned cmask = channel.getHWEncoding() << 12;
     createMovInst(dcl, 0, 2, g4::SIMD1, NULL, NULL, createImm(cmask, Type_UD));
 
-    G4_Declare *dcl1 = createSendPayloadDcl(GENX_DATAPORT_IO_SZ, Type_F);
+    G4_Declare *dcl1 = createSendPayloadDcl(getGenxDataportIOSize(), Type_F);
     dcl1->setAliasDeclare(dcl, numEltPerGRF<Type_UB>());
 
     // mov  (1)     VX(1,4)<1>,  deltaU
@@ -2360,7 +2360,7 @@ int IR_Builder::translateVISASamplerInst(
     // mov (8)      VX(0,0)<1>,  r0:ud
     // add dcl for VX
     unsigned num_payload_elt = simdMode/2 * numEltPerGRF<Type_UB>()/TypeSize(Type_UD);
-    G4_Declare *dcl = createSendPayloadDcl(num_payload_elt + GENX_SAMPLER_IO_SZ, Type_UD);
+    G4_Declare *dcl = createSendPayloadDcl(num_payload_elt + getGenxSamplerIOSize(), Type_UD);
 
     // mov  VX(0,0)<1>, r0
     createMovR0Inst(dcl, 0, 0);

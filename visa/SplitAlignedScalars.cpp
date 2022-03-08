@@ -319,7 +319,7 @@ bool SplitAlignedScalars::isDclCandidate(G4_Declare* dcl)
         !dcl->isOutput() &&
         !dcl->isPayloadLiveOut() &&
         !dcl->isDoNotSpill() &&
-        gra.getSubRegAlign(dcl) == GRFALIGN)
+        gra.getSubRegAlign(dcl) == kernel.getGRFAlign())
         return true;
     return false;
 }

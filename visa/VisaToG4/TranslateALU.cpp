@@ -423,7 +423,7 @@ int IR_Builder::translateVISALogicInst(
         // split into
         // bfi1 tmp src0 src1
         // bfi2 dst tmp src2 src3
-        G4_Declare* tmpDcl = createTempVar(exsize, g4Srcs[0]->getType(), GRFALIGN);
+        G4_Declare* tmpDcl = createTempVar(exsize, g4Srcs[0]->getType(), getGRFAlign());
         G4_DstRegRegion* tmpDst = createDstRegRegion(tmpDcl, 1);
         createInst(
             predOpnd,

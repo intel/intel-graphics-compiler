@@ -118,7 +118,7 @@ void LocalRA::evenAlign()
 #endif
             gra.evenAlign();
         }
-        gra.updateSubRegAlignment(GRFALIGN);
+        gra.updateSubRegAlignment(builder.getGRFAlign());
         // Since we are piggy backing on mask field of G4_Declare,
         // we need to make sure we reset it before going further.
         resetMasks();
@@ -916,7 +916,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, b
             }
 
             auto assignAlign = gra.isEvenAligned(dcl) ? BankAlign::Even : bankAlign;
-            G4_SubReg_Align subAlign = builder.GRFAlign() ? GRFALIGN : gra.getSubRegAlign(dcl);
+            G4_SubReg_Align subAlign = builder.GRFAlign() ? builder.getGRFAlign() : gra.getSubRegAlign(dcl);
 
             if (assignFromFront)
             {
@@ -2424,7 +2424,7 @@ void PhyRegsLocalRA::markPhyRegs(G4_Declare* topdcl)
 bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int &regnum, int &subregnum, int size)
 {
     bool found = false;
-    if (subalign == GRFALIGN)
+    if (subalign == builder.getGRFAlign())
     {
         if (isWordBusy(regIdx, 0, size) == false)
         {
@@ -2432,7 +2432,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int
             found = true;
         }
     }
-    else if (subalign == HALFGRFALIGN)
+    else if (subalign == builder.getHalfGRFAlign())
     {
         if (isWordBusy(regIdx, 0, size) == false)
         {

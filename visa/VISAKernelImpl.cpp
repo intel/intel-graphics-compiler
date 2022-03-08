@@ -185,7 +185,7 @@ void replaceFCOpcodes(IR_Builder& builder)
     }
 }
 
-static void setDeclAlignment(G4_Declare* dcl, unsigned grfSize, VISA_Align align)
+static void setDeclAlignment(G4_Declare* dcl, const IR_Builder& builder, VISA_Align align)
 {
     switch (align)
     {
@@ -195,22 +195,22 @@ static void setDeclAlignment(G4_Declare* dcl, unsigned grfSize, VISA_Align align
     case ALIGN_QWORD: dcl->setSubRegAlign(Four_Word); break;
     case ALIGN_OWORD: dcl->setSubRegAlign(Eight_Word); break;
     case ALIGN_GRF:
-        dcl->setSubRegAlign(GRFALIGN);
+        dcl->setSubRegAlign(builder.getGRFAlign());
         break;
     case ALIGN_2_GRF:
-        dcl->setSubRegAlign(GRFALIGN);
+        dcl->setSubRegAlign(builder.getGRFAlign());
         dcl->setEvenAlign();
         break;
     case ALIGN_HWORD: dcl->setSubRegAlign(Sixteen_Word); break;
     case ALIGN_32WORD:
-        dcl->setSubRegAlign(GRFALIGN);
-        if (grfSize == 32)
+        dcl->setSubRegAlign(builder.getGRFAlign());
+        if (builder.getGRFSize() == 32)
         {
             dcl->setEvenAlign();
         }
         break;
     case ALIGN_64WORD:  //64bytes GRF aligned
-        assert(grfSize == 64);
+        assert(builder.getGRFSize() == 64);
         dcl->setSubRegAlign(ThirtyTwo_Word);
         dcl->setEvenAlign();
         break;
@@ -995,11 +995,11 @@ int VISAKernelImpl::CreateVISAGenVar(
         }
 
         // force subalign to be GRF if total size is larger than or equal to GRF
-        if ((info->dcl->getSubRegAlign() != GRFALIGN) ||
+        if ((info->dcl->getSubRegAlign() != getIRBuilder()->getGRFAlign()) ||
             (varAlign == (m_builder->getGRFSize() == 64 ? ALIGN_64WORD : ALIGN_32WORD)) ||
             (varAlign == ALIGN_2_GRF))
         {
-            setDeclAlignment(info->dcl, m_builder->getGRFSize(), varAlign);
+            setDeclAlignment(info->dcl, *m_builder, varAlign);
         }
 
         info->name_index = -1;
@@ -7411,8 +7411,8 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
         if (src2Precision == GenPrecision::FP16 || src2Precision == GenPrecision::BF16 ||
             src2Bits == 8 || (src1Bits <= 4 && src2Bits == 4))
         {
-            G4_SubReg_Align srAlign = GRFALIGN;
-            if (Count != 8) srAlign = HALFGRFALIGN;
+            G4_SubReg_Align srAlign = getIRBuilder()->getGRFAlign();
+            if (Count != 8) srAlign = getIRBuilder()->getHalfGRFAlign();
             src2RegVar->getDeclare()->setSubRegAlign(srAlign);
         }
         else if ((src1Bits == 8 && src2Bits == 4) || (src1Bits <= 4 && src2Bits == 2))
