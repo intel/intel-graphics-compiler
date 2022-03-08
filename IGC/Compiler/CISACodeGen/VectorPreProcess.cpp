@@ -369,6 +369,7 @@ namespace
             uint32_t NElts,
             uint32_t SplitSize,
             SmallVector<std::pair<Type*, uint32_t>, 8>& SplitInfo);
+        bool processScalarLoadStore(Function& F);
 
     private:
         const DataLayout* m_DL;
@@ -1596,12 +1597,85 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
     return Inst;
 }
 
+// Replace store instructions like
+// store i24 %1, i24 addrspace(3)* %2, align 4
+// or
+// store i48 %1, i48 addrspace(3)* %2, align 4
+//
+// with
+// store <3 x i8> %3, <3 x i8> addrspace(3)* %4, align 4
+// or
+// store <3 x i8> %16, <3 x i16> addrspace(3)* %4, align 4
+//
+// to be split later in this pass.
+// Otherwise later TypeLegalizwe pass replaces these instructions with 3-element store.
+// The same is for i24 and i48 load instruxtions.
+//
+bool VectorPreProcess::processScalarLoadStore(Function& F)
+{
+    InstWorkVector list_delete;
+    for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
+    {
+        Instruction* inst = &*I;
+        if (isa<StoreInst>(inst))
+        {
+            Type* Ty = inst->getOperand(0)->getType();
+            if (Ty->isVectorTy())
+                continue;
+            unsigned bitSize = Ty->getScalarSizeInBits();
+            if (bitSize != 24 && bitSize != 48)
+                continue;
+            IRBuilder<> Builder(inst);
+            Type* newScalTy = bitSize == 24 ? Type::getInt8Ty(inst->getContext()) : Type::getInt16Ty(inst->getContext());
+            Type* newVecTy = IGCLLVM::FixedVectorType::get(newScalTy, 3);
+            Value* val = Builder.CreateBitCast(inst->getOperand(0), newVecTy);
+            Value* ptr = inst->getOperand(1);
+            Type* newPtrType = PointerType::get(newVecTy, ptr->getType()->getPointerAddressSpace());
+            Value* newPtr = Builder.CreateBitCast(ptr, newPtrType);
+            Builder.CreateAlignedStore(val, newPtr, IGCLLVM::getAlign(cast<StoreInst>(inst)->getAlignment()),
+                cast<StoreInst>(inst)->isVolatile());
+            list_delete.push_back(inst);
+        }
+        else if (isa<LoadInst>(inst))
+        {
+            Type* Ty = inst->getType();
+            if (Ty->isVectorTy())
+                continue;
+            unsigned bitSize = Ty->getScalarSizeInBits();
+            if (bitSize != 24 && bitSize != 48)
+                continue;
+            IRBuilder<> Builder(inst);
+            Type* newScalTy = bitSize == 24 ? Type::getInt8Ty(inst->getContext()) : Type::getInt16Ty(inst->getContext());
+            Type* newVecTy = IGCLLVM::FixedVectorType::get(newScalTy, 3);
+            Value* ptr = inst->getOperand(0);
+            Type* newPtrType = PointerType::get(newVecTy, ptr->getType()->getPointerAddressSpace());
+            Value* newPtr = Builder.CreateBitCast(ptr, newPtrType);
+            Value* newVecVal=  Builder.CreateAlignedLoad(newVecTy, newPtr, IGCLLVM::getAlign(cast<LoadInst>(inst)->getAlignment()),
+                cast<LoadInst>(inst)->isVolatile());
+            Value* newVal = Builder.CreateBitCast(newVecVal, Ty);
+            inst->replaceAllUsesWith(newVal);
+            list_delete.push_back(inst);
+        }
+    }
+
+    if (list_delete.empty())
+        return false;
+
+    for (auto i : list_delete)
+    {
+        i->eraseFromParent();
+    }
+    return true;
+}
+
 bool VectorPreProcess::runOnFunction(Function& F)
 {
     bool changed = false;
     m_DL = &F.getParent()->getDataLayout();
     m_C = &F.getContext();
     m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    changed = processScalarLoadStore(F);
 
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
     {
