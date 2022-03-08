@@ -1147,7 +1147,6 @@ namespace IGC
         std::vector<int> m_dsNonDefaultIdxMap;
         std::vector<int> m_gsNonDefaultIdxMap;
         std::vector<int> m_psIdxMap;
-        DWORD dsInSize = 0;
         DWORD LtoUsedMask = 0;
         uint64_t m_SIMDInfo;
         uint32_t HdcEnableIndexSize = 0;
