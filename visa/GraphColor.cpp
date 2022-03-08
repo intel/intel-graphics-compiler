@@ -10557,16 +10557,7 @@ int GlobalRA::coloringRegAlloc()
         // depending on spill offset. oword is supported for PVC but it is not emitted in
         // favor of LSC.
         || builder.supportsLSC());
-
-    // spill compression implementation considers only interference graph when deciding
-    // to share spill slots. 3d programs may have variables in Default bucket that dont
-    // interfere but cannot be assigned same spill slot. for correctness, this is turned
-    // off for 3d. in order to support this for 3d, we would've to consider augmentation
-    // live-intervals in spill compression implementation. currently, augmentation is
-    // required only when target is VISA_3D. for VC target it is safe to keep spill
-    // compression enabled.
-    bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression) &&
-        kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D;
+    bool enableSpillSpaceCompression = builder.getOption(vISA_SpillSpaceCompression);
 
     uint32_t nextSpillOffset = 0;
     uint32_t scratchOffset = 0;
@@ -10860,6 +10851,23 @@ int GlobalRA::coloringRegAlloc()
                     // spending time inserting spill code and then aborting.
                     stopTimer(TimerID::GRF_GLOBAL_RA);
                     return VISA_SPILL;
+                }
+
+                if (iterationNo == 0 &&
+                    enableSpillSpaceCompression &&
+                    kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
+                    !hasStackCall)
+                {
+                    unsigned spillSize = 0;
+                    const LIVERANGE_LIST& spilledLRs = coloring.getSpilledLiveRanges();
+                    for (auto lr : spilledLRs)
+                    {
+                        spillSize += lr->getDcl()->getByteSize();
+                    }
+                    if ((int)(spillSize * 1.5) < (SCRATCH_MSG_LIMIT - globalScratchOffset))
+                    {
+                        enableSpillSpaceCompression = false;
+                    }
                 }
 
                 startTimer(TimerID::SPILL);
