@@ -2339,11 +2339,7 @@ namespace IGC
         pShader->FillKernel();
         SProgramOutput* pOutput = pShader->ProgramOutput();
 
-        //  Need a better heuristic for NoRetry
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
-        int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
-        bool noRetry = ((subGrpSize > 0 || pOutput->m_scratchSpaceUsedBySpills < 1000) &&
-            ctx->m_instrTypes.mayHaveIndirectOperands);
 
         bool optDisable = false;
         if (ctx->getModuleMetaData()->compOpt.OptDisable)
@@ -2351,8 +2347,8 @@ namespace IGC
             optDisable = true;
         }
 
-        if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
-            noRetry ||
+        //  Need a better heuristic for NoRetry. Currently spill size is used
+        if (pOutput->m_scratchSpaceUsedBySpills < 1000 ||
             ctx->m_retryManager.IsLastTry() ||
             (!ctx->m_retryManager.kernelSkip.empty() &&
              ctx->m_retryManager.kernelSkip.count(pFunc->getName().str())) ||
