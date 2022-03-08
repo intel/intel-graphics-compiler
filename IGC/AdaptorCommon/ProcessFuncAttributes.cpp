@@ -581,6 +581,12 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 SetNoInline(F);
             }
 
+            if (IGC_IS_FLAG_ENABLED(PartitionUnit) && efs.isStackCallAssigned(F))
+            {
+                F->addFnAttr("visaStackCall");
+                SetNoInline(F);
+            }
+
             if (!F->hasFnAttribute(llvm::Attribute::NoInline) &&
                 IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
             {
@@ -600,7 +606,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                 }
                 if (shouldAlwaysInline)
                 {
-                    if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize) &&
+                    if ((IGC_IS_FLAG_ENABLED(ControlKernelTotalSize) || IGC_IS_FLAG_ENABLED(ControlUnitSize)) &&
                         efs.shouldEnableSubroutine() &&
                         efs.isTrimmedFunction(F))
                     {

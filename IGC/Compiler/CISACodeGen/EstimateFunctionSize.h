@@ -16,6 +16,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include <cstddef>
 #include "Probe/Assertion.h"
+#include <deque>
+#include <unordered_map>
 
 namespace IGC {
 
@@ -55,20 +57,29 @@ namespace IGC {
 
         void visitCallInst( llvm::CallInst& CI );
 
+        bool isStackCallAssigned(llvm::Function* F);
+
+
     private:
         void analyze();
         void checkSubroutine();
         void clear();
-
-        bool funcIsGoodtoTrim( llvm::Function* F );
         void reduceKernelSize();
-        size_t findKernelTotalSize(llvm::Function* Kernel, uint32_t uk, uint32_t &up);
 
         /// \brief Return the associated opaque data.
         template <typename T> T* get(llvm::Function* F) {
             IGC_ASSERT(ECG.count(F));
             return static_cast<T*>(ECG[F]);
         }
+
+        void initializeTopologicalVisit(llvm::Function* root, std::unordered_map<void*, uint32_t>& FunctionsInKernel, std::deque<void*>& BottomUpQueue, bool ignoreStackCallBoundary);
+        uint32_t updateExpandedUnitSize(llvm::Function* F, bool ignoreStackCallBoundary);
+        uint32_t bottomUpHeuristic(llvm::Function* F, uint32_t& stackCall_cnt);
+        void partitionKernel();
+        void reduceCompilationUnitSize();
+        void trimCompilationUnit(llvm::SmallVector<void*, 64> &unitHeads, uint32_t threshold, bool ignoreStackCallBoundary);
+        uint32_t getMaxUnitSize();
+        void getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64> &functions_to_trim, bool ignoreStackCallBoundary);
 
         /// \brief The module being analyzed.
         llvm::Module* M;
@@ -100,6 +111,10 @@ namespace IGC {
         /// Internal data structure for the analysis which is approximately an
         /// extended call graph.
         llvm::SmallDenseMap<llvm::Function*, void*> ECG;
+        //Functions that are assigned stackcalls
+        llvm::SmallVector<void*, 64> stackCalls;
+        //Kernel entries
+        llvm::SmallVector<void*, 64> kernelEntries;
     };
 
     llvm::ModulePass* createEstimateFunctionSizePass();
