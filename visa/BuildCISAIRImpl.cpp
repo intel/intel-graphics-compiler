@@ -689,174 +689,220 @@ void CISA_IR_Builder::LinkTimeOptimization(
 
     // append instructions from callee to caller
     for (auto& [callee, sgInvokeList] : callee2Callers)
-    for (auto& it : sgInvokeList)
     {
-        bool inlining =         ( options & (1U << Linker_Inline)           );
-        bool removeArgRet =     ( options & (1U << Linker_RemoveArgRet)     );
-        bool removeStackArg =   ( options & (1U << Linker_RemoveStackArg)   );
-        bool removeStackFrame = ( options & (1U << Linker_RemoveStackFrame) );
-        G4_INST* fcall = *it;
-        assert(fcall->opcode() == G4_pseudo_fcall);
+        G4_Declare *replacedArgDcl = nullptr;
+        G4_Declare *replacedRetDcl = nullptr;
 
-        G4_Kernel* caller = GetCallerKernel(fcall);
-        G4_Kernel* callee = GetCalleeKernel(fcall);
-        G4_INST* calleeLabel = *callee->fg.builder->instList.begin();
-        ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not a label");
-
-        // Change fcall to call
-        fcall->setOpcode(G4_call);
-        fcall->setSrc(calleeLabel->getSrc(0), 0);
-        // we only record a single callsite to the target in order to convert to jumps
-        // note that we don't need call2jump when inlining kicks in
-        if ((!inlining) && callsite.find(calleeLabel) == callsite.end())
+        for (auto& it : sgInvokeList)
         {
-            callsite[calleeLabel] = it;
-        }
-        else
-        {
-            callsite[calleeLabel] = dummyContainer.end();
-        }
+            bool inlining =         ( options & (1U << Linker_Inline)           );
+            bool removeArgRet =     ( options & (1U << Linker_RemoveArgRet)     );
+            bool removeStackArg =   ( options & (1U << Linker_RemoveStackArg)   );
+            bool removeStackFrame = ( options & (1U << Linker_RemoveStackFrame) );
+            G4_INST* fcall = *it;
+            assert(fcall->opcode() == G4_pseudo_fcall);
 
-        auto& callerInsts = caller->fg.builder->instList;
-        auto calleeInsts = callee->fg.builder->instList;
+            G4_Kernel* caller = GetCallerKernel(fcall);
+            G4_Kernel* callee = GetCalleeKernel(fcall);
+            G4_INST* calleeLabel = *callee->fg.builder->instList.begin();
+            ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not a label");
 
-        if (removeArgRet)
-        {
-            auto& calleeBuilder = callee->fg.builder;
-            auto& callerBuilder = caller->fg.builder;
-            const RegionDesc *rDesc = callerBuilder->getRegionStride1();
-            G4_Declare *replacedArgDcl = callerBuilder->createDeclareNoLookup("newArg", G4_GRF, callerBuilder->numEltPerGRF<Type_UD>(), 32, Type_UD);
-            G4_Declare *replacedRetDcl = callerBuilder->createDeclareNoLookup("newRet", G4_GRF, callerBuilder->numEltPerGRF<Type_UD>(), 12, Type_UD);
-
-            for (G4_INST* inst : calleeInsts)
+            // Change fcall to call
+            fcall->setOpcode(G4_call);
+            fcall->setSrc(calleeLabel->getSrc(0), 0);
+            // we only record a single callsite to the target in order to convert to jumps
+            // note that we don't need call2jump when inlining kicks in
+            if ((!inlining) && callsite.find(calleeLabel) == callsite.end())
             {
-                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
-                {
-                    G4_Operand *src = inst->getSrc(i);
-                    if (!src) continue;
-                    G4_Declare* topDcl = src->getTopDcl();
-                    if (!topDcl) continue;
-                    G4_Declare* rootDcl = topDcl->getRootDeclare();
-                    if (calleeBuilder->isPreDefArg(rootDcl))
-                    {
-                        G4_Operand *replacedArgSrc = callerBuilder->createSrc(
-                                replacedArgDcl->getRegVar(),
-                                src->asSrcRegRegion()->getRegOff(),
-                                src->asSrcRegRegion()->getSubRegOff(),
-                                rDesc,
-                                src->getType());
-                        inst->setSrc(replacedArgSrc, i);
-                    }
-                }
-
-                G4_Operand *dst = inst->getDst();
-                if (!dst) continue;
-                G4_Declare* topDcl = dst->getTopDcl();
-                if (!topDcl) continue;
-                G4_Declare* rootDcl = topDcl->getRootDeclare();
-                if (calleeBuilder->isPreDefRet(rootDcl))
-                {
-                    G4_DstRegRegion *replacedRetDst = callerBuilder->createDst(
-                            replacedRetDcl->getRegVar(),
-                            dst->asDstRegRegion()->getRegOff(),
-                            dst->asDstRegRegion()->getSubRegOff(),
-                            dst->asDstRegRegion()->getHorzStride(),
-                            dst->getType());
-                    inst->setDest(replacedRetDst);
-                }
-
+                callsite[calleeLabel] = it;
             }
-            for (G4_INST* inst : callerInsts)
+            else
             {
-                G4_Operand *dst = inst->getDst();
-                if (!dst) continue;
-                G4_Declare* topDcl = dst->getTopDcl();
-                if (!topDcl) continue;
-                G4_Declare* rootDcl = topDcl->getRootDeclare();
-                if (callerBuilder->isPreDefArg(rootDcl))
-                {
-                    G4_DstRegRegion *replacedArgDst = callerBuilder->createDst(
-                            replacedArgDcl->getRegVar(),
-                            dst->asDstRegRegion()->getRegOff(),
-                            dst->asDstRegRegion()->getSubRegOff(),
-                            dst->asDstRegRegion()->getHorzStride(),
-                            dst->getType());
-                    inst->setDest(replacedArgDst);
-                }
+                callsite[calleeLabel] = dummyContainer.end();
+            }
 
-                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+            auto& callerInsts = caller->fg.builder->instList;
+            auto calleeInsts = callee->fg.builder->instList;
+
+            if (removeArgRet)
+            {
+                auto& calleeBuilder = callee->fg.builder;
+                auto& callerBuilder = caller->fg.builder;
+                const RegionDesc *rDesc = callerBuilder->getRegionStride1();
+                replacedArgDcl = replacedArgDcl ?
+                    replacedArgDcl :
+                    callerBuilder->createDeclareNoLookup("newArg", G4_GRF, callerBuilder->numEltPerGRF<Type_UD>(), 32, Type_UD);
+                replacedRetDcl = replacedRetDcl ?
+                    replacedRetDcl :
+                    callerBuilder->createDeclareNoLookup("newRet", G4_GRF, callerBuilder->numEltPerGRF<Type_UD>(), 12, Type_UD);
+
+                for (G4_INST* inst : calleeInsts)
                 {
-                    G4_Operand *src = inst->getSrc(i);
-                    if (!src) continue;
-                    G4_Declare* topDcl = src->getTopDcl();
+                    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                    {
+                        G4_Operand *src = inst->getSrc(i);
+                        if (!src) continue;
+                        G4_Declare* topDcl = src->getTopDcl();
+                        if (!topDcl) continue;
+                        G4_Declare* rootDcl = topDcl->getRootDeclare();
+                        if (calleeBuilder->isPreDefArg(rootDcl))
+                        {
+                            G4_Operand *replacedArgSrc = callerBuilder->createSrc(
+                                    replacedArgDcl->getRegVar(),
+                                    src->asSrcRegRegion()->getRegOff(),
+                                    src->asSrcRegRegion()->getSubRegOff(),
+                                    rDesc,
+                                    src->getType());
+                            inst->setSrc(replacedArgSrc, i);
+                        }
+                    }
+
+                    G4_Operand *dst = inst->getDst();
+                    if (!dst) continue;
+                    G4_Declare* topDcl = dst->getTopDcl();
                     if (!topDcl) continue;
                     G4_Declare* rootDcl = topDcl->getRootDeclare();
-                    if (callerBuilder->isPreDefRet(rootDcl))
+                    if (calleeBuilder->isPreDefRet(rootDcl))
                     {
-                        G4_Operand *replacedRetSrc = callerBuilder->createSrc(
+                        G4_DstRegRegion *replacedRetDst = callerBuilder->createDst(
                                 replacedRetDcl->getRegVar(),
-                                src->asSrcRegRegion()->getRegOff(),
-                                src->asSrcRegRegion()->getSubRegOff(),
-                                rDesc,
-                                src->getType());
-                        inst->setSrc(replacedRetSrc, i);
+                                dst->asDstRegRegion()->getRegOff(),
+                                dst->asDstRegRegion()->getSubRegOff(),
+                                dst->asDstRegRegion()->getHorzStride(),
+                                dst->getType());
+                        inst->setDest(replacedRetDst);
+                    }
+
+                }
+                for (G4_INST* inst : callerInsts)
+                {
+                    G4_Operand *dst = inst->getDst();
+                    if (!dst) continue;
+                    G4_Declare* topDcl = dst->getTopDcl();
+                    if (!topDcl) continue;
+                    G4_Declare* rootDcl = topDcl->getRootDeclare();
+                    if (callerBuilder->isPreDefArg(rootDcl))
+                    {
+                        G4_DstRegRegion *replacedArgDst = callerBuilder->createDst(
+                                replacedArgDcl->getRegVar(),
+                                dst->asDstRegRegion()->getRegOff(),
+                                dst->asDstRegRegion()->getSubRegOff(),
+                                dst->asDstRegRegion()->getHorzStride(),
+                                dst->getType());
+                        inst->setDest(replacedArgDst);
+                    }
+
+                    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                    {
+                        G4_Operand *src = inst->getSrc(i);
+                        if (!src) continue;
+                        G4_Declare* topDcl = src->getTopDcl();
+                        if (!topDcl) continue;
+                        G4_Declare* rootDcl = topDcl->getRootDeclare();
+                        if (callerBuilder->isPreDefRet(rootDcl))
+                        {
+                            G4_Operand *replacedRetSrc = callerBuilder->createSrc(
+                                    replacedRetDcl->getRegVar(),
+                                    src->asSrcRegRegion()->getRegOff(),
+                                    src->asSrcRegRegion()->getSubRegOff(),
+                                    rDesc,
+                                    src->getType());
+                            inst->setSrc(replacedRetSrc, i);
+                        }
                     }
                 }
             }
-        }
 
-        // A hash map to record how SP is populated from caller to callee
-        std::map<G4_Declare*, long long> stackPointers;
-        // A hash map to record where the instruction is on defs
-        std::map<G4_Declare*, std::list<vISA::G4_INST*>::iterator> defInst;
+            // A hash map to record how SP is populated from caller to callee
+            std::map<G4_Declare*, long long> stackPointers;
+            // A hash map to record where the instruction is on defs
+            std::map<G4_Declare*, std::list<vISA::G4_INST*>::iterator> defInst;
 
-        if (removeStackArg)
-        {
-            // collect instructions which store args to stack
-            auto& callerBuilder = caller->fg.builder;
-            auto& calleeBuilder = callee->fg.builder;
-            auto getPointerOffset = [&](G4_INST *inst, long long offset)
+            if (removeStackArg)
             {
-                auto execSize = static_cast<int>(inst->getExecSize());
-                assert(execSize == 1);
-                switch(inst->opcode())
+                // collect instructions which store args to stack
+                auto& callerBuilder = caller->fg.builder;
+                auto& calleeBuilder = callee->fg.builder;
+                auto getPointerOffset = [&](G4_INST *inst, long long offset)
                 {
-                    case G4_mov:
-                        {
-                            return offset;
-                        }
-                    case G4_add:
-                        {
-                            assert(inst->getSrc(1)->isImm());
-                            return offset + inst->getSrc(1)->asImm()->getImm();
-                        }
-                    default:
-                        {
-                            assert(0);
-                            return 0LL;
-                        }
-                }
-            };
+                    auto execSize = static_cast<int>(inst->getExecSize());
+                    assert(execSize == 1);
+                    switch(inst->opcode())
+                    {
+                        case G4_mov:
+                            {
+                                return offset;
+                            }
+                        case G4_add:
+                            {
+                                assert(inst->getSrc(1)->isImm());
+                                return offset + inst->getSrc(1)->asImm()->getImm();
+                            }
+                        default:
+                            {
+                                assert(0);
+                                return 0LL;
+                            }
+                    }
+                };
 
-            auto getRootDeclare = [&](G4_Operand *opnd)
-            {
-                if (!opnd)
-                    return (G4_Declare*) nullptr;
-                G4_Declare* topDcl = opnd->getTopDcl();
-                if (!topDcl)
-                    return (G4_Declare*) nullptr;
-                return topDcl->getRootDeclare();
-
-            };
-
-            auto getBeginIt = [&](std::list<vISA::G4_INST*>::iterator it)
-            {
-                // Trace backward until it reaches an update for SP
-                // This is where we start to push spilled arguments onto stack
-                auto beginIt = it;
-                for (; beginIt != callerInsts.begin(); --beginIt)
+                auto getRootDeclare = [&](G4_Operand *opnd)
                 {
-                    G4_INST *inst = *beginIt;
+                    if (!opnd)
+                        return (G4_Declare*) nullptr;
+                    G4_Declare* topDcl = opnd->getTopDcl();
+                    if (!topDcl)
+                        return (G4_Declare*) nullptr;
+                    return topDcl->getRootDeclare();
+
+                };
+
+                auto getBeginIt = [&](std::list<vISA::G4_INST*>::iterator it)
+                {
+                    // Trace backward until it reaches an update for SP
+                    // This is where we start to push spilled arguments onto stack
+                    auto beginIt = it;
+                    for (; beginIt != callerInsts.begin(); --beginIt)
+                    {
+                        G4_INST *inst = *beginIt;
+                        for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                        {
+                            G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
+                            if (!rootDcl) continue;
+                            G4_Operand *dst = inst->getDst();
+                            if (rootDcl == callerBuilder->getFE_SP())
+                            {
+                                // the dst is updating SP
+                                if (dst->getTopDcl() == callerBuilder->getFE_SP())
+                                {
+                                    auto prevIt = beginIt;
+                                    prevIt --;
+                                    G4_INST *prevInst = *prevIt;
+                                    // It reaches the begining of function where it pushes a new frame.
+                                    // It is not where we are looking for.
+                                    if (prevInst->getDst()->getTopDcl() == callerBuilder->getFE_FP())
+                                    {
+                                        return it;
+                                    }
+                                    else
+                                    {
+                                        return beginIt;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return it;
+                };
+
+                // A list of store in order to perform store-to-load forwarding
+                std::list<std::list<vISA::G4_INST*>::iterator> storeList;
+
+                auto beginIt = getBeginIt(it);
+                bool noArgOnStack = (beginIt == it);
+                for (auto callerIt = beginIt; callerIt != it; callerIt ++)
+                {
+                    G4_INST *inst = *callerIt;
                     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
                     {
                         G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
@@ -864,124 +910,68 @@ void CISA_IR_Builder::LinkTimeOptimization(
                         G4_Operand *dst = inst->getDst();
                         if (rootDcl == callerBuilder->getFE_SP())
                         {
-                            // the dst is updating SP
-                            if (dst->getTopDcl() == callerBuilder->getFE_SP())
-                            {
-                                auto prevIt = beginIt;
-                                prevIt --;
-                                G4_INST *prevInst = *prevIt;
-                                // It reaches the begining of function where it pushes a new frame.
-                                // It is not where we are looking for.
-                                if (prevInst->getDst()->getTopDcl() == callerBuilder->getFE_FP())
-                                {
-                                    return it;
-                                }
-                                else
-                                {
-                                    return beginIt;
-                                }
-                            }
-                        }
-                    }
-                }
-                return it;
-            };
-
-            // A list of store in order to perform store-to-load forwarding
-            std::list<std::list<vISA::G4_INST*>::iterator> storeList;
-
-            auto beginIt = getBeginIt(it);
-            bool noArgOnStack = (beginIt == it);
-            for (auto callerIt = beginIt; callerIt != it; callerIt ++)
-            {
-                G4_INST *inst = *callerIt;
-                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
-                {
-                    G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
-                    if (!rootDcl) continue;
-                    G4_Operand *dst = inst->getDst();
-                    if (rootDcl == callerBuilder->getFE_SP())
-                    {
-                        stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
-                        defInst[dst->getTopDcl()] = callerIt;
-                        // beginIt is the update of SP before pushing arguments onto stack
-                        // We do not remove it immediately since we don't know if all S2L can be perform at this stage
-                        std::string prefix = (removeStackFrame && callerIt != beginIt) ? "removeFrame " : "";
-                        DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
-                        DEBUG_UTIL(inst->dump());
-                        if (removeStackFrame && callerIt != beginIt)
-                        {
-                            callerInsts.erase(callerIt);
-                        }
-                    }
-                    else if (stackPointers.find(rootDcl) != stackPointers.end())
-                    {
-                        long long offset = stackPointers[rootDcl];
-                        if (inst->opcode() == G4_mov ||
-                            inst->opcode() == G4_add)
-                        {
-                            auto execSize = static_cast<int>(inst->getExecSize());
-                            if (execSize != 1)
-                            {
-                                // Currently only support scalar type of operations
-                                DEBUG_PRINT("skip nonaddress calc\n");
-                                DEBUG_UTIL(inst->dump());
-                                continue;
-                            }
-                            stackPointers[dst->getTopDcl()] = getPointerOffset(inst, offset);
+                            stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
                             defInst[dst->getTopDcl()] = callerIt;
-                            DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
+                            // beginIt is the update of SP before pushing arguments onto stack
+                            // We do not remove it immediately since we don't know if all S2L can be perform at this stage
+                            std::string prefix = (removeStackFrame && callerIt != beginIt) ? "removeFrame " : "";
+                            DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
                             DEBUG_UTIL(inst->dump());
+                            if (removeStackFrame && callerIt != beginIt)
+                            {
+                                callerInsts.erase(callerIt);
+                            }
                         }
-                        else if (inst->opcode() == G4_sends ||
-                                inst->opcode() == G4_send)
+                        else if (stackPointers.find(rootDcl) != stackPointers.end())
                         {
-                            assert(i == 0);
-                            // Start adding argument stores to the list
-                            storeList.push_back(callerIt);
-                            DEBUG_PRINT("[ ]");
-                            DEBUG_UTIL(inst->dump());
-                        }
-                        else
-                        {
-                            assert(0 && "not implemented");
+                            long long offset = stackPointers[rootDcl];
+                            if (inst->opcode() == G4_mov ||
+                                inst->opcode() == G4_add)
+                            {
+                                auto execSize = static_cast<int>(inst->getExecSize());
+                                if (execSize != 1)
+                                {
+                                    // Currently only support scalar type of operations
+                                    DEBUG_PRINT("skip nonaddress calc\n");
+                                    DEBUG_UTIL(inst->dump());
+                                    continue;
+                                }
+                                stackPointers[dst->getTopDcl()] = getPointerOffset(inst, offset);
+                                defInst[dst->getTopDcl()] = callerIt;
+                                DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
+                                DEBUG_UTIL(inst->dump());
+                            }
+                            else if (inst->opcode() == G4_sends ||
+                                    inst->opcode() == G4_send)
+                            {
+                                assert(i == 0);
+                                // Start adding argument stores to the list
+                                storeList.push_back(callerIt);
+                                DEBUG_PRINT("[ ]");
+                                DEBUG_UTIL(inst->dump());
+                            }
+                            else
+                            {
+                                assert(0 && "not implemented");
+                            }
                         }
                     }
                 }
-            }
-            // passing SP offset from caller to callee
-            stackPointers[calleeBuilder->getFE_SP()] = stackPointers[callerBuilder->getFE_SP()];
-            stackPointers[calleeBuilder->getFE_FP()] = stackPointers[callerBuilder->getFE_FP()];
+                // passing SP offset from caller to callee
+                stackPointers[calleeBuilder->getFE_SP()] = stackPointers[callerBuilder->getFE_SP()];
+                stackPointers[calleeBuilder->getFE_FP()] = stackPointers[callerBuilder->getFE_FP()];
 
-            for (auto calleeIt = calleeInsts.begin(); calleeIt != calleeInsts.end(); calleeIt++)
-            {
-                G4_INST *inst = *calleeIt;
-                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                for (auto calleeIt = calleeInsts.begin(); calleeIt != calleeInsts.end(); calleeIt++)
                 {
-                    G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
-                    if (!rootDcl) continue;
-                    G4_Operand *dst = inst->getDst();
-                    if (rootDcl == calleeBuilder->getFE_SP())
+                    G4_INST *inst = *calleeIt;
+                    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
                     {
-                        stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
-                        defInst[dst->getTopDcl()] = calleeIt;
-                        std::string prefix = removeStackFrame ? "removeFrame " : "";
-                        DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
-                        DEBUG_UTIL(inst->dump());
-                        if (removeStackFrame)
+                        G4_Declare* rootDcl = getRootDeclare(inst->getSrc(i));
+                        if (!rootDcl) continue;
+                        G4_Operand *dst = inst->getDst();
+                        if (rootDcl == calleeBuilder->getFE_SP())
                         {
-                            calleeInsts.erase(calleeIt);
-                            break;
-                        }
-                    }
-                    else if (stackPointers.find(rootDcl) != stackPointers.end())
-                    {
-                        long long offset = stackPointers[rootDcl];
-                        if (inst->opcode() == G4_mov)
-                        {
-                            auto execSize = static_cast<int>(inst->getExecSize());
-                            assert(execSize == 1);
-                            stackPointers[dst->getTopDcl()] = getPointerOffset(inst, offset);
+                            stackPointers[dst->getTopDcl()] = getPointerOffset(inst, stackPointers[rootDcl]);
                             defInst[dst->getTopDcl()] = calleeIt;
                             std::string prefix = removeStackFrame ? "removeFrame " : "";
                             DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
@@ -992,164 +982,189 @@ void CISA_IR_Builder::LinkTimeOptimization(
                                 break;
                             }
                         }
-                        else if (inst->opcode() == G4_sends ||
-                                inst->opcode() == G4_send)
+                        else if (stackPointers.find(rootDcl) != stackPointers.end())
                         {
-                            if (storeList.empty())
+                            long long offset = stackPointers[rootDcl];
+                            if (inst->opcode() == G4_mov)
                             {
-                                // store prevFP to the callee's frame
-                                if (stackPointers[callerBuilder->getFE_SP()] ==
-                                    stackPointers[getRootDeclare(inst->getSrc(0))])
+                                auto execSize = static_cast<int>(inst->getExecSize());
+                                assert(execSize == 1);
+                                stackPointers[dst->getTopDcl()] = getPointerOffset(inst, offset);
+                                defInst[dst->getTopDcl()] = calleeIt;
+                                std::string prefix = removeStackFrame ? "removeFrame " : "";
+                                DEBUG_PRINT(prefix << "(" << stackPointers[dst->getTopDcl()] << ") ");
+                                DEBUG_UTIL(inst->dump());
+                                if (removeStackFrame)
                                 {
-                                    DEBUG_PRINT("remove prevFP on callee's frame:\n");
-                                    DEBUG_UTIL(inst->dump());
                                     calleeInsts.erase(calleeIt);
                                     break;
                                 }
-                                DEBUG_PRINT("skip for now (private variable on the callee's frame):\n");
-                                DEBUG_UTIL(inst->dump());
-                                assert(0);
                             }
-                            auto storeIt = storeList.front();
-                            G4_INST *storeInst = *storeIt;
-                            G4_INST  *loadInst = inst;
-                            storeList.pop_front();
-                            DEBUG_PRINT("store-to-load forwarding:\n");
-                            DEBUG_PRINT("\tstore:\t");
-                            DEBUG_UTIL(storeInst->dump());
-                            DEBUG_PRINT("\tload :\t");
-                            DEBUG_UTIL(loadInst->dump());
-                            assert(stackPointers[getRootDeclare(storeInst->getSrc(0))] ==
-                                   stackPointers[getRootDeclare( loadInst->getSrc(0))] &&
-                                   "Store and load have different SP offset");
-                            // promote the load into mov
-                            inst->setOpcode(G4_mov);
-                            loadInst->setSrc(storeInst->getSrc(1), 0);
-                            DEBUG_PRINT("\tforwarded:");
-                            DEBUG_UTIL(inst->dump());
-                            // erase the store
-                            callerInsts.erase(storeIt);
-                        }
-                        else
-                        {
-                            assert(0 && "not implemented");
-                        }
-                    }
-                }
-            }
-
-            // All args has been removed on the stack
-            // Remove SP updating instruction
-            if (storeList.empty() && !noArgOnStack)
-            {
-                DEBUG_PRINT("removed:");
-                DEBUG_UTIL((*defInst[callerBuilder->getFE_SP()])->dump());
-                callerInsts.erase(defInst[callerBuilder->getFE_SP()]);
-            }
-
-        }
-
-        if (inlining)
-        {
-            auto& builder = caller->fg.builder;
-            std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
-            G4_Label *raLabel = builder->createLabel(funcName + "_ret" + std::to_string(raUID++), LABEL_BLOCK);
-            G4_INST* ra = caller->fg.createNewLabelInst(raLabel);
-            // We don't need calleeLabel (first instruction) anymore after inlining
-            calleeInsts.pop_front();
-            std::map<G4_Declare*, G4_Declare*> newDclMap;
-            for (G4_INST* fret : calleeInsts)
-            {
-                G4_INST* inst = fret->cloneInst();
-                auto cloneDcl = [&](G4_Operand* opd)
-                {
-                    if (opd)
-                    {
-                        G4_Declare* topDcl = opd->getTopDcl();
-                        G4_RegVar* var =
-                            opd->isAddrExp() ?
-                            opd->asAddrExp()->getRegVar() :
-                            opd->getBase() && opd->getBase()->isRegVar()?
-                                opd->getBase()->asRegVar() :
-                                nullptr;
-                        if (!var)
-                            return;
-                        G4_Declare* dcl = var->getDeclare();
-                        if (topDcl && topDcl == callee->fg.builder->getStackCallArg())
-                        {
-                            G4_Declare* newDcl = caller->fg.builder->cloneDeclare(newDclMap, dcl);
-                            opd->setTopDcl(caller->fg.builder->getStackCallArg());
-                            opd->setBase(newDcl->getRegVar());
-                            newDcl->setAliasDeclare(caller->fg.builder->getStackCallArg(), newDcl->getAliasOffset());
-                        }
-                        else if (topDcl && topDcl == callee->fg.builder->getStackCallRet())
-                        {
-                            G4_Declare* newDcl = caller->fg.builder->cloneDeclare(newDclMap, dcl);
-                            opd->setTopDcl(caller->fg.builder->getStackCallRet());
-                            opd->setBase(newDcl->getRegVar());
-                            newDcl->setAliasDeclare(caller->fg.builder->getStackCallRet(), newDcl->getAliasOffset());
-                        }
-                        else
-                        {
-                            G4_Declare* newDcl = caller->fg.builder->cloneDeclare(newDclMap, dcl);
-                            if (opd->isAddrExp())
+                            else if (inst->opcode() == G4_sends ||
+                                    inst->opcode() == G4_send)
                             {
-                                assert(topDcl == nullptr);
-                                opd->asAddrExp()->setRegVar(newDcl->getRegVar());
+                                if (storeList.empty())
+                                {
+                                    // store prevFP to the callee's frame
+                                    if (stackPointers[callerBuilder->getFE_SP()] ==
+                                        stackPointers[getRootDeclare(inst->getSrc(0))])
+                                    {
+                                        DEBUG_PRINT("remove prevFP on callee's frame:\n");
+                                        DEBUG_UTIL(inst->dump());
+                                        calleeInsts.erase(calleeIt);
+                                        break;
+                                    }
+                                    DEBUG_PRINT("skip for now (private variable on the callee's frame):\n");
+                                    DEBUG_UTIL(inst->dump());
+                                    assert(0);
+                                }
+                                auto storeIt = storeList.front();
+                                G4_INST *storeInst = *storeIt;
+                                G4_INST  *loadInst = inst;
+                                storeList.pop_front();
+                                DEBUG_PRINT("store-to-load forwarding:\n");
+                                DEBUG_PRINT("\tstore:\t");
+                                DEBUG_UTIL(storeInst->dump());
+                                DEBUG_PRINT("\tload :\t");
+                                DEBUG_UTIL(loadInst->dump());
+                                assert(stackPointers[getRootDeclare(storeInst->getSrc(0))] ==
+                                       stackPointers[getRootDeclare( loadInst->getSrc(0))] &&
+                                       "Store and load have different SP offset");
+                                // promote the load into mov
+                                inst->setOpcode(G4_mov);
+                                loadInst->setSrc(storeInst->getSrc(1), 0);
+                                DEBUG_PRINT("\tforwarded:");
+                                DEBUG_UTIL(inst->dump());
+                                // erase the store
+                                callerInsts.erase(storeIt);
                             }
                             else
                             {
-                                opd->setTopDcl(newDcl->getAliasDeclare() ? newDcl->getAliasDeclare() : newDcl);
-                                opd->setBase(newDcl->getRegVar());
+                                assert(0 && "not implemented");
                             }
                         }
                     }
-                };
-                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
-                {
-                    cloneDcl(inst->getSrc(i));
                 }
-                cloneDcl(inst->getDst());
-                // add predicate into declaration list
-                if (G4_VarBase* flag = inst->getCondModBase())
+
+                // All args has been removed on the stack
+                // Remove SP updating instruction
+                if (storeList.empty() && !noArgOnStack)
                 {
-                    caller->Declares.push_back(flag->asRegVar()->getDeclare());
+                    DEBUG_PRINT("removed:");
+                    DEBUG_UTIL((*defInst[callerBuilder->getFE_SP()])->dump());
+                    callerInsts.erase(defInst[callerBuilder->getFE_SP()]);
                 }
-                callerInsts.insert(it, inst);
-                if (inst->opcode() != G4_pseudo_fret)
+
+            }
+
+            if (inlining)
+            {
+                auto& builder = caller->fg.builder;
+                std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
+                G4_Label *raLabel = builder->createLabel(funcName + "_ret" + std::to_string(raUID++), LABEL_BLOCK);
+                G4_INST* ra = caller->fg.createNewLabelInst(raLabel);
+                // We don't need calleeLabel (first instruction) anymore after inlining
+                calleeInsts.pop_front();
+                std::map<G4_Declare*, G4_Declare*> newDclMap;
+                for (G4_INST* fret : calleeInsts)
+                {
+                    G4_INST* inst = fret->cloneInst();
+                    auto cloneDcl = [&](G4_Operand* opd)
+                    {
+                        if (opd)
+                        {
+                            G4_Declare* topDcl = opd->getTopDcl();
+                            G4_RegVar* var =
+                                opd->isAddrExp() ?
+                                opd->asAddrExp()->getRegVar() :
+                                opd->getBase() && opd->getBase()->isRegVar()?
+                                    opd->getBase()->asRegVar() :
+                                    nullptr;
+                            if (!var)
+                                return;
+                            G4_Declare* dcl = var->getDeclare();
+                            if (topDcl && topDcl == callee->fg.builder->getStackCallArg())
+                            {
+                                G4_Declare* newDcl = caller->fg.builder->cloneDeclare(newDclMap, dcl);
+                                opd->setTopDcl(caller->fg.builder->getStackCallArg());
+                                opd->setBase(newDcl->getRegVar());
+                                newDcl->setAliasDeclare(caller->fg.builder->getStackCallArg(), newDcl->getAliasOffset());
+                            }
+                            else if (topDcl && topDcl == callee->fg.builder->getStackCallRet())
+                            {
+                                G4_Declare* newDcl = caller->fg.builder->cloneDeclare(newDclMap, dcl);
+                                opd->setTopDcl(caller->fg.builder->getStackCallRet());
+                                opd->setBase(newDcl->getRegVar());
+                                newDcl->setAliasDeclare(caller->fg.builder->getStackCallRet(), newDcl->getAliasOffset());
+                            }
+                            else if (topDcl && (topDcl == replacedArgDcl || topDcl == replacedRetDcl))
+                            {
+                                G4_Declare* newDcl = caller->fg.builder->createTempVar(topDcl->getTotalElems(), topDcl->getElemType(), Any, topDcl->getName());
+                                newDcl->setAliasDeclare(topDcl, 0);
+                                caller->Declares.push_back(newDcl);
+                            }
+                            else
+                            {
+                                G4_Declare* newDcl = caller->fg.builder->cloneDeclare(newDclMap, dcl);
+                                if (opd->isAddrExp())
+                                {
+                                    assert(topDcl == nullptr);
+                                    opd->asAddrExp()->setRegVar(newDcl->getRegVar());
+                                }
+                                else
+                                {
+                                    opd->setTopDcl(newDcl->getAliasDeclare() ? newDcl->getAliasDeclare() : newDcl);
+                                    opd->setBase(newDcl->getRegVar());
+                                }
+                            }
+                        }
+                    };
+                    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                    {
+                        cloneDcl(inst->getSrc(i));
+                    }
+                    cloneDcl(inst->getDst());
+                    // add predicate into declaration list
+                    if (G4_VarBase* flag = inst->getCondModBase())
+                    {
+                        caller->Declares.push_back(flag->asRegVar()->getDeclare());
+                    }
+                    callerInsts.insert(it, inst);
+                    if (inst->opcode() != G4_pseudo_fret)
+                        continue;
+                    // Change inst to goto
+                    inst->setOpcode(G4_goto);
+                    inst->asCFInst()->setUip(raLabel);
+                }
+                // insert return label for goto
+                callerInsts.insert(it, ra);
+                // remove the call
+                callerInsts.erase(it);
+            }
+            else
+            {
+                // We only have to copy callee's instructions once for subrountine calls
+                if (visited.find(callee) != visited.end())
+                {
                     continue;
-                // Change inst to goto
-                inst->setOpcode(G4_goto);
-                inst->asCFInst()->setUip(raLabel);
-            }
-            // insert return label for goto
-            callerInsts.insert(it, ra);
-            // remove the call
-            callerInsts.erase(it);
-        }
-        else
-        {
-            // We only have to copy callee's instructions once for subrountine calls
-            if (visited.find(callee) != visited.end())
-            {
-                continue;
-            }
-            visited.insert(callee);
-            for (G4_INST* fret : calleeInsts)
-            {
-                if (fret->opcode() != G4_pseudo_fret)
-                    continue;
-                // Change fret to ret
-                fret->setOpcode(G4_return);
-                rets[calleeLabel].push_back(fret);
-            }
-            callerInsts.insert(callerInsts.end(), calleeInsts.begin(), calleeInsts.end());
-            // Append declarations from callee to caller
-            auto callerDclCount = caller->Declares.size();
-            for (auto curDcl : callee->Declares)
-            {
-                curDcl->setDeclId(curDcl->getDeclId() + callerDclCount);
-                caller->Declares.push_back(curDcl);
+                }
+                visited.insert(callee);
+                for (G4_INST* fret : calleeInsts)
+                {
+                    if (fret->opcode() != G4_pseudo_fret)
+                        continue;
+                    // Change fret to ret
+                    fret->setOpcode(G4_return);
+                    rets[calleeLabel].push_back(fret);
+                }
+                callerInsts.insert(callerInsts.end(), calleeInsts.begin(), calleeInsts.end());
+                // Append declarations from callee to caller
+                auto callerDclCount = caller->Declares.size();
+                for (auto curDcl : callee->Declares)
+                {
+                    curDcl->setDeclId(curDcl->getDeclId() + callerDclCount);
+                    caller->Declares.push_back(curDcl);
+                }
             }
         }
     }
