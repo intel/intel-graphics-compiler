@@ -1261,9 +1261,8 @@ void LinearScanRA::setDstReferences(G4_BB* bb, INST_LIST_ITER inst_it, G4_Declar
         lr = CreateLocalLiveRange(dcl);
     }
 
-    if (dcl->isLiveIn() && dcl->isOutput() && !lr->isGRFRegAssigned())
+    if (dcl->isOutput() && !lr->isGRFRegAssigned())
     {
-        lr->setFirstRef(curInst, 0);
         lr->setLastRef(curInst, lastInstLexID * 2 + 1);
         if (!lr->isPushedToIntervalList())
         {
@@ -1364,9 +1363,8 @@ void LinearScanRA::setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcId
         lr = CreateLocalLiveRange(dcl);
     }
 
-    if (dcl->isLiveIn() && dcl->isOutput() && !lr->isGRFRegAssigned())
+    if (dcl->isOutput() && !lr->isGRFRegAssigned())
     {
-        lr->setFirstRef(curInst, 0);
         lr->setLastRef(curInst, lastInstLexID * 2 + 1);
         if (!lr->isPushedToIntervalList())
         {
