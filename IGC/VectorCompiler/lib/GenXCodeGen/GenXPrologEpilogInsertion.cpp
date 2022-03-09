@@ -45,6 +45,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/KernelInfo.h"
+#include "vc/Utils/General/IndexFlattener.h"
 
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
@@ -69,8 +70,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 
 #include <unordered_set>
-
-#include "GenXLiveness.h"
 
 using namespace llvm;
 using namespace genx;
@@ -953,8 +952,7 @@ Value *GenXPrologEpilogInsertion::readAggrFromReg(Type &Ty,
       Read = IRB.CreateBitCast(Read, EltTy);
     OffsetInAggr += EltTySize.inBytes();
 
-    SmallVector<unsigned, 4> Indices;
-    IndexFlattener::unflatten(&Ty, i, &Indices);
+    auto Indices = IndexFlattener::unflatten(&Ty, i);
 
     AggrRes = IRB.CreateInsertValue(AggrRes, Read, Indices);
   }
@@ -1039,8 +1037,7 @@ void GenXPrologEpilogInsertion::passAggrInReg(Value &Op, unsigned OffsetInReg,
   unsigned AggrNumElts = IndexFlattener::getNumElements(Op.getType());
   unsigned OffsetInAggr = 0;
   for (unsigned i = 0; i < AggrNumElts; ++i) {
-    SmallVector<unsigned, 4> Indices;
-    IndexFlattener::unflatten(Op.getType(), i, &Indices);
+    auto Indices = IndexFlattener::unflatten(Op.getType(), i);
 
     Value *Elt = IRB.CreateExtractValue(&Op, Indices);
     IGC_ASSERT_MESSAGE(!Elt->getType()->isAggregateType(),

@@ -162,16 +162,18 @@ SPDX-License-Identifier: MIT
 #include "FunctionGroup.h"
 #include "GenXSubtarget.h"
 #include "IgnoreRAUWValueMap.h"
+#include "Probe/Assertion.h"
+#include "vc/Utils/General/IndexFlattener.h"
+
+#include "llvm/ADT/Hashing.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Value.h"
 #include "llvm/IR/ValueHandle.h"
-#include "llvm/ADT/Hashing.h"
-#include "llvm/ADT/MapVector.h"
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
-#include "Probe/Assertion.h"
 
 namespace llvm {
 
@@ -198,43 +200,6 @@ namespace genx {
 class Bale;
 
 /***********************************************************************
- * IndexFlattener : a class containing some (static) utility functions to
- * convert between indices of aggregate (as found in an extractelement
- * instruction) and a flattened index, in which an aggregate containing further
- * aggregates is flattened as if it is a single struct containing just the
- * non-aggregate elements.
- *
- * SimpleValue uses this to encode and decode its flattened index.
- * Liveness and coalescing use flattenArg and getNumArgElements to calculate
- * live ranges for function args at the call sites.
- */
-struct IndexFlattener {
-  // flatten : convert aggregate indices into a flattened index
-  static unsigned flatten(Type *AggrTy, ArrayRef<unsigned> Indices);
-  // getNumElements : get the number of non-aggregate elements in the flattened
-  //    aggregate. Returns 1 if it is not an aggregate type, but 0 for void
-  //    type.
-  static unsigned getNumElements(Type *Ty);
-  // unflatten : convert a flattened index back into normal aggregate indices
-  static unsigned unflatten(Type *AggrTy, unsigned Unflattened,
-                            SmallVectorImpl<unsigned> *Indices);
-  // getElementType : get type of aggregate element from flattened index
-  static Type *getElementType(Type *Ty, unsigned FlattenedIndex);
-  // flattenArg : flatten an arg in a function or call, i.e. calculate the
-  //    total number of flattened indices used up by previous args. If all
-  //    previous args are not aggregate type, then this just returns the arg
-  //    index
-  static unsigned flattenArg(FunctionType *FT, unsigned ArgIndex);
-  // getNumArgElements : get the number of non-aggregate elements in all args
-  //    of the function
-  static unsigned getNumArgElements(FunctionType *FT) {
-    return flattenArg(FT, FT->getNumParams());
-  }
-};
-
-class AssertingSV;
-
-/***********************************************************************
  * SimpleValue : a non-aggregate value, possibly inside an aggregate
  * See comment at the top of the file.
  */
@@ -242,21 +207,19 @@ class SimpleValue {
   Value *V;
   unsigned Index; // flattened aggregate index
 public:
-  SimpleValue() : V(nullptr), Index(0) {}
-  // Constructor from a non-aggregate value
-  SimpleValue(Value *V) : V(V), Index(0) {}
   // Constructor from an aggregate value and an already flattened index
-  SimpleValue(Value *V, unsigned Index) : V(V), Index(Index) {}
+  SimpleValue(Value *V = nullptr, unsigned Index = 0) : V(V), Index(Index) {}
   // Constructor from an aggregate value and unflattened indices (as found in
   // extractelement)
   SimpleValue(Value *V, ArrayRef<unsigned> Indices)
       : V(V), Index(IndexFlattener::flatten(V->getType(), Indices)) {}
-  SimpleValue(const AssertingSV &);
   // Accessors
   Value *getValue() const { return V; }
   unsigned getIndex() const { return Index; }
   // getType : get the type of the (element) value
-  Type *getType() const;
+  Type *getType() const {
+    return IndexFlattener::getElementType(V->getType(), Index);
+  }
   // Comparisons
   bool operator==(SimpleValue Rhs) const { return V == Rhs.V && Index == Rhs.Index; }
   bool operator!=(SimpleValue Rhs) const { return !(*this == Rhs); }
@@ -267,24 +230,37 @@ public:
   }
   // Debug dump/print
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-  void dump() const;
+  void dump() const {
+    print(errs());
+    errs() << '\n';
+  }
 #endif
-  void print(raw_ostream &OS) const;
-  void printName(raw_ostream &OS) const;
+  void print(raw_ostream &OS) const {
+    OS << V->getName();
+    if (Index || V->getType()->isAggregateType())
+      OS << "#" << Index;
+  }
+  void printName(raw_ostream &OS) const {
+    OS << V->getName();
+    if (Index || V->getType()->isAggregateType())
+      OS << "#" << Index;
+  }
 };
 
-inline raw_ostream &operator<<(raw_ostream &OS, SimpleValue V) {
-  V.print(OS);
+inline raw_ostream &operator<<(raw_ostream &OS, SimpleValue SV) {
+  SV.print(OS);
   return OS;
 }
 
 // AssertingSV : like a SimpleValue, but contains an AssertingVH
 class AssertingSV {
   AssertingVH<Value> V;
-  unsigned Index = 0;
+  unsigned Index;
+
 public:
   AssertingSV(SimpleValue SV) : V(SV.getValue()), Index(SV.getIndex()) {}
   SimpleValue get() const { return SimpleValue(V, Index); }
+  operator SimpleValue() const { return get(); }
   Value *getValue() const { return V; }
   unsigned getIndex() const { return Index; }
   Type *getType() const { return get().getType(); }
@@ -294,6 +270,11 @@ public:
   void print(raw_ostream &OS) const { get().print(OS); }
   void printName(raw_ostream &OS) const { get().printName(OS); }
 };
+
+inline raw_ostream &operator<<(raw_ostream &OS, AssertingSV SV) {
+  SV.print(OS);
+  return OS;
+}
 
 // Segment : a single range of instruction numbers in which a value is
 // live

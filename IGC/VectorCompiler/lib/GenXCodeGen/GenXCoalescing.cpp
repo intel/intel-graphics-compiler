@@ -1772,8 +1772,7 @@ Instruction *GenXCoalescing::insertCopy(SimpleValue Input, LiveRange *LR,
     // extract is created coalesced by adding it to the live
     // range of the struct element. An extractvalue is always
     // coalesced and never generates code.
-    SmallVector<unsigned, 4> Indices;
-    IndexFlattener::unflatten(ST, Input.getIndex(), &Indices);
+    auto Indices = IndexFlattener::unflatten(ST, Input.getIndex());
     Instruction *Extract = ExtractValueInst::Create(Input.getValue(), Indices,
         "twoaddr.extract", InsertBefore);
     auto SourceLR = Liveness->getLiveRange(Input);
@@ -1808,8 +1807,7 @@ Instruction *GenXCoalescing::insertIntoStruct(Type *Ty,
   if (!ST)
     return NewVal;
   // We're copying into struct element. We need to add an insertvalue.
-  SmallVector<unsigned, 4> Indices;
-  IndexFlattener::unflatten(ST, FlattenedIndex, &Indices);
+  auto Indices = IndexFlattener::unflatten(ST, FlattenedIndex);
   return InsertValueInst::Create(OldStruct, NewVal,
       Indices, "coalescefail.insert", InsertBefore);
 }
