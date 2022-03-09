@@ -2025,12 +2025,13 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p1f64_i32_i32_f64, )( gl
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMinEXT, _p3f64_i32_i32_f64, )( local double* Pointer, int Scope, int Semantics, double Value)
 {
     double orig;
-    FENCE_PRE_OP(Scope, Semantics, false)
-    LOCAL_SPINLOCK_START()
-    orig = *Pointer;
-    *Pointer = (orig < Value) ? orig : Value;
-    LOCAL_SPINLOCK_END()
-    FENCE_POST_OP(Scope, Semantics, false)
+    double desired;
+    do {
+        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p3i64_i32_i32, )((__local long*)Pointer, Scope, Semantics));
+        desired = ( orig < Value ) ? orig : Value;
+    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )(
+                                (__local long*)Pointer, Scope, Semantics, Semantics,
+                                as_long(desired), as_long(orig)));
     return orig;
 }
 
@@ -2162,12 +2163,13 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p1f64_i32_i32_f64, )( gl
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p3f64_i32_i32_f64, )( local double* Pointer, int Scope, int Semantics, double Value)
 {
     double orig;
-    FENCE_PRE_OP(Scope, Semantics, false)
-    LOCAL_SPINLOCK_START()
-    orig = *Pointer;
-    *Pointer = (orig > Value) ? orig : Value;
-    LOCAL_SPINLOCK_END()
-    FENCE_POST_OP(Scope, Semantics, false)
+    double desired;
+    do {
+        orig = as_double(SPIRV_BUILTIN(AtomicLoad, _p3i64_i32_i32, )((__local long*)Pointer, Scope, Semantics));
+        desired = ( orig > Value ) ? orig : Value;
+    } while(as_long(orig) != SPIRV_BUILTIN(AtomicCompareExchange, _p3i64_i32_i32_i32_i64_i64, )(
+                                (__local long*)Pointer, Scope, Semantics, Semantics,
+                                as_long(desired), as_long(orig)));
     return orig;
 }
 
