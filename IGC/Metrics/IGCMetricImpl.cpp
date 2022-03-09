@@ -15,6 +15,9 @@ SPDX-License-Identifier: MIT
 #include <iomanip>
 #include <common/igc_regkeys.hpp>
 #include <Metrics/IGCMetricImpl.h>
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+#include <Metrics/IGCMetricsVer.h>
+#endif
 
 #include <Probe/Assertion.h>
 #include <Compiler/CISACodeGen/ShaderCodeGen.hpp>
@@ -38,6 +41,7 @@ namespace IGCMetrics
         this->isEnabled = false;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         this->countInstInFunc = 0;
+        this->pMetricData = nullptr;
 #endif
     }
     IGCMetricImpl::~IGCMetricImpl()
@@ -46,6 +50,11 @@ namespace IGCMetrics
         this->map_EmuCalls.clear();
         this->map_Func.clear();
         this->map_Loops.clear();
+        if (this->pMetricData != nullptr)
+        {
+            free(this->pMetricData);
+            this->pMetricData = nullptr;
+        }
 #endif
     }
     bool IGCMetricImpl::Enable()
@@ -73,10 +82,52 @@ namespace IGCMetrics
 #endif
     }
 
+    size_t IGCMetricImpl::getMetricDataSize()
+    {
+        if (!Enable()) return 0;
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+        // pMetricData = [VerInfo|CollectedMetricsData....]
+        return sizeof(int) + oclProgram.ByteSizeLong();
+#else
+        return 0;
+#endif
+    }
+
+    const void* const IGCMetricImpl::getMetricData()
+    {
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+        return pMetricData;
+#else
+        return nullptr;
+#endif
+    }
+
     void IGCMetricImpl::OutputMetrics()
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
+
+        if (pMetricData == nullptr)
+        {
+            // pMetricData = [VerInfo|CollectedMetricsData....]
+            pMetricData = malloc(getMetricDataSize());
+
+            // Encode the IGCMetrics version.
+            // Currently it's count of commits made for
+            // IGC/Metrics/proto_schema folder.
+            // Define IGCMetricsVer generated during cmake call.
+            // If there was a problem to generate the IGCMetricsVer value,
+            // then it will be set to default "0"
+            ((int*)pMetricData)[0] = IGCMetricsVer;
+
+            if (oclProgram.ByteSizeLong() > 0)
+            {
+                // Copy IGC metrics data into stream
+                void* pMetricDataInput = (void*)((char*)pMetricData + sizeof(int));
+                oclProgram.SerializeToArray(
+                    pMetricDataInput, oclProgram.ByteSizeLong());
+            }
+        }
 
         if (IGC_GET_FLAG_VALUE(MetricsDumpEnable) > 0)
         {
@@ -91,7 +142,8 @@ namespace IGCMetrics
                 if (IGC_GET_FLAG_VALUE(MetricsDumpEnable) == 1)
                 {
                     // Binary format of protobuf
-                    oclProgram.SerializePartialToOstream(&metric_data);
+                    metric_data.write(
+                        (const char*)pMetricData, getMetricDataSize());
                 }
                 else if (IGC_GET_FLAG_VALUE(MetricsDumpEnable) == 2)
                 {
@@ -104,6 +156,7 @@ namespace IGCMetrics
 
                     std::string json;
                     google::protobuf::util::MessageToJsonString(oclProgram, &json, jsonConfig);
+                    metric_data << "IGCMetricsVer : " << IGCMetricsVer << "\n";
                     metric_data << json;
                 }
 

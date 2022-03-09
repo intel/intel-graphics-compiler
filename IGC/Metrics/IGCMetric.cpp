@@ -36,6 +36,16 @@ namespace IGCMetrics
         get(igcMetric)->Init(Hash, isEnabled);
     }
 
+    size_t IGCMetric::getMetricDataSize()
+    {
+        return get(igcMetric)->getMetricDataSize();
+    }
+
+    const void* const IGCMetric::getMetricData()
+    {
+        return get(igcMetric)->getMetricData();
+    }
+
     void IGCMetric::OutputMetrics()
     {
         get(igcMetric)->OutputMetrics();

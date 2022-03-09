@@ -7,8 +7,10 @@
 #============================ end_copyright_notice =============================
 
 if(IGC_METRICS)
+  find_package(Git REQUIRED)
 
-  set(protobuf_generate_PROTOC_OUT_DIR "${IGC_OPTION__OUTPUT_DIR}/Metrics")
+  set(IGC_METRICS_SOURCE_CODE "${IGC_OPTION__OUTPUT_DIR}/Metrics")
+  set(protobuf_generate_PROTOC_OUT_DIR "${IGC_METRICS_SOURCE_CODE}")
   file(MAKE_DIRECTORY ${protobuf_generate_PROTOC_OUT_DIR})
   set(IGC_METRICS_PROTO_SCHEMA "Metrics/proto_schema")
   # For protobuf compiler setup
@@ -34,6 +36,24 @@ if(IGC_METRICS)
       set_source_files_properties(${IGC_METRICS_SRC} PROPERTIES COMPILE_FLAGS -Wno-error)
     endif()
   endforeach()
+
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD .
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/proto_schema
+    OUTPUT_VARIABLE IGCMetricsVer
+    RESULT_VARIABLE IGCMetricsVer_RetCode
+  )
+
+  if(${IGCMetricsVer_RetCode} EQUAL 0)
+    message(STATUS "IGC\\Metrics - Data layout version ${IGCMetricsVer}")
+  else()
+    set(IGCMetricsVer "0")
+    message(STATUS "IGC\\Metrics - Data layout version not known - set to 0")
+  endif()
+
+  set(IGCMetricsVerFile "${IGC_METRICS_SOURCE_CODE}/IGCMetricsVer.h")
+  file(WRITE ${IGCMetricsVerFile} "#define IGCMetricsVer ${IGCMetricsVer}")
+  list(APPEND IGC_METRICS_HDRS ${IGCMetricsVerFile})
 
   add_compile_definitions(IGC_METRICS__PROTOBUF_ATTACHED)
 else()

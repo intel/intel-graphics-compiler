@@ -40,11 +40,13 @@ namespace IGCMetrics
         bool Enable();
         void Init(ShaderHash* Hash, bool isDebugInfo);
 
+        size_t getMetricDataSize();
+        const void* const getMetricData();
+
         void CollectLoops(llvm::LoopInfo* loopInfo);
         void CollectLoops(llvm::Loop* loop);
 
         void CollectFunctions(llvm::Module* pModule);
-
 
         void StatBeginEmuFunc(llvm::Instruction* instruction);
         void StatEndEmuFunc(llvm::Instruction* emulatedInstruction);

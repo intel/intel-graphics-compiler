@@ -45,6 +45,8 @@ namespace IGCMetrics
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
         IGC_METRICS::Program oclProgram;
         IGCLLVM::Module* pModule;
+        // On end of collecting metrics it will contain binary format of protobuf
+        void* pMetricData;
 
         // Helpers
         // Map user-variables
@@ -92,6 +94,10 @@ namespace IGCMetrics
         IGCMetricImpl();
         ~IGCMetricImpl();
         bool Enable();
+
+        size_t getMetricDataSize();
+        const void* const getMetricData();
+
         void Init(ShaderHash* Hash, bool isDebugInfo);
 
         void CollectLoops(llvm::LoopInfo* loopInfo);
