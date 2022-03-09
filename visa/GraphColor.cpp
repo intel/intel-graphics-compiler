@@ -11074,9 +11074,16 @@ int GlobalRA::coloringRegAlloc()
             //  paramOverflowAreaOffset -> ---------------------
 
             // Since it is difficult to predict amount of space needed to store stack, we
-            // reserve 64k. Reserving PTSS is ideal, but it can lead to OOM on machines
+            // reserve 128k. Reserving max PTSS is ideal, but it can lead to OOM on machines
             // with large number of threads.
-            unsigned int scratchAllocation = 1024 * kernel.getOptions()->getuInt32Option(vISA_ScratchAllocForStackInKB);
+            unsigned int scratchAllocForStackInKB = kernel.getOptions()->getuInt32Option(vISA_ScratchAllocForStackInKB);
+
+            if (builder.getPlatform() == Xe_PVCXT)
+            {
+                scratchAllocForStackInKB = std::min<unsigned int>(scratchAllocForStackInKB, 64);
+            }
+
+            unsigned int scratchAllocation = 1024 * scratchAllocForStackInKB;
             jitInfo->spillMemUsed = scratchAllocation;
             jitInfo->isSpill = true;
 
