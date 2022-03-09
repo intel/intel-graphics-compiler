@@ -2221,27 +2221,27 @@ NullaryInstruction:
     |
     FENCE_GLOBAL_OP
     {
-        ABORT_ON_FAIL(pBuilder->CISA_create_fence_instruction($1, 0x0, CISAlineno));
+        pBuilder->CISA_create_fence_instruction($1, 0x0, CISAlineno);
     }
     |
     FENCE_GLOBAL_OP FENCE_OPTIONS
     {
-        ABORT_ON_FAIL(pBuilder->CISA_create_fence_instruction($1, $2, CISAlineno));
+        pBuilder->CISA_create_fence_instruction($1, $2, CISAlineno);
     }
     |
     FENCE_LOCAL_OP
     {
-        ABORT_ON_FAIL(pBuilder->CISA_create_fence_instruction($1, 0x20, CISAlineno));
+        pBuilder->CISA_create_fence_instruction($1, 0x20, CISAlineno);
     }
     |
     FENCE_LOCAL_OP FENCE_OPTIONS
     {
-        ABORT_ON_FAIL(pBuilder->CISA_create_fence_instruction($1, $2 | 0x20, CISAlineno));
+        pBuilder->CISA_create_fence_instruction($1, $2 | 0x20, CISAlineno);
     }
     |
     FENCE_SW_OP
     {
-        ABORT_ON_FAIL(pBuilder->CISA_create_fence_instruction($1, 0x80, CISAlineno));
+        pBuilder->CISA_create_fence_instruction($1, 0x80, CISAlineno);
     }
 
 OwordModifier: %empty {$$ = false;} | OWORD_MODIFIER;
