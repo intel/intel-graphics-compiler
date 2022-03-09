@@ -98,6 +98,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/JointMatrixFuncsResolutionPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/ResolvePointersComparison.h"
+#include "Compiler/Optimizer/OpenCLPasses/RayTracing/ResolveOCLRaytracingBuiltins.hpp"
+#include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/FixResourcePtr.hpp"
@@ -483,8 +485,11 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new BuiltinCallGraphAnalysis());
 
+    mpm.add(new ResolveOCLRaytracingBuiltins());
+    mpm.add(createRayTracingIntrinsicAnalysisPass());
     // Adding implicit args based on Analysis passes
     mpm.add(new AddImplicitArgs());
+    mpm.add(createRayTracingIntrinsicResolutionPass());
 
     // Resolution passes
     mpm.add(new WIFuncResolution());

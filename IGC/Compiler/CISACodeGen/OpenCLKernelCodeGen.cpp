@@ -1302,6 +1302,12 @@ namespace IGC
             }
         }
         break;
+        case KernelArg::ArgType::RT_STACK_ID:
+        {
+            m_kernelInfo.m_threadPayload.HasRTStackID = true;
+        }
+        break;
+
         case KernelArg::ArgType::R1:
             m_kernelInfo.m_threadPayload.UnusedPerThreadConstantPresent = true;
             break;
@@ -1321,6 +1327,21 @@ namespace IGC
             m_kernelInfo.m_syncBufferAnnotation = std::move(syncBuffer);
         }
         break;
+
+        case KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER:
+        {
+            int argNo = kernelArg->getAssociatedArgNo();
+            SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
+            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+
+            auto rtGlobalBuffer = std::make_unique<iOpenCL::RTGlobalBufferAnnotation>();
+
+            rtGlobalBuffer->ArgumentNumber = argNo;
+            rtGlobalBuffer->PayloadPosition = payloadPosition;
+            rtGlobalBuffer->DataSize = kernelArg->getAllocateSize();
+
+            m_kernelInfo.m_rtGlobalBufferAnnotation = std::move(rtGlobalBuffer);
+        }
 
         case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
         {
@@ -1664,8 +1685,11 @@ namespace IGC
         m_kernelInfo.m_threadPayload.UnusedPerThreadConstantPresent = false;
         m_kernelInfo.m_printfBufferAnnotation = nullptr;
         m_kernelInfo.m_syncBufferAnnotation = nullptr;
+        m_kernelInfo.m_rtGlobalBufferAnnotation = nullptr;
         m_kernelInfo.m_threadPayload.HasStageInGridOrigin = false;
         m_kernelInfo.m_threadPayload.HasStageInGridSize = false;
+        m_kernelInfo.m_threadPayload.HasRTStackID = false;
+
         if (m_enableHWGenerateLID)
         {
             m_kernelInfo.m_threadPayload.generateLocalID = true;
@@ -1771,6 +1795,7 @@ namespace IGC
                             allocSize = PVCLSCEnabled() ? 64 : 32;
                         }
                     }
+
                     offset = iSTD::Align(offset, alignment);
 
                     // Arguments larger than a GRF must be at least GRF-aligned.

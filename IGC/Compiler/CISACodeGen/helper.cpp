@@ -447,6 +447,7 @@ namespace IGC
             {
                 // For bindless pointers
                 if ((inst->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue) ||
+                    (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GlobalRootSignatureValue) ||
                     (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr))
                 {
                     srcPtr = baseValue;
@@ -687,6 +688,22 @@ namespace IGC
         return false;
     }
 
+    bool GetGRFOffsetFromGlobalRootSignatureValue(
+        Value* pointerSrc, unsigned& GRFOffset)
+    {
+        if (auto* inst = dyn_cast<GenIntrinsicInst>(pointerSrc))
+        {
+            if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GlobalRootSignatureValue)
+            {
+                GRFOffset = (unsigned)cast<ConstantInt>(inst->getOperand(0))->getZExtValue();
+                bool isConstant =
+                    cast<ConstantInt>(inst->getOperand(1))->getZExtValue();
+                return isConstant;
+            }
+        }
+        return false;
+    }
+
     bool GetStatelessBufferInfo(Value* pointer, unsigned& bufIdOrGRFOffset,
             BufferType & bufferTy, Value*& bufferSrcPtr, bool& isDirectBuf)
     {
@@ -709,6 +726,14 @@ namespace IGC
             bufferTy = BUFFER_TYPE_UNKNOWN;
             return true;
         }
+        else if (GetGRFOffsetFromGlobalRootSignatureValue(src, bufIdOrGRFOffset))
+        {
+            bufferSrcPtr = src;
+            bufferTy = CONSTANT_BUFFER;
+            isDirectBuf = true;
+            return true;
+        }
+
         return false;
     }
 

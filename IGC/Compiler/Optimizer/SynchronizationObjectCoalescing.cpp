@@ -2095,6 +2095,38 @@ static inline bool IsLscFenceOperation(const Instruction* pInst)
     return false;
 }
 
+static bool IsAsyncRaytracingOperation(const Instruction* pInst)
+{
+    if (auto *GII = dyn_cast<GenIntrinsicInst>(pInst))
+    {
+        switch (GII->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_TraceRayAsync:
+        case GenISAIntrinsic::GenISA_BindlessThreadDispatch:
+            return true;
+        default:
+            break;
+        }
+    }
+
+    return false;
+}
+
+static bool IsSyncRaytracingOperation(const Instruction* pInst)
+{
+    if (auto *GII = dyn_cast<GenIntrinsicInst>(pInst))
+    {
+        switch (GII->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_TraceRaySync:
+            return true;
+        default:
+            break;
+        }
+    }
+
+    return false;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 static inline LSC_SFID GetLscMem(const Instruction* pInst)
@@ -2154,6 +2186,15 @@ InstructionMask SynchronizationObjectCoalescingAnalysis::GetInstructionMask(cons
     else if (IsSharedMemoryWriteOperation(pInst))
     {
         return InstructionMask::SharedMemoryWriteOperation;
+    }
+    else if (IsAsyncRaytracingOperation(pInst))
+    {
+        return AllNoAtomicMask;
+    }
+    else if (IsSyncRaytracingOperation(pInst))
+    {
+        return InstructionMask::BufferReadOperation |
+               InstructionMask::BufferWriteOperation;
     }
 
     return InstructionMask::None;
