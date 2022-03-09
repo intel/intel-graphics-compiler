@@ -1533,9 +1533,9 @@ namespace IGC
 
         template <typename T, typename U>
         T getOptVal(
-            const Interface::Optional<T> &InputVal, U RegkeyVal, U DefaultVal)
+            const Interface::Optional<T> &InputVal, U RegkeyVal, bool IsSet)
         {
-            if (RegkeyVal != DefaultVal)
+            if (IsSet)
                 return RegkeyVal;
             else
                 return InputVal ? *InputVal : RegkeyVal;
@@ -1544,7 +1544,7 @@ namespace IGC
         void setOptions(const IGC::RTCompileOptions& Opts)
         {
 #define GET(Name, RegkeyName) \
-    getOptVal(Opts.Name, IGC_GET_FLAG_VALUE(RegkeyName), IGC_GET_FLAG_DEFAULT_VALUE(RegkeyName))
+    getOptVal(Opts.Name, IGC_GET_FLAG_VALUE(RegkeyName), IGC_IS_FLAG_SET(RegkeyName))
             CompOptions.TileXDim1D = GET(TileXDim1D, RayTracingCustomTileXDim1D);
             CompOptions.TileYDim1D = GET(TileYDim1D, RayTracingCustomTileYDim1D);
             CompOptions.TileXDim2D = GET(TileXDim2D, RayTracingCustomTileXDim2D);

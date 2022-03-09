@@ -744,6 +744,7 @@ static void declareIGCKey(std::string& line, const char* dataType, const char* r
         std::cout << std::endl;
 
         std::cout << "** regkey " << line << std::endl;
+        regKey->Set();
         memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
     }
 }
@@ -813,10 +814,14 @@ bool CheckHashRange(SRegKeyVariableMetaData& varname)
     return false;
 }
 
-static void LoadFromRegKeyOrEnvVarOrOptions(const std::string& options = "", bool* RegFlagNameError = nullptr, std::string registrykeypath = IGC_REGISTRY_KEY)
+static void LoadFromRegKeyOrEnvVarOrOptions(
+    const std::string& options = "",
+    bool* RegFlagNameError = nullptr,
+    const std::string& registrykeypath = IGC_REGISTRY_KEY)
 {
     SRegKeyVariableMetaData* pRegKeyVariable = (SRegKeyVariableMetaData*)&g_RegKeyList;
-    unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
+    constexpr unsigned NUM_REGKEY_ENTRIES =
+        sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
     for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++)
     {
         debugString value = { 0 };
@@ -833,6 +838,7 @@ static void LoadFromRegKeyOrEnvVarOrOptions(const std::string& options = "", boo
         {
             memcpy_s(pRegKeyVariable[i].m_string, sizeof(value), value, sizeof(value));
 
+            pRegKeyVariable[i].Set();
             checkAndSetIfKeyHasNoDefaultValue(&pRegKeyVariable[i]);
         }
 
