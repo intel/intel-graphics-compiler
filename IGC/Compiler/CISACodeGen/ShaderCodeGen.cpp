@@ -658,7 +658,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         }
     }
 
-    if (ctx.m_instrTypes.hasLoop)
+    if (ctx.m_instrTypes.numOfLoop)
     {
         // need to run loop simplify to canonicalize loop and merge latches
         mpm.add(createLoopCanonicalization());
@@ -2037,7 +2037,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         if (IGC_IS_FLAG_ENABLED(SampleMultiversioning) || pContext->m_enableSampleMultiversioning)
         {
-            if (!pContext->m_instrTypes.hasLoop)
+            if (pContext->m_instrTypes.numOfLoop == 0)
                 mpm.add(new SampleMultiversioning(pContext));
         }
 
@@ -2048,7 +2048,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
         {
             // disable loop unroll for excessive large shaders
-            if (pContext->m_instrTypes.hasLoop)
+            if (pContext->m_instrTypes.numOfLoop)
             {
                 mpm.add(createLoopDeadCodeEliminationPass());
                 mpm.add(createLoopCanonicalization());
@@ -2363,7 +2363,7 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(new InlineUnmaskedFunctionsPass());
         }
 
-        if (pContext->m_instrTypes.hasLoop)
+        if (pContext->m_instrTypes.numOfLoop)
         {
             mpm.add(createDeadPHINodeEliminationPass());
         }

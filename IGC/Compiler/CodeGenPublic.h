@@ -274,13 +274,11 @@ namespace IGC
     struct SInstrTypes
     {
         bool CorrelatedValuePropagationEnable;
-        bool hasLoop;
         bool hasMultipleBB;
         bool hasCmp;
         bool hasSwitch;
         bool hasPhi;
         bool hasLoadStore;
-        bool hasCall;
         bool hasIndirectCall;
         bool hasInlineAsm;
         bool hasInlineAsmPointerAccess;
@@ -303,7 +301,6 @@ namespace IGC
         bool hasGenericAddressSpacePointers;
         bool hasDebugInfo;        //<! true only if module contains debug info !llvm.dbg.cu
         bool hasAtomics;
-        bool hasBarrier;        //<! true if module has thread group barrier
         bool hasDiscard;
         bool hasTypedRead;
         bool hasTypedwrite;
@@ -312,9 +309,15 @@ namespace IGC
         // Note: does not check for indirect sampler
         bool mayHaveIndirectResources;
         bool hasUniformAssumptions;
-        bool hasWaveIntrinsics;
         bool hasPullBary;
         bool sampleCmpToDiscardOptimizationPossible;
+        unsigned int numCall;
+        unsigned int numBarrier;
+        unsigned int numLoadStore;
+        unsigned int numWaveIntrinsics;
+        unsigned int numAtomics;
+        unsigned int numTypedReadWrite;
+        unsigned int numAllInsts;
         unsigned int sampleCmpToDiscardOptimizationSlot;
         unsigned int numSample;
         unsigned int numBB;
