@@ -973,6 +973,11 @@ uint32_t getGRFSize() const
     }
 }
 
+uint32_t getInlineDataSize() const
+{
+    return supportInlineData() ? 32 : 0;
+}
+
 bool hasFusedEU() const
 {
     return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE &&

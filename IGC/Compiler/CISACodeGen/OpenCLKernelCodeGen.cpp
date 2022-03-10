@@ -1734,7 +1734,7 @@ namespace IGC
         }
 
         const bool useInlineData = passNOSInlineData();
-        const uint inlineDataSize = 32;
+        const uint inlineDataSize = m_Platform->getInlineDataSize();
         bool inlineDataProcessed = false;
         uint offsetCorrection = 0;
 
