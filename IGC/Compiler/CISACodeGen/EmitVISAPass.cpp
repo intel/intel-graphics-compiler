@@ -11819,23 +11819,6 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             if (argIter->use_empty()) continue;
         }
 
-        if (Src->GetType() == ISA_TYPE_BOOL)
-        {
-            // bool args are treated as a vector of WORDs
-            uint nElts = numLanes(m_currShader->m_dispatchSize);
-            CVariable* ReplaceArg = m_currShader->GetNewVariable(
-                nElts,
-                ISA_TYPE_W,
-                EALIGN_HWORD, false, 1,
-                CName::NONE);
-            CVariable* one = m_currShader->ImmToVariable(1, ISA_TYPE_W);
-            CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_W);
-            m_encoder->Select(Src, ReplaceArg, one, zero);
-
-            argType = IntegerType::getInt16Ty(inst->getContext());
-            Src = ReplaceArg;
-        }
-
         // adjust offset for alignment
         uint align = getGRFSize();
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));
@@ -11869,21 +11852,10 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     // Write all arguments that does not fit in GRF to stack
     offsetS = emitStackArgumentLoadOrStore(argsOnStack, true);
 
-    uint retSize = 0;
-    if (!inst->use_empty())
-    {
-        CVariable* Dst = GetSymbol(inst);
-        if (Dst->GetType() == ISA_TYPE_BOOL)
-        {
-            retSize = numLanes(m_currShader->m_dispatchSize) * SIZE_WORD;
-        }
-        else
-        {
-            retSize = Dst->GetSize();
-        }
-        CVariable* Src = m_currShader->GetRETV();
-        IGC_ASSERT_MESSAGE(retSize <= Src->GetSize(), "No support for return on stack!");
-    }
+    CVariable* RetV = GetSymbol(inst);
+    uint retSize = RetV->GetSize() <= m_currShader->GetRETV()->GetSize() ?
+        RetV->GetSize() : // return on GRF
+        0;                // return on Stack
 
     unsigned char argSizeInGRF = (offsetA + getGRFSize() - 1) / getGRFSize();
     unsigned char retSizeInGRF = (retSize + getGRFSize() - 1) / getGRFSize();
@@ -11906,25 +11878,26 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     // lambda to read the return value
     auto CopyReturnValue = [this](CallInst* inst)->void
     {
-        // No need to copy if there are no uses
-        if (inst->use_empty())
-            return;
-
         CVariable* Dst = GetSymbol(inst);
         CVariable* Src = m_currShader->GetRETV();
-        if (Dst->GetType() == ISA_TYPE_BOOL)
+        bool returnOnGRF = Dst->GetSize() <= Src->GetSize();
+
+        if (returnOnGRF)
         {
-            CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
-            m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
+            if (!inst->use_empty())
+            {
+                // Copy from return GRF
+                if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
+                {
+                    Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
+                }
+                emitCopyAll(Dst, Src, inst->getType());
+            }
         }
         else
         {
-            IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
-            if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
-            {
-                Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
-            }
-            emitCopyAll(Dst, Src, inst->getType());
+            // Copy from stack
+            IGC_ASSERT_MESSAGE(0, "Does not yet support return on stack");
         }
     };
 
@@ -12050,10 +12023,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
         uint align = getGRFSize();
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));
         uint argSize = Dst->GetSize();
-        if (Dst->GetType() == ISA_TYPE_BOOL)
-        {
-            argSize = numLanes(m_currShader->m_dispatchSize) * SIZE_WORD;
-        }
+
         // check if an argument can be written to ARGV based upon offset + arg-size
         bool overflow = ((offsetA + argSize) > ArgBlkVar->GetSize());
         if (!overflow)
@@ -12061,12 +12031,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
             if (!Arg.use_empty())
             {
                 CVariable* Src = ArgBlkVar;
-                if (Dst->GetType() == ISA_TYPE_BOOL)
-                {
-                    Src = m_currShader->GetNewAlias(ArgBlkVar, ISA_TYPE_W, (uint16_t)offsetA, numLanes(m_currShader->m_dispatchSize), false);
-                    m_encoder->Cmp(EPREDICATE_NE, Dst, Src, m_currShader->ImmToVariable(0, ISA_TYPE_W));
-                }
-                else if (m_FGA->isLeafFunc(F))
+                if (m_FGA->isLeafFunc(F))
                 {
                     // Directly map the dst register to an alias of ArgBlkVar, and update symbol mapping for future uses
                     Dst = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
@@ -12129,29 +12094,25 @@ void EmitPass::emitStackFuncExit(llvm::ReturnInst* inst)
         unsigned RetSize = 0;
         unsigned nLanes = numLanes(m_currShader->m_dispatchSize);
         CVariable* Src = GetSymbol(inst->getReturnValue());
+        bool isSrcUniform = Src->IsUniform();
+        RetSize = isSrcUniform ? nLanes * Src->GetSize() : Src->GetSize();
 
-        if (Src->GetType() == ISA_TYPE_BOOL)
+        if (RetSize <= Dst->GetSize())
         {
-            CVariable* one = m_currShader->ImmToVariable(1, ISA_TYPE_W);
-            CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_W);
-            CVariable* DstAlias = m_currShader->GetNewAlias(Dst, ISA_TYPE_W, 0, nLanes, false);
-            m_encoder->Select(Src, DstAlias, one, zero);
-            RetSize = nLanes * SIZE_WORD;
-        }
-        else
-        {
-            bool isSrcUniform = Src->IsUniform();
-            RetSize = isSrcUniform ? nLanes * Src->GetSize() : Src->GetSize();
-            IGC_ASSERT_MESSAGE(RetSize <= Dst->GetSize(), "No support for return on stack!");
-
+            // Return on GRF
             if (Dst->GetType() != Src->GetType() || Dst->IsUniform() != Src->IsUniform())
             {
                 unsigned elements = isSrcUniform ? Src->GetNumberElement() * nLanes : Src->GetNumberElement();
                 Dst = m_currShader->GetNewAlias(Dst, Src->GetType(), 0, elements, false);
             }
             emitCopyAll(Dst, Src, RetTy);
+            m_encoder->SetStackFunctionRetSize((RetSize + getGRFSize() - 1) / getGRFSize());
         }
-        m_encoder->SetStackFunctionRetSize((RetSize + getGRFSize() - 1) / getGRFSize());
+        else
+        {
+            // Return on Stack
+            IGC_ASSERT_MESSAGE(0, "Does not yet support return on stack");
+        }
     }
     else
     {
