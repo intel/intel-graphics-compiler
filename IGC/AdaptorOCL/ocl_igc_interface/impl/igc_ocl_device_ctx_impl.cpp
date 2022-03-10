@@ -61,6 +61,10 @@ IgcOclTranslationCtxBase *CIF_PIMPL(IgcOclDeviceCtx)::CreateTranslationCtx(CIF::
     return CIF::InterfaceCreator<IgcOclTranslationCtx>::CreateInterfaceVer(version, version, this, inType, outType);
 }
 
+IgcBuiltinsBase *CIF_GET_INTERFACE_CLASS(IgcOclDeviceCtx, 4)::GetIgcBuiltinsHandleImpl(CIF::Version_t ver){
+    return CIF_GET_PIMPL()->GetIgcBuiltinsHandle(ver);
+}
+
 }
 
 CIF_EXPORT_ENTRY_POINTS_STATIC(IGC::IgcOclDeviceCtx);
