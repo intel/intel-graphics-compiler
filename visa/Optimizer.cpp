@@ -7723,8 +7723,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         // Ensure the first instruction of a stack function has switch option.
         if (fg.getIsStackCallFunc() &&
-            VISA_WA_CHECK(builder.getPWaTable(), WaThreadSwitchAfterCall) &&
-            !builder.getOption(vISA_enablePreemption))
+            VISA_WA_CHECK(builder.getPWaTable(), WaThreadSwitchAfterCall))
         {
             addSwitchOptionToBB(fg.getEntryBB(), true);
         }
