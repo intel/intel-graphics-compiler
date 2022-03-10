@@ -38,10 +38,10 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include <functional>
-#include <list>
 #include <map>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace llvm {
@@ -177,10 +177,6 @@ private:
   };
 
   FGMap GroupMap;
-  // TODO: "Visited" should not be part of FGA state - it should be an external
-  // entity
-  std::unordered_set<Function *> Visited;
-  using CallGraph = std::map<Function *, std::list<Function *>>;
 
 public:
   static char ID;
@@ -249,6 +245,7 @@ public:
   }
 
   size_t size() const { return Groups.size(); }
+  bool legalizeGroups();
   // addToFunctionGroup : add Function F to FunctionGroup FG
   // Using this (rather than calling push_back directly on the FunctionGroup)
   // means that the mapping from F to FG will be created, and getGroup() will
@@ -256,8 +253,10 @@ public:
   void addToFunctionGroup(FunctionGroup *FG, Function *F, FGType Type);
   // createFunctionGroup : create new FunctionGroup for which F is the head
   FunctionGroup *createFunctionGroup(Function *F, FGType Type);
-  bool buildGroup(CallGraph &callees, Function *F,
-                  FunctionGroup *curGr = nullptr, FGType Type = FGType::GROUP);
+  using CallGraphTy = std::unordered_map<Function *, std::vector<Function *>>;
+  void buildGroup(const CallGraphTy &CG, Function *Head,
+                  FGType Type = FGType::GROUP);
+  void buildGroups();
 
   bool verify() const;
 

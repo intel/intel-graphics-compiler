@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 
 #include "FunctionGroup.h"
 #include "vc/Utils/GenX/KernelInfo.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/GenXIntrinsics/GenXMetadata.h"
 #include "llvm/IR/Dominators.h"
@@ -38,6 +39,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/LegacyPassManagers.h"
 #include "llvmWrapper/IR/PassTimingInfo.h"
+#include "llvmWrapper/IR/Value.h"
 
 #include "Probe/Assertion.h"
 
@@ -117,7 +119,6 @@ void FunctionGroupAnalysis::clear() {
 
   Groups.clear();
   NonMainGroups.clear();
-  Visited.clear();
   M = nullptr;
 }
 
@@ -225,79 +226,254 @@ static StringRef TypeToAttr(FunctionGroupAnalysis::FGType Type) {
   return "";
 }
 
-bool FunctionGroupAnalysis::buildGroup(CallGraph &Callees, Function *F,
-                                       FunctionGroup *curGr, FGType Type) {
-  bool result = false;
-  LLVM_DEBUG(dbgs() << "process function " << F->getName() << " from " << curGr
-                    << ", type = " << Type << "\n");
-  if (Visited.count(F) > 0) {
-    bool NeedCloning =
-        std::any_of(std::begin(TypesToProcess), std::end(TypesToProcess),
-                    [&GM = GroupMap, curGr, F](FGType CurType) {
-                      return GM[CurType].count(F) && GM[CurType][F] != curGr;
-                    });
-    if (NeedCloning && !F->hasFnAttribute(TypeToAttr(Type))) {
-      ValueToValueMapTy VMap;
-      Function *ClonedFunc = CloneFunction(F, VMap);
-      ClonedFunc->setName(F->getName() + "." + curGr->getHead()->getName());
-      LLVM_DEBUG(dbgs() << "Cloning: " << ClonedFunc->getName() << "\n");
-
-      result = true;
-
-      for (auto it = F->use_begin(); it != F->use_end();) {
-        Use *u = &*it++;
-        auto *CI = dyn_cast<CallInst>(u->getUser());
-        IGC_ASSERT(CI);
-        if (GroupMap[Type][CI->getFunction()] == curGr)
-          *u = ClonedFunc;
-      }
-      addToFunctionGroup(curGr, ClonedFunc, Type);
-
-      for (auto &Callee : Callees[F]) {
-        if (Callee == F)
-          continue;
-        if (vc::requiresStackCall(Callee)) {
-          LLVM_DEBUG(dbgs()
-                     << "\tDo not process next callee " << Callee->getName()
-                     << " because it's a stack call\n");
-          continue;
-        }
-        LLVM_DEBUG(dbgs() << "Next callee: " << Callee->getName() << "\n");
-        result |= buildGroup(Callees, Callee, curGr, Type);
-      }
-    }
-  } else if (!Visited.count(F)) {
-    Visited.insert(F);
-    // group is created either on a function with a corresponding attribute
-    // or on a root of a whole function tree that is kernel (genx_main)
-    if (F->hasFnAttribute(TypeToAttr(Type)) ||
-        F->hasFnAttribute(genx::FunctionMD::CMGenXMain)) {
-      LLVM_DEBUG(dbgs() << "Create new group of type " << Type << "\n");
-      curGr = createFunctionGroup(F, Type);
-    } else if (curGr) {
-      LLVM_DEBUG(dbgs() << "Add to group " << curGr->getHead()->getName()
-                        << " of type " << Type << "\n");
-      addToFunctionGroup(curGr, F, Type);
-    }
-    for (auto &Callee : Callees[F]) {
-      if (vc::requiresStackCall(Callee)) {
-        LLVM_DEBUG(dbgs() << "\tDo not process next callee "
-                          << Callee->getName()
-                          << " because it's a stack call\n");
+static FunctionGroupAnalysis::CallGraphTy buildCallGraph(Module &M) {
+  FunctionGroupAnalysis::CallGraphTy CG;
+  std::unordered_map<Function *, std::unordered_set<Function *>> Visited;
+  for (auto &F : M) {
+    CG[&F];
+    for (auto *U : F.users()) {
+      auto *Inst = dyn_cast<Instruction>(U);
+      if (!Inst)
         continue;
+      if (!F.empty() && Visited[Inst->getFunction()].count(&F) == 0) {
+        CG[Inst->getFunction()].push_back(&F);
+        Visited[Inst->getFunction()].insert(&F);
       }
-
-      LLVM_DEBUG(dbgs() << "Next callee: " << Callee->getName() << "\n");
-      result |= buildGroup(Callees, Callee, curGr, Type);
+      // Recursive functions must use stack.
+      if (Inst->getFunction() == &F) {
+        const bool UsesStack = vc::requiresStackCall(&F);
+        IGC_ASSERT_MESSAGE(
+            UsesStack,
+            "Found recursive function without CMStackCall attribute");
+        (void)UsesStack;
+      }
     }
   }
-  LLVM_DEBUG(dbgs() << "finish processing function " << F->getName()
-                    << " on level " << Type << "\n");
-  return result;
+
+  return CG;
+}
+
+// Depth-first traversal of all reachable functions from StartPoint in call
+// graph CG. Does not visit functions for which Pred(Function *) returns false.
+// Calls OnNode(Function *F) for each function F of the subgraph that is
+// traversed. Calls OnEdge(Function *F, Function *Callee) for each
+// function-callee pair of the subgraph that is traversed if both Pred(F) and
+// Pred(Callee) return true.
+template <typename CallbackOnNode, typename CallbackOnEdge,
+          typename UnaryPredicate>
+static void traverseCallGraph(const FunctionGroupAnalysis::CallGraphTy &CG,
+                              Function *StartPoint, CallbackOnNode OnNode,
+                              CallbackOnEdge OnEdge, UnaryPredicate Pred) {
+  if (!Pred(StartPoint))
+    return;
+  std::vector<Function *> Stack = {StartPoint};
+  std::unordered_set<Function *> Visited = {StartPoint};
+  while (!Stack.empty()) {
+    Function *F = Stack.back();
+    Stack.pop_back();
+    IGC_ASSERT_MESSAGE(CG.count(F), "Inconsistent call graph");
+
+    OnNode(F);
+    for (Function *Callee : CG.at(F)) {
+      if (!Pred(Callee))
+        continue;
+      OnEdge(F, Callee);
+      if (Visited.count(Callee))
+        continue;
+      Visited.insert(Callee);
+      Stack.push_back(Callee);
+    }
+  }
+}
+
+template <typename CallbackOnNode, typename UnaryPredicate>
+static void traverseCallGraphNodes(const FunctionGroupAnalysis::CallGraphTy &CG,
+                                   Function *StartPoint, CallbackOnNode OnNode,
+                                   UnaryPredicate Pred) {
+  traverseCallGraph(
+      CG, StartPoint, OnNode, [](Function *, Function *) {}, Pred);
+}
+
+template <typename CallbackOnEdge, typename UnaryPredicate>
+static void traverseCallGraphEdges(const FunctionGroupAnalysis::CallGraphTy &CG,
+                                   Function *StartPoint, CallbackOnEdge OnEdge,
+                                   UnaryPredicate Pred) {
+  traverseCallGraph(
+      CG, StartPoint, [](Function *) {}, OnEdge, Pred);
+}
+
+using FGHead = Function;
+// Maps the function to the heads of all function groups to which this function
+// belongs.
+using FuncToGroupsMapTy = std::unordered_map<Function *, std::vector<FGHead *>>;
+// Maps the original function to this function in a specific function group, it
+// can be the original function itself or its clone.
+using FuncToClonesMapTy =
+    std::unordered_map<Function *, std::unordered_map<FGHead *, Function *>>;
+
+static FuncToGroupsMapTy
+buildFuncToGroupsMap(const FunctionGroupAnalysis::CallGraphTy &CG,
+                     const std::vector<Function *> &Heads) {
+  FuncToGroupsMapTy FuncToGroupsMap;
+  for (Function *Head : Heads) {
+    traverseCallGraphNodes(
+        CG, Head,
+        [&FuncToGroupsMap, Head](Function *F) {
+          FuncToGroupsMap[F].push_back(Head);
+        },
+        // Do not process stack calls, except for heads of subgroups.
+        [Head](Function *F) { return F == Head || !vc::requiresStackCall(F); });
+  }
+  return FuncToGroupsMap;
+}
+
+// Clones each function for each function group (except for one) to which it
+// belongs. The second return value is whether the module has been changed.
+static std::pair<FuncToClonesMapTy, bool>
+cloneFunctions(const FuncToGroupsMapTy &FuncToGroupsMap) {
+  FuncToClonesMapTy FuncToClonesMap;
+  bool ModuleModified = false;
+  for (const auto &[F, FGs] : FuncToGroupsMap) {
+    IGC_ASSERT(!FGs.empty());
+    FuncToClonesMap[F][FGs.front()] = F;
+    for (Function *FG : drop_begin(FGs, 1)) {
+      ModuleModified = true;
+      ValueToValueMapTy VMap;
+      Function *ClonedFunc = CloneFunction(F, VMap);
+      FuncToClonesMap[F][FG] = ClonedFunc;
+    }
+    // Rename clones if the function belongs to several function groups
+    if (FGs.size() > 1) {
+      auto FuncName = F->getName();
+      for (auto [FG, ActualFunc] : FuncToClonesMap[F])
+        ActualFunc->setName(FuncName + "." + FG->getName());
+    }
+  }
+  return {std::move(FuncToClonesMap), ModuleModified};
+}
+
+// Restores correct uses between functions clones. The CG itself is not
+// modified.
+//
+// Let's name actual clones of F and Callee in the current function group as
+// ActualF and ActualCallee. When the clones were created the uses remained the
+// same, so ActualF uses Callee. But we need to make ActualF use ActualCallee,
+// and so for each function-callee pair in the original CG and for each FG.
+// --------------------------------------
+// | Original CG |    Functions uses    |
+// --------------------------------------
+// |             |                      |
+// |   Callee    | Callee  ActualCallee |
+// |     ^       |      ^      ^        |
+// |     |       |       \     |        |
+// |     |       |        X    |        |
+// |     |       |         \   |        |
+// |     F       |         ActualF      |
+// |             |                      |
+// --------------------------------------
+// Callee may coincide with ActualCallee.
+static void recoverEdges(const FunctionGroupAnalysis::CallGraphTy &CG,
+                         const std::vector<Function *> &Heads,
+                         const FuncToClonesMapTy &FuncToClonesMap) {
+  for (Function *Head : Heads) {
+    // The original graph is traversed, but edges are constructed between the
+    // actual functions of the current function group.
+    traverseCallGraphEdges(
+        CG, Head,
+        [&FuncToClonesMap, Head](Function *F, Function *Callee) {
+          Function *ActualF = FuncToClonesMap.at(F).at(Head);
+          Function *ActualCallee = FuncToClonesMap.at(Callee).at(Head);
+          IGCLLVM::replaceUsesWithIf(Callee, ActualCallee, [ActualF](Use &U) {
+            auto *CI = dyn_cast<CallInst>(U.getUser());
+            IGC_ASSERT(CI);
+            // Callee use should be replaced only if it is called from ActualF,
+            // i.e. in the current function group.
+            return CI->getFunction() == ActualF;
+          });
+        },
+        // Do not process stack calls, except for heads of subgroups.
+        [Head](Function *F) { return F == Head || !vc::requiresStackCall(F); });
+  }
+}
+
+// Makes each function of the module belong to only one function group. If a
+// function belongs to several function groups, it is copied.
+bool FunctionGroupAnalysis::legalizeGroups() {
+  const CallGraphTy CG = buildCallGraph(*M);
+
+  std::vector<Function *> Heads;
+  auto HeadsRange =
+      make_filter_range(*M, [](Function &F) { return genx::fg::isHead(F); });
+  transform(HeadsRange, std::back_inserter(Heads),
+            [](Function &F) { return &F; });
+
+  auto FuncToGroupsMap = buildFuncToGroupsMap(CG, Heads);
+  auto [FuncToClonesMap, ModuleModified] = cloneFunctions(FuncToGroupsMap);
+  if (!ModuleModified)
+    return false;
+  recoverEdges(CG, Heads, FuncToClonesMap);
+  return true;
+}
+
+void FunctionGroupAnalysis::buildGroup(const CallGraphTy &CG, Function *Head,
+                                       FGType Type) {
+  FunctionGroup *FG = createFunctionGroup(Head, Type);
+  traverseCallGraphNodes(
+      CG, Head,
+      [this, Head, FG, Type](Function *F) {
+        if (F == Head)
+          return;
+        addToFunctionGroup(FG, F, Type);
+      },
+      [Head](Function *F) { return F == Head || !vc::requiresStackCall(F); });
 }
 
 bool FunctionGroupAnalysis::verify() const {
   return llvm::all_of(AllGroups(), [](const auto &GR) { return GR->verify(); });
+}
+
+// Fills in Groups and NonMainGroups. It is assumed that all function groups
+// have already been legalized, i.e. no function of a module is called from
+// two different heads.
+void FunctionGroupAnalysis::buildGroups() {
+  const CallGraphTy CG = buildCallGraph(*M);
+  for (auto T : TypesToProcess) {
+    for (auto &F : *M) {
+      if (F.isDeclaration())
+        continue;
+      if (!genx::fg::isHead(F))
+        continue;
+      // Do not process kernels at subgroup level.
+      if (genx::fg::isGroupHead(F) &&
+          T == FunctionGroupAnalysis::FGType::SUBGROUP)
+        continue;
+      // Do not process stack calls at group level.
+      if (genx::fg::isSubGroupHead(F) &&
+          T == FunctionGroupAnalysis::FGType::GROUP)
+        continue;
+      buildGroup(CG, &F, T);
+    }
+  }
+
+  for (auto SubFG : subgroups()) {
+    const Function *Head = SubFG->getHead();
+    IGC_ASSERT(Head);
+
+    for (auto U : Head->users()) {
+      const auto *UserInst = dyn_cast<CallInst>(U);
+      if (!UserInst)
+        continue;
+
+      const Function *UserFunction = UserInst->getFunction();
+      IGC_ASSERT(UserFunction);
+      FunctionGroup *UserFG = getAnyGroup(UserFunction);
+      IGC_ASSERT(UserFG);
+
+      UserFG->addSubgroup(SubFG);
+    }
+  }
+
+  IGC_ASSERT(verify());
 }
 
 void FunctionGroupAnalysis::print(raw_ostream &OS, const Module *) const {

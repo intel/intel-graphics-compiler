@@ -101,77 +101,8 @@ bool GenXModule::runOnModule(Module &M) {
       BC->emitDWARFDebugInfo() && vc::DIBuilder::checkIfModuleHasDebugInfo(M);
   ImplicitArgsBufferIsUsed = isImplicitArgsBufferUsed(M);
 
-  // Iterate, processing each Function that is not yet assigned to a
-  // FunctionGroup.
-  bool ModuleModified = false;
-
-  // build callgraph and process subgroups
-  std::map<Function *, std::list<Function *>> CG;
-  // TODO: for now it's a temporary workaround of strange ArgIndirection
-  // problems that it depends on order of functions withing a group
-  // This should be removed once indirection is fixed
-  std::map<Function *, std::set<Function*>> Visited;
-
-  for (auto &F : M) {
-    for (auto *U : F.users()) {
-      auto *Inst = dyn_cast<Instruction>(U);
-      if (!Inst) {
-        continue;
-      }
-      if (!F.empty() && Visited[Inst->getFunction()].count(&F) == 0) {
-        CG[Inst->getFunction()].push_back(&F);
-        Visited[Inst->getFunction()].insert(&F);
-      }
-      // recursive funcs must use stack
-      if (Inst->getFunction() == &F) {
-        const bool UsesStack = vc::requiresStackCall(&F);
-        IGC_ASSERT_MESSAGE(
-            UsesStack,
-            "Found recursive function without CMStackCall attribute");
-        (void)UsesStack;
-      }
-    }
-  }
-
-  for (auto T : FGA->TypesToProcess) {
-    for (auto &F : M) {
-      if (F.isDeclaration())
-        continue;
-      if (!genx::fg::isHead(F))
-        continue;
-      // Do not process kernels at subgroup level.
-      if (genx::fg::isGroupHead(F) &&
-          T == FunctionGroupAnalysis::FGType::SUBGROUP)
-        continue;
-      // Do not process stack calls at group level.
-      if (genx::fg::isSubGroupHead(F) &&
-          T == FunctionGroupAnalysis::FGType::GROUP)
-        continue;
-      // TODO: it seems OK not to update CG each time a function was cloned. But
-      // it must be investigated deeper.
-      ModuleModified |= FGA->buildGroup(CG, &F, nullptr, T);
-    }
-  }
-
-  for (auto SubFG : FGA->subgroups()) {
-    const Function *Head = SubFG->getHead();
-    IGC_ASSERT(Head);
-
-    for (auto U : Head->users()) {
-      const auto *UserInst = dyn_cast<Instruction>(U);
-      if (!UserInst)
-        continue;
-
-      const Function *UserFunction = UserInst->getFunction();
-      IGC_ASSERT(UserFunction);
-      FunctionGroup *UserFG = FGA->getAnyGroup(UserFunction);
-      IGC_ASSERT(UserFG);
-
-      UserFG->addSubgroup(SubFG);
-    }
-  }
-
-  IGC_ASSERT(FGA->verify());
+  bool ModuleModified = FGA->legalizeGroups();
+  FGA->buildGroups();
   return ModuleModified;
 }
 
