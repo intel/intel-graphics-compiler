@@ -163,6 +163,15 @@ public:
     return IntrinsicID != GenXIntrinsic::genx_vload &&
            IntrinsicID != GenXIntrinsic::genx_vstore;
   }
+
+  void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
+                               TTI::UnrollingPreferences &UP) {
+    if (unsigned VCUnrollThreshold = BC.getLoopUnrollThreshold()) {
+      UP.Threshold = VCUnrollThreshold;
+      UP.PartialThreshold = VCUnrollThreshold;
+      UP.Partial = true;
+    }
+  }
 };
 
 /// Initialize all GenX passes for opt tool.
