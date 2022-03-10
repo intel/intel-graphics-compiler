@@ -43,14 +43,14 @@ using namespace IGC::IGCMD;
 namespace IGC
 {
 
-    COpenCLKernel::COpenCLKernel(const OpenCLProgramContext* ctx, Function* pFunc, CShaderProgram* pProgram) :
+    COpenCLKernel::COpenCLKernel(OpenCLProgramContext* ctx, Function* pFunc, CShaderProgram* pProgram) :
         CComputeShaderBase(pFunc, pProgram)
     {
         m_HasTID = false;
         m_HasGlobalSize = false;
         m_disableMidThreadPreemption = false;
         m_perWIStatelessPrivateMemSize = 0;
-        m_Context = const_cast<OpenCLProgramContext*>(ctx);
+        m_Context = ctx;
         m_localOffsetsMap.clear();
         m_pBtiLayout = &(ctx->btiLayout);
         m_Platform = &(ctx->platform);
@@ -2057,10 +2057,23 @@ namespace IGC
         return funcMD->second.localSize;
     }
 
-    void COpenCLKernel::FillKernel()
+    void COpenCLKernel::FillKernel(SIMDMode simdMode)
     {
-        m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace = ProgramOutput()->getScratchSpaceUsageInSlot0();
-        m_kernelInfo.m_executionEnivronment.PerThreadScratchSpaceSlot1 = ProgramOutput()->getScratchSpaceUsageInSlot1();
+        auto pOutput = ProgramOutput();
+        if (simdMode == SIMDMode::SIMD32)
+            m_kernelInfo.m_kernelProgram.simd32 = *pOutput;
+        else if (simdMode == SIMDMode::SIMD16)
+            m_kernelInfo.m_kernelProgram.simd16 = *pOutput;
+        else if (simdMode == SIMDMode::SIMD8)
+            m_kernelInfo.m_kernelProgram.simd8 = *pOutput;
+
+        m_Context->SetSIMDInfo(SIMD_SELECTED, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+
+        m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = numLanes(simdMode);
+        m_kernelInfo.m_executionEnivronment.SIMDInfo = m_Context->GetSIMDInfo();
+
+        m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace = pOutput->getScratchSpaceUsageInSlot0();
+        m_kernelInfo.m_executionEnivronment.PerThreadScratchSpaceSlot1 = pOutput->getScratchSpaceUsageInSlot1();
         m_kernelInfo.m_executionEnivronment.PerThreadPrivateOnStatelessSize = m_perWIStatelessPrivateMemSize;
         m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
         m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_ConstantBufferLength / getGRFSize(); // in 256 bits
@@ -2352,10 +2365,21 @@ namespace IGC
         }
     }
 
-    void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CShaderProgram* pKernel, Function* pFunc, MetaDataUtils* pMdUtils)
+    bool COpenCLKernel::IsValidShader(COpenCLKernel* pShader)
+    {
+        return pShader && (pShader->ProgramOutput()->m_programSize > 0);
+    }
+
+    void GatherDataForDriver(
+        OpenCLProgramContext* ctx,
+        COpenCLKernel* pShader,
+        CShaderProgram* pKernel,
+        Function* pFunc,
+        MetaDataUtils* pMdUtils,
+        SIMDMode simdMode)
     {
         IGC_ASSERT(pShader != nullptr);
-        pShader->FillKernel();
+        pShader->FillKernel(simdMode);
         SProgramOutput* pOutput = pShader->ProgramOutput();
 
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
@@ -2387,36 +2411,6 @@ namespace IGC
         {
             ctx->m_retryManager.kernelSet.insert(pShader->m_kernelInfo.m_kernelName);
         }
-    }
-
-    static bool SetKernelProgram(OpenCLProgramContext* ctx, COpenCLKernel* shader, DWORD simdMode)
-    {
-        if (shader && (shader->ProgramOutput()->m_programSize > 0))
-        {
-            if (simdMode == 32)
-            {
-                //why do we need this? we will get all output in GatherDataForDriver(...)
-                //remove it to avoid messy logics
-                //shader->m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize =
-                //    shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
-                shader->m_kernelInfo.m_kernelProgram.simd32 = *shader->ProgramOutput();
-                ctx->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
-            }
-            else if (simdMode == 16)
-            {
-                shader->m_kernelInfo.m_kernelProgram.simd16 = *shader->ProgramOutput();
-                ctx->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
-            }
-            else if (simdMode == 8)
-            {
-                shader->m_kernelInfo.m_kernelProgram.simd8 = *shader->ProgramOutput();
-                ctx->SetSIMDInfo(SIMD_SELECTED, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
-            }
-            shader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = simdMode;
-            shader->m_kernelInfo.m_executionEnivronment.SIMDInfo = ctx->GetSIMDInfo();
-            return true;
-        }
-        return false;
     }
 
     void CodeGen(OpenCLProgramContext* ctx)
@@ -2495,22 +2489,22 @@ namespace IGC
                 && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
             {
                 //Gather the kernel binary for each compiled kernel
-                if (SetKernelProgram(ctx, simd32Shader, 32))
-                    GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
-                if (SetKernelProgram(ctx, simd16Shader, 16))
-                    GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
-                if (SetKernelProgram(ctx, simd8Shader, 8))
-                    GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
+                if (COpenCLKernel::IsValidShader(simd32Shader))
+                    GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD32);
+                if (COpenCLKernel::IsValidShader(simd16Shader))
+                    GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD16);
+                if (COpenCLKernel::IsValidShader(simd8Shader))
+                    GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD8);
             }
             else
             {
                 //Gather the kernel binary only for 1 SIMD mode of the kernel
-                if (SetKernelProgram(ctx, simd32Shader, 32))
-                    GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
-                else if (SetKernelProgram(ctx, simd16Shader, 16))
-                    GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
-                else if (SetKernelProgram(ctx, simd8Shader, 8))
-                    GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
+                if (COpenCLKernel::IsValidShader(simd32Shader))
+                    GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD32);
+                else if (COpenCLKernel::IsValidShader(simd16Shader))
+                    GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD16);
+                else if (COpenCLKernel::IsValidShader(simd8Shader))
+                    GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD8);
             }
         }
 

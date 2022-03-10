@@ -430,11 +430,6 @@ void CGen8OpenCLProgram::GetZEBinary(
     llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes,
     const char* spv, uint32_t spvSize)
 {
-    auto isValidShader = [&](IGC::COpenCLKernel* shader)->bool
-    {
-        return shader && shader->ProgramOutput()->m_programSize > 0;
-    };
-
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> elfStorage;
 
     ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
@@ -481,11 +476,11 @@ void CGen8OpenCLProgram::GetZEBinary(
             && (m_Context.getModuleMetaData()->csInfo.forcedSIMDSize == 0))
         {
             // For multiple SIMD modes, send SIMD modes in descending order
-            if (isValidShader(simd32Shader))
+            if (IGC::COpenCLKernel::IsValidShader(simd32Shader))
                 kernelVec.push_back(simd32Shader);
-            if (isValidShader(simd16Shader))
+            if (IGC::COpenCLKernel::IsValidShader(simd16Shader))
                 kernelVec.push_back(simd16Shader);
-            if (isValidShader(simd8Shader))
+            if (IGC::COpenCLKernel::IsValidShader(simd8Shader))
                 kernelVec.push_back(simd8Shader);
 
             if (IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging))
@@ -495,17 +490,17 @@ void CGen8OpenCLProgram::GetZEBinary(
         }
         else
         {
-            if (isValidShader(simd32Shader))
+            if (IGC::COpenCLKernel::IsValidShader(simd32Shader))
             {
                 kernelVec.push_back(simd32Shader);
                 simdMode = SIMDMode::SIMD32;
             }
-            else if (isValidShader(simd16Shader))
+            else if (IGC::COpenCLKernel::IsValidShader(simd16Shader))
             {
                 kernelVec.push_back(simd16Shader);
                 simdMode = SIMDMode::SIMD16;
             }
-            else if (isValidShader(simd8Shader))
+            else if (IGC::COpenCLKernel::IsValidShader(simd8Shader))
             {
                 kernelVec.push_back(simd8Shader);
                 simdMode = SIMDMode::SIMD8;
@@ -748,11 +743,6 @@ void CGen8OpenCLProgram::GetZEBinary(
 
 void CGen8OpenCLProgram::CreateKernelBinaries()
 {
-    auto isValidShader = [&](IGC::COpenCLKernel* shader)->bool
-    {
-        return (shader && shader->ProgramOutput()->m_programSize > 0);
-    };
-
     for (auto pKernel : m_ShaderProgramList)
     {
         IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
@@ -765,20 +755,20 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
             && (m_Context.getModuleMetaData()->csInfo.forcedSIMDSize == 0))
         {
             // For multiple SIMD modes, send SIMD modes in descending order
-            if (isValidShader(simd32Shader))
+            if (IGC::COpenCLKernel::IsValidShader(simd32Shader))
                 kernelVec.push_back(simd32Shader);
-            if (isValidShader(simd16Shader))
+            if (IGC::COpenCLKernel::IsValidShader(simd16Shader))
                 kernelVec.push_back(simd16Shader);
-            if (isValidShader(simd8Shader))
+            if (IGC::COpenCLKernel::IsValidShader(simd8Shader))
                 kernelVec.push_back(simd8Shader);
         }
         else
         {
-            if (isValidShader(simd32Shader))
+            if (IGC::COpenCLKernel::IsValidShader(simd32Shader))
                 kernelVec.push_back(simd32Shader);
-            else if (isValidShader(simd16Shader))
+            else if (IGC::COpenCLKernel::IsValidShader(simd16Shader))
                 kernelVec.push_back(simd16Shader);
-            else if (isValidShader(simd8Shader))
+            else if (IGC::COpenCLKernel::IsValidShader(simd8Shader))
                 kernelVec.push_back(simd8Shader);
         }
 
