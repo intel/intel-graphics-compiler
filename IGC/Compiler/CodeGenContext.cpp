@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/RayTracing/RayTracingConstantsEnums.h"
 #include "Compiler/CISACodeGen/ComputeShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Probe/Assertion.h"
 
@@ -610,6 +611,33 @@ namespace IGC
         return val;
     }
 
+    void OpenCLProgramContext::failOnSpills()
+    {
+        if (!m_InternalOptions.FailOnSpill)
+        {
+            return;
+        }
+        auto& programList = m_programOutput.m_ShaderProgramList;
+        for (auto& kernel : programList)
+        {
+            for (auto mode : { SIMDMode::SIMD8, SIMDMode::SIMD16, SIMDMode::SIMD32 })
+            {
+                COpenCLKernel* shader = static_cast<COpenCLKernel*>(kernel->GetShader(mode));
+                if (shader)
+                {
+                    auto output = shader->ProgramOutput();
+                    if (output->m_scratchSpaceUsedBySpills > 0)
+                    {
+                        std::string msg =
+                            "Spills detected in kernel: "
+                            + shader->m_kernelInfo.m_kernelName;
+                        EmitError(msg.c_str(), nullptr);
+                    }
+                }
+            }
+        }
+    }
+
     void OpenCLProgramContext::InternalOptions::parseOptions(const char* IntOptStr)
     {
         // Assume flags is in the form: <f0>[=<v0>] <f1>[=<v1>] ...
@@ -921,6 +949,10 @@ namespace IGC
             else if (suffix.equals("-disableEUFusion"))
             {
                 DisableEUFusion = true;
+            }
+            else if (suffix.equals("-fail-on-spill"))
+            {
+                FailOnSpill = true;
             }
 
             // advance to the next flag

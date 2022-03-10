@@ -1761,6 +1761,8 @@ namespace IGC
             bool IntelForceDisable4GBBuffer = false;
             // user-controled option to disable EU Fusion
             bool DisableEUFusion = false;
+            // Fail comilation if spills are present in compiled kernel
+            bool FailOnSpill = false;
 
             std::vector<std::string> LargeGRFKernels;
             std::vector<std::string> RegularGRFKernels;
@@ -1881,6 +1883,7 @@ namespace IGC
         bool hasNoPrivateToGenericCast() const override;
         bool enableTakeGlobalAddress() const override;
         int16_t getVectorCoalescingControl() const override;
+        void failOnSpills();
     private:
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
     };

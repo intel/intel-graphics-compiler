@@ -1318,6 +1318,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
         } while (!kernelFunctions.empty());
     } while (retry);
 
+    oclContext.failOnSpills();
+
     if (oclContext.HasError())
     {
         if (oclContext.HasWarning())
