@@ -68,17 +68,20 @@ FunctionPass *llvm::createGenXPromotePredicatePass() {
   return new GenXPromotePredicate;
 }
 
-static constexpr unsigned NewIntWidth = 16;
+static constexpr unsigned PromotedPredicateWidth = 16;
 
 // Get predicate value with grf type.
 static Value *getExtendedValue(Value *Val, Instruction *InsertBefore) {
+  IGC_ASSERT(Val->getType()->isIntOrIntVectorTy(1));
   IRBuilder<> IRB(InsertBefore);
-  Type *NewTy = IGCLLVM::getWithNewBitWidth(Val->getType(), NewIntWidth);
+  Type *NewTy =
+      IGCLLVM::getWithNewBitWidth(Val->getType(), PromotedPredicateWidth);
   return IRB.CreateSExt(Val, NewTy, Val->getName() + ".widened");
 }
 
 // Get grf value with predicate type.
 static Value *getTruncatedValue(Value *Val, Instruction *InsertBefore) {
+  IGC_ASSERT(Val->getType()->isIntOrIntVectorTy(PromotedPredicateWidth));
   IRBuilder<> IRB(InsertBefore);
   Type *NewTy = IGCLLVM::getWithNewBitWidth(Val->getType(), 1);
   return IRB.CreateTrunc(Val, NewTy, Val->getName() + ".truncated");
@@ -91,7 +94,7 @@ static Value *promoteInst(Instruction *Inst) {
   // Special case - phi node.
   if (auto *Phi = dyn_cast<PHINode>(Inst)) {
     auto *WidenedPhi = IRB.CreatePHI(
-        IGCLLVM::getWithNewBitWidth(Phi->getType(), NewIntWidth),
+        IGCLLVM::getWithNewBitWidth(Phi->getType(), PromotedPredicateWidth),
         Phi->getNumIncomingValues(), Phi->getName() + ".promoted");
     for (unsigned i = 0; i < Phi->getNumIncomingValues(); ++i) {
       auto IncomingValue = Phi->getIncomingValue(i);
