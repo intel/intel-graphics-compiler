@@ -12400,15 +12400,6 @@ void Optimizer::newDoNoMaskWA()
         return PRED_DEFAULT;
     };
 
-    // Return condMod if a flag register is used. Since sel
-    // does not update flag register, return null for sel.
-    auto getFlagModifier = [](G4_INST* I) -> G4_CondMod* {
-        if (I->opcode() == G4_sel || I->opcode() == G4_csel) {
-            return nullptr;
-        }
-        return I->getCondMod();
-    };
-
     // Return true if a NoMask inst is either send or global
     auto isCandidateInst = [&](G4_INST* Inst, FlowGraph& cfg) -> bool {
         // pseudo should be gone at this time [skip all pseudo].
@@ -12773,9 +12764,9 @@ void Optimizer::newDoNoMaskWA()
         G4_CondMod* P = I->getCondMod();
         assert((P && !I->getPredicate()) && "ICE: expect flagModifier and no predicate!");
 
-        if (I->opcode() == G4_sel)
+        if (I->opcode() == G4_sel || I->opcode() == G4_csel)
         {
-            // Special handling of sel inst
+            // Special handling of sel/csel inst
             doFlagModifierSelInstWA(aFlagVarDefInst, aFlagVar, aBB, aII);
             return;
         }
@@ -13252,7 +13243,7 @@ void Optimizer::doNoMaskWA()
     // Return condMod if a flag register is used. Since sel
     // does not update flag register, return null for sel.
     auto getFlagModifier = [](G4_INST* I) -> G4_CondMod* {
-        if (I->opcode() == G4_sel) {
+        if (I->opcode() == G4_sel || I->opcode() == G4_csel) {
             return nullptr;
         }
         return I->getCondMod();
