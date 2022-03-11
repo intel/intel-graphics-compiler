@@ -12840,7 +12840,6 @@ void Optimizer::newDoNoMaskWA()
             aBB->insertBefore(aII, I0);
 
             // I1: (W) mov (1|M0)  P  flagVar
-            //    Note that flagVar's size >= P's
             G4_SrcRegRegion* I1S0 = builder.createSrc(aFlagVar, 0, 0, scalarReg, Ty);
             G4_DstRegRegion* D1 = builder.createDst(modVar, 0, 0, 1, Ty);
             G4_INST* I1 = builder.createMov(g4::SIMD1, D1, I1S0, InstOpt_WriteEnable, false);
