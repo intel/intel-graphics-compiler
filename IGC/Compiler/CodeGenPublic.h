@@ -1067,6 +1067,7 @@ namespace IGC
         PushConstantMode m_pushConstantMode = PushConstantMode::DEFAULT;
 
         SInstrTypes m_instrTypes;
+        SInstrTypes m_instrTypesAfterOpts;
 
         /////  used for instruction statistic before/after pass
         int instrStat[TOTAL_TYPES][TOTAL_STAGE];

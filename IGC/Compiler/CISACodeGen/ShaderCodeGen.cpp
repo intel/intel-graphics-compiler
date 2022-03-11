@@ -357,6 +357,9 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     }
     mpm.add(createFixInvalidFuncNamePass());
 
+    // collect stats after all the optimization. This info can be dumped to the cos file
+    mpm.add(new CheckInstrTypes(&(ctx.m_instrTypesAfterOpts), nullptr));
+
     //
     // Generally, passes that change IR should be prior to this place!
     //
