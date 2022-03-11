@@ -630,7 +630,7 @@ public:
 #if LLVM_VERSION_MAJOR >= 11
           if (loExpr)
           {
-              if (countConst > 0)
+              if (!countExpr)
               {
                   totalBits *= static_cast<uint64_t>(countConst);
                   countExpr = ConstantAsMetadata::get(ConstantInt::get(Type::getInt64Ty(M->getContext()), countConst));
@@ -639,10 +639,10 @@ public:
           }
           else
 #endif
-          if (countConst > 0)
-              subrange = Builder.getOrCreateSubrange(loConst, countConst);
-          else
+          if (countExpr)
               subrange = Builder.getOrCreateSubrange(loConst, countExpr);
+          else
+              subrange = Builder.getOrCreateSubrange(loConst, countConst);
           subscripts.push_back(subrange);
       }
 
@@ -5064,18 +5064,15 @@ SPIRVToLLVM::transSourceExtension() {
     ExtSet.insert(I);
   auto OCLExtensions = getStr(map<std::string>(ExtSet));
   std::string OCLOptionalCoreFeatures;
-  bool First = true;
-  static const char *OCLOptCoreFeatureNames[] = {
+  static const char * const OCLOptCoreFeatureNames[] = {
       "cl_images",
       "cl_doubles",
   };
   for (auto &I:OCLOptCoreFeatureNames) {
     size_t Loc = OCLExtensions.find(I);
     if (Loc != std::string::npos) {
-      OCLExtensions.erase(Loc, strlen(I));
-      if (First)
-        First = false;
-      else
+      OCLExtensions.erase(Loc, std::strlen(I));
+      if (!OCLOptionalCoreFeatures.empty())
         OCLOptionalCoreFeatures += ' ';
       OCLOptionalCoreFeatures += I;
     }
