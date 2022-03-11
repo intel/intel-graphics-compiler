@@ -1718,11 +1718,17 @@ void CompileUnit::addSimdLaneRegionBase(IGC::DIEBlock* Block, const DbgVariable&
     LLVM_DEBUG(dbgs() << "  addSimdLaneRegionBase(PieceSizeInBits: " << PieceSizeInBits << ")\n");
     // TODO Support special logic for "sequential" regions
     for (size_t i = 0; i < OffsetsCount; ++i) {
-        const auto Offset = Loc.GetRegionOffset(i);
+        auto Offset = Loc.GetRegionOffset(i);
+        auto Reg = lr->getGRF().regNum;
+        // If offset overlapping register - increase register index
+        Reg += Offset / Loc.GetVISAModule()->getGRFSizeInBits();
+        if (Offset >= Loc.GetVISAModule()->getGRFSizeInBits()) {
+            Offset = Offset % Loc.GetVISAModule()->getGRFSizeInBits();
+        }
         IGC_ASSERT(Offset < Loc.GetVISAModule()->getGRFSizeInBits());
         // Generate piece for each element of address:
         // DW_OP_reg N; DW_OP_bit_piece: size: Size offset: Offset ;
-        addRegisterLoc(Block, lr->getGRF().regNum, 0, DV.getDbgInst());
+        addRegisterLoc(Block, Reg, 0, DV.getDbgInst());
         addBitPiece(Block, PieceSizeInBits, Offset);
     }
 }
