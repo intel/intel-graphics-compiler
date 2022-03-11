@@ -66,6 +66,25 @@ namespace IGC
             {
                 m_annotatedNumThreads = numThreads;
             }
+            else
+            {
+                auto FuncName = pFunc->getName().str();
+                //check if option is set to use large GRF
+                for (auto SubNameR : ctx->m_InternalOptions.RegularGRFKernels)
+                {
+                    if (FuncName.find(SubNameR) != std::string::npos)
+                    {
+                        m_annotatedNumThreads = 8;
+                    }
+                }
+                for (auto SubNameL : ctx->m_InternalOptions.LargeGRFKernels)
+                {
+                    if (FuncName.find(SubNameL) != std::string::npos)
+                    {
+                        m_annotatedNumThreads = 4;
+                    }
+                }
+            }
         }
     }
 

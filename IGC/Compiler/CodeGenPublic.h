@@ -1684,7 +1684,9 @@ namespace IGC
                 IntelHasPositivePointerOffset(false),
                 IntelHasBufferOffsetArg(false),
                 IntelBufferOffsetArgOptional(true),
-                IntelHasSubDWAlignedPtrArg(false)
+                IntelHasSubDWAlignedPtrArg(false),
+                LargeGRFKernels(),
+                RegularGRFKernels()
             {
                 if (pInputArgs == nullptr)
                     return;
@@ -1758,6 +1760,9 @@ namespace IGC
             bool IntelForceDisable4GBBuffer = false;
             // user-controled option to disable EU Fusion
             bool DisableEUFusion = false;
+
+            std::vector<std::string> LargeGRFKernels;
+            std::vector<std::string> RegularGRFKernels;
 
             bool AllowRelocAdd = true;
 

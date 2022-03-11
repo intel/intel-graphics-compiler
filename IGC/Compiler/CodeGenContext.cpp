@@ -795,6 +795,26 @@ namespace IGC
                 Pos = valEnd;
                 continue;
             }
+            else if (suffix.equals("-large-grf-kernel"))
+            {
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+
+                LargeGRFKernels.push_back(valStr.str());
+                Pos = valEnd;
+                continue;
+            }
+            else if (suffix.equals("-regular-grf-kernel"))
+            {
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+
+                RegularGRFKernels.push_back(valStr.str());
+                Pos = valEnd;
+                continue;
+            }
 
             // -cl-intel-force-disable-4GB-buffer
             else if (suffix.equals("-force-disable-4GB-buffer"))
