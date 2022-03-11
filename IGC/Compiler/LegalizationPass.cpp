@@ -225,7 +225,7 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
             }
             if (flippable)
             {
-                Instruction* invert;
+                Instruction* invert = nullptr;
                 if (I.getOpcode() == Instruction::And)
                 {
                     invert =
@@ -244,7 +244,10 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
                             "",
                             &I);
                 }
-                invert->setDebugLoc(I.getDebugLoc());
+                if (invert)
+                {
+                    invert->setDebugLoc( I.getDebugLoc() );
+                }
                 while (!I.user_empty())
                 {
                     auto U = I.user_begin();

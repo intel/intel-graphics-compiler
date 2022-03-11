@@ -163,6 +163,7 @@ char IGC::RayTracingAddressSpaceAAWrapperPass::ID = 0;
 
 IGC::RayTracingAddressSpaceAAWrapperPass::RayTracingAddressSpaceAAWrapperPass() : ImmutablePass(ID) {
     initializeRayTracingAddressSpaceAAWrapperPassPass(*PassRegistry::getPassRegistry());
+    Result = nullptr;
 }
 
 ImmutablePass* IGC::createRayTracingAddressSpaceAAWrapperPass() {

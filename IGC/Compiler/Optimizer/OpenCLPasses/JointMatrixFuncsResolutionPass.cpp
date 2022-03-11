@@ -183,7 +183,7 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
 
 static unsigned parseNumber(StringRef name, unsigned *offset) {
 #define BUFFER_SIZE 16
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE+1];
     unsigned count = 0;
     while (std::isdigit(name[*offset]) && count < BUFFER_SIZE) {
         buffer[count] = name[*offset];

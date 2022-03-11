@@ -95,7 +95,7 @@ namespace {
 
     public:
         GASPropagator(BuilderType* Builder, LoopInfo* LoopInfo)
-            : IRB(Builder), LI(LoopInfo) {
+            : IRB(Builder), LI(LoopInfo), TheUse(nullptr), TheVal(nullptr) {
             populateResolvableLoopPHIs();
         }
 

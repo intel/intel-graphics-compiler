@@ -2073,44 +2073,51 @@ getDepAndRel(G4_Operand* Opnd, const preDDD::LiveNode& LN, DepType Dep)
 {
     G4_CmpRelation Rel = G4_CmpRelation::Rel_undef;
     G4_Operand *Other = LN.N->getInst()->getOperand(LN.OpNum);
-    if (Opnd->isDstRegRegion())
-        Rel = Opnd->asDstRegRegion()->compareOperand(Other);
-    else if (Opnd->isCondMod())
-        Rel = Opnd->asCondMod()->compareOperand(Other);
-    else if (Opnd->isSrcRegRegion())
-        Rel = Opnd->asSrcRegRegion()->compareOperand(Other);
-    else if (Opnd->isPredicate())
-        Rel = Opnd->asPredicate()->compareOperand(Other);
-    else
-        Rel = Opnd->compareOperand(Other);
+    assert(Other != nullptr);
 
-    if (Rel == G4_CmpRelation::Rel_disjoint) {
-        // Check if there is any acc dependency on acc registers.
-        G4_AccRegSel AccOpnd = Opnd->getAccRegSel();
-        G4_AccRegSel AccOther = Other->getAccRegSel();
+    if( Other )
+    {
+        if( Opnd->isDstRegRegion() )
+            Rel = Opnd->asDstRegRegion()->compareOperand( Other );
+        else if( Opnd->isCondMod() )
+            Rel = Opnd->asCondMod()->compareOperand( Other );
+        else if( Opnd->isSrcRegRegion() )
+            Rel = Opnd->asSrcRegRegion()->compareOperand( Other );
+        else if( Opnd->isPredicate() )
+            Rel = Opnd->asPredicate()->compareOperand( Other );
+        else
+            Rel = Opnd->compareOperand( Other );
 
-        // Normalize NOACC to ACC_UNDEFINED
-        if (AccOpnd == G4_AccRegSel::NOACC)
-            AccOpnd = G4_AccRegSel::ACC_UNDEFINED;
-        if (AccOther == G4_AccRegSel::NOACC)
-            AccOther = G4_AccRegSel::ACC_UNDEFINED;
+        if( Rel == G4_CmpRelation::Rel_disjoint )
+        {
+            // Check if there is any acc dependency on acc registers.
+            G4_AccRegSel AccOpnd = Opnd->getAccRegSel();
+            G4_AccRegSel AccOther = Other->getAccRegSel();
 
-        if (AccOther == AccOpnd &&
-            AccOther != G4_AccRegSel::ACC_UNDEFINED) {
-            // While comparing V3:Acc2 to V4:Acc2, we cannot kill this live
-            // node, as there is no overlap on V3 and V4. So only returns
-            // Rel_interfere relation, not Rel_eq.
-            //
-            if (LN.isWrite() && Opnd->isDstRegRegion())
-                return std::make_pair(DepType::WAW, Rel_interfere);
-            if (LN.isWrite())
-                return std::make_pair(DepType::WAR, Rel_interfere);
-            if (Opnd->isDstRegRegion())
-                return std::make_pair(DepType::RAW, Rel_interfere);
+            // Normalize NOACC to ACC_UNDEFINED
+            if( AccOpnd == G4_AccRegSel::NOACC )
+                AccOpnd = G4_AccRegSel::ACC_UNDEFINED;
+            if( AccOther == G4_AccRegSel::NOACC )
+                AccOther = G4_AccRegSel::ACC_UNDEFINED;
+
+            if( AccOther == AccOpnd &&
+                AccOther != G4_AccRegSel::ACC_UNDEFINED )
+            {
+                // While comparing V3:Acc2 to V4:Acc2, we cannot kill this live
+                // node, as there is no overlap on V3 and V4. So only returns
+                // Rel_interfere relation, not Rel_eq.
+                //
+                if( LN.isWrite() && Opnd->isDstRegRegion() )
+                    return std::make_pair( DepType::WAW, Rel_interfere );
+                if( LN.isWrite() )
+                    return std::make_pair( DepType::WAR, Rel_interfere );
+                if( Opnd->isDstRegRegion() )
+                    return std::make_pair( DepType::RAW, Rel_interfere );
+            }
+
+            // No dependency.
+            return std::make_pair( DepType::NODEP, Rel );
         }
-
-        // No dependency.
-        return std::make_pair(DepType::NODEP, Rel);
     }
     return std::make_pair(Dep, Rel);
 }
