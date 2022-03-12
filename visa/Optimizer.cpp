@@ -7419,9 +7419,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
         else
         {
-            if (/*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM &&*/
-            ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
-              builder.getOption(vISA_forceNoMaskWA)))
+            if (builder.hasFusedEUNoMaskWA())
             {
                 doNoMaskWA();
             }
@@ -7709,16 +7707,17 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     {
         if (builder.useNewNoMaskWA())
         {
-            if (builder.hasFusedEUNoMaskWA() &&
-                (builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
+            if (builder.hasFusedEUNoMaskWA())
             {
                 newDoNoMaskWA_postRA();
             }
         }
-        else if (builder.hasFusedEUWA() &&
-                 (builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
+        else
         {
-            doNoMaskWA_postRA();
+            if (builder.hasFusedEUNoMaskWA())
+            {
+                doNoMaskWA_postRA();
+            }
         }
 
         // Ensure the first instruction of a stack function has switch option.
@@ -14071,6 +14070,13 @@ void Optimizer::doNoMaskWA()
 //
 void Optimizer::newDoNoMaskWA_postRA()
 {
+    // If no spill, return after clearing NoMaskInfo
+    if (!(builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
+    {
+        kernel.clearNoMaskInfo();
+        return;
+    }
+
     // Utility class to get flag def/use info for a BB
     //    Each of 16-bit flag has one bit to track whether it is used or defined.
     //    We have 4 flags, thus 4 bits for use and 4 bits for def.
@@ -14815,6 +14821,13 @@ void Optimizer::newDoNoMaskWA_postRA()
 
 void Optimizer::doNoMaskWA_postRA()
 {
+    // If no spill, clear noMaskInfo and return.
+    if (!(builder.getJitInfo()->spillMemUsed > 0 || builder.getJitInfo()->numFlagSpillStore > 0))
+    {
+        kernel.clearNoMaskInfo();
+        return;
+    }
+
     std::vector<INST_LIST_ITER> NoMaskCandidates;
     G4_ExecSize simdsize = fg.getKernel()->getSimdSize();
 
