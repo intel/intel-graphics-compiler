@@ -54,6 +54,14 @@ namespace IGCLLVM
             llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
             : llvm::IRBuilder<T, InserterTyDef()>(TheBB, IP, FPMathTag, OpBundles) {}
 
+        const T& getFolder() {
+#if LLVM_VERSION_MAJOR <= 10
+            return llvm::IRBuilder<T, InserterTyDef()>::getFolder();
+#else
+            return static_cast<const T&>(llvm::IRBuilderBase::Folder);
+#endif
+        }
+
         using llvm::IRBuilder<T, InserterTyDef()>::CreateMemCpy;
 
         inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, uint64_t Size, unsigned Align,
