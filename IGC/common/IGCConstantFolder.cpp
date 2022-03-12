@@ -15,12 +15,6 @@ SPDX-License-Identifier: MIT
 namespace IGC
 {
 
-IGCConstantFolder::IGCConstantFolder() :
-  m_baseConstantFolder(llvm::ConstantFolder())
-{
-
-}
-
 llvm::Constant* IGCConstantFolder::CreateGradientXFine(llvm::Constant* C0) const
 {
     return CreateGradient(C0);
@@ -105,7 +99,7 @@ llvm::Constant* IGCConstantFolder::CreateFAdd(llvm::Constant* C0, llvm::Constant
 {
     if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1))
     {
-        return m_baseConstantFolder.CreateFAdd(C0, C1);
+        return IGCLLVM::ConstantFolderBase::CreateFAdd(C0, C1);
     }
     llvm::ConstantFP* CFP0 = llvm::cast<llvm::ConstantFP>(C0);
     llvm::ConstantFP* CFP1 = llvm::cast<llvm::ConstantFP>(C1);
@@ -126,7 +120,7 @@ llvm::Constant* IGCConstantFolder::CreateFMul(llvm::Constant* C0, llvm::Constant
 {
     if (llvm::isa<llvm::UndefValue>(C0) || llvm::isa<llvm::UndefValue>(C1))
     {
-        return m_baseConstantFolder.CreateFMul(C0, C1);
+        return IGCLLVM::ConstantFolderBase::CreateFMul(C0, C1);
     }
     llvm::ConstantFP* CFP0 = llvm::cast<llvm::ConstantFP>(C0);
     llvm::ConstantFP* CFP1 = llvm::cast<llvm::ConstantFP>(C1);
@@ -147,7 +141,7 @@ llvm::Constant* IGCConstantFolder::CreateFPTrunc(llvm::Constant* C0, llvm::Type*
 {
     if (llvm::isa<llvm::UndefValue>(C0))
     {
-        return m_baseConstantFolder.CreateFPCast(C0, dstType);
+        return IGCLLVM::ConstantFolderBase::CreateFPCast(C0, dstType);
     }
     llvm::APFloat APF = llvm::cast<llvm::ConstantFP>(C0)->getValueAPF();
     const llvm::fltSemantics& outputSemantics = dstType->isHalfTy() ? llvm::APFloatBase::IEEEhalf() :
