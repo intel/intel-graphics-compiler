@@ -984,7 +984,7 @@ namespace IGC
 
     static void initCompOptionFromRegkey(CodeGenContext* ctx)
     {
-        SetCurrentDebugHash(ctx->hash.asmHash);
+        SetCurrentDebugHash(ctx->hash);
 
         CompOptions& opt = ctx->getModuleMetaData()->compOpt;
 

@@ -14,6 +14,9 @@ PURPOSE: Defines meta data for holding/defining regkey variables
 #include "IGC/common/igc_debug.h"
 #include "IGC/common/igc_flags.hpp"
 #include "common/SysUtils.hpp"
+#include "iStdLib/types.h"
+#include "common/shaderHash.hpp"
+#include "Probe/Assertion.h"
 #include <string>
 
 typedef char debugString[256];
@@ -31,13 +34,32 @@ typedef char debugString[256];
 #include <vector>
 struct HashRange
 {
+    enum class Type
+    {
+        Asm, // asmhash:, hash:
+        Pso  // psohash:
+    };
+
     unsigned long long start;
     unsigned long long end;
+    Type Ty;
     union
     {
         unsigned    m_Value;
         debugString m_string;
     };
+
+    uint64_t getHashVal(const ShaderHash& Hash) const
+    {
+        switch (Ty)
+        {
+        case Type::Asm:
+            return Hash.getAsmHash();
+        case Type::Pso:
+            return Hash.getPsoHash();
+        }
+        return {};
+    }
 };
 
 struct SRegKeyVariableMetaData
@@ -102,7 +124,8 @@ struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
     {                                               \
         return releaseMode;                         \
     }                                               \
-} regkeyName
+} regkeyName;                                       \
+static_assert(sizeof(regkeyName) == sizeof(SRegKeyVariableMetaData));
 
 // XMACRO defining the regkeys
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
@@ -161,11 +184,11 @@ void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys);
 void DumpIGCRegistryKeyDefinitions();
 void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction);
 void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError = nullptr);
-void SetCurrentDebugHash(unsigned long long hash);
+void SetCurrentDebugHash(const ShaderHash &hash);
 #undef LINUX_RELEASE_MODE
 #else
 static inline void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys) {}
-static inline void SetCurrentDebugHash(unsigned long long hash) {}
+static inline void SetCurrentDebugHash(const ShaderHash &hash) {}
 static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError=nullptr) {}
 #define IGC_SET_FLAG_VALUE(name, regkeyValue)
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \

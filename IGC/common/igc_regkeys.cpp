@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
+#include <llvm/ADT/StringSwitch.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "3d/common/iStdLib/File.h"
@@ -36,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include <iostream>
 #include <mutex>
 #include <algorithm>
+#include <optional>
 #include "Probe/Assertion.h"
 #include "common/Types.hpp"
 
@@ -603,7 +605,7 @@ static void ParseCStringVector(std::vector<char *> &OutputVector,
 }
 
 static void setRegkeyFromOption(
-    std::string&     optionValue,
+    const std::string&     optionValue,
     const char* dataTypeName,
     const char* regkeyName,
     void*       pRegkeyVar,
@@ -690,42 +692,64 @@ static const std::string GetOptionFile()
     return (GetOptionFilePath() + fname);
 }
 
-// parses this syntax:
-// hash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
-static void ParseHashRange(std::string line, std::vector<HashRange>& ranges)
+static
+std::optional<std::pair<HashRange::Type, llvm::StringRef>>
+parseHashType(llvm::StringRef line)
 {
-    size_t sPos = line.find("hash:");
-    if(sPos == std::string::npos)
-    {
-        return;
-    }
-    // re-initialize ranges
-    ranges.clear();
-    std::string vString = line.substr(sPos + 5);
-    std::string token;
-    std::stringstream sline(vString);
-    while(std::getline(sline, token, ','))
-    {
-        size_t dash = token.find('-');
-        std::string start = token.substr(0, dash);
-        std::string end;
-        if(dash == std::string::npos)
-        {
-            end = start;
-        }
-        else
-        {
-            end = token.substr(dash + 1);
-        }
-        HashRange range;
-        range.start = std::stoull(start, nullptr, 16);
-        range.end = std::stoull(end, nullptr, 16);
-        ranges.push_back(range);
-    }
+    using namespace llvm;
+    size_t Loc = line.find_first_of(':');
+    if (Loc == StringRef::npos)
+        return {};
 
+    auto Ty = StringSwitch<std::optional<HashRange::Type>>(line.substr(0, Loc))
+               .Cases("hash", "asmhash", HashRange::Type::Asm)
+               .Case("psohash", HashRange::Type::Pso)
+               .Default({});
+    if (!Ty)
+        return {};
+
+    return { std::make_pair(*Ty, line.substr(Loc + 1)) };
 }
 
-static void declareIGCKey(std::string& line, const char* dataType, const char* regkeyName, std::vector<HashRange>& hashes, SRegKeyVariableMetaData* regKey)
+// parses this syntax:
+// Each hash may be optionally prefixed with "0x" (e.g., 0xaaaaaaaaaaaaaaaa)
+// hash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
+// asmhash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
+// psohash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
+static void ParseHashRange(llvm::StringRef line, std::vector<HashRange>& ranges)
+{
+    using namespace llvm;
+    auto Result = parseHashType(line);
+    if (!Result)
+        return;
+    auto parseAsInt = [](StringRef S) {
+        unsigned Radix = S.startswith("0x") ? 0 : 16;
+        uint64_t Result;
+        bool Err = S.getAsInteger(Radix, Result);
+        IGC_ASSERT(!Err);
+        return Result;
+    };
+    // re-initialize ranges
+    ranges.clear();
+    auto [HashType, vString] = *Result;
+    do {
+        auto [token, RHS] = vString.split(',');
+        size_t dash = token.find('-');
+        StringRef start = token.substr(0, dash);
+        StringRef end = (dash == StringRef::npos) ?
+            start : token.substr(dash + 1);
+        HashRange range;
+        range.start = parseAsInt(start);
+        range.end   = parseAsInt(end);
+        range.Ty    = HashType;
+        ranges.push_back(range);
+        vString = RHS;
+    } while (!vString.empty());
+}
+
+static void declareIGCKey(
+    const std::string& line, const char* dataType, const char* regkeyName,
+    std::vector<HashRange>& hashes, SRegKeyVariableMetaData* regKey)
 {
     bool isSet = false;
     debugString value = { 0 };
@@ -788,22 +812,27 @@ void appendToOptionsLogFile(std::string const &message)
     os.close();
 }
 
-thread_local unsigned long long g_CurrentShaderHash = 0;
+static thread_local ShaderHash g_CurrentShaderHash;
+void SetCurrentDebugHash(const ShaderHash& hash)
+{
+    g_CurrentShaderHash = hash;
+}
+
 bool CheckHashRange(SRegKeyVariableMetaData& varname)
 {
-    std::vector<HashRange>hashes = varname.hashes;
-    if(hashes.empty())
-    {
+    if (varname.hashes.empty())
         return true;
-    }
-    for(auto it : hashes)
+
+    for (auto &it : varname.hashes)
     {
-        if(g_CurrentShaderHash >= it.start && g_CurrentShaderHash <= it.end)
+        unsigned long long CurrHash = it.getHashVal(g_CurrentShaderHash);
+        if (CurrHash >= it.start && CurrHash <= it.end)
         {
             varname.m_Value = it.m_Value;
-            char msg[100];
-            int size = snprintf(msg, 100, "Shader %#0llx: %s=%d", g_CurrentShaderHash, varname.GetName(), it.m_Value);
-            if (size >=0 && size < 100)
+            constexpr uint32_t Len = 100;
+            char msg[Len];
+            int size = snprintf(msg, Len, "Shader %#0llx: %s=%d", CurrHash, varname.GetName(), it.m_Value);
+            if (size >= 0 && size < Len)
             {
                 appendToOptionsLogFile(msg);
             }
@@ -886,11 +915,6 @@ static void LoadFromRegKeyOrEnvVarOrOptions(
             }
         }
     }
-}
-
-void SetCurrentDebugHash(unsigned long long hash)
-{
-    g_CurrentShaderHash = hash;
 }
 
 /*****************************************************************************\

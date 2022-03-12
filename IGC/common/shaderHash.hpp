@@ -6,8 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef SHADER_HASH_HPP
-#define SHADER_HASH_HPP
+#pragma once
 
 class ShaderHash
 {
@@ -37,4 +36,3 @@ public:
     QWORD stateHash;
 };
 
-#endif //SHADER_HASH_HPP

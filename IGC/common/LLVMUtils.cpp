@@ -741,7 +741,7 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
 
 void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
 {
-    SetCurrentDebugHash(pContext->hash.asmHash);
+    SetCurrentDebugHash(pContext->hash);
 
     if (IGC_IS_FLAG_ENABLED(DumpLLVMIR))
     {
