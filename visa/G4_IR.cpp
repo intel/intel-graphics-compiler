@@ -7348,7 +7348,7 @@ void G4_INST::setImplAccDst(G4_DstRegRegion* opnd)
 // will have 0xFF00, which lane 8-15
 unsigned G4_INST::getExecLaneMask() const
 {
-    unsigned maskbits = (1 << getExecSize()) - 1;
+    unsigned maskbits = (unsigned)(((uint64_t)1 << getExecSize()) - 1);
     unsigned chanOffset = getMaskOffset();
     return (maskbits << chanOffset);
 }
