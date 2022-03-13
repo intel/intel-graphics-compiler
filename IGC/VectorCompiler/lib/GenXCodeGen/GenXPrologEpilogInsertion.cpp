@@ -74,14 +74,6 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 
-static cl::opt<unsigned> ArgRegSizeInGRFsOpt(
-    "vc-arg-reg-size", cl::init(visa::ArgRegSizeInGRFs), cl::Hidden,
-    cl::desc("Set max ARG size in registers to use for arguments passing"));
-
-static cl::opt<unsigned> RetRegSizeInGRFsOpt(
-    "vc-ret-reg-size", cl::init(visa::RetRegSizeInGRFs), cl::Hidden,
-    cl::desc("Set max RET size in registers to use for return value passing"));
-
 namespace {
 
 inline unsigned calcPadding(uint64_t Val, unsigned Align) {
@@ -414,8 +406,8 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   ST = &getAnalysis<TargetPassConfig>()
             .getTM<GenXTargetMachine>()
             .getGenXSubtarget();
-  ArgRegByteSize = ArgRegSizeInGRFsOpt * ST->getGRFByteSize();
-  RetRegByteSize = RetRegSizeInGRFsOpt * ST->getGRFByteSize();
+  ArgRegByteSize = visa::ArgRegSizeInGRFs * ST->getGRFByteSize();
+  RetRegByteSize = visa::RetRegSizeInGRFs * ST->getGRFByteSize();
   LLVM_DEBUG(dbgs() << "ArgReg size is " << ArgRegByteSize << "\n");
   LLVM_DEBUG(dbgs() << "RetReg size is " << RetRegByteSize << "\n");
   if (!(BEConf->useNewStackBuilder() && ST->isOCLRuntime())) {
