@@ -152,6 +152,8 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     return ArgKindType::PrivateBase;
   if (KAI.isByValSVM())
     return ArgKindType::ByValSVM;
+  if (KAI.isImplicitArgsBuffer())
+    return ArgKindType::ImplicitArgsBuffer;
 
   // Explicit arguments.
   switch (KM.getArgCategory(ArgNo)) {

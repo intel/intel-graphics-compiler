@@ -552,7 +552,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
       }
 
       if (AI.isLocalSize() || AI.isGroupCount() || AI.isPrintBuffer() ||
-          AI.isPrivateBase()) {
+          AI.isPrivateBase() || AI.isImplicitArgsBuffer()) {
         unsigned Bytes = Arg.getType()->getPrimitiveSizeInBits() / 8;
         unsigned Align = Arg.getType()->getScalarSizeInBits() / 8;
         placeArg(&Arg, Bytes, Align);

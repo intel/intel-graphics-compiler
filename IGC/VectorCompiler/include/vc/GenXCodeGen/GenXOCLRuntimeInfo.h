@@ -56,6 +56,7 @@ public:
       PrivateBase,
       ByValSVM,
       BindlessBuffer,
+      ImplicitArgsBuffer,
     };
 
     enum class AccessKindType { None, ReadOnly, WriteOnly, ReadWrite };

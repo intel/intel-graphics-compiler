@@ -105,6 +105,7 @@ SPDX-License-Identifier: MIT
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 
+#include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/ImplicitArgsBuffer.h"
 #include "vc/Utils/General/DebugInfo.h"
@@ -186,8 +187,9 @@ using IntrIDMap = std::unordered_map<Function *, IntrIDSet>;
 // overlap with real instrinsic IDs.
 namespace PseudoIntrinsic {
 enum Enum : unsigned {
-  First = GenXIntrinsic::not_any_intrinsic,
+  First = vc::InternalIntrinsic::not_any_intrinsic,
   PrivateBase = First,
+  ImplicitArgsBuffer,
   Last
 };
 } // namespace PseudoIntrinsic
@@ -262,6 +264,8 @@ private:
         return KernelMetadata::AK_SURFACE | KernelMetadata::IMP_SB_DEPCNT;
       case PseudoIntrinsic::PrivateBase:
         return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_OCL_PRIVATE_BASE;
+      case PseudoIntrinsic::ImplicitArgsBuffer:
+        return KernelMetadata::AK_NORMAL | KernelMetadata::IMP_IMPL_ARGS_BUFFER;
     }
     return KernelMetadata::AK_NORMAL;
   }
@@ -308,6 +312,7 @@ private:
     switch (IID) {
       case GenXIntrinsic::genx_print_buffer:
       case PseudoIntrinsic::PrivateBase:
+      case PseudoIntrinsic::ImplicitArgsBuffer:
         return llvm::Type::getInt64Ty(Context);
       case GenXIntrinsic::genx_local_id:
       case GenXIntrinsic::genx_local_size:
@@ -896,10 +901,15 @@ template <bool IsEntry> void CallGraphTraverser::visitFunction(Function &F) {
 
 static std::string getImplicitArgName(unsigned IID) {
   if (!isPseudoIntrinsic(IID))
-    return "__arg_" + GenXIntrinsic::getAnyName(IID, None);
-  IGC_ASSERT_MESSAGE(IID == PseudoIntrinsic::PrivateBase,
-                     "there's only private base pseudo intrinsic for now");
-  return "privBase";
+    return "impl.arg." + GenXIntrinsic::getAnyName(IID, None);
+  switch (IID) {
+  case PseudoIntrinsic::ImplicitArgsBuffer:
+    return "impl.arg.impl.args.buffer";
+  default:
+    IGC_ASSERT_MESSAGE(IID == PseudoIntrinsic::PrivateBase,
+                       "there's only private base pseudo intrinsic for now");
+    return "impl.arg.private.base";
+  }
 }
 
 // Process a kernel - loads from a global (and the globals) have already been

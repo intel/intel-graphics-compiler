@@ -272,6 +272,11 @@ public:
     IMP_OCL_PRIVATE_BASE = 0xC << 3,
     IMP_OCL_LINEARIZATION = 0xD << 3,
     IMP_OCL_BYVALSVM = 0xE << 3,
+    // Implicit argument with implicit args buffer.
+    // It is not supported by CMRT. It is not supported for platforms with
+    // payload in memory (for those platforms r0.0 is used to obtain the
+    // pointer).
+    IMP_IMPL_ARGS_BUFFER = 0xF << 3,
     IMP_PSEUDO_INPUT = 0x10 << 3
   };
 
@@ -333,6 +338,10 @@ struct KernelArgInfo {
   bool isByValSVM() const {
     uint32_t Val = Kind & 0xFFF8;
     return Val == KernelMetadata::IMP_OCL_BYVALSVM;
+  }
+  bool isImplicitArgsBuffer() const {
+    uint32_t Val = Kind & 0xFFF8;
+    return Val == KernelMetadata::IMP_IMPL_ARGS_BUFFER;
   }
 };
 

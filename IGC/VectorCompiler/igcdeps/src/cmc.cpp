@@ -428,6 +428,25 @@ void CMKernel::createPrintfBufferArgAnnotation(unsigned Index, unsigned BTI,
       zebin::PreDefinedAttrGetter::ArgType::printf_buffer, ArgOffset, Size);
 }
 
+void CMKernel::createImplArgsBufferAnnotation(unsigned Size,
+                                              unsigned ArgOffset) {
+  auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
+
+  constInput->ConstantType = iOpenCL::DATA_PARAMETER_IMPL_ARG_BUFFER;
+  constInput->Offset = 0;
+  constInput->PayloadPosition = ArgOffset;
+  constInput->PayloadSizeInBytes = Size;
+  constInput->ArgumentNumber = 0;
+  constInput->LocationIndex = 0;
+  constInput->LocationCount = 0;
+  m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
+
+  zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+      m_kernelInfo.m_zePayloadArgs,
+      zebin::PreDefinedAttrGetter::ArgType::implicit_arg_buffer, ArgOffset,
+      Size);
+}
+
 // TODO: refactor this function with the OCL part.
 void CMKernel::RecomputeBTLayout(int numUAVs, int numResources)
 {
@@ -634,6 +653,9 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
     case ArgKind::ByValSVM:
       // Do nothing because it has already been linearized and implicit args
       // will be set instead of it.
+      break;
+    case ArgKind::ImplicitArgsBuffer:
+      Kernel.createImplArgsBufferAnnotation(Arg.getSizeInBytes(), ArgOffset);
       break;
     }
   }
