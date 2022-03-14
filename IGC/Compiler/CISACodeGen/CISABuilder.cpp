@@ -6015,6 +6015,7 @@ namespace IGC
             (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram()))
         {
             context->m_retryManager.Disable();
+            context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
         }
 
 #if (GET_SHADER_STATS && !PRINT_DETAIL_SHADER_STATS)

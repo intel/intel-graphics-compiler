@@ -976,8 +976,17 @@ namespace IGC
         void SetSpillSize(unsigned int spillSize);
         unsigned int GetLastSpillSize();
         unsigned int numInstructions = 0;
+        // For OCL the retry manager will work on per-kernel basis, that means
+        // Disable() will disable only specific kernel. Other kernels still can
+        // be retried. To keep the old behavior for other shader types, Disable()
+        // will check the field and keep the old behavior. If other shader
+        // types want to follow OCL this has to be set, see CodeGenContext
+        // constructor.
+        bool perKernel;
         /// the set of OCL kernels that need to recompile
         std::set<std::string> kernelSet;
+        /// the set of OCL kernels that need to skip recompilation
+        std::set<std::string> kernelSkip;
 
         void ClearSpillParams();
         // save entry for given SIMD mode, to avoid recompile for next retry.
@@ -1201,6 +1210,9 @@ namespace IGC
 
             // Per context flag adjustment
             setFlagsPerCtx();
+
+            // Set retry behavor for Disable()
+            m_retryManager.perKernel = (type == ShaderType::OPENCL_SHADER);
         }
 
         CodeGenContext(CodeGenContext&) = delete;

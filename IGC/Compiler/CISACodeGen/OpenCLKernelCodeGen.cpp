@@ -2397,6 +2397,8 @@ namespace IGC
         if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
             noRetry ||
             ctx->m_retryManager.IsLastTry() ||
+            (!ctx->m_retryManager.kernelSkip.empty() &&
+             ctx->m_retryManager.kernelSkip.count(pFunc->getName().str())) ||
             optDisable)
         {
             // Save the shader program to the state processor to be handled later
@@ -2475,6 +2477,7 @@ namespace IGC
             }
         }
 
+        // Clear the retry set and collect kernels for retry in the loop below.
         ctx->m_retryManager.kernelSet.clear();
 
         // gather data to send back to the driver
@@ -2508,6 +2511,10 @@ namespace IGC
                     GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD8);
             }
         }
+
+        // The skip set to avoid retry is not needed. Clear it and collect a new set
+        // during retry compilation.
+        ctx->m_retryManager.kernelSkip.clear();
     }
 
     bool COpenCLKernel::hasReadWriteImage(llvm::Function& F)

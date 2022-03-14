@@ -39,7 +39,7 @@ namespace IGC
         { false, true, true, true, false, false, false, false, false, 500 }
     };
 
-    RetryManager::RetryManager() : enabled(false)
+    RetryManager::RetryManager() : enabled(false), perKernel(false)
     {
         memset(m_simdEntries, 0, sizeof(m_simdEntries));
         firstStateId = IGC_GET_FLAG_VALUE(RetryManagerFirstStateId);
@@ -107,7 +107,11 @@ namespace IGC
     unsigned RetryManager::GetRetryId() const { return stateId; }
 
     void RetryManager::Enable() { enabled = true; }
-    void RetryManager::Disable() { enabled = false; }
+    void RetryManager::Disable() {
+        if (!perKernel) {
+            enabled = false;
+        }
+    }
 
     void RetryManager::SetSpillSize(unsigned int spillSize) { lastSpillSize = spillSize; }
     unsigned int RetryManager::GetLastSpillSize() { return lastSpillSize; }
