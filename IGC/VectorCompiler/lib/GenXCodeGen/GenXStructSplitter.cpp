@@ -133,7 +133,7 @@ void GenXStructSplitter::getAnalysisUsage(AnalysisUsage &AU) const {
 
 static Type *getArrayFreeTy(Type *Ty);
 static Type *getBaseTy(Type *Ty);
-static char const *getTypePrefix(Type &Ty);
+static const char *getTypePrefix(Type &Ty);
 
 // Class to do first analysis and ban all structures, which cannot be split
 // at advance. It bans structures containing array of complex structs. It bans
@@ -198,16 +198,16 @@ public:
 
   public:
     SElementsOfType(unsigned Size);
-    SElementsOfType(std::vector<Type *> const &InTypes);
+    SElementsOfType(const std::vector<Type *> &InTypes);
 
     unsigned size() const;
 
     Type *getTyAt(unsigned Index) const;
     unsigned getIdxAt(unsigned Index) const;
     std::pair<Type *&, unsigned &> at(unsigned Index);
-    std::pair<Type *const &, unsigned const &> at(unsigned Index) const;
+    std::pair<Type *const &, const unsigned &> at(unsigned Index) const;
 
-    std::vector<Type *> const &getTypesArray() const { return Types; }
+    const std::vector<Type *> &getTypesArray() const { return Types; }
 
     using ty_iterator = std::vector<Type *>::iterator;
     using idx_iterator = std::vector<unsigned>::iterator;
@@ -262,8 +262,8 @@ public:
     auto types() const { return make_range(ty_begin(), ty_end()); }
 
     void emplace_back(Type &Ty, unsigned Index);
-    void push_back(value_type const &Elem);
-    void emplace_back(SElement const &Elem);
+    void push_back(const value_type &Elem);
+    void emplace_back(const SElement &Elem);
 
     void print(raw_ostream &Os = llvm::errs()) const;
   };
@@ -411,7 +411,7 @@ private:
   StructType *checkAbilityToMerge(const ElemMapping &NewSTypes) const;
 
 public:
-  DependencyGraph(Module &M, StructFilter const &Filter);
+  DependencyGraph(Module &M, const StructFilter &Filter);
   void run();
 
   //***************************************
@@ -419,10 +419,10 @@ public:
   //***************************************
   bool isPlain(StructType &STy) const;
   bool isStructProcessed(StructType &STy) const;
-  STypes const &getStructComponens(StructType &STy) const;
+  const STypes &getStructComponens(StructType &STy) const;
   Type *getPlainSubTy(StructType &STy) const;
   const ElemMapping &getElemMappingFor(StructType &STy) const;
-  ListOfSplitElements const &getElementsListOfSTyAtIdx(StructType &STy,
+  const ListOfSplitElements &getElementsListOfSTyAtIdx(StructType &STy,
                                                        unsigned Idx) const;
   std::vector<Type *> getUniqueSplitTypes(StructType &STy) const;
   //***************************************
@@ -437,7 +437,7 @@ public:
 // This class handles all instructions that use split structs.
 class Substituter : public InstVisitor<Substituter> {
   LLVMContext &Ctx;
-  DataLayout const &DL;
+  const DataLayout &DL;
   StructFilter Filter;
   DependencyGraph Graph;
   vc::DIBuilder DIB;
@@ -457,8 +457,8 @@ class Substituter : public InstVisitor<Substituter> {
   AllocaInst *generateAlloca(AllocaInst &AI,
                              const DependencyGraph::SElement &TyElem);
   Instruction *generateNewGEPs(GetElementPtrInst &GEPI, Type &DestSTy,
-                               DependencyGraph::SElementsOfType const &IdxPath,
-                               TypeToInstrMap const &NewInstr,
+                               const DependencyGraph::SElementsOfType &IdxPath,
+                               const TypeToInstrMap &NewInstr,
                                unsigned PlainTyIdx) const;
 
   static Optional<
@@ -469,9 +469,9 @@ class Substituter : public InstVisitor<Substituter> {
   getInstUses(Instruction &I);
   static Optional<uint64_t> processAddInst(Instruction &I, BinaryOperator &BO);
 
-  bool processGEP(GetElementPtrInst &GEPI, TypeToInstrMap const &NewInstr,
+  bool processGEP(GetElementPtrInst &GEPI, const TypeToInstrMap &NewInstr,
                   InstsToSubstitute /*OUT*/ &InstToInst);
-  bool processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
+  bool processPTI(PtrToIntInst &PTI, const TypeToInstrMap &NewInstr,
                   InstsToSubstitute /*OUT*/ &InstToInst);
   static bool processPTIsUses(Instruction &I, uint64_t /*OUT*/ &MaxPtrOffset);
 
@@ -594,7 +594,7 @@ bool DependencyGraph::isStructProcessed(StructType &STy) const {
 //  Gets the element's information of the struct.
 //  Requires structure to be processed before.
 //
-DependencyGraph::STypes const &
+const DependencyGraph::STypes &
 DependencyGraph::getStructComponens(StructType &STy) const {
   auto FindIt = AllStructs.find(&STy);
   IGC_ASSERT_MESSAGE(
@@ -607,7 +607,7 @@ DependencyGraph::getStructComponens(StructType &STy) const {
 //  Gets vector of elements substitution of old struct with new substructs'
 //  elements.
 //
-DependencyGraph::ElemMapping const &
+const DependencyGraph::ElemMapping &
 DependencyGraph::getElemMappingFor(StructType &STy) const {
   auto FindIt = InfoToMerge.find(&STy);
   IGC_ASSERT_MESSAGE(
@@ -620,10 +620,10 @@ DependencyGraph::getElemMappingFor(StructType &STy) const {
 //  Gets element's list which substitutes split struct's(STy) element at
 //  index(Idx).
 //
-DependencyGraph::ListOfSplitElements const &
+const DependencyGraph::ListOfSplitElements &
 DependencyGraph::getElementsListOfSTyAtIdx(StructType &STy,
                                            unsigned Idx) const {
-  ElemMapping const &VecOfSTy = getElemMappingFor(STy);
+  const ElemMapping &VecOfSTy = getElemMappingFor(STy);
   IGC_ASSERT_MESSAGE(Idx < VecOfSTy.size(),
                      "Attempt to get element out of borders.");
   return VecOfSTy.at(Idx);
@@ -730,7 +730,7 @@ void DependencyGraph::processNode(Node &SNode) {
   // Splitting always gets a plain type, so graph will be changed anyway.
   if (StructType *OldSTy = SNode.getType()) {
     // Splitting.
-    STypes const &Types = getStructComponens(*OldSTy);
+    const STypes &Types = getStructComponens(*OldSTy);
     // Indices of unsplit struct will be matched with indices of elements of
     // new split structs.
     ElemMapping IndicesMap(OldSTy->getNumElements());
@@ -830,8 +830,8 @@ void DependencyGraph::remakeParent(Node &SNode, Node &SNodeToChange,
                     << "\n\tChild node: " << *SNodeToChange.getType() << "\n");
   StructType *CurrentS = SNode.getType();
   StringRef CurrentSName = CurrentS->getName();
-  unsigned const NumElements = CurrentS->getNumElements();
-  unsigned const NewMaxSize = NumElements + NewReplaceTypes.size() - 1;
+  const unsigned NumElements = CurrentS->getNumElements();
+  const unsigned NewMaxSize = NumElements + NewReplaceTypes.size() - 1;
   std::vector<Type *> NewElements;
   NewElements.reserve(NewMaxSize);
   // First create an empty structure.
@@ -930,7 +930,7 @@ void DependencyGraph::mergeStructGenerationInfo() {
       LLVM_DEBUG(dbgs() << "Able to merge: " << SToMerge << "\n\tWith "
                         << *SToMergeWith << "\n");
 
-      ElemMapping const &InfoAboutTemporaryS = getElemMappingFor(*SToMergeWith);
+      const ElemMapping &InfoAboutTemporaryS = getElemMappingFor(*SToMergeWith);
       // Every element of the structure SToMerge will be substituted with
       // element from the structure SToMergeWith and/or new elements from
       // SToMergeWith will be placed in SToMerge.
@@ -940,7 +940,7 @@ void DependencyGraph::mergeStructGenerationInfo() {
                              "Attempt to merge unwrapped type.");
           IGC_ASSERT_MESSAGE(Element.getIndex() < InfoAboutTemporaryS.size(),
                              "Attempt to get element out of borders.");
-          ListOfSplitElements const &NewElement =
+          const ListOfSplitElements &NewElement =
               InfoAboutTemporaryS.at(Element.getIndex());
 
           auto EIt = NewElement.rbegin();
@@ -987,7 +987,7 @@ void DependencyGraph::mergeStructGenerationInfo() {
 //            (Ci, 2)
 //
 StructType *
-DependencyGraph::checkAbilityToMerge(ElemMapping const &NewSTypes) const {
+DependencyGraph::checkAbilityToMerge(const ElemMapping &NewSTypes) const {
   IGC_ASSERT_MESSAGE(NewSTypes.size(), "Merging empty structs.");
   IGC_ASSERT_MESSAGE(NewSTypes.begin()->size(), "Merging empty structs.");
   auto FirstElem = NewSTypes.begin()->begin();
@@ -1014,7 +1014,7 @@ DependencyGraph::checkAbilityToMerge(ElemMapping const &NewSTypes) const {
 //
 //  Constructor gets all initial information about structures in Module.
 //
-DependencyGraph::DependencyGraph(Module &M, StructFilter const &Filter)
+DependencyGraph::DependencyGraph(Module &M, const StructFilter &Filter)
     : Ctx{M.getContext()}, NodeMM{M} {
   for (auto &&STy : M.getIdentifiedStructTypes())
     if (!Filter.isStructBanned(*STy))
@@ -1289,7 +1289,7 @@ void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
 //  Returns Instruction responsible for processing Type.
 //
 static Instruction *findProperInstruction(
-    Type *Ty, std::unordered_map<Type *, Instruction *> const &NewInstr) {
+    Type *Ty, const std::unordered_map<Type *, Instruction *> &NewInstr) {
   auto FindInstrIt = NewInstr.find(Ty);
   IGC_ASSERT_MESSAGE(
       FindInstrIt != NewInstr.end(),
@@ -1307,8 +1307,8 @@ static Instruction *findProperInstruction(
 //
 Instruction *
 Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
-                             DependencyGraph::SElementsOfType const &IdxPath,
-                             TypeToInstrMap const &NewInstr,
+                             const DependencyGraph::SElementsOfType &IdxPath,
+                             const TypeToInstrMap &NewInstr,
                              unsigned PlainTyIdx) const {
   using SElement = DependencyGraph::SElement;
   using ListOfSplitElements = DependencyGraph::ListOfSplitElements;
@@ -1324,7 +1324,7 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
                 [&PlainType, &LocalIdxPath, this](auto &&Elem) {
                   auto [Ty, Idx] = Elem;
                   StructType *STy = cast<StructType>(Ty);
-                  ListOfSplitElements const &ListOfPossibleTypes =
+                  const ListOfSplitElements &ListOfPossibleTypes =
                       Graph.getElementsListOfSTyAtIdx(*STy, Idx);
 
                   auto FindIt = std::find_if(
@@ -1348,7 +1348,7 @@ Substituter::generateNewGEPs(GetElementPtrInst &GEPI, Type &PlainType,
   // If Size == 0 then we do not need to create a GEP. Just find proper previous
   // instruction.
   Instruction *ToInsert = findProperInstruction(&PlainType, NewInstr);
-  unsigned const Size = LocalIdxPath.size();
+  const unsigned Size = LocalIdxPath.size();
   if (!Size) {
     LLVM_DEBUG(dbgs() << "Instruction has been reused: " << *ToInsert << "\n");
     return ToInsert;
@@ -1421,7 +1421,7 @@ bool Substituter::processAlloca(AllocaInst &Alloca) {
 //
 Optional<std::tuple<DependencyGraph::SElementsOfType, std::vector<Type *>>>
 Substituter::getIndicesPath(GetElementPtrInst &GEPI) {
-  unsigned const Size = GEPI.getNumIndices() - 1;
+  const unsigned Size = GEPI.getNumIndices() - 1;
   DependencyGraph::SElementsOfType IdxPath{Size};
   std::vector<Type *> GottenTypeArr;
   GottenTypeArr.reserve(Size);
@@ -1431,7 +1431,7 @@ Substituter::getIndicesPath(GetElementPtrInst &GEPI) {
   for (auto It = GEPI.idx_begin() + 1, End = GEPI.idx_end(); It != End; ++It) {
     Value *VIdx = *It;
     if (Constant *CIdx = dyn_cast<Constant>(VIdx)) {
-      APInt const &Int = CIdx->getUniqueInteger();
+      const APInt &Int = CIdx->getUniqueInteger();
       // Naive assumption that all indices are unsigned greater then zero and
       // scalar.
       uint64_t Idx = Int.getZExtValue();
@@ -1466,7 +1466,7 @@ Substituter::getInstUses(Instruction &I) {
   std::vector<PtrToIntInst *> UsesPTI;
   UsesGEP.reserve(I.getNumUses());
   UsesPTI.reserve(I.getNumUses());
-  for (auto const &U : I.uses())
+  for (const auto &U : I.uses())
     if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(U.getUser()))
       UsesGEP.push_back(GEP);
     else if (PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(U.getUser()))
@@ -1508,7 +1508,7 @@ Substituter::getInstUses(Instruction &I) {
 //     -> %a = gep Cf, 0, 2, 0
 //
 bool Substituter::processGEP(GetElementPtrInst &GEPI,
-                             TypeToInstrMap const &NewInstr,
+                             const TypeToInstrMap &NewInstr,
                              InstsToSubstitute /*OUT*/ &InstToInst) {
   LLVM_DEBUG(dbgs() << "Processing uses of instruction: " << GEPI << "\n");
   using SElement = DependencyGraph::SElement;
@@ -1517,7 +1517,7 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
   if (!IndicesPath)
     return false;
   auto [IdxPath, GottenTypeArr] = std::move(IndicesPath.getValue());
-  unsigned const Size = GottenTypeArr.size();
+  const unsigned Size = GottenTypeArr.size();
   IGC_ASSERT_MESSAGE(
       IdxPath.size() == Size,
       "IdxPath and GottenTypeArr must be consistent with each other.");
@@ -1543,7 +1543,7 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
     Type *PrevType = IdxPath.getTyAt(Size - 1);
     unsigned Idx = IdxPath.getIdxAt(Size - 1);
     StructType *STyToBeSplit = cast<StructType>(PrevType);
-    ListOfSplitElements const &ListOfPossibleTypes =
+    const ListOfSplitElements &ListOfPossibleTypes =
         Graph.getElementsListOfSTyAtIdx(*STyToBeSplit, Idx);
 
     TypeToInstrMap NewInstructions;
@@ -1589,7 +1589,7 @@ bool Substituter::processGEP(GetElementPtrInst &GEPI,
 //  read/write, then checks if max offset lies within unsplit block. If it
 //  does, then substitutes the struct. Overwise we cannot split the struct.
 //
-bool Substituter::processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
+bool Substituter::processPTI(PtrToIntInst &PTI, const TypeToInstrMap &NewInstr,
                              InstsToSubstitute /*OUT*/ &InstToInst) {
 
   StructType *STy = dyn_cast<StructType>(
@@ -1605,12 +1605,12 @@ bool Substituter::processPTI(PtrToIntInst &PTI, TypeToInstrMap const &NewInstr,
   unsigned IdxOfOldElem{0};
   Type *SplitTy{nullptr};
   unsigned IdxOfSplitStructElem{0};
-  DependencyGraph::ElemMapping const &IdxMapping =
+  const DependencyGraph::ElemMapping &IdxMapping =
       Graph.getElemMappingFor(*STy);
   for (auto &&Elem : STy->elements()) {
     IGC_ASSERT_MESSAGE(IdxOfOldElem < IdxMapping.size(),
                        "Attempt to get element out of borders.");
-    DependencyGraph::ListOfSplitElements const &ListOfElements =
+    const DependencyGraph::ListOfSplitElements &ListOfElements =
         IdxMapping.at(IdxOfOldElem++);
     for (auto &&NewElem : ListOfElements) {
       if (!SplitTy) {
@@ -1698,7 +1698,7 @@ Optional<uint64_t> Substituter::processAddInst(Instruction &User,
   }
   Type *OffsetTy = ToCalculateOffset->getType();
   if (OffsetTy->isVectorTy()) {
-    unsigned const Width =
+    const unsigned Width =
         cast<IGCLLVM::FixedVectorType>(OffsetTy)->getNumElements();
     for (unsigned i = 0; i != Width; ++i) {
       Value *OffsetValue = ConstantOffsets->getAggregateElement(i);
@@ -1727,7 +1727,7 @@ Optional<uint64_t> Substituter::processAddInst(Instruction &User,
 bool Substituter::processPTIsUses(Instruction &I,
                                   uint64_t /*OUT*/ &MaxPtrOffset) {
   uint64_t LocalPtrOffset{0};
-  for (auto const &U : I.uses()) {
+  for (const auto &U : I.uses()) {
     Instruction *User = dyn_cast<Instruction>(U.getUser());
     if (User->getOpcode() == Instruction::FAdd ||
         User->getOpcode() == Instruction::Add) {
@@ -1805,7 +1805,7 @@ DependencyGraph::SElementsOfType::SElementsOfType(unsigned Size) {
 
 // Automaticaly matches Types with sequential Indices.
 DependencyGraph::SElementsOfType::SElementsOfType(
-    std::vector<Type *> const &InTypes)
+    const std::vector<Type *> &InTypes)
     : Types{InTypes}, IndicesOfTypes(Types.size()) {
   std::iota(IndicesOfTypes.begin(), IndicesOfTypes.end(), 0);
 }
@@ -1815,11 +1815,11 @@ void DependencyGraph::SElementsOfType::emplace_back(Type &Ty, unsigned Index) {
   IndicesOfTypes.emplace_back(Index);
 }
 
-void DependencyGraph::SElementsOfType::push_back(value_type const &Elem) {
+void DependencyGraph::SElementsOfType::push_back(const value_type &Elem) {
   emplace_back(*Elem.first, Elem.second);
 }
 
-void DependencyGraph::SElementsOfType::emplace_back(SElement const &Elem) {
+void DependencyGraph::SElementsOfType::emplace_back(const SElement &Elem) {
   IGC_ASSERT_MESSAGE(
       !Elem.isUnwrapped(),
       "Element is unwrapped and cannot be placed in indices chain.");
@@ -1827,7 +1827,7 @@ void DependencyGraph::SElementsOfType::emplace_back(SElement const &Elem) {
 }
 
 unsigned DependencyGraph::SElementsOfType::size() const {
-  unsigned const Size = Types.size();
+  const unsigned Size = Types.size();
   IGC_ASSERT_MESSAGE(Size == IndicesOfTypes.size(),
                      "Size of Types and Indices has to be the same.");
   return Size;
@@ -1850,7 +1850,7 @@ DependencyGraph::SElementsOfType::at(unsigned Index) {
                         std::ref(IndicesOfTypes.at(Index)));
 }
 
-std::pair<Type *const &, unsigned const &>
+std::pair<Type *const &, const unsigned &>
 DependencyGraph::SElementsOfType::at(unsigned Index) const {
   IGC_ASSERT_MESSAGE(Index < size(), "Attempt to get element out of borders.");
   return std::make_pair(std::ref(Types.at(Index)),
@@ -1978,7 +1978,7 @@ Type *getArrayFreeTy(Type *Ty) {
 //
 //  Help function to get type-specific prefix for naming
 //
-char const *getTypePrefix(Type &Ty) {
+const char *getTypePrefix(Type &Ty) {
   Type::TypeID ID = Ty.getTypeID();
   switch (ID) {
   case Type::VoidTyID:
