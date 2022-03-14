@@ -72,5 +72,8 @@ def vc_loop_unroll_threshold : PlainSeparate<"vc-loop-unroll-threshold">,
   HelpText<"Loop unroll threhsold for VC">;
 def : PlainJoined<"vc-loop-unroll-threshold=">, Alias<vc_loop_unroll_threshold>,
   HelpText<"Alias for -vc-loop-unroll-threshold <value>">;
+
+def vc_ignore_loop_unroll_threshold_on_pragma : PlainFlag<"vc-ignore-loop-unroll-threshold-on-pragma">,
+  HelpText<"Ignore loop unroll threhsold on pragma for VC">;
 }
 // }} VC internal options

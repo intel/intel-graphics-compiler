@@ -150,6 +150,9 @@ struct GenXBackendOptions {
   // Loop unroll threshold. Value 0 means to keep default threshold.
   unsigned LoopUnrollThreshold = 0;
 
+  // Ignore unrolling threshold on loops with #pragma unroll.
+  bool IgnoreLoopUnrollThresholdOnPragma = false;
+
   // Calling enforceLLVMOptions queries the state of LLVM options and
   // updates BackendOptions accordingly.
   // Note: current implementation allows backend options to be configured by
@@ -322,6 +325,10 @@ public:
 
   unsigned getLoopUnrollThreshold() const {
     return Options.LoopUnrollThreshold;
+  }
+
+  bool ignoreLoopUnrollThresholdOnPragma() const {
+    return Options.IgnoreLoopUnrollThresholdOnPragma;
   }
 };
 } // namespace llvm

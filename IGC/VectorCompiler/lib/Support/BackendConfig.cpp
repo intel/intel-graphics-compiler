@@ -136,6 +136,11 @@ static cl::opt<unsigned> VCLoopUnrollThreshold(
     "vc-loop-unroll-threshold", cl::Hidden,
     cl::desc("Threshold value for LLVM loop unroll pass"));
 
+static cl::opt<bool> VCIgnoreLoopUnrollThresholdOnPragma(
+    "vc-ignore-loop-unroll-threshold-on-pragma", cl::Hidden,
+    cl::desc("Ignore threshold value for LLVM loop unroll pass when pragma is "
+             "used"));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -177,6 +182,8 @@ void GenXBackendOptions::enforceLLVMOptions() {
   enforceOptionIfSpecified(EnablePreemption, EnablePreemptionOpt);
   enforceOptionIfSpecified(DirectCallsOnly, DirectCallsOnlyOpt);
   enforceOptionIfSpecified(LoopUnrollThreshold, VCLoopUnrollThreshold);
+  enforceOptionIfSpecified(IgnoreLoopUnrollThresholdOnPragma,
+                           VCIgnoreLoopUnrollThresholdOnPragma);
 }
 
 static std::unique_ptr<MemoryBuffer>

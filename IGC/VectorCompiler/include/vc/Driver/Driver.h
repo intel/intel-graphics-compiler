@@ -142,6 +142,7 @@ struct CompileOptions {
   bool DirectCallsOnly = false;
   DebugInfoStripControl StripDebugInfoCtrl = DebugInfoStripControl::None;
   unsigned ForceLoopUnrollThreshold = 0;
+  bool IgnoreLoopUnrollThresholdOnPragma = false;
 };
 
 struct ExternalData {

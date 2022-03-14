@@ -26,8 +26,9 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/General/Types.h"
 
-#include "llvm/IR/DataLayout.h"
 #include "llvm/CodeGen/BasicTTIImpl.h"
+#include "llvm/IR/DataLayout.h"
+#include "llvm/Transforms/Utils/UnrollLoop.h"
 
 namespace llvm {
 
@@ -118,6 +119,12 @@ class GenXTTIImpl : public TargetTransformInfoImplCRTPBase<GenXTTIImpl>
 
   const GenXBackendConfig &BC;
 
+  MDNode *GetUnrollMetadataForLoop(const Loop *L, StringRef Name) {
+    if (MDNode *LoopID = L->getLoopID())
+      return GetUnrollMetadata(LoopID, Name);
+    return nullptr;
+  }
+
 public:
   GenXTTIImpl(const DataLayout &DL, const GenXBackendConfig &BC)
       : BaseT(DL), BC(BC) {}
@@ -166,6 +173,14 @@ public:
 
   void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
                                TTI::UnrollingPreferences &UP) {
+    if (BC.ignoreLoopUnrollThresholdOnPragma()) {
+      if (GetUnrollMetadataForLoop(L, "llvm.loop.unroll.full"))
+        UP.Threshold = std::numeric_limits<unsigned>::max();
+      if (GetUnrollMetadataForLoop(L, "llvm.loop.unroll.enable"))
+        UP.Threshold = UP.PartialThreshold =
+            std::numeric_limits<unsigned>::max();
+    }
+
     if (unsigned VCUnrollThreshold = BC.getLoopUnrollThreshold()) {
       UP.Threshold = VCUnrollThreshold;
       UP.PartialThreshold = VCUnrollThreshold;

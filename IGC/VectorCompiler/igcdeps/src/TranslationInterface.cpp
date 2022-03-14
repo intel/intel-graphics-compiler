@@ -256,6 +256,8 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
 
   if (unsigned LoopUnrollThreshold = IGC_GET_FLAG_VALUE(VCLoopUnrollThreshold))
     Opts.ForceLoopUnrollThreshold = LoopUnrollThreshold;
+  if (IGC_IS_FLAG_ENABLED(VCIgnoreLoopUnrollThresholdOnPragma))
+    Opts.IgnoreLoopUnrollThresholdOnPragma = true;
 
   Opts.NoOptFinalizerMode =
       deriveDefaultableFlagValue<vc::NoOptFinalizerControl>(
