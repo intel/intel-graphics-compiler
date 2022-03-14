@@ -335,7 +335,7 @@ void ZEBinaryBuilder::addSymbol(const vISA::ZESymEntry& sym, uint8_t binding,
 void ZEBinaryBuilder::addRuntimeSymbols()
 {
     if (IGC_IS_FLAG_ENABLED(EnableGlobalStateBuffer))
-        mBuilder.addSymbol("__INTEL_PATCH_CROSS_THREAD_OFFSET_OFF_R0", /*addr*/0, /*size*/0,
+        mBuilder.addSymbol("INTEL_PATCH_CROSS_THREAD_OFFSET_OFF_R0", /*addr*/0, /*size*/0,
             llvm::ELF::STB_GLOBAL, llvm::ELF::STT_NOTYPE, /*sectionId*/-1);
 }
 
