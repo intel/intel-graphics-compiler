@@ -1685,9 +1685,7 @@ namespace IGC
                 IntelHasPositivePointerOffset(false),
                 IntelHasBufferOffsetArg(false),
                 IntelBufferOffsetArgOptional(true),
-                IntelHasSubDWAlignedPtrArg(false),
-                LargeGRFKernels(),
-                RegularGRFKernels()
+                IntelHasSubDWAlignedPtrArg(false)
             {
                 if (pInputArgs == nullptr)
                     return;
@@ -1763,9 +1761,6 @@ namespace IGC
             bool DisableEUFusion = false;
             // Fail comilation if spills are present in compiled kernel
             bool FailOnSpill = false;
-
-            std::vector<std::string> LargeGRFKernels;
-            std::vector<std::string> RegularGRFKernels;
 
             bool AllowRelocAdd = true;
 
