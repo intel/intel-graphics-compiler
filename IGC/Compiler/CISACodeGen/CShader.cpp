@@ -283,8 +283,8 @@ void CShader::InitializeStackVariables()
     // create argument-value register, limited to 12 GRF
     m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, getGRFAlignment(), false, 1, "ARGV");
     encoder.GetVISAPredefinedVar(m_ARGV, PREDEFINED_ARG);
-    // create return-value register, limited to 4 GRF
-    m_RETV = GetNewVariable(getGRFSize(), ISA_TYPE_D, getGRFAlignment(), false, 1, "ReturnValue");
+    // create return-value register, limited to 8 GRF
+    m_RETV = GetNewVariable(getGRFSize() * 2, ISA_TYPE_D, getGRFAlignment(), false, 1, "RETV");
     encoder.GetVISAPredefinedVar(m_RETV, PREDEFINED_RET);
     // create stack-pointer register
     m_SP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "SP");
