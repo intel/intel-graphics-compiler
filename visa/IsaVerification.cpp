@@ -770,7 +770,8 @@ static bool isReadWritePreDefinedVar(
     PreDefinedVarsInternal internalIndex = mapExternalToInternalPreDefVar(index);
     if (internalIndex == PreDefinedVarsInternal::ARG ||   internalIndex == PreDefinedVarsInternal::RET || internalIndex == PreDefinedVarsInternal::FE_SP ||
         internalIndex == PreDefinedVarsInternal::FE_FP || internalIndex == PreDefinedVarsInternal::CR0 || internalIndex == PreDefinedVarsInternal::DBG ||
-        internalIndex == PreDefinedVarsInternal::VAR_NULL)
+        internalIndex == PreDefinedVarsInternal::VAR_NULL || internalIndex == PreDefinedVarsInternal::IMPL_ARG_BUF_PTR ||
+        internalIndex == PreDefinedVarsInternal::LOCAL_ID_BUF_PTR)
     {
         return true;
     }

@@ -9051,6 +9051,8 @@ G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(
     case PreDefinedVarsInternal::GROUP_ID_Z:
     case PreDefinedVarsInternal::GROUP_COUNT_X:
     case PreDefinedVarsInternal::GROUP_COUNT_Y:
+    case PreDefinedVarsInternal::IMPL_ARG_BUF_PTR:
+    case PreDefinedVarsInternal::LOCAL_ID_BUF_PTR:
         {
             G4_Type type = GetGenTypeFromVISAType(getPredefinedVarType(internalIndex));
             // R0 is already declared
