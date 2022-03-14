@@ -405,14 +405,8 @@ static void CommonOCLBasedPasses(
         mpm.add(new LowerInvokeSIMD());
 
         // Fix illegal argument/return types in function calls not already inlined.
-        // Structs/arrays are not allowed to be passed by value.
-        // Return types are not allowed to be more than 64-bits.
         // This pass changes all illegal function signatures to be passed by pointer instead.
-        // NOTE: SPIR-V adaptor already handles this for struct types
-        if (pContext->m_instrTypes.hasSubroutines)
-        {
-            mpm.add(new LegalizeFunctionSignatures());
-        }
+        mpm.add(new LegalizeFunctionSignatures());
 
         mpm.add(createProcessBuiltinMetaDataPass());
         mpm.add(new PurgeMetaDataUtils());

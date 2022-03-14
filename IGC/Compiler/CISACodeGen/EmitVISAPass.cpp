@@ -11870,23 +11870,17 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     offsetS = emitStackArgumentLoadOrStore(argsOnStack, true);
 
     uint retSize = 0;
-    if (!inst->use_empty())
+    bool returnOnStack = false;
+
+    if (!inst->getType()->isVoidTy())
     {
-        CVariable* Dst = GetSymbol(inst);
-        if (Dst->GetType() == ISA_TYPE_BOOL)
-        {
-            retSize = numLanes(m_currShader->m_dispatchSize) * SIZE_WORD;
-        }
-        else
-        {
-            retSize = Dst->GetSize();
-        }
-        CVariable* Src = m_currShader->GetRETV();
-        IGC_ASSERT_MESSAGE(retSize <= Src->GetSize(), "No support for return on stack!");
+        CVariable* RetV = GetSymbol(inst);
+        retSize = RetV->GetSize();
+        returnOnStack = retSize > m_currShader->GetRETV()->GetSize();
     }
 
     unsigned char argSizeInGRF = (offsetA + getGRFSize() - 1) / getGRFSize();
-    unsigned char retSizeInGRF = (retSize + getGRFSize() - 1) / getGRFSize();
+    unsigned char retSizeInGRF = ((returnOnStack ? 0 : retSize) + getGRFSize() - 1) / getGRFSize();
 
     // lamda to copy arguments to arg register block
     auto CopyArgBlkVariables = [&](void)->void
@@ -11904,27 +11898,26 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     };
 
     // lambda to read the return value
-    auto CopyReturnValue = [this](CallInst* inst)->void
+    auto CopyReturnValue = [&](CallInst* inst)->void
     {
-        // No need to copy if there are no uses
-        if (inst->use_empty())
-            return;
+        // Don't copy if it's not used
+        if (inst->use_empty()) return;
 
         CVariable* Dst = GetSymbol(inst);
         CVariable* Src = m_currShader->GetRETV();
-        if (Dst->GetType() == ISA_TYPE_BOOL)
+
+        if (!returnOnStack)
         {
-            CVariable* SrcAlias = m_currShader->GetNewAlias(Src, ISA_TYPE_W, 0, numLanes(m_currShader->m_dispatchSize), false);
-            m_encoder->Cmp(EPREDICATE_NE, Dst, SrcAlias, m_currShader->ImmToVariable(0, ISA_TYPE_W));
-        }
-        else
-        {
-            IGC_ASSERT(Dst->GetSize() <= Src->GetSize());
+            // Copy from return GRF
             if (Dst->GetType() != Src->GetType() || Src->IsUniform() != Dst->IsUniform())
             {
                 Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement(), Dst->IsUniform());
             }
             emitCopyAll(Dst, Src, inst->getType());
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "No support for return on stack!");
         }
     };
 
