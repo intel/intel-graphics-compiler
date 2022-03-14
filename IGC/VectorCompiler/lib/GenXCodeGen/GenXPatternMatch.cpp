@@ -2824,7 +2824,10 @@ static DivRemOptimize isSuitableUDivURemOperand(Value *Operand) {
   if (!isa<Constant>(Operand))
     return DivRemOptimize::Not;
   Type *OperandTy = Operand->getType();
-  if (!OperandTy->isIntOrIntVectorTy())
+  // TODO support i8, i16 & i64 cases
+  // for pow2 case just turning on the same pattern as i32 width
+  // Not int and not vector of int, or width wrong( not 32).
+  if (!OperandTy->isIntOrIntVectorTy(genx::DWordBits))
     return DivRemOptimize::Not;
   // TODO: Remove this as we have tests for this pattern.
   if (PatternMatch::match(Operand, PatternMatch::m_Negative()))
@@ -2842,7 +2845,12 @@ static DivRemOptimize isSuitableSDivSRemOperand(Value *Operand) {
   if (!isa<Constant>(Operand))
     return DivRemOptimize::Not;
   Type *OperandTy = Operand->getType();
-  if (!OperandTy->isIntOrIntVectorTy())
+  // TODO support i8, i16 & i64 cases
+  // i8, i16 - by creating zext/sext to i32
+  // i64 - just turning on the same pattern as i32 width,
+  //  as emulation for shift and add much faster than emulation division.
+  // Not int and not vector of int, or width wrong( not 32).
+  if (!OperandTy->isIntOrIntVectorTy(genx::DWordBits))
     return DivRemOptimize::Not;
   if (PatternMatch::match(Operand, PatternMatch::m_Negative()))
     return DivRemOptimize::Not;
@@ -2870,10 +2878,10 @@ static void decomposeSDivPow2(BinaryOperator &SDivOp) {
   IGC_ASSERT(ElementTy);
   unsigned ElementBitWidth = ElementTy->getIntegerBitWidth();
 
-  Constant *VecSignBit = Constant::getIntegerValue(
-      OperationTy, APInt{ElementBitWidth, ElementBitWidth - 1});
-  Constant *VecBitWidth = Constant::getIntegerValue(
-      OperationTy, APInt{ElementBitWidth, ElementBitWidth});
+  Constant *VecSignBit =
+      Constant::getIntegerValue(OperationTy, APInt{32, ElementBitWidth - 1});
+  Constant *VecBitWidth =
+      Constant::getIntegerValue(OperationTy, APInt{32, ElementBitWidth});
 
   Constant *Log2Divisor = getFloorLog2(Divisor);
   IGC_ASSERT(Log2Divisor != nullptr);
@@ -2965,13 +2973,10 @@ static void decomposeURemPow2(BinaryOperator &URemOp) {
              DivRemOptimize::Pow2);
   Constant *Divisor = cast<Constant>(URemOp.getOperand(1));
   Type *OperationTy = Dividend->getType();
-  Type *ElementTy = OperationTy->getScalarType();
-  unsigned ElementBitWidth = ElementTy->getIntegerBitWidth();
 
   IRBuilder<> Builder{&URemOp};
 
-  Constant *One =
-      Constant::getIntegerValue(OperationTy, APInt{ElementBitWidth, 1});
+  Constant *One = Constant::getIntegerValue(OperationTy, APInt{32, 1});
   Value *Res = Builder.CreateAnd(Dividend, Builder.CreateSub(Divisor, One));
   URemOp.replaceAllUsesWith(Res);
   Res->takeName(&URemOp);
