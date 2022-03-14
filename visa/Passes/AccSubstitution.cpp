@@ -565,7 +565,7 @@ bool AccSubPass::isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, b
         G4_Operand* src = useInst->getSrc(srcId);
 
         if (dst->getType() != src->getType() || kernel.fg.globalOpndHT.isOpndGlobal(src) ||
-            dst->compareOperand(src) != Rel_eq)
+            dst->compareOperand(src, builder) != Rel_eq)
         {
             return false;
         }
@@ -657,7 +657,7 @@ bool AccSubPass::replaceDstWithAcc(G4_INST* inst, int accNum)
             if (!builder.relaxedACCRestrictions3() && (useInst->opcode() == G4_mul || useInst->opcode() == G4_mac))
             {
                 if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg() ||
-                    useInst->getSrc(0)->compareOperand(useInst->getSrc(1)) == G4_CmpRelation::Rel_eq)
+                    useInst->getSrc(0)->compareOperand(useInst->getSrc(1), builder) == G4_CmpRelation::Rel_eq)
                 {
                     return false;
                 }

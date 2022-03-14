@@ -254,7 +254,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
 
         if (hs != 1)
         {
-            auto relation = defInst->getDst()->compareOperand(use);
+            auto relation = defInst->getDst()->compareOperand(use, builder);
             if (!(relation == Rel_eq || relation == Rel_gt))
             {
                 canReplace = false;

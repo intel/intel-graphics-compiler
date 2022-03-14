@@ -1939,6 +1939,8 @@ public:
         dcllist.push_back(this);
     }
 
+    const IR_Builder& getBuilder() const { return irb; }
+
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
     void setGRFBaseOffset(unsigned int offset) { GRFBaseOffset = offset; }
@@ -2421,19 +2423,7 @@ public:
         }
         return bitVec[0];
     }
-    uint64_t getBitVecH()
-    {
-        if (isRightBoundSet() == false && !isNullReg())
-        {
-            // computeRightBound also computes bitVec
-            inst->computeRightBound(this);
-        }
-        if (::getGRFSize() == 32)
-        {
-            assert(bitVec[1] == 0 && "upper bits should be 0");
-        }
-        return bitVec[1];
-    }
+    uint64_t getBitVecH(const IR_Builder& builder);
     /*
         For operands that do use it, it is computed during left bound compuation.
     */
@@ -2445,9 +2435,9 @@ public:
         bitVec[0] = bvl;
     }
 
-    void setBitVecFromSize(uint32_t NBytes);
+    void setBitVecFromSize(uint32_t NBytes, const IR_Builder& builder);
 
-    void updateFootPrint(BitSet& footprint, bool isSet);
+    void updateFootPrint(BitSet& footprint, bool isSet, const IR_Builder& builder);
 
     virtual unsigned computeRightBound(uint8_t exec_size) { return left_bound; }
     void setRightBound(unsigned val)
@@ -2468,7 +2458,7 @@ public:
     unsigned getLinearizedEnd();
 
     // compare if this operand is the same as the input w.r.t physical register in the end
-    virtual G4_CmpRelation compareOperand(G4_Operand *opnd)
+    virtual G4_CmpRelation compareOperand(G4_Operand *opnd, const IR_Builder& builder)
     {
         return Rel_disjoint;
     }
@@ -2762,7 +2752,7 @@ public:
     bool isEqualTo(G4_Imm& imm1) const;
     bool isEqualTo(G4_Imm* imm1) const { return isEqualTo(*imm1); }
 
-    G4_CmpRelation compareOperand(G4_Operand *opnd) override;
+    G4_CmpRelation compareOperand(G4_Operand *opnd, const IR_Builder& builder) override;
     G4_RegFileKind getRegFile() const { return G4_UndefinedRF; }
 
     static bool isInTypeRange(int64_t imm, G4_Type ty);
@@ -3067,7 +3057,7 @@ namespace vISA
             right_bound = 0;
         }
 
-        void setSrcBitVec(uint8_t exec_size);
+        void setSrcBitVec(uint8_t exec_size, const IR_Builder& irb);
 
     public:
         G4_SrcRegRegion(G4_SrcRegRegion& rgn);
@@ -3143,7 +3133,7 @@ namespace vISA
         bool isIndirect() const { return acc != Direct; }
 
         unsigned computeRightBound(uint8_t exec_size) override;
-        G4_CmpRelation compareOperand(G4_Operand *opnd) override;
+        G4_CmpRelation compareOperand(G4_Operand *opnd, const IR_Builder& builder) override;
 
         void setType(const IR_Builder& builder, G4_Type ty)
         {
@@ -3345,7 +3335,7 @@ public:
     }
     void setDstBitVec(uint8_t exec_size);
     unsigned computeRightBound(uint8_t exec_size) override;
-    G4_CmpRelation compareOperand(G4_Operand *opnd) override;
+    G4_CmpRelation compareOperand(G4_Operand *opnd, const IR_Builder& builder) override;
     bool isNativeType() const;
     bool isNativePackedRowRegion() const;
     bool isNativePackedRegion() const;
@@ -3468,7 +3458,7 @@ public:
     G4_Align16_Predicate_Control getAlign16PredicateControl() const { return align16Control; }
 
     unsigned computeRightBound(uint8_t exec_size) override;
-    G4_CmpRelation compareOperand(G4_Operand *opnd) override;
+    G4_CmpRelation compareOperand(G4_Operand *opnd, const IR_Builder& builder) override;
     void splitPred();
     void setSameAsNoMask(bool v) { isPredicateSameAsNoMask = v; };
     bool isSameAsNoMask() const { return isPredicateSameAsNoMask; }
@@ -3595,7 +3585,7 @@ public:
     }
 
     unsigned computeRightBound(uint8_t exec_size) override;
-    G4_CmpRelation compareOperand(G4_Operand *opnd) override;
+    G4_CmpRelation compareOperand(G4_Operand *opnd, const IR_Builder& builder) override;
     void splitCondMod();
 };
 

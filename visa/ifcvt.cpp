@@ -633,9 +633,9 @@ void runIfCvt(FlowGraph &fg) {
                 continue;
 
             auto compareOperand =
-                [](G4_DstRegRegion* A, G4_Operand* B, unsigned ExecSize)
+                [](G4_DstRegRegion* A, G4_Operand* B, unsigned ExecSize, const IR_Builder& IRB)
                 -> G4_CmpRelation {
-                G4_CmpRelation Res = A->compareOperand(B);
+                G4_CmpRelation Res = A->compareOperand(B, IRB);
                 if ((A->isAreg() && A->isFlag()) || (B->isAreg() && B->isFlag()) ||
                     (A->isAreg() && A->isAccReg()) || (B->isAreg() && B->isAccReg()))
                 {
@@ -672,11 +672,11 @@ void runIfCvt(FlowGraph &fg) {
             G4_Operand *Src0 = I->getSrc(0);
             G4_Operand *Src1 = I->getSrc(1);
             int OpndIdx = -1;
-            if (compareOperand(Dst, Src0, ExSz) == Rel_eq &&
+            if (compareOperand(Dst, Src0, ExSz, *fg.builder) == Rel_eq &&
                 Src0->isSrcRegRegion() &&
                 Src0->asSrcRegRegion()->getModifier() == Mod_src_undef)
                 OpndIdx = 0;
-            else if (compareOperand(Dst, Src1, ExSz) == Rel_eq &&
+            else if (compareOperand(Dst, Src1, ExSz, *fg.builder) == Rel_eq &&
                      Src1->isSrcRegRegion() &&
                      Src1->asSrcRegRegion()->getModifier() == Mod_src_undef)
                 OpndIdx = 1;

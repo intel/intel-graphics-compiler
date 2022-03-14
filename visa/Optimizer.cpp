@@ -2782,7 +2782,7 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst, G4_INST
     G4_DstRegRegion *newDstOpnd = dst;
 
     unsigned char defDstElSize = (unsigned char)defDstRegion->getTypeSize();
-    G4_CmpRelation rel = src->compareOperand(defDstRegion);
+    G4_CmpRelation rel = src->compareOperand(defDstRegion, *fg.builder);
     G4_Type defDstType = defDstRegion->getType();
 
     unsigned char dstElSize = (unsigned char)TypeSize(dstType);
@@ -2998,7 +2998,7 @@ static void doHoisting(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
             G4_Operand *UseOpnd = UI->first->getOperand(UI->second);
             // this comparison is necessary, since uses of inst's dst may be
             // different from those from defInst's dst.
-            G4_CmpRelation rel = defInst->getDst()->compareOperand(UseOpnd);
+            G4_CmpRelation rel = defInst->getDst()->compareOperand(UseOpnd, *fg.builder);
             if (rel != Rel_disjoint)
             {
                 defInst->addDefUse(UI->first, UI->second);
@@ -3124,7 +3124,7 @@ void Optimizer::reassociateConst()
                 continue;
             }
 
-            auto isGoodSrc0Def = [isSrc1Const](G4_INST* def, G4_INST* use)
+            auto isGoodSrc0Def = [isSrc1Const](G4_INST* def, G4_INST* use, const IR_Builder& builder)
             {
                 assert(use->getSrc(0)->isSrcRegRegion() && "expect src0 to be src region");
                 if (def->opcode() != use->opcode())
@@ -3142,12 +3142,12 @@ void Optimizer::reassociateConst()
                 }
                 auto useSrc = use->getSrc(0)->asSrcRegRegion();
                 if (useSrc->hasModifier() || def->getDst()->getTypeSize() != useSrc->getTypeSize() ||
-                    def->getDst()->compareOperand(useSrc) != Rel_eq)
+                    def->getDst()->compareOperand(useSrc, builder) != Rel_eq)
                 {
                     // make sure def fully defines use and have the same integer type size (signed-ness should not matter)
                     return false;
                 }
-                if (def->getDst()->compareOperand(def->getSrc(0)) != Rel_disjoint)
+                if (def->getDst()->compareOperand(def->getSrc(0), builder) != Rel_disjoint)
                 {
                     // can't sink source if def overwrites it
                     return false;
@@ -3163,7 +3163,7 @@ void Optimizer::reassociateConst()
                 return true;
             };
 
-            if (isGoodSrc0Def(src0Def, inst) && !chkFwdOutputHazard(src0Def, iter))
+            if (isGoodSrc0Def(src0Def, inst, builder) && !chkFwdOutputHazard(src0Def, iter))
             {
                 //std::cout << "reassociate: \n";
                 //src0Def->dump();
@@ -3542,14 +3542,14 @@ void Optimizer::removePartialMovs()
             //Same mask order, to avoid the reverting
             BitSet srcMask(getMaskSize(inst1, Opnd_src0), 0);
             BitSet dstMask(getMaskSize(inst1, Opnd_src0), 0);
-            src1->updateFootPrint(srcMask, true);
-            dst1->updateFootPrint(dstMask, true);
+            src1->updateFootPrint(srcMask, true, builder);
+            dst1->updateFootPrint(dstMask, true, builder);
             if (dstMask != srcMask)
             {
                 continue;
             }
-            src2->updateFootPrint(srcMask, true);
-            dst2->updateFootPrint(dstMask, true);
+            src2->updateFootPrint(srcMask, true, builder);
+            dst2->updateFootPrint(dstMask, true, builder);
             if (dstMask != srcMask)
             {
                 continue;
@@ -4153,7 +4153,7 @@ void Optimizer::cselPeepHoleOpt()
                     continue;
 
                 //also checks for indirect, will return inerference.
-                G4_CmpRelation rel = tempInst->getDst()->compareOperand(cmpSrc0);
+                G4_CmpRelation rel = tempInst->getDst()->compareOperand(cmpSrc0, builder);
                 if (rel != Rel_disjoint)
                 {
                     canOpt = false;
@@ -4448,7 +4448,7 @@ bool Optimizer::createSmov(G4_BB *bb, G4_INST* flagMove, G4_INST* next_inst)
         return false;
     }
 
-    G4_CmpRelation rel = flagMove->getDst()->compareOperand(next_inst->getPredicate());
+    G4_CmpRelation rel = flagMove->getDst()->compareOperand(next_inst->getPredicate(), builder);
     if (rel != Rel_eq && !(rel == Rel_gt && next_inst->getMaskOffset() == 0))
     {
         return false;
@@ -4644,7 +4644,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
     // If legal, use the cmp location as new insert position.
     bool sinkInst = false;
 
-    if (inst->getDst()->compareOperand(cmpInst->getSrc(0)) == Rel_eq)
+    if (inst->getDst()->compareOperand(cmpInst->getSrc(0), builder) == Rel_eq)
     {
         if (inst->use_size() == 1)
         {
@@ -4764,11 +4764,11 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
     }
 
     // Check if two source operands have the same type and value.
-    auto IsEqual = [](G4_Operand *opnd1, G4_Operand *opnd2)
+    auto IsEqual = [](G4_Operand *opnd1, G4_Operand *opnd2, const IR_Builder& builder)
     {
         if (opnd1->isImm() && opnd2->isImm())
             return opnd1->asImm()->isEqualTo(opnd2->asImm());
-        if (opnd1->compareOperand(opnd2) != Rel_eq)
+        if (opnd1->compareOperand(opnd2, builder) != Rel_eq)
             return false;
         // footprint does not imply equality.
         // (1) region difference:  r10.0<1;4,2>:f vs r10.0<8;8,1>
@@ -4799,8 +4799,8 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
     bool reversed = false;
     G4_CondMod* condMod = cmpInst->getCondMod();
 
-    auto canFold = [=, &reversed]() {
-        G4_CmpRelation condRel = pred->asPredicate()->compareOperand(condMod);
+    auto canFold = [=, &reversed](const IR_Builder& builder) {
+        G4_CmpRelation condRel = pred->asPredicate()->compareOperand(condMod, builder);
         if (!(condRel == Rel_eq && isSameExecSize) &&
             !(condRel == Rel_lt && isSubExecSize))
             return false;
@@ -4815,7 +4815,7 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
         // P = cmp.ne A, B
         // C = (+P) sel A, B  => C = sel.ne A, B
         //
-        if (IsEqual(sel_src0, cmp_src0) && IsEqual(sel_src1, cmp_src1))
+        if (IsEqual(sel_src0, cmp_src0, builder) && IsEqual(sel_src1, cmp_src1, builder))
             return true;
 
         // Sel operands are reversed.
@@ -4825,7 +4825,7 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
         // P = cmp.ne A, B
         // C = (+P) sel B, A  => C = sel.ne B, A
         //
-        if (IsEqual(sel_src0, cmp_src1) && IsEqual(sel_src1, cmp_src0))
+        if (IsEqual(sel_src0, cmp_src1, builder) && IsEqual(sel_src1, cmp_src0, builder))
         {
             reversed = true;
             return true;
@@ -4833,7 +4833,7 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
         return false;
     };
 
-    if (!canFold())
+    if (!canFold(builder))
     {
         return false;
     }
@@ -4924,7 +4924,7 @@ bool Optimizer::foldPseudoNot(G4_BB* bb, INST_LIST_ITER& iter)
 
         // check the case where flag is partially used
         G4_SrcRegRegion* opnd = useInst->getSrc(G4_INST::getSrcNum(opndPos))->asSrcRegRegion();
-        if (dst->compareOperand(opnd) != Rel_eq)
+        if (dst->compareOperand(opnd, builder) != Rel_eq)
         {
             canFold = false;
             break;
@@ -5087,9 +5087,9 @@ void Optimizer::optimizeLogicOperation()
                     // indirect access. That checking could be simplified as
                     // only dst/src of the same instruction are checked.
                     auto compareOperand =
-                        [](G4_DstRegRegion *A, G4_Operand *B, unsigned ExecSize)
+                        [](G4_DstRegRegion *A, G4_Operand *B, unsigned ExecSize, const IR_Builder& IRB)
                         -> G4_CmpRelation {
-                        G4_CmpRelation Res = A->compareOperand(B);
+                        G4_CmpRelation Res = A->compareOperand(B, IRB);
                         if (Res != Rel_interfere)
                             return Res;
                         if (A->getRegAccess() != IndirGRF ||
@@ -5120,11 +5120,11 @@ void Optimizer::optimizeLogicOperation()
                     G4_Operand *Src0 = inst->getSrc(0);
                     G4_Operand *Src1 = inst->getSrc(1);
                     int OpndIdx = -1;
-                    if (compareOperand(Dst, Src0, ExSz) == Rel_eq &&
+                    if (compareOperand(Dst, Src0, ExSz, builder) == Rel_eq &&
                         Src0->isSrcRegRegion() &&
                         Src0->asSrcRegRegion()->getModifier() == Mod_src_undef)
                         OpndIdx = 0;
-                    else if (compareOperand(Dst, Src1, ExSz) == Rel_eq &&
+                    else if (compareOperand(Dst, Src1, ExSz, builder) == Rel_eq &&
                              Src1->isSrcRegRegion() &&
                              Src1->asSrcRegRegion()->getModifier() == Mod_src_undef)
                         OpndIdx = 1;
@@ -5326,7 +5326,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         G4_Operand* curr_dst = defInst->getCondMod() ?
             defInst->getCondMod() : (G4_Operand*) defInst->getDst();
 
-        G4_CmpRelation rel = curr_dst->compareOperand(src);
+        G4_CmpRelation rel = curr_dst->compareOperand(src, builder);
         if (rel != Rel_eq ||
             (defInst->getPredicate() && defInst->opcode() != G4_sel))
         {
@@ -5336,7 +5336,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         if (fg.globalOpndHT.isOpndGlobal(curr_dst))
         {
             G4_DstRegRegion* dst = inst->getDst();
-            if (dst->compareOperand(curr_dst) != Rel_eq)
+            if (dst->compareOperand(curr_dst, builder) != Rel_eq)
             {
                 return false;
             }
@@ -5427,7 +5427,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             if (curr_inst->getPredicate() &&
                 (curr_inst->getPredicate()->getBase() != curr_base ||
                     curr_inst->getPredicate()->getSubRegOff() != curr_subreg) &&
-                curr_inst->getPredicate()->compareOperand(second_def) == Rel_eq)
+                curr_inst->getPredicate()->compareOperand(second_def, builder) == Rel_eq)
             {
                 curr_inst->setPredicate(builder.duplicateOperand(new_pred));
             }
@@ -5437,7 +5437,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 G4_Operand *curr_src = curr_inst->getSrc(k);
                 if (curr_src->isSrcRegRegion() && !(curr_inst->isMath() && k == 1 && curr_src->isNullReg()))
                 {
-                    if (curr_src->asSrcRegRegion()->compareOperand(second_def) == Rel_eq)
+                    if (curr_src->asSrcRegRegion()->compareOperand(second_def, builder) == Rel_eq)
                     {
                         G4_SrcRegRegion *new_src_opnd = builder.createSrcRegRegion(
                             curr_src->asSrcRegRegion()->getModifier(),
@@ -5481,7 +5481,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             if (curr_inst->getPredicate() &&
                 (curr_inst->getPredicate()->getBase() != curr_base ||
                     curr_inst->getPredicate()->getSubRegOff() != curr_subreg) &&
-                curr_inst->getPredicate()->compareOperand(first_def) == Rel_eq)
+                curr_inst->getPredicate()->compareOperand(first_def, builder) == Rel_eq)
             {
                 curr_inst->setPredicate(builder.duplicateOperand(new_pred));
             }
@@ -5491,7 +5491,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 G4_Operand *curr_src = curr_inst->getSrc(k);
                 if (curr_src->isSrcRegRegion() && !(curr_inst->isMath() && k == 1 && curr_src->isNullReg()))
                 {
-                    if (curr_src->asSrcRegRegion()->compareOperand(first_def) == Rel_eq)
+                    if (curr_src->asSrcRegRegion()->compareOperand(first_def, builder) == Rel_eq)
                     {
                         G4_SrcRegRegion *new_src_opnd = builder.createSrcRegRegion(
                             curr_src->asSrcRegRegion()->getModifier(),
@@ -5692,7 +5692,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             G4_Operand* opnd = dst->getSrc(i);
 
-            if (opnd != NULL && opnd->compareOperand(src->getSrc(i)) != Rel_eq)
+            if (opnd != NULL && opnd->compareOperand(src->getSrc(i), builder) != Rel_eq)
             {
                 return false;
             }
@@ -5843,15 +5843,16 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             G4_DstRegRegion* dst = inst->getDst();
             auto interferes = [dst](G4_INST* valInst)
             {
+                const IR_Builder& builder = valInst->getBuilder();
                 G4_DstRegRegion* valDst = valInst->getDst();
-                if (dst->compareOperand(valDst) != Rel_disjoint)
+                if (dst->compareOperand(valDst, builder) != Rel_disjoint)
                 {
                     return true;
                 }
                 for (int i = 0, numSrc = valInst->getNumSrc(); i < numSrc; ++i)
                 {
                     G4_Operand* src = valInst->getSrc(i);
-                    if (src != nullptr && dst->compareOperand(src) != Rel_disjoint)
+                    if (src != nullptr && dst->compareOperand(src, builder) != Rel_disjoint)
                     {
                         return true;
                     }
@@ -5891,7 +5892,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     G4_Operand* src = inst->getSrc(i);
                     G4_Operand* valSrc = valInst->getSrc(i);
-                    if (src == nullptr || valSrc == nullptr || src->compareOperand(valSrc) != Rel_eq)
+                    if (src == nullptr || valSrc == nullptr || src->compareOperand(valSrc, inst->getBuilder()) != Rel_eq)
                     {
                         srcMatch = false;
                         break;
@@ -5964,7 +5965,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     {
                         G4_Operand* cOpnd = cInst->getSrc(iSrc);
                         G4_Operand* iOpnd = iInst->getSrc(iSrc);
-                        if (cOpnd == nullptr || iOpnd == nullptr || cOpnd->compareOperand(iOpnd) != Rel_eq)
+                        if (cOpnd == nullptr || iOpnd == nullptr || cOpnd->compareOperand(iOpnd, builder) != Rel_eq)
                         {
                             srcMatch = false;
                             break;
@@ -6270,7 +6271,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         if (payLoadSize > 1 &&
             !(redundancyCount == 3 &&
-                dest->send->getSrc(0)->compareOperand(source->send->getSrc(0))
+                dest->send->getSrc(0)->compareOperand(source->send->getSrc(0), builder)
                 == Rel_eq))
         {
             dest->insertHeaderMovInst(source->send, builder, bb);
@@ -6599,30 +6600,30 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             return false;
         }
         if (last->mDot0                                        &&
-             (def->compareOperand(last->mDot0->getSrc(0)) == Rel_eq ||
-               (last->mDot0->getSrc(1) && def->compareOperand(last->mDot0->getSrc(1)) == Rel_eq) ||
-                (last->mDot0->getSrc(2) && def->compareOperand(last->mDot0->getSrc(2)) == Rel_eq)))
+             (def->compareOperand(last->mDot0->getSrc(0), builder) == Rel_eq ||
+               (last->mDot0->getSrc(1) && def->compareOperand(last->mDot0->getSrc(1), builder) == Rel_eq) ||
+               (last->mDot0->getSrc(2) && def->compareOperand(last->mDot0->getSrc(2), builder) == Rel_eq)))
         {
             isDef = last->isXRedef = true;
         }
         else if (last->mDot1                                   &&
-             (def->compareOperand(last->mDot1->getSrc(0)) == Rel_eq ||
-               (last->mDot1->getSrc(1) && def->compareOperand(last->mDot1->getSrc(1)) == Rel_eq) ||
-               (last->mDot1->getSrc(2) && def->compareOperand(last->mDot1->getSrc(2)) == Rel_eq)))
+             (def->compareOperand(last->mDot1->getSrc(0), builder) == Rel_eq ||
+               (last->mDot1->getSrc(1) && def->compareOperand(last->mDot1->getSrc(1), builder) == Rel_eq) ||
+               (last->mDot1->getSrc(2) && def->compareOperand(last->mDot1->getSrc(2), builder) == Rel_eq)))
         {
             isDef = last->isYRedef = true;
         }
         else if (last->mDot2                                   &&
-             (def->compareOperand(last->mDot2->getSrc(0)) == Rel_eq  ||
-               (last->mDot2->getSrc(1) && def->compareOperand(last->mDot2->getSrc(1)) == Rel_eq) ||
-               (last->mDot2->getSrc(2) && def->compareOperand(last->mDot2->getSrc(2)) == Rel_eq)))
+             (def->compareOperand(last->mDot2->getSrc(0), builder) == Rel_eq  ||
+               (last->mDot2->getSrc(1) && def->compareOperand(last->mDot2->getSrc(1), builder) == Rel_eq) ||
+               (last->mDot2->getSrc(2) && def->compareOperand(last->mDot2->getSrc(2), builder) == Rel_eq)))
         {
              isDef = last->isSizeRedef = true;
         }
         else if (last->m                                       &&
-            (def->compareOperand(last->m->getSrc(0)) == Rel_eq ||
-              (last->m->getSrc(1) && def->compareOperand(last->m->getSrc(1)) == Rel_eq) ||
-              (last->m->getSrc(2) && def->compareOperand(last->m->getSrc(2)) == Rel_eq)))
+            (def->compareOperand(last->m->getSrc(0), builder) == Rel_eq ||
+              (last->m->getSrc(1) && def->compareOperand(last->m->getSrc(1), builder) == Rel_eq) ||
+              (last->m->getSrc(2) && def->compareOperand(last->m->getSrc(2), builder) == Rel_eq)))
         {
             isDef = last->isR0Dot0Redef = true;
         }
@@ -9924,7 +9925,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
                 G4_DstRegRegion* defDstRegion = defInst->getDst();
                 if (Seen.count(defInst) > 0 ||
-                    src->compareOperand(defDstRegion) != Rel_eq)
+                    src->compareOperand(defDstRegion, builder) != Rel_eq)
                 {
                     ii++;
                     continue;
@@ -9973,7 +9974,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     if (useInst->getLocalId() < inst->getLocalId() ||
                         !useInst->isRawMov() ||
                         inst->getExecSize() != useInst->getExecSize() ||
-                        (useInst->getSrc(0))->compareOperand(defDstRegion) != Rel_eq ||
+                        (useInst->getSrc(0))->compareOperand(defDstRegion, builder) != Rel_eq ||
                         useInst->def_size() > 1 ||
                         (!(inst->isWriteEnableInst()) &&
                         useInst->getMaskOption() != instMaskOption) ||
@@ -10601,7 +10602,7 @@ bool MadSequenceInfo::checkMadSequence()
         G4_Operand *src2 = useInst->getSrc(2);
         ASSERT_USER(dst && dst->isDstRegRegion(), "invalid dst");
         ASSERT_USER(src2 && src2->isSrcRegRegion(), "invalid src2");
-        if (dst->compareOperand(src2) != Rel_eq)
+        if (dst->compareOperand(src2, builder) != Rel_eq)
             return false;
 
         // Move the next pair.
@@ -10691,7 +10692,7 @@ bool MadSequenceInfo::checkUserChain()
         if (!AR.useAccAsDst(useDst->asDstRegRegion(), true, true))
             return false;
 
-        if (defInst->getDst()->compareOperand(useOpnd) != Rel_eq)
+        if (defInst->getDst()->compareOperand(useOpnd, builder) != Rel_eq)
             return false;
 
         // move to next pair.
@@ -12563,10 +12564,10 @@ void Optimizer::newDoNoMaskWA()
             G4_Operand* src0_2 = I->getSrc(2);
             G4_Operand* src0_3 = I->getSrc(3);
 
-            if ((src0_0 && src0_0->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_1 && src0_1->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_2 && src0_2->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_3 && src0_3->compareOperand(aDst) != Rel_disjoint))
+            if ((src0_0 && src0_0->compareOperand(aDst, builder) != Rel_disjoint) ||
+                (src0_1 && src0_1->compareOperand(aDst, builder) != Rel_disjoint) ||
+                (src0_2 && src0_2->compareOperand(aDst, builder) != Rel_disjoint) ||
+                (src0_3 && src0_3->compareOperand(aDst, builder) != Rel_disjoint))
             {
                 return;
             }
@@ -13412,10 +13413,10 @@ void Optimizer::doNoMaskWA()
             G4_Operand* src0_2 = I->getSrc(2);
             G4_Operand* src0_3 = I->getSrc(3);
 
-            if ((src0_0 && src0_0->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_1 && src0_1->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_2 && src0_2->compareOperand(aDst) != Rel_disjoint) ||
-                (src0_3 && src0_3->compareOperand(aDst) != Rel_disjoint))
+            if ((src0_0 && src0_0->compareOperand(aDst, builder) != Rel_disjoint) ||
+                (src0_1 && src0_1->compareOperand(aDst, builder) != Rel_disjoint) ||
+                (src0_2 && src0_2->compareOperand(aDst, builder) != Rel_disjoint) ||
+                (src0_3 && src0_3->compareOperand(aDst, builder) != Rel_disjoint))
             {
                 return;
             }

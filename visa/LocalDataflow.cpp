@@ -18,18 +18,18 @@ using namespace vISA;
 
 namespace {
 
-void getOpndFootprint(G4_Operand* opnd, BitSet& footprint)
+void getOpndFootprint(G4_Operand* opnd, BitSet& footprint, const IR_Builder& builder)
 {
-    opnd->updateFootPrint(footprint, true);
+    opnd->updateFootPrint(footprint, true, builder);
 }
 
 // Combine footprint.
 //
 // Use DefOnpd's foot print to kill the footprint being defined.
 //
-void combineFootprint(G4_Operand* DefOpnd, BitSet& footprint)
+void combineFootprint(G4_Operand* DefOpnd, BitSet& footprint, const IR_Builder& builder)
 {
-    DefOpnd->updateFootPrint(footprint, false);
+    DefOpnd->updateFootPrint(footprint, false, builder);
 }
 
 struct LocalLivenessInfo;
@@ -43,7 +43,7 @@ struct LiveNode {
     {
         auto opnd = getOperand();
         if (opnd)
-            getOpndFootprint(opnd, mask);
+            getOpndFootprint(opnd, mask, Inst->getBuilder());
     }
 
     // The instruction being tracked.
@@ -155,28 +155,29 @@ struct LocalLivenessInfo {
 
 } // namespace
 
-static G4_CmpRelation compOpnd(G4_Operand* Opnd1, G4_Operand* Opnd2)
+static G4_CmpRelation compOpnd(G4_Operand* Opnd1, G4_Operand* Opnd2, const IR_Builder& builder)
 {
     if (Opnd1->isDstRegRegion())
-        return Opnd1->asDstRegRegion()->compareOperand(Opnd2);
+        return Opnd1->asDstRegRegion()->compareOperand(Opnd2, builder);
     else if (Opnd1->isCondMod())
-        return Opnd1->asCondMod()->compareOperand(Opnd2);
+        return Opnd1->asCondMod()->compareOperand(Opnd2, builder);
     else if (Opnd1->isSrcRegRegion())
-        return Opnd1->asSrcRegRegion()->compareOperand(Opnd2);
+        return Opnd1->asSrcRegRegion()->compareOperand(Opnd2, builder);
     else if (Opnd1->isPredicate())
-        return Opnd1->asPredicate()->compareOperand(Opnd2);
+        return Opnd1->asPredicate()->compareOperand(Opnd2, builder);
 
     // all other cases, virtual call.
-    return Opnd1->compareOperand(Opnd2);
+    return Opnd1->compareOperand(Opnd2, builder);
 }
 
 bool LiveNode::addDefinition(G4_INST* DefInst, Gen4_Operand_Number DefOpNum,
                              LocalLivenessInfo &LLI)
 {
+    const IR_Builder& builder = Inst->getBuilder();
     // This definition does not overlap with this live node.
     G4_Operand* DefOpnd = DefInst->getOperand(DefOpNum);
     G4_Operand* UseOpnd = getOperand();
-    G4_CmpRelation Rel = compOpnd(DefOpnd, UseOpnd);
+    G4_CmpRelation Rel = compOpnd(DefOpnd, UseOpnd, builder);
     if (Rel == G4_CmpRelation::Rel_disjoint)
         return false;
 
@@ -196,7 +197,7 @@ bool LiveNode::addDefinition(G4_INST* DefInst, Gen4_Operand_Number DefOpNum,
         G4_Operand* PrevDef = PrevDefInst->getOperand(Node.second);
         G4_Operand* CurrDef = DefInst->getOperand(DefOpNum);
         assert((PrevDef != nullptr) && (CurrDef != nullptr));
-        G4_CmpRelation DefRel = compOpnd(PrevDef, CurrDef);
+        G4_CmpRelation DefRel = compOpnd(PrevDef, CurrDef, builder);
         if (DefRel == G4_CmpRelation::Rel_eq || DefRel == G4_CmpRelation::Rel_gt)
             return false;
     }
@@ -249,7 +250,7 @@ bool LiveNode::addDefinition(G4_INST* DefInst, Gen4_Operand_Number DefOpNum,
 
     if (CombineBitV()) {
         G4_Operand* DefOpnd = DefInst->getOperand(DefOpNum);
-        combineFootprint(DefOpnd, mask);
+        combineFootprint(DefOpnd, mask, builder);
     }
 
     if (UseOpnd && mask.isEmpty(UseOpnd->getLeftBound(), UseOpnd->getRightBound())) {
@@ -592,7 +593,7 @@ void DefEscapeBBAnalysis::analyzeBB(G4_BB* bb)
                     {
                         continue;
                     }
-                    auto rel = dst->compareOperand(prevInst->getDst());
+                    auto rel = dst->compareOperand(prevInst->getDst(), *fg.builder);
                     if (rel == Rel_eq || rel == Rel_gt)
                     {
                         std::swap(vec[i], vec[vec.size() - 1]);

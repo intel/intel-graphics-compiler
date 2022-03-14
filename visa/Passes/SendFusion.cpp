@@ -644,7 +644,7 @@ bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1)
     {
         G4_SrcRegRegion* s0 = I0->getSrc(0)->asSrcRegRegion();
         G4_SrcRegRegion* s1 = I1->getSrc(0)->asSrcRegRegion();
-        if (s0->compareOperand(s1) != Rel_disjoint)
+        if (s0->compareOperand(s1, *Builder) != Rel_disjoint)
         {
             return false;
         }

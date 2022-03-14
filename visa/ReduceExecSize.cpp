@@ -1481,7 +1481,7 @@ bool HWConformity::checkSrcDstOverlap(INST_LIST_ITER iter, G4_BB* bb, bool compO
             }
             else
             {
-                G4_CmpRelation rel = inst->getDst()->compareOperand(srcs[i]);
+                G4_CmpRelation rel = inst->getDst()->compareOperand(srcs[i], builder);
                 if (rel != Rel_disjoint)
                 {
                     useTmp = (rel != Rel_eq) || compOpt ||

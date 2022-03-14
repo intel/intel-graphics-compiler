@@ -4227,12 +4227,12 @@ bool HWConformity::isFpMadPreferred(G4_BB* bb, INST_LIST_ITER iter)
     MUST_BE_TRUE(inst->opcode() == G4_pseudo_mad, "expect pseudo mad");
 
     // Check whether test_inst is sharing the same dst.
-    auto equal_mad_dst = [](G4_INST* test_inst, G4_Operand* dst)
+    auto equal_mad_dst = [this](G4_INST* test_inst, G4_Operand* dst)
     {
         if (test_inst->opcode() == G4_pseudo_mad)
         {
             G4_Operand* test_dst = test_inst->getDst();
-            if (test_dst->compareOperand(dst) == Rel_eq)
+            if (test_dst->compareOperand(dst, builder) == Rel_eq)
                 return true;
         }
         return false;
@@ -4598,7 +4598,7 @@ static bool isSameOperand(G4_Operand* srcOpnd, struct LiveNode* ln)
 {
     G4_Operand* opnd = ln->Inst->getOperand(ln->OpNum);
 
-    if (opnd->compareOperand(srcOpnd) == Rel_eq)
+    if (opnd->compareOperand(srcOpnd, ln->Inst->getBuilder()) == Rel_eq)
     {
         return true;
     }
@@ -4857,7 +4857,7 @@ void HWConformity::fixSADA2Inst(G4_BB* bb)
                                 // no sada2 if def's dst is indirect, or it type is not W or UW
                                 canDoSada2 = false;
                             }
-                            else if (src2DstOpnd->compareOperand(src2) !=
+                            else if (src2DstOpnd->compareOperand(src2, builder) !=
                                 Rel_eq)
                             {
                                 // no sada2 if src2Dst and src2 are not equal
@@ -5172,8 +5172,8 @@ void HWConformity::fixSendInst(G4_BB* bb)
         if (builder.WaDisableSendSrcDstOverlap())
         {
             // create copy if dst and src0/src1 overlap due to being the same variable
-            bool src0Overlap = inst->getDst()->compareOperand(inst->getSrc(0)) != Rel_disjoint;
-            bool src1Overlap = inst->isSplitSend() && inst->getDst()->compareOperand(inst->getSrc(1)) != Rel_disjoint;
+            bool src0Overlap = inst->getDst()->compareOperand(inst->getSrc(0), builder) != Rel_disjoint;
+            bool src1Overlap = inst->isSplitSend() && inst->getDst()->compareOperand(inst->getSrc(1), builder) != Rel_disjoint;
             if (src0Overlap || src1Overlap)
             {
                 int dstSize = inst->getMsgDesc()->getDstLenRegs();
@@ -5245,7 +5245,7 @@ void HWConformity::fixsrc1src2Overlap(G4_BB* bb)
             !src1->isNullReg() && !src2->isNullReg() &&
             src1->getType() == src2->getType())
         {
-            G4_CmpRelation cmpResult = src1->compareOperand(src2);
+            G4_CmpRelation cmpResult = src1->compareOperand(src2, builder);
             if (cmpResult != Rel_disjoint && cmpResult != Rel_undef)
             {
                 G4_Type movType = src2->getType();
@@ -5306,7 +5306,7 @@ void HWConformity::fixOverlapInst(G4_BB* bb)
                     G4_Operand* src = inst->getSrc(i);
                     if (src != NULL && !src->isNullReg() && src->getTopDcl() && src->getTopDcl()->getRegFile() == G4_GRF)
                     {
-                        srcOverlap |= inst->getDst()->compareOperand(inst->getSrc(i)) == Rel_interfere;
+                        srcOverlap |= inst->getDst()->compareOperand(inst->getSrc(i), builder) == Rel_interfere;
                         if (srcOverlap)
                         {
                             srcSize = (src->getLinearizedEnd() - src->getLinearizedStart() + 1) / kernel.numEltPerGRF<Type_UB>();
@@ -5417,7 +5417,7 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB* bb, PointsTo
                 continue;
             }
             G4_Declare* srcDcl = src->getTopDcl();
-            G4_CmpRelation rel = dst->compareOperand(src);
+            G4_CmpRelation rel = dst->compareOperand(src, builder);
             if (src->isSrcRegRegion())
             {
                 G4_SrcRegRegion* srcRg = src->asSrcRegRegion();

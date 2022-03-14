@@ -741,8 +741,8 @@ void G4_INST::copyDef(
                 ASSERT_USER(use, "null operand unexpected");
                 G4_Operand *dst = I->first->getOperand(Opnd_dst);
                 G4_Operand *condMod = I->first->getOperand(Opnd_condMod);
-                if ((dst && use->compareOperand(dst) != Rel_disjoint) ||
-                    (condMod && use->compareOperand(condMod) != Rel_disjoint))
+                if ((dst && use->compareOperand(dst, getBuilder()) != Rel_disjoint) ||
+                    (condMod && use->compareOperand(condMod, getBuilder()) != Rel_disjoint))
                 {
                     // OK
                 }
@@ -776,9 +776,9 @@ void G4_INST::copyDefsTo(G4_INST *inst2, bool checked)
             G4_Operand *dst = I->first->getOperand(Opnd_dst);
             G4_Operand *condMod = I->first->getOperand(Opnd_condMod);
             G4_Operand* implicitAccDef = I->first->getImplAccDst();
-            if ((dst && use->compareOperand(dst) != Rel_disjoint) ||
-                (condMod && use->compareOperand(condMod) != Rel_disjoint) ||
-                (implicitAccDef && use->compareOperand(implicitAccDef) != Rel_disjoint))
+            if ((dst && use->compareOperand(dst, getBuilder()) != Rel_disjoint) ||
+                (condMod && use->compareOperand(condMod, getBuilder()) != Rel_disjoint) ||
+                (implicitAccDef && use->compareOperand(implicitAccDef, getBuilder()) != Rel_disjoint))
             {
                 // OK
             }
@@ -810,9 +810,9 @@ void G4_INST::copyUsesTo(G4_INST *inst2, bool checked)
             G4_Operand *dst = inst2->getOperand(Opnd_dst);
             G4_Operand *condMod = inst2->getOperand(Opnd_condMod);
             G4_Operand *implicitAccDef = inst2->getImplAccDst();
-            if ((dst && use->compareOperand(dst) != Rel_disjoint) ||
-                (condMod && use->compareOperand(condMod) != Rel_disjoint) ||
-                (implicitAccDef && use->compareOperand(implicitAccDef) != Rel_disjoint))
+            if ((dst && use->compareOperand(dst, getBuilder()) != Rel_disjoint) ||
+                (condMod && use->compareOperand(condMod, getBuilder()) != Rel_disjoint) ||
+                (implicitAccDef && use->compareOperand(implicitAccDef, getBuilder()) != Rel_disjoint))
             {
                 // OK
             }
@@ -882,7 +882,7 @@ void G4_INST::trimDefInstList()
         {
             if ((*iter).first->getCondMod())
             {
-                rel = src->compareOperand((*iter).first->getCondMod());
+                rel = src->compareOperand((*iter).first->getCondMod(), getBuilder());
             }
             else if ((*iter).first->getDst())
             {
@@ -892,13 +892,13 @@ void G4_INST::trimDefInstList()
                 }
                 else
                 {
-                    rel = src->compareOperand((*iter).first->getDst());
+                    rel = src->compareOperand((*iter).first->getDst(), getBuilder());
                 }
             }
         }
         else
         {
-            rel = src->compareOperand((*iter).first->getDst());
+            rel = src->compareOperand((*iter).first->getDst(), getBuilder());
         }
 
         if (rel == Rel_disjoint)
@@ -2409,7 +2409,7 @@ bool G4_INST::canPropagateTo(
 
     // Check 'dst' of MOV and 'use' are the same variable. Otherwise, it's not
     // legal to be propagated.
-    G4_CmpRelation rel = dst->compareOperand(use);
+    G4_CmpRelation rel = dst->compareOperand(use, getBuilder());
     if (rel != Rel_eq)
     {
         return false;
@@ -3042,13 +3042,13 @@ bool G4_INST::isWARdep(G4_INST* inst)
     {
 
         if (
-            (src0_0 && src0_0->compareOperand(dst1) != Rel_disjoint) ||
-            (src0_1 && src0_1->compareOperand(dst1) != Rel_disjoint) ||
-            (src0_2 && src0_2->compareOperand(dst1) != Rel_disjoint) ||
-            (src0_3 && src0_3->compareOperand(dst1) != Rel_disjoint) ||
-            (msg0 && (msg0->compareOperand(dst1) != Rel_disjoint)) ||
-            (pred0 && (pred0->compareOperand(dst1) != Rel_disjoint)) ||
-            (implicitSrc0 && (implicitSrc0->compareOperand(dst1) != Rel_disjoint)))
+            (src0_0 && src0_0->compareOperand(dst1, getBuilder()) != Rel_disjoint) ||
+            (src0_1 && src0_1->compareOperand(dst1, getBuilder()) != Rel_disjoint) ||
+            (src0_2 && src0_2->compareOperand(dst1, getBuilder()) != Rel_disjoint) ||
+            (src0_3 && src0_3->compareOperand(dst1, getBuilder()) != Rel_disjoint) ||
+            (msg0 && (msg0->compareOperand(dst1, getBuilder()) != Rel_disjoint)) ||
+            (pred0 && (pred0->compareOperand(dst1, getBuilder()) != Rel_disjoint)) ||
+            (implicitSrc0 && (implicitSrc0->compareOperand(dst1, getBuilder()) != Rel_disjoint)))
         {
             return true;
         }
@@ -3056,10 +3056,10 @@ bool G4_INST::isWARdep(G4_INST* inst)
 
     if (mod)
     {
-        if ((pred0 && pred0->compareOperand(mod) != Rel_disjoint) ||
-            (src0_0 && src0_0->isFlag() && src0_0->compareOperand(mod) != Rel_disjoint) ||
-            (src0_1 && src0_1->isFlag() && src0_1->compareOperand(mod) != Rel_disjoint) ||
-            (src0_2 && src0_2->isFlag() && src0_2->compareOperand(mod) != Rel_disjoint))
+        if ((pred0 && pred0->compareOperand(mod, getBuilder()) != Rel_disjoint) ||
+            (src0_0 && src0_0->isFlag() && src0_0->compareOperand(mod, getBuilder()) != Rel_disjoint) ||
+            (src0_1 && src0_1->isFlag() && src0_1->compareOperand(mod, getBuilder()) != Rel_disjoint) ||
+            (src0_2 && src0_2->isFlag() && src0_2->compareOperand(mod, getBuilder()) != Rel_disjoint))
         {
             return true;
         }
@@ -3067,10 +3067,10 @@ bool G4_INST::isWARdep(G4_INST* inst)
 
     if (implAccDst)
     {
-        if ((implicitSrc0 && implicitSrc0->compareOperand(implAccDst) != Rel_disjoint) ||
-            (src0_0 && src0_0->isAccReg() && src0_0->compareOperand(implAccDst) != Rel_disjoint) ||
-            (src0_1 && src0_1->isAccReg() && src0_1->compareOperand(implAccDst) != Rel_disjoint) ||
-            (src0_2 && src0_2->isAccReg() && src0_2->compareOperand(implAccDst) != Rel_disjoint))
+        if ((implicitSrc0 && implicitSrc0->compareOperand(implAccDst, getBuilder()) != Rel_disjoint) ||
+            (src0_0 && src0_0->isAccReg() && src0_0->compareOperand(implAccDst, getBuilder()) != Rel_disjoint) ||
+            (src0_1 && src0_1->isAccReg() && src0_1->compareOperand(implAccDst, getBuilder()) != Rel_disjoint) ||
+            (src0_2 && src0_2->isAccReg() && src0_2->compareOperand(implAccDst, getBuilder()) != Rel_disjoint))
         {
             return true;
         }
@@ -3090,9 +3090,9 @@ bool G4_INST::isWAWdep(G4_INST *inst)
     bool NULLDst1 = !dst1 || hasNULLDst();
     if (dst0 && !inst->hasNULLDst())
     {
-        if ((!NULLDst1 && dst1->compareOperand(dst0) != Rel_disjoint) ||
-            (implicitDst1 && implicitDst1->compareOperand(dst0) != Rel_disjoint) ||
-            (cMod1 && cMod1->getBase() && cMod1->compareOperand(dst0) != Rel_disjoint))
+        if ((!NULLDst1 && dst1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+            (implicitDst1 && implicitDst1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+            (cMod1 && cMod1->getBase() && cMod1->compareOperand(dst0, getBuilder()) != Rel_disjoint))
         {
             return true;
         }
@@ -3100,8 +3100,8 @@ bool G4_INST::isWAWdep(G4_INST *inst)
 
     if (implicitDst0)
     {
-        if ((!NULLDst1 && dst1->compareOperand(implicitDst0) != Rel_disjoint) ||
-            (implicitDst1 && implicitDst1->compareOperand(implicitDst0) != Rel_disjoint))
+        if ((!NULLDst1 && dst1->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint) ||
+            (implicitDst1 && implicitDst1->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint))
         {
             return true;
         }
@@ -3109,8 +3109,8 @@ bool G4_INST::isWAWdep(G4_INST *inst)
 
     if (cMod0 && cMod0->getBase())
     {
-        if ((!NULLDst1 && dst1->compareOperand(cMod0) != Rel_disjoint) ||
-            (cMod1 && cMod1->getBase() && cMod1->compareOperand(cMod0) != Rel_disjoint))
+        if ((!NULLDst1 && dst1->compareOperand(cMod0, getBuilder()) != Rel_disjoint) ||
+            (cMod1 && cMod1->getBase() && cMod1->compareOperand(cMod0, getBuilder()) != Rel_disjoint))
         {
             return true;
         }
@@ -3134,13 +3134,13 @@ bool G4_INST::isRAWdep(G4_INST *inst)
     bool NULLSrc1 = (opcode() == G4_math && src1_1->isNullReg());
     if (dst0 && !inst->hasNULLDst())
     {
-        if ((src1_0 && src1_0->compareOperand(dst0) != Rel_disjoint) ||
-            (src1_1 && !NULLSrc1 && src1_1->compareOperand(dst0) != Rel_disjoint) ||
-            (src1_2 && src1_2->compareOperand(dst0) != Rel_disjoint) ||
-            (src1_3 && src1_3->compareOperand(dst0) != Rel_disjoint) ||
-            (msg1 && msg1->compareOperand(dst0) != Rel_disjoint) ||
-            (pred1 && pred1->compareOperand(dst0) != Rel_disjoint) ||
-            (implicitSrc1 && implicitSrc1->compareOperand(dst0) != Rel_disjoint))
+        if ((src1_0 && src1_0->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+            (src1_1 && !NULLSrc1 && src1_1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+            (src1_2 && src1_2->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+            (src1_3 && src1_3->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+            (msg1 && msg1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+            (pred1 && pred1->compareOperand(dst0, getBuilder()) != Rel_disjoint) ||
+            (implicitSrc1 && implicitSrc1->compareOperand(dst0, getBuilder()) != Rel_disjoint))
         {
             return true;
         }
@@ -3148,10 +3148,10 @@ bool G4_INST::isRAWdep(G4_INST *inst)
 
     if (cMod0 && cMod0->getBase())
     {
-        if ((pred1 && pred1->compareOperand(cMod0) != Rel_disjoint) ||
-            (src1_0 && src1_0->isFlag() && src1_0->compareOperand(cMod0) != Rel_disjoint) ||
-            (src1_2 && src1_2->isFlag() && src1_2->compareOperand(cMod0) != Rel_disjoint) ||
-            (src1_1 && src1_1->isFlag() && src1_1->compareOperand(cMod0) != Rel_disjoint))
+        if ((pred1 && pred1->compareOperand(cMod0, getBuilder()) != Rel_disjoint) ||
+            (src1_0 && src1_0->isFlag() && src1_0->compareOperand(cMod0, getBuilder()) != Rel_disjoint) ||
+            (src1_2 && src1_2->isFlag() && src1_2->compareOperand(cMod0, getBuilder()) != Rel_disjoint) ||
+            (src1_1 && src1_1->isFlag() && src1_1->compareOperand(cMod0, getBuilder()) != Rel_disjoint))
         {
             return true;
         }
@@ -3159,10 +3159,10 @@ bool G4_INST::isRAWdep(G4_INST *inst)
 
     if (implicitDst0)
     {
-        if ((implicitSrc1 && implicitSrc1->compareOperand(implicitDst0) != Rel_disjoint) ||
-            (src1_0 && src1_0->isAccReg() && src1_0->compareOperand(implicitDst0) != Rel_disjoint) ||
-            (src1_2 && src1_2->isAccReg() && src1_2->compareOperand(implicitDst0) != Rel_disjoint) ||
-            (src1_1 && src1_1->isAccReg() && src1_1->compareOperand(implicitDst0) != Rel_disjoint))
+        if ((implicitSrc1 && implicitSrc1->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint) ||
+            (src1_0 && src1_0->isAccReg() && src1_0->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint) ||
+            (src1_2 && src1_2->isAccReg() && src1_2->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint) ||
+            (src1_1 && src1_1->isAccReg() && src1_1->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint))
         {
             return true;
         }
@@ -4475,16 +4475,17 @@ void printRegVarOff(std::ostream&  output,
                 {
                     int regNum = 0, subRegNum = 0;
                     uint32_t byteAddress = opnd->getLinearizedStart();
+                    const IR_Builder& builder = baseVar->getDeclare()->getBuilder();
 
                     if (baseVar->getDeclare()->getGRFBaseOffset() == 0)
                     {
                         // This is before RA and getLineariedStart() only contains the left bound
                         // we have to add the declare's phyreg
-                        byteAddress += baseVar->getPhyReg()->asGreg()->getRegNum() * ::getGRFSize() + baseVar->getPhyRegOff() * TypeSize(type);
+                        byteAddress += baseVar->getPhyReg()->asGreg()->getRegNum() * builder.getGRFSize() + baseVar->getPhyRegOff() * TypeSize(type);
                     }
 
-                    regNum = byteAddress / ::getGRFSize();
-                    subRegNum = (byteAddress % ::getGRFSize()) / TypeSize(type);
+                    regNum = byteAddress / builder.getGRFSize();
+                    subRegNum = (byteAddress % builder.getGRFSize()) / TypeSize(type);
 
 
                      output << "r" << regNum;
@@ -4837,7 +4838,7 @@ void G4_DstRegRegion::computeLeftBound(const IR_Builder& builder)
         left_bound = subRegOff * TypeSize(type);
         if (base->asAreg()->getArchRegType() == AREG_ACC1 || regOff == 1)
         {
-            left_bound += ::getGRFSize();
+            left_bound += builder.getGRFSize();
         }
         byteOffset = left_bound;
     } else if (top_dcl) {
@@ -4988,7 +4989,8 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
             // result size, and also both low and high results are GRF-aligned.
             if (INST_WIDE_DST(inst->opcode()))
             {
-                unsigned totalBytesDstLow = (totalBytes + ::getGRFSize() - 1) & (~(::getGRFSize() - 1)); // GRF-aligned
+                const IR_Builder& builder = inst->getBuilder();
+                unsigned totalBytesDstLow = (totalBytes + builder.getGRFSize() - 1) & (~(builder.getGRFSize() - 1)); // GRF-aligned
                 totalBytes = totalBytesDstLow * 2;
             }
 
@@ -5009,7 +5011,7 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
 /// regRegion is either a SrcRegRegion or DstRegRegion, opnd can be any G4_operand
 /// We put this in a separate function since G4_DstRegRegion and G4_SrcRegRegion
 /// should have (nearly) identical code for compareOperand
-static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operand* opnd)
+static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operand* opnd, const IR_Builder& builder)
 {
     assert((regRegion->isSrcRegRegion() || regRegion->isDstRegRegion()) && "expect either src or dst regRegion");
     bool legal_opnd = opnd->isSrcRegRegion() || opnd->isDstRegRegion() || opnd->isPredicate() || opnd->isCondMod() || opnd->isAddrExp();
@@ -5126,8 +5128,8 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
     uint32_t myRightBound = regRegion->getRightBound();
 
     {
-        uint64_t opndBitVecL = opnd->getBitVecL(), opndBitVecH = opnd->getBitVecH();
-        uint64_t myBitVecL = regRegion->getBitVecL(), myBitVecH = regRegion->getBitVecH();
+        uint64_t opndBitVecL = opnd->getBitVecL(), opndBitVecH = opnd->getBitVecH(builder);
+        uint64_t myBitVecL = regRegion->getBitVecL(), myBitVecH = regRegion->getBitVecH(builder);
         if (myRightBound < left_bound2 || right_bound2 < myLeftBound)
         {
             return Rel_disjoint;
@@ -5142,8 +5144,8 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
         {
             // First consider if any operand is > two GRFs. If so we just compare the bound
             // as such operands are assumed to touch every element within the bound.
-            bool meExceedTwoGRF = (myRightBound - myLeftBound) > 2u * ::getGRFSize();
-            bool opndExceedTwoGRF = (right_bound2 - left_bound2) > 2u * ::getGRFSize();
+            bool meExceedTwoGRF = (myRightBound - myLeftBound) > 2u * builder.getGRFSize();
+            bool opndExceedTwoGRF = (right_bound2 - left_bound2) > 2u * builder.getGRFSize();
             if (meExceedTwoGRF || opndExceedTwoGRF)
             {
                 if (left_bound2 >= myLeftBound && right_bound2 <= myRightBound)
@@ -5158,7 +5160,7 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
             }
 
             // Now both operands are within two GRFs, compare their footprint to get precise relations
-            int maskSize = 2 * ::getGRFSize();
+            int maskSize = 2 * builder.getGRFSize();
             if (myDcl)
             {
                 maskSize = myDcl->getRegVar()->isFlag() ? myDcl->getNumberFlagElements()
@@ -5166,8 +5168,8 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
             }
             BitSet myBitSet(maskSize, false);
             BitSet otherBitSet(maskSize, false);
-            regRegion->updateFootPrint(myBitSet, true);
-            opnd->updateFootPrint(otherBitSet, true);
+            regRegion->updateFootPrint(myBitSet, true, builder);
+            opnd->updateFootPrint(otherBitSet, true, builder);
 
             BitSet tmp = myBitSet;
             myBitSet &= otherBitSet;
@@ -5188,9 +5190,9 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
     }
 }
 
-G4_CmpRelation G4_DstRegRegion::compareOperand(G4_Operand *opnd)
+G4_CmpRelation G4_DstRegRegion::compareOperand(G4_Operand *opnd, const IR_Builder& builder)
 {
-    return compareRegRegionToOperand(this, opnd);
+    return compareRegRegionToOperand(this, opnd, builder);
 }
 
 bool G4_DstRegRegion::isNativeType() const
@@ -5385,7 +5387,7 @@ static bool regionHasFixedSubreg(const IR_Builder& builder, G4_Operand* opnd, ui
     if (base->asRegVar()->isPhyRegAssigned())
     {
         offset = (subRegOff + base->asRegVar()->getPhyRegOff()) * TypeSize(opnd->getType());
-        offset %= ::getGRFSize();
+        offset %= builder.getGRFSize();
         return true;
     }
 
@@ -6005,7 +6007,7 @@ static G4_CmpRelation compareFlagToOperand(G4_Operand* flag, G4_Operand* opnd)
     return compareBound(flag->getLeftBound(), flag->getRightBound(), opnd->getLeftBound(), opnd->getRightBound());
 }
 
-G4_CmpRelation G4_Predicate::compareOperand(G4_Operand *opnd)
+G4_CmpRelation G4_Predicate::compareOperand(G4_Operand *opnd, const IR_Builder& builder)
 {
     return compareFlagToOperand(this, opnd);
 }
@@ -6083,7 +6085,7 @@ unsigned G4_CondMod::computeRightBound(uint8_t exec_size)
 }
 
 /// same as G4_Predicate::compareOperand
-G4_CmpRelation G4_CondMod::compareOperand(G4_Operand *opnd)
+G4_CmpRelation G4_CondMod::compareOperand(G4_Operand *opnd, const IR_Builder& builder)
 {
     return compareFlagToOperand(this, opnd);
 }
@@ -6162,7 +6164,7 @@ bool G4_Imm::isSignBitZero() const
     return false;
 }
 
-G4_CmpRelation G4_Imm::compareOperand(G4_Operand *opnd)
+G4_CmpRelation G4_Imm::compareOperand(G4_Operand *opnd, const IR_Builder& builder)
 {
     G4_CmpRelation rel = Rel_disjoint;
     if (opnd->isImm() && isEqualTo(opnd->asImm()))
@@ -6450,7 +6452,7 @@ void G4_SrcRegRegion::computeLeftBound(const IR_Builder& builder)
     }
 }
 
-void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
+void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size, const IR_Builder& irb)
 {
     uint64_t bit_seq = TypeFootprint(type);
     unsigned short typeSize = TypeSize(type);
@@ -6467,7 +6469,7 @@ void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
     {
         // fast path
         int totalBytes = exec_size * typeSize;
-        MUST_BE_TRUE(totalBytes <= 2 * ::getGRFSize(), "total bytes exceed 2 GRFs");
+        MUST_BE_TRUE(totalBytes <= 2 * irb.getGRFSize(), "total bytes exceed 2 GRFs");
 
         footPrint0 = totalBytes < 64 ? (1ULL << totalBytes) - 1 : ULLONG_MAX;
         if (totalBytes > 64)
@@ -6546,7 +6548,7 @@ unsigned G4_SrcRegRegion::computeRightBound(uint8_t exec_size)
                 exec_size = 2;
             }
 
-            setSrcBitVec(exec_size);
+            setSrcBitVec(exec_size, inst->getBuilder());
 
             if (desc->isScalar())
             {
@@ -6593,9 +6595,9 @@ unsigned G4_SrcRegRegion::computeRightBound(uint8_t exec_size)
     return right_bound;
 }
 
-G4_CmpRelation G4_SrcRegRegion::compareOperand(G4_Operand *opnd)
+G4_CmpRelation G4_SrcRegRegion::compareOperand(G4_Operand *opnd, const IR_Builder& builder)
 {
-    return compareRegRegionToOperand(this, opnd);
+    return compareRegRegionToOperand(this, opnd, builder);
 }
 
 bool G4_SrcRegRegion::isNativeType() const
@@ -6931,13 +6933,27 @@ bool G4_Operand::crossGRF(const IR_Builder& builder)
            getLeftBound() / builder.numEltPerGRF<Type_UB>();
 }
 
+uint64_t G4_Operand::getBitVecH(const IR_Builder& builder)
+{
+    if (isRightBoundSet() == false && !isNullReg())
+    {
+        // computeRightBound also computes bitVec
+        inst->computeRightBound(this);
+    }
+    if (builder.getGRFSize() == 32)
+    {
+        assert(bitVec[1] == 0 && "upper bits should be 0");
+    }
+    return bitVec[1];
+}
+
 //
 // Normalize an operand's bitvec footprint based on its left bound
 // and update the given bitset.
 // If isSet is true, we set all bits that are covered by this operand.
 // If isSet os false, we clear all bits that are covered by this operand.
 //
-void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
+void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet, const IR_Builder& builder)
 {
     unsigned N = NUM_BITS_PER_ELT;
     unsigned lb = getLeftBound();
@@ -6963,11 +6979,11 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
                 footprint.resetElt(idx, bitVal);
             }
         }
-        if (::getGRFSize() > 32)
+        if (builder.getGRFSize() > 32)
         {
             for (int i = 0; i < 2 && idx <= endIdx; ++i, ++idx)
             {
-                uint64_t bits = getBitVecH();
+                uint64_t bits = getBitVecH(builder);
                 uint32_t bitVal = (uint32_t)(i % 2 ? bits >> N : bits);
                 if (isSet)
                 {
@@ -7004,9 +7020,9 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
             if (mask0 & (1ULL << i))
                 footprint.set(j, isSet);
         }
-        if (::getGRFSize() > 32)
+        if (builder.getGRFSize() > 32)
         {
-            uint64_t mask1 = getBitVecH();
+            uint64_t mask1 = getBitVecH(builder);
             for (unsigned i = 0; i < 64 && j <= rb; ++i, ++j)
             {
                 if (mask1 & (1ULL << i))
@@ -7020,11 +7036,11 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet)
 
 // update bit vector for this operand based on it size
 // We assume all bytes are touched
-void G4_Operand::setBitVecFromSize(uint32_t NBytes)
+void G4_Operand::setBitVecFromSize(uint32_t NBytes, const IR_Builder& builder)
 {
     bitVec[0] = NBytes < 64 ? (1ULL << NBytes) - 1 : ULLONG_MAX;
     bitVec[1] = 0;
-    if (::getGRFSize() > 32 && NBytes >= 64)
+    if (builder.getGRFSize() > 32 && NBytes >= 64)
     {
         bitVec[1] = (NBytes < 64 * 2) ? (1ULL << (NBytes - 64)) - 1 : ULLONG_MAX;
     }
@@ -7153,7 +7169,7 @@ void G4_InstSend::computeRightBound(G4_Operand* opnd)
                 LB + numReg * getBuilder().numEltPerGRF<Type_UB>()) - 1;
 
             unsigned NBytes = RB - LB + 1;
-            opnd->setBitVecFromSize(NBytes);
+            opnd->setBitVecFromSize(NBytes, getBuilder());
             opnd->setRightBound(RB);
         };
 
@@ -8559,7 +8575,7 @@ static void computeSpillFillOperandBound(G4_Operand* opnd, unsigned int LB, int 
         LB + numReg * builder.numEltPerGRF<Type_UB>()) - 1;
 
     unsigned NBytes = RB - LB + 1;
-    opnd->setBitVecFromSize(NBytes);
+    opnd->setBitVecFromSize(NBytes, builder);
     opnd->setRightBound(RB);
 }
 
@@ -8792,10 +8808,10 @@ void G4_InstDpas::computeRightBound(G4_Operand* opnd)
         uint8_t D = dpasInst->getSystolicDepth();
         uint8_t C = dpasInst->getRepeatCount();
 
-        auto computeDpasOperandBound = [](G4_Operand* opnd, unsigned leftBound, unsigned rightBound)
+        auto computeDpasOperandBound = [this](G4_Operand* opnd, unsigned leftBound, unsigned rightBound)
         {
             unsigned NBytes = rightBound - leftBound + 1;
-            opnd->setBitVecFromSize(NBytes);
+            opnd->setBitVecFromSize(NBytes, getBuilder());
             opnd->setRightBound(rightBound);
         };
 

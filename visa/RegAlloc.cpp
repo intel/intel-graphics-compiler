@@ -1820,7 +1820,7 @@ void LivenessAnalysis::footprintDst(const G4_BB* bb,
     {
         // Bitwise OR left-bound/right-bound with dst footprint to indicate
         // bytes that are written in to
-        opnd->updateFootPrint(*dstfootprint, true);
+        opnd->updateFootPrint(*dstfootprint, true, *fg.builder);
     }
 }
 
@@ -1830,7 +1830,7 @@ void LivenessAnalysis::footprintSrc(const G4_INST* i,
     BitSet* srcfootprint)
 {
     // Reset bits in kill map footprint
-    opnd->updateFootPrint(*srcfootprint, false);
+    opnd->updateFootPrint(*srcfootprint, false, i->getBuilder());
 }
 
 void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,

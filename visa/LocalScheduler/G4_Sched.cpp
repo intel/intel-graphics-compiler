@@ -2077,16 +2077,17 @@ getDepAndRel(G4_Operand* Opnd, const preDDD::LiveNode& LN, DepType Dep)
 
     if( Other )
     {
+        const IR_Builder& builder = LN.N->getInst()->getBuilder();
         if( Opnd->isDstRegRegion() )
-            Rel = Opnd->asDstRegRegion()->compareOperand( Other );
+            Rel = Opnd->asDstRegRegion()->compareOperand( Other, builder );
         else if( Opnd->isCondMod() )
-            Rel = Opnd->asCondMod()->compareOperand( Other );
+            Rel = Opnd->asCondMod()->compareOperand( Other, builder );
         else if( Opnd->isSrcRegRegion() )
-            Rel = Opnd->asSrcRegRegion()->compareOperand( Other );
+            Rel = Opnd->asSrcRegRegion()->compareOperand( Other, builder );
         else if( Opnd->isPredicate() )
-            Rel = Opnd->asPredicate()->compareOperand( Other );
+            Rel = Opnd->asPredicate()->compareOperand( Other, builder );
         else
-            Rel = Opnd->compareOperand( Other );
+            Rel = Opnd->compareOperand( Other, builder );
 
         if( Rel == G4_CmpRelation::Rel_disjoint )
         {

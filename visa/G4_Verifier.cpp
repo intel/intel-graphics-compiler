@@ -134,10 +134,10 @@ static bool checkDefUse(G4_INST* defInst, G4_Operand *use)
         }
     }
 
-    if (dst && Rel_disjoint != use->compareOperand(dst))
+    if (dst && Rel_disjoint != use->compareOperand(dst, defInst->getBuilder()))
         return true;
 
-    if (condMod && Rel_disjoint != use->compareOperand(condMod))
+    if (condMod && Rel_disjoint != use->compareOperand(condMod, defInst->getBuilder()))
         return true;
 
     return false;
