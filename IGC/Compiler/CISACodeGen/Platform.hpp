@@ -1005,11 +1005,6 @@ bool WaCubeHFPrecisionBug() const
     return m_WaTable.Wa_18012201914 != 0;
 }
 
-bool switchSIMDBasedOnMemInstr() const
-{
-    return m_platformInfo.eProductFamily <= IGFX_DG1;
-}
-
 //The max size in bytes of the scratch space per thread.
 //  XeHP_SDV and above are for each physical thread: 256k.
 //  TGLLP and below are for each FFTID: 2M.
