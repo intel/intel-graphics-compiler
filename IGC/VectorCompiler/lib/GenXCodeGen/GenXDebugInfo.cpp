@@ -926,20 +926,20 @@ public:
   static constexpr unsigned RdNumOp =
       GenXIntrinsic::GenXRegion::OldValueOperandNum;
 
-  static const Value *
-  calculateBaledLocation(const CallInst *UseInst,
-                         llvm::SmallVector<unsigned, 0> *Offsets,
-                         const GenXBaling &BA, const DataLayout &DL) {
+  using OffsetsVector = llvm::SmallVector<unsigned, 0>;
+
+  std::tuple<const Value *, OffsetsVector>
+  calculateBaledLocation(const CallInst *UseInst, const GenXBaling &BA,
+                         const DataLayout &DL) const {
     IGC_ASSERT(UseInst);
-    IGC_ASSERT(Offsets);
     if (!GenXIntrinsic::isRdRegion(UseInst))
-      return UseInst;
+      return std::make_tuple(UseInst, OffsetsVector());
     auto BI = BA.getBaleInfo(UseInst);
 
     if (BI.Type != genx::BaleInfo::RDREGION ||
         !dyn_cast<ConstantInt>(UseInst->getOperand(RdIndex)) ||
         BI.isOperandBaled(RdNumOp) || !BA.isBaled(UseInst))
-      return UseInst;
+      return std::make_tuple(UseInst, OffsetsVector());
 
     auto GetSignConstant = [](Value *Operand) {
       auto *CI = cast<ConstantInt>(Operand);
@@ -953,7 +953,7 @@ public:
     auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(UseInst->getType());
     // TODO: Investigate scalar
     if (!VTy)
-      return UseInst;
+      return std::make_tuple(UseInst, OffsetsVector());
     auto Vstride = GetSignConstant(UseInst->getOperand(RdVstride));
     auto Width = GetSignConstant(UseInst->getOperand(RdWidth));
     auto Stride = GetSignConstant(UseInst->getOperand(RdStride));
@@ -963,17 +963,24 @@ public:
     auto ElSizeInBits = vc::getTypeSize(VTy->getElementType(), &DL).inBits();
     IGC_ASSERT(Width);
     unsigned NumElements = VTy->getNumElements() / Width;
+    OffsetsVector Offsets;
 
     for (unsigned I = 0; I < NumElements; ++I) {
       for (unsigned J = 0; J < Width; ++J) {
         auto CurrOffset = StartIdx + ElSizeInBits * (I * Vstride + J * Stride);
         // Check type overflow
         IGC_ASSERT(CurrOffset <= std::numeric_limits<unsigned>::max());
-        Offsets->push_back(CurrOffset);
+        if ((CurrOffset % getGRFSizeInBits()) + ElSizeInBits >
+            getGRFSizeInBits()) {
+          LLVM_DEBUG(dbgs() << "  Fail to generate Bale location element has "
+                               "crossGRF access\n");
+          return std::make_tuple(UseInst, OffsetsVector());
+        }
+        Offsets.push_back(CurrOffset);
       }
     }
     // Replace value to source of rdregion
-    return UseInst->getOperand(RdNumOp);
+    return std::make_tuple(UseInst->getOperand(RdNumOp), std::move(Offsets));
   }
 
   IGC::VISAVariableLocation
@@ -999,10 +1006,10 @@ public:
     const Value *DbgValue =
         IGCLLVM::getVariableLocation(cast<DbgVariableIntrinsic>(DbgInst));
 
-    llvm::SmallVector<unsigned, 0> Offsets;
+    OffsetsVector Offsets;
     if (auto *UseInst = dyn_cast_or_null<CallInst>(DbgValue)) {
-      DbgValue = calculateBaledLocation(UseInst, &Offsets, BA,
-                                        F.getParent()->getDataLayout());
+      std::tie(DbgValue, Offsets) =
+          calculateBaledLocation(UseInst, BA, F.getParent()->getDataLayout());
     }
 
     IGC_ASSERT(VarDescr);
