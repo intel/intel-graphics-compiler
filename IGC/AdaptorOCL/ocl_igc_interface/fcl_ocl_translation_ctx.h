@@ -59,9 +59,9 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclTranslationCtx, 2, 1) {
 
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(FclOclTranslationCtx, IGC::OclTranslationOutput, CIF::Builtins::Buffer);
 CIF_MARK_LATEST_VERSION(FclOclTranslationCtxLatest, FclOclTranslationCtx);
-using FclOclTranslationCtxTagOCL = FclOclTranslationCtx<1>; // Note : can tag with different version for
-                                                               //        transition periods
-
+using FclOclTranslationCtxTagOCL =
+    FclOclTranslationCtxLatest; // Note : can tag with different version for
+                                //        transition periods
 }
 
 #include "cif/macros/disable.h"

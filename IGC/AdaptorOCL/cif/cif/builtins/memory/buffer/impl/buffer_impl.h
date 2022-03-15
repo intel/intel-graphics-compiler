@@ -113,7 +113,7 @@ CIF_DECLARE_INTERFACE_PIMPL(Buffer) : CIF::PimplBase {
     /// Returns writeable access to underlyng buffer
     /// Note : for constant buffer this will cause reallocation (copy!) to writeable memory
     void *GetMemoryRawWriteable(){
-        if(this->isConst){
+        if(this->isConst && this->capacity != 0){
             if(false == Reallocate(this->size, this->capacity)){
                 return nullptr;
             }

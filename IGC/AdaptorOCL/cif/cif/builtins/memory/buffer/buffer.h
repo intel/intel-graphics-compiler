@@ -152,12 +152,12 @@ CIF::RAII::UPtr_t<BufferInterface> CreateConstBuffer(CIF::CIFMain *provider, con
 
 template<typename BufferInterface = BufferLatest>
 CIF::RAII::UPtr_t<BufferInterface> CreateWriteableBuffer(CIF::CIFMain *provider, const void *initialData, size_t initialSize){
-    auto *buff = CreateConstBuffer<BufferInterface>(provider, initialData, initialSize);
+    auto buff = CreateConstBuffer<BufferInterface>(provider, initialData, initialSize);
     if(buff == nullptr){
         return CIF::RAII::UPtr<BufferInterface>(nullptr);
     }
     auto writeableMem = buff->GetMemoryRawWriteable();
-    if(writeableMem == nullptr){
+    if(writeableMem == nullptr && (initialData != nullptr && initialSize != 0)){
         // failed to allocate new memory in writeable memory
         return CIF::RAII::UPtr<BufferInterface>(nullptr);
     }
@@ -166,7 +166,7 @@ CIF::RAII::UPtr_t<BufferInterface> CreateWriteableBuffer(CIF::CIFMain *provider,
 
 template<typename BufferInterface = BufferLatest>
 CIF::RAII::UPtr_t<BufferInterface> CreateBufferFromPtr(CIF::CIFMain *provider, void *ptr, size_t size, DeallocatorT ptrDeallocator){
-    auto *buff = CreateConstBuffer<BufferInterface>(provider, nullptr, 0);
+    auto buff = CreateConstBuffer<BufferInterface>(provider, nullptr, 0);
     if(buff == nullptr){
         return CIF::RAII::UPtr<BufferInterface>(nullptr);
     }
