@@ -191,12 +191,6 @@ extern std::stringstream errorMsgs;
 #define MUST_BE_TRUE2(x, errormsg, inst)
 #endif
 
-
-/*************** internal jitter functions ********************/
-// sets the platform by enum value
-int SetVisaPlatform(TARGET_PLATFORM vPlatform);
-unsigned char getGRFSize();
-
 enum class PlatformGen
 {
     GEN_UNKNOWN = 0,

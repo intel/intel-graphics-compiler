@@ -269,10 +269,6 @@ int CISA_IR_Builder::CreateBuilder(
 
     startTimer(TimerID::TOTAL);
     startTimer(TimerID::BUILDER);  // builder time ends with we call compile (i.e., it covers the IR construction time)
-    // TODO: Remove global APIs that get/set visa platform. Currently
-    // ::getGRFSize() still relies on this.
-    //this must be called before any other API.
-    SetVisaPlatform(platform);
 
     builder = new CISA_IR_Builder(platform, buildOption, mode, COMMON_ISA_MAJOR_VER, COMMON_ISA_MINOR_VER, pWaTable);
 

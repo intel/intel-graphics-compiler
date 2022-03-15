@@ -17,8 +17,6 @@ SPDX-License-Identifier: MIT
 //FIXME: potentially not thread safe, but should be ok since it's debugging code
 std::stringstream errorMsgs;
 
-static _THREAD TARGET_PLATFORM visaPlatform;
-
 using namespace vISA;
 const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
     PlatformInfo(GENX_BDW, PlatformGen::GEN8, 3, 32, "BDW", "GEN8"),
@@ -48,14 +46,6 @@ const PlatformInfo* PlatformInfo::LookupPlatformInfo(TARGET_PLATFORM p)
             return &pi;
     }
     return nullptr;
-}
-
-int SetVisaPlatform(TARGET_PLATFORM vPlatform)
-{
-    assert(vPlatform >= GENX_BDW && "unsupported platform");
-    visaPlatform = vPlatform;
-
-    return VISA_SUCCESS;
 }
 
 TARGET_PLATFORM PlatformInfo::getVisaPlatformFromStr(const char * str)
@@ -133,16 +123,6 @@ const char * const* PlatformInfo::getGenxPlatformStrings(TARGET_PLATFORM p)
         assert(false && "invalid platform");
         return nullptr;
     }
-}
-
-unsigned char getGRFSize()
-{
-    unsigned int size = 32;
-
-    if (visaPlatform >= Xe_PVC)
-        size = 64;
-
-    return size;
 }
 
 // The encoding of gen platform defined in vISA spec:
