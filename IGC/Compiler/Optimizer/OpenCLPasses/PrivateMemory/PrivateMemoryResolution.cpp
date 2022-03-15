@@ -513,6 +513,12 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                     // Argument offsets are also OWORD aligned
                     argSize += iSTD::Align(static_cast<DWORD>(DL.getTypeAllocSize(AI->getType())), SIZE_OWORD);
                 }
+                // Also do it for return value
+                if (!childF->getReturnType()->isVoidTy())
+                {
+                    argSize += iSTD::Align(static_cast<DWORD>(DL.getTypeAllocSize(childF->getReturnType())), SIZE_OWORD);
+                }
+
                 uint32_t stackFrameSize = currFuncPrivateMem + argSize + SIZE_OWORD;
                 uint32_t size = stackFrameSize + AnalyzeCGPrivateMemUsage(childF);
                 maxSize = std::max(maxSize, size);

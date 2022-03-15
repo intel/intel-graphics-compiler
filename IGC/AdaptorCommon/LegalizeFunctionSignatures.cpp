@@ -71,8 +71,8 @@ LegalizeFunctionSignatures::LegalizeFunctionSignatures()
 
 //****************************************************************//
 
-static const unsigned int MAX_STACKCALL_RETVAL_SIZE_IN_BITS = 64;
-static const unsigned int MAX_STRUCT_ARGUMENT_SIZE_IN_BITS = 128;
+static const unsigned int MAX_RETVAL_SIZE_IN_BITS = 64;
+static const unsigned int MAX_STRUCT_SIZE_IN_BITS = 128;
 static const unsigned int MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS = 512;
 
 bool LegalizeFunctionSignatures::runOnModule(Module& M)
@@ -90,12 +90,12 @@ bool LegalizeFunctionSignatures::runOnModule(Module& M)
     return true;
 }
 
-// IGC stackcall ABI requires return values to be <= 64bits, since we don't support return value on stack.
-// Stackcalls with return values > 64bits will need to be changed to pass-by-ref.
+// If the return type size is greater than the allowed size, we convert the return value to pass-by-pointer
 inline bool isLegalReturnType(const Type* ty)
 {
     // check return type size
-    return ty->getPrimitiveSizeInBits() <= MAX_STACKCALL_RETVAL_SIZE_IN_BITS;
+    //return ty->getPrimitiveSizeInBits() <= MAX_RETVAL_SIZE_IN_BITS;
+    return true; // allow all return sizes
 }
 
 // Check if an int or int-vector argument type is a power of two
@@ -143,10 +143,7 @@ inline bool isPromotableStructType(const Module& M, const Type* ty, bool isStack
     if (IGC_IS_FLAG_DISABLED(EnableByValStructArgPromotion))
         return false;
 
-    // We can separate promoting argument and return value sizes.
-    // Return value is limited to 64-bits due to vISA stackcall conventions.
-    // Argument is not limited to 64-bits, but can be adjusted to minimize spill.
-    const unsigned int maxSize = isStackCall ? (isReturnValue ? MAX_STACKCALL_RETVAL_SIZE_IN_BITS : MAX_STRUCT_ARGUMENT_SIZE_IN_BITS)
+    const unsigned int maxSize = isStackCall ? MAX_STRUCT_SIZE_IN_BITS
         : MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS;
 
     const DataLayout& DL = M.getDataLayout();

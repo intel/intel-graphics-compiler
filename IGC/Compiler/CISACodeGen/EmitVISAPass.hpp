@@ -136,8 +136,13 @@ public:
     void emitStackCall(llvm::CallInst* inst);
     void emitStackFuncEntry(llvm::Function* F);
     void emitStackFuncExit(llvm::ReturnInst* inst);
-    uint emitStackArgumentLoadOrStore(std::vector<CVariable*>& Args, bool isWrite);
     void InitializeKernelStack(llvm::Function* pKernel);
+
+    /// stack-call functions for reading and writing argument/retval data to stack
+    typedef SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t>, 8> StackDataBlocks;
+    uint CalculateStackDataBlocks(StackDataBlocks& blkData, std::vector<CVariable*>& Args);
+    void ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS);
+    void WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS);
 
     // emits the visa relocation instructions for function/global symbols
     void emitSymbolRelocation(llvm::Function& F);
