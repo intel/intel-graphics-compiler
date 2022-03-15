@@ -9,12 +9,13 @@ SPDX-License-Identifier: MIT
 #ifndef VC_UTILS_GENX_TYPE_SIZE_H
 #define VC_UTILS_GENX_TYPE_SIZE_H
 
+#include "Probe/Assertion.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+
 #include <llvm/IR/Type.h>
 #include <llvm/Support/MathExtras.h>
 
-#include <llvmWrapper/IR/DerivedTypes.h>
-
-#include "Probe/Assertion.h"
+#include <cstdint>
 
 namespace llvm {
 class DataLayout;
@@ -71,6 +72,19 @@ public:
   SzType inQWords() const { return asIntegralStrict<QWordBits>(); }
   SzType inOWords() const { return asIntegralStrict<OWordBits>(); }
 
+  TypeSizeWrapper &operator*=(uint64_t RHS) {
+    TS = TS * RHS;
+    return *this;
+  }
+
+  friend TypeSizeWrapper operator*(TypeSizeWrapper LHS, uint64_t RHS) {
+    return LHS *= RHS;
+  }
+
+  friend TypeSizeWrapper operator*(uint64_t LHS, TypeSizeWrapper RHS) {
+    return RHS * LHS;
+  }
+
   friend bool operator==(const TypeSizeWrapper &LHS,
                          const TypeSizeWrapper &RHS) {
     return LHS.TS == RHS.TS;
@@ -113,7 +127,7 @@ private:
 #endif
     IGC_ASSERT_MESSAGE(BitsAsUI <= std::numeric_limits<SzType>::max(),
                        "Type is too large to operate on");
-    IGC_ASSERT_MESSAGE(BitsAsUI > 0, "Could not determine size of Type");
+    IGC_ASSERT_MESSAGE(BitsAsUI >= 0, "Could not determine size of Type");
     if constexpr (Strict) {
       IGC_ASSERT_MESSAGE(BitsAsUI % UnitBitSize == 0,
           "Type size in bits cannot be represented in requested units exactly");

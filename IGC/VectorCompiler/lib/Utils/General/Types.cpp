@@ -145,3 +145,13 @@ Type *vc::setScalarType(Type &OrigTy, Type &ScalarTy) {
   return IGCLLVM::FixedVectorType::get(
       &ScalarTy, cast<IGCLLVM::FixedVectorType>(OrigTy).getNumElements());
 }
+
+unsigned vc::getNumElements(Type &Ty) {
+  if (isa<IGCLLVM::FixedVectorType>(Ty))
+    return cast<IGCLLVM::FixedVectorType>(Ty).getNumElements();
+  if (isa<ArrayType>(Ty))
+    return cast<ArrayType>(Ty).getNumElements();
+  if (isa<StructType>(Ty))
+    return cast<StructType>(Ty).getNumElements();
+  return 1;
+}

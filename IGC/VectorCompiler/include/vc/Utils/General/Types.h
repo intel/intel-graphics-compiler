@@ -77,6 +77,11 @@ IGCLLVM::FixedVectorType &getVectorType(llvm::Type &Ty);
 //    (<4 x double>, double) -> <4 x double>
 llvm::Type *setScalarType(llvm::Type &OrigTy, llvm::Type &ScalarTy);
 
+// Returns getNumElements method result for all types that are derived from
+// llvm::Type and have this method (VectorType, ArrayType, StructType), returns
+// 1 for others.
+unsigned getNumElements(llvm::Type &Ty);
+
 } // namespace vc
 
 #endif // VC_UTILS_GENERAL_TYPES_H

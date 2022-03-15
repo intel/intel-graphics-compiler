@@ -39,11 +39,13 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Support/ShaderDump.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
+#include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/GenX/RegCategory.h"
+#include "vc/Utils/General/Types.h"
 
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsicInst.h"
@@ -635,6 +637,7 @@ private:
   VISA_PredVar *getPredicateVar(Value *V);
   VISA_PredVar *getZeroedPredicateVar(Value *V);
   VISA_SurfaceVar *getPredefinedSurfaceVar(GlobalVariable &GV);
+  VISA_GenVar *getPredefinedGeneralVar(GlobalVariable &GV);
   VISA_EMask_Ctrl getExecMaskFromWrPredRegion(Instruction *WrPredRegion,
                                                      bool IsNoMask);
   VISA_EMask_Ctrl getExecMaskFromWrRegion(const DstOpndDesc &DstDesc,
@@ -675,6 +678,8 @@ private:
                         const DstOpndDesc &DstDesc);
   void buildAlloca(CallInst *CI, unsigned IntrinID, unsigned Mod,
                    const DstOpndDesc &DstDesc);
+  void buildLoneReadVariableRegion(CallInst &CI);
+  void buildLoneWriteVariableRegion(CallInst &CI);
   void buildWritePredefSurface(CallInst &CI);
   void buildGetHWID(CallInst *CI, const DstOpndDesc &DstDesc);
   void addWriteRegionLifetimeStartInst(Instruction *WrRegion);
@@ -2850,6 +2855,12 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       case GenXIntrinsic::genx_gaddr:
         buildSymbolInst(CI, Mod, DstDesc);
         break;
+      case vc::InternalIntrinsic::read_variable_region:
+        buildLoneReadVariableRegion(*CI);
+        break;
+      case vc::InternalIntrinsic::write_variable_region:
+        buildLoneWriteVariableRegion(*CI);
+        break;
       case GenXIntrinsic::genx_write_predef_surface:
         buildWritePredefSurface(*CI);
         break;
@@ -4484,6 +4495,81 @@ GenXKernelBuilder::getPredefinedSurfaceVar(GlobalVariable &GV) {
   VISA_SurfaceVar *SurfVar = nullptr;
   CISA_CALL(Kernel->GetPredefinedSurface(SurfVar, VisaSurfName));
   return SurfVar;
+}
+
+// Returns vISA predefined variable corresponding to the provided global
+// variable \p GV.
+VISA_GenVar *GenXKernelBuilder::getPredefinedGeneralVar(GlobalVariable &GV) {
+  VISA_GenVar *Variable = nullptr;
+  auto VariableID =
+      StringSwitch<PreDefined_Vars>(GV.getName())
+          .Case(vc::PredefVar::ImplicitArgsBufferName,
+                PREDEFINED_IMPL_ARG_BUF_PTR)
+          .Case(vc::PredefVar::LocalIDBufferName, PREDEFINED_LOCAL_ID_BUF_PTR)
+          .Default(PREDEFINED_VAR_LAST);
+  IGC_ASSERT_MESSAGE(VariableID != PREDEFINED_VAR_LAST,
+                     "Unexpected predefined general variable");
+  CISA_CALL(Kernel->GetPredefinedVar(Variable, VariableID));
+  return Variable;
+}
+
+// Creates region based on read_variable_region intrinsic operands.
+static Region createRegion(vc::ReadVariableRegion RVR,
+                           DataLayout *DL = nullptr) {
+  Region R;
+  R.NumElements = vc::getNumElements(*RVR.getCallInst().getType());
+  R.VStride = RVR.getVStride();
+  R.Width = RVR.getWidth();
+  R.Stride = RVR.getStride();
+  R.Offset = RVR.getOffset().inBytes();
+  R.setElementTy(RVR.getElementType(), DL);
+  return R;
+}
+
+// Creates region based on write_variable_region intrinsic operands.
+static Region createRegion(vc::WriteVariableRegion WVR,
+                           DataLayout *DL = nullptr) {
+  Region R;
+  R.NumElements = vc::getNumElements(*WVR.getInput().getType());
+  R.Stride = WVR.getStride();
+  R.Offset = WVR.getOffset().inBytes();
+  R.setElementTy(WVR.getElementType(), DL);
+
+  IGC_ASSERT_MESSAGE(
+      R.Stride > 0,
+      "write.variable.region must have 1D region which stride cannot be 0");
+  return R;
+}
+
+// Creates MOV instruction for not baled read_variable_region intrinsic.
+void GenXKernelBuilder::buildLoneReadVariableRegion(CallInst &CI) {
+  vc::ReadVariableRegion RVR{CI};
+  VISA_GenVar *Variable = getPredefinedGeneralVar(RVR.getVariable());
+  Region R = createRegion(RVR);
+  VISA_VectorOpnd *SrcOp =
+      createGeneralOperand(&R, Variable, Signedness::DONTCARESIGNED,
+                           MODIFIER_NONE, /* IsDest=*/false);
+  VISA_VectorOpnd *DstOp = createDestination(&CI, Signedness::DONTCARESIGNED);
+  CISA_CALL(Kernel->AppendVISADataMovementInst(
+      ISA_MOV, /*pred=*/nullptr, /*satMod=*/false, vISA_EMASK_M1_NM,
+      getExecSizeFromValue(R.NumElements), DstOp, SrcOp));
+}
+
+// Creates MOV instruction for not baled write_variable_region intrinsic.
+void GenXKernelBuilder::buildLoneWriteVariableRegion(CallInst &CI) {
+  vc::WriteVariableRegion WVR{CI};
+  IGC_ASSERT_MESSAGE(cast<Constant>(WVR.getMask()).isAllOnesValue(),
+                     "predication is not yet allowed");
+  VISA_GenVar *Variable = getPredefinedGeneralVar(WVR.getVariable());
+  Region R = createRegion(WVR);
+  VISA_VectorOpnd *SrcOp =
+      createSource(&WVR.getInput(), Signedness::DONTCARESIGNED);
+  VISA_VectorOpnd *DstOp =
+      createGeneralOperand(&R, Variable, Signedness::DONTCARESIGNED,
+                           MODIFIER_NONE, /* IsDest=*/true);
+  CISA_CALL(Kernel->AppendVISADataMovementInst(
+      ISA_MOV, /*pred=*/nullptr, /*satMod=*/false, vISA_EMASK_M1_NM,
+      getExecSizeFromValue(R.NumElements), DstOp, SrcOp));
 }
 
 /***********************************************************************

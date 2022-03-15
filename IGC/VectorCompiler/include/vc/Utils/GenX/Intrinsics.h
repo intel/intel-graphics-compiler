@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define VC_UTILS_GENX_INTRINSICS_H
 
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
+#include "vc/Utils/GenX/TypeSize.h"
 
 #include "Probe/Assertion.h"
 
@@ -21,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
 
+#include <type_traits>
 #include <utility>
 
 namespace llvm {
@@ -32,6 +34,151 @@ class Type;
 namespace vc {
 
 namespace detail {
+
+// Returns zero extended value of a call inst \p CI constant operand with
+// \p OpIdx index.
+inline int getConstIntOperand(const llvm::CallInst &CI, int OpIdx) {
+  return llvm::cast<llvm::ConstantInt>(CI.getOperand(OpIdx))->getZExtValue();
+}
+
+template <bool IsConst> class ReadVariableRegionImpl {
+  using MaybeConstCallInst =
+      std::conditional_t<IsConst, const llvm::CallInst, llvm::CallInst>;
+  using MaybeConstGlobalVariable =
+      std::conditional_t<IsConst, const llvm::GlobalVariable,
+                         llvm::GlobalVariable>;
+  MaybeConstCallInst *CI;
+
+public:
+  enum Operand {
+    VariableIdx,
+    VStrideIdx,
+    WidthIdx,
+    StrideIdx,
+    OffsetIdx,
+    NumOperands
+  };
+
+  ReadVariableRegionImpl(MaybeConstCallInst &CIIn) : CI{&CIIn} {
+    IGC_ASSERT_MESSAGE(vc::InternalIntrinsic::getInternalIntrinsicID(CI) ==
+                           vc::InternalIntrinsic::read_variable_region,
+                       "expected intrinsic wasn't provided to the constructor");
+    IGC_ASSERT_MESSAGE(getVariable().getValueType() ==
+                           CI->getType()->getScalarType(),
+                       "Variable operand and return types don't match");
+    IGC_ASSERT_MESSAGE(llvm::isa<llvm::ConstantInt>(CI->getOperand(VStrideIdx)),
+                       "VStride operand must be a constant");
+    IGC_ASSERT_MESSAGE(llvm::isa<llvm::ConstantInt>(CI->getOperand(WidthIdx)),
+                       "Width operand must be a constant");
+    IGC_ASSERT_MESSAGE(llvm::isa<llvm::ConstantInt>(CI->getOperand(StrideIdx)),
+                       "Stride operand must be a constant");
+    IGC_ASSERT_MESSAGE(llvm::isa<llvm::ConstantInt>(CI->getOperand(OffsetIdx)),
+                       "Offset operand must be a constant");
+  }
+
+  // Casting back to llvm::CallInst.
+  MaybeConstCallInst &getCallInst() { return *CI; }
+  const llvm::CallInst &getCallInst() const { return *CI; }
+
+  operator MaybeConstCallInst &() { return getCallInst(); }
+  operator const llvm::CallInst &() const { return getCallInst(); }
+
+  // Gets predefined vISA variable represented as llvm::GlobalVariable.
+  MaybeConstGlobalVariable &getVariable() {
+    return *llvm::cast<llvm::GlobalVariable>(CI->getOperand(VariableIdx));
+  }
+
+  // Gets predefined vISA variable represented as llvm::GlobalVariable.
+  const llvm::GlobalVariable &getVariable() const {
+    return *llvm::cast<llvm::GlobalVariable>(CI->getOperand(VariableIdx));
+  }
+
+  // Region properties accessors.
+  int getVStride() const { return getConstIntOperand(*CI, VStrideIdx); }
+  int getWidth() const { return getConstIntOperand(*CI, WidthIdx); }
+  int getStride() const { return getConstIntOperand(*CI, StrideIdx); }
+  int getOffsetInElements() const { return getConstIntOperand(*CI, OffsetIdx); }
+
+  vc::TypeSizeWrapper getOffset(llvm::DataLayout *DL = nullptr) const {
+    return getOffsetInElements() * vc::getTypeSize(getElementType(), DL);
+  }
+
+  // Gets predefined variable element type.
+  llvm::Type *getElementType() const { return CI->getType()->getScalarType(); }
+};
+
+template <bool IsConst> class WriteVariableRegionImpl {
+  using MaybeConstCallInst =
+      std::conditional_t<IsConst, const llvm::CallInst, llvm::CallInst>;
+  using MaybeConstGlobalVariable =
+      std::conditional_t<IsConst, const llvm::GlobalVariable,
+                         llvm::GlobalVariable>;
+  using MaybeConstValue =
+      std::conditional_t<IsConst, const llvm::Value, llvm::Value>;
+  MaybeConstCallInst *CI;
+
+public:
+  enum Operand {
+    VariableIdx,
+    InputIdx,
+    StrideIdx,
+    OffsetIdx,
+    MaskIdx,
+    NumOperands
+  };
+
+  WriteVariableRegionImpl(MaybeConstCallInst &CIIn) : CI{&CIIn} {
+    IGC_ASSERT_MESSAGE(vc::InternalIntrinsic::getInternalIntrinsicID(CI) ==
+                           vc::InternalIntrinsic::write_variable_region,
+                       "expected intrinsic wasn't provided to the constructor");
+    IGC_ASSERT_MESSAGE(getVariable().getValueType() ==
+                           getInput().getType()->getScalarType(),
+                       "Variable and input operand types don't match");
+    IGC_ASSERT_MESSAGE(llvm::isa<llvm::ConstantInt>(CI->getOperand(StrideIdx)),
+                       "Stride operand must be a constant");
+    IGC_ASSERT_MESSAGE(llvm::isa<llvm::ConstantInt>(CI->getOperand(OffsetIdx)),
+                       "Offset operand must be a constant");
+  }
+
+  // Casting back to llvm::CallInst.
+  MaybeConstCallInst &getCallInst() { return *CI; }
+  const llvm::CallInst &getCallInst() const { return *CI; }
+
+  operator MaybeConstCallInst &() { return getCallInst(); }
+  operator const llvm::CallInst &() const { return getCallInst(); }
+
+  // Gets predefined vISA variable represented as llvm::GlobalVariable.
+  MaybeConstGlobalVariable &getVariable() {
+    return *llvm::cast<llvm::GlobalVariable>(CI->getOperand(VariableIdx));
+  }
+
+  // Gets predefined vISA variable represented as llvm::GlobalVariable.
+  const llvm::GlobalVariable &getVariable() const {
+    return *llvm::cast<llvm::GlobalVariable>(CI->getOperand(VariableIdx));
+  }
+
+  // Gets value that is being written to the predefined variable.
+  MaybeConstValue &getInput() { return *CI->getOperand(InputIdx); }
+  const llvm::Value &getInput() const { return *CI->getOperand(InputIdx); }
+
+  // Gets predecation mask.
+  MaybeConstValue &getMask() { return *CI->getOperand(MaskIdx); }
+  const llvm::Value &getMask() const { return *CI->getOperand(MaskIdx); }
+
+  // Region properties accessors.
+  int getStride() const { return getConstIntOperand(*CI, StrideIdx); }
+  int getOffsetInElements() const { return getConstIntOperand(*CI, OffsetIdx); }
+
+  vc::TypeSizeWrapper getOffset(llvm::DataLayout *DL = nullptr) const {
+    return getOffsetInElements() * vc::getTypeSize(getElementType(), DL);
+  }
+
+  // Gets predefined variable element type.
+  llvm::Type *getElementType() const {
+    return getInput().getType()->getScalarType();
+  }
+};
+
 template <typename Range, typename IsIntrinsicFunc,
           typename IsOverloadedRetFunc, typename IsOverloadedArgFunc,
           typename GetDeclarationFunc>
@@ -58,6 +205,22 @@ llvm::Function *getDeclarationForIdFromArgs(llvm::Type *RetTy, Range &&Args,
   return GetDeclaration(M, Id, Types);
 }
 } // namespace detail
+
+// A wrapper class for CallInst with @llvm.vc.internal.read.variable.region
+// intrinsic. Provides convenient accessors for the intrinsic specific operands
+// and properties.
+using ReadVariableRegion = detail::ReadVariableRegionImpl</* IsConst=*/false>;
+// The same as above but for const CallInst case.
+using ReadVariableRegionConst =
+    detail::ReadVariableRegionImpl</* IsConst=*/true>;
+
+// A wrapper class for CallInst with @llvm.vc.internal.write.variable.region
+// intrinsic. Provides convenient accessors for the intrinsic specific operands
+// and properties.
+using WriteVariableRegion = detail::WriteVariableRegionImpl</* IsConst=*/false>;
+// The same as above but for const CallInst case.
+using WriteVariableRegionConst =
+    detail::WriteVariableRegionImpl</* IsConst=*/true>;
 
 // Return declaration for intrinsics with provided parameters.
 // This is helper function to get genx intrinsic declaration for given

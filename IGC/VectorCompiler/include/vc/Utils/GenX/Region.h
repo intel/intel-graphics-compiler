@@ -229,6 +229,10 @@ public:
   // Set \p UseDegenerateVectorType to produce <1 x Ty> instead of Ty.
   llvm::Type *getRegionType(bool UseDegenerateVectorType = false) const;
 
+  // Sets \p ElementTy field with \p Ty and sets \p ElementByte accordingly.
+  // Data layout \p DL must be provided for pointer types.
+  void setElementTy(Type *Ty, DataLayout *DL = nullptr);
+
 protected:
   // Create wrregion or wrconstregion intrinsic from this Region
   Instruction *createWrCommonRegion(GenXIntrinsic::ID, Value *OldVal,

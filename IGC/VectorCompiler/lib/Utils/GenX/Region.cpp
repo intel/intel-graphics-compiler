@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
+#include "vc/Utils/General/Types.h"
 #include "vc/Utils/GenX/Region.h"
 #include "vc/Utils/GenX/TypeSize.h"
 
@@ -1010,4 +1011,9 @@ int CMRegion::getDstStride() const {
     return 1;
   IGC_ASSERT_MESSAGE(Stride > 0, "stride cannot be zero");
   return Stride;
+}
+
+void CMRegion::setElementTy(Type *Ty, DataLayout *DL) {
+  ElementTy = Ty;
+  ElementBytes = vc::getTypeSize(ElementTy, DL).inBytes();
 }
