@@ -533,6 +533,187 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
                 }
             }
         }
+
+        for (auto bb : kernel->fg)
+        {
+            for (auto instr : bb->getInstList())
+            {
+                if (instr->getExecSize() == g4::SIMD1)
+                {
+                    m_kernelInfo->countSIMD1++;
+                }
+                else if (instr->getExecSize() == g4::SIMD2)
+                {
+                    m_kernelInfo->countSIMD2++;
+                }
+                else if (instr->getExecSize() == g4::SIMD4)
+                {
+                    m_kernelInfo->countSIMD4++;
+                }
+                else if (instr->getExecSize() == g4::SIMD8)
+                {
+                    m_kernelInfo->countSIMD8++;
+                }
+                else if (instr->getExecSize() == g4::SIMD16)
+                {
+                    m_kernelInfo->countSIMD16++;
+                }
+                else if (instr->getExecSize() == g4::SIMD32)
+                {
+                    m_kernelInfo->countSIMD32++;
+                }
+
+                if (instr->isSend())
+                {
+                    G4_InstSend* SendInst = instr->asSendInst();
+                    auto sendDesc = SendInst->getMsgDescRaw();
+
+                    auto isSendUniform = [](bool isStore, auto instr, auto m_kernelInfo)
+                    {
+                        // Assuming that if we have W-Mask (aka NoMask)
+                        // then it's means that we are executing send as uniform instruction
+                        // cross all threads
+                        if (instr->getPredicate() &&
+                              instr->getPredicate()->isSameAsNoMask())
+                        {
+                            if (isStore)
+                            {
+                                m_kernelInfo->countUniformStores++;
+                            }
+                            else
+                            {
+                                m_kernelInfo->countUniformLoads++;
+                            }
+                        }
+                    };
+
+                    if (!sendDesc->isLSC())
+                    {
+                        #define COUNT_HDC_SEND( SEND, isWRITE ) \
+                        case SEND : \
+                             m_kernelInfo->hdcSends.count##SEND ++; \
+                             isSendUniform( isWRITE , instr, m_kernelInfo); \
+                             m_kernelInfo->hdcSends.hasAnyHDCSend = true; \
+                             break;
+
+                        auto funcID = sendDesc->getSFID();
+                        switch (funcID)
+                        {
+                        case SFID::DP_DC0:
+                            switch (sendDesc->getHdcMessageType())
+                            {
+                                // Load
+                                COUNT_HDC_SEND(DC_OWORD_BLOCK_READ, false)
+                                COUNT_HDC_SEND(DC_ALIGNED_OWORD_BLOCK_READ, false)
+                                COUNT_HDC_SEND(DC_DWORD_SCATTERED_READ, false)
+                                COUNT_HDC_SEND(DC_BYTE_SCATTERED_READ, false)
+                                COUNT_HDC_SEND(DC_QWORD_SCATTERED_READ, false)
+                                // Store
+                                COUNT_HDC_SEND(DC_OWORD_BLOCK_WRITE, true)
+                                COUNT_HDC_SEND(DC_DWORD_SCATTERED_WRITE, true)
+                                COUNT_HDC_SEND(DC_BYTE_SCATTERED_WRITE, true)
+                                COUNT_HDC_SEND(DC_QWORD_SCATTERED_WRITE, true)
+                            default:
+                                break;
+                            }
+                            break;
+                        case SFID::DP_DC1:
+                            switch (sendDesc->getHdcMessageType())
+                            {
+                                // Load
+                                COUNT_HDC_SEND(DC1_UNTYPED_SURFACE_READ, false)
+                                COUNT_HDC_SEND(DC1_MEDIA_BLOCK_READ, false)
+                                COUNT_HDC_SEND(DC1_TYPED_SURFACE_READ, false)
+                                COUNT_HDC_SEND(DC1_A64_SCATTERED_READ, false)
+                                COUNT_HDC_SEND(DC1_A64_UNTYPED_SURFACE_READ, false)
+                                COUNT_HDC_SEND(DC1_A64_BLOCK_READ, false)
+                                // Store
+                                COUNT_HDC_SEND(DC1_UNTYPED_SURFACE_WRITE, true)
+                                COUNT_HDC_SEND(DC1_MEDIA_BLOCK_WRITE, true)
+                                COUNT_HDC_SEND(DC1_TYPED_SURFACE_WRITE, true)
+                                COUNT_HDC_SEND(DC1_A64_BLOCK_WRITE, true)
+                                COUNT_HDC_SEND(DC1_A64_UNTYPED_SURFACE_WRITE, true)
+                                COUNT_HDC_SEND(DC1_A64_SCATTERED_WRITE, true)
+                            default:
+                                break;
+                            }
+                            break;
+                        case SFID::DP_DC2:
+                            switch (sendDesc->getHdcMessageType())
+                            {
+                                // Load
+                                COUNT_HDC_SEND(DC2_UNTYPED_SURFACE_READ, false)
+                                COUNT_HDC_SEND(DC2_A64_SCATTERED_READ, false)
+                                COUNT_HDC_SEND(DC2_A64_UNTYPED_SURFACE_READ, false)
+                                COUNT_HDC_SEND(DC2_BYTE_SCATTERED_READ, false)
+                                // Store
+                                COUNT_HDC_SEND(DC2_UNTYPED_SURFACE_WRITE, true)
+                                COUNT_HDC_SEND(DC2_A64_UNTYPED_SURFACE_WRITE, true)
+                                COUNT_HDC_SEND(DC2_A64_SCATTERED_WRITE, true)
+                                COUNT_HDC_SEND(DC2_BYTE_SCATTERED_WRITE, true)
+                            default:
+                                break;
+                            }
+                            break;
+                        case SFID::URB:
+                            switch (sendDesc->getHdcMessageType())
+                            {
+                                // Load
+                                COUNT_HDC_SEND(URB_READ_HWORD, false)
+                                COUNT_HDC_SEND(URB_READ_OWORD, false)
+                                COUNT_HDC_SEND(URB_SIMD8_READ, false)
+                                // Store
+                                COUNT_HDC_SEND(URB_WRITE_HWORD, true)
+                                COUNT_HDC_SEND(URB_WRITE_OWORD, true)
+                                COUNT_HDC_SEND(URB_SIMD8_WRITE, true)
+                            default:
+                                break;
+                            }
+                            break;
+                        default:
+                            break;
+                        }
+                        #undef COUNT_HDC_SEND
+                    }
+                    else
+                    {
+                        #define COUNT_LSC_SEND( SEND, isWRITE ) \
+                        case LSC_OP::SEND : \
+                             m_kernelInfo->lscSends.count##SEND ++; \
+                             isSendUniform( isWRITE , instr, m_kernelInfo); \
+                             m_kernelInfo->lscSends.hasAnyLSCSend = true; \
+                             break;
+
+                        switch (sendDesc->getLscOp())
+                        {
+                            // Load
+                            COUNT_LSC_SEND(LSC_LOAD, false)
+                            COUNT_LSC_SEND(LSC_LOAD_STRIDED, false)
+                            COUNT_LSC_SEND(LSC_LOAD_QUAD, false)
+                            COUNT_LSC_SEND(LSC_LOAD_BLOCK2D, false)
+                            // Store
+                            COUNT_LSC_SEND(LSC_STORE, true)
+                            COUNT_LSC_SEND(LSC_STORE_STRIDED, true)
+                            COUNT_LSC_SEND(LSC_STORE_QUAD, true)
+                            COUNT_LSC_SEND(LSC_STORE_BLOCK2D, true)
+                            COUNT_LSC_SEND(LSC_STORE_UNCOMPRESSED, true)
+                        default:
+                            break;
+                        }
+                        #undef COUNT_LSC_SEND
+                    }
+                }
+                /* TODO
+                if (instr->isSpillIntrinsic())
+                {
+
+                }
+                else if (instr->isFillIntrinsic())
+                {
+
+                }*/
+            }
+        }
     }
 
     if (m_options->getOption(vISA_outputToFile))

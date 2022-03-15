@@ -2915,6 +2915,7 @@ void GlobalRA::getBankAlignment(LiveRange* lr, BankAlign &align)
         G4_Declare* topdcl = dcl->getRootDeclare();
         auto topdclBC = getBankConflict(topdcl);
 
+
         if (topdclBC != BANK_CONFLICT_NONE)
         {
             if (topdcl->getElemSize() >= 4 &&

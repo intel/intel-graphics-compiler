@@ -10,21 +10,89 @@ syntax = "proto3";
 
 package IGC_METRICS;
 
-message InstrStats {
-  enum SIMDType {
-    SIMD1 = 0;
-    SIMD4 = 1;
-    SIMD8 = 2;
-    SIMD16 = 3;
-    SIMD32 = 4;
-  }
+message SIMDStats {
+  int32 SIMD1 = 1;
+  int32 SIMD2 = 2;
+  int32 SIMD4 = 3;
+  int32 SIMD8 = 4;
+  int32 SIMD16 = 5;
+  int32 SIMD32 = 6;
+}
 
-  repeated SIMDType simd_used = 1;
-  int32 countLoads = 2;
-  int32 countStores = 3;
-  int32 countCoalescedAccess = 4;
-  int32 countShufflePermutes = 5;
-  int32 countArithmeticInst = 6;
-  int32 countEmulatedInst = 7;
-  int32 countTranscendentalFunc = 8;
+message HDCSendStats {
+// Data Cache0 Messages
+  // Store
+  int32 countDC_OWORD_BLOCK_WRITE = 1;
+  int32 countDC_DWORD_SCATTERED_WRITE = 2;
+  int32 countDC_BYTE_SCATTERED_WRITE = 3;
+  int32 countDC_QWORD_SCATTERED_WRITE = 4;
+  // Load
+  int32 countDC_OWORD_BLOCK_READ = 5;
+  int32 countDC_ALIGNED_OWORD_BLOCK_READ = 6;
+  int32 countDC_DWORD_SCATTERED_READ = 7;
+  int32 countDC_BYTE_SCATTERED_READ = 8;
+  int32 countDC_QWORD_SCATTERED_READ = 9;
+
+// Data Cache1 Messages
+  // Store
+  int32 countDC1_UNTYPED_SURFACE_WRITE = 10;
+  int32 countDC1_MEDIA_BLOCK_WRITE = 11;
+  int32 countDC1_TYPED_SURFACE_WRITE = 12;
+  int32 countDC1_A64_BLOCK_WRITE = 13;
+  int32 countDC1_A64_UNTYPED_SURFACE_WRITE = 14;
+  int32 countDC1_A64_SCATTERED_WRITE = 15;
+  // Load
+  int32 countDC1_UNTYPED_SURFACE_READ = 16;
+  int32 countDC1_MEDIA_BLOCK_READ = 17;
+  int32 countDC1_TYPED_SURFACE_READ = 18;
+  int32 countDC1_A64_SCATTERED_READ = 19;
+  int32 countDC1_A64_UNTYPED_SURFACE_READ = 20;
+  int32 countDC1_A64_BLOCK_READ = 21;
+
+// Data Cache2 Messages
+  // Store
+  int32 countDC2_UNTYPED_SURFACE_WRITE = 22;
+  int32 countDC2_A64_UNTYPED_SURFACE_WRITE = 23;
+  int32 countDC2_A64_SCATTERED_WRITE = 24;
+  int32 countDC2_BYTE_SCATTERED_WRITE = 25;
+  // Load
+  int32 countDC2_UNTYPED_SURFACE_READ = 26;
+  int32 countDC2_A64_SCATTERED_READ = 27;
+  int32 countDC2_A64_UNTYPED_SURFACE_READ = 28;
+  int32 countDC2_BYTE_SCATTERED_READ  = 29;
+
+// URB Messages
+  // Store
+  int32 countURB_WRITE_HWORD = 30;
+  int32 countURB_WRITE_OWORD = 31;
+  int32 countURB_SIMD8_WRITE = 32;
+  // Load
+  int32 countURB_READ_HWORD = 33;
+  int32 countURB_READ_OWORD = 34;
+  int32 countURB_SIMD8_READ = 35;
+}
+
+message LSCSendStats {
+  // Store
+  int32 countLSC_STORE = 1;
+  int32 countLSC_STORE_STRIDED = 2;
+  int32 countLSC_STORE_QUAD = 3;
+  int32 countLSC_STORE_BLOCK2D = 4;
+  int32 countLSC_STORE_UNCOMPRESSED = 5;
+  // Load
+  int32 countLSC_LOAD = 6;
+  int32 countLSC_LOAD_STRIDED = 7;
+  int32 countLSC_LOAD_QUAD = 8;
+  int32 countLSC_LOAD_BLOCK2D = 9;
+}
+
+message InstrStats {
+  SIMDStats simd_used = 1;
+  int32 countCoalescedAccess = 2;
+  int32 countShufflePermutes = 3;
+  int32 countArithmeticInst = 4;
+  int32 countEmulatedInst = 5;
+  int32 countTranscendentalFunc = 6;
+  HDCSendStats statsHDCSends = 7;
+  LSCSendStats statsLSCSends = 8;
 }

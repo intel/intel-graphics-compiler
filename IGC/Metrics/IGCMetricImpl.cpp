@@ -269,23 +269,152 @@ namespace IGCMetrics
             if (func_m != nullptr)
             {
                 auto func_reg_stats_m = func_m->mutable_local_reg_stats();
-
                 func_reg_stats_m->set_percentgrfusage(
                     kernelInfo->precentGRFUsage);
-
                 func_reg_stats_m->set_countregspillsallocated(
                     kernelInfo->numSpillReg);
-
                 func_reg_stats_m->set_countregfillsallocated(
                     kernelInfo->numFillReg);
-
                 func_reg_stats_m->set_countregallocated(
                     kernelInfo->numReg);
-
                 func_reg_stats_m->set_countregtmpallocated(
                     kernelInfo->numTmpReg);
                 func_reg_stats_m->set_countbytesregtmpallocated(
                     kernelInfo->bytesOfTmpReg);
+
+                auto func_instr_stats_m = func_m->mutable_instruction_stats();
+
+                auto func_instr_simd_stats_m = func_instr_stats_m->mutable_simd_used();
+                func_instr_simd_stats_m->set_simd1(
+                    kernelInfo->countSIMD1);
+                func_instr_simd_stats_m->set_simd2(
+                    kernelInfo->countSIMD2);
+                func_instr_simd_stats_m->set_simd4(
+                    kernelInfo->countSIMD4);
+                func_instr_simd_stats_m->set_simd8(
+                    kernelInfo->countSIMD8);
+                func_instr_simd_stats_m->set_simd16(
+                    kernelInfo->countSIMD16);
+                func_instr_simd_stats_m->set_simd32(
+                    kernelInfo->countSIMD32);
+
+                if (kernelInfo->lscSends.hasAnyLSCSend)
+                {
+                    auto lsc_sends_stats_m = func_instr_stats_m->mutable_statslscsends();
+
+                    // Load
+                    lsc_sends_stats_m->set_countlsc_load(
+                        kernelInfo->lscSends.countLSC_LOAD);
+                    lsc_sends_stats_m->set_countlsc_load_strided(
+                        kernelInfo->lscSends.countLSC_LOAD_STRIDED);
+                    lsc_sends_stats_m->set_countlsc_load_quad(
+                        kernelInfo->lscSends.countLSC_LOAD_QUAD);
+                    lsc_sends_stats_m->set_countlsc_load_block2d(
+                        kernelInfo->lscSends.countLSC_LOAD_BLOCK2D);
+                    // Store
+                    lsc_sends_stats_m->set_countlsc_store(
+                        kernelInfo->lscSends.countLSC_STORE);
+                    lsc_sends_stats_m->set_countlsc_store_strided(
+                        kernelInfo->lscSends.countLSC_STORE_STRIDED);
+                    lsc_sends_stats_m->set_countlsc_store_quad(
+                        kernelInfo->lscSends.countLSC_STORE_QUAD);
+                    lsc_sends_stats_m->set_countlsc_store_block2d(
+                        kernelInfo->lscSends.countLSC_STORE_BLOCK2D);
+                    lsc_sends_stats_m->set_countlsc_store_uncompressed(
+                        kernelInfo->lscSends.countLSC_STORE_UNCOMPRESSED);
+                }
+
+                if (kernelInfo->hdcSends.hasAnyHDCSend)
+                {
+                    auto hdc_sends_stats_m = func_instr_stats_m->mutable_statshdcsends();
+                    // Data Cache0 Messages
+                    // Load
+                    hdc_sends_stats_m->set_countdc_oword_block_read(
+                        kernelInfo->hdcSends.countDC_OWORD_BLOCK_READ);
+                    hdc_sends_stats_m->set_countdc_aligned_oword_block_read(
+                        kernelInfo->hdcSends.countDC_ALIGNED_OWORD_BLOCK_READ);
+                    hdc_sends_stats_m->set_countdc_dword_scattered_read(
+                        kernelInfo->hdcSends.countDC_DWORD_SCATTERED_READ);
+                    hdc_sends_stats_m->set_countdc_byte_scattered_read(
+                        kernelInfo->hdcSends.countDC_BYTE_SCATTERED_READ);
+                    hdc_sends_stats_m->set_countdc_qword_scattered_read(
+                        kernelInfo->hdcSends.countDC_QWORD_SCATTERED_READ);
+                    // Store
+                    hdc_sends_stats_m->set_countdc_oword_block_write(
+                        kernelInfo->hdcSends.countDC_OWORD_BLOCK_WRITE);
+                    hdc_sends_stats_m->set_countdc_dword_scattered_write(
+                        kernelInfo->hdcSends.countDC_DWORD_SCATTERED_WRITE);
+                    hdc_sends_stats_m->set_countdc_byte_scattered_write(
+                        kernelInfo->hdcSends.countDC_BYTE_SCATTERED_WRITE);
+                    hdc_sends_stats_m->set_countdc_qword_scattered_write(
+                        kernelInfo->hdcSends.countDC_QWORD_SCATTERED_WRITE);
+
+                    // Data Cache1 Messages
+                    // Load
+                    hdc_sends_stats_m->set_countdc1_untyped_surface_read(
+                        kernelInfo->hdcSends.countDC1_UNTYPED_SURFACE_READ);
+                    hdc_sends_stats_m->set_countdc1_media_block_read(
+                        kernelInfo->hdcSends.countDC1_MEDIA_BLOCK_READ);
+                    hdc_sends_stats_m->set_countdc1_typed_surface_read(
+                        kernelInfo->hdcSends.countDC1_TYPED_SURFACE_READ);
+                    hdc_sends_stats_m->set_countdc1_a64_scattered_read(
+                        kernelInfo->hdcSends.countDC1_A64_SCATTERED_READ);
+                    hdc_sends_stats_m->set_countdc1_a64_untyped_surface_read(
+                        kernelInfo->hdcSends.countDC1_A64_UNTYPED_SURFACE_READ);
+                    hdc_sends_stats_m->set_countdc1_a64_block_read(
+                        kernelInfo->hdcSends.countDC1_A64_BLOCK_READ);
+                    // Store
+                    hdc_sends_stats_m->set_countdc1_untyped_surface_write(
+                        kernelInfo->hdcSends.countDC1_UNTYPED_SURFACE_WRITE);
+                    hdc_sends_stats_m->set_countdc1_media_block_write(
+                        kernelInfo->hdcSends.countDC1_MEDIA_BLOCK_WRITE);
+                    hdc_sends_stats_m->set_countdc1_typed_surface_write(
+                        kernelInfo->hdcSends.countDC1_TYPED_SURFACE_WRITE);
+                    hdc_sends_stats_m->set_countdc1_a64_block_write(
+                        kernelInfo->hdcSends.countDC1_A64_BLOCK_WRITE);
+                    hdc_sends_stats_m->set_countdc1_a64_untyped_surface_write(
+                        kernelInfo->hdcSends.countDC1_A64_UNTYPED_SURFACE_WRITE);
+                    hdc_sends_stats_m->set_countdc1_a64_scattered_write(
+                        kernelInfo->hdcSends.countDC1_A64_SCATTERED_WRITE);
+
+                    // Data Cache2 Messages
+                    // Load
+                    hdc_sends_stats_m->set_countdc2_untyped_surface_read(
+                        kernelInfo->hdcSends.countDC2_UNTYPED_SURFACE_READ);
+                    hdc_sends_stats_m->set_countdc2_a64_scattered_read(
+                        kernelInfo->hdcSends.countDC2_A64_SCATTERED_READ);
+                    hdc_sends_stats_m->set_countdc2_a64_untyped_surface_read(
+                        kernelInfo->hdcSends.countDC2_A64_UNTYPED_SURFACE_READ);
+                    hdc_sends_stats_m->set_countdc2_byte_scattered_read(
+                        kernelInfo->hdcSends.countDC2_BYTE_SCATTERED_READ);
+                    // Store
+                    hdc_sends_stats_m->set_countdc2_untyped_surface_write(
+                        kernelInfo->hdcSends.countDC2_UNTYPED_SURFACE_WRITE);
+                    hdc_sends_stats_m->set_countdc2_a64_untyped_surface_write(
+                        kernelInfo->hdcSends.countDC2_A64_UNTYPED_SURFACE_WRITE);
+                    hdc_sends_stats_m->set_countdc2_a64_scattered_write(
+                        kernelInfo->hdcSends.countDC2_A64_SCATTERED_WRITE);
+                    hdc_sends_stats_m->set_countdc2_byte_scattered_write(
+                        kernelInfo->hdcSends.countDC2_BYTE_SCATTERED_WRITE);
+
+                    // URB Messages
+                    // Load
+                    hdc_sends_stats_m->set_counturb_read_hword(
+                        kernelInfo->hdcSends.countURB_READ_HWORD);
+                    hdc_sends_stats_m->set_counturb_read_oword(
+                        kernelInfo->hdcSends.countURB_READ_OWORD);
+                    hdc_sends_stats_m->set_counturb_simd8_read(
+                        kernelInfo->hdcSends.countURB_SIMD8_READ);
+                    // Store
+                    hdc_sends_stats_m->set_counturb_write_hword(
+                        kernelInfo->hdcSends.countURB_WRITE_HWORD);
+                    hdc_sends_stats_m->set_counturb_write_oword(
+                        kernelInfo->hdcSends.countURB_WRITE_OWORD);
+                    hdc_sends_stats_m->set_counturb_simd8_write(
+                        kernelInfo->hdcSends.countURB_SIMD8_WRITE);
+
+
+                }
             }
         }
 #endif
@@ -1028,8 +1157,24 @@ namespace IGCMetrics
                 ifelse_m->set_countbrtaken((int)std::distance(
                     bb->users().begin(), bb->users().end()));
 
-                auto ifelse_block_db = llvm::dyn_cast<DILexicalBlock>(bb->getTerminator()->getDebugLoc().getScope());
-                FillCodeRef(ifelse_m->mutable_brloc(), ifelse_block_db);
+                llvm::DebugLoc* dbLoc = nullptr;
+                auto instr_i = bb->end();
+
+                // Start checking from the terminator instruction
+                // then go to the previous one
+                do
+                {
+                    instr_i--;
+                    // We need to get debug info
+                    dbLoc = (llvm::DebugLoc*)&instr_i->getDebugLoc();
+                } while (*dbLoc && instr_i != bb->begin());
+
+                if (*dbLoc)
+                {
+                    auto ifelse_block_db = llvm::dyn_cast<DILexicalBlock>(
+                        dbLoc->getScope());
+                    FillCodeRef(ifelse_m->mutable_brloc(), ifelse_block_db);
+                }
             }
         }
     }
