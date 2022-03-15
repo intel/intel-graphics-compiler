@@ -128,6 +128,8 @@ public:
     virtual bool passNOSInlineData() { return false; }
     virtual bool loadThreadPayload() { return false; }
     virtual unsigned getAnnotatedNumThreads() { return 0; }
+    virtual bool IsRegularGRFRequested() { return false; }
+    virtual bool IsLargeGRFRequested() { return false; }
     virtual bool hasReadWriteImage(llvm::Function& F) { return false; }
     virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {

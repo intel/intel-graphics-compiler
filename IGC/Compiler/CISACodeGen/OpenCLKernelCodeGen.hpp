@@ -35,6 +35,8 @@ namespace IGC
         SIMDStatus  checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls);
         SIMDStatus  checkSIMDCompileCondsPVC(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls);
 
+        bool IsRegularGRFRequested() override;
+        bool IsLargeGRFRequested() override;
         unsigned getAnnotatedNumThreads() override;
         void FillKernel(SIMDMode simdMode);
 
@@ -112,6 +114,8 @@ namespace IGC
         bool m_HasTID;
         bool m_HasGlobalSize;
         bool m_disableMidThreadPreemption;
+        bool m_largeGRFRequested;
+        bool m_regularGRFRequested;
         unsigned m_annotatedNumThreads;
 
         // Maps GlobalVariables representing local address-space pointers

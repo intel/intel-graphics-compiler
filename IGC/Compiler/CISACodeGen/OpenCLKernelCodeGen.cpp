@@ -56,6 +56,8 @@ namespace IGC
         m_Platform = &(ctx->platform);
         m_DriverInfo = &(ctx->m_DriverInfo);
 
+        m_regularGRFRequested = false;
+        m_largeGRFRequested = false;
         m_annotatedNumThreads = 0;
         if (m_Platform->supportsStaticRegSharing())
         {
@@ -65,6 +67,25 @@ namespace IGC
             if (numThreads > 0 && m_Platform->isValidNumThreads(numThreads))
             {
                 m_annotatedNumThreads = numThreads;
+            }
+
+            //check if option is set to use certain GRF size
+            auto FuncName = pFunc->getName().str();
+            for (auto SubNameR : ctx->m_InternalOptions.RegularGRFKernels)
+            {
+                if (FuncName.find(SubNameR) != std::string::npos)
+                {
+                    m_regularGRFRequested = true;
+                    break;
+                }
+            }
+            for (auto SubNameL : ctx->m_InternalOptions.LargeGRFKernels)
+            {
+                if (FuncName.find(SubNameL) != std::string::npos)
+                {
+                    m_largeGRFRequested = true;
+                    break;
+                }
             }
         }
     }
@@ -2727,6 +2748,16 @@ namespace IGC
 
     unsigned COpenCLKernel::getAnnotatedNumThreads() {
         return m_annotatedNumThreads;
+    }
+
+    bool COpenCLKernel::IsRegularGRFRequested()
+    {
+        return m_regularGRFRequested;
+    }
+
+    bool COpenCLKernel::IsLargeGRFRequested()
+    {
+        return m_largeGRFRequested;
     }
 
     SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass& EP, llvm::Function& F, bool hasSyncRTCalls)

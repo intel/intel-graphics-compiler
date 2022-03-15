@@ -1685,7 +1685,9 @@ namespace IGC
                 IntelHasPositivePointerOffset(false),
                 IntelHasBufferOffsetArg(false),
                 IntelBufferOffsetArgOptional(true),
-                IntelHasSubDWAlignedPtrArg(false)
+                IntelHasSubDWAlignedPtrArg(false),
+                LargeGRFKernels(),
+                RegularGRFKernels()
             {
                 if (pInputArgs == nullptr)
                     return;
@@ -1752,6 +1754,8 @@ namespace IGC
             bool Intel256GRFPerThread = false;
             bool IntelNumThreadPerEU = false;
             uint32_t numThreadsPerEU = 0;
+            std::vector<std::string> LargeGRFKernels;
+            std::vector<std::string> RegularGRFKernels;
             // IntelForceInt32DivRemEmu is used only if fp64 is supported natively.
             // IntelForceInt32DivRemEmu wins if both are set and can be applied.
             bool IntelForceInt32DivRemEmu = false;

@@ -4424,8 +4424,9 @@ namespace IGC
         // Setting number of GRF and threads per EU is restricted to OCL only
         // Number of threads can be set by:
         //  1. User input through
-        //    1.1 compiler option for entire module
-        //    1.2 kernel annotation for a specific kernel function
+        //    1.1 internal option for a specific kernel function
+        //    1.2 compiler option for entire module
+        //    1.3 kernel annotation for a specific kernel function
         //  2. Compiler heuristics
         //
         if (context->type == ShaderType::OPENCL_SHADER)
@@ -4433,7 +4434,17 @@ namespace IGC
             auto ClContext = static_cast<OpenCLProgramContext*>(context);
             if (m_program->m_Platform->supportsStaticRegSharing())
             {
-                if (ClContext->getNumThreadsPerEU() > 0)
+                if (m_program->IsRegularGRFRequested())
+                {
+                    // Number of threads per EU is set per kernel function (by compiler option)
+                    SaveOption(vISA_HWThreadNumberPerEU, unsigned(8));
+                }
+                else if (m_program->IsLargeGRFRequested())
+                {
+                    // Number of threads per EU is set per kernel function (by compiler option)
+                    SaveOption(vISA_HWThreadNumberPerEU, unsigned(4));
+                }
+                else if (ClContext->getNumThreadsPerEU() > 0)
                 {
                     // Number of threads per EU is set per module (by compiler option)
                     SaveOption(vISA_HWThreadNumberPerEU, ClContext->getNumThreadsPerEU());
