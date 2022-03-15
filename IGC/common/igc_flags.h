@@ -143,7 +143,7 @@ DECLARE_IGC_REGKEY(bool, EnableSimplePushSizeBasedOpimization, false, "Enable th
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescing,     false, "Setting this to 1/true adds a compiler switch to disable constant coalesing", false)
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescingOutOfBoundsCheck,     false, "Setting this to 1/true adds a compiler switch to disable constant coalesing out of bounds check", false)
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescingOfStatefulNonUniformLoads, false, "Disable merging non-uniform loads from stateful buffers. Note: does not affect merging to sampler loads", false)
-DECLARE_IGC_REGKEY(bool, EnableTextureLoadCoalescing, false, "Enable merging non-uniform loads from bindless textures", false)
+DECLARE_IGC_REGKEY(bool, EnableTextureLoadCoalescing,   true, "Enable merging non-uniform loads from bindless textures", false)
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTextures, false, "Setting this to use HDC message rather than sampler ld for texture read", false)
 DECLARE_IGC_REGKEY(bool, UseHDCTypedReadForAllTypedBuffers,  false, "Setting this to use HDC message rather than sampler ld for buffer read", false)
 DECLARE_IGC_REGKEY(bool, DisableUniformTypedAccess,     false, "Setting this will disable uniform typed access handling", false)
