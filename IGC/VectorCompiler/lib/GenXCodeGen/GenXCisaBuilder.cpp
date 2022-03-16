@@ -4248,8 +4248,8 @@ GenXKernelBuilder::getRegForValueOrNullAndSaveAlias(Args &&... args) {
  */
 template <typename... Args>
 GenXKernelBuilder::Register *
-GenXKernelBuilder::getRegForValueAndSaveAlias(Args &&...args) {
-  Register *R = RegAlloc->getOrCreateRegForValue(std::forward<Args>(args)...);
+GenXKernelBuilder::getRegForValueAndSaveAlias(Args &&... args) {
+  Register *R = RegAlloc->getRegForValue(std::forward<Args>(args)...);
   SimpleValue SV = std::get<0>(std::make_tuple(args...));
   IGC_ASSERT_MESSAGE(R, "getRegForValue must return non-nullptr register");
   LastUsedAliasMap[SV.getValue()] = R;

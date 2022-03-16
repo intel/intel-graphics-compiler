@@ -186,6 +186,14 @@ namespace llvm {
     std::list<Reg>& getRegStorage() {
       return RegStorage;
     }
+    // Get the vISA virtual register for a value (assertion failure if none).
+    Reg *getRegForValue(genx::SimpleValue V,
+                        genx::Signedness Signed = genx::DONTCARESIGNED,
+                        Type *OverrideType = nullptr, bool IsBF = false) {
+      Reg *R = getOrCreateRegForValue(V, Signed, OverrideType, IsBF);
+      IGC_ASSERT_MESSAGE(R, "no register allocated for this value");
+      return R;
+    }
     // Get the vISA virtual register for a value or nullptr if there is no
     // register associated with given value.
     Reg *getRegForValueOrNull(genx::SimpleValue V,
@@ -205,7 +213,7 @@ namespace llvm {
     Reg *getRegForValueUntyped(genx::SimpleValue V) const;
 
     // Get the signedness of a register.
-    genx::Signedness getSigned(const Reg *R) const;
+    genx::Signedness getSigned(Reg* R);
 
     // Set callback that will be called each time new register is created.
     // It is used in CisaBuilder when new aliases are created.
