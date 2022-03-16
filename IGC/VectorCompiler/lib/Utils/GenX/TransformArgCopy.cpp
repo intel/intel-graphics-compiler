@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/Types.h"
 
 #include <llvm/ADT/STLExtras.h>
-#include <llvm/ADT/Twine.h>
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
@@ -218,8 +217,6 @@ static Type *getRetType(LLVMContext &Context,
                         const TransformedFuncType &TFType) {
   if (TFType.Ret.empty())
     return Type::getVoidTy(Context);
-  if (TFType.Ret.size() == 1)
-    return TFType.Ret.front();
   return StructType::get(Context, TFType.Ret);
 }
 
@@ -312,19 +309,6 @@ inheritCallAttributes(CallInst &OrigCall, int NumOrigFuncArgs,
   return std::move(NewCallAttrs);
 }
 
-static Value *extractValueFromRet(Value &RetVal, int RetIdx,
-                                  IRBuilder<> &Builder,
-                                  const TransformedFuncInfo &NewFuncInfo,
-                                  const Twine &Name = "") {
-  if (NewFuncInfo.getRetToArgInfo().Map.size() == 1) {
-    // Structure of one element, omit struct.
-    return &RetVal;
-  }
-  IGC_ASSERT_MESSAGE(NewFuncInfo.getRetToArgInfo().Map.size() > 1,
-                     "Unexpected types number");
-  return Builder.CreateExtractValue(&RetVal, RetIdx, Name);
-}
-
 static void handleRetValuePortion(int RetIdx, int ArgIdx, CallInst &OrigCall,
                                   CallInst &NewCall, IRBuilder<> &Builder,
                                   const TransformedFuncInfo &NewFuncInfo) {
@@ -332,12 +316,11 @@ static void handleRetValuePortion(int RetIdx, int ArgIdx, CallInst &OrigCall,
   if (ArgIdx == RetToArgInfo::OrigRetNoArg) {
     IGC_ASSERT_MESSAGE(RetIdx == 0, "only zero element of returned value can "
                                     "be original function argument");
-    auto *ExtractedVal =
-        extractValueFromRet(NewCall, RetIdx, Builder, NewFuncInfo, "ret");
-    OrigCall.replaceAllUsesWith(ExtractedVal);
+    OrigCall.replaceAllUsesWith(
+        Builder.CreateExtractValue(&NewCall, RetIdx, "ret"));
     return;
   }
-  Value *OutVal = extractValueFromRet(NewCall, RetIdx, Builder, NewFuncInfo);
+  Value *OutVal = Builder.CreateExtractValue(&NewCall, RetIdx);
   if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx) {
     auto Kind =
         NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(ArgIdx).Kind;
@@ -395,18 +378,6 @@ static std::vector<Value *> handleGlobalArgs(Function &NewFunc,
   return LocalizedGloabls;
 }
 
-static Value *insertValueToRet(Value &Val, Value &RetVal, int RetIdx,
-                               IRBuilder<> &Builder,
-                               const TransformedFuncInfo &NewFuncInfo) {
-  if (NewFuncInfo.getRetToArgInfo().Map.size() == 1) {
-    // Structure of one element, omit struct.
-    return &Val;
-  }
-  IGC_ASSERT_MESSAGE(NewFuncInfo.getRetToArgInfo().Map.size() > 1,
-                     "Unexpected types number");
-  return Builder.CreateInsertValue(&RetVal, &Val, RetIdx);
-}
-
 static Value *
 appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
                                 ReturnInst &OrigRet, IRBuilder<> &Builder,
@@ -420,8 +391,7 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
     IGC_ASSERT_MESSAGE(OrigRetVal, "type unexpected");
     IGC_ASSERT_MESSAGE(OrigRetVal->getType()->isSingleValueType(),
                        "type unexpected");
-    return insertValueToRet(*OrigRetVal, NewRetVal, RetIdx, Builder,
-                            NewFuncInfo);
+    return Builder.CreateInsertValue(&NewRetVal, OrigRetVal, RetIdx);
   }
   if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx) {
     auto Kind =
@@ -437,8 +407,7 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
         "an alloca is expected when pass localized global by value");
     Value *LocalizedGlobalVal = Builder.CreateLoad(
         LocalizedGlobal->getType()->getPointerElementType(), LocalizedGlobal);
-    return insertValueToRet(*LocalizedGlobalVal, NewRetVal, RetIdx, Builder,
-                            NewFuncInfo);
+    return Builder.CreateInsertValue(&NewRetVal, LocalizedGlobalVal, RetIdx);
   }
   IGC_ASSERT_MESSAGE(NewFuncInfo.getArgKinds()[ArgIdx] == ArgKind::CopyInOut,
                      "Only copy in-out values are expected");
@@ -451,8 +420,7 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
                      "corresponding alloca is expected");
   Value *CurRetByVal = Builder.CreateLoad(
       CurRetByPtr->getType()->getPointerElementType(), CurRetByPtr);
-  return insertValueToRet(*CurRetByVal, NewRetVal, RetIdx, Builder,
-                          NewFuncInfo);
+  return Builder.CreateInsertValue(&NewRetVal, CurRetByVal, RetIdx);
 }
 
 // Add some additional code before \p OrigCall to pass localized global value
