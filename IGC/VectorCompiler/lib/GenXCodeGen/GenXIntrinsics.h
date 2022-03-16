@@ -278,8 +278,8 @@ public:
   using DescrType = llvm::SmallVector<ArgInfo, 8>;
 
   // Construct a GenXIntrinsicInfo for a particular intrinsic
-  GenXIntrinsicInfo(unsigned IntrinId) { InfoIt = Table.find(IntrinId); }
-  bool isNull() const { return InfoIt == Table.cend(); }
+  GenXIntrinsicInfo(unsigned IntrinId) { InfoIt = getTable().find(IntrinId); }
+  bool isNull() const { return InfoIt == getTable().cend(); }
   bool isNotNull() const { return !isNull(); }
   // Return instruction description.
   ArrayRef<ArgInfo> getInstDesc() const {
@@ -301,7 +301,7 @@ public:
 
 private:
   using TableType = std::unordered_map<unsigned, DescrType>;
-  static const TableType Table;
+  static const TableType &getTable();
   TableType::const_iterator InfoIt;
 };
 

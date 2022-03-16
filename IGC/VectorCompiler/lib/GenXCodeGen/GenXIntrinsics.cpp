@@ -50,9 +50,12 @@ using namespace llvm;
 // aid readability.
 
 // Region access intrinsics do not appear in this table
-const GenXIntrinsicInfo::TableType GenXIntrinsicInfo::Table = {
+const GenXIntrinsicInfo::TableType &GenXIntrinsicInfo::getTable() {
+  static TableType Table = {
 #include "GenXIntrinsicInfoTable.inc"
-};
+  };
+  return Table;
+}
 
 // Get the category and modifier for an arg idx (-1 means return value).
 // The returned ArgInfo struct contains just the short read from the table,
