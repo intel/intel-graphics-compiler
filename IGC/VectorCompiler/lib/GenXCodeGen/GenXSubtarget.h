@@ -67,6 +67,7 @@ protected:
     XE_HP_SDV,
     XE_DG2,
     XE_PVC,
+    XE_PVCXT_A0,
     XE_PVCXT,
   };
 
@@ -271,11 +272,13 @@ public:
   /// * isDG2 - true if target is DG2
   bool isDG2() const { return GenXVariant == XE_DG2; }
   /// * isPVC - true if target is PVC
-  bool isPVC() const { return isPVCXL() || isPVCXT(); }
+  bool isPVC() const { return isPVCXL() || isPVCXT_A0() || isPVCXT(); }
 
   /// * isPVCXT - true if target is PVCXT
   bool isPVCXT() const { return GenXVariant == XE_PVCXT; }
 
+  /// * isPVCXT_A0 - true if target is PVCXT_A0
+  bool isPVCXT_A0() const { return GenXVariant == XE_PVCXT_A0; }
 
   /// * isPVCXL - true if target is PVCXL
   bool isPVCXL() const { return GenXVariant == XE_PVC; }
@@ -428,6 +431,7 @@ public:
       return TARGET_PLATFORM::Xe_DG2;
     case XE_PVC:
       return TARGET_PLATFORM::Xe_PVC;
+    case XE_PVCXT_A0:
     case XE_PVCXT:
       return TARGET_PLATFORM::Xe_PVCXT;
     case GENX_KBL:

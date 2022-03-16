@@ -60,7 +60,10 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
       RevId &= cmc::ComputeTileMaskPVC;
       if (RevId < REVISION_B)
         return "PVC";
-      return "PVCXT";
+      else if (RevId < REVISION_D)
+        return "PVCXT_A0"; // PVC XT A0 RevID==0x3==REVISION_B
+      else
+        return "PVCXT";
     }
   default:
     break;

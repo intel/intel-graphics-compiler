@@ -14,6 +14,7 @@ set(SUPPORTED_VC_PLATFORMS
     "ADLS"
     "DG2"
     "PVC"
+    "PVCXT_A0"
     "PVCXT"
     )
 

@@ -68,6 +68,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
     .Cases("XEHP", "XEHP_SDV", XE_HP_SDV)
     .Case("DG2", XE_DG2)
     .Case("PVC", XE_PVC)
+    .Case("PVCXT_A0", XE_PVCXT_A0)
     .Case("PVCXT", XE_PVCXT)
     .Default(UNDEFINED_ARCH);
 
