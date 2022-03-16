@@ -19,6 +19,7 @@ See LICENSE.TXT for details.
 
 #pragma once
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/Optional.h"
@@ -29,6 +30,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/GlobalValue.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "DIE.hpp"
 #include "DwarfDebug.hpp"

@@ -13,6 +13,7 @@ See LICENSE.TXT for details.
 
 ============================= end_copyright_notice ===========================*/
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/IR/DIBuilder.h"
@@ -21,6 +22,7 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCDwarf.h"
 #include "llvm/MC/MCSymbol.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "DwarfDebug.hpp"
 #include "StreamEmitter.hpp"

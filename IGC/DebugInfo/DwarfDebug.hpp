@@ -18,6 +18,7 @@ See LICENSE.TXT for details.
 ///////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/FoldingSet.h"
@@ -29,6 +30,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/Instruction.h"
 #include "llvm/Support/Allocator.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 // TODO: remove wrapper since we don't need LLVM 7 support
 #include "llvmWrapper/IR/IntrinsicInst.h"

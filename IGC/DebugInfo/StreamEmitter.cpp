@@ -13,6 +13,7 @@ See LICENSE.TXT for details.
 
 ============================= end_copyright_notice ===========================*/
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/ADT/STLExtras.h"
 #include "llvm/IR/DataLayout.h"
@@ -33,6 +34,7 @@ See LICENSE.TXT for details.
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "DIE.hpp"
 #include "DwarfDebug.hpp"

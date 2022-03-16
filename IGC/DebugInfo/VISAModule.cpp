@@ -13,7 +13,7 @@ See LICENSE.TXT for details.
 
 ============================= end_copyright_notice ===========================*/
 
-
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Function.h"
@@ -21,6 +21,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "LexicalScopes.hpp"
 #include "VISAModule.hpp"

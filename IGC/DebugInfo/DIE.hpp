@@ -18,6 +18,7 @@ See LICENSE.TXT for details.
 ///////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallVector.h"
@@ -26,6 +27,7 @@ See LICENSE.TXT for details.
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/Compiler.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "Probe/Assertion.h"
 

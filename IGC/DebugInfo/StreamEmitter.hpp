@@ -15,6 +15,7 @@ See LICENSE.TXT for details.
 
 #pragma once
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/MC/MCContext.h"
@@ -24,6 +25,7 @@ See LICENSE.TXT for details.
 #include "llvm/Support/DataTypes.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <string>
 

@@ -17,6 +17,7 @@ See LICENSE.TXT for details.
 // This file is based on llvm-3.4\lib\CodeGen\AsmPrinter\DIE.cpp
 ///////////////////////////////////////////////////////////////////////////////
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/Twine.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -29,6 +30,7 @@ See LICENSE.TXT for details.
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "DIE.hpp"
 #include "DwarfDebug.hpp"

@@ -17,6 +17,7 @@ See LICENSE.TXT for details.
 // This file is based on llvm-3.4\lib\CodeGen\LexicalScopes.cpp
 ///////////////////////////////////////////////////////////////////////////////
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/DebugInfo.h"
@@ -26,6 +27,7 @@ See LICENSE.TXT for details.
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "LexicalScopes.hpp"
 #include "VISAModule.hpp"

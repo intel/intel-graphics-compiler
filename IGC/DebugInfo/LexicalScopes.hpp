@@ -19,6 +19,7 @@ See LICENSE.TXT for details.
 
 #pragma once
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -29,6 +30,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/DebugLoc.h"
 #include "llvm/IR/ValueHandle.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include <unordered_map>
 #include <utility>

@@ -17,6 +17,7 @@ See LICENSE.TXT for details.
 // This file is based on llvm-3.4\lib\CodeGen\AsmPrinter\DwarfCompilerUnit.cpp
 ///////////////////////////////////////////////////////////////////////////////
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvm/ADT/APFloat.h"
@@ -34,6 +35,7 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCSymbolELF.h"
 #include "llvm/MC/MachineLocation.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "DIE.hpp"
 #include "DwarfCompileUnit.hpp"

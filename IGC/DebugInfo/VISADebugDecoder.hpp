@@ -8,11 +8,13 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "Probe/Assertion.h"
 
