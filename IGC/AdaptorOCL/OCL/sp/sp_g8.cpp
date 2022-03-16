@@ -1950,8 +1950,9 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             annotations.m_PrivateMemSize->Offset + iOpenCL::DATA_PARAMETER_DATA_SIZE );
     }
 
-    // Payload must be a multiple of a GRF register
-    dataParameterStreamSize += GetAlignmentOffset(dataParameterStreamSize, CPlatform(m_Platform).getGRFSize());
+    // Payload must be a multiple of 32 bytes
+    // This assumption has to be the same as in vISA::Optimizer::loadThreadPayload
+    dataParameterStreamSize += GetAlignmentOffset(dataParameterStreamSize, 32);
 
     if( retValue.Success )
     {

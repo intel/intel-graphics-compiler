@@ -8557,6 +8557,22 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         const bool useInlineData = builder.getOption(vISA_useInlineData);
 
         // preparation of thread payload size and start offsets
+
+        //  Payload in Memory                                Payload in GRF (T0)
+        //  (Prepared by Runtime)
+        //  (Does not contain inlineData)
+        // -----------------------                       R1 ----------------------- <-- perThreadLoadStartGRF
+        // |  cross thread data  | \                        |  per thread data T0 |
+        // |                     |  numCrossThreadDW     R4 -----------------------
+        // |                     | /                        |  inline data        |
+        // ----------------------- <-- localIDsOffset       |  (if enable)        |
+        // |  per thread data T0 |                       R5 ----------------------- <-- crossThreadLoadStart, crossThreadLoadStartGRF
+        // -----------------------                          |  cross thread data  | \
+        // |  per thread data T1 |                          |                     |  numCrossThreadDW
+        // -----------------------                          |                     | /
+        // |        ...          |                          -----------------------
+        // -----------------------
+
         const uint32_t perThreadLoadStartGRF = kernel.getOptions()->getuInt32Option(vISA_loadThreadPayloadStartReg);
         int PTIS = kernel.getInt32KernelAttr(Attributes::ATTR_PerThreadInputSize);
         uint32_t numPerThreadGRF = PTIS / kernel.numEltPerGRF<Type_UB>();
@@ -8564,8 +8580,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         uint32_t crossThreadLoadStartGRF = 0; // grf number
         // cross thread size (not including inlinedata size and alignement)
         const uint32_t loadedCrossThreadInputSize = findLoadedInputSize(crossThreadLoadStart);
-        // final cross thread size to be loaded
-        uint32_t numCrossThreadGRF = 0;
+        // final cross thread size to be loaded as number of DW (including aligenment)
+        uint32_t numCrossThreadDW = 0;
         // payload memory offset of where local id should be loaded from
         uint32_t localIDsOffset = 0;
         int CTIS = kernel.getInt32KernelAttr(Attributes::ATTR_CrossThreadInputSize);
@@ -8573,18 +8589,18 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             // per-thread payload vars
             // N = inlinedata size
-            // Payload is aligned to grf size,
+            // Cross thread data size is aligned to 32byte,
             // if inlinedata is used, runtime puts first N bytes of payload in inlinedata.
             // Rest of payload is shifted in the buffer by N bytes.
             // So payload args which start at N offset, now start at 0 offset.
             // Because of this we need to calculate localID offset:
             const uint32_t inlineDataSize = builder.getInlineDataSize();
             uint32_t correction = useInlineData ? inlineDataSize : 0;
-            localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, kernel.getGRFSize());
+            localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, 32);
             localIDsOffset -= useInlineData ? inlineDataSize : 0;
 
             // cross-thread payload vars
-            numCrossThreadGRF = AlignUp(loadedCrossThreadInputSize, kernel.getGRFSize()) / kernel.numEltPerGRF<Type_UB>();
+            numCrossThreadDW = AlignUp(loadedCrossThreadInputSize, 32) / TypeSize(Type_UD);
             crossThreadLoadStartGRF = crossThreadLoadStart / kernel.getGRFSize();
         }
         else
@@ -8594,13 +8610,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             localIDsOffset -= useInlineData ? kernel.getGRFSize() : 0;
 
             // cross-thread payload vars
-            numCrossThreadGRF = CTIS / kernel.numEltPerGRF<Type_UB>();
+            numCrossThreadDW = CTIS / TypeSize(Type_UD);
             crossThreadLoadStartGRF = perThreadLoadStartGRF + numPerThreadGRF;
             if (useInlineData)
             {
                 // first GRF of cross-thread data is already loaded
                 crossThreadLoadStartGRF++;
-                numCrossThreadGRF--;
+                numCrossThreadDW -= builder.getInlineDataSize() / TypeSize(Type_UD);
             }
         }
 
@@ -8630,18 +8646,21 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
         // load <numGRF> GRFs from the address "loadAddress", starting from <startGRF>
         auto loadFromMemory = [this, &instBuffer, getHWordBlockEncoding](
-            G4_Declare* loadAddress, uint32_t startGRF, uint32_t numGRF)
+            G4_Declare* loadAddress, uint32_t startGRF, uint32_t numTotalDW)
         {
-            bool useHword = builder.hasHWordBlockLoad();
-            for (int numRemaining = numGRF, nextGRF = startGRF; numRemaining > 0; /* updated in body */)
+            for (uint32_t numRemainingDW = numTotalDW, nextGRF = startGRF; numRemainingDW > 0; /* updated in body */)
             {
-                int numGRFToLoad = numRemaining > 2 ? 4 : numRemaining;
-                if (numRemaining == 3)
-                {
-                    // we can't do 4GRF load since it may overwrite values pushed from inline data,
-                    // break load to 2+1 instead
-                    numGRFToLoad = 2;
-                }
+                // can load 4, 2 or 1 grf per send.
+                // Still load 1 GRF if the remainingDW is less than 1 GRF. The addtional bytes those being loaded won't be used.
+                uint32_t DWin4GRF = 4 * builder.numEltPerGRF<Type_UD>();
+                uint32_t DWin2GRF = DWin4GRF / 2;
+                uint32_t DWin1GRF = DWin2GRF / 2;
+                uint32_t numGRFToLoad =
+                    numRemainingDW >= DWin4GRF ? 4 : // 4 GRF
+                    numRemainingDW >= DWin2GRF ? 2 : // 2 GRF
+                    1; // 1 GRF or less than 1 GRF
+
+                bool useHword = builder.hasHWordBlockLoad();
                 uint32_t numElts = (numGRFToLoad * kernel.getGRFSize()) / (useHword ? 32 : 16);
                 uint32_t dataBlocks = useHword ? getHWordBlockEncoding(numElts) :
                     (numElts == 2 ? 2 : (numElts == 4 ? 3 : 4));
@@ -8656,9 +8675,11 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 auto sendInst = builder.createSendInst(nullptr, G4_send, g4::SIMD8, sendDst, sendSrc,
                     builder.createImm(msgDescVal, Type_UD), InstOpt_WriteEnable, desc, true);
                 instBuffer.push_back(sendInst);
-                numRemaining -= numGRFToLoad;
+                if (numRemainingDW < DWin1GRF)
+                    break;
+                numRemainingDW -= numGRFToLoad * builder.numEltPerGRF<Type_UD>();
                 nextGRF += numGRFToLoad;
-                if (numRemaining > 0)
+                if (numRemainingDW > 0)
                 {
                     // advance the address offset
                     // (W) add (1) loadAddress.2 loadAddress.2 numGRFToLoad*32
@@ -8672,18 +8693,36 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 }
             }
         };
-        auto loadFromMemoryLSC = [this, &instBuffer](
-            G4_Declare* loadAddress, uint32_t startGRF, uint32_t numGRF)
+
+        // a helper function for loadFromMemoryLSC to get the max DW number which can fulfill
+        // LSC element number
+        auto getMaxNumDWforLscElementRequirement = [this](uint32_t numDW) {
+            if (builder.lscGetElementNum(numDW) != LSC_DATA_ELEMS_INVALID)
+                return numDW;
+            if (numDW > builder.numEltPerGRF<Type_UD>()) {
+                if      (numDW > 64) return (uint32_t)64;
+                else if (numDW > 32) return (uint32_t)32;
+                else if (numDW > 16) return (uint32_t)16;
+                else if (numDW > 8)  return (uint32_t)8;
+                assert(0 && "unreachable");
+            }
+            // when the numDW is less than 1 grf, we want to load all within one send
+            // The additional bytes being loaded won't be used so should be fine
+            if (numDW < 2)       return (uint32_t)2;
+            else if (numDW < 4)  return (uint32_t)4;
+            else if (numDW < 8)  return (uint32_t)8;
+            else if (numDW < 16) return (uint32_t)16;
+            assert(0 && "unreachable");
+            return (uint32_t)0;
+        };
+
+        auto loadFromMemoryLSC = [this, &instBuffer, &getMaxNumDWforLscElementRequirement](
+            G4_Declare* loadAddress, uint32_t startGRF, uint32_t numTotalDW)
         {
             const auto ADDR_TYPE = LSC_ADDR_TYPE_BTI;
 
-            for (int numRemaining = numGRF, nextGRF = startGRF; numRemaining > 0; /* updated in body */)
+            for (uint32_t numRemainingDW = numTotalDW, nextGRF = startGRF; numRemainingDW > 0; /* updated in body */)
             {
-                int numGRFToLoad =
-                    numRemaining > 4 ? 4 :
-                    numRemaining == 3 ? 2 : // split to 2+1
-                    numRemaining; // 2 or 1
-
                 // Generate a A32 tranpose LSC load to BTI 255. size is d32x{16/32}t
                 LSC_OP op = LSC_LOAD;
                 LSC_SFID lscSfid = LSC_UGM;
@@ -8694,15 +8733,16 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 addrInfo.immScale = 1;
                 addrInfo.immOffset = 0;
                 addrInfo.size = LSC_ADDR_SIZE_32b;
-                auto numDW = numGRFToLoad * (kernel.getGRFSize() / 4);
+
                 LSC_DATA_SHAPE dataShape { };
                 dataShape.size = LSC_DATA_SIZE_32b; //in the unit of 32b
                 dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
-                dataShape.elems = builder.lscGetElementNum(numDW);
+                uint32_t numDWToLoad = getMaxNumDWforLscElementRequirement(numRemainingDW);
+                dataShape.elems = builder.lscGetElementNum(numDWToLoad);
 
                 G4_Imm* surfaceBTI = builder.createImm(255, Type_UW);
 
-                auto sendDstDcl = builder.createHardwiredDeclare(numDW, Type_UD, nextGRF, 0);
+                auto sendDstDcl = builder.createHardwiredDeclare(numDWToLoad, Type_UD, nextGRF, 0);
                 auto dstRead = builder.createDstRegRegion(sendDstDcl, 1);
                 auto src0Addr = builder.createSrcRegRegion(loadAddress, builder.getRegionStride1()); // address base
 
@@ -8714,7 +8754,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     addrInfo,
                     dataShape,
                     surfaceBTI,
-                    numGRFToLoad,
+                    numDWToLoad < builder.numEltPerGRF<Type_UD>() ? 1 : numDWToLoad / builder.numEltPerGRF<Type_UD>(),
                     1);
 
                 G4_InstSend *sendInst = builder.createLscSendInst(
@@ -8729,15 +8769,19 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     true);
 
                 instBuffer.push_back(sendInst);
-                numRemaining -= numGRFToLoad;
-                nextGRF += numGRFToLoad;
-                bool advanceLoadAddress = numRemaining > 0;
+                // we pick to load all data within one send in getMaxNumDWforLscElementRequirement if
+                // numRemainingDW is less than one grf. All should be loaded at this point.
+                if (numRemainingDW < builder.numEltPerGRF<Type_UD>())
+                    break;
+                numRemainingDW -= numDWToLoad;
+                nextGRF += numDWToLoad / builder.numEltPerGRF<Type_UD>();
+                bool advanceLoadAddress = numRemainingDW > 0;
                 if (advanceLoadAddress)
                 {
                     // advance the address offset
                     // (W) add (1) loadAddress.0 loadAddress.0 numGRFToLoad*32
                     auto addSrc0 = builder.createSrcRegRegion(loadAddress, builder.getRegionScalar());
-                    auto addSrc1 = builder.createImm(numGRFToLoad * kernel.numEltPerGRF<Type_UB>(), Type_UW);
+                    auto addSrc1 = builder.createImm(numDWToLoad * TypeSize(Type_UD), Type_UW);
                     auto addDst = builder.createDst(loadAddress->getRegVar(), 0, 0, 1, Type_UD);
                     auto addInst = builder.createBinOp(G4_add, g4::SIMD1, addDst,
                         addSrc0, addSrc1, InstOpt_WriteEnable, false);
@@ -8896,11 +8940,11 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
             if (useLSC)
             {
-                loadFromMemoryLSC(rtail, perThreadLoadStartGRF, numPerThreadGRF);
+                loadFromMemoryLSC(rtail, perThreadLoadStartGRF, numPerThreadGRF * builder.numEltPerGRF<Type_UD>());
             }
             else
             {
-                loadFromMemory(rtail, perThreadLoadStartGRF, numPerThreadGRF);
+                loadFromMemory(rtail, perThreadLoadStartGRF, numPerThreadGRF * builder.numEltPerGRF<Type_UD>());
             }
             perThreadBB = kernel.fg.createNewBB();
             perThreadBB->insert(perThreadBB->begin(), instBuffer.begin(), instBuffer.end());
@@ -8943,11 +8987,11 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             {
                 if (useLSC)
                 {
-                    loadFromMemoryLSC(rtail, crossThreadLoadStartGRF, numCrossThreadGRF);
+                    loadFromMemoryLSC(rtail, crossThreadLoadStartGRF, numCrossThreadDW);
                 }
                 else
                 {
-                    loadFromMemory(rtail, crossThreadLoadStartGRF, numCrossThreadGRF);
+                    loadFromMemory(rtail, crossThreadLoadStartGRF, numCrossThreadDW);
                 }
             }
 
