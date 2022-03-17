@@ -4233,7 +4233,7 @@ GenXKernelBuilder::getRegForValueUntypedAndSaveAlias(Args &&... args) {
 template <typename... Args>
 GenXKernelBuilder::Register *
 GenXKernelBuilder::getRegForValueOrNullAndSaveAlias(Args &&... args) {
-  Register *R = RegAlloc->getRegForValueOrNull(std::forward<Args>(args)...);
+  Register *R = RegAlloc->getOrCreateRegForValue(std::forward<Args>(args)...);
   SimpleValue SV = std::get<0>(std::make_tuple(args...));
   if (R)
     LastUsedAliasMap[SV.getValue()] = R;
