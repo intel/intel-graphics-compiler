@@ -26,19 +26,16 @@ namespace IGC
         typedef uint16_t ThreadPayloadEntry;
 
         // Find the max thread group dimension
-        const OctEltUnit SIZE_OF_DQWORD = OctEltUnit(2);
-        const OctEltUnit SIZE_OF_OWORD = OctEltUnit(1);
         uint numberOfId = GetNumberOfId();
         uint dimX = numLanes(m_dispatchSize);
         // dimX must align to alignment_X bytes (one GRF)
-        uint alignment_X = EltUnit(SIZE_OF_OWORD).Count() * sizeof(DWORD);
+        uint alignment_X = getGRFSize();
         uint dimX_aligned = iSTD::Align(dimX * sizeof(ThreadPayloadEntry), alignment_X) / sizeof(ThreadPayloadEntry);
         uint dimY = (iSTD::Align(m_threadGroupSize, dimX) / dimX) * numberOfId;
         curbeReadLength = dimX_aligned * numberOfId * sizeof(ThreadPayloadEntry) / alignment_X;
 
-        uint alignedVal = EltUnit(SIZE_OF_DQWORD).Count() * sizeof(ThreadPayloadEntry); // Oct Element is 8 Entries
         // m_NOSBufferSize is the additional space for cross-thread constant data (constants set by driver).
-        curbeTotalDataLength = iSTD::Align(dimX_aligned * dimY * sizeof(ThreadPayloadEntry) + m_NOSBufferSize, alignedVal);
+        curbeTotalDataLength = iSTD::Align(dimX_aligned * dimY * sizeof(ThreadPayloadEntry) + m_NOSBufferSize, getGRFSize());
 
         IGC_ASSERT_MESSAGE((pThreadPayload == nullptr), "Thread payload should be a null variable");
 
