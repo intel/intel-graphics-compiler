@@ -444,6 +444,20 @@ public:
         }
         m_noMaskWAInfo.clear();
     }
+#if defined(_DEBUG) || defined(_INTERNAL)
+    void verifyNoMaskWAInfo()
+    {
+        for (auto iter : m_noMaskWAInfo)
+        {
+            G4_BB* bb = iter.first;
+            auto BI = std::find(fg.begin(), fg.end(), bb);
+            if (BI == fg.end())
+            {
+                assert(false && "Some BBs after RA have been removed, which breaks noMask WA!");
+            }
+        }
+    }
+#endif
 
     // Call WA under EU fusion
     //     add  v10  -ip,  v20                    // ip_start_inst
