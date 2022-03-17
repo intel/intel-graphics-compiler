@@ -25,7 +25,6 @@ namespace IGC{
 
 DEFINE_GET_SET(GTSystemInfo, 1, EUCount, uint32_t);
 DEFINE_GET_SET(GTSystemInfo, 1, ThreadCount, uint32_t);
-DEFINE_GET_SET(GTSystemInfo, 1, SliceCount, uint32_t);
 DEFINE_GET_SET(GTSystemInfo, 1, SubSliceCount, uint32_t);
 DEFINE_GET_SET(GTSystemInfo, 1, L3CacheSizeInKb, uint64_t);
 DEFINE_GET_SET(GTSystemInfo, 1, LLCCacheSizeInKb, uint64_t);
@@ -48,6 +47,18 @@ DEFINE_GET_SET(GTSystemInfo, 1, IsDynamicallyPopulated, bool);
 
 DEFINE_GET_SET(GTSystemInfo, 3, MaxDualSubSlicesSupported, uint32_t);
 DEFINE_GET_SET(GTSystemInfo, 3, DualSubSliceCount, uint32_t);
+
+uint32_t CIF_GET_INTERFACE_CLASS(GTSystemInfo, 1)::GetSliceCount() const {
+    return CIF_GET_PIMPL()->gsi.SliceCount;
+}
+
+void CIF_GET_INTERFACE_CLASS(GTSystemInfo, 1)::SetSliceCount(uint32_t v) {
+    CIF_GET_PIMPL()->SetSliceCount(v);
+}
+
+GTSliceInfoBase *CIF_GET_INTERFACE_CLASS(GTSystemInfo, 4)::GetSliceInfoHandleImpl(CIF::Version_t version, uint32_t sliceIdx) {
+    return CIF_GET_PIMPL()->GetSliceInfoHandle(version, sliceIdx);
+}
 
 }
 
