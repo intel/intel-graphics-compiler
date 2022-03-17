@@ -26,7 +26,7 @@ class PassRegistry;
 //
 // CMImpParam - Transforms to enable implicit parameters
 //
-Pass *createCMImpParamPass(bool);
+Pass *createCMImpParamPass(bool, bool);
 
 //===----------------------------------------------------------------------===//
 //
