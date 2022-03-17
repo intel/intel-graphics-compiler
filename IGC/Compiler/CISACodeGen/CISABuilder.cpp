@@ -5629,7 +5629,10 @@ namespace IGC
             visaFunc->GetJitInfo(jitInfo);
             entry.f_spillMemPerThread = jitInfo->spillMemUsed;
 
-            attrs.emplace_back(entry.f_isKernel, entry.f_hasBarrier, entry.f_privateMemPerThread,
+            uint8_t isExternal = F->hasFnAttribute("referenced-indirectly") ? 1 : 0;
+            // Set per-function barrier count from vISA information.
+            uint32_t barrierCnt = NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->usesBarrier);
+            attrs.emplace_back(entry.f_isKernel, isExternal, barrierCnt, entry.f_privateMemPerThread,
                 entry.f_spillMemPerThread, F->getName().str());
             attribTable.push_back(entry);
         }
@@ -6231,7 +6234,7 @@ namespace IGC
                 pOutput->m_funcRelocationTableEntries);
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
+        if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching) || ZEBinEnabled)
         {
             CreateFuncAttributeTable(pOutput->m_funcAttributeTable,
                 pOutput->m_funcAttributeTableSize,

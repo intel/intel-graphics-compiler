@@ -109,15 +109,17 @@ struct ZERelocEntry {
 /// ZEFuncAttribEntry - A function attribute entry that will later be transformed to ZE binary format
 struct ZEFuncAttribEntry {
     uint8_t     f_isKernel;      // Is the function a kernel
-    uint8_t     f_hasBarrier;    // Does the function use barriers
+    uint8_t     f_isExternal;    // Is the function external
+    uint32_t    f_BarrierCount;  // Number of barriers used by the function
     uint32_t    f_privateMemPerThread; // Total private memory (in bytes) used by this function per thread
     uint32_t    f_spillMemPerThread;  // Spill mem used (in bytes) in scratch space for this function
     std::string f_name; // The function's name
 
-    ZEFuncAttribEntry(uint8_t isKernel, uint8_t hasBarrier, uint32_t privateMemPerThread,
-        uint32_t spillMemPerThread, std::string funcName)
+    ZEFuncAttribEntry(uint8_t isKernel, uint8_t isExternal, uint32_t barrierCount,
+        uint32_t privateMemPerThread, uint32_t spillMemPerThread, std::string funcName)
         : f_isKernel(isKernel),
-          f_hasBarrier(hasBarrier),
+          f_isExternal(isExternal),
+          f_BarrierCount(barrierCount),
           f_privateMemPerThread(privateMemPerThread),
           f_spillMemPerThread(spillMemPerThread),
           f_name(funcName)
