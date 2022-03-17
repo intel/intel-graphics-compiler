@@ -320,16 +320,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
     vc::addPass(PM, createVerifierPass());
   // Run passes to generate vISA.
 
-  /// .. include:: GenXAggregatePseudoLowering.cpp
-  vc::addPass(PM, createGenXAggregatePseudoLoweringPass());
-  /// InstructionCombining
-  /// --------------------
-  /// This is a standard LLVM pass, used at this point in the GenX backend.
-  ///
-  vc::addPass(PM, createInstructionCombiningPass());
-
-  // Aggregate pseudo lowering may create GEPs to be lowered before TPM
-
   /// BasicAliasAnalysis
   /// ------------------
   /// This is a standard LLVM analysis pass to provide basic AliasAnalysis
@@ -376,6 +366,12 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   // PrologEpilog may emit memory instructions of illegal width.
   vc::addPass(PM, createGenXPrologEpilogInsertionPass());
 
+  /// .. include:: GenXAggregatePseudoLowering.cpp
+  /// GenXAggregatePseudoLowering must be run after
+  /// GenXPrologEpilogInsertion as the latter may create stack loads and stores
+  /// of aggregates.
+  vc::addPass(PM, createGenXAggregatePseudoLoweringPass());
+
   /// .. include:: GenXGEPLowering.cpp
   vc::addPass(PM, createGenXGEPLoweringPass());
   /// .. include:: GenXLoadStoreLowering.cpp
@@ -387,6 +383,9 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// This is a standard LLVM pass, used at this point in the GenX backend.
   /// Run instcombine after some lowering passes (e.g. GenXLoadStoreLowering) to
   /// make a cleanup.
+  /// Cleans up after bunch of lowering passes such as
+  /// GenXPrologEpilogInsertion, GenXAggregatePseudoLowering,
+  /// GenXLoadStoreLowering.
   vc::addPass(PM, createInstructionCombiningPass());
   // Run integer reduction again to revert some trunc/ext patterns transformed
   // by instcombine.
