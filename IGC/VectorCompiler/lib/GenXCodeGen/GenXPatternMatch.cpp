@@ -2945,7 +2945,10 @@ static void decomposeSRemPow2(BinaryOperator &SRemOp) {
 
   const char *Name = "genxSremOpt";
   Value *Sdiv = Builder.CreateSDiv(Dividend, Divisor, Name);
-  Value *MulRes = Builder.CreateMul(Sdiv, Divisor, Name);
+  // Mul is implemented with left shift.
+  Constant *Log2Divisor = getFloorLog2(Divisor);
+  Value *MulRes = Builder.CreateShl(Sdiv, Log2Divisor, Name);
+
   Value *Res = Builder.CreateSub(Dividend, MulRes);
 
   decomposeSDivPow2(*cast<BinaryOperator>(Sdiv));
