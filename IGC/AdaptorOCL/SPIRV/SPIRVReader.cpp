@@ -642,7 +642,10 @@ public:
           if (countExpr)
               subrange = Builder.getOrCreateSubrange(loConst, countExpr);
           else
+          {
+              totalBits *= static_cast<uint64_t>(countConst);
               subrange = Builder.getOrCreateSubrange(loConst, countConst);
+          }
           subscripts.push_back(subrange);
       }
 

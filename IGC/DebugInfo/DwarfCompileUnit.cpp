@@ -547,7 +547,7 @@ bool isUnsignedDIType(DwarfDebug *DD, DIType *Ty) {
 }
 
 /// If this type is derived from a base type then return base type size.
-static uint64_t getBaseTypeSize(DwarfDebug *DD, DIDerivedType *Ty) {
+static uint64_t getBaseTypeSize(DwarfDebug *DD, const DIDerivedType *Ty) {
   unsigned Tag = Ty->getTag();
 
   if (Tag != dwarf::DW_TAG_member && Tag != dwarf::DW_TAG_typedef &&
@@ -556,16 +556,11 @@ static uint64_t getBaseTypeSize(DwarfDebug *DD, DIDerivedType *Ty) {
     return Ty->getSizeInBits();
   }
 
-  DIType *BaseType = DD->resolve(Ty->getBaseType());
+  const DIType *BaseType = DD->resolve(Ty->getBaseType());
 
   // Void type is represented as null
   if (!BaseType)
     return 0;
-
-  // If this type is not derived from any type then take conservative approach.
-  if (isa<DIBasicType>(BaseType)) {
-    return Ty->getSizeInBits();
-  }
 
   // If this is a derived type, go ahead and get the base type, unless it's a
   // reference then it's just the size of the field. Pointer types have no need
@@ -3131,12 +3126,11 @@ void CompileUnit::constructMemberDIE(DIE &Buffer, DIDerivedType *DT) {
     uint64_t FieldSize = getBaseTypeSize(DD, DT);
     uint64_t OffsetInBytes;
 
-    bool IsBitfield = FieldSize && Size != FieldSize;
+    bool IsBitfield = Size < FieldSize;
     if (IsBitfield) {
       // Handle bitfield.
-      addUInt(MemberDie, dwarf::DW_AT_byte_size, None,
-              getBaseTypeSize(DD, DT) >> 3);
-      addUInt(MemberDie, dwarf::DW_AT_bit_size, None, DT->getSizeInBits());
+      addUInt(MemberDie, dwarf::DW_AT_byte_size, None, FieldSize >> 3);
+      addUInt(MemberDie, dwarf::DW_AT_bit_size, None, Size);
 
       uint64_t Offset = DT->getOffsetInBits();
       uint64_t AlignMask = ~(DT->getAlignInBits() - 1);
@@ -3149,7 +3143,7 @@ void CompileUnit::constructMemberDIE(DIE &Buffer, DIDerivedType *DT) {
         Offset = FieldSize - (Offset + Size);
       addUInt(MemberDie, dwarf::DW_AT_bit_offset, None, Offset);
 
-      // Here WD_AT_data_member_location points to the anonymous
+      // Here DW_AT_data_member_location points to the anonymous
       // field that includes this bit field.
       OffsetInBytes = FieldOffset >> 3;
     } else {
