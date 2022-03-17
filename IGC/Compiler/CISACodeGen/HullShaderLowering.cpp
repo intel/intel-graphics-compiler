@@ -353,8 +353,7 @@ namespace IGC
                         instructionToRemove.push_back(inst);
                     }
 
-                    if (IID == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead ||
-                        IID == GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec)
+                    if (IID == GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec)
                     {
                         builder.SetInsertPoint(inst);
 
@@ -366,16 +365,21 @@ namespace IGC
                             // Patch constant output read
                             llvm::Value* attributeIndex = inst->getOperand(0);
 
-                            if (llvm::ConstantInt * constAttributeIndex = llvm::dyn_cast<llvm::ConstantInt>(attributeIndex))
+                            // Constant, so global offset is sufficient in urb read message
+                            // the payload constant header size in oword units
+                            const unsigned int tessellationFactorSizeIn16B = 2;
+                            const unsigned int patchConstantSpaceOffset = tessellationFactorSizeIn16B;
+
+                            if (llvm::ConstantInt* constAttributeIndex = llvm::dyn_cast<llvm::ConstantInt>(attributeIndex))
                             {
-                                // Constant, so global offset is sufficient in urb read message
+
                                 urbOffset = builder.getInt32(
-                                    int_cast<unsigned int>(constAttributeIndex->getZExtValue()) + vertexHeaderSize);
+                                    int_cast<unsigned int>(constAttributeIndex->getZExtValue()) + patchConstantSpaceOffset);
                             }
                             else
                             {
                                 // Runtime value, so per-slot offset is required in urb read message
-                                urbOffset = builder.CreateAdd(attributeIndex, builder.getInt32(vertexHeaderSize));
+                                urbOffset = builder.CreateAdd(attributeIndex, builder.getInt32(patchConstantSpaceOffset));
                             }
                         }
                         else
