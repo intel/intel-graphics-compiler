@@ -808,6 +808,7 @@ public:
     std::list<VISAKernelImpl*>& getKernels() { return m_kernelsAndFunctions; }
 
     const VISAKernelImpl* getKernel(const std::string& name) const;
+          VISAKernelImpl* getKernel(const std::string& name);
 
     Options m_options;
     std::stringstream m_ssIsaAsm;

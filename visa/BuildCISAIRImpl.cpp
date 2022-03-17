@@ -1189,7 +1189,38 @@ void CISA_IR_Builder::LinkTimeOptimization(
             }
         }
     }
+}
 
+static void retrieveBarrierInfoFromCallee(VISAKernelImpl* entry, std::set<VISAKernelImpl*>& visited)
+{
+    // Propagate properties of callee to caller recursively.
+    auto res = visited.insert(entry);
+    if (!res.second)
+        return;
+
+    for (G4_BB* bb : entry->getKernel()->fg)
+    {
+        if (!bb->isEndWithFCall())
+            continue;
+
+        G4_INST* fcall = bb->back();
+        if (fcall->asCFInst()->isIndirectCall())
+            continue;
+
+        const char* funcName = fcall->getSrc(0)->asLabel()->getLabel();
+        VISAKernelImpl* callee = entry->getCISABuilder()->getKernel(funcName);
+        retrieveBarrierInfoFromCallee(callee, visited);
+
+        // usesBarrier property is propagated to IGC and onwards in to NEO patch
+        // token. We need this logic here to propagate barrier usage to IGC and
+        // further to NEO so it can set up WG size appropriately. Without this
+        // setting barrier would cause machine to hang.
+        // TODO: How to set usesBarrier when callee is indirect in patch token
+        // path? For zebin path, the barrier information of an indirect
+        // (external) function will be provided in the corresponding .ze_info
+        // field.
+        entry->getIRBuilder()->getJitInfo()->usesBarrier |= callee->getIRBuilder()->getJitInfo()->usesBarrier;
+    }
 }
 
 // Stitch the FG of subFunctions to mainFunc
@@ -1247,14 +1278,6 @@ static void Stitch_Compiled_Units(
                 // Connect new fg
                 mainFunc->fg.addPredSuccEdges(cur, callee->fg.getEntryBB());
                 mainFunc->fg.addPredSuccEdges(callee->fg.getUniqueReturnBlock(), retBlock);
-
-                // propagate properties of callee to mainFunc
-                // usesBarrier property is propagated to IGC and onwards in to NEO patch
-                // token. we need this logic here to propagate barrier usage to IGC and
-                // further to NEO so it can setup WG size appropriately. without this
-                // setting barrier would cause machine to hang.
-                // TODO: How to set usesBarrier when callee is indirect?
-                mainFunc->fg.builder->getJitInfo()->usesBarrier |= callee->fg.builder->getJitInfo()->usesBarrier;
 
                 G4_INST* calleeLabel = callee->fg.getEntryBB()->front();
                 ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
@@ -1744,6 +1767,13 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                     }
                 }
             }
+        }
+
+        // Set usesBarrier property for each kernel and function appropriately.
+        {
+            std::set<VISAKernelImpl*> visited;
+            for (VISAKernelImpl* f : m_kernelsAndFunctions)
+                retrieveBarrierInfoFromCallee(f, visited);
         }
 
         // reset debug info offset of functionsToStitch
@@ -4432,4 +4462,9 @@ const VISAKernelImpl* CISA_IR_Builder::getKernel(const std::string& name) const
     if (it == m_nameToKernel.end())
         return nullptr;
     return it->second;
+}
+
+VISAKernelImpl* CISA_IR_Builder::getKernel(const std::string& name)
+{
+    return const_cast<VISAKernelImpl*>(const_cast<const CISA_IR_Builder*>(this)->getKernel(name));
 }
