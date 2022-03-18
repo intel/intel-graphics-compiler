@@ -266,7 +266,7 @@ namespace vISA
         Interference& intf;
         GlobalRA& gra;
         const LivenessAnalysis& liveAnalysis;
-        LiveRange* const * const lrs;
+        LiveRange** const& lrs;
         FCALL_RET_MAP& fcallRetMap;
         CALL_DECL_MAP callDclMap;
         std::unordered_map<FuncInfo*, PhyRegSummary> localSummaryOfCallee;
@@ -301,7 +301,6 @@ namespace vISA
         void updateStartIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void updateEndIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void buildLiveIntervals();
-        void clearIntervalInfo();
         void sortLiveIntervals();
         unsigned getEnd(const G4_Declare* dcl) const;
         bool isNoMask(const G4_Declare* dcl, unsigned size) const;
@@ -324,9 +323,12 @@ namespace vISA
         void addSIMDIntfForRetDclares(G4_Declare* newDcl);
 
     public:
-        Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g);
+        Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange** const& ranges, GlobalRA& g);
+        ~Augmentation();
 
         void augmentIntfGraph();
+
+        const std::vector<G4_Declare*>& getSortedLiveIntervals() const { return sortedIntervals; }
     };
 
     class Interference
@@ -349,6 +351,7 @@ namespace vISA
         const unsigned splitNum;
         unsigned* matrix = nullptr;
         const LivenessAnalysis* const liveAnalysis;
+        Augmentation aug;
 
         std::vector<std::vector<unsigned>> sparseIntf;
 
@@ -506,6 +509,8 @@ namespace vISA
         bool linearScanVerify() const;
 
         bool isStrongEdgeBetween(const G4_Declare*, const G4_Declare*) const;
+
+        const Augmentation& getAugmentation() const { return aug; }
     };
 
     // Class to compute reg chart dump and dump it to ostream.

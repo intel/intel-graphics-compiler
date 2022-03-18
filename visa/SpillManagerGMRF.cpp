@@ -437,6 +437,46 @@ bool SpillManagerGRF::spillMemLifetimeInterfere(
     }
 }
 
+void SpillManagerGRF::getOverlappingIntervals(G4_Declare* dcl, std::vector<G4_Declare*>& intervals) const
+{
+    auto& allIntervals = spillingIntervals;
+    auto dclStart = gra.getStartInterval(dcl);
+    auto dclEnd = gra.getEndInterval(dcl);
+    auto dclMask = gra.getAugmentationMask(dcl);
+
+    // non-default variables have all interferences marked in
+    // interferences graph
+    if (dclMask == AugmentationMasks::NonDefault)
+        return;
+
+    for (auto otherDcl : allIntervals)
+    {
+        if (otherDcl == dcl)
+            continue;
+
+        auto start = gra.getStartInterval(otherDcl);
+        auto end = gra.getEndInterval(otherDcl);
+
+        // First overlap not yet seen
+        if (end->getLexicalId() < dclStart->getLexicalId())
+            continue;
+
+        // allIntervals are sorted on start. All overlapping
+        // intervals are guaranteed to be visited when
+        // current interval start is beyond end of dcl.
+        if (start->getLexicalId() > dclEnd->getLexicalId())
+            return;
+
+        // end lexical id >= dclStart lexical id
+        // add interval to list only if it is has same aug mask
+        // because overlapping intervals with different masks are already
+        // marked in intf graph.
+        if (start->getLexicalId() <= dclEnd->getLexicalId() &&
+            dclMask == gra.getAugmentationMask(otherDcl))
+            intervals.push_back(otherDcl);
+    }
+}
+
 // Calculate the spill memory displacement for the regvar.
 unsigned SpillManagerGRF::calculateSpillDisp(G4_RegVar *   regVar) const
 {
@@ -462,7 +502,19 @@ unsigned SpillManagerGRF::calculateSpillDisp(G4_RegVar *   regVar) const
             continue;
         locList.push_back(lrEdge);
     }
+
+    std::vector<G4_Declare*> overlappingDcls;
+    getOverlappingIntervals(regVar->getDeclare()->getRootDeclare(), overlappingDcls);
+    for (auto overlap : overlappingDcls)
+    {
+        auto lrEdge = overlap->getRegVar();
+        if (lrEdge->getDisp() == UINT_MAX)
+            continue;
+        locList.push_back(lrEdge);
+    }
+
     locList.sort([](G4_RegVar* v1, G4_RegVar* v2) { return v1->getDisp() < v2->getDisp(); });
+    locList.unique();
 
     // Find a spill slot for lRange within the locList.
     // we always start searching from nextSpillOffset_ to facilitate intra-iteration reuse.
@@ -4466,6 +4518,17 @@ bool SpillManagerGRF::insertSpillFillCode(
         else
         {
             lr->getVar()->getDeclare()->setSpillFlag();
+        }
+    }
+
+    if (doSpillSpaceCompression)
+    {
+        // cache spilling intervals in sorted order so we can use these
+        // for spill compression.
+        for (auto dcl : spillIntf_->getAugmentation().getSortedLiveIntervals())
+        {
+            if (dcl->isSpilled())
+                spillingIntervals.push_back(dcl);
         }
     }
 

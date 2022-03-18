@@ -611,6 +611,8 @@ private:
         }
     }
 
+    void getOverlappingIntervals(G4_Declare* dcl, std::vector<G4_Declare*>& intervals) const;
+
     // Data
     GlobalRA&                gra;
     IR_Builder *             builder_;
@@ -663,6 +665,9 @@ private:
     std::unordered_map<G4_Declare*, G4_Imm*> scalarImmSpill;
 
     VarReferences refs;
+
+    // sorted list of all spilling intervals
+    std::vector<G4_Declare*> spillingIntervals;
 
     // analysis pass to assist in spill/fill code gen
     // currently it identifies scalar imm variables that should be re-mat

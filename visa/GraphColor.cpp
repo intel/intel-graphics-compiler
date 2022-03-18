@@ -53,7 +53,8 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 Interference::Interference(const LivenessAnalysis* l, LiveRange** const & lr, unsigned n, unsigned ns, unsigned nm,
     GlobalRA& g) : gra(g), kernel(g.kernel), lrs(lr),
     builder(*g.kernel.fg.builder), maxId(n), splitStartId(ns), splitNum(nm),
-    liveAnalysis(l), rowSize(maxId / BITS_DWORD + 1)
+    liveAnalysis(l), rowSize(maxId / BITS_DWORD + 1),
+    aug(g.kernel, *this, *l, lr, g)
 {
 }
 
@@ -2714,7 +2715,6 @@ void Interference::computeInterference()
     }
 
     // Augment interference graph to accomodate non-default masks
-    Augmentation aug(kernel, *this, *liveAnalysis, lrs, gra);
     aug.augmentIntfGraph();
 
     generateSparseIntfGraph();
@@ -2933,7 +2933,7 @@ void GlobalRA::getBankAlignment(LiveRange* lr, BankAlign &align)
     }
 }
 
-Augmentation::Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange* const ranges[], GlobalRA& g) :
+Augmentation::Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis& l, LiveRange** const& ranges, GlobalRA& g) :
     kernel(k), intf(i), gra(g), liveAnalysis(l), lrs(ranges), fcallRetMap(g.fcallRetMap), m(kernel.fg.mem)
 {
 }
@@ -4234,6 +4234,19 @@ void Augmentation::buildLiveIntervals()
 
                 updateEndInterval(defdcl, inst);
             }
+            else if (liveAnalysis.livenessClass(G4_GRF) &&
+                dst &&
+                dst->isIndirect())
+            {
+                const REGVAR_VECTOR& pointsToSet = liveAnalysis.getPointsToAnalysis().getAllInPointsToOrIndrUse(dst, curBB);
+                for (auto pointsToVar : pointsToSet)
+                {
+                    if (pointsToVar.var->isRegAllocPartaker())
+                    {
+                        updateStartInterval(pointsToVar.var->getDeclare()->getRootDeclare(), inst);
+                    }
+                }
+            }
 
             if (liveAnalysis.livenessClass(G4_FLAG))
             {
@@ -4454,7 +4467,7 @@ void Augmentation::buildLiveIntervals()
 #endif
 }
 
-void Augmentation::clearIntervalInfo()
+Augmentation::~Augmentation()
 {
     // Clear out calculated information so that subsequent RA
     // iterations dont have stale information
@@ -5400,10 +5413,6 @@ void Augmentation::augmentIntfGraph()
             }
             gra.updateSubRegAlignment(kernel.getGRFAlign());
         }
-
-        // Clear information calculated in this iteration of RA so
-        // a later RA iteration does not use stale information
-        clearIntervalInfo();
     }
 }
 
