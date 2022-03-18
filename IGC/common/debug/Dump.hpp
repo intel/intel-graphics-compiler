@@ -46,6 +46,7 @@ namespace IGC
 class CShader;
 namespace Debug
 {
+std::string GetShaderTypeAcronym(ShaderType shaderType);
 
 /*************************************************************************************************\
  *  Generic

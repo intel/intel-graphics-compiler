@@ -47,6 +47,33 @@ namespace Debug
 char ModuleFlushDumpPass::ID = 0;
 char FunctionFlushDumpPass::ID = 0;
 
+std::string GetShaderTypeAcronym(ShaderType shaderType)
+{
+    switch (shaderType)
+    {
+    case ShaderType::OPENCL_SHADER:
+        return "OCL";
+    case ShaderType::PIXEL_SHADER:
+        return "PS";
+    case ShaderType::DOMAIN_SHADER:
+        return "DS";
+    case ShaderType::HULL_SHADER:
+        return "HS";
+    case ShaderType::VERTEX_SHADER:
+        return "VS";
+    case ShaderType::GEOMETRY_SHADER:
+        return "GS";
+    case ShaderType::COMPUTE_SHADER:
+        return "CS"; break;
+    case ShaderType::RAYTRACING_SHADER:
+        return "RT"; break;
+    case ShaderType::UNKNOWN:
+    default:
+        IGC_ASSERT_MESSAGE(0, "Unknown Shader Type");
+        return "UNKNOWN";
+    }
+}
+
 /*************************************************************************************************\
  *  Generic
  */
