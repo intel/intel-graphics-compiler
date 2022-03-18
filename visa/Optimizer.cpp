@@ -1386,6 +1386,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(preRA_HWWorkaround,      vISA_EnableAlways,            TimerID::MISC_OPTS);
     INITIALIZE_PASS(regAlloc,                vISA_EnableAlways,            TimerID::TOTAL_RA);
     INITIALIZE_PASS(removeLifetimeOps,       vISA_EnableAlways,            TimerID::MISC_OPTS);
+    INITIALIZE_PASS(postRA_HWWorkaround,     vISA_EnableAlways,            TimerID::MISC_OPTS);
     INITIALIZE_PASS(countBankConflicts,      vISA_OptReport,               TimerID::MISC_OPTS);
     INITIALIZE_PASS(removeRedundMov,         vISA_EnableAlways,            TimerID::MISC_OPTS);
     INITIALIZE_PASS(removeEmptyBlocks,       vISA_EnableAlways,            TimerID::MISC_OPTS);
@@ -1930,7 +1931,7 @@ int Optimizer::optimization()
     // PreRA scheduling
     runPass(PI_preRA_Schedule);
 
-    // HW workaround before RA (assume no pseudo inst)
+    // HW workaround before RA
     runPass(PI_preRA_HWWorkaround);
 
     if (builder.enableACCBeforRA())
@@ -1950,6 +1951,9 @@ int Optimizer::optimization()
     }
 
     runPass(PI_removeLifetimeOps);
+
+    // HW workaround after RA
+    runPass(PI_postRA_HWWorkaround);
 
     runPass(PI_countBankConflicts);
 
@@ -7401,16 +7405,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // HW WAs that are done before RA.
     void Optimizer::preRA_HWWorkaround()
     {
-        // -forceNoMaskWA : to force running this WA pass on platform other than TGLLP.
-        // noMaskWA:  only apply on TGLLP
-        //   bit[1:0]:  0 - off
-        //              1 - on, replacing nomask in any divergent BB (conservative)
-        //              2 - on, replacing nomask in nested divergent BB (aggressive)
-        //              3 - not used, will behave the same as 2
-        //     bit[2]:  0 - optimized. "emask flag" is created once per each BB
-        //              1 - simple insertion of "emask flag". A new flag is created
-        //                  each time it is needed, that is, created per each inst.
-        //  (See comments for more details at doNoMaskWA().
         if (builder.useNewNoMaskWA())
         {
             if (builder.hasFusedEUNoMaskWA())
@@ -7436,6 +7430,35 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         insertFenceAtEntry();
 
         cloneSampleInst();
+    }
+
+    //
+    // HW WAs that are done right after RA.
+    //    Sometime, a WA needs both preRA and postRA WA and postRA needs info from preRA (NoMask WA).
+    //    If doing postWA in HWWorkaround,  some instructions, or even basic blocks (ifcvt), are removed,
+    //    which could interfere information passing from preRA to postRA. The loss of such the interference
+    //    can cause postRA WA to fail.  For this purpose, a postRA_HWWorkaround is added. This also means
+    //    that BBs and insts between preRA pass and postRA pass remain undeleted (is it too strong?).
+    //
+    //    Note that for those WAs that should be done after inst scheduling, they should go to
+    //    HWWorkaround, not here, in order to prevent the scheduling from invalidating WAs.
+    //
+    void Optimizer::postRA_HWWorkaround()
+    {
+        if (builder.useNewNoMaskWA())
+        {
+            if (builder.hasFusedEUNoMaskWA())
+            {
+                newDoNoMaskWA_postRA();
+            }
+        }
+        else
+        {
+            if (builder.hasFusedEUNoMaskWA())
+            {
+                doNoMaskWA_postRA();
+            }
+        }
     }
 
     G4_INST* Optimizer::evenlySplitDPASInst(INST_LIST_ITER iter, G4_BB* bb)
@@ -7706,21 +7729,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // some workaround for HW restrictions.  We apply them here so as not to affect optimizations, RA, and scheduling
     void Optimizer::HWWorkaround()
     {
-        if (builder.useNewNoMaskWA())
-        {
-            if (builder.hasFusedEUNoMaskWA())
-            {
-                newDoNoMaskWA_postRA();
-            }
-        }
-        else
-        {
-            if (builder.hasFusedEUNoMaskWA())
-            {
-                doNoMaskWA_postRA();
-            }
-        }
-
         // Ensure the first instruction of a stack function has switch option.
         if (fg.getIsStackCallFunc() &&
             VISA_WA_CHECK(builder.getPWaTable(), WaThreadSwitchAfterCall))
@@ -11044,10 +11052,6 @@ void Optimizer::lowerMadSequence()
 
 void Optimizer::ifCvt()
 {
-    // New NoMask WA requires the BB not merged. Conservatively turn ifcvt off.
-    if (builder.useNewNoMaskWA() && builder.hasFusedEUNoMaskWA())
-        return;
-
     runIfCvt(fg);
 }
 

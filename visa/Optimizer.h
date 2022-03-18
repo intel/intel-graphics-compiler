@@ -152,6 +152,7 @@ class Optimizer
     bool foldCmpToCondMod(G4_BB* BB, INST_LIST_ITER& iter);
     void HWWorkaround();
     void preRA_HWWorkaround();
+    void postRA_HWWorkaround();
     G4_INST* evenlySplitDPASInst(INST_LIST_ITER iter, G4_BB* bb);
     bool hasDPASSourceTwoReuse(DPASSrc2RSCache* src2GRFCache, G4_INST* inst);
     void DPASWA(G4_BB* bb, INST_LIST_ITER ii, DPASSrc2RSCache* src2GRFCache);
@@ -355,6 +356,7 @@ public:
         PI_optimizeLogicOperation,
         PI_HWConformityChk,            // always
         PI_preRA_HWWorkaround,         // always, each WA under specific control
+        PI_postRA_HWWorkaround,        // always, each WA under specific control
         PI_preRA_Schedule,
         PI_regAlloc,                   // always
         PI_removeLifetimeOps,          // always
