@@ -161,33 +161,13 @@ namespace IGC
             m_walkOrder = WO_YXZ;
         }
 
-        uint UNDEF = 999;
-        uint order0 = UNDEF;
-        uint order1 = UNDEF;
-        if (m_ThreadIDLayout == ThreadIDLayout::TileY) {
-            IGC_ASSERT(is_pow2_y);
-            order0 = 1;
-            order1 = (is_pow2_x ? 0 : (is_pow2_z ? 2 : UNDEF));
-        }else {
-            //below is from HAS p-code except tileY
-            //try to find walk_order so that HW can generate LID
-            if (is_pow2_x) {
-                // (pow2,pow2,z) or (pow2,y,pow2) or illegal
-                order0 = 0;
-                order1 = (is_pow2_y ? 1 : (is_pow2_z ? 2 : UNDEF));
-            }else if (is_pow2_y) {
-                // (x,pow2,pow2) or illegal
-                order0 = 1;
-                order1 = (is_pow2_z ? 2 : UNDEF);
-            }
-        }
+        auto order = selectBestWalkOrder(
+            m_ThreadIDLayout, is_pow2_x, is_pow2_y, is_pow2_z);
 
-        if (order1 != UNDEF) {
-            // select walkorder
-            m_walkOrder = getWalkOrder(order0, order1);
+        if (order) {
+            m_walkOrder = *order;
             m_enableHWGenerateLID = true;
-
-        }else {
+        } else {
             // Is 2D or 3D dispatch and isnt pow2, so the HW doesn't support it
             m_enableHWGenerateLID = false;
             m_ThreadIDLayout = ThreadIDLayout::X;
@@ -195,6 +175,84 @@ namespace IGC
             return;
         }
     }
+
+    Optional<CComputeShaderBase::WALK_ORDER>
+    CComputeShaderBase::checkLegalWalkOrder(
+        const std::array<uint32_t, 3>& Dims,
+        const WorkGroupWalkOrderMD& WO)
+    {
+        auto is_pow2 = [](uint32_t dim) {
+            return iSTD::IsPowerOfTwo(dim);
+        };
+
+        const int walkorder_x = WO.dim0;
+        const int walkorder_y = WO.dim1;
+        const int walkorder_z = WO.dim2;
+
+        const uint32_t dim_x = Dims[0];
+        const uint32_t dim_y = Dims[1];
+        const uint32_t dim_z = Dims[2];
+
+        uint order0 = (walkorder_x == 0) ? 0 : (walkorder_y == 0) ? 1 : 2;
+        uint order1 = (walkorder_x == 1) ? 0 : (walkorder_y == 1) ? 1 : 2;
+
+        if (order0 != order1
+            && ((order0 == 0 && is_pow2(dim_x))
+                || (order0 == 1 && is_pow2(dim_y))
+                || (order0 == 2 && is_pow2(dim_z)))
+            && ((order1 == 0 && is_pow2(dim_x))
+                || (order1 == 1 && is_pow2(dim_y))
+                || (order1 == 2 && is_pow2(dim_z)))
+            )
+        {
+            // Legal walk order for HW auto-gen
+            return getWalkOrder(order0, order1);
+        }
+
+        return None;
+    }
+
+    Optional<CComputeShaderBase::WALK_ORDER>
+    CComputeShaderBase::selectBestWalkOrder(
+        ThreadIDLayout Layout,
+        bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
+    {
+        constexpr uint UNDEF = std::numeric_limits<uint>::max();
+        uint order0 = UNDEF;
+        uint order1 = UNDEF;
+        if (Layout == ThreadIDLayout::TileY)
+        {
+            IGC_ASSERT(is_pow2_y);
+            order0 = 1;
+            order1 = (is_pow2_x ? 0 : (is_pow2_z ? 2 : UNDEF));
+        }
+        else
+        {
+            //below is from HAS p-code except tileY
+            //try to find walk_order so that HW can generate LID
+            if (is_pow2_x)
+            {
+                // (pow2,pow2,z) or (pow2,y,pow2) or illegal
+                order0 = 0;
+                order1 = (is_pow2_y ? 1 : (is_pow2_z ? 2 : UNDEF));
+            }
+            else if (is_pow2_y)
+            {
+                // (x,pow2,pow2) or illegal
+                order0 = 1;
+                order1 = (is_pow2_z ? 2 : UNDEF);
+            }
+        }
+
+        if (order1 != UNDEF)
+        {
+            // select walkorder
+            return getWalkOrder(order0, order1);
+        }
+
+        return None;
+    }
+
     //order0: the internal walk dim
     //order1: the intermediate walk dim
     //e.g.: 1, 0 means, YXZ walkorder
@@ -209,8 +267,8 @@ namespace IGC
         case getWalkOrderValue(0, 1): return WALK_ORDER::WO_XYZ; //012
         case getWalkOrderValue(0, 2): return WALK_ORDER::WO_XZY; //021
         case getWalkOrderValue(1, 0): return WALK_ORDER::WO_YXZ; //102
-        case getWalkOrderValue(1, 2): return WALK_ORDER::WO_YZX; //201
-        case getWalkOrderValue(2, 0): return WALK_ORDER::WO_ZXY; //120
+        case getWalkOrderValue(1, 2): return WALK_ORDER::WO_YZX; //120
+        case getWalkOrderValue(2, 0): return WALK_ORDER::WO_ZXY; //201
         case getWalkOrderValue(2, 1): return WALK_ORDER::WO_ZYX; //210
         default:
             IGC_ASSERT_MESSAGE(0, "unhandled case!");

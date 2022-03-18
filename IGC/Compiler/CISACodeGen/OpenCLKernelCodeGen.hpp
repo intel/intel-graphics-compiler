@@ -126,7 +126,7 @@ namespace IGC
 
         void ClearKernelInfo();
     private:
-        bool hasWorkGroupWalkOrder();
+        WorkGroupWalkOrderMD getWorkGroupWalkOrder();
         void tryHWGenerateLocalIDs();
     };
 
