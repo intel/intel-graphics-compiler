@@ -25,7 +25,6 @@ namespace IGC
 namespace vISA
 {
     struct ZESymEntry;
-    struct ZEFuncAttribEntry;
 }
 
 namespace iOpenCL
@@ -111,14 +110,9 @@ private:
         const std::string& kernelName, const char* kernelBinary,
         unsigned int kernelBinarySize);
 
-    /// add kernel execution environment
+    /// add execution environment
     void addKernelExecEnv(const IGC::SOpenCLKernelInfo& annotations,
                           zebin::zeInfoKernel& zeinfoKernel);
-
-    /// add execution environment for external function
-    void addFunctionExecEnv(const IGC::SOpenCLKernelInfo& annotations,
-                            const vISA::ZEFuncAttribEntry& zeFuncAttr,
-                            zebin::zeInfoFunction& zeFunction);
 
     /// add experimental properties
     void addKernelExperimentalProperties(const IGC::SOpenCLKernelInfo& annotations,
@@ -165,9 +159,6 @@ private:
     /// Add everything used to be in patch token iOpenCL::PATCH_TOKEN_GTPIN_INFO
     /// into gtpin_info section
     void addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations);
-
-    /// Add function attributes for external functions.
-    void addFunctionAttrs(const IGC::SOpenCLKernelInfo& annotations);
 
     /// ------------ Verifier sub-functions ------------
     bool hasSystemKernel(
