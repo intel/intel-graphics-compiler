@@ -373,6 +373,11 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createGenXAggregatePseudoLoweringPass());
 
   /// .. include:: GenXGEPLowering.cpp
+  /// GenXGEPLowering must be run before GenXThreadPrivateMemory and cannot be
+  /// run earlier as GenXAggregatePseudoLowering may create GEPs.
+  /// TODO: We run GenXGEPLowering twice: before GenXThreadPrivateMemory and
+  /// before GenXLowering. It seems that after GenXThreadPrivateMemory removal
+  /// we can remove this run of GenXGEPLowering.
   vc::addPass(PM, createGenXGEPLoweringPass());
   /// .. include:: GenXLoadStoreLowering.cpp
   vc::addPass(PM, createGenXLoadStoreLoweringPass());
