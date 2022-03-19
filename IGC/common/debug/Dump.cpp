@@ -229,19 +229,7 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
     if(m_type.hasValue())
     {
         ss << (underscore ? "_" : "");
-        switch(m_type.getValue())
-        {
-        case ShaderType::OPENCL_SHADER: ss << "OCL"; break;
-        case ShaderType::PIXEL_SHADER: ss << "PS"; break;
-        case ShaderType::DOMAIN_SHADER: ss << "DS"; break;
-        case ShaderType::HULL_SHADER: ss << "HS"; break;
-        case ShaderType::VERTEX_SHADER: ss << "VS"; break;
-        case ShaderType::GEOMETRY_SHADER: ss << "GS"; break;
-        case ShaderType::COMPUTE_SHADER: ss << "CS"; break;
-        case ShaderType::RAYTRACING_SHADER: ss << "RT"; break;
-        case ShaderType::UNKNOWN:
-        default: IGC_ASSERT_MESSAGE(0, "Unknown Shader Type"); break;
-        }
+        ss << GetShaderTypeAcronym(m_type.getValue());
         underscore = true;
     }
     if(m_psPhase.hasValue())
