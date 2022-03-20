@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "inc/common/igfxfmid.h"
 #include "Compiler/compiler_caps.h"
 #include "Compiler/igc_workaround.h"
+#include "Compiler/API/ShaderTypesEnum.h"
 #include "common/Types.hpp"
 #include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"
