@@ -23,10 +23,19 @@ long CIF_GET_INTERFACE_CLASS(IgcBuiltins, 1)::DefaultGroupJointSortMemoryRequire
     const size_t bits_per_pass = 4;
 
     if (scope == GroupSortMemoryScope::workGroup) {
-        return totalItems * (keyTypeSizeInBytes + valueTypeSizeInBytes) +
+        long radixSortMemory =
+            totalItems * (keyTypeSizeInBytes + valueTypeSizeInBytes) +
             rangeSize * (1 << bits_per_pass) * sizeof(uint32_t) +
             sizeof(uint32_t) +
             (valueTypeSizeInBytes > 0 ? sizeof(uint32_t) : 0);
+        long mergeSortMemory =
+            totalItems * (keyTypeSizeInBytes + valueTypeSizeInBytes) +
+            sizeof(uint32_t) +
+            (valueTypeSizeInBytes > 0 ? sizeof(uint32_t) : 0);
+        long itemsPerWorkItem = (totalItems - 1) / rangeSize + 1;
+        bool is_radix = (itemsPerWorkItem > 8 &&
+            itemsPerWorkItem >= keyTypeSizeInBytes * 8);
+        return is_radix ? radixSortMemory : mergeSortMemory;
     }
     else {
         return -1;
@@ -42,10 +51,17 @@ long CIF_GET_INTERFACE_CLASS(IgcBuiltins, 1)::DefaultGroupPrivateSortMemoryRequi
     const size_t bits_per_pass = 4;
 
     if (scope == GroupSortMemoryScope::workGroup) {
-        return rangeSize * itemsPerWorkItem * (keyTypeSizeInBytes + valueTypeSizeInBytes) +
+        long radixSortMemory =
+            rangeSize * itemsPerWorkItem * (keyTypeSizeInBytes + valueTypeSizeInBytes) +
             rangeSize * (1 << bits_per_pass) * sizeof(uint32_t) +
             sizeof(uint32_t) +
             (valueTypeSizeInBytes > 0 ? sizeof(uint32_t) : 0);
+        long mergeSortMemory =
+            2 * rangeSize * itemsPerWorkItem * (keyTypeSizeInBytes + valueTypeSizeInBytes)
+            + (valueTypeSizeInBytes > 0 ? 4 : 1) * sizeof(uint32_t);
+        bool is_radix = (itemsPerWorkItem > 8 &&
+            itemsPerWorkItem >= keyTypeSizeInBytes * 8);
+        return is_radix ? radixSortMemory : mergeSortMemory;
     }
     else if (scope == GroupSortMemoryScope::subGroup) {
         if ((itemsPerWorkItem > 1) ||
@@ -64,10 +80,6 @@ bool CIF_GET_INTERFACE_CLASS(IgcBuiltins, 1)::DefaultGroupSortSupported(GroupSor
                                                                         bool isKeyValue,
                                                                         bool isJointSort) const
 {
-    if (scope == GroupSortMemoryScope::subGroup &&
-            keyType == GroupSortKeyType::half_key_type) {
-        return false;
-    }
     return true;
 }
 

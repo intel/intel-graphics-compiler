@@ -302,7 +302,7 @@ DEFN_RADIX_WORK_GROUP_BUCKET_VALUE(ulong)
 
 
 /* Count step is common for key and key-value variants */
-#define DEFN_RADIX_WORK_GROUP_SORT_STEPS(type, ordered_type)                   \
+#define DEFN_DEFAULT_WORK_GROUP_SORT_STEPS(type, ordered_type)                 \
 void OVERLOADABLE __builtin_radix_sort_count(                                  \
     bool is_comp_asc, bool is_temp_local_mem, uint items_per_work_item,        \
     uint radix_iter, uint n, uint start, type* keys_input, uint* scan_memory)  \
@@ -376,10 +376,187 @@ void OVERLOADABLE __builtin_radix_sort_reorder(                                \
             keys_output[new_offset_idx] = keys_input[val_idx];                 \
         }                                                                      \
     }                                                                          \
+}                                                                              \
+                                                                               \
+/* Merge sort steps */                                                         \
+uint OVERLOADABLE __builtin_merge_lower_bound(                                 \
+    type* in, uint first, uint last, type value, bool is_asc)                  \
+{                                                                              \
+    uint n = last - first;                                                     \
+    uint cur = n;                                                              \
+    uint it;                                                                   \
+    while (n > 0) {                                                            \
+        it = first;                                                            \
+        cur = n / 2;                                                           \
+        it += cur;                                                             \
+        if (is_asc) {                                                          \
+            if (in[it] < value)                                                \
+                n -= cur + 1, first = ++it;                                    \
+            else                                                               \
+                n = cur;                                                       \
+        } else {                                                               \
+            if (in[it] > value)                                                \
+                n -= cur + 1, first = ++it;                                    \
+            else                                                               \
+                n = cur;                                                       \
+        }                                                                      \
+    }                                                                          \
+    return first;                                                              \
+}                                                                              \
+                                                                               \
+uint OVERLOADABLE __builtin_merge_upper_bound(                                 \
+    type* in, uint first, uint last, type value, bool is_asc)                  \
+{                                                                              \
+    uint n = last - first;                                                     \
+    uint cur = n;                                                              \
+    uint it;                                                                   \
+    while (n > 0) {                                                            \
+        it = first;                                                            \
+        cur = n / 2;                                                           \
+        it += cur;                                                             \
+        if (is_asc) {                                                          \
+            if (in[it] > value)                                                \
+                n = cur;                                                       \
+            else                                                               \
+                n -= cur + 1, first = ++it;                                    \
+        } else {                                                               \
+            if (in[it] < value)                                                \
+                n = cur;                                                       \
+            else                                                               \
+                n -= cur + 1, first = ++it;                                    \
+        }                                                                      \
+    }                                                                          \
+    return first;                                                              \
+}                                                                              \
+                                                                               \
+void OVERLOADABLE __builtin_swap(type* in, const uint i1, const uint i2)       \
+{                                                                              \
+    type tmp = in[i1];                                                         \
+    in[i1] = in[i2];                                                           \
+    in[i2] = tmp;                                                              \
+}                                                                              \
+                                                                               \
+void OVERLOADABLE __builtin_bubble_sort(                                       \
+    type* first, const uint begin, const uint end, bool is_asc)                \
+{                                                                              \
+    for (uint i = begin; i < end; ++i) {                                       \
+        for (uint idx = i + 1; idx < end; ++idx) {                             \
+            if (is_asc) {                                                      \
+                if(first[idx] < first[i]) {                                    \
+                    __builtin_swap(first, idx, i);                             \
+                }                                                              \
+            } else {                                                           \
+                if(first[idx] > first[i]) {                                    \
+                    __builtin_swap(first, idx, i);                             \
+                }                                                              \
+            }                                                                  \
+        }                                                                      \
+    }                                                                          \
+}                                                                              \
+                                                                               \
+void OVERLOADABLE __builtin_merge_step(const uint offset, type* keys_input,    \
+    type* keys_output, const uint start_1, const uint end_1, const uint end_2, \
+    const uint start_out, const uint chunk, bool is_asc)                       \
+{                                                                              \
+    const uint start_2 = end_1;                                                \
+    /* Borders of the sequences to merge within this call */                   \
+    const uint local_start_1 = min(offset + start_1, end_1);                   \
+    const uint local_end_1 = min(local_start_1 + chunk, end_1);                \
+    const uint local_start_2 = min(offset + start_2, end_2);                   \
+    const uint local_end_2 = min(local_start_2 + chunk, end_2);                \
+                                                                               \
+    const uint local_size_1 = local_end_1 - local_start_1;                     \
+    const uint local_size_2 = local_end_2 - local_start_2;                     \
+                                                                               \
+    /* Process 1st sequence */                                                 \
+    if (local_start_1 < local_end_1)                                           \
+    {                                                                          \
+        /* Reduce the range for searching within the 2nd sequence              \
+           and handle bound items */                                           \
+        /* find left border in 2nd sequence */                                 \
+        const type local_l_item_1 = keys_input[local_start_1];                 \
+        uint l_search_bound_2 = __builtin_merge_lower_bound(                   \
+            keys_input, start_2, end_2, local_l_item_1, is_asc);               \
+        const uint l_shift_1 = local_start_1 - start_1;                        \
+        const uint l_shift_2 = l_search_bound_2 - start_2;                     \
+                                                                               \
+        keys_output[start_out + l_shift_1 + l_shift_2] = local_l_item_1;       \
+                                                                               \
+        /* find right border in 2nd sequence */                                \
+        uint r_search_bound_2;                                                 \
+        if (local_size_1 > 1)                                                  \
+        {                                                                      \
+            const type local_r_item_1 = keys_input[local_end_1 - 1];           \
+            r_search_bound_2 = __builtin_merge_lower_bound(                    \
+                keys_input, l_search_bound_2, end_2, local_r_item_1, is_asc);  \
+            const uint r_shift_1 = local_end_1 - 1 - start_1;                  \
+            const uint r_shift_2 = r_search_bound_2 - start_2;                 \
+                                                                               \
+            keys_output[start_out + r_shift_1 + r_shift_2] = local_r_item_1;   \
+        }                                                                      \
+                                                                               \
+        /* Handle intermediate items */                                        \
+        for (uint idx = local_start_1 + 1; idx < local_end_1 - 1; ++idx)       \
+        {                                                                      \
+            const type intermediate_item_1 = keys_input[idx];                  \
+            /* we shouldn't seek in whole 2nd sequence.                        \
+               Just for the part where the 1st sequence should be */           \
+            l_search_bound_2 = __builtin_merge_lower_bound(                    \
+                keys_input, l_search_bound_2, r_search_bound_2,                \
+                intermediate_item_1, is_asc);                                  \
+            const uint shift_1 = idx - start_1;                                \
+            const uint shift_2 = l_search_bound_2 - start_2;                   \
+                                                                               \
+            keys_output[start_out + shift_1 + shift_2] = intermediate_item_1;  \
+        }                                                                      \
+    }                                                                          \
+    /* Process 2nd sequence */                                                 \
+    if (local_start_2 < local_end_2)                                           \
+    {                                                                          \
+        /* Reduce the range for searching within the 1st sequence              \
+           and handle bound items */                                           \
+        /* find left border in 1st sequence */                                 \
+        const type local_l_item_2 = keys_input[local_start_2];                 \
+        uint l_search_bound_1 = __builtin_merge_upper_bound(                   \
+            keys_input, start_1, end_1, local_l_item_2, is_asc);               \
+        const uint l_shift_1 = l_search_bound_1 - start_1;                     \
+        const uint l_shift_2 = local_start_2 - start_2;                        \
+                                                                               \
+        keys_output[start_out + l_shift_1 + l_shift_2] = local_l_item_2;       \
+                                                                               \
+        uint r_search_bound_1;                                                 \
+        /* find right border in 1st sequence */                                \
+        if (local_size_2 > 1)                                                  \
+        {                                                                      \
+            const type local_r_item_2 = keys_input[local_end_2 - 1];           \
+            r_search_bound_1 = __builtin_merge_upper_bound(                    \
+                keys_input, l_search_bound_1, end_1, local_r_item_2, is_asc);  \
+            const uint r_shift_1 = r_search_bound_1 - start_1;                 \
+            const uint r_shift_2 = local_end_2 - 1 - start_2;                  \
+                                                                               \
+            keys_output[start_out + r_shift_1 + r_shift_2] = local_r_item_2;   \
+        }                                                                      \
+                                                                               \
+        /* Handle intermediate items */                                        \
+        for (uint idx = local_start_2 + 1; idx < local_end_2 - 1; ++idx)       \
+        {                                                                      \
+            const type intermediate_item_2 = keys_input[idx];                  \
+            /* we shouldn't seek in whole 1st sequence.                        \
+               Just for the part where the 2nd sequence should be */           \
+            l_search_bound_1 = __builtin_merge_upper_bound(                    \
+                keys_input, l_search_bound_1, r_search_bound_1,                \
+                intermediate_item_2, is_asc);                                  \
+            const uint shift_1 = l_search_bound_1 - start_1;                   \
+            const uint shift_2 = idx - start_2;                                \
+                                                                               \
+            keys_output[start_out + shift_1 + shift_2] = intermediate_item_2;  \
+        }                                                                      \
+    }                                                                          \
 }
 
+
 /* Key-value reorder step */
-#define DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type,       \
+#define DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type,             \
     values_type)                                                               \
 void OVERLOADABLE __builtin_radix_sort_reorder(                                \
     bool is_comp_asc, uint items_per_work_item, uint radix_iter, uint n,       \
@@ -415,24 +592,168 @@ void OVERLOADABLE __builtin_radix_sort_reorder(                                \
             values_output[new_offset_idx] = values_input[val_idx];             \
         }                                                                      \
     }                                                                          \
+}                                                                              \
+                                                                               \
+void OVERLOADABLE __builtin_swap(type* in_k, values_type* in_v,                \
+    const uint i1, const uint i2)                                              \
+{                                                                              \
+    type tmp = in_k[i1];                                                       \
+    in_k[i1] = in_k[i2];                                                       \
+    in_k[i2] = tmp;                                                            \
+                                                                               \
+    values_type tmpv = in_v[i1];                                               \
+    in_v[i1] = in_v[i2];                                                       \
+    in_v[i2] = tmpv;                                                           \
+}                                                                              \
+                                                                               \
+/* merge sort key-value steps */                                               \
+void OVERLOADABLE __builtin_bubble_sort(                                       \
+    type* first, values_type* values_first, const uint begin, const uint end,  \
+    bool is_asc)                                                               \
+{                                                                              \
+    for (uint i = begin; i < end; ++i) {                                       \
+        for (uint idx = i + 1; idx < end; ++idx) {                             \
+            if (is_asc) {                                                      \
+                if(first[idx] < first[i]) {                                    \
+                    __builtin_swap(first, values_first, idx, i);               \
+                }                                                              \
+            } else {                                                           \
+                if(first[idx] > first[i]) {                                    \
+                    __builtin_swap(first, values_first, idx, i);               \
+                }                                                              \
+            }                                                                  \
+        }                                                                      \
+    }                                                                          \
+}                                                                              \
+                                                                               \
+void OVERLOADABLE __builtin_merge_step(const uint offset, type* keys_input,    \
+    type* keys_output, values_type* values_input, values_type* values_output,  \
+    const uint start_1, const uint end_1, const uint end_2,                    \
+    const uint start_out, const uint chunk, bool is_asc)                       \
+{                                                                              \
+    const uint start_2 = end_1;                                                \
+    /* Borders of the sequences to merge within this call */                   \
+    const uint local_start_1 = min(offset + start_1, end_1);                   \
+    const uint local_end_1 = min(local_start_1 + chunk, end_1);                \
+    const uint local_start_2 = min(offset + start_2, end_2);                   \
+    const uint local_end_2 = min(local_start_2 + chunk, end_2);                \
+                                                                               \
+    const uint local_size_1 = local_end_1 - local_start_1;                     \
+    const uint local_size_2 = local_end_2 - local_start_2;                     \
+                                                                               \
+    /* Process 1st sequence */                                                 \
+    if (local_start_1 < local_end_1)                                           \
+    {                                                                          \
+        /* Reduce the range for searching within the 2nd sequence              \
+           and handle bound items */                                           \
+        /* find left border in 2nd sequence */                                 \
+        const type local_l_item_1 = keys_input[local_start_1];                 \
+        uint l_search_bound_2 = __builtin_merge_lower_bound(                   \
+            keys_input, start_2, end_2, local_l_item_1, is_asc);               \
+        const uint l_shift_1 = local_start_1 - start_1;                        \
+        const uint l_shift_2 = l_search_bound_2 - start_2;                     \
+                                                                               \
+        keys_output[start_out + l_shift_1 + l_shift_2] = local_l_item_1;       \
+        values_output[start_out + l_shift_1 + l_shift_2] =                     \
+            values_input[local_start_1];                                       \
+                                                                               \
+        /* find right border in 2nd sequence */                                \
+        uint r_search_bound_2;                                                 \
+        if (local_size_1 > 1)                                                  \
+        {                                                                      \
+            const type local_r_item_1 = keys_input[local_end_1 - 1];           \
+            r_search_bound_2 = __builtin_merge_lower_bound(                    \
+                keys_input, l_search_bound_2, end_2, local_r_item_1, is_asc);  \
+            const uint r_shift_1 = local_end_1 - 1 - start_1;                  \
+            const uint r_shift_2 = r_search_bound_2 - start_2;                 \
+                                                                               \
+            keys_output[start_out + r_shift_1 + r_shift_2] = local_r_item_1;   \
+            values_output[start_out + r_shift_1 + r_shift_2] =                 \
+                values_input[local_end_1 - 1];                                 \
+        }                                                                      \
+                                                                               \
+        /* Handle intermediate items */                                        \
+        for (uint idx = local_start_1 + 1; idx < local_end_1 - 1; ++idx)       \
+        {                                                                      \
+            const type intermediate_item_1 = keys_input[idx];                  \
+            /* we shouldn't seek in whole 2nd sequence.                        \
+               Just for the part where the 1st sequence should be */           \
+            l_search_bound_2 = __builtin_merge_lower_bound(                    \
+                keys_input, l_search_bound_2, r_search_bound_2,                \
+                intermediate_item_1, is_asc);                                  \
+            const uint shift_1 = idx - start_1;                                \
+            const uint shift_2 = l_search_bound_2 - start_2;                   \
+                                                                               \
+            keys_output[start_out + shift_1 + shift_2] = intermediate_item_1;  \
+            values_output[start_out + shift_1 + shift_2] =                     \
+                values_input[idx];                                             \
+        }                                                                      \
+    }                                                                          \
+    /* Process 2nd sequence */                                                 \
+    if (local_start_2 < local_end_2)                                           \
+    {                                                                          \
+        /* Reduce the range for searching within the 1st sequence              \
+           and handle bound items */                                           \
+        /* find left border in 1st sequence */                                 \
+        const type local_l_item_2 = keys_input[local_start_2];                 \
+        uint l_search_bound_1 = __builtin_merge_upper_bound(                   \
+            keys_input, start_1, end_1, local_l_item_2, is_asc);               \
+        const uint l_shift_1 = l_search_bound_1 - start_1;                     \
+        const uint l_shift_2 = local_start_2 - start_2;                        \
+                                                                               \
+        keys_output[start_out + l_shift_1 + l_shift_2] = local_l_item_2;       \
+        values_output[start_out + l_shift_1 + l_shift_2] =                     \
+                values_input[local_start_2];                                   \
+                                                                               \
+        uint r_search_bound_1;                                                 \
+        /* find right border in 1st sequence */                                \
+        if (local_size_2 > 1)                                                  \
+        {                                                                      \
+            const type local_r_item_2 = keys_input[local_end_2 - 1];           \
+            r_search_bound_1 = __builtin_merge_upper_bound(                    \
+                keys_input, l_search_bound_1, end_1, local_r_item_2, is_asc);  \
+            const uint r_shift_1 = r_search_bound_1 - start_1;                 \
+            const uint r_shift_2 = local_end_2 - 1 - start_2;                  \
+                                                                               \
+            keys_output[start_out + r_shift_1 + r_shift_2] = local_r_item_2;   \
+            values_output[start_out + r_shift_1 + r_shift_2] =                 \
+                values_input[local_end_2 - 1];                                 \
+        }                                                                      \
+                                                                               \
+        /* Handle intermediate items */                                        \
+        for (uint idx = local_start_2 + 1; idx < local_end_2 - 1; ++idx)       \
+        {                                                                      \
+            const type intermediate_item_2 = keys_input[idx];                  \
+            /* we shouldn't seek in whole 1st sequence.                        \
+               Just for the part where the 2nd sequence should be */           \
+            l_search_bound_1 = __builtin_merge_upper_bound(                    \
+                keys_input, l_search_bound_1, r_search_bound_1,                \
+                intermediate_item_2, is_asc);                                  \
+            const uint shift_1 = l_search_bound_1 - start_1;                   \
+            const uint shift_2 = idx - start_2;                                \
+                                                                               \
+            keys_output[start_out + shift_1 + shift_2] = intermediate_item_2;  \
+            values_output[start_out + shift_1 + shift_2] =                     \
+                values_input[idx];                                             \
+        }                                                                      \
+    }                                                                          \
 }
-
 
 #define DEFN_DEFAULT_WORK_GROUP_SORT_STEPS_ALL(type, ordered_type)             \
                                                                                \
-    DEFN_RADIX_WORK_GROUP_SORT_STEPS(type, ordered_type)                       \
+    DEFN_DEFAULT_WORK_GROUP_SORT_STEPS(type, ordered_type)                       \
                                                                                \
-    DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, uchar)    \
-    DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, ushort)   \
-    DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, uint)     \
-    DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, ulong)    \
+    DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, uchar)    \
+    DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, ushort)   \
+    DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, uint)     \
+    DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, ulong)    \
                                                                                \
-    DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, char)     \
-    DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, short)    \
-    DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, int)      \
-    DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, long)     \
+    DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, char)     \
+    DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, short)    \
+    DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, int)      \
+    DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, long)     \
                                                                                \
-    DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, float)    \
+    DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(type, ordered_type, float)    \
 
 /* All types, without half and double */
 DEFN_DEFAULT_WORK_GROUP_SORT_STEPS_ALL(uchar, uchar)
@@ -455,39 +776,39 @@ DEFN_DEFAULT_WORK_GROUP_SORT_STEPS_ALL(double, ulong)
 
 /* half and double separately */
 #if defined(cl_khr_fp16)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(uchar, uchar, half)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(ushort, ushort, half)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(uint, uint, half)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(ulong, ulong, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(uchar, uchar, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(ushort, ushort, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(uint, uint, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(ulong, ulong, half)
 
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(char, uchar, half)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(short, ushort, half)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(int, uint, half)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(long, ulong, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(char, uchar, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(short, ushort, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(int, uint, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(long, ulong, half)
 
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(half, ushort, half)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(float, uint, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(half, ushort, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(float, uint, half)
 #if defined(cl_khr_fp64)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(double, ulong, half)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(double, ulong, half)
 #endif  //cl_khr_fp64
 #endif  //cl_khr_fp16
 
 #if defined(cl_khr_fp64)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(uchar, uchar, double)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(ushort, ushort, double)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(uint, uint, double)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(ulong, ulong, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(uchar, uchar, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(ushort, ushort, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(uint, uint, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(ulong, ulong, double)
 
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(char, uchar, double)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(short, ushort, double)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(int, uint, double)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(long, ulong, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(char, uchar, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(short, ushort, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(int, uint, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(long, ulong, double)
 
 #if defined(cl_khr_fp16)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(half, ushort, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(half, ushort, double)
 #endif  //cl_khr_fp16
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(float, uint, double)
-DEFN_RADIX_WORK_GROUP_SORT_KEY_VALUE_REORDER(double, ulong, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(float, uint, double)
+DEFN_WORK_GROUP_SORT_KEY_VALUE_REORDER(double, ulong, double)
 #endif  //cl_khr_fp64
 
 
@@ -511,9 +832,8 @@ void __devicelib_default_work_group_private_sort_spread_##direction##_##type_abb
     DEFN_DEFAULT_WORK_GROUP_SORT_KEY_ONLY_BODY(                                \
         type, false, is_asc, true, sort_local_mem, temp_local_mem)
 
-
-/* Key-only work-group sort algorithm */
-#define DEFN_DEFAULT_WORK_GROUP_SORT_KEY_ONLY_BODY(                            \
+/* Key-only work-group sort algorithms */
+#define DEFN_DEFAULT_WORK_GROUP_RADIX_SORT_KEY_ONLY_BODY(                      \
     type, is_joint, is_asc, is_spread, sort_local_mem, temp_local_mem)         \
 {                                                                              \
     const uint local_size = get_local_size(0);                                 \
@@ -583,6 +903,130 @@ void __devicelib_default_work_group_private_sort_spread_##direction##_##type_abb
     }                                                                          \
 }
 
+#define DEFN_DEFAULT_WORK_GROUP_MERGE_SORT_KEY_ONLY_BODY(                      \
+    type, is_joint, is_asc, is_spread, sort_local_mem, temp_local_mem)         \
+{                                                                              \
+    const uint local_size = get_local_size(0);                                 \
+    const uint idx = get_local_id(0);                                          \
+                                                                               \
+    bool is_sort_local_mem = sort_local_mem;                                   \
+    bool is_temp_local_mem = temp_local_mem;                                   \
+                                                                               \
+    const uint items_per_work_item = is_joint ? (n - 1) / local_size + 1 : n;  \
+    const uint max_n = is_joint ? n : items_per_work_item * local_size;        \
+                                                                               \
+    type* keys_input = (type*) first;                                          \
+    type* temp = (type*) scratch;                                              \
+                                                                               \
+    if (is_joint) {                                                            \
+        /* first sort within work-item */                                      \
+        __builtin_bubble_sort(keys_input, idx * items_per_work_item,           \
+            min((idx + 1) * items_per_work_item, max_n), is_asc);              \
+        if (is_sort_local_mem)                                                 \
+            work_group_barrier(CLK_LOCAL_MEM_FENCE);                           \
+        else                                                                   \
+            work_group_barrier(CLK_GLOBAL_MEM_FENCE);                          \
+    }                                                                          \
+    else { /* private mem sort */                                              \
+        /* first sort private array within work-item */                        \
+        __builtin_bubble_sort(first, 0, items_per_work_item, is_asc);          \
+                                                                               \
+        /* copy items from private to temp memory */                           \
+        for(uint i = 0; i < items_per_work_item; ++i)                          \
+            temp[idx * items_per_work_item + i] = first[i];                    \
+        keys_input = (type*) scratch;                                          \
+        temp = &keys_input[local_size*items_per_work_item];                    \
+        is_sort_local_mem = is_temp_local_mem;                                 \
+        if (is_temp_local_mem)                                                 \
+            work_group_barrier(CLK_LOCAL_MEM_FENCE);                           \
+        else                                                                   \
+            work_group_barrier(CLK_GLOBAL_MEM_FENCE);                          \
+    }                                                                          \
+                                                                               \
+    uint sorted_size = 1;                                                      \
+    bool data_in_temp = false;                                                 \
+    while(sorted_size * items_per_work_item < max_n)                           \
+    {                                                                          \
+        const uint start_1 = min(                                              \
+            2 * sorted_size * items_per_work_item * (idx / sorted_size),       \
+            max_n);                                                            \
+        const uint end_1 = min(                                                \
+            start_1 + sorted_size * items_per_work_item, max_n);               \
+        const uint start_2 = end_1;                                            \
+        const uint end_2 = min(                                                \
+            start_2 + sorted_size * items_per_work_item, max_n);               \
+        const uint offset = items_per_work_item * (idx % sorted_size);         \
+                                                                               \
+        if (!data_in_temp) {                                                   \
+            __builtin_merge_step(                                              \
+                offset, keys_input, temp, start_1, end_1, end_2, start_1,      \
+                items_per_work_item, is_asc);                                  \
+            if (is_temp_local_mem)                                             \
+                work_group_barrier(CLK_LOCAL_MEM_FENCE);                       \
+            else                                                               \
+                work_group_barrier(CLK_GLOBAL_MEM_FENCE);                      \
+        }                                                                      \
+        else {                                                                 \
+            __builtin_merge_step(                                              \
+                offset, temp, keys_input, start_1, end_1,                      \
+                end_2, start_1, items_per_work_item, is_asc);                  \
+            if (is_sort_local_mem)                                             \
+                work_group_barrier(CLK_LOCAL_MEM_FENCE);                       \
+            else                                                               \
+                work_group_barrier(CLK_GLOBAL_MEM_FENCE);                      \
+        }                                                                      \
+                                                                               \
+        sorted_size *= 2;                                                      \
+        data_in_temp = !data_in_temp;                                          \
+    }                                                                          \
+                                                                               \
+    if (is_joint) {                                                            \
+        /* copy back only if data is in a temporary storage */                 \
+        if(data_in_temp) {                                                     \
+            for(uint i = 0; i < items_per_work_item; ++i) {                    \
+                if(idx * items_per_work_item + i < n) {                        \
+                    first[idx * items_per_work_item + i] =                     \
+                        temp[idx * items_per_work_item + i];                   \
+                }                                                              \
+            }                                                                  \
+            if (is_sort_local_mem)                                             \
+                work_group_barrier(CLK_LOCAL_MEM_FENCE);                       \
+            else                                                               \
+                work_group_barrier(CLK_GLOBAL_MEM_FENCE);                      \
+        }                                                                      \
+    }                                                                          \
+    else { /* private sort */                                                  \
+        type* data = data_in_temp ? temp : keys_input;                         \
+        for (uint i = 0; i < items_per_work_item; ++i) {                       \
+            if (!is_spread) {                                                  \
+                first[i] = data[items_per_work_item * idx + i];                \
+            }                                                                  \
+            else {                                                             \
+                first[i] = data[local_size * i + idx];                         \
+            }                                                                  \
+        }                                                                      \
+    }                                                                          \
+}
+
+/* Key-only work-group sort function body */
+#define DEFN_DEFAULT_WORK_GROUP_SORT_KEY_ONLY_BODY(                            \
+    type, is_joint, is_asc, is_spread, sort_local_mem, temp_local_mem)         \
+{                                                                              \
+    const uint local_size = get_local_size(0);                                 \
+                                                                               \
+    const uint items_per_work_item = is_joint ?                                \
+        (n - 1) / local_size + 1 : n;                                          \
+                                                                               \
+    if (items_per_work_item > 8 &&                                             \
+            items_per_work_item >= sizeof(type) * RADIX_SORT_CHAR_BIT) {       \
+        DEFN_DEFAULT_WORK_GROUP_RADIX_SORT_KEY_ONLY_BODY(                      \
+            type, is_joint, is_asc, is_spread, sort_local_mem, temp_local_mem) \
+    } else {                                                                   \
+        DEFN_DEFAULT_WORK_GROUP_MERGE_SORT_KEY_ONLY_BODY(                      \
+            type, is_joint, is_asc, is_spread, sort_local_mem, temp_local_mem) \
+    }                                                                          \
+}
+
 
 /* Key-value work-group sort interfaces */
 #define DEFN_DEFAULT_WORK_GROUP_SORT_KEY_VALUE(type, values_type,              \
@@ -606,7 +1050,7 @@ void __devicelib_default_work_group_private_sort_spread_##direction##_##type_abb
 
 
 /* Key-value work-group sort algorithm */
-#define DEFN_DEFAULT_WORK_GROUP_SORT_KEY_VALUE_BODY(                           \
+#define DEFN_DEFAULT_WORK_GROUP_RADIX_SORT_KEY_VALUE_BODY(                     \
     type, values_type, is_joint, is_asc, is_spread,                            \
     sort_local_mem, temp_local_mem)                                            \
 {                                                                              \
@@ -631,11 +1075,11 @@ void __devicelib_default_work_group_private_sort_spread_##direction##_##type_abb
     uint* scan_memory = (uint*) scratch;                                       \
     type* keys_output = (type*) ((char*) scratch +                             \
         radix_states * local_size * sizeof(uint));                             \
-    uint values_shift = keys_n * sizeof(type);                                 \
-    values_shift = (((values_shift + sizeof(uint) - 1) /                       \
+    uint values_offset = keys_n * sizeof(type);                                \
+    values_offset = (((values_offset + sizeof(uint) - 1) /                     \
         sizeof(uint)) * sizeof(uint));                                         \
     values_type* values_output = (values_type*)                                \
-        ((char*) keys_output + values_shift);                                  \
+        ((char*) keys_output + values_offset);                                 \
                                                                                \
     uint start = is_joint_sort ? items_per_work_item * idx : 0;                \
                                                                                \
@@ -687,6 +1131,155 @@ void __devicelib_default_work_group_private_sort_spread_##direction##_##type_abb
             }                                                                  \
         }                                                                      \
                                                                                \
+    }                                                                          \
+}
+
+#define DEFN_DEFAULT_WORK_GROUP_MERGE_SORT_KEY_VALUE_BODY(                     \
+    type, values_type, is_joint, is_asc, is_spread, sort_local_mem,            \
+    temp_local_mem)                                                            \
+{                                                                              \
+    const uint local_size = get_local_size(0);                                 \
+    const uint idx = get_local_id(0);                                          \
+                                                                               \
+    bool is_sort_local_mem = sort_local_mem;                                   \
+    bool is_temp_local_mem = temp_local_mem;                                   \
+                                                                               \
+    const uint items_per_work_item = is_joint ? (n - 1) / local_size + 1 : n;  \
+    const uint max_n = is_joint ? n : items_per_work_item * local_size;        \
+                                                                               \
+    type* keys_input = (type*) first;                                          \
+    type* temp = (type*) scratch;                                              \
+                                                                               \
+    values_type* values_input = (values_type*) values_first;                   \
+    uint values_offset = max_n * sizeof(type);                                 \
+    values_offset = (((values_offset + sizeof(uint) - 1) /                     \
+        sizeof(uint)) * sizeof(uint));                                         \
+    values_type* values_temp = (values_type*)                                  \
+        ((char*) temp + values_offset);                                        \
+                                                                               \
+    if (is_joint) {                                                            \
+        /* first sort within work-item */                                      \
+        __builtin_bubble_sort(keys_input, values_input,                        \
+            idx * items_per_work_item,                                         \
+            min((idx + 1) * items_per_work_item, max_n), is_asc);              \
+        if (is_sort_local_mem)                                                 \
+            work_group_barrier(CLK_LOCAL_MEM_FENCE);                           \
+        else                                                                   \
+            work_group_barrier(CLK_GLOBAL_MEM_FENCE);                          \
+    }                                                                          \
+    else { /* private mem sort */                                              \
+        /* first sort private array within work-item */                        \
+        __builtin_bubble_sort(first, values_input, 0, items_per_work_item,     \
+            is_asc);                                                           \
+                                                                               \
+        /* copy items from private to temp memory */                           \
+        keys_input = (type*) scratch;                                          \
+        values_input = (values_type*) ((char*) keys_input + values_offset);    \
+        uint keys_offset = max_n * sizeof(values_type);                        \
+        keys_offset = (((keys_offset + sizeof(uint) - 1) /                     \
+            sizeof(uint)) * sizeof(uint));                                     \
+        temp = (type*) ((char*) values_input + keys_offset);                   \
+        values_temp = (values_type*) ((char*) temp + values_offset);           \
+        for(uint i = 0; i < items_per_work_item; ++i) {                        \
+            keys_input[idx * items_per_work_item + i] = first[i];              \
+            values_input[idx * items_per_work_item + i] = values_first[i];     \
+        }                                                                      \
+        is_sort_local_mem = is_temp_local_mem;                                 \
+        if (is_temp_local_mem)                                                 \
+            work_group_barrier(CLK_LOCAL_MEM_FENCE);                           \
+        else                                                                   \
+            work_group_barrier(CLK_GLOBAL_MEM_FENCE);                          \
+    }                                                                          \
+                                                                               \
+    uint sorted_size = 1;                                                      \
+    bool data_in_temp = false;                                                 \
+    while(sorted_size * items_per_work_item < max_n)                           \
+    {                                                                          \
+        const uint start_1 = min(                                              \
+            2 * sorted_size * items_per_work_item * (idx / sorted_size),       \
+            max_n);                                                            \
+        const uint end_1 = min(                                                \
+            start_1 + sorted_size * items_per_work_item, max_n);               \
+        const uint start_2 = end_1;                                            \
+        const uint end_2 = min(                                                \
+            start_2 + sorted_size * items_per_work_item, max_n);               \
+        const uint offset = items_per_work_item * (idx % sorted_size);         \
+                                                                               \
+        if (!data_in_temp) {                                                   \
+            __builtin_merge_step(                                              \
+                offset, keys_input, temp, values_input, values_temp, start_1,  \
+                end_1, end_2, start_1, items_per_work_item, is_asc);           \
+            if (is_temp_local_mem)                                             \
+                work_group_barrier(CLK_LOCAL_MEM_FENCE);                       \
+            else                                                               \
+                work_group_barrier(CLK_GLOBAL_MEM_FENCE);                      \
+        }                                                                      \
+        else {                                                                 \
+            __builtin_merge_step(                                              \
+                offset, temp, keys_input, values_temp, values_input, start_1,  \
+                end_1, end_2, start_1, items_per_work_item, is_asc);           \
+            if (is_sort_local_mem)                                             \
+                work_group_barrier(CLK_LOCAL_MEM_FENCE);                       \
+            else                                                               \
+                work_group_barrier(CLK_GLOBAL_MEM_FENCE);                      \
+        }                                                                      \
+                                                                               \
+        sorted_size *= 2;                                                      \
+        data_in_temp = !data_in_temp;                                          \
+    }                                                                          \
+                                                                               \
+    if (is_joint) {                                                            \
+        /* copy back only if data is in a temporary storage */                 \
+        if(data_in_temp) {                                                     \
+            for(uint i = 0; i < items_per_work_item; ++i) {                    \
+                if(idx * items_per_work_item + i < n) {                        \
+                    first[idx * items_per_work_item + i] =                     \
+                        temp[idx * items_per_work_item + i];                   \
+                    values_first[idx * items_per_work_item + i] =              \
+                        values_temp[idx * items_per_work_item + i];            \
+                }                                                              \
+            }                                                                  \
+            if (is_sort_local_mem)                                             \
+                work_group_barrier(CLK_LOCAL_MEM_FENCE);                       \
+            else                                                               \
+                work_group_barrier(CLK_GLOBAL_MEM_FENCE);                      \
+        }                                                                      \
+    }                                                                          \
+    else { /* private sort */                                                  \
+        type* data = data_in_temp ? temp : keys_input;                         \
+        values_type* values_data = data_in_temp ? values_temp : values_input;  \
+                                                                               \
+        for (uint i = 0; i < items_per_work_item; ++i) {                       \
+            if (!is_spread) {                                                  \
+                first[i] = data[items_per_work_item * idx + i];                \
+                values_first[i] = values_data[items_per_work_item * idx + i];  \
+            }                                                                  \
+            else {                                                             \
+                first[i] = data[local_size * i + idx];                         \
+                values_first[i] = values_data[local_size * i + idx];           \
+            }                                                                  \
+        }                                                                      \
+    }                                                                          \
+}
+
+#define DEFN_DEFAULT_WORK_GROUP_SORT_KEY_VALUE_BODY(                           \
+    type, values_type, is_joint, is_asc, is_spread,                            \
+    sort_local_mem, temp_local_mem)                                            \
+{                                                                              \
+    const uint local_size = get_local_size(0);                                 \
+                                                                               \
+    const uint items_per_work_item = is_joint ?                                \
+        (n - 1) / local_size + 1 : n;                                          \
+                                                                               \
+    if (items_per_work_item > 8 &&                                             \
+            items_per_work_item >= sizeof(type) * RADIX_SORT_CHAR_BIT) {       \
+        DEFN_DEFAULT_WORK_GROUP_RADIX_SORT_KEY_VALUE_BODY(                     \
+            type, values_type, is_joint, is_asc, is_spread,                    \
+            sort_local_mem, temp_local_mem)                                    \
+    } else {                                                                   \
+        DEFN_DEFAULT_WORK_GROUP_MERGE_SORT_KEY_VALUE_BODY(                     \
+            type, values_type, is_joint, is_asc, is_spread,                    \
+            sort_local_mem, temp_local_mem)                                    \
     }                                                                          \
 }
 
