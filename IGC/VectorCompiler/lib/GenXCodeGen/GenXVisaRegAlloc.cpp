@@ -792,8 +792,7 @@ GenXVisaRegAlloc::getOrCreateRegForValue(SimpleValue V, Signedness Signed,
  * different signedness between source and destination can make the jitter
  * generate less efficient code.
  */
-genx::Signedness GenXVisaRegAlloc::getSigned(Reg* R)
-{
+genx::Signedness GenXVisaRegAlloc::getSigned(const Reg *R) const {
   return (R && R->Category == vc::RegCategory::General) ? R->Signed
                                                         : DONTCARESIGNED;
 }
