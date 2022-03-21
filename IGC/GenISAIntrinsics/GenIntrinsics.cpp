@@ -566,15 +566,18 @@ GenISAIntrinsic::ID GenISAIntrinsic::getIntrinsicID(const Function *F) {
     //If you do not find the function ptr as key corresponding to the GenISAIntrinsic::ID add the new key
     auto it = (*safeIntrinsicIDCache).find(F);
     if (it == (*safeIntrinsicIDCache).end()) {
-        const ValueName* const valueName = F->getValueName();
-        IGC_ASSERT(nullptr != valueName);
         GenISAIntrinsic::ID Id = no_intrinsic;
-        llvm::StringRef prefix = getGenIntrinsicPrefix();
-        llvm::StringRef Name = valueName->getKey();
-        IGC_ASSERT_MESSAGE(Name.size() > prefix.size(), "Not a valid gen intrinsic name signature");
-        IGC_ASSERT_MESSAGE(Name.startswith(prefix), "Not a valid gen intrinsic name signature");
-        Id = lookupGenIntrinsicID(Name.data(), Name.size());
-        (*safeIntrinsicIDCache)[F] = Id;
+        const ValueName* const valueName = F->getValueName();
+        if (nullptr != valueName)
+        {
+            llvm::StringRef prefix = getGenIntrinsicPrefix();
+            llvm::StringRef Name = valueName->getKey();
+            if (Name.size() > prefix.size() && Name.startswith(prefix))
+            {
+                Id = lookupGenIntrinsicID(Name.data(), Name.size());
+                (*safeIntrinsicIDCache)[F] = Id;
+            }
+        }
         return Id;
     }
     else

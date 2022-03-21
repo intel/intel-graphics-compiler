@@ -829,6 +829,16 @@ public:
         }
         return usage;
     }
+    inline llvm::Value* getVertexIndex() const
+    {
+        llvm::Value* pVertexIndex = nullptr;
+        if (getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_GSsystemValue)
+        {
+            // TODO: deprecate usage of GSSystemValue intrinsic
+            pVertexIndex = getOperand(0);
+        }
+        return pVertexIndex;
+    }
 };
 
 class WavePrefixIntrinsic : public GenIntrinsicInst
