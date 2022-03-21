@@ -20657,6 +20657,7 @@ void EmitPass::emitWavePrefix(WavePrefixIntrinsic* I)
         if (CI->isAllOnesValue())
             Mask = nullptr;
     }
+    m_encoder->SetSubSpanDestination(false);
     emitScan(
         I->getSrc(), I->getOpKind(), I->isInclusiveScan(), Mask, false);
 }
@@ -20707,6 +20708,7 @@ void EmitPass::emitWaveAll(llvm::GenIntrinsicInst* inst)
     uint64_t identity = 0;
     GetReductionOp(op, inst->getOperand(0)->getType(), identity, opCode, type);
     CVariable* dst = m_destination;
+    m_encoder->SetSubSpanDestination(false);
     emitReductionAll(opCode, identity, type, false, src, dst);
 }
 
@@ -20720,6 +20722,7 @@ void EmitPass::emitWaveClustered(llvm::GenIntrinsicInst* inst)
     uint64_t identity = 0;
     GetReductionOp(op, inst->getOperand(0)->getType(), identity, opCode, type);
     CVariable *dst = m_destination;
+    m_encoder->SetSubSpanDestination(false);
     emitReductionClustered(opCode, identity, type, false, clusterSize, src, dst);
 }
 
