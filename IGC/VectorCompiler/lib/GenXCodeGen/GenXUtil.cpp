@@ -211,9 +211,8 @@ Constant *genx::concatConstants(Constant *C1, Constant *C2)
  *          Otherwise the terminator of the closest common dominating basic
  *          block.
  */
-Instruction *genx::findClosestCommonDominator(DominatorTree *DT,
-    ArrayRef<Instruction *> Insts)
-{
+Instruction *genx::findClosestCommonDominator(const DominatorTree *DT,
+                                              ArrayRef<Instruction *> Insts) {
   IGC_ASSERT(!Insts.empty());
   SmallVector<InstScanner, 8> InstScanners;
   // Find the closest common dominating basic block.

@@ -96,7 +96,7 @@ Constant *concatConstants(Constant *C1, Constant *C2);
 
 // findClosestCommonDominator : find latest common dominator of some
 // instructions
-Instruction *findClosestCommonDominator(DominatorTree *DT,
+Instruction *findClosestCommonDominator(const DominatorTree *DT,
                                         ArrayRef<Instruction *> Insts);
 
 // convertShlShr : convert Shl followed by AShr/LShr by the same amount into
