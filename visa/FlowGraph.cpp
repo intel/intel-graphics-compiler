@@ -289,7 +289,7 @@ G4_BB* FlowGraph::beginBB(Label_BB_Map& map, G4_INST* first)
     else
     {
         // no label for this BB, create one!
-        std::string prefix = builder->kernel.getName();
+        std::string prefix = sanitizeLabelString(builder->kernel.getName());
         std::string name = prefix + "_auto_" + std::to_string(autoLabelId++);
         G4_Label* label = builder->createLabel(name, LABEL_BLOCK);
         labelInst = createNewLabelInst(label);

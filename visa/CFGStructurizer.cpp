@@ -2934,7 +2934,8 @@ G4_BB *CFGStructurizer::createBBWithLabel()
     G4_BB *newBB = CFG->createNewBB();
 
     // Create a label for the new BB
-    std::string str = std::string(CFG->builder->kernel.getName()) + "_cf_" + std::to_string(newBB->getId());
+    std::string str = sanitizeLabelString(CFG->builder->kernel.getName()) +
+        "_cf_" + std::to_string(newBB->getId());
     G4_Label* lab = CFG->builder->createLabel(str, LABEL_BLOCK);
     G4_INST *labelInst = CFG->builder->createLabelInst(lab, false);
     newBB->push_front(labelInst);
