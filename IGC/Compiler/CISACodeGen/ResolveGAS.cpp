@@ -2044,10 +2044,6 @@ bool CastToGASAnalysis::runOnModule(llvm::Module& M)
     bool hasPrivateCast = false; // true if there is a cast from private to GAS
     bool hasLocalCast = false; // true if there is a cast from local to GAS.
 
-    bool hasIntToGeneric = false;
-    bool hasLocalToInt = false;
-    bool hasPrivateToInt = false;
-
     for (Function& F : M)
     {
         // ToDo: replace with generic checks for extern functions
@@ -2078,29 +2074,7 @@ bool CastToGASAnalysis::runOnModule(llvm::Module& M)
                 else if (AS == ADDRESS_SPACE_PRIVATE)
                     hasPrivateCast = true;
             }
-            else if (auto* ITP = dyn_cast<IntToPtrInst>(I))
-            {
-                if (ITP->getAddressSpace() == ADDRESS_SPACE_GENERIC)
-                    hasIntToGeneric = true;
-            }
-            else if (auto* PTI = dyn_cast<PtrToIntInst>(I))
-            {
-                unsigned AS = PTI->getPointerAddressSpace();
-                if (AS == ADDRESS_SPACE_LOCAL)
-                    hasLocalToInt = true;
-                else if (AS == ADDRESS_SPACE_PRIVATE)
-                    hasPrivateToInt = true;
-            }
         }
-    }
-
-    // Take `ptrtoint` instructions into account only if there is a GAS `inttoptr` instruction
-    if (hasIntToGeneric)
-    {
-        if (!hasLocalCast)
-            hasLocalCast = hasLocalToInt;
-        if (!hasPrivateCast)
-            hasPrivateCast = hasPrivateToInt;
     }
 
     // Set those so that dynamic resolution can use them.
