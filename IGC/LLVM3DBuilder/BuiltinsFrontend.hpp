@@ -761,32 +761,30 @@ public:
     llvm::Value* create_discard(llvm::Value* condition);
     llvm::Value* create_runtime(llvm::Value* offset);
     llvm::CallInst* create_countbits(llvm::Value* src);
-    llvm::Value* create_waveBallot(llvm::Value* src, llvm::Value* helperLaneMode = nullptr);
-    llvm::Value* create_waveInverseBallot(llvm::Value* src, llvm::Value* helperLaneMode = nullptr);
+    llvm::Value* create_waveBallot(llvm::Value* src);
+    llvm::Value* create_waveInverseBallot(llvm::Value* src);
     llvm::Value* create_waveshuffleIndex(llvm::Value* src, llvm::Value* index, llvm::Value* helperLaneMode = nullptr);
-    llvm::Value* create_waveAll(llvm::Value* src, llvm::Value* type, llvm::Value* helperLaneMode = nullptr);
+    llvm::Value* create_waveAll(llvm::Value* src, llvm::Value* type);
     llvm::Value* create_wavePrefix(
         llvm::Value* src, llvm::Value* type, bool inclusive,
-        llvm::Value *Mask = nullptr, llvm::Value* helperLaneMode = nullptr);
+        llvm::Value *Mask = nullptr);
     llvm::Value* create_wavePrefixBitCount(
-        llvm::Value* src, llvm::Value *Mask = nullptr, llvm::Value* helperLaneMode = nullptr);
-    llvm::Value* create_waveMatch(llvm::Instruction *inst, llvm::Value *src, llvm::Value* helperLaneMode = nullptr);
+        llvm::Value* src, llvm::Value *Mask = nullptr);
+    llvm::Value* create_waveMatch(llvm::Instruction *inst, llvm::Value *src);
     llvm::Value* create_waveMultiPrefix(
         llvm::Instruction *I,
         llvm::Value *Val,
         llvm::Value *Mask,
-        IGC::WaveOps OpKind,
-        llvm::Value* helperLaneMode = nullptr);
+        IGC::WaveOps OpKind);
     llvm::Value* create_waveMultiPrefixBitCount(
         llvm::Instruction *I,
         llvm::Value *Val,
-        llvm::Value *Mask,
-        llvm::Value* helperLaneMode = nullptr);
+        llvm::Value *Mask);
     llvm::Value* create_quadPrefix(llvm::Value* src, llvm::Value* type, bool inclusive = false);
     llvm::Value* get32BitLaneID();
     llvm::Value* getSimdSize();
-    llvm::Value* getFirstLaneID(llvm::Value* helperLaneMode = nullptr);
-    llvm::Value* readFirstLane(llvm::Value* src, llvm::Value* helperLaneMode = nullptr);
+    llvm::Value* getFirstLaneID();
+    llvm::Value* readFirstLane(llvm::Value* src);
 
     void VectorToScalars(
         llvm::Value* vector,

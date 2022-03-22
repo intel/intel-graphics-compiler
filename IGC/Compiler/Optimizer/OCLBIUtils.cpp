@@ -1005,7 +1005,6 @@ public:
         }
 
         m_args.push_back(truncInst);
-        m_args.push_back(IRB.getInt32(0));
         replaceGenISACallInst(isaId);
     }
 };

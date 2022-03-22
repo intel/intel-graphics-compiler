@@ -651,15 +651,13 @@ Imported_Intrinsics = \
 "GenISA_WaveAll": ["Accumulate all the active lanes",
     [("anyint",                        ""),
     [(0,                               "value"),
-     ("char",                          "IGC:WaveOps"),
-     ("int",                           "helperLaneMode : 0: not used; 1: used.")],
+     ("char",                          "IGC:WaveOps")],
     "Convergent,InaccessibleMemOnly"]],
 ####################################################################################################
 "GenISA_WaveBallot": ["All lanes get the same value",
     [("int",                           "return a bitfield with 1 for active lane with input true, "+\
                                        "0 for the rest."),
-    [("bool",                          "Bool b"),
-     ("int",                           "helperLaneMode : 0: not used; 1: used.")],
+    [("bool",                          "Bool b")],
     "Convergent,InaccessibleMemOnly"]],
 ####################################################################################################
 "GenISA_WaveClustered": ["Accumulate all active lanes within consecutive input clusters and "+\
@@ -671,14 +669,12 @@ Imported_Intrinsics = \
                                        "n-th output cluster"),
     [(0,                               "value"),
      ("char",                          "IGC::WaveOps"),
-     ("int",                           "size - must be a compile time constant and assumed > 1"),
-     ("int",                           "helperLaneMode : 0: not used; 1: used.")],
+     ("int",                           "size - must be a compile time constant and assumed > 1")],
     "Convergent,InaccessibleMemOnly"]],
 ####################################################################################################
 "GenISA_WaveInverseBallot": ["",
     [("bool",                          "return value of n-th bit from the input bitfield"),
-    [("int",                           "bitfield"),
-     ("int",                           "helperLaneMode : 0: not used; 1: used.")],
+    [("int",                           "bitfield")],
     "Convergent,InaccessibleMemOnly"]],
 ####################################################################################################
 "GenISA_WavePrefix": ["Accumulate and keep the intermediate results in each lane",
@@ -686,8 +682,7 @@ Imported_Intrinsics = \
     [(0,                               "value"),
      ("char",                          "IGC::WaveOps"),
      ("bool",                          "type - either exclusive(0) or inclusive(1) operation"),
-     ("bool",                          "mask - subset of lanes to participate in the computation."),
-     ("int",                           "helperLaneMode : 0: not used; 1: used.")],
+     ("bool",                          "mask - subset of lanes to participate in the computation.")],
     "Convergent,InaccessibleMemOnly"]],
 ####################################################################################################
 "GenISA_WaveShuffleIndex": ["Read from a specific lane",

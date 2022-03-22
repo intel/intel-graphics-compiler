@@ -188,7 +188,6 @@ namespace IGC
         bool MatchBranch(llvm::BranchInst& I);
         bool MatchShuffleBroadCast(llvm::GenIntrinsicInst& I);
         bool MatchWaveShuffleIndex(llvm::GenIntrinsicInst& I);
-        bool MatchWaveInstruction(llvm::GenIntrinsicInst& I);
         bool MatchRegisterRegion(llvm::GenIntrinsicInst& I);
 
         Pattern* Match(llvm::Instruction& inst);
