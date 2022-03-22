@@ -142,7 +142,6 @@ namespace IGC
             IGC_ASSERT(0);
             break;
         }
-
         platform->SetWATable(waTable);
         platform->SetSkuTable(*pSkuFeatureTable);
     }
