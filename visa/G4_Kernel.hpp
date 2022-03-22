@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <tuple>
 
 namespace vISA
 {
@@ -150,6 +151,11 @@ public:
     G4_INST* WAFlag_allOne;    // (W&P.anyh) mov  P  0xFFFFFFFF
     G4_INST* Inst_restore;     // (W) mov (1|M0)  P  t
     // G4_INST* WAFlag_spill;  // (W) mov (1|M0)  DW1  P  [used by postRA]
+    std::list<std::tuple<G4_INST*, G4_INST*, G4_INST*> > WASequenceInfo;
+
+    NoMaskWA_info_t(std::list<std::tuple<G4_INST*, G4_INST*, G4_INST*> >& aWASeqInfo)
+        : WASequenceInfo(std::move(aWASeqInfo))
+    {}
     G4_INST* getWAFlagDefInst() const { return WAFlag_allOne ? WAFlag_allOne : WAFlag_cmp; }
 };
 
@@ -418,9 +424,10 @@ private:
 public:
     void addNoMaskWAInfo(G4_BB* aBB,
         G4_INST* aInstKill, G4_INST* aInstSave, G4_INST* aInstRestore,
-        G4_INST* aWAFlag_mov0, G4_INST* aWAFlag_cmp, G4_INST* aWAFlag_allOne)
+        G4_INST* aWAFlag_mov0, G4_INST* aWAFlag_cmp, G4_INST* aWAFlag_allOne,
+        std::list<std::tuple<G4_INST*, G4_INST*, G4_INST*> >& WASequenceInfo)
     {
-        NoMaskWA_info_t* pinfo = new NoMaskWA_info_t();
+        NoMaskWA_info_t* pinfo = new NoMaskWA_info_t(WASequenceInfo);
         pinfo->Inst_kill = aInstKill;
         pinfo->Inst_save = aInstSave;
         pinfo->WAFlag_mov0 = aWAFlag_mov0;

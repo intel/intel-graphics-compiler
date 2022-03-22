@@ -12385,6 +12385,25 @@ void Optimizer::newDoNoMaskWA()
     fg.reassignBlockIDs();
     fg.findNestedDivergentBBs(nestedDivergentBBs);
 
+    // Make sure the flag spill/fill inside a WA sequence do not need postRA WA.
+    // [doc will be added for this later]
+    // Given:
+    //     (W) cmp (16)  (ge)PTemp.0 V0249_f(0,0)<1>:f  V0217(0,0)<1;1,0>:f  V0247(0,0)<1;1,0>:f
+    // After postRA WA:
+    //  (B)  (W) mov (1)              r115.0<1>:ud  r14.7<0;1,0>:ud
+    //       (W) or (1)               r14.7<1>:ud  r14.7<0;1,0>:ud  0xffff0000:ud
+    //       (W&!f0.0) and (1)        r14.7<1>: ud  r14.7<0;1,0>:ud  0xffff:ud
+    //  (1)  (W&f0.0) mov (1)         f1.0<1>:uw  r14.14<0;1,0>:uw                  // flag fill,  postWA applied!
+    //  (F)  (W&f1.0) cmp(16|M16)  (ge)f1.0  r79.0<1>:f  r44.0<1;1,0>:f  r75.0<1;1,0>:f
+    //  (2)  (W) mov(1)              r14.14<1>:uw  f1.0<0; ,0>:uw                   // flag spill
+    //  (E)  (W&!f0.0) mov(1)        r14.7<1>:ud  r115.0<0;1,0>:ud
+    // In this case, (1) should not have WA applied, as doing WA makes f1.0 undefined for case f0.0 = 'all 0'
+    // (hitting HW bug case). To avoid this, save (B, E, F) and let postRA to exclude (1) and (2) from having WA.
+    //
+    // Note that for this to work,  (E)'s dst must be replaced with the flag's spill grf!
+    //
+    // WASequenceInfo : keep (B, E, F) and it will be passed into postRA.
+    std::list<std::tuple<G4_INST*, G4_INST*, G4_INST*> > WASequenceInfo;
     std::vector<INST_LIST_ITER> NoMaskCandidates;
     const G4_ExecSize simdsize = fg.getKernel()->getSimdSize();
 
@@ -12705,6 +12724,8 @@ void Optimizer::newDoNoMaskWA()
 
         // update defUse
         I0->addDefUse(I, Opnd_pred);
+
+        WASequenceInfo.push_back(std::make_tuple(pseudoMov, restoreMov, I));
     };
 
     // flagVar : WA flag for this BB
@@ -12919,6 +12940,8 @@ void Optimizer::newDoNoMaskWA()
                 // copyUsesTo() to achieve that, which is conservative.
                 I->copyUsesTo(I2, false);
             }
+
+            WASequenceInfo.push_back(std::make_tuple(I0, I2, I));
             return;
         }
 
@@ -12978,6 +13001,8 @@ void Optimizer::newDoNoMaskWA()
             // copyUsesTo() to achieve that, which is conservative.
             I->copyUsesTo(I3, false);
         }
+
+        WASequenceInfo.push_back(std::make_tuple(I0, I3, I));
     };
 
     //  Predicated inst with flagModifier.
@@ -13096,6 +13121,8 @@ void Optimizer::newDoNoMaskWA()
             // conservatively use copyUsesTo().
             I->copyUsesTo(I2, false);
         }
+
+        WASequenceInfo.push_back(std::make_tuple(I0, I2, I));
     };
 
     // Scan all insts and apply WA on NoMask candidate insts
@@ -13244,7 +13271,9 @@ void Optimizer::newDoNoMaskWA()
 
             // save WA info for postRA
             kernel.addNoMaskWAInfo(BB,
-                InstKill, InstSave, InstRestore, InstMov0, InstCmp, InstAllOne);
+                InstKill, InstSave, InstRestore, InstMov0, InstCmp, InstAllOne,
+                WASequenceInfo);
+            WASequenceInfo.clear();
         }
     }
 
@@ -14325,6 +14354,15 @@ void Optimizer::newDoNoMaskWA_postRA()
         {
             verifyBBInst(aBB, aWAInfo->WAFlag_allOne);
         }
+        for (auto& LI : aWAInfo->WASequenceInfo)
+        {
+            G4_INST* sI = std::get<0>(LI);
+            G4_INST* eI = std::get<1>(LI);
+            G4_INST* flagI = std::get<2>(LI);
+            verifyBBInst(aBB, sI);
+            verifyBBInst(aBB, eI);
+            verifyBBInst(aBB, flagI);
+        }
 #endif
     };
 
@@ -14376,6 +14414,52 @@ void Optimizer::newDoNoMaskWA_postRA()
         if (HasGRFSpill && isSpillLdSt(I))
         {
             return true;
+        }
+        return false;
+    };
+
+    auto isInsidePreRAWASequence = [&](G4_INST* aI, G4_BB* aBB, NoMaskWA_info_t* preRAWAInfo)
+    {
+        bool isFlagSpill = false;
+        bool isFlagFill = false;
+        uint32_t freg, fsreg;
+        G4_Type flagTy;
+        if (HasFlagSpill && aI->isMov() && aI->getExecSize() == g4::SIMD1
+            && aI->isWriteEnableInst() && aI->getSrc(0) && aI->getDst())
+        {
+            if (aI->getSrc(0)->isFlag() && aI->getDst()->isGreg())
+            {
+                isFlagSpill = true;
+                FlagDefUse::getFlagRegAndSubreg(aI->getSrc(0), freg, fsreg, flagTy);
+            }
+            else if (aI->getDst()->isFlag() && aI->getSrc(0)->isGreg())
+            {
+                isFlagFill = true;
+                FlagDefUse::getFlagRegAndSubreg(aI->getDst(), freg, fsreg, flagTy);
+            }
+        }
+        if ((isFlagSpill || isFlagFill) &&
+            preRAWAInfo != nullptr &&
+            !preRAWAInfo->WASequenceInfo.empty())
+        {
+            uint32_t fr, fsr;
+            G4_Type ty;
+            for (auto& LI : preRAWAInfo->WASequenceInfo)
+            {
+                G4_INST* startI = std::get<0>(LI);
+                G4_INST* endI = std::get<1>(LI);
+                G4_INST* flagI = std::get<2>(LI);
+                if (aI->getLocalId() > startI->getLocalId() && aI->getLocalId() < endI->getLocalId())
+                {
+                    assert(flagI->getPredicate());
+                    FlagDefUse::getFlagRegAndSubreg(flagI->getPredicate(), fr, fsr, ty);
+                    if (ty == flagTy && freg == fr)
+                    {
+                        return true;
+                    }
+                    break;
+                }
+            }
         }
         return false;
     };
@@ -14499,22 +14583,26 @@ void Optimizer::newDoNoMaskWA_postRA()
             continue;
         }
 
+        // Reset local ids so we can check instruction order.
+        BB->resetLocalIds();
+
         // Collect all insts that need to apply WA.
+        NoMaskWA_info_t* preRA_WAInfo = kernel.getNoMaskWAInfo(BB);
         for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
         {
             G4_INST* I = *II;
             if (isCandidate(I, BB))
             {
-                waInsts.push_back(I);
+                if (!isInsidePreRAWASequence(I, BB, preRA_WAInfo))
+                {
+                    waInsts.push_back(I);
+                }
             }
         }
         if (waInsts.empty())
         {
             continue;
         }
-
-        // Reset local ids so we can check instruction order.
-        BB->resetLocalIds();
 
         // WAFlag : preRA WA flag.
         //    Note: for WA flag (both preRA and postRA), Operands' subRegOff should be 0 always.
@@ -14523,7 +14611,6 @@ void Optimizer::newDoNoMaskWA_postRA()
         uint32_t WAFreg = 0xff;   // init to invalid number
 
         // If PreRA has done WA in this BB, it has range [preRA_start, preRA_end]
-        NoMaskWA_info_t* preRA_WAInfo = kernel.getNoMaskWAInfo(BB);
         INST_LIST_ITER preRA_waStartI = BB->end();
         INST_LIST_ITER preRA_waEndI = BB->end();
         int preRA_start_id = -1, preRA_end_id = -1;
