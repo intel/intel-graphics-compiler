@@ -2889,12 +2889,23 @@ bool EarlyOutPatterns::DotProductMatch(const Instruction* I)
     Value* Z2 = nullptr;
 
     // dp3
-    return match(I,
+    if (match(I,
         m_FAdd(
             m_FMul(m_Value(Z1), m_Value(Z2)),
             m_FAdd(
                 m_FMul(m_Value(X1), m_Value(X2)),
-                m_FMul(m_Value(Y1), m_Value(Y2)))));
+                m_FMul(m_Value(Y1), m_Value(Y2)))))) {
+        return true;
+    }
+    if (match(I,
+        m_FAdd(
+            m_FAdd(
+                m_FMul(m_Value(X1), m_Value(X2)),
+                m_FMul(m_Value(Y1), m_Value(Y2))),
+            m_FMul(m_Value(Z1), m_Value(Z2))))) {
+        return true;
+    }
+    return false;
 }
 
 // Does is a dot product pattern the source of this instruction?
