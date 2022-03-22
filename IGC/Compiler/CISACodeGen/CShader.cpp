@@ -122,19 +122,19 @@ void CShader::PreAnalysisPass()
 {
     ExtractGlobalVariables();
 
-    auto funcMDItr = m_ModuleMetadata->FuncMD.find(entry);
-    if (funcMDItr != m_ModuleMetadata->FuncMD.end())
+    if (GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory ||
+        GetContext()->getModuleMetaData()->compOpt.UseStatelessforPrivateMemory)
     {
-        if (funcMDItr->second.privateMemoryPerWI != 0)
-        {
-            if (GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory
-                || GetContext()->getModuleMetaData()->compOpt.UseStatelessforPrivateMemory
-                )
-            {
-                const uint32_t GRFSize = getGRFSize();
-                IGC_ASSERT(0 < GRFSize);
+        const uint32_t GRFSize = getGRFSize();
+        IGC_ASSERT(0 < GRFSize);
 
-                m_ScratchSpaceSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
+        auto StackMemIter = m_ModuleMetadata->PrivateMemoryPerFG.find(entry);
+        if (StackMemIter != m_ModuleMetadata->PrivateMemoryPerFG.end())
+        {
+            unsigned maxPrivateMem = StackMemIter->second;
+            if (maxPrivateMem > 0)
+            {
+                m_ScratchSpaceSize = maxPrivateMem * numLanes(m_dispatchSize);
 
                 // Round up to GRF-byte aligned.
                 m_ScratchSpaceSize = ((GRFSize + m_ScratchSpaceSize - 1) / GRFSize) * GRFSize;

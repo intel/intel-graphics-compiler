@@ -1746,11 +1746,13 @@ namespace IGC
         // Set only if the private memory metadata actually exists and we don't use
         // scratch space for private memory.
         bool noScratchSpacePrivMem = !m_Context->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory;
-
-        auto funcMD = m_Context->getModuleMetaData()->FuncMD.find(entry);
-        if (noScratchSpacePrivMem && (funcMD != m_Context->getModuleMetaData()->FuncMD.end()) && funcMD->second.privateMemoryPerWI)
+        if (noScratchSpacePrivMem)
         {
-            m_perWIStatelessPrivateMemSize = funcMD->second.privateMemoryPerWI;
+            auto StackMemIter = m_Context->getModuleMetaData()->PrivateMemoryPerFG.find(entry);
+            if (StackMemIter != m_Context->getModuleMetaData()->PrivateMemoryPerFG.end())
+            {
+                m_perWIStatelessPrivateMemSize = StackMemIter->second;
+            }
         }
 
 
