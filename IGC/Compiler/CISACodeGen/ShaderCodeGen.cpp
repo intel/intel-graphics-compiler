@@ -784,6 +784,12 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(createSplitIndirectEEtoSelPass());
     }
 
+    // This pass can create constant expression
+    if (ctx.m_DriverInfo.HasDoubleLoadStore())
+    {
+        mpm.add(new HandleLoadStoreInstructions());
+    }
+
     // Split big vector & 3-element load/store, etc.
     mpm.add(createVectorPreProcessPass());
 
@@ -869,12 +875,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     if (ctx.m_DriverInfo.benefitFromTypeDemotion() &&
         IGC_IS_FLAG_ENABLED(EnableTypeDemotion)) {
         mpm.add(createTypeDemotePass());
-    }
-
-    // This pass can create constant expression
-    if (ctx.m_DriverInfo.HasDoubleLoadStore())
-    {
-        mpm.add(new HandleLoadStoreInstructions());
     }
 
     // Do Genx strengthreduction (do things like fdiv -> inv + mul)
