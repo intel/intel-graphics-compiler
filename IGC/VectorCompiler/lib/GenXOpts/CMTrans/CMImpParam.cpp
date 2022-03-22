@@ -107,9 +107,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "vc/Support/GenXDiagnostic.h"
-#include "vc/Utils/GenX/IRBuilder.h"
 #include "vc/Utils/GenX/ImplicitArgsBuffer.h"
-#include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/General/DebugInfo.h"
 #include "vc/Utils/General/FunctionAttrs.h"
 #include "vc/Utils/General/IRBuilder.h"
@@ -152,10 +150,6 @@ using namespace llvm;
 static cl::opt<bool>
     CMRTOpt("cmimpparam-cmrt", cl::init(true), cl::Hidden,
             cl::desc("Should be used only in llvm opt to switch RT"));
-static cl::opt<bool>
-    PayloadInMemoryOpt("cmimpparam-payload-in-memory", cl::init(true),
-                       cl::Hidden,
-                       cl::desc("Whether the target has payload in memory"));
 
 // Sometimes full list of elements cannot be defined, e.g. list of called
 // functions when indirect call instructions are present.
@@ -202,21 +196,10 @@ enum Enum : unsigned {
 
 struct CMImpParam : public ModulePass {
   static char ID;
-  bool IsCmRT = false;
-  // Defines whether payload is in memory or on registers. It depends on target
-  // architecture.
-  bool HasPayloadInMemory = false;
+  bool IsCmRT;
   const DataLayout *DL = nullptr;
 
-  CMImpParam(bool IsCmRTIn, bool HasPayloadInMemoryIn)
-      : ModulePass{ID}, IsCmRT{IsCmRTIn}, HasPayloadInMemory{
-                                              HasPayloadInMemoryIn} {
-    initializeCMImpParamPass(*PassRegistry::getPassRegistry());
-  }
-
-  CMImpParam()
-      : ModulePass{ID}, IsCmRT{CMRTOpt}, HasPayloadInMemory{
-                                             PayloadInMemoryOpt} {
+  CMImpParam(bool isCmRT = true) : ModulePass(ID), IsCmRT(isCmRT && CMRTOpt) {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
 
@@ -240,8 +223,7 @@ private:
   processKernels(const std::vector<FunctionRef> &Kernels,
                  const IntrIDMap &UsedIntrInfo,
                  const std::unordered_set<Function *> &RequireImplArgsBuffer);
-  CallGraphNode *processKernelParameters(Function *F,
-                                         const IntrIDSet &UsedImplicits);
+  CallGraphNode *processKernel(Function *F, const IntrIDSet &UsedImplicits);
 
   std::pair<IntrIDMap, std::unordered_set<Function *>>
   analyzeFixedSignatureFunctions(Module &M, const IntrIDMap &UsedIntrInfo);
@@ -250,12 +232,6 @@ private:
   void storeImplArgInFixedSignatureFunction(unsigned IID,
                                             Value &ImplArgsBufferPtr,
                                             IRBuilder<> &IRB);
-
-  vc::ThreadPayloadKind getThreadPayloadKind() const {
-    if (HasPayloadInMemory)
-      return vc::ThreadPayloadKind::InMemory;
-    return vc::ThreadPayloadKind::OnRegister;
-  }
 
   static Value *getValue(Metadata *M) {
     if (auto VM = dyn_cast<ValueAsMetadata>(M))
@@ -430,46 +406,6 @@ bool kernelRequiresImplArgBuffer(
                       });
 }
 
-// Creates predefined vISA variables that are required to work with implicit
-// arguments in extern and indirect functions for architectures with payload on
-// registers.
-// The required predefined variables must not be created before calling this
-// function. If you not sure whether they are created or not, use
-// \p getOrCreatePredefVars.
-static GlobalVariable *createPredefVars(Module &M) {
-  return &vc::PredefVar::createImplicitArgsBuffer(M);
-  // FIXME: createLocalIDBuffer(M); to support local IDs.
-}
-
-// Returns implicit args buffer related predefined variables. Returns existing
-// ones or creates new ones.
-static GlobalVariable *getOrCreatePredefVars(Module &M) {
-  auto *ImplArgBuffer = M.getNamedGlobal(vc::PredefVar::ImplicitArgsBufferName);
-  if (ImplArgBuffer)
-    return ImplArgBuffer;
-  return createPredefVars(M);
-}
-
-// Special prologue must be added to kernel for architectures with payload on
-// registers. Implicit argument buffer implicit argument and local ids buffer
-// pointer must be copied into the corresponding predefined variables. This
-// function inserts the corresponding code in the \p Kernel prologue.
-static void addKernelPrologue(Function &Kernel) {
-  IGC_ASSERT_MESSAGE(vc::isKernel(Kernel),
-                     "wrong argument: a kernel must be provided");
-  vc::KernelMetadata KM{&Kernel};
-
-  auto ImplArgsBufferIt = llvm::find_if(KM.getArgKinds(), [](unsigned ArgKind) {
-    return vc::KernelArgInfo(ArgKind).isImplicitArgsBuffer();
-  });
-  auto ImplArgsBufferIdx = ImplArgsBufferIt - KM.getArgKinds().begin();
-  auto *ImplArgsBufferArg = IGCLLVM::getArg(Kernel, ImplArgsBufferIdx);
-
-  IRBuilder<> IRB{&*Kernel.getEntryBlock().getFirstInsertionPt()};
-  auto *ImplArgsBufferVar = getOrCreatePredefVars(*Kernel.getParent());
-  vc::createWriteVariableRegion(*ImplArgsBufferVar, *ImplArgsBufferArg, IRB);
-}
-
 bool CMImpParam::runOnModule(Module &M) {
   DL = &M.getDataLayout();
 
@@ -496,13 +432,6 @@ bool CMImpParam::runOnModule(Module &M) {
 
   replaceImplicitArgIntrinsics(Workload);
 
-  // Predefined variables are required when fixed signature functions with
-  // implicit args are present. The variables are required to access implicit
-  // args. This approach is used only for architectures with payload on
-  // registers.
-  if (!FixedSignFuncInfo.empty() && !HasPayloadInMemory)
-    createPredefVars(M);
-
   for (auto [F, RequiredImplArgs] : FixedSignFuncInfo)
     processFixedSignatureFunction(*F, RequiredImplArgs);
 
@@ -524,30 +453,16 @@ void CMImpParam::processKernels(
     auto [RequiredImplArgs, CalledFixedSignFuncs] =
         CallGraphTraverser{CG, UsedIntrInfo}.collectIndirectlyUsedImplArgs(
             Kernel);
-    bool KernelRequiresImplArgBuffer = kernelRequiresImplArgBuffer(
-        CalledFixedSignFuncs, RequireImplArgsBuffer);
-    // For kernels that require implicit args buffer and architectures that
-    // have payload on registers a prologue must be inserted. In this prologue
-    // implicit args buffer implicit arg is copied into the corresponding
-    // predefined variable.
-    bool KernelRequiresPrologueInsertion =
-        KernelRequiresImplArgBuffer && !HasPayloadInMemory;
-
-    if (KernelRequiresImplArgBuffer)
+    if (kernelRequiresImplArgBuffer(CalledFixedSignFuncs,
+                                    RequireImplArgsBuffer))
       Kernel.addFnAttr(vc::ImplicitArgs::KernelAttr);
-    if (KernelRequiresPrologueInsertion)
-      RequiredImplArgs.emplace(PseudoIntrinsic::ImplicitArgsBuffer);
     // For OCL/L0 RT we should unconditionally add implicit PRIVATE_BASE
     // argument which is not supported on CM RT.
     if (!IsCmRT)
       RequiredImplArgs.emplace(PseudoIntrinsic::PrivateBase);
     vc::internal::createInternalMD(Kernel);
-    if (!RequiredImplArgs.empty()) {
-      CallGraphNode *NewKernelNode =
-          processKernelParameters(&Kernel, RequiredImplArgs);
-      if (KernelRequiresPrologueInsertion)
-        addKernelPrologue(*NewKernelNode->getFunction());
-    }
+    if (!RequiredImplArgs.empty())
+      processKernel(&Kernel, RequiredImplArgs);
   }
 }
 
@@ -595,8 +510,7 @@ CMImpParam::analyzeFixedSignatureFunctions(Module &M,
 void CMImpParam::processFixedSignatureFunction(Function &F,
                                                const IntrIDSet &UsedIntrInfo) {
   IRBuilder<> IRB{&*F.getEntryBlock().getFirstInsertionPt()};
-  auto &ImplArgsBufferPtr =
-      vc::ImplicitArgs::Buffer::getPointer(IRB, getThreadPayloadKind());
+  auto &ImplArgsBufferPtr = vc::ImplicitArgs::Buffer::getPointer(IRB);
   for (unsigned IID : UsedIntrInfo)
     storeImplArgInFixedSignatureFunction(IID, ImplArgsBufferPtr, IRB);
 }
@@ -1002,14 +916,12 @@ static std::string getImplicitArgName(unsigned IID) {
 // added if required elsewhere (in doInitialization)
 // We've already determined that this is a kernel and that it requires some
 // implicit arguments adding
-CallGraphNode *
-CMImpParam::processKernelParameters(Function *F,
-                                    const IntrIDSet &UsedImplicits) {
+CallGraphNode *CMImpParam::processKernel(Function *F,
+                                         const IntrIDSet &UsedImplicits) {
   LLVMContext &Context = F->getContext();
 
-  IGC_ASSERT_MESSAGE(
-      vc::isKernel(F),
-      "processKernelParameters invoked on non-kernel CallGraphNode");
+  IGC_ASSERT_MESSAGE(vc::isKernel(F),
+                     "ProcessKernel invoked on non-kernel CallGraphNode");
 
   AttributeList AttrVec;
   const AttributeList &PAL = F->getAttributes();
@@ -1167,6 +1079,4 @@ INITIALIZE_PASS_END(CMImpParam, "cmimpparam",
                     "Transformations required to support implicit arguments",
                     false, false)
 
-Pass *llvm::createCMImpParamPass(bool IsCMRT, bool HasPayloadInMemory) {
-  return new CMImpParam{IsCMRT, HasPayloadInMemory};
-}
+Pass *llvm::createCMImpParamPass(bool IsCMRT) { return new CMImpParam(IsCMRT); }
