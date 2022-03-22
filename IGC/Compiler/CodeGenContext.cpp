@@ -617,22 +617,32 @@ namespace IGC
         {
             return;
         }
+        // If there is fail-on-spill option provided
+        // and __attribute__((annotate("igc-do-not-spill"))) is present for a kernel,
+        // we fail compilation
         auto& programList = m_programOutput.m_ShaderProgramList;
         for (auto& kernel : programList)
         {
             for (auto mode : { SIMDMode::SIMD8, SIMDMode::SIMD16, SIMDMode::SIMD32 })
             {
                 COpenCLKernel* shader = static_cast<COpenCLKernel*>(kernel->GetShader(mode));
-                if (shader)
+
+                if (!COpenCLKernel::IsValidShader(shader))
                 {
-                    auto output = shader->ProgramOutput();
-                    if (output->m_scratchSpaceUsedBySpills > 0)
-                    {
-                        std::string msg =
-                            "Spills detected in kernel: "
-                            + shader->m_kernelInfo.m_kernelName;
-                        EmitError(msg.c_str(), nullptr);
-                    }
+                    continue;
+                }
+
+                auto& funcMD = modMD->FuncMD[shader->entry];
+                auto& annotatnions = funcMD.UserAnnotations;
+                auto output = shader->ProgramOutput();
+
+                if (output->m_scratchSpaceUsedBySpills > 0 &&
+                    std::find(annotatnions.begin(), annotatnions.end(), "igc-do-not-spill") != annotatnions.end())
+                {
+                    std::string msg =
+                        "Spills detected in kernel: "
+                        + shader->m_kernelInfo.m_kernelName;
+                    EmitError(msg.c_str(), nullptr);
                 }
             }
         }
