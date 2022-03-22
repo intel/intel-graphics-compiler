@@ -604,7 +604,7 @@ void SpillManager::updateRMWNeeded()
 //
 // check if flag dst is spilled and insert spill code
 //
-void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
+void SpillManager::replaceSpilledFlagCondMod(G4_BB*         bb,
                                          INST_LIST_ITER it, // where new insts will be inserted
                                          G4_INST*       inst)
 {
@@ -637,7 +637,9 @@ void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
             if (flagDcl->getNumberFlagElements() > inst->getExecSize() ||
                 (!bb->isAllLaneActive() && !inst->isWriteEnableInst()))
             {
-                if (noRMWNeeded.find(mod) == noRMWNeeded.end())
+                //Conditional modifier must use same flag register as predicate.
+                //So if conditional modifier needs pre-fill, the prediciate must be filled already.
+                if (noRMWNeeded.find(mod) == noRMWNeeded.end() && predicate == NULL)
                 {
                     genRegMov(bb, it,
                         spDcl->getRegVar(), 0,
@@ -767,7 +769,7 @@ void SpillManager::insertSpillCode()
             G4_CondMod* mod = inst->getCondMod();
             if (mod != NULL &&
                 mod->getBase() != NULL) {
-                replaceSpilledFlagDst(bb, inst_it, inst);
+                replaceSpilledFlagCondMod(bb, inst_it, inst);
             }
             inst_it++;
         }

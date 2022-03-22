@@ -75,13 +75,12 @@ class SpillManager
     void replaceSpilledPredicate(G4_BB* bb,
                            INST_LIST_ITER it,
                            G4_INST*       inst);
-    void replaceSpilledFlagDst(G4_BB*     bb,
-                           INST_LIST_ITER it,
-                           G4_INST*       inst);
 
     void createSpillLocations(const G4_Kernel& kernel);
 
     void updateRMWNeeded();
+
+    void replaceSpilledFlagCondMod(G4_BB* bb, INST_LIST_ITER it, G4_INST* inst);
 
     bool checkDefUseDomRel(G4_Operand* dst, G4_BB* defBB);
 
