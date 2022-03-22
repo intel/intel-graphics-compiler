@@ -142,18 +142,17 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
   unsigned RawKind = KM.getArgKind(ArgNo);
 
   // Implicit arguments.
-  vc::KernelArgInfo KAI{RawKind};
-  if (KAI.isLocalSize())
+  if (vc::isLocalSizeKind(RawKind))
     return ArgKindType::LocalSize;
-  if (KAI.isGroupCount())
+  if (vc::isGroupCountKind(RawKind))
     return ArgKindType::GroupCount;
-  if (KAI.isPrintBuffer())
+  if (vc::isPrintBufferKind(RawKind))
     return ArgKindType::PrintBuffer;
-  if (KAI.isPrivateBase())
+  if (vc::isPrivateBaseKind(RawKind))
     return ArgKindType::PrivateBase;
-  if (KAI.isByValSVM())
+  if (vc::isByValSVMKind(RawKind))
     return ArgKindType::ByValSVM;
-  if (KAI.isImplicitArgsBuffer())
+  if (vc::isImplicitArgsBufferKind(RawKind))
     return ArgKindType::ImplicitArgsBuffer;
 
   // Explicit arguments.
@@ -321,8 +320,7 @@ void GenXOCLRuntimeInfo::KernelInfo::setArgumentProperties(
   auto NonPayloadArgs =
       make_filter_range(Kernel.args(), [&KM](const Argument &Arg) {
         uint32_t ArgKind = KM.getArgKind(Arg.getArgNo());
-        vc::KernelArgInfo KAI(ArgKind);
-        return !KAI.isLocalIDs();
+        return !vc::isLocalIDKind(ArgKind);
       });
   KernelArgBuilder ArgBuilder{KM, Kernel.getParent()->getDataLayout(), ST, BC};
   transform(NonPayloadArgs, std::back_inserter(ArgInfos),

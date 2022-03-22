@@ -458,17 +458,12 @@ static GlobalVariable *getOrCreatePredefVars(Module &M) {
 static void addKernelPrologue(Function &Kernel) {
   IGC_ASSERT_MESSAGE(vc::isKernel(Kernel),
                      "wrong argument: a kernel must be provided");
-  vc::KernelMetadata KM{&Kernel};
-
-  auto ImplArgsBufferIt = llvm::find_if(KM.getArgKinds(), [](unsigned ArgKind) {
-    return vc::KernelArgInfo(ArgKind).isImplicitArgsBuffer();
-  });
-  auto ImplArgsBufferIdx = ImplArgsBufferIt - KM.getArgKinds().begin();
-  auto *ImplArgsBufferArg = IGCLLVM::getArg(Kernel, ImplArgsBufferIdx);
 
   IRBuilder<> IRB{&*Kernel.getEntryBlock().getFirstInsertionPt()};
   auto *ImplArgsBufferVar = getOrCreatePredefVars(*Kernel.getParent());
-  vc::createWriteVariableRegion(*ImplArgsBufferVar, *ImplArgsBufferArg, IRB);
+  Argument &ImplArgsBufferArg =
+      vc::getImplicitArg(Kernel, vc::KernelMetadata::IMP_IMPL_ARGS_BUFFER);
+  vc::createWriteVariableRegion(*ImplArgsBufferVar, ImplArgsBufferArg, IRB);
 }
 
 bool CMImpParam::runOnModule(Module &M) {

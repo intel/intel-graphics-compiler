@@ -471,14 +471,9 @@ void GenXPrologEpilogInsertion::initializeStack(Function &F) {
   auto *Mul = IRB.CreateMul(HWIDCall, ThreadOffset);
   auto *MulCasted = IRB.CreateZExt(Mul, IRB.getInt64Ty());
 
-  vc::KernelMetadata KM{&F};
-  auto *PrivBase =
-      std::find_if(F.arg_begin(), F.arg_end(), [&KM](Argument &Arg) {
-        return vc::KernelArgInfo{KM.getArgKind(Arg.getArgNo())}.isPrivateBase();
-      });
-  IGC_ASSERT_EXIT_MESSAGE(PrivBase != F.arg_end(), "No PrivBase arg found");
-
-  auto *Add = IRB.CreateAdd(PrivBase, MulCasted);
+  auto &PrivBase =
+      vc::getImplicitArg(F, vc::KernelMetadata::IMP_OCL_PRIVATE_BASE);
+  auto *Add = IRB.CreateAdd(&PrivBase, MulCasted);
   buildWritePredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB, Add);
   Value *SP = buildReadPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
                                  IRB.getInt64Ty(), false);

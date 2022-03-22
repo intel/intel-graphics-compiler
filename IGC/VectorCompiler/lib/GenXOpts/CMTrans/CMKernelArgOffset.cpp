@@ -500,8 +500,8 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     unsigned ThreadPayloads[] = {
         Offset // R1, local_id_x, local_id_y, local_id_z
     };
-    auto getImpOffset = [&](vc::KernelArgInfo AI) -> int {
-      if (AI.isLocalIDs())
+    auto getImpOffset = [&](uint32_t ArgKind) -> int {
+      if (vc::isLocalIDKind(ArgKind))
         return ThreadPayloads[0];
       return -1;
     };
@@ -541,18 +541,16 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     };
 
     // First scan, assign implicit arguments.
-    auto ArgKinds = KM->getArgKinds();
-    auto Kind = ArgKinds.begin();
-    for (auto &Arg : F->args()) {
-      vc::KernelArgInfo AI{*Kind++};
-      int ImpOffset = getImpOffset(AI);
+    for (auto &&[Arg, ArgKind] : zip(F->args(), KM->getArgKinds())) {
+      int ImpOffset = getImpOffset(ArgKind);
       if (ImpOffset > 0) {
         PlacedArgs[&Arg] = ImpOffset;
         continue;
       }
 
-      if (AI.isLocalSize() || AI.isGroupCount() || AI.isPrintBuffer() ||
-          AI.isPrivateBase() || AI.isImplicitArgsBuffer()) {
+      if (vc::isLocalSizeKind(ArgKind) || vc::isGroupCountKind(ArgKind) ||
+          vc::isPrintBufferKind(ArgKind) || vc::isPrivateBaseKind(ArgKind) ||
+          vc::isImplicitArgsBufferKind(ArgKind)) {
         unsigned Bytes = Arg.getType()->getPrimitiveSizeInBits() / 8;
         unsigned Align = Arg.getType()->getScalarSizeInBits() / 8;
         placeArg(&Arg, Bytes, Align);
@@ -560,10 +558,8 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     }
 
     // Second scan, assign normal arguments.
-    Kind = ArgKinds.begin();
     unsigned Idx = 0;
-    for (auto &Arg : F->args()) {
-      vc::KernelArgInfo AI{*Kind++};
+    for (auto &&[Arg, ArgKind] : zip(F->args(), KM->getArgKinds())) {
       bool IsBuffer = KM->isBufferType(Idx++);
 
       // Skip alaready assigned arguments.
@@ -572,7 +568,7 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
 
       // image/sampler arguments do not allocate vISA inputs
       // buffer arguments do allocate unused vISA inputs
-      if (!AI.isNormalCategory() && !IsBuffer) {
+      if (!vc::isNormalCategoryArgKind(ArgKind) && !IsBuffer) {
         PlacedArgs[&Arg] = vc::KernelMetadata::SKIP_OFFSET_VAL;
         continue;
       }
