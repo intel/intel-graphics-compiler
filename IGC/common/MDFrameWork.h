@@ -643,8 +643,6 @@ namespace IGC
 
         unsigned int privateMemoryPerWI = 0;
 
-        std::map<llvm::Function*, unsigned int> PrivateMemoryPerFG;
-
         SPIRVCapabilities capabilities;
 
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask{};
