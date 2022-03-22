@@ -4986,35 +4986,35 @@ short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMax, _i32_i32_i16, )(int Execution,
 int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMax, _i32_i32_i32, )(int Execution, int Operation, int X);
 long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupSMax, _i32_i32_i64, )(int Execution, int Operation, long X);
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIMul, _i32_i32_i8, )(int Execution, int Operation, char X);
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIMul, _i32_i32_i16, )(int Execution, int Operation, short X);
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIMul, _i32_i32_i32, )(int Execution, int Operation, int X);
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIMul, _i32_i32_i64, )(int Execution, int Operation, long X);
+char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIMulKHR, _i32_i32_i8, )(int Execution, int Operation, char X);
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIMulKHR, _i32_i32_i16, )(int Execution, int Operation, short X);
+int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIMulKHR, _i32_i32_i32, )(int Execution, int Operation, int X);
+long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupIMulKHR, _i32_i32_i64, )(int Execution, int Operation, long X);
 
-half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMul, _i32_i32_f16, )(int Execution, int Operation, half X);
-float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMul, _i32_i32_f32, )(int Execution, int Operation, float X);
+half   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMulKHR, _i32_i32_f16, )(int Execution, int Operation, half X);
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMulKHR, _i32_i32_f32, )(int Execution, int Operation, float X);
 #if defined(cl_khr_fp64)
-double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMul, _i32_i32_f64, )(int Execution, int Operation, double X);
+double SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupFMulKHR, _i32_i32_f64, )(int Execution, int Operation, double X);
 #endif // defined(cl_khr_fp64)
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseAnd, _i32_i32_i8, )(int Execution, int Operation, char X);
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseAnd, _i32_i32_i16, )(int Execution, int Operation, short X);
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseAnd, _i32_i32_i32, )(int Execution, int Operation, int X);
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseAnd, _i32_i32_i64, )(int Execution, int Operation, long X);
+char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseAndKHR, _i32_i32_i8, )(int Execution, int Operation, char X);
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseAndKHR, _i32_i32_i16, )(int Execution, int Operation, short X);
+int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseAndKHR, _i32_i32_i32, )(int Execution, int Operation, int X);
+long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseAndKHR, _i32_i32_i64, )(int Execution, int Operation, long X);
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseOr, _i32_i32_i8, )(int Execution, int Operation, char X);
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseOr, _i32_i32_i16, )(int Execution, int Operation, short X);
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseOr, _i32_i32_i32, )(int Execution, int Operation, int X);
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseOr, _i32_i32_i64, )(int Execution, int Operation, long X);
+char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseOrKHR, _i32_i32_i8, )(int Execution, int Operation, char X);
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseOrKHR, _i32_i32_i16, )(int Execution, int Operation, short X);
+int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseOrKHR, _i32_i32_i32, )(int Execution, int Operation, int X);
+long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseOrKHR, _i32_i32_i64, )(int Execution, int Operation, long X);
 
-char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseXor, _i32_i32_i8, )(int Execution, int Operation, char X);
-short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseXor, _i32_i32_i16, )(int Execution, int Operation, short X);
-int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseXor, _i32_i32_i32, )(int Execution, int Operation, int X);
-long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseXor, _i32_i32_i64, )(int Execution, int Operation, long X);
+char  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseXorKHR, _i32_i32_i8, )(int Execution, int Operation, char X);
+short SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseXorKHR, _i32_i32_i16, )(int Execution, int Operation, short X);
+int   SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseXorKHR, _i32_i32_i32, )(int Execution, int Operation, int X);
+long  SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupBitwiseXorKHR, _i32_i32_i64, )(int Execution, int Operation, long X);
 
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupLogicalAnd, _i32_i32_i1, )(int Execution, int Operation, bool X);
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupLogicalOr, _i32_i32_i1, )(int Execution, int Operation, bool X);
-bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupLogicalXor, _i32_i32_i1, )(int Execution, int Operation, bool X);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupLogicalAndKHR, _i32_i32_i1, )(int Execution, int Operation, bool X);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupLogicalOrKHR, _i32_i32_i1, )(int Execution, int Operation, bool X);
+bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupLogicalXorKHR, _i32_i32_i1, )(int Execution, int Operation, bool X);
 
 // Device-Side Enqueue Instructions
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)

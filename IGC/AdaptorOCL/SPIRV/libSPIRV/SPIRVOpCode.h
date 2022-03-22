@@ -150,7 +150,7 @@ inline bool hasGroupOperation(Op OpCode) {
   return (OpGroupIAdd <= OC && OC <= OpGroupSMax) ||
          (OpGroupNonUniformBallotBitCount == OC)  ||
          (OpGroupNonUniformIAdd <= OC && OC <= OpGroupNonUniformLogicalXor) ||
-         (OpGroupIMul <= OC && OC <= OpGroupLogicalXor);
+         (OpGroupIMulKHR <= OC && OC <= OpGroupLogicalXorKHR);
 }
 
 inline bool isSubgroupAvcINTELTypeOpCode(Op OpCode) {

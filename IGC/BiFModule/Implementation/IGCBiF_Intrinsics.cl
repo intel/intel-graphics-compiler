@@ -751,7 +751,8 @@ DECL_SUB_GROUP_CLUSTERED_OPERATION(type, type_abbr, operation, reduce)
 // __builtin_IB_sub_group_clustered_reduce_IMul/FMul
 #define DECL_SUB_GROUP_ADD_MUL(type, type_abbr, type_sign)  \
 DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Add)  \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Mul)
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##Mul)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, type_sign##MulKHR)
 
 DECL_SUB_GROUP_ADD_MUL(char,   i8,  I)
 DECL_SUB_GROUP_ADD_MUL(short,  i16, I)
@@ -795,10 +796,13 @@ DECL_SUB_GROUP_MIN_MAX(half,   f16, F)
 // __builtin_IB_sub_group_reduce_BitwiseAnd/Or/Xor
 // __builtin_IB_sub_group_scan_BitwiseAnd/Or/Xor
 // __builtin_IB_sub_group_clustered_reduce_BitwiseAnd/Or/Xor
-#define DECL_BITWISE_OPERATIONS(type, type_abbr)        \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseAnd)  \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseOr)   \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseXor)
+#define DECL_BITWISE_OPERATIONS(type, type_abbr)           \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseAnd)     \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseOr)      \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseXor)     \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseAndKHR)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseOrKHR)   \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, BitwiseXorKHR)
 
 DECL_BITWISE_OPERATIONS(char,  i8)
 DECL_BITWISE_OPERATIONS(short, i16)
@@ -809,10 +813,13 @@ DECL_BITWISE_OPERATIONS(long,  i64)
 // __builtin_IB_sub_group_reduce_LogicalAnd/Or/Xor
 // __builtin_IB_sub_group_scan_LogicalAnd/Or/Xor
 // __builtin_IB_sub_group_clustered_reduce_LogicalAnd/Or/Xor
-#define DECL_LOGICAL_OPERATIONS(type, type_abbr)        \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalAnd)  \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalOr)   \
-DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalXor)
+#define DECL_LOGICAL_OPERATIONS(type, type_abbr)           \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalAnd)     \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalOr)      \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalXor)     \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalAndKHR)  \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalOrKHR)   \
+DECL_SUB_GROUP_ALL_GROUPS(type, type_abbr, LogicalXorKHR)
 
 DECL_LOGICAL_OPERATIONS(bool, i1)
 
