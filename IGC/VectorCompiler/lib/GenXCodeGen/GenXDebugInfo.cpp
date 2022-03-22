@@ -1102,7 +1102,7 @@ public:
       PrintSkippedAndClearCount();
 
       OS << Prefix;
-      OS << "  [" << VisaIndexCurr << ";" << VisaIndexNext << "): ";
+      OS << " [" << VisaIndexCurr << ";" << VisaIndexNext << "): ";
 
       auto *Reg = getRegisterForValue(Inst);
       OS << "<";
@@ -1111,6 +1111,13 @@ public:
       OS << "> ";
 
       Inst->print(OS);
+
+      if (auto DbgLoc = Inst->getDebugLoc()) {
+        StringRef Filename = DbgLoc->getFilename();
+        auto Line = DbgLoc->getLine();
+        auto Col = DbgLoc->getColumn();
+        OS << " [" << Filename << ":" << Line << "," << Col << "]";
+      }
       OS << "\n";
     }
 
