@@ -171,6 +171,7 @@ public:
     // Emit lifetime start right before inst V. If ForAllInstance is true, emit lifestart
     // for both instances; otherwise, just the current instance set in the calling context.
     void emitLifetimeStart(CVariable* Var, llvm::BasicBlock* BB, llvm::Instruction* I, bool ForAllInstance);
+    bool waveShuffleCase(CVariable* Var, BasicBlock* BB, Instruction* I, bool ForAllInstance);
 
     // set the predicate with current active channels
     void emitPredicateFromChannelIP(CVariable* dst, CVariable* alias = NULL);
@@ -920,7 +921,7 @@ private:
     LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1) const;
     bool m_isDuplicate;
     CVariable* m_tmpDest = nullptr;
-
+    std::set<CoalescingEngine::CCTuple*> lifetimeStartAdded;
 };
 
 } // namespace IGC

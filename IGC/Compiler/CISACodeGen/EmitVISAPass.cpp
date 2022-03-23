@@ -10361,9 +10361,85 @@ CVariable* EmitPass::Add(CVariable* Src0, CVariable* Src1, const CVariable* DstP
     return Dst;
 }
 
+bool EmitPass::waveShuffleCase(CVariable* Var, BasicBlock* BB, Instruction* I, bool ForAllInstance)
+{
+    // waveShuffleIndex with indirect index generating a0.0 and preventing vISA from marking the lifetime.
+    // Add a lifetime start in this case to avoid keeping a large payload around when not needed.
+    bool found = false;
+    CoalescingEngine::CCTuple* ct = m_CE->GetValueCCTupleMapping(I);
+    if (ct)
+    {
+        for (auto* UI : I->users()) // UI is the instruction where the payload is used
+        {
+            for (uint i = 0; i < UI->getNumOperands(); i++)
+            {
+                if (!dyn_cast<Instruction>(UI->getOperand(i)))
+                    continue;
+
+                if (GenIntrinsicInst* WaveShuffleIndexInst = dyn_cast<GenIntrinsicInst>(UI->getOperand(i)))
+                {
+                    // if some of the payload come from waveShuffleIndex with indirect index, add the lifetimeStart.
+                    if (WaveShuffleIndexInst->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex)
+                    {
+                        CVariable* data = GetSymbol(WaveShuffleIndexInst->getOperand(0));
+                        CVariable* simdChannel = GetSymbol(WaveShuffleIndexInst->getOperand(1));
+
+                        if (!data->IsUniform() && !simdChannel->IsImmediate())
+                        {
+                            found = true;
+                        }
+                    }
+                }
+
+                // all payload src need to be in the same basic block
+                if (Instruction* payloadSrcInst = dyn_cast<Instruction>(UI->getOperand(i)))
+                {
+                    if (payloadSrcInst->getParent() != I->getParent())
+                    {
+                        found = false;
+                        break;
+                    }
+                }
+            }
+            if (found)
+                break;
+        }
+    }
+
+    // found the case. Start adding lifetimeStart if this is the first occurance of CC_Tuple.
+    // The ones already handled are kept in lifetimeStartAdded.
+    if (found)
+    {
+        // if ct is not previous found, insert it into lifetimeStartAdded. Otherwise the lifetime_start is already added and no need to add again.
+        if (lifetimeStartAdded.find(ct) == lifetimeStartAdded.end())
+        {
+            lifetimeStartAdded.insert(ct);
+            if (ForAllInstance)
+            {
+                for (uint instance = 0; instance < Var->GetNumberInstance(); instance++)
+                {
+                    m_encoder->SetSecondHalf(instance == 0 ? false : true);
+                    m_encoder->Lifetime(LIFETIME_START, Var);
+                }
+            }
+            else
+            {
+                // Current instance, set already in the calling context.
+                m_encoder->Lifetime(LIFETIME_START, Var);
+            }
+        }
+    }
+    return found;
+}
+
 // Insert lifetime start right before instruction I if it is a candidate.
 void EmitPass::emitLifetimeStart(CVariable* Var, BasicBlock* BB, Instruction* I, bool ForAllInstance)
 {
+    if (waveShuffleCase(Var, BB, I, ForAllInstance)) {
+        // already insert a Lifetimestart
+        return;
+    }
+
     if (m_pCtx->getVectorCoalescingControl() == 0 || Var == nullptr) {
         return;
     }
