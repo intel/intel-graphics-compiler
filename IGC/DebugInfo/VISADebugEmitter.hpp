@@ -34,11 +34,13 @@ class Module;
 }
 
 namespace IGC {
+
 class StreamEmitter;
 class VISAModule;
 class DwarfDebug;
 class DwarfDISubprogramCache;
 class CodeGenContext;
+class VISADebugInfo;
 
 class DebugEmitter : public IDebugEmitter {
 public:
@@ -51,8 +53,8 @@ public:
 
   void SetDISPCache(DwarfDISubprogramCache *DISPCache) override;
 
-  std::vector<char> Finalize(bool finalize,
-                             const DbgDecoder *decodedDbg) override;
+  std::vector<char> Finalize(bool Finalize,
+                             const IGC::VISADebugInfo &VisaDbgInfo) override;
 
   void BeginInstruction(llvm::Instruction *pInst) override;
   void EndInstruction(llvm::Instruction *pInst) override;
@@ -70,7 +72,8 @@ public:
 private:
   /// @brief Reset Debug Emitter instance.
   void Reset();
-  void processCurrentFunction(bool finalize, const DbgDecoder *decodedDbg);
+  void processCurrentFunction(bool Finalize,
+                              const IGC::VISADebugInfo &VisaDbgInfo);
 
 private:
   bool m_initialized = false;

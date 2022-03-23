@@ -23,7 +23,6 @@ using namespace std;
 
 namespace IGC
 {
-    class DbgDecoder;
     class CVariable;
     class VISAModule;
     class CShader;

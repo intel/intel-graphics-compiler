@@ -29,12 +29,13 @@ class Function;
 } // namespace llvm
 
 namespace IGC {
-// Forward declaration
+
+struct DebugEmitterOpts;
+
 class CShader;
 class VISAModule;
-struct DebugEmitterOpts;
-class DbgDecoder;
 class DwarfDISubprogramCache;
+class VISADebugInfo;
 
 /// @brief IDebugEmitter is an interface for debug info emitter class.
 ///        It can be used by IGC VISA emitter pass to emit debug info.
@@ -63,11 +64,11 @@ public:
   /// @param DISPCache [IN] pointer to an external DwarfDISubprogramCache
   virtual void SetDISPCache(DwarfDISubprogramCache *DISPCache) = 0;
   /// @brief Emit debug info to given buffer and reset debug emitter.
-  /// @param finalize [IN] indicates whether this is last function in group.
-  /// @param decodedDbg [IN] holds decoded VISA debug information.
+  /// @param Finalize [IN] indicates whether this is last function in group.
+  /// @param VisaDbgIngo [IN] holds decoded VISA debug information.
   /// @return memory buffer which contains the emitted debug info.
-  virtual std::vector<char> Finalize(bool finalize,
-                                     const DbgDecoder *decodedDbg) = 0;
+  virtual std::vector<char> Finalize(bool Finalize,
+                                     const IGC::VISADebugInfo &VisaDbgInfo) = 0;
 
   /// @brief Process instruction before emitting its VISA code.
   /// @param pInst instruction to process.

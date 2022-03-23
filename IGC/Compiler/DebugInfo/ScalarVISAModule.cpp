@@ -129,7 +129,7 @@ int ScalarVisaModule::getFPReg() const {
     return regFP;
 }
 
-llvm::StringRef ScalarVisaModule::GetVISAFuncName(llvm::StringRef OldName) const
+llvm::StringRef ScalarVisaModule::GetVISAFuncName() const
 {
     // when igc.device.enqueue metadata is used, function name
     // doesnt match between llvm::Function and VISA. this
@@ -139,6 +139,7 @@ llvm::StringRef ScalarVisaModule::GetVISAFuncName(llvm::StringRef OldName) const
     //
     // when device enqueue is not used, llvm's function name
     // matches that used by VISA.
+    auto OldName = getFunction()->getName();
     auto& Module = *getFunction()->getParent();
 
     // check if llvm function name is different than VISA function name

@@ -408,22 +408,6 @@ public:
       decode();
   }
 
-  bool getVarInfo(std::string &kernelName, std::string &name,
-                  VarInfo &var) const {
-    for (const auto &k : compiledObjs) {
-      if (compiledObjs.size() > 1 && k.kernelName.compare(kernelName) != 0)
-        continue;
-
-      for (const auto &v : k.Vars) {
-        if (v.name.compare(name) == 0) {
-          var = v;
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
   void print(llvm::raw_ostream &OS) const;
   void dump() const;
 };

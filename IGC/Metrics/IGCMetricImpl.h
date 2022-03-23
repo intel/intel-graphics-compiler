@@ -136,7 +136,9 @@ namespace IGCMetrics
             llvm::Function* pFunc,
             bool IsGeminiLakeWithDoubles);
 
-        void CollectDataFromDebugInfo(IGC::DebugInfoData* pDebugInfo, IGC::DbgDecoder* pDebugDecoder);
+        void CollectDataFromDebugInfo(
+            IGC::DebugInfoData *pDebugInfo,
+            const IGC::VISADebugInfo *pVisaDbgInfo);
 
         void CollectInstructionCnt(
             llvm::Function* pFunc,

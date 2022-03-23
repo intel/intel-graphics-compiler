@@ -598,7 +598,7 @@ namespace IGCMetrics
 #endif
     }
 
-    void IGCMetricImpl::CollectDataFromDebugInfo(IGC::DebugInfoData* pDebugInfo, IGC::DbgDecoder* pDebugDecoder)
+    void IGCMetricImpl::CollectDataFromDebugInfo(IGC::DebugInfoData *pDebugInfo, const IGC::VISADebugInfo *pVisaDbgInfo)
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
@@ -731,7 +731,7 @@ namespace IGCMetrics
 
                 auto fillRegister = [&](unsigned int reg)
                 {
-                    const auto* varInfo = vISAData->getVarInfo(*pDebugDecoder, reg);
+                    const auto* varInfo = vISAData->getVarInfo(*pVisaDbgInfo, reg);
                     auto varInfo_reg_m = varInfo_m->add_reg();
 
                     varInfo_reg_m->set_addrmodel(varLoc.IsInGlobalAddrSpace() ?

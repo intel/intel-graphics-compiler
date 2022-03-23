@@ -28,6 +28,7 @@ See LICENSE.TXT for details.
 #include "StreamEmitter.hpp"
 #include "VISADebugEmitter.hpp"
 #include "VISAModule.hpp"
+#include "VISADebugInfo.hpp"
 
 #include "Probe/Assertion.h"
 #include "secure_mem.h"
@@ -87,7 +88,7 @@ void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM,
 }
 
 void DebugEmitter::processCurrentFunction(bool finalize,
-                                          const DbgDecoder *decodedDbg) {
+                                          const IGC::VISADebugInfo &VisaDbg) {
 
   auto EmitIpLabel = [&](unsigned int ip) {
     // Emit label before %ip
@@ -97,15 +98,15 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     }
   };
 
-  m_pVISAModule->buildDirectElfMaps(*decodedDbg);
-  auto co = m_pVISAModule->getCompileUnit(*decodedDbg);
+  m_pVISAModule->rebuildVISAIndexes(VisaDbg);
+  const auto *VisaDebugInfo = m_pVISAModule->findVisaObjectDI(VisaDbg);
+  IGC_ASSERT(VisaDebugInfo);
 
   // Emit src line mapping directly instead of
   // relying on dbgmerge. elf generated will have
   // text section and debug_line sections populated.
-  const auto &VISAIndexToInst = m_pVISAModule->VISAIndexToInst;
-  const auto &VISAIndexToSize = m_pVISAModule->VISAIndexToSize;
-  decltype(m_pVISAModule->GenISAToVISAIndex) GenISAToVISAIndex;
+  VISAObjectDebugInfo::GenToVisaIndexes GenISAToVISAIndex;
+  const auto &GenToByteSizeLUT = VisaDebugInfo->getGenToSizeInBytesLUT();
   unsigned int subEnd = m_pVISAModule->GetCurrentVISAId();
   unsigned int prevLastGenOff = lastGenOff;
   m_pDwarfDebug->lowPc = lastGenOff;
@@ -113,19 +114,20 @@ void DebugEmitter::processCurrentFunction(bool finalize,
   // SIMD width
   m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
 
-  if (co->subs.size() == 0) {
-    GenISAToVISAIndex = m_pVISAModule->GenISAToVISAIndex;
+  if (VisaDebugInfo->getSubroutines().empty()) {
+    // TODO: we copy large object here. do we really need it?
+    GenISAToVISAIndex = VisaDebugInfo->getGenToVisaIndexLUT();
     if (GenISAToVISAIndex.size() > 0)
       lastGenOff = GenISAToVISAIndex.back().GenOffset;
-    m_pDwarfDebug->lowPc = co->relocOffset;
+    m_pDwarfDebug->lowPc = VisaDebugInfo->getRelocOffset();
   } else {
-    for (auto item : m_pVISAModule->GenISAToVISAIndex) {
+    for (const auto &item : VisaDebugInfo->getGenToVisaIndexLUT()) {
       if ((item.GenOffset >= lastGenOff) ||
           ((item.GenOffset | lastGenOff) == 0)) {
         if (item.VisaOffset <= subEnd || item.VisaOffset == 0xffffffff) {
           GenISAToVISAIndex.push_back(item);
-          auto size = m_pVISAModule->GenISAInstSizeBytes[item.GenOffset];
-          lastGenOff = item.GenOffset + size;
+          auto Size = GenToByteSizeLUT.lookup(item.GenOffset);
+          lastGenOff = item.GenOffset + Size;
           continue;
         }
 
@@ -144,7 +146,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     IGC_ASSERT(pc < genxISA.size());
     IGC_ASSERT(GenISAToVISAIndex.begin()->GenOffset >= pc);
   }
-  for (auto item : GenISAToVISAIndex) {
+  for (const auto &item : GenISAToVISAIndex) {
     for (unsigned int i = pc; i != item.GenOffset; i++) {
       EmitIpLabel(i);
       m_pStreamEmitter->EmitInt8(genxISA[i]);
@@ -152,9 +154,13 @@ void DebugEmitter::processCurrentFunction(bool finalize,
 
     pc = item.GenOffset;
 
-    auto instIt = VISAIndexToInst.end();
-    auto sizeIt = VISAIndexToSize.find(item.VisaOffset);
-    if (sizeIt != VISAIndexToSize.end()) {
+    const auto &VisaIndexToInst = m_pVISAModule->getVisaIndexToInstLUT();
+    const auto &VisaIndexToVisaSizeIndex =
+        m_pVISAModule->getVisaIndexToVisaSizeIndexLUT();
+
+    auto InstIt = VisaIndexToInst.end();
+    auto SizeIndexIt = VisaIndexToVisaSizeIndex.find(item.VisaOffset);
+    if (SizeIndexIt != VisaIndexToVisaSizeIndex.end()) {
       // Lookup all VISA instructions that may
       // map to an llvm::Instruction. This is useful
       // when an llvm::Instruction leads to multiple
@@ -162,24 +168,24 @@ void DebugEmitter::processCurrentFunction(bool finalize,
       // optimizes some of those away. Src line
       // mapping for all VISA instructions is the
       // same. So lookup any one that still exists.
-      auto startIdx = sizeIt->second.VisaOffset;
-      auto numVISAInsts = sizeIt->second.VisaInstrNum;
+      auto StartIdx = SizeIndexIt->second.VisaOffset;
+      auto NumVISAInsts = SizeIndexIt->second.VisaInstrNum;
       // Loop till at least one VISA instruction
       // is found.
-      for (unsigned int visaId = startIdx; visaId != (startIdx + numVISAInsts);
+      for (unsigned int visaId = StartIdx; visaId != (StartIdx + NumVISAInsts);
            visaId++) {
-        instIt = VISAIndexToInst.find(visaId);
-        if (instIt != VISAIndexToInst.end())
+        InstIt = VisaIndexToInst.find(visaId);
+        if (InstIt != VisaIndexToInst.end())
           break;
       }
     }
 
-    if (instIt == VISAIndexToInst.end())
+    if (InstIt == VisaIndexToInst.end())
       continue;
-    if (!m_pVISAModule->IsExecutableInst(*instIt->second))
+    if (!m_pVISAModule->IsExecutableInst(*InstIt->second))
       continue;
 
-    const auto &loc = instIt->second->getDebugLoc();
+    const auto &loc = InstIt->second->getDebugLoc();
     if (!loc || loc == prevSrcLoc)
       continue;
 
@@ -232,8 +238,8 @@ void DebugEmitter::SetDISPCache(DwarfDISubprogramCache *DISPCache) {
   m_pDwarfDebug->setDISPCache(DISPCache);
 }
 
-std::vector<char> DebugEmitter::Finalize(bool finalize,
-                                         const DbgDecoder *decodedDbg) {
+std::vector<char>
+DebugEmitter::Finalize(bool Finalize, const IGC::VISADebugInfo &VisaDbgInfo) {
   if (!m_debugEnabled) {
     return {};
   }
@@ -241,7 +247,7 @@ std::vector<char> DebugEmitter::Finalize(bool finalize,
   IGC_ASSERT_MESSAGE(m_pVISAModule,
                      "active visa object must be selected before finalization");
   IGC_ASSERT(m_pDwarfDebug);
-  m_pDwarfDebug->setDecodedDbg(decodedDbg);
+  m_pDwarfDebug->setVisaDbgInfo(VisaDbgInfo);
 
   if (!doneOnce) {
     m_pDwarfDebug->beginModule();
@@ -257,14 +263,16 @@ std::vector<char> DebugEmitter::Finalize(bool finalize,
   m_pDwarfDebug->beginFunction(pFunc, m_pVISAModule);
   LLVM_DEBUG(dbgs() << "[DwarfDebug] beginFunction end ***\n");
 
-  processCurrentFunction(finalize, decodedDbg);
+  processCurrentFunction(Finalize, VisaDbgInfo);
 
   // Emit post-function debug information
   LLVM_DEBUG(dbgs() << "[DwarfDebug] endFunction start ---\n");
   m_pDwarfDebug->endFunction(pFunc);
   LLVM_DEBUG(dbgs() << "[DwarfDebug] endFunction done ***\n");
 
-  if (!finalize) {
+  LLVM_DEBUG(dbgs() << "Processed VISA Object:\n");
+  LLVM_DEBUG(m_pVISAModule->dump());
+  if (!Finalize) {
     LLVM_DEBUG(dbgs() << "[DwarfDebug] non-finalized exit ***\n");
     return {};
   }
@@ -277,9 +285,6 @@ std::vector<char> DebugEmitter::Finalize(bool finalize,
 
   m_pStreamEmitter->Finalize();
   LLVM_DEBUG(dbgs() << "[DwarfDebug] finalized***\n");
-
-  LLVM_DEBUG(dbgs() << "Finalized Visa Module:\n");
-  LLVM_DEBUG(m_pVISAModule->dump());
 
   // Add program header table to satisfy latest gdb
   bool is64Bit = m_pVISAModule->getPointerSize() == 8;

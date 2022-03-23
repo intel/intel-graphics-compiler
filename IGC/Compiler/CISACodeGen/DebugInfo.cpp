@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include "DebugInfo/ScalarVISAModule.h"
 #include "DebugInfo/DwarfDebug.hpp"
+#include "DebugInfo/VISADebugInfo.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
 #include "llvm/IR/IntrinsicInst.h"
 
@@ -91,8 +92,10 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         std::vector<std::pair<unsigned int, std::pair<llvm::Function*, IGC::VISAModule*>>> sortedVISAModules;
 
         // Sort modules in order of their placement in binary
-        DbgDecoder decodedDbg(m_currShader->ProgramOutput()->m_debugDataGenISA);
-        auto getGenOff = [&decodedDbg](std::vector<std::pair<unsigned int, unsigned int>>& data, unsigned int VISAIndex)
+        IGC::VISADebugInfo VisaDbgInfo(m_currShader->ProgramOutput()->m_debugDataGenISA);
+        const auto &decodedDbg = VisaDbgInfo.getRawDecodedData();
+        auto getGenOff = [&decodedDbg](const std::vector<std::pair<unsigned int, unsigned int>>& data,
+                                       unsigned int VISAIndex)
         {
             unsigned retval = 0;
             for (auto& item : data)
@@ -223,7 +226,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             if (--size == 0)
                 finalize = true;
 
-            EmitDebugInfo(finalize, &decodedDbg);
+            EmitDebugInfo(finalize, VisaDbgInfo);
         }
 
         // set VISA dbg info to nullptr to indicate 1-step debug is enabled
@@ -237,7 +240,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         if (finalize)
         {
             m_currShader->GetContext()->metrics.CollectDataFromDebugInfo(
-                &m_currShader->GetDebugInfoData(), &decodedDbg);
+                &m_currShader->GetDebugInfoData(), &VisaDbgInfo);
 
             IDebugEmitter::Release(m_pDebugEmitter);
         }
@@ -262,11 +265,12 @@ static void debugDump(const CShader* Shader, llvm::StringRef Ext,
     fclose(DumpFile);
 }
 
-void DebugInfoPass::EmitDebugInfo(bool finalize, DbgDecoder* decodedDbg)
+void DebugInfoPass::EmitDebugInfo(bool finalize,
+                                  const IGC::VISADebugInfo& VisaDbgInfo)
 {
     IGC_ASSERT(m_pDebugEmitter);
 
-    std::vector<char> buffer = m_pDebugEmitter->Finalize(finalize, decodedDbg);
+    std::vector<char> buffer = m_pDebugEmitter->Finalize(finalize, VisaDbgInfo);
 
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) || IGC_IS_FLAG_ENABLED(ElfDumpEnable))
         debugDump(m_currShader, "elf", { buffer.data(), buffer.size() });

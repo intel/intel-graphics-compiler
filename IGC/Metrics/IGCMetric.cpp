@@ -189,9 +189,9 @@ namespace IGCMetrics
         get(igcMetric)->FinalizeStats();
     }
 
-    void IGCMetric::CollectDataFromDebugInfo(IGC::DebugInfoData* pDebugInfo, IGC::DbgDecoder* pDebugDecoder)
+    void IGCMetric::CollectDataFromDebugInfo(IGC::DebugInfoData *pDebugInfo, const IGC::VISADebugInfo *pVisaDbgInfo)
     {
-        get(igcMetric)->CollectDataFromDebugInfo(pDebugInfo, pDebugDecoder);
+        get(igcMetric)->CollectDataFromDebugInfo(pDebugInfo, pVisaDbgInfo);
     }
 
     bool IGCMetric::isMetricFuncCall(llvm::CallInst* pCall)

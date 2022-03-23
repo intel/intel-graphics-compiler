@@ -47,6 +47,7 @@ See LICENSE.TXT for details.
 #include "DwarfDebug.hpp"
 #include "StreamEmitter.hpp"
 #include "VISAModule.hpp"
+#include "VISADebugInfo.hpp"
 
 #include <list>
 #include <unordered_set>
@@ -389,8 +390,6 @@ DwarfDebug::DwarfDebug(StreamEmitter *A, VISAModule *M)
   DwarfVersion = getDwarfVersionFromModule(M->GetModule());
 }
 
-DwarfDebug::~DwarfDebug() { decodedDbg = nullptr; }
-
 MCSymbol *DwarfDebug::getStringPoolSym() {
   return Asm->GetTempSymbol(StringPref);
 }
@@ -641,7 +640,7 @@ void DwarfDebug::encodeRange(CompileUnit *TheCU, DIE *ScopeDIE,
   for (SmallVectorImpl<InsnRange>::const_iterator RI = PrunedRanges.begin(),
                                                   RE = PrunedRanges.end();
        RI != RE; ++RI) {
-    auto GenISARanges = m_pModule->getGenISARange(*RI);
+    auto GenISARanges = m_pModule->getGenISARange(*VisaDbgInfo, *RI);
     for (auto &R : GenISARanges) {
       AllGenISARanges.push_back(R);
     }
@@ -1161,14 +1160,14 @@ void DwarfDebug::beginModule() {
 
   if (DwarfFrameSectionNeeded()) {
     Asm->SwitchSection(Asm->GetDwarfFrameSection());
-    if (m_pModule->hasOrIsStackCall(*decodedDbg)) {
+    if (m_pModule->hasOrIsStackCall(*VisaDbgInfo)) {
       // First stack call CIE is written out,
       // next subroutine CIE if required.
       offsetCIEStackCall = 0;
       offsetCIESubroutine = writeStackcallCIE();
     }
 
-    if (m_pModule->getSubroutines(*decodedDbg)->size() > 0) {
+    if (!m_pModule->getSubroutines(*VisaDbgInfo)->empty()) {
       // writeSubroutineCIE();
     }
   }
@@ -1450,7 +1449,9 @@ void DwarfDebug::collectVariableInfo(
              IntervalTy end) -> std::pair<IntervalTy, IntervalTy> {
     if (start >= end)
       return std::make_pair(0, 0);
-    const auto &Map = m_pModule->VISAIndexToAllGenISAOff;
+    // TODO: this one is slow
+    const auto &Map =
+        VisaDbgInfo->findVisaObjectDI(*m_pModule)->getVisaToGenLUT();
     auto LB = Map.lower_bound(start);
     auto UB = Map.upper_bound(end);
     if (LB == Map.end() || UB == Map.end())
@@ -1497,7 +1498,7 @@ void DwarfDebug::collectVariableInfo(
                        VISAVariableLocation &Loc,
                        DbgDecoder::LiveIntervalsVISA &visaRange,
                        DbgDecoder::LiveIntervalsVISA &visaRange2nd) {
-    auto allCallerSave = m_pModule->getAllCallerSave(*decodedDbg, startRange,
+    auto allCallerSave = m_pModule->getAllCallerSave(*VisaDbgInfo, startRange,
                                                      endRange, visaRange);
     std::vector<DbgDecoder::LiveIntervalsVISA> vars = {visaRange};
 
@@ -1661,8 +1662,9 @@ void DwarfDebug::collectVariableInfo(
       // Conditions below decide whether we want to emit location to debug_loc
       // or inline it in the DIE. To inline in DIE, we simply dont emit anything
       // here and continue the loop.
-      bool needsCallerSave =
-          !m_pModule->getCompileUnit(*decodedDbg)->cfi.callerSaveEntry.empty();
+      const auto *VisaDebugInfo = m_pModule->findVisaObjectDI(*VisaDbgInfo);
+      IGC_ASSERT(VisaDebugInfo);
+      bool needsCallerSave = !VisaDebugInfo->getCFI().callerSaveEntry.empty();
       if (!EmitSettings.EmitDebugLoc && !needsCallerSave) {
         LLVM_DEBUG(
             dbgs() << "  << location is expected to be emitted in DIE: "
@@ -1714,7 +1716,7 @@ void DwarfDebug::collectVariableInfo(
       }
 
       IGC::InsnRange InsnRange(start, end);
-      auto GenISARange = m_pModule->getGenISARange(InsnRange);
+      auto GenISARange = m_pModule->getGenISARange(*VisaDbgInfo, InsnRange);
 
       // Emit location within the DIE for dbg.declare
       if (History.size() == 1 && isa<DbgDeclareInst>(pInst) &&
@@ -1830,7 +1832,7 @@ void DwarfDebug::collectVariableInfo(
           }
         } else if (CurLoc.IsRegister()) {
           auto regNum = CurLoc.GetRegister();
-          const auto *VarInfo = m_pModule->getVarInfo(*decodedDbg, regNum);
+          const auto *VarInfo = m_pModule->getVarInfo(*VisaDbgInfo, regNum);
           if (!VarInfo)
             continue;
           for (const auto &visaRange : VarInfo->lrs) {
@@ -1882,7 +1884,7 @@ void DwarfDebug::collectVariableInfo(
             if (CurLoc.HasLocationSecondReg()) {
               auto regNum2nd = CurLoc.GetSecondReg();
               const auto *VarInfo2nd =
-                  m_pModule->getVarInfo(*decodedDbg, regNum2nd);
+                  m_pModule->getVarInfo(*VisaDbgInfo, regNum2nd);
               if (VarInfo2nd)
                 p.visaRange2nd = (*VarInfo2nd->lrs.rbegin());
             }
@@ -2372,7 +2374,7 @@ void DwarfDebug::endFunction(const Function *MF) {
 
   if (DwarfFrameSectionNeeded()) {
     Asm->SwitchSection(Asm->GetDwarfFrameSection());
-    if (m_pModule->hasOrIsStackCall(*decodedDbg)) {
+    if (m_pModule->hasOrIsStackCall(*VisaDbgInfo)) {
       LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall start ---\n");
       writeFDEStackCall(m_pModule);
       LLVM_DEBUG(dbgs() << "[DwarfDebug] writing FDEStackCall end  ***\n");
@@ -3050,11 +3052,12 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   std::vector<uint8_t> data;
 
   auto firstInst = (m->GetInstInfoMap()->begin())->first;
+  // TODO: fixup to a proper name getter
   auto funcName = firstInst->getParent()->getParent()->getName();
 
   const IGC::DbgDecoder::SubroutineInfo *sub = nullptr;
-  const auto *co = m->getCompileUnit(*decodedDbg);
-  for (const auto &s : co->subs) {
+  const auto *VisaDebugInfo = m->findVisaObjectDI(*VisaDbgInfo);
+  for (const auto &s : VisaDebugInfo->getSubroutines()) {
     if (s.name.compare(funcName.str()) == 0) {
       sub = &s;
       break;
@@ -3076,11 +3079,12 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   write(data, ptrSize == 4 ? (uint32_t)offsetCIESubroutine
                            : (uint64_t)offsetCIESubroutine);
 
+  // TODO: move this to VisaDebugInfo
   // initial location
-  auto getGenISAOffset = [co](unsigned int VISAIndex) {
+  auto getGenISAOffset = [VisaDebugInfo](unsigned int VISAIndex) {
     uint64_t genOffset = 0;
 
-    for (auto &item : co->CISAIndexMap) {
+    for (auto &item : VisaDebugInfo->getCISAIndexLUT()) {
       if (item.first >= VISAIndex) {
         genOffset = item.second;
         break;
@@ -3140,7 +3144,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   // <ip, <instructions to write> >
   auto sortAsc = [](uint64_t a, uint64_t b) { return a < b; };
   std::map<uint64_t, std::vector<uint8_t>, decltype(sortAsc)> cfaOps(sortAsc);
-  const auto &dbgInfo = *m->getCompileUnit(*decodedDbg);
+  const auto &DbgInfo = *m->findVisaObjectDI(*VisaDbgInfo);
   auto numGRFs = GetVISAModule()->getNumGRFs();
   auto specialGRF = GetSpecialGRF();
 
@@ -3269,7 +3273,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   };
 
   auto ptrSize = Asm->GetPointerSize();
-  auto &cfi = dbgInfo.cfi;
+  const auto &CFI = DbgInfo.getCFI();
   // Emit CIE
   uint8_t lenSize = 4;
   if (ptrSize == 8)
@@ -3280,7 +3284,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
                            : (uint64_t)offsetCIEStackCall);
 
   // initial location
-  auto genOffStart = dbgInfo.relocOffset;
+  auto genOffStart = DbgInfo.getRelocOffset();
   auto genOffEnd = highPc;
 
   // LabelOffset holds offset where start %ip is written to buffer.
@@ -3300,8 +3304,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   const unsigned int MovGenInstSizeInBytes = 16;
 
   // write CFA
-  if (cfi.callerbefpValid) {
-    const auto &callerFP = cfi.callerbefp;
+  if (CFI.callerbefpValid) {
+    const auto &callerFP = CFI.callerbefp;
     for (const auto &item : callerFP) {
       // map out CFA to an offset on be stack
       write(cfaOps[item.start],
@@ -3320,8 +3324,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   }
 
   // write return addr on stack
-  if (cfi.retAddrValid) {
-    auto &retAddr = cfi.retAddr;
+  if (CFI.retAddrValid) {
+    auto &retAddr = CFI.retAddr;
     for (auto &item : retAddr) {
       // start live-range
       write(cfaOps[item.start], (uint8_t)llvm::dwarf::DW_CFA_expression);
@@ -3364,12 +3368,12 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   }
 
   // write callee save
-  if (cfi.calleeSaveEntry.size() > 0) {
+  if (CFI.calleeSaveEntry.size() > 0) {
     // set holds any callee save GRF that has been saved already to stack.
     // this is required because of some differences between dbginfo structure
     // reporting callee save and dwarf's debug_frame section requirements.
     std::unordered_set<uint32_t> calleeSaveRegsSaved;
-    for (auto &item : cfi.calleeSaveEntry) {
+    for (auto &item : CFI.calleeSaveEntry) {
       for (unsigned int idx = 0; idx != item.data.size(); ++idx) {
         auto regNum = (uint32_t)item.data[idx].srcRegOff /
                       (m_pModule->getGRFSizeInBytes());
@@ -3387,7 +3391,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       }
 
       // check whether an entry is present in calleeSaveRegsSaved but not in
-      // cfi.calleeSaveEntry missing entries are available in original locations
+      // CFI.calleeSaveEntry missing entries are available in original locations
       for (auto it = calleeSaveRegsSaved.begin();
            it != calleeSaveRegsSaved.end();) {
         bool found = false;
@@ -3449,8 +3453,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   }
 }
 bool DwarfDebug::DwarfFrameSectionNeeded() const {
-  return (m_pModule->hasOrIsStackCall(*decodedDbg) ||
-          (m_pModule->getSubroutines(*decodedDbg)->size() > 0));
+  return (m_pModule->hasOrIsStackCall(*VisaDbgInfo) ||
+          (!m_pModule->getSubroutines(*VisaDbgInfo)->empty()));
 }
 
 llvm::MCSymbol *DwarfDebug::GetLabelBeforeIp(unsigned int ip) {

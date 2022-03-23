@@ -61,8 +61,7 @@ class DIE;
 class DIEBlock;
 class DIEEntry;
 class DwarfDebug;
-
-class DbgDecoder;
+class VISADebugInfo;
 
 /// \brief This struct describes location entries emitted in the .debug_loc
 /// section.
@@ -572,8 +571,6 @@ public:
   //
   DwarfDebug(IGC::StreamEmitter *A, ::IGC::VISAModule *M);
 
-  ~DwarfDebug();
-
   IGC::StreamEmitter &getStreamEmitter() const { return *Asm; }
 
   const IGC::DebugEmitterOpts &getEmitterSettings() const {
@@ -652,7 +649,7 @@ private:
   // line#, vector<inlinedAt>
   llvm::DenseMap<unsigned int, std::vector<llvm::DILocation *>> isStmtSet;
 
-  const DbgDecoder *decodedDbg = nullptr;
+  const IGC::VISADebugInfo *VisaDbgInfo = nullptr;
 
   // store all instructions corresponding to same InlinedAt MDNode
   llvm::DenseMap<llvm::MDNode *, std::vector<const llvm::Instruction *>>
@@ -710,8 +707,9 @@ public:
   // SIMD width
   unsigned short simdWidth = 0;
 
-  const DbgDecoder *getDecodedDbg() { return decodedDbg; }
-  void setDecodedDbg(const DbgDecoder *d) { decodedDbg = d; }
+  const IGC::VISADebugInfo *getVisaDebugInfo() { return VisaDbgInfo; }
+
+  void setVisaDbgInfo(const IGC::VISADebugInfo &VDI) { VisaDbgInfo = &VDI; }
 
   llvm::MCSymbol *CopyDebugLoc(unsigned int offset);
   unsigned int CopyDebugLocNoReloc(unsigned int o);

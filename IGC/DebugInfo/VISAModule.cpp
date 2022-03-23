@@ -15,6 +15,7 @@ See LICENSE.TXT for details.
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instruction.h"
@@ -24,7 +25,9 @@ See LICENSE.TXT for details.
 // clang-format on
 
 #include "LexicalScopes.hpp"
+#include "VISADebugInfo.hpp"
 #include "VISAModule.hpp"
+#include "Utils.hpp"
 
 #include <algorithm>
 #include <unordered_map>
@@ -203,11 +206,13 @@ bool VISAModule::IsExecutableInst(const llvm::Instruction &inst) {
   return true;
 }
 
-void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder &VD) {
-  const auto *co = getCompileUnit(VD);
-  IGC_ASSERT(co);
-  VISAIndexToInst.clear();
-  VISAIndexToSize.clear();
+void VISAModule::rebuildVISAIndexes(const VISADebugInfo &VD) {
+
+  const auto *VDI = findVisaObjectDI(VD);
+  IGC_ASSERT(VDI);
+
+  VisaIndexToInst.clear();
+  VisaIndexToVisaSizeIndex.clear();
   for (VISAModule::const_iterator II = begin(), IE = end(); II != IE; ++II) {
     const Instruction *pInst = *II;
 
@@ -225,44 +230,11 @@ void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder &VD) {
       continue;
 
     unsigned int currOffset = itr->second.m_offset;
-    VISAIndexToInst.insert(std::make_pair(currOffset, pInst));
+    VisaIndexToInst.insert(std::make_pair(currOffset, pInst));
     unsigned int currSize = itr->second.m_size;
-    for (auto index = currOffset; index != (currOffset + currSize); index++)
-      VISAIndexToSize.insert(
-          std::make_pair(index, VisaInterval{currOffset, currSize}));
+    for (auto VI = currOffset, E = (currOffset + currSize); VI != E; ++VI)
+      VisaIndexToVisaSizeIndex[VI] = VisaSizeIndex{currOffset, currSize};
   }
-  GenISAToVISAIndex.clear();
-  for (auto i = 0; i != co->CISAIndexMap.size(); i++) {
-    auto &item = co->CISAIndexMap[i];
-    GenISAToVISAIndex.push_back(IDX_Gen2Visa{item.second, item.first});
-  }
-
-  // Compute all Gen ISA offsets corresponding to each VISA index
-  VISAIndexToAllGenISAOff.clear();
-  for (auto &item : co->CISAIndexMap) {
-    auto VISAIndex = item.first;
-    auto GenISAOffset = item.second;
-
-    auto it = VISAIndexToAllGenISAOff.find(VISAIndex);
-    if (it != VISAIndexToAllGenISAOff.end())
-      it->second.push_back(GenISAOffset);
-    else {
-      std::vector<unsigned> vec;
-      vec.push_back(GenISAOffset);
-      VISAIndexToAllGenISAOff[VISAIndex] = std::move(vec);
-    }
-  }
-
-  GenISAInstSizeBytes.clear();
-  for (auto i = 0; i != co->CISAIndexMap.size() - 1; i++) {
-    const auto &NextGenIdx = GenISAToVISAIndex[i + 1];
-    const auto &CurGenIdx = GenISAToVISAIndex[i];
-    IGC_ASSERT(NextGenIdx.GenOffset >= CurGenIdx.GenOffset);
-    unsigned int size = NextGenIdx.GenOffset - CurGenIdx.GenOffset;
-    GenISAInstSizeBytes.insert(std::make_pair(CurGenIdx.GenOffset, size));
-  }
-  GenISAInstSizeBytes.insert(
-      std::make_pair(GenISAToVISAIndex.back().GenOffset, 16));
 }
 
 // This function returns a vector of tuples. Each tuple corresponds to a call
@@ -281,16 +253,16 @@ void VISAModule::buildDirectElfMaps(const IGC::DbgDecoder &VD) {
 // It is assumed that if startRegNum is within caller save area then entire
 // variable is in caller save area.
 std::vector<std::tuple<uint64_t, uint64_t, unsigned int>>
-VISAModule::getAllCallerSave(const IGC::DbgDecoder &VD, uint64_t startRange,
+VISAModule::getAllCallerSave(const VISADebugInfo &VD, uint64_t startRange,
                              uint64_t endRange,
                              DbgDecoder::LiveIntervalsVISA &genIsaRange) {
   std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> callerSaveIPs;
-  const auto *CO = getCompileUnit(VD);
+  const auto *VDI = findVisaObjectDI(VD);
 
-  if (!CO)
+  if (!VDI)
     return std::move(callerSaveIPs);
 
-  if (CO->cfi.callerSaveEntry.size() == 0)
+  if (VDI->getCFI().callerSaveEntry.empty())
     return std::move(callerSaveIPs);
 
   if (!genIsaRange.isGRF())
@@ -302,10 +274,11 @@ VISAModule::getAllCallerSave(const IGC::DbgDecoder &VD, uint64_t startRange,
   unsigned int prevSize = 0;
   bool inCallerSaveSection = false;
   std::vector<DbgDecoder::PhyRegSaveInfoPerIP> saves;
-  auto callerSaveStartIt = CO->cfi.callerSaveEntry.end();
+  const auto &CFI = VDI->getCFI();
+  auto callerSaveStartIt = CFI.callerSaveEntry.end();
 
-  for (auto callerSaveIt = CO->cfi.callerSaveEntry.begin();
-       callerSaveIt != CO->cfi.callerSaveEntry.end(); ++callerSaveIt) {
+  for (auto callerSaveIt = CFI.callerSaveEntry.begin();
+       callerSaveIt != CFI.callerSaveEntry.end(); ++callerSaveIt) {
     auto &callerSave = (*callerSaveIt);
     if (prevSize > 0 && prevSize > callerSave.numEntries &&
         !inCallerSaveSection) {
@@ -318,8 +291,9 @@ VISAModule::getAllCallerSave(const IGC::DbgDecoder &VD, uint64_t startRange,
 
     if ((*callerSaveIt).numEntries == 0 && inCallerSaveSection) {
       uint64_t callerSaveIp =
-          (*callerSaveStartIt).genIPOffset + CO->relocOffset;
-      uint64_t callerRestoreIp = (*callerSaveIt).genIPOffset + CO->relocOffset;
+          (*callerSaveStartIt).genIPOffset + VDI->getRelocOffset();
+      uint64_t callerRestoreIp =
+          (*callerSaveIt).genIPOffset + VDI->getRelocOffset();
       // End of current caller save section
       if (startRange < callerSaveIp) {
         callerRestoreIp = std::min<uint64_t>(endRange, callerRestoreIp);
@@ -392,35 +366,25 @@ void VISAModule::coalesceRanges(
                     GenISARange.end());
 }
 
-template <class ContainerType, class BinaryFunction>
-void OrderedTraversal(const ContainerType &Data, BinaryFunction Visit) {
-  std::vector<typename ContainerType::key_type> Keys;
-  std::transform(Data.begin(), Data.end(), std::back_inserter(Keys),
-                 [](const auto &KV) { return KV.first; });
-  std::sort(Keys.begin(), Keys.end());
-  for (const auto &Key : Keys) {
-    auto FoundIt = Data.find(Key);
-    IGC_ASSERT(FoundIt != Data.end());
-    const auto &Val = FoundIt->second;
-    Visit(Key, Val);
-  }
-}
-
 void VISAModule::print(raw_ostream &OS) const {
 
   OS << "[DBG] VisaModule\n";
-  OS << "  Module VISAIndexToInst Dump\n  ---\n";
 
+  OS << "  --- VisaIndexToInst Dump\n";
   OrderedTraversal(
-      VISAIndexToInst, [&OS](const auto &VisaIdx, const auto &Inst) {
-        OS << "    visa_index: " << VisaIdx << " ->  inst: " << *Inst << "\n";
+      VisaIndexToInst, [&OS](const auto &VisaIdx, const auto &Inst) {
+        OS << "    VI2Inst: " << VisaIdx << " ->  inst: " << *Inst << "\n";
       });
-  OrderedTraversal(VISAIndexToSize,
-                   [&OS](const auto &VisaIdx, const auto &SizeInfo) {
-                     OS << "    visa_index: " << VisaIdx
-                        << " -> {offset: " << SizeInfo.VisaOffset
-                        << ", size: " << SizeInfo.VisaInstrNum << "}\n";
+  OS << "  ___\n";
+
+  OS << "  --- VISAIndexToSize Dump\n";
+  OrderedTraversal(VisaIndexToVisaSizeIndex,
+                   [&OS](const auto &VisaIdx, const auto &VisaInterval) {
+                     OS << "    VI2Size: " << VisaIdx
+                        << " -> {offset: " << VisaInterval.VisaOffset
+                        << ", size: " << VisaInterval.VisaInstrNum << "}\n";
                    });
+  OS << "  ___\n";
 }
 
 const llvm::Instruction *getNextInst(const llvm::Instruction *start) {
@@ -434,7 +398,7 @@ const llvm::Instruction *getNextInst(const llvm::Instruction *start) {
 }
 
 std::vector<std::pair<unsigned int, unsigned int>>
-VISAModule::getGenISARange(const InsnRange &Range) {
+VISAModule::getGenISARange(const VISADebugInfo &VD, const InsnRange &Range) {
   // Given a range, return vector of start-end range for corresponding Gen ISA
   // instructions
   auto start = Range.first;
@@ -445,6 +409,11 @@ VISAModule::getGenISARange(const InsnRange &Range) {
   // scheduling in Gen ISA means several independent sub-ranges will be present.
   std::vector<std::pair<unsigned int, unsigned int>> GenISARange;
   bool endNextInst = false;
+
+  const auto *VDI = findVisaObjectDI(VD);
+  IGC_ASSERT(VDI);
+  const auto &VisaToGenMapping = VDI->getVisaToGenLUT();
+  const auto &GenToSizeInBytes = VDI->getGenToSizeInBytesLUT();
 
   while (1) {
     if (!start || !end || endNextInst)
@@ -467,23 +436,22 @@ VISAModule::getGenISARange(const InsnRange &Range) {
 
     for (unsigned int i = 0; i != VISASize; i++) {
       auto VISAIndex = startVISAOffset + i;
-      auto it = VISAIndexToAllGenISAOff.find(VISAIndex);
-      if (it != VISAIndexToAllGenISAOff.end()) {
-        int lastEnd = -1;
-        for (const auto &genInst : it->second) {
-          unsigned int sizeGenInst = GenISAInstSizeBytes[genInst];
+      auto it = VisaToGenMapping.find(VISAIndex);
+      if (it == VisaToGenMapping.end())
+        continue;
+      int lastEnd = -1;
+      for (const auto &genInst : it->second) {
+        unsigned int sizeGenInst = GenToSizeInBytes.lookup(genInst);
 
-          if (GenISARange.size() > 0)
-            lastEnd = GenISARange.back().second;
-
-          if (lastEnd == genInst) {
-            GenISARange.back().second += sizeGenInst;
-          } else {
-            GenISARange.push_back(
-                std::make_pair(genInst, genInst + sizeGenInst));
-          }
+        if (GenISARange.size() > 0)
           lastEnd = GenISARange.back().second;
+
+        if (lastEnd == genInst) {
+          GenISARange.back().second += sizeGenInst;
+        } else {
+          GenISARange.push_back(std::make_pair(genInst, genInst + sizeGenInst));
         }
+        lastEnd = GenISARange.back().second;
       }
     }
 
@@ -495,10 +463,10 @@ VISAModule::getGenISARange(const InsnRange &Range) {
 
   llvm::DenseMap<unsigned, unsigned> unassignedGenOffset;
   if (m_catchAllVisaId != 0) {
-    auto it = VISAIndexToAllGenISAOff.find(m_catchAllVisaId);
-    if (it != VISAIndexToAllGenISAOff.end()) {
+    auto it = VisaToGenMapping.find(m_catchAllVisaId);
+    if (it != VisaToGenMapping.end()) {
       for (const auto &genInst : it->second) {
-        unsigned int sizeGenInst = GenISAInstSizeBytes[genInst];
+        unsigned int sizeGenInst = GenToSizeInBytes.lookup(genInst);
         unassignedGenOffset[genInst] = sizeGenInst;
       }
     }
@@ -519,14 +487,14 @@ VISAModule::getGenISARange(const InsnRange &Range) {
   return std::move(GenISARange);
 }
 
-const DbgDecoder::VarInfo *VISAModule::getVarInfo(const IGC::DbgDecoder &VD,
+const DbgDecoder::VarInfo *VISAModule::getVarInfo(const VISADebugInfo &VD,
                                                   unsigned int vreg) const {
   auto &Cache = *VICache.get();
   if (Cache.empty()) {
-    const auto *co = getCompileUnit(VD);
-    if (!co)
+    const auto *VDI = findVisaObjectDI(VD);
+    if (!VDI)
       return nullptr;
-    for (const auto &VarInfo : co->Vars) {
+    for (const auto &VarInfo : VDI->getVISAVariables()) {
       StringRef Name = VarInfo.name;
       // TODO: what to do with variables starting with "T"?
       if (Name.startswith("V")) {
@@ -546,49 +514,29 @@ const DbgDecoder::VarInfo *VISAModule::getVarInfo(const IGC::DbgDecoder &VD,
   return FoundIt->second;
 }
 
-bool VISAModule::hasOrIsStackCall(const IGC::DbgDecoder &VD) const {
-  const auto *co = getCompileUnit(VD);
-  if (!co)
+bool VISAModule::hasOrIsStackCall(const VISADebugInfo &VD) const {
+  const auto *VDI = findVisaObjectDI(VD);
+  if (!VDI)
     return false;
 
-  const auto &cfi = co->cfi;
-  if (cfi.befpValid || cfi.frameSize > 0 || cfi.retAddr.size() > 0)
+  const auto &CFI = VDI->getCFI();
+  if (CFI.befpValid || CFI.frameSize > 0 || CFI.retAddr.size() > 0)
     return true;
 
   return IsIntelSymbolTableVoidProgram();
 }
 
 const std::vector<DbgDecoder::SubroutineInfo> *
-VISAModule::getSubroutines(const IGC::DbgDecoder &VD) const {
-  const auto *co = getCompileUnit(VD);
-  if (co)
-    return &co->subs;
+VISAModule::getSubroutines(const VISADebugInfo &VD) const {
+  const auto *VDI = findVisaObjectDI(VD);
+  if (VDI)
+    return &VDI->getSubroutines();
   return nullptr;
 }
 
-const DbgDecoder::DbgInfoFormat *
-VISAModule::getCompileUnit(const IGC::DbgDecoder &VD) const {
-  auto EntryFuncName = m_Func->getName();
-  EntryFuncName = GetVISAFuncName(EntryFuncName);
-
-  for (const auto &co : VD.compiledObjs) {
-    if (VD.compiledObjs.size() == 1 ||
-        co.kernelName.compare(EntryFuncName.str()) == 0) {
-      return &co;
-    }
-
-    if (GetType() == ObjectType::SUBROUTINE) {
-      // Subroutine bounds are stored inside corresponding kernel struct
-      // in VISA debug info.
-      for (auto &Sub : co.subs) {
-        if (Sub.name.compare(EntryFuncName.str()) == 0) {
-          return &co;
-        }
-      }
-    }
-  }
-
-  return nullptr;
+const VISAObjectDebugInfo *
+VISAModule::findVisaObjectDI(const VISADebugInfo &VD) const {
+  return VD.findVisaObjectDI(*this);
 }
 
 bool VISAVariableLocation::IsSampler() const {

@@ -106,7 +106,7 @@ public:
     int getPTOReg() const override;
     int getFPReg() const override;
 
-    llvm::StringRef GetVISAFuncName(llvm::StringRef OldName) const override;
+    llvm::StringRef GetVISAFuncName() const override;
 
     void setPrivateBase(void* V) override
     {

@@ -41,8 +41,11 @@ class MDNode;
 } // namespace llvm
 
 namespace IGC {
-class VISAModule;
+
 class DwarfDebug;
+
+class VISAModule;
+class VISAObjectDebugInfo;
 
 /// @brief VISAVariableLocation holds information on the source variable
 ///        location with respect to the VISA virtual machine.
@@ -357,28 +360,26 @@ public:
   static constexpr unsigned int TEXTURE_REGISTER_BEGIN = (74744);
   static constexpr unsigned int TEXTURE_REGISTER_NUM = (255);
 
+private:
   // Store VISA index->[header VISA index, #VISA instructions] corresponding
   // to same llvm::Instruction. If llvm inst A generates VISA 3,4,5 then
   // this structure will have 3 entries:
   // 3 -> [3,3]
   // 4 -> [3,3]
   // 5 -> [3,3]
-  struct VisaInterval {
+  struct VisaSizeIndex {
     unsigned VisaOffset;
     unsigned VisaInstrNum;
   };
-  struct IDX_Gen2Visa {
-    unsigned GenOffset;
-    unsigned VisaOffset;
-  };
-  // Store first VISA index->llvm::Instruction mapping
-  llvm::DenseMap<unsigned, const llvm::Instruction *> VISAIndexToInst;
-  llvm::DenseMap<unsigned, VisaInterval> VISAIndexToSize;
-  llvm::DenseMap<unsigned, unsigned> GenISAInstSizeBytes;
-  std::map<unsigned, std::vector<unsigned>> VISAIndexToAllGenISAOff;
-  std::vector<IDX_Gen2Visa> GenISAToVISAIndex;
 
-private:
+  using VisaIndexToVisaSizeIndexMap = llvm::DenseMap<unsigned, VisaSizeIndex>;
+  VisaIndexToVisaSizeIndexMap VisaIndexToVisaSizeIndex;
+
+  using VisaIndexToInstMap =
+      llvm::DenseMap<unsigned, const llvm::Instruction *>;
+  VisaIndexToInstMap VisaIndexToInst;
+
+  // mapping between virtual registers and VarInfo (see VISADebugDecoder.hpp)
   using VarInfoCache =
       std::unordered_map<unsigned, const DbgDecoder::VarInfo *>;
 
@@ -413,6 +414,13 @@ public:
 
   virtual ~VISAModule() {}
 
+  const VisaIndexToVisaSizeIndexMap &getVisaIndexToVisaSizeIndexLUT() const {
+    return VisaIndexToVisaSizeIndex;
+  }
+
+  const VisaIndexToInstMap &getVisaIndexToInstLUT() const {
+    return VisaIndexToInst;
+  }
   /// @brief true if the underlying function correspond to the
   /// "primary entry point".
   bool isPrimaryFunc() const { return IsPrimaryFunc; }
@@ -494,28 +502,30 @@ public:
 
   ///  @brief return false if inst is a placeholder instruction
   bool IsExecutableInst(const llvm::Instruction &inst);
-  const DbgDecoder::VarInfo *getVarInfo(const IGC::DbgDecoder &VD,
+  const DbgDecoder::VarInfo *getVarInfo(const VISADebugInfo &VD,
                                         unsigned int vreg) const;
 
-  bool hasOrIsStackCall(const IGC::DbgDecoder &VD) const;
-  const std::vector<DbgDecoder::SubroutineInfo> *
-  getSubroutines(const IGC::DbgDecoder &VD) const;
+  bool hasOrIsStackCall(const VISADebugInfo &VD) const;
 
-  void buildDirectElfMaps(const IGC::DbgDecoder &VD);
+  // TODO: deprectate this function
+  const std::vector<DbgDecoder::SubroutineInfo> *
+  getSubroutines(const VISADebugInfo &VD) const;
+
+  void rebuildVISAIndexes(const VISADebugInfo &VD);
 
   std::vector<std::pair<unsigned int, unsigned int>>
-  getGenISARange(const InsnRange &Range);
+  getGenISARange(const VISADebugInfo &VD, const InsnRange &Range);
 
   // Given %ip range and variable location, returns vector of locations where
   // variable is available in memory due to caller save sequence. Return format
   // is: <start %ip of caller save, end %ip of caller save, stack slot offset
   // for caller save>
   std::vector<std::tuple<uint64_t, uint64_t, unsigned int>>
-  getAllCallerSave(const IGC::DbgDecoder &VD, uint64_t startRange,
+  getAllCallerSave(const VISADebugInfo &VD, uint64_t startRange,
                    uint64_t endRange, DbgDecoder::LiveIntervalsVISA &Locs);
 
-  virtual const DbgDecoder::DbgInfoFormat *
-  getCompileUnit(const IGC::DbgDecoder &VD) const;
+  virtual const VISAObjectDebugInfo *
+  findVisaObjectDI(const VISADebugInfo &VDI) const;
 
   virtual unsigned getUnpaddedProgramSize() const = 0;
   virtual bool isLineTableOnly() const = 0;
@@ -539,9 +549,7 @@ public:
 
   virtual bool IsIntelSymbolTableVoidProgram() const { return false; }
 
-  virtual llvm::StringRef GetVISAFuncName(llvm::StringRef OldName) const {
-    return OldName;
-  }
+  virtual llvm::StringRef GetVISAFuncName() const = 0;
 
   const InstInfoMap *GetInstInfoMap() { return &m_instInfoMap; }
 

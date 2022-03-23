@@ -12,6 +12,7 @@ set(DEBUG_INFO_LIBRARY_SOURCES
   DwarfCompileUnit.cpp
   LexicalScopes.cpp
   DwarfDebug.cpp
+  VISADebugInfo.cpp
   VISADebugEmitter.cpp
   VISADebugDecoder.cpp
   VISAModule.cpp

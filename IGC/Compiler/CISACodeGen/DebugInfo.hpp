@@ -26,8 +26,8 @@ using namespace std;
 
 namespace IGC
 {
-    class DbgDecoder;
     class CVariable;
+    class VISADebugInfo;
 
     class DebugInfoPass : public llvm::ModulePass
     {
@@ -52,7 +52,7 @@ namespace IGC
             AU.setPreservesAll();
         }
 
-        void EmitDebugInfo(bool, DbgDecoder*);
+        void EmitDebugInfo(bool, const IGC::VISADebugInfo &VDI);
     };
 
     class CatchAllLineNumber : public llvm::FunctionPass
