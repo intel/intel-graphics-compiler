@@ -54,6 +54,8 @@ set(IGC_BUILD__HDR__common
     "${CMAKE_CURRENT_SOURCE_DIR}/CompilerStatsUtils.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_debug.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_flags.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/igc_flags.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/igc_regkeys.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_regkeys.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_resourceDimTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IGCConstantFolder.h"
