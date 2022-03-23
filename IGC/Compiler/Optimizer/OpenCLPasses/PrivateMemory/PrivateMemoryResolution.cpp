@@ -458,6 +458,14 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
         }
         // Resolve collected alloca instructions for current function
         changed |= resolveAllocaInstructions(hasStackCall || hasVLA);
+
+        // Initialize the stack mem usage per function group to the kernel's privateMemPerWI
+        if (isEntryFunc(m_pMdUtils, m_currFunction))
+        {
+            auto funcMD = modMD.FuncMD.find(m_currFunction);
+            if (funcMD != modMD.FuncMD.end())
+                modMD.PrivateMemoryPerFG[m_currFunction] = funcMD->second.privateMemoryPerWI;
+        }
     }
 
     if (FGA)
@@ -478,9 +486,11 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
             if (funcIt == modMD.FuncMD.end())
                 return 0;
 
-            // Stack offsets should be OWORD aligned
             uint32_t currFuncPrivateMem = (uint32_t)(funcIt->second.privateMemoryPerWI);
-            currFuncPrivateMem = iSTD::Align(currFuncPrivateMem, SIZE_OWORD);
+            // Add 1 OWORD for FP stack write
+            if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+                currFuncPrivateMem += SIZE_OWORD;
+
             CallGraphNode* Node = CG[F];
 
             // Function has recursion, don't search CG further
@@ -501,8 +511,8 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                 }
             }
 
-            // Recursively calculate the private mem usage of all callees
-            uint32_t maxSize = currFuncPrivateMem;
+            // Recursively calculate the max private mem usage of all callees
+            uint32_t maxSize = 0;
             for (auto childF : childFuncs)
             {
                 IGC_ASSERT(childF);
@@ -519,11 +529,10 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                     argSize += iSTD::Align(static_cast<DWORD>(DL.getTypeAllocSize(childF->getReturnType())), SIZE_OWORD);
                 }
 
-                uint32_t stackFrameSize = currFuncPrivateMem + argSize + SIZE_OWORD;
-                uint32_t size = stackFrameSize + AnalyzeCGPrivateMemUsage(childF);
+                uint32_t size = argSize + AnalyzeCGPrivateMemUsage(childF);
                 maxSize = std::max(maxSize, size);
             }
-            return maxSize;
+            return currFuncPrivateMem + maxSize;
         };
 
         // Calculate the max private mem used by each function group
@@ -534,19 +543,17 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
         {
             FunctionGroup* FG = *GI;
             Function* pKernel = FG->getHead();
-            uint32_t maxPrivateMem = modMD.FuncMD[pKernel].privateMemoryPerWI;
+            uint32_t maxPrivateMem = 0;
 
             if (FG->hasStackCall())
             {
                 // Analyze call depth for stack memory required
                 maxPrivateMem = AnalyzeCGPrivateMemUsage(pKernel);
-
-                // If indirect calls or recursions exist, add additional 4KB,
-                // and hope we don't run out.
-                if (FG->hasIndirectCall() || FG->hasRecursion())
-                {
-                    maxPrivateMem += (4 * 1024);
-                }
+            }
+            if (FG->hasIndirectCall() || FG->hasRecursion())
+            {
+                // If indirect calls or recursions exist, add additional 4KB and hope we don't run out.
+                maxPrivateMem += (4 * 1024);
             }
             if (FG->hasVariableLengthAlloca())
             {
@@ -554,7 +561,11 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                 maxPrivateMem += 1024;
             }
             maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize)));
-            FG->setMaxPrivateMemOnStack((unsigned)maxPrivateMem);
+
+            if (maxPrivateMem > 0)
+            {
+                modMD.PrivateMemoryPerFG[pKernel] = (unsigned)maxPrivateMem;
+            }
         }
     }
 

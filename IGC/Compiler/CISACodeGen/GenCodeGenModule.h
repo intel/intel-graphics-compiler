@@ -153,14 +153,6 @@ namespace IGC {
         bool hasRecursion() {
             return m_hasRecursion;
         }
-        /// Set and Get the max private memory used by FG give then call depth
-        /// This is calculated in PrivateMemoryResolution.cpp
-        void setMaxPrivateMemOnStack(unsigned size) {
-            m_MaxPrivateMemOnStack = size;
-        }
-        unsigned getMaxPrivateMemOnStack() {
-            return m_MaxPrivateMemOnStack;
-        }
 
         void replaceGroupHead(llvm::Function* OH, llvm::Function* NH) {
             auto headSG = Functions[0];
@@ -180,7 +172,6 @@ namespace IGC {
         bool m_hasVaribleLengthAlloca = false;
         bool m_hasIndirectCall = false;
         bool m_hasRecursion = false;
-        unsigned m_MaxPrivateMemOnStack = 0;
         bool SIMDModeValid[3] = {true, true, true};
     };
 

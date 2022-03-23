@@ -11681,17 +11681,18 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
 {
     m_currShader->InitializeStackVariables();
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    auto pModuleMetadata = pCtx->getModuleMetaData();
+    auto pModMD = pCtx->getModuleMetaData();
 
     CVariable* pStackBufferBase = m_currShader->GetPrivateBase();
     CVariable* pHWTID = m_currShader->GetHWTID();
     CVariable* pSize = nullptr;
 
-    IGC_ASSERT(pModuleMetadata->FuncMD.find(pKernel) != pModuleMetadata->FuncMD.end());
-    unsigned kernelAllocaSize = pModuleMetadata->FuncMD[pKernel].privateMemoryPerWI;
+    IGC_ASSERT(pModMD->FuncMD.find(pKernel) != pModMD->FuncMD.end());
+    unsigned kernelAllocaSize = pModMD->FuncMD[pKernel].privateMemoryPerWI;
 
-    auto FG = m_FGA ? m_FGA->getGroup(pKernel) : nullptr;
-    uint32_t MaxPrivateSize = FG ? FG->getMaxPrivateMemOnStack() : kernelAllocaSize;
+    auto stackMemIter = pModMD->PrivateMemoryPerFG.find(pKernel);
+    IGC_ASSERT(stackMemIter != pModMD->PrivateMemoryPerFG.end());
+    unsigned MaxPrivateSize = stackMemIter->second;
 
     if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching))
     {
@@ -11711,14 +11712,6 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     m_encoder->Push();
 
     unsigned totalAllocaSize = kernelAllocaSize * numLanes(m_currShader->m_dispatchSize);
-
-    if (IGC_IS_FLAG_DISABLED(EnableRuntimeFuncAttributePatching))
-    {
-        // If we don't return per-function private memory size,
-        // modify private-memory size to a large setting.
-        // This will be reported through patch-tokens as per-kernel requirement.
-        pModuleMetadata->FuncMD[pKernel].privateMemoryPerWI = MaxPrivateSize;
-    }
 
     // Initialize SP to per-thread kernel stack base
     CVariable* pSP = m_currShader->GetSP();
