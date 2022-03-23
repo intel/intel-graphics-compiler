@@ -1444,10 +1444,10 @@ void DwarfDebug::collectVariableInfo(
     return (DbgVariable *)nullptr;
   };
 
-  using interval_type = decltype(DbgDecoder::LiveIntervalsVISA::start);
+  using IntervalTy = decltype(DbgDecoder::LiveIntervalGenISA::start);
   auto findSemiOpenInterval =
-      [this](interval_type start,
-             interval_type end) -> std::pair<interval_type, interval_type> {
+      [this](IntervalTy start,
+             IntervalTy end) -> std::pair<IntervalTy, IntervalTy> {
     if (start >= end)
       return std::make_pair(0, 0);
     const auto &Map = m_pModule->VISAIndexToAllGenISAOff;
@@ -1670,17 +1670,20 @@ void DwarfDebug::collectVariableInfo(
         continue;
       }
 
+      const auto *StorageMD = pInst->getMetadata("StorageOffset");
       if (EmitSettings.UseOffsetInLocation && isa<DbgDeclareInst>(pInst)) {
-        // When using OffsetInLocation, we emit offset of variable from
-        // privateBase. This works only for -O0 when variables are stored in
-        // memory. When optimizations are enabled, ie when pInst is not
-        // dbgDeclare, we may choose to emit locations to debug_loc as variables
-        // may be mapped to registers.
-        LLVM_DEBUG(
-            dbgs()
-            << "  << location is expected to be emitted in DIE: "
-            << "EmitSettings.UseOffsetInLocation && isa<DbgDeclareInst>\n");
-        continue;
+        if (StorageMD) {
+          // When using OffsetInLocation, we emit offset of variable from
+          // privateBase. This works only for -O0 when variables are stored in
+          // memory. When optimizations are enabled, ie when pInst is not
+          // dbgDeclare, we may choose to emit locations to debug_loc as
+          // variables may be mapped to registers.
+          LLVM_DEBUG(dbgs()
+                     << "  << location is expected to be emitted in DIE: "
+                     << "EmitSettings.UseOffsetInLocation && "
+                        "isa<DbgDeclareInst> && StorageMD\n");
+          continue;
+        }
       }
 
       // assume that VISA preserves location thoughout its lifetime
@@ -1715,11 +1718,10 @@ void DwarfDebug::collectVariableInfo(
 
       // Emit location within the DIE for dbg.declare
       if (History.size() == 1 && isa<DbgDeclareInst>(pInst) &&
-          !needsCallerSave) {
-        LLVM_DEBUG(
-            dbgs()
-            << "  << location is expected to be emitted in DIE: "
-            << "isa<DbgDeclare> && History.size() == 1 && !needsCallerSave\n");
+          !needsCallerSave && StorageMD) {
+        LLVM_DEBUG(dbgs() << "  << location is expected to be emitted in DIE: "
+                          << "isa<DbgDeclare> && History.size() == 1 &&"
+                             "!needsCallerSave && StorageMD\n");
         continue;
       }
 
