@@ -5638,7 +5638,7 @@ namespace IGC
         {
             tableEntries = attribTable.size();
             bufferSize = tableEntries * sizeof(vISA::GenFuncAttribEntry);
-            buffer = IGC::aligned_malloc(bufferSize, alignof(vISA::GenFuncAttribEntry));
+            buffer = IGC::aligned_malloc(bufferSize, int_cast<size_t>(llvm::alignTo(alignof(vISA::GenFuncAttribEntry), sizeof(void *))));
             IGC_ASSERT_MESSAGE(nullptr != buffer, "Table cannot be allocated");
             memcpy_s(buffer, bufferSize, attribTable.data(), bufferSize);
         }
