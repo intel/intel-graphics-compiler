@@ -167,6 +167,17 @@ namespace IGCLLVM
 #endif
         }
 
+#if LLVM_VERSION_MAJOR < 11
+        using llvm::IRBuilder<T, InserterTyDef()>::CreateShuffleVector;
+
+        inline llvm::Value *CreateShuffleVector(llvm::Value *V1, llvm::Value *V2, llvm::ArrayRef<int> Mask,
+                                              const llvm::Twine &Name="") {
+            std::vector<int> IntVec = Mask.vec();
+            std::vector<uint32_t> UIntVec(IntVec.begin(), IntVec.end());
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateShuffleVector(V1, V2, UIntVec, Name);
+        }
+#endif
+
 #if LLVM_VERSION_MAJOR >= 11
       inline llvm::CallInst* CreateCall(llvm::Value* Callee, llvm::ArrayRef<llvm::Value*> Args = llvm::None,
                                            const llvm::Twine& Name = "", llvm::MDNode* FPMathTag = nullptr) {
