@@ -113,22 +113,21 @@ VISADebugInfo::VISADebugInfo(const void *RawDbgDataPtr)
   }
 }
 
-const VISAObjectDebugInfo *
-VISADebugInfo::findVisaObjectDI(const VISAModule &VM) const {
+const VISAObjectDebugInfo &
+VISADebugInfo::getVisaObjectDI(const VISAModule &VM) const {
 
   auto EntryFuncName = VM.GetVISAFuncName();
 
-  if (DebugInfoMap.size() == 1) {
-    return &DebugInfoMap.begin()->second;
-  }
+  IGC_ASSERT(!DebugInfoMap.empty());
+  if (DebugInfoMap.size() == 1)
+    return DebugInfoMap.begin()->second;
 
   for (const auto &CO : DecodedDebugStorage.compiledObjs) {
-
     auto VisaDebugInfoIt = DebugInfoMap.find(&CO);
     IGC_ASSERT(VisaDebugInfoIt != DebugInfoMap.end());
 
     if (CO.kernelName.compare(EntryFuncName.str()) == 0) {
-      return &VisaDebugInfoIt->second;
+      return VisaDebugInfoIt->second;
     }
 
     if (VM.GetType() == VISAModule::ObjectType::SUBROUTINE) {
@@ -139,27 +138,27 @@ VISADebugInfo::findVisaObjectDI(const VISAModule &VM) const {
             return Sub.name.compare(EntryFuncName.str()) == 0;
           });
       if (SubroutineMatched) {
-        return &VisaDebugInfoIt->second;
+        return VisaDebugInfoIt->second;
       }
     }
   }
 
-  return nullptr;
+  IGC_ASSERT_MESSAGE(0, "could not get debug info object!");
+  return DebugInfoMap.begin()->second;
 }
 
-const VISAObjectDebugInfo *VISADebugInfo::findVisaObjectByCompliledObjectName(
+const VISAObjectDebugInfo &VISADebugInfo::getVisaObjectByCompliledObjectName(
     llvm::StringRef CompiledObjectName) const {
   auto FoundIt = std::find_if(DecodedDebugStorage.compiledObjs.begin(),
                               DecodedDebugStorage.compiledObjs.end(),
                               [&CompiledObjectName](const auto &CO) {
                                 return (CO.kernelName == CompiledObjectName);
                               });
-  if (FoundIt == DecodedDebugStorage.compiledObjs.end())
-    return nullptr;
+  IGC_ASSERT(FoundIt != DecodedDebugStorage.compiledObjs.end());
 
   auto VisaDebugInfoIt = DebugInfoMap.find(&*FoundIt);
   IGC_ASSERT(VisaDebugInfoIt != DebugInfoMap.end());
-  return &VisaDebugInfoIt->second;
+  return VisaDebugInfoIt->second;
 }
 
 void VISADebugInfo::dump() const { print(llvm::dbgs()); }

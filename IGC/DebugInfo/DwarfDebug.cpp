@@ -1449,9 +1449,7 @@ void DwarfDebug::collectVariableInfo(
              IntervalTy end) -> std::pair<IntervalTy, IntervalTy> {
     if (start >= end)
       return std::make_pair(0, 0);
-    // TODO: this one is slow
-    const auto &Map =
-        VisaDbgInfo->findVisaObjectDI(*m_pModule)->getVisaToGenLUT();
+    const auto &Map = VisaDbgInfo->getVisaToGenLUT();
     auto LB = Map.lower_bound(start);
     auto UB = Map.upper_bound(end);
     if (LB == Map.end() || UB == Map.end())
@@ -1662,9 +1660,7 @@ void DwarfDebug::collectVariableInfo(
       // Conditions below decide whether we want to emit location to debug_loc
       // or inline it in the DIE. To inline in DIE, we simply dont emit anything
       // here and continue the loop.
-      const auto *VisaDebugInfo = m_pModule->findVisaObjectDI(*VisaDbgInfo);
-      IGC_ASSERT(VisaDebugInfo);
-      bool needsCallerSave = !VisaDebugInfo->getCFI().callerSaveEntry.empty();
+      bool needsCallerSave = !VisaDbgInfo->getCFI().callerSaveEntry.empty();
       if (!EmitSettings.EmitDebugLoc && !needsCallerSave) {
         LLVM_DEBUG(
             dbgs() << "  << location is expected to be emitted in DIE: "
@@ -3056,8 +3052,7 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   auto funcName = firstInst->getParent()->getParent()->getName();
 
   const IGC::DbgDecoder::SubroutineInfo *sub = nullptr;
-  const auto *VisaDebugInfo = m->findVisaObjectDI(*VisaDbgInfo);
-  for (const auto &s : VisaDebugInfo->getSubroutines()) {
+  for (const auto &s : VisaDbgInfo->getSubroutines()) {
     if (s.name.compare(funcName.str()) == 0) {
       sub = &s;
       break;
@@ -3079,12 +3074,12 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   write(data, ptrSize == 4 ? (uint32_t)offsetCIESubroutine
                            : (uint64_t)offsetCIESubroutine);
 
-  // TODO: move this to VisaDebugInfo
+  // TODO: move this to VisaDebugObjectInfo
   // initial location
-  auto getGenISAOffset = [VisaDebugInfo](unsigned int VISAIndex) {
+  auto getGenISAOffset = [this](unsigned int VISAIndex) {
     uint64_t genOffset = 0;
 
-    for (auto &item : VisaDebugInfo->getCISAIndexLUT()) {
+    for (auto &item : VisaDbgInfo->getCISAIndexLUT()) {
       if (item.first >= VISAIndex) {
         genOffset = item.second;
         break;
@@ -3144,7 +3139,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   // <ip, <instructions to write> >
   auto sortAsc = [](uint64_t a, uint64_t b) { return a < b; };
   std::map<uint64_t, std::vector<uint8_t>, decltype(sortAsc)> cfaOps(sortAsc);
-  const auto &DbgInfo = *m->findVisaObjectDI(*VisaDbgInfo);
+  const auto &DbgInfo = *VisaDbgInfo;
   auto numGRFs = GetVISAModule()->getNumGRFs();
   auto specialGRF = GetSpecialGRF();
 

@@ -869,11 +869,11 @@ public:
 
   bool isKernel() const { return GetType() == ObjectType::KERNEL; }
 
-  const IGC::VISAObjectDebugInfo *
-  findVisaObjectDI(const IGC::VISADebugInfo &VDI) const override {
+  const IGC::VISAObjectDebugInfo &
+  getVisaObjectDI(const IGC::VISADebugInfo &VDI) const override {
     StringRef CompiledObjectName =
         isSubroutine() ? MVTI.getSubroutineOwner(&F)->getName() : F.getName();
-    return VDI.findVisaObjectByCompliledObjectName(CompiledObjectName);
+    return VDI.getVisaObjectByCompliledObjectName(CompiledObjectName);
   }
 
   unsigned int getUnpaddedProgramSize() const override {

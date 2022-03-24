@@ -45,6 +45,7 @@ namespace IGC {
 class DwarfDebug;
 
 class VISAModule;
+class VISADebugInfo;
 class VISAObjectDebugInfo;
 
 /// @brief VISAVariableLocation holds information on the source variable
@@ -502,30 +503,30 @@ public:
 
   ///  @brief return false if inst is a placeholder instruction
   bool IsExecutableInst(const llvm::Instruction &inst);
-  const DbgDecoder::VarInfo *getVarInfo(const VISADebugInfo &VD,
+  const DbgDecoder::VarInfo *getVarInfo(const VISAObjectDebugInfo &VD,
                                         unsigned int vreg) const;
 
-  bool hasOrIsStackCall(const VISADebugInfo &VD) const;
+  bool hasOrIsStackCall(const VISAObjectDebugInfo &VD) const;
 
   // TODO: deprectate this function
   const std::vector<DbgDecoder::SubroutineInfo> *
-  getSubroutines(const VISADebugInfo &VD) const;
+  getSubroutines(const VISAObjectDebugInfo &VD) const;
 
-  void rebuildVISAIndexes(const VISADebugInfo &VD);
+  void rebuildVISAIndexes();
 
   std::vector<std::pair<unsigned int, unsigned int>>
-  getGenISARange(const VISADebugInfo &VD, const InsnRange &Range);
+  getGenISARange(const VISAObjectDebugInfo &VD, const InsnRange &Range);
 
   // Given %ip range and variable location, returns vector of locations where
   // variable is available in memory due to caller save sequence. Return format
   // is: <start %ip of caller save, end %ip of caller save, stack slot offset
   // for caller save>
   std::vector<std::tuple<uint64_t, uint64_t, unsigned int>>
-  getAllCallerSave(const VISADebugInfo &VD, uint64_t startRange,
+  getAllCallerSave(const VISAObjectDebugInfo &VD, uint64_t startRange,
                    uint64_t endRange, DbgDecoder::LiveIntervalsVISA &Locs);
 
-  virtual const VISAObjectDebugInfo *
-  findVisaObjectDI(const VISADebugInfo &VDI) const;
+  virtual const VISAObjectDebugInfo &
+  getVisaObjectDI(const VISADebugInfo &VDI) const;
 
   virtual unsigned getUnpaddedProgramSize() const = 0;
   virtual bool isLineTableOnly() const = 0;

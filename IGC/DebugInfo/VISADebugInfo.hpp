@@ -103,11 +103,11 @@ public:
     return DecodedDebugStorage;
   }
 
-  // finds Visa Object Debug Info that corresponds to a particular named
+  // gets Visa Object Debug Info that corresponds to a particular named
   // entity - that is a kernel/stack-called function or a subroutine
-  const VISAObjectDebugInfo *findVisaObjectDI(const VISAModule &VM) const;
-  const VISAObjectDebugInfo *
-  findVisaObjectByCompliledObjectName(llvm::StringRef CompiledObjectName) const;
+  const VISAObjectDebugInfo &getVisaObjectDI(const VISAModule &VM) const;
+  const VISAObjectDebugInfo &
+  getVisaObjectByCompliledObjectName(llvm::StringRef CompiledObjectName) const;
 
   void dump() const;
   void print(llvm::raw_ostream &OS) const;

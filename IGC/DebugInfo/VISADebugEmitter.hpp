@@ -73,7 +73,7 @@ private:
   /// @brief Reset Debug Emitter instance.
   void Reset();
   void processCurrentFunction(bool Finalize,
-                              const IGC::VISADebugInfo &VisaDbgInfo);
+                              const IGC::VISAObjectDebugInfo &VisaDbgInfo);
 
 private:
   bool m_initialized = false;

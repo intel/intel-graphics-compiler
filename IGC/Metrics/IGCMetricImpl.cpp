@@ -731,7 +731,8 @@ namespace IGCMetrics
 
                 auto fillRegister = [&](unsigned int reg)
                 {
-                    const auto* varInfo = vISAData->getVarInfo(*pVisaDbgInfo, reg);
+                    const auto &VDI = vISAData->getVisaObjectDI(*pVisaDbgInfo);
+                    const auto* varInfo = vISAData->getVarInfo(VDI, reg);
                     auto varInfo_reg_m = varInfo_m->add_reg();
 
                     varInfo_reg_m->set_addrmodel(varLoc.IsInGlobalAddrSpace() ?

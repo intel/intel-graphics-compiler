@@ -922,7 +922,7 @@ void CompileUnit::addBindlessOrStatelessLocation(
     uint32_t regNum = Loc.GetRegister();
     const auto *VISAMod = Loc.GetVISAModule();
 
-    const auto *VarInfo = VISAMod->getVarInfo(*DD->getVisaDebugInfo(), regNum);
+    const auto *VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
     if (!VarInfo) {
       LLVM_DEBUG(dbgs() << "warning: register is not available "
                         << "for bindless surface offset of a V" << regNum);
@@ -1040,7 +1040,7 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block,
     auto regNum = Loc.GetRegister();
     const auto *VISAMod = Loc.GetVISAModule();
 
-    const auto *VarInfo = VISAMod->getVarInfo(*DD->getVisaDebugInfo(), regNum);
+    const auto *VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
     if (!VarInfo) {
       LLVM_DEBUG(dbgs() << "warning: register is not available "
                         << "for bindless surface offset of a V" << regNum);
@@ -1132,7 +1132,7 @@ void CompileUnit::addBindlessScratchSpaceLocation(
     auto regNum = Loc.GetRegister();
     const auto *VISAMod = Loc.GetVISAModule();
 
-    const auto *VarInfo = VISAMod->getVarInfo(*DD->getVisaDebugInfo(), regNum);
+    const auto *VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
     if (!VarInfo) {
       LLVM_DEBUG(dbgs() << "warning: could not build bindless scratch offset (V"
                         << regNum << ")");
@@ -1188,11 +1188,10 @@ void CompileUnit::addBE_FP(IGC::DIEBlock *Block) {
   // DW_OP_const2u <32>
   // DW_OP_plus
   uint32_t BE_FP_RegNum = 0, BE_FP_SubRegNum = 0;
-  const auto *vMod = DD->GetVISAModule();
-  const auto *VisaDbgInfo = vMod->findVisaObjectDI(*DD->getVisaDebugInfo());
-  IGC_ASSERT(VisaDbgInfo);
+  const auto &VisaDbgInfo = DD->getVisaDebugInfo();
+
   bool hasValidBEFP =
-      VisaDbgInfo->getCFI().getBEFPRegNum(BE_FP_RegNum, BE_FP_SubRegNum);
+      VisaDbgInfo.getCFI().getBEFPRegNum(BE_FP_RegNum, BE_FP_SubRegNum);
   if (!hasValidBEFP)
     return;
 
@@ -1278,7 +1277,7 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock *Block, const DbgVariable &DV,
 
     // Rely on getVarInfo result here.
     const auto *VarInfoFP =
-        VISAMod->getVarInfo(*DD->getVisaDebugInfo(), regNumFP);
+        VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNumFP);
     if (!VarInfoFP) {
       LLVM_DEBUG(dbgs() << "warning: SLM - no gen loc info for FP (V"
                         << regNumFP << ")");
@@ -2598,7 +2597,7 @@ IGC::DIEBlock *CompileUnit::buildSLM(const DbgVariable &var,
   IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
 
   if (loc.IsRegister()) {
-    const auto *VarInfo = VISAMod->getVarInfo(*DD->getVisaDebugInfo(), regNum);
+    const auto *VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
     if (!VarInfo) {
       LLVM_DEBUG(dbgs() << "warning: could not build SLM location for V"
                         << regNum);
@@ -2677,7 +2676,7 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
 
   // Rely on getVarInfo result here.
   const auto *VarInfoPrivBase =
-      VISAMod->getVarInfo(*DD->getVisaDebugInfo(), privateBaseRegNum);
+      VISAMod->getVarInfo(DD->getVisaDebugInfo(), privateBaseRegNum);
   if (!VarInfoPrivBase) {
     LLVM_DEBUG(dbgs() << "warning: could not get PrivateBase LR (V"
                       << privateBaseRegNum << ")");
@@ -2723,7 +2722,7 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
 
   // Rely on getVarInfo result here.
   const auto *VarInfoPerThOff =
-      VISAMod->getVarInfo(*DD->getVisaDebugInfo(), regNumPerThOff);
+      VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNumPerThOff);
   if (!VarInfoPerThOff) {
     LLVM_DEBUG(dbgs() << "warning: could not get PTO LR (V" << regNumPerThOff
                       << ")");
@@ -2829,8 +2828,7 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
   auto regNumFP = VISAMod->getFPReg();
 
   // Rely on getVarInfo result here.
-  const auto *VarInfoFP =
-      VISAMod->getVarInfo(*DD->getVisaDebugInfo(), regNumFP);
+  const auto *VarInfoFP = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNumFP);
   if (!VarInfoFP) {
     LLVM_DEBUG(dbgs() << "warning: no gen loc info for FP (V" << regNumFP
                       << ")");
@@ -2934,7 +2932,7 @@ bool CompileUnit::buildValidVar(
   // rely on getVarInfo result here.
   if (!vars) {
     auto regNum = loc.GetRegister();
-    VarInfo = VISAMod->getVarInfo(*DD->getVisaDebugInfo(), regNum);
+    VarInfo = VISAMod->getVarInfo(DD->getVisaDebugInfo(), regNum);
 
     if (VarInfo)
       LLVM_DEBUG(dbgs() << "  general vISA Variable info: ";

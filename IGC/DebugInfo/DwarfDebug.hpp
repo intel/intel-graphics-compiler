@@ -649,7 +649,7 @@ private:
   // line#, vector<inlinedAt>
   llvm::DenseMap<unsigned int, std::vector<llvm::DILocation *>> isStmtSet;
 
-  const IGC::VISADebugInfo *VisaDbgInfo = nullptr;
+  const IGC::VISAObjectDebugInfo *VisaDbgInfo = nullptr;
 
   // store all instructions corresponding to same InlinedAt MDNode
   llvm::DenseMap<llvm::MDNode *, std::vector<const llvm::Instruction *>>
@@ -707,9 +707,14 @@ public:
   // SIMD width
   unsigned short simdWidth = 0;
 
-  const IGC::VISADebugInfo *getVisaDebugInfo() { return VisaDbgInfo; }
+  const IGC::VISAObjectDebugInfo &getVisaDebugInfo() {
+    IGC_ASSERT(VisaDbgInfo);
+    return *VisaDbgInfo;
+  }
 
-  void setVisaDbgInfo(const IGC::VISADebugInfo &VDI) { VisaDbgInfo = &VDI; }
+  void setVisaDbgInfo(const IGC::VISAObjectDebugInfo &VDI) {
+    VisaDbgInfo = &VDI;
+  }
 
   llvm::MCSymbol *CopyDebugLoc(unsigned int offset);
   unsigned int CopyDebugLocNoReloc(unsigned int o);

@@ -88,7 +88,7 @@ void DebugEmitter::Initialize(std::unique_ptr<VISAModule> VM,
 }
 
 void DebugEmitter::processCurrentFunction(bool finalize,
-                                          const IGC::VISADebugInfo &VisaDbg) {
+                                          const IGC::VISAObjectDebugInfo &VDI) {
 
   auto EmitIpLabel = [&](unsigned int ip) {
     // Emit label before %ip
@@ -98,15 +98,13 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     }
   };
 
-  m_pVISAModule->rebuildVISAIndexes(VisaDbg);
-  const auto *VisaDebugInfo = m_pVISAModule->findVisaObjectDI(VisaDbg);
-  IGC_ASSERT(VisaDebugInfo);
+  m_pVISAModule->rebuildVISAIndexes();
 
   // Emit src line mapping directly instead of
   // relying on dbgmerge. elf generated will have
   // text section and debug_line sections populated.
   VISAObjectDebugInfo::GenToVisaIndexes GenISAToVISAIndex;
-  const auto &GenToByteSizeLUT = VisaDebugInfo->getGenToSizeInBytesLUT();
+  const auto &GenToByteSizeLUT = VDI.getGenToSizeInBytesLUT();
   unsigned int subEnd = m_pVISAModule->GetCurrentVISAId();
   unsigned int prevLastGenOff = lastGenOff;
   m_pDwarfDebug->lowPc = lastGenOff;
@@ -114,14 +112,14 @@ void DebugEmitter::processCurrentFunction(bool finalize,
   // SIMD width
   m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
 
-  if (VisaDebugInfo->getSubroutines().empty()) {
+  if (VDI.getSubroutines().empty()) {
     // TODO: we copy large object here. do we really need it?
-    GenISAToVISAIndex = VisaDebugInfo->getGenToVisaIndexLUT();
+    GenISAToVISAIndex = VDI.getGenToVisaIndexLUT();
     if (GenISAToVISAIndex.size() > 0)
       lastGenOff = GenISAToVISAIndex.back().GenOffset;
-    m_pDwarfDebug->lowPc = VisaDebugInfo->getRelocOffset();
+    m_pDwarfDebug->lowPc = VDI.getRelocOffset();
   } else {
-    for (const auto &item : VisaDebugInfo->getGenToVisaIndexLUT()) {
+    for (const auto &item : VDI.getGenToVisaIndexLUT()) {
       if ((item.GenOffset >= lastGenOff) ||
           ((item.GenOffset | lastGenOff) == 0)) {
         if (item.VisaOffset <= subEnd || item.VisaOffset == 0xffffffff) {
@@ -238,8 +236,8 @@ void DebugEmitter::SetDISPCache(DwarfDISubprogramCache *DISPCache) {
   m_pDwarfDebug->setDISPCache(DISPCache);
 }
 
-std::vector<char>
-DebugEmitter::Finalize(bool Finalize, const IGC::VISADebugInfo &VisaDbgInfo) {
+std::vector<char> DebugEmitter::Finalize(bool Finalize,
+                                         const IGC::VISADebugInfo &VD) {
   if (!m_debugEnabled) {
     return {};
   }
@@ -247,6 +245,7 @@ DebugEmitter::Finalize(bool Finalize, const IGC::VISADebugInfo &VisaDbgInfo) {
   IGC_ASSERT_MESSAGE(m_pVISAModule,
                      "active visa object must be selected before finalization");
   IGC_ASSERT(m_pDwarfDebug);
+  const auto &VisaDbgInfo = m_pVISAModule->getVisaObjectDI(VD);
   m_pDwarfDebug->setVisaDbgInfo(VisaDbgInfo);
 
   if (!doneOnce) {

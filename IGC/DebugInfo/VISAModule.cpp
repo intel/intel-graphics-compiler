@@ -206,10 +206,7 @@ bool VISAModule::IsExecutableInst(const llvm::Instruction &inst) {
   return true;
 }
 
-void VISAModule::rebuildVISAIndexes(const VISADebugInfo &VD) {
-
-  const auto *VDI = findVisaObjectDI(VD);
-  IGC_ASSERT(VDI);
+void VISAModule::rebuildVISAIndexes() {
 
   VisaIndexToInst.clear();
   VisaIndexToVisaSizeIndex.clear();
@@ -253,16 +250,12 @@ void VISAModule::rebuildVISAIndexes(const VISADebugInfo &VD) {
 // It is assumed that if startRegNum is within caller save area then entire
 // variable is in caller save area.
 std::vector<std::tuple<uint64_t, uint64_t, unsigned int>>
-VISAModule::getAllCallerSave(const VISADebugInfo &VD, uint64_t startRange,
-                             uint64_t endRange,
+VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI,
+                             uint64_t startRange, uint64_t endRange,
                              DbgDecoder::LiveIntervalsVISA &genIsaRange) {
   std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> callerSaveIPs;
-  const auto *VDI = findVisaObjectDI(VD);
 
-  if (!VDI)
-    return std::move(callerSaveIPs);
-
-  if (VDI->getCFI().callerSaveEntry.empty())
+  if (VDI.getCFI().callerSaveEntry.empty())
     return std::move(callerSaveIPs);
 
   if (!genIsaRange.isGRF())
@@ -274,7 +267,7 @@ VISAModule::getAllCallerSave(const VISADebugInfo &VD, uint64_t startRange,
   unsigned int prevSize = 0;
   bool inCallerSaveSection = false;
   std::vector<DbgDecoder::PhyRegSaveInfoPerIP> saves;
-  const auto &CFI = VDI->getCFI();
+  const auto &CFI = VDI.getCFI();
   auto callerSaveStartIt = CFI.callerSaveEntry.end();
 
   for (auto callerSaveIt = CFI.callerSaveEntry.begin();
@@ -291,9 +284,9 @@ VISAModule::getAllCallerSave(const VISADebugInfo &VD, uint64_t startRange,
 
     if ((*callerSaveIt).numEntries == 0 && inCallerSaveSection) {
       uint64_t callerSaveIp =
-          (*callerSaveStartIt).genIPOffset + VDI->getRelocOffset();
+          (*callerSaveStartIt).genIPOffset + VDI.getRelocOffset();
       uint64_t callerRestoreIp =
-          (*callerSaveIt).genIPOffset + VDI->getRelocOffset();
+          (*callerSaveIt).genIPOffset + VDI.getRelocOffset();
       // End of current caller save section
       if (startRange < callerSaveIp) {
         callerRestoreIp = std::min<uint64_t>(endRange, callerRestoreIp);
@@ -398,7 +391,8 @@ const llvm::Instruction *getNextInst(const llvm::Instruction *start) {
 }
 
 std::vector<std::pair<unsigned int, unsigned int>>
-VISAModule::getGenISARange(const VISADebugInfo &VD, const InsnRange &Range) {
+VISAModule::getGenISARange(const VISAObjectDebugInfo &VDI,
+                           const InsnRange &Range) {
   // Given a range, return vector of start-end range for corresponding Gen ISA
   // instructions
   auto start = Range.first;
@@ -410,10 +404,8 @@ VISAModule::getGenISARange(const VISADebugInfo &VD, const InsnRange &Range) {
   std::vector<std::pair<unsigned int, unsigned int>> GenISARange;
   bool endNextInst = false;
 
-  const auto *VDI = findVisaObjectDI(VD);
-  IGC_ASSERT(VDI);
-  const auto &VisaToGenMapping = VDI->getVisaToGenLUT();
-  const auto &GenToSizeInBytes = VDI->getGenToSizeInBytesLUT();
+  const auto &VisaToGenMapping = VDI.getVisaToGenLUT();
+  const auto &GenToSizeInBytes = VDI.getGenToSizeInBytesLUT();
 
   while (1) {
     if (!start || !end || endNextInst)
@@ -487,14 +479,12 @@ VISAModule::getGenISARange(const VISADebugInfo &VD, const InsnRange &Range) {
   return std::move(GenISARange);
 }
 
-const DbgDecoder::VarInfo *VISAModule::getVarInfo(const VISADebugInfo &VD,
-                                                  unsigned int vreg) const {
+const DbgDecoder::VarInfo *
+VISAModule::getVarInfo(const VISAObjectDebugInfo &VDI,
+                       unsigned int vreg) const {
   auto &Cache = *VICache.get();
   if (Cache.empty()) {
-    const auto *VDI = findVisaObjectDI(VD);
-    if (!VDI)
-      return nullptr;
-    for (const auto &VarInfo : VDI->getVISAVariables()) {
+    for (const auto &VarInfo : VDI.getVISAVariables()) {
       StringRef Name = VarInfo.name;
       // TODO: what to do with variables starting with "T"?
       if (Name.startswith("V")) {
@@ -514,29 +504,21 @@ const DbgDecoder::VarInfo *VISAModule::getVarInfo(const VISADebugInfo &VD,
   return FoundIt->second;
 }
 
-bool VISAModule::hasOrIsStackCall(const VISADebugInfo &VD) const {
-  const auto *VDI = findVisaObjectDI(VD);
-  if (!VDI)
-    return false;
-
-  const auto &CFI = VDI->getCFI();
+bool VISAModule::hasOrIsStackCall(const VISAObjectDebugInfo &VDI) const {
+  const auto &CFI = VDI.getCFI();
   if (CFI.befpValid || CFI.frameSize > 0 || CFI.retAddr.size() > 0)
     return true;
-
   return IsIntelSymbolTableVoidProgram();
 }
 
 const std::vector<DbgDecoder::SubroutineInfo> *
-VISAModule::getSubroutines(const VISADebugInfo &VD) const {
-  const auto *VDI = findVisaObjectDI(VD);
-  if (VDI)
-    return &VDI->getSubroutines();
-  return nullptr;
+VISAModule::getSubroutines(const VISAObjectDebugInfo &VDI) const {
+  return &VDI.getSubroutines();
 }
 
-const VISAObjectDebugInfo *
-VISAModule::findVisaObjectDI(const VISADebugInfo &VD) const {
-  return VD.findVisaObjectDI(*this);
+const VISAObjectDebugInfo &
+VISAModule::getVisaObjectDI(const VISADebugInfo &VD) const {
+  return VD.getVisaObjectDI(*this);
 }
 
 bool VISAVariableLocation::IsSampler() const {
