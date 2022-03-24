@@ -49,6 +49,7 @@ set(IGC_BUILD__SRC__OpenCLPasses
     "${CMAKE_CURRENT_SOURCE_DIR}/TransformUnmaskedFunctionsPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelFunctionCloning.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ErrorCheckPass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PoisonFP64KernelsPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/JointMatrixFuncsResolutionPass.cpp"
   )
 set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All

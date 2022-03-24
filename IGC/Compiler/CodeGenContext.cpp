@@ -982,6 +982,14 @@ namespace IGC
             {
                 FailOnSpill = true;
             }
+            // -cl-poison-unsupported-fp64-kernels
+            // -ze-poison-unsupported-fp64-kernels
+            else if (suffix.equals("-poison-unsupported-fp64-kernels"))
+            {
+                // This option forces IGC to poison kernels using fp64
+                // operations on platforms without HW support for fp64.
+                EnableUnsporrtedFP64Poisoning = true;
+            }
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);

@@ -93,6 +93,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/SPIRMetaDataTranslation.h"
 #include "Compiler/Optimizer/OpenCLPasses/ErrorCheckPass.h"
+#include "Compiler/Optimizer/OpenCLPasses/PoisonFP64KernelsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/DpasFuncs/DpasFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
@@ -405,6 +406,9 @@ static void CommonOCLBasedPasses(
 
         // Check after GlobalDCE in case of doubles in dead functions
         mpm.add(new ErrorCheck());
+        if (pContext->m_InternalOptions.EnableUnsporrtedFP64Poisoning) {
+            mpm.add(new PoisonFP64Kernels());
+        }
 
         mpm.add(new LowerInvokeSIMD());
 
@@ -512,6 +516,9 @@ static void CommonOCLBasedPasses(
 
     // check for unsupported intrinsics
     mpm.add(new ErrorCheck());
+    if (pContext->m_InternalOptions.EnableUnsporrtedFP64Poisoning) {
+        mpm.add(new PoisonFP64Kernels());
+    }
 
     mpm.add(new ImageFuncResolution());
     mpm.add(new Image3dToImage2darray());
