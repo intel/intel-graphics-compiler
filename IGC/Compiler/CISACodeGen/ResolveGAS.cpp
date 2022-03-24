@@ -504,11 +504,18 @@ bool GASPropagator::visitPHINode(PHINode& PN) {
                 continue;
             }
 
-            AddrSpaceCastInst* ASCI = dyn_cast<AddrSpaceCastInst>(V);
-            if (!ASCI || ASCI->getSrcTy() != NonGASTy)
-                return false;
+            Value* NewVal = nullptr;
+            if (isa<ConstantPointerNull>(V)) {
+                NewVal = ConstantPointerNull::get(cast<PointerType>(NonGASTy));
+            }
+            else if (AddrSpaceCastInst* ASCI = dyn_cast<AddrSpaceCastInst>(V)) {
+                if (ASCI->getSrcTy() == NonGASTy)
+                    NewVal = ASCI->getOperand(0);;
+            }
 
-            NewIncomingValues[i] = ASCI->getOperand(0);
+            if (!NewVal) return false;
+
+            NewIncomingValues[i] = NewVal;
         }
     }
 
