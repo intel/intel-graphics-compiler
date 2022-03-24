@@ -2275,7 +2275,7 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
   int64_t LowerBound = SR->getLowerBound();
 #endif
   int64_t DefaultLowerBound = getDefaultLowerBound();
-  int64_t Count = SR->getCount().dyn_cast<ConstantInt *>()->getSExtValue();
+  auto *CI = SR->getCount().dyn_cast<ConstantInt *>();
 
 #if LLVM_VERSION_MAJOR >= 11
   auto addBoundTypeEntry = [&](dwarf::Attribute Attr,
@@ -2306,8 +2306,8 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
   if (auto *CV = SR->getCount().dyn_cast<DIVariable *>()) {
     if (auto *CountVarDIE = getDIE(CV))
       addDIEEntry(DW_Subrange, dwarf::DW_AT_count, CountVarDIE);
-  } else if (Count != -1)
-    addUInt(DW_Subrange, dwarf::DW_AT_count, None, Count);
+  } else if (CI && CI->getSExtValue() != -1)
+    addUInt(DW_Subrange, dwarf::DW_AT_count, None, CI->getSExtValue());
 
   addBoundTypeEntry(dwarf::DW_AT_upper_bound, SR->getUpperBound());
 
@@ -2317,11 +2317,14 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR,
     addUInt(DW_Subrange, dwarf::DW_AT_lower_bound, None, LowerBound);
   }
 
-  if (Count != -1 && Count != 0) {
-    // FIXME: An unbounded array should reference the expression that defines
-    // the array.
-    addUInt(DW_Subrange, dwarf::DW_AT_upper_bound, None,
-            LowerBound + Count - 1);
+  if (CI) {
+    int64_t Count = CI->getSExtValue();
+    if (Count != -1 && Count != 0) {
+      // FIXME: An unbounded array should reference the expression that defines
+      // the array.
+      addUInt(DW_Subrange, dwarf::DW_AT_upper_bound, None,
+              LowerBound + Count - 1);
+    }
   }
 #endif
 }
