@@ -684,7 +684,8 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // CM implicit parameters.
   auto AddCMImpParam = [this](const PassManagerBuilder &Builder,
                               PassManagerBase &PM) {
-    PM.add(createCMImpParamPass(!Subtarget.isOCLRuntime()));
+    PM.add(createCMImpParamPass(!Subtarget.isOCLRuntime(),
+                                Subtarget.hasThreadPayloadInMemory()));
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
                          AddCMImpParam);

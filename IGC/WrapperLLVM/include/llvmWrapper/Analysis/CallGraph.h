@@ -31,6 +31,18 @@ namespace IGCLLVM
 #else
 using CallGraphNode = llvm::CallGraphNode;
 #endif
+
+#if LLVM_VERSION_MAJOR < 11
+    struct CallRecord final {
+        llvm::Optional<llvm::WeakTrackingVH> first{};
+        llvm::CallGraphNode *second{nullptr};
+
+        CallRecord() = default;
+        CallRecord(llvm::CallGraphNode::CallRecord CR) : first{CR.first}, second{CR.second} {}
+    };
+#else
+    using CallRecord = llvm::CallGraphNode::CallRecord;
+#endif
 }
 
 #endif

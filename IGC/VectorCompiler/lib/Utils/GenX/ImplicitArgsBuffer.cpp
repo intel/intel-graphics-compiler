@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/ImplicitArgsBuffer.h"
 
 #include "vc/Utils/GenX/IRBuilder.h"
+#include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/General/Types.h"
 
 #include "Probe/Assertion.h"
@@ -61,12 +62,24 @@ StructType &vc::ImplicitArgs::Buffer::getType(Module &M) {
   return *StructType::create(C, ElementTys, TypeName);
 }
 
-PointerType &vc::ImplicitArgs::Buffer::getPtrType(Module &M) {
-  return *PointerType::get(&vc::ImplicitArgs::Buffer::getType(M),
-                           vc::AddrSpace::GlobalA32);
+vc::AddrSpace::Enum
+vc::ImplicitArgs::Buffer::getPtrAddrSpace(vc::ThreadPayloadKind Kind) {
+  // For targets with the payload in memory A32 addressing is used.
+  if (Kind == vc::ThreadPayloadKind::InMemory)
+    return vc::AddrSpace::GlobalA32;
+  // Otherwise A64/A32 addressing is used.
+  return vc::AddrSpace::Global;
 }
 
-Value &vc::ImplicitArgs::Buffer::getPointer(IRBuilder<> &IRB) {
+PointerType &vc::ImplicitArgs::Buffer::getPtrType(Module &M,
+                                                  vc::ThreadPayloadKind Kind) {
+  return *PointerType::get(&vc::ImplicitArgs::Buffer::getType(M),
+                           vc::ImplicitArgs::Buffer::getPtrAddrSpace(Kind));
+}
+
+template <>
+Value &vc::ImplicitArgs::Buffer::getPointer<vc::ThreadPayloadKind::InMemory>(
+    IRBuilder<> &IRB) {
   auto *R0Decl = GenXIntrinsic::getGenXDeclaration(
       IRB.GetInsertBlock()->getModule(), GenXIntrinsic::genx_r0,
       IRB.getInt32Ty());
@@ -74,20 +87,49 @@ Value &vc::ImplicitArgs::Buffer::getPointer(IRBuilder<> &IRB) {
   auto *IntPtr = IRB.CreateAnd(
       R0, IRB.getInt32(maskTrailingZeros<uint32_t>(vc::PtrOffsetInR00)),
       "indir.data.heap.ptr.int");
-  auto *PtrTy =
-      &vc::ImplicitArgs::Buffer::getPtrType(*IRB.GetInsertBlock()->getModule());
+  auto *PtrTy = &vc::ImplicitArgs::Buffer::getPtrType(
+      *IRB.GetInsertBlock()->getModule(), vc::ThreadPayloadKind::InMemory);
   auto *Ptr = IRB.CreateIntToPtr(IntPtr, PtrTy, "indir.data.heap.ptr");
   return *Ptr;
+}
+
+template <>
+Value &vc::ImplicitArgs::Buffer::getPointer<vc::ThreadPayloadKind::OnRegister>(
+    IRBuilder<> &IRB) {
+  GlobalVariable *IAVar = IRB.GetInsertPoint()->getModule()->getNamedGlobal(
+      vc::PredefVar::ImplicitArgsBufferName);
+  IGC_ASSERT_MESSAGE(IAVar, "Implicit args buffer predefined variable must "
+                            "have already been created");
+  auto *IntPtr = vc::createReadVariableRegion(*IAVar, IRB);
+  auto *PtrTy = &vc::ImplicitArgs::Buffer::getPtrType(
+      *IRB.GetInsertBlock()->getModule(), vc::ThreadPayloadKind::OnRegister);
+  auto *Ptr = IRB.CreateIntToPtr(IntPtr, PtrTy, "indir.data.heap.ptr");
+  return *Ptr;
+}
+
+Value &vc::ImplicitArgs::Buffer::getPointer(llvm::IRBuilder<> &IRB,
+                                            ThreadPayloadKind Kind) {
+  if (Kind == vc::ThreadPayloadKind::InMemory)
+    return vc::ImplicitArgs::Buffer::getPointer<
+        vc::ThreadPayloadKind::InMemory>(IRB);
+  IGC_ASSERT_MESSAGE(Kind == vc::ThreadPayloadKind::OnRegister,
+                     "an unexpected thread payload kind");
+  return vc::ImplicitArgs::Buffer::getPointer<
+      vc::ThreadPayloadKind::OnRegister>(IRB);
 }
 
 Value &vc::ImplicitArgs::Buffer::loadField(Value &BufferPtr,
                                            Indices::Enum FieldIdx,
                                            IRBuilder<> &IRB,
                                            const Twine &Name) {
-  IGC_ASSERT_MESSAGE(BufferPtr.getType() ==
-                         &vc::ImplicitArgs::Buffer::getPtrType(
-                             *IRB.GetInsertBlock()->getModule()),
-                     "wrong argument: a wrong type for buffer pointer value");
+  IGC_ASSERT_MESSAGE(
+      BufferPtr.getType() == &vc::ImplicitArgs::Buffer::getPtrType(
+                                 *IRB.GetInsertBlock()->getModule(),
+                                 vc::ThreadPayloadKind::InMemory) ||
+          BufferPtr.getType() == &vc::ImplicitArgs::Buffer::getPtrType(
+                                     *IRB.GetInsertBlock()->getModule(),
+                                     vc::ThreadPayloadKind::OnRegister),
+      "wrong argument: a wrong type for buffer pointer value");
   auto *FieldPtr = IRB.CreateInBoundsGEP(
       BufferPtr.getType()->getPointerElementType(), &BufferPtr,
       {IRB.getInt32(0), IRB.getInt32(FieldIdx)}, Name + ".ptr");
