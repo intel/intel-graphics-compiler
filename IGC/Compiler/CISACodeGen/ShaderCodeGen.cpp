@@ -819,6 +819,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     }
     else
     {
+        // Also break and lower GEP constexpr.
+        mpm.add(new BreakConstantExpr());
         mpm.add(createGEPLoweringPass());
     }
 

@@ -227,7 +227,10 @@ namespace {
         bool visitAlloca(AllocaInst&) { return false; }
         bool visitLoad(LoadInst&);
         bool visitStore(StoreInst&);
-        bool visitGetElementPtr(GetElementPtrInst&) { return false; }
+        bool visitGetElementPtr(GetElementPtrInst&) {
+            IGC_ASSERT_MESSAGE(false, "GEP should be handled in GEPLowering pass");
+            return false;
+        }
         bool visitFence(FenceInst&) { return false; }
         bool visitAtomicCmpXchg(AtomicCmpXchgInst&);
         bool visitAtomicRMW(AtomicRMWInst&);
