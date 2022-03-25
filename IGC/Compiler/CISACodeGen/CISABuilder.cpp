@@ -4444,15 +4444,15 @@ namespace IGC
                     // Number of threads per EU is set per kernel function (by compiler option)
                     SaveOption(vISA_HWThreadNumberPerEU, unsigned(4));
                 }
-                else if (ClContext->getNumThreadsPerEU() > 0)
-                {
-                    // Number of threads per EU is set per module (by compiler option)
-                    SaveOption(vISA_HWThreadNumberPerEU, ClContext->getNumThreadsPerEU());
-                }
                 else if (m_program->getAnnotatedNumThreads() > 0)
                 {
                     // Number of threads per EU is set per kernel function (by user annotation)
                     SaveOption(vISA_HWThreadNumberPerEU, m_program->getAnnotatedNumThreads());
+                }
+                else if (ClContext->getNumThreadsPerEU() > 0)
+                {
+                    // Number of threads per EU is set per module (by compiler option)
+                    SaveOption(vISA_HWThreadNumberPerEU, ClContext->getNumThreadsPerEU());
                 }
                 else if (m_program->m_Platform->supportsAutoGRFSelection() &&
                     context->m_DriverInfo.supportsAutoGRFSelection() &&
