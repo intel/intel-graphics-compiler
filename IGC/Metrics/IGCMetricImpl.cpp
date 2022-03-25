@@ -615,8 +615,7 @@ namespace IGCMetrics
         {
             llvm::Function* pFunc = pListFuncData_it->first;
             IGC::VISAModule* vISAData = pListFuncData_it->second;
-
-            //IGC::ScalarVisaModule* scalarVM = llvm::dyn_cast<IGC::ScalarVisaModule>(vISAData);
+            const auto &VDI = vISAData->getVisaObjectDI(*pVisaDbgInfo);
 
 #ifdef DEBUG_METRIC
             std::printf("\nList of symbols:\n");
@@ -731,7 +730,6 @@ namespace IGCMetrics
 
                 auto fillRegister = [&](unsigned int reg)
                 {
-                    const auto &VDI = vISAData->getVisaObjectDI(*pVisaDbgInfo);
                     const auto* varInfo = vISAData->getVarInfo(VDI, reg);
                     auto varInfo_reg_m = varInfo_m->add_reg();
 
