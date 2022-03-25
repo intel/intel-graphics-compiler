@@ -148,6 +148,8 @@ public:
       SCALARORCONTIGUOUS =  GENX_ITR_FLAGENUM(4, 3), // operand must be stride 0 or contiguous
       TWICEWIDTH =          GENX_ITR_FLAGENUM(4, 4), // operand is twice the execution width
       STRIDE1 =             GENX_ITR_FLAGENUM(4, 5), // horizontal stride must be 1
+      ONLY_LEGAL_REGION =   GENX_ITR_FLAGENUM(4, 6), // instruction can be baled with only legal
+                                                     // region that won`t be splitted
     // Modifiers for destination only, 2 bits used
     SATURATION =            GENX_ITR_FLAGMASK(7, 2),
     SATURATION_DEFAULT =    GENX_ITR_FLAGENUM(7, 0), // saturation default: not saturated, fp is

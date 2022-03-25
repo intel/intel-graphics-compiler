@@ -2005,18 +2005,18 @@
       "exec_size": [ "EXECSIZE_FROM_ARG", 1],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
-      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 3 ]
+      "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", "ONLY_LEGAL_REGION", 1 ],
+      "src1": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", "ONLY_LEGAL_REGION", 2 ],
+      "src2": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", "ONLY_LEGAL_REGION", 3 ]
     },
     "genx_umadw": {
       "opc": "ISA_MADW",
       "exec_size": [ "EXECSIZE_FROM_ARG", 1],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
-      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
-      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 2 ],
-      "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 3 ]
+      "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", "ONLY_LEGAL_REGION", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", "ONLY_LEGAL_REGION", 2 ],
+      "src2": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", "ONLY_LEGAL_REGION", 3 ]
     },
     "genx_ssshl": {
       "opc": "ISA_SHL",

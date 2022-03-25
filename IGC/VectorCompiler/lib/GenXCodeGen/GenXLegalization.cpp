@@ -865,15 +865,7 @@ bool GenXLegalization::processInst(Instruction *Inst) {
     if (!isa<StoreInst>(Inst))
       return false; // no splitting needed for other scalar op.
   }
-  auto ID = GenXIntrinsic::getGenXIntrinsicID(Inst);
-  if ((ID == GenXIntrinsic::genx_dpas) ||
-      (ID == GenXIntrinsic::genx_dpas2) ||
-      (ID == GenXIntrinsic::genx_dpasw) ||
-      (ID == GenXIntrinsic::genx_dpas_nosrc0) ||
-      (ID == GenXIntrinsic::genx_dpasw_nosrc0)) {
-    return false;
-  }
-  if (ID == GenXIntrinsic::genx_umadw || ID == GenXIntrinsic::genx_smadw)
+  if (!Baling->canSplitBale(Inst))
     return false;
   if (isa<ExtractValueInst>(Inst))
     return false;

@@ -309,6 +309,11 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
     if (R.Stride != 1 || R.Width < 4)
       return false;
     break;
+  case GenXIntrinsicInfo::ONLY_LEGAL_REGION:
+    // Some instructions like umadw and smadw can't be splitted. It leads
+    // to problem in legalization. We have to not bale incorrect region with
+    // such instructions in order to split region independently.
+    return R.Width == R.NumElements && R.Stride == 1;
   default:
     break;
   }
@@ -367,12 +372,14 @@ bool GenXBaling::isSafeToMove(Instruction *Op, Instruction *From, Instruction *T
 /***********************************************************************
  * canSplitBale : check if instruction can be splitted
  */
-static bool canSplitBale(Instruction *Inst) {
+bool GenXBaling::canSplitBale(Instruction *Inst) const {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(Inst);
   if ((IID == GenXIntrinsic::genx_dpas) || (IID == GenXIntrinsic::genx_dpas2) ||
       (IID == GenXIntrinsic::genx_dpasw) ||
       (IID == GenXIntrinsic::genx_dpas_nosrc0) ||
-      (IID == GenXIntrinsic::genx_dpasw_nosrc0))
+      (IID == GenXIntrinsic::genx_dpasw_nosrc0) ||
+      (IID == GenXIntrinsic::genx_umadw) ||
+      (IID == GenXIntrinsic::genx_smadw))
     return false;
   return true;
 }

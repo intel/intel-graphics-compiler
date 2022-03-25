@@ -411,6 +411,8 @@ public:
   // isBaled : test whether all uses of an instruction would be baled in to
   // users
   bool isBaled(const Instruction *Inst) const { return getBaleParent(Inst); }
+  // canSplitBale : check if instruction can be splitted
+  bool canSplitBale(Instruction *Inst) const;
   // getBaleParent : return the instruction baled into, 0 if none
   Instruction *getBaleParent(const Instruction *Inst) const;
   // unbale : unbale an instruction from its bale parent
