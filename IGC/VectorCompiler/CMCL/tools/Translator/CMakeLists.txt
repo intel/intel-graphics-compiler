@@ -13,12 +13,24 @@ if(NOT TARGET CMCLTranslatorTool)
 
   # LLVM dependencies
   igc_get_llvm_targets(LLVM_LIBS
+    Analysis
+    AsmParser
+    BinaryFormat
+    BitReader
+    BitstreamReader
+    CodeGen
     Core
-    Support
     IRReader
+    MC
+    MCParser
+    Object
+    ProfileData
+    Remarks
+    Support
   # Not really required but VS linker fails on its dependency from Support
     Demangle
-    BitWriter)
+    BitWriter
+    )
 
   target_link_libraries(CMCLTranslatorTool
     CMCLSupport

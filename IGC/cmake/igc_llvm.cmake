@@ -11,8 +11,13 @@ include_guard(DIRECTORY)
 if(NOT IGC_BUILD__LLVM_SOURCES)
   message(STATUS "[IGC] IGC will take prebuilt LLVM")
   message(STATUS "[IGC] Searching for prebuilt LLVM in ${LLVM_ROOT} and system directories")
-  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION} REQUIRED)
+  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION} REQUIRED PATHS ${LLVM_ROOT})
   message(STATUS "[IGC] Found LLVM: ${LLVM_DIR}")
+
+  set(LLVM_DIR "${LLVM_DIR}" PARENT_SCOPE)
+  set(LLVM_LIB_DIR "${LLVM_DIR}/lib")
+  set(LLVM_LIB_DIR "${LLVM_LIB_DIR}" PARENT_SCOPE)
+  set(LLVM_BIN_DIR "${LLVM_DIR}/bin")
 
   # Tell the build that we are using prebuilds.
   set(IGC_BUILD__LLVM_PREBUILDS ON)
@@ -24,16 +29,34 @@ set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
   )
 
-set(LLVM_TABLEGEN_EXE "llvm-tblgen")
-if(CMAKE_CROSSCOMPILING)
-  if(DEFINED LLVM_TABLEGEN)
-    set(LLVM_TABLEGEN_EXE ${LLVM_TABLEGEN})
-  else()
-    find_program(LLVM_TABLEGEN_EXE "llvm-tblgen" ${LLVM_TOOLS_BINARY_DIR} NO_DEFAULT_PATH)
+if(IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME AND WIN32)
+  set(IGC_OPTION__LLVM_MODE "${IGC_OPTION__LLVM_MODE}" CACHE STRING "")
+
+  set(IGC_OPTION__LLDELF_LIB_DIR "${LLVM_LIB_DIR}")
+  set(IGC_OPTION__LLD_BIN_DIR "${LLVM_BIN_DIR}")
+  set(IGC_OPTION__LLDELF_H_DIR "${DEFAULT_IGC_LLVM_SOURCES_DIR}/lld")
+
+  set(LLVM_LINK_EXE "${LLVM_BIN_DIR}/llvm-link" CACHE STRING "")
+  set(LLVM_AS_EXE "${LLVM_BIN_DIR}/llvm-as.exe" CACHE STRING "")
+  set(LLVM_OPT_EXE "${LLVM_BIN_DIR}/opt.exe" CACHE STRING "")
+  set(LLVM_TABLEGEN_EXE "${LLVM_BIN_DIR}/llvm-tblgen.exe")
+
+  set(LLVM_INCLUDE_DIRS "${LLVM_DIR}/include;${DEFAULT_IGC_LLVM_SOURCES_DIR}/llvm/include")
+  set(LLVM_INCLUDE_DIRS "${LLVM_INCLUDE_DIRS}" PARENT_SCOPE)
+else()
+  set(LLVM_LINK_EXE "llvm-link" CACHE STRING "")
+  set(LLVM_AS_EXE "llvm-as" CACHE STRING "")
+  set(LLVM_OPT_EXE "opt" CACHE STRING "")
+
+  set(LLVM_TABLEGEN_EXE "llvm-tblgen")
+  if(CMAKE_CROSSCOMPILING)
+    if(DEFINED LLVM_TABLEGEN)
+      set(LLVM_TABLEGEN_EXE ${LLVM_TABLEGEN})
+    else()
+      find_program(LLVM_TABLEGEN_EXE "llvm-tblgen" ${LLVM_TOOLS_BINARY_DIR} NO_DEFAULT_PATH)
+    endif()
   endif()
 endif()
-
-set(LLVM_LINK_EXE "llvm-link" CACHE STRING "")
 
 include(AddLLVM)
 include(TableGen)
@@ -61,39 +84,42 @@ if(IGC_OPTION__ENABLE_LIT_TESTS)
 endif()
 
 set(IGC_LLVM_COMPONENTS
-  "ipo"
-  "IRReader"
-  "BitWriter"
-  "BinaryFormat"
-  "AsmParser"
-  "BitReader"
-  "Linker"
-  "CodeGen"
-  "ScalarOpts"
-  "TransformUtils"
-  "Analysis"
-  "Target"
-  "ObjCARCOpts"
-  "Vectorize"
-  "Instrumentation"
-  "Object"
-  "MCParser"
-  "ProfileData"
-  "MC"
-  "Core"
-  "Support"
-  "Demangle"
+  AggressiveInstCombine
+  Analysis
+  AsmParser
+  BinaryFormat
+  BitReader
+  BitWriter
+  CodeGen
+  Core
+  Demangle
+  InstCombine
+  Instrumentation
+  Ipo
+  IRReader
+  Linker
+  MC
+  MCParser
+  ObjCARCOpts
+  Object
+  ProfileData
+  Remarks
+  ScalarOpts
+  Support
+  Target
+  TransformUtils
+  Vectorize
   )
 
 if(LLVM_VERSION_MAJOR GREATER_EQUAL 8)
   list(APPEND IGC_LLVM_COMPONENTS
-    "InstCombine"
+    InstCombine
     )
 endif()
 
 if(LLVM_VERSION_MAJOR GREATER_EQUAL 9)
   list(APPEND IGC_LLVM_COMPONENTS
-    "BitstreamReader"
+    BitstreamReader
     )
 endif()
 

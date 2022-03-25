@@ -14,6 +14,8 @@ add_executable(${VCB_EXECUTABLE_NAME}
   )
 
 igc_get_llvm_targets(LLVM_LIBS
+  Analysis
+  AsmParser
   Core
   Support
   )

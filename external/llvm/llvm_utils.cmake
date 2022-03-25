@@ -117,10 +117,6 @@ macro(llvm_define_mode_variable proj_name var)
   set(SOURCE_MODE_NAME "Source")
   set(PREBUILDS_MODE_NAME "Prebuilds")
 
-  set(${var} "" CACHE STRING
-    "${proj_name} mode for IGC (can be ${SOURCE_MODE_NAME}, ${PREBUILDS_MODE_NAME} or empty)"
-    )
-
   if(${var} AND NOT (${var} MATCHES "^(${SOURCE_MODE_NAME}|${PREBUILDS_MODE_NAME})$"))
     message(FATAL_ERROR "${proj_name} mode can be only ${SOURCE_MODE_NAME}, ${PREBUILDS_MODE_NAME} or empty!")
   endif()

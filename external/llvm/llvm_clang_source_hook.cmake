@@ -29,6 +29,7 @@ endif()
 
 # In Prebuild mode there is nothing to do here for now.
 if(IGC_OPTION__CLANG_MODE STREQUAL PREBUILDS_MODE_NAME)
+  message(STATUS "[Clang] Will use Clang prebuilds")
   return()
 endif()
 

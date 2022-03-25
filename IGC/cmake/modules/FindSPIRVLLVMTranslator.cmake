@@ -15,9 +15,10 @@
 # Optionally, llvm-spirv tool will be checked and LLVMSPIRVTranslator_Tool_FOUND
 # will be set to true and llvm-spirv executable target will be defined.
 
-find_library(SPIRVLLVMTranslator_Library LLVMSPIRVLib)
+find_library(SPIRVLLVMTranslator_Library LLVMSPIRVLib PATHS ${LLVM_LIB_DIR})
 find_path(SPIRVLLVMTranslator_INCLUDE_DIR "LLVMSPIRVLib.h"
   PATH_SUFFIXES LLVMSPIRVLib
+  PATHS "${IGC_OPTION__SPIRV_TRANSLATOR_SOURCE_DIR}/include"
   )
 
 # Try to find version and llvm-spirv.
@@ -71,6 +72,12 @@ if(SPIRVLLVMTranslator_FOUND AND NOT TARGET LLVMSPIRVLib)
   add_library(LLVMSPIRVLib IMPORTED UNKNOWN)
   set_target_properties(LLVMSPIRVLib PROPERTIES
     IMPORTED_LOCATION ${SPIRVLLVMTranslator_Library}
+    INTERFACE_INCLUDE_DIRECTORIES ${SPIRVLLVMTranslator_INCLUDE_DIR}
+    )
+endif()
+
+if (NOT IGC_BUILD__SPIRV_TRANSLATOR_SOURCES)
+  set_target_properties(LLVMSPIRVLib PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${SPIRVLLVMTranslator_INCLUDE_DIR}
     )
 endif()

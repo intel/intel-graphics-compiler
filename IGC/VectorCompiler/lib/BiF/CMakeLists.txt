@@ -9,7 +9,6 @@
 add_subdirectory(Utils)
 
 set(RESOURCE_EMBEDDER_SCRIPT ${IGC_SOURCE_DIR}/BiFModule/resource_embedder.py)
-set(LLVM_OPT_EXE "opt" CACHE STRING "")
 set(VCB_EXE "vcb" CACHE STRING "")
 
 # Args:

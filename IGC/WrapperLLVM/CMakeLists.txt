@@ -59,6 +59,12 @@ include_directories(
     "${IGC_BUILD__IGC_COMMON_DIR}"
 )
 
+if(IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME AND WIN32)
+  include_directories(
+    "${SPIRVLLVMTranslator_INCLUDE_DIR}"
+  )
+endif()
+
 igc_sg_register(
     IGC__WrapperLLVM
     "WrapperLLVM"

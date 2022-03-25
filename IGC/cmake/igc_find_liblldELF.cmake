@@ -56,16 +56,22 @@ elseif(IGC_BUILD__LLVM_PREBUILDS)
     Target)
   igc_get_llvm_targets(LLD_ELF_LLVM_DEPS
     ${LLVM_TARGETS_TO_BUILD}
+    Analysis
+    AsmPrinter
     BinaryFormat
     BitWriter
+    Codegen
     Core
     DebugInfoDWARF
     Demangle
+    GlobalISel
     LTO
     MC
+    MCDisassembler
     Object
     Option
     Passes
+    SelectionDAG
     Support)
   target_link_libraries(lldCommon INTERFACE
     ${LLD_COMMON_LLVM_DEPS})

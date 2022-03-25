@@ -9,7 +9,11 @@
 include_guard(DIRECTORY)
 
 # SPIRV translator was added with LLVM (source build or prebuild).
-if(TARGET LLVMSPIRVLib)
+
+if(NOT TARGET LLVMSPIRVLib OR (WIN32 AND NOT IGC_BUILD__SPIRV_TRANSLATOR_SOURCES))
+  message(STATUS "[IGC] Trying to find prebuilt SPIRV library")
+  find_package(SPIRVLLVMTranslator ${LLVM_VERSION_MAJOR} REQUIRED)
+else()
   message(STATUS "[IGC] Using LLVMSPIRVLib that comes with LLVM")
 
   # Guess location of header files.
@@ -54,9 +58,6 @@ if(TARGET LLVMSPIRVLib)
     INTERFACE_INCLUDE_DIRECTORIES $<BUILD_INTERFACE:${_inc_dir}>
     )
   unset(_inc_dir)
-else()
-  message(STATUS "[IGC] Trying to find prebuilt SPIRV library")
-  find_package(SPIRVLLVMTranslator ${LLVM_VERSION_MAJOR} REQUIRED)
 endif()
 
 # Set additional compile definition for library. Use property instead of

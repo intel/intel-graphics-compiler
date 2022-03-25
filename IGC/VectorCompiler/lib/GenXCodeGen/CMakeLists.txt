@@ -96,18 +96,27 @@ target_include_directories(VCCodeGen
   )
 
 igc_get_llvm_targets(LLVM_LIBS
+  AggressiveInstCombine
   Analysis
+  BitstreamReader
   BitReader
-  Core
+  BitWriter
+  BinaryFormat
   CodeGen
+  Core
   Demangle
   InstCombine
+  Instrumentation
+  ipo
+  IRReader
   Linker
+  Object
+  ProfileData
+  ScalarOpts
   Support
   Target
   TransformUtils
-  ScalarOpts
-  ipo
+  Vectorize
   )
 
 target_link_libraries(VCCodeGen

@@ -1299,17 +1299,17 @@ if(IGC_OPTION__LLVM_LLD)
   include(igc_find_liblldELF)
 endif()
 
-# ==================================== WrapperLLVM package =============================================
-
-add_subdirectory(WrapperLLVM)
-igc_sg_define(IGC__WrapperLLVM)
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/WrapperLLVM/include")
-
 # ==================================== SPIRV-LLVM-Translator package ===================================
 
 if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
   include(igc_spirv)
 endif()
+
+# ==================================== WrapperLLVM package =============================================
+
+add_subdirectory(WrapperLLVM)
+igc_sg_define(IGC__WrapperLLVM)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/WrapperLLVM/include")
 
 # ======================================== Include directories =========================================
 

@@ -42,8 +42,10 @@ if(IGC_OPTION__SPIRV_TRANSLATOR_MODE STREQUAL SOURCE_MODE_NAME)
 endif()
 
 # Handle dependent options for Prebuild mode.
-# Nothing here for now.
 if(IGC_OPTION__SPIRV_TRANSLATOR_MODE STREQUAL PREBUILDS_MODE_NAME)
+  message(STATUS "[SPIRV] Will use SPIRV translator prebuilds")
+  # Set spirv translator source dir, as it is needed when using prebuild translator later
+  set(IGC_OPTION__SPIRV_TRANSLATOR_SOURCE_DIR "${DEFAULT_SPIRV_TRANSLATOR_SOURCE_DIR}" CACHE PATH "Path to SPIRV translator sources")
   return()
 endif()
 

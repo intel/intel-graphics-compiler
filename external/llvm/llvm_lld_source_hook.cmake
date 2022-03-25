@@ -25,6 +25,7 @@ endif()
 
 # In Prebuild mode there is nothing to do here for now.
 if(IGC_OPTION__LLD_MODE STREQUAL PREBUILDS_MODE_NAME)
+  message(STATUS "[lld] Will use lld prebuilds")
   return()
 endif()
 

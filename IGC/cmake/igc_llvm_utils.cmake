@@ -36,6 +36,21 @@ function(igc_get_llvm_targets RET)
     set(TARGETS ${TARGETS} LLVM)
   endif()
 
+  if(IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME AND WIN32)
+    set(PRE_BUILT_TARGETS)
+    foreach(tmp_name ${TARGETS})
+        unset(found_name CACHE)
+        find_library(found_name ${tmp_name} PATHS "${LLVM_LIB_DIR}")
+        if(EXISTS ${found_name})
+            list(APPEND PRE_BUILT_TARGETS ${found_name})
+        else()
+            message(FATAL_ERROR "File not found for: ${tmp_name}")
+        endif()
+    endforeach()
+
+    set(TARGETS ${PRE_BUILT_TARGETS})
+  endif()
+
   set(${RET} ${TARGETS} PARENT_SCOPE)
 endfunction()
 
