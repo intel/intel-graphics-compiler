@@ -4489,8 +4489,8 @@ GenXKernelBuilder::getPredefinedSurfaceVar(GlobalVariable &GV) {
   PreDefined_Surface VisaSurfName =
       StringSwitch<PreDefined_Surface>(SurfName)
           .Case(vc::PredefVar::BSSName, PREDEFINED_SURFACE_T252)
-          .Default(PREDEFINED_SURFACE_LAST);
-  IGC_ASSERT_MESSAGE(VisaSurfName != PREDEFINED_SURFACE_LAST,
+          .Default(PREDEFINED_SURFACE_INVALID);
+  IGC_ASSERT_MESSAGE(VisaSurfName != PREDEFINED_SURFACE_INVALID,
                      "Unexpected predefined surface");
   VISA_SurfaceVar *SurfVar = nullptr;
   CISA_CALL(Kernel->GetPredefinedSurface(SurfVar, VisaSurfName));
@@ -4506,8 +4506,8 @@ VISA_GenVar *GenXKernelBuilder::getPredefinedGeneralVar(GlobalVariable &GV) {
           .Case(vc::PredefVar::ImplicitArgsBufferName,
                 PREDEFINED_IMPL_ARG_BUF_PTR)
           .Case(vc::PredefVar::LocalIDBufferName, PREDEFINED_LOCAL_ID_BUF_PTR)
-          .Default(PREDEFINED_VAR_LAST);
-  IGC_ASSERT_MESSAGE(VariableID != PREDEFINED_VAR_LAST,
+          .Default(PREDEFINED_VAR_INVALID);
+  IGC_ASSERT_MESSAGE(VariableID != PREDEFINED_VAR_INVALID,
                      "Unexpected predefined general variable");
   CISA_CALL(Kernel->GetPredefinedVar(Variable, VariableID));
   return Variable;
