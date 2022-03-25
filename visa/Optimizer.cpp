@@ -12669,7 +12669,7 @@ void Optimizer::newDoNoMaskWA()
         G4_Predicate* P = I->getPredicate();
         assert((P && !I->getCondMod()) && "ICE: expect predicate and no flagModifier!");
 
-        uint32_t flagBits = P->getRightBound() - P->getLeftBound() + 1;
+        uint32_t flagBits = (P->getRightBound() - P->getLeftBound() + 1) + I->getMaskOffset();
         assert((16 * aFlagVar->getDeclare()->getRootDeclare()->getWordSize()) >= flagBits &&
             "ICE[vISA]: WA's flagVar should not be smaller!");
 
@@ -13523,7 +13523,7 @@ void Optimizer::doNoMaskWA()
         G4_Predicate* P = I->getPredicate();
         assert((P && !I->getCondMod()) && "ICE: expect predicate and no flagModifier!");
 
-        uint32_t flagBits = P->getRightBound() + 1;
+        uint32_t flagBits = (P->getRightBound() - P->getLeftBound() + 1) + I->getMaskOffset();
         assert((16 * flagVar->getDeclare()->getRootDeclare()->getWordSize()) >= flagBits &&
             "ICE[vISA]: WA's flagVar should not be smaller!");
 
