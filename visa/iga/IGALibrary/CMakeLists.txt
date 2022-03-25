@@ -113,7 +113,7 @@ if (IGC_BUILD)
 endif(IGC_BUILD)
 
 if (MSVC)
-    add_compile_options($<$<CONFIG:Release>:/Ox> /Gy)
+    add_compile_options(/Gy)
     # parallel build
     add_compile_options(/MP)
 endif()
