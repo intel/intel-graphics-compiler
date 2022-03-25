@@ -1273,10 +1273,15 @@ GenXFunctionPtrList initializeDebugEmitter(
   }
   // Currently Debug Info Emitter expects that GenXFunctions are
   // processed in the same order as they appear in the visa object
-  // (in terms of genisa instructions order)
+  // Ideally, the order should not matter - but we are not there yet
+  // due to DwarfEmitter limitations
   std::sort(GFPointers.begin(), GFPointers.end(), [](auto *LGF, auto *RGF) {
     const auto &LDI = LGF->getFinalizerDI();
     const auto &RDI = RGF->getFinalizerDI();
+    if (LDI.relocOffset == RDI.relocOffset)
+      return visaMapComparer(LGF->getFunction(), RGF->getFunction(),
+                             LGF->getVisaMapping().V2I,
+                             RGF->getVisaMapping().V2I);
     return LDI.relocOffset < RDI.relocOffset;
   });
   return GFPointers;
@@ -1463,7 +1468,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
   auto &ElfBin = ElfOutputs[&KF];
 
   for (auto *GF : GFPointers) {
-    LLVM_DEBUG(dbgs() << "--- Processing GenXFunction:  "
+    LLVM_DEBUG(dbgs() << "\n--- Processing GenXFunction:  "
                       << GF->getFunction()->getName().str() << " ---\n");
     LLVM_DEBUG(GF->printVisaMapping(dbgs()));
     IGC_ASSERT(validateVisaMapping(GF->getVisaMapping().V2I));
