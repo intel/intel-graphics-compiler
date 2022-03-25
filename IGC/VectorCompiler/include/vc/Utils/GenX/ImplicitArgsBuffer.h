@@ -154,11 +154,26 @@ llvm::Value &getBasePtr(llvm::Value &BufferPtr, llvm::IRBuilder<> &IRB,
 // Arguments:
 //    \p BufferPtr - a pointer to the implicit args buffer. Should be obtained
 //                   via vc::ImplicitArgs::Buffer::getPointer interface.
+//                   It is not used in payload on register case but still must
+//                   be provided to have a uniform interface between different
+//                   payload kinds.
 //    \p IRB - IR builder to insert the instructions.
 //    \p Name - a name of the returned value and a prefix for other constructed
 //              value names.
 llvm::Value &getPointer(llvm::Value &BufferPtr, llvm::IRBuilder<> &IRB,
+                        ThreadPayloadKind Kind,
                         const llvm::Twine &Name = "ia.local.id.ptr");
+template <ThreadPayloadKind Kind>
+llvm::Value &getPointer(llvm::Value &BufferPtr, llvm::IRBuilder<> &IRB,
+                        const llvm::Twine &Name = "ia.local.id.ptr");
+template <>
+llvm::Value &getPointer<ThreadPayloadKind::InMemory>(llvm::Value &BufferPtr,
+                                                     llvm::IRBuilder<> &IRB,
+                                                     const llvm::Twine &Name);
+template <>
+llvm::Value &getPointer<ThreadPayloadKind::OnRegister>(llvm::Value &BufferPtr,
+                                                       llvm::IRBuilder<> &IRB,
+                                                       const llvm::Twine &Name);
 
 // Inserts instructions that load a field from local ID structure.
 // Arguments:

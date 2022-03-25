@@ -437,18 +437,60 @@ bool kernelRequiresImplArgBuffer(
 // The required predefined variables must not be created before calling this
 // function. If you not sure whether they are created or not, use
 // \p getOrCreatePredefVars.
-static GlobalVariable *createPredefVars(Module &M) {
-  return &vc::PredefVar::createImplicitArgsBuffer(M);
-  // FIXME: createLocalIDBuffer(M); to support local IDs.
+static std::pair<GlobalVariable *, GlobalVariable *>
+createPredefVars(Module &M) {
+  return {&vc::PredefVar::createImplicitArgsBuffer(M),
+          &vc::PredefVar::createLocalIDBuffer(M)};
 }
 
 // Returns implicit args buffer related predefined variables. Returns existing
 // ones or creates new ones.
-static GlobalVariable *getOrCreatePredefVars(Module &M) {
+static std::pair<GlobalVariable *, GlobalVariable *>
+getOrCreatePredefVars(Module &M) {
   auto *ImplArgBuffer = M.getNamedGlobal(vc::PredefVar::ImplicitArgsBufferName);
-  if (ImplArgBuffer)
-    return ImplArgBuffer;
+  if (ImplArgBuffer) {
+    auto *LocalIDBuffer = M.getNamedGlobal(vc::PredefVar::LocalIDBufferName);
+    IGC_ASSERT_MESSAGE(
+        LocalIDBuffer,
+        "If implict args buffer predefined variable is created, local ID "
+        "buffer predefined variable must be created too");
+    return {ImplArgBuffer, LocalIDBuffer};
+  }
   return createPredefVars(M);
+}
+
+// Inserts code that initializes local ID buffer predefined variable
+// \p LocalIDBufferVar with local ID buffer pointer.
+// Local ID buffer is allocated on \p Kernel stack and initialized with the
+// value of local ID implicit argument (the argument must have already be added
+// to the kernel arguments).
+static void initializeLocalIDBufferVariable(Function &Kernel,
+                                            GlobalVariable &LocalIDBufferVar,
+                                            IRBuilder<> &IRB) {
+  using namespace vc::ImplicitArgs;
+  IGC_ASSERT_MESSAGE(vc::isKernel(Kernel),
+                     "wrong argument: a kernel must be provided");
+
+  Argument &LocalIDArg =
+      vc::getImplicitArg(Kernel, vc::KernelMetadata::IMP_LOCAL_ID);
+  auto *LocalIDBufferPtr =
+      IRB.CreateAlloca(&LocalID::getType(*LocalIDBufferVar.getParent()),
+                       vc::AddrSpace::Private, nullptr, "loc.id.buffer");
+
+  std::array<LocalID::Indices::Enum, 3> Indices = {
+      LocalID::Indices::X, LocalID::Indices::Y, LocalID::Indices::Z};
+  for (auto Index : Indices) {
+    auto *Element =
+        IRB.CreateExtractElement(&LocalIDArg, Index, "loc.id." + Twine{Index});
+    auto *Pointer = IRB.CreateGEP(
+        LocalIDBufferPtr->getAllocatedType(), LocalIDBufferPtr,
+        {IRB.getInt32(0), IRB.getInt32(Index)}, "loc.id.ptr." + Twine{Index});
+    IRB.CreateStore(Element, Pointer);
+  }
+
+  auto *LocalIDBufferIntPtr = IRB.CreatePtrToInt(
+      LocalIDBufferPtr, IRB.getInt64Ty(), "loc.id.buf.int.ptr");
+  vc::createWriteVariableRegion(LocalIDBufferVar, *LocalIDBufferIntPtr, IRB);
 }
 
 // Special prologue must be added to kernel for architectures with payload on
@@ -456,14 +498,20 @@ static GlobalVariable *getOrCreatePredefVars(Module &M) {
 // pointer must be copied into the corresponding predefined variables. This
 // function inserts the corresponding code in the \p Kernel prologue.
 static void addKernelPrologue(Function &Kernel) {
+  using namespace vc::ImplicitArgs;
   IGC_ASSERT_MESSAGE(vc::isKernel(Kernel),
                      "wrong argument: a kernel must be provided");
 
   IRBuilder<> IRB{&*Kernel.getEntryBlock().getFirstInsertionPt()};
-  auto *ImplArgsBufferVar = getOrCreatePredefVars(*Kernel.getParent());
+  auto [ImplArgsBufferVar, LocalIDBufferVar] =
+      getOrCreatePredefVars(*Kernel.getParent());
+
+  // Initializing implicit args buffer predefined variable.
   Argument &ImplArgsBufferArg =
       vc::getImplicitArg(Kernel, vc::KernelMetadata::IMP_IMPL_ARGS_BUFFER);
   vc::createWriteVariableRegion(*ImplArgsBufferVar, ImplArgsBufferArg, IRB);
+
+  initializeLocalIDBufferVariable(Kernel, *LocalIDBufferVar, IRB);
 }
 
 bool CMImpParam::runOnModule(Module &M) {
@@ -531,8 +579,10 @@ void CMImpParam::processKernels(
 
     if (KernelRequiresImplArgBuffer)
       Kernel.addFnAttr(vc::ImplicitArgs::KernelAttr);
-    if (KernelRequiresPrologueInsertion)
+    if (KernelRequiresPrologueInsertion) {
       RequiredImplArgs.emplace(PseudoIntrinsic::ImplicitArgsBuffer);
+      RequiredImplArgs.emplace(GenXIntrinsic::genx_local_id16);
+    }
     // For OCL/L0 RT we should unconditionally add implicit PRIVATE_BASE
     // argument which is not supported on CM RT.
     if (!IsCmRT)
@@ -645,11 +695,12 @@ Value &loadVec3ArgFromIABuffer(Value &ImplArgsBufferPtr, IRBuilder<> &IRB) {
 //    \p ImplArgsBufferPtr - a pointer to implicit args buffer structure;
 //    \p IRB - IR builder used to insert the code.
 static Value &loadLocalIDFromIABuffer(Value &ImplArgsBufferPtr,
-                                      IRBuilder<> &IRB) {
+                                      IRBuilder<> &IRB,
+                                      vc::ThreadPayloadKind PayloadKind) {
   using namespace vc::ImplicitArgs;
   std::array<LocalID::Indices::Enum, 3> Indices = {
       LocalID::Indices::X, LocalID::Indices::Y, LocalID::Indices::Z};
-  auto &LIDStructPtr = LocalID::getPointer(ImplArgsBufferPtr, IRB);
+  auto &LIDStructPtr = LocalID::getPointer(ImplArgsBufferPtr, IRB, PayloadKind);
   std::array<Value *, 3> VectorElements;
   std::transform(Indices.begin(), Indices.end(), VectorElements.begin(),
                  [&LIDStructPtr, &IRB](LocalID::Indices::Enum Idx) {
@@ -667,13 +718,14 @@ static Value &loadLocalIDFromIABuffer(Value &ImplArgsBufferPtr,
 //    \p ImplArgsBufferPtr - a pointer to implicit args buffer structure;
 //    \p IRB - IR builder used to insert the code.
 static Value &loadArgFromIABuffer(unsigned IID, Value &ImplArgsBufferPtr,
-                                  IRBuilder<> &IRB) {
+                                  IRBuilder<> &IRB,
+                                  vc::ThreadPayloadKind PayloadKind) {
   switch (IID) {
   default:
     IGC_ASSERT_MESSAGE(0, "unexpected intrinsic id");
     return ImplArgsBufferPtr;
   case GenXIntrinsic::genx_local_id16:
-    return loadLocalIDFromIABuffer(ImplArgsBufferPtr, IRB);
+    return loadLocalIDFromIABuffer(ImplArgsBufferPtr, IRB, PayloadKind);
   case GenXIntrinsic::genx_local_id:
     IGC_ASSERT_MESSAGE(0, "IA buffer is supported only for OCL/L0 so local.id "
                           "must have been already transformed into local.id16");
@@ -706,7 +758,8 @@ static Value &loadArgFromIABuffer(unsigned IID, Value &ImplArgsBufferPtr,
 void CMImpParam::storeImplArgInFixedSignatureFunction(unsigned IID,
                                                       Value &ImplArgsBufferPtr,
                                                       IRBuilder<> &IRB) {
-  auto &ImplicitArg = loadArgFromIABuffer(IID, ImplArgsBufferPtr, IRB);
+  auto &ImplicitArg =
+      loadArgFromIABuffer(IID, ImplArgsBufferPtr, IRB, getThreadPayloadKind());
   IGC_ASSERT_MESSAGE(GlobalsMap.count(IID),
                      "must have a corresponding global since the arg use was "
                      "already replaced with a load from the global");
@@ -1098,11 +1151,11 @@ CMImpParam::processKernelParameters(Function *F,
                        "fewer parameters for new function than expected");
     I2->setName(getImplicitArgName(IID));
 
-    if (!isPseudoIntrinsic(IID)) {
+    if (GlobalsMap.count(IID)) {
       // Also insert a new store at the start of the function to the global
-      // variable used for this implicit argument intrinsic
-      IGC_ASSERT_MESSAGE(GlobalsMap.count(IID),
-                         "no global associated with this imp arg intrinsic");
+      // variable used for this implicit argument intrinsic if such global is
+      // present. There are no global for pseudo intrinsics and sometimes for
+      // local ID when it is used only for kernel prologue.
       new StoreInst(I2, GlobalsMap[IID], &FirstI);
     }
 

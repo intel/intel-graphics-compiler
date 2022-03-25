@@ -164,14 +164,41 @@ Value &vc::ImplicitArgs::LocalID::getBasePtr(Value &BufferPtr, IRBuilder<> &IRB,
                                  *IRB.GetInsertBlock()->getModule()),
                              Name);
 }
-
-Value &vc::ImplicitArgs::LocalID::getPointer(Value &BufferPtr, IRBuilder<> &IRB,
-                                             const Twine &Name) {
+template <>
+Value &vc::ImplicitArgs::LocalID::getPointer<vc::ThreadPayloadKind::InMemory>(
+    Value &BufferPtr, IRBuilder<> &IRB, const Twine &Name) {
   auto &BasePtr =
       vc::ImplicitArgs::LocalID::getBasePtr(BufferPtr, IRB, Name + ".base");
   Value *Index = vc::getGroupThreadIDForPIM(IRB);
   return *IRB.CreateGEP(BasePtr.getType()->getPointerElementType(), &BasePtr,
                         Index, Name);
+}
+
+template <>
+Value &vc::ImplicitArgs::LocalID::getPointer<vc::ThreadPayloadKind::OnRegister>(
+    Value &BufferPtr, IRBuilder<> &IRB, const Twine &Name) {
+  GlobalVariable *IAVar = IRB.GetInsertPoint()->getModule()->getNamedGlobal(
+      vc::PredefVar::LocalIDBufferName);
+  IGC_ASSERT_MESSAGE(IAVar, "Local ID buffer predefined variable must "
+                            "have already been created");
+  auto *IntPtr = vc::createReadVariableRegion(*IAVar, IRB, Name + ".intptr");
+  return *IRB.CreateIntToPtr(IntPtr,
+                             &vc::ImplicitArgs::LocalID::getPtrType(
+                                 *IRB.GetInsertPoint()->getModule()),
+                             Name);
+}
+
+Value &vc::ImplicitArgs::LocalID::getPointer(Value &BufferPtr,
+                                             llvm::IRBuilder<> &IRB,
+                                             ThreadPayloadKind Kind,
+                                             const Twine &Name) {
+  if (Kind == vc::ThreadPayloadKind::InMemory)
+    return vc::ImplicitArgs::LocalID::getPointer<
+        vc::ThreadPayloadKind::InMemory>(BufferPtr, IRB, Name);
+  IGC_ASSERT_MESSAGE(Kind == vc::ThreadPayloadKind::OnRegister,
+                     "an unexpected thread payload kind");
+  return vc::ImplicitArgs::LocalID::getPointer<
+      vc::ThreadPayloadKind::OnRegister>(BufferPtr, IRB, Name);
 }
 
 Value &vc::ImplicitArgs::LocalID::loadField(

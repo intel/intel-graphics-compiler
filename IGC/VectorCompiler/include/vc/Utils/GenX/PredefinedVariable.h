@@ -49,7 +49,7 @@ constexpr const char ImplicitArgsBufferName[] =
 
 // The name of a global variable that represents predefined VISA variable
 // LOCAL_ID_BUF_PTR.
-constexpr const char LocalIDBufferName[] = "llvm.vc.predef.var.impl.args.buf";
+constexpr const char LocalIDBufferName[] = "llvm.vc.predef.var.loc.id.buf";
 
 enum class ID {
   BSS,
