@@ -22,8 +22,8 @@ SPDX-License-Identifier: MIT
 #define GT_MAX_SUBSLICE_PER_SLICE      (8)
 #define GT_MAX_VDBOX                   (2)
 #define GT_MAX_VEBOX                   (2)
-#define GT_MAX_SUBSLICE_PER_DSS        (2) // Currently max value based on Gen12
-#define GT_MAX_DUALSUBSLICE_PER_SLICE  (6) // Currently max value based on Gen12LP
+#define GT_MAX_SUBSLICE_PER_DSS        (2)
+#define GT_MAX_DUALSUBSLICE_PER_SLICE  (8)
 
 typedef struct GT_SUBSLICE_INFO
 {
