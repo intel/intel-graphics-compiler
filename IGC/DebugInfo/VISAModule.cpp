@@ -252,7 +252,7 @@ void VISAModule::rebuildVISAIndexes() {
 std::vector<std::tuple<uint64_t, uint64_t, unsigned int>>
 VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI,
                              uint64_t startRange, uint64_t endRange,
-                             DbgDecoder::LiveIntervalsVISA &genIsaRange) {
+                             DbgDecoder::LiveIntervalsVISA &genIsaRange) const {
   std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> callerSaveIPs;
 
   if (VDI.getCFI().callerSaveEntry.empty())
@@ -392,7 +392,7 @@ const llvm::Instruction *getNextInst(const llvm::Instruction *start) {
 
 std::vector<std::pair<unsigned int, unsigned int>>
 VISAModule::getGenISARange(const VISAObjectDebugInfo &VDI,
-                           const InsnRange &Range) {
+                           const InsnRange &Range) const {
   // Given a range, return vector of start-end range for corresponding Gen ISA
   // instructions
   auto start = Range.first;

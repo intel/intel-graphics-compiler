@@ -515,7 +515,7 @@ public:
   void rebuildVISAIndexes();
 
   std::vector<std::pair<unsigned int, unsigned int>>
-  getGenISARange(const VISAObjectDebugInfo &VD, const InsnRange &Range);
+  getGenISARange(const VISAObjectDebugInfo &VD, const InsnRange &Range) const;
 
   // Given %ip range and variable location, returns vector of locations where
   // variable is available in memory due to caller save sequence. Return format
@@ -523,7 +523,8 @@ public:
   // for caller save>
   std::vector<std::tuple<uint64_t, uint64_t, unsigned int>>
   getAllCallerSave(const VISAObjectDebugInfo &VD, uint64_t startRange,
-                   uint64_t endRange, DbgDecoder::LiveIntervalsVISA &Locs);
+                   uint64_t endRange,
+                   DbgDecoder::LiveIntervalsVISA &Locs) const;
 
   virtual const VISAObjectDebugInfo &
   getVisaObjectDI(const VISADebugInfo &VDI) const;
