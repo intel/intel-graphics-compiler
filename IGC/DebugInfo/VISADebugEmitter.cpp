@@ -120,8 +120,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     m_pDwarfDebug->lowPc = VDI.getRelocOffset();
   } else {
     for (const auto &item : VDI.getGenToVisaIndexLUT()) {
-      if ((item.GenOffset >= lastGenOff) ||
-          ((item.GenOffset | lastGenOff) == 0)) {
+      if (item.GenOffset >= lastGenOff) {
         if (item.VisaOffset <= subEnd || item.VisaOffset == 0xffffffff) {
           GenISAToVISAIndex.push_back(item);
           auto Size = GenToByteSizeLUT.lookup(item.GenOffset);
