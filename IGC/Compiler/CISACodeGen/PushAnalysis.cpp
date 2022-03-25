@@ -1792,6 +1792,9 @@ namespace IGC
                 auto funcInfo = loc->second;
                 FuncMD.erase(i.first);
                 FuncMD[i.second] = funcInfo;
+                auto& privateMemoryPerFG = m_context->getModuleMetaData()->PrivateMemoryPerFG;
+                privateMemoryPerFG[i.second] = privateMemoryPerFG[i.first];
+                privateMemoryPerFG.erase(i.first);
             }
         }
         m_pMdUtils->save(M.getContext());
