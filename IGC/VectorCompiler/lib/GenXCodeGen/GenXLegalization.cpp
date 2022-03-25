@@ -385,12 +385,14 @@ private:
     TwiceWidth = nullptr;
   }
   unsigned adjustTwiceWidthOrFixed4(const Bale &B);
-  bool checkIfLongLongSupportNeeded(Instruction *Inst) const;
+  bool checkIfLongLongSupportNeeded(const Instruction *Inst) const;
   void verifyLSCFence(const Instruction *Inst);
   void verifyLSCAtomic(const Instruction *Inst);
   void verifyLSC2D(const Instruction *Inst);
   void verifyLSCTransposed(const Instruction *Inst);
   void verifyLSCNonTransposed(const Instruction *Inst);
+  bool checkType(const Type *Ty, const Instruction *Inst) const;
+  bool checkInst(const Instruction *Inst) const;
   bool processInst(Instruction *Inst);
   bool processBale(Instruction *InsertBefore);
   bool noSplitProcessing();
@@ -618,7 +620,8 @@ unsigned GenXLegalization::adjustTwiceWidthOrFixed4(const Bale &B) {
  * Some operations like bitcasts or ptrtoint do not really need any HW support
  * to generate a compliant VISA
  */
-bool GenXLegalization::checkIfLongLongSupportNeeded(Instruction *Inst) const {
+bool GenXLegalization::checkIfLongLongSupportNeeded(
+    const Instruction *Inst) const {
   // for now, we expect that the inspected instruction results in a value
   // 64-bit type (scalar or vector)
   IGC_ASSERT(Inst);
@@ -729,6 +732,63 @@ void GenXLegalization::verifyLSCNonTransposed(const Instruction *Inst) {
 }
 
 /***********************************************************************
+ * checkType : check if type is ok according to subtarget
+ *
+ * Return: true if everything is ok, false if no legalization required
+ */
+bool GenXLegalization::checkType(const Type *Ty,
+                                 const Instruction *Inst) const {
+  if (Ty->isIntegerTy(64) && !ST->hasLongLong() && !ST->emulateLongLong() &&
+      checkIfLongLongSupportNeeded(Inst)) {
+    auto Target = getAnalysis<TargetPassConfig>()
+                      .getTM<GenXTargetMachine>()
+                      .getTargetCPU();
+    vc::diagnose(Ty->getContext(), "GenXLegalization", Inst,
+                 "'i64' data type is not supported by this target <" + Target +
+                     ">");
+    return false;
+  }
+
+  if (Ty->isDoubleTy() && !ST->hasFP64()) {
+    auto Target = getAnalysis<TargetPassConfig>()
+                      .getTM<GenXTargetMachine>()
+                      .getTargetCPU();
+    vc::diagnose(Ty->getContext(), "GenXLegalization", Inst,
+                 "'double' data type is not supported by this target <" +
+                     Target + ">");
+    return false;
+  }
+  return true;
+}
+
+/***********************************************************************
+ * checkInst : check instruction before GRF width legalization
+ *
+ * Return: true if everything is ok, false if no legalization required
+ */
+bool GenXLegalization::checkInst(const Instruction *Inst) const {
+  LLVM_DEBUG(dbgs() << "checkInst: " << *Inst << "\n");
+  if (Inst->isTerminator())
+    return false; // ignore terminator
+  if (isa<PHINode>(Inst))
+    return false; // ignore phi node
+  if (GenXIntrinsic::isReadWritePredefReg(Inst))
+    return false; // ignore predef regs
+
+  // Sanity check for illegal operand type
+  const auto *ScalarType = Inst->getType()->getScalarType();
+  checkType(ScalarType, Inst);
+
+  // Sanity check for illegal operands
+  for (auto &&Op : Inst->operands()) {
+    const auto *ScalarOpType = Op->getType()->getScalarType();
+    checkType(ScalarOpType, Inst);
+  }
+
+  return true;
+}
+
+/***********************************************************************
  * processInst : process one instruction to legalize execution width and GRF
  *    crossing
  *
@@ -736,38 +796,9 @@ void GenXLegalization::verifyLSCNonTransposed(const Instruction *Inst) {
  *          something from it)
  */
 bool GenXLegalization::processInst(Instruction *Inst) {
-  LLVM_DEBUG(dbgs() << "processInst: " << *Inst << "\n");
-  if (Inst->isTerminator())
-    return false; // ignore terminator
-  // Prepare to insert split code after current instruction.
-  auto InsertBefore = Inst->getNextNode();
-  if (isa<PHINode>(Inst))
-    return false; // ignore phi node
-  if (GenXIntrinsic::isReadWritePredefReg(Inst))
+  if (!checkInst(Inst))
     return false;
-  // Sanity check for illegal operand type
-  const auto *ScalarType = Inst->getType()->getScalarType();
-
-  if (ScalarType->isIntegerTy(64) && !ST->hasLongLong()) {
-    if (!ST->emulateLongLong() && checkIfLongLongSupportNeeded(Inst)) {
-      auto Target = getAnalysis<TargetPassConfig>()
-                        .getTM<GenXTargetMachine>()
-                        .getTargetCPU();
-      vc::diagnose(Inst->getContext(), "GenXLegalization", Inst,
-                   "'i64' data type is not supported by this target <" +
-                       Target + ">");
-    }
-  }
-
-  if (ScalarType->isDoubleTy() && !ST->hasFP64()) {
-    auto Target = getAnalysis<TargetPassConfig>()
-                      .getTM<GenXTargetMachine>()
-                      .getTargetCPU();
-    vc::diagnose(Inst->getContext(), "GenXLegalization", Inst,
-                 "'double' data type is not supported by this target <" +
-                     Target + ">");
-  }
-
+  LLVM_DEBUG(dbgs() << "processInst: " << *Inst << "\n");
   if (!ST->hasSad2Support()) {
     switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
     case GenXIntrinsic::genx_ssad2:
@@ -813,6 +844,9 @@ bool GenXLegalization::processInst(Instruction *Inst) {
       verifyLSCNonTransposed(Inst);
     }
   }
+
+  // Prepare to insert split code after current instruction.
+  auto InsertBefore = Inst->getNextNode();
 
   if (!isa<VectorType>(Inst->getType()) && !GenXIntrinsic::isLSC(Inst)) {
     if (Inst->getOpcode() == Instruction::BitCast &&
