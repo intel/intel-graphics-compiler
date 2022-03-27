@@ -63,7 +63,7 @@ extern __constant int __UseNativeFP64GlobalAtomicAdd;
   if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                       \
   {                                                                                   \
       bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
-      __intel_memfence_handler(flushL3, isGlobal, false);                             \
+      __intel_memfence_handler(flushL3, isGlobal, isGlobal);                          \
   }
 
 // This fencing scheme allows us to obey the memory model when coherency is
