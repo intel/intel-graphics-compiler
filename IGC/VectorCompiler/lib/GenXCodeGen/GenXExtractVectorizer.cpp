@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 
 #include <llvm/Analysis/CFG.h>
+#include <llvm/Analysis/PostDominators.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Dominators.h>
@@ -45,6 +46,7 @@ namespace {
 class GenXExtractVectorizer : public FunctionPass {
   bool Modified = false;
   DominatorTree *DT = nullptr;
+  PostDominatorTree *PDT = nullptr;
   SmallVector<Value *, 8> Extracted;
   std::set<Value *> ExtractedSet;
 
@@ -82,6 +84,7 @@ public:
   StringRef getPassName() const override { return "GenX Extract Vectorizer"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<PostDominatorTreeWrapperPass>();
     AU.setPreservesCFG();
   }
   bool runOnFunction(Function &F) override;
@@ -99,6 +102,7 @@ namespace llvm { void initializeGenXExtractVectorizerPass(PassRegistry &); }
 INITIALIZE_PASS_BEGIN(GenXExtractVectorizer, "GenXExtractVectorizer",
                       "GenXExtractVectorizer", false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 INITIALIZE_PASS_END(GenXExtractVectorizer, "GenXExtractVectorizer",
                     "GenXExtractVectorizer", false, false)
 
@@ -115,6 +119,7 @@ FunctionPass *llvm::createGenXExtractVectorizerPass()
 bool GenXExtractVectorizer::runOnFunction(Function &F)
 {
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   // Scan the code looking for vector values that have an extract (a rdregion
   // of one element) applied.
   for (auto fi = F.begin(), fe = F.end(); fi != fe; ++fi) {
@@ -163,13 +168,46 @@ static bool hasCommonStride(const GenXExtractVectorizer::Bucket &B) {
   return true;
 }
 
-template <typename Iter>
-static Instruction *findInsertionPoint(Iter Begin, Iter End,
-                                       const DominatorTree &DT) {
+static Instruction *findInsertionPoint(const GenXExtractVectorizer::Bucket &B,
+                                       const DominatorTree &DT,
+                                       const PostDominatorTree &PDT) {
   SmallVector<Instruction *, 8> Insts;
-  std::transform(Begin, End, std::back_inserter(Insts),
+  std::transform(B.begin(), B.end(), std::back_inserter(Insts),
                  [](auto &Extract) { return Extract.Inst; });
-  return findClosestCommonDominator(&DT, Insts);
+  Instruction *InsertPt = findClosestCommonDominator(&DT, Insts);
+  const BasicBlock *CommonDom = InsertPt->getParent();
+
+  std::unordered_set<const BasicBlock *> BBs;
+  std::transform(Insts.begin(), Insts.end(), std::inserter(BBs, BBs.end()),
+                 [](auto *Inst) { return Inst->getParent(); });
+  const BasicBlock *CommonPostDom = B.front().Inst->getParent();
+  for (const auto *BB : BBs)
+    CommonPostDom = PDT.findNearestCommonDominator(CommonPostDom, BB);
+
+  if (CommonDom == CommonPostDom)
+    return InsertPt;
+
+  for (auto I = df_begin(CommonDom), E = df_end(CommonDom); I != E;) {
+    // CommonPostDom is reached. There is a path from CommonDom to
+    // CommonPostDom such that no instruction from Insts will be met. It means
+    // that vectorization of the accesses for the bucket will generate redundant
+    // computations for this execution path. For such cases benefit of the
+    // vectorization is under the question. We follow conservative behavior and
+    // do not transform not clear cases.
+    // Common insertion points may exist for some bucket partitions. However,
+    // experiments have shown that such a pattern is extremely rare and we may
+    // lose more at compile time looking for suitable partitions.
+    if (*I == CommonPostDom)
+      return nullptr;
+    // At least one instruction from Insts will be met. There is no need to
+    // traverse children.
+    if (BBs.count(*I))
+      I.skipChildren();
+    else
+      ++I;
+  }
+
+  return InsertPt;
 }
 
 // Create region for vectorized accesses.
@@ -256,7 +294,9 @@ void GenXExtractVectorizer::processExtracted(Value *V)
     if (!hasCommonStride(B))
       continue;
     // Find the latest point that we can insert the vectorized instruction.
-    Instruction *InsertPt = findInsertionPoint(B.begin(), B.end(), *DT);
+    Instruction *InsertPt = findInsertionPoint(B, *DT, *PDT);
+    if (!InsertPt)
+      continue;
 
     Region R = createRegion(B, BI);
     BucketsToProcess.push_back({std::move(B), std::move(R), InsertPt});
