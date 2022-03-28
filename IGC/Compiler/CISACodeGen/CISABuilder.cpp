@@ -4967,7 +4967,7 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, VISAKernel* prevKernel)
+    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, VISAKernel* prevKernel)
     {
         m_aliasesMap.clear();
         m_encoderState.m_SubSpanDestination = false;
@@ -5000,8 +5000,8 @@ namespace IGC
 
         COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISACompile);
         bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
-        auto builderMode = m_hasInlineAsm ? vISA_ASM_WRITER : vISA_DEFAULT;
-        auto builderOpt = (enableVISADump || m_hasInlineAsm) ? VISA_BUILDER_BOTH : VISA_BUILDER_GEN;
+        auto builderMode = m_hasInlineAsm || hasAdditionalVisaAsmToLink ? vISA_ASM_WRITER : vISA_DEFAULT;
+        auto builderOpt = (enableVISADump || m_hasInlineAsm || hasAdditionalVisaAsmToLink) ? VISA_BUILDER_BOTH : VISA_BUILDER_GEN;
         V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
             &m_vISAWaTable));
 
@@ -5852,23 +5852,22 @@ namespace IGC
 
                 if (result == 0 && additionalVISAAsmToLink) {
                     std::stringstream ss;
-                    result = vbuilder->Compile(
-                        m_enableVISAdump ? GetDumpFileName("isa").c_str() : "",
-                        &ss, true);
-                    result = (result == 0) ? vAsmTextBuilder->ParseVISAText(vMainKernel->getVISAAsm(), "") : result;
+                    result = vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextStream().str(), "");
                     for(auto visaAsm : *additionalVISAAsmToLink) {
                         result = (result == 0) ? vAsmTextBuilder->ParseVISAText(visaAsm, "") : result;
                     }
 
-                    // Mark invoke_simd targets with LTO_InvokeOptTarget attribute.
-                    IGC_ASSERT(m_program && m_program->GetContext() && m_program->GetContext()->getModule());
-                    for (auto& F : m_program->GetContext()->getModule()->getFunctionList())
-                    {
-                        if (F.hasFnAttribute("invoke_simd_target")) {
-                            auto vFunc = vAsmTextBuilder->GetVISAKernel(F.getName().data());
-                            IGC_ASSERT(vFunc);
-                            bool enabled = true;
-                            vFunc->AddKernelAttribute("LTO_InvokeOptTarget", 1, &enabled);
+                    if (result == 0) {
+                        // Mark invoke_simd targets with LTO_InvokeOptTarget attribute.
+                        IGC_ASSERT(m_program && m_program->GetContext() && m_program->GetContext()->getModule());
+                        for (auto& F : m_program->GetContext()->getModule()->getFunctionList())
+                        {
+                            if (F.hasFnAttribute("invoke_simd_target")) {
+                                auto vFunc = vAsmTextBuilder->GetVISAKernel(F.getName().data());
+                                IGC_ASSERT(vFunc);
+                                bool enabled = true;
+                                vFunc->AddKernelAttribute("LTO_InvokeOptTarget", 1, &enabled);
+                            }
                         }
                     }
                 }
@@ -5897,7 +5896,7 @@ namespace IGC
                     vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, true);
                 }
 
-                if (visaAsmOverride || additionalVISAAsmToLink) {
+                if (visaAsmOverride) {
                     // After call to ParseVISAText, we have new VISAKernel, which don't have asm path set.
                     // So we need to set the OutputAsmPath attribute of overridden kernel,
                     // otherwise, we will not get .visaasm dump and .asm file dump

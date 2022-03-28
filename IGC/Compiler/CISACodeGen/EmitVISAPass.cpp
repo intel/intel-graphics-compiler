@@ -769,8 +769,16 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             m_pCtx->m_DriverInfo.SupportInlineAssembly() &&
             (!m_FGA ? IGC::hasInlineAsmInFunc(F) : m_FGA->getGroup(&F)->hasInlineAsm());
 
+        bool hasAdditionalVisaAsmToLink = false;
+        if (m_pCtx->type == ShaderType::OPENCL_SHADER) {
+            auto cl_context = static_cast<OpenCLProgramContext*>(m_pCtx);
+            if (!cl_context->m_VISAAsmToLink.empty()) {
+                hasAdditionalVisaAsmToLink = true;
+            }
+        }
+
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
-        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, hasInlineAsmCall, prevKernel);
+        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, hasInlineAsmCall, hasAdditionalVisaAsmToLink, prevKernel);
         initDefaultRoundingMode();
         m_currShader->PreCompile();
 
