@@ -3807,7 +3807,9 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST* inst) const
     G4_Type execType = inst->getExecType();
     G4_DstRegRegion* dst = inst->getDst();
 
-    MUST_BE_TRUE(!IS_QTYPE(dst->getType()) && !IS_BTYPE(dst->getType()), "3Src inst don't support Q and B dst types");
+    {
+        MUST_BE_TRUE(!IS_QTYPE(dst->getType()) && !IS_BTYPE(dst->getType()), "3Src inst don't support Q and B dst types");
+    }
 
     if (!builder.hasMixMode() &&
         isLowPrecisionFloatTy(dst->getType()) && !isLowPrecisionFloatTy(execType))
@@ -3865,6 +3867,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
     uint8_t execSize = inst->getExecSize();
     G4_Operand* src = inst->getSrc(srcPos);
     // for pseudo_mad we have to swap src0 and src2
+    // isSrc2 variable should be interpreted as isSrc2 in GEN
     bool isSrc2 = inst->opcode() == G4_pseudo_mad ? srcPos == 0 : srcPos == 2;
 
     if (!builder.hasMixMode())
@@ -3878,7 +3881,9 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
 
     if (IS_QTYPE(src->getType()))
     {
-        return false;
+        {
+            return false;
+        }
     }
 
     // mad specific checks
@@ -3886,11 +3891,11 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
     {
         if (isSrc2)
         {
-            if (IS_DTYPE(src->getType()))
+            if (IS_DTYPE(src->getType())
+                    )
             {
                 return false;
             }
-
             if (builder.noSrc2Regioning() && IS_BTYPE(src->getType()))
             {
                 return false;
@@ -4008,7 +4013,8 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
             else
             {
                 // not a scalar, src2 must be GRF aligned.
-                if (!builder.isOpndAligned(src, kernel.numEltPerGRF<Type_UB>()))
+                if (!builder.isOpndAligned(src, kernel.numEltPerGRF<Type_UB>())
+                        )
                 {
                     return false;
                 }
@@ -8615,8 +8621,10 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
                 // for mix mode the source must be packed, otherwise srcStride shoudl be == sizeof(exec type)
                 if (!builder.isOpndAligned(src, alignment) || (isMixModeSrc ? !isMixModePackedSrc : srcStride != execTyWidth))
                 {
-                    int stride = (int)(isMixModeSrc ? 1 : execTyWidth / src->getTypeSize());
-                    doAlignMove(inst, i, stride);
+                    {
+                        int stride = (int)(isMixModeSrc ? 1 : execTyWidth / src->getTypeSize());
+                        doAlignMove(inst, i, stride);
+                    }
                 }
             }
         }

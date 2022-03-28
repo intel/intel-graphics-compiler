@@ -420,6 +420,7 @@ SPDX-License-Identifier: MIT
         return getPlatform() == Xe_PVCXT && hasRSForSpecificPlatform();
     }
 
+
     bool alignBindlessSampler() const
     {
         return getPlatformGeneration() == PlatformGen::GEN9;
