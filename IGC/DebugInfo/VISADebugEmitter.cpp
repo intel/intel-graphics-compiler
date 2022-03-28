@@ -109,6 +109,11 @@ void DebugEmitter::processCurrentFunction(bool finalize,
   unsigned int prevLastGenOff = lastGenOff;
   m_pDwarfDebug->lowPc = lastGenOff;
 
+  LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] initial bounds info: "
+                    << "subEnd = " << subEnd << "(VI), "
+                    << "lastGenOff = 0x" << llvm::Twine::utohexstr(lastGenOff)
+                    << "\n");
+
   // SIMD width
   m_pDwarfDebug->simdWidth = m_pVISAModule->GetSIMDSize();
 
@@ -134,10 +139,18 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     }
   }
 
+  LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] updated bounds info: "
+                    << "lastGenOff = 0x" << llvm::Twine::utohexstr(lastGenOff)
+                    << "\n");
+  LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] GenISAInstructions selected: "
+                    << GenISAToVISAIndex.size() << "\n");
+
   auto genxISA = m_pVISAModule->getGenBinary();
   DebugLoc prevSrcLoc = DebugLoc();
   unsigned int pc = prevLastGenOff;
 
+  LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] updated bounds info: "
+                    << "pc = 0x" << llvm::Twine::utohexstr(pc) << "\n");
   if (!GenISAToVISAIndex.empty()) {
     IGC_ASSERT(GenISAToVISAIndex.rbegin()->GenOffset <= genxISA.size());
     IGC_ASSERT(pc < genxISA.size());
@@ -205,7 +218,6 @@ void DebugEmitter::processCurrentFunction(bool finalize,
 
     prevSrcLoc = loc;
   }
-
   if (finalize) {
     size_t unpaddedSize = m_pVISAModule->getUnpaddedProgramSize();
 
@@ -228,6 +240,10 @@ void DebugEmitter::processCurrentFunction(bool finalize,
   }
 
   m_pDwarfDebug->highPc = lastGenOff;
+
+  LLVM_DEBUG(dbgs() << "[DwarfDebug][IP-RANGE] updated bounds info: "
+                    << "high_pc = 0x"
+                    << llvm::Twine::utohexstr(m_pDwarfDebug->highPc) << "\n");
 }
 
 void DebugEmitter::SetDISPCache(DwarfDISubprogramCache *DISPCache) {

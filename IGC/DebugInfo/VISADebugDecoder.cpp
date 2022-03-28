@@ -95,8 +95,8 @@ void IGC::DbgDecoder::LiveIntervalGenISA::print(llvm::raw_ostream &OS) const {
 void IGC::DbgDecoder::LiveIntervalGenISA::dump() const { print(llvm::dbgs()); }
 
 void IGC::DbgDecoder::SubroutineInfo::print(llvm::raw_ostream &OS) const {
-  OS << "Name=" << name << " [" << startVISAIndex << ";" << endVISAIndex
-     << "], retvals: ";
+  OS << "[" << startVISAIndex << ";" << endVISAIndex << "] Name=" << name
+     << ", retvals: ";
   PrintItems(OS, retval, ", ");
 }
 
@@ -158,9 +158,14 @@ void IGC::DbgDecoder::DbgInfoFormat::print(llvm::raw_ostream &OS) const {
   OS << "  RelocOffset: " << relocOffset << "\n";
   OS << "  NumSubroutines: " << subs.size() << "\n";
 
-  OS << "  Subroutines: [\n    ";
-  PrintItems(OS, subs, "\n    ");
-  OS << "  ]\n";
+  OS << "  Subroutines (VI-sorted): [\n    ";
+  auto SubsCopy = subs;
+  std::sort(SubsCopy.begin(), SubsCopy.end(),
+            [](const auto &LSub, const auto &RSub) {
+              return LSub.startVISAIndex < RSub.startVISAIndex;
+            });
+  PrintItems(OS, SubsCopy, "\n    ");
+  OS << "\n  ]\n";
   OS << "  CFI: {\n";
   cfi.print(OS);
   OS << "  }\n";
