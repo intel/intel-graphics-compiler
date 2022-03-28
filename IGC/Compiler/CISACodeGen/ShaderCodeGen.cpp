@@ -602,8 +602,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     if (ctx.m_instrTypes.hasGenericAddressSpacePointers)
     {
-        if (!isOptDisabled &&
-            IGC_IS_FLAG_ENABLED(EnableGASResolver))
+        if (IGC_IS_FLAG_ENABLED(EnableGASResolver))
         {
             mpm.add(createSROAPass());
             mpm.add(createFixAddrSpaceCastPass());
