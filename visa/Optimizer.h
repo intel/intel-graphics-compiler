@@ -266,12 +266,15 @@ private:
     void replaceRetWithJmpi();
     void doNoMaskWA();
     void newDoNoMaskWA();
+    void prepareNoMaskWA();
+    void applyNoMaskWA();
     void applyFusedCallWA();
     void setDMaskFusedCallWA();
     void finishFusedCallWA();
     void doNoMaskWA_postRA();
     void newDoNoMaskWA_postRA();
     bool NoMaskWAUseRAList() const { return true; }
+    bool allPostRANoMaskWA() const { return false; }
     void insertFenceAtEntry();
     void expandMulPostSchedule();
     void expandMadwPostSchedule();

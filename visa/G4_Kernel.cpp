@@ -563,6 +563,9 @@ G4_Kernel::G4_Kernel(const PlatformInfo& pInfo, INST_LIST_NODE_ALLOCATOR& alloc,
         gtPinInfo = nullptr;
     }
 
+    // NoMask WA
+    m_EUFusionNoMaskWAInfo = nullptr;
+
     setKernelParameters();
 }
 

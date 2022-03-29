@@ -159,6 +159,15 @@ public:
     G4_INST* getWAFlagDefInst() const { return WAFlag_allOne ? WAFlag_allOne : WAFlag_cmp; }
 };
 
+// NoMask WA Information
+class NoMaskWAInfo
+{
+public:
+    bool        HasWAInsts;       // true: there are NoMask inst that needs WA.
+    G4_Declare* WAFlagReserved;
+    G4_Declare* WATempReserved;
+};
+
 class G4_Kernel
 {
 public:
@@ -421,7 +430,24 @@ private:
     //   PreRA WA creates WA flag and applies WA. This map keeps info around.
     //   storage used will be freed after postRA WA is done.
     std::unordered_map<G4_BB*, NoMaskWA_info_t*> m_noMaskWAInfo;
+    // Passing info from preRA to postRA
+    NoMaskWAInfo* m_EUFusionNoMaskWAInfo;
 public:
+    void createNoMaskWAInfo(G4_Declare* aWAFlag, G4_Declare* aWATemp, bool aInstNeedWA)
+    {
+        NoMaskWAInfo* waInfo = new NoMaskWAInfo();
+        waInfo->WAFlagReserved = aWAFlag;
+        waInfo->WATempReserved = aWATemp;
+        waInfo->HasWAInsts = aInstNeedWA;
+
+        m_EUFusionNoMaskWAInfo = waInfo;
+    }
+    void deleteEUFusionNoMaskWAInfo()
+    {
+        delete m_EUFusionNoMaskWAInfo;
+        m_EUFusionNoMaskWAInfo = nullptr;
+    }
+    NoMaskWAInfo* getEUFusionNoMaskWAInfo() const { return m_EUFusionNoMaskWAInfo; }
     void addNoMaskWAInfo(G4_BB* aBB,
         G4_INST* aInstKill, G4_INST* aInstSave, G4_INST* aInstRestore,
         G4_INST* aWAFlag_mov0, G4_INST* aWAFlag_cmp, G4_INST* aWAFlag_allOne,

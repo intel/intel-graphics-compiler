@@ -7405,11 +7405,19 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // HW WAs that are done before RA.
     void Optimizer::preRA_HWWorkaround()
     {
+        // 3 versions: will keep one after the driver is stable
         if (builder.useNewNoMaskWA())
         {
             if (builder.hasFusedEUNoMaskWA())
             {
-                newDoNoMaskWA();
+                if (allPostRANoMaskWA())
+                {
+                    prepareNoMaskWA();
+                }
+                else
+                {
+                    newDoNoMaskWA();
+                }
             }
         }
         else
@@ -7445,11 +7453,19 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     //
     void Optimizer::postRA_HWWorkaround()
     {
+        // 3 versions: will keep one after the driver is stable
         if (builder.useNewNoMaskWA())
         {
             if (builder.hasFusedEUNoMaskWA())
             {
-                newDoNoMaskWA_postRA();
+                if (allPostRANoMaskWA())
+                {
+                    applyNoMaskWA();
+                }
+                else
+                {
+                    newDoNoMaskWA_postRA();
+                }
             }
         }
         else
@@ -13288,6 +13304,1087 @@ void Optimizer::newDoNoMaskWA()
             I->setSkipPostRA(true);
         }
     }
+}
+
+// The NoMask WA has two parts:
+//        preRA part: prepare for applying WA in postRA
+//       postRA part: apply WAs
+//
+// prepareNoMaskWA is preRA part. It does:
+//    1. Determines if NoMask WA needs to be applied for any BB
+//       This is done by using nested divergence to decide whether a BB needs WA.
+//    2. If WA is needed,  reserve dedicated GRFs
+//       Check all insts that need WA and decide how much GRF to be reserved.
+//       At most 2GRF + 2DW is needed.
+//    This info, reserved GRFs and whether there are insts that need WA, is passed
+//    into postRA.  Note that even though there is no inst that need WA preRA, it is
+//    still possible that spill/fill needs WA. Thus, at least 2DW will be reserved.
+void Optimizer::prepareNoMaskWA()
+{
+    std::unordered_map<G4_BB*, int> nestedDivergentBBs;
+    const G4_ExecSize simdsize = fg.getKernel()->getSimdSize();
+
+    // Identify BBs that need WA
+    fg.reassignBlockIDs();
+    fg.findNestedDivergentBBs(nestedDivergentBBs);
+
+    // Return true if a NoMask inst is either send or global
+    auto isCandidateInst = [&](G4_INST* Inst, FlowGraph& cfg) -> bool {
+        // pseudo should be gone at this time [skip all pseudo].
+        if (!Inst->isWriteEnableInst() ||
+            Inst->isCFInst() ||
+            Inst->isPseudoLogic() ||
+            Inst->isPseudoKill() ||
+            Inst->isWait() ||          // predicate not supported
+            Inst->opcode() == G4_nop)  // predicate not supported
+        {
+            return false;
+        }
+        if (Inst->isSend() && Inst->getPredicate() && Inst->getExecSize() > simdsize)
+        {
+            // fused send, already correctly predicated, skip
+            return false;
+        }
+        if (Inst->isEOT())
+        {
+            // Algo assumes no WA needed for entry and exit, skip EOT for now.
+            return false;
+        }
+        return true;
+    };
+
+    // If true, there exist NoMask insts that need WA.
+    bool hasWAInst = false;
+    bool reserveWAFlag = false;
+    uint32_t numTempInUD = 0;        // size of temp in UD
+    G4_SubReg_Align tempAlign = Even_Word;
+
+    auto updateTempReserve = [&](uint32_t aNumElts, G4_Type aEltTy, G4_SubReg_Align aAlign)
+    {
+        uint32_t newBytes = aNumElts * TypeSize(aEltTy);
+        uint32_t newDWs = (newBytes + 3) / 4;
+        if (newDWs > numTempInUD)
+        {
+            numTempInUD = newDWs;
+        }
+        if (tempAlign < aAlign)
+        {
+            tempAlign = aAlign;
+        }
+    };
+
+    // Scan all insts and mark then if WAs are needed
+    for (auto BI : fg)
+    {
+        G4_BB* BB = BI;
+        if ((BB->getBBType() & G4_BB_NM_WA_TYPE) == 0)
+        {
+            continue;
+        }
+
+        // This BB might need WA, thus reserved GRF for WA flags.
+        // (Even though there is no NoMask inst in this BB now, later RA might generate
+        //  spill/fill in this BB. Thus WAFlagReserve shoud be set here.)
+        reserveWAFlag = true;
+        for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+        {
+            G4_INST* I = *II;
+            if (isCandidateInst(I, fg))
+            {
+                I->setNeedPostRA(true);
+                hasWAInst = true;
+
+                // Check if any temps are needed.
+                G4_CondMod* condmod = I->getCondMod();
+                G4_Predicate* pred = I->getPredicate();
+                if (pred && !condmod)
+                {
+                    // doPredicateInstWA(): need 1 DW
+                    updateTempReserve(1, Type_UD, Even_Word);
+                }
+                else if (!pred && condmod)
+                {
+                    if (I->opcode() == G4_sel || I->opcode() == G4_csel)
+                    {
+                        // doFlagModifierSelInstWA : temp for saving dst (could be 2GRF)
+                        G4_DstRegRegion* dst = I->getDst();
+                        assert((dst && !dst->isNullReg()) && "ICE: expect dst to be non-null!");
+                        (void)updateTempReserve(I->getExecSize() * dst->getHorzStride(),
+                            dst->getType(), dst->getTopDcl()->getSubRegAlign());
+                    }
+                    else
+                    {
+                        //doFlagModifierInstWA : temp for saving condmod
+                        updateTempReserve(1, Type_UD, Even_Word);
+                    }
+                }
+                else if (pred && condmod)
+                {
+                    //doPredicateAndFlagModifierInstWA : temp for saving predicate
+                    updateTempReserve(1, Type_UD, Even_Word);
+                }
+            }
+        }
+    }
+
+    G4_BB* entryBB = fg.getEntryBB();
+    assert(entryBB);
+    G4_Declare* WATemp = nullptr;
+    if (numTempInUD > 0)
+    {
+        // For temps other than WA flags. Its size will be the largest of all temps
+        // It is at most 2 GRF (dst that uses maximum 2 GRF).
+        WATemp = builder.createTempVar(numTempInUD, Type_UD, tempAlign, "WATemp");
+        WATemp->setLiveIn();
+        WATemp->setLiveOut();
+        WATemp->setDoNotSpill();
+
+        // Add a pseudo use inst so that RA will include this temp for reg allocation.
+        G4_ExecSize sz = builder.toExecSize(Get_VISA_Exec_Size_From_Raw_Size(numTempInUD));
+        G4_SrcRegRegion* use = builder.createSrc(WATemp->getRegVar(), 0, 0,
+            (sz == g4::SIMD1 ? builder.getRegionScalar() : builder.getRegionStride1()), Type_UD);
+        G4_INST* pseudoUseInst = builder.createIntrinsicInst(
+            nullptr, Intrinsic::FlagSpill, sz,  nullptr, use, nullptr, nullptr, InstOpt_NoOpt, false);
+
+        INST_LIST_ITER inst_it = entryBB->getFirstInsertPos();
+        entryBB->insertBefore(inst_it, pseudoUseInst);
+    }
+
+    // WA flag temp:  2 DW.
+    //    The First for saving the existing flag so that WA flag can use it.
+    //    The second one is a temp for saving WA flag to avoid recalculating it.
+    G4_Declare* WAFlagReserve = nullptr;
+    if (reserveWAFlag)
+    {
+        WAFlagReserve = builder.createTempVar(2, Type_UD, Even_Word, "WAFlag");
+        WAFlagReserve->setLiveIn();
+        WAFlagReserve->setLiveOut();
+        WAFlagReserve->setDoNotSpill();
+
+        G4_SrcRegRegion* src = builder.createSrc(
+            WAFlagReserve->getRegVar(), 0, 0, builder.getRegionStride1(), Type_UD);
+        G4_INST* pseudoUseInst = builder.createIntrinsicInst(
+            nullptr, Intrinsic::FlagSpill, g4::SIMD2,
+            nullptr, src, nullptr, nullptr, InstOpt_NoOpt, false);
+
+        INST_LIST_ITER inst_it = entryBB->getFirstInsertPos();
+        entryBB->insertBefore(inst_it, pseudoUseInst);
+    };
+
+    // Save info for applyNoMaskWA() to use after RA.
+    // If reserveWAFlag is false, there is no need to apply WA at all (including postRA).
+    if (reserveWAFlag)
+    {
+        kernel.createNoMaskWAInfo(WAFlagReserve, WATemp, hasWAInst);
+    }
+}
+
+void Optimizer::applyNoMaskWA()
+{
+    // Utility class to get flag def/use info for a BB
+    //    Each of 16-bit flag has one bit to track whether it is used or defined.
+    //    We have 4 flags, thus 4 bits for use and 4 bits for def.
+    //
+    //    DefUse info is encoded as uint32_t, in which the first 4 bits of 1st half
+    //    and the 2nd half are for use and def, respectively, that is,
+    //        [3:0] : use (f1.1, f1.0, f0.1, f0.0)
+    //      [19:16] : def (f1.1, f1.0, f0.1, f0.0)
+    //
+    // For example,  0xA0001 (1010b, 0001b) -> f1.1 & f0.1 are defined, f0.0 is used
+    //
+    // Convention:
+    //    Inst iterator range is represented as [a, b], or [a, b), in which '[' and ']'
+    //    means inclusive, where '(' and ')' means exclusive.  For example, [1, 10) means
+    //    1 to 9, where [1, 10] means 1 to 10.
+    class FlagDefUse
+    {
+        G4_BB* m_BB;
+        // Keep track DefUse info for each inst.
+        std::unordered_map<G4_INST*, uint32_t> m_flagDefUse;
+    public:
+        FlagDefUse(G4_BB* aBB) : m_BB(aBB) {}
+
+        // return value:
+        //   true:  if "O" is flag and has assigned a physical flag. This physical reg
+        //          is returned as (freg, fsreg):ty.
+        //   false: otherwise
+        static bool getFlagRegAndSubreg(G4_Operand* O, uint32_t& freg, uint32_t& fsreg, G4_Type& ty)
+        {
+            G4_VarBase* BVar = O->getBase();
+            uint32_t nelts = (O->getRightBound() - O->getLeftBound() + 16) / 16;
+            ty = (nelts == 1 ? Type_UW : Type_UD);
+            bool isValid = false;
+            if (BVar)
+            {
+                freg = BVar->ExRegNum(isValid);
+                fsreg = BVar->asRegVar()->getPhyRegOff();
+            }
+            return isValid;
+        }
+
+    private:
+        uint16_t getFlagBits(G4_Operand* O) {
+            uint32_t r, sr;
+            G4_Type t;
+            if (getFlagRegAndSubreg(O, r, sr, t))
+            {
+                uint16_t bits = (t == Type_UD ? 0x3 : 0x1);
+                return (bits << (r * 2 + sr));
+            }
+            assert(false && "Flag: not allocated to physical register!");
+            return 0;
+        };
+
+        uint32_t getFlagDefUseBits(G4_INST* aI)
+        {
+            auto MI = m_flagDefUse.find(aI);
+            if (MI != m_flagDefUse.end())
+            {
+                return MI->second;
+            }
+
+            uint16_t flagUse = 0;
+            uint16_t flagDef = 0;
+            for (int i = 0, sz = (int)aI->getNumSrc(); i < sz; ++i)
+            {
+                G4_Operand* S = aI->getOperand(aI->getSrcOperandNum(i));
+                if (S && S->isFlag())
+                {
+                    assert(S->asSrcRegRegion()->getBase()->getAreg());
+                    flagUse |= getFlagBits(S);
+                }
+            }
+            // predicate
+            if (G4_Predicate* P = aI->getPredicate())
+            {
+                flagUse |= getFlagBits(P);
+            }
+            // defs
+            G4_Operand* D = aI->getDst();
+            if (D && !D->isNullReg() && D->isFlag())
+            {
+                assert(D->asDstRegRegion()->getBase()->getAreg());
+                flagDef |= getFlagBits(D);
+            }
+            if (aI->opcode() != G4_sel && aI->opcode() != G4_csel)
+            {   // sel does not update condMod
+                if (G4_CondMod* Mod = aI->getCondMod())
+                {
+                    flagDef |= getFlagBits(Mod);
+                }
+            }
+            uint32_t retBits = (flagDef << 16) | flagUse;
+            m_flagDefUse.insert(std::make_pair(aI, retBits));
+            return retBits;
+        }
+
+        // Return flag bits for instructions within [SI, EI).
+        uint32_t getInstsBits(INST_LIST_ITER SI, INST_LIST_ITER EI)
+        {
+            uint32_t defuse = 0;
+            for (auto II = SI; II != EI; ++II) {
+                G4_INST* tI = *II;
+                defuse |= getFlagDefUseBits(tI);
+            }
+            return defuse;
+        }
+
+        // Return  true: if there is a flag that is not referenced by this duBits.
+        //               The returned flag (freg, fsreg) is a unreferenced one.
+        //        false: otherwise.
+        bool getUnreferencedFlag(uint32_t duBits, G4_Type fty, uint32_t& freg, uint32_t& fsreg)
+        {
+            uint32_t fBits = (fty == Type_UD) ? 0x3 : 0x1;
+            uint32_t duBitsD = (duBits >> 16);
+            int i = 0;
+            for (; i < 4; i += (fty == Type_UD ? 2 : 1)) {
+                if ((fBits & duBits) == 0        // Use
+                    && (fBits & duBitsD) == 0)   // Def
+                {
+                    freg = i / 2;
+                    fsreg = i % 2;
+                    return true;
+                }
+                fBits = (fBits << (fty == Type_UD ? 2 : 1));
+            }
+            return false;
+        }
+
+    public:
+        // Let BI = aWaInsts[aStartIx], EI = ++(aWaInsts.back()).
+        // Note that aWaInsts's element is of INST_LIST_ITER.
+        //
+        // getBestFlagIfAvailable() searches [BI, EI), and it searches in order until no available flag can
+        // be used. (In doing so, we have the maximum number of WA insts that can use the same WA flag.)
+        // The argument 'aEndIx' is the index it stops when no flag can be used.
+        //   Return value:
+        //     false:  If aEndIx == aStartIx,  no flag can be used. This means that the inst at aStartIx takes
+        //             all two flags.
+        //      true:  otherwise, (retFreg, retFsreg):FTy is not used in [ aWaInsts[aStartIx], aWaInsts[aEndIx] ).
+        //             If aEndIx = aWaInsts.size(), it means (retFreg, retFsreg):FTy can be used for all insts
+        //             of aWaInsts, starting from aStartIx.
+        bool getBestFlagIfAvailable(const std::vector<INST_LIST_ITER>& aWaInsts,
+            const int32_t aStartIx, int32_t& aEndIx, G4_Type FTy, uint32_t& retFreg, uint32_t& retFsreg)
+        {
+            // initialize flag to be invalid
+            retFreg = 0xff;
+            retFsreg = 0xff;
+
+            int SIx = aStartIx;
+            INST_LIST_ITER BI = aWaInsts[SIx];
+            uint32_t DUBits = 0;
+            for (const int EIx = (int)aWaInsts.size(); SIx < EIx; ++SIx)
+            {
+                uint32_t r, s;
+                INST_LIST_ITER NI = std::next(aWaInsts[SIx]);
+                DUBits |= getInstsBits(BI, NI);
+                if (!getUnreferencedFlag(DUBits, FTy, r, s))
+                {
+                    // no flag is available at ix
+                    break;
+                }
+                retFreg = r;
+                retFsreg = s;
+                BI = NI;  // set the next starting iterator
+            }
+
+            aEndIx = SIx;
+            return SIx != aStartIx;
+        }
+    };
+
+    // Only need to create at most 6 WAFlag temps.
+    G4_Declare* FlagUD[2] = { nullptr, nullptr };
+    G4_Declare* FlagUW[4] = { nullptr, nullptr, nullptr, nullptr };
+    auto getFlagDcl = [&](uint32_t aFreg, uint32_t aFsreg, G4_Type aFTy)
+    {
+        G4_Declare* retDcl;
+        if (aFTy == Type_UD)
+        {
+            int ix = aFreg;
+            if (FlagUD[ix] == nullptr)
+            {
+                FlagUD[ix] = builder.createTempFlag(2, "WAFlagUD");
+            }
+            retDcl = FlagUD[ix];
+        }
+        else
+        {
+            int ix = 2 * aFreg + aFsreg;
+            if (FlagUW[ix] == nullptr)
+            {
+                FlagUW[ix] = builder.createTempFlag(1, "WAFlagUW");
+            }
+            retDcl = FlagUW[ix];
+        }
+        return retDcl;
+    };
+
+    // Get those GRFs reserved in prepareNoMaskWA()
+    NoMaskWAInfo* WAInfo = kernel.getEUFusionNoMaskWAInfo();
+
+    // If no spill AND no inst that needs WA, just return.
+    //   ' HasWAInsts = true' means that before RA, there are insts that need WA
+    const bool HasFlagSpill = (builder.getJitInfo()->numFlagSpillStore > 0);
+    const bool HasGRFSpill = (builder.getJitInfo()->spillMemUsed > 0);
+    if (!WAInfo ||                                                // No BB needs WA
+        (!(HasFlagSpill || HasGRFSpill) && !WAInfo->HasWAInsts))  // No Spill, no WA Insts
+    {
+        kernel.deleteEUFusionNoMaskWAInfo();
+        return;
+    }
+
+    const G4_ExecSize Simdsize = fg.getKernel()->getSimdSize();
+    const RegionDesc* ScalarReg = builder.getRegionScalar();
+    bool UseAnyh = true;  // default, adjusted for each BB.
+
+    // WAFlagReserve is 2DW GRF.
+    // An example about how to use it.
+    //     Assume WAFlag is f0.1:uw
+    //
+    //   ===========================================
+    //   |          DW0        |        DW         |
+    //   |   uw0     |   uw1   |   uw0   |   uw1   |
+    //   ===========================================
+    //   | orig f0.1 |         | WA f0.1 |         |       <-- WAFlag = f0.1:uw
+    //   ============================================
+    //   |      orig  f0.0     |    WA f0.0        |       <-- WAFlag = f0.0:ud
+    //   ===========================================
+    //
+    // If WAFlag cannot be used to all insts as it is clobbered somewhere in the
+    // middle, it must be saved in DW1.
+    //
+    G4_Declare* SaveDcl = WAInfo->WAFlagReserved; // 2DW
+    G4_RegVar* SaveVar = SaveDcl->getRegVar();
+    G4_Declare* WATempDcl = WAInfo->WATempReserved;  // 0 - 2 GRF
+    G4_RegVar* WATempVar = (WATempDcl ? WATempDcl->getRegVar() : nullptr);
+
+#if defined(_DEBUG) || defined(_INTERNAL)
+    // Check if linearStart has been done and SaveDcl/WATempDcl has been allocated.
+    // (computePReg() set GRFBaseOffset().
+    auto checkDclPReg = [&](G4_Declare* aDcl)
+    {
+        // Set lineartStar for aDcl
+        G4_RegVar* RegVar = aDcl->getRegVar();
+        assert(RegVar->isPhyRegAssigned() && RegVar->getPhyReg()->isGreg());
+        uint32_t regNum = (static_cast<G4_Greg*>(RegVar->getPhyReg()))->getRegNum();
+        uint32_t subRegNum = RegVar->getPhyRegOff();
+        uint32_t dclEltBytes = aDcl->getElemSize();
+        uint32_t linearizedStart = (regNum * builder.numEltPerGRF<Type_UB>()) + (subRegNum * dclEltBytes);
+        assert(aDcl->getGRFBaseOffset() == linearizedStart);
+    };
+
+    checkDclPReg(SaveDcl);
+    if (WATempDcl != nullptr)
+    {
+        checkDclPReg(WATempDcl);
+    }
+#endif
+
+    auto verifyRegVarSize = [&](G4_RegVar* aRegVar, uint32_t aBytes)
+    {
+#if defined(_DEBUG) || defined(_INTERNAL)
+        uint32_t var_sz = (aRegVar != nullptr ? aRegVar->getDeclare()->getByteSize() : 0);
+        if (var_sz < aBytes)
+        {
+            assert(false && "WATemp does not reserve enough space!");
+        }
+#endif
+    };
+
+    auto WAFlagSaveOff = [](G4_Type aT) { return aT == Type_UD ? 1 : 2; };
+    auto isNull = [](G4_Operand* aO) { return (aO == nullptr || aO->isNullReg()); };
+
+    auto getPredCtrl = [&Simdsize](bool aUseAnyh) -> G4_Predicate_Control
+    {
+        if (aUseAnyh)
+        {
+            return Simdsize == g4::SIMD8
+                ? PRED_ANY8H
+                : (Simdsize == g4::SIMD16 ? PRED_ANY16H : PRED_ANY32H);
+        }
+        return PRED_DEFAULT;
+    };
+
+    auto isCandidate = [](G4_INST* I)
+    {
+        return (I->getNeedPostRA() && I->isWriteEnableInst());
+    };
+
+    // Create WAFlag using mov and cmp.
+    auto createFlagFromCmp = [&](G4_BB* aBB, INST_LIST_ITER& aInsertBeforePos, G4_RegVar* aFlag, G4_Type aTy)
+    {
+        //  I0:     (W) mov (1|M0)  f0.0<1>:aTy,  0
+        //  I1:         cmp (Simdsize|M0) (eq)f0.0  r0<0;1,0>:uw  r0<0;1,0>:uw
+        //  I2      (W&f0.0.anyh) mov (1|M0) f0.0:aTy   0xffffffff:aTy             [optional]
+        G4_DstRegRegion* D = builder.createDst(aFlag, 0, 0, 1, aTy);
+        G4_INST* I0 = builder.createMov(g4::SIMD1, D, builder.createImm(0, aTy), InstOpt_WriteEnable, false);
+        aBB->insertBefore(aInsertBeforePos, I0);
+
+        G4_RegVar* r0Var = builder.getRealR0()->getRegVar();
+        G4_SrcRegRegion* r0_0 = builder.createSrc(r0Var, 0, 0, ScalarReg, Type_UW);
+        G4_SrcRegRegion* r0_1 = builder.createSrc(r0Var, 0, 0, ScalarReg, Type_UW);
+        G4_CondMod* flagCM = builder.createCondMod(Mod_e, aFlag, 0);
+        G4_DstRegRegion* nullDst = builder.createNullDst(Type_UW);
+        G4_INST* I1 = builder.createInternalInst(
+            NULL, G4_cmp, flagCM, g4::NOSAT, Simdsize, nullDst, r0_0, r0_1, InstOpt_M0);
+        aBB->insertBefore(aInsertBeforePos, I1);
+
+        if (!UseAnyh)
+        {
+            G4_Imm* allone = builder.createImm(0xFFFFFFFF, aTy);
+            G4_DstRegRegion* tF = builder.createDst(aFlag, 0, 0, 1, aTy);
+            G4_INST* I2 = builder.createMov(g4::SIMD1, tF, allone, InstOpt_WriteEnable, false);
+            G4_Predicate* I2_P = builder.createPredicate(PredState_Plus, aFlag, 0,
+                (Simdsize == g4::SIMD8 ? PRED_ANY8H : (Simdsize == g4::SIMD16 ? PRED_ANY16H : PRED_ANY32H)));
+            I2->setPredicate(I2_P);
+            aBB->insertBefore(aInsertBeforePos, I2);
+        }
+    };
+
+    auto createSIMD1Mov = [&](G4_BB* aBB, INST_LIST_ITER& aInsertBeforePos,
+        G4_RegVar* Dst, unsigned Dst_soff, G4_RegVar* Src, unsigned Src_soff, G4_Type Ty)
+    {
+        G4_DstRegRegion* D = builder.createDst(Dst, 0, Dst_soff, 1, Ty);
+        G4_SrcRegRegion* S = builder.createSrc(Src, 0, Src_soff, ScalarReg, Ty);
+        G4_INST* tI = builder.createMov(g4::SIMD1, D, S, InstOpt_WriteEnable, false);
+        aBB->insertBefore(aInsertBeforePos, tI);
+        return tI;
+    };
+
+    auto initWAFlag = [&](G4_BB* aBB, INST_LIST_ITER& aInsertBeforePos,
+        G4_RegVar* aFlag, G4_Type aTy,
+        bool& aFlagCreated, bool& aFlagSaved, const bool aSaveFlag)
+    {
+        if (aFlagCreated)
+        {
+            // Reload the already-saved WAFlag
+            assert(aFlagSaved && "WAFlag should have been saved!");
+            (void)createSIMD1Mov(aBB, aInsertBeforePos, aFlag, 0, SaveVar, WAFlagSaveOff(aTy), aTy);
+        }
+        else
+        {
+            // Create a WAFlag for this BB
+            createFlagFromCmp(aBB, aInsertBeforePos, aFlag, aTy);
+            aFlagCreated = true;
+
+            if (!aFlagSaved && aSaveFlag)
+            {
+                // save WAFlag
+                (void)createSIMD1Mov(aBB, aInsertBeforePos, SaveVar, WAFlagSaveOff(aTy), aFlag, 0, aTy);
+                aFlagSaved = true;
+            }
+        }
+    };
+
+    // doPredicateInstWA()  : WA for a predicated inst without condMod
+    //
+    // flagVar : Var for WA flag for this BB:
+    // currII:  iter to inst to which WA is applied.
+    //   Given a predicated inst 'I'
+    //        I :  (W&[+-]P) <inst> (8|M0) ...
+    //      to:
+    //        I0:  (W)           mov (1|M0) waTemp<0;1,0>    P
+    //        I1:  (W&-flagVar)  mov (1|M0)  P  0 [+] | 0xffff [-]
+    //        I :  (W&[+-]P)     <inst> (8|M0) ...                  [unchanged]
+    //        I2:  (W&-flagVar)  mov (1|M0) P   waTemp<0;1,0>
+    //
+    // where the original predCtrl of P at 'I' shall remain unchanged.
+    //
+    auto doPredicateInstWA = [&](G4_BB* aBB, INST_LIST_ITER& aII, G4_RegVar* aFlagVar)
+    {
+        G4_INST* I = *aII;
+        G4_Predicate* P = I->getPredicate();
+        assert((P && !I->getCondMod()) && "ICE: expect predicate and no flagModifier!");
+
+        uint32_t flagBits = (P->getRightBound() - P->getLeftBound() + 1) + I->getMaskOffset();
+        assert((16 * aFlagVar->getDeclare()->getRootDeclare()->getWordSize()) >= flagBits &&
+            "ICE[vISA]: WA's flagVar should not be smaller!");
+
+        G4_Type Ty = (flagBits > 16) ? Type_UD : Type_UW;
+
+        // I0:  (W) mov (1|M0) waTemp  P
+        verifyRegVarSize(WATempVar, 4);
+        (void) createSIMD1Mov(aBB, aII, WATempVar, 0, P->getTopDcl()->getRegVar(), 0, Ty);
+
+        // I1: (W&-flagVar)  mov (1|M0)  P  0 [+] | 0xffff [-]
+        int64_t imm = (P->getState() == PredState_Plus ? 0 : 0xFFFFFFFF);
+        G4_Imm* I1_s0 = builder.createImm(imm, Ty);
+        G4_DstRegRegion* I1_d = builder.createDst(P->getTopDcl()->getRegVar(), 0, 0, 1, Ty);
+        G4_Predicate* I1_flag = builder.createPredicate(
+            PredState_Minus, aFlagVar, 0, getPredCtrl(UseAnyh));
+        G4_INST* I1 = builder.createMov(g4::SIMD1, I1_d, I1_s0, InstOpt_WriteEnable, false);
+        I1->setPredicate(I1_flag);
+        aBB->insertBefore(aII, I1);
+
+        // I : unchanged
+
+        // I2: (W&-flagVar)  mov (1|M0) P   waTemp<0;1,0>
+        auto nextII = std::next(aII);
+        G4_INST* I2 = createSIMD1Mov(aBB, nextII, P->getTopDcl()->getRegVar(), 0, WATempVar, 0, Ty);
+        G4_Predicate* I2_flag = builder.createPredicate(
+            PredState_Minus, aFlagVar, 0, getPredCtrl(UseAnyh));
+        I2->setPredicate(I2_flag);
+    };
+
+    // doFlagModifierSelInstWA : WA for sel inst that has condmod without predicate
+    //   Note that sel does not update flag. Also, when condMod is used, predicate
+    //   is not allowed.
+    //
+    // flagVar : WA flag for this BB
+    // Before:
+    //     I:  (W) sel.ge.f0.0  (1|M0)   r10.0<1>:f  r20.0<0;1,0>:f  0:f
+    // After
+    //     I:  (W) sel.ge.f0.0  (1|M0)  WATemp:f  r20.0<0;1,0>:f   0:f
+    //     I0: (W&flagVar) mov  (1|M0)  r10.0<1>:f WATemp:f
+    //
+    auto doFlagModifierSelInstWA = [&](G4_BB* aBB, INST_LIST_ITER& aII, G4_RegVar* aFlagVar)
+    {
+        G4_INST* I = *aII;
+        G4_CondMod* P = I->getCondMod();
+        assert((P && !I->getPredicate()) && "ICE [sel]: expect flagModifier and no predicate!");
+
+        G4_DstRegRegion* dst = I->getDst();
+        assert( !isNull(dst) && "ICE: expect dst to be non-null!");
+
+
+        // Make sure that a temp, created in preRA, is big enough to hold data and possible gap
+        // b/w data due to alignment/hw restriction.
+        const uint16_t HS = dst->getHorzStride();
+        uint32_t dst_bytes = I->getExecSize() * HS * dst->getTypeSize();
+        verifyRegVarSize(WATempVar, dst_bytes);
+
+        // I : (W) sel.ge.f0.0  (1|M0)  WATemp:f  r20.0<0;1,0>:f   0:f
+        G4_DstRegRegion* I_d = builder.createDst(WATempVar, 0, 0, HS, dst->getType());
+        I->setDest(I_d);
+
+        // I0: (W&flagVar) mov  (1|M0)  r10.0<1>:f WATemp:f
+        const RegionDesc* regionSave = builder.createRegionDesc(I->getExecSize(), HS, 1, 0);
+#if 0
+        if (I->getExecSize() == g4::SIMD1) {
+            regionSave = ScalarReg;
+        }
+        else {
+            switch (HS)
+            {
+            case 1: regionSave = builder.getRegionStride1(); break;
+            case 2: regionSave = builder.getRegionStride2(); break;
+            case 4: regionSave = builder.getRegionStride4(); break;
+            default:
+                assert(false && "ICE: unsupported dst horz stride!");
+            }
+        }
+#endif
+
+        auto nextII = std::next(aII);
+        G4_SrcRegRegion* I0_src0 = builder.createSrc(WATempVar, 0, 0, regionSave, dst->getType());
+        G4_INST* I0 = builder.createMov(I->getExecSize(), dst, I0_src0, InstOpt_WriteEnable, false);
+        G4_Predicate* I0_f = builder.createPredicate(PredState_Plus, aFlagVar, 0, getPredCtrl(UseAnyh));
+        I0->setPredicate(I0_f);
+        aBB->insertBefore(nextII, I0);
+    };
+
+    // doFlagModifierInstWA : WA for an inst with flagModifier but no predicate.
+    //
+    // flagVar : WA flag for this BB.
+    //    Before:
+    //       I:  (W)  cmp (16|M16) (ne)P  D ....   // 32-bit flag
+    //         or
+    //           (W)  cmp (16|M0)  (ne)P  D ....   // 16-bit flag
+    //
+    //    After:
+    //      (1) D = null (common)
+    //           I0: (W)             mov (1|M0) WATemp   P
+    //           I:  (W)             cmp (16|M16) (ne)P  ....
+    //           I1: (W&-flagVar)    mov (1|M0)  P   WATemp
+    //      (2) I's execMask is the same as flagVar's size
+    //          (I's entire condMod is defined by I.)
+    //           I0  (W)             mov (1|M0)  WATemp  P
+    //           I1: (W)             mov (1|M0)  P   flagVar
+    //            I: (W&P)           cmp (16|M0) (ne)P .....          // add predicate
+    //           I2: (W&~flagVar)    mov (1|M0)  P  WATemp
+    //      (3) otherwise(less common)
+    //               Note that the sequence can only modify P that this cmp will change.
+    //           I0: (W)             mov (1|M0)  WATemp  P
+    //           I1: (W)             or  (1|M0)  P  P   <I's execMask>  // enable all
+    //           I2: (W&~flagVar)    and (1|M0)  P  P   ~<I's execMask> // disable all
+    //            I: (W&P)           cmp (16|M0) (ne)P .....            // add pred
+    //           I3: (W&~flagVar)    mov (1|M0)  P  WATemp
+    //
+    auto doFlagModifierInstWA = [&](G4_BB* aBB, INST_LIST_ITER& aII, G4_RegVar* aFlagVar)
+    {
+        G4_INST* I = *aII;
+        G4_CondMod* P = I->getCondMod();
+        assert((P && !I->getPredicate()) && "ICE: expect flagModifier and no predicate!");
+
+        // sel is specially handled in a different function.
+        assert(!(I->opcode() == G4_sel || I->opcode() == G4_csel));
+
+        G4_Declare* modDcl = P->getTopDcl();
+        G4_RegVar* modVar = modDcl->getRegVar();
+        G4_Type Ty = (modDcl->getWordSize() > 1) ? Type_UD : Type_UW;
+        G4_Type flagVarTy = (aFlagVar->getDeclare()->getWordSize() > 1 ? Type_UD : Type_UW);
+        if (isNull(I->getDst()))
+        {   // case 1
+
+            // I0: (W)        mov (1|M0) WATemp  P
+            verifyRegVarSize(WATempVar, 4);
+            (void)createSIMD1Mov(aBB, aII, WATempVar, 0, modVar, 0, Ty);
+
+            // I : unchanged
+
+            // I1: (W&-flagVar.anyh) mov (1|M0)  P  WATemp
+            auto nextII = std::next(aII);
+            G4_INST* I1 = createSIMD1Mov(aBB, nextII, modVar, 0, WATempVar, 0, Ty);
+            G4_Predicate* I1_f = builder.createPredicate(
+                PredState_Minus, aFlagVar, 0, getPredCtrl(UseAnyh));
+            I1->setPredicate(I1_f);
+
+            return;
+        }
+
+        const uint32_t execMask = I->getExecLaneMask();
+        assert((Ty == Type_UD || (execMask & 0xFFFF0000) == 0) &&
+            "ICE: a flag used in an inst should not be smaller than the inst's execMask!");
+        if (flagVarTy == Ty &&
+            ((execMask == 0xFFFF && Ty == Type_UW) || (execMask == 0xFFFFFFFF && Ty == Type_UD)))
+        {
+            // case 2 : entire mod is defined by 'I' !
+            //
+            // I0: (W)        mov (1|M0) WATemp  P
+            verifyRegVarSize(WATempVar, 4);
+            (void)createSIMD1Mov(aBB, aII, WATempVar, 0, modVar, 0, Ty);
+
+            // I1: (W) mov (1|M0)  P  flagVar
+            (void)createSIMD1Mov(aBB, aII, modVar, 0, aFlagVar, 0, Ty);
+
+            // I: add the new predicate (must be the same as modDcl), for example:
+            //    (W&P.anyh)       cmp (16|M0) (ne)P  ....
+            G4_Predicate* I_P = builder.createPredicate(PredState_Plus, modVar, 0, getPredCtrl(UseAnyh));
+            I->setPredicate(I_P);
+
+            // I2: (W&~flagVar.anyh)  mov (1|M0)  P  WATemp
+            auto nextII = std::next(aII);
+            G4_INST* I2 = createSIMD1Mov(aBB, nextII, modVar, 0, WATempVar, 0, Ty);
+            G4_Predicate* I2_f = builder.createPredicate(
+                PredState_Minus, aFlagVar, 0, getPredCtrl(UseAnyh));
+            I2->setPredicate(I2_f);
+
+            return;
+        }
+
+        // case 3 (less common)
+        //
+        // I0: (W)        mov (1|M0) WATemp  P<0;1,0>
+        verifyRegVarSize(WATempVar, 4);
+        (void)createSIMD1Mov(aBB, aII, WATempVar, 0, modVar, 0, Ty);
+
+        // I1: (W) or (1|M0)  P  P   ExecMask
+        G4_SrcRegRegion* I1_s0 = builder.createSrc(modVar, 0, 0, ScalarReg, Ty);
+        G4_Imm* I1_s1 = builder.createImm(execMask, Ty);
+        G4_DstRegRegion* I1_d = builder.createDst(modVar, 0, 0, 1, Ty);
+        G4_INST* I1 = builder.createBinOp(G4_or, g4::SIMD1, I1_d, I1_s0, I1_s1, InstOpt_WriteEnable, false);
+        aBB->insertBefore(aII, I1);
+
+        // I2: (W&~flagVar.anyh) and (1|M0)  P  P   ~ExecMask
+        uint32_t negExecMask = (uint32_t)(~execMask);
+        G4_SrcRegRegion* I2_s0 = builder.createSrc(modVar, 0, 0, ScalarReg, Ty);
+        G4_Imm* I2_s1 = builder.createImm(negExecMask, Ty);
+        G4_DstRegRegion* I2_d = builder.createDst(modVar, 0, 0, 1, Ty);
+        G4_INST* I2 = builder.createBinOp(G4_and, g4::SIMD1, I2_d, I2_s0, I2_s1, InstOpt_WriteEnable, false);
+        G4_Predicate* I2_f = builder.createPredicate(PredState_Minus, aFlagVar, 0, getPredCtrl(UseAnyh));
+        I2->setPredicate(I2_f);
+        aBB->insertBefore(aII, I2);
+
+        // I: add a new predicate, for example:
+        //    (W&P)            cmp (16|M0)  (ne)P .....
+        G4_Predicate* I_P = builder.createPredicate(PredState_Plus, modVar, 0, PRED_DEFAULT);
+        I->setPredicate(I_P);
+
+        // I3: (W&~flagVar.anyh)  mov (1|M0)  P  WATemp
+        auto nextII = std::next(aII);
+        G4_INST* I3 = createSIMD1Mov(aBB, nextII, modVar, 0, WATempVar, 0, Ty);
+        G4_Predicate* I3_f = builder.createPredicate(PredState_Minus, aFlagVar, 0, getPredCtrl(UseAnyh));
+        I3->setPredicate(I3_f);
+    };
+
+    //  doPredicateAndFlagModifierInstWA : WA for inst with both predicate and condMod
+    //
+    //  flagVar : emask for this BB:
+    //
+    //    Before:
+    //       I:  (W&[-]P)  and (16|M0) (ne)P  ....
+    //
+    //    After:
+    //          I0:   (W)           mov (1|M0) WATemp  P
+    //      Three cases
+    //      case 1:  'I' defines entire P
+    //          I1:   (W&-flagVar)  mov (1|M0) P  0 (for +p)| ExecMask (for -P)  // disable all lanes
+    //      case 2: +P
+    //          I1    (W&-flagVar)  and (1|M0) P   P  ~execMask   // disable all lanes
+    //      case 3: -P
+    //          I1    (W&-flagVar)   or (1|M0) P   P  execMask    // disable all lanes
+    //
+    //       I:  (W&[-]P)         and (16|M0) (ne)P  ....    // unchanged
+    //       I2: (W&-flagVar)     mov (1|M0)  P   WATemp
+    //
+    auto doPredicateAndFlagModifierInstWA = [&](G4_BB* aBB, INST_LIST_ITER& aII, G4_RegVar* aFlagVar)
+    {
+        G4_INST* I = *aII;
+        G4_Predicate* P = I->getPredicate();
+        G4_CondMod* M = I->getCondMod();
+        assert((P && M) && "ICE: expect both predicate and flagModifier!");
+        assert(P->getTopDcl() == M->getTopDcl() &&
+            "ICE: both predicate and flagMod must be the same flag!");
+
+        G4_Declare* modDcl = M->getTopDcl();
+        G4_RegVar* modVar = modDcl->getRegVar();
+        G4_Type Ty = (modDcl->getWordSize() > 1) ? Type_UD : Type_UW;
+
+        // I0: (W)        mov (1|M0) WATemp  P
+        verifyRegVarSize(WATempVar, 4);
+        (void)createSIMD1Mov(aBB, aII, WATempVar, 0, modVar, 0, Ty);
+
+        uint32_t execMask = I->getExecLaneMask();
+        uint32_t negExecMask = (uint32_t)(~execMask);
+        bool isPlusP = (P->getState() == PredState_Plus);
+        G4_INST* I1 = nullptr;
+        if ((Ty == Type_UD && execMask == 0xFFFFFFFF) || (Ty == Type_UW && execMask == 0xFFFF))
+        {
+            // case 1 : entire P are defined.
+            // I1:  (W&-flagVar)  mov (1|M0) P  0 (for +p)| ExecMask (for -P)
+            G4_DstRegRegion* I1_d = builder.createDst(modVar, 0, 0, 1, Ty);
+            G4_Imm* I1_imm = builder.createImm(isPlusP ? 0 : execMask, Ty);
+            I1 = builder.createMov(g4::SIMD1, I1_d, I1_imm, InstOpt_WriteEnable, false);
+            G4_Predicate* I1_f = builder.createPredicate(PredState_Minus, aFlagVar, 0, getPredCtrl(UseAnyh));
+            I1->setPredicate(I1_f);
+            aBB->insertBefore(aII, I1);
+        }
+        else
+        {
+            // case 2 & 3
+            //
+            // case 2: +P
+            //   I1:  (W&-flagVar)  and (1|M0) P   P  ~execMask
+            // case 3: -P
+            //   I1:  (W&-flagVar)   or (1|M0) P   P  execMask
+            G4_DstRegRegion* I1_d = builder.createDst(modVar, 0, 0, 1, Ty);
+            G4_SrcRegRegion* I1_s0 = builder.createSrc(modVar, 0, 0, ScalarReg, Ty);
+            G4_Imm* I1_imm = builder.createImm((isPlusP ? negExecMask : execMask), Ty);
+            G4_opcode opc1 = (isPlusP ? G4_and : G4_or);
+            I1 = builder.createBinOp(opc1, g4::SIMD1, I1_d,I1_s0, I1_imm, InstOpt_WriteEnable, false);
+            G4_Predicate* I1_f = builder.createPredicate(PredState_Minus, aFlagVar, 0, getPredCtrl(UseAnyh));
+            I1->setPredicate(I1_f);
+            aBB->insertBefore(aII, I1);
+        }
+
+        // No change to I
+
+        // I2: (W&-flagVar)     mov (1|M0)  P   WATemp
+        auto nextII = std::next(aII);
+        G4_INST* I2 = createSIMD1Mov(aBB, nextII, modVar, 0, WATempVar, 0, Ty);
+        G4_Predicate* I2_f = builder.createPredicate(PredState_Minus, aFlagVar, 0, getPredCtrl(UseAnyh));
+        I2->setPredicate(I2_f);
+    };
+
+    auto doSimpleInstWA = [&](G4_BB* aBB, INST_LIST_ITER& aII, G4_RegVar* aFlagVar)
+    {
+        G4_INST* I = *aII;
+        G4_Predicate* P = I->getPredicate();
+        G4_CondMod* M = I->getCondMod();
+        assert((P == nullptr && M == nullptr) && "ICE: expect neither pred nor condmod!");
+
+        G4_Predicate* newPred = builder.createPredicate(PredState_Plus, aFlagVar, 0, getPredCtrl(UseAnyh));
+        I->setPredicate(newPred);
+    };
+
+    auto applyWAToInst = [&](G4_BB* aBB, INST_LIST_ITER& aII, G4_RegVar* aFlagVar)
+    {
+        G4_INST* I = *aII;
+        G4_Predicate* P = I->getPredicate();
+        G4_CondMod* M = I->getCondMod();
+
+        if (P == nullptr && M == nullptr)
+        {
+            doSimpleInstWA(aBB, aII, aFlagVar);
+        }
+        else if (P != nullptr && M == nullptr)
+        {
+            doPredicateInstWA(aBB, aII, aFlagVar);
+        }
+        else if (P == nullptr && M != nullptr)
+        {
+            if ((I->opcode() == G4_sel || I->opcode() == G4_csel))
+            {
+                // Not expecting null dst, as it is no-op
+                if (!isNull(I->getDst()))
+                {
+                    doFlagModifierSelInstWA(aBB, aII, aFlagVar);
+                }
+            }
+            else
+            {
+                doFlagModifierInstWA(aBB, aII, aFlagVar);
+            }
+        }
+        else
+        {
+            doPredicateAndFlagModifierInstWA(aBB, aII, aFlagVar);
+        }
+    };
+
+    for (G4_BB* BB : kernel.fg)
+    {
+        if ((BB->getBBType() & G4_BB_NM_WA_TYPE) == 0)
+        {
+            continue;
+        }
+
+        std::vector<INST_LIST_ITER> waInsts;
+        // Set default for WAFlag's type, and it may be changed later.
+        G4_Type WATy = (Simdsize == g4::SIMD32 ? Type_UD : Type_UW);
+        // use anyh is preferred as it uses one intruction less.
+        UseAnyh = true;
+
+        // Collect all insts that need to apply WA. It also does:
+        //    1. Determine WAFlag is UD or UW (simdsize isn't enough); and
+        //    2. Check if WAFlag can use anyh or WAFlag must be all one's.
+        for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+        {
+            G4_INST* I = *II;
+            if (isCandidate(I))
+            {
+                waInsts.push_back(II);
+            }
+
+            if ((I->getExecSize() + I->getMaskOffset()) > 16)
+            {
+                WATy = Type_UD;
+            }
+            if (UseAnyh)
+            {
+                if (I->getExecSize() > Simdsize || I->getMaskOffset() != 0)
+                {
+                    UseAnyh = false;
+                }
+            }
+        }
+
+        if (waInsts.empty())
+        {
+            continue;
+        }
+
+        FlagDefUse FlagDUInfo(BB);
+
+        bool WAFlagCreated = false;
+        bool WAFlagSaved = false;
+        int ix = 0;
+        const int NumWAInsts = (int)waInsts.size();
+        while (ix < NumWAInsts)
+        {
+            INST_LIST_ITER currII = waInsts[ix];
+            uint32_t WAFreg = 0xff;   // init to invalid number
+            uint32_t WAFsreg = 0xff;  // init to invalid number
+
+            int nextIx;
+            bool hasFreeFlag = FlagDUInfo.getBestFlagIfAvailable(waInsts, ix, nextIx, WATy, WAFreg, WAFsreg);
+            if (hasFreeFlag)
+            {   // found available flag in [ix, nextIx).
+                assert(nextIx > ix);
+                // Given
+                //     (W) add (16|M0)  r10  r20  r30
+                // Changed to
+                //     1) (W) mov (1|M0) saveVar  f1.0
+                //     2) <init waflag f1.0>
+                //     3) apply WA to all inst in [ix, nextIx). "(W) add (16|M0)  r10  r20  r30" is at ix
+                //     4) (W) mov (1|M0)  f1.0  saveVar
+                G4_RegVar* WAFlagVar = getFlagDcl(WAFreg, WAFsreg, WATy)->getRegVar();
+                WAFlagVar->setPhyReg(builder.phyregpool.getFlagAreg(WAFreg), WAFsreg);
+
+                // 1) save the original flag for WAFlag.
+                (void)createSIMD1Mov(BB, currII, SaveVar, 0, WAFlagVar, 0, WATy);
+
+                // 2) init or reload WAFlag
+                bool saveWAFlag = (nextIx < NumWAInsts);
+                initWAFlag(BB, currII, WAFlagVar, WATy, WAFlagCreated, WAFlagSaved, saveWAFlag);
+
+                // 3) apply WA
+                INST_LIST_ITER lastII = waInsts[nextIx - 1];
+                INST_LIST_ITER nextII = std::next(lastII);
+                for (int j = ix; j < nextIx; ++j)
+                {
+                    currII = waInsts[j];
+                    applyWAToInst(BB, currII, WAFlagVar);
+                }
+
+                // 4) restore the saved original flag before the next inst.
+                (void)createSIMD1Mov(BB, nextII, WAFlagVar, 0, SaveVar, 0, WATy);
+
+                // set ix for the next wa inst.
+                ix = nextIx;
+            }
+            else
+            {
+                uint32_t fr, fsr;
+                G4_Type ty;
+
+                // waInsts[ix] uses all flags. Need to save one to the reserved tmp.
+                //   It is possible to have flag in src0, dst, and condMod/predicate.
+                //   First, need to pick up one that is not used by condMod/predicate
+                //   so that WAFlag can still work.
+                G4_INST* I = *currII;
+                G4_Predicate* P = I->getPredicate();
+                G4_CondMod* M = I->getCondMod();
+                G4_Operand* O_f = (P != nullptr ? (G4_Operand*)P : (G4_Operand*)M);
+                G4_Operand* src0 = I->getSrc(0);
+                G4_SrcRegRegion* sreg = ((!isNull(src0) && src0->isSrcRegRegion()) ? src0->asSrcRegRegion() : nullptr);
+                G4_DstRegRegion* dreg = I->getDst();
+                if (O_f != nullptr)
+                {
+                    bool isValid = FlagDefUse::getFlagRegAndSubreg(O_f, WAFreg, WAFsreg, ty);
+                    assert(isValid && "Flag should've been assigned physical reg already!");
+
+                    // WAFlag must use the other flag
+                    WAFreg = (WAFreg == 0 ? 1 : 0);
+                }
+                else
+                {
+                    G4_Operand* O = (!isNull(sreg) && src0->isFlag())
+                        ? (G4_Operand*)sreg
+                        : (G4_Operand*)((!isNull(dreg) && dreg->isFlag()) ? dreg : nullptr);
+                    assert(O != nullptr && "ICE: inst must have flag operands if it uses all flags!");
+
+                    bool isValid = FlagDefUse::getFlagRegAndSubreg(O, WAFreg, WAFsreg, ty);
+                    assert(isValid && "Flag should've been assigned physical reg already!");
+                }
+
+                // Save the entire flag, even though only the half is used.
+                G4_RegVar* tVar = getFlagDcl(WAFreg, 0, Type_UD)->getRegVar();
+                tVar->setPhyReg(builder.phyregpool.getFlagAreg(WAFreg), 0);
+
+                // WAFlag. It can be UW (no tVar:UD). Uses 0 as sreg always in this case.
+                WAFsreg = 0;
+                G4_RegVar* WAFlagVar = getFlagDcl(WAFreg, WAFsreg, WATy)->getRegVar();
+                WAFlagVar->setPhyReg(builder.phyregpool.getFlagAreg(WAFreg), WAFsreg);
+
+                // Assume that simdsize = 32 and currII is
+                //    (W&f0.1)  or (1|M0) f1.0:uw  f1.1 0x101:uw
+                // WA codes are:
+                //    1) (W) mov (1|M0)  saveVar:ud   f1.0:ud
+                //    2) <init waflag f1.0>
+                //    3) (W&f0.1   or (1|M0) saveVar:uw  saveVar.1:uw  0x101:uw  [WA will be applied]
+                //    4) (W) mov (1|M0)  f1.0:ud  saveVar:ud                     [needed for dst change]
+
+                // 1) save the original flag for WAFlag.
+                (void)createSIMD1Mov(BB, currII, SaveVar, 0, tVar, 0, Type_UD);
+
+                // 2) create WAFlag if not yet, or reload the WAFlag
+                bool saveWAFlag = (ix != (NumWAInsts - 1));
+                initWAFlag(BB, currII, WAFlagVar, WATy, WAFlagCreated, WAFlagSaved, saveWAFlag);
+
+                // 3) (1) Modify I; (2) apply WA
+                INST_LIST_ITER nextII = std::next(currII);
+                for (int i = 0; i < 2; ++i)
+                {
+                    G4_Operand* O = (i == 0 ? (G4_Operand*)dreg : (G4_Operand*)sreg);
+                    if (!isNull(O) && O->isFlag())
+                    {
+                        bool isValid = FlagDefUse::getFlagRegAndSubreg(O, fr, fsr, ty);
+                        assert(isValid && "Flag should've been assigned physical reg already!");
+
+                        if (fr == WAFreg)
+                        {
+                            // flag : either 2bytes at roff 0 or 1; or 4 bytes at roff 0
+                            assert(fsr == 0 || O->getTypeSize() == 2);
+                            if (i == 0)
+                            {
+                                // dst
+                                G4_DstRegRegion* newDreg =
+                                    builder.createDst(SaveVar, 0, fsr, dreg->getHorzStride(), dreg->getType());
+                                I->setDest(newDreg);
+                            }
+                            else
+                            {
+                                // src0
+                                G4_SrcRegRegion* newSreg =
+                                    builder.createSrc(SaveVar, 0, fsr, sreg->getRegion(), sreg->getType());
+                                I->setSrc(newSreg, 0);
+                            }
+                        }
+                    }
+                }
+                applyWAToInst(BB, currII, WAFlagVar);
+
+                // 4) Restore the original flag before the next inst
+                (void)createSIMD1Mov(BB, nextII, tVar, 0, SaveVar, 0, Type_UD);
+
+                // set ix for the next wa inst
+                ++ix;
+            }
+        }
+    }
+    kernel.deleteEUFusionNoMaskWAInfo();
 }
 
 void Optimizer::doNoMaskWA()
