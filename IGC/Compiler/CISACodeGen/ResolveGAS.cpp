@@ -1702,7 +1702,7 @@ void LowerGPCallArg::fixAddressSpaceInAllUses(Value* ptr, uint newAS, uint oldAS
         }
 
         // add inst to partiallyLowered Inst list.  cover select and phi for now, and may add others later
-        if (isa<SelectInst>(inst) || isa<PHINode>(inst))
+        if (isa<SelectInst>(inst) || isa<PHINode>(inst) || isa<ICmpInst>(inst))
         {
             // if not all operands are lowered, add to partiallyLowered list, and don't propagate
             bool partiallylowered = false;
@@ -1805,7 +1805,7 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc, Ge
     // travese the partiallyLoweredInsts and insert cast for those with incompatible addrspace
     for (auto inst : m_partiallyLoweredInsts)
     {
-        IGC_ASSERT((dyn_cast<SelectInst>(inst) || dyn_cast<PHINode>(inst)));
+        IGC_ASSERT((dyn_cast<SelectInst>(inst) || dyn_cast<PHINode>(inst)) || dyn_cast<ICmpInst>(inst));
         std::vector<Value*> unloweredSrc; // PHI may have more than 2 operands
         std::vector<Value*> loweredSrc;
         PointerType* ASGPtrTy = nullptr;
