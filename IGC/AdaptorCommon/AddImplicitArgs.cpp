@@ -65,31 +65,6 @@ AddImplicitArgs::AddImplicitArgs() : ModulePass(ID)
     initializeAddImplicitArgsPass(*PassRegistry::getPassRegistry());
 }
 
-
-static bool KernelInvokesStackCall(llvm::Function& F)
-{
-    if (IGC::ForceAlwaysInline())
-        return false;
-
-    // Return true if any callee is a stackcall
-    for (auto& BB : F)
-    {
-        for (auto& Inst : BB)
-        {
-            if (!isa<llvm::CallInst>(Inst))
-                continue;
-            const auto& Call = cast<llvm::CallInst>(Inst);
-            const auto* Callee = Call.getCalledFunction();
-            if (!Callee)
-                return true;
-            if (Callee->hasFnAttribute("visaStackCall") ||
-                Callee->hasFnAttribute("referenced-indirectly"))
-                return true;
-        }
-    }
-    return false;
-}
-
 bool AddImplicitArgs::runOnModule(Module &M)
 {
     MapList<Function*, Function*> funcsMapping;
@@ -130,20 +105,6 @@ bool AddImplicitArgs::runOnModule(Module &M)
         }
 
         ImplicitArgs implicitArgs(func, m_pMdUtils);
-
-        if (!ctx->platform.isProductChildOf(IGFX_XE_HP_SDV) &&
-            KernelInvokesStackCall(func))
-        {
-            // force add local id implicit args to kernel as we need
-            // those to populate local id buffer that stack call functions
-            // may use.
-            llvm::SmallVector<ImplicitArg::ArgType, 3> localIdImplArgs = {
-                ImplicitArg::ArgType::LOCAL_ID_X,
-                ImplicitArg::ArgType::LOCAL_ID_Y,
-                ImplicitArg::ArgType::LOCAL_ID_Z
-            };
-            implicitArgs.addImplicitArgs(func, localIdImplArgs, m_pMdUtils);
-        }
 
         // Create the new function body and insert it into the module
         FunctionType *pNewFTy = getNewFuncType(&func, implicitArgs);
