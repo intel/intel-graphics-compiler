@@ -658,16 +658,29 @@ bool CMRegion::isSimilar(const CMRegion &R2) const
   return isStrictlySimilar(R);
 }
 
-BitVector CMRegion::getAccessBitMap(int MinTrackingOffset) const {
+SmallVector<unsigned, 8> CMRegion::getAccessIndices() const {
+  IGC_ASSERT(!Indirect);
+  SmallVector<unsigned, 8> Res;
+  Res.reserve(NumElements);
+  IGC_ASSERT(Offset % ElementBytes == 0);
+  unsigned StartIdx = Offset / ElementBytes;
+  for (unsigned Row = 0; Row < NumElements / Width; ++Row)
+    for (unsigned RowIdx = 0; RowIdx < Width; ++RowIdx)
+      Res.push_back(StartIdx + Row * VStride + RowIdx * Stride);
+  IGC_ASSERT(Res.size() == NumElements);
+  return Res;
+}
+
+SmallBitVector CMRegion::getAccessBitMap(int MinTrackingOffset) const {
   // Construct bitmap for a single row
-  BitVector RowBitMap(getRowLength());
+  SmallBitVector RowBitMap(getRowLength());
   for (unsigned i = 0; i < Width; i++) {
     RowBitMap <<= (Stride * ElementBytes);
     RowBitMap.set(0, ElementBytes);
   }
   // Apply row bitmap to a whole region bitmap
   // exactly NumRows times
-  BitVector BitMap(getLength());
+  SmallBitVector BitMap(getLength());
   unsigned NumRows = NumElements / Width;
   if (NumRows != 1) {
     for (unsigned i = 0; i < NumRows; i++) {
@@ -702,8 +715,8 @@ bool CMRegion::overlap(const CMRegion &R2) const {
     return false;
   // Check overlapping using bit masks
   int MinOffset = std::min(Offset, R2.Offset);
-  BitVector Mask1 = getAccessBitMap(MinOffset);
-  BitVector Mask2 = R2.getAccessBitMap(MinOffset);
+  auto Mask1 = getAccessBitMap(MinOffset);
+  auto Mask2 = R2.getAccessBitMap(MinOffset);
   // If there are any common bits then these regions overlap
   return Mask1.anyCommon(Mask2);
 }

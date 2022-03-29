@@ -57,6 +57,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallBitVector.h"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 
 namespace llvm {
@@ -207,9 +208,11 @@ public:
   bool isMultiIndirect() const {
     return Indirect && isa<VectorType>(Indirect->getType());
   }
+  // Get indices in vector that represent accessed elements for this region
+  SmallVector<unsigned, 8> getAccessIndices() const;
   // Get bit mask in which ones values represent bytes which
   // were accessed by this region
-  BitVector getAccessBitMap(int MinTrackingOffset = 0) const;
+  SmallBitVector getAccessBitMap(int MinTrackingOffset = 0) const;
   // Length of single row in bytes
   unsigned getRowLength() const {
     return Stride ? (Width * Stride * ElementBytes) : ElementBytes;
