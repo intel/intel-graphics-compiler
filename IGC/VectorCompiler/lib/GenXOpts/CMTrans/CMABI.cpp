@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/BreakConst.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/KernelInfo.h"
@@ -209,32 +210,6 @@ private:
   // \brief Global variables that are used directly or indirectly.
   GlobalSetTy Globals;
 };
-
-// Diagnostic information for error/warning for overlapping arg
-class DiagnosticInfoOverlappingArgs : public DiagnosticInfo {
-private:
-  std::string Description;
-  StringRef Filename;
-  unsigned Line;
-  unsigned Col;
-
-  static const int KindID;
-
-  static int getKindID() { return KindID; }
-
-public:
-  // Initialize from an Instruction and an Argument.
-  DiagnosticInfoOverlappingArgs(Instruction *Inst,
-      const Twine &Desc, DiagnosticSeverity Severity = DS_Error);
-  void print(DiagnosticPrinter &DP) const override;
-
-  static bool classof(const DiagnosticInfo *DI) {
-    return DI->getKind() == getKindID();
-  }
-};
-
-const int DiagnosticInfoOverlappingArgs::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
 
 class CMABIAnalysis : public ModulePass {
   // This map captures all global variables to be localized.
@@ -946,10 +921,10 @@ void CMABI::diagnoseOverlappingArgs(CallInst *CI)
           if (Reported.insert(std::pair<unsigned, unsigned>(ArgIdx1, ArgIdx2))
                 .second) {
             // Not already reported.
-            DiagnosticInfoOverlappingArgs Err(CI, "by reference arguments "
-                + Twine(ArgIdx1) + " and " + Twine(ArgIdx2) + " overlap",
-                DS_Error);
-            Inst->getContext().diagnose(Err);
+            vc::fatal(Inst->getContext(), "CMABI",
+                      "by reference arguments " + Twine(ArgIdx1) + " and " +
+                          Twine(ArgIdx2) + " overlap",
+                      CI);
           }
         }
         (*Entry)[i] = std::max((*Entry)[i], (*VectorToMerge)[i]);
@@ -972,41 +947,6 @@ void CMABI::diagnoseOverlappingArgs(CallInst *CI)
     }
   }
 }
-
-/***********************************************************************
- * DiagnosticInfoOverlappingArgs initializer from Instruction
- *
- * If the Instruction has a DebugLoc, then that is used for the error
- * location.
- * Otherwise, the location is unknown.
- */
-DiagnosticInfoOverlappingArgs::DiagnosticInfoOverlappingArgs(Instruction *Inst,
-    const Twine &Desc, DiagnosticSeverity Severity)
-    : DiagnosticInfo(getKindID(), Severity), Line(0), Col(0)
-{
-  auto DL = Inst->getDebugLoc();
-  if (!DL) {
-    Filename = DL.get()->getFilename();
-    Line = DL.getLine();
-    Col = DL.getCol();
-  }
-  Description = Desc.str();
-}
-
-/***********************************************************************
- * DiagnosticInfoOverlappingArgs::print : print the error/warning message
- */
-void DiagnosticInfoOverlappingArgs::print(DiagnosticPrinter &DP) const
-{
-  std::string Loc(
-        (Twine(!Filename.empty() ? Filename : "<unknown>")
-        + ":" + Twine(Line)
-        + (!Col ? Twine() : Twine(":") + Twine(Col))
-        + ": ")
-      .str());
-  DP << Loc << Description;
-}
-
 
 char CMABI::ID = 0;
 INITIALIZE_PASS_BEGIN(CMABI, "cmabi", "Fix ABI issues for the genx backend", false, false)
