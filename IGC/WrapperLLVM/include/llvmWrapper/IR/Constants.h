@@ -32,7 +32,7 @@ namespace IGCLLVM
 #endif
   }
 
-    namespace ConstantExpr {
+  namespace ConstantExpr {
 #if LLVM_VERSION_MAJOR < 11
         inline llvm::Constant *getShuffleVector(llvm::Constant *V1,
             llvm::Constant *V2, llvm::ArrayRef<uint64_t> Mask,
@@ -53,8 +53,27 @@ namespace IGCLLVM
 
     namespace ConstantFixedVector
     {
-        inline llvm::Constant *getSplat(unsigned NumElements, llvm::Constant *V)
-        {
+    inline llvm::Constant *getSplatValue(llvm::ConstantVector *CV,
+                                         bool AllowUndefs = false) {
+#if LLVM_VERSION_MAJOR < 10
+      if (!AllowUndefs)
+        CV->getSplatValue();
+      llvm::Constant *Elt = CV->getOperand(0);
+      for (unsigned I = 1, E = CV->getNumOperands(); I < E; ++I) {
+        llvm::Constant *OpC = CV->getOperand(I);
+        if (llvm::isa<llvm::UndefValue>(OpC))
+          continue;
+        if (llvm::isa<llvm::UndefValue>(Elt))
+          Elt = OpC;
+        if (OpC != Elt)
+          return nullptr;
+      }
+      return Elt;
+#else
+      return CV->getSplatValue(AllowUndefs);
+#endif
+    }
+    inline llvm::Constant *getSplat(unsigned NumElements, llvm::Constant *V) {
 #if LLVM_VERSION_MAJOR < 11
             return llvm::ConstantVector::getSplat(NumElements, V);
 #elif LLVM_VERSION_MAJOR == 11
@@ -67,6 +86,18 @@ namespace IGCLLVM
         }
     }
 
+    namespace Constant {
+    inline llvm::Constant *getSplatValue(llvm::Constant *C,
+                                         bool AllowUndefs = false) {
+#if LLVM_VERSION_MAJOR < 10
+      if (auto CV = llvm::dyn_cast<llvm::ConstantVector>(C))
+        return IGCLLVM::ConstantFixedVector::getSplatValue(CV, AllowUndefs);
+      return C->getSplatValue();
+#else
+      return C->getSplatValue(AllowUndefs);
+#endif
+    }
+    } // namespace Constant
 }
 
 #endif

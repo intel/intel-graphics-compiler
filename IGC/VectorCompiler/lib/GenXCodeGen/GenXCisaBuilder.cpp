@@ -69,9 +69,10 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/CallSite.h"
+#include "llvmWrapper/IR/Constants.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include <algorithm>
 #include <map>
@@ -1906,7 +1907,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createImmediateOperand(Constant *V,
   Type *T = V->getType();
   if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(T)) {
     // Vector constant.
-    auto Splat = V->getSplatValue();
+    auto Splat = IGCLLVM::Constant::getSplatValue(V, /* AllowUndefs */ true);
     if (!Splat) {
       // Non-splatted vector constant. Must be a packed vector.
       unsigned NumElements = VT->getNumElements();

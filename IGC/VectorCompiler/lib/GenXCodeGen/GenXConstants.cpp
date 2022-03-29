@@ -103,6 +103,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/MathExtras.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -1240,7 +1241,7 @@ Instruction *ConstantLoader::loadSplatConstant(Instruction *InsertPos) {
       VTy->getScalarType()->isIntegerTy(1))
     return nullptr;
   // Skip non-splat vector.
-  Constant *C1 = C->getSplatValue();
+  Constant *C1 = IGCLLVM::Constant::getSplatValue(C, /* AllowUndefs */ true);
   if (!C1)
     return nullptr;
   // Create <1 x T> constant and broadcast it through rdregion.
@@ -1431,7 +1432,7 @@ bool ConstantLoader::isBigSimple() const {
   auto VT = dyn_cast<VectorType>(C->getType());
   if (!VT)
     return true; // scalar always simple
-  if (C->getSplatValue())
+  if (IGCLLVM::Constant::getSplatValue(C, /* AllowUndefs */ true))
     return true; // splat constant always simple
   if (DL.getTypeSizeInBits(VT->getElementType()) == 1)
     return true; // predicate constant always simple
