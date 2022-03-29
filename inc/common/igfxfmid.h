@@ -686,4 +686,9 @@ typedef enum __NATIVEGTTYPE
                                  ( d == DEV_ID_4F87 )             ||   \
                                  ( d == DEV_ID_4F88 ))
 
+#define GFX_IS_DG2_G12_CONFIG(d)   ( ( d == DEV_ID_4F85 )                              ||   \
+                                      ( d == DEV_ID_4F86 )                              ||   \
+                                      ( d == DEV_ID_56A3 )                              ||   \
+                                      ( d == DEV_ID_56A4 ))
+
 #endif

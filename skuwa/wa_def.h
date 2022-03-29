@@ -343,11 +343,19 @@ void InitAcm_G11HwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
+void InitAcm_G12HwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
 void InitAcm_G11SwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
 void InitAcm_G10SwWaTable(
+       PWA_TABLE                       pWaTable,
+       PSKU_FEATURE_TABLE              pSkuTable,
+       PWA_INIT_PARAM                  pWaParam);
+void InitAcm_G12SwWaTable(
        PWA_TABLE                       pWaTable,
        PSKU_FEATURE_TABLE              pSkuTable,
        PWA_INIT_PARAM                  pWaParam);

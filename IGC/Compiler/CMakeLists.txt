@@ -91,6 +91,8 @@ set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iacm_g10_sw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iacm_g11_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iacm_g11_sw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iacm_g12_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iacm_g12_sw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ipvc_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ipvc_xt_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/irkl_hw_wa.c"

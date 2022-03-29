@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "../common/EmUtils.h"
 #include "../../../skuwa/iacm_g10_rev_id.h"
 #include "../../../skuwa/iacm_g11_rev_id.h"
+#include "../../../skuwa/iacm_g12_rev_id.h"
 
 struct genplatform
 {
@@ -49,6 +50,7 @@ inline bool genplatform::hasSupportForAllOCLImageFormats() const
     bool isDG2B0Plus = SI_WA_FROM(m_platformInfo->usRevId, ACM_G10_GT_REV_ID_B0);
     bool isDG2C0Plus = SI_WA_FROM(m_platformInfo->usRevId, ACM_G10_GT_REV_ID_C0);
     bool isDG2G11EUConfig = GFX_IS_DG2_G11_CONFIG(m_platformInfo->usDeviceID);
+    bool isDG2G12EUConfig = GFX_IS_DG2_G12_CONFIG(m_platformInfo->usDeviceID);
     if ((m_platformInfo->eProductFamily == IGFX_DG2 && isDG2C0Plus) ||
         (m_platformInfo->eProductFamily == IGFX_DG2 && isDG2G11EUConfig && isDG2B0Plus))
     {

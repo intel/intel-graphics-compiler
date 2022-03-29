@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 
 #include "../../../skuwa/iacm_g10_rev_id.h"
 #include "../../../skuwa/iacm_g11_rev_id.h"
+#include "../../../skuwa/iacm_g12_rev_id.h"
 
 namespace IGC
 {
@@ -163,6 +164,7 @@ bool isProductChildOf(PRODUCT_FAMILY product) const
 bool supports8DWLSCMessage() const {
     return (SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0) && m_platformInfo.eProductFamily == IGFX_DG2)
         || GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID)
+        || GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID)
         || m_platformInfo.eProductFamily == IGFX_PVC;
 }
 
@@ -662,6 +664,7 @@ bool hasHalfSIMDLSC() const
 {
     return (m_platformInfo.eProductFamily == IGFX_DG2 && SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0)) ||
         GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
+        GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID) ||
         // false for PVC XL A0 RevID==0x0, true from PVC XT A0 RevID==0x3==REVISION_B
         (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId >= REVISION_B);
 }
@@ -777,9 +780,14 @@ bool LSCEnabled(SIMDMode m = SIMDMode::UNKNOWN) const
             if (m == SIMDMode::UNKNOWN)
             {
                 // Must generate LSC after A0 (not include A0)
-                return (SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0) || GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID));
+                return (SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0) ||
+                        GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
+                        GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID)
+                        );
             }
-            return ((SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0) || GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID))
+            return ((SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0) ||
+                     GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
+                     GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID))
                 && m == SIMDMode::SIMD8) ||
                 m == SIMDMode::SIMD16;
         default:
@@ -895,9 +903,11 @@ bool typedReadSupportsAllRenderableFormats() const
     bool isChildOfDG2B0 = SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0);
     bool isChildOfDG2C0 = SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_C0);
     bool isDG2G11Config = GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID);
+    bool isDG2G12Config = GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID);
 
     if ((m_platformInfo.eProductFamily == IGFX_DG2 && isChildOfDG2C0) ||
         (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G11Config && isChildOfDG2B0) ||
+        (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G12Config ) ||
         (m_platformInfo.eProductFamily == IGFX_PVC))
     {
         return IGC_IS_FLAG_DISABLED(ForceFormatConversionDG2Plus);
@@ -1018,6 +1028,7 @@ bool supportAIParameterCombiningWithLODBiasEnabled() const
 {
     return IGC_IS_FLAG_ENABLED(EnableAIParameterCombiningWithLODBias) &&
            (m_platformInfo.eProductFamily == IGFX_DG2 && SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0)) ||
+           GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID) ||
            GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID);
 }
 

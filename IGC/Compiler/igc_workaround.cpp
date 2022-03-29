@@ -103,11 +103,19 @@ namespace IGC
             InitXeHPSDVSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
         case IGFX_DG2:
+            /* 128 */
             if (TRUE == GFX_IS_DG2_G11_CONFIG(platform->getPlatformInfo().usDeviceID))
             {
                 InitAcm_G11HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
                 InitAcm_G11SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             }
+            /* 256 */
+            else if (TRUE == GFX_IS_DG2_G12_CONFIG(platform->getPlatformInfo().usDeviceID))
+            {
+                InitAcm_G12HwWaTable(&waTable,pSkuFeatureTable, &stWaInitParam);
+                InitAcm_G12SwWaTable(&waTable,pSkuFeatureTable, &stWaInitParam);
+            }
+            /* 512 */
             else
             {
                 InitAcm_G10HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
