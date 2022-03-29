@@ -2376,6 +2376,7 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createDeadPHINodeEliminationPass());
         }
 
+
         mpm.run(*pContext->getModule());
     } // end scope
     COMPILER_TIME_END(pContext, TIME_OptimizationPasses);
