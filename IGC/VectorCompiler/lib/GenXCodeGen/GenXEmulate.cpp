@@ -863,8 +863,8 @@ Value *GenXEmulate::Emu64Expander::visitPtrToInt(PtrToIntInst &I) {
   if (DL.getTypeSizeInBits(I.getOperand(0)->getType()->getScalarType()) <
       DL.getTypeSizeInBits(I.getType()->getScalarType())) {
     LLVM_DEBUG(dbgs() << "i64-emu::ERROR: " << I << " can't be emulated\n");
-    vc::diagnose(I.getContext(), "GenXEmulate",
-                 "ptr32->i64 extensions are not supported", &I);
+    vc::diagnose(I.getContext(), "GenXEmulate", &I,
+                 "ptr32->i64 extensions are not supported");
   }
 
   auto Builder = getIRBuilder();
@@ -910,8 +910,8 @@ Value *GenXEmulate::Emu64Expander::visitIntToPtr(IntToPtrInst &I) {
   if (DL.getTypeSizeInBits(I.getOperand(0)->getType()->getScalarType()) >
       DL.getTypeSizeInBits(I.getType()->getScalarType())) {
     LLVM_DEBUG(dbgs() << "i64-emu::ERROR: " << I << " can't be emulated\n");
-    vc::diagnose(I.getContext(), "GenXEmulate",
-                 "i64->ptr32 truncations are not supported", &I);
+    vc::diagnose(I.getContext(), "GenXEmulate", &I,
+                 "i64->ptr32 truncations are not supported");
   }
 
   auto Builder = getIRBuilder();
@@ -1194,8 +1194,8 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
 
 Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
   if (CI.getType()->getScalarType()->isDoubleTy())
-    vc::diagnose(CI.getContext(), "GenXEmulate",
-                 "double->UI conversions are not supported", &CI);
+    vc::diagnose(CI.getContext(), "GenXEmulate", &CI,
+                 "double->UI conversions are not supported");
 
   auto IID = vc::getAnyIntrinsicID(&Inst);
   IGC_ASSERT_MESSAGE(IID == GenXIntrinsic::genx_fptosi_sat ||
@@ -1212,13 +1212,13 @@ Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
   Type *Ty2 = IGCLLVM::getArg(*F, 0)->getType();
   OpType OpAndType{Opcode, Ty, Ty2};
   if (!EmulationFuns)
-    vc::diagnose(CI.getContext(), "GenXEmulate",
-                 "Emulation was called without initialization", &CI);
+    vc::diagnose(CI.getContext(), "GenXEmulate", &CI,
+                 "Emulation was called without initialization");
 
   auto Iter = EmulationFuns->find(OpAndType);
   if (Iter == EmulationFuns->end())
-    vc::diagnose(CI.getContext(), "GenXEmulate",
-                 "Unsupported instruction for emulation", &CI);
+    vc::diagnose(CI.getContext(), "GenXEmulate", &CI,
+                 "Unsupported instruction for emulation");
 
   SmallVector<Value *, 8> Args(CI.arg_operands());
 

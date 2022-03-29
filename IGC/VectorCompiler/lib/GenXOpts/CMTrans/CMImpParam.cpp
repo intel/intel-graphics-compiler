@@ -534,9 +534,9 @@ bool CMImpParam::runOnModule(Module &M) {
     return false;
 
   if (!RequireImplArgsBuffer.empty() && IsCmRT)
-    vc::fatal(M.getContext(), "GenXImplicitParameters",
-              "Implicit arguments buffer is required but it is not "
-              "supported for CM RT");
+    vc::diagnose(M.getContext(), "GenXImplicitParameters",
+                 "Implicit arguments buffer is required but it is not "
+                 "supported for CM RT");
 
   replaceImplicitArgIntrinsics(Workload);
 
@@ -903,8 +903,8 @@ static bool isImplicitArgIntrinsic(const Function &F, bool IsCMRT) {
   case GenXIntrinsic::genx_get_scoreboard_bti:
   case GenXIntrinsic::genx_get_scoreboard_depcnt:
     if (!IsCMRT)
-      vc::diagnose(F.getContext(), "GenXImplicitParameters",
-                   "scoreboarding intrinsics are supported only for CM RT", &F);
+      vc::diagnose(F.getContext(), "GenXImplicitParameters", &F,
+                   "scoreboarding intrinsics are supported only for CM RT");
     return true;
   default:
     return false;

@@ -3352,10 +3352,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerSqrt(CI);
     case Intrinsic::sadd_sat:
     case Intrinsic::ssub_sat:
-      vc::fatal(Inst->getContext(), "GenXLowering",
-                "Sorry not implemented: GenX backend cannot handle this "
-                "intrinsic yet",
-                Inst);
+      vc::diagnose(Inst->getContext(), "GenXLowering", Inst,
+                   "Sorry not implemented: GenX backend cannot handle this "
+                   "intrinsic yet");
       break;
     case Intrinsic::uadd_sat:
       return lowerUAddWithSat(CI);
@@ -5555,8 +5554,8 @@ bool GenXLowering::lowerF32MathIntrinsic(CallInst *CI,
   IGC_ASSERT(CI);
   auto *ResTy = CI->getType();
   if (!ResTy->getScalarType()->isFloatTy())
-    vc::fatal(CI->getContext(), "GenXLowering",
-              "Sorry there is only f32 native instruction", CI);
+    vc::diagnose(CI->getContext(), "GenXLowering", CI,
+                 "Sorry there is only f32 native instruction");
   auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), GenXID,
                                                  {CI->getType()});
   SmallVector<Value *, 2> Args{CI->args()};
@@ -5570,8 +5569,8 @@ bool GenXLowering::lowerF32MathIntrinsic(CallInst *CI,
 bool GenXLowering::lowerF32FastMathIntrinsic(CallInst *CI,
                                              GenXIntrinsic::ID GenXID) {
   if (!CI->getFastMathFlags().isFast())
-    vc::fatal(CI->getContext(), "GenXLowering",
-              "Sorry there is only low precision native instruction", CI);
+    vc::diagnose(CI->getContext(), "GenXLowering", CI,
+                 "Sorry there is only low precision native instruction");
   return lowerF32MathIntrinsic(CI, GenXID);
 }
 

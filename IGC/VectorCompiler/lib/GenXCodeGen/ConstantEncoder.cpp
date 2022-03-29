@@ -57,8 +57,8 @@ encodeConstExprImpl(const PtrToIntOperator &P2I, const DataLayout &DL) {
     return {Data.trunc(32), Relocs};
   }
 
-  vc::diagnose(P2I.getContext(), "ConstantEncoder",
-               "such ptrtoint constant expression is not supported", &P2I);
+  vc::diagnose(P2I.getContext(), "ConstantEncoder", &P2I,
+               "such ptrtoint constant expression is not supported");
   return {Data, Relocs};
 }
 
@@ -93,9 +93,8 @@ encodeConstExprImpl(const IGCLLVM::AddrSpaceCastOperator &ASC,
   }
 
   vc::diagnose(
-      ASC.getContext(), "ConstantEncoder",
-      "such addrspacecast constant expression is not supported or illegal",
-      &ASC);
+      ASC.getContext(), "ConstantEncoder", &ASC,
+      "such addrspacecast constant expression is not supported or illegal");
   return {Data, Relocs};
 }
 

@@ -186,10 +186,12 @@ StackAnalysis::checkFunction(Function &F) {
     uint64_t UsedStackSize = 0;
     switch (m_ProcessedFs[NextCalledF].m_ProcessingFlag) {
     case FunctionState::ProcessingState::Started: {
-      vc::warn(F.getContext(), "StackUsage",
-               "Recursion has been found in call graph. Called function: \"" +
-                   NextCalledF->getName() + "\" from \"" + F.getName() +
-                   "\"\nStack overflow can occur, but cannot be diagnosed.");
+      vc::diagnose(
+          F.getContext(), "StackUsage",
+          "Recursion has been found in call graph. Called function: \"" +
+              NextCalledF->getName() + "\" from \"" + F.getName() +
+              "\"\nStack overflow can occur, but cannot be diagnosed.",
+          DS_Warning);
       return None;
     }
     case FunctionState::ProcessingState::NotStarted: {
@@ -254,11 +256,13 @@ void StackAnalysis::checkKernel(Function &Kernel) {
   // align stack size to kernel alignment requirement
   KernelUsedStack = llvm::alignTo(KernelUsedStack, KernelAlignment);
   if (KernelUsedStack > m_MaxStackSize) {
-    vc::warn(Kernel.getContext(), "StackUsage",
-             "Kernel \"" + Kernel.getName() + "\" may overflow stack. Used " +
-                 std::to_string(KernelUsedStack) + " bytes of " +
-                 std::to_string(m_MaxStackSize) +
-                 "\nCalls: " + GenerateCallSequence(Kernel));
+    vc::diagnose(Kernel.getContext(), "StackUsage",
+                 "Kernel \"" + Kernel.getName() +
+                     "\" may overflow stack. Used " +
+                     std::to_string(KernelUsedStack) + " bytes of " +
+                     std::to_string(m_MaxStackSize) +
+                     "\nCalls: " + GenerateCallSequence(Kernel),
+                 DS_Warning);
     return;
   }
 

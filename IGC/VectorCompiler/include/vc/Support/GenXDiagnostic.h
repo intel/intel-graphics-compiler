@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #define VC_SUPPORT_GENXDIAGNOSTIC_H
 
 #include "llvm/ADT/Twine.h"
-#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Instructions.h"
@@ -41,7 +40,6 @@ class DiagnosticInfo : public llvm::DiagnosticInfo {
 private:
   std::string Description;
   static const int KindID;
-  llvm::DiagnosticSeverity Severity_;
 
   static int getKindID() { return KindID; }
 
@@ -50,37 +48,15 @@ public:
   DiagnosticInfo(const llvm::Twine &Prefix, const llvm::Twine &Desc,
                  llvm::DiagnosticSeverity Severity = llvm::DS_Error)
       : llvm::DiagnosticInfo(getKindID(), Severity),
-        Description((Prefix + ": " + Desc).str()), Severity_(Severity) {}
+        Description((Prefix + ": " + Desc).str()) {}
 
   // Initialize with Value
   DiagnosticInfo(const llvm::Value *Val, const llvm::Twine &Prefix,
                  const llvm::Twine &Desc,
                  llvm::DiagnosticSeverity Severity = llvm::DS_Error)
-      : llvm::DiagnosticInfo(getKindID(), Severity), Severity_(Severity) {
+      : llvm::DiagnosticInfo(getKindID(), Severity) {
     std::string Str;
     printToString(Str, *Val);
-    Description =
-        (Prefix + " failed for: <" + Str.c_str() + ">: " + Desc).str();
-  }
-
-  // Initialize with Instruction, account for debug info
-  DiagnosticInfo(const llvm::Instruction *Inst, const llvm::Twine &Prefix,
-                 const llvm::Twine &Desc,
-                 llvm::DiagnosticSeverity Severity = llvm::DS_Error)
-      : llvm::DiagnosticInfo(getKindID(), Severity), Severity_(Severity) {
-    std::string Str;
-    printToString(Str, *Inst);
-
-    auto DL = Inst->getDebugLoc();
-    if (DL) {
-      llvm::StringRef Filename = DL.get()->getFilename();
-      unsigned Line = DL.getLine();
-      unsigned Col = DL.getCol();
-      llvm::Twine DbgStr = llvm::Twine(" ") + llvm::Twine(Filename) + " : " +
-                           llvm::Twine(Line) + " : " + llvm::Twine(Col);
-      Str += DbgStr.str();
-    }
-
     Description =
         (Prefix + " failed for: <" + Str.c_str() + ">: " + Desc).str();
   }
@@ -89,65 +65,31 @@ public:
   DiagnosticInfo(const llvm::Type *Ty, const llvm::Twine &Prefix,
                  const llvm::Twine &Desc,
                  llvm::DiagnosticSeverity Severity = llvm::DS_Error)
-      : llvm::DiagnosticInfo(getKindID(), Severity), Severity_(Severity) {
+      : llvm::DiagnosticInfo(getKindID(), Severity) {
     std::string Str;
     printToString(Str, *Ty);
     Description =
         (Prefix + " failed for: <" + Str.c_str() + ">: " + Desc).str();
   }
 
-  // Initialize with Arg
-  DiagnosticInfo(const llvm::Argument *Arg, const llvm::Twine &Prefix,
-                 const llvm::Twine &Desc,
-                 llvm::DiagnosticSeverity Severity = llvm::DS_Error)
-      : llvm::DiagnosticInfo(getKindID(), Severity), Severity_(Severity) {
-    llvm::Twine Str = " Argument " + llvm::Twine(Arg->getArgNo() + 1) + " in " +
-                      Arg->getParent()->getName();
-    Description = (Prefix + " failed for: <" + Str + ">: " + Desc).str();
-  }
-
-  void print(llvm::DiagnosticPrinter &DP) const override {
-    if (Severity_ == llvm::DS_Error)
-      llvm::report_fatal_error(Description);
-    DP << Description;
-  }
+  void print(llvm::DiagnosticPrinter &DP) const override { DP << Description; }
 
   static bool classof(const llvm::DiagnosticInfo *DI) {
     return DI->getKind() == getKindID();
   }
 };
 
-// warn means warn and continue working (unless handler redefined)
-template <typename... Args>
-void warn(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
-          const llvm::Twine &Desc, Args &&... args) {
-  DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc,
-                      llvm::DS_Warning};
-  Ctx.diagnose(Diag);
-}
-
-// diagnose means error but continue working
-template <typename... Args>
 void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
-              const llvm::Twine &Desc, Args &&... args) {
-  DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc,
-                      llvm::DS_Error};
-  Ctx.diagnose(Diag);
-}
+              const llvm::Twine &Desc,
+              llvm::DiagnosticSeverity Severity = llvm::DS_Error);
+void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
+              const llvm::Value *Val, const llvm::Twine &Desc,
+              llvm::DiagnosticSeverity Severity = llvm::DS_Error);
+void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
+              const llvm::Type *Ty, const llvm::Twine &Desc,
+              llvm::DiagnosticSeverity Severity = llvm::DS_Error);
 
-// fatal means fatal
-template <typename... Args>
-[[noreturn]] void fatal(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
-                        const llvm::Twine &Desc, Args &&... args) {
-  DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc,
-                      llvm::DS_Error};
-  Ctx.diagnose(Diag);
-  // we shall not reach this, diagnose reports fatal error
-  llvm::report_fatal_error("Diag: aborted");
-}
-
-template <typename Diag>
-struct IRChecker {
+template <typename Diag> struct IRChecker {
   static void argOperandIsConstantInt(const llvm::CallInst &CI, unsigned Idx,
                                       const llvm::Twine &ArgName) {
     auto *Op = CI.getArgOperand(Idx);
