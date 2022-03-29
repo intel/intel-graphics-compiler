@@ -112,7 +112,8 @@ static cl::opt<bool>
  * available, but the caller wants the constant offset separated out like
  * that.
  */
-Region genx::makeRegionWithOffset(Instruction *Inst, bool WantParentWidth) {
+Region genx::makeRegionWithOffset(const Instruction *Inst,
+                                  bool WantParentWidth) {
   unsigned OperandNum = 0;
   switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
   case GenXIntrinsic::genx_rdregioni:
@@ -139,13 +140,13 @@ Region genx::makeRegionWithOffset(Instruction *Inst, bool WantParentWidth) {
  * This also works with rdpredregion and wrpredregion, with Offset in
  * bits rather than bytes, and with ElementBytes set to 1.
  */
-Region genx::makeRegionFromBaleInfo(Instruction *Inst, const BaleInfo &BI,
+Region genx::makeRegionFromBaleInfo(const Instruction *Inst, const BaleInfo &BI,
                                     bool WantParentWidth) {
   Region Result;
   // Determine where to get the subregion value from and which arg index
   // the region parameters start at.
   unsigned ArgIdx = 0;
-  Value *Subregion = 0;
+  const Value *Subregion = nullptr;
   IGC_ASSERT(isa<CallInst>(Inst));
   auto CallI = cast<CallInst>(Inst);
   IGC_ASSERT(CallI->getCalledFunction());

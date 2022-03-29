@@ -76,9 +76,10 @@ struct BaleInfo;
 
 using Region = llvm::Region;
 
-Region makeRegionWithOffset(Instruction *Inst, bool WantParentWidth = false);
+Region makeRegionWithOffset(const Instruction *Inst,
+                            bool WantParentWidth = false);
 
-Region makeRegionFromBaleInfo(Instruction *Inst, const BaleInfo &BI,
+Region makeRegionFromBaleInfo(const Instruction *Inst, const BaleInfo &BI,
                               bool WantParentWidth = false);
 
 // getLegalSize : get the max legal size of a region
