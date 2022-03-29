@@ -249,7 +249,6 @@ DEF_VISA_OPTION(vISA_SplitMov64,            ET_INT32,"-SplitMov64",  "USAGE: -Sp
 DEF_VISA_OPTION(vISA_UseOldSubRoutineAugIntf,    ET_BOOL, "-useOldSubRoutineAugIntf",     UNUSED, false)
 DEF_VISA_OPTION(vISA_FastCompileRA,    ET_BOOL, "-fastCompileRA",     UNUSED, false)
 DEF_VISA_OPTION(vISA_HybridRAWithSpill,    ET_BOOL, "-hybridRAWithSpill",     UNUSED, false)
-DEF_VISA_OPTION(vISA_EnableSwapAccSub,    ET_BOOL,  "-swapAccSub",      UNUSED, true)
 
 //=== binary emission options ===
 DEF_VISA_OPTION(vISA_Compaction,          ET_BOOL,  "-nocompaction",    UNUSED, true)

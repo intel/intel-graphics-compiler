@@ -55,7 +55,7 @@ public:
     void multiAccSub(G4_BB* bb);
 
     bool isAccCandidate(G4_INST* inst, int& lastUse, bool& mustBeAcc0, bool& isAllFloat, int& readSuppressionSrcs, int& bundleBC,
-        int& bankBC, std::map<G4_INST*, unsigned int>* BCInfo, std::vector<USE_DEF_NODE> *SwappableUses);
+        int& bankBC, std::map<G4_INST*, unsigned int>* BCInfo);
 
     int getNumAccSubDef() const { return numAccSubDef; }
     int getNumAccSubUse() const { return numAccSubUse; }
