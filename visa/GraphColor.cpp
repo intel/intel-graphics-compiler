@@ -7312,7 +7312,6 @@ bool GraphColor::regAlloc(
     bool reserveSpillReg, unsigned& spillRegSize, unsigned& indrSpillRegSize,
     const RPE* rpe)
 {
-
     bool useSplitLLRHeuristic = false;
 
     if (builder.getOption(vISA_RATrace))

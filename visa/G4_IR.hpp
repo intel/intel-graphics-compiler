@@ -2095,13 +2095,10 @@ public:
 
     int getOffsetFromBase()
     {
-        if (offsetFromBase == -1)
+        offsetFromBase = 0;
+        for (const G4_Declare *dcl = this; dcl->getAliasDeclare() != NULL; dcl = dcl->getAliasDeclare())
         {
-            offsetFromBase = 0;
-            for (const G4_Declare *dcl = this; dcl->getAliasDeclare() != NULL; dcl = dcl->getAliasDeclare())
-            {
-                offsetFromBase += dcl->getAliasOffset();
-            }
+            offsetFromBase += dcl->getAliasOffset();
         }
         return offsetFromBase;
     }
