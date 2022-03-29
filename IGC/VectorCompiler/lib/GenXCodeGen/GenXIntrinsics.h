@@ -77,8 +77,10 @@ public:
     EXECSIZE_GE8 =          GENX_ITR_CATVAL(0x07), // execution size (must be >= 8)
     EXECSIZE_NOT2 =         GENX_ITR_CATVAL(0x08), // execution size (cannot be 2)
 
+    ELEMENTWISE =           GENX_ITR_CATVAL(0x09), // intrinsic has element-wise semantics
+
     // A field that contains a literal value the operand field
-    LITERAL =               GENX_ITR_CATVAL(0x09), // literal byte (usually opcode)
+    LITERAL =               GENX_ITR_CATVAL(0x0a), // literal byte (usually opcode)
     LITMASK =               ~CATMASK,
 
     // A field that contains an operand number, other than general:
@@ -288,15 +290,17 @@ public:
     return isNull() ? ArrayRef<ArgInfo>{} : ArrayRef<ArgInfo>{InfoIt->second};
   }
   // Get the category and modifier for an arg idx
-  ArgInfo getArgInfo(int Idx);
+  ArgInfo getArgInfo(int Idx) const;
   // Get the trailing null zone, if any.
-  unsigned getTrailingNullZoneStart(CallInst *CI);
+  unsigned getTrailingNullZoneStart(CallInst *CI) const;
   // Get the category and modifier for the return value
-  ArgInfo getRetInfo() { return getArgInfo(-1); }
+  ArgInfo getRetInfo() const { return getArgInfo(-1); }
   // Get bitmap of allowed execution sizes
-  unsigned getExecSizeAllowedBits();
+  unsigned getExecSizeAllowedBits() const;
   // Determine if a predicated destination mask is permitted
-  bool getPredAllowed();
+  bool getPredAllowed() const;
+  // Determine if intrinsic is element-wise
+  bool isElementWise() const;
   // Get The overrided execution size or 0.
   static unsigned getOverridedExecSize(CallInst *CI,
                                        const GenXSubtarget *ST = nullptr);

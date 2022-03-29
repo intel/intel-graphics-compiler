@@ -13,6 +13,7 @@
     "genx_fptosi_sat": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ]
@@ -20,6 +21,7 @@
     "genx_fptoui_sat": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ]
@@ -27,6 +29,7 @@
     "genx_sat": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ]
@@ -34,6 +37,7 @@
     "genx_uutrunc_sat": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ]
@@ -41,6 +45,7 @@
     "genx_ustrunc_sat": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ]
@@ -48,6 +53,7 @@
     "genx_sutrunc_sat": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ]
@@ -55,6 +61,7 @@
     "genx_sstrunc_sat": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ]
@@ -849,6 +856,7 @@
     "fma": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
@@ -858,6 +866,7 @@
     "genx_ssmad": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -867,6 +876,7 @@
     "genx_sumad": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -876,6 +886,7 @@
     "genx_usmad": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -885,6 +896,7 @@
     "genx_uumad": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -894,6 +906,7 @@
     "genx_ssmad_sat": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -903,6 +916,7 @@
     "genx_sumad_sat": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -912,6 +926,7 @@
     "genx_usmad_sat": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -921,6 +936,7 @@
     "genx_uumad_sat": {
       "opc": "ISA_MAD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -936,6 +952,7 @@
     "genx_smax": {
       "opc": "ISA_FMINMAX",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "flag_for_max": [ "LITERAL", 1 ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -944,6 +961,7 @@
     "genx_umax": {
       "opc": "ISA_FMINMAX",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "flag_for_max": [ "LITERAL", 1 ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -952,6 +970,7 @@
     "genx_fmax": {
       "opc": "ISA_FMINMAX",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "flag_for_max": [ "LITERAL", 1 ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
@@ -960,6 +979,7 @@
     "genx_smin": {
       "opc": "ISA_FMINMAX",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "flag_for_max": [ "LITERAL", 0 ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -968,6 +988,7 @@
     "genx_umin": {
       "opc": "ISA_FMINMAX",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "flag_for_max": [ "LITERAL", 0 ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_INTALLOWED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -976,6 +997,7 @@
     "genx_fmin": {
       "opc": "ISA_FMINMAX",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "flag_for_max": [ "LITERAL", 0 ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", "MODIFIER_ARITH", 1 ],
@@ -984,6 +1006,7 @@
     "genx_pow": {
       "opc": "ISA_POW",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ],
@@ -1012,6 +1035,7 @@
     "genx_sqrt": {
       "opc": "ISA_SQRT",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1019,6 +1043,7 @@
     "genx_rsqrt": {
       "opc": "ISA_RSQRT",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1026,6 +1051,7 @@
     "genx_ieee_sqrt": {
       "opc": "ISA_SQRTM",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1033,6 +1059,7 @@
     "genx_inv": {
       "opc": "ISA_INV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1040,6 +1067,7 @@
     "genx_log": {
       "opc": "ISA_LOG",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1047,6 +1075,7 @@
     "genx_exp": {
       "opc": "ISA_EXP",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1592,6 +1621,7 @@
     "genx_sin": {
       "opc": "ISA_SIN",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1599,6 +1629,7 @@
     "genx_cos": {
       "opc": "ISA_COS",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1606,6 +1637,7 @@
     "genx_ssavg": {
       "opc": "ISA_AVG",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1614,6 +1646,7 @@
     "genx_suavg": {
       "opc": "ISA_AVG",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1622,6 +1655,7 @@
     "genx_usavg": {
       "opc": "ISA_AVG",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1630,6 +1664,7 @@
     "genx_uuavg": {
       "opc": "ISA_AVG",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1638,6 +1673,7 @@
     "genx_ssavg_sat": {
       "opc": "ISA_AVG",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1646,6 +1682,7 @@
     "genx_suavg_sat": {
       "opc": "ISA_AVG",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1654,6 +1691,7 @@
     "genx_usavg_sat": {
       "opc": "ISA_AVG",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1662,6 +1700,7 @@
     "genx_uuavg_sat": {
       "opc": "ISA_AVG",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1674,6 +1713,7 @@
     "genx_ssadd_sat": {
       "opc": "ISA_ADD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1682,6 +1722,7 @@
     "genx_suadd_sat": {
       "opc": "ISA_ADD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1690,6 +1731,7 @@
     "genx_usadd_sat": {
       "opc": "ISA_ADD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1698,6 +1740,7 @@
     "genx_uuadd_sat": {
       "opc": "ISA_ADD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1706,6 +1749,7 @@
     "genx_lzd": {
       "opc": "ISA_LZD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ]
@@ -1731,6 +1775,7 @@
     "genx_add3": {
       "opc": "ISA_ADD3",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "ctsign": "ChooseSign({1, 2, 3})",
       "dst": [ "GENERAL_CTSIGN", 0 ],
@@ -1741,6 +1786,7 @@
     "genx_ssadd3_sat": {
       "opc": "ISA_ADD3",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1750,6 +1796,7 @@
     "genx_suadd3_sat": {
       "opc": "ISA_ADD3",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1759,6 +1806,7 @@
     "genx_usadd3_sat": {
       "opc": "ISA_ADD3",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1768,6 +1816,7 @@
     "genx_uuadd3_sat": {
       "opc": "ISA_ADD3",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1895,6 +1944,7 @@
     "genx_rndd": {
       "opc": "ISA_RNDD",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1902,6 +1952,7 @@
     "genx_rnde": {
       "opc": "ISA_RNDE",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1909,6 +1960,7 @@
     "genx_rndu": {
       "opc": "ISA_RNDU",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1916,6 +1968,7 @@
     "genx_rndz": {
       "opc": "ISA_RNDZ",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -1923,6 +1976,7 @@
     "genx_ssmul": {
       "opc": "ISA_MUL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1931,6 +1985,7 @@
     "genx_sumul": {
       "opc": "ISA_MUL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1939,6 +1994,7 @@
     "genx_usmul": {
       "opc": "ISA_MUL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1947,6 +2003,7 @@
     "genx_uumul": {
       "opc": "ISA_MUL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1955,6 +2012,7 @@
     "genx_ssmul_sat": {
       "opc": "ISA_MUL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1963,6 +2021,7 @@
     "genx_sumul_sat": {
       "opc": "ISA_MUL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1971,6 +2030,7 @@
     "genx_usmul_sat": {
       "opc": "ISA_MUL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1979,6 +2039,7 @@
     "genx_uumul_sat": {
       "opc": "ISA_MUL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -1987,6 +2048,7 @@
     "genx_smulh": {
       "opc": "ISA_MULH",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -1995,6 +2057,7 @@
     "genx_umulh": {
       "opc": "ISA_MULH",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -2021,6 +2084,7 @@
     "genx_ssshl": {
       "opc": "ISA_SHL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -2029,6 +2093,7 @@
     "genx_sushl": {
       "opc": "ISA_SHL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -2037,6 +2102,7 @@
     "genx_usshl": {
       "opc": "ISA_SHL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -2045,6 +2111,7 @@
     "genx_uushl": {
       "opc": "ISA_SHL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -2053,6 +2120,7 @@
     "genx_ssshl_sat": {
       "opc": "ISA_SHL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -2061,6 +2129,7 @@
     "genx_sushl_sat": {
       "opc": "ISA_SHL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -2069,6 +2138,7 @@
     "genx_usshl_sat": {
       "opc": "ISA_SHL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", "MODIFIER_ARITH", 1 ],
@@ -2077,6 +2147,7 @@
     "genx_uushl_sat": {
       "opc": "ISA_SHL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "MODIFIER_ARITH", 1 ],
@@ -2085,6 +2156,7 @@
     "genx_rol": {
       "opc": "ISA_ROL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
@@ -2093,6 +2165,7 @@
     "genx_ror": {
       "opc": "ISA_ROR",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
@@ -2101,6 +2174,7 @@
     "genx_sbfe": {
       "opc": "ISA_BFE",
       "exec_size": [ "EXECSIZE_NOT2" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "OWALIGNED", "SIGNED", 0 ],
       "src0": [ "GENERAL", "OWALIGNED", "SIGNED", 1 ],
@@ -2110,6 +2184,7 @@
     "genx_ubfe": {
       "opc": "ISA_BFE",
       "exec_size": [ "EXECSIZE_NOT2" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "OWALIGNED", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "OWALIGNED", "UNSIGNED", 1 ],
@@ -2119,6 +2194,7 @@
     "genx_bfi": {
       "opc": "ISA_BFI",
       "exec_size": [ "EXECSIZE_NOT2" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "OWALIGNED", 0 ],
       "src0": [ "GENERAL", "OWALIGNED", "UNSIGNED", 1 ],
@@ -2306,6 +2382,7 @@
     "genx_frc": {
       "opc": "ISA_FRC",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SATURATION_NOSAT", 0 ],
       "src0": [ "GENERAL", 1 ]
@@ -2384,6 +2461,7 @@
     "genx_bf_cvt": {
       "opc": "ISA_MOV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "DIRECTONLY", 0 ],
       "src0": [ "GENERAL", "CONTIGUOUS", "DIRECTONLY", "NOIMM", 1 ]
@@ -2391,18 +2469,21 @@
     "genx_qf_cvt": {
       "opc": "ISA_FCVT",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "NOIMM", 1 ]
     },
     "genx_tf32_cvt": {
       "opc": "ISA_FCVT",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", "NOIMM", 1 ]
     },
      "genx_srnd":{
       "opc": "ISA_SRND",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "GENERAL", 1 ],
@@ -2411,6 +2492,7 @@
     "genx_bfrev": {
       "opc": "ISA_BFREV",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ]
@@ -2418,6 +2500,7 @@
     "genx_cbit": {
       "opc": "ISA_CBIT",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ]
@@ -2425,6 +2508,7 @@
     "genx_ieee_div": {
       "opc": "ISA_DIVM",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", 0 ],
       "src0": [ "GENERAL", 1 ],
@@ -2457,6 +2541,7 @@
     "genx_ssdp4a": {
       "opc": "ISA_DP4A",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", 1 ],
@@ -2466,6 +2551,7 @@
     "genx_sudp4a": {
       "opc": "ISA_DP4A",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
@@ -2475,6 +2561,7 @@
     "genx_usdp4a": {
       "opc": "ISA_DP4A",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", 1 ],
@@ -2484,6 +2571,7 @@
     "genx_uudp4a": {
       "opc": "ISA_DP4A",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
@@ -2493,6 +2581,7 @@
     "genx_ssdp4a_sat": {
       "opc": "ISA_DP4A",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", 1 ],
@@ -2502,6 +2591,7 @@
     "genx_sudp4a_sat": {
       "opc": "ISA_DP4A",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "SIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
@@ -2511,6 +2601,7 @@
     "genx_usdp4a_sat": {
       "opc": "ISA_DP4A",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "SIGNED", 1 ],
@@ -2520,6 +2611,7 @@
     "genx_uudp4a_sat": {
       "opc": "ISA_DP4A",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", "SATURATION_SATURATE", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ],
@@ -2600,6 +2692,7 @@
     "genx_sfbh": {
       "opc": "ISA_FBH",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "SIGNED", 1 ]
@@ -2607,6 +2700,7 @@
     "genx_ufbh": {
       "opc": "ISA_FBH",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ]
@@ -2614,6 +2708,7 @@
     "genx_fbl": {
       "opc": "ISA_FBL",
       "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
       "src0": [ "GENERAL", "UNSIGNED", 1 ]
