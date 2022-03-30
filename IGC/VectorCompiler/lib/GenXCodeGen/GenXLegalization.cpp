@@ -453,46 +453,6 @@ private:
 
 static const unsigned MaxPredSize = 32;
 
-class DiagnosticInfoLegalization : public DiagnosticInfoWithLocationBase {
-private:
-  const Instruction *Inst;
-  std::string Description;
-
-  static const int KindID;
-
-  static int getKindID() { return KindID; }
-
-public:
-  DiagnosticInfoLegalization(const Instruction *Inst, const Twine &Desc,
-                             DiagnosticSeverity Severity = DS_Error);
-
-  void print(DiagnosticPrinter &DP) const override;
-  std::string getDescription() const;
-};
-
-const int DiagnosticInfoLegalization::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
-
-DiagnosticInfoLegalization::DiagnosticInfoLegalization(const Instruction *I,
-                                                       const Twine &Desc,
-                                                       DiagnosticSeverity Severity):
-    DiagnosticInfoWithLocationBase(static_cast<DiagnosticKind>(getKindID()),
-                                   Severity,
-                                   *I->getFunction(), I->getDebugLoc()),
-    Inst(I),
-    Description(Desc.str()) {}
-
-std::string DiagnosticInfoLegalization::getDescription() const {
-  std::string str;
-  vc::printToString(str, *Inst);
-  return (Twine("GenXLegalization failed for instruction \"") +
-          StringRef(str).ltrim() + "\": " + Description).str();
-}
-
-void DiagnosticInfoLegalization::print(DiagnosticPrinter &DP) const {
-  DP << getLocationStr() << ": " << getDescription();
-}
-
 bool isLSCWithReturn(Instruction *Inst) {
   return GenXIntrinsic::isLSC(Inst) && !Inst->getType()->isVoidTy();
 }
@@ -668,26 +628,26 @@ void GenXLegalization::verifyLSCAtomic(const Instruction *Inst) {
   IGC_ASSERT(GenXIntrinsic::isLSCAtomic(Inst));
   unsigned Width = GenXIntrinsic::getLSCWidth(Inst);
   if (!isPowerOf2_32(Width)) {
-    DiagnosticInfoLegalization Err(Inst,
-        "LSC atomic instruction execution width must be a power of 2");
-    Inst->getContext().diagnose(Err);
+    vc::diagnose(Inst->getContext(), "GenXLegalization",
+                 "LSC atomic instruction execution width must be a power of 2",
+                 Inst);
   }
   if (Width > ST->getLSCMaxWidth()) {
-    DiagnosticInfoLegalization Err(Inst,
+    vc::diagnose(
+        Inst->getContext(), "GenXLegalization",
         "LSC atomic instruction execution width must be no more than " +
-        Twine(ST->getLSCMaxWidth()));
-    Inst->getContext().diagnose(Err);
+            Twine(ST->getLSCMaxWidth()),
+        Inst);
   }
   unsigned NumVectorElems = GenXIntrinsic::getLSCNumVectorElements(Inst);
   if (NumVectorElems > 1) {
-    DiagnosticInfoLegalization Err(Inst,
-        "LSC atomic instruction vector size must be 1");
-    Inst->getContext().diagnose(Err);
+    vc::diagnose(Inst->getContext(), "GenXLegalization",
+                 "LSC atomic instruction vector size must be 1", Inst);
   }
   if (GenXIntrinsic::isLSCTransposed(Inst)) {
-    DiagnosticInfoLegalization Err(Inst,
-        "LSC atomic instructions do not support transposed data order");
-    Inst->getContext().diagnose(Err);
+    vc::diagnose(Inst->getContext(), "GenXLegalization",
+                 "LSC atomic instructions do not support transposed data order",
+                 Inst);
   }
 }
 
@@ -708,14 +668,12 @@ void GenXLegalization::verifyLSCTransposed(const Instruction *Inst) {
                          ST->getLSCMaxDataRegisters() *
                          genx::ByteBits;
   if (DataBits > MaxDataBits) {
-    DiagnosticInfoLegalization Err(Inst,
-        "Transposed LSC instruction vector size is too large");
-    Inst->getContext().diagnose(Err);
+    vc::diagnose(Inst->getContext(), "GenXLegalization",
+                 "Transposed LSC instruction vector size is too large", Inst);
   }
   if (GenXIntrinsic::getLSCWidth(Inst) > 1) {
-    DiagnosticInfoLegalization Err(Inst,
-        "Transposed LSC instruction execution width must be 1");
-    Inst->getContext().diagnose(Err);
+    vc::diagnose(Inst->getContext(), "GenXLegalization",
+                 "Transposed LSC instruction execution width must be 1", Inst);
   }
 }
 
@@ -725,9 +683,9 @@ void GenXLegalization::verifyLSCTransposed(const Instruction *Inst) {
  */
 void GenXLegalization::verifyLSCNonTransposed(const Instruction *Inst) {
   if (getLSCMaxWidthWithVectorSize(Inst) < ST->getLSCMinWidth()) {
-    DiagnosticInfoLegalization Err(Inst,
-        "Non-transposed LSC instruction vector size is too large");
-    Inst->getContext().diagnose(Err);
+    vc::diagnose(Inst->getContext(), "GenXLegalization",
+                 "Non-transposed LSC instruction vector size is too large",
+                 Inst);
   }
 }
 
@@ -743,9 +701,10 @@ bool GenXLegalization::checkType(const Type *Ty,
     auto Target = getAnalysis<TargetPassConfig>()
                       .getTM<GenXTargetMachine>()
                       .getTargetCPU();
-    vc::diagnose(Ty->getContext(), "GenXLegalization", Inst,
+    vc::diagnose(Ty->getContext(), "GenXLegalization",
                  "'i64' data type is not supported by this target <" + Target +
-                     ">");
+                     ">",
+                 Inst);
     return false;
   }
 
@@ -753,9 +712,10 @@ bool GenXLegalization::checkType(const Type *Ty,
     auto Target = getAnalysis<TargetPassConfig>()
                       .getTM<GenXTargetMachine>()
                       .getTargetCPU();
-    vc::diagnose(Ty->getContext(), "GenXLegalization", Inst,
+    vc::diagnose(Ty->getContext(), "GenXLegalization",
                  "'double' data type is not supported by this target <" +
-                     Target + ">");
+                     Target + ">",
+                 Inst);
     return false;
   }
   return true;
@@ -827,9 +787,8 @@ bool GenXLegalization::processInst(Instruction *Inst) {
       return false;
     }
     if (GenXIntrinsic::isLSCLegacyAtomic(Inst)) {
-      DiagnosticInfoLegalization Err(Inst,
-          "Legacy LSC atomics are not supported");
-      Inst->getContext().diagnose(Err);
+      vc::diagnose(Inst->getContext(), "GenXLegalization",
+                   "Legacy LSC atomics are not supported", Inst);
     }
     if (GenXIntrinsic::isLSC2D(Inst)) {
       verifyLSC2D(Inst);

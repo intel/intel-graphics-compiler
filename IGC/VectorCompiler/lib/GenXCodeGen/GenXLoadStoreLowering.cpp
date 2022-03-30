@@ -455,8 +455,8 @@ GenXLoadStoreLowering::getLoadVType(const LoadInst &LdI) const {
     LdTy = IGCLLVM::FixedVectorType::get(LdTy, 1);
 
   if (!LdTy->isVectorTy())
-    vc::diagnose(LdI.getContext(), "LDS", LdTy,
-                 "Unsupported type inside replaceLoad");
+    vc::fatal(LdI.getContext(), "LDS", "Unsupported type inside replaceLoad",
+              LdTy);
   return cast<IGCLLVM::FixedVectorType>(LdTy);
 }
 
@@ -771,8 +771,8 @@ Value *GenXLoadStoreLowering::vectorizeValueOperandIfNeeded(
   ValueOpTy = ValueOp->getType();
 
   if (!ValueOpTy->isVectorTy()) {
-    vc::diagnose(StI.getContext(), "LDS", ValueOpTy,
-                 "Unsupported type inside replaceStore");
+    vc::fatal(StI.getContext(), "LDS", "Unsupported type inside replaceStore",
+              ValueOpTy);
   }
 
   return ValueOp;

@@ -479,8 +479,8 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
   } else if (isa<ConstantPointerNull>(Ptr))
     return ConstantInt::get(MemTy, 0);
 
-  vc::diagnose(Ptr->getContext(), "TPM", Ptr,
-               "Cannot find pointer replacement");
+  vc::diagnose(Ptr->getContext(), "TPM", "Cannot find pointer replacement",
+               Ptr);
   return nullptr; // to suppress warnings
 }
 
@@ -592,8 +592,8 @@ bool GenXThreadPrivateMemory::replaceLoad(LoadInst *LdI) {
            LdTy->isPointerTy())
     LdTy = IGCLLVM::FixedVectorType::get(LdTy, 1);
   else {
-    vc::diagnose(LdI->getContext(), "TPM", LdTy,
-                 "Unsupported type inside replaceLoad");
+    vc::fatal(LdI->getContext(), "TPM", "Unsupported type inside replaceLoad",
+              LdTy);
   }
 
   unsigned NumEltsToLoad =
@@ -684,8 +684,8 @@ bool GenXThreadPrivateMemory::replaceStore(StoreInst *StI) {
     ValueOpTy = ValueOp->getType();
   }
   if (!ValueOpTy->isVectorTy()) {
-    vc::diagnose(StI->getContext(), "TPM", ValueOpTy,
-                 "Unsupported type inside replaceStore");
+    vc::fatal(StI->getContext(), "TPM", "Unsupported type inside replaceStore",
+              ValueOpTy);
   }
 
   unsigned ValueEltSz = 0;
@@ -1428,8 +1428,9 @@ bool GenXThreadPrivateMemory::processUsers() {
     }
     if (m_AIUsers.empty()) {
       if (!Changed && ChangeRequired) {
-        vc::diagnose(I->getContext(), "TPM", I,
-                     "Thread private memory: cannot resolve all alloca uses");
+        vc::diagnose(I->getContext(), "TPM",
+                     "Thread private memory: cannot resolve all alloca uses",
+                     I);
       }
       Changed = false;
       collectEachPossibleTPMUsers();
@@ -1562,10 +1563,9 @@ void GenXThreadPrivateMemory::visitFunction(Function &F) {
                           << F.getName() << "\n");
         m_Calls[&F].Recreate = true;
       } else {
-        vc::diagnose(F.getContext(), "TPM",
-                     F.getName() +
-                         " args are used in TPM, but rewriting impossible",
-                     DS_Warning);
+        vc::warn(F.getContext(), "TPM",
+                 F.getName() +
+                     " args are used in TPM, but rewriting impossible");
       }
     }
     return;

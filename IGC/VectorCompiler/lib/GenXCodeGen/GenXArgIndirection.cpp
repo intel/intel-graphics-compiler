@@ -144,6 +144,7 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "GenXUtil.h"
 
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
 #include "vc/Utils/General/FunctionAttrs.h"
@@ -169,38 +170,10 @@ using namespace genx;
 static cl::opt<unsigned> LimitGenXArgIndirection("limit-genx-arg-indirection", cl::init(UINT_MAX), cl::Hidden,
                                       cl::desc("Limit GenX argument indirection."));
 
-
 namespace {
 
 class GenXArgIndirection;
 class SubroutineArg;
-
-
-// Diagnostic information for error/warning relating arg indirection.
-class DiagnosticInfoArgIndirection : public DiagnosticInfo {
-private:
-  std::string Description;
-  StringRef Filename;
-  unsigned Line;
-  unsigned Col;
-
-  static const int KindID;
-
-  static int getKindID() { return KindID; }
-
-public:
-  // Initialize from an Instruction and an Argument.
-  DiagnosticInfoArgIndirection(Instruction *Inst, Argument *Arg,
-      const Twine &Desc, DiagnosticSeverity Severity = DS_Error);
-  void print(DiagnosticPrinter &DP) const override;
-
-  static bool classof(const DiagnosticInfo *DI) {
-    return DI->getKind() == getKindID();
-  }
-};
-
-const int DiagnosticInfoArgIndirection::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
 
 // processArgLR relies on these being in this order.
 // checkIndirectability relies on these being powers of 2 (except
@@ -745,10 +718,8 @@ Indirectability SubroutineArg::checkIndirectability()
       if (CoalescedRetIdx >= 0) {
         for (auto *U: F->users()) {
           if (auto *CI = checkFunctionCall(U, F)) {
-            DiagnosticInfoArgIndirection Warn(
-                CI, Arg, "Argument coalesced with multiple return values",
-                DS_Warning);
-            CI->getContext().diagnose(Warn);
+            vc::warn(CI->getContext(), "GenXArgIndirection",
+                     "Argument coalesced with multiple return values", Arg);
           }
         }
         return Indirectability::CANNOT_INDIRECT;
@@ -849,9 +820,8 @@ ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
     Value *RetVal = getRetVal(CI, CoalescedRetIdx);
     if (!RetVal) {
       // getRetVal could not determine what happens to this return value.
-      DiagnosticInfoArgIndirection Warn(CI, Arg,
-          "Coalesced return value has unknown uses", DS_Warning);
-      CI->getContext().diagnose(Warn);
+      vc::warn(CI->getContext(), "GenXArgIndirection",
+               "Coalesced return value has unknown uses", Arg);
       return nullptr;
     }
     if (!isa<UndefValue>(RetVal)) {
@@ -892,15 +862,13 @@ ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
 
   // Check that the regions are contiguous, and report if they are not.
   if (ArgRWS.isNull() && !ArgRWS.RdR.isContiguous()) {
-    DiagnosticInfoArgIndirection Warn(CI, Arg,
-        "Non-contiguous region", DS_Warning);
-    CI->getContext().diagnose(Warn);
+    vc::warn(CI->getContext(), "GenXArgIndirection", "Non-contiguous region",
+             Arg);
     return new NoOptCallSite(CI);
   }
   if (RetRWS.isNull() && !RetRWS.WrR.isContiguous()) {
-    DiagnosticInfoArgIndirection Warn(CI, Arg,
-        "Non-contiguous region for coalesced return value", DS_Warning);
-    CI->getContext().diagnose(Warn);
+    vc::warn(CI->getContext(), "GenXArgIndirection",
+             "Non-contiguous region for coalesced return value", Arg);
     return new NoOptCallSite(CI);
   }
 
@@ -960,9 +928,8 @@ ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
             ->contains(Pass->Numbering->getNumber(CI)))
       return new IndirectArgCallSite(CI, ArgRWS.getInputUse(),
           ArgRWS.getRdIndex());
-    DiagnosticInfoArgIndirection Warn(CI, Arg,
-        "Argument is region in value that is live over call", DS_Warning);
-    CI->getContext().diagnose(Warn);
+    vc::warn(CI->getContext(), "GenXArgIndirection",
+             "Argument is region in value that is live over call", Arg);
     return nullptr;
   }
 
@@ -979,9 +946,8 @@ ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
         return new IndirectArgRetCallSite(CI, ArgRWS.getInputUse(),
             RetRWS.EndWr, ArgRWS.getRdIndex());
     }
-    DiagnosticInfoArgIndirection Warn(CI, Arg,
-        "Coalesced return value does not match argument", DS_Warning);
-    CI->getContext().diagnose(Warn);
+    vc::warn(CI->getContext(), "GenXArgIndirection",
+             "Coalesced return value does not match argument", Arg);
     return nullptr;
   }
 
@@ -991,9 +957,8 @@ ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
   if (!CanCoalesceWithoutKill && !ArgRWS.isNull() && !isa<Constant>(ArgRWS.Input)
         && Pass->Liveness->getLiveRange(ArgRWS.Input)
           ->contains(Pass->Numbering->getNumber(CI))) {
-    DiagnosticInfoArgIndirection Warn(CI, Arg,
-        "Argument is value that is live over call", DS_Warning);
-    CI->getContext().diagnose(Warn);
+    vc::warn(CI->getContext(), "GenXArgIndirection",
+             "Argument is value that is live over call", Arg);
     return nullptr;
   }
 
@@ -1050,11 +1015,11 @@ bool GenXArgIndirection::gatherBalesToModify(LiveRange *ArgLR, Alignment Align)
     if (!checkIndirectBale(&B, ArgLR, Align)) {
       // Failure. For error reporting, get the arg for the function in which the
       // failure occurred.
-      Argument *Arg = getArgForFunction(ArgLR, B.getHead()->Inst->getParent()
-            ->getParent());
-      DiagnosticInfoArgIndirection Warn(B.getHead()->Inst, Arg,
-          "Use of argument cannot be indirected", DS_Warning);
-      B.getHead()->Inst->getContext().diagnose(Warn);
+      auto *Inst = B.getHead()->Inst;
+      IGC_ASSERT(Inst);
+      Argument *Arg = getArgForFunction(ArgLR, Inst->getParent()->getParent());
+      vc::warn(Inst->getContext(), "GenXArgIndirection",
+               "Use of argument cannot be indirected", Arg);
       return false;
     }
   }
@@ -1882,41 +1847,3 @@ Value *SubroutineArg::getRetVal(CallInst *CI, unsigned RetNum)
   }
   return RetVal;
 }
-
-/***********************************************************************
- * DiagnosticInfoArgIndirection initializer from Instruction
- *
- * If the Instruction has a DebugLoc, then that is used for the error
- * location.
- * Otherwise, the location is unknown.
- */
-DiagnosticInfoArgIndirection::DiagnosticInfoArgIndirection(Instruction *Inst,
-    Argument *Arg, const Twine &Desc, DiagnosticSeverity Severity)
-    : DiagnosticInfo(getKindID(), Severity), Line(0), Col(0)
-{
-  auto DL = Inst->getDebugLoc();
-  if (DL) {
-    Filename = DL->getFilename();
-    Line = DL.getLine();
-    Col = DL.getCol();
-  }
-  Description = (Twine("GenXArgIndirection failed for argument ")
-      + Twine(Arg->getArgNo() + 1) + " in " + Arg->getParent()->getName()
-      + ": " + Desc).str();
-}
-
-/***********************************************************************
- * DiagnosticInfoArgIndirection::print : print the error/warning message
- */
-void DiagnosticInfoArgIndirection::print(DiagnosticPrinter &DP) const
-{
-  std::string Loc(
-        (Twine(!Filename.empty() ? Filename : "<unknown>")
-        + ":" + Twine(Line)
-        + (!Col ? Twine() : Twine(":") + Twine(Col))
-        + ": ")
-      .str());
-  DP << Loc << Description;
-}
-
-
