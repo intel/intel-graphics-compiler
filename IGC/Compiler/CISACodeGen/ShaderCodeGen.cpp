@@ -912,6 +912,10 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     // other passes using uniformness together to avoid re-running it several times
     if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing) && ctx.m_retryManager.AllowConstantCoalescing())
     {
+        // Run constant propagation before constant coalescing,
+        // because coalescing implementation expects folded constants
+        mpm.add(createIPSCCPPass());
+
         mpm.add(createBreakCriticalEdgesPass());
         mpm.add(new ConstantCoalescing());
     }

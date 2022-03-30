@@ -549,12 +549,12 @@ void StatelessToStateful::visitCallInst(CallInst& I)
                 if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead)
                 {
                     PointerType* pTy = PointerType::get(Inst->getType(), addrSpace);
-                    Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
+                    Instruction* pIntToPtr = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
                     Function* simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
                         M,
                         intrinID,
                         { Inst->getType(),pTy });
-                    Instruction* simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, { pPtrToInt }, "", Inst);
+                    Instruction* simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, { pIntToPtr }, "", Inst);
                     simdMediaBlockRead->setDebugLoc(DL);
                     Inst->replaceAllUsesWith(simdMediaBlockRead);
                     Inst->eraseFromParent();
@@ -563,7 +563,7 @@ void StatelessToStateful::visitCallInst(CallInst& I)
                 else if (isUntypedAtomics(intrinID))
                 {
                     PointerType* pTy = PointerType::get(dyn_cast<PointerType>(ptr->getType())->getElementType(), addrSpace);
-                    Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
+                    Instruction* pIntToPtr = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
                     Instruction* pIntrinInst = nullptr;
                     if (intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
                         intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
@@ -572,7 +572,7 @@ void StatelessToStateful::visitCallInst(CallInst& I)
                     {
                         pIntrinInst = CallInst::Create(
                             GenISAIntrinsic::getDeclaration(M, intrinID, { Inst->getType(), pTy, pTy }),
-                            { pPtrToInt, pPtrToInt, Inst->getOperand(2), Inst->getOperand(3) },
+                            { pIntToPtr, pIntToPtr, Inst->getOperand(2), Inst->getOperand(3) },
                             "",
                             Inst);
                     }
@@ -580,7 +580,7 @@ void StatelessToStateful::visitCallInst(CallInst& I)
                     {
                         pIntrinInst = CallInst::Create(
                             GenISAIntrinsic::getDeclaration(M, intrinID, { Inst->getType(), pTy }),
-                            { pPtrToInt, offset, Inst->getOperand(2), Inst->getOperand(3) },
+                            { pIntToPtr, offset, Inst->getOperand(2), Inst->getOperand(3) },
                             "",
                             Inst);
                     }
@@ -593,9 +593,9 @@ void StatelessToStateful::visitCallInst(CallInst& I)
                         intrinID == GenISAIntrinsic::GenISA_HDCuncompressedwrite)
                 {
                     PointerType* pTy = PointerType::get(Inst->getOperand(1)->getType(), addrSpace);
-                    Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
+                    Instruction* pIntToPtr = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
                     SmallVector<Value*, 2> args;
-                    args.push_back(pPtrToInt);
+                    args.push_back(pIntToPtr);
                     args.push_back(Inst->getOperand(1));
                     Function* pFunc = GenISAIntrinsic::getDeclaration(
                         M,
