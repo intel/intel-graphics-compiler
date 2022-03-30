@@ -1219,7 +1219,9 @@ static void retrieveBarrierInfoFromCallee(VISAKernelImpl* entry, std::set<VISAKe
         // path? For zebin path, the barrier information of an indirect
         // (external) function will be provided in the corresponding .ze_info
         // field.
-        entry->getIRBuilder()->getJitInfo()->usesBarrier |= callee->getIRBuilder()->getJitInfo()->usesBarrier;
+        entry->getIRBuilder()->getJitInfo()->usesBarrier =
+            std::max(entry->getIRBuilder()->getJitInfo()->usesBarrier,
+                     callee->getIRBuilder()->getJitInfo()->usesBarrier);
     }
 }
 

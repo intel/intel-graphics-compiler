@@ -8212,11 +8212,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
     }
 
-    // perform simple stat collection (e.g., numBarriers, numSends)
+    // perform simple stat collection (e.g., numSends)
     // IR is not modified
     void Optimizer::collectStats()
     {
-        builder.getJitInfo()->usesBarrier = 0;
         uint32_t numSends = 0;
         for (auto bb : fg)
         {
@@ -8225,14 +8224,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 if (inst->isSend())
                 {
                     numSends++;
-                    if (inst->asSendInst()->getMsgDesc()->isBarrier())
-                    {
-                        // Propagate information about barriers presence back to IGC. It's safer to
-                        // depend on vISA statistics as IGC is not able to detect barriers if they are
-                        // used as a part of Inline vISA code.
-                        // This information is used by legacy CMRT as well as OpenCL/L0 runtime.
-                        builder.getJitInfo()->usesBarrier += 1;
-                    }
                 }
             }
         }
