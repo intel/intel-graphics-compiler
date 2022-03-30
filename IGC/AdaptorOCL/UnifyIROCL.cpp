@@ -182,7 +182,13 @@ static void CommonOCLBasedPasses(
     std::unique_ptr<llvm::Module> BuiltinSizeModule)
 {
 #if defined( _DEBUG )
-    llvm::verifyModule(*pContext->getModule());
+    bool brokenDebugInfo = false;
+    IGC_ASSERT(nullptr != pContext->getModule());
+    IGC_ASSERT(false == llvm::verifyModule(*pContext->getModule(), &dbgs(), &brokenDebugInfo));
+
+    // We ignore incorrect DI for now
+    // We used if (false == pContext->m_hasLegacyDebugInfo), instead of passing &brokenDebugInfo earlier
+    (void)brokenDebugInfo;
 #endif
 
     COMPILER_TIME_START(pContext, TIME_UnificationPasses);
