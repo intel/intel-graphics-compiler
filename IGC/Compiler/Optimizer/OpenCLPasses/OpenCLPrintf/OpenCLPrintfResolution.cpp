@@ -796,10 +796,18 @@ CallInst* OpenCLPrintfResolution::genAtomicAdd(Value* outputBufferPtr,
 unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argType, uint vecSize)
 {
     switch (argType) {
+    case IGC::SHADER_PRINTF_BYTE:
+        return 1;
+    case IGC::SHADER_PRINTF_SHORT:
+        return 2;
     case IGC::SHADER_PRINTF_LONG:
     case IGC::SHADER_PRINTF_DOUBLE:
     case IGC::SHADER_PRINTF_POINTER:    // Runtime expects 64 bit value for pointer regardless of its actual size.
         return 8;
+    case IGC::SHADER_PRINTF_VECTOR_BYTE:
+        return vecSize * 1;
+    case IGC::SHADER_PRINTF_VECTOR_SHORT:
+        return vecSize * 2;
     case IGC::SHADER_PRINTF_VECTOR_LONG:
     case IGC::SHADER_PRINTF_VECTOR_DOUBLE:
         return vecSize * 8;
