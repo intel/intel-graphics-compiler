@@ -408,6 +408,7 @@ namespace IGC
         bool allowDisableRematforCS                     = false;
 
         bool DisableIncSpillCostAllAddrTaken            = false;
+        bool DisableCPSOmaskWA                          = false;
     };
 
     enum class ThreadIDLayout
