@@ -22201,7 +22201,7 @@ void EmitPass::emitSyncStackID(llvm::GenIntrinsicInst* I)
 
         ssid_shl_imm = euid_offset + 2 - ssid_bit_loc;
     }
-    else if (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC)
+    else if (m_currShader->m_Platform->getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPC_CORE)
     {
         euid_offset = 8;
         euid_and_imm = BITMASK_RANGE(4, 5);
@@ -22586,7 +22586,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
         }
 
         const bool WideTraceRay =
-            m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC ||
+            m_currShader->m_Platform->getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPC_CORE ||
             (getGRFSize() == 64 && IGC_IS_FLAG_ENABLED(DisableWideTraceRay));
 
         if (WideTraceRay)
@@ -22955,7 +22955,7 @@ Tristate EmitPass::shouldGenerateLSCQuery(
 
             bool Result =
                 DriverInfo.EnableLSCForLdRawAndStoreRawOnDG2() ||
-                Platform.getPlatformInfo().eProductFamily == IGFX_PVC;
+                Platform.isCoreChildOf(IGFX_XE_HPC_CORE);
 
             return (Result ? Tristate::True : Tristate::False);
         }

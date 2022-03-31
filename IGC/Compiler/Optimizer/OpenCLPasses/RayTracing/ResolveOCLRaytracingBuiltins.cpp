@@ -60,7 +60,7 @@ bool ResolveOCLRaytracingBuiltins::runOnModule(Module& M) {
     visit(M);
 
     if (m_callsToReplace.size() > 0) {
-        if (m_pCtx->platform.getPlatformInfo().eProductFamily != IGFX_PVC &&
+        if (m_pCtx->platform.getPlatformInfo().eRenderCoreFamily != IGFX_XE_HPC_CORE &&
             m_pCtx->platform.getPlatformInfo().eProductFamily != IGFX_DG2) {
             IGC_ASSERT_MESSAGE(0, "Raytracing extensions used on unsupported platform!");
             m_pCtx->EmitError("OCL raytracing extensions can be used only on supported platform", *m_callsToReplace.begin());

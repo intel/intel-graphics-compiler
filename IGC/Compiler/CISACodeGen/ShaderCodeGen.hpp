@@ -522,7 +522,7 @@ public:
     // Note that for PVC A0 simd16, PVCLSCEnabled() returns true
     // but no LSC is generated!
     bool PVCLSCEnabled() const {
-        return m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC && m_Platform->hasLSC();
+        return m_Platform->isCoreChildOf(IGFX_XE_HPC_CORE) && m_Platform->hasLSC();
     }
 
     e_alignment getGRFAlignment() const { return CVariable::getAlignment(getGRFSize()); }

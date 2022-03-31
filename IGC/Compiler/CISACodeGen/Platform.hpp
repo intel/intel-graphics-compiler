@@ -143,16 +143,13 @@ bool isProductChildOf(PRODUCT_FAMILY product) const
     bool result;
     switch (product) {
     case IGFX_PVC:
-        result = m_platformInfo.eRenderCoreFamily >= IGFX_XE_HPC_CORE;
+        result = isCoreChildOf(IGFX_XE_HPC_CORE);
         break;
     case IGFX_XE_HP_SDV:
-                result = m_platformInfo.eProductFamily == IGFX_XE_HP_SDV
-                || m_platformInfo.eProductFamily == IGFX_DG2
-                || m_platformInfo.eProductFamily == IGFX_PVC;
+        result = isCoreChildOf(IGFX_XE_HP_CORE);
         break;
     case IGFX_DG2:
-        result = m_platformInfo.eProductFamily == IGFX_DG2
-                || m_platformInfo.eProductFamily == IGFX_PVC;
+        result = isCoreChildOf(IGFX_XE_HPG_CORE);
         break;
     default:
         result = m_platformInfo.eProductFamily >= product;
@@ -161,11 +158,22 @@ bool isProductChildOf(PRODUCT_FAMILY product) const
     return result;
 }
 
+bool isCoreChildOf(GFXCORE_FAMILY core) const
+{
+    bool result;
+    switch (core) {
+    default:
+        result = m_platformInfo.eRenderCoreFamily >= core;
+        break;
+    }
+    return result;
+}
+
 bool supports8DWLSCMessage() const {
     return (SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0) && m_platformInfo.eProductFamily == IGFX_DG2)
-        || GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID)
-        || GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID)
-        || m_platformInfo.eProductFamily == IGFX_PVC;
+            || GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID)
+            || GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID)
+            || isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
 PRODUCT_FAMILY GetProductFamily() const { return m_platformInfo.eProductFamily; }
@@ -430,7 +438,7 @@ bool disableStaticVertexCount() const
 
 bool hasSamplerSupport() const
 {
-    return (m_platformInfo.eProductFamily != IGFX_PVC) ||
+    return (m_platformInfo.eRenderCoreFamily != IGFX_XE_HPC_CORE) ||
         (IGC_IS_FLAG_ENABLED(EnableSamplerSupport)); // flag for IGFX_PVC
 }
 
@@ -597,7 +605,7 @@ bool supportInlineData() const
 // TODO: temporary solution, remove this once it's not needed
 bool supportInlineDataOCL() const
 {
-    if (m_platformInfo.eProductFamily == IGFX_PVC)
+    if (m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE)
     {
         return false;
     }
@@ -626,7 +634,7 @@ bool WaEnableLSCBackupMode() const
 
 bool supportQWRotateInstructions() const
 {
-    return m_platformInfo.eProductFamily == IGFX_PVC && IGC_IS_FLAG_ENABLED(EnableQWRotateInstructions);
+    return m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE && IGC_IS_FLAG_ENABLED(EnableQWRotateInstructions);
 }
 
 bool loosenSimd32occu() const
@@ -652,7 +660,7 @@ bool supportsTier2VRS() const
 
 bool supportsSIMD16TypedRW() const
 {
-    return m_platformInfo.eProductFamily == IGFX_PVC;
+    return isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
 bool supportHWGenerateTID() const
@@ -696,7 +704,7 @@ bool hasQWAddSupport() const
 
 bool hasExecSize16DPAS() const
 {
-    return m_platformInfo.eProductFamily == IGFX_PVC;
+    return isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
 bool LSCSimd1NeedFullPayload() const
@@ -731,13 +739,7 @@ SIMDMode getMaxRayQuerySIMDSize() const
 
 SIMDMode getPreferredRayTracingSIMDSize() const
 {
-    switch (m_platformInfo.eProductFamily)
-    {
-    case IGFX_PVC:
-        return SIMDMode::SIMD16;
-    default:
-        return SIMDMode::SIMD8;
-    }
+    return isCoreChildOf(IGFX_XE_HPC_CORE) ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
 }
 
 bool supportRayTracing() const
@@ -821,7 +823,7 @@ bool hasL3FlushOnGPUScopeInvalidate() const
 }
 
 bool L3CacheCoherentCrossTiles() const {
-    return m_platformInfo.eProductFamily == IGFX_PVC;
+    return isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
 bool AllowFenceOpt() const
@@ -844,25 +846,21 @@ bool RTFenceWAforBkModeEnabled() const
 
 SIMDMode getMinDispatchMode() const
 {
-    if (m_platformInfo.eProductFamily == IGFX_PVC)
-    {
-        return SIMDMode::SIMD16;
-    }
-    return SIMDMode::SIMD8;
+    return isCoreChildOf(IGFX_XE_HPC_CORE) ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
 }
 
 bool hasLSCTypedMessage() const
 {
-    return m_platformInfo.eProductFamily == IGFX_PVC;
+    return isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
 SIMDMode getMaxLSCTypedMessageSize() const
 {
-    switch (m_platformInfo.eProductFamily)
+    switch (m_platformInfo.eRenderCoreFamily)
     {
-    case IGFX_DG2:
+    case IGFX_XE_HPG_CORE:
         return SIMDMode::SIMD8;
-    case IGFX_PVC:
+    case IGFX_XE_HPC_CORE:
         return SIMDMode::SIMD16;
     default:
             return SIMDMode::SIMD16;
@@ -871,7 +869,7 @@ SIMDMode getMaxLSCTypedMessageSize() const
 
 unsigned getAccChNumUD() const
 {
-    return m_platformInfo.eProductFamily == IGFX_PVC ? 16 : 8;
+    return isCoreChildOf(IGFX_XE_HPC_CORE) ? 16 : 8;
 }
 
 bool hasInt64SLMAtomicCAS() const
@@ -908,7 +906,7 @@ bool typedReadSupportsAllRenderableFormats() const
     if ((m_platformInfo.eProductFamily == IGFX_DG2 && isChildOfDG2C0) ||
         (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G11Config && isChildOfDG2B0) ||
         (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G12Config ) ||
-        (m_platformInfo.eProductFamily == IGFX_PVC))
+        (m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE))
     {
         return IGC_IS_FLAG_DISABLED(ForceFormatConversionDG2Plus);
     }
@@ -975,13 +973,7 @@ unsigned int getMaxNumberHWThreadForEachWG() const
 
 uint32_t getGRFSize() const
 {
-    switch (m_platformInfo.eProductFamily)
-    {
-    case IGFX_PVC:
-        return 64;
-    default:
-        return 32;
-    }
+    return isCoreChildOf(IGFX_XE_HPC_CORE) ? 64 : 32;
 }
 
 uint32_t getInlineDataSize() const
@@ -992,7 +984,7 @@ uint32_t getInlineDataSize() const
 bool hasFusedEU() const
 {
     return m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE &&
-        m_platformInfo.eProductFamily != IGFX_PVC;
+        !isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
 bool hasPartialEmuI64Enabled() const
@@ -1039,7 +1031,7 @@ bool useScratchSpaceForOCL() const
     if (hasScratchSurface()) {
         return LSCEnabled() &&
                IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemoryForDG2Plus) &&
-               m_platformInfo.eProductFamily == IGFX_PVC;
+               m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE;
     }
     else {
         return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);
@@ -1050,7 +1042,7 @@ bool useScratchSpaceForOCL() const
 // Check if byte ALU operations are well supported. If not, promote byte to i16/i32.
 bool supportByteALUOperation() const
 {
-    return m_platformInfo.eProductFamily != IGFX_PVC;
+    return !isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
 // Platform requires kernel arguments pulling.

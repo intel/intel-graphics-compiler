@@ -418,7 +418,7 @@ Instruction* LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst() {
             getImmediateEnum(0, LSC_SCOPE_GROUP, LSC_SCOPE_SYSACQ),  // immediate scope of the fence
         memPort == LSC_SLM ||
         (memPort == LSC_TGM &&
-         context->platform.getPlatformInfo().eProductFamily == IGFX_PVC) ?
+         context->platform.getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPC_CORE) ?
             getConstantInt32(LSC_FENCE_OP_NONE) :
             getImmediateEnum(1, LSC_FENCE_OP_NONE, LSC_FENCE_OP_FLUSHL3)   // immediate flush type
     };
