@@ -103,6 +103,8 @@ void GenXTrampolineInsertion::visitFunction(Function &F) {
     return;
   if (vc::isKernel(&F))
     return;
+  if (vc::isCMCallable(F))
+    return;
 
   if (!F.hasLocalLinkage()) {
     ExternalFuncs.push_back(&F);

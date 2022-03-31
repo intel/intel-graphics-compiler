@@ -62,6 +62,11 @@ inline bool isKernel(const llvm::Function *F) {
 
 inline bool isKernel(const llvm::Function &F) { return isKernel(&F); }
 
+// Check if it is a fast composite.
+inline bool isCMCallable(const llvm::Function &F) {
+  return F.hasFnAttribute(llvm::genx::FunctionMD::CMCallable);
+}
+
 // Utility function to tell if a Function needs to be called using
 // vISA stack call ABI.
 inline bool requiresStackCall(const llvm::Function *F) {
