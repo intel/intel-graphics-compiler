@@ -572,7 +572,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(llvm::createAggressiveDCEPass());
         // TODO: we probably should be running other passes on the result
 
-        if (!IGC::ForceAlwaysInline())
+        if (!IGC::ForceAlwaysInline(&ctx))
         {
             mpm.add(new PurgeMetaDataUtils());
         }
@@ -763,7 +763,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 #if LLVM_VERSION_MAJOR >= 12
         mpm.add(createIPSCCPPass());
 #else
-        if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
+        if (getFunctionControl(&ctx) == FLAG_FCALL_DEFAULT)
         {
             // Don't run IPConstantProp when debugging function calls, to avoid folding function arg/ret constants
             mpm.add(createIPConstantPropagationPass());
@@ -2290,7 +2290,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         if (pContext->m_enableSubroutine &&
-            IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_DEFAULT)
+            getFunctionControl(pContext) == FLAG_FCALL_DEFAULT)
         {
             mpm.add(createEstimateFunctionSizePass(EstimateFunctionSize::AL_Kernel));
             mpm.add(createSubroutineInlinerPass());
@@ -2359,7 +2359,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(CreateGatingSimilarSamples());
 
-        if (!IGC::ForceAlwaysInline())
+        if (!IGC::ForceAlwaysInline(pContext))
         {
             mpm.add(new PurgeMetaDataUtils());
         }

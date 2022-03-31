@@ -131,7 +131,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
         }
     }
 
-    if (!IGC::ForceAlwaysInline())
+    if (!IGC::ForceAlwaysInline(ctx))
     {
         for (auto I : funcsMappingForReplacement)
         {
@@ -497,8 +497,9 @@ bool BuiltinCallGraphAnalysis::runOnModule(Module &M)
 {
     m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-    if (IGC::ForceAlwaysInline())
+    if (IGC::ForceAlwaysInline(pCtx))
     {
         return false;
     }

@@ -393,7 +393,7 @@ static void CommonOCLBasedPasses(
         // Report undef references after setting func attribs for import linking
         mpm.add(new UndefinedReferencesPass());
 
-        if (!IGC::ForceAlwaysInline())
+        if (!IGC::ForceAlwaysInline(pContext))
         {
             int Threshold = IGC_GET_FLAG_VALUE(OCLInlineThreshold);
             mpm.add(createFunctionInliningPass(Threshold));

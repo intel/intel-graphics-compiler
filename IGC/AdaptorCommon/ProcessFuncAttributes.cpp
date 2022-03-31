@@ -253,7 +253,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     EstimateFunctionSize& efs = getAnalysis<EstimateFunctionSize>();
     bool isOptDisable = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable;
-    auto FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
+    auto FCtrl = getFunctionControl(pCtx);
 
     std::set<llvm::Function *> fastMathFunct;
     GlobalVariable *gv_fastMath = M.getGlobalVariable("__FastRelaxedMath", true);
@@ -725,7 +725,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             IGC_ASSERT_MESSAGE(0, "Recursion detected but not enabled!");
         }
-        if (IGC::ForceAlwaysInline())
+        if (IGC::ForceAlwaysInline(pCtx))
         {
             IGC_ASSERT_MESSAGE(0, "Cannot have recursion when forcing inline!");
         }
@@ -796,7 +796,8 @@ ModulePass *createProcessBuiltinMetaDataPass()
 
 bool ProcessBuiltinMetaData::runOnModule(Module& M)
 {
-    if (IGC::ForceAlwaysInline())
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (IGC::ForceAlwaysInline(pCtx))
     {
         return false;
     }

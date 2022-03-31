@@ -33,6 +33,8 @@ SPDX-License-Identifier: MIT
 namespace IGC
 {
 
+    class CodeGenContextWrapper;
+
     // Maximum width supported as input
 #define MAX_INPUT_VECTOR_WIDTH 16
 
@@ -63,6 +65,7 @@ namespace IGC
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
+            AU.addRequired<CodeGenContextWrapper>();
             AU.setPreservesCFG();
         }
 

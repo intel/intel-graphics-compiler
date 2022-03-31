@@ -30,6 +30,7 @@ using namespace IGC::IGCMD;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ImplicitGlobalId, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ImplicitGlobalId, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ImplicitGlobalId::ID = 0;
@@ -83,11 +84,12 @@ bool ImplicitGlobalId::runOnModule(Module& M)
 
 bool ImplicitGlobalId::runOnFunction(Function& F)
 {
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     IGC_ASSERT_MESSAGE(!F.isDeclaration(), "Expect kernel functions, which must be defined");
 
     // When stack calls are enabled, default behavior is to skip these in all functions
     if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL &&
-        !IGC::ForceAlwaysInline() &&
+        !IGC::ForceAlwaysInline(pCtx) &&
         IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
     {
         // Insert in functions only when reg key is set

@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
+    class CodeGenContextWrapper;
 
     /// @brief Inserts debugging information for OpenCL debugging.
     class ImplicitGlobalId : public llvm::ModulePass
@@ -64,6 +65,7 @@ namespace IGC
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
     private:

@@ -960,6 +960,24 @@ namespace IGC
             {
                 DisableEUFusion = true;
             }
+            // -cl-intel-functonControl [<n>]
+            // -ze-intel-functionControl [<n>]
+            else if (suffix.equals("-functionControl"))
+            {
+                int val;
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+                if (valStr.getAsInteger(10, val))
+                {
+                    IGC_ASSERT(0);
+                }
+                if (val >= 0)
+                {
+                    FunctionControl = val;
+                }
+                Pos = valEnd;
+            }
             else if (suffix.equals("-fail-on-spill"))
             {
                 FailOnSpill = true;

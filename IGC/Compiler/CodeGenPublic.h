@@ -1762,6 +1762,8 @@ namespace IGC
             bool IntelForceDisable4GBBuffer = false;
             // user-controled option to disable EU Fusion
             bool DisableEUFusion = false;
+            // Function Control (same as IGC key FunctionControl)
+            int FunctionControl = -1;
             // Fail comilation if spills are present in compiled kernel
             bool FailOnSpill = false;
 

@@ -1158,7 +1158,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
         if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
         {
-            if (IGC::ForceAlwaysInline() ||
+            if (IGC::ForceAlwaysInline(m_pCtx) ||
                 ((OpenCLProgramContext*)(m_currShader->GetContext()))->m_InternalOptions.KernelDebugEnable)
             {
                 DebugInfoData::markOutput(F, m_currShader, m_pDebugEmitter);

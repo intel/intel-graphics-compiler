@@ -981,9 +981,9 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
         if (CS.hasFnAttr(llvm::Attribute::AlwaysInline))
             return IGCLLVM::InlineCost::getAlways();
 
-        int FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
+        int FCtrl = getFunctionControl(pCtx);
 
-        if (IGC::ForceAlwaysInline())
+        if (IGC::ForceAlwaysInline(pCtx))
             return IGCLLVM::InlineCost::getAlways();
 
         if (pCtx->m_enableSubroutine == false)

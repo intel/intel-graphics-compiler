@@ -1959,6 +1959,24 @@ namespace IGC
         return pContext->getRegisterPointerSizeInBits(PT->getAddressSpace()) == 64;
     }
 
+    int getFunctionControl(const CodeGenContext* pContext)
+    {
+        // Let Key have a higher priority. Flag is used if the key isn't set.
+        int val = IGC_GET_FLAG_VALUE(FunctionControl);
+        if (val == FLAG_FCALL_DEFAULT)
+        {
+            if (pContext->type == ShaderType::OPENCL_SHADER)
+            {
+                auto CLCtx = static_cast<const OpenCLProgramContext*>(pContext);
+                if (CLCtx->m_InternalOptions.FunctionControl > 0)
+                {
+                    val = CLCtx->m_InternalOptions.FunctionControl;
+                }
+            }
+        }
+        return val;
+    }
+
     bool IsBitCastForLifetimeMark(const llvm::Value* V)
     {
         if (!V || !llvm::isa<llvm::BitCastInst>(V))

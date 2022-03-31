@@ -229,10 +229,12 @@ namespace IGC
         return (pF == getIntelSymbolTableVoidProgram(pF->getParent()));
     }
 
-    inline bool ForceAlwaysInline()
+    int getFunctionControl(const CodeGenContext* pContext);
+
+    inline bool ForceAlwaysInline(const CodeGenContext* pContext)
     {
         // return true if FunctionControl is set to INLINE, and SelectiveFunctionControl does not force fcalls.
-        return IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_INLINE &&
+        return getFunctionControl(pContext) == FLAG_FCALL_FORCE_INLINE &&
             (IGC_GET_FLAG_VALUE(SelectiveFunctionControl) == FLAG_FCALL_DEFAULT ||
                 IGC_GET_FLAG_VALUE(SelectiveFunctionControl) == FLAG_FCALL_FORCE_INLINE);
     }

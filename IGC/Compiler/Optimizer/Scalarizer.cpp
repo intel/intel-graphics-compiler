@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/Scalarizer.h"
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -50,6 +51,7 @@ namespace VectorizerUtils {
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ScalarizeFunction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ScalarizeFunction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ScalarizeFunction::ID = 0;
@@ -79,8 +81,8 @@ ScalarizeFunction::~ScalarizeFunction()
 
 bool ScalarizeFunction::runOnFunction(Function& F)
 {
-
-    if (!IGC::ForceAlwaysInline())
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (!IGC::ForceAlwaysInline(pCtx))
     {
         if (F.isDeclaration()) return false;
     }
