@@ -189,4 +189,3 @@ void initializeCatchAllLineNumberPass(llvm::PassRegistry&);
 void initializePromoteConstantStructsPass(llvm::PassRegistry&);
 void initializeLowerInvokeSIMDPass(llvm::PassRegistry&);
 void initializeImplicitGIDRestoringPass(llvm::PassRegistry&);
-void initializeResolvePointersComparisonPass(llvm::PassRegistry&);
