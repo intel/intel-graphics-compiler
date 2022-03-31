@@ -39,8 +39,17 @@ typedef struct _FINALIZER_INFO{
     unsigned numFlagSpillStore;
     unsigned numFlagSpillLoad;
 
-    // whether kernel uses a barrier
-    unsigned usesBarrier;
+    // Propagate information about barriers presence back to IGC. It's safer to
+    // depend on vISA statistics as IGC is not able to detect barriers if they
+    // are used as a part of Inline vISA code.
+    // This information is used by legacy CMRT as well as OpenCL/L0 runtime.
+    //
+    // The number of named barriers; it also indicates whether kernel uses a
+    // barrier.
+    // TODO: Maybe consider to use a bitset to track the barrier IDs used, and
+    // the number of bits set can be used to represent the number of barriers.
+    unsigned usesBarrier = 0;
+    static constexpr unsigned kMaxNamedBarriers = 32;
 
     unsigned BBNum;
     VISA_BB_INFO* BBInfo;
