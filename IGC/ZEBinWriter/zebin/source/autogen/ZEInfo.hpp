@@ -61,7 +61,7 @@ struct zeInfoPayloadArgument
 {
     bool operator==(const zeInfoPayloadArgument& other) const
     {
-        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index && source_offset == other.source_offset;
+        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index && source_offset == other.source_offset && slm_alignment == other.slm_alignment;
     }
     zeinfo_str_t arg_type;
     zeinfo_int32_t offset = 0;
@@ -72,6 +72,7 @@ struct zeInfoPayloadArgument
     zeinfo_str_t access_type;
     zeinfo_int32_t sampler_index = -1;
     zeinfo_int32_t source_offset = -1;
+    zeinfo_int32_t slm_alignment = 0;
 };
 struct zeInfoPerThreadPayloadArgument
 {
@@ -175,7 +176,7 @@ struct zeInfoContainer
     HostAccessesTy global_host_access_table;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.13"; }
+    static zeinfo_str_t getVersionNumber() { return "1.14"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,

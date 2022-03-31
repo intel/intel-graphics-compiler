@@ -698,7 +698,8 @@ namespace IGC
                 kernelArg->getAssociatedArgNo(),
                 zebin::PreDefinedAttrGetter::ArgAddrMode::slm,
                 zebin::PreDefinedAttrGetter::ArgAddrSpace::local,
-                zebin::PreDefinedAttrGetter::ArgAccessType::readwrite);
+                zebin::PreDefinedAttrGetter::ArgAccessType::readwrite,
+                kernelArg->getAlignment());
             break;
         // by value arguments
         case KernelArg::ArgType::CONSTANT_REG:

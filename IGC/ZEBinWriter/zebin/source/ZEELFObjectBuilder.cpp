@@ -965,7 +965,8 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByPointer(
     int32_t arg_index,
     PreDefinedAttrGetter::ArgAddrMode addrmode,
     PreDefinedAttrGetter::ArgAddrSpace addrspace,
-    PreDefinedAttrGetter::ArgAccessType access_type)
+    PreDefinedAttrGetter::ArgAccessType access_type,
+    int32_t alignment)
 {
     arg_list.emplace_back();
     zeInfoPayloadArgument& arg = arg_list.back();
@@ -976,6 +977,13 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByPointer(
     arg.addrmode = PreDefinedAttrGetter::get(addrmode);
     arg.addrspace = PreDefinedAttrGetter::get(addrspace);
     arg.access_type = PreDefinedAttrGetter::get(access_type);
+
+    if (addrmode == PreDefinedAttrGetter::ArgAddrMode::slm &&
+        addrspace == PreDefinedAttrGetter::ArgAddrSpace::local) {
+        arg.slm_alignment = alignment;
+    } else {
+        IGC_ASSERT_MESSAGE(alignment == 0, "Only expect a nonzero alignment for slm ptr now");
+    }
     return arg;
 }
 

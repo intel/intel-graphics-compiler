@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.13
+Version 1.14
 
 ## Grammar
 
@@ -149,6 +149,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | access_type | <access_type> | Optional | | Present when arg_type is "arg_bypointer" |
 | sampler_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer" and address_space is "sampler" |
 | source_offset | int32 | Optional | -1 | Present when arg_type is "arg_byvalue" and the arg is a flattened aggregate element |
+| slm_alignment | int32 | Optional | 0 | Present when arg_type is "arg_bypointer", addrmode is "slm" and address_space is "local" |
 <!--- PayloadArgument PayloadArguments -->
 
 ### Supported argument types:
@@ -299,6 +300,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.14**: Add slm_alignment to payload argument.
 - **Version 1.13**: Add functions with the name and execution env.
 - **Version 1.12**: Add global_host_access_table to container.
 - **Version 1.11**: Add require_disable_eufusion attribute.

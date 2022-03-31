@@ -411,7 +411,8 @@ public:
         int32_t arg_index,
         PreDefinedAttrGetter::ArgAddrMode addrmode,
         PreDefinedAttrGetter::ArgAddrSpace addrspace,
-        PreDefinedAttrGetter::ArgAccessType access_type);
+        PreDefinedAttrGetter::ArgAccessType access_type,
+        int32_t alignment = 0);
 
     // addPayloadArgumentByValue - add explicit kernel argument with pass by
     // value type into given arg_list
