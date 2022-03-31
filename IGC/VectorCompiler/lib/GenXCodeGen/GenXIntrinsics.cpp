@@ -179,8 +179,10 @@ unsigned GenXIntrinsicInfo::getOverridedExecSize(CallInst *CI,
   case GenXIntrinsic::genx_dpas2:
   case GenXIntrinsic::genx_dpas_nosrc0:
   case GenXIntrinsic::genx_dpasw:
-  case GenXIntrinsic::genx_dpasw_nosrc0:
-    return ST ? ST->dpasWidth() : 8;
+  case GenXIntrinsic::genx_dpasw_nosrc0: {
+    unsigned Width = ST ? ST->dpasWidth() : 8;
+    return Width;
+  }
   }
 
   return 0;
