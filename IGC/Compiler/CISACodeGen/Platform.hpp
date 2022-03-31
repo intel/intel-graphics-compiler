@@ -597,6 +597,12 @@ bool has16OWSLMBlockRW() const
     return IGC_IS_FLAG_ENABLED(Enable16OWSLMBlockRW) && isProductChildOf(IGFX_XE_HP_SDV);
 }
 
+bool hasLargeMaxConstantBufferSize() const
+{
+    return IGC_IS_FLAG_DISABLED(Force32bitConstantGEPLowering) &&
+        m_platformInfo.eProductFamily == IGFX_PVC;
+}
+
 bool supportInlineData() const
 {
     return isProductChildOf(IGFX_XE_HP_SDV);

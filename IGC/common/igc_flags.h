@@ -114,6 +114,7 @@ DECLARE_IGC_REGKEY(bool, AvoidDstSrcGRFOverlap,               false,  "avoid GRF
 DECLARE_IGC_REGKEY(bool, AvoidSrc1Src2Overlap,               false,  "avoid src1 and src2 GRF overlap to avoid the conflict without read suppression ", false)
 DECLARE_IGC_REGKEY(bool, UseLinearScanRA,               false,  "use Linear Scan as default register allocation algorithm ", false)
 DECLARE_IGC_REGKEY(bool, DisableWriteCombine, false, "Disable write combine. PVC+ only", false)
+DECLARE_IGC_REGKEY(bool, Force32bitConstantGEPLowering, false, "Go back to old version of GEP lowering for constant address space. PVC only", false)
 
 DECLARE_IGC_GROUP("IGC Optimization")
 DECLARE_IGC_REGKEY(bool, AllowMem2Reg,                  false, "Setting this to true makes IGC run mem2reg even when optimizations are disabled", true)

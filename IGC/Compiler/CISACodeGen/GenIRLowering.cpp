@@ -604,7 +604,7 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst* GEP) const
         else if (GEP->getAddressSpace() == ADDRESS_SPACE_CONSTANT || !modMD->compOpt.GreaterThan2GBBufferRequired)
         {
             canReduceNegativeOffset = true;
-            pointerMathSizeInBits = 32;
+            pointerMathSizeInBits = m_ctx->platform.hasLargeMaxConstantBufferSize() ? 64 : 32;
             reducePointerArith = true;
         }
     }
