@@ -277,7 +277,7 @@ static void checkNamedBarrierSrc(G4_Operand* src, bool isBarrierId)
         if (isBarrierId)
         {
             uint32_t val = (uint32_t)src->asImm()->getInt();
-            assert(val < FINALIZER_INFO::kMaxNamedBarriers && "illegal named barrier id");
+            assert(val < 32 && "illegal named barrier id");
         }
     }
     else if (src->isSrcRegRegion())
@@ -291,35 +291,11 @@ static void checkNamedBarrierSrc(G4_Operand* src, bool isBarrierId)
     }
 }
 
-static void updateNamedBarriersInJitInfo(FINALIZER_INFO* jitinfo, G4_Operand* barrierId)
-{
-    if (!jitinfo)
-        return;
-
-    if (barrierId->isImm())
-    {
-        // Update the number of named barriers to Barrier id + 1 as the id is a
-        // 0-based number.
-        unsigned id = (unsigned)barrierId->asImm()->getInt();
-        jitinfo->usesBarrier = std::max(jitinfo->usesBarrier, id + 1);
-    }
-    else
-    {
-        // In order to be safe, set the number of named barriers to the max
-        // value allowed if the barrier id is unknown to vISA. We probably
-        // won't see this in typical cases as the barrier id provided by users
-        // like IGC should be an immediate value.
-        jitinfo->usesBarrier = FINALIZER_INFO::kMaxNamedBarriers;
-    }
-}
-
 int IR_Builder::translateVISANamedBarrierWait(G4_Operand* barrierId)
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     checkNamedBarrierSrc(barrierId, true);
-
-    updateNamedBarriersInJitInfo(getJitInfo(), barrierId);
 
     G4_Operand* barSrc = barrierId;
     if (barrierId->isSrcRegRegion()) {
@@ -342,8 +318,6 @@ int IR_Builder::translateVISANamedBarrierSignal(G4_Operand* barrierId, G4_Operan
 
     checkNamedBarrierSrc(barrierId, true);
     checkNamedBarrierSrc(threadCount, false);
-
-    updateNamedBarriersInJitInfo(getJitInfo(), barrierId);
 
     if (threadCount->isImm())
     {
@@ -537,11 +511,6 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
     {
     case ISA_BARRIER:
     {
-        // For the legacy barrier, update usesBarrier to 1 when there's a
-        // barrier.
-        if (getJitInfo() && getJitInfo()->usesBarrier == 0)
-            getJitInfo()->usesBarrier = 1;
-
         generateBarrierSend();
         generateBarrierWait();
     }
