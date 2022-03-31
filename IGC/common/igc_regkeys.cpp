@@ -747,6 +747,44 @@ static void ParseHashRange(llvm::StringRef line, std::vector<HashRange>& ranges)
     } while (!vString.empty());
 }
 
+static void setIGCKeyOnHash(
+    std::vector<HashRange>& hashes, const unsigned value,
+    SRegKeyVariableMetaData* var)
+{
+    for (size_t i = 0; i < hashes.size(); i++)
+        var->hashes.push_back(hashes[i]);
+    var->Set();
+    var->m_Value = value;
+}
+
+// Implicitly set the subkeys for ShaderDumpEnableAll and ShaderDumpEnable
+// Otherwise, they don't work properly in Options.txt
+static void processIGCKeys(
+    const char* regkeyName, const unsigned value,
+    std::vector<HashRange>& hashes)
+{
+    if (strcmp("ShaderDumpEnableAll", regkeyName) == 0 &&
+        value == 1)
+    {
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(ShaderDumpEnable));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISASlowpath));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISADumpCommonISA));
+    }
+    if (strcmp("ShaderDumpEnable", regkeyName) == 0 &&
+        value == 1)
+    {
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(DumpLLVMIR));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableCosDump));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(DumpOCLProgramInfo));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISAOutput));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISABinary));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISADumpCommonISA));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableCapsDump));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(DumpPatchTokens));
+        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(RayTracingDumpYaml));
+    }
+}
+
 static void declareIGCKey(
     const std::string& line, const char* dataType, const char* regkeyName,
     std::vector<HashRange>& hashes, SRegKeyVariableMetaData* regKey)
@@ -754,7 +792,7 @@ static void declareIGCKey(
     bool isSet = false;
     debugString value = { 0 };
     setRegkeyFromOption(line, dataType, regkeyName, &value, isSet);
-    if (isSet)
+    if (isSet && !hashes.empty())
     {
         std::cout << std::endl << "** hashes ";
         for (size_t i = 0; i < hashes.size(); i++) {
@@ -770,6 +808,8 @@ static void declareIGCKey(
         std::cout << "** regkey " << line << std::endl;
         regKey->Set();
         memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
+
+        processIGCKeys(regkeyName, regKey->m_Value, hashes);
     }
 }
 
@@ -937,7 +977,8 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
     // only load the debug flags once before compiling to avoid any multi-threading issue
     static std::mutex loadFlags;
     static volatile bool flagsSet = false;
-    loadFlags.lock();
+    std::lock_guard<std::mutex> lock(loadFlags);
+
     if(!flagsSet)
     {
         flagsSet = true;
@@ -1064,7 +1105,6 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
             IGC_SET_FLAG_VALUE(ForceOCLSIMDWidth, 0);
         }
     }
-    loadFlags.unlock();
 }
 
 // Get all keys that have been set explicitly with a non-default value. Return

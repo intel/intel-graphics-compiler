@@ -148,6 +148,7 @@ extern SRegKeysList g_RegKeyList;
 #define IGC_SET_FLAG_VALUE(name, regkeyValue)    (g_RegKeyList.name.m_Value = regkeyValue)
 #define IGC_GET_REGKEYSTRING(name)               \
   ((CheckHashRange(g_RegKeyList.name) && g_RegKeyList.name.IsReleaseMode()) ? g_RegKeyList.name.m_string : "")
+#define IGC_GET_REGKEYVAR(name)                  ( &(g_RegKeyList.name) )
 #else
 #define IGC_GET_FLAG_VALUE(name)                 \
   (CheckHashRange(g_RegKeyList.name) ? g_RegKeyList.name.m_Value : g_RegKeyList.name.GetDefault())
@@ -159,6 +160,7 @@ extern SRegKeysList g_RegKeyList;
 #define IGC_SET_FLAG_VALUE(name, regkeyValue)    (g_RegKeyList.name.m_Value = regkeyValue)
 #define IGC_GET_REGKEYSTRING(name)               \
   (CheckHashRange(g_RegKeyList.name) ? g_RegKeyList.name.m_string : "")
+#define IGC_GET_REGKEYVAR(name)                  ( &(g_RegKeyList.name) )
 #endif
 
 #define IGC_REGKEY_OR_FLAG_ENABLED(name, flag) (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
@@ -211,4 +213,5 @@ namespace IGC
 #define IGC_GET_REGKEYSTRING(name)    ("")
 #define IGC_REGKEY_OR_FLAG_ENABLED(name, flag) \
   (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
+#define IGC_GET_REGKEYVAR(name)       (null)
 #endif
