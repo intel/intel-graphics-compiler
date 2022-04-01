@@ -311,6 +311,7 @@ namespace IGC
         bool hasUniformAssumptions;
         bool hasPullBary;
         bool sampleCmpToDiscardOptimizationPossible;
+        bool hasRuntimeValueVector;
         unsigned int numCall;
         unsigned int numBarrier;
         unsigned int numLoadStore;

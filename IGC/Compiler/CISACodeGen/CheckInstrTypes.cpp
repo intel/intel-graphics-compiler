@@ -95,6 +95,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList, IGCMetrics::IGCMet
     instrList->hasPullBary = false;
     instrList->hasDynamicGenericLoadStore = false;  /* may use hasGenericAddressSpacePointers instead */
     instrList->hasUnmaskedRegion = false;
+    instrList->hasRuntimeValueVector = false;
 }
 
 void CheckInstrTypes::SetLoopFlags(Function& F)
@@ -307,6 +308,14 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
             if (bufferType == UAV || bufferType == BINDLESS)
             {
                 g_InstrTypes->hasStorageBufferStore = true;
+            }
+            break;
+        }
+        case GenISAIntrinsic::GenISA_RuntimeValue:
+        {
+            if (CI->getType()->isVectorTy())
+            {
+                g_InstrTypes->hasRuntimeValueVector = true;
             }
             break;
         }

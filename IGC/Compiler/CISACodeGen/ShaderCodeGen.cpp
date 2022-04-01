@@ -975,8 +975,11 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         }
     }
 
-    // Legalize RuntimeValue calls for push analysis
-    mpm.add(new RuntimeValueLegalizationPass());
+    if (ctx.m_instrTypes.hasRuntimeValueVector)
+    {
+        // Legalize RuntimeValue calls for push analysis
+        mpm.add(new RuntimeValueLegalizationPass());
+    }
 
     mpm.add(createInstSimplifyLegacyPass());
     // This pass inserts bitcasts for vector loads/stores.
@@ -2011,10 +2014,6 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(new BreakConstantExpr());
         mpm.add(new IGCConstProp());
-
-        // Optimize extracts from RuntimeValue vectors
-        mpm.add(new RuntimeValueVectorExtractPass());
-
         mpm.add(new CustomSafeOptPass());
         if (!pContext->m_DriverInfo.WADisableCustomPass())
         {
@@ -2287,6 +2286,14 @@ void OptimizeIR(CodeGenContext* const pContext)
             }
             mpm.add(createGenOptLegalizer());
             mpm.add(createInsertBranchOptPass());
+        }
+
+        if (pContext->m_instrTypes.hasRuntimeValueVector)
+        {
+            // Optimize extracts from RuntimeValue vectors. It should be executed
+            // after constants propagation and loop unrolling
+            mpm.add(createVectorBitCastOptPass());
+            mpm.add(new RuntimeValueVectorExtractPass());
         }
 
         if (pContext->m_enableSubroutine &&
