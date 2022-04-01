@@ -803,13 +803,16 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
 // Goes through function groups in FGRange and collects their vISA asms into a
 // string.
 template <typename Range>
-static std::string collectVISAAsm(const VISABuilder &VB, Range &&FGRange) {
-  return std::accumulate(
-      FGRange.begin(), FGRange.end(), std::string{},
-      [&VB](std::string S, const FunctionGroup *FG) {
-        return std::move(S +=
-                         VB.GetVISAKernel(FG->getName().str())->getVISAAsm());
-      });
+static std::vector<GenXOCLRuntimeInfo::KernelInfo::NamedVISAAsm>
+collectVISAAsm(const VISABuilder &VB, Range &&FGRange) {
+  std::vector<GenXOCLRuntimeInfo::KernelInfo::NamedVISAAsm> VISAAsm;
+  std::transform(FGRange.begin(), FGRange.end(), std::back_inserter(VISAAsm),
+                 [&VB](const FunctionGroup *FG) {
+                   auto Name = FG->getName();
+                   return std::make_pair(
+                       Name.str(), VB.GetVISAKernel(Name.str())->getVISAAsm());
+                 });
+  return VISAAsm;
 }
 
 template <typename Range>

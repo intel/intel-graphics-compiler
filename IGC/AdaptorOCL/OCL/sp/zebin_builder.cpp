@@ -61,7 +61,7 @@ void ZEBinaryBuilder::createKernel(
     const SOpenCLKernelInfo& annotations,
     const uint32_t grfSize,
     const CBTILayout& layout,
-    const std::string& visaasm,
+    const std::vector<NamedVISAAsm>& visaasm,
     bool isProgramDebuggable)
 {
     ZEELFObjectBuilder::SectionID textID =
@@ -86,8 +86,8 @@ void ZEBinaryBuilder::createKernel(
     addMemoryBuffer(annotations, zeKernel);
     addGTPinInfo(annotations);
     addFunctionAttrs(annotations);
-    if (!visaasm.empty())
-        addKernelVISAAsm(annotations.m_kernelName, visaasm);
+    for (auto &&[name, visa] : visaasm)
+        addKernelVISAAsm(name, visa);
     if (isProgramDebuggable)
         addKernelDebugEnv(annotations, layout, zeKernel);
 }

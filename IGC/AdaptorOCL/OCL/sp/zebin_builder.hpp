@@ -47,6 +47,9 @@ public:
     // Set the GfxCoreFamily as the specified value.
     void setGfxCoreFamily(GFXCORE_FAMILY value);
 
+    // Pair of name for the section (1st elem) and VISA asm text (2nd elem).
+    using NamedVISAAsm = std::pair<std::string, std::string>;
+
     /// add kernel information. Also create kernel metadata information for .ze_info
     /// This function can be called several times for adding different kernel information
     /// into this ZEObject
@@ -57,7 +60,7 @@ public:
         const IGC::SOpenCLKernelInfo& annotations,
         const uint32_t grfSize,
         const IGC::CBTILayout& layout,
-        const std::string& visaasm,
+        const std::vector<NamedVISAAsm>& visaasm,
         bool isProgramDebuggable);
 
     // getElfSymbol - find a symbol name in ELF binary and return a symbol entry

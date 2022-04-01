@@ -162,7 +162,12 @@ public:
     // Duplicates Func.Relocations. Cannot unify it on VC side since the
     // duplication happens on Finalizer side.
     TableInfo LegacyFuncRelocations;
-    std::string VISAAsm;
+
+    // Keeps in the first element name of the FG's head and VISA asm for this FG
+    // in the second element.
+    using NamedVISAAsm = std::pair<std::string, std::string>;
+    // We attach VISA asm of all FGs to dummy kernel. So vector is required.
+    std::vector<NamedVISAAsm> VISAAsm;
 
   private:
     std::string Name;

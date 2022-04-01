@@ -758,7 +758,9 @@ static void setGenBinary(const FINALIZER_INFO &JitterInfo,
   PO.m_InstructionCount = JitterInfo.numAsmCount;
 }
 
-static void setVISAAsm(const std::string &VISAAsm, CMKernel &Kernel) {
+static void setVISAAsm(
+    const std::vector<GenXOCLRuntimeInfo::KernelInfo::NamedVISAAsm> &VISAAsm,
+    CMKernel &Kernel) {
   Kernel.getProgramOutput().m_VISAAsm = VISAAsm;
 }
 
