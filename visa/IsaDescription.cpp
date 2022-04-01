@@ -308,6 +308,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
 
     },
 
+
     /// 12
     { ALL, ISA_MAD, ISA_Inst_Arith, "mad", 6, SAME_DATA_TYPE,
     {

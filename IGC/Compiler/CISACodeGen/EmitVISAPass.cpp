@@ -3764,6 +3764,7 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     TODO("Do smarter pattern matching to look for non-constant zexted/sexted sources.");
 
     CVariable* dstLo, * dstHi, * dstHiTemp;
+
     dstLo = m_currShader->GetNewVariable(dst->GetNumberElement(),
         ISA_TYPE_UD, m_destination->GetAlign(), dst->IsUniform(),
         CName(m_destination->getName(), "int64Lo"));
@@ -3867,6 +3868,7 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2], SIMDMode simdMode, bool 
     m_encoder->SetDstSubReg(1);
     m_encoder->Copy(dstAsUD, dstHi);
     m_encoder->Push();
+
 }
 
 void EmitPass::Mul(const SSource sources[2], const DstModifier& modifier)
@@ -23055,3 +23057,4 @@ void EmitPass::emitCastSelect(CVariable* flag, CVariable* dst, CVariable* src0, 
     m_encoder->Push();
     m_encoder->Cast(dst, tmpDst);
 }
+

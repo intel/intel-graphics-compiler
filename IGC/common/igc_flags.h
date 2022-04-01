@@ -403,6 +403,7 @@ DECLARE_IGC_REGKEY(bool, Enable64BitEmulation,          false, "Enable 64-bit em
 DECLARE_IGC_REGKEY(bool, Enable64BitEmulationOnSelectedPlatform, true, "Enable 64-bit emulation on selected platforms", false)
 DECLARE_IGC_REGKEY(DWORD, EnableConstIntDivReduction,   0x1,   "Enables strength reduction on integer division/remainder with constant divisors/moduli", true)
 DECLARE_IGC_REGKEY(DWORD, EnableIntDivRemCombine,       0x0,   "Given div/rem pairs with same operands merged; replace rem with mul+sub on quotient; 0x3 (set bit[1]) forces this on constant power of two divisors as well", true)
+DECLARE_IGC_REGKEY(bool, EnableWideMulMad,              false, "Enable wide (64-bit) mul and mad instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableRecursionOpenCL,         true,  "Enable recursion with OpenCL user functions", false)
 DECLARE_IGC_REGKEY(bool, ForceDPEmulation,              false, "Force double emulation for testing purpose", false)
 DECLARE_IGC_REGKEY(bool, EnableDPEmulation,             false, "Enforce double precision floating point operations emulation on platforms that do not support it natively", true)

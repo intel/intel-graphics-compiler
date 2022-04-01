@@ -2277,7 +2277,8 @@ namespace IGC
             };
 
             // One multiplicant should be *W or *B.
-            if (!isByteOrWordValue(sources[0]) && !isByteOrWordValue(sources[1]))
+            if (!isByteOrWordValue(sources[0]) && !isByteOrWordValue(sources[1])
+                    )
                 return false;
 
             auto isQWordValue = [](Value* V) -> bool {
