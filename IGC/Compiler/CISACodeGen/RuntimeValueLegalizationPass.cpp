@@ -99,28 +99,42 @@ static bool GetAllRuntimeValueCalls(
                             // Only vectors of 32-bit values are supported at the moment
                             if (fixedVectorTy->getElementType()->getPrimitiveSizeInBits() == 32)
                             {
-                                uint32_t numElements = int_cast<uint32_t>(fixedVectorTy->getNumElements());
-                                const uint32_t lastElementOffset = offset + numElements - 1;
-
-                                // Check if vector needs to be GRF aligned
-                                // Vector must be GRF aligned if it's size is larger than or equal to one GRF.
-                                // Vector must fit in one GRF if its size is less than one GRF(it can not cross GRF boundary).
-                                const uint32_t alignedVectorOffset =
-                                    int_cast<uint32_t>(llvm::alignTo(offset, dataGRFAlignmentInDwords));
-                                // Offset can be already aligned to GRF boundary
-                                if (offset != alignedVectorOffset)
+                                // Only vectors having corresponding extract element instructions
+                                // are subject of further processing.
+                                bool hasEEUser = false;
+                                for (llvm::User* user : intr->users())
                                 {
-                                    // Check if vector crosses GRF boundary
-                                    if (lastElementOffset >= alignedVectorOffset)
+                                    if (llvm::ExtractElementInst* EEI = llvm::dyn_cast<llvm::ExtractElementInst>(user))
                                     {
-                                        // Align to GRF by changing vector's offset
-                                        offset = int_cast<uint32_t>(llvm::alignDown(offset, dataGRFAlignmentInDwords));
+                                        hasEEUser = true;
+                                        break;
                                     }
                                 }
-                                runtimeValueCalls.insert(std::make_pair(std::make_pair(offset, lastElementOffset), intr));
+                                if (hasEEUser)
+                                {
+                                    uint32_t numElements = int_cast<uint32_t>(fixedVectorTy->getNumElements());
+                                    const uint32_t lastElementOffset = offset + numElements - 1;
 
-                                // Having RuntimeValue vectors, further legalization checks are needed
-                                legalizationCheckNeeded = true;
+                                    // Check if vector needs to be GRF aligned
+                                    // Vector must be GRF aligned if it's size is larger than or equal to one GRF.
+                                    // Vector must fit in one GRF if its size is less than one GRF(it can not cross GRF boundary).
+                                    const uint32_t alignedVectorOffset =
+                                        int_cast<uint32_t>(llvm::alignTo(offset, dataGRFAlignmentInDwords));
+                                    // Offset can be already aligned to GRF boundary
+                                    if (offset != alignedVectorOffset)
+                                    {
+                                        // Check if vector crosses GRF boundary
+                                        if (lastElementOffset >= alignedVectorOffset)
+                                        {
+                                            // Align to GRF by changing vector's offset
+                                            offset = int_cast<uint32_t>(llvm::alignDown(offset, dataGRFAlignmentInDwords));
+                                        }
+                                    }
+                                    runtimeValueCalls.insert(std::make_pair(std::make_pair(offset, lastElementOffset), intr));
+
+                                    // Having RuntimeValue vectors, further legalization checks are needed
+                                    legalizationCheckNeeded = true;
+                                }
                             }
                             else
                             {
@@ -310,42 +324,18 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
                 if (fixedVectorTy)
                 {
                     // RuntimeValue calls representing vectors of scalars are rewritten due to offset/size change.
-                    // Thus related instructions should be adjusted too.
+                    // Thus related extract element instructions should be adjusted too.
                     std::vector<llvm::User*> users(callToResolve->user_begin(), callToResolve->user_end());
-
-                    bool EEOnly = true;
                     for (llvm::User* const user : users)
                     {
-                        if (!llvm::isa<llvm::ExtractElementInst>(user))
+                        llvm::ExtractElementInst* EEI = llvm::dyn_cast<llvm::ExtractElementInst>(user);
+                        IGC_ASSERT(EEI);
+                        if (EEI)
                         {
-                            EEOnly = false;
-                            break;
-                        }
-                    }
-
-                    if (EEOnly)
-                    {
-                        // Adjust all extract element instructions
-                        for (llvm::User* const user : users)
-                        {
-                            llvm::ExtractElementInst* EEI = llvm::cast<llvm::ExtractElementInst>(user);
                             builder.SetInsertPoint(EEI);
                             EEI->setOperand(0, newValue);
                             EEI->setOperand(1, builder.CreateAdd(EEI->getIndexOperand(), builder.getInt32(eeOffset)));
                         }
-                    }
-                    else
-                    {
-                        // Repack the vector and replace all uses with new one
-                        llvm::Value* repackedVectorVal = llvm::UndefValue::get(fixedVectorTy);
-                        for (unsigned i = 0; i < resolvedSize; i++)
-                        {
-                            repackedVectorVal = builder.CreateInsertElement(
-                                repackedVectorVal,
-                                builder.CreateExtractElement(newValue, builder.getInt32(eeOffset + i)),
-                                builder.getInt32(i));
-                        }
-                        callToResolve->replaceAllUsesWith(repackedVectorVal);
                     }
                 }
                 else
