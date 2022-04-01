@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/Analysis/ConstantFolding.h"
+#include "llvm/Analysis/TargetFolder.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Constants.h"
@@ -974,7 +975,8 @@ static Value *simplifyBitCastWithRegionWrite(Instruction *WrR,
   if (!ConvertRes)
     return nullptr;
   auto [NewVecTy, R] = *ConvertRes;
-  IRBuilder<> IRB(WrR);
+  IRBuilder<TargetFolder> IRB(WrR->getParent(), BasicBlock::iterator(WrR),
+                              TargetFolder(DL));
   IGC_ASSERT(vc::isBitCastAllowed(*OldVal, *NewVecTy));
   auto *OldValCast =
       IRB.CreateBitCast(OldVal, NewVecTy, OldVal->getName() + ".cast");
@@ -1055,8 +1057,12 @@ static Value *simplifyBitCastFromRegionRead(BitCastInst *BCI,
     return nullptr;
   auto [NewVecTy, R] = *ConvertRes;
   IGC_ASSERT(vc::isBitCastAllowed(*OldVal, *NewVecTy));
+  IRBuilder<TargetFolder>(BCI->getParent(), BasicBlock::iterator(BCI),
+                          TargetFolder(DL));
   auto *NewBCI =
-      IRBuilder<>(BCI).CreateBitCast(OldVal, NewVecTy, BCI->getName());
+      IRBuilder<TargetFolder>(BCI->getParent(), BasicBlock::iterator(BCI),
+                              TargetFolder(DL))
+          .CreateBitCast(OldVal, NewVecTy, BCI->getName());
   auto *NewRdR =
       R.createRdRegion(NewBCI, RdR->getName(), BCI, RdR->getDebugLoc());
   return NewRdR;
