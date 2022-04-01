@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef VC_UTILS_GENX_TRANSFORMARGCOPY_H
 #define VC_UTILS_GENX_TRANSFORMARGCOPY_H
 
+#include "vc/Utils/GenX/TypeSize.h"
+
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallPtrSet.h>
@@ -27,6 +29,10 @@ SPDX-License-Identifier: MIT
 
 namespace vc {
 
+// Collect arguments that should be transformed.
+llvm::SmallPtrSet<llvm::Argument *, 8>
+collectArgsToTransform(llvm::Function &F, vc::TypeSizeWrapper MaxStructSize);
+
 void replaceUsesWithinFunction(
     const llvm::SmallDenseMap<llvm::Value *, llvm::Value *> &GlobalsToReplace,
     llvm::Function *F);
@@ -36,7 +42,7 @@ struct TransformedFuncType {
   llvm::SmallVector<llvm::Type *, 8> Args;
 };
 
-enum class ArgKind { General, CopyIn, CopyInOut };
+enum class ArgKind { General, CopyIn, CopyOut, CopyInOut };
 enum class GlobalArgKind { ByValueIn, ByValueInOut, ByPointer };
 
 struct GlobalArgInfo {
@@ -55,9 +61,65 @@ struct GlobalArgsInfo {
   }
 };
 
-struct RetToArgInfo {
-  static constexpr int OrigRetNoArg = -1;
-  std::vector<int> Map;
+// Data and helpers for ret to arg (both orig and new ones) connection.
+// It doesn't contain ret info itself: ret_id is taken from position in vec.
+// Check TransformedFuncInfo for more details.
+class RetToArgLink {
+  static constexpr int OmittedIdx = -1;
+  const int NewIdx;
+  const int OrigIdx;
+
+  RetToArgLink(int NewIdxIn, int OrigIdxIn)
+      : NewIdx{NewIdxIn}, OrigIdx{OrigIdxIn} {}
+
+  // Check if the given idx is real one.
+  static bool isRealIdx(int Idx);
+  // Check if the given idx is omitted.
+  static bool isOmittedIdx(int Idx);
+
+public:
+  // Create RetToArgLink for original return value.
+  static RetToArgLink createForOrigRet();
+  // Create RetToArgLink for global argument.
+  // Global argument is a newly added one, thus it is omitted in
+  // original call.
+  static RetToArgLink createForGlobalArg(int NewIdx);
+  // Create RetToArgLink for omitted argument.
+  static RetToArgLink createForOmittedArg(int OrigIdx);
+  // Create RetToArgLink with specific indices.
+  static RetToArgLink createForLinkedArgs(int NewIdx, int OrigIdx);
+
+  // Check if the link describes the original return value.
+  bool isOrigRet() const;
+  // Check if the link describes the global argument.
+  bool isGlobalArg() const;
+  // Check if the link describes the omitted argument.
+  bool isOmittedArg() const;
+  // Get new argument idx.
+  int getNewIdx() const;
+  // Get orig argument idx.
+  int getOrigIdx() const;
+};
+
+// Information for existing original arg. OrigId is not stored here.
+// Chech TransformedFuncInfo for more details.
+class OrigArgInfo {
+  static constexpr int OmittedIdx = -1;
+  llvm::Type *TransformedOrigType;
+  const ArgKind Kind;
+  const int NewIdx;
+
+public:
+  OrigArgInfo(llvm::Type *TyIn, ArgKind KindIn, int NewIdxIn = OmittedIdx);
+
+  // Check if the argument is omitted.
+  bool isOmittedArg() const { return NewIdx == OmittedIdx; }
+  // Get transformed original argument type.
+  llvm::Type *getTransformedOrigType() const { return TransformedOrigType; }
+  // Get argument kind.
+  ArgKind getKind() const { return Kind; }
+  // Get new argument idx.
+  int getNewIdx() const;
 };
 
 struct ParameterAttrInfo {
@@ -72,32 +134,36 @@ struct ParameterAttrInfo {
 class TransformedFuncInfo {
   TransformedFuncType NewFuncType;
   llvm::AttributeList Attrs;
-  std::vector<ArgKind> ArgKinds;
   std::vector<ParameterAttrInfo> DiscardedParameterAttrs;
-  RetToArgInfo RetToArg;
+  std::vector<RetToArgLink> RetToArg;
+  std::vector<OrigArgInfo> OrigArgs;
   GlobalArgsInfo GlobalArgs;
 
 public:
   TransformedFuncInfo(llvm::Function &OrigFunc,
                       llvm::SmallPtrSetImpl<llvm::Argument *> &ArgsToTransform);
   void appendGlobals(llvm::SetVector<llvm::GlobalVariable *> &Globals);
+  // Gather attributes for new function type according to transformations.
+  llvm::AttributeList gatherAttributes(llvm::LLVMContext &Context,
+                                       const llvm::AttributeList &AL) const;
 
   const TransformedFuncType &getType() const { return NewFuncType; }
   llvm::AttributeList getAttributes() const { return Attrs; }
-  const std::vector<ArgKind> &getArgKinds() const { return ArgKinds; }
   const std::vector<ParameterAttrInfo> &getDiscardedParameterAttrs() const {
     return DiscardedParameterAttrs;
   }
+  const std::vector<RetToArgLink> &getRetToArgInfo() const { return RetToArg; }
+  const std::vector<OrigArgInfo> &getOrigArgInfo() const { return OrigArgs; }
   const GlobalArgsInfo &getGlobalArgsInfo() const { return GlobalArgs; }
-  const RetToArgInfo &getRetToArgInfo() const { return RetToArg; }
 
 private:
   void
-  fillCopyInOutInfo(llvm::Function &OrigFunc,
-                    llvm::SmallPtrSetImpl<llvm::Argument *> &ArgsToTransform);
+  fillOrigArgInfo(llvm::Function &OrigFunc,
+                  llvm::SmallPtrSetImpl<llvm::Argument *> &ArgsToTransform);
 
   void inheritAttributes(llvm::Function &OrigFunc);
 
+  // Sret may become inapplicable for transformed function.
   void discardStructRetAttr(llvm::LLVMContext &Context);
 
   void appendRetCopyOutInfo();

@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/GenX/TransformArgCopy.h"
+#include "vc/Utils/GenX/TypeSize.h"
 #include "vc/Utils/General/DebugInfo.h"
 #include "vc/Utils/General/FunctionAttrs.h"
 #include "vc/Utils/General/InstRebuilder.h"
@@ -84,6 +85,11 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 using namespace llvm;
+
+static cl::opt<unsigned>
+    MaxCMABIByvalSize("vc-max-cmabi-byval-size", cl::init(128), cl::Hidden,
+                      cl::desc("Maximum struct size to be passed by value for "
+                               "internal functions in bytes."));
 
 STATISTIC(NumArgumentsTransformed, "Number of pointer arguments transformed");
 
@@ -298,12 +304,6 @@ private:
   // \brief Create allocas for globals and replace their uses.
   void LocalizeGlobals(LocalizationInfo &LI);
 
-  // Return true if pointer type arugment is only used to
-  // load or store a simple value. This helps decide whehter
-  // it is safe to convert ptr arg to by-value arg or
-  // simple-value copy-in-copy-out.
-  bool OnlyUsedBySimpleValueLoadStore(Value *Arg);
-
   // \brief Diagnose illegal overlapping by-ref args.
   void diagnoseOverlappingArgs(CallInst *CI);
 
@@ -458,61 +458,15 @@ CallGraphNode *CMABI::ProcessNode(CallGraphNode *CGN) {
     return nullptr;
   }
 
-  SmallVector<Argument*, 16> PointerArgs;
-  for (auto &Arg: F->args())
-    if (Arg.getType()->isPointerTy())
-      PointerArgs.push_back(&Arg);
-
-  // Check if there is any pointer arguments or globals to localize.
-  if (PointerArgs.empty() && LI.empty())
-    return 0;
-
   // Check transformable arguments.
-  SmallPtrSet<Argument*, 8> ArgsToTransform;
-  for (Argument *PtrArg: PointerArgs) {
-    Type *ArgTy = cast<PointerType>(PtrArg->getType())->getElementType();
-    // Only transform to simple types.
-    if ((ArgTy->isVectorTy() || OnlyUsedBySimpleValueLoadStore(PtrArg)) &&
-        (ArgTy->isIntOrIntVectorTy() || ArgTy->isFPOrFPVectorTy()))
-      ArgsToTransform.insert(PtrArg);
-  }
+  vc::TypeSizeWrapper MaxStructSize = vc::ByteSize * MaxCMABIByvalSize;
+  SmallPtrSet<Argument *, 8> ArgsToTransform =
+      vc::collectArgsToTransform(*F, MaxStructSize);
 
   if (ArgsToTransform.empty() && LI.empty())
     return 0;
 
   return TransformNode(*F, ArgsToTransform, LI);
-}
-
-bool CMABI::OnlyUsedBySimpleValueLoadStore(Value *Arg) {
-  for (const auto &U : Arg->users()) {
-    auto *I = dyn_cast<Instruction>(U);
-    if (!I)
-      return false;
-
-    if (auto LI = dyn_cast<LoadInst>(U)) {
-      if (Arg != LI->getPointerOperand())
-        return false;
-    }
-    else if (auto SI = dyn_cast<StoreInst>(U)) {
-      if (Arg != SI->getPointerOperand())
-        return false;
-    }
-    else if (auto GEP = dyn_cast<GetElementPtrInst>(U)) {
-      if (Arg != GEP->getPointerOperand())
-        return false;
-      else if (!GEP->hasAllZeroIndices())
-        return false;
-      if (!OnlyUsedBySimpleValueLoadStore(U))
-        return false;
-    }
-    else if (isa<AddrSpaceCastInst>(U) || isa<PtrToIntInst>(U)) {
-      if (!OnlyUsedBySimpleValueLoadStore(U))
-        return false;
-    }
-    else
-      return false;
-  }
-  return true;
 }
 
 // \brief Fix argument passing for kernels: i1 -> i8.

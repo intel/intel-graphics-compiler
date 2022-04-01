@@ -10,11 +10,13 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/CallSite.h"
+#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Instructions.h"
 
 #include "Probe/Assertion.h"
 
 #include "vc/Utils/GenX/TransformArgCopy.h"
+#include "vc/Utils/GenX/TypeSize.h"
 #include "vc/Utils/General/DebugInfo.h"
 #include "vc/Utils/General/FunctionAttrs.h"
 #include "vc/Utils/General/Types.h"
@@ -36,6 +38,145 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace vc;
+
+// Check if the value is only used by simple load or store.
+static bool onlyUsedBySimpleValueLoadStore(const Value &Arg) {
+  auto UserChecker = [&Arg](const auto &U) {
+    auto *I = dyn_cast<Instruction>(U);
+    if (!I)
+      return false;
+
+    if (auto *LI = dyn_cast<LoadInst>(U))
+      return &Arg == LI->getPointerOperand();
+    if (auto *SI = dyn_cast<StoreInst>(U))
+      return &Arg == SI->getPointerOperand();
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
+      if (&Arg != GEP->getPointerOperand())
+        return false;
+      if (!GEP->hasAllZeroIndices())
+        return false;
+      return onlyUsedBySimpleValueLoadStore(*U);
+    }
+
+    if (isa<AddrSpaceCastInst>(U) || isa<PtrToIntInst>(U))
+      return onlyUsedBySimpleValueLoadStore(*U);
+
+    return false;
+  };
+
+  return llvm::all_of(Arg.users(), UserChecker);
+}
+
+// Check if the struct contains only suitable types.
+// Currently suitable types are ints/vector of ints, floats/vector of floats,
+// pointers/vector of pointers.
+static bool containsOnlySuitableTypes(const StructType &StrTy) {
+  return llvm::all_of(StrTy.elements(), [](Type *Ty) {
+    return Ty->isIntOrIntVectorTy() || Ty->isFPOrFPVectorTy() ||
+           Ty->isPtrOrPtrVectorTy();
+  });
+}
+
+// Returns true if data is only read using load-like intrinsics. The result may
+// be false negative.
+static bool isSinkedToLoadIntrinsics(const Instruction *Inst) {
+  if (isa<CallInst>(Inst)) {
+    auto *CI = cast<CallInst>(Inst);
+    auto IID = GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction());
+    return IID == GenXIntrinsic::genx_svm_gather ||
+           IID == GenXIntrinsic::genx_gather_scaled;
+  }
+  return std::all_of(Inst->user_begin(), Inst->user_end(), [](const User *U) {
+    if (isa<InsertElementInst>(U) || isa<ShuffleVectorInst>(U) ||
+        isa<BinaryOperator>(U) || isa<CallInst>(U))
+      return isSinkedToLoadIntrinsics(cast<Instruction>(U));
+    return false;
+  });
+}
+
+// Arg is a ptr to a vector/struct type. If data is only read using load, then
+// false is returned. Otherwise, or if it is not clear, true is returned. This
+// is a recursive function. The result may be false positive.
+static bool isPtrArgModified(const Value &Arg) {
+  // User iterator returns pointer both for star and arrow operators, because...
+  return std::any_of(Arg.user_begin(), Arg.user_end(), [](const User *U) {
+    if (isa<LoadInst>(U))
+      return false;
+    if (isa<AddrSpaceCastInst>(U) || isa<BitCastInst>(U) ||
+        isa<GetElementPtrInst>(U))
+      return isPtrArgModified(*U);
+    if (isa<PtrToIntInst>(U))
+      return !isSinkedToLoadIntrinsics(cast<Instruction>(U));
+    return true;
+  });
+}
+
+// Check if it is safe to pass structure by value.
+static bool structSafeToPassByVal(const Argument &Arg) {
+  StructType *StrTy =
+      cast<StructType>(cast<PointerType>(Arg.getType())->getElementType());
+
+  if (!containsOnlySuitableTypes(*StrTy))
+    return false;
+
+  // SRet/Byval are safe no matter what happens inside the
+  // function according to their langref definitions.
+  if (Arg.hasAttribute(Attribute::StructRet) ||
+      Arg.hasAttribute(Attribute::ByVal))
+    return true;
+
+  auto UserChecker = [&Arg](const auto &U) {
+    auto *I = dyn_cast<Instruction>(U);
+    if (!I)
+      return false;
+
+    if (auto *SI = dyn_cast<StoreInst>(U))
+      return &Arg == SI->getPointerOperand();
+    if (auto *LI = dyn_cast<LoadInst>(U))
+      return &Arg == LI->getPointerOperand();
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
+      IGC_ASSERT(&Arg == GEP->getPointerOperand());
+      // Check the first idx is zero.
+      Value *Idx = *GEP->idx_begin();
+      auto *ConstIdx = dyn_cast<ConstantInt>(Idx);
+      return ConstIdx && ConstIdx->getZExtValue() == 0;
+    }
+
+    return false;
+  };
+
+  // Allow only CopyIn for non-byval/sret structures
+  return llvm::all_of(Arg.users(), UserChecker) && !isPtrArgModified(Arg);
+}
+
+// Check if argument should be transformed.
+static bool argToTransform(const Argument &Arg,
+                           vc::TypeSizeWrapper MaxStructSize) {
+  auto *PtrTy = dyn_cast<PointerType>(Arg.getType());
+  if (!PtrTy)
+    return false;
+  Type *ElemTy = PtrTy->getElementType();
+  if ((ElemTy->isVectorTy() || onlyUsedBySimpleValueLoadStore(Arg)) &&
+      (ElemTy->isIntOrIntVectorTy() || ElemTy->isFPOrFPVectorTy()))
+    return true;
+  if (auto *StrTy = dyn_cast<StructType>(ElemTy)) {
+    const DataLayout &DL = Arg.getParent()->getParent()->getDataLayout();
+    if (structSafeToPassByVal(Arg) &&
+        vc::getTypeSize(StrTy, &DL) <= MaxStructSize)
+      return true;
+  }
+  return false;
+}
+
+// Collect arguments that should be transformed.
+SmallPtrSet<Argument *, 8>
+vc::collectArgsToTransform(Function &F, vc::TypeSizeWrapper MaxStructSize) {
+  SmallPtrSet<Argument *, 8> ArgsToTransform;
+  for (auto &Arg : F.args())
+    if (argToTransform(Arg, MaxStructSize))
+      ArgsToTransform.insert(&Arg);
+  return ArgsToTransform;
+}
 
 // Replaces uses of global variables with the corresponding allocas inside a
 // specified function. More insts can be rebuild if global variable addrspace
@@ -68,16 +209,72 @@ GlobalArgInfo vc::GlobalArgsInfo::getGlobalInfoForArgNo(int ArgIdx) const {
   return Globals[ArgIdx - FirstGlobalArgIdx];
 }
 
+bool vc::RetToArgLink::isRealIdx(int Idx) {
+  bool Res = (Idx != OmittedIdx);
+  if (Res)
+    IGC_ASSERT_MESSAGE(Idx >= 0, "Not omitted idx is corrupted!");
+  return Res;
+}
+
+bool vc::RetToArgLink::isOmittedIdx(int Idx) { return !isRealIdx(Idx); }
+
+RetToArgLink vc::RetToArgLink::createForOrigRet() {
+  return {OmittedIdx, OmittedIdx};
+}
+
+RetToArgLink vc::RetToArgLink::createForGlobalArg(int NewIdx) {
+  IGC_ASSERT_MESSAGE(isRealIdx(NewIdx), "Tried to build corrupted link!");
+  return {NewIdx, OmittedIdx};
+}
+
+RetToArgLink vc::RetToArgLink::createForOmittedArg(int OrigIdx) {
+  IGC_ASSERT_MESSAGE(isRealIdx(OrigIdx), "Tried to build corrupted link!");
+  return {OmittedIdx, OrigIdx};
+}
+
+RetToArgLink vc::RetToArgLink::createForLinkedArgs(int NewIdx, int OrigIdx) {
+  IGC_ASSERT_MESSAGE(isRealIdx(NewIdx) && isRealIdx(OrigIdx),
+                     "Tried to build corrupted link!");
+  return {NewIdx, OrigIdx};
+}
+
+bool vc::RetToArgLink::isOrigRet() const {
+  return isOmittedIdx(NewIdx) && isOmittedIdx(OrigIdx);
+}
+
+bool vc::RetToArgLink::isGlobalArg() const {
+  return isRealIdx(NewIdx) && isOmittedIdx(OrigIdx);
+}
+
+bool vc::RetToArgLink::isOmittedArg() const {
+  return isOmittedIdx(NewIdx) && isRealIdx(OrigIdx);
+}
+
+int vc::RetToArgLink::getNewIdx() const {
+  IGC_ASSERT_MESSAGE(isRealIdx(NewIdx), "Tried to use bad new index!");
+  return NewIdx;
+}
+
+int vc::RetToArgLink::getOrigIdx() const {
+  IGC_ASSERT_MESSAGE(isRealIdx(OrigIdx), "Tried to use bad orig index!");
+  return OrigIdx;
+}
+
+vc::OrigArgInfo::OrigArgInfo(Type *TyIn, ArgKind KindIn, int NewIdxIn)
+    : TransformedOrigType{TyIn}, Kind{KindIn}, NewIdx{NewIdxIn} {
+  IGC_ASSERT_MESSAGE(TyIn, "Bad type provided");
+  IGC_ASSERT_MESSAGE(NewIdxIn == OmittedIdx || NewIdxIn >= 0,
+                     "Undexpected new index");
+}
+
+int vc::OrigArgInfo::getNewIdx() const {
+  IGC_ASSERT_MESSAGE(NewIdx >= 0, "Tried to use bad new idx!");
+  return NewIdx;
+}
+
 vc::TransformedFuncInfo::TransformedFuncInfo(
     Function &OrigFunc, SmallPtrSetImpl<Argument *> &ArgsToTransform) {
-  fillCopyInOutInfo(OrigFunc, ArgsToTransform);
-  std::transform(OrigFunc.arg_begin(), OrigFunc.arg_end(),
-                 std::back_inserter(NewFuncType.Args),
-                 [&ArgsToTransform](Argument &Arg) {
-                   if (ArgsToTransform.count(&Arg))
-                     return Arg.getType()->getPointerElementType();
-                   return Arg.getType();
-                 });
+  fillOrigArgInfo(OrigFunc, ArgsToTransform);
   inheritAttributes(OrigFunc);
 
   // struct-returns are not supported for transformed functions,
@@ -88,13 +285,13 @@ vc::TransformedFuncInfo::TransformedFuncInfo(
   auto *OrigRetTy = OrigFunc.getFunctionType()->getReturnType();
   if (!OrigRetTy->isVoidTy()) {
     NewFuncType.Ret.push_back(OrigRetTy);
-    RetToArg.Map.push_back(RetToArgInfo::OrigRetNoArg);
+    RetToArg.push_back(RetToArgLink::createForOrigRet());
   }
   appendRetCopyOutInfo();
 }
 
 // Whether provided \p GV should be passed by pointer.
-static bool passLocalizedGlobalByPointer(const llvm::GlobalValue &GV) {
+static bool passLocalizedGlobalByPointer(const GlobalValue &GV) {
   auto *Type = GV.getType()->getPointerElementType();
   return Type->isAggregateType();
 }
@@ -118,85 +315,89 @@ void vc::TransformedFuncInfo::appendGlobals(
       else {
         GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByValueInOut});
         NewFuncType.Ret.push_back(PointeeTy);
-        RetToArg.Map.push_back(ArgIdx);
+        RetToArg.push_back(RetToArgLink::createForGlobalArg(ArgIdx));
       }
     }
   }
 }
 
-// Returns true if data is only read using load-like intrinsics. The result may
-// be false negative.
-static bool isSinkedToLoadIntrinsics(const Instruction *Inst) {
-  if (isa<CallInst>(Inst)) {
-    auto *CI = cast<CallInst>(Inst);
-    auto IID = GenXIntrinsic::getAnyIntrinsicID(CI->getCalledFunction());
-    return IID == GenXIntrinsic::genx_svm_gather ||
-           IID == GenXIntrinsic::genx_gather_scaled;
-  }
-  return std::all_of(Inst->user_begin(), Inst->user_end(), [](const User *U) {
-    if (isa<InsertElementInst>(U) || isa<ShuffleVectorInst>(U) ||
-        isa<BinaryOperator>(U) || isa<CallInst>(U))
-      return isSinkedToLoadIntrinsics(cast<Instruction>(U));
-    return false;
-  });
-}
-
-// Arg is a ptr to a vector type. If data is only read using load, then false is
-// returned. Otherwise, or if it is not clear, true is returned. This is a
-// recursive function. The result may be false positive.
-static bool isPtrArgModified(const Value &Arg) {
-  // User iterator returns pointer both for star and arrow operators, because...
-  return std::any_of(Arg.user_begin(), Arg.user_end(), [](const User *U) {
-    if (isa<LoadInst>(U))
-      return false;
-    if (isa<AddrSpaceCastInst>(U) || isa<BitCastInst>(U) ||
-        isa<GetElementPtrInst>(U))
-      return isPtrArgModified(*U);
-    if (isa<PtrToIntInst>(U))
-      return !isSinkedToLoadIntrinsics(cast<Instruction>(U));
-    return true;
-  });
-}
-
-void vc::TransformedFuncInfo::fillCopyInOutInfo(
+void vc::TransformedFuncInfo::fillOrigArgInfo(
     Function &OrigFunc, SmallPtrSetImpl<Argument *> &ArgsToTransform) {
-  IGC_ASSERT_MESSAGE(ArgKinds.empty(),
+  IGC_ASSERT_MESSAGE(OrigArgs.empty(),
                      "shouldn't be filled before this method");
-  llvm::transform(OrigFunc.args(), std::back_inserter(ArgKinds),
-                  [&ArgsToTransform](Argument &Arg) {
-                    if (!ArgsToTransform.count(&Arg))
-                      return ArgKind::General;
-                    if (isPtrArgModified(Arg))
-                      return ArgKind::CopyInOut;
-                    return ArgKind::CopyIn;
-                  });
+
+  auto DetermineArgKind = [&ArgsToTransform](const Argument &Arg) {
+    if (!ArgsToTransform.count(&Arg))
+      return ArgKind::General;
+    if (Arg.hasAttribute(Attribute::StructRet))
+      return ArgKind::CopyOut;
+    if (Arg.hasAttribute(Attribute::ByVal))
+      return ArgKind::CopyIn;
+    if (isPtrArgModified(Arg))
+      return ArgKind::CopyInOut;
+    return ArgKind::CopyIn;
+  };
+
+  for (const auto &Arg : OrigFunc.args()) {
+    Type *Ty = Arg.getType();
+    int NewIdx = NewFuncType.Args.size();
+    auto Kind = DetermineArgKind(Arg);
+
+    // Update type for transformed arguments.
+    if (Kind != ArgKind::General) {
+      Ty = Ty->getPointerElementType();
+    }
+
+    if (Kind == ArgKind::CopyOut) {
+      // Save omitted arg info.
+      OrigArgs.push_back({Ty, Kind});
+    } else {
+      // Save arg info and update argument types.
+      NewFuncType.Args.push_back(Ty);
+      OrigArgs.push_back({Ty, Kind, NewIdx});
+    }
+  }
+}
+
+AttributeList
+vc::TransformedFuncInfo::gatherAttributes(LLVMContext &Context,
+                                          const AttributeList &AL) const {
+  AttributeList GatheredAttrs;
+
+  // Gather argument attributes.
+  for (auto OrigArgData : enumerate(OrigArgs)) {
+    int OrigIdx = OrigArgData.index();
+    const OrigArgInfo &OrigArgInfoEntry = OrigArgData.value();
+    if (OrigArgInfoEntry.getKind() == ArgKind::General) {
+      IGC_ASSERT_MESSAGE(!OrigArgInfoEntry.isOmittedArg(),
+                         "unexpected omitted argument");
+      AttributeSet ArgAttrs = AL.getParamAttributes(OrigIdx);
+      if (ArgAttrs.hasAttributes())
+        GatheredAttrs = GatheredAttrs.addParamAttributes(
+            Context, OrigArgInfoEntry.getNewIdx(), AttrBuilder{ArgAttrs});
+    }
+  }
+
+  // Gather function attributes.
+  AttributeSet FnAttrs = AL.getFnAttributes();
+  if (FnAttrs.hasAttributes()) {
+    AttrBuilder B(FnAttrs);
+    GatheredAttrs =
+        GatheredAttrs.addAttributes(Context, AttributeList::FunctionIndex, B);
+  }
+
+  return GatheredAttrs;
 }
 
 void vc::TransformedFuncInfo::inheritAttributes(Function &OrigFunc) {
   LLVMContext &Context = OrigFunc.getContext();
   const AttributeList &OrigAttrs = OrigFunc.getAttributes();
-
-  // Inherit argument attributes
-  for (auto ArgInfo : enumerate(ArgKinds)) {
-    if (ArgInfo.value() == ArgKind::General) {
-      AttributeSet ArgAttrs = OrigAttrs.getParamAttributes(ArgInfo.index());
-      if (ArgAttrs.hasAttributes())
-        Attrs = Attrs.addParamAttributes(Context, ArgInfo.index(),
-                                         AttrBuilder{ArgAttrs});
-    }
-  }
-
-  // Inherit function attributes.
-  AttributeSet FnAttrs = OrigAttrs.getFnAttributes();
-  if (FnAttrs.hasAttributes()) {
-    AttrBuilder B(FnAttrs);
-    Attrs = Attrs.addAttributes(Context, AttributeList::FunctionIndex, B);
-  }
+  Attrs = gatherAttributes(Context, OrigAttrs);
 }
 
 void vc::TransformedFuncInfo::discardStructRetAttr(LLVMContext &Context) {
   constexpr auto SretAttr = Attribute::StructRet;
-  for (auto ArgInfo : enumerate(ArgKinds)) {
+  for (auto ArgInfo : enumerate(NewFuncType.Args)) {
     unsigned ParamIndex = ArgInfo.index();
     if (Attrs.hasParamAttr(ParamIndex, SretAttr)) {
       Attrs = Attrs.removeParamAttribute(Context, ParamIndex, SretAttr);
@@ -206,10 +407,21 @@ void vc::TransformedFuncInfo::discardStructRetAttr(LLVMContext &Context) {
 }
 
 void vc::TransformedFuncInfo::appendRetCopyOutInfo() {
-  for (auto ArgInfo : enumerate(ArgKinds)) {
-    if (ArgInfo.value() == ArgKind::CopyInOut) {
-      NewFuncType.Ret.push_back(NewFuncType.Args[ArgInfo.index()]);
-      RetToArg.Map.push_back(ArgInfo.index());
+  for (auto OrigArgData : enumerate(OrigArgs)) {
+    int OrigIdx = OrigArgData.index();
+    const OrigArgInfo &OrigArgInfoEntry = OrigArgData.value();
+    switch (OrigArgInfoEntry.getKind()) {
+    case ArgKind::CopyInOut:
+      NewFuncType.Ret.push_back(OrigArgInfoEntry.getTransformedOrigType());
+      RetToArg.push_back(RetToArgLink::createForLinkedArgs(
+          OrigArgInfoEntry.getNewIdx(), OrigIdx));
+      break;
+    case ArgKind::CopyOut:
+      NewFuncType.Ret.push_back(OrigArgInfoEntry.getTransformedOrigType());
+      RetToArg.push_back(RetToArgLink::createForOmittedArg(OrigIdx));
+      break;
+    default:
+      break;
     }
   }
 }
@@ -235,7 +447,8 @@ Function *vc::createTransformedFuncDecl(Function &OrigFunc,
   Function *NewFunc =
       Function::Create(NewFuncTy, OrigFunc.getLinkage(), OrigFunc.getName());
 
-  LLVM_DEBUG(dbgs() << "\nCMABI: Transforming From:" << OrigFunc);
+  LLVM_DEBUG(dbgs() << "\nVC-TRANSFORM-ARG-COPY: Transforming From:"
+                    << OrigFunc);
   vc::transferNameAndCCWithNewAttr(TFuncInfo.getAttributes(), OrigFunc,
                                    *NewFunc);
   OrigFunc.getParent()->getFunctionList().insert(OrigFunc.getIterator(),
@@ -252,11 +465,17 @@ getTransformedFuncCallArgs(CallInst &OrigCall,
   std::vector<Value *> NewCallOps;
 
   // Loop over the operands, inserting loads in the caller.
-  for (auto &&[OrigArg, Kind] :
-       zip(IGCLLVM::args(OrigCall), NewFuncInfo.getArgKinds())) {
+  [[maybe_unused]] unsigned OmittedCount = 0;
+  for (auto &&[OrigArg, OrigArgData] :
+       zip(IGCLLVM::args(OrigCall), NewFuncInfo.getOrigArgInfo())) {
+    auto Kind = OrigArgData.getKind();
     switch (Kind) {
     case ArgKind::General:
       NewCallOps.push_back(OrigArg.get());
+      break;
+    case ArgKind::CopyOut:
+      // The argument is omitted
+      ++OmittedCount;
       break;
     default: {
       IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyIn || Kind == ArgKind::CopyInOut,
@@ -271,9 +490,10 @@ getTransformedFuncCallArgs(CallInst &OrigCall,
     }
   }
 
-  IGC_ASSERT_MESSAGE(NewCallOps.size() == IGCLLVM::arg_size(OrigCall),
+  IGC_ASSERT_MESSAGE(NewCallOps.size() ==
+                         IGCLLVM::arg_size(OrigCall) - OmittedCount,
                      "varargs are unexpected");
-  return std::move(NewCallOps);
+  return NewCallOps;
 }
 
 static AttributeList
@@ -281,55 +501,38 @@ inheritCallAttributes(CallInst &OrigCall, int NumOrigFuncArgs,
                       const TransformedFuncInfo &NewFuncInfo) {
   IGC_ASSERT_MESSAGE(OrigCall.getNumArgOperands() == NumOrigFuncArgs,
                      "varargs aren't supported");
-  AttributeList NewCallAttrs;
 
   const AttributeList &CallPAL = OrigCall.getAttributes();
   auto &Context = OrigCall.getContext();
-  for (auto ArgInfo : enumerate(NewFuncInfo.getArgKinds())) {
-    if (ArgInfo.value() == ArgKind::General) {
-      AttributeSet attrs =
-          OrigCall.getAttributes().getParamAttributes(ArgInfo.index());
-      if (attrs.hasAttributes()) {
-        AttrBuilder B(attrs);
-        NewCallAttrs =
-            NewCallAttrs.addParamAttributes(Context, ArgInfo.index(), B);
-      }
-    }
-  }
+  AttributeList NewCallAttrs = NewFuncInfo.gatherAttributes(Context, CallPAL);
 
   for (auto DiscardInfo : NewFuncInfo.getDiscardedParameterAttrs()) {
     NewCallAttrs = NewCallAttrs.removeParamAttribute(
         Context, DiscardInfo.ArgIndex, DiscardInfo.Attr);
   }
 
-  // Add any function attributes.
-  if (CallPAL.hasAttributes(AttributeList::FunctionIndex)) {
-    AttrBuilder B(CallPAL.getFnAttributes());
-    NewCallAttrs =
-        NewCallAttrs.addAttributes(Context, AttributeList::FunctionIndex, B);
-  }
-
-  return std::move(NewCallAttrs);
+  return NewCallAttrs;
 }
 
 static Value *extractValueFromRet(Value &RetVal, int RetIdx,
                                   IRBuilder<> &Builder,
                                   const TransformedFuncInfo &NewFuncInfo,
                                   const Twine &Name = "") {
-  if (NewFuncInfo.getRetToArgInfo().Map.size() == 1) {
+  if (NewFuncInfo.getRetToArgInfo().size() == 1) {
     // Structure of one element, omit struct.
     return &RetVal;
   }
-  IGC_ASSERT_MESSAGE(NewFuncInfo.getRetToArgInfo().Map.size() > 1,
+  IGC_ASSERT_MESSAGE(NewFuncInfo.getRetToArgInfo().size() > 1,
                      "Unexpected types number");
   return Builder.CreateExtractValue(&RetVal, RetIdx, Name);
 }
 
-static void handleRetValuePortion(int RetIdx, int ArgIdx, CallInst &OrigCall,
-                                  CallInst &NewCall, IRBuilder<> &Builder,
+static void handleRetValuePortion(int RetIdx, RetToArgLink ArgInfo,
+                                  CallInst &OrigCall, CallInst &NewCall,
+                                  IRBuilder<> &Builder,
                                   const TransformedFuncInfo &NewFuncInfo) {
   // Original return value.
-  if (ArgIdx == RetToArgInfo::OrigRetNoArg) {
+  if (ArgInfo.isOrigRet()) {
     IGC_ASSERT_MESSAGE(RetIdx == 0, "only zero element of returned value can "
                                     "be original function argument");
     auto *ExtractedVal =
@@ -338,18 +541,26 @@ static void handleRetValuePortion(int RetIdx, int ArgIdx, CallInst &OrigCall,
     return;
   }
   Value *OutVal = extractValueFromRet(NewCall, RetIdx, Builder, NewFuncInfo);
-  if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx) {
+  if (ArgInfo.isGlobalArg()) {
+    // Globals are at new indices.
+    int NewIdx = ArgInfo.getNewIdx();
+    IGC_ASSERT_MESSAGE(NewIdx >=
+                           NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx,
+                       "Corrupted global arg position!");
     auto Kind =
-        NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(ArgIdx).Kind;
+        NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(NewIdx).Kind;
     IGC_ASSERT_MESSAGE(
         Kind == GlobalArgKind::ByValueInOut,
         "only passed by value localized global should be copied-out");
     Builder.CreateStore(
-        OutVal, NewFuncInfo.getGlobalArgsInfo().getGlobalForArgNo(ArgIdx));
+        OutVal, NewFuncInfo.getGlobalArgsInfo().getGlobalForArgNo(NewIdx));
   } else {
-    IGC_ASSERT_MESSAGE(NewFuncInfo.getArgKinds()[ArgIdx] == ArgKind::CopyInOut,
-                       "only copy in-out args are expected");
-    Builder.CreateStore(OutVal, OrigCall.getArgOperand(ArgIdx));
+    // Use orig index: working with orig call's argument
+    int OrigArgIdx = ArgInfo.getOrigIdx();
+    auto Kind = NewFuncInfo.getOrigArgInfo()[OrigArgIdx].getKind();
+    IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyInOut || Kind == ArgKind::CopyOut,
+                       "only copy (in-)out args are expected");
+    Builder.CreateStore(OutVal, OrigCall.getArgOperand(OrigArgIdx));
   }
 }
 
@@ -398,22 +609,21 @@ static std::vector<Value *> handleGlobalArgs(Function &NewFunc,
 static Value *insertValueToRet(Value &Val, Value &RetVal, int RetIdx,
                                IRBuilder<> &Builder,
                                const TransformedFuncInfo &NewFuncInfo) {
-  if (NewFuncInfo.getRetToArgInfo().Map.size() == 1) {
+  if (NewFuncInfo.getRetToArgInfo().size() == 1) {
     // Structure of one element, omit struct.
     return &Val;
   }
-  IGC_ASSERT_MESSAGE(NewFuncInfo.getRetToArgInfo().Map.size() > 1,
+  IGC_ASSERT_MESSAGE(NewFuncInfo.getRetToArgInfo().size() > 1,
                      "Unexpected types number");
   return Builder.CreateInsertValue(&RetVal, &Val, RetIdx);
 }
 
-static Value *
-appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
-                                ReturnInst &OrigRet, IRBuilder<> &Builder,
-                                const TransformedFuncInfo &NewFuncInfo,
-                                const std::vector<Value *> &OrigArgReplacements,
-                                std::vector<Value *> &LocalizedGlobals) {
-  if (ArgIdx == RetToArgInfo::OrigRetNoArg) {
+static Value *appendTransformedFuncRetPortion(
+    Value &NewRetVal, int RetIdx, RetToArgLink ArgInfo, ReturnInst &OrigRet,
+    IRBuilder<> &Builder, const TransformedFuncInfo &NewFuncInfo,
+    const std::vector<Value *> &OrigArgReplacements,
+    std::vector<Value *> &LocalizedGlobals) {
+  if (ArgInfo.isOrigRet()) {
     IGC_ASSERT_MESSAGE(RetIdx == 0,
                        "original return value must be at zero index");
     Value *OrigRetVal = OrigRet.getReturnValue();
@@ -423,14 +633,19 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
     return insertValueToRet(*OrigRetVal, NewRetVal, RetIdx, Builder,
                             NewFuncInfo);
   }
-  if (ArgIdx >= NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx) {
+  if (ArgInfo.isGlobalArg()) {
+    // Globals are at new indices.
+    int NewIdx = ArgInfo.getNewIdx();
+    IGC_ASSERT_MESSAGE(NewIdx >=
+                           NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx,
+                       "Corrupted global arg position!");
     auto Kind =
-        NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(ArgIdx).Kind;
+        NewFuncInfo.getGlobalArgsInfo().getGlobalInfoForArgNo(NewIdx).Kind;
     IGC_ASSERT_MESSAGE(
         Kind == GlobalArgKind::ByValueInOut,
         "only passed by value localized global should be copied-out");
     Value *LocalizedGlobal =
-        LocalizedGlobals[ArgIdx -
+        LocalizedGlobals[NewIdx -
                          NewFuncInfo.getGlobalArgsInfo().FirstGlobalArgIdx];
     IGC_ASSERT_MESSAGE(
         isa<AllocaInst>(LocalizedGlobal),
@@ -440,9 +655,12 @@ appendTransformedFuncRetPortion(Value &NewRetVal, int RetIdx, int ArgIdx,
     return insertValueToRet(*LocalizedGlobalVal, NewRetVal, RetIdx, Builder,
                             NewFuncInfo);
   }
-  IGC_ASSERT_MESSAGE(NewFuncInfo.getArgKinds()[ArgIdx] == ArgKind::CopyInOut,
-                     "Only copy in-out values are expected");
-  Value *CurRetByPtr = OrigArgReplacements[ArgIdx];
+  // Use orig index: working with orig call's argument replacement.
+  int OrigIdx = ArgInfo.getOrigIdx();
+  auto Kind = NewFuncInfo.getOrigArgInfo()[OrigIdx].getKind();
+  IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyInOut || Kind == ArgKind::CopyOut,
+                     "Only copy (in-)out values are expected");
+  Value *CurRetByPtr = OrigArgReplacements[OrigIdx];
   IGC_ASSERT_MESSAGE(isa<PointerType>(CurRetByPtr->getType()),
                      "a pointer is expected");
   if (isa<AddrSpaceCastInst>(CurRetByPtr))
@@ -543,7 +761,7 @@ CallInst *vc::FuncUsersUpdater::updateFuncDirectUser(CallInst &OrigCall) {
       &NewFuncCGN);
 
   IRBuilder<> Builder(&OrigCall);
-  for (auto RetToArg : enumerate(NewFuncInfo.getRetToArgInfo().Map))
+  for (auto RetToArg : enumerate(NewFuncInfo.getRetToArgInfo()))
     handleRetValuePortion(RetToArg.index(), RetToArg.value(), OrigCall,
                           *NewCall, Builder, NewFuncInfo);
   return NewCall;
@@ -567,21 +785,28 @@ std::vector<Value *> vc::FuncBodyTransfer::handleTransformedFuncArgs() {
   Instruction *InsertPt = &*(NewFunc.begin()->getFirstInsertionPt());
 
   std::transform(
-      NewFuncInfo.getArgKinds().begin(), NewFuncInfo.getArgKinds().end(),
-      NewFunc.arg_begin(), std::back_inserter(OrigArgReplacements),
-      [InsertPt](ArgKind Kind, Argument &NewArg) -> Value * {
-        switch (Kind) {
+      NewFuncInfo.getOrigArgInfo().begin(), NewFuncInfo.getOrigArgInfo().end(),
+      std::back_inserter(OrigArgReplacements),
+      [InsertPt, this](const auto &OrigArgData) -> Value * {
+        switch (OrigArgData.getKind()) {
         case ArgKind::CopyIn:
         case ArgKind::CopyInOut: {
-          auto *Alloca = new AllocaInst(NewArg.getType(),
+          auto *NewArg = IGCLLVM::getArg(NewFunc, OrigArgData.getNewIdx());
+          auto *Alloca = new AllocaInst(NewArg->getType(),
                                         vc::AddrSpace::Private, "", InsertPt);
-          new StoreInst{&NewArg, Alloca, InsertPt};
+          new StoreInst{NewArg, Alloca, InsertPt};
           return Alloca;
         }
+        case ArgKind::CopyOut: {
+          IGC_ASSERT_MESSAGE(OrigArgData.isOmittedArg(),
+                             "Unexpected existing arg");
+          return new AllocaInst(OrigArgData.getTransformedOrigType(),
+                                AddrSpace::Private, "", InsertPt);
+        }
         default:
-          IGC_ASSERT_MESSAGE(Kind == ArgKind::General,
+          IGC_ASSERT_MESSAGE(OrigArgData.getKind() == ArgKind::General,
                              "unexpected argument kind");
-          return &NewArg;
+          return IGCLLVM::getArg(NewFunc, OrigArgData.getNewIdx());
         }
       });
 
@@ -612,7 +837,7 @@ std::vector<Value *> vc::FuncBodyTransfer::handleTransformedFuncArgs() {
     OrigArg.replaceAllUsesWith(OrigArgReplacement);
   }
 
-  return std::move(OrigArgReplacements);
+  return OrigArgReplacements;
 }
 
 void vc::FuncBodyTransfer::handleTransformedFuncRet(
@@ -620,7 +845,7 @@ void vc::FuncBodyTransfer::handleTransformedFuncRet(
     std::vector<Value *> &LocalizedGlobals) {
   Type *NewRetTy = NewFunc.getReturnType();
   IRBuilder<> Builder(&OrigRet);
-  auto &&RetToArg = enumerate(NewFuncInfo.getRetToArgInfo().Map);
+  auto &&RetToArg = enumerate(NewFuncInfo.getRetToArgInfo());
   Value *NewRetVal = std::accumulate(
       RetToArg.begin(), RetToArg.end(), cast<Value>(UndefValue::get(NewRetTy)),
       [&OrigRet, &Builder, &OrigArgReplacements, &LocalizedGlobals,
