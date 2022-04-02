@@ -441,55 +441,26 @@ Output:
 \*****************************************************************************/
 static const char* ConvertType(const char* flagType)
 {
-    if (strcmp(flagType, "int") == 0)
+    if(strcmp(flagType, "bool") == 0)
+    {
+        return "bool";
+    }
+    if((strcmp(flagType, "int") == 0) || (strcmp(flagType, "DWORD") == 0))
+    {
         return "DWORD";
-    else if(strcmp(flagType, "debugString") == 0)
+    }
+    if(strcmp(flagType, "debugString") == 0)
+    {
         return "string";
+    }
     return flagType;
 }
 
-template <typename T>
-static std::string ConvertDefault(
-    const std::string &Type, T Val, const std::string &ValStr)
-{
-    if (Type == "bool")
-    {
-        return std::to_string(static_cast<bool>(Val) ? 1U : 0U);
-    }
-    else if (Type == "string")
-    {
-        if (Val == 0)
-            return "";
-        else if constexpr (std::is_convertible_v<T, std::string>)
-            return Val;
-    }
-    return ValStr;
-}
-
-static void DumpIGCRegistryKeyDefinitions(
-    const char* registryKeyPath, const char* xmlPath)
-{
-#ifdef _WIN32
-    // Create the directory path
-    iSTD::DirectoryCreate("C:\\Intel");
-    iSTD::DirectoryCreate("C:\\Intel\\IGfx");
-    iSTD::DirectoryCreate("C:\\Intel\\IGfx\\GfxRegistryManager");
-    iSTD::DirectoryCreate("C:\\Intel\\IGfx\\GfxRegistryManager\\Keys");
-
-    // Create the XML file to hold the debug variable definitions
-    FILE* fp = fopen(xmlPath, "w");
-
-    if (fp == NULL)
-    {
-        return;
-    }
-
-#define DECLARE_IGC_REGKEY( dataType, regkeyName, defaultValue, descriptionText, releaseMode )             \
-    fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\" default=\"%s\" description=\"%s\" />\n", \
-        #regkeyName,                                                                                       \
-        ConvertType(#dataType),                                                                            \
-        registryKeyPath,                                                                                   \
-        ConvertDefault(ConvertType(#dataType), defaultValue, #defaultValue).c_str(),                       \
+#define DECLARE_IGC_REGKEY( dataType, regkeyName, defaultValue, descriptionText, releaseMode ) \
+    fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\" description=\"%s\" />\n",    \
+        #regkeyName,                                                                           \
+        ConvertType(#dataType),                                                                \
+        "HKLM\\" IGC_REGISTRY_KEY,                                                             \
         descriptionText);
 #define DECLARE_IGC_GROUP( groupName ) \
     if(!firstGroup)                    \
@@ -499,6 +470,23 @@ static void DumpIGCRegistryKeyDefinitions(
     firstGroup = false;                \
     fprintf(fp, "  <Group name=\"%s\">\n", groupName);
 
+void DumpIGCRegistryKeyDefinitions()
+{
+#ifdef _WIN32
+    // Create the directory path
+
+    iSTD::DirectoryCreate("C:\\Intel");
+    iSTD::DirectoryCreate("C:\\Intel\\IGfx");
+    iSTD::DirectoryCreate("C:\\Intel\\IGfx\\GfxRegistryManager");
+    iSTD::DirectoryCreate("C:\\Intel\\IGfx\\GfxRegistryManager\\Keys");
+
+    // Create the XML file to hold the debug variable definitions
+    FILE* fp = fopen("C:\\Intel\\IGfx\\GfxRegistryManager\\Keys\\IGC.xml", "w");
+
+    if (fp == NULL)
+    {
+        return;
+    }
     bool firstGroup = true;
     // Generate the XML
     fprintf(fp, "<RegistryKeys>\n");
@@ -508,41 +496,68 @@ static void DumpIGCRegistryKeyDefinitions(
 
     fclose(fp);
     fp = NULL;
-
+#endif
+}
 #undef DECLARE_IGC_REGKEY
 #undef DECLARE_IGC_GROUP
 
-#endif // _WIN32
-}
-
-void DumpIGCRegistryKeyDefinitions()
-{
-    constexpr char* registryKeyPath = "HKLM\\" IGC_REGISTRY_KEY;
-    constexpr char* xmlPath =
-        "C:\\Intel\\IGfx\\GfxRegistryManager\\Keys\\IGC.xml";
-
-    DumpIGCRegistryKeyDefinitions(registryKeyPath, xmlPath);
-}
-
 void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction)
 {
+#ifdef _WIN32
+    // Create the directory path
+
+    iSTD::DirectoryCreate("C:\\Intel");
+    iSTD::DirectoryCreate("C:\\Intel\\IGfx");
+    iSTD::DirectoryCreate("C:\\Intel\\IGfx\\GfxRegistryManager");
+    iSTD::DirectoryCreate("C:\\Intel\\IGfx\\GfxRegistryManager\\Keys");
+
     if (driverRegistryPath.empty())
     {
         IGC_ASSERT_MESSAGE(0, "Failed to find the driver registry path, cannot create the debug variable XML file.");
         return;
     }
 
-    const std::string registryKeyPath =
-        "HKLM\\SYSTEM\\ControlSet001\\Control\\Class\\" + driverRegistryPath + "\\IGC";
+    std::string registryKeyPath = "HKLM\\SYSTEM\\ControlSet001\\Control\\Class\\" + driverRegistryPath + "\\IGC";
 
-    const std::string xmlPath =
-        "C:\\Intel\\IGfx\\GfxRegistryManager\\Keys\\IGC." +
-        std::to_string(pciBus)      + "." +
-        std::to_string(pciDevice)   + "." +
-        std::to_string(pciFunction) + ".xml";
+#define DECLARE_IGC_REGKEY( dataType, regkeyName, defaultValue, descriptionText, releaseMode ) \
+    fprintf(fp, "    <Key name=\"%s\" type=\"%s\" location=\"%s\" description=\"%s\" />\n",    \
+        #regkeyName,                                                                           \
+        ConvertType(#dataType),                                                                \
+        registryKeyPath.c_str(),                                                               \
+        descriptionText);
 
-    DumpIGCRegistryKeyDefinitions(registryKeyPath.c_str(), xmlPath.c_str());
+#define DECLARE_IGC_GROUP( groupName ) \
+    if(!firstGroup)                    \
+    {                                  \
+        fprintf(fp, "  </Group>\n");   \
+    }                                  \
+    firstGroup = false;                \
+    fprintf(fp, "  <Group name=\"%s\">\n", groupName);
+
+    std::string xmlPath = "C:\\Intel\\IGfx\\GfxRegistryManager\\Keys\\IGC." + std::to_string(pciBus) + "." + std::to_string(pciDevice) + "." + std::to_string(pciFunction) + ".xml";
+
+    // Create the XML file to hold the debug variable definitions
+    FILE* fp = fopen(xmlPath.c_str(), "w");
+
+    if (fp == NULL)
+    {
+        return;
+    }
+    bool firstGroup = true;
+    // Generate the XML
+    fprintf(fp, "<RegistryKeys>\n");
+#include "igc_regkeys.h"
+    fprintf(fp, "  </Group>\n");
+    fprintf(fp, "</RegistryKeys>\n");
+
+    fclose(fp);
+    fp = NULL;
+#endif
 }
+
+#undef DECLARE_IGC_REGKEY
+#undef DECLARE_IGC_GROUP
+
 
 static void checkAndSetIfKeyHasNoDefaultValue(SRegKeyVariableMetaData* pRegKeyVariable)
 {
