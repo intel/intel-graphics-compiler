@@ -12,17 +12,24 @@ SPDX-License-Identifier: MIT
 using namespace IGC;
 ///////////////////// Vertex Properties ///////////////////////////////////////
 GeometryShaderProperties::VertexProperties::VertexProperties()
-    : m_hasClipCullDistances(false)
+    : m_hasClipDistances(false)
+    , m_hasCullDistances(false)
     , m_hasVertexHeader(true)
     , m_maxAttributeCount(0)
     , m_clipDistanceMask(0)
     , m_cullDistanceMask(0)
 {}
 
-void GeometryShaderProperties::VertexProperties::HasClipCullDistances(bool hasClipCullDistances)
+void GeometryShaderProperties::VertexProperties::HasClipDistances(bool hasClipDistances)
 {
-    m_hasClipCullDistances = hasClipCullDistances;
+    m_hasClipDistances = hasClipDistances;
 }
+
+void GeometryShaderProperties::VertexProperties::HasCullDistances(bool hasCullDistances)
+{
+    m_hasCullDistances = hasCullDistances;
+}
+
 
 void GeometryShaderProperties::VertexProperties::MaxAttributeCount(unsigned int maxAttributeCount)
 {
@@ -46,7 +53,7 @@ void GeometryShaderProperties::VertexProperties::HasVertexHeader(bool hasVertexH
 
 OctEltUnit GeometryShaderProperties::VertexProperties::HeaderSize() const
 {
-    return OctEltUnit(!m_hasVertexHeader ? 0 : HasClipCullDistances() ? 2 : 1);
+    return OctEltUnit(!m_hasVertexHeader ? 0 : HasClipDistances() || HasCullDistances() ? 2 : 1);
 }
 
 QuadEltUnit GeometryShaderProperties::VertexProperties::Size() const
@@ -55,9 +62,14 @@ QuadEltUnit GeometryShaderProperties::VertexProperties::Size() const
     return QuadEltUnit(numAttributesPadded) + HeaderSize();
 }
 
-bool GeometryShaderProperties::VertexProperties::HasClipCullDistances() const
+bool GeometryShaderProperties::VertexProperties::HasClipDistances() const
 {
-    return m_hasClipCullDistances;
+    return m_hasClipDistances;
+}
+
+bool GeometryShaderProperties::VertexProperties::HasCullDistances() const
+{
+    return m_hasCullDistances;
 }
 
 unsigned int GeometryShaderProperties::VertexProperties::ClipDistanceMask() const
