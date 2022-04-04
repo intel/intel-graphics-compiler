@@ -37,12 +37,186 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/XeHPSIPCSRDebugBindless.h"
 #include "common/SIPKernels/XeHPGSIPCSRDebug.h"
 #include "common/SIPKernels/XeHPGSIPCSRDebugBindless.h"
+#include "common/SIPKernels/XeHPCSIPCSRDebugBindless.h"
 
 using namespace llvm;
 using namespace USC;
 
 namespace SIP
 {
+
+// Debug surface area for all XeHPC+ architectures
+struct XeHPCDebugSurfaceLayout
+{
+    // The *_ALIGN fields below are padding of the SIP between
+    // the registers set.
+    static constexpr size_t GR_COUNT = 128;
+    static constexpr size_t GR_ELEMENTS = 1;
+    static constexpr size_t GR_ELEMENT_SIZE = 64;
+    static constexpr size_t GR_ALIGN = 0;
+
+    static constexpr size_t A0_COUNT = 1;
+    static constexpr size_t A0_ELEMENTS = 16;
+    static constexpr size_t A0_ELEMENT_SIZE = 2;
+    static constexpr size_t A0_ALIGN = 0;
+
+    static constexpr size_t F_COUNT = 4;
+    static constexpr size_t F_ELEMENTS = 2;
+    static constexpr size_t F_ELEMENT_SIZE = 2;
+    static constexpr size_t F_ALIGN = 12;
+
+    static constexpr size_t EXEC_MASK_COUNT = 1;
+    static constexpr size_t EXEC_MASK_ELEMENTS = 1;
+    static constexpr size_t EXEC_MASK_ELEMENT_SIZE = 4;
+    static constexpr size_t EXEC_MASK_ALIGN = 0;
+
+    static constexpr size_t SR_COUNT = 2;
+    static constexpr size_t SR_ELEMENTS = 4;
+    static constexpr size_t SR_ELEMENT_SIZE = 4;
+    static constexpr size_t SR_ALIGN = 0;
+
+    static constexpr size_t CR_COUNT = 1;
+    static constexpr size_t CR_ELEMENTS = 4;
+    static constexpr size_t CR_ELEMENT_SIZE = 4;
+    static constexpr size_t CR_ALIGN = 16;
+
+    static constexpr size_t IP_COUNT = 1;
+    static constexpr size_t IP_ELEMENTS = 1;
+    static constexpr size_t IP_ELEMENT_SIZE = 4;
+    static constexpr size_t IP_ALIGN = 28;
+
+    static constexpr size_t N_COUNT = 1;
+    static constexpr size_t N_ELEMENTS = 3;
+    static constexpr size_t N_ELEMENT_SIZE = 4;
+    static constexpr size_t N_ALIGN = 20;
+
+    static constexpr size_t TDR_COUNT = 1;
+    static constexpr size_t TDR_ELEMENTS = 8;
+    static constexpr size_t TDR_ELEMENT_SIZE = 2;
+    static constexpr size_t TDR_ALIGN = 48;
+
+    static constexpr size_t ACC_COUNT = 4;
+    static constexpr size_t ACC_ELEMENTS = 16;
+    static constexpr size_t ACC_ELEMENT_SIZE = 4;
+    static constexpr size_t ACC_ALIGN = 0;
+
+    static constexpr size_t MME_COUNT = 8;
+    static constexpr size_t MME_ELEMENTS = 16;
+    static constexpr size_t MME_ELEMENT_SIZE = 4;
+    static constexpr size_t MME_ALIGN = 0;
+
+    static constexpr size_t TM_COUNT = 1;
+    static constexpr size_t TM_ELEMENTS = 5;
+    static constexpr size_t TM_ELEMENT_SIZE = 4;
+    static constexpr size_t TM_ALIGN = 12;
+
+    static constexpr size_t CE_COUNT = 1;
+    static constexpr size_t CE_ELEMENTS = 1;
+    static constexpr size_t CE_ELEMENT_SIZE = 4;
+    static constexpr size_t CE_ALIGN = 12;
+
+    static constexpr size_t SP_COUNT = 1;
+    static constexpr size_t SP_ELEMENTS = 2;
+    static constexpr size_t SP_ELEMENT_SIZE = 8;
+    static constexpr size_t SP_ALIGN = 0;
+
+    static constexpr size_t DBG_COUNT = 1;
+    static constexpr size_t DBG_ELEMENTS = 1;
+    static constexpr size_t DBG_ELEMENT_SIZE = 4;
+    static constexpr size_t DBG_ALIGN = 0;
+
+    static constexpr size_t VERSION_COUNT = 1;
+    static constexpr size_t VERSION_ELEMENTS = 1;
+    static constexpr size_t VERSION_ELEMENT_SIZE = 20;
+    static constexpr size_t VERSION_ALIGN = 8;
+
+    static constexpr size_t SIP_CMD_COUNT = 1;
+    static constexpr size_t SIP_CMD_ELEMENTS = 1;
+    static constexpr size_t SIP_CMD_ELEMENT_SIZE = 128;
+    static constexpr size_t SIP_CMD_ALIGN = 0;
+
+    uint8_t grf[GR_COUNT * GR_ELEMENTS * GR_ELEMENT_SIZE + GR_ALIGN];
+    uint8_t a0[A0_COUNT * A0_ELEMENTS * A0_ELEMENT_SIZE + A0_ALIGN];
+    uint8_t f[F_COUNT * F_ELEMENTS * F_ELEMENT_SIZE + F_ALIGN];
+    uint8_t execmask[EXEC_MASK_COUNT * EXEC_MASK_ELEMENTS * EXEC_MASK_ELEMENT_SIZE + EXEC_MASK_ALIGN];
+    uint8_t sr[SR_COUNT * SR_ELEMENTS * SR_ELEMENT_SIZE + SR_ALIGN];
+    uint8_t cr[CR_COUNT * CR_ELEMENTS * CR_ELEMENT_SIZE + CR_ALIGN];
+    uint8_t ip[IP_COUNT * IP_ELEMENTS * IP_ELEMENT_SIZE + IP_ALIGN];
+    uint8_t n[N_COUNT * N_ELEMENTS * N_ELEMENT_SIZE + N_ALIGN];
+    uint8_t tdr[TDR_COUNT * TDR_ELEMENTS * TDR_ELEMENT_SIZE + TDR_ALIGN];
+    uint8_t acc[ACC_COUNT * ACC_ELEMENTS * ACC_ELEMENT_SIZE + ACC_ALIGN];
+    uint8_t mme[MME_COUNT * MME_ELEMENTS * MME_ELEMENT_SIZE + MME_ALIGN];
+    uint8_t tm[TM_COUNT * TM_ELEMENTS * TM_ELEMENT_SIZE + TM_ALIGN];
+    uint8_t ce[CE_COUNT * CE_ELEMENTS * CE_ELEMENT_SIZE + CE_ALIGN];
+    uint8_t sp[SP_COUNT * SP_ELEMENTS * SP_ELEMENT_SIZE + SP_ALIGN];
+    uint8_t dbg[DBG_COUNT * DBG_ELEMENTS * DBG_ELEMENT_SIZE + DBG_ALIGN];
+    uint8_t version[VERSION_COUNT * VERSION_ELEMENTS * VERSION_ELEMENT_SIZE + VERSION_ALIGN];
+    uint8_t sip_cmd[SIP_CMD_COUNT * SIP_CMD_ELEMENTS * SIP_CMD_ELEMENT_SIZE + SIP_CMD_ALIGN];
+};
+
+static struct StateSaveAreaHeader XeHPCSIPCSRDebugBindlessDebugHeader =
+{
+    {"tssarea", 0, {2, 0, 0}, sizeof(StateSaveAreaHeader) / 8, {0, 0, 0}},  // versionHeader
+    {
+        // regHeader
+        0,                               // num_slices
+        0,                               // num_subslices_per_slice
+        0,                               // num_eus_per_subslice
+        0,                               // num_threads_per_eu
+        0,                               // state_area_offset
+        0x2600,                          // state_save_size
+        0,                               // slm_area_offset
+        0,                               // slm_bank_size
+        0,                               // slm_bank_valid
+        offsetof(struct XeHPCDebugSurfaceLayout, version),  // sr_magic_offset
+        {offsetof(struct XeHPCDebugSurfaceLayout, grf), XeHPCDebugSurfaceLayout::GR_COUNT,
+         XeHPCDebugSurfaceLayout::GR_ELEMENTS* XeHPCDebugSurfaceLayout::GR_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::GR_ELEMENTS* XeHPCDebugSurfaceLayout::GR_ELEMENT_SIZE},  // grf
+        {offsetof(struct XeHPCDebugSurfaceLayout, a0), XeHPCDebugSurfaceLayout::A0_COUNT,
+         XeHPCDebugSurfaceLayout::A0_ELEMENTS* XeHPCDebugSurfaceLayout::A0_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::A0_ELEMENTS* XeHPCDebugSurfaceLayout::A0_ELEMENT_SIZE},  // addr
+        {offsetof(struct XeHPCDebugSurfaceLayout, f), XeHPCDebugSurfaceLayout::F_COUNT,
+         XeHPCDebugSurfaceLayout::F_ELEMENTS* XeHPCDebugSurfaceLayout::F_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::F_ELEMENTS* XeHPCDebugSurfaceLayout::F_ELEMENT_SIZE},  // flag
+        {offsetof(struct XeHPCDebugSurfaceLayout, execmask), XeHPCDebugSurfaceLayout::EXEC_MASK_COUNT,
+         XeHPCDebugSurfaceLayout::EXEC_MASK_ELEMENTS* XeHPCDebugSurfaceLayout::EXEC_MASK_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::EXEC_MASK_ELEMENTS* XeHPCDebugSurfaceLayout::EXEC_MASK_ELEMENT_SIZE},  // emask
+        {offsetof(struct XeHPCDebugSurfaceLayout, sr), XeHPCDebugSurfaceLayout::SR_COUNT,
+         XeHPCDebugSurfaceLayout::SR_ELEMENTS* XeHPCDebugSurfaceLayout::SR_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::SR_ELEMENTS* XeHPCDebugSurfaceLayout::SR_ELEMENT_SIZE},  // sr
+        {offsetof(struct XeHPCDebugSurfaceLayout, cr), XeHPCDebugSurfaceLayout::CR_COUNT,
+         XeHPCDebugSurfaceLayout::CR_ELEMENTS* XeHPCDebugSurfaceLayout::CR_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::CR_ELEMENTS* XeHPCDebugSurfaceLayout::CR_ELEMENT_SIZE},  // cr
+        {offsetof(struct XeHPCDebugSurfaceLayout, n), XeHPCDebugSurfaceLayout::N_COUNT,
+         XeHPCDebugSurfaceLayout::N_ELEMENTS* XeHPCDebugSurfaceLayout::N_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::N_ELEMENTS* XeHPCDebugSurfaceLayout::N_ELEMENT_SIZE},  // notification
+        {offsetof(struct XeHPCDebugSurfaceLayout, tdr), XeHPCDebugSurfaceLayout::TDR_COUNT,
+         XeHPCDebugSurfaceLayout::TDR_ELEMENTS* XeHPCDebugSurfaceLayout::TDR_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::TDR_ELEMENTS* XeHPCDebugSurfaceLayout::TDR_ELEMENT_SIZE},  // tdr
+        {offsetof(struct XeHPCDebugSurfaceLayout, acc), XeHPCDebugSurfaceLayout::ACC_COUNT,
+         XeHPCDebugSurfaceLayout::ACC_ELEMENTS* XeHPCDebugSurfaceLayout::ACC_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::ACC_ELEMENTS* XeHPCDebugSurfaceLayout::ACC_ELEMENT_SIZE},  // acc
+        {offsetof(struct XeHPCDebugSurfaceLayout, mme), XeHPCDebugSurfaceLayout::MME_COUNT,
+         XeHPCDebugSurfaceLayout::MME_ELEMENTS* XeHPCDebugSurfaceLayout::MME_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::MME_ELEMENTS* XeHPCDebugSurfaceLayout::MME_ELEMENT_SIZE},  // mme
+        {offsetof(struct XeHPCDebugSurfaceLayout, ce), XeHPCDebugSurfaceLayout::CE_COUNT,
+         XeHPCDebugSurfaceLayout::CE_ELEMENTS* XeHPCDebugSurfaceLayout::CE_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::CE_ELEMENTS* XeHPCDebugSurfaceLayout::CE_ELEMENT_SIZE},  // ce
+        {offsetof(struct XeHPCDebugSurfaceLayout, sp), XeHPCDebugSurfaceLayout::SP_COUNT,
+         XeHPCDebugSurfaceLayout::SP_ELEMENTS* XeHPCDebugSurfaceLayout::SP_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::SP_ELEMENTS* XeHPCDebugSurfaceLayout::SP_ELEMENT_SIZE},  // sp
+        {offsetof(struct XeHPCDebugSurfaceLayout, sip_cmd), XeHPCDebugSurfaceLayout::SIP_CMD_COUNT,
+         XeHPCDebugSurfaceLayout::SIP_CMD_ELEMENTS* XeHPCDebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::SIP_CMD_ELEMENTS* XeHPCDebugSurfaceLayout::SIP_CMD_ELEMENT_SIZE},  // cmd
+        {offsetof(struct XeHPCDebugSurfaceLayout, tm), XeHPCDebugSurfaceLayout::TM_COUNT,
+         XeHPCDebugSurfaceLayout::TM_ELEMENTS* XeHPCDebugSurfaceLayout::TM_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::TM_ELEMENTS* XeHPCDebugSurfaceLayout::TM_ELEMENT_SIZE},  // tm
+        {0, 0, 0, 0},                                  // FC
+        {offsetof(struct XeHPCDebugSurfaceLayout, dbg), XeHPCDebugSurfaceLayout::DBG_COUNT,
+         XeHPCDebugSurfaceLayout::DBG_ELEMENTS* XeHPCDebugSurfaceLayout::DBG_ELEMENT_SIZE * 8,
+         XeHPCDebugSurfaceLayout::DBG_ELEMENTS* XeHPCDebugSurfaceLayout::DBG_ELEMENT_SIZE}  // dbg
+    }
+};
 
 // Debug surface area for all GEN8+ architectures
 struct DebugSurfaceLayout
@@ -443,6 +617,26 @@ void populateSIPKernelInfo(const IGC::CPlatform &platform,
 
     SIPKernelInfo[XE_HP_CSR] = std::make_tuple((void*)&XeHPSIPCSR, (int)sizeof(XeHPSIPCSR), nullptr, 0);
     SIPKernelInfo[XE_HP_CSR_DEBUG] = std::make_tuple((void*)&XeHPSIPCSRDebug, (int)sizeof(XeHPSIPCSRDebug), nullptr, 0);
+
+    SIPKernelInfo[XE_HPG_CSR_DEBUG] = std::make_tuple((void*)&XeHPGSIPCSRDebug, (int)sizeof(XeHPGSIPCSRDebug), nullptr, 0);
+
+    SIPKernelInfo[XE_HPC_CSR_DEBUG_BINDLESS] = std::make_tuple((void*)&XeHPCSIPCSRDebugBindless,
+		    (int)sizeof(XeHPCSIPCSRDebugBindless), (void*)&XeHPCSIPCSRDebugBindlessDebugHeader,
+		    (int)sizeof(XeHPCSIPCSRDebugBindlessDebugHeader));
+
+    XeHPCSIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu = 0;
+
+    if (sysInfo.EUCount != 0)
+        XeHPCSIPCSRDebugBindlessDebugHeader.regHeader.num_threads_per_eu = (sysInfo.ThreadCount / sysInfo.EUCount);
+
+    if (sizeof(StateSaveAreaHeader) % 16)
+        XeHPCSIPCSRDebugBindlessDebugHeader.regHeader.state_area_offset =
+            16 - sizeof(StateSaveAreaHeader) % 16;
+
+    XeHPCSIPCSRDebugBindlessDebugHeader.regHeader.num_slices = sysInfo.MaxSlicesSupported;
+    XeHPCSIPCSRDebugBindlessDebugHeader.regHeader.num_subslices_per_slice =
+            (sysInfo.MaxSlicesSupported > 0 ? (sysInfo.MaxSubSlicesSupported / sysInfo.MaxSlicesSupported) : sysInfo.MaxSubSlicesSupported);
+    XeHPCSIPCSRDebugBindlessDebugHeader.regHeader.num_eus_per_subslice = sysInfo.MaxEuPerSubSlice;
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
@@ -554,8 +748,12 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 SIPIndex = bindlessMode ? XE_HP_CSR_DEBUG_BINDLESS : XE_HP_CSR_DEBUG;
                 break;
             case IGFX_DG2:
+                SIPIndex =  bindlessMode ? XE_HPG_CSR_DEBUG_BINDLESS : XE_HPG_CSR_DEBUG;
+                break;
+	    // No support for Bindful mode for PVC.
             case IGFX_PVC:
-
+                SIPIndex =  XE_HPC_CSR_DEBUG_BINDLESS;
+                break;
             default:
                 break;
             }

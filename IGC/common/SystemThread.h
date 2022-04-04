@@ -63,6 +63,7 @@ namespace SIP
         XE_HP_CSR_DEBUG_BINDLESS,
         XE_HPG_CSR_DEBUG,
         XE_HPG_CSR_DEBUG_BINDLESS,
+        XE_HPC_CSR_DEBUG_BINDLESS,
         GEN_SIP_MAX_INDEX
     };
 
