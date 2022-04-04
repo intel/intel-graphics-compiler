@@ -483,7 +483,13 @@ public:
     G4_BB* getBB() const { return ddd.getBB(); }
 
     // Run list scheduling.
-    void scheduleBlockForPressure() { SethiUllmanScheduling(); }
+    void scheduleBlockForPressure(bool ForceClustering = false) {
+        auto SaveClustering = config.DoClustering;
+        if (ForceClustering)
+            config.DoClustering = 1;
+        SethiUllmanScheduling();
+        config.DoClustering = SaveClustering;
+    }
     void scheduleBlockForLatency() { LatencyScheduling(); }
 
     // Commit this scheduling if it reduces register pressure.
@@ -617,6 +623,18 @@ bool preRA_Scheduler::run()
                 Changed = true;
                 kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
                                                               this->kernel.getSimdSize());
+            }
+            else if (!config.DoClustering && ddd.getKernel().getSimdSize() != g4::SIMD32)
+            {   // try clustering
+                ddd.reset(false);
+                S.scheduleBlockForPressure(true);
+                if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ false))
+                {
+                    SCHED_DUMP(rp.dump(bb, "After scheduling for presssure, "));
+                    Changed = true;
+                    kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
+                        this->kernel.getSimdSize());
+                }
             }
         }
 
@@ -813,6 +831,18 @@ bool preRA_RegSharing::run()
                 changed = true;
                 kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
                     this->kernel.getSimdSize());
+            }
+            else if (!config.DoClustering && ddd.getKernel().getSimdSize() != g4::SIMD32)
+            {   // try clustering
+                ddd.reset(false);
+                S.scheduleBlockForPressure(true);
+                if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ false))
+                {
+                    SCHED_DUMP(rp.dump(bb, "After scheduling for presssure, "));
+                    changed = true;
+                    kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
+                        this->kernel.getSimdSize());
+                }
             }
         }
 
@@ -1152,20 +1182,19 @@ preNode* SethiUllmanQueue::scheduleClusteringNode()
 
     // Match clustering nodes.
     auto collectClustering = [&](preNode* Node, preNode* predNode) {
-        unsigned SU = Numbers[Node->getID()];
         for (auto& E : predNode->succs()) {
             preNode* N = E.getNode();
-            // Match nodes with the same SU numbers, may not be ready.
-            if (!E.isDataDep() || Numbers[N->getID()] != SU || N->isScheduled)
-                break;
+            // Match nodes may not be ready.
+            if (!E.isDataDep() || N->isScheduled)
+                continue;
             // Do not cluster sends, which may confuse send pairing.
             if (N->getInst() == nullptr || N->getInst()->isSend())
-                break;
+                continue;
             Clusterings.push_back(N);
         }
 
         // Check if the first matching is successful.
-        if (unsigned(Clusterings.size()) == predNode->succ_size() &&
+        if (unsigned(Clusterings.size()) == predNode->NumSuccsLeft &&
             unsigned(Clusterings.size()) >= CLUSTER_SIZE_MIN &&
             unsigned(Clusterings.size()) <= CLUSTER_SIZE_MAX)
             return true;
@@ -1177,13 +1206,13 @@ preNode* SethiUllmanQueue::scheduleClusteringNode()
                 preNode* N = E.getNode();
                 // Only match ready nodes.
                 if (!E.isDataDep() || N->isScheduled || N->NumSuccsLeft)
-                    break;
+                    continue;
                 // Do not cluster sends, which may confuse send pairing.
                 if (N->getInst() == nullptr || N->getInst()->isSend())
-                    break;
+                    continue;
                 Clusterings.push_back(N);
             }
-            if (unsigned(Clusterings.size()) == predNode->succ_size() &&
+            if (unsigned(Clusterings.size()) == predNode->NumSuccsLeft &&
                 unsigned(Clusterings.size()) >= CLUSTER_SIZE_MIN &&
                 unsigned(Clusterings.size()) <= CLUSTER_SIZE_MAX) {
                 return true;
