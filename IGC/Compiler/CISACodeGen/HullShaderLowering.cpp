@@ -353,7 +353,8 @@ namespace IGC
                         instructionToRemove.push_back(inst);
                     }
 
-                    if (IID == GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec)
+                    if (IID == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead ||
+                        IID == GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec)
                     {
                         builder.SetInsertPoint(inst);
 
