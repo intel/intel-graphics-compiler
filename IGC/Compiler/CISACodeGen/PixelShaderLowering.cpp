@@ -405,8 +405,9 @@ void PixelShaderLowering::FindIntrinsicOutput(
         unsigned int location;
         for (location = 0; location < cMaxInputComponents; location++)
         {
-            if (inputComponentsUsed.test(location) == false &&
-                isLinearInterpolation.test(location / 4) == false)
+            bool isLocationSuitable = inputComponentsUsed.test(location) == false &&
+                isLinearInterpolation.test(location / 4) == false;
+            if (isLocationSuitable)
             {
                 break;
             }
