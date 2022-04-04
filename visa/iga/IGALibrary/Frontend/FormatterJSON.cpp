@@ -135,7 +135,6 @@ public:
     void emitInst(const Instruction &i) {
         comments.clear();
 
-        const bool isSend = i.getOpSpec().isSendOrSendsFamily();
         emitIndent();
         emit("{");
         emit("\"kind\":\"I\"");
