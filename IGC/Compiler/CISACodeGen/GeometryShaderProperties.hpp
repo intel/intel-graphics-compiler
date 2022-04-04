@@ -27,10 +27,8 @@ namespace IGC
             VertexProperties();
 
             // ---- setters
-            /// Sets whether the shader has declared output registers with clip distance semantics.
-            void HasClipDistances(bool hasClipDistances);
-            /// Sets whether the shader has declared output registers with cull distance semantics.
-            void HasCullDistances(bool hasCullDistances);
+            /// Sets whether the shader has declared output registers with clip/cull distance semantics.
+            void HasClipCullDistances(bool hasClipDistances);
             /// Sets the maximum count of attribute declared in the shader program.
             void MaxAttributeCount(unsigned int maxAttributeCount);
             /// Sets the bitmask corresponding to which clip distances are in use.
@@ -44,7 +42,7 @@ namespace IGC
 
             // ---- getters
             /// Returns true if the shader declares output registers with clip distance semantics.
-            bool HasClipDistances() const;
+            bool HasClipCullDistances() const;
             /// Returns true if the shader declares output registers with cull distance semantics.
             bool HasCullDistances() const;
             /// Returns the bitmask corresponding to which clip distances are in use.
@@ -63,8 +61,7 @@ namespace IGC
             QuadEltUnit Size() const;
 
         private:
-            bool m_hasClipDistances;
-            bool m_hasCullDistances;
+            bool m_hasClipCullDistances;
             bool m_hasVertexHeader;
             int m_maxAttributeCount;
             unsigned int m_clipDistanceMask;

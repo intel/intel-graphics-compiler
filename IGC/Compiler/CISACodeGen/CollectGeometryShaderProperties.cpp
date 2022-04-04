@@ -121,40 +121,18 @@ void CollectGeometryShaderProperties::ExtractGlobalVariables(llvm::Function& F)
         (llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue()));
     m_gsProps.Input().InstanceCount(instanceCount);
 
-    // Frontend needs to provide information about which clip distances are in use by setting
-    // bitmask value in the global variable GsOutputClipDistanceMask. Least significant bit
-    // means clip plane #0 is used etc until bit 7 that corresponds to clip plane 7.
-    pGlobal = module->getGlobalVariable("GsOutputClipDistanceMask");
-    auto outputClipDistanceMask =
-        (pGlobal == nullptr) ? 0 : static_cast<unsigned int>(
-            llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-    auto hasOutputClipDistances = outputClipDistanceMask != 0;
-    m_gsProps.Output().PerVertex().HasClipDistances(hasOutputClipDistances);
-    m_gsProps.Output().PerVertex().ClipDistanceMask(outputClipDistanceMask);
-
-    // Deal with cull distances the same way as we do with clip distances.
-    pGlobal = module->getGlobalVariable("GsOutputCullDistanceMask");
-    auto outputCullDistanceMask =
-        (pGlobal == nullptr) ? 0 : static_cast<unsigned int>(
-            llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-    auto hasOutputCullDistances = outputCullDistanceMask != 0;
-    m_gsProps.Output().PerVertex().HasCullDistances(hasOutputCullDistances);
-    m_gsProps.Output().PerVertex().CullDistanceMask(outputCullDistanceMask);
-
     //see if clip and cull were sent as input
     pGlobal = module->getGlobalVariable("ShaderHasClipCullInput");
     auto clipCullAsInput = (pGlobal == nullptr) ? false : true;
-    m_gsProps.Input().PerVertex().HasClipDistances(clipCullAsInput);
+    m_gsProps.Input().PerVertex().HasClipCullDistances(clipCullAsInput);
     CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (context->getModuleMetaData()->URBInfo.has64BVertexHeaderInput)
     {
-        m_gsProps.Input().PerVertex().HasClipDistances(true);
-        m_gsProps.Input().PerVertex().HasCullDistances(true);
+        m_gsProps.Input().PerVertex().HasClipCullDistances(true);
     }
     if (context->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput)
     {
-        m_gsProps.Output().PerVertex().HasClipDistances(true);
-        m_gsProps.Output().PerVertex().HasCullDistances(true);
+        m_gsProps.Output().PerVertex().HasClipCullDistances(true);
     }
 
 }
@@ -172,7 +150,7 @@ void CollectGeometryShaderProperties::HandleSystemInput(llvm::GenIntrinsicInst& 
     case CLIP_DISTANCE_Y:
     case CLIP_DISTANCE_Z:
     case CLIP_DISTANCE_W:
-        m_gsProps.Input().PerVertex().HasClipDistances(true);
+        m_gsProps.Input().PerVertex().HasClipCullDistances(true);
         break;
 
     case GS_INSTANCEID:
@@ -200,7 +178,7 @@ void CollectGeometryShaderProperties::HandleOutputWrite(llvm::GenIntrinsicInst& 
         // shader has output clip or cull distances
         // this should have been recognized already by global variable extraction
         // that deals with clip or cull distance masks
-        IGC_ASSERT((m_gsProps.Output().PerVertex().HasClipDistances()) || (m_gsProps.Output().PerVertex().HasCullDistances()));
+        m_gsProps.Output().PerVertex().HasClipCullDistances(true);
         break;
     case SHADER_OUTPUT_TYPE_VIEWPORT_ARRAY_INDEX:
         m_gsProps.Output().HasViewportArrayIndex(true);
