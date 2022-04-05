@@ -736,37 +736,97 @@ static void setIGCKeyOnHash(
     std::vector<HashRange>& hashes, const unsigned value,
     SRegKeyVariableMetaData* var)
 {
+    // hashes can be empty if the var is not set via Options.txt
     for (size_t i = 0; i < hashes.size(); i++)
         var->hashes.push_back(hashes[i]);
     var->Set();
     var->m_Value = value;
 }
 
-// Implicitly set the subkeys for ShaderDumpEnableAll and ShaderDumpEnable
-// Otherwise, they don't work properly in Options.txt
-static void processIGCKeys(
-    const char* regkeyName, const unsigned value,
-    std::vector<HashRange>& hashes)
+// Implicitly set the subkeys
+static void setImpliedIGCKeys()
 {
-    if (strcmp("ShaderDumpEnableAll", regkeyName) == 0 &&
-        value == 1)
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableLLVMGenericOptimizations, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableCodeSinking, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableDeSSA, true);
+    //disable now until we figure out the issue
+    //IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, DisablePayloadCoalescing, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableSendS, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, EnableVISANoSchedule, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableUniformAnalysis, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisablePushConstant, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableConstantCoalescing, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableURBWriteMerge, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableCodeHoisting, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableEmptyBlockRemoval, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableSIMD32Slicing, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableCSEL, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableFlagOpt, true);
+    IGC_SET_IMPLIED_REGKEY(DisableIGCOptimizations, 1, DisableScalarAtomics, true);
+
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisablePayloadSinking, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisablePromoteToScratch, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableEarlyRemat, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableLateRemat, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableRTGlobalsKnownValues, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisablePreSplitOpts, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableInvariantLoad, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableRTStackOpts, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisablePrepareLoadsStores, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableRayTracingConstantCoalescing, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableMatchRegisterRegion, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableFuseContinuations, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableRaytracingIntrinsicAttributes, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableShaderFusion, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableExamineRayFlag, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableSpillReorder, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisablePromoteContinuation, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableRTAliasAnalysis, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableRTFenceElision, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableRTMemDSE, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, RematThreshold, 0);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableDPSE, true);
+
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, ShaderDumpEnable, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, EnableVISASlowpath, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, EnableVISADumpCommonISA, true);
+
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, DumpLLVMIR, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, EnableCosDump, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, DumpOCLProgramInfo, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, EnableVISAOutput, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, EnableVISABinary, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, EnableVISADumpCommonISA, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, EnableCapsDump, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, DumpPatchTokens, true);
+    IGC_SET_IMPLIED_REGKEY(ShaderDumpEnable, 1, RayTracingDumpYaml, true);
+
+    IGC_SET_IMPLIED_REGKEY(DumpTimeStatsPerPass, 1, DumpTimeStats, true);
+    IGC_SET_IMPLIED_REGKEY(DumpTimeStatsCoarse,  1, DumpTimeStats, true);
+    if (IGC_IS_FLAG_ENABLED(DumpTimeStatsPerPass) ||
+        IGC_IS_FLAG_ENABLED(DumpTimeStatsCoarse) ||
+        IGC_IS_FLAG_ENABLED(DumpTimeStats))
     {
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(ShaderDumpEnable));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISASlowpath));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISADumpCommonISA));
+        // Need to turn on this setting so per-shader .csv is generated
+        IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
     }
-    if (strcmp("ShaderDumpEnable", regkeyName) == 0 &&
-        value == 1)
+
+    IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 32, EnableOCLSIMD32, true);
+    IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 32, EnableOCLSIMD16, false);
+    IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 16, EnableOCLSIMD32, false);
+    IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 16, EnableOCLSIMD16, true);
+    IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth,  8, EnableOCLSIMD32, false);
+    IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth,  8, EnableOCLSIMD16, false);
+}
+
+void setImpliedRegkey(SRegKeyVariableMetaData& name,
+    const bool set,
+    SRegKeyVariableMetaData& subname,
+    const unsigned subvalue)
+{
+    if (set)
     {
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(DumpLLVMIR));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableCosDump));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(DumpOCLProgramInfo));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISAOutput));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISABinary));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableVISADumpCommonISA));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(EnableCapsDump));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(DumpPatchTokens));
-        setIGCKeyOnHash(hashes, true, IGC_GET_REGKEYVAR(RayTracingDumpYaml));
+        setIGCKeyOnHash(name.hashes, subvalue, &subname);
     }
 }
 
@@ -793,8 +853,6 @@ static void declareIGCKey(
         std::cout << "** regkey " << line << std::endl;
         regKey->Set();
         memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
-
-        processIGCKeys(regkeyName, regKey->m_Value, hashes);
     }
 }
 
@@ -819,6 +877,7 @@ static void LoadDebugFlagsFromFile()
 #undef DECLARE_IGC_REGKEY
 
     }
+    setImpliedIGCKeys();
 }
 
 void appendToOptionsLogFile(std::string const &message)
@@ -991,104 +1050,7 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
             llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
         }
 
-        if(IGC_IS_FLAG_ENABLED(DisableIGCOptimizations))
-        {
-            IGC_SET_FLAG_VALUE(DisableLLVMGenericOptimizations, true);
-            IGC_SET_FLAG_VALUE(DisableCodeSinking, true);
-            IGC_SET_FLAG_VALUE(DisableDeSSA, true);
-            //disable now until we figure out the issue
-            //IGC_SET_FLAG_VALUE(DisablePayloadCoalescing, true);
-            IGC_SET_FLAG_VALUE(DisableSendS, true);
-            IGC_SET_FLAG_VALUE(EnableVISANoSchedule, true);
-            IGC_SET_FLAG_VALUE(DisableUniformAnalysis, true);
-            IGC_SET_FLAG_VALUE(DisablePushConstant, true);
-            IGC_SET_FLAG_VALUE(DisableConstantCoalescing, true);
-            IGC_SET_FLAG_VALUE(DisableURBWriteMerge, true);
-            IGC_SET_FLAG_VALUE(DisableCodeHoisting, true);
-            IGC_SET_FLAG_VALUE(DisableEmptyBlockRemoval, true);
-            IGC_SET_FLAG_VALUE(DisableSIMD32Slicing, true);
-            IGC_SET_FLAG_VALUE(DisableCSEL, true);
-            IGC_SET_FLAG_VALUE(DisableFlagOpt, true);
-            IGC_SET_FLAG_VALUE(DisableScalarAtomics, true);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(DisableRayTracingOptimizations))
-        {
-            IGC_SET_FLAG_VALUE(DisablePayloadSinking, true);
-            IGC_SET_FLAG_VALUE(DisablePromoteToScratch, true);
-            IGC_SET_FLAG_VALUE(DisableEarlyRemat, true);
-            IGC_SET_FLAG_VALUE(DisableLateRemat, true);
-            IGC_SET_FLAG_VALUE(DisableRTGlobalsKnownValues, true);
-            IGC_SET_FLAG_VALUE(DisablePreSplitOpts, true);
-            IGC_SET_FLAG_VALUE(DisableInvariantLoad, true);
-            IGC_SET_FLAG_VALUE(DisableRTStackOpts, true);
-            IGC_SET_FLAG_VALUE(DisablePrepareLoadsStores, true);
-            IGC_SET_FLAG_VALUE(DisableRayTracingConstantCoalescing, true);
-            IGC_SET_FLAG_VALUE(DisableMatchRegisterRegion, true);
-            IGC_SET_FLAG_VALUE(DisableFuseContinuations, true);
-            IGC_SET_FLAG_VALUE(DisableRaytracingIntrinsicAttributes, true);
-            IGC_SET_FLAG_VALUE(DisableShaderFusion, true);
-            IGC_SET_FLAG_VALUE(DisableExamineRayFlag, true);
-            IGC_SET_FLAG_VALUE(DisableSpillReorder, true);
-            IGC_SET_FLAG_VALUE(DisablePromoteContinuation, true);
-            IGC_SET_FLAG_VALUE(DisableRTAliasAnalysis, true);
-            IGC_SET_FLAG_VALUE(DisableRTFenceElision, true);
-            IGC_SET_FLAG_VALUE(DisableRTMemDSE, true);
-            IGC_SET_FLAG_VALUE(RematThreshold, 0);
-            IGC_SET_FLAG_VALUE(DisableDPSE, true);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
-        {
-            IGC_SET_FLAG_VALUE(ShaderDumpEnable, true);
-            IGC_SET_FLAG_VALUE(EnableVISASlowpath, true);
-            IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-        {
-            IGC_SET_FLAG_VALUE(DumpLLVMIR, true);
-            IGC_SET_FLAG_VALUE(EnableCosDump, true);
-            IGC_SET_FLAG_VALUE(DumpOCLProgramInfo, true);
-            IGC_SET_FLAG_VALUE(EnableVISAOutput, true);
-            IGC_SET_FLAG_VALUE(EnableVISABinary, true);
-            IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
-            IGC_SET_FLAG_VALUE(EnableCapsDump, true);
-            IGC_SET_FLAG_VALUE(DumpPatchTokens, true);
-            IGC_SET_FLAG_VALUE(RayTracingDumpYaml, true);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(DumpTimeStatsPerPass) ||
-            IGC_IS_FLAG_ENABLED(DumpTimeStatsCoarse))
-        {
-            IGC_SET_FLAG_VALUE(DumpTimeStats, true);
-            IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(DumpTimeStats))
-        {
-            // Need to turn on this setting so per-shader .csv is generated
-            IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
-        }
-
-        switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth))
-        {
-        case 32:
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD32, true);
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
-            break;
-        case 16:
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD16, true);
-            break;
-        case 8:
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD32, false);
-            IGC_SET_FLAG_VALUE(EnableOCLSIMD16, false);
-            break;
-        default:
-            // Non-valid value is ignored (using default).
-            IGC_SET_FLAG_VALUE(ForceOCLSIMDWidth, 0);
-        }
+        setImpliedIGCKeys();
     }
 }
 
