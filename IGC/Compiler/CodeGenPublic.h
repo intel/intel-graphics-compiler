@@ -1630,6 +1630,9 @@ namespace IGC
         // Returns true if an RTPSO (i.e., not a collection state object).
         bool isRTPSO() const;
 
+        // Flip X,Y thread group dimensions in COMPUTE_WALKER?
+        bool isDispatchAlongY() const;
+
         enum class CompileConfig
         {
             // An RTPSO that could have shaders added to it later on

@@ -20873,17 +20873,18 @@ void EmitPass::emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst* I)
 
 void EmitPass::emitBindlessShaderSGV(llvm::GenIntrinsicInst* inst)
 {
-    CBindlessShader* bsProgram = static_cast<CBindlessShader*>(m_currShader);
+    auto* bsProgram = static_cast<CBindlessShader*>(m_currShader);
     SGVUsage usage = static_cast<SGVUsage>(
         dyn_cast<ConstantInt>(inst->getOperand(0))->getZExtValue());
     CVariable* pThreadIdInGroup = nullptr;
+    auto* Ctx = static_cast<RayDispatchShaderContext*>(m_pCtx);
 
     switch (usage)
     {
     case THREAD_GROUP_ID_X:
     {
         m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->SetSrcSubReg(0, 1);
+        m_encoder->SetSrcSubReg(0, Ctx->isDispatchAlongY() ? 6 : 1);
         m_encoder->Copy(m_destination, bsProgram->GetR0());
         m_encoder->Push();
         break;
@@ -20891,7 +20892,7 @@ void EmitPass::emitBindlessShaderSGV(llvm::GenIntrinsicInst* inst)
     case THREAD_GROUP_ID_Y:
     {
         m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->SetSrcSubReg(0, 6);
+        m_encoder->SetSrcSubReg(0, Ctx->isDispatchAlongY() ? 1 : 6);
         m_encoder->Copy(m_destination, bsProgram->GetR0());
         m_encoder->Push();
         break;

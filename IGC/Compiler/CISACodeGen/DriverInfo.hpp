@@ -339,6 +339,8 @@ namespace IGC
         // To support this, the compiler output must be able to express a
         // raygen shader identifier with continuation KSPs after it.
         virtual bool supportsRaytracingContinuationPromotion() const { return false; }
+        // To support this, UMD must flip the X and Y dimensions
+        virtual bool supportsRaytracingDispatchComputeWalkerAlongYFirst() const { return false; }
 
         // Enable LSC on DG2 for the following:
         //   GenISAIntrinsic::GenISA_ldraw_indexed
