@@ -887,5 +887,19 @@ void StatelessToStateful::finalizeArgInitialValue(Function* F)
             BufferOffsetArg->replaceAllUsesWith(ZeroValue);
         }
     }
+
     m_argsInfo.clear();
+
+    // Clear add instructions created in StatelessToStateful::getOffsetFromGEP
+    DenseSet<Instruction*> AddInstructionsToLower;
+    for (auto U : ZeroValue->users())
+        if (auto I = dyn_cast<Instruction>(U))
+            if (I->getOpcode() == Instruction::Add && I->getOperand(0) == ZeroValue)
+                AddInstructionsToLower.insert(I);
+
+    for (auto AddInst : AddInstructionsToLower)
+    {
+        AddInst->replaceAllUsesWith(AddInst->getOperand(1));
+        AddInst->eraseFromParent();
+    }
 }
