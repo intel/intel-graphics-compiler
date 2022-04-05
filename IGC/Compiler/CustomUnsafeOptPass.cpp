@@ -2481,6 +2481,7 @@ private:
     static bool canOptimizeNdotL(SmallVector<Instruction*, 4> & Values, FCmpInst* FC);
     static bool canOptimizeDirectOutput(SmallVector<Instruction*, 4> & Values, GenIntrinsicInst* GII, Value*& SI, unsigned int ShaderLength);
     static bool canOptimizeMulMaxMatch(SmallVector<Instruction*, 4> & Values, Instruction* I);
+    static bool canOptimizeSelectOutput(SelectInst* SI);
     static bool DotProductMatch(const Instruction* I);
     static bool DotProductSourceMatch(const Instruction* I);
     static BasicBlock* tryFoldAndSplit(
@@ -2956,6 +2957,19 @@ bool EarlyOutPatterns::canOptimizeMulMaxMatch(SmallVector<Instruction*, 4> & Val
     return true;
 }
 
+bool EarlyOutPatterns::canOptimizeSelectOutput(SelectInst *SI)
+{
+    if (FCmpInst* FC = dyn_cast<FCmpInst>(SI->getCondition()))
+    {
+        ConstantFP* src1 = dyn_cast<ConstantFP>(FC->getOperand(1));
+        if (FC->getPredicate() != FCmpInst::FCMP_OGT || !FC->hasOneUse() || !src1 || !src1->isZero()) {
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
 bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> & Values, FCmpInst* FC)
 {
     // this function checks the lighting pattern -
@@ -3135,6 +3149,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
     bool NdotLPatternEnable = 0;
     bool DirectOutputPatternEnable = 0;
     bool MulMaxMatchEnable = 0;
+    bool SelectFcmpPatternEnable = 0;
 
     // Each pattern below is given a bit to toggle on/off
     // to isolate the performance for each individual pattern.
@@ -3144,6 +3159,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
         DPMaxPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x2) != 0;
         DPFSatPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x4) != 0;
         NdotLPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x8) != 0;
+        SelectFcmpPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x10) != 0;
     }
     else if (m_ctx->type == ShaderType::PIXEL_SHADER)
     {
@@ -3246,12 +3262,17 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
                     Values.push_back(&II);
                 }
             }
+            else if (auto* SI = dyn_cast<SelectInst>(&II))
+            {
+                OptCandidate = SelectFcmpPatternEnable && canOptimizeSelectOutput(SI);
+                if (OptCandidate)
+                    Values.push_back(&II);
+            }
             if (OptCandidate)
             {
                 BasicBlock* BB1 = tryFoldAndSplit(Values, Root,
                     FoldThreshold, FoldThresholdMultiChannel, RatioNeeded);
                 BBSplit = (BB1 != nullptr);
-
                 if (BBSplit)
                 {
                     BB = BB1;
@@ -3454,6 +3475,8 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
     builder.CreateBr(endifBlock);
     // split the blocks
     ValueToValueMapTy VMap;
+
+    // TODO: Create if block only for affected instructions
     BasicBlock* ifBlock = CloneBasicBlock(elseBlock, VMap);
     ifBlock->setName(VALUE_NAME("EO_IF"));
     currentBB->getParent()->getBasicBlockList().insertAfter(currentBB->getIterator(), ifBlock);

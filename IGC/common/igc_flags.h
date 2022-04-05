@@ -396,7 +396,7 @@ DECLARE_IGC_REGKEY(bool, SampleMultiversioning,         false, "Create branches 
 DECLARE_IGC_REGKEY(bool, EnableSMRescheduling,          false, "Change instruction order to enable extra Sample Multiversioning cases", false)
 DECLARE_IGC_REGKEY(bool, DisableEarlyOutPatterns,       false, "Disable optimization trying to create an early out after sampleC messages", false)
 DECLARE_IGC_REGKEY(DWORD, EarlyOutPatternSelectPS,      0xff,  "Each bit selects a pattern match to enable/disable.", false)
-DECLARE_IGC_REGKEY(DWORD, EarlyOutPatternSelectCS,      0x8,   "Each bit selects a pattern match to enable/disable.", false)
+DECLARE_IGC_REGKEY(DWORD, EarlyOutPatternSelectCS,      0xff,   "Each bit selects a pattern match to enable/disable.", false)
 DECLARE_IGC_REGKEY(bool, OCLEnableReassociate,          false, "Enable reassociation", true)
 DECLARE_IGC_REGKEY(bool, EnableOCLScratchPrivateMemory, true,  "Enable the use of scratch space for private memory [OCL only]", false)
 DECLARE_IGC_REGKEY(bool, EnableMaxWGSizeCalculation,    true,  "Enable max work group size calculation [OCL only]", true)
