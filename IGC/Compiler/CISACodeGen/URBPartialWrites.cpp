@@ -657,16 +657,11 @@ bool URBPartialWrites::runOnFunction(Function& F)
         ctx->type == ShaderType::TASK_SHADER)
     {
         // In Mesh and Task shaders a single URB location may be written from
-        // multiple HW threads.
-        const IGC::ModuleMetaData* md =
-            getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        const uint workGroupSize = ctx->type == ShaderType::MESH_SHADER ?
-            md->msInfo.WorkGroupSize : md->taskInfo.WorkGroupSize;
-        uint minSimd = ctx->platform.getMinDispatchMode() == SIMDMode::SIMD8 ? 8 : 16;
-        if (workGroupSize > minSimd)
-        {
-            m_SharedURB = true;
-        }
+        // multiple HW threads or different lanes inside a single HW thread.
+
+        //TODO if we can prove uniformity across urb inputs then we can enable
+        //this for future uniform urb writes
+        m_SharedURB = true;
     }
     const uint fullWriteGranularity = ctx->platform.getURBFullWriteMinGranularity();
     if (fullWriteGranularity == 16)
