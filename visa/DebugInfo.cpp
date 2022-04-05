@@ -623,7 +623,6 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
     // passed - stackCallEntryBBs that holds entryBBs of all stack
     // call functions part of this compilation unit.
 
-    bool done = false;
     unsigned int maxVISAIndex = 0;
     uint64_t maxGenIsaOffset = 0;
     // Now traverse CFG, create pair of CISA byte offset, gen binary offset and push to vector
@@ -633,28 +632,13 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
 
         int isaPrevByteOffset = -1;
 
-        if (kernel->fg.builder->getIsKernel())
+        // check if bb belongs to a stitched stack call function, if so
+        // stop before processing bb.
+        if (&bb->getParent() != &kernel->fg)
         {
-            auto entryBBend = stackCallEntryBBs.end();
-            for (auto entryBBIt = stackCallEntryBBs.begin();
-                entryBBIt != entryBBend;
-                entryBBIt++)
-            {
-                if (bb == (*entryBBIt))
-                {
-                    // Since we are traversing BBs in layout
-                    // order, we will parse all kernel BBs
-                    // first and as soon as we reach entryBB
-                    // of first stack call function, we stop
-                    // processing.
-                    done = true;
-                    break;
-                }
-            }
-        }
-
-        if (done == true)
-        {
+            // verify if bb is part of stackCallEntryBBs list
+            MUST_BE_TRUE(std::find(stackCallEntryBBs.begin(), stackCallEntryBBs.end(), bb) != stackCallEntryBBs.end(),
+                "didnt find matching entry bb from stitched stack call");
             break;
         }
 
