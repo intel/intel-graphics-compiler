@@ -436,6 +436,19 @@ public:
         numBankConflicts = 0;
         initOptimizations();
     }
+    ~Optimizer()
+    {
+        // Normally, noMask Info will be freed in postRA workaround.
+        // But in case RA fails, postRA will not be invoked. Thus, need
+        // to free memory allocated in preRA_HWWorkaround() here as well.
+        if (builder.useNewNoMaskWA())
+        {
+            if (builder.hasFusedEUNoMaskWA())
+            {
+                kernel.clearNoMaskInfo();
+            }
+        }
+    }
     int optimization();
 
 };
