@@ -508,6 +508,22 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
                         return false;
                     // FIXME: If there's any further hardware restrictions on
                     // src2, please check here.
+                    switch (
+                        useInst->getSrc(2)->asSrcRegRegion()->getModifier()) {
+                    default:
+                        return false;
+                    case Mod_src_undef:
+                        break;
+                    case Mod_Minus:
+                        // Need further check whether src1 has no source
+                        // modifier.
+                        if (useInst->getSrc(1)->isSrcRegRegion() &&
+                            useInst->getSrc(1)
+                                    ->asSrcRegRegion()
+                                    ->getModifier() != Mod_src_undef)
+                          return false;
+                        break;
+                    }
                 }
                 // Q: What's the purpose of this check?
                 if (!IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(2)->getType()) ||
@@ -525,6 +541,20 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
                     // the acc substitution is infeasible.
                     if (def2 && def2 == inst)
                         return false;
+                    switch (
+                        useInst->getSrc(1)->asSrcRegRegion()->getModifier()) {
+                    default:
+                        return false;
+                    case Mod_src_undef:
+                        // Need further check whether src2 has negative source
+                        // modifier or no source modifier.
+                        if (useInst->getSrc(2)->isSrcRegRegion()) {
+                            auto SMod = useInst->getSrc(2)->asSrcRegRegion()->getModifier();
+                            if (SMod != Mod_src_undef && SMod != Mod_Minus)
+                                return false;
+                        }
+                        break;
+                    }
                 }
                 if (BC)
                 {
@@ -1171,6 +1201,19 @@ void AccSubPass::multiAccSub(G4_BB* bb)
                              "Only src1 or src2 is expected.");
                 U.first->swapSrc(1, 2);
                 U.first->swapDefUse(Opnd_src1, Opnd_src2);
+                // If both are src regions, swap src modifiers as well. The
+                // combinations supported are neither of them has source
+                // modifier or src1 has no source modifier but src2 has
+                // negative modifier.
+                auto *S1 = U.first->getSrc(1);
+                auto *S2 = U.first->getSrc(2);
+                if (S1->isSrcRegRegion() && S2->isSrcRegRegion()) {
+                    auto SMod1 = S1->asSrcRegRegion()->getModifier();
+                    auto SMod2 = S2->asSrcRegRegion()->getModifier();
+                    std::swap(SMod1, SMod2);
+                    S1->asSrcRegRegion()->setModifier(SMod1);
+                    S2->asSrcRegRegion()->setModifier(SMod2);
+                }
             }
         }
     }
