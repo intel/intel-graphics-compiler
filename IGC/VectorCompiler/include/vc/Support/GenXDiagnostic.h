@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
+#include "llvm/Pass.h"
 
 #include "Probe/Assertion.h"
 
@@ -38,27 +39,36 @@ template <typename T> void printToString(std::string &Str, T &V) {
 #endif
 }
 
+enum class WarningName {
+  Generic,
+  CMRT,
+  NotAWarning,
+};
+
 // Diagnostic information for errors/warnings
 class DiagnosticInfo : public llvm::DiagnosticInfo {
 private:
-  std::string Description;
   static const int KindID;
+  std::string Description;
   llvm::DiagnosticSeverity Severity;
+  WarningName WName;
 
   static int getKindID() { return KindID; }
 
 public:
   // Initialize from description
   DiagnosticInfo(const llvm::Twine &Prefix, const llvm::Twine &Desc,
-                 llvm::DiagnosticSeverity SeverityIn = llvm::DS_Error)
+                 llvm::DiagnosticSeverity SeverityIn, WarningName WNameIn)
       : llvm::DiagnosticInfo(getKindID(), SeverityIn),
-        Description((Prefix + ": " + Desc).str()), Severity(SeverityIn) {}
+        Description((Prefix + ": " + Desc).str()), Severity(SeverityIn),
+        WName(WNameIn) {}
 
   // Initialize with Value
   DiagnosticInfo(const llvm::Value *Val, const llvm::Twine &Prefix,
-                 const llvm::Twine &Desc,
-                 llvm::DiagnosticSeverity SeverityIn = llvm::DS_Error)
-      : llvm::DiagnosticInfo(getKindID(), SeverityIn), Severity(SeverityIn) {
+                 const llvm::Twine &Desc, llvm::DiagnosticSeverity SeverityIn,
+                 WarningName WNameIn)
+      : llvm::DiagnosticInfo(getKindID(), SeverityIn), Severity(SeverityIn),
+        WName(WNameIn) {
     std::string Str;
     printToString(Str, *Val);
     Description =
@@ -67,9 +77,10 @@ public:
 
   // Initialize with Instruction, account for debug info
   DiagnosticInfo(const llvm::Instruction *Inst, const llvm::Twine &Prefix,
-                 const llvm::Twine &Desc,
-                 llvm::DiagnosticSeverity SeverityIn = llvm::DS_Error)
-      : llvm::DiagnosticInfo(getKindID(), SeverityIn), Severity(SeverityIn) {
+                 const llvm::Twine &Desc, llvm::DiagnosticSeverity SeverityIn,
+                 WarningName WNameIn)
+      : llvm::DiagnosticInfo(getKindID(), SeverityIn), Severity(SeverityIn),
+        WName(WNameIn) {
     std::string Str;
     printToString(Str, *Inst);
 
@@ -89,9 +100,10 @@ public:
 
   // Initialize with Type
   DiagnosticInfo(const llvm::Type *Ty, const llvm::Twine &Prefix,
-                 const llvm::Twine &Desc,
-                 llvm::DiagnosticSeverity SeverityIn = llvm::DS_Error)
-      : llvm::DiagnosticInfo(getKindID(), SeverityIn), Severity(SeverityIn) {
+                 const llvm::Twine &Desc, llvm::DiagnosticSeverity SeverityIn,
+                 WarningName WNameIn)
+      : llvm::DiagnosticInfo(getKindID(), SeverityIn), Severity(SeverityIn),
+        WName(WNameIn) {
     std::string Str;
     printToString(Str, *Ty);
     Description =
@@ -100,9 +112,10 @@ public:
 
   // Initialize with Arg
   DiagnosticInfo(const llvm::Argument *Arg, const llvm::Twine &Prefix,
-                 const llvm::Twine &Desc,
-                 llvm::DiagnosticSeverity SeverityIn = llvm::DS_Error)
-      : llvm::DiagnosticInfo(getKindID(), SeverityIn), Severity(SeverityIn) {
+                 const llvm::Twine &Desc, llvm::DiagnosticSeverity SeverityIn,
+                 WarningName WNameIn)
+      : llvm::DiagnosticInfo(getKindID(), SeverityIn), Severity(SeverityIn),
+        WName(WNameIn) {
     auto *ArgParent = Arg->getParent();
     IGC_ASSERT(ArgParent);
     Description = (Prefix + " failed for: < Argument " +
@@ -117,6 +130,9 @@ public:
     DP << Description;
   }
 
+  // name to use in custom diagnostic handler
+  WarningName getName() const { return WName; }
+
   static bool classof(const llvm::DiagnosticInfo *DI) {
     return DI->getKind() == getKindID();
   }
@@ -124,45 +140,72 @@ public:
 
 // warn means warn and continue working (unless handler redefined)
 template <typename... Args>
-void warn(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
+void warn(WarningName WN, llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
           const llvm::Twine &Desc, Args &&... args) {
   DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc,
-                      llvm::DS_Warning};
+                      llvm::DS_Warning, WN};
   Ctx.diagnose(Diag);
 }
 
-// diagnose means error but continue working
+// overload for generic warnings
+template <typename... Args>
+void warn(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
+          const llvm::Twine &Desc, Args &&... args) {
+  warn(WarningName::Generic, Ctx, Prefix, Desc, std::forward<Args>(args)...);
+}
+
+// overload for explicit pass
+template <typename... Args>
+void warn(WarningName WN, llvm::LLVMContext &Ctx, const llvm::Pass &Pass,
+          const llvm::Twine &Desc, Args &&... args) {
+  warn(WN, Ctx, Pass.getPassName(), Desc, std::forward<Args>(args)...);
+}
+
+// diagnose means maybe error
+template <typename... Args>
+void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
+              const llvm::Twine &Desc, llvm::DiagnosticSeverity DSType,
+              WarningName WN, Args &&... args) {
+  DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc, DSType, WN};
+  Ctx.diagnose(Diag);
+}
+
+// overload in case we are more certain
 template <typename... Args>
 void diagnose(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
               const llvm::Twine &Desc, Args &&... args) {
-  DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc,
-                      llvm::DS_Error};
+  DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc, llvm::DS_Error,
+                      WarningName::NotAWarning};
   Ctx.diagnose(Diag);
 }
 
-// fatal means fatal
+// fatal means fatal that is why it is marked noreturn
 template <typename... Args>
 [[noreturn]] void fatal(llvm::LLVMContext &Ctx, const llvm::Twine &Prefix,
                         const llvm::Twine &Desc, Args &&... args) {
-  DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc,
-                      llvm::DS_Error};
+  DiagnosticInfo Diag{std::forward<Args>(args)..., Prefix, Desc, llvm::DS_Error,
+                      WarningName::NotAWarning};
   Ctx.diagnose(Diag);
   // we shall not reach this, diagnose reports fatal error
   llvm::report_fatal_error("Diag: aborted");
 }
 
-template <typename Diag>
-struct IRChecker {
-  static void argOperandIsConstantInt(const llvm::CallInst &CI, unsigned Idx,
-                                      const llvm::Twine &ArgName) {
-    auto *Op = CI.getArgOperand(Idx);
-    if (llvm::isa<llvm::ConstantInt>(Op))
-      return;
-    Diag Err(&CI, "<" + ArgName + "> is expected to be constant",
-             llvm::DS_Error);
-    CI.getContext().diagnose(Err);
-  }
-};
+// pass name overload for fatal
+template <typename... Args>
+[[noreturn]] void fatal(llvm::LLVMContext &Ctx, const llvm::Pass &Pass,
+                        const llvm::Twine &Desc, Args &&... args) {
+  fatal(Ctx, Pass.getPassName(), Desc, std::forward<Args>(args)...);
+}
+
+// replace IR checker
+inline void checkArgOperandIsConstantInt(const llvm::CallInst &CI, unsigned Idx,
+                                         const llvm::Twine &ArgName) {
+  auto *Op = CI.getArgOperand(Idx);
+  if (llvm::isa<llvm::ConstantInt>(Op))
+    return;
+  fatal(CI.getContext(), "IRChecker",
+        "<" + ArgName + "> is expected to be constant", &CI);
+}
 
 } // namespace vc
 

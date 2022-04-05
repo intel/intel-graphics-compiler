@@ -175,6 +175,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "GenXVisitor.h"
 
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "vc/Utils/GenX/RegCategory.h"
@@ -214,32 +215,6 @@ static cl::opt<bool> GenXCoalescingLessCopies(
 
 STATISTIC(NumCoalescingCandidates, "Number of coalescing candidates");
 STATISTIC(NumInsertedCopies, "Number of inserted copies");
-
-// Diagnostic information for error/warning relating fast-composition.
-class DiagnosticInfoFastComposition : public DiagnosticInfo {
-private:
-  std::string Description;
-  StringRef Filename;
-  unsigned Line;
-  unsigned Col;
-
-  static const int KindID;
-
-  static int getKindID() { return KindID; }
-
-public:
-  // Initialize from an Instruction and an Argument.
-  DiagnosticInfoFastComposition(Instruction *Inst,
-    const Twine &Desc, DiagnosticSeverity Severity = DS_Error);
-  void print(DiagnosticPrinter &DP) const override;
-
-  static bool classof(const DiagnosticInfo *DI) {
-    return DI->getKind() == getKindID();
-  }
-};
-
-const int DiagnosticInfoFastComposition::KindID =
-    llvm::getNextAvailablePluginDiagnosticKind();
 
 namespace {
 
@@ -581,9 +556,8 @@ void GenXCoalescing::visitCallInst(CallInst &CI) {
   if (!Callee->hasFnAttribute("CMCallable"))
     return;
   if (CI.getFunction()->hasFnAttribute("CMCallable")) {
-    DiagnosticInfoFastComposition Err(&CI, "Callable function must not call"
-      " another callable function", DS_Error);
-    CI.getContext().diagnose(Err);
+    vc::diagnose(CI.getContext(), "GenXCoalescing",
+                 "Callable function must not call", &CI);
   }
   Callables.push_back(&CI);
 }
@@ -1661,10 +1635,10 @@ void GenXCoalescing::coalesceCallables() {
     // Check if next node is correct return insn
     if (!Ret || !isa<ReturnInst>(Ret)) {
       // getRetVal could not determine what happens to this return value.
-      DiagnosticInfoFastComposition Err(CI,
-        "Callable Call must be right before function return",
-        (ST->warnCallable() ? DS_Warning : DS_Error));
-      CI->getContext().diagnose(Err);
+      DiagnosticSeverity DS_Type = ST->warnCallable() ? DS_Warning : DS_Error;
+      vc::diagnose(CI->getContext(), "GenXCoalescing",
+                   "Callable Call must be right before function return",
+                   DS_Type, vc::WarningName::Generic, CI);
     }
     Function *F = CI->getParent()->getParent();
     IGC_ASSERT(vc::isKernel(F));
@@ -2135,40 +2109,5 @@ void GenXCoalescing::replaceAllUsesWith(Instruction *OldInst,
                               }),
                ToCopy.end());
   OldInst->replaceAllUsesWith(NewInst);
-}
-
-/***********************************************************************
-* DiagnosticInfoFastComposition initializer from Instruction
-*
-* If the Instruction has a DebugLoc, then that is used for the error
-* location.
-* Otherwise, the location is unknown.
-*/
-DiagnosticInfoFastComposition::DiagnosticInfoFastComposition(Instruction *Inst,
-  const Twine &Desc, DiagnosticSeverity Severity)
-  : DiagnosticInfo(getKindID(), Severity), Line(0), Col(0)
-{
-  auto DL = Inst->getDebugLoc();
-  if (!DL) {
-    Filename = DL->getFilename();
-    Line = DL.getLine();
-    Col = DL.getCol();
-  }
-  Description = (Twine("Fast Composition restriction violation")
-    + ": " + Desc).str();
-}
-
-/***********************************************************************
-* DiagnosticInfoFastComposition::print : print the error/warning message
-*/
-void DiagnosticInfoFastComposition::print(DiagnosticPrinter &DP) const
-{
-  std::string Loc(
-    (Twine(!Filename.empty() ? Filename : "<unknown>")
-    + ":" + Twine(Line)
-    + (!Col ? Twine() : Twine(":") + Twine(Col))
-    + ": ")
-    .str());
-  DP << Loc << Description;
 }
 

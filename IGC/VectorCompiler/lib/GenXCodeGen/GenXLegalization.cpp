@@ -391,7 +391,7 @@ private:
   void verifyLSC2D(const Instruction *Inst);
   void verifyLSCTransposed(const Instruction *Inst);
   void verifyLSCNonTransposed(const Instruction *Inst);
-  bool checkType(const Type *Ty, const Instruction *Inst) const;
+  void verifyType(const Type *Ty, const Instruction *Inst) const;
   bool checkInst(const Instruction *Inst) const;
   bool processInst(Instruction *Inst);
   bool processBale(Instruction *InsertBefore);
@@ -683,42 +683,38 @@ void GenXLegalization::verifyLSCTransposed(const Instruction *Inst) {
  */
 void GenXLegalization::verifyLSCNonTransposed(const Instruction *Inst) {
   if (getLSCMaxWidthWithVectorSize(Inst) < ST->getLSCMinWidth()) {
-    vc::diagnose(Inst->getContext(), "GenXLegalization",
-                 "Non-transposed LSC instruction vector size is too large",
-                 Inst);
+    vc::fatal(Inst->getContext(), *this,
+              "Non-transposed LSC instruction vector size is too large", Inst);
   }
 }
 
 /***********************************************************************
- * checkType : check if type is ok according to subtarget
+ * verifyType : check if type is ok according to subtarget
  *
- * Return: true if everything is ok, false if no legalization required
+ * Fails with fatal error if we have non-supported type
  */
-bool GenXLegalization::checkType(const Type *Ty,
-                                 const Instruction *Inst) const {
+void GenXLegalization::verifyType(const Type *Ty,
+                                  const Instruction *Inst) const {
   if (Ty->isIntegerTy(64) && !ST->hasLongLong() && !ST->emulateLongLong() &&
       checkIfLongLongSupportNeeded(Inst)) {
     auto Target = getAnalysis<TargetPassConfig>()
                       .getTM<GenXTargetMachine>()
                       .getTargetCPU();
-    vc::diagnose(Ty->getContext(), "GenXLegalization",
-                 "'i64' data type is not supported by this target <" + Target +
-                     ">",
-                 Inst);
-    return false;
+    vc::fatal(Ty->getContext(), *this,
+              "'i64' data type is not supported by this target <" + Target +
+                  ">",
+              Inst);
   }
 
   if (Ty->isDoubleTy() && !ST->hasFP64()) {
     auto Target = getAnalysis<TargetPassConfig>()
                       .getTM<GenXTargetMachine>()
                       .getTargetCPU();
-    vc::diagnose(Ty->getContext(), "GenXLegalization",
-                 "'double' data type is not supported by this target <" +
-                     Target + ">",
-                 Inst);
-    return false;
+    vc::fatal(Ty->getContext(), *this,
+              "'double' data type is not supported by this target <" + Target +
+                  ">",
+              Inst);
   }
-  return true;
 }
 
 /***********************************************************************
@@ -737,12 +733,12 @@ bool GenXLegalization::checkInst(const Instruction *Inst) const {
 
   // Sanity check for illegal operand type
   const auto *ScalarType = Inst->getType()->getScalarType();
-  checkType(ScalarType, Inst);
+  verifyType(ScalarType, Inst);
 
   // Sanity check for illegal operands
   for (auto &&Op : Inst->operands()) {
     const auto *ScalarOpType = Op->getType()->getScalarType();
-    checkType(ScalarOpType, Inst);
+    verifyType(ScalarOpType, Inst);
   }
 
   return true;

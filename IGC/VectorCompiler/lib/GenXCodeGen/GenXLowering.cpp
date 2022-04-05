@@ -168,8 +168,6 @@ public:
 const int DiagnosticInfoLowering::KindID =
     llvm::getNextAvailablePluginDiagnosticKind();
 
-using IRChecker = vc::IRChecker<DiagnosticInfoLowering>;
-
 DiagnosticInfoLowering::DiagnosticInfoLowering(const Instruction *Inst,
                                                const Twine &Desc,
                                                DiagnosticSeverity Severity)
@@ -945,7 +943,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   IGC_ASSERT(!Widths.empty());
   unsigned NumChannels = NumVectorElements;
   if (MaskIdx != NONEED) {
-    IRChecker::argOperandIsConstantInt(*CI, MaskIdx, "channel mask");
+    vc::checkArgOperandIsConstantInt(*CI, MaskIdx, "channel mask");
     NumChannels = (unsigned)cast<ConstantInt>(CI->getArgOperand(MaskIdx))
                       ->getZExtValue();
     NumChannels = (NumChannels & 1) + ((NumChannels & 2) >> 1) +
@@ -960,7 +958,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   if (IID == GenXIntrinsic::genx_svm_scatter ||
       IID == GenXIntrinsic::genx_svm_gather) {
     const unsigned NumBlocksOpIDX = 1;
-    IRChecker::argOperandIsConstantInt(*CI, NumBlocksOpIDX, "log2 num blocks");
+    vc::checkArgOperandIsConstantInt(*CI, NumBlocksOpIDX, "log2 num blocks");
     NumBlks = (unsigned)cast<ConstantInt>(CI->getArgOperand(NumBlocksOpIDX))
                   ->getZExtValue();
     NumBlks = (1 << NumBlks);

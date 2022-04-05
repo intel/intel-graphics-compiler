@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "GenXVisa.h"
 
 #include "vc/Support/BackendConfig.h"
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/General/STLExtras.h"
 
 #include "llvm/ADT/SmallVector.h"
@@ -314,12 +315,6 @@ bool TransformPrivMem::replaceAggregatedStore(StoreInst *StI) {
   return true;
 }
 
-static void WarnLargeAllocas(Function &F) {
-  DiagnosticInfoPromoteArray Warn{
-      F.getName() + " allocation size is too big: using TPM", DS_Warning};
-  F.getContext().diagnose(Warn);
-}
-
 bool TransformPrivMem::runOnFunction(llvm::Function &F) {
   m_pFunc = &F;
   m_ctx = &(m_pFunc->getContext());
@@ -344,7 +339,8 @@ bool TransformPrivMem::runOnFunction(llvm::Function &F) {
   selectAllocasToHandle();
 
   if (LargeAllocasWereLeft)
-    WarnLargeAllocas(F);
+    vc::warn(vc::WarningName::Generic, F.getContext(), *this,
+             F.getName() + " allocation size is too big: using TPM");
 
   for (auto *Alloca : m_allocasToPrivMem) {
     handleAllocaInst(Alloca);
@@ -1136,8 +1132,8 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
   int64_t v0 = 0;
   int64_t diff = 0;
   ConstantInt *CI = dyn_cast<ConstantInt>(pScalarizedIdx);
-  PointerType* ScatterPtrTy =
-	  dyn_cast<PointerType>(pInst->getArgOperand(1)->getType());
+  PointerType *ScatterPtrTy =
+      dyn_cast<PointerType>(pInst->getArgOperand(1)->getType());
   // pScalarizedIdx is an indice of element, so
   // count byte offset depending on the type of pointer in scatter
   IGC_ASSERT(ScatterPtrTy);
