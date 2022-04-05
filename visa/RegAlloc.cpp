@@ -3559,10 +3559,16 @@ static void replaceSSO(G4_Kernel& kernel)
             {
                 if (kernel.fg.getIsStackCallFunc())
                 {
-                    bb->erase(instIt);
+                    instIt = bb->erase(instIt);
+                    --instIt;
                 }
                 else
                     inst->setDest(dst);
+
+                // if an earlier pass inserted pseudokill for SSO dcl, remove it
+                // but our final target is the instruction actually defining SSO.
+                if (inst->isPseudoKill())
+                    continue;
 
                 // Also update scratch msg dcl to be an alias
                 kernel.fg.builder->getSpillSurfaceOffset()->setAliasDeclare(
