@@ -506,13 +506,20 @@ private:
 
 } // namespace
 
-static unsigned getRPReductionThreshold(unsigned NumGrfs, unsigned simdSize)
+static bool isSlicedSIMD32(G4_Kernel& kernel)
+{
+    // need special treatment with simd32-slicing during scheduling
+    return (kernel.getSimdSize() == g4::SIMD32 &&
+        kernel.fg.builder->getNativeExecSize() < g4::SIMD16);
+}
+
+static unsigned getRPReductionThreshold(unsigned NumGrfs, bool SlicedSIMD32)
 {
     float Ratio = NumGrfs / 128.0f;
 
-    // For SIMD32 kernels, use a higher threshold for rp reduction,
+    // For SIMD32 prior to PVC, use a higher threshold for rp reduction,
     // as it may not be beneficial.
-    if (simdSize == 32)
+    if (SlicedSIMD32)
         return unsigned(PRESSURE_REDUCTION_THRESHOLD_SIMD32 * Ratio);
 
     // For all other kernels, use the default threshold.
@@ -568,7 +575,7 @@ bool preRA_Scheduler::run()
             return false;
     }
 
-    unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), kernel.getSimdSize());
+    unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), isSlicedSIMD32(kernel));
     unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
 
     LatencyTable LT(kernel.fg.builder);
@@ -624,7 +631,7 @@ bool preRA_Scheduler::run()
                 kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
                                                               this->kernel.getSimdSize());
             }
-            else if (!config.DoClustering && ddd.getKernel().getSimdSize() != g4::SIMD32)
+            else if (!config.DoClustering && !isSlicedSIMD32(ddd.getKernel()))
             {   // try clustering
                 ddd.reset(false);
                 S.scheduleBlockForPressure(true);
@@ -681,23 +688,13 @@ GRFMode::GRFMode(TARGET_PLATFORM platform)
     switch (platform)
     {
     case Xe_DG2:
+    case Xe_PVC:
+    case Xe_PVCXT:
         configurations.resize(2);
         // Configurations for this platform <GRF, numThreads>
         configurations[0] = std::make_pair(128, 8);
         configurations[1] = std::make_pair(256, 4);
         defaultMode = 0; // default GRF mode
-        break;
-    case Xe_PVC:
-    case Xe_PVCXT:
-        configurations.resize(6);
-        // Configurations for this platform <GRF, numThreads>
-        configurations[0] = std::make_pair(64, 12);
-        configurations[1] = std::make_pair(96, 10);
-        configurations[2] = std::make_pair(128, 8);
-        configurations[3] = std::make_pair(160, 6);
-        configurations[4] = std::make_pair(192, 5);
-        configurations[5] = std::make_pair(256, 4);
-        defaultMode = 2; // default GRF mode
         break;
     default:
         configurations.resize(1);
@@ -775,7 +772,7 @@ bool preRA_RegSharing::run()
         kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
     }
 
-    unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), kernel.getSimdSize());
+    unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), isSlicedSIMD32(kernel));
     LatencyTable LT(kernel.fg.builder);
 
     for (auto bb : kernel.fg)
@@ -832,7 +829,7 @@ bool preRA_RegSharing::run()
                 kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
                     this->kernel.getSimdSize());
             }
-            else if (!config.DoClustering && ddd.getKernel().getSimdSize() != g4::SIMD32)
+            else if (!config.DoClustering && !isSlicedSIMD32(ddd.getKernel()))
             {   // try clustering
                 ddd.reset(false);
                 S.scheduleBlockForPressure(true);
@@ -1148,8 +1145,9 @@ bool SethiUllmanQueue::compare(preNode* N1, preNode* N2)
 
 preNode* SethiUllmanQueue::scheduleClusteringNode()
 {
-    // Clustering does not work well for SIMD32 kernels.
-    if (ddd.getKernel().getSimdSize() == g4::SIMD32)
+    // Clustering does not work well for SIMD32 before PVC
+    // because all instructions are sliced into SIMD16
+    if (isSlicedSIMD32(ddd.getKernel()))
         return nullptr;
 
     // Schedule clustering nodes first.
@@ -1837,7 +1835,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
         // For reducing rpe.
         if (NewRPE + PRESSURE_REDUCTION_MIN_BENEFIT <= MaxRPE) {
             bool AbortOnSpill = kernel.getOptions()->getOption(vISA_AbortOnSpill);
-            if (kernel.getSimdSize() == g4::SIMD32 && AbortOnSpill) {
+            if (isSlicedSIMD32(kernel) && AbortOnSpill) {
                 // It turns out that simd32 kernels may be scheduled like slicing, which
                 // in general hurts latency hidding. If not insist to compile for simd32,
                 // make rp reduction conservative.
