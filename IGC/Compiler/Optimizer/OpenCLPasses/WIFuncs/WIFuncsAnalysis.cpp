@@ -108,6 +108,13 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
             if (m_hasStackCalls)
             {
                 implicitArgs.push_back(ImplicitArg::ArgType::IMPLICIT_ARG_BUFFER_PTR);
+
+                // force add local id implicit args to kernel as we need
+                // those to populate local id buffer that stack call functions
+                // may use.
+                implicitArgs.push_back(ImplicitArg::ArgType::LOCAL_ID_X);
+                implicitArgs.push_back(ImplicitArg::ArgType::LOCAL_ID_Y);
+                implicitArgs.push_back(ImplicitArg::ArgType::LOCAL_ID_Z);
             }
         }
     }
