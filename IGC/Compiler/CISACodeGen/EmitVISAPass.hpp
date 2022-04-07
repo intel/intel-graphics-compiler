@@ -475,6 +475,7 @@ public:
         CVariable* GlobalBufferPtr,
         CVariable* StackID,
         CVariable* ShaderRecord,
+        CVariable* Flag,
         bool releaseStackID);
     void emitBindlessThreadDispatch(llvm::BTDIntrinsic *I);
     void emitStackIDRelease(llvm::StackIDReleaseIntrinsic *I);

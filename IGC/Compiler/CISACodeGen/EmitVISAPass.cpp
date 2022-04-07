@@ -22719,6 +22719,7 @@ void EmitPass::emitBTD(
     CVariable* GlobalBufferPtr,
     CVariable* StackID,
     CVariable* ShaderRecord,
+    CVariable* Flag,
     bool releaseStackID)
 {
 
@@ -22791,6 +22792,7 @@ void EmitPass::emitBTD(
         true);
     m_encoder->Push();
 
+    m_encoder->SetPredicate(Flag);
     m_encoder->Sends(
         nullptr,
         payload,
@@ -22821,14 +22823,21 @@ void EmitPass::emitBindlessThreadDispatch(BTDIntrinsic* I)
     CVariable* stackID = GetSymbol(I->getStackID());
     CVariable* shaderRecord = GetSymbol(I->getShaderRecordAddress());
 
-    emitBTD(globalBufferPtr, stackID, shaderRecord, false);
+    emitBTD(globalBufferPtr, stackID, shaderRecord, nullptr, false);
 }
 
 void EmitPass::emitStackIDRelease(StackIDReleaseIntrinsic* I)
 {
     CVariable* stackID = GetSymbol(I->getStackID());
+    CVariable* flag = nullptr;
 
-    emitBTD(nullptr, stackID, nullptr, true);
+    if (auto* CI = dyn_cast<ConstantInt>(I->getPredicate());
+        !CI || !CI->isAllOnesValue())
+    {
+        flag = GetSymbol(I->getPredicate());
+    }
+
+    emitBTD(nullptr, stackID, nullptr, flag, true);
 }
 
 void EmitPass::emitGetShaderRecordPtr(GetShaderRecordPtrIntrinsic* I)

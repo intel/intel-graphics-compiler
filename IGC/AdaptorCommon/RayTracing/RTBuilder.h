@@ -401,7 +401,8 @@ public:
     AsyncStackPointerVal* getAsyncStackPointer(bool BuildAddress = false);
     SyncStackPointerVal*  getSyncStackPointer();
     CallInst* CreateBTDCall(Value* RecordPointer);
-    StackIDReleaseIntrinsic* CreateStackIDRelease(Value* StackID = nullptr);
+    StackIDReleaseIntrinsic* CreateStackIDRelease(
+        Value* StackID = nullptr, Value* Flag = nullptr);
     CallInst* createMergeCall();
 
     // Note: 'traceRayCtrl' should be already by 8 bits to its location

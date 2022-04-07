@@ -728,6 +728,12 @@ bool hasNoFullI64Support() const
     return (hasNoInt64Inst() || hasPartialInt64Support());
 }
 
+bool WaPredicatedStackIDRelease() const
+{
+    return m_WaTable.Wa_22014559856 &&
+           IGC_IS_FLAG_ENABLED(EnablePredicatedStackIDRelease);
+}
+
 // This returns the current maximum size that we recommend for performance.
 // SIMD32 is still allowed and we may relax this in the future.
 SIMDMode getMaxRayQuerySIMDSize() const

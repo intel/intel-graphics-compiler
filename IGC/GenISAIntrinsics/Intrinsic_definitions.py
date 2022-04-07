@@ -2557,7 +2557,8 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_StackIDRelease": ["Raytracing: codegens to send.btd and sets stack id release bit",
     [("void",                          ""),
-    [("short",                         "stack id")],
+    [("short",                         "stack id"),
+     ("bool",                          "predicate flag")],
     "WriteMem"]],
 ####################################################################################################
 "GenISA_StackSize": ["Raytracing: per lane stack size in bytes",

@@ -1075,6 +1075,7 @@ public:
     }
 
     Value* getStackID() const { return getOperand(0); }
+    Value* getPredicate() const { return getOperand(1); }
 };
 
 class ReportHitHLIntrinsic : public GenIntrinsicInst {

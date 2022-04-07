@@ -48,6 +48,7 @@ endif()
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTBuilder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTLoggingManager.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RTStackFormat.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/RayTracing/RayTracingPredicatedStackIDReleasePass.cpp"
     )
   list(APPEND IGC_BUILD__SRC__DriverInterface ${IGC_BUILD__SRC__RAYTRACING})
 

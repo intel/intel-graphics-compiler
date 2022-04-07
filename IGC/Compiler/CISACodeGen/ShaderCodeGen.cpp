@@ -170,6 +170,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/SampleCmpToDiscard.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 #include "DebugInfo.hpp"
+#include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
 #include "Compiler/SamplerPerfOptPass.hpp"
 #include "Compiler/CISACodeGen/HalfPromotion.h"
@@ -928,6 +929,9 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     if (ctx.type == ShaderType::RAYTRACING_SHADER)
     {
+        if (ctx.platform.WaPredicatedStackIDRelease())
+            mpm.add(createRayTracingPredicatedStackIDReleasePass());
+
         if (IGC_IS_FLAG_DISABLED(DisableRTFenceElision))
             mpm.add(createSynchronizationObjectCoalescing());
     }

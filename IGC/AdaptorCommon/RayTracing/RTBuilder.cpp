@@ -985,7 +985,8 @@ CallInst* RTBuilder::CreateBTDCall(Value* RecordPointer)
     return this->CreateCall(BTDCall, args);
 }
 
-StackIDReleaseIntrinsic* RTBuilder::CreateStackIDRelease(Value* StackID)
+StackIDReleaseIntrinsic* RTBuilder::CreateStackIDRelease(
+    Value* StackID, Value* Flag)
 {
     Module* module = this->GetInsertBlock()->getModule();
     Value* stackID = StackID ? StackID : this->getAsyncStackID();
@@ -994,7 +995,10 @@ StackIDReleaseIntrinsic* RTBuilder::CreateStackIDRelease(Value* StackID)
         module,
         GenISAIntrinsic::GenISA_StackIDRelease);
 
-    return cast<StackIDReleaseIntrinsic>(this->CreateCall(BTDCall, stackID));
+    auto* Predicate = Flag ? Flag : getTrue();
+
+    return cast<StackIDReleaseIntrinsic>(
+        this->CreateCall2(BTDCall, stackID, Predicate));
 }
 
 // Note: 'traceRayCtrl' should be already by 8 bits to its location
