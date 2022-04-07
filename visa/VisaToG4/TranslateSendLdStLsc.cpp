@@ -143,7 +143,7 @@ int IR_Builder::translateLscUntypedInst(
     const G4_ExecSize execSize = toExecSize(visaExecSize);
     const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
 
-    const static uint32_t BYTES_PER_REG = getGRFSize();
+    const uint32_t BYTES_PER_REG = getGRFSize();
 
     if (addrInfo.type == LSC_ADDR_TYPE_ARG) {
         // Translate argument loads to platform specific logic

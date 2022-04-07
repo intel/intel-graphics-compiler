@@ -836,7 +836,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         // Since vISA stackcall ABI predefine the argument register to r26.0, if the payload is larger than
         // 26GRFs then doing a stackcall will overwrite the payload registers.
         const int visaStackCallArgRegStart = 26;
-        static const int64_t maxGRFOffset = visaStackCallArgRegStart * m_currShader->getGRFSize();
+        const int64_t maxGRFOffset = visaStackCallArgRegStart * m_currShader->getGRFSize();
         llvm::IRBuilder<> builder(&*F.getEntryBlock().getFirstInsertionPt());
         for (auto& arg : F.args())
         {
