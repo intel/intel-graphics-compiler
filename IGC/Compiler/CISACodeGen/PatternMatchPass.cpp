@@ -1122,6 +1122,13 @@ namespace IGC
                     MatchShuffleBroadCast(*GII) ||
                     MatchWaveShuffleIndex(*GII);
                 break;
+            case GenISAIntrinsic::GenISA_WaveBallot:
+            case GenISAIntrinsic::GenISA_WaveInverseBallot:
+            case GenISAIntrinsic::GenISA_WaveAll:
+            case GenISAIntrinsic::GenISA_WaveClustered:
+            case GenISAIntrinsic::GenISA_WavePrefix:
+                match = MatchWaveInstruction(*GII);
+                break;
             case GenISAIntrinsic::GenISA_simdBlockRead:
             case GenISAIntrinsic::GenISA_simdBlockWrite:
                 match = MatchBlockReadWritePointer(*GII) ||
@@ -4941,6 +4948,34 @@ namespace IGC
             //only if helperLaneMode==1, we enable helper lane under some shuffleindex cases (not for all cases).
             HandleSubspanUse(I.getArgOperand(0));
             HandleSubspanUse(&I);
+        }
+        return MatchSingleInstruction(I);
+    }
+
+    bool CodeGenPatternMatch::MatchWaveInstruction(llvm::GenIntrinsicInst& I)
+    {
+        unsigned int helperLaneIndex = 0;
+        switch (I.getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_WaveAll:
+            helperLaneIndex = 2;
+            break;
+        case GenISAIntrinsic::GenISA_WaveBallot:
+        case GenISAIntrinsic::GenISA_WaveInverseBallot:
+            helperLaneIndex = 1;
+            break;
+        case GenISAIntrinsic::GenISA_WaveClustered:
+        case GenISAIntrinsic::GenISA_WavePrefix:
+            helperLaneIndex = 3;
+            break;
+        default:
+            IGC_ASSERT(false);
+            break;
+        }
+        llvm::Value* helperLaneMode = I.getArgOperand(helperLaneIndex);
+        if (int_cast<int>(cast<ConstantInt>(helperLaneMode)->getSExtValue()) == 1)
+        {
+            m_NeedVMask = true;
         }
         return MatchSingleInstruction(I);
     }

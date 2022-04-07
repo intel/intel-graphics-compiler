@@ -506,7 +506,7 @@ void SubGroupFuncsResolution::subGroupArithmetic(CallInst& CI, WaveOps op, Group
     Value* waveCall = nullptr;
     if (groupType == GroupOperationReduce)
     {
-        Value* args[2] = { arg, opVal };
+        Value* args[3] = { arg, opVal, IRB.getInt32(0) };
         Function* waveAll = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_WaveAll,
             arg->getType());
@@ -514,7 +514,7 @@ void SubGroupFuncsResolution::subGroupArithmetic(CallInst& CI, WaveOps op, Group
     }
     else if (groupType == GroupOperationScan)
     {
-        Value* args[4] = { arg, opVal, IRB.getInt1(false), IRB.getInt1(true) };
+        Value* args[5] = { arg, opVal, IRB.getInt1(false), IRB.getInt1(true), IRB.getInt32(0) };
         Function* waveScan = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_WavePrefix,
             arg->getType());
@@ -523,7 +523,7 @@ void SubGroupFuncsResolution::subGroupArithmetic(CallInst& CI, WaveOps op, Group
     else if (groupType == GroupOperationClusteredReduce)
     {
         Value* clusterSize = CI.getOperand(1);
-        Value* args[3] = { arg, opVal, clusterSize };
+        Value* args[4] = { arg, opVal, clusterSize, IRB.getInt32(0) };
         Function* waveClustered = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
             GenISAIntrinsic::GenISA_WaveClustered,
             arg->getType());

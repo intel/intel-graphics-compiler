@@ -1098,7 +1098,7 @@ bool PixelShaderLowering::optBlendState(
             // ifany(src.a != 1.0) ? RTIndex : RTIndex + 4
             Constant* f1 = ConstantFP::get(colorOut.color[3]->getType(), 1.0);
             Value* ane1 = irb.CreateFCmpUNE(colorOut.color[3], f1);
-            Value* ane1_ballot = irb.CreateCall(fBallot, { ane1 });
+            Value* ane1_ballot = irb.CreateCall(fBallot, { ane1, irb.getInt32(0) });
             Value* any = irb.CreateICmpNE(ane1_ballot, irb.getInt32(0));
             colorOut.blendStateIndex = irb.CreateSelect(any,
                 irb.getInt32(colorOut.RTindex),
