@@ -293,7 +293,10 @@ namespace IGC
         unsigned int eltId = 0;
         unsigned int size = 0;
     };
-
+    struct ConstantAddressDescriptorTable : ConstantAddress
+    {
+        unsigned int tableOffset = 0;
+    };
     bool operator < (const ConstantAddress &a, const ConstantAddress &b);
 
     //to hold metadata of every function
@@ -303,7 +306,6 @@ namespace IGC
         WorkGroupWalkOrderMD workGroupWalkOrder;
         std::vector<FuncArgMD> funcArgs;
         FunctionTypeMD functionType = KernelFunction;
-        std::map<ConstantAddress, uint32_t> inlineDynConstants;
         RayTraceShaderInfo rtInfo;
         ResourceAllocMD resAllocMD;
         std::vector<unsigned> maxByteOffsets;
@@ -531,7 +533,7 @@ namespace IGC
         std::vector<StatelessPushInfo> pushableAddresses;
 
         // Indices of RuntimeValues that can be used to compute surface state
-        // offsets for the bindless push.
+        // offsets for the bindless push along with the Descriptor Table Offset.
         std::vector<unsigned int> bindlessPushInfo;
 
         // Dynamic buffer offsets info.
@@ -597,6 +599,7 @@ namespace IGC
 
     struct SPIRVCapabilities
     {
+
         bool globalVariableDecorationsINTEL = false;
     };
 

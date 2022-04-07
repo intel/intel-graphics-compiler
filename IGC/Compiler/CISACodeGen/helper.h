@@ -163,7 +163,7 @@ namespace IGC
     bool GetStatelessBufferInfo(llvm::Value* pointer, unsigned& bufIdOrGRFOffset, IGC::BufferType& bufferTy, llvm::Value*& bufferSrcPtr, bool& isDirectBuf);
     // try to evaluate the address if it is constant.
     bool EvalConstantAddress(llvm::Value* address, unsigned int& offset, const llvm::DataLayout* pDL, llvm::Value* ptrSrc = nullptr);
-    bool getConstantAddress(llvm::Instruction& I, ConstantAddress& cl, CodeGenContext* pContext, bool& directBuf, bool& statelessBuf, bool& bindlessBuf);
+    bool getConstantAddress(llvm::Instruction& I, ConstantAddress& cl, CodeGenContext* pContext, bool& directBuf, bool& statelessBuf, bool& bindlessBuf, unsigned int& TableOffset);
 
 
     bool isSampleLoadGather4InfoInstruction(const llvm::Instruction* inst);
