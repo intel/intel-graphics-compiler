@@ -1573,8 +1573,7 @@ bool G4_INST::hasACCOpnd() const
         (dst && dst->isAccReg()) ||
         (srcs[0] && srcs[0]->isAccReg()) ||
         (srcs[1] && srcs[1]->isAccReg()) ||
-        (srcs[2] && srcs[2]->isAccReg()) ||
-        op == G4_madw);
+        (srcs[2] && srcs[2]->isAccReg()));
 }
 
 G4_Type G4_INST::getOpExecType(int& extypesize)

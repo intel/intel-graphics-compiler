@@ -9455,12 +9455,6 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
                 madwInst->setSrc(insertMovBefore(it, 0, src0->getType(), bb), 0);
             }
         }
-
-        // add implicit acc dst to the madw instruction as acc will be used as dst of the expanded mul after local scheduling.
-        // it is a must to fix the WAR/WAW issue of acc in local scheduling.
-        G4_DstRegRegion* accDstOpnd = builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, madwInst->getDst()->getType());
-        madwInst->setImplAccDst(accDstOpnd);
-
         retIter = std::next(it);
     }
     else
@@ -9475,6 +9469,9 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB* bb)
         //     mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
         //     mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d // High 32 bits
         //     mov  (16) dst_lo32<1>:d  acc0.0<1;1,0>:d                // Low 32 bits
+
+        // unset AccWrCtrl
+        madwInst->setOptionOff(InstOpt_AccWrCtrl);
 
         uint32_t origOptions = madwInst->getOption();
         G4_Predicate* origPredicate = madwInst->getPredicate();

@@ -16849,6 +16849,9 @@ void Optimizer::expandMadwPostSchedule()
                 continue;
             }
 
+            // Unset a AccWrCtrl first.
+            inst->setOptionOff(InstOpt_AccWrCtrl);
+
             G4_Operand* src0 = inst->getSrc(0);
             G4_Operand* src1 = inst->getSrc(1);
             G4_Operand* src2 = inst->getSrc(2);

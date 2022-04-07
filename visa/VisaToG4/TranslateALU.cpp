@@ -109,7 +109,7 @@ int IR_Builder::translateVISAArithmeticInst(
         }
 
         // do not check type of sources, float and integer are supported
-        createInst(
+        auto inst = createInst(
             predOpnd,
             GetGenOpcodeFromVISAOpcode(opcode),
             condMod,
@@ -121,6 +121,19 @@ int IR_Builder::translateVISAArithmeticInst(
             src2Opnd,
             instOpt,
             true);
+
+        if (opcode == ISA_MADW)
+        {
+            G4_DstRegRegion* accDstOpnd = createDst(
+                phyregpool.getAcc0Reg(),
+                0,
+                0,
+                1,
+                dstOpnd->getType());
+
+            inst->setImplAccDst(accDstOpnd);
+            inst->setOptionOn(InstOpt_AccWrCtrl); // to be consistent with impl Acc.
+        }
     }
     else
     {
