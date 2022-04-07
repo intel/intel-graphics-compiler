@@ -508,6 +508,7 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
                         return false;
                     // FIXME: If there's any further hardware restrictions on
                     // src2, please check here.
+                    // CHECK: source modifier on itself & src1.
                     switch (
                         useInst->getSrc(2)->asSrcRegRegion()->getModifier()) {
                     default:
@@ -524,6 +525,18 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
                           return false;
                         break;
                     }
+                    // CHECK: source alignment on src1. If src1 could be
+                    // swapped onto src2, src1 must be GRF aligned or it's a
+                    // scalar.
+                    if (useInst->getSrc(1)->isSrcRegRegion()) {
+                        G4_Operand *src = useInst->getSrc(1);
+                        const RegionDesc *srcRegion =
+                            src->asSrcRegRegion()->getRegion();
+                        if (!srcRegion->isScalar() &&
+                            !builder.isOpndAligned(src, builder.getGRFSize())) {
+                            return false;
+                        }
+                    }
                 }
                 // Q: What's the purpose of this check?
                 if (!IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(2)->getType()) ||
@@ -533,7 +546,11 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
                 }
                 break;
             case Opnd_src1:
-                if (!kernel.fg.builder->relaxedACCRestrictions3()) {
+                // Record swappable use if there is restriction on acc usage on
+                // src2 and swapAccSub is enabled and that use is a commutative
+                // one.
+                if (!kernel.fg.builder->relaxedACCRestrictions3() &&
+                    SwappableUses && isCommutativeOnSrc12(useInst)) {
                     // As src2 cannot use acc, acc substitution is only
                     // feasible if src1 and src2 are different.
                     auto *def2 = useInst->getSingleDef(Opnd_src2);
@@ -541,6 +558,7 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
                     // the acc substitution is infeasible.
                     if (def2 && def2 == inst)
                         return false;
+                    // CHECK: source modifier on itself & src2.
                     switch (
                         useInst->getSrc(1)->asSrcRegRegion()->getModifier()) {
                     default:
