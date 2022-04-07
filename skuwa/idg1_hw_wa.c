@@ -88,4 +88,11 @@ void InitDg1HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_DG1, DG1_REV_ID_A0, FUTURE_PROJECT));
 
+    // Components affected: igc
+    SI_WA_ENABLE(
+        Wa_14013672992,
+        "No link provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_DG1, DG1_REV_ID_A0, FUTURE_PROJECT));
 }

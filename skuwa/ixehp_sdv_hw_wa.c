@@ -16,7 +16,7 @@ void InitXeHPSDVHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
 {
     int iStepId_XeHP_SDV = (int)pWaParam->usRevId;
 
-    // Components affected: igc 
+    // Components affected: igc
     SI_WA_ENABLE(
         Wa_14013341720,
         "No Link provided",
@@ -24,7 +24,7 @@ void InitXeHPSDVHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_XeHP_SDV, XE_HP_SDV_GT_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc 
+    // Components affected: igc
     SI_WA_ENABLE(
         Wa_16011859583,
         "No Link provided",
@@ -32,7 +32,7 @@ void InitXeHPSDVHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_XeHP_SDV, XE_HP_SDV_GT_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc 
+    // Components affected: igc
     SI_WA_ENABLE(
         Wa_22010811838,
         "No Link provided",
@@ -40,4 +40,11 @@ void InitXeHPSDVHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_XeHP_SDV, XE_HP_SDV_GT_REV_ID_A0, FUTURE_PROJECT));
 
+    // Components affected: igc
+    SI_WA_ENABLE(
+        Wa_14013672992,
+        "No link provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_XeHP_SDV, XE_HP_SDV_GT_REV_ID_A0, FUTURE_PROJECT));
 }
