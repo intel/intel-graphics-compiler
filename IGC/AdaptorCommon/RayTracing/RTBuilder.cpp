@@ -2223,79 +2223,89 @@ Value* RTBuilder::emitStateRegID(uint32_t BitStart, uint32_t BitEnd)
     return shrInst;
 }
 
-Value* RTBuilder::getSliceID()
-{
+std::pair<uint32_t, uint32_t> RTBuilder::getSliceIDBitsInSR0() const {
     if (Ctx.platform.GetPlatformFamily() == IGFX_GEN8_CORE ||
         Ctx.platform.GetPlatformFamily() == IGFX_GEN9_CORE)
     {
-        return emitStateRegID(14, 15);
+        return {14, 15};
     }
     else if (Ctx.platform.GetPlatformFamily() == IGFX_GEN12_CORE   ||
-             Ctx.platform.GetPlatformFamily() == IGFX_XE_HP_CORE   ||
-             Ctx.platform.GetPlatformFamily() == IGFX_XE_HPG_CORE)
+        Ctx.platform.GetPlatformFamily() == IGFX_XE_HP_CORE   ||
+        Ctx.platform.GetPlatformFamily() == IGFX_XE_HPG_CORE)
     {
-        return emitStateRegID(11, 13);
+        return {11, 13};
     }
     else if (Ctx.platform.GetPlatformFamily() == IGFX_XE_HPC_CORE)
     {
-        return emitStateRegID(12, 14);
+        return {12, 14};
     }
     else
     {
-        return emitStateRegID(12, 14);
+        return {12, 14};
     }
 }
 
-Value* RTBuilder::getSubsliceID()
-{
+std::pair<uint32_t, uint32_t> RTBuilder::getSubsliceIDBitsInSR0() const {
     if (Ctx.platform.GetPlatformFamily() == IGFX_GEN8_CORE ||
         Ctx.platform.GetPlatformFamily() == IGFX_GEN9_CORE)
     {
-        return emitStateRegID(12, 13);
+        return {12, 13};
     }
     else
     {
-        return emitStateRegID(8, 8);
+        return {8, 8};
     }
 }
 
-Value* RTBuilder::getDualSubsliceID()
-{
+std::pair<uint32_t, uint32_t> RTBuilder::getDualSubsliceIDBitsInSR0() const {
     if (Ctx.platform.GetPlatformFamily() == IGFX_GEN11_CORE   ||
         Ctx.platform.GetPlatformFamily() == IGFX_GEN11LP_CORE ||
         Ctx.platform.GetPlatformFamily() == IGFX_GEN12LP_CORE ||
         Ctx.platform.GetPlatformFamily() == IGFX_XE_HPC_CORE)
     {
-        return emitStateRegID(9, 11);
+        return {9, 11};
     }
     else if (Ctx.platform.GetPlatformFamily() == IGFX_GEN12_CORE   ||
-             Ctx.platform.GetPlatformFamily() == IGFX_XE_HP_CORE   ||
-             Ctx.platform.GetPlatformFamily() == IGFX_XE_HPG_CORE)
+        Ctx.platform.GetPlatformFamily() == IGFX_XE_HP_CORE   ||
+        Ctx.platform.GetPlatformFamily() == IGFX_XE_HPG_CORE)
     {
-        return emitStateRegID(9, 10);
+        return {9, 10};
     }
     else
     {
         IGC_ASSERT_MESSAGE(0, "No support for Dual Subslice in current platform");
-        return nullptr;
+        return {0,0};
     }
 }
 
+Value* RTBuilder::getSliceID()
+{
+    auto bitsInSR0 = getSliceIDBitsInSR0();
+    return emitStateRegID(bitsInSR0.first, bitsInSR0.second);
+}
+
+Value* RTBuilder::getSubsliceID()
+{
+    auto bitsInSR0 = getSubsliceIDBitsInSR0();
+    return emitStateRegID(bitsInSR0.first, bitsInSR0.second);
+}
+
+Value* RTBuilder::getDualSubsliceID()
+{
+    auto bitsInSR0 = getDualSubsliceIDBitsInSR0();
+    return emitStateRegID(bitsInSR0.first, bitsInSR0.second);
+}
+
+// globalDSSID is the combined value of sliceID and dssID on slice.
 Value* RTBuilder::getGlobalDSSID()
 {
-    Value* dssID = getDualSubsliceID();
-    Value* sliceID = getSliceID();
-
-    Value* dssIDGlobal = this->CreateMul(
-        sliceID,
-        this->getInt32(NumDSSPerSlice),
-        VALUE_NAME("dssIDGlobalBase")
-    );
-    return this->CreateAdd(
-        dssIDGlobal,
-        dssID,
-        VALUE_NAME("GlobalDSSID")
-    );
+    auto dssIDBits = getDualSubsliceIDBitsInSR0();
+    auto sliceIDBits = getSliceIDBitsInSR0();
+    // In current platforms dssID and sliceID are adjacent in SR0.
+    // If any of these asserts is hit, we need to change the calculations here.
+    IGC_ASSERT_MESSAGE(dssIDBits.first < sliceIDBits.first, "DSSID bits in SR0 are not before SliceID bits!");
+    IGC_ASSERT_MESSAGE(sliceIDBits.first == dssIDBits.second + 1, "DSSID and sliceID are not adjacent in SR0!");
+    return emitStateRegID(dssIDBits.first, sliceIDBits.second);
 }
 
 bool RTBuilder::isNonLocalAlloca(uint32_t AddrSpace)

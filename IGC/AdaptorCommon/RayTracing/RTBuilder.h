@@ -708,9 +708,13 @@ private:
         IGC::CallableShaderTypeMD ShaderTy);
 
     Value* emitStateRegID(uint32_t BitStart, uint32_t BitEnd);
+    std::pair<uint32_t, uint32_t> getSliceIDBitsInSR0() const;
+    std::pair<uint32_t, uint32_t> getSubsliceIDBitsInSR0() const;
+    std::pair<uint32_t, uint32_t> getDualSubsliceIDBitsInSR0() const;
     Value* getSliceID();
     Value* getSubsliceID();
     Value* getDualSubsliceID();
+
     Value* getGlobalDSSID();
 
     Value* getInstanceLeafPtr(Value* instLeafTopPtr);
