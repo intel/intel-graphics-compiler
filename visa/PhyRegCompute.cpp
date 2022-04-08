@@ -37,7 +37,7 @@ void G4_SrcRegRegion::computePReg(const IR_Builder& builder)
 
             dcl->setGRFBaseOffset(linearizedStart);
         }
-
+#if 0
         if (baseVar->getPhyReg()->isA0())
         {
             G4_Declare* dcl = baseVar->getDeclare();
@@ -48,7 +48,7 @@ void G4_SrcRegRegion::computePReg(const IR_Builder& builder)
 
             dcl->setGRFBaseOffset(linearizedStart);
         }
-
+#endif
     }
 }
 
@@ -79,6 +79,7 @@ void G4_DstRegRegion::computePReg(const IR_Builder& builder)
             dcl->setGRFBaseOffset(linearizedStart);
         }
 
+#if 0
         if (baseVar->getPhyReg()->isA0())
         {
             G4_Declare* dcl = baseVar->getDeclare();
@@ -89,5 +90,6 @@ void G4_DstRegRegion::computePReg(const IR_Builder& builder)
 
             dcl->setGRFBaseOffset(linearizedStart);
         }
+#endif
     }
 }
