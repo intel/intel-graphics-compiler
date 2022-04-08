@@ -113,6 +113,43 @@ static bool isCommutativeOnSrc12(G4_INST *inst) {
     return false;
 }
 
+static bool isSrcSwapLegal(G4_INST *inst, IR_Builder &builder) {
+    MUST_BE_TRUE(inst->opcode() == G4_mad || inst->opcode() == G4_add3,
+                 "Unexpected operation for src swap");
+
+    auto prospectiveSrc2 = inst->getSrc(1);
+    if (!prospectiveSrc2->isSrcRegRegion())
+        return false;
+
+    auto prospectiveSrc2Type = prospectiveSrc2->getType();
+    if (IS_DTYPE(prospectiveSrc2Type) || IS_BTYPE(prospectiveSrc2Type))
+        return false;
+
+    if (prospectiveSrc2->asSrcRegRegion()->isIndirect())
+        return false;
+
+    uint16_t stride = 0;
+    if (!prospectiveSrc2->asSrcRegRegion()->isScalar()) {
+        if (!prospectiveSrc2->asSrcRegRegion()->checkGRFAlign(builder))
+            return false;
+
+        if (!prospectiveSrc2->asSrcRegRegion()->getRegion()->isSingleStride(
+                inst->getExecSize(), stride))
+          return false;
+    }
+    unsigned short dstExecSize = inst->getDst()->getExecTypeSize();
+    unsigned short srcExecSize =
+        stride * prospectiveSrc2->asSrcRegRegion()->getElemSize();
+    if (dstExecSize != srcExecSize)
+        return false;
+
+    // Check dst alignment, which needs to match src2.
+    if (!inst->getDst()->checkGRFAlign(builder))
+        return false;
+
+    return true;
+}
+
 /*
  * Bank conflict types:
  *  1. any two from same bundle and same bank
@@ -528,15 +565,8 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
                     // CHECK: source alignment on src1. If src1 could be
                     // swapped onto src2, src1 must be GRF aligned or it's a
                     // scalar.
-                    if (useInst->getSrc(1)->isSrcRegRegion()) {
-                        G4_Operand *src = useInst->getSrc(1);
-                        const RegionDesc *srcRegion =
-                            src->asSrcRegRegion()->getRegion();
-                        if (!srcRegion->isScalar() &&
-                            !builder.isOpndAligned(src, builder.getGRFSize())) {
-                            return false;
-                        }
-                    }
+                    if (!isSrcSwapLegal(useInst, builder))
+                        return false;
                 }
                 // Q: What's the purpose of this check?
                 if (!IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(2)->getType()) ||
