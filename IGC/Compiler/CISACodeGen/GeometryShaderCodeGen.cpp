@@ -385,11 +385,9 @@ void CGeometryShader::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
 
     pKernelProgram->URBAllocationSize = GetURBAllocationSize();
 
-    pKernelProgram->UserClipDistancesMask = m_properties.Output().PerVertex().ClipDistanceMask();
-    pKernelProgram->UserCullDistancesMask = m_properties.Output().PerVertex().CullDistanceMask();
-
     pKernelProgram->MaxOutputVertexCount = m_properties.Output().MaxVertexCount();
 
+    pKernelProgram->DeclaresClipCullDistances = m_properties.Output().PerVertex().HasClipCullDistances();
     pKernelProgram->DeclaresVPAIndex = m_properties.Output().HasViewportArrayIndex();
     pKernelProgram->DeclaresRTAIndex = m_properties.Output().HasRenderTargetArrayIndex();
 
