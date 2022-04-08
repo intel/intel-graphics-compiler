@@ -358,6 +358,7 @@ namespace IGC
         // dual-source blending RTW message. The second message must be send
         // when the state of dual-source blending is not known at compile time.
         virtual bool sendSingleSourceRTWAfterDualSourceRTW() const { return true; }
+
 protected:
     bool autoGRFSelection = false;
     };
