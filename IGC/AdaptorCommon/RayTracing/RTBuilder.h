@@ -385,6 +385,8 @@ public:
     Value* CreateSWHotZonePtrIntrinsic(Value *Addr, Type *PtrTy, bool AddDecoration);
     Value* CreateAsyncStackPtrIntrinsic(Value *Addr, Type *PtrTy, bool AddDecoration);
     Value* CreateSyncStackPtrIntrinsic(Value* Addr, Type* PtrTy, bool AddDecoration);
+
+
     CallInst* CreateSWStackPtrIntrinsic(
         Value *Addr, bool AddDecoration, const Twine &Name = "");
     SWStackPtrVal* getSWStackPointer(
@@ -705,12 +707,6 @@ private:
         uint32_t dim,
         IGC::CallableShaderTypeMD ShaderTy);
 
-    Value* getTraceRayPayload(
-        Value* bvhLevel,
-        Value* traceRayCtrl,
-        bool isRayQuery,
-        const Twine& PayloadName = "");
-
     Value* emitStateRegID(uint32_t BitStart, uint32_t BitEnd);
     Value* getSliceID();
     Value* getSubsliceID();
@@ -727,6 +723,13 @@ private:
     const IGC::RayDispatchShaderContext& RtCtx() const;
 //printf
 public:
+
+    Value* getTraceRayPayload(
+        Value* bvhLevel,
+        Value* traceRayCtrl,
+        bool isRayQuery,
+        const Twine& PayloadName = "");
+
     void printTraceRay(const TraceRayAsyncHLIntrinsic* trace);
     void printDispatchRayIndex(const std::vector<Value*>& Indices);
 public:

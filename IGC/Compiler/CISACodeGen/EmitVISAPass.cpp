@@ -126,6 +126,7 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool
     m_canAbortOnSpill(canAbortOnSpill),
     m_roundingMode_FP(ERoundingMode::ROUND_TO_NEAREST_EVEN),
     m_roundingMode_FPCvtInt(ERoundingMode::ROUND_TO_ZERO),
+    m_preemptionMode(EPreemptionMode::PREEMPTION_ENABLED),
     m_pSignature(pSignature),
     m_isDuplicate(false)
 {
@@ -1238,6 +1239,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         (m_currShader->GetContext()->m_instrTypes.numLoopInsts == 0) &&
         (m_currShader->ProgramOutput()->m_InstructionCount < IGC_GET_FLAG_VALUE(MidThreadPreemptionDisableThreshold)))
     {
+        m_preemptionMode = PREEMPTION_DISABLED;
+
         if (m_currShader->GetShaderType() == ShaderType::COMPUTE_SHADER)
         {
             CComputeShader* csProgram = static_cast<CComputeShader*>(m_currShader);
@@ -16759,6 +16762,15 @@ void EmitPass::SetRoundingMode_FPCvtInt(ERoundingMode newRM_FPCvtInt)
     }
 }
 
+void EmitPass::SetPreemptionMode(EPreemptionMode newPreemptionMode)
+{
+    if (newPreemptionMode != m_preemptionMode)
+    {
+        m_encoder->SetPreemptionMode(m_preemptionMode, newPreemptionMode);
+        m_preemptionMode = newPreemptionMode;
+    }
+}
+
 // Return true if inst needs specific rounding mode; false otherwise.
 //
 // Currently, only gen intrinsic needs rounding mode other than the default.
@@ -22585,8 +22597,12 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
                 offsetof(RTStackFormat::TraceRayMessage::Header, rayQueryLocation) / sizeof(DWORD);
             static_assert(RayQueryDword == 4, "header change?");
 
-            CVariable* RayQueryVal =
-                m_currShader->ImmToVariable(RayQueryEnable ? 1 : 0, ISA_TYPE_UD);
+        uint64_t rayQueryHeader = 0x0;
+
+        rayQueryHeader |= RayQueryEnable ? 1 : 0;
+
+        CVariable* RayQueryVal =
+            m_currShader->ImmToVariable(rayQueryHeader, ISA_TYPE_UD);
 
             m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
@@ -22631,6 +22647,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
             m_currShader->m_SIMDSize >= SIMDMode::SIMD16 ? 1 : 0,
             true,
             RayQueryEnable);
+
         CVariable* pMessDesc =
             m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_UD);
 
@@ -22666,7 +22683,9 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic* I, bool RayQueryEnable)
             payload,
             extDescriptor,
             exDesc,
-            pMessDesc);
+            pMessDesc,
+            false);
+
         m_encoder->Push();
     }
 
@@ -22714,6 +22733,7 @@ void EmitPass::emitReadTraceRaySync(llvm::GenIntrinsicInst* I)
         true);
     m_encoder->Push();
 }
+
 
 void EmitPass::emitBTD(
     CVariable* GlobalBufferPtr,

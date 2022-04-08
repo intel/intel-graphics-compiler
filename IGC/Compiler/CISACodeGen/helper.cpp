@@ -224,6 +224,26 @@ namespace IGC
     }
 
     ///
+    /// returns the number of exit blocks iin the given function.
+    ///
+    unsigned getNumberOfExitBlocks(llvm::Function& function)
+    {
+        unsigned numberOfExitBlocks = 0;
+
+        for (llvm::BasicBlock& block : function.getBasicBlockList())
+        {
+            llvm::Instruction* terminator = block.getTerminator();
+
+            if (llvm::isa_and_nonnull<ReturnInst>(terminator))
+            {
+                ++numberOfExitBlocks;
+            }
+        }
+
+        return numberOfExitBlocks;
+    }
+
+    ///
     /// returns constant buffer load offset
     ///
     int getConstantBufferLoadOffset(llvm::LoadInst* ld)
@@ -1411,6 +1431,40 @@ namespace IGC
         }
 
         return false;
+    }
+
+    bool isBarrierIntrinsic(const llvm::Instruction* I)
+    {
+        const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(I);
+        if (!GII)
+            return false;
+
+        switch (GII->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_threadgroupbarrier:
+        case GenISAIntrinsic::GenISA_threadgroupbarrier_signal:
+        case GenISAIntrinsic::GenISA_threadgroupbarrier_wait:
+        case GenISAIntrinsic::GenISA_threadgroupnamedbarriers_signal:
+        case GenISAIntrinsic::GenISA_threadgroupnamedbarriers_wait:
+        case GenISAIntrinsic::GenISA_wavebarrier:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool isUserFunctionCall(const llvm::Instruction* I)
+    {
+        const CallInst* callInst = dyn_cast<CallInst>(I);
+
+        // Return true if:
+        // 1. callInst->getCalledFunction() == nullptr, this means indirect function call
+        // OR
+        // 2. Called function is not an Intrinsic.
+        bool isUserFunction = (callInst != nullptr) &&
+            ((callInst->getCalledFunction() == nullptr) || !callInst->getCalledFunction()->isIntrinsic());
+
+        return isUserFunction;
     }
 
     bool isURBWriteIntrinsic(const llvm::Instruction* I)

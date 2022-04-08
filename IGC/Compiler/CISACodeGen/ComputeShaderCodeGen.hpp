@@ -37,6 +37,11 @@ namespace IGC
             m_disableMidThreadPreemption = true;
         }
 
+        bool        GetDisableMidthreadPreemption()
+        {
+            return m_disableMidThreadPreemption;
+        }
+
         bool        HasSLM() const { return m_hasSLM; }
         bool        HasFullDispatchMask() override;
 

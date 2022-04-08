@@ -264,6 +264,12 @@ namespace IGC
         ROUND_TO_ANY   // dont care
     };
 
+    enum EPreemptionMode
+    {
+        PREEMPTION_ENABLED,
+        PREEMPTION_DISABLED
+    };
+
 
 
     enum DISPATCH_SHADER_RAY_INFO_TYPE : unsigned int

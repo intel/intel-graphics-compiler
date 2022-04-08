@@ -1309,6 +1309,7 @@ public:
     Value* getFlags()  const { return getOperand(0); }
 };
 
+
 class RayQueryInstrisicBase : public GenIntrinsicInst
 {
 public:

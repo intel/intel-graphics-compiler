@@ -597,6 +597,7 @@ Value* RTBuilder::CreateSyncStackPtrIntrinsic(
     return StackPtr;
 }
 
+
 RTBuilder::SWStackPtrVal* RTBuilder::getSWStackPointer(const Twine& Name)
 {
     auto* CI = this->CreateSWStackPtrIntrinsic(nullptr, false, Name);

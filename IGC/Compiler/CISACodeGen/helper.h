@@ -178,6 +178,10 @@ namespace IGC
     bool isSubGroupIntrinsicPVC(const llvm::Instruction* I);
     bool hasSubGroupIntrinsicPVC(llvm::Function& F);
 
+    bool isBarrierIntrinsic(const llvm::Instruction* I);
+
+    bool isUserFunctionCall(const llvm::Instruction* I);
+
     bool IsStatelessMemLoadIntrinsic(llvm::GenISAIntrinsic::ID id);
     bool IsStatelessMemStoreIntrinsic(llvm::GenISAIntrinsic::ID id);
     bool IsStatelessMemAtomicIntrinsic(llvm::GenIntrinsicInst& inst, llvm::GenISAIntrinsic::ID id);
@@ -197,6 +201,8 @@ namespace IGC
     BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIdx, unsigned& bufId);
     BufferType DecodeBufferType(unsigned addrSpace);
     int getConstantBufferLoadOffset(llvm::LoadInst* ld);
+
+    unsigned getNumberOfExitBlocks(llvm::Function& function);
 
     bool isDummyBasicBlock(llvm::BasicBlock* BB);
 

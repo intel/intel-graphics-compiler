@@ -3006,6 +3006,61 @@ namespace IGC
         return RMEncoding::RoundToZero_int;
     }
 
+    CEncoder::PreemptionEncoding CEncoder::getEncoderPreemptionMode(EPreemptionMode preemptionMode)
+    {
+        switch (preemptionMode)
+        {
+        default:
+            break;
+        case PREEMPTION_ENABLED:
+            return PreemptionEncoding::PreemptionEnabled;
+        case PREEMPTION_DISABLED:
+            return PreemptionEncoding::PreemptionDisabled;
+        }
+
+        return PreemptionEncoding::PreemptionEnabled;
+    }
+
+    void CEncoder::SetPreemptionMode(EPreemptionMode actualPreemptionMode, EPreemptionMode newPreemptionMode)
+    {
+        if (actualPreemptionMode != newPreemptionMode)
+        {
+            PreemptionEncoding actualPreemptionMode_en = getEncoderPreemptionMode(actualPreemptionMode);
+            PreemptionEncoding newPreemptionMode_en = getEncoderPreemptionMode(newPreemptionMode);
+            SetPreemptionMode(actualPreemptionMode_en, newPreemptionMode_en);
+        }
+    }
+
+    void CEncoder::SetPreemptionMode(PreemptionEncoding actualPreemptionMode, PreemptionEncoding newPreemptionMode)
+    {
+        IGC_ASSERT_MESSAGE(
+            (actualPreemptionMode != newPreemptionMode),
+            "Only setting PreemptionMode if the new PreemptionMode is different from the current PreemptionMode!");
+
+        VISA_VectorOpnd* src0_Opnd = nullptr;
+        VISA_VectorOpnd* src1_Opnd = nullptr;
+        VISA_VectorOpnd* dst_Opnd = nullptr;
+        VISA_GenVar* cr0_var = nullptr;
+
+        uint preemptionMode = actualPreemptionMode ^ newPreemptionMode;
+
+        IGC_ASSERT(nullptr != vKernel);
+
+        V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
+        V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
+        V(vKernel->CreateVISAImmediate(src1_Opnd, &preemptionMode, ISA_TYPE_UD));
+        V(vKernel->CreateVISADstOperand(dst_Opnd, cr0_var, 1, 0, 0));
+        V(vKernel->AppendVISAArithmeticInst(
+            ISA_XOR,
+            nullptr,
+            false,
+            vISA_EMASK_M1_NM,
+            EXEC_SIZE_1,
+            dst_Opnd,
+            src0_Opnd,
+            src1_Opnd));
+    }
+
     VISA_LabelOpnd* CEncoder::GetLabel(uint label)
     {
         VISA_LabelOpnd* visaLabel = labelMap[label];
