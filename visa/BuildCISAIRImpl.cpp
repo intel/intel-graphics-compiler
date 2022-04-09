@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1888,7 +1888,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
 #ifndef DLL_MODE
     if (criticalMsg.str().length() > 0)
     {
-        std::cerr << "[vISA Finalizer Messsages]\n" << criticalMsg.str();
+        std::cerr << "[vISA Finalizer Messages]\n" << criticalMsg.str();
     }
 #endif //DLL_MODE
 

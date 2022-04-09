@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1718,7 +1718,7 @@ void vISAVerifier::verifyInstructionArith(
     case ISA_ADD3O:
         REPORT_INSTRUCTION(options, dstType == ISA_TYPE_UD || dstType == ISA_TYPE_D ||
             dstType == ISA_TYPE_UW || dstType == ISA_TYPE_W,
-            "%s only supports interger D/W type", ISA_Inst_Table[opcode].str);
+            "%s only supports integer D/W type", ISA_Inst_Table[opcode].str);
         break;
     default:
         REPORT_INSTRUCTION(options, dstType == ISA_TYPE_F || dstType == ISA_TYPE_DF || dstType == ISA_TYPE_HF || IsIntType(dstType), "%s has illegal dst type", ISA_Inst_Table[opcode].str);
@@ -1934,7 +1934,7 @@ void vISAVerifier::verifyInstructionLogic(
             default:
             {
                 REPORT_INSTRUCTION(options,false,
-                         "All operands of logic instructions must be of integral type! opnd %d has unknow type %d",
+                         "All operands of logic instructions must be of integral type! opnd %d has unknown type %d",
                          i, (int)(opnd_type));
             }
         }
@@ -2238,7 +2238,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST* inst)
                 case 1:
                 case 2:
                 case 3: break;
-                default: REPORT_INSTRUCTION(options,false, "cntrl for CISA SAMPLER AVS intruction should be a "
+                default: REPORT_INSTRUCTION(options,false, "cntrl for CISA SAMPLER AVS instruction should be a "
                                                   "value 0-3 (8/16bit full/chrominance down sample).");
             }
 
@@ -2257,7 +2257,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST* inst)
                 case 1:
                 case 2:
                 case 3: break;
-                default: REPORT_INSTRUCTION(options,false, "execMode for CISA SAMPLER AVS intruction should "
+                default: REPORT_INSTRUCTION(options,false, "execMode for CISA SAMPLER AVS instruction should "
                                                   "be a value 0-3 (16x4, 8x4, 16x8, or 4x4).");
             }
 
@@ -4018,7 +4018,7 @@ void vISAVerifier::verifyKernelHeader()
         REPORT_HEADER(options,header->getSampler(i)->name_index < header->getStringCount(),
             "S%d's name index(%d) is not valid", i, header->getSampler(i)->name_index);
         REPORT_HEADER(options,header->getSampler(i)->num_elements <= COMMON_ISA_MAX_SAMPLER_SIZE,
-            "S%d's number of elements(%d) is not vaild", i, header->getSampler(i)->num_elements);
+            "S%d's number of elements(%d) is not valid", i, header->getSampler(i)->num_elements);
     }
 
     /// Verify surface.

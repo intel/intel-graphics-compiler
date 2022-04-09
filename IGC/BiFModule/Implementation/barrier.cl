@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -121,7 +121,7 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(int Execut
     }
     else  if( Execution == Subgroup )
     {
-        // nothing will be emited but we need to prevent optimization spliting control flow
+        // nothing will be emited but we need to prevent optimization splitting control flow
         __builtin_IB_sub_group_barrier();
     }
 }

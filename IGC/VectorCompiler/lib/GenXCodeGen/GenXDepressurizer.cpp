@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -848,7 +848,7 @@ void GenXDepressurizer::attemptSinking(Instruction *InsertBefore,
     //
     // ... := use(v0); // SB.Head
     //
-    // v1  := twoaddr(v0); // two-addr intruction.
+    // v1  := twoaddr(v0); // two-addr instruction.
     //
     // x <--- here this SB could be sunk to.
     //

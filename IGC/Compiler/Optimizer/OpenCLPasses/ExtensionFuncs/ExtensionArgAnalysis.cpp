@@ -1,12 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/Optimizer/OpenCLPasses/ExtenstionFuncs/ExtensionArgAnalysis.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/ExtensionFuncs/ExtensionArgAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 
@@ -19,7 +19,7 @@ using namespace IGC;
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-extension-arg-analysis"
-#define PASS_DESCRIPTION "Analyzes extenstion functions arguments"
+#define PASS_DESCRIPTION "Analyzes extension functions arguments"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
 IGC_INITIALIZE_PASS_BEGIN(ExtensionArgAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2788,7 +2788,7 @@ unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
     {
         return (unsigned int)constValue->getZExtValue();
     }
-    IGC_ASSERT_MESSAGE(0, "unknow SIMD constant expression");
+    IGC_ASSERT_MESSAGE(0, "unknown SIMD constant expression");
     return 0;
 }
 

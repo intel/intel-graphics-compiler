@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -517,7 +517,7 @@ extern "C" int iga_main(int argc, const char **argv)
     xGrp.defineFlag(
         "print-ldst",
         nullptr,
-        "enables load/store pseudo intructions where possible",
+        "enables load/store pseudo instructions where possible",
         "Send instructions are emitted as load/store instructions",
         opts::OptAttrs::ALLOW_UNSET,
         baseOpts.printLdSt);

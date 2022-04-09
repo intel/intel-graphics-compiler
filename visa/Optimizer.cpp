@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -9631,7 +9631,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //  _label_ip_wa:
         //    add    dst     dst     32            // adjust dst to the next 2 instruction's ip
         //    ret    dst                           // jump to the next instruction
-        //    add    dst     -dst    call_target   // at this intruction dst is the ip value
+        //    add    dst     -dst    call_target   // at this instruction dst is the ip value
 
         uint32_t reg_num = inst_with_ip->getDst()->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
         uint32_t reg_off = inst_with_ip->getDst()->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()
@@ -14394,7 +14394,7 @@ void Optimizer::applyNoMaskWA()
         std::vector<INST_LIST_ITER> waInsts;
         // Set default for WAFlag's type, and it may be changed later.
         G4_Type WATy = (Simdsize == g4::SIMD32 ? Type_UD : Type_UW);
-        // use anyh is preferred as it uses one intruction less.
+        // use anyh is preferred as it uses one instruction less.
         UseAnyh = true;
 
         // Collect all insts that need to apply WA. It also does:

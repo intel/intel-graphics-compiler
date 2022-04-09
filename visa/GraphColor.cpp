@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -322,7 +322,7 @@ void BankConflictPass::setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegN
         }
     }
 
-    //In case src1 and src2 share same declare, i.e. use same regsiter
+    //In case src1 and src2 share same declare, i.e. use same register
     if (bank_num == 0 &&
         dcls[1] == dcls[2])
     {
@@ -687,7 +687,7 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
         }
     }
 
-    //In case (src0) src1 and src2 use same declare, i.e. use same regsiter
+    //In case (src0) src1 and src2 use same declare, i.e. use same register
     if ((dcls[0] == dcls[1]) && (dcls[1] == dcls[2]))
     {
         return;
@@ -838,7 +838,7 @@ void BankConflictPass::setupBankConflictsforDPAS(G4_INST* inst)
     }
 #endif
 
-    //In case (src0) src1 and src2 use same declare, i.e. use same regsiter
+    //In case (src0) src1 and src2 use same declare, i.e. use same register
     if (dcls[0] == dcls[2] ||
         !dcls[0] || !dcls[2])
     {
@@ -3572,7 +3572,7 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
     }
     else
     {
-        MUST_BE_TRUE(false, "Dont know how to handle this type of operand");
+        MUST_BE_TRUE(false, "Don't know how to handle this type of operand");
     }
 
     // Handle condMod
@@ -4470,7 +4470,7 @@ void Augmentation::buildLiveIntervals()
 Augmentation::~Augmentation()
 {
     // Clear out calculated information so that subsequent RA
-    // iterations dont have stale information
+    // iterations don't have stale information
     for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin(), end = kernel.Declares.end();
         dcl_it != end;
         dcl_it++)
@@ -4595,7 +4595,7 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
         //
         // V33 will interfere with VCA_SAVE pseudo node.
         // It also needs to interfere with retval to
-        // ensure V33 and retval dont get same allocation.
+        // ensure V33 and retval don't get same allocation.
         // Note that if V33 is actually live after fcall
         // then graph coloring will do this for us. In this
         // case however we need to rely on augmentation.
@@ -6610,7 +6610,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     // try re-allocation of a child/parent dcl when split is enabled.
     // ignoreChildrenIntf is set to true when all children are assigned to consecutive ranges
     // and we want to get fully coalesceable assignment for parent. In such circumstance, we
-    // dont want to account for interference between parent/child since doing so cannot result
+    // don't want to account for interference between parent/child since doing so cannot result
     // in a coalesceable assignment.
     auto assignColor = [&](LiveRange* lr, bool ignoreChildrenIntf = false, bool spillAllowed = true, bool returnFalseOnFail = false)
     {
@@ -6803,7 +6803,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                     // for first-fit register assignment track spilled live ranges
                     if (spillAllowed)
                     {
-                        // When retrying a coalesceable assignment, dont spill
+                        // When retrying a coalesceable assignment, don't spill
                         // if there is no GRF available.
                         spilledLRs.push_back(lr);
                         lr->setSpilled(true);
@@ -6837,7 +6837,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     {
         auto lr = (*iter);
 
-        // in case child/parent was already spilled earlier, dont recolor
+        // in case child/parent was already spilled earlier, don't recolor
         if (lr->isSpilled())
             continue;
 
@@ -8887,8 +8887,8 @@ void GlobalRA::reportUndefinedUses(
 
     if (referencedDcl->getAddressed() == true)
     {
-        // Dont run analysis for addressed opnds.
-        // Specifically, we dont analyze following,
+        // Don't run analysis for addressed opnds.
+        // Specifically, we don't analyze following,
         //
         // A0 = &V1
         // r[A0] = 0 <-- V1 indirectly defined
@@ -9265,8 +9265,8 @@ void VarSplit::rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd, st
         if ((*it)->leftBound > range->rightBound)
         {
             //The range item in the list is on the right of current range, insert it before the postion.
-            //Since the whole range is inserted first, all the ranges should be continous.
-            ASSERT_USER((*it)->leftBound - range->rightBound == 1, "none continous spliting happened\n");
+            //Since the whole range is inserted first, all the ranges should be continuous.
+            ASSERT_USER((*it)->leftBound - range->rightBound == 1, "none continuous spliting happened\n");
             rangeList->insert(it, range);
             return;
         }
@@ -10589,7 +10589,7 @@ int GlobalRA::coloringRegAlloc()
             {
                 if (isReRAPass())
                 {
-                    // Dont modify program if reRA pass spills
+                    // Don't modify program if reRA pass spills
                     return VISA_SPILL;
                 }
 

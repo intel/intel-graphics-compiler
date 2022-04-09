@@ -17162,7 +17162,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     if (srcEltBytes == dstEltBytes)
     {
         // This should not happen now, but generate code anyway.
-        // CISABuilder does split if there is any spliting.
+        // CISABuilder does split if there is any splitting.
 
         // Special case for: 1 element vectors to scalars
         //    %15 = bitcast <1 x i64> %4 to i64
@@ -17200,7 +17200,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         IGC_ASSERT_MESSAGE((dstEltBytes % srcEltBytes) == 0, "Basic types should be power of 2");
         // Since srcEltBytes can be the second largest element type (32bit)
         // and region hstride == 1, Src will not need splitting!
-        // Only dst might need spliting.
+        // Only dst might need splitting.
         bool splitDst = (!dstUniform && (dstEltBytes * width > m_currShader->getGRFSize() * 2));
         IGC_ASSERT_MESSAGE((!splitDst || (width == 16) || (width == 32)),
             "Internal Error: Dst needs splitting only under SIMD16!");
@@ -17372,7 +17372,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         CVariable* aliasSrc = m_currShader->GetNewAlias(src, m_destination->GetType(), 0, 0);
         uint32_t N = srcEltBytes / dstEltBytes;
         // Similar to dstEltBytes > srcEltBytes, dstEltBytes can be 32bit
-        // at most and dst's stride == 1, so it will not need spliting.
+        // at most and dst's stride == 1, so it will not need splitting.
         bool splitSrc = (!srcUniform && (srcEltBytes * width > m_currShader->getGRFSize() * 2));
         IGC_ASSERT_MESSAGE((!splitSrc || (width == 16) || (width == 32)),
             "Internal Error: Src needs splitting only under SIMD16!");

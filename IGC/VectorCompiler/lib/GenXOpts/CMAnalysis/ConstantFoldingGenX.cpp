@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -270,7 +270,7 @@ Constant *llvm::ConstantFoldGenX(Instruction *I, const DataLayout &DL) {
   Constant *Folded = ConstantFoldGenXIntrinsic(
       IID, CS.getFunctionType()->getReturnType(), ConstantArgs, I, DL);
   if (Folded)
-    LLVM_DEBUG(dbgs() << "Successfully constant folded intruction to "
+    LLVM_DEBUG(dbgs() << "Successfully constant folded instruction to "
                       << *Folded << "\n");
   else
     LLVM_DEBUG(dbgs() << "Failed to constant fold instruction\n");

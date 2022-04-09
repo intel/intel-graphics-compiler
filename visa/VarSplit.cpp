@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -66,7 +66,7 @@ void VarSplitPass::verify()
             }
         }
 
-        MUST_BE_TRUE(found, "Didnt find child dcl");
+        MUST_BE_TRUE(found, "Didn't find child dcl");
         return childLbRb;
     };
 
@@ -78,12 +78,12 @@ void VarSplitPass::verify()
             if (inst->isSplitIntrinsic())
             {
                 // ensure this is split mov instruction
-                MUST_BE_TRUE(inst->isSplitIntrinsic(), "Didnt expect new non-split intrinsic instruction");
+                MUST_BE_TRUE(inst->isSplitIntrinsic(), "Didn't expect new non-split intrinsic instruction");
 
                 // verify that split instruction's dst, src(0) is correct
                 splitDcls.insert(inst->getDst()->getTopDcl());
 
-                MUST_BE_TRUE(!inst->getSrc(0)->getTopDcl()->getAddressed(), "Shouldnt split indirectly addressed variable");
+                MUST_BE_TRUE(!inst->getSrc(0)->getTopDcl()->getAddressed(), "Shouldn't split indirectly addressed variable");
 
                 auto origSrc0 = inst->getSrc(0)->asSrcRegRegion();
                 auto origLb = origSrc0->getLeftBound();
@@ -395,7 +395,7 @@ void VarSplitPass::findSplitCandidates()
 
         if (item.second.srcs.size() > 0)
         {
-            // Dont emit split if all uses are closeby
+            // Don't emit split if all uses are closeby
             unsigned int idx = instId[item.second.srcs.front().first->getInst()];
             bool split = true;
             if (item.second.srcs.size() > 1)
@@ -422,7 +422,7 @@ void VarSplitPass::findSplitCandidates()
                 }
             }
 
-            // dont split if def-last first use distance <= 8
+            // Don't split if def-last first use distance <= 8
             if (split &&
                 (instId[item.second.srcs.back().first->getInst()] - instId[item.second.def.first->getInst()]) <= 8)
                 split = false;
@@ -494,7 +494,7 @@ void VarSplitPass::split()
             splitParentDcl.insert(std::make_pair(splitDcl, dstDcl));
             splitChildren[dstDcl].push_back(splitDcl);
 
-            // If this part of dcl is never used in code, then dont create split intrinsic inst for it
+            // If this part of dcl is never used in code, then don't create split intrinsic inst for it
             if (!item.second.isPartDclUsed(lb, rb))
             {
                 unusedDcls.insert(splitDcl);
@@ -553,7 +553,7 @@ void VarSplitPass::split()
             auto item = getSplitDcl(lb, rb);
             auto item_lb = std::get<0>(item);
             auto dcl = std::get<2>(item);
-            MUST_BE_TRUE(dcl, "Didnt find split dcl");
+            MUST_BE_TRUE(dcl, "Didn't find split dcl");
 
             unsigned int regNum = (lb - item_lb) / kernel.numEltPerGRF<Type_UB>();
 
@@ -1432,7 +1432,7 @@ std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
     // prune list of loops
     // 1. loops are stored in descending order of max reg pressure
     // 2. apply cost heuristic to decide if variable should be split at a loop
-    // 3. once split at a loop, dont split at any parent or nested loop
+    // 3. once split at a loop, don't split at any parent or nested loop
     //
     // Example:
     //

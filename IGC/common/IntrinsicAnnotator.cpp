@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -25,7 +25,7 @@ void IntrinsicAnnotator::emitFunctionAnnot(const Function* func, formatted_raw_o
         OS << "; Function Desc: " << comments.funcDescription << "\n";
         for (auto out : comments.outputs)
         {
-            OS << "; Ouput: " << out << "\n";
+            OS << "; Output: " << out << "\n";
         }
         for (std::vector<int>::size_type i = 0; i != comments.inputs.size(); i++)
         {

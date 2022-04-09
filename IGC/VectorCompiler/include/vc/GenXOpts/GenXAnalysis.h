@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -52,7 +52,7 @@ Constant *ConstantFoldGenX(Instruction *I, const DataLayout &DL);
 Value *SimplifyGenXIntrinsic(unsigned IID, Type *RetTy, Use *ArgBegin,
                              Use *ArgEnd, const DataLayout &DL);
 
-/// Given a GenX related intruction, see if we can fold the
+/// Given a GenX related instruction, see if we can fold the
 /// result. This function tries simplification and then constant folding.
 ///
 /// If this instruction could not be simplified returns null.

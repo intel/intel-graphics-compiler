@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -173,7 +173,7 @@ void IR_Builder::bindInputDecl(G4_Declare* dcl, int offset)
     dcl->setRegFile(G4_INPUT);
     unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
     if (regNum + dcl->getNumRows() > kernel.getNumRegTotal() - reservedGRFNum) {
-        MUST_BE_TRUE(false, "INPUT payload execeeds the regsiter number");
+        MUST_BE_TRUE(false, "INPUT payload execeeds the register number");
     }
 }
 

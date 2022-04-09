@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -39,7 +39,7 @@ Inline Function:
     GetCpuInstructionLevel
 
 Description:
-    Returns the highest level of IA32 intruction extensions supported by the CPU
+    Returns the highest level of IA32 instruction extensions supported by the CPU
     ( i.e. SSE, SSE2, SSE4, etc )
 
 Output:

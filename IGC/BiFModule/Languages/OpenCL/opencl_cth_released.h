@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -3233,7 +3233,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
   uint4 __attribute__((overloadable)) read_imageui(read_only image3d_t image, sampler_t sampler, float4 coord, float lod);
 
 
-  // Write Image Funtions
+  // Write Image Functions
 
   // 1D writes with mipmap support
   /**

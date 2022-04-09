@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -67,7 +67,7 @@ namespace IGC
             auto it = CVarToVISADclId.find(CVar);
             if (it == CVarToVISADclId.end())
             {
-                IGC_ASSERT_MESSAGE(false, "Didnt find VISA dcl id");
+                IGC_ASSERT_MESSAGE(false, "Didn't find VISA dcl id");
                 return 0;
             }
             if (index == 0)

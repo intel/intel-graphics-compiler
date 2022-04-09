@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -43,7 +43,7 @@ static G4_Declare* getInputDeclare(
     // multiple of elementType, here just add additional checks to make sure this is the case.
     uint32_t offset = input->getRegVar()->getPhyRegOff() * input->getElemSize() + firstEltOffset;
     uint32_t eltBytes = TypeSize(eltType);
-    MUST_BE_TRUE((offset % eltBytes) == 0, "Offset shoule be mutiple of element size");
+    MUST_BE_TRUE((offset % eltBytes) == 0, "Offset should be multiple of element size");
     offset = offset / eltBytes;
     const char* name = builder.getNameString(builder.mem, 16, "InputR%d.%d", input->getRegVar()->getPhyReg()->asGreg()->getRegNum(), offset);
     G4_Declare* newInputDcl = builder.createDeclareNoLookup(name, G4_INPUT, (uint16_t)bundleSize, 1,

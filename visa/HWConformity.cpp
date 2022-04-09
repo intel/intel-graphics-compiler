@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -6300,7 +6300,7 @@ void HWConformity::fixBFMixedMode()
             bool changed = false;
             if (currES > nativeES)
             {
-                // No spliting needed for an inst whose execsize <= nativeES, as
+                // No splitting needed for an inst whose execsize <= nativeES, as
                 // its operand takes one GRF at most.
                 for (int i = 0, nsrc = (int)Inst->getNumSrc(); i < nsrc; ++i)
                 {
@@ -6816,7 +6816,7 @@ bool HWConformity::splitInstListForByteDst(INST_LIST_ITER it, G4_BB* bb, uint16_
             MUST_BE_TRUE(new_iter != bb->end(), "Cannot find predicate definition function in BB.");
             new_iter++;
             G4_INST* secondHalfOp = splitInstWithByteDst(expand_op);
-            MUST_BE_TRUE(secondHalfOp, "Error in spliting instruction.");
+            MUST_BE_TRUE(secondHalfOp, "Error in splitting instruction.");
             bb->insertBefore(new_iter, secondHalfOp);
         }
     }
@@ -7155,7 +7155,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
         }
 
         if (opnd->isDstRegRegion() &&
-            // check if the opnd has pre-assigned physical regsiter
+            // check if the opnd has pre-assigned physical register
             !(topdcl->getRegVar()->isPhyRegAssigned()) &&
             // check if the opnd is global
             !(kernel.fg.globalOpndHT.isOpndGlobal(opnd)) &&
@@ -7188,7 +7188,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
             }
         }
         else if (opnd->isSrcRegRegion() &&
-            // check if the opnd has pre-assigned physical regsiter
+            // check if the opnd has pre-assigned physical register
             !(opnd->asSrcRegRegion()->getBase()->asRegVar()->isPhyRegAssigned()) &&
             // check if the opnd is global
             !(kernel.fg.globalOpndHT.isOpndGlobal(opnd)) &&

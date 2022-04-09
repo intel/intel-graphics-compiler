@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1224,7 +1224,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
         if (!(builder->getFCPatchInfo() &&
             builder->getFCPatchInfo()->getFCComposableKernel()))
         {
-            // Dont insert EOT send for FC composable kernels
+            // Don't insert EOT send for FC composable kernels
             exitBB->addEOTSend();
         }
 
@@ -1245,7 +1245,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                 if ((*lastBBIt) == retBB)
                 {
                     // This condition is BB layout dependent.
-                    // However, we dont change BB layout in JIT
+                    // However, we don't change BB layout in JIT
                     // and in case we do it in future, we
                     // will need to insert correct jumps
                     // there to preserve correctness.

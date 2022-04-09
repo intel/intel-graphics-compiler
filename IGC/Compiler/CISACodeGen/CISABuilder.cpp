@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -6929,7 +6929,7 @@ namespace IGC
             else
             {
                 // Unpacking is needed from the original SIMD16 data payload to form
-                // two SIMD8 data payload by spliting the original simd16 data payload.
+                // two SIMD8 data payload by splitting the original simd16 data payload.
                 CVariable* V0, * V1;
                 uint16_t newNumElems = (uint16_t)8 * nd;
                 V0 = m_program->GetNewVariable(

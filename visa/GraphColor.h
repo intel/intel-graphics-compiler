@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1382,8 +1382,8 @@ namespace vISA
         vISA::G4_Operand*    flagOpnd;
         INST_LIST_ITER inst_it;
 
-        unsigned   linearizedStart; //linearized start regsiter address
-        unsigned   linearizedEnd;   //linearized end regsiter address
+        unsigned   linearizedStart; //linearized start register address
+        unsigned   linearizedEnd;   //linearized end register address
         unsigned   leftOff;         //left offset in scratch space
         unsigned   rightOff;        //right offset in the scratch space
         unsigned   useCount;

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -488,7 +488,7 @@ iga::SFID BinaryEncodingIGA::getSFID(const G4_INST *inst)
     case vISA::SFID::TGM:       sfid = iga::SFID::TGM; break;
     case vISA::SFID::UGML:      sfid = iga::SFID::UGML; break;
     default:
-        ASSERT_USER(false, "Unknow SFID generated from vISA");
+        ASSERT_USER(false, "Unknown SFID generated from vISA");
         break;
     }
 

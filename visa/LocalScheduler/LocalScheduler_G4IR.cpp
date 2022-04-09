@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -3101,7 +3101,7 @@ bool Node::hasConflict(Node* node2)
                     }
                     else
                     {
-                        //The same regsiter is reused in both SIMD8 instructions
+                        //The same register is reused in both SIMD8 instructions
                         prevInstRegs[1][i] = prevInstRegs[0][i];
                     }
                 }
@@ -3122,7 +3122,7 @@ bool Node::hasConflict(Node* node2)
             candidateNum++;
         }
     }
-    else    //For SIMD16 and SIMD32, if the GRF1 of src1 or src2 of inst 1 is GRF regsiter
+    else    //For SIMD16 and SIMD32, if the GRF1 of src1 or src2 of inst 1 is GRF register
     {
         if (prevInstRegs[1][1] != -1)
         {

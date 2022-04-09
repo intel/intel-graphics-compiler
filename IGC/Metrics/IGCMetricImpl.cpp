@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -449,7 +449,7 @@ namespace IGCMetrics
                     func_m->set_type(IGC_METRICS::FunctionType::FUNCTION);
                     break;
                 default:
-                    IGC_ASSERT_MESSAGE(false, "Unknow Function type");
+                    IGC_ASSERT_MESSAGE(false, "Unknown Function type");
                     break;
                 }
                 map_Func.insert({ func_dbinfo , func_m });

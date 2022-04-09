@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -400,7 +400,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
             // mov (8) V1<2>:d    V3
             // add (8) V2<1>:q    V2    V1<16;8,2>
             //
-            // => Dont replace V1<16;8,2> with V0<8;8,1> because it would make
+            // => Don't replace V1<16;8,2> with V0<8;8,1> because it would make
             // code HW non-conformant.
             canReplace = false;
         }
@@ -1071,7 +1071,7 @@ bool LVN::opndsMatch(T* opnd1, K* opnd2)
     }
     else
     {
-        // Not in SIMD CF so dont care
+        // Not in SIMD CF so don't care
     }
 
     if (match)
@@ -1366,7 +1366,7 @@ bool LVN::computeValue(G4_INST* inst, bool negate, bool& canNegate, bool& isGlob
     if (inst->getDst() && inst->getDst()->getTopDcl())
     {
         // Compute value for globals so we can insert it in LVN table.
-        // But we dont want to apply optimization on such instructions.
+        // But we don't want to apply optimization on such instructions.
         isGlobal = fg.globalOpndHT.isOpndGlobal(inst->getDst());
         isGlobal |= inst->getDst()->getTopDcl()->isOutput();
         isGlobal |= inst->getDst()->getTopDcl()->isInput();
@@ -1889,7 +1889,7 @@ void LVN::doLVN()
 
             // Compute value of current instruction
             // success is false when there is a float type-conversion mov
-            // that we dont implement, eg :hf->:f interpretation.
+            // that we don't implement, eg :hf->:f interpretation.
             success = computeValue(inst, false, canNegate, isGlobal, posVal, false, value);
             value.inst = inst;
             oldValue = value;

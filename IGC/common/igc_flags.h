@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -59,7 +59,7 @@ DECLARE_IGC_REGKEY(DWORD,disableIGASyntax,              false, "Disables GEN isa
 DECLARE_IGC_REGKEY(DWORD,disableCompaction,             false, "Disables compaction.", true)
 DECLARE_IGC_REGKEY(DWORD,TotalGRFNum,                   0,     "Total GRF used for register allocation.", false)
 DECLARE_IGC_REGKEY(DWORD,TotalGRFNum4CS,                0,     "Total GRF used for register allocation. ComputeShader only.", false)
-DECLARE_IGC_REGKEY(DWORD,ReservedRegisterNum,           0,     "Reserve regsiter number for spill cost testing.", false)
+DECLARE_IGC_REGKEY(DWORD,ReservedRegisterNum,           0,     "Reserve register number for spill cost testing.", false)
 DECLARE_IGC_REGKEY(DWORD, GRFNumToUse,                  0,     "Set the number of general registers to use (64 to totalGRFNum)", false)
 DECLARE_IGC_REGKEY(bool, ExpandPlane,                   false, "Enable pln to mad macro expansion.", false)
 DECLARE_IGC_REGKEY(bool, EnableBCR,                     false, "Enable bank conflict reduction.", true)

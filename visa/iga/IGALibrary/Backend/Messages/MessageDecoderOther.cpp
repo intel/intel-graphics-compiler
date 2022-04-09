@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -743,7 +743,7 @@ static void decodeSendMessage(
             break;
         case 0x1D:
             symbol = "sample_ld_mcs";
-            desc = "sample load mcs auxilary data";
+            desc = "sample load mcs auxiliary data";
             params = 4;
             break;
         case 0x1E:

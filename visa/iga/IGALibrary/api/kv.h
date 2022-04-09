@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -366,7 +366,7 @@ IGA_API uint32_t kv_get_opcode(const kv_t *kv, int32_t pc);
 IGA_API kv_status_t kv_get_subfunction(const kv_t *kv, int32_t pc, uint32_t* subfunc);
 
 /*
- * This function returns if intruction has destination.
+ * This function returns if instruction has destination.
  */
 IGA_API int32_t kv_get_has_destination(const kv_t *kv, int32_t pc);
 

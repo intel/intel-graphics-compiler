@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -175,7 +175,7 @@ void PreCompiledFuncImport::eraseCallInst(CallInst * CI)
     }
 }
 
-// This function scans intructions before emulation. It converts double-related
+// This function scans instructions before emulation. It converts double-related
 // operations (intrinsics, instructions) into ones that can be emulated. It has:
 //   1. Intrinsics
 //      Replaced some intrinsics of double operands with a known sequence that can be emulated.

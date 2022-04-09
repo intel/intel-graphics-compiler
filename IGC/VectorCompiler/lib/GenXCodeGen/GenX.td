@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -80,7 +80,7 @@ def FeatureIntDivRem32: SubtargetFeature<"divrem32",
 def FeatureInstrAdd64: SubtargetFeature<"add64",
                                        "HasAdd64",
                                        "true",
-                                       "enable support for native add64 intruction">;
+                                       "enable support for native add64 instruction">;
 
 def FeatureInstrBitRotate: SubtargetFeature<"bitrotate",
                                            "HasBitRotate",

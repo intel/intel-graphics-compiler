@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -317,7 +317,7 @@ void G4_INST::setOpcode(G4_opcode opcd)
         G4_Inst_Table[opcd].instType == InstTypeVector)
        ) ||
         opcd == G4_label),
-        "setOpcode would change the intruction class, which is illegal.");
+        "setOpcode would change the instruction class, which is illegal.");
 
     bool resetBounds = false;
 
@@ -862,7 +862,7 @@ void G4_INST::removeUseOfInst()
     }
 }
 
-// remove the faked def-instructions in def list, which is resulted from instruction spliting
+// remove the faked def-instructions in def list, which is resulted from instruction splitting
 void G4_INST::trimDefInstList()
 {
     // trim def list
@@ -1681,7 +1681,7 @@ static G4_INST::MovType getMovType(
     // the source type only.
     if (TypeSize(srcTy) < TypeSize(dstTy)) {
         if (IS_SIGNED_INT(srcTy)) {
-            // Treat ABS as zero-extenstion.
+            // Treat ABS as zero-extension.
             if (srcMod == Mod_Abs)
                 return G4_INST::ZExt;
             // If the sign bit is 0, then zext is the same as sext.
@@ -1700,7 +1700,7 @@ static G4_INST::MovType getMovType(
     }
 
     // Otherwise, treat it as COPY they are the same in bit size.
-    // Treat ABS as zero-extenstion.
+    // Treat ABS as zero-extension.
     if (IS_SIGNED_INT(srcTy) && srcMod == Mod_Abs)
         return G4_INST::ZExt;
     return G4_INST::Copy;
@@ -2885,7 +2885,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         return false;
     }
 
-    // dont hoist stack calls related variables (Arg, Retval, SP, FP)
+    // Don't hoist stack calls related variables (Arg, Retval, SP, FP)
     if (defInst->getDst() && defInst->getDst()->getTopDcl())
     {
         G4_Declare* defDstDcl = defInst->getDst()->getTopDcl()->getRootDeclare();
@@ -4962,7 +4962,7 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size)
         else
         {
             /*
-                we need to set leftBound for pseudo intruction
+                we need to set leftBound for pseudo instruction
                 so that it creates use/def links correctly in the control flow graph between
                 cmp instruction and pseudo instruction.
                 This matters when we break up SIMD32 instruction in to two SIMD16 with H1/H2 masks.
@@ -6294,7 +6294,7 @@ int64_t G4_Imm::typecastVals(int64_t value, G4_Type type)
     }
     default:
     {
-        // Dont do float conversions
+        // Don't do float conversions
         retVal = value;
     }
     }
@@ -6532,7 +6532,7 @@ unsigned G4_SrcRegRegion::computeRightBound(uint8_t exec_size)
         else
         {
             /*
-                we need to set leftBound for pseudo intruction
+                we need to set leftBound for pseudo instruction
                 so that it creates use/def links correctly in the control flow graph between
                 cmp instruction and pseudo instruction.
                 This matters when we break up SIMD32 instruction in to two SIMD16 with H1/H2 masks.
@@ -7298,7 +7298,7 @@ void G4_INST::setSrc(G4_Operand* opnd, unsigned i)
             (srcs[3] == srcs[i] && i != 3))
         {
             // opnd is present in some other
-            // index of srcs so dont set its
+            // index of srcs so don't set its
             // inst to NULL
         }
         else

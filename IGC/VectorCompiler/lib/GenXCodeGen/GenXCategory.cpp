@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -731,7 +731,7 @@ Instruction *GenXCategory::createConversion(Value *V, vc::RegCategory Cat) {
   // and this isn't an address conversion, use the operand for that
   // intrinsic call directly rather than using the result of the intrinsic.
   // This helps the jitter to generate better code when surface constants
-  // are used in send intructions.
+  // are used in send instructions.
   if (Cat != vc::RegCategory::Address) {
     if (GenXIntrinsic::getGenXIntrinsicID(V) == GenXIntrinsic::genx_constanti)
       V = cast<CallInst>(V)->getArgOperand(0);
