@@ -25,7 +25,9 @@ using IGCLLVM::FixedVectorType;
 
 namespace {
     // Types for destination and accumulate.
-    enum DstAccType { DSTACC_UNUSED, DSTACC_FLOAT, DSTACC_FP16, DSTACC_BF16, DSTACC_INT32 };
+    enum DstAccType { DSTACC_UNUSED,
+        DSTACC_FLOAT, DSTACC_FP16, DSTACC_BF16,
+        DSTACC_INT32 };
 
     /// @brief  DpasFuncsTranslation pass : tranlate dpas builtin (__builtin_IB_*dpas*) into igc intrinsic.
     ///         It also may combine several dpas intrinsics into a single one.

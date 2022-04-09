@@ -7342,7 +7342,7 @@ namespace IGC
 
             CVariable* input0 = nullptr;
             CVariable* input1 = nullptr;
-            uint16_t newNumElemsSrc0 = (uint16_t)16;
+            uint16_t newNumElemsSrc0 = (uint16_t)(visaNumLanes(toExecSize) * repeatCount);
             IGC_ASSERT(newNumElemsSrc0 <= input->GetNumberElement());
             input0 = m_program->GetNewVariable(
                 newNumElemsSrc0,
@@ -7358,46 +7358,46 @@ namespace IGC
                 CName::NONE);
             // Starting offset is calculated from AliasOffset only (subVar not used).
             uint32_t srcOfstBytesSrc0 = input->GetAliasOffset();
-            SplitPayloadToLowerSIMD(input, srcOfstBytesSrc0, 1, input0, input1, 32);
+            SplitPayloadToLowerSIMD(input, srcOfstBytesSrc0, repeatCount, input0, input1, visaNumLanes(fromExecSize));
 
             CVariable* dst0 = input0, * dst1 = input1;
             if (dst != input)
             {
-                uint16_t newNumElemsDst = (uint16_t)16;
+                uint16_t newNumElemsDst = (uint16_t)(visaNumLanes(toExecSize) * repeatCount);
                 IGC_ASSERT(newNumElemsDst <= dst->GetNumberElement());
                 dst0 = m_program->GetNewVariable(
                     newNumElemsDst,
                     dst->GetType(),
                     dst->GetAlign(),
                     dst->IsUniform(),
-                    CName(dst->getName(),"_M0"));
+                    CName::NONE);
                 dst1 = m_program->GetNewVariable(
                     newNumElemsDst,
                     dst->GetType(),
                     dst->GetAlign(),
                     dst->IsUniform(),
-                    CName(dst->getName(),"_M16"));
+                    CName::NONE);
             }
 
             CVariable* weight0 = nullptr;
             CVariable* weight1 = nullptr;
-            uint16_t newNumElemsSrc1 = (uint16_t)16 * 8;
+            uint16_t newNumElemsSrc1 = (uint16_t)(visaNumLanes(toExecSize) * systolicDepth);
             IGC_ASSERT(newNumElemsSrc1 <= weight->GetNumberElement());
             weight0 = m_program->GetNewVariable(
                 newNumElemsSrc1,
                 weight->GetType(),
                 weight->GetAlign(),
                 weight->IsUniform(),
-                CName(weight->getName(),"_M0"));
+                CName::NONE);
             weight1 = m_program->GetNewVariable(
                 newNumElemsSrc1,
                 weight->GetType(),
                 weight->GetAlign(),
                 weight->IsUniform(),
-                CName(weight->getName(),"_M16"));
+                CName::NONE);
             // Starting offset is calculated from AliasOffset only (subVar not used).
             uint32_t srcOfstBytesSrc1 = weight->GetAliasOffset();
-            SplitPayloadToLowerSIMD(weight, srcOfstBytesSrc1, 8, weight0, weight1, 32);
+            SplitPayloadToLowerSIMD(weight, srcOfstBytesSrc1, systolicDepth, weight0, weight1, visaNumLanes(fromExecSize));
 
             for (unsigned thePart = 0; thePart < numParts; ++thePart)
             {
@@ -7408,7 +7408,7 @@ namespace IGC
                 V(vKernel->AppendVISADpasInst(
                     IsDpasw ? ISA_DPASW : ISA_DPAS,
                     SplitEMask(fromExecSize, toExecSize, thePart, execMask),
-                    execSize,
+                    toExecSize,
                     dstOpnd,
                     srcOpnd0,
                     srcOpnd1,
@@ -7419,7 +7419,7 @@ namespace IGC
                     repeatCount));
             }
             uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + dst->GetAliasOffset();
-            MergePayloadToHigherSIMD(dst0, dst1, 1, dst, dstOfstBytes, 32);
+            MergePayloadToHigherSIMD(dst0, dst1, repeatCount, dst, dstOfstBytes, visaNumLanes(fromExecSize));
         }
         else
         {
