@@ -577,16 +577,6 @@ void Optimizer::zeroSomeARF()
         G4_INST* zeroAcc1 = builder.createMov(
             builder.getNativeExecSize(), Acc1Dst, builder.createImm(0, Type_UD), InstOpt_WriteEnable, false);
         (void)mainBB->insertBefore(insertBeforePos, zeroAcc1);
-
-        // Zero flags
-        int num32bitFlags = (int)(builder.getNumFlagRegisters()/2);
-        for (int i = 0; i < num32bitFlags; ++i)
-        {
-            G4_DstRegRegion* flagDst = builder.createDst(builder.phyregpool.getFlagAreg(i), 0, 0, 1, Type_UD);
-            G4_INST* zeroFlag = builder.createMov(
-                g4::SIMD1, flagDst, builder.createImm(0, Type_UD), InstOpt_WriteEnable, false);
-            (void)mainBB->insertBefore(insertBeforePos, zeroFlag);
-        }
     }
 }
 
