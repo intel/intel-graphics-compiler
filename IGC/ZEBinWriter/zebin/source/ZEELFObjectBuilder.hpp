@@ -147,6 +147,17 @@ public:
     // - Note that the given data buffer have to be alive through ZEELFObjectBuilder
     void addSectionMisc(std::string name, const uint8_t* data, uint64_t size);
 
+    // add .note.intelgt.metrics section
+    // - name: .note.intelgt.metrics. Do not includes leading .note.intelgt.metrics
+    //         in the given name. For example, giving "func", the section name will be
+    //         ".note.intelgt.metrics.func". The default name is .note.intelgt.metrics.
+    //         It'll be applied if the given name is empty.
+    // - size in byte
+    // - Note that the alignment requirement of the section should be satisfied
+    //   by the given data and size
+    // - Note that the given data buffer have to be alive through ZEELFObjectBuilder
+    void addSectionMetrics(std::string name, const uint8_t* data, uint64_t size);
+
     // .debug_info section in DWARF format
     // - name: section name. The default name is .debug_info
     // - size in byte
@@ -338,20 +349,21 @@ private:
 
 private:
     // place holder for section default name
-    const std::string m_TextName       = ".text";
-    const std::string m_DataName       = ".data";
-    const std::string m_BssName        = ".bss";
-    const std::string m_SymTabName     = ".symtab";
-    const std::string m_RelName        = ".rel";
-    const std::string m_RelaName       = ".rela";
-    const std::string m_SpvName        = ".spv";
-    const std::string m_VISAAsmName    = ".visaasm";
-    const std::string m_DebugName      = ".debug_info";
-    const std::string m_ZEInfoName     = ".ze_info";
-    const std::string m_GTPinInfoName  = ".gtpin_info";
-    const std::string m_MiscName       = ".misc";
-    const std::string m_CompatNoteName = ".note.intelgt.compat";
-    const std::string m_StrTabName     = ".strtab";
+    const std::string m_TextName        = ".text";
+    const std::string m_DataName        = ".data";
+    const std::string m_BssName         = ".bss";
+    const std::string m_SymTabName      = ".symtab";
+    const std::string m_RelName         = ".rel";
+    const std::string m_RelaName        = ".rela";
+    const std::string m_SpvName         = ".spv";
+    const std::string m_VISAAsmName     = ".visaasm";
+    const std::string m_DebugName       = ".debug_info";
+    const std::string m_ZEInfoName      = ".ze_info";
+    const std::string m_GTPinInfoName   = ".gtpin_info";
+    const std::string m_MiscName        = ".misc";
+    const std::string m_CompatNoteName  = ".note.intelgt.compat";
+    const std::string m_MetricsNoteName = ".note.intelgt.metrics";
+    const std::string m_StrTabName      = ".strtab";
 
 private:
     // 32 or 64 bit object

@@ -83,6 +83,8 @@ private:
     uint64_t writeZEInfo();
     // write .note.intelgt.compat section
     std::pair<uint64_t, uint64_t> writeCompatibilityNote();
+    // write .note.intelgt.compat section
+    std::pair<uint64_t, uint64_t> writeMetricsNote(uint64_t sizeRsrv, uint64_t* offset);
     // write string table
     uint64_t writeStrTab();
     // write section header
@@ -264,6 +266,20 @@ ZEELFObjectBuilder::addSectionMisc(std::string name, const uint8_t* data, uint64
 
     addStandardSection(sectName,
         data, size, SHT_ZEBIN_MISC, 0, 0, 0, m_otherStdSections);
+}
+
+void
+ZEELFObjectBuilder::addSectionMetrics(std::string name, const uint8_t* data, uint64_t size)
+{
+    // adjust the section name
+    std::string sectName;
+    if (name != "")
+        sectName = m_MetricsNoteName + "." + name;
+    else
+        sectName = m_MetricsNoteName;
+
+    addStandardSection(sectName,
+        data, size, ELF::SHT_NOTE, 0, 0, 0, m_otherStdSections);
 }
 
 void
@@ -596,6 +612,27 @@ std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
     return std::make_pair(start_off, m_W.OS.tell() - start_off);
 }
 
+std::pair<uint64_t, uint64_t> ELFWriter::writeMetricsNote(uint64_t sizeRsrv, uint64_t* offset) {
+    auto padToRequiredAlign = [&]() {
+        // The alignment of the Elf word, name and descriptor is 4.
+        // Implementations differ from the specification here: in practice all
+        // variants align both the name and descriptor to 4-bytes.
+        uint64_t cur = m_W.OS.tell();
+        uint64_t next = llvm::alignTo(cur, 4);
+        writePadding(next - cur);
+    };
+
+    // Align the section offset to the required alignment first.
+    // TODO: Handle the section alignment in a more generic place.
+    padToRequiredAlign();
+    uint64_t start_off = m_W.OS.tell();
+    *offset = start_off;
+    // Reserve space for metrics data
+    writePadding(sizeRsrv);
+
+    return std::make_pair(start_off, m_W.OS.tell() - start_off);
+}
+
 uint64_t ELFWriter::writeStrTab()
 {
     uint64_t start_off = m_W.OS.tell();
@@ -714,8 +751,26 @@ void ELFWriter::writeSections()
             break;
 
         case ELF::SHT_NOTE: {
-            if (entry.sectName == m_ObjBuilder.m_CompatNoteName)
+            // Currently we don't seem to reorder strings in the .strtab, and
+            // the offset returned by LLVM StringTableBuilder::add() will still
+            // be valid, so the section name can be checked in this way.
+            //  Other possibilities are: creating a new section kind and set
+            // the appropriate section pointer, or emitting .strtab before
+            // the note section.
+            if (entry.sectName == m_ObjBuilder.m_CompatNoteName) {
                 std::tie(entry.offset, entry.size) = writeCompatibilityNote();
+            }
+            if (entry.sectName == m_ObjBuilder.m_MetricsNoteName) {
+                uint64_t metricsDataBeginOffset = 0;
+                std::tie(entry.offset, entry.size) = writeMetricsNote(64, &metricsDataBeginOffset);
+                IGC_ASSERT(nullptr != entry.section);
+                IGC_ASSERT(entry.section->getKind() == Section::STANDARD);
+                const StandardSection* const stdsect =
+                    static_cast<const StandardSection*>(entry.section);
+                IGC_ASSERT(nullptr != stdsect);
+                if (stdsect->m_size + stdsect->m_padding > 0)
+                    entry.size = writeSectionData(stdsect->m_data, stdsect->m_size, stdsect->m_padding);
+            }
             break;
         }
 

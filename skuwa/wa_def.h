@@ -18,10 +18,11 @@ SPDX-License-Identifier: MIT
     #include "../inc/common/igfxfmid.h"
 #endif // if !defined(__KCH)
 #include "gtsysinfo.h"
+#include <limits.h>
 
 #define SIWA_TRUE               0x00000001    // force enable
 #define SIWA_FALSE              0x00000000    // force disable
-#define FUTURE_PROJECT          2147483647    // INT_MAX
+#define FUTURE_PROJECT          INT_MAX
 
 #define BXT_REV_ID_A0           SI_REV_ID(0,2)
 #define BXT_REV_ID_B0           SI_REV_ID(3,3)
@@ -59,7 +60,7 @@ SPDX-License-Identifier: MIT
 #define SI_WA_BEFORE(ulRevID, STEPPING) (ulRevID < (int)SI_REV_LO(STEPPING))                     // Current Rev ID is lower than the lowest Rev ID for that STEPPING
 #define SI_WA_UNTIL(ulRevID, STEPPING) (ulRevID <= (int)SI_REV_HI(STEPPING))                    // Current Rev ID is lower than or equal to the highest Rev ID for that STEPPING
 #define SI_WA_FROM(ulRevID, STEPPING) (ulRevID >= (int)SI_REV_LO(STEPPING))                    // Current Rev ID is higher than or equal to the lowest Rev ID for that STEPPING
-#define SI_WA_BETWEEN(ulRevID, StepOld, StepNew) ((ulRevID <= (int)SI_REV_HI(StepNew)) && (ulRevID >= (int)SI_REV_LO(StepOld))) // Current Rev ID is between the StepOld and StepNew (inclusive)
+#define SI_WA_BETWEEN(ulRevID, StepOld, StepNew) ((ulRevID < (int)SI_REV_HI(StepNew)) && (ulRevID >= (int)SI_REV_LO(StepOld))) // Current Rev ID is between the StepOld (inclusive) and StepNew (NOT inclusive)
 #define SI_WA_FOR_EVER (SIWA_TRUE)
 #define SI_WA_NEVER (SIWA_FALSE)
 
@@ -155,6 +156,11 @@ typedef struct _WaInitParam
     PCH_PRODUCT_FAMILY  ePCHProductFamily;
     const GT_SYSTEM_INFO   *pGtSysInfo;           // Required CNL+
     unsigned char    bWinDoD;  // BOOLEAN
+    // Rev IDs for each IP blocks.
+    unsigned short  usDisplayRevID;
+    unsigned short  usRenderRevID;
+    unsigned short  usMediaRevID;
+    unsigned short  usDeviceID;
 } WA_INIT_PARAM, *PWA_INIT_PARAM;
 
 /********* Common functions to intialize wa table ************\
