@@ -33,6 +33,7 @@ $ export IGC_ShaderDumpEnable=1
 ```
 
 ### List of available flags
+- **allowLICM** - Setting this to false to disable LLVM LICM in IGC in order to control register pressure
 - **AllowMem2Reg** - Setting this to true makes IGC run mem2reg even when optimizations are disabled
 - **ControlInlineImplicitArgs** - Avoid trimming functions with implicit args
 - **ControlInlineTinySize** - Tiny function size for controlling kernel total size
