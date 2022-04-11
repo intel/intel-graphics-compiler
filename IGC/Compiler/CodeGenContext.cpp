@@ -234,7 +234,6 @@ namespace IGC
             }
             else
                 if (IGC_IS_FLAG_ENABLED(ForceCSLeastSIMD)
-                    || (IGC_IS_FLAG_ENABLED(ForceCSLeastSIMD4RQ) && cgCtx->hasSyncRTCalls())
                     )
                 {
                     if (m_simdEntries[0])
@@ -1352,10 +1351,6 @@ namespace IGC
         if (getModuleMetaData()->csInfo.forceTotalGRFNum != 0)
         {
             return getModuleMetaData()->csInfo.forceTotalGRFNum;
-        }
-        if (hasSyncRTCalls() && IGC_GET_FLAG_VALUE(TotalGRFNum4RQ) != 0)
-        {
-            return IGC_GET_FLAG_VALUE(TotalGRFNum4RQ);
         }
         if (this->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
         {

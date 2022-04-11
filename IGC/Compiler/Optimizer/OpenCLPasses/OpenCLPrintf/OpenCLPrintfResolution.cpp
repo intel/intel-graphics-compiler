@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
-#include "AdaptorCommon/RayTracing/RTLoggingManager.h"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
@@ -334,12 +333,6 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F
         {
             IGC_ASSERT_MESSAGE(0, "Unexpected printf argument (expected string literal)");
             return 0;
-        }
-
-        if (m_CGContext->type == ShaderType::RAYTRACING_SHADER)
-        {
-            auto* Ctx = static_cast<RayDispatchShaderContext*>(m_CGContext);
-            m_stringIndex = *Ctx->LogMgr.getIndex(formatStringConst->getAsCString());
         }
 
         // Add new metadata node and put the printf string into it.
