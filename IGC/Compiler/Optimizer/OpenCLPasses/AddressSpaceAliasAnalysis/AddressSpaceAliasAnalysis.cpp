@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "llvm/Config/llvm-config.h"
+#include "AdaptorCommon/RayTracing/RayTracingAddressSpaceAliasAnalysis.h"
 #include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
@@ -204,5 +205,7 @@ ImmutablePass* IGC::createAddressSpaceAAWrapperPass() {
 
 void IGC::addAddressSpaceAAResult(Pass& P, Function&, AAResults& AAR) {
     if (auto * WrapperPass = P.getAnalysisIfAvailable<AddressSpaceAAWrapperPass>())
+        AAR.addAAResult(WrapperPass->getResult());
+    if (auto * WrapperPass = P.getAnalysisIfAvailable<RayTracingAddressSpaceAAWrapperPass>())
         AAR.addAAResult(WrapperPass->getResult());
 }

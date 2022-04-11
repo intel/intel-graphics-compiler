@@ -160,6 +160,7 @@ static AllocationType getAllocationType(KernelArg::ArgType argType, BindlessAllo
     case KernelArg::ArgType::IMPLICIT_PRIVATE_BASE:
     case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
     case KernelArg::ArgType::IMPLICIT_SYNC_BUFFER:
+    case KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER:
     case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_EVENT_POOL:
     case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE:
     case KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET:

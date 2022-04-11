@@ -385,6 +385,16 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
         //
         const unsigned int totalPrivateMemPerWI = m_ModAllocaInfo->getTotalPrivateMemPerWI(&F);
 
+        //FIXME: for now, to shrink size, let's use SIMD8 if have to.
+        //later, maybe, we want to change to legacy behavior: SIMD16, to avoid potential spill.
+        //but even so, when we support slot0 and slot1, then, we could still use SIMD8.
+        if (Ctx.platform.hasScratchSurface() &&
+            Ctx.hasSyncRTCalls() &&
+            totalPrivateMemPerWI > scratchSpaceLimitPerWI) {
+            simd_size = numLanes(Ctx.platform.getMinDispatchMode());
+            scratchSpaceLimitPerWI = maxScratchSpaceBytes / simd_size;
+        }
+
         if (totalPrivateMemPerWI > scratchSpaceLimitPerWI) {
             // IGC errors out when we are trying to remove statelesspvtmem of OCL (even though OCl still supports statelesspvtmem).
             // This assertion tests a scenario where (pvt_mem_usage > 256k) while statelessprivatememory is not supported.
