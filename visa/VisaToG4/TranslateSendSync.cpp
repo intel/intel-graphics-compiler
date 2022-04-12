@@ -298,18 +298,17 @@ static void updateNamedBarriersInJitInfo(FINALIZER_INFO* jitinfo, G4_Operand* ba
 
     if (barrierId->isImm())
     {
-        // Update the number of named barriers to barrier id + 1 as the id is a
-        // 0-based number.
+        // Mark the barrier id is being used.
         unsigned id = (unsigned)barrierId->asImm()->getInt();
-        jitinfo->usesBarrier = std::max(jitinfo->usesBarrier, id + 1);
+        jitinfo->usedBarriers.set(id);
     }
     else
     {
-        // In order to be safe, set the number of named barriers to the max
-        // value allowed if the barrier id is unknown to vISA. We probably
-        // won't see this in typical cases as the barrier id provided by users
-        // like IGC should be an immediate value.
-        jitinfo->usesBarrier = FINALIZER_INFO::kMaxNamedBarriers;
+        // In order to be safe, mark all barriers are being used if the barrier
+        // id is unknown to vISA. We probably won't see this in typical cases
+        // as the barrier id provided by users like IGC should be an immediate
+        // value.
+        jitinfo->usedBarriers.set();
     }
 }
 
@@ -455,10 +454,8 @@ static void updateBarrierInJitInfo(FINALIZER_INFO* jitinfo)
     if (!jitinfo)
         return;
 
-    // For the legacy barrier, update usesBarrier to 1 when there's a
-    // barrier.
-    if (jitinfo->usesBarrier == 0)
-        jitinfo->usesBarrier = 1;
+    // The legacy barrier is always allocated to id 0.
+    jitinfo->usedBarriers.set(0);
 }
 
 void IR_Builder::generateBarrierSend()

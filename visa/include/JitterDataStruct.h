@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef JITTERDATASTRUCT_
 #define JITTERDATASTRUCT_
 
+#include <bitset>
+#include <optional>
 #include <stdint.h>
 
 typedef struct _VISA_BB_INFO{
@@ -44,12 +46,28 @@ typedef struct _FINALIZER_INFO{
     // are used as a part of Inline vISA code.
     // This information is used by legacy CMRT as well as OpenCL/L0 runtime.
     //
-    // The number of named barriers; it also indicates whether kernel uses a
-    // barrier.
-    // TODO: Maybe consider to use a bitset to track the barrier IDs used, and
-    // the number of bits set can be used to represent the number of barriers.
-    unsigned usesBarrier = 0;
+    // The max number of named barriers allowed
     static constexpr unsigned kMaxNamedBarriers = 32;
+    // Use a bitset to track the barrier IDs used
+    std::bitset<kMaxNamedBarriers> usedBarriers;
+    // Return the max id set + 1 as the number of barriers used. Ideally the
+    // number of bits set can be used to represent the number of barriers.
+    // However, In current programming model the barriers should be allocated
+    // sequentially, so here we return max id + 1 to make sure of that.
+    unsigned numBarriers() const {
+        auto maxId = getMaxBarrierId();
+        return maxId.has_value() ? maxId.value() + 1 : 0;
+    }
+    // Return true if kernel uses any barrier
+    bool hasBarrier() const { return usedBarriers.any(); }
+    // Return the max barrier id set
+    std::optional<unsigned> getMaxBarrierId() const {
+        for (unsigned i = kMaxNamedBarriers - 1; i != static_cast<unsigned>(-1); --i) {
+            if (usedBarriers.test(i))
+                return std::optional(i);
+        }
+        return std::nullopt;
+    }
 
     unsigned BBNum;
     VISA_BB_INFO* BBInfo;

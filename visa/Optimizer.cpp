@@ -1877,6 +1877,11 @@ bool Optimizer::R0CopyNeeded()
         return true;
     }
 
+    if (kernel.getOption(vISA_PreserveR0InR0))
+    {
+        return false;
+    }
+
     if (builder.getIsKernel() && kernel.fg.getHasStackCalls())
     {
         // As per VISA ABI, last register in GRF file should

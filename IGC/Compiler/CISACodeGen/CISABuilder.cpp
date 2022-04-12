@@ -4266,6 +4266,13 @@ namespace IGC
             SaveOption(vISA_enablePreemption, true);
         }
 
+        if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
+            (m_program->m_Platform->isProductChildOf(IGFX_PVC) || IGC_IS_FLAG_ENABLED(ForcePreserveR0)))
+        {
+            // Force VISA to preserve r0 in r0 itself throughout the kernel/stackcall function.
+            SaveOption(vISA_PreserveR0InR0, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(forceGlobalRA))
         {
             SaveOption(vISA_LocalRA, false);
@@ -5689,7 +5696,7 @@ namespace IGC
 
             uint8_t isExternal = F->hasFnAttribute("referenced-indirectly") ? 1 : 0;
             // Set per-function barrier count from vISA information.
-            uint32_t barrierCnt = jitInfo->usesBarrier;
+            uint32_t barrierCnt = jitInfo->numBarriers();
             attrs.emplace_back(entry.f_isKernel, isExternal, barrierCnt, entry.f_privateMemPerThread,
                 entry.f_spillMemPerThread, F->getName().str());
             attribTable.push_back(entry);
@@ -5996,11 +6003,11 @@ namespace IGC
 
         // Depend on vISA information about barriers presence to make sure that it's
         // always set properly, even if a barrier is used as a part of Inline vISA code only.
-        if (jitInfo->usesBarrier)
+        if (jitInfo->hasBarrier())
         {
             if (context->getModuleMetaData()->NBarrierCnt > 0)
             {
-                m_program->SetBarrierNumber(NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->usesBarrier));
+                m_program->SetBarrierNumber(NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->numBarriers()));
             }
             else
             {

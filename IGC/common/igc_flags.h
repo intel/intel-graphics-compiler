@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 DECLARE_IGC_GROUP("VISA optimization")
 DECLARE_IGC_REGKEY(DWORD, VISALTO,                          0, "vISA LTO optimization flags. check LINKER_TYPE for more details", false)
 DECLARE_IGC_REGKEY(bool, DisableSendS,                  false, "Setting this to 1/true adds a compiler switch to not generate sends commands, default is to enable sends ", false)
+DECLARE_IGC_REGKEY(bool, ForcePreserveR0,               false, "Setting this to true makes VISA preserve r0 in r0", true)
 DECLARE_IGC_REGKEY(bool, EnablePreemption,              true,  "Enable generating preeemptable code (SKL+)", false)
 DECLARE_IGC_REGKEY(bool, ForcePreemptionWA,             false, "Force generating preemptable code across platforms", true)
 DECLARE_IGC_REGKEY(bool, EnableVISANoSchedule,          false, "Enable VISA No-Schedule", true)

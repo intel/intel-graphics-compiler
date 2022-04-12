@@ -10318,10 +10318,13 @@ int GlobalRA::coloringRegAlloc()
             addStoreRestoreToReturn();
         }
 
-        // bind builtinR0 to the reserved stack call ABI GRF so that caller and
-        // callee can agree on which GRF to use for r0
-        builder.getBuiltinR0()->getRegVar()->setPhyReg(
-            builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
+        if (!kernel.getOption(vISA_PreserveR0InR0))
+        {
+            // bind builtinR0 to the reserved stack call ABI GRF so that caller and
+            // callee can agree on which GRF to use for r0
+            builder.getBuiltinR0()->getRegVar()->setPhyReg(
+                builder.phyregpool.getGreg(kernel.getThreadHeaderGRF()), 0);
+        }
     }
 
     if (kernel.getOption(vISA_SpillAnalysis))
