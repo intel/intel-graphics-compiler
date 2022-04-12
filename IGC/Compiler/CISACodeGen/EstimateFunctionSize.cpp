@@ -238,16 +238,23 @@ namespace {
             //the node will have implicit arguments too
             //In this scenario, when ControlInlineImplicitArgs is set
             //the node should be inlined unconditioinally so exempt from a stackcall and trimming target
-            if ((IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs) ||
-                IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg)) &&
-                HasImplicitArg == false && callee->HasImplicitArg == true)
+            if (HasImplicitArg == false && callee->HasImplicitArg == true)
             {
                 HasImplicitArg = true;
-                if(FunctionAttr != FA_KERNEL_ENTRY)
-                    setForceInline();
                 if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & 0x40) != 0)
                 {
                     std::cout << "Func " << this->F->getName().str() << " expands to has implicit arg due to " << callee->F->getName().str() << std::endl;
+                }
+
+                if (FunctionAttr != FA_KERNEL_ENTRY) //Can't inline kernel entry
+                {
+                    if (isStackCallAssigned()) //When stackcall is assigned we need to determine based on the flag
+                    {
+                        if (IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
+                            setForceInline();
+                    }
+                    else if (IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs)) //Force inline ordinary functions with implicit arguments
+                        setForceInline();
                 }
             }
             uint32_t sizeIncrease = callee->ExpandedSize * CalleeList[callee];
@@ -417,9 +424,6 @@ void EstimateFunctionSize::analyze() {
             if (!tmpHasImplicitArg) //The function doesn't have an implicit argument: skip
                 continue;
             Node->HasImplicitArg = true;
-            if (Node->FunctionAttr != FA_KERNEL_ENTRY)
-                Node->setForceInline();
-
             if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & 0x40) != 0)
             {
                 static int cnt = 0;
@@ -430,6 +434,20 @@ void EstimateFunctionSize::analyze() {
                     Name = "nonLeaf";
                 std::cout << Name << " Func " << ++cnt << " " << Node->F->getName().str() << " calls implicit args so HasImplicitArg" << std::endl;
             }
+
+            if (Node->FunctionAttr == FA_KERNEL_ENTRY) //Can't inline kernel entry
+                continue;
+
+            if (Node->isStackCallAssigned()) //When stackcall is assigned we need to determined based on the flag
+            {
+                if(IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
+                    Node->setForceInline();
+                continue;
+            }
+
+            //For other cases
+            if(IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs)) //Force inline ordinary functions with implicit arguments
+                Node->setForceInline();
         }
     }
 
