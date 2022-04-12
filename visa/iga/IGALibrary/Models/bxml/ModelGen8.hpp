@@ -1,11 +1,10 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
 #ifndef IGA_MODELS_GEN8_HPP
 #define IGA_MODELS_GEN8_HPP
 

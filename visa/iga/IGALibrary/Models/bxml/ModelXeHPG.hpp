@@ -1,11 +1,10 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-
 #ifndef IGA_MODELS_XE_HPG_HPP
 #define IGA_MODELS_XE_HPG_HPP
 
@@ -30,6 +29,8 @@ namespace iga {
                 {TYPE(Type::HF),TYPE(Type::HF)},
                 // BF,F <- BF,F
                 {TYPE(Type::BF)|TYPE(Type::F),TYPE(Type::BF)|TYPE(Type::F)},
+                // DF <- DF
+                {TYPE(Type::DF),TYPE(Type::DF)},
                 // DF <- DF
                 {TYPE(Type::DF),TYPE(Type::DF)},
                 // UQ,Q <- UW,W,UD,D,UQ,Q
@@ -205,16 +206,14 @@ namespace iga {
             {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
-                // F <- UB,B,UW,W,UD,D
-                {TYPE(Type::F),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)},
                 // HF <- HF
                 {TYPE(Type::HF),TYPE(Type::HF)},
-                // HF <- UB,B,UW,W,UD,D
-                {TYPE(Type::HF),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
                 // BF,F <- BF,F
                 {TYPE(Type::BF)|TYPE(Type::F),TYPE(Type::BF)|TYPE(Type::F)},
+                // DF <- DF
+                {TYPE(Type::DF),TYPE(Type::DF)},
                 // DF <- DF
                 {TYPE(Type::DF),TYPE(Type::DF)},
                 // UQ,Q <- UW,W,UD,D,UQ,Q
@@ -231,12 +230,12 @@ namespace iga {
             {
                 // UB,B,UW,W,UD,D <- UB,B,UW,W,UD,D
                 {TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
-                // F <- UB,B,UW,W,UD,D
-                {TYPE(Type::F),TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)},
                 // HF <- HF
                 {TYPE(Type::HF),TYPE(Type::HF)},
+                // DF <- DF
+                {TYPE(Type::DF),TYPE(Type::DF)},
                 // DF <- DF
                 {TYPE(Type::DF),TYPE(Type::DF)}
             },
@@ -258,10 +257,10 @@ namespace iga {
                 {TYPE(Type::F),TYPE(Type::F)},
                 // HF <- HF
                 {TYPE(Type::HF),TYPE(Type::HF)},
-                // D <- D
-                {TYPE(Type::D),TYPE(Type::D)},
-                // W <- W
-                {TYPE(Type::W),TYPE(Type::W)}
+                // UD,D <- UD,D
+                {TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UD)|TYPE(Type::D)},
+                // UW,W <- UW,W
+                {TYPE(Type::UW)|TYPE(Type::W),TYPE(Type::UW)|TYPE(Type::W)}
             },
             OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
@@ -460,10 +459,12 @@ namespace iga {
                 {TYPE(Type::HF),TYPE(Type::HF)},
                 // BF,F <- BF,F
                 {TYPE(Type::BF)|TYPE(Type::F),TYPE(Type::BF)|TYPE(Type::F)},
-                // W <- B
-                {TYPE(Type::W),TYPE(Type::B)},
-                // W,D <- W,D
-                {TYPE(Type::W)|TYPE(Type::D),TYPE(Type::W)|TYPE(Type::D)},
+                // UW,W <- UB,B
+                {TYPE(Type::UW)|TYPE(Type::W),TYPE(Type::UB)|TYPE(Type::B)},
+                // UW,W,UD,D <- UW,W,UD,D
+                {TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
+                // DF <- DF
+                {TYPE(Type::DF),TYPE(Type::DF)},
                 // DF <- DF
                 {TYPE(Type::DF),TYPE(Type::DF)}
             },
@@ -479,7 +480,7 @@ namespace iga {
                 // DF <- DF
                 {TYPE(Type::DF),TYPE(Type::DF)}
             },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
         {Op::INVALID, Platform::XE_HPG, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
         {Op::INVALID, Platform::XE_HPG, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
@@ -488,8 +489,12 @@ namespace iga {
             "Extended Math Function",
             OpSpec::Format::MATH_BINARY_REG_REGIMM,
             {
-                // F,HF <- F,HF
-                {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)}
+                // F <- F
+                {TYPE(Type::F),TYPE(Type::F)},
+                // HF <- HF
+                {TYPE(Type::HF),TYPE(Type::HF)},
+                // DF <- DF
+                {TYPE(Type::DF),TYPE(Type::DF)}
             },
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
@@ -538,14 +543,6 @@ namespace iga {
             "Move Indexed",
             OpSpec::Format::BASIC_BINARY_REG_REGIMM,
             {
-                // B <- B
-                {TYPE(Type::B),TYPE(Type::B)},
-                // UB <- UB
-                {TYPE(Type::UB),TYPE(Type::UB)},
-                // W <- W
-                {TYPE(Type::W),TYPE(Type::W)},
-                // UW <- UW
-                {TYPE(Type::UW),TYPE(Type::UW)},
                 // D <- D
                 {TYPE(Type::D),TYPE(Type::D)},
                 // UD <- UD
@@ -568,12 +565,16 @@ namespace iga {
                 {TYPE(Type::UW)|TYPE(Type::W),TYPE(Type::UW)|TYPE(Type::W)},
                 // UD,D <- UW,W
                 {TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UW)|TYPE(Type::W)},
+                // UD,D <- UW,W,UD,D
+                {TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UW)|TYPE(Type::W)|TYPE(Type::UD)|TYPE(Type::D)},
                 // F <- F
                 {TYPE(Type::F),TYPE(Type::F)},
                 // HF <- HF
                 {TYPE(Type::HF),TYPE(Type::HF)},
                 // BF,F <- BF,F
                 {TYPE(Type::BF)|TYPE(Type::F),TYPE(Type::BF)|TYPE(Type::F)},
+                // DF <- DF
+                {TYPE(Type::DF),TYPE(Type::DF)},
                 // DF <- DF
                 {TYPE(Type::DF),TYPE(Type::DF)},
                 // UQ,Q <- UD,D
@@ -703,6 +704,8 @@ namespace iga {
                 {TYPE(Type::HF),TYPE(Type::HF)},
                 // BF,F <- BF,F
                 {TYPE(Type::BF)|TYPE(Type::F),TYPE(Type::BF)|TYPE(Type::F)},
+                // DF <- DF
+                {TYPE(Type::DF),TYPE(Type::DF)},
                 // DF <- DF
                 {TYPE(Type::DF),TYPE(Type::DF)},
                 // UQ,Q <- UW,W,UD,D,UQ,Q
