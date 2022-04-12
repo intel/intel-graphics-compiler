@@ -39,8 +39,7 @@ public:
     // Setup ZEBin platform, and ELF header information. The program scope information
     // is also be parsed from SOpenCLProgramInfo in the constructor
     ZEBinaryBuilder(const PLATFORM plat, bool is64BitPointer,
-        const IGC::SOpenCLProgramInfo& programInfo, const uint8_t* spvData, uint32_t spvSize,
-        const uint8_t* metricsData, uint32_t metricsSize);
+        const IGC::SOpenCLProgramInfo& programInfo, const uint8_t* spvData, uint32_t spvSize);
 
     // Set the ProductFamily as the specified value.
     void setProductFamily(PRODUCT_FAMILY value);
@@ -102,9 +101,6 @@ private:
 
     /// add runtime symbols
     void addRuntimeSymbols();
-
-    /// add note section for IGC metrics
-    void addMetrics(const uint8_t* data, uint32_t size);
 
     /// add program scope symbols (e.g. symbols defined in global/const buffer)
     void addProgramSymbols(const IGC::SOpenCLProgramInfo& annotations);

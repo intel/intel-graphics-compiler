@@ -12,10 +12,10 @@ SPDX-License-Identifier: MIT
 
 #include "wa_def.h"
 
-#define PVC_XT_GT_REV_ID_CT_A0   SI_REV_ID(3,3)
-#define PVC_XT_GT_REV_ID_CT_B0   SI_REV_ID(5,5)
+#define PVC_XT_GT_REV_ID_COMPUTETILE_A0   SI_REV_ID(3,3)
+#define PVC_XT_GT_REV_ID_COMPUTETILE_B0   SI_REV_ID(5,5)
 
-#define PVC_XT_GT_REV_ID_BD_A0   SI_REV_ID(0,0)
-#define PVC_XT_GT_REV_ID_BD_B0   SI_REV_ID(3,3)
+#define PVC_XT_GT_REV_ID_BASEDIE_A0   SI_REV_ID(0,0)
+#define PVC_XT_GT_REV_ID_BASEDIE_B0   SI_REV_ID(3,3)
 
 

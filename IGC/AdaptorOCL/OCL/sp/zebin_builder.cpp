@@ -26,7 +26,7 @@ using namespace llvm;
 
 ZEBinaryBuilder::ZEBinaryBuilder(
     const PLATFORM plat, bool is64BitPointer, const IGC::SOpenCLProgramInfo& programInfo,
-    const uint8_t* spvData, uint32_t spvSize, const uint8_t* metricsData, uint32_t metricsSize)
+    const uint8_t* spvData, uint32_t spvSize)
     : mPlatform(plat), mBuilder(is64BitPointer)
 {
     G6HWC::InitializeCapsGen8(&mHWCaps);
@@ -43,10 +43,6 @@ ZEBinaryBuilder::ZEBinaryBuilder(
 
     if (spvData != nullptr)
         addSPIRV(spvData, spvSize);
-
-    // Add metrics section to zeBinary regardless of metrics presence,
-    // i.e. if there is no metrics data then an empty section will be added.
-    addMetrics(metricsData, metricsSize);
 }
 
 void ZEBinaryBuilder::setProductFamily(PRODUCT_FAMILY value)
@@ -254,11 +250,6 @@ void ZEBinaryBuilder::addGlobals(const IGC::SOpenCLProgramInfo& annotations)
 void ZEBinaryBuilder::addSPIRV(const uint8_t* data, uint32_t size)
 {
     mBuilder.addSectionSpirv("", data, size);
-}
-
-void ZEBinaryBuilder::addMetrics(const uint8_t* data, uint32_t size)
-{
-    mBuilder.addSectionMetrics("", data, size);
 }
 
 ZEELFObjectBuilder::SectionID ZEBinaryBuilder::addKernelBinary(const std::string& kernelName,

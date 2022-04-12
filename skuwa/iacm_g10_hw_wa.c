@@ -17,14 +17,6 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
 
 
     SI_WA_ENABLE(
-        Wa_1609337769,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, ACM_G10_GT_REV_ID_B0));
-
-
-    SI_WA_ENABLE(
         Wa_14010198302,
         "No Link Provided",
         "No HWSightingLink provided",
@@ -89,33 +81,9 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
 
 
     SI_WA_ENABLE(
-        Wa_14013672992,
-        "No Link Provided",
-        "No Link Provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
-        Wa_18012660806,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
         Wa_14014414195,
         "No Link Provided",
         "No Link Provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
-        Wa_14012437816,
-        "No Link Provided",
-        "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
 
@@ -126,14 +94,6 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
-        Wa_22013880840,
-        "No Link Provided",
-        "No Link Provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_B0, FUTURE_PROJECT));
 
 
     SI_WA_ENABLE(
@@ -153,23 +113,7 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
 
 
     SI_WA_ENABLE(
-        Wa_18012201914,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_B0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
         Wa_14012562260,
-        "No Link Provided",
-        "No Link Provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, ACM_G10_GT_REV_ID_B0));
-
-
-    SI_WA_ENABLE(
-        Wa_18013852970,
         "No Link Provided",
         "No Link Provided",
         PLATFORM_ALL,
@@ -185,52 +129,18 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
 
 
     SI_WA_ENABLE(
-        Wa_14012688258,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
-        Wa_22012532006,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, ACM_G10_GT_REV_ID_C0));
-
-
-    SI_WA_ENABLE(
         Wa_16012292205,
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
 
-
-    SI_WA_ENABLE(
-        Wa_18015444900,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_B0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
-        Wa_22012766191,
-        "No Link Provided",
-        "No Link Provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
-
-
     SI_WA_ENABLE(
         Wa_22012856258,
         "No Link Provided",
-        "No Link Provided",
+        "No HWSightingLink provided",
         PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_B0, FUTURE_PROJECT));
-
+        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
 
     SI_WA_ENABLE(
         Wa_22013689345,
@@ -239,6 +149,26 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_B0, FUTURE_PROJECT));
 
+    SI_WA_ENABLE(
+        Wa_22013880840,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_B0, FUTURE_PROJECT));
+
+    SI_WA_ENABLE(
+        Wa_18012201914,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_B0, FUTURE_PROJECT));
+
+    SI_WA_ENABLE(
+        Wa_14013672992,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
 
     SI_WA_ENABLE(
         Wa_22014559856,
@@ -246,5 +176,4 @@ void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_ACM_G10, ACM_G10_GT_REV_ID_A0, FUTURE_PROJECT));
-
 }

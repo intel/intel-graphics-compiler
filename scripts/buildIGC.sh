@@ -70,7 +70,7 @@ echo "[Build Status] LLVM_VERSION_PREFERRED = $LLVM_VERSION_PREFERRED"
 
 echo "[Build Status] Prepare install OpenCL Clang"
 dpkg -i ./igc-official-release/*.deb
-echo "[Build Status] OpenCL Clang installed"
+echo "[Build Status] OpenCL Clang INSTALLED"
 
 
 echo "[Build Status] Install SPIRV-LLVM-Translator"
