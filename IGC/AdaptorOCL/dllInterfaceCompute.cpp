@@ -139,6 +139,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/SourceMgr.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "IGC/Metrics/IGCMetric.h"
+
 using namespace IGC::IGCMD;
 using namespace IGC::Debug;
 using namespace IGC;
@@ -962,7 +964,6 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
                         const IGC::CPlatform &IGCPlatform,
                         float profilingTimerResolution,
                         const ShaderHash& inputShHash) {
-
     // This part of code is a critical-section for threads,
     // due static LLVM object which handles options.
     // Setting mutex to ensure that single thread will enter and setup this flag.
@@ -1346,6 +1347,9 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
     int binarySize = 0;
     char* binaryOutput = nullptr;
 
+    oclContext.metrics.FinalizeStats();
+    oclContext.metrics.OutputMetrics();
+
     if (!IGC_IS_FLAG_ENABLED(EnableZEBinary) &&
         !oclContext.getModuleMetaData()->compOpt.EnableZEBinary) {
         Util::BinaryStream programBinary;
@@ -1366,8 +1370,13 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
             spv_data = pInputArgs->pInput;
             spv_size = pInputArgs->InputSize;
         }
+
+        // IGC metrics
+        size_t metricDataSize = oclContext.metrics.getMetricDataSize();
+        auto metricData = reinterpret_cast<const char*>(oclContext.metrics.getMetricData());
+
         oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes,
-            spv_data, spv_size);
+            spv_data, spv_size, metricData, metricDataSize);
 
         // FIXME: try to avoid memory copy here
         binarySize = buf.size();
@@ -1401,9 +1410,6 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
     COMPILER_TIME_PRINT(&oclContext, ShaderType::OPENCL_SHADER, oclContext.hash);
 
     COMPILER_TIME_DEL(&oclContext, m_compilerTimeStats);
-
-    oclContext.metrics.FinalizeStats();
-    oclContext.metrics.OutputMetrics();
 
     return true;
 }

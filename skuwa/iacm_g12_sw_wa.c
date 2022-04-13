@@ -16,6 +16,7 @@ void InitAcm_G12SwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
     int StepId_ACM_G12 = (int)pWaParam->usRevId;
 
     SI_WA_ENABLE(
+
         WaMixModeSelInstDstNotPacked,
         "No HWBugLink provided",
         "No Link Provided",
@@ -31,4 +32,4 @@ void InitAcm_G12HASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable,
 
 
 }
-#endif // __KCH
+#endif
