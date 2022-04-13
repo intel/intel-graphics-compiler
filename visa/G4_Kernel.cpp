@@ -1956,6 +1956,23 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
     int32_t pc = 0;
     std::vector<char> igaStringBuffer;
     igaStringBuffer.resize(512); // TODO: expand default after testing
+
+    // printedLabels - tracked the labels those have been printed to the pc to avoid
+    // printing the same label twice at the same pc. This can happen when there's an empty
+    // BB contains only labels. The BB and the following BB will both print those labels.
+    // The pair is the pc to label name pair.
+    std::set<std::pair<int32_t, std::string>> printedLabels;
+    // tryPrintLable - check if the given label is already printed with the given pc. Print it
+    // if not, and skip it if yes.
+    auto tryPrintLabel = [&os, &printedLabels](int32_t label_pc, std::string label_name) {
+        auto label_pair = std::make_pair(label_pc, label_name);
+        // skip if the same label in the set
+        if (printedLabels.find(label_pair) != printedLabels.end())
+            return;
+        os << label_name << ":\n";
+        printedLabels.insert(label_pair);
+    };
+
     for (BB_LIST_ITER itBB = fg.begin(); itBB != fg.end(); ++itBB) {
         os << "// "; (*itBB)->emitBbInfo(os); os << "\n";
         for (INST_LIST_ITER itInst = (*itBB)->begin();
@@ -1983,11 +2000,13 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
             if (isInstTarget) {
                 auto itr = ls.blockOffsets.find(pc);
                 if (itr == ls.blockOffsets.end()) {
-                    os << labeler(pc, &ls) << ":\n";
+                    std::string labelname(labeler(pc, &ls));
+                    tryPrintLabel(pc, labelname);
                 } else {
                     // there can be multiple labels per PC
                     for (const std::string &lbl : itr->second) {
-                        os << ls.labelPrefix << lbl << ":\n";
+                        std::string labelname(ls.labelPrefix + lbl);
+                        tryPrintLabel(pc, labelname);
                     }
                 }
                 if (!findNextNonLabel(false)) {
