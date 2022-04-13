@@ -56,13 +56,12 @@ namespace IGCLLVM {
 
     inline Align getCorrectAlign(uint32_t Val)
     {
-        if (Val == 0)
-        {
-            // LLVM Does not accept 0 alignment.
-            // Instead assume byte-align.
-            Val = 1;
-        }
+#if LLVM_VERSION_MAJOR >= 11
+        // llvm::Align does not accept 0 alignment.
+        return llvm::assumeAligned(Val);
+#else
         return Align{ Val };
+#endif
     }
 
     // It is meant for copying alignement.

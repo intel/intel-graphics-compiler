@@ -403,14 +403,14 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
 
     Instruction &FirstI = *Fn->getEntryBlock().begin();
     Type *ElemTy = GV->getType()->getElementType();
+    IGCLLVM::Align GVAlign = IGCLLVM::getCorrectAlign(GV->getAlignment());
     AllocaInst *Alloca = new AllocaInst(ElemTy, vc::AddrSpace::Private,
+                                        /*ArraySize=*/nullptr, GVAlign,
                                         GV->getName() + ".local", &FirstI);
 
-    if (GV->getAlignment())
-      Alloca->setAlignment(IGCLLVM::getCorrectAlign(GV->getAlignment()));
-
     if (!isa<UndefValue>(GV->getInitializer()))
-      new StoreInst(GV->getInitializer(), Alloca, &FirstI);
+      new StoreInst(GV->getInitializer(), Alloca, /*isVolatile=*/false,
+                    GVAlign, &FirstI);
 
     vc::DIBuilder::createDbgDeclareForLocalizedGlobal(*Alloca, *GV, FirstI);
 

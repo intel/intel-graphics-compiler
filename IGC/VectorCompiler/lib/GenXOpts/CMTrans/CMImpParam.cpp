@@ -147,6 +147,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 using namespace llvm;
 
@@ -775,7 +776,8 @@ void CMImpParam::replaceWithGlobal(CallInst *CI) {
   GlobalVariable *GV =
       getOrCreateGlobalForIID(CI->getParent()->getParent(), IID);
   LoadInst *Load = new LoadInst(GV->getType()->getPointerElementType(), GV, "",
-                                /* isVolatile */ false, CI);
+                                /* isVolatile */ false,
+                                IGCLLVM::getCorrectAlign(GV->getAlignment()), CI);
   Load->takeName(CI);
   Load->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(Load);
@@ -1151,12 +1153,15 @@ CMImpParam::processKernelParameters(Function *F,
                        "fewer parameters for new function than expected");
     I2->setName(getImplicitArgName(IID));
 
-    if (GlobalsMap.count(IID)) {
+    auto GlobalsMapIt = GlobalsMap.find(IID);
+    if (GlobalsMapIt != GlobalsMap.end()) {
+      GlobalVariable *GV = GlobalsMapIt->second;
       // Also insert a new store at the start of the function to the global
       // variable used for this implicit argument intrinsic if such global is
       // present. There are no global for pseudo intrinsics and sometimes for
       // local ID when it is used only for kernel prologue.
-      new StoreInst(I2, GlobalsMap[IID], &FirstI);
+      new StoreInst(I2, GV, /*isVolatile=*/false,
+                    IGCLLVM::getCorrectAlign(GV->getAlignment()), &FirstI);
     }
 
     // Prepare the kinds that will go into the metadata
