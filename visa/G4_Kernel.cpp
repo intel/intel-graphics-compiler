@@ -2040,7 +2040,8 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
             }
 
             static const uint32_t IGA_FMT_OPTS =
-                IGA_FORMATTING_OPT_PRINT_LDST
+                getOption(vISA_PrintHexFloatInAsm) ? IGA_FORMATTING_OPT_PRINT_HEX_FLOATS : IGA_FORMATTING_OPTS_DEFAULT
+                | IGA_FORMATTING_OPT_PRINT_LDST
                 | IGA_FORMATTING_OPT_PRINT_BFNEXPRS;
             while (true) {
                 size_t nw = kv.getInstSyntax(
