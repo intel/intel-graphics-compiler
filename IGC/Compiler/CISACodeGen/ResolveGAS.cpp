@@ -556,13 +556,20 @@ bool GASPropagator::visitSelect(SelectInst& I) {
     unsigned OpNo = TheUse->getOperandNo();
     Use* TheOtherUse = &I.getOperandUse(3 - OpNo);
 
-    AddrSpaceCastInst* ASCI = dyn_cast<AddrSpaceCastInst>(TheOtherUse->get());
-    if (!ASCI || ASCI->getSrcTy() != NonGASTy)
-        return false;
+    Value* TheOtherVal = nullptr;
+    if (isa<ConstantPointerNull>(TheOtherUse->get())) {
+        TheOtherVal = ConstantPointerNull::get(cast<PointerType>(NonGASTy));
+    }
+    else if (AddrSpaceCastInst* ASCI = dyn_cast<AddrSpaceCastInst>(TheOtherUse->get())) {
+        if (ASCI->getSrcTy() == NonGASTy)
+            TheOtherVal = ASCI->getPointerOperand();
+    }
+
+    if (!TheOtherVal) return false;
 
     // Change select operands to non-GAS
     TheUse->set(TheVal);
-    TheOtherUse->set(ASCI->getOperand(0));
+    TheOtherUse->set(TheOtherVal);
 
     // Handle select return type
     BuilderType::InsertPointGuard Guard(*IRB);
