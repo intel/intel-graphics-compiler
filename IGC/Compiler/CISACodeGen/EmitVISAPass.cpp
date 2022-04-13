@@ -12160,6 +12160,7 @@ void EmitPass::emitStackFuncEntry(Function* F)
                     // Directly map the dst register to an alias of ArgBlkVar, and update symbol mapping for future uses
                     Dst = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
                     m_currShader->UpdateSymbolMap(&Arg, Dst);
+                    m_currShader->UpdateSymbolMap(m_deSSA->getRootValue(&Arg), Dst);
                 }
                 else
                 {
