@@ -105,6 +105,7 @@ struct SemanticChecker : LOCChecker {
             checkDst(i, i.getDestination());
         }
         int srcs = i.getSourceCount();
+        checkExecSize(i);
         if (srcs > 0) {
             checkSrc(i, 0);
         }
@@ -114,6 +115,9 @@ struct SemanticChecker : LOCChecker {
         if (srcs > 2) {
             checkSrc(i, 2);
         }
+    }
+
+    void checkExecSize(const Instruction &i) {
     }
 
     void checkDst(const Instruction &i, const Operand &op) {
@@ -409,6 +413,8 @@ struct SanityChecker {
         } else if (i.getDestination().getKind() != Operand::Kind::INVALID) {
             IGA_ASSERT_FALSE("unsupported destination should be .kind=INVALID");
         }
+
+        checkExecSize(i);
         int srcs = i.getSourceCount();
         if (srcs > 0) {
             checkSrc(i, 0);
@@ -438,6 +444,9 @@ struct SanityChecker {
         default:
             IGA_ASSERT_FALSE("wrong kind for destination");
         }
+    }
+
+    void checkExecSize(const Instruction &i) {
     }
 
     void checkSrc(const Instruction &inst, int srcIx) {

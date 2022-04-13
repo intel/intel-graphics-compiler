@@ -172,6 +172,7 @@ std::string iga::ToSyntax(DpasFC sfc)
     case DpasFC::F_8X6: return "8x6";
     case DpasFC::F_8X7: return "8x7";
     case DpasFC::F_8X8: return "8x8";
+    //
     default:
         return fmtHex(static_cast<uint32_t>(sfc)) + "?";
     }

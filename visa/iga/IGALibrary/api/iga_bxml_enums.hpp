@@ -168,6 +168,7 @@ namespace iga
         F_8X7  =  (8 << 8) | 7,
         F_8X8  =  (8 << 8) | 8,
     };
+
     // static const DpasFC ALL_DpasFCs[] ...
     static const std::array<DpasFC,48> ALL_DpasFCs {
         DpasFC::F_1X1, DpasFC::F_1X2, DpasFC::F_1X3,
@@ -183,6 +184,7 @@ namespace iga
         DpasFC::F_8X4, DpasFC::F_8X5, DpasFC::F_8X6,
         DpasFC::F_8X7, DpasFC::F_8X8,
     };
+
     static inline uint32_t GetDpasSystolicDepth(DpasFC sf) {
         return uint32_t(sf) >> 8;
     }

@@ -3845,6 +3845,8 @@ public:
             WarningAtT(subRegLoc,
                 "src1 subregister must be GRF aligned for this op");
         }
+
+
         // TODO: we could ensure src2 is half-grf aligned
         // int byteOff = SubRegToBytesOffset(subregNum, RegName::GRF_R, ty);
 
