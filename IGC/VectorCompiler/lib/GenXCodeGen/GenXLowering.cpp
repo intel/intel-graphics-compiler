@@ -4937,17 +4937,37 @@ bool GenXLowering::lowerMul64(Instruction *Inst) {
   auto Src0 = SplitBuilder.splitOperandLoHi(0);
   auto Src1 = SplitBuilder.splitOperandLoHi(1);
 
-  // create muls and adds
-  auto *ResL = Builder.CreateMul(Src0.Lo, Src1.Lo);
-  // create the mulh intrinsic to the get the carry-part
-  Type *tys[2] = {ResL->getType(), Src0.Lo->getType()};
-  // build argument list
-  SmallVector<llvm::Value *, 2> args{Src0.Lo, Src1.Lo};
   auto *M = Inst->getModule();
-  Function *IntrinFunc =
-      GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_umulh, tys);
+  Value *Cari = nullptr;
+  Value *ResL = nullptr;
 
-  auto *Cari = Builder.CreateCall(IntrinFunc, args, ".cari");
+  if (ST->useMulDDQ()) {
+    // Create uumul intrinsic for DxD->Q multiplication
+    Type *tys[2] = {Inst->getType(), Src0.Lo->getType()};
+    Function *IntrinsicUUMul =
+        GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_uumul, tys);
+    SmallVector<llvm::Value *, 2> args{Src0.Lo, Src1.Lo};
+
+    auto *UUMul = Builder.CreateCall(IntrinsicUUMul, args);
+    auto Res = SplitBuilder.splitValueLoHi(*UUMul);
+
+    Cari = Res.Hi;
+    ResL = Res.Lo;
+  } else {
+    // Create mul instruction and mulh intrinsic
+    ResL = Builder.CreateMul(Src0.Lo, Src1.Lo);
+
+    // create the mulh intrinsic to the get the carry-part
+    Type *tys[2] = {ResL->getType(), Src0.Lo->getType()};
+    // build argument list
+    SmallVector<llvm::Value *, 2> args{Src0.Lo, Src1.Lo};
+    Function *IntrinFunc =
+        GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_umulh, tys);
+
+    Cari = Builder.CreateCall(IntrinFunc, args, ".cari");
+  }
+
+  // create muls and adds
   auto *Temp0 = Builder.CreateMul(Src0.Lo, Src1.Hi);
   auto *Temp1 = Builder.CreateAdd(Cari, Temp0);
   auto *Temp2 = Builder.CreateMul(Src0.Hi, Src1.Lo);
