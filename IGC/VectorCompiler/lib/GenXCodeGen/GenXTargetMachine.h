@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/CodeGen/BasicTTIImpl.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/Transforms/Utils/UnrollLoop.h"
+#include "llvm/Target/TargetLoweringObjectFile.h"
 
 namespace llvm {
 
@@ -36,6 +37,7 @@ class raw_pwrite_stream;
 class MachineModuleInfo;
 
 class GenXTargetMachine : public IGCLLVM::LLVMTargetMachine {
+  std::unique_ptr<TargetLoweringObjectFile> TLOF;
   // FIXME: regarding backend config: target machine shouldn't include a pass.
   // Should split current GenXBackendConfig into an implementation and a
   // pass-wrapper.
@@ -67,6 +69,9 @@ public:
 
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
 
+  TargetLoweringObjectFile *getObjFileLowering() const override {
+    return TLOF.get();
+  }
   const TargetSubtargetInfo *getSubtargetImpl(const Function &) const override {
     return &Subtarget;
   }

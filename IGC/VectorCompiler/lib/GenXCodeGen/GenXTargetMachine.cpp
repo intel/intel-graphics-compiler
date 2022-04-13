@@ -48,6 +48,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
@@ -193,6 +194,13 @@ public:
 
 } // namespace
 
+static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
+  if (TT.isOSWindows())
+    return std::make_unique<TargetLoweringObjectFileCOFF>();
+  else
+    return std::make_unique<TargetLoweringObjectFileELF>();
+}
+
 GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
                                      StringRef CPU, StringRef FS,
                                      const TargetOptions &Options,
@@ -204,7 +212,8 @@ GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
                                  RM ? RM.getValue() : Reloc::Model::Static,
                                  CM ? CM.getValue() : CodeModel::Model::Small,
                                  OL),
-      BC(std::move(BC)), Is64Bit(Is64Bit), Subtarget(TT, CPU.str(), FS.str()) {}
+      TLOF(createTLOF(getTargetTriple())), BC(std::move(BC)), Is64Bit(Is64Bit),
+      Subtarget(TT, CPU.str(), FS.str()) {}
 
 GenXTargetMachine::~GenXTargetMachine() = default;
 
