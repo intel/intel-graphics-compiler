@@ -20844,14 +20844,8 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
         IGC_ASSERT_MESSAGE(arg, "Implicit argument not found!");
         if (arg)
         {
-            CVariable* Src = m_currShader->getOrCreateArgumentSymbol(arg, false);
-            CVariable* Dst = GetSymbol(I);
-            if (Dst->GetType() != Src->GetType())
-            {
-                Src = m_currShader->GetNewAlias(Src, Dst->GetType(), 0, Dst->GetNumberElement());
-            }
-            // Map directly to the kernel's argument
-            m_currShader->UpdateSymbolMap(I, Src);
+            m_encoder->SetNoMask();
+            m_currShader->CopyVariable(GetSymbol(I), m_currShader->getOrCreateArgumentSymbol(arg, false));
         }
     }
     else
