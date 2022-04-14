@@ -443,6 +443,9 @@ namespace IGC
         bool forceTileYWalk = false;
         // enable atomic branch optimization
         bool atomicBranch = false;
+        // resource index for hf packing (resourceRangeID, indexIntoRange)
+        std::vector<std::vector<unsigned int>> ResForHfPacking;
+
     };
 
 
@@ -590,6 +593,15 @@ namespace IGC
         unsigned int numReplicas = 0;
     };
 
+    struct SrvMapData
+    {
+        unsigned int resourceRangeID;
+        unsigned int indexIntoRange;
+        bool hfCandidate = false;
+        unsigned int runtimeValue;
+        unsigned int ptrAddressSpace;
+    };
+
     struct URBLayoutInfo
     {
         bool has64BVertexHeaderInput = false;
@@ -627,6 +639,7 @@ namespace IGC
         std::vector<PointerAddressRelocInfo> GlobalBufferAddressRelocInfo;
         std::vector<PointerAddressRelocInfo> ConstantBufferAddressRelocInfo;
         std::map<uint32_t, uint32_t> forceLscCacheList;
+        std::vector<SrvMapData> SrvMap;
         std::vector<uint32_t> RasterizerOrderedByteAddressBuffer;
         unsigned int MinNOSPushConstantSize = 0;
         llvm::MapVector<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;

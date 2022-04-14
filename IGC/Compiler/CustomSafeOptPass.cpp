@@ -6371,3 +6371,127 @@ bool InsertBranchOpt::runOnFunction(Function& F)
     }
     return false;
 }
+
+namespace {
+    class HFfoldingOpt : public FunctionPass
+    {
+    public:
+        static char ID;
+        HFfoldingOpt();
+
+        StringRef getPassName() const override { return "HFfoldingOpt"; }
+
+        bool runOnFunction(Function& F) override;
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
+    private:
+        CodeGenContext* pContext = nullptr;
+        ModuleMetaData* modMD;
+        bool findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace);
+        void getHFPackingCandidate(Function& F);
+        void PackHfResources();
+    };
+}
+
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+#define PASS_FLAG "igc-HFfolding"
+#define PASS_DESCRIPTION "HF folding Opt"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(HFfoldingOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(HFfoldingOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+char HFfoldingOpt::ID = 0;
+FunctionPass* IGC::createHFfoldingOptPass()
+{
+    return new HFfoldingOpt();
+}
+
+HFfoldingOpt::HFfoldingOpt() : FunctionPass(ID)
+{
+    initializeHFfoldingOptPass(*PassRegistry::getPassRegistry());
+}
+
+bool HFfoldingOpt::findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace)
+{
+    ptrAddrSpace = cast<SamplerLoadIntrinsic>(tex)->getTextureValue()->getType()->getPointerAddressSpace();
+
+    Value* src = IGC::TracePointerSource(cast<SamplerLoadIntrinsic>(tex)->getTextureValue());
+    if (GetGRFOffsetFromRTV(src, runtimeV))
+    {
+        return true;
+    }
+    return false;
+}
+
+void HFfoldingOpt::getHFPackingCandidate(Function& F)
+{
+    for (auto bb = F.begin(); bb != F.end(); ++bb)
+    {
+        for (auto ii = bb->begin(); ii != bb->end(); ++ii)
+        {
+            if (StoreInst* pStore = llvm::dyn_cast<StoreInst>(&(*ii)))
+            {
+                if (pStore->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
+                {
+                    continue;
+                }
+
+                if (ExtractElementInst* ee = dyn_cast<ExtractElementInst>(pStore->getOperand(0)))
+                {
+                    if (GenIntrinsicInst* texld = llvm::dyn_cast<GenIntrinsicInst>(ee->getOperand(0)))
+                    {
+                        if (texld->getIntrinsicID() != GenISAIntrinsic::GenISA_ldptr)
+                        {
+                            continue;
+                        }
+
+                        uint runtimeV = 0;
+                        uint ptrAddrSpace = 0;
+                        if (findSRVinfo(texld, runtimeV, ptrAddrSpace))
+                        {
+                            for (auto& iter : modMD->SrvMap)
+                            {
+                                if (iter.runtimeValue == runtimeV && iter.ptrAddressSpace == ptrAddrSpace)
+                                {
+                                    // found immediate usage of texture load to local store. Set the hfCandidate to true
+                                    // UMD will check if the resource is hf and can be packed.
+                                    iter.hfCandidate = 1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void HFfoldingOpt::PackHfResources()
+{
+
+}
+
+bool HFfoldingOpt::runOnFunction(Function& F)
+{
+    pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    modMD = pContext->getModuleMetaData();
+
+    if (modMD->csInfo.ResForHfPacking.size() == 0)
+    {
+        getHFPackingCandidate(F);
+    }
+    else
+    {
+        PackHfResources();
+    }
+
+    return false;
+}
