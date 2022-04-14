@@ -92,6 +92,18 @@ typedef enum
     GED_MODEL_11,
 
     /*!
+     * GED Model Version: xe.hpc.a
+     * Supported CPUs: XeHpcA
+     */
+    GED_MODEL_XE_HPC_A,
+
+    /*!
+     * GED Model Version: xe.hpc
+     * Supported CPUs: XeHpc
+     */
+    GED_MODEL_XE_HPC,
+
+    /*!
      * GED Model Version: tgl
      * Supported CPUs: DashG
      */
@@ -108,18 +120,6 @@ typedef enum
      * Supported CPUs: XeHPG
      */
     GED_MODEL_XE_HPG,
-
-    /*!
-     * GED Model Version: xe.hpc.a
-     * Supported CPUs: XeHpcA
-     */
-    GED_MODEL_XE_HPC_A,
-
-    /*!
-     * GED Model Version: xe.hpc
-     * Supported CPUs: XeHpc
-     */
-    GED_MODEL_XE_HPC,
     GED_MODEL_INVALID
 } GED_MODEL;
 
@@ -2962,30 +2962,6 @@ extern uint32_t GED_CALLCONV GED_GetSWSB(ged_ins_t* ins, GED_RETURN_VALUE* resul
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetSWSB(ged_ins_t* ins, const uint32_t value);
 
 /*!
- * Get the value of the Src1IsImm field in the given instruction. See @ref GED_INS_FIELD_Src1IsImm for the field's description.
- *
- * @param[in]       ins    Pointer to the decoded instruction object.
- * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
- *                         which caused the failure.
- *
- * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
- *              it is important to check the GED_RETURN_VALUE result.
- *
- * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
- */
-extern uint32_t GED_CALLCONV GED_GetSrc1IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-
-/*!
- * Set the value of the Src1IsImm field in the given instruction. See @ref GED_INS_FIELD_Src1IsImm for the field's description.
- *
- * @param[in,out]   ins    Pointer to the instruction object for encoding.
- * @param[in]       value  The value to encode.
- *
- * @return      GED_RETURN_VALUE indicating success or encoding error.
- */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1IsImm(ged_ins_t* ins, const uint32_t value);
-
-/*!
  * Get the value of the Src0IsImm field in the given instruction. See @ref GED_INS_FIELD_Src0IsImm for the field's description.
  *
  * @param[in]       ins    Pointer to the decoded instruction object.
@@ -3010,8 +2986,7 @@ extern uint32_t GED_CALLCONV GED_GetSrc0IsImm(ged_ins_t* ins, GED_RETURN_VALUE* 
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0IsImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
- * Get the value of the Src0SubRegNumByte field in the given instruction. See @ref GED_INS_FIELD_Src0SubRegNumByte for the field's
- * description.
+ * Get the value of the Src1IsImm field in the given instruction. See @ref GED_INS_FIELD_Src1IsImm for the field's description.
  *
  * @param[in]       ins    Pointer to the decoded instruction object.
  * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
@@ -3022,18 +2997,17 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0IsImm(ged_ins_t* ins, const uint
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV GED_GetSrc0SubRegNumByte(ged_ins_t* ins, GED_RETURN_VALUE* result);
+extern uint32_t GED_CALLCONV GED_GetSrc1IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
- * Set the value of the Src0SubRegNumByte field in the given instruction. See @ref GED_INS_FIELD_Src0SubRegNumByte for the field's
- * description.
+ * Set the value of the Src1IsImm field in the given instruction. See @ref GED_INS_FIELD_Src1IsImm for the field's description.
  *
  * @param[in,out]   ins    Pointer to the instruction object for encoding.
  * @param[in]       value  The value to encode.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0SubRegNumByte(ged_ins_t* ins, const uint32_t value);
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1IsImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the SyncFC field in the given instruction. The function returns an enumeration value. To obtain the enum entry's
@@ -3060,32 +3034,7 @@ extern GED_SYNC_FC GED_CALLCONV GED_GetSyncFC(ged_ins_t* ins, GED_RETURN_VALUE* 
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetSyncFC(ged_ins_t* ins, const GED_SYNC_FC value);
 
 /*!
- * Get the value of the FusionCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
- * entry's string representation, use @ref GED_GetFusionCtrlString. See @ref GED_INS_FIELD_FusionCtrl for the field's description.
- *
- * @param[in]       ins    Pointer to the decoded instruction object.
- * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
- *                         which caused the failure.
- *
- * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
- *
- * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
- */
-extern GED_FUSION_CTRL GED_CALLCONV GED_GetFusionCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
-
-/*!
- * Set the value of the FusionCtrl field in the given instruction. See @ref GED_INS_FIELD_FusionCtrl for the field's description.
- *
- * @param[in,out]   ins    Pointer to the instruction object for encoding.
- * @param[in]       value  The value to encode.
- *
- * @return      GED_RETURN_VALUE indicating success or encoding error.
- */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetFusionCtrl(ged_ins_t* ins, const GED_FUSION_CTRL value);
-
-/*!
- * Get the value of the DataTypeIndexNoDep field in the given instruction. See @ref GED_INS_FIELD_DataTypeIndexNoDep for the field's
- * description.
+ * Get the value of the Src2IsImm field in the given instruction. See @ref GED_INS_FIELD_Src2IsImm for the field's description.
  *
  * @param[in]       ins    Pointer to the decoded instruction object.
  * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
@@ -3096,42 +3045,17 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetFusionCtrl(ged_ins_t* ins, const GED
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV GED_GetDataTypeIndexNoDep(ged_ins_t* ins, GED_RETURN_VALUE* result);
+extern uint32_t GED_CALLCONV GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
- * Set the value of the DataTypeIndexNoDep field in the given instruction. See @ref GED_INS_FIELD_DataTypeIndexNoDep for the field's
- * description.
+ * Set the value of the Src2IsImm field in the given instruction. See @ref GED_INS_FIELD_Src2IsImm for the field's description.
  *
  * @param[in,out]   ins    Pointer to the instruction object for encoding.
  * @param[in]       value  The value to encode.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetDataTypeIndexNoDep(ged_ins_t* ins, const uint32_t value);
-
-/*!
- * Get the value of the CompactedImm field in the given instruction. See @ref GED_INS_FIELD_CompactedImm for the field's description.
- *
- * @param[in]       ins    Pointer to the decoded instruction object.
- * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
- *                         which caused the failure.
- *
- * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
- *              it is important to check the GED_RETURN_VALUE result.
- *
- * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
- */
-extern uint32_t GED_CALLCONV GED_GetCompactedImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
-
-/*!
- * Set the value of the CompactedImm field in the given instruction. See @ref GED_INS_FIELD_CompactedImm for the field's description.
- *
- * @param[in,out]   ins    Pointer to the instruction object for encoding.
- * @param[in]       value  The value to encode.
- *
- * @return      GED_RETURN_VALUE indicating success or encoding error.
- */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetCompactedImm(ged_ins_t* ins, const uint32_t value);
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2IsImm(ged_ins_t* ins, const uint32_t value);
 
 /*!
  * Get the value of the RepeatCount field in the given instruction. See @ref GED_INS_FIELD_RepeatCount for the field's description.
@@ -3386,7 +3310,8 @@ extern uint32_t GED_CALLCONV GED_GetSrc1Length(ged_ins_t* ins, GED_RETURN_VALUE*
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1Length(ged_ins_t* ins, const uint32_t value);
 
 /*!
- * Get the value of the Src2IsImm field in the given instruction. See @ref GED_INS_FIELD_Src2IsImm for the field's description.
+ * Get the value of the DataTypeIndexNoDep field in the given instruction. See @ref GED_INS_FIELD_DataTypeIndexNoDep for the field's
+ * description.
  *
  * @param[in]       ins    Pointer to the decoded instruction object.
  * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
@@ -3397,17 +3322,92 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1Length(ged_ins_t* ins, const uin
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
+extern uint32_t GED_CALLCONV GED_GetDataTypeIndexNoDep(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
- * Set the value of the Src2IsImm field in the given instruction. See @ref GED_INS_FIELD_Src2IsImm for the field's description.
+ * Set the value of the DataTypeIndexNoDep field in the given instruction. See @ref GED_INS_FIELD_DataTypeIndexNoDep for the field's
+ * description.
  *
  * @param[in,out]   ins    Pointer to the instruction object for encoding.
  * @param[in]       value  The value to encode.
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc2IsImm(ged_ins_t* ins, const uint32_t value);
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDataTypeIndexNoDep(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the CompactedImm field in the given instruction. See @ref GED_INS_FIELD_CompactedImm for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetCompactedImm(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the CompactedImm field in the given instruction. See @ref GED_INS_FIELD_CompactedImm for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetCompactedImm(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the Src0SubRegNumByte field in the given instruction. See @ref GED_INS_FIELD_Src0SubRegNumByte for the field's
+ * description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetSrc0SubRegNumByte(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the Src0SubRegNumByte field in the given instruction. See @ref GED_INS_FIELD_Src0SubRegNumByte for the field's
+ * description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0SubRegNumByte(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the FusionCtrl field in the given instruction. The function returns an enumeration value. To obtain the enum
+ * entry's string representation, use @ref GED_GetFusionCtrlString. See @ref GED_INS_FIELD_FusionCtrl for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_FUSION_CTRL GED_CALLCONV GED_GetFusionCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the FusionCtrl field in the given instruction. See @ref GED_INS_FIELD_FusionCtrl for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetFusionCtrl(ged_ins_t* ins, const GED_FUSION_CTRL value);
 
 /*!
  * Get the value of the AddrImm field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -3446,7 +3446,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcAddrImm(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3529,7 +3529,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcChanSel(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3643,7 +3643,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcIsImm(ged_ins_t* ins, cons
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3672,7 +3672,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcMathMacroExt(ged_ins_t* in
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3727,7 +3727,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRegNum(ged_ins_t* ins, con
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -3754,7 +3754,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRepCtrl(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src1SubBytePrecision's enumeration if the field is valid, GED_SUB_BYTE_PRECISION_INVALID otherwise.
+ * @return      FusionCtrl's enumeration if the field is valid, GED_FUSION_CTRL_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -4833,31 +4833,6 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_DCRO(uint32_t* msgDesc
                                                                messageType);
 
 /*!
- * Get the value of the ExMessageLength field from the given extended message descriptor (as obtained by @ref GED_GetExMsgDesc). See
- * @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
- *
- * @param[in]       exMsgDesc  The extended message descriptor.
- * @param[in]       modelId    The GED model by which to interpret.
- * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
- *                             error which caused the failure.
- *
- * @return      The exmessage length if the field is valid, the unchanged exMsgDesc value otherwise.
- */
-extern uint32_t GED_CALLCONV GED_GetExMessageLength(const uint32_t exMsgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
-
-/*!
- * Set the value of the ExMessageLength field in the given extended message descriptor. The latter can then be set to its appropriate
- * field (@ref GED_SetExMsgDesc). See @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
- *
- * @param[in,out]   exMsgDesc  The extended message descriptor.
- * @param[in]       modelId    The GED model by which to interpret.
- * @param[in]       length     The exmessage length.
- *
- * @return      GED_RETURN_VALUE indicating success or encoding error.
- */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetExMessageLength(uint32_t* exMsgDesc, const GED_MODEL modelId, const uint32_t length);
-
-/*!
  * Get the value of the DPOpcode field from the given message descriptor (as obtained by @ref GED_GetMsgDesc). The function returns an
  * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDpOpcodeString. See @ref
  * GED_PSEUDO_FIELD_DPOpcode for the field's description.
@@ -5091,6 +5066,31 @@ extern GED_DP_ADDR_SIZE GED_CALLCONV GED_GetDPAddrSize(const uint32_t msgDesc, c
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetDPAddrSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_SIZE AddrSize);
+
+/*!
+ * Get the value of the ExMessageLength field from the given extended message descriptor (as obtained by @ref GED_GetExMsgDesc). See
+ * @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
+ *
+ * @param[in]       exMsgDesc  The extended message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      The exmessage length if the field is valid, the unchanged exMsgDesc value otherwise.
+ */
+extern uint32_t GED_CALLCONV GED_GetExMessageLength(const uint32_t exMsgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the ExMessageLength field in the given extended message descriptor. The latter can then be set to its appropriate
+ * field (@ref GED_SetExMsgDesc). See @ref GED_PSEUDO_FIELD_ExMessageLength for the field's description.
+ *
+ * @param[in,out]   exMsgDesc  The extended message descriptor.
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       length     The exmessage length.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetExMessageLength(uint32_t* exMsgDesc, const GED_MODEL modelId, const uint32_t length);
 
 #if GED_EXPERIMENTAL
 

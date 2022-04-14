@@ -34,25 +34,25 @@ const ged_unsigned_table_t EnumInterpretersTable2[3] =
 }; // EnumInterpretersTable2[]
 const ged_unsigned_table_t EnumInterpretersTable3[3] =
 {
-    unsignedTable25, // 0
-    unsignedTable30, // 1
+    unsignedTable26, // 0
+    unsignedTable31, // 1
     NULL // 2
 }; // EnumInterpretersTable3[]
 const ged_unsigned_table_t EnumInterpretersTable4[3] =
 {
-    unsignedTable26, // 0
-    unsignedTable31, // 1
+    unsignedTable27, // 0
+    unsignedTable32, // 1
     NULL // 2
 }; // EnumInterpretersTable4[]
 const ged_unsigned_table_t EnumInterpretersTable5[3] =
 {
-    unsignedTable27, // 0
-    unsignedTable31, // 1
+    unsignedTable25, // 0
+    unsignedTable30, // 1
     NULL // 2
 }; // EnumInterpretersTable5[]
 const ged_unsigned_table_t EnumInterpretersTable6[3] =
 {
     unsignedTable28, // 0
-    unsignedTable32, // 1
+    unsignedTable31, // 1
     NULL // 2
 }; // EnumInterpretersTable6[]

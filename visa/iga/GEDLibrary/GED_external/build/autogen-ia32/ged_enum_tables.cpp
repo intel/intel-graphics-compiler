@@ -368,9 +368,9 @@ const ged_unsigned_enum_value_t* unsignedTable26[19] =
     &unsignedVar2, // 11
     &unsignedVar2, // 12
     &unsignedVar2, // 13
-    &unsignedVar2, // 14
+    NULL, // 14
     &unsignedVar1, // 15
-    NULL, // 16
+    &unsignedVar0, // 16
     NULL, // 17
     NULL // 18
 }; // unsignedTable26[]
@@ -392,9 +392,9 @@ const ged_unsigned_enum_value_t* unsignedTable27[19] =
     &unsignedVar2, // 13
     NULL, // 14
     &unsignedVar1, // 15
-    &unsignedVar0, // 16
-    NULL, // 17
-    NULL // 18
+    NULL, // 16
+    &unsignedVar0, // 17
+    &unsignedVar7 // 18
 }; // unsignedTable27[]
 const ged_unsigned_enum_value_t* unsignedTable28[19] =
 {
@@ -412,11 +412,11 @@ const ged_unsigned_enum_value_t* unsignedTable28[19] =
     &unsignedVar2, // 11
     &unsignedVar2, // 12
     &unsignedVar2, // 13
-    NULL, // 14
+    &unsignedVar2, // 14
     &unsignedVar1, // 15
     NULL, // 16
-    &unsignedVar0, // 17
-    &unsignedVar7 // 18
+    NULL, // 17
+    NULL // 18
 }; // unsignedTable28[]
 const ged_unsigned_enum_value_t* unsignedTable29[19] =
 {

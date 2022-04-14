@@ -129,22 +129,22 @@ GED_FIELD_TYPE fieldTypesByField[128] =
     0x100, // 109
     0x100, // 110
     0x100, // 111
-    0x100, // 112
-    0x103, // 113
-    0x103, // 114
-    0x100, // 115
-    0x100, // 116
-    0x102, // 117
-    0x102, // 118
+    0x103, // 112
+    0x100, // 113
+    0x102, // 114
+    0x102, // 115
+    0x103, // 116
+    0x103, // 117
+    0x103, // 118
     0x103, // 119
-    0x103, // 120
-    0x103, // 121
-    0x103, // 122
+    0x100, // 120
+    0x100, // 121
+    0x100, // 122
     0x100, // 123
     0x100, // 124
     0x100, // 125
     0x100, // 126
-    0x100 // 127
+    0x103 // 127
 }; // fieldTypesByField[]
 
 #if GED_VALIDATION_API
@@ -260,24 +260,24 @@ const char* fieldNameByField[128] =
     "Src2TernaryImm", // 107
     "Src2HorzStride", // 108
     "SWSB", // 109
-    "Src1IsImm", // 110
-    "Src0IsImm", // 111
-    "Src0SubRegNumByte", // 112
-    "SyncFC", // 113
-    "FusionCtrl", // 114
-    "DataTypeIndexNoDep", // 115
-    "CompactedImm", // 116
-    "RepeatCount", // 117
-    "SystolicDepth", // 118
-    "Src2Precision", // 119
-    "Src2SubBytePrecision", // 120
-    "Src1Precision", // 121
-    "Src1SubBytePrecision", // 122
-    "BfnFC", // 123
-    "ExBSO", // 124
-    "CPS", // 125
-    "Src1Length", // 126
-    "Src2IsImm" // 127
+    "Src0IsImm", // 110
+    "Src1IsImm", // 111
+    "SyncFC", // 112
+    "Src2IsImm", // 113
+    "RepeatCount", // 114
+    "SystolicDepth", // 115
+    "Src2Precision", // 116
+    "Src2SubBytePrecision", // 117
+    "Src1Precision", // 118
+    "Src1SubBytePrecision", // 119
+    "BfnFC", // 120
+    "ExBSO", // 121
+    "CPS", // 122
+    "Src1Length", // 123
+    "DataTypeIndexNoDep", // 124
+    "CompactedImm", // 125
+    "Src0SubRegNumByte", // 126
+    "FusionCtrl" // 127
 }; // fieldNameByField[]
 #endif // GED_VALIDATION_API
 GED_FIELD_TYPE pseudoFieldTypesByField[45] =
@@ -317,16 +317,16 @@ GED_FIELD_TYPE pseudoFieldTypesByField[45] =
     0x103, // 32
     0x103, // 33
     0x103, // 34
-    0x100, // 35
+    0x103, // 35
     0x103, // 36
     0x103, // 37
     0x103, // 38
     0x103, // 39
-    0x103, // 40
-    0x100, // 41
+    0x100, // 40
+    0x103, // 41
     0x103, // 42
     0x103, // 43
-    0x103 // 44
+    0x100 // 44
 }; // pseudoFieldTypesByField[]
 
 #if GED_VALIDATION_API
@@ -367,15 +367,15 @@ const char* fieldNameByPseudoField[45] =
     "MessageTypeDP_DC0ScratchBlock", // 32
     "MessageTypeDP_DC2", // 33
     "MessageTypeDP_DCRO", // 34
-    "ExMessageLength", // 35
-    "DPOpcode", // 36
-    "DPAddrType", // 37
-    "DPVectSize", // 38
-    "DPFlushType", // 39
-    "DPTranspose", // 40
-    "DPFlushRange", // 41
-    "DPDataSize", // 42
-    "DPFenceScope", // 43
-    "DPAddrSize" // 44
+    "DPOpcode", // 35
+    "DPAddrType", // 36
+    "DPVectSize", // 37
+    "DPFlushType", // 38
+    "DPTranspose", // 39
+    "DPFlushRange", // 40
+    "DPDataSize", // 41
+    "DPFenceScope", // 42
+    "DPAddrSize", // 43
+    "ExMessageLength" // 44
 }; // fieldNameByPseudoField[]
 #endif // GED_VALIDATION_API

@@ -1146,13 +1146,6 @@ typedef enum
     GED_INS_FIELD_SWSB,
 
     /*!
-     * Src1IsImm
-     *
-     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-     */
-    GED_INS_FIELD_Src1IsImm,
-
-    /*!
      * Src0IsImm
      *
      * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
@@ -1160,11 +1153,11 @@ typedef enum
     GED_INS_FIELD_Src0IsImm,
 
     /*!
-     * TBD
+     * Src1IsImm
      *
-     * @par     Models:     TGL, XE.HP, XE.HPG
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
-    GED_INS_FIELD_Src0SubRegNumByte,
+    GED_INS_FIELD_Src1IsImm,
 
     /*!
      * Sync FC.
@@ -1174,28 +1167,11 @@ typedef enum
     GED_INS_FIELD_SyncFC,
 
     /*!
-     * Fusion Control. For send and sendc instruction, this field provides explicit control for EU fusion lock-step execution. When
-     * this bit is set , the instruction is executed serially starting from the first EU to the last EU in the fused set.
+     * Src2IsImm
      *
-     * @par     Models:     TGL, XE.HP, XE.HPG
+     * @par     Models:     XE.HPC.A, XE.HPC
      */
-    GED_INS_FIELD_FusionCtrl,
-
-    /*!
-     * Lookup one of 32 19-bit values. That value is used (from MSB to LSB) for the Src1.RegFile[0], Src1.SrcType[3:0],
-     * Src0.RegFile[0], Dst.RegFile[0], Dst.HorzStride[1:0], Src1.IsImm, Src0.IsImm, Src0.SrcType[3:0], Dst.DstType[3:0], Dst.AddrMode
-     * bit fields.
-     *
-     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-     */
-    GED_INS_FIELD_DataTypeIndexNoDep,
-
-    /*!
-     * Compacted immediate
-     *
-     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
-     */
-    GED_INS_FIELD_CompactedImm,
+    GED_INS_FIELD_Src2IsImm,
 
     /*!
      * This field indicate the number of instructions to be created from a single macro instruction
@@ -1269,11 +1245,35 @@ typedef enum
     GED_INS_FIELD_Src1Length,
 
     /*!
-     * Src2IsImm
+     * Lookup one of 32 19-bit values. That value is used (from MSB to LSB) for the Src1.RegFile[0], Src1.SrcType[3:0],
+     * Src0.RegFile[0], Dst.RegFile[0], Dst.HorzStride[1:0], Src1.IsImm, Src0.IsImm, Src0.SrcType[3:0], Dst.DstType[3:0], Dst.AddrMode
+     * bit fields.
      *
-     * @par     Models:     XE.HPC.A, XE.HPC
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
      */
-    GED_INS_FIELD_Src2IsImm
+    GED_INS_FIELD_DataTypeIndexNoDep,
+
+    /*!
+     * Compacted immediate
+     *
+     * @par     Models:     TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC
+     */
+    GED_INS_FIELD_CompactedImm,
+
+    /*!
+     * TBD
+     *
+     * @par     Models:     TGL, XE.HP, XE.HPG
+     */
+    GED_INS_FIELD_Src0SubRegNumByte,
+
+    /*!
+     * Fusion Control. For send and sendc instruction, this field provides explicit control for EU fusion lock-step execution. When
+     * this bit is set , the instruction is executed serially starting from the first EU to the last EU in the fused set.
+     *
+     * @par     Models:     TGL, XE.HP, XE.HPG
+     */
+    GED_INS_FIELD_FusionCtrl
 } GED_INS_FIELD;
 
 /*!
@@ -1542,13 +1542,6 @@ typedef enum
     GED_PSEUDO_FIELD_MessageTypeDP_DCRO,
 
     /*!
-     * This field specifies the number of 256-bit GRF registers starting from src1 to be sent out on the request message payload.
-     *
-     * @par     Models:     TGL
-     */
-    GED_PSEUDO_FIELD_ExMessageLength,
-
-    /*!
      * This field indicates the opcode of DP atomic operation
      *
      * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
@@ -1610,6 +1603,13 @@ typedef enum
      *
      * @par     Models:     XE.HPG, XE.HPC.A, XE.HPC
      */
-    GED_PSEUDO_FIELD_DPAddrSize
+    GED_PSEUDO_FIELD_DPAddrSize,
+
+    /*!
+     * This field specifies the number of 256-bit GRF registers starting from src1 to be sent out on the request message payload.
+     *
+     * @par     Models:     TGL
+     */
+    GED_PSEUDO_FIELD_ExMessageLength
 } GED_PSEUDO_FIELD;
 #endif // GED_INS_FIELD_H

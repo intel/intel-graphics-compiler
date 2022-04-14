@@ -92,12 +92,13 @@ const ged_compact_mapping_fragment_t MappingFragmentsTable11[8] =
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  45,  46,   1,  13,     0x6000 }, { 104, 105,   3,   8,      0x300 } }, // 6
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  47,  48,   1,  15,    0x18000 }, { 125, 126,   3,  29, 0x60000000 } } // 7
 }; // MappingFragmentsTable11[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable12[4] =
+const ged_compact_mapping_fragment_t MappingFragmentsTable12[5] =
 {
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  12,   0,   0,     0x1fff }, {  16,  28,   0,  16, 0x1fff0000 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  16,   0,  14,    0x1c000 }, {  32,  34,   1,   0,        0x7 } }, // 2
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  17,  20,   0,  17,   0x1e0000 }, {  92,  95,   2,  28, 0xf0000000 } } // 3
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  10,   0,   0,      0x7ff }, {  18,  28,   0,  18, 0x1ffc0000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  11,  11,   0,  11,      0x800 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  12,  12,   0,  12,     0x1000 }, {  32,  32,   1,   0,        0x1 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  34,  34,   1,   2,        0x4 } }, // 3
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  17,   0,  14,    0x3c000 }, {  92,  95,   2,  28, 0xf0000000 } } // 4
 }; // MappingFragmentsTable12[]
 const ged_compact_mapping_fragment_t MappingFragmentsTable13[4] =
 {
@@ -114,134 +115,63 @@ const ged_compact_mapping_fragment_t MappingFragmentsTable14[5] =
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  15,  18,   0,  15,    0x78000 }, {  88,  91,   2,  24,  0xf000000 } }, // 3
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  19,  19,   0,  19,    0x80000 }, {  98,  98,   3,   2,        0x4 } } // 4
 }; // MappingFragmentsTable14[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable15[3] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   4,   0,   0,       0x1f }, {  51,  55,   1,  19,   0xf80000 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   5,   9,   0,   5,      0x3e0 }, {  67,  71,   2,   3,       0xf8 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  10,  14,   0,  10,     0x7c00 }, {  99, 103,   3,   3,       0xf8 } } // 2
-}; // MappingFragmentsTable15[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable16[2] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   4,   0,   0,       0x1f }, {  51,  55,   1,  19,   0xf80000 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   5,   9,   0,   5,      0x3e0 }, {  67,  71,   2,   3,       0xf8 } } // 1
-}; // MappingFragmentsTable16[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable17[3] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   1,   0,   0,        0x3 }, {  44,  45,   1,  12,     0x3000 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   2,   3,   0,   2,        0xc }, {  64,  65,   2,   0,        0x3 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   4,  11,   0,   4,      0xff0 }, {  80,  87,   2,  16,   0xff0000 } } // 2
-}; // MappingFragmentsTable17[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable18[2] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   1,   0,   0,        0x3 }, {  96,  97,   3,   0,        0x3 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   2,  11,   0,   2,      0xffc }, { 112, 121,   3,  16,  0x3ff0000 } } // 1
-}; // MappingFragmentsTable18[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable19[2] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  11,   0,   0,      0xfff }, {  96, 107,   3,   0,      0xfff } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, { 108, 127,   3,  12, 0xfffff000 } } // 1
-}; // MappingFragmentsTable19[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable20[2] =
-{
-    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, {  96, 115,   3,   0,    0xfffff } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  11,   0,   0,      0xfff }, { 116, 127,   3,  20, 0xfff00000 } } // 1
-}; // MappingFragmentsTable20[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable21[2] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  10,   0,   0,      0x7ff }, {  96, 106,   3,   0,      0x7ff } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_REP,         {  11,  11,   0,  11,      0x800 }, { 107, 127,   3,  11, 0xfffff800 } } // 1
-}; // MappingFragmentsTable21[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable22[4] =
-{
-    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, {  96, 107,   3,   0,      0xfff } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, { 112, 123,   3,  16,  0xfff0000 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, { 108, 111,   3,  12,     0xf000 } }, // 2
-    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, { 124, 127,   3,  28, 0xf0000000 } } // 3
-}; // MappingFragmentsTable22[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable23[4] =
-{
-    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, { 100, 111,   3,   4,     0xfff0 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, { 116, 127,   3,  20, 0xfff00000 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, {  96,  99,   3,   0,        0xf } }, // 2
-    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, { 112, 115,   3,  16,    0xf0000 } } // 3
-}; // MappingFragmentsTable23[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable24[4] =
-{
-    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  10,   0,   0,      0x7ff }, {  96, 106,   3,   0,      0x7ff } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  10,   0,   0,      0x7ff }, { 112, 122,   3,  16,  0x7ff0000 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_REP,         {  11,  11,   0,  11,      0x800 }, { 107, 111,   3,  11,     0xf800 } }, // 2
-    { GED_COMPACT_MAPPING_TYPE_REP,         {  11,  11,   0,  11,      0x800 }, { 123, 127,   3,  27, 0xf8000000 } } // 3
-}; // MappingFragmentsTable24[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable25[9] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  12,   0,   0,     0x1fff }, {  16,  28,   0,  16, 0x1fff0000 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  16,   0,  14,    0x1c000 }, {  32,  34,   1,   0,        0x7 } }, // 2
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  17,  23,   0,  17,   0xfe0000 }, {  36,  42,   1,   4,      0x7f0 } }, // 3
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  24,  24,   0,  24,  0x1000000 }, {  48,  48,   1,  16,    0x10000 } }, // 4
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  25,  25,   0,  25,  0x2000000 }, {  50,  50,   1,  18,    0x40000 } }, // 5
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  26,  28,   0,  26, 0x1c000000 }, {  80,  82,   2,  16,    0x70000 } }, // 6
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  29,  31,   0,  29, 0xe0000000 }, {  88,  90,   2,  24,  0x7000000 } }, // 7
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  32,  35,   1,   0,        0xf }, {  92,  95,   2,  28, 0xf0000000 } } // 8
-}; // MappingFragmentsTable25[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable26[7] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   0,   0,   0,        0x1 }, {  35,  35,   1,   3,        0x8 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   1,   5,   0,   1,       0x3e }, {  43,  47,   1,  11,     0xf800 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   6,   8,   0,   6,      0x1c0 }, {  64,  66,   2,   0,        0x7 } }, // 2
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   9,  13,   0,   9,     0x3e00 }, {  83,  87,   2,  19,   0xf80000 } }, // 3
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  14,   0,  14,     0x4000 }, {  91,  91,   2,  27,  0x8000000 } }, // 4
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  15,  17,   0,  15,    0x38000 }, {  96,  98,   3,   0,        0x7 } }, // 5
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  18,  20,   0,  18,   0x1c0000 }, { 112, 114,   3,  16,    0x70000 } } // 6
-}; // MappingFragmentsTable26[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable27[4] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   4,   0,   0,       0x1f }, {  51,  55,   1,  19,   0xf80000 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   5,   9,   0,   5,      0x3e0 }, {  67,  71,   2,   3,       0xf8 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  10,  14,   0,  10,     0x7c00 }, {  99, 103,   3,   3,       0xf8 } }, // 2
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  15,  19,   0,  15,    0xf8000 }, { 115, 119,   3,  19,   0xf80000 } } // 3
-}; // MappingFragmentsTable27[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable28[9] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  12,   0,   0,     0x1fff }, {  16,  28,   0,  16, 0x1fff0000 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  16,   0,  14,    0x1c000 }, {  32,  34,   1,   0,        0x7 } }, // 2
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  17,  23,   0,  17,   0xfe0000 }, {  36,  42,   1,   4,      0x7f0 } }, // 3
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  24,  26,   0,  24,  0x7000000 }, {  48,  50,   1,  16,    0x70000 } }, // 4
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  27,  29,   0,  27, 0x38000000 }, {  80,  82,   2,  16,    0x70000 } }, // 5
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  30,  31,   0,  30, 0xc0000000 }, {  88,  89,   2,  24,  0x3000000 } }, // 6
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  32,  32,   1,   0,        0x1 }, {  90,  90,   2,  26,  0x4000000 } }, // 7
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  33,  36,   1,   1,       0x1e }, {  92,  95,   2,  28, 0xf0000000 } } // 8
-}; // MappingFragmentsTable28[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable29[5] =
-{
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  10,   0,   0,      0x7ff }, {  18,  28,   0,  18, 0x1ffc0000 } }, // 0
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  11,  11,   0,  11,      0x800 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  12,  12,   0,  12,     0x1000 }, {  32,  32,   1,   0,        0x1 } }, // 2
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  34,  34,   1,   2,        0x4 } }, // 3
-    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  17,   0,  14,    0x3c000 }, {  92,  95,   2,  28, 0xf0000000 } } // 4
-}; // MappingFragmentsTable29[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable30[4] =
+const ged_compact_mapping_fragment_t MappingFragmentsTable15[4] =
 {
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   0,   0,   0,        0x1 }, {  33,  33,   1,   1,        0x2 } }, // 0
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   1,   5,   0,   1,       0x3e }, {  51,  55,   1,  19,   0xf80000 } }, // 1
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   6,  10,   0,   6,      0x7c0 }, {  67,  71,   2,   3,       0xf8 } }, // 2
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  11,  11,   0,  11,      0x800 }, {  87,  87,   2,  23,   0x800000 } } // 3
-}; // MappingFragmentsTable30[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable31[3] =
+}; // MappingFragmentsTable15[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable16[3] =
 {
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   1,   0,   0,        0x3 }, {  44,  45,   1,  12,     0x3000 } }, // 0
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   2,   3,   0,   2,        0xc }, {  64,  65,   2,   0,        0x3 } }, // 1
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   4,  10,   0,   4,      0x7f0 }, {  80,  86,   2,  16,   0x7f0000 } } // 2
-}; // MappingFragmentsTable31[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable32[4] =
+}; // MappingFragmentsTable16[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable17[4] =
 {
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   1,   0,   0,        0x3 }, {  96,  97,   3,   0,        0x3 } }, // 0
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   2,   6,   0,   2,       0x7c }, {  99, 103,   3,   3,       0xf8 } }, // 1
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   7,  13,   0,   7,     0x3f80 }, { 112, 118,   3,  16,   0x7f0000 } }, // 2
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  15,   0,  14,     0xc000 }, { 120, 121,   3,  24,  0x3000000 } } // 3
-}; // MappingFragmentsTable32[]
-const ged_compact_mapping_fragment_t MappingFragmentsTable33[10] =
+}; // MappingFragmentsTable17[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable18[2] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  11,   0,   0,      0xfff }, {  96, 107,   3,   0,      0xfff } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, { 108, 127,   3,  12, 0xfffff000 } } // 1
+}; // MappingFragmentsTable18[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable19[2] =
+{
+    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, {  96, 115,   3,   0,    0xfffff } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  11,   0,   0,      0xfff }, { 116, 127,   3,  20, 0xfff00000 } } // 1
+}; // MappingFragmentsTable19[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable20[2] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  10,   0,   0,      0x7ff }, {  96, 106,   3,   0,      0x7ff } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_REP,         {  11,  11,   0,  11,      0x800 }, { 107, 127,   3,  11, 0xfffff800 } } // 1
+}; // MappingFragmentsTable20[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable21[4] =
+{
+    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, {  96, 107,   3,   0,      0xfff } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, { 112, 123,   3,  16,  0xfff0000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, { 108, 111,   3,  12,     0xf000 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, { 124, 127,   3,  28, 0xf0000000 } } // 3
+}; // MappingFragmentsTable21[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable22[4] =
+{
+    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, { 100, 111,   3,   4,     0xfff0 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  11,   0,   0,      0xfff }, { 116, 127,   3,  20, 0xfff00000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, {  96,  99,   3,   0,        0xf } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_FIXED,       {   0,   0,   0,   0,        0x1 }, { 112, 115,   3,  16,    0xf0000 } } // 3
+}; // MappingFragmentsTable22[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable23[4] =
+{
+    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  10,   0,   0,      0x7ff }, {  96, 106,   3,   0,      0x7ff } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_REP,         {   0,  10,   0,   0,      0x7ff }, { 112, 122,   3,  16,  0x7ff0000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_REP,         {  11,  11,   0,  11,      0x800 }, { 107, 111,   3,  11,     0xf800 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_REP,         {  11,  11,   0,  11,      0x800 }, { 123, 127,   3,  27, 0xf8000000 } } // 3
+}; // MappingFragmentsTable23[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable24[10] =
 {
     { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  10,   0,   0,      0x7ff }, {  18,  28,   0,  18, 0x1ffc0000 } }, // 0
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  11,  11,   0,  11,      0x800 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
@@ -253,4 +183,74 @@ const ged_compact_mapping_fragment_t MappingFragmentsTable33[10] =
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  27,  29,   0,  27, 0x38000000 }, {  88,  90,   2,  24,  0x7000000 } }, // 7
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  30,  31,   0,  30, 0xc0000000 }, {  92,  93,   2,  28, 0x30000000 } }, // 8
     { GED_COMPACT_MAPPING_TYPE_1x1,         {  32,  33,   1,   0,        0x3 }, {  94,  95,   2,  30, 0xc0000000 } } // 9
+}; // MappingFragmentsTable24[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable25[7] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   0,   0,   0,        0x1 }, {  35,  35,   1,   3,        0x8 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   1,   5,   0,   1,       0x3e }, {  43,  47,   1,  11,     0xf800 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   6,   8,   0,   6,      0x1c0 }, {  64,  66,   2,   0,        0x7 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   9,  13,   0,   9,     0x3e00 }, {  83,  87,   2,  19,   0xf80000 } }, // 3
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  14,   0,  14,     0x4000 }, {  91,  91,   2,  27,  0x8000000 } }, // 4
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  15,  17,   0,  15,    0x38000 }, {  96,  98,   3,   0,        0x7 } }, // 5
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  18,  20,   0,  18,   0x1c0000 }, { 112, 114,   3,  16,    0x70000 } } // 6
+}; // MappingFragmentsTable25[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable26[4] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   4,   0,   0,       0x1f }, {  51,  55,   1,  19,   0xf80000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   5,   9,   0,   5,      0x3e0 }, {  67,  71,   2,   3,       0xf8 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  10,  14,   0,  10,     0x7c00 }, {  99, 103,   3,   3,       0xf8 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  15,  19,   0,  15,    0xf8000 }, { 115, 119,   3,  19,   0xf80000 } } // 3
+}; // MappingFragmentsTable26[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable27[4] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  12,   0,   0,     0x1fff }, {  16,  28,   0,  16, 0x1fff0000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  16,   0,  14,    0x1c000 }, {  32,  34,   1,   0,        0x7 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  17,  20,   0,  17,   0x1e0000 }, {  92,  95,   2,  28, 0xf0000000 } } // 3
+}; // MappingFragmentsTable27[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable28[3] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   4,   0,   0,       0x1f }, {  51,  55,   1,  19,   0xf80000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   5,   9,   0,   5,      0x3e0 }, {  67,  71,   2,   3,       0xf8 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  10,  14,   0,  10,     0x7c00 }, {  99, 103,   3,   3,       0xf8 } } // 2
+}; // MappingFragmentsTable28[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable29[2] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   4,   0,   0,       0x1f }, {  51,  55,   1,  19,   0xf80000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   5,   9,   0,   5,      0x3e0 }, {  67,  71,   2,   3,       0xf8 } } // 1
+}; // MappingFragmentsTable29[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable30[3] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   1,   0,   0,        0x3 }, {  44,  45,   1,  12,     0x3000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   2,   3,   0,   2,        0xc }, {  64,  65,   2,   0,        0x3 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   4,  11,   0,   4,      0xff0 }, {  80,  87,   2,  16,   0xff0000 } } // 2
+}; // MappingFragmentsTable30[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable31[2] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,   1,   0,   0,        0x3 }, {  96,  97,   3,   0,        0x3 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   2,  11,   0,   2,      0xffc }, { 112, 121,   3,  16,  0x3ff0000 } } // 1
+}; // MappingFragmentsTable31[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable32[9] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  12,   0,   0,     0x1fff }, {  16,  28,   0,  16, 0x1fff0000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  16,   0,  14,    0x1c000 }, {  32,  34,   1,   0,        0x7 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  17,  23,   0,  17,   0xfe0000 }, {  36,  42,   1,   4,      0x7f0 } }, // 3
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  24,  24,   0,  24,  0x1000000 }, {  48,  48,   1,  16,    0x10000 } }, // 4
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  25,  25,   0,  25,  0x2000000 }, {  50,  50,   1,  18,    0x40000 } }, // 5
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  26,  28,   0,  26, 0x1c000000 }, {  80,  82,   2,  16,    0x70000 } }, // 6
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  29,  31,   0,  29, 0xe0000000 }, {  88,  90,   2,  24,  0x7000000 } }, // 7
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  32,  35,   1,   0,        0xf }, {  92,  95,   2,  28, 0xf0000000 } } // 8
+}; // MappingFragmentsTable32[]
+const ged_compact_mapping_fragment_t MappingFragmentsTable33[9] =
+{
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {   0,  12,   0,   0,     0x1fff }, {  16,  28,   0,  16, 0x1fff0000 } }, // 0
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  13,  13,   0,  13,     0x2000 }, {  31,  31,   0,  31, 0x80000000 } }, // 1
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  14,  16,   0,  14,    0x1c000 }, {  32,  34,   1,   0,        0x7 } }, // 2
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  17,  23,   0,  17,   0xfe0000 }, {  36,  42,   1,   4,      0x7f0 } }, // 3
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  24,  26,   0,  24,  0x7000000 }, {  48,  50,   1,  16,    0x70000 } }, // 4
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  27,  29,   0,  27, 0x38000000 }, {  80,  82,   2,  16,    0x70000 } }, // 5
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  30,  31,   0,  30, 0xc0000000 }, {  88,  89,   2,  24,  0x3000000 } }, // 6
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  32,  32,   1,   0,        0x1 }, {  90,  90,   2,  26,  0x4000000 } }, // 7
+    { GED_COMPACT_MAPPING_TYPE_1x1,         {  33,  36,   1,   1,       0x1e }, {  92,  95,   2,  28, 0xf0000000 } } // 8
 }; // MappingFragmentsTable33[]

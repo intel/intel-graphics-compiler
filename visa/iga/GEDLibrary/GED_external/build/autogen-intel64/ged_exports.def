@@ -242,20 +242,14 @@ EXPORTS
   GED_SetSrc2HorzStride
   GED_GetSWSB
   GED_SetSWSB
-  GED_GetSrc1IsImm
-  GED_SetSrc1IsImm
   GED_GetSrc0IsImm
   GED_SetSrc0IsImm
-  GED_GetSrc0SubRegNumByte
-  GED_SetSrc0SubRegNumByte
+  GED_GetSrc1IsImm
+  GED_SetSrc1IsImm
   GED_GetSyncFC
   GED_SetSyncFC
-  GED_GetFusionCtrl
-  GED_SetFusionCtrl
-  GED_GetDataTypeIndexNoDep
-  GED_SetDataTypeIndexNoDep
-  GED_GetCompactedImm
-  GED_SetCompactedImm
+  GED_GetSrc2IsImm
+  GED_SetSrc2IsImm
   GED_GetRepeatCount
   GED_SetRepeatCount
   GED_GetSystolicDepth
@@ -276,8 +270,14 @@ EXPORTS
   GED_SetCPS
   GED_GetSrc1Length
   GED_SetSrc1Length
-  GED_GetSrc2IsImm
-  GED_SetSrc2IsImm
+  GED_GetDataTypeIndexNoDep
+  GED_SetDataTypeIndexNoDep
+  GED_GetCompactedImm
+  GED_SetCompactedImm
+  GED_GetSrc0SubRegNumByte
+  GED_SetSrc0SubRegNumByte
+  GED_GetFusionCtrl
+  GED_SetFusionCtrl
   GED_GetIndexedSrcAddrImm
   GED_SetIndexedSrcAddrImm
   GED_GetIndexedSrcAddrMode
@@ -382,8 +382,6 @@ EXPORTS
   GED_SetMessageTypeDP_DC2
   GED_GetMessageTypeDP_DCRO
   GED_SetMessageTypeDP_DCRO
-  GED_GetExMessageLength
-  GED_SetExMessageLength
   GED_GetDPOpcode
   GED_SetDPOpcode
   GED_GetDPAddrType
@@ -402,6 +400,8 @@ EXPORTS
   GED_SetDPFenceScope
   GED_GetDPAddrSize
   GED_SetDPAddrSize
+  GED_GetExMessageLength
+  GED_SetExMessageLength
   GED_SetRawBits
   GED_GetAccessModeString
   GED_GetAccWrCtrlString

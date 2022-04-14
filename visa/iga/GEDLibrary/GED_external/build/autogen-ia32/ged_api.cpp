@@ -29,11 +29,11 @@ SPDX-License-Identifier: MIT
 #include "ged_model_9.h"
 #include "ged_model_10.h"
 #include "ged_model_11.h"
+#include "ged_model_xe_hpc_a.h"
+#include "ged_model_xe_hpc.h"
 #include "ged_model_tgl.h"
 #include "ged_model_xe_hp.h"
 #include "ged_model_xe_hpg.h"
-#include "ged_model_xe_hpc_a.h"
-#include "ged_model_xe_hpc.h"
 
 #ifdef GED_OBSCURE_MODEL_NAMES
 #define GED_MODEL_NAME_STRING(name) ""
@@ -52,17 +52,17 @@ ModelData ModelsArray[12] =
     { GED_MODEL_NS_9::Opcodes, GED_MODEL_NAME_STRING("9"), 128, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable3, 3, EnumInterpretersTable1, 0, NULL }, // 4
     { GED_MODEL_NS_10::Opcodes, GED_MODEL_NAME_STRING("10"), 128, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable4, 3, EnumInterpretersTable1, 0, NULL }, // 5
     { GED_MODEL_NS_11::Opcodes, GED_MODEL_NAME_STRING("11"), 128, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL }, // 6
-    { GED_MODEL_NS_TGL::Opcodes, GED_MODEL_NAME_STRING("tgl"), 128, (const ged_field_enum_table_t)OpcodeTable2, 36, PositionInterpreterTable6, 3, EnumInterpretersTable3, 0, NULL }, // 7
-    { GED_MODEL_NS_XE_HP::Opcodes, GED_MODEL_NAME_STRING("xe.hp"), 128, (const ged_field_enum_table_t)OpcodeTable3, 35, PositionInterpreterTable7, 3, EnumInterpretersTable4, 0, NULL }, // 8
-    { GED_MODEL_NS_XE_HPG::Opcodes, GED_MODEL_NAME_STRING("xe.hpg"), 128, (const ged_field_enum_table_t)OpcodeTable3, 45, PositionInterpreterTable8, 3, EnumInterpretersTable4, 0, NULL }, // 9
-    { GED_MODEL_NS_XE_HPC_A::Opcodes, GED_MODEL_NAME_STRING("xe.hpc.a"), 128, (const ged_field_enum_table_t)OpcodeTable4, 45, PositionInterpreterTable9, 3, EnumInterpretersTable5, 0, NULL }, // 10
-    { GED_MODEL_NS_XE_HPC::Opcodes, GED_MODEL_NAME_STRING("xe.hpc"), 128, (const ged_field_enum_table_t)OpcodeTable5, 45, PositionInterpreterTable9, 3, EnumInterpretersTable6, 0, NULL } // 11
+    { GED_MODEL_NS_XE_HPC_A::Opcodes, GED_MODEL_NAME_STRING("xe.hpc.a"), 128, (const ged_field_enum_table_t)OpcodeTable4, 44, PositionInterpreterTable6, 3, EnumInterpretersTable3, 0, NULL }, // 7
+    { GED_MODEL_NS_XE_HPC::Opcodes, GED_MODEL_NAME_STRING("xe.hpc"), 128, (const ged_field_enum_table_t)OpcodeTable5, 44, PositionInterpreterTable6, 3, EnumInterpretersTable4, 0, NULL }, // 8
+    { GED_MODEL_NS_TGL::Opcodes, GED_MODEL_NAME_STRING("tgl"), 128, (const ged_field_enum_table_t)OpcodeTable2, 45, PositionInterpreterTable7, 3, EnumInterpretersTable5, 0, NULL }, // 9
+    { GED_MODEL_NS_XE_HP::Opcodes, GED_MODEL_NAME_STRING("xe.hp"), 128, (const ged_field_enum_table_t)OpcodeTable3, 35, PositionInterpreterTable8, 3, EnumInterpretersTable6, 0, NULL }, // 10
+    { GED_MODEL_NS_XE_HPG::Opcodes, GED_MODEL_NAME_STRING("xe.hpg"), 128, (const ged_field_enum_table_t)OpcodeTable3, 44, PositionInterpreterTable9, 3, EnumInterpretersTable6, 0, NULL } // 11
 }; // ModelsArray[]
 #endif // GED_MODELS_ARRAY_HIDDEN
 const unsigned int numOfSupportedModels = 12;
 
 #ifndef GED_MODELS_ARRAY_NAMES_HIDDEN
-const char* modelNames[12] = { GED_MODEL_NAME_STRING("7"), GED_MODEL_NAME_STRING("7_5"), GED_MODEL_NAME_STRING("8"), GED_MODEL_NAME_STRING("8_1"), GED_MODEL_NAME_STRING("9"), GED_MODEL_NAME_STRING("10"), GED_MODEL_NAME_STRING("11"), GED_MODEL_NAME_STRING("tgl"), GED_MODEL_NAME_STRING("xe_hp"), GED_MODEL_NAME_STRING("xe_hpg"), GED_MODEL_NAME_STRING("xe_hpc_a"), GED_MODEL_NAME_STRING("xe_hpc") };
+const char* modelNames[12] = { GED_MODEL_NAME_STRING("7"), GED_MODEL_NAME_STRING("7_5"), GED_MODEL_NAME_STRING("8"), GED_MODEL_NAME_STRING("8_1"), GED_MODEL_NAME_STRING("9"), GED_MODEL_NAME_STRING("10"), GED_MODEL_NAME_STRING("11"), GED_MODEL_NAME_STRING("xe_hpc_a"), GED_MODEL_NAME_STRING("xe_hpc"), GED_MODEL_NAME_STRING("tgl"), GED_MODEL_NAME_STRING("xe_hp"), GED_MODEL_NAME_STRING("xe_hpg") };
 #endif // GED_MODELS_ARRAY_NAMES_HIDDEN
 
 #ifndef GED_MODELS_ARRAY_FUNCTION_HIDDEN
@@ -84,11 +84,11 @@ bool GetModelByName(const string& name, /* GED_MODEL */ unsigned int& model)
     else if (GED_MODEL_NAME_STRING("9") == name) model = GED_MODEL_9;
     else if (GED_MODEL_NAME_STRING("10") == name) model = GED_MODEL_10;
     else if (GED_MODEL_NAME_STRING("11") == name) model = GED_MODEL_11;
+    else if (GED_MODEL_NAME_STRING("xe_hpc_a") == name) model = GED_MODEL_XE_HPC_A;
+    else if (GED_MODEL_NAME_STRING("xe_hpc") == name) model = GED_MODEL_XE_HPC;
     else if (GED_MODEL_NAME_STRING("tgl") == name) model = GED_MODEL_TGL;
     else if (GED_MODEL_NAME_STRING("xe_hp") == name) model = GED_MODEL_XE_HP;
     else if (GED_MODEL_NAME_STRING("xe_hpg") == name) model = GED_MODEL_XE_HPG;
-    else if (GED_MODEL_NAME_STRING("xe_hpc_a") == name) model = GED_MODEL_XE_HPC_A;
-    else if (GED_MODEL_NAME_STRING("xe_hpc") == name) model = GED_MODEL_XE_HPC;
     else return false;
     return true;
 }
@@ -1283,16 +1283,6 @@ GED_RETURN_VALUE GED_SetSWSB(ged_ins_t* ins, const uint32_t value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_SWSB, value);
 }
-uint32_t GED_GetSrc1IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result)
-{
-    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
-    if (NULL == result) result = &localResult;
-    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src1IsImm, *result);
-}
-GED_RETURN_VALUE GED_SetSrc1IsImm(ged_ins_t* ins, const uint32_t value)
-{
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src1IsImm, value);
-}
 uint32_t GED_GetSrc0IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
@@ -1303,15 +1293,15 @@ GED_RETURN_VALUE GED_SetSrc0IsImm(ged_ins_t* ins, const uint32_t value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src0IsImm, value);
 }
-uint32_t GED_GetSrc0SubRegNumByte(ged_ins_t* ins, GED_RETURN_VALUE* result)
+uint32_t GED_GetSrc1IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src0SubRegNumByte, *result);
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src1IsImm, *result);
 }
-GED_RETURN_VALUE GED_SetSrc0SubRegNumByte(ged_ins_t* ins, const uint32_t value)
+GED_RETURN_VALUE GED_SetSrc1IsImm(ged_ins_t* ins, const uint32_t value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src0SubRegNumByte, value);
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src1IsImm, value);
 }
 GED_SYNC_FC GED_GetSyncFC(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
@@ -1324,36 +1314,15 @@ GED_RETURN_VALUE GED_SetSyncFC(ged_ins_t* ins, const GED_SYNC_FC value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_SyncFC, (const uint32_t)value);
 }
-GED_FUSION_CTRL GED_GetFusionCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result)
+uint32_t GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_FusionCtrl, *result);
-    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_FUSION_CTRL)value : GED_FUSION_CTRL_INVALID;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src2IsImm, *result);
 }
-GED_RETURN_VALUE GED_SetFusionCtrl(ged_ins_t* ins, const GED_FUSION_CTRL value)
+GED_RETURN_VALUE GED_SetSrc2IsImm(ged_ins_t* ins, const uint32_t value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_FusionCtrl, (const uint32_t)value);
-}
-uint32_t GED_GetDataTypeIndexNoDep(ged_ins_t* ins, GED_RETURN_VALUE* result)
-{
-    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
-    if (NULL == result) result = &localResult;
-    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_DataTypeIndexNoDep, *result);
-}
-GED_RETURN_VALUE GED_SetDataTypeIndexNoDep(ged_ins_t* ins, const uint32_t value)
-{
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_DataTypeIndexNoDep, value);
-}
-uint32_t GED_GetCompactedImm(ged_ins_t* ins, GED_RETURN_VALUE* result)
-{
-    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
-    if (NULL == result) result = &localResult;
-    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_CompactedImm, *result);
-}
-GED_RETURN_VALUE GED_SetCompactedImm(ged_ins_t* ins, const uint32_t value)
-{
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_CompactedImm, value);
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src2IsImm, value);
 }
 uint32_t GED_GetRepeatCount(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
@@ -1459,15 +1428,46 @@ GED_RETURN_VALUE GED_SetSrc1Length(ged_ins_t* ins, const uint32_t value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src1Length, value);
 }
-uint32_t GED_GetSrc2IsImm(ged_ins_t* ins, GED_RETURN_VALUE* result)
+uint32_t GED_GetDataTypeIndexNoDep(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src2IsImm, *result);
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_DataTypeIndexNoDep, *result);
 }
-GED_RETURN_VALUE GED_SetSrc2IsImm(ged_ins_t* ins, const uint32_t value)
+GED_RETURN_VALUE GED_SetDataTypeIndexNoDep(ged_ins_t* ins, const uint32_t value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src2IsImm, value);
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_DataTypeIndexNoDep, value);
+}
+uint32_t GED_GetCompactedImm(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_CompactedImm, *result);
+}
+GED_RETURN_VALUE GED_SetCompactedImm(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_CompactedImm, value);
+}
+uint32_t GED_GetSrc0SubRegNumByte(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src0SubRegNumByte, *result);
+}
+GED_RETURN_VALUE GED_SetSrc0SubRegNumByte(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src0SubRegNumByte, value);
+}
+GED_FUSION_CTRL GED_GetFusionCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_FusionCtrl, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_FUSION_CTRL)value : GED_FUSION_CTRL_INVALID;
+}
+GED_RETURN_VALUE GED_SetFusionCtrl(ged_ins_t* ins, const GED_FUSION_CTRL value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_FusionCtrl, (const uint32_t)value);
 }
 int32_t GED_GetIndexedSrcAddrImm(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
 {
@@ -2091,16 +2091,6 @@ GED_RETURN_VALUE GED_SetMessageTypeDP_DCRO(uint32_t* msgDesc, const GED_MODEL mo
 {
     return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_MessageTypeDP_DCRO, modelId, messageType);
 }
-uint32_t GED_GetExMessageLength(const uint32_t exMsgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
-{
-    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
-    if (NULL == result) result = &localResult;
-    return GEDInterpreter::InterpretPosition(exMsgDesc, GED_PSEUDO_FIELD_ExMessageLength, modelId, *result);
-}
-GED_RETURN_VALUE GED_SetExMessageLength(uint32_t* exMsgDesc, const GED_MODEL modelId, const uint32_t length)
-{
-    return GEDInterpreter::SetInterpretedPosition(*exMsgDesc, GED_PSEUDO_FIELD_ExMessageLength, modelId, length);
-}
 GED_DP_OPCODE GED_GetDPOpcode(const uint32_t msgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
@@ -2198,6 +2188,16 @@ GED_DP_ADDR_SIZE GED_GetDPAddrSize(const uint32_t msgDesc, const GED_MODEL model
 GED_RETURN_VALUE GED_SetDPAddrSize(uint32_t* msgDesc, const GED_MODEL modelId, const GED_DP_ADDR_SIZE AddrSize)
 {
     return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_DPAddrSize, modelId, AddrSize);
+}
+uint32_t GED_GetExMessageLength(const uint32_t exMsgDesc, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return GEDInterpreter::InterpretPosition(exMsgDesc, GED_PSEUDO_FIELD_ExMessageLength, modelId, *result);
+}
+GED_RETURN_VALUE GED_SetExMessageLength(uint32_t* exMsgDesc, const GED_MODEL modelId, const uint32_t length)
+{
+    return GEDInterpreter::SetInterpretedPosition(*exMsgDesc, GED_PSEUDO_FIELD_ExMessageLength, modelId, length);
 }
 
 #if GED_EXPERIMENTAL
