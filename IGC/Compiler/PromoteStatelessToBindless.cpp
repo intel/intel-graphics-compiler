@@ -45,6 +45,11 @@ bool PromoteStatelessToBindless::runOnFunction(Function& F)
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto ClContext = static_cast<OpenCLProgramContext*>(ctx);
 
+    bool HasStackCall = F.hasFnAttribute("visaStackCall");
+    // Skip functions marked with stackcall.
+    if (HasStackCall)
+        return false;
+
     m_AccessToSrcPtrMap.clear();
     m_AddressUsedSrcPtrMap.clear();
     if (!ClContext->m_InternalOptions.UseBindlessPrintf)
