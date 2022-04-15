@@ -75,6 +75,7 @@ namespace {
         bool resolveOnBasicBlock(BasicBlock*) const;
 
         bool resolveMemoryFromHost(Function&) const;
+        bool resolveAllocas(Function&) const;
 
         bool checkGenericArguments(Function& F) const;
         void convertLoadToGlobal(LoadInst* LI) const;
@@ -197,6 +198,7 @@ bool GASResolving::runOnFunction(Function& F) {
     Propagator = &ThePropagator;
 
     resolveMemoryFromHost(F);
+    resolveAllocas(F);
 
     bool Changed = false;
     bool LocalChanged = false;
@@ -853,6 +855,133 @@ bool GASResolving::resolveMemoryFromHost(Function& F) const {
         Changed = true;
     }
     return Changed;
+}
+
+// resolveAllocas function looks for alloca storing generic pointer.
+// If it can be proved that an alloca always holds a pointer to particular
+// non-generic address space, then all load/store operations on a pointer
+// loaded from this alloca can be resolved to operate on a non-generic addrspace.
+//
+// Example:
+// %generic_alloca = alloca i32 addrspace(4)*, align 8
+// %local_to_generic = addrspacecast i32 addrspace(3)* %local_ptr to i32 addrspace(4)*
+// store i32 addrspace(4)* %local_to_generic, i32 addrspace(4)** %generic_alloca, align 8
+// %local_as_generic = load i32 addrspace(4)*, i32 addrspace(4)** %generic_alloca, align 8
+// store i32 5, i32 addrspace(4)* %local_as_generic, align 8
+//
+// Above llvm code represents a situation where %local_ptr is stored in %generic_alloca,
+// then it is loaded as a generic pointer (%local_as_generic). All store and load instructions
+// operating on %local_as_generic will be resolved to local addrspace by resolveAllocas
+// function, by inserting two additional addrspacecast's:
+//
+// %local_as_generic = load i32 addrspace(4)*, i32 addrspace(4)** %generic_alloca, align 8
+// %cast_to_local = addrspacecast i32 addrspace(4)* %local_as_generic to i32 addrspace(3)*
+// %cast_back_to_generic = addrspacecast i32 addrspace(3)* %cast_to_local to i32 addrspace(4)*
+// store i32 5, i32 addrspace(4)* %cast_back_to_generic, align 8
+//
+// These two addrspacecast's (%cast_to_local and %cast_back_to_generic) provides
+// an information about non-generic addrspace of a pointer loaded from alloca. These
+// addrspacecast's will be resolved in further resolving process of GASResolving pass.
+
+bool GASResolving::resolveAllocas(Function& F) const {
+    struct AllocaDesc {
+        AllocaInst* alloca;
+        std::optional<unsigned int> originAddrSpace;
+    };
+
+    auto isUnsafeUse = [](Use& U) {
+        Instruction* I = dyn_cast<Instruction>(U.getUser());
+        if (!I) return false;
+
+        if (auto* SI = dyn_cast<StoreInst>(I)) {
+            if (SI->getValueOperand() == U)
+                return true;
+        }
+        else if (auto CI = dyn_cast<CallInst>(I)) {
+            if (CI->onlyReadsMemory() || CI->onlyAccessesInaccessibleMemory())
+                return false;
+
+            if (auto II = dyn_cast<IntrinsicInst>(CI)) {
+                if (II->getIntrinsicID() == Intrinsic::lifetime_start ||
+                    II->getIntrinsicID() == Intrinsic::lifetime_end)
+                    return false;
+            }
+
+            return true;
+        }
+        else if (isa<PtrToIntInst>(I) || isa<AddrSpaceCastInst>(I) || I->mayWriteToMemory())
+            return true;
+
+        return false;
+    };
+
+    auto findOriginAddrSpace = [&isUnsafeUse](AllocaInst* AI) -> std::optional<unsigned int> {
+        DenseSet<StoreInst*> storesToAlloca;
+        for (auto& Use : AI->uses()) {
+            if (isUnsafeUse(Use))
+                return std::nullopt;
+
+            if (auto* SI = dyn_cast<StoreInst>(Use.getUser())) {
+                IGC_ASSERT(SI->getPointerOperand() == AI);
+                storesToAlloca.insert(SI);
+                continue;
+            }
+        }
+
+        std::optional<unsigned> originAddrSpace;
+        for (auto* SI : storesToAlloca) {
+            if (auto* ASCI = dyn_cast<AddrSpaceCastInst>(SI->getValueOperand())) {
+                unsigned int NonGenericAS = ASCI->getSrcAddressSpace();
+                if (originAddrSpace && originAddrSpace.value() != NonGenericAS)
+                    return std::nullopt;
+
+                originAddrSpace.emplace(NonGenericAS);
+            }
+            else
+                return std::nullopt;
+        }
+
+        return originAddrSpace;
+    };
+
+    std::vector<AllocaDesc> AllocaDescriptors;
+    for (auto I = inst_begin(F), E = inst_end(F); I != E; ++I) {
+        if (auto* AI = dyn_cast<AllocaInst>(&*I)) {
+            Type* Ty = AI->getAllocatedType();
+            bool isCandidate = Ty->isPointerTy() && Ty->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC;
+            if (isCandidate) {
+                std::optional<unsigned> originAddrSpace = findOriginAddrSpace(AI);
+                if (originAddrSpace)
+                    AllocaDescriptors.push_back(AllocaDesc{ AI, originAddrSpace });
+            }
+        }
+    }
+
+    if (AllocaDescriptors.empty())
+        return false;
+
+    for (AllocaDesc& AD : AllocaDescriptors) {
+        for (auto* User : AD.alloca->users()) {
+            if (auto* LI = dyn_cast<LoadInst>(User)) {
+                PointerType* GenericTy = cast<PointerType>(LI->getType());
+                IGC_ASSERT(GenericTy->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC);
+
+                BuilderType::InsertPointGuard Guard(*IRB);
+                IRB->SetInsertPoint(LI->getNextNode());
+                IGC_ASSERT(AD.originAddrSpace != std::nullopt);
+                auto* NonGenericTy = PointerType::get(GenericTy->getElementType(), AD.originAddrSpace.value());
+                auto* CastToNonGAS = cast<AddrSpaceCastInst>(IRB->CreateAddrSpaceCast(LI, NonGenericTy));
+                auto* CastBackToGeneric = cast<AddrSpaceCastInst>(IRB->CreateAddrSpaceCast(CastToNonGAS, GenericTy));
+
+                for (auto& use : LI->uses()){
+                    if (use.getUser() != CastToNonGAS)
+                        use.set(CastBackToGeneric);
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 bool GASResolving::isLoadGlobalCandidate(LoadInst* LI) const {

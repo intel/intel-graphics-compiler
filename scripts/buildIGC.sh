@@ -72,6 +72,7 @@ echo "[Build Status] Prepare install OpenCL Clang"
 dpkg -i ./igc-official-release/*.deb
 echo "[Build Status] OpenCL Clang INSTALLED"
 
+
 echo "[Build Status] Install SPIRV-LLVM-Translator"
 dpkg -i ./build-SPIRV-LLVM-Translator/*.deb
 mv /usr/lib/libLLVMSPIRVLib.a /usr/local/lib/libLLVMSPIRVLib.a # WA Cpack wrongly pack deb file
