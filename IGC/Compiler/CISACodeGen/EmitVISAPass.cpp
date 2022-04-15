@@ -19802,6 +19802,7 @@ void IGC::EmitPass::emitCanonicalize(llvm::Instruction* inst, const DstModifier&
         CVariable* negativeZero = m_currShader->GetScalarConstant(llvm::ConstantFP::get(inst->getType(), -0.0));
         m_encoder->SetDstModifier(modifier);
         m_encoder->Add(m_destination, inputVal, negativeZero);
+        m_encoder->Push();
     }
 }
 
