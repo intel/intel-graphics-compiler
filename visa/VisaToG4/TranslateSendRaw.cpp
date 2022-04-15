@@ -139,29 +139,12 @@ int IR_Builder::translateVISARawSendsInst(
         sendMsgDesc->setEOT();
     }
 
-    int status = VISA_SUCCESS;
-    std::stringstream ss;
+    MUST_BE_TRUE(sendMsgDesc->MessageLength() == numSrc0, "message length mismatch for raw sends");
+    if (!dstOpnd->isNullReg()) {
+        MUST_BE_TRUE(sendMsgDesc->ResponseLength() <= numDst, "response length mismatch for raw sends");
+    }
+    MUST_BE_TRUE(sendMsgDesc->extMessageLength() <= numSrc1, "extended message length mismatch for raw sends");
 
-    if (sendMsgDesc->MessageLength() != numSrc0)
-    {
-        ss << "\nMessage length mismatch for raw sends\n";
-        status = VISA_FAILURE;
-    }
-    if (!dstOpnd->isNullReg() && sendMsgDesc->ResponseLength() > numDst) {
-        ss << "Response length mismatch for raw sends\n";
-        status = VISA_FAILURE;
-    }
-    if (sendMsgDesc->extMessageLength() > numSrc1)
-    {
-        ss << "Extended message length mismatch for raw sends\n";
-        status = VISA_FAILURE;
-    }
-
-    if (status != VISA_SUCCESS)
-    {
-        MUST_BE_TRUE(false, ss.str().c_str());
-        return status;
-    }
 
     createSplitSendInst(
         predOpnd,
