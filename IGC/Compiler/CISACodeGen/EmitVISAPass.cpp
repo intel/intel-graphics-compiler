@@ -20844,8 +20844,16 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
         IGC_ASSERT_MESSAGE(arg, "Implicit argument not found!");
         if (arg)
         {
-            m_encoder->SetNoMask();
-            m_currShader->CopyVariable(GetSymbol(I), m_currShader->getOrCreateArgumentSymbol(arg, false));
+            if (I->getType()->isVectorTy())
+            {
+                emitVectorCopy(GetSymbol(I), m_currShader->getOrCreateArgumentSymbol(arg, false),
+                    int_cast<unsigned>(dyn_cast<IGCLLVM::FixedVectorType>(I->getType())->getNumElements()));
+            }
+            else
+            {
+                m_encoder->SetNoMask();
+                m_currShader->CopyVariable(GetSymbol(I), m_currShader->getOrCreateArgumentSymbol(arg, false));
+            }
         }
     }
     else
