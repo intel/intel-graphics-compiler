@@ -427,19 +427,13 @@ bool createElfFileName(std::string &name, unsigned int maxNameLen, SIMDMode simd
 }
 
 void CGen8OpenCLProgram::GetZEBinary(
-    llvm::raw_pwrite_stream& programBinary,
-    unsigned pointerSizeInBytes,
-    const char* spv, uint32_t spvSize,
-    const char* metrics, uint32_t metricsSize,
-    const char* buildOptions, uint32_t buildOptionsSize)
+    llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes,
+    const char* spv, uint32_t spvSize, const char* metrics, uint32_t metricsSize)
 {
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> elfStorage;
 
     ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
-        m_Context.m_programInfo,
-        (const uint8_t*)spv, spvSize,
-        (const uint8_t*)metrics, metricsSize,
-        (const uint8_t*)buildOptions, buildOptionsSize);
+        m_Context.m_programInfo, (const uint8_t*)spv, spvSize, (const uint8_t*)metrics, metricsSize);
     zebuilder.setProductFamily(m_Platform.eProductFamily);
 
     std::vector<string> elfVecNames;      // Vector of parameters for the linker, contains in/out ELF file names and params

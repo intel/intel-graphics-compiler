@@ -39,10 +39,8 @@ public:
     // Setup ZEBin platform, and ELF header information. The program scope information
     // is also be parsed from SOpenCLProgramInfo in the constructor
     ZEBinaryBuilder(const PLATFORM plat, bool is64BitPointer,
-        const IGC::SOpenCLProgramInfo& programInfo,
-        const uint8_t* spvData,      uint32_t spvSize,
-        const uint8_t* metricsData,  uint32_t metricsSize,
-        const uint8_t* buildOptions, uint32_t buildOptionsSize);
+        const IGC::SOpenCLProgramInfo& programInfo, const uint8_t* spvData, uint32_t spvSize,
+        const uint8_t* metricsData, uint32_t metricsSize);
 
     // Set the ProductFamily as the specified value.
     void setProductFamily(PRODUCT_FAMILY value);
@@ -101,9 +99,6 @@ private:
 
     /// add spir-v section
     void addSPIRV(const uint8_t* data, uint32_t size);
-
-    /// add miscellaneous info section (section with SHT_ZEBIN_MISC type)
-    void addMiscInfoSection(std::string sectName, const uint8_t* data, uint32_t size);
 
     /// add runtime symbols
     void addRuntimeSymbols();

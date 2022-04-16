@@ -191,7 +191,7 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   // is destroyed.
   std::unique_ptr<llvm::MemoryBuffer> DebugInfoHolder;
   iOpenCL::ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8,
-                                     *m_programInfo, nullptr, 0, nullptr, 0, nullptr, 0};
+                                     *m_programInfo, nullptr, 0, nullptr, 0};
   zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
 
   for (const auto &kernel : m_kernels) {
