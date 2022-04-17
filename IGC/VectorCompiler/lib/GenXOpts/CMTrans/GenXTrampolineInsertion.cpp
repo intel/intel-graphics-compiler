@@ -52,6 +52,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Value.h"
 #include "vc/GenXOpts/GenXOpts.h"
+#include "vc/InternalIntrinsics/InternalIntrinsics.h"
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/Intrinsics.h"
 #include "vc/Utils/GenX/KernelInfo.h"
@@ -67,7 +68,7 @@ using namespace llvm;
 
 static cl::opt<bool> EnableTrampolineInsertion(
     "vc-enable-trampoline-insertion",
-    llvm::cl::desc("Enable/disable GenXTrampolineInsertion"), cl::init(false),
+    llvm::cl::desc("Enable/disable GenXTrampolineInsertion"), cl::init(true),
     cl::Hidden);
 
 namespace {
@@ -98,6 +99,8 @@ public:
 
 void GenXTrampolineInsertion::visitFunction(Function &F) {
   if (GenXIntrinsic::isAnyNonTrivialIntrinsic(&F))
+    return;
+  if (vc::InternalIntrinsic::isInternalNonTrivialIntrinsic(&F))
     return;
   if (vc::isEmulationFunction(F))
     return;
