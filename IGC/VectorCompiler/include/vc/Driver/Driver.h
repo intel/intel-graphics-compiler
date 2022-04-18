@@ -88,6 +88,8 @@ struct CompileOptions {
   bool DisableStructSplitting = false;
   // IGC_DisableEuFusion
   bool DisableEUFusion = false;
+  // IGC_VCSaveStackCallLinkage, -vc-save-stack-call-linkage
+  bool SaveStackCallLinkage = false;
 
   OptimizerLevel IROptLevel = OptimizerLevel::Full;
   OptimizerLevel CodegenOptLevel = OptimizerLevel::Full;
@@ -138,7 +140,6 @@ struct CompileOptions {
   bool HasHalfSIMDLSC = false;
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;
-  bool SaveStackCallLinkage = false;
   bool DirectCallsOnly = false;
   DebugInfoStripControl StripDebugInfoCtrl = DebugInfoStripControl::None;
   unsigned ForceLoopUnrollThreshold = 0;

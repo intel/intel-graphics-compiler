@@ -692,6 +692,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.UsePlain2DImages = true;
   if (ApiOptions.hasArg(OPT_vc_enable_preemption))
     Opts.EnablePreemption = true;
+  if (ApiOptions.hasArg(OPT_library_compilation_ze))
+    Opts.SaveStackCallLinkage = true;
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_fp_contract)) {
     StringRef Val = A->getValue();

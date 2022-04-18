@@ -32,5 +32,7 @@ def emit_debug : PlainFlag<"g">,
 defm opt_disable : CommonFlag<"opt-disable">,
   HelpText<"Turns off optimizations">;
 
+defm library_compilation : CommonFlag<"library-compilation">;
+
 }
 // }} Common API options

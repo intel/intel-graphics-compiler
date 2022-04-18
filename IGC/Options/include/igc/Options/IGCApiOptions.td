@@ -33,8 +33,6 @@ defm no_subgroup_ifp : CommonFlag<"no-subgroup-ifp">;
 defm uniform_work_group_size : CommonFlag<"uniform-work-group-size">;
 
 defm take_global_address : CommonFlag<"take-global-address">;
-
-defm library_compilation : CommonFlag<"library-compilation">;
 // }} Backend API options
 
 // API options from source translation {{
