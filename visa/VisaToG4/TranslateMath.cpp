@@ -223,7 +223,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
 
     // pred and conModifier
-    G4_Declare *tmpFlag = createTempFlag(1);
+    uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
+    G4_Declare *tmpFlag = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
@@ -618,7 +619,8 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     }
 
     // pred and conModifier
-    G4_Declare *tmpFlag = createTempFlag(1);
+    uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
+    G4_Declare* tmpFlag = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
@@ -913,7 +915,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     }
 
     // pred and conModifier
-    G4_Declare *tmpFlag = createTempFlag(instExecSize == 32 ? 2 : 1);
+    uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
+    G4_Declare* tmpFlag = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
@@ -1201,7 +1204,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
 
     // pred and conModifier
-    G4_Declare *flagReg = createTempFlag(instExecSize == 32 ? 2 : 1);
+    uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
+    G4_Declare *flagReg = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
