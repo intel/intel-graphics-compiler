@@ -801,8 +801,8 @@ bool LSCEnabled(SIMDMode m = SIMDMode::UNKNOWN) const
             }
             return ((SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0) ||
                      GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
-                     GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID))
-                && m == SIMDMode::SIMD8) ||
+                     GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID)
+                ) && m == SIMDMode::SIMD8) ||
                 m == SIMDMode::SIMD16;
         default:
             return true;
