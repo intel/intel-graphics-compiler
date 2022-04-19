@@ -11,8 +11,6 @@ SPDX-License-Identifier: MIT
 #include "cif/common/id.h"
 #include "cif/common/cif.h"
 
-#include "ocl_igc_interface/gt_slice_info.h"
-
 #include "cif/macros/enable.h"
 
 // Interface : GT_SYS_INFO
@@ -89,20 +87,7 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 3, 1) {
     virtual void SetDualSubSliceCount(uint32_t v);
 };
 
-CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(GTSystemInfo, 4, 3) {
-    CIF_INHERIT_CONSTRUCTOR();
-
-    template <typename GTSliceInfoInterface = GTSliceInfoTagOCL>
-    CIF::RAII::UPtr_t<GTSliceInfoInterface> GetSliceInfoHandle(uint32_t sliceIdx) {
-      return CIF::RAII::RetainAndPack<GTSliceInfoInterface>( GetSliceInfoHandleImpl(GTSliceInfoInterface::GetVersion(), sliceIdx) );
-    }
-
-protected:
-    virtual GTSliceInfoBase *GetSliceInfoHandleImpl(CIF::Version_t ver, uint32_t sliceIdx);
-};
-
-CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(GTSystemInfo, IGC::GTSliceInfo);
-
+CIF_GENERATE_VERSIONS_LIST(GTSystemInfo);
 CIF_MARK_LATEST_VERSION(GTSystemInfoLatest, GTSystemInfo);
 using GTSystemInfoTagOCL = GTSystemInfo<3>;    // Note : can tag with different version for
                                                //        transition periods

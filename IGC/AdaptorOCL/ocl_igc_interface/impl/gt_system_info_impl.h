@@ -13,8 +13,6 @@ SPDX-License-Identifier: MIT
 #include "cif/export/pimpl_base.h"
 #include "cif/helpers/memory.h"
 
-#include "ocl_igc_interface/impl/gt_slice_info_impl.h"
-
 #include "gtsysinfo.h"
 
 #include "cif/macros/enable.h"
@@ -26,25 +24,7 @@ CIF_DECLARE_INTERFACE_PIMPL(GTSystemInfo) : CIF::PimplBase {
       CIF::SafeZeroOut(gsi);
   }
 
-  void SetSliceCount(uint32_t sliceCount){
-      gsi.SliceCount = sliceCount;
-      if(sliceInfo.size() > sliceCount){
-          sliceInfo.resize(sliceCount);
-      }else {
-          sliceInfo.reserve(sliceCount);
-          while(sliceInfo.size() > sliceCount){
-              sliceInfo.push_back(std::make_unique<CIF::Multiversion<GTSliceInfo>>());
-              (*sliceInfo.rbegin())->CreateImpl();
-          }
-      }
-  }
-
-  GTSliceInfoBase *GetSliceInfoHandle(CIF::Version_t version, uint32_t sliceIdx) {
-      return sliceInfo.at(sliceIdx)->GetVersion(version);
-  }
-
   GT_SYSTEM_INFO gsi;
-  std::vector<std::unique_ptr<CIF::Multiversion<GTSliceInfo>>> sliceInfo;
 };
 
 CIF_DEFINE_INTERFACE_TO_PIMPL_FORWARDING_CTOR_DTOR(GTSystemInfo);
