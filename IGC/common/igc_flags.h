@@ -142,7 +142,7 @@ DECLARE_IGC_REGKEY(bool, DisableSimplePushWithDynamicUniformBuffers, false,"Disa
 DECLARE_IGC_REGKEY(bool, DisableStaticCheck,            false, "Disable static check to push constants.", false)
 DECLARE_IGC_REGKEY(bool, DisableStaticCheckForConstantFolding,  true, "Disable static check to fold constants.", false)
 DECLARE_IGC_REGKEY(int, forcePushConstantMode,  0, "set the push constant mode, 0 is default behavior, 1 is simple push, 2 is gather constant, 3 is none/pull constants", false)
-DECLARE_IGC_REGKEY(bool, EnableSimplePushSizeBasedOpimization, false, "Enable the simplepush optimization to do push based on size", false)
+DECLARE_IGC_REGKEY(bool, EnableSimplePushSizeBasedOpimization, true, "Enable the simplepush optimization to do push based on size", false)
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescing,     false, "Setting this to 1/true adds a compiler switch to disable constant coalesing", false)
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescingOutOfBoundsCheck,     false, "Setting this to 1/true adds a compiler switch to disable constant coalesing out of bounds check", false)
 DECLARE_IGC_REGKEY(bool, DisableConstantCoalescingOfStatefulNonUniformLoads, false, "Disable merging non-uniform loads from stateful buffers. Note: does not affect merging to sampler loads", false)
