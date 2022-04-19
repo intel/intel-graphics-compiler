@@ -1343,6 +1343,11 @@ void G4_Kernel::emitDeviceAsm(
         os << "// --  BAD: " << fg.BCStats.NumOfBadInsts << "\n";
         os << "// --   OK: " << fg.BCStats.NumOfOKInsts << "\n";
     }
+
+    os << "//.accSubDef: " << fg.XeBCStats.accSubDef << "\n";
+    os << "//.accSubUse: " << fg.XeBCStats.accSubUse << "\n";
+    os << "//.accSubCandidateDef: " << fg.XeBCStats.accSubCandidateDef << "\n";
+    os << "//.accSubCandidateUse: " << fg.XeBCStats.accSubCandidateUse << "\n";
 }
 
 void G4_Kernel::emitRegInfo()

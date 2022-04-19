@@ -1441,6 +1441,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(zeroSomeARF,             vISA_zeroSomeARF,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(addSWSBInfo,             vISA_addSWSBInfo,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(expandMadwPostSchedule,  vISA_expandMadwPostSchedule,  TimerID::MISC_OPTS);
+    INITIALIZE_PASS(ACCSchedule,          vISA_PreSchedForAcc,          TimerID::PRERA_SCHEDULING);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1841,6 +1842,11 @@ void Optimizer::accSubPostSchedule()
 
     AccSubPass accSub(builder, kernel);
     accSub.run();
+    kernel.fg.XeBCStats.setAccSubDef(accSub.getNumAccSubDef());
+    kernel.fg.XeBCStats.setAccSubUse(accSub.getNumAccSubUse());
+    kernel.fg.XeBCStats.setAccSubCandidateDef(accSub.getNumAccSubCandidateDef());
+    kernel.fg.XeBCStats.setAccSubCandidateUse(accSub.getNumAccSubCandidateUse());
+
 }
 
 
@@ -1866,8 +1872,13 @@ void Optimizer::accSubBeforeRA()
         kernel.fg.localDataFlowAnalysis();
     }
 
+
     AccSubPass accSub(builder, kernel);
     accSub.run();
+    kernel.fg.XeBCStats.setAccSubDef(accSub.getNumAccSubDef());
+    kernel.fg.XeBCStats.setAccSubUse(accSub.getNumAccSubUse());
+    kernel.fg.XeBCStats.setAccSubCandidateDef(accSub.getNumAccSubCandidateDef());
+    kernel.fg.XeBCStats.setAccSubCandidateUse(accSub.getNumAccSubCandidateUse());
 }
 
 bool Optimizer::R0CopyNeeded()
@@ -1949,12 +1960,13 @@ int Optimizer::optimization()
     // HW workaround before RA
     runPass(PI_preRA_HWWorkaround);
 
-    if (builder.enableACCBeforRA())
+    if (builder.enableACCBeforRA() && kernel.getOption(vISA_PreSchedForAcc))
     {
-        runPass(PI_expandMulPostSchedule);
+        runPass(PI_ACCSchedule);
+    }
 
-        runPass(PI_expandMadwPostSchedule);
-
+    if (builder.enableACCBeforRA() && !kernel.getOption(vISA_PreSchedForAcc))
+    {
         runPass(PI_accSubBeforeRA);
     }
 
@@ -1996,7 +2008,7 @@ int Optimizer::optimization()
         runPass(PI_localSchedule);
     }
 
-    if (!builder.enableACCBeforRA())
+    if (!builder.enableACCBeforRA() && !kernel.getOption(vISA_PreSchedForAcc))
     {
         runPass(PI_expandMulPostSchedule);
 

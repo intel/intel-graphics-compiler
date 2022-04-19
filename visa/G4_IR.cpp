@@ -231,6 +231,7 @@ G4_INST::G4_INST(
     srcCISAoff(UndefinedCisaOffset),
     sat(s ? 1 : 0),
     evenlySplitInst(false),
+    canBeAcc(false),
     execSize(size),
     bin(nullptr),
     builder(irb)
@@ -8379,6 +8380,85 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const
 bool G4_INST::canSrcBeAcc(Gen4_Operand_Number opndNum) const
 {
     return canSrcBeAccBeforeHWConform(opndNum) && canSrcBeAccAfterHWConform(opndNum);
+}
+
+//
+//If the instruction can be replace with ACC register, including the destination operand of the instruction and the use operands in the following instructions through DU chain.
+//Used in the pre RA scheduling for ACC and corresponding ACC substitution.
+//Note that, simplification may be still needed, some restrictions may not be applied to the platform which support pre RA scheduling for ACC.
+//
+bool G4_INST::canInstBeAcc(GlobalOpndHashTable *ght)
+{
+    G4_DstRegRegion* dst = getDst();
+    if (!dst || ght->isOpndGlobal(dst) || !canDstBeAcc())
+    {
+        return false;
+    }
+
+    if (getCondMod() && opcode() != G4_sel)
+    {
+        // since our du-chain is on inst instead of operand, the presence of conditional modifier complicates the checks later.
+        // This is somewhat conservative but shouldn't matter too much as inst with both dst and conditional modifiers are rare.
+        // Exception is for sel as flag register is not updated.
+        return false;
+    }
+
+    // check that every use may be replaced with acc
+    int lastUseId = 0;
+    for (auto I = use_begin(), E = use_end(); I != E; ++I)
+    {
+        auto&& use = *I;
+        G4_INST* useInst = use.first;
+        Gen4_Operand_Number opndNum = use.second;
+        lastUseId = std::max(lastUseId, useInst->getLocalId());
+
+        if (useInst->getNumSrc() == 3)
+        {
+            switch (opndNum)
+            {
+            case Opnd_src2:
+                if (!IS_TYPE_FLOAT_FOR_ACC(useInst->getSrc(2)->getType()) ||
+                   (useInst->getDst() && !IS_TYPE_FLOAT_FOR_ACC(useInst->getDst()->getType())))
+                {
+                    return false;
+                }
+                break;
+            case Opnd_src1:
+            case Opnd_src0:
+                break;  //OK
+            default:
+                return false;
+            }
+        }
+
+        if (useInst->getSingleDef(opndNum) == nullptr)
+        {
+            // def must be the only define for this use
+            return false;
+        }
+
+        int srcId = useInst->getSrcNum(opndNum);
+        G4_Operand* src = useInst->getSrc(srcId);
+
+        if (dst->getType() != src->getType() || ght->isOpndGlobal(src) ||
+            dst->compareOperand(src, getBuilder()) != Rel_eq)
+        {
+            return false;
+        }
+        if (!useInst->canSrcBeAcc(opndNum))
+        {
+            return false;
+        }
+    }
+
+    if (lastUseId == 0)
+    {
+        // no point using acc for a dst without local uses
+        return false;
+    }
+
+    canBeAcc = true;
+    return true;
 }
 
 TARGET_PLATFORM G4_INST::getPlatform() const

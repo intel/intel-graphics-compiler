@@ -91,6 +91,8 @@ class G4_BB
     // active in this BB.
     bool divergent;
 
+    bool Latency_Sched;
+
     // the physical pred/succ for this block (i.e., the pred/succ for this
     // block in the BB list).  Note that some transformations may rearrange
     // BB layout, so for safety it's best to recompute this
@@ -207,7 +209,7 @@ public:
         traversal(0), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), hasSendInBB(false), loopNestLevel(0), scopeID(0),
         divergent(false), physicalPred(NULL), physicalSucc(NULL),
-        parent(fg), instList(alloc)
+        parent(fg), instList(alloc), Latency_Sched(false)
     {
     }
 
@@ -263,6 +265,8 @@ public:
 
     void       setDivergent(bool val) { divergent = val; }
     bool       isDivergent() const    { return divergent; }
+    void       setLatencySched(bool val) { Latency_Sched = val; }
+    bool       isLatencySched() const { return Latency_Sched; }
     bool       isAllLaneActive() const;
 
     unsigned   getScopeID() const { return scopeID; }

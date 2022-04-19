@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "LocalScheduler_G4IR.h"
 #include "../GraphColor.h"
+#include "Passes/AccSubstitution.hpp"
 
 #include <functional>
 #include <fstream>
@@ -87,6 +88,7 @@ public:
     void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
 
     DepType getBarrier() const { return Barrier; }
+    void setBarrier(DepType d) { Barrier = d; }
     static DepType checkBarrier(G4_INST* Inst);
     static bool isBarrier(G4_INST* Inst) {
       switch (checkBarrier(Inst)) {
@@ -138,6 +140,8 @@ public:
         return TupleLead->TupleParts;
     }
 
+    void setACCCandidate() { ACCCandidate = true; }
+    bool isACCCandidate() { return ACCCandidate; }
     void print(std::ostream& os) const;
     void dump() const;
 
@@ -171,9 +175,12 @@ private:
     bool isScheduled = false;
     bool isClustered = false;
     bool isClusterLead = false;
+    bool ACCCandidate = false;
 
     friend class preDDD;
     friend class BB_Scheduler;
+    friend class BB_ACC_Scheduler;
+    friend class SethiUllmanACCQueue;
     friend class SethiUllmanQueue;
     friend class LatencyQueue;
 };
@@ -229,6 +236,8 @@ public:
 
     // Dump the DDD into a dot file.
     void dumpDagDot();
+
+    void buildGraphForACC();
 
     // Each instruction creates live nodes for adding dependency edges.
     struct LiveNode {
@@ -504,6 +513,7 @@ private:
     void relocatePseudoKills();
 };
 
+
 } // namespace
 
 static bool isSlicedSIMD32(G4_Kernel& kernel)
@@ -673,6 +683,7 @@ bool preRA_Scheduler::run()
             if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
                 SCHED_DUMP(rp.dump(bb, "After scheduling for latency, "));
                 Changed = true;
+                bb->setLatencySched(true);
                 kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
                                                               this->kernel.getSimdSize());
             }
@@ -1898,16 +1909,16 @@ DepType preNode::checkBarrier(G4_INST* Inst)
 
 void preNode::print(std::ostream& os) const
 {
-    os << "ID: " << this->ID << "\n";
+    os << "ID: " << this->ID << "";
     Inst->emit(os, false, false);
 
     os << "Preds: ";
     for (auto& E : this->Preds)
         os << E.getNode()->ID << ",";
-    os << "\n";
+    os << "";
 
     os << "Succs: ";
-    for (auto& E : this->Preds)
+    for (auto& E : this->Succs)
         os << E.getNode()->ID << ",";
     os << "\n";
 }
@@ -2429,4 +2440,360 @@ void preDDD::dumpDagDot()
 
     ofile << "}\n";
     ofile.close();
+}
+
+namespace {
+// Queue for Sethi-Ullman scheduling to reduce register pressure.
+class SethiUllmanACCQueue {
+    preDDD& ddd;
+
+    // Sethi-Ullman numbers.
+    std::vector<unsigned> Numbers;
+
+    std::vector<preNode*> Q;
+
+public:
+    SethiUllmanACCQueue(preDDD& ddd, G4_Kernel* kernel)
+        : ddd(ddd)
+    {
+        init(kernel);
+    }
+
+    // Add a new ready node.
+    void push(preNode* N)
+    {
+        Q.push_back(N);
+    }
+
+    // Schedule the top node.
+    preNode* pop()
+    {
+        return select();
+    }
+
+    bool empty() const
+    {
+        return Q.empty();
+    }
+
+    unsigned getNumber(unsigned i) { return Numbers[i]; }
+private:
+    // Compute the Sethi-Ullman number for a node.
+    unsigned calculateSethiUllmanNumberForACC(preNode* N, G4_Kernel* kernel);
+
+    // Initialize Sethi-Ullman numbers.
+    void init(G4_Kernel* kernel);
+
+    // Select next ready node to schedule.
+    preNode* select();
+
+    // Compare two ready nodes and decide which one should be scheduled first.
+    // Return true if N2 has a higher priority than N1, false otherwise.
+    bool compare(preNode* N1, preNode* N2);
+};
+
+
+// Scheduler instruction to increase the ACC substitution ratio on a single block.
+class BB_ACC_Scheduler {
+    // The kernel this block belongs to.
+    G4_Kernel& kernel;
+
+    // The data dependency graph for this block.
+    preDDD& ddd;
+
+    // The schedule result.
+    std::vector<G4_INST*> schedule;
+
+public:
+    BB_ACC_Scheduler(G4_Kernel& kernel, preDDD& ddd)
+        : kernel(kernel)
+        , ddd(ddd)
+    {
+    }
+
+    void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
+
+    Mem_Manager& getMem() const { return ddd.getMem(); }
+    G4_Kernel& getKernel() const { return kernel; }
+    G4_BB* getBB() const { return ddd.getBB(); }
+
+    // Run Sethi-Ullman scheduling.
+    void scheduleBlockForACC()
+    {
+        SethiUllmanACCScheduling();
+    }
+
+    // Commit the scheduling result.
+    void commit();
+
+private:
+    void SethiUllmanACCScheduling();
+    bool verifyScheduling();
+
+};
+
+} // namespace
+
+//
+// Basic generalized SU scheduling algorithm
+//
+void BB_ACC_Scheduler::SethiUllmanACCScheduling()
+{
+    schedule.clear();
+    SethiUllmanACCQueue Q(ddd, &kernel);
+    Q.push(ddd.getExitNode());
+
+    while (!Q.empty()) {
+        preNode* N = Q.pop();
+        assert(!N->isScheduled && N->NumSuccsLeft == 0);
+        if (N->getInst() != nullptr) {
+#ifdef DEBUG_VERBOSE_ON
+            std::cerr << "SU[" << Q.getNumber(N->getID()) << "]:";
+            N->dump();
+#endif
+            schedule.push_back(N->getInst());
+            N->isScheduled = true;
+        }
+
+        for (auto I = N->pred_begin(), E = N->pred_end(); I != E; ++I) {
+            preNode* Node = I->getNode();
+            assert(!Node->isScheduled && Node->NumSuccsLeft);
+            --Node->NumSuccsLeft;
+            if (Node->NumSuccsLeft == 0)
+                Q.push(Node);
+        }
+    }
+
+    assert(verifyScheduling());
+}
+
+void BB_ACC_Scheduler::commit()
+{
+    INST_LIST& CurInsts = getBB()->getInstList();
+    CurInsts.clear();
+
+    //move the scheduled instruction to the instruction list.
+    for (auto Inst : schedule)
+    {
+        CurInsts.push_front(Inst);
+    }
+
+    return;
+}
+
+bool BB_ACC_Scheduler::verifyScheduling()
+{
+    std::set<G4_INST*> Insts;
+    for (auto Inst : *(getBB()))
+        Insts.insert(Inst);
+
+    if (Insts.size() != schedule.size())
+    {
+        return false;
+    }
+
+    for (auto Inst : schedule) {
+        if (Insts.count(Inst) != 1) {
+            Inst->dump();
+            return false;
+        }
+    }
+
+    return true;
+}
+
+preRA_ACC_Scheduler::preRA_ACC_Scheduler(G4_Kernel& k, Mem_Manager& m)
+    : kernel(k)
+    , mem(m)
+    , m_options(kernel.getOptions())
+{
+}
+
+preRA_ACC_Scheduler::~preRA_ACC_Scheduler() {}
+
+bool preRA_ACC_Scheduler::run()
+{
+    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D)
+    {
+        // Do not run pre-RA scheduler for CM unless user forces it.
+        if (!m_options->getOption(vISA_preRA_ScheduleForce))
+            return false;
+    }
+
+    AccSubPass accSub(*kernel.fg.builder, kernel);
+
+    for (auto bb : kernel.fg) {
+        preDDD ddd(mem, kernel, bb);
+        SchedConfig config(0);
+        BB_ACC_Scheduler S(kernel, ddd);
+
+        ddd.buildGraphForACC();
+        S.scheduleBlockForACC();
+        S.commit();
+        accSub.doAccSub(bb);
+    }
+
+    kernel.fg.XeBCStats.setAccSubDef(accSub.getNumAccSubDef());
+    kernel.fg.XeBCStats.setAccSubUse(accSub.getNumAccSubUse());
+    kernel.fg.XeBCStats.setAccSubCandidateDef(accSub.getNumAccSubCandidateDef());
+    kernel.fg.XeBCStats.setAccSubCandidateUse(accSub.getNumAccSubCandidateUse());
+
+    return true;
+}
+
+#define ACC_DEF_NODE_DEGREE  1
+#define ACC_USE_NODE_DEGREE  5
+#define NONE_ACC_NODE_DEGREE 20
+
+//
+// Generalizations of the Sethi-Ullman algorithm for register allocation
+//
+unsigned SethiUllmanACCQueue::calculateSethiUllmanNumberForACC(preNode* N, G4_Kernel* kernel)
+{
+    assert(N->getID() < Numbers.size());
+    unsigned CurNum = Numbers[N->getID()];
+    if (CurNum != 0)
+        return CurNum;
+
+    //Get the number of Pred nodes
+    unsigned accPredNum = 0;
+    std::vector<std::pair<preNode*, unsigned>> Preds;
+    for (auto I = N->pred_begin(), E = N->pred_end(); I != E; ++I) {
+        auto& Edge = *I;
+
+        // Skip pseudo-kills as they are lifetime markers.
+        auto predNode = Edge.getNode();
+        auto type = Edge.getType();
+        auto DefInst = predNode->getInst();
+        if (!DefInst)
+            continue;
+
+        if (predNode->isACCCandidate() && type == DepType::RAW)
+        {
+            accPredNum++;
+        }
+        // Recurse on the predecessors.
+        unsigned Num = calculateSethiUllmanNumberForACC(Edge.getNode(), kernel);
+        Preds.emplace_back(Edge.getNode(), Num);
+    }
+
+    //If current node is not ACC candidate, but it's predecessor is, reduce the degree to be scheduled first.
+    CurNum = N->isACCCandidate() ? ACC_DEF_NODE_DEGREE : accPredNum ? ACC_USE_NODE_DEGREE : NONE_ACC_NODE_DEGREE;
+
+    if (Preds.size() > 0) {
+        std::sort(Preds.begin(), Preds.end(),
+            [](std::pair<preNode*, unsigned> lhs,
+                std::pair<preNode*, unsigned> rhs)
+        {
+            return lhs.second < rhs.second;
+        });
+        //Add the minimal degree of the pred nodes
+        CurNum = CurNum + Preds[0].second;
+    }
+
+    return CurNum;
+}
+
+void SethiUllmanACCQueue::init(G4_Kernel* kernel)
+{
+    auto& Nodes = ddd.getNodes();
+    unsigned N = (unsigned)Nodes.size();
+    Numbers.resize(N, 0);
+    for (unsigned i = 0; i < N; ++i) {
+        unsigned j = N - 1 - i;
+        Numbers[j] = calculateSethiUllmanNumberForACC(Nodes[j], kernel);
+    }
+
+#ifdef DEBUG_VERBOSE_ON
+    std::cerr << "\n\n";
+    for (auto I = Nodes.rbegin(); I != Nodes.rend(); ++I) {
+        std::cerr << "SU[" << Numbers[(*I)->getID()] << "] " << ((*I)->isACCCandidate() ? "ACC " : "GRF ");
+        (*I)->dump();
+    }
+    std::cerr << "\n\n";
+#endif
+}
+
+// Compare two ready nodes and decide which one should be scheduled first.
+// Return true if N2 has a higher priority than N1, false otherwise.
+bool SethiUllmanACCQueue::compare(preNode* N1, preNode* N2)
+{
+    // TODO. Introduce heuristics before comparing SU numbers.
+    assert(N1->getID() < Numbers.size());
+    assert(N2->getID() < Numbers.size());
+    assert(N1->getID() != N2->getID());
+
+    // Pseudo kill always has higher priority.
+    if (N1->getInst()->isPseudoKill())
+        return false;
+
+    unsigned SU1 = Numbers[N1->getID()];
+    unsigned SU2 = Numbers[N2->getID()];
+
+    // This is a bottom-up scheduling. Smaller SU number means higher priority.
+    if (SU1 < SU2)
+        return false;
+
+    if (SU1 > SU2)
+        return true;
+
+    // Otherwise, break tie with their IDs. Smaller ID means higher priority.
+    return N1->getID() > N2->getID();
+}
+
+preNode* SethiUllmanACCQueue::select()
+{
+    assert(!Q.empty());
+    auto TopIter = Q.end();
+    for (auto I = Q.begin(), E = Q.end(); I != E; ++I) {
+        if (TopIter == Q.end() || compare(*TopIter, *I))
+            TopIter = I;
+    }
+
+    assert(TopIter != Q.end());
+    preNode* Top = *TopIter;
+    std::swap(*TopIter, Q.back());
+    Q.pop_back();
+
+    return Top;
+}
+
+// Build the data dependency bottom up with two simple
+// special nodes.
+void preDDD::buildGraphForACC()
+{
+     assert(!IsDagBuilt);
+
+    // Starts with the exit node.
+    addNodeToGraph(&ExitNode);
+
+    unsigned NumOfInsts = (unsigned)m_BB->size();
+    SNodes.reserve(NumOfInsts);
+
+    auto I = m_BB->rbegin(), E = m_BB->rend();
+    for (unsigned i = 0; I != E; ++I) {
+        preNode* N = new (mem) preNode(*I, i++);
+        SNodes.push_back(N);
+        if (m_BB->isLatencySched() && (*I)->isSend())
+        {
+            N->setBarrier(DepType::SEND_BARRIER);
+        }
+        addNodeToGraph(N);
+        if ((*I)->canInstBeAcc(&kernel.fg.globalOpndHT))
+        {
+            N->setACCCandidate();
+        }
+    }
+
+    // Ends with the entry node.
+    addNodeToGraph(&EntryNode);
+
+    // prune the graph.
+    prune();
+
+    // Set DAG is complete.
+    IsDagBuilt = true;
+
+    // Initialize perNode data.
+    reset();
 }

@@ -169,6 +169,16 @@ class Optimizer
     void removeEmptyBlocks() { fg.removeEmptyBlocks(); }
     void reassignBlockIDs() { fg.reassignBlockIDs(); }
     void evalAddrExp() { kernel.evalAddrExp(); }
+
+    void ACCSchedule()
+    {
+        kernel.fg.resetLocalDataFlowData();
+        kernel.fg.localDataFlowAnalysis();
+
+        preRA_ACC_Scheduler Sched(kernel, mem);
+        Sched.run();
+    }
+
     void preRA_Schedule()
     {
         if (kernel.useRegSharingHeuristics())
@@ -407,6 +417,7 @@ public:
         PI_zeroSomeARF,
         PI_addSWSBInfo,
         PI_expandMadwPostSchedule,
+        PI_ACCSchedule,
         PI_NUM_PASSES
     };
 

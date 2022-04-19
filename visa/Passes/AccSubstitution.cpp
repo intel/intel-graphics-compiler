@@ -48,6 +48,17 @@ struct AccInterval
         return (std::pow((double)(bundleConflictTimes + 1), 3) + std::pow((double)(bankConflictTimes + 1), 2) + std::pow((double)inst->use_size(), 3) / dist) / (suppressionTimes + 1);
     }
 
+    double getNewSpillCost() const {
+        if (isPreAssigned)
+        {
+            // don't spill pre-assigned
+            return (double)1000000;
+        }
+        int dist = lastUse - inst->getLocalId();
+
+        return (std::pow(((double)inst->use_size() ), 1) / dist);
+    }
+
     // see if this interval needs both halves of the acc
     bool needBothAcc(IR_Builder& builder) const
     {
@@ -467,6 +478,39 @@ static unsigned getBankConflicts(int srcOpndIdx, unsigned int BC)
     }
 
     return conflicts;
+}
+
+void AccSubPass::getInstACCAttributes(G4_INST *inst, int& lastUse, bool& isAllFloat)
+{
+    isAllFloat =  true;
+    int lastUseId = 0;
+    G4_DstRegRegion* dst = inst->getDst();
+
+    if (!IS_TYPE_FLOAT_FOR_ACC(dst->getType()))
+    {
+        isAllFloat = false;
+    }
+
+    for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
+    {
+        auto&& use = *I;
+        G4_INST* useInst = use.first;
+        Gen4_Operand_Number opndNum = use.second;
+        lastUseId = std::max(lastUseId, useInst->getLocalId());
+
+        int srcId = useInst->getSrcNum(opndNum);
+        G4_Operand* src = useInst->getSrc(srcId);
+
+        if (!IS_TYPE_FLOAT_FOR_ACC(src->getType()))
+        {
+            isAllFloat = false;
+        }
+
+    }
+
+    lastUse = lastUseId;
+
+    return;
 }
 
 // returns true if the inst is a candidate for acc substitution
@@ -1077,6 +1121,197 @@ struct AccAssignment
 };
 
 
+void AccSubPass::doAccSub(G4_BB* bb)
+{
+    bb->resetLocalIds();
+
+    int numGeneralAcc = kernel.getNumAcc();
+    std::vector<AccInterval*> intervals;
+    std::vector<AccInterval*> failIntervals;
+    std::vector<AccInterval*> spillIntervals;
+
+    //build intervals for potential acc candidates as well as pre-existing acc uses from mac/mach/addc/etc
+    for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd; ++instIter)
+    {
+        G4_INST* inst = *instIter;
+        if (inst->defAcc())
+        {
+            // we should only have single def/use acc at this point, so any use would kill the def
+            auto iter = instIter;
+            auto useIter = std::find_if(++iter, instEnd, [](G4_INST* inst) { return inst->useAcc(); });
+            int lastUseId = useIter == instEnd ? bb->back()->getLocalId() : (*useIter)->getLocalId();
+            AccInterval* newInterval = new AccInterval(inst, lastUseId, true);
+            intervals.push_back(newInterval);
+        }
+        else
+        {
+            int lastUseId = 0;
+            bool isAllFloat = true;
+            if (inst->canInstBeAcc())
+            {
+                getInstACCAttributes(inst, lastUseId, isAllFloat);
+                if (lastUseId)
+                {
+                    // this is a potential candidate for acc substitution
+                    AccInterval* newInterval = new AccInterval(inst, lastUseId);
+                    newInterval->isAllFloat = isAllFloat;
+
+                    intervals.push_back(newInterval);
+                }
+            }
+        }
+    }
+
+    //modified linear scan to assign free accs to intervals
+    AccAssignment accAssign(numGeneralAcc, builder, true);
+
+    for (auto interval : intervals)
+    {
+        // expire intervals
+        accAssign.expireIntervals(interval);
+
+        // assign interval
+        bool foundFreeAcc = accAssign.assignAcc(interval);
+
+        //Spill
+        if (!foundFreeAcc && accAssign.activeIntervals.size() != 0)
+        {
+            // check if we should spill one of the active intervals
+            auto spillCostCmp = [interval](AccInterval* intv1, AccInterval* intv2)
+            {
+                return intv1->getNewSpillCost() < intv2->getNewSpillCost();
+            };
+            auto spillIter = std::min_element(accAssign.activeIntervals.begin(), accAssign.activeIntervals.end(),
+                spillCostCmp);
+            auto spillCandidate = *spillIter;
+            if (interval->getNewSpillCost() > spillCandidate->getNewSpillCost() &&
+                !spillCandidate->isPreAssigned &&
+                !(interval->mustBeAcc0 && spillCandidate->assignedAcc != 0))
+            {
+                bool tmpAssignValue[2];
+
+                tmpAssignValue[0] = accAssign.freeAccs[spillCandidate->assignedAcc];
+                accAssign.freeAccs[spillCandidate->assignedAcc] = true;
+                if (spillCandidate->needBothAcc(builder))
+                {
+                    tmpAssignValue[1] = accAssign.freeAccs[spillCandidate->assignedAcc + 1];
+                    accAssign.freeAccs[spillCandidate->assignedAcc + 1] = true;
+                }
+
+                if (accAssign.assignAcc(interval))
+                {
+#ifdef DEBUG_VERBOSE_ON
+                    std::cerr << "Kicked out:  \t";
+                    spillCandidate->dump();
+#endif
+                    spillIntervals.push_back(spillCandidate);
+                    spillCandidate->spilledAcc = spillCandidate->assignedAcc;
+                    spillCandidate->lastUse = interval->inst->getLocalId();
+
+                    spillCandidate->assignedAcc = -1;
+                    accAssign.activeIntervals.erase(spillIter);
+                }
+                else
+                {
+                    accAssign.freeAccs[spillCandidate->assignedAcc] = tmpAssignValue[0];
+                    if (spillCandidate->needBothAcc(builder))
+                    {
+                        accAssign.freeAccs[spillCandidate->assignedAcc + 1] = tmpAssignValue[1];
+                    }
+                }
+            }
+        }
+
+        if (interval->assignedAcc == -1)
+        {
+            failIntervals.push_back(interval);
+        }
+#ifdef DEBUG_VERBOSE_ON
+        if (interval->assignedAcc == -1)
+        {
+            std::cerr << "Failed:    \t";
+        }
+        else
+        {
+            std::cerr << "Assigned:   \t";
+        }
+        interval->dump();
+#endif
+    }
+
+    //Rescan the spilled and failed cases to do ACC substitution in peephole.
+    if (failIntervals.size() && spillIntervals.size())
+    {
+        for (auto spillInterval : spillIntervals)
+        {
+            AccAssignment accAssign(numGeneralAcc, builder, false);
+            accAssign.freeAccs[spillInterval->spilledAcc] = true;
+            if (spillInterval->needBothAcc(builder))
+            {
+                accAssign.freeAccs[spillInterval->spilledAcc + 1] = true;
+            }
+
+            for (auto failInterval : failIntervals)
+            {
+                if (!((spillInterval->inst->getLocalId() <= failInterval->inst->getLocalId()) &&
+                    (failInterval->lastUse <= spillInterval->lastUse)) ||
+                    failInterval->assignedAcc != -1)
+                {
+                    continue;
+                }
+                accAssign.expireIntervals(failInterval);
+                accAssign.assignAcc(failInterval);
+            }
+        }
+    }
+
+    for (auto interval : intervals)
+    {
+        G4_INST* inst = interval->inst;
+
+        if (!interval->isPreAssigned)
+        {
+            numAccSubCandidateDef++;
+            numAccSubCandidateUse += (int)inst->use_size();
+        }
+        if (!interval->isPreAssigned && interval->assignedAcc != -1)
+        {
+            if (replaceDstWithAcc(inst, interval->assignedAcc))
+            {
+                numAccSubDef++;
+                numAccSubUse += (int)inst->use_size();
+            }
+#if 0
+            std::cout << "Acc sub def inst: \n";
+            inst->emit(std::cout);
+            std::cout << "[" << inst->getLocalId() << "]\n";
+            std::cout << "Uses:\n";
+            for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
+            {
+                auto&& use = *I;
+                std::cout << "\t";
+                use.first->emit(std::cout);
+                std::cout << "[" << use.first->getLocalId() << "]\n";
+            }
+#endif
+        }
+#if 1
+        if (!interval->isPreAssigned && interval->assignedAcc == -1)
+        {
+            inst->addComment("ACC_Candidate");
+        }
+#endif
+    }
+
+    for (int i = 0, end = (int)intervals.size(); i < end; ++i)
+    {
+        delete intervals[i];
+    }
+
+    return;
+}
+
+
 void AccSubPass::multiAccSub(G4_BB* bb)
 {
     int numGeneralAcc = kernel.getNumAcc();
@@ -1397,13 +1632,22 @@ void AccSubPass::multiAccSub(G4_BB* bb)
         if (interval->isRemoved)
             continue;
 
+        G4_INST* inst = interval->inst;
+
+        if (!interval->isPreAssigned)
+        {
+            numAccSubCandidateDef++;
+            numAccSubCandidateUse += (int)inst->use_size();
+        }
+
         if (!interval->isPreAssigned && interval->assignedAcc != -1)
         {
-            G4_INST* inst = interval->inst;
-            replaceDstWithAcc(inst, interval->assignedAcc);
+            if (replaceDstWithAcc(inst, interval->assignedAcc))
+            {
+                numAccSubDef++;
+                numAccSubUse += (int)inst->use_size();
+            }
 
-            numAccSubDef++;
-            numAccSubUse += (int)inst->use_size();
 #if 0
             std::cout << "Acc sub def inst: \n";
             inst->emit(std::cout);

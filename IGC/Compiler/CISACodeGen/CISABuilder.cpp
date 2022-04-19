@@ -4796,6 +4796,12 @@ namespace IGC
             {
                 SaveOption(vISA_hasDoubleAcc, true);
             }
+
+            if (IGC_IS_FLAG_ENABLED(EnablePreRAAccSchedAndSub))
+            {
+                SaveOption(vISA_PreSchedForAcc, true);
+            }
+
         }
         else
         {

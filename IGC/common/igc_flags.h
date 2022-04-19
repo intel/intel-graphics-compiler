@@ -599,6 +599,7 @@ DECLARE_IGC_REGKEY(bool, SkipTREarlyExitCheck, false, "Skip SIMD16 early exit ch
 DECLARE_IGC_REGKEY(bool, EnableTCSHWBarriers, false,  "Enable TCS pass with HW barriers support. Default TCS pass is TCS pass with multiple continuation functions.", false)
 DECLARE_IGC_REGKEY(bool, ForceMCFBarriers, false,  "Force TCS pass with MCF (SW) barriers support. Default TCS pass is TCS pass with multiple continuation functions.", false)
 DECLARE_IGC_REGKEY(bool, EnableAccSub, true, "Enable accumulator substitution", false)
+DECLARE_IGC_REGKEY(bool, EnablePreRAAccSchedAndSub, false, "Enable accumulator substitution", false)
 DECLARE_IGC_REGKEY(DWORD, NumGeneralAcc, 0, "set the number [1-8] of general acc for accumulator substitution. 0 means using the platform-default value", false)
 DECLARE_IGC_REGKEY(bool, HasDoubleAcc, false, "has doubled accumulators", false)
 DECLARE_IGC_REGKEY(bool, ForceSWCoalescingOfAtomicCounter, false, "Force software coalescing of atomic counter", false)

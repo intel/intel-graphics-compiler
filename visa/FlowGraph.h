@@ -106,67 +106,6 @@ public:
 }; // FuncInfo
 
 
-
-///
-/// A hashtable of <declare, node> where every node is a vector of
-/// {LB, RB} (left-bounds and right-bounds)
-/// A source operand (either SrcRegRegion or Predicate) is considered to be global
-/// if it is not fully defined in one BB
-///
-class GlobalOpndHashTable
-{
-    Mem_Manager& mem;
-    std_arena_based_allocator<uint32_t> private_arena_allocator;
-
-    static uint32_t packBound(uint16_t lb, uint16_t rb)
-    {
-        return (rb << 16) + lb;
-    }
-
-    static uint16_t getLB(uint32_t value)
-    {
-        return (uint16_t) (value & 0xFFFF);
-    }
-    static uint16_t getRB(uint32_t value)
-    {
-        return (uint16_t) (value >> 16);
-    }
-
-    struct HashNode
-    {
-        // each elements is {LB, RB} pair where [0:15] is LB and [16:31] is RB
-        std::vector<uint32_t, std_arena_based_allocator<uint32_t>> bounds;
-
-        HashNode(uint16_t lb, uint16_t rb, std_arena_based_allocator<uint32_t>& m)
-            : bounds(m)
-        {
-            bounds.push_back(packBound(lb, rb));
-        }
-
-        void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-
-        void insert(uint16_t newLB, uint16_t newRB);
-        bool isInNode(uint16_t lb, uint16_t rb) const;
-    };
-
-    // "global" refers to declares with elements that are used without a preceding define in the same BB
-    std::map<G4_Declare*, HashNode*> globalVars;
-    // for debugging it's often useful to dump out the global operands, not just declares.
-    // Note that this may not be an exhaustive list, for example it does not cover dst global operands;
-    // for accuracy one should use isOpndGlobal()
-    std::vector<G4_Operand*> globalOpnds;
-
-public:
-    GlobalOpndHashTable(Mem_Manager& m) : mem(m) { }
-
-    void addGlobalOpnd(G4_Operand * opnd);
-    // returns true if def may possibly define a global variable
-    bool isOpndGlobal(G4_Operand * def) const;
-    void clearHashTable();
-
-    void dump(std::ostream &os = std::cerr) const;
-}; // GlobalOpndHashTable
-
 //
 // A table mapping the subroutine (INIT) block id's to their FuncInfo nodes.
 //
@@ -287,6 +226,16 @@ public:
         int simd16ReadSuppression = 0;
         int twoSrcBC = 0;
 
+        //For the static profiling of acc regsiter substituion ratio
+        //The operand numbers which are be replaced with acc.
+        //Def:dst operand, Use:src operand
+        unsigned accSubDef = 0;
+        unsigned accSubUse = 0;
+
+        //Candidates, which may be substituted with acc, or not because of spill
+        unsigned accSubCandidateDef = 0;
+        unsigned accSubCandidateUse = 0;
+
         void clear()
         {
             simd8 = 0;
@@ -300,6 +249,11 @@ public:
         void addSimd16RSBC(unsigned num) { simd16ReadSuppression += num; }
         void add2SrcBC(unsigned num) { twoSrcBC += num; }
         void addSIMD8() { ++simd8; }
+
+        void setAccSubDef(unsigned num) { accSubDef = num; }
+        void setAccSubUse(unsigned num) { accSubUse = num; }
+        void setAccSubCandidateDef(unsigned num) { accSubCandidateDef = num; }
+        void setAccSubCandidateUse(unsigned num) { accSubCandidateUse = num; }
 
     } XeBCStats;
     unsigned numRMWs = 0;    // counting the number of read-modify-write

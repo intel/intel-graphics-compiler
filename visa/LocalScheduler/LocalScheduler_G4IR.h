@@ -348,6 +348,19 @@ private:
     Options* m_options;
 };
 
+class preRA_ACC_Scheduler {
+public:
+    preRA_ACC_Scheduler(G4_Kernel& k, Mem_Manager& m);
+    ~preRA_ACC_Scheduler();
+    bool run();
+
+private:
+    G4_Kernel& kernel;
+    Mem_Manager& mem;
+    RPE* rpe;
+    Options* m_options;
+};
+
 class GRFMode
 {
 public:
