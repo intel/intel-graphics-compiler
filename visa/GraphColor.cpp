@@ -12327,8 +12327,7 @@ void GlobalRA::fixAlignment()
     // Rest of RA shouldnt have to read/modify alignment of G4_RegVar
     copyAlignment();
 
-    if (kernel.getSimdSize() == g4::SIMD32 &&
-        kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
+    if (kernel.getSimdSize() == g4::SIMD32)
     {
         // we have to force all flags to be 32-bit aligned even if they are < 32-bit,
         // due to potential emask usage.
