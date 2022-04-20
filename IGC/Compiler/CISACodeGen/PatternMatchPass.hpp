@@ -258,6 +258,8 @@ namespace IGC
         bool NeedInstruction(llvm::Instruction& I);
         bool SIMDConstExpr(llvm::Instruction* v);
         bool IsConstOrSimdConstExpr(llvm::Value* C);
+        bool FlushesDenormsOnOutput(llvm::Instruction& I);
+        bool FlushesDenormsOnInput(llvm::Instruction& I);
 
         // Place a constant Val into the constant pool. This constant should be
         // available in basic block UseBlock.

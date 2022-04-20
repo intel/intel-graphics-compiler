@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -147,6 +147,19 @@ namespace IGC
         return false;
     }
 
+    // If "v" is a canonicalize instruction, return its source argument. Return
+    // "v" otherwise.
+    inline Value* SkipCanonicalize(Value* v)
+    {
+        IntrinsicInst* intr = dyn_cast<IntrinsicInst>(v);
+        if (intr &&
+            intr->getIntrinsicID() == Intrinsic::canonicalize)
+        {
+            return intr->getOperand(0);
+        }
+        return v;
+    }
+
     bool CodeGenPatternMatch::IsDbgInst(llvm::Instruction& inst) const
     {
         if (llvm::isa<llvm::DbgInfoIntrinsic>(&inst))
@@ -173,6 +186,128 @@ namespace IGC
             return SIMDConstExpr(inst);
         }
         return false;
+    }
+
+    // Checks if denorms are flushed on instruction's output.
+    // When denorm mode in CR0 is set to flush to zero, denorms are flushed on
+    // input and output of any floating-point mathematical operation with the
+    // following exceptions:
+    // - raw mov retains denorms
+    // - conversion instructions retain denorms (includes mix-mode instructions)
+    // - extended math instructions retain half float denorms
+    bool CodeGenPatternMatch::FlushesDenormsOnOutput(Instruction& I)
+    {
+        bool flushesDenorms = false;
+        if ((m_ctx->m_floatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isHalfTy()) ||
+            (m_ctx->m_floatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isFloatTy()) ||
+            (m_ctx->m_floatDenormMode64 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isDoubleTy()))
+        {
+            switch (GetOpCode(&I))
+            {
+            case llvm_select:
+                flushesDenorms = true;
+                for (uint i = 1; i < I.getNumOperands(); ++i)
+                {
+                    Instruction* inst = dyn_cast<Instruction>(I.getOperand(i));
+                    if (inst && !FlushesDenormsOnOutput(*inst))
+                    {
+                        flushesDenorms = false;
+                        break;
+                    }
+                }
+                break;
+            case llvm_max:
+            case llvm_min:
+                flushesDenorms = true;
+                for (uint i = 0; i < I.getNumOperands(); ++i)
+                {
+                    Instruction* inst = dyn_cast<Instruction>(I.getOperand(i));
+                    if (inst && !FlushesDenormsOnOutput(*inst))
+                    {
+                        flushesDenorms = false;
+                        break;
+                    }
+                }
+                break;
+            case llvm_fsat:
+            case llvm_fabs:
+                if (isa<Instruction>(I.getOperand(0)))
+                {
+                    flushesDenorms = FlushesDenormsOnOutput(*(cast<Instruction>(I.getOperand(0))));
+                }
+                break;
+            case llvm_canonicalize:
+            case llvm_fadd:
+            case llvm_fadd_rtz:
+            case llvm_fsub:
+            case llvm_fmul:
+            case llvm_fmul_rtz:
+            case llvm_fma:
+            case llvm_roundne:
+            case llvm_round_z:
+            case llvm_floor:
+            case llvm_ceil:
+            case llvm_frc:
+                flushesDenorms = true;
+                break;
+            case llvm_fdiv:
+            case llvm_frem:
+            case llvm_cos:
+            case llvm_sin:
+            case llvm_log:
+            case llvm_exp:
+            case llvm_pow:
+            case llvm_sqrt:
+            case llvm_rsq:
+                // extended math retain half denorms
+                flushesDenorms = !I.getType()->isHalfTy();
+                break;
+            default:
+                break;
+            }
+        }
+        return flushesDenorms;
+    }
+    bool CodeGenPatternMatch::FlushesDenormsOnInput(Instruction& I)
+    {
+        bool flushesDenorms = false;
+        if ((m_ctx->m_floatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isHalfTy()) ||
+            (m_ctx->m_floatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isFloatTy()) ||
+            (m_ctx->m_floatDenormMode64 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO && I.getType()->isDoubleTy()))
+        {
+            switch (GetOpCode(&I))
+            {
+            case llvm_canonicalize:
+            case llvm_fadd:
+            case llvm_fadd_rtz:
+            case llvm_fsub:
+            case llvm_fmul:
+            case llvm_fmul_rtz:
+            case llvm_fma:
+            case llvm_roundne:
+            case llvm_round_z:
+            case llvm_floor:
+            case llvm_ceil:
+            case llvm_frc:
+                flushesDenorms = true;
+                break;
+            case llvm_fdiv:
+            case llvm_frem:
+            case llvm_cos:
+            case llvm_sin:
+            case llvm_log:
+            case llvm_exp:
+            case llvm_pow:
+            case llvm_sqrt:
+            case llvm_rsq:
+                // extended math retain half denorms
+                flushesDenorms = !I.getType()->isHalfTy();
+                break;
+            default:
+                break;
+            }
+        }
+        return flushesDenorms;
     }
 
     // this function need to be in sync with CShader::EvaluateSIMDConstExpr on what can be supported
@@ -2199,7 +2334,7 @@ namespace IGC
         {
             for (uint i = 0; i < 2; i++)
             {
-                Value* src = I.getOperand(i);
+                Value* src = SkipCanonicalize(I.getOperand(i));
                 if (FPExtInst * fpextInst = llvm::dyn_cast<llvm::FPExtInst>(src))
                 {
                     if (!m_Platform.supportMixMode() && fpextInst->getSrcTy()->getTypeID() == llvm::Type::HalfTyID)
@@ -2224,12 +2359,17 @@ namespace IGC
                     if (isFpMadWithContractionOverride && !mul->hasAllowContract())
                         continue;
 
-                    sources[2] = I.getOperand(1 - i);
-                    sources[1] = mul->getOperand(0);
-                    sources[0] = mul->getOperand(1);
+                    sources[2] = SkipCanonicalize(I.getOperand(1 - i));
+                    sources[1] = SkipCanonicalize(mul->getOperand(0));
+                    sources[0] = SkipCanonicalize(mul->getOperand(1));
+
                     GetModifier(*sources[0], src_mod[0], sources[0]);
                     GetModifier(*sources[1], src_mod[1], sources[1]);
                     GetModifier(*sources[2], src_mod[2], sources[2]);
+
+                    sources[0] = SkipCanonicalize(sources[0]);
+                    sources[1] = SkipCanonicalize(sources[1]);
+                    sources[2] = SkipCanonicalize(sources[2]);
                     if (I.getOpcode() == Instruction::FSub ||
                         I.getOpcode() == Instruction::Sub)
                     {
@@ -3304,13 +3444,23 @@ namespace IGC
         pattern->instruction = &I;
         uint nbSources = GetNbSources(I);
 
+        llvm::SmallVector<llvm::Value*, 4> sources(I.op_begin(), I.op_end());
+        if (FlushesDenormsOnInput(I))
+        {
+            // Denorms are flushed at input - skip canonicalize
+            std::transform(sources.begin(), sources.end(), sources.begin(),
+                [](llvm::Value* src)->llvm::Value*
+                {
+                    return SkipCanonicalize(src);
+                });
+        }
         bool supportModiferSrc0 = SupportsModifier(&I);
         bool supportRegioning = SupportsRegioning(&I);
         llvm::Instruction* src0Inst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
         if (I.getOpcode() == llvm::Instruction::UDiv && src0Inst && src0Inst->getOpcode() == llvm::Instruction::Sub) {
             supportModiferSrc0 = false;
         }
-        pattern->sources[0] = GetSource(I.getOperand(0), supportModiferSrc0 && SupportSrc0Mod, supportRegioning);
+        pattern->sources[0] = GetSource(sources[0], supportModiferSrc0 && SupportSrc0Mod, supportRegioning);
         if (nbSources > 1)
         {
             bool supportModiferSrc1 = SupportsModifier(&I);
@@ -3318,13 +3468,13 @@ namespace IGC
             if (I.getOpcode() == llvm::Instruction::UDiv && src1Inst && src1Inst->getOpcode() == llvm::Instruction::Sub) {
                 supportModiferSrc1 = false;
             }
-            pattern->sources[1] = GetSource(I.getOperand(1), supportModiferSrc1, supportRegioning);
+            pattern->sources[1] = GetSource(sources[1], supportModiferSrc1, supportRegioning);
 
             // add df imm to constant pool for binary/ternary inst
             // we do 64-bit int imm bigger than 32 bits, since smaller may fit in D/W
             for (int i = 0, numSrc = (int)nbSources; i < numSrc; ++i)
             {
-                Value* op = I.getOperand(i);
+                Value* op = sources[i];
                 if (isCandidateForConstantPool(op))
                 {
                     AddToConstantPool(I.getParent(), op);
@@ -3352,10 +3502,17 @@ namespace IGC
         };
         SingleInstPattern* pattern = new (m_allocator) SingleInstPattern();
         pattern->inst = &I;
+        bool flushesDenorms = FlushesDenormsOnInput(I);
         uint numSources = GetNbSources(I);
         for (uint i = 0; i < numSources; i++)
         {
-            MarkAsSource(I.getOperand(i));
+            Value* src = I.getOperand(i);
+            if (flushesDenorms)
+            {
+                // Denorms are flushed at input - skip canonicalize
+                src = SkipCanonicalize(src);
+            }
+            MarkAsSource(src);
         }
 
         if (CallInst * callinst = dyn_cast<CallInst>(&I))
@@ -3392,95 +3549,16 @@ namespace IGC
             }
         };
 
-
-        // FAdd, FSub, FMul, FDiv instructions flush subnormals to zero.
-        // However, mix mode and math instructions preserve subnormals.
-        // Other instructions also preserve subnormals.
-        // FSat intrinsic instruction can be emitted i.e. as FAdd so such an
-        // instruction should be inspected recursively.
-        std::function<bool(llvm::Value*)> DetermineIfMixMode;
-        DetermineIfMixMode = [&DetermineIfMixMode, this](llvm::Value* operand) -> bool
-        {
-            bool isMixModePossible = false;
-            if (m_Platform.supportMixMode())
-            {
-                if (llvm::BinaryOperator* pBianaryOperator = llvm::dyn_cast<llvm::BinaryOperator>(operand))
-                {
-                    // the switch instruction is executed to break the recursion if it is unneeded.
-                    // The cause for this recursion is a possibility of constructing mad instructions.
-                    switch (pBianaryOperator->getOpcode())
-                    {
-                    case llvm::BinaryOperator::BinaryOps::FAdd:
-                    case llvm::BinaryOperator::BinaryOps::FMul:
-                    case llvm::BinaryOperator::BinaryOps::FSub:
-                        isMixModePossible = pBianaryOperator->getType()->isDoubleTy() == false &&
-                            (DetermineIfMixMode(pBianaryOperator->getOperand(0)) || DetermineIfMixMode(pBianaryOperator->getOperand(1)));
-                        break;
-                    default:
-                        break;
-                    }
-                }
-                else if (isa<FPTruncInst>(operand))
-                {
-                    FPTruncInst* fptruncInst = llvm::cast<FPTruncInst>(operand);
-                    isMixModePossible = fptruncInst->getSrcTy()->isDoubleTy() == false;
-                }
-                else if (isa<FPExtInst>(operand))
-                {
-                    FPExtInst* fpextInst = llvm::cast<FPExtInst>(operand);
-                    isMixModePossible = fpextInst->getDestTy()->isDoubleTy() == false;
-                }
-            }
-            return isMixModePossible;
-        };
-
-        std::function<bool(llvm::Value*)> DetermineIfNeeded;
-        DetermineIfNeeded = [&DetermineIfNeeded, &DetermineIfMixMode](llvm::Value* operand) -> bool
-        {
-            bool isNeeded = true;
-            if (llvm::BinaryOperator* pBianaryOperator = llvm::dyn_cast<llvm::BinaryOperator>(operand))
-            {
-                // the switch instruction is to consider only the operations
-                // which support flushing denorms to zero.
-                switch (pBianaryOperator->getOpcode())
-                {
-                case llvm::BinaryOperator::BinaryOps::FAdd:
-                case llvm::BinaryOperator::BinaryOps::FMul:
-                case llvm::BinaryOperator::BinaryOps::FSub:
-                case llvm::BinaryOperator::BinaryOps::FDiv:
-                    isNeeded = DetermineIfMixMode(pBianaryOperator);
-                    break;
-                default:
-                    break;
-                }
-            }
-            else if(GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(operand))
-            {
-                switch (intrin->getIntrinsicID())
-                {
-                case GenISAIntrinsic::GenISA_fsat:
-                    isNeeded = DetermineIfNeeded(intrin->getOperand(0));
-                    break;
-                default:
-                    break;
-                }
-            }
-            else if (IntrinsicInst* intrin = dyn_cast<IntrinsicInst>(operand))
-            {
-                switch (intrin->getIntrinsicID())
-                {
-                case Intrinsic::canonicalize:
-                    isNeeded = DetermineIfNeeded(intrin->getOperand(0));
-                    break;
-                default:
-                    break;
-                }
-            }
-            return isNeeded;
-        };
-
         CanonicalizeInstPattern* pattern = new (m_allocator) CanonicalizeInstPattern(&I);
-        if (DetermineIfNeeded(I.getOperand(0)))
+        IGC_ASSERT(isa<Instruction>(I.getOperand(0)));
+        // Current implementation assumes that mix mode is disabled if
+        // half float or 32-bit float denorms must be flushed.
+        if (m_ctx->m_floatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO ||
+            m_ctx->m_floatDenormMode32 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO)
+        {
+            IGC_ASSERT(!m_Platform.supportMixMode() || m_ctx->getModuleMetaData()->disableMixMode);
+        }
+        if (!FlushesDenormsOnOutput(*(cast<Instruction>(I.getOperand(0)))))
         {
             MarkAsSource(I.getOperand(0));
         }
