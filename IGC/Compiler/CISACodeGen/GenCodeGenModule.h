@@ -117,40 +117,40 @@ namespace IGC {
         iterator end() { return iterator(Functions, iterator::END); }
 
         ~FunctionGroup() {
-            for (auto F : Functions) {
-                delete F;
+            for (auto I = Functions.begin(), E = Functions.end(); I != E; I++) {
+                delete (*I);
             }
         }
 
         /// \brief The entry kernel function of group.
-        llvm::Function* getHead() const {
+        llvm::Function* getHead() {
             return Functions.front()->front();
         }
         /// \brief The tail function of a group.
-        llvm::Function* back() const {
+        llvm::Function* back() {
             return Functions.back()->back();
         }
         /// \brief Only one function in this group
-        bool isSingle() const {
+        bool isSingle() {
             return (Functions.size() == 1 && Functions.front()->size() == 1);
         }
         /// \brief Function group has a stack call (including indirect calls)
-        bool hasStackCall() const {
+        bool hasStackCall() {
             return m_hasStackCall;
         }
-        bool hasInlineAsm() const {
+        bool hasInlineAsm() {
             return m_hasInlineAsm;
         }
         /// \brief Function group has a variable length alloca
-        bool hasVariableLengthAlloca() const {
-            return m_hasVariableLengthAlloca;
+        bool hasVariableLengthAlloca() {
+            return m_hasVaribleLengthAlloca;
         }
         /// \brief Function group has indirect calls
-        bool hasIndirectCall() const {
+        bool hasIndirectCall() {
             return m_hasIndirectCall;
         }
         /// \brief Function group has recursion
-        bool hasRecursion() const {
+        bool hasRecursion() {
             return m_hasRecursion;
         }
 
@@ -169,7 +169,7 @@ namespace IGC {
     private:
         bool m_hasStackCall = false;
         bool m_hasInlineAsm = false;
-        bool m_hasVariableLengthAlloca = false;
+        bool m_hasVaribleLengthAlloca = false;
         bool m_hasIndirectCall = false;
         bool m_hasRecursion = false;
         bool SIMDModeValid[3] = {true, true, true};
