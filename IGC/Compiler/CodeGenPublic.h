@@ -839,7 +839,7 @@ namespace IGC
 
         iOpenCL::ThreadPayload        m_threadPayload = {};
 
-        iOpenCL::ExecutionEnivronment m_executionEnivronment = {};
+        iOpenCL::ExecutionEnvironment m_executionEnvironment = {};
 
         iOpenCL::KernelTypeProgramBinaryInfo m_kernelTypeInfo = {};
 

@@ -1021,7 +1021,7 @@ namespace IGC
 
         case KernelArg::ArgType::PTR_DEVICE_QUEUE:
         {
-            m_kernelInfo.m_executionEnivronment.HasDeviceEnqueue = true;
+            m_kernelInfo.m_executionEnvironment.HasDeviceEnqueue = true;
             unsigned int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
@@ -1274,7 +1274,7 @@ namespace IGC
 
             if (kernelArg->getAccessQual() == IGC::KernelArg::AccessQual::READ_WRITE)
             {
-                m_kernelInfo.m_executionEnivronment.HasReadWriteImages = true;
+                m_kernelInfo.m_executionEnvironment.HasReadWriteImages = true;
             }
         }
         break;
@@ -1407,7 +1407,7 @@ namespace IGC
 
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE:
         {
-            m_kernelInfo.m_executionEnivronment.HasDeviceEnqueue = true;
+            m_kernelInfo.m_executionEnvironment.HasDeviceEnqueue = true;
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
@@ -1426,7 +1426,7 @@ namespace IGC
 
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_EVENT_POOL:
         {
-            m_kernelInfo.m_executionEnivronment.HasDeviceEnqueue = true;
+            m_kernelInfo.m_executionEnvironment.HasDeviceEnqueue = true;
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
@@ -1981,7 +1981,7 @@ namespace IGC
         // Disable EU Fusion.
         if (IGC_IS_FLAG_ENABLED(DisableEuFusion) || m_Context->m_InternalOptions.DisableEUFusion)
         {
-            m_kernelInfo.m_executionEnivronment.RequireDisableEUFusion = true;
+            m_kernelInfo.m_executionEnvironment.RequireDisableEUFusion = true;
         }
 
         // ToDo: we should avoid passing all three dimensions of local id
@@ -2097,33 +2097,33 @@ namespace IGC
 
         m_Context->SetSIMDInfo(SIMD_SELECTED, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
 
-        m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = numLanes(simdMode);
-        m_kernelInfo.m_executionEnivronment.SIMDInfo = m_Context->GetSIMDInfo();
+        m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = numLanes(simdMode);
+        m_kernelInfo.m_executionEnvironment.SIMDInfo = m_Context->GetSIMDInfo();
 
-        m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace = pOutput->getScratchSpaceUsageInSlot0();
-        m_kernelInfo.m_executionEnivronment.PerThreadScratchSpaceSlot1 = pOutput->getScratchSpaceUsageInSlot1();
-        m_kernelInfo.m_executionEnivronment.PerThreadPrivateOnStatelessSize = m_perWIStatelessPrivateMemSize;
+        m_kernelInfo.m_executionEnvironment.PerThreadScratchSpace = pOutput->getScratchSpaceUsageInSlot0();
+        m_kernelInfo.m_executionEnvironment.PerThreadScratchSpaceSlot1 = pOutput->getScratchSpaceUsageInSlot1();
+        m_kernelInfo.m_executionEnvironment.PerThreadPrivateOnStatelessSize = m_perWIStatelessPrivateMemSize;
         m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
         m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_ConstantBufferLength / getGRFSize(); // in 256 bits
         m_kernelInfo.m_kernelProgram.MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads() / GetShaderThreadUsageRate();
 
-        m_kernelInfo.m_executionEnivronment.SumFixedTGSMSizes = getSumFixedTGSMSizes(entry);
+        m_kernelInfo.m_executionEnvironment.SumFixedTGSMSizes = getSumFixedTGSMSizes(entry);
 
         // TODO: need to change misleading HasBarriers to NumberofBarriers
-        m_kernelInfo.m_executionEnivronment.HasBarriers = this->GetBarrierNumber();
-        m_kernelInfo.m_executionEnivronment.DisableMidThreadPreemption = GetDisableMidThreadPreemption();
-        m_kernelInfo.m_executionEnivronment.SubgroupIndependentForwardProgressRequired =
+        m_kernelInfo.m_executionEnvironment.HasBarriers = this->GetBarrierNumber();
+        m_kernelInfo.m_executionEnvironment.DisableMidThreadPreemption = GetDisableMidThreadPreemption();
+        m_kernelInfo.m_executionEnvironment.SubgroupIndependentForwardProgressRequired =
             m_Context->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired;
-        m_kernelInfo.m_executionEnivronment.CompiledForGreaterThan4GBBuffers =
+        m_kernelInfo.m_executionEnvironment.CompiledForGreaterThan4GBBuffers =
             m_Context->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired;
         IGC_ASSERT(gatherMap.size() == 0);
         m_kernelInfo.m_kernelProgram.gatherMapSize = 0;
         m_kernelInfo.m_kernelProgram.bindingTableEntryCount = 0;
 
-        m_kernelInfo.m_executionEnivronment.HasDeviceEnqueue = false;
-        m_kernelInfo.m_executionEnivronment.IsSingleProgramFlow = false;
-        //m_kernelInfo.m_executionEnivronment.PerSIMDLanePrivateMemorySize = m_perWIStatelessPrivateMemSize;
-        m_kernelInfo.m_executionEnivronment.HasFixedWorkGroupSize = false;
+        m_kernelInfo.m_executionEnvironment.HasDeviceEnqueue = false;
+        m_kernelInfo.m_executionEnvironment.IsSingleProgramFlow = false;
+        //m_kernelInfo.m_executionEnvironment.PerSIMDLanePrivateMemorySize = m_perWIStatelessPrivateMemSize;
+        m_kernelInfo.m_executionEnvironment.HasFixedWorkGroupSize = false;
         m_kernelInfo.m_kernelName = entry->getName().str();
         m_kernelInfo.m_ShaderHashCode = m_Context->hash.getAsmHash();
 
@@ -2133,14 +2133,14 @@ namespace IGC
 
         if (threadGroupSize->hasValue())
         {
-            m_kernelInfo.m_executionEnivronment.HasFixedWorkGroupSize = true;
-            m_kernelInfo.m_executionEnivronment.FixedWorkgroupSize[0] = threadGroupSize->getXDim();
-            m_kernelInfo.m_executionEnivronment.FixedWorkgroupSize[1] = threadGroupSize->getYDim();
-            m_kernelInfo.m_executionEnivronment.FixedWorkgroupSize[2] = threadGroupSize->getZDim();
+            m_kernelInfo.m_executionEnvironment.HasFixedWorkGroupSize = true;
+            m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[0] = threadGroupSize->getXDim();
+            m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[1] = threadGroupSize->getYDim();
+            m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[2] = threadGroupSize->getZDim();
         }
         if (subGroupSize->hasValue())
         {
-            m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = subGroupSize->getSIMD_size();
+            m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = subGroupSize->getSIMD_size();
         }
 
         auto& FuncMap = m_Context->getModuleMetaData()->FuncMD;
@@ -2152,32 +2152,32 @@ namespace IGC
 
             if (workGroupWalkOrder.dim0 || workGroupWalkOrder.dim1 || workGroupWalkOrder.dim2)
             {
-                m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[0] = workGroupWalkOrder.dim0;
-                m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[1] = workGroupWalkOrder.dim1;
-                m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[2] = workGroupWalkOrder.dim2;
+                m_kernelInfo.m_executionEnvironment.WorkgroupWalkOrder[0] = workGroupWalkOrder.dim0;
+                m_kernelInfo.m_executionEnvironment.WorkgroupWalkOrder[1] = workGroupWalkOrder.dim1;
+                m_kernelInfo.m_executionEnvironment.WorkgroupWalkOrder[2] = workGroupWalkOrder.dim2;
             }
 
-            m_kernelInfo.m_executionEnivronment.IsInitializer = funcMD.IsInitializer;
-            m_kernelInfo.m_executionEnivronment.IsFinalizer = funcMD.IsFinalizer;
+            m_kernelInfo.m_executionEnvironment.IsInitializer = funcMD.IsInitializer;
+            m_kernelInfo.m_executionEnvironment.IsFinalizer = funcMD.IsFinalizer;
 
-            m_kernelInfo.m_executionEnivronment.CompiledSubGroupsNumber = funcMD.CompiledSubGroupsNumber;
+            m_kernelInfo.m_executionEnvironment.CompiledSubGroupsNumber = funcMD.CompiledSubGroupsNumber;
 
-            m_kernelInfo.m_executionEnivronment.HasRTCalls = funcMD.hasSyncRTCalls;
+            m_kernelInfo.m_executionEnvironment.HasRTCalls = funcMD.hasSyncRTCalls;
         }
 
-        m_kernelInfo.m_executionEnivronment.HasGlobalAtomics = GetHasGlobalAtomics();
+        m_kernelInfo.m_executionEnvironment.HasGlobalAtomics = GetHasGlobalAtomics();
         m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = ProgramOutput()->m_offsetToSkipPerThreadDataLoad;
         m_kernelInfo.m_threadPayload.OffsetToSkipSetFFIDGP = ProgramOutput()->m_offsetToSkipSetFFIDGP;
 
-        m_kernelInfo.m_executionEnivronment.NumGRFRequired = ProgramOutput()->m_numGRFTotal;
+        m_kernelInfo.m_executionEnvironment.NumGRFRequired = ProgramOutput()->m_numGRFTotal;
 
-        m_kernelInfo.m_executionEnivronment.HasDPAS = GetHasDPAS();
-        m_kernelInfo.m_executionEnivronment.StatelessWritesCount = GetStatelessWritesCount();
-        m_kernelInfo.m_executionEnivronment.IndirectStatelessCount = GetIndirectStatelessCount();
-        m_kernelInfo.m_executionEnivronment.numThreads = ProgramOutput()->m_numThreads;
+        m_kernelInfo.m_executionEnvironment.HasDPAS = GetHasDPAS();
+        m_kernelInfo.m_executionEnvironment.StatelessWritesCount = GetStatelessWritesCount();
+        m_kernelInfo.m_executionEnvironment.IndirectStatelessCount = GetIndirectStatelessCount();
+        m_kernelInfo.m_executionEnvironment.numThreads = ProgramOutput()->m_numThreads;
 
-        m_kernelInfo.m_executionEnivronment.UseBindlessMode = m_Context->m_InternalOptions.UseBindlessMode;
-        m_kernelInfo.m_executionEnivronment.HasStackCalls = HasStackCalls();
+        m_kernelInfo.m_executionEnvironment.UseBindlessMode = m_Context->m_InternalOptions.UseBindlessMode;
+        m_kernelInfo.m_executionEnvironment.HasStackCalls = HasStackCalls();
     }
 
     void COpenCLKernel::RecomputeBTLayout()

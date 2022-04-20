@@ -79,7 +79,7 @@ void ZEBinaryBuilder::createKernel(
     if (annotations.m_threadPayload.HasLocalIDx ||
         annotations.m_threadPayload.HasLocalIDy ||
         annotations.m_threadPayload.HasLocalIDz) {
-        addLocalIds(annotations.m_executionEnivronment.CompiledSIMDSize,
+        addLocalIds(annotations.m_executionEnvironment.CompiledSIMDSize,
             grfSize,
             annotations.m_threadPayload.HasLocalIDx,
             annotations.m_threadPayload.HasLocalIDy,
@@ -108,7 +108,7 @@ void ZEBinaryBuilder::addGTPinInfo(const IGC::SOpenCLKernelInfo& annotations)
 {
     const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
     const SProgramOutput* output = nullptr;
-    switch (annotations.m_executionEnivronment.CompiledSIMDSize) {
+    switch (annotations.m_executionEnvironment.CompiledSIMDSize) {
     case 1:  output = &(program->simd1); break;
     case 8:  output = &(program->simd8); break;
     case 16: output = &(program->simd16); break;
@@ -140,7 +140,7 @@ void ZEBinaryBuilder::addFunctionAttrs(const IGC::SOpenCLKernelInfo& annotations
             return program.simd32.m_funcAttrs;
         else
             return program.simd1.m_funcAttrs;
-    } (annotations.m_executionEnivronment.CompiledSIMDSize,
+    } (annotations.m_executionEnvironment.CompiledSIMDSize,
        annotations.m_kernelProgram);
 
     for (auto& funcAttr : funcAttrs) {
@@ -293,13 +293,13 @@ void ZEBinaryBuilder::addMemoryBuffer(
     //  - contains privates and both igc and vISA stack, or
     //  - contains only vISA stack
     uint32_t scratch0 =
-        annotations.m_executionEnivronment.PerThreadScratchSpace;
+        annotations.m_executionEnvironment.PerThreadScratchSpace;
     // scratch1 is privates on stack
     uint32_t scratch1 =
-        annotations.m_executionEnivronment.PerThreadScratchSpaceSlot1;
+        annotations.m_executionEnvironment.PerThreadScratchSpaceSlot1;
     // private_on_global: privates and IGC stack on stateless
     uint32_t private_on_global =
-        annotations.m_executionEnivronment.PerThreadPrivateOnStatelessSize;
+        annotations.m_executionEnvironment.PerThreadPrivateOnStatelessSize;
 
     //  single scratch space have everything
     if (scratch0 && !scratch1 && !private_on_global) {
@@ -407,7 +407,7 @@ void ZEBinaryBuilder::addKernelSymbols(
             return program.simd32.m_symbols;
         else
             return program.simd1.m_symbols;
-    } (annotations.m_executionEnivronment.CompiledSIMDSize,
+    } (annotations.m_executionEnvironment.CompiledSIMDSize,
         annotations.m_kernelProgram);
 
     // add local symbols of this kernel binary
@@ -453,7 +453,7 @@ void ZEBinaryBuilder::addKernelRelocations(
             return program.simd32.m_relocs;
         else
             return program.simd1.m_relocs;
-    } (annotations.m_executionEnivronment.CompiledSIMDSize, annotations.m_kernelProgram);
+    } (annotations.m_executionEnvironment.CompiledSIMDSize, annotations.m_kernelProgram);
 
     // FIXME: For r_type, zebin::R_TYPE_ZEBIN should have the same enum value as visa::GenRelocType.
     // Take the value directly
@@ -479,18 +479,18 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
 {
     zeInfoExecutionEnv& env = zeinfoKernel.execution_env;
 
-    env.barrier_count = annotations.m_executionEnivronment.HasBarriers;
-    env.disable_mid_thread_preemption = annotations.m_executionEnivronment.DisableMidThreadPreemption;
-    env.grf_count = annotations.m_executionEnivronment.NumGRFRequired;
-    env.has_4gb_buffers = annotations.m_executionEnivronment.CompiledForGreaterThan4GBBuffers;
-    env.has_device_enqueue = annotations.m_executionEnivronment.HasDeviceEnqueue;
-    env.has_dpas = annotations.m_executionEnivronment.HasDPAS;
-    env.has_fence_for_image_access = annotations.m_executionEnivronment.HasReadWriteImages;
-    env.has_global_atomics = annotations.m_executionEnivronment.HasGlobalAtomics;
+    env.barrier_count = annotations.m_executionEnvironment.HasBarriers;
+    env.disable_mid_thread_preemption = annotations.m_executionEnvironment.DisableMidThreadPreemption;
+    env.grf_count = annotations.m_executionEnvironment.NumGRFRequired;
+    env.has_4gb_buffers = annotations.m_executionEnvironment.CompiledForGreaterThan4GBBuffers;
+    env.has_device_enqueue = annotations.m_executionEnvironment.HasDeviceEnqueue;
+    env.has_dpas = annotations.m_executionEnvironment.HasDPAS;
+    env.has_fence_for_image_access = annotations.m_executionEnvironment.HasReadWriteImages;
+    env.has_global_atomics = annotations.m_executionEnvironment.HasGlobalAtomics;
     env.has_multi_scratch_spaces = CPlatform(mPlatform).hasScratchSurface() && IGC_IS_FLAG_ENABLED(SeparateSpillPvtScratchSpace);
-    env.has_no_stateless_write = (annotations.m_executionEnivronment.StatelessWritesCount == 0);
-    env.has_stack_calls = annotations.m_executionEnivronment.HasStackCalls;
-    env.require_disable_eufusion = annotations.m_executionEnivronment.RequireDisableEUFusion;
+    env.has_no_stateless_write = (annotations.m_executionEnvironment.StatelessWritesCount == 0);
+    env.has_stack_calls = annotations.m_executionEnvironment.HasStackCalls;
+    env.require_disable_eufusion = annotations.m_executionEnvironment.RequireDisableEUFusion;
     env.inline_data_payload_size = annotations.m_threadPayload.PassInlineDataSize;
     env.offset_to_skip_per_thread_data_load = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;;
     env.offset_to_skip_set_ffid_gp = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;
@@ -507,22 +507,22 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
         env.required_sub_group_size = std::stoul(attrs.substr(p1, p2 - p1));
     }
 
-    if(annotations.m_executionEnivronment.HasFixedWorkGroupSize)
+    if(annotations.m_executionEnvironment.HasFixedWorkGroupSize)
     {
-        env.required_work_group_size.push_back(annotations.m_executionEnivronment.FixedWorkgroupSize[0]);
-        env.required_work_group_size.push_back(annotations.m_executionEnivronment.FixedWorkgroupSize[1]);
-        env.required_work_group_size.push_back(annotations.m_executionEnivronment.FixedWorkgroupSize[2]);
+        env.required_work_group_size.push_back(annotations.m_executionEnvironment.FixedWorkgroupSize[0]);
+        env.required_work_group_size.push_back(annotations.m_executionEnvironment.FixedWorkgroupSize[1]);
+        env.required_work_group_size.push_back(annotations.m_executionEnvironment.FixedWorkgroupSize[2]);
     }
-    env.simd_size = annotations.m_executionEnivronment.CompiledSIMDSize;
+    env.simd_size = annotations.m_executionEnvironment.CompiledSIMDSize;
     // set slm size to inline local size
-    env.slm_size = annotations.m_executionEnivronment.SumFixedTGSMSizes ;
-    env.subgroup_independent_forward_progress = annotations.m_executionEnivronment.SubgroupIndependentForwardProgressRequired;
-    if (annotations.m_executionEnivronment.WorkgroupWalkOrder[0] ||
-        annotations.m_executionEnivronment.WorkgroupWalkOrder[1] ||
-        annotations.m_executionEnivronment.WorkgroupWalkOrder[2]) {
-        env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnivronment.WorkgroupWalkOrder[0]);
-        env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnivronment.WorkgroupWalkOrder[1]);
-        env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnivronment.WorkgroupWalkOrder[2]);
+    env.slm_size = annotations.m_executionEnvironment.SumFixedTGSMSizes ;
+    env.subgroup_independent_forward_progress = annotations.m_executionEnvironment.SubgroupIndependentForwardProgressRequired;
+    if (annotations.m_executionEnvironment.WorkgroupWalkOrder[0] ||
+        annotations.m_executionEnvironment.WorkgroupWalkOrder[1] ||
+        annotations.m_executionEnvironment.WorkgroupWalkOrder[2]) {
+        env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnvironment.WorkgroupWalkOrder[0]);
+        env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnvironment.WorkgroupWalkOrder[1]);
+        env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnvironment.WorkgroupWalkOrder[2]);
     }
 }
 
@@ -533,8 +533,8 @@ void ZEBinaryBuilder::addFunctionExecEnv(const SOpenCLKernelInfo& annotations,
     // TODO: Currently we only set barrier count and other required information
     // such as GRF count and SIMD size in per-function execution environment.
     zeInfoExecutionEnv& env = zeFunction.execution_env;
-    env.grf_count = annotations.m_executionEnivronment.NumGRFRequired;
-    env.simd_size = annotations.m_executionEnivronment.CompiledSIMDSize;
+    env.grf_count = annotations.m_executionEnvironment.NumGRFRequired;
+    env.simd_size = annotations.m_executionEnvironment.CompiledSIMDSize;
     env.barrier_count = zeFuncAttr.f_BarrierCount;
 }
 

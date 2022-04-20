@@ -279,7 +279,7 @@ struct ThreadPayload
     bool     tileY           = false;
 };
 
-struct ExecutionEnivronment
+struct ExecutionEnvironment
 {
     DWORD  CompiledSIMDSize                           = 0;
     DWORD  CompiledSubGroupsNumber                    = 0;

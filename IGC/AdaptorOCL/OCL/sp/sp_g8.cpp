@@ -1090,7 +1090,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
                 G6HWC::GFXMEDIASTATE_THREAD_PRIORITY_NORMAL;
 
             ifdd.DW2.Gen8.SingleProgramFlow =
-                annotations.m_executionEnivronment.IsSingleProgramFlow;
+                annotations.m_executionEnvironment.IsSingleProgramFlow;
 
             ifdd.DW3.Gen8.SamplerCount =
                 context.Dynamic.SamplerCount;
@@ -1196,7 +1196,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for MEDIA_VFE_STATE
     if( retValue.Success )
     {
-      const DWORD perThreadScratchSpaceSizeInBytes = annotations.m_executionEnivronment.PerThreadScratchSpace;
+      const DWORD perThreadScratchSpaceSizeInBytes = annotations.m_executionEnvironment.PerThreadScratchSpace;
       if (perThreadScratchSpaceSizeInBytes > 0)
         {
             iOpenCL::SPatchMediaVFEState    patch;
@@ -1221,7 +1221,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for MEDIA_VFE_STATE slot1
     if (retValue.Success)
     {
-        const DWORD perThreadScratchSpaceSizeInBytes = annotations.m_executionEnivronment.PerThreadScratchSpaceSlot1;
+        const DWORD perThreadScratchSpaceSizeInBytes = annotations.m_executionEnvironment.PerThreadScratchSpaceSlot1;
         if (perThreadScratchSpaceSizeInBytes > 0)
         {
             iOpenCL::SPatchMediaVFEState    patch;
@@ -1422,7 +1422,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     // Patch for TGSM
     if( retValue.Success )
     {
-        if( annotations.m_executionEnivronment.SumFixedTGSMSizes > 0 )
+        if( annotations.m_executionEnvironment.SumFixedTGSMSizes > 0 )
         {
             iOpenCL::SPatchAllocateLocalSurface patch;
             memset( &patch, 0, sizeof( patch ) );
@@ -1430,7 +1430,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_LOCAL_SURFACE;
             patch.Size = sizeof( patch );
             patch.TotalInlineLocalMemorySize =
-                annotations.m_executionEnivronment.SumFixedTGSMSizes;
+                annotations.m_executionEnvironment.SumFixedTGSMSizes;
 
             retValue = AddPatchItem(
                 patch,
@@ -2006,7 +2006,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
     }
 
-    // Patch for Execution Enivronment
+    // Patch for Execution Environment
     if( retValue.Success )
     {
         iOpenCL::SPatchExecutionEnvironment patch;
@@ -2016,23 +2016,23 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.Token = iOpenCL::PATCH_TOKEN_EXECUTION_ENVIRONMENT;
         patch.Size  = sizeof( patch );
 
-        if( annotations.m_executionEnivronment.HasFixedWorkGroupSize )
+        if( annotations.m_executionEnvironment.HasFixedWorkGroupSize )
         {
-            patch.RequiredWorkGroupSizeX = annotations.m_executionEnivronment.FixedWorkgroupSize[0];
-            patch.RequiredWorkGroupSizeY = annotations.m_executionEnivronment.FixedWorkgroupSize[1];
-            patch.RequiredWorkGroupSizeZ = annotations.m_executionEnivronment.FixedWorkgroupSize[2];
+            patch.RequiredWorkGroupSizeX = annotations.m_executionEnvironment.FixedWorkgroupSize[0];
+            patch.RequiredWorkGroupSizeY = annotations.m_executionEnvironment.FixedWorkgroupSize[1];
+            patch.RequiredWorkGroupSizeZ = annotations.m_executionEnvironment.FixedWorkgroupSize[2];
         }
 
         patch.WorkgroupWalkOrderDims = 0;
-        patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[0];
-        patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[1] << 2;
-        patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[2] << 4;
+        patch.WorkgroupWalkOrderDims |= annotations.m_executionEnvironment.WorkgroupWalkOrder[0];
+        patch.WorkgroupWalkOrderDims |= annotations.m_executionEnvironment.WorkgroupWalkOrder[1] << 2;
+        patch.WorkgroupWalkOrderDims |= annotations.m_executionEnvironment.WorkgroupWalkOrder[2] << 4;
 
-        patch.CompiledSIMD32 = ( annotations.m_executionEnivronment.CompiledSIMDSize == 32 );
-        patch.CompiledSIMD16 = ( annotations.m_executionEnivronment.CompiledSIMDSize == 16 );
-        patch.CompiledSIMD8  = ( annotations.m_executionEnivronment.CompiledSIMDSize == 8 );
+        patch.CompiledSIMD32 = ( annotations.m_executionEnvironment.CompiledSIMDSize == 32 );
+        patch.CompiledSIMD16 = ( annotations.m_executionEnvironment.CompiledSIMDSize == 16 );
+        patch.CompiledSIMD8  = ( annotations.m_executionEnvironment.CompiledSIMDSize == 8 );
 
-        if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        if (annotations.m_executionEnvironment.CompiledSIMDSize == 1)
         {
             patch.LargestCompiledSIMDSize = 1;
         }
@@ -2043,10 +2043,10 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.LargestCompiledSIMDSize = patch.CompiledSIMD32 ? 32 : patch.LargestCompiledSIMDSize;
         }
 
-        patch.HasBarriers                       = iOpenCL::EncodeNumBarriers(annotations.m_executionEnivronment.HasBarriers);
-        patch.DisableMidThreadPreemption        = annotations.m_executionEnivronment.DisableMidThreadPreemption;
+        patch.HasBarriers                       = iOpenCL::EncodeNumBarriers(annotations.m_executionEnvironment.HasBarriers);
+        patch.DisableMidThreadPreemption        = annotations.m_executionEnvironment.DisableMidThreadPreemption;
 
-        patch.UsesStatelessSpillFill = (annotations.m_executionEnivronment.PerThreadScratchSpace > 0);
+        patch.UsesStatelessSpillFill = (annotations.m_executionEnvironment.PerThreadScratchSpace > 0);
         patch.UsesMultiScratchSpaces = false;
         if (CPlatform(m_Platform).hasScratchSurface() && IGC_IS_FLAG_ENABLED(SeparateSpillPvtScratchSpace))
         {
@@ -2057,33 +2057,33 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         patch.HasDeviceEnqueue = (bool)hasDeviceEnqueue;
 
-        patch.UsesFencesForReadWriteImages = annotations.m_executionEnivronment.HasReadWriteImages;
+        patch.UsesFencesForReadWriteImages = annotations.m_executionEnvironment.HasReadWriteImages;
 
-        patch.IsInitializer = annotations.m_executionEnivronment.IsInitializer;
-        patch.IsFinalizer = annotations.m_executionEnivronment.IsFinalizer;
+        patch.IsInitializer = annotations.m_executionEnvironment.IsInitializer;
+        patch.IsFinalizer = annotations.m_executionEnvironment.IsFinalizer;
 
-        patch.SubgroupIndependentForwardProgressRequired = annotations.m_executionEnivronment.SubgroupIndependentForwardProgressRequired;
+        patch.SubgroupIndependentForwardProgressRequired = annotations.m_executionEnvironment.SubgroupIndependentForwardProgressRequired;
 
-        patch.CompiledSubGroupsNumber = annotations.m_executionEnivronment.CompiledSubGroupsNumber;
+        patch.CompiledSubGroupsNumber = annotations.m_executionEnvironment.CompiledSubGroupsNumber;
 
-        patch.CompiledForGreaterThan4GBBuffers = annotations.m_executionEnivronment.CompiledForGreaterThan4GBBuffers;
+        patch.CompiledForGreaterThan4GBBuffers = annotations.m_executionEnvironment.CompiledForGreaterThan4GBBuffers;
 
-        patch.NumGRFRequired = annotations.m_executionEnivronment.NumGRFRequired;
+        patch.NumGRFRequired = annotations.m_executionEnvironment.NumGRFRequired;
 
-        patch.HasGlobalAtomics = annotations.m_executionEnivronment.HasGlobalAtomics;
+        patch.HasGlobalAtomics = annotations.m_executionEnvironment.HasGlobalAtomics;
 
-        patch.HasDPAS = annotations.m_executionEnivronment.HasDPAS;
+        patch.HasDPAS = annotations.m_executionEnvironment.HasDPAS;
 
-        patch.HasRTCalls = annotations.m_executionEnivronment.HasRTCalls;
+        patch.HasRTCalls = annotations.m_executionEnvironment.HasRTCalls;
 
-        patch.NumThreadsRequired = annotations.m_executionEnivronment.numThreads;
-        patch.StatelessWritesCount = annotations.m_executionEnivronment.StatelessWritesCount;
-        patch.IndirectStatelessCount = annotations.m_executionEnivronment.IndirectStatelessCount;
+        patch.NumThreadsRequired = annotations.m_executionEnvironment.numThreads;
+        patch.StatelessWritesCount = annotations.m_executionEnvironment.StatelessWritesCount;
+        patch.IndirectStatelessCount = annotations.m_executionEnvironment.IndirectStatelessCount;
 
-        patch.UseBindlessMode = annotations.m_executionEnivronment.UseBindlessMode;
-        patch.HasStackCalls = annotations.m_executionEnivronment.HasStackCalls;
-        patch.SIMDInfo = annotations.m_executionEnivronment.SIMDInfo;
-        patch.RequireDisableEUFusion = annotations.m_executionEnivronment.RequireDisableEUFusion;
+        patch.UseBindlessMode = annotations.m_executionEnvironment.UseBindlessMode;
+        patch.HasStackCalls = annotations.m_executionEnvironment.HasStackCalls;
+        patch.SIMDInfo = annotations.m_executionEnvironment.SIMDInfo;
+        patch.RequireDisableEUFusion = annotations.m_executionEnvironment.RequireDisableEUFusion;
 
         retValue = AddPatchItem(
             patch,
@@ -2152,23 +2152,23 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         unsigned int size = 0;
         void* buffer = nullptr;
         const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
-        if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
+        if (annotations.m_executionEnvironment.CompiledSIMDSize == 8)
         {
             buffer = program->simd8.m_gtpinBuffer;
             size = program->simd8.m_gtpinBufferSize;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 16)
         {
             buffer = program->simd16.m_gtpinBuffer;
             size = program->simd16.m_gtpinBufferSize;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 32)
         {
             buffer = program->simd32.m_gtpinBuffer;
             size = program->simd32.m_gtpinBufferSize;
         }
         // CM kernels are dispatched with CompiledSIMDSize == 1
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 1)
         {
             buffer = program->simd1.m_gtpinBuffer;
             size = program->simd1.m_gtpinBufferSize;
@@ -2196,25 +2196,25 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         uint32_t entries = 0;
         void* buffer = nullptr;
         const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
-        if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
+        if (annotations.m_executionEnvironment.CompiledSIMDSize == 8)
         {
             buffer = program->simd8.m_funcSymbolTable;
             size = program->simd8.m_funcSymbolTableSize;
             entries = program->simd8.m_funcSymbolTableEntries;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 16)
         {
             buffer = program->simd16.m_funcSymbolTable;
             size = program->simd16.m_funcSymbolTableSize;
             entries = program->simd16.m_funcSymbolTableEntries;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 32)
         {
             buffer = program->simd32.m_funcSymbolTable;
             size = program->simd32.m_funcSymbolTableSize;
             entries = program->simd32.m_funcSymbolTableEntries;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 1)
         {
             buffer = program->simd1.m_funcSymbolTable;
             size = program->simd1.m_funcSymbolTableSize;
@@ -2243,19 +2243,19 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         uint32_t entries = 0;
         void* buffer = nullptr;
         const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
-        if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
+        if (annotations.m_executionEnvironment.CompiledSIMDSize == 8)
         {
             buffer = program->simd8.m_funcRelocationTable;
             size = program->simd8.m_funcRelocationTableSize;
             entries = program->simd8.m_funcRelocationTableEntries;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 16)
         {
             buffer = program->simd16.m_funcRelocationTable;
             size = program->simd16.m_funcRelocationTableSize;
             entries = program->simd16.m_funcRelocationTableEntries;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 32)
         {
             buffer = program->simd32.m_funcRelocationTable;
             size = program->simd32.m_funcRelocationTableSize;
@@ -2263,7 +2263,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         }
         // CM kernels are dispatched with CompiledSIMDSize == 1, this is just a contract
         // between igcmc and patch token generator, shouldn't break existing scenarios for IGC
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 1)
         {
             buffer = program->simd1.m_funcRelocationTable;
             size = program->simd1.m_funcRelocationTableSize;
@@ -2301,25 +2301,25 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         uint32_t entries = 0;
         void* buffer = nullptr;
         const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
-        if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
+        if (annotations.m_executionEnvironment.CompiledSIMDSize == 8)
         {
             buffer = program->simd8.m_globalHostAccessTable;
             size = program->simd8.m_globalHostAccessTableSize;
             entries = program->simd8.m_globalHostAccessTableEntries;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 16)
         {
             buffer = program->simd16.m_globalHostAccessTable;
             size = program->simd16.m_globalHostAccessTableSize;
             entries = program->simd16.m_globalHostAccessTableEntries;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 32)
         {
             buffer = program->simd32.m_globalHostAccessTable;
             size = program->simd32.m_globalHostAccessTableSize;
             entries = program->simd32.m_globalHostAccessTableEntries;
         }
-        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 1)
+        else if (annotations.m_executionEnvironment.CompiledSIMDSize == 1)
         {
             buffer = program->simd1.m_globalHostAccessTable;
             size = program->simd1.m_globalHostAccessTableSize;

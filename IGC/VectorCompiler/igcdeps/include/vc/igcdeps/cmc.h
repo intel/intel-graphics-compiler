@@ -48,7 +48,7 @@ public:
 
   // getter for convenience
   const IGC::SProgramOutput &getProgramOutput() const {
-    IGC_ASSERT_MESSAGE(m_kernelInfo.m_executionEnivronment.CompiledSIMDSize ==
+    IGC_ASSERT_MESSAGE(m_kernelInfo.m_executionEnvironment.CompiledSIMDSize ==
                            1,
                        "SIMD size is expected to be 1 for CMKernel");
     return m_kernelInfo.m_kernelProgram.simd1;
