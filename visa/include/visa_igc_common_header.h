@@ -761,16 +761,11 @@ struct LSC_CACHE_OPTS {
 // Auxiliary enums for cache options translation from intrinsics into
 // vISA representation.
 typedef enum {
-    LSC_L1DEF_L3DEF = 0,
-    LSC_L1UC_L3UC,          //  Load: L1 uncached   L3 uncached # Store: L1 uncached      L3 uncached
-    LSC_L1UC_L3C_WB,        //  Load: L1 uncached   L3 cached   # Store: L1 uncached      L3 write-back
-    LSC_L1C_WT_L3UC,        //  Load: L1 cached     L3 uncached # Store: L1 write-through L3 uncached
-    LSC_L1C_WT_L3C_WB,      //  Load: L1 cached     L3 cached   # Store: L1 write-through L3 write-back
-    LSC_L1S_L3UC,           //  Load: L1 streaming  L3 uncached # Store: L1 streaming     L3 uncached
-    LSC_L1S_L3C_WB,         //  Load: L1 streaming  L3 cached   # Store: L1 streaming     L3 write-back
-
-    LSC_L1IAR_WB_L3C_WB,    //  Load: L1 invalidate after read L3 cached # Store: L1 write-back L3 write-back
-    LSC_CC_INVALID,
+#define LSC_CACHE_CTRL_OPTION(Name, Val, Description) Name = Val,
+#include "igc_regkeys_enums_defs.h"
+LSC_CACHE_CTRL_OPTIONS
+#undef LSC_CACHE_CTRL_OPTION
+#undef LSC_CACHE_CTRL_OPTIONS
 } LSC_L1_L3_CC;
 
 // Groups all the necessary address into a product type

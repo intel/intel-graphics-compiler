@@ -3139,36 +3139,62 @@ bool EarlyOutPatterns::canOptimizeSampleInst(SmallVector<Instruction*, 4> & Chan
     return false;
 }
 
+enum class CS_PATTERNS
+{
+#define EARLY_OUT_CS_PATTERN(Name, Val) Name = Val,
+#include "igc_regkeys_enums_defs.h"
+EARLY_OUT_CS_PATTERNS
+#undef EARLY_OUT_CS_PATTERN
+#undef EARLY_OUT_CS_PATTERNS
+};
+
+enum class PS_PATTERNS
+{
+#define EARLY_OUT_PS_PATTERN(Name, Val) Name = Val,
+#include "igc_regkeys_enums_defs.h"
+EARLY_OUT_PS_PATTERNS
+#undef EARLY_OUT_PS_PATTERN
+#undef EARLY_OUT_PS_PATTERNS
+};
+
 bool EarlyOutPatterns::processBlock(BasicBlock* BB)
 {
     bool Changed = false;
     bool BBSplit = true;
-    bool SamplePatternEnable = 0;
-    bool DPMaxPatternEnable = 0;
-    bool DPFSatPatternEnable = 0;
-    bool NdotLPatternEnable = 0;
-    bool DirectOutputPatternEnable = 0;
-    bool MulMaxMatchEnable = 0;
-    bool SelectFcmpPatternEnable = 0;
+    bool SamplePatternEnable = false;
+    bool DPMaxPatternEnable = false;
+    bool DPFSatPatternEnable = false;
+    bool NdotLPatternEnable = false;
+    bool DirectOutputPatternEnable = false;
+    bool MulMaxMatchEnable = false;
+    bool SelectFcmpPatternEnable = false;
 
     // Each pattern below is given a bit to toggle on/off
     // to isolate the performance for each individual pattern.
     if (m_ctx->type == ShaderType::COMPUTE_SHADER)
     {
-        SamplePatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x1) != 0;
-        DPMaxPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x2) != 0;
-        DPFSatPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x4) != 0;
-        NdotLPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x8) != 0;
-        SelectFcmpPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x10) != 0;
+        auto PatEnable = [](CS_PATTERNS Pat) {
+            return (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & (uint32_t)Pat) != 0;
+        };
+
+        SamplePatternEnable     = PatEnable(CS_PATTERNS::SamplePatternEnable);
+        DPMaxPatternEnable      = PatEnable(CS_PATTERNS::DPMaxPatternEnable);
+        DPFSatPatternEnable     = PatEnable(CS_PATTERNS::DPFSatPatternEnable);
+        NdotLPatternEnable      = PatEnable(CS_PATTERNS::NdotLPatternEnable);
+        SelectFcmpPatternEnable = PatEnable(CS_PATTERNS::SelectFcmpPatternEnable);
     }
     else if (m_ctx->type == ShaderType::PIXEL_SHADER)
     {
-        SamplePatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x1) != 0;
-        DPMaxPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x2) != 0;
-        DPFSatPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x4) != 0;
-        NdotLPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x8) != 0;
-        DirectOutputPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x10) != 0;
-        MulMaxMatchEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x20) != 0;
+        auto PatEnable = [](PS_PATTERNS Pat) {
+            return (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & (uint32_t)Pat) != 0;
+        };
+
+        SamplePatternEnable       = PatEnable(PS_PATTERNS::SamplePatternEnable);
+        DPMaxPatternEnable        = PatEnable(PS_PATTERNS::DPMaxPatternEnable);
+        DPFSatPatternEnable       = PatEnable(PS_PATTERNS::DPFSatPatternEnable);
+        NdotLPatternEnable        = PatEnable(PS_PATTERNS::NdotLPatternEnable);
+        DirectOutputPatternEnable = PatEnable(PS_PATTERNS::DirectOutputPatternEnable);
+        MulMaxMatchEnable         = PatEnable(PS_PATTERNS::MulMaxMatchEnable);
     }
 
     while (BBSplit)

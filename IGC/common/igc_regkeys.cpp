@@ -491,6 +491,10 @@ static void DumpIGCRegistryKeyDefinitions(
         registryKeyPath,                                                                                   \
         ConvertDefault(ConvertType(#dataType), defaultValue, #defaultValue).c_str(),                       \
         descriptionText);
+#define DECLARE_IGC_REGKEY_ENUM(regkeyName, defaultValue, description, values, releaseMode) \
+    DECLARE_IGC_REGKEY(enum, regkeyName, defaultValue, description "[VALUES]" values, releaseMode)
+#define DECLARE_IGC_REGKEY_BITMASK(regkeyName, defaultValue, description, values, releaseMode) \
+    DECLARE_IGC_REGKEY(bitmask, regkeyName, defaultValue, description "[VALUES]" values, releaseMode)
 #define DECLARE_IGC_GROUP( groupName ) \
     if(!firstGroup)                    \
     {                                  \
@@ -511,6 +515,8 @@ static void DumpIGCRegistryKeyDefinitions(
 
 #undef DECLARE_IGC_REGKEY
 #undef DECLARE_IGC_GROUP
+#undef DECLARE_IGC_REGKEY_ENUM
+#undef DECLARE_IGC_REGKEY_BITMASK
 
 #endif // _WIN32
 }
