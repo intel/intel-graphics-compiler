@@ -52,6 +52,12 @@ endif()
 # No mode was specified, start searching.
 if(NOT IGC_OPTION__SPIRV_TRANSLATOR_MODE)
   message(STATUS "[SPIRV] Using default procedure to determine SPIRV mode")
+  # OpenCL Clang and Vector Compiler share the library Spirv Translator, so we cannot build Spriv Translator
+  # if OpenCL Clang is taken from the system.
+  if(IGC_TRY_TO_TAKE_CLANG_FROM_SYSTEM)
+    message(STATUS "[SPIRV] No mode was specified for SPIRV. Clang is trying to be taken from the system, so the SPIRV translator not will be built from the source")
+    return()
+  endif()
   if(EXISTS "${DEFAULT_SPIRV_TRANSLATOR_SOURCE_DIR}")
     set(IGC_BUILD__SPIRV_TRANSLATOR_SOURCES ON)
     set(IGC_OPTION__SPIRV_TRANSLATOR_SOURCE_DIR ${DEFAULT_SPIRV_TRANSLATOR_SOURCE_DIR})
