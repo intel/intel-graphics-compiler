@@ -80,6 +80,8 @@ namespace {
         bool checkGenericArguments(Function& F) const;
         void convertLoadToGlobal(LoadInst* LI) const;
         bool isLoadGlobalCandidate(LoadInst* LI) const;
+
+        bool canonicalizeAddrSpaceCasts(Function& F) const;
     };
 
     class GASPropagator : public InstVisitor<GASPropagator, bool> {
@@ -196,11 +198,12 @@ bool GASResolving::runOnFunction(Function& F) {
     GASPropagator ThePropagator(&TheBuilder, &LI);
     IRB = &TheBuilder;
     Propagator = &ThePropagator;
-
-    resolveMemoryFromHost(F);
-    resolveAllocas(F);
-
     bool Changed = false;
+
+    Changed |= canonicalizeAddrSpaceCasts(F);
+    Changed |= resolveMemoryFromHost(F);
+    Changed |= resolveAllocas(F);
+
     bool LocalChanged = false;
     do {
         LocalChanged = resolveOnFunction(&F);
@@ -219,6 +222,43 @@ bool GASResolving::resolveOnFunction(Function* F) const {
     return Changed;
 }
 
+// Transform the following cast
+//
+//  addrspacecast SrcTy addrspace(S)* to DstTy addrspace(T)*
+//
+// to
+//
+//  bitcast SrcTy addrspace(S)* to DstTy addrspace(S)*
+//  addrspacecast DstTy addrspace(S)* to DstTy addrspace(T)*
+//
+// OpaquePointers TODO: This method will be useless once IGC is switched to opaque pointers
+bool GASResolving::canonicalizeAddrSpaceCasts(Function& F) const {
+    std::vector<AddrSpaceCastInst*> GASAddrSpaceCasts;
+    for (auto& I : make_range(inst_begin(F), inst_end(F)))
+        if (AddrSpaceCastInst* ASCI = dyn_cast<AddrSpaceCastInst>(&I))
+            if(ASCI->getDestAddressSpace() == GAS)
+                GASAddrSpaceCasts.push_back(ASCI);
+
+    bool changed = false;
+    BuilderType::InsertPointGuard Guard(*IRB);
+    for (auto ASCI : GASAddrSpaceCasts)
+    {
+        Value* Src = ASCI->getPointerOperand();
+        Type* SrcType = Src->getType();
+        Type* DstElementType = ASCI->getType()->getPointerElementType();
+
+        if (SrcType->getPointerElementType() == DstElementType)
+            continue;
+
+        PointerType* TransPtrTy = PointerType::get(DstElementType, SrcType->getPointerAddressSpace());
+        IRB->SetInsertPoint(ASCI);
+        Src = IRB->CreateBitCast(Src, TransPtrTy);
+        ASCI->setOperand(0, Src);
+        changed = true;
+    }
+    return changed;
+}
+
 bool GASResolving::resolveOnBasicBlock(BasicBlock* BB) const {
     bool Changed = false;
 
@@ -232,31 +272,7 @@ bool GASResolving::resolveOnBasicBlock(BasicBlock* BB) const {
         // Skip non generic address casting.
         if (DstPtrTy->getAddressSpace() != GAS)
             continue;
-        Type* DstTy = DstPtrTy->getElementType();
         Value* Src = CI->getOperand(0);
-        PointerType* SrcPtrTy = cast<PointerType>(Src->getType());
-        // Canonicalize the addrspace cast by separating out the type casting if
-        // any.
-        if (SrcPtrTy->getElementType() != DstTy) {
-            BuilderType::InsertPointGuard Guard(*IRB);
-            // Transform the following cast
-            //
-            //  addrspacecast SrcTy addrspace(S)* to DstTy addrspace(T)*
-            //
-            // to
-            //  bitcast SrcTy addrspace(S)* to DstTy addrspace(S)*
-            //  addrspacecast DstTy addrspace(S)* to DstTy addrspace(T)*
-            //
-            PointerType* TransPtrTy =
-                PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
-
-            IRB->SetInsertPoint(CI);
-            // Update source.
-            Src = IRB->CreateBitCast(Src, TransPtrTy);
-            SrcPtrTy = cast<PointerType>(Src->getType());
-            CI->setOperand(0, Src);
-            Changed = true;
-        }
 
         llvm::Module* ModuleMeta = BB->getModule();
 
