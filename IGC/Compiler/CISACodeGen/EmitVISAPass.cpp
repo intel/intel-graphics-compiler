@@ -20746,7 +20746,7 @@ void EmitPass::emitWaveClustered(llvm::GenIntrinsicInst* inst)
     emitReductionClustered(opCode, identity, type, false, clusterSize, src, dst);
 }
 
-void EmitPass::emitDP4A(GenIntrinsicInst* GII, const SSource* Sources, const DstModifier& modifier) {
+void EmitPass::emitDP4A(GenIntrinsicInst* GII, const SSource* Sources, const DstModifier& modifier, bool isAccSigned) {
     GenISAIntrinsic::ID GIID = GII->getIntrinsicID();
     CVariable* dst = m_destination;
     CVariable *src0, *src1, *src2;
@@ -20766,20 +20766,37 @@ void EmitPass::emitDP4A(GenIntrinsicInst* GII, const SSource* Sources, const Dst
         src2 = GetSrcVariable(Sources[2]);
     }
 
+    // Set correct signedness of src0 and dst.
+    if (modifier.sat)
+    {
+        if (isAccSigned)
+        {
+            dst = m_currShader->BitCast(dst, GetSignedType(dst->GetType()));
+            src0 = m_currShader->BitCast(src0, GetSignedType(src0->GetType()));
+        }
+        else
+        {
+            dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
+            src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
+        }
+    }
+
     // Set correct signedness of src1.
     if (GIID == GenISAIntrinsic::GenISA_dp4a_ss ||
         GIID == GenISAIntrinsic::GenISA_dp4a_su)
-        src1 = m_currShader->BitCast(src1, ISA_TYPE_D);
+        src1 = m_currShader->BitCast(src1, GetSignedType(src1->GetType()));
     if (GIID == GenISAIntrinsic::GenISA_dp4a_uu ||
         GIID == GenISAIntrinsic::GenISA_dp4a_us)
-        src1 = m_currShader->BitCast(src1, ISA_TYPE_UD);
+        src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
+
     // Set correct signedness of src2.
     if (GIID == GenISAIntrinsic::GenISA_dp4a_ss ||
         GIID == GenISAIntrinsic::GenISA_dp4a_us)
-        src2 = m_currShader->BitCast(src2, ISA_TYPE_D);
+        src2 = m_currShader->BitCast(src2, GetSignedType(src2->GetType()));
     if (GIID == GenISAIntrinsic::GenISA_dp4a_uu ||
         GIID == GenISAIntrinsic::GenISA_dp4a_su)
-        src2 = m_currShader->BitCast(src2, ISA_TYPE_UD);
+        src2 = m_currShader->BitCast(src2, GetUnsignedType(src2->GetType()));
+
     // Emit dp4a.
     m_encoder->SetDstModifier(modifier);
     m_encoder->dp4a(dst, src0, src1, src2);

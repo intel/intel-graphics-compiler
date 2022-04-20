@@ -3710,11 +3710,12 @@ namespace IGC
         struct Dp4aSatPattern : Pattern
         {
             GenIntrinsicInst* inst;
+            bool isAccSigned;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
                 DstModifier mod = modifier;
                 mod.sat = true;
-                pass->emitDP4A(inst, nullptr, mod);
+                pass->emitDP4A(inst, nullptr, mod, isAccSigned);
             }
         };
 
@@ -3780,6 +3781,7 @@ namespace IGC
 
                     Dp4aSatPattern* dp4aSatPattern = new (m_allocator) Dp4aSatPattern();
                     dp4aSatPattern->inst = genIsaInst;
+                    dp4aSatPattern->isAccSigned = !isUnsigned;
                     AddPattern(dp4aSatPattern);
                 }
                 else

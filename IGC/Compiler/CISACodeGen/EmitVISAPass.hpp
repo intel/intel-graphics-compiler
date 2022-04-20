@@ -460,7 +460,8 @@ public:
     void emitLLVMbswap(llvm::IntrinsicInst* inst);
     void emitDP4A(llvm::GenIntrinsicInst* GII,
         const SSource* source = nullptr,
-        const DstModifier& modifier = DstModifier());
+        const DstModifier& modifier = DstModifier(),
+        bool isAccSigned = true);
 
     void emitLLVMStackSave(llvm::IntrinsicInst* inst);
     void emitLLVMStackRestore(llvm::IntrinsicInst* inst);
