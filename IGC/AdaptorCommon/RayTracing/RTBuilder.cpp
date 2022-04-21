@@ -2301,11 +2301,19 @@ Value* RTBuilder::getGlobalDSSID()
 {
     auto dssIDBits = getDualSubsliceIDBitsInSR0();
     auto sliceIDBits = getSliceIDBitsInSR0();
-    // In current platforms dssID and sliceID are adjacent in SR0.
-    // If any of these asserts is hit, we need to change the calculations here.
-    IGC_ASSERT_MESSAGE(dssIDBits.first < sliceIDBits.first, "DSSID bits in SR0 are not before SliceID bits!");
-    IGC_ASSERT_MESSAGE(sliceIDBits.first == dssIDBits.second + 1, "DSSID and sliceID are not adjacent in SR0!");
-    return emitStateRegID(dssIDBits.first, sliceIDBits.second);
+
+    if (dssIDBits.first < sliceIDBits.first && sliceIDBits.first == dssIDBits.second + 1)
+    {
+        return emitStateRegID(dssIDBits.first, sliceIDBits.second);
+    }
+    else
+    {
+        Value* dssID = emitStateRegID(dssIDBits.first, dssIDBits.second);
+        Value* sliceID = emitStateRegID(sliceIDBits.first, sliceIDBits.second);
+        unsigned shiftAmount = dssIDBits.second - dssIDBits.first + 1;
+        Value* globalDSSID = CreateShl(sliceID, shiftAmount);
+        return CreateOr(globalDSSID, dssID);
+    }
 }
 
 bool RTBuilder::isNonLocalAlloca(uint32_t AddrSpace)
