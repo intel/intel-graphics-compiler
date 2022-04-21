@@ -756,8 +756,7 @@ namespace IGC
 
         m_hsProps.m_ForcedDispatchMask = GetForcedDispatchMask(kernel);
 
-        pGlobal = module->getGlobalVariable("ShaderHasClipCullInput");
-        auto clipCullAsInput = (pGlobal == nullptr) ? false : true;
+        auto clipCullAsInput = false;
         IGC::CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         if (ctx->getModuleMetaData()->URBInfo.has64BVertexHeaderInput) {
             // In case we have no linking information we need the URB header to have a fixed size

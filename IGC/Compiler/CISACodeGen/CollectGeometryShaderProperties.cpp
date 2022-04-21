@@ -122,9 +122,6 @@ void CollectGeometryShaderProperties::ExtractGlobalVariables(llvm::Function& F)
     m_gsProps.Input().InstanceCount(instanceCount);
 
     //see if clip and cull were sent as input
-    pGlobal = module->getGlobalVariable("ShaderHasClipCullInput");
-    auto clipCullAsInput = (pGlobal == nullptr) ? false : true;
-    m_gsProps.Input().PerVertex().HasClipCullDistances(clipCullAsInput);
     CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (context->getModuleMetaData()->URBInfo.has64BVertexHeaderInput)
     {
