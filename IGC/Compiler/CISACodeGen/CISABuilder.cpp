@@ -4343,7 +4343,7 @@ namespace IGC
 
             // temp for testing
             if (IGC_IS_FLAG_ENABLED(EnableNewNoMaskWA)) {
-                SaveOption(vISA_newTmpNoMaskWA, true);
+                SaveOption(vISA_newTmpNoMaskWA, IGC_GET_FLAG_VALUE(EnableNewNoMaskWA));
             }
         }
 

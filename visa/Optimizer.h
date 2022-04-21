@@ -284,7 +284,7 @@ private:
     void doNoMaskWA_postRA();
     void newDoNoMaskWA_postRA();
     bool NoMaskWAUseRAList() const { return true; }
-    bool allPostRANoMaskWA() const { return false; }
+    bool allPostRANoMaskWA() const { return builder.getuint32Option(vISA_newTmpNoMaskWA) >= 2; }
     void insertFenceAtEntry();
     void expandMulPostSchedule();
     void expandMadwPostSchedule();
