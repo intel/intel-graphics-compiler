@@ -18,6 +18,7 @@ set(OPT_SOURCES
   CMTrans/GenXImportOCLBiF.cpp
   CMTrans/GenXTranslateSPIRVBuiltins.cpp
   CMTrans/GenXTrampolineInsertion.cpp
+  CMTrans/GenXCloneIndirectFunctions.cpp
   CMTrans/GenXLinkageCorruptor.cpp
   CMPacketize/GenXPacketize.cpp
   CMPacketize/PacketBuilder.cpp

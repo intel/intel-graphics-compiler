@@ -146,6 +146,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXStackUsagePass(registry);
   initializeGenXOCLRuntimeInfoPass(registry);
   initializeGenXStructSplitterPass(registry);
+  initializeGenXCloneIndirectFunctionsPass(registry);
   initializeGenXTrampolineInsertionPass(registry);
   initializeGenXPredRegionLoweringPass(registry);
   initializeGenXLinkageCorruptorPass(registry);
@@ -618,6 +619,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createCFGSimplificationPass());
     PM.add(createInstructionCombiningPass());
     PM.add(createDeadCodeEliminationPass());
+    // PM.add(createGlobalDCEPass());
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
                          AddPacketize);
@@ -664,16 +666,16 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
                            AddLowerLoadStore);
   }
 
-  // Trampoline insertion.
   if (Subtarget.isOCLRuntime()) {
-    auto AddTrampolineInsertion = [](const PassManagerBuilder &Builder,
-                                     PassManagerBase &PM) {
+    auto AddIndirect = [](const PassManagerBuilder &Builder,
+                          PassManagerBase &PM) {
+      PM.add(createGenXCloneIndirectFunctionsPass());
       PM.add(createGenXTrampolineInsertionPass());
     };
     PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
-                           AddTrampolineInsertion);
+                           AddIndirect);
     PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
-                           AddTrampolineInsertion);
+                           AddIndirect);
   }
 
   // Have to internalize functions before CM implicit parameters as all

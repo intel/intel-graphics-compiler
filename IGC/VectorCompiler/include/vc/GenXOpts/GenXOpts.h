@@ -73,6 +73,9 @@ void initializeGenXBTIAssignmentPass(PassRegistry &);
 ModulePass *createGenXTranslateSPIRVBuiltinsPass();
 void initializeGenXTranslateSPIRVBuiltinsPass(PassRegistry &);
 
+ModulePass *createGenXCloneIndirectFunctionsPass();
+void initializeGenXCloneIndirectFunctionsPass(PassRegistry &);
+
 ModulePass *createGenXTrampolineInsertionPass();
 void initializeGenXTrampolineInsertionPass(PassRegistry &);
 

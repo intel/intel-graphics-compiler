@@ -208,10 +208,8 @@ void GenXGlobalValueLowering::fillWorkListForGVInstUse(Use &GVUse) {
                          GenXIntrinsic::genx_gaddr,
                      "llvm.gaddr must be inserted by this pass, but someone "
                      "inserted it before");
-  // Skipping direct calls. Relocating will make them indirect.
-  if (isa<Function>(ConstWithGV) && isa<CallInst>(Usr) &&
-      cast<CallInst>(Usr)->getCalledFunction() == cast<Function>(ConstWithGV))
-    return;
+  // Do not skip direct calls as an indirectly-called function can be called
+  // only indirectly. See GenXCloneIndirectFunctions
   Function *Func = Usr->getParent()->getParent();
   WorkList[Func].Users.insert({Usr, GVUse.getOperandNo()});
   WorkList[Func].Replacement[ConstWithGV] = nullptr;
