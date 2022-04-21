@@ -48,7 +48,7 @@ DECLARE_IGC_REGKEY(DWORD, NoMaskWA,                     2,     "Add NoMask WA us
                                                                                  bit[2]   : how to add WA - 0 (optim, per-BB) | 1 (simple, ie, per-inst)", false)
 DECLARE_IGC_REGKEY(bool, ForceNoMaskWA,                 false, "[tmp, testing] Force NoMaskWA on any platforms", false)
 DECLARE_IGC_REGKEY(bool, EnableNewNoMaskWA,             true,  "[tmp, testing] Enable New NoMaskWA", true)
-DECLARE_IGC_REGKEY(bool, EnableCallWA,                  true,  "Enable call WA when EU fusion is on", true)
+DECLARE_IGC_REGKEY(DWORD, EnableCallWA,                 1,     " Control call WA when EU fusion is on. 0: off; 1: non-XE_HP_SDV platforms; 2: all platforms", true)
 DECLARE_IGC_REGKEY(bool, EnableMathDPASWA,              false, "PVC math instruction running with DPAS issue", false)
 DECLARE_IGC_REGKEY(bool, ForceSubReturn,                true,  "If a subroutine does not have a return, generate a dummy return if this key is set (to meet visa requirement)", false)
 DECLARE_IGC_REGKEY(DWORD,UnifiedSendCycle,              0,     "Using unified send cycle.", false)
