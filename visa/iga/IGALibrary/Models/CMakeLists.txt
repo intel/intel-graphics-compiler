@@ -18,6 +18,9 @@ set(IGA_ModelsOpen
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelGen10.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelGen11.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelXe.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelXeHP.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelXeHPG.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/bxml/ModelXeHPC.hpp
 )
 set(IGA_ModelsExteneded )
 

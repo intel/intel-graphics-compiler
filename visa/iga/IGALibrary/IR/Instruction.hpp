@@ -151,8 +151,9 @@ namespace iga
         // e.g. pass Operand::NULL_UD_SRC
         void setSource(SourceIndex srcIx, const Operand &op);
 
-        void setExtMsgDesc(const SendDesc &msg) {m_exDesc = msg;}
-        void setMsgDesc(const SendDesc &msg) {m_desc = msg;}
+        void setExtMsgDesc(const SendDesc &msg);
+        void setMsgDesc(const SendDesc &msg);
+
 
         void setDstLength(int dstLength) {m_sendDstLength = dstLength;}
         void setSrc0Length(int src0Length) {m_sendSrc0Length = src0Length;}
@@ -228,8 +229,10 @@ namespace iga
 
         unsigned           getSourceCount() const;
 
-        SendDesc           getExtMsgDescriptor() const {return m_exDesc;}
-        SendDesc           getMsgDescriptor()    const {return m_desc;}
+        SendDesc           getExtMsgDescriptor() const;
+        SendDesc           getMsgDescriptor()    const;
+
+
         // (For send messages) this returns the dst payload length in registers
         // as encoded by the descriptors (if known).
         int                getDstLength() const {return m_sendDstLength;}
@@ -274,6 +277,50 @@ namespace iga
 
         SendDesc         m_exDesc;
         SendDesc         m_desc;
+
+
+        ///////////////////////////////////////////////////////////////////////
+        // Regarding Src1.Length
+        //
+        // For XeHP to XeHPC, we encode Src1.Length and CPS
+        // sometimes we use the ExDesc a0.# reg for these fields and
+        // sometimes they are encoded in the EU ISA bits (as immediate)
+        //
+        // +-----------+------------+-------------------------------------------
+        // | Platform  | ExDesc ... | Src1.Length/CPS
+        // +-----------+------------+-------------------------------------------
+        // | XE        | ExDesc[10:6] always holds Src1.Length
+        // |           | Imm.       | EU[103:99,35] (this::imm[11:6])
+        // |           |      send ... (SRC1LEN<<6) ...
+        // |           | Reg.       | ExDesc[11:6] (this::reg a0.#[11:6])
+        // |           |      send ... a0.2 ...
+        // +-----------+------------+-------------------------------------------
+        // | XE_HP     | Sampler bindless accesses need more surface offset bits;
+        // |           | thus ExDesc[11:6] are now low surface offest bits.
+        // |           | Thus in that case, Src1.Length [10:6] and CPS [11]
+        // |           | must be placed in the EU encoding.
+        // |           +------------------------------------------------
+        // |           | Imm.       | EU[103:99,35] (as this::imm[11:6])
+        // |           |      send ... src1           (SRC1LEN<<6) ...
+        // |           +------------------------------------------------
+        // |           | Reg.       | Reg[11:6]
+        // |           |      send ...  src1          a0.#   ...
+        // |           +------------------------------------------------
+        // |           | Reg.+ExBSO | EU[103:99,35] (as this::imm[11:6])
+        // |           |      send ...  src1:SRC1LEN  a0.#   ... {[CPS]}
+        // +-----------+------------+-------------------------------------------
+        // | XE_HPG    | Src1.Length always comes from the EU ISA, regardless
+        // |           | if a0.# is used.
+        // |           | Imm.       | EU[103:99,35] (as this::src1Length,this::cps)
+        // |           |      send ...  src1:SRC1LEN  imm  ... {[CPS]}
+        // |           | Reg.+ExBSO | EU[103:99,35] (as this::imm[11:6])
+        // |           |      send ...  src1:SRC1LEN  a0.#  ... {[CPS]}
+        // +-----------+------------+-------------------------------------------
+        // | XE_HPC    | Same as XE_HPG, but since the sampler is absent
+        // |           | there won't be a use of ExBSO and CPS.
+        // +-----------+------------+-------------------------------------------
+        //
+
         // These fields are best-effort decodes of the message lengths
         // E.g. if the fields are buried in an immediate send descriptor,
         // extract them here.  In some cases (e.g. reg descriptors), we can't

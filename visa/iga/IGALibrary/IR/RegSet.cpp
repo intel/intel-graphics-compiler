@@ -24,6 +24,10 @@ using namespace iga;
 //
 
 static size_t BytesForRegSet(RegName rn, const Model &m) {
+    // For platforms lacking a particular register this returns a
+    // nonzero size so that m.getRegCount() doesn't assert
+    if (m.lookupRegInfoByRegName(rn) == nullptr)
+        return 1;
     return (size_t)m.getRegCount(rn) * m.getBytesPerReg(rn);
 }
 
@@ -216,27 +220,33 @@ bool RegSet::addPredicationInputs(const Instruction &i)
     return false;
 }
 
+static bool addSendDescriptors(const Instruction &i, RegSet &rs)
+{
+    bool added = false;
+    // send register descriptors may touch a0.#
+    auto desc = i.getMsgDescriptor();
+    if (desc.isReg()) {
+        // send is strange: a0.# is in word offsets but reads 32b
+        // fake it by converting a0.4:uw to a0.2:ud and writing the
+        // full 32b
+        desc.reg.subRegNum /= 2;
+        added |= rs.add(RegName::ARF_A, desc.reg, Type::UD);
+    }
+    auto exDesc = i.getExtMsgDescriptor();
+    if (exDesc.isReg()) {
+        // see above
+        exDesc.reg.subRegNum /= 2;
+        added |= rs.add(RegName::ARF_A, exDesc.reg, Type::UD);
+    }
+    return added;
+}
 
 bool RegSet::addSourceInputs(const Instruction &i)
 {
     bool added = false;
 
     if (i.getOpSpec().isSendOrSendsFamily()) {
-        // send register descriptors may touch a0.#
-        auto desc = i.getMsgDescriptor();
-        if (desc.isReg()) {
-            // send is strange: a0.# is in word offsets but reads 32b
-            // fake it by converting a0.4:uw to a0.2:ud and writing the
-            // full 32b
-            desc.reg.subRegNum /= 2;
-            added |= add(RegName::ARF_A, desc.reg, Type::UD);
-        }
-        auto exDesc = i.getExtMsgDescriptor();
-        if (exDesc.isReg()) {
-            // see above
-            exDesc.reg.subRegNum /= 2;
-            added |= add(RegName::ARF_A, exDesc.reg, Type::UD);
-        }
+        addSendDescriptors(i, *this);
     }
 
     added |= addSourceImplicit(i);
@@ -769,9 +779,10 @@ static void strForReg(
     bool &first,
     std::ostream &os)
 {
-    const size_t bytesPerReg = model.getBytesPerReg(rn);
     const RegInfo *ri = model.lookupRegInfoByRegName(rn);
-    IGA_ASSERT(ri, "invalid register");
+    if (!ri) // for cases where a platform lacks a register
+        return;
+    const size_t bytesPerReg = model.getBytesPerReg(rn);
     auto emitReg = [&](size_t i) {
         if (first)
             first = false;

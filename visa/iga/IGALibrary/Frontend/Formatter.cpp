@@ -412,6 +412,7 @@ public:
 private:
 
 
+
     void formatInstructionPrefix(const Instruction& i) {
         formatMaskAndPredication(i);
         emit(' ');

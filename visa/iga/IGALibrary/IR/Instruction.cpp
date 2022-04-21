@@ -153,6 +153,14 @@ void Instruction::setSource(SourceIndex srcIx, const Operand &op)
     m_srcs[ix] = op;
 }
 
+void Instruction::setExtMsgDesc(const SendDesc &msg) {
+    m_exDesc = msg;
+}
+void Instruction::setMsgDesc(const SendDesc &msg) {
+    m_desc = msg;
+}
+
+
 const Model &Instruction::model() const {
     return Model::LookupModelRef(platform());
 }
@@ -238,4 +246,13 @@ unsigned Instruction::getSourceCount() const
     } else {
         return getOpSpec().getSourceCount(getSubfunction());
     }
+}
+
+SendDesc Instruction::getExtMsgDescriptor() const
+{
+    return m_exDesc;
+}
+SendDesc Instruction::getMsgDescriptor() const
+{
+    return m_desc;
 }

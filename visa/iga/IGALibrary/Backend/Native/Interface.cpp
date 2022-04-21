@@ -379,8 +379,8 @@ Kernel *iga::native::Decode(
     size_t bitsLen)
 {
     IGA_ASSERT(IsDecodeSupported(m, dopts), "invalid platform for decode; "
-            "caller should have checked via iga::native::IsDecodeSupported");
-    eh.reportError(Loc(0), "feature currently only available on internal builds");
+        "caller should have checked via iga::native::IsDecodeSupported");
+    eh.reportError(Loc(0), "feature unavailable");
     return nullptr;
 }
 
@@ -396,7 +396,7 @@ void iga::native::DecodeFields(
     IGA_ASSERT(IsDecodeSupported(m, dopts), "invalid platform for decode; "
         "caller should have checked via iga::native::IsDecodeSupported");
     //
-    eh.reportError(loc, "feature currently only available on internal builds");
+    eh.reportError(loc, "feature unavailable");
 }
 
 

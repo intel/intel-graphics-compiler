@@ -82,6 +82,7 @@ namespace iga {
             const SendDesc &extDesc,
             const SendDesc &msgDesc);
 
+
         Instruction *createNopInstruction();
         Instruction *createIllegalInstruction();
         Instruction *createSyncNopInstruction(SWSB sw);

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "../../IR/SWSBSetter.hpp"
 #include "../../Models/Models.hpp"
 #include "../../Timer/Timer.hpp"
+#include "../../bits.hpp"
 
 #include <cstring>
 
@@ -821,7 +822,7 @@ void Encoder::encodeSendInstruction(const Instruction& i)
     if (os.isSendFamily()) {
         encodeSendDestination(i.getDestination());
         encodeSendSource0(i.getSource(0));
-        if (m_model.supportsUnifiedSend()) {
+        if (m_model.supportsXeSend()) {
             encodeSendsSource1(i.getSource(1));
         }
     } else if (os.isSendsFamily()) {
@@ -868,7 +869,7 @@ void Encoder::encodeSendDescs(const Instruction& i)
         errorT("unsupported platform");
     }
 
-    bool noEOTinExDesc = m_model.supportsUnifiedSend();
+    bool noEOTinExDesc = m_model.supportsXeSend();
     if (noEOTinExDesc &&
         i.getExtMsgDescriptor().isImm() &&
         (i.getExtMsgDescriptor().imm & 1 << 5))
@@ -1458,7 +1459,7 @@ void Encoder::encodeSendSource0(const Operand& src)
 
     if (src.getKind() ==  Operand::Kind::DIRECT)
     {
-        if (m_model.supportsUnifiedSend()){
+        if (m_model.supportsXeSend()){
             GED_ENCODE(Src0RegNum, src.getDirRegRef().regNum);
         } else {
             GED_ENCODE(Src0DataType, lowerDataType(t));
@@ -2035,7 +2036,7 @@ void Encoder::encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v) {
 // fixes stuff where GED just ignores or where it refuses to allow us to
 // set bits.  This should be empty unless GED fixes are in flight.
 void Encoder::applyGedWorkarounds(
-    const Kernel& /* k */, size_t /* bitsLen */)
+  const Kernel&, size_t)
 {
     // NOTE: there should be a GED raw bits setter (we can use this for
     // workarounds...)

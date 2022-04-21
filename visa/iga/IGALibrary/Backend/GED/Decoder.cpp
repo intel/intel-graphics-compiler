@@ -1259,6 +1259,7 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
     return inst;
 }
 
+
 void Decoder::decodeSendDestination(Instruction *inst)
 {
     GED_ACCESS_MODE accessMode = decodeAccessMode();

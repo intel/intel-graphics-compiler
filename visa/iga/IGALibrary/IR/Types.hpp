@@ -47,7 +47,7 @@ enum class Platform
     GEN11       = IGA_GEN_VER_ORDINAL(11, 0 ),
     // XE version
     XE          = IGA_XE_VER_ORDINAL(1, 0), // TGL
-    XE_HP       = IGA_XE_VER_ORDINAL(1, 1), // XE_HP
+    XE_HP       = IGA_XE_VER_ORDINAL(1, 1),
     XE_HPG      = IGA_XE_VER_ORDINAL(1, 2),
     XE_HPC      = IGA_XE_VER_ORDINAL(1, 4), // XeHPC-XT, preserved (1, 3) for XeHPC-XL
     FUTURE      = 0x7FFFFFFF
@@ -316,9 +316,9 @@ struct RegRef {
     constexpr RegRef(uint16_t rNum, uint16_t srNum)
         : regNum(rNum), subRegNum(srNum) { }
     constexpr RegRef(int rNum, int srNum)
-        : regNum((uint8_t)rNum), subRegNum((uint8_t)srNum) { }
+        : regNum((uint16_t)rNum), subRegNum((uint16_t)srNum) { }
     constexpr RegRef(uint32_t rNum, uint32_t srNum)
-        : regNum((uint8_t)rNum), subRegNum((uint8_t)srNum) { }
+        : regNum((uint16_t)rNum), subRegNum((uint16_t)srNum) { }
 
     bool operator==(const RegRef &rr) const {
         return regNum == rr.regNum && subRegNum == rr.subRegNum;
@@ -328,7 +328,7 @@ struct RegRef {
     }
 };
 
-static constexpr RegRef REGREF_INVALID {0xFF, 0xFF};
+static constexpr RegRef REGREF_INVALID {0xFFFF, 0xFFFF};
 static constexpr RegRef REGREF_ZERO_ZERO {0, 0};
 
 struct SendDesc {

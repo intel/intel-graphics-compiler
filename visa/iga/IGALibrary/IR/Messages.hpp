@@ -431,11 +431,12 @@ namespace iga
         operator bool() const {return errors.empty();}
     };
 
-    // Attempts to decode the descriptor for
+    // Attempts to decode the descriptor for send instructions
     DecodeResult tryDecode(
         Platform p, SFID sfid, ExecSize execSize,
         SendDesc exDesc, SendDesc desc,
         DecodedDescFields *fields);
+
 
     //
     // returns true if the SFID on a given platform is eligible for symbolic

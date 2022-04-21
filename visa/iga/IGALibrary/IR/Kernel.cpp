@@ -167,6 +167,7 @@ Instruction *Kernel::createSendInstruction(
 }
 
 
+
 Instruction *Kernel::createNopInstruction()
 {
     Instruction *inst = new(&m_mem)Instruction(

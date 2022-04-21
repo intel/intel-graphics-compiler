@@ -1086,7 +1086,7 @@ public:
 
             if (Consume(PIPE)) {
                 static const IdentMap<ChannelOffset> EM_OFFS {
-                    {"M0", ChannelOffset::M0}
+                      {"M0", ChannelOffset::M0}
                     , {"M4", ChannelOffset::M4}
                     , {"M8", ChannelOffset::M8}
                     , {"M12", ChannelOffset::M12}
@@ -2123,6 +2123,7 @@ public:
     }
 
 
+
     // same as ParseSrcOp, but semantically chekcs that it's a label
     void ParseSrcOpLabel(int srcOpIx) {
         ParseSrcOp(srcOpIx);
@@ -2949,6 +2950,11 @@ public:
         if (ConsumeReg(regInfo, regNum)) {
             // send src1 must not have region and subreg
             m_srcKinds[1] = Operand::Kind::DIRECT;
+            if (regInfo->regName != RegName::ARF_NULL &&
+                regInfo->regName != RegName::GRF_R)
+            {
+                FailAtT(m_srcLocs[1], "invalid src1 register");
+            }
             //
             // parse the type
             Type sty = Type::INVALID;
@@ -3023,51 +3029,6 @@ public:
         }
     }
 
-    int ParseSendSrc1OpWithLen() {
-        const Token regnameTk = Next();
-        const RegInfo *regInfo;
-        int regNum = 0;
-        if (!ConsumeReg(regInfo, regNum)) {
-            FailT("expected Src1 register");
-        }
-        // send src1 must not have region and subreg
-        m_srcKinds[1] = Operand::Kind::DIRECT;
-
-        if (!Consume(COLON) && !Consume(HASH)) {
-            FailT("expected ':' (Src1Length must suffix Src1 payload)");
-        }
-        const auto src1LenLoc = Next().loc;
-        ImmVal v;
-        if (!TryParseIntConstExprPrimary(v, "src1 length")) {
-            FailT("failed to parse src1 length");
-        } else if (v.s64 < 0 || v.s64 > 32) {
-            FailAtT(src1LenLoc, "invalid src1 length");
-        }
-        int src1Len = (int)v.s64;
-        m_sendSrcLens[1] = src1Len;
-        if (regInfo->regName == RegName::ARF_NULL && src1Len != 0) {
-            FailAtT(src1LenLoc, "Src1Len must be 0 for null register");
-        } else if (regInfo->regName == RegName::GRF_R &&
-            regNum + src1Len > regInfo->getNumReg())
-        {
-            FailAtT(src1LenLoc,
-                "Src1Len: ending register must be <= ", regInfo->getNumReg());
-        }
-
-        // construct the op directly
-        Type t = SendOperandDefaultType(1);
-        m_builder.InstSrcOpRegDirect(
-            1,
-            m_srcLocs[1],
-            SrcModifier::NONE,
-            regInfo->regName,
-            RegRef(regNum, 0),
-            Region::SRC010, // set the default region
-            t);
-
-        return src1Len;
-    }
-
     // e.g. "r13" or "r13:f"
     void ParseSendSrcOp(int srcOpIx, bool enableImplicitOperand) {
         m_srcLocs[srcOpIx] = NextLoc();
@@ -3093,39 +3054,48 @@ public:
             }
         }
 
-#ifndef DISABLE_SENDx_IND_SRC_OPND
         ParseSrcOp(srcOpIx);
-#else
-        if (!ConsumeReg(regInfo, regNum)) {
-            Fail("expected send operand");
-        }
-        auto dotLoc = NextLoc();
-        if (Consume(DOT)) {
-            int i;
-            ConsumeIntLitOrFail(i, "expected subregister");
-            if (m_parseOpts.deprecatedSyntaxWarnings) {
-                Warning(dotLoc, "send instructions may not have subregisters");
-            }
-        }
-        RegRef reg {uint16_t(regNum), 0};
-        // gets the implicit region and warns against using explicit regioning
-        Region rgn = ParseSrcOpRegionVWH(*regInfo, srcOpIx, false);
-        // because we are trying to phase out source operands on send
-        // instructions we handle them explicitly here
-        Type sty = ParseSendOperandTypeWithDefault(srcOpIx);
-        m_handler.InstSrcOpRegDirect(
-            srcOpIx,
-            m_srcLocs[srcOpIx],
-            SrcModifier::NONE,
-            *regInfo,
-            reg,
-            rgn,
-            sty);
-#endif
     }
 
+    std::pair<const RegInfo *,uint16_t> ParseReg()
+    {
+        const RegInfo *regInfo = nullptr;
+        int regNum = -1;
+        if (!ConsumeReg(regInfo, regNum)) {
+            FailT("expected register");
+        } else if (!regInfo->isRegNumberValid(regNum)) {
+            FailT("invalid register number");
+        }
+        return std::pair<const RegInfo *,uint16_t>(regInfo, (uint16_t)regNum);
+    }
 
+    int ParseSrcOpLenSuffix(int regNum)
+    {
+        int srcLen = -1;
+        ConsumeOrFail(COLON, "expected payload length suffix (e.g. :2)");
 
+        // explicit length syntax
+        //   e.g. "r13:4"
+        //   e.g. "r13:(2*2)"
+        // NOTE: permit : so we can use this in the preprocessor
+        // e.g. r13:4
+        auto at = NextLoc();
+        ImmVal v;
+        if (!TryParseIntConstExpr(v, "extended descriptor")) {
+            FailT("expected extended send descriptor");
+        }
+        if (v.s64 < 0 || v.s64 > 0x1F) {
+            FailAtT(at, "SrcLen out of range");
+        } else if (regNum + (int)v.s64 - 1 > 255) {
+            FailAtT(at, "SrcLen register range extends past GRF end");
+        }
+        if (v.s64 > 32) { // could constrain this more
+            FailAtT(at, "invalid payload length");
+        }
+        srcLen = (int)v.s64;
+
+        return srcLen;
+    }
 
     Type ParseDstOpTypeWithDefault() {
         if (m_opSpec->hasImplicitDstType()) {
@@ -3349,12 +3319,12 @@ public:
 
 
 
+
     //
     // (INTEXPR|AddrRegRef) (INTEXPR|AddrRegRef)
     void ParseSendDescsLegacy() {
         IGA_ASSERT(platform() <= Platform::XE,
             "wrong platform for function");
-
 
         const Loc exDescLoc = NextLoc();
         SendDesc exDesc;
@@ -3468,7 +3438,8 @@ public:
         m_builder.InstOptsAdd(instOpts);
 
         if (m_implicitExBSO && !instOpts.contains(InstOpt::EXBSO)
-            ) {
+            )
+        {
             WarningAtT(m_mnemonicLoc, "send src1 length implicitly added "
                 "(include {ExBSO})");
         }
@@ -4158,6 +4129,7 @@ bool KernelParser::ParseLdStInst()
     if (!sendOpSupportsSyntax(platform(), vma.op, vma.sfid)) {
         FailS(NextLoc(), "op not yet supported for ld/st parse");
     }
+
     // IGA op
     m_opSpec = &m_model.lookupOpSpec(
         platform() < Platform::XE ? Op::SENDS : Op::SEND);

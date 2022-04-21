@@ -27,6 +27,7 @@ namespace iga
         const SendDesc &exDesc,
         const SendDesc &desc,
         std::stringstream &ss);
+
 } // iga::
 
 #endif

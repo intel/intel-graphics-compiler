@@ -158,7 +158,7 @@ public:
     }
 
     void DumpTokens(std::ostream &out, const std::string &inp) const {
-        for (auto t : m_tokens) {
+        for (const auto &t : m_tokens) {
             out << "AT" << t.loc.line << "." << t.loc.col <<
             "(" << t.loc.offset << ":" << t.loc.extent  << ": " <<
             LexemeString(t.lexeme) << std::endl;

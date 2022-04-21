@@ -132,7 +132,9 @@ class InstBuilder {
 
     SendDesc                    m_exDesc;
     SendDesc                    m_desc;
-    // int                         m_sendDst;  // (extracted later)
+
+
+    // int                         m_sendDstLen;  // (extracted later)
     int                         m_sendSrc0Len = -1;
     int                         m_sendSrc1Len = -1;
 
@@ -232,6 +234,7 @@ private:
         m_exDesc.imm = 0;
         m_desc.imm = 0;
 
+
         m_sendSrc0Len = m_sendSrc1Len = -1;
 
         m_instOpts.clear();
@@ -262,6 +265,7 @@ public:
     }
 
     const SendDesc getExDesc() const {return m_exDesc;}
+
     Subfunction getSubfunction() const {return m_subfunc;}
 
     ///////////////////////////////////////////////////////////////////////////

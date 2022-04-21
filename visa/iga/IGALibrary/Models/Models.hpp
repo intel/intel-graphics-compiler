@@ -327,7 +327,7 @@ namespace iga
             return supportsHwDeps();
         }
         // sends merged with send (send is binary)
-        bool supportsUnifiedSend() const {
+        bool supportsXeSend() const {
             return !supportsHwDeps();
         }
         // registers in control flow is stored in src1 for
@@ -348,11 +348,11 @@ namespace iga
 
         // {NoSrcDepSet} allowed
         bool supportNoSrcDepSet() const {
-            return platform >= Platform::GEN9 && !supportsUnifiedSend();
+            return platform >= Platform::GEN9 && !supportsXeSend();
         }
         // {NoPreempt} allowed
         bool supportsNoPreempt() const {
-            return platform >= Platform::GEN10 && !supportsUnifiedSend();
+            return platform >= Platform::GEN10 && !supportsXeSend();
         }
         // implies that:
         //  - branches don't have types

@@ -83,8 +83,6 @@ void iga::EmitSendDescriptorInfo(
     const SendDesc &exDesc, const SendDesc &desc,
     std::stringstream &ss)
 {
-    DiagnosticList ws, es;
-
     //////////////////////////////////////
     // emit the: "wr:1h+2, rd:4" part
     ss << "wr:";
@@ -154,12 +152,7 @@ void iga::EmitSendDescriptorInfo(
         } else if (!dr.info.description.empty()) {
             ss << "; " << dr.info.description;
         } else {
-            if (!es.empty() &&
-                es.back().second.find("unsupported sfid") == std::string::npos)
-            {
-                ss << "; " << es.back().second << "?";
-            }
-            // skip unsupported SFIDs
+            ss << "; ?";
         }
 
         bool appendUvrLod =
@@ -192,3 +185,4 @@ void iga::EmitSendDescriptorInfo(
         } // U,V,R,LOD
     }
 } // iga::EmitSendDescriptorInfo
+
