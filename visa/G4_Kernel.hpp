@@ -168,6 +168,60 @@ public:
     G4_Declare* WATempReserved;
 };
 
+// Indirect Call WA info
+//    Every indirect call (one in a BB) has the following postRA will
+//    use this to update relative IP, etc.
+class IndirectCallWAInfo
+{
+public:
+    //  Call_BB:
+    //           Small_start
+    //           Small_patch
+    //           Big_start
+    //           Big_patch
+    //           if (BigEU)
+    //  BigBB:
+    //              big_call (original)
+    //           else
+    //  SmallBB:
+    //              small_call (new one)
+    //           endif
+    //
+    // G4_BB*   Call_BB;       // as map key
+    G4_BB*   Big_BB;
+    G4_BB*   Small_BB;
+    // SmallEU and BigEU's relative IP are calculated as follow:
+    //   Given
+    //     call v20            // v20 is absolute target addr
+    //   The relative IP is caculated as follows:
+    //     add  v10  -ip,  v20                    // start inst
+    //     add  v11   v10, 0x33 (-label_patch)    // patch inst
+    //     ...
+    //     call v11                               // call inst
+    //                                            // v11 is relative target addr
+    // This map keeps  patch inst --> <ip_start_inst, ip_end_inst>
+    // Once encoding is decided, label_path = IP(ip_end_inst) - IP(ip_start_inst)
+    //
+    G4_INST* Small_start;   // SmallEU start: add  t -ip      SmallTarget
+    G4_INST* Small_patch;   // SmallEU patch: add  rSmallT t  <patchVal>
+    G4_INST* Big_start;     // BigEU start :  add  t1 -ip      BigTarget
+    G4_INST* Big_patch;     // BigEU patch :  add  rBigT   t1 <patchVal>
+    G4_INST* Big_call;
+    G4_INST* Small_call;
+    IndirectCallWAInfo(G4_BB* aBig_BB, G4_BB* aSmall_BB,
+        G4_INST* aSmall_start, G4_INST* aSmall_patch,
+        G4_INST* aBig_start, G4_INST* aBig_patch,
+        G4_INST* aBig_call, G4_INST* aSmall_call)
+        : Big_BB(aBig_BB), Small_BB(aSmall_BB),
+          Small_start(aSmall_start), Small_patch(aSmall_patch),
+          Big_start(aBig_start), Big_patch(aBig_patch),
+          Big_call(aBig_call), Small_call(aSmall_call)
+    {}
+
+    IndirectCallWAInfo()
+    {}
+};
+
 class G4_Kernel
 {
 public:
@@ -492,22 +546,12 @@ public:
     }
 #endif
 
-    // Call WA under EU fusion
-    //     add  v10  -ip,  v20                    // ip_start_inst
-    //     add  v11   v10, 0x33 (-label_patch)    // patch inst
-    //     ...
-    //     call v11                               // ip_end_inst
-    // This map keeps  patch inst --> <ip_start_inst, ip_end_inst>
-    // Once encoding is decided, label_path = IP(ip_end_inst) - IP(ip_start_inst)
-    //
-    // m_labelPatchInsts: keep the info described above
-    // m_instToBBs:  convenient map to BBs that those insts belong to
-    // m_waCallInsts: call insts whose targets should be defined outside the smallEU branch.
-    // m_maskOffWAInsts: insts whose MaskOff needs to be changed for this WA.
-    std::unordered_map<G4_INST*, std::pair<G4_INST*, G4_INST*>> m_labelPatchInsts;
-    std::unordered_map<G4_INST*, G4_BB*> m_instToBBs;
-    std::list<G4_INST*> m_waCallInsts;
+    // m_maskOffWAInsts: insts whose MaskOff will be changed for this call WA.
     std::unordered_map <G4_INST*, G4_BB*> m_maskOffWAInsts;
+    // m_indirectCallWAInfo : all info related to indirect call wa
+    // such as BBs for smallEU's call/bigEu's call. If ip-relative call,
+    // insts to calculate IP-relative address, etc.
+    std::unordered_map<G4_BB*, IndirectCallWAInfo> m_indirectCallWAInfo;
     void setMaskOffset(G4_INST* I, G4_InstOption MO) {
         // For call WA
         assert((I->getMaskOffset() + I->getExecSize()) <= 16);

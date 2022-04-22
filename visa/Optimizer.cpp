@@ -222,11 +222,13 @@ void Optimizer::setDMaskFusedCallWA()
 // Need to be done after SWSB so we can set call relative IP correctly.
 void Optimizer::finishFusedCallWA()
 {
+    // Regarding using M16 as maskOff to force running some instructions
+    //
     // For each nested stack call like the following:
     //   (1) (W)  mov  (4|M0)    r59.4<1>:ud     r125.0<4;4,1>:ud     // save code in prolog
-    //   (2)     call (8|M0)    r125.0          inner
+    //   (2)     call (16|M0)    r125.0          inner
     //   (3) (W)  mov  (4|M0)    r125.0<1>:ud    r59.4<4;4,1>:ud      // restore code in ret.
-    //   (4)      ret  (8|M0)    r125.0
+    //   (4)      ret  (16|M0)    r125.0
     // If no active channels,  call inst will always execute due to the hw bug, therefore
     // r125 will be modified by this call inst at (2). As no active channels, r125 restore
     // code at (3) is not going to be run. Therefore, r125 returned at (4) is not the
@@ -234,61 +236,75 @@ void Optimizer::finishFusedCallWA()
     //
     // The fix is to make save/restore mov instructions run always even though there
     // are no active channels.  They run if their quarter control is outside the current
-    // JEU size (8 in this case), but still active (dmask still show it is active).
-    // We will set dmask to simd16 in this case, quarter control to M8 instead M0:
-    //   (1) (W)  mov  (4|M8)    r59.4<1>:ud     r125.0<4;4,1>:ud
-    //   (2)      call (8|M0)    r125.0          inner
-    //   (3) (W)  mov  (4|M8)    r125.0<1>:ud    r59.4<4;4,1>:ud
+    // JEU size (16 in this case), but still active (dmask still show it is active).
+    // We will set dmask to simd32 in this case, quarter control to M16 instead M0:
+    //   (1) (W)  mov  (4|M16)    r59.4<1>:ud     r125.0<4;4,1>:ud
+    //   (2)      call (16|M0)     r125.0          inner
+    //   (3) (W)  mov  (4|M16)    r125.0<1>:ud    r59.4<4;4,1>:ud
     //
     // Note:
     //    r59.4 needs to write on stack frame before call and read back after call and
     //    its address payload needs to be correct. For this purpose, all call stack-related
     //    WA is done in RA, not here.
     //
-    if (kernel.m_labelPatchInsts.empty() && kernel.m_waCallInsts.empty() && kernel.m_maskOffWAInsts.empty())
+
+    if (kernel.m_indirectCallWAInfo.empty() && kernel.m_maskOffWAInsts.empty())
         return;
 
-    // patch ip for fused call WA
 #if defined(_DEBUG)
-    // Verify m_labelPatchInsts/m_instToBBs are still valid
-    bool found = true;
-    for (auto II : kernel.m_instToBBs)
+    // Expect all BBs and insts related to call wa are present and the insts are
+    // still in their BBs (they could be reordered, but require to be in the original
+    // BB).
+    //
+    // Don't expect any violation, but do the sanity check here to make sure.
+    for (auto II : kernel.m_indirectCallWAInfo)
     {
-        G4_BB* BB = II.second;
-        if (std::find(kernel.fg.begin(), kernel.fg.end(), BB) == kernel.fg.end())
+        G4_BB* BB = II.first;
+        IndirectCallWAInfo& callWAInfo = II.second;
+        G4_BB* BigBB = callWAInfo.Big_BB;
+        G4_BB* SmallBB = callWAInfo.Small_BB;
+        if (std::find(kernel.fg.begin(), kernel.fg.end(), BB) == kernel.fg.end() ||
+            std::find(kernel.fg.begin(), kernel.fg.end(), BigBB) == kernel.fg.end() ||
+            std::find(kernel.fg.begin(), kernel.fg.end(), SmallBB) == kernel.fg.end())
         {
-            assert(false && "ICE: BB not found in IP patch info!");
-            found = false;
+            assert(false && "ICE: BB not found in indirect call WA info!");
             break;
         }
 
-        G4_INST* Inst = II.first;
-        if (std::find(BB->begin(), BB->end(), Inst) == BB->end())
+        G4_INST* bigStart = callWAInfo.Big_start;
+        G4_INST* bigPatch = callWAInfo.Big_patch;
+        G4_INST* smallStart = callWAInfo.Small_start;
+        G4_INST* smallPatch = callWAInfo.Small_patch;
+        G4_INST* bigCall = callWAInfo.Big_call;
+        G4_INST* smallCall = callWAInfo.Small_call;
+        if ((bigStart && std::find(BB->begin(), BB->end(), bigStart) == BB->end()) ||
+            (bigPatch && std::find(BB->begin(), BB->end(), bigPatch) == BB->end()) ||
+            (smallStart && std::find(BB->begin(), BB->end(), smallStart) == BB->end()) ||
+            (smallPatch && std::find(BB->begin(), BB->end(), smallPatch) == BB->end()) ||
+            (bigCall && std::find(BigBB->begin(), BigBB->end(), bigCall) == BigBB->end()) ||
+            (smallCall && std::find(SmallBB->begin(), SmallBB->end(), smallCall) == SmallBB->end()))
         {
-            assert(false && "ICE: inst not found in IP patch info!");
-            found = false;
+            assert(false && "ICE: inst not found in its original BB!");
             break;
         }
     }
 
-    if (found)
+    for (auto II : kernel.m_maskOffWAInsts)
     {
-        for (auto II : kernel.m_labelPatchInsts)
+        G4_INST* tInst = II.first;
+        G4_BB* tBB = II.second;
+
+        // make sure BB and inst are still valid
+        if (std::find(kernel.fg.begin(), kernel.fg.end(), tBB) == kernel.fg.end())
         {
-            found = false;
-            G4_INST* patch_add = II.first;
-            G4_INST* ip_start = II.second.first;
-            G4_INST* ip_end = II.second.second;
-            if (kernel.m_instToBBs.find(patch_add) != kernel.m_instToBBs.end()
-                && kernel.m_instToBBs.find(ip_start) != kernel.m_instToBBs.end()
-                && kernel.m_instToBBs.find(ip_end) != kernel.m_instToBBs.end())
-            {
-                found = true;
-                continue;
-            }
-            break;
+            assert(false && "ICE: BB not in m_maskOffWAInsts!");
+            continue;
         }
-        assert(found && "ICE: inst not in m_instToBBs!");
+        if (std::find(tBB->begin(), tBB->end(), tInst) == tBB->end())
+        {
+            assert(false && "ICE: inst not in m_maskOffWAInsts!");
+            continue;
+        }
     }
 #endif
 
@@ -310,72 +326,76 @@ void Optimizer::finishFusedCallWA()
     //    1. (W) mov (1|M0)            r2.0<1>:ud  sr0.0<0;1,0>:ud
     //    2. (W) and (16|M0) (eq)f1.0  null<1>:uw  r2.0<0;1,0>:uw    0x80:uw
     //    3. (W & ~f1.0) mov (1|M0)    cr0.2<1>:ud r3.0<0;1,0>:ud
-    //    4. (W)mov (1|M0)            r64.2<1>:ud cr0.2<0;1,0>:ud
-    // WA requires the mov at 4 to be in M8, not M0 in case the BigEU has all channesl off.
-    // Here set quarter control of that mov to M8 (simd8 kernel).
+    //    4. (W)mov (1|M0)             r64.0<1>:ud cr0.2<0;1,0>:ud
+    // WA requires the mov at 4 to be in M16, not M0 in case the BigEU is off.
+    // Here set quarter control of that mov to M16 (When stackcall is used,
+    // only simd8/simd16 is allowed. Thus, we will set M16 always no matter
+    // the kernel is simd8 or simd16).
     for (auto II : kernel.m_maskOffWAInsts)
     {
         G4_INST* tInst = II.first;
-        G4_BB*  tBB = II.second;
-
-        // make sure inst are still valid
-        if (std::find(kernel.fg.begin(), kernel.fg.end(), tBB) == kernel.fg.end())
-        {
-            assert(false && "ICE: BB not in m_maskOffWAInsts!");
-            continue;
-        }
-        if (std::find(tBB->begin(), tBB->end(), tInst) == tBB->end())
-        {
-            assert(false && "ICE: inst not in m_maskOffWAInsts!");
-            continue;
-        }
         kernel.setMaskOffset(tInst, InstOpt_M16);
     }
 
-    for (auto II : kernel.m_labelPatchInsts)
+    // indirect relative call
+    for (auto II : kernel.m_indirectCallWAInfo)
     {
-        G4_INST* patch_add = II.first;
-        G4_INST* ip_start = II.second.first;
-        G4_INST* ip_end = II.second.second;
+        G4_BB* BB = II.first;
+        IndirectCallWAInfo& callWAInfo = II.second;
 
-        G4_BB* start_bb = kernel.m_instToBBs[ip_start];
-        G4_BB* end_bb = kernel.m_instToBBs[ip_end];
+        if (callWAInfo.Small_start == nullptr)
+        {   // calla, skip
+            continue;
+        }
 
-        int32_t dist = 0;
-        G4_BB* b;
-        G4_BB* next_b = start_bb;
-        INST_LIST_ITER it_start = std::find(start_bb->begin(), start_bb->end(), ip_start);
-        INST_LIST_ITER it_end = std::find(end_bb->begin(), end_bb->end(), ip_end);
-        do {
-            b = next_b;
-            INST_LIST_ITER iter = (b == start_bb ? it_start : b->begin());
-            INST_LIST_ITER iterEnd = (b == end_bb ? it_end : b->end());
-            for (; iter != iterEnd; ++iter)
-            {
-                G4_INST* tI = *iter;
-                update_ip_distance(tI, dist);
-            }
-            next_b = b->getPhysicalSucc();
-        } while (b != end_bb && next_b != nullptr);
-        assert(b == end_bb);
+        for (int i = 0; i < 2; ++i)
+        {
+            G4_INST* patch_add = (i == 0 ? callWAInfo.Small_patch : callWAInfo.Big_patch);
+            G4_INST* ip_start = (i == 0 ? callWAInfo.Small_start : callWAInfo.Big_start);
+            G4_INST* ip_end = (i == 0 ? callWAInfo.Small_call : callWAInfo.Big_call);
+            G4_BB* start_bb = BB;
+            G4_BB* end_bb = (i == 0 ? callWAInfo.Small_BB : callWAInfo.Big_BB);
 
-        G4_Imm* distOprd = builder.createImm(-dist, Type_D);
-        patch_add->setSrc(distOprd, 1);
+            int32_t dist = 0;
+            G4_BB* b;
+            G4_BB* next_b = start_bb;
+            INST_LIST_ITER it_start = std::find(start_bb->begin(), start_bb->end(), ip_start);
+            INST_LIST_ITER it_end = std::find(end_bb->begin(), end_bb->end(), ip_end);
+            do {
+                b = next_b;
+                INST_LIST_ITER iter = (b == start_bb ? it_start : b->begin());
+                INST_LIST_ITER iterEnd = (b == end_bb ? it_end : b->end());
+                for (; iter != iterEnd; ++iter)
+                {
+                    G4_INST* tI = *iter;
+                    update_ip_distance(tI, dist);
+                }
+                next_b = b->getPhysicalSucc();
+            } while (b != end_bb && next_b != nullptr);
+            assert(b == end_bb);
+
+            G4_Imm* distOprd = builder.createImm(-dist, Type_D);
+            patch_add->setSrc(distOprd, 1);
+        }
     }
 
     // RA does the following
-    //   (W) mov(1|M0)  r125.0<1>:f   r60.2<0;1,0>:f
+    //   (W) mov(1|M0)  r125.0<1>:f   r60.0<0;1,0>:f
     //   (W) send.dc0(16|M0)   null r126  r5    0x80      0x020A03FF   // stack spill
     //       sync.nop        null{ Compacted,$4.src }
     //       call (8|M0)      r125.0   r125.0
     //
-    // To make this WA work,  call has to be:
-    //   call (8|M0)  r125.0 r60.2
-    // Here propogate r60.2 down to call instruction
-    for (auto LI : kernel.m_waCallInsts)
+    // To make this WA work,  call for SmallEU has to use r60, not r125, as below:
+    //   call (8|M0)  r125.0 r60.0
+    // Here propogate r60.0 down to call instruction
+    // (For call, can just copy patch's dst to call's target. Here the code works
+    //  for both call and calla.)
+    for (auto II : kernel.m_indirectCallWAInfo)
     {
-        G4_INST* iCallInst = LI;
-        G4_BB* B = kernel.m_instToBBs[iCallInst];
+        IndirectCallWAInfo& callWAInfo = II.second;
+
+        G4_INST* iCallInst = callWAInfo.Small_call;
+        G4_BB* B = callWAInfo.Small_BB;
         assert(iCallInst->isFCall() && iCallInst->getSrc(0)->isGreg());
 
         bool isValid;
@@ -385,14 +405,14 @@ void Optimizer::finishFusedCallWA()
 
         // Search backward to find the the 1st mov that defined this reg
         // This works for ifcall that has been put into a separate BB, in
-        // which only insts related call sequence are present.
+        // which only insts related to call sequence are present in the BB.
         // If not found, do nothing.
         INST_LIST_ITER it_end = std::find(B->begin(), B->end(), iCallInst);
         assert(it_end != B->end());
-        it_end = std::prev(it_end);
         for (auto II = it_end, IB = B->begin(); II != IB; --II)
         {
-            G4_INST* tInst = *II;
+            auto prevII = std::prev(II);
+            G4_INST* tInst = *prevII;
             if (tInst->opcode() == G4_mov
                 && tInst->getExecSize() == g4::SIMD1
                 && tInst->isWriteEnableInst()
@@ -415,10 +435,8 @@ void Optimizer::finishFusedCallWA()
         }
     }
 
-    kernel.m_instToBBs.clear();
-    kernel.m_labelPatchInsts.clear();
-    kernel.m_waCallInsts.clear();
     kernel.m_maskOffWAInsts.clear();
+    kernel.m_indirectCallWAInfo.clear();
 }
 
 void Optimizer::adjustIndirectCallOffsetAfterSWSBSet()
@@ -16375,15 +16393,16 @@ void Optimizer::doNoMaskWA_postRA()
 //          else   // SmallEU
 //             call
 //   2. HW has a bug in which call always runs and it always uses BigEU's target as targets for both EUs.
-//      This causes several issues and the WA is used to fix this harware bugs.
+//      This causes several issues and the WA is used to fix this harware bug.
 //
 // Details of 2
 // ============
 //  Under EU fusion,  assume that an indirect call invokes A in thread 0 and invokes B in thread 1.
 //  Assume that these two threads are fused and run on a pair of fused EUs {bigEU, smallEU}. The hardware
-//  will always invoke A: the callee from thread 0 in bigEU, which is incorrect. To workaround this bug,
-//  we have to rely on the fact that cr0 is shared among the pair of fused EUs and copy thread 1's callee
-//  into thread 0. In doing so, thread 1's callee can be invoked. The details are as follows:
+//  will always invoke A: the callee from thread 0 in bigEU even in else (smallEU) barnch, which is
+//  incorrect. To workaround this bug, we have to rely on the fact that cr0.2 is shared among the pair
+//  of fused EUs and copy thread 1's callee into thread 0 via cr0.2. In doing so, thread 1's callee
+//  can be invoked. The details are as follows:
 //
 //    before:
 //      BB:
@@ -16416,14 +16435,14 @@ void Optimizer::doNoMaskWA_postRA()
 //      nextBB:
 //            join <nextJoin or null>                                       // finalJoin
 //
-// Those I4_patch_add/I5_patch_add, etc are added into m_labelPatchInsts/m_instsToBBs, so
-// that finishFusedCallWA() will have the right immediate to replace 0x33333333.
+// The BBs and those insts such as I4_patch_add/I5_patch_add, etc are added into m_indirectCallWAInfo
+// so that finishFusedCallWA() can finish post-processing to patch the relative IP and others.
 //
 // Note that there is another hardware bug. If BigEU is off, the mov instruction
 //    "(W)     mov (1 |M0)  smallEUTarget:ud   cr0.2<0;1,0>:ud"
-// will not run. As result, SmallEU's target cannot be copied into BigEU, which in turn will
-// not run the call for SmallEU (it shall hang as the target is undefined). This issue is
-// also handled in finishFusedCallWA().
+// will not run, thus BigEU will not have smallEU's target. Since this WA requires
+// the above move must be run, a special maskOff (M16) must be used to force NoMask to run
+// no matter if the EU is off or on. This will be handled in finishFusedCallWA().
 //
 void Optimizer::applyFusedCallWA()
 {
@@ -16573,14 +16592,18 @@ void Optimizer::applyFusedCallWA()
                 nullptr, g4::NOSAT, callI->getExecSize(), nullptr, nSrc, nullptr, callI->getOption());
             smallB0->push_back(nCallI);
 
-            kernel.m_maskOffWAInsts.insert(std::make_pair(I3, BB));
-
             if (!fg.globalOpndHT.isOpndGlobal(Target))
             {
                 callI->removeDefUse(Opnd_src0);
             }
             fg.globalOpndHT.addGlobalOpnd(Target);
             fg.globalOpndHT.addGlobalOpnd(nSrc);
+
+            kernel.m_maskOffWAInsts.insert(std::make_pair(I3, BB));
+            kernel.m_indirectCallWAInfo.emplace(BB,
+                IndirectCallWAInfo(
+                    bigB0, smallB0, nullptr, nullptr,
+                    nullptr, nullptr, callI, nCallI));
         }
         else
         {
@@ -16642,15 +16665,11 @@ void Optimizer::applyFusedCallWA()
                 callI->transferDef(I5_ip_start, Opnd_src0, Opnd_src1);
             }
 
-            // add patch info, so those patch_add will be patched.
-            kernel.m_labelPatchInsts.insert(std::make_pair(I4_patch_add, std::pair(I4_ip_start, nCallI)));
-            kernel.m_labelPatchInsts.insert(std::make_pair(I5_patch_add, std::pair(I5_ip_start, callI)));
-            kernel.m_instToBBs.insert(std::make_pair(I4_ip_start, BB));
-            kernel.m_instToBBs.insert(std::make_pair(I4_patch_add, BB));
-            kernel.m_instToBBs.insert(std::make_pair(I5_ip_start, BB));
-            kernel.m_instToBBs.insert(std::make_pair(I5_patch_add, BB));
-            kernel.m_instToBBs.insert(std::make_pair(callI, bigB0));
-            kernel.m_instToBBs.insert(std::make_pair(nCallI, smallB0));
+            // add indirect call wa info
+            kernel.m_indirectCallWAInfo.emplace(BB,
+                IndirectCallWAInfo(
+                    bigB0, smallB0, I4_ip_start, I4_patch_add,
+                    I5_ip_start, I5_patch_add, callI, nCallI));
 
             kernel.m_maskOffWAInsts.insert(std::make_pair(I3, BB));
             kernel.m_maskOffWAInsts.insert(std::make_pair(I4_ip_start, BB));
@@ -16727,10 +16746,6 @@ void Optimizer::applyFusedCallWA()
         // To make RA know that the real inst can flow from bigB1 to smallB0
         // an edge is added from bigB1 to smallB0
         fg.addPredSuccEdges(bigB1, smallB0);
-
-        // save new call to make sure its target isn't defined inside smallB0
-        kernel.m_waCallInsts.push_back(nCallI);
-        kernel.m_instToBBs[nCallI] = smallB0;  // ok to reset for non-calla.
 
         // divergence property update
         //   new BBs's divergence is the same as BB's
