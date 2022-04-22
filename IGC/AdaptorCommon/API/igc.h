@@ -112,8 +112,8 @@ typedef enum {
       (!IGC_IS_FLAG_ENABLED(ExtraRetrySIMD16) && (!HasSimd(8, stats) || DoSimd32(stats)))))
 
 // We don't need compile continuation if no staged compilation enabled denoted by RegKeys.
-#define HasCompileContinuation(Ail, flag, prev_ctx_ptr, stats) ( \
-    (IGC_IS_FLAG_ENABLED(StagedCompilation) || Ail) && \
+#define HasCompileContinuation(flag, prev_ctx_ptr, stats) ( \
+    (IGC_IS_FLAG_ENABLED(StagedCompilation)) && \
     (ContinueFastCompileStage1(flag, prev_ctx_ptr, stats) || \
      ContinueBestPerfStage1(flag, prev_ctx_ptr, stats)))
 
