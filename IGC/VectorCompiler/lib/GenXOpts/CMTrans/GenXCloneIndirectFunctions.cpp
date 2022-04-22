@@ -159,9 +159,9 @@ bool GenXCloneIndirectFunctions::runOnModule(Module &M) {
   bool Modified = false;
 
   for (auto [F, IsExternal] : IndirectFuncs) {
-    auto CheckDirectCall = [F](User *U) {
+    auto CheckDirectCall = [Func = F](User *U) {
       auto *CI = dyn_cast<CallInst>(U);
-      return CI && CI->getCalledFunction() == F;
+      return CI && CI->getCalledFunction() == Func;
     };
 
     if (F->isDeclaration()) {
