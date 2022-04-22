@@ -51,6 +51,14 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
     if (!F) return;
     if (!F->getName().contains("__builtin_invoke_simd")) return;
 
+    auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    // invoke_simd is allowed only on compute path.
+    auto OCLCtx = static_cast<OpenCLProgramContext*>(Ctx);
+    if (OCLCtx->m_VISAAsmToLink.empty()) {
+        OCLCtx->EmitError("invoke_simd is currently allowed only with direct calls, callee definition must be provided.", &CI);
+        return;
+    }
+
     // First argument is a function pointer. We need to bitcast it to lowered type.
     // The type will be deducted from this invocation.
 
