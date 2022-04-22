@@ -696,6 +696,9 @@ namespace IGC
     // Get GRF offset from GenISA_RuntimeValue intrinsic call
     bool GetGRFOffsetFromRTV(Value* pointerSrc, unsigned& GRFOffset)
     {
+        if (!pointerSrc)
+            return false;
+
         if (GenIntrinsicInst * inst = dyn_cast<GenIntrinsicInst>(pointerSrc))
         {
             // For bindless pointers with encoded metadata

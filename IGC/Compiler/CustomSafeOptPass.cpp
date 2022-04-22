@@ -6388,11 +6388,27 @@ namespace {
             AU.addRequired<CodeGenContextWrapper>();
         }
     private:
+        struct MergeHFData
+        {
+            uint32_t gepArraySize;
+            uint32_t gepOffset;
+            GetElementPtrInst* GEP;
+            ExtractElementInst* EE;
+            StoreInst* Store;
+        };
         CodeGenContext* pContext = nullptr;
         ModuleMetaData* modMD;
+        std::map<std::pair<uint, Value*>, SmallVector<MergeHFData, 2> > MergeHF;
+
         bool findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace);
+        bool getSRVMap(GenIntrinsicInst* tex, uint& index);
+        bool supportHF(const uint resourceRangeID, const uint indexIntoRange);
+        bool getGEPInfo(GetElementPtrInst* GEP, uint& arraySize, uint& elmBytes, uint& offset);
+        bool getHFDataList(std::pair <uint, Value*> &key, SmallVector<MergeHFData, 2>& HFDataList);
+        bool canMergeHF(GetElementPtrInst* GEP, ExtractElementInst* EE, StoreInst* Store,
+            const uint ptrAddressSpace, SmallVector<MergeHFData, 2>& HFDataList);
         void getHFPackingCandidate(Function& F);
-        void PackHfResources();
+        void PackHfResources(Function& F);
     };
 }
 
@@ -6418,8 +6434,15 @@ HFfoldingOpt::HFfoldingOpt() : FunctionPass(ID)
     initializeHFfoldingOptPass(*PassRegistry::getPassRegistry());
 }
 
+// return runtimeV and ptrAddrSpace for the given GenISA_ldptr
 bool HFfoldingOpt::findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace)
 {
+    if (!tex)
+        return false;
+
+    if (tex->getIntrinsicID() != GenISAIntrinsic::GenISA_ldptr)
+        return false;
+
     ptrAddrSpace = cast<SamplerLoadIntrinsic>(tex)->getTextureValue()->getType()->getPointerAddressSpace();
 
     Value* src = IGC::TracePointerSource(cast<SamplerLoadIntrinsic>(tex)->getTextureValue());
@@ -6427,6 +6450,165 @@ bool HFfoldingOpt::findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrA
     {
         return true;
     }
+    return false;
+}
+
+// lookup SRV mapping entry from GenISA_ldptr intrinsic
+// return the 'index' of the found entry
+bool HFfoldingOpt::getSRVMap(GenIntrinsicInst* texld, uint& index)
+{
+    uint runtimeV = 0;
+    uint ptrAddrSpace = 0;
+
+    if (!texld)
+        return false;
+
+    if (findSRVinfo(texld, runtimeV, ptrAddrSpace))
+    {
+        uint idx = 0;
+        for (auto& iter : modMD->SrvMap)
+        {
+            if (iter.runtimeValue == runtimeV && iter.ptrAddressSpace == ptrAddrSpace)
+            {
+                index = idx;
+                return true;
+            }
+            idx++;
+        }
+    }
+
+    return false;
+}
+
+// detect if the given resource supports half float
+bool HFfoldingOpt::supportHF(const uint resourceRangeID, const uint indexIntoRange)
+{
+    std::vector<unsigned int> HFRes;
+    for (size_t i = 0; i < pContext->getModuleMetaData()->csInfo.ResForHfPacking.size(); i++)
+    {
+        HFRes = pContext->getModuleMetaData()->csInfo.ResForHfPacking[i];
+        if (resourceRangeID == HFRes[0] && indexIntoRange == HFRes[1])
+            return true;
+    }
+    return false;
+}
+
+// extract offset, arraySize, and elementSize in bytes from GEP
+bool HFfoldingOpt::getGEPInfo(GetElementPtrInst* GEP, uint& arraySize, uint& elmBytes, uint& offset)
+{
+    if (!GEP)
+        return false;
+
+    // [144 x float] addrspace(3)* inttoptr (i32 4608 to [144 x float] addrspace(3)*)
+    // offset    : 4608
+    // arraySize : 144
+    // elmBytes  : 4 (size of float)
+    if (const ConstantExpr* CE = dyn_cast<ConstantExpr>(GEP->getPointerOperand()))
+    {
+        const ConstantInt* CI = dyn_cast<ConstantInt>(CE->getOperand(0));
+
+        if (CI && CI->getType()->isIntegerTy())
+        {
+            offset = (uint)CI->getZExtValue();
+
+            Type* type = GEP->getSourceElementType();
+            if (type->isArrayTy())
+            {
+                arraySize = (uint) type->getArrayNumElements();
+                elmBytes = type->getArrayElementType()->getScalarSizeInBits()/8;
+                return true;
+            }
+            else
+                return false;
+        }
+    }
+    return false;
+}
+
+bool HFfoldingOpt::getHFDataList(std::pair <uint, Value*> &key,
+    SmallVector<MergeHFData, 2>& HFDataList)
+{
+    std::map<std::pair<uint, Value*>, SmallVector<MergeHFData, 2> >::iterator it;
+
+    it = MergeHF.find(key);
+    if (it != MergeHF.end())
+    {
+        HFDataList = it->second;
+        return true;
+    }
+    else
+        return false;
+}
+
+bool HFfoldingOpt::canMergeHF(GetElementPtrInst* GEP, ExtractElementInst* EE, StoreInst* Store,
+    const uint ptrAddressSpace, SmallVector<MergeHFData, 2> &HFDataList)
+{
+    uint arraySize = 0, elmBytes = 0, offset = 0;
+
+    if (!GEP)
+        return false;
+
+    if (getGEPInfo(GEP, arraySize, elmBytes, offset))
+    {
+        Value* gepIdx = GEP->getOperand(2);
+        std::pair <uint, Value*> key =
+            std::make_pair(ptrAddressSpace, gepIdx);
+
+        if (getHFDataList(key, HFDataList))
+        {
+            // check if the current one can be merged with previous one
+            // %37 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 4608 to[144 x float] addrspace(3)*), i32 0, i32 %23
+            // %38 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 5184 to[144 x float] addrspace(3)*), i32 0, i32 %23
+
+            if (HFDataList.empty())
+                return false;
+
+            // only expect 1 item on existing entry
+            if (HFDataList.size() != 1)
+                return false;
+
+            MergeHFData data = *(HFDataList.begin());
+
+            if (data.gepArraySize == arraySize)
+            {
+                MergeHFData newData;
+                newData.gepArraySize = arraySize;
+                newData.gepOffset = offset;
+                newData.GEP = GEP;
+                newData.EE = EE;
+                newData.Store = Store;
+
+                // if the difference of 5184 & 4608 is 144*4, we can merge
+                // sort the MergeList based on the order of GEP offset
+                if (offset > data.gepOffset &&
+                    (offset - arraySize * elmBytes) == data.gepOffset)
+                {
+                    HFDataList.push_back(newData);
+                    return true;
+                }
+                else if (offset < data.gepOffset &&
+                    (offset + arraySize * elmBytes) == data.gepOffset)
+                {
+                    HFDataList.insert(HFDataList.begin(), newData);
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            // insert into the map
+            MergeHFData data;
+            data.gepArraySize = arraySize;
+            data.gepOffset = offset;
+            data.GEP = GEP;
+            data.EE = EE;
+            data.Store = Store;
+
+            HFDataList.push_back(data);
+            MergeHF[key] = HFDataList;
+        }
+    }
+
     return false;
 }
 
@@ -6445,28 +6627,12 @@ void HFfoldingOpt::getHFPackingCandidate(Function& F)
 
                 if (ExtractElementInst* ee = dyn_cast<ExtractElementInst>(pStore->getOperand(0)))
                 {
-                    if (GenIntrinsicInst* texld = llvm::dyn_cast<GenIntrinsicInst>(ee->getOperand(0)))
+                    uint index = 0;
+                    if (getSRVMap(dyn_cast<GenIntrinsicInst>(ee->getOperand(0)), index))
                     {
-                        if (texld->getIntrinsicID() != GenISAIntrinsic::GenISA_ldptr)
-                        {
-                            continue;
-                        }
-
-                        uint runtimeV = 0;
-                        uint ptrAddrSpace = 0;
-                        if (findSRVinfo(texld, runtimeV, ptrAddrSpace))
-                        {
-                            for (auto& iter : modMD->SrvMap)
-                            {
-                                if (iter.runtimeValue == runtimeV && iter.ptrAddressSpace == ptrAddrSpace)
-                                {
-                                    // found immediate usage of texture load to local store. Set the hfCandidate to true
-                                    // UMD will check if the resource is hf and can be packed.
-                                    iter.hfCandidate = 1;
-                                    break;
-                                }
-                            }
-                        }
+                        // found immediate usage of texture load to local store. Set the hfCandidate to true
+                        // UMD will check if the resource is hf and can be packed.
+                        modMD->SrvMap[index].hfCandidate = true;
                     }
                 }
             }
@@ -6474,9 +6640,97 @@ void HFfoldingOpt::getHFPackingCandidate(Function& F)
     }
 }
 
-void HFfoldingOpt::PackHfResources()
-{
 
+// Merge 2 f16 stores into 1 i32 store
+void HFfoldingOpt::PackHfResources(Function& F)
+{
+    std::vector<Instruction*> RemoveInst;
+
+    // From
+    //   %27 = call fast <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p2621447__2D_DIM_Resource.p2621447__2D_DIM_Resource(i32 %.i0549, i32 % .i1550, i32 0, i32 0, %__2D_DIM_Resource addrspace(2621447) * undef, % __2D_DIM_Resource addrspace(2621447) * %t7, i32 0, i32 0, i32 0)
+    //   %29 = extractelement <4 x float> %27, i32 1
+    //   %30 = extractelement <4 x float> %27, i32 2
+    //   %37 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 4608 to[144 x float] addrspace(3)*), i32 0, i32 %23
+    //   %38 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 5184 to[144 x float] addrspace(3)*), i32 0, i32 %23
+    //   store float %29, float addrspace(3)* %37, align 4
+    //   store float %30, float addrspace(3)* %38, align 4
+    // To
+    //   %27 = call fast <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p2621447__2D_DIM_Resource.p2621447__2D_DIM_Resource(i32 %.i0549, i32 % .i1550, i32 0, i32 0, %__2D_DIM_Resource addrspace(2621447) * undef, % __2D_DIM_Resource addrspace(2621447) * %t7, i32 0, i32 0, i32 0)
+    //   %29 = extractelement <4 x float> %27, i32 1
+    //   %30 = extractelement <4 x float> %27, i32 2
+    //   %37 = getelementptr[144 x i32], [144 x i32] addrspace(3) * inttoptr(i32 4608 to[144 x i32] addrspace(3)*), i32 0, i32 %23
+    //   %38 = call float @llvm.genx.GenISA.f32tof16.rtz(float %29)
+    //   %39 = bitcast float %38 to i32
+    //   %40 = call float @llvm.genx.GenISA.f32tof16.rtz(float% 30)
+    //   %41 = bitcast float %40 to i32
+    //   %42 = shl i32 %41, 16
+    //   %43 = or i32 %39, %42
+    //   store i32 %43, i32 addrspace(3)* %37, align 4
+
+    for (auto bb = F.begin(); bb != F.end(); ++bb)
+    {
+        for (auto ii = bb->begin(); ii != bb->end(); ++ii)
+        {
+            if (StoreInst* pStore = dyn_cast<StoreInst>(&(*ii)))
+            {
+                if (pStore->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
+                {
+                    continue;
+                }
+
+                ExtractElementInst* EE = dyn_cast<ExtractElementInst>(pStore->getOperand(0));
+                GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(pStore->getOperand(1));
+                if (!EE)
+                    continue;
+
+                uint index = 0;
+                if (!getSRVMap(dyn_cast<GenIntrinsicInst>(EE->getOperand(0)), index))
+                    continue;
+
+                SrvMapData mapData = modMD->SrvMap[index];
+                if (!supportHF(mapData.resourceRangeID, mapData.indexIntoRange))
+                    continue;
+
+                SmallVector<MergeHFData, 2> HFDataList;
+                if (!canMergeHF(GEP, EE, pStore, mapData.ptrAddressSpace, HFDataList))
+                    continue;
+
+                // We will merge 2 HF stores
+                MergeHFData data1 = HFDataList[0];
+                MergeHFData data2 = HFDataList[1];
+
+                auto inst = data1.Store;
+                IRBuilder<> builder(inst);
+                Module* module = inst->getModule();
+
+                Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(data1.gepOffset),
+                    PointerType::get(ArrayType::get(builder.getInt32Ty(), data1.gepArraySize), ADDRESS_SPACE_LOCAL));
+
+                Value* gepArg[] = { data1.GEP->getOperand(1), data1.GEP->getOperand(2) };
+                Value* newGEP = builder.CreateGEP(nullptr, Int2Ptr, gepArg);
+
+                Value* new1, *new2;
+                Function* f32tof16 = GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_f32tof16_rtz);
+                new1 = builder.CreateCall(f32tof16, data1.EE);
+                new1 = builder.CreateBitCast(new1, builder.getInt32Ty());
+
+                new2 = builder.CreateCall(f32tof16, data2.EE);
+                new2 = builder.CreateBitCast(new2, builder.getInt32Ty());
+                new2 = builder.CreateShl(new2, builder.getInt32(16));
+
+                new1 = builder.CreateOr(new1, new2);
+                new1 = builder.CreateAlignedStore(new1, newGEP, IGCLLVM::getAlign(4));
+
+                RemoveInst.push_back(data1.Store);
+                RemoveInst.push_back(data2.Store);
+                RemoveInst.push_back(data1.GEP);
+                RemoveInst.push_back(data2.GEP);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < RemoveInst.size(); i++)
+        RemoveInst[i]->eraseFromParent();
 }
 
 bool HFfoldingOpt::runOnFunction(Function& F)
@@ -6490,7 +6744,7 @@ bool HFfoldingOpt::runOnFunction(Function& F)
     }
     else
     {
-        PackHfResources();
+        PackHfResources(F);
     }
 
     return false;

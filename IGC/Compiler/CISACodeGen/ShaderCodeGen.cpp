@@ -1985,12 +1985,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createSLMConstPropPass());
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableHFpacking) &&
-            pContext->type == ShaderType::COMPUTE_SHADER)
-        {
-            mpm.add(createHFfoldingOptPass());
-        }
-
         if (pContext->m_DriverInfo.CodeSinkingBeforeCFGSimplification())
         {
             mpm.add(new CodeSinking(true));
@@ -2016,6 +2010,12 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(createLogicalAndToBranchPass());
         mpm.add(llvm::createEarlyCSEPass());
+
+        if (IGC_IS_FLAG_ENABLED(EnableHFpacking) &&
+            pContext->type == ShaderType::COMPUTE_SHADER)
+        {
+            mpm.add(createHFfoldingOptPass());
+        }
 
         if (pContext->m_instrTypes.CorrelatedValuePropagationEnable)
         {
