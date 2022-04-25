@@ -952,6 +952,7 @@ void IR_Builder::initScratchSurfaceOffset()
         {
             G4_DstRegRegion* andDst = createDstRegRegion(scratchSurfaceOffset, 1);
             auto andInst = createBinOp(G4_and, g4::SIMD1, andDst, R0_5, createImm(0xFFFFFC00, Type_UD), InstOpt_WriteEnable, true);
+            andInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
             instList.pop_back();
             auto iter = std::find_if(instList.begin(), instList.end(), [](G4_INST* inst) { return !inst->isLabel(); });
             instList.insert(iter, andInst);

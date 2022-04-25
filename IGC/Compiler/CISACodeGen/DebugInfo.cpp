@@ -638,11 +638,12 @@ CatchAllLineNumber::~CatchAllLineNumber()
 
 bool CatchAllLineNumber::runOnFunction(llvm::Function& F)
 {
-    // Insert placeholder intrinsic instruction in each kernel.
+    // Insert placeholder intrinsic instruction in each kernel/stack call function.
     if (!F.getSubprogram() || F.isDeclaration())
         return false;
 
-    if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL)
+    if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL &&
+        !F.hasFnAttribute("visaStackCall"))
         return false;
 
     llvm::IRBuilder<> Builder(F.getParent()->getContext());

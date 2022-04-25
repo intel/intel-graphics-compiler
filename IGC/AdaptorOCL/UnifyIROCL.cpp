@@ -376,9 +376,6 @@ static void CommonOCLBasedPasses(
         mpm.add(createPromoteMemoryToRegisterPass());
     }
 
-    mpm.add(new CatchAllLineNumber());
-
-
     // OCL has built-ins so it always need to run inlining
     {
         // Estimate maximal function size in the module and disable subroutine if not profitable.
@@ -582,6 +579,9 @@ static void CommonOCLBasedPasses(
 
     mpm.add(createLowerSwitchPass());
     mpm.add(createTypeLegalizerPass());
+
+    mpm.add(new CatchAllLineNumber());
+
     mpm.run(*pContext->getModule());
 
     // Following functions checks whether -g option is specified.
