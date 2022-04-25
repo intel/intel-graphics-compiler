@@ -79,6 +79,7 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/Transforms/Utils/ValueMapper.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <set>
@@ -6409,6 +6410,10 @@ namespace {
             const uint ptrAddressSpace, SmallVector<MergeHFData, 2>& HFDataList);
         void getHFPackingCandidate(Function& F);
         void PackHfResources(Function& F);
+        void removeRedundantChannels(Function& F);
+        bool allowedALUinst(Value* inst);
+        bool findStoreSequence(std::vector<Value*>& path);
+        bool adjGep(Value* gep0, Value* gep1, Value* gep2, uint32_t offset[3]);
     };
 }
 
@@ -6733,10 +6738,314 @@ void HFfoldingOpt::PackHfResources(Function& F)
         RemoveInst[i]->eraseFromParent();
 }
 
+bool HFfoldingOpt::allowedALUinst(Value* inst)
+{
+    // return true for ALU insts allowed in this opt.
+    // can be extended to a larger range of instructions.
+    if (inst == nullptr)
+        return false;
+
+    if (Instruction* ii = dyn_cast<Instruction>(inst))
+    {
+        switch (ii->getOpcode()) {
+        case Instruction::Add:
+        case Instruction::FAdd:
+        case Instruction::Sub:
+        case Instruction::FSub:
+        case Instruction::Mul:
+        case Instruction::FMul:
+        case Instruction::FDiv:
+        case Instruction::Shl:
+        case Instruction::LShr:
+        case Instruction::AShr:
+        case Instruction::And:
+        case Instruction::Or:
+        case Instruction::Xor:
+            return true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (IntrinsicInst* intrInst = dyn_cast<IntrinsicInst>(inst))
+    {
+        switch (intrInst->getIntrinsicID()) {
+        case Intrinsic::sqrt:
+        case Intrinsic::log:
+        case Intrinsic::log2:
+        case Intrinsic::cos:
+        case Intrinsic::sin:
+        case Intrinsic::pow:
+        case Intrinsic::floor:
+        case Intrinsic::ceil:
+        case Intrinsic::trunc:
+        case Intrinsic::maximum:
+        case Intrinsic::minimum:
+        case Intrinsic::fabs:
+        case Intrinsic::exp:
+        case Intrinsic::exp2:
+            return true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return false;
+}
+
+bool HFfoldingOpt::findStoreSequence(std::vector<Value*>& path)
+{
+    // pathIndex=0,1,2 are the load instructions. No need to check them. Start checking pathIndex=3
+    // save the sequence that generates the stored value.
+    uint pathIndex = 3;
+    while (pathIndex < path.size())
+    {
+        // limit the sequences to no more than 10 instructions
+        if (path.size() > 10)
+            return false;
+
+        Instruction* inst = dyn_cast<Instruction>(path[pathIndex]);
+        uint srciCount = inst->getNumOperands();
+        if (CallInst* cinst = dyn_cast<CallInst>(path[pathIndex]))
+        {
+            srciCount = cinst->getNumArgOperands();
+        }
+        for (uint srci = 0; srci < srciCount; srci++)
+        {
+            if (dyn_cast<Constant>(inst->getOperand(srci)) ||
+                inst->getOperand(srci) == dyn_cast<Instruction>(path[0])->getOperand(0) ||
+                inst->getOperand(srci) == dyn_cast<Instruction>(path[1])->getOperand(0))
+            {
+                // the operands uses are constant, or the stored values from pStore0 and [1].
+                ;
+            }
+            else if (allowedALUinst(inst->getOperand(srci)))
+            {
+                if (std::find(path.begin(), path.end(), inst->getOperand(srci)) == path.end())
+                {
+                    path.push_back(inst->getOperand(srci));
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        pathIndex++;
+    }
+    return true;
+}
+
+bool HFfoldingOpt::adjGep(Value* gep0, Value* gep1, Value* gep2, uint32_t offset[3])
+{
+    // check if the GEPs are accessing continuous space.
+    uint32_t arraySize[3] = { 0, 0, 0 }, elmBytes[3] = { 0, 0, 0 };
+    GetElementPtrInst* GEP[3] = { nullptr, nullptr, nullptr };
+    bool skipOpt = false;
+    GEP[0] = dyn_cast<GetElementPtrInst>(gep0);
+    GEP[1] = dyn_cast<GetElementPtrInst>(gep1);
+    GEP[2] = dyn_cast<GetElementPtrInst>(gep2);
+    if (GEP[0] && GEP[1] && GEP[2] &&
+        GEP[0]->getOperand(2) == GEP[1]->getOperand(2) &&
+        GEP[0]->getOperand(2) == GEP[2]->getOperand(2))
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            if (!getGEPInfo(GEP[i], arraySize[i], elmBytes[i], offset[i]))
+            {
+                return false;
+            }
+        }
+
+        if (skipOpt ||
+            arraySize[0] != arraySize[1] || arraySize[0] != arraySize[2] ||
+            elmBytes[0] != elmBytes[1] || elmBytes[0] != elmBytes[2])
+        {
+            return false;
+        }
+        if (offset[2] != offset[1] + elmBytes[0] * arraySize[0] ||
+            offset[1] != offset[0] + elmBytes[0] * arraySize[0])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void HFfoldingOpt::removeRedundantChannels(Function& F)
+{
+    /*
+    %32 = fmul fast float %29, %29
+    %33 = fmul fast float %30, %30
+    %34 = fadd fast float %32, %33
+    %35 = fsub fast float 1.000000e+00, %34
+    %36 = call fast float @llvm.sqrt.f32(float %35)
+    %37 = getelementptr [144 x float], [144 x float] addrspace(3)* inttoptr (i32 4608 to [144 x float] addrspace(3)*), i32 0, i32 %23
+    %38 = getelementptr [144 x float], [144 x float] addrspace(3)* inttoptr (i32 5184 to [144 x float] addrspace(3)*), i32 0, i32 %23
+    %39 = getelementptr [144 x float], [144 x float] addrspace(3)* inttoptr (i32 5760 to [144 x float] addrspace(3)*), i32 0, i32 %23
+    store float %29, float addrspace(3)* %37, align 4
+    store float %30, float addrspace(3)* %38, align 4
+    store float %36, float addrspace(3)* %39, align 4
+    Since %36 is calculated from %29 and %30, we can skip the store/load for %36,
+    and calculate %36 when we need to use it.
+    In this example, the calculationg includes the fmul->fmul->fadd->fsub->sqrt sequence
+    */
+    std::map<uint32_t, std::vector<Value*>> allGEP;
+    for (BasicBlock& bb : F)
+    {
+        for (Instruction& ii : bb)
+        {
+            if (GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(&ii))
+            {
+                uint32_t arraySize, elmBytes, offset;
+                if (getGEPInfo(GEP, arraySize, elmBytes, offset))
+                {
+                    allGEP[offset].push_back(GEP);
+                }
+            }
+        }
+    }
+
+    // for both storeGepToRemove and loadGepToRemove, the structure is
+    // storeGepToRemove[offset from inttoptr][std::vector of path];
+    // where each path is a collection of instructions used to calculate the load/store being removed.
+    std::map<uint32_t, std::vector<std::vector<Value*>>> storeGepToRemove;
+    std::map<uint32_t, std::vector<std::vector<Value*>>> loadGepToRemove;
+    uint32_t offset[3] = { 0, 0, 0 };
+    for (BasicBlock& bb : F)
+    {
+        for (Instruction& ii : bb)
+        {
+            if (LoadInst* pLoad2 = dyn_cast<LoadInst>(&ii))
+            {
+                if (LoadInst* pLoad1 = dyn_cast<LoadInst>(pLoad2->getPrevNode()))
+                {
+                    if (LoadInst* pLoad0 = dyn_cast<LoadInst>(pLoad1->getPrevNode()))
+                    {
+                        bool gepCheck = adjGep(
+                            pLoad0->getPointerOperand(),
+                            pLoad1->getPointerOperand(),
+                            pLoad2->getPointerOperand(),
+                            offset);
+                        if (gepCheck && !(pLoad2->getNextNode() &&
+                            dyn_cast<LoadInst>(pLoad2->getNextNode())) &&
+                            dyn_cast<Instruction>(pLoad2->getOperand(0)) != nullptr)
+                        {
+                            std::vector<Value*>allLoads;
+                            allLoads.push_back(pLoad0);
+                            allLoads.push_back(pLoad1);
+                            allLoads.push_back(pLoad2);
+                            loadGepToRemove[offset[2]].push_back(allLoads);
+                        }
+                    }
+                }
+            }
+
+            // check if the pStore can be generated by other store values.
+            if (StoreInst* pStore2 = dyn_cast<StoreInst>(&ii))
+            {
+                if (StoreInst* pStore1 = dyn_cast<StoreInst>(pStore2->getPrevNode()))
+                {
+                    if (StoreInst* pStore0 = dyn_cast<StoreInst>(pStore1->getPrevNode()))
+                    {
+                        bool gepCheck = adjGep(pStore0->getPointerOperand(), pStore1->getPointerOperand(), pStore2->getPointerOperand(), offset);
+
+                        if (gepCheck && !(pStore2->getNextNode() &&
+                            dyn_cast<StoreInst>(pStore2->getNextNode())) &&
+                            dyn_cast<Instruction>(pStore2->getOperand(0)) != nullptr)
+                        {
+                            std::vector<Value*>path;
+                            path.push_back(pStore0);
+                            path.push_back(pStore1);
+                            path.push_back(pStore2);
+                            path.push_back(pStore2->getOperand(0));
+
+                            if (findStoreSequence(path))
+                            {
+                                storeGepToRemove[offset[2]].push_back(path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // if the total number of load/store qualified for the opt is not the same as the total number of all load/store
+    // with the same offset, we can not apply the optimization on load/store with this offset.
+    // Remove it from storeGepToRemove.
+    for (auto iter = storeGepToRemove.begin(); iter != storeGepToRemove.end(); iter++)
+    {
+        uint32_t index = iter->first;
+        if (allGEP[index].size() != storeGepToRemove[index].size() + loadGepToRemove[index].size())
+        {
+            storeGepToRemove.erase(iter);
+        }
+    }
+
+    if (storeGepToRemove.size() == 0)
+        return;
+
+    // todo: check if all the sequence used to calculate pStore2 is the same
+
+    // start removing load/store/gep
+    for (auto iter = storeGepToRemove.begin(); iter != storeGepToRemove.end(); iter++)
+    {
+        llvm::ValueToValueMapTy vmap;
+        // create pattern for the load
+        std::vector<Value*> copyFromSet = storeGepToRemove[iter->first][0];
+        for (auto copyToInst : loadGepToRemove[iter->first])
+        {
+            Instruction* insertPos = cast<Instruction>(copyToInst[2])->getNextNode();
+            Instruction* newInst = nullptr;
+            for (uint i = copyFromSet.size() - 1; i > 2; i--)
+            {
+                // copy the pattern
+                Instruction* copyFromSetInst = cast<Instruction>(copyFromSet[i]);
+                newInst = copyFromSetInst->clone();
+                vmap[copyFromSet[i]] = newInst;
+                newInst->insertBefore(insertPos);
+                llvm::RemapInstruction(newInst, vmap,
+                    RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
+
+                // set the operand using the other stored values
+                for (uint srci = 0; srci < copyFromSetInst->getNumOperands(); srci++)
+                {
+                    if (copyFromSetInst->getOperand(srci) == cast<Instruction>(storeGepToRemove[iter->first][0][0])->getOperand(0))
+                    {
+                        newInst->setOperand(srci, copyToInst[0]);
+                    }
+                    if (copyFromSetInst->getOperand(srci) == cast<Instruction>(storeGepToRemove[iter->first][0][1])->getOperand(0))
+                    {
+                        newInst->setOperand(srci, copyToInst[1]);
+                    }
+                }
+            }
+
+            // remove load
+            IGC_ASSERT(newInst);
+            copyToInst[2]->replaceAllUsesWith(newInst);
+            cast<Instruction>(copyToInst[2])->eraseFromParent();
+        }
+
+        // remove store
+        for (uint storeIndex = 0; storeIndex < storeGepToRemove[iter->first].size(); storeIndex++)
+        {
+            StoreInst* stInst = cast<StoreInst>(storeGepToRemove[iter->first][storeIndex][2]);
+            stInst->dropAllReferences();
+            stInst->eraseFromParent();
+        }
+    }
+}
+
 bool HFfoldingOpt::runOnFunction(Function& F)
 {
     pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     modMD = pContext->getModuleMetaData();
+
+    removeRedundantChannels(F);
 
     if (modMD->csInfo.ResForHfPacking.size() == 0)
     {
