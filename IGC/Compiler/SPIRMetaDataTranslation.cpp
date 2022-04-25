@@ -184,8 +184,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
                 getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Unsupported required sub group size", spirKernel->getFunction());
                 return false;
             }
-            else if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPC_CORE
-                && simd_size == 8)
+            else if (!getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.hasSIMD8Support() && simd_size == 8)
             {
                 getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
                     "Kernel compiled with required subgroup size 8, which is unsupported on this platform", spirKernel->getFunction());

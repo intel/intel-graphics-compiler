@@ -1342,6 +1342,10 @@ unsigned forceQwAtSrc0ForQwShlWA() const
     return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId == REVISION_B);
 }
 
-};
 
+bool hasSIMD8Support() const
+{
+    return !(m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE);
+}
+};
 }//namespace IGC
