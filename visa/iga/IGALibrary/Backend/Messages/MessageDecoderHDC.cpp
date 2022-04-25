@@ -1638,6 +1638,7 @@ void MessageDecoderHDC::tryDecodeDC1() {
                 MessageInfo::Attr::NONE);
         } else {
             const auto DW_SUBTYPE = 0x1;
+            //const auto QW_SUBTYPE = 0x2;
             bool isDword = subType == DW_SUBTYPE; // else QW
             // unlike non-A64 version, this variant supports DW and QW
             // in the same message type, the MDC_A64_DS is treated as a
