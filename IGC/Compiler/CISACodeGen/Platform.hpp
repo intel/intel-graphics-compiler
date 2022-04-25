@@ -1042,7 +1042,7 @@ bool useScratchSpaceForOCL() const
     // because it does not support byte-aligned (byte-scattered) messages.
     if (hasScratchSurface()) {
         return LSCEnabled() &&
-               IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemoryForDG2Plus) &&
+               IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory) &&
                m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE;
     }
     else {
