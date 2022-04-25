@@ -12626,6 +12626,42 @@ void Optimizer::newDoNoMaskWA()
         return flagVar;
     };
 
+    auto addPseudoKillIfFullCondMod = [&](G4_BB* aBB, INST_LIST_ITER aII)
+    {
+        // Only NoMask Inst without predicate will call this function!
+        G4_INST* I = *aII;
+        G4_CondMod* aCondMod = I->getCondMod();
+        if (I->getImplAccSrc() != nullptr || I->isSend() || !aCondMod ||
+            aCondMod->getBase()->asRegVar()->getPhyReg())
+        {
+            return;
+        }
+
+        // Make sure condMod is not used in this inst
+        {
+            G4_Operand* src0_0 = I->getSrc(0);
+            G4_Operand* src0_1 = I->getSrc(1);
+            G4_Operand* src0_2 = I->getSrc(2);
+            G4_Operand* src0_3 = I->getSrc(3);
+
+            if ((src0_0 && src0_0->compareOperand(aCondMod, builder) != Rel_disjoint) ||
+                (src0_1 && src0_1->compareOperand(aCondMod, builder) != Rel_disjoint) ||
+                (src0_2 && src0_2->compareOperand(aCondMod, builder) != Rel_disjoint) ||
+                (src0_3 && src0_3->compareOperand(aCondMod, builder) != Rel_disjoint))
+            {
+                return;
+            }
+        }
+
+        const G4_Declare* decl = ((const G4_RegVar*)aCondMod->getBase())->getDeclare();
+        const G4_Declare* rDcl = decl->getRootDeclare();
+        if ((aCondMod->getRightBound() - aCondMod->getLeftBound() + 1) >= rDcl->getNumberFlagElements())
+        {
+            auto pseudoKill = builder.createPseudoKill(const_cast<G4_Declare*>(rDcl), PseudoKillType::Other);
+            aBB->insertBefore(aII, pseudoKill);
+        }
+    };
+
     auto addPseudoKillIfFullDstWrite = [&](G4_BB* aBB, INST_LIST_ITER aII)
     {
         // Only NoMask Inst without predicate will call this function!
@@ -12900,6 +12936,7 @@ void Optimizer::newDoNoMaskWA()
 
         // Add pseudo kill for dst
         addPseudoKillIfFullDstWrite(aBB, aII);
+        addPseudoKillIfFullCondMod(aBB, aII);
 
         const bool condModGlb = fg.globalOpndHT.isOpndGlobal(P);
         G4_Declare* modDcl = P->getTopDcl();
