@@ -419,25 +419,23 @@ void IR_Builder::predefinedVarRegAssignment(uint8_t inputSize)
 // -- replace pre-defined V2 (thread_y)
 void IR_Builder::expandPredefinedVars()
 {
-
-    // Use FFTID from msg header
-    // and (1) hw_tid, r0.5, 0x3ff
-    //
-    // 9:0     FFTID. This ID is assigned by TS and is a unique identifier for the thread in
-    // comparison to other concurrent root threads. It is used to free up resources used
-    // by the thread upon thread completion.
-    //
-    // [Pre-DevBDW]: Format = U8. Bits 9:8 are Reserved, MBZ.
-    //
-    // [0:8] For Pre-Gen9
-    // [0:9] For Gen10+
-    //
-
     // first non-label instruction
     auto iter = std::find_if(instList.begin(), instList.end(), [](G4_INST* inst) { return !inst->isLabel(); });
 
     if (preDefVars.isHasPredefined(PreDefinedVarsInternal::HW_TID))
     {
+        // Use FFTID from msg header
+        // and (1) hw_tid, r0.5, 0x3ff
+        //
+        // 9:0     FFTID. This ID is assigned by TS and is a unique identifier for the thread in
+        // comparison to other concurrent root threads. It is used to free up resources used
+        // by the thread upon thread completion.
+        //
+        // [Pre-DevBDW]: Format = U8. Bits 9:8 are Reserved, MBZ.
+        //
+        // [0:8] For Pre-Gen9
+        // [0:9] For Gen10+
+        //
         const unsigned fftid_mask = getPlatform() >= GENX_CNL ? 0x3FF : 0x1FF;
         G4_SrcRegRegion* src = createSrc(realR0->getRegVar(), 0, 5, getRegionScalar(), Type_UD);
         G4_Imm* mask1 = createImm(fftid_mask, Type_UD);

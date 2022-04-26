@@ -247,9 +247,6 @@ unsigned int getMaxNumberThreadPerWorkgroupPooledMax() const
 {
     return m_caps.KernelHwCaps.EUCountPerPoolMax * m_caps.KernelHwCaps.EUThreadsPerEU;
 }
-unsigned int getFFTIDBitMask() const {
-    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE) ? 0x3FF : 0x1FF;
-}
 unsigned int getBarrierCountBits(unsigned int count) const
 {
     // Returns barrier count field + enable for barrier message
