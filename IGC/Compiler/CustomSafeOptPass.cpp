@@ -6650,32 +6650,34 @@ void HFfoldingOpt::getHFPackingCandidate(Function& F)
 void HFfoldingOpt::PackHfResources(Function& F)
 {
     std::vector<Instruction*> RemoveInst;
-
-    // From
-    //   %27 = call fast <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p2621447__2D_DIM_Resource.p2621447__2D_DIM_Resource(i32 %.i0549, i32 % .i1550, i32 0, i32 0, %__2D_DIM_Resource addrspace(2621447) * undef, % __2D_DIM_Resource addrspace(2621447) * %t7, i32 0, i32 0, i32 0)
-    //   %29 = extractelement <4 x float> %27, i32 1
-    //   %30 = extractelement <4 x float> %27, i32 2
-    //   %37 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 4608 to[144 x float] addrspace(3)*), i32 0, i32 %23
-    //   %38 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 5184 to[144 x float] addrspace(3)*), i32 0, i32 %23
-    //   store float %29, float addrspace(3)* %37, align 4
-    //   store float %30, float addrspace(3)* %38, align 4
-    // To
-    //   %27 = call fast <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p2621447__2D_DIM_Resource.p2621447__2D_DIM_Resource(i32 %.i0549, i32 % .i1550, i32 0, i32 0, %__2D_DIM_Resource addrspace(2621447) * undef, % __2D_DIM_Resource addrspace(2621447) * %t7, i32 0, i32 0, i32 0)
-    //   %29 = extractelement <4 x float> %27, i32 1
-    //   %30 = extractelement <4 x float> %27, i32 2
-    //   %37 = getelementptr[144 x i32], [144 x i32] addrspace(3) * inttoptr(i32 4608 to[144 x i32] addrspace(3)*), i32 0, i32 %23
-    //   %38 = call float @llvm.genx.GenISA.f32tof16.rtz(float %29)
-    //   %39 = bitcast float %38 to i32
-    //   %40 = call float @llvm.genx.GenISA.f32tof16.rtz(float% 30)
-    //   %41 = bitcast float %40 to i32
-    //   %42 = shl i32 %41, 16
-    //   %43 = or i32 %39, %42
-    //   store i32 %43, i32 addrspace(3)* %37, align 4
+    std::map<uint32_t, uint32_t> HFpacked;
 
     for (auto bb = F.begin(); bb != F.end(); ++bb)
     {
         for (auto ii = bb->begin(); ii != bb->end(); ++ii)
         {
+            /*
+            From
+                %27 = call fast <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p2621447__2D_DIM_Resource.p2621447__2D_DIM_Resource(i32 %.i0549, i32 % .i1550, i32 0, i32 0, %__2D_DIM_Resource addrspace(2621447) * undef, % __2D_DIM_Resource addrspace(2621447) * %t7, i32 0, i32 0, i32 0)
+                %29 = extractelement <4 x float> %27, i32 1
+                %30 = extractelement <4 x float> %27, i32 2
+                %37 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 4608 to[144 x float] addrspace(3)*), i32 0, i32 %23
+                %38 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 5184 to[144 x float] addrspace(3)*), i32 0, i32 %23
+                store float %29, float addrspace(3)* %37, align 4
+                store float %30, float addrspace(3)* %38, align 4
+            To
+                %27 = call fast <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p2621447__2D_DIM_Resource.p2621447__2D_DIM_Resource(i32 %.i0549, i32 % .i1550, i32 0, i32 0, %__2D_DIM_Resource addrspace(2621447) * undef, % __2D_DIM_Resource addrspace(2621447) * %t7, i32 0, i32 0, i32 0)
+                %29 = extractelement <4 x float> %27, i32 1
+                %30 = extractelement <4 x float> %27, i32 2
+                %37 = getelementptr[144 x i32], [144 x i32] addrspace(3) * inttoptr(i32 4608 to[144 x i32] addrspace(3)*), i32 0, i32 %23
+                %38 = call float @llvm.genx.GenISA.f32tof16.rtz(float %29)
+                %39 = bitcast float %38 to i32
+                %40 = call float @llvm.genx.GenISA.f32tof16.rtz(float% 30)
+                %41 = bitcast float %40 to i32
+                %42 = shl i32 %41, 16
+                %43 = or i32 %39, %42
+                store i32 %43, i32 addrspace(3)* %37, align 4
+            */
             if (StoreInst* pStore = dyn_cast<StoreInst>(&(*ii)))
             {
                 if (pStore->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
@@ -6706,16 +6708,15 @@ void HFfoldingOpt::PackHfResources(Function& F)
 
                 auto inst = data1.Store;
                 IRBuilder<> builder(inst);
-                Module* module = inst->getModule();
 
                 Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(data1.gepOffset),
                     PointerType::get(ArrayType::get(builder.getInt32Ty(), data1.gepArraySize), ADDRESS_SPACE_LOCAL));
-
                 Value* gepArg[] = { data1.GEP->getOperand(1), data1.GEP->getOperand(2) };
                 Value* newGEP = builder.CreateGEP(nullptr, Int2Ptr, gepArg);
 
                 Value* new1, *new2;
-                Function* f32tof16 = GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_f32tof16_rtz);
+                Function* f32tof16 = GenISAIntrinsic::getDeclaration(inst->getModule(),
+                    GenISAIntrinsic::GenISA_f32tof16_rtz);
                 new1 = builder.CreateCall(f32tof16, data1.EE);
                 new1 = builder.CreateBitCast(new1, builder.getInt32Ty());
 
@@ -6726,13 +6727,86 @@ void HFfoldingOpt::PackHfResources(Function& F)
                 new1 = builder.CreateOr(new1, new2);
                 new1 = builder.CreateAlignedStore(new1, newGEP, IGCLLVM::getAlign(4));
 
+                HFpacked[data1.gepOffset] = data2.gepOffset;
+
                 RemoveInst.push_back(data1.Store);
                 RemoveInst.push_back(data2.Store);
                 RemoveInst.push_back(data1.GEP);
                 RemoveInst.push_back(data2.GEP);
-            }
-        }
-    }
+            } // if (StoreInst* pStore ...
+            /*
+            From
+                %694 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 4608 to[144 x float] addrspace(3)*), i32 0, i32 % 23
+                %695 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 5184 to[144 x float] addrspace(3)*), i32 0, i32 % 23
+                %load24 = load float, float addrspace(3) * %694, align 4
+                %load26 = load float, float addrspace(3) * %695, align 4
+             To
+                %694 = getelementptr [144 x i32], [144 x i32] addrspace(3)* inttoptr (i32 4608 to [144 x i32] addrspace(3)*), i32 0, i32 %23
+                %695 = load i32, i32 addrspace(3)* %694, align 4
+                %696 = and i32 %695, 65535
+                %697 = lshr i32 %696, 16
+                %698 = bitcast i32 %696 to float
+                %699 = bitcast i32 %697 to float
+             */
+            else if (LoadInst* pLoad = dyn_cast<LoadInst>(&(*ii)))
+            {
+                if (pLoad->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
+                {
+                    continue;
+                }
+
+                uint arraySize1, elmBytes1, offset1;
+                uint arraySize2, elmBytes2, offset2;
+                GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(pLoad->getOperand(0));
+                if (!GEP || !getGEPInfo(GEP, arraySize1, elmBytes1, offset1))
+                    continue;
+
+                std::map<uint32_t, uint32_t>::iterator iHFpacked = HFpacked.find(offset1);
+                if (iHFpacked == HFpacked.end())
+                    continue;
+
+                if (!pLoad->getNextNode())
+                    continue;
+
+                LoadInst* pLoad2 = dyn_cast<LoadInst>(pLoad->getNextNode());
+                if (!pLoad2)
+                    continue;
+
+                GetElementPtrInst* GEP2 = dyn_cast<GetElementPtrInst>(pLoad2->getOperand(0));
+                if (!GEP2 || !getGEPInfo(GEP2, arraySize2, elmBytes2, offset2))
+                    continue;
+
+                if ((arraySize1 != arraySize2) || (elmBytes1 != elmBytes2) ||
+                    offset2 != iHFpacked->second)
+                    continue;
+
+                auto inst = pLoad;
+                IRBuilder<> builder(inst);
+                Value* new1, *new2;
+
+                Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(offset1),
+                    PointerType::get(ArrayType::get(builder.getInt32Ty(), arraySize1), ADDRESS_SPACE_LOCAL));
+                Value* gepArg[] = { GEP->getOperand(1), GEP->getOperand(2) };
+                Value* newGEP = builder.CreateGEP(nullptr, Int2Ptr, gepArg);
+
+                new1 = builder.CreateAlignedLoad(builder.getInt32Ty(), newGEP, IGCLLVM::getAlign(4));
+                new1 = builder.CreateAnd(new1, builder.getInt32(0xffff));
+
+                new2 = builder.CreateLShr(new1, builder.getInt32(16));
+
+                new1 = builder.CreateBitCast(new1, builder.getFloatTy());
+                new2 = builder.CreateBitCast(new2, builder.getFloatTy());
+
+                pLoad->replaceAllUsesWith(new1);
+                pLoad2->replaceAllUsesWith(new2);
+
+                RemoveInst.push_back(pLoad);
+                RemoveInst.push_back(pLoad2);
+                RemoveInst.push_back(GEP);
+                RemoveInst.push_back(GEP2);
+            } // else if (LoadInst* pLoad...
+        } // for (auto ii ...
+    } // for (auto bb ...
 
     for (size_t i = 0; i < RemoveInst.size(); i++)
         RemoveInst[i]->eraseFromParent();
