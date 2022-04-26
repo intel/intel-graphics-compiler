@@ -40,12 +40,31 @@ function(igc_get_llvm_targets RET)
     set(PRE_BUILT_TARGETS)
     foreach(tmp_name ${TARGETS})
         unset(found_name CACHE)
-        find_library(found_name ${tmp_name} PATHS "${LLVM_LIB_DIR}")
-        if(EXISTS ${found_name})
-            list(APPEND PRE_BUILT_TARGETS ${found_name})
-        else()
-            message(FATAL_ERROR "File not found for: ${tmp_name}")
+
+        find_library(found_name_release ${tmp_name} PATHS "${LLVM_DIR}/Release/lib")
+
+        if("${found_name_release}" STREQUAL "${found_name_release}-NOTFOUND")
+          message(FATAL_ERROR
+          "Cannot find ${tmp_name} in Release version in ${LLVM_DIR}")
         endif()
+
+        find_library(found_name_debug ${tmp_name} PATHS "${LLVM_DIR}/Debug/lib")
+
+        if("${found_name_debug}" STREQUAL "${found_name_debug}-NOTFOUND")
+          message(FATAL_ERROR
+          "Cannot find ${tmp_name} in Debug version in ${LLVM_DIR}")
+        endif()
+
+        # Add lib as imported target if not already added
+        if (NOT TARGET ${tmp_name})
+          add_library(${tmp_name} UNKNOWN IMPORTED)
+          set_target_properties(${tmp_name} PROPERTIES
+            IMPORTED_LOCATION_RELEASE "${found_name_release}"
+            IMPORTED_LOCATION_RELEASEINTERNAL "${found_name_release}"
+            IMPORTED_LOCATION_DEBUG "${found_name_debug}"
+            )
+        endif()
+        list(APPEND PRE_BUILT_TARGETS ${tmp_name})
     endforeach()
 
     set(TARGETS ${PRE_BUILT_TARGETS})
