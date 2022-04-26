@@ -613,9 +613,19 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     }
 
     bool isDummyKernel = IGC::isIntelSymbolTableVoidProgram(&F);
+    bool isFuncGroupHead = !m_FGA || m_FGA->isGroupHead(&F);
+    bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
 
     // Dummy program is only used for symbol table info, so skip compilation if no symbol table is needed
-    if (isDummyKernel && !isSymbolTableRequired(&F))
+    if (isDummyKernel && !isSymbolTableRequired(&F) && m_pCtx->type == ShaderType::OPENCL_SHADER)
+    {
+        return false;
+    }
+
+    // Force SIMD8 on library compilations for non-OCL shaders
+    if (m_pCtx->type != ShaderType::OPENCL_SHADER &&
+        m_pCtx->getCompilerOption().IsLibraryCompilation &&
+        m_SimdMode != SIMDMode::SIMD8)
     {
         return false;
     }
@@ -647,8 +657,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
 
     CShader* prevShader = m_pCtx->m_prevShader;
-    bool isFuncGroupHead = !m_FGA || m_FGA->isGroupHead(&F);
-    bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
     if (isFuncGroupHead)
     {
         if (hasStackCall)
@@ -1110,7 +1118,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     bool skipPrologue = false;
 
-    if (isFuncGroupHead)
+    if (isFuncGroupHead && !isDummyKernel)
     {
         if (!needKernelArgOverrideWA)
         {

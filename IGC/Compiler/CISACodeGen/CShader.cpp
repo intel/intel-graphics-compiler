@@ -331,6 +331,9 @@ void CShader::RestoreStackState()
 
 void CShader::CreateImplicitArgs()
 {
+    if (IGC::isIntelSymbolTableVoidProgram(entry))
+        return;
+
     m_numBlocks = entry->size();
     m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, 1, "R0");
     encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);

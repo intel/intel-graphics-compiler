@@ -295,6 +295,8 @@ bool WIAnalysisRunner::run()
     auto& F = *m_func;
     if (m_pMdUtils->findFunctionsInfoItem(&F) == m_pMdUtils->end_FunctionsInfo())
         return false;
+    if (IGC::isIntelSymbolTableVoidProgram(&F))
+        return false;
 
     m_depMap.Initialize(m_TT);
     m_TT->RegisterListener(&m_depMap);
