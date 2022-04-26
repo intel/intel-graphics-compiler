@@ -253,8 +253,8 @@ void Optimizer::finishFusedCallWA()
 
 #if defined(_DEBUG)
     // Expect all BBs and insts related to call wa are present and the insts are
-    // still in their BBs (they could be reordered, but require to be in the original
-    // BB).
+    // still in their BBs (they could be reordered, but are required to be in the
+    // original BB).
     //
     // Don't expect any violation, but do the sanity check here to make sure.
     for (auto II : kernel.m_indirectCallWAInfo)
@@ -271,13 +271,15 @@ void Optimizer::finishFusedCallWA()
             break;
         }
 
+        G4_INST* ip_wa = callWAInfo.IP_WA_placeholder;
         G4_INST* bigStart = callWAInfo.Big_start;
         G4_INST* bigPatch = callWAInfo.Big_patch;
         G4_INST* smallStart = callWAInfo.Small_start;
         G4_INST* smallPatch = callWAInfo.Small_patch;
         G4_INST* bigCall = callWAInfo.Big_call;
         G4_INST* smallCall = callWAInfo.Small_call;
-        if ((bigStart && std::find(BB->begin(), BB->end(), bigStart) == BB->end()) ||
+        if ((ip_wa && std::find(BB->begin(), BB->end(), ip_wa) == BB->end()) ||
+            (bigStart && std::find(BB->begin(), BB->end(), bigStart) == BB->end()) ||
             (bigPatch && std::find(BB->begin(), BB->end(), bigPatch) == BB->end()) ||
             (smallStart && std::find(BB->begin(), BB->end(), smallStart) == BB->end()) ||
             (smallPatch && std::find(BB->begin(), BB->end(), smallPatch) == BB->end()) ||
@@ -348,10 +350,94 @@ void Optimizer::finishFusedCallWA()
             continue;
         }
 
+        G4_INST* ip_wa = callWAInfo.IP_WA_placeholder;
+        G4_INST* ip_inst = nullptr;
+        if (ip_wa)
+        {
+            //  Simplified example to show what it does:
+            //      Given
+            //          pseudo_fcall (16)    r4.0:ud
+            //
+            //      After applyFusedCallWA and RA:
+            //         (W) mov (1)              r2.0<1>:ud  sr0.0<0;1,0>:ud
+            //         (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
+            //         (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
+            //         (W) mov (1)              r3.2<1>:ud  cr0.2<0;1,0>:ud
+            //         (W) mov (1)              r3.0<1>:d  0x89abcdef:d                        : ip_wa (placeholder)
+            //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r3.2<0;1,0>:d       : small_start
+            //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  0x33333333:d        : small_patch
+            //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r4.0<0;1,0>:d       : big_start
+            //         (W) add (1)              r2.0<1>:d  r2.0<0;1,0>:d  0x33333333:d         : big_patch
+            //         if (BigEU)
+            //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f // $53:&87:
+            //                 pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud              : big_call
+            //         else
+            //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
+            //                 pseudo_fcall (16)    r125.0<1>:ud  r125.0<0;1,0>:ud             : small_call
+            //
+            //
+            //     After finishFusedCallWA()
+            //         (W) mov (1)              r2.0<1>:ud  sr0.0<0;1,0>:ud
+            //         (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
+            //         (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
+            //         (W) mov (1)              r3.2<1>:ud  cr0.2<0;1,0>:ud
+            //
+            //         (W) call (1)             r3.0<1>:d  _label_ip_wa
+            //      _label_ip_wa:
+            //         (W) add (1|M16)          r3.0<1>:d  r3.0<0;1,0>:d  0x20:d {NoCompact}
+            //          (W) return (1)          r3.0<0;1,0>:d {NoCompact}
+            //
+            //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r3.2<0;1,0>:d        : IP
+            //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  144
+            //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r4.0<0;1,0>:d
+            //         (W) add (1)              r2.0<1>:d  r2.0<0;1,0>:d   96
+            //         if (BigEU)
+            //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f // $53:&87:
+            //                pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud                : IP+96
+            //         else
+            //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
+            //                pseudo_fcall (16)    r125.0<1>:ud  r70.0<0;1,0>:f                 : IP+144
+            //
+            BB->resetLocalIds();
+            G4_INST* sI = callWAInfo.Small_start;
+            G4_INST* bI = callWAInfo.Big_start;
+            ip_inst = (sI->getLocalId() < bI->getLocalId() ? sI : bI);
+
+            // Get IP to ip_inst.
+            //   IP-WA's call sequence must be inserted right before ip_inst and
+            //   IP must be stored in ip_wa's dst, not ip_inst's dst.
+            InstListType waInsts;
+            replaceIPWithCall(waInsts, ip_wa);
+
+            // find IP adjustment add and set mask offset to M16!
+            // (it is the 3rd inst!)
+            G4_INST* adjust_ip_add = nullptr;
+            for (auto tI : waInsts)
+            {
+                if (tI->opcode() == G4_add) {
+                    adjust_ip_add = tI;
+                    break;
+                }
+            }
+            assert(adjust_ip_add);
+            kernel.setMaskOffset(adjust_ip_add, InstOpt_M16);
+
+            auto ip_inst_ii = std::find(BB->begin(), BB->end(), ip_inst);
+            BB->insert(ip_inst_ii, waInsts.begin(), waInsts.end());
+
+            // remove placeholder
+            BB->remove(ip_wa);
+        }
+
+        // IP WA is applied if ip_inst isn't null.
         for (int i = 0; i < 2; ++i)
         {
             G4_INST* patch_add = (i == 0 ? callWAInfo.Small_patch : callWAInfo.Big_patch);
             G4_INST* ip_start = (i == 0 ? callWAInfo.Small_start : callWAInfo.Big_start);
+            if (ip_inst) {
+                // IP WA: ip is taken at ip_inst for both small and big targets.
+                ip_start = ip_inst;
+            }
             G4_INST* ip_end = (i == 0 ? callWAInfo.Small_call : callWAInfo.Big_call);
             G4_BB* start_bb = BB;
             G4_BB* end_bb = (i == 0 ? callWAInfo.Small_BB : callWAInfo.Big_BB);
@@ -385,7 +471,7 @@ void Optimizer::finishFusedCallWA()
     //       sync.nop        null{ Compacted,$4.src }
     //       call (8|M0)      r125.0   r125.0
     //
-    // To make this WA work,  call for SmallEU has to use r60, not r125, as below:
+    // To make call WA work,  call for SmallEU has to use r60, not r125, as below:
     //   call (8|M0)  r125.0 r60.0
     // Here propogate r60.0 down to call instruction
     // (For call, can just copy patch's dst to call's target. Here the code works
@@ -9509,7 +9595,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         return add_dst_decl;
     }
 
-    void Optimizer::replaceIPWithCall(InstListType& insts, G4_INST* add_with_ip)
+    void Optimizer::replaceIPWithCall(InstListType& insts, G4_INST* inst_with_ip)
     {
         // Expand
         //    add    dst      -IP   call_target
@@ -9520,13 +9606,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         //    ret    dst                           // jump to the next instruction
         //    add    dst     -dst    call_target   // at this intruction dst is the ip value
 
-        uint32_t reg_num = add_with_ip->getDst()->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
-        uint32_t reg_off = add_with_ip->getDst()->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()
-            / add_with_ip->getDst()->getTypeSize();
+        uint32_t reg_num = inst_with_ip->getDst()->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
+        uint32_t reg_off = inst_with_ip->getDst()->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()
+            / inst_with_ip->getDst()->getTypeSize();
         // call's dst must have sub-reg num 0 (HW restriction)
         assert(reg_off == 0);
         G4_Declare* dst_decl =
-            builder.createHardwiredDeclare(1, add_with_ip->getDst()->getType(), reg_num, reg_off);
+            builder.createHardwiredDeclare(1, inst_with_ip->getDst()->getType(), reg_num, reg_off);
 
         // call   dst     _label_ip_wa
         // NOTE: create the call and label instructions directly without forming a BB to skip the
@@ -9556,11 +9642,14 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             builder.createSrcRegRegion(dst_decl, builder.getRegionScalar()),
             nullptr, InstOpt_WriteEnable | InstOpt_NoCompact));
 
-        // update given add instruction's src0
-        G4_SrcRegRegion* new_src = builder.createSrcRegRegion(
-            dst_decl, builder.getRegionScalar());
-        new_src->setModifier(Mod_Minus);
-        add_with_ip->setSrc(new_src, 0);
+        // update given add instruction's src0 if needed
+        if (inst_with_ip->opcode() == G4_add)
+        {
+            G4_SrcRegRegion* new_src = builder.createSrcRegRegion(
+                dst_decl, builder.getRegionScalar());
+            new_src->setModifier(Mod_Minus);
+            inst_with_ip->setSrc(new_src, 0);
+        }
     }
 
     void Optimizer::createInstForJmpiSequence(InstListType& insts, G4_INST* fcall)
@@ -16639,16 +16728,49 @@ void Optimizer::applyFusedCallWA()
             kernel.m_maskOffWAInsts.insert(std::make_pair(I3, BB));
             kernel.m_indirectCallWAInfo.emplace(BB,
                 IndirectCallWAInfo(
-                    bigB0, smallB0, nullptr, nullptr,
+                    bigB0, smallB0, nullptr, nullptr, nullptr,
                     nullptr, nullptr, callI, nCallI));
         }
         else
         {
-            // relative target for small EU:  need to patch offset after swsb
-            //    I4_ip_start:   add t  (-ip) + smallTarget
-            //    I4_patch_add:  add I4Target  t   -0x33
-            //         where 0x33 should be the IP difference between I4_ip_start and call I4Target, patched later.
-            G4_VarBase* V_ip = builder.phyregpool.getIpReg();
+            // relative target:  need to patch offset after SWSB in finishFusedCallWA()
+
+            //
+            //    I4_ip_start:   add rSmallIP  (-ip)  smallTarget
+            //    I4_patch_add:  add I4Target  rSmallIP   -0x33333333
+            //    I5_ip_start:   add rBigIP  (-ip) + bigTarget
+            //    I5_patch_add:  add I5Target  rBigIP   -0x33333333
+            //       where 0x33333333 should be the IP difference between I4_ip_start and nCallI
+            //       (to I4Target), I5_ip_start and callI (I5Target), respectively.
+            //       and it is patched later.
+            // If IP WA is needed, will add the following:
+            //    ip_wa_mov:     mov  tIP    0x89ABCDEF                : placeholder.
+            //    I4_ip_start:   add  rSmallIP  -tIP  smallTarget
+            //    I4_patch_add:  add  I4Target  rSmallIP   -0x33333333 : patch needed
+            //    I5_ip_start:   add  rBigIP  -tIP  smallTarget
+            //    I5_patch_add:  add  I5Target  rBigIP   -0x33333333   : patch needed
+            //  where ip_wa_mov will be removed in finishFusedCallWA() with ip wa using in-place call.
+            //
+            G4_VarBase* V_ip = nullptr;
+            G4_INST* ip_wa_placeholder = nullptr;
+            if (builder.needIPWA())
+            {
+                // Need 2 DWs (grf-aligned) as using IP WA needs 2 DWs (return IP and call mask)
+                G4_Declare* tIP_dcl = builder.createTempVar(2, Type_D, builder.getGRFAlign(), "tIP");
+                V_ip = (G4_VarBase*)tIP_dcl->getRegVar();
+
+                // placeholder mov makes sure tIP has a valid live range.
+                G4_DstRegRegion* IP_WA_Dst = builder.createDst(V_ip, 0, 0, 1, Type_D);
+                G4_Imm* IP_WA_Src0 = builder.createImm(0x89ABCDEF, Type_D);
+                ip_wa_placeholder = builder.createMov(g4::SIMD1, IP_WA_Dst, IP_WA_Src0, InstOpt_WriteEnable, false);
+                BB->push_back(ip_wa_placeholder);
+            }
+            else
+            {
+                V_ip = (G4_VarBase*)builder.phyregpool.getIpReg();
+            }
+
+            // SmallEU
             G4_Declare* I4_IP = builder.createTempVar(1, Type_D, Any, "rSmallIP");
             G4_DstRegRegion* I4_Dst = builder.createDst(I4_IP->getRegVar(), 0, 0, 1, Type_D);
             G4_SrcRegRegion* I4_Src0 = builder.createSrcRegRegion(Mod_Minus, Direct, V_ip, 0, 0, builder.getRegionScalar(), Type_D);
@@ -16661,10 +16783,7 @@ void Optimizer::applyFusedCallWA()
             G4_Imm* I4_pSrc1 = builder.createImm(0x33333333, Type_D);  // to be patched later
             G4_INST* I4_patch_add = builder.createBinOp(G4_add, g4::SIMD1, I4_pDst, I4_pSrc0, I4_pSrc1, InstOpt_WriteEnable, false);
 
-            // relative target of bigEU: need to patch offset after swsb
-            //    I5_ip_start:   add t  (-ip) + bigTarget
-            //    I5_patch_add:  add I5Target  t   -0x33
-            //         where 0x33 should be the IP difference between I4_ip_start and call I4Target, patched later.
+            // BigEU
             G4_Declare* I5_IP = builder.createTempVar(1, Type_D, Any, "rBigIP");
             G4_DstRegRegion* I5_Dst = builder.createDst(I5_IP->getRegVar(), 0, 0, 1, Type_D);
             G4_SrcRegRegion* I5_Src0 = builder.createSrcRegRegion(Mod_Minus, Direct, V_ip, 0, 0, builder.getRegionScalar(), Type_D);
@@ -16705,7 +16824,8 @@ void Optimizer::applyFusedCallWA()
             // add indirect call wa info
             kernel.m_indirectCallWAInfo.emplace(BB,
                 IndirectCallWAInfo(
-                    bigB0, smallB0, I4_ip_start, I4_patch_add,
+                    bigB0, smallB0,
+                    ip_wa_placeholder, I4_ip_start, I4_patch_add,
                     I5_ip_start, I5_patch_add, callI, nCallI));
 
             kernel.m_maskOffWAInsts.insert(std::make_pair(I3, BB));

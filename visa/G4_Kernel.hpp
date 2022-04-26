@@ -202,6 +202,7 @@ public:
     // This map keeps  patch inst --> <ip_start_inst, ip_end_inst>
     // Once encoding is decided, label_path = IP(ip_end_inst) - IP(ip_start_inst)
     //
+    G4_INST* IP_WA_placeholder;   // IP WA, will be replaced with call if present
     G4_INST* Small_start;   // SmallEU start: add  t -ip      SmallTarget
     G4_INST* Small_patch;   // SmallEU patch: add  rSmallT t  <patchVal>
     G4_INST* Big_start;     // BigEU start :  add  t1 -ip      BigTarget
@@ -209,10 +210,12 @@ public:
     G4_INST* Big_call;
     G4_INST* Small_call;
     IndirectCallWAInfo(G4_BB* aBig_BB, G4_BB* aSmall_BB,
+        G4_INST* aIP_WA,
         G4_INST* aSmall_start, G4_INST* aSmall_patch,
         G4_INST* aBig_start, G4_INST* aBig_patch,
         G4_INST* aBig_call, G4_INST* aSmall_call)
-        : Big_BB(aBig_BB), Small_BB(aSmall_BB),
+        : IP_WA_placeholder(aIP_WA),
+          Big_BB(aBig_BB), Small_BB(aSmall_BB),
           Small_start(aSmall_start), Small_patch(aSmall_patch),
           Big_start(aBig_start), Big_patch(aBig_patch),
           Big_call(aBig_call), Small_call(aSmall_call)

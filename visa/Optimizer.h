@@ -301,8 +301,13 @@ private:
         InstListType& insts, G4_INST* fcall, int64_t adjust_off);
     // a helper function to create the instructions to get ip from call's dst
     // This is a WA for platforms can't support ip register
-    // The give add_with_ip must be an add instruction with ip register as its src0
-    void replaceIPWithCall(InstListType& insts, G4_INST* add_with_ip);
+    // The inst_with_ip must be:
+    //    1. an add instruction with ip register as its src0.
+    //       its src0 will be replaced with call's dst. or
+    //    2. a mov instruction.
+    //       its dst is used. No change to the mov instruction.
+    // In both case, the dst of inst_with_ip is used to save IP.
+    void replaceIPWithCall(InstListType& insts, G4_INST* inst_with_ip);
 
     void insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it);
 
