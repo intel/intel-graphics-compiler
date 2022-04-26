@@ -6412,7 +6412,7 @@ namespace {
         void PackHfResources(Function& F);
         void removeRedundantChannels(Function& F);
         bool allowedALUinst(Value* inst);
-        bool findStoreSequence(std::vector<Value*>& path);
+        bool findStoreSequence(std::vector<Instruction*>& path, std::vector< std::vector<Instruction*>> &allPath);
         bool adjGep(Value* gep0, Value* gep1, Value* gep2, uint32_t offset[3]);
     };
 }
@@ -6795,10 +6795,16 @@ bool HFfoldingOpt::allowedALUinst(Value* inst)
     return false;
 }
 
-bool HFfoldingOpt::findStoreSequence(std::vector<Value*>& path)
+bool HFfoldingOpt::findStoreSequence(std::vector<Instruction*>& path, std::vector< std::vector<Instruction*>> &allPath)
 {
-    // pathIndex=0,1,2 are the load instructions. No need to check them. Start checking pathIndex=3
+    // pathIndex=0,1,2 are the store instructions. No need to check them. Start checking pathIndex=3
     // save the sequence that generates the stored value.
+
+    // firstPath is the first set of instructions used to calculate the store to be removed.
+    // All sequences going into "path" need to match the same usage pattern as firstPath, which is allPath[0].
+
+    bool firstPath = (allPath.size() == 0 || allPath[0].size() == 0);
+
     uint pathIndex = 3;
     while (pathIndex < path.size())
     {
@@ -6806,26 +6812,63 @@ bool HFfoldingOpt::findStoreSequence(std::vector<Value*>& path)
         if (path.size() > 10)
             return false;
 
-        Instruction* inst = dyn_cast<Instruction>(path[pathIndex]);
+        if (!firstPath && allPath[0].size() <= pathIndex)
+            return false;
+
+        Instruction* inst = path[pathIndex];
+
         uint srciCount = inst->getNumOperands();
-        if (CallInst* cinst = dyn_cast<CallInst>(path[pathIndex]))
+        if (CallInst* cinst = dyn_cast<CallInst>(inst))
         {
             srciCount = cinst->getNumArgOperands();
         }
+
         for (uint srci = 0; srci < srciCount; srci++)
         {
-            if (dyn_cast<Constant>(inst->getOperand(srci)) ||
-                inst->getOperand(srci) == dyn_cast<Instruction>(path[0])->getOperand(0) ||
-                inst->getOperand(srci) == dyn_cast<Instruction>(path[1])->getOperand(0))
+            // the operands uses are constant
+            if (Constant* c = dyn_cast<Constant>(inst->getOperand(srci)))
             {
-                // the operands uses are constant, or the stored values from pStore0 and [1].
-                ;
+                // need to match with the constant used in the first set
+                if (!firstPath)
+                {
+                    Constant* c0 = dyn_cast<Constant>(allPath[0][pathIndex]->getOperand(srci));
+                    if (!c0 || c != c0)
+                        return false;
+                }
+            }
+            // the operands are the stored values from pStore0 and [1].
+            else if (inst->getOperand(srci) == path[0]->getOperand(0))
+            {
+                if (!firstPath)
+                {
+                    if (allPath[0][pathIndex]->getOperand(srci) != allPath[0][0]->getOperand(0))
+                    {
+                        return false;
+                    }
+                }
+            }
+            else if (inst->getOperand(srci) == path[1]->getOperand(0))
+            {
+                if (!firstPath)
+                {
+                    if (allPath[0][pathIndex]->getOperand(srci) != allPath[0][1]->getOperand(0))
+                    {
+                        return false;
+                    }
+                }
             }
             else if (allowedALUinst(inst->getOperand(srci)))
             {
+                if (!firstPath &&
+                    (dyn_cast<Instruction>(inst->getOperand(srci))->getOpcode() !=
+                    dyn_cast<Instruction>(allPath[0][pathIndex]->getOperand(srci))->getOpcode()))
+                {
+                    return false;
+                }
+
                 if (std::find(path.begin(), path.end(), inst->getOperand(srci)) == path.end())
                 {
-                    path.push_back(inst->getOperand(srci));
+                    path.push_back(dyn_cast<Instruction>(inst->getOperand(srci)));
                 }
             }
             else
@@ -6835,6 +6878,12 @@ bool HFfoldingOpt::findStoreSequence(std::vector<Value*>& path)
         }
         pathIndex++;
     }
+
+    if (!firstPath && allPath[0].size() != path.size())
+    {
+        return false;
+    }
+
     return true;
 }
 
@@ -6892,7 +6941,8 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
     and calculate %36 when we need to use it.
     In this example, the calculationg includes the fmul->fmul->fadd->fsub->sqrt sequence
     */
-    std::map<uint32_t, std::vector<Value*>> allGEP;
+
+    std::map<uint32_t, uint32_t> allGEP; // allGEP[offset, count]
     for (BasicBlock& bb : F)
     {
         for (Instruction& ii : bb)
@@ -6902,7 +6952,7 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
                 uint32_t arraySize, elmBytes, offset;
                 if (getGEPInfo(GEP, arraySize, elmBytes, offset))
                 {
-                    allGEP[offset].push_back(GEP);
+                    allGEP[offset]++;
                 }
             }
         }
@@ -6911,8 +6961,8 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
     // for both storeGepToRemove and loadGepToRemove, the structure is
     // storeGepToRemove[offset from inttoptr][std::vector of path];
     // where each path is a collection of instructions used to calculate the load/store being removed.
-    std::map<uint32_t, std::vector<std::vector<Value*>>> storeGepToRemove;
-    std::map<uint32_t, std::vector<std::vector<Value*>>> loadGepToRemove;
+    std::map<uint32_t, std::vector<std::vector<Instruction*>>> storeGepToRemove;
+    std::map<uint32_t, std::vector<std::vector<Instruction*>>> loadGepToRemove;
     uint32_t offset[3] = { 0, 0, 0 };
     for (BasicBlock& bb : F)
     {
@@ -6933,7 +6983,7 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
                             dyn_cast<LoadInst>(pLoad2->getNextNode())) &&
                             dyn_cast<Instruction>(pLoad2->getOperand(0)) != nullptr)
                         {
-                            std::vector<Value*>allLoads;
+                            std::vector<Instruction*>allLoads;
                             allLoads.push_back(pLoad0);
                             allLoads.push_back(pLoad1);
                             allLoads.push_back(pLoad2);
@@ -6951,18 +7001,17 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
                     if (StoreInst* pStore0 = dyn_cast<StoreInst>(pStore1->getPrevNode()))
                     {
                         bool gepCheck = adjGep(pStore0->getPointerOperand(), pStore1->getPointerOperand(), pStore2->getPointerOperand(), offset);
-
-                        if (gepCheck && !(pStore2->getNextNode() &&
-                            dyn_cast<StoreInst>(pStore2->getNextNode())) &&
-                            dyn_cast<Instruction>(pStore2->getOperand(0)) != nullptr)
+                        Instruction* pStore2Src0 = dyn_cast<Instruction>(pStore2->getOperand(0));
+                        if (gepCheck && pStore2Src0 && !(pStore2->getNextNode() &&
+                            dyn_cast<StoreInst>(pStore2->getNextNode())))
                         {
-                            std::vector<Value*>path;
+                            std::vector<Instruction*>path;
                             path.push_back(pStore0);
                             path.push_back(pStore1);
                             path.push_back(pStore2);
-                            path.push_back(pStore2->getOperand(0));
+                            path.push_back(pStore2Src0);
 
-                            if (findStoreSequence(path))
+                            if (findStoreSequence(path, storeGepToRemove[offset[2]]))
                             {
                                 storeGepToRemove[offset[2]].push_back(path);
                             }
@@ -6976,10 +7025,10 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
     // if the total number of load/store qualified for the opt is not the same as the total number of all load/store
     // with the same offset, we can not apply the optimization on load/store with this offset.
     // Remove it from storeGepToRemove.
-    for (auto iter = storeGepToRemove.begin(); iter != storeGepToRemove.end(); iter++)
+    for (auto iter = storeGepToRemove.cbegin(), next_it = iter; iter != storeGepToRemove.cend(); iter = next_it)
     {
-        uint32_t index = iter->first;
-        if (allGEP[index].size() != storeGepToRemove[index].size() + loadGepToRemove[index].size())
+        ++next_it;
+        if (allGEP[iter->first] != storeGepToRemove[iter->first].size() + loadGepToRemove[iter->first].size())
         {
             storeGepToRemove.erase(iter);
         }
@@ -6988,36 +7037,33 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
     if (storeGepToRemove.size() == 0)
         return;
 
-    // todo: check if all the sequence used to calculate pStore2 is the same
-
     // start removing load/store/gep
     for (auto iter = storeGepToRemove.begin(); iter != storeGepToRemove.end(); iter++)
     {
         llvm::ValueToValueMapTy vmap;
         // create pattern for the load
-        std::vector<Value*> copyFromSet = storeGepToRemove[iter->first][0];
+        std::vector<Instruction*> copyFromSet = storeGepToRemove[iter->first][0];
         for (auto copyToInst : loadGepToRemove[iter->first])
         {
-            Instruction* insertPos = cast<Instruction>(copyToInst[2])->getNextNode();
+            Instruction* insertPos = copyToInst[2]->getNextNode();
             Instruction* newInst = nullptr;
             for (uint i = copyFromSet.size() - 1; i > 2; i--)
             {
                 // copy the pattern
-                Instruction* copyFromSetInst = cast<Instruction>(copyFromSet[i]);
-                newInst = copyFromSetInst->clone();
+                newInst = copyFromSet[i]->clone();
                 vmap[copyFromSet[i]] = newInst;
                 newInst->insertBefore(insertPos);
                 llvm::RemapInstruction(newInst, vmap,
                     RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
 
                 // set the operand using the other stored values
-                for (uint srci = 0; srci < copyFromSetInst->getNumOperands(); srci++)
+                for (uint srci = 0; srci < copyFromSet[i]->getNumOperands(); srci++)
                 {
-                    if (copyFromSetInst->getOperand(srci) == cast<Instruction>(storeGepToRemove[iter->first][0][0])->getOperand(0))
+                    if (copyFromSet[i]->getOperand(srci) == storeGepToRemove[iter->first][0][0]->getOperand(0))
                     {
                         newInst->setOperand(srci, copyToInst[0]);
                     }
-                    if (copyFromSetInst->getOperand(srci) == cast<Instruction>(storeGepToRemove[iter->first][0][1])->getOperand(0))
+                    if (copyFromSet[i]->getOperand(srci) == storeGepToRemove[iter->first][0][1]->getOperand(0))
                     {
                         newInst->setOperand(srci, copyToInst[1]);
                     }
@@ -7027,15 +7073,14 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
             // remove load
             IGC_ASSERT(newInst);
             copyToInst[2]->replaceAllUsesWith(newInst);
-            cast<Instruction>(copyToInst[2])->eraseFromParent();
+            copyToInst[2]->eraseFromParent();
         }
 
         // remove store
         for (uint storeIndex = 0; storeIndex < storeGepToRemove[iter->first].size(); storeIndex++)
         {
-            StoreInst* stInst = cast<StoreInst>(storeGepToRemove[iter->first][storeIndex][2]);
-            stInst->dropAllReferences();
-            stInst->eraseFromParent();
+            storeGepToRemove[iter->first][storeIndex][2]->dropAllReferences();
+            storeGepToRemove[iter->first][storeIndex][2]->eraseFromParent();
         }
     }
 }
