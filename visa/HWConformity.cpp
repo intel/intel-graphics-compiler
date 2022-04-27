@@ -8960,7 +8960,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
                     }
                     else if (ss == 2)
                     {
-                        bool Aligned = srcAligned && dstAligned
+                        bool Aligned = srcAligned && dstAligned && (numRows == 1)
                             && !(i == 1 && TypeSize(dstTy) == 1 && VISA_WA_CHECK(builder.getPWaTable(), Wa_16012383669))
                             && ((dstSubRegOff % (32 / TypeSize(dstTy))) == (srcSubRegOff / TypeSize(dstTy)));
                         needFix |= !Aligned;
@@ -8981,13 +8981,13 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
                     }
                     else if (ss == 4)
                     {
-                        bool Aligned = srcAligned && dstAligned
+                        bool Aligned = srcAligned && dstAligned && (numRows == 1)
                             && ((2 * (dstSubRegOff % 16)) == (srcSubRegOff / 2));
                         needFix |= !Aligned;
                     }
                     else if (ss == 8)
                     {
-                        bool Aligned = srcAligned && dstAligned
+                        bool Aligned = srcAligned && dstAligned && (numRows == 1)
                             && ((2 * (dstSubRegOff % 8)) == (srcSubRegOff / 4));
                         needFix |= !Aligned;
                     }
@@ -9004,7 +9004,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
                     }
                     else if (ss == 4)
                     {
-                        bool Aligned = srcAligned && dstAligned
+                        bool Aligned = srcAligned && dstAligned && (numRows == 1)
                             && ((dstSubRegOff % 32) == (srcSubRegOff / 2));
                         // change dstAligned to false, so we need a pack-shift
                         // in the end of the fix
@@ -9017,7 +9017,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
                     }
                     else if (ss == 8)
                     {
-                        bool Aligned = srcAligned && dstAligned
+                        bool Aligned = srcAligned && dstAligned && (numRows == 1)
                             && ((dst->getSubRegOff() % 16) == (srcSubRegOff / 4));
                         needFix |= !Aligned;
                     }
@@ -9035,13 +9035,13 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
                     }
                     else if (ss == 2)
                     {
-                        bool Aligned = srcAligned && dstAligned
+                        bool Aligned = srcAligned && dstAligned && (numRows == 1)
                             && ((dstSubRegOff % 32) == (srcSubRegOff / 2));
                         needFix |= !Aligned;
                     }
                     else if (ss == 4)
                     {
-                        bool Aligned = srcAligned && dstAligned
+                        bool Aligned = srcAligned && dstAligned && (numRows == 1)
                             && ((dstSubRegOff % 16) == (srcSubRegOff / 4));
                         // change dstAligned to false, so we need a pack-shift
                         // in the end of the fix
