@@ -54,9 +54,10 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
     auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // invoke_simd is allowed only on compute path.
     auto OCLCtx = static_cast<OpenCLProgramContext*>(Ctx);
+    bool forceBinaryLinking = false;
     if (OCLCtx->m_VISAAsmToLink.empty()) {
-        OCLCtx->EmitError("invoke_simd is currently allowed only with direct calls, callee definition must be provided.", &CI);
-        return;
+        OCLCtx->EmitWarning("It seems that definition is not provided for invoke_simd target. Link-time optimizations will not be triggered.");
+        forceBinaryLinking = true;
     }
 
     // First argument is a function pointer. We need to bitcast it to lowered type.
@@ -82,10 +83,15 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
             Callee->setName(Callee->getName() + ".old");
             NewFunc = Function::Create(FTy, Callee->getLinkage(), oldName, *Callee->getParent());
             NewFunc->setAttributes(Callee->getAttributes());
-            NewFunc->addFnAttr(FNATTR_INVOKE_SIMD_TARGET);
-            if (NewFunc->hasFnAttribute(FNATTR_REFERENCED_INDIRECTLY)) {
-                NewFunc->removeFnAttr(FNATTR_REFERENCED_INDIRECTLY);
+
+            // If we don't have the definition in .visaasm, revert to regular binary linking.
+            if(!forceBinaryLinking) {
+                NewFunc->addFnAttr(FNATTR_INVOKE_SIMD_TARGET);
+                if (NewFunc->hasFnAttribute(FNATTR_REFERENCED_INDIRECTLY)) {
+                   NewFunc->removeFnAttr(FNATTR_REFERENCED_INDIRECTLY);
+                }
             }
+
             NewFunc->setCallingConv(Callee->getCallingConv());
             m_OldFuncToNewFuncMap[Callee] = NewFunc;
         } else {
