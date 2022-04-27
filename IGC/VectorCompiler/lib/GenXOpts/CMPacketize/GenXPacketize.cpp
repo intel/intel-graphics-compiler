@@ -818,7 +818,7 @@ Value *GenXPacketize::packetizeLLVMIntrinsic(Instruction *pInst) {
   // packetize intrinsic operands
   std::vector<Type *> vectorArgTys;
   std::vector<Value *> packetizedArgs;
-  for (auto &operand : pCall->arg_operands()) {
+  for (auto &operand : IGCLLVM::args(pCall)) {
     auto VV = getPacketizeValue(operand.get());
     packetizedArgs.push_back(VV);
     vectorArgTys.push_back(VV->getType());

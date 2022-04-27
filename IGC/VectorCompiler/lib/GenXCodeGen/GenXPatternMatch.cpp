@@ -42,7 +42,6 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "GENX_PATTERN_MATCH"
 #include "GenX.h"
 #include "GenXConstants.h"
 #include "GenXModule.h"
@@ -63,7 +62,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/InstVisitor.h"
-#include "llvm/IR/Instructions.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PatternMatch.h"
@@ -75,6 +74,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 
+#include "llvmWrapper/ADT/APInt.h"
 #include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -92,6 +92,8 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace llvm::PatternMatch;
 using namespace genx;
+
+#define DEBUG_TYPE "GENX_PATTERN_MATCH"
 
 STATISTIC(NumOfMadMatched, "Number of mad instructions matched");
 STATISTIC(NumOfMinMaxMatched, "Number of min/max instructions matched");
@@ -2963,34 +2965,34 @@ static void decomposeUDivNotPow2(BinaryOperator &UDivOp) {
                 : cast<ConstantInt>(Divisor))
           ->getValue();
 
-  APInt::mu MagicStruct = DivisorVal.magicu();
+  IGCLLVM::UnsignedDivisonByConstantInfo MagicStruct = IGCLLVM::getAPIntMagicUnsigned(DivisorVal);
   const int ElementBitWidth =
       Divisor->getType()->getScalarType()->getIntegerBitWidth();
   // Even divisors, can pre-shift the dividend to avoid
   // extra work at the end.
   Value *ShiftedDividend = Dividend;
   // Need addition and y is 2 * y'.
-  if (MagicStruct.a && !DivisorVal[0]) {
+  if (IGCLLVM::IsAddition(MagicStruct) && !DivisorVal[0]) {
     unsigned ShiftSizeRaw = DivisorVal.countTrailingZeros();
     Constant *ShiftSize =
         Constant::getIntegerValue(OperationTy, APInt{32, ShiftSizeRaw});
     ShiftedDividend = Builder.CreateLShr(ShiftedDividend, ShiftSize);
-    MagicStruct = DivisorVal.lshr(ShiftSizeRaw).magicu(ShiftSizeRaw);
+    MagicStruct = IGCLLVM::getAPIntMagicUnsigned(DivisorVal.lshr(ShiftSizeRaw), ShiftSizeRaw);
 
     // Should not change addition quality.
-    IGC_ASSERT_MESSAGE(!MagicStruct.a, "expected to subtract now");
-    IGC_ASSERT_MESSAGE(MagicStruct.s < DivisorVal.getBitWidth(),
+    IGC_ASSERT_MESSAGE(!IGCLLVM::IsAddition(MagicStruct), "expected to subtract now");
+    IGC_ASSERT_MESSAGE(IGCLLVM::ShiftAmount(MagicStruct) < DivisorVal.getBitWidth(),
                        "undefined shift");
   }
-  Constant *MagicConst = Constant::getIntegerValue(OperationTy, MagicStruct.m);
+  Constant *MagicConst = Constant::getIntegerValue(OperationTy, IGCLLVM::MagicNumber(MagicStruct));
   Value *MulH = vc::createAnyIntrinsic(Builder, {ShiftedDividend, MagicConst},
                                         GenXIntrinsic::genx_umulh,
                                         {OperationTy, OperationTy}, "opt");
 
   Value *Res = nullptr;
-  if (!MagicStruct.a) {
+  if (!IGCLLVM::IsAddition(MagicStruct)) {
     Constant *Shift =
-        Constant::getIntegerValue(OperationTy, APInt{32, MagicStruct.s});
+        Constant::getIntegerValue(OperationTy, APInt{32, IGCLLVM::ShiftAmount(MagicStruct)});
     Res = Builder.CreateLShr(MulH, Shift);
   } else {
     Value *Fixup = Builder.CreateSub(Dividend, MulH, "q_appx");
@@ -2998,7 +3000,7 @@ static void decomposeUDivNotPow2(BinaryOperator &UDivOp) {
     Fixup = Builder.CreateLShr(Fixup, One);
     Value *Addition = Builder.CreateAdd(Fixup, MulH, "q_appx_add");
     Constant *Shift =
-        Constant::getIntegerValue(OperationTy, APInt{32, MagicStruct.s - 1});
+        Constant::getIntegerValue(OperationTy, APInt{32, IGCLLVM::ShiftAmount(MagicStruct) - 1});
     Res = Builder.CreateLShr(Addition, Shift);
   }
   IGC_ASSERT(Res);
@@ -3394,7 +3396,7 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
       unsigned NumOpnds = Inst->getNumOperands();
       auto CI = dyn_cast<CallInst>(Inst);
       if (CI)
-        NumOpnds = CI->getNumArgOperands();
+        NumOpnds = IGCLLVM::getNumArgOperands(CI);
       for (unsigned i = 0, e = NumOpnds; i != e; ++i) {
         auto C = dyn_cast<Constant>(Inst->getOperand(i));
         if (!C || isa<UndefValue>(C))

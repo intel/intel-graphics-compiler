@@ -210,7 +210,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Instructions.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Support/CommandLine.h"
@@ -715,7 +715,7 @@ void GenXSimdCFConformance::gatherGotoJoinEMVals(bool IncludeIncoming)
         if (!GotoJoin)
           continue;
         if (FG && (FGA->getGroup(GotoJoin->getParent()->getParent()) != FG
-            || ui->getOperandNo() != GotoJoin->getNumArgOperands()))
+            || ui->getOperandNo() != IGCLLVM::getNumArgOperands(GotoJoin)))
           continue;
         // We have a goto/join (in our function group in the case of the late
         // pass).  Add the EM value (struct index 0) to EMVals.
@@ -747,7 +747,7 @@ void GenXSimdCFConformance::gatherEMVals()
     if (!Savemask)
       continue;
     if (FG && (FGA->getGroup(Savemask->getParent()->getParent()) != FG ||
-               ui->getOperandNo() != Savemask->getNumArgOperands()))
+               ui->getOperandNo() != IGCLLVM::getNumArgOperands(Savemask)))
       continue;
       lowerSimdCF = true;
     // Add its EM input to EMVals, if not a constant.
@@ -763,7 +763,7 @@ void GenXSimdCFConformance::gatherEMVals()
     if (!Unmask)
       continue;
     if (FG && (FGA->getGroup(Unmask->getParent()->getParent()) != FG ||
-               ui->getOperandNo() != Unmask->getNumArgOperands()))
+               ui->getOperandNo() != IGCLLVM::getNumArgOperands(Unmask)))
       continue;
       lowerSimdCF = true;
     // We have a unmask (in our function group in the case of the late
@@ -777,7 +777,7 @@ void GenXSimdCFConformance::gatherEMVals()
     if (!Remask)
       continue;
     if (FG && (FGA->getGroup(Remask->getParent()->getParent()) != FG ||
-               ui->getOperandNo() != Remask->getNumArgOperands()))
+               ui->getOperandNo() != IGCLLVM::getNumArgOperands(Remask)))
       continue;
       lowerSimdCF = true;
     // We have a remask (in our function group in the case of the late
@@ -1747,7 +1747,7 @@ bool GenXSimdCFConformance::hoistJoin(CallInst *Join)
   // However, if we find such an instruction and it is an extractvalue from the
   // result of an earlier goto/join in a different block, we can just move it
   // to after that goto/join.
-  for (unsigned oi = 0, oe = Join->getNumArgOperands(); oi != oe; ++oi) {
+  for (unsigned oi = 0, oe = IGCLLVM::getNumArgOperands(Join); oi != oe; ++oi) {
     auto Opnd = dyn_cast<Instruction>(Join->getOperand(oi));
     if (!Opnd || isa<PHINode>(Opnd))
       continue;
@@ -2437,7 +2437,7 @@ static bool checkAllUsesAreSelectOrWrRegion(Value *V)
     if (GenXIntrinsic::isWrRegion(IID))
       continue;
     if (IID == GenXIntrinsic::genx_wrpredpredregion
-        && OpNum == cast<CallInst>(User2)->getNumArgOperands() - 1)
+        && OpNum == IGCLLVM::getNumArgOperands(cast<CallInst>(User2)) - 1)
       continue;
     if (GenXIntrinsic::isAnyNonTrivialIntrinsic(IID)
         && !cast<CallInst>(User2)->doesNotAccessMemory())
@@ -2617,7 +2617,7 @@ bool GenXSimdCFConformance::getConnectedVals(
         // about that.
         auto ValTy = IndexFlattener::getElementType(
             Val.getType(), Val.getIndex());
-        for (unsigned Idx = 0, End = CI->getNumArgOperands(); ; ++Idx) {
+        for (unsigned Idx = 0, End = IGCLLVM::getNumArgOperands(CI); ; ++Idx) {
           if (Idx == End)
             return false; // no corresponding call arg found
           if (CI->getArgOperand(Idx)->getType() == ValTy) {
@@ -2778,7 +2778,7 @@ bool GenXSimdCFConformance::getConnectedVals(
           break;
         case GenXIntrinsic::genx_wrpredpredregion:
           // Use in wrpredpredregion allowed as the last arg.
-          if (ui->getOperandNo() + 1 != CI->getNumArgOperands())
+          if (ui->getOperandNo() + 1 != IGCLLVM::getNumArgOperands(CI))
             UsersToLower.push_back(SimpleValue(User, ui->getOperandNo()));
           break;
         default:
@@ -3697,7 +3697,7 @@ void GenXSimdCFConformance::replaceGotoJoinUses(CallInst *GotoJoin,
           continue;
         unsigned NumOperands = I->getNumOperands();
         if (auto CI = dyn_cast<CallInst>(I))
-          NumOperands = CI->getNumArgOperands();
+          NumOperands = IGCLLVM::getNumArgOperands(CI);
         V = nullptr;
         if (NumOperands == 1)
           V = I->getOperand(0);

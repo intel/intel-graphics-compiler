@@ -101,7 +101,6 @@ SPDX-License-Identifier: MIT
 /// flag pressure.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_DEPRESSURIZER"
 
 #include "FunctionGroup.h"
 #include "GenX.h"
@@ -126,6 +125,8 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace genx;
+
+#define DEBUG_TYPE "GENX_DEPRESSURIZER"
 
 static cl::opt<unsigned>
     LimitGenXDepressurizer("limit-genx-depressurizer", cl::init(UINT_MAX),

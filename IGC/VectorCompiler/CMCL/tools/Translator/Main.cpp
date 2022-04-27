@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "cmcl/Support/BuiltinTranslator.h"
 
+#include <llvm/Pass.h>
 #include <llvm/Bitcode/BitcodeWriterPass.h>
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/LLVMContext.h>

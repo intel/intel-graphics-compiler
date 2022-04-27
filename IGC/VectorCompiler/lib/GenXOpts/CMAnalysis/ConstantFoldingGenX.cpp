@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/CallSite.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "genx-constantfolding"
 
@@ -255,7 +256,7 @@ Constant *llvm::ConstantFoldGenX(Instruction *I, const DataLayout &DL) {
     return nullptr;
 
   SmallVector<Constant *, 4> ConstantArgs;
-  ConstantArgs.reserve(CS.getNumArgOperands());
+  ConstantArgs.reserve(IGCLLVM::getNumArgOperands(&CS));
   auto FoldOperand = [&DL](const Use &A) {
     auto *C = cast<Constant>(A.get());
     Constant *Folded = ConstantFoldConstant(C, DL);

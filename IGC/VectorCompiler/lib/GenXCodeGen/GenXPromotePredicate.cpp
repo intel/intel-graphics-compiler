@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "GENX_PROMOTE_PREDICATE"
 
 #include "GenX.h"
 #include "GenXUtil.h"
@@ -27,6 +26,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+
+#define DEBUG_TYPE "GENX_PROMOTE_PREDICATE"
 
 using namespace llvm;
 using namespace genx;

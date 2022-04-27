@@ -214,7 +214,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         else
         {
             IGC_ASSERT(II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed);
-            IGC_ASSERT(2 < II->getNumArgOperands());
+            IGC_ASSERT(2 < IGCLLVM::getNumArgOperands(II));
             IGC_ASSERT(nullptr != II->getArgOperand(2));
 
             Ty = II->getArgOperand(2)->getType();

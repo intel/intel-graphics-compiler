@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/PassRegistry.h"
-#include "llvm/Transforms/InstCombine/InstCombineWorklist.h"
+#include "llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h"
 #include "llvm/IR/PassManager.h"
 #include "Compiler/InitializePasses.h"
 

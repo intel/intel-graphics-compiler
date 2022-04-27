@@ -42,6 +42,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
@@ -767,7 +768,7 @@ namespace IGC {
 
             if (!call0->getCalledFunction() ||
                 call0->getCalledFunction() != call1->getCalledFunction() ||
-                !call0->getCalledFunction()->doesNotReadMemory() ||
+                !IGCLLVM::onlyWritesMemory(call0->getCalledFunction()) ||
                 call0->isConvergent())
             {
                 return false;

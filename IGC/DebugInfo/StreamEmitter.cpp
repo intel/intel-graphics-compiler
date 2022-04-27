@@ -16,6 +16,7 @@ See LICENSE.TXT for details.
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/ADT/STLExtras.h"
+#include "llvmWrapper/MC/MCStreamer.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/MC/MCAsmBackend.h"
@@ -32,7 +33,7 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/TargetRegistry.h"
+#include "llvmWrapper/Support/TargetRegistry.h"
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
@@ -322,7 +323,16 @@ public:
   }
 #endif
 
-  bool writeNopData(raw_ostream &OS, uint64_t Count) const override {
+#if LLVM_VERSION_MAJOR < 14
+  bool writeNopData(raw_ostream &OS, uint64_t Count) const override
+  {
+      return writeNopData(OS, Count, nullptr);
+  }
+
+  bool writeNopData(raw_ostream &OS, uint64_t Count, const MCSubtargetInfo *STI) const {
+#else
+  bool writeNopData(raw_ostream &OS, uint64_t Count, const MCSubtargetInfo *STI) const override {
+#endif
     const char nop = (char)0x90;
     for (uint64_t i = 0; i < Count; ++i) {
       OS.write(&nop, 1);
@@ -417,7 +427,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream &outStream,
                                     std::move(pObjectWriter),
                                     std::move(pCodeEmitter), isRelaxAll);
 
-  m_pMCStreamer->InitSections(isNoExecStack);
+  IGCLLVM::initSections(m_pMCStreamer, isNoExecStack, m_pContext);
 }
 
 StreamEmitter::~StreamEmitter() {

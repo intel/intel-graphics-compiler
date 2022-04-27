@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/Instructions.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -82,7 +82,7 @@ unsigned GenXIntrinsicInfo::getTrailingNullZoneStart(CallInst *CI) const {
     return CI->getNumOperands();
   unsigned BaseArg = AI->getArgIdx();
   unsigned TrailingNullStart = BaseArg;
-  for (unsigned Idx = BaseArg; Idx < CI->getNumArgOperands(); ++Idx) {
+  for (unsigned Idx = BaseArg; Idx < IGCLLVM::getNumArgOperands(CI); ++Idx) {
     if (auto CA = dyn_cast<Constant>(CI->getArgOperand(Idx)))
       if (CA->isNullValue())
         continue;

@@ -86,7 +86,7 @@ void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst& I)
             I.getIntrinsicID(),
             builder.getFloatTy());
 
-        for (unsigned i = 0; i < I.getNumArgOperands(); ++i)
+        for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(&I); ++i)
         {
             if (I.getOperand(i)->getType()->isHalfTy())
             {
@@ -124,7 +124,7 @@ void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst& I)
             I.getIntrinsicID(),
             builder.getFloatTy());
 
-        for (unsigned i = 0; i < I.getNumArgOperands(); ++i)
+        for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(&I); ++i)
         {
             if (I.getOperand(i)->getType()->isHalfTy())
             {

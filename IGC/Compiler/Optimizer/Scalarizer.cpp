@@ -196,7 +196,7 @@ void ScalarizeFunction::buildExclusiveSet()
         std::vector<llvm::Value*> workset;
         if (GenIntrinsicInst * GII = dyn_cast<GenIntrinsicInst>(currInst))
         {
-            unsigned numOperands = GII->getNumArgOperands();
+            unsigned numOperands = IGCLLVM::getNumArgOperands(GII);
             for (unsigned i = 0; i < numOperands; i++)
             {
                 Value* operand = GII->getArgOperand(i);
@@ -391,7 +391,7 @@ void ScalarizeFunction::recoverNonScalarizableInst(Instruction* Inst)
     // Iterate over all arguments. Check that they all exist (or rebuilt)
     if (CallInst * CI = dyn_cast<CallInst>(Inst))
     {
-        unsigned numOperands = CI->getNumArgOperands();
+        unsigned numOperands = IGCLLVM::getNumArgOperands(CI);
         for (unsigned i = 0; i < numOperands; i++)
         {
             Value* operand = CI->getArgOperand(i);

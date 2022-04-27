@@ -3490,13 +3490,13 @@ void EmitPass::emitSetMessagePhaseType(GenIntrinsicInst* inst, VISA_Type type) {
 
 void EmitPass::emitSetMessagePhaseX_legacy(GenIntrinsicInst* inst)
 {
-    Type* pTy = inst->getArgOperand(inst->getNumArgOperands() - 1)->getType();
+    Type* pTy = inst->getArgOperand(IGCLLVM::getNumArgOperands(inst) - 1)->getType();
     unsigned size = pTy->getScalarSizeInBits() / 8;
     emitSetMessagePhaseType_legacy(inst, GetTypeFromSize(size));
 }
 
 void EmitPass::emitSetMessagePhaseX(GenIntrinsicInst* inst) {
-    Type* pTy = inst->getArgOperand(inst->getNumArgOperands() - 1)->getType();
+    Type* pTy = inst->getArgOperand(IGCLLVM::getNumArgOperands(inst) - 1)->getType();
     unsigned size = pTy->getScalarSizeInBits() / 8;
     emitSetMessagePhaseType(inst, GetTypeFromSize(size));
 }
@@ -4335,7 +4335,7 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
 {
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
     // temp variable should be the same type as the destination
-    bool perspective = cast<ConstantInt>(inst->getOperand(inst->getNumArgOperands() - 1))->getZExtValue() != 0;
+    bool perspective = cast<ConstantInt>(inst->getOperand(IGCLLVM::getNumArgOperands(inst) - 1))->getZExtValue() != 0;
     EU_PIXEL_INTERPOLATOR_INTERPOLATION_MODE interpolationMode =
         perspective ? EU_PI_MESSAGE_PERSPECTIVE_INTERPOLATION : EU_PI_MESSAGE_LINEAR_INTERPOLATION;
     if (interpolationMode == EU_PI_MESSAGE_LINEAR_INTERPOLATION)
@@ -10261,7 +10261,7 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst* inst, SmallVector<St
     if (success)
     {
         // Check the input constraint tokens
-        for (unsigned i = 0; i < inst->getNumArgOperands(); i++, index++)
+        for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(inst); i++, index++)
         {
             CVariable* cv = GetSymbol(inst->getArgOperand(i));
             success &= CheckConstraintTypes(constraints[index], cv);
@@ -10311,7 +10311,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
     {
         opnds.push_back(m_destination);
     }
-    for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
+    for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(inst); i++)
     {
         CVariable* cv = GetSymbol(inst->getArgOperand(i));
         opnds.push_back(cv);
@@ -12062,7 +12062,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
     std::vector<CVariable*> argsOnStack;
     SmallVector<std::tuple<CVariable*, Type*, uint32_t>, 8> argsOnRegister;
 
-    for (uint32_t i = 0; i < inst->getNumArgOperands(); i++)
+    for (uint32_t i = 0; i < IGCLLVM::getNumArgOperands(inst); i++)
     {
         Value* operand = inst->getArgOperand(i);
         CVariable* Src = GetSymbol(operand);
@@ -15152,7 +15152,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     ForceDMask();
     // Currently, Dword Atomics can be called by matching 2 intrinsics. One is the DwordAtomicRaw
     // and AtomicCmpXchg (which has 2 srcs unlike the other atomics).
-    IGC_ASSERT(pInsn->getNumArgOperands() == 4);
+    IGC_ASSERT(IGCLLVM::getNumArgOperands(pInsn) == 4);
 
     /// Immediate Atomics return the value before the atomic operation is performed. So that flag
     /// needs to be set for this.
@@ -15397,7 +15397,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
     ForceDMask();
     // Currently, Dword Atomics can be called by matching 2 intrinsics. One is the DwordAtomicRaw
     // and AtomicCmpXchg (which has 2 srcs unlike the other atomics).
-    IGC_ASSERT(pInsn->getNumArgOperands() == 6);
+    IGC_ASSERT(IGCLLVM::getNumArgOperands(pInsn) == 6);
 
     /// Immediate Atomics return the value before the atomic operation is performed. So that flag
     /// needs to be set for this.
@@ -16048,7 +16048,7 @@ LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool Invalidat
 void EmitPass::emitMemoryFence(llvm::Instruction* inst)
 {
     static constexpr int ExpectedNumberOfArguments = 7;
-    IGC_ASSERT(cast<CallInst>(inst)->getNumArgOperands() == ExpectedNumberOfArguments);
+    IGC_ASSERT(IGCLLVM::getNumArgOperands(cast<CallInst>(inst)) == ExpectedNumberOfArguments);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     // If passed a non-constant value for any of the parameters,
@@ -17090,7 +17090,7 @@ void EmitPass::emitfitof(llvm::GenIntrinsicInst* inst)
 // Emit FP Operations (FPO) using round-to-zero (rtz)
 void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
 {
-    IGC_ASSERT_MESSAGE(inst->getNumArgOperands() >= 2, "ICE: incorrect gen intrinsic");
+    IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) >= 2, "ICE: incorrect gen intrinsic");
 
     GenISAIntrinsic::ID GID = inst->getIntrinsicID();
     CVariable* src0 = GetSymbol(inst->getOperand(0));
@@ -17126,7 +17126,7 @@ void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
 
 // Emit FP mad (FMA) using round-to-positive-infinity (rtp)
 void EmitPass::emitFMArtp(llvm::GenIntrinsicInst *inst) {
-  IGC_ASSERT_MESSAGE(inst->getNumArgOperands() == 3, "ICE: incorrect gen intrinsic");
+  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) == 3, "ICE: incorrect gen intrinsic");
 
   CVariable *src0 = GetSymbol(inst->getOperand(0));
   CVariable *src1 = GetSymbol(inst->getOperand(1));
@@ -17143,7 +17143,7 @@ void EmitPass::emitFMArtp(llvm::GenIntrinsicInst *inst) {
 
 // Emit FP mad (FMA) using round-to-negative-infinity (rtn)
 void EmitPass::emitFMArtn(llvm::GenIntrinsicInst *inst) {
-  IGC_ASSERT_MESSAGE(inst->getNumArgOperands() == 3, "ICE: incorrect gen intrinsic");
+  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) == 3, "ICE: incorrect gen intrinsic");
 
   CVariable *src0 = GetSymbol(inst->getOperand(0));
   CVariable *src1 = GetSymbol(inst->getOperand(1));

@@ -88,12 +88,12 @@ namespace IGC
         /// @brief Returns the alignment for V, if it is known.
         ///        Otherwise, returns the maximum alignment.
         /// @param V the value the alignment of which we're interested in
-        unsigned int getAlignValue(llvm::Value* V) const;
+        auto getAlignValue(llvm::Value* V) const;
 
         /// @brief Returns the alignment of a constant integer.
         ///        This is normally 1 << ctz(C) (the highest power of 2 that divides C),
         ///        except when C is 0, when it is the max alignment
-        unsigned int getConstantAlignment(uint64_t C) const;
+        auto getConstantAlignment(uint64_t C) const;
 
         /// @brief This map stores the known alignment of every value.
         llvm::MapVector<llvm::Value*, unsigned int> m_alignmentMap;

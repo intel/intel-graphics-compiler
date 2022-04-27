@@ -248,7 +248,7 @@ void BIConvert::runOnModule(Module &M) {
           tys0[0] = InstCall->getArgOperand(0)->getType();
           // build argument list for the 1st intrinsic
           args0.append(InstCall->op_begin(),
-                       InstCall->op_begin() + InstCall->getNumArgOperands());
+                       InstCall->op_begin() + IGCLLVM::getNumArgOperands(InstCall));
           Function *IntrinFunc0 =
               GenXIntrinsic::getAnyDeclaration(&M, pair.first, tys0);
           Instruction *IntrinCall0 = CallInst::Create(
@@ -396,7 +396,7 @@ static void removeFunctionBitcasts(Module &M) {
             }
 
             std::vector<Value *> Args;
-            for (unsigned I = 0, E = pInstCall->getNumArgOperands(); I != E;
+            for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(pInstCall); I != E;
                  ++I) {
               Args.push_back(pInstCall->getArgOperand(I));
             }

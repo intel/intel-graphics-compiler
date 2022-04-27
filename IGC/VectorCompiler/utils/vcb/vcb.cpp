@@ -24,11 +24,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/InitLLVM.h>
-#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/ToolOutputFile.h>
 
 #include <llvm/Pass.h>
 #include <llvmWrapper/Target/TargetMachine.h>
+#include <llvmWrapper/Support/TargetRegistry.h>
 
 using namespace llvm;
 
@@ -121,7 +121,7 @@ void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform) {
   sys::fs::OpenFlags Flags = TextOutput ? sys::fs::OF_Text : sys::fs::OF_None;
   ToolOutputFile Output{OutputFilename, EC, Flags};
   if (EC)
-    report_fatal_error("Can't open file : " + OutputFilename);
+    report_fatal_error(llvm::StringRef("Can't open file : " + OutputFilename));
   if (TextOutput)
     PM.add(createPrintModulePass(Output.os()));
   else

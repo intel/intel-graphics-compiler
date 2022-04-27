@@ -220,7 +220,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/Instructions.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
@@ -1740,7 +1740,7 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
   if (!isa<SelectInst>(Inst)) {
     unsigned NumOperands = Inst->getNumOperands();
     if (CallInst *CI = dyn_cast<CallInst>(Inst))
-      NumOperands = CI->getNumArgOperands();
+      NumOperands = IGCLLVM::getNumArgOperands(CI);
     if (NumOperands) {
       IGC_ASSERT_MESSAGE(isa<VectorType>(Inst->getOperand(0)->getType()),
         "instruction not supported");
@@ -2322,7 +2322,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
         cast<VectorType>(BInst.Inst->getType())->getElementType(),
         Width * WidthAdjust)); // RetTy
   }
-  for (unsigned i = 0, e = CI->getNumArgOperands(); i != e; ++i) {
+  for (unsigned i = 0, e = IGCLLVM::getNumArgOperands(CI); i != e; ++i) {
     Use *U = &CI->getOperandUse(i);
     if (U == Fixed4) {
       Args.push_back(CI->getArgOperand(i));

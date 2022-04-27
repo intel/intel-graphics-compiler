@@ -74,7 +74,7 @@ namespace IGC
         if (func->getReturnType() != call->getType())
             return false;
 
-        if (func->arg_size() != call->getNumArgOperands())
+        if (func->arg_size() != IGCLLVM::getNumArgOperands(call))
             return false;
 
         unsigned index = 0;

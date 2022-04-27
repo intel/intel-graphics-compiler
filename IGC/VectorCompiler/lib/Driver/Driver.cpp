@@ -42,7 +42,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/StringSaver.h"
-#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetOptions.h"
@@ -51,6 +50,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar.h"
 
 #include "llvmWrapper/Option/OptTable.h"
+#include "llvmWrapper/Support/TargetRegistry.h"
 #include "llvmWrapper/Target/TargetMachine.h"
 
 #include "Probe/Assertion.h"

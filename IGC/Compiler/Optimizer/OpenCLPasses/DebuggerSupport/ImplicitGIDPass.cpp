@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
-#include "llvm/IR/Attributes.h"
+#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
@@ -305,7 +305,7 @@ Value* ImplicitGlobalId::CreateGetId(IRBuilder<>& B, GlobalOrLocal wi)
 
         // Set function attributes
         AttributeList funcAttrs;
-        AttrBuilder attBuilder;
+        IGCLLVM::AttrBuilder attBuilder{ pNewFunc->getContext() };
         attBuilder.addAttribute(Attribute::NoUnwind).addAttribute(Attribute::ReadNone);
         funcAttrs = AttributeList::get(pNewFunc->getContext(), AttributeList::FunctionIndex, attBuilder);
         pNewFunc->setAttributes(funcAttrs);

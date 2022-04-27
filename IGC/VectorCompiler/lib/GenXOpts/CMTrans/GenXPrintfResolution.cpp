@@ -39,7 +39,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
-#include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Linker/Linker.h>
 #include <llvm/Pass.h>
@@ -47,6 +46,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Operator.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include <algorithm>
 #include <functional>
@@ -292,7 +292,7 @@ void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
   assertPrintfCall(OrigPrintf);
   auto [FmtStrSize, ArgsInfo] =
       analyzeFormatString(*OrigPrintf.getArgOperand(0));
-  if (ArgsInfo.size() != OrigPrintf.getNumArgOperands() - 1)
+  if (ArgsInfo.size() != IGCLLVM::getNumArgOperands(&OrigPrintf) - 1)
     vc::fatal(OrigPrintf.getContext(), "GenXPrintfResolution",
               "printf format string and arguments don't correspond");
 

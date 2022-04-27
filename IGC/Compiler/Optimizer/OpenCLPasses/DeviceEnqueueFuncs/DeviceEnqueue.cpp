@@ -126,7 +126,7 @@ void DeviceEnqueueFuncsAnalysis::visitCallInst(CallInst& CI)
     else if (funcName == GET_OBJECT_ID)
     {
         // Extract the arg num and add it to the appropriate data structure
-        IGC_ASSERT_MESSAGE(CI.getNumArgOperands() == 1, "get_object_id function is expected to have only one argument");
+        IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(&CI) == 1, "get_object_id function is expected to have only one argument");
 
         // We support only compile-time constants as arguments of get_object_id()
         ConstantInt* callArg = dyn_cast<ConstantInt>(CI.getArgOperand(0));
@@ -138,7 +138,7 @@ void DeviceEnqueueFuncsAnalysis::visitCallInst(CallInst& CI)
     else if (funcName == GET_BLOCK_SIMD_SIZE)
     {
         // Extract the arg num and add it to the appropriate data structure
-        IGC_ASSERT_MESSAGE(CI.getNumArgOperands() == 1, "get_block_simd_size function is expected to have only one argument");
+        IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(&CI) == 1, "get_block_simd_size function is expected to have only one argument");
 
         // We support only compile-time constants as arguments of get_object_id()
         ConstantInt* callArg = dyn_cast<ConstantInt>(CI.getArgOperand(0));

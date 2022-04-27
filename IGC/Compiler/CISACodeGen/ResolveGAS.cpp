@@ -1127,7 +1127,7 @@ void GASRetValuePropagator::updateAllUsesWithNewFunction(Function* oldFunc, Func
 
         // Prepare args for new call
         std::vector<Value*> callArgs;
-        for (unsigned I = 0, E = cInst->getNumArgOperands(); I != E; ++I) {
+        for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(cInst); I != E; ++I) {
             callArgs.push_back(cInst->getArgOperand(I));
         }
 
@@ -1689,7 +1689,7 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(Function* oldFunc, Function* n
         std::vector<Value*> newCallArgs;
 
         auto AI = newFunc->arg_begin();
-        for (unsigned int i = 0; i < cInst->getNumArgOperands(); ++i, ++AI)
+        for (unsigned int i = 0; i < IGCLLVM::getNumArgOperands(cInst); ++i, ++AI)
         {
             Value* callArg = cInst->getOperand(i);
             Value* funcArg = AI;

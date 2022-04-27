@@ -1402,7 +1402,7 @@ bool GenXThreadPrivateMemory::processUsers() {
         Changed = true;
       } else if (ID == GenXIntrinsic::not_any_intrinsic) {
         if (m_Calls[CI->getCalledFunction()].Calls.count(CI) > 0) {
-          for (unsigned i = 0; i < CI->getNumArgOperands(); i++) {
+          for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(CI); i++) {
             if (m_Calls[CI->getCalledFunction()].Args.count(
                     IGCLLVM::getArg(*CI->getCalledFunction(), i)) > 0)
               CI->replaceUsesOfWith(

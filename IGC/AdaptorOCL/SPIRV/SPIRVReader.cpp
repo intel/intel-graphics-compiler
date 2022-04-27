@@ -47,8 +47,10 @@ THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/DIBuilder.h"
+#include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -4212,8 +4214,7 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
   BF->foreachReturnValueAttr([&](SPIRVFuncParamAttrKind Kind){
     if (Kind == FunctionParameterAttributeCount)
       return;
-    F->addAttribute(AttributeList::ReturnIndex,
-        SPIRSPIRVFuncParamAttrMap::rmap(Kind));
+    IGCLLVM::addRetAttr(F, SPIRSPIRVFuncParamAttrMap::rmap(Kind));
   });
 
   // Creating all basic blocks before creating instructions.
@@ -5053,7 +5054,7 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
       BC->getName(),
       BB);
   setCallingConv(Call);
-  Call->addAttribute(AttributeList::FunctionIndex, Attribute::NoUnwind);
+  IGCLLVM::addFnAttr(Call, Attribute::NoUnwind);
   return Call;
 }
 

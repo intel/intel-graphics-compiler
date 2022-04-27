@@ -3424,7 +3424,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     unsigned RoundedWidth = roundedVal(Width, 4u);
     Type *DataType = CI->getType();
     if (DataType->isVoidTy())
-      DataType = CI->getOperand(CI->getNumArgOperands() - 1)->getType();
+      DataType = CI->getOperand(IGCLLVM::getNumArgOperands(CI) - 1)->getType();
     unsigned DataSize;
     if (VectorType *VT = dyn_cast<VectorType>(DataType))
       DataSize = DL.getTypeSizeInBits(VT) / genx::ByteBits;
@@ -3691,7 +3691,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     auto BaseArg = AI.getArgIdx();
     MaxRawOperands = BaseArg;
 
-    for (unsigned Idx = BaseArg; Idx < CI->getNumArgOperands(); ++Idx) {
+    for (unsigned Idx = BaseArg; Idx < IGCLLVM::getNumArgOperands(CI); ++Idx) {
       if (auto CA = dyn_cast<Constant>(CI->getArgOperand(Idx))) {
         if (CA->isNullValue())
           continue;
@@ -5077,7 +5077,7 @@ bool GenXKernelBuilder::isInLoop(BasicBlock *BB) {
     auto CI = dyn_cast<CallInst>(ui->getUser());
     if (!checkFunctionCall(CI, BBFunc))
       continue;
-    IGC_ASSERT(ui->getOperandNo() == CI->getNumArgOperands());
+    IGC_ASSERT(ui->getOperandNo() == IGCLLVM::getNumArgOperands(CI));
     if (CI->getFunction() == BBFunc)
       continue;
     if (isInLoop(CI->getParent())) {
@@ -6374,7 +6374,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
 
   // Check whether the called function has a predicate arg that is EM.
   int EMOperandNum = -1, EMIdx = -1;
-  for (auto &Arg : CI->arg_operands()) {
+  for (auto &Arg : IGCLLVM::args(CI)) {
     ++EMIdx;
     if (!Arg->getType()->getScalarType()->isIntegerTy(1))
       continue;
@@ -6385,7 +6385,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
   }
 
   int TotalArgSize = 0;
-  for (auto &CallArg : CI->arg_operands())
+  for (auto &CallArg : IGCLLVM::args(CI))
     TotalArgSize += getValueSize(CallArg->getType());
 
   VISA_GenVar *Sp = nullptr, *Arg = nullptr, *Ret = nullptr;
@@ -6399,7 +6399,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
   uint64_t StackOff = 0;
   bool StackStarted = false;
   // pack arguments
-  for (auto &CallArg : CI->arg_operands()) {
+  for (auto &CallArg : IGCLLVM::args(CI)) {
     auto *CallArgLR = Liveness->getLiveRangeOrNull(CallArg.get());
     if (CallArgLR && CallArgLR->getCategory() == vc::RegCategory::EM)
       continue;

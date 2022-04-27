@@ -106,7 +106,7 @@ void ResolveOCLAtomics::processOCLAtomic(CallInst& callInst, AtomicOp op, Buffer
     // Generate a call to GenISA_dwordatomic intrinsic.
     GenISAIntrinsic::ID genIsaIntrinID;
 
-    const bool noSources = (callInst.getNumArgOperands() == 1);
+    const bool noSources = (IGCLLVM::getNumArgOperands(&callInst) == 1);
     // For atomics w/o sources (atomic_inc and atomic_dec), src0 should be absent.
     // However, we cannot pass nullptr as argument, so we set src0 = "0" and it
     // will be ignored in EmitPass::emitAtomicRaw.

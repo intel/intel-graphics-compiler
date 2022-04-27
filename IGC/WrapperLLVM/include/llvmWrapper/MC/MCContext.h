@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/MC/MCContext.h"
-#include "llvm/Support/TargetRegistry.h"
+#include "llvmWrapper/Support/TargetRegistry.h"
 
 namespace IGCLLVM
 {

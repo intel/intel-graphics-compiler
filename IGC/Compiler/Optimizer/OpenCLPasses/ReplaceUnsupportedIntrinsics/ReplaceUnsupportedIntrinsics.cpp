@@ -137,7 +137,7 @@ ReplaceUnsupportedIntrinsics::ReplaceUnsupportedIntrinsics() : FunctionPass(ID)
 MemCpyInst* ReplaceUnsupportedIntrinsics::MemMoveToMemCpy(MemMoveInst* MM)
 {
     SmallVector<Value*, 5> args;
-    for (unsigned i = 0; i < MM->getNumArgOperands(); i++)
+    for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(MM); i++)
         args.push_back(MM->getArgOperand(i));
 
     auto* Dst = MM->getRawDest();

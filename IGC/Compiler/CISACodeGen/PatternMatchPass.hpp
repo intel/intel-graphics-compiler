@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/DataLayout.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 namespace llvm
 {
@@ -339,7 +340,7 @@ namespace IGC
     {
         if (llvm::CallInst * intrin = llvm::dyn_cast<llvm::CallInst>(&v))
         {
-            return intrin->getNumArgOperands();
+            return IGCLLVM::getNumArgOperands(intrin);
         }
         return v.getNumOperands();
     }

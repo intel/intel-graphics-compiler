@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
-#include "llvm/IR/Function.h"
+#include "llvmWrapper/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/GenericDomTree.h"
@@ -514,7 +514,7 @@ bool PreCompiledFuncImport::runOnModule(Module& M)
 
         types.push_back(CI->getType());
 
-        for (unsigned i = 0; i < CI->getNumArgOperands(); i++)
+        for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(CI); i++)
         {
             types.push_back(CI->getArgOperand(i)->getType());
             args.push_back(CI->getArgOperand(i));
@@ -950,7 +950,7 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator& inst, Int32Emulat
             funcName,
             m_pModule);
     }
-    func->addAttribute(0, llvm::Attribute::AlwaysInline);
+    IGCLLVM::addRetAttr(func, llvm::Attribute::AlwaysInline);
 
 
 
@@ -2082,7 +2082,7 @@ void PreCompiledFuncImport::replaceFunc(Function* old_func, Function* new_func)
             return;
         }
         Function* parent_func = cInst->getParent()->getParent();
-        size_t numArgOperands = cInst->getNumArgOperands();
+        size_t numArgOperands = IGCLLVM::getNumArgOperands(cInst);
 
         // let's prepare argument list on new call function
         llvm::Function::arg_iterator new_arg_iter = new_func->arg_begin();

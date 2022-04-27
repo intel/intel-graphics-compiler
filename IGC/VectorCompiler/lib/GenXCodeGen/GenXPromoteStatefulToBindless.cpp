@@ -140,7 +140,7 @@ static void reportUnhandledIntrinsic(const char *Func, GenXIntrinsic::ID Id) {
   std::ostringstream SS;
   SS << "In function '" << Func << "': Intrinsic '" << getGenXName(Id)
      << "' is not yet supported";
-  llvm::report_fatal_error(SS.str());
+  llvm::report_fatal_error(llvm::StringRef(SS.str()));
 }
 
 // Buffer argument kind is converted to GENERAL to denote that

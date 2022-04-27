@@ -753,7 +753,7 @@ Value* OpenCLPrintfResolution::fixupPrintfArg(CallInst& printfCall, Value* arg, 
 
 void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst& printfCall)
 {
-    for (int i = 0, numArgs = printfCall.getNumArgOperands(); i < numArgs; ++i)
+    for (int i = 0, numArgs = IGCLLVM::getNumArgOperands(&printfCall); i < numArgs; ++i)
     {
         Value* arg = printfCall.getOperand(i);
         Type* argType = arg->getType();

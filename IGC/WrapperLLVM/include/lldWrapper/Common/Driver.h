@@ -19,7 +19,9 @@ namespace IGCLLD {
     namespace elf {
         inline bool link(llvm::ArrayRef<const char *> Args, bool CanExitEarly,
                          llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS) {
-#if LLVM_VERSION_MAJOR >= 10
+#if LLVM_VERSION_MAJOR >= 14
+            return lld::elf::link(Args, stdoutOS, stderrOS, CanExitEarly, false);
+#elif LLVM_VERSION_MAJOR >= 10
             return lld::elf::link(Args, CanExitEarly, stdoutOS, stderrOS);
 #else
             (void)stdoutOS;

@@ -164,7 +164,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst& CI)
     }
 
     // Extract the arg num and add it to the appropriate data structure
-    IGC_ASSERT_MESSAGE(CI.getNumArgOperands() == 1, "Supported image/sampler functions are expected to have only one argument");
+    IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(&CI) == 1, "Supported image/sampler functions are expected to have only one argument");
 
     // We only care about image and sampler arguments here, inline samplers
     // don't require extra kernel parameters.

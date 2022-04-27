@@ -20,7 +20,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/KernelInfo.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/Instructions.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Debug.h"
 
@@ -120,7 +120,7 @@ unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
           // wasting numbers does not really matter.
           PreReserve = 2 * IndexFlattener::getNumArgElements(
                 CI->getFunctionType());
-          PreReserve += 2 * CI->getNumArgOperands(); // extra for pre-copy addresses of args
+          PreReserve += 2 * IGCLLVM::getNumArgOperands(CI); // extra for pre-copy addresses of args
           unsigned NumRetVals = IndexFlattener::getNumElements(CI->getType());
           PreReserve += NumRetVals; // extra for pre-copy addresses of retvals
           PostReserve = NumRetVals;

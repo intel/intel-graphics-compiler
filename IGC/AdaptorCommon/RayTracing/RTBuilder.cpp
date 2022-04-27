@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "RTStackFormat.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -3251,30 +3252,30 @@ Value* RTBuilder::createAllocaNumber(const AllocaInst* AI, uint32_t Number)
 void RTBuilder::setReturnAlignment(CallInst* CI, uint32_t AlignVal)
 {
     auto Attrs = CI->getAttributes();
-    AttrBuilder AB{ Attrs, AttributeList::ReturnIndex };
+    IGCLLVM::AttrBuilder AB { CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex)};
     AB.addAlignmentAttr(AlignVal);
     auto AL =
-        Attrs.addAttributes(CI->getContext(), AttributeList::ReturnIndex, AB);
+        IGCLLVM::addAttributesAtIndex(Attrs, CI->getContext(), AttributeList::ReturnIndex, AB);
     CI->setAttributes(AL);
 }
 
 void RTBuilder::setNoAlias(CallInst* CI)
 {
     auto Attrs = CI->getAttributes();
-    AttrBuilder AB{ Attrs, AttributeList::ReturnIndex };
+    IGCLLVM::AttrBuilder AB{ CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex) };
     AB.addAttribute(Attribute::AttrKind::NoAlias);
     auto AL =
-        Attrs.addAttributes(CI->getContext(), AttributeList::ReturnIndex, AB);
+        IGCLLVM::addAttributesAtIndex(Attrs, CI->getContext(), AttributeList::ReturnIndex, AB);
     CI->setAttributes(AL);
 }
 
 void RTBuilder::setDereferenceable(CallInst* CI, uint32_t Size)
 {
     auto Attrs = CI->getAttributes();
-    AttrBuilder AB{ Attrs, AttributeList::ReturnIndex };
+    IGCLLVM::AttrBuilder AB{ CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex) };
     AB.addDereferenceableAttr(Size);
     auto AL =
-        Attrs.addAttributes(CI->getContext(), AttributeList::ReturnIndex, AB);
+        IGCLLVM::addAttributesAtIndex(Attrs, CI->getContext(), AttributeList::ReturnIndex, AB);
     CI->setAttributes(AL);
 }
 

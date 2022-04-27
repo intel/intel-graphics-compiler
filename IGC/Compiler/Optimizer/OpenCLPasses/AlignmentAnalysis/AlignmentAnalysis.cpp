@@ -95,6 +95,89 @@ bool AlignmentAnalysis::runOnFunction(Function& F)
     return true;
 }
 
+auto AlignmentAnalysis::getConstantAlignment(uint64_t C) const
+{
+    if (!C)
+    {
+        return Value::MaximumAlignment;
+    }
+#if LLVM_VERSION_MAJOR >= 14
+    return iSTD::Min(Value::MaximumAlignment, 1UL << llvm::countTrailingZeros(C));
+#else
+    return iSTD::Min(Value::MaximumAlignment, 1U << llvm::countTrailingZeros(C));
+#endif
+}
+
+auto AlignmentAnalysis::getAlignValue(Value* V) const
+{
+    const alignment_t MinimumAlignmentValue = static_cast<alignment_t>(MinimumAlignment);
+    if (dyn_cast<Instruction>(V))
+    {
+        auto iter = m_alignmentMap.find(V);
+        if (iter == m_alignmentMap.end())
+        {
+            // Instructions are initialize to maximum alignment
+            // (this is the "top" value)
+            return Value::MaximumAlignment;
+        }
+
+        return static_cast<alignment_t>(iter->second);
+    }
+    else if (dyn_cast<Constant>(V))
+    {
+        if (ConstantInt * constInt = dyn_cast<ConstantInt>(V))
+        {
+            return getConstantAlignment(constInt->getZExtValue());
+        }
+        else if (GlobalVariable * GV = dyn_cast<GlobalVariable>(V))
+        {
+            auto align = GV->getAlignment();
+
+            // If the globalvariable uses the default alignment, pull it from the datalayout
+            if (!align)
+            {
+                Type* gvType = GV->getType();
+                return m_DL->getABITypeAlignment(gvType->getPointerElementType());
+            }
+            else
+            {
+                return align;
+            }
+        }
+
+        // Not an int or a globalvariable, be pessimistic.
+        return MinimumAlignmentValue;
+    }
+    else if (Argument * arg = dyn_cast<Argument>(V))
+    {
+        if (arg->getType()->isPointerTy())
+        {
+            // Pointer arguments are guaranteed to be aligned on the ABI alignment
+            Type* pointedTo = arg->getType()->getPointerElementType();
+            if (pointedTo->isSized())
+            {
+                return m_DL->getABITypeAlignment(pointedTo);
+            }
+            else
+            {
+                // We have some pointer-to-opaque-types which are not real pointers -
+                // this is used to pass things like images around.
+                // Apparently, DataLayout being asked about the ABI alignment of opaque types.
+                // So, we don't.
+                return MinimumAlignmentValue;
+            }
+        }
+        else
+        {
+            // We don't know anything about integer arguments.
+            return MinimumAlignmentValue;
+        }
+    }
+
+    // Be pessimistic
+    return MinimumAlignmentValue;
+}
+
 bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
 {
     // Get the currently known alignment of I.
@@ -165,7 +248,7 @@ unsigned int AlignmentAnalysis::visitSelectInst(SelectInst& I)
 
 unsigned int AlignmentAnalysis::visitPHINode(PHINode& I)
 {
-    unsigned int newAlign = Value::MaximumAlignment;
+    auto newAlign = Value::MaximumAlignment;
 
     // The alignment of a PHI is the minimal alignment of any of the
     // incoming values.
@@ -437,10 +520,11 @@ void AlignmentAnalysis::SetInstAlignment(MemSetInst& I)
 {
     // Set the align attribute of the memset according to the detected
     // alignment of its operand.
-#if LLVM_VERSION_MAJOR == 4
-    unsigned alignment = iSTD::Max(I.getAlignment(), getAlignValue(I.getRawDest()));
-    I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
-#elif LLVM_VERSION_MAJOR >= 7
+#if LLVM_VERSION_MAJOR >= 14
+    uint64_t alignment_value = iSTD::Max(I.getDestAlign()->value(), getAlignValue(I.getRawDest()));
+    llvm::Align alignment = llvm::Align(alignment_value);
+    I.setDestAlignment(alignment);
+#else
     unsigned alignment = iSTD::Max(I.getDestAlignment(), getAlignValue(I.getRawDest()));
     I.setDestAlignment(alignment);
 #endif
@@ -449,12 +533,12 @@ void AlignmentAnalysis::SetInstAlignment(MemSetInst& I)
 void AlignmentAnalysis::SetInstAlignment(MemCpyInst& I)
 {
     // Set the align attribute of the memcpy based on the minimum alignment of its source and dest fields
+#if LLVM_VERSION_MAJOR >= 14
+    uint64_t alignment_value = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
+    llvm::Align alignment = llvm::Align(alignment_value);
+    I.setDestAlignment(alignment);
+#else
     unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
-#if LLVM_VERSION_MAJOR == 4
-    alignment = iSTD::Max(I.getAlignment(), alignment);
-    I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
-#elif LLVM_VERSION_MAJOR >= 7
-    alignment = iSTD::Max(I.getDestAlignment(), alignment);
     I.setDestAlignment(alignment);
 #endif
 }
@@ -462,91 +546,13 @@ void AlignmentAnalysis::SetInstAlignment(MemCpyInst& I)
 void AlignmentAnalysis::SetInstAlignment(MemMoveInst& I)
 {
     // Set the align attribute of the memmove based on the minimum alignment of its source and dest fields
+#if LLVM_VERSION_MAJOR >= 14
+    uint64_t alignment_value = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
+    llvm::Align alignment = llvm::max(I.getDestAlign(), llvm::Align(alignment_value));
+    I.setDestAlignment(alignment);
+#else
     unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
-#if LLVM_VERSION_MAJOR == 4
-    alignment = iSTD::Max(I.getAlignment(), alignment);
-    I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
-#elif LLVM_VERSION_MAJOR >= 7
     alignment = iSTD::Max(I.getDestAlignment(), alignment);
     I.setDestAlignment(alignment);
 #endif
-}
-
-unsigned int AlignmentAnalysis::getAlignValue(Value* V) const
-{
-    if (dyn_cast<Instruction>(V))
-    {
-        auto iter = m_alignmentMap.find(V);
-        if (iter == m_alignmentMap.end())
-        {
-            // Instructions are initialize to maximum alignment
-            // (this is the "top" value)
-            return Value::MaximumAlignment;
-        }
-
-        return iter->second;
-    }
-    else if (dyn_cast<Constant>(V))
-    {
-        if (ConstantInt * constInt = dyn_cast<ConstantInt>(V))
-        {
-            return getConstantAlignment(constInt->getZExtValue());
-        }
-        else if (GlobalVariable * GV = dyn_cast<GlobalVariable>(V))
-        {
-            unsigned int align = GV->getAlignment();
-
-            // If the globalvariable uses the default alignment, pull it from the datalayout
-            if (!align)
-            {
-                Type* gvType = GV->getType();
-                return m_DL->getABITypeAlignment(gvType->getPointerElementType());
-            }
-            else
-            {
-                return align;
-            }
-        }
-
-        // Not an int or a globalvariable, be pessimistic.
-        return MinimumAlignment;
-    }
-    else if (Argument * arg = dyn_cast<Argument>(V))
-    {
-        if (arg->getType()->isPointerTy())
-        {
-            // Pointer arguments are guaranteed to be aligned on the ABI alignment
-            Type* pointedTo = arg->getType()->getPointerElementType();
-            if (pointedTo->isSized())
-            {
-                return m_DL->getABITypeAlignment(pointedTo);
-            }
-            else
-            {
-                // We have some pointer-to-opaque-types which are not real pointers -
-                // this is used to pass things like images around.
-                // Apparently, DataLayout being asked about the ABI alignment of opaque types.
-                // So, we don't.
-                return MinimumAlignment;
-            }
-        }
-        else
-        {
-            // We don't know anything about integer arguments.
-            return MinimumAlignment;
-        }
-    }
-
-    // Be pessimistic
-    return MinimumAlignment;
-}
-
-unsigned int AlignmentAnalysis::getConstantAlignment(uint64_t C) const
-{
-    if (!C)
-    {
-        return Value::MaximumAlignment;
-    }
-
-    return iSTD::Min(Value::MaximumAlignment, 1U << llvm::countTrailingZeros(C));
 }

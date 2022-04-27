@@ -34,7 +34,6 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -43,6 +42,8 @@ See LICENSE.TXT for details.
 #include "common/Types.hpp"
 #include "GenIntrinsics.h"
 #include "Probe/Assertion.h"
+
+#include "llvmWrapper/IR/Instructions.h"
 
 namespace llvm {
 /// IntrinsicInst - A useful wrapper class for inspecting calls to intrinsic
@@ -322,19 +323,19 @@ class LdMSIntrinsic : public SamplerLoadIntrinsic {
 public:
     inline Value* getImmOffset(unsigned int i)
     {
-        return getOperand(getNumArgOperands() - 3 + i);
+        return getOperand(arg_size() - 3 + i);
     }
     inline void setImmOffset(unsigned int i, Value* val)
     {
-        return setOperand(getNumArgOperands() - 3 + i, val);
+        return setOperand(arg_size() - 3 + i, val);
     }
     inline Value* getCoordinate(unsigned int i)
     {
-        return getOperand(getNumArgOperands() - 8 + i);
+        return getOperand(arg_size() - 8 + i);
     }
     inline void setCoordinate(unsigned int i, Value* val)
     {
-        return setOperand(getNumArgOperands() - 8 + i, val);
+        return setOperand(arg_size() - 8 + i, val);
     }
     static inline bool classof(const GenIntrinsicInst *I) {
         switch(I->getIntrinsicID()) {

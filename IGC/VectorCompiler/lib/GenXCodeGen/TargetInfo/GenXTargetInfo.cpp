@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "GenXTargetInfo.h"
 
-#include "llvm/Support/TargetRegistry.h"
+#include "llvmWrapper/Support/TargetRegistry.h"
 
 using namespace llvm;
 

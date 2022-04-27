@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include <type_traits>
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/helper.h"
+#include "llvmWrapper/ADT/APInt.h"
 
 using namespace llvm;
 
@@ -479,22 +480,23 @@ struct IntDivConstantReduction : public FunctionPass
         //
         const int bitSize = dividend->getType()->getIntegerBitWidth();
         //
-        APInt::ms appxRecip = divisor.magic();
+        IGCLLVM::SignedDivisionByConstantInfo appxRecip = IGCLLVM::getAPIntMagic(divisor);
         //
         ConstantInt *appxRcp = IGC::getConstantSInt(
-            B, bitSize, appxRecip.m.getSExtValue());
+            B, bitSize, IGCLLVM::MagicNumber(appxRecip).getSExtValue());
         Value *appxQ =
             IGC::CreateMulh(F, B, true, dividend, appxRcp);
-        if (divisor.isStrictlyPositive() && appxRecip.m.isNegative()) {
+        if (divisor.isStrictlyPositive() && IGCLLVM::MagicNumber(appxRecip).isNegative()) {
             appxQ = B.CreateAdd(appxQ, dividend, "q_appx");
         }
-        if (divisor.isNegative() && appxRecip.m.isStrictlyPositive()) {
+        if (divisor.isNegative() && IGCLLVM::MagicNumber(appxRecip).isStrictlyPositive()) {
             appxQ = B.CreateSub(appxQ, dividend, "q_appx");
         }
-        if (appxRecip.s > 0) {
-            ConstantInt *shift = IGC::getConstantSInt(B, bitSize, appxRecip.s);
+        if (IGCLLVM::ShiftAmount(appxRecip) > 0) {
+            ConstantInt *shift = IGC::getConstantSInt(B, bitSize, IGCLLVM::ShiftAmount(appxRecip));
             appxQ = B.CreateAShr(appxQ, shift, "q_appx");
         }
+
         //
         // Extract the sign bit and add it to the quotient
         if (IGC_GET_FLAG_VALUE(EnableConstIntDivReduction) == 3) {
@@ -520,33 +522,33 @@ struct IntDivConstantReduction : public FunctionPass
     {
         //////////////////////////////////////////////////
         // C.f. Hacker's Delight 10-8
-        APInt::mu appxRecip = divisor.magicu();
+        IGCLLVM::UnsignedDivisonByConstantInfo appxRecip = IGCLLVM::getAPIntMagicUnsigned(divisor);
         //
         const int bitSize = dividend->getType()->getIntegerBitWidth();
         //
         // even divisors can pre-shift the dividend to avoid
         // extra work at the end.
         Value *shiftedDividend = dividend;
-        if (appxRecip.a && !divisor[0]) {
+        if (IGCLLVM::IsAddition(appxRecip) && !divisor[0]) {
             unsigned s = divisor.countTrailingZeros();
             shiftedDividend = B.CreateLShr(shiftedDividend, s);
-            appxRecip = divisor.lshr(s).magicu(s);
-            IGC_ASSERT_MESSAGE(!appxRecip.a, "expected to subtract now");
-            IGC_ASSERT_MESSAGE(appxRecip.s < divisor.getBitWidth(), "undefined shift");
+            appxRecip = IGCLLVM::getAPIntMagicUnsigned(divisor.lshr(s), s);
+            IGC_ASSERT_MESSAGE(!IGCLLVM::IsAddition(appxRecip), "expected to subtract now");
+            IGC_ASSERT_MESSAGE(IGCLLVM::ShiftAmount(appxRecip) < divisor.getBitWidth(), "undefined shift");
         }
         //
         ConstantInt *appxRcp = IGC::getConstantUInt(
-            B, bitSize, appxRecip.m.getZExtValue());
+            B, bitSize, IGCLLVM::MagicNumber(appxRecip).getZExtValue());
         Value *appxQ =
             IGC::CreateMulh(F, B, false, shiftedDividend, appxRcp);
         //
-        if (!appxRecip.a) {
-            appxQ = B.CreateLShr(appxQ, appxRecip.s, "q_appx");
+        if (!IGCLLVM::IsAddition(appxRecip)) {
+            appxQ = B.CreateLShr(appxQ, IGCLLVM::ShiftAmount(appxRecip), "q_appx");
         } else {
             Value *fixup = B.CreateSub(dividend, appxQ, "q_appx");
             fixup = B.CreateLShr(fixup, 1);
             appxQ = B.CreateAdd(fixup, appxQ, "q_appx");
-            appxQ = B.CreateLShr(appxQ, appxRecip.s - 1, "q_appx");
+            appxQ = B.CreateLShr(appxQ, IGCLLVM::ShiftAmount(appxRecip) - 1, "q_appx");
         }
         return appxQ;
     }

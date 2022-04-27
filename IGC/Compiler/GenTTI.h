@@ -55,7 +55,11 @@ namespace llvm
 #if LLVM_VERSION_MAJOR >= 7
             ScalarEvolution & SE,
 #endif
-            TTI::UnrollingPreferences & UP);
+            TTI::UnrollingPreferences & UP
+#if LLVM_VERSION_MAJOR >= 14
+        , OptimizationRemarkEmitter* ORE
+#endif
+        );
 
 #if LLVM_VERSION_MAJOR >= 11
         void getPeelingPreferences(Loop* L, ScalarEvolution& SE,

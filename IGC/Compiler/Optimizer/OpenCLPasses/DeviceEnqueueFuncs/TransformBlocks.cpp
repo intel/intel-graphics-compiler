@@ -25,7 +25,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Module.h"
 #include "llvm/IR/Argument.h"
 #include "llvmWrapper/IR/Instructions.h"
-#include "llvm/IR/Attributes.h"
+#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/IR/ValueHandle.h"
 #include "llvmWrapper/Transforms/Utils.h"
@@ -46,6 +46,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvmWrapper/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvm/Support/Regex.h"
 #include <algorithm>
 #include <map>
 #include <unordered_set>
@@ -838,7 +839,7 @@ namespace //Anonymous
             : ObjCBlockCallArgs(call, dataContext)
             , _block(nullptr)
         {
-            auto arg = call.arg_operands().begin();
+            auto arg = IGCLLVM::args(call).begin();
 
             _queue = *(arg++);
             _flags = *(arg++);
@@ -852,7 +853,7 @@ namespace //Anonymous
 
             _block = *(arg++);
 
-            while (arg != call.arg_operands().end())
+            while (arg != IGCLLVM::args(call).end())
             {
                 if ((*arg)->getType()->isIntegerTy(32))
                 {
@@ -928,7 +929,7 @@ namespace //Anonymous
         SPIRVOpEnqueueKernelCallArgs(llvm::CallInst& call, DataContext& dataContext)
             : DeviceExecCallArgs(call, dataContext)
         {
-            IGC_ASSERT_EXIT_MESSAGE(8 <= _call.getNumArgOperands(), "OpEnqueueKernel signature does not match");
+            IGC_ASSERT_EXIT_MESSAGE(8 <= IGCLLVM::getNumArgOperands(&_call), "OpEnqueueKernel signature does not match");
 
             _queue = _call.getArgOperand(0);
             _flags = _call.getArgOperand(1);
@@ -948,7 +949,7 @@ namespace //Anonymous
             }
 
             const unsigned localSizesStartArgNum = 10;
-            const unsigned argsNum = _call.getNumArgOperands();
+            const unsigned argsNum = IGCLLVM::getNumArgOperands(&_call);
             for (unsigned i = localSizesStartArgNum; i < argsNum; i++)
             {
                 auto arg = _call.getArgOperand(i);
@@ -1564,7 +1565,7 @@ namespace //Anonymous
                     auto callInst = dyn_cast<CallInst>(user);
                     if (!callInst) continue;
 
-                    for (auto& arg : callInst->arg_operands()) {
+                    for (auto& arg : IGCLLVM::args(callInst)) {
                         if (Function * invoke = dyn_cast<Function>(arg)) {
                             if (isInvokeFunctionKernelWrapper(invoke, dataContext)) {
                                 // Inline the wrapped invoke function.
@@ -1609,7 +1610,7 @@ namespace //Anonymous
                             {
                                 // assuming indirect call is the block call
                                 unsigned blockArgIdx = callInst->hasStructRetAttr() ? 1 : 0;
-                                if (callInst->getNumArgOperands() > blockArgIdx)
+                                if (IGCLLVM::getNumArgOperands(callInst) > blockArgIdx)
                                 {
                                     Value* spc = callInst->getArgOperand(blockArgIdx)->stripPointerCasts();
                                     if (KindQuery::isBlockStructType(spc->getType()))
@@ -2450,7 +2451,9 @@ namespace //Anonymous
                 {
                     // FIXME: This potentially can be rewritted to be simpler.
                     AttributeList attrSet = AttributeList::get(arg.getParent()->getContext(), AttributeList::FunctionIndex, llvm::Attribute::ByVal);
-                    arg.addAttr(attrSet.getAttribute(AttributeList::FunctionIndex, llvm::Attribute::ByVal));
+                    arg.addAttr(
+                        IGCLLVM::getAttribute(attrSet, AttributeList::FunctionIndex, llvm::Attribute::ByVal)
+                    );
                     ++byValI;
                 }
             }

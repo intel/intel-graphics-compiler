@@ -277,7 +277,7 @@ The return value of this function is a sync object which will be used by the ker
 */
 void ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery(CallInst& callInst) {
   IGC_ASSERT(callInst.getType()->isPointerTy());
-  IGC_ASSERT(callInst.getNumArgOperands() == 3);
+  IGC_ASSERT(IGCLLVM::getNumArgOperands(&callInst) == 3);
 
   // Insert a ugm fence prior to send.rta to ensure RTUnit has accesss to
   // current data.

@@ -146,6 +146,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Analysis/CallGraph.h"
+#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -1088,9 +1089,9 @@ CMImpParam::processKernelParameters(Function *F,
   for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E;
        ++I, ++ArgIndex) {
     ArgTys.push_back(I->getType());
-    AttributeSet attrs = PAL.getParamAttributes(ArgIndex);
+    AttributeSet attrs = IGCLLVM::getParamAttrs(PAL, ArgIndex);
     if (attrs.hasAttributes()) {
-      AttrBuilder B(attrs);
+      IGCLLVM::AttrBuilder B(Context, attrs);
       AttrVec = AttrVec.addParamAttributes(Context, ArgIndex, B);
     }
   }
@@ -1114,10 +1115,10 @@ CMImpParam::processKernelParameters(Function *F,
     "type out of sync, expect bool arguments)");
 
   // Add any function attributes
-  AttributeSet FnAttrs = PAL.getFnAttributes();
+  AttributeSet FnAttrs = IGCLLVM::getFnAttrs(PAL);
   if (FnAttrs.hasAttributes()) {
-    AttrBuilder B(FnAttrs);
-    AttrVec = AttrVec.addAttributes(Context, AttributeList::FunctionIndex, B);
+    IGCLLVM::AttrBuilder B(Context, FnAttrs);
+    AttrVec = IGCLLVM::addAttributesAtIndex(AttrVec, Context, AttributeList::FunctionIndex, B);
   }
 
   // Create new function body and insert into the module

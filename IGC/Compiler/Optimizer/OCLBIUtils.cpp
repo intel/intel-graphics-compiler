@@ -867,7 +867,7 @@ class CSimpleIntrinMapping : public CCommand
 protected:
     void createIntrinsicType(const CallInst* pCI, ArrayRef<Type*> overloadTypes)
     {
-        m_args.append(pCI->op_begin(), pCI->op_begin() + pCI->getNumArgOperands());
+        m_args.append(pCI->op_begin(), pCI->op_begin() + IGCLLVM::getNumArgOperands(pCI));
         IGC_ASSERT_MESSAGE(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics), "Both intrinsic id's cannot be valid at the same time");
 
         // GenISA intrinsics ID start after llvm intrinsics
@@ -900,7 +900,7 @@ public:
 
     void createIntrinsic()
     {
-        IGC_ASSERT_MESSAGE(!(this->isOverloadable && m_pCallInst->getNumArgOperands() == 0), "Cannot create an overloadable with no args");
+        IGC_ASSERT_MESSAGE(!(this->isOverloadable && IGCLLVM::getNumArgOperands(m_pCallInst) == 0), "Cannot create an overloadable with no args");
         llvm::Type* tys[2];
         switch (isaId)
         {
@@ -921,7 +921,7 @@ public:
         case GenISAIntrinsic::GenISA_itof_rtz:
             tys[0] = m_pCallInst->getCalledFunction()->getReturnType();
             tys[1] = m_pCallInst->getArgOperand(0)->getType();
-            m_args.append(m_pCallInst->op_begin(), m_pCallInst->op_begin() + m_pCallInst->getNumArgOperands());
+            m_args.append(m_pCallInst->op_begin(), m_pCallInst->op_begin() + IGCLLVM::getNumArgOperands(m_pCallInst));
             IGC_ASSERT_MESSAGE(!(id != Intrinsic::num_intrinsics && isaId != GenISAIntrinsic::ID::num_genisa_intrinsics), "Both intrinsic id's cannot be valid at the same time");
             replaceGenISACallInst(isaId, llvm::ArrayRef<llvm::Type*>(tys));
             break;
@@ -936,7 +936,7 @@ public:
         case GenISAIntrinsic::GenISA_simdSetMessagePhase:
         case GenISAIntrinsic::GenISA_setMessagePhaseX:
         case GenISAIntrinsic::GenISA_setMessagePhaseX_legacy:
-            createIntrinsicType(m_pCallInst, m_pCallInst->getArgOperand(m_pCallInst->getNumArgOperands() - 1)->getType());
+            createIntrinsicType(m_pCallInst, m_pCallInst->getArgOperand(IGCLLVM::getNumArgOperands(m_pCallInst) - 1)->getType());
             break;
         case GenISAIntrinsic::GenISA_broadcastMessagePhaseV:
         case GenISAIntrinsic::GenISA_simdGetMessagePhaseV:
@@ -956,7 +956,7 @@ public:
             Type* overloadTypes[] =
             {
                 m_pCallInst->getCalledFunction()->getReturnType(),
-                m_pCallInst->getArgOperand(m_pCallInst->getNumArgOperands() - 1)->getType()
+                m_pCallInst->getArgOperand(IGCLLVM::getNumArgOperands(m_pCallInst) - 1)->getType()
             };
             createIntrinsicType(m_pCallInst, overloadTypes);
             break;
@@ -1043,7 +1043,7 @@ public:
         }
 
         // Rest of the params
-        m_args.append(m_pCallInst->op_begin() + 3 + num_images, m_pCallInst->op_begin() + m_pCallInst->getNumArgOperands());
+        m_args.append(m_pCallInst->op_begin() + 3 + num_images, m_pCallInst->op_begin() + IGCLLVM::getNumArgOperands(m_pCallInst));
 
         replaceGenISACallInst(id);
     }
@@ -1085,7 +1085,7 @@ public:
         }
 
         // Rest of the params except for the accelerator sampler.
-        m_args.append(m_pCallInst->op_begin() + 1 + m_numImgArgs + 1, m_pCallInst->op_begin() + m_pCallInst->getNumArgOperands());
+        m_args.append(m_pCallInst->op_begin() + 1 + m_numImgArgs + 1, m_pCallInst->op_begin() + IGCLLVM::getNumArgOperands(m_pCallInst));
 
         // Device-side VME using the CNewVMESend always use inline samplers.
         IGC::ModuleMetaData* MD = m_Ctx->getModuleMetaData();

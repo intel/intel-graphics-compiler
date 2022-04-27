@@ -412,7 +412,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
     if ((funcName == "__builtin_IB_to_private") || (funcName == "__builtin_IB_to_local")
         || (funcName == "__builtin_IB_to_global"))
     {
-        IGC_ASSERT(I.getNumArgOperands() == 1);
+        IGC_ASSERT(IGCLLVM::getNumArgOperands(&I) == 1);
         Value* arg = I.getArgOperand(0);
         PointerType* dstType = dyn_cast<PointerType>(I.getType());
         IGC_ASSERT( dstType != nullptr );

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/ConstantFolder.h"
+#include <llvm/Support/Casting.h>
 
 namespace IGCLLVM
 {
@@ -27,14 +28,139 @@ namespace IGCLLVM
     {
     private:
         llvm::ConstantFolder m_baseConstantFolder;
-    public:
-        ConstantFolderBase() :
-            m_baseConstantFolder(llvm::ConstantFolder()) {}
 
+        // these override functions are here to avoid letting `ConstantFolderBase` class
+        // becoming a pure-virtual class when LLVM_VERSION_MAJOR < 14
+#if LLVM_VERSION_MAJOR < 14
         inline llvm::Constant* CreateAdd(llvm::Constant* LHS, llvm::Constant* RHS,
             bool HasNUW = false, bool HasNSW = false) const override {
             return m_baseConstantFolder.CreateAdd(LHS, RHS, HasNUW, HasNSW);
         }
+
+        inline llvm::Constant* CreateAnd(llvm::Constant* LHS, llvm::Constant* RHS) const override {
+            return m_baseConstantFolder.CreateAnd(LHS, RHS);
+        }
+
+        inline llvm::Constant* CreateOr(llvm::Constant* LHS, llvm::Constant* RHS) const override {
+            return m_baseConstantFolder.CreateOr(LHS, RHS);
+        }
+
+        inline llvm::Constant* CreateICmp(llvm::CmpInst::Predicate P, llvm::Constant* LHS,
+            llvm::Constant* RHS) const override {
+            return m_baseConstantFolder.CreateICmp(P, LHS, RHS);
+        }
+
+        inline llvm::Constant* CreateSelect(llvm::Constant* C, llvm::Constant* True,
+            llvm::Constant* False) const override {
+            return m_baseConstantFolder.CreateSelect(C, True, False);
+        }
+
+        inline llvm::Constant* CreateGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
+            llvm::ArrayRef<llvm::Constant*> IdxList) const override {
+            return m_baseConstantFolder.CreateGetElementPtr(Ty, C, IdxList);
+        }
+
+        inline llvm::Constant* CreateGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
+            llvm::Constant* Idx) const override {
+            return m_baseConstantFolder.CreateGetElementPtr(Ty, C, Idx);
+        }
+
+        inline llvm::Constant* CreateGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
+            llvm::ArrayRef<llvm::Value*> IdxList) const override {
+            return m_baseConstantFolder.CreateGetElementPtr(Ty, C, IdxList);
+        }
+
+        inline llvm::Constant* CreateInBoundsGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
+            llvm::ArrayRef<llvm::Constant*> IdxList) const override {
+            return m_baseConstantFolder.CreateInBoundsGetElementPtr(Ty, C, IdxList);
+        }
+
+        inline llvm::Constant* CreateInBoundsGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
+            llvm::Constant* Idx) const override {
+            return m_baseConstantFolder.CreateInBoundsGetElementPtr(Ty, C, Idx);
+        }
+
+        inline llvm::Constant* CreateInBoundsGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
+            llvm::ArrayRef<llvm::Value*> IdxList) const override {
+            return m_baseConstantFolder.CreateInBoundsGetElementPtr(Ty, C, IdxList);
+        }
+#endif
+
+    public:
+        ConstantFolderBase() :
+            m_baseConstantFolder(llvm::ConstantFolder()) {}
+
+        inline llvm::Value* FoldAdd(llvm::Value* LHS, llvm::Value* RHS, bool HasNUW = false,
+            bool HasNSW = false) const
+#if LLVM_VERSION_MAJOR < 14
+        {
+            return CreateAdd(llvm::dyn_cast<llvm::Constant>(LHS), llvm::dyn_cast<llvm::Constant>(RHS), HasNUW, HasNSW);
+        }
+#else
+        override {
+            return m_baseConstantFolder.FoldAdd(LHS, RHS, HasNUW, HasNSW);
+        }
+#endif
+
+        inline llvm::Value* FoldAnd(llvm::Value* LHS, llvm::Value* RHS) const
+#if LLVM_VERSION_MAJOR < 14
+        {
+            return CreateAnd(llvm::dyn_cast<llvm::Constant>(LHS), llvm::dyn_cast<llvm::Constant>(RHS));
+        }
+#else
+        override {
+            return m_baseConstantFolder.FoldAnd(LHS, RHS);
+        }
+#endif
+
+        inline llvm::Value* FoldOr(llvm::Value* LHS, llvm::Value* RHS) const
+#if LLVM_VERSION_MAJOR < 14
+        {
+            return CreateOr(llvm::dyn_cast<llvm::Constant>(LHS), llvm::dyn_cast<llvm::Constant>(RHS));
+        }
+#else
+        override {
+            return m_baseConstantFolder.FoldOr(LHS, RHS);
+        }
+#endif
+
+        inline llvm::Value* FoldICmp(llvm::CmpInst::Predicate P, llvm::Value* LHS, llvm::Value* RHS) const
+#if LLVM_VERSION_MAJOR < 14
+        {
+            return CreateICmp(P, llvm::dyn_cast<llvm::Constant>(LHS), llvm::dyn_cast<llvm::Constant>(RHS));
+        }
+#else
+        override {
+            return m_baseConstantFolder.FoldICmp(P, LHS, RHS);
+        }
+#endif
+
+        inline llvm::Value* FoldSelect(llvm::Value* C, llvm::Value* True, llvm::Value* False) const
+#if LLVM_VERSION_MAJOR < 14
+        {
+            return CreateSelect(llvm::dyn_cast<llvm::Constant>(C), llvm::dyn_cast<llvm::Constant>(True), llvm::dyn_cast<llvm::Constant>(False));
+        }
+#else
+        override {
+            return m_baseConstantFolder.FoldSelect(C, True, False);
+        }
+#endif
+
+        inline llvm::Value* FoldGEP(llvm::Type* Ty, llvm::Value* Ptr, llvm::ArrayRef<llvm::Value*> IdxList,
+            bool IsInBounds = false) const
+#if LLVM_VERSION_MAJOR < 14
+        {
+            if (IsInBounds) {
+                return CreateInBoundsGetElementPtr(Ty, llvm::dyn_cast<llvm::Constant>(Ptr), IdxList);
+            } else {
+                return CreateGetElementPtr(Ty, llvm::dyn_cast<llvm::Constant>(Ptr), IdxList);
+            }
+        }
+#else
+        override {
+            return m_baseConstantFolder.FoldGEP(Ty, Ptr, IdxList, IsInBounds);
+        }
+#endif
 
         inline llvm::Constant* CreateFAdd(llvm::Constant* LHS, llvm::Constant* RHS) const override {
             return m_baseConstantFolder.CreateFAdd(LHS, RHS);
@@ -99,14 +225,6 @@ namespace IGCLLVM
             return m_baseConstantFolder.CreateAShr(LHS, RHS, isExact);
         }
 
-        inline llvm::Constant* CreateAnd(llvm::Constant* LHS, llvm::Constant* RHS) const override {
-            return m_baseConstantFolder.CreateAnd(LHS, RHS);
-        }
-
-        inline llvm::Constant* CreateOr(llvm::Constant* LHS, llvm::Constant* RHS) const override {
-            return m_baseConstantFolder.CreateOr(LHS, RHS);
-        }
-
         inline llvm::Constant* CreateXor(llvm::Constant* LHS, llvm::Constant* RHS) const override {
             return m_baseConstantFolder.CreateXor(LHS, RHS);
         }
@@ -131,36 +249,6 @@ namespace IGCLLVM
 
         inline llvm::Constant* CreateUnOp(llvm::Instruction::UnaryOps Opc, llvm::Constant* C) const override {
             return m_baseConstantFolder.CreateUnOp(Opc, C);
-        }
-
-        inline llvm::Constant* CreateGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
-            llvm::ArrayRef<llvm::Constant*> IdxList) const override {
-            return m_baseConstantFolder.CreateGetElementPtr(Ty, C, IdxList);
-        }
-
-        inline llvm::Constant* CreateGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
-            llvm::Constant* Idx) const override {
-            return m_baseConstantFolder.CreateGetElementPtr(Ty, C, Idx);
-        }
-
-        inline llvm::Constant* CreateGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
-            llvm::ArrayRef<llvm::Value*> IdxList) const override {
-            return m_baseConstantFolder.CreateGetElementPtr(Ty, C, IdxList);
-        }
-
-        inline llvm::Constant* CreateInBoundsGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
-            llvm::ArrayRef<llvm::Constant*> IdxList) const override {
-            return m_baseConstantFolder.CreateInBoundsGetElementPtr(Ty, C, IdxList);
-        }
-
-        inline llvm::Constant* CreateInBoundsGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
-            llvm::Constant* Idx) const override {
-            return m_baseConstantFolder.CreateInBoundsGetElementPtr(Ty, C, Idx);
-        }
-
-        inline llvm::Constant* CreateInBoundsGetElementPtr(llvm::Type* Ty, llvm::Constant* C,
-            llvm::ArrayRef<llvm::Value*> IdxList) const override {
-            return m_baseConstantFolder.CreateInBoundsGetElementPtr(Ty, C, IdxList);
         }
 
         inline llvm::Constant* CreateCast(llvm::Instruction::CastOps Op, llvm::Constant* C,
@@ -210,19 +298,9 @@ namespace IGCLLVM
             return m_baseConstantFolder.CreateTruncOrBitCast(C, DestTy);
         }
 
-        inline llvm::Constant* CreateICmp(llvm::CmpInst::Predicate P, llvm::Constant* LHS,
-            llvm::Constant* RHS) const override {
-            return m_baseConstantFolder.CreateICmp(P, LHS, RHS);
-        }
-
         inline llvm::Constant* CreateFCmp(llvm::CmpInst::Predicate P, llvm::Constant* LHS,
             llvm::Constant* RHS) const override {
             return m_baseConstantFolder.CreateFCmp(P, LHS, RHS);
-        }
-
-        inline llvm::Constant* CreateSelect(llvm::Constant* C, llvm::Constant* True,
-            llvm::Constant* False) const override {
-            return m_baseConstantFolder.CreateSelect(C, True, False);
         }
 
         inline llvm::Constant* CreateExtractElement(llvm::Constant* Vec, llvm::Constant* Idx) const override {
