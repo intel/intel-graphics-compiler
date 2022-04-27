@@ -2187,6 +2187,18 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFMaxEXT, _p4f64_i32_i32_f64, )( ge
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAdd, _p1f32_i32_i32_f32, )( __global float *Pointer, int Scope, int Semantics, float Value)
+{
+    atomic_operation_1op_as_float( __builtin_IB_atomic_add_global_f32, float, Pointer, Scope, Semantics, Value, true );
+}
+float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFSub, _p1f32_i32_i32_f32, )( __global float *Pointer, int Scope, int Semantics, float Value)
+{
+    atomic_operation_1op_as_float( __builtin_IB_atomic_sub_global_f32, float, Pointer, Scope, Semantics, Value, true );
+}
+
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 #undef ATOMIC_FLAG_FALSE
 #undef ATOMIC_FLAG_TRUE
 
