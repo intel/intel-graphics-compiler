@@ -397,6 +397,18 @@ void ConstantCoalescing::ProcessBlock(
     std::vector<BufChunk*> & indcb_owloads,
     std::vector<BufChunk*> & indcb_gathers)
 {
+    // checking for stores for future load merging check
+    bool bbHasStores = false;
+    for (BasicBlock::iterator BBI_st = blk->begin(), BBE_st = blk->end();
+        BBI_st != BBE_st; ++BBI_st)
+    {
+        if (isa<StoreInst>(BBI_st) ||
+            isa<StoreRawIntrinsic>(BBI_st))
+        {
+            bbHasStores = true;
+            break;
+        }
+    }
     // get work-item analysis, need to update uniformness information
     for (BasicBlock::iterator BBI = blk->begin(), BBE = blk->end();
          BBI != BBE; ++BBI)
@@ -416,6 +428,7 @@ void ConstantCoalescing::ProcessBlock(
             if ((bufType != BINDLESS_CONSTANT_BUFFER)
                 && (bufType != BINDLESS_TEXTURE)
                 && (bufType != SSH_BINDLESS_CONSTANT_BUFFER)
+                && (bufType != BINDLESS)
                 )
             {
                 continue;
@@ -442,18 +455,22 @@ void ConstantCoalescing::ProcessBlock(
                 uint addrSpace = ldRaw->getResourceValue()->getType()->getPointerAddressSpace();
                 if (wiAns->isUniform(ldRaw))
                 {
-                    MergeUniformLoad(
-                        ldRaw,
-                        ldRaw->getResourceValue(),
-                        addrSpace,
-                        baseOffsetInBytes,
-                        offsetInBytes,
-                        maxEltPlus,
-                        Extension,
-                        baseOffsetInBytes ? indcb_owloads : dircb_owloads);
+                    if (!bbHasStores || (bufType != BINDLESS))
+                    {
+                        MergeUniformLoad(
+                            ldRaw,
+                            ldRaw->getResourceValue(),
+                            addrSpace,
+                            baseOffsetInBytes,
+                            offsetInBytes,
+                            maxEltPlus,
+                            Extension,
+                            baseOffsetInBytes ? indcb_owloads : dircb_owloads);
+                    }
                 }
                 else if (bufType == BINDLESS_CONSTANT_BUFFER
                          || bufType == SSH_BINDLESS_CONSTANT_BUFFER
+                        || bufType == BINDLESS
                          )
                 {
                     if (UsesTypedConstantBuffer(m_ctx, bufType))
@@ -468,15 +485,18 @@ void ConstantCoalescing::ProcessBlock(
                     }
                     else if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOfStatefulNonUniformLoads))
                     {
-                        MergeScatterLoad(
-                            ldRaw,
-                            ldRaw->getResourceValue(),
-                            addrSpace,
-                            baseOffsetInBytes,
-                            offsetInBytes,
-                            maxEltPlus,
-                            Extension,
-                            indcb_gathers);
+                        if (!bbHasStores || (bufType != BINDLESS))
+                        {
+                            MergeScatterLoad(
+                                ldRaw,
+                                ldRaw->getResourceValue(),
+                                addrSpace,
+                                baseOffsetInBytes,
+                                offsetInBytes,
+                                maxEltPlus,
+                                Extension,
+                                indcb_gathers);
+                        }
                     }
                 }
                 else if (bufType == BINDLESS_TEXTURE && IGC_IS_FLAG_ENABLED(EnableTextureLoadCoalescing))
