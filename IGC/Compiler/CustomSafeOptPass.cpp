@@ -6400,6 +6400,8 @@ namespace {
         CodeGenContext* pContext = nullptr;
         ModuleMetaData* modMD;
         std::map<std::pair<uint, Value*>, SmallVector<MergeHFData, 2> > MergeHF;
+        std::map<uint, uint> slmOffsetMap;
+        DWORD slmSize = 0;
 
         bool findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace);
         bool getSRVMap(GenIntrinsicInst* tex, uint& index);
@@ -6414,6 +6416,9 @@ namespace {
         bool allowedALUinst(Value* inst);
         bool findStoreSequence(std::vector<Instruction*>& path, std::vector< std::vector<Instruction*>> &allPath);
         bool adjGep(Value* gep0, Value* gep1, Value* gep2, uint32_t offset[3]);
+        bool initializeSlmOffsetMap(Function& F);
+        void removeFromSlmMap(GetElementPtrInst* gep);
+        void updateSlmOffsetSize(Function& F);
     };
 }
 
@@ -6485,6 +6490,38 @@ bool HFfoldingOpt::getSRVMap(GenIntrinsicInst* texld, uint& index)
     return false;
 }
 
+void HFfoldingOpt::removeFromSlmMap(GetElementPtrInst* gep)
+{
+    uint32_t arraySize = 0, elmBytes = 0, offset = 0;
+    getGEPInfo(gep, arraySize, elmBytes, offset);
+
+    auto slmOffsetIter = slmOffsetMap.begin();
+    while (slmOffsetIter != slmOffsetMap.end())
+    {
+        // already removed
+        if (slmOffsetIter->second == -1)
+        {
+            ;
+        }
+        // find the offset to be removed
+        else if (slmOffsetIter->first == offset)
+        {
+            slmOffsetMap[slmOffsetIter->first] = -1;
+            slmSize -= arraySize * elmBytes;
+
+            // update the higher offsets
+            slmOffsetIter++;
+            while (slmOffsetIter != slmOffsetMap.end())
+            {
+                slmOffsetMap[slmOffsetIter->first] -= (arraySize * elmBytes);
+                slmOffsetIter++;
+            }
+            break;
+        }
+        slmOffsetIter++;
+    }
+}
+
 // detect if the given resource supports half float
 bool HFfoldingOpt::supportHF(const uint resourceRangeID, const uint indexIntoRange)
 {
@@ -6508,6 +6545,20 @@ bool HFfoldingOpt::getGEPInfo(GetElementPtrInst* GEP, uint& arraySize, uint& elm
     // offset    : 4608
     // arraySize : 144
     // elmBytes  : 4 (size of float)
+    if (isa<ConstantPointerNull>(GEP->getPointerOperand()))
+    {
+        offset = 0;
+        Type* type = GEP->getSourceElementType();
+        if (type->isArrayTy())
+        {
+            arraySize = (uint)type->getArrayNumElements();
+            elmBytes = type->getArrayElementType()->getScalarSizeInBits() / 8;
+            return true;
+        }
+        else
+            return false;
+    }
+
     if (const ConstantExpr* CE = dyn_cast<ConstantExpr>(GEP->getPointerOperand()))
     {
         const ConstantInt* CI = dyn_cast<ConstantInt>(CE->getOperand(0));
@@ -7074,6 +7125,13 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
                 {
                     if (StoreInst* pStore0 = dyn_cast<StoreInst>(pStore1->getPrevNode()))
                     {
+                        if (pStore0->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL ||
+                            pStore1->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL ||
+                            pStore2->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
+                        {
+                            continue;
+                        }
+
                         bool gepCheck = adjGep(pStore0->getPointerOperand(), pStore1->getPointerOperand(), pStore2->getPointerOperand(), offset);
                         Instruction* pStore2Src0 = dyn_cast<Instruction>(pStore2->getOperand(0));
                         if (gepCheck && pStore2Src0 && !(pStore2->getNextNode() &&
@@ -7150,6 +7208,9 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
             copyToInst[2]->eraseFromParent();
         }
 
+        // update the slm map
+        removeFromSlmMap(cast<GetElementPtrInst>(storeGepToRemove[iter->first][0][2]->getOperand(1)));
+
         // remove store
         for (uint storeIndex = 0; storeIndex < storeGepToRemove[iter->first].size(); storeIndex++)
         {
@@ -7159,10 +7220,75 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
     }
 }
 
+bool HFfoldingOpt::initializeSlmOffsetMap(Function& F)
+{
+    uint32_t arraySize = 0, elmBytes = 0, offset = 0;
+    uint32_t lastOffset = 0;
+    uint32_t lastOffsetSlmSize = 0;
+    slmOffsetMap.clear();
+    for (BasicBlock& bb : F)
+    {
+        for (Instruction& ii : bb)
+        {
+            if (GetElementPtrInst* GEP = llvm::dyn_cast<GetElementPtrInst>(&(ii)))
+            {
+                if (GEP->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
+                {
+                    if (getGEPInfo(GEP, arraySize, elmBytes, offset))
+                    {
+                        slmOffsetMap[offset] = offset;
+
+                        if (lastOffset < offset)
+                        {
+                            lastOffset = offset;
+                            lastOffsetSlmSize = arraySize * elmBytes;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    slmSize = lastOffset + lastOffsetSlmSize;
+    return true;
+}
+
+void HFfoldingOpt::updateSlmOffsetSize(Function& F)
+{
+    uint32_t arraySize = 0, elmBytes = 0, offset = 0;
+    for (BasicBlock& bb : F)
+    {
+        for (Instruction& ii : bb)
+        {
+            if (GetElementPtrInst* GEP = llvm::dyn_cast<GetElementPtrInst>(&(ii)))
+            {
+                if (GEP->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL &&
+                    getGEPInfo(GEP, arraySize, elmBytes, offset))
+                {
+                    if (slmOffsetMap[offset] != -1 && slmOffsetMap[offset] != offset)
+                    {
+                        ConstantExpr* CE = dyn_cast<ConstantExpr>(GEP->getPointerOperand());
+                        CE->setOperand(0, ConstantInt::get(CE->getOperand(0)->getType(), slmOffsetMap[offset]));
+                    }
+                }
+            }
+        }
+    }
+    static_cast<ComputeShaderContext*>(pContext)->m_slmSize  = iSTD::RoundPower2(slmSize);
+}
+
 bool HFfoldingOpt::runOnFunction(Function& F)
 {
     pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     modMD = pContext->getModuleMetaData();
+
+    bool allowOpt = initializeSlmOffsetMap(F);
+    if (!allowOpt)
+        return false;
 
     removeRedundantChannels(F);
 
@@ -7174,6 +7300,9 @@ bool HFfoldingOpt::runOnFunction(Function& F)
     {
         PackHfResources(F);
     }
+
+    // update slm offsets and size
+    updateSlmOffsetSize(F);
 
     return false;
 }
