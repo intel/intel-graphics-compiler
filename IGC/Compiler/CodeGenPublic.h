@@ -569,11 +569,10 @@ namespace IGC
         bool         DiscardAdjacencyEnable;
         OctEltUnit   SBEVertexURBEntryReadOffset;
         URBAllocationUnit URBAllocationSize;
-        unsigned int UserClipDistancesMask;
-        unsigned int UserCullDistancesMask;
         unsigned int MaxOutputVertexCount;
         unsigned int BindingTableEntryBitmap;
 
+        bool         DeclaresClipCullDistances;
         bool         DeclaresVPAIndex;
         bool         DeclaresRTAIndex;
 
