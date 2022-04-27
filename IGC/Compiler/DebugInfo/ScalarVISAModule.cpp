@@ -576,7 +576,6 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
         // the program. This will help debugger examine their
         // values anywhere in the code till they are in scope.
         unsigned int reg = m_pShader->GetDebugInfoData().getVISADclId(pVar, 0);
-        IGC_ASSERT_MESSAGE(reg < GENERAL_REGISTER_NUM, "Bad VISA general register");
 
         if (pType->isVectorTy())
         {
