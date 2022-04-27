@@ -173,9 +173,10 @@ void Optimizer::regAlloc()
     }
 }
 
-// This could be done in applyFusedCallWA().
-// Here, we add or inst to modify dmask. Doing so here has minimum impact to visa.
-void Optimizer::setDMaskFusedCallWA()
+// 1. set DMask so that upper 16bits are ones.
+//    This may be done in applyFusedCallWA(). Doing so here has minimum impact to visa.
+// 2. Perform IP WA if needed.
+void Optimizer::finishFusedCallWA_preSWSB()
 {
     if (builder.getIsKernel())
     {
@@ -217,36 +218,6 @@ void Optimizer::setDMaskFusedCallWA()
             entryBB->insertBefore(entryBB->getFirstInsertPos(), I0);
         }
     }
-}
-
-// Need to be done after SWSB so we can set call relative IP correctly.
-void Optimizer::finishFusedCallWA()
-{
-    // Regarding using M16 as maskOff to force running some instructions
-    //
-    // For each nested stack call like the following:
-    //   (1) (W)  mov  (4|M0)    r59.4<1>:ud     r125.0<4;4,1>:ud     // save code in prolog
-    //   (2)     call (16|M0)    r125.0          inner
-    //   (3) (W)  mov  (4|M0)    r125.0<1>:ud    r59.4<4;4,1>:ud      // restore code in ret.
-    //   (4)      ret  (16|M0)    r125.0
-    // If no active channels,  call inst will always execute due to the hw bug, therefore
-    // r125 will be modified by this call inst at (2). As no active channels, r125 restore
-    // code at (3) is not going to be run. Therefore, r125 returned at (4) is not the
-    // one that is saved into r59.4 at (1), which is wrong.
-    //
-    // The fix is to make save/restore mov instructions run always even though there
-    // are no active channels.  They run if their quarter control is outside the current
-    // JEU size (16 in this case), but still active (dmask still show it is active).
-    // We will set dmask to simd32 in this case, quarter control to M16 instead M0:
-    //   (1) (W)  mov  (4|M16)    r59.4<1>:ud     r125.0<4;4,1>:ud
-    //   (2)      call (16|M0)     r125.0          inner
-    //   (3) (W)  mov  (4|M16)    r125.0<1>:ud    r59.4<4;4,1>:ud
-    //
-    // Note:
-    //    r59.4 needs to write on stack frame before call and read back after call and
-    //    its address payload needs to be correct. For this purpose, all call stack-related
-    //    WA is done in RA, not here.
-    //
 
     if (kernel.m_indirectCallWAInfo.empty() && kernel.m_maskOffWAInsts.empty())
         return;
@@ -257,7 +228,7 @@ void Optimizer::finishFusedCallWA()
     // original BB).
     //
     // Don't expect any violation, but do the sanity check here to make sure.
-    for (auto II : kernel.m_indirectCallWAInfo)
+    for (auto& II : kernel.m_indirectCallWAInfo)
     {
         G4_BB* BB = II.first;
         IndirectCallWAInfo& callWAInfo = II.second;
@@ -310,6 +281,136 @@ void Optimizer::finishFusedCallWA()
     }
 #endif
 
+    if (builder.needIPWA())
+    {
+        for (auto& II : kernel.m_indirectCallWAInfo)
+        {
+            G4_BB* BB = II.first;
+            IndirectCallWAInfo& callWAInfo = II.second;
+
+            G4_INST* ip_wa = callWAInfo.IP_WA_placeholder;
+            if (ip_wa == nullptr)
+            {
+                // calla, ip wa not needed.
+                continue;
+            }
+
+            G4_INST* ip_inst = nullptr;
+            if (ip_wa)
+            {
+                //  Simplified example to show what it does:
+                //      Given
+                //          pseudo_fcall (16)    r4.0:ud
+                //
+                //      After applyFusedCallWA and RA:
+                //         (W) mov (1)              r2.0<1>:ud  sr0.0<0;1,0>:ud
+                //         (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
+                //         (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
+                //         (W) mov (1)              r3.2<1>:ud  cr0.2<0;1,0>:ud
+                //         (W) mov (1)              r3.0<1>:d  0x89abcdef:d                        : ip_wa (placeholder)
+                //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r3.2<0;1,0>:d       : small_start
+                //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  0x33333333:d        : small_patch
+                //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r4.0<0;1,0>:d       : big_start
+                //         (W) add (1)              r2.0<1>:d  r2.0<0;1,0>:d  0x33333333:d         : big_patch
+                //         if (BigEU)
+                //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f // $53:&87:
+                //                 pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud              : big_call
+                //         else
+                //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
+                //                 pseudo_fcall (16)    r125.0<1>:ud  r125.0<0;1,0>:ud             : small_call
+                //
+                //
+                //     After finishFusedCallWA()
+                //         (W) mov (1)              r2.0<1>:ud  sr0.0<0;1,0>:ud
+                //         (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
+                //         (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
+                //         (W) mov (1)              r3.2<1>:ud  cr0.2<0;1,0>:ud
+                //
+                //         (W) call (1)             r3.0<1>:d  _label_ip_wa
+                //      _label_ip_wa:
+                //         (W) add (1|M16)          r3.0<1>:d  r3.0<0;1,0>:d  0x20:d {NoCompact}
+                //          (W) return (1)          r3.0<0;1,0>:d {NoCompact}
+                //
+                //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r3.2<0;1,0>:d        : IP
+                //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  144
+                //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r4.0<0;1,0>:d
+                //         (W) add (1)              r2.0<1>:d  r2.0<0;1,0>:d   96
+                //         if (BigEU)
+                //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f // $53:&87:
+                //                pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud                : IP+96
+                //         else
+                //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
+                //                pseudo_fcall (16)    r125.0<1>:ud  r70.0<0;1,0>:f                 : IP+144
+                //
+                BB->resetLocalIds();
+                G4_INST* sI = callWAInfo.Small_start;
+                G4_INST* bI = callWAInfo.Big_start;
+                ip_inst = (sI->getLocalId() < bI->getLocalId() ? sI : bI);
+
+                // Get IP to ip_inst.
+                //   IP-WA's call sequence must be inserted right before ip_inst and
+                //   IP must be stored in ip_wa's dst, not ip_inst's dst.
+                InstListType waInsts;
+                replaceIPWithCall(waInsts, ip_wa);
+
+                // find IP adjustment add and set mask offset to M16!
+                // (it is the 3rd inst!)
+                G4_INST* adjust_ip_add = nullptr;
+                for (auto tI : waInsts)
+                {
+                    if (tI->opcode() == G4_add) {
+                        adjust_ip_add = tI;
+                        break;
+                    }
+                }
+                assert(adjust_ip_add);
+                kernel.setMaskOffset(adjust_ip_add, InstOpt_M16);
+
+                auto ip_inst_ii = std::find(BB->begin(), BB->end(), ip_inst);
+                BB->insert(ip_inst_ii, waInsts.begin(), waInsts.end());
+
+                // Remove placeholder
+                BB->remove(ip_wa);
+
+                // finishFusedCallWA() will use this to calculate the offset.
+                callWAInfo.IP_WA_placeholder = ip_inst;
+            }
+        }
+    }
+}
+
+// Need to be done after SWSB so we can set call relative IP correctly.
+void Optimizer::finishFusedCallWA()
+{
+    // Regarding using M16 as maskOff to force running some instructions
+    //
+    // For each nested stack call like the following:
+    //   (1) (W)  mov  (4|M0)    r59.4<1>:ud     r125.0<4;4,1>:ud     // save code in prolog
+    //   (2)     call (16|M0)    r125.0          inner
+    //   (3) (W)  mov  (4|M0)    r125.0<1>:ud    r59.4<4;4,1>:ud      // restore code in ret.
+    //   (4)      ret  (16|M0)    r125.0
+    // If no active channels,  call inst will always execute due to the hw bug, therefore
+    // r125 will be modified by this call inst at (2). As no active channels, r125 restore
+    // code at (3) is not going to be run. Therefore, r125 returned at (4) is not the
+    // one that is saved into r59.4 at (1), which is wrong.
+    //
+    // The fix is to make save/restore mov instructions run always even though there
+    // are no active channels.  They run if their quarter control is outside the current
+    // JEU size (16 in this case), but still active (dmask still show it is active).
+    // We will set dmask to simd32 in this case, quarter control to M16 instead M0:
+    //   (1) (W)  mov  (4|M16)    r59.4<1>:ud     r125.0<4;4,1>:ud
+    //   (2)      call (16|M0)     r125.0          inner
+    //   (3) (W)  mov  (4|M16)    r125.0<1>:ud    r59.4<4;4,1>:ud
+    //
+    // Note:
+    //    r59.4 needs to write on stack frame before call and read back after call and
+    //    its address payload needs to be correct. For this purpose, all call stack-related
+    //    WA is done in RA, not here.
+    //
+
+    if (kernel.m_indirectCallWAInfo.empty() && kernel.m_maskOffWAInsts.empty())
+        return;
+
     auto update_ip_distance = [](G4_INST* inst, int32_t& ip_dist) {
         G4_opcode op = inst->opcode();
         if (op == G4_sync_nop)
@@ -350,84 +451,8 @@ void Optimizer::finishFusedCallWA()
             continue;
         }
 
-        G4_INST* ip_wa = callWAInfo.IP_WA_placeholder;
-        G4_INST* ip_inst = nullptr;
-        if (ip_wa)
-        {
-            //  Simplified example to show what it does:
-            //      Given
-            //          pseudo_fcall (16)    r4.0:ud
-            //
-            //      After applyFusedCallWA and RA:
-            //         (W) mov (1)              r2.0<1>:ud  sr0.0<0;1,0>:ud
-            //         (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
-            //         (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
-            //         (W) mov (1)              r3.2<1>:ud  cr0.2<0;1,0>:ud
-            //         (W) mov (1)              r3.0<1>:d  0x89abcdef:d                        : ip_wa (placeholder)
-            //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r3.2<0;1,0>:d       : small_start
-            //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  0x33333333:d        : small_patch
-            //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r4.0<0;1,0>:d       : big_start
-            //         (W) add (1)              r2.0<1>:d  r2.0<0;1,0>:d  0x33333333:d         : big_patch
-            //         if (BigEU)
-            //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f // $53:&87:
-            //                 pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud              : big_call
-            //         else
-            //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
-            //                 pseudo_fcall (16)    r125.0<1>:ud  r125.0<0;1,0>:ud             : small_call
-            //
-            //
-            //     After finishFusedCallWA()
-            //         (W) mov (1)              r2.0<1>:ud  sr0.0<0;1,0>:ud
-            //         (W) and (16)  (eq)f1.0   null<1>:uw  r2.0<0;1,0>:uw  0x80:uw
-            //         (W&!f1.0) mov (1)        cr0.2<1>:ud  r4.0<0;1,0>:ud
-            //         (W) mov (1)              r3.2<1>:ud  cr0.2<0;1,0>:ud
-            //
-            //         (W) call (1)             r3.0<1>:d  _label_ip_wa
-            //      _label_ip_wa:
-            //         (W) add (1|M16)          r3.0<1>:d  r3.0<0;1,0>:d  0x20:d {NoCompact}
-            //          (W) return (1)          r3.0<0;1,0>:d {NoCompact}
-            //
-            //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r3.2<0;1,0>:d        : IP
-            //         (W) add (1)              r70.0<1>:d  r2.0<0;1,0>:d  144
-            //         (W) add (1)              r2.0<1>:d  -r3.0<0;1,0>:d  r4.0<0;1,0>:d
-            //         (W) add (1)              r2.0<1>:d  r2.0<0;1,0>:d   96
-            //         if (BigEU)
-            //             (W) mov (1)             r125.0<1>:f  r2.0<0;1,0>:f // $53:&87:
-            //                pseudo_fcall (16)   r125.0<1>:ud  r125.0<0;1,0>:ud                : IP+96
-            //         else
-            //             (W) mov (1)              r125.0<1>:f  r70.0<0;1,0>:f
-            //                pseudo_fcall (16)    r125.0<1>:ud  r70.0<0;1,0>:f                 : IP+144
-            //
-            BB->resetLocalIds();
-            G4_INST* sI = callWAInfo.Small_start;
-            G4_INST* bI = callWAInfo.Big_start;
-            ip_inst = (sI->getLocalId() < bI->getLocalId() ? sI : bI);
-
-            // Get IP to ip_inst.
-            //   IP-WA's call sequence must be inserted right before ip_inst and
-            //   IP must be stored in ip_wa's dst, not ip_inst's dst.
-            InstListType waInsts;
-            replaceIPWithCall(waInsts, ip_wa);
-
-            // find IP adjustment add and set mask offset to M16!
-            // (it is the 3rd inst!)
-            G4_INST* adjust_ip_add = nullptr;
-            for (auto tI : waInsts)
-            {
-                if (tI->opcode() == G4_add) {
-                    adjust_ip_add = tI;
-                    break;
-                }
-            }
-            assert(adjust_ip_add);
-            kernel.setMaskOffset(adjust_ip_add, InstOpt_M16);
-
-            auto ip_inst_ii = std::find(BB->begin(), BB->end(), ip_inst);
-            BB->insert(ip_inst_ii, waInsts.begin(), waInsts.end());
-
-            // remove placeholder
-            BB->remove(ip_wa);
-        }
+        // finishFusedCallWA_preSWSB() sets this placeholder.
+        G4_INST* ip_inst = callWAInfo.IP_WA_placeholder;
 
         // IP WA is applied if ip_inst isn't null.
         for (int i = 0; i < 2; ++i)
@@ -703,7 +728,7 @@ void Optimizer::addSWSBInfo()
     if (do_fcall_wa)
     {
         // Need to be done before SWSB
-        setDMaskFusedCallWA();
+        finishFusedCallWA_preSWSB();
     }
 
     if (!builder.hasSWSB())

@@ -279,7 +279,7 @@ private:
     void prepareNoMaskWA();
     void applyNoMaskWA();
     void applyFusedCallWA();
-    void setDMaskFusedCallWA();
+    void finishFusedCallWA_preSWSB();
     void finishFusedCallWA();
     void doNoMaskWA_postRA();
     void newDoNoMaskWA_postRA();
