@@ -1198,8 +1198,8 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
         decodeSendInfoXe(sdi);
     } else if (platform() == Platform::XE_HP) {
         decodeSendInfoXeHP(sdi);
-    } else if (platform() == Platform::XE_HPG ||
-        platform() == Platform::XE_HPC)
+    } else if (platform() >= Platform::XE_HPG
+    )
     {
         decodeSendInfoXeHPG(sdi);
     } else {

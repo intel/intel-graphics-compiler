@@ -861,8 +861,8 @@ void Encoder::encodeSendDescs(const Instruction& i)
         encodeSendDescsXe(i);
     } else if (platform() == Platform::XE_HP) {
         encodeSendDescsXeHP(i);
-    } else if (platform() == Platform::XE_HPG ||
-        platform() == Platform::XE_HPC)
+    } else if (platform() == Platform::XE_HPG || platform() == Platform::XE_HPC
+        )
     {
         encodeSendDescsXeHPG(i);
     } else {

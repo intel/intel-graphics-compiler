@@ -128,7 +128,6 @@ namespace iga
         case Platform::XE_HP:  pltf = GED_MODEL_XE_HP;  break;
         case Platform::XE_HPG: pltf = GED_MODEL_XE_HPG; break;
         case Platform::XE_HPC: pltf = GED_MODEL_XE_HPC; break;
-
         default:
             break;
         }

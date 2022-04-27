@@ -158,12 +158,14 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         4,
         0, (4)),
 
+
     IGA_REGISTER_SPEC_LE(
         Platform::XE_HPC,
         RegName::ARF_MSG, "msg", "Message Control",
         0x5, 0,
         4,
         8, (4,4,4,4,4,4,4,4)),
+
     IGA_REGISTER_SPEC(
         Platform::GEN7P5, Platform::GEN7P5,
         RegName::ARF_SP, "sp", "Stack Pointer",
@@ -171,12 +173,11 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         4,
         0, (2*4)), // two subregisters of 4 bytes each
     IGA_REGISTER_SPEC(
-        Platform::GEN8, Platform::XE_HPC,
+        Platform::GEN8, Platform::XE,
         RegName::ARF_SP, "sp", "Stack Pointer",
         0x6, 0,
         4,
         0, (2*8)), // two subregisters of 8 bytes each
-
 
     IGA_REGISTER_SPEC_UNIFORM(
         RegName::ARF_SR, "sr", "State Register",
@@ -237,11 +238,13 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
     // fc1.0     channel enables
     // fc2       call mask
     // fc3       JEU fused mask
+
     IGA_REGISTER_SPEC(Platform::XE, Platform::XE_HPC,
         RegName::ARF_FC, "fc", "Flow Control",
         0xD, 0,
         4,
         4, (4*32,4*1,4*1,4*1)),
+
     IGA_REGISTER_SPEC(Platform::GEN7, Platform::GEN7P5,
         RegName::ARF_DBG, "dbg", "Debug",
         0xF, 0,
@@ -476,6 +479,8 @@ static constexpr Model MODEL_XE_HPC(
     "12p72",
     "xehpc"
     );
+
+
 
 const Model * const iga::ALL_MODELS[] {
     &MODEL_GEN7P5,
