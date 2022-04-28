@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -196,6 +196,7 @@ public:
   void updateOffsetInArgsMD(llvm::SmallVectorImpl<unsigned> &&Offsets);
   void updateLinearizationMD(ArgToImplicitLinearization &&Lin);
   void updateBTIndicesMD(std::vector<int> &&BTIs);
+  void updateSLMSizeMD(unsigned Size);
 
   bool hasArgLinearization(llvm::Argument *Arg) const {
     return Linearization.count(Arg);

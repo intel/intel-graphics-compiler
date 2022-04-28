@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -125,6 +125,7 @@ SPDX-License-Identifier: MIT
 
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
+#include "vc/Utils/GenX/KernelInfo.h"
 
 #include <algorithm>
 #include <iterator>
@@ -265,6 +266,7 @@ private:
   bool lowerFAbs(CallInst *CI);
   bool lowerF32MathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID);
   bool lowerF32FastMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID);
+  bool lowerSlmInit(CallInst *CI);
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
@@ -3331,6 +3333,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerGenXIMad(CI, IntrinsicID);
     case GenXIntrinsic::genx_lzd:
       return lowerLzd(Inst);
+    case GenXIntrinsic::genx_slm_init:
+      return lowerSlmInit(CI);
     case Intrinsic::masked_load:
       return lowerLLVMMaskedLoad(CI);
     case Intrinsic::masked_store:
@@ -5591,6 +5595,33 @@ bool GenXLowering::lowerF32FastMathIntrinsic(CallInst *CI,
     vc::fatal(CI->getContext(), "GenXLowering",
               "Sorry there is only low precision native instruction", CI);
   return lowerF32MathIntrinsic(CI, GenXID);
+}
+
+bool GenXLowering::lowerSlmInit(CallInst *CI) {
+  auto *BB = CI->getParent();
+  auto *F = BB->getParent();
+  if (F->getCallingConv() != CallingConv::SPIR_KERNEL) {
+    vc::fatal(CI->getContext(), "GenXLowering",
+              "SLM init call is supported only in kernels", CI);
+  }
+
+  auto *V = dyn_cast<ConstantInt>(CI->getArgOperand(0));
+  if (!V) {
+    vc::fatal(CI->getContext(), "GenXLowering",
+              "Cannot reserve non-constant amount of SLM", CI);
+  }
+
+  unsigned SLMSize = V->getValue().getZExtValue();
+
+  vc::KernelMetadata MD{F};
+
+  if (SLMSize > MD.getSLMSize()) {
+    MD.updateSLMSizeMD(SLMSize);
+  }
+
+  ToErase.push_back(CI);
+
+  return true;
 }
 
 /***********************************************************************

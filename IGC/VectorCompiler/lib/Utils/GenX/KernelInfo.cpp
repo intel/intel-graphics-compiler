@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -323,6 +323,14 @@ void vc::KernelMetadata::updateBTIndicesMD(std::vector<int> &&BTIndices) {
   BTIs = std::move(BTIndices);
   updateArgsMD(BTIs.begin(), BTIs.end(), InternalNode,
                internal::KernelMDOp::BTIndices);
+}
+
+void vc::KernelMetadata::updateSLMSizeMD(unsigned Size) {
+  SLMSize = Size;
+  auto *Ty = Type::getInt32Ty(F->getContext());
+  auto *C = ConstantInt::get(Ty, SLMSize);
+  ExternalNode->replaceOperandWith(genx::KernelMDOp::SLMSize,
+                                   ValueAsMetadata::get(C));
 }
 
 bool vc::hasKernel(const Module &M) {
