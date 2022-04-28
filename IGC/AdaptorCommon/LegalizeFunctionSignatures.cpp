@@ -90,12 +90,12 @@ bool LegalizeFunctionSignatures::runOnModule(Module& M)
     return true;
 }
 
-// If the return type size is greater than the allowed size, we convert the return value to pass-by-pointer
-inline bool isLegalReturnType(const Type* ty)
+inline bool isLegalSignatureType(const Type* ty)
 {
-    // check return type size
-    //return ty->getPrimitiveSizeInBits() <= MAX_RETVAL_SIZE_IN_BITS;
-    return true; // allow all return sizes
+    // Structs are by default illegal unless they are promotable
+    if (ty->getTypeID() == Type::ArrayTyID) return false;
+    if (ty->getTypeID() == Type::StructTyID) return false;
+    return true;
 }
 
 // Check if an int or int-vector argument type is a power of two
@@ -257,15 +257,15 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
         auto ei = pFunc->arg_end();
 
         // Create the new function signature by replacing the illegal types
-        if (isStackCall && !isLegalReturnType(pFunc->getReturnType()))
-        {
-            legalizeReturnType = true;
-            argTypes.push_back(PointerType::get(pFunc->getReturnType(), 0));
-        }
-        else if (FunctionHasPromotableSRetArg(M, pFunc))
+        if (FunctionHasPromotableSRetArg(M, pFunc))
         {
             promoteSRetType = true;
             ai++; // Skip adding the first arg
+        }
+        else if (isStackCall && !isLegalSignatureType(pFunc->getReturnType()))
+        {
+            legalizeReturnType = true;
+            argTypes.push_back(PointerType::get(pFunc->getReturnType(), 0));
         }
 
         for (; ai != ei; ai++)
@@ -280,6 +280,11 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
             {
                 fixArgType = true;
                 argTypes.push_back(PromotedStructValueType(M, ai->getType()));
+            }
+            else if (!isLegalSignatureType(ai->getType()))
+            {
+                fixArgType = true;
+                argTypes.push_back(PointerType::get(ai->getType(), 0));
             }
             else
             {
@@ -336,12 +341,12 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             bool isStackCall = pFunc->hasFnAttribute("visaStackCall");
             Value* tempAllocaForSRetPointer = nullptr;
 
-            if (isStackCall && !isLegalReturnType(pFunc->getReturnType())) {
+            if (FunctionHasPromotableSRetArg(M, pFunc)) {
+                promoteSRetType = true;
+            }
+            else if (isStackCall && !isLegalSignatureType(pFunc->getReturnType())) {
                 legalizeReturnType = true;
                 ++NewArgIt; // Skip first argument that we added.
-            }
-            else if (FunctionHasPromotableSRetArg(M, pFunc)) {
-                promoteSRetType = true;
             }
 
             // Fix the usages of arguments that have changed
@@ -374,6 +379,12 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                     StoreToStruct(builder, &*NewArgIt, newArgPtr);
                     VMap[&*OldArgIt] = newArgPtr;
                 }
+                else if (!isLegalSignatureType(OldArgIt->getType()))
+                {
+                    // Load from pointer arg
+                    Value* load = builder.CreateLoad(&*NewArgIt);
+                    VMap[&*OldArgIt] = load;
+                }
                 else
                 {
                     // No change, map old arg to new arg
@@ -390,13 +401,27 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             builder.CreateBr(ClonedEntryBB);
             MergeBlockIntoPredecessor(ClonedEntryBB);
 
+            // Loop through new args and add attributes
+            for (auto oldIt = pFunc->arg_begin(), it = pNewFunc->arg_begin(), ie = pNewFunc->arg_end(); it != ie; it++)
+            {
+                if (legalizeReturnType && it == pNewFunc->arg_begin())
+                {
+                    it->addAttr(llvm::Attribute::NoAlias);
+                    it->addAttr(llvm::Attribute::StructRet);
+                    continue;
+                }
+                else if (it->getType()->isPointerTy() &&
+                    oldIt->getType() != it->getType() &&
+                    !isLegalSignatureType(oldIt->getType()))
+                {
+                    it->addAttr(llvm::Attribute::ByVal);
+                }
+                oldIt++;
+            }
+
             // Now fix the return values
             if (legalizeReturnType)
             {
-                // Add "noalias" and "sret" to the return argument
-                auto retArg = pNewFunc->arg_begin();
-                retArg->addAttr(llvm::Attribute::NoAlias);
-                retArg->addAttr(llvm::Attribute::StructRet);
                 // Loop through all return instructions and store the old return value into the arg0 pointer
                 const auto ptrSize = DL.getPointerSize();
                 for (auto RetInst : Returns)
@@ -499,7 +524,15 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
 
     // Check return type
     Value* returnPtr = nullptr;
-    if (isStackCall && !isLegalReturnType(callInst->getType()))
+    if (callInst->getType()->isVoidTy() &&
+        callInst->getNumArgOperands() > 0 &&
+        callInst->paramHasAttr(0, llvm::Attribute::StructRet) &&
+        isPromotableStructType(M, callInst->getArgOperand(0)->getType(), isStackCall, true /* retval */))
+    {
+        opNum++; // Skip the first call operand
+        promoteSRetType = true;
+    }
+    else if (isStackCall && !isLegalSignatureType(callInst->getType()))
     {
         // Create an alloca for the return type
         IGCLLVM::IRBuilder<> builder(callInst);
@@ -511,14 +544,6 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         retAttrib = retAttrib.addAttribute(M.getContext(), llvm::Attribute::StructRet);
         ArgAttrVec.push_back(retAttrib);
         legalizeReturnType = true;
-    }
-    else if (callInst->getType()->isVoidTy() &&
-        callInst->getNumArgOperands() > 0 &&
-        callInst->paramHasAttr(0, llvm::Attribute::StructRet) &&
-        isPromotableStructType(M, callInst->getArgOperand(0)->getType(), isStackCall, true /* retval */))
-    {
-        opNum++; // Skip the first call operand
-        promoteSRetType = true;
     }
 
     // Check call operands if it needs to be replaced
@@ -542,6 +567,18 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             Value* newOp = LoadFromStruct(builder, arg);
             callArgs.push_back(newOp);
             ArgAttrVec.push_back(AttributeSet());
+            fixArgType = true;
+        }
+        else if (!isLegalSignatureType(arg->getType()))
+        {
+            // Create and store operand as an alloca, then pass as argument
+            IGCLLVM::IRBuilder<> builder(callInst);
+            Value* alloca = builder.CreateAlloca(arg->getType());
+            builder.CreateStore(arg, alloca);
+            callArgs.push_back(alloca);
+            AttributeSet argAttrib;
+            argAttrib = argAttrib.addAttribute(M.getContext(), llvm::Attribute::ByVal);
+            ArgAttrVec.push_back(argAttrib);
             fixArgType = true;
         }
         else
