@@ -4397,6 +4397,11 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagClear, _p3i32_i32_i32, )(local i
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFlagClear, _p4i32_i32_i32, )(generic int *Pointer, int Scope, int Semantics);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAdd, _p1f32_i32_i32_f32, )(global float *Pointer, int Scope, int Semantics, float Value);
+float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFSub, _p1f32_i32_i32_f32, )(global float *Pointer, int Scope, int Semantics, float Value);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+
 // SPV_EXT_shader_atomic_float_add
 float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f32_i32_i32_f32, )(private float *Pointer, int Scope, int Semantics, float Value);
 float  SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f32_i32_i32_f32, )(global float *Pointer, int Scope, int Semantics, float Value);

@@ -391,6 +391,8 @@ ATOMIC_FETCH_FUNCTION(max, ulong, UMax, i64, ulong)
 ATOMIC_FETCH_FUNCTION(min, long, SMin, i64, ulong)
 ATOMIC_FETCH_FUNCTION(min, ulong, UMin, i64, ulong)
 #endif // defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
+ATOMIC_FETCH_FUNCTION_ADDRSPACE(add, float, FAdd, f32, float, global, p1)
+ATOMIC_FETCH_FUNCTION_ADDRSPACE(sub, float, FSub, f32, float, global, p1)
 
 // The atomic_store Functions
 // void atomic_store(volatile A *object, C desired)

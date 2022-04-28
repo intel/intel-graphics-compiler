@@ -31,6 +31,15 @@ INLINE TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE TYPE *p, TYPE cmp, 
     return __builtin_IB_atomic_##KEY##_##ADDRSPACE##_##IGC_TYPE((volatile __##ADDRSPACE IGC_CL_TYPE *)p, cmp, val); \
 }
 
+#if defined(cl_intel_global_float_atomics)
+//atom_add
+DEF_ATOM_2SRC(add, global, float, f32, float)
+DEF_ATOMIC_2SRC(add, global, float, f32, float)
+//atom_sub
+DEF_ATOM_2SRC(sub, global, float, f32, float)
+DEF_ATOMIC_2SRC(sub, global, float, f32, float)
+#endif // defined(cl_intel_global_float_atomics)
+
 //atom_min
 DEF_ATOM_2SRC(min, global, float, f32, float)
 DEF_ATOM_2SRC(min, local, float, f32, float)
