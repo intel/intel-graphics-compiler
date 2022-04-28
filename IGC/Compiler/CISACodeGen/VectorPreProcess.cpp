@@ -1261,8 +1261,16 @@ void VectorPreProcess::getOrGenScalarValues(
         BasicBlock::iterator inst_b;
         if (Instruction * I = dyn_cast<Instruction>(VecVal))
         {
-            inst_b = BasicBlock::iterator(I);
-            ++inst_b;
+            if (auto phi = dyn_cast<PHINode>(I))
+            {
+                // avoid inserting between phis
+                inst_b = phi->getParent()->getFirstInsertionPt();
+            }
+            else
+            {
+                inst_b = BasicBlock::iterator(I);
+                ++inst_b;
+            }
         }
         else
         {
