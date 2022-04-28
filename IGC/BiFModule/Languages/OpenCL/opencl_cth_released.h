@@ -6939,10 +6939,10 @@ void __attribute__((overloadable)) intel_work_group_vme_mb_multi_bidir_check_8x8
 #endif // #ifndef _OPENCL_CTH_
 
 #ifdef cl_intel_split_work_group_barrier
-void __attribute__((overloadable)) work_group_barrier_arrive(cl_mem_fence_flags flags);
-void __attribute__((overloadable)) work_group_barrier_wait(cl_mem_fence_flags flags);
+void intel_work_group_barrier_arrive(cl_mem_fence_flags flags);
+void intel_work_group_barrier_wait(cl_mem_fence_flags flags);
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-void __attribute__((overloadable)) work_group_barrier_arrive(cl_mem_fence_flags flags, memory_scope scope);
-void __attribute__((overloadable)) work_group_barrier_wait(cl_mem_fence_flags flags, memory_scope scope);
+void intel_work_group_barrier_arrive(cl_mem_fence_flags flags, memory_scope scope);
+void intel_work_group_barrier_wait(cl_mem_fence_flags flags, memory_scope scope);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // cl_intel_split_work_group_barrier
