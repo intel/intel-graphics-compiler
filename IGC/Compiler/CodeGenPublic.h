@@ -1421,7 +1421,8 @@ namespace IGC
         SComputeShaderKernelProgram programOutput;
         bool isSecondCompile;
         bool m_IsPingPongSecond;
-        unsigned m_slmSize;
+        unsigned m_slmSize;  // tgsm size round to power of 2
+        unsigned m_tgsmSize; // tgsm size
         bool numWorkGroupsUsed;
         bool m_ForceOneSIMD = false;
         bool m_UseLinearWalk = false;
@@ -1439,6 +1440,7 @@ namespace IGC
             isSecondCompile = false;
             m_IsPingPongSecond = false;
             m_slmSize = 0;
+            m_tgsmSize = 0;
             numWorkGroupsUsed = false;
             m_threadGroupSize_X = 0;
             m_threadGroupSize_Y = 0;

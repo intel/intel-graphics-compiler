@@ -6398,10 +6398,10 @@ namespace {
             StoreInst* Store;
         };
         CodeGenContext* pContext = nullptr;
+        ComputeShaderContext* csCtx = nullptr;
         ModuleMetaData* modMD;
         std::map<std::pair<uint, Value*>, SmallVector<MergeHFData, 2> > MergeHF;
         std::map<uint, uint> slmOffsetMap;
-        DWORD slmSize = 0;
 
         bool findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace);
         bool getSRVMap(GenIntrinsicInst* tex, uint& index);
@@ -6507,7 +6507,7 @@ void HFfoldingOpt::removeFromSlmMap(GetElementPtrInst* gep)
         else if (slmOffsetIter->first == offset)
         {
             slmOffsetMap[slmOffsetIter->first] = -1;
-            slmSize -= arraySize * elmBytes;
+            csCtx->m_tgsmSize -= arraySize * elmBytes;;
 
             // update the higher offsets
             slmOffsetIter++;
@@ -6526,9 +6526,9 @@ void HFfoldingOpt::removeFromSlmMap(GetElementPtrInst* gep)
 bool HFfoldingOpt::supportHF(const uint resourceRangeID, const uint indexIntoRange)
 {
     std::vector<unsigned int> HFRes;
-    for (size_t i = 0; i < pContext->getModuleMetaData()->csInfo.ResForHfPacking.size(); i++)
+    for (size_t i = 0; i < modMD->csInfo.ResForHfPacking.size(); i++)
     {
-        HFRes = pContext->getModuleMetaData()->csInfo.ResForHfPacking[i];
+        HFRes = modMD->csInfo.ResForHfPacking[i];
         if (resourceRangeID == HFRes[0] && indexIntoRange == HFRes[1])
             return true;
     }
@@ -7223,8 +7223,6 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
 bool HFfoldingOpt::initializeSlmOffsetMap(Function& F)
 {
     uint32_t arraySize = 0, elmBytes = 0, offset = 0;
-    uint32_t lastOffset = 0;
-    uint32_t lastOffsetSlmSize = 0;
     slmOffsetMap.clear();
     for (BasicBlock& bb : F)
     {
@@ -7237,12 +7235,6 @@ bool HFfoldingOpt::initializeSlmOffsetMap(Function& F)
                     if (getGEPInfo(GEP, arraySize, elmBytes, offset))
                     {
                         slmOffsetMap[offset] = offset;
-
-                        if (lastOffset < offset)
-                        {
-                            lastOffset = offset;
-                            lastOffsetSlmSize = arraySize * elmBytes;
-                        }
                     }
                     else
                     {
@@ -7253,7 +7245,6 @@ bool HFfoldingOpt::initializeSlmOffsetMap(Function& F)
         }
     }
 
-    slmSize = lastOffset + lastOffsetSlmSize;
     return true;
 }
 
@@ -7278,12 +7269,13 @@ void HFfoldingOpt::updateSlmOffsetSize(Function& F)
             }
         }
     }
-    static_cast<ComputeShaderContext*>(pContext)->m_slmSize  = iSTD::RoundPower2(slmSize);
+    csCtx->m_slmSize = iSTD::RoundPower2(DWORD(csCtx->m_tgsmSize));
 }
 
 bool HFfoldingOpt::runOnFunction(Function& F)
 {
     pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    csCtx = static_cast<ComputeShaderContext*>(pContext);
     modMD = pContext->getModuleMetaData();
 
     bool allowOpt = initializeSlmOffsetMap(F);
