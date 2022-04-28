@@ -2089,12 +2089,12 @@ int Optimizer::optimization()
     // HW workaround before RA
     runPass(PI_preRA_HWWorkaround);
 
-    if (builder.enableACCBeforRA() && builder.enablePreSchedACC())
+    if (builder.enableACCBeforRA() && kernel.getOption(vISA_PreSchedForAcc))
     {
         runPass(PI_ACCSchedule);
     }
 
-    if (builder.enableACCBeforRA() && !builder.enablePreSchedACC())
+    if (builder.enableACCBeforRA() && !kernel.getOption(vISA_PreSchedForAcc))
     {
         runPass(PI_accSubBeforeRA);
     }
@@ -2137,7 +2137,7 @@ int Optimizer::optimization()
         runPass(PI_localSchedule);
     }
 
-    if (!builder.enableACCBeforRA() && !builder.enablePreSchedACC())
+    if (!builder.enableACCBeforRA() && !kernel.getOption(vISA_PreSchedForAcc))
     {
         runPass(PI_expandMulPostSchedule);
 

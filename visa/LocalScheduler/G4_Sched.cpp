@@ -2623,11 +2623,6 @@ bool preRA_ACC_Scheduler::run()
     AccSubPass accSub(*kernel.fg.builder, kernel);
 
     for (auto bb : kernel.fg) {
-        if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE) {
-            //Skip small and large blocks.
-            continue;
-        }
-
         preDDD ddd(mem, kernel, bb);
         SchedConfig config(0);
         BB_ACC_Scheduler S(kernel, ddd);
