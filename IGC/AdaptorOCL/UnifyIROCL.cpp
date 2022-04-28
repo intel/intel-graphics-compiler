@@ -434,6 +434,11 @@ static void CommonOCLBasedPasses(
 
     if (IGC_IS_FLAG_ENABLED(EnableGASResolver))
     {
+        // Run InferAddressSpaces pass first - to propagate named addrspaces
+        // through elementary LLVM instructions, then run custom ResolveGAS
+        // pass to handle IGC specific instructions, like builtins etc.
+        mpm.add(createInferAddressSpacesPass(ADDRESS_SPACE_GENERIC));
+
         // Add fix up of illegal `addrspacecast` in respect to OCL 2.0 spec.
         mpm.add(createFixAddrSpaceCastPass());
         mpm.add(createResolveGASPass());
