@@ -828,6 +828,7 @@ IR_Builder::IR_Builder(
         memset(metaData, 0, sizeof(FINALIZER_INFO));
     }
 
+    usedBarriers = BitSet(kernel.getMaxNumOfBarriers(), false);
     fcPatchInfo = NULL;
 
     if (!getIsPayload())

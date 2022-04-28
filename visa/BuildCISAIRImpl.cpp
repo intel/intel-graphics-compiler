@@ -1256,7 +1256,6 @@ void CISA_IR_Builder::LinkTimeOptimization(
 
 static void retrieveBarrierInfoFromCallee(VISAKernelImpl* entry, std::set<VISAKernelImpl*>& visited)
 {
-    // Propagate properties of callee to caller recursively.
     auto res = visited.insert(entry);
     if (!res.second)
         return;
@@ -1272,18 +1271,18 @@ static void retrieveBarrierInfoFromCallee(VISAKernelImpl* entry, std::set<VISAKe
 
         const char* funcName = fcall->getSrc(0)->asLabel()->getLabel();
         VISAKernelImpl* callee = entry->getCISABuilder()->getKernel(funcName);
+        // Propagate properties of callee to caller recursively.
         retrieveBarrierInfoFromCallee(callee, visited);
-
-        // usesBarrier property is propagated to IGC and onwards in to NEO patch
-        // token. We need this logic here to propagate barrier usage to IGC and
-        // further to NEO so it can set up WG size appropriately. Without this
-        // setting barrier would cause machine to hang.
-        // TODO: How to set usesBarrier when callee is indirect in patch token
-        // path? For zebin path, the barrier information of an indirect
-        // (external) function will be provided in the corresponding .ze_info
-        // field.
-        entry->getIRBuilder()->getJitInfo()->usedBarriers |= callee->getIRBuilder()->getJitInfo()->usedBarriers;
+        entry->getIRBuilder()->usedBarries() |= callee->getIRBuilder()->usedBarries();
     }
+    // numBarriers property is propagated to IGC and onwards in to NEO patch
+    // token. We need this logic here to propagate barrier usage to IGC and
+    // further to NEO so it can set up WG size appropriately.  Without this
+    // setting barrier would cause machine to hang.
+    // TODO: How to set numBarriers when callee is indirect in patch token
+    // path? For zebin path, the barrier information of an indirect (external)
+    // function will be provided in the corresponding .ze_info field.
+    entry->getIRBuilder()->getJitInfo()->numBarriers = entry->getIRBuilder()->numBarriers();
 }
 
 // Stitch the FG of subFunctions to mainFunc

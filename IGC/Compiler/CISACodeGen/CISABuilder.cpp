@@ -5707,7 +5707,7 @@ namespace IGC
 
             uint8_t isExternal = F->hasFnAttribute("referenced-indirectly") ? 1 : 0;
             // Set per-function barrier count from vISA information.
-            uint32_t barrierCnt = jitInfo->numBarriers();
+            uint32_t barrierCnt = jitInfo->numBarriers;
             attrs.emplace_back(entry.f_isKernel, isExternal, barrierCnt, entry.f_privateMemPerThread,
                 entry.f_spillMemPerThread, F->getName().str());
             attribTable.push_back(entry);
@@ -6014,11 +6014,11 @@ namespace IGC
 
         // Depend on vISA information about barriers presence to make sure that it's
         // always set properly, even if a barrier is used as a part of Inline vISA code only.
-        if (jitInfo->hasBarrier())
+        if (jitInfo->numBarriers != 0)
         {
             if (context->getModuleMetaData()->NBarrierCnt > 0)
             {
-                m_program->SetBarrierNumber(NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->numBarriers()));
+                m_program->SetBarrierNumber(NamedBarriersResolution::AlignNBCnt2BarrierNumber(jitInfo->numBarriers));
             }
             else
             {

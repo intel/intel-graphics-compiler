@@ -270,14 +270,14 @@ void IR_Builder::generateSingleBarrier()
         true);
 }
 
-static void checkNamedBarrierSrc(G4_Operand* src, bool isBarrierId)
+static void checkNamedBarrierSrc(G4_Operand* src, bool isBarrierId, const G4_Kernel& kernel)
 {
     if (src->isImm())
     {
         if (isBarrierId)
         {
             uint32_t val = (uint32_t)src->asImm()->getInt();
-            assert(val < FINALIZER_INFO::kMaxNamedBarriers && "illegal named barrier id");
+            assert(val < kernel.getMaxNumOfBarriers() && "illegal named barrier id");
         }
     }
     else if (src->isSrcRegRegion())
@@ -291,16 +291,13 @@ static void checkNamedBarrierSrc(G4_Operand* src, bool isBarrierId)
     }
 }
 
-static void updateNamedBarriersInJitInfo(FINALIZER_INFO* jitinfo, G4_Operand* barrierId)
+void IR_Builder::updateNamedBarrier(G4_Operand* barrierId)
 {
-    if (!jitinfo)
-        return;
-
     if (barrierId->isImm())
     {
         // Mark the barrier id is being used.
         unsigned id = (unsigned)barrierId->asImm()->getInt();
-        jitinfo->usedBarriers.set(id);
+        usedBarriers.set(id, true);
     }
     else
     {
@@ -308,7 +305,7 @@ static void updateNamedBarriersInJitInfo(FINALIZER_INFO* jitinfo, G4_Operand* ba
         // id is unknown to vISA. We probably won't see this in typical cases
         // as the barrier id provided by users like IGC should be an immediate
         // value.
-        jitinfo->usedBarriers.set();
+        usedBarriers.setAll();
     }
 }
 
@@ -316,9 +313,9 @@ int IR_Builder::translateVISANamedBarrierWait(G4_Operand* barrierId)
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    checkNamedBarrierSrc(barrierId, true);
+    checkNamedBarrierSrc(barrierId, true, kernel);
 
-    updateNamedBarriersInJitInfo(getJitInfo(), barrierId);
+    updateNamedBarrier(barrierId);
 
     G4_Operand* barSrc = barrierId;
     if (barrierId->isSrcRegRegion()) {
@@ -339,10 +336,10 @@ int IR_Builder::translateVISANamedBarrierSignal(G4_Operand* barrierId, G4_Operan
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-    checkNamedBarrierSrc(barrierId, true);
-    checkNamedBarrierSrc(threadCount, false);
+    checkNamedBarrierSrc(barrierId, true, kernel);
+    checkNamedBarrierSrc(threadCount, false, kernel);
 
-    updateNamedBarriersInJitInfo(getJitInfo(), barrierId);
+    updateNamedBarrier(barrierId);
 
     if (threadCount->isImm())
     {
@@ -449,18 +446,15 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
     return VISA_SUCCESS;
 }
 
-static void updateBarrierInJitInfo(FINALIZER_INFO* jitinfo)
+void IR_Builder::updateBarrier()
 {
-    if (!jitinfo)
-        return;
-
     // The legacy barrier is always allocated to id 0.
-    jitinfo->usedBarriers.set(0);
+    usedBarriers.set(0, true);
 }
 
 void IR_Builder::generateBarrierSend()
 {
-    updateBarrierInJitInfo(getJitInfo());
+    updateBarrier();
 
     if (hasUnifiedBarrier())
     {
@@ -513,7 +507,7 @@ void IR_Builder::generateBarrierSend()
 
 void IR_Builder::generateBarrierWait()
 {
-    updateBarrierInJitInfo(getJitInfo());
+    updateBarrier();
 
     G4_Operand* waitSrc = nullptr;
     if (!hasUnifiedBarrier()) {

@@ -310,6 +310,7 @@ public:
     G4_SubReg_Align getHalfGRFAlign() const {return platformInfo.getHalfGRFAlign();}
     unsigned getGenxDataportIOSize() const {return platformInfo.getGenxDataportIOSize();}
     unsigned getGenxSamplerIOSize() const {return platformInfo.getGenxSamplerIOSize();}
+    unsigned getMaxNumOfBarriers() const {return platformInfo.getMaxNumOfBarriers();}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 

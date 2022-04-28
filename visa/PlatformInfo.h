@@ -75,6 +75,14 @@ public:
         return getGenxDataportIOSize();
     }
 
+    // The max number of named barriers allowed
+    unsigned getMaxNumOfBarriers() const {
+        if (platform >= Xe_PVC)
+            return 32;
+        // Set the number to 8 for pre-PVC now to align with IGC.
+        return 8;
+    }
+
     const char* getGenxPlatformString() const;
 
     /*************** internal jitter functions ********************/

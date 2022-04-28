@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <set>
 #include <string>
 
+#include "BitSet.h"
 #include "G4_Kernel.hpp"
 #include "G4_IR.hpp"
 #include "InstSplit.h"
@@ -312,6 +313,8 @@ private:
 
     FINALIZER_INFO*       metaData = nullptr;
     CompilerStats         compilerStats;
+    // Use a BitSet to track the barrier IDs used
+    BitSet                usedBarriers;
 
     int                   subroutineId = -1;   // the kernel itself has id 0, as we always emit a subroutine label for kernel too
     enum VISA_BUILD_TYPE type; // as opposed to what?
@@ -664,6 +667,19 @@ public:
     unsigned getGenxSamplerIOSize() const {return kernel.getGenxSamplerIOSize();}
     FINALIZER_INFO* getJitInfo() {return metaData;}
     CompilerStats &getcompilerStats() {return compilerStats;}
+    BitSet& usedBarries() {return usedBarriers;}
+    // Return the max id set + 1 as the number of barriers used. Ideally the
+    // number of bits set can be used to represent the number of barriers.
+    // However, In current programming model the barriers should be allocated
+    // sequentially, so here we return max id + 1 to make sure of that.
+    unsigned numBarriers() const {
+        int maxId = usedBarriers.findLastIn(0, kernel.getMaxNumOfBarriers());
+        // maxId + 1 would also cover the case, which returns -1, that no bits
+        // are set.
+        return maxId + 1;
+    }
+    void updateBarrier();
+    void updateNamedBarrier(G4_Operand* barrierId);
 
     G4_Declare* cloneDeclare(std::map<G4_Declare*, G4_Declare*>& dclMap, G4_Declare* dcl);
 
