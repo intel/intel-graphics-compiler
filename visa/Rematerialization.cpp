@@ -126,8 +126,7 @@ namespace vISA
                 if (samplerHeaderMov &&
                     inst->isSplitSend() &&
                     inst->getMsgDesc()->isSampler() &&
-                    inst->getMsgDescRaw() &&
-                    inst->getMsgDescRaw()->isHeaderPresent())
+                    inst->getMsgDesc()->isHeaderPresent())
                 {
                     MUST_BE_TRUE(samplerHeaderMov->getExecSize() == 1, "Unexpected sampler header");
                     samplerHeaderMap.insert(std::make_pair(inst, samplerHeaderMov));
@@ -782,8 +781,7 @@ namespace vISA
 
                     bool samplerHeaderNotUsed = uniqueDefInst->getSrc(0)->asSrcRegRegion()->getTopDcl() != kernel.fg.builder->getBuiltinSamplerHeader();
 
-                    if (!uniqueDefInst->getMsgDescRaw() ||
-                        !uniqueDefInst->getMsgDescRaw()->isHeaderPresent() ||
+                    if (!uniqueDefInst->getMsgDesc()->isHeaderPresent() ||
                         samplerHeaderNotUsed)
                     {
                         len += uniqueDefInst->getMsgDesc()->getSrc0LenRegs();
@@ -1046,7 +1044,6 @@ namespace vISA
                 0, 1, samplerDst->getElemType());
 
             auto dstMsgDesc = dstInst->getMsgDescRaw();
-            // TODO: this may not hold when we start using load/store descriptors
             MUST_BE_TRUE(dstMsgDesc, "expected raw descriptor");
 
             auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(

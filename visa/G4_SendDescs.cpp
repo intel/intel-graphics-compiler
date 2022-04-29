@@ -18,40 +18,40 @@ using namespace vISA;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LdSt data type support
-std::string vISA::ToSymbol(LdStOp op)
+std::string vISA::ToSymbol(MsgOp op)
 {
     switch (op) {
-    case LdStOp::LOAD:         return "load";
-    case LdStOp::LOAD_QUAD:    return "load_quad";
-    case LdStOp::LOAD_STRIDED: return "load_strided";
-    case LdStOp::LOAD_BLOCK2D: return "load_block2d";
-    case LdStOp::STORE:         return "store";
-    case LdStOp::STORE_QUAD:    return "store_quad";
-    case LdStOp::STORE_STRIDED: return "store_strided";
-    case LdStOp::STORE_BLOCK2D: return "store_block2d";
+    case MsgOp::LOAD:         return "load";
+    case MsgOp::LOAD_QUAD:    return "load_quad";
+    case MsgOp::LOAD_STRIDED: return "load_strided";
+    case MsgOp::LOAD_BLOCK2D: return "load_block2d";
+    case MsgOp::STORE:         return "store";
+    case MsgOp::STORE_QUAD:    return "store_quad";
+    case MsgOp::STORE_STRIDED: return "store_strided";
+    case MsgOp::STORE_BLOCK2D: return "store_block2d";
     // general atomics
-    case LdStOp::ATOMIC_LOAD:   return "atomic_load";
-    case LdStOp::ATOMIC_STORE:  return "atomic_store";
+    case MsgOp::ATOMIC_LOAD:   return "atomic_load";
+    case MsgOp::ATOMIC_STORE:  return "atomic_store";
     // floating point
-    case LdStOp::ATOMIC_FADD:   return "atomic_fadd";
-    case LdStOp::ATOMIC_FSUB:   return "atomic_fsub";
-    case LdStOp::ATOMIC_FMIN:   return "atomic_fmin";
-    case LdStOp::ATOMIC_FMAX:   return "atomic_fmax";
-    case LdStOp::ATOMIC_FCAS:   return "atomic_fcas";
+    case MsgOp::ATOMIC_FADD:   return "atomic_fadd";
+    case MsgOp::ATOMIC_FSUB:   return "atomic_fsub";
+    case MsgOp::ATOMIC_FMIN:   return "atomic_fmin";
+    case MsgOp::ATOMIC_FMAX:   return "atomic_fmax";
+    case MsgOp::ATOMIC_FCAS:   return "atomic_fcas";
     // integer
-    case LdStOp::ATOMIC_IINC:   return "atomic_iinc";
-    case LdStOp::ATOMIC_IDEC:   return "atomic_idec";
-    case LdStOp::ATOMIC_IADD:   return "atomic_iadd";
-    case LdStOp::ATOMIC_ISUB:   return "atomic_isub";
-    case LdStOp::ATOMIC_ICAS:   return "atomic_icas";
-    case LdStOp::ATOMIC_SMIN:   return "atomic_smin";
-    case LdStOp::ATOMIC_SMAX:   return "atomic_smax";
-    case LdStOp::ATOMIC_UMIN:   return "atomic_umin";
-    case LdStOp::ATOMIC_UMAX:   return "atomic_umax";
+    case MsgOp::ATOMIC_IINC:   return "atomic_iinc";
+    case MsgOp::ATOMIC_IDEC:   return "atomic_idec";
+    case MsgOp::ATOMIC_IADD:   return "atomic_iadd";
+    case MsgOp::ATOMIC_ISUB:   return "atomic_isub";
+    case MsgOp::ATOMIC_ICAS:   return "atomic_icas";
+    case MsgOp::ATOMIC_SMIN:   return "atomic_smin";
+    case MsgOp::ATOMIC_SMAX:   return "atomic_smax";
+    case MsgOp::ATOMIC_UMIN:   return "atomic_umin";
+    case MsgOp::ATOMIC_UMAX:   return "atomic_umax";
     // integer bitwise
-    case LdStOp::ATOMIC_AND:    return "atomic_and";
-    case LdStOp::ATOMIC_XOR:    return "atomic_xor";
-    case LdStOp::ATOMIC_OR:     return "atomic_or";
+    case MsgOp::ATOMIC_AND:    return "atomic_and";
+    case MsgOp::ATOMIC_XOR:    return "atomic_xor";
+    case MsgOp::ATOMIC_OR:     return "atomic_or";
     default:
         break;
     }
@@ -170,7 +170,7 @@ bool G4_SendDesc::isLSC() const
 ///////////////////////////////////////////////////////////////////////////////
 G4_SendDescLdSt::G4_SendDescLdSt(
     SFID sfid,
-    LdStOp _op,
+    MsgOp _op,
     G4_ExecSize _execSize,
     //
     // addr params
@@ -186,7 +186,7 @@ G4_SendDescLdSt::G4_SendDescLdSt(
     ImmOff _immOff,
     LdStAttrs _attrs,
     const IR_Builder& builder)
-    : G4_SendDesc(G4_SendDesc::Kind::LDST, sfid, _execSize, builder),
+    : G4_SendDesc(G4_SendDesc::Kind::INVALID, sfid, _execSize, builder),
     op(_op),
     //
     addrType(at), addrBits(_addrBits), addrDims(_addrDims),
@@ -220,11 +220,11 @@ size_t G4_SendDescLdSt::getSrc0LenBytes() const
         return (size_t)overrideSrc0LengthBytesValue;
     }
     switch (op) {
-    case LdStOp::LOAD_STRIDED:
-    case LdStOp::STORE_STRIDED:
+    case MsgOp::LOAD_STRIDED:
+    case MsgOp::STORE_STRIDED:
         return 8 + 4;  // address field is 64b (even for A32) + pitch is 32b
-    case LdStOp::LOAD_BLOCK2D:
-    case LdStOp::STORE_BLOCK2D:
+    case MsgOp::LOAD_BLOCK2D:
+    case MsgOp::STORE_BLOCK2D:
         // [243:0] ~ 256b = 32B
         return 32;
     default:
@@ -279,11 +279,11 @@ bool G4_SendDescLdSt::isSLM() const
 
 SendAccess G4_SendDescLdSt::getAccessType() const
 {
-    if ((int(op) & int(LDST_LOAD_GROUP)) != 0)
+    if ((int(op) & int(MSGOP_BUFFER_LOAD_GROUP)) != 0)
         return SendAccess::READ_ONLY;
-    else if ((int(op) & int(LDST_STORE_GROUP)) != 0)
+    else if ((int(op) & int(MSGOP_BUFFER_STORE_GROUP)) != 0)
         return SendAccess::WRITE_ONLY;
-    else if ((int(op) & int(LDST_ATOMIC_GROUP)) != 0)
+    else if ((int(op) & int(MSGOP_BUFFER_ATOMIC_GROUP)) != 0)
         return hasAttrs(LdStAttrs::ATOMIC_RETURN) ?
         SendAccess::READ_WRITE : SendAccess::WRITE_ONLY;
 
@@ -293,7 +293,7 @@ SendAccess G4_SendDescLdSt::getAccessType() const
 
 bool G4_SendDescLdSt::isAtomic() const
 {
-    return (int(op) & int(LDST_ATOMIC_GROUP)) != 0;
+    return (int(op) & int(MSGOP_BUFFER_ATOMIC_GROUP)) != 0;
 }
 
 bool G4_SendDescLdSt::isTyped() const
@@ -563,13 +563,14 @@ LSC_DATA_ORDER G4_SendDescRaw::getLscDataOrder() const
 }
 
 
-void G4_SendDescRaw::setEOT() {
+bool G4_SendDescRaw::setEOT() {
     eotAfterMessage = true;
 
     if (isLscOp())
-        return;
+        return true;
 
-    extDesc.layout.eot = true;
+    extDesc.layout.eot = true; // for ancient platforms/encoders
+    return true;
 }
 
 static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType, const IR_Builder& irb)
@@ -754,7 +755,7 @@ bool G4_SendDescRaw::isByteScatterRW() const
         switch (getHdcMessageType()) {
         case DC1_A64_SCATTERED_READ:
         case DC1_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 1);
+            return (getElemSize() == 1);
         default:
             break;
         }
@@ -763,7 +764,7 @@ bool G4_SendDescRaw::isByteScatterRW() const
         switch (getHdcMessageType()) {
         case DC2_A64_SCATTERED_READ:
         case DC2_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 1);
+            return (getElemSize() == 1);
         case DC2_BYTE_SCATTERED_READ:
         case DC2_BYTE_SCATTERED_WRITE:
             return true;
@@ -794,7 +795,7 @@ bool G4_SendDescRaw::isDWScatterRW() const
         switch (getHdcMessageType()) {
         case DC1_A64_SCATTERED_READ:
         case DC1_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 4);
+            return (getElemSize() == 4);
         default:
             break;
         }
@@ -803,7 +804,7 @@ bool G4_SendDescRaw::isDWScatterRW() const
         switch (getHdcMessageType()) {
         case DC2_A64_SCATTERED_READ:
         case DC2_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 4);
+            return (getElemSize() == 4);
         default:
             break;
         }
@@ -831,7 +832,7 @@ bool G4_SendDescRaw::isQWScatterRW() const
         switch (getHdcMessageType()) {
         case DC1_A64_SCATTERED_READ:
         case DC1_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 8);
+            return (getElemSize() == 8);
         default:
             break;
         }
@@ -840,7 +841,7 @@ bool G4_SendDescRaw::isQWScatterRW() const
         switch (getHdcMessageType()) {
         case DC2_A64_SCATTERED_READ:
         case DC2_A64_SCATTERED_WRITE:
-            return (getBlockSize() == 8);
+            return (getElemSize() == 8);
         default:
             break;
         }
@@ -964,41 +965,118 @@ unsigned G4_SendDescRaw::getEnabledChannelNum() const
     return getNumEnabledChannels((funcCtrl >> MSG_BLOCK_SIZE_OFFSET) & 0xF);
 }
 
-unsigned G4_SendDescRaw::getBlockNum() const
+unsigned G4_SendDescRaw::getElemsPerAddr() const
 {
-    MUST_BE_TRUE(isHDC(), "not an HDC message");
+    if (isHDC()) {
+        uint32_t funcCtrl = getFuncCtrl();
 
-    uint32_t funcCtrl = getFuncCtrl();
-
-#define MSG_BLOCK_NUMBER_OFFSET 10
-    funcCtrl =  (funcCtrl >> MSG_BLOCK_NUMBER_OFFSET) & 0x3;
-    switch (funcCtrl)
-    {
-    case SVM_BLOCK_NUM_1: return 1;
-    case SVM_BLOCK_NUM_2: return 2;
-    case SVM_BLOCK_NUM_4: return 4;
-    case SVM_BLOCK_NUM_8: return 8;
-    default: MUST_BE_TRUE(false, "Illegal SVM block number (should be 1, 2, 4, or 8).");
-    }
-
+        const int MSG_BLOCK_NUMBER_OFFSET = 10;
+        funcCtrl = (funcCtrl >> MSG_BLOCK_NUMBER_OFFSET) & 0x3;
+        switch (funcCtrl)
+        {
+        case SVM_BLOCK_NUM_1: return 1;
+        case SVM_BLOCK_NUM_2: return 2;
+        case SVM_BLOCK_NUM_4: return 4;
+        case SVM_BLOCK_NUM_8: return 8;
+        default: MUST_BE_TRUE(false, "Illegal SVM block number (should be 1, 2, 4, or 8).");
+        }
+    } else if (isLSC()) {
+        auto op = getLscOp();
+        switch (op) {
+        case LSC_STORE_QUAD:
+        case LSC_LOAD_QUAD:
+        {
+            int elems = 0;
+            auto cmask = (getDesc() >> 14) & 0xF;
+            for (int i = 0; i < 4; i++, cmask >>= 1) {
+                elems += (cmask & 1);
+            }
+            break;
+        }
+        case LSC_LOAD:
+        case LSC_LOAD_STRIDED:
+        case LSC_STORE:
+        case LSC_STORE_STRIDED:
+            // bits [14:12] are the vector size
+            switch ((getDesc() >> 14) & 0x7) {
+            case 0: return 1;
+            case 1: return 2;
+            case 2: return 3;
+            case 3: return 4;
+            case 4: return 8;
+            case 5: return 16;
+            case 6: return 32;
+            case 7: return 64;
+            }
+            break;
+        case LSC_LOAD_BLOCK2D:
+        case LSC_STORE_BLOCK2D:
+            // unsupported
+            return 0;
+        default:
+            if (op >= LSC_ATOMIC_IINC && op <= LSC_ATOMIC_XOR) {
+                return 1; // atomics are always 1
+            } else {
+                return 0;
+            }
+        }
+        return 1;
+    } // TODO: others e.g. sampler
     return 0;
 }
 
-unsigned G4_SendDescRaw::getBlockSize() const
+unsigned G4_SendDescRaw::getElemSize() const
 {
-    MUST_BE_TRUE(isHDC(), "not an HDC message");
+    if (isHDC()) {
+        // FIXME: this should be checking for DC1 (SVM? only???)
+        // Move HDC decode logic from Augmentation to here
+        uint32_t funcCtrl = getFuncCtrl();
 
-    uint32_t funcCtrl = getFuncCtrl();
-
-    funcCtrl =  (funcCtrl >> MSG_BLOCK_SIZE_OFFSET) & 0x3;
-    switch (funcCtrl)
-    {
-    case SVM_BLOCK_TYPE_BYTE: return 1;
-    case SVM_BLOCK_TYPE_DWORD: return 4;
-    case SVM_BLOCK_TYPE_QWORD: return 8;
-    default: MUST_BE_TRUE(false, "Illegal SVM block size (should be 1, 4, or 8).");
+        funcCtrl =  (funcCtrl >> MSG_BLOCK_SIZE_OFFSET) & 0x3;
+        switch (funcCtrl)
+        {
+        case SVM_BLOCK_TYPE_BYTE: return 1;
+        case SVM_BLOCK_TYPE_DWORD: return 4;
+        case SVM_BLOCK_TYPE_QWORD: return 8;
+        default: MUST_BE_TRUE(false, "Illegal SVM block size (should be 1, 4, or 8).");
+        }
+        return 0;
+    } else if (isLSC()) {
+        if (getSFID() == SFID::TGM)
+            return 4; // typed always accesses 4B
+        // UGM, SLM, or something else untyped
+        auto op = getLscOp();
+        switch (op) {
+        case LSC_LOAD:
+        case LSC_LOAD_STRIDED:
+        case LSC_LOAD_QUAD:
+        case LSC_LOAD_BLOCK2D:
+        case LSC_STORE:
+        case LSC_STORE_STRIDED:
+        case LSC_STORE_QUAD:
+        case LSC_STORE_BLOCK2D:
+            break; // supported
+        default:
+            if (op < LSC_ATOMIC_IINC && op > LSC_ATOMIC_XOR) {
+                MUST_BE_TRUE(false, "unexpected receiver (unsupported descriptor type) ==> fix this");
+                return 0;
+            } // else supported
+        }
+        // []
+        switch ((getDesc() >> 9) & 0x7) {
+        case 0: return 1; // d8 (block2d only)
+        case 1: return 2; // d16 (block2d only)
+        case 3: return 8; // d64
+        default: return 2; // d32, d8u32, ... all 32b in register file
+        }
+    } else if (getSFID() == SFID::SAMPLER) {
+        return is16BitReturn() ? 2 : 4;
+    // TODO: render target
+    // TODO: other unsupported things like barrier and fence should just return 0 without asserting?
+    } else {
+        MUST_BE_TRUE(false, "unexpected receiver (unsupported descriptor type) ==> fix this");
+        return 0;
     }
-    return 0;
 }
 
 bool G4_SendDescRaw::isOwordLoad() const
@@ -1197,18 +1275,18 @@ size_t G4_SendDescRaw::getDstLenBytes() const
     // Use macro fo easy testing.
     } else if (isByteScatterRW() && isDataPortRead()) {
         assert(getExecSize() != g4::SIMD_UNDEFINED);
-        uint16_t nbytes = getBlockNum();
+        uint16_t nbytes = getElemsPerAddr();
         // assume 4 at least
         nbytes = (nbytes >= 4 ? nbytes : 4);
         size_t sz = nbytes * getExecSize();
         return sz;
     } else if (isDWScatterRW() && isDataPortRead()) {
         assert(getExecSize() != g4::SIMD_UNDEFINED);
-        size_t sz = 4 * getBlockNum() * getExecSize();
+        size_t sz = 4 * getElemsPerAddr() * getExecSize();
         return sz;
     } else if (isQWScatterRW() && isDataPortRead()) {
         assert(getExecSize() != g4::SIMD_UNDEFINED);
-        size_t sz = 8 * getBlockNum() * getExecSize();
+        size_t sz = 8 * getElemsPerAddr() * getExecSize();
         return sz;
     } else if (isUntypedRW() && isDataPortRead()) {
         assert(getExecSize() != g4::SIMD_UNDEFINED);
@@ -1261,14 +1339,15 @@ bool G4_SendDescRaw::isBarrier() const
     return funcID == SFID::GATEWAY && (funcCtrl & 0xFF) == 0x4;
 }
 
-int G4_SendDescRaw::getOffset() const
+
+std::optional<ImmOff> G4_SendDescRaw::getOffset() const
 {
     if (isLscOp()) {
-        MUST_BE_TRUE(false, "need to do some work here...");
+    } else if (isScratchRW()) {
+        // HWord scratch message
+        return ImmOff(getScratchRWOffset() * 32);
     }
-    if (isScratchRW())
-        return getScratchRWOffset() * 32;
-    return 0;
+    return std::nullopt;
 }
 
 static Caching cachingToG4(LSC_CACHE_OPT co)

@@ -14,7 +14,8 @@ using namespace vISA;
 enum retDepType { RET_RAW = 1, RET_WAW, RET_WAR };
 
 // Checks for memory interferences created with the "send" instruction for data port.
-static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, retDepType depT, bool BTIIsRestrict)
+static DepType DoMemoryInterfereSend(
+    G4_InstSend *send1, G4_InstSend *send2, retDepType depT, bool BTIIsRestrict)
 {
     // If either instruction is not a send then there cannot be a memory interference.
     if (!send1 || !send2 || !send1->isSend() || !send2->isSend())
@@ -51,7 +52,9 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
     {
         auto hasImmediateBTI = [](G4_InstSend* send, unsigned int &bti){
             G4_SendDescRaw* msgDesc = send->getMsgDescRaw();
-            if (msgDesc && msgDesc->isLSC() && msgDesc->getLscAddrType() == LSC_ADDR_TYPE_BTI && msgDesc->getSurface() == nullptr) {
+            if (msgDesc && msgDesc->isLSC() && msgDesc->getLscAddrType() == LSC_ADDR_TYPE_BTI &&
+              msgDesc->getSurface() == nullptr)
+            {
                 // LSC messages
                 bti = msgDesc->getExtendedDesc() >> 24;
                 return true;
@@ -153,9 +156,9 @@ static DepType DoMemoryInterfereScratchSend(G4_INST *send1, G4_INST *send2, retD
             (depT == RET_WAW && !send1IsRead && !send2IsRead) ||
             (depT == RET_RAW && !send1IsRead && send2IsRead))
         {
-
-            uint16_t leftOff1 = send1->getMsgDesc()->getOffset();
-            uint16_t leftOff2 = send2->getMsgDesc()->getOffset();
+            // scratch guaranteed to return valid linear ImmOff
+            uint16_t leftOff1 = (uint16_t)send1->getMsgDesc()->getOffset()->immOff;
+            uint16_t leftOff2 = (uint16_t)send2->getMsgDesc()->getOffset()->immOff;
             auto bytesAccessed = [](const G4_INST *send) {
                 return send->getMsgDesc()->isRead() ?
                     (uint16_t)send->getMsgDesc()->getDstLenBytes() :
@@ -219,6 +222,7 @@ DepType vISA::CheckBarrier(G4_INST *inst)
     }
     if (inst->isSend())
     {
+
         if (inst->asSendInst()->isSendc())
         {
             // sendc may imply synchronization
@@ -229,7 +233,8 @@ DepType vISA::CheckBarrier(G4_INST *inst)
             // Send with the EOT message desciptor is a barrier.
             return SEND_BARRIER;
         }
-        else if (inst->getMsgDescRaw() && inst->getMsgDescRaw()->isThreadMessage())
+        else if (inst->getMsgDesc()->getSFID() == SFID::GATEWAY ||
+            inst->getMsgDesc()->getSFID() == SFID::SPAWNER)
         {
             return MSG_BARRIER;
         }

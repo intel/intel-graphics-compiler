@@ -92,8 +92,9 @@ void CoalesceSpillFills::copyToOldFills(
             unsigned int size = oldFill.second.second;
 
             static const int BYTES_PER_HEXWORD = 32;
+
             unsigned int scratchOff =
-                coalescedFillDst->getInst()->getMsgDesc()->getOffset() / BYTES_PER_HEXWORD;
+              ((unsigned)coalescedFillDst->getInst()->getMsgDesc()->getOffset()->immOff) / BYTES_PER_HEXWORD;
 
             // Scratch msg offset is always equal or lower than individual fills
             unsigned int offToUse = off - scratchOff + rowOff;
@@ -105,7 +106,8 @@ void CoalesceSpillFills::copyToOldFills(
                 oldFill.first->getBase(), rowOff, 0, 1, Type_UD);
 
             G4_SrcRegRegion* src = kernel.fg.builder->createSrc(
-                coalescedFillDst->getBase(), offToUse, 0, kernel.fg.builder->getRegionStride1(), Type_UD);
+                coalescedFillDst->getBase(), offToUse, 0,
+                kernel.fg.builder->getRegionStride1(), Type_UD);
 
             G4_INST* copy = kernel.fg.builder->createMov(
                 simdSize, movDst, src, InstOpt_WriteEnable, false);

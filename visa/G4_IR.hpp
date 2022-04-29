@@ -616,12 +616,6 @@ public:
             return nullptr;
         return (G4_SendDescRaw *)msgDesc;
     }
-    const G4_SendDescLdSt * getMsgDescLdSt() const {
-        const auto *msgDesc = getMsgDesc();
-        if (msgDesc == nullptr || !getMsgDesc()->isRaw())
-            return nullptr;
-        return (const G4_SendDescLdSt *)msgDesc;
-    }
 
     virtual bool mayExceedTwoGRF() const
     {
@@ -1568,8 +1562,6 @@ public:
     //    thread should also terminate with a send to TS.
     bool canBeEOT() const
     {
-        if (!msgDesc->isRaw())
-            return false;
         bool canEOT = getMsgDesc()->getDstLenRegs() == 0 &&
             (getMsgDesc()->getSFID() != SFID::NULL_SFID &&
                 getMsgDesc()->getSFID() != SFID::SAMPLER);

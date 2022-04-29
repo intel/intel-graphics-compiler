@@ -2944,8 +2944,6 @@ bool Augmentation::updateDstMaskForGather(G4_INST* inst, std::vector<unsigned ch
 {
     if (const G4_SendDescRaw *d = inst->getMsgDescRaw()) {
         return updateDstMaskForGatherRaw(inst, mask, d);
-    } else if (const G4_SendDescLdSt *d = inst->getMsgDescLdSt()) {
-        return updateDstMaskForGatherLdSt(inst, mask, d);
     } else {
         ASSERT_USER(false, "unexpected descriptor");
         return false;
@@ -2999,8 +2997,8 @@ bool Augmentation::updateDstMaskForGatherRaw(
         {
         case DC1_A64_SCATTERED_READ:   //a64 scattered read: svm_gather
         {
-            unsigned blockNum = msgDesc->getBlockNum();
-            unsigned blockSize = msgDesc->getBlockSize();
+            unsigned blockNum = msgDesc->getElemsPerAddr();
+            unsigned blockSize = msgDesc->getElemSize();
 
             for (unsigned i = 0; i < execSize; i++)
             {
@@ -3182,11 +3180,12 @@ bool Augmentation::updateDstMaskForGatherRaw(
     return false;
 }
 
+#if 0 // TODO: replace with newer approach
 bool Augmentation::updateDstMaskForGatherLdSt(
     G4_INST* inst, std::vector<unsigned char>& mask, const G4_SendDescLdSt *msgDesc)
 {
     // as in the raw case only support SIMT
-    if (msgDesc->op != LdStOp::LOAD || msgDesc->order == LdStOrder::SCALAR) {
+    if (msgDesc->op != MsgOp::LOAD || msgDesc->order == LdStOrder::SCALAR) {
         return false;
     }
     unsigned char curEMBit = (unsigned char)inst->getMaskOffset();
@@ -3196,6 +3195,7 @@ bool Augmentation::updateDstMaskForGatherLdSt(
 
     return true;
 }
+#endif
 
 // Value stored at each byte in mask determines which bits
 // of EM enable that byte for writing. When checkCmodOnly

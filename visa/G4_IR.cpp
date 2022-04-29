@@ -4001,14 +4001,10 @@ void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_
         srcs[3]->emit(output, false);
         output << ' ';
     }
-    else
+    else if (!isSplitSend() && srcs[2])
     {
-        if (getMsgDescRaw()) {
-            std::ios::fmtflags outFlags(output.flags());
-            output << fmtHex(getMsgDescRaw()->getExtendedDesc());
-            output << ' ';
-            output.flags(outFlags);
-        }
+        srcs[2]->emit(output, false); // for old unary send
+        output << ' ';
     }
 
     // emit msgDesc (2 for sends and 1 for send). Last operand shown in asm.
@@ -4039,14 +4035,27 @@ void G4_InstSend::emit_send_desc(std::ostream& output)
     if (!desc.empty()) {
         output << msgDesc->getDescription();
     }
-    if (const auto *rawDesc = sendInst->getMsgDescRaw()) {
+
+    if (auto immOff = sendInst->getMsgDesc()->getOffset()) {
+        int signedOff = immOff->immOff;
+        if (immOff->is2d) {
+            output << "; ImmOff=(" <<
+                fmtHex(immOff->immOffX) << " elems," <<
+                fmtHex(immOff->immOffY) << " elems)";
+        } else {
+            if (signedOff > 0) {
+                output << "; ImmOff=+" << fmtHex(signedOff);
+            } else if (signedOff < 0) {
+                output << "; ImmOff=-" << fmtHex(-signedOff);
+            }
+        }
     }
 
-    output << ", resLen=" << msgDesc->getDstLenRegs();
-    output << ", msgLen=" << msgDesc->getSrc0LenRegs();
+    output << ", dstLen=" << msgDesc->getDstLenRegs();
+    output << ", src0Len=" << msgDesc->getSrc0LenRegs();
     if (isSplitSend())
     {
-        output << ", extMsgLen=" << msgDesc->getSrc1LenRegs();
+        output << ", src1Len=" << msgDesc->getSrc1LenRegs();
     }
 
     if (msgDesc->isBarrier())
@@ -8524,8 +8533,9 @@ G4_INST* G4_InstSend::cloneInst()
         auto src1 = nonConstBuilder->duplicateOperand(getSrc(1))->asSrcRegRegion();
         auto desc = nonConstBuilder->duplicateOperand(getSrc(2));
         auto extDesc = nonConstBuilder->duplicateOperand(getSrc(3));
-        newInst = nonConstBuilder->createInternalSplitSendInst(getExecSize(), dst, src0, src1, desc,
-            getOption(), getMsgDescRaw(), extDesc);
+        newInst = nonConstBuilder->createInternalSplitSendInst(
+            getExecSize(), dst, src0, src1, desc,
+            getOption(), getMsgDesc(), extDesc);
         if (prd)
         {
             newInst->setPredicate(prd);

@@ -12,40 +12,42 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA.h"
 
 #include <string>
+#include <optional>
 #include <ostream>
 #include <utility>
+
 
 namespace vISA
 {
 enum class SendAccess
 {
     INVALID = 0,
-    READ_ONLY, // e.g. load
-    WRITE_ONLY, // e.g. store
+    READ_ONLY, // e.g. load, sampler operation
+    WRITE_ONLY, // e.g. store, render target write
     READ_WRITE // e.g. an atomic with return
 };
-static const int LDST_LOAD_GROUP   = 0x100;
-static const int LDST_STORE_GROUP  = 0x200;
-static const int LDST_ATOMIC_GROUP = 0x400;
-static const int LDST_OTHER_GROUP  = 0x800;
+static const int MSGOP_BUFFER_LOAD_GROUP   = 0x100;
+static const int MSGOP_BUFFER_STORE_GROUP  = 0x200;
+static const int MSGOP_BUFFER_ATOMIC_GROUP = 0x400;
+static const int MSGOP_OTHER_GROUP  = 0x800;
 //
-// load/store operation
-enum class LdStOp {
+// various message operations
+enum class MsgOp {
     INVALID = 0,
     //
-    LOAD = LDST_LOAD_GROUP + 1,
+    LOAD = MSGOP_BUFFER_LOAD_GROUP + 1,
     LOAD_QUAD, // e.g. untyped load (loading XYZW)
     LOAD_STRIDED, // same as load, but 1 address (obeys exec mask)
     LOAD_BLOCK2D,
     //
-    STORE_GROUP = LDST_STORE_GROUP + 1,
+    STORE_GROUP = MSGOP_BUFFER_STORE_GROUP + 1,
     STORE,
     STORE_QUAD,
     STORE_STRIDED,
     STORE_BLOCK2D,
     //
     // atomics
-    ATOMIC_GROUP = LDST_ATOMIC_GROUP + 1,
+    ATOMIC_GROUP = MSGOP_BUFFER_ATOMIC_GROUP + 1,
     ATOMIC_LOAD,
     ATOMIC_STORE,
     //
@@ -70,7 +72,7 @@ enum class LdStOp {
     ATOMIC_OR,
     // others ...
 };
-std::string ToSymbol(LdStOp);
+std::string ToSymbol(MsgOp);
 
 enum class LdStOrder {
     INVALID = 0,
@@ -200,7 +202,10 @@ protected:
     void setExecSize(G4_ExecSize v) { execSize = v; }
 
 public:
-    enum class Kind {INVALID, RAW, LDST};
+    enum class Kind {
+      INVALID,
+      RAW, // G4_SendDescRaw
+    };
 
     Kind        kind;
 
@@ -226,7 +231,6 @@ public:
     G4_ExecSize getExecSize() const { return execSize; }
 
     bool isRaw() const {return kind == Kind::RAW;}
-    bool isLdSt() const {return kind == Kind::LDST;}
     //
     bool isHDC() const;
     bool isLSC() const;
@@ -238,6 +242,8 @@ public:
     virtual bool isAtomic() const = 0;
     virtual bool isBarrier() const = 0;
     virtual bool isFence() const = 0;
+    virtual bool isHeaderPresent() const = 0;
+
     //
     // This gives a general access type
     virtual SendAccess getAccessType() const = 0;
@@ -254,6 +260,16 @@ public:
     bool isReadWrite() const {
         return getAccessType() == SendAccess::READ_WRITE;
     }
+    // Returns the nubmer of elements each address (or coordinate)
+    // accesses
+    // E.g. d32x2 returns 2 (representing a message that loads
+    // a pair per address).
+    virtual unsigned getElemsPerAddr() const = 0;
+    //
+    // Returns the size in bytes of each element.
+    // E.g. a d32x2 returns 4 (d32 is 32b)
+    virtual unsigned getElemSize() const = 0;
+
     //
     // Returns the caching behavior of this message if known.
     // Returns Caching::INVALID if the message doesn't support caching
@@ -285,29 +301,29 @@ public:
     //
     // message offset in terms of bytes
     //   e.g. scratch offset
-    virtual int getOffset() const = 0;
+    virtual std::optional<ImmOff> getOffset() const = 0;
 
     // Returns the associated surface (if any)
     // This can be a BTI (e.g. a0 register or G4_Imm if immediate)
     virtual G4_Operand *getSurface() const = 0;
 
     virtual std::string getDescription() const = 0;
+
+    // Sets the EOT bit of the descriptor,
+    // returns false if the descriptor forbids EOT
+    virtual bool setEOT() = 0;
 };
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // high-level load/store descriptors
-
+// TODO: remove this, make descriptor that maintains encoding
+// for newer-style descriptors and offers abstract access
+// to all the things that are fields below
 //
-// A Load/Store message descriptor
-// Unlike G4_SendDescRaw, this descriptor will be encoded by the
-// IGA adapter or further back.
-//
-// Just because you can specify it here does not mean there's a valid message.
-// Check canEncode().
 struct G4_SendDescLdSt : G4_SendDesc {
     // The message op
-    LdStOp op;
+    MsgOp op;
 
     // E.g. flat, bti, ...
     AddrType addrType;
@@ -370,7 +386,7 @@ struct G4_SendDescLdSt : G4_SendDesc {
 
     G4_SendDescLdSt(
         SFID sfid,
-        LdStOp _op,
+        MsgOp _op,
         G4_ExecSize _execSize,
         //
         // addr params
@@ -408,7 +424,7 @@ struct G4_SendDescLdSt : G4_SendDesc {
     virtual std::pair<Caching,Caching> getCaching() const override {return std::make_pair(l1, l3);}
     virtual void setCaching(Caching l1, Caching l3) override;
     //
-    virtual int getOffset() const override {return immOff.immOff;}
+    virtual std::optional<ImmOff> getOffset() const override {return immOff;}
     virtual G4_Operand *getSurface() const override {return surface;}
     //
     virtual bool isEOT() const override {return false;}
@@ -598,6 +614,9 @@ public:
     ////////////////////////////////////////////////////////////////////////
     // LSC-related operations
     bool isLscOp() const {return isLscDescriptor;}
+
+    // TODO: update to use types defined in this file rather than
+    // these front-end vISA interface types
     LSC_OP getLscOp() const {
         assert(isLscOp());
         return static_cast<LSC_OP>(desc.value & 0x3F);
@@ -607,7 +626,8 @@ public:
     LSC_DATA_ORDER getLscDataOrder() const;
 
     bool isEOTInst() const { return eotAfterMessage; }
-    void setEOT();
+
+    virtual bool setEOT() override;
 
     // query methods common for all raw sends
     uint16_t ResponseLength() const;
@@ -617,7 +637,6 @@ public:
     bool isDataPortWrite() const { return accessType != SendAccess::READ_ONLY; }
     SendAccess getAccess() const { return accessType; }
     bool isValidFuncCtrl() const { return funcCtrlValid; }
-    bool isHeaderPresent() const;
     void setHeaderPresent(bool val);
 
     ///////////////////////////////////////////////////////////////////////
@@ -636,8 +655,19 @@ public:
 
     bool isSLMMessage() const;
     unsigned getEnabledChannelNum() const;
-    unsigned getBlockNum() const;
-    unsigned getBlockSize() const;
+
+    // Returns the nubmer of elements each address (or coordinate)
+    // accesses
+    // E.g. d32x2 returns 2 (representing a message that loads
+    // a pair per address).
+    virtual unsigned getElemsPerAddr() const override;
+    //
+    // Returns the size in bytes of each element.
+    // E.g. a d32x2 returns 4 (d32 is 32b)
+    //
+    // This is the size in the register file not memory.
+    virtual unsigned getElemSize() const override;
+
     bool isOwordLoad() const;
     // OW1H ==> implies 2 (but shouldn't be used)
     // asserts isOwordLoad()
@@ -686,10 +716,6 @@ public:
     bool is16BitInput() const;
     bool is16BitReturn() const;
 
-    bool isThreadMessage() const {
-        return getSFID() == SFID::GATEWAY || getSFID() == SFID::SPAWNER;
-    }
-
 
     bool isLSCTyped() const {return isTyped() && isLSC();}
     // atomic write or explicit barrier
@@ -726,7 +752,10 @@ public:
     virtual std::pair<Caching,Caching> getCaching() const override;
     virtual void setCaching(Caching l1, Caching l3) override;
     //
-    virtual int getOffset() const override;
+    // If the message has an immediate address offset,
+    // this returns that offset.  The offset is in bytes.
+    virtual std::optional<ImmOff> getOffset() const override;
+
     virtual G4_Operand *getSurface() const override {return m_bti;}
     //
     virtual bool isEOT() const override {return isEOTInst();}
@@ -734,6 +763,7 @@ public:
     virtual bool isAtomic() const override {return isAtomicMessage();}
     virtual bool isBarrier() const override;
     virtual bool isFence() const override;
+    virtual bool isHeaderPresent() const override;
     virtual bool isScratch() const override {return isScratchRW();}
     virtual bool isTyped() const override;
     //

@@ -1152,7 +1152,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                 }
                 else
                 {
-                    //generate EOT send
+                    // generate EOT send
                     G4_INST* lastInst = bb->back();
                     bb->pop_back();
                     bool needsEOTSend = true;
@@ -1165,15 +1165,16 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                             !(secondToLastInst->getMsgDesc()->getSrc1LenRegs() > 2 &&
                                 VISA_WA_CHECK(builder->getPWaTable(), WaSendsSrc1SizeLimitWhenEOT)))
                         {
-                            G4_SendDescRaw *rawDesc = secondToLastInst->getMsgDescRaw();
-                            MUST_BE_TRUE(rawDesc, "expected raw descriptor");
-                            rawDesc->setEOT();
-                            if (secondToLastInst->isSplitSend())
+                            G4_SendDesc *desc = secondToLastInst->getMsgDesc();
+                            desc->setEOT();
+                            if (secondToLastInst->isSplitSend() && secondToLastInst->getMsgDescRaw())
                             {
-                                if (secondToLastInst->getSrc(3)->isImm())
+                                bool mustUpdateExDescOperand = true;
+                                if (mustUpdateExDescOperand && secondToLastInst->getSrc(3)->isImm())
                                 {
                                     secondToLastInst->setSrc(
-                                        builder->createImm(rawDesc->getExtendedDesc(), Type_UD), 3);
+                                        builder->createImm(
+                                          secondToLastInst->getMsgDescRaw()->getExtendedDesc(), Type_UD), 3);
                                 }
                             }
                             needsEOTSend = false;
