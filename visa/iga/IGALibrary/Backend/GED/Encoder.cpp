@@ -1874,6 +1874,7 @@ void Encoder::encodeOptions(const Instruction& inst)
         GED_ENCODE(ThreadCtrl, GED_THREAD_CTRL_Atomic);
     }
 
+
     if (inst.hasInstOpt(InstOpt::SWITCH) && m_model.supportsHwDeps())
     {
         if (inst.getOp() == Op::NOP) {

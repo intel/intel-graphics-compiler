@@ -2144,6 +2144,7 @@ void Decoder::decodeOptions(Instruction *inst)
         }
     }
 
+
     if (os.supportsDepCtrl()) {
         GED_DEP_CTRL dpCtrl = GED_DEP_CTRL_Normal;
         GED_DECODE_RAW_TO(DepCtrl, dpCtrl);
