@@ -10955,9 +10955,10 @@ int GlobalRA::coloringRegAlloc()
             // with large number of threads.
             unsigned int scratchAllocForStackInKB = kernel.getOptions()->getuInt32Option(vISA_ScratchAllocForStackInKB);
 
-            if (builder.getPlatform() == Xe_PVCXT)
+            if (!kernel.getOptions()->isOptionSetByUser(vISA_ScratchAllocForStackInKB) &&
+                builder.getPlatform() == Xe_PVCXT)
             {
-                scratchAllocForStackInKB = std::min<unsigned int>(scratchAllocForStackInKB, 64);
+                scratchAllocForStackInKB = 64;
             }
 
             unsigned int scratchAllocation = 1024 * scratchAllocForStackInKB;
