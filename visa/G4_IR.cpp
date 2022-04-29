@@ -7971,11 +7971,6 @@ bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const
         }
         break;
     case Type_F:
-        if (builder.relaxedACCRestrictions3())
-        {
-            //Support any SIMD Size
-            return true;
-        }
         if (getExecSize() != G4_ExecSize(builder.getNativeExecSize() * 2) &&
             getExecSize() != builder.getNativeExecSize())
         {
@@ -7987,13 +7982,6 @@ bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const
         {
             return false;
         }
-
-        if (builder.relaxedACCRestrictions3())
-        {
-            //Support any SIMD Size
-            return true;
-        }
-
         if (getExecSize() != builder.getNativeExecSize() &&
             getExecSize() != G4_ExecSize(builder.getNativeExecSize() / 2))
         {
