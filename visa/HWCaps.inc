@@ -762,6 +762,11 @@ SPDX-License-Identifier: MIT
         return false;
     }
 
+    bool enablePreSchedACC() const
+    {
+        return false;
+    }
+
     bool hasDoubleAcc() const
     {
         return getOption(vISA_hasDoubleAcc);
