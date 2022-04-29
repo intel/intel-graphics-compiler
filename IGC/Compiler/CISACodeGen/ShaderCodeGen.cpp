@@ -764,9 +764,11 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 #if LLVM_VERSION_MAJOR >= 12
         mpm.add(createIPSCCPPass());
 #else
-        if (getFunctionControl(&ctx) == FLAG_FCALL_DEFAULT)
+        if (!ctx.m_hasStackCalls)
         {
-            // Don't run IPConstantProp when debugging function calls, to avoid folding function arg/ret constants
+            // Don't run IPConstantProp when stackcalls are present.
+            // Let global constants be relocated inside stack funcs.
+            // We cannot process SLM constants inside stackcalls, so don't propagate them.
             mpm.add(createIPConstantPropagationPass());
         }
         mpm.add(createConstantPropagationPass());
@@ -1942,7 +1944,10 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createIPSCCPPass());
 #else
             mpm.add(createConstantPropagationPass());
-            mpm.add(createIPConstantPropagationPass());
+
+            // Don't run IPConstantProp if there are stackcalls
+            if (!pContext->m_hasStackCalls)
+                mpm.add(createIPConstantPropagationPass());
 #endif
         }
 

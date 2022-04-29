@@ -1103,6 +1103,7 @@ namespace IGC
     void CodeGenContext::CheckEnableSubroutine(llvm::Module& M)
     {
         bool EnableSubroutine = false;
+        bool EnableStackFuncs = false;
         for (auto& F : M)
         {
             if (F.isDeclaration() ||
@@ -1117,10 +1118,14 @@ namespace IGC
                 !F.hasFnAttribute(llvm::Attribute::AlwaysInline))
             {
                 EnableSubroutine = true;
-                break;
+                if (F.hasFnAttribute("visaStackCall") && !F.user_empty())
+                {
+                    EnableStackFuncs = true;
+                }
             }
         }
         m_enableSubroutine = EnableSubroutine;
+        m_hasStackCalls = EnableStackFuncs;
     }
 
     void CodeGenContext::InitVarMetaData() {}
