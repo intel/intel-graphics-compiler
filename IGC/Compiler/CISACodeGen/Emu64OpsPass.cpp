@@ -1750,6 +1750,14 @@ bool InstExpander::visitBitCast(BitCastInst& BC) {
         return false;
 
     if (Emu->isInt64(&BC)) {
+        if (Emu->isInt64(Src)) {
+            // Somehow there are still 'bitcast's from i64 to i64. Directly
+            // re-use the already expanded values.
+            Value *Lo = nullptr, *Hi = nullptr;
+            std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
+            Emu->setExpandedValues(&BC, Lo, Hi);
+            return true;
+        }
         Src = IRB->CreateBitCast(Src, Emu->getV2Int32Ty());
         Value* Lo = IRB->CreateExtractElement(Src, IRB->getInt32(0));
         Value* Hi = IRB->CreateExtractElement(Src, IRB->getInt32(1));
