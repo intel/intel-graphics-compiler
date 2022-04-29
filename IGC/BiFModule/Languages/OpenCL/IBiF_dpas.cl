@@ -238,16 +238,16 @@ DEFN_INTEL_SG_IDPAS( u2_u2_matrix_mad_k64, int8, ushort8, uint4, idpas_u2_u2_8_8
 
 
 // bfloat16: both a and b are 2 bfloat16.
-DEFN_INTEL_SG_FDPAS( bf16_bf16_matrix_mad_k16, float,  int,   int8,  fdpas_bf_bf_8_1 )
-DEFN_INTEL_SG_FDPAS( bf16_bf16_matrix_mad_k16, float2, int2,  int8,  fdpas_bf_bf_8_2 )
-DEFN_INTEL_SG_FDPAS( bf16_bf16_matrix_mad_k16, float4, int4,  int8,  fdpas_bf_bf_8_4 )
-DEFN_INTEL_SG_FDPAS( bf16_bf16_matrix_mad_k16, float8, int8,  int8,  fdpas_bf_bf_8_8 )
+DEFN_INTEL_SG_FDPAS( bf16_bf16_matrix_mad_k16, float,  uint,   uint8,  fdpas_bf_bf_8_1 )
+DEFN_INTEL_SG_FDPAS( bf16_bf16_matrix_mad_k16, float2, uint2,  uint8,  fdpas_bf_bf_8_2 )
+DEFN_INTEL_SG_FDPAS( bf16_bf16_matrix_mad_k16, float4, uint4,  uint8,  fdpas_bf_bf_8_4 )
+DEFN_INTEL_SG_FDPAS( bf16_bf16_matrix_mad_k16, float8, uint8,  uint8,  fdpas_bf_bf_8_8 )
 
 // half: both a and b are 2 half.
-DEFN_INTEL_SG_FDPAS( f16_f16_matrix_mad_k16, float,  int,   int8,  fdpas_hf_hf_8_1 )
-DEFN_INTEL_SG_FDPAS( f16_f16_matrix_mad_k16, float2, int2,  int8,  fdpas_hf_hf_8_2 )
-DEFN_INTEL_SG_FDPAS( f16_f16_matrix_mad_k16, float4, int4,  int8,  fdpas_hf_hf_8_4 )
-DEFN_INTEL_SG_FDPAS( f16_f16_matrix_mad_k16, float8, int8,  int8,  fdpas_hf_hf_8_8 )
+DEFN_INTEL_SG_FDPAS( f16_f16_matrix_mad_k16, float,  uint,   uint8,  fdpas_hf_hf_8_1 )
+DEFN_INTEL_SG_FDPAS( f16_f16_matrix_mad_k16, float2, uint2,  uint8,  fdpas_hf_hf_8_2 )
+DEFN_INTEL_SG_FDPAS( f16_f16_matrix_mad_k16, float4, uint4,  uint8,  fdpas_hf_hf_8_4 )
+DEFN_INTEL_SG_FDPAS( f16_f16_matrix_mad_k16, float8, uint8,  uint8,  fdpas_hf_hf_8_8 )
 
 
 //// PVC : simd16 ////
@@ -418,10 +418,10 @@ DEFN_INTEL_SG16_IDPAS( u2_u2_matrix_mad_k64, int8, uchar8, uint4, idpas_u2_u2_8_
 
 
 // bfloat16: both a and b are 2 bfloat16.
-DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float,  float,  short,   int8,  fdpas_f_f_bf_bf_8_1 )
-DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float2, float2, short2,  int8,  fdpas_f_f_bf_bf_8_2 )
-DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float4, float4, short4,  int8,  fdpas_f_f_bf_bf_8_4 )
-DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float8, float8, short8,  int8,  fdpas_f_f_bf_bf_8_8 )
+DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float,  float,  ushort,   uint8,  fdpas_f_f_bf_bf_8_1 )
+DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float2, float2, ushort2,  uint8,  fdpas_f_f_bf_bf_8_2 )
+DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float4, float4, ushort4,  uint8,  fdpas_f_f_bf_bf_8_4 )
+DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float8, float8, ushort8,  uint8,  fdpas_f_f_bf_bf_8_8 )
 //DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, short,  float,  short,   int8,  fdpas_bf_f_bf_bf_8_1 )
 //DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, short2, float2, short2,  int8,  fdpas_bf_f_bf_bf_8_2 )
 //DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, short4, float4, short4,  int8,  fdpas_bf_f_bf_bf_8_4 )
@@ -430,16 +430,16 @@ DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float8, float8, short8,  int8, 
 //DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float2, short2, short2,  int8,  fdpas_f_bf_bf_bf_8_2 )
 //DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float4, short4, short4,  int8,  fdpas_f_bf_bf_bf_8_4 )
 //DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, float8, short8, short8,  int8,  fdpas_f_bf_bf_bf_8_8 )
-DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, short,  short,  short,   int8,  fdpas_bf_bf_bf_bf_8_1 )
-DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, short2, short2, short2,  int8,  fdpas_bf_bf_bf_bf_8_2 )
-DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, short4, short4, short4,  int8,  fdpas_bf_bf_bf_bf_8_4 )
-DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, short8, short8, short8,  int8,  fdpas_bf_bf_bf_bf_8_8 )
+DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, ushort,  ushort,  ushort,   uint8,  fdpas_bf_bf_bf_bf_8_1 )
+DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, ushort2, ushort2, ushort2,  uint8,  fdpas_bf_bf_bf_bf_8_2 )
+DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, ushort4, ushort4, ushort4,  uint8,  fdpas_bf_bf_bf_bf_8_4 )
+DEFN_INTEL_SG16_FDPAS( bf16_bf16_matrix_mad_k16, ushort8, ushort8, ushort8,  uint8,  fdpas_bf_bf_bf_bf_8_8 )
 
 // half: both a and b are 2 half.
-DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float,  float,  short,   int8,  fdpas_f_f_hf_hf_8_1 )
-DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float2, float2, short2,  int8,  fdpas_f_f_hf_hf_8_2 )
-DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float4, float4, short4,  int8,  fdpas_f_f_hf_hf_8_4 )
-DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float8, float8, short8,  int8,  fdpas_f_f_hf_hf_8_8 )
+DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float,  float,  ushort,   uint8,  fdpas_f_f_hf_hf_8_1 )
+DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float2, float2, ushort2,  uint8,  fdpas_f_f_hf_hf_8_2 )
+DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float4, float4, ushort4,  uint8,  fdpas_f_f_hf_hf_8_4 )
+DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float8, float8, ushort8,  uint8,  fdpas_f_f_hf_hf_8_8 )
 
 #ifdef cl_khr_fp16
 
@@ -451,10 +451,10 @@ DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float8, float8, short8,  int8,  f
 //DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float2, half2,  short2,  int8,  fdpas_f_hf_hf_hf_8_2 )
 //DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float4, half4,  short4,  int8,  fdpas_f_hf_hf_hf_8_4 )
 //DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, float8, half8,  short8,  int8,  fdpas_f_hf_hf_hf_8_8 )
-DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, half,   half,   short,   int8,  fdpas_hf_hf_hf_hf_8_1 )
-DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, half2,  half2,  short2,  int8,  fdpas_hf_hf_hf_hf_8_2 )
-DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, half4,  half4,  short4,  int8,  fdpas_hf_hf_hf_hf_8_4 )
-DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, half8,  half8,  short8,  int8,  fdpas_hf_hf_hf_hf_8_8 )
+DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, half,   half,   ushort,   uint8,  fdpas_hf_hf_hf_hf_8_1 )
+DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, half2,  half2,  ushort2,  uint8,  fdpas_hf_hf_hf_hf_8_2 )
+DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, half4,  half4,  ushort4,  uint8,  fdpas_hf_hf_hf_hf_8_4 )
+DEFN_INTEL_SG16_FDPAS( f16_f16_matrix_mad_k16, half8,  half8,  ushort8,  uint8,  fdpas_hf_hf_hf_hf_8_8 )
 
 #endif  // cl_khr_fp16
 
@@ -660,13 +660,13 @@ DEFN_INTEL_SG_IDPAS( u2_u2_split_matrix_mad_k64, int8, ushort4, uint4, idpasw_u2
 
 
 // bfloat16: both a and b are 2 bfloat16.
-DEFN_INTEL_SG_FDPAS( bf16_bf16_split_matrix_mad_k16, float2, int,   int8,  fdpasw_bf_bf_8_2 )
-DEFN_INTEL_SG_FDPAS( bf16_bf16_split_matrix_mad_k16, float4, int2,  int8,  fdpasw_bf_bf_8_4 )
-DEFN_INTEL_SG_FDPAS( bf16_bf16_split_matrix_mad_k16, float8, int4,  int8,  fdpasw_bf_bf_8_8 )
+DEFN_INTEL_SG_FDPAS( bf16_bf16_split_matrix_mad_k16, float2, uint,   uint8,  fdpasw_bf_bf_8_2 )
+DEFN_INTEL_SG_FDPAS( bf16_bf16_split_matrix_mad_k16, float4, uint2,  uint8,  fdpasw_bf_bf_8_4 )
+DEFN_INTEL_SG_FDPAS( bf16_bf16_split_matrix_mad_k16, float8, uint4,  uint8,  fdpasw_bf_bf_8_8 )
 
 // half: both a and b are 2 half.
-DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float2, int,   int8,  fdpasw_hf_hf_8_2 )
-DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float4, int2,  int8,  fdpasw_hf_hf_8_4 )
-DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float8, int4,  int8,  fdpasw_hf_hf_8_8 )
+DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float2, uint,   uint8,  fdpasw_hf_hf_8_2 )
+DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float4, uint2,  uint8,  fdpasw_hf_hf_8_4 )
+DEFN_INTEL_SG_FDPAS( f16_f16_split_matrix_mad_k16, float8, uint4,  uint8,  fdpasw_hf_hf_8_8 )
 
 #endif // cl_intel_subgroup_split_matrix_multiply_accumulate
