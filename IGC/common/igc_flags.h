@@ -758,6 +758,7 @@ DECLARE_IGC_GROUP("Raytracing Options")
     DECLARE_IGC_REGKEY(bool, DisableDPSE, false, "Disable Dead PayloadStore Elimination.", true)
     DECLARE_IGC_REGKEY(bool, EnableRTDispatchAlongY, false, "Dispatch Compute Walker along Y first", true)
     DECLARE_IGC_REGKEY(bool, EnablePredicatedStackIDRelease, false, "Emit a single stack ID release at the end of the shader", true)
+    DECLARE_IGC_REGKEY(bool, EnableCrossFillRemat, false, "Rematerialize values if they use already spilled values", true)
 
 DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, DisableEuFusion, false, "Require disable of EU fusion", true)
