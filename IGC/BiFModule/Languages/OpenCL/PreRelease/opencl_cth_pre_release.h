@@ -1745,16 +1745,16 @@ int4  __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(uint4 a
 int8  __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(uint8 a, uint8 b, int8 acc);
 
 // bfloat16 and bfloat16 matrices:
-float   __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(uint  a, uint8 b, float  acc);
-float2  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(uint2 a, uint8 b, float2 acc);
-float4  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(uint4 a, uint8 b, float4 acc);
-float8  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(uint8 a, uint8 b, float8 acc);
+float   __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int  a, int8 b, float  acc);
+float2  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int2 a, int8 b, float2 acc);
+float4  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int4 a, int8 b, float4 acc);
+float8  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int8 a, int8 b, float8 acc);
 
 // fp16 and fp16 matrices:
-float   __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(uint  a, uint8 b, float  acc);
-float2  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(uint2 a, uint8 b, float2 acc);
-float4  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(uint4 a, uint8 b, float4 acc);
-float8  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(uint8 a, uint8 b, float8 acc);
+float   __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(int  a, int8 b, float  acc);
+float2  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(int2 a, int8 b, float2 acc);
+float4  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(int4 a, int8 b, float4 acc);
+float8  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(int8 a, int8 b, float8 acc);
 
 
 /**** SIMD16 ****/
@@ -1782,17 +1782,17 @@ int8 __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(ushort8 
 
 // bfloat16 and bfloat16 matrices,
 // float acc, float return type:
-float  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(ushort  a, uint8 b, float  acc);
-float2 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(ushort2 a, uint8 b, float2 acc);
-float4 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(ushort4 a, uint8 b, float4 acc);
-float8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(ushort8 a, uint8 b, float8 acc);
+float  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short a, int8 b, float acc);
+float2 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short8 a, int8 b, float8 acc);
 
 // fp16 and fp16 matrices,
 // float acc, float return type:
-float  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(ushort  a, uint8 b, float  acc);
-float2 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(ushort2 a, uint8 b, float2 acc);
-float4 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(ushort4 a, uint8 b, float4 acc);
-float8 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(ushort8 a, uint8 b, float8 acc);
+float  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short a, int8 b, float acc);
+float2 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short8 a, int8 b, float8 acc);
 
 #ifdef cl_intel_subgroup_matrix_multiply_accumulate_tf32
 
@@ -1825,14 +1825,14 @@ int4 __attribute__((overloadable)) intel_sub_group_u8_u8_split_matrix_mad_k32(ui
 int8 __attribute__((overloadable)) intel_sub_group_u8_u8_split_matrix_mad_k32(uint4 a, uint8 b, int8 acc);
 
 // bfloat16 and bfloat16 matrices:
-float2 __attribute__((overloadable)) intel_sub_group_bf16_bf16_split_matrix_mad_k16(uint  a, uint8 b, float2 acc);
-float4 __attribute__((overloadable)) intel_sub_group_bf16_bf16_split_matrix_mad_k16(uint2 a, uint8 b, float4 acc);
-float8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_split_matrix_mad_k16(uint4 a, uint8 b, float8 acc);
+float2 __attribute__((overloadable)) intel_sub_group_bf16_bf16_split_matrix_mad_k16(int  a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_bf16_bf16_split_matrix_mad_k16(int2 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_split_matrix_mad_k16(int4 a, int8 b, float8 acc);
 
 // fp16 and fp16 matrices:
-float2 __attribute__((overloadable)) intel_sub_group_f16_f16_split_matrix_mad_k16(uint  a, uint8 b, float2 acc);
-float4 __attribute__((overloadable)) intel_sub_group_f16_f16_split_matrix_mad_k16(uint2 a, uint8 b, float4 acc);
-float8 __attribute__((overloadable)) intel_sub_group_f16_f16_split_matrix_mad_k16(uint4 a, uint8 b, float8 acc);
+float2 __attribute__((overloadable)) intel_sub_group_f16_f16_split_matrix_mad_k16(int  a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_f16_f16_split_matrix_mad_k16(int2 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_f16_f16_split_matrix_mad_k16(int4 a, int8 b, float8 acc);
 
 #endif // cl_intel_subgroup_split_matrix_multiply_accumulate
 
