@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -138,6 +138,7 @@ SPDX-License-Identifier: MIT
 #include <iterator>
 #include <map>
 #include <numeric>
+#include <set>
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
@@ -186,7 +187,7 @@ struct LinearizationElt {
 using LinearizedTy = std::vector<LinearizationElt>;
 using ArgLinearization = std::unordered_map<Argument *, LinearizedTy>;
 using ImplArgIntrSeq = std::vector<CallInst *>;
-using IntrIDSet = std::unordered_set<unsigned>;
+using IntrIDSet = std::set<unsigned>;
 using IntrIDMap = std::unordered_map<Function *, IntrIDSet>;
 
 // Implicit args in this pass are denoted by the corresponding intrinsic ID.
