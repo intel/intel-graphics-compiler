@@ -2359,14 +2359,24 @@ void SWSB::tokenAllocation()
     //Assign tokens to nodes in the order of liveness. Here we only need to
     //iterate SB nodes in that order, and don't actually need to sort
     //SBSendNodes as it might be referenced through allTokenNodesMap.
-    auto sortInLivenessOrder = [](const SBNODE_VECT& vec) {
-        SBNODE_VECT sorted(vec.size());
-        std::partial_sort_copy(vec.begin(), vec.end(), sorted.begin(), sorted.end(), compareInterval);
-        return sorted;
+    auto sortInLivenessOrder = [](const SBNODE_VECT& vec, bool stdSort) {
+        if (stdSort)
+        {
+            SBNODE_VECT sorted(vec);
+            std::sort(sorted.begin(), sorted.end(), compareInterval);
+            return sorted;
+        }
+        else
+        {
+            SBNODE_VECT sorted(vec.size());
+            std::partial_sort_copy(vec.begin(), vec.end(), sorted.begin(), sorted.end(), compareInterval);
+            return sorted;
+        }
     };
     const bool enableSendTokenReduction = fg.builder->getOptions()->getOption(vISA_EnableSendTokenReduction);
     const bool enableDPASTokenReduction = fg.builder->getOptions()->getOption(vISA_EnableDPASTokenReduction);
-    for (SBNode* node : sortInLivenessOrder(SBSendNodes))
+    const bool assignTokenUsingStdsort = fg.builder->getOptions()->getOption(vISA_AssignTokenUsingStdSort);
+    for (SBNode* node : sortInLivenessOrder(SBSendNodes, assignTokenUsingStdsort))
     {
         unsigned startID = node->getLiveStartID();
         G4_INST* inst = node->getLastInstruction();

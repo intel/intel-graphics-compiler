@@ -240,6 +240,7 @@ DEF_VISA_OPTION(vISA_DistPropTokenAllocation,      ET_BOOL,  "-distPropTokenAllo
 DEF_VISA_OPTION(vISA_SWSBStitch,      ET_BOOL,  "-SWSBStitch",    UNUSED, false)
 DEF_VISA_OPTION(vISA_SBIDDepLoc,      ET_BOOL,  "-SBIDDepLoc",    UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpSBID,      ET_BOOL,  "-dumpSBID",    UNUSED, false)
+DEF_VISA_OPTION(vISA_AssignTokenUsingStdSort, ET_BOOL, "-assignSWSBTokUsingStdSort", UNUSED, false)
 
 DEF_VISA_OPTION(vISA_EnableALUThreePipes,      ET_BOOL,  "-threeALUPipes",    UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableDPASTokenReduction,      ET_BOOL,  "-DPASTokenReduction",    UNUSED, false)
