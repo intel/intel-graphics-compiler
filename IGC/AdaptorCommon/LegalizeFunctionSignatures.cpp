@@ -251,6 +251,13 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
         if (isEntryFunc(pMdUtils, pFunc))
             continue;
 
+        if (pFunc->getName().empty())
+        {
+            // Empty function names can cause funny behavior later on
+            // Always give it a name. If duplicates, LLVM will insert a unique tag
+            pFunc->setName("__function__");
+        }
+
         // For binary linking, calling a function outside the module is possible, so declaration
         // signatures has to be fixed as well
         if (pFunc->isDeclaration() &&
