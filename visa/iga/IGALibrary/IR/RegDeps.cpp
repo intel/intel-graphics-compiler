@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "../asserts.hpp"
 #include "../bits.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <limits>
 #include <sstream>
@@ -432,7 +433,7 @@ void DepSet::addDependency(const RegRangeType& reg_range)
 
 void DepSet::addDependency(const RegRangeListType& reg_range)
 {
-    for (auto pair : reg_range) {
+    for (RegRangeType pair : reg_range) {
         // when range is max(), which means it's null, skip it
         if (pair.first == std::numeric_limits<uint32_t>::max())
             continue;
@@ -442,13 +443,242 @@ void DepSet::addDependency(const RegRangeListType& reg_range)
         }
     }
 
-    //Using one of the special registers to add read dependency in to special bucket
+    //Using one of the special registers to add read dependency into special bucket
     //This way it will always check that implicit dependency
     m_bucketList.push_back(m_DB.getBucketStart(RegName::ARF_CR));
 }
 
-static bool helper_isLastDpas(const Instruction &dpas, const Instruction &next_inst)
-{
+size_t DepSetBuilder::DpasMacroBuilder::getNumberOfSuppresionGroups(uint32_t srcIdx) const {
+    if (srcIdx == 1)
+        return m_model.platform > Platform::XE_HPC ? 2 : 1;
+
+    if (srcIdx == 2) {
+        if (m_model.platform == Platform::XE_HPC)
+            return 4;
+        if (m_model.platform > Platform::XE_HPC)
+            return 8;
+    }
+    return 0;
+}
+
+size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
+    InstListIterator startIt, uint32_t srcIdx) {
+    // get the candidate block
+    BitSet<> allDstBits(m_dsBuilder.getGRF_LEN());
+    BitSet<> allSrcBits(m_dsBuilder.getGRF_LEN());
+    BitSet<> allDstNoLastBits(m_dsBuilder.getGRF_LEN());
+    BitSet<> allSrcNoLastBits(m_dsBuilder.getGRF_LEN());
+    SuppressBlockPtrTy bptr =
+        getSuppressionBlockCandidate(startIt, srcIdx, allDstBits, allSrcBits, allDstNoLastBits, allSrcNoLastBits);
+    if (!bptr)
+        return 0;
+
+    size_t numSuppressed = 0;
+    InstListIterator it = startIt;
+    // advance inst iterator to the next instruction following the block
+    // Note that this instruction must be a macro candidate, otherwise the suppression
+    // block won't formed
+    std::advance(it, bptr->size());
+    assert(it != m_instList.end());
+
+
+    // find until the last instruction that can be suppressed
+    while (it != m_instList.end()) {
+        if (!srcIsSuppressCandidate(**it, srcIdx))
+            break;
+
+        SrcRegRangeType src_range, src_extra_range;
+        DstRegRangeType dst_range;
+        m_inps.getDpasSrcDependency(**it, src_range, src_extra_range, m_model);
+        m_inps.getDpasDstDependency(**it, dst_range);
+        if (hasInternalDep(dst_range, src_range, GetDpasSystolicDepth((*it)->getDpasFc()) == 8))
+            break;
+
+        Operand& srcOp = (*it)->getSource(srcIdx);
+        // TODO: to simplify the implementation, stop looking if the src is null
+        if (srcOp.getDirRegName() != RegName::GRF_R)
+            break;
+
+        // found the first instruction that can't be suppressed. Stop looking.
+        if (!bptr->contains(srcOp.getDirRegRef().regNum))
+            break;
+
+        bool skipSetLastBits = false;
+        if (hasProducerConsumerDep(dst_range, src_range, allDstBits, allSrcBits)) {
+                break;
+        }
+
+        // at this point, we can add this DPAS into the macro
+        ++numSuppressed;
+        (*it)->addInstOpt(InstOpt::ATOMIC);
+        bptr->addRegRanges(src_range, src_extra_range, dst_range);
+        if (!skipSetLastBits) {
+            allSrcNoLastBits = allSrcBits;
+            allDstNoLastBits = allDstBits;
+        }
+        setDstSrcBits(src_range, dst_range, allSrcBits, allDstBits);
+        InstListIterator nextIt = std::next(it, 1);
+        if (nextIt == m_instList.end())
+            break;
+        if (nextIsNotMacroCandidate(**it, **nextIt))
+            break;
+        it = nextIt;
+    }
+
+    if (numSuppressed) {
+        // at least one instruction can be suppressed, the candidate block can be in the macro
+        // udpate register footprint into DepSet
+        updateRegFootprintsToDepSets(bptr->allSrcRange, bptr->allExtraSrcRange, bptr->allDstRange);
+        InstListIterator bptr_it = startIt;
+        for (size_t i = 0; i < bptr->size(); ++i) {
+            (*bptr_it)->addInstOpt(InstOpt::ATOMIC);
+            ++bptr_it;
+        }
+
+        // return the total instructions found can be in the macro
+        return bptr->size() + numSuppressed;
+    }
+    return 0;
+}
+
+DepSetBuilder::DpasMacroBuilder::SuppressBlockPtrTy
+DepSetBuilder::DpasMacroBuilder::getSuppressionBlockCandidate(
+    InstListIterator startIt, uint32_t srcIdx,
+    BitSet<>& allDstBits, BitSet<>& allSrcBits,
+    BitSet<>& allDstNoLastBits, BitSet<>& allSrcNoLastBits) const {
+    assert(srcIdx == 1 || srcIdx == 2);
+    size_t maxGroupNum = getNumberOfSuppresionGroups(srcIdx);
+    // return null if the given src can't be suppressed
+    if (!maxGroupNum)
+        return nullptr;
+
+    SuppressBlockPtrTy sb(new SuppressBlock(maxGroupNum, srcIdx == 1 ? 8 : 4));
+    // try from the startIt to see if there are dpas sequence that can form the suppression block
+    // check number of maxGroupSize to find the first one block those can potentially be suppressed
+    InstListIterator it = startIt;
+    for (size_t i = 0; i < maxGroupNum; ++i) {
+        InstListIterator nextIt = it;
+        ++nextIt;
+        // if next instruction is not a suppression candidate, there's no chance to form a
+        // suppression block, return nullptr directly
+        if (nextIt == m_instList.end())
+            return nullptr;
+        if (nextIsNotMacroCandidate(**it, **nextIt))
+            return nullptr;
+        if (!srcIsSuppressCandidate(**it, srcIdx))
+            return nullptr;
+        SrcRegRangeType src_range, src_extra_range;
+        DstRegRangeType dst_range;
+        m_inps.getDpasSrcDependency(**it, src_range, src_extra_range, m_model);
+        m_inps.getDpasDstDependency(**it, dst_range);
+        if (hasInternalDep(dst_range, src_range, GetDpasSystolicDepth((*it)->getDpasFc()) == 8))
+            return nullptr;
+
+        bool skipSetLastBits = false;
+        if (hasProducerConsumerDep(dst_range, src_range, allDstBits, allSrcBits)) {
+                break;
+        }
+        uint16_t reg = (*it)->getSource(srcIdx).getDirRegRef().regNum;
+        if (sb->partialOverlapped(reg))
+            return nullptr;
+
+        // found the first duplicated register, the block is formed
+        if (sb->contains(reg))
+            break;
+        sb->addRegs(reg);
+        sb->addRegRanges(src_range, src_extra_range, dst_range);
+        if (!skipSetLastBits) {
+            allSrcNoLastBits = allSrcBits;
+            allDstNoLastBits = allDstBits;
+        }
+        setDstSrcBits(src_range, dst_range, allSrcBits, allDstBits);
+        ++it;
+    }
+
+    assert(sb->size());
+    return std::move(sb);
+}
+
+bool DepSetBuilder::DpasMacroBuilder::srcIsSuppressCandidate(const Instruction& inst, uint32_t srcIdx) const {
+    // src1 always can be the candidate since all dpas depth must be the same within the same macro
+    if (srcIdx == 1)
+        return true;
+    if (srcIdx == 2) {
+        // can't be DP dpas
+        if (inst.isDF())
+            return false;
+
+        if (GetDpasRepeatCount(inst.getDpasFc()) != 8)
+            return false;
+        return true;
+    }
+    return false;
+}
+
+bool DepSetBuilder::DpasMacroBuilder::hasProducerConsumerDep(
+    const DstRegRangeType& dst_range, const SrcRegRangeType& src_range,
+    const BitSet<>& target_dst_bits, const BitSet<>& target_src_bits) const {
+
+    BitSet<> new_srcbits(m_dsBuilder.getGRF_LEN());
+    BitSet<> new_dstbits(m_dsBuilder.getGRF_LEN());
+    setDstSrcBits(src_range, dst_range, new_srcbits, new_dstbits);
+
+    // check if there is WAR/RAW/WAW dependency
+    if (target_src_bits.intersects(new_dstbits) ||
+        target_dst_bits.intersects(new_srcbits) ||
+        target_dst_bits.intersects(new_dstbits))
+        return true;
+    return false;
+}
+
+// add given src and dst register ranges into DepSet
+void DepSetBuilder::DpasMacroBuilder::updateRegFootprintsToDepSets(
+    SrcRegRangeType& src_range, SrcRegRangeType& extra_src_range, DstRegRangeType& dst_range) {
+        m_inps.addDependency(src_range);
+        m_inps.addDependency(extra_src_range);
+        m_oups.addDependency(dst_range);
+};
+
+void DepSetBuilder::DpasMacroBuilder::updateRegFootprintsToDepSets(
+    RegRangeListType& src_range, RegRangeListType& extra_src_range, RegRangeListType& dst_range) {
+    m_inps.addDependency(src_range);
+    m_inps.addDependency(extra_src_range);
+    m_oups.addDependency(dst_range);
+};
+
+const Instruction& DepSetBuilder::DpasMacroBuilder::formMacro(size_t& dpasCnt) {
+    dpasCnt = 1;
+    InstListIterator cur = m_firstDpasIt;
+    SrcRegRangeType src_range, src_extra_range;
+    DstRegRangeType dst_range;
+    m_inps.getDpasSrcDependency(**cur, src_range, src_extra_range, m_model);
+    m_inps.getDpasDstDependency(**cur, dst_range);
+    InstListIterator next = cur;
+    next++;
+    // early exit if there is no following instructions
+    if (next == m_instList.end()) {
+        updateRegFootprintsToDepSets(src_range, src_extra_range, dst_range);
+        return **cur;
+    }
+
+    dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 1));
+    dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 2));
+
+    if (dpasCnt == 1) {
+        updateRegFootprintsToDepSets(src_range, src_extra_range, dst_range);
+        return **cur;
+    }
+
+    InstListIterator last = m_firstDpasIt;
+    std::advance(last, dpasCnt-1);
+    assert(last != m_instList.end());
+    // remove the Atomic set at the last dpas
+    (*last)->removeInstOpt(InstOpt::ATOMIC);
+    return **last;
+}
+
+bool DepSetBuilder::DpasMacroBuilder::nextIsNotMacroCandidate(
+    const Instruction &dpas, const Instruction &next_inst) const {
     if (!next_inst.getOpSpec().isDpasFamily())
         return true;
 
@@ -479,13 +709,89 @@ static bool helper_isLastDpas(const Instruction &dpas, const Instruction &next_i
     }
     if (dpas.getDestination().getType() != next_inst.getDestination().getType())
         return true;
-
-    // dpas in the same macro must have the same src1 register
-    if (dpas.getSource(1).getDirRegRef() != next_inst.getSource(1).getDirRegRef())
-        return true;
-
     return false;
 }
+
+// set register fange from start_reg to upper_reg into bit_set
+void DepSetBuilder::DpasMacroBuilder::setBits(
+    BitSet<> &bit_set, uint32_t start_reg, uint32_t upper_reg) const {
+      // if the given register is max(), which means there's no register,
+      // then no need to do anything
+      if (start_reg == std::numeric_limits<uint32_t>::max() ||
+          upper_reg == std::numeric_limits<uint32_t>::max())
+          return;
+      for (uint32_t i = start_reg; i <= upper_reg; ++i) {
+          uint32_t grf_addr = i * m_dsBuilder.getGRF_BYTES_PER_REG();
+          bit_set.set(grf_addr, m_dsBuilder.getGRF_BYTES_PER_REG());
+      }
+ }
+
+// set dst_range to dst_bits and src_range to src_bits
+void DepSetBuilder::DpasMacroBuilder::setDstSrcBits(
+    const SrcRegRangeType &src_range, const DstRegRangeType &dst_range,
+    BitSet<> &src_bits, BitSet<> &dst_bits) const {
+    for (auto regs : src_range) {
+        setBits(src_bits, regs.first, regs.second);
+    }
+    setBits(dst_bits, dst_range.first, dst_range.second);
+}
+
+// check if the given register ranges having intersection
+bool DepSetBuilder::DpasMacroBuilder::hasIntersect(
+    const DepSet::RegRangeType &rr1, const DepSet::RegRangeType &rr2) const {
+    BitSet<> rr1bits(m_dsBuilder.getGRF_LEN());
+    BitSet<> rr2bits(m_dsBuilder.getGRF_LEN());
+    setBits(rr1bits, rr1.first, rr1.second);
+    setBits(rr2bits, rr2.first, rr2.second);
+
+    return rr1bits.intersects(rr2bits);
+}
+
+// If rr1 and rr2 footprint are all the same, return true.
+// If rr1 and rr2 has intersect but not entirely the same, then return
+// false. If no dependency, return true
+bool DepSetBuilder::DpasMacroBuilder::hasEntireOverlapOrNoOverlap(
+    const DepSet::RegRangeType &rr1, const DepSet::RegRangeType &rr2) const {
+
+    // no overlap
+    if (!hasIntersect(rr1, rr2))
+        return true;
+
+    // overlap, check if it's completely overlap
+    BitSet<> rr1bits(m_dsBuilder.getGRF_LEN());
+    BitSet<> rr2bits(m_dsBuilder.getGRF_LEN());
+    setBits(rr1bits, rr1.first, rr1.second);
+    setBits(rr2bits, rr2.first, rr2.second);
+    return rr1bits.equal(rr2bits);
+}
+
+// check if the instruction having internal dependency
+// Instruction having internal dependency on dst to src is not allowed to bein a macro.
+// Only for depth 8 dpas, internal dep on dst and src0 is allowed, but only when
+// src0 and dst memory footprint is entirely the same
+bool DepSetBuilder::DpasMacroBuilder::hasInternalDep(
+    const DstRegRangeType &dst_range, const SrcRegRangeType &src_range, bool isDepth8) const {
+    if (hasIntersect(dst_range, src_range[1]))
+        return true;
+
+    if (hasIntersect(dst_range, src_range[2]))
+        return true;
+
+    // if src0 is null, skip it
+    if (src_range[0].first != std::numeric_limits<uint32_t>::max()) {
+        if (!isDepth8 && hasIntersect(dst_range, src_range[0]))
+            return true;
+
+        // for depth 8 dpas, sr0 and dst having the same footprint is
+        // treated as no internal dependency for other rep_count, having
+        // intersect is internal dependency
+        if (isDepth8 &&
+            !hasEntireOverlapOrNoOverlap(dst_range, src_range[0]))
+            return true;
+    }
+    return false;
+}
+
 
 std::pair<DepSet*, DepSet*> DepSetBuilder::createDPASSrcDstDepSet(
     const InstList& insList, InstListIterator instIt, const InstIDs& inst_id_counter,
@@ -504,156 +810,12 @@ std::pair<DepSet*, DepSet*> DepSetBuilder::createDPASSrcDstDepSet(
     setDEPPipeClass(enc_mode, *oups, **instIt, mPlatformModel);
 
     // identify dpas macro
-    dpasCnt = 1;
-    Instruction* cur_inst = *instIt;
+    DpasMacroBuilder dmb(*this, mPlatformModel, insList, instIt, *inps, *oups);
+    const Instruction& lastDpas = dmb.formMacro(dpasCnt);
 
-    typedef DepSet::RegRangeListType SrcRegRangeType;
-    typedef DepSet::RegRangeType DstRegRangeType;
-
-    // do the first instruction
-    SrcRegRangeType src_range;
-    SrcRegRangeType extra_src_range;
-    inps->getDpasSrcDependency(*cur_inst, src_range, extra_src_range, mPlatformModel);
-    inps->addDependency(src_range);
-    inps->addDependency(extra_src_range);
-
-    DstRegRangeType dst_range;
-    oups->getDpasDstDependency(*cur_inst, dst_range);
-    oups->addDependency(dst_range);
-
-    // Track the used registers of src and dst by two BitSet. Dependency in the
-    // macro is not allowed, if there is dependency then cannot be in the same macro
-    // dpas only use grf so consider the grf only
-    BitSet<> srcbits(getGRF_LEN());
-    BitSet<> dstbits(getGRF_LEN());
-    auto setBits = [this](BitSet<>& bit_set, uint32_t start_reg, uint32_t upper_reg) {
-        // if the given register is max(), which means it's no register,
-        // then no need to do anything
-        if (start_reg == std::numeric_limits<uint32_t>::max() ||
-            upper_reg == std::numeric_limits<uint32_t>::max())
-            return;
-        for (uint32_t i = start_reg; i <= upper_reg; ++i) {
-            uint32_t grf_addr = i * getGRF_BYTES_PER_REG();
-            bit_set.set(grf_addr, getGRF_BYTES_PER_REG());
-        }
-    };
-    // set the bits for future check the dependency
-    for (auto regs : src_range) {
-        setBits(srcbits, regs.first, regs.second);
-    }
-    setBits(dstbits, dst_range.first, dst_range.second);
-
-    // check if the given register ranges having intersection
-    auto hasIntersect = [&setBits, this]
-            (const DepSet::RegRangeType& rr1, const DepSet::RegRangeType& rr2) {
-        BitSet<> rr1bits(getGRF_LEN());
-        BitSet<> rr2bits(getGRF_LEN());
-        setBits(rr1bits, rr1.first, rr1.second);
-        setBits(rr2bits, rr2.first, rr2.second);
-
-        return rr1bits.intersects(rr2bits);
-    };
-
-    // check if the having overlap on given register range.
-    // If rr1 and rr2 footprint are all the same, then return true.
-    // If rr1 and rr2 has overlap but not entirely the same, then return false.
-    // If no dependency, return true
-    auto hasEntireOverlapOrNoOverlap = [&setBits, &hasIntersect, this]
-            (const DepSet::RegRangeType& rr1, const DepSet::RegRangeType& rr2) {
-        BitSet<> rr1bits(getGRF_LEN());
-        BitSet<> rr2bits(getGRF_LEN());
-        setBits(rr1bits, rr1.first, rr1.second);
-        setBits(rr2bits, rr2.first, rr2.second);
-
-        if (hasIntersect(rr1, rr2))
-            return rr1bits.equal(rr2bits);
-        else
-            return true;
-    };
-
-    // check if the instruction having internal dependency
-    // Instruction having internal dependency on dst to src is not allowed to be
-    // in a macro.
-    // Only for dpas8x8, insternal dep on dst and src0 is allowed, but only when src0 and
-    // dst memory footprin is entirely the same
-    auto hasInternalDep = [&hasEntireOverlapOrNoOverlap, &hasIntersect](
-                                const DstRegRangeType& dst_range,
-                                const SrcRegRangeType& src_range,
-                                bool isDepth8) {
-        if (hasIntersect(dst_range, src_range[1]))
-            return true;
-
-        if (hasIntersect(dst_range, src_range[2]))
-            return true;
-
-        // if src0 is null, then must not have dependency between dst and src0, skip it
-        if (src_range[0].first != std::numeric_limits<uint32_t>::max()) {
-            if (!isDepth8 && hasIntersect(dst_range, src_range[0]))
-                return true;
-
-            // for depth 8 dpas, sr0 and dst having the same foot print is treated
-            // as no internal dependency for other rep_count, having intersect is
-            // internal dependency
-            if (isDepth8 && !hasEntireOverlapOrNoOverlap(dst_range, src_range[0]))
-                return true;
-        }
-        return false;
-    };
-    // if the first dpas has internal dependency, then itself form
-    // a macro, otherwise keep checking until lastDpas
-    if (!hasInternalDep(dst_range, src_range,
-        GetDpasSystolicDepth(cur_inst->getDpasFc()) == 8))
-    {
-
-        // do the following instruction until the end of macro
-        while (1) {
-            ++instIt;
-            if (instIt == insList.end())
-                break;
-
-            if (helper_isLastDpas(*cur_inst, **instIt))
-                break;
-            SrcRegRangeType new_src_range, new_extra_regs;
-            DstRegRangeType new_dst_range;
-            inps->getDpasSrcDependency(**instIt, new_src_range, new_extra_regs, mPlatformModel);
-            oups->getDpasDstDependency(**instIt, new_dst_range);
-            BitSet<> new_srcbits(getGRF_LEN());
-            BitSet<> new_dstbits(getGRF_LEN());
-            for (auto regs : new_src_range) {
-                setBits(new_srcbits, regs.first, regs.second);
-            }
-            setBits(new_dstbits, new_dst_range.first, new_dst_range.second);
-
-            // if the new instruction having internal dependency, then
-            // cannot be part of this macro
-            if (hasInternalDep(new_dst_range, new_src_range,
-                GetDpasSystolicDepth(cur_inst->getDpasFc()) == 8))
-                break;
-
-            // if the new instruction having WAR/RAW/WAW to previous, then cannot be part of this macro
-            if (srcbits.intersects(new_dstbits) ||
-                dstbits.intersects(new_srcbits) ||
-                dstbits.intersects(new_dstbits))
-                break;
-
-            // Add ATOMIC to dpas inside the macro, except for the last dpas
-            cur_inst->addInstOpt(InstOpt::ATOMIC);
-
-            cur_inst = *instIt;
-
-            // add the new dependency
-            inps->addDependency(new_src_range);
-            inps->addDependency(new_extra_regs);
-            oups->addDependency(new_dst_range);
-            srcbits.add(new_srcbits);
-            dstbits.add(new_dstbits);
-
-            ++dpasCnt;
-        }
-    }
     // let the last instruciton in the macro represent this DepSet
-    inps->m_instruction = cur_inst;
-    oups->m_instruction = cur_inst;
+    inps->m_instruction = &lastDpas;
+    oups->m_instruction = &lastDpas;
 
     return std::make_pair(inps, oups);
 }

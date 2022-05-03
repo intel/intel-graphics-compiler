@@ -16,7 +16,8 @@ SPDX-License-Identifier: MIT
 #include <ostream>
 #include <vector>
 #include <map>
-
+#include <memory>
+#include <set>
 
 namespace iga
 {
@@ -81,10 +82,10 @@ class DepSetBuilder;
 // BITs per 32-byte GRF register
 //    1 would be register granularity only
 //    8 would be DWORD granularity
-//
 class DepSet {
     friend DepSetBuilder;
-public:
+
+  public:
     struct InstIDs {
     public:
         InstIDs() {}
@@ -122,7 +123,10 @@ public:
         uint32_t mathPipe = 0;
     };
 
-private:
+    typedef std::pair<uint32_t, uint32_t> RegRangeType;
+    typedef std::vector<RegRangeType> RegRangeListType;
+
+  private:
     DepSet(const InstIDs& inst_id_counter, const DepSetBuilder& dsb);
     ~DepSet()
     {
@@ -201,9 +205,6 @@ private:
     // its footpring for a dst register "r2.2:d"
     // This is a helper setter for some Workarounds
     void setOutputsDstDepFullGrf();
-
-    typedef std::pair<uint32_t, uint32_t> RegRangeType;
-    typedef std::vector<RegRangeType> RegRangeListType;
 
     // Set the bits to this DepSet with the given reg_range
     void addDependency(const RegRangeType& reg_range);
@@ -386,9 +387,197 @@ private:
     const uint32_t ARF_SPECIAL_BYTES_PER_REG = 4;
 
 private:
+    // DpasMacroBuilder - a helper class for building dpas macro
+
+    // DPAS sequence can form a macro by setting {Atomic} to all DPAS in the same macro, except the last one
+    // DPAS can form a macro when:
+    // 1. consecutive DPAS instructions of the same opcode
+    // 2. same datatype of the same operand across all instructions
+    // 3. same execution mask across all instructions
+    // 4. same depth
+    // 5. has no internal dependency within the instruction
+    //    with an exception that for depth 8 dpas, src0and dst dependency is allowed if they are completely the same
+    // 6. One of below conditions is met:
+    //    a) src1 read suppression is fulfilled
+    //    b) src2 read suppression is fulfilled
+    class DpasMacroBuilder {
+    public:
+        DpasMacroBuilder(
+            const DepSetBuilder &dsBuilder,
+            const Model &model,
+            const InstList &instList,
+            InstListIterator dpasIt,
+            DepSet& in,
+            DepSet& out)
+            : m_dsBuilder(dsBuilder), m_model(model), m_instList(instList), m_firstDpasIt(dpasIt),
+              m_inps(in), m_oups(out)
+        {}
+
+        // form a macro start from dpasIt, and set the register footprint of all
+        // instruction in the macro into the given input and output DepSet
+        // - dpasCnt is the output of number of instructions in the macro
+        // - return the last intruction in the formed macro
+        const Instruction& formMacro(size_t &dpasCnt);
+
+    private:
+        typedef DepSet::RegRangeListType RegRangeListType;
+        typedef RegRangeListType SrcRegRangeType;
+        typedef DepSet::RegRangeType RegRangeType;
+        typedef RegRangeType DstRegRangeType;
+
+
+        // check if the given next_inst can be the candidate within current macro
+        // return true if it can't
+        bool nextIsNotMacroCandidate(const Instruction &dpas, const Instruction &next_inst) const;
+
+        // set register fange from start_reg to upper_reg into bit_set
+        void setBits(BitSet<> &bit_set, uint32_t start_reg, uint32_t upper_reg) const;
+
+        // set dst_range to dst_bits and src_range to src_bits
+        void setDstSrcBits(
+            const SrcRegRangeType &src_range,
+            const DstRegRangeType &dst_range,
+            BitSet<> &src_bits,
+            BitSet<> &dst_bits) const;
+
+        // check if the given register ranges having intersection
+        bool hasIntersect(const DepSet::RegRangeType &rr1, const DepSet::RegRangeType &rr2) const;
+
+        // If rr1 and rr2 footprint are all the same, return true.
+        // If rr1 and rr2 has intersect but not entirely the same, then return
+        // false. If no dependency, return true
+        bool hasEntireOverlapOrNoOverlap(const DepSet::RegRangeType &rr1,
+                                         const DepSet::RegRangeType &rr2) const;
+
+        // check if the instruction having internal dependency
+        // Instruction having internal dependency on dst to src is not allowed
+        // to be in a macro. Only for dpas8x8, insternal dep on dst and src0 is
+        // allowed, but only when src0 and dst memory footprint is entirely the
+        // same
+        bool hasInternalDep(const DstRegRangeType &dst_range,
+                            const SrcRegRangeType &src_range,
+                            bool isDepth8) const;
+
+        // check if the givem src/dst RegRange has producer-consumer dependency
+        // (WAW/WAR/RWA) to the given src/dst BitSet
+        bool hasProducerConsumerDep(const DstRegRangeType& dst_range,
+                                    const SrcRegRangeType& src_range,
+                                    const BitSet<>& target_dst_bits,
+                                    const BitSet<>& target_src_bits) const;
+
+
+        void updateRegFootprintsToDepSets(
+            SrcRegRangeType& src_range, SrcRegRangeType& extra_src_range, DstRegRangeType& dst_range);
+        void updateRegFootprintsToDepSets(
+            RegRangeListType& src_range, RegRangeListType& extra_src_range, RegRangeListType& dst_range);
+
+    private:
+        struct SuppressBlock {
+        public:
+            // Maximum number of groups allowed. This dpeneds on platform and the src index
+            const size_t maxNumGroup;
+            const size_t groupSize;
+
+            // Groups in this block: each group is represented by the first register of the group
+            std::vector<uint16_t> groups;
+
+            // Keep tarck of the src and dst register footprints of all instructions those
+            // are in this suppressBlcok. This will be used to set to DepSet when the block
+            // is decided to be added into the macro, for avoiding re-calculating the dependency
+            RegRangeListType allSrcRange, allExtraSrcRange;
+            RegRangeListType allDstRange;
+
+        public:
+            SuppressBlock(size_t maxNumGroup, size_t groupSize)
+                : maxNumGroup(maxNumGroup), groupSize(groupSize)
+            {}
+
+            bool isFull() const
+            {
+                return groups.size() >= maxNumGroup;
+            }
+
+            bool contains(uint16_t startRegNum) const
+            {
+                return std::find(groups.begin(), groups.end(), startRegNum) != groups.end();
+            }
+
+            // check if the given register range has partially overlapped with existed ones
+            // return true when there is partially overlapped
+            // retur false if there is completely overlapped or no overlapped
+            bool partialOverlapped(uint16_t startRegNum) const
+            {
+                if (contains(startRegNum))
+                    return false;
+                for (auto& group : groups) {
+                    // number of registers in a group must be all the same across the groups
+                    // in the same block
+                    uint16_t diff = startRegNum > group ?
+                                        startRegNum - group : group - startRegNum;
+                    if (diff < groupSize)
+                        return true;
+                }
+                return false;
+            }
+
+            size_t size () const { return groups.size(); }
+
+            // add the registers into this blcok,
+            void addRegs(uint16_t startRegNum)
+            {
+                assert(!isFull());
+                assert(!contains(startRegNum));
+                groups.push_back(startRegNum);
+            }
+
+            void addRegRanges(SrcRegRangeType& srcRange,
+                              SrcRegRangeType& extraSrcRange,
+                              DstRegRangeType& dstRange)
+            {
+                allSrcRange.insert(allSrcRange.end(), srcRange.begin(), srcRange.end());
+                allExtraSrcRange.insert(allExtraSrcRange.end(), extraSrcRange.begin(), extraSrcRange.end());
+                allDstRange.push_back(dstRange);
+            }
+
+        }; // SuppressionBlock
+        typedef std::unique_ptr<SuppressBlock> SuppressBlockPtrTy;
+
+        // get the max number of suppression groups according to srcIdx and platform
+        size_t getNumberOfSuppresionGroups(uint32_t srcIdx) const;
+
+        // check from startIt, find the number of consecutive dpas those can be grouped in a macro due
+        // to srcIdx suppression. Return number of instructions found
+        size_t formSrcSuppressionBlock(InstListIterator startIt, uint32_t srcIdx);
+
+        // return the candidate SuppressBlock that is found fulfilling read suppression requirement
+        // of given src index, start from the give instruction. This block is the first candidate block
+        // of instructions register those can be suppressed. Will need to check if the following instructions
+        // having the same registers so that they can actually being suppressed.
+        // return nullptr if there is no chance to suppress the given src
+        // allDstBits, allSrcBits - all used grf bits in the return suppressBlock
+        // allDstNoLastBits, allSrcNoLastBits - all used grf in the return suppressBlock except the
+        // last instruction's
+        SuppressBlockPtrTy getSuppressionBlockCandidate(
+            InstListIterator startIt, uint32_t srcIdx,
+            BitSet<>& allDstBits, BitSet<>& allSrcBits,
+            BitSet<>& allDstNoLastBits, BitSet<>& allSrcNoLastBits) const;
+
+        bool srcIsSuppressCandidate(const Instruction& inst, uint32_t srcIdx) const;
+
+    private:
+        const DepSetBuilder &m_dsBuilder;
+        const Model &m_model;
+
+        const InstList &m_instList;
+        InstListIterator m_firstDpasIt;
+
+        DepSet& m_inps;
+        DepSet& m_oups;
+    }; // DpasMacroBuilder
+
+private:
     // Track all the created DepSet for deletion
     std::vector<DepSet*> mAllDepSet;
-
     const Model &mPlatformModel;
 };
 
