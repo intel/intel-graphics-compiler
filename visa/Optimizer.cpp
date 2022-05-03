@@ -1870,6 +1870,7 @@ void Optimizer::reRAPostSchedule()
     if (builder.getIsPayload())
         return;
     auto freeGRFsBeforeReRA = gtpin->getNumFreeGlobalRegs();
+    auto nextScratchFreeBeforeReRA = gtpin->getScratchNextFree();
 
     storeGRFAssignments(kernel.Declares, assignments);
     // This pass is run for gtpin since they need re-allocation after
@@ -1944,6 +1945,7 @@ void Optimizer::reRAPostSchedule()
         computeGlobalFreeGRFs(kernel);
     }
 
+    gtpin->setScratchNextFree(nextScratchFreeBeforeReRA);
     *builder.getJitInfo() = finalizerInfo;
 }
 

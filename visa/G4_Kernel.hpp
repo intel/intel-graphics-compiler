@@ -106,6 +106,7 @@ public:
     void* getGTPinInfoBuffer(unsigned &bufferSize);
 
     void setScratchNextFree(unsigned next);
+    unsigned int getScratchNextFree() const;
 
     uint32_t getNumBytesScratchUse() const;
 
