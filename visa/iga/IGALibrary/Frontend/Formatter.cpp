@@ -329,6 +329,11 @@ public:
         rsAccS.addSourceImplicit(i);
         emitSet("s-impl", rsAccS);
 
+        RegSet rsDescS(model);
+        rsDescS.addSourceDescriptorInputs(i);
+        emitSet("s-desc", rsDescS);
+
+
         if (!first)
             newline();
     }

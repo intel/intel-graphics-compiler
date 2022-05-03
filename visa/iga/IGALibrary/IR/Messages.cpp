@@ -500,6 +500,18 @@ static void postProcessDecode(
     }
 } // postProcessDecode
 
+DecodeResult iga::tryDecode(const Instruction &i, DecodedDescFields *fields)
+{
+    if (!i.getOpSpec().isSendOrSendsFamily()) {
+        return DecodeResult();
+    }
+    return
+        tryDecode(i.getOpSpec().platform,
+            i.getSubfunction().send,
+            i.getExecSize(),
+            i.getExtMsgDescriptor(), i.getMsgDescriptor(),
+            nullptr);
+}
 
 DecodeResult iga::tryDecode(
     Platform platform, SFID sfid, ExecSize execSize,

@@ -11,8 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "../api/iga_bxml_enums.hpp"
 #include "../Backend/Native/Field.hpp"
-#include "../IR/Types.hpp"
-#include "../IR/Loc.hpp"
+#include "../IR/Instruction.hpp"
 
 #include <cstdint>
 #include <string>
@@ -431,11 +430,18 @@ namespace iga
         operator bool() const {return errors.empty();}
     };
 
+
+    // Attempts to decode the descriptor for send instructions
+    DecodeResult tryDecode(
+        const Instruction &inst,
+        DecodedDescFields *fields);
+
     // Attempts to decode the descriptor for send instructions
     DecodeResult tryDecode(
         Platform p, SFID sfid, ExecSize execSize,
         SendDesc exDesc, SendDesc desc,
         DecodedDescFields *fields);
+
 
 
     //

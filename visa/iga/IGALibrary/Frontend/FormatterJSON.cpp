@@ -658,10 +658,7 @@ public:
 
         if (srcIx == 0 && i.getSrc0Length() >= 0) {
             emit("{");
-            const auto di =
-                tryDecode(platform(), i.getSubfunction().send, i.getExecSize(),
-                    i.getExtMsgDescriptor(), i.getMsgDescriptor(),
-                    nullptr);
+            const auto di = tryDecode(i, nullptr);
             emit("\"kind\":\"AD\"");
             emit(", \"surf\":");
             if (di) {

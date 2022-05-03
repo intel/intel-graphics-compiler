@@ -87,6 +87,9 @@ namespace iga
         // implicit sources such as acc or flag register in a select
         bool addSourceImplicit(const Instruction &i);
         //
+        // just send descriptor inputs
+        bool addSourceDescriptorInputs(const Instruction &i);
+        //
         // just uses of a0 as part of an indirect register access
         bool addDestinationInputs(const Instruction &i); // register indirect
         //

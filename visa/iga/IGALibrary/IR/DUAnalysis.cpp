@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 
-/*******************************************************
+/******************************************************************************
  * This performs a basic liveness/DU analysis (reverse walk) of the
  * register files (GRF and ARF).  The RegSet abstraction tracks bytes
  * touched by instructions.
@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
  * We choose a reverse (backwards) analysis because we want the algorithm to
  * infer kernel inputs (or use of uninitialized variables).
  *    ==> Hence, read examples bottom up.
- *******************************************************
+ ******************************************************************************
  * IMPLEMENTATION NOTES:
  *
  *  - The analysis is conservative/approximate.
@@ -23,7 +23,7 @@ SPDX-License-Identifier: MIT
  *  - The algorithm runs in three steps.
  *      (a) precompute the data flow sets
  *      (b) iterate the graph until the fix point is reached
- *      (c) a final pass through to copy out data
+ *      (c) execute a final pass through to copy out data
  *
  * See below for notation and formalism below.
  */
@@ -82,8 +82,8 @@ using namespace iga;
  *      wasn't bad enough, the writes may be chunked into smaller pieces due to
  *      hardware restriction (several predicated ops to create X);
  *       e.g.
- *          X[1]   = (P[1])    add ..  fragment #1 of P
- *          X[0]   = (P[0])    add ..  fragment #2 of P
+ *          X[1]   = (P[1])    add ..  fragment #0 of P
+ *          X[0]   = (P[0])    add ..  fragment #1 of P
  *          X[0,1] = (~P[0,1]) add ..  full part of ~P[0,1]
  *                             use X[0,1]
  *      This can happen since we must break things down to smaller instructions
@@ -94,29 +94,30 @@ using namespace iga;
  *      Nevertheless, if pairs are nearby and uncomplicated (not fragmented),
  *      it should be fairly efficient.  However, pathological cases exist.
  *
- *    - Notation.  Rather showing full complicated instructions, most examples
- *      reduce the to general 'def' and 'use' instructions in comments below.
+ *    - Notation.  Rather that showing full complicated instructions,
+ *      most examples reduce the to general 'def' and 'use' instructions
+ *      in comments below.
  *           X =   def ... // defines X
  *           X = P def ... // defines X under predicate P
  *           ...
  *           use X
  *
- *    - Since we are dealing with fully vectorized code we use a simple array
+ *    - Since we are dealing with fully vectorized code we use array
  *      notation to illustrate fragmenting.  Formally, the values needn't
- *      be adjacent (X[0] not near X[1]), but in practice they will be.
+ *      be adjacent (X[0] may not be near X[1]), but in practice they will be.
  *        A:  X[0,1] =      def ... // defines X[0] and X[1] unconditionally
  *        B:  X[1]   = P[0] def ... // defines X[1] under predicate P[0]
  *        C:  use X[1] // uses X[1] // uses just X[1]
  *      The above yields DU relations {(A,C,X[1]),(A,B,X[1])}
  *
- *    - In some cases we give data flow graphs with various ASCII characters.
- *          (did you read this bottom up?)
+ *    - In some cases we give data flow graphs with ASCII characters.
+ *          (read this bottom up)
  *          XXXX||||  X[0] = def ...  // live range fully partially killed off
  *          ||||||||  ...             // nothing changes (disj. insts.)
  *          ||||++++  X[1] = P[0] def // part of range conditionally killed
  *          XXXXXXXX         use X[0,1]
- *      Even if not explicitly stated, one should assume there could be
- *      non-interfering instructions between each line above.
+ *      Even if not explicitly stated in an example, one should assume there
+ *      could be non-interfering instructions between each line above.
  */
 
 
@@ -610,8 +611,7 @@ struct DepAnalysisComputer
     const Model                     &model;
     Kernel                          *k;
 
-    // sources and destinations indexed by instruction ID
-    // std::vector<Instruction *>       insts;
+    // precomputed sources and destination sets indexed by instruction ID
     std::vector<RegSet>              instDstsUnion;
     std::vector<InstSrcs>            instSrcs;
 
@@ -634,7 +634,6 @@ struct DepAnalysisComputer
         results.liveIn.clear();
         results.sums.resize(k->getInstructionCount());
 
-        // insts.reserve(k->getInstructionCount());
         instSrcs.reserve(k->getInstructionCount());
         instDstsUnion.reserve(k->getInstructionCount());
 
@@ -648,12 +647,13 @@ struct DepAnalysisComputer
             blockState.emplace_back(b);
             b->setID(bIx++);
 
-            for (Instruction *i : b->getInstList()) {
+            auto iitr = b->getInstList().begin();
+            while (iitr != b->getInstList().end()) {
+                Instruction *i = *iitr;
                 i->setID(iIx++);
-
-                // insts[i->getID()] = i;
                 instSrcs.emplace_back(InstSrcs::compute(*i));
                 instDstsUnion.emplace_back(InstDsts::compute(*i).unionOf());
+                iitr++;
             }
         }
 
@@ -712,6 +712,7 @@ struct DepAnalysisComputer
             }
         }
     } // DepAnalysisComputer::DepAnalysisComputer
+
 
     static bool fallthroughPossible(const Instruction *i) {
         bool unconditionalJmp = i->getOp() == Op::JMPI && !i->hasPredication();
@@ -864,10 +865,10 @@ struct DepAnalysisComputer
                 LiveCount &lc = results.sums[i.getID()];
                 lc.grfBytes =
                     (unsigned)rs.bitSetFor(RegName::GRF_R).cardinality();
-                lc.flagBytes =
-                    (unsigned)rs.bitSetFor(RegName::ARF_F).cardinality();
                 lc.accBytes =
                     (unsigned)rs.bitSetFor(RegName::ARF_ACC).cardinality();
+                lc.flagBytes =
+                    (unsigned)rs.bitSetFor(RegName::ARF_F).cardinality();
                 lc.indexBytes =
                     (unsigned)rs.bitSetFor(RegName::ARF_A).cardinality();
             }
