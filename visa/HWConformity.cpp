@@ -1746,6 +1746,29 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
         return false;
     }
 
+    auto allScalarSrcs = [](G4_INST* I)
+    {
+        // return true If all of I's srcs are scalar; false otherwise.
+        bool allScalarSrc = true;
+        for (int i = 0, nsrc = I->getNumSrc(); i < nsrc; i++)
+        {
+            G4_Operand* src = I->getSrc(i);
+            if (src && !src->isNullReg() && src->isSrcRegRegion() &&
+                !(src->asSrcRegRegion()->getRegion()->isScalar()))
+            {
+                allScalarSrc = false;
+                break;
+            }
+        }
+        return allScalarSrc;
+    };
+
+    // float operation requires that operands of every channel to start on the same offset
+    // except for scalar operands.
+    // If dst is indirect and not all srcs are scalar, assume it is not aligned.
+    bool FPDstUnaligned_restriction9_7 =
+        ((extype == Type_F || extype == Type_HF) && dst->getRegAccess() != Direct && !allScalarSrcs(inst));
+
     bool dstHFMixModeInst = inst->getDst()->getType() == builder.getMixModeType() && extype == Type_F;
     bool dstNotAlignedToExecType = exec_size > 1 && (dst_elsize * h_stride) < extypesize &&
         !(builder.hasMixMode() && dstHFMixModeInst);
@@ -1764,7 +1787,8 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB* bb, G4_Type extype, 
             dst->getRegAccess() != Direct &&
             !(byteDst && extypesize == 2 && exec_size == 1)
            ) ||
-        dstNotAlignedToExecType)
+        dstNotAlignedToExecType ||
+        FPDstUnaligned_restriction9_7)
     {
         /*
          * 10.3

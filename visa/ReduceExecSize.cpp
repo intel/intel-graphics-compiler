@@ -164,7 +164,11 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB* bb)
         if (extypesize < (int)kernel.numEltPerGRF<Type_UB>()/2)
         {
             uint32_t dst_elsize = inst->getDst()->getTypeSize();
-            if (dst_elsize < (unsigned int)extypesize)
+            if (dst_elsize < (unsigned int)extypesize ||
+                // indirect float type needs to be handled as well.
+                // See fixDstAlignment for detail
+                ((extype == Type_F || extype == Type_HF) &&
+                 inst->getDst()->getRegAccess() != Direct))
             {
                 if (fixDstAlignment(i, bb, extype, dst_elsize))
                 {
