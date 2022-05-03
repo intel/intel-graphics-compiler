@@ -406,6 +406,7 @@ public:
                     m_flagModifier,
                     m_subfunc);
         }
+
         inst->setLoc(m_loc);
         m_insts.emplace_back(inst);
 
@@ -523,6 +524,12 @@ public:
             swInfo.distType = m_depInfo.distType;
         }
         swInfo.spToken = m_depInfo.spToken;
+
+        SWSB::InstType instType = inst->getSWSBInstType(m_swsbEncodeMode);
+        if (!swInfo.verify(m_swsbEncodeMode, instType)) {
+            m_errorHandler.reportError(inst->getLoc(), "invalid SWSB mode");
+        }
+
         inst->setSWSB(swInfo);
 
         m_pc += inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
