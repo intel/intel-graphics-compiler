@@ -99,6 +99,23 @@ static bool isFP64Operation(llvm::Instruction *I) {
     return false;
 }
 
+static bool isFP64DivSqrtOperation(llvm::Instruction* I) {
+    if (isFP64Operation(I))
+    {
+        if (I->getOpcode() == Instruction::FDiv)
+        {
+            return true;
+        }
+
+        IntrinsicInst* IInst = dyn_cast<IntrinsicInst>(I);
+        if (IInst && IInst->getIntrinsicID() == Intrinsic::sqrt)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void ErrorCheck::visitInstruction(llvm::Instruction& I)
 {
     auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -108,6 +125,16 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
     {
         OpenCLProgramContext *OCLContext = static_cast<OpenCLProgramContext*>(ctx);
         poisonFP64KernelsEnabled = OCLContext->m_InternalOptions.EnableUnsporrtedFP64Poisoning;
+    }
+
+    bool neededByPlatform = !ctx->platform.hasNoFP64Inst() && !ctx->platform.hasCorrectlyRoundedMacros() && ctx->m_DriverInfo.NeedFP64DivSqrt();
+    if (neededByPlatform && !ctx->m_enablePrivMemForDPDivSqrtEmu)
+    {
+        // check that instruction has fp64 div/sqrt operation
+        if (isFP64DivSqrtOperation(&I))
+        {
+            ctx->m_enablePrivMemForDPDivSqrtEmu = true;
+        }
     }
 
     if (!ctx->m_DriverInfo.NeedFP64(ctx->platform.getPlatformInfo().eProductFamily) && ctx->platform.hasNoFP64Inst()

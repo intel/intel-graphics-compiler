@@ -1130,6 +1130,7 @@ namespace IGC
         bool m_hasLegacyDebugInfo = false;
         bool m_hasEmu64BitInsts = false;
         bool m_hasDPDivSqrtEmu = false;
+        bool m_enablePrivMemForDPDivSqrtEmu = false;
 
         CompilerStats m_Stats;
         // Flag for staged compilation
