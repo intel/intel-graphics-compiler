@@ -9,6 +9,10 @@
 # ROOT
 cmake_minimum_required(VERSION 2.8)
 
+if (NOT IGC_BUILD)
+enable_testing()
+endif()
+
 project(IGA)
 
 include (BuildSetup.cmake)

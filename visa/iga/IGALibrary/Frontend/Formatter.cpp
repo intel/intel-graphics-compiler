@@ -269,7 +269,7 @@ public:
         }
         formatPrefixComment(i, currInstBits);
 
-        const bool isSend = i.getOpSpec().isSendOrSendsFamily();
+        const bool isSend = i.is(Op::SEND); // not for sendc
         if (isSend) {
             bool sendPrinted = false;
             if (platform() >= Platform::XE_HPG && opts.printLdSt) {
@@ -1292,7 +1292,6 @@ void Formatter::formatInstOpts(
 } // end formatInstOpts
 
 bool Formatter::formatLoadStoreSyntax(const Instruction& i) {
-    // TODO: relax this, but ensure nothing breaks
     if (platform() < Platform::XE_HPG) {
         // We will not even try on <=XeHPG
         return false;
