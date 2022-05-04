@@ -10271,7 +10271,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
         // to be copied first before being used as an inline asm input.
         // TODO: To avoid the extra move, we need to be able to explicity define an alias variable with offset
         // instead of a region within the base value.
-        if (opVar->GetAlias() && opVar->GetAliasOffset() > 0 &&
+        else if (opVar->GetAlias() && opVar->GetAliasOffset() > 0 &&
             m_encoder->GetVariableName(opVar) == m_encoder->GetVariableName(opVar->GetAlias()))
         {
             CVariable* tempMov = m_currShader->GetNewVariable(
