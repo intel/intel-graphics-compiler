@@ -435,8 +435,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
-        bool generateIf = true;
-
+        bool generateIf = !this->getOption(vISA_PredicatedFdivSqrt);
         if (generateIf)
         {
             // if
@@ -459,13 +458,37 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             }
         }
         {
+            G4_Predicate* predicateFlagReg_m1 = NULL;
+            G4_Predicate* predicateFlagReg_m2 = NULL;
+            G4_Predicate* predicateFlagReg_m3 = NULL;
+            G4_Predicate* predicateFlagReg_m4 = NULL;
+            G4_Predicate* predicateFlagReg_m5 = NULL;
+            G4_Predicate* predicateFlagReg_m6 = NULL;
+            G4_Predicate* predicateFlagReg_m7 = NULL;
+            G4_Predicate* predicateFlagReg_m8 = NULL;
+            G4_Predicate* predicateFlagReg_m9 = NULL;
+            G4_Predicate* predicateFlagReg_m10 = NULL;
+            if (!generateIf)
+            {
+                predicateFlagReg_m1 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m2 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m3 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m4 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m5 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m6 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m7 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m8 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m9 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m10 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            }
+
             // madm (4) r9.acc3 r0.noacc r6.noacc r8.acc2 {Align16, N1/N2}
             G4_SrcRegRegion *t0SrcOpnd = createSrcRegRegion(tsrc0);
             t9DstOpnd0->setAccRegSel(ACC3);
             t0SrcOpnd->setAccRegSel(NOACC);
             t6SrcOpnd1->setAccRegSel(NOACC);
             t8SrcOpnd0x0->setAccRegSel(ACC2);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m1, exsize,
                 t9DstOpnd0, t0SrcOpnd,
                 t6SrcOpnd1, t8SrcOpnd0x0, madmInstOpt);
 
@@ -475,7 +498,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             t1SrcOpnd0->setAccRegSel(NOACC);
             t7SrcOpndNeg0->setAccRegSel(NOACC);
             t8SrcOpnd0x1->setAccRegSel(ACC2);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m2, exsize,
                 t10DstOpnd0, t1SrcOpnd0,
                 t7SrcOpndNeg0, t8SrcOpnd0x1, madmInstOpt);
 
@@ -484,7 +507,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             t6SrcOpnd2->setAccRegSel(NOACC);
             t7SrcOpndNeg1->setAccRegSel(NOACC);
             t9SrcOpnd0x0->setAccRegSel(ACC3);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m3, exsize,
                 t11DstOpnd0, t6SrcOpnd2,
                 t7SrcOpndNeg1, t9SrcOpnd0x0, madmInstOpt);
 
@@ -493,7 +516,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             t8SrcOpnd0x2->setAccRegSel(ACC2);
             t10SrcOpnd0->setAccRegSel(ACC4);
             t8SrcOpnd0x3->setAccRegSel(ACC2);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m4, exsize,
                 t12DstOpnd0, t8SrcOpnd0x2,
                 t10SrcOpnd0, t8SrcOpnd0x3, madmInstOpt);
 
@@ -503,7 +526,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             t1SrcOpnd1->setAccRegSel(NOACC);
             t7SrcOpndNeg2->setAccRegSel(NOACC);
             t12SrcOpnd0x0->setAccRegSel(ACC6);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m5, exsize,
                 t13DstOpnd0, t1SrcOpnd1,
                 t7SrcOpndNeg2, t12SrcOpnd0x0, madmInstOpt);
 
@@ -512,7 +535,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             t8SrcOpnd0x4->setAccRegSel(ACC2);
             t10SrcOpnd1->setAccRegSel(ACC4);
             t12SrcOpnd0x1->setAccRegSel(ACC6);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m6, exsize,
                 t8DstOpnd1, t8SrcOpnd0x4,
                 t10SrcOpnd1, t12SrcOpnd0x1, madmInstOpt);
 
@@ -521,7 +544,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             t9SrcOpnd0x1->setAccRegSel(ACC3);
             t11SrcOpnd0->setAccRegSel(ACC5);
             t12SrcOpnd0x2->setAccRegSel(ACC6);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m7, exsize,
                 t9DstOpnd1, t9SrcOpnd0x1,
                 t11SrcOpnd0, t12SrcOpnd0x2, madmInstOpt);
 
@@ -530,7 +553,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             t12SrcOpnd0x3->setAccRegSel(ACC6);
             t8SrcOpnd1->setAccRegSel(ACC8);
             t13SrcOpnd0->setAccRegSel(ACC7);
-            inst = createMadm(exsize, t12DstOpnd1, t12SrcOpnd0x3,
+            inst = createMadm(predicateFlagReg_m8, exsize, t12DstOpnd1, t12SrcOpnd0x3,
                 t8SrcOpnd1, t13SrcOpnd0, madmInstOpt);
 
             // madm (4) r11.acc3 r6.noacc -r7.noacc r9.acc9 {Align16, N1/N2}
@@ -538,7 +561,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             t6SrcOpnd3->setAccRegSel(NOACC);
             t7SrcOpndNeg3->setAccRegSel(NOACC);
             t9SrcOpnd1x0->setAccRegSel(ACC9);
-            inst = createMadm(exsize, t11DstOpnd1, t6SrcOpnd3,
+            inst = createMadm(predicateFlagReg_m9, exsize, t11DstOpnd1, t6SrcOpnd3,
                 t7SrcOpndNeg3, t9SrcOpnd1x0, madmInstOpt);
 
             // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
@@ -549,7 +572,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             t9SrcOpnd1x1->setAccRegSel(ACC9);
             t11SrcOpnd1->setAccRegSel(ACC3);
             t12SrcOpnd1->setAccRegSel(ACC2);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m10, exsize,
                 t8DstOpnd2, t9SrcOpnd1x1,
                 t11SrcOpnd1, t12SrcOpnd1, madmInstOpt);
         }
@@ -603,6 +626,8 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize); // for those execution size: element_size before the loop
     G4_InstOpts madmInstOpt = Get_Gen4_Emask(emask, exsize); // only used in the loop
     const RegionDesc *srcRegionDesc = getRegionStride1();
+
+    bool generateIf = !this->getOption(vISA_PredicatedFdivSqrt);
 
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_1 = createImm(float(1.0));
@@ -682,6 +707,24 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     for (uint16_t loopIndex = 0; currEMask != vISA_NUM_EMASK && loopIndex < loopCount;
         ++loopIndex, currEMask = Get_Next_EMask(currEMask, exsize))
     {
+        G4_Predicate* predicateFlagReg_m1 = NULL;
+        G4_Predicate* predicateFlagReg_m2 = NULL;
+        G4_Predicate* predicateFlagReg_m3 = NULL;
+        G4_Predicate* predicateFlagReg_m4 = NULL;
+        G4_Predicate* predicateFlagReg_m5 = NULL;
+        G4_Predicate* predicateFlagReg_m6 = NULL;
+        G4_Predicate* predicateFlagReg_m7 = NULL;
+        if (!generateIf)
+        {
+            predicateFlagReg_m1 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m2 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m3 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m4 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m5 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m6 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m7 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+        }
+
         uint16_t regIndex = loopIndex * splitInstGRFSize;
         // set Q1 for insts within the 1st loop and Q2 for the 2nd, if inside SIMD CF
         instOpt = Get_Gen4_Emask(currEMask, exsize);
@@ -797,7 +840,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         t2SrcOpnd->setAccRegSel(NOACC);
         t6SrcOpnd1->setAccRegSel(NOACC);
         t8SrcOpnd0x0->setAccRegSel(ACC2);
-        inst = createMadm(exsize,
+        inst = createMadm(predicateFlagReg_m1, exsize,
             t9DstOpnd0, t2SrcOpnd,
             t6SrcOpnd1, t8SrcOpnd0x0, madmInstOpt);
 
@@ -807,7 +850,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         t5SrcOpnd0->setAccRegSel(NOACC);
         t4SrcOpndNeg0->setAccRegSel(NOACC);
         t8SrcOpnd0x1->setAccRegSel(ACC2);
-        inst = createMadm(exsize,
+        inst = createMadm(predicateFlagReg_m2, exsize,
             t10DstOpnd0, t5SrcOpnd0,
             t4SrcOpndNeg0, t8SrcOpnd0x1, madmInstOpt);
 
@@ -816,7 +859,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         t8SrcOpnd0x2->setAccRegSel(ACC2);
         t10SrcOpnd0->setAccRegSel(ACC4);
         t8SrcOpnd0x3->setAccRegSel(ACC2);
-        inst = createMadm(exsize,
+        inst = createMadm(predicateFlagReg_m3, exsize,
             t1DstOpnd0, t8SrcOpnd0x2,
             t10SrcOpnd0, t8SrcOpnd0x3, madmInstOpt);
 
@@ -826,7 +869,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         t6SrcOpnd2->setAccRegSel(NOACC);
         t4SrcOpndNeg1->setAccRegSel(NOACC);
         t9SrcOpnd0x0->setAccRegSel(ACC3);
-        inst = createMadm(exsize,
+        inst = createMadm(predicateFlagReg_m4, exsize,
             t11DstOpnd0, t6SrcOpnd2,
             t4SrcOpndNeg1, t9SrcOpnd0x0, madmInstOpt);
 
@@ -836,7 +879,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         t9SrcOpnd0x1->setAccRegSel(ACC3);
         t11SrcOpnd0->setAccRegSel(ACC6);
         t1SrcOpnd0->setAccRegSel(ACC5);
-        inst = createMadm(exsize,
+        inst = createMadm(predicateFlagReg_m5, exsize,
             t9DstOpnd1, t9SrcOpnd0x1,
             t11SrcOpnd0, t1SrcOpnd0, madmInstOpt);
 
@@ -846,7 +889,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         t6SrcOpnd3->setAccRegSel(NOACC);
         t4SrcOpndNeg2->setAccRegSel(NOACC);
         t9SrcOpnd1x0->setAccRegSel(ACC7);
-        inst = createMadm(exsize,
+        inst = createMadm(predicateFlagReg_m6, exsize,
             t6DstOpnd0, t6SrcOpnd3,
             t4SrcOpndNeg2, t9SrcOpnd1x0, madmInstOpt);
 
@@ -858,7 +901,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         t9SrcOpnd1x1->setAccRegSel(ACC7);
         t6SrcOpnd4->setAccRegSel(ACC8);
         t1SrcOpnd1->setAccRegSel(ACC5);
-        inst = createMadm(exsize,
+        inst = createMadm(predicateFlagReg_m7, exsize,
             t8DstOpnd1, t9SrcOpnd1x1,
             t6SrcOpnd4, t1SrcOpnd1, madmInstOpt);
 
@@ -919,6 +962,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     G4_Declare* tmpFlag = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
+    bool generateIf = !this->getOption(vISA_PredicatedFdivSqrt);
+
     // temp registers
     G4_Declare *t6  = createTempVarWithNoSpill(element_size, Type_F, Any);
     G4_Declare *t7  = createTempVarWithNoSpill(element_size, Type_F, Any);
@@ -961,6 +1006,23 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     for (uint16_t loopIndex = 0; currEMask != vISA_NUM_EMASK && loopIndex < loopCount;
         ++loopIndex, currEMask = Get_Next_EMask(currEMask, exsize))
     {
+        G4_Predicate* predicateFlagReg_m1 = NULL;
+        G4_Predicate* predicateFlagReg_m2 = NULL;
+        G4_Predicate* predicateFlagReg_m3 = NULL;
+        G4_Predicate* predicateFlagReg_m4 = NULL;
+        G4_Predicate* predicateFlagReg_m5 = NULL;
+        G4_Predicate* predicateFlagReg_m6 = NULL;
+        G4_Predicate* predicateFlagReg_m7 = NULL;
+        if (!generateIf)
+        {
+            predicateFlagReg_m1 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m2 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m3 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m4 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m5 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m6 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            predicateFlagReg_m7 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+        }
         uint16_t regIndex = splitInstGRFSize * loopIndex;
         instOpt = Get_Gen4_Emask(currEMask, exsize);
         instOpt |= isNoMask(emask) ? InstOpt_WriteEnable : 0;
@@ -1056,7 +1118,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t0SrcOpnd0->setAccRegSel(NOACC);
         t8SrcOpnd0->setAccRegSel(NOACC);
         t7SrcOpnd0->setAccRegSel(ACC2);
-        inst = createMadm( exsize, t9DstOpnd0, t0SrcOpnd0,
+        inst = createMadm(predicateFlagReg_m1, exsize,
+            t9DstOpnd0, t0SrcOpnd0,
             t8SrcOpnd0, t7SrcOpnd0, madmInstOpt);
 
 
@@ -1066,7 +1129,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t0SrcOpnd1->setAccRegSel(NOACC);
         t6SrcOpnd1->setAccRegSel(NOACC);
         t7SrcOpnd1->setAccRegSel(ACC2);
-        inst = createMadm(exsize, t11DstOpnd0, t0SrcOpnd1,
+        inst = createMadm(predicateFlagReg_m2, exsize,
+            t11DstOpnd0, t0SrcOpnd1,
             t6SrcOpnd1, t7SrcOpnd1, madmInstOpt);
 
 
@@ -1087,7 +1151,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t8SrcOpnd1->setAccRegSel(NOACC);
         t11SrcOpndNeg0->setAccRegSel(ACC4);
         t9SrcOpnd0->setAccRegSel(ACC3);
-        inst = createMadm(exsize, t10DstOpnd0, t8SrcOpnd1,
+        inst = createMadm(predicateFlagReg_m3, exsize,
+            t10DstOpnd0, t8SrcOpnd1,
             t11SrcOpndNeg0, t9SrcOpnd0, madmInstOpt);
 
 
@@ -1096,7 +1161,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t9SrcOpnd1x0->setAccRegSel(ACC3);
         t10SrcOpnd0->setAccRegSel(ACC5);
         t9SrcOpnd1x1->setAccRegSel(ACC3);
-        inst = createMadm( exsize, t9DstOpnd1, t9SrcOpnd1x0,
+        inst = createMadm(predicateFlagReg_m4, exsize,
+            t9DstOpnd1, t9SrcOpnd1x0,
             t10SrcOpnd0, t9SrcOpnd1x1, madmInstOpt);
 
 
@@ -1105,7 +1171,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t11SrcOpnd1x0->setAccRegSel(ACC4);
         t10SrcOpnd1->setAccRegSel(ACC5);
         t11SrcOpnd1x1->setAccRegSel(ACC4);
-        inst = createMadm(exsize, t7DstOpnd1, t11SrcOpnd1x0,
+        inst = createMadm(predicateFlagReg_m5, exsize,
+            t7DstOpnd1, t11SrcOpnd1x0,
             t10SrcOpnd1, t11SrcOpnd1x1, madmInstOpt);
 
 
@@ -1125,7 +1192,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t6SrcOpnd2->setAccRegSel(NOACC);
         t7SrcOpndNeg0->setAccRegSel(ACC7);
         t7SrcOpnd2x1->setAccRegSel(ACC7);
-        inst = createMadm( exsize, t10DstOpnd1, t6SrcOpnd2,
+        inst = createMadm(predicateFlagReg_m6, exsize,
+            t10DstOpnd1, t6SrcOpnd2,
             t7SrcOpndNeg0, t7SrcOpnd2x1, madmInstOpt);
 
         // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
@@ -1136,7 +1204,8 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t7SrcOpnd3->setAccRegSel(ACC7);
         t9SrcOpnd2->setAccRegSel(ACC6);
         t10SrcOpnd2->setAccRegSel(ACC8);
-        inst = createMadm(exsize, t7DstOpnd2, t7SrcOpnd3,
+        inst = createMadm(predicateFlagReg_m7, exsize,
+            t7DstOpnd2, t7SrcOpnd3,
             t9SrcOpnd2, t10SrcOpnd2, madmInstOpt);
 
         if (!hasDefaultRoundDenorm)
@@ -1207,6 +1276,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
     G4_Declare *flagReg = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
+
+    bool generateIf = !this->getOption(vISA_PredicatedFdivSqrt);
+
 
     // temp registers
     G4_Declare *t0 = getImmDcl(createDFImm(0.0), element_size);
@@ -1303,8 +1375,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         inst = createMathInst(NULL, g4::NOSAT, exsize, dst0, src0, src1, MATH_RSQRTM, madmInstOpt, true);
         inst->setCondMod(condModOverflow);
 
-        bool generateIf = true;
-
         if (generateIf)
         {
             // if
@@ -1328,12 +1398,36 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         }
 
         {
+            G4_Predicate* predicateFlagReg_m1 = NULL;
+            G4_Predicate* predicateFlagReg_m2 = NULL;
+            G4_Predicate* predicateFlagReg_m3 = NULL;
+            G4_Predicate* predicateFlagReg_m4 = NULL;
+            G4_Predicate* predicateFlagReg_m5 = NULL;
+            G4_Predicate* predicateFlagReg_m6 = NULL;
+            G4_Predicate* predicateFlagReg_m7 = NULL;
+            G4_Predicate* predicateFlagReg_m8 = NULL;
+            G4_Predicate* predicateFlagReg_m9 = NULL;
+            G4_Predicate* predicateFlagReg_m10 = NULL;
+            if (!generateIf)
+            {
+                predicateFlagReg_m1 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m2 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m3 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m4 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m5 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m6 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m7 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m8 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m9 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m10 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+            }
+
             // madm (4) r9.acc3 r0.noacc r2(r8).noacc r7.acc2 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst9); dst0->setAccRegSel(ACC3);
             src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
             src1 = createSrcRegRegion(csrc2); src1->setAccRegSel(NOACC);
             src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m1, exsize,
                 dst0, src0, src1, src2, madmInstOpt);
 
             // madm (4) r11.acc4 r0.noacc r6.noacc r7.acc2 {Align16, N1/N2}
@@ -1349,7 +1443,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             }
             src1->setAccRegSel(NOACC);
             src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m2, exsize,
                 dst0, src0, src1, src2, madmInstOpt);
 
             // madm (4) r10.acc5 r2(r8).noacc -r11.acc4 r9.acc3 {Align16, N1/N2}
@@ -1368,7 +1462,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
                 src1->getType());
             neg_src1 = createSrcRegRegion(neg_srcRegion);
             neg_src1->setAccRegSel(src1->getAccRegSel());
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m3, exsize,
                 dst0, src0, neg_src1, src2, madmInstOpt);
 
             // madm (4) r8.acc7 r1.noacc r3.noacc r10.acc5 {Align16, N1/N2}
@@ -1376,7 +1470,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0 = createSrcRegRegion(csrc1); src0->setAccRegSel(NOACC);
             src1 = createSrcRegRegion(csrc3); src1->setAccRegSel(NOACC);
             src2 = createSrcRegRegion(tsrc10); src2->setAccRegSel(ACC5);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m4, exsize,
                 dst0, src0, src1, src2, madmInstOpt);
 
             // madm (4) r7.acc8 r0.noacc r10.acc5 r11.acc4 {Align16, N1/N2}
@@ -1384,7 +1478,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
             src1 = createSrcRegRegion(tsrc10); src1->setAccRegSel(ACC5);
             src2 = createSrcRegRegion(tsrc11); src2->setAccRegSel(ACC4);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m5, exsize,
                 dst0, src0, src1, src2, madmInstOpt);
 
             // madm (4) r10.acc9 r0.noacc r10.acc5 r9.acc3 {Align16, N1/N2}
@@ -1392,7 +1486,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
             src1 = createSrcRegRegion(tsrc10); src1->setAccRegSel(ACC5);
             src2 = createSrcRegRegion(tsrc9); src2->setAccRegSel(ACC3);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m6, exsize,
                 dst0, src0, src1, src2, madmInstOpt);
 
             // madm (4) r7.acc8 r11.acc4 r8.acc7 r7.acc8 {Align16, N1/N2}
@@ -1400,7 +1494,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0 = createSrcRegRegion(tsrc11); src0->setAccRegSel(ACC4);
             src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC7);
             src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC8);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m7, exsize,
                 dst0, src0, src1, src2, madmInstOpt);
 
             // madm (4) r8.acc7 r9.acc3 r8.acc7 r10.acc9 {Align16, N1/N2}
@@ -1408,7 +1502,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0 = createSrcRegRegion(tsrc9); src0->setAccRegSel(ACC3);
             src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC7);
             src2 = createSrcRegRegion(tsrc10); src2->setAccRegSel(ACC9);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m8, exsize,
                 dst0, src0, src1, src2, madmInstOpt);
 
             // madm (4) r9.acc3 r6.noacc -r7.acc8 r7.acc8 {Align16, N1/N2}
@@ -1435,7 +1529,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
                 src1->getType());
             neg_src1 = createSrcRegRegion(neg_srcRegion1);
             neg_src1->setAccRegSel(src1->getAccRegSel());
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m9, exsize,
                 dst0, src0, neg_src1, src2, madmInstOpt);
 
             // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
@@ -1446,9 +1540,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             src0 = createSrcRegRegion(tsrc7); src0->setAccRegSel(ACC8);
             src1 = createSrcRegRegion(tsrc9); src1->setAccRegSel(ACC3);
             src2 = createSrcRegRegion(tsrc8); src2->setAccRegSel(ACC7);
-            inst = createMadm(exsize,
+            inst = createMadm(predicateFlagReg_m10, exsize,
                 dst0, src0, src1, src2, madmInstOpt);
-
         }
 
         if (generateIf)
