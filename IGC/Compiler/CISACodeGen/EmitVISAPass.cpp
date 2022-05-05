@@ -6203,6 +6203,14 @@ void EmitPass::emitLegacySimdBlockWrite(llvm::Instruction* inst, llvm::Value* pt
     CVariable* data = GetSymbol(dataPtr);
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
 
+    if (!IsGRFAligned(data, EALIGN_GRF) && !data->IsUniform())
+    {
+        CVariable* temp =
+            m_currShader->GetNewVariable(numLanes(m_SimdMode), data->GetType(), EALIGN_GRF, CName::NONE);
+        m_encoder->Copy(temp, data);
+        data = temp;
+    }
+
     Type* Ty = dataPtr->getType();
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     uint32_t nbElements = 0;
@@ -6698,6 +6706,14 @@ void EmitPass::emitLSCSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVa
 
     CVariable* data = GetSymbol(dataPtr);
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
+
+    if (!IsGRFAligned(data, EALIGN_GRF) && !data->IsUniform())
+    {
+        CVariable* temp =
+            m_currShader->GetNewVariable(numLanes(m_SimdMode), data->GetType(), EALIGN_GRF, CName::NONE);
+        m_encoder->Copy(temp, data);
+        data = temp;
+    }
 
     Type* Ty = dataPtr->getType();
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
