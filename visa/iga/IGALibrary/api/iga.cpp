@@ -443,7 +443,7 @@ public:
             m_model,
             formatLabel,
             formatLabelEnv);
-        fopts.addApiOpts(dopts.formatting_opts);
+        fopts.addApiOpts(dopts.formatting_opts, dopts.base_pc_offset);
         if (swsbEnMod == SWSB_ENCODE_MODE::SWSBInvalidMode)
             fopts.setSWSBEncodingMode(m_model.getSWSBEncodeMode());
         else

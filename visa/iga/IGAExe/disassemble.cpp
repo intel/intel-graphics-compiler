@@ -21,6 +21,7 @@ bool disassemble(
 
     iga_disassemble_options_t dopts = IGA_DISASSEMBLE_OPTIONS_INIT();
     dopts.formatting_opts = makeFormattingOpts(opts);
+    dopts.base_pc_offset             = opts.pcOffset;
     setOptBit(dopts.decoder_opts,
         IGA_DECODING_OPT_NATIVE,
         opts.useNativeEncoder);

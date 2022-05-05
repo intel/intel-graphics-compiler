@@ -46,6 +46,8 @@ static bool parseInt(const char *inp, int &val)
         if (inp[0] && inp[0] == '0' && inp[1] &&
             (inp[1] == 'x' || inp[1] == 'X'))
         {
+            // if we detect hex, change the radix to 16
+            radix = 16;
             inp += 2;
         }
         char *end = nullptr;

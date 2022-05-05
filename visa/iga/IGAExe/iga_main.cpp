@@ -470,6 +470,21 @@ extern "C" int iga_main(int argc, const char **argv)
         "An instruction PC will be added as a comment",
         opts::OptAttrs::ALLOW_UNSET,
         baseOpts.printInstructionPc);
+    xGrp.defineOpt(
+        "set-pc-base",
+        nullptr,
+        "INT",
+        "print pc offset by specified",
+        "An instruction PC offset by a user specified base will be added as a comment -- use with Xprint-pc flag",
+        opts::OptAttrs::ALLOW_UNSET,
+        [] (const char* cinp, const opts::ErrorHandler& eh, Opts& baseOpts) {
+            if (cinp == nullptr) {
+                baseOpts.pcOffset = 0;
+            }
+            else {
+                baseOpts.pcOffset = eh.parseInt(cinp);
+            }
+        });
     xGrp.defineFlag(
         "print-bits",
         nullptr,

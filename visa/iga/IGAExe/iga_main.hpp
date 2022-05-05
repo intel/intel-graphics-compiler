@@ -57,6 +57,7 @@ struct Opts {
     bool syntaxExts          = false;                // -Xsyntax-exts
     bool useNativeEncoder    = false;                // -Xnative
     bool forceNoCompact      = false;                // -Xforce-no-compact
+    uint32_t pcOffset       = 0;                     // pcOffset provided with -Xset-pc-base
 
     bool printBits           = false;                // -Xprint-bits
     bool printDefs           = false;                // -Xprint-defs

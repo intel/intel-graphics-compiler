@@ -223,7 +223,10 @@ public:
                 emit(" ");
             }
             emit("[");
-            emitHexDigits<PC>(i.getPC(), 4);
+            // emit PC. if basePCOffset is specified, PC is printed after adding
+            // the offset specified in command line. By default, basePCOffset
+            // is 0
+            emitHexDigits<PC>(i.getPC()+opts.basePCOffset, 4);
             emit("] ");
         }
 
@@ -1431,8 +1434,7 @@ bool Formatter::formatLoadStoreSyntax(const Instruction& i) {
 ///////////////////////////////////////////////////////////////////////////////
 //
 // Public interfaces into the kernel
-void FormatOpts::addApiOpts(uint32_t fmtOpts)
-{
+void FormatOpts::addApiOpts(uint32_t fmtOpts, uint32_t pcOff) {
     numericLabels =
         (fmtOpts & IGA_FORMATTING_OPT_NUMERIC_LABELS) != 0;
     syntaxExtensions =
@@ -1455,6 +1457,7 @@ void FormatOpts::addApiOpts(uint32_t fmtOpts)
         (fmtOpts & IGA_FORMATTING_OPT_PRINT_ANSI) != 0;
     printJson =
         (fmtOpts & IGA_FORMATTING_OPT_PRINT_JSON) != 0;
+    basePCOffset = pcOff;
 }
 
 void FormatKernel(

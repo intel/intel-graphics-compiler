@@ -47,6 +47,7 @@ namespace iga {
         bool              printAnsi = false;
         bool              printJson = false;
         DepAnalysis      *liveAnalysis = nullptr;
+        uint32_t basePCOffset              = 0;
 
         // format with default labels
         FormatOpts(const Model &m)
@@ -79,7 +80,8 @@ namespace iga {
         }
 
         // in iga.cpp
-        void addApiOpts(uint32_t fmtOpts);
+        // pcOffset is added to pc string in comments during disassembly
+        void addApiOpts(uint32_t fmtOpts, uint32_t pcOffset = 0);
     };
 
 

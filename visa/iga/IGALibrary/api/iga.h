@@ -394,11 +394,12 @@ typedef struct {
     uint32_t     _reserved0; /* use formatting_opts; set this to 0! */
     uint32_t     _reserved1; /* use formatting_opts; set this to 0! */
     uint32_t     decoder_opts; /* opts for the decoding phase */
+    uint32_t     base_pc_offset; /* base pc offset to add to pc in disassembly string output*/
     /* ... future fields (ensure total size is a multiple of 8;
      * add "reserved" if needed) ... */
 } iga_disassemble_options_t;
 
-static_assert(sizeof(iga_disassemble_options_t) == 5*4,
+static_assert(sizeof(iga_disassemble_options_t) == 6*4,
     "wrong size for iga_disassemble_options_t");
 
 /* A default value for iga_disassemble_options_t */
