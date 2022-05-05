@@ -533,6 +533,7 @@ public:
     void dumpBB(G4_BB* bb) const;
     void dumpLive(BitSet& live) const;
     void dumpGlobalVarNum() const;
+    void reportUndefinedUses() const;
     bool isEmptyLiveness() const;
     bool writeWholeRegion(const G4_BB* bb, const G4_INST* prd, G4_DstRegRegion* dst, const Options *opt) const;
 

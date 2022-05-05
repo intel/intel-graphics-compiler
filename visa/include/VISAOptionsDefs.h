@@ -41,6 +41,7 @@ DEF_VISA_OPTION(vISA_DebugConsoleDump,      ET_BOOL, "-dumpDebugConsoleOutput", 
 DEF_VISA_OPTION(vISA_EmitLocation,          ET_BOOL, "-emitLocation",    UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpRPE,               ET_BOOL, "-dumpRPE",         UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpLiveness,          ET_BOOL, "-dumpLiveness",         UNUSED, false)
+DEF_VISA_OPTION(vISA_DumpUndefUsesFromLiveness, ET_BOOL, "-dumpUndefUsesFromLiveness", UNUSED, false)
 DEF_VISA_OPTION(vISA_disableInstDebugInfo,  ET_BOOL, "-disableInstDebugInfo",      UNUSED, false)
 DEF_VISA_OPTION(vISA_analyzeMove,           ET_BOOL, "-analyzeMove",     UNUSED, false)
 DEF_VISA_OPTION(vISA_skipFDE,               ET_BOOL, "-skipFDE",         UNUSED, false)

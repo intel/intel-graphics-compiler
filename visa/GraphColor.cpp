@@ -10562,6 +10562,10 @@ int GlobalRA::coloringRegAlloc()
         //
         if (liveAnalysis.getNumSelectedVar() > 0)
         {
+            if (builder.getOption(vISA_DumpUndefUsesFromLiveness) && iterationNo == 0 && !rematDone)
+            {
+                liveAnalysis.reportUndefinedUses();
+            }
             // force spill should be done only for the 1st iteration
             bool forceSpill = iterationNo > 0 ? false : builder.getOption(vISA_ForceSpills);
             RPE rpe(*this, &liveAnalysis);

@@ -2577,6 +2577,37 @@ void LivenessAnalysis::dumpGlobalVarNum() const
     std::cerr << "total var num: " << numVarId << " global var num: " << global_var_num << "\n";
 }
 
+void LivenessAnalysis::reportUndefinedUses() const
+{
+    auto dumpVar = [](G4_RegVar* var)
+    {
+        int size = var->getDeclare()->getTotalElems() * var->getDeclare()->getElemSize();
+        std::cerr << var->getName() << "(" << size << "), ";
+    };
+
+    std::cerr << "\nPossible undefined uses in kernel " << fg.getKernel()->getName() << ":\n";
+    unsigned count = 0;
+    for (auto var : vars)
+    {
+        // Skip if the var is not involved in RA.
+        if (!var->isRegAllocPartaker())
+            continue;
+        // Skip if the var is a AddrSpillLoc.
+        if (var->isRegVarAddrSpillLoc())
+            continue;
+        // Skip if the var is not in use_in of BB0
+        if (!isUseIn(fg.getEntryBB(), var->getId()))
+            continue;
+        // Skip if the var is in def_in of BB0
+        if (def_in[fg.getEntryBB()->getId()].isSet(var->getId()))
+            continue;
+
+        if (count++ % 10 == 0) std::cerr << "\n";
+            dumpVar(var);
+    }
+    std::cerr << "\n";
+}
+
 bool LivenessAnalysis::isEmptyLiveness() const
 {
     return numBBId == 0;
