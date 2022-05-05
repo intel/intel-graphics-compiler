@@ -641,7 +641,7 @@ void vISAVerifier::verifyRegion(
                     startByte, endByte);
             }
 
-            unsigned firstElementIndex = row_offset * irBuilder->getGRFSize() + col_offset;
+            unsigned firstElementIndex = row_offset * irBuilder->getGRFSize() + col_offset * VN_size;
 
             for (int i = 0; i < exec_sz / width_val; i++)
             {
@@ -650,16 +650,16 @@ void vISAVerifier::verifyRegion(
                     unsigned region_offset = firstElementIndex +
                         (((i * v_stride_val)  + (j * h_stride_val)) * VN_size);
 
-                    if (region_offset > var_size)
+                    if (region_offset >= var_size)
                     {
 #ifndef DLL_MODE
-                        std::cout << "WARNING: CISA region and offset cause an out of bounds byte access: "<< region_offset << "\n";
+                        std::cout << "WARNING: CISA region and offset cause an out of bounds byte access: " << region_offset << "\n";
                         std::cout << "An access should not exceed the declared allocation size: " << var_size << "\n";
                         std::cout << "  The access fails the following check to determine correct bounds (see CISA manual section 5.1 Region-based Addressing):\n";
-                        std::cout << "  (row_offset * GRF_SIZE + col_offset) + (((i * v_stride) + (j * h_stride)) * type_size) <= type_size * num_elements:\n";
-                        std::cout << "(" << (int)row_offset << " * "<< irBuilder->getGRFSize() << " + "<< (int)col_offset << ") + (((" <<
+                        std::cout << "  (row_offset * GRF_SIZE + col_offset * type_size) + (((i * v_stride) + (j * h_stride)) * type_size) < type_size * num_elements:\n";
+                        std::cout << "(" << (int)row_offset << " * "<< (int)irBuilder->getGRFSize() << " + "<< (int)col_offset << " * " << VN_size << ") + (((" <<
                             i << " * " << v_stride_val <<") + (" << j <<" * " << h_stride_val << ")) * " << VN_size <<
-                            ") <= " << VN_size << " * " << num_elements << "\n";
+                            ") < " << VN_size << " * " << num_elements << "\n";
                         std::cout << "Violating Instruction: " <<
                             printInstruction(header, inst, options) << "\n";
 #endif // DLL_MODE
