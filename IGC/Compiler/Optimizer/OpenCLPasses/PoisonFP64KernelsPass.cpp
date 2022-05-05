@@ -83,16 +83,68 @@ bool PoisonFP64Kernels::runOnSCC(CallGraphSCC &SCC) {
     return modified;
 }
 
+static Constant *createPoisonMessage(Module *M, Function *Kernel) {
+    std::string message = "[CRITICAL ERROR] Kernel '" + Kernel->getName().str()
+                        + "' removed due to usage of FP64 instructions unsupported by the targeted hardware. "
+                        + "Running this kernel may result in unexpected results.\n";
+    std::string varName = "poison.message." + Kernel->getName().str();
+
+    LLVMContext &Ctx = M->getContext();
+    Type *StringType = ArrayType::get(Type::getInt8Ty(Ctx), message.size() + 1);
+
+    Constant *StringValue = ConstantDataArray::getString(Ctx, message, true);
+    GlobalVariable *GV = new GlobalVariable(
+        *M, StringType, true, GlobalValue::InternalLinkage, StringValue,
+        varName, nullptr, GlobalValue::ThreadLocalMode::NotThreadLocal, 2);
+    GV->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
+    return GV;
+}
+
+static void poisonKernel(Function *Kernel) {
+    Module *M = Kernel->getParent();
+    LLVMContext &Ctx = M->getContext();
+
+    Kernel->removeFnAttr("uses-fp64-math");
+    Kernel->deleteBody();
+    BasicBlock* BB = BasicBlock::Create(Ctx, "entry", Kernel);
+
+    Function *F = M->getFunction("printf");
+    if (F == nullptr) {
+        FunctionType *FT = FunctionType::get(
+            Type::getInt32Ty(Ctx), { Type::getInt8PtrTy(Ctx, 2) }, true);
+        F = Function::Create(FT, GlobalValue::ExternalLinkage, "printf", M);
+        F->setCallingConv(CallingConv::SPIR_FUNC);
+        F->addFnAttr(llvm::Attribute::NoUnwind);
+    }
+
+    Constant *PoisonMessage = createPoisonMessage(M, Kernel);
+    Type *MessageType = static_cast<PointerType *>(PoisonMessage->getType())->getElementType();
+
+    std::vector<Value *> Indices = {
+        ConstantInt::getSigned(Type::getInt32Ty(Ctx), 0),
+        ConstantInt::getSigned(Type::getInt32Ty(Ctx), 0)
+    };
+    GetElementPtrInst *GEP = GetElementPtrInst::Create(MessageType, PoisonMessage, Indices, "posion.message.gep", BB);
+    GEP->setIsInBounds(true);
+
+    CallInst::Create(F, { GEP }, "printf.result", BB);
+    ReturnInst::Create(Ctx, BB);
+}
+
 bool PoisonFP64Kernels::doFinalization(CallGraph &CG) {
     CodeGenContext *CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    IGCMD::MetaDataUtils *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
     bool modified = false;
-    for (auto I = fp64FunctionsOrder.rbegin(), E = fp64FunctionsOrder.rend(); I != E; I++) {
-        Function *F = *I;
+    for (Function *F : reverse(fp64FunctionsOrder)) {
         std::string msg = "Removing unsupported FP64 function: '" + F->getName().str() + "'";
         CGC->EmitWarning(msg.c_str());
 
-        F->eraseFromParent();
+        if (isEntryFunc(MDUtils, F)) {
+            poisonKernel(F);
+        } else {
+            F->eraseFromParent();
+        }
         modified = true;
     }
 
