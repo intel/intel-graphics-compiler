@@ -122,9 +122,21 @@ namespace IGC
         }
 
         if (!IGC_IS_FLAG_ENABLED(EnableNonOCLWalkOrderSel) || needsLinearWalk) {
-            //reset walkorder
-            m_walkOrder = WO_XYZ;
-            m_enableHWGenerateLID = (is_pow2_x && is_pow2_y);
+            if (threadGroupSize_Y == 1 && threadGroupSize_Z == 1)
+            {
+                m_walkOrder = WO_YZX;
+                m_enableHWGenerateLID = true;
+            }
+            else if (threadGroupSize_X == 1 && threadGroupSize_Z == 1)
+            {
+                m_walkOrder = WO_XZY;
+                m_enableHWGenerateLID = true;
+            }
+            else
+            {
+                m_walkOrder = WO_XYZ;
+                m_enableHWGenerateLID = (is_pow2_x && is_pow2_y);
+            }
             //disable tileY if walkorder cannot be changed
             m_ThreadIDLayout = ThreadIDLayout::X;
             return;
