@@ -291,64 +291,42 @@ void DebugInfoPass::EmitDebugInfo(bool finalize,
 
 // Detect instructions with an address class pattern. Then remove all opcodes of this pattern from
 // this instruction's last operand (metadata of DIExpression).
-// Pattern 1: !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)
-void DebugInfoData::extractAddressClass(llvm::Function& F, CShader* pShader, IDebugEmitter* pDebugEmitter)
+// Pattern: !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)
+void DebugInfoData::extractAddressClass(llvm::Function& F)
 {
-    IGC_ASSERT_MESSAGE(pDebugEmitter, "Missing debug emitter");
-    VISAModule* visaModule = pDebugEmitter->getCurrentVISA();
-    IGC_ASSERT_MESSAGE(visaModule, "Missing visa module");
-
-    llvm::IRBuilder<> Builder(F.getParent()->getContext());
     DIBuilder di(*F.getParent());
 
     for (auto& bb : F)
     {
         for (auto& pInst : bb)
         {
-            if (isa<CallInst>(&pInst))
+            if (auto* DI = dyn_cast<DbgVariableIntrinsic>(&pInst))
             {
-                CallInst* CI = cast<CallInst>(&pInst);
-                IGC_ASSERT_MESSAGE(CI, "Missing call instruction");
-                if (!CI->arg_empty() &&
-                    CI->arg_size() >= 3 &&
-                    (CI->getIntrinsicID() == Intrinsic::dbg_declare || CI->getIntrinsicID() == Intrinsic::dbg_value))
+                const DIExpression* DIExpr = DI->getExpression();
+                llvm::SmallVector<uint64_t, 5> newElements;
+                for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E; ++I)
                 {
-                    DIExpression* DIExpr = nullptr;
-                    if (auto* DDI = dyn_cast<DbgDeclareInst>(&pInst))
+                    if (I->getOp() == dwarf::DW_OP_constu)
                     {
-                        DIExpr = DDI->getExpression();
-                    }
-                    else if (auto* DVI = dyn_cast<DbgValueInst>(&pInst))
-                    {
-                        DIExpr = DVI->getExpression();
-                    }
-
-                    llvm::SmallVector<uint64_t, 5> Exprs;
-                    if (DIExpr)
-                    {
-                        auto numElements = DIExpr->getNumElements();
-                        // If DWARF opcodes in this call instruction's last operand,
-                        // which is metadata of DIExpression, match the pattern,
-                        // then prepare a new DIExpression with the same content
-                        // except the pattern's DWARF opcodes. The currently processed
-                        // instruction's last operand will be replaced with
-                        // this new DIExpression.
-                        if (numElements >= 4 &&
-                            DIExpr->getElement(numElements - 4) == dwarf::DW_OP_constu &&
-                            DIExpr->getElement(numElements - 2) == dwarf::DW_OP_swap &&
-                            DIExpr->getElement(numElements - 1) == dwarf::DW_OP_xderef)
+                        auto patternI = I;
+                        if (++patternI != E && patternI->getOp() == dwarf::DW_OP_swap &&
+                            ++patternI != E && patternI->getOp() == dwarf::DW_OP_xderef)
                         {
-                            for (unsigned int j = 0; j != numElements - 4; ++j)
-                            {
-                                Exprs.push_back(DIExpr->getElement(j));
-                            }
-
-                            DIExpression* newDIExpr = di.createExpression(Exprs);
-                            Value* newMD = MetadataAsValue::get(F.getContext(), newDIExpr);
-
-                            CI->setArgOperand(CI->getNumArgOperands() - 1, newMD);
+                            I = patternI;
+                            continue;
                         }
                     }
+                    I->appendToVector(newElements);
+                }
+
+                if (newElements.size() < DIExpr->getNumElements())
+                {
+                    DIExpression* newDIExpr = di.createExpression(newElements);
+#if LLVM_VERSION_MAJOR < 13
+                    DI->setArgOperand(2, MetadataAsValue::get(newDIExpr->getContext(), newDIExpr));
+#else
+                    DI->setExpression(newDIExpr);
+#endif
                 }
             }
         }

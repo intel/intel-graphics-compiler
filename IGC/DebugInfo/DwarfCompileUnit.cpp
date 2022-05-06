@@ -262,6 +262,7 @@ void CompileUnit::addUInt(IGC::DIEBlock *Block, dwarf::Form Form,
       "Insufficient bits in form for encoding");
   addUInt(Block, (dwarf::Attribute)0, Form, Integer);
 }
+
 void CompileUnit::addBitPiece(IGC::DIEBlock *Block, uint64_t SizeBits,
                               uint64_t OffsetBits) {
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
@@ -649,27 +650,21 @@ void CompileUnit::addConstantValue(DIE *Die, const APInt &Val, bool Unsigned) {
 
 /// addConstantUValue - Add constant unsigned value entry in variable DIEBlock.
 void CompileUnit::addConstantUValue(DIEBlock *TheDie, uint64_t Val) {
-  dwarf::LocationAtom constOp = dwarf::DW_OP_const1u;
-  dwarf::Form constForm = DIEInteger::BestForm(false, Val);
-  switch (constForm) {
-  case dwarf::DW_FORM_data1:
-    constOp = dwarf::DW_OP_const1u;
-    break;
-  case dwarf::DW_FORM_data2:
-    constOp = dwarf::DW_OP_const2u;
-    break;
-  case dwarf::DW_FORM_data4:
-    constOp = dwarf::DW_OP_const4u;
-    break;
-  case dwarf::DW_FORM_data8:
-    constOp = dwarf::DW_OP_const8u;
-    break;
-  default:
-    IGC_ASSERT_MESSAGE(false, "Unsupported encoding");
-    break;
+  if (Val <= 31) {
+    addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_lit0 + Val);
+  } else if (Val <= 0xff) {
+    addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
+    addUInt(TheDie, dwarf::DW_FORM_data1, Val);
+  } else if (Val <= 0xffff) {
+    addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
+    addUInt(TheDie, dwarf::DW_FORM_data2, Val);
+  } else if (Val <= 0xffffffff) {
+    addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_const4u);
+    addUInt(TheDie, dwarf::DW_FORM_data4, Val);
+  } else {
+    addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
+    addUInt(TheDie, dwarf::DW_FORM_data8, Val);
   }
-  addUInt(TheDie, dwarf::DW_FORM_data1, constOp);
-  addUInt(TheDie, constForm, Val);
 }
 
 /// addConstantData - Add constant data entry in variable DIE.
@@ -1515,48 +1510,21 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV,
     uint32_t regNum = lr->getGRF().regNum + regNumOffset;
     auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(regNum);
 
-    // 1 var fits the whole GRF then set litForSubReg=dwarf::DW_OP_lit0 and
-    // litForSIMDlane=dwarf::DW_OP_lit0, 2 vars   - dwarf::DW_OP_lit1 and
-    // dwarf::DW_OP_lit1, 4 vars   - dwarf::DW_OP_lit2 and dwarf::DW_OP_lit3, 8
-    // vars   - dwarf::DW_OP_lit3 and dwarf::DW_OP_lit7, 16 vars  -
-    // dwarf::DW_OP_lit4 and dwarf::DW_OP_lit15, 32 vars  - dwarf::DW_OP_lit5
-    // and dwarf::DW_OP_lit31, 64 vars  - dwarf::DW_OP_lit6 and
-    // dwarf::DW_OP_const1u 63, 128 vars - dwarf::DW_OP_lit7 and
-    // dwarf::DW_OP_const1u 127, 256 vars - dwarf::DW_OP_lit8 and
-    // dwarf::DW_OP_const1u 255, 512 vars - dwarf::DW_OP_lit9 and
-    // dwarf::DW_OP_const2u 511, etc.
-    dwarf::LocationAtom litForSubReg =
-        (dwarf::LocationAtom)(dwarf::DW_OP_lit0 + valForSubRegLit);
-    dwarf::LocationAtom litForSIMDlane = dwarf::DW_OP_const2u;
-    if (variablesInSingleGRF <= 32) {
-      litForSIMDlane =
-          (dwarf::LocationAtom)(dwarf::DW_OP_lit0 + variablesInSingleGRF - 1);
-    } else if (variablesInSingleGRF <= 256) {
-      litForSIMDlane = dwarf::DW_OP_const1u;
-    }
-
     EmitPushSimdLane(Block, isSecondHalf);
 
-    addUInt(Block, dwarf::DW_FORM_data1, litForSubReg);
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit0 + valForSubRegLit);
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_shr);
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus_uconst);
     addUInt(Block, dwarf::DW_FORM_udata,
             DWRegEncoded); // Register ID is shifted by offset
     addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);
     EmitPushSimdLane(Block, false);
-    addUInt(Block, dwarf::DW_FORM_data1, litForSIMDlane);
-    if (variablesInSingleGRF > 256) {
-      addUInt(Block, dwarf::DW_FORM_data2, variablesInSingleGRF - 1);
-    } else if (variablesInSingleGRF > 32) {
-      addUInt(Block, dwarf::DW_FORM_data1, variablesInSingleGRF - 1);
-    }
 
+    addConstantUValue(Block, variablesInSingleGRF - 1);
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
-    addUInt(Block, dwarf::DW_FORM_data2, bitsUsedByVar);
+    addConstantUValue(Block, bitsUsedByVar);
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
-    addUInt(Block, dwarf::DW_FORM_data2, varSizeInBits);
+    addConstantUValue(Block, varSizeInBits);
 
     if (isa<llvm::DbgDeclareInst>(DV.getDbgInst())) {
       // Pointer
@@ -1590,6 +1558,7 @@ bool CompileUnit::emitBitPiecesForRegVal(
   }
   return true;
 }
+
 // addSimdLaneScalar - add a sequence of attributes to calculate location of
 // scalar variable e.g. a GRF subregister.
 void CompileUnit::addSimdLaneScalar(IGC::DIEBlock *Block, const DbgVariable &DV,
@@ -3022,7 +2991,7 @@ bool CompileUnit::buildValidVar(
       }
     } else {
       LLVM_DEBUG(
-          dbgs() << "  <warning> variable is niether in GRF nor spilled\n");
+          dbgs() << "  <warning> variable is neither in GRF nor spilled\n");
     }
     var.emitExpression(this, Block);
   }

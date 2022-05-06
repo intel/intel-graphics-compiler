@@ -1170,7 +1170,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     if (m_currShader->GetDebugInfoData().m_pDebugEmitter)
     {
-        DebugInfoData::extractAddressClass(F, m_currShader, m_pDebugEmitter);
+        DebugInfoData::extractAddressClass(F);
 
         if (IGC_IS_FLAG_ENABLED(UseOffsetInLocation))
         {

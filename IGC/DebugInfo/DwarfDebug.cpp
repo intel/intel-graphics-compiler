@@ -160,13 +160,51 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
   if (!DbgInst)
     return;
 
+  const DIExpression *DIExpr = DbgInst->getExpression();
+  llvm::SmallVector<uint64_t, 5> Elements;
+  for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E;
+       ++I) {
+    switch (I->getOp()) {
+    case dwarf::DW_OP_LLVM_fragment: {
+      uint64_t offset = I->getArg(0);
+      uint64_t size = I->getArg(1);
+      Elements.push_back(dwarf::DW_OP_bit_piece);
+      Elements.push_back(size);
+      Elements.push_back(offset);
+      continue;
+    }
+
+    case dwarf::DW_OP_LLVM_convert:
+      if (I->getArg(1) == dwarf::DW_ATE_unsigned) {
+        uint64_t bits = I->getArg(0);
+        if (bits < 64) {
+          if (bits <= 8)
+            Elements.push_back(dwarf::DW_OP_const1u);
+          else if (bits <= 16)
+            Elements.push_back(dwarf::DW_OP_const2u);
+          else if (bits <= 32)
+            Elements.push_back(dwarf::DW_OP_const4u);
+          else
+            Elements.push_back(dwarf::DW_OP_const8u);
+          Elements.push_back(((uint64_t)1 << bits) - 1);
+          Elements.push_back(dwarf::DW_OP_and);
+        }
+        continue;
+      }
+      break;
+
+    default:
+      break;
+    }
+    I->appendToVector(Elements);
+  }
+
   // Indirect values result in emission DWARF location descriptors of
   // <memory location> type - the evaluation should result in address,
   // thus no need for OP_deref.
   // Currently, our dwarf emitters support only "simple indirect" values.
-  auto Elements = DbgInst->getExpression()->getElements();
   if (currentLocationIsSimpleIndirectValue())
-    Elements = Elements.slice(1); // drop OP_deref
+    Elements.erase(Elements.begin()); // drop OP_deref
 
   for (auto elem : Elements) {
     auto BF = DIEInteger::BestForm(false, elem);
