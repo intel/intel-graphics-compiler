@@ -172,7 +172,8 @@ typedef enum
     FCEXP_SPILL_COMPRESSION             = ( 0x1 << 0x8 ),
     FCEXP_LOCAL_DECL_SPLIT_GLOBAL_RA    = ( 0x1 << 0x9 ),
     FCEXP_QUICKTOKEN_ALLOC              = ( 0x1 << 0xa ),
-    FCEXP_TOBE_DESIGNED                 = ( 0x1 << 0xb ),
+    FCEXP_DISABLE_UNROLL                = ( 0x1 << 0xb ),
+    FCEXP_TOBE_DESIGNED                 = ( 0x1 << 0xc ),
 } FCEXP_FLAG_t;
 
 #endif // __IGC_H

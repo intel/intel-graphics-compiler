@@ -2127,7 +2127,14 @@ void OptimizeIR(CodeGenContext* const pContext)
                 // if the shader contains indexable_temp, we'll keep unroll
                 bool unroll = IGC_IS_FLAG_DISABLED(DisableLoopUnroll);
                 bool hasIndexTemp = (pContext->m_indexableTempSize[0] > 0);
-                if (LoopUnrollThreshold > 0 && (unroll || hasIndexTemp))
+                bool disableLoopUnrollStage1 =
+                    IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) &&
+                       (IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT ||
+                        (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_UNROLL));
+                if ((LoopUnrollThreshold > 0 &&
+                     unroll &&
+                     !disableLoopUnrollStage1)
+                    || hasIndexTemp)
                 {
                     mpm.add(IGCLLVM::createLoopUnrollPass());
                 }
