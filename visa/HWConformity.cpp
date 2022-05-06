@@ -651,6 +651,82 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB* bb)
         return false;
     };
 
+    auto isPureHF = [](const G4_INST* aI) {
+        G4_DstRegRegion* aD = aI->getDst();
+        G4_Operand* S0 = aI->getSrc(0);
+        G4_Operand* S1 = aI->getSrc(1);
+        if ((aD && !aD->isNullReg() && aD->getType() != Type_HF) ||
+            (S0 && !S0->isNullReg() && S0->getType() != Type_HF) ||
+            (S1 && !S1->isNullReg() && S1->getType() != Type_HF))
+        {
+            return false;
+        }
+        return true;
+    };
+
+    // For packed HF math,  it must be simd8/simd16. (see math instruction for detail)
+    G4_ExecSize nativeES = builder.getNativeExecSize();
+    if (isPureHF(inst) && inst->getExecSize() < nativeES)
+    {
+        // math:  src0 and src1.
+        // Given (PVC):
+        //       math.inv (8|M0)          r4.0<1>:hf    r1.0<1;1,0>:hf
+        // changed to:
+        //       mov (16|M0)              r6.0<1>:uw    0x7C00:uw
+        //       mov (8|M0)               r6.0<1>:hf    r1.0<1;1,0>:hf
+        //       math.inv (16|M0)         r7.0<1>:hf    r6.0<1;1,0>:hf
+        //       mov (8|M0)               r4.0<1>:hf    r7.0<1;1,0>:hf
+        //
+        // If src is scalar such as:
+        //       math.inv (1|M0)          r4.8<1>:hf    r1.8<0;1,0>:hf
+        // Changed it to:
+        //       math.inv (16|M0)         r6.0<1>:hf    r1.8<0;1,0>:hf
+        //       mov (1|M0)               r4.8<1>:hf    r6.0<0;1,0>:hf
+        G4_ExecSize currES = inst->getExecSize();
+
+        for (int i = 0, sz = 2; i < sz; ++i)
+        {
+            G4_Operand* S = inst->getSrc(i);
+            if (!S || S->isNullReg() || !S->isSrcRegRegion()) {
+                continue;
+            }
+            G4_SrcRegRegion* rS = S->asSrcRegRegion();
+            if (rS->getRegion()->isScalar())
+            {
+                continue;
+            }
+
+            G4_Declare* sDcl = builder.createTempVar(nativeES, Type_HF, builder.getGRFAlign());
+            G4_DstRegRegion* tD0 = builder.createDst(sDcl->getRegVar(), 0, 0, 1, Type_UW);
+            G4_Imm* inf = builder.createImm(0x7C00, Type_UW);
+            G4_INST* I0 = builder.createMov(nativeES, tD0, inf, inst->getOption(), false);
+
+            G4_DstRegRegion* tD1 = builder.createDst(sDcl->getRegVar(), 0, 0, 1, Type_HF);
+            G4_INST* I1 = builder.createMov(currES, tD1, rS, inst->getOption(), false);
+
+            G4_SrcRegRegion* nS0 = builder.createSrcRegRegion(sDcl, builder.getRegionStride1());
+            inst->setSrc(nS0, i);
+
+            bb->insertBefore(it, I0);
+            bb->insertBefore(it, I1);
+        }
+
+        G4_Declare* dDcl = builder.createTempVar(nativeES, Type_HF, builder.getGRFAlign());
+        G4_DstRegRegion* nD = builder.createDstRegRegion(dDcl, 1);
+        inst->setDest(nD);  // dst: still original
+        inst->setExecSize(nativeES);
+
+        G4_SrcRegRegion* nSrc = builder.createSrcRegRegion(dDcl, builder.getRegionStride1());
+        G4_INST* nMov = builder.createMov(currES, dst, nSrc, inst->getOption(), false);
+        bb->insertAfter(it, nMov);
+
+        // Update dst/src0/src1 as it needs further check on other restrictions.
+        dst = inst->getDst();
+        src0 = inst->getSrc(0);
+        src1 = inst->getSrc(1);
+        mov_dst = true;
+    }
+
     if (src0)
     {
         G4_Type src0_type = src0->getType();
