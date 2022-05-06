@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ScalarizerCodeGen.hpp"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
+#include "Compiler/CISACodeGen/SinkCommonOffsetFromGEP.h"
 #include "Compiler/CISACodeGen/HoistURBWrites.hpp"
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CheckInstrTypes.hpp"
@@ -693,7 +694,8 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     {
         mpm.add(CreatePrivateMemoryResolution());
     }
-
+    // Should help MemOpt pass to merge more loads
+    mpm.add(createSinkCommonOffsetFromGEPPass());
     // Run MemOpt
     if (!isOptDisabled &&
         ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt) && !ctx.getModuleMetaData()->disableMemOptforNegativeOffsetLoads) {
