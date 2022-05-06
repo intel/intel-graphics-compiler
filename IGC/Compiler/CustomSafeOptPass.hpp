@@ -91,6 +91,7 @@ namespace IGC
         void visitBitCast(llvm::BitCastInst& BC);
 
         void matchDp4a(llvm::BinaryOperator& I);
+        void matchMixOperation(llvm::BinaryOperator& I);
         void hoistDp3(llvm::BinaryOperator& I);
 
         template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
