@@ -72,6 +72,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PromoteInt8Type.hpp"
 #include "Compiler/CISACodeGen/CalculateLocalIDs.hpp"
 #include "Compiler/CISACodeGen/PrepareLoadsStoresPass.h"
+#include "Compiler/CISACodeGen/HFfoldingOpt.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
