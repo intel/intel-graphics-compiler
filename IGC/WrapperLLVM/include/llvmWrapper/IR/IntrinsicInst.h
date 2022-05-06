@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IntrinsicInst.h>
+#include "llvm/IR/DebugInfoMetadata.h"
 
 #include "Probe/Assertion.h"
 
@@ -41,6 +42,15 @@ namespace IGCLLVM
                                           llvm::ValueAsMetadata::get(Undef)));
 #else
         DbgInst->setUndef();
+#endif
+    }
+
+    inline void setExpression(llvm::DbgVariableIntrinsic* DbgInst, llvm::DIExpression* NewExpr) {
+        IGC_ASSERT(DbgInst);
+#if LLVM_VERSION_MAJOR <= 12
+        DbgInst->setArgOperand(2, llvm::MetadataAsValue::get(DbgInst->getContext(), NewExpr));
+#else
+        DbgInst->setExpression(NewExpr);
 #endif
     }
 }
