@@ -19,7 +19,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/HullShaderClearTessFactors.hpp"
 #include "Compiler/CISACodeGen/DomainShaderLowering.hpp"
 #include "Compiler/CISACodeGen/AdvCodeMotion.h"
-#include "Compiler/CISACodeGen/RematAddressArithmetic.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/Emu64OpsPass.h"
 #include "Compiler/CISACodeGen/PullConstantHeuristics.hpp"
@@ -905,7 +904,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
             mpm.add(new AddressArithmeticSinking());
         }
     }
-    mpm.add(createRematAddressArithmeticPass());
 
     // Enabling half promotion AIL for compute shaders only at this point. 
     // If needed ctx.type check can be removed to apply for all shader types
