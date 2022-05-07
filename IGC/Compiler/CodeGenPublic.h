@@ -1559,6 +1559,7 @@ namespace IGC
             CompOptions.TileYDim2D = GET(TileYDim2D, RayTracingCustomTileYDim2D);
             CompOptions.RematThreshold = GET(RematThreshold, RematThreshold);
             CompOptions.HoistRemat = GET(HoistRemat, EnableHoistRemat);
+            CompOptions.DispatchAlongY = GET(DispatchAlongY, EnableRTDispatchAlongY);
 #undef GET
         }
 

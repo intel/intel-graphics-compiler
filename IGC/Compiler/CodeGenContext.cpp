@@ -1701,7 +1701,7 @@ namespace IGC
     {
         const bool AlongY =
             m_DriverInfo.supportsRaytracingDispatchComputeWalkerAlongYFirst();
-        return IGC_IS_FLAG_ENABLED(EnableRTDispatchAlongY) && AlongY;
+        return opts().DispatchAlongY && AlongY;
     }
 
     uint64_t RayDispatchShaderContext::getShaderHash(const CShader* Prog) const
