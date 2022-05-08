@@ -556,13 +556,13 @@ static unsigned getRPThresholdLow(unsigned NumGrfs, unsigned simdSize)
 
 static unsigned getLatencyHidingThreshold(G4_Kernel &kernel)
 {
-    unsigned NumGrfs = kernel.getNumRegTotal();
-    float Ratio = NumGrfs / 128.0f;
     unsigned RPThreshold = kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleRPThreshold);
     if (RPThreshold > 0)
     {
-        return unsigned(RPThreshold * Ratio);
+        return unsigned(RPThreshold);
     }
+    unsigned NumGrfs = kernel.getNumRegTotal();
+    float Ratio = NumGrfs / 128.0f;
     return unsigned(LATENCY_PRESSURE_THRESHOLD * Ratio);
 }
 
