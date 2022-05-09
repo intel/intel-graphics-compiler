@@ -2662,6 +2662,10 @@ DEFN_UNIFORM_GROUP_FUNC(LogicalXorKHR, bool, Int, i1, __intel_xor, 0)
     uint clusterIndex = 0;                                                                                  \
     uint activeChannels = __builtin_IB_WaveBallot(true);                                                    \
     uint numActive = SPIRV_OCL_BUILTIN(popcount, _i32, )(as_int(activeChannels));                           \
+                                                                                                            \
+    if(numActive < ClusterSize)                                                                             \
+      ClusterSize = numActive;                                                                              \
+                                                                                                            \
     uint numClusters = numActive / ClusterSize;                                                             \
                                                                                                             \
     for (uint clusterIndex = 0; clusterIndex < numClusters; clusterIndex++)                                 \
