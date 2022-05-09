@@ -887,70 +887,78 @@ static bool isSyncNop(const Instruction &i) {
 
 void SWSBAnalyzer::postProcess()
 {
-    // revisit all instructions
-    for (Block* bb : m_kernel.getBlockList())
-    {
-        InstList& instList = bb->getInstList();
-        for (auto inst_it = instList.begin(); inst_it != instList.end(); ++inst_it)
+    // revisit all instructions to handle write-combined Atomic block:
+    // move all swsb set within the Atomic block out for the "instruction write combined" cases
+    // Atomic are provided in the input so assume they are correct and have no internal dependency within
+    // the macro
+    // Move all swsb to the first instruction in the Atomic block
+    // E.g.
+    //      (W) mov (32|M0)  r13.0<2>:ub   r50.0<1;1,0>:uw   {Atomic, I@1}
+    //      (W) mov (32|M0)  r13.1<2>:ub   r52.0<1;1,0>:uw   {Atomic}
+    //      (W) mov (32|M0)  r13.2<2>:ub   r54.0<1;1,0>:uw   {Atomic}
+    //      (W) mov (32|M0)  r13.3<2>:ub   r56.0<1;1,0>:uw
+    if (m_kernel.getModel().hasReadModifiedWriteOnByteDst()) {
+
+        for (Block* bb : m_kernel.getBlockList())
         {
-            Instruction* inst = *inst_it;
-            // move all swsb set on the second instruction to the first for
-            // "instruction combined" case on byte type dst. e.g.
-            //      (W) mov (32|M0)  r13.0<2>:ub   r11.0<1;1,0>:uw   {Atomic}
-            //      (W) mov (32|M0)  r13.1<2>:ub   r10.0<1;1,0>:uw
-            if (m_kernel.getModel().hasReadModifiedWriteOnByteDst() &&
-                inst->hasInstOpt(InstOpt::ATOMIC) &&
-                !inst->getOpSpec().isDpasFamily() &&
-                !inst->getOpSpec().isSendOrSendsFamily() &&
-                inst->getDestination().getDirRegName() == RegName::GRF_R &&
-                TypeSizeInBitsWithDefault(inst->getDestination().getType(), 32) == 8)
+            InstList& instList = bb->getInstList();
+            for (auto inst_it = instList.begin(); inst_it != instList.end(); ++inst_it)
             {
-                auto next_it = inst_it;
-                ++next_it;
-                assert(next_it != instList.end());
-                Instruction* next_inst = *next_it;
+                auto isWriteCombinedCandidate = [&](Instruction& inst) {
+                   return inst.is(Op::MOV) &&
+                          inst.getDestination().getKind() == Operand::Kind::DIRECT &&
+                          inst.getDestination().getDirRegName() == RegName::GRF_R &&
+                          TypeSizeInBitsWithDefault(inst.getDestination().getType(), 32) == 8;
+                };
 
-                // in case the next instructions have sync carrying its swsb, move
-                // sync to before current instruction
-                // - Make sure current inst is not the last inst other than sync
-                InstList sync_insts;
-                while (next_inst->is(Op::SYNC)) {
-                    sync_insts.push_back(next_inst);
-                    ++next_it;
-                    if (next_it == instList.end())
+                if ((*inst_it)->hasInstOpt(InstOpt::ATOMIC) && isWriteCombinedCandidate(**inst_it))
+                {
+                    // found the marcro start
+                    InstListIterator firstit = inst_it;
+                    ++inst_it;
+                    InstList sync_insts;
+                    // iterate to the end of the macro and move all swsb to the
+                    // first
+                    for (; inst_it != instList.end(); ++inst_it) {
+                        Instruction& cur_inst = **inst_it;
+                        // found sync, prepare to move to before the firstinst
+                        if (cur_inst.is(Op::SYNC)) {
+                            sync_insts.push_back(m_kernel.createSyncNopInstruction(cur_inst.getSWSB()));
+                            // remove swsb in current sync so that this sync will be removed in the following
+                            // pass
+                            cur_inst.setSWSB(SWSB());
+                            continue;
+                        }
+                        // All instructions within the write-combined atomic block must be write-combined candidate
+                        if (isWriteCombinedCandidate(cur_inst)) {
+                            // move the swsb within the atomic block to the firstinst
+                            if (cur_inst.getSWSB().hasSWSB()) {
+                                addSWSBToInst(**firstit, cur_inst.getSWSB(), *bb, inst_it);
+                                cur_inst.setSWSB(SWSB());
+                            }
+                            // found the last instruction of the Atomic block
+                            if (!cur_inst.hasInstOpt(InstOpt::ATOMIC))
+                                break;
+                        } else {
+                            m_errorHandler.reportError(
+                                cur_inst.getPC(), "Instruction found in the write-combined atomic block is not a write-combined candidate");
+                            break;
+                        }
+                    }
+                    // insert sync to before firstinst
+                    if (!sync_insts.empty())
+                        instList.insert(firstit, sync_insts.begin(), sync_insts.end());
+
+                    if (inst_it == instList.end()) {
+                        m_errorHandler.reportError(
+                            (*firstit)->getPC(), "The last instruction in this write-combined atomic block has {Atomic} set");
                         break;
-                    next_inst = *next_it;
-                }
-
-                if (next_it == instList.end()) {
-                    // An unexpected instruction with {Atomic} set but has no following
-                    // instruction that can be combined with it
-                    assert(next_it != instList.end());
-                    continue;
-                }
-
-                // - move sync to before current inst
-                if (!sync_insts.empty()) {
-                    auto remove_start = inst_it;
-                    ++remove_start;
-                    instList.erase(remove_start, next_it);
-                    instList.insert(inst_it, sync_insts.begin(), sync_insts.end());
-                }
-
-                // the following instruction must not have Atomic set, or we do not
-                // know what should do
-                IGA_ASSERT((!next_inst->hasInstOpt(InstOpt::ATOMIC)),
-                    "Atomic followed by Atomic on fixed latency instructions");
-
-                SWSB next_swsb = next_inst->getSWSB();
-                if (next_swsb.hasSWSB()) {
-                    addSWSBToInst(*inst, next_swsb, *bb, inst_it);
-                    next_inst->setSWSB(SWSB());
+                    }
                 }
             }
-
         }
     }
+
     // revisit all instructions to remove redundant sync.nop
     // sync.nop carry the sbid the same as the sbid set on the following instruction can be
     // removed since it'll automatically be sync-ed when sbid is reused. For example:
