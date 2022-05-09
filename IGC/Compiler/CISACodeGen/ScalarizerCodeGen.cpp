@@ -115,3 +115,40 @@ void ScalarizerCodeGen::visitBinaryOperator(llvm::BinaryOperator& I)
         }
     }
 }
+
+void ScalarizerCodeGen::visitCastInst(llvm::CastInst& I)
+{
+    // Scalarizing vector type Trunc/Ext instructions
+    if (I.getOpcode() == Instruction::Trunc || I.getOpcode() == Instruction::ZExt || I.getOpcode() == Instruction::SExt)
+    {
+        if (I.getType()->isVectorTy())
+        {
+            IGCLLVM::FixedVectorType* instType = cast<IGCLLVM::FixedVectorType>(I.getType());
+            unsigned numElements = int_cast<unsigned>(instType->getNumElements());
+            Type* dstType = instType->getScalarType();
+            Value* src0 = I.getOperand(0);
+            auto castOp = I.getOpcode();
+            m_builder->SetInsertPoint(&I);
+
+            Value* lastOp = UndefValue::get(instType);
+            for (unsigned i = 0; i < numElements; i++)
+            {
+                Value* constIndex = ConstantInt::get(m_builder->getInt32Ty(), i);
+                Value* eeSrc0 = m_builder->CreateExtractElement(src0, constIndex);
+                Value* newCastInst = nullptr;
+                switch (castOp)
+                {
+                    case Instruction::Trunc: newCastInst = m_builder->CreateTrunc(eeSrc0, dstType); break;
+                    case Instruction::ZExt: newCastInst = m_builder->CreateZExt(eeSrc0, dstType); break;
+                    case Instruction::SExt: newCastInst = m_builder->CreateSExt(eeSrc0, dstType); break;
+                    default: IGC_ASSERT(0);
+                }
+                lastOp = m_builder->CreateInsertElement(lastOp, newCastInst, constIndex);
+            }
+
+            // Now replace all the instruction users with the newly created instruction
+            I.replaceAllUsesWith(lastOp);
+            I.eraseFromParent();
+        }
+    }
+}
