@@ -1948,13 +1948,6 @@ class G4_Declare
     // ToDo: they should be moved out of G4_Declare and stored as maps in RA/spill
     G4_Declare* spillDCL;  // if an addr/flag var is spilled, SpillDCL is the location (GRF) holding spilled value
 
-    // this should only be called by builder
-    void setNumberFlagElements(uint8_t numEl)
-    {
-        assert(regFile == G4_FLAG && "may only be called on a flag");
-        numFlagElements = numEl;
-    }
-
 public:
     G4_Declare(const IR_Builder& builder,
                const char*    n,
@@ -2148,6 +2141,12 @@ public:
         assert(regFile == G4_FLAG && "should only be called for flag vars");
         return numFlagElements;
     }
+    void setNumberFlagElements(uint8_t numEl)
+    {
+        assert(regFile == G4_FLAG && "may only be called on a flag");
+        numFlagElements = numEl;
+    }
+
 
     G4_Type          getElemType() const {return elemInfo.getType();}
     uint16_t         getElemSize() const {return elemInfo.getElemSize();}

@@ -5739,7 +5739,7 @@ void G4_Declare::resizeNumRows(unsigned int numrows)
 void G4_Declare::emit(std::ostream &output) const
 {
 
-    output << "//.declare " << name;
+    output << "//.declare " << name << " (" << getDeclId() << ") ";
     output << " rf=";
     if (useGRF())
     {
@@ -5756,6 +5756,7 @@ void G4_Declare::emit(std::ostream &output) const
     else if (regFile == G4_FLAG)
     {
         output << 'f';
+        output << getNumberFlagElements() << " ";
     }
     else
     {

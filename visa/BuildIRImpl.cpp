@@ -50,6 +50,10 @@ G4_Declare* DeclarePool::cloneDeclare(G4_Kernel& kernel, std::map<G4_Declare*, G
     G4_RegVar* regVar = new (mem) G4_RegVar(cloneDcl, G4_RegVar::RegVarType::Default);
     cloneDcl->setRegVar(regVar);
     cloneDcl->setSubRegAlign(dcl->getSubRegAlign());
+    if (dcl->getRegFile() == G4_FLAG)
+    {
+        cloneDcl->setNumberFlagElements((uint8_t )dcl->getNumberFlagElements());
+    }
     if (topDcl)
     {
         assert(dcl != topDcl);
