@@ -12614,7 +12614,7 @@ void Optimizer::newDoNoMaskWA()
             // Make sure this temp is reserved just for WA and is not spilled.
             WATemp->setLiveIn();
             WATemp->setLiveOut();
-            WATemp->isDoNotSpill();
+            WATemp->setDoNotSpill();
         }
         else
         {
