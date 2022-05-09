@@ -41,7 +41,7 @@ namespace IGCLLVM
                        llvm::ValueMapTypeRemapper *TypeMapper = nullptr,
                        llvm::ValueMaterializer *Materializer = nullptr)
    {
-       llvm::CloneFunctionChangeType Changes = ModuleLevelChanges ? llvm::CloneFunctionChangeType::GlobalChanges : llvm::CloneFunctionChangeType::LocalChang\
+       llvm::CloneFunctionChangeType Changes = ModuleLevelChanges ? llvm::CloneFunctionChangeType::DifferentModule : llvm::CloneFunctionChangeType::LocalChang\
 esOnly;
        llvm::CloneFunctionInto(NewFunc, OldFunc, VMap, Changes, Returns, NameSuffix, CodeInfo, TypeMapper, Materializer);
    }
