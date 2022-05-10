@@ -69,15 +69,15 @@ void WIFuncResolution::storeImplicitBufferPtrs(llvm::Function& F)
             auto DataTypeI16 = Type::getInt16Ty(C);
             auto AllocaVec = Builder.CreateAlloca(DataTypeI16, ConstantInt::get(DataTypeI16, (uint64_t)3));
             auto FirstSlot = Builder.CreatePointerCast(AllocaVec, DataTypeI16->getPointerTo());
-            Builder.CreateStore(LocalIdX, FirstSlot);
+            Builder.CreateStore(LocalIdX, FirstSlot, true);
             auto SecondSlot = Builder.CreatePtrToInt(FirstSlot, Type::getInt64Ty(C));
             SecondSlot = Builder.CreateAdd(SecondSlot, ConstantInt::get(SecondSlot->getType(), (uint64_t)2));
             SecondSlot = Builder.CreateIntToPtr(SecondSlot, DataTypeI16->getPointerTo());
-            Builder.CreateStore(LocalIdY, SecondSlot);
+            Builder.CreateStore(LocalIdY, SecondSlot, true);
             auto ThirdSlot = Builder.CreatePtrToInt(FirstSlot, Type::getInt64Ty(C));
             ThirdSlot = Builder.CreateAdd(ThirdSlot, ConstantInt::get(ThirdSlot->getType(), (uint64_t)4));
             ThirdSlot = Builder.CreateIntToPtr(ThirdSlot, DataTypeI16->getPointerTo());
-            Builder.CreateStore(LocalIdZ, ThirdSlot);
+            Builder.CreateStore(LocalIdZ, ThirdSlot, true);
 
             auto* LidFunc = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_SetLocalIdBufferPtr, AllocaVec->getType());
             Args = { AllocaVec };
