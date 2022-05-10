@@ -219,7 +219,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 #if LLVM_VERSION_MAJOR < 11
         offset = iSTD::Align(offset, m_DL->getPreferredAlignment(globalVar));
 #else
-        offset = iSTD::Align(offset, m_DL->getPreferredAlign(globalVar).value());
+        offset = iSTD::Align(offset, (unsigned)m_DL->getPreferredAlign(globalVar).value());
 #endif
         inlineProgramScopeOffsets[globalVar] = offset;
         offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getType()->getPointerElementType()));
