@@ -61,11 +61,6 @@ namespace IGC
         /// @param  I The binary op
         void visitBinaryOperator(llvm::BinaryOperator& I);
 
-        /// @brief  CallInst instructions visitor.
-        ///         Analyzes if there are private memory allocation.
-        /// @param  CI The binary op
-        void visitCallInst(llvm::CallInst& CI);
-
     private:
         /// @brief  Function entry point.
         ///         Finds all alloca instructions in this function, analyzes them and adds
@@ -76,9 +71,6 @@ namespace IGC
 
         /// @brief  A flag signaling if the current function uses private memory
         bool m_hasPrivateMem;
-
-        /// @brief A flag signaling if the platform has partial fp64 emulation
-        bool m_hasDPDivSqrtEmu = false;
 
         /// @brief  MetaData utils used to generate LLVM metadata
         IGCMD::MetaDataUtils* m_pMDUtils;
