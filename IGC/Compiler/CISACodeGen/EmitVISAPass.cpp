@@ -1986,6 +1986,19 @@ void EmitPass::EmitAluIntrinsic(llvm::CallInst* I, const SSource source[2], cons
             //Throw away source[1], since for ctlz, this is a flag we don't care about.
             emitCtlz(source[0]);
             break;
+        case Intrinsic::sqrt:
+        {
+            // By default, double sqrt is correctly rounded (IEEE sqrt).
+            if (CI->getType()->isDoubleTy() && !CI->hasApproxFunc())
+            {
+                EmitSimpleAlu(llvm_ieee_sqrt, source, modifier);
+            }
+            else
+            {
+                EmitSimpleAlu(I, source, modifier);
+            }
+            break;
+        }
         default:
             // no special handling
             EmitSimpleAlu(I, source, modifier);
@@ -3674,8 +3687,17 @@ void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], con
         Sub(source, modifier);
         break;
     case Instruction::FDiv:
-        FDiv(source, modifier);
+    {
+        if (inst->getType()->isDoubleTy() && !inst->hasApproxFunc())
+        {   // default : ieee fdiv
+            EmitSimpleAlu(llvm_ieee_divide, source, modifier);
+        }
+        else
+        {
+            FDiv(source, modifier);
+        }
         break;
+    }
     case Instruction::Xor:
         Xor(source, modifier);
         break;
