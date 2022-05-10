@@ -10,61 +10,89 @@
 #   IGC_OPTION__LLDELF_H_DIR - Specify additional directories for searching lldELF headers
 
 function(add_lld_library LIB_NAME)
-  find_library(${LIB_NAME}_PATH_RELEASE
-    ${LIB_NAME}
-    PATHS "${IGC_OPTION__LLD_DIR}/Release/lib"
-    PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/lib")
+  if(WIN32)
+    find_library(${LIB_NAME}_PATH_RELEASE
+      ${LIB_NAME}
+      PATHS "${IGC_OPTION__LLD_DIR}/Release/lib"
+      PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/lib")
 
-  if("${${LIB_NAME}_PATH_RELEASE}" STREQUAL "${LIB_NAME}_PATH_RELEASE-NOTFOUND")
-    message(FATAL_ERROR
-    "Cannot find ${LIB_NAME} library in Release version in ${IGC_OPTION__LLD_DIR}")
+    if("${${LIB_NAME}_PATH_RELEASE}" STREQUAL "${LIB_NAME}_PATH_RELEASE-NOTFOUND")
+      message(FATAL_ERROR
+      "Cannot find ${LIB_NAME} library in Release version in ${IGC_OPTION__LLD_DIR}")
+    endif()
+
+    find_library(${LIB_NAME}_PATH_DEBUG
+      ${LIB_NAME}
+      PATHS "${IGC_OPTION__LLD_DIR}/Debug/lib"
+      PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/lib")
+
+    if("${${LIB_NAME}_PATH_DEBUG}" STREQUAL "${LIB_NAME}_PATH_DEBUG-NOTFOUND")
+      message(FATAL_ERROR
+      "Cannot find ${LIB_NAME} library in Debug version in ${IGC_OPTION__LLD_DIR}")
+    endif()
+
+    add_library(${LIB_NAME} UNKNOWN IMPORTED GLOBAL)
+    set_target_properties(${LIB_NAME} PROPERTIES
+      IMPORTED_LOCATION_RELEASE "${${LIB_NAME}_PATH_RELEASE}"
+      IMPORTED_LOCATION_RELEASEINTERNAL "${${LIB_NAME}_PATH_RELEASE}"
+      IMPORTED_LOCATION_DEBUG "${${LIB_NAME}_PATH_DEBUG}"
+      )
+  else()
+    find_library(${LIB_NAME}_PATH
+      ${LIB_NAME}
+      PATHS "${IGC_OPTION__LLDELF_LIB_DIR}"
+      PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/lib")
+
+    if(${LIB_NAME}_PATH-NOTFOUND)
+      message(FATAL_ERROR
+      "Cannot find ${LIB_NAME} library, please install missing library or provide the path by IGC_OPTION__LLDELF_LIB_DIR")
+    endif()
+    add_library(${LIB_NAME} UNKNOWN IMPORTED GLOBAL)
+    set_target_properties(${LIB_NAME} PROPERTIES IMPORTED_LOCATION ${${LIB_NAME}_PATH})
   endif()
-
-  find_library(${LIB_NAME}_PATH_DEBUG
-    ${LIB_NAME}
-    PATHS "${IGC_OPTION__LLD_DIR}/Debug/lib"
-    PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/lib")
-
-  if("${${LIB_NAME}_PATH_DEBUG}" STREQUAL "${LIB_NAME}_PATH_DEBUG-NOTFOUND")
-    message(FATAL_ERROR
-    "Cannot find ${LIB_NAME} library in Debug version in ${IGC_OPTION__LLD_DIR}")
-  endif()
-
-  add_library(${LIB_NAME} UNKNOWN IMPORTED GLOBAL)
-  set_target_properties(${LIB_NAME} PROPERTIES
-    IMPORTED_LOCATION_RELEASE "${${LIB_NAME}_PATH_RELEASE}"
-    IMPORTED_LOCATION_RELEASEINTERNAL "${${LIB_NAME}_PATH_RELEASE}"
-    IMPORTED_LOCATION_DEBUG "${${LIB_NAME}_PATH_DEBUG}"
-    )
 endfunction()
 
 function(add_lld_executable EXE_NAME)
-  find_program(${EXE_NAME}_PATH_RELEASE
-    ${EXE_NAME}
-    PATHS "${IGC_OPTION__LLD_DIR}/Release/bin"
-    PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/bin")
+  if(WIN32)
+    find_program(${EXE_NAME}_PATH_RELEASE
+      ${EXE_NAME}
+      PATHS "${IGC_OPTION__LLD_DIR}/Release/bin"
+      PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/bin")
 
-  if("${${EXE_NAME}_PATH_RELEASE}" STREQUAL "${EXE_NAME}_PATH_RELEASE-NOTFOUND")
-    message(FATAL_ERROR
-    "Cannot find ${EXE_NAME} executable in Release version in ${IGC_OPTION__LLD_DIR}")
+    if("${${EXE_NAME}_PATH_RELEASE}" STREQUAL "${EXE_NAME}_PATH_RELEASE-NOTFOUND")
+      message(FATAL_ERROR
+      "Cannot find ${EXE_NAME} executable in Release version in ${IGC_OPTION__LLD_DIR}")
+    endif()
+
+    find_program(${EXE_NAME}_PATH_DEBUG
+      ${EXE_NAME}
+      PATHS "${IGC_OPTION__LLD_DIR}/Debug/bin"
+      PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/bin")
+
+    if("${${EXE_NAME}_PATH_DEBUG}" STREQUAL "${EXE_NAME}_PATH_DEBUG-NOTFOUND")
+      message(FATAL_ERROR
+      "Cannot find ${EXE_NAME} executable in Debug version in ${IGC_OPTION__LLD_DIR}")
+    endif()
+
+    add_executable(${EXE_NAME} IMPORTED GLOBAL)
+    set_target_properties(${EXE_NAME} PROPERTIES
+      IMPORTED_LOCATION_RELEASE "${${EXE_NAME}_PATH_RELEASE}"
+      IMPORTED_LOCATION_RELEASEINTERNAL "${${EXE_NAME}_PATH_RELEASE}"
+      IMPORTED_LOCATION_DEBUG "${${EXE_NAME}_PATH_DEBUG}"
+      )
+  else()
+    find_program(${EXE_NAME}_PATH
+      ${EXE_NAME}
+      PATHS "${IGC_OPTION__LLD_BIN_DIR}"
+      PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/bin")
+
+    if(${EXE_NAME}_PATH-NOTFOUND)
+      message(FATAL_ERROR "Cannot find ${EXE_NAME} executable, please install missing executable or provide the path by IGC_OPTION__LLD_BIN_DIR")
+    endif()
+
+    add_executable(${EXE_NAME} IMPORTED GLOBAL)
+    set_target_properties(${EXE_NAME} PROPERTIES IMPORTED_LOCATION ${${EXE_NAME}_PATH})
   endif()
-
-  find_program(${EXE_NAME}_PATH_DEBUG
-    ${EXE_NAME}
-    PATHS "${IGC_OPTION__LLD_DIR}/Debug/bin"
-    PATH_SUFFIXES "llvm-${LLVM_VERSION_MAJOR}/bin")
-
-  if("${${EXE_NAME}_PATH_DEBUG}" STREQUAL "${EXE_NAME}_PATH_DEBUG-NOTFOUND")
-    message(FATAL_ERROR
-    "Cannot find ${EXE_NAME} executable in Debug version in ${IGC_OPTION__LLD_DIR}")
-  endif()
-
-  add_executable(${EXE_NAME} IMPORTED GLOBAL)
-  set_target_properties(${EXE_NAME} PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${${EXE_NAME}_PATH_RELEASE}"
-  IMPORTED_LOCATION_RELEASEINTERNAL "${${EXE_NAME}_PATH_RELEASE}"
-  IMPORTED_LOCATION_DEBUG "${${EXE_NAME}_PATH_DEBUG}"
-  )
 endfunction()
 
 if(IGC_BUILD__LLVM_SOURCES)
