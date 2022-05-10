@@ -385,8 +385,21 @@ namespace IGC
                         if (usage == SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO ||
                             usage == SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI)
                         {
+                            context->getModuleMetaData()->URBInfo.hasVertexHeader = true;
+                            context->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput = true;
                             m_headerSize = QuadEltUnit(4);
                             m_dsPropsPass->DeclareClipDistance();
+                        }
+                        else if (usage == SHADER_OUTPUT_TYPE_POSITION ||
+                            usage == SHADER_OUTPUT_TYPE_POINTWIDTH ||
+                            usage == SHADER_OUTPUT_TYPE_RENDER_TARGET_ARRAY_INDEX ||
+                            usage == SHADER_OUTPUT_TYPE_COARSE_PIXEL_SIZE)
+                        {
+                            context->getModuleMetaData()->URBInfo.hasVertexHeader = true;
+                            if (m_headerSize < QuadEltUnit(2))
+                            {
+                                m_headerSize = QuadEltUnit(2);
+                            }
                         }
                     }
                 }

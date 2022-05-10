@@ -556,8 +556,21 @@ namespace IGC
                         if (usage == SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO ||
                             usage == SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI)
                         {
+                            m_context->getModuleMetaData()->URBInfo.hasVertexHeader = true;
+                            m_context->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput = true;
                             m_headerSize = QuadEltUnit(4);
                             m_vsPropsPass->DeclareClipDistance();
+                        }
+                        else if (usage == SHADER_OUTPUT_TYPE_POSITION ||
+                            usage == SHADER_OUTPUT_TYPE_POINTWIDTH ||
+                            usage == SHADER_OUTPUT_TYPE_RENDER_TARGET_ARRAY_INDEX ||
+                            usage == SHADER_OUTPUT_TYPE_COARSE_PIXEL_SIZE)
+                        {
+                            m_context->getModuleMetaData()->URBInfo.hasVertexHeader = true;
+                            if (m_headerSize < QuadEltUnit(2))
+                            {
+                                m_headerSize = QuadEltUnit(2);
+                            }
                         }
                     }
                 }

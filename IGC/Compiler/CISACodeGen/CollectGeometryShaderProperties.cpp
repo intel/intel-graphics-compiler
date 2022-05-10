@@ -147,8 +147,18 @@ void CollectGeometryShaderProperties::HandleSystemInput(llvm::GenIntrinsicInst& 
     case CLIP_DISTANCE_Y:
     case CLIP_DISTANCE_Z:
     case CLIP_DISTANCE_W:
+        m_gsProps.Input().PerVertex().HasVertexHeader(true);
         m_gsProps.Input().PerVertex().HasClipCullDistances(true);
         break;
+
+    case POSITION_X:
+    case POSITION_Y:
+    case POSITION_Z:
+    case POSITION_W:
+        m_gsProps.Input().PerVertex().HasVertexHeader(true);
+
+    case POINT_WIDTH:
+        m_gsProps.Input().PerVertex().HasVertexHeader(true);
 
     case GS_INSTANCEID:
         m_gsProps.Input().HasInstanceID(true);

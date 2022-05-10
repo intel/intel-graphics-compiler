@@ -758,8 +758,10 @@ namespace IGC
 
         auto clipCullAsInput = false;
         IGC::CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        if (ctx->getModuleMetaData()->URBInfo.has64BVertexHeaderInput) {
+        if (ctx->getModuleMetaData()->URBInfo.has64BVertexHeaderInput)
+        {
             // In case we have no linking information we need the URB header to have a fixed size
+            IGC_ASSERT(ctx->getModuleMetaData()->URBInfo.hasVertexHeader);
             clipCullAsInput = true;
         }
 
