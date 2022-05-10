@@ -1017,9 +1017,10 @@ int IR_Builder::translateVISAAvsInst(
             unsigned int upper_bits = 0;
             upper_bits += execMode << 25;
 
-            if (eifbypass->isImm())
+            if (!eifbypass || eifbypass->isImm())
             {
-                upper_bits += (eifbypass->asImm()->getInt() & 1) << 27;
+                int64_t eifbypassVal = (eifbypass != NULL) ? eifbypass->asImm()->getInt() : 0;
+                upper_bits += (eifbypassVal & 1) << 27;
 
                 G4_DstRegRegion* dst2_opnd = createDst(dcl1_ud->getRegVar(), 0, 7, 1, Type_UD);
                 createBinOp(G4_add, g4::SIMD1, dst2_opnd, groupIDOpnd,
