@@ -786,6 +786,7 @@ static void setImpliedIGCKeys()
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableShaderFusion, true);
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableExamineRayFlag, true);
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableSpillReorder, true);
+    IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableCrossFillRemat, true);
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisablePromoteContinuation, true);
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableRTAliasAnalysis, true);
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableRTFenceElision, true);
