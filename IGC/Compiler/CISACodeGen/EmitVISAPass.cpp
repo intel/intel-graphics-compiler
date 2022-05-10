@@ -452,6 +452,7 @@ bool EmitPass::isSymbolTableRequired(llvm::Function* F)
         // Check has global symbols attached
         else if (!m_moduleMD->inlineProgramScopeOffsets.empty())
         {
+            bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary) || m_pCtx->getCompilerOption().EnableZEBinary;
             for (auto it : m_moduleMD->inlineProgramScopeOffsets)
             {
                 GlobalVariable* pGlobal = it.first;
@@ -465,6 +466,12 @@ bool EmitPass::isSymbolTableRequired(llvm::Function* F)
                 pGlobal->removeDeadConstantUsers();
 
                 // Check if relocation is required by checking uses
+
+                // FIXME: Ideally we should emit symtab for the global if
+                // there's an user in both ZEBIN and PT.
+                if (ZEBinEnabled && !pGlobal->user_empty())
+                    return true;
+
                 for (auto user : pGlobal->users())
                 {
                     if (isa<Instruction>(user))
