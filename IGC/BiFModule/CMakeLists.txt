@@ -12,6 +12,7 @@
 # ======================================================================================================
 
 # =============================================== Tools ================================================
+include(BiFModuleCache)
 
 # In new Clang versions VME types are built-in. Keep this flag until all OS's update Clang version to 8
 if(NOT DEFINED VME_TYPES_DEFINED)
@@ -246,16 +247,17 @@ function(igc_bif_build_bc)
 
     # OpenCL source compilation is triggered by CLANG change, change of source files, change of precompiled header, change of
     # forcibly included headers or change of additional dependencies.
+
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND clang-tool -cc1 -x cl -fblocks -fpreserve-vec3-type -opencl-builtins "-triple=${_archTriple}" -w -emit-llvm-bc -o "${_bcTempFilePath}" ${_pchFlags} ${_incFileFlags} ${_includeDirsFlags} ${_defineFlags} ${_options_DEFAULT} ${_options_CL} "${_srcFilePath}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "$<TARGET_FILE:clang-tool>" -cc1 -x cl -fblocks -fpreserve-vec3-type -opencl-builtins "-triple=${_archTriple}" -w -emit-llvm-bc -o "${_bcTempFilePath}" ${_pchFlags} ${_incFileFlags} ${_includeDirsFlags} ${_defineFlags} ${_options_DEFAULT} ${_options_CL} "${_srcFilePath}"
         DEPENDS clang-tool ${_pchFilePath} ${_incFilePaths} "${_srcFilePath}" ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Compiling OpenCL source: \"${_srcFileName}\""
       )
     add_custom_command(
         OUTPUT "${_bcIntFilePath}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_bcTempFilePath}" "${_bcIntFilePath}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E copy_if_different "${_bcTempFilePath}" "${_bcIntFilePath}"
         DEPENDS "${_bcTempFilePath}"
         COMMENT "BiF: \"${_outBcFileName}\": Updating intermediate .bc for \"${_srcFileName}\" if changed."
       )
@@ -276,14 +278,14 @@ function(igc_bif_build_bc)
     # Makes sure that LLVM is unzipped before.
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND ${LLVM_AS_EXE} -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_LL} "${_srcFilePath}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "$<TARGET_FILE:${LLVM_AS_EXE}>" -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_LL} "${_srcFilePath}"
         DEPENDS "${_srcFilePath}" ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Compiling OpenCL source: \"${_srcFileName}\""
       )
     add_custom_command(
         OUTPUT "${_bcIntFilePath}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_bcTempFilePath}" "${_bcIntFilePath}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E copy_if_different "${_bcTempFilePath}" "${_bcIntFilePath}"
         DEPENDS "${_bcTempFilePath}"
         COMMENT "BiF: \"${_outBcFileName}\": Updating intermediate .bc for \"${_srcFileName}\" if changed."
       )
@@ -303,18 +305,24 @@ function(igc_bif_build_bc)
     set(_bcTempFilePath "${_bcIntFilePath}.tmp")
     math(EXPR _bcFileId "${_bcFileId} + 1")
 
+    if(EXISTS ${LLVM_LINK_EXE})
+        set(bif-llvm-link_exe ${LLVM_LINK_EXE})
+    else()
+        set(bif-llvm-link_exe $<TARGET_FILE:${LLVM_LINK_EXE}>)
+    endif()
+
     # LLVM linking is triggered by host LLVM package change (where tools are), change of intermediate .bc files or change of additional dependencies.
     # Makes sure that LLVM is unzipped before.
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND ${LLVM_LINK_EXE} -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${bif-llvm-link_exe}" -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
         DEPENDS ${_bcFiles} ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Linking intermediate .bc into output .bc."
       )
     add_custom_command(
         OUTPUT "${_bcIntFilePath}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_bcTempFilePath}" "${_bcIntFilePath}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E copy_if_different "${_bcTempFilePath}" "${_bcIntFilePath}"
         DEPENDS "${_bcTempFilePath}"
         COMMENT "BiF: \"${_outBcFileName}\": Updating output .bc if changed (after linking)."
       )
@@ -332,14 +340,14 @@ function(igc_bif_build_bc)
     # Makes sure that LLVM is unzipped before.
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND ${LLVM_OPT_EXE} -O2 -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_OPT} ${_bcFiles}
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "$<TARGET_FILE:${LLVM_OPT_EXE}>" -O2 -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_OPT} ${_bcFiles}
         DEPENDS ${_bcFiles} ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Optmizing output .bc."
       )
     add_custom_command(
         OUTPUT "${_bcIntFilePath}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_bcTempFilePath}" "${_bcIntFilePath}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E copy_if_different "${_bcTempFilePath}" "${_bcIntFilePath}"
         DEPENDS "${_bcTempFilePath}"
         COMMENT "BiF: \"${_outBcFileName}\": Updating output .bc if changed (after optimization)."
       )
@@ -350,7 +358,7 @@ function(igc_bif_build_bc)
   # Final copy.
   add_custom_command(
       OUTPUT "${_outBcFilePath}"
-      COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${_bcFiles} "${_outBcFilePath}"
+      COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E copy_if_different ${_bcFiles} "${_outBcFilePath}"
       DEPENDS ${_bcFiles}
       COMMENT "BiF: \"${_outBcFileName}\": Copying output .bc."
     )
@@ -418,8 +426,8 @@ set(IGC_BUILD__BIF_OCL_INCLUDES ${IGC_BUILD__BIF_OCL_INCLUDES} ${IGC_BUILD__BIF_
 
 add_custom_command(
     OUTPUT "${IGC_BUILD__BIF_OCL_FORCE_INC}"
-    COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_DIR}"
-    COMMAND "${PYTHON_EXECUTABLE}"
+    COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_DIR}"
+    COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${PYTHON_EXECUTABLE}"
     ARGS ${_concatScript} -new ${IGC_BUILD__BIF_OCL_FORCE_INC} ${IGC_BUILD__BIF_OCL_SHARED_INC} ${IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE}
     DEPENDS ${_concatScript}
     DEPENDS ${IGC_BUILD__BIF_OCL_SHARED_INC}
@@ -453,6 +461,9 @@ if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
 endif(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
 
 igc_bif_find_cl_files(IGC_BUILD__BIF_OCL_COMMON_DEPENDS ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS} "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation")
+
+# Adding BiFModuleCacheInit to start before any of the custom target attached to IGC_BUILD__PROJ__BiFModule_OCL
+list(APPEND IGC_BUILD__BIF_OCL_COMMON_DEPENDS ${BiFModule_Init})
 
 set(KHR_DEFINES "cl_khr_f16" "cl_khr_fp64" "cl_khr_gl_msaa_sharing" "cl_khr_mipmap_image" "cl_khr_depth_images" "cl_intel_subgroups_short"
                 "cl_intel_subgroups_char" "cl_intel_subgroups_long" "cl_intel_subgroup_local_block_io" "cl_intel_64bit_global_atomics_placeholder"
@@ -597,12 +608,20 @@ endif()
 set(IGC_BUILD__PROJ__BiFModule_OCL       "${IGC_BUILD__PROJ_NAME_PREFIX}BiFModuleOcl")
 set(IGC_BUILD__PROJ__BiFModule_OCL       "${IGC_BUILD__PROJ__BiFModule_OCL}" PARENT_SCOPE)
 set(IGC_BUILD__PROJ_LABEL__BiFModule_OCL "BiFModule-OCL")
+set(IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL clang-tool "${IGC_BUILD__BIF_OCL_FORCE_INC}" "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc")
+
 
 add_custom_target("${IGC_BUILD__PROJ__BiFModule_OCL}"
-    DEPENDS clang-tool "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc" "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc" "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
+    DEPENDS ${IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL}
     SOURCES ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
   )
 set_property(TARGET "${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__BiFModule_OCL}")
+
+generate_bif_src_checksum(${IGC_BUILD__PROJ__BiFModule_OCL})
+
+generate_bif_prebuild_pack(${IGC_BUILD__PROJ__BiFModule_OCL} "${IGC_BUILD__PROJ_DEPENDS_BiFModule_OCL}")
+set(IGC_BUILD__PROJ__BiFModuleCache_OCL       "${IGC_BUILD__PROJ__BiFModuleCache_OCL}" PARENT_SCOPE)
+
 
 # =========================================== SPIRV Headers ============================================
 
