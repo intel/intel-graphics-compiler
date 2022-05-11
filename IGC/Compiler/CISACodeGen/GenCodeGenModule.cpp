@@ -589,10 +589,8 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
 {
     for (auto FG : Groups)
     {
-        for (auto FI = FG->begin(), FE = FG->end(); FI != FE; ++FI)
+        for (const Function* F : *FG)
         {
-            Function* F = *FI;
-
             // Ignore indirect functions
             if (F->hasFnAttribute("referenced-indirectly"))
             {
@@ -607,7 +605,7 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
             // function attribute "hasVLA" should be set at ProcessFuncAttributes pass
             if (F->hasFnAttribute("hasVLA"))
             {
-                FG->m_hasVaribleLengthAlloca = true;
+                FG->m_hasVariableLengthAlloca = true;
             }
 
             // check if FG uses recursion. The "hasRecursion" attribute is set in
@@ -618,9 +616,9 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
             }
 
             // For the remaining attributes we need to loop through all the call instructions
-            for (auto ii = inst_begin(*FI), ei = inst_end(*FI); ii != ei; ii++)
+            for (auto ii = inst_begin(F), ei = inst_end(F); ii != ei; ii++)
             {
-                if (CallInst* call = dyn_cast<CallInst>(&*ii))
+                if (const CallInst* call = dyn_cast<CallInst>(&*ii))
                 {
                     Function* calledF = call->getCalledFunction();
                     if (call->isInlineAsm())
