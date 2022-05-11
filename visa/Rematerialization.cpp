@@ -530,9 +530,9 @@ namespace vISA
             (G4_RegFileKind::G4_GRF | G4_RegFileKind::G4_INPUT)) == 0x0)
             return false;
 
-        // Skip remat if src opnd uses special acc registers
-        if (src->getAccRegSel() != ACC_UNDEFINED)
-            return false;
+        G4_AccRegSel accRegSel = src->getAccRegSel();
+        if (accRegSel != ACC_UNDEFINED && accRegSel != NOACC)
+          return false;
 
         // Lookup defs of src in program
         auto opIt = operations.find(topdcl);
@@ -1242,6 +1242,11 @@ namespace vISA
                                     rematSrc = createSrcRgn(src->asSrcRegRegion(), uniqueDef->first->getDst(),
                                         (*prevRematIt).second.first->getDst()->getTopDcl());
 
+                                    if (src->asSrcRegRegion()->getAccRegSel() == NOACC)
+                                    {
+                                      rematSrc->setAccRegSel(NOACC);
+                                    }
+
                                     reduceNumUses(src->getTopDcl());
 
 #if 0
@@ -1262,6 +1267,12 @@ namespace vISA
                                 std::list<G4_INST*> newInsts;
                                 G4_INST* cacheInst = nullptr;
                                 rematSrc = rematerialize(src->asSrcRegRegion(), bb, uniqueDef, newInsts, cacheInst);
+
+                                if (src->asSrcRegRegion()->getAccRegSel() == NOACC)
+                                {
+                                  rematSrc->setAccRegSel(NOACC);
+                                }
+
                                 while (!newInsts.empty())
                                 {
                                     bb->insertBefore(instIt, newInsts.front());
