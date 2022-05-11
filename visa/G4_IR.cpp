@@ -5857,7 +5857,7 @@ void G4_Predicate::emit_body(std::ostream& output, bool symbolreg)
     if (getBase()->asRegVar()->isPhyRegAssigned())
     {
         getBase()->asRegVar()->getPhyReg()->emit(output);
-        output << "." << getBase()->asRegVar()->getPhyRegOff();
+        output << "." << getBase()->asRegVar()->getPhyRegOff() + subRegOff;
     }
     else
     {
@@ -6054,7 +6054,7 @@ void G4_CondMod::emit(std::ostream& output, bool symbolreg)
         output << "f0.0";
     } else if (getBase()->asRegVar()->isPhyRegAssigned()) {
         getBase()->asRegVar()->getPhyReg()->emit(output);
-        output << "." << getBase()->asRegVar()->getPhyRegOff();
+        output << "." << getBase()->asRegVar()->getPhyRegOff() + subRegOff;
     } else {
         getBase()->emit(output);
         if (subRegOff != UNDEFINED_SHORT)
