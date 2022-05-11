@@ -815,15 +815,8 @@ void ELFWriter::writeHeader()
     // e_ident[EI_VERSION]
     m_W.OS << char(ELF::EV_CURRENT);
 
-    // e_ident[EI_OSABI]
-    m_W.OS << char(ELF::ELFOSABI_NONE);
-
-    // ABI version is hard coded right now. In future, if more ABI versions exist then revisit this.
-    // e_ident[EI_ABIVERSION]
-    m_W.OS << char(1);
-
     // e_ident padding
-    m_W.OS.write_zeros(ELF::EI_NIDENT - ELF::EI_PAD);
+    m_W.OS.write_zeros(ELF::EI_NIDENT - ELF::EI_OSABI);
 
     // e_type: Currently IGC always emits a relocatable file
     m_W.write<uint16_t>(ELF::ET_REL);
