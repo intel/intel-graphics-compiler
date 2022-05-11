@@ -134,6 +134,7 @@ DEF_VISA_OPTION(vISA_CodePatch,   ET_INT32, "-codePatch",        UNUSED, 0)
 DEF_VISA_OPTION(vISA_Linker,      ET_INT32, "-linker",        UNUSED, 0)
 DEF_VISA_OPTION(vISA_lscEnableImmOffsFor,   ET_INT32, "-lscEnableImmOffsFor", UNUSED, 0x3001E)
 DEF_VISA_OPTION(vISA_PreserveR0InR0,        ET_BOOL, "-preserver0", UNUSED, false)
+DEF_VISA_OPTION(vISA_StackCallABIVer,       ET_INT32, "-abiver", UNUSED, 1)
 
 //=== RA options ===
 DEF_VISA_OPTION(vISA_RoundRobin,            ET_BOOL, "-noroundrobin",    UNUSED, true)
