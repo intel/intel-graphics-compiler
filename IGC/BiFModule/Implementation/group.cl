@@ -2657,35 +2657,23 @@ DEFN_UNIFORM_GROUP_FUNC(LogicalXorKHR, bool, Int, i1, __intel_xor, 0)
     }                                                                                                \
 }
 
-#define DEFN_SUB_GROUP_CLUSTERED_REDUCE(type, type_abbr, op, identity, X, ClusterSize, signed_cast)         \
-{                                                                                                           \
-    uint clusterIndex = 0;                                                                                  \
-    uint activeChannels = __builtin_IB_WaveBallot(true);                                                    \
-    uint numActive = SPIRV_OCL_BUILTIN(popcount, _i32, )(as_int(activeChannels));                           \
-                                                                                                            \
-    if(numActive < ClusterSize)                                                                             \
-      ClusterSize = numActive;                                                                              \
-                                                                                                            \
-    uint numClusters = numActive / ClusterSize;                                                             \
-                                                                                                            \
-    for (uint clusterIndex = 0; clusterIndex < numClusters; clusterIndex++)                                 \
-    {                                                                                                       \
-        uint Counter = ClusterSize;                                                                         \
-        uint Ballot = activeChannels;                                                                       \
-        uint clusterBallot = 0;                                                                             \
-        while (Counter--)                                                                                   \
-        {                                                                                                   \
-            uint trailingOne = 1 << SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int(Ballot));                         \
-            clusterBallot |= trailingOne;                                                                   \
-            Ballot ^= trailingOne;                                                                          \
-        }                                                                                                   \
-        uint active = SPIRV_BUILTIN(GroupNonUniformInverseBallot, _i32_v4i32, )(Subgroup, clusterBallot);   \
-        if (active)                                                                                         \
-        {                                                                                                   \
-            DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X, signed_cast)                \
-        }                                                                                                   \
-        activeChannels ^= clusterBallot;                                                                    \
-    }                                                                                                       \
+#define DEFN_SUB_GROUP_CLUSTERED_REDUCE(type, type_abbr, op, identity, X, ClusterSize, signed_cast)       \
+{                                                                                                         \
+    uint activeChannels = __builtin_IB_WaveBallot(true);                                                  \
+    while (activeChannels != 0)                                                                           \
+    {                                                                                                     \
+        uint clusterBallot = activeChannels;                                                              \
+        for (uint Counter = 0; Counter < ClusterSize; Counter++)                                          \
+        {                                                                                                 \
+            activeChannels &= activeChannels - 1;                                                         \
+        }                                                                                                 \
+        clusterBallot ^= activeChannels;                                                                  \
+        uint active = SPIRV_BUILTIN(GroupNonUniformInverseBallot, _i32_v4i32, )(Subgroup, clusterBallot); \
+        if (active)                                                                                       \
+        {                                                                                                 \
+            DEFN_SUB_GROUP_REDUCE_NON_UNIFORM(type, type_abbr, op, identity, X, signed_cast)              \
+        }                                                                                                 \
+    }                                                                                                     \
 }
 
 #define SUB_GROUP_SWITCH_NON_UNIFORM(type, type_abbr, op, identity, X, Operation, ClusterSize, signed_cast) \
