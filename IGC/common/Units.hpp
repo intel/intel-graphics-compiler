@@ -143,9 +143,9 @@ public:
     /// When adding two object of different units, we want to return a new
     /// object representing the sum that has the type of the smaller argument unit.
     /// For example, if we have
-    /// Unit<ByteUnit> a;
+    /// Unit<ByteUnitDescriptor> a;
     /// Unit<WordUnit> b;
-    /// then a + b and b + a should have type Unit<ByteUnit> since only then
+    /// then a + b and b + a should have type Unit<ByteUnitDescriptor> since only then
     /// all values can be represented when converting between units.
     /// To achieve this variability of the return type, enable_if is employed
     /// in the two template methods below. Thanks to SFINAE, one of them will be
