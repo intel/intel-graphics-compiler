@@ -251,6 +251,10 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
         if (isEntryFunc(pMdUtils, pFunc))
             continue;
 
+        // An internally-linked function that eventually gets inlined doesn't need this transformation
+        if (pFunc->hasFnAttribute(llvm::Attribute::AlwaysInline) && pFunc->hasInternalLinkage())
+            continue;
+
         if (pFunc->getName().empty())
         {
             // Empty function names can cause funny behavior later on
