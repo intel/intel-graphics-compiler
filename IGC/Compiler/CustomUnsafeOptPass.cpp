@@ -2515,6 +2515,8 @@ private:
         ArrayRef<Instruction*> Values,
         const DenseSet<const Value*>& FoldedVals);
     static unsigned int shortPathToOutput(Value* inst, unsigned int limit);
+    static Instruction* FindLastFoldedValue(const DenseSet<const Value*>& FoldedVals,
+        BasicBlock* currentBB);
 
     CodeGenContext* m_ctx;
     unsigned int m_ShaderLength;
@@ -3451,7 +3453,7 @@ DenseSet<const Value*> EarlyOutPatterns::tryAndFoldValues(ArrayRef<Instruction*>
     {
         for (auto UI : inst->users())
         {
-            if (auto * useInst = dyn_cast<Instruction>(UI))
+            if (auto* useInst = dyn_cast<Instruction>(UI))
             {
                 if (useInst->getParent() == inst->getParent())
                 {
@@ -3477,35 +3479,38 @@ DenseSet<const Value*> EarlyOutPatterns::tryAndFoldValues(ArrayRef<Instruction*>
     return FoldedVals;
 }
 
+Instruction* EarlyOutPatterns::FindLastFoldedValue(const DenseSet<const Value*>& FoldedVals, BasicBlock* currentBB)
+{
+    // traverse the block backwards and find the last folded value
+    for (BasicBlock::reverse_iterator re = currentBB->rbegin(), ri = currentBB->rend(); re != ri; ++re)
+    {
+        if (FoldedVals.count(&(*re)))
+        {
+            re--;
+            return &*re;
+        }
+    }
+    // default to return the last instruction in the block
+    return &*(currentBB->rbegin());
+}
+
 // return the new block where the code after inst was moved
 BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<const Value*>& FoldedVals)
 {
     IRBuilder<> builder(inst->getContext());
     BasicBlock* currentBB = inst->getParent();
-    BasicBlock* endifBlock = BasicBlock::Create(inst->getContext(), VALUE_NAME("EO_endif"), currentBB->getParent(), currentBB->getNextNode());
-    BasicBlock* elseBlock = BasicBlock::Create(inst->getContext(), VALUE_NAME("EO_else"), currentBB->getParent(), currentBB->getNextNode());
-
+    Instruction* lastFoldedInst = FindLastFoldedValue(FoldedVals, currentBB);
+    BasicBlock* elseBlock = currentBB->splitBasicBlock(inst->getNextNode(), "EO_else");
+    currentBB->getTerminator()->eraseFromParent();
+    BasicBlock* endifBlock = elseBlock->splitBasicBlock(lastFoldedInst->getIterator(), "EO_endif");
     currentBB->replaceSuccessorsPhiUsesWith(endifBlock);
 
-    // copy the end of the block to the else part
-    elseBlock->getInstList().splice(elseBlock->begin(),
-        currentBB->getInstList(),
-        inst->getNextNode()->getIterator(),
-        currentBB->getTerminator()->getIterator());
-    endifBlock->getInstList().splice(endifBlock->begin(), currentBB->getInstList(), currentBB->getTerminator());
-    if (isa<ReturnInst>(endifBlock->getTerminator()))
-    {
-        MoveOutputToConvergeBlock(elseBlock, endifBlock);
-    }
-    builder.SetInsertPoint(elseBlock);
-    builder.CreateBr(endifBlock);
     // split the blocks
     ValueToValueMapTy VMap;
 
-    // TODO: Create if block only for affected instructions
     BasicBlock* ifBlock = CloneBasicBlock(elseBlock, VMap);
     ifBlock->setName(VALUE_NAME("EO_IF"));
-    currentBB->getParent()->getBasicBlockList().insertAfter(currentBB->getIterator(), ifBlock);
+    currentBB->getParent()->getBasicBlockList().insert(endifBlock->getIterator(), ifBlock);
     for (auto II = ifBlock->begin(), IE = ifBlock->end(); II != IE; ++II)
     {
         for (unsigned op = 0, E = II->getNumOperands(); op != E; ++op)
@@ -3547,11 +3552,9 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
             VMap[it]->replaceAllUsesWith(ConstantFP::get(it->getType(), 0.0));
         }
     }
-
     // branching
     builder.SetInsertPoint(currentBB);
     builder.CreateCondBr(inst, ifBlock, elseBlock);
-
     return elseBlock;
 }
 
