@@ -14111,22 +14111,6 @@ void Optimizer::applyNoMaskWA()
 
         // I0: (W&flagVar) mov  (1|M0)  r10.0<1>:f WATemp:f
         const RegionDesc* regionSave = builder.createRegionDesc(I->getExecSize(), HS, 1, 0);
-#if 0
-        if (I->getExecSize() == g4::SIMD1) {
-            regionSave = ScalarReg;
-        }
-        else {
-            switch (HS)
-            {
-            case 1: regionSave = builder.getRegionStride1(); break;
-            case 2: regionSave = builder.getRegionStride2(); break;
-            case 4: regionSave = builder.getRegionStride4(); break;
-            default:
-                assert(false && "ICE: unsupported dst horz stride!");
-            }
-        }
-#endif
-
         auto nextII = std::next(aII);
         G4_SrcRegRegion* I0_src0 = builder.createSrc(WATempVar, 0, 0, regionSave, dst->getType());
         G4_INST* I0 = builder.createMov(I->getExecSize(), dst, I0_src0, InstOpt_WriteEnable, false);
@@ -14406,15 +14390,12 @@ void Optimizer::applyNoMaskWA()
             if (isCandidate(I))
             {
                 waInsts.push_back(II);
-            }
 
-            if ((I->getExecSize() + I->getMaskOffset()) > 16)
-            {
-                WATy = Type_UD;
-            }
-            if (UseAnyh)
-            {
-                if (I->getExecSize() > Simdsize || I->getMaskOffset() != 0)
+                if ((I->getExecSize() + I->getMaskOffset()) > 16)
+                {
+                    WATy = Type_UD;
+                }
+                if (UseAnyh && (I->getExecSize() > Simdsize || I->getMaskOffset() != 0))
                 {
                     UseAnyh = false;
                 }
