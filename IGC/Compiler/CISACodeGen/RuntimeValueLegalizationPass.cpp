@@ -112,6 +112,10 @@ static bool GetAllRuntimeValueCalls(
                             }
                         }
                     }
+                    else if (intr->getType()->getPrimitiveSizeInBits() == 64)
+                    {
+                        runtimeValueCalls.insert(std::make_pair(std::make_pair(offset, offset + 1), intr));
+                    }
                     else
                     {
                         runtimeValueCalls.insert(std::make_pair(std::make_pair(offset, offset), intr));
@@ -123,11 +127,14 @@ static bool GetAllRuntimeValueCalls(
     return legalizationCheckNeeded;
 }
 
-////////////////////////////////////////////////////////////////////////////
-// @brief Creates a set of accessed RuntimeValue offsets (no duplicates).
-static void GetAccessedOffsets(
-    RuntimeValueCollection& runtimeValueCalls,
-    std::set<uint32_t>& accessedOffsetsSet)
+////////////////////////////////////////////////////////////////////////////////
+// @brief Creates a vector of accessed RuntimeValue offset ranges. Returned
+// ranges cannot overlap and must either not cross GRF boundaries or start
+// at GRF boundary.
+static void GetDisjointRegions(
+    std::vector<std::pair<uint32_t, uint32_t>>& disjointRegions,
+    const RuntimeValueCollection& runtimeValueCalls,
+    const uint32_t dataGRFAlignmentInDwords)
 {
     // Since input collection is already sorted according to offset
     // and number of elements of RuntimeValue, it's enough to process
@@ -137,46 +144,56 @@ static void GetAccessedOffsets(
     // ->{ {6, 6},  RuntimeValue* }
     // ->{ {8, 19}, RuntimeValue* }
     //   { {8, 8},  RuntimeValue* }
-    int prevOffset = -1;
     for (auto it : runtimeValueCalls)
     {
-        std::pair<uint32_t, uint32_t> offsets = it.first;
-        if (offsets.first != prevOffset)
+        std::pair<uint32_t, uint32_t> range = it.first;
+        if (disjointRegions.empty() ||
+            range.first > disjointRegions.back().second)
         {
-            for (uint32_t i = offsets.first; i <= offsets.second; i++)
+            disjointRegions.push_back(range);
+        }
+        else if (range.first != disjointRegions.back().first &&
+            range.second > disjointRegions.back().second)
+        {
+            disjointRegions.back().second = range.second;
+        }
+
+        // Lambda checks if a range of offsets accessed as a vector is correctly
+        // aligned:
+        // - vector must be GRF aligned if it's size is larger than or equal to
+        //   a single GRF.
+        // - vector must fit in one GRF if its size is less than a single GRF
+        //   (it can not cross GRF boundary).
+        auto IsUnaligned = [dataGRFAlignmentInDwords](
+            const std::pair<uint32_t, uint32_t>& range)
+        {
+            const uint64_t alignedRegionOffset =
+                llvm::alignTo(range.first, dataGRFAlignmentInDwords);
+            if (range.first != alignedRegionOffset &&
+                range.second >= alignedRegionOffset)
             {
-                accessedOffsetsSet.insert(i);
+                return true;
             }
-            prevOffset = offsets.first;
-        }
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////
-// @brief Creates a vector of disjoint offsets regions based on offsets set
-static void GetDisjointRegions(
-    std::set<uint32_t>& offsetsSet,
-    std::vector<std::pair<uint32_t, uint32_t>>& disjointRegions)
-{
-    std::vector<uint32_t> offsets(offsetsSet.begin(), offsetsSet.end());
-    std::size_t numOffsets = offsets.size();
-    IGC_ASSERT(numOffsets > 0);
-
-    uint32_t numElementsInRange = 1;
-    for (std::size_t i = 1; i <= numOffsets; i++)
-    {
-        if ((i == numOffsets) || (offsets[i] - offsets[i - 1] != 1))
+            return false;
+        };
+        while (IsUnaligned(disjointRegions.back()))
         {
-            uint32_t beginIdx = offsets[i - numElementsInRange];
-            uint32_t endIdx = offsets[i - 1];
-            disjointRegions.push_back(std::make_pair(beginIdx, endIdx));
-
-            // Reset range element counter
-            numElementsInRange = 1;
-        }
-        else
-        {
-            numElementsInRange++;
+            auto current = disjointRegions.back();
+            // Align to GRF boundary
+            current.first = int_cast<uint32_t>(llvm::alignDown(current.first, dataGRFAlignmentInDwords));
+            // Check for overlapping regions already in the vector
+            while (!disjointRegions.empty() &&
+                disjointRegions.back().second >= current.first)
+            {
+                IGC_ASSERT(disjointRegions.back().second <= current.second);
+                if (disjointRegions.back().first < current.first)
+                {
+                    IGC_ASSERT(!IsUnaligned(disjointRegions.back()));
+                    current.first = disjointRegions.back().first;
+                }
+                disjointRegions.pop_back();
+            }
+            disjointRegions.push_back(current);
         }
     }
 }
@@ -187,60 +204,16 @@ static void GetDisjointRegions(
 // for example: {0, {0, 2}}, {1, {0, 2}}, {4, {4, 1}}
 // Resulting ranges are disjoint and each spans the biggest continuous range of offsets.
 static void GetAccessedRegions(
-    RuntimeValueCollection& runtimeValueCalls,
     std::map<uint32_t, std::pair<uint32_t, uint32_t>>& accessedRegions,
-    uint32_t dataGRFAlignmentInDwords)
+    const RuntimeValueCollection& runtimeValueCalls,
+    const uint32_t dataGRFAlignmentInDwords)
 {
-    // Create a set of accessed offsets without duplicates
-    std::set<uint32_t> accessedOffsetsSet;
-    GetAccessedOffsets(runtimeValueCalls, accessedOffsetsSet);
-
     // Get disjoint offsets regions
     std::vector<std::pair<uint32_t, uint32_t>> disjointRegions;
-    GetDisjointRegions(accessedOffsetsSet, disjointRegions);
-
-    // Make sure regions are GRF aligned.
-    // Region must be GRF aligned if it's size is larger than or equal to one GRF.
-    // Region must fit in one GRF if its size is less than one GRF(it can not cross GRF boundary).
-    bool regionsChanged = false;
-    accessedOffsetsSet.clear();
-    std::size_t disjointRegionsNum = disjointRegions.size();
-    for (std::size_t i = 0; i < disjointRegionsNum; i++)
-    {
-        uint32_t beginIdx = disjointRegions[i].first;
-        uint32_t endIdx = disjointRegions[i].second;
-        if (beginIdx != endIdx)
-        {
-            const uint32_t alignedRegionOffset =
-                int_cast<uint32_t>(llvm::alignTo(beginIdx, dataGRFAlignmentInDwords));
-            // Offset can be already aligned to GRF boundary
-            if (beginIdx != alignedRegionOffset)
-            {
-                // Check if region crosses GRF boundary
-                if (endIdx >= alignedRegionOffset)
-                {
-                    // Align to GRF by changing region's start offset
-                    beginIdx = int_cast<uint32_t>(llvm::alignDown(beginIdx, dataGRFAlignmentInDwords));
-                    regionsChanged = true;
-                }
-            }
-        }
-
-        for (uint32_t idx = beginIdx; idx <= endIdx; idx++)
-        {
-            accessedOffsetsSet.insert(idx);
-        }
-    }
-
-    if (regionsChanged)
-    {
-        // Since regions have changed, get disjoint offsets regions again
-        disjointRegions.clear();
-        GetDisjointRegions(accessedOffsetsSet, disjointRegions);
-    }
+    GetDisjointRegions(disjointRegions, runtimeValueCalls, dataGRFAlignmentInDwords);
 
     // Create final map of disjoint RuntimeValue regions
-    disjointRegionsNum = disjointRegions.size();
+    std::size_t disjointRegionsNum = disjointRegions.size();
     for (std::size_t i = 0; i < disjointRegionsNum; i++)
     {
         uint32_t beginIdx = disjointRegions[i].first;
@@ -310,7 +283,7 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
         // {offset { enclosing_region_start_offset, enclosing_region_size }}
         // for example: {0, {0, 2}}, {1, {0, 2}}, {4, {4, 1}}
         std::map<uint32_t, std::pair<uint32_t, uint32_t>> accessedRegions;
-        GetAccessedRegions(runtimeValueCalls, accessedRegions, dataGRFAlignmentInDwords);
+        GetAccessedRegions(accessedRegions, runtimeValueCalls, dataGRFAlignmentInDwords);
 
         // Loop through all RuntimeValue calls
         for (auto it : runtimeValueCalls)
@@ -322,7 +295,8 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
 
             uint32_t resolvedOffset = int_cast<uint32_t>(
                 cast<ConstantInt>(callToResolve->getArgOperand(0))->getZExtValue());
-            uint32_t resolvedSize = fixedVectorTy ? int_cast<uint32_t>(fixedVectorTy->getNumElements()) : 1;
+            uint32_t resolvedSize = fixedVectorTy ?
+                int_cast<uint32_t>(fixedVectorTy->getNumElements()) : (callToResolve->getType()->getPrimitiveSizeInBits() / 32);
 
             // Find corresponding region
             auto regionIter = accessedRegions.find(resolvedOffset);
@@ -336,6 +310,13 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
                 llvm::IRBuilder<> builder(callToResolve);
 
                 llvm::Type* resolvedBaseType = fixedVectorTy ? fixedVectorTy->getElementType() : callToResolve->getType();
+                IGC_ASSERT(regionSize > 1);
+                bool is64bit = resolvedBaseType->getPrimitiveSizeInBits() == 64;
+                if (is64bit)
+                {
+                    IGC_ASSERT(fixedVectorTy == nullptr);
+                    resolvedBaseType = builder.getInt32Ty();
+                }
                 llvm::Type* vectorType = IGCLLVM::FixedVectorType::get(resolvedBaseType, regionSize);
                 Function* runtimeValueFunc = GenISAIntrinsic::getDeclaration(&module,
                     GenISAIntrinsic::GenISA_RuntimeValue,
@@ -344,9 +325,10 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
                 // Create new RuntimeValue call
                 Value* newValue = builder.CreateCall(runtimeValueFunc, builder.getInt32(regionOffset));
 
+                IGC_ASSERT(resolvedOffset >= regionOffset);
                 uint32_t eeOffset = resolvedOffset - regionOffset;
 
-                if (fixedVectorTy)
+                if (fixedVectorTy || is64bit)
                 {
                     // RuntimeValue calls representing vectors of scalars are rewritten due to offset/size change.
                     // Thus related instructions should be adjusted too.
@@ -370,13 +352,17 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
                             llvm::ExtractElementInst* EEI = llvm::cast<llvm::ExtractElementInst>(user);
                             builder.SetInsertPoint(EEI);
                             EEI->setOperand(0, newValue);
-                            EEI->setOperand(1, builder.CreateAdd(EEI->getIndexOperand(), builder.getInt32(eeOffset)));
+                            if (eeOffset > 0)
+                            {
+                                EEI->setOperand(1, builder.CreateAdd(EEI->getIndexOperand(), builder.getInt32(eeOffset)));
+                            }
                         }
                     }
                     else
                     {
                         // Repack the vector and replace all uses with new one
-                        llvm::Value* repackedVectorVal = llvm::UndefValue::get(fixedVectorTy);
+                        llvm::Value* repackedVectorVal = llvm::UndefValue::get(
+                            (is64bit ? IGCLLVM::FixedVectorType::get(resolvedBaseType, 2) : fixedVectorTy));
                         for (unsigned i = 0; i < resolvedSize; i++)
                         {
                             repackedVectorVal = builder.CreateInsertElement(
@@ -384,7 +370,8 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
                                 builder.CreateExtractElement(newValue, builder.getInt32(eeOffset + i)),
                                 builder.getInt32(i));
                         }
-                        callToResolve->replaceAllUsesWith(repackedVectorVal);
+                        callToResolve->replaceAllUsesWith(
+                            builder.CreateBitCast(repackedVectorVal, callToResolve->getType()));
                     }
                 }
                 else
