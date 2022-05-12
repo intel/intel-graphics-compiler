@@ -5067,7 +5067,15 @@ namespace IGC
             SSource source;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                pass->Mov(source, modifier);
+                const bool isSimd32Dispatch = (pass->m_currShader->m_dispatchSize == SIMDMode::SIMD32);
+                if (isSimd32Dispatch && pass->m_currShader->m_numberInstance == 2)
+                {
+                    pass->emitCrossInstanceMov(source, modifier);
+                }
+                else
+                {
+                    pass->Mov(source, modifier);
+                }
             }
         };
 

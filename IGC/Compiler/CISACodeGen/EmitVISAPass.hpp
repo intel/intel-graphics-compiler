@@ -218,6 +218,7 @@ public:
     void emitPatchInstanceId(llvm::Instruction* inst);
     void emitSimdSize(llvm::Instruction* inst);
     void emitSimdShuffle(llvm::Instruction* inst);
+    void emitCrossInstanceMov(const SSource& source, const DstModifier& modifier);
     void emitSimdShuffleDown(llvm::Instruction* inst);
     void emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal = nullptr);
     void emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal = nullptr);

@@ -5609,6 +5609,72 @@ void EmitPass::emitSimdSize(llvm::Instruction* inst)
     //m_encoder->Push();
 }
 
+void EmitPass::emitCrossInstanceMov(const SSource& source, const DstModifier& modifier)
+{
+    IGC_ASSERT(m_currShader->m_numberInstance == 2);
+    IGC_ASSERT(m_currShader->m_dispatchSize == SIMDMode::SIMD32);
+    IGC_ASSERT_MESSAGE(!m_encoder->IsSecondHalf(), "This emitter must be called only once for simd32!");
+
+    CVariable* data = GetSymbol(source.value);
+
+    CVariable* contiguousData = nullptr;
+    CVariable* upperHalfOfContiguousData = nullptr;
+
+    const uint16_t numElements = data->GetNumberElement();
+    IGC_ASSERT(numElements == 16);
+    const VISA_Type dataType = data->GetType();
+
+    // Create a 32 element variable and copy both instances of data into it.
+    contiguousData = m_currShader->GetNewVariable(
+        numElements * 2,
+        dataType,
+        data->GetAlign(),
+        "CrossInstMovTmp");
+
+    upperHalfOfContiguousData = m_currShader->GetNewAlias(
+        contiguousData,
+        dataType,
+        numElements * m_encoder->GetCISADataTypeSize(dataType),
+        numElements);
+
+    IGC_ASSERT(contiguousData);
+    IGC_ASSERT(upperHalfOfContiguousData);
+
+    m_encoder->SetSecondHalf(false);
+    m_encoder->Copy(contiguousData, data);
+    m_encoder->Push();
+
+    m_encoder->SetSecondHalf(true);
+    m_encoder->Copy(upperHalfOfContiguousData, data);
+    m_encoder->Push();
+
+    m_encoder->SetSecondHalf(false);
+
+    // Copy from cross instance data
+    bool isSecondHalf = false;
+    for (uint32_t i = 0; i < m_currShader->m_numberInstance; i++)
+    {
+        if (isSecondHalf)
+        {
+            m_encoder->SetSecondHalf(true);
+        }
+
+        // Emit mov
+        m_encoder->SetSrcSubReg(0, source.elementOffset + numElements * i);
+        m_encoder->SetSrcRegion(0, source.region[0], source.region[1], source.region[2]);
+        m_encoder->SetDstModifier(modifier);
+        m_encoder->Copy(m_destination, contiguousData);
+        m_encoder->Push();
+
+        if (isSecondHalf)
+        {
+            m_encoder->SetSecondHalf(false);
+        }
+
+        isSecondHalf = !isSecondHalf;
+    }
+}
+
 /// Emits VISA instructions for SIMD_SHUFFLE.
 void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
 {
