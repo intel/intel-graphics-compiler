@@ -435,7 +435,23 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
-        bool generateIf = !this->getOption(vISA_PredicatedFdivSqrt);
+        bool generateIf;
+        bool doFastDiv = (opcode == ISA_DIV);
+        switch (this->getuint32Option(vISA_PredicatedFdivSqrt))
+        {
+        case 0:  // force if-endif
+            generateIf = true;
+            break;
+        case 1:  // force predicated
+            generateIf = false;
+            break;
+        case 2:  // visa selects
+        default: // other value as default (2)
+            // Using predicated for fast div
+            generateIf = !doFastDiv;
+            break;
+        }
+
         if (generateIf)
         {
             // if
@@ -457,6 +473,86 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
                 inst = createIf(predicateFlagReg, exsize, instOpt);
             }
         }
+
+        // fast version
+        if (doFastDiv)
+        {
+
+            G4_Predicate *predicateFlagReg_m1 = NULL;
+            G4_Predicate *predicateFlagReg_m2 = NULL;
+            G4_Predicate *predicateFlagReg_m3 = NULL;
+            G4_Predicate *predicateFlagReg_m4 = NULL;
+            G4_Predicate *predicateFlagReg_m5 = NULL;
+
+            if (!generateIf)
+            {
+                predicateFlagReg_m1 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m2 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m3 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m4 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m5 = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            }
+            // initial quotient approximation
+            // q = a * y;
+            // madm (4) r9.acc3 r0.noacc r6.noacc r8.acc2 {Align16, N1/N2}
+            G4_SrcRegRegion *t0SrcOpnd0 = createSrcRegRegion(tsrc0);
+            t9DstOpnd0->setAccRegSel(ACC3);
+            t0SrcOpnd0->setAccRegSel(NOACC);
+            t6SrcOpnd1->setAccRegSel(NOACC);
+            t8SrcOpnd0x0->setAccRegSel(ACC2);
+            inst = createMadm(predicateFlagReg_m1, exsize,
+                t9DstOpnd0, t0SrcOpnd0,
+                t6SrcOpnd1, t8SrcOpnd0x0, madmInstOpt);
+
+            // relative error:  eps = 1 -b*y
+            // DP_FMA is the double precision FMA instruction
+            // madm (4) r10.acc4 r1.noacc -r7.noacc r8.acc2 {Align16, N1/N2}
+            G4_SrcRegRegion *t1SrcOpnd0 = createSrcRegRegion(tsrc1);
+            t10DstOpnd0->setAccRegSel(ACC4);
+            t1SrcOpnd0->setAccRegSel(NOACC);
+            t7SrcOpndNeg0->setAccRegSel(NOACC);
+            t8SrcOpnd0x1->setAccRegSel(ACC2);
+            inst = createMadm(predicateFlagReg_m2, exsize,
+                t10DstOpnd0, t1SrcOpnd0,
+                t7SrcOpndNeg0, t8SrcOpnd0x1, madmInstOpt);
+
+            // refine approximation
+            // eps = DP_FMA(eps, eps, eps);
+            // madm (4) r11.acc5 r10.acc4 r10.acc4 r10.acc4 {Align16, N1/N2}
+            t11DstOpnd0->setAccRegSel(ACC5);
+            t10SrcOpnd0->setAccRegSel(ACC4);
+            inst = createMadm(predicateFlagReg_m3, exsize,
+                t11DstOpnd0, t10SrcOpnd0,
+                t10SrcOpnd0, t10SrcOpnd0, madmInstOpt);
+
+            // q*eps (extended exponent is important for accuracy in all cases)
+            // q_e = q * eps;
+            // madm (4) r12.acc6 r0.noacc r9.acc3 r11.acc5 {Align16, N1/N2}
+            G4_SrcRegRegion *t0SrcOpnd1 = createSrcRegRegion(tsrc0);
+            t12DstOpnd0->setAccRegSel(ACC6);
+            t0SrcOpnd1->setAccRegSel(NOACC);
+            t9SrcOpnd0x0->setAccRegSel(ACC3);
+            t11SrcOpnd0->setAccRegSel(ACC5);
+            inst = createMadm(predicateFlagReg_m4, exsize,
+                t12DstOpnd0, t0SrcOpnd1,
+                t9SrcOpnd0x0, t11SrcOpnd0, madmInstOpt);
+
+            // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
+            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+
+            // Final step:  inputs (other than a) are in extended exponent format
+            // Output is in regular format (nomme)
+            // res = a*y + q_e
+            // madm (4) r8.noacc r12.acc6 r6.noacc r8.acc2 {Align16, N1/N2}
+            t8DstOpnd2->setAccRegSel(NOACC);
+            t12SrcOpnd0x0->setAccRegSel(ACC6);
+            t6SrcOpnd2->setAccRegSel(NOACC);
+            t8SrcOpnd0x2->setAccRegSel(ACC2);
+            inst = createMadm(predicateFlagReg_m5, exsize,
+                t8DstOpnd2, t12SrcOpnd0x0,
+                t6SrcOpnd2, t8SrcOpnd0x2, madmInstOpt);
+        }
+        else
         {
             G4_Predicate* predicateFlagReg_m1 = NULL;
             G4_Predicate* predicateFlagReg_m2 = NULL;
@@ -627,7 +723,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     G4_InstOpts madmInstOpt = Get_Gen4_Emask(emask, exsize); // only used in the loop
     const RegionDesc *srcRegionDesc = getRegionStride1();
 
-    bool generateIf = !this->getOption(vISA_PredicatedFdivSqrt);
+    bool generateIf = (this->getuint32Option(vISA_PredicatedFdivSqrt) != 1);
 
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_1 = createImm(float(1.0));
@@ -962,7 +1058,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     G4_Declare* tmpFlag = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
-    bool generateIf = !this->getOption(vISA_PredicatedFdivSqrt);
+    bool generateIf = (this->getuint32Option(vISA_PredicatedFdivSqrt) != 1);
 
     // temp registers
     G4_Declare *t6  = createTempVarWithNoSpill(element_size, Type_F, Any);
@@ -1254,6 +1350,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_SrcRegRegion *src2 = nullptr;
     G4_SrcRegRegion *neg_src1 = nullptr;
 
+
+    // If enableInterleaveMacro option is on, then do not split here. Later InstSplitPass
     {
         if (instExecSize > exsize)
         {
@@ -1277,7 +1375,22 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_Declare *flagReg = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
-    bool generateIf = !this->getOption(vISA_PredicatedFdivSqrt);
+    bool generateIf;
+    bool doFastSqrt = (opcode == ISA_SQRT);
+    switch (this->getuint32Option(vISA_PredicatedFdivSqrt))
+    {
+    case 0:  // force if-endif
+        generateIf = true;
+        break;
+    case 1:  // force predicated
+        generateIf = false;
+        break;
+    case 2:  // visa selects
+    default: // other value treated as 2 (default)
+        // Using predicated for fast sqrt
+        generateIf = !doFastSqrt;
+        break;
+    }
 
 
     // temp registers
@@ -1397,6 +1510,136 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             }
         }
 
+        if (doFastSqrt)
+        {
+
+            G4_Predicate *predicateFlagReg_m1 = NULL;
+            G4_Predicate *predicateFlagReg_m2 = NULL;
+            G4_Predicate *predicateFlagReg_m3 = NULL;
+            G4_Predicate *predicateFlagReg_m4 = NULL;
+            G4_Predicate *predicateFlagReg_m5 = NULL;
+            G4_Predicate *predicateFlagReg_m6 = NULL;
+
+            if (!generateIf)
+            {
+                predicateFlagReg_m1 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m2 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m3 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m4 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m5 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                predicateFlagReg_m6 = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+            }
+
+            //S0 = a * y;
+            // madm (4) r11.acc4 r0.noacc r6.noacc r7.acc2 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst11); dst0->setAccRegSel(ACC4);
+            src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
+            if (IsSrc0Moved)
+            {
+                src1 = createSrcRegRegion(tsrc6);
+            }
+            else
+            {
+                src1 = createSrcRegRegion(fsrc0);
+            }
+            src1->setAccRegSel(NOACC);
+            src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
+            inst = createMadm(
+                predicateFlagReg_m1, exsize,
+                dst0, src0, src1, src2, madmInstOpt);
+
+            // -0.5*y
+            // H0 = -0.5*y;
+            // madm (4) r9.acc3 r0.noacc r2(r8).noacc r7.acc2 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst9); dst0->setAccRegSel(ACC3);
+            src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(csrc2); src1->setAccRegSel(NOACC);
+            src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
+            G4_SrcRegRegion neg_srcRegion(
+                *this,
+                Mod_Minus,
+                src1->getRegAccess(),
+                src1->getBase(),
+                src1->getRegOff(),
+                src1->getSubRegOff(),
+                src1->getRegion(),
+                src1->getType());
+            neg_src1 = createSrcRegRegion(neg_srcRegion);
+            neg_src1->setAccRegSel(src1->getAccRegSel());
+            inst = createMadm(
+                predicateFlagReg_m2, exsize,
+                dst0, src0, neg_src1, src2, madmInstOpt);
+
+            // relative error; use double precision FMA
+            // eps = DP_FMA(H0, S0, 0.5);
+            // eps = 0.5 + H0*S0
+            // madm (4) r10.acc5 r2(r8).noacc -r11.acc4 r9.acc3 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst10); dst0->setAccRegSel(ACC5);
+            src0 = createSrcRegRegion(csrc2); src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(tsrc11); src1->setAccRegSel(ACC4);
+            src2 = createSrcRegRegion(tsrc9); src2->setAccRegSel(ACC3);
+            inst = createMadm(
+                predicateFlagReg_m3, exsize,
+                dst0, src0, src1, src2, madmInstOpt);
+
+            // refine approximation to ~46 bits
+            //S1 = DP_FMA(S0, eps, S0);
+            // madm (4) r7.acc8 r11.acc4 r10.acc5 r11.acc4 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC8);
+            src0 = createSrcRegRegion(tsrc11); src0->setAccRegSel(ACC4);
+            src1 = createSrcRegRegion(tsrc10); src1->setAccRegSel(ACC5);
+            src2 = createSrcRegRegion(tsrc11); src2->setAccRegSel(ACC4);
+            inst = createMadm(
+                predicateFlagReg_m4, exsize,
+                dst0, src0, src1, src2, madmInstOpt);
+
+            // error term:  S1^2 - a
+            // D = DP_FMA(S1, S1, -a);
+            // madm (4) r8.acc7 -r6.noacc r7.acc8 r7.acc8 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC7);
+            if (IsSrc0Moved)
+            {
+                src0 = createSrcRegRegion(tsrc6);
+            }
+            else
+            {
+                src0 = createSrcRegRegion(fsrc0);
+            }
+            src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(tsrc7); src1->setAccRegSel(ACC8);
+            src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC8);
+            G4_SrcRegRegion neg_srcRegion0(
+                *this,
+                Mod_Minus,
+                src0->getRegAccess(),
+                src0->getBase(),
+                src0->getRegOff(),
+                src0->getSubRegOff(),
+                src0->getRegion(),
+                src0->getType());
+
+            G4_SrcRegRegion *neg_src0 = createSrcRegRegion(neg_srcRegion0);
+            neg_src0->setAccRegSel(src1->getAccRegSel());
+            inst = createMadm(
+                predicateFlagReg_m5, exsize,
+                dst0, neg_src0, src1, src2, madmInstOpt);
+
+            // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
+            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+
+            // final result:  S1 + D*H0
+            // This result is computed and stored to regular double precision format (nomme)
+            // y = DP_FMA(D, H0, S1);
+            // madm (4) r7.noacc r7.acc8 r9.acc3 r8.acc7 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(NOACC);
+            src0 = createSrcRegRegion(tsrc7); src0->setAccRegSel(ACC8);
+            src1 = createSrcRegRegion(tsrc9); src1->setAccRegSel(ACC3);
+            src2 = createSrcRegRegion(tsrc8); src2->setAccRegSel(ACC7);
+            inst = createMadm(
+                predicateFlagReg_m6, exsize,
+                dst0, src0, src1, src2, madmInstOpt);
+        }
+        else
         {
             G4_Predicate* predicateFlagReg_m1 = NULL;
             G4_Predicate* predicateFlagReg_m2 = NULL;
