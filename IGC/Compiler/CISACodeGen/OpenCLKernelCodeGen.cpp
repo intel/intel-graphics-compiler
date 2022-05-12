@@ -2447,6 +2447,7 @@ namespace IGC
 
     void CodeGen(OpenCLProgramContext* ctx)
     {
+#ifndef DX_ONLY_IGC
         // Do program-wide code generation.
         // Currently, this just creates the program-scope patch stream.
         if (ctx->m_retryManager.IsFirstTry())
@@ -2543,6 +2544,7 @@ namespace IGC
         // The skip set to avoid retry is not needed. Clear it and collect a new set
         // during retry compilation.
         ctx->m_retryManager.kernelSkip.clear();
+#endif // ifndef DX_ONLY_IGC
     }
 
     bool COpenCLKernel::hasReadWriteImage(llvm::Function& F)
