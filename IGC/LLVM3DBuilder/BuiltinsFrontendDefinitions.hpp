@@ -4933,4 +4933,18 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateCPSActualCo
 
 
 
+template<bool preserveNames, typename T, typename Inserter>
+inline llvm::GenIntrinsicInst* LLVM3DBuilder<preserveNames, T, Inserter>::CreateLaunder(
+    llvm::Value* pSrcVal)
+{
+    llvm::Module* module = this->GetInsertBlock()->getModule();
+    llvm::Function*  pFunc = llvm::GenISAIntrinsic::getDeclaration(
+        module,
+        llvm::GenISAIntrinsic::GenISA_launder,
+        pSrcVal->getType());
+    auto* CI = this->CreateCall(
+        pFunc, pSrcVal, VALUE_NAME(pSrcVal->getName() + llvm::Twine(".launder")));
+    return llvm::cast<llvm::GenIntrinsicInst>(CI);
+}
+
 #endif // BUILTINS_FRONTEND_DEFINITIONS_HPP

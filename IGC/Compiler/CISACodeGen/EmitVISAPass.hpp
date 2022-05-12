@@ -599,6 +599,7 @@ public:
     void emitLifetimeStartAtEndOfBB(llvm::BasicBlock* BB);
     void emitDebugPlaceholder(llvm::GenIntrinsicInst* I);
     void emitDummyInst(llvm::GenIntrinsicInst* GII);
+    void emitLaunder(llvm::GenIntrinsicInst* GII);
     void emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I);
     void emitStoreImplBufferPtr(llvm::GenIntrinsicInst* I);
     void emitStoreLocalIdBufferPtr(llvm::GenIntrinsicInst* I);

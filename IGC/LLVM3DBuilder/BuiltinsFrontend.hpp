@@ -27,6 +27,10 @@ SPDX-License-Identifier: MIT
 #include "../../../skuwa/iacm_g11_rev_id.h"
 #include "../../../skuwa/iacm_g12_rev_id.h"
 
+namespace llvm {
+    class GenIntrinsicInst;
+}
+
 struct genplatform
 {
 private:
@@ -797,6 +801,8 @@ public:
     llvm::Value* ScalarsToVector(
         llvm::Value* (&scalars)[4],
         unsigned vectorElementCnt);
+
+    llvm::GenIntrinsicInst* CreateLaunder(llvm::Value* V);
 
 private:
 

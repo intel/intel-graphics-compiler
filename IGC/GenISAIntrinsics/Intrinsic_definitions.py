@@ -846,6 +846,11 @@ Imported_Intrinsics = \
     [("anyint",                        "thread ID")],
     "None"]],
 ####################################################################################################
+"GenISA_launder": ["Prevent the compiler from seeing where result comes from.",
+    [("anyint",                        "return the argument"),
+    [(0,                               "value to be laundered")],
+    "NoMem"]],
+####################################################################################################
 "GenISA_dwordatomicstructured": ["",
     [("int",                           ""),
     [("anyptr",                        "Dst Buffer"),

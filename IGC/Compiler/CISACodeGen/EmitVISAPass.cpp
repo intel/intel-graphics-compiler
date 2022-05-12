@@ -10126,6 +10126,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_dummyInstID:
         break;  // pseudo instruction, do nothing
+    case GenISAIntrinsic::GenISA_launder:
+        emitLaunder(inst);
+        break;
     case GenISAIntrinsic::GenISA_vectorUniform:
         break;  // pseudo instruction, do nothing
     case GenISAIntrinsic::GenISA_staticConstantPatchValue:
@@ -20945,6 +20948,12 @@ void EmitPass::emitDummyInst(llvm::GenIntrinsicInst* GII)
     CVariable* dst = m_currShader->GetNULL();
     CVariable* src = m_currShader->GetR0();
     m_encoder->Copy(dst, src);
+    m_encoder->Push();
+}
+void EmitPass::emitLaunder(GenIntrinsicInst* GII)
+{
+    CVariable* src = GetSymbol(GII->getArgOperand(0));
+    m_encoder->Copy(m_destination, src);
     m_encoder->Push();
 }
 
