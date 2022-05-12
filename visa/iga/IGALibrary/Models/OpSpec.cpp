@@ -66,7 +66,7 @@ bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const
 
 
 bool OpSpec::implicitDstTypeVal(Type &type) const {
-    if (isSendFamily() && platform >= Platform::GEN8) {
+  if (isSendFamily() && platform >= Platform::GEN8) {
         type = Type::UD;
         if (platform >= Platform::XE) {
             type = Type::UB;
@@ -144,9 +144,7 @@ Region OpSpec::implicitSrcRegion(
         } else {
             return Region::SRC1X0;
         }
-        // return &Region::INVALID;
-    }
-    else {
+    } else {
         if (platform >= Platform::XE && isBranching())
             return Region::SRC110;
 
@@ -267,7 +265,7 @@ bool OpSpec::implicitSrcTypeVal(
     bool isImmOrLbl,
     Type& type) const
 {
-    // TODO: pull from BXML data (ideally somehow in the syntax)
+  // TODO: pull from BXML data (ideally somehow in the syntax)
     if (isTypedBranch()) {
         // branches no longer take types in XE
         if (platform >= Platform::XE) {

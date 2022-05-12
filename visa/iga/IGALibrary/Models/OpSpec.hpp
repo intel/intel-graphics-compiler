@@ -249,7 +249,9 @@ namespace iga
             return implicitDstTypeVal(type);
         }
         Type implicitDstType() const {
-            Type type; (void)implicitDstTypeVal(type); return type;
+            Type type = Type::INVALID;
+            (void)implicitDstTypeVal(type);
+            return type;
         }
         bool implicitDstTypeVal(Type &type) const;
 
@@ -360,12 +362,12 @@ namespace iga
         // An "implicit source type" is a type that should be omitted in syntax
         // if present, we simply warn the user (it can still mismatch the default)
         bool hasImplicitSrcType(int srcOpIx, bool immOrLbl) const {
-            Type type;
+            Type type = Type::INVALID;
             return implicitSrcTypeVal(srcOpIx, immOrLbl, type);
         }
 
         Type implicitSrcType(int srcOpIx, bool immOrLbl) const {
-            Type type;
+            Type type = Type::INVALID;
             (void)implicitSrcTypeVal(srcOpIx, immOrLbl, type);
             return type;
         }

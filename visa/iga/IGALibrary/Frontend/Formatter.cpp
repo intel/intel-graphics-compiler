@@ -59,6 +59,7 @@ protected:
     ansi_esc ANSI_COMMENT;
 
     void formatDstOp(const Instruction &i);
+
     void formatSrcOp(SourceIndex ix, const Instruction &i);
     void formatSyncAllSrc0(const Instruction &i);
     void formatBareRegisterUnescaped(RegName regName, int regNum);
@@ -1022,6 +1023,18 @@ void Formatter::formatDstOp(const Instruction &i)
     finishColumn();
 }
 
+static bool sendSrc1NeedsLengthSuffix(const Formatter &f, const Instruction &i)
+{
+    // If Src1.Length is not encoded in the ExDesc (but rather in EU ISA)
+    // then we need to emit Src1.Length somewhere else.  We've chosen
+    // to the suffix the source register.
+    //   e.g. r1:4
+    // This holds for XeHP with ExBSO
+    // and for imm descs in XeHPG+ as well
+    auto exDesc = i.getExtMsgDescriptor();
+    return i.hasInstOpt(InstOpt::EXBSO) || // includes the XeHPG+ imm cases
+        (exDesc.isImm() && f.platform() >= Platform::XE_HPG);
+}
 
 void Formatter::formatSrcOp(
     SourceIndex srcIx,
@@ -1034,30 +1047,14 @@ void Formatter::formatSrcOp(
 
     switch (src.getKind()) {
     case Operand::Kind::DIRECT: {
-        // If Src1.Length is not encoded in the ExDesc (but rather in EU ISA)
-        // then we need to emit Src1.Length somewhere else.  We've chosen
-        // to the suffix the source register.
-        //   e.g. r1:4
-        // This holds for XeHP with ExBSO
-        // and for imm descs in XeHPG+ as well
-        auto exDesc = i.getExtMsgDescriptor();
-        const bool isSendSrc1 = srcIx == SourceIndex::SRC1 &&
-            os.isSendOrSendsFamily();
-        auto src1NeedsLenSuffix =
-            isSendSrc1 && i.hasInstOpt(InstOpt::EXBSO);
-        src1NeedsLenSuffix |= // includes the XeHPG+ imm cases
-            isSendSrc1 &&
-            exDesc.isImm() &&
-            platform() >= Platform::XE_HPG;
-        //
-        if (src1NeedsLenSuffix) {
-            formatSendSrcWithLength(
-                src,
-                i.getSrc1Length());
+        if (os.isSendOrSendsFamily() &&
+            srcIx == SourceIndex::SRC1 &&
+            sendSrc1NeedsLengthSuffix(*this, i))
+        {
+            formatSendSrcWithLength(src, i.getSrc1Length());
             break;
         }
-        bool hasSubreg =
-            os.hasSrcSubregister(static_cast<int>(srcIx), i.isMacro());
+        bool hasSubreg = os.hasSrcSubregister(int(srcIx), i.isMacro());
         bool isSimt =
             i.getExecSize() > ExecSize::SIMD1 &&
                 (src.getRegion() != Region::SRC110 ||

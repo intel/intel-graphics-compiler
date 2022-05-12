@@ -195,6 +195,9 @@ typedef kv_t* (CDECLATTRIBUTE * pIGAKVCreate)(
     char *errbuf,
     size_t errbuf_cap,
     /* iga::SWSB_ENCODE_MODE */ uint32_t swsb_mode);
+#define IGA_KV_DELETE_STR "kv_delete"
+typedef void(CDECLATTRIBUTE *pIGAKVDelete)(kv_t *);
+
 #define IGA_KV_GET_INST_SIZE_STR "kv_get_inst_size"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetInstSize)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_INST_TARGETS_STR "kv_get_inst_targets"
@@ -234,8 +237,6 @@ typedef uint32_t(CDECLATTRIBUTE * pIGAKVGetSendIndirectDescs)(
     uint8_t *ex_desc_subreg,
     uint8_t *desc_reg,
     uint8_t *desc_subreg);
-#define IGA_KV_DELETE_STR "kv_delete"
-typedef void(CDECLATTRIBUTE *pIGAKVDelete)(kv_t *);
 
 /************************* KV Analysis APIS **********************************/
 
@@ -371,54 +372,54 @@ IGA_API iga_status_t  iga_get_interface(iga_functions_t *);
 /* A table of all kernel viewer functions */
 typedef struct
 {
-    pIGAKVCreate               kv_create;
-    pIGAKVDelete               kv_delete;
-    pIGAKVGetInstSize          kv_get_inst_size;
-    pIGAKVGetInstTargets       kv_get_inst_targets;
-    pIGAKVIsInstTarget         kv_is_inst_target;
-    pIGAKVGetDefaultLabelName  kv_get_default_label_name;
-    pIGAKVGetInstSyntax        kv_get_inst_syntax;
-    pIGAKVGetOpgroup           kv_get_opgroup;
-    pIGAKVGetSendDescs         kv_get_send_descs;
-    pIGAKVGetSendIndirectDescs kv_get_send_indirect_descs;
-    pIGAKVGetSendExBso         kv_get_send_exbso;
-    pIGAKVGetExecutionSize     kv_get_execution_size;
-    pIGAKVGetNumberSources     kv_get_number_sources;
-    pIGAKVGetOpcode            kv_get_opcode;
-    pIGAKVGetSubfunction       kv_get_subfunction;
-    pIGAKVGetHasDestination    kv_get_has_destination;
-    pIGAKVGetDstRegister       kv_get_destination_register;
-    pIGAKVGetDstSubRegister    kv_get_destination_sub_register;
-    pIGAKVGetDstDataType       kv_get_destination_data_type;
-    pIGAKVGetDstRegisterType   kv_get_destination_register_type;
-    pIGAKVGetDstRegisterKind   kv_get_destination_register_kind;
-    pIGAKVGetSrcRegister       kv_get_source_register;
-    pIGAKVGetSrcSubRegister    kv_get_source_sub_register;
-    pIGAKVGetSrcDataType       kv_get_source_data_type;
-    pIGAKVGetSrcRegisterType   kv_get_source_register_type;
-    pIGAKVGetSrcRegisterKind   kv_get_source_register_kind;
-    pIGAKVGetIsSrcVector       kv_is_source_vector;
-    pIGAKVGetChannelOffset     kv_get_channel_offset;
-    pIGAKVGetMaskControl       kv_get_mask_control;
-    pIGAKVGetMessageType       kv_get_message_type;
-    pIGAKVGetMessageSFID       kv_get_message_sfid;
-    pIGAKVGetMessageLen        kv_get_message_len;
-    pIGAKVGetDstRegion         kv_get_destination_region;
-    pIGAKVGetSrcRegion         kv_get_source_region;
-    pIGAKVGetSrcImmediate      kv_get_source_immediate;
-    pIGAKVGetFlagModifier      kv_get_flag_modifier;
-    pIGAKVGetSrcModifier       kv_get_source_modifier;
-    pIGAKVGetDstModifier       kv_get_destination_modifier;
-    pIGAKVGetFlagReg           kv_get_flag_reg;
-    pIGAKVGetFlagSubReg        kv_get_flag_subreg;
-    pIGAKVGetPredicate         kv_get_predicate;
-    pIGAKVGetIsInversePred     kv_get_inverse_predicate;
-    pIGAKVGetSWSBInfo          kv_get_swsb_info;
-    pIGAKVHasInstOpt           kv_has_inst_opt;
-    pIGAKVGetSrcIndirectImmOff kv_get_source_indirect_imm_off;
-    pIGAKVGetDstIndirectImmOff kv_get_destination_indirect_imm_off;
-    pIGAKVGetSrcMMENumber      kv_get_source_mme_number;
-    pIGAKVGetDstMMENumber      kv_get_destination_mme_number;
+    pIGAKVCreate                 kv_create;
+    pIGAKVDelete                 kv_delete;
+    pIGAKVGetInstSize            kv_get_inst_size;
+    pIGAKVGetInstTargets         kv_get_inst_targets;
+    pIGAKVIsInstTarget           kv_is_inst_target;
+    pIGAKVGetDefaultLabelName    kv_get_default_label_name;
+    pIGAKVGetInstSyntax          kv_get_inst_syntax;
+    pIGAKVGetOpgroup             kv_get_opgroup;
+    pIGAKVGetSendDescs           kv_get_send_descs;
+    pIGAKVGetSendIndirectDescs   kv_get_send_indirect_descs;
+    pIGAKVGetSendExBso           kv_get_send_exbso;
+    pIGAKVGetExecutionSize       kv_get_execution_size;
+    pIGAKVGetNumberSources       kv_get_number_sources;
+    pIGAKVGetOpcode              kv_get_opcode;
+    pIGAKVGetSubfunction         kv_get_subfunction;
+    pIGAKVGetHasDestination      kv_get_has_destination;
+    pIGAKVGetDstRegister         kv_get_destination_register;
+    pIGAKVGetDstSubRegister      kv_get_destination_sub_register;
+    pIGAKVGetDstDataType         kv_get_destination_data_type;
+    pIGAKVGetDstRegisterType     kv_get_destination_register_type;
+    pIGAKVGetDstRegisterKind     kv_get_destination_register_kind;
+    pIGAKVGetSrcRegister         kv_get_source_register;
+    pIGAKVGetSrcSubRegister      kv_get_source_sub_register;
+    pIGAKVGetSrcDataType         kv_get_source_data_type;
+    pIGAKVGetSrcRegisterType     kv_get_source_register_type;
+    pIGAKVGetSrcRegisterKind     kv_get_source_register_kind;
+    pIGAKVGetIsSrcVector         kv_is_source_vector;
+    pIGAKVGetChannelOffset       kv_get_channel_offset;
+    pIGAKVGetMaskControl         kv_get_mask_control;
+    pIGAKVGetMessageType         kv_get_message_type;
+    pIGAKVGetMessageSFID         kv_get_message_sfid;
+    pIGAKVGetMessageLen          kv_get_message_len;
+    pIGAKVGetDstRegion           kv_get_destination_region;
+    pIGAKVGetSrcRegion           kv_get_source_region;
+    pIGAKVGetSrcImmediate        kv_get_source_immediate;
+    pIGAKVGetFlagModifier        kv_get_flag_modifier;
+    pIGAKVGetSrcModifier         kv_get_source_modifier;
+    pIGAKVGetDstModifier         kv_get_destination_modifier;
+    pIGAKVGetFlagReg             kv_get_flag_reg;
+    pIGAKVGetFlagSubReg          kv_get_flag_subreg;
+    pIGAKVGetPredicate           kv_get_predicate;
+    pIGAKVGetIsInversePred       kv_get_inverse_predicate;
+    pIGAKVGetSWSBInfo            kv_get_swsb_info;
+    pIGAKVHasInstOpt             kv_has_inst_opt;
+    pIGAKVGetSrcIndirectImmOff   kv_get_source_indirect_imm_off;
+    pIGAKVGetDstIndirectImmOff   kv_get_destination_indirect_imm_off;
+    pIGAKVGetSrcMMENumber        kv_get_source_mme_number;
+    pIGAKVGetDstMMENumber        kv_get_destination_mme_number;
 } kv_functions_t;
 
 #endif // _IGAD_H_

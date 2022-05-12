@@ -43,24 +43,24 @@ extern "C"  {
 /* incomplete type for a kernel view handle */
 struct kv_t;
 
-/* Kernel viewer statuses */
+/* Kernel Viewer API Statuses */
 typedef enum {
-    KV_SUCCESS          = 0,
-    KV_ERROR            = 1, /* general error */
-    KV_DECODE_ERROR     = 2, /*
-                              * error during initial decode of the kernel
-                              * always check KernelView::decodeSucceeded.
-                              */
-    KV_INVALID_PC       = 3,  /* invalid instruction PC */
+    KV_SUCCESS                = 0,
+    KV_ERROR                  = 1, /* general error (unlisted below) */
+    KV_DECODE_ERROR           = 2, /*
+                                    * error during initial decode of the kernel
+                                    * always check KernelView::decodeSucceeded.
+                                    */
+    KV_INVALID_PC             = 3,  /* invalid instruction PC */
 
-    KV_INVALID_ARGUMENT = 10, /* an invalid argument passed in */
+    KV_INVALID_ARGUMENT       = 10, /* an invalid argument passed in (e.g. nullptr) */
 
     KV_NON_SEND_INSTRUCTION   = 20, /* underlying inst isn't a send */
     KV_DESCRIPTOR_INDIRECT    = 21, /* a send message with a reg desc */
     KV_DESCRIPTOR_INVALID     = 22, /* an unrecognized send descriptor */
     KV_NO_SUBFUNCTION         = 23, /* underlying inst has no sub-function */
 
-    KV_INCAPABLE_PLATFORM     = 30  /* the called-api is incapable on the platform*/
+    KV_INCAPABLE_PLATFORM     = 30  /* invalid API for the given platform */
 } kv_status_t;
 
 /*
@@ -213,6 +213,7 @@ IGA_API uint32_t kv_get_send_descs(
     uint32_t *desc);
 
 
+
 /*
  * Returns the indirect descriptor registers for a send message.
  * The function fails silently if the PC is invalid or a nullptr is passed.
@@ -228,22 +229,24 @@ IGA_API void kv_get_send_indirect_descs(
     uint8_t *desc_subreg);
 
 /*
-* Determines if the given send instruction is on ExBSO mode.
-* exbso = 1 if true, 0 if fales.
-* exbso = -1 if not success.
-* exbso mode is introduces since XeHP.
-*
-* RETURNS:
-*  KV_SUCCESS               on success
-*  KV_NON_SEND_INSTRUCTION  if called on a non-send instruction
-*  KV_INVALID_PC            if passed an invalid PC
-*  KV_INVALID_ARGUMENT      if given a null parameter
-*  KV_INCAPABLE_PLATFORM    if it's not XeHP+ platform
-*/
+ * Determines if the given send instruction is on ExBSO mode.
+ * exbso = 1 if true, 0 if fales.
+ * exbso = -1 if not success.
+ * exbso mode is introduces since XeHP.
+ *
+ * RETURNS:
+ *  KV_SUCCESS               on success
+ *  KV_NON_SEND_INSTRUCTION  if called on a non-send instruction
+ *  KV_INVALID_PC            if passed an invalid PC
+ *  KV_INVALID_ARGUMENT      if given a null parameter
+ *  KV_INCAPABLE_PLATFORM    if it's not XeHP+ platform
+ */
 IGA_API kv_status_t kv_get_send_exbso(
     const kv_t *kv,
     int32_t pc,
     int32_t *exbso);
+
+
 
 /*
  * A symbol to indicate an invalid send descriptor value.

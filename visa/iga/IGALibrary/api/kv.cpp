@@ -380,23 +380,21 @@ void kv_get_send_indirect_descs(
         *ex_desc_reg = *ex_desc_subreg = *desc_reg = *desc_subreg = KV_INVALID_REG;
         return;
     }
-
     if (inst->getExtMsgDescriptor().isReg()) {
         *ex_desc_reg = (uint8_t)inst->getExtMsgDescriptor().reg.regNum;
         *ex_desc_subreg = (uint8_t)inst->getExtMsgDescriptor().reg.subRegNum;
-    }
-    else {
+    } else {
         *ex_desc_reg = *ex_desc_subreg = KV_INVALID_REG;
     }
 
     if (inst->getMsgDescriptor().isReg()) {
         *desc_reg = (uint8_t)inst->getMsgDescriptor().reg.regNum;
         *desc_subreg = (uint8_t)inst->getMsgDescriptor().reg.subRegNum;
-    }
-    else {
+    } else {
         *desc_reg = *desc_subreg = KV_INVALID_REG;
     }
 }
+
 
 
 /******************** KernelView analysis APIs *******************************/
@@ -460,8 +458,7 @@ kv_status_t kv_get_message_type(
         return kv_status_t::KV_DESCRIPTOR_INDIRECT;
 
     Platform p = ((KernelViewImpl *)kv)->m_model.platform;
-    SFMessageType msgType =
-        getMessageType(p, inst->getSendFc(), desc.imm);
+    SFMessageType msgType = getMessageType(p, inst->getSendFc(), desc.imm);
     *message_type_enum = static_cast<int32_t>(msgType);
 
     if (msgType == SFMessageType::INVALID)
@@ -509,12 +506,14 @@ kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc, int32_t *sfid_enum)
         return kv_status_t::KV_NON_SEND_INSTRUCTION;
     }
 
-    const auto exDesc = inst->getExtMsgDescriptor();
-
     Platform p = ((KernelViewImpl*)kv)->m_model.platform;
-    // <TGL: SFID is ExDesc[3:0]; if it's in a0, we're sunk
-    if (exDesc.isReg() && p < Platform::XE)
-        return kv_status_t::KV_DESCRIPTOR_INDIRECT;
+    if (p < Platform::XE) {
+      const auto exDesc = inst->getExtMsgDescriptor();
+
+      // <TGL: SFID is ExDesc[3:0]; if it's in a0, we're sunk
+      if (exDesc.isReg() && p < Platform::XE)
+          return kv_status_t::KV_DESCRIPTOR_INDIRECT;
+    }
 
     SFID sfid = inst->getSendFc();
     *sfid_enum = static_cast<int32_t>(sfid);

@@ -21,7 +21,7 @@ namespace iga {
 
 static inline std::string MakeErrorString(const char *pfx, int t) {
     std::stringstream ss;
-    ss << pfx << "::" << t << "?";
+    ss << pfx << "::" << fmtHex((uint32_t)t, 8) << "?";
     return ss.str();
 }
 
