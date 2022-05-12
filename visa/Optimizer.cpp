@@ -13699,81 +13699,26 @@ void Optimizer::applyNoMaskWA()
         //   true:  if "O" is flag and has assigned a physical flag. This physical reg
         //          is returned as (freg, fsreg):ty.
         //   false: otherwise
-        //
-        // Note this code mimics the logic of printRegVarOff() in G4_IR.cpp.
-        //
-        // For pred/condMod, "ty" is the actual size that this "O" accesses,
-        // not the decl size of "O". For example,
-        //    cmp  (16|M16)  (eq)f0.0  ...
-        // this func returns with f(0,0):UW, but "O" is of UD!
         static bool getFlagRegAndSubreg(G4_Operand* O, uint32_t& freg, uint32_t& fsreg, G4_Type& ty)
         {
-            // flag:
-            //        reg no = base's ExRegNum()
-            //     subregoff = base's subregoff + Operand's subregoff  (in UW)
-            //
-            // Type difference b/w base and operand is not considered here for flag as
-            // the base's type is always UW. Operand's type can be UW/UD. If operand's type is UD,
-            // its subregoff in UD must be 0, which is the same as one in UW. Therefore, simply
-            // treat operand's subRegOff as in UW.
-            uint32_t nSubFlag = (O->getRightBound() - O->getLeftBound() + 16) / 16;
-            uint32_t subregoff = 0;
-            if (O->isSrcRegRegion())
-            {
-                subregoff = O->asSrcRegRegion()->getSubRegOff();
-            }
-            else if (O->isDstRegRegion())
-            {
-                subregoff = O->asDstRegRegion()->getSubRegOff();
-            }
-            else if (O->isPredicate())
-            {
-                subregoff = O->asPredicate()->getSubRegOff();
-            }
-            else if (O->isCondMod())
-            {
-                subregoff = O->asCondMod()->getSubRegOff();
-            }
-
             G4_VarBase* BVar = O->getBase();
-            ty = (nSubFlag == 1 ? Type_UW : Type_UD);
+            uint32_t nelts = (O->getRightBound() - O->getLeftBound() + 16) / 16;
+            ty = (nelts == 1 ? Type_UW : Type_UD);
             bool isValid = false;
             if (BVar)
             {
                 freg = BVar->ExRegNum(isValid);
-                fsreg = BVar->asRegVar()->getPhyRegOff() + subregoff;
+                fsreg = BVar->asRegVar()->getPhyRegOff();
             }
             return isValid;
         }
 
     private:
-        uint16_t getFlagBits(G4_Operand* O)
-        {
+        uint16_t getFlagBits(G4_Operand* O) {
             uint32_t r, sr;
             G4_Type t;
             if (getFlagRegAndSubreg(O, r, sr, t))
             {
-                // For the following cases, getFlagRegAndSubreg() returns with r=1, sr=0, ty=UW.
-                // But they really access f1.1. Thus, do adjustment to get the right flag bits!
-                //          cmp (16|M16) (eq)f1.0 ...
-                //   (f1.0) mov (16|M16) ....
-                if ((O->isPredicate() || O->isCondMod()) && t == Type_UW)
-                {
-                    // sanity check: subreg could be 1 only if rightBound < 16
-                    assert(sr == 0 || O->getRightBound() < 16);
-
-                    if (O->getLeftBound() >= 16)
-                    {
-                        // typical cases like ones in comments above
-                        sr = 1;
-                    }
-                    else if (O->getRightBound() >= 16)
-                    {
-                        // cross two sub-flags (f1.0 and f1.1). Reset t to UD
-                        t = Type_UD;
-                    }
-                }
-
                 uint16_t bits = (t == Type_UD ? 0x3 : 0x1);
                 return (bits << (r * 2 + sr));
             }
