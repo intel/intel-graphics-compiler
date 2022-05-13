@@ -1412,7 +1412,7 @@ template <typename T> void write(std::vector<unsigned char> &vec, T data) {
 }
 
 void write(std::vector<unsigned char> &vec, const unsigned char *data,
-           uint8_t N) {
+           unsigned int N) {
   for (unsigned int i = 0; i != N; i++)
     vec.push_back(*(data + i));
 }
