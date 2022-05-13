@@ -63,6 +63,9 @@ DEFINE_TIME_STAT(             TIME_VISA_RPE,                     "VISA Reg Press
 DEFINE_TIME_STAT(           TIME_VISA_Unaccounted,               "VISA Total Unaccounted",                 TIME_VISA_TOTAL,                    false,         true,           false,          true )
 DEFINE_TIME_STAT(         TIME_vISACompile_Unaccounted,          "vISACompile Unaccounted",                TIME_CG_vISACompile,                false,         true,           false,          true )
 DEFINE_TIME_STAT(      TIME_CG_Unaccounted,                      "CodeGen Unaccounted",                    TIME_CodeGen,                       false,         true,           false,          true )
+DEFINE_TIME_STAT(    TIME_RT_SETUP,                              "Raytracing Setup Total",                 TIME_TOTAL,                         false,         false,          true,           true )
+DEFINE_TIME_STAT(      TIME_RT_LINKING,                          "Raytracing Linking",                     TIME_RT_SETUP,                      false,         false,          true,           true )
+DEFINE_TIME_STAT(      TIME_RT_PASSES,                           "Raytracing Passes",                      TIME_RT_SETUP,                      false,         false,          true,           true )
 DEFINE_TIME_STAT(    TIME_TOTAL_Unaccounted,                     "Total Unaccounted",                      TIME_TOTAL,                         false,         true,           false,          true )
 
 // This must be the last one in the list

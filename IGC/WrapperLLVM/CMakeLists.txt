@@ -34,7 +34,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Value.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/InstrTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/InstVisitor.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Constant.h"	
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Constant.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/LegacyPassManagers.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Module.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/PatternMatch.h"
@@ -47,6 +47,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/Cloning.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/LoopUtils.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/Local.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/ValueMapper.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils.h"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/include/lldWrapper/Common/Driver.h"

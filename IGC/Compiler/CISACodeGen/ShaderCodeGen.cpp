@@ -480,6 +480,11 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(createCalculateLocalIDsPass());
     }
 
+    if (ctx.type == ShaderType::RAYTRACING_SHADER)
+    {
+        mpm.add(createLowerGlobalRootSignaturePass());
+    }
+
     if (ctx.type == ShaderType::PIXEL_SHADER)
     {
         mpm.add(new DiscardLowering());
@@ -735,6 +740,31 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         {
             mpm.add(new ImplicitGIDRestoring());
         }
+    }
+
+    if (ctx.type == ShaderType::RAYTRACING_SHADER)
+    {
+        if (IGC_IS_FLAG_ENABLED(EnableStackIDReleaseScheduling))
+            mpm.add(createStackIDSchedulingPass());
+        // This will help eliminate some redundant loads in some cases. Need
+        // to run this before create ldraw*/storeraw* intrinsics for raytracing
+        // memory.
+        mpm.add(createEarlyCSEPass());
+        if (IGC_IS_FLAG_DISABLED(DisableRTMemDSE))
+            mpm.add(createRayTracingMemDSEPass());
+        // Convert load/store to ldraw*/storeraw*
+        mpm.add(createRaytracingStatefulPass());
+        if (IGC_IS_FLAG_DISABLED(DisableRayTracingConstantCoalescing))
+        {
+            // block load RTGlobals
+            mpm.add(createRayTracingConstantCoalescingPass());
+        }
+        // lift raygen shader global and local pointer to inline data access.
+        mpm.add(CreateBindlessInlineDataPass());
+    }
+    else if (ctx.hasSyncRTCalls())
+    {
+        mpm.add(createRaytracingStatefulPass());
     }
 
     if (ctx.type == ShaderType::OPENCL_SHADER &&

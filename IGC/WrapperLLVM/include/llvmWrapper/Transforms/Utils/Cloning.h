@@ -40,11 +40,14 @@ namespace IGCLLVM
                        llvm::ClonedCodeInfo *CodeInfo = nullptr,
                        llvm::ValueMapTypeRemapper *TypeMapper = nullptr,
                        llvm::ValueMaterializer *Materializer = nullptr)
-   {
-       llvm::CloneFunctionChangeType Changes = ModuleLevelChanges ? llvm::CloneFunctionChangeType::DifferentModule : llvm::CloneFunctionChangeType::LocalChang\
-esOnly;
-       llvm::CloneFunctionInto(NewFunc, OldFunc, VMap, Changes, Returns, NameSuffix, CodeInfo, TypeMapper, Materializer);
-   }
+    {
+        // TODO: True/false ModuleLevelChanges may not exactly map to GlobalChanges & DifferentModule
+        llvm::CloneFunctionChangeType Changes = ModuleLevelChanges ?
+            llvm::CloneFunctionChangeType::DifferentModule :
+            llvm::CloneFunctionChangeType::GlobalChanges;
+
+        llvm::CloneFunctionInto(NewFunc, OldFunc, VMap, Changes, Returns, NameSuffix, CodeInfo, TypeMapper, Materializer);
+    }
 #else
     using llvm::CloneFunctionInto;
 #endif
