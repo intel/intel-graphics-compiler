@@ -4246,6 +4246,9 @@ namespace IGC
 
                 else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
                     SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
+
+                else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 2);
             }
         }
 
@@ -5440,9 +5443,12 @@ namespace IGC
     bool CEncoder::AvoidRetryOnSmallSpill() const
     {
         CodeGenContext* context = m_program->GetContext();
-        return context->type == ShaderType::PIXEL_SHADER &&
-            (m_program->m_dispatchSize == SIMDMode::SIMD8 || m_program->m_dispatchSize == SIMDMode::SIMD16) &&
+        if (context->type == ShaderType::PIXEL_SHADER)
+            return (m_program->m_dispatchSize == SIMDMode::SIMD8 || m_program->m_dispatchSize == SIMDMode::SIMD16) &&
             context->m_retryManager.IsFirstTry();
+        else if(context->type == ShaderType::OPENCL_SHADER)
+            return context->m_retryManager.IsFirstTry();
+        return false;
     }
 
     void CEncoder::CreateLocalSymbol(const std::string& kernelName, vISA::GenSymType type,
