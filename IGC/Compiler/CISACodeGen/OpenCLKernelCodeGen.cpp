@@ -2028,11 +2028,15 @@ namespace IGC
 
     bool COpenCLKernel::passNOSInlineData()
     {
+        if (IGC_GET_FLAG_VALUE(EnablePassInlineData) == -1) {
+            return false;
+        }
+        const bool forceEnablePassInlineData = (IGC_GET_FLAG_VALUE(EnablePassInlineData) == 1);
         bool passInlineData = false;
         const bool loadThreadPayload = m_Platform->supportLoadThreadPayloadForCompute();
         const bool inlineDataSupportEnabled =
             (m_Platform->supportInlineDataOCL() &&
-            (m_DriverInfo->UseInlineData() || IGC_IS_FLAG_ENABLED(EnablePassInlineData)));
+            (m_DriverInfo->UseInlineData() || forceEnablePassInlineData));
         if (loadThreadPayload &&
             inlineDataSupportEnabled)
         {

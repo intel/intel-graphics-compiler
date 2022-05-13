@@ -86,7 +86,7 @@ DECLARE_IGC_REGKEY(bool, SetDefaultTileYWalk,           true,   "Use TileY walk 
 DECLARE_IGC_REGKEY(bool, ForceTileY,                    false,  "Force TileY mode on DG2", false)
 DECLARE_IGC_REGKEY(bool, EnableNewTileYCheck,           true,   "Enable new TileY check on DG2", false)
 DECLARE_IGC_REGKEY(bool, KeepTileYForFlattened,         false,  "Keep TileY for FlattenedThreadIdInGroup on DG2", false)
-DECLARE_IGC_REGKEY(bool, EnablePassInlineData,          false,  "Pass 1st GRF of cross-thread payload as inline data", true)
+DECLARE_IGC_REGKEY(DWORD,EnablePassInlineData,          0,      "1: Force pass 1st GRF of cross-thread payload as inline data; -1: Force disable passing inline data", true)
 DECLARE_IGC_REGKEY(DWORD,ScratchSpaceSizeReserved,      0,      "Reserved size of scratch space. XeHP and above only. Test only. Remove it once stabalized.", true)
 DECLARE_IGC_REGKEY(DWORD,ScratchSpaceSizeLimit,         0,      "Size limit of scratch space. XeHP and above only. Test only. Remove it once stabalized.", true)
 DECLARE_IGC_REGKEY(bool, EnablePromoteI8,               true,   "Enable promoting i8 (char) to i16 on all ALU insts that does support i8. It's only for XeHPC+ for now.", true)

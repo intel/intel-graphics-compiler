@@ -302,6 +302,10 @@ namespace IGC
     // memory and there is inline data to pass.
     bool CComputeShader::passNOSInlineData()
     {
+        if (IGC_GET_FLAG_VALUE(EnablePassInlineData) == -1) {
+            return false;
+        }
+        const bool forceEnablePassInlineData = (IGC_GET_FLAG_VALUE(EnablePassInlineData) == 1);
         // Currently we cannot support InlineData in ZEBinary so always disable it
         auto modMD = static_cast<const ComputeShaderContext*>(GetContext())->getModuleMetaData();
         if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMD->compOpt.EnableZEBinary)
@@ -311,7 +315,7 @@ namespace IGC
         const bool hasConstants = pushInfo.constantReg.size() > 0 || modMD->MinNOSPushConstantSize > 0;
         const bool inlineDataSupportEnabled =
             (m_Platform->supportInlineData() &&
-            (m_DriverInfo->UseInlineData() || IGC_IS_FLAG_ENABLED(EnablePassInlineData)));
+            (m_DriverInfo->UseInlineData() || forceEnablePassInlineData));
 
         const bool passInlineData = inlineDataSupportEnabled && loadThreadPayload && hasConstants;
         return passInlineData;
