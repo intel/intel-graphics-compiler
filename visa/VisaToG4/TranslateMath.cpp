@@ -436,7 +436,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         inst->setCondMod(condModOverflow);
 
         bool generateIf;
-        bool doFastDiv = (opcode == ISA_DIV);
+        bool doFastDiv = (opcode == ISA_DIV || opcode == ISA_INV);
         switch (this->getuint32Option(vISA_PredicatedFdivSqrt))
         {
         case 0:  // force if-endif
