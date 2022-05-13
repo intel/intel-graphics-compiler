@@ -290,6 +290,29 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     // cr0.0 register
     G4_Declare* regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
 
+    bool generateIf;
+    bool doFastDiv = (opcode == ISA_DIV || opcode == ISA_INV);
+    switch (this->getuint32Option(vISA_PredicatedFdivSqrt))
+    {
+    case 0:  // force if-endif
+        generateIf = true;
+        break;
+    case 1:  // force predicated
+        generateIf = false;
+        break;
+    case 2:  // visa selects
+    default: // other value as default (2)
+        // Using predicated for fast div
+        generateIf = !doFastDiv;
+        break;
+    }
+
+    // For NoMask inst, force using predicated
+    if (isNoMask(emask))
+    {
+        generateIf = false;
+    }
+
     // each madm only handles 4 channel double data
     VISA_EMask_Ctrl currEMask = emask;
     uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_DF) * exsize + getGRFSize() - 1) / getGRFSize());
@@ -435,43 +458,11 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
-        bool generateIf;
-        bool doFastDiv = (opcode == ISA_DIV || opcode == ISA_INV);
-        switch (this->getuint32Option(vISA_PredicatedFdivSqrt))
-        {
-        case 0:  // force if-endif
-            generateIf = true;
-            break;
-        case 1:  // force predicated
-            generateIf = false;
-            break;
-        case 2:  // visa selects
-        default: // other value as default (2)
-            // Using predicated for fast div
-            generateIf = !doFastDiv;
-            break;
-        }
-
         if (generateIf)
         {
             // if
-            if (isNoMask(emask))
-            {
-                G4_Declare *tmpFlag2 = createTempFlag(2);
-                inst = createBinOp(G4_and, g4::SIMD1, createDstRegRegion(Direct, tmpFlag2->getRegVar(),
-                    0, 0, 1, Type_UD, ACC_UNDEFINED),
-                    createSrcRegRegion(tmpFlag, getRegionScalar()),
-                    createImm(0x1, Type_UD), InstOpt_WriteEnable, true);
-
-                G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag2->getRegVar(),
-                    0, predCtrlHasWidth() ? PRED_ANY32H : PRED_ANY_WHOLE);
-                inst = createIf(predicateFlagReg, G4_ExecSize(32), instOpt);
-            }
-            else
-            {
-                G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-                inst = createIf(predicateFlagReg, exsize, instOpt);
-            }
+            G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            inst = createIf(predicateFlagReg, exsize, instOpt);
         }
 
         // fast version
@@ -685,7 +676,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             }
 
             // endif (8) {Q1/Q2}
-            inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
+            inst = createEndif(exsize, instOpt);
         }
     }; //for loop
 
@@ -724,6 +715,10 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     const RegionDesc *srcRegionDesc = getRegionStride1();
 
     bool generateIf = (this->getuint32Option(vISA_PredicatedFdivSqrt) != 1);
+    if (isNoMask(emask))
+    {
+        generateIf = false;
+    }
 
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_1 = createImm(float(1.0));
@@ -911,19 +906,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
-        if (isNoMask(emask))
-        {
-            G4_Declare *tmpFlag2 = createTempFlag(2);
-            inst = createBinOp(G4_and, g4::SIMD1, createDstRegRegion(Direct, tmpFlag2->getRegVar(),
-                0, 0, 1, Type_UD, ACC_UNDEFINED),
-                createSrcRegRegion(tmpFlag, getRegionScalar()),
-                createImm(0x1, Type_UD), InstOpt_WriteEnable, true);
-
-            G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag2->getRegVar(),
-                0, predCtrlHasWidth() ? PRED_ANY32H : PRED_ANY_WHOLE);
-            inst = createIf(predicateFlagReg, G4_ExecSize(32), instOpt);
-        }
-        else
+        if (generateIf)
         {
             // (-f0.1) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
@@ -1001,17 +984,19 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
             t8DstOpnd1, t9SrcOpnd1x1,
             t6SrcOpnd4, t1SrcOpnd1, madmInstOpt);
 
-        if (!hasDefaultRoundDenorm)
+        if (generateIf)
         {
-            // else (8) {Q1/Q2}
-            createElse(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
+            if (!hasDefaultRoundDenorm)
+            {
+                // else (8) {Q1/Q2}
+                createElse(exsize, instOpt);
 
-            // restore Rounding Mode in CR
-            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                // restore Rounding Mode in CR
+                restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+            }
+            // endif (8) {Q1/Q2}
+            inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
         }
-
-        // endif (8) {Q1/Q2}
-        inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
     };
 
     // make final copy to dst
@@ -1059,6 +1044,10 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     bool generateIf = (this->getuint32Option(vISA_PredicatedFdivSqrt) != 1);
+    if (isNoMask(emask))
+    {
+        generateIf = false;
+    }
 
     // temp registers
     G4_Declare *t6  = createTempVarWithNoSpill(element_size, Type_F, Any);
@@ -1188,19 +1177,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
-        if (isNoMask(emask))
-        {
-            G4_Declare *tmpFlag2 = createTempFlag(2);
-            inst = createBinOp(G4_and, g4::SIMD1, createDstRegRegion(Direct, tmpFlag2->getRegVar(),
-                0, 0, 1, Type_UD, ACC_UNDEFINED),
-                createSrcRegRegion(tmpFlag, getRegionScalar()),
-                createImm(0x1, Type_UD), InstOpt_WriteEnable, true);
-
-            G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag2->getRegVar(),
-                0, predCtrlHasWidth() ? PRED_ANY32H : PRED_ANY_WHOLE);
-            inst = createIf(predicateFlagReg, G4_ExecSize(32), instOpt);
-        }
-        else
+        if (generateIf)
         {
             // (-f1.0) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_IF_LABEL__0 {Q1/Q2}
             G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
@@ -1304,17 +1281,20 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
             t7DstOpnd2, t7SrcOpnd3,
             t9SrcOpnd2, t10SrcOpnd2, madmInstOpt);
 
-        if (!hasDefaultRoundDenorm)
+        if (generateIf)
         {
-            // else (8) {Q1/Q2}
-            createElse(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
+            if (!hasDefaultRoundDenorm)
+            {
+                // else (8) {Q1/Q2}
+                createElse(exsize, instOpt);
 
-            // restore Rounding Mode in CR
-            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                // restore Rounding Mode in CR
+                restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+            }
+
+            // endif (exsize) {Q1/Q2}
+            inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
         }
-
-        // endif (exsize) {Q1/Q2}
-        inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
     };
 
     // make final copy to dst
@@ -1392,6 +1372,10 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         break;
     }
 
+    if (isNoMask(emask))
+    {
+        generateIf = false;
+    }
 
     // temp registers
     G4_Declare *t0 = getImmDcl(createDFImm(0.0), exsize);
@@ -1491,23 +1475,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         if (generateIf)
         {
             // if
-            if (isNoMask(emask))
-            {
-                G4_Declare* tmpFlag = createTempFlag(2);
-                inst = createBinOp(G4_and, g4::SIMD1, createDstRegRegion(Direct, tmpFlag->getRegVar(),
-                    0, 0, 1, Type_UD, ACC_UNDEFINED),
-                    createSrcRegRegion(flagReg, getRegionScalar()),
-                    createImm(0x1, Type_UD), InstOpt_WriteEnable, true);
-
-                G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(),
-                    0, predCtrlHasWidth() ? PRED_ANY32H : PRED_ANY_WHOLE);
-                inst = createIf(predicateFlagReg, G4_ExecSize(32), instOpt);
-            }
-            else
-            {
-                G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
-                inst = createIf(predicateFlagReg, exsize, instOpt);
-            }
+            G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+            inst = createIf(predicateFlagReg, exsize, instOpt);
         }
 
         if (doFastSqrt)
