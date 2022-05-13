@@ -669,43 +669,60 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     auto SelectFCtrl = IGC_GET_FLAG_VALUE(SelectiveFunctionControl);
     if (SelectFCtrl != FLAG_FCALL_DEFAULT)
     {
-        std::ifstream inputFile(IGC::Debug::GetFunctionDebugFile());
-        if (inputFile.is_open())
+        if (SelectFCtrl == FLAG_FCALL_DUMP_CALLABLE_FUNCTIONS)
         {
-            std::string line;
-            while (std::getline(inputFile, line))
+            // Dump all callable function names
+            std::ofstream outputFile(IGC::Debug::GetFunctionDebugFile());
+            if (outputFile.is_open())
             {
-                if (Function* F = M.getFunction(line))
+                for (auto& F : M)
                 {
-                    if (SelectFCtrl == FLAG_FCALL_FORCE_INLINE)
-                    {
-                        F->removeFnAttr("referenced-indirectly");
-                        F->removeFnAttr("visaStackCall");
-                        SetAlwaysInline(F);
-                    }
-                    else if (SelectFCtrl == FLAG_FCALL_FORCE_SUBROUTINE)
-                    {
-                        F->removeFnAttr("referenced-indirectly");
-                        F->removeFnAttr("visaStackCall");
-                        SetNoInline(F);
-                    }
-                    else if (SelectFCtrl == FLAG_FCALL_FORCE_STACKCALL)
-                    {
-                        F->removeFnAttr("referenced-indirectly");
-                        F->addFnAttr("visaStackCall");
-                        SetNoInline(F);
-                    }
-                    else if (SelectFCtrl == FLAG_FCALL_FORCE_INDIRECTCALL)
-                    {
-                        pCtx->m_enableFunctionPointer = true;
-                        F->addFnAttr("referenced-indirectly");
-                        F->addFnAttr("visaStackCall");
-                        F->setLinkage(GlobalValue::ExternalLinkage);
-                        SetNoInline(F);
-                    }
+                    if (!F.isDeclaration() && !isEntryFunc(pMdUtils , &F))
+                        outputFile << F.getName().str() << std::endl;
                 }
             }
-            inputFile.close();
+            outputFile.close();
+        }
+        else
+        {
+            std::ifstream inputFile(IGC::Debug::GetFunctionDebugFile());
+            if (inputFile.is_open())
+            {
+                std::string line;
+                while (std::getline(inputFile, line))
+                {
+                    if (Function* F = M.getFunction(line))
+                    {
+                        if (SelectFCtrl == FLAG_FCALL_FORCE_INLINE)
+                        {
+                            F->removeFnAttr("referenced-indirectly");
+                            F->removeFnAttr("visaStackCall");
+                            SetAlwaysInline(F);
+                        }
+                        else if (SelectFCtrl == FLAG_FCALL_FORCE_SUBROUTINE)
+                        {
+                            F->removeFnAttr("referenced-indirectly");
+                            F->removeFnAttr("visaStackCall");
+                            SetNoInline(F);
+                        }
+                        else if (SelectFCtrl == FLAG_FCALL_FORCE_STACKCALL)
+                        {
+                            F->removeFnAttr("referenced-indirectly");
+                            F->addFnAttr("visaStackCall");
+                            SetNoInline(F);
+                        }
+                        else if (SelectFCtrl == FLAG_FCALL_FORCE_INDIRECTCALL)
+                        {
+                            pCtx->m_enableFunctionPointer = true;
+                            F->addFnAttr("referenced-indirectly");
+                            F->addFnAttr("visaStackCall");
+                            F->setLinkage(GlobalValue::ExternalLinkage);
+                            SetNoInline(F);
+                        }
+                    }
+                }
+                inputFile.close();
+            }
         }
     }
 
