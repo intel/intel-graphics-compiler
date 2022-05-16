@@ -1199,6 +1199,7 @@ private:
 } // namespace vISA
 
 std::ostream& operator<<(std::ostream& os, vISA::G4_INST& inst);
+std::ostream& operator<<(std::ostream& os, vISA::G4_Operand& opnd);
 
 namespace vISA
 {

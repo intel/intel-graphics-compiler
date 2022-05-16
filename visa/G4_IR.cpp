@@ -6969,6 +6969,29 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet, const IR_Builder
     unsigned lb = getLeftBound();
     unsigned rb = getRightBound();
     const bool doFastPath = true; // for debugging
+    // Check if the left bound and the right bound are within footprint.
+    auto boundsChecking = [&]() {
+        // FIXME: Currently focus on checking out-of-bounds access for GRF
+        // first, and some special cases are skipped.
+        // 1. Skip ARF now because ARF is special and might not have the
+        //    correct footprint size set in LocalDataflow for example.
+        // 2. Skip FLAG now because IGC might create a predicate var with
+        //    8 elements, i.e., SETP (8), while the access granularity of FLAG
+        //    is a word (16 bits)
+        // 3. Skip predefined var now as vISA user might not emit the correct
+        //    ArgSize attribute in some cases.
+        if (isAreg())
+            return true;
+        if (isFlag())
+            return true;
+        if (getTopDcl() && getTopDcl()->isPreDefinedVar())
+            return true;
+        return lb <= rb && rb < footprint.getSize();
+    };
+    MUST_BE_TRUE(!builder.getOption(vISA_boundsChecking) || boundsChecking(),
+        "Out-of-bounds access found in " << *getInst() << "\n"
+        << "For operand " << *this << ", the footprint size is " << footprint.getSize()
+        << " and the accessing range is [" << lb << ", " << rb << "]\n");
 
     if (doFastPath && lb % N == 0 && (rb + 1) % N == 0)
     {
@@ -7266,6 +7289,12 @@ void G4_Operand::dump() const
 #if _DEBUG
     const_cast<G4_Operand *>(this)->emit(std::cerr, false);
 #endif
+}
+
+std::ostream& operator<<(std::ostream& os, G4_Operand& opnd)
+{
+    opnd.emit(os, false);
+    return os;
 }
 
 void G4_INST::setPredicate(G4_Predicate* p)

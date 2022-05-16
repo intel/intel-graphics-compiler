@@ -184,6 +184,7 @@ DEF_VISA_OPTION(vISA_DumpAllBCInfo,          ET_BOOL, "-dumpAllBCInfo", UNUSED, 
 DEF_VISA_OPTION(vISA_LinearScan,               ET_BOOL, "-linearScan",       UNUSED, false)
 DEF_VISA_OPTION(vISA_LSFristFit,               ET_BOOL, "-lsFirstFit",       UNUSED, true)
 DEF_VISA_OPTION(vISA_verifyLinearScan,               ET_BOOL, "-verifyLinearScan",       UNUSED, false)
+DEF_VISA_OPTION(vISA_boundsChecking,        ET_BOOL, "-boundsChecking", UNUSED, false)
 
 //=== scheduler options ===
 DEF_VISA_OPTION(vISA_LocalScheduling,       ET_BOOL, "-noschedule",      UNUSED, true)

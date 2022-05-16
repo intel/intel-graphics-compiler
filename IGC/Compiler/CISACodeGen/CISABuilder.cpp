@@ -4316,6 +4316,11 @@ namespace IGC
             SaveOption(vISA_EnableScalarJmp, false);
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableVISABoundsChecking))
+        {
+            SaveOption(vISA_boundsChecking, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(ForceNoMaskWA)) {
             SaveOption(vISA_forceNoMaskWA, true);
             // Turn off jmpi as there is no wa for jmpi
