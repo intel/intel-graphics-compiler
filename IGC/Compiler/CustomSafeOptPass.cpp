@@ -75,6 +75,7 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
 #include <llvm/IR/Constants.h>
+#include "llvm/IR/DebugInfo.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
@@ -198,7 +199,7 @@ void CustomSafeOptPass::visitXor(Instruction& XorInstr) {
         }
     }
 
-    // Note: DIExpression in debug variable instructions must be extended with additional DWARF opcodes:
+    // DIExpression in debug variable instructions must be extended with additional DWARF opcodes:
     // DW_OP_constu 1, DW_OP_xor, DW_OP_stack_value
     const DebugLoc& DL = XorInstr.getDebugLoc();
     if (Instruction* NewCmpInst = dyn_cast<Instruction>(NewCmp)) {
@@ -258,6 +259,22 @@ void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
     BrInst->setCondition(OrInst);
     BrInst->swapSuccessors();
 
+    // after optimization DIExpression in debug variable instructions can be extended with additional DWARF opcodes:
+    // DW_OP_constu 1, DW_OP_xor, DW_OP_stack_value
+    const DebugLoc& DL = I.getDebugLoc();
+    if (Instruction* NewOrInst = dyn_cast<Instruction>(OrInst)) {
+        NewOrInst->setDebugLoc(DL);
+        auto* Val = static_cast<Value*>(&I);
+        SmallVector<DbgValueInst*, 1> DbgValues;
+        llvm::findDbgValues(DbgValues, Val);
+        for (auto DV : DbgValues) {
+            DIExpression* OldExpr = DV->getExpression();
+            DIExpression* NewExpr = DIExpression::append(
+                OldExpr, { dwarf::DW_OP_constu, 1, dwarf::DW_OP_xor, dwarf::DW_OP_stack_value });
+            IGCLLVM::setExpression(DV, NewExpr);
+        }
+    }
+    I.replaceAllUsesWith(OrInst);
     I.eraseFromParent();
 }
 
@@ -480,14 +497,38 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
 
     unsigned int newSize = index_ub + 1 - index_lb;
     if (newSize >= pType->getArrayNumElements())
-    {
         return;
-    }
     // found a case to optimize
     IGCLLVM::IRBuilder<> IRB(&I);
     llvm::ArrayType* allocaArraySize = llvm::ArrayType::get(pType->getArrayElementType(), newSize);
     llvm::Value* newAlloca = IRB.CreateAlloca(allocaArraySize, nullptr);
     llvm::Value* gepArg1;
+
+    llvm::Function* userFunc = I.getParent()->getParent();
+    llvm::Module& M = *userFunc->getParent();
+    llvm::DIBuilder DIB(M);
+
+    // A debug line info is moved so the alloca has corresponding dbg.declare call
+    // with DIExpression DW_OP_LLVM_fragment specifying fragment.
+    TinyPtrVector<DbgVariableIntrinsic*>  Dbgs = llvm::FindDbgAddrUses(&I);
+    auto typeSize = pType->getArrayElementType()->getPrimitiveSizeInBits();
+    if (!Dbgs.empty()) {
+        const DebugLoc DL = I.getDebugLoc();
+        for (auto DDI : Dbgs) {
+            DILocalVariable* Var = DDI->getVariable();
+            DIExpression* OldExpr = DDI->getExpression();
+            auto ExprFragment = OldExpr->getFragmentInfo();
+            auto* NewExpr = OldExpr;
+            if (auto E = DIExpression::createFragmentExpression(OldExpr, (unsigned)index_lb* typeSize, (unsigned)newSize* typeSize)) {
+                NewExpr = *E;
+                if (Instruction* NewAllocaInst = dyn_cast<Instruction>(newAlloca)) {
+                    if (Var)
+                        DIB.insertDeclare(newAlloca, Var, NewExpr, DL, NewAllocaInst);
+                }
+            }
+        }
+    }
+
 
     for (Value::user_iterator it = I.user_begin(), e = I.user_end(); it != e; ++it) {
         if (GetElementPtrInst * pGEP = llvm::dyn_cast<GetElementPtrInst>(*it)) {
@@ -505,10 +546,6 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
             Type *BaseTy = cast<PointerType>(newAlloca->getType())->getPointerElementType();
             llvm::Value* pGEPnew = GetElementPtrInst::Create(BaseTy, newAlloca, gepArg, "", pGEP);
 
-            // TBD: reduce dgb metadana info and add DIExpressions: DW_OP_LLVM_fragment, starting position in original variable, and size of chunk
-            const DebugLoc& DL = pGEP->getDebugLoc();
-            if (Instruction* pGEPnewInst = dyn_cast<Instruction>(pGEPnew))
-                pGEPnewInst->setDebugLoc(DL);
             pGEP->replaceAllUsesWith(pGEPnew);
         }
     }
@@ -899,7 +936,7 @@ void CustomSafeOptPass::visitFPTruncInst(FPTruncInst& I)
             {
                 newPhi->addIncoming(newSources[i], phi->getIncomingBlock(i));
             }
-            // Note: Debug info location must be preserved in a new phi instruction
+            // Debug info location must be preserved in a new phi instruction
             const DebugLoc& DL = I.getDebugLoc();
             if (Instruction* newPhiInst = dyn_cast<Instruction>(newPhi))
                 newPhiInst->setDebugLoc(DL);
@@ -992,7 +1029,7 @@ void CustomSafeOptPass::visitBitCast(BitCastInst& BC)
                     newPhi->addIncoming(newSources[i], phi->getIncomingBlock(i));
                 }
                 const DebugLoc& DL = BC.getDebugLoc();
-                // Note: Debug info location must be preserved on a resulting select and phi
+                // Debug info location must be preserved on a resulting select and phi
                 if (Instruction* newPhiInst = dyn_cast<Instruction>(newPhi))
                     newPhiInst->setDebugLoc(DL);
                 BC.replaceAllUsesWith(newPhi);
