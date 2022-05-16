@@ -612,6 +612,16 @@ namespace IGC
         return val;
     }
 
+    uint32_t OpenCLProgramContext::getPrivateMemoryMinimalSizePerThread() const
+    {
+        return m_InternalOptions.IntelPrivateMemoryMinimalSizePerThread;
+    }
+
+    uint32_t OpenCLProgramContext::getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const
+    {
+        return m_InternalOptions.IntelScratchSpacePrivateMemoryMinimalSizePerThread;
+    }
+
     void OpenCLProgramContext::failOnSpills()
     {
         if (!m_InternalOptions.FailOnSpill)
@@ -990,6 +1000,38 @@ namespace IGC
                 // This option forces IGC to poison kernels using fp64
                 // operations on platforms without HW support for fp64.
                 EnableUnsupportedFP64Poisoning = true;
+            }
+            // *-private-memory-minimal-size-per-thread <SIZE>
+            // SIZE >= 0
+            else if (suffix.equals("-private-memory-minimal-size-per-thread"))
+            {
+                size_t valueStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valueEnd = opts.find_first_of(' ', valueStart);
+                llvm::StringRef valueString = opts.substr(valueStart, valueEnd - valueStart);
+
+                IntelPrivateMemoryMinimalSizePerThread = 0;
+                if (valueString.getAsInteger(10, IntelPrivateMemoryMinimalSizePerThread))
+                {
+                    IGC_ASSERT(0);
+                }
+                Pos = valueEnd;
+                continue;
+            }
+            // *-scratch-space-private-memory-minimal-size-per-thread <SIZE>
+            // SIZE >= 0
+            else if (suffix.equals("-scratch-space-private-memory-minimal-size-per-thread"))
+            {
+                size_t valueStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valueEnd = opts.find_first_of(' ', valueStart);
+                llvm::StringRef valueString = opts.substr(valueStart, valueEnd - valueStart);
+
+                IntelScratchSpacePrivateMemoryMinimalSizePerThread = 0;
+                if (valueString.getAsInteger(10, IntelScratchSpacePrivateMemoryMinimalSizePerThread))
+                {
+                    IGC_ASSERT(0);
+                }
+                Pos = valueEnd;
+                continue;
             }
 
             // advance to the next flag
@@ -1399,6 +1441,16 @@ namespace IGC
     }
 
     int16_t CodeGenContext::getVectorCoalescingControl() const
+    {
+        return 0;
+    }
+
+    uint32_t CodeGenContext::getPrivateMemoryMinimalSizePerThread() const
+    {
+        return 0;
+    }
+
+    uint32_t CodeGenContext::getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const
     {
         return 0;
     }

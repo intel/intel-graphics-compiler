@@ -135,6 +135,7 @@ void CShader::PreAnalysisPass()
                 IGC_ASSERT(0 < GRFSize);
 
                 m_ScratchSpaceSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
+                m_ScratchSpaceSize = std::max(m_ScratchSpaceSize, m_ctx->getIntelScratchSpacePrivateMemoryMinimalSizePerThread());
 
                 // Round up to GRF-byte aligned.
                 m_ScratchSpaceSize = ((GRFSize + m_ScratchSpaceSize - 1) / GRFSize) * GRFSize;

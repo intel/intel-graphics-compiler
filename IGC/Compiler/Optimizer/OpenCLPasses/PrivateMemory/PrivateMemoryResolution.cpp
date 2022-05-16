@@ -577,6 +577,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
                 // Add another 1KB if there are VLAs
                 maxPrivateMem += 1024;
             }
+            maxPrivateMem = std::max(maxPrivateMem, Ctx.getPrivateMemoryMinimalSizePerThread());
             maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize)));
 
             if (maxPrivateMem > 0)

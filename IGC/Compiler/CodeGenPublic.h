@@ -1258,6 +1258,8 @@ namespace IGC
         virtual bool hasNoPrivateToGenericCast() const;
         virtual bool enableTakeGlobalAddress() const;
         virtual int16_t getVectorCoalescingControl() const;
+        virtual uint32_t getPrivateMemoryMinimalSizePerThread() const;
+        virtual uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const;
         bool isPOSH() const;
 
         CompilerStats& Stats()
@@ -1784,6 +1786,9 @@ namespace IGC
 
             bool AllowRelocAdd = true;
 
+            uint32_t IntelPrivateMemoryMinimalSizePerThread = 0;
+            uint32_t IntelScratchSpacePrivateMemoryMinimalSizePerThread = 0;
+
             private:
                 void parseOptions(const char* IntOptStr);
         };
@@ -1898,6 +1903,8 @@ namespace IGC
         bool hasNoPrivateToGenericCast() const override;
         bool enableTakeGlobalAddress() const override;
         int16_t getVectorCoalescingControl() const override;
+        uint32_t getPrivateMemoryMinimalSizePerThread() const override;
+        uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const override;
         void failOnSpills();
     private:
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
