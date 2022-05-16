@@ -24,7 +24,7 @@ SPDX-License-Identifier: MIT
 | .debug_* | the debug information (if required) | SHT_PROGBITS |
 | .ze_info | the metadata section for runtime information | SHT_ZEBIN_ZEINFO |
 | .gtpin_info.{*kernel_name*\|*function_name*} | the metadata section for gtpin information (if any) | SHT_ZEBIN_GTPIN_INFO |
-| .misc | the miscellaneous data for multiple purposes (if required) | SHT_ZEBIN_MISC |
+| .misc.{*misc_name*} | the miscellaneous data for multiple purposes. For example, the section _.misc.buildOptions_ contains the build options used for compiling this binary.  | SHT_ZEBIN_MISC |
 | .note.intelgt.compat | the compatibility notes for runtime information | SHT_NOTE |
 | .strtab | the string table for section/symbol names | SHT_STRTAB |
 
