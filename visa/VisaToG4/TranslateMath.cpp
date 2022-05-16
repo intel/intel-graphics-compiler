@@ -313,6 +313,13 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         generateIf = false;
     }
 
+    // fast div would be 1ULP under default rounding mode and 2ULP otherwise.
+    // Avoid setting rounding mode as 1-2ULP is acceptable for fast div.
+    if (doFastDiv)
+    {
+        hasDefaultRoundDenorm = true;
+    }
+
     // each madm only handles 4 channel double data
     VISA_EMask_Ctrl currEMask = emask;
     uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_DF) * exsize + getGRFSize() - 1) / getGRFSize());
@@ -528,9 +535,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
                 t12DstOpnd0, t0SrcOpnd1,
                 t9SrcOpnd0x0, t11SrcOpnd0, madmInstOpt);
 
-            // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
-            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
-
             // Final step:  inputs (other than a) are in extended exponent format
             // Output is in regular format (nomme)
             // res = a*y + q_e
@@ -542,6 +546,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             inst = createMadm(predicateFlagReg_m5, exsize,
                 t8DstOpnd2, t12SrcOpnd0x0,
                 t6SrcOpnd2, t8SrcOpnd0x2, madmInstOpt);
+
+            // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
+            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
         }
         else
         {
@@ -1416,6 +1423,14 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_SrcRegRegion csrc3(*this, Mod_src_undef, Direct, t3->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
 
     bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
+
+    // fast sqrt would be 1ULP under default rounding mode and 2ULP otherwise.
+    // Avoid setting rounding mode as 1-2ULP is acceptable for fast sqrt.
+    if (doFastSqrt)
+    {
+        hasDefaultRoundDenorm = true;
+    }
+
     // cr0.0 register
     G4_Declare* regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
 
@@ -1593,9 +1608,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
                 predicateFlagReg_m5, exsize,
                 dst0, neg_src0, src1, src2, madmInstOpt);
 
-            // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
-            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
-
             // final result:  S1 + D*H0
             // This result is computed and stored to regular double precision format (nomme)
             // y = DP_FMA(D, H0, S1);
@@ -1607,6 +1619,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             inst = createMadm(
                 predicateFlagReg_m6, exsize,
                 dst0, src0, src1, src2, madmInstOpt);
+
+            // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
+            restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
         }
         else
         {
