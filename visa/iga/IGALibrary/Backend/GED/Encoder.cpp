@@ -257,7 +257,8 @@ void Encoder::encodeFC(const Instruction &i)
         GED_ENCODE(BfnFC, i.getBfnFc().value);
     } else if (os.isDpasFamily()) {
         auto sf = i.getDpasFc();
-        GED_ENCODE(SystolicDepth, GetDpasSystolicDepth(sf));
+        auto sdepth = GetDpasSystolicDepth(sf);
+        GED_ENCODE(SystolicDepth, sdepth);
         GED_ENCODE(RepeatCount, GetDpasRepeatCount(sf));
     } else if (os.isSendOrSendsFamily()) {
         if (platform() >= Platform::XE) {
@@ -1470,11 +1471,12 @@ void Encoder::encodeSendSource0(const Operand& src)
     else if (src.getKind() == Operand::Kind::INDIRECT)
     {
         {
+            // legacy send indirect src operand
             GED_ENCODE(Src0DataType, lowerDataType(t));
             GED_ENCODE(Src0AddrSubRegNum, src.getIndAddrReg().subRegNum);
-            // For platform >= XeHPC, the ImmAddr is represented in Word Offset in bianry,
-            //     platform <  XeHPC, the ImmAddr is represented in Byte Offset in bianry
-            // And for all platforms, the ImmAddr is represented in Byet Offset in assembly
+            // For platform >= XeHPC, the ImmAddr is represented in Word Offset in binary,
+            //     platform <  XeHPC, the ImmAddr is represented in Byte Offset in binary
+            // And for all platforms, the ImmAddr is represented in Byte Offset in assembly
             if (platform() >= Platform::XE_HPC) {
                 GED_ENCODE(Src0AddrImm, src.getIndImmAddr() / 2);
             } else {

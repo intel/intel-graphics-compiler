@@ -208,7 +208,7 @@ public:
         SrcModifier m_regOpSrcMod;
         DstModifier m_regOpDstMod;
     };
-    RegName m_regOpName = RegName::INVALID;
+    RegName m_regOpName = RegName::INVALID; // exists for ind. as well
     MathMacroExt m_regMathMacro = MathMacroExt::INVALID;
     Region  m_regOpRgn = Region::INVALID;
 

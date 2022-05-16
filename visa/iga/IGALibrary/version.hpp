@@ -8,6 +8,6 @@ SPDX-License-Identifier: MIT
 
 #ifndef _IGA_VERSION_HPP_
 #define _IGA_VERSION_HPP_
-#define IGA_VERSION_PREFIX_STRING "1.0.1"
+#define IGA_VERSION_PREFIX_STRING "1.1.0"
 
 #endif // _IGA_VERSION_HPP_

@@ -413,11 +413,6 @@ namespace iga
         // branches have implicit :d
         val = ty == Type::INVALID ? 4*val :
             SubRegToBinaryOffset((int)val, reg, ty, model.platform);
-        if (platform() >= Platform::XE_HPC &&
-            reg == RegName::ARF_FC)
-        {
-            val = 2 * val;
-        }
         encodeFieldBits(f, val);
     }
 

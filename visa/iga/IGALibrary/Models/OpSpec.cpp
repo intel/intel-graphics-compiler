@@ -34,7 +34,7 @@ bool OpSpec::hasDstSubregister(bool isMacro) const {
 
 
 Region OpSpec::implicitDstRegion(bool isMacro) const {
-    Region rgn;
+    Region rgn = Region::INVALID;
     bool hasRgn = implicitDstRegion(rgn, isMacro);
     IGA_ASSERT(hasRgn, "dst does not have an implicit region");
     return rgn;

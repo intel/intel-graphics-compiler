@@ -657,11 +657,6 @@ namespace iga
                 reportFieldError(fSUBREG,
                     "subregister offset is misaligned for type size");
             }
-            bool scaleArfFc = false;
-            scaleArfFc = model.platform >= Platform::XE_HPC;
-            if (opInfo.regOpName == RegName::ARF_FC && scaleArfFc) {
-                scaled /= 2;
-            }
             opInfo.regOpReg.subRegNum = scaled;
 
             std::stringstream ss;
