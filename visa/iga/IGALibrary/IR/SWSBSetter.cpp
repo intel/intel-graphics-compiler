@@ -810,11 +810,11 @@ void SWSBAnalyzer::addRMWDependencyIfReqruied(DepSet& input, DepSet& output) {
     }
 }
 
-void SWSBAnalyzer::addSWSBToInst(Instruction& inst,
-                                 const SWSB& swsb,
-                                 Block& block,
-                                 InstListIterator inst_it)
+void SWSBAnalyzer::addSWSBToInst(
+    InstListIterator instIt, const SWSB& swsb, Block& block)
 {
+    assert(instIt != block.getInstList().end());
+    Instruction& inst = **instIt;
     SWSB new_swsb(inst.getSWSB());
     // handling distance
     if (swsb.hasDist()) {
@@ -843,7 +843,7 @@ void SWSBAnalyzer::addSWSBToInst(Instruction& inst,
                 SWSB tmp_swsb(SWSB::DistType::NO_DIST, swsb.tokenType,
                               0, swsb.sbid);
                 Instruction* sync_inst = m_kernel.createSyncNopInstruction(tmp_swsb);
-                block.insertInstBefore(inst_it, sync_inst);
+                block.insertInstBefore(instIt, sync_inst);
             }
         }
     }
@@ -856,7 +856,7 @@ void SWSBAnalyzer::addSWSBToInst(Instruction& inst,
         SWSB tmp_swsb(swsb.distType, SWSB::TokenType::NOTOKEN,
                       swsb.minDist, 0);
         Instruction* sync_inst = m_kernel.createSyncNopInstruction(tmp_swsb);
-        block.insertInstBefore(inst_it, sync_inst);
+        block.insertInstBefore(instIt, sync_inst);
 
         new_swsb.distType = SWSB::DistType::NO_DIST;
         new_swsb.minDist = 0;
@@ -890,13 +890,16 @@ void SWSBAnalyzer::postProcess()
     // revisit all instructions to handle write-combined Atomic block:
     // move all swsb set within the Atomic block out for the "instruction write combined" cases
     // Atomic are provided in the input so assume they are correct and have no internal dependency within
-    // the macro
-    // Move all swsb to the first instruction in the Atomic block
+    // the macro.
+    // Move all swsb to the first instruction in the Atomic block and also add the distance swsb to the
+    // intruction following the Atomic block in case of it has dependency to the block but was resolved within
+    // the instruction in the block
     // E.g.
     //      (W) mov (32|M0)  r13.0<2>:ub   r50.0<1;1,0>:uw   {Atomic, I@1}
     //      (W) mov (32|M0)  r13.1<2>:ub   r52.0<1;1,0>:uw   {Atomic}
     //      (W) mov (32|M0)  r13.2<2>:ub   r54.0<1;1,0>:uw   {Atomic}
     //      (W) mov (32|M0)  r13.3<2>:ub   r56.0<1;1,0>:uw
+    //          add (1)      r13.0<1>:df   r100.0<0;1,0>:df  {I@1}
     if (m_kernel.getModel().hasReadModifiedWriteOnByteDst()) {
 
         for (Block* bb : m_kernel.getBlockList())
@@ -910,15 +913,28 @@ void SWSBAnalyzer::postProcess()
                           inst.getDestination().getDirRegName() == RegName::GRF_R &&
                           TypeSizeInBitsWithDefault(inst.getDestination().getType(), 32) == 8;
                 };
+                // add distance swsb in "from" into "to"
+                auto updateDistanceSWSB = [](const SWSB& from, SWSB& to) {
+                    if (!from.hasDist())
+                        return;
+
+                    if (!to.hasDist()) {
+                        to.distType = from.distType;
+                        to.minDist = from.minDist;
+                    } else {
+                        to.distType = (to.distType == from.distType) ? to.distType : SWSB::DistType::REG_DIST_ALL;
+                        to.minDist = std::min(to.minDist, from.minDist);
+                    }
+                };
 
                 if ((*inst_it)->hasInstOpt(InstOpt::ATOMIC) && isWriteCombinedCandidate(**inst_it))
                 {
                     // found the marcro start
                     InstListIterator firstit = inst_it;
+                    SWSB allDistSWSB = SWSB();
                     ++inst_it;
                     InstList sync_insts;
-                    // iterate to the end of the macro and move all swsb to the
-                    // first
+                    // iterate to the end of the macro and move all swsb to the first
                     for (; inst_it != instList.end(); ++inst_it) {
                         Instruction& cur_inst = **inst_it;
                         // found sync, prepare to move to before the firstinst
@@ -931,9 +947,10 @@ void SWSBAnalyzer::postProcess()
                         }
                         // All instructions within the write-combined atomic block must be write-combined candidate
                         if (isWriteCombinedCandidate(cur_inst)) {
-                            // move the swsb within the atomic block to the firstinst
+                            // move the swsb within the atomic block to the firstinst and keep track of distance swsb
                             if (cur_inst.getSWSB().hasSWSB()) {
-                                addSWSBToInst(**firstit, cur_inst.getSWSB(), *bb, inst_it);
+                                updateDistanceSWSB(cur_inst.getSWSB(), allDistSWSB);
+                                addSWSBToInst(firstit, cur_inst.getSWSB(), *bb);
                                 cur_inst.setSWSB(SWSB());
                             }
                             // found the last instruction of the Atomic block
@@ -954,6 +971,13 @@ void SWSBAnalyzer::postProcess()
                             (*firstit)->getPC(), "The last instruction in this write-combined atomic block has {Atomic} set");
                         break;
                     }
+
+                    // insert distance dependency to the instruction following the block
+                    InstListIterator next = inst_it;
+                    next++;
+                    if (next == instList.end())
+                        break;
+                    addSWSBToInst(next, allDistSWSB, *bb);
                 }
             }
         }

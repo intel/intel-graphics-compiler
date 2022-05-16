@@ -153,8 +153,8 @@ namespace iga
 
         // add swsb into instruction, insert sync if the added swsb is not compatible
         // with the existed swsb in the inst
-        void addSWSBToInst(Instruction& inst, const SWSB& swsb,
-                           Block& block, InstListIterator inst_it);
+        void addSWSBToInst(InstListIterator instIt, const SWSB& swsb,
+                           Block& block);
 
         /// ------------ HW Workaround Information ------------ ///
         // MathWAInfo: For a math instruction, when the following instruction has different
