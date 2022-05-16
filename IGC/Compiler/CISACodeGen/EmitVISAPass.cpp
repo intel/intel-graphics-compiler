@@ -13169,7 +13169,9 @@ CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar, bool nomask)
 CVariable* EmitPass::GetHalfExecutionMask()
 {
     auto& currBlock = getCurrentBlock();
-    if (!currBlock.m_activeMask)
+    // WA: Always compute the EMask for the current BB if inlineAsm calls are present,
+    // since they may introduce control flow (via labels) LLVM is not able to track.
+    if (!currBlock.m_activeMask || m_pCtx->m_instrTypes.hasInlineAsm)
     {
         bool isSecondHalf = m_encoder->IsSecondHalf();
         bool isSubSpanDst = m_encoder->IsSubSpanDestination();
