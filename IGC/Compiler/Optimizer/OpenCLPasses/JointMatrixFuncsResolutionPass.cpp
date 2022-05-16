@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IRBuilder.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Module.h"
@@ -49,6 +50,7 @@ JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass() : FunctionPass(
 bool JointMatrixFuncsResolutionPass::runOnFunction(Function& F)
 {
     m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    PlaceholderInstructions.clear();
     ResolvedValues.clear();
     InstsToErase.clear();
     Changed = false;
@@ -231,13 +233,18 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(const Type *opaqueType, JointM
 
     JointMatrixTypeDescription desc;
     parseMatrixTypeName(opaqueType, &desc);
+    /* Treat row major matrices with types not supported by accumulators as
+     * PackedA matrices. Both are in row major format. */
+    if (desc.layout == LayoutRowMajor && desc.bitWidth <= 16) {
+        desc.layout = LayoutPackedA;
+    }
 
     if (desc.layout == LayoutRowMajor && desc.bitWidth <= 16) {
         desc.layout = LayoutPackedA;
     }
 
     if (outDesc != nullptr)
-      *outDesc = desc;
+        *outDesc = desc;
 
     LLVMContext &ctx = opaqueType->getContext();
 
@@ -380,10 +387,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
     IGC_ASSERT_MESSAGE(PA != PrecisionType::PRECISION_UNUSED, "Invalid matrix A element type.");
     IGC_ASSERT_MESSAGE(PB != PrecisionType::PRECISION_UNUSED, "Invalid matrix B element type.");
 
-    int SD = aDesc.rows; // systolic depth, 8 or 16
-    int RC = bDesc.columns; // repeat count, from 1 to 8
+    int SD = 8; // systolic depth, only 8 supported currently
+    int RC = aDesc.rows; // repeat count, from 1 to 8
 
-    IGC_ASSERT_MESSAGE(SD == 8 || SD == 16, "Unexpected systolic depth in MAD operaion.");
     IGC_ASSERT_MESSAGE(RC >= 1 && RC <= 8,  "Unexpected repeat count in MAD operaion.");
 
     bool IsDpasw = false; // is wide
@@ -414,20 +420,95 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
     return dpasCall;
 }
 
-static int getSliceSize(Type *matrixType) {
+static int getResolvedVectorSize(Type *matrixType) {
     IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matrixType);
     IGC_ASSERT_MESSAGE(ty, "Unexpected type when calculating slice size.");
     return (int)ty->getNumElements();
 }
 
+static Type *getResolvedVectorElementType(Type *matrixType) {
+    IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matrixType);
+    IGC_ASSERT_MESSAGE(ty, "Unexpected type when calculating slice size.");
+    return ty->getElementType();
+}
+
+static int getSliceSize(const JointMatrixTypeDescription *desc) {
+    if (desc->layout == LayoutRowMajor) {
+        return desc->rows;
+    }
+    if (desc->layout == LayoutPackedA) {
+        return desc->rows * (32 / desc->bitWidth);
+    }
+    if (desc->layout == LayoutPackedB) {
+        return 8  * (32 / desc->bitWidth);
+    }
+    IGC_ASSERT_MESSAGE(true, "Unexpected matrix layout.");
+    return 1;
+}
+
+template <class BuilderT>
+static Value *packFillValue
+        (BuilderT *Builder, Value *V, IntegerType *SourceType, IntegerType *TargetType) {
+    /* TODO: fixup for DPCPP bug */
+    if (V->getType()->isPointerTy()) {
+        PointerType *PT = dyn_cast<PointerType>(V->getType());
+        V = Builder->CreateBitCast(V, PointerType::get(SourceType, PT->getAddressSpace()));
+        V = Builder->CreateLoad(PT->getElementType(), V);
+    }
+
+    IntegerType *currentType = dyn_cast<IntegerType>(V->getType());
+    if (currentType == nullptr) {
+        unsigned size = V->getType()->getScalarSizeInBits();
+        V = Builder->CreateBitCast(V, Type::getIntNTy(Builder->getContext(), size));
+        currentType = dyn_cast<IntegerType>(V->getType());
+    }
+
+    uint64_t sourceBitWidth = currentType->getBitWidth();
+    uint64_t packFactor = TargetType->getBitWidth() / sourceBitWidth;
+
+    if (ConstantInt *Constant = dyn_cast<ConstantInt>(V)) {
+        uint64_t value = Constant->getLimitedValue();
+        if (value == 0) {
+            return ConstantInt::get(TargetType, 0, "matrix.fill.zero");
+        }
+
+        uint64_t packedValue = 0;
+        for (unsigned i = 0; i < packFactor; i++) {
+            packedValue |= value << (sourceBitWidth * i);
+        }
+        return ConstantInt::get(TargetType, packedValue, "matrix.fill.packedconst");
+    }
+
+    Value *extendedValue = Builder->CreateZExt(V, TargetType);
+    Value *acc = extendedValue;//ConstantInt::get(TargetType, 0, "matrix.fill.acc");
+    for (unsigned i = 1; i < packFactor; i++) {
+        Value *shl = Builder->CreateShl(extendedValue, sourceBitWidth * i);
+        acc = Builder->CreateOr(shl, acc);
+    }
+    return acc;
+}
+
 Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
     Value *fillValue = CI->getArgOperand(0);
-    Type *matTy = ResolveType(CI->getType(), nullptr);
+
+    JointMatrixTypeDescription desc;
+    Type *matTy = ResolveType(CI->getType(), &desc);
 
     IRBuilder builder(CI);
-    const int sliceSize = getSliceSize(matTy);
+    const int sliceSize = getSliceSize(&desc);
+    const int vectorSize = getResolvedVectorSize(matTy);
+    /* Case with packing: */
+    if (sliceSize > vectorSize) {
+        IntegerType *sliceElmentType = Type::getIntNTy(builder.getContext(), desc.bitWidth);
+        IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(matTy));
+        fillValue = packFillValue(&builder, fillValue, sliceElmentType, vectorElementType);
+    /* Case without packing: */
+    } else if (sliceSize != vectorSize) {
+        IGC_ASSERT_MESSAGE(false, "Malformed matrix slice.");
+    }
+
     Value *slice = UndefValue::get(matTy);
-    for (int i = 0; i < sliceSize; i++) {
+    for (int i = 0; i < vectorSize; i++) {
         slice = builder.CreateInsertElement(slice, fillValue, i);
     }
 
@@ -436,9 +517,10 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
 }
 
 Value *JointMatrixFuncsResolutionPass::ResolveWILength(CallInst *CI) {
-    Value *matrix = Resolve(CI->getArgOperand(0));
+    JointMatrixTypeDescription desc;
+    ResolveType(CI->getArgOperand(0)->getType(), &desc);
 
-    const int sliceSize = getSliceSize(matrix->getType());
+    const int sliceSize = getSliceSize(&desc);
     Value *lenght = ConstantInt::get(CI->getType(), sliceSize, "matrix.slice.size");
 
     CI->replaceAllUsesWith(lenght);
@@ -446,13 +528,59 @@ Value *JointMatrixFuncsResolutionPass::ResolveWILength(CallInst *CI) {
     return lenght;
 }
 
+template <class BuilderT>
+static Value *createSliceExtract
+      (BuilderT *builder, Value *matrix, Value *index, const JointMatrixTypeDescription *desc) {
+    const int sliceSize = getSliceSize(desc);
+    const int vectorSize = getResolvedVectorSize(matrix->getType());
+    /* Unpacking: */
+    if (sliceSize > vectorSize) {
+        uint64_t packFactor = sliceSize / vectorSize;
+        index = builder->CreateUDiv(index, ConstantInt::get(index->getType(), packFactor));
+    }
+    Value *element = builder->CreateExtractElement(matrix, index, "matrix.element");
+    return element;
+}
+
 Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
     Value *matrix = Resolve(CI->getArgOperand(0));
     Value *component = CI->getArgOperand(1);
     Value *index = CI->getArgOperand(2);
 
+    JointMatrixTypeDescription desc;
+    Type *rawMatTy = ResolveType(CI->getArgOperand(0)->getType(), &desc);
+    IGCLLVM::FixedVectorType *matTy = dyn_cast<IGCLLVM::FixedVectorType>(rawMatTy);
+
     IRBuilder builder(CI);
-    Value *slice = builder.CreateInsertElement(matrix, component, index);
+    const int sliceSize = getSliceSize(&desc);
+    const int vectorSize = getResolvedVectorSize(matTy);
+
+    Value *slice = nullptr;
+    if (sliceSize > vectorSize) {
+        Value *element = createSliceExtract(&builder, matrix, index, &desc);
+        if (!isa<IntegerType>(element->getType())) {
+            unsigned vecElemSize = matTy->getElementType()->getScalarSizeInBits();
+            element = builder.CreateBitCast(element, Type::getIntNTy(builder.getContext(), vecElemSize));
+        }
+
+        uint64_t packFactor = sliceSize / vectorSize;
+        Value *offset = builder.CreateURem(index, ConstantInt::get(index->getType(), packFactor));
+        offset = builder.CreateMul(offset, ConstantInt::get(offset->getType(), desc.bitWidth));
+
+        index = builder.CreateUDiv(index, ConstantInt::get(index->getType(), packFactor));
+
+        if (!isa<IntegerType>(component->getType())) {
+            component = builder.CreateBitCast(component, Type::getIntNTy(builder.getContext(), desc.bitWidth));
+        }
+
+        unsigned vecElemSize = matTy->getElementType()->getScalarSizeInBits();
+        component = builder.CreateZExtOrBitCast(component, Type::getIntNTy(builder.getContext(), vecElemSize));
+        offset = builder.CreateTruncOrBitCast(offset, Type::getIntNTy(builder.getContext(), vecElemSize));
+
+        component = builder.CreateShl(component, offset);
+        component = builder.CreateOr(element, component);
+    }
+    slice = builder.CreateInsertElement(matrix, component, index);
 
     InstsToErase.insert(CI);
     return slice;
@@ -462,12 +590,56 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
     Value *matrix = Resolve(CI->getArgOperand(0));
     Value *index = CI->getArgOperand(1);
 
+    JointMatrixTypeDescription desc;
+    Type *matTy = ResolveType(CI->getArgOperand(0)->getType(), &desc);
+
     IRBuilder builder(CI);
-    Value *element = builder.CreateExtractElement(matrix, index, "matrix.element");
+    Value *element = createSliceExtract(&builder, matrix, index, &desc);
+    /* Unpacking: */
+    const int sliceSize = getSliceSize(&desc);
+    const int vectorSize = getResolvedVectorSize(matTy);
+    if (sliceSize > vectorSize) {
+        index = builder.CreateTruncOrBitCast(index, element->getType());
+        uint64_t packFactor = sliceSize / vectorSize;
+        Value *offset = builder.CreateURem(index, ConstantInt::get(index->getType(), packFactor));
+        offset = builder.CreateMul(offset, ConstantInt::get(offset->getType(), desc.bitWidth));
+        element = builder.CreateAShr(element, offset);
+        uint64_t mask = (1 << desc.bitWidth) - 1;
+        element = builder.CreateAnd(element, mask);
+
+        element = builder.CreateTruncOrBitCast(element, Type::getIntNTy(builder.getContext(), desc.bitWidth));
+        element = builder.CreateBitCast(element, CI->getType());
+    }
 
     CI->replaceAllUsesWith(element);
     InstsToErase.insert(CI);
     return element;
+}
+
+void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
+    if (ResolvedValues.count(v) > 0) {
+        return;
+    }
+
+    Type *type = v->getType();
+    if (type->isPointerTy()) {
+        type = ResolveType(v->getType(), nullptr);
+    }
+    if (type->isVoidTy()) {
+        return;
+    }
+
+    Instruction *predecesor = nullptr;
+    if (Instruction *inst = dyn_cast<Instruction>(v)) {
+        predecesor = inst;
+    }
+    /* Using bit-casts as placeholder values. Undefs of each type are unique per
+     * module and cannot be used as unique placeholders. */
+    Instruction *placeholder =
+        BitCastInst::Create(Instruction::BitCast, UndefValue::get(type),
+                            type, "tmp.value", predecesor);
+    ResolvedValues[v] = placeholder;
+    PlaceholderInstructions[v] = placeholder;
 }
 
 Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
@@ -480,24 +652,34 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
     Value *NewValue = nullptr;
     StringRef funcName = func->getName();
     if (funcName.startswith(JointMatrixLoadPrefx)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveLoad(CI);
     } else if (funcName.startswith(JointMatrixStorePrefx)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveStore(CI);
     } else if (funcName.startswith(JointMatrixMadPrefx)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveMad(CI, MadOpSS);
     } else if (funcName.startswith(JointMatrixSUMadPrefx)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveMad(CI, MadOpSU);
     } else if (funcName.startswith(JointMatrixUSMadPrefx)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveMad(CI, MadOpUS);
     } else if (funcName.startswith(JointMatrixUUMadPrefx)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveMad(CI, MadOpUU);
     } else if (funcName.startswith(JointMatrixFillPrefx)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveFill(CI);
     } else if (funcName.startswith(JointMatrixWorkItemLengthPrefx)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveWILength(CI);
     } else if (funcName.startswith(JointMatrixSliceInsert)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveSliceInsert(CI);
     } else if (funcName.startswith(JointMatrixSliceExtract)) {
+        InsertPlaceholder(CI);
         NewValue = ResolveSliceExtract(CI);
     }
 
@@ -506,6 +688,16 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
 }
 
 void JointMatrixFuncsResolutionPass::CacheResolvedValue(Value *oldValue, Value *newValue) {
+    if (newValue == nullptr)
+        return;
+
+    if (PlaceholderInstructions.count(oldValue) > 0) {
+        Instruction *placeholder = PlaceholderInstructions[oldValue];
+        PlaceholderInstructions.erase(oldValue);
+        placeholder->replaceAllUsesWith(newValue);
+        InstsToErase.insert(placeholder);
+    }
+
     ResolvedValues[oldValue] = newValue;
 }
 
@@ -532,6 +724,9 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 
         InstsToErase.insert(PN);
         return NewPN;
+    } else if (isa<UndefValue>(v)) {
+        Type *type = ResolveType(v->getType(), nullptr);
+        return UndefValue::get(type);
     }
 
     IGC_ASSERT_MESSAGE(false, "Resolve failure.");
