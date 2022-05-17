@@ -24,10 +24,13 @@ namespace IGCLLVM
                        bool DoAutoReset = true)
    {
 #if LLVM_VERSION_MAJOR >= 13
-        std::string Err;
-        const llvm::Target *T = llvm::TargetRegistry::lookupTarget(TheTriple.str(), Err);
-        std::unique_ptr<llvm::MCSubtargetInfo> STI(T->createMCSubtargetInfo(TheTriple.str(), "", ""));
-        return new llvm::MCContext(TheTriple, MAI, MRI, STI.get(), Mgr, TargetOpts, DoAutoReset);
+// Refactor MCObjectFileInfo initialization and allow targets to create MCObjectFileInfo
+//
+//      Differential Revision: https://reviews.llvm.org/D101921
+
+        auto *Context = new llvm::MCContext(TheTriple, MAI, MRI, nullptr, Mgr, TargetOpts, DoAutoReset);
+        Context->setObjectFileInfo(MOFI);
+        return Context;
 #elif LLVM_VERSION_MAJOR >= 10
         return new llvm::MCContext(MAI, MRI, MOFI, Mgr, TargetOpts, DoAutoReset);
 #else
