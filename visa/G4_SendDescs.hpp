@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 #include <ostream>
 #include <utility>
 
-
 namespace vISA
 {
 enum class SendAccess
@@ -34,31 +33,25 @@ static const int MSGOP_OTHER_GROUP  = 0x800;
 // various message operations
 enum class MsgOp {
     INVALID = 0,
-    //
+    // load
     LOAD = MSGOP_BUFFER_LOAD_GROUP + 1,
-    LOAD_QUAD, // e.g. untyped load (loading XYZW)
     LOAD_STRIDED, // same as load, but 1 address (obeys exec mask)
+    LOAD_QUAD, // e.g. untyped load (loading XYZW)
     LOAD_BLOCK2D,
-    //
+    // store
     STORE_GROUP = MSGOP_BUFFER_STORE_GROUP + 1,
     STORE,
-    STORE_QUAD,
     STORE_STRIDED,
+    STORE_QUAD,
     STORE_BLOCK2D,
     //
     // atomics
+    //
     ATOMIC_GROUP = MSGOP_BUFFER_ATOMIC_GROUP + 1,
-    ATOMIC_LOAD,
-    ATOMIC_STORE,
-    //
-    ATOMIC_FADD,
-    ATOMIC_FSUB,
-    ATOMIC_FMIN,
-    ATOMIC_FMAX,
-    ATOMIC_FCAS,
-    //
     ATOMIC_IINC,
     ATOMIC_IDEC,
+    ATOMIC_LOAD,
+    ATOMIC_STORE,
     ATOMIC_IADD,
     ATOMIC_ISUB,
     ATOMIC_ICAS,
@@ -66,6 +59,14 @@ enum class MsgOp {
     ATOMIC_SMAX,
     ATOMIC_UMIN,
     ATOMIC_UMAX,
+    ATOMIC_CAS,
+    //
+    ATOMIC_FADD,
+    ATOMIC_FSUB,
+    ATOMIC_FMIN,
+    ATOMIC_FMAX,
+    ATOMIC_FCAS,
+    //
     //
     ATOMIC_AND,
     ATOMIC_XOR,
@@ -73,6 +74,8 @@ enum class MsgOp {
     // others ...
 };
 std::string ToSymbol(MsgOp);
+uint32_t GetMsgOpEncoding(MsgOp);
+MsgOp ConvertLSCOpToMsgOp(LSC_OP op);
 
 enum class LdStOrder {
     INVALID = 0,
@@ -87,6 +90,75 @@ enum class AddrType {
     SS, BSS,
     BTI
 };
+
+// Data size
+enum class DataSize {
+    INVALID = 0,
+    D8, // 8b
+    D16, // 16b
+    D32,// 32b
+    D64, // 64b
+    D8U32, // 8bit zero extended to 32bit
+    D16U32, // 16bit zero extended to 32bit
+};
+
+std::string ToSymbol(DataSize d);
+DataSize ConvertLSCDataSize(LSC_DATA_SIZE ds);
+uint32_t GetDataSizeEncoding(DataSize ds);
+
+// Data order
+enum class DataOrder {
+    INVALID = 0,
+    NONTRANSPOSE,
+    TRANSPOSE
+};
+
+std::string ToSymbol(DataOrder dord);
+DataOrder ConvertLSCDataOrder(LSC_DATA_ORDER dord);
+uint32_t GetDataOrderEncoding(DataOrder dord);
+
+// Data elems
+enum class VecElems {
+    INVALID = 0,
+    V1,
+    V2,
+    V3,
+    V4,
+    V8,
+    V16,
+    V32,
+    V64
+};
+
+std::string ToSymbol(VecElems ve);
+VecElems ConvertLSCDataElems(LSC_DATA_ELEMS de);
+uint32_t GetVecElemsEncoding(VecElems ve);
+
+// data chmask
+enum DataChMask
+{
+    INVALID = 0,
+    X = 1 << 0,
+    Y = 1 << 1,
+    Z = 1 << 2,
+    W = 1 << 3
+};
+
+// address size type
+enum class AddrSizeType
+{
+  INVALID = 0,
+  FLAT_A64_A32,
+  FLAT_A64_A64,
+  STATEFUL_A32,
+  FLAT_A32_A32,
+  GLOBAL_A32_A32,
+  LOCAL_A32_A32,
+};
+
+std::string ToSymbol(AddrSizeType a);
+AddrSizeType ConvertLSCAddrSizeType(LSC_ADDR_SIZE a);
+uint32_t GetAddrSizeTypeEncoding(AddrSizeType a);
 
 // Cache controls
 // only certain combinations are legal
@@ -105,6 +177,8 @@ enum class Caching {
 std::string ToSymbol(Caching);
 // default, default returns ""
 std::string ToSymbol(Caching,Caching);
+Caching ConvertLSCCacheOpt(LSC_CACHE_OPT co);
+std::pair<Caching, Caching> ConvertLSCCacheOpts(LSC_CACHE_OPT col1, LSC_CACHE_OPT col3);
 
 struct ImmOff {
     bool is2d;
@@ -457,7 +531,6 @@ struct G4_SendDescLdSt : G4_SendDesc {
         overrideDstLengthBytesValue = lenBytes;
     }
 }; // G4_SendDescLdSt
-
 
 ////////////////////////////////////////////////////////////////////////////
 class G4_SendDescRaw : public G4_SendDesc

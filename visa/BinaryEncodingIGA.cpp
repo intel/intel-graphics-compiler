@@ -56,6 +56,7 @@ public:
     void FixInst();
     void *EmitBinary(size_t& binarySize);
 
+
 private:
     BinaryEncodingIGA(const BinaryEncodingIGA& other);
     BinaryEncodingIGA& operator=(const BinaryEncodingIGA& other);
@@ -1038,6 +1039,7 @@ void BinaryEncodingIGA::Encode()
     }
 }
 
+
 Instruction *BinaryEncodingIGA::translateInstruction(
     G4_INST *g4inst, Block*& bbNew)
 {
@@ -1078,8 +1080,10 @@ Instruction *BinaryEncodingIGA::translateInstruction(
     }
     else if (opSpec->isSendOrSendsFamily())
     {
+        {
         SendDesc desc = getIGASendDesc(g4inst);
         SendExDescOpts sdos = getIGASendExDesc(g4inst);
+
         igaInst =
             IGAKernel->createSendInstruction(
                 *opSpec,
@@ -1099,6 +1103,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(
 
         igaInst->setSrc1Length(sdos.xlen);
         igaInst->addInstOpts(sdos.extraOpts);
+        }
     }
     else if (opSpec->op == Op::NOP)
     {
@@ -1401,6 +1406,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(
     } // for
 }
 
+
 SendDesc BinaryEncodingIGA::getIGASendDesc(G4_INST* sendInst) const
 {
     SendDesc desc;
@@ -1453,7 +1459,7 @@ static SendDesc encodeExDescSendUnary(
 
     // old unary packed send
     // exDesc is stored in SendMsgDesc and must be IMM
-    G4_SendDescRaw* descG4 = sendInst->getMsgDescRaw();
+    const G4_SendDescRaw* descG4 = sendInst->getMsgDescRaw();
     assert(descG4 != nullptr && "expected raw send");
 
     exDescIga.type = SendDesc::Kind::IMM;
@@ -1486,12 +1492,12 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
 {
     SendDesc exDescIga;
 
-    G4_Operand* exDescG4 = sendInst->getSrc(3);
-    G4_SendDescRaw* descG4 = sendInst->getMsgDescRaw();
+    const G4_Operand* exDescG4 = sendInst->getSrc(3);
+    const G4_SendDescRaw* descG4 = (G4_SendDescRaw*)sendInst->getMsgDesc();
     assert(descG4 != nullptr && "expected raw descriptor");
 
     sdos.xlen = (int)descG4->extMessageLength();
-    //
+
     exDescIga.type = SendDesc::Kind::IMM;
     exDescIga.imm = (uint32_t)exDescG4->asImm()->getImm();
     // We must clear the funcID in the extended message for Xe+

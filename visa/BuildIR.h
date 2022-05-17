@@ -1458,6 +1458,7 @@ public:
         SendAccess access,
         G4_Operand* bti);
 
+
     G4_InstSend *createLscSendInst(
         G4_Predicate *pred,
         G4_DstRegRegion *dst, G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
@@ -1466,6 +1467,8 @@ public:
         G4_InstOpts option,
         LSC_ADDR_TYPE addrType,
         bool emitA0RegDef);
+
+
     G4_SrcRegRegion* getScratchSurfaceStatusIndex();
 
     void RestoreA0();
@@ -2403,7 +2406,6 @@ public:
         G4_SrcRegRegion        *src1Data, // store data/extra atomic operands
         G4_SrcRegRegion        *src2Data // only for fcas/icas
     );
-
     int translateLscUntypedBlock2DInst(
         LSC_OP                  op,
         LSC_SFID                lscSfid,
@@ -2445,6 +2447,7 @@ public:
         uint32_t &desc,
         int &status) const;
     void lscEncodeAddrType(LSC_ADDR_TYPE at, uint32_t &desc, int &status) const;
+
 
     G4_SrcRegRegion *lscBuildStridedPayload(
         G4_Predicate        *pred,

@@ -2080,6 +2080,7 @@ G4_InstSend* IR_Builder::createSplitSendInst(
     {
         src3 = createImm(((G4_SendDescRaw *)msgDesc)->getExtendedDesc(), Type_UD);
     }
+
     G4_InstSend* m = new (mem) G4_InstSend(
         *this, prd, op, execSize, dst, src0, src1, msg, src3, options, msgDesc);
 
@@ -2799,6 +2800,7 @@ G4_SendDescRaw* IR_Builder::createLscMsgDesc(
     return g4desc;
 }
 
+
 G4_SendDescRaw * IR_Builder::createLscDesc(
     SFID sfid,
     uint32_t desc,
@@ -2811,6 +2813,7 @@ G4_SendDescRaw * IR_Builder::createLscDesc(
     return msgDesc;
 }
 
+
 G4_InstSend *IR_Builder::createLscSendInst(
     G4_Predicate *pred,
     G4_DstRegRegion *dst,
@@ -2822,6 +2825,7 @@ G4_InstSend *IR_Builder::createLscSendInst(
     LSC_ADDR_TYPE addrType,
     bool emitA0RegDef)
 {
+
     uint32_t exDesc = msgDesc->getExtendedDesc();
     G4_Operand *surface = msgDesc->getSurface();   // BTI or SS/BSS
     G4_Operand *exDescOpnd = nullptr;
@@ -2906,9 +2910,10 @@ G4_InstSend *IR_Builder::createLscSendInst(
         exDescOpnd = createImm(exDesc, Type_UD);
     }
 
+    uint32_t descVal = (uint32_t)msgDesc->getDesc();
     return createSplitSendInst(
         pred, G4_sends, execSize, dst, src0, src1,
-        createImm(msgDesc->getDesc(), Type_UD),
+        createImm(descVal, Type_UD),
         option, msgDesc, exDescOpnd, true);
 }
 

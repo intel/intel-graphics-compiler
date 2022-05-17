@@ -7693,7 +7693,10 @@ void HWConformity::fixImm64(INST_LIST_ITER i,
         }
         else
         {
-            if (inst->opcode() != G4_mov)
+            bool allow64bitimmOperand = false;
+            if ((inst->opcode() == G4_mov)
+                ) allow64bitimmOperand = true;
+            if (!allow64bitimmOperand)
             {
                 inst->setSrc(insertMovBefore(i, j, src->getType(), bb), j);
             }

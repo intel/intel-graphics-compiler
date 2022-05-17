@@ -8932,7 +8932,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 auto dstRead = builder.createDstRegRegion(sendDstDcl, 1);
                 auto src0Addr = builder.createSrcRegRegion(loadAddress, builder.getRegionStride1()); // address base
 
-                G4_SendDescRaw *desc = builder.createLscMsgDesc(
+                G4_SendDesc* desc = nullptr;
+                G4_InstSend* sendInst = nullptr;
+                {
+                desc = builder.createLscMsgDesc(
                     op,
                     lscSfid,
                     EXEC_SIZE_1,
@@ -8943,17 +8946,17 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     numDWToLoad < builder.numEltPerGRF<Type_UD>() ? 1 : numDWToLoad / builder.numEltPerGRF<Type_UD>(),
                     1);
 
-                G4_InstSend *sendInst = builder.createLscSendInst(
+                sendInst = builder.createLscSendInst(
                     nullptr,
                     dstRead,
                     src0Addr,
                     nullptr,
                     g4::SIMD1,
-                    desc,
+                    (G4_SendDescRaw*)desc,
                     InstOpt_NoOpt,
                     ADDR_TYPE,
                     true);
-
+                }
                 instBuffer.push_back(sendInst);
                 // we pick to load all data within one send in getMaxNumDWforLscElementRequirement if
                 // numRemainingDW is less than one grf. All should be loaded at this point.

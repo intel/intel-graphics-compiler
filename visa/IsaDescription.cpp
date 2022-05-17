@@ -2443,6 +2443,7 @@ bool LscOpInfoFind(LSC_OP op, LscOpInfo &opInfo)
     case LSC_READ_STATE_INFO:    loadOp("lsc_read_state_info",     0x1E); break;
     case LSC_FENCE:              otherOp("lsc_fence",              0x1F); break;
     //
+
     default:
         return false;
     }

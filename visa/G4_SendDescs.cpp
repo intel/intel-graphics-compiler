@@ -18,6 +18,7 @@ using namespace vISA;
 
 ///////////////////////////////////////////////////////////////////////////////
 // LdSt data type support
+// MsgOp
 std::string vISA::ToSymbol(MsgOp op)
 {
     switch (op) {
@@ -58,6 +59,249 @@ std::string vISA::ToSymbol(MsgOp op)
     return "???";
 }
 
+MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
+    switch(op) {
+        case LSC_OP::LSC_LOAD:
+            return MsgOp::LOAD;
+        case LSC_OP::LSC_LOAD_STRIDED:
+            return MsgOp::LOAD_STRIDED;
+        case LSC_OP::LSC_LOAD_QUAD:
+            return MsgOp::LOAD_QUAD;
+        case LSC_OP::LSC_LOAD_BLOCK2D:
+            return MsgOp::LOAD_BLOCK2D;
+        case LSC_OP::LSC_STORE:
+            return MsgOp::STORE;
+        case LSC_OP::LSC_STORE_STRIDED:
+            return MsgOp::STORE_STRIDED;
+        case LSC_OP::LSC_STORE_QUAD:
+            return MsgOp::STORE_QUAD;
+        case LSC_OP::LSC_STORE_BLOCK2D:
+            return MsgOp::STORE_BLOCK2D;
+        case LSC_OP::LSC_ATOMIC_IINC:
+            return MsgOp::ATOMIC_IINC;
+        case LSC_OP::LSC_ATOMIC_IDEC:
+            return MsgOp::ATOMIC_IDEC;
+        case LSC_OP::LSC_ATOMIC_LOAD:
+            return MsgOp::ATOMIC_LOAD;
+        case LSC_OP::LSC_ATOMIC_STORE:
+            return MsgOp::ATOMIC_STORE;
+        case LSC_OP::LSC_ATOMIC_IADD:
+            return MsgOp::ATOMIC_IADD;
+        case LSC_OP::LSC_ATOMIC_ISUB:
+            return MsgOp::ATOMIC_ISUB;
+        case LSC_OP::LSC_ATOMIC_ICAS:
+            return MsgOp::ATOMIC_ICAS;
+        case LSC_OP::LSC_ATOMIC_FADD:
+            return MsgOp::ATOMIC_FADD;
+        case LSC_OP::LSC_ATOMIC_FSUB:
+            return MsgOp::ATOMIC_FSUB;
+        case LSC_OP::LSC_ATOMIC_FMIN:
+            return MsgOp::ATOMIC_FMIN;
+        case LSC_OP::LSC_ATOMIC_FMAX:
+            return MsgOp::ATOMIC_FMAX;
+        case LSC_OP::LSC_ATOMIC_FCAS:
+            return MsgOp::ATOMIC_FCAS;
+        case LSC_OP::LSC_ATOMIC_AND:
+            return MsgOp::ATOMIC_AND;
+        case LSC_OP::LSC_ATOMIC_XOR:
+            return MsgOp::ATOMIC_XOR;
+        case LSC_OP::LSC_ATOMIC_OR:
+            return MsgOp::ATOMIC_OR;
+        default:
+            return MsgOp::INVALID;
+    }
+}
+
+uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
+    // source -- https://gfxspecs.intel.com/Predator/Home/Index/71890
+    switch(m) {
+        case MsgOp::LOAD: return 0;
+        case MsgOp::LOAD_STRIDED: return 2;
+        case MsgOp::LOAD_BLOCK2D: return 3;
+        case MsgOp::STORE: return 4;
+        case MsgOp::STORE_STRIDED: return 6;
+        case MsgOp::STORE_BLOCK2D: return 7;
+        case MsgOp::ATOMIC_IINC: return 8;
+        case MsgOp::ATOMIC_IDEC: return 9;
+        case MsgOp::ATOMIC_LOAD: return 10;
+        case MsgOp::ATOMIC_STORE: return 11;
+        case MsgOp::ATOMIC_IADD: return 12;
+        case MsgOp::ATOMIC_ISUB: return 13;
+        case MsgOp::ATOMIC_SMIN: return 14;
+        case MsgOp::ATOMIC_SMAX: return 15;
+        case MsgOp::ATOMIC_UMIN: return 16;
+        case MsgOp::ATOMIC_UMAX: return 17;
+        case MsgOp::ATOMIC_CAS: return 18;
+        case MsgOp::ATOMIC_FADD: return 19;
+        case MsgOp::ATOMIC_FSUB: return 20;
+        case MsgOp::ATOMIC_FMIN: return 21;
+        case MsgOp::ATOMIC_FMAX: return 22;
+        case MsgOp::ATOMIC_FCAS: return 23;
+        case MsgOp::ATOMIC_AND: return 24;
+        case MsgOp::ATOMIC_XOR: return 25;
+        case MsgOp::ATOMIC_OR: return 26;
+        // TODO: other ops
+        default: MUST_BE_TRUE(false, "Invalid msg op");
+    }
+    return 0;
+}
+
+// data size
+std::string vISA::ToSymbol(DataSize d) {
+    switch(d)
+    {
+        case DataSize::INVALID: return "invalid data size";
+        case DataSize::D8: return "8b";
+        case DataSize::D16: return "16b";
+        case DataSize::D32: return "32b";
+        case DataSize::D64: return "64b";
+        case DataSize::D8U32: return "8b zero extended to 32b";
+        case DataSize::D16U32: return "16b zero extended to 32b";
+        default: return "?";
+    }
+}
+
+DataSize vISA::ConvertLSCDataSize(LSC_DATA_SIZE ds) {
+    switch(ds) {
+        case LSC_DATA_SIZE_8b: return DataSize::D8;
+        case LSC_DATA_SIZE_16b: return DataSize::D16;
+        case LSC_DATA_SIZE_32b: return DataSize::D32;
+        case LSC_DATA_SIZE_64b: return DataSize::D64;
+        case LSC_DATA_SIZE_8c32b: return DataSize::D8U32;
+        case LSC_DATA_SIZE_16c32b: return DataSize::D16U32;
+        default: MUST_BE_TRUE(false, "invalid data size");
+    }
+    return DataSize::INVALID;
+}
+
+uint32_t vISA::GetDataSizeEncoding(DataSize ds) {
+    switch(ds) {
+        case DataSize::D8: return 0;
+        case DataSize::D16: return 1;
+        case DataSize::D32: return 2;
+        case DataSize::D64: return 3;
+        case DataSize::D8U32: return 4;
+        case DataSize::D16U32: return 5;
+        default: MUST_BE_TRUE(false, "invalid data size");
+    }
+    return 0;
+}
+
+// data order
+std::string vISA::ToSymbol(DataOrder d) {
+    switch(d) {
+    case DataOrder::INVALID: return "invalid data order";
+    case DataOrder::NONTRANSPOSE: return "non transpose";
+    case DataOrder::TRANSPOSE: return "transpose";
+        default: return "?";
+    }
+}
+
+DataOrder vISA::ConvertLSCDataOrder(LSC_DATA_ORDER dord) {
+    switch(dord) {
+        case LSC_DATA_ORDER_NONTRANSPOSE: return DataOrder::NONTRANSPOSE;
+        case LSC_DATA_ORDER_TRANSPOSE: return DataOrder::TRANSPOSE;
+        default: MUST_BE_TRUE(false, "invalid data order");
+    }
+    return DataOrder::INVALID;
+}
+
+uint32_t vISA::GetDataOrderEncoding(DataOrder dord) {
+    switch(dord) {
+        case DataOrder::NONTRANSPOSE: return 0;
+        case DataOrder::TRANSPOSE: return 1;
+        default: MUST_BE_TRUE(false, "invalid data order");
+    }
+    return 0;
+}
+
+// data elems
+std::string vISA::ToSymbol(VecElems v) {
+    switch(v) {
+    case VecElems::V1: return "vector length 1";
+    case VecElems::V2: return "vector length 2";
+    case VecElems::V3: return "vector length 3";
+    case VecElems::V4: return "vector length 4";
+    case VecElems::V8: return "vector length 8";
+    case VecElems::V16: return "vector length 16";
+    case VecElems::V32: return "vector length 32";
+    case VecElems::V64: return "vector length 64";
+    default: return "?";
+    }
+}
+
+VecElems vISA::ConvertLSCDataElems(LSC_DATA_ELEMS de) {
+    switch(de) {
+    case LSC_DATA_ELEMS_1: return VecElems::V1;
+    case LSC_DATA_ELEMS_2: return VecElems::V2;
+    case LSC_DATA_ELEMS_3: return VecElems::V3;
+    case LSC_DATA_ELEMS_4: return VecElems::V4;
+    case LSC_DATA_ELEMS_8: return VecElems::V8;
+    case LSC_DATA_ELEMS_16: return VecElems::V16;
+    case LSC_DATA_ELEMS_32: return VecElems::V32;
+    case LSC_DATA_ELEMS_64: return VecElems::V64;
+    default: MUST_BE_TRUE(false, "number of data elements");
+    }
+    return VecElems::INVALID;
+}
+
+uint32_t vISA::GetVecElemsEncoding(VecElems ve) {
+    switch(ve) {
+    case VecElems::V1: return 0;
+    case VecElems::V2: return 1;
+    case VecElems::V3: return 2;
+    case VecElems::V4: return 3;
+    case VecElems::V8: return 4;
+    case VecElems::V16: return 5;
+    case VecElems::V32: return 6;
+    case VecElems::V64: return 7;
+    default: MUST_BE_TRUE(false, "invalid vector elements");
+    }
+    return 0;
+}
+
+// Addr size type
+std::string vISA::ToSymbol(AddrSizeType a) {
+    switch (a)
+    {
+    case AddrSizeType::FLAT_A64_A32: return "flat_a64_a32";
+    case AddrSizeType::FLAT_A64_A64: return "flat_a64_a64";
+    case AddrSizeType::STATEFUL_A32: return "stateful_a32";
+    case AddrSizeType::FLAT_A32_A32: return "flat_a32_a32";
+    case AddrSizeType::GLOBAL_A32_A32: return "global_a32_a32";
+    case AddrSizeType::LOCAL_A32_A32: return "local_a32_a32";
+    default: return "?";
+    }
+}
+
+AddrSizeType vISA::ConvertLSCAddrSizeType(LSC_ADDR_SIZE a) {
+    // TODO: This function may need an additional argument -- LSC_ADDR_TYPE
+    // TODO: expand the cases
+    switch(a) {
+    case LSC_ADDR_SIZE_32b: return AddrSizeType::FLAT_A64_A32;
+    case LSC_ADDR_SIZE_64b: return AddrSizeType::FLAT_A64_A64;
+    default: MUST_BE_TRUE(false, "address size");
+    }
+    return AddrSizeType::INVALID;
+}
+
+uint32_t vISA::GetAddrSizeTypeEncoding(AddrSizeType a) {
+    switch(a) {
+    case AddrSizeType::FLAT_A32_A32:
+    case AddrSizeType::GLOBAL_A32_A32:
+    case AddrSizeType::FLAT_A64_A32:
+        return 0;
+    case AddrSizeType::LOCAL_A32_A32:
+    case AddrSizeType::FLAT_A64_A64:
+        return 1;
+    case AddrSizeType::STATEFUL_A32:
+        return 2;
+    default: MUST_BE_TRUE(false, "invalid address size type");
+    }
+    return 0;
+}
+
+// caching
 std::string vISA::ToSymbol(Caching c)
 {
     switch (c)
@@ -79,6 +323,26 @@ std::string vISA::ToSymbol(Caching l1, Caching l3)
         return "";
     else
         return ToSymbol(l1) + ToSymbol(l3);
+}
+
+Caching vISA::ConvertLSCCacheOpt(LSC_CACHE_OPT co) {
+    switch(co) {
+    case LSC_CACHING_DEFAULT: return Caching::DF;
+    case LSC_CACHING_UNCACHED: return Caching::UC;
+    case LSC_CACHING_CACHED: return Caching::CA;
+    case LSC_CACHING_WRITEBACK: return Caching::WB;
+    case LSC_CACHING_WRITETHROUGH: return Caching::WT;
+    case LSC_CACHING_STREAMING: return Caching::ST;
+    case LSC_CACHING_READINVALIDATE: return Caching::RI;
+    default: MUST_BE_TRUE(false, "invalid caching");
+    }
+    return Caching::INVALID;
+}
+
+std::pair<Caching, Caching> vISA::ConvertLSCCacheOpts(LSC_CACHE_OPT col1,
+                        LSC_CACHE_OPT col3) {
+
+    return std::make_pair(ConvertLSCCacheOpt(col1), ConvertLSCCacheOpt(col3));
 }
 
 int ElemsPerAddr::getCount() const
@@ -162,8 +426,6 @@ bool G4_SendDesc::isLSC() const
     }
     return false;
 }
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // G4_SendDescLdSt implementations

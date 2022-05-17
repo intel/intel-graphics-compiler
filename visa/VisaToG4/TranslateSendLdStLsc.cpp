@@ -173,12 +173,16 @@ int IR_Builder::translateLscUntypedInst(
         surface =  createImm(0xFF, Type_UD);
     }
 
-    // send descriptor
-    uint32_t desc = 0;
-    uint32_t exDesc = 0;
+    SFID sfid = SFID::NULL_SFID;
+    switch (lscSfid) {
+    case LSC_UGM:  sfid = SFID::UGM;  break;
+    case LSC_UGML: sfid = SFID::UGML; break;
+    case LSC_SLM:  sfid = SFID::SLM;  break;
+    default: check(false,"invalid SFID for untyped LSC message");
+    }
 
-    // try and promote the surface identifier (e.g. BTI or SS obj) to ex desc
-    surface = lscTryPromoteSurfaceImmToExDesc(surface, addrInfo.type, exDesc);
+    G4_SendDesc* msgDesc = nullptr;
+
     const auto opInfo = LscOpInfoGet(op);
     MUST_BE_TRUE(!opInfo.isBlock2D(),
         "use translateLscUntypedBlock2DInst for lsc_*_block2d");
@@ -187,6 +191,14 @@ int IR_Builder::translateLscUntypedInst(
         opInfo.kind == LscOpInfo::LOAD ||
         opInfo.kind == LscOpInfo::STORE ||
         opInfo.kind == LscOpInfo::ATOMIC, "unhandled LSC op class");
+
+    {
+    // send descriptor
+    uint32_t desc = 0;
+    uint32_t exDesc = 0;
+
+    // try and promote the surface identifier (e.g. BTI or SS obj) to ex desc
+    surface = lscTryPromoteSurfaceImmToExDesc(surface, addrInfo.type, exDesc);
 
     // Desc[5:0] is the message opcode
     desc |= opInfo.encoding; // Desc[5:0]
@@ -205,7 +217,7 @@ int IR_Builder::translateLscUntypedInst(
     //
     const int addrSizeBits = lscEncodeAddrSize(addrInfo.size, desc, status);
     const int dataSizeBits = lscEncodeDataSize(dataShape.size, desc, status);
-    //
+
     int vecSize = 0; // definitely assigned
     if (!opInfo.hasChMask()) {
         vecSize = lscEncodeDataElems(dataShape.elems, desc, status);
@@ -448,36 +460,29 @@ int IR_Builder::translateLscUntypedInst(
     desc |= dstLen << 20;   // Desc[24:20]  dst len
     desc |= addrRegs << 25; // Desc[29:25]  src0 len
 
-    SFID sfid = SFID::NULL_SFID;
-    switch (lscSfid) {
-    case LSC_UGM:  sfid = SFID::UGM;  break;
-    case LSC_UGML: sfid = SFID::UGML; break;
-    case LSC_SLM:  sfid = SFID::SLM;  break;
-    default: check(false,"invalid SFID for untyped LSC message");
-    }
-
-    G4_SendDescRaw *msgDesc = createLscDesc(
+    msgDesc = createLscDesc(
         sfid,
         desc,
         exDesc,
         src1Len,
         getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
         surface);
+
     createLscSendInst(
         pred,
         dstRead,
         src0Addr,
         src1Data,
         execSize,
-        msgDesc,
+        (G4_SendDescRaw*)msgDesc,
         instOpt,
         addrInfo.type,
         true);
 
     return status;
+
+    }
 }
-
-
 
 int IR_Builder::translateLscUntypedBlock2DInst(
     LSC_OP                      op,
@@ -506,6 +511,23 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     const auto opInfo = LscOpInfoGet(op);
     MUST_BE_TRUE(opInfo.isBlock2D(), "not an LSC block2d op");
 
+    const G4_ExecSize execSize = toExecSize(visaExecSize);
+    const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+
+    G4_SrcRegRegion* src0Addr =
+        lscBuildBlock2DPayload(dataShape2D, pred, src0Addrs);
+
+    SFID sfid = SFID::NULL_SFID;
+    switch (lscSfid) {
+    case LSC_UGM:  sfid = SFID::UGM;  break;
+    case LSC_UGML: sfid = SFID::UGML; break;
+    case LSC_SLM:  sfid = SFID::SLM;  break;
+    default: check(false, "invalid SFID for untyped block2d LSC message");
+    }
+
+    G4_SendDesc* msgDesc = nullptr;
+
+
     // send descriptor
     uint32_t desc = 0;
     uint32_t exDesc = 0;
@@ -519,9 +541,6 @@ int IR_Builder::translateLscUntypedBlock2DInst(
         desc |= (1 << 15);
     lscEncodeCachingOpts(opInfo, cacheOpts, desc, status);
     desc |= (0 << 29); // Desc[30:29] = FLAT
-
-    G4_SrcRegRegion *src0Addr =
-        lscBuildBlock2DPayload(dataShape2D, pred, src0Addrs);
 
     uint32_t dataRegs =
         lscBlock2dComputeDataRegs(op, dataShape2D, getGRFSize(), dataSizeBits);
@@ -549,15 +568,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     desc |= dstLen << 20;   // Desc[24:20]  dst len
     desc |= addrRegs << 25; // Desc[28:25]  src0 len
 
-    SFID sfid = SFID::NULL_SFID;
-    switch (lscSfid) {
-    case LSC_UGM:  sfid = SFID::UGM;  break;
-    case LSC_UGML: sfid = SFID::UGML; break;
-    case LSC_SLM:  sfid = SFID::SLM;  break;
-    default: check(false, "invalid SFID for untyped block2d LSC message");
-    }
-
-    G4_SendDescRaw * msgDesc = createLscDesc(
+    msgDesc = createLscDesc(
         sfid,
         desc,
         exDesc,
@@ -565,15 +576,14 @@ int IR_Builder::translateLscUntypedBlock2DInst(
         getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
         nullptr);
 
-    const G4_ExecSize execSize = toExecSize(visaExecSize);
-    const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+
     G4_InstSend *sendInst = createLscSendInst(
         pred,
         dstRead,
         src0Addr,
         src1Data,
         execSize,
-        msgDesc,
+        (G4_SendDescRaw*)msgDesc,
         instOpt,
         LSC_ADDR_TYPE_FLAT,
         true);
@@ -819,6 +829,7 @@ LSC_DATA_ELEMS IR_Builder::lscGetElementNum(unsigned eNum) const
     return LSC_DATA_ELEMS_INVALID;
 }
 
+
 int IR_Builder::lscEncodeAddrSize(
     LSC_ADDR_SIZE addrSize, uint32_t &desc, int &status) const
 {
@@ -852,6 +863,7 @@ int IR_Builder::lscEncodeDataSize(
     desc |= dataSizeEnc << 9; // Desc[11:9]
     return dataSizeBits;
 }
+
 
 int IR_Builder::lscEncodeDataElems(
     LSC_DATA_ELEMS dataElems, uint32_t &desc, int &status) const
