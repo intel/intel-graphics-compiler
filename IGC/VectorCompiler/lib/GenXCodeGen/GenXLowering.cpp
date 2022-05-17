@@ -3011,96 +3011,112 @@ bool GenXLowering::translateLegacyToLSC(CallInst *CI, unsigned IID) {
   case GenXIntrinsic::genx_svm_block_ld:
   case GenXIntrinsic::genx_svm_block_ld_unaligned: {
     unsigned AddrIdx = 0;
-    auto Length =
-        cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements();
-    IGC_ASSERT(Length <= 128);
-    SmallVector<Value *, 12> Args;
-    Args.push_back(OnePred1);                         // #0, 1xi1 Predicate
-    Args.push_back(ConstantInt::get(I8Ty, LSC_LOAD)); // #1, subopcode
-    Args.push_back(CZeroInt8);                        // #2, L1 control
-    Args.push_back(CZeroInt8);                        // #3, L3 control
-    if (IID == GenXIntrinsic::genx_svm_block_ld_unaligned)
-      Args.push_back(ConstantInt::get(I16Ty, 1)); // #4, scale
-    else
-      Args.push_back(ConstantInt::get(I16Ty, 16)); // #4, scale
-    Args.push_back(CZeroInt32);                    // #5, immed-offset
-    Args.push_back(LSCDatumSize(CI));              // #6
-    Args.push_back(ConstantInt::get(
-        I8Ty, LSCVectorSize(Length))); // #7, num-elem is the Length
-    Args.push_back(
-        ConstantInt::get(I8Ty, LSC_DATA_ORDER_TRANSPOSE)); // #8, transpose
-    Args.push_back(CZeroInt8); // #9, no-channel-mask
-                               // create 1x vector for address
+
+    // create 1x vector for address
     Value *AddrV = CI->getArgOperand(AddrIdx);
     auto AddrV1Ty = IGCLLVM::FixedVectorType::get(AddrV->getType(), 1);
     auto AddrV1 = CastInst::CreateBitOrPointerCast(
         AddrV, AddrV1Ty, AddrV->getName() + VALUE_NAME(".lsc"), CI);
-    Args.push_back(AddrV1);     // #10, address
-    Args.push_back(CZeroInt32); // #11, SurfaceIndex
+
+    // LSC transposed messages only support D32 and D64 elements
+    auto *OldVT = cast<IGCLLVM::FixedVectorType>(CI->getType());
+    auto *VT = adjustVTForTransposedMessage(OldVT);
+    auto Length = VT->getNumElements();
+    IGC_ASSERT(Length <= 128);
+
+    SmallVector<Value *, 12> Args = {
+        OnePred1,                                      // #0, 1xi1 Predicate
+        ConstantInt::get(I8Ty, LSC_LOAD),              // #1, subopcode
+        CZeroInt8,                                     // #2, L1 control
+        CZeroInt8,                                     // #3, L3 control
+        ConstantInt::get(I16Ty, 1),                    // #4, scale
+        CZeroInt32,                                    // #5, immed-offset
+        LSCDatumSize(VT),                              // #6
+        ConstantInt::get(I8Ty, LSCVectorSize(Length)), // #7, num-elem is Length
+        ConstantInt::get(I8Ty, LSC_DATA_ORDER_TRANSPOSE), // #8, transpose
+        CZeroInt8,                                        // #9, no-channel-mask
+        AddrV1,                                           // #10, address
+        CZeroInt32,                                       // #11, SurfaceIndex
+    };
 
     // now we sure that all can be converted, so increase statistics
     NumLegacy += 1;
 
     // create the call to 32 wide lsc.load.stateless instructions.
-    Type *Tys[] = {CI->getType(), Args[0]->getType(), Args[10]->getType()};
+    Type *Tys[] = {VT, OnePred1->getType(), AddrV1Ty};
     auto Decl = GenXIntrinsic::getGenXDeclaration(
         CI->getModule(), GenXIntrinsic::genx_lsc_load_stateless, Tys);
-    auto NewInst = CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+    auto *NewInst =
+        CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+    NewInst->setDebugLoc(DL);
 
     LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
     LLVM_DEBUG(CI->dump());
     LLVM_DEBUG(dbgs() << "Translated to:\n");
     LLVM_DEBUG(NewInst->dump());
 
-    NewInst->setDebugLoc(DL);
-    CI->replaceAllUsesWith(NewInst);
+    // Cast the loaded vector back to the required data type
+    Value *Casted = NewInst;
+    if (VT != OldVT)
+      Casted = CastInst::CreateBitOrPointerCast(
+          NewInst, OldVT, NewInst->getName() + VALUE_NAME(".cast.lsc"), CI);
+    CI->replaceAllUsesWith(Casted);
     ToErase.push_back(CI);
   } break;
   case GenXIntrinsic::genx_svm_block_st: {
-    unsigned DataIdx = 1;
-    unsigned AddrIdx = 0;
-    auto Length =
-        cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(DataIdx)->getType())
-            ->getNumElements();
-    IGC_ASSERT(Length <= 128);
-    SmallVector<Value *, 13> Args;
-    Args.push_back(OnePred1);                          // #0, 1xi1 Predicate
-    Args.push_back(ConstantInt::get(I8Ty, LSC_STORE)); // #1, subopcode
-    Args.push_back(CZeroInt8);                         // #2, L1 control
-    Args.push_back(CZeroInt8);                         // #3, L3 control
-    Args.push_back(ConstantInt::get(I16Ty, 16));       // #4, scale
-    Args.push_back(CZeroInt32);                        // #5, immed-offset
-    Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
-    Args.push_back(ConstantInt::get(
-        I8Ty, LSCVectorSize(Length))); // #7, num-elem is the Length
-    Args.push_back(
-        ConstantInt::get(I8Ty, LSC_DATA_ORDER_TRANSPOSE)); // #8, transpose
-    Args.push_back(CZeroInt8); // #9, no-channel-mask
-                               // create 1x vector for address
+    constexpr unsigned AddrIdx = 0;
+    constexpr unsigned DataIdx = 1;
+
+    // create 1x vector for address
     Value *AddrV = CI->getArgOperand(AddrIdx);
     auto AddrV1Ty = IGCLLVM::FixedVectorType::get(AddrV->getType(), 1);
     auto AddrV1 = CastInst::CreateBitOrPointerCast(
         AddrV, AddrV1Ty, AddrV->getName() + VALUE_NAME(".lsc"), CI);
-    Args.push_back(AddrV1);                     // #10, address
-    Args.push_back(CI->getArgOperand(DataIdx)); // #11, Data
-    Args.push_back(CZeroInt32);                 // #12, SurfaceIndex
+
+    // LSC transposed messages only support D32 and D64 elements
+    Value *Data = CI->getArgOperand(DataIdx);
+    auto *OldVT = cast<IGCLLVM::FixedVectorType>(Data->getType());
+    auto *VT = adjustVTForTransposedMessage(OldVT);
+
+    if (VT != OldVT)
+      Data = CastInst::CreateBitOrPointerCast(
+          Data, VT, Data->getName() + VALUE_NAME(".cast.lsc"), CI);
+
+    auto Length =
+        cast<IGCLLVM::FixedVectorType>(Data->getType())->getNumElements();
+    IGC_ASSERT(Length <= 128);
+
+    SmallVector<Value *, 13> Args = {
+        OnePred1,                                      // #0, 1xi1 Predicate
+        ConstantInt::get(I8Ty, LSC_STORE),             // #1, subopcode
+        CZeroInt8,                                     // #2, L1 control
+        CZeroInt8,                                     // #3, L3 control
+        ConstantInt::get(I16Ty, 1),                    // #4, scale
+        CZeroInt32,                                    // #5, immed-offset
+        LSCDatumSize(VT),                              // #6
+        ConstantInt::get(I8Ty, LSCVectorSize(Length)), // #7, num-elem is Length
+        ConstantInt::get(I8Ty, LSC_DATA_ORDER_TRANSPOSE), // #8, transpose
+        CZeroInt8,                                        // #9, no-channel-mask
+        AddrV1,                                           // #10, address
+        Data,                                             // #11, Data
+        CZeroInt32,                                       // #12, SurfaceIndex
+    };
 
     // now we sure that all can be converted, so increase statistics
     NumLegacy += 1;
 
     // create the call to 32 wide lsc.store.stateless instructions.
-    Type *Tys[] = {Args[0]->getType(), Args[10]->getType(),
-                   Args[11]->getType()};
+    Type *Tys[] = {OnePred1->getType(), AddrV1Ty, VT};
     auto Decl = GenXIntrinsic::getGenXDeclaration(
         CI->getModule(), GenXIntrinsic::genx_lsc_store_stateless, Tys);
     auto NewInst = CallInst::Create(Decl, Args, "", CI);
+    NewInst->setDebugLoc(DL);
 
     LLVM_DEBUG(dbgs() << "Legacy intrinsic:\n");
     LLVM_DEBUG(CI->dump());
     LLVM_DEBUG(dbgs() << "Translated to:\n");
     LLVM_DEBUG(NewInst->dump());
 
-    NewInst->setDebugLoc(DL);
     CI->replaceAllUsesWith(NewInst);
     ToErase.push_back(CI);
   } break;
