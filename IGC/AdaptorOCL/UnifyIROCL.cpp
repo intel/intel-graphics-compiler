@@ -403,7 +403,7 @@ static void CommonOCLBasedPasses(
 
         // Check after GlobalDCE in case of doubles in dead functions
         mpm.add(new ErrorCheck());
-        if (pContext->m_InternalOptions.EnableUnsporrtedFP64Poisoning) {
+        if (pContext->m_InternalOptions.EnableUnsupportedFP64Poisoning) {
             mpm.add(new PoisonFP64Kernels());
         }
 
@@ -518,7 +518,7 @@ static void CommonOCLBasedPasses(
 
     // check for unsupported intrinsics
     mpm.add(new ErrorCheck());
-    if (pContext->m_InternalOptions.EnableUnsporrtedFP64Poisoning) {
+    if (pContext->m_InternalOptions.EnableUnsupportedFP64Poisoning) {
         mpm.add(new PoisonFP64Kernels());
     }
 

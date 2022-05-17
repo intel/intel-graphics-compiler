@@ -1777,7 +1777,7 @@ namespace IGC
             bool FailOnSpill = false;
             // This option forces IGC to poison kernels using fp64
             // operations on platforms without HW support for fp64.
-            bool EnableUnsporrtedFP64Poisoning = false;
+            bool EnableUnsupportedFP64Poisoning = false;
 
             bool AllowRelocAdd = true;
 

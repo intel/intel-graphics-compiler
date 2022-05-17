@@ -989,7 +989,7 @@ namespace IGC
             {
                 // This option forces IGC to poison kernels using fp64
                 // operations on platforms without HW support for fp64.
-                EnableUnsporrtedFP64Poisoning = true;
+                EnableUnsupportedFP64Poisoning = true;
             }
 
             // advance to the next flag

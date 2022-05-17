@@ -107,7 +107,7 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
     if (ctx->type == ShaderType::OPENCL_SHADER)
     {
         OpenCLProgramContext *OCLContext = static_cast<OpenCLProgramContext*>(ctx);
-        poisonFP64KernelsEnabled = OCLContext->m_InternalOptions.EnableUnsporrtedFP64Poisoning;
+        poisonFP64KernelsEnabled = OCLContext->m_InternalOptions.EnableUnsupportedFP64Poisoning;
     }
 
     if (!ctx->m_DriverInfo.NeedFP64(ctx->platform.getPlatformInfo().eProductFamily) && ctx->platform.hasNoFP64Inst()
