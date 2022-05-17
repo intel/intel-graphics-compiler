@@ -453,7 +453,7 @@ static Value *packFillValue
     if (V->getType()->isPointerTy()) {
         PointerType *PT = dyn_cast<PointerType>(V->getType());
         V = Builder->CreateBitCast(V, PointerType::get(SourceType, PT->getAddressSpace()));
-        V = Builder->CreateLoad(PT->getElementType(), V);
+        V = Builder->CreateLoad(SourceType, V);
     }
 
     IntegerType *currentType = dyn_cast<IntegerType>(V->getType());
