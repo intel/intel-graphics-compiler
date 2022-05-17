@@ -957,25 +957,26 @@ namespace IGC
         ~RetryManager();
 
         bool AdvanceState();
-        bool AllowLICM();
-        bool AllowPromotePrivateMemory();
-        bool AllowPreRAScheduler();
-        bool AllowVISAPreRAScheduler();
-        bool AllowCodeSinking();
-        bool AllowAddressArithmeticSinking();
-        bool AllowSimd32Slicing();
-        bool AllowLargeURBWrite();
-        bool AllowConstantCoalescing();
+        bool AllowLICM() const;
+        bool AllowPromotePrivateMemory() const;
+        bool AllowPreRAScheduler() const;
+        bool AllowVISAPreRAScheduler() const;
+        bool AllowCodeSinking() const;
+        bool AllowAddressArithmeticSinking() const;
+        bool AllowSimd32Slicing() const;
+        bool AllowLargeURBWrite() const;
+        bool AllowConstantCoalescing() const;
         void SetFirstStateId(int id);
-        bool IsFirstTry();
-        bool IsLastTry();
+        bool IsFirstTry() const;
+        bool IsLastTry() const;
         unsigned GetRetryId() const;
 
         void Enable();
         void Disable();
 
         void SetSpillSize(unsigned int spillSize);
-        unsigned int GetLastSpillSize();
+        unsigned int GetLastSpillSize() const;
+
         unsigned int numInstructions = 0;
         // For OCL the retry manager will work on per-kernel basis, that means
         // Disable() will disable only specific kernel. Other kernels still can
@@ -993,7 +994,7 @@ namespace IGC
         // save entry for given SIMD mode, to avoid recompile for next retry.
         void SaveSIMDEntry(SIMDMode simdMode, CShader* shader);
         CShader* GetSIMDEntry(SIMDMode simdMode);
-        bool AnyKernelSpills();
+        bool AnyKernelSpills() const;
 
         // Try to pickup the simd mode & kernel based on heuristics and fill
         // programOutput.  If returning true, then stop the further retry.
@@ -1005,21 +1006,29 @@ namespace IGC
         // ID rather than id 0.
         unsigned firstStateId;
 
-        unsigned getStateCnt();
-
-        /// internal knob to disable retry manager.
+        // internal knob to disable retry manager.
         bool enabled;
 
         unsigned lastSpillSize = 0;
 
         // cache the compiled kernel during retry
-        CShader* m_simdEntries[3];
+        struct CacheEntry
+        {
+            SIMDMode simdMode;
+            CShader* shader;
+        };
 
-        CShader* PickCSEntryForcedFromDriver(SIMDMode& simdMode,
-            unsigned char forcedSIMDModeFromDriver);
+        CacheEntry cache[3] = {
+            {SIMDMode::SIMD8, nullptr},
+            {SIMDMode::SIMD16, nullptr},
+            {SIMDMode::SIMD32, nullptr},
+        };
+
+        CacheEntry* GetCacheEntry(SIMDMode simdMode);
+
+        CShader* PickCSEntryForcedFromDriver(SIMDMode& simdMode, unsigned char forcedSIMDModeFromDriver);
         CShader* PickCSEntryByRegKey(SIMDMode& simdMode, ComputeShaderContext* cgCtx);
-        CShader* PickCSEntryEarly(SIMDMode& simdMode,
-            ComputeShaderContext* cgCtx);
+        CShader* PickCSEntryEarly(SIMDMode& simdMode, ComputeShaderContext* cgCtx);
         CShader* PickCSEntryFinally(SIMDMode& simdMode);
         void FreeAllocatedMemForNotPickedCS(SIMDMode simdMode);
         bool PickupCS(ComputeShaderContext* cgCtx);
