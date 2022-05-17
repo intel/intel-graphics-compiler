@@ -502,7 +502,8 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
                 gepArg1 = BinaryOperator::CreateSub(pGEP->getOperand(2), IRB.getInt32(index_lb), "reducedIndex", pGEP);
             }
             llvm::Value* gepArg[] = { pGEP->getOperand(1), gepArg1 };
-            llvm::Value* pGEPnew = GetElementPtrInst::Create(nullptr, newAlloca, gepArg, "", pGEP);
+            Type *BaseTy = cast<PointerType>(newAlloca->getType())->getPointerElementType();
+            llvm::Value* pGEPnew = GetElementPtrInst::Create(BaseTy, newAlloca, gepArg, "", pGEP);
 
             // TBD: reduce dgb metadana info and add DIExpressions: DW_OP_LLVM_fragment, starting position in original variable, and size of chunk
             const DebugLoc& DL = pGEP->getDebugLoc();
@@ -575,10 +576,11 @@ void CustomSafeOptPass::visitLoadInst(LoadInst& load)
             SmallVector<Value*, 8> indices;
             indices.append(gep->idx_begin(), gep->idx_end());
             indices[selIdx] = sel->getOperand(1);
-            GetElementPtrInst* gep1 = GetElementPtrInst::Create(nullptr, gep->getPointerOperand(), indices, gep->getName(), gep);
+            Type *BaseTy = cast<PointerType>(gep->getPointerOperand()->getType())->getPointerElementType();
+            GetElementPtrInst* gep1 = GetElementPtrInst::Create(BaseTy, gep->getPointerOperand(), indices, gep->getName(), gep);
             gep1->setDebugLoc(gep->getDebugLoc());
             indices[selIdx] = sel->getOperand(2);
-            GetElementPtrInst* gep2 = GetElementPtrInst::Create(nullptr, gep->getPointerOperand(), indices, gep->getName(), gep);
+            GetElementPtrInst* gep2 = GetElementPtrInst::Create(BaseTy, gep->getPointerOperand(), indices, gep->getName(), gep);
             gep2->setDebugLoc(gep->getDebugLoc());
             LoadInst* load1 = cast<LoadInst>(load.clone());
             load1->insertBefore(&load);

@@ -1014,7 +1014,8 @@ void ScalarizeFunction::scalarizeInstruction(GetElementPtrInst* GI)
         auto op1 = baseValue->getType()->isVectorTy() ? operand1[i] : baseValue;
         auto op2 = indexValue->getType()->isVectorTy() ? operand2[i] : indexValue;
 
-        Value* newGEP = GetElementPtrInst::Create(nullptr, op1, op2, "", GI);
+        Type *BaseTy = cast<PointerType>(op1->getType())->getPointerElementType();
+        Value* newGEP = GetElementPtrInst::Create(BaseTy, op1, op2, "", GI);
         Value* constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
         Instruction* insert = InsertElementInst::Create(assembledVector,
             newGEP, constIndex, "assembled.vect", GI);

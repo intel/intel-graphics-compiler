@@ -179,9 +179,10 @@ bool InlineLocalsResolution::runOnModule(Module& M)
                 Value* sizeConstant = ConstantInt::get(Type::getInt32Ty(C), Offset);
                 SmallVector<Value*, 1> idx(1, sizeConstant);
                 Instruction* pInsertBefore = &(*F.begin()->getFirstInsertionPt());
-                Type* pLocalCharPtrType = Type::getInt8Ty(C)->getPointerTo(ADDRESS_SPACE_LOCAL);
+                Type* pCharType = Type::getInt8Ty(C);
+                Type* pLocalCharPtrType = pCharType->getPointerTo(ADDRESS_SPACE_LOCAL);
                 Instruction* pCharPtr = BitCastInst::CreatePointerCast(arg, pLocalCharPtrType, "localToChar", pInsertBefore);
-                Value* pMovedCharPtr = GetElementPtrInst::Create(nullptr, pCharPtr, idx, "movedLocal", pInsertBefore);
+                Value* pMovedCharPtr = GetElementPtrInst::Create(pCharType, pCharPtr, idx, "movedLocal", pInsertBefore);
 
                 Value* pMovedPtr = CastInst::CreatePointerCast(pMovedCharPtr, ptrType, "charToLocal", pInsertBefore);
 

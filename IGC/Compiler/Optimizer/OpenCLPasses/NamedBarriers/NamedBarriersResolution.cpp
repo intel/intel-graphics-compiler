@@ -313,7 +313,8 @@ void NamedBarriersResolution::HandleNamedBarrierInit(CallInst& NBarrierInitCall)
         m_NamedBarrierType->getPointerTo(SPIRAS_Local),
         Type::getInt32PtrTy(context, SPIRAS_Local)
     };
-    auto pointerNBarrier = GetElementPtrInst::Create(nullptr, m_NamedBarrierArray, { getInt64(module, 0), getInt32(module, 0) }, "", &(NBarrierInitCall));
+    Type *BaseTy = cast<PointerType>(m_NamedBarrierArray->getType())->getPointerElementType();
+    auto pointerNBarrier = GetElementPtrInst::Create(BaseTy, m_NamedBarrierArray, { getInt64(module, 0), getInt32(module, 0) }, "", &(NBarrierInitCall));
     auto bitcastPointerNBarrier = BitCastInst::CreatePointerBitCastOrAddrSpaceCast(pointerNBarrier, m_NamedBarrierType->getPointerTo(SPIRAS_Local), "", &(NBarrierInitCall));
     SmallVector<Value*, 3> ArgsVal
     {

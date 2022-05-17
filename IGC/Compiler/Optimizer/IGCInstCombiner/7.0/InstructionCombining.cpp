@@ -1675,7 +1675,8 @@ Instruction* InstCombiner::visitGetElementPtrInst(GetElementPtrInst& GEP) {
                         auto* NewSrc = cast<GetElementPtrInst>(
                             Builder.CreateGEP(SO0, GO1, Src->getName()));
                         NewSrc->setIsInBounds(Src->isInBounds());
-                        auto* NewGEP = GetElementPtrInst::Create(nullptr, NewSrc, { SO1 });
+                        Type *BaseTy = cast<PointerType>(NewSrc->getType())->getPointerElementType();
+                        auto* NewGEP = GetElementPtrInst::Create(BaseTy, NewSrc, { SO1 });
                         NewGEP->setIsInBounds(GEP.isInBounds());
                         return NewGEP;
                     }

@@ -3601,17 +3601,18 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   case OpInBoundsPtrAccessChain: {
     auto AC = static_cast<SPIRVAccessChainBase *>(BV);
     auto Base = transValue(AC->getBase(), F, BB);
+    Type *BaseTy = cast<PointerType>(Base->getType())->getPointerElementType();
     auto Index = transValue(AC->getIndices(), F, BB);
     if (!AC->hasPtrIndex())
       Index.insert(Index.begin(), getInt32(M, 0));
     auto IsInbound = AC->isInBounds();
     Value *V = nullptr;
     if (BB) {
-      auto GEP = GetElementPtrInst::Create(nullptr, Base, Index, BV->getName(), BB);
+      auto GEP = GetElementPtrInst::Create(BaseTy, Base, Index, BV->getName(), BB);
       GEP->setIsInBounds(IsInbound);
       V = GEP;
     } else {
-      V = ConstantExpr::getGetElementPtr(nullptr, dyn_cast<Constant>(Base), Index, IsInbound);
+      V = ConstantExpr::getGetElementPtr(BaseTy, dyn_cast<Constant>(Base), Index, IsInbound);
     }
     return mapValue(BV, V);
     }

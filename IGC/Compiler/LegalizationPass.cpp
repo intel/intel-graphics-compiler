@@ -1660,7 +1660,8 @@ void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, Instruction
         if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(*II))
         {
             SmallVector<Value*, 8> Idx(gep->idx_begin(), gep->idx_end());
-            GetElementPtrInst* newGep = GetElementPtrInst::Create(nullptr, newPtr, Idx, "", gep);
+            Type *BaseTy = cast<PointerType>(newPtr->getType())->getPointerElementType();
+            GetElementPtrInst* newGep = GetElementPtrInst::Create(BaseTy, newPtr, Idx, "", gep);
             newGep->setDebugLoc(gep->getDebugLoc());
             RecursivelyChangePointerType(gep, newGep);
         }

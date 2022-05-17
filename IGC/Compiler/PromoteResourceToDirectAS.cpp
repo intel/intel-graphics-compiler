@@ -297,6 +297,7 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
     unsigned numInstructions = instList.size();
     Value* patchedInst = patchedSourcePtr;
     dstPtr = nullptr;
+    Type* patchTy = nullptr;
 
     // Find all the instructions we need to patch, starting from the top.
     // If there is more than one GEP instruction, we need to patch all of them, as well
@@ -326,7 +327,6 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
 
     if (!patchedInst)
     {
-        Type* patchTy = nullptr;
         if (patchInstructions.size() > 0)
         {
             // Get the original pointer type before any GEPs or bitcasts modifies it
@@ -349,9 +349,9 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
             llvm::SmallVector<llvm::Value*, 4> gepArgs(gepInst->idx_begin(), gepInst->idx_end());
             // Create the new GEP instruction
             if (gepInst->isInBounds())
-                patchedInst = GetElementPtrInst::CreateInBounds(nullptr, patchedInst, gepArgs, "", gepInst);
+                patchedInst = GetElementPtrInst::CreateInBounds(patchTy, patchedInst, gepArgs, "", gepInst);
             else
-                patchedInst = GetElementPtrInst::Create(nullptr, patchedInst, gepArgs, "", gepInst);
+                patchedInst = GetElementPtrInst::Create(patchTy, patchedInst, gepArgs, "", gepInst);
 
             if (GetElementPtrInst* gepPatchedInst = dyn_cast<GetElementPtrInst>(patchedInst))
             {
