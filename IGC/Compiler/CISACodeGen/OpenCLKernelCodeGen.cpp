@@ -634,6 +634,12 @@ namespace IGC
         case KernelArg::ArgType::PTR_CONSTANT: {
             uint32_t arg_idx = kernelArg->getAssociatedArgNo();
 
+            FunctionMetaData& funcMD = GetContext()->getModuleMetaData()->FuncMD[entry];
+            auto access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
+            if (kernelArg->getArgType() == KernelArg::ArgType::PTR_CONSTANT ||
+                funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "const")
+                access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readonly;
+
             // Add BTI argument if being promoted
             // FIXME: do not set bti if the number is 0xffffffff (?)
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
@@ -647,9 +653,7 @@ namespace IGC
                     (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
                       zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
                       zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
-                    (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
-                      zebin::PreDefinedAttrGetter::ArgAccessType::readwrite :
-                      zebin::PreDefinedAttrGetter::ArgAccessType::readonly
+                    access_type
                 );
                 // add the corresponding BTI table index
                 zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
@@ -671,6 +675,7 @@ namespace IGC
             if (is_bti_only)
                 break;
              */
+
             ResourceAllocMD& resAllocMD = GetContext()->getModuleMetaData()->FuncMD[entry].resAllocMD;
             IGC_ASSERT_MESSAGE(resAllocMD.argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
 
@@ -686,9 +691,7 @@ namespace IGC
                 (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
                   zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
                   zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
-                (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
-                  zebin::PreDefinedAttrGetter::ArgAccessType::readwrite :
-                  zebin::PreDefinedAttrGetter::ArgAccessType::readonly
+                access_type
                 );
             break;
         }
