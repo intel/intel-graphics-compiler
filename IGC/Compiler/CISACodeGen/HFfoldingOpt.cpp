@@ -22,6 +22,46 @@ using namespace llvm;
 using namespace IGC;
 
 namespace {
+
+    enum class HFdataType : unsigned char
+    {
+        HF_STORE,
+        HF_LOAD,
+        HF_END,
+    };
+
+    struct HFdata
+    {
+        union
+        {
+            StoreInst* Store;
+            LoadInst* Load;
+        };
+        HFdataType type;
+        GetElementPtrInst* GEP;
+        uint arraySize;
+        uint elmBytes;
+        uint offset;
+        bool bStoreConstZero;
+        uint storePattern;
+
+        HFdata(HFdataType HFtype): type(HFtype) { clear(); }
+        void clear()
+        {
+            GEP = nullptr;
+            arraySize = 0;
+            elmBytes = 0;
+            offset = 0;
+            bStoreConstZero = false;
+            storePattern = 0;
+            if (type == HFdataType::HF_STORE)
+                Store = nullptr;
+            else
+                Load = nullptr;
+        }
+        bool isValid() { return (GEP && arraySize); }
+    };
+
     class HFfoldingOpt : public FunctionPass
     {
     public:
@@ -42,12 +82,15 @@ namespace {
         ModuleMetaData* modMD;
         std::map<uint, uint> slmOffsetMap;
         std::map<uint, bool> HFList; // GEPoffset, HF flag
+        std::map<uint32_t, uint32_t> HFpackedOffsets; // merged pair: GEP offset #1, GEP offset #2
+        std::map<GetElementPtrInst*, Value *> HFpackedGEPs; // mapped old GEP to new GEP
+        bool bRemoveFromSlmMap;
 
         bool findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace);
         bool getSRVMap(GenIntrinsicInst* tex, uint& index);
         bool supportHF(ExtractElementInst* EE, const uint gepOffset);
         bool getGEPInfo(GetElementPtrInst* GEP, uint& arraySize, uint& elmBytes, uint& offset);
-        ExtractElementInst* decodeStore(StoreInst* pStore, bool& bStoreConstZero);
+        ExtractElementInst* decodeStore(StoreInst* pStore, bool& bStoreConstZero, uint &storePattern);
         void getHFPackingCandidate(Function& F);
         void PackHfResources(Function& F);
         void removeRedundantChannels(Function& F);
@@ -57,6 +100,16 @@ namespace {
         bool initializeSlmOffsetMap(Function& F);
         void removeFromSlmMap(GetElementPtrInst* gep);
         void updateSlmOffsetSize(Function& F);
+        bool canMergeGEPs(Instruction* inst1, Instruction* inst2);
+        bool canMerge(HFdata& prev, GetElementPtrInst* GEP,
+            const uint arraySize, const uint elmBytes, const uint offset,
+            const uint storePattern, const bool bStoreConstZero, bool &bRemoveSLM);
+        void replaceStores(Instruction* startInst, Value* newGEP,
+            StoreInst* Store1, StoreInst* Store2,
+            const bool bStoreConstZero1, const bool bStoreConstZero2);
+        void replaceLoads(Instruction* startInst, Value* newGEP,
+            LoadInst* load1, LoadInst* load2);
+        bool isPacked(uint offset1, uint offset2);
     };
 }
 
@@ -80,6 +133,7 @@ FunctionPass* IGC::createHFfoldingOptPass()
 HFfoldingOpt::HFfoldingOpt() : FunctionPass(ID)
 {
     initializeHFfoldingOptPass(*PassRegistry::getPassRegistry());
+    bRemoveFromSlmMap = false;
 }
 
 // return runtimeV and ptrAddrSpace for the given GenISA_ldptr
@@ -152,6 +206,7 @@ void HFfoldingOpt::removeFromSlmMap(GetElementPtrInst* gep)
         // find the offset to be removed
         else if (slmOffsetIter->first == offset)
         {
+            bRemoveFromSlmMap = true;
             slmOffsetMap[slmOffsetIter->first] = -1;
             csCtx->m_tgsmSize -= arraySize * elmBytes;;
 
@@ -199,7 +254,7 @@ bool HFfoldingOpt::supportHF(ExtractElementInst* EE, const uint gepOffset)
         if (modMD->SrvMap[index].resourceRangeID == HFRes[0] &&
             modMD->SrvMap[index].indexIntoRange == HFRes[1])
         {
-            isHF = true;
+            isHF = modMD->SrvMap[index].hfCandidate;
             break;
         }
     }
@@ -214,10 +269,7 @@ bool HFfoldingOpt::getGEPInfo(GetElementPtrInst* GEP, uint& arraySize, uint& elm
     if (!GEP)
         return false;
 
-    // [144 x float] addrspace(3)* inttoptr (i32 4608 to [144 x float] addrspace(3)*)
-    // offset    : 4608
-    // arraySize : 144
-    // elmBytes  : 4 (size of float)
+    // getelementptr[144 x float], [144 x float] addrspace(3) * null, i32 0, i32 % 885
     if (isa<ConstantPointerNull>(GEP->getPointerOperand()))
     {
         offset = 0;
@@ -232,6 +284,10 @@ bool HFfoldingOpt::getGEPInfo(GetElementPtrInst* GEP, uint& arraySize, uint& elm
             return false;
     }
 
+    // [144 x float] addrspace(3)* inttoptr (i32 4608 to [144 x float] addrspace(3)*)
+    // offset    : 4608
+    // arraySize : 144
+    // elmBytes  : 4 (size of float)
     if (const ConstantExpr* CE = dyn_cast<ConstantExpr>(GEP->getPointerOperand()))
     {
         const ConstantInt* CI = dyn_cast<ConstantInt>(CE->getOperand(0));
@@ -294,9 +350,10 @@ void HFfoldingOpt::getHFPackingCandidate(Function& F)
  ***** Scenario 3 *****
     store float 0.000000e+00, float addrspace(3)* %122, align 4
 */
-ExtractElementInst* HFfoldingOpt::decodeStore(StoreInst* pStore, bool& bStoreConstZero)
+ExtractElementInst* HFfoldingOpt::decodeStore(StoreInst* pStore, bool& bStoreConstZero, uint& storePattern)
 {
     bStoreConstZero = false;
+    storePattern = 0;
 
     if (!pStore->getOperand(0)->getType()->isFloatTy())
         return nullptr;
@@ -310,22 +367,187 @@ ExtractElementInst* HFfoldingOpt::decodeStore(StoreInst* pStore, bool& bStoreCon
         {
             // scenario 2
             EE = dyn_cast<ExtractElementInst>(inst->getOperand(0));
+            storePattern = 2;
         }
         else if (ConstantFP* fp = dyn_cast<ConstantFP>(pStore->getOperand(0)))
         {
             // scenario 3
             if (fp->isExactlyValue(0))
+            {
                 bStoreConstZero = true;
+                storePattern = 3;
+            }
+        }
+    }
+    else
+    {
+        storePattern = 1;
+    }
+    return EE;
+}
+
+// Two GEPs with the same offset (5184) can be merged if the indices are off by 1
+// %79 = shl i32 % 78, 2
+// %80 = getelementptr[1296 x float], [1296 x float] addrspace(3) *
+//       inttoptr(i32 5184 to[1296 x float] addrspace(3)*), i32 0, i32 % 79
+// %81 = or i32 % 79, 1
+// %82 = getelementptr[1296 x float], [1296 x float] addrspace(3) *
+//       inttoptr(i32 5184 to[1296 x float] addrspace(3)*), i32 0, i32 % 81
+bool HFfoldingOpt::canMergeGEPs(Instruction* inst1, Instruction* inst2)
+{
+    if (!inst1 || !inst2)
+        return false;
+
+    uint addr1 = 0, addr2 = 0;
+    if (inst1->getOpcode() == Instruction::Or)
+    {
+        const ConstantInt* CI = dyn_cast<ConstantInt>(inst1->getOperand(1));
+        addr1 = (uint)CI->getZExtValue();
+    }
+    if (inst2->getOpcode() == Instruction::Or)
+    {
+        const ConstantInt* CI = dyn_cast<ConstantInt>(inst2->getOperand(1));
+        addr2 = (uint)CI->getZExtValue();
+    }
+
+    return (addr2 == addr1 + 1);
+}
+
+bool HFfoldingOpt::canMerge(HFdata& prev, GetElementPtrInst* GEP,
+    const uint arraySize, const uint elmBytes, const uint offset,
+    const uint storePattern, const bool bStoreConstZero, bool& removeSLM)
+{
+    removeSLM = false;
+
+    if (!prev.isValid())
+        return false;
+
+    if (!GEP || !prev.GEP)
+        return false;
+
+    if ((arraySize != prev.arraySize) || (elmBytes != prev.elmBytes) ||
+        (bStoreConstZero != prev.bStoreConstZero))
+    {
+        return false;
+    }
+
+    // For load type, we will only merge the ones which are tracked by stores
+    if (prev.type == HFdataType::HF_LOAD)
+    {
+        return isPacked(prev.offset, offset);
+    }
+
+    if (offset != prev.offset)
+    {
+        if (storePattern != prev.storePattern)
+        {
+            return false;
+        }
+
+        // if offset #2 is already tracked by the merged HF folding offset, we can't merge it
+        if (HFpackedOffsets.find(offset) != HFpackedOffsets.end())
+        {
+            return false;
         }
     }
 
-    return EE;
+    /* case 1: Merge GEPs with different offsets, but same indices
+      %37 = getelementptr[144 x float], [144 x float] addrspace(3) *
+            inttoptr(i32 4608 to[144 x float] addrspace(3)*), i32 0, i32 %23
+      %38 = getelementptr[144 x float], [144 x float] addrspace(3) *
+            inttoptr(i32 5184 to[144 x float] addrspace(3)*), i32 0, i32 %23
+      */
+    if ((prev.offset > 0) &&
+        (offset == prev.offset + prev.arraySize * prev.elmBytes) &&
+        (GEP->getOperand(2) == prev.GEP->getOperand(2)))
+    {
+        removeSLM = true;
+        return true;
+    }
+
+    /* case 2: Merge GEPs with the same offset, but different indices
+      %80 = getelementptr[1296 x float], [1296 x float] addrspace(3) *
+            inttoptr(i32 5184 to[1296 x float] addrspace(3)*), i32 0, i32 %79
+      store float% 48, float addrspace(3)*%80, align 32
+      %81 = or i32 %79, 1
+      %82 = getelementptr[1296 x float], [1296 x float] addrspace(3) *
+            inttoptr(i32 5184 to[1296 x float] addrspace(3)*), i32 0, i32 %81
+      */
+    if ((offset == prev.offset) &&
+        (GEP->getOperand(2) != prev.GEP->getOperand(2)) &&
+        canMergeGEPs(dyn_cast<Instruction>(prev.GEP->getOperand(2)),
+                 dyn_cast<Instruction>(GEP->getOperand(2))))
+    {
+        return true;
+    }
+
+    return false;
 }
+
+void HFfoldingOpt::replaceStores(Instruction* startInst, Value* newGEP,
+    StoreInst *Store1, StoreInst* Store2,
+    const bool bStoreConstZero1, const bool bStoreConstZero2)
+{
+    IRBuilder<> builder(startInst);
+
+    if (bStoreConstZero1 && bStoreConstZero2)
+    {
+        builder.CreateAlignedStore(ConstantInt::get(builder.getInt32Ty(), 0),
+            newGEP, IGCLLVM::getAlign(4));
+    }
+    else
+    {
+        Value* new1, * new2;
+        Function* f32tof16 = GenISAIntrinsic::getDeclaration(startInst->getModule(),
+            GenISAIntrinsic::GenISA_f32tof16_rtz);
+        new1 = builder.CreateCall(f32tof16, Store1->getOperand(0));
+        new1 = builder.CreateBitCast(new1, builder.getInt32Ty());
+
+        new2 = builder.CreateCall(f32tof16, Store2->getOperand(0));
+        new2 = builder.CreateBitCast(new2, builder.getInt32Ty());
+        new2 = builder.CreateShl(new2, builder.getInt32(16));
+
+        new1 = builder.CreateOr(new1, new2);
+        new1 = builder.CreateAlignedStore(new1, newGEP, getLoadStoreAlignment(Store1));
+    }
+}
+
+void HFfoldingOpt::replaceLoads(Instruction *startInst, Value* newGEP,
+    LoadInst *load1, LoadInst *load2)
+{
+    IRBuilder<> builder(startInst);
+    Value* new1, * new2;
+
+    new1 = builder.CreateAlignedLoad(builder.getInt32Ty(), newGEP,
+        getLoadStoreAlignment(load1));
+    new2 = builder.CreateLShr(new1, builder.getInt32(16));
+    new1 = builder.CreateAnd(new1, builder.getInt32(0xffff));
+
+    new1 = builder.CreateBitCast(new1, builder.getFloatTy());
+    new2 = builder.CreateBitCast(new2, builder.getFloatTy());
+    load1->replaceAllUsesWith(new1);
+    load2->replaceAllUsesWith(new2);
+}
+
+// Checked if these two offsets are tracked by merged HF folding offsets
+bool HFfoldingOpt::isPacked(uint offset1, uint offset2)
+{
+    std::map<uint32_t, uint32_t>::iterator it;
+
+    it = HFpackedOffsets.find(offset1);
+    if (it != HFpackedOffsets.end() && offset2 == it->second)
+    {
+        return true;
+    }
+    return false;
+}
+
 // Merge 2 f16 stores into 1 i32 store
 void HFfoldingOpt::PackHfResources(Function& F)
 {
     std::vector<Instruction*> RemoveInst;
-    std::map<uint32_t, uint32_t> HFpacked;
+    HFdata prevStore(HFdataType::HF_STORE);
+    HFdata prevLoad(HFdataType::HF_LOAD);
 
     for (auto bb = F.begin(); bb != F.end(); ++bb)
     {
@@ -353,83 +575,64 @@ void HFfoldingOpt::PackHfResources(Function& F)
                 %43 = or i32 %39, %42
                 store i32 %43, i32 addrspace(3)* %37, align 4
             */
-            if (StoreInst* pStore = dyn_cast<StoreInst>(&(*ii)))
+            if (StoreInst* Store = dyn_cast<StoreInst>(&(*ii)))
             {
-                if (pStore->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
+                if (Store->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
                 {
                     continue;
                 }
 
-                uint arraySize1, elmBytes1, offset1;
-                uint arraySize2, elmBytes2, offset2;
-                GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(pStore->getOperand(1));
-                if (!GEP || !getGEPInfo(GEP, arraySize1, elmBytes1, offset1))
+                uint arraySize, elmBytes, offset;
+                GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(Store->getOperand(1));
+                if (!GEP || !getGEPInfo(GEP, arraySize, elmBytes, offset))
                     continue;
 
-                bool bStoreConstZero1 = false, bStoreConstZero2 = false;
-                ExtractElementInst* EE = decodeStore(pStore, bStoreConstZero1);
-                if (!supportHF(EE, offset1))
+                bool bStoreConstZero = false;
+                uint storePattern = 0;
+                ExtractElementInst* EE = decodeStore(Store, bStoreConstZero, storePattern);
+                if (!supportHF(EE, offset) && !isPacked(prevStore.offset, offset))
                     continue;
 
-                if (!pStore->getNextNode())
-                    continue;
-                StoreInst* pStore2 = dyn_cast<StoreInst>(pStore->getNextNode());
-                if (!pStore2)
-                    continue;
+                bool bRemoveSLM = false;
+                bool bMerge = canMerge(prevStore, GEP, arraySize, elmBytes, offset,
+                    storePattern, bStoreConstZero, bRemoveSLM);
 
-                GetElementPtrInst* GEP2 = dyn_cast<GetElementPtrInst>(pStore2->getOperand(1));
-                if (!GEP2 || !getGEPInfo(GEP2, arraySize2, elmBytes2, offset2))
+                if (!bMerge)
+                {
+                    prevStore.Store = Store;
+                    prevStore.GEP = GEP;
+                    prevStore.arraySize = arraySize;
+                    prevStore.elmBytes = elmBytes;
+                    prevStore.offset = offset;
+                    prevStore.bStoreConstZero = bStoreConstZero;
+                    prevStore.storePattern = storePattern;
                     continue;
-
-                ExtractElementInst* EE2 = decodeStore(pStore, bStoreConstZero2);
-                if (!supportHF(EE2, offset2))
-                    continue;
-
-                if ((arraySize1 != arraySize2) || (elmBytes1 != elmBytes2) ||
-                    GEP->getOperand(2) != GEP2->getOperand(2) ||
-                    (offset2 != offset1 + arraySize1 * elmBytes1))
-                    continue;
+                }
 
                 auto inst = GEP;
                 IRBuilder<> builder(inst);
 
-                Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(offset1),
-                    PointerType::get(ArrayType::get(builder.getInt32Ty(), arraySize1), ADDRESS_SPACE_LOCAL));
-                Value* gepArg[] = { GEP->getOperand(1), GEP->getOperand(2) };
+                Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(prevStore.offset),
+                    PointerType::get(ArrayType::get(builder.getInt32Ty(), prevStore.arraySize),
+                        ADDRESS_SPACE_LOCAL));
+                Value* gepArg[] = { prevStore.GEP->getOperand(1), prevStore.GEP->getOperand(2) };
                 Value* newGEP = builder.CreateGEP(nullptr, Int2Ptr, gepArg);
 
-                if (bStoreConstZero1 && bStoreConstZero2)
-                {
-                    builder.CreateAlignedStore(ConstantInt::get(builder.getInt32Ty(), 0),
-                        newGEP, IGCLLVM::getAlign(4));
-                }
-                else
-                {
-                    Value* new1, * new2;
-                    Function* f32tof16 = GenISAIntrinsic::getDeclaration(inst->getModule(),
-                        GenISAIntrinsic::GenISA_f32tof16_rtz);
-                    new1 = builder.CreateCall(f32tof16, pStore->getOperand(0));
-                    new1 = builder.CreateBitCast(new1, builder.getInt32Ty());
+                replaceStores(GEP, newGEP, prevStore.Store, Store,
+                    prevStore.bStoreConstZero, bStoreConstZero);
 
-                    new2 = builder.CreateCall(f32tof16, pStore2->getOperand(0));
-                    new2 = builder.CreateBitCast(new2, builder.getInt32Ty());
-                    new2 = builder.CreateShl(new2, builder.getInt32(16));
+                // track the GEP offset of the merged stores for quick lookup later
+                HFpackedOffsets[prevStore.offset] = offset;
+                HFpackedGEPs[prevStore.GEP] = newGEP;
 
-                    new1 = builder.CreateOr(new1, new2);
-                    new1 = builder.CreateAlignedStore(new1, newGEP, IGCLLVM::getAlign(4));
-                }
+                RemoveInst.push_back(prevStore.Store);
+                RemoveInst.push_back(Store);
 
-                // track the GEP offset of the merged stores, so we can use them when merging load
-                HFpacked[offset1] = offset2;
+                prevStore.clear();
 
-                RemoveInst.push_back(pStore);
-                RemoveInst.push_back(pStore2);
-                RemoveInst.push_back(GEP);
-                RemoveInst.push_back(GEP2);
-
-                removeFromSlmMap(GEP2);
-                ++ii; // skip next store because it is merged with the current store
-            } // if (StoreInst* pStore ...
+                if (bRemoveSLM)
+                    removeFromSlmMap(GEP);
+            } // if (StoreInst* Store ...
             /*
             From
                 %694 = getelementptr[144 x float], [144 x float] addrspace(3) * inttoptr(i32 4608 to[144 x float] addrspace(3)*), i32 0, i32 % 23
@@ -444,71 +647,83 @@ void HFfoldingOpt::PackHfResources(Function& F)
                 %698 = bitcast i32 %696 to float
                 %699 = bitcast i32 %697 to float
              */
-            else if (LoadInst* pLoad = dyn_cast<LoadInst>(&(*ii)))
+            else if (LoadInst* Load = dyn_cast<LoadInst>(&(*ii)))
             {
-                if (pLoad->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
+                if (Load->getPointerAddressSpace() != ADDRESS_SPACE_LOCAL)
                 {
                     continue;
                 }
 
-                uint arraySize1, elmBytes1, offset1;
-                uint arraySize2, elmBytes2, offset2;
-                GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(pLoad->getOperand(0));
-                if (!GEP || !getGEPInfo(GEP, arraySize1, elmBytes1, offset1))
+                uint arraySize, elmBytes, offset;
+                GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(Load->getOperand(0));
+                if (!GEP || !getGEPInfo(GEP, arraySize, elmBytes, offset))
                     continue;
 
-                std::map<uint32_t, uint32_t>::iterator iHFpacked = HFpacked.find(offset1);
-                if (iHFpacked == HFpacked.end())
+                bool bDummy = false;
+                uint dummyPattern = 0;
+                bool bMerge = canMerge(prevLoad, GEP, arraySize, elmBytes, offset,
+                    dummyPattern, bDummy, bDummy);
+
+                if (!bMerge)
+                {
+                    prevLoad.Load = Load;
+                    prevLoad.GEP = GEP;
+                    prevLoad.arraySize = arraySize;
+                    prevLoad.elmBytes = elmBytes;
+                    prevLoad.offset = offset;
                     continue;
+                }
 
-                if (!pLoad->getNextNode())
-                    continue;
+                Value* newGEP;
+                Instruction* startInst;
+                std::map<GetElementPtrInst*, Value*>::iterator iGEP;
+                iGEP = HFpackedGEPs.find(prevLoad.GEP);
+                if (iGEP != HFpackedGEPs.end())
+                {
+                    // no need to create new GEP
+                    newGEP = iGEP->second;
+                    startInst = prevLoad.Load;
+                }
+                else
+                {
+                    startInst = GEP;
+                    IRBuilder<> builder(startInst);
 
-                LoadInst* pLoad2 = dyn_cast<LoadInst>(pLoad->getNextNode());
-                if (!pLoad2)
-                    continue;
+                    Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(prevLoad.offset),
+                        PointerType::get(ArrayType::get(builder.getInt32Ty(), prevLoad.arraySize), ADDRESS_SPACE_LOCAL));
+                    Value* gepArg[] = { prevLoad.GEP->getOperand(1), prevLoad.GEP->getOperand(2) };
+                    newGEP = builder.CreateGEP(nullptr, Int2Ptr, gepArg);
+                }
 
-                GetElementPtrInst* GEP2 = dyn_cast<GetElementPtrInst>(pLoad2->getOperand(0));
-                if (!GEP2 || !getGEPInfo(GEP2, arraySize2, elmBytes2, offset2))
-                    continue;
+                replaceLoads(startInst, newGEP, prevLoad.Load, Load);
 
-                if ((arraySize1 != arraySize2) || (elmBytes1 != elmBytes2) ||
-                    offset2 != iHFpacked->second)
-                    continue;
+                RemoveInst.push_back(prevLoad.Load);
+                RemoveInst.push_back(Load);
 
-                auto inst = GEP;
-                IRBuilder<> builder(inst);
-                Value* new1, * new2;
-
-                Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(offset1),
-                    PointerType::get(ArrayType::get(builder.getInt32Ty(), arraySize1), ADDRESS_SPACE_LOCAL));
-                Value* gepArg[] = { GEP->getOperand(1), GEP->getOperand(2) };
-                Value* newGEP = builder.CreateGEP(nullptr, Int2Ptr, gepArg);
-
-                new1 = builder.CreateAlignedLoad(builder.getInt32Ty(), newGEP, IGCLLVM::getAlign(4));
-                new2 = builder.CreateLShr(new1, builder.getInt32(16));
-                new1 = builder.CreateAnd(new1, builder.getInt32(0xffff));
-
-                new1 = builder.CreateBitCast(new1, builder.getFloatTy());
-                new2 = builder.CreateBitCast(new2, builder.getFloatTy());
-
-                pLoad->replaceAllUsesWith(new1);
-                pLoad2->replaceAllUsesWith(new2);
-
-                RemoveInst.push_back(pLoad);
-                RemoveInst.push_back(pLoad2);
-                RemoveInst.push_back(GEP);
-                RemoveInst.push_back(GEP2);
-
-                ++ii; // skip next load because it is merged with the current load
-            } // else if (LoadInst* pLoad...
+                prevLoad.clear();
+            } // else if (LoadInst* Load...
         } // for (auto ii ...
+
+        prevStore.clear();
+        prevLoad.clear();
     } // for (auto bb ...
 
+    GetElementPtrInst* removeGEP;
     for (size_t i = 0; i < RemoveInst.size(); i++)
     {
+        if (LoadInst* Load = dyn_cast<LoadInst>(RemoveInst[i]))
+            removeGEP = dyn_cast<GetElementPtrInst>(RemoveInst[i]->getOperand(0));
+        else
+            removeGEP = dyn_cast<GetElementPtrInst>(RemoveInst[i]->getOperand(1));
+
         RemoveInst[i]->dropAllReferences();
         RemoveInst[i]->eraseFromParent();
+
+        if (removeGEP && removeGEP->use_empty())
+        {
+            removeGEP->dropAllReferences();
+            removeGEP->eraseFromParent();
+        }
     }
 }
 
@@ -907,6 +1122,9 @@ bool HFfoldingOpt::initializeSlmOffsetMap(Function& F)
 void HFfoldingOpt::updateSlmOffsetSize(Function& F)
 {
     uint32_t arraySize = 0, elmBytes = 0, offset = 0;
+
+    if (!bRemoveFromSlmMap)
+        return;
 
     for (BasicBlock& bb : F)
     {
