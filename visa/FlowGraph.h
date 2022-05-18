@@ -132,7 +132,6 @@ class FlowGraph
     bool     doIPA;                             // requires inter-procedural liveness analysis
     bool     hasStackCalls;                     // indicates that the flowgraph contains STACK_CALL calls
     bool     isStackCallFunc;                    // indicates the function itself is a STACK_CALL function
-    unsigned autoLabelId;
     G4_Kernel* pKernel;                         // back pointer to the kernel object
 
     // map each BB to its local RA GRF usage summary, populated in local RA
@@ -400,7 +399,7 @@ public:
 
     FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m) :
       traversalNum(0), numBBId(0), reducible(true),
-      doIPA(false), hasStackCalls(false), isStackCallFunc(false), autoLabelId(0),
+      doIPA(false), hasStackCalls(false), isStackCallFunc(false),
       pKernel(kernel), mem(m), instListAlloc(alloc),
       kernelInfo(NULL), builder(NULL), globalOpndHT(m), framePtrDcl(NULL),
       stackPtrDcl(NULL), scratchRegDcl(NULL), pseudoVCEDcl(NULL),

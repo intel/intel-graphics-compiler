@@ -389,12 +389,12 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
         return VISA_FAILURE;
     }
 
-    VISAKernelImpl * kerneltemp = new (m_mem) VISAKernelImpl(VISA_BUILD_TYPE::KERNEL, this, kernelName);
+    unsigned int funcId = this->m_kernel_count++;
+    VISAKernelImpl * kerneltemp = new (m_mem) VISAKernelImpl(VISA_BUILD_TYPE::KERNEL, this, kernelName, funcId);
     kernel = static_cast<VISAKernel*>(kerneltemp);
     m_kernel = kerneltemp;
 
     m_kernelsAndFunctions.push_back(kerneltemp);
-    this->m_kernel_count++;
     this->m_nameToKernel[kernelName] = m_kernel;
 
     if (m_builderMode == vISA_ASM_WRITER)
@@ -423,11 +423,11 @@ int CISA_IR_Builder::AddFunction(VISAFunction *& function, const char* functionN
         return VISA_FAILURE;
     }
 
-    VISAKernelImpl* kerneltemp = new (m_mem) VISAKernelImpl(VISA_BUILD_TYPE::FUNCTION, this, functionName);
+    unsigned int funcId = this->m_function_count++;
+    VISAKernelImpl* kerneltemp = new (m_mem) VISAKernelImpl(VISA_BUILD_TYPE::FUNCTION, this, functionName, funcId);
     function = static_cast<VISAFunction*>(kerneltemp);
     m_kernel = kerneltemp;
     m_kernelsAndFunctions.push_back(kerneltemp);
-    m_kernel->m_functionId = this->m_function_count++;
     this->m_nameToKernel[functionName] = m_kernel;
 
     if (m_builderMode == vISA_ASM_WRITER)
@@ -447,11 +447,11 @@ int CISA_IR_Builder::AddPayloadSection(VISAFunction *& function, const char* fun
         return VISA_FAILURE;
     }
 
-    VISAKernelImpl* kerneltemp = new (m_mem) VISAKernelImpl(VISA_BUILD_TYPE::PAYLOAD, this, functionName);
+    unsigned int funcId = this->m_function_count++;
+    VISAKernelImpl* kerneltemp = new (m_mem) VISAKernelImpl(VISA_BUILD_TYPE::PAYLOAD, this, functionName, funcId);
     function = static_cast<VISAFunction*>(kerneltemp);
     m_kernel = kerneltemp;
     m_kernelsAndFunctions.push_back(kerneltemp);
-    m_kernel->m_functionId = this->m_function_count++;
     this->m_nameToKernel[functionName] = m_kernel;
 
     return VISA_SUCCESS;

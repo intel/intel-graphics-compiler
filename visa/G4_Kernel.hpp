@@ -244,6 +244,7 @@ private:
     bool regSharingHeuristics;
     Options *m_options;
     const Attributes* m_kernelAttrs;
+    const uint32_t m_function_id;
 
     RA_Type RAType;
     KernelDebugInfo* kernelDbgInfo = nullptr;
@@ -294,7 +295,7 @@ public:
     unsigned char minor_version;
 
     G4_Kernel(const PlatformInfo& pInfo, INST_LIST_NODE_ALLOCATOR& alloc,
-        Mem_Manager& m, Options* options, Attributes* anAttr,
+        Mem_Manager& m, Options* options, Attributes* anAttr, uint32_t funcId,
         unsigned char major, unsigned char minor);
     ~G4_Kernel();
 
@@ -334,6 +335,8 @@ public:
 
     void     setKernelID(uint64_t ID) { kernelID = ID; }
     uint64_t getKernelID() const { return kernelID; }
+
+    uint32_t getFunctionId() const { return m_function_id; }
 
     Options *getOptions() { return m_options; }
     const Attributes* getKernelAttrs() const { return m_kernelAttrs; }

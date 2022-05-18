@@ -414,8 +414,7 @@ namespace {
             ASSERT_USER(BB->empty(),
                         "BB to be marked empty is not empty!");
 
-            std::string id = "LABEL__EMPTYBB__" + toString(BB->getId());
-            G4_Label *label = IRB->createLabel(id, LABEL_BLOCK);
+            G4_Label* label = IRB->createLocalBlockLabel("LABEL__EMPTYBB");
             G4_INST *inst =
                 IRB->createLabelInst(label, false);
             BB->push_back(inst);

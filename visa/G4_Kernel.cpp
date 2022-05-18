@@ -542,9 +542,10 @@ uint32_t gtPinData::getNumBytesScratchUse() const
 
 
 G4_Kernel::G4_Kernel(const PlatformInfo& pInfo, INST_LIST_NODE_ALLOCATOR& alloc,
-    Mem_Manager& m, Options* options, Attributes* anAttr,
+    Mem_Manager& m, Options* options, Attributes* anAttr, uint32_t funcId,
     unsigned char major, unsigned char minor)
-    : platformInfo(pInfo), m_options(options), m_kernelAttrs(anAttr), RAType(RA_Type::UNKNOWN_RA),
+    : platformInfo(pInfo), m_options(options), m_kernelAttrs(anAttr),
+    m_function_id(funcId), RAType(RA_Type::UNKNOWN_RA),
     asmInstCount(0), kernelID(0), fg(alloc, this, m),
     major_version(major), minor_version(minor)
 {

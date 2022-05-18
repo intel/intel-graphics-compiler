@@ -45,8 +45,8 @@ class VISAKernelImpl : public VISAFunction
     friend class VISAKernel_format_provider;
 
 public:
-    VISAKernelImpl(enum VISA_BUILD_TYPE type, CISA_IR_Builder* cisaBuilder, const char* name)
-        : m_mem(4096), m_CISABuilder(cisaBuilder), m_options(cisaBuilder->getOptions())
+    VISAKernelImpl(enum VISA_BUILD_TYPE type, CISA_IR_Builder* cisaBuilder, const char* name, unsigned int funcId)
+        : m_mem(4096), m_CISABuilder(cisaBuilder), m_options(cisaBuilder->getOptions()), m_functionId(funcId)
     {
         mBuildOption = m_CISABuilder->getBuilderOption();
         m_magic_number = COMMON_ISA_MAGIC_NUM;
@@ -94,7 +94,6 @@ public:
         surfaceNameCount = COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1;
         samplerNameCount = 0;
         unknownNameCount = 0;
-        m_functionId = 0;
         m_vISAInstCount = -1;
 
         mIsFCCallableKernel = false;
@@ -942,7 +941,7 @@ public:
     // This member holds symbolic index of function when invoked via
     // API path. Builder client can use this id when invoking this
     // stack call function. For a kernel instance, this is not useful.
-    unsigned int m_functionId;
+    const unsigned int m_functionId;
 
     unsigned getvIsaInstCount() const override { return m_vISAInstCount; };
 

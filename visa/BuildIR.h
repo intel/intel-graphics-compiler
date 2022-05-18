@@ -319,6 +319,8 @@ private:
     int                   subroutineId = -1;   // the kernel itself has id 0, as we always emit a subroutine label for kernel too
     enum VISA_BUILD_TYPE type; // as opposed to what?
 
+    uint32_t             m_next_local_label_id = 0;
+
     // pre-defined declare that binds to R0 (the entire GRF)
     // when pre-emption is enabled, builtinR0 is replaced by a temp,
     // and a move is inserted at kernel entry
@@ -1129,12 +1131,44 @@ public:
     // a new null-terminated copy of "lab" is created for the new label, so
     // caller does not have to allocate memory for lab
     //
+    // Note that "lab" should be unique within CISA_IR_BUILDER.
     G4_Label* createLabel(const std::string &lab, VISA_Label_Kind kind)
     {
         auto labStr = lab.c_str();
         size_t len = strlen(labStr) + 1;
         char* new_str = (char*)mem.alloc(len);  // +1 for null that ends the string
         memcpy_s(new_str, len, labStr, len);
+        return new (mem) G4_Label(new_str);
+    }
+
+    uint32_t getAndUpdateNextLabelId() { return m_next_local_label_id++; }
+    //
+    // createLocalBlockLabel() creates a unique label of type LABEL_BLOCK.
+    //
+    // Return a new G4_Label whose name is a null-terminated local label that
+    // always starts with "_". This label is guaranteed to be unique within a
+    // kernel and all its functions (within CISA_IR_BUILDER).
+    // It is in the form:
+    //
+    //       label name:  _[<kernelName>|L]_f<functionId>_<func_local_label_id>_<lab>
+    //
+    //    where optional <lab> is used for annotating the label for readability.
+    // If no kernel name or kernel name is too long, the label will start with "_L".
+    //
+    G4_Label* createLocalBlockLabel(const std::string& lab = "")
+    {
+        std::stringstream ss;
+        std::string kname(kernel.getName() ? kernel.getName() : "L");
+        if (kname.size() > 30)
+        {
+            // kname is just for readability. If it is too long, don't use it.
+            kname = "L";
+        }
+        uint32_t lbl_id = getAndUpdateNextLabelId();
+        ss  << "_" << kname << "_f" << kernel.getFunctionId() << "_" << lbl_id << "_" << lab;
+        size_t len = ss.str().size() + 1;
+        char* new_str = (char*)mem.alloc(len);  // +1 for null that ends the string
+        memcpy_s(new_str, len, ss.str().c_str(), len);
         return new (mem) G4_Label(new_str);
     }
 

@@ -1599,3 +1599,18 @@ const char* toString(GenPrecision P)
     return "?";
 }
 
+bool strEndsWith(const std::string& str, const std::string& suffix)
+{
+    return str.size() >= suffix.size() && 0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
+}
+
+bool strStartsWith(const std::string& str, const std::string& prefix)
+{
+    return str.size() >= prefix.size() && 0 == str.compare(0, prefix.size(), prefix);
+}
+
+// Return true if 'str' is a visa-generated local label (starts with "_") that ends with 'suffix'.
+bool isLocalLabelEndsWith(const std::string& str, const std::string& suffix)
+{
+    return str.size() > 0 && str[0] == '_' && strEndsWith(str, suffix);
+}

@@ -185,5 +185,9 @@ inline bool isSampleIndexSet(uint16_t mode)
     return (mode & (0x1 << 0x1));
 }
 
+bool strEndsWith(const std::string& str, const std::string& suffix);
+bool strStartsWith(const std::string& str, const std::string& prefix);
+bool isLocalLabelEndsWith(const std::string& str, const std::string& suffix);
+
 #endif  /* COMMON_ISA_UTIL_INCLUDED */
 

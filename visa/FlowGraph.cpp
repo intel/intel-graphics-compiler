@@ -289,9 +289,7 @@ G4_BB* FlowGraph::beginBB(Label_BB_Map& map, G4_INST* first)
     else
     {
         // no label for this BB, create one!
-        std::string prefix = sanitizeLabelString(builder->kernel.getName());
-        std::string name = prefix + "_auto_" + std::to_string(autoLabelId++);
-        G4_Label* label = builder->createLabel(name, LABEL_BLOCK);
+        G4_Label* label = builder->createLocalBlockLabel();
         labelInst = createNewLabelInst(label);
         newLabelInst = true;
     }
@@ -423,9 +421,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
         assert(inst->asCFInst()->getJip() == nullptr && "IF should not have a label at this point");
 
         // create if_label
-        std::string createdLabel = "_AUTO_GENERATED_IF_LABEL_" + std::to_string(sn);
-        sn++;
-        if_label = builder->createLabel(createdLabel, LABEL_BLOCK);
+        if_label = builder->createLocalBlockLabel("if");
         inst->asCFInst()->setJip(if_label);
 
         // look for else/endif
@@ -452,9 +448,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
                 it1++;
 
                 // add endif label to "else"
-                std::string createdLabel = "__AUTO_GENERATED_ELSE_LABEL__" + std::to_string(sn);
-                sn++;
-                else_label = builder->createLabel(createdLabel, LABEL_BLOCK);
+                else_label = builder->createLocalBlockLabel("else");
                 inst->asCFInst()->setJip(else_label);
 
                 // insert if-else label
@@ -631,8 +625,7 @@ void FlowGraph::normalizeFlowGraph()
                 addPredSuccEdges(newNode, retBB);
 
                 // Create and insert label inst
-                std::string name = "L_AUTO_" + std::to_string(newNode->getId());
-                G4_Label* lbl = builder->createLabel(name, LABEL_BLOCK);
+                G4_Label* lbl = builder->createLocalBlockLabel();
                 G4_INST* inst = createNewLabelInst(lbl, lInst->getLineNo(), lInst->getCISAOff());
                 newNode->push_back(inst);
                 insert(++it, newNode);
@@ -1567,8 +1560,7 @@ void FlowGraph::decoupleInitBlock(G4_BB* bb, FuncInfoHashTable& funcInfoHashTabl
     newInitBB->setBBType(G4_BB_INIT_TYPE);
     addPredSuccEdges(newInitBB, oldInitBB);
 
-    std::string blockName = "LABEL__EMPTYBB__" + std::to_string(newInitBB->getId());
-    G4_Label* label = builder->createLabel(blockName, LABEL_BLOCK);
+    G4_Label* label = builder->createLocalBlockLabel("LABEL__EMPTYBB");
     G4_INST* labelInst = createNewLabelInst(label);
     newInitBB->push_back(labelInst);
 }
@@ -1592,8 +1584,7 @@ void FlowGraph::decoupleReturnBlock(G4_BB* bb)
     oldRetBB->unsetBBType(G4_BB_RETURN_TYPE);
     newRetBB->setBBType(G4_BB_RETURN_TYPE);
 
-    std::string str = "LABEL__EMPTYBB__" + std::to_string(newRetBB->getId());
-    G4_Label* label = builder->createLabel(str, LABEL_BLOCK);
+    G4_Label* label = builder->createLocalBlockLabel("LABEL__EMPTYBB");
     G4_INST* labelInst = createNewLabelInst(label);
     newRetBB->push_back(labelInst);
 }
@@ -1921,8 +1912,8 @@ void FlowGraph::removeRedundantLabels()
         {
             G4_INST* removedBlockInst = bb->front();
             if (removedBlockInst->getLabel()->isFuncLabel() ||
-                strncmp(removedBlockInst->getLabelStr(), "LABEL__EMPTYBB", 14) == 0 ||
-                strncmp(removedBlockInst->getLabelStr(), "__AUTO_GENERATED_DUMMY_LAST_BB", 30) == 0)
+                isLocalLabelEndsWith(removedBlockInst->getLabelStr(), "LABEL__EMPTYBB") ||
+                isLocalLabelEndsWith(removedBlockInst->getLabelStr(), "DUMMY_LAST_BB"))
             {
                 continue;
             }
@@ -2229,15 +2220,14 @@ void FlowGraph::removeEmptyBlocks()
 
             //
             // The removal candidates will have a unique successor and a single label
-            // starting with LABEL__EMPTYBB as the only instruction besides a JMP.
+            // ending with LABEL__EMPTYBB as the only instruction besides a JMP.
             //
             if (bb->size() > 0 && bb->size() < 3)
             {
                 INST_LIST::iterator removedBlockInst = bb->begin();
 
                 if ((*removedBlockInst)->isLabel() == false ||
-                    strncmp((*removedBlockInst)->getLabelStr(),
-                        "LABEL__EMPTYBB", 14) != 0)
+                    !isLocalLabelEndsWith((*removedBlockInst)->getLabelStr(), "LABEL__EMPTYBB"))
                 {
                     ++it;
                     continue;
@@ -2417,8 +2407,7 @@ void FlowGraph::linkDummyBB()
     {
         G4_BB *dumBB = createNewBB();
         MUST_BE_TRUE(dumBB != NULL, ERROR_FLOWGRAPH);
-        std::string str("__AUTO_GENERATED_DUMMY_LAST_BB");
-        G4_Label *dumLabel = builder->createLabel(str, LABEL_BLOCK);
+        G4_Label* dumLabel = builder->createLocalBlockLabel("DUMMY_LAST_BB");
         G4_INST* label = createNewLabelInst(dumLabel);
         dumBB->push_back(label);
         BBs.push_back(dumBB);
@@ -3158,8 +3147,7 @@ G4_Label* FlowGraph::insertEndif(G4_BB* bb, G4_ExecSize execSize, bool createLab
     // endifs a new label will be created for each of them.
     if (createLabel)
     {
-        std::string name = "_auto" + std::to_string(autoLabelId++);
-        G4_Label* label = builder->createLabel(name, LABEL_BLOCK);
+        G4_Label* label = builder->createLocalBlockLabel();
         endifWithLabels.emplace(endifInst, label);
         return label;
     }
@@ -3211,8 +3199,7 @@ void FlowGraph::setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB)
 
         if (label == NULL)
         {
-            std::string name = "_auto" + std::to_string(autoLabelId++);
-            label = builder->createLabel(name, LABEL_BLOCK);
+            label = builder->createLocalBlockLabel();
             endifWithLabels.emplace(target, label);
         }
     }

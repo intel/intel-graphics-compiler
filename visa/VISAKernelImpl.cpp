@@ -752,12 +752,15 @@ int VISAKernelImpl::InitializeFastPath()
 {
     m_kernelMem = new vISA::Mem_Manager(4096);
 
+    uint32_t funcId;
+    GetFunctionId(funcId);
     m_kernel = new (m_mem) G4_Kernel(
         *getCISABuilder()->getPlatformInfo(),
         m_instListNodeAllocator,
         *m_kernelMem,
         m_options,
         m_kernelAttrs,
+        funcId,
         m_major_version,
         m_minor_version);
     m_kernel->setName(m_name.c_str());
