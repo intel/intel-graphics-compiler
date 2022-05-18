@@ -19679,36 +19679,33 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     if (pushSize % SIZE_OWORD > 0)
         pushSize += (SIZE_OWORD - (pushSize % SIZE_OWORD));
 
-    if (pushSize != 0)
+    // Update SP by pushSize
+    emitAddPointer(pSP, pSP, m_currShader->ImmToVariable(pushSize, ISA_TYPE_UD));
+
+    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
     {
-        // Update SP by pushSize
-        emitAddPointer(pSP, pSP, m_currShader->ImmToVariable(pushSize, ISA_TYPE_UD));
-
-        if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
+        // Store old FP value to current FP
+        CVariable* pOldFP = m_currShader->GetPrevFP();
+        // If previous FP is null (for kernel frame), we initialize it to 0
+        if (pOldFP == nullptr)
         {
-            // Store old FP value to current FP
-            CVariable* pOldFP = m_currShader->GetPrevFP();
-            // If previous FP is null (for kernel frame), we initialize it to 0
-            if (pOldFP == nullptr)
-            {
-                pOldFP = m_currShader->GetNewVariable(pFP);
-                m_encoder->Copy(pOldFP, m_currShader->ImmToVariable(0, ISA_TYPE_UQ));
-                m_encoder->Push();
-            }
+            pOldFP = m_currShader->GetNewVariable(pFP);
+            m_encoder->Copy(pOldFP, m_currShader->ImmToVariable(0, ISA_TYPE_UQ));
+            m_encoder->Push();
+        }
 
-            pFP = ReAlignUniformVariable(pFP, EALIGN_GRF);
-            if (shouldGenerateLSC())
-            {
-                ResourceDescriptor resource;
-                resource.m_surfaceType = ESURFACE_STATELESS;
-                emitLSCStore(nullptr, pOldFP, pFP, 64, 1, 0, &resource, LSC_ADDR_SIZE_64b, LSC_DATA_ORDER_TRANSPOSE, 0);
-                m_encoder->Push();
-            }
-            else
-            {
-                m_encoder->OWStoreA64(pOldFP, pFP, SIZE_OWORD, 0);
-                m_encoder->Push();
-            }
+        pFP = ReAlignUniformVariable(pFP, EALIGN_GRF);
+        if (shouldGenerateLSC())
+        {
+            ResourceDescriptor resource;
+            resource.m_surfaceType = ESURFACE_STATELESS;
+            emitLSCStore(nullptr, pOldFP, pFP, 64, 1, 0, &resource, LSC_ADDR_SIZE_64b, LSC_DATA_ORDER_TRANSPOSE, 0);
+            m_encoder->Push();
+        }
+        else
+        {
+            m_encoder->OWStoreA64(pOldFP, pFP, SIZE_OWORD, 0);
+            m_encoder->Push();
         }
     }
 }
