@@ -42,6 +42,7 @@ public:
 public:
     static constexpr char *MergeFuncName = "__mergeContinuation";
     static constexpr char *BTDTarget = "btd.target";
+    static constexpr char* SpillSize = "spill.size";
     enum RTMemoryAccessMode
     {
         STATELESS,
@@ -636,7 +637,10 @@ public:
 
     void setGlobalBufferPtr(Value* GlobalBufferPtr);
     void setDisableRTGlobalsKnownValues(bool shouldDisable);
-
+    GenIntrinsicInst* getSpillAnchor(Value* V);
+    static void setSpillSize(ContinuationHLIntrinsic& CI, uint32_t SpillSize);
+    static Optional<uint32_t> getSpillSize(
+        const ContinuationHLIntrinsic& CI);
 public:
     static Instruction* getEntryFirstInsertionPt(
         Function &F,

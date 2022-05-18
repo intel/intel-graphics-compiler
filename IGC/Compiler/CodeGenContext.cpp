@@ -1709,6 +1709,17 @@ namespace IGC
         return opts().DispatchAlongY && AlongY;
     }
 
+    bool RayDispatchShaderContext::doSpillWidening() const
+    {
+        if (IGC_IS_FLAG_DISABLED(EnableSpillWidening))
+            return false;
+
+        // It's easier to just only do this with stateful SWStack so it's easier
+        // to find the spills later on.
+        auto Offset = getModuleMetaData()->rtInfo.SWStackSurfaceStateOffset;
+        return Offset.has_value();
+    }
+
     uint64_t RayDispatchShaderContext::getShaderHash(const CShader* Prog) const
     {
         auto* MD = getModuleMetaData();

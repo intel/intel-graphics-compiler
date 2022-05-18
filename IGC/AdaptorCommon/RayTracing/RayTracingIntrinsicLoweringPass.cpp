@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "ShaderProperties.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "Utils.h"
 
 #include <vector>
 #include "common/LLVMWarningsPush.hpp"
@@ -145,6 +146,12 @@ private:
     Instruction* LowerPayload(
         Function *F, StackFrameInfo &SFI, RTBuilder::SWStackPtrVal *FrameAddr);
 
+    void padSpills(
+        ContinuationHLIntrinsic* CHLI,
+        const StackFrameInfo& SFI,
+        RTBuilder::SWStackPtrVal* FrameAddr,
+        RTBuilder &RTB);
+
     Module* m_module;
     RayDispatchShaderContext *m_CGCtx = nullptr;
 
@@ -190,16 +197,6 @@ char RayTracingIntrinsicLoweringPass::ID = 0;
 IGC_INITIALIZE_PASS_BEGIN(RayTracingIntrinsicLoweringPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(RayTracingIntrinsicLoweringPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-
-static unsigned gcd(unsigned Dividend, unsigned Divisor) {
-    // Dividend and Divisor will be naturally swapped as needed.
-    while (Divisor) {
-        unsigned Rem = Dividend % Divisor;
-        Dividend = Divisor;
-        Divisor = Rem;
-    };
-    return Dividend;
-}
 
 static uint32_t getFrameAlignment(const Value* Ptr, const DataLayout &DL)
 {
@@ -870,6 +867,35 @@ void RayTracingIntrinsicLoweringPass::LowerFillValues(
     }
 }
 
+void RayTracingIntrinsicLoweringPass::padSpills(
+    ContinuationHLIntrinsic* CHLI,
+    const StackFrameInfo& SFI,
+    RTBuilder::SWStackPtrVal* FrameAddr,
+    RTBuilder &RTB)
+{
+    auto SpillSize = RTBuilder::getSpillSize(*CHLI);
+    if (!SpillSize)
+        return;
+
+    uint32_t PadStartOffset = SFI.getSpillOffset() + *SpillSize;
+    uint32_t Size = SFI.getFrameSize() - PadStartOffset;
+    if (Size == 0 || Size % 4 != 0)
+        return;
+    uint32_t NumDWs = Size / 4;
+
+    uint32_t Addrspace = FrameAddr->getType()->getPointerAddressSpace();
+    auto *NewFrameAddr =
+        RTB.CreateBitCast(FrameAddr, RTB.getInt8PtrTy(Addrspace));
+    auto* Anchor = RTB.getSpillAnchor(UndefValue::get(RTB.getInt32Ty()));
+    for (uint32_t i = 0; i < NumDWs; i++)
+    {
+        uint32_t CurOffset = PadStartOffset + 4 * i;
+        auto* Addr = RTB.CreateGEP(NewFrameAddr, RTB.getInt32(CurOffset));
+        Addr = RTB.CreateBitCast(Addr, RTB.getInt32PtrTy(Addrspace));
+        RTB.CreateStore(Anchor, Addr);
+    }
+}
+
 // Lowering of GenISA_TraceRayAsyncHL. This function does quite a bit of
 // work which can be summarized by this step:
 //   1.Copy all relevant information from TraceRay() into the RTStack Header
@@ -895,10 +921,12 @@ void RayTracingIntrinsicLoweringPass::LowerTraces(
 
     for (auto *trace : traceCalls)
     {
-        // Write the stack
         RTBuilder builder(trace, *m_CGCtx);
+        padSpills(trace, SFI, FrameAddr, builder);
+
         builder.printTraceRay(trace);
 
+        // Write the stack
         auto* const StackPointer = builder.getAsyncStackPointer();
 
         // 1. First, let's fill up the data in the MemRay struct
@@ -1130,6 +1158,7 @@ void RayTracingIntrinsicLoweringPass::LowerCallShaders(
     for (auto call : callShaderCalls)
     {
         RTBuilder builder(call, *m_CGCtx);
+        padSpills(call, SFI, FrameAddr, builder);
 
         // the only stores of the dispatch ray indices happen in the raygen
         // root.  Do it at the last moment right before a TraceRay().

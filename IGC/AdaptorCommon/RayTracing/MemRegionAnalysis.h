@@ -30,6 +30,9 @@ enum class RTMemRegion : uint32_t
     LocalArgs,
 };
 
+llvm::Optional<RTMemRegion>
+getRTRegionByAddrspace(const llvm::Value* V, const ModuleMetaData& MMD);
+
 llvm::Optional<RTMemRegion> getRegionOffset(
     const llvm::Value* Ptr,
     const llvm::DataLayout* DL = nullptr,

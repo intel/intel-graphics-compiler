@@ -3885,3 +3885,35 @@ void RTBuilder::setGlobalBufferPtr(Value* GlobalBufferPtr) {
 void RTBuilder::setDisableRTGlobalsKnownValues(bool Disable) {
     this->DisableRTGlobalsKnownValues = Disable;
 }
+
+GenIntrinsicInst* RTBuilder::getSpillAnchor(Value* V)
+{
+    auto* M = GetInsertBlock()->getModule();
+    CallInst* Anchor = this->CreateCall(
+        GenISAIntrinsic::getDeclaration(
+            M, GenISAIntrinsic::GenISA_rt_spill_anchor, V->getType()),
+        V,
+        VALUE_NAME(V->getName() + Twine(".anchor")));
+    return cast<GenIntrinsicInst>(Anchor);
+}
+
+void RTBuilder::setSpillSize(ContinuationHLIntrinsic& CI, uint32_t SpillSize)
+{
+    auto& C = CI.getContext();
+    MDNode* node = MDNode::get(
+        C,
+        ConstantAsMetadata::get(
+            ConstantInt::get(Type::getInt32Ty(C), SpillSize)));
+    CI.setMetadata(RTBuilder::SpillSize, node);
+}
+
+Optional<uint32_t> RTBuilder::getSpillSize(const ContinuationHLIntrinsic& CI)
+{
+    auto* MD = CI.getMetadata(RTBuilder::SpillSize);
+    if (!MD)
+        return None;
+
+    auto* CMD = cast<ConstantAsMetadata>(MD->getOperand(0));
+    auto* C = cast<ConstantInt>(CMD->getValue());
+    return static_cast<uint32_t>(C->getZExtValue());
+}

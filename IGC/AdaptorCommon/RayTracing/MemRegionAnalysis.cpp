@@ -59,7 +59,9 @@ static Optional<RTMemRegion> getIntrinsicRegion(const GenIntrinsicInst* GII)
     }
 }
 
-static Optional<RTMemRegion>
+namespace IGC {
+
+Optional<RTMemRegion>
 getRTRegionByAddrspace(const Value* V, const ModuleMetaData &MMD)
 {
     auto* PtrTy = dyn_cast<PointerType>(V->getType());
@@ -81,8 +83,6 @@ getRTRegionByAddrspace(const Value* V, const ModuleMetaData &MMD)
 
     return None;
 }
-
-namespace IGC {
 
 Optional<RTMemRegion> getRegionOffset(const Value* Ptr, const DataLayout *DL, uint64_t* Offset, uint64_t* dereferenceable_value)
 {

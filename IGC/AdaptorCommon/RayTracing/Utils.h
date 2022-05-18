@@ -98,4 +98,6 @@ bool collectAnalyzablePayloadUses(
     uint64_t Offset,
     uint32_t instTypeMask = (PL_Inst_Type::Load|PL_Inst_Type::Store));
 
+unsigned gcd(unsigned Dividend, unsigned Divisor);
+
 } // namespace IGC

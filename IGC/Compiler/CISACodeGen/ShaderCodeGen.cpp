@@ -726,6 +726,13 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
         mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore));
 
+        if (ctx.type == ShaderType::RAYTRACING_SHADER &&
+            static_cast<RayDispatchShaderContext&>(ctx).doSpillWidening())
+        {
+            mpm.add(createRTSpillShrinkPass());
+            mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore));
+        }
+
         if ((ctx.type == ShaderType::RAYTRACING_SHADER || ctx.hasSyncRTCalls())
             && IGC_IS_FLAG_ENABLED(EnableLSCCacheOptimization))
         {

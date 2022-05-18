@@ -132,7 +132,7 @@ private:
         FillValueIntrinsic* Fill,
         ContinuationInfo::SpillColl& Spills);
     RayDispatchShaderContext* m_CGCtx = nullptr;
-    void shrinkSpill(
+    uint32_t shrinkSpill(
         const DataLayout &DL,
         BasicBlock* BB,
         bool Sort);
@@ -140,6 +140,9 @@ private:
         const DataLayout &DL,
         BasicBlock* BB,
         bool Sort);
+    void markContinuationIntrinsic(
+        BasicBlock* BB,
+        uint32_t MaxOffset);
     bool postprocess(ContinuationInfo& ContInfo, const DataLayout& DL);
     std::vector<uint32_t> computeNewOrder(const BasicBlock& BB) const;
     void removeDeadSpills(BasicBlock& BB);
@@ -487,7 +490,11 @@ bool LateRematPass::postprocess(ContinuationInfo& ContInfo, const DataLayout &DL
 
         bool Sort = SpillLoopBB ? false : true;
         for (auto* BB : SpillBBs)
-            shrinkSpill(DL, BB, Sort);
+        {
+            uint32_t MaxOffset = shrinkSpill(DL, BB, Sort);
+            if (m_CGCtx->doSpillWidening())
+                markContinuationIntrinsic(BB, MaxOffset);
+        }
         shrinkFill(DL, FillBB, Sort);
     }
     if (IGC_IS_FLAG_DISABLED(DisableSpillReorder))
@@ -763,7 +770,21 @@ void LateRematPass::expandSpills(
     }
 }
 
-void LateRematPass::shrinkSpill(
+void LateRematPass::markContinuationIntrinsic(
+    BasicBlock* BB,
+    uint32_t MaxOffset)
+{
+    for (auto& I : reverse(*BB))
+    {
+        if (auto *CI = dyn_cast<ContinuationHLIntrinsic>(&I))
+        {
+            RTBuilder::setSpillSize(*CI, MaxOffset);
+            return;
+        }
+    }
+}
+
+uint32_t LateRematPass::shrinkSpill(
     const DataLayout& DL,
     BasicBlock* BB,
     bool Sort)
@@ -780,6 +801,7 @@ void LateRematPass::shrinkSpill(
         SI->setOffset(CurLoc);
         CurLoc += DL.getTypeSizeInBits(SI->getData()->getType()) / 8;
     }
+    return int_cast<uint32_t>(CurLoc);
 }
 
 void LateRematPass::shrinkFill(

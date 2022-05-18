@@ -185,6 +185,7 @@ bool RayTracingShaderLowering::runOnModule(Module& M)
             case GenISAIntrinsic::GenISA_AsyncStackPtr:
             case GenISAIntrinsic::GenISA_SyncStackPtr:
             case GenISAIntrinsic::GenISA_SWStackPtr:
+            case GenISAIntrinsic::GenISA_rt_spill_anchor:
             {
                 DeadInsts.push_back(GII);
                 RTB.SetInsertPoint(GII);

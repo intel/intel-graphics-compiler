@@ -2700,5 +2700,10 @@ Imported_Intrinsics = \
     [("int",                           "Query Object Index"),
      ("int",                           "Info Type"),
      ("int",                           "Dimension used for certain types")],
-    "None"]]
+    "None"]],
+####################################################################################################
+"GenISA_rt_spill_anchor": ["Raytracing: Marker for spilled values",
+    [("anyint",                         "return the input"),
+    [(0,                                "input value")],
+    "NoMem"]]
 }

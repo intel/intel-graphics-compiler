@@ -43,5 +43,6 @@ llvm::Pass* createPayloadSinkingPass();
 llvm::Pass* createLowerGlobalRootSignaturePass();
 llvm::Pass* createRayTracingMemDSEPass();
 llvm::Pass* createRayTracingPredicatedStackIDReleasePass();
+llvm::Pass* createRTSpillShrinkPass();
 llvm::Pass* createDeadPayloadStoreEliminationPass();
 }

@@ -1637,6 +1637,9 @@ namespace IGC
         // Flip X,Y thread group dimensions in COMPUTE_WALKER?
         bool isDispatchAlongY() const;
 
+        // widen spills to use padded area of SWStack
+        bool doSpillWidening() const;
+
         enum class CompileConfig
         {
             // An RTPSO that could have shaders added to it later on

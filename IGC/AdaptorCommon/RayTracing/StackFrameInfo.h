@@ -56,12 +56,12 @@ public:
     bool isRoot(const llvm::Function* F) const;
     bool isRayGen() const;
     bool isRayGenRoot(const llvm::Function* F) const;
+    uint32_t getSpillOffset() const;
 private:
     uint32_t getAllocasOffset() const;
     uint32_t TotalAllocaSize = 0;
     uint32_t TotalSpillSize  = 0;
 private:
-    uint32_t getSpillOffset() const;
     void addAllocas(const llvm::Function *F);
     void addFills(const llvm::Function *F);
     void addSpills(const llvm::Function *F);

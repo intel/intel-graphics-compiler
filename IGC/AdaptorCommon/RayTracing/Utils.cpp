@@ -145,5 +145,14 @@ bool collectAnalyzablePayloadUses(
     return true;
 }
 
+unsigned gcd(unsigned Dividend, unsigned Divisor) {
+    // Dividend and Divisor will be naturally swapped as needed.
+    while (Divisor) {
+        unsigned Rem = Dividend % Divisor;
+        Dividend = Divisor;
+        Divisor = Rem;
+    };
+    return Dividend;
+}
 
 } // namespace IGC
