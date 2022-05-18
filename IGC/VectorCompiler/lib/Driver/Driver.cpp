@@ -694,6 +694,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.EnablePreemption = true;
   if (ApiOptions.hasArg(OPT_library_compilation_ze))
     Opts.SaveStackCallLinkage = true;
+  if (ApiOptions.hasArg(OPT_vc_disable_non_overlapping_region_opt))
+    Opts.ForceDisableNonOverlappingRegionOpt = true;
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_fp_contract)) {
     StringRef Val = A->getValue();
