@@ -1121,7 +1121,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
     unsigned PtrSzInBits = pKernelModule->getDataLayout().getPointerSizeInBits();
     //TODO: Again, this should not happen on each compilation
 
-    bool doSplitModule = oclContext.m_InternalOptions.CompileOneKernelAtTime;
+    bool doSplitModule = oclContext.m_InternalOptions.CompileOneKernelAtTime ||
+                         IGC_IS_FLAG_ENABLED(CompileOneAtTime);
     /// set retry manager
     bool retry = false;
     oclContext.m_retryManager.Enable();
