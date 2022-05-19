@@ -415,7 +415,6 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
             const unsigned pointedToAddrSpace = WalkCastsToFindNamedAddrSpace(initializer);
 
             IGC_ASSERT(addressSpace == ADDRESS_SPACE_GLOBAL || addressSpace == ADDRESS_SPACE_CONSTANT);
-            IGC_ASSERT_MESSAGE(pointerSize == 8, "Can global var pointer ever be 32bits?");
 
             // We can only patch global and constant pointers.
             if (pointedToAddrSpace == ADDRESS_SPACE_GLOBAL || pointedToAddrSpace == ADDRESS_SPACE_CONSTANT)
