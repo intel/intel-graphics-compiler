@@ -52,6 +52,7 @@ DEF_VISA_OPTION(vISA_removeInstrinsics,     ET_BOOL, "-removeInstrinsics",     U
 DEF_VISA_OPTION(vISA_addSWSBInfo,           ET_BOOL, "-addSWSBInfo",     UNUSED, true)
 DEF_VISA_OPTION(vISA_DumpRAIntfGraph,       ET_BOOL, "-dumpintf",        UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpGenOffset,         ET_BOOL, "-dumpgenoffset",   UNUSED, false)
+DEF_VISA_OPTION(vISA_ForceAssignRhysicalReg,ET_CSTR, "-forceAssignRhysicalReg", UNUSED, NULL)
 
 //=== Optimization options ===
 DEF_VISA_OPTION(vISA_EnableAlways,          ET_BOOL, NULLSTR,            UNUSED, true)
