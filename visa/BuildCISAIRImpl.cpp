@@ -725,7 +725,6 @@ void CISA_IR_Builder::LinkTimeOptimization(
             {
                 auto& calleeBuilder = callee->fg.builder;
                 auto& callerBuilder = caller->fg.builder;
-                const RegionDesc *rDesc = callerBuilder->getRegionStride1();
                 replacedArgDcl = replacedArgDcl ?
                     replacedArgDcl :
                     callerBuilder->createDeclareNoLookup("newArg", G4_GRF, callerBuilder->numEltPerGRF<Type_UD>(), 32, Type_UD);
@@ -748,7 +747,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                                     replacedArgDcl->getRegVar(),
                                     src->asSrcRegRegion()->getRegOff(),
                                     src->asSrcRegRegion()->getSubRegOff(),
-                                    rDesc,
+                                    src->asSrcRegRegion()->getRegion(),
                                     src->getType());
                             inst->setSrc(replacedArgSrc, i);
                         }
@@ -771,8 +770,18 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     }
 
                 }
-                for (G4_INST* inst : callerInsts)
+
+                // Trace backward from callsite to replace Arg with newArg
+                auto rIt = it;
+                rIt --;
+                for (; rIt != callerInsts.begin(); --rIt)
                 {
+                    G4_INST *inst = *rIt;
+                    if (inst->opcode() == G4_pseudo_fcall ||
+                        inst->opcode() == G4_call)
+                    {
+                        break;
+                    }
                     G4_Operand *dst = inst->getDst();
                     if (!dst) continue;
                     G4_Declare* topDcl = dst->getTopDcl();
@@ -780,15 +789,28 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     G4_Declare* rootDcl = topDcl->getRootDeclare();
                     if (callerBuilder->isPreDefArg(rootDcl))
                     {
+                        G4_Declare* dcl = dst->getBase()->asRegVar()->getDeclare();
+                        G4_Declare* newDcl = callerBuilder->createTempVar(dcl->getTotalElems(), dcl->getElemType(), Any, dcl->getName());
+                        newDcl->setAliasDeclare(replacedArgDcl, dcl->getAliasOffset());
                         G4_DstRegRegion *replacedArgDst = callerBuilder->createDst(
-                                replacedArgDcl->getRegVar(),
+                                newDcl->getRegVar(),
                                 dst->asDstRegRegion()->getRegOff(),
                                 dst->asDstRegRegion()->getSubRegOff(),
                                 dst->asDstRegRegion()->getHorzStride(),
                                 dst->getType());
                         inst->setDest(replacedArgDst);
                     }
-
+                }
+                auto fIt = it;
+                fIt++;
+                for (; fIt != callerInsts.end(); ++fIt)
+                {
+                    G4_INST *inst = *fIt;
+                    if (inst->opcode() == G4_pseudo_fcall ||
+                        inst->opcode() == G4_call)
+                    {
+                        break;
+                    }
                     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
                     {
                         G4_Operand *src = inst->getSrc(i);
@@ -802,7 +824,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                                     replacedRetDcl->getRegVar(),
                                     src->asSrcRegRegion()->getRegOff(),
                                     src->asSrcRegRegion()->getSubRegOff(),
-                                    rDesc,
+                                    src->asSrcRegRegion()->getRegion(),
                                     src->getType());
                             inst->setSrc(replacedRetSrc, i);
                         }
@@ -1132,9 +1154,8 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     }
                     else if (topDcl && (topDcl == replacedArgDcl || topDcl == replacedRetDcl))
                     {
-                        G4_Declare* newDcl = caller->fg.builder->createTempVar(topDcl->getTotalElems(), topDcl->getElemType(), Any, topDcl->getName());
-                        newDcl->setAliasDeclare(topDcl, 0);
-                        caller->Declares.push_back(newDcl);
+                        G4_Declare* newDcl = caller->fg.builder->createTempVar(dcl->getTotalElems(), dcl->getElemType(), Any, dcl->getName());
+                        newDcl->setAliasDeclare(topDcl, dcl->getAliasOffset());
                     }
                     else
                     {
@@ -1152,6 +1173,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     }
                 }
             };
+            std::map<G4_Label*, G4_Label*> labelMap;
             if (inlining)
             {
                 auto& builder = caller->fg.builder;
@@ -1160,12 +1182,36 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 G4_INST* ra = caller->fg.createNewLabelInst(raLabel);
                 // We don't need calleeLabel (first instruction) anymore after inlining
                 calleeInsts.pop_front();
+                // Iterate once to clone labels
+                for (G4_INST* inst : calleeInsts)
+                {
+                    if (inst->opcode() == G4_label)
+                    {
+                        std::string name = inst->getSrc(0)->asLabel()->getLabel();
+                        G4_Label *newLabel = builder->createLabel(name + "_" + std::to_string(funcUID), LABEL_BLOCK);
+                        labelMap[inst->getSrc(0)->asLabel()] = newLabel;
+                    }
+                }
+
+                // clone instructions
                 for (G4_INST* fret : calleeInsts)
                 {
-                    G4_INST* inst = fret->cloneInst();
+                    G4_INST* inst = nullptr;
+                    if (fret->opcode() == G4_label)
+                    {
+                        inst = caller->fg.createNewLabelInst(labelMap[fret->getSrc(0)->asLabel()]);
+                    }
+                    else
+                    {
+                        inst = fret->cloneInst();
+                    }
                     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
                     {
                         cloneDcl(inst->getSrc(i));
+                    }
+                    if (inst->opcode() == G4_goto)
+                    {
+                        inst->asCFInst()->setUip(labelMap[fret->asCFInst()->getUip()]);
                     }
                     cloneDcl(inst->getDst());
                     cloneDcl(inst->getPredicate());
