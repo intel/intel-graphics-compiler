@@ -23,7 +23,11 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
+#include "common/debug/Debug.hpp"
+
 #include <utility>    // std::pair, std::make_pair
+#include <sstream>    // std::string, std::stringstream
+#include <fstream>    // std::ofstream
 
 using namespace llvm;
 using namespace IGC;
@@ -1319,6 +1323,28 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
 {
     if (Optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst))
     {
+        bool optReportEnabled = IGC_IS_FLAG_ENABLED(EnableOptReportLoadNarrowing);
+        auto emitOptReport = [&](std::string report, Instruction* from, Instruction* to)
+        {
+            std::string strFrom;
+            llvm::raw_string_ostream rsoFrom(strFrom);
+            from->print(rsoFrom);
+
+            std::string strTo;
+            llvm::raw_string_ostream rsoTo(strTo);
+            to->print(rsoTo);
+
+            std::stringstream optReportFile;
+            optReportFile << IGC::Debug::GetShaderOutputFolder() << "LoadNarrowing.opt";
+
+            std::ofstream optReportStream;
+            optReportStream.open(optReportFile.str(), std::ios::app);
+            optReportStream << IGC::Debug::GetShaderOutputName() << ": "
+                << report << std::endl
+                << rsoFrom.str() << " ->" << std::endl
+                << rsoTo.str() << std::endl;
+        };
+
         AbstractLoadInst& ALI = optionalALI.getValue();
         if (!Inst->getType()->isVectorTy() || ALI.getAlignment() < 4)
             return Inst;
@@ -1432,6 +1458,26 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
                 GenISAIntrinsic::getDeclaration(ldrawvec->getModule(), GenISAIntrinsic::GenISA_ldraw_indexed, types);
             NewLI = Builder.CreateCall(newLdRawFunction, args);
             NewLI->setDebugLoc(EE_user->getDebugLoc());
+
+            if (optReportEnabled)
+            {
+                std::string type;
+                llvm::raw_string_ostream rsoType(type);
+                Inst->getType()->print(rsoType);
+
+                std::stringstream report;
+                report << (BC ? "Bitcasted vector" : "Vector") << " load of " << rsoType.str()
+                    << " is transformed to scalar load";
+                if (calc_offset)
+                {
+                    report << (isa<ConstantInt>(ldrawvec->getOffsetValue())
+                        ? ", static offset added"
+                        : ", runtime offset added");
+                }
+                report << ":";
+                emitOptReport(report.str(), Inst, NewLI);
+            }
+
             Value* NewBC = nullptr;
             if (BC)
             {
@@ -1466,6 +1512,24 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
             Type* NewVecTy = FixedVectorType::get(cast<VectorType>(Inst->getType())->getElementType(),
                 MaxIndex + 1);
             NewLI = ALI.Create(NewVecTy);
+
+            if (optReportEnabled)
+            {
+                std::string type, narrowedType;
+                llvm::raw_string_ostream rsoType(type), rsoNarrowedType(narrowedType);
+                Inst->getType()->print(rsoType);
+                NewVecTy->print(rsoNarrowedType);
+
+                std::stringstream report;
+                report << (BC ? "Bitcasted vector" : "Vector") << " load of " << rsoType.str()
+                    << " is narrowed to vector load of " << rsoNarrowedType.str();
+                if (canSimplifyOneUseZeroIndex && skipSimplifyBitcastedOneUse)
+                {
+                    report << " (narrowing to scalar load is disabled by WA)";
+                }
+                report << ":";
+                emitOptReport(report.str(), Inst, NewLI);
+            }
 
             // Loop and replace all uses.
             SmallVector<Value*, 8> NewEEI(MaxIndex + 1, nullptr);
