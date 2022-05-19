@@ -11,6 +11,7 @@
 import sys
 
 config.llvm_tools_dir = "@LLVM_TOOLS_DIR@"
+config.llvm_version = "@LLVM_VERSION_MAJOR@"
 config.lit_tools_dir = "@LLVM_TOOLS_DIR@"
 config.host_triple = "@LLVM_HOST_TRIPLE@"
 config.target_triple = "@TARGET_TRIPLE@"

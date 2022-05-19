@@ -43,3 +43,11 @@ tool_dirs = [config.igc_opt_dir, config.llvm_tools_dir]
 tools = [ToolSubst('igc_opt')]
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)
+
+# Add substitutions for pass configuration options to account for
+# opt CLI changes between LLVM 10 and 11.
+# FIXME: Remove once older-than-11 LLVM versions go out of use.
+if int(config.llvm_version) < 11:
+  config.substitutions.append(('%enable-basic-aa%', '-basicaa'))
+else:
+  config.substitutions.append(('%enable-basic-aa%', '--basic-aa'))

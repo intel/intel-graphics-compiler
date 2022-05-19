@@ -26,7 +26,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR <= 10
         return DL->getPreferredAlignment(GV);
 #else
-        return DL->getPreferredAlign(GV).value();
+        return (unsigned)DL->getPreferredAlign(GV).value();
 #endif
     }
 
