@@ -11,6 +11,8 @@ name: Build IGC
 on:
   push:
     branches: [ master ]
+  pull_request:
+    branches: [ master ]
     
 jobs:
   download-OpenCL-Clang: # openCL Clang is downloaded from intel/intel-graphics-compiler releases
@@ -157,25 +159,49 @@ jobs:
           key: ${{ steps.SPIRV-LLVM-Translator-hash.outputs.spirv_translator_sha_short }}-ubuntu${{ matrix.ubuntu_version }}-llvm${{ matrix.llvm_ver }}
 
 #Build IGC
+      - name:  Checkout IGC sources
+        uses: actions/checkout@v2
+        with:
+          path: workspace/igc
+      - name: Checkout vc-intrinsics sources
+        uses: actions/checkout@v2
+        with:
+          repository: intel/vc-intrinsics
+          ref: master
+          path: workspace/vc-intrinsics
+      - name:  Checkout SPIRV-Headers sources
+        uses: actions/checkout@v2
+        with:
+          repository: KhronosGroup/SPIRV-Headers
+          ref: master
+          path: workspace/SPIRV-Headers
+      - name:  Checkout the SPIRV-Headers
+        uses: actions/checkout@v2
+        with:
+          repository: KhronosGroup/SPIRV-Tools
+          ref: master
+          path: workspace/SPIRV-Tools
+      - name: get short hash
+        id: igc-current-short-Hash
+        run: echo "::set-output name=sha_short::${GITHUB_SHA::7}"
       - name: run Docker
         run: |
           docker run --name=buildigc \
             -v $(pwd)/scripts/buildIGC.sh:/buildIGC.sh \
             -v $(pwd)/igc-official-release:/igc-official-release \
             -v $(pwd)/build-SPIRV-LLVM-Translator:/build-SPIRV-LLVM-Translator \
+            -v $(pwd)/workspace:/workspace \
             --env DEBIAN_FRONTEND="noninteractive" \
             --env UBUNTU_VERSION=${{ matrix.ubuntu_version }} \
             --env LLVM_VERSION=${{ matrix.llvm_ver }} \
             --env COMPILER=${{ matrix.compiler }} \
+            --env IGC_SHA=${{ steps.igc-current-short-Hash.outputs.sha_short }} \
             ubuntu:${{ matrix.ubuntu_version }} \
             sh /buildIGC.sh
       - name: creating folder to store output artifacts
         run: mkdir Artifacts
       - name: copying artifact from docker to github host
         run: sudo docker cp buildigc:/workspace/igc/build/DEB-FILES ./Artifacts
-      - name: get short hash
-        id: igc-current-short-Hash
-        run: echo "::set-output name=sha_short::${GITHUB_SHA::7}"
       - uses: actions/upload-artifact@v2
         continue-on-error: true
         with:

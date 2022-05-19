@@ -41,7 +41,12 @@ if [ -z ${OWN_CMAKE_FLAGS+x} ]; then
 else
     echo "[Build Status] OWN_CMAKE_FLAGS = ${OWN_CMAKE_FLAGS}"
 fi
-
+if [ -z ${IGC_SHA+x} ]; then
+    echo "[Build Status] IGC_SHA is unset, use default master";
+    OWN_CMAKE_FLAGS="master"
+else
+    echo "[Build Status] IGC_SHA = ${IGC_SHA}"
+fi
 
 apt-get update
 apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip file
@@ -78,18 +83,11 @@ dpkg -i ./build-SPIRV-LLVM-Translator/*.deb
 mv /usr/lib/libLLVMSPIRVLib.a /usr/local/lib/libLLVMSPIRVLib.a # WA Cpack wrongly pack deb file
 echo "[Build Status] SPIRV-LLVM-Translator INSTALLED"
 
-mkdir workspace
-cd workspace
-
 /usr/bin/git version
-/usr/bin/git clone https://github.com/intel/intel-graphics-compiler ./igc
-cd igc
+/usr/bin/git config --global --add safe.directory /workspace/igc
+cd workspace/igc
 echo "[Build Status] IGC commit hash below:"
-/usr/bin/git log -1 --format='%H'
-/usr/bin/git clone https://github.com/intel/vc-intrinsics ../vc-intrinsics
-/usr/bin/git clone https://github.com/KhronosGroup/SPIRV-Headers.git ../SPIRV-Headers
-/usr/bin/git clone https://github.com/KhronosGroup/SPIRV-Tools.git ../SPIRV-Tools
-echo "[Build Status] All necessary repository CLONED"
+echo "[Build Status] All necessary repository Ready"
 
 CONFIG_VARS="-DIGC_OPTION__LLVM_MODE=Prebuilds -DIGC_OPTION__LLVM_PREFERRED_VERSION=$LLVM_VERSION_PREFERRED"
 case $COMPILER in
