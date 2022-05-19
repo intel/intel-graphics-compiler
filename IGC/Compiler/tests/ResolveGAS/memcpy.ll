@@ -30,6 +30,6 @@ define internal spir_func void @func() {
   ret void
 }
 
-; CHECK: declare void @llvm.memcpy.p0i8.p0i8.i64(i8* {{(noalias )?}}nocapture writeonly, i8* {{(noalias )?}}nocapture readonly, i64, i1 immarg)
+; CHECK: declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture writeonly, i8* nocapture readonly, i64, i1 immarg)
 declare void @llvm.memcpy.p4i8.p4i8.i64(i8 addrspace(4)* nocapture writeonly, i8 addrspace(4)* nocapture readonly, i64, i1 immarg)
 
