@@ -11826,6 +11826,23 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     CVariable* pHWTID = m_currShader->GetHWTID();
     CVariable* pSize = nullptr;
 
+    // If the private base is a 32-bit pointer, extend it to 64-bits to match SP/FP
+    if (pStackBufferBase->GetType() == ISA_TYPE_UD || pStackBufferBase->GetType() == ISA_TYPE_D)
+    {
+        CVariable* dst = m_currShader->GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "PrivateBase64");
+        CVariable* dstAsUD = m_currShader->BitCast(dst, ISA_TYPE_UD);
+        m_encoder->SetDstRegion(2);
+        m_encoder->Copy(dstAsUD, pStackBufferBase);
+        m_encoder->Push();
+
+        m_encoder->SetDstSubReg(1);
+        m_encoder->SetDstRegion(2);
+        m_encoder->Copy(dstAsUD, m_currShader->ImmToVariable(0, ISA_TYPE_UD));
+        m_encoder->Push();
+
+        pStackBufferBase = dst;
+    }
+
     IGC_ASSERT(pModMD->FuncMD.find(pKernel) != pModMD->FuncMD.end());
     unsigned kernelAllocaSize = pModMD->FuncMD[pKernel].privateMemoryPerWI;
 
