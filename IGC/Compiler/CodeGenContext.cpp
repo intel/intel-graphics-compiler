@@ -1350,13 +1350,17 @@ namespace IGC
 
     uint32_t CodeGenContext::getNumGRFPerThread() const
     {
+        constexpr uint32_t DEFAULT_TOTAL_GRF_NUM = 128;
+
         if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
         {
             return IGC_GET_FLAG_VALUE(TotalGRFNum);
         }
         if (getModuleMetaData()->csInfo.forceTotalGRFNum != 0)
         {
-            return getModuleMetaData()->csInfo.forceTotalGRFNum;
+            {
+                return getModuleMetaData()->csInfo.forceTotalGRFNum;
+            }
         }
         if (hasSyncRTCalls() && IGC_GET_FLAG_VALUE(TotalGRFNum4RQ) != 0)
         {
@@ -1366,7 +1370,7 @@ namespace IGC
         {
             return IGC_GET_FLAG_VALUE(TotalGRFNum4CS);
         }
-        return 128;
+        return DEFAULT_TOTAL_GRF_NUM;
     }
 
     bool CodeGenContext::forceGlobalMemoryAllocation() const
