@@ -628,8 +628,8 @@ ValuePair InstExpander::getExpandedValues(Value* V)
                 }
             }
             break;
-        case llvm::Instruction::Sub:
         case llvm::Instruction::Mul:
+        case llvm::Instruction::Sub:
         case llvm::Instruction::Xor:
         case llvm::Instruction::And:
         case llvm::Instruction::Or:
