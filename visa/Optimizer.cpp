@@ -2859,6 +2859,18 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
             return false;
         }
 
+        if (Dcl && Dcl->getRegFile() == G4_RegFileKind::G4_ADDRESS &&
+            Dcl->getRegVar() &&
+            Dcl->getRegVar()->getPhyReg())
+        {
+            // Dont def-hoist if dst is hardwired to address register.
+            // Doing so extends live-range of assigned register a0.
+            // Given that the machine has single addr register, a0,
+            // it may even cause address RA to fail due to uncolorable
+            // graph.
+            return false;
+        }
+
         if (!fg.builder->hasByteALU() && Dst->getTypeSize() == 1)
         {
             return false;
