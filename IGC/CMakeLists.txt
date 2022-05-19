@@ -678,6 +678,7 @@ if(MSVC)
         ALIAS LinkTimeCodeGeneration     "/LTCG"
         ALIAS ControlFlowGuard           "/guard:cf"
         ALIAS NoDefaultLib               "/NODEFAULTLIB:kernel32.lib"
+        ALIAS ControlFlowEnforcement     "/CETCOMPAT"
       )
   else()
     igc_flag_register_settings(
@@ -696,6 +697,7 @@ if(MSVC)
         ALIAS LinkTimeCodeGeneration     "/LTCG"
         ALIAS ControlFlowGuard           "/guard:cf"
         ALIAS NoDefaultLib
+        ALIAS ControlFlowEnforcement     "/CETCOMPAT"
       )
   endif()
 else()
@@ -711,6 +713,7 @@ else()
       ALIAS LinkTimeCodeGeneration
       ALIAS ControlFlowGuard
       ALIAS NoDefaultLib
+      ALIAS ControlFlowEnforcement
     )
 
   if(IGC_OPTION__COMPILE_LINK_ALLOW_UNSAFE_SIZE_OPT)
@@ -1082,6 +1085,7 @@ foreach(_linkerFlagName IN ITEMS "CMAKE_EXE_LINKER_FLAGS" "CMAKE_SHARED_LINKER_F
       PATTERN "${IGC_BUILD__RELEASE_PATTERN}"
       SET
         ControlFlowGuard
+        ControlFlowEnforcement
         # Disable LTCG due to release build time increase
         #LinkTimeCodeGeneration
     )
