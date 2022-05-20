@@ -1145,7 +1145,6 @@ namespace IGC
         SInstrTypes m_savedInstrTypes;
 
         bool m_hasVendorExtension = false;
-        bool PsHighSimdDisable = false;
 
         std::vector<int> m_hsIdxMap;
         std::vector<int> m_dsIdxMap;
