@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/CISACodeGen/HFfoldingOpt.hpp"
+#include "Compiler/CISACodeGen/HFpackingOpt.hpp"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -62,13 +62,13 @@ namespace {
         bool isValid() { return (GEP && arraySize); }
     };
 
-    class HFfoldingOpt : public FunctionPass
+    class HFpackingOpt : public FunctionPass
     {
     public:
         static char ID;
-        HFfoldingOpt();
+        HFpackingOpt();
 
-        StringRef getPassName() const override { return "HFfoldingOpt"; }
+        StringRef getPassName() const override { return "HFpackingOpt"; }
 
         bool runOnFunction(Function& F) override;
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
@@ -117,22 +117,22 @@ namespace {
 #undef PASS_DESCRIPTION
 #undef PASS_CFG_ONLY
 #undef PASS_ANALYSIS
-#define PASS_FLAG "igc-HFfolding"
-#define PASS_DESCRIPTION "HF folding Opt"
+#define PASS_FLAG "igc-HFpacking"
+#define PASS_DESCRIPTION "HF packing Opt"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(HFfoldingOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(HFfoldingOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(HFpackingOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(HFpackingOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char HFfoldingOpt::ID = 0;
-FunctionPass* IGC::createHFfoldingOptPass()
+char HFpackingOpt::ID = 0;
+FunctionPass* IGC::createHFpackingOptPass()
 {
-    return new HFfoldingOpt();
+    return new HFpackingOpt();
 }
 
-HFfoldingOpt::HFfoldingOpt() : FunctionPass(ID)
+HFpackingOpt::HFpackingOpt() : FunctionPass(ID)
 {
-    initializeHFfoldingOptPass(*PassRegistry::getPassRegistry());
+    initializeHFpackingOptPass(*PassRegistry::getPassRegistry());
     bRemoveFromSlmMap = false;
 }
 
@@ -145,7 +145,7 @@ HFfoldingOpt::HFfoldingOpt() : FunctionPass(ID)
 // %4 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 15)
 // %t7 = inttoptr i32 % 4 to % __2D_DIM_Resource addrspace(2621447) *
 // runtimeV = 15
-bool HFfoldingOpt::findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace)
+bool HFpackingOpt::findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace)
 {
     if (!tex)
         return false;
@@ -165,7 +165,7 @@ bool HFfoldingOpt::findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrA
 
 // lookup SRV mapping entry from GenISA_ldptr intrinsic
 // return the 'index' of the found entry
-bool HFfoldingOpt::getSRVMap(GenIntrinsicInst* texld, uint& index)
+bool HFpackingOpt::getSRVMap(GenIntrinsicInst* texld, uint& index)
 {
     uint runtimeV = 0;
     uint ptrAddrSpace = 0;
@@ -190,7 +190,7 @@ bool HFfoldingOpt::getSRVMap(GenIntrinsicInst* texld, uint& index)
     return false;
 }
 
-void HFfoldingOpt::removeFromSlmMap(GetElementPtrInst* gep)
+void HFpackingOpt::removeFromSlmMap(GetElementPtrInst* gep)
 {
     uint32_t arraySize = 0, elmBytes = 0, offset = 0;
     getGEPInfo(gep, arraySize, elmBytes, offset);
@@ -225,7 +225,7 @@ void HFfoldingOpt::removeFromSlmMap(GetElementPtrInst* gep)
 }
 
 // detect if the given resource supports half float
-bool HFfoldingOpt::supportHF(ExtractElementInst* EE, const uint gepOffset)
+bool HFpackingOpt::supportHF(ExtractElementInst* EE, const uint gepOffset)
 {
     uint index = 0;
 
@@ -264,7 +264,7 @@ bool HFfoldingOpt::supportHF(ExtractElementInst* EE, const uint gepOffset)
 }
 
 // extract offset, arraySize, and elementSize in bytes from GEP
-bool HFfoldingOpt::getGEPInfo(GetElementPtrInst* GEP, uint& arraySize, uint& elmBytes, uint& offset)
+bool HFpackingOpt::getGEPInfo(GetElementPtrInst* GEP, uint& arraySize, uint& elmBytes, uint& offset)
 {
     if (!GEP)
         return false;
@@ -310,7 +310,7 @@ bool HFfoldingOpt::getGEPInfo(GetElementPtrInst* GEP, uint& arraySize, uint& elm
     return false;
 }
 
-void HFfoldingOpt::getHFPackingCandidate(Function& F)
+void HFpackingOpt::getHFPackingCandidate(Function& F)
 {
     for (auto bb = F.begin(); bb != F.end(); ++bb)
     {
@@ -350,7 +350,7 @@ void HFfoldingOpt::getHFPackingCandidate(Function& F)
  ***** Scenario 3 *****
     store float 0.000000e+00, float addrspace(3)* %122, align 4
 */
-ExtractElementInst* HFfoldingOpt::decodeStore(StoreInst* pStore, bool& bStoreConstZero, uint& storePattern)
+ExtractElementInst* HFpackingOpt::decodeStore(StoreInst* pStore, bool& bStoreConstZero, uint& storePattern)
 {
     bStoreConstZero = false;
     storePattern = 0;
@@ -393,7 +393,7 @@ ExtractElementInst* HFfoldingOpt::decodeStore(StoreInst* pStore, bool& bStoreCon
 // %81 = or i32 % 79, 1
 // %82 = getelementptr[1296 x float], [1296 x float] addrspace(3) *
 //       inttoptr(i32 5184 to[1296 x float] addrspace(3)*), i32 0, i32 % 81
-bool HFfoldingOpt::canMergeGEPs(Instruction* inst1, Instruction* inst2)
+bool HFpackingOpt::canMergeGEPs(Instruction* inst1, Instruction* inst2)
 {
     if (!inst1 || !inst2)
         return false;
@@ -413,7 +413,7 @@ bool HFfoldingOpt::canMergeGEPs(Instruction* inst1, Instruction* inst2)
     return (addr2 == addr1 + 1);
 }
 
-bool HFfoldingOpt::canMerge(HFdata& prev, GetElementPtrInst* GEP,
+bool HFpackingOpt::canMerge(HFdata& prev, GetElementPtrInst* GEP,
     const uint arraySize, const uint elmBytes, const uint offset,
     const uint storePattern, const bool bStoreConstZero, bool& removeSLM)
 {
@@ -484,7 +484,7 @@ bool HFfoldingOpt::canMerge(HFdata& prev, GetElementPtrInst* GEP,
     return false;
 }
 
-void HFfoldingOpt::replaceStores(Instruction* startInst, Value* newGEP,
+void HFpackingOpt::replaceStores(Instruction* startInst, Value* newGEP,
     StoreInst *Store1, StoreInst* Store2,
     const bool bStoreConstZero1, const bool bStoreConstZero2)
 {
@@ -512,7 +512,7 @@ void HFfoldingOpt::replaceStores(Instruction* startInst, Value* newGEP,
     }
 }
 
-void HFfoldingOpt::replaceLoads(Instruction *startInst, Value* newGEP,
+void HFpackingOpt::replaceLoads(Instruction *startInst, Value* newGEP,
     LoadInst *load1, LoadInst *load2)
 {
     IRBuilder<> builder(startInst);
@@ -530,7 +530,7 @@ void HFfoldingOpt::replaceLoads(Instruction *startInst, Value* newGEP,
 }
 
 // Checked if these two offsets are tracked by merged HF folding offsets
-bool HFfoldingOpt::isPacked(uint offset1, uint offset2)
+bool HFpackingOpt::isPacked(uint offset1, uint offset2)
 {
     std::map<uint32_t, uint32_t>::iterator it;
 
@@ -543,7 +543,7 @@ bool HFfoldingOpt::isPacked(uint offset1, uint offset2)
 }
 
 // Merge 2 f16 stores into 1 i32 store
-void HFfoldingOpt::PackHfResources(Function& F)
+void HFpackingOpt::PackHfResources(Function& F)
 {
     std::vector<Instruction*> RemoveInst;
     HFdata prevStore(HFdataType::HF_STORE);
@@ -727,7 +727,7 @@ void HFfoldingOpt::PackHfResources(Function& F)
     }
 }
 
-bool HFfoldingOpt::allowedALUinst(Value* inst)
+bool HFpackingOpt::allowedALUinst(Value* inst)
 {
     // return true for ALU insts allowed in this opt.
     // can be extended to a larger range of instructions.
@@ -784,7 +784,7 @@ bool HFfoldingOpt::allowedALUinst(Value* inst)
     return false;
 }
 
-bool HFfoldingOpt::findStoreSequence(std::vector<Instruction*>& path, std::vector< std::vector<Instruction*>>& allPath)
+bool HFpackingOpt::findStoreSequence(std::vector<Instruction*>& path, std::vector< std::vector<Instruction*>>& allPath)
 {
     // pathIndex=0,1,2 are the store instructions. No need to check them. Start checking pathIndex=3
     // save the sequence that generates the stored value.
@@ -876,7 +876,7 @@ bool HFfoldingOpt::findStoreSequence(std::vector<Instruction*>& path, std::vecto
     return true;
 }
 
-bool HFfoldingOpt::adjGep(Value* gep0, Value* gep1, Value* gep2, uint32_t offset[3])
+bool HFpackingOpt::adjGep(Value* gep0, Value* gep1, Value* gep2, uint32_t offset[3])
 {
     // check if the GEPs are accessing continuous space.
     uint32_t arraySize[3] = { 0, 0, 0 }, elmBytes[3] = { 0, 0, 0 };
@@ -912,7 +912,7 @@ bool HFfoldingOpt::adjGep(Value* gep0, Value* gep1, Value* gep2, uint32_t offset
     return true;
 }
 
-void HFfoldingOpt::removeRedundantChannels(Function& F)
+void HFpackingOpt::removeRedundantChannels(Function& F)
 {
     /*
     %32 = fmul fast float %29, %29
@@ -1094,7 +1094,7 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
     }
 }
 
-bool HFfoldingOpt::initializeSlmOffsetMap(Function& F)
+bool HFpackingOpt::initializeSlmOffsetMap(Function& F)
 {
     uint32_t arraySize = 0, elmBytes = 0, offset = 0;
     slmOffsetMap.clear();
@@ -1121,7 +1121,7 @@ bool HFfoldingOpt::initializeSlmOffsetMap(Function& F)
     return true;
 }
 
-void HFfoldingOpt::updateSlmOffsetSize(Function& F)
+void HFpackingOpt::updateSlmOffsetSize(Function& F)
 {
     uint32_t arraySize = 0, elmBytes = 0, offset = 0;
 
@@ -1151,7 +1151,7 @@ void HFfoldingOpt::updateSlmOffsetSize(Function& F)
     csCtx->m_slmSize = iSTD::RoundPower2(DWORD(csCtx->m_tgsmSize));
 }
 
-bool HFfoldingOpt::runOnFunction(Function& F)
+bool HFpackingOpt::runOnFunction(Function& F)
 {
     pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     csCtx = static_cast<ComputeShaderContext*>(pContext);

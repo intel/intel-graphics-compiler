@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#ifndef __HF_FOLDING_OPT_H__
-#define __HF_FOLDING_OPT_H__
+#ifndef __HF_PACKING_OPT_H__
+#define __HF_PACKING_OPT_H__
 
 #include <llvm/Pass.h>
 
 namespace IGC {
-    FunctionPass* createHFfoldingOptPass();
+    FunctionPass* createHFpackingOptPass();
 } // End namespace IGC
 
-#endif // __HF_FOLDING_OPT_H__
+#endif // __HF_PACKING_OPT_H__
