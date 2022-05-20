@@ -8353,19 +8353,36 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const
     G4_SrcRegRegion* src = getSrc(srcId)->asSrcRegRegion();
 
     // dst must be GRF-aligned
-    if ((getDst()->getLinearizedStart() % getBuilder().numEltPerGRF<Type_UB>()) != 0)
+    if (G4_VarBase* base = dst->getBase())
     {
-        if (!(isMixedMode() && builder.getPlatform() == Xe_XeHPSDV))
-            return false;
+        if (base->isRegVar())
+        {
+            if (base->asRegVar()->isPhyRegAssigned())
+            {
+                if ((dst->getLinearizedStart() % getBuilder().numEltPerGRF<Type_UB>()) != 0)
+                {
+                    if (!(isMixedMode() && builder.getPlatform() == Xe_XeHPSDV))
+                        return false;
+                }
+            }
+            else
+            {
+                //If the destination offset is not GRF aligned, such as has sub register offset, the src cannot be replaced with ACC
+                if (!builder.isOpndAligned(dst, getBuilder().numEltPerGRF<Type_UB>()))
+                {
+                    return false;
+                }
+            }
+        }
     }
 
     // check that src0 and dst have the same type/alignment
-    auto dstEltSize = getDst()->getHorzStride() * getDst()->getTypeSize();
+    auto dstEltSize = dst->getHorzStride() * dst->getTypeSize();
     if (dstEltSize > TypeSize(src->getType()))
     {
         return false;
     }
-    else if (isLowPrecisionFloatTy(getDst()->getType()) && src->getType() == Type_F &&
+    else if (isLowPrecisionFloatTy(dst->getType()) && src->getType() == Type_F &&
         dstEltSize == 2)
     {
         if (builder.relaxedACCRestrictions())
