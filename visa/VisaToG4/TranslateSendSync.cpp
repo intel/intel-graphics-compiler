@@ -321,6 +321,7 @@ int IR_Builder::translateVISANamedBarrierWait(G4_Operand* barrierId)
     if (barrierId->isSrcRegRegion()) {
         // sync can take only flag src
         G4_Declare* flagDecl = createTempFlag(1);
+        flagDecl->setSubRegAlign(Even_Word);
         createMov(g4::SIMD1, createDstRegRegion(flagDecl, 1), barrierId,
             InstOpt_WriteEnable, true);
         barSrc = createSrcRegRegion(flagDecl, getRegionScalar());

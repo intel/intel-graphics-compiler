@@ -12332,18 +12332,15 @@ void GlobalRA::fixAlignment()
     // Rest of RA shouldnt have to read/modify alignment of G4_RegVar
     copyAlignment();
 
-    if (kernel.getSimdSize() == g4::SIMD32)
+    for (auto dcl : kernel.Declares)
     {
-        // we have to force all flags to be 32-bit aligned even if they are < 32-bit,
-        // due to potential emask usage.
-        // ToDo: may be better to simply allocate them as 32-bit?
-        for (auto dcl : kernel.Declares)
-        {
-            if (dcl->getRegFile() & G4_FLAG)
-            {
-                setSubRegAlign(dcl, G4_SubReg_Align::Even_Word);
-            }
-        }
+      if (dcl->getRegFile() & G4_FLAG)
+      {
+        if (dcl->getByteSize() > 2 ||
+          (kernel.getSimdSize() == g4::SIMD32 &&
+            kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM))
+          setSubRegAlign(dcl, G4_SubReg_Align::Even_Word);
+      }
     }
 
     if (builder.getPlatform() == GENX_BDW)
