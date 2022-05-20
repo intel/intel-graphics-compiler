@@ -28,7 +28,6 @@ DECLARE_IGC_REGKEY(DWORD, VISAPostScheduleStartBBID, 0,  "The ID of BB which wil
 DECLARE_IGC_REGKEY(DWORD, VISAPostScheduleEndBBID, 0,  "The ID of BB which will be last scheduled", false)
 DECLARE_IGC_REGKEY(DWORD, SIMD8_SpillThreshold,         2,     "Percentage of instructions allowed for spilling", false)
 DECLARE_IGC_REGKEY(DWORD, SIMD16_SpillThreshold,        1,     "Percentage of instructions allowed for spilling", false)
-DECLARE_IGC_REGKEY(DWORD, SIMD32_SpillThreshold,        1,     "Percentage of instructions allowed for spilling", false)
 DECLARE_IGC_REGKEY(bool, DisableCSEL,                   false, "disable csel peep-hole", false)
 DECLARE_IGC_REGKEY(bool, DisableFlagOpt,                false, "Disable optimization cmp with logic op", false)
 DECLARE_IGC_REGKEY(bool, DisableIfCvt,                  false, "Disable ifcvt", false)
