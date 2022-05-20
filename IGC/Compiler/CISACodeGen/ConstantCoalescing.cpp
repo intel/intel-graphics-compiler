@@ -473,7 +473,7 @@ void ConstantCoalescing::ProcessBlock(
                         || bufType == BINDLESS
                          )
                 {
-                    if (UsesTypedConstantBuffer(m_ctx, bufType))
+                    if (UsesTypedConstantBuffer(m_ctx, bufType) && (bufType != BINDLESS))
                     {
                         ScatterToSampler(
                             ldRaw,
