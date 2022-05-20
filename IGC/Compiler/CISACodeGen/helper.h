@@ -536,4 +536,20 @@ namespace IGC
     std::pair<llvm::Value*, unsigned int> GetURBBaseAndOffset(llvm::Value* pUrbOffset);
 
     std::vector<std::pair<unsigned int, std::string>> GetPrintfStrings(llvm::Module &M);
+
+    template<typename Fn>
+    struct Defer
+    {
+        Defer(Fn F) : F(F) {}
+        ~Defer() {
+            if (Do) F();
+        }
+        void operator()() {
+            if (Do) F();
+            Do = false;
+        }
+    private:
+        bool Do = true;
+        Fn F;
+};
 } // namespace IGC
