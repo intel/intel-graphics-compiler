@@ -445,8 +445,6 @@ static void CommonOCLBasedPasses(
 
         if (IGC_IS_FLAG_ENABLED(EnableLowerGPCallArg))
         {
-            if (IGC_IS_FLAG_ENABLED(DetectCastToGAS))
-                mpm.add(createCastToGASAnalysisPass());
             mpm.add(createLowerGPCallArg());
         }
 

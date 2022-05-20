@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #define DEBUG_TYPE "gas-resolver"
 #include "Compiler/CISACodeGen/ResolveGAS.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/CastToGASAnalysis.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
@@ -1308,6 +1309,7 @@ namespace IGC
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CallGraphWrapperPass>();
             AU.addRequired<LoopInfoWrapperPass>();
+            AU.addRequired<CastToGASWrapperPass>();
         }
 
         virtual StringRef getPassName() const override
@@ -1329,6 +1331,7 @@ namespace IGC
         IGCMD::MetaDataUtils* m_mdUtils = nullptr;
         CodeGenContext* m_ctx = nullptr;
         Module* m_module = nullptr;
+        GASInfo* m_GI = nullptr;
         bool m_changed = false;
 
         void processCallArg(Module& M);
@@ -1358,6 +1361,7 @@ namespace IGC
     IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
     IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASWrapperPass)
     IGC_INITIALIZE_PASS_END(LowerGPCallArg, GP_PASS_FLAG, GP_PASS_DESC, GP_PASS_CFG_ONLY, GP_PASS_ANALYSIS)
 }
 
@@ -1365,6 +1369,7 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
 {
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_GI = &getAnalysis<CastToGASWrapperPass>().getGASInfo();
     m_module = &M;
 
     // (1) main work
@@ -1411,9 +1416,6 @@ void LowerGPCallArg::processCallArg(Module& M)
 
 void LowerGPCallArg::processGASInst(Module& M)
 {
-    if (!m_ctx->hasNoPrivateToGenericCast() || !m_ctx->hasNoLocalToGenericCast())
-        return;
-
     // As AddrSpaceCast has been processed already in GASResolving,
     // here only handle non-addrspacecast ptr
     auto toSkip = [](Value* P) {
@@ -1431,6 +1433,9 @@ void LowerGPCallArg::processGASInst(Module& M)
     // Change GAS inst, such as ld/st, etc to global ld/st, etc.
     for (Function& F : M)
     {
+        if (m_GI->canGenericPointToPrivate(F) || m_GI->canGenericPointToLocal(F))
+            continue;
+
         auto NI = inst_begin(F);
         for (auto FI = NI, FE = inst_end(F); FI != FE; FI = NI)
         {
@@ -1743,95 +1748,4 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(Function* oldFunc, Function* n
         IGC_ASSERT(i->user_empty());
         i->eraseFromParent();
     }
-}
-
-namespace IGC
-{
-    class CastToGASAnalysis : public ModulePass
-    {
-    public:
-        static char ID;
-
-        CastToGASAnalysis() : ModulePass(ID)
-        {
-            initializeCastToGASAnalysisPass(*PassRegistry::getPassRegistry());
-        }
-
-        bool runOnModule(Module&) override;
-
-        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-        {
-            AU.addRequired<CodeGenContextWrapper>();
-        }
-
-        virtual StringRef getPassName() const override
-        {
-            return "GenericPointerUsageAnalysis";
-        }
-
-    private:
-        CodeGenContext* m_ctx = nullptr;
-    };
-} // End anonymous namespace
-
-ModulePass* IGC::createCastToGASAnalysisPass() { return new CastToGASAnalysis(); }
-
-char CastToGASAnalysis::ID = 0;
-
-#define CAST_TO_GAS_PASS_FLAG "generic-pointer-analysis"
-#define CAST_TO_GAS_PASS_DESC "Analyze generic pointer usage"
-#define CAST_TO_GAS_PASS_CFG_ONLY false
-#define CAST_TO_GAS_PASS_ANALYSIS false
-namespace IGC
-{
-    IGC_INITIALIZE_PASS_BEGIN(CastToGASAnalysis, CAST_TO_GAS_PASS_FLAG, CAST_TO_GAS_PASS_DESC, CAST_TO_GAS_PASS_CFG_ONLY, CAST_TO_GAS_PASS_ANALYSIS)
-    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-    IGC_INITIALIZE_PASS_END(CastToGASAnalysis, CAST_TO_GAS_PASS_FLAG, CAST_TO_GAS_PASS_DESC, CAST_TO_GAS_PASS_CFG_ONLY, CAST_TO_GAS_PASS_ANALYSIS)
-}
-
-bool CastToGASAnalysis::runOnModule(llvm::Module& M)
-{
-    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
-    bool hasPrivateCast = false; // true if there is a cast from private to GAS
-    bool hasLocalCast = false; // true if there is a cast from local to GAS.
-
-    for (Function& F : M)
-    {
-        // ToDo: replace with generic checks for extern functions
-        if (F.hasFnAttribute("referenced-indirectly"))
-        {
-            for (auto& arg : F.args())
-            {
-                PointerType* argPointerType = dyn_cast<PointerType>(arg.getType());
-                if (argPointerType && argPointerType->getAddressSpace() == ADDRESS_SPACE_GENERIC)
-                {
-                    return false;
-                }
-            }
-        }
-
-        for (auto FI = inst_begin(F), FE = inst_end(F);
-            (FI != FE) && !(hasPrivateCast && hasLocalCast); ++FI)
-        {
-            Instruction* I = &*FI;
-            if (auto* ASC = dyn_cast<AddrSpaceCastInst>(I))
-            {
-                if (ASC->getDestAddressSpace() != ADDRESS_SPACE_GENERIC)
-                    continue;
-
-                unsigned AS = ASC->getSrcAddressSpace();
-                if (AS == ADDRESS_SPACE_LOCAL)
-                    hasLocalCast = true;
-                else if (AS == ADDRESS_SPACE_PRIVATE)
-                    hasPrivateCast = true;
-            }
-        }
-    }
-
-    // Set those so that dynamic resolution can use them.
-    m_ctx->getModuleMetaData()->hasNoLocalToGenericCast = !hasLocalCast;
-    m_ctx->getModuleMetaData()->hasNoPrivateToGenericCast = !hasPrivateCast;
-
-    return true;
 }

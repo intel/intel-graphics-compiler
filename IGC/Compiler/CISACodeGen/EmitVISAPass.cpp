@@ -141,6 +141,7 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool
     initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
     initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
     initializeLiveVariablesPass(*PassRegistry::getPassRegistry());
+    initializeCastToGASWrapperPassPass(*PassRegistry::getPassRegistry());
 }
 
 EmitPass::~EmitPass()
@@ -591,6 +592,10 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         return false;
     }
     m_moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+    GASInfo& GI = getAnalysis<CastToGASWrapperPass>().getGASInfo();
+    m_canGenericPointToPrivate = GI.canGenericPointToPrivate(F);
+    m_canGenericPointToLocal = GI.canGenericPointToLocal(F);
 
     CreateKernelShaderMap(m_pCtx, pMdUtils, F);
 
@@ -10823,8 +10828,8 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 
     CVariable* srcV = GetSymbol(addrSpaceCast->getOperand(0));
 
-    if ((m_pCtx->allocatePrivateAsGlobalBuffer() || m_pCtx->hasNoPrivateToGenericCast()) &&
-        m_pCtx->hasNoLocalToGenericCast())
+    if ((m_pCtx->allocatePrivateAsGlobalBuffer() || !m_canGenericPointToPrivate) &&
+        !m_canGenericPointToLocal)
     {
         // If forcing global memory allocacion and there are no generic pointers to local AS,
         // there is no need to tag generic pointers.

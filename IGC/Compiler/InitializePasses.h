@@ -26,6 +26,7 @@ void initializeBlockCoalescingPass(llvm::PassRegistry&);
 void initializeBreakConstantExprPass(llvm::PassRegistry&);
 void initializeBuiltinCallGraphAnalysisPass(llvm::PassRegistry&);
 void initializeBuiltinsConverterPass(llvm::PassRegistry&);
+void initializeCastToGASWrapperPassPass(llvm::PassRegistry&);
 void initializeClearTessFactorsPass(llvm::PassRegistry&);
 void initializeCleanPHINodePass(llvm::PassRegistry&);
 void initializeCoalescingEnginePass(llvm::PassRegistry&);

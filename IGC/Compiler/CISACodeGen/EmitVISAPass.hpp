@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "Simd32Profitability.hpp"
 #include "GenCodeGenModule.h"
 #include "VariableReuseAnalysis.hpp"
+#include "CastToGASAnalysis.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/DataLayout.h>
@@ -60,6 +61,7 @@ public:
         AU.addRequired<Simd32ProfitabilityAnalysis>();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<VariableReuseAnalysis>();
+        AU.addRequired<CastToGASWrapperPass>();
         AU.setPreservesAll();
     }
 
@@ -816,6 +818,9 @@ private:
     uint m_currentBlock = (uint) -1;
 
     bool m_currFuncHasSubroutine = false;
+
+    bool m_canGenericPointToPrivate = false;
+    bool m_canGenericPointToLocal = false;
 
     // Used to relocate phi-mov to different BB. phiMovToBB is the map from "fromBB"
     // to "toBB" (meaning to move phi-mov from "fromBB" to "toBB"). See MovPhiSources.

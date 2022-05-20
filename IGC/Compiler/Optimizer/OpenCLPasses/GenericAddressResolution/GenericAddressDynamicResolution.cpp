@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
+#include "Compiler/CISACodeGen/CastToGASAnalysis.h"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublicEnums.h"
@@ -58,6 +59,7 @@ namespace {
 #define PASS_ANALYSIS2 false
 IGC_INITIALIZE_PASS_BEGIN(GenericAddressAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASWrapperPass)
 IGC_INITIALIZE_PASS_END(GenericAddressAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
 char GenericAddressAnalysis::ID = 0;
@@ -107,6 +109,7 @@ namespace {
         {
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<CastToGASWrapperPass>();
         }
 
         virtual bool runOnFunction(Function& F) override;
@@ -116,6 +119,9 @@ namespace {
         Module* getModule() { return m_module; }
 
     private:
+        bool m_needPrivateBranches = false;
+        bool m_needLocalBranches = false;
+
         Type* getPointerAsIntType(LLVMContext& Ctx, unsigned AS);
         void resolveGAS(Instruction& I, Value* pointerOperand);
         void resolveGASWithoutBranches(Instruction& I, Value* pointerOperand);
@@ -130,6 +136,7 @@ namespace {
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(GenericAddressDynamicResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASWrapperPass)
 IGC_INITIALIZE_PASS_END(GenericAddressDynamicResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char GenericAddressDynamicResolution::ID = 0;
@@ -138,6 +145,11 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
 {
     m_module = F.getParent();
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    GASInfo& GI = getAnalysis<CastToGASWrapperPass>().getGASInfo();
+    m_needPrivateBranches = GI.canGenericPointToPrivate(F);
+    m_needLocalBranches = GI.canGenericPointToLocal(F);
+
     bool modified = false;
     bool changed = false;
 
@@ -208,8 +220,8 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
     }
 
     if (pointerAddressSpace == ADDRESS_SPACE_GENERIC) {
-        if((m_ctx->allocatePrivateAsGlobalBuffer() || m_ctx->hasNoPrivateToGenericCast()) &&
-            m_ctx->hasNoLocalToGenericCast())
+        if((m_ctx->allocatePrivateAsGlobalBuffer() || !m_needPrivateBranches) &&
+            !m_needLocalBranches)
         {
             resolveGASWithoutBranches(I, pointerOperand);
         }
@@ -282,8 +294,8 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     // GAS needs to resolve to private only if
     //     1) private is NOT allocated in global space; and
     //     2) there is a cast from private to GAS.
-    bool hasPrivate = !(m_ctx->allocatePrivateAsGlobalBuffer() || m_ctx->hasNoPrivateToGenericCast());
-    bool hasLocal = !m_ctx->hasNoLocalToGenericCast();
+    bool needPrivateBranch = !(m_ctx->allocatePrivateAsGlobalBuffer()) || m_needPrivateBranches;
+    bool needLocalBranch = m_needLocalBranches;
 
     auto createBlock = [&](const Twine& BlockName, const Twine& LoadName, IGC::ADDRESS_SPACE addressSpace, Value*& load)
     {
@@ -306,13 +318,13 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     };
 
     // Private branch
-    if (hasPrivate)
+    if (needPrivateBranch)
     {
         privateBlock = createBlock("PrivateBlock", "privateLoad", ADDRESS_SPACE_PRIVATE, privateLoad);
     }
 
     // Local Branch
-    if (hasLocal)
+    if (needLocalBranch)
     {
         localBlock = createBlock("LocalBlock", "localLoad", ADDRESS_SPACE_LOCAL, localLoad);
     }
@@ -323,17 +335,17 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     currentBlock->getTerminator()->eraseFromParent();
     builder.SetInsertPoint(currentBlock);
 
-    const int numPrivateLocal = (hasPrivate && hasLocal) ? 2 : ((hasPrivate || hasLocal) ? 1 : 0);
-    IGC_ASSERT(0 < numPrivateLocal);
+    const int numCases = (needPrivateBranch && needLocalBranch) ? 2 : ((needPrivateBranch || needLocalBranch) ? 1 : 0);
+    IGC_ASSERT(0 < numCases);
 
     {
-        SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, numPrivateLocal);
+        SwitchInst* switchTag = builder.CreateSwitch(tag, globalBlock, numCases);
         // Based on tag there are two cases 001: private, 010: local, 000/111: global
-        if (hasPrivate)
+        if (needPrivateBranch)
         {
             switchTag->addCase(privateTag, privateBlock);
         }
-        if (hasLocal)
+        if (needLocalBranch)
         {
             switchTag->addCase(localTag, localBlock);
         }
@@ -341,7 +353,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
         if (isa<LoadInst>(&I))
         {
             IGCLLVM::IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
-            PHINode* phi = phiBuilder.CreatePHI(I.getType(), numPrivateLocal + 1, I.getName());
+            PHINode* phi = phiBuilder.CreatePHI(I.getType(), numCases + 1, I.getName());
             if (privateLoad)
             {
                 phi->addIncoming(privateLoad, privateBlock);

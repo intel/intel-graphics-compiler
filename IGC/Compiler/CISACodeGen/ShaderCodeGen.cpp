@@ -616,8 +616,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
             mpm.add(createFixAddrSpaceCastPass());
             mpm.add(createResolveGASPass());
         }
-        if(IGC_IS_FLAG_ENABLED(DetectCastToGAS))
-            mpm.add(createCastToGASAnalysisPass());
         mpm.add(createGenericAddressDynamicResolutionPass());
     }
 
