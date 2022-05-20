@@ -1037,6 +1037,7 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
     if (storeGepToRemove.size() == 0)
         return;
 
+    GetElementPtrInst* removeGEP;
     // start removing load/store/gep
     for (auto iter = storeGepToRemove.begin(); iter != storeGepToRemove.end(); iter++)
     {
@@ -1076,19 +1077,20 @@ void HFfoldingOpt::removeRedundantChannels(Function& F)
             copyToInst[2]->eraseFromParent();
         }
 
-        // update the slm map
-        GetElementPtrInst* removeGEP = cast<GetElementPtrInst>(storeGepToRemove[iter->first][0][2]->getOperand(1));
-        removeFromSlmMap(removeGEP);
-
         // remove store
         for (uint storeIndex = 0; storeIndex < storeGepToRemove[iter->first].size(); storeIndex++)
         {
+            // update the slm map
+            removeGEP = cast<GetElementPtrInst>(storeGepToRemove[iter->first][storeIndex][2]->getOperand(1));
+            removeFromSlmMap(removeGEP);
+
             storeGepToRemove[iter->first][storeIndex][2]->dropAllReferences();
             storeGepToRemove[iter->first][storeIndex][2]->eraseFromParent();
+
+            if (removeGEP->use_empty())
+                removeGEP->eraseFromParent();
         }
 
-        if (removeGEP->use_empty())
-            removeGEP->eraseFromParent();
     }
 }
 
