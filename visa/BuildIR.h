@@ -1157,13 +1157,19 @@ public:
     //
     G4_Label* createLocalBlockLabel(const std::string& lab = "")
     {
-        std::stringstream ss;
-        std::string kname(kernel.getName() ? kernel.getName() : "L");
-        if (kname.size() > 30)
+        const char* cstr_kname = kernel.getName();
+        std::string kname("L");
+        if (cstr_kname)
         {
-            // kname is just for readability. If it is too long, don't use it.
-            kname = "L";
+            std::string tName = sanitizeLabelString(cstr_kname);
+            // cstr_kname is just for readability. If it is too long, don't use it.
+            if (tName.size() != 0 && tName.size() <= 30)
+            {
+                kname = tName;
+            }
         }
+
+        std::stringstream ss;
         uint32_t lbl_id = getAndUpdateNextLabelId();
         ss  << "_" << kname << "_f" << kernel.getFunctionId() << "_" << lbl_id << "_" << lab;
         size_t len = ss.str().size() + 1;

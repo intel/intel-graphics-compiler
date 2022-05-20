@@ -1209,8 +1209,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
             insert(iter, exitBB);
         }
 
-        std::string exitBBStr("__EXIT_BB");
-        G4_Label *exitLabel = builder->createLabel(exitBBStr, LABEL_BLOCK);
+        G4_Label *exitLabel = builder->createLocalBlockLabel("EXIT_BB");
         G4_INST* label = createNewLabelInst(exitLabel);
         exitBB->push_back(label);
 
@@ -1472,8 +1471,7 @@ G4_BB* FlowGraph::mergeSubRoutineReturn(G4_Label* subroutineLabel)
         //
         // Create a label for the newBB and insert return to new BB
         //
-        std::string str = "LABEL__" + std::to_string(newBB->getId());
-        G4_Label* lab = builder->createLabel(str, LABEL_BLOCK);
+        G4_Label* lab = builder->createLocalBlockLabel();
         G4_INST* labelInst = createNewLabelInst(lab);
 
         // exitBB is really just a dummy one for analysis, and does not need a return
@@ -2338,8 +2336,7 @@ void FlowGraph::mergeFReturns()
         {
             G4_BB* newExit = createNewBB();
             assert(!builder->getIsKernel() && "Not expecting fret in kernel");
-            std::string str = "__MERGED_FRET_EXIT_BLOCK";
-            dumLabel = builder->createLabel(str, LABEL_BLOCK);
+            dumLabel = builder->createLocalBlockLabel("MERGED_FRET_EXIT_BB");
             G4_INST* label = createNewLabelInst(dumLabel);
             newExit->push_back(label);
             G4_INST* fret = builder->createInternalCFInst(
