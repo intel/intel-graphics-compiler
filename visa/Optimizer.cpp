@@ -1183,7 +1183,7 @@ void Optimizer::insertDummyMovForHWRSWA()
                         }
                     }
                     G4_BB* wa_bb = hasJmpIPred ?
-                        kernel.fg.createNewBBWithLabel("WA_", preInst->getLineNo(), preInst->getCISAOff()) :
+                        kernel.fg.createNewBBWithLabel("RSWA", preInst->getLineNo(), preInst->getCISAOff()) :
                         kernel.fg.createNewBB();
                     kernel.fg.insert(bb_it, wa_bb);
                     G4_Label* newLabel = hasJmpIPred ? wa_bb->getLabel() : NULL;
@@ -8630,8 +8630,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             }
             else
             {
-                std::string label_name("ffid_prolog_end");
-                jmp_label = builder.createLabel(label_name, LABEL_BLOCK);
+                jmp_label = builder.createLocalBlockLabel("ffid_prolog_end");
                 next_bb->insertBefore(next_bb->begin(), createLabelInst(jmp_label));
             }
             entry_0_bb->push_back(createJmpi(jmp_label));
@@ -9657,7 +9656,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // NOTE: create the call and label instructions directly without forming a BB to skip the
         // BB end with call checking (e.g. in SWSB setting) that this is just a fall-throug call and
         // is a temporarily WA
-        G4_Label *label = builder.createLabel(std::string("_label_ip_wa"), LABEL_BLOCK);
+        G4_Label *label = builder.createLocalBlockLabel("ip_wa");
         insts.push_back(builder.createInternalInst(
             nullptr, G4_call, nullptr, g4::NOSAT, g4::SIMD1,
             builder.createDstRegRegion(dst_decl, 1),
@@ -16700,7 +16699,7 @@ void Optimizer::applyFusedCallWA()
             {
                 // Cannot insert join, otherwise, label for while/endif would be wrong
                 // Here, create a new empty BB so that we can add join into it.
-                G4_BB* endBB = fg.createNewBBWithLabel("_FusedCallWA_EndBB/Tar", callI->getLineNo(), callI->getCISAOff());
+                G4_BB* endBB = fg.createNewBBWithLabel("CallWA_EndBB", callI->getLineNo(), callI->getCISAOff());
                 nextBI = fg.insert(nextBI, endBB);
 
                 // Adjust control-flow
@@ -16763,10 +16762,10 @@ void Optimizer::applyFusedCallWA()
         BB->push_back(I2);
         BB->push_back(I3);
 
-        G4_BB* bigB0 = fg.createNewBBWithLabel("_FusedCallWA_", callI->getLineNo(), callI->getCISAOff());
-        G4_BB* bigB1 = fg.createNewBBWithLabel("_FusedCallWA_", callI->getLineNo(), callI->getCISAOff());
-        G4_BB* smallB0 = fg.createNewBBWithLabel("_FusedCallWA_", callI->getLineNo(), callI->getCISAOff());
-        G4_BB* smallB1 = fg.createNewBBWithLabel("_FusedCallWA_", callI->getLineNo(), callI->getCISAOff());
+        G4_BB* bigB0 = fg.createNewBBWithLabel("CallWA_BigB0", callI->getLineNo(), callI->getCISAOff());
+        G4_BB* bigB1 = fg.createNewBBWithLabel("CallWA_BigB1", callI->getLineNo(), callI->getCISAOff());
+        G4_BB* smallB0 = fg.createNewBBWithLabel("CallWA_SmallB0", callI->getLineNo(), callI->getCISAOff());
+        G4_BB* smallB1 = fg.createNewBBWithLabel("CallWA_SmallB1", callI->getLineNo(), callI->getCISAOff());
         // Note that nextBI points to the nextBB!
         fg.insert(nextBI, bigB0);
         fg.insert(nextBI, bigB1);

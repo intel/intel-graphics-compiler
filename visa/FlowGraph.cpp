@@ -345,11 +345,12 @@ G4_BB* FlowGraph::createNewBB(bool insertInFG)
     return bb;
 }
 
-G4_BB* FlowGraph::createNewBBWithLabel(const char* LabelPrefix, int Lineno, int CISAoff)
+G4_BB* FlowGraph::createNewBBWithLabel(const char* LabelSuffix, int Lineno, int CISAoff)
 {
     G4_BB* newBB = createNewBB(true);
-    std::string name = LabelPrefix + std::to_string(newBB->getId());
-    G4_Label* lbl = builder->createLabel(name, LABEL_BLOCK);
+    G4_Label* lbl = LabelSuffix != nullptr
+        ? builder->createLocalBlockLabel(LabelSuffix)
+        : builder->createLocalBlockLabel();
     G4_INST* inst = createNewLabelInst(lbl, Lineno, CISAoff);
     newBB->push_back(inst);
     return newBB;
@@ -1313,7 +1314,7 @@ void FlowGraph::handleReturn(Label_BB_Map& labelMap, FuncInfoHashTable& funcInfo
                     // return edge has not been added yet.
                     G4_INST* I0 = retAddr->getFirstInst();
                     if (I0 == nullptr) I0 = last;
-                    G4_BB* newRetBB = createNewBBWithLabel("Label_return_BB", I0->getLineNo(), I0->getCISAOff());
+                    G4_BB* newRetBB = createNewBBWithLabel("Return_BB", I0->getLineNo(), I0->getCISAOff());
                     bb->removeSuccEdge(retAddr);
                     retAddr->removePredEdge(bb);
                     addPredSuccEdges(bb, newRetBB, true);

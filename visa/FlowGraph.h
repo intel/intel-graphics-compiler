@@ -436,7 +436,7 @@ public:
     G4_INST* createNewLabelInst(G4_Label* label, int lineNo = 0, int CISAOff = -1);
 
     G4_BB* createNewBB(bool insertInFG = true);
-    G4_BB* createNewBBWithLabel(const char* LabelPrefix, int Lineno = 0, int CISAoff = -1);
+    G4_BB* createNewBBWithLabel(const char* LabelSuffix, int Lineno = 0, int CISAoff = -1);
     int64_t insertDummyUUIDMov();
     //
     // Increase by one so that all BBs' traversal are less than traversalNum
