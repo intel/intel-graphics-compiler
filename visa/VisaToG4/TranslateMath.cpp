@@ -676,7 +676,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
             if (!hasDefaultRoundDenorm)
             {
                 // else (8) {Q1/Q2}
-                createElse(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
+                createElse(exsize, instOpt);
 
                 // restore Rounding Mode in CR
                 restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
@@ -1002,7 +1002,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
                 restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
             }
             // endif (8) {Q1/Q2}
-            inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
+            inst = createEndif(exsize, instOpt);
         }
     };
 
@@ -1300,7 +1300,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
             }
 
             // endif (exsize) {Q1/Q2}
-            inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
+            inst = createEndif(exsize, instOpt);
         }
     };
 
@@ -1776,14 +1776,14 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
             if (!hasDefaultRoundDenorm)
             {
                 // else (8) {Q1/Q2}
-                createElse(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
+                createElse(exsize, instOpt);
 
                 // restore Rounding Mode in CR
                 restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
             }
 
             // endif (8) {Q1/Q2}
-            inst = createEndif(isNoMask(emask) ? G4_ExecSize(32) : exsize, instOpt);
+            inst = createEndif(exsize, instOpt);
         }
     };
 
