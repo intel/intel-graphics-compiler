@@ -4495,15 +4495,6 @@ namespace IGC
             SaveOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
         }
 
-        if (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram())
-        {
-            bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary) || context->getCompilerOption().EnableZEBinary;
-
-            // pass higher ABI version when using ZEBinary
-            if (ZEBinEnabled)
-                SaveOption(vISA_StackCallABIVer, (uint32_t)2);
-        }
-
         //
         // Setting number of GRF and threads per EU is restricted to OCL only
         // Number of threads can be set by:
