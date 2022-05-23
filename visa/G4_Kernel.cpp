@@ -864,7 +864,7 @@ KernelDebugInfo* G4_Kernel::getKernelDebugInfo()
 
 unsigned G4_Kernel::getStackCallStartReg() const
 {
-    // Last 3 GRFs to be used as scratch
+    // Last 3 (or 2) GRFs reserved for stack call purpose
     unsigned totalGRFs = getNumRegTotal();
     unsigned startReg = totalGRFs - numReservedABIGRF();
     return startReg;

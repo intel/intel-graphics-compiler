@@ -347,6 +347,7 @@ public:
         return getKernelAttrs()->getInt32KernelAttr(aID);
     }
     bool getOption(vISAOptions opt) const { return m_options->getOption(opt); }
+    uint32_t getuInt32Option(vISAOptions opt) const { return m_options->getuInt32Option(opt); }
     void computeChannelSlicing();
     void calculateSimdSize();
     G4_ExecSize getSimdSize() { return simdSize; }
@@ -391,10 +392,26 @@ public:
     unsigned calleeSaveStart() const;
     unsigned getNumCalleeSaveRegs() const;
 
+    enum StackCallABIVersion
+    {
+        VER_1 = 1, // This version is used pre-zebin
+        VER_2 = 2, // This version is used for zebin
+    };
+
     // return the number of reserved GRFs for stack call ABI
     // the reserved registers are at the end of the GRF file (e.g., r125-r127)
+    // for some architectures/ABI version, we dont need a copy of r0 and
+    // instructions can directly refer to r0 in code (eg, sends).
     uint32_t numReservedABIGRF() const {
-        return 3;
+        if (getuInt32Option(vISA_StackCallABIVer) == VER_1)
+            return 3;
+        else
+        {
+            // for ABI version > 1,
+            if (getOption(vISA_PreserveR0InR0))
+                return 2;
+            return 3;
+        }
     }
 
     // purpose of the GRFs reserved for stack call ABI
@@ -403,15 +420,30 @@ public:
     const int ThreadHeaderGRF = 2;
 
     uint32_t getFPSPGRF() const{
-        return getStackCallStartReg() + FPSPGRF;
+        // For ABI V1 return r125.
+        // For ABI V2 return r127.
+        if(getuInt32Option(vISA_StackCallABIVer) == VER_1)
+            return getStackCallStartReg() + FPSPGRF;
+        else
+            return (getNumRegTotal() - 1) - FPSPGRF;
     }
 
     uint32_t getSpillHeaderGRF() const{
-        return getStackCallStartReg() + SpillHeaderGRF;
+        // For ABI V1 return r126.
+        // For ABI V2 return r126.
+        if (getuInt32Option(vISA_StackCallABIVer) == VER_1)
+            return getStackCallStartReg() + SpillHeaderGRF;
+        else
+            return (getNumRegTotal() - 1) - SpillHeaderGRF;
     }
 
     uint32_t getThreadHeaderGRF() const{
-        return getStackCallStartReg() + ThreadHeaderGRF;
+        // For ABI V1 return r127.
+        // For ABI V2 return r125.
+        if (getuInt32Option(vISA_StackCallABIVer) == VER_1)
+            return getStackCallStartReg() + ThreadHeaderGRF;
+        else
+            return (getNumRegTotal() - 1) - ThreadHeaderGRF;
     }
 
     void renameAliasDeclares();
