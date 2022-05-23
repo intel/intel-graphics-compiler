@@ -42,6 +42,8 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module& M)
 
     bool hasStackCall = false;
 
+    m_hasDPDivSqrtEmu = !pCtx->platform.hasNoFP64Inst() && !pCtx->platform.hasCorrectlyRoundedMacros() && pCtx->m_DriverInfo.NeedFP64DivSqrt();
+
     // Run on all functions defined in this module
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
@@ -125,7 +127,6 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
         CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         // This is the condition that double emulation is used.
         if ((IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-            (!pCtx->platform.hasNoFP64Inst() && !pCtx->platform.hasCorrectlyRoundedMacros() && pCtx->m_DriverInfo.NeedFP64DivSqrt()) ||
             (pCtx->m_DriverInfo.NeedFP64(pCtx->platform.getPlatformInfo().eProductFamily) && pCtx->platform.hasNoFP64Inst())))
         {
             m_hasPrivateMem = true;
@@ -169,6 +170,28 @@ void PrivateMemoryUsageAnalysis::visitBinaryOperator(llvm::BinaryOperator& I)
             break;
         default:
             break;
+        }
+    }
+
+    // Check if an instruction is fp64 div to enable privMem
+    if (m_hasDPDivSqrtEmu)
+    {
+        if (I.getOpcode() == Instruction::FDiv)
+        {
+            m_hasPrivateMem = true;
+        }
+    }
+}
+
+void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst& CI)
+{
+    // Check if a sqrtd builtin is called to enable privMem
+    if (m_hasDPDivSqrtEmu && CI.hasName())
+    {
+        Function* calledFunc = CI.getCalledFunction();
+        if (calledFunc->getName().startswith("__builtin_IB_native_sqrtd"))
+        {
+            m_hasPrivateMem = true;
         }
     }
 }
