@@ -685,30 +685,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(llvm::createGlobalDCEPass());
         mpm.add(new PurgeMetaDataUtils());
         mpm.add(createGenXCodeGenModulePass());
-
-        // Light cleanup for subroutines after cloning. Note that the constant
-        // propogation order is reversed, compared to the opt sequence in
-        // OptimizeIR. There is a substantial gain with CFG simplification after
-        // interprocedural constant propagation.
-        if (!isOptDisabled)
-        {
-            mpm.add(createPruneUnusedArgumentsPass());
-#if LLVM_VERSION_MAJOR >= 12
-            mpm.add(createIPSCCPPass());
-#else
-            if (!ctx.m_hasStackCalls)
-            {
-                // Don't run IPConstantProp when stackcalls are present.
-                // Let global constants be relocated inside stack funcs.
-                // We cannot process SLM constants inside stackcalls, so don't propagate them.
-                mpm.add(createIPConstantPropagationPass());
-            }
-            mpm.add(createConstantPropagationPass());
-#endif
-            mpm.add(createDeadCodeEliminationPass());
-            mpm.add(createCFGSimplificationPass());
-            mpm.add(createIGCInstructionCombiningPass());
-        }
     }
 
     // Remove all uses of implicit arg instrinsics after inlining by lowering them to kernel args
@@ -817,6 +793,30 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(new StatelessToStateful(hasBufOff));
     }
 
+    // Light cleanup for subroutines after cloning. Note that the constant
+    // propogation order is reversed, compared to the opt sequence in
+    // OptimizeIR. There is a substantial gain with CFG simplification after
+    // interprocedural constant propagation.
+    if (ctx.m_enableSubroutine && !isOptDisabled)
+    {
+        mpm.add(createPruneUnusedArgumentsPass());
+
+#if LLVM_VERSION_MAJOR >= 12
+        mpm.add(createIPSCCPPass());
+#else
+        if (!ctx.m_hasStackCalls)
+        {
+            // Don't run IPConstantProp when stackcalls are present.
+            // Let global constants be relocated inside stack funcs.
+            // We cannot process SLM constants inside stackcalls, so don't propagate them.
+            mpm.add(createIPConstantPropagationPass());
+        }
+        mpm.add(createConstantPropagationPass());
+#endif
+
+        mpm.add(createDeadCodeEliminationPass());
+        mpm.add(createCFGSimplificationPass());
+    }
     // Since we don't support switch statements, switch lowering is needed after the last CFG simplication
     mpm.add(llvm::createLowerSwitchPass());
 
