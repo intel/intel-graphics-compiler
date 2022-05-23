@@ -2447,6 +2447,11 @@ bool globalLinearScan::canBeSpilledLR(LSLiveRange* lr)
         return false;
     }
 
+    if (lr->getTopDcl()->isDoNotSpill())
+    {
+        return false;
+    }
+
     if (lr->isCall())
     {
         return false;
