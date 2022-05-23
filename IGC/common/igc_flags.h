@@ -350,7 +350,6 @@ DECLARE_IGC_REGKEY(bool, DumpTimeStatsPerPass,          false, "Collect Timing o
 DECLARE_IGC_REGKEY(bool, DumpHasNonKernelArgLdSt,       false, "Print if hasNonKernelArg load/store to stderr", true)
 DECLARE_IGC_REGKEY(bool, PrintPsoDdiHash,               true,  "Print psoDDIHash in TimeStats_Shaders.csv file", true)
 DECLARE_IGC_REGKEY(bool, AddExtraIntfInfo,                false, "Will add extra inteference info from .extraintf files from c:\\Intel\\IGC\\ShaderOverride", false)
-DECLARE_IGC_REGKEY(bool, SimdEarlyOut_9,                false, "Force compiler simd early out for dx9", true)
 
 DECLARE_IGC_GROUP("Debugging features")
 DECLARE_IGC_REGKEY(debugString, ForceAssignRhysicalReg,     0, "Force assigning dclId to phyiscal reg.", true)

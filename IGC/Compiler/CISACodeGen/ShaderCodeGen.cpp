@@ -1246,8 +1246,7 @@ void CodeGen(DomainShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders)
 // check based on performance measures.
 static bool SimdEarlyCheck(CodeGenContext* ctx)
 {
-    if (IGC_IS_FLAG_ENABLED(SimdEarlyOut_9) &&
-        ctx->m_instrTypes.numPsInputs > 22 && ctx->m_instrTypes.numInsts > 1000)
+    if (ctx->m_instrTypes.numPsInputs > 22 && ctx->m_instrTypes.numInsts > 1000)
     {
         return false;
     }
