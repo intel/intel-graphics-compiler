@@ -658,7 +658,7 @@ bool enableImmConstantOpt() const
 
 bool supportsTier2VRS() const
 {
-    return m_platformInfo.eProductFamily == IGFX_DG2;
+    return m_platformInfo.eProductFamily >= IGFX_DG2;
 }
 
 bool supportsSIMD16TypedRW() const
