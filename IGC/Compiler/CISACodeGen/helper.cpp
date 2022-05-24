@@ -1187,6 +1187,8 @@ namespace IGC
             case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
             case GenISAIntrinsic::GenISA_simdBlockRead:
             case GenISAIntrinsic::GenISA_simdBlockWrite:
+            case GenISAIntrinsic::GenISA_LSCLoad:
+            case GenISAIntrinsic::GenISA_LSCLoadBlock:
                 pBuffer = intr->getOperand(0);
                 break;
             case GenISAIntrinsic::GenISA_intatomicrawA64:
