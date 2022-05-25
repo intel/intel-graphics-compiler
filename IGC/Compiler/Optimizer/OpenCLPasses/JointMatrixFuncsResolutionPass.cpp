@@ -577,6 +577,13 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
         component = builder.CreateZExtOrBitCast(component, Type::getIntNTy(builder.getContext(), vecElemSize));
         offset = builder.CreateTruncOrBitCast(offset, Type::getIntNTy(builder.getContext(), vecElemSize));
 
+        /* clear element bits: */
+        uint64_t maskValue = (1 << desc.bitWidth) - 1;
+        Value *mask = builder.CreateShl(ConstantInt::get(element->getType(), maskValue), offset);
+        mask = builder.CreateNot(mask);
+        element = builder.CreateAnd(element, mask);
+
+        /* shift component and merge with element: */
         component = builder.CreateShl(component, offset);
         component = builder.CreateOr(element, component);
     }
