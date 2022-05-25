@@ -53,6 +53,18 @@ void LocalScheduler::localScheduling()
         #define SCH_THRESHOLD 2
         if (instCountBefore < SCH_THRESHOLD)
         {
+            unsigned int sequentialCycles = 0;
+            for (INST_LIST_ITER inst_it = (*ib)->begin(), bbEnd = (*ib)->end();
+                inst_it != bbEnd;
+                inst_it++)
+            {
+                sequentialCycles += LT.getOccupancy((*inst_it));
+            }
+            bbInfo[i].id = (*ib)->getId();
+            bbInfo[i].staticCycle = sequentialCycles;
+            bbInfo[i].sendStallCycle = 0;
+            bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
+            totalCycles += sequentialCycles;
             continue;
         }
 
@@ -65,6 +77,8 @@ void LocalScheduler::localScheduling()
             // So artificially breakup inst list here to reduce size
             // of scheduler problem size.
             unsigned int count = 0;
+            unsigned int sequentialCycles = 0;
+            unsigned int sendStallCycles = 0;
             std::vector<G4_BB*> sections;
 
             for (INST_LIST_ITER inst_it = (*ib)->begin();
@@ -79,6 +93,8 @@ void LocalScheduler::localScheduling()
                     tempBB->splice(tempBB->begin(),
                         (*ib), (*ib)->begin(), inst_it);
                     G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, LT);
+                    sequentialCycles += schedule.sequentialCycle;
+                    sendStallCycles += schedule.sendStallCycle;
                     count = 0;
                 }
                 count++;
@@ -93,6 +109,11 @@ void LocalScheduler::localScheduling()
             {
                 (*ib)->splice((*ib)->end(), sections[i], sections[i]->begin(), sections[i]->end());
             }
+            bbInfo[i].id = (*ib)->getId();
+            bbInfo[i].staticCycle = sequentialCycles;
+            bbInfo[i].sendStallCycle = sendStallCycles;
+            bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
+            totalCycles += sequentialCycles;
         }
         else
         {
