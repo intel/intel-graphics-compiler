@@ -480,6 +480,7 @@ DECLARE_IGC_REGKEY(bool, EnableImplicitArgAsIntrinsic,  true,  "Use GenISAIntrin
 DECLARE_IGC_REGKEY(bool, EnableSamplerSupport, false, "Enables sampler messages generation for PVC.", true)
 DECLARE_IGC_REGKEY(bool, EnableLSC, false, "Enables the new dataport encoding for LSC messages.", true)
 DECLARE_IGC_REGKEY(bool, ForceNoLSC, false, "Disables the new dataport encoding for LSC messages.", true)
+DECLARE_IGC_REGKEY(bool, EnableMadLoopSlice, false, "Enables the slicing of mad loops.", true)
 
 DECLARE_IGC_REGKEY(bool, EnableDG2LSCSIMD8WA, true, "Enables WA for DG2 LSC simd8 d32-v8/d64-v3/d64-v4. [temp, should be replaced with WA id", false)
 DECLARE_IGC_REGKEY(DWORD, LscImmOffsMatch, 1, \

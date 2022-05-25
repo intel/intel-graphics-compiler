@@ -2454,6 +2454,10 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
 
+        if (IGC_IS_FLAG_ENABLED(EnableMadLoopSlice)) {
+            mpm.add(createMadLoopSlicePass());
+        }
+
         mpm.run(*pContext->getModule());
     } // end scope
     COMPILER_TIME_END(pContext, TIME_OptimizationPasses);

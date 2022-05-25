@@ -21,4 +21,7 @@ namespace IGC {
     llvm::FunctionPass* createAdvCodeMotionPass(unsigned Control);
 } // End namespace IGC
 
+void initializeMadLoopSlicePass(llvm::PassRegistry&);
+llvm::FunctionPass* createMadLoopSlicePass();
+
 #endif // _CISA_ADVCODEMOTION_H_

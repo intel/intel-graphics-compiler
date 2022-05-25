@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/EquivalenceClasses.h>
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/ScalarEvolution.h>
@@ -19,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvmWrapper/Transforms/Utils/LoopUtils.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -657,4 +659,173 @@ bool AdvCodeMotion::isMostlyTaken(bool InvPred, Value* Cond) const {
     if (isCase1(InvPred, Cond))
         return true;
     return false;
+}
+
+namespace {
+
+// This pass will separate chains of MAD within an innermost loop. Says, if the
+// loop has the following code:
+//
+// a := phi(a0/header, d/latch)
+// b := phi(b0/header, c/latch)
+// A := phi(A0/header, D/latch)
+// B := phi(B0/header, D/latch)
+// c := mad(a, b);
+// C := mad(A, B);
+// d := mad(b, c);
+// D := mad(B, C);
+//
+// this pass will transform it into
+//
+// a := phi(a0/header, d/latch)
+// b := phi(b0/header, c/latch)
+// A := phi(A0/header, D/latch)
+// B := phi(B0/header, D/latch)
+// c := mad(a, b);
+// d := mad(b, c);
+// C := mad(A, B);
+// D := mad(B, C);
+//
+// It slices each MAD chain and clusters that chain together to help the
+// finalizer promoting the intermeidate results into Acc.
+
+class MadLoopSlice : public FunctionPass {
+    LoopInfo* LI;
+
+public:
+    static char ID;
+
+    MadLoopSlice() : FunctionPass(ID) {
+        initializeMadLoopSlicePass(*PassRegistry::getPassRegistry());
+    }
+
+    bool runOnFunction(Function &F) override;
+
+    StringRef getPassName() const override { return "Mad Loop Slice"; }
+
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
+        AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<MetaDataUtilsWrapper>();
+        AU.addRequired<LoopInfoWrapperPass>();
+    }
+
+private:
+    bool sliceLoop(Loop *L) const;
+};
+
+} // namespace
+
+#define PASS2_FLAG     "igc-madloopslice"
+#define PASS2_DESC     "IGC Mad Loop Slice"
+#define PASS2_CFG_ONLY false
+#define PASS2_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(MadLoopSlice, PASS2_FLAG, PASS2_DESC, PASS2_CFG_ONLY, PASS2_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+IGC_INITIALIZE_PASS_END(MadLoopSlice, PASS2_FLAG, PASS2_DESC, PASS2_CFG_ONLY, PASS2_ANALYSIS)
+
+char MadLoopSlice::ID = 0;
+
+bool MadLoopSlice::runOnFunction(Function &F) {
+    // Skip non-kernel function.
+    MetaDataUtils* MDU = nullptr;
+    MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    auto FII = MDU->findFunctionsInfoItem(&F);
+    if (FII == MDU->end_FunctionsInfo())
+        return false;
+
+    LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+
+    SmallVector<Loop *, 8> InnermostLoops;
+    for (auto I = LI->begin(), E = LI->end(); I != E; ++I)
+        for (auto DFI = df_begin(*I), DFE = df_end(*I); DFI != DFE; ++DFI)
+            if (IGCLLVM::isInnermost(*DFI))
+                InnermostLoops.push_back(*DFI);
+
+    bool Changed = false;
+    for (auto *L : InnermostLoops)
+        Changed |= sliceLoop(L);
+
+    return Changed;
+}
+
+bool MadLoopSlice::sliceLoop(Loop *L) const {
+    // So far, we only handle single block loop body.
+    if (L->getNumBlocks() != 1)
+        return false;
+
+    auto *BB = L->getBlocks()[0];
+    assert(BB == L->getLoopLatch() &&
+           "The single BB in that loop is not latch!");
+
+    BranchInst *BI = dyn_cast_or_null<BranchInst>(BB->getTerminator());
+    if (!BI)
+        return false;
+
+    auto IsDMAD = [](const Instruction *I) {
+        if (!I->getType()->isDoubleTy())
+            return false;
+        const IntrinsicInst *II = dyn_cast<IntrinsicInst>(I);
+        if (II)
+            return II->getIntrinsicID() == Intrinsic::fma;
+        switch (I->getOpcode()) {
+        case Instruction::FAdd:
+        case Instruction::FMul:
+            return true;
+        default:
+            break;
+        }
+        return false;
+    };
+
+    EquivalenceClasses<Instruction *> ECs;
+    for (Instruction &I : *BB) {
+        for (Value *O : I.operands()) {
+            Instruction *OI = dyn_cast<Instruction>(O);
+            // Consider only instructions in that loop.
+            if (OI && L->contains(OI->getParent()))
+                ECs.unionSets(&I, OI);
+        }
+    }
+    DenseMap<Instruction * /*Leader*/, Instruction * /*Pos*/> Leaders;
+    for (auto I = ECs.begin(), E = ECs.end(); I != E; ++I) {
+        if (!I->isLeader())
+            continue;
+        Instruction *Leader = I->getData();
+        // Skip EC with the loop condition.
+        if (ECs.isEquivalent(Leader, BI))
+            continue;
+        for (auto MI = ECs.member_begin(I), ME = ECs.member_end(); MI != ME;
+             ++MI) {
+            // Skip the slicing if there is non-MAD instructions.
+            if (!isa<PHINode>(*MI) && !IsDMAD(*MI))
+                return false;
+        }
+        Leaders.insert(std::make_pair(Leader, nullptr));
+    }
+
+    // Don't slice if the loop body cannot be fully separated.
+    if (Leaders.size() < 2)
+        return false;
+
+    // Traverse the block in the reverse order and slice mads separately.
+    for (auto BI = BB->rbegin(), BE = BB->rend(); BI != BE; /*EMPTY*/) {
+        Instruction *I = &*BI++;
+        if (isa<PHINode>(I))
+            break;
+        Instruction *Leader = ECs.getLeaderValue(I);
+        auto MapIt = Leaders.find(Leader);
+        if (MapIt == Leaders.end())
+            continue;
+        if (MapIt->second)
+            I->moveBefore(MapIt->second);
+        MapIt->second = I;
+    }
+
+    return true;
+}
+
+FunctionPass *createMadLoopSlicePass() {
+    return new MadLoopSlice();
 }
