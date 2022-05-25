@@ -1040,7 +1040,7 @@ bool useScratchSpaceForOCL() const
     if (hasScratchSurface()) {
         return LSCEnabled() &&
                IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory) &&
-               isCoreChildOf(IGFX_XE_HPC_CORE);
+               m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE;
     }
     else {
         return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);
