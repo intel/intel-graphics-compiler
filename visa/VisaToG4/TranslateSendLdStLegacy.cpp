@@ -2997,7 +2997,11 @@ int IR_Builder::translateVISASVMAtomicInst(
 
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
-    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+    // For send that has smaller execsize than exSize, like
+    //     "send (4)  ..."
+    // Make sure to use send's execsize (4) as batchsize, not 8/16/32.
+    // Thus, batchsize is min(exSize, instExSize).
+    preparePayload(msgs, sizes, std::min(exSize, instExSize), useSplitSend, sources, len);
     unsigned dstLength = dst->isNullReg() ? 0 : ((bitwidth == 16 || bitwidth == 32) ? 1 : 2);
     unsigned msgDesc = 0;
     msgDesc |= getA64BTI();

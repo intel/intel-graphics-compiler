@@ -128,7 +128,7 @@ static void CopySrcToMsgPayload(
             src->getBase(),
             src->getRegOff() + srcRegOff,
             src->getSubRegOff(),
-            src->getRegion(),
+            (execSize == 1 ? IRB->getRegionScalar() : src->getRegion()), // either scalar or stride1
             src->getType());
     IRB->createMov(execSize, dstRegion, srcRegion, eMask, true);
 }
@@ -148,8 +148,23 @@ static void Copy_Source_To_Payload(
     uint32_t numSrcRegs = (source->getElemSize() * batchSize) / IRB->getGRFSize();
     if (numSrcRegs == 0)
     {
-        // always copy at least one GRF
-        numSrcRegs = 1;
+        // No need to initialize all elements of temp message payload var.
+        // Only need to copy all used elements of operands.
+        // For example,
+        //    send  (2)  null  V10:a64   V20:ud
+        //
+        // The temp message var is M3 as below. No need to initialize all 96 bytes!
+        // Only need to copy 2 UQ (V10) and 2 UD (V20) into the right place of M3!
+        //
+        //.declare M3  size=96 type=ud align=16 words
+        //    mov (2) M3{0,0)<1>:uq  V10.0<1;1,0>:uq
+        //    mov (2) M3(2,0)<1>:ud  V20:ud
+        //
+        if (!source->isNullReg()) {
+            CopySrcToMsgPayload(IRB, batchSize, eMask,
+                msg, regOff, source, srcRegOff);
+        }
+        return;
     }
 
     for (unsigned i = 0; i < execSize; i += batchSize) {
@@ -175,8 +190,8 @@ void IR_Builder::preparePayload(
     unsigned offset = 0;
     unsigned splitPos = 0;
 
-    // Loop through all source regions to check whether they forms one
-    // consecutive regions or one/two consecutive regions if splitIndex is
+    // Loop through all source regions to check whether they form one or two
+    // consecutive regions. If they form two consecutive regions, splitPos is
     // non-zero.
     unsigned i;
     for (i = 0; i != len; ++i) {
@@ -189,6 +204,8 @@ void IR_Builder::preparePayload(
         const G4_Declare *srcDcl = getDeclare(srcReg);
         ASSERT_USER(srcDcl, "Declaration is missing!");
 
+        // this is the size of message payload that holds srcReg.
+        // (Thus, this size >= srcReg's size!)
         unsigned regionSize = srcs[i].execSize * srcReg->getTypeSize();
 
         if (regionSize < getGRFSize()) {
@@ -255,7 +272,7 @@ void IR_Builder::preparePayload(
         // All sources are checked and they are fit into one or two consecutive
         // regions.
         msgs[0] = srcs[0].opnd;
-        msgs[1] = (splitPos == 0) ? 0 : srcs[splitPos].opnd;
+        msgs[1] = (splitPos == 0) ? nullptr : srcs[splitPos].opnd;
         sizes[0] = msgSizes[0] / numEltPerGRF<Type_UB>();
         sizes[1] = msgSizes[1] / numEltPerGRF<Type_UB>();
 
