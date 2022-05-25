@@ -281,6 +281,9 @@ void CShader::AddEpilogue(llvm::ReturnInst* ret)
 
 void CShader::InitializeStackVariables()
 {
+    // Set the SP/FP variable types to match the private pointer size defined in the data layout
+    bool isA64Private = (GetContext()->getRegisterPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64);
+
     // create argument-value register, limited to 12 GRF
     m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, getGRFAlignment(), false, 1, "ARGV");
     encoder.GetVISAPredefinedVar(m_ARGV, PREDEFINED_ARG);
@@ -288,10 +291,10 @@ void CShader::InitializeStackVariables()
     m_RETV = GetNewVariable(getGRFSize() * 2, ISA_TYPE_D, getGRFAlignment(), false, 1, "RETV");
     encoder.GetVISAPredefinedVar(m_RETV, PREDEFINED_RET);
     // create stack-pointer register
-    m_SP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "SP");
+    m_SP = GetNewVariable(1, (isA64Private ? ISA_TYPE_UQ : ISA_TYPE_UD), (isA64Private ? EALIGN_QWORD : EALIGN_DWORD), true, 1, "SP");
     encoder.GetVISAPredefinedVar(m_SP, PREDEFINED_FE_SP);
     // create frame-pointer register
-    m_FP = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "FP");
+    m_FP = GetNewVariable(1, (isA64Private ? ISA_TYPE_UQ : ISA_TYPE_UD), (isA64Private ? EALIGN_QWORD : EALIGN_DWORD), true, 1, "FP");
     encoder.GetVISAPredefinedVar(m_FP, PREDEFINED_FE_FP);
     // create pointers locations to buffers
     if (!m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV) &&

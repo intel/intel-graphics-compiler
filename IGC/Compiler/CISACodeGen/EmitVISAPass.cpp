@@ -11826,23 +11826,6 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
     CVariable* pHWTID = m_currShader->GetHWTID();
     CVariable* pSize = nullptr;
 
-    // If the private base is a 32-bit pointer, extend it to 64-bits to match SP/FP
-    if (pStackBufferBase->GetType() == ISA_TYPE_UD || pStackBufferBase->GetType() == ISA_TYPE_D)
-    {
-        CVariable* dst = m_currShader->GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "PrivateBase64");
-        CVariable* dstAsUD = m_currShader->BitCast(dst, ISA_TYPE_UD);
-        m_encoder->SetDstRegion(2);
-        m_encoder->Copy(dstAsUD, pStackBufferBase);
-        m_encoder->Push();
-
-        m_encoder->SetDstSubReg(1);
-        m_encoder->SetDstRegion(2);
-        m_encoder->Copy(dstAsUD, m_currShader->ImmToVariable(0, ISA_TYPE_UD));
-        m_encoder->Push();
-
-        pStackBufferBase = dst;
-    }
-
     IGC_ASSERT(pModMD->FuncMD.find(pKernel) != pModMD->FuncMD.end());
     unsigned kernelAllocaSize = pModMD->FuncMD[pKernel].privateMemoryPerWI;
 
@@ -11931,6 +11914,7 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
 {
     // Get current SP
     CVariable* pSP = m_currShader->GetSP();
+    bool useA64 = (pSP->GetSize() == 8);
 
     // Load each OWORD block from stack
     for (auto& I : blkData)
@@ -11945,14 +11929,15 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
 
         CVariable* LdDst = Arg;
 
+        ResourceDescriptor resource;
+        resource.m_surfaceType = ESURFACE_STATELESS;
+
         int RmnBytes = LdDst->GetSize() - ArgOffset;
         bool needRmCopy = BlkSize == SIZE_OWORD && RmnBytes > 0 && RmnBytes < SIZE_OWORD;
         // LSC Gather message
         if (shouldGenerateLSC())
         {
             pSP = ReAlignUniformVariable(pSP, EALIGN_GRF);
-            ResourceDescriptor resource;
-            resource.m_surfaceType = ESURFACE_STATELESS;
             unsigned blkBits = 64;
             unsigned nBlks = (BlkSize * 8) / 64;
             if (needRmCopy)
@@ -11960,7 +11945,7 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
                 // Fixme: Is it possible for args to be non 8byte aligned?
                 IGC_ASSERT_MESSAGE(RmnBytes == 8, "Minimum LSC block size is 8 bytes");
             }
-            emitLSCLoad(nullptr, LdDst, pSP, blkBits, nBlks, ArgOffset, &resource, LSC_ADDR_SIZE_64b, LSC_DATA_ORDER_TRANSPOSE, spOffset);
+            emitLSCLoad(nullptr, LdDst, pSP, blkBits, nBlks, ArgOffset, &resource, useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b, LSC_DATA_ORDER_TRANSPOSE, spOffset);
             m_encoder->Push();
         }
         else
@@ -11971,7 +11956,10 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
 
             if (!needRmCopy)
             {
-                m_encoder->OWLoadA64(LdDst, pTempSP, BlkSize, ArgOffset);
+                if (useA64)
+                    m_encoder->OWLoadA64(LdDst, pTempSP, BlkSize, ArgOffset);
+                else
+                    m_encoder->OWLoad(LdDst, resource, pTempSP, false, BlkSize, ArgOffset);
                 m_encoder->Push();
             }
             else
@@ -11981,7 +11969,10 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
                 if (ldDstElemSize > 0)
                 {
                     CVariable* pTempDst = m_currShader->GetNewVariable(SIZE_OWORD / ldDstElemSize, LdDst->GetType(), m_currShader->getGRFAlignment(), true, 1, CName::NONE);
-                    m_encoder->OWLoadA64(pTempDst, pTempSP, SIZE_OWORD);
+                    if (useA64)
+                        m_encoder->OWLoadA64(pTempDst, pTempSP, SIZE_OWORD);
+                    else
+                        m_encoder->OWLoad(LdDst, resource, pTempSP, false, SIZE_OWORD);
                     m_encoder->Push();
                     emitVectorCopy(LdDst, pTempDst, RmnBytes / ldDstElemSize, ArgOffset, 0);
                 }
@@ -11996,6 +11987,7 @@ void EmitPass::WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
 {
     // Get current SP
     CVariable* pSP = m_currShader->GetSP();
+    bool useA64 = (pSP->GetSize() == 8);
 
     // Load or store each OWORD block to stack
     for (auto& I : blkData)
@@ -12016,7 +12008,7 @@ void EmitPass::WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
             resource.m_surfaceType = ESURFACE_STATELESS;
             unsigned blkBits = 64;
             unsigned nBlks = (BlkSize * 8) / 64;
-            emitLSCStore(nullptr, Arg, pSP, blkBits, nBlks, ArgOffset, &resource, LSC_ADDR_SIZE_64b, LSC_DATA_ORDER_TRANSPOSE, spOffset);
+            emitLSCStore(nullptr, Arg, pSP, blkBits, nBlks, ArgOffset, &resource, useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b, LSC_DATA_ORDER_TRANSPOSE, spOffset);
             m_encoder->Push();
         }
         else
@@ -12025,7 +12017,10 @@ void EmitPass::WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
             CVariable* pTempSP = m_currShader->GetNewVariable(pSP);
             emitAddPointer(pTempSP, pSP, m_currShader->ImmToVariable(spOffset, ISA_TYPE_D));
 
-            m_encoder->OWStoreA64(Arg, pTempSP, BlkSize, ArgOffset);
+            if (useA64)
+                m_encoder->OWStoreA64(Arg, pTempSP, BlkSize, ArgOffset);
+            else
+                m_encoder->OWStore(Arg, ESURFACE_STATELESS, nullptr, pTempSP, BlkSize, ArgOffset);
             m_encoder->Push();
         }
     }
@@ -19686,15 +19681,11 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     m_encoder->Copy(pFP, pSP);
     m_encoder->Push();
 
-    if IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack)
-    {
-        // Allocate 1 extra oword to store previous frame's FP
-        pushSize += SIZE_OWORD;
-    }
+    // Allocate 1 extra oword to store previous frame's FP
+    pushSize += IGC_IS_FLAG_ENABLED(EnableWriteOldFPToStack) ? SIZE_OWORD : 0;
 
     // Since we use unaligned oword writes, pushSize should be OW aligned address
-    if (pushSize % SIZE_OWORD > 0)
-        pushSize += (SIZE_OWORD - (pushSize % SIZE_OWORD));
+    pushSize = int_cast<unsigned>(llvm::alignTo(pushSize, SIZE_OWORD));
 
     if (pushSize != 0)
     {
@@ -19709,21 +19700,25 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
             if (pOldFP == nullptr)
             {
                 pOldFP = m_currShader->GetNewVariable(pFP);
-                m_encoder->Copy(pOldFP, m_currShader->ImmToVariable(0, ISA_TYPE_UQ));
+                m_encoder->Copy(pOldFP, m_currShader->ImmToVariable(0, pOldFP->GetType()));
                 m_encoder->Push();
             }
 
             pFP = ReAlignUniformVariable(pFP, EALIGN_GRF);
+            bool useA64 = (pFP->GetSize() == 8);
             if (shouldGenerateLSC())
             {
                 ResourceDescriptor resource;
                 resource.m_surfaceType = ESURFACE_STATELESS;
-                emitLSCStore(nullptr, pOldFP, pFP, 64, 1, 0, &resource, LSC_ADDR_SIZE_64b, LSC_DATA_ORDER_TRANSPOSE, 0);
+                emitLSCStore(nullptr, pOldFP, pFP, 64, 1, 0, &resource, (useA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b), LSC_DATA_ORDER_TRANSPOSE, 0);
                 m_encoder->Push();
             }
             else
             {
-                m_encoder->OWStoreA64(pOldFP, pFP, SIZE_OWORD, 0);
+                if (useA64)
+                    m_encoder->OWStoreA64(pOldFP, pFP, SIZE_OWORD, 0);
+                else
+                    m_encoder->OWStore(pOldFP, ESURFACE_STATELESS, nullptr, pFP, SIZE_OWORD, 0);
                 m_encoder->Push();
             }
         }
