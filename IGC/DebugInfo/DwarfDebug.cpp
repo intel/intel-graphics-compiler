@@ -3021,16 +3021,47 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   // DW_OP_bit_piece 32 96
   write(data, (uint8_t)llvm::dwarf::DW_CFA_def_cfa_expression);
 
-  data1.clear();
+  // The DW_CFA_def_cfa_expression instruction takes a single operand
+  // encoded as a DW_FORM_exprloc.
   write(data1, (uint8_t)llvm::dwarf::DW_OP_regx);
   auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF);
   writeULEB128(data1, DWRegEncoded);
-  write(data1, (uint8_t)llvm::dwarf::DW_OP_bit_piece);
-  writeULEB128(data1, 32);
-  writeULEB128(data1, BEFPSubReg * 4 * 8);
+  write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
+  write(data1, (uint16_t)(BEFPSubReg * 4 * 8));
+  write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
+  write(data1, (uint8_t)32);
+  write(data1, (uint8_t)DW_OP_INTEL_push_bit_piece_stack);
+
+  if (EmitSettings.ScratchOffsetInOW) {
+    // when scratch offset is in OW, be_fp has to be multiplied by 16
+    // to normalize and generate byte offset for complete address
+    // computation.
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const1u);
+    write(data1, (uint8_t)16);
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_mul);
+  }
+
+  // indicate that the resulting address is on BE stack
+  if (!EmitSettings.EnableGTLocationDebugging) {
+    Address addr;
+    addr.Set(Address::Space::eScratch, 0, 0);
+
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const8u);
+    write(data1, (uint64_t)addr.GetAddress());
+
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_or);
+  } else {
+    uint32_t scratchBaseAddrEncoded =
+        GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
+
+    write(data1, (uint8_t)scratchBaseAddrEncoded);
+    writeULEB128(data, 0);
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_plus);
+  }
 
   writeULEB128(data, data1.size());
-  copyVec(data1);
+  for (auto item : data1)
+    write(data, (uint8_t)item);
 
   // emit same value for all callee save entries in frame
   unsigned int calleeSaveStart = (numGRFs - 8) / 2;
