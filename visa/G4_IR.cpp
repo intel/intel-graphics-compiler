@@ -5068,6 +5068,11 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
             return Rel_interfere;
         }
     }
+    if ((builder.getStackCallRet() == myDcl && builder.getStackCallArg() == opndDcl) ||
+        (builder.getStackCallArg() == myDcl && builder.getStackCallRet() == opndDcl))
+    {
+        return Rel_interfere;
+    }
 
     if (opndAcc == myAcc && myAcc != Direct)
     {
