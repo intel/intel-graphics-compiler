@@ -42,7 +42,7 @@ DECLARE_IGC_REGKEY(bool, EnableVISADebug,               false, "Runs VISA in deb
 DECLARE_IGC_REGKEY(DWORD, EnableVISAStructurizer,       1,     "Enable/Disable VISA structurizer. See value defs in igc_flags.hpp.", false)
 DECLARE_IGC_REGKEY(bool, EnableVISAJmpi,                true,  "Enable/Disable VISA generating jmpi (scalar jump).", false)
 DECLARE_IGC_REGKEY(bool, ForceVISAStructurizer,         false, "Force VISA structurizer for testing. Used on platforms in which we turns off SCF and use UCF by default", false)
-DECLARE_IGC_REGKEY(bool, EnableVISABoundsChecking,      false, "Enable VISA bounds checking.", false)
+DECLARE_IGC_REGKEY(bool, EnableVISABoundsChecking,      true,  "Enable VISA bounds checking.", false)
 DECLARE_IGC_REGKEY(DWORD, NoMaskWA,                     2,     "Add NoMask WA using software-computed emask flag. Valid value: (two groups) \
                                                                    valid value:  bit[1:0] : which BB to insert - 0(off), 1(divergent BB), \
                                                                                             2 (nested divergent BB), 3 (=2). \
