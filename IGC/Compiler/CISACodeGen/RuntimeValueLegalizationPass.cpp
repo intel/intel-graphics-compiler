@@ -295,8 +295,9 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module& module)
 
             uint32_t resolvedOffset = int_cast<uint32_t>(
                 cast<ConstantInt>(callToResolve->getArgOperand(0))->getZExtValue());
-            uint32_t resolvedSize = fixedVectorTy ?
-                int_cast<uint32_t>(fixedVectorTy->getNumElements()) : (callToResolve->getType()->getPrimitiveSizeInBits() / 32);
+            uint32_t resolvedSize = int_cast<uint32_t>(fixedVectorTy
+                ? fixedVectorTy->getNumElements()
+                : callToResolve->getType()->getPrimitiveSizeInBits() / 32);
 
             // Find corresponding region
             auto regionIter = accessedRegions.find(resolvedOffset);
