@@ -251,7 +251,7 @@ DECLARE_IGC_REGKEY(bool, EnableUnmaskedFunctions,    true,    "Enable unmaksed f
 DECLARE_IGC_REGKEY(bool, EnableStatefulAtomic,       false,   "Enable promoting stateless atomic to stateful atomic.", false)
 DECLARE_IGC_REGKEY(bool, EnableHoistDp3,             false,    "Enable dp3 Hoisting.", false)
 DECLARE_IGC_REGKEY(bool, ForceHoistDp3,              false,   "force dp3 Hoisting.", false)
-DECLARE_IGC_REGKEY(bool, EnableBitcastedLoadNarrowing,       true,  "Enable narrowing of vector loads in bitcasts patterns.", false)
+DECLARE_IGC_REGKEY(bool, EnableBitcastedLoadNarrowing, false, "Enable narrowing of vector loads in bitcasts patterns.", false)
 DECLARE_IGC_REGKEY(bool, EnableBitcastedLoadNarrowingToScalar, false, "Enable narrowing of vector loads to scalar ones in bitcasts patterns.", false)
 DECLARE_IGC_REGKEY(bool, EnableOptReportLoadNarrowing, false, "Generate opt report for narrowing of vector loads.", false)
 
