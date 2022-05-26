@@ -486,7 +486,7 @@ if(MSVC)
       ALIAS CompileAsDefault           CompileAs REMOVE_GROUP
       ALIAS DebugInfoDisabled          DebugInfoFormat REMOVE_GROUP
       ALIAS DebugInfoProgramDatabase   "/Zi"
-      ALIAS DisableSpecificWarnings    "/wd4267" "/wd4273" "/wd4091" "/wd4996"
+      ALIAS DisableSpecificWarnings    "/wd4267" "/wd4273" "/wd4091" "/wd4996" "/wd4291"
       ALIAS ExceptionsDisabled         Exceptions REMOVE_GROUP
       ALIAS ExceptionsEnabled          "/EHsc"
       ALIAS FaviorSize                 "/Os"
@@ -745,7 +745,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           SET
             CompileAsDefault
             DisableSpecificWarnings
-            ExceptionsDisabled
+            ExceptionsEnabled
             MultiProcessorCompilation
             DeadCodeEliminate
             CallingConvCdecl
@@ -759,7 +759,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
             CompileAsDefault
 
             DisableSpecificWarnings
-            ExceptionsDisabled
+            ExceptionsEnabled
             MultiProcessorCompilation
             DeadCodeEliminate
     )

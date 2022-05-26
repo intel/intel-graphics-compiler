@@ -27,6 +27,8 @@ set_llvm_opt(LLVM_ENABLE_PIC ON CACHE BOOL "desc")
 set_llvm_opt(LLVM_ABI_BREAKING_CHECKS FORCE_OFF CACHE BOOL "desc")
 set_llvm_opt(LLVM_ENABLE_DUMP ON CACHE BOOL "desc")
 set_llvm_opt(LLVM_ENABLE_TERMINFO OFF CACHE BOOL "desc")
+set_llvm_opt(LLVM_ENABLE_EH ON CACHE BOOL "desc")
+set_llvm_opt(LLVM_ENABLE_RTTI ON CACHE BOOL "desc")
 
 set_llvm_opt(LLVM_ENABLE_EH ON CACHE BOOL "desc")
 set_llvm_opt(LLVM_ENABLE_RTTI ON CACHE BOOL "desc")
