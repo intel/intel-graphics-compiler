@@ -221,8 +221,8 @@ namespace IGC
             uint channel,
             bool feedbackEnable);
 
-        void OWLoad(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, bool owordAligned, uint dstSize, uint dstOffset = 0);
-        void OWStore(CVariable* dst, e_predefSurface surfaceType, CVariable* bufidx, CVariable* offset, uint dstSize, uint srcOffset);
+        void OWLoad(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, bool owordAligned, uint bytesToBeRead, uint dstOffset = 0);
+        void OWStore(CVariable* data, e_predefSurface surfaceType, CVariable* bufidx, CVariable* offset, uint bytesToBeRead, uint srcOffset);
 
         void AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1);
         void Barrier(e_barrierKind BarrierKind);

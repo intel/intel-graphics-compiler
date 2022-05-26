@@ -11954,12 +11954,23 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
             CVariable* pTempSP = m_currShader->GetNewVariable(pSP);
             emitAddPointer(pTempSP, pSP, m_currShader->ImmToVariable(spOffset, ISA_TYPE_D));
 
+            CVariable* offsetShr = nullptr;
+            if (!useA64)
+            {
+                offsetShr = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "SPOffset_OW");
+                m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                m_encoder->SetNoMask();
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+                m_encoder->Shr(offsetShr, pTempSP, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
+                m_encoder->Push();
+            }
+
             if (!needRmCopy)
             {
                 if (useA64)
                     m_encoder->OWLoadA64(LdDst, pTempSP, BlkSize, ArgOffset);
                 else
-                    m_encoder->OWLoad(LdDst, resource, pTempSP, false, BlkSize, ArgOffset);
+                    m_encoder->OWLoad(LdDst, resource, offsetShr, false, BlkSize, ArgOffset);
                 m_encoder->Push();
             }
             else
@@ -11972,7 +11983,7 @@ void EmitPass::ReadStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
                     if (useA64)
                         m_encoder->OWLoadA64(pTempDst, pTempSP, SIZE_OWORD);
                     else
-                        m_encoder->OWLoad(LdDst, resource, pTempSP, false, SIZE_OWORD);
+                        m_encoder->OWLoad(pTempDst, resource, offsetShr, false, SIZE_OWORD);
                     m_encoder->Push();
                     emitVectorCopy(LdDst, pTempDst, RmnBytes / ldDstElemSize, ArgOffset, 0);
                 }
@@ -12019,8 +12030,16 @@ void EmitPass::WriteStackDataBlocks(StackDataBlocks& blkData, uint offsetS)
 
             if (useA64)
                 m_encoder->OWStoreA64(Arg, pTempSP, BlkSize, ArgOffset);
-            else
-                m_encoder->OWStore(Arg, ESURFACE_STATELESS, nullptr, pTempSP, BlkSize, ArgOffset);
+            else {
+                // SP offset is in units of BYTES, but OWStore requires units of OWORDS
+                CVariable* offsetShr = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "SPOffset_OW");
+                m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                m_encoder->SetNoMask();
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+                m_encoder->Shr(offsetShr, pTempSP, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
+                m_encoder->Push();
+                m_encoder->OWStore(Arg, ESURFACE_STATELESS, nullptr, offsetShr, BlkSize, ArgOffset);
+            }
             m_encoder->Push();
         }
     }
@@ -19717,8 +19736,16 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
             {
                 if (useA64)
                     m_encoder->OWStoreA64(pOldFP, pFP, SIZE_OWORD, 0);
-                else
-                    m_encoder->OWStore(pOldFP, ESURFACE_STATELESS, nullptr, pFP, SIZE_OWORD, 0);
+                else {
+                    // FP is in units of BYTES, but OWStore requires units of OWORDS
+                    CVariable* offsetShr = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "FPOffset_OW");
+                    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                    m_encoder->SetNoMask();
+                    m_encoder->SetSrcRegion(0, 0, 1, 0);
+                    m_encoder->Shr(offsetShr, pFP, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
+                    m_encoder->Push();
+                    m_encoder->OWStore(pOldFP, ESURFACE_STATELESS, nullptr, offsetShr, SIZE_OWORD, 0);
+                }
                 m_encoder->Push();
             }
         }
