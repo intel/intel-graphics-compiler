@@ -267,7 +267,7 @@ DECLARE_IGC_REGKEY(int,  ShaderDebugHashCode,           0,     "The driver will 
 DECLARE_IGC_REGKEY(bool, EnableZeroSomeARF,             false,  "If set, insert mov inst to zero a0, acc, etc to assist HW debugging.", false)
 DECLARE_IGC_REGKEY(DWORD, ShaderDisableOptPassesAfter,  0,     "Will only run first N optimization passes, any further passes will be ignored. This flag can be used to bisect optimization passes.", false)
 DECLARE_IGC_REGKEY(bool, ShaderOverride,                false, "Will override any LLVM shader with matching name in c:\\Intel\\IGC\\ShaderOverride", false)
-DECLARE_IGC_REGKEY(bool, CompileOneAtTime,              false, "Compile only one kernel (out of many in llvm::module) at a time. Prints compiled kenrels names to stdout.", false)
+DECLARE_IGC_REGKEY(bool, CompileOneAtTime,              false, "Compile only one kernel (out of many in llvm::module) at a time. Prints compiled kenrels names to stdout. Useful to debug compilation time and crashes - it does not produce valid binary.", false)
 DECLARE_IGC_REGKEY(bool, SystemThreadEnable,            false, "This key forces software to create a system thread. The system thread may still be created by software even \
                                                                 if this control is set to false.The system thread is invoked if either the software requires \
                                                                 exception handling or if kernel debugging is active and a breakpoint is hit.", false)
