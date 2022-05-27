@@ -103,8 +103,14 @@ SPDX-License-Identifier: MIT
 // unreferenced formal parameter
 #   pragma warning( disable : 4100 )
 
+// declaration of 'X' hides function parameter
+#   pragma warning( disable : 4457 )
+
 // declaration of 'X' hides class member
 #   pragma warning( disable : 4458 )
+
+// declaration of 'X' hides global declaration
+#   pragma warning( disable : 4459 )
 
 // cast truncates constatnt value
 #   pragma warning( disable : 4310 )
