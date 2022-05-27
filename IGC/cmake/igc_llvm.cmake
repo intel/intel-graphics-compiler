@@ -11,7 +11,10 @@ include_guard(DIRECTORY)
 if(NOT IGC_BUILD__LLVM_SOURCES)
   message(STATUS "[IGC] IGC will take prebuilt LLVM")
   message(STATUS "[IGC] Searching for prebuilt LLVM in ${LLVM_ROOT} and system directories")
-  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION} REQUIRED PATHS ${LLVM_ROOT})
+  find_package(LLVM ${IGC_OPTION__LLVM_PREFERRED_VERSION}
+    REQUIRED
+    PATHS ${LLVM_ROOT}
+    )
   message(STATUS "[IGC] Found LLVM: ${LLVM_DIR}")
 
   set(LLVM_DIR "${LLVM_DIR}" PARENT_SCOPE)
