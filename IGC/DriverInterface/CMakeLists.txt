@@ -192,7 +192,7 @@ list(APPEND IGC_BUILD__SRC__DriverInterface
   )
 
 
-if (DX_ONLY)
+if (DX_ONLY OR VK_ONLY)
     set(IGC_BUILD__SRC__RAYTRACING_DX
         ${IGC_BUILD__SRC__RAYTRACING}
         PARENT_SCOPE
@@ -204,7 +204,7 @@ if (DX_ONLY)
 endif()
 
 # Resources.
-if(MSVC AND NOT DX_ONLY)
+if(MSVC AND NOT (DX_ONLY OR VK_ONLY))
     igc_rc_register_resource(
         DriverInterface__igc_dll
         FILE                "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/Resource/BuiltinResource.rc"

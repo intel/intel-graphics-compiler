@@ -14,13 +14,17 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #ifndef DX_ONLY_IGC
+#ifndef VK_ONLY_IGC
 #include <AdaptorOCL/SPIRV/SPIRVInternal.h>
+#endif //#ifndef VK_ONLY_IGC
 #endif //#ifndef DX_ONLY_IGC
 #include "MDFrameWork.h"
 #include "Probe/Assertion.h"
 
 #ifndef DX_ONLY_IGC
+#ifndef VK_ONLY_IGC
 using namespace igc_spv;
+#endif //#ifndef VK_ONLY_IGC
 #endif //#ifndef DX_ONLY_IGC
 using namespace llvm;
 using namespace IGC;
@@ -77,6 +81,7 @@ NamedBarriersResolution::~NamedBarriersResolution(void)
 void NamedBarriersResolution::initGlobalVariables(llvm::Module* Module, llvm::Type* NamedBarrierStructType)
 {
 #ifndef DX_ONLY_IGC
+#ifndef VK_ONLY_IGC
     LLVMContext& context = Module->getContext();
 
     m_NamedBarrierType = NamedBarrierStructType;
@@ -93,6 +98,7 @@ void NamedBarriersResolution::initGlobalVariables(llvm::Module* Module, llvm::Ty
         "NamedBarrierID", nullptr,
         GlobalVariable::ThreadLocalMode::NotThreadLocal,
         SPIRAS_Local);
+#endif //#ifndef VK_ONLY_IGC
 #endif //#ifndef DX_ONLY_IGC
 }
 
@@ -202,6 +208,7 @@ Value* NamedBarriersResolution::FindAllocStructNBarrier(Value* Val, bool IsNBarr
 void NamedBarriersResolution::HandleNamedBarrierInitPVC(CallInst& NBarrierInitCall)
 {
 #ifndef DX_ONLY_IGC
+#ifndef VK_ONLY_IGC
     m_CountNamedBarriers++;
     IGC_ASSERT_MESSAGE(m_CountNamedBarriers <= GetMaxNamedBarriers(), "NamedBarriersResolution : We crossed the max of amount of named barriers!");
     Module* module = NBarrierInitCall.getModule();
@@ -218,6 +225,7 @@ void NamedBarriersResolution::HandleNamedBarrierInitPVC(CallInst& NBarrierInitCa
     // Map nbarrier struct to the his equal ID
     m_MapInitToID.insert(std::pair<Value*, s_namedBarrierInfo>(
         pointerToNBarrierStruct, structNb));
+#endif //#ifndef VK_ONLY_IGC
 #endif //#ifndef DX_ONLY_IGC
 }
 
@@ -305,6 +313,7 @@ bool NamedBarriersResolution::isNamedBarrierSync(StringRef& FunctionName)
 void NamedBarriersResolution::HandleNamedBarrierInit(CallInst& NBarrierInitCall)
 {
 #ifndef DX_ONLY_IGC
+#ifndef VK_ONLY_IGC
     IGC_ASSERT_MESSAGE(m_CountNamedBarriers < GetMaxNamedBarriers(), "NamedBarriersResolution : We crossed the max of amount of named barriers!");
     LLVMContext& context = NBarrierInitCall.getCalledFunction()->getContext();
     Module* module = NBarrierInitCall.getModule();
@@ -340,12 +349,14 @@ void NamedBarriersResolution::HandleNamedBarrierInit(CallInst& NBarrierInitCall)
     NBarrierInitCall.eraseFromParent();
 
     m_CountNamedBarriers++;
+#endif //#ifndef VK_ONLY_IGC
 #endif //#ifndef DX_ONLY_IGC
 }
 
 void NamedBarriersResolution::HandleNamedBarrierSync(CallInst& NBarrierSyncCall)
 {
 #ifndef DX_ONLY_IGC
+#ifndef VK_ONLY_IGC
     LLVMContext& context = NBarrierSyncCall.getCalledFunction()->getContext();
     Module* module = NBarrierSyncCall.getModule();
 
@@ -375,6 +386,7 @@ void NamedBarriersResolution::HandleNamedBarrierSync(CallInst& NBarrierSyncCall)
     CallInst* newCall = CallInst::Create(newF, ArgsVal, "", &(NBarrierSyncCall));
     newCall->setDebugLoc(NBarrierSyncCall.getDebugLoc());
     NBarrierSyncCall.eraseFromParent();
+#endif //#ifndef VK_ONLY_IGC
 #endif //#ifndef DX_ONLY_IGC
 }
 
