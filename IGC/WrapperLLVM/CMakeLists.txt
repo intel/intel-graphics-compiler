@@ -21,6 +21,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/MemoryLocation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/TargetLibraryInfo.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Bitcode/BitcodeWriter.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/CodeGen/CommandFlags.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCContext.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCObjectFileInfo.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/IRBuilder.h"
