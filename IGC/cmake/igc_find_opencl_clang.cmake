@@ -8,7 +8,7 @@
 
 # Order of chosing way how to take opencl-clang
 #1. CCLANG_FROM_SYSTEM - use installed on system opencl-clang toolchain
-#2. CCLANG_BUILD_PREBUILDS - use prebuilded opencl-clang toolchain
+#2. CCLANG_BUILD_PREBUILDS - use prebuilt opencl-clang toolchain
 #   CCLANG_BUILD_PREBUILDS_DIR - set path to prebuilt cclang folder
 #3. CCLANG_BUILD_INTREE_LLVM - use sources of opencl-clang toolchain
 #
@@ -55,8 +55,12 @@ if(NOT CCLANG_FROM_SYSTEM)
   ### Check if user by choosing some way of linking with opencl-clang provided required folders
   if(${CCLANG_BUILD_PREBUILDS})
     if(NOT EXISTS ${CCLANG_BUILD_PREBUILDS_DIR})
-      message(FATAL_ERROR "[IGC] : User setup to use prebuilded opencl-clang but not found folder : ${CCLANG_BUILD_PREBUILDS_DIR}")
-      set(CCLANG_BUILD_PREBUILDS FALSE)
+      unset(CCLANG_BUILD_PREBUILDS_DIR)
+      set(CCLANG_BUILD_PREBUILDS_DIR "/opt/intel-cclang-static-${IGC_OPTION__LLVM_PREFERRED_VERSION}")
+      if(NOT EXISTS ${CCLANG_BUILD_PREBUILDS_DIR})
+        message(FATAL_ERROR "[IGC] : User setup to use prebuilt opencl-clang but not found folder : ${CCLANG_BUILD_PREBUILDS_DIR}")
+        set(CCLANG_BUILD_PREBUILDS FALSE)
+      endif()
     endif()
   elseif(${CCLANG_BUILD_INTREE_LLVM})
     if(NOT EXISTS ${CCLANG_BUILD_INTREE_LLVM_DIR})
@@ -104,11 +108,13 @@ if(CCLANG_FROM_SYSTEM)
     message(FATAL_ERROR "[IGC] : Couldn't find clang-${LLVM_VERSION_MAJOR} executable, please install it.")
   endif(CLANG_GE7)
 ###
-#2. CCLANG_BUILD_PREBUILDS - use prebuilded opencl-clang toolchain
+#2. CCLANG_BUILD_PREBUILDS - use prebuilt opencl-clang toolchain
 elseif(${CCLANG_BUILD_PREBUILDS})
   message(STATUS "[IGC] : opencl-clang will be taken from prebuilds")
 
-  set(CLANG_TOOL_PATH "${CCLANG_BUILD_PREBUILDS_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}")
+  # Find CLANG_TOOL recursively in CCLANG_BUILD_PREBUILDS_DIR
+  file(GLOB_RECURSE CLANG_TOOL_PATH ${CCLANG_BUILD_PREBUILDS_DIR}/*clang${CMAKE_EXECUTABLE_SUFFIX})
+  message(STATUS "[IGC] : Find CLANG_TOOL in : ${CLANG_TOOL_PATH}")
   set(LLVM_PACKAGE_VERSION "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}${LLVM_VERSION_SUFFIX}")
 
   if(CMAKE_CROSSCOMPILING)
@@ -140,13 +146,17 @@ elseif(${CCLANG_BUILD_PREBUILDS})
     if(DEFINED CCLANG_INSTALL_PREBUILDS_DIR)
       set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_INSTALL_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
     else()
-      set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${CCLANG_BUILD_PREBUILDS_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+      # Find opencl-clang-lib recursively in CCLANG_BUILD_PREBUILDS_DIR
+      file(GLOB_RECURSE OPENCL-CLANG_PATH ${CCLANG_BUILD_PREBUILDS_DIR}/*${COMMON_CLANG_LIB_FULL_NAME})
+      message(STATUS "[IGC] : Find opencl-clang-lib in : ${OPENCL-CLANG_PATH}")
+      set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_LOCATION" "${OPENCL-CLANG_PATH}")
     endif()
 
     add_executable(clang-tool IMPORTED GLOBAL)
     set_property(TARGET clang-tool PROPERTY "IMPORTED_LOCATION" "${CLANG_TOOL_PATH}")
 
-    set(opencl-header "${CCLANG_BUILD_PREBUILDS_DIR}/opencl-c.h")
+    # Find opencl-header recursively in CCLANG_BUILD_PREBUILDS_DIR
+    file(GLOB_RECURSE opencl-header ${CCLANG_BUILD_PREBUILDS_DIR}/*opencl-c.h)
   else()
     message(FATAL_ERROR "[IGC] : The clang-tool(${CLANG_TOOL_VERSION}) from prebuilts is newer than llvm(${LLVM_PACKAGE_VERSION}) version for IGC.")
   endif()
