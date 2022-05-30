@@ -511,7 +511,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
     // A debug line info is moved so the alloca has corresponding dbg.declare call
     // with DIExpression DW_OP_LLVM_fragment specifying fragment.
     TinyPtrVector<DbgVariableIntrinsic*>  Dbgs = llvm::FindDbgAddrUses(&I);
-    auto typeSize = pType->getArrayElementType()->getPrimitiveSizeInBits();
+    unsigned typeSize = (unsigned)pType->getArrayElementType()->getPrimitiveSizeInBits();
     if (!Dbgs.empty()) {
         const DebugLoc DL = I.getDebugLoc();
         for (auto DDI : Dbgs) {
