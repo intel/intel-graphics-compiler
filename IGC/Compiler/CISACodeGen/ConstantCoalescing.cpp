@@ -409,6 +409,7 @@ void ConstantCoalescing::ProcessBlock(
             break;
         }
     }
+    bool skipLdrawOpt = (m_ctx->type == ShaderType::PIXEL_SHADER) || bbHasStores;
     // get work-item analysis, need to update uniformness information
     for (BasicBlock::iterator BBI = blk->begin(), BBE = blk->end();
          BBI != BBE; ++BBI)
@@ -455,7 +456,7 @@ void ConstantCoalescing::ProcessBlock(
                 uint addrSpace = ldRaw->getResourceValue()->getType()->getPointerAddressSpace();
                 if (wiAns->isUniform(ldRaw))
                 {
-                    if (!bbHasStores || (bufType != BINDLESS))
+                    if (!skipLdrawOpt || (bufType != BINDLESS))
                     {
                         MergeUniformLoad(
                             ldRaw,
@@ -485,7 +486,7 @@ void ConstantCoalescing::ProcessBlock(
                     }
                     else if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescingOfStatefulNonUniformLoads))
                     {
-                        if (!bbHasStores || (bufType != BINDLESS))
+                        if (bufType != BINDLESS)
                         {
                             MergeScatterLoad(
                                 ldRaw,
