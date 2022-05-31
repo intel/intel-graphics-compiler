@@ -700,7 +700,7 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
 
             args.push_back(sourcePointer);
             args.push_back(bufferAddress);
-            for (unsigned i = 2; i < pIntr->getNumArgOperands(); i++)
+            for (unsigned i = 2; i < IGCLLVM::getNumArgOperands(pIntr); i++)
             {
                 args.push_back(pIntr->getArgOperand(i));
             }

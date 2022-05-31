@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvm/IR/Module.h>
@@ -545,7 +546,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
     // Check return type
     Value* returnPtr = nullptr;
     if (callInst->getType()->isVoidTy() &&
-        callInst->getNumArgOperands() > 0 &&
+        IGCLLVM::getNumArgOperands(callInst) > 0 &&
         callInst->paramHasAttr(0, llvm::Attribute::StructRet) &&
         isPromotableStructType(M, callInst->getArgOperand(0)->getType(), isStackCall, true /* retval */))
     {
@@ -567,7 +568,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
     }
 
     // Check call operands if it needs to be replaced
-    for (; opNum < callInst->getNumArgOperands(); opNum++)
+    for (; opNum < IGCLLVM::getNumArgOperands(callInst); opNum++)
     {
         Value* arg = callInst->getArgOperand(opNum);
         if (!isLegalIntVectorType(M, arg->getType()))
@@ -605,7 +606,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         {
             // legal argument
             callArgs.push_back(arg);
-            ArgAttrVec.push_back(PAL.getParamAttributes(opNum));
+            ArgAttrVec.push_back(IGCLLVM::getParamAttrs(PAL, opNum));
         }
     }
 
@@ -638,7 +639,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         // Create the new call instruction
         CallInst* newCallInst = builder.CreateCall(newCalledValue, callArgs);
         newCallInst->setCallingConv(callInst->getCallingConv());
-        newCallInst->setAttributes(AttributeList::get(M.getContext(), PAL.getFnAttributes(), PAL.getRetAttributes(), ArgAttrVec));
+        newCallInst->setAttributes(AttributeList::get(M.getContext(), IGCLLVM::getFnAttrs(PAL), IGCLLVM::getRetAttrs(PAL), ArgAttrVec));
         newCallInst->setDebugLoc(callInst->getDebugLoc());
 
         if (legalizeReturnType)

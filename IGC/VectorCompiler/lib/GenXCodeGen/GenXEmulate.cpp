@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
+#include "llvmWrapper/IR/Instructions.h"
 #define DEBUG_TYPE "GENX_EMULATION"
 
 #include "GenX.h"
@@ -1220,7 +1221,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
     vc::diagnose(CI.getContext(), "GenXEmulate",
                  "Unsupported instruction for emulation", &CI);
 
-  SmallVector<Value *, 8> Args(CI.arg_operands());
+  SmallVector<Value *, 8> Args(IGCLLVM::args(CI));
 
   return Builder.CreateCall(Iter->second, Args);
 }

@@ -32,7 +32,7 @@ getBiFModuleOrReportErrorImpl(MemoryBufferRef BiFModuleBuffer, LLVMContext &Ctx,
                     [&ErrStream](const llvm::ErrorInfoBase &EI) {
                       ErrStream << EI.message() << std::endl;
                     });
-    report_fatal_error(ErrStream.str());
+    report_fatal_error(llvm::StringRef(ErrStream.str()));
   }
   return std::move(BiFModule.get());
 }

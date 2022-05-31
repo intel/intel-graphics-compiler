@@ -401,9 +401,9 @@ void GenXPrologEpilogInsertion::removeAttrs(Function &F) const {
 }
 
 static void removeCallInstAttrs(CallInst &CI) {
-  CI.removeAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
-  CI.removeAttribute(AttributeList::FunctionIndex, Attribute::ReadOnly);
-  CI.removeAttribute(AttributeList::FunctionIndex, Attribute::WriteOnly);
+  IGCLLVM::removeFnAttr(&CI, Attribute::ReadNone);
+  IGCLLVM::removeFnAttr(&CI, Attribute::ReadOnly);
+  IGCLLVM::removeFnAttr(&CI, Attribute::WriteOnly);
 }
 
 bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {

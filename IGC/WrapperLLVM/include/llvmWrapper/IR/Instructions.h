@@ -80,6 +80,24 @@ namespace IGCLLVM
 #endif
     }
 
+    inline llvm::iterator_range<llvm::User::op_iterator> args(llvm::CallInst* CI)
+    {
+#if LLVM_VERSION_MAJOR < 8
+        return CI->arg_operands();
+#else
+        return CI->args();
+#endif
+    }
+
+    inline unsigned getNumArgOperands(const llvm::CallInst* CI)
+    {
+#if LLVM_VERSION_MAJOR < 14
+       return CI->getNumArgOperands();
+#else
+       return CI->arg_size();
+#endif
+    }
+
     inline unsigned getArgOperandNo(llvm::CallInst &CI, const llvm::Use *U) {
 #if LLVM_VERSION_MAJOR < 10
       IGC_ASSERT_MESSAGE(CI.isArgOperand(U), "Arg operand # out of range!");

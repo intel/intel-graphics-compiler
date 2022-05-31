@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instruction.h"
-#include "llvm/IR/Instructions.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
@@ -1950,7 +1950,7 @@ bool InstExpander::visitCall(CallInst& Call) {
     IGC_ASSERT(nullptr != CallCopy);
     CallCopy->insertBefore(&Call);
     IRB->SetInsertPoint(CallCopy);
-    for (int argNo=0, sz = (int)Call.getNumArgOperands(); argNo < sz; ++argNo)
+    for (int argNo=0, sz = (int)IGCLLVM::getNumArgOperands(&Call); argNo < sz; ++argNo)
     {
         Value* OldVal = Call.getArgOperand(argNo);
         if (Emu->isInt64(OldVal))

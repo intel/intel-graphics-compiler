@@ -37,7 +37,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
-#include "llvm/IR/Instructions.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
@@ -1336,8 +1336,8 @@ static bool simplifyX86MaskedStore(IntrinsicInst &II, InstCombiner &IC) {
 // comparison to the first NumOperands.
 static bool haveSameOperands(const IntrinsicInst &I, const IntrinsicInst &E,
                              unsigned NumOperands) {
-  IGC_ASSERT_MESSAGE(I.getNumArgOperands() >= NumOperands, "Not enough operands");
-  IGC_ASSERT_MESSAGE(E.getNumArgOperands() >= NumOperands, "Not enough operands");
+  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(&I) >= NumOperands, "Not enough operands");
+  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(&E) >= NumOperands, "Not enough operands");
   for (unsigned i = 0; i < NumOperands; i++)
     if (I.getArgOperand(i) != E.getArgOperand(i))
       return false;
@@ -1362,7 +1362,7 @@ static bool removeTriviallyEmptyRange(IntrinsicInst &I, unsigned StartID,
       if (isa<DbgInfoIntrinsic>(E) || E->getIntrinsicID() == StartID)
         continue;
       if (E->getIntrinsicID() == EndID &&
-          haveSameOperands(I, *E, E->getNumArgOperands())) {
+          haveSameOperands(I, *E, IGCLLVM::getNumArgOperands(E))) {
         IC.eraseInstFromFunction(*E);
         IC.eraseInstFromFunction(I);
         return true;
@@ -1388,7 +1388,7 @@ Instruction *InstCombiner::visitVACopyInst(VACopyInst &I) {
 /// instructions. For normal calls, it allows visitCallSite to do the heavy
 /// lifting.
 Instruction *InstCombiner::visitCallInst(CallInst &CI) {
-  auto Args = CI.arg_operands();
+  auto Args = IGCLLVM::args(CI);
   if (Value *V = SimplifyCall(CI.getCalledValue(), Args.begin(), Args.end(), DL,
                               &TLI, &DT, &AC))
     return replaceInstUsesWith(CI, V);
@@ -2481,7 +2481,7 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
   case Intrinsic::arm_neon_vst4lane: {
     unsigned MemAlign =
         getKnownAlignment(II->getArgOperand(0), DL, II, &AC, &DT);
-    unsigned AlignArg = II->getNumArgOperands() - 1;
+    unsigned AlignArg = IGCLLVM::getNumArgOperands(II) - 1;
     ConstantInt *IntrAlign = dyn_cast<ConstantInt>(II->getArgOperand(AlignArg));
     if (IntrAlign && IntrAlign->getZExtValue() < MemAlign) {
       II->setArgOperand(AlignArg,

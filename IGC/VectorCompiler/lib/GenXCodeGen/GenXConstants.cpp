@@ -95,7 +95,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
-#include "llvm/IR/Instructions.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/ValueMap.h"
 #include "llvm/Support/Casting.h"
@@ -163,7 +163,7 @@ bool genx::loadNonSimpleConstants(
   unsigned NumArgs = Inst->getNumOperands();
   auto CI = dyn_cast<CallInst>(Inst);
   if (CI)
-    NumArgs = CI->getNumArgOperands();
+    NumArgs = IGCLLVM::getNumArgOperands(CI);
   unsigned IID = vc::getAnyIntrinsicID(Inst);
   // Do not proceed loading of genx.alloca argument since its value doesn't
   // needed (only type matters) and always null.
@@ -346,7 +346,7 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
     case GenXIntrinsic::genx_output:
     case GenXIntrinsic::genx_output_1:
       // load all args for subroutine and some intrinsic calls.
-      for (unsigned i = 0, e = CI->getNumArgOperands(); i != e; ++i) {
+      for (unsigned i = 0, e = IGCLLVM::getNumArgOperands(CI); i != e; ++i) {
         U = &CI->getOperandUse(i);
         if (auto C = dyn_cast<Constant>(*U)) {
           if (!isa<UndefValue>(C)) {

@@ -1009,7 +1009,7 @@ Value* InstCombiner::simplifyAMDGCNMemoryIntrinsicDemanded(IntrinsicInst* II,
     Function* NewIntrin = Intrinsic::getDeclaration(M, IID, OverloadTys);
 
     SmallVector<Value*, 16> Args;
-    for (unsigned I = 0, E = II->getNumArgOperands(); I != E; ++I)
+    for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(II); I != E; ++I)
         Args.push_back(II->getArgOperand(I));
 
     if (NewDMask)

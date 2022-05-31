@@ -374,7 +374,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(llvm::Function* ol
 
         std::vector<Value*> new_args;
         Function *parent_func = cInst->getParent()->getParent();
-        size_t numArgOperands = cInst->getNumArgOperands();
+        size_t numArgOperands = IGCLLVM::getNumArgOperands(cInst);
 
         // let's prepare argument list on new call function
         llvm::Function::arg_iterator new_arg_iter = new_func->arg_begin();

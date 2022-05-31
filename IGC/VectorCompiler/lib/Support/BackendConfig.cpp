@@ -193,8 +193,8 @@ readBiFModuleFromFile(const cl::opt<std::string> &File) {
   ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr =
       MemoryBuffer::getFileOrSTDIN(File);
   if (!FileOrErr)
-    report_fatal_error("opening OpenCL BiF file failed: " +
-                       FileOrErr.getError().message());
+    report_fatal_error(llvm::StringRef("opening OpenCL BiF file failed: " +
+                       FileOrErr.getError().message()));
   return std::move(FileOrErr.get());
 }
 

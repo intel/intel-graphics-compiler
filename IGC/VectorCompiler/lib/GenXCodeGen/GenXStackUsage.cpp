@@ -103,7 +103,7 @@ class StackAnalysis : public InstVisitor<StackAnalysis> {
       NotStarted // function has not started processing but will start
     };
     uint64_t m_UsedSz{0};
-    unsigned m_RequiredAlign{0};
+    alignment_t m_RequiredAlign{0};
     bool m_HasIndirect{false};
     Function *m_pHeavyFunction{nullptr};
     ProcessingState m_ProcessingFlag{ProcessingState::NotStarted};
@@ -112,7 +112,7 @@ class StackAnalysis : public InstVisitor<StackAnalysis> {
   // map between Function and its State
   std::unordered_map<Function *, FunctionState> m_ProcessedFs{};
 
-  llvm::Optional<std::pair<uint64_t, unsigned>> checkFunction(Function &F);
+  llvm::Optional<std::pair<uint64_t, alignment_t>> checkFunction(Function &F);
   std::string GenerateCallSequence(Function &F);
   void checkKernel(Function &Kernel);
 
@@ -156,7 +156,7 @@ void StackAnalysis::visitFunction(Function &F) {
 }
 
 // Check CallGraph and usage of allocas in function
-llvm::Optional<std::pair<uint64_t, unsigned>>
+llvm::Optional<std::pair<uint64_t, alignment_t>>
 StackAnalysis::checkFunction(Function &F) {
   auto pOnF = m_ProcessedFs.find(&F);
   IGC_ASSERT_MESSAGE(pOnF != m_ProcessedFs.end(),
@@ -248,6 +248,7 @@ void StackAnalysis::checkKernel(Function &Kernel) {
                << Kernel.getName() << ")\n");
     return;
   }
+
   auto [KernelUsedStack, KernelAlignment] = *Res;
 
   KernelAlignment = std::max(KernelAlignment, visa::BytesPerSVMPtr);

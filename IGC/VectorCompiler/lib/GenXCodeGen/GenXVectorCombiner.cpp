@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 // and if we can combine them together, we do this
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_VECTOR_COMBINER"
 
 #include <algorithm>
 
@@ -33,6 +32,8 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace genx;
+
+#define DEBUG_TYPE "GENX_VECTOR_COMBINER"
 
 STATISTIC(NumOfWidenInsructions,
           "Number of combined to wider variant instructions");
@@ -377,7 +378,7 @@ bool GenXVectorCombiner::processWorkList() {
               ->getSplatValue();
       unsigned NumericWidth = cast<IGCLLVM::FixedVectorType>(OriginalSrc->getType())
                       ->getNumElements();
-	  auto Width = IGCLLVM::getElementCount(NumericWidth);
+      auto Width = IGCLLVM::getElementCount(NumericWidth);
       Constant *WideConstant =
           ConstantVector::getSplat(Width, ScalarSecondOperand);
       Vals.push_back(WideConstant);

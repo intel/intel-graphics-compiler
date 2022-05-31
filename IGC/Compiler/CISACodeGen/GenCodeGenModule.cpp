@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Argument.h"
-#include "llvm/IR/Attributes.h"
+#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/Analysis/InlineCost.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SCCIterator.h"
@@ -368,7 +368,7 @@ static bool DeduceNonNullAttribute(Module& M)
             if (NotNull) {
                 // FIXME: Below lines possibly can be refactored to be simpler.
                 AttributeList attrSet = AttributeList::get(Arg.getParent()->getContext(), Arg.getArgNo() + 1, llvm::Attribute::NonNull);
-                Arg.addAttr(attrSet.getAttribute(Arg.getArgNo() + 1, llvm::Attribute::NonNull));
+                Arg.addAttr(IGCLLVM::getAttribute(attrSet, Arg.getArgNo() + 1, llvm::Attribute::NonNull));
                 Modifided = true;
             }
         }

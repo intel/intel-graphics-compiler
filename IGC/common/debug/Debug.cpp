@@ -228,18 +228,30 @@ void Warning(
 }
 
 namespace {
+#if LLVM_VERSION_MAJOR >= 14
+    void FatalErrorHandler(void *user_data, const char* reason, bool gen_crash_diag)
+#else
     void FatalErrorHandler(void *user_data, const std::string& reason, bool gen_crash_diag)
+#endif
     {
         (void)user_data;
         (void)reason;
 #if defined( _DEBUG )
 #if defined( _WIN32 )
         OutputDebugStringA("LLVM Error: ");
+    #if LLVM_VERSION_MAJOR >= 14
+        OutputDebugStringA(reason);
+    #else
         OutputDebugStringA(reason.c_str());
+    #endif
         OutputDebugStringA("\n");
 #endif
         fprintf( stderr, "%s", "LLVM Error: " );
+    #if LLVM_VERSION_MAJOR >= 14
+        fprintf( stderr, "%s", reason);
+    #else
         fprintf( stderr, "%s", reason.c_str());
+    #endif
         fprintf( stderr, "%s", "\n");
         fflush( stderr );
 

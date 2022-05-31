@@ -301,6 +301,14 @@ namespace IGCLLVM
 
 #endif
 
+#if LLVM_VERSION_MAJOR >= 14
+        Value* CreatePtrDiff(Value *LHS, Value *RHS, const Twine &Name = "") {
+          auto *PtrTy = cast<PointerType>(LHS->getType());
+          Type *Ty = PtrTy->getElementType();
+          return llvm::IRBuilder<T, InserterTyDef()>::CreatePtrDiff(Ty, LHS, RHS, Name);
+        }
+#endif
+
         inline llvm::Value* CreateConstInBoundsGEP2_64(
             llvm::Value* Ptr,
             uint64_t Idx0,

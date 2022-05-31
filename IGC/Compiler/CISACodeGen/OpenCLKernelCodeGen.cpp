@@ -1688,7 +1688,7 @@ namespace IGC
                 }
                 else
                 {
-                    for (int i = 0, e = (int)CallI->getNumArgOperands(); i < e; ++i)
+                    for (int i = 0, e = (int)IGCLLVM::getNumArgOperands(CallI); i < e; ++i)
                     {
                         Value* arg = CallI->getArgOperand(i);
                         PointerType* PTy = dyn_cast<PointerType>(arg->getType());

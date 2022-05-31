@@ -1075,7 +1075,7 @@ bool SLMConstProp::runOnFunction(Function& F)
                 if (checkSLMArg) {
                     // Make sure those intrinsic does not use ptr to SLM
                     // (for example, SLM atomic, etc.
-                    for (int i = 0, e = (int)CallI->getNumArgOperands();
+                    for (int i = 0, e = (int)IGCLLVM::getNumArgOperands(CallI);
                         i < e; ++i) {
                         Type* Ty = CallI->getArgOperand(i)->getType();
                         if (PointerType * PTy = dyn_cast<PointerType>(Ty)) {

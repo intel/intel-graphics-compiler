@@ -85,7 +85,6 @@ SPDX-License-Identifier: MIT
 /// GenXLiveness has another go at splitting them up.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_LOWERING"
 
 #include "GenX.h"
 #include "GenXGotoJoin.h"
@@ -131,6 +130,8 @@ SPDX-License-Identifier: MIT
 #include <iterator>
 #include <numeric>
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "GENX_LOWERING"
 
 using namespace llvm;
 using namespace genx;
@@ -363,7 +364,7 @@ bool GenXLowering::processTwoAddressOpnd(CallInst *CI) {
     Type *Ty = CI->getArgOperand(*OpNum)->getType();
     IGC_ASSERT_MESSAGE(Ty == CI->getType(), "two address op type out of sync");
 
-    for (unsigned i = 0; i < CI->getNumArgOperands(); ++i) {
+    for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(CI); ++i) {
       auto Op = dyn_cast<Constant>(CI->getArgOperand(i));
       // Check if the predicate operand is all true.
       if (Op && Op->getType()->getScalarSizeInBits() == 1) {
@@ -993,7 +994,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
   for (auto CurWidth : Widths) {
     SmallVector<Value *, 8> Args;
     // initialize the args with the old values
-    for (unsigned ArgI = 0; ArgI < CI->getNumArgOperands(); ++ArgI)
+    for (unsigned ArgI = 0; ArgI < IGCLLVM::getNumArgOperands(CI); ++ArgI)
       Args.push_back(CI->getArgOperand(ArgI));
     // Predicate
     if (PredIdx != NONEED) {
@@ -1709,7 +1710,7 @@ bool GenXLowering::widenSIMD8GatherScatter(CallInst *CI, unsigned IID) {
   }
 
   SmallVector<Value *, 8> Args;
-  for (unsigned i = 0; i < CI->getNumArgOperands(); ++i) {
+  for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(CI); ++i) {
     Args.push_back(CI->getArgOperand(i));
   }
   Args[PredIdx] = ExpandPredicate(CI, PredIdx, WidenSIMD);
@@ -3252,7 +3253,7 @@ bool GenXLowering::processInst(Instruction *Inst) {
     unsigned IntrinsicID = GenXIntrinsic::not_any_intrinsic;
     if (Function *Callee = CI->getCalledFunction()) {
       IntrinsicID = vc::getAnyIntrinsicID(Callee);
-      IGC_ASSERT(CI->getNumArgOperands() < GenXIntrinsicInfo::OPNDMASK);
+      IGC_ASSERT(IGCLLVM::getNumArgOperands(CI) < GenXIntrinsicInfo::OPNDMASK);
     }
     if (ST) {
       // use gather/scatter to implement SLM oword load/store on
@@ -5743,7 +5744,7 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
   // Get the range of operands to process.
   unsigned StartIdx = 0, EndIdx = Inst->getNumOperands();
   if (auto CI = dyn_cast<CallInst>(Inst))
-    EndIdx = CI->getNumArgOperands();
+    EndIdx = IGCLLVM::getNumArgOperands(CI);
   else if (isa<SelectInst>(Inst))
     StartIdx = 1;
   // Extend the operands.

@@ -959,7 +959,7 @@ namespace IGC
         llvm::Function* pCalledFunc = pIntr->getCalledFunction();
 
         // Look at the intrinsic and figure out which pointer to change
-        int num_ops = pIntr->getNumArgOperands();
+        int num_ops = IGCLLVM::getNumArgOperands(pIntr);
         llvm::SmallVector<llvm::Value*, 5> args;
 
         for (int i = 0; i < num_ops; ++i)

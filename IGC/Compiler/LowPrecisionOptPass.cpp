@@ -21,6 +21,8 @@ SPDX-License-Identifier: MIT
 
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/IGCIRBuilder.h"
+#include "llvmWrapper/IR/Instructions.h"
+
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -297,7 +299,7 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst& I)
     Function* newSample = GenISAIntrinsic::getDeclaration(
         m_currFunction->getParent(), I.getIntrinsicID(), overloadTys);
     llvm::SmallVector<llvm::Value*, 8> newArgs;
-    for (unsigned int i = 0, argSize = I.getNumArgOperands(); i < argSize; i++)
+    for (unsigned int i = 0, argSize = IGCLLVM::getNumArgOperands(&I); i < argSize; i++)
     {
         newArgs.push_back(I.getArgOperand(i));
     }

@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include <map>
 #include <string>
@@ -63,7 +64,7 @@ namespace llvm {
     // convention limits them to 12 and 8.
     constexpr static unsigned ArgRegSizeInGRFs = 12;
     constexpr static unsigned RetRegSizeInGRFs = 8;
-    constexpr static unsigned BytesPerSVMPtr = 8;
+    constexpr static alignment_t BytesPerSVMPtr = 8;
     constexpr static unsigned BytesPerOword = 16;
     constexpr static unsigned StackPerThreadScratch = 256;
     constexpr static unsigned StackPerThreadSVM = 8192*2;

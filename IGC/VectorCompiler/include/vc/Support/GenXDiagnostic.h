@@ -126,7 +126,7 @@ public:
 
   void print(llvm::DiagnosticPrinter &DP) const override {
     if (Severity == llvm::DS_Error)
-      llvm::report_fatal_error(Description);
+      llvm::report_fatal_error(llvm::StringRef(Description));
     DP << Description;
   }
 

@@ -160,7 +160,6 @@ SPDX-License-Identifier: MIT
 /// and insert an extra copy at the start of the function.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_COALESCING"
 
 #include "FunctionGroup.h"
 #include "GenX.h"
@@ -202,6 +201,8 @@ SPDX-License-Identifier: MIT
 #include <algorithm>
 #include <map>
 #include <vector>
+
+#define DEBUG_TYPE "GENX_COALESCING"
 
 using namespace llvm;
 using namespace genx;

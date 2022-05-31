@@ -54,7 +54,9 @@ THE SOFTWARE.
 
 #include <llvm/Support/ScaledNumber.h>
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/Support/Regex.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 
@@ -121,7 +123,7 @@ getOrCreateFunction(Module *M, Type *RetTy, ArrayRef<Type *> ArgTypes,
 std::vector<Value *>
 getArguments(CallInst* CI) {
   std::vector<Value*> Args;
-  for (unsigned I = 0, E = CI->getNumArgOperands(); I != E; ++I) {
+  for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(CI); I != E; ++I) {
     Args.push_back(CI->getArgOperand(I));
   }
   return Args;

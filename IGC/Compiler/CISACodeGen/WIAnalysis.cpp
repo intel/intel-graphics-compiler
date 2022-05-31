@@ -1608,7 +1608,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
 
         // Iterate over all input dependencies. If all are uniform - propagate it.
         // otherwise - return RANDOM
-        unsigned numParams = inst->getNumArgOperands();
+        unsigned numParams = IGCLLVM::getNumArgOperands(inst);
         WIAnalysis::WIDependancy dep = WIAnalysis::UNIFORM_GLOBAL;
         for (unsigned i = 0; i < numParams; ++i)
         {

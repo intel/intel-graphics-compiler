@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Function.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvmWrapper/IR/Constant.h"
+#include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
@@ -159,7 +160,7 @@ static TrivialUniformity checkCallInst(const CallInst* CI, UniformityCache *Cach
     if (result.kind == TrivialUniformity::FORMAL_ARG) {
         /* If uniformity of the function depends on a formal argument, check if all actual arguments are uniform: */
         result = TrivialUniformity::Unifrom();
-        const size_t count = CI->getNumArgOperands();
+        const size_t count = IGCLLVM::getNumArgOperands(CI);
         for (size_t i = 0; i < count; ++i) {
             result = mergeUnifromity(result, checkValue(CI->getArgOperand(i), Cache));
             if (result.kind == TrivialUniformity::NONUNIFORM) {
@@ -254,9 +255,9 @@ bool TransformUnmaskedFunctionsPass::runOnFunction(llvm::Function& F)
     for (User *U : F.users()) {
         if (CallInst* CI = dyn_cast<CallInst>(U)) {
             if (CI->hasFnAttr(llvm::Attribute::AlwaysInline)) {
-                CI->removeAttribute(AttributeList::FunctionIndex, llvm::Attribute::AlwaysInline);
+                IGCLLVM::removeFnAttr(CI, llvm::Attribute::AlwaysInline);
             }
-            CI->addAttribute(AttributeList::FunctionIndex, llvm::Attribute::NoInline);
+            IGCLLVM::addFnAttr(CI, llvm::Attribute::NoInline);
         }
     }
     return true;

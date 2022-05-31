@@ -1299,7 +1299,7 @@ void PixelShaderLowering::moveRTWriteToBlock(
     unsigned numPredBB = predBB.size();
     if (numPredBB > 1)
     {
-        for (unsigned i = 0; i < call->getNumArgOperands(); i++)
+        for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(call); i++)
         {
             if (Instruction * inst = dyn_cast<Instruction>(call->getArgOperand(i)))
             {

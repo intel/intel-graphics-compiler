@@ -177,7 +177,11 @@ public:
   }
 
   void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
-                               TTI::UnrollingPreferences &UP) {
+                               TTI::UnrollingPreferences &UP
+#if LLVM_VERSION_MAJOR >= 14
+                             , OptimizationRemarkEmitter* ORE
+#endif
+                               ) {
     if (BC.ignoreLoopUnrollThresholdOnPragma()) {
       if (GetUnrollMetadataForLoop(L, "llvm.loop.unroll.full"))
         UP.Threshold = std::numeric_limits<unsigned>::max();

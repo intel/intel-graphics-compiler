@@ -16,6 +16,7 @@ See LICENSE.TXT for details.
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/ADT/STLExtras.h"
+#include "llvmWrapper/MC/MCStreamer.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/MC/MCAsmBackend.h"
@@ -32,7 +33,7 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/TargetRegistry.h"
+#include "llvmWrapper/Support/TargetRegistry.h"
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
@@ -322,35 +323,45 @@ public:
   }
 #endif
 
+#if LLVM_VERSION_MAJOR < 14
   bool writeNopData(raw_ostream &OS, uint64_t Count) const override {
-    const char nop = (char)0x90;
-    for (uint64_t i = 0; i < Count; ++i) {
-      OS.write(&nop, 1);
-    }
-    return true;
+    return writeNopData(OS, Count, nullptr);
   }
 
-  /// createObjectWriter - Create a new MCObjectWriter instance for use by the
-  /// assembler backend to emit the final object file.
-  std::unique_ptr<MCObjectWriter>
-  createObjectWriter(llvm::raw_pwrite_stream &os) const {
-    Triple triple(m_targetTriple);
-    uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
-    uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
-    // Only i386 uses Rel instead of RelA.
-    bool hasRelocationAddend = eMachine != ELF::EM_386;
-    std::unique_ptr<MCELFObjectTargetWriter> pMOTW =
-        IGCLLVM::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine,
-                                                  hasRelocationAddend);
-    return createELFObjectWriter(std::move(pMOTW), os, /*IsLittleEndian=*/true);
+  bool writeNopData(raw_ostream &OS, uint64_t Count,
+                    const MCSubtargetInfo *STI) const {
+#else
+  bool writeNopData(raw_ostream &OS, uint64_t Count,
+                    const MCSubtargetInfo *STI) const override {
+#endif
+      const char nop = (char)0x90;
+  for (uint64_t i = 0; i < Count; ++i) {
+    OS.write(&nop, 1);
   }
+  return true;
+}
 
-  std::unique_ptr<MCObjectTargetWriter>
-  createObjectTargetWriter() const override {
-    // TODO: implement this
-    IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
-  }
-};
+/// createObjectWriter - Create a new MCObjectWriter instance for use by the
+/// assembler backend to emit the final object file.
+std::unique_ptr<MCObjectWriter>
+createObjectWriter(llvm::raw_pwrite_stream &os) const {
+  Triple triple(m_targetTriple);
+  uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
+  uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+  // Only i386 uses Rel instead of RelA.
+  bool hasRelocationAddend = eMachine != ELF::EM_386;
+  std::unique_ptr<MCELFObjectTargetWriter> pMOTW =
+      IGCLLVM::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine,
+                                                hasRelocationAddend);
+  return createELFObjectWriter(std::move(pMOTW), os, /*IsLittleEndian=*/true);
+}
+
+std::unique_ptr<MCObjectTargetWriter>
+createObjectTargetWriter() const override {
+  // TODO: implement this
+  IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
+}
+}; // namespace IGC
 
 class VISAMCCodeEmitter : public MCCodeEmitter {
   /// EncodeInstruction - Encode the given \p inst to bytes on the output
@@ -417,7 +428,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream &outStream,
                                     std::move(pObjectWriter),
                                     std::move(pCodeEmitter), isRelaxAll);
 
-  m_pMCStreamer->InitSections(isNoExecStack);
+  IGCLLVM::initSections(m_pMCStreamer, isNoExecStack, m_pContext);
 }
 
 StreamEmitter::~StreamEmitter() {

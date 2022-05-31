@@ -155,13 +155,13 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
-#include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/ValueHandle.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
 
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace llvm;
@@ -755,7 +755,7 @@ Indirectability SubroutineArg::checkIndirectability()
   // Create an object of some subclass of ArgIndCallSite for each call site.
   for (auto &U: F->uses()) {
     if (auto *CI = checkFunctionCall(U.getUser(), F)) {
-      IGC_ASSERT(U.getOperandNo() == CI->getNumArgOperands());
+      IGC_ASSERT(U.getOperandNo() == IGCLLVM::getNumArgOperands(CI));
       auto CS = createCallSite(CI);
       if (!CS)
         return Indirectability::CANNOT_INDIRECT;
@@ -1285,7 +1285,7 @@ void SubroutineArg::fixCallSites()
     // can modify the arg being indirected such that the eraseUnusedTree erases
     // the rd-wr sequence that sets up the arg in the old call.
     SmallVector<Value *, 4> Args;
-    for (unsigned oi = 0, oe = CS->CI->getNumArgOperands(); oi != oe; ++oi)
+    for (unsigned oi = 0, oe = IGCLLVM::getNumArgOperands(CS->CI); oi != oe; ++oi)
       Args.push_back(CS->CI->getArgOperand(oi));
     Args.push_back(UndefValue::get(Type::getInt16Ty(CS->CI->getContext())));
     CallInst *OldCI = CS->CI;
@@ -1337,7 +1337,7 @@ Value *CallerIndirectingCallSite::process(GenXArgIndirection *Pass,
 Value *NoOptCallSite::process(GenXArgIndirection *Pass, SubroutineArg *SubrArg)
 {
   unsigned InsertNumber = Pass->Numbering->getArgIndirectionNumber(
-      CI, CI->getNumArgOperands() - 1, 0);
+      CI, IGCLLVM::getNumArgOperands(CI) - 1, 0);
   Instruction *InsertBefore = CI;
   Type *I16Ty = Type::getInt16Ty(CI->getContext());
   // If the arg is undef, we can just use an undef address.
@@ -1400,7 +1400,7 @@ Value *ConstArgRetCallSite::process(GenXArgIndirection *Pass,
   // instruction number of the address arg's pre-copy slot.
   Instruction *InsertBefore = CI;
   unsigned InsertNumber = Pass->Numbering->getArgIndirectionNumber(
-        CI, CI->getNumArgOperands() - 1, 0);
+        CI, IGCLLVM::getNumArgOperands(CI) - 1, 0);
   // Insert a load the constant. Bitcast it to the right type to replace
   // RetEndWr.
   SmallVector<Instruction *, 4> AddedInsts;
@@ -1485,7 +1485,7 @@ Value *IndirectArgCallSite::process(GenXArgIndirection *Pass,
   // instruction number of the address arg's pre-copy slot.
   Instruction *InsertBefore = CI;
   unsigned InsertNumber = Pass->Numbering->getArgIndirectionNumber(CI,
-      CI->getNumArgOperands() - 1, 0);
+      IGCLLVM::getNumArgOperands(CI) - 1, 0);
   Value *AddressArg = nullptr;
   if (isa<Constant>(Index)) {
     // Constant index for the region. Add a convert.addr to load it into an

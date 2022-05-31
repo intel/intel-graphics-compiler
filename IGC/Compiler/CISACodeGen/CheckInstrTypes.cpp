@@ -186,7 +186,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         if (C.isInlineAsm())
         {
             g_InstrTypes->hasInlineAsm = true;
-            for (unsigned i = 0; i < C.getNumArgOperands(); i++)
+            for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(&C); i++)
             {
                 Type* opndTy = C.getArgOperand(i)->getType();
                 if (opndTy->isPointerTy() &&

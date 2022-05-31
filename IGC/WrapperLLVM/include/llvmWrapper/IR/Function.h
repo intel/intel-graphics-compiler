@@ -31,6 +31,22 @@ inline llvm::Argument *getArg(const llvm::Function &F, unsigned ArgNo) {
   return Arg;
 }
 
+inline void addRetAttr(llvm::Function *F, llvm::Attribute::AttrKind Kind) {
+#if LLVM_VERSION_MAJOR < 14
+  F->addAttribute(llvm::AttributeList::ReturnIndex, Kind);
+#else
+  F->addRetAttr(Kind);
+#endif
+}
+
+inline bool onlyWritesMemory(llvm::Function *F) {
+#if LLVM_VERSION_MAJOR < 14
+  return F->doesNotReadMemory();
+#else
+  return F->onlyWritesMemory();
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif

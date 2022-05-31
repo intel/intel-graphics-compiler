@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef VC_LIB_GENXCODEGEN_TARGETMACHINE_H
 #define VC_LIB_GENXCODEGEN_TARGETMACHINE_H
 
-#include "llvm/Support/TargetRegistry.h"
+#include "llvmWrapper/Support/TargetRegistry.h"
 
 #include "vc/Support/BackendConfig.h"
 

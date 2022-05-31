@@ -537,7 +537,7 @@ bool GenXSimplify::simplifyGenXLscAtomic(CallInst &CI,
 
   LLVM_DEBUG(dbgs() << "processing <lsc atomic>: " << CI << "\n");
 
-  if (!isa<UndefValue>(CI.getArgOperand(CI.getNumArgOperands() - 1))) {
+  if (!isa<UndefValue>(CI.getArgOperand(IGCLLVM::getNumArgOperands(&CI) - 1))) {
     LLVM_DEBUG(dbgs() << "  skipping as instruction already has some " <<
                "\"previous value\" set\n");
     return false;
@@ -597,7 +597,7 @@ bool GenXSimplify::simplifyGenXLscAtomic(CallInst &CI,
     LLVM_DEBUG(dbgs() << "previous value does not dominate candidate!\n");
     return false;
   }
-  CI.setArgOperand(CI.getNumArgOperands() - 1, PrevValue);
+  CI.setArgOperand(IGCLLVM::getNumArgOperands(&CI) - 1, PrevValue);
 
   Select->replaceAllUsesWith(&CI);
   Select->eraseFromParent();

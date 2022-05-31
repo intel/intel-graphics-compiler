@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvmWrapper/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
@@ -96,7 +97,7 @@ void ResolveSampledImageBuiltins::visitCallInst(CallInst& CI)
 
 Value* ResolveSampledImageBuiltins::lowerGetImage(CallInst& CI)
 {
-    IGC_ASSERT(CI.getNumArgOperands() == 1);
+    IGC_ASSERT(IGCLLVM::getNumArgOperands(&CI) == 1);
 
     CallInst* callReturningOpaque = dyn_cast<CallInst>(CI.getArgOperand(0)->stripPointerCasts());
     IGC_ASSERT(callReturningOpaque);
@@ -127,7 +128,7 @@ Value* ResolveSampledImageBuiltins::lowerGetImage(CallInst& CI)
 
 Value* ResolveSampledImageBuiltins::lowerGetSampler(CallInst& CI)
 {
-    IGC_ASSERT(CI.getNumArgOperands() == 1);
+    IGC_ASSERT(IGCLLVM::getNumArgOperands(&CI) == 1);
     CallInst* callReturningOpaque = dyn_cast<CallInst>(CI.getArgOperand(0)->stripPointerCasts());
     IGC_ASSERT(callReturningOpaque);
 

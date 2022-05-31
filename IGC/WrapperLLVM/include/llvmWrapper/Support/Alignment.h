@@ -18,6 +18,12 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 #endif
 
+#if LLVM_VERSION_MAJOR >= 14
+typedef uint64_t alignment_t;
+#else
+typedef unsigned alignment_t;
+#endif
+
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR < 10
     inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
