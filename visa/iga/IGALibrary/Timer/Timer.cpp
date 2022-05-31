@@ -72,19 +72,22 @@ static int64_t CurrFreq() {
 }
 #endif
 
+namespace iga {
 
 struct Timer {
-    double       time;
-    int64_t      currentStart;
-    const char  *name;
-    int64_t      ticks;
-    bool         started;
+    double time;
+    int64_t currentStart;
+    const char *name;
+    int64_t ticks;
+    bool started;
 };
 
-static _THREAD Timer    timers[TIMER_NUM_TIMERS];
-static _THREAD char     kernelAsmName[256] = "";
-static _THREAD int64_t  proc_freq;
-static _THREAD int      numTimers = TIMER_NUM_TIMERS;
+} // namespace iga
+
+static _THREAD iga::Timer timers[TIMER_NUM_TIMERS];
+static _THREAD char       kernelAsmName[256] = "";
+static _THREAD int64_t    proc_freq;
+static _THREAD int        numTimers = TIMER_NUM_TIMERS;
 
 void initIGATimer()
 {

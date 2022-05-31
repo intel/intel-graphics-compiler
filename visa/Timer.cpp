@@ -76,6 +76,7 @@ static const char* timerNames[static_cast<int>(TimerID::NUM_TIMERS)] =
 #endif
 #endif // MEASURE_COMPILATION_TIME
 
+namespace vISA {
 
 struct Timer {
     double time;
@@ -86,7 +87,9 @@ struct Timer {
     unsigned int hits;
 };
 
-static _THREAD Timer timers[static_cast<int>(TimerID::NUM_TIMERS)];
+} // namespace vISA
+
+static _THREAD vISA::Timer timers[static_cast<int>(TimerID::NUM_TIMERS)];
 static _THREAD LARGE_INTEGER proc_freq;
 static _THREAD int numTimers = static_cast<int>(TimerID::NUM_TIMERS);
 
