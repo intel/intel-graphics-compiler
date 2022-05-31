@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-wi-func-resolution -constprop -S %s -o %t.ll
+; RUN: igc_opt -igc-wi-func-resolution -instsimplify -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 declare i32 @__builtin_IB_get_group_id(i32 %dim)

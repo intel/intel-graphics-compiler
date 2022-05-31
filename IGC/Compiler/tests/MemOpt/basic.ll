@@ -172,12 +172,12 @@ entry:
  ; CHECK: fence seq_cst
  ; CHECK: %add6 = add nsw i32 %mul, 1
  ; CHECK: %arrayidx8 = getelementptr inbounds i32, i32* %src, i32 %add6
- ; CHECK: %1 = bitcast i32* %arrayidx8 to i64*
- ; CHECK: %2 = load i64, i64* %1, align 4
+ ; CHECK: %1 = bitcast i32* %arrayidx8 to [[i64_TYPE:i64|<2 x i32>]]*
+ ; CHECK: %2 = load [[i64_TYPE]], [[i64_TYPE]]* %1, align 4
  ; CHECK: %add10 = add nsw i32 %add1, 1
  ; CHECK: %arrayidx12 = getelementptr inbounds i32, i32* %dst, i32 %add10
- ; CHECK: %3 = bitcast i32* %arrayidx12 to i64*
- ; CHECK: store i64 %2, i64* %3, align 4
+ ; CHECK: %3 = bitcast i32* %arrayidx12 to [[i64_TYPE]]*
+ ; CHECK: store [[i64_TYPE]] %2, [[i64_TYPE]]* %3, align 4
  ; CHECK: ret void
 
 
