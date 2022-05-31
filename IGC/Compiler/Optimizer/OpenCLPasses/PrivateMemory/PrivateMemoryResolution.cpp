@@ -290,6 +290,13 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
                 }
             }
         }
+        else {
+            // Check individual functions if FGA not available
+            for (auto& F : M) {
+                if (F.hasFnAttribute("visaStackCall") || F.hasFnAttribute("hasVLA"))
+                    return false;
+            }
+        }
     }
 
     const llvm::DataLayout* DL = &M.getDataLayout();
