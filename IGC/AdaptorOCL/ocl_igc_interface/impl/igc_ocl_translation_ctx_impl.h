@@ -311,39 +311,51 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         }
 
         bool success = false;
-        if (this->inType == CodeType::elf)
+        try
         {
-            // Handle TB_DATA_FORMAT_ELF input as a result of a call to
-            // clLinkLibrary(). There are two possible scenarios, link input
-            // to form a new library (BC module) or link input to form an
-            // executable.
-
-            // First, link input modules together
-            CDriverInfo dummyDriverInfo;
-            IGC::OpenCLProgramContext oclContextTemp(oclLayout, igcPlatform, &inputArgs, dummyDriverInfo, nullptr, false);
-            IGC::Debug::RegisterComputeErrHandlers(*oclContextTemp.getLLVMContext());
-            success = TC::ProcessElfInput(
-                inputArgs, output, oclContextTemp, platform,
-                toLegacyFormat(this->outType),
-                this->globalState.MiscOptions.ProfilingTimerResolution);
-        }else
-        {
-            if ((this->inType == CodeType::llvmLl) ||
-                (this->inType == CodeType::spirV) ||
-                (this->inType == CodeType::llvmBc))
+            if (this->inType == CodeType::elf)
             {
-                TC::TB_DATA_FORMAT inFormatLegacy = toLegacyFormat(this->inType);
-                success = TC::TranslateBuild(
-                    &inputArgs,
-                    &output,
-                    inFormatLegacy,
-                    igcPlatform,
+                // Handle TB_DATA_FORMAT_ELF input as a result of a call to
+                // clLinkLibrary(). There are two possible scenarios, link input
+                // to form a new library (BC module) or link input to form an
+                // executable.
+
+                // First, link input modules together
+                CDriverInfo dummyDriverInfo;
+                IGC::OpenCLProgramContext oclContextTemp(oclLayout, igcPlatform, &inputArgs, dummyDriverInfo, nullptr, false);
+                IGC::Debug::RegisterComputeErrHandlers(*oclContextTemp.getLLVMContext());
+                success = TC::ProcessElfInput(
+                    inputArgs, output, oclContextTemp, platform,
+                    toLegacyFormat(this->outType),
                     this->globalState.MiscOptions.ProfilingTimerResolution);
             }
             else
             {
-                outputInterface->GetImpl()->SetError(TranslationErrorType::UnhandledInput, "Unhandled inType");
-                success = false;
+                if ((this->inType == CodeType::llvmLl) ||
+                    (this->inType == CodeType::spirV) ||
+                    (this->inType == CodeType::llvmBc))
+                {
+                    TC::TB_DATA_FORMAT inFormatLegacy = toLegacyFormat(this->inType);
+                    success = TC::TranslateBuild(
+                        &inputArgs,
+                        &output,
+                        inFormatLegacy,
+                        igcPlatform,
+                        this->globalState.MiscOptions.ProfilingTimerResolution);
+                }
+                else
+                {
+                    outputInterface->GetImpl()->SetError(TranslationErrorType::UnhandledInput, "Unhandled inType");
+                    success = false;
+                }
+            }
+        }
+        catch (...)
+        {
+            success = false;
+            if (output.ErrorStringSize == 0 && output.pErrorString == nullptr)
+            {
+                outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, "IGC: Internal Compiler Error");
             }
         }
 

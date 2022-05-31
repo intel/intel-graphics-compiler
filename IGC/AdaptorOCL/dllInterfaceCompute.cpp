@@ -269,36 +269,49 @@ bool CIGCTranslationBlock::Translate(
     pOutputArgs->pDebugData = nullptr;
     pOutputArgs->DebugDataSize = 0;
 
-    if (m_DataFormatInput == TB_DATA_FORMAT_ELF)
+
+    try
     {
-        // Handle TB_DATA_FORMAT_ELF input as a result of a call to
-        // clLinkLibrary(). There are two possible scenarios, link input
-        // to form a new library (BC module) or link input to form an
-        // executable.
+        if (m_DataFormatInput == TB_DATA_FORMAT_ELF)
+        {
+            // Handle TB_DATA_FORMAT_ELF input as a result of a call to
+            // clLinkLibrary(). There are two possible scenarios, link input
+            // to form a new library (BC module) or link input to form an
+            // executable.
 
-        // First, link input modules together
-        USC::SShaderStageBTLayout zeroLayout = USC::g_cZeroShaderStageBTLayout;
-        IGC::COCLBTILayout oclLayout(&zeroLayout);
-        CDriverInfoOCLNEO driverInfo;
-        IGC::OpenCLProgramContext oclContextTemp(oclLayout, IGCPlatform, &InputArgsCopy, driverInfo, nullptr,
-                                                 m_DataFormatOutput == TC::TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY);
-        RegisterComputeErrHandlers(*oclContextTemp.getLLVMContext());
-        bool success = ProcessElfInput(InputArgsCopy, *pOutputArgs, oclContextTemp, m_ProfilingTimerResolution);
+            // First, link input modules together
+            USC::SShaderStageBTLayout zeroLayout = USC::g_cZeroShaderStageBTLayout;
+            IGC::COCLBTILayout oclLayout(&zeroLayout);
+            CDriverInfoOCLNEO driverInfo;
+            IGC::OpenCLProgramContext oclContextTemp(oclLayout, IGCPlatform, &InputArgsCopy, driverInfo, nullptr,
+                                                     m_DataFormatOutput == TC::TB_DATA_FORMAT_NON_COHERENT_DEVICE_BINARY);
+            RegisterComputeErrHandlers(*oclContextTemp.getLLVMContext());
+            bool success = ProcessElfInput(InputArgsCopy, *pOutputArgs, oclContextTemp, m_ProfilingTimerResolution);
 
-        return success;
+            return success;
+        }
+
+        if ((m_DataFormatInput == TB_DATA_FORMAT_LLVM_TEXT) ||
+            (m_DataFormatInput == TB_DATA_FORMAT_SPIR_V) ||
+            (m_DataFormatInput == TB_DATA_FORMAT_LLVM_BINARY))
+        {
+            return TC::TranslateBuild(&InputArgsCopy, pOutputArgs, m_DataFormatInput, IGCPlatform, m_ProfilingTimerResolution);
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Unsupported input format");
+            return false;
+        }
     }
-
-    if ((m_DataFormatInput == TB_DATA_FORMAT_LLVM_TEXT) ||
-        (m_DataFormatInput == TB_DATA_FORMAT_SPIR_V) ||
-        (m_DataFormatInput == TB_DATA_FORMAT_LLVM_BINARY))
+    catch (...)
     {
-        return TC::TranslateBuild(&InputArgsCopy, pOutputArgs, m_DataFormatInput, IGCPlatform, m_ProfilingTimerResolution);
-    }
-    else
-    {
-        IGC_ASSERT_MESSAGE(0, "Unsupported input format");
+        if (pOutputArgs->ErrorStringSize == 0 && pOutputArgs->pErrorString == nullptr)
+        {
+            SetErrorMessage("IGC: Internal Compiler Error", *pOutputArgs);
+        }
         return false;
     }
+
     return false;
 }
 
@@ -1257,45 +1270,83 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
 
             oclContext.getModuleMetaData()->csInfo.forcedSIMDSize |= IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth);
 
-            if (llvm::StringRef(oclContext.getModule()->getTargetTriple()).startswith("spir"))
+            try
             {
-                IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
-            }
-            else // not SPIR
-            {
-                IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
-            }
+                if (llvm::StringRef(oclContext.getModule()->getTargetTriple()).startswith("spir"))
+                {
+                    IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+                }
+                else // not SPIR
+                {
+                    IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+                }
 
-            if (oclContext.HasError())
+                if (oclContext.HasError())
+                {
+                    if (oclContext.HasWarning())
+                    {
+                        SetOutputMessage(oclContext.GetErrorAndWarning(), *pOutputArgs);
+                    }
+                    else
+                    {
+                        SetOutputMessage(oclContext.GetError(), *pOutputArgs);
+                    }
+                    return false;
+                }
+
+                // Compiler Options information available after unification.
+                ModuleMetaData* modMD = oclContext.getModuleMetaData();
+                if (modMD->compOpt.DenormsAreZero)
+                {
+                    oclContext.m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
+                    oclContext.m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
+                }
+                if (IGC_GET_FLAG_VALUE(ForceFastestSIMD))
+                {
+                    oclContext.m_retryManager.AdvanceState();
+                    oclContext.m_retryManager.SetFirstStateId(oclContext.m_retryManager.GetRetryId());
+                }
+                // Optimize the IR. This happens once for each program, not per-kernel.
+                IGC::OptimizeIR(&oclContext);
+
+                // Now, perform code generation
+                IGC::CodeGen(&oclContext);
+            }
+            catch (std::bad_alloc& e)
             {
-                if (oclContext.HasWarning())
+                (void)e; //not used now
+                SetOutputMessage("IGC: Out Of Memory", *pOutputArgs);
+                return false;
+            }
+            catch (std::exception &e)
+            {
+                if (oclContext.HasError() && oclContext.HasWarning())
                 {
                     SetOutputMessage(oclContext.GetErrorAndWarning(), *pOutputArgs);
                 }
                 else
                 {
-                    SetOutputMessage(oclContext.GetError(), *pOutputArgs);
+                    if (oclContext.HasError())
+                    {
+                        SetOutputMessage(oclContext.GetError(), *pOutputArgs);
+                    }
+                    if (oclContext.HasWarning())
+                    {
+                        SetOutputMessage(oclContext.GetWarning(), *pOutputArgs);
+                    }
+                }
+
+                if (e.what() != nullptr)
+                {
+                    SetErrorMessage(e.what(), *pOutputArgs);
+                }
+
+                if (pOutputArgs->ErrorStringSize == 0 && pOutputArgs->pErrorString == nullptr)
+                {
+                    SetErrorMessage("IGC: Internal Compiler Error", *pOutputArgs);
                 }
                 return false;
             }
-
-            // Compiler Options information available after unification.
-            ModuleMetaData *modMD = oclContext.getModuleMetaData();
-            if (modMD->compOpt.DenormsAreZero)
-            {
-                oclContext.m_floatDenormMode16 = FLOAT_DENORM_FLUSH_TO_ZERO;
-                oclContext.m_floatDenormMode32 = FLOAT_DENORM_FLUSH_TO_ZERO;
-            }
-            if( IGC_GET_FLAG_VALUE( ForceFastestSIMD ) )
-            {
-                oclContext.m_retryManager.AdvanceState();
-                oclContext.m_retryManager.SetFirstStateId(oclContext.m_retryManager.GetRetryId());
-            }
-            // Optimize the IR. This happens once for each program, not per-kernel.
-            IGC::OptimizeIR(&oclContext);
-
-            // Now, perform code generation
-            IGC::CodeGen(&oclContext);
 
             retry = (!oclContext.m_retryManager.kernelSet.empty() &&
                      oclContext.m_retryManager.AdvanceState());
