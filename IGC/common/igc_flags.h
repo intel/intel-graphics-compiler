@@ -369,6 +369,7 @@ DECLARE_IGC_REGKEY(debugString, ExtraOCLInternalOptions, 0,    "Extra internal o
 DECLARE_IGC_REGKEY(bool, UseVISAVarNames,               false, "Make VISA generate names for virtual variables so they match with dbg file", true)
 DECLARE_IGC_REGKEY(DWORD, MetricsDumpEnable,            0,     "Dump IGC Metrics to file *.optrpt in current working directory.\
                                                                 Setting to 0 - disabled, 1 - makes in binary format, 2 - makes in plain-text format.", true)
+DECLARE_IGC_REGKEY(bool, PrintDebugSettings,            false, "Prints all non-default debug settings", false)
 
 DECLARE_IGC_GROUP("IGC Features")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD16,               true,  "Enable OCL SIMD16 mode", true)

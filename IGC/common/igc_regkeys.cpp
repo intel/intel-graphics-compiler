@@ -1006,6 +1006,15 @@ static void LoadFromRegKeyOrEnvVarOrOptions(
             }
         }
     }
+    if (IGC_IS_FLAG_ENABLED(PrintDebugSettings))
+    {
+        std::cout << "*** Settings with non-default values ***" << std::endl;
+        for(DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++)
+        {
+            if (pRegKeyVariable[i].m_isSetToNonDefaultValue)
+                std::cout << pRegKeyVariable[i].GetName() << " " << pRegKeyVariable[i].m_Value << std::endl;
+        }
+    }
 }
 
 /*****************************************************************************\
