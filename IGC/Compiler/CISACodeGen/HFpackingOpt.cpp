@@ -79,12 +79,12 @@ namespace {
     private:
         CodeGenContext* pContext = nullptr;
         ComputeShaderContext* csCtx = nullptr;
-        ModuleMetaData* modMD;
+        ModuleMetaData* modMD = nullptr;
         std::map<uint, uint> slmOffsetMap;
         std::map<uint, bool> HFList; // GEPoffset, HF flag
         std::map<uint32_t, uint32_t> HFpackedOffsets; // merged pair: GEP offset #1, GEP offset #2
         std::map<GetElementPtrInst*, Value *> HFpackedGEPs; // mapped old GEP to new GEP
-        bool bRemoveFromSlmMap;
+        bool bRemoveFromSlmMap = false;
 
         bool findSRVinfo(GenIntrinsicInst* tex, uint& runtimeV, uint& ptrAddrSpace);
         bool getSRVMap(GenIntrinsicInst* tex, uint& index);
@@ -199,12 +199,9 @@ void HFpackingOpt::removeFromSlmMap(GetElementPtrInst* gep)
     while (slmOffsetIter != slmOffsetMap.end())
     {
         // already removed
-        if (slmOffsetIter->second == -1)
-        {
-            ;
-        }
-        // find the offset to be removed
-        else if (slmOffsetIter->first == offset)
+        if ( !(slmOffsetIter->second == -1)  &&
+            // find the offset to be removed
+            (slmOffsetIter->first == offset) )
         {
             bRemoveFromSlmMap = true;
             slmOffsetMap[slmOffsetIter->first] = -1;
@@ -497,7 +494,7 @@ void HFpackingOpt::replaceStores(Instruction* startInst, Value* newGEP,
     }
     else
     {
-        Value* new1, * new2;
+        Value* new1 = nullptr, * new2 = nullptr;
         Function* f32tof16 = GenISAIntrinsic::getDeclaration(startInst->getModule(),
             GenISAIntrinsic::GenISA_f32tof16_rtz);
         new1 = builder.CreateCall(f32tof16, Store1->getOperand(0));
@@ -516,7 +513,7 @@ void HFpackingOpt::replaceLoads(Instruction *startInst, Value* newGEP,
     LoadInst *load1, LoadInst *load2)
 {
     IRBuilder<> builder(startInst);
-    Value* new1, * new2;
+    Value* new1 = nullptr, * new2 = nullptr;
 
     new1 = builder.CreateAlignedLoad(builder.getInt32Ty(), newGEP,
         getLoadStoreAlignment(load1));
@@ -532,9 +529,7 @@ void HFpackingOpt::replaceLoads(Instruction *startInst, Value* newGEP,
 // Checked if these two offsets are tracked by merged HF folding offsets
 bool HFpackingOpt::isPacked(uint offset1, uint offset2)
 {
-    std::map<uint32_t, uint32_t>::iterator it;
-
-    it = HFpackedOffsets.find(offset1);
+    std::map<uint32_t, uint32_t>::iterator it = HFpackedOffsets.find(offset1);
     if (it != HFpackedOffsets.end() && offset2 == it->second)
     {
         return true;
@@ -582,7 +577,7 @@ void HFpackingOpt::PackHfResources(Function& F)
                     continue;
                 }
 
-                uint arraySize, elmBytes, offset;
+                uint arraySize = 0, elmBytes = 0, offset = 0;
                 GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(Store->getOperand(1));
                 if (!GEP || !getGEPInfo(GEP, arraySize, elmBytes, offset))
                     continue;
@@ -654,7 +649,7 @@ void HFpackingOpt::PackHfResources(Function& F)
                     continue;
                 }
 
-                uint arraySize, elmBytes, offset;
+                uint arraySize = 0, elmBytes = 0, offset = 0;
                 GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(Load->getOperand(0));
                 if (!GEP || !getGEPInfo(GEP, arraySize, elmBytes, offset))
                     continue;
@@ -674,8 +669,8 @@ void HFpackingOpt::PackHfResources(Function& F)
                     continue;
                 }
 
-                Value* newGEP;
-                Instruction* startInst;
+                Value* newGEP = nullptr;
+                Instruction* startInst = nullptr;
                 std::map<GetElementPtrInst*, Value*>::iterator iGEP;
                 iGEP = HFpackedGEPs.find(prevLoad.GEP);
                 if (iGEP != HFpackedGEPs.end())
@@ -1037,7 +1032,7 @@ void HFpackingOpt::removeRedundantChannels(Function& F)
     if (storeGepToRemove.size() == 0)
         return;
 
-    GetElementPtrInst* removeGEP;
+    GetElementPtrInst* removeGEP = nullptr;
     // start removing load/store/gep
     for (auto iter = storeGepToRemove.begin(); iter != storeGepToRemove.end(); iter++)
     {

@@ -133,7 +133,7 @@ bool CastToGASWrapperPass::runOnModule(Module& M)
         if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL)
             continue;
 
-        bool disruptAnalysis;
+        bool disruptAnalysis = false;
         SmallPtrSet<const Function*, 32> functions;
         getAllFuncsAccessibleFromKernel(&F, CG, functions, disruptAnalysis);
         functions.insert(&F);
