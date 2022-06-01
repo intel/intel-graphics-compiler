@@ -2102,14 +2102,14 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
         auto befpSetupInst = getBEFPSetupInst();
         if (befpSetupInst)
         {
-            start = (uint32_t)befpSetupInst->getGenOffset() +
+            start = (uint32_t)befpSetupInst->getGenOffset() - reloc_offset  +
                 getBinInstSize(befpSetupInst);
             auto spRestoreInst = getCallerSPRestoreInst();
             if (spRestoreInst)
             {
-                end = (uint32_t)spRestoreInst->getGenOffset();
+                end = (uint32_t)spRestoreInst->getGenOffset() - reloc_offset;
             }
-            for (uint32_t i = start - reloc_offset; i <= end - reloc_offset; i++)
+            for (uint32_t i = start; i <= end; i++)
             {
                 updateDebugInfo(*kernel, befp, i);
             }
@@ -2121,8 +2121,13 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
     }
 
     auto callerbefp = getCallerBEFP();
-    if (callerbefp)
+    if (callerbefp && befp)
     {
+        // callerbefp is stored in FDE. BE_FP is needed to access
+        // FDE. Therefore:
+        // 1. Caller BP_FP location can be emitted only if BE_FP is valid
+        // 2. Caller BE_FP location is valid only after BE_FP is updated
+        //     in current frame
         auto callerbefpLIInfo = getLiveIntervalInfo(callerbefp);
         callerbefpLIInfo->clearLiveIntervals();
         auto callerbeSaveInst = getCallerBEFPSaveInst();
@@ -2131,8 +2136,10 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
             auto callerbefpRestoreInst = getCallerBEFPRestoreInst();
             MUST_BE_TRUE(callerbefpRestoreInst != nullptr,
                 "Instruction destroying caller be fp not found in epilog");
-            start = (uint32_t)callerbeSaveInst->getGenOffset() - reloc_offset +
-                getBinInstSize(callerbeSaveInst);
+            // Guarantee that start of FDE live-range is same as or after BE_FP
+            // of current frame is initialized
+            start = std::max(start, (uint32_t)callerbeSaveInst->getGenOffset() - reloc_offset +
+                getBinInstSize(callerbeSaveInst));
             end = (uint32_t)callerbefpRestoreInst->getGenOffset() - reloc_offset;
             for (uint32_t i = start;
                 i <= end;

@@ -2885,6 +2885,25 @@ void DwarfDebug::emitDebugMacInfo() {
   }
 }
 
+void DwarfDebug::encodeScratchAddrSpace(std::vector<uint8_t> &data) {
+  if (!EmitSettings.EnableGTLocationDebugging) {
+    Address addr;
+    addr.Set(Address::Space::eScratch, 0, 0);
+
+    write(data, (uint8_t)llvm::dwarf::DW_OP_const8u);
+    write(data, (uint64_t)addr.GetAddress());
+
+    write(data, (uint8_t)llvm::dwarf::DW_OP_or);
+  } else {
+    uint32_t scratchBaseAddrEncoded =
+        GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
+
+    write(data, (uint8_t)scratchBaseAddrEncoded);
+    writeULEB128(data, 0);
+    write(data, (uint8_t)llvm::dwarf::DW_OP_plus);
+  }
+}
+
 uint32_t DwarfDebug::writeSubroutineCIE() {
   std::vector<uint8_t> data;
   auto numGRFs = GetVISAModule()->getNumGRFs();
@@ -3042,22 +3061,7 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   }
 
   // indicate that the resulting address is on BE stack
-  if (!EmitSettings.EnableGTLocationDebugging) {
-    Address addr;
-    addr.Set(Address::Space::eScratch, 0, 0);
-
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_const8u);
-    write(data1, (uint64_t)addr.GetAddress());
-
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_or);
-  } else {
-    uint32_t scratchBaseAddrEncoded =
-        GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
-
-    write(data1, (uint8_t)scratchBaseAddrEncoded);
-    writeULEB128(data, 0);
-    write(data1, (uint8_t)llvm::dwarf::DW_OP_plus);
-  }
+  encodeScratchAddrSpace(data1);
 
   writeULEB128(data, data1.size());
   for (auto item : data1)
@@ -3275,22 +3279,7 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
     write(data1, (uint8_t)llvm::dwarf::DW_OP_plus);
 
     // indicate that the resulting address is on BE stack
-    if (!EmitSettings.EnableGTLocationDebugging) {
-      Address addr;
-      addr.Set(Address::Space::eScratch, 0, 0);
-
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_const8u);
-      write(data1, (uint64_t)addr.GetAddress());
-
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_or);
-    } else {
-      uint32_t scratchBaseAddrEncoded =
-          GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
-
-      write(data1, (uint8_t)scratchBaseAddrEncoded);
-      writeULEB128(data1, 0);
-      write(data1, (uint8_t)llvm::dwarf::DW_OP_plus);
-    }
+    encodeScratchAddrSpace(data1);
 
     if (deref) {
       write(data1, (uint8_t)llvm::dwarf::DW_OP_deref);
@@ -3309,6 +3298,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       write(data1, (uint8_t)16);
       write(data1, (uint8_t)llvm::dwarf::DW_OP_mul);
     }
+
+    encodeScratchAddrSpace(data1);
 
     writeULEB128(data, data1.size());
     for (auto item : data1)
