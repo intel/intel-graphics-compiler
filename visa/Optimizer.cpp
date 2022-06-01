@@ -10529,7 +10529,8 @@ private:
         else
             T = getLastUser()->getDst()->getType();
 
-        return IS_FTYPE(T) ? Type_F : (IS_SIGNED_INT(T) ? Type_W : Type_UW);
+        assert((IS_FTYPE(T) || IS_HFTYPE(T) || IS_INT(T)) && "Only F/HF/W/B types are expected here");
+        return (IS_FTYPE(T) || IS_HFTYPE(T)) ? T : (IS_SIGNED_INT(T) ? Type_W : Type_UW);
     }
 };
 
