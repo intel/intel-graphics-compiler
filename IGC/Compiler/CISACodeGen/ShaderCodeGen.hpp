@@ -241,6 +241,8 @@ public:
     void SaveStackState();
     void RestoreStackState();
 
+    void InitializeScratchSurfaceStateAddress();
+
     void        AllocateInput(CVariable* var, uint offset, uint instance = 0, bool forceLiveOut = false);
     void        AllocateOutput(CVariable* var, uint offset, uint instance = 0);
     CVariable* ImmToVariable(uint64_t immediate, VISA_Type type, bool isCodePatchCandidate = false);
@@ -355,6 +357,8 @@ public:
     /// is the value passed to VISA so that VISA's spill, if any,
     /// will go after this space.
     uint m_ScratchSpaceSize;
+
+    CVariable* m_ScratchSurfaceAddress = nullptr;
 
     ShaderStats* m_shaderStats;
 

@@ -333,6 +333,10 @@ void CShader::RestoreStackState()
     m_SavedFP = nullptr;
 }
 
+void CShader::InitializeScratchSurfaceStateAddress()
+{
+}
+
 void CShader::CreateImplicitArgs()
 {
     if (IGC::isIntelSymbolTableVoidProgram(entry))

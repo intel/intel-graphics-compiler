@@ -843,6 +843,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         }
     }
 
+    if (m_moduleMD->PrivateMemoryPerFG[&F] > 0)
+    {
+        m_currShader->InitializeScratchSurfaceStateAddress();
+    }
+
     // Only apply WA to OCL shaders with stackcall enabled
     // TODO: Remove this WA once vISA handles the register copy
     bool needKernelArgOverrideWA = isFuncGroupHead && hasStackCall && m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER;
