@@ -21042,18 +21042,27 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
         ImplicitArg::ArgType IAtype = ImplicitArgs::getArgType(I->getIntrinsicID());
         Argument* arg = IAS.getImplicitArg(*groupHead, IAtype);
         IGC_ASSERT_MESSAGE(arg, "Implicit argument not found!");
-        if (arg)
+        CVariable* Src = m_currShader->getOrCreateArgumentSymbol(arg, false);
+        CVariable* Dst = GetSymbol(I);
+
+        if (IAtype == ImplicitArg::ArgType::PAYLOAD_HEADER ||
+            IAtype == ImplicitArg::ArgType::WORK_DIM ||
+            IAtype == ImplicitArg::ArgType::NUM_GROUPS ||
+            IAtype == ImplicitArg::ArgType::GLOBAL_SIZE ||
+            IAtype == ImplicitArg::ArgType::LOCAL_SIZE ||
+            IAtype == ImplicitArg::ArgType::ENQUEUED_LOCAL_WORK_SIZE ||
+            IAtype == ImplicitArg::ArgType::CONSTANT_BASE ||
+            IAtype == ImplicitArg::ArgType::GLOBAL_BASE ||
+            IAtype == ImplicitArg::ArgType::PRIVATE_BASE ||
+            IAtype == ImplicitArg::ArgType::PRINTF_BUFFER)
         {
-            if (I->getType()->isVectorTy())
-            {
-                emitVectorCopy(GetSymbol(I), m_currShader->getOrCreateArgumentSymbol(arg, false),
-                    int_cast<unsigned>(dyn_cast<IGCLLVM::FixedVectorType>(I->getType())->getNumElements()));
-            }
-            else
-            {
-                m_encoder->SetNoMask();
-                m_currShader->CopyVariable(GetSymbol(I), m_currShader->getOrCreateArgumentSymbol(arg, false));
-            }
+            // Map directly to the kernel's arguments
+            m_currShader->UpdateSymbolMap(I, Src);
+        }
+        else
+        {
+            // Otherwise copy the kernel arg value into the intrinsic variable
+            emitCopyAll(Dst, Src, I->getType());
         }
     }
     else
