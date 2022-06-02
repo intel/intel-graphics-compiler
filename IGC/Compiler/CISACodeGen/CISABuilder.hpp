@@ -619,12 +619,12 @@ namespace IGC
 
         // CreateRelocationTable
         // input/output: buffer, bufferSize, tableEntries: for patch-token-based format.
-        void CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
+        void CreateRelocationTable(VISAKernel* pMainKernel, void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
         // input/output: relocations: for ZEBinary foramt
-        void CreateRelocationTable(SProgramOutput::RelocListTy& relocations);
+        void CreateRelocationTable(VISAKernel* pMainKernel, SProgramOutput::RelocListTy& relocations);
 
         // CreateFuncAttributeTable
-        void CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::FuncAttrListTy& attrs);
+        void CreateFuncAttributeTable(VISAKernel* pMainKernel, void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::FuncAttrListTy& attrs);
 
         // CreateGlobalHostAccessTable
         typedef std::vector<vISA::HostAccessEntry> HostAccessList;

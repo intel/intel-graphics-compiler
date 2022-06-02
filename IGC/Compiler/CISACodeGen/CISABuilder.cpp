@@ -5675,7 +5675,7 @@ namespace IGC
             globalHostAccessTable.push_back(vISA::ZEHostAccessEntry{ I.device_name, I.host_name });
     }
 
-    void CEncoder::CreateRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
+    void CEncoder::CreateRelocationTable(VISAKernel* pMainKernel, void*& buffer, unsigned& bufferSize, unsigned& tableEntries)
     {
         // for patch-token-based binary format
         buffer = nullptr;
@@ -5683,19 +5683,19 @@ namespace IGC
         tableEntries = 0;
 
         // vISA will directly return the buffer with GenRelocEntry layout
-        IGC_ASSERT(nullptr != vMainKernel);
-        V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
+        IGC_ASSERT(nullptr != pMainKernel);
+        V(pMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
         IGC_ASSERT((sizeof(vISA::GenRelocEntry) * tableEntries) == bufferSize);
     }
 
-    void CEncoder::CreateRelocationTable(SProgramOutput::RelocListTy& relocations)
+    void CEncoder::CreateRelocationTable(VISAKernel* pMainKernel, SProgramOutput::RelocListTy& relocations)
     {
         // for ZEBinary format
-        IGC_ASSERT(nullptr != vMainKernel);
-        V(vMainKernel->GetRelocations(relocations));
+        IGC_ASSERT(nullptr != pMainKernel);
+        V(pMainKernel->GetRelocations(relocations));
     }
 
-    void CEncoder::CreateFuncAttributeTable(void*& buffer, unsigned& bufferSize,
+    void CEncoder::CreateFuncAttributeTable(VISAKernel* pMainKernel, void*& buffer, unsigned& bufferSize,
         unsigned& tableEntries, SProgramOutput::FuncAttrListTy& attrs)
     {
         buffer = nullptr;
@@ -5718,7 +5718,8 @@ namespace IGC
             VISAKernel* visaFunc = nullptr;
             if (it.second.isKernel)
             {
-                visaFunc = vMainKernel;
+                IGC_ASSERT(pMainKernel != nullptr);
+                visaFunc = pMainKernel;
             }
             else
             {
@@ -6336,18 +6337,20 @@ namespace IGC
 
         if (ZEBinEnabled)
         {
-            CreateRelocationTable(pOutput->m_relocs);
+            CreateRelocationTable(pMainKernel, pOutput->m_relocs);
         }
         else
         {
-            CreateRelocationTable(pOutput->m_funcRelocationTable,
+            CreateRelocationTable(pMainKernel,
+                pOutput->m_funcRelocationTable,
                 pOutput->m_funcRelocationTableSize,
                 pOutput->m_funcRelocationTableEntries);
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching) || ZEBinEnabled)
         {
-            CreateFuncAttributeTable(pOutput->m_funcAttributeTable,
+            CreateFuncAttributeTable(pMainKernel,
+                pOutput->m_funcAttributeTable,
                 pOutput->m_funcAttributeTableSize,
                 pOutput->m_funcAttributeTableEntries,
                 pOutput->m_funcAttrs);
