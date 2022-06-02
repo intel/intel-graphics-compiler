@@ -335,15 +335,6 @@ void CShader::RestoreStackState()
 
 void CShader::InitializeScratchSurfaceStateAddress()
 {
-    m_ScratchSurfaceAddress = GetNewVariable(1, ISA_TYPE_D, EALIGN_DWORD, true, 1, "ScratchSurfaceAddress");
-    {
-        // For scratch surface, we need to shr the surface state offset coming in R0.5 by 4
-        // This is because the scratch offset is passed in via r0.5[31:10],
-        // but the BSS/SS descriptor expects the offset in [31:6] bits, thus we must shift it right by 4
-        encoder.SetSrcSubReg(0, 5);
-        encoder.Shr(m_ScratchSurfaceAddress, GetR0(), ImmToVariable(4, ISA_TYPE_UD));
-        encoder.Push();
-    }
 }
 
 void CShader::CreateImplicitArgs()

@@ -20372,8 +20372,6 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
             ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
             if (modMD && modMD->compOpt.UseScratchSpacePrivateMemory)
             {
-                IGC_ASSERT(m_currShader->m_ScratchSurfaceAddress);
-                resource.m_resource = m_currShader->m_ScratchSurfaceAddress;
                 resource.m_surfaceType = ESURFACE_SCRATCH;
                 return resource;
             }
