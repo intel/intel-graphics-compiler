@@ -2341,7 +2341,8 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
     }
 
     auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    if (!modMD->compOpt.MadEnable)
+    if (!modMD->compOpt.MadEnable &&
+        !m_ctx->m_DriverInfo.RespectPerInstructionContractFlag())
     {
         return;
     }
