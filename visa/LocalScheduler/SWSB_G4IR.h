@@ -219,7 +219,6 @@ namespace vISA
             return false;
         }
 
-
         //Check if current footprint overlaps footprint2
         //FIXME: it's conservative. Because for the indirect, the ranges may be contiguous?
         bool isWholeOverlap(const SBFootprint *liveFootprint) const
@@ -254,6 +253,38 @@ namespace vISA
             }
 
             return findOverlap;
+        }
+
+        // check if the current footprint has the same range with given one, or they are not overlapped at all
+        bool isSameOrNoOverlap(const SBFootprint* liveFootprint) const
+        {
+            unsigned short offset = 0;
+            if (!hasOverlap(liveFootprint, offset))
+                return true;
+
+
+            for (const SBFootprint* footprint2Ptr = liveFootprint; footprint2Ptr; footprint2Ptr = footprint2Ptr->next)
+            {
+                if (fType == footprint2Ptr->fType &&
+                    LeftB == footprint2Ptr->LeftB && RightB == footprint2Ptr->RightB)
+                    continue;
+
+                bool findSame = false;
+                for (const SBFootprint* curFootprintPtr = next; curFootprintPtr; curFootprintPtr = curFootprintPtr->next)
+                {
+                    FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
+                    if (curFType == footprint2Ptr->fType &&
+                        curFootprintPtr->LeftB == footprint2Ptr->LeftB && curFootprintPtr->RightB == footprint2Ptr->RightB)
+                    {
+                        findSame = true;
+                        break;
+                    }
+                }
+
+                if (!findSame)
+                    return false;
+            }
+            return true;
         }
 
     };
@@ -1352,7 +1383,9 @@ namespace vISA
 
         int totalGRFNum;
         int tokenAfterDPASCycle;
-
+    private:
+        // dpas read suppression buffer size
+        unsigned short getDpasSrcCacheSize(Gen4_Operand_Number opNum) const;
     public:
         LiveGRFBuckets *send_use_kills;
         BB_SWSB_LIST      Preds;
@@ -1503,12 +1536,12 @@ namespace vISA
 
         void clearKilledBucketNodeXeHP(LiveGRFBuckets* LB, int integerID, int floatID, int longID, int mathID);
 
-        bool hasInternalDependenceWithinDPAS(SBNode *node);
+        bool hasInternalDependenceWithinDPAS(SBNode *node) const;
         bool hasDependenceBetweenDPASNodes(SBNode * node, SBNode * nextNode);
-        bool src2FootPrintCachePVC(SBNode* curNode, SBNode* nextNode) const;
+        // check if the given src can be cached (by src suppression buffer)
+        bool dpasSrcFootPrintCache(Gen4_Operand_Number opNum, SBNode* curNode, SBNode* nextNode) const;
         bool src2SameFootPrintDiffType(SBNode* curNode, SBNode* nextNode) const;
         bool isLastDpas(SBNode * curNode, SBNode * nextNode);
-
 
         void getLiveOutToken(unsigned allSendNum, const SBNODE_VECT *SBNodes);
 

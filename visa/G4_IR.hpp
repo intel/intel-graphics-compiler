@@ -822,7 +822,6 @@ public:
     bool isNoDDChkInst()   const { return (option & InstOpt_NoDDChk)    ? true : false; }
     bool isNoDDClrInst()   const { return (option & InstOpt_NoDDClr)    ? true : false; }
     bool isBreakPointInst() const { return (option & InstOpt_BreakPoint) ? true : false; }
-
     // true if inst reads/writes acc either implicitly or explicitly
     bool useAcc() const
     {

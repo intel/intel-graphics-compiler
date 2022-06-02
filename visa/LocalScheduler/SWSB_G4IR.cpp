@@ -5253,7 +5253,7 @@ void G4_BB_SB::footprintMerge(SBNode* node, const SBNode* nextNode)
     return;
 }
 
-bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode* node)
+bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode* node) const
 {
     const SBFootprint* dstfp = node->getFirstFootprint(Opnd_dst);
 
@@ -5322,12 +5322,26 @@ bool G4_BB_SB::hasDependenceBetweenDPASNodes(SBNode* node, SBNode* nextNode)
     return false;
 }
 
-#define SRC2_CACHE_SIZE 1024
-bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
+unsigned short G4_BB_SB::getDpasSrcCacheSize(Gen4_Operand_Number opNum) const
 {
+    if (opNum == Gen4_Operand_Number::Opnd_src1) {
+        return 512;
+    }
+    if (opNum == Gen4_Operand_Number::Opnd_src2) {
+        if (builder.hasDpasSrc2ReadSupression())
+            return 1024;
+    }
+    return 0;
+}
+
+bool G4_BB_SB::dpasSrcFootPrintCache(Gen4_Operand_Number opNum, SBNode * curNode, SBNode * nextNode) const
+{
+    // this function is expected to be called only when there is suppression buffer of given src number
+    assert(getDpasSrcCacheSize(opNum) != 0);
+
     BitSet cachedGRF(totalGRFNum, false);
 
-    for (const SBFootprint* fp = curNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
+    for (const SBFootprint* fp = curNode->getFirstFootprint(opNum); fp; fp = fp->next)
     {
         unsigned short leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
         unsigned short rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
@@ -5337,7 +5351,7 @@ bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
         }
     }
 
-    for (const SBFootprint* fp = nextNode->getFirstFootprint(Opnd_src2); fp; fp = fp->next)
+    for (const SBFootprint* fp = nextNode->getFirstFootprint(opNum); fp; fp = fp->next)
     {
         unsigned short leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
         unsigned short rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
@@ -5355,8 +5369,7 @@ bool G4_BB_SB::src2FootPrintCachePVC(SBNode * curNode, SBNode * nextNode) const
             cachedGRFNum++;
         }
     }
-
-    return cachedGRFNum <= (SRC2_CACHE_SIZE + builder.numEltPerGRF<Type_UB>() - 1) / builder.numEltPerGRF<Type_UB>();
+    return cachedGRFNum <= (getDpasSrcCacheSize(opNum) + builder.numEltPerGRF<Type_UB>() - 1) / builder.numEltPerGRF<Type_UB>();
 }
 
 bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) const
@@ -5386,8 +5399,9 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) co
     return false;
 }
 
+
 //restrict a macro to :
-//    1. Consecutive instructions of same opcode, same datatype in all sources and dest and same register for Src1.
+//  1. Consecutive instructions of same opcode, same datatype in all sources and dest and same register for Src1.
 //  2. Allow having variable repeat count
 bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
 {
@@ -5414,14 +5428,8 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
     }
 
     G4_InstDpas* dpasInst = curInst->asDpasInst();
-    G4_Operand* srcOpnd1 = curInst->getSrc(1);
-    G4_Operand* srcOpnd2 = curInst->getSrc(2);
-    unsigned short leftBound1 = srcOpnd1->getLinearizedStart();
-    unsigned short leftBound2 = srcOpnd2->getLinearizedStart();
     uint8_t curD = dpasInst->getSystolicDepth();
     uint8_t curC = dpasInst->getRepeatCount();
-    int curSrc1Reg = leftBound1 / builder.numEltPerGRF<Type_UB>();
-    int curSrc2Reg = leftBound2 / builder.numEltPerGRF<Type_UB>();
 
     G4_InstDpas* nextDpasInst = nextInst->asDpasInst();
     uint8_t nextD = nextDpasInst->getSystolicDepth();
@@ -5443,15 +5451,8 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
         }
     }
 
-    srcOpnd1 = nextDpasInst->getSrc(1);
-    srcOpnd2 = nextDpasInst->getSrc(2);
-    leftBound1 = srcOpnd1->getLinearizedStart();
-    leftBound2 = srcOpnd2->getLinearizedStart();
-    int nextSrc1Reg = leftBound1 / builder.numEltPerGRF<Type_UB>();
-    int nextSrc2Reg = leftBound2 / builder.numEltPerGRF<Type_UB>();
-
-    if (builder.hasSrc2ReadSupression() &&
-        builder.hasSrc2ReadSupressionSameRegSameType() &&
+    if (builder.hasDpasSrc2ReadSupression() &&
+        builder.hasDpasSrc2ReadSupressionSameRegSameType() &&
         src2SameFootPrintDiffType(curNode, nextNode))
     {
         return true;
@@ -5462,26 +5463,38 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
         return false;
     }
 
-    //src1 or src2 read suppression
-    if (curSrc1Reg == nextSrc1Reg ||
-        (builder.hasSrc2ReadSupression() &&  (curSrc2Reg == nextSrc2Reg &&
-            curC == nextC &&
-            curC == 8)))
+    // dpas having dependency to other dpas in the macro cannot be part of the macro
+    if (hasDependenceBetweenDPASNodes(curNode, nextNode))
+    {
+        return true;
+    }
+
+    //Src1 read suppression:
+    if (dpasSrcFootPrintCache(Gen4_Operand_Number::Opnd_src1, curNode, nextNode) &&
+        curNode->getFirstFootprint(Opnd_src1)->isSameOrNoOverlap(nextNode->getFirstFootprint(Opnd_src1)))
     {
         return false;
     }
 
-    //Src2 read suppression with GRF cache.
+    //Src2 read suppression:
     //Using {Atomic} in the last line of a macro (such as in the lines I highlighted) has some implications in the hardware implementation:
     //1. In 8x8 macros (such as the one you pasted) is fine.
     //2. In other repetitions, it will cause that the src1 of the next macro will be ignored.
     // Hardware uses {Atomic} to indicate that the next instruction will reuse the src1. In an 8x8, they always verify
+    //3. non-df dpas
+    auto isDFInst = [](G4_INST& inst) {
+        for (Gen4_Operand_Number opndNum : {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2})
+            if (inst.getOperand(opndNum)->getType() == G4_Type::Type_DF)
+                return true;
+        return false;
+    };
 
-    if (builder.hasSrc2ReadSupression() &&
+    if (builder.hasDpasSrc2ReadSupression() &&
         curC == nextC &&
         curC == 8 &&
-        src2FootPrintCachePVC(curNode, nextNode) &&
-        curNode->getFirstFootprint(Opnd_src2)->isWholeOverlap(nextNode->getFirstFootprint(Opnd_src2)))
+        !isDFInst(*nextDpasInst) &&
+        dpasSrcFootPrintCache(Gen4_Operand_Number::Opnd_src2, curNode, nextNode) &&
+        curNode->getFirstFootprint(Opnd_src2)->isSameOrNoOverlap(nextNode->getFirstFootprint(Opnd_src2)))
     {
         return false;
     }
@@ -5776,11 +5789,8 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     //Different Depth, src1 and type cannot be merged
                     //Same register reuse in dest and src cannot be a part of a macro, even the last one.
                     if (sameSrcDst ||
-                        isLastDpas(node, &nextNode) ||
-                        hasDependenceBetweenDPASNodes(node, &nextNode))
-                    {
+                        isLastDpas(node, &nextNode)) // if isLastDpas is true, it might still can be fwd
                         break;
-                    }
 
                     if (hasInternalDependenceWithinDPAS(&nextNode))
                     {

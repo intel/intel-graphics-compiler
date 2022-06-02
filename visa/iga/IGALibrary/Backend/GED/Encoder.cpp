@@ -174,6 +174,7 @@ void Encoder::encodeBlock(Block *blk)
             mustNotCompact = true;
         }
 
+
         int32_t iLen = 16;
         if (mustCompact || (!mustNotCompact && m_opts.autoCompact)) {
             // try compact first

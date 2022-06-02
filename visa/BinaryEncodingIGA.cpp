@@ -429,6 +429,7 @@ InstOptSet BinaryEncodingIGA::getIGAInstOptSet(G4_INST* inst) const
         options.add(InstOpt::NOCOMPACT);
     }
 
+
     return options;
 }
 

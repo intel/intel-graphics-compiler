@@ -924,12 +924,13 @@ SPDX-License-Identifier: MIT
        return false;
     }
 
-    bool hasSrc2ReadSupression() const
+    bool hasDpasSrc2ReadSupression() const
     {
         return getPlatform() >= Xe_PVCXT;
     }
 
-    bool hasSrc2ReadSupressionSameRegSameType() const
+
+    bool hasDpasSrc2ReadSupressionSameRegSameType() const
     {
         return getPlatform() == Xe_PVC && !getOption(vISA_HasPartialInt64);
     }
