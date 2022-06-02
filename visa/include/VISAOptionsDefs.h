@@ -320,6 +320,7 @@ DEF_VISA_OPTION(vISA_EnableMathDPASWA,    ET_BOOL,  "-enableMathDPASWA",      UN
 DEF_VISA_OPTION(vISA_skipFenceCommit,     ET_BOOL,  "-skipFenceCommit", UNUSED, false)
 DEF_VISA_OPTION(vISA_removeFence,         ET_BOOL,  "-removeFence", "Remove fence if no write in a kernel", false)
 
+
 //=== HW Workarounds ===
 DEF_VISA_OPTION(vISA_clearScratchWritesBeforeEOT,   ET_BOOL,  "-waClearScratchWrite", UNUSED, false)
 DEF_VISA_OPTION(vISA_clearHDCWritesBeforeEOT,       ET_BOOL,  "-waClearHDCWrite",    UNUSED, false)

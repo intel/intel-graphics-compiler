@@ -1888,8 +1888,9 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
     assert(errBuf);
     if (!errBuf)
         return;
+    TARGET_PLATFORM p = getPlatform();
     KernelView kv(
-        getIGAPlatform(getPlatform()), binary, binarySize,
+        getIGAPlatform(p), binary, binarySize,
         GetIGASWSBEncodeMode(*fg.builder),
         errBuf, ERROR_STRING_MAX_LENGTH);
     const auto errorMap =

@@ -1061,4 +1061,5 @@ SPDX-License-Identifier: MIT
         }
         return 0;
    }
+
    // end HW capabilities

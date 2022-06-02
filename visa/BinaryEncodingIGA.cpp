@@ -36,7 +36,6 @@ class BinaryEncodingIGA
     Kernel*      IGAKernel = nullptr;
     const Model* platformModel;
     const TARGET_PLATFORM   platform;
-
 public:
     BinaryEncodingIGA(vISA::Mem_Manager &m, vISA::G4_Kernel& k, std::string fname);
     ~BinaryEncodingIGA() {delete IGAKernel;}
@@ -357,7 +356,6 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
     default:
         break;
     }
-
     return platform;
 }
 
