@@ -303,9 +303,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     case 2:  // visa selects
     default: // other value as default (2)
         // Using predicated for fast div
-        //generateIf = !doFastDiv;
-        // Use branch by default for both (the whole sequence is not affected by Inst scheduling).
-        generateIf = true;
+        generateIf = !doFastDiv;
         break;
     }
 
@@ -1377,9 +1375,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     case 2:  // visa selects
     default: // other value treated as 2 (default)
         // Using predicated for fast sqrt
-        // generateIf = !doFastSqrt;
-        // make branching default for now.
-        generateIf = true;
+        generateIf = !doFastSqrt;
         break;
     }
 
