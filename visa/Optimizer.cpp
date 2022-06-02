@@ -9302,7 +9302,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                                 {
                                     if ((msgDesc->isAtomic() && !msgDesc->isRead())      // case 1
                                         || (!(msgDesc->getCachingL1() == Caching::WB ||  // case 2
-                                              msgDesc->getCachingL1() == Caching::WT ||
                                               msgDesc->getCachingL1() == Caching::ST) && !msgDesc->isScratchWrite()))
                                     {
                                         needLscUgmFence = true;
