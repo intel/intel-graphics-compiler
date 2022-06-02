@@ -219,6 +219,7 @@ private:
   bool splitGatherScatter(CallInst *CI, unsigned IID);
   bool processTwoAddressOpnd(CallInst *CI);
   bool processInst(Instruction *Inst);
+  bool lowerAllAny(CallInst *CI);
   bool lowerRdRegion(Instruction *Inst);
   bool lowerWrRegion(Instruction *Inst);
   bool lowerRdPredRegion(Instruction *Inst);
@@ -3291,6 +3292,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return generatePredicatedWrrForNewLoad(CI);
 
     switch (IntrinsicID) {
+    case GenXIntrinsic::genx_all:
+    case GenXIntrinsic::genx_any:
+      return lowerAllAny(CI);
     case GenXIntrinsic::genx_rdregioni:
     case GenXIntrinsic::genx_rdregionf:
       return lowerRdRegion(Inst);
@@ -3433,6 +3437,54 @@ bool GenXLowering::processInst(Instruction *Inst) {
     Inst->getContext().emitError(Inst,
         "GenX backend cannot handle allocas with CMRT yet");
   return false;
+}
+
+/***********************************************************************
+ * lowerAllAny : handle all and any intrinsics
+ *
+ * Return:  whether any change was made, and thus the current instruction
+ *          is now marked for erasing
+ *
+ */
+bool GenXLowering::lowerAllAny(CallInst *CI) {
+  auto *Op = CI->getArgOperand(0);
+
+  auto *SrcTy = Op->getType();
+  if (SrcTy->isIntOrIntVectorTy(1))
+    return false;
+
+  IGC_ASSERT(SrcTy->isVectorTy());
+
+  IRBuilder<> Builder(CI);
+
+  auto NElem = cast<IGCLLVM::FixedVectorType>(SrcTy)->getNumElements();
+  Type *Int1Ty = Type::getInt1Ty(CI->getContext());
+  Type *Ty = IGCLLVM::FixedVectorType::get(Int1Ty, NElem);
+
+  Value *Arg = nullptr;
+
+  if (auto *Ext = dyn_cast<SExtInst>(Op))
+    Arg = Ext->getOperand(0);
+  else if (auto *Ext = dyn_cast<ZExtInst>(Op))
+    Arg = Ext->getOperand(0);
+  else
+    Arg = Builder.CreateICmpNE(Op, ConstantInt::get(SrcTy, 0));
+
+  Value *NewInst = nullptr;
+
+  if (NElem > 1) {
+    auto IntrID = GenXIntrinsic::getGenXIntrinsicID(CI);
+    auto *Fn = GenXIntrinsic::getGenXDeclaration(CI->getModule(), IntrID, {Ty});
+    NewInst =
+        Builder.CreateCall(Fn, {Arg}, CI->getName() + VALUE_NAME(".lowered"));
+  } else
+    NewInst = Builder.CreateBitCast(Arg, Int1Ty,
+                                    CI->getName() + VALUE_NAME(".lowered"));
+
+  CI->replaceAllUsesWith(NewInst);
+
+  ToErase.push_back(CI);
+  return true;
 }
 
 /***********************************************************************

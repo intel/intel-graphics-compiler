@@ -149,6 +149,50 @@
         ]
       }
     },
+    "All": {
+      "Name": "all",
+      "Operands": [
+        {
+          "Name": "Source",
+          "Kind": "Input"
+        }
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_all",
+        "ReturnType": {
+          "GetBuiltinReturnType": []
+        },
+        "Operands": [
+          {
+            "GetBuiltinOperand": [
+              "Source"
+            ]
+          }
+        ]
+      }
+    },
+    "Any": {
+      "Name": "any",
+      "Operands": [
+        {
+          "Name": "Source",
+          "Kind": "Input"
+        }
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_any",
+        "ReturnType": {
+          "GetBuiltinReturnType": []
+        },
+        "Operands": [
+          {
+            "GetBuiltinOperand": [
+              "Source"
+            ]
+          }
+        ]
+      }
+    },
     "LZD": {
       "Name": "lzd",
       "Operands": [

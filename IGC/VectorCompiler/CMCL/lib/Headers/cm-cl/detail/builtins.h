@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -55,6 +55,9 @@ int __cm_cl_printf_format_index(__global const char *str);
 // FIXME: Need this overload as a workaround for some frontends that didn't
 //        switch to using addrspaces.
 int __cm_cl_printf_format_index(__private const char *str);
+
+template <int width> bool __cm_cl_all(vector_impl<char, width> src);
+template <int width> bool __cm_cl_any(vector_impl<char, width> src);
 
 uint32_t __cm_cl_lzd(uint32_t src);
 template <int width>

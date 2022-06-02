@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -145,6 +145,21 @@ public:
   vector_slice<T, sub_width, stride, T, width> select(offset_type offset) {
     return {*this, offset};
   }
+
+  bool all() {
+    mask<width> msk = *this != 0;
+    return detail::__cm_cl_all(msk.cl_vector());
+  }
+
+  bool any() {
+    mask<width> msk = *this != 0;
+    return detail::__cm_cl_any(msk.cl_vector());
+  }
+
+  bool none() {
+    mask<width> msk = *this != 0;
+    return !detail::__cm_cl_any(msk.cl_vector());
+  }
 };
 
 #define VECTOR_OPEQ_BASED_BINOP(OP)                                            \
@@ -178,35 +193,33 @@ VECTOR_OPEQ_BASED_BINOP(&)
 VECTOR_OPEQ_BASED_BINOP(|)
 VECTOR_OPEQ_BASED_BINOP(^)
 
-template <typename T, int width>
-mask<width> operator==(vector<T, width> lhs, vector<T, width> rhs) {
-  return lhs.equal(rhs);
-}
+#define VECTOR_FUNC_BASED_BINOP(FUNC, OP)                                      \
+  template <typename LT, typename RT, int width>                               \
+  auto operator OP(vector<LT, width> lhs, vector<RT, width> rhs) {             \
+    using CT = decltype(cl::declval<LT>() + cl::declval<RT>());                \
+    vector<CT, width> clhs = lhs;                                              \
+    vector<CT, width> crhs = rhs;                                              \
+    return clhs.FUNC(crhs);                                                    \
+  }                                                                            \
+                                                                               \
+  template <typename LT, typename RT, int width>                               \
+  auto operator OP(vector<LT, width> lhs, RT srhs) {                           \
+    vector<RT, width> rhs{srhs};                                               \
+    return lhs OP rhs;                                                         \
+  }                                                                            \
+                                                                               \
+  template <typename LT, typename RT, int width>                               \
+  auto operator OP(LT slhs, vector<RT, width> rhs) {                           \
+    vector<LT, width> lhs{slhs};                                               \
+    return lhs OP rhs;                                                         \
+  }
 
-template <typename T, int width>
-mask<width> operator!=(vector<T, width> lhs, vector<T, width> rhs) {
-  return lhs.not_equal(rhs);
-}
-
-template <typename T, int width>
-mask<width> operator<(vector<T, width> lhs, vector<T, width> rhs) {
-  return lhs.less(rhs);
-}
-
-template <typename T, int width>
-mask<width> operator>(vector<T, width> lhs, vector<T, width> rhs) {
-  return lhs.greater(rhs);
-}
-
-template <typename T, int width>
-mask<width> operator<=(vector<T, width> lhs, vector<T, width> rhs) {
-  return lhs.less_equal(rhs);
-}
-
-template <typename T, int width>
-mask<width> operator>=(vector<T, width> lhs, vector<T, width> rhs) {
-  return lhs.greater_equal(rhs);
-}
+VECTOR_FUNC_BASED_BINOP(equal, ==)
+VECTOR_FUNC_BASED_BINOP(not_equal, !=)
+VECTOR_FUNC_BASED_BINOP(less, <)
+VECTOR_FUNC_BASED_BINOP(greater, >)
+VECTOR_FUNC_BASED_BINOP(less_equal, <=);
+VECTOR_FUNC_BASED_BINOP(greater_equal, >=);
 
 template <typename T, int width>
 vector<T, width> merge(vector<T, width> true_val, vector<T, width> false_val,
@@ -256,6 +269,9 @@ private:
   template <typename DT, int d_width> friend class vector;
 
 public:
+  vector_slice(orig_vector_impl &orig_vec_in, offset_type offset_in = 0)
+      : orig_vec{orig_vec_in}, offset{offset_in} {}
+
   vector_slice(vector<OrigT, orig_width> &orig_vec_in,
                offset_type offset_in = 0)
       : orig_vec{orig_vec_in.impl}, offset{offset_in} {}
@@ -320,6 +336,20 @@ public:
   // will win the overload. And it's implicitly deleted.
   vector_slice operator=(vector_slice rhs) {
     return operator=<stride, OrigT, orig_width>(rhs);
+  }
+
+  template <int new_sub_width, int new_stride>
+  vector_slice<T, new_sub_width, stride * new_stride, OrigT, orig_width>
+  select(offset_type new_offset) {
+    offset_type off = offset + new_offset * stride;
+    return {orig_vec, off};
+  }
+
+  vector_slice merge(vector<T, width> vec, mask<width> msk) {
+    vector<T, width> tmp = *this;
+    tmp.merge(vec, msk);
+    *this = tmp;
+    return *this;
   }
 };
 
