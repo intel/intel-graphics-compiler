@@ -7656,35 +7656,7 @@ namespace IGC
         }
         else if (surfaceType == ESURFACE_SCRATCH)
         {
-            {
-                // For scratch surface, we need to shr the surface state offset coming in R0.5 by 4
-                //      This is because the scratch offset is passed in via r0.5[31:10],
-                //      but the BSS/SS descriptor expects the offset in [31:6] bits, thus we must shift it right by 4
-                VISA_GenVar* r0Var = nullptr;
-                V(vKernel->GetPredefinedVar(r0Var, PREDEFINED_R0));
-
-                VISA_VectorOpnd* surfOpnd = nullptr;
-                V(vKernel->CreateVISASrcOperand(surfOpnd, r0Var, MODIFIER_NONE, 0, 1, 0, 0, 5));
-
-                VISA_VectorOpnd* surfOpndShrDst = nullptr;
-                VISA_VectorOpnd* shrOpnd = nullptr;
-                uint16_t imm_data = 4;
-
-                V(vKernel->CreateVISAImmediate(shrOpnd, &imm_data, ISA_TYPE_UW));
-                CVariable* surfOpndShrVar = m_program->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, "SurfaceOpnd");
-                V(vKernel->CreateVISADstOperand(surfOpndShrDst, GetVISAVariable(surfOpndShrVar), 1, 0, 0));
-                V(vKernel->AppendVISAArithmeticInst(
-                    ISA_SHR,
-                    nullptr,
-                    false,
-                    vISA_EMASK_M1_NM,
-                    EXEC_SIZE_1,
-                    surfOpndShrDst,
-                    surfOpnd,
-                    shrOpnd));
-
-                return GetSourceOperandNoModifier(surfOpndShrVar);
-            }
+            return GetSourceOperandNoModifier(bti);
         }
         else
         {
