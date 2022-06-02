@@ -26,8 +26,8 @@ define void @f0(i32 addrspace(1)* %global_ptr, i32 addrspace(3)* %local_ptr) {
 
 ; CHECK: define void @f1(i32 addrspace(1)* %[[GLOBAL_PTR:.*]], i32 addrspace(3)* %[[LOCAL_PTR:.*]])
 define void @f1(i32 addrspace(4)* %global_as_generic, i32 addrspace(4)* %local_as_generic) {
-  ; CHECK: %[[GLOBAL_AS_GENERIC:.*]] = addrspacecast i32 addrspace(1)* %[[GLOBAL_PTR]] to i32 addrspace(4)*
-  ; CHECK: %[[LOCAL_AS_GENERIC:.*]] = addrspacecast i32 addrspace(3)* %[[LOCAL_PTR]] to i32 addrspace(4)*
+  ; CHECK-DAG: %[[GLOBAL_AS_GENERIC:.*]] = addrspacecast i32 addrspace(1)* %[[GLOBAL_PTR]] to i32 addrspace(4)*
+  ; CHECK-DAG: %[[LOCAL_AS_GENERIC:.*]] = addrspacecast i32 addrspace(3)* %[[LOCAL_PTR]] to i32 addrspace(4)*
   %gid = call spir_func i32 @get_global_id()
   %cond = icmp ne i32 %gid, 0
   ; CHECK: %[[GLOBAL_OR_LOCAL:.*]] = select i1 %cond, i32 addrspace(4)* %[[GLOBAL_AS_GENERIC]], i32 addrspace(4)* %[[LOCAL_AS_GENERIC]]

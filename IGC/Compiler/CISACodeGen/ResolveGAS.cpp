@@ -88,7 +88,7 @@ namespace {
         friend class InstVisitor<GASPropagator, bool>;
 
         LoopInfo* const LI;
-        BuilderType* const IRB;
+        BuilderType IRB;
 
         Use* TheUse;
         Value* TheVal;
@@ -97,8 +97,8 @@ namespace {
         DenseSet<PHINode*> ResolvableLoopPHIs;
 
     public:
-        GASPropagator(BuilderType* Builder, LoopInfo* LoopInfo)
-            : IRB(Builder), LI(LoopInfo), TheUse(nullptr), TheVal(nullptr) {
+        GASPropagator(LLVMContext& Ctx, LoopInfo* LoopInfo)
+            : IRB(Ctx), LI(LoopInfo), TheUse(nullptr), TheVal(nullptr) {
             populateResolvableLoopPHIs();
         }
 
@@ -195,9 +195,10 @@ namespace IGC {
 }
 
 bool GASResolving::runOnFunction(Function& F) {
-    BuilderType TheBuilder(F.getContext());
+    LLVMContext& Ctx = F.getContext();
     LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    GASPropagator ThePropagator(&TheBuilder, &LI);
+    BuilderType TheBuilder(Ctx);
+    GASPropagator ThePropagator(Ctx, &LI);
     IRB = &TheBuilder;
     Propagator = &ThePropagator;
     bool Changed = false;
@@ -385,9 +386,9 @@ bool GASPropagator::visitAddrSpaceCastInst(AddrSpaceCastInst& I) {
 
     Value* Src = TheVal;
     if (SrcPtrTy->getElementType() != DstPtrTy->getElementType()) {
-        BuilderType::InsertPointGuard Guard(*IRB);
-        IRB->SetInsertPoint(&I);
-        Src = IRB->CreateBitCast(Src, DstPtrTy);
+        BuilderType::InsertPointGuard Guard(IRB);
+        IRB.SetInsertPoint(&I);
+        Src = IRB.CreateBitCast(Src, DstPtrTy);
     }
     I.replaceAllUsesWith(Src);
     I.eraseFromParent();
@@ -399,8 +400,8 @@ bool GASPropagator::visitBitCastInst(BitCastInst& I) {
     PointerType* SrcPtrTy = cast<PointerType>(TheVal->getType());
     PointerType* DstPtrTy = cast<PointerType>(I.getType());
 
-    BuilderType::InsertPointGuard Guard(*IRB);
-    IRB->SetInsertPoint(&(*std::next(BasicBlock::iterator(&I))));
+    BuilderType::InsertPointGuard Guard(IRB);
+    IRB.SetInsertPoint(I.getNextNode());
     // Push `addrspacecast` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
     Type* DstTy = DstPtrTy->getElementType();
@@ -408,8 +409,8 @@ bool GASPropagator::visitBitCastInst(BitCastInst& I) {
         PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     Value* Src = TheVal;
     if (SrcPtrTy->getElementType() != DstTy)
-        Src = IRB->CreateBitCast(Src, TransPtrTy);
-    Value* NewPtr = IRB->CreateAddrSpaceCast(Src, DstPtrTy);
+        Src = IRB.CreateBitCast(Src, TransPtrTy);
+    Value* NewPtr = IRB.CreateAddrSpaceCast(Src, DstPtrTy);
     I.replaceAllUsesWith(NewPtr);
     I.eraseFromParent();
 
@@ -426,8 +427,8 @@ bool GASPropagator::visitGetElementPtrInst(GetElementPtrInst& I) {
     PointerType* SrcPtrTy = cast<PointerType>(TheVal->getType());
     PointerType* DstPtrTy = cast<PointerType>(I.getType());
 
-    BuilderType::InsertPointGuard Guard(*IRB);
-    IRB->SetInsertPoint(&(*std::next(BasicBlock::iterator(&I))));
+    BuilderType::InsertPointGuard Guard(IRB);
+    IRB.SetInsertPoint(I.getNextNode());
     // Push `getelementptr` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
     Type* DstTy = DstPtrTy->getElementType();
@@ -435,7 +436,7 @@ bool GASPropagator::visitGetElementPtrInst(GetElementPtrInst& I) {
         PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     TheUse->set(TheVal);
     I.mutateType(TransPtrTy);
-    Value* NewPtr = IRB->CreateAddrSpaceCast(&I, DstPtrTy);
+    Value* NewPtr = IRB.CreateAddrSpaceCast(&I, DstPtrTy);
     for (auto UI = I.use_begin(), UE = I.use_end(); UI != UE; /*EMPTY*/) {
         Use& U = *UI++;
         if (U.getUser() == NewPtr)
@@ -463,10 +464,10 @@ bool GASPropagator::visitPHINode(PHINode& PN) {
             }
             Instruction* I = cast<Instruction>(V);
             // For value generated inside loop, cast them to non-GAS pointers.
-            BuilderType::InsertPointGuard Guard(*IRB);
-            IRB->SetInsertPoint(&(*std::next(BasicBlock::iterator(I))));
+            BuilderType::InsertPointGuard Guard(IRB);
+            IRB.SetInsertPoint(I->getNextNode());
 
-            NewIncomingValues[i] = IRB->CreateAddrSpaceCast(I, NonGASTy);
+            NewIncomingValues[i] = IRB.CreateAddrSpaceCast(I, NonGASTy);
         }
     }
     else {
@@ -501,9 +502,9 @@ bool GASPropagator::visitPHINode(PHINode& PN) {
     NewPN->takeName(&PN);
     NewPN->setDebugLoc(PN.getDebugLoc());
 
-    BuilderType::InsertPointGuard Guard(*IRB);
-    IRB->SetInsertPoint(PN.getParent()->getFirstNonPHI());
-    Value* NewPtr = IRB->CreateAddrSpaceCast(NewPN, GASTy);
+    BuilderType::InsertPointGuard Guard(IRB);
+    IRB.SetInsertPoint(PN.getParent()->getFirstNonPHI());
+    Value* NewPtr = IRB.CreateAddrSpaceCast(NewPN, GASTy);
     PN.replaceAllUsesWith(NewPtr);
     PN.eraseFromParent();
     return true;
@@ -547,8 +548,8 @@ bool GASPropagator::visitSelect(SelectInst& I) {
     TheOtherUse->set(TheOtherVal);
 
     // Handle select return type
-    BuilderType::InsertPointGuard Guard(*IRB);
-    IRB->SetInsertPoint(&(*std::next(BasicBlock::iterator(&I))));
+    BuilderType::InsertPointGuard Guard(IRB);
+    IRB.SetInsertPoint(I.getNextNode());
 
     PointerType* DstPtrTy = cast<PointerType>(I.getType());
     PointerType* NonGASPtrTy = dyn_cast<PointerType>(NonGASTy);
@@ -557,7 +558,7 @@ bool GASPropagator::visitSelect(SelectInst& I) {
     // followed by a new 'addrspacecast' to GAS
     PointerType* TransPtrTy = PointerType::get(DstPtrTy->getElementType(), NonGASPtrTy->getAddressSpace());
     I.mutateType(TransPtrTy);
-    Value* NewPtr = IRB->CreateAddrSpaceCast(&I, DstPtrTy);
+    Value* NewPtr = IRB.CreateAddrSpaceCast(&I, DstPtrTy);
 
     for (auto UI = I.use_begin(), UE = I.use_end(); UI != UE;) {
         Use& U = *UI++;
@@ -701,9 +702,9 @@ bool GASPropagator::visitCallInst(CallInst& I) {
         Type* DstTy = I.getType();
         Value* NewPtr = Constant::getNullValue(DstTy);
         if (SrcPtrTy->getAddressSpace() == ADDRESS_SPACE_LOCAL) {
-            BuilderType::InsertPointGuard Guard(*IRB);
-            IRB->SetInsertPoint(&I);
-            NewPtr = IRB->CreateBitCast(TheVal, DstTy);
+            BuilderType::InsertPointGuard Guard(IRB);
+            IRB.SetInsertPoint(&I);
+            NewPtr = IRB.CreateBitCast(TheVal, DstTy);
         }
         I.replaceAllUsesWith(NewPtr);
         I.eraseFromParent();
@@ -715,9 +716,9 @@ bool GASPropagator::visitCallInst(CallInst& I) {
         Type* DstTy = I.getType();
         Value* NewPtr = Constant::getNullValue(DstTy);
         if (SrcPtrTy->getAddressSpace() == ADDRESS_SPACE_PRIVATE) {
-            BuilderType::InsertPointGuard Guard(*IRB);
-            IRB->SetInsertPoint(&I);
-            NewPtr = IRB->CreateBitCast(TheVal, DstTy);
+            BuilderType::InsertPointGuard Guard(IRB);
+            IRB.SetInsertPoint(&I);
+            NewPtr = IRB.CreateBitCast(TheVal, DstTy);
         }
         I.replaceAllUsesWith(NewPtr);
         I.eraseFromParent();
@@ -951,9 +952,8 @@ bool GASRetValuePropagator::runOnModule(Module& M) {
 
     for (auto* F : candidates)
     {
-        BuilderType TheBuilder(F->getContext());
         LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>(*F).getLoopInfo();
-        GASPropagator ThePropagator(&TheBuilder, &LI);
+        GASPropagator ThePropagator(F->getContext(), &LI);
         m_Propagator = &ThePropagator;
 
         if (propagateReturnValue(F))
@@ -1597,7 +1597,6 @@ std::optional<unsigned> LowerGPCallArg::getOriginAddressSpace(Function* func, un
 // Loops over the argument list transferring uses from old function to new one.
 void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc)
 {
-    BuilderType TheBuilder(newFunc->getEntryBlock().getFirstNonPHI());
     for (auto ArgPair : llvm::zip(oldFunc->args(), newFunc->args()))
     {
         Value* oldArg = &std::get<0>(ArgPair);
@@ -1611,11 +1610,12 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc)
             continue;
         }
 
-        auto* NewArgToGeneric = TheBuilder.CreateAddrSpaceCast(newArg, oldArg->getType(), "");
+        auto* NewArgToGeneric = CastInst::Create(
+            Instruction::AddrSpaceCast, newArg, oldArg->getType(), "", newFunc->getEntryBlock().getFirstNonPHI());
         oldArg->replaceAllUsesWith(NewArgToGeneric);
 
         LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>(*newFunc).getLoopInfo();
-        GASPropagator Propagator(&TheBuilder, &LI);
+        GASPropagator Propagator(newFunc->getContext(), &LI);
         Propagator.propagate(newArg);
     }
 }
