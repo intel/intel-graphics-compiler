@@ -3832,6 +3832,9 @@ namespace IGC
             asmName = "kernel.asm";
         }
         V(vPayloadSection->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
+        // Set Target to VISA_3D (1) for scalar IGC.
+        const uint8_t visaTarget = VISATarget::VISA_3D;
+        V(vKernel->AddKernelAttribute("Target", sizeof(visaTarget), &visaTarget));
 
         VISA_LabelOpnd* functionLabel = nullptr;
         V(vPayloadSection->CreateVISALabelVar(functionLabel, "payload", LABEL_SUBROUTINE));
@@ -5161,6 +5164,9 @@ namespace IGC
         V(vbuilder->AddKernel(vKernel, kernelName.c_str()));
         V(vbuilder->SetPrevKernel(prevKernel));
         V(vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str()));
+        // Set Target to VISA_3D for scalar IGC.
+        const uint8_t visaTarget = VISATarget::VISA_3D;
+        V(vKernel->AddKernelAttribute("Target", sizeof(visaTarget), &visaTarget));
 
         SetDispatchSimdSize();
         SetSpillMemOffset();

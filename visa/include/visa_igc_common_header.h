@@ -17,6 +17,13 @@ typedef enum
     vISA_ASM_READER     // mode for visa text input
 } vISABuilderMode;
 
+// Target should be specified as follows
+// - Kernel target attribute in VISA binarary or visaasm
+typedef enum {
+    VISA_CM = 0,
+    VISA_3D = 1
+} VISATarget;
+
 typedef enum
 {
     PREDEFINED_NULL             = 0,
