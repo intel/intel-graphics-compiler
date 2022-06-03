@@ -106,5 +106,6 @@ make -j`nproc`
 echo "[Build Status] make DONE"
 cpack
 mkdir DEB-FILES && mv ./*.deb ./DEB-FILES
+mkdir DEB-FILES/dbgsym && mv ./*.ddeb ./DEB-FILES/dbgsym
 echo "[Build Status] cpack DONE"
 echo "====================BUILD IGC========================="
