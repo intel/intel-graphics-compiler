@@ -139,6 +139,36 @@ void ShaderStats::printSumShaderStats()
             fprintf(fileName_sqm,"total SIMD32 spill count = %d\n", m_CompileShaderStats[STATS_ISA_SPILL32]);
             printf("total SIMD32 spill count = %d\n", m_CompileShaderStats[STATS_ISA_SPILL32]);
         }
+        if (m_CompileShaderStats[STATS_ISA_CYCLE_ESTIMATE8] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD8 cycle estimate = %d\n", m_CompileShaderStats[STATS_ISA_CYCLE_ESTIMATE8]);
+            printf("total SIMD8 cycle estimate = %d\n", m_CompileShaderStats[STATS_ISA_CYCLE_ESTIMATE8]);
+        }
+        if (m_CompileShaderStats[STATS_ISA_CYCLE_ESTIMATE16] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD16 cycle estimate = %d\n", m_CompileShaderStats[STATS_ISA_CYCLE_ESTIMATE16]);
+            printf("total SIMD16 cycle estimate = %d\n", m_CompileShaderStats[STATS_ISA_CYCLE_ESTIMATE16]);
+        }
+        if (m_CompileShaderStats[STATS_ISA_CYCLE_ESTIMATE32] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD32 cycle estimate = %d\n", m_CompileShaderStats[STATS_ISA_CYCLE_ESTIMATE32]);
+            printf("total SIMD32 cycle estimate = %d\n", m_CompileShaderStats[STATS_ISA_CYCLE_ESTIMATE32]);
+        }
+        if (m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE8] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD8 stall estimate = %d\n", m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE8]);
+            printf("total SIMD8 stall estimate = %d\n", m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE8]);
+        }
+        if (m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE16] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD16 stall estimate = %d\n", m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE16]);
+            printf("total SIMD16 stall estimate = %d\n", m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE16]);
+        }
+        if (m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE32] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD32 stall estimate = %d\n", m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE32]);
+            printf("total SIMD32 stall estimate = %d\n", m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE32]);
+        }
         fprintf(fileName_sqm, "total SIMD8  shaders = %d\n", m_TotalSimd8);
         fprintf(fileName_sqm, "total SIMD16 shaders = %d\n", m_TotalSimd16);
         fprintf(fileName_sqm, "total SIMD32 shaders = %d\n", m_TotalSimd32);

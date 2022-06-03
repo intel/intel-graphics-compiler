@@ -348,6 +348,8 @@ public:
     bool isMessageTargetDataCacheDataPort;
     uint m_sendStallCycle;
     uint m_staticCycle;
+    uint m_loopNestedStallCycle;
+    uint m_loopNestedCycle;
     unsigned m_spillSize = 0;
     float m_spillCost = 0;          // num weighted spill inst / total inst
 

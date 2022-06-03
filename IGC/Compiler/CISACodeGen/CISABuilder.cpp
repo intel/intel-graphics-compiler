@@ -6112,18 +6112,23 @@ namespace IGC
             SimdSize32++;
         }
 
-        if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+        uint sendStallCycle = 0;
+        uint staticCycle = 0;
+        uint loopNestedStallCycle = 0;
+        uint loopNestedCycle = 0;
+        for (uint i = 0; i < jitInfo->BBNum; i++)
         {
-            uint sendStallCycle = 0;
-            uint staticCycle = 0;
-            for (uint i = 0; i < jitInfo->BBNum; i++)
-            {
-                sendStallCycle += jitInfo->BBInfo[i].sendStallCycle;
-                staticCycle += jitInfo->BBInfo[i].staticCycle;
-            }
-            m_program->m_sendStallCycle = sendStallCycle;
-            m_program->m_staticCycle = staticCycle;
+            sendStallCycle += jitInfo->BBInfo[i].sendStallCycle;
+            staticCycle += jitInfo->BBInfo[i].staticCycle;
+            // expects that a loop runs 16 iterations
+            auto nestingfactor = (jitInfo->BBInfo[i].loopNestLevel * 4);
+            loopNestedStallCycle += (jitInfo->BBInfo[i].sendStallCycle << nestingfactor);
+            loopNestedCycle += (jitInfo->BBInfo[i].staticCycle << nestingfactor);
         }
+        m_program->m_sendStallCycle = sendStallCycle;
+        m_program->m_staticCycle = staticCycle;
+        m_program->m_loopNestedStallCycle = loopNestedStallCycle;
+        m_program->m_loopNestedCycle = loopNestedCycle;
 
         if ((jitInfo->isSpill && (AvoidRetryOnSmallSpill() || jitInfo->avoidRetry)) ||
             (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram()))
@@ -6137,16 +6142,22 @@ namespace IGC
         {
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT, jitInfo->numAsmCount);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL8, (int)jitInfo->isSpill);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE8, (int)m_program->m_loopNestedCycle);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE8, (int)m_program->m_loopNestedStallCycle);
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
         {
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT_SIMD16, jitInfo->numAsmCount);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL16, (int)jitInfo->isSpill);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE16, (int)m_program->m_loopNestedCycle);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE16, (int)m_program->m_loopNestedStallCycle);
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
         {
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT_SIMD32, jitInfo->numAsmCount);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL32, (int)jitInfo->isSpill);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE32, (int)m_program->m_loopNestedCycle);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE32, (int)m_program->m_loopNestedStallCycle);
         }
 #endif
         void* genxbin = nullptr;
