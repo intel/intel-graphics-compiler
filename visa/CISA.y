@@ -2128,8 +2128,8 @@ BranchInstruction: Predicate BRANCH_OP ExecSize IdentOrStringLit
         $1, $3.emask, $3.exec_size,
         $4.cisa_gen_opnd, (unsigned)$5, (unsigned)$6, CISAlineno);
     }
-    // 1       2          3
-    | FADDR  IDENT VecDstOperand_G_I
+    // 1      2                3
+    | FADDR  IdentOrStringLit VecDstOperand_G_I
     {
         pBuilder->CISA_create_faddr_instruction($2, $3.cisa_gen_opnd, CISAlineno);
     }

@@ -384,6 +384,19 @@ static void encodeStringLiteral(std::stringstream &ss, const char *str) {
   ss << '"';
 }
 
+// Return true if str matches IDENT: [[:alpha:]_][[:alnum:]_]*
+static bool isIdentifier(const char *str) {
+  if (str == nullptr || *str == '\0')
+      return false;
+  if (!std::isalpha((unsigned char)str[0]) && str[0] != '_')
+      return false;
+  for (size_t i = 1; str[i] != '\0'; i++) {
+      if (!std::isalnum((unsigned char)str[i]) && str[i] != '_')
+          return false;
+  }
+  return true;
+}
+
 std::string printAttributes(
     const print_format_provider_t* header,
     const int attr_count,
@@ -1053,7 +1066,12 @@ static std::string printInstructionControlFlow(
             case ISA_FADDR:
             {
                 /// symbol name in string
-                sstr << header->getString(getPrimitiveOperand<uint16_t>(inst, i++));
+                const char* sym = header->getString(getPrimitiveOperand<uint16_t>(inst, i++));
+                if (isIdentifier(sym)) {
+                    sstr << sym;
+                } else {
+                    encodeStringLiteral(sstr, sym);
+                }
                 /// dst
                 sstr << printOperand(header, inst, i++, opt);
                 break;
