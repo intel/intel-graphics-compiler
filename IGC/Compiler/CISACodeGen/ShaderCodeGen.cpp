@@ -2111,7 +2111,8 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         bool disableGOPT = ( (IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) ||
                                IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
-                             (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_GOPT));
+                             ((IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_GOPT) ||
+                               pContext->getModuleMetaData()->compOpt.DisableFastestGopt));
 
         if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
         {

@@ -411,6 +411,8 @@ namespace IGC
 
         bool DisableIncSpillCostAllAddrTaken            = false;
         bool DisableCPSOmaskWA                          = false;
+
+        bool DisableFastestGopt                         = false;
         bool WaForceHalfPromotion                       = false;
     };
 
