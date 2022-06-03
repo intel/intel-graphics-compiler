@@ -34,12 +34,22 @@ SPDX-License-Identifier: MIT
 
 namespace IGCMetrics
 {
-    const char* const funcTrackValue = "llvm.igc.metric.trackValue";
+    const char* const funcTrackValue        = "llvm.igc.metric.trackValue";
+
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+    struct VarData
+    {
+        IGC_METRICS::VarInfo* var_m;
+        llvm::CallInst* varTracker;
+        llvm::MetadataAsValue* varDILocalVariable;
+    };
+#endif
 
     class IGCMetricImpl
     {
     private:
         friend class CollectDataMetrics;
+        friend class CollectSpillFills;
 
         bool isEnabled;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
@@ -50,7 +60,7 @@ namespace IGCMetrics
 
         // Helpers
         // Map user-variables
-        std::map<llvm::MetadataAsValue*, IGC_METRICS::VarInfo*> map_Var;
+        std::map<llvm::MetadataAsValue*, struct VarData> map_Var;
         // Map Function debuginfo to Function metrics
         std::map<llvm::DISubprogram*, IGC_METRICS::Function*> map_Func;
         // helpers for emulated calls
@@ -60,11 +70,15 @@ namespace IGCMetrics
         // Current count of instruction in function
         int countInstInFunc;
 
+        uint fillInstrKindID = 0;
+        uint spillInstrKindID = 0;
+
         int CountInstInFunc(llvm::Function* pFunc);
 
         void GetFunctionData(IGC_METRICS::Function* func_m, llvm::Function& func);
         void UpdateFunctionArgumentsList();
 
+        inline struct VarData* GetVarData(llvm::Value* pValue);
         inline IGC_METRICS::VarInfo* GetVarMetric(llvm::Value* pValue);
         inline IGC_METRICS::VarInfo* AddVarMetric(llvm::DbgVariableIntrinsic* pInstr);
 
@@ -78,6 +92,7 @@ namespace IGCMetrics
 
         void UpdateLoopsInfo();
         void UpdateModelCost();
+        void UpdateMem2RegStats(IGC::VISAModule* CurrentVISA);
         void CollectLoop(llvm::Loop* loop);
 
         inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DILexicalBlock* Loc);
@@ -89,6 +104,8 @@ namespace IGCMetrics
         static inline const std::string GetFullPath(const char* dir, const char* fileName);
         static inline const std::string GetFullPath(const std::string& dir, const std::string& fileName);
 
+        inline llvm::CallInst* makeTrackCall(const char* const trackCall, ArrayRef<Value*> Args, llvm::Instruction* insertAfter);
+        static inline llvm::MetadataAsValue* makeMDasVal(llvm::Value* Value);
 #endif
     public:
         IGCMetricImpl();
@@ -113,6 +130,7 @@ namespace IGCMetrics
 
         void CollectRegStats(KERNEL_INFO* vISAstats, llvm::Function* pFunc);
 
+        void UpdateVariable(llvm::Value* Org, llvm::Value* New);
         void CollectMem2Reg(llvm::AllocaInst* pAllocaInst, IGC::StatusPrivArr2Reg status);
 
         void CollectLoopCyclomaticComplexity(

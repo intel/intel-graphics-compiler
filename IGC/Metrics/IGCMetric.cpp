@@ -86,6 +86,11 @@ namespace IGCMetrics
         get(igcMetric)->CollectLoops(loopInfo);
     }
 
+    void IGCMetric::UpdateVariable(llvm::Value* Org, llvm::Value* New)
+    {
+        get(igcMetric)->UpdateVariable(Org, New);
+    }
+
     void IGCMetric::CollectMem2Reg(llvm::AllocaInst* pAllocaInst, IGC::StatusPrivArr2Reg status)
     {
         get(igcMetric)->CollectMem2Reg(pAllocaInst, status);

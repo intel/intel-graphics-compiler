@@ -11,39 +11,37 @@ SPDX-License-Identifier: MIT
 
 
 #include <string>
-#include <map>
+#include <vector>
 
-class VarInfo
+struct SpillFillInfo
 {
-public:
-    enum AddressModel {
-        GLOBAL = 0,
-        LOCAL = 1
-    };
+    int countBytesSpilled = 0;
 
-    enum MemAccess {
-        NONE = 0,
-        BLOCKED = 1,
-        STATEFUL = 2,
-        STATELESS = 3,
-        ATOMIC = 4
-    };
+    // This array will contain the nb order for each
+    // spill send instr in the shader
+    std::vector<int> spillInstrOrder;
+    // This array will contain the nb order for each
+    // fill send instr in the shader
+    std::vector<int> fillInstrOrder;
 
-    int lineNb;
-    const char* srcFilename;
-    int size;
-    short type;
-    AddressModel addrModel;
-    MemAccess memoryAccess;
-    bool isSpill;
-    bool isUniform;
-    bool isConst;
-    bool promoted2GRF;
+    // List of virtual variables associated with spill/fills
+    std::vector<const char*> virtualVars;
 
-    // BankConflictInfo
-    int bc_count;
-    int bc_sameBank;
-    int bc_twoSrc;
+    ~SpillFillInfo()
+    {
+        spillInstrOrder.clear();
+        fillInstrOrder.clear();
+        virtualVars.clear();
+    }
+
+    void AddVirtualVar(const char* const pName)
+    {
+        if (std::find(virtualVars.begin(), virtualVars.end(), pName) ==
+            virtualVars.end())
+        {
+            virtualVars.push_back(pName);
+        }
+    }
 };
 
 struct LSCSendStats {
@@ -120,7 +118,7 @@ struct HDCSendStats {
 class KERNEL_INFO
 {
 public:
-    std::map<int, VarInfo*> variables;
+    struct SpillFillInfo spillFills;
 
     int numReg;
     int numTmpReg;
@@ -162,13 +160,7 @@ public:
         countSIMD32 = 0;
     }
     ~KERNEL_INFO()
-    {
-        for (auto i = variables.begin(); i != variables.end(); ++i)
-        {
-            delete i->second;
-        }
-        variables.clear();
-    }
+    {    }
 };
 
 #endif

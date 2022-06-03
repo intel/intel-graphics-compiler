@@ -1,0 +1,28 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2022 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+syntax = "proto3";
+
+package IGC_METRICS;
+
+message SpillFillStats {
+
+  int32 countSpillInstr = 1;
+  int32 countFillInstr = 2;
+  int32 countBytesSpilled = 3;
+
+  // This array will contain the vISA-ID for each
+  // spill send instr in the shader
+  repeated int32 spillInstrVISAID = 4;
+  // This array will contain the vISA-ID for each
+  // fill send instr in the shader
+  repeated int32 fillInstrVISAID = 5;
+
+  // List of virtual variables associated with spill/fills
+  repeated string virtualVars = 6;
+}

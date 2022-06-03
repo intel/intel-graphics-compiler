@@ -509,7 +509,6 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
         for (auto decl : kernel->Declares)
         {
             auto regVar = decl->getRegVar();
-            kernel->emitRegInfo();
             if (regVar != nullptr)
             {
                 if (regVar->isRegVar())
@@ -703,15 +702,21 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
                         #undef COUNT_LSC_SEND
                     }
                 }
-                /* TODO
+
                 if (instr->isSpillIntrinsic())
                 {
+                    auto payload = instr->getSrc(1)->asSrcRegRegion();
+                    auto dcl = payload->getTopDcl();
+                    m_kernelInfo->spillFills.countBytesSpilled += dcl->getByteSize();
+
+                    m_kernelInfo->spillFills.AddVirtualVar(dcl->getName());
+                    m_kernelInfo->spillFills.spillInstrOrder.push_back(instr->getCISAOff());
 
                 }
                 else if (instr->isFillIntrinsic())
                 {
-
-                }*/
+                    m_kernelInfo->spillFills.spillInstrOrder.push_back(instr->getCISAOff());
+                }
             }
         }
     }

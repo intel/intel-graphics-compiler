@@ -55,6 +55,7 @@ namespace IGCMetrics
 
         void CollectRegStats(KERNEL_INFO* vISAstats, llvm::Function* pFunc);
 
+        void UpdateVariable(llvm::Value* Org, llvm::Value* New);
         void CollectMem2Reg(llvm::AllocaInst* pAllocaInst, IGC::StatusPrivArr2Reg status);
 
         void CollectLoopCyclomaticComplexity(

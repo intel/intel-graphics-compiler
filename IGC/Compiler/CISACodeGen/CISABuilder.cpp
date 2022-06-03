@@ -4174,12 +4174,12 @@ namespace IGC
         if (context->m_instrTypes.hasDebugInfo)
         {
             SaveOption(vISA_GenerateDebugInfo, true);
+        }
 
-            if (context->metrics.Enable())
-            {
-                SaveOption(vISA_GenerateKernelInfo, true);
-                SaveOption(vISA_EmitLocation, true);
-            }
+        if (context->metrics.Enable())
+        {
+            SaveOption(vISA_GenerateKernelInfo, true);
+            SaveOption(vISA_EmitLocation, true);
         }
 
         if (canAbortOnSpill)

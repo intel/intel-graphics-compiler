@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -19,6 +19,7 @@ import "Metrics/proto_schema/code_reference.proto";
 import "Metrics/proto_schema/local_reg_stats.proto";
 import "Metrics/proto_schema/cfg_stats.proto";
 import "Metrics/proto_schema/cost_model_stats.proto";
+import "Metrics/proto_schema/spillFill_stats.proto";
 
 package IGC_METRICS;
 
@@ -54,4 +55,6 @@ message Function
   CFGStats cfg_stats = 12;
 
   CostModelStats costModel_stats = 13;
+
+  SpillFillStats spillFill_stats = 14;
 }
