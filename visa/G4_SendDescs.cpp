@@ -116,10 +116,10 @@ uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
     // source -- https://gfxspecs.intel.com/Predator/Home/Index/71890
     switch(m) {
         case MsgOp::LOAD: return 0;
-        case MsgOp::LOAD_STRIDED: return 2;
+        case MsgOp::LOAD_QUAD: return 2;
         case MsgOp::LOAD_BLOCK2D: return 3;
         case MsgOp::STORE: return 4;
-        case MsgOp::STORE_STRIDED: return 6;
+        case MsgOp::STORE_QUAD: return 6;
         case MsgOp::STORE_BLOCK2D: return 7;
         case MsgOp::ATOMIC_IINC: return 8;
         case MsgOp::ATOMIC_IDEC: return 9;
@@ -183,6 +183,19 @@ uint32_t vISA::GetDataSizeEncoding(DataSize ds) {
         case DataSize::D8U32: return 4;
         case DataSize::D16U32: return 5;
         default: MUST_BE_TRUE(false, "invalid data size");
+    }
+    return 0;
+}
+
+size_t vISA::GetDataSizeInBytes(DataSize ds) {
+    switch(ds) {
+    case DataSize::D8: return 1;
+    case DataSize::D16: return 2;
+    case DataSize::D32: return 4;
+    case DataSize::D64: return 8;
+    case DataSize::D8U32: return 4;
+    case DataSize::D16U32: return 4;
+    default: MUST_BE_TRUE(false, "invalid encoding");
     }
     return 0;
 }
@@ -258,6 +271,32 @@ uint32_t vISA::GetVecElemsEncoding(VecElems ve) {
     default: MUST_BE_TRUE(false, "invalid vector elements");
     }
     return 0;
+}
+
+size_t vISA::GetNumVecElems(VecElems ve) {
+    switch(ve) {
+    case VecElems::V1: return 1;
+    case VecElems::V2: return 2;
+    case VecElems::V3: return 3;
+    case VecElems::V4: return 4;
+    case VecElems::V8: return 8;
+    case VecElems::V16: return 16;
+    case VecElems::V32: return 32;
+    case VecElems::V64: return 64;
+    default: MUST_BE_TRUE(false, "invalid encoding");
+    }
+    return 0;
+}
+
+// data chmask
+size_t vISA::GetNumVecElemsQuad(int chMask) {
+    size_t vecElems = 0;
+    if (chMask & DataChMask::X) vecElems++;
+    if (chMask & DataChMask::Y) vecElems++;
+    if (chMask & DataChMask::Z) vecElems++;
+    if (chMask & DataChMask::W) vecElems++;
+
+    return vecElems;
 }
 
 // Addr size type

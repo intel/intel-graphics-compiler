@@ -181,8 +181,6 @@ int IR_Builder::translateLscUntypedInst(
     default: check(false,"invalid SFID for untyped LSC message");
     }
 
-    G4_SendDesc* msgDesc = nullptr;
-
     const auto opInfo = LscOpInfoGet(op);
     MUST_BE_TRUE(!opInfo.isBlock2D(),
         "use translateLscUntypedBlock2DInst for lsc_*_block2d");
@@ -460,7 +458,7 @@ int IR_Builder::translateLscUntypedInst(
     desc |= dstLen << 20;   // Desc[24:20]  dst len
     desc |= addrRegs << 25; // Desc[29:25]  src0 len
 
-    msgDesc = createLscDesc(
+    G4_SendDescRaw* msgDesc = createLscDesc(
         sfid,
         desc,
         exDesc,
@@ -474,7 +472,7 @@ int IR_Builder::translateLscUntypedInst(
         src0Addr,
         src1Data,
         execSize,
-        (G4_SendDescRaw*)msgDesc,
+        msgDesc,
         instOpt,
         addrInfo.type,
         true);
@@ -525,8 +523,6 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     default: check(false, "invalid SFID for untyped block2d LSC message");
     }
 
-    G4_SendDesc* msgDesc = nullptr;
-
 
     // send descriptor
     uint32_t desc = 0;
@@ -568,7 +564,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     desc |= dstLen << 20;   // Desc[24:20]  dst len
     desc |= addrRegs << 25; // Desc[28:25]  src0 len
 
-    msgDesc = createLscDesc(
+    G4_SendDescRaw* msgDesc = createLscDesc(
         sfid,
         desc,
         exDesc,
@@ -583,7 +579,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
         src0Addr,
         src1Data,
         execSize,
-        (G4_SendDescRaw*)msgDesc,
+        msgDesc,
         instOpt,
         LSC_ADDR_TYPE_FLAT,
         true);
@@ -626,38 +622,11 @@ int IR_Builder::translateLscTypedInst(
     uint32_t desc = opInfo.encoding;
     uint32_t exDesc = 0;
 
-    surface = lscTryPromoteSurfaceImmToExDesc(surface, addrModel, exDesc);
-
-    int numChannels = 0;
-    if (opInfo.hasChMask()) {
-        if (shape.chmask & LSC_DATA_CHMASK_X) {
-            desc |= 1 << 12;
-            numChannels++;
-        }
-        if (shape.chmask & LSC_DATA_CHMASK_Y) {
-            desc |= 1 << 13;
-            numChannels++;
-        }
-        if (shape.chmask & LSC_DATA_CHMASK_Z) {
-            desc |= 1 << 14;
-            numChannels++;
-        }
-        if (shape.chmask & LSC_DATA_CHMASK_W) {
-            desc |= 1 << 15;
-            numChannels++;
-        }
-        MUST_BE_TRUE(numChannels != 0, "empty channel mask");
-    } else {
-        // atomics are single channel
-        numChannels = 1;
-    }
-    int addrSizeBits = lscEncodeAddrSize(addrSize, desc, status);
-    int dataSizeBits = lscEncodeDataSize(shape.size, desc, status);
-    (void)addrSizeBits;
-    (void)dataSizeBits;
-
-    lscEncodeCachingOpts(opInfo, cacheOpts, desc, status); // Desc[19:17]
-    lscEncodeAddrType(addrModel, desc, status);
+    G4_SrcRegRegion *srcAddrs[2] { };
+    G4_SrcRegRegion *srcData = nullptr;
+    unsigned srcAddrRegs[2]{ };
+    unsigned srcDataRegs = 0;
+    uint32_t dstDataRegs = 0;
 
     auto checkPayloadSize =
         [&] (const char *which,
@@ -688,6 +657,7 @@ int IR_Builder::translateLscTypedInst(
             return;
         }
         const G4_Declare *decl = getDeclare(srcAddr);
+        uint32_t addrSizeBits = lscComputeAddrSize(addrSize, status);
         const int regsPerAddrChannel =
             std::max<int>(1,addrSizeBits*(int)execSize/8/BYTES_PER_GRF);
         checkPayloadSize(which, decl, regsPerAddrChannel);
@@ -697,11 +667,6 @@ int IR_Builder::translateLscTypedInst(
     checkAddrPayloadSize("src0AddrRs", src0AddrRs);
     checkAddrPayloadSize("src0AddrLODs", src0AddrLODs);
 
-    G4_SrcRegRegion *srcAddrs[2] { };
-    G4_SrcRegRegion *srcData = nullptr;
-    unsigned srcAddrRegs[2]{ };
-    unsigned srcDataRegs = 0;
-    uint32_t dstDataRegs = 0;
     if (opInfo.op == LSC_READ_STATE_INFO) {
         // like fences, send requires *something* (at least one reg) to be
         // sent out; we pick the initial r0 value since it's known to
@@ -737,6 +702,45 @@ int IR_Builder::translateLscTypedInst(
         MUST_BE_TRUE(srcAddrRegs[0] < 32, "too many address registers");
 
         // each channel consumes at least one register (top padding may be 0)
+        srcData = coalescePayload(
+            BYTES_PER_GRF, BYTES_PER_GRF, std::max(getNativeExecSize(), execSize),
+            execSize, {src1Data, src2Data}, emask);
+    }
+
+    surface = lscTryPromoteSurfaceImmToExDesc(surface, addrModel, exDesc);
+
+    int numChannels = 0;
+    if (opInfo.hasChMask()) {
+        if (shape.chmask & LSC_DATA_CHMASK_X) {
+            desc |= 1 << 12;
+            numChannels++;
+        }
+        if (shape.chmask & LSC_DATA_CHMASK_Y) {
+            desc |= 1 << 13;
+            numChannels++;
+        }
+        if (shape.chmask & LSC_DATA_CHMASK_Z) {
+            desc |= 1 << 14;
+            numChannels++;
+        }
+        if (shape.chmask & LSC_DATA_CHMASK_W) {
+            desc |= 1 << 15;
+            numChannels++;
+        }
+        MUST_BE_TRUE(numChannels != 0, "empty channel mask");
+    } else {
+        // atomics are single channel
+        numChannels = 1;
+    }
+    int addrSizeBits = lscEncodeAddrSize(addrSize, desc, status);
+    int dataSizeBits = lscEncodeDataSize(shape.size, desc, status);
+    (void)addrSizeBits;
+    (void)dataSizeBits;
+
+    lscEncodeCachingOpts(opInfo, cacheOpts, desc, status); // Desc[19:17]
+    lscEncodeAddrType(addrModel, desc, status);
+
+    if (opInfo.op != LSC_READ_STATE_INFO) {
         const int regsPerDataChannel =
             std::max<int>(1, dataSizeBits*(int)execSize/8/BYTES_PER_GRF);
         auto checkDataDeclSize =
@@ -751,8 +755,6 @@ int IR_Builder::translateLscTypedInst(
         checkDataDeclSize("src1Data", src1Data);
         checkDataDeclSize("src2Data", src2Data);
 
-        srcData = coalescePayload(
-            BYTES_PER_GRF, BYTES_PER_GRF, std::max(getNativeExecSize(), execSize), execSize, {src1Data, src2Data}, emask);
         srcDataRegs = 0;
         if (!srcData->isNullReg()) {
             const G4_Declare *srcDcl = getDeclare(srcData);
@@ -780,7 +782,7 @@ int IR_Builder::translateLscTypedInst(
         desc |= (dstDataRegs & 0x1F) << 20; // rlen == Desc[24:20]
     }
 
-    G4_SendDescRaw *msgDesc = createLscDesc(
+    G4_SendDescRaw* msgDesc = createLscDesc(
         SFID::TGM,
         desc,
         exDesc,
@@ -843,6 +845,35 @@ int IR_Builder::lscEncodeAddrSize(
     }
     desc |= addrSizeEnc << 7;  // Desc[8:7]
     return addrSizeBits;
+}
+
+uint32_t IR_Builder::lscComputeAddrSize(LSC_ADDR_SIZE addrSize, int &status) const
+{
+    int addrSizeBits = 32;
+    switch(addrSize) {
+    case LSC_ADDR_SIZE_16b: addrSizeBits = 16; break;
+    case LSC_ADDR_SIZE_32b: addrSizeBits = 32; break;
+    case LSC_ADDR_SIZE_64b: addrSizeBits = 64; break;
+    default: MUST_BE_TRUE(false, "invalid address size"); status = VISA_FAILURE;
+    }
+    return addrSizeBits;
+}
+
+uint32_t IR_Builder::lscComputeDataSize(
+        LSC_DATA_SIZE dataSize, int &status) const
+{
+    int dataSizeBits = 32;
+    switch(dataSize) {
+    case LSC_DATA_SIZE_8b: dataSizeBits = 8; break;
+    case LSC_DATA_SIZE_16b: dataSizeBits = 16; break;
+    case LSC_DATA_SIZE_32b: dataSizeBits = 32; break;
+    case LSC_DATA_SIZE_64b: dataSizeBits = 64; break;
+    case LSC_DATA_SIZE_8c32b: dataSizeBits = 32; break;
+    case LSC_DATA_SIZE_16c32b: dataSizeBits = 32; break;
+    case LSC_DATA_SIZE_16c32bH: dataSizeBits = 32; break;
+    default: MUST_BE_TRUE(false, "invalid data size"); status = VISA_FAILURE;
+    }
+    return dataSizeBits;
 }
 
 int IR_Builder::lscEncodeDataSize(

@@ -49,6 +49,13 @@ typedef struct FCCalls
     const char* calleeLabelString;
 } FCCalls;
 
+struct OperandLengths
+{
+    int dstLen;
+    int src0Len;
+    int src1Len;
+};
+
 enum DeclareType
 {
     Regular = 0,
@@ -1906,6 +1913,7 @@ public:
         G4_ExecSize batchExSize, bool splitSendEnabled,
         PayloadSource sources[], unsigned len);
 
+
     // Coalesce multiple payloads into a single region.  Pads each region with
     // an optional alignment argument (e.g. a GRF size).  The source region
     // sizes are determined by source dimension, so use an alias if you are
@@ -2460,7 +2468,9 @@ public:
 
     LSC_DATA_ELEMS lscGetElementNum(unsigned eNum) const;
     int  lscEncodeAddrSize(LSC_ADDR_SIZE addr_size, uint32_t &desc, int &status) const;
+    uint32_t lscComputeAddrSize(LSC_ADDR_SIZE addr_size, int &status) const;
     int  lscEncodeDataSize(LSC_DATA_SIZE data_size, uint32_t &desc, int &status) const;
+    uint32_t lscComputeDataSize(LSC_DATA_SIZE data_size, int &status) const;
     int  lscEncodeDataElems(LSC_DATA_ELEMS data_elems, uint32_t &desc, int &status) const;
     void lscEncodeDataOrder(LSC_DATA_ORDER t, uint32_t &desc, int &status) const;
     void lscEncodeCachingOpts(

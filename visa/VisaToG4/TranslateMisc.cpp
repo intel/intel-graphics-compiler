@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "BuildIR.h"
+#include <cmath>
 
 using namespace vISA;
 
@@ -180,6 +181,7 @@ static void Copy_Source_To_Payload(
         srcRegOff += numSrcRegs;
     }
 }
+
 
 void IR_Builder::preparePayload(
     G4_SrcRegRegion *msgs[2],

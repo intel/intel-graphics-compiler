@@ -55,7 +55,6 @@ public:
     void FixInst();
     void *EmitBinary(size_t& binarySize);
 
-
 private:
     BinaryEncodingIGA(const BinaryEncodingIGA& other);
     BinaryEncodingIGA& operator=(const BinaryEncodingIGA& other);
@@ -1035,7 +1034,6 @@ void BinaryEncodingIGA::Encode()
             kernel.getComputeFFIDGP1NextOff();
     }
 }
-
 
 Instruction *BinaryEncodingIGA::translateInstruction(
     G4_INST *g4inst, Block*& bbNew)

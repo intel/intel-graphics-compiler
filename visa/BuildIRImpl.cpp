@@ -747,6 +747,7 @@ void IR_Builder::createBuiltinDecls()
     builtinHWTID->setBuiltin();
 
 
+
     builtinT252 = createDeclareNoLookup(vISAPreDefSurf[PREDEFINED_SURFACE_T252].name, G4_GRF, 1, 1, Type_UD);
     builtinT252->setBuiltin();
     builtinBindlessSampler = createDeclareNoLookup("B_S", G4_GRF, 1, 1, Type_UD);

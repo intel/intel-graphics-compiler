@@ -8932,10 +8932,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 auto dstRead = builder.createDstRegRegion(sendDstDcl, 1);
                 auto src0Addr = builder.createSrcRegRegion(loadAddress, builder.getRegionStride1()); // address base
 
-                G4_SendDesc* desc = nullptr;
                 G4_InstSend* sendInst = nullptr;
                 {
-                desc = builder.createLscMsgDesc(
+                G4_SendDescRaw* desc = builder.createLscMsgDesc(
                     op,
                     lscSfid,
                     EXEC_SIZE_1,
@@ -8952,7 +8951,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     src0Addr,
                     nullptr,
                     g4::SIMD1,
-                    (G4_SendDescRaw*)desc,
+                    desc,
                     InstOpt_NoOpt,
                     ADDR_TYPE,
                     true);

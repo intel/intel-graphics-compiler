@@ -38,6 +38,8 @@ enum class MsgOp {
     LOAD_STRIDED, // same as load, but 1 address (obeys exec mask)
     LOAD_QUAD, // e.g. untyped load (loading XYZW)
     LOAD_BLOCK2D,
+    LOAD_STATUS,
+    LOAD_QUAD_STATUS,
     // store
     STORE_GROUP = MSGOP_BUFFER_STORE_GROUP + 1,
     STORE,
@@ -72,6 +74,7 @@ enum class MsgOp {
     ATOMIC_XOR,
     ATOMIC_OR,
     // others ...
+    READ_STATE_INFO
 };
 std::string ToSymbol(MsgOp);
 uint32_t GetMsgOpEncoding(MsgOp);
@@ -105,6 +108,7 @@ enum class DataSize {
 std::string ToSymbol(DataSize d);
 DataSize ConvertLSCDataSize(LSC_DATA_SIZE ds);
 uint32_t GetDataSizeEncoding(DataSize ds);
+size_t GetDataSizeInBytes(DataSize ds);
 
 // Data order
 enum class DataOrder {
@@ -133,6 +137,7 @@ enum class VecElems {
 std::string ToSymbol(VecElems ve);
 VecElems ConvertLSCDataElems(LSC_DATA_ELEMS de);
 uint32_t GetVecElemsEncoding(VecElems ve);
+size_t GetNumVecElems(VecElems ve);
 
 // data chmask
 enum DataChMask
@@ -143,6 +148,8 @@ enum DataChMask
     Z = 1 << 2,
     W = 1 << 3
 };
+
+size_t GetNumVecElemsQuad(int chMask);
 
 // address size type
 enum class AddrSizeType
