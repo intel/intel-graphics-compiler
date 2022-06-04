@@ -3235,6 +3235,9 @@ void FlowGraph::convertGotoToJmpi(G4_INST *gotoInst)
 */
 void FlowGraph::processGoto(bool HasSIMDCF)
 {
+    // For a given loop (StartBB, EndBB) (EndBB->StartBB is a backedge), this function
+    // return a BB in which an out-of-loop join will be inserted.
+    //
     // For all BBs in [StartBB, EndBB) (including StartBB, but not including EndBB) that
     // jump after EndBB (forward jump), return the earliest (closest to EndBB). If no such
     // BB, return nullptr.
@@ -3244,7 +3247,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
         const G4_BB* StartBB,
         const G4_BB* EndBB) -> G4_BB*
     {
-        // Existing active joins must be considered. For example,
+        // Existing active joins (passed in as "activeJoins") must be considered. For example,
         //    goto L0  (non-uniform)
         //    ...
         //  Loop:
@@ -3257,9 +3260,40 @@ void FlowGraph::processGoto(bool HasSIMDCF)
         //     ...
         //  L1:
         // Since 'goto L0' is non-uniform, 'goto L1' must be tranlated into goto and a join must
-        // be inserted at L1.  If goto L0 is not considered (no active join at L0) and 'goto L1' can
-        // be converted into jmpi (thus no join will be inserted at L1, which is wrong.
-        std::list<BlockSizePair> tmpActiveJoins(activeJoins);
+        // be inserted at L1.  This "goto L0" is outside of the loop (outside of [StartBB, EndBB)).
+        // If it is not considered, this function thinks there is no active joins at L0 and 'goto L1'
+        // would be converted into jmpi incorrectly.
+
+        // list of BB that will have a join at the begin of each BB.
+        // The list is in the order of the increasing BB id.
+        std::list<G4_BB*> tmpActiveJoins;
+        // initialize tmpActiveJoins with activeJoins
+        for (auto II = activeJoins.begin(), IE = activeJoins.end(); II != IE; ++II)
+        {
+            tmpActiveJoins.push_back(II->first);
+        }
+
+        auto orderedInsert = [](std::list<G4_BB*>& tmpActiveJoins, G4_BB* aBB)
+        {
+            auto II = tmpActiveJoins.begin(), IE = tmpActiveJoins.end();
+            for (; II != IE; ++II)
+            {
+                G4_BB* bb = *II;
+                if (bb->getId() == aBB->getId())
+                {
+                    break;
+                }
+                else if (bb->getId() > aBB->getId())
+                {
+                    tmpActiveJoins.insert(II, aBB);
+                    break;
+                }
+            }
+            if (II == IE)
+            {
+                tmpActiveJoins.push_back(aBB);
+            }
+        };
 
         const G4_BB* bb = StartBB;
         while (bb != EndBB)
@@ -3268,7 +3302,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
             if (!tmpActiveJoins.empty())
             {
                 // adjust active join lists if a join is reached.
-                if (bb == tmpActiveJoins.front().first)
+                if (bb == tmpActiveJoins.front())
                 {
                     tmpActiveJoins.pop_front();
                 }
@@ -3288,7 +3322,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
             G4_BB* targetBB = currBB->Succs.back();
             assert(lastInst->asCFInst()->getUip() == targetBB->getLabel());
             if (lastInst->asCFInst()->isUniform() &&
-                (tmpActiveJoins.empty() || tmpActiveJoins.front().first->getId() >= targetBB->getId()))
+                (tmpActiveJoins.empty() || tmpActiveJoins.front()->getId() >= targetBB->getId()))
             {
                 // Non-crossing uniform goto will be jmpi, and thus no join needed.
                 //
@@ -3305,12 +3339,11 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                 //  it must be translated to goto, not jmpi.  Thus, join is needed at L1.
                 continue;
             }
-            // Here, use SIMD1 as execsize does not matter here.
-            addBBToActiveJoinList(tmpActiveJoins, targetBB, g4::SIMD1);
+            orderedInsert(tmpActiveJoins, targetBB);
         }
 
         // Need to remove join at EndBB if present (looking for joins after EndBB)
-        if (!tmpActiveJoins.empty() && tmpActiveJoins.front().first == EndBB)
+        if (!tmpActiveJoins.empty() && tmpActiveJoins.front() == EndBB)
         {
             tmpActiveJoins.pop_front();
         }
@@ -3320,7 +3353,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
             // no new join
             return nullptr;
         }
-        return tmpActiveJoins.front().first;
+        return tmpActiveJoins.front();
     };
 
     // list of active blocks where a join needs to be inserted, sorted in lexical order
