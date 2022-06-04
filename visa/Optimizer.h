@@ -284,7 +284,10 @@ private:
     void doNoMaskWA_postRA();
     void newDoNoMaskWA_postRA();
     bool NoMaskWAUseRAList() const { return true; }
-    bool allPostRANoMaskWA() const { return builder.getuint32Option(vISA_newTmpNoMaskWA) >= 2; }
+    bool allPostRANoMaskWA() const {
+        return (builder.getuint32Option(vISA_newTmpNoMaskWA) >= 2 ||
+            kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM);
+    }
     void insertFenceAtEntry();
     void expandMulPostSchedule();
     void expandMadwPostSchedule();
