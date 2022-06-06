@@ -309,7 +309,7 @@ enum G4_InstOption
     InstOpt_Compacted   = 0x00002000,
     InstOpt_NoSrcDepSet = 0x00004000,
     InstOpt_NoPreempt   = 0x00008000,
-    InstOpt_Serialize   = 0x0001000,
+    InstOpt_Serialize   = 0x00010000,
 
     InstOpt_END         = 0xFFFFFFFF
 };
