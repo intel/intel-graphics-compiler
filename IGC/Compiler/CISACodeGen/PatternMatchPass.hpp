@@ -261,6 +261,7 @@ namespace IGC
         bool IsConstOrSimdConstExpr(llvm::Value* C);
         bool FlushesDenormsOnOutput(llvm::Instruction& I);
         bool FlushesDenormsOnInput(llvm::Instruction& I);
+        bool ContractionAllowed(llvm::Instruction& I) const;
 
         // Place a constant Val into the constant pool. This constant should be
         // available in basic block UseBlock.

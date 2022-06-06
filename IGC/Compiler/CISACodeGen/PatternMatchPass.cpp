@@ -310,6 +310,16 @@ namespace IGC
         return flushesDenorms;
     }
 
+    bool CodeGenPatternMatch::ContractionAllowed(llvm::Instruction& I) const
+    {
+        if (m_AllowContractions ||
+            (m_ctx->m_DriverInfo.RespectPerInstructionContractFlag() && I.hasAllowContract()))
+        {
+            return true;
+        }
+        return false;
+    }
+
     // this function need to be in sync with CShader::EvaluateSIMDConstExpr on what can be supported
     bool CodeGenPatternMatch::SIMDConstExpr(Instruction* C)
     {
@@ -2037,7 +2047,7 @@ namespace IGC
         e_modifier src_mod[2] = { e_modifier::EMOD_NONE, e_modifier::EMOD_NONE };
         e_modifier pred_mod = e_modifier::EMOD_NONE;
         bool invertPred = false;
-        if (m_AllowContractions == false || IGC_IS_FLAG_ENABLED(DisableMatchPredAdd))
+        if (!ContractionAllowed(I) || IGC_IS_FLAG_ENABLED(DisableMatchPredAdd))
         {
             return false;
         }
@@ -2061,7 +2071,7 @@ namespace IGC
             llvm::BinaryOperator* mul = llvm::dyn_cast<llvm::BinaryOperator>(src);
             if (mul && mul->getOpcode() == Instruction::FMul)
             {
-                if (!mul->hasOneUse())
+                if (!mul->hasOneUse() || !ContractionAllowed(*mul))
                 {
                     continue;
                 }
@@ -2822,7 +2832,7 @@ namespace IGC
         llvm::Value* sources[3];
         e_modifier   src_mod[3];
 
-        if (m_AllowContractions == false)
+        if (!ContractionAllowed(I))
         {
             return false;
         }
@@ -2839,12 +2849,14 @@ namespace IGC
         for (uint i = 0; i < 2; i++)
         {
             llvm::BinaryOperator* mul = llvm::dyn_cast<llvm::BinaryOperator>(I.getOperand(i));
-            if (mul && mul->getOpcode() == Instruction::FMul)
+            if (mul &&
+                mul->getOpcode() == Instruction::FMul &&
+                ContractionAllowed(*mul))
             {
                 for (uint j = 0; j < 2; j++)
                 {
                     llvm::BinaryOperator* sub = llvm::dyn_cast<llvm::BinaryOperator>(mul->getOperand(j));
-                    if (sub)
+                    if (sub && ContractionAllowed(*sub))
                     {
                         llvm::ConstantFP* zero = llvm::dyn_cast<llvm::ConstantFP>(sub->getOperand(0));
                         if (zero && zero->isExactlyValue(0.f))
@@ -2893,7 +2905,9 @@ namespace IGC
             mul[0] = llvm::dyn_cast<llvm::BinaryOperator>(I.getOperand(0));
             mul[1] = llvm::dyn_cast<llvm::BinaryOperator>(I.getOperand(1));
             if (mul[0] && mul[0]->getOpcode() == Instruction::FMul &&
+                ContractionAllowed(*mul[0]) &&
                 mul[1] && mul[1]->getOpcode() == Instruction::FMul &&
+                ContractionAllowed(*mul[1]) &&
                 !llvm::isa<llvm::ConstantFP>(mul[0]->getOperand(0)) &&
                 !llvm::isa<llvm::ConstantFP>(mul[0]->getOperand(1)) &&
                 !llvm::isa<llvm::ConstantFP>(mul[1]->getOperand(0)) &&
@@ -2904,7 +2918,9 @@ namespace IGC
                     for (uint j = 0; j < 2; j++)
                     {
                         llvm::BinaryOperator* sub = llvm::dyn_cast<llvm::BinaryOperator>(mul[i]->getOperand(j));
-                        if (sub && sub->getOpcode() == Instruction::FSub)
+                        if (sub &&
+                            sub->getOpcode() == Instruction::FSub &&
+                            ContractionAllowed(*sub))
                         {
                             llvm::ConstantFP* one = llvm::dyn_cast<llvm::ConstantFP>(sub->getOperand(0));
                             if (one && one->isExactlyValue(1.f))
@@ -2979,7 +2995,10 @@ namespace IGC
                             uint k = 2 - casei;
 
                             //op[i] and op[j] should be fMul, and op[k] is src2
-                            if (op[i]->getOpcode() == Instruction::FMul && op[j]->getOpcode() == Instruction::FMul)
+                            if (op[i]->getOpcode() == Instruction::FMul &&
+                                op[j]->getOpcode() == Instruction::FMul &&
+                                ContractionAllowed(*op[i]) &&
+                                ContractionAllowed(*op[j]))
                             {
                                 for (uint srci = 0; srci < 2; srci++)
                                 {
