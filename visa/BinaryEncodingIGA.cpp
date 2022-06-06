@@ -348,8 +348,6 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
         platform = Platform::XE_HPG;
         break;
     case Xe_PVC:
-        platform = Platform::XE_HPC;
-        break;
     case Xe_PVCXT:
         platform = Platform::XE_HPC;
         break;
