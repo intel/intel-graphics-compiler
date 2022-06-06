@@ -905,9 +905,9 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         }
     }
 
-    // Enabling half promotion AIL for compute shaders only at this point. 
+    // Enabling half promotion AIL for compute shaders only at this point.
     // If needed ctx.type check can be removed to apply for all shader types
-    if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) || 
+    if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) ||
         (ctx.getModuleMetaData()->compOpt.WaForceHalfPromotion && ctx.type == ShaderType::COMPUTE_SHADER) ||
         (!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion)))
     {
@@ -2112,6 +2112,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         bool disableGOPT = ( (IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) ||
                                IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
                              ((IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_GOPT) ||
+                               IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT ||
                                pContext->getModuleMetaData()->compOpt.DisableFastestGopt));
 
         if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
@@ -2334,6 +2335,15 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
         else
         {
+            if (pContext->m_instrTypes.hasMultipleBB)
+            {
+                assert(disableGOPT);
+                bool hasIndexTemp = (pContext->m_indexableTempSize[0] > 0);
+                if (hasIndexTemp)
+                {
+                    mpm.add(IGCLLVM::createLoopUnrollPass());
+                }
+            }
             if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt) && pContext->platform.enableImmConstantOpt())
             {
                 mpm.add(createIGCIndirectICBPropagaionPass());
