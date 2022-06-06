@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #if defined( _INTERNAL ) || defined( _DEBUG )
     #define GET_SHADER_STATS 1
     #define PRINT_PER_SHADER_STATS 1
-    #define PRINT_DETAIL_SHADER_STATS 0
     #define GET_MEM_STATS 1
 #endif
 
@@ -68,8 +67,6 @@ public:
     }
 
     void printShaderStats(ShaderHash hash, ShaderType shaderType, const std::string &postFix);
-    void printOpcodeStats(ShaderHash hash, ShaderType shaderType, const std::string &postFix);
-    void parseIsaShader(ShaderHash hash, ShaderType shaderType, SIMDMode simd);
     int  getShaderStats(SHADER_STATS_ITEMS compileInterval);
     void sumShaderStat(SHADER_STATS_ITEMS compileInterval, int count);
     void miscSumShaderStat(ShaderStats* sStats);
@@ -84,28 +81,14 @@ private:
     int m_TotalSimd32;
 };
 
-#if PRINT_DETAIL_SHADER_STATS
-#define COMPILER_SHADER_STATS_PRINT( shaderStats, shaderType, hash, postFix ) \
-    do \
-    { \
-        if( shaderStats ) \
-        { \
-            (shaderStats)->parseIsaShader( hash, shaderType, SIMDMode::SIMD8 ); \
-            if( shaderType == ShaderType::PIXEL_SHADER || shaderType == ShaderType::COMPUTE_SHADER ) \
-            { \
-                (shaderStats)->parseIsaShader( hash, shaderType, SIMDMode::SIMD16 ); \
-                (shaderStats)->parseIsaShader( hash, shaderType, SIMDMode::SIMD32 ); \
-            } \
-        } \
-    } while (0)
-#elif PRINT_PER_SHADER_STATS
+
+#if PRINT_PER_SHADER_STATS
 #define COMPILER_SHADER_STATS_PRINT( shaderStats, shaderType, hash, postFix) \
     do \
     { \
     if( shaderStats ) \
         { \
         (shaderStats)->printShaderStats( hash, shaderType, postFix ); \
-        (shaderStats)->printOpcodeStats( hash, shaderType, postFix ); \
         } \
     } while (0)
 #else
