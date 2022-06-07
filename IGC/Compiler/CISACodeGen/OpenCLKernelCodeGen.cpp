@@ -659,9 +659,8 @@ namespace IGC
                 zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
                     bti_idx, arg_idx);
             }
-            // FIXME: check if all reference are promoted, if it is, we can skip
-            // creating non-bti payload arg
-            /*
+
+            // check if all reference are promoted, if it is, we can skip creating stateless payload arg
             bool is_bti_only =
                 IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
                 IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
@@ -671,11 +670,18 @@ namespace IGC
                 (kernelArg->getArg()->use_empty() || !GetHasGlobalStatelessAccess())) ||
                     (kernelArg->getArgType() == KernelArg::ArgType::PTR_CONSTANT &&
                     (kernelArg->getArg()->use_empty() || !GetHasConstantStatelessAccess())));
-            // no need to add normal argument if all use are promoted
-            if (is_bti_only)
-                break;
-             */
 
+            if (is_bti_only) {
+                // create buffer_address for statefull only arg in case of address check is needed
+                // for example: something like "if(buffer != nullptr)" in the kernel.
+                // this address will be accessed as a value and cannot be de-referenced
+                zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::buffer_address,
+                    payloadPosition, kernelArg->getAllocateSize());
+                arg.arg_index = kernelArg->getAssociatedArgNo();
+                arg.offset = payloadPosition;
+                break;
+            }
             ResourceAllocMD& resAllocMD = GetContext()->getModuleMetaData()->FuncMD[entry].resAllocMD;
             IGC_ASSERT_MESSAGE(resAllocMD.argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
 
