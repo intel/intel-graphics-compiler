@@ -505,14 +505,15 @@ TraceRayInlineLoweringPass::emitSyncStackToShadowMemory(
 
     Value* doneDW = nullptr;
     Value* isValidBit = nullptr;
+    Value* NotDone = nullptr;
 
     {
         //Read done bit for return value
         doneDW = builder.getPotentialHitInfo(ShadowMemStackPointer, VALUE_NAME("DoneDW"));
         isValidBit = builder.getHitValid(HWStackPointer, CallableShaderTypeMD::ClosestHit);
-    }
 
-    Value* NotDone = builder.isDoneBitNotSet(doneDW);
+        NotDone = builder.isDoneBitNotSet(doneDW);
+    }
 
     //Need To store Hit Info for current RayQuery Object
     //CommittedHit
