@@ -414,6 +414,8 @@ namespace IGC
 
         bool DisableFastestGopt                         = false;
         bool WaForceHalfPromotion                       = false;
+
+        bool EnableUndefAlphaOutputAsRed                = true;
     };
 
     enum class ThreadIDLayout

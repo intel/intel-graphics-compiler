@@ -376,7 +376,7 @@ bool BlendToDiscard::blendToDiscardMRT(
         {
             // Discard: src.rgb == 0 and don't compute src.a
             cond = irb.CreateAllValuesAreZeroF(colors, nColors);
-            Value* nAlpha = IGC_IS_FLAG_ENABLED(EnableUndefAlphaOutputAsRed) ?
+            Value* nAlpha = m_cgCtx->getModuleMetaData()->compOpt.EnableUndefAlphaOutputAsRed ?
                 outInst[i]->getOperand(0) : f0;
 
             outInst[i]->setOperand(3, nAlpha);

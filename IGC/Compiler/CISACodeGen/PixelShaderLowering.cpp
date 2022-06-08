@@ -506,7 +506,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
                 if (isa<UndefValue>(pInst->getOperand(i)))
                 {
                     if (i == 3 &&
-                        IGC_IS_FLAG_ENABLED(EnableUndefAlphaOutputAsRed))
+                        m_cgCtx->getModuleMetaData()->compOpt.EnableUndefAlphaOutputAsRed)
                     {
                         // if it's alpha, then set default value to
                         // color.r, see IGC-959.
@@ -1274,7 +1274,7 @@ bool PixelShaderLowering::optBlendState(
         }
 
         // set output alpha as output.r, see IGC-959
-        if (IGC_IS_FLAG_ENABLED(EnableUndefAlphaOutputAsRed))
+        if (m_cgCtx->getModuleMetaData()->compOpt.EnableUndefAlphaOutputAsRed)
         {
             colorOut.color[3] = colorOut.color[0];
         }
