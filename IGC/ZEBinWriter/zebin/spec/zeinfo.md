@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.15
+Version 1.14
 
 ## Grammar
 
@@ -166,7 +166,6 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | enqueued_local_size | int32x3 | OpenCL specific feature. The size returned by OCL get_enqueued_local_size API  |
 | global_id_offset | int32x3 | |
 | private_base_stateless | int64 | The base address of private buffer specified at per_thread_memory_buffers |
-| buffer_address | | The address for buffer reference of stateful only memory access. |
 | buffer_offset | | The extra offset for buffer reference to satisfy the alignment requirement of stateful memory access. |
 | printf_buffer | | The address of printf_buffer which holds the printf strings information. |
 | implicit_arg_buffer | int64 | The base address of implicit arg buffer |
@@ -301,7 +300,6 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
-- **Version 1.15**: Add buffer_address to payload argument type.
 - **Version 1.14**: Add slm_alignment to payload argument.
 - **Version 1.13**: Add functions with the name and execution env.
 - **Version 1.12**: Add global_host_access_table to container.
