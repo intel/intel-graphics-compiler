@@ -1865,7 +1865,8 @@ int IR_Builder::translateVISASampler3DInst(
     bool simd16HFReturn = FP16Return && execSize == 16;
     if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi, needHeaderForChannels,
         isBindlessSampler(sampler),
-        simd16HFReturn))
+        simd16HFReturn) ||
+        samplerHeaderPreemptionWA())
     {
         useHeader = true;
         ++numRows;
@@ -2119,7 +2120,8 @@ int IR_Builder::translateVISAGather3dInst(
 
     if (needSamplerHeader(this, pixelNullMask, nonZeroAoffImmi, needHeaderForChannels,
         isBindlessSampler(sampler),
-        simd16HFReturn))
+        simd16HFReturn) ||
+        samplerHeaderPreemptionWA())
     {
         useHeader = true;
         ++numRows;

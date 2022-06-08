@@ -4631,6 +4631,10 @@ namespace IGC
         {
             SaveOption(vISA_forceSamplerHeader, true);
         }
+        if (IGC_IS_FLAG_ENABLED(samplerHeaderWA))
+        {
+            SaveOption(vISA_samplerHeaderWA, true);
+        }
         if (IGC_IS_FLAG_ENABLED(EnableIGAEncoder))
         {
             SaveOption(vISA_IGAEncoder, true);

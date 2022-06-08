@@ -111,6 +111,7 @@ DEF_VISA_OPTION(vISA_expandPlane,         ET_BOOL, "-expandPlane",        UNUSED
 DEF_VISA_OPTION(vISA_FImmToHFImm,         ET_BOOL, "-fiTohfi",    UNUSED, false)
 DEF_VISA_OPTION(vISA_cacheSamplerHeader,  ET_BOOL, "-noSamplerHeaderCache", UNUSED, true)
 DEF_VISA_OPTION(vISA_forceSamplerHeader,  ET_BOOL, "-forceSamplerHeader", UNUSED, false)
+DEF_VISA_OPTION(vISA_samplerHeaderWA,  ET_BOOL, "-samplerHeaderWA", UNUSED, false)
 DEF_VISA_OPTION(vISA_markSamplerMoves,    ET_BOOL, "-markSamplerMoves", UNUSED, false)
 DEF_VISA_OPTION(vISA_noncoherentStateless, ET_BOOL, "-ncstateless",       UNUSED, false)
 DEF_VISA_OPTION(vISA_enablePreemption,    ET_BOOL,  "-enablePreemption",  UNUSED, false)

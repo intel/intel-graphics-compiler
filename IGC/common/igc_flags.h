@@ -578,6 +578,7 @@ DECLARE_IGC_REGKEY(bool, LimitConstantBuffersPushed,    true, "Limit max number 
 DECLARE_IGC_REGKEY(DWORD, MaxPreRASchedulerRegPressureThreshold, 60,  "Max PreRA Scheduler Threshold", false)
 DECLARE_IGC_REGKEY(bool, EnablePreRASampleCluster,      false, "Enabling helps cluster sample instructions with identical texture index which are ready to be scheduled, to be scheduled together", false)
 DECLARE_IGC_REGKEY(bool, forceSamplerHeader,            false, "force sampler messages to use header", false)
+DECLARE_IGC_REGKEY(bool, samplerHeaderWA,            false, "enable sampler header to solve HW WA", false)
 DECLARE_IGC_REGKEY(bool, VFPackingDisablePartialElements, false, "disable packing for partial vertex element as it causes performance drops", false)
 DECLARE_IGC_REGKEY(bool, cl_khr_srgb_image_writes,      false, "Enable cl_khr_srgb_image_writes extension", false)
 DECLARE_IGC_REGKEY(bool, MSAA16BitPayloadEnable,        true,  "Enable support for MSAA 16 bit payload , a hardware DCN supporting this from ICL+ to improve perf on MSAA workloads", false)

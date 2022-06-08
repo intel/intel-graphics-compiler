@@ -34,6 +34,11 @@ SPDX-License-Identifier: MIT
             (getPlatform() < GENX_ICLLP && m_options->getOption(vISA_enablePreemption));
     }
 
+    bool samplerHeaderPreemptionWA() const
+    {
+        return m_options->getOption(vISA_enablePreemption) && m_options->getOption(vISA_samplerHeaderWA);
+    }
+
     bool needsNoPreemptR2ForSend() const
     {
         return getPlatformGeneration() == PlatformGen::GEN11;
