@@ -265,6 +265,22 @@ function(igc_bif_build_bc)
     list(APPEND _bcFiles "${_bcIntFilePath}")
   endforeach()
 
+  set(bif-llvm-as_exe ${LLVM_AS_EXE})
+  set(bif-llvm-link_exe ${LLVM_LINK_EXE})
+  set(bif-llvm-opt_exe ${LLVM_OPT_EXE})
+
+  if(NOT (IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME AND WIN32))
+    if(NOT EXISTS ${LLVM_AS_EXE})
+      set(bif-llvm-as_exe $<TARGET_FILE:${LLVM_AS_EXE}>)
+    endif()
+    if(NOT EXISTS ${LLVM_LINK_EXE})
+      set(bif-llvm-link_exe $<TARGET_FILE:${LLVM_LINK_EXE}>)
+    endif()
+    if(NOT EXISTS ${LLVM_OPT_EXE})
+      set(bif-llvm-opt_exe $<TARGET_FILE:${LLVM_OPT_EXE}>)
+    endif()
+  endif()
+
   foreach(_srcFilePath ${_srcFilePaths_LL})
     string(REPLACE ";" "\;" _srcFilePath "${_srcFilePath}")
 
@@ -279,7 +295,7 @@ function(igc_bif_build_bc)
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "$<TARGET_FILE:${LLVM_AS_EXE}>" -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_LL} "${_srcFilePath}"
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${bif-llvm-as_exe}" -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_LL} "${_srcFilePath}"
         DEPENDS "${_srcFilePath}" ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Compiling OpenCL source: \"${_srcFileName}\""
       )
@@ -304,12 +320,6 @@ function(igc_bif_build_bc)
     set(_bcIntFilePath  "${_outBcFilePath}__link__${_bcFileId}.bc")
     set(_bcTempFilePath "${_bcIntFilePath}.tmp")
     math(EXPR _bcFileId "${_bcFileId} + 1")
-
-    if(EXISTS ${LLVM_LINK_EXE})
-        set(bif-llvm-link_exe ${LLVM_LINK_EXE})
-    else()
-        set(bif-llvm-link_exe $<TARGET_FILE:${LLVM_LINK_EXE}>)
-    endif()
 
     # LLVM linking is triggered by host LLVM package change (where tools are), change of intermediate .bc files or change of additional dependencies.
     # Makes sure that LLVM is unzipped before.
@@ -341,7 +351,7 @@ function(igc_bif_build_bc)
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "$<TARGET_FILE:${LLVM_OPT_EXE}>" -O2 -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_OPT} ${_bcFiles}
+        COMMAND "${CMAKE_COMMAND}" -E compare_files ${BiFModule_PREBUILD_SHA_PATH} ${BiFModule_SRC_SHA_PATH} || "${bif-llvm-opt_exe}" -O2 -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_OPT} ${_bcFiles}
         DEPENDS ${_bcFiles} ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Optmizing output .bc."
       )
