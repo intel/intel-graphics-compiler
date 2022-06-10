@@ -464,7 +464,14 @@ public:
         {
             if (builder.hasFusedEUNoMaskWA())
             {
-                kernel.clearNoMaskInfo();
+                if (allPostRANoMaskWA())
+                {
+                    kernel.deleteEUFusionNoMaskWAInfo();
+                }
+                else
+                {
+                    kernel.clearNoMaskInfo();
+                }
             }
         }
     }
