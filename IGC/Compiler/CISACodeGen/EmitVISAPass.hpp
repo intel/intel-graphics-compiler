@@ -813,8 +813,6 @@ private:
     ERoundingMode m_roundingMode_FP;
     ERoundingMode m_roundingMode_FPCvtInt;
 
-    EPreemptionMode m_preemptionMode;
-
     uint m_currentBlock = (uint) -1;
 
     bool m_currFuncHasSubroutine = false;
@@ -889,8 +887,6 @@ private:
     void SetRoundingMode_FPCvtInt(ERoundingMode RM_FPCvtInt);
     bool setRMExplicitly(llvm::Instruction* inst);
     void ResetRoundingMode(llvm::Instruction* inst);
-
-    void SetPreemptionMode(EPreemptionMode newPreemptionMode);
 
     // returns true if the instruction does not care about the rounding mode settings
     bool ignoreRoundingMode(llvm::Instruction* inst) const;

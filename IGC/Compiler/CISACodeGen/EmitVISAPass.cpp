@@ -126,7 +126,6 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap& shaders, SIMDMode mode, bool
     m_canAbortOnSpill(canAbortOnSpill),
     m_roundingMode_FP(ERoundingMode::ROUND_TO_NEAREST_EVEN),
     m_roundingMode_FPCvtInt(ERoundingMode::ROUND_TO_ZERO),
-    m_preemptionMode(EPreemptionMode::PREEMPTION_ENABLED),
     m_pSignature(pSignature),
     m_isDuplicate(false)
 {
@@ -1264,8 +1263,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         (m_currShader->GetContext()->m_instrTypes.numLoopInsts == 0) &&
         (m_currShader->ProgramOutput()->m_InstructionCount < IGC_GET_FLAG_VALUE(MidThreadPreemptionDisableThreshold)))
     {
-        m_preemptionMode = PREEMPTION_DISABLED;
-
         if (m_currShader->GetShaderType() == ShaderType::COMPUTE_SHADER)
         {
             CComputeShader* csProgram = static_cast<CComputeShader*>(m_currShader);
@@ -16925,15 +16922,6 @@ void EmitPass::SetRoundingMode_FPCvtInt(ERoundingMode newRM_FPCvtInt)
             // If FPCvtInt's RM is not RTZ, it must be the same as FP's
             m_roundingMode_FP = m_roundingMode_FPCvtInt;
         }
-    }
-}
-
-void EmitPass::SetPreemptionMode(EPreemptionMode newPreemptionMode)
-{
-    if (newPreemptionMode != m_preemptionMode)
-    {
-        m_encoder->SetPreemptionMode(m_preemptionMode, newPreemptionMode);
-        m_preemptionMode = newPreemptionMode;
     }
 }
 

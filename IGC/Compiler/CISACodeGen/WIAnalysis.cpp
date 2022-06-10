@@ -1331,6 +1331,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_dual_subslice_id ||
         GII_id == GenISAIntrinsic::GenISA_eu_id        ||
         GII_id == GenISAIntrinsic::GenISA_eu_thread_id ||
+        GII_id == GenISAIntrinsic::GenISA_movcr ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id ||
         GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca ||
         GII_id == GenISAIntrinsic::GenISA_StackAlloca ||

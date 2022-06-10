@@ -471,8 +471,6 @@ namespace IGC
         void SetRoundingMode_FP(ERoundingMode actualRM, ERoundingMode newRM);
         void SetRoundingMode_FPCvtInt(ERoundingMode actualRM, ERoundingMode newRM);
 
-        void SetPreemptionMode(EPreemptionMode actualPreemptionMode, EPreemptionMode newPreemptionMode);
-
         static uint GetCISADataTypeSize(VISA_Type type) {return CVariable::GetCISADataTypeSize(type);}
         static e_alignment GetCISADataTypeAlignment(VISA_Type type) {return CVariable::GetCISADataTypeAlignment(type);}
 
@@ -671,17 +669,6 @@ namespace IGC
         // Get Encoding bit values for rounding mode
         RMEncoding getEncoderRoundingMode_FP(ERoundingMode FP_RM);
         RMEncoding getEncoderRoundingMode_FPCvtInt(ERoundingMode FCvtI_RM);
-
-        enum PreemptionEncoding
-        {
-            PreemptionDisabled = 0x000,
-            PreemptionEnabled = 0x800
-        };
-
-        PreemptionEncoding getEncoderPreemptionMode(EPreemptionMode preemptionMode);
-
-        void SetPreemptionMode(PreemptionEncoding actualPreemptionMode, PreemptionEncoding newPreemptionMode);
-
         unsigned GetRawOpndSplitOffset(VISA_Exec_Size fromExecSize,
             VISA_Exec_Size toExecSize,
             unsigned thePart, CVariable* var) const;

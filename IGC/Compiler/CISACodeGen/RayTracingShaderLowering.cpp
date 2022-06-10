@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "RayTracingShaderLowering.hpp"
 #include "AdaptorCommon/RayTracing/RTBuilder.h"
 #include "IGCPassSupport.h"
+#include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
