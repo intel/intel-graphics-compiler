@@ -66,6 +66,7 @@ set(IGC_BUILD__SRC__Compiler
     "${CMAKE_CURRENT_SOURCE_DIR}/SampleMultiversioning.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/HandleFRemInstructions.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GenRotate.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/RemoveCodeAssumptions.cpp"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ibdw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ichv_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ibxt_wa.c"
@@ -157,6 +158,7 @@ set(IGC_BUILD__HDR__Compiler
     "${CMAKE_CURRENT_SOURCE_DIR}/HandleFRemInstructions.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GenRotate.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SamplerPerfOptPass.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/RemoveCodeAssumptions.hpp"
     ${IGC_BUILD__HDR__Compiler_CISACodeGen}
     ${IGC_BUILD__HDR__Compiler_DebugInfo}
     ${IGC_BUILD__HDR__Compiler_Legalizer}

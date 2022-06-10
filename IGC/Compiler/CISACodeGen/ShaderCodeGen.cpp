@@ -126,6 +126,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/InitializePasses.h"
 #include "Compiler/GenRotate.hpp"
 #include "Compiler/Optimizer/Scalarizer.h"
+#include "Compiler/RemoveCodeAssumptions.hpp"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/debug/Dump.hpp"
@@ -905,9 +906,9 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         }
     }
 
-    // Enabling half promotion AIL for compute shaders only at this point. 
+    // Enabling half promotion AIL for compute shaders only at this point.
     // If needed ctx.type check can be removed to apply for all shader types
-    if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) || 
+    if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) ||
         (ctx.getModuleMetaData()->compOpt.WaForceHalfPromotion && ctx.type == ShaderType::COMPUTE_SHADER) ||
         (!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion)))
     {
@@ -940,12 +941,20 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         mpm.add(createNanHandlingPass());
     }
 
+    if(!isOptDisabled) {
+        // Removing code assumptions can enable some InstructionCombining optimizations.
+        // Last instruction combining pass needs to be before Legalization pass, as it can produce illegal instructions.
+        mpm.add(new RemoveCodeAssumptions());
+        mpm.add(createIGCInstructionCombiningPass());
+    }
+
     // TODO: move to use instruction flags
     // to figure out if we need to preserve Nan
     bool preserveNan = !ctx.getCompilerOption().NoNaNs;
 
     // Legalizer does not handle constant expressions
     mpm.add(new BreakConstantExpr());
+
     mpm.add(new Legalization(preserveNan));
 
     // Scalarizer in codegen to handle the vector instructions
