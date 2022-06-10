@@ -3928,3 +3928,164 @@ bool CShader::needsEntryFence() const
     }
     return false;
 }
+
+bool CShader::forceCacheCtrl(llvm::Instruction* inst)
+{
+    std::map<uint32_t, uint32_t> list = m_ModuleMetadata->forceLscCacheList;
+    unsigned calleeArgNo = 0;
+    PushInfo& pushInfo = m_ModuleMetadata->pushInfo;
+    Value* src = IGC::TracePointerSource(inst->getOperand(0));
+    if (src)
+    {
+        if (Argument * calleeArg = dyn_cast<Argument>(src))
+        {
+            calleeArgNo = calleeArg->getArgNo();
+            for (auto index_it = pushInfo.constantReg.begin(); index_it != pushInfo.constantReg.end(); ++index_it)
+            {
+                if (index_it->second == calleeArgNo)
+                {
+                    auto pos = list.find(index_it->first);
+                    if (pos != list.end()) {
+                        MDNode* node = MDNode::get(
+                            inst->getContext(),
+                            ConstantAsMetadata::get(
+                                ConstantInt::get(Type::getInt32Ty(inst->getContext()), pos->second)));
+                        inst->setMetadata("lsc.cache.ctrl", node);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// This function may be used in earlier passes to determine whether a given
+// instruction will generate an LSC message. If it returns Unknown or False, you
+// should conservatively assume that you don't know what will be generated. If
+// this returns True, it is guaranteed that an LSC message will result.
+Tristate CShader::shouldGenerateLSCQuery(
+    const CodeGenContext& Ctx,
+    Instruction* vectorLdStInst,
+    SIMDMode Mode)
+{
+    auto& Platform   = Ctx.platform;
+    auto& DriverInfo = Ctx.m_DriverInfo;
+
+    if (!Platform.LSCEnabled(Mode)) {
+        // We enable LSC load/store only when program SIMD size is >= LSC's
+        // simd size.  This is to avoid increasing register pressure and
+        // reduce extra moves.
+        // Note, that this only applies to gather/scatter;
+        // for blocked messages we can always enable LSC
+        return Tristate::False;
+    }
+
+    // Geneate LSC for load/store instructions as Load/store emit can
+    // handle full-payload uniform non-transpose LSC on PVC A0.
+    if (vectorLdStInst == nullptr
+        || isa<LoadInst>(vectorLdStInst)
+        || isa<StoreInst>(vectorLdStInst))
+        return Tristate::True;
+    // special checks for typed r/w
+    if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(vectorLdStInst))
+    {
+        if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedread ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_intatomictyped ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_icmpxchgatomictyped)
+        {
+            return (Platform.hasLSCTypedMessage() ? Tristate::True : Tristate::False);
+        }
+        else if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_storeraw_indexed ||
+            inst->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)
+        {
+            IGC_ASSERT(Platform.isProductChildOf(IGFX_DG2));
+            IGC_ASSERT(Platform.hasLSC());
+
+            bool Result =
+                DriverInfo.EnableLSCForLdRawAndStoreRawOnDG2() ||
+                Platform.isCoreChildOf(IGFX_XE_HPC_CORE);
+
+            return (Result ? Tristate::True : Tristate::False);
+        }
+    }
+
+    // in PVC A0, SIMD1 reads/writes need full payloads
+    // this causes chaos for vISA (would need 4REG alignment)
+    // and to make extra moves to enable the payload
+    // B0 gets this feature (there is no A1)
+    if (!Platform.LSCSimd1NeedFullPayload()) {
+        return Tristate::True;
+    }
+
+    return Tristate::Unknown;
+}
+
+// Note that if LSCEnabled() returns true, load/store instructions must be
+// generated with LSC; but some intrinsics are still generated with legacy.
+bool CShader::shouldGenerateLSC(llvm::Instruction* vectorLdStInst)
+{
+    if (vectorLdStInst && m_ctx->m_DriverInfo.SupportForceRouteAndCache())
+    {
+        // check if umd specified lsc caching mode and set the metadata if needed.
+        if (forceCacheCtrl(vectorLdStInst))
+        {
+            // if umd force the caching mode, also assume it wants the resource to be in lsc.
+            return true;
+        }
+    }
+
+    if (auto result = shouldGenerateLSCQuery(*m_ctx, vectorLdStInst, m_SIMDSize);
+        result != Tristate::Unknown)
+        return (result == Tristate::True);
+
+    // ensure both source and destination are not uniform
+    Value* addrs = nullptr;
+    if (GenIntrinsicInst * inst = dyn_cast<GenIntrinsicInst>(vectorLdStInst)) {
+        addrs = inst->getOperand(0); // operand 0 is always addr for loads and stores
+    } // else others?
+
+    // we can generate LSC only if it's not uniform (SIMD1) or A32
+    bool canGenerate = true;
+    if (addrs) {
+        bool isA32 = false; // TODO: see below
+        if (PointerType * ptrType = dyn_cast<PointerType>(addrs->getType())) {
+            isA32 = !IGC::isA64Ptr(ptrType, GetContext());
+        }
+        canGenerate &= isA32 || !GetSymbol(addrs)->IsUniform();
+
+        if (!isA32 && GetSymbol(addrs)->IsUniform()) {
+            // This is A64 and Uniform case. The LSC is not allowed.
+            // However, before exit check the total bytes to be stored or loaded.
+            if (totalBytesToStoreOrLoad(vectorLdStInst) >= 4) {
+                canGenerate = true;
+            }
+        }
+    }
+    return canGenerate;
+} // shouldGenerateLSC
+
+uint32_t CShader::totalBytesToStoreOrLoad(llvm::Instruction* vectorLdStInst)
+{
+    if (dyn_cast<LoadInst>(vectorLdStInst) || dyn_cast<StoreInst>(vectorLdStInst)) {
+        Type* Ty = nullptr;
+        if (LoadInst * inst = dyn_cast<LoadInst>(vectorLdStInst)) {
+            Ty = inst->getType();
+        }
+        else if (StoreInst * inst = dyn_cast<StoreInst>(vectorLdStInst)) {
+            Value* storedVal = inst->getValueOperand();
+            Ty = storedVal->getType();
+        }
+        if (Ty) {
+            IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+            Type* eltTy = VTy ? VTy->getElementType() : Ty;
+            uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
+            uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+            return (eltBytes * elts);
+        }
+    }
+    return 0;
+} // totalBytesToStoreOrLoad

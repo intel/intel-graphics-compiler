@@ -566,6 +566,17 @@ public:
     bool IsIntelSymbolTableVoidProgram() const { return m_isIntelSymbolTableVoidProgram; }
     void SetIsIntelSymbolTableVoidProgram() { m_isIntelSymbolTableVoidProgram = true; }
 
+    ////////////////////////////////////////////////////////////////////
+    // NOTE: for vector load/stores instructions pass the
+    // optional instruction argument checks additional constraints
+    static Tristate shouldGenerateLSCQuery(
+        const CodeGenContext& Ctx,
+        llvm::Instruction* vectorLdStInst = nullptr,
+        SIMDMode Mode = SIMDMode::UNKNOWN);
+    bool shouldGenerateLSC(llvm::Instruction* vectorLdStInst = nullptr);
+    bool forceCacheCtrl(llvm::Instruction* vectorLdStInst = nullptr);
+    uint32_t totalBytesToStoreOrLoad(llvm::Instruction* vectorLdStInst);
+
 protected:
     bool CompileSIMDSizeInCommon(SIMDMode simdMode);
     uint32_t GetShaderThreadUsageRate();
