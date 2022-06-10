@@ -78,7 +78,8 @@ namespace IGC
         } insts[VECMESSAGEINFO_MAX_LEN];
         uint16_t  numInsts;
 
-        VectorMessage(EmitPass* emitter) : m_emitter(emitter) {}
+        VectorMessage(EmitPass* emitter);
+        VectorMessage(CShader* shader) : Shader(shader) {}
         void getInfo(llvm::Type* Ty, uint32_t Align, bool useA32,
             bool forceByteScatteredRW = false);
 
@@ -86,7 +87,7 @@ namespace IGC
         void getLSCInfo(llvm::Type* Ty, uint32_t Align, CodeGenContext* ctx, bool useA32, bool transpose);
 
     private:
-        const EmitPass* m_emitter;
+        const CShader *Shader;
 
         VectorMessage(const VectorMessage&);   // not implemented
         void operator=(const VectorMessage&);  // not implemented

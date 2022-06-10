@@ -650,18 +650,18 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
 {
     VectorType* VTy = dyn_cast<VectorType>(Ty);
     Type* eTy = VTy ? cast<VectorType>(VTy)->getElementType() : Ty;
-    unsigned eltSize = m_emitter->GetScalarTypeSizeInRegister(eTy);
+    unsigned eltSize = Shader->GetScalarTypeSizeInRegister(eTy);
     unsigned nElts = VTy ? (unsigned)cast<IGCLLVM::FixedVectorType>(VTy)->getNumElements() : 1;
     // total bytes
     const unsigned TBytes = nElts * eltSize;
 
     // Per-channel Max Bytes (MB) that can be read/written by a single send inst
     unsigned MB;
-    SIMDMode SM = m_emitter->m_currShader->m_SIMDSize;
+    SIMDMode SM = Shader->m_SIMDSize;
     bool has_8B_A64_BS =
-        m_emitter->m_currShader->m_Platform->has8ByteA64ByteScatteredMessage();
+        Shader->m_Platform->has8ByteA64ByteScatteredMessage();
     bool has_8DW_A64_SM =
-        m_emitter->m_currShader->m_Platform->has8DWA64ScatteredMessage();
+        Shader->m_Platform->has8DWA64ScatteredMessage();
 
     //
     // Set up default message and the data type of the message
@@ -770,12 +770,11 @@ void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
 void VectorMessage::getLSCInfo(llvm::Type* Ty, uint32_t Align, CodeGenContext* ctx, bool useA32, bool transpose)
 {
     IGC_ASSERT(nullptr != ctx);
-    IGC_ASSERT(nullptr != m_emitter);
-    IGC_ASSERT(nullptr != m_emitter->m_currShader);
+    IGC_ASSERT(nullptr != Shader);
 
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
     Type* eTy = VTy ? VTy->getContainedType(0) : Ty;
-    unsigned eltSize = m_emitter->GetScalarTypeSizeInRegister(eTy);
+    unsigned eltSize = Shader->GetScalarTypeSizeInRegister(eTy);
     unsigned nElts = VTy ? (unsigned)VTy->getNumElements() : 1;
     // total bytes
     const unsigned TBytes = nElts * eltSize;
@@ -788,7 +787,7 @@ void VectorMessage::getLSCInfo(llvm::Type* Ty, uint32_t Align, CodeGenContext* c
     uint16_t blkInBytes = (uint16_t)CEncoder::GetCISADataTypeSize(dataType);
 
     // Per-channel Max Bytes (MB) that can be read/written by a single send inst
-    const unsigned int numLanesForSIMDSize = numLanes(m_emitter->m_currShader->m_SIMDSize);
+    const unsigned int numLanesForSIMDSize = numLanes(Shader->m_SIMDSize);
     IGC_ASSERT(numLanesForSIMDSize);
     unsigned int MB = (8 * ctx->platform.getGRFSize()) / numLanesForSIMDSize;
     if (Align < 4 || (eltSize == 8 && Align < 8)) {
@@ -863,3 +862,4 @@ void VectorMessage::getLSCInfo(llvm::Type* Ty, uint32_t Align, CodeGenContext* c
     IGC_ASSERT_MESSAGE(numInsts <= (sizeof(insts) / sizeof(*insts)), "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
 }
 
+VectorMessage::VectorMessage(EmitPass* emitter) : Shader(emitter->m_currShader) {}
