@@ -373,7 +373,9 @@ public:
     void normalizeSubRoutineBB(FuncInfoHashTable& funcInfoTable);
     void processGoto(bool HasSIMDCF);
     void processSCF(FuncInfoHashTable& FuncInfoMap);
-    void insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip);
+    // Insert a join at the beginning of 'bb' with given 'execsize' and 'maskoffset'.
+    // If a join is already present, update that join to cover the given 'execsize' and 'maskoffset'.
+    void insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip, uint8_t maskOffset = 0);
 
     // functions for structure analysis
     G4_Kernel *getKernel() const { return pKernel; }

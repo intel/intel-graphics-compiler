@@ -46,6 +46,79 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
+//
+// Helper class for processGoto to merge join's execution masks.
+// For example,
+//    (p1) goto (8|M8) label
+//         ....
+//    (p2) goto (4|M4) label
+//         ....
+//    label:
+//         join (16|M0)
+// Merge( (8|M8) and (4|M4)) will be (16|M0)!
+//
+// Normally, we don't see this kind of code. But visa will generate macro sequence
+// like the following, and we have to match join's execMask to all of its gotos. We
+// do so by tracking excution mask (execSize + mask offset).
+//
+//        (p) goto (8|M8) L
+//        ......
+//        L:
+//            join (8|M8)            // not join (8|M0)
+//
+class ExecMaskInfo
+{
+    uint8_t ExecSize;    // 1|2|4|8|16|32
+    uint8_t MaskOffset;  // 0|4|8|12|16|20|24|28
+
+    void mergeEM(ExecMaskInfo& aEM)
+    {
+        // The new execMask should cover at least [left, right)
+        const uint32_t left = std::min(MaskOffset, aEM.getMaskOffset());
+        const uint32_t right = std::max(MaskOffset + ExecSize, aEM.getMaskOffset() + aEM.getExecSize());
+        // Divide 32 channels into 8 quarters
+        uint32_t lowQuarter = left / 4;
+        uint32_t highQuarter = (right - 1) / 4;
+        if (lowQuarter < 4 && highQuarter >= 4)
+        {
+            // (32, M0)
+            ExecSize = 32;
+            MaskOffset = 0;
+        }
+        else if (lowQuarter < 2 && highQuarter >= 2)
+        {
+            // (16, M0|M16)
+            ExecSize = 16;
+            MaskOffset = 0;
+        }
+        else if (lowQuarter < 6 && highQuarter >= 6)
+        {
+            // (16, M16)
+            ExecSize = 16;
+            MaskOffset = 16;
+        }
+        // at this time, the range resides in one of [Q0,Q1], [Q2,Q3], [Q4,Q5], and [Q6,Q7].
+        else
+        {
+            // (4|8, ...)
+            ExecSize = (lowQuarter != highQuarter ? 8 : 4);
+            MaskOffset = left;
+        }
+    }
+
+public:
+    ExecMaskInfo() : ExecSize(0), MaskOffset(0) {};
+    ExecMaskInfo(uint8_t aE, uint8_t aM) : ExecSize(aE), MaskOffset(aM) {}
+
+    uint8_t getExecSize() const { return ExecSize; }
+    uint8_t getMaskOffset() const { return MaskOffset; }
+
+    void mergeExecMask(G4_ExecSize aExSize, uint8_t aMaskOffset)
+    {
+        ExecMaskInfo anotherEM{ aExSize, aMaskOffset };
+        mergeEM(anotherEM);
+    }
+};
 
 void GlobalOpndHashTable::HashNode::insert(uint16_t newLB, uint16_t newRB)
 {
@@ -3039,9 +3112,10 @@ G4_BB* FlowGraph::getUniqueReturnBlock()
 
 /*
 * Insert a join at the beginning of this basic block, immediately after the label
-* If a join is already present, nothing will be done
+* If a join is already present, make sure the join will cover the given 'execSize' and
+* 'maskOffset'.
 */
-void FlowGraph::insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip)
+void FlowGraph::insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip, uint8_t maskOffset)
 {
     MUST_BE_TRUE(bb->size() > 0, "empty block");
     INST_LIST_ITER iter = bb->begin();
@@ -3055,7 +3129,8 @@ void FlowGraph::insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip)
     if (iter == bb->end())
     {
         // insert join at the end
-        G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, InstOpt_NoOpt);
+        G4_InstOption instMask = G4_INST::offsetToMask(execSize, maskOffset, builder->hasNibCtrl());
+        G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, instMask);
         bb->push_back(jInst, false);
     }
     else
@@ -3064,22 +3139,34 @@ void FlowGraph::insertJoinToBB(G4_BB* bb, G4_ExecSize execSize, G4_Label* jip)
 
         if (secondInst->opcode() == G4_join)
         {
-            if (execSize > secondInst->getExecSize())
+            G4_ExecSize origExSize = secondInst->getExecSize();
+            uint8_t origMaskOffset = (uint8_t)secondInst->getMaskOffset();
+            ExecMaskInfo joinEM{ origExSize, origMaskOffset };
+            joinEM.mergeExecMask(execSize, maskOffset);
+            if (joinEM.getExecSize() > origExSize)
             {
-                secondInst->setExecSize(execSize);
+                secondInst->setExecSize(G4_ExecSize{ joinEM.getExecSize() });
+            }
+            if (joinEM.getMaskOffset() != origMaskOffset)
+            {
+                G4_InstOption nMask =
+                    G4_INST::offsetToMask(joinEM.getExecSize(), joinEM.getMaskOffset(), builder->hasNibCtrl());
+                secondInst->setMaskOption(nMask);
             }
         }
         else
         {
-            G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, InstOpt_NoOpt);
+            G4_InstOption instMask = G4_INST::offsetToMask(execSize, maskOffset, builder->hasNibCtrl());
+            G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, instMask);
             bb->insertBefore(iter, jInst, false);
         }
     }
 }
 
-typedef std::pair<G4_BB*, G4_ExecSize> BlockSizePair;
+// For tracking execMask information of join.
+typedef std::pair<G4_BB*, ExecMaskInfo> BlockSizePair;
 
-static void addBBToActiveJoinList(std::list<BlockSizePair>& activeJoinBlocks, G4_BB* bb, G4_ExecSize execSize)
+static void addBBToActiveJoinList(std::list<BlockSizePair>& activeJoinBlocks, G4_BB* bb, G4_ExecSize execSize, uint8_t maskOff)
 {
     // add goto target to list of active blocks that need a join
     std::list<BlockSizePair>::iterator listIter;
@@ -3089,22 +3176,20 @@ static void addBBToActiveJoinList(std::list<BlockSizePair>& activeJoinBlocks, G4
         if (aBB->getId() == bb->getId())
         {
             // block already in list, update exec size if necessary
-            if (execSize > (*listIter).second)
-            {
-                (*listIter).second = execSize;
-            }
+            ExecMaskInfo& EM = (*listIter).second;
+            EM.mergeExecMask(execSize, maskOff);
             break;
         }
         else if (aBB->getId() > bb->getId())
         {
-            activeJoinBlocks.insert(listIter, BlockSizePair(bb, execSize));
+            (void) activeJoinBlocks.insert(listIter, BlockSizePair(bb, ExecMaskInfo(execSize, maskOff)));
             break;
         }
     }
 
     if (listIter == activeJoinBlocks.end())
     {
-        activeJoinBlocks.push_back(BlockSizePair(bb, execSize));
+        activeJoinBlocks.push_back(BlockSizePair(bb, ExecMaskInfo(execSize, maskOff)));
     }
 }
 
@@ -3373,7 +3458,9 @@ void FlowGraph::processGoto(bool HasSIMDCF)
             {
                 // This block is the target of one or more forward goto,
                 // or the fall-thru of a backward goto, needs to insert a join
-                G4_ExecSize execSize = activeJoinBlocks.front().second;
+                ExecMaskInfo& EM = activeJoinBlocks.front().second;
+                uint8_t eSize = EM.getExecSize();
+                uint8_t mOff = EM.getMaskOffset();
                 G4_Label* joinJIP = NULL;
 
                 activeJoinBlocks.pop_front();
@@ -3384,7 +3471,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     joinJIP = joinBlock->getLabel();
                 }
 
-                insertJoinToBB(bb, execSize, joinJIP);
+                insertJoinToBB(bb, G4_ExecSize{eSize}, joinJIP, mOff);
             }
         }
 
@@ -3425,7 +3512,8 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     // join) within the loop body will has its JIP set to this join.
                     if (G4_BB* afterLoopJoinBB = getEarliestJmpOutBB(activeJoinBlocks, bb, predBB))
                     {
-                        addBBToActiveJoinList(activeJoinBlocks, afterLoopJoinBB, eSize);
+                        // conservatively use maskoffset = 0.
+                        addBBToActiveJoinList(activeJoinBlocks, afterLoopJoinBB, eSize, 0);
                     }
                 }
                 else
@@ -3439,7 +3527,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                     // add join to the fall-thru BB
                     if (G4_BB* fallThruBB = predBB->getPhysicalSucc())
                     {
-                        addBBToActiveJoinList(activeJoinBlocks, fallThruBB, eSize);
+                        addBBToActiveJoinList(activeJoinBlocks, fallThruBB, eSize, (uint8_t)lastInst->getMaskOffset());
                         lastInst->asCFInst()->setJip(fallThruBB->getLabel());
                     }
                 }
@@ -3466,7 +3554,7 @@ void FlowGraph::processGoto(bool HasSIMDCF)
                 // set goto JIP to the first active block
                 G4_ExecSize eSize = lastInst->getExecSize() > g4::SIMD1 ?
                     lastInst->getExecSize() : pKernel->getSimdSize();
-                addBBToActiveJoinList(activeJoinBlocks, gotoTargetBB, eSize);
+                addBBToActiveJoinList(activeJoinBlocks, gotoTargetBB, eSize, (uint8_t)lastInst->getMaskOffset());
                 G4_BB* joinBlock = activeJoinBlocks.front().first;
                 if (lastInst->getExecSize() == g4::SIMD1)
                 {   // For simd1 goto, convert it to a goto with the right execSize.
