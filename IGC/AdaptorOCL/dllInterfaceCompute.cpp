@@ -303,6 +303,14 @@ bool CIGCTranslationBlock::Translate(
             return false;
         }
     }
+    catch (std::exception& e)
+    {
+        if (pOutputArgs->ErrorStringSize == 0 && pOutputArgs->pErrorString == nullptr)
+        {
+            SetErrorMessage(std::string("IGC: ") + e.what(), *pOutputArgs);
+        }
+        return false;
+    }
     catch (...)
     {
         if (pOutputArgs->ErrorStringSize == 0 && pOutputArgs->pErrorString == nullptr)
@@ -1320,30 +1328,13 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs,
             }
             catch (std::exception &e)
             {
-                if (oclContext.HasError() && oclContext.HasWarning())
-                {
-                    SetOutputMessage(oclContext.GetErrorAndWarning(), *pOutputArgs);
-                }
-                else
-                {
-                    if (oclContext.HasError())
-                    {
-                        SetOutputMessage(oclContext.GetError(), *pOutputArgs);
-                    }
-                    if (oclContext.HasWarning())
-                    {
-                        SetOutputMessage(oclContext.GetWarning(), *pOutputArgs);
-                    }
-                }
-
-                if (e.what() != nullptr)
-                {
-                    SetErrorMessage(e.what(), *pOutputArgs);
-                }
-
                 if (pOutputArgs->ErrorStringSize == 0 && pOutputArgs->pErrorString == nullptr)
                 {
-                    SetErrorMessage("IGC: Internal Compiler Error", *pOutputArgs);
+                    std::string message = "IGC: ";
+                    message += oclContext.GetErrorAndWarning();
+                    message += '\n';
+                    message += e.what();
+                    SetErrorMessage(message.c_str(), *pOutputArgs);
                 }
                 return false;
             }

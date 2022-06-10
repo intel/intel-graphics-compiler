@@ -350,6 +350,16 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
                 }
             }
         }
+        catch (std::exception& e)
+        {
+            success = false;
+            if (output.ErrorStringSize == 0 && output.pErrorString == nullptr)
+            {
+                std::string msg = "IGC: ";
+                msg += e.what();
+                outputInterface->GetImpl()->SetError(TranslationErrorType::FailedCompilation, msg.c_str());
+            }
+        }
         catch (...)
         {
             success = false;
