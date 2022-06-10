@@ -134,9 +134,9 @@ static void CopySrcToMsgPayload(
 }
 
 static void Copy_Source_To_Payload(
-    IR_Builder *IRB, G4_ExecSize batchExSize,
-    G4_Declare *msg, unsigned &regOff,
-    G4_SrcRegRegion *source, G4_ExecSize execSize,
+    IR_Builder* IRB, G4_ExecSize batchExSize,
+    G4_Declare* msg, unsigned& regOff,
+    G4_SrcRegRegion* source, uint32_t numElts,
     uint32_t eMask)
 {
     ASSERT_USER(batchExSize == 1 || batchExSize == 2 || batchExSize == 4 ||
@@ -144,7 +144,7 @@ static void Copy_Source_To_Payload(
         "Invalid execution size for message payload copy!");
 
     unsigned srcRegOff = 0;
-    G4_ExecSize batchSize = std::min(batchExSize, execSize);
+    G4_ExecSize batchSize { std::min((uint32_t)batchExSize, numElts) };
     uint32_t numSrcRegs = (source->getElemSize() * batchSize) / IRB->getGRFSize();
     if (numSrcRegs == 0)
     {
@@ -165,13 +165,13 @@ static void Copy_Source_To_Payload(
                 msg, regOff, source, srcRegOff);
         }
         // regOff : need to advance to the next payload grf
-        //          This payload takes this size: execSize * source->getElemSize()
-        uint32_t numPayloadRegs = (source->getElemSize() * execSize) / IRB->getGRFSize();
+        //          This payload takes this size: numElts * source->getElemSize()
+        uint32_t numPayloadRegs = (source->getElemSize() * numElts) / IRB->getGRFSize();
         regOff += (numPayloadRegs == 0 ? 1 : numPayloadRegs);
         return;
     }
 
-    for (unsigned i = 0; i < execSize; i += batchSize) {
+    for (unsigned i = 0; i < numElts; i += batchSize) {
         if (!source->isNullReg()) {
             CopySrcToMsgPayload(IRB, batchSize, eMask,
                 msg, regOff, source, srcRegOff);
@@ -210,7 +210,7 @@ void IR_Builder::preparePayload(
 
         // this is the size of message payload that holds srcReg.
         // (Thus, this size >= srcReg's size!)
-        unsigned regionSize = srcs[i].execSize * srcReg->getTypeSize();
+        unsigned regionSize = srcs[i].numElts * srcReg->getTypeSize();
 
         if (regionSize < getGRFSize()) {
             // FIXME: Need a better solution to decouple the value type from
@@ -286,7 +286,7 @@ void IR_Builder::preparePayload(
     // Count remaining message size.
     for (; i != len; ++i) {
         G4_SrcRegRegion *srcReg = srcs[i].opnd;
-        unsigned regionSize = srcs[i].execSize * srcReg->getTypeSize();
+        unsigned regionSize = srcs[i].numElts * srcReg->getTypeSize();
         if (regionSize < getGRFSize()) {
             // FIXME: Need a better solution to decouple the value type from
             // the container type to generate better COPY if required.
@@ -305,7 +305,7 @@ void IR_Builder::preparePayload(
     for (i = splitPos; i != len; ++i)
     {
         Copy_Source_To_Payload(this, batchExSize, msg, regOff, srcs[i].opnd,
-            srcs[i].execSize, srcs[i].instOpt);
+            srcs[i].numElts, srcs[i].instOpt);
     }
 
     i = 0;

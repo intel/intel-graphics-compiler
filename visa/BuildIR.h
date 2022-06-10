@@ -1856,7 +1856,7 @@ public:
 
     struct PayloadSource {
         G4_SrcRegRegion  *opnd;
-        G4_ExecSize       execSize;
+        uint32_t          numElts;  // 'opnd's size in msg payload
         G4_InstOpts       instOpt;
     };
 

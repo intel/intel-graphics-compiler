@@ -96,14 +96,14 @@ int IR_Builder::translateVISAQWScatterInst(
     unsigned len = 0;
 
     sources[len].opnd = addresses;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
 
     unsigned numElems = Get_Common_ISA_SVM_Block_Num(numBlocks);
 
     sources[len].opnd = src;
-    sources[len].execSize = G4_ExecSize(exSize * numElems);
+    sources[len].numElts = exSize * numElems;
     sources[len].instOpt = instOpt;
     ++len;
 
@@ -1488,26 +1488,26 @@ int IR_Builder::translateVISADwordAtomicInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].execSize = g4::SIMD8;
+        sources[len].numElts = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
         ++len;
     }
 
     sources[len].opnd = offsets;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
 
     if (src0 && !src0->isNullReg()) {
         sources[len].opnd = src0;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
 
     if (src1 && !src1->isNullReg()) {
         sources[len].opnd = src1;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
@@ -1589,21 +1589,21 @@ void IR_Builder::buildTypedSurfaceAddressPayload(
 
     // Append U
     sources[len].opnd = uOffsetOpnd;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
 
     // Append V if any.
     if (!vOffsetOpnd->isNullReg()) {
         sources[len].opnd = vOffsetOpnd;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
     else if (!lodOpnd->isNullReg()) {
         G4_SrcRegRegion *nullVOffset = createNullSrc(Type_UD);
         sources[len].opnd = nullVOffset;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
@@ -1613,14 +1613,14 @@ void IR_Builder::buildTypedSurfaceAddressPayload(
         ASSERT_USER(!vOffsetOpnd->isNullReg(),
             "r offset must be NULL if v offset is NULL");
         sources[len].opnd = rOffsetOpnd;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
     else if (!lodOpnd->isNullReg()) {
         G4_SrcRegRegion *nullROffset = createNullSrc(Type_UD);
         sources[len].opnd = nullROffset;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
@@ -1628,7 +1628,7 @@ void IR_Builder::buildTypedSurfaceAddressPayload(
     // Append LOD if any.
     if (!lodOpnd->isNullReg()) {
         sources[len].opnd = lodOpnd;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
@@ -1673,7 +1673,7 @@ int IR_Builder::translateVISAGather4TypedInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].execSize = g4::SIMD8;
+        sources[len].numElts = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
         ++len;
     }
@@ -1759,7 +1759,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].execSize = g4::SIMD8;
+        sources[len].numElts = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
         ++len;
     }
@@ -1768,7 +1768,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
 
     // Append source
     sources[len].opnd = srcOpnd;
-    sources[len].execSize = G4_ExecSize(exSize * numEnabledChannels);
+    sources[len].numElts = exSize * numEnabledChannels;
     sources[len].instOpt = instOpt;
     ++len;
 
@@ -1866,7 +1866,7 @@ int IR_Builder::translateVISATypedAtomicInst(
     if (src0 != nullptr && !src0->isNullReg())
     {
         sources[len].opnd = src0;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
@@ -1874,7 +1874,7 @@ int IR_Builder::translateVISATypedAtomicInst(
     if (src1 != nullptr && !src1->isNullReg())
     {
         sources[len].opnd = src1;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
@@ -2085,13 +2085,13 @@ int IR_Builder::translateGather4Inst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].execSize = g4::SIMD8;
+        sources[len].numElts = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
         ++len;
     }
 
     sources[len].opnd = offsets;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
 
@@ -2187,17 +2187,17 @@ int IR_Builder::translateScatter4Inst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].execSize = g4::SIMD8;
+        sources[len].numElts = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
         ++len;
     }
 
     sources[len].opnd = offsets;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
     sources[len].opnd = src;
-    sources[len].execSize = G4_ExecSize(exSize * chMask.getNumEnabledChannels());
+    sources[len].numElts = exSize * chMask.getNumEnabledChannels();
     sources[len].instOpt = instOpt;
     ++len;
 
@@ -2377,13 +2377,13 @@ int IR_Builder::translateByteGatherInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].execSize = g4::SIMD8;
+        sources[len].numElts = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
         ++len;
     }
 
     sources[len].opnd = offsets;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
 
@@ -2487,17 +2487,17 @@ int IR_Builder::translateByteScatterInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].execSize = g4::SIMD8;
+        sources[len].numElts = g4::SIMD8;
         sources[len].instOpt = InstOpt_WriteEnable;
         ++len;
     }
 
     sources[len].opnd = offsets;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
     sources[len].opnd = src;
-    sources[len].execSize = G4_ExecSize(exSize * numBatch);
+    sources[len].numElts = exSize * numBatch;
     sources[len].instOpt = instOpt;
     ++len;
 
@@ -2656,7 +2656,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     unsigned len = 0;
 
     sources[len].opnd = createSrcRegRegion(dcl, getRegionStride1());
-    sources[len].execSize = g4::SIMD8;
+    sources[len].numElts = g4::SIMD8;
     sources[len].instOpt = InstOpt_WriteEnable;
     ++len;
 
@@ -2673,11 +2673,11 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     switch (src->getElemSize())
     {
     case 4:
-        sources[len].execSize = G4_ExecSize(scale * srcNumGRF);
+        sources[len].numElts = scale * srcNumGRF;
         movExecSize = G4_ExecSize(scale);
         break;
     case 8:
-        sources[len].execSize = G4_ExecSize(scale * srcNumGRF);
+        sources[len].numElts = scale * srcNumGRF;
         movExecSize = G4_ExecSize(scale);
         break;
     }
@@ -2832,7 +2832,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
     unsigned len = 0;
 
     sources[len].opnd = addresses;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
 
@@ -2848,7 +2848,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
         numElems = Get_Common_ISA_SVM_Block_Num(numBlocks);
 
     sources[len].opnd = src;
-    sources[len].execSize = G4_ExecSize(exSize * numElems);
+    sources[len].numElts = exSize * numElems;
     sources[len].instOpt = instOpt;
     ++len;
 
@@ -2979,14 +2979,14 @@ int IR_Builder::translateVISASVMAtomicInst(
     unsigned len = 0;
 
     sources[len].opnd = addresses;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
 
     if (src0 != NULL && !src0->isNullReg())
     {
         sources[len].opnd = src0;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
@@ -2994,7 +2994,7 @@ int IR_Builder::translateVISASVMAtomicInst(
     if (src1 != NULL && !src1->isNullReg())
     {
         sources[len].opnd = src1;
-        sources[len].execSize = exSize;
+        sources[len].numElts = exSize;
         sources[len].instOpt = instOpt;
         ++len;
     }
@@ -3093,7 +3093,7 @@ int IR_Builder::translateSVMGather4Inst(
     unsigned len = 0;
 
     sources[len].opnd = offsets;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
 
@@ -3168,11 +3168,11 @@ int IR_Builder::translateSVMScatter4Inst(
     unsigned len = 0;
 
     sources[len].opnd = offsets;
-    sources[len].execSize = exSize;
+    sources[len].numElts = exSize;
     sources[len].instOpt = instOpt;
     ++len;
     sources[len].opnd = src;
-    sources[len].execSize = G4_ExecSize(exSize * chMask.getNumEnabledChannels());
+    sources[len].numElts = exSize * chMask.getNumEnabledChannels();
     sources[len].instOpt = instOpt;
     ++len;
 
