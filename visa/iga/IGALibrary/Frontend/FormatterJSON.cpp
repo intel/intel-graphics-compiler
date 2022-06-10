@@ -700,6 +700,7 @@ public:
     void emitAddrSurfInfo(const Instruction &i, const MessageInfo &mi) {
         emit("{\"type\":");
         switch (mi.addrType) {
+        case AddrType::INVALID: emit("\"invalid\""); break;
         case AddrType::FLAT: emit("\"flat\""); break;
         case AddrType::BTI:  emit("\"bti\""); break;
         case AddrType::BSS:  emit("\"bss\""); break;

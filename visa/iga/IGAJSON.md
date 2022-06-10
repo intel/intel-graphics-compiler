@@ -130,8 +130,8 @@ indirect register used and may include `Rgn` (region) objects for regions used.
 Sources may include `Vt` and `Wi` if those fields are present
 (in some formats these are implicit fields).
 
-Send instructions have additional operands
-* `AD` address
-* `DA` data
-* `IM` immediate will be used for immediate send descriptors
-
+Send instructions have additional operand kinds:
+* `AD` address: an address type (possibly with surface info), an offset, payload size
+* `DA` data: a register an payload, and
+* `IM` immediate: for immediate send descriptors.
+The `-Xprint-ldst` option might impact operand layout.
