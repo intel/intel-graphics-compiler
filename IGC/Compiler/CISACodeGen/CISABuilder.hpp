@@ -306,8 +306,8 @@ namespace IGC
         void ScatterA64(CVariable* val, CVariable* offset, unsigned elementSize, unsigned numElems);
         void ByteGather(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
         void ByteScatter(CVariable* src, const ResourceDescriptor& resource, CVariable* offset, unsigned elementSize, unsigned numElems);
-        void Gather4Scaled(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset);
-        void Gather4ScaledNd(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned nd);
+        void Gather4Scaled(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned Mask = 0);
+        void Gather4ScaledNd(CVariable* dst, const ResourceDescriptor& resource, CVariable* offset, unsigned nd, unsigned Mask = 0);
         void Scatter4Scaled(CVariable* src, const ResourceDescriptor& resource, CVariable* offset);
         void Gather4A64(CVariable* dst, CVariable* offset);
         void Scatter4A64(CVariable* src, CVariable* offset);

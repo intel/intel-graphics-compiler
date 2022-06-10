@@ -6676,7 +6676,7 @@ namespace IGC
     void CEncoder::Gather4ScaledNd(CVariable* dst,
         const ResourceDescriptor& resource,
         CVariable* offset,
-        unsigned nd) {
+        unsigned nd, unsigned Mask) {
 
         VISA_StateOpndHandle* surfaceOpnd = GetVISASurfaceOpnd(resource);
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
@@ -6687,13 +6687,15 @@ namespace IGC
         int val = 0;
         V(vKernel->CreateVISAImmediate(globalOffsetOpnd, &val, ISA_TYPE_UD));
 
+        if (!Mask)
+            Mask = BIT(nd) - 1;
         V(vKernel->AppendVISASurfAccessGather4Scatter4ScaledInst(
             ISA_GATHER4_SCALED,
             predOpnd,
             GetAluEMask(dst),
             visaExecSize(offset->IsUniform() ? lanesToSIMDMode(offset->GetNumberElement()) :
                 m_encoderState.m_simdSize),
-            ConvertChannelMaskToVisaType(BIT(nd) - 1),
+            ConvertChannelMaskToVisaType(Mask),
             surfaceOpnd,
             globalOffsetOpnd,
             addressOpnd, dstOpnd));
@@ -6730,10 +6732,10 @@ namespace IGC
 
     void CEncoder::Gather4Scaled(CVariable* dst,
         const ResourceDescriptor& resource,
-        CVariable* offset)
+        CVariable* offset, unsigned Mask)
     {
         unsigned nd = getNumChannels(dst);
-        Gather4ScaledNd(dst, resource, offset, nd);
+        Gather4ScaledNd(dst, resource, offset, nd, Mask);
     }
 
     void CEncoder::Scatter4Scaled(CVariable* src,

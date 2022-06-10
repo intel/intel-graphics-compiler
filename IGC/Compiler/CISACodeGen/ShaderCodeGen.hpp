@@ -327,6 +327,13 @@ public:
     virtual bool HasFullDispatchMask() { return false; }
     bool needsEntryFence() const;
 
+    std::pair<bool, unsigned> getExtractMask(Value *V) const {
+        auto It = extractMasks.find(V);
+        if (It == extractMasks.end())
+            return std::make_pair(false, 0);
+        return std::make_pair(true, It->second);
+    }
+
     llvm::Function* entry;
     const CBTILayout* m_pBtiLayout;
     const CPlatform* m_Platform;

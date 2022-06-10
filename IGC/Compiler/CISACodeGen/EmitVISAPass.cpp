@@ -18362,6 +18362,14 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
         return;
     }
 
+    bool HasEM;
+    unsigned Mask;
+    std::tie(HasEM, Mask) = m_currShader->getExtractMask(inst);
+    if (!HasEM) {
+        // Ensure 'Mask' is cleared.
+        Mask = 0;
+    }
+
     // Second, src isn't uniform
     for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
     {
@@ -18412,7 +18420,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
             m_encoder->ByteGather(gatherDst, resource, rawAddrVar, blkBits, numBlks);
             break;
         case VectorMessage::MESSAGE_A32_UNTYPED_SURFACE_RW:
-            m_encoder->Gather4Scaled(gatherDst, resource, rawAddrVar);
+            m_encoder->Gather4Scaled(gatherDst, resource, rawAddrVar, Mask);
             break;
         case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
             emitGather4A64(inst, gatherDst, rawAddrVar, false);

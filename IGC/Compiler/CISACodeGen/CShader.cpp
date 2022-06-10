@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/HullShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/DomainShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+#include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/BindlessShaderCodeGen.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/secure_mem.h"
@@ -1375,6 +1376,69 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
         {
             nbElement = iSTD::BitCount(mask);
         }
+    } else if (auto *LD = dyn_cast<LoadInst>(val)) {
+        do {
+            if (shouldGenerateLSC(LD))
+                break;
+            Value *Ptr = LD->getPointerOperand();
+            PointerType *PtrTy = cast<PointerType>(Ptr->getType());
+            bool useA32 = !IGC::isA64Ptr(PtrTy, GetContext());
+
+            Type* Ty = LD->getType();
+            IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+            Type* eltTy = VTy ? VTy->getElementType() : Ty;
+            uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
+            // Skip if not 32-bit load.
+            if (eltBytes != 4)
+                break;
+
+            uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+            uint32_t totalBytes = eltBytes * elts;
+
+            unsigned align = LD->getAlignment();
+
+            uint bufferIndex = 0;
+            bool directIndexing = false;
+            BufferType bufType = DecodeAS4GFXResource(PtrTy->getAddressSpace(), directIndexing, bufferIndex);
+            // Some driver describe constant buffer as typed which forces us to use
+            // byte scatter message.
+            bool forceByteScatteredRW = (bufType == CONSTANT_BUFFER) && UsesTypedConstantBuffer(GetContext(), bufType);
+
+            // Keep this check consistent in emitpass.
+            if (bufType == STATELESS_A32)
+                break;
+
+            // Keep this check consistent in emitpass.
+            if (totalBytes < 4)
+                break;
+
+            // Keep this check consistent in emitpass.
+            if (GetIsUniform(Ptr))
+                break;
+
+            VectorMessage VecMessInfo(this);
+            VecMessInfo.getInfo(Ty, align, useA32, forceByteScatteredRW);
+
+            // Skip if non-trival case or gather4 won't be used. So far, only
+            // VectorMessage::MESSAGE_A32_UNTYPED_SURFACE_RW is considered.
+            if (VecMessInfo.numInsts != 1 ||
+                VecMessInfo.insts[0].kind !=
+                    VectorMessage::MESSAGE_A32_UNTYPED_SURFACE_RW)
+                break;
+
+            for (auto *User : LD->users()) {
+                auto *EEI = dyn_cast<ExtractElementInst>(User);
+                auto *CI = EEI ? dyn_cast<ConstantInt>(EEI->getIndexOperand()) : nullptr;
+                if (!CI) {
+                    // Don't populate any mask so that default one could be used instead.
+                    mask = 0;
+                    break;
+                }
+                mask |= BIT(unsigned(CI->getZExtValue()));
+            }
+            if (mask)
+                nbElement = iSTD::BitCount(mask);
+        } while (0);
     }
     return nbElement;
 }
