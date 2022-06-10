@@ -304,7 +304,9 @@ void IR_Builder::preparePayload(
     unsigned regOff = 0;
     for (i = splitPos; i != len; ++i)
     {
-        Copy_Source_To_Payload(this, batchExSize, msg, regOff, srcs[i].opnd,
+        G4_ExecSize cpExSize = srcs[i].copyExecSize != g4::SIMD_UNDEFINED
+            ? srcs[i].copyExecSize : batchExSize;
+        Copy_Source_To_Payload(this, cpExSize, msg, regOff, srcs[i].opnd,
             srcs[i].numElts, srcs[i].instOpt);
     }
 

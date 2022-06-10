@@ -1854,10 +1854,29 @@ public:
 
     G4_Declare* getImmDcl(G4_Imm* val, int numElt);
 
+    //
+    // 'copyExecSize' and preparePayload's batchExSize together provide
+    // the execSize of copying instruction.
+    //     'copyExecSize' of PayloadSource is used for header only for now.
+    //     If 'copyExecSize' is present, use it; otherwise, use batchExSize
+    //     of preparePayload for copying.
+    //
+    //  For example,
+    //     send(4|M0)   nullptr  addr:a32 data:ud ...
+    //  will be changed to
+    //     mov(8|M0)    msgPayload(0,0) <1;1,0> header
+    //     mov(4|M0)    msgPayload(1,0) <1;1,0> addr
+    //     mov(4|M0)    msgPayload(2,0) <1;1,0> data
+    //     send(4|M0)   nullptr   msgPayload ...
+    //  where 'copyExecSize' will be 8 and batchExSize = 4.
+    //
     struct PayloadSource {
         G4_SrcRegRegion  *opnd;
-        uint32_t          numElts;  // 'opnd's size in msg payload
+        uint32_t          numElts;       // 'opnd's size in msg payload
         G4_InstOpts       instOpt;
+        G4_ExecSize       copyExecSize;  // used for copy if given.
+
+        PayloadSource() : copyExecSize(g4::SIMD_UNDEFINED) {}
     };
 
     /// preparePayload - This method prepares payload from the specified header
@@ -1869,7 +1888,10 @@ public:
     ///                         2-element array must be cleared before calling
     ///                         preparePayload().
     /// \param batchExSize      When it's required to copy sources, batchExSize
-    ///                         specifies the SIMD width of copy.
+    ///                         specifies the SIMD width of copy except when
+    ///                         'copyExecSize' of PayloadSource is defined. And
+    ///                         in the case 'copyExecSize is defined, it's used as
+    ///                         execsize for copy.
     /// \param splitSendEnabled Whether feature split-send is available. When
     ///                         feature split-send is available, this function
     ///                         will check whether two consecutive regions

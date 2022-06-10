@@ -92,7 +92,7 @@ int IR_Builder::translateVISAQWScatterInst(
     unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize);
     bool useSplitSend = useSends();
 
-    PayloadSource sources[2]; // Maximal 2 sources, optional header + offsets
+    PayloadSource sources[2]; // Maximal 2 sources, offsets + src
     unsigned len = 0;
 
     sources[len].opnd = addresses;
@@ -109,7 +109,11 @@ int IR_Builder::translateVISAQWScatterInst(
 
     G4_SrcRegRegion *msgs[2] {0, 0};
     unsigned sizes[2] {0, 0};
-    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+    // For send that has smaller execsize than exSize, like
+    //     "send (4)  ..."
+    // Make sure to use send's execsize (4) as batchsize, not 8/16/32.
+    // Thus, batchsize is min(exSize, instExSize).
+    preparePayload(msgs, sizes, std::min(exSize, instExSize), useSplitSend, sources, len);
 
     uint32_t desc = buildDescForScatter(DC_QWORD_SCATTERED_WRITE, numBlocks,
         execSize == EXEC_SIZE_8 ? MDC_SM2_SIMD8 : MDC_SM2_SIMD16);
@@ -1484,8 +1488,9 @@ int IR_Builder::translateVISADwordAtomicInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].numElts = g4::SIMD8;
+        sources[len].numElts = numEltPerGRF<Type_UD>();
         sources[len].instOpt = InstOpt_WriteEnable;
+        sources[len].copyExecSize = g4::SIMD8;  // header has 8 DWs
         ++len;
     }
 
@@ -1510,7 +1515,7 @@ int IR_Builder::translateVISADwordAtomicInst(
 
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
-    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+    preparePayload(msgs, sizes, std::min(exSize, instExSize), useSplitSend, sources, len);
 
     SFID sfid = SFID::DP_DC1;
     unsigned MD = 0;
@@ -1669,8 +1674,9 @@ int IR_Builder::translateVISAGather4TypedInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].numElts = g4::SIMD8;
+        sources[len].numElts = numEltPerGRF<Type_UD>();
         sources[len].instOpt = InstOpt_WriteEnable;
+        sources[len].copyExecSize = g4::SIMD8;
         ++len;
     }
 
@@ -1755,8 +1761,9 @@ int IR_Builder::translateVISAScatter4TypedInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].numElts = g4::SIMD8;
+        sources[len].numElts = numEltPerGRF<Type_UD>();
         sources[len].instOpt = InstOpt_WriteEnable;
+        sources[len].copyExecSize = g4::SIMD8;
         ++len;
     }
 
@@ -1877,7 +1884,7 @@ int IR_Builder::translateVISATypedAtomicInst(
 
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
-    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+    preparePayload(msgs, sizes, std::min(exSize, instExSize), useSplitSend, sources, len);
 
     unsigned dstLength = dst->isNullReg() ? 0 : 1;
 
@@ -2081,8 +2088,9 @@ int IR_Builder::translateGather4Inst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].numElts = g4::SIMD8;
+        sources[len].numElts = numEltPerGRF<Type_UD>();
         sources[len].instOpt = InstOpt_WriteEnable;
+        sources[len].copyExecSize = g4::SIMD8;
         ++len;
     }
 
@@ -2093,7 +2101,7 @@ int IR_Builder::translateGather4Inst(
 
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
-    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+    preparePayload(msgs, sizes, std::min(exSize, instExSize), useSplitSend, sources, len);
 
     SFID sfid = SFID::DP_DC1;
 
@@ -2183,8 +2191,9 @@ int IR_Builder::translateScatter4Inst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].numElts = g4::SIMD8;
+        sources[len].numElts = numEltPerGRF<Type_UD>();
         sources[len].instOpt = InstOpt_WriteEnable;
+        sources[len].copyExecSize = g4::SIMD8;
         ++len;
     }
 
@@ -2199,7 +2208,7 @@ int IR_Builder::translateScatter4Inst(
 
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
-    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+    preparePayload(msgs, sizes, std::min(exSize, instExSize), useSplitSend, sources, len);
 
     SFID sfid = SFID::DP_DC1;
 
@@ -2373,8 +2382,9 @@ int IR_Builder::translateByteGatherInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].numElts = g4::SIMD8;
+        sources[len].numElts = numEltPerGRF<Type_UD>();
         sources[len].instOpt = InstOpt_WriteEnable;
+        sources[len].copyExecSize = g4::SIMD8;
         ++len;
     }
 
@@ -2385,7 +2395,7 @@ int IR_Builder::translateByteGatherInst(
 
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
-    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+    preparePayload(msgs, sizes, std::min(exSize, instExSize), useSplitSend, sources, len);
 
     SFID sfid = SFID::DP_DC0;
 
@@ -2483,8 +2493,9 @@ int IR_Builder::translateByteScatterInst(
         G4_SrcRegRegion *header
             = createSrcRegRegion(dcl, getRegionStride1());
         sources[len].opnd = header;
-        sources[len].numElts = g4::SIMD8;
+        sources[len].numElts = numEltPerGRF<Type_UD>();
         sources[len].instOpt = InstOpt_WriteEnable;
+        sources[len].copyExecSize = g4::SIMD8;
         ++len;
     }
 
@@ -2499,7 +2510,7 @@ int IR_Builder::translateByteScatterInst(
 
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
-    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+    preparePayload(msgs, sizes, std::min(exSize, instExSize), useSplitSend, sources, len);
 
     SFID sfid = SFID::DP_DC0;
 
@@ -2652,8 +2663,9 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     unsigned len = 0;
 
     sources[len].opnd = createSrcRegRegion(dcl, getRegionStride1());
-    sources[len].numElts = g4::SIMD8;
+    sources[len].numElts = numEltPerGRF<Type_UD>();
     sources[len].instOpt = InstOpt_WriteEnable;
+    sources[len].copyExecSize = g4::SIMD8;  // block msg header has 8 DWs
     ++len;
 
     if (src->getElemSize() < TypeSize(Type_UD))
@@ -2824,7 +2836,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
 
     bool useSplitSend = useSends();
 
-    PayloadSource sources[2]; // Maximal 2 sources, optional header + offsets
+    PayloadSource sources[2]; // Maximal 2 sources, offsets + src
     unsigned len = 0;
 
     sources[len].opnd = addresses;
@@ -2860,7 +2872,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
         (TypeSize(srcType) != 4))
         src->setType(*this, Type_UD);
 
-    preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
+    preparePayload(msgs, sizes, std::min(exSize, instExSize), useSplitSend, sources, len);
 
     // set the type back in case we changed it for preparePayload
     src->setType(*this, srcType);
