@@ -456,7 +456,7 @@ bool TranslateSPIRVToLLVM(
     // translation options.
     if (InputArgs.SpecConstantsSize)
     {
-        for (auto SC : specIDToSpecValueMap)
+        for (const auto& SC : specIDToSpecValueMap)
             Opts.setSpecConst(SC.first, SC.second);
     }
 
