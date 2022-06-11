@@ -168,6 +168,24 @@ bool RayTracingShaderLowering::runOnModule(Module& M)
         for (auto II = inst_begin(&F), IE = inst_end(&F); II != IE; /* empty */)
         {
             Instruction& I = *II++;
+            if (auto* II = dyn_cast<IntrinsicInst>(&I))
+            {
+                switch (II->getIntrinsicID())
+                {
+                case Intrinsic::lifetime_start:
+                case Intrinsic::lifetime_end:
+                {
+                    auto* Ptr = II->getOperand(1);
+                    uint32_t Addrspace =
+                        Ptr->getType()->getPointerAddressSpace();
+                    if (Addrspace != ADDRESS_SPACE_PRIVATE)
+                        II->eraseFromParent();
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
             auto* GII = dyn_cast<GenIntrinsicInst>(&I);
             if (!GII)
                 continue;
