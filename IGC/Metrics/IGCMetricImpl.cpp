@@ -1135,7 +1135,7 @@ namespace IGCMetrics
                         {
                             func_arg_m->set_name(arg->getName().str());
                         }
-                        func_arg_m->set_compilesize(arg->getType()->getPrimitiveSizeInBits());
+                        func_arg_m->set_compilesize((int32_t)arg->getType()->getPrimitiveSizeInBits());
                         func_arg_m->set_type(IGC_METRICS::KernelArg_ArgumentType::KernelArg_ArgumentType_IMPLICIT);
                     }
                 }
@@ -1508,7 +1508,7 @@ namespace IGCMetrics
                 {
                     auto func_arg_m = func_m->add_arguments();
                     func_arg_m->set_name(varName);
-                    func_arg_m->set_compilesize(value->getType()->getPrimitiveSizeInBits());
+                    func_arg_m->set_compilesize((int32_t)value->getType()->getPrimitiveSizeInBits());
                     func_arg_m->set_type(IGC_METRICS::KernelArg_ArgumentType::KernelArg_ArgumentType_EXPLICIT);
                 }
 
