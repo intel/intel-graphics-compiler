@@ -446,6 +446,8 @@ namespace IGCMetrics
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
 
         this->pModule = (IGCLLVM::Module*)pModule;
+        fillInstrKindID = pModule->getMDKindID("FillInstr");
+        spillInstrKindID = pModule->getMDKindID("SpillInstr");
         for (auto func_i = pModule->begin(); func_i != pModule->end(); ++func_i)
         {
             llvm::Function& func = *func_i;
@@ -615,6 +617,7 @@ namespace IGCMetrics
         UpdateLoopsInfo();
         UpdateModelCost();
         UpdateFunctionArgumentsList();
+        UpdateInstructionStats();
 #endif
     }
 
@@ -953,12 +956,6 @@ namespace IGCMetrics
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        if (fillInstrKindID == 0)
-        {
-            fillInstrKindID = pModule->getMDKindID("FillInstr");
-            spillInstrKindID = pModule->getMDKindID("SpillInstr");
-        }
-
         IGC_METRICS::Function* func_metric = GetFuncMetric(pAllocaInst);
         if (func_metric)
         {
@@ -1217,16 +1214,113 @@ namespace IGCMetrics
 
     void IGCMetricImpl::UpdateLoopsInfo()
     {
-        //TODO
     }
 
-    class CollectDataMetrics : public llvm::InstVisitor<CollectDataMetrics>
+    class CollectInstrData : public llvm::InstVisitor<CollectInstrData>
     {
         IGCMetricImpl* metric;
 
     public:
 
-        CollectDataMetrics(IGCMetricImpl* metric)
+        CollectInstrData(IGCMetricImpl* metric)
+        {
+            this->metric = metric;
+        }
+
+        void visitUnaryOperator(llvm::UnaryOperator& unaryOpInst)
+        {
+            AddArithmeticinstCount(unaryOpInst);
+        }
+
+        void visitBinaryOperator(llvm::BinaryOperator& binaryOpInst)
+        {
+            AddArithmeticinstCount(binaryOpInst);
+        }
+
+        void visitCallInst(llvm::CallInst& callInst)
+        {
+            /*
+            if (GenIntrinsicInst* CI = llvm::dyn_cast<GenIntrinsicInst>(&callInst))
+            {
+                switch (CI->getIntrinsicID())
+                {
+                default:
+                    break;
+                }
+            }*/
+            if (IntrinsicInst* CI = llvm::dyn_cast<IntrinsicInst>(&callInst))
+            {
+                switch (CI->getIntrinsicID())
+                {
+                case Intrinsic::log:
+                case Intrinsic::log2:
+                case Intrinsic::log10:
+                case Intrinsic::cos:
+                case Intrinsic::sin:
+                case Intrinsic::exp:
+                case Intrinsic::exp2:
+                    AddTranscendentalFuncCount(callInst);
+                    break;
+                case Intrinsic::sqrt:
+                case Intrinsic::pow:
+                case Intrinsic::floor:
+                case Intrinsic::ceil:
+                case Intrinsic::trunc:
+                case Intrinsic::maxnum:
+                case Intrinsic::minnum:
+                    AddArithmeticinstCount(callInst);
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+
+        void AddTranscendentalFuncCount(llvm::Instruction& instr)
+        {
+            // Transcendental functions includes:
+            // 1.exponential function
+            // 2.logarithm
+            // 3.trigonometric functions
+            auto func_m = metric->GetFuncMetric(&instr);
+
+            if (func_m)
+            {
+                auto instr_stats_m = func_m->mutable_instruction_stats();
+                instr_stats_m->set_counttranscendentalfunc(
+                    instr_stats_m->counttranscendentalfunc() + 1
+                );
+            }
+        }
+
+        void AddArithmeticinstCount(llvm::Instruction& instr)
+        {
+            auto func_m = metric->GetFuncMetric(&instr);
+
+            if (func_m)
+            {
+                auto instr_stats_m = func_m->mutable_instruction_stats();
+                instr_stats_m->set_countarithmeticinst(
+                    instr_stats_m->countarithmeticinst() + 1
+                );
+            }
+        }
+    };
+
+    void IGCMetricImpl::UpdateInstructionStats()
+    {
+        CollectInstrData metricPass(this);
+
+        metricPass.visit(pModule);
+    }
+
+    class CollectFuncData : public llvm::InstVisitor<CollectFuncData>
+    {
+        IGCMetricImpl* metric;
+
+    public:
+
+        CollectFuncData(IGCMetricImpl* metric)
         {
             this->metric = metric;
         }
@@ -1294,7 +1388,7 @@ namespace IGCMetrics
 
     void IGCMetricImpl::GetFunctionData(IGC_METRICS::Function* func_m, llvm::Function& func)
     {
-        CollectDataMetrics metricPass(this);
+        CollectFuncData metricPass(this);
 
         metricPass.visit(func);
 

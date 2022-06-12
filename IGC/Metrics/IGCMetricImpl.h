@@ -48,8 +48,9 @@ namespace IGCMetrics
     class IGCMetricImpl
     {
     private:
-        friend class CollectDataMetrics;
+        friend class CollectFuncData;
         friend class CollectSpillFills;
+        friend class CollectInstrData;
 
         bool isEnabled;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
@@ -90,10 +91,11 @@ namespace IGCMetrics
         inline IGC_METRICS::Function* GetFuncMetric(const llvm::DebugLoc& pLoc);
         inline IGC_METRICS::Function* GetFuncMetric(llvm::Function* pFunc);
 
+        void CollectLoop(llvm::Loop* loop);
         void UpdateLoopsInfo();
         void UpdateModelCost();
         void UpdateMem2RegStats(IGC::VISAModule* CurrentVISA);
-        void CollectLoop(llvm::Loop* loop);
+        void UpdateInstructionStats();
 
         inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DILexicalBlock* Loc);
         inline void FillCodeRef(IGC_METRICS::CodeRef* codeRef, llvm::DISubprogram* Loc);
