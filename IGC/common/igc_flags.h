@@ -181,6 +181,7 @@ DECLARE_IGC_REGKEY(bool, DisableDX9LowPrecision,        true,  "Disables HF in D
 DECLARE_IGC_REGKEY(bool, EnablePingPongTextureOpt,      true,  "Enables the Ping Pong texture optimization which is used only for Compute Shaders for back to back dispatches", false)
 DECLARE_IGC_REGKEY(bool, EnableAtomicBranch,            false, "Enable Atomic branch optimization which break atomic into if/else with atomic and read based on the operation", false)
 DECLARE_IGC_REGKEY(bool, EnableThreeWayLoadSpiltOpt,    false, "Enable three way load spilt opt.", false)
+DECLARE_IGC_REGKEY(bool, EnableClampPowOpt,             true, "Enable brnaching to skip math.pow when clamp output is zero", true)
 DECLARE_IGC_REGKEY(bool, EnableSamplerChannelReturn,    true,  "Setting this to 1/true adds a compiler switch to enable using header to return selective channels from sampler", false)
 DECLARE_IGC_REGKEY(bool, EnableThreadCombiningOpt,      true,  "Enables the thread combining optimization which is used only for Compute Shaders for combining a number of software threads to dispatch smaller number of hardware threads", false)
 DECLARE_IGC_REGKEY(bool, DisablePromotePrivMem,         false, "Setting this to 1/true adds a compiler switch to disable IGC private array promotion", false)
