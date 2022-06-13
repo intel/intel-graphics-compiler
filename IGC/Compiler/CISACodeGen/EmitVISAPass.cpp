@@ -12320,7 +12320,16 @@ void EmitPass::emitStackFuncEntry(Function* F)
                     // Directly map the dst register to an alias of ArgBlkVar, and update symbol mapping for future uses
                     Dst = m_currShader->GetNewAlias(ArgBlkVar, Dst->GetType(), (uint16_t)offsetA, Dst->GetNumberElement(), Dst->IsUniform());
                     m_currShader->UpdateSymbolMap(&Arg, Dst);
-                    m_currShader->UpdateSymbolMap(m_deSSA->getRootValue(&Arg), Dst);
+                    Value *val = m_deSSA->getRootValue(&Arg);
+                    if (val && dyn_cast<Argument>(val) == nullptr)
+                    {
+                        // When the leading root value is not an argument, it means the argument has been clobbered through phi nodes.
+                        // Create mov for the new CVariable
+                        CVariable *var = m_currShader->GetNewVariable(Dst);
+                        m_encoder->Copy(var, Dst);
+                        m_encoder->Push();
+                        m_currShader->UpdateSymbolMap(val, var);
+                    }
                 }
                 else
                 {

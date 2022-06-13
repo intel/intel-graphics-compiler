@@ -759,17 +759,6 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     if (!topDcl) continue;
                     G4_Declare* rootDcl = topDcl->getRootDeclare();
 
-                    if (calleeBuilder->isPreDefArg(rootDcl))
-                    {
-                        G4_DstRegRegion *replacedArgDst = callerBuilder->createDst(
-                                replacedArgDcl->getRegVar(),
-                                dst->asDstRegRegion()->getRegOff(),
-                                dst->asDstRegRegion()->getSubRegOff(),
-                                dst->asDstRegRegion()->getHorzStride(),
-                                dst->getType());
-                        inst->setDest(replacedArgDst);
-                    }
-
                     if (calleeBuilder->isPreDefRet(rootDcl))
                     {
                         G4_DstRegRegion *replacedRetDst = callerBuilder->createDst(
