@@ -50,7 +50,8 @@ Installing LLVM, Clang, and OpenCL Clang components means you no longer have to 
       |- SPIRV-Tools                  https://github.com/KhronosGroup/SPIRV-Tools
       |- SPIRV-Headers                https://github.com/KhronosGroup/SPIRV-Headers
 ```
-Additionaly, you can use **SPIRV-Tools** prebuild pacakge. In order to do that be sure to pass to cmake command `IGC_OPTION__SPIRV_TOOLS_MODE=Prebuilds`.
+Additionaly, you can use **SPIRV-Tools** prebuild pacakge. In order to do that be sure to pass to cmake command `IGC_OPTION__SPIRV_TOOLS_MODE=Prebuilds`. Until the issue 
+https://github.com/KhronosGroup/SPIRV-Tools/issues/3909 will not be resolved, we support only SPIRV_Tools as a shared lib, and we encourage to build SPIRV-Tools prebuild with SPIRV_TOOLS_BUILD_STATIC=OFF flag.
 
 Additionaly, OpenCL Clang and Vector Compiler share the library Spirv Translator. Cannot build llvm-spirv translator if OpenCL-Clang is taken as prebuilt from system. This can lead to problems with linking.
 
