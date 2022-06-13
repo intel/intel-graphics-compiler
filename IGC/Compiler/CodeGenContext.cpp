@@ -652,8 +652,8 @@ namespace IGC
     void OpenCLProgramContext::InternalOptions::parseOptions(const char* IntOptStr)
     {
         // Assume flags is in the form: <f0>[=<v0>] <f1>[=<v1>] ...
-        // flag name and its value are either seperated by ' ' or '=';
-        // flag seperator is always ' '.
+        // flag name and its value are either seperated by one or many ' ' or a single '='.
+        // A flag seperator between two flags is always one or many ' '.
         const char* NAMESEP = " =";  // separator b/w name and its value
 
         llvm::StringRef opts(IntOptStr);
@@ -977,6 +977,28 @@ namespace IGC
             else if (suffix.equals("-fail-on-spill"))
             {
                 FailOnSpill = true;
+            }
+            // -[cl|ze]-load-cache-default[=| ]<positive int>
+            // -[cl|ze]-store-cache-default[=| ]<positive int>
+            else if (suffix.equals("-load-cache-default") || suffix.equals("-store-cache-default"))
+            {
+                bool isLoad = suffix.equals("-load-cache-default");
+                int val;
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
+                if (valStr.getAsInteger(10, val))
+                {
+                    IGC_ASSERT(0);
+                }
+                if (val >= 0)
+                {
+                    if (isLoad)
+                        LoadCacheDefault = val;
+                    else
+                        StoreCacheDefault = val;
+                }
+                Pos = valEnd;
             }
             // -cl-poison-unsupported-fp64-kernels
             // -ze-poison-unsupported-fp64-kernels

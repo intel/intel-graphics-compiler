@@ -21621,7 +21621,24 @@ static bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad)
 LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
     Instruction* inst, bool isLoad) const
 {
-    LSC_CACHE_OPTS cacheOpts {LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
+    LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+
+    // If default setting is passed to igc, take it
+    if (m_pCtx->type == ShaderType::OPENCL_SHADER)
+    {
+        auto CLCtx = static_cast<const OpenCLProgramContext*>(m_pCtx);
+        if (isLoad && CLCtx->m_InternalOptions.LoadCacheDefault != -1)
+        {   // load
+            LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(CLCtx->m_InternalOptions.LoadCacheDefault);
+            cacheOpts = translateLSCCacheControlsEnum(L1L3Val, true);
+        }
+        else if (!isLoad && CLCtx->m_InternalOptions.StoreCacheDefault != -1)
+        {   // store
+            LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(CLCtx->m_InternalOptions.StoreCacheDefault);
+            cacheOpts = translateLSCCacheControlsEnum(L1L3Val, false);
+        }
+    }
+
     // inst could be nullptr when this function is called
     if (inst)
     {
