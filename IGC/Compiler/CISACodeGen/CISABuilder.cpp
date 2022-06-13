@@ -2883,6 +2883,11 @@ namespace IGC
         }
         imm_data |= RM_bits;
 
+        if (IGC_IS_FLAG_ENABLED(deadLoopForFloatException))
+        {
+            imm_data |= 0x200; //Cr0 , bit 9 to enable float exception trap
+        }
+
         // If we are in the default mode no need to set the CR
         if (imm_data != 0)
         {
