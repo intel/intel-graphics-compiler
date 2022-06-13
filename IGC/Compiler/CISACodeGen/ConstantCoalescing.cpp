@@ -409,7 +409,10 @@ void ConstantCoalescing::ProcessBlock(
             break;
         }
     }
-    bool skipLdrawOpt = (m_ctx->type == ShaderType::PIXEL_SHADER) || bbHasStores;
+
+    bool isCPS = false;
+
+    bool skipLdrawOpt = isCPS || bbHasStores;
     // get work-item analysis, need to update uniformness information
     for (BasicBlock::iterator BBI = blk->begin(), BBE = blk->end();
          BBI != BBE; ++BBI)
