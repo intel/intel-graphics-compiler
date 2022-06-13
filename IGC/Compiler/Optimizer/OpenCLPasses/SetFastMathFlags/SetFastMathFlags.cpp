@@ -42,6 +42,13 @@ SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask) : ModulePass(ID)
     initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
 }
 
+SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask, bool skipUnsafeFpMathAttr) : ModulePass(ID)
+{
+    m_Mask = Mask;
+    m_skipUnsafeFpMathAttr = skipUnsafeFpMathAttr;
+    initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
+}
+
 bool SetFastMathFlags::runOnModule(Module& M)
 {
     auto hasFnAttributeSet = [](Function& F, StringRef Attr) -> bool
@@ -53,8 +60,10 @@ bool SetFastMathFlags::runOnModule(Module& M)
     bool changed = false;
     for (Function& F : M) {
         FastMathFlags fmfs;
+        // We determine if we have to use the unsafe-fp-math attr or we can omit it
+        bool unsafeFpMathAttrCheck = m_skipUnsafeFpMathAttr || hasFnAttributeSet(F, "unsafe-fp-math");
         // Fast relaxed math implies all other flags.
-        if (modMD.compOpt.FastRelaxedMath && hasFnAttributeSet(F, "unsafe-fp-math")) {
+        if (modMD.compOpt.FastRelaxedMath && unsafeFpMathAttrCheck) {
             fmfs.setFast();
             fmfs &= m_Mask;
             changed |= setFlags(F, fmfs);

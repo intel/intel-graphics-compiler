@@ -383,7 +383,7 @@ static void CommonOCLBasedPasses(
         FastMathFlags Mask;
         Mask.setFast();
         Mask.setNoSignedZeros(false);
-        mpm.add(new SetFastMathFlags(Mask));
+        mpm.add(new SetFastMathFlags(Mask, true));
 
         // Report undef references after setting func attribs for import linking
         mpm.add(new UndefinedReferencesPass());
@@ -569,7 +569,7 @@ static void CommonOCLBasedPasses(
 
     FastMathFlags Mask;
     Mask.setNoSignedZeros(true);
-    mpm.add(new SetFastMathFlags(Mask));
+    mpm.add(new SetFastMathFlags(Mask, true));
     mpm.add(new FixResourcePtr());
 
     if(isOptDisabled)

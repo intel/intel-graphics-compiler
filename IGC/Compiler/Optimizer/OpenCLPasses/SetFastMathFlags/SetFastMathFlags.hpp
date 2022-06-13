@@ -32,6 +32,8 @@ namespace IGC
 
         SetFastMathFlags(llvm::FastMathFlags Mask);
 
+        SetFastMathFlags(llvm::FastMathFlags Mask, bool skipUnsafeFpMathAttr);
+
         ~SetFastMathFlags() {}
 
         virtual llvm::StringRef getPassName() const override
@@ -55,6 +57,11 @@ namespace IGC
         static bool setFlags(llvm::Function& F, llvm::FastMathFlags fmfs);
 
         llvm::FastMathFlags m_Mask;
+
+        // We need to distinguish between when the compiler uses the FastRelaxedMath flag alone
+        // and when uses the FastRelaxedMath flag with unsafe-fp-math attribute.
+        // For the option one, we set the new bool variable to true (we skip unsafe-fp-math attribute)
+        bool m_skipUnsafeFpMathAttr = false;
     };
 
 } // namespace IGC
