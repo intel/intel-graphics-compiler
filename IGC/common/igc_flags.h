@@ -532,6 +532,7 @@ DECLARE_IGC_REGKEY(DWORD, FunctionCloningThreshold,    0,
     "Limits how many times functions can be cloned when called from multiple function groups." \
     "If exceeding the cloning threshold, compile the function only once and use address relocation instead." \
     "A value of '0' means no limit on times it can be cloned", true)
+DECLARE_IGC_REGKEY(bool, ForceLowestSIMDForStackCalls,  true, "If enabled, compile to the lowest allowed SIMD mode when stack calls or indirect calls are present", true)
 DECLARE_IGC_REGKEY(DWORD, OCLInlineThreshold,           512,  "Setting OCL inline thershold", true)
 DECLARE_IGC_REGKEY(bool, DisableAddingAlwaysAttribute,  false, "Disable adding always attribute", true)
 DECLARE_IGC_REGKEY(bool, EnableForceGroupSize,          false, "Enable forcing thread Group Size ForceGroupSizeX and ForceGroupSizeY", false)
