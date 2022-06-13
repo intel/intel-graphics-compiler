@@ -20,7 +20,9 @@ if(DEFAULT_IGC_LLVM_SOURCES_DIR)
 endif()
 
 if(IGC_OPTION__LLD_MODE STREQUAL SOURCE_MODE_NAME)
-  set(IGC_OPTION__lld_SOURCES_DIR "${DEFAULT_IGC_lld_SOURCES_DIR}" CACHE PATH "Path to lld sources")
+  if (NOT DEFINED IGC_OPTION__lld_SOURCES_DIR)
+    set(IGC_OPTION__lld_SOURCES_DIR "${DEFAULT_IGC_lld_SOURCES_DIR}" CACHE PATH "Path to lld sources")
+  endif()
 endif()
 
 # In Prebuild mode there is nothing to do here for now.

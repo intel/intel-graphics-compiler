@@ -24,7 +24,9 @@ if(DEFAULT_IGC_LLVM_SOURCES_DIR)
 endif()
 
 if(IGC_OPTION__CLANG_MODE STREQUAL SOURCE_MODE_NAME)
-  set(IGC_OPTION__CLANG_SOURCES_DIR "${DEFAULT_IGC_CLANG_SOURCES_DIR}" CACHE PATH "Path to Clang sources")
+  if (NOT DEFINED IGC_OPTION__CLANG_SOURCES_DIR)
+    set(IGC_OPTION__CLANG_SOURCES_DIR "${DEFAULT_IGC_CLANG_SOURCES_DIR}" CACHE PATH "Path to Clang sources")
+  endif()
 endif()
 
 # In Prebuild mode there is nothing to do here for now.
