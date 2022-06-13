@@ -259,7 +259,14 @@ std::string iga::FormatLastError(unsigned errCode)
     if (errMsg)
         msg = errMsg;
 #else
+// The XSI-compliant version of strerror_r() is provided if:
+#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+    // strerror_r return int for The XSI-compliant
     strerror_r(errCode, buf, sizeof(buf));
+#else
+    // GNU-specific version is provided and strerror_r return char*
+    errMsg = strerror_r(errCode, buf, sizeof(buf));
+#endif // (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
 #endif // _WIN32
     if (errMsg == nullptr || errMsg[0] == 0)
         return "???";
