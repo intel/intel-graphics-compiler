@@ -1563,6 +1563,8 @@ public:
 
     Value* getPayloadPtr() const   { return getOperand(0);    }
     void   setPayloadPtr(Value *V) { return setOperand(0, V); }
+
+    Value* getFrameAddr() const    { return getOperand(1);    }
 };
 
 class ContinuationSignpostIntrinsic : public GenIntrinsicInst {
