@@ -775,8 +775,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     if (ctx.type == ShaderType::OPENCL_SHADER &&
         static_cast<OpenCLProgramContext&>(ctx).
-            m_InternalOptions.PromoteStatelessToBindless &&
-        !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired)
+            m_InternalOptions.PromoteStatelessToBindless)
     {
         mpm.add(new PromoteStatelessToBindless());
     }
