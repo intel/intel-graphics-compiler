@@ -765,7 +765,7 @@ DECLARE_IGC_GROUP("Raytracing Options")
     DECLARE_IGC_REGKEY(bool, DisableRTFenceElision, false, "Disable optimization to remove unneeded fences", false)
     DECLARE_IGC_REGKEY(bool, DisableDPSE, false, "Disable Dead PayloadStore Elimination.", true)
     DECLARE_IGC_REGKEY(bool, EnableRTDispatchAlongY, false, "Dispatch Compute Walker along Y first", true)
-    DECLARE_IGC_REGKEY(bool, EnablePredicatedStackIDRelease, false, "Emit a single stack ID release at the end of the shader", true)
+    DECLARE_IGC_REGKEY(bool, DisablePredicatedStackIDRelease, false, "Emit a single stack ID release at the end of the shader", true)
     DECLARE_IGC_REGKEY(bool, DisableCrossFillRemat, false, "Rematerialize values if they use already spilled values", true)
     DECLARE_IGC_REGKEY(bool, EnableSpillWidening, false, "Expand SWStack spills into padding of stack frame", true)
 

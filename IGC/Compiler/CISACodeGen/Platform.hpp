@@ -728,7 +728,7 @@ bool hasNoFullI64Support() const
 bool WaPredicatedStackIDRelease() const
 {
     return m_WaTable.Wa_22014559856 &&
-           IGC_IS_FLAG_ENABLED(EnablePredicatedStackIDRelease);
+           IGC_IS_FLAG_DISABLED(DisablePredicatedStackIDRelease);
 }
 
 // This returns the current maximum size that we recommend for performance.
