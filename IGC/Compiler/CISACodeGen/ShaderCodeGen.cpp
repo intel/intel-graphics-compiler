@@ -127,6 +127,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/InitializePasses.h"
 #include "Compiler/GenRotate.hpp"
 #include "Compiler/Optimizer/Scalarizer.h"
+#include "Compiler/RemoveCodeAssumptions.hpp"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/debug/Dump.hpp"
@@ -867,6 +868,14 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     }
 
     mpm.add(new WorkaroundAnalysis());
+
+    if (!isOptDisabled) {
+        // Removing code assumptions can enable some InstructionCombining optimizations.
+        // Last instruction combining pass needs to be before Legalization pass, as it can produce illegal instructions.
+        mpm.add(new RemoveCodeAssumptions());
+        mpm.add(createIGCInstructionCombiningPass());
+    }
+
     if (!isOptDisabled)
     {
         // Optimize lower-level IR
