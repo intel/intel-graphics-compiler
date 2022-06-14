@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include <sstream>
 #include <string>
 #include <vector>
+#include <type_traits>
 
 using namespace iga;
 
@@ -259,14 +260,12 @@ std::string iga::FormatLastError(unsigned errCode)
     if (errMsg)
         msg = errMsg;
 #else
-// The XSI-compliant version of strerror_r() is provided if:
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
-    // strerror_r return int for The XSI-compliant
-    strerror_r(errCode, buf, sizeof(buf));
-#else
-    // GNU-specific version is provided and strerror_r return char*
-    errMsg = strerror_r(errCode, buf, sizeof(buf));
-#endif // (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+    // Response to issue https://github.com/intel/intel-graphics-compiler/issues/213
+    auto strerror_r_return_value = strerror_r(errCode, buf, sizeof(buf));
+    if(std::is_same<decltype(strerror_r_return_value), char*>::value)
+    {
+        errMsg = strerror_r_return_value;
+    }
 #endif // _WIN32
     if (errMsg == nullptr || errMsg[0] == 0)
         return "???";
