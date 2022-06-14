@@ -1058,7 +1058,6 @@ SPDX-License-Identifier: MIT
       return 2 * 1024 * 1024;
    }
 
-
    uint32_t getInlineDataSize() const
    {
         if (getPlatform() >= Xe_XeHPSDV)
@@ -1068,4 +1067,11 @@ SPDX-License-Identifier: MIT
         return 0;
    }
 
+
+   // Return true if platform has structured control-flow instructions.
+   // Note: stop using SCF for DG2+ even though DG2/PVC still support it.
+   bool hasSCF() const
+   {
+       return (getPlatform() < Xe_DG2);
+   }
    // end HW capabilities

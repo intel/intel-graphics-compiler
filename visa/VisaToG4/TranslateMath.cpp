@@ -11,6 +11,26 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
+// Helper functions
+static bool useSCF(IR_Builder& aBuilder)
+{
+    // temp
+    return true;
+    // If it is scalar IGC, use SCF if structurizer is enabled; otherwise, don't use.
+    if (aBuilder.kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
+    {
+        return aBuilder.getOption(vISA_EnableStructurizer);
+    }
+    // VC, etc. Use SCF if platform supports SCF.
+    return aBuilder.hasSCF();
+}
+
+static uint32_t getSIMDSize(IR_Builder& aBuilder)
+{
+    int32_t simdsz = aBuilder.kernel.getInt32KernelAttr(Attributes::ATTR_SimdSize);
+    return (uint32_t)(simdsz <= 0 ? 32 : simdsz);
+}
+
 //
 // convert src into a direct packed region
 //
@@ -177,20 +197,43 @@ static void setDefaultRoundDenorm(
     }
 }
 
-static void restoreCR0_0(
+static void setFlagWithImm(IR_Builder& builder, G4_Declare* flag, bool isSetFlag, uint32_t imm)
+{
+    if (isSetFlag)
+    {
+        G4_Type flagTy = (flag->getNumElems() > 1 ? Type_UD: Type_UW);
+        G4_DstRegRegion* flagDst = builder.createDstRegRegion(flag, 1);
+        builder.createMov(g4::SIMD1, flagDst, builder.createImm(imm, flagTy), InstOpt_WriteEnable, true);
+    }
+}
+
+static void initEOFlagIfNeeded(IR_Builder& builder, G4_Declare* EOFlag, bool isSetFlag)
+{
+    if (isSetFlag)
+    {
+        G4_Type flagTy = (EOFlag->getNumElems() > 1 ? Type_UD : Type_UW);
+        G4_DstRegRegion* flagDst = builder.createDst(EOFlag->getRegVar(), 0, 0, 1, flagTy);
+        G4_Imm* imm = builder.createImm((flagTy == Type_UD ? 0xFFFFFFFF : 0xFFFF), flagTy);
+        builder.createMov(g4::SIMD1, flagDst, imm, InstOpt_WriteEnable, true);
+    }
+}
+
+static G4_INST* restoreCR0_0(
     IR_Builder& builder,
     bool hasDefaultRoundDenorm,
     G4_Declare* regCR0)
 {
+    G4_INST* restoreInst = nullptr;
     if (!hasDefaultRoundDenorm)
     {
         G4_DstRegRegion* cr0DstRegOpndForRestoreIfInst = builder.createDst(builder.phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
         auto tmpSrcOpndForCR0OnIf = builder.createSrcRegRegion(regCR0, builder.getRegionScalar());
 
         // restore cr0.0
-        builder.createMov(g4::SIMD1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
+        restoreInst = builder.createMov(g4::SIMD1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
             InstOpt_WriteEnable, true);
     }
+    return restoreInst;
 }
 
 int IR_Builder::translateVISAArithmeticDoubleInst(
@@ -222,8 +265,79 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
     G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
 
+    // Using either if-endif or goto/join
+    // Given the following on platform invm is simd8 only:
+    //
+    //     divm (M1, 8) dst.0<1>:df V0035(0,0)<1;1,0>:df V0037(0,0)<1;1,0>:df
+    //
+    // (1) if-endif
+    //       math.invm (4|M0) (eo)f0.0  r2.mme0:df  r58.nomme:df  r34.nomme:df
+    //       (~f0.0) if (4|M0) L0   L0
+    //          madm (4|M0) ...
+    //          ....
+    //          madm (4|M0) ...
+    //   L0: endif   L1
+    //   L1:
+    //       math.invm (4|M4) (eo)f0.0  r3.mme0:df  r59.nomme:df  r35.nomme:df
+    //       (~f0.0) if (4|M4) L2   L2
+    //          madm (4|M4) ...
+    //          ....
+    //          madm (4|M4) ...
+    //   L2: endif   L3
+    //   L3:
+    //
+    // (2) goto/join
+    //     As we only generate goto here and join will be inserted in processGoto(),
+    //     need to follow the assumption of processGoto() in which goto/join's execsize
+    //     should be the maximum number of active lanes when the control-flow reaches them.
+    //     For this, need to use goto (8|M0), not goto (4|M0) or goto (4|M4)!
+    //
+    //       (W)  mov (1|M0) f0.0:uw 0xff:uw   // set f0.0 to EO
+    //       math.invm (4|M0) (eo)f0.0  r2.mme0:df  r58.nomme:df  r34.nomme:df
+    //       (~f0.0) goto (8|M0) L0   L0
+    //          madm (4|M0) ...
+    //          ....
+    //          madm (4|M0) ...
+    //   L0:
+    //       (W)  mov (1|M0) f0.0:uw 0xff:uw   // set f0.0 to EO
+    //       math.invm (4|M4) (eo)f0.0  r3.mme0:df  r59.nomme:df  r35.nomme:df
+    //       (~f0.0) goto (8|M0) L2   L2
+    //          madm (4|M4) ...
+    //          ....
+    //          madm (4|M4) ...
+    //   L2:
+    //
+    bool generateIf;
+    bool doFastDiv = (opcode == ISA_DIV || opcode == ISA_INV);
+    switch (this->getuint32Option(vISA_PredicatedFdivSqrt))
+    {
+    case 0:  // force if-endif
+        generateIf = true;
+        break;
+    case 1:  // force predicated
+        generateIf = false;
+        break;
+    case 2:  // visa selects
+    default: // other value as default (2)
+        // Using predicated for fast div
+        generateIf = !doFastDiv;
+        break;
+    }
+
+    // For NoMask inst, force using predicated
+    if (isNoMask(emask))
+    {
+        generateIf = false;
+    }
+    const bool use_goto = (!useSCF(*this));
+
     // pred and conModifier
     uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
+    if (generateIf && use_goto)
+    {
+        // need to use flag that matches the simdsize.
+        flagSize = getSIMDSize(*this);
+    }
     G4_Declare *tmpFlag = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
@@ -290,35 +404,29 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     // cr0.0 register
     G4_Declare* regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
 
-    bool generateIf;
-    bool doFastDiv = (opcode == ISA_DIV || opcode == ISA_INV);
-    switch (this->getuint32Option(vISA_PredicatedFdivSqrt))
-    {
-    case 0:  // force if-endif
-        generateIf = true;
-        break;
-    case 1:  // force predicated
-        generateIf = false;
-        break;
-    case 2:  // visa selects
-    default: // other value as default (2)
-        // Using predicated for fast div
-        generateIf = !doFastDiv;
-        break;
-    }
-
-    // For NoMask inst, force using predicated
-    if (isNoMask(emask))
-    {
-        generateIf = false;
-    }
-
     // fast div would be 1ULP under default rounding mode and 2ULP otherwise.
     // Avoid setting rounding mode as 1-2ULP is acceptable for fast div.
     if (doFastDiv)
     {
         hasDefaultRoundDenorm = true;
     }
+
+    // Use the following to restore cr0 when generating goto/join
+    //         flagRestoreCR0 = 1
+    //         (EO) goto (8|M0) gotoUIP   // use !EO for SKL and prior platforms.
+    //             madm ...
+    //             madm ...
+    //             ...
+    //            (W) mov (1|M0) cr0 regCR0
+    //            flagRestoreCR0 = 0;
+    //            madm ...
+    //  gotoUIP:
+    //          (W&flagRestoreCR0) mov  (1|M0)  cr0 regCR0
+    //
+    // (if-endif can uses the same predicated restore, but choose not for now)
+    //
+    G4_Declare* flagRestoreCR0 = createTempFlag(1);
+    const bool mayUseFlagRestoreCR0 = (!useSCF(*this) && generateIf);
 
     // each madm only handles 4 channel double data
     VISA_EMask_Ctrl currEMask = emask;
@@ -406,6 +514,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
         // save CR, and then set rounding mode to RNE if hasDefaultRoundDenorm is false
         setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, regCR0);
+        setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 1);
 
         if (needsSrc0Move)
         {
@@ -456,6 +565,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         G4_SrcRegRegion *t7SrcOpndNeg2 = createSrcRegRegion(tsrc7_neg);
         G4_SrcRegRegion *t7SrcOpndNeg3 = createSrcRegRegion(tsrc7_neg);
 
+        // see comments regarding goto/join in translateVISAArithmeticDoubleInst().
+        initEOFlagIfNeeded(*this, tmpFlag, generateIf && use_goto);
+
         // math.e0.f0.0 (4) r8.acc2 r6.noacc r7.noacc 0xe {Align16, N1/N2}
         t8DstOpnd0->setAccRegSel(ACC2);
         t6SrcOpnd0->setAccRegSel(NOACC);
@@ -465,11 +577,23 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
+        G4_Label* gotoUIP = nullptr;
         if (generateIf)
         {
-            // if
-            G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-            inst = createIf(predicateFlagReg, exsize, instOpt);
+            if (!use_goto)
+            {
+                // if
+                G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                inst = createIf(predicateFlagReg, exsize, instOpt);
+            }
+            else
+            {
+                gotoUIP = createLocalBlockLabel("macro");
+                // visa goto (not gen goto inst) will jump on true!
+                G4_Predicate* predicateFlagReg = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                G4_ExecSize gotoExSize(getSIMDSize(*this));
+                inst = createCFInst(predicateFlagReg, G4_goto, gotoExSize, nullptr, gotoUIP, InstOpt_NoOpt, true);
+            }
         }
 
         // fast version
@@ -549,6 +673,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
             // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
             restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+            setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
         }
         else
         {
@@ -660,6 +785,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
             // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
             restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+            setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
 
             // madm (4) r8.noacc r9.acc9 r11.acc3 r12.acc2 {Align16, N1/N2}
             t8DstOpnd2->setAccRegSel(NOACC);
@@ -673,17 +799,33 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
         if (generateIf)
         {
-            if (!hasDefaultRoundDenorm)
+            if (!use_goto)
             {
-                // else (8) {Q1/Q2}
-                createElse(exsize, instOpt);
+                if (!hasDefaultRoundDenorm)
+                {
+                    // else (8) {Q1/Q2}
+                    createElse(exsize, instOpt);
 
-                // restore Rounding Mode in CR
-                restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                    // restore Rounding Mode in CR
+                    restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                }
+
+                // endif (8) {Q1/Q2}
+                inst = createEndif(exsize, instOpt);
             }
+            else
+            {
+                assert(gotoUIP);
+                inst = createLabelInst(gotoUIP, true);
 
-            // endif (8) {Q1/Q2}
-            inst = createEndif(exsize, instOpt);
+                if (!hasDefaultRoundDenorm)
+                {
+                    // restore Rounding Mode in CR
+                    G4_INST* cr0Inst = restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                    G4_Predicate* predCR0 = createPredicate(PredState_Plus, flagRestoreCR0->getRegVar(), 0, predCtrlValue);
+                    cr0Inst->setPredicate(predCR0);
+                }
+            }
         }
     }; //for loop
 
@@ -721,12 +863,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     G4_InstOpts madmInstOpt = Get_Gen4_Emask(emask, exsize); // only used in the loop
     const RegionDesc *srcRegionDesc = getRegionStride1();
 
-    bool generateIf = (this->getuint32Option(vISA_PredicatedFdivSqrt) != 1);
-    if (isNoMask(emask))
-    {
-        generateIf = false;
-    }
-
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_1 = createImm(float(1.0));
     if (instExecSize <= exsize)
@@ -741,8 +877,20 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         loopCount = instExecSize / exsize;
     }
 
+    bool generateIf = (this->getuint32Option(vISA_PredicatedFdivSqrt) != 1);
+    if (isNoMask(emask))
+    {
+        generateIf = false;
+    }
+    const bool use_goto = (!useSCF(*this));
+
     // pred and conModifier
     uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
+    if (generateIf && use_goto)
+    {
+        // goto requires flag to match simdsize.
+        flagSize = getSIMDSize(*this);
+    }
     G4_Declare* tmpFlag = createTempFlag(flagSize > 16 ? 2 : 1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
@@ -799,6 +947,10 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
     // cr0.0 register
     G4_Declare* regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
+
+    // For restoring cr0.0. See translateVISAArithmeticDoubleInst() for detail.
+    G4_Declare* flagRestoreCR0 = createTempFlag(1);
+    const bool mayUseFlagRestoreCR0 = (!useSCF(*this) && generateIf);
 
     VISA_EMask_Ctrl currEMask = emask;
     uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_F) * exsize + getGRFSize() - 1) / getGRFSize());
@@ -880,6 +1032,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
 
         // save CR, and then set rounding mode to RNE if hasDefaultRoundDenorm is false
         setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, regCR0);
+        setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 1);
 
         t6SrcOpnd0 = createSrcRegRegion(fsrc0);
         t6SrcOpnd1 = createSrcRegRegion(fsrc0);
@@ -903,6 +1056,9 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         G4_SrcRegRegion *t4SrcOpndNeg1 = createSrcRegRegion(tsrc4_neg);
         G4_SrcRegRegion *t4SrcOpndNeg2 = createSrcRegRegion(tsrc4_neg);
 
+        // see comments regarding goto/join in translateVISAArithmeticDoubleInst().
+        initEOFlagIfNeeded(*this, tmpFlag, generateIf && use_goto);
+
         // math.e0.f0.0 (8) r8.acc2 r6.noacc r4.noacc 0xe {Align16, Q1/Q2}
         t8DstOpnd0->setAccRegSel(ACC2);
         t6SrcOpnd0->setAccRegSel(NOACC);
@@ -913,11 +1069,23 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
+        G4_Label* gotoUIP = nullptr;
         if (generateIf)
         {
-            // (-f0.1) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
-            G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-            inst = createIf(predicateFlagReg, exsize, instOpt);
+            if (!use_goto)
+            {
+                // (-f0.1) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
+                G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                inst = createIf(predicateFlagReg, exsize, instOpt);
+            }
+            else
+            {
+                gotoUIP = createLocalBlockLabel("macro");
+                // visa goto (not gen goto inst) will jump on true!
+                G4_Predicate* predicateFlagReg = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                G4_ExecSize gotoExSize(getSIMDSize(*this));
+                inst = createCFInst(predicateFlagReg, G4_goto, gotoExSize, nullptr, gotoUIP, InstOpt_NoOpt, true);
+            }
         }
 
         // madm (8) r9.acc3 r2.noacc r6.noacc r8.acc2 {Align16, Q1/Q2}
@@ -981,6 +1149,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
 
         // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
         restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+        setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
 
         // madm (8) r8.noacc r9.acc7 r6.acc8 r1.acc5 {Align16, Q1/Q2}
         t8DstOpnd1->setAccRegSel(NOACC);
@@ -993,16 +1162,33 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
 
         if (generateIf)
         {
-            if (!hasDefaultRoundDenorm)
+            if (!use_goto)
             {
-                // else (8) {Q1/Q2}
-                createElse(exsize, instOpt);
+                if (!hasDefaultRoundDenorm)
+                {
+                    // else (8) {Q1/Q2}
+                    createElse(exsize, instOpt);
 
-                // restore Rounding Mode in CR
-                restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                    // restore Rounding Mode in CR
+                    restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                }
+
+                // endif (8) {Q1/Q2}
+                inst = createEndif(exsize, instOpt);
             }
-            // endif (8) {Q1/Q2}
-            inst = createEndif(exsize, instOpt);
+            else
+            {
+                assert(gotoUIP);
+                inst = createLabelInst(gotoUIP, true);
+
+                if (!hasDefaultRoundDenorm)
+                {
+                    // restore Rounding Mode in CR
+                    G4_INST* cr0Inst = restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                    G4_Predicate* predCR0 = createPredicate(PredState_Plus, flagRestoreCR0->getRegVar(), 0, predCtrlValue);
+                    cr0Inst->setPredicate(predCR0);
+                }
+            }
         }
     };
 
@@ -1045,16 +1231,22 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         loopCount = instExecSize / exsize;
     }
 
-    // pred and conModifier
-    uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
-    G4_Declare* tmpFlag = createTempFlag(flagSize > 16 ? 2 : 1);
-    G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
-
     bool generateIf = (this->getuint32Option(vISA_PredicatedFdivSqrt) != 1);
     if (isNoMask(emask))
     {
         generateIf = false;
     }
+    const bool use_goto = (!useSCF(*this));
+
+    // pred and conModifier
+    uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
+    if (generateIf && use_goto)
+    {
+        // goto requires flag to match simdsize.
+        flagSize = getSIMDSize(*this);
+    }
+    G4_Declare* tmpFlag = createTempFlag(flagSize > 16 ? 2 : 1);
+    G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
     G4_Declare *t6  = createTempVarWithNoSpill(element_size, Type_F, Any);
@@ -1092,6 +1284,10 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
     // cr0.0 register
     G4_Declare* regCR0 = createTempVarWithNoSpill(1, Type_UD, Any);
+
+    // For restoring cr0.0. See translateVISAArithmeticDoubleInst() for detail.
+    G4_Declare* flagRestoreCR0 = createTempFlag(1);
+    const bool mayUseFlagRestoreCR0 = (!useSCF(*this) && generateIf);
 
     VISA_EMask_Ctrl currEMask = emask;
     uint16_t splitInstGRFSize = (uint16_t)((TypeSize(Type_F) * exsize + getGRFSize() - 1) / getGRFSize());
@@ -1168,6 +1364,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
 
         // save CR, and then set rounding mode to RNE if hasDefaultRoundDenorm is false
         setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, regCR0);
+        setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 1);
 
         t6SrcOpnd0 = createSrcRegRegion(fsrc0);
         t6SrcOpnd1 = createSrcRegRegion(fsrc0);
@@ -1177,18 +1374,32 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         t7DstOpnd0->setAccRegSel(ACC2);
         t6SrcOpnd0->setAccRegSel(NOACC);
 
-        G4_SrcRegRegion *null_src_opnd = createNullSrc(Type_F);
+        // see comments regarding goto/join in translateVISAArithmeticDoubleInst().
+        initEOFlagIfNeeded(*this, tmpFlag, generateIf && use_goto);
 
+        G4_SrcRegRegion *null_src_opnd = createNullSrc(Type_F);
         inst = createMathInst(NULL, g4::NOSAT, exsize, t7DstOpnd0, t6SrcOpnd0,
             null_src_opnd, MATH_RSQRTM, madmInstOpt, true);
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
+        G4_Label* gotoUIP = nullptr;
         if (generateIf)
         {
-            // (-f1.0) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_IF_LABEL__0 {Q1/Q2}
-            G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-            inst = createIf(predicateFlagReg, exsize, instOpt);
+            if (!use_goto)
+            {
+                // (-f0.1) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
+                G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                inst = createIf(predicateFlagReg, exsize, instOpt);
+            }
+            else
+            {
+                gotoUIP = createLocalBlockLabel("macro");
+                // visa goto (not gen goto inst) will jump on true!
+                G4_Predicate* predicateFlagReg = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0, predCtrlValue);
+                G4_ExecSize gotoExSize(getSIMDSize(*this));
+                inst = createCFInst(predicateFlagReg, G4_goto, gotoExSize, nullptr, gotoUIP, InstOpt_NoOpt, true);
+            }
         }
 
         //madm (8) r9.acc3 r0.noacc r8.noacc r7.acc2 {Aligned16, Q1/Q2}
@@ -1278,6 +1489,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
 
         // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
         restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+        setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
 
         //madm (8) r7.noacc r7.acc7 r9.acc6 r10.acc8 {Aligned16, Q1/Q2}
         t7DstOpnd2->setAccRegSel(NOACC);
@@ -1290,17 +1502,33 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
 
         if (generateIf)
         {
-            if (!hasDefaultRoundDenorm)
+            if (!use_goto)
             {
-                // else (8) {Q1/Q2}
-                createElse(exsize, instOpt);
+                if (!hasDefaultRoundDenorm)
+                {
+                    // else (8) {Q1/Q2}
+                    createElse(exsize, instOpt);
 
-                // restore Rounding Mode in CR
-                restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                    // restore Rounding Mode in CR
+                    restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                }
+
+                // endif (8) {Q1/Q2}
+                inst = createEndif(exsize, instOpt);
             }
+            else
+            {
+                assert(gotoUIP);
+                inst = createLabelInst(gotoUIP, true);
 
-            // endif (exsize) {Q1/Q2}
-            inst = createEndif(exsize, instOpt);
+                if (!hasDefaultRoundDenorm)
+                {
+                    // restore Rounding Mode in CR
+                    G4_INST* cr0Inst = restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                    G4_Predicate* predCR0 = createPredicate(PredState_Plus, flagRestoreCR0->getRegVar(), 0, predCtrlValue);
+                    cr0Inst->setPredicate(predCR0);
+                }
+            }
         }
     };
 
@@ -1357,11 +1585,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
 
-    // pred and conModifier
-    uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
-    G4_Declare *flagReg = createTempFlag(flagSize > 16 ? 2 : 1);
-    G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
-
     bool generateIf;
     bool doFastSqrt = (opcode == ISA_SQRT);
     switch (this->getuint32Option(vISA_PredicatedFdivSqrt))
@@ -1383,6 +1606,21 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     {
         generateIf = false;
     }
+    const bool use_goto = (!useSCF(*this));
+
+    // pred and conModifier
+    uint32_t flagSize = instExecSize + getvISAMaskOffset(emask);
+    if (generateIf && use_goto)
+    {
+        // goto requires flag to match simdsize.
+        flagSize = getSIMDSize(*this);
+    }
+    G4_Declare *flagReg = createTempFlag(flagSize > 16 ? 2 : 1);
+    G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
+
+    // For restoring cr0.0. See translateVISAArithmeticDoubleInst() for detail.
+    G4_Declare* flagRestoreCR0 = createTempFlag(1);
+    const bool mayUseFlagRestoreCR0 = (!useSCF(*this) && generateIf);
 
     // temp registers
     G4_Declare *t0 = getImmDcl(createDFImm(0.0), exsize);
@@ -1469,6 +1707,10 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
         // save CR, and then set rounding mode to RNE if hasDefaultRoundDenorm is false
         setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, regCR0);
+        setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 1);
+
+        // see comments regarding goto/join in translateVISAArithmeticDoubleInst().
+        initEOFlagIfNeeded(*this, flagReg, generateIf && use_goto);
 
         // math.e0.f0.0 (4) r7.acc2 r6.noacc NULL 0xf {Align16, N1/N2}
         dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC2);
@@ -1487,11 +1729,23 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         inst = createMathInst(NULL, g4::NOSAT, exsize, dst0, src0, src1, MATH_RSQRTM, madmInstOpt, true);
         inst->setCondMod(condModOverflow);
 
+        G4_Label* gotoUIP = nullptr;
         if (generateIf)
         {
-            // if
-            G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
-            inst = createIf(predicateFlagReg, exsize, instOpt);
+            if (!use_goto)
+            {
+                // if
+                G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+                inst = createIf(predicateFlagReg, exsize, instOpt);
+            }
+            else
+            {
+                gotoUIP = createLocalBlockLabel("macro");
+                // visa goto (not gen goto inst) will jump on true!
+                G4_Predicate* predicateFlagReg = createPredicate(PredState_Plus, flagReg->getRegVar(), 0, predCtrlValue);
+                G4_ExecSize gotoExSize(getSIMDSize(*this));
+                inst = createCFInst(predicateFlagReg, G4_goto, gotoExSize, nullptr, gotoUIP, InstOpt_NoOpt, true);
+            }
         }
 
         if (doFastSqrt)
@@ -1622,6 +1876,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
             // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
             restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+            setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
         }
         else
         {
@@ -1761,6 +2016,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
             // restore Rounding Mode in CR if hasDefaultRoundDenorm is false
             restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+            setFlagWithImm(*this, flagRestoreCR0, (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
 
             // madm (4) r7.noacc r7.acc8 r9.acc3 r8.acc7 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(NOACC);
@@ -1773,17 +2029,33 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
         if (generateIf)
         {
-            if (!hasDefaultRoundDenorm)
+            if (!use_goto)
             {
-                // else (8) {Q1/Q2}
-                createElse(exsize, instOpt);
+                if (!hasDefaultRoundDenorm)
+                {
+                    // else (8) {Q1/Q2}
+                    createElse(exsize, instOpt);
 
-                // restore Rounding Mode in CR
-                restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                    // restore Rounding Mode in CR
+                    restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                }
+
+                // endif (8) {Q1/Q2}
+                inst = createEndif(exsize, instOpt);
             }
+            else
+            {
+                assert(gotoUIP);
+                inst = createLabelInst(gotoUIP, true);
 
-            // endif (8) {Q1/Q2}
-            inst = createEndif(exsize, instOpt);
+                if (!hasDefaultRoundDenorm)
+                {
+                    // restore Rounding Mode in CR
+                    G4_INST* cr0Inst = restoreCR0_0(*this, hasDefaultRoundDenorm, regCR0);
+                    G4_Predicate* predCR0 = createPredicate(PredState_Plus, flagRestoreCR0->getRegVar(), 0, predCtrlValue);
+                    cr0Inst->setPredicate(predCR0);
+                }
+            }
         }
     };
 

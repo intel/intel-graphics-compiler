@@ -57,14 +57,14 @@ using namespace vISA;
 //         join (16|M0)
 // Merge( (8|M8) and (4|M4)) will be (16|M0)!
 //
-// Normally, we don't see this kind of code. But visa will generate macro sequence
-// like the following, and we have to match join's execMask to all of its gotos. We
-// do so by tracking excution mask (execSize + mask offset).
+// Normally, we don't see this kind of code. (Visa will generate macro sequence like
+// the following.) If it happens, we have to match join's execMask to all of its gotos.
+// we do so by tracking excution mask (execSize + mask offset).
 //
 //        (p) goto (8|M8) L
 //        ......
 //        L:
-//            join (8|M8)            // not join (8|M0)
+//            join (8|M8)            // M8, not M0
 //
 class ExecMaskInfo
 {
@@ -495,7 +495,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
         assert(inst->asCFInst()->getJip() == nullptr && "IF should not have a label at this point");
 
         // create if_label
-        if_label = builder->createLocalBlockLabel("if");
+        if_label = builder->createLocalBlockLabel("ifJip");
         inst->asCFInst()->setJip(if_label);
 
         // look for else/endif
@@ -522,7 +522,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
                 it1++;
 
                 // add endif label to "else"
-                else_label = builder->createLocalBlockLabel("else");
+                else_label = builder->createLocalBlockLabel("elseJip");
                 inst->asCFInst()->setJip(else_label);
 
                 // insert if-else label
@@ -3313,10 +3313,12 @@ void FlowGraph::convertGotoToJmpi(G4_INST *gotoInst)
 *    if it is uniform and it does not overlap with another divergent goto.  All uniform
 *    backward gotos may be converted into scalar jumps.
 *
+*  This function assumes **scalar control flow**: meaning that given any goto inst,
+*  its execsize should cover all active lanes used for all BBs dominated by this goto.
+*
 *  - This function does *not* alter the CFG.
 *  - This function does *not* consider SCF (structured control flow), as a well-formed
 *    vISA program should not have overlapped goto and structured CF instructions.
-*
 */
 void FlowGraph::processGoto(bool HasSIMDCF)
 {
