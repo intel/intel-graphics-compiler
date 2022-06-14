@@ -70,8 +70,9 @@ namespace {
             Instruction*, BasicBlock*) const;
         bool collectTrivialUser(SmallPtrSetImpl<Instruction*>&,
             Instruction*) const;
-        bool hoistUniformLoad(LoadInst*, BasicBlock*) const;
         bool hoistUniformLoad(ArrayRef<BasicBlock*>) const;
+
+        bool hoistInst(Instruction *inst, BasicBlock*) const;
 
         bool isLeadCandidate(BasicBlock*) const;
 
@@ -175,6 +176,59 @@ bool AdvMemOpt::runOnFunction(Function& F) {
             }
         }
     }
+
+    // hoist input-based sample instructions in pixel shader into Entry-Block
+    unsigned MaxSampleHoisted = IGC_GET_FLAG_VALUE(PixelSampleHoistingLimit);
+    if (Ctx->type == ShaderType::PIXEL_SHADER && MaxSampleHoisted)
+    {
+        auto DL = F.getParent()->getDataLayout();
+        BasicBlock& EntryBlk = F.getEntryBlock();
+        unsigned LiveOutPressure = 0;
+        unsigned NumSampleInsts = 0;
+        // check how many sample instruction and the live-out registers in the entry-block
+        for (auto BI = EntryBlk.begin(), BE = EntryBlk.end(); BI != BE; ++BI)
+        {
+            auto Inst = &*BI;
+            if (isSampleLoadGather4InfoInstruction(Inst))
+                NumSampleInsts++;
+            if (Inst->isUsedOutsideOfBlock(&EntryBlk))
+            {
+                LiveOutPressure += (uint)(DL.getTypeAllocSize(Inst->getType()));
+            }
+        }
+        // hoist sampler instructions from the blocks post-dominiating the entry block
+        if (NumSampleInsts > 0 && NumSampleInsts <= 3 && LiveOutPressure <= 92)
+        {
+            auto Node = PDT->getNode(&EntryBlk);
+            unsigned NumSampleHoisted = 0;
+            while (Node->getIDom() && NumSampleHoisted < MaxSampleHoisted)
+            {
+                Node = Node->getIDom();
+                BasicBlock* SuccBlk = Node->getBlock();
+                auto BI = SuccBlk->begin();
+                auto BE = SuccBlk->end();
+                auto Inst = &*BI;
+                while (!isSampleLoadGather4InfoInstruction(Inst) && BI != BE)
+                {
+                    Inst = &*BI++;
+                }
+                while (BI != BE && NumSampleHoisted < MaxSampleHoisted)
+                {
+                    auto NextCand = &*BI++;
+                    while (!isSampleLoadGather4InfoInstruction(NextCand) && BI != BE)
+                    {
+                        NextCand = &*BI++;
+                    }
+                    if (hoistInst(Inst, &EntryBlk))
+                    {
+                        NumSampleHoisted++;
+                    }
+                    if (BI != BE)
+                        Inst = NextCand;
+                }
+            }
+        }
+    }
     return false;
 }
 
@@ -253,7 +307,11 @@ bool AdvMemOpt::collectOperandInst(SmallPtrSetImpl<Instruction*>& Set,
         Instruction* I = dyn_cast<Instruction>(V);
         if (!I)
             continue;
-        else if (I->getParent() != Inst->getParent())
+        if (isa<PHINode>(I) ||
+            I->mayHaveSideEffects() ||
+            I->mayReadOrWriteMemory())
+            return true;
+        if (I->getParent() != Inst->getParent())
         {
             // moving load instruction can be done only if operands
             // comes from the same basic block or a dominator of
@@ -264,7 +322,7 @@ bool AdvMemOpt::collectOperandInst(SmallPtrSetImpl<Instruction*>& Set,
             else
                 return true;
         }
-        if (isa<PHINode>(I) || collectOperandInst(Set, I, LeadingBlock))
+        if (collectOperandInst(Set, I, LeadingBlock))
             return true;
     }
     Set.insert(Inst);
@@ -286,7 +344,7 @@ bool AdvMemOpt::collectTrivialUser(SmallPtrSetImpl<Instruction*>& Set,
     return false;
 }
 
-bool AdvMemOpt::hoistUniformLoad(LoadInst* LD, BasicBlock* BB) const {
+bool AdvMemOpt::hoistInst(Instruction* LD, BasicBlock* BB) const {
     SmallPtrSet<Instruction*, 32> ToHoist;
     if (collectOperandInst(ToHoist, LD, BB))
         return false;
@@ -334,7 +392,7 @@ bool AdvMemOpt::hoistUniformLoad(ArrayRef<BasicBlock*> Line) const {
                 LoadInst* LD = dyn_cast<LoadInst>(&*II++);
                 if (!LD || !WI->isUniform(LD))
                     continue;
-                if (!hoistUniformLoad(LD, Lead))
+                if (!hoistInst(LD, Lead))
                     break; // Bail out if any uniform load could not be hoisted safely.
                   // Reset iterator
                 II = Curr->getFirstNonPHI()->getIterator();
