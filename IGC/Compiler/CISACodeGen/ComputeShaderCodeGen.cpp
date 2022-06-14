@@ -415,7 +415,7 @@ namespace IGC
         CreateConstantBufferOutput(pKernelProgram);
 
         pKernelProgram->m_StagingCtx = pctx->m_StagingCtx;
-        pKernelProgram->m_RequestStage2 = RequestStage2(pctx->m_CgFlag, pctx->m_StagingCtx);
+        pKernelProgram->m_RequestStage2 = IGC_IS_FLAG_ENABLED(StagedCompilation) && RequestStage2(pctx->m_CgFlag, pctx->m_StagingCtx);
         pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
         pKernelProgram->UavLoaded = m_uavLoaded;
         for (int i = 0; i < 4; i++)

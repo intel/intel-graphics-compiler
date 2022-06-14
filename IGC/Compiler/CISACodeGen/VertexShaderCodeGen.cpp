@@ -146,7 +146,7 @@ namespace IGC
         const bool isPositionOnlyShader = (entry->getParent()->getModuleFlag("IGC::PositionOnlyVertexShader") != nullptr);
 
         pKernelProgram->m_StagingCtx = GetContext()->m_StagingCtx;
-        pKernelProgram->m_RequestStage2 = RequestStage2(GetContext()->m_CgFlag, GetContext()->m_StagingCtx);
+        pKernelProgram->m_RequestStage2 = IGC_IS_FLAG_ENABLED(StagedCompilation) && RequestStage2(GetContext()->m_CgFlag, GetContext()->m_StagingCtx);
         {
             pKernelProgram->simd8 = *ProgramOutput();
         }

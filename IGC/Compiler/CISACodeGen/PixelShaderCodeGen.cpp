@@ -876,7 +876,7 @@ void CPixelShader::FillProgram(SPixelShaderKernelProgram* pKernelProgram)
     const PixelShaderInfo& psInfo = GetContext()->getModuleMetaData()->psInfo;
 
     pKernelProgram->m_StagingCtx = GetContext()->m_StagingCtx;
-    pKernelProgram->m_RequestStage2 = RequestStage2(GetContext()->m_CgFlag, GetContext()->m_StagingCtx);
+    pKernelProgram->m_RequestStage2 = IGC_IS_FLAG_ENABLED(StagedCompilation) && RequestStage2(GetContext()->m_CgFlag, GetContext()->m_StagingCtx);
     pKernelProgram->blendToFillEnabled = psInfo.blendToFillEnabled;
     pKernelProgram->forceEarlyZ = psInfo.forceEarlyZ;
 
