@@ -43,7 +43,6 @@ public:
     static constexpr char *MergeFuncName = "__mergeContinuation";
     static constexpr char *BTDTarget = "btd.target";
     static constexpr char* SpillSize = "spill.size";
-    static constexpr char* IsContinuation = "is.continuation";
     enum RTMemoryAccessMode
     {
         STATELESS,
@@ -544,10 +543,6 @@ public:
         Value* Payload,
         SWStackPtrVal* StackFrameVal);
 
-    Value* computeReturnIP(
-        const IGC::RayDispatchShaderContext& RayCtx,
-        Function &F);
-
     CallInst* CreateLSCFence(LSC_SFID SFID, LSC_SCOPE Scope, LSC_FENCE_OP FenceOp);
 public:
     // Utilities
@@ -634,8 +629,7 @@ public:
     Value* getProceduralHitKind(
         IGC::RTArgs &Args,
         SWStackPtrVal* FrameAddr);
-    PayloadPtrIntrinsic* getPayloadPtrIntrinsic(
-        Value* PayloadPtr, SWStackPtrVal* FrameAddr);
+    PayloadPtrIntrinsic* getPayloadPtrIntrinsic(Value* PayloadPtr);
     ContinuationSignpostIntrinsic* getContinuationSignpost(Value* FrameAddr, Value* Offset);
 
     SpillValueIntrinsic* getSpillValue(Value* Val, uint64_t Offset);
@@ -647,10 +641,6 @@ public:
     static void setSpillSize(ContinuationHLIntrinsic& CI, uint32_t SpillSize);
     static Optional<uint32_t> getSpillSize(
         const ContinuationHLIntrinsic& CI);
-    static void markAsContinuation(Function& F);
-    static bool isContinuation(const Function& F);
-
-    GetShaderRecordPtrIntrinsic* getShaderRecordPtr(Function* F);
 public:
     static Instruction* getEntryFirstInsertionPt(
         Function &F,

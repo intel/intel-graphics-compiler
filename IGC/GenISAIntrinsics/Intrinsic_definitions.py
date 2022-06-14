@@ -2503,8 +2503,7 @@ Imported_Intrinsics = \
 ####################################################################################################
 "GenISA_PayloadPtr": ["Raytracing: Temporary used to mark payload pointer after intrinsic lowering",
     [("anyptr",                     "Returns the first argument"),
-    [(0,                            "The payload pointer"),
-     ("anyptr",                     "The SWStack base pointer")],
+    [(0,                            "The payload pointer")],
     "NoMem"]],
 ####################################################################################################
 "GenISA_ContinuationSignpost": ["Raytracing: Temporary used to mark continuation entry points",

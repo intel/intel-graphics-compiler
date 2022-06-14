@@ -1011,7 +1011,6 @@ bool SplitAsyncPass::runOnModule(Module &M)
             Cont->setLinkage(GlobalValue::InternalLinkage);
             Cont->addFnAttr(llvm::Attribute::AttrKind::AlwaysInline);
         }
-        RTBuilder::markAsContinuation(*Cont);
     }
 
     DumpLLVMIR(m_CGCtx, "SplitAsyncPass");
