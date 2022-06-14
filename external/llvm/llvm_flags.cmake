@@ -19,6 +19,7 @@ set_llvm_opt(LLVM_BUILD_TOOLS OFF CACHE BOOL "desc")
 set_llvm_opt(LLVM_INCLUDE_UTILS ON CACHE BOOL "desc")
 set_llvm_opt(LLVM_BUILD_UTILS OFF CACHE BOOL "desc")
 
+set_llvm_opt(LLVM_INCLUDE_BENCHMARKS OFF CACHE BOOL "desc")
 set_llvm_opt(LLVM_INCLUDE_EXAMPLES OFF CACHE BOOL "desc")
 set_llvm_opt(LLVM_INCLUDE_TESTS OFF CACHE BOOL "desc")
 set_llvm_opt(LLVM_APPEND_VC_REV OFF CACHE BOOL "desc")
