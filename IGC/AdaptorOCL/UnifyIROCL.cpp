@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Verifier.h>
 #include <llvm/Analysis/CFGPrinter.h>
 #include <llvm/Analysis/Passes.h>
+#include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/Transforms/IPO.h>
@@ -433,6 +434,9 @@ static void CommonOCLBasedPasses(
 
     if (IGC_IS_FLAG_ENABLED(EnableGASResolver))
     {
+        // InferAddressSpaces pass requires TTI analysis, but it doesn't initialize it
+        // as a dependency. Let's run it manually until IGC is switched to LLVM 14.
+        mpm.add(createTargetTransformInfoWrapperPass(TargetIRAnalysis()));
         // Run InferAddressSpaces pass first - to propagate named addrspaces
         // through elementary LLVM instructions, then run custom ResolveGAS
         // pass to handle IGC specific instructions, like builtins etc.
