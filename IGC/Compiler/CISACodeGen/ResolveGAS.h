@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
