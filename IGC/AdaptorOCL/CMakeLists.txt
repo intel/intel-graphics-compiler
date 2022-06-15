@@ -18,11 +18,12 @@ set(IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerInvokeSIMD.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteBools.cpp"
   )
 
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
   list(APPEND IGC_BUILD__SRC__AdaptorOCL
-      "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
     )
 endif()
@@ -127,6 +128,8 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerInvokeSIMD.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteBools.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.h"
 
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API/USC_d3d10.h"
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/usc_d3d10_umd.h"
@@ -143,7 +146,6 @@ set(IGC_BUILD__HDR__AdaptorOCL
 
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
   list(APPEND IGC_BUILD__HDR__AdaptorOCL
-      "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.h"
       "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
     )
 endif()

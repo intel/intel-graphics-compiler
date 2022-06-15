@@ -111,6 +111,7 @@ SPDX-License-Identifier: MIT
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "preprocess_spvir/PreprocessSPVIR.h"
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
+#include "preprocess_spvir/PromoteBools.cpp"
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "LowerInvokeSIMD.hpp"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
@@ -295,6 +296,7 @@ static void CommonOCLBasedPasses(
     IGCPassManager mpmSPIR(pContext, "Unify");
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new PreprocessSPVIR());
+    mpmSPIR.add(new PromoteBools());
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new TypesLegalizationPass());
     mpmSPIR.add(new TargetLibraryInfoWrapperPass());

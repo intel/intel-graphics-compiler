@@ -35,12 +35,13 @@ namespace IGC
         virtual bool runOnModule(llvm::Module& F) override;
         void visitCallInst(llvm::CallInst& CI);
         void visitOpenCLEISPrintf(llvm::CallInst& CI);
+
+        static bool isSPVIR(llvm::StringRef funcName);
     private:
         bool hasArrayArg(llvm::Function& F);
         void processBuiltinsWithArrayArguments(llvm::Function& F);
         void processBuiltinsWithArrayArguments();
         void createCallAndReplace(llvm::CallInst& oldCallInst, llvm::StringRef newFuncName, std::vector<llvm::Value*>& args);
-        bool isSPVIR(llvm::StringRef funcName);
 
         IGCLLVM::Module* m_Module = nullptr;
         llvm::IRBuilder<>* m_Builder = nullptr;
