@@ -14,8 +14,6 @@ using namespace vISA;
 // Helper functions
 static bool useSCF(IR_Builder& aBuilder)
 {
-    // temp
-    return true;
     // If it is scalar IGC, use SCF if structurizer is enabled; otherwise, don't use.
     if (aBuilder.kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM)
     {
