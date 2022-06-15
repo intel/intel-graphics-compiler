@@ -1904,9 +1904,8 @@ endif()
 
 # ============================================== LIT TESTS =============================================
 
-add_subdirectory(Compiler/tests)
-if(TARGET "check-igc")
-  add_dependencies("${IGC_BUILD__PROJ__igc_dll}" "check-igc")
+if(DEFINED IGC_BUILD__PROJ__igc_opt AND TARGET ${IGC_BUILD__PROJ__igc_opt})
+  add_subdirectory(Compiler/tests)
 endif()
 
 

@@ -35,7 +35,7 @@ set(IGC_LIT_TEST_DEPENDS
   FileCheck
   count
   not
-  igc_opt
+  "${IGC_BUILD__PROJ__igc_opt}"
   )
 
 # This will create a target called `check-igc`, which will run all tests from
@@ -48,7 +48,10 @@ add_lit_testsuite(check-igc "Running the IGC LIT tests"
   )
 
 # Tests should not be excluded from "Build Solution" in VS.
-set_target_properties(check-igc PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD OFF)
+set_target_properties(check-igc
+    PROPERTIES
+        EXCLUDE_FROM_DEFAULT_BUILD OFF
+        EXCLUDE_FROM_ALL OFF)
 
 # Line below is just used to group LIT reated targets in single directory
 # in IDE. This is completely optional.
