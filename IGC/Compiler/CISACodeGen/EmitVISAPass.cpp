@@ -4490,7 +4490,7 @@ void EmitPass::emitInterpolate(llvm::GenIntrinsicInst* inst)
 {
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
     CVariable* barys = GetSymbol(inst->getOperand(1));
-    uint setupIndex = (uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
+    uint setupIndex = psProgram->getSetupIndex((uint)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
     // temp variable should be the same type as the destination
     CVariable* inputVar = psProgram->GetInputDelta(setupIndex);
 
