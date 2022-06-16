@@ -3270,6 +3270,12 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst* inst)
         {
             return false;
         }
+        // If there is another component not being treated as alias, this
+        // component cannot be neither. This decision should be mitigated once
+        // the VISA could track the liveness of individual elements of vector
+        // variables.
+        if (IsCoalesced(extract))
+            return false;
     }
 
     return true;
