@@ -491,18 +491,12 @@ public:
     G4_Kernel& getKernel() const { return kernel; }
     G4_BB* getBB() const { return ddd.getBB(); }
 
-    // Run list scheduling.
-    void scheduleBlockForPressure(bool ForceClustering = false) {
-        auto SaveClustering = config.DoClustering;
-        if (ForceClustering)
-            config.DoClustering = 1;
-        SethiUllmanScheduling();
-        config.DoClustering = SaveClustering;
-    }
-    void scheduleBlockForLatency() { LatencyScheduling(); }
+    // MaxPressure is the BB pressure before and after scheduling
+    bool scheduleBlockForPressure(unsigned& MaxPressure, unsigned Threshold);
 
-    // Commit this scheduling if it reduces register pressure.
-    bool commitIfBeneficial(unsigned &MaxRPE, bool IsTopDown);
+    // MaxPressure is the BB pressure before and after scheduling
+    // ReassignID of PreNodes when this is not 1st-round scheduling
+    bool scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignID);
 
 private:
     void SethiUllmanScheduling();
@@ -511,6 +505,8 @@ private:
 
     // Relocate pseudo-kills right before its successors.
     void relocatePseudoKills();
+    // Commit this scheduling if it reduces register pressure.
+    bool commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown);
 };
 
 
@@ -626,68 +622,8 @@ bool preRA_Scheduler::run()
         preDDD ddd(mem, kernel, bb);
         BB_Scheduler S(kernel, ddd, rp, config, LT);
 
-        auto tryRPReduction = [=]() {
-            if (!config.UseSethiUllman)
-                 return false;
-            return MaxPressure >= Threshold;
-        };
-
-        if (tryRPReduction()) {
-            ddd.buildGraph();
-            S.scheduleBlockForPressure();
-            if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ false)) {
-                SCHED_DUMP(rp.dump(bb, "After scheduling for presssure, "));
-                Changed = true;
-                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
-                                                              this->kernel.getSimdSize());
-            }
-            else if (!config.DoClustering && !isSlicedSIMD32(ddd.getKernel()))
-            {   // try clustering
-                ddd.reset(false);
-                S.scheduleBlockForPressure(true);
-                if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ false))
-                {
-                    SCHED_DUMP(rp.dump(bb, "After scheduling for presssure, "));
-                    Changed = true;
-                    kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
-                        this->kernel.getSimdSize());
-                }
-            }
-        }
-
-        auto tryLatencyHiding = [=]() {
-            if (!config.UseLatency)
-                return false;
-
-            if (MaxPressure >= getLatencyHidingThreshold(kernel))
-                return false;
-
-            // simple ROI check.
-            unsigned NumOfHighLatencyInsts = 0;
-            for (auto Inst : *bb) {
-                if (Inst->isSend()) {
-                    G4_SendDesc* MsgDesc = Inst->getMsgDesc();
-                    if (MsgDesc->isRead() ||
-                        MsgDesc->isSampler() ||
-                        MsgDesc->isAtomic())
-                        NumOfHighLatencyInsts++;
-                }
-            }
-
-            return NumOfHighLatencyInsts >= 2;
-        };
-
-        if (tryLatencyHiding()) {
-            ddd.reset(Changed);
-            S.scheduleBlockForLatency();
-            if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
-                SCHED_DUMP(rp.dump(bb, "After scheduling for latency, "));
-                Changed = true;
-                bb->setLatencySched(true);
-                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
-                                                              this->kernel.getSimdSize());
-            }
-        }
+        Changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
+        Changed |= S.scheduleBlockForLatency(MaxPressure, Changed);
     }
 
     return Changed;
@@ -822,75 +758,8 @@ bool preRA_RegSharing::run()
         preDDD ddd(mem, kernel, bb);
         BB_Scheduler S(kernel, ddd, rp, config, LT);
 
-        auto tryRPReduction = [=]()
-        {
-            if (!config.UseSethiUllman)
-                return false;
-            return MaxPressure >= Threshold;
-        };
-
-        if (tryRPReduction())
-        {
-            ddd.buildGraph();
-            S.scheduleBlockForPressure();
-            if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ false))
-            {
-                SCHED_DUMP(rp.dump(bb, "After scheduling for presssure, "));
-                changed = true;
-                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
-                    this->kernel.getSimdSize());
-            }
-            else if (!config.DoClustering && !isSlicedSIMD32(ddd.getKernel()))
-            {   // try clustering
-                ddd.reset(false);
-                S.scheduleBlockForPressure(true);
-                if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ false))
-                {
-                    SCHED_DUMP(rp.dump(bb, "After scheduling for presssure, "));
-                    changed = true;
-                    kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
-                        this->kernel.getSimdSize());
-                }
-            }
-        }
-
-        auto tryLatencyHiding = [=]()
-        {
-            if (!config.UseLatency)
-                return false;
-
-            if (MaxPressure >= getLatencyHidingThreshold(kernel))
-                return false;
-
-            // simple ROI check.
-            unsigned NumOfHighLatencyInsts = 0;
-            for (auto Inst : *bb)
-            {
-                if (Inst->isSend())
-                {
-                    G4_SendDesc* MsgDesc = Inst->getMsgDesc();
-                    if (MsgDesc->isRead() ||
-                        MsgDesc->isSampler() ||
-                        MsgDesc->isAtomic())
-                        NumOfHighLatencyInsts++;
-                }
-            }
-
-            return NumOfHighLatencyInsts >= 2;
-        };
-
-        if (tryLatencyHiding())
-        {
-            ddd.reset(changed);
-            S.scheduleBlockForLatency();
-            if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ true))
-            {
-                SCHED_DUMP(rp.dump(bb, "After scheduling for latency, "));
-                changed = true;
-                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
-                    this->kernel.getSimdSize());
-            }
-        }
+        changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
+        changed |= S.scheduleBlockForLatency(MaxPressure, changed);
     }
 
     return changed;
@@ -1317,6 +1186,43 @@ preNode* SethiUllmanQueue::select()
 
 // The basic idea is...
 //
+bool BB_Scheduler::scheduleBlockForPressure(unsigned& MaxPressure, unsigned Threshold)
+{
+    auto tryRPReduction = [=]() {
+        if (!config.UseSethiUllman)
+            return false;
+        return MaxPressure >= Threshold;
+    };
+
+    bool Changed = false;
+    if (tryRPReduction()) {
+        ddd.buildGraph();
+        SethiUllmanScheduling();
+        if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ false)) {
+            SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
+            Changed = true;
+            kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
+                this->kernel.getSimdSize());
+        }
+        else if (!config.DoClustering && !isSlicedSIMD32(ddd.getKernel()))
+        {   // try clustering
+            ddd.reset(false);
+            auto SaveClustering = config.DoClustering;
+            config.DoClustering = 1;
+            SethiUllmanScheduling();
+            config.DoClustering = SaveClustering;
+            if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ false))
+            {
+                SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
+                Changed = true;
+                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
+                    this->kernel.getSimdSize());
+            }
+        }
+    }
+    return Changed;
+}
+
 void BB_Scheduler::SethiUllmanScheduling()
 {
     schedule.clear();
@@ -1423,8 +1329,47 @@ private:
 
 } // namespace
 
-// Scheduling block to hide latency (top down).
 //
+bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignID)
+{
+    auto tryLatencyHiding = [=]() {
+        if (!config.UseLatency)
+            return false;
+
+        if (MaxPressure >= getLatencyHidingThreshold(kernel))
+            return false;
+
+        // simple ROI check.
+        unsigned NumOfHighLatencyInsts = 0;
+        for (auto Inst : *(ddd.getBB())) {
+            if (Inst->isSend()) {
+                G4_SendDesc* MsgDesc = Inst->getMsgDesc();
+                if (MsgDesc->isRead() ||
+                    MsgDesc->isSampler() ||
+                    MsgDesc->isAtomic())
+                    NumOfHighLatencyInsts++;
+            }
+        }
+
+        return NumOfHighLatencyInsts >= 2;
+    };
+
+    bool Changed = false;
+    if (tryLatencyHiding()) {
+        ddd.reset(ReassignID);
+        LatencyScheduling();
+        if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
+            SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
+            Changed = true;
+            ddd.getBB()->setLatencySched(true);
+            kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
+                this->kernel.getSimdSize());
+        }
+    }
+    return Changed;
+}
+
+// Scheduling block to hide latency (top down).
 void BB_Scheduler::LatencyScheduling()
 {
     schedule.clear();
