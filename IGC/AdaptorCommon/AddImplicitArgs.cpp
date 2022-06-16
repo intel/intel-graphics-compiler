@@ -557,7 +557,6 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
         if (pF->hasFnAttribute("referenced-indirectly"))
         {
             IGC_ASSERT_MESSAGE(0, "Cannot force inline indirect calls! Requires ForceInlineStackCallWithImplArg=0 and IA buffer support.");
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Exported functions cannot use implicit arguments", pF);
             continue;
         }
 

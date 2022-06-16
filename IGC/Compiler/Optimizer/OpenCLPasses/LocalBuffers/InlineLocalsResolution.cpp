@@ -444,14 +444,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
                 continue;
             }
 
-            Function* parentF = user->getParent()->getParent();
-            if (parentF->hasFnAttribute("visaStackCall"))
-            {
-                IGC_ASSERT(0);
-                getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Cannot use localSLM inside stackcalls", globalVar);
-                return;
-            }
-            m_FuncToVarsMap[parentF].insert(globalVar);
+            m_FuncToVarsMap[user->getParent()->getParent()].insert(globalVar);
         }
     }
 
