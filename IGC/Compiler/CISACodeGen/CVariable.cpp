@@ -121,7 +121,15 @@ CVariable::CVariable(
     {
         const unsigned int denominator = GetCISADataTypeSize(m_type);
         IGC_ASSERT(denominator);
-        m_nbElement = var->m_nbElement * GetCISADataTypeSize(var->m_type) / denominator;
+
+        if (0 == denominator)
+        {
+            m_nbElement = 0;
+        }
+        else
+        {
+            m_nbElement = var->m_nbElement * GetCISADataTypeSize(var->m_type) / denominator;
+        }
     }
     IGC_ASSERT_MESSAGE(var->m_varType == EVARTYPE_GENERAL, "only general variable can have alias");
 }

@@ -318,7 +318,14 @@ namespace IGC
         }
         OverallEstimate = iSTD::Round(OverallEstimate, SIMD_PRESSURE_MULTIPLIER) /
             SIMD_PRESSURE_MULTIPLIER;
-        OverallEstimate = OverallEstimate / getMaxAssignedNumberForFunction();
+        if (0 == MaxAssignedNumber)
+        {
+            return false;
+        }
+        else
+        {
+            OverallEstimate = OverallEstimate / getMaxAssignedNumberForFunction();
+        }
         if (OverallEstimate > OVERALL_PRESSURE_UPBOUND)
             return false;
 

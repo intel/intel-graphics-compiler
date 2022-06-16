@@ -436,11 +436,13 @@ static int getSliceSize(const JointMatrixTypeDescription *desc) {
     if (desc->layout == LayoutRowMajor) {
         return desc->rows;
     }
-    if (desc->layout == LayoutPackedA) {
-        return desc->rows * (32 / desc->bitWidth);
-    }
-    if (desc->layout == LayoutPackedB) {
-        return 8  * (32 / desc->bitWidth);
+    if (desc->bitWidth != 0) {
+        if (desc->layout == LayoutPackedA) {
+            return desc->rows * (32 / desc->bitWidth);
+        }
+        if (desc->layout == LayoutPackedB) {
+            return 8 * (32 / desc->bitWidth);
+        }
     }
     IGC_ASSERT_MESSAGE(true, "Unexpected matrix layout.");
     return 1;

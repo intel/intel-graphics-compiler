@@ -135,7 +135,7 @@ SPIRV_DEF_DEC(OCLExtOpDbgKind)
 const SPIRVDecoder&
 operator>>(const SPIRVDecoder&I, std::string& Str) {
   uint64_t Count = 0;
-  char Ch;
+  char Ch = '\0';
   while ((!I.IS.eof() && I.IS.get(Ch)) && Ch != '\0') {
     Str += Ch;
     ++Count;

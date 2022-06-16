@@ -207,7 +207,7 @@ void GenRotate::matchRotate(Instruction* I)
     }
     else
     {
-        Value* X0, * X1;
+        Value* X0 = nullptr, * X1 = nullptr;
         if ((match(V0, m_ZExt(m_Value(X0))) || match(V0, m_SExt(m_Value(X0)))) &&
             match(V1, m_ZExt(m_Value(X1))))
         {
@@ -229,7 +229,7 @@ void GenRotate::matchRotate(Instruction* I)
     Value* RAmt = RHS->getOperand(1);
     ConstantInt* C_LAmt = dyn_cast<ConstantInt>(LAmt);
     ConstantInt* C_RAmt = dyn_cast<ConstantInt>(RAmt);
-    Value* X0, * X1;
+    Value* X0 = nullptr, * X1 = nullptr;
     Value* Amt = nullptr;
     bool isROL = true;
     if (C_LAmt || C_RAmt)
@@ -278,7 +278,7 @@ void GenRotate::matchRotate(Instruction* I)
 
         if (Amt)
         {
-            Value* X0, * X1, * X2;
+            Value* X0, * X1, * X2 = nullptr;
             // 1) simple case: amt = typeWidth - X0;   use amt1 as shift amount.
             bool isReverse = match(Amt, m_Sub(m_SpecificInt(typeWidth), m_Value(X0)));
 
