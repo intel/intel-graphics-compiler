@@ -708,6 +708,11 @@ bool IGCPassManager::isPrintAfter(Pass* P)
 
 void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
 {
+    // Skip adding a printer pass for analysis passes.
+    const PassInfo *PI = Pass::lookupPassInfo(P->getPassID());
+    if (!PI || PI->isAnalysis())
+        return;
+
     std::string passName =
         m_name + (isBefore ? "_before_" : "_after_") + std::string(P->getPassName());
     auto name =
