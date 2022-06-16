@@ -131,6 +131,7 @@ private:
         Function& F, StackFrameInfo& SFI, RTBuilder::SWStackPtrVal *FrameAddr);
     void mergeContinuationShaders();
     void patchSignposts();
+    void patchPayloads();
     void emitMergeCalls(
         Function *F,
         const StackFrameInfo &SFI,
@@ -152,14 +153,17 @@ private:
         RTBuilder::SWStackPtrVal* FrameAddr,
         RTBuilder &RTB);
 
-    Module* m_module;
+    Module* m_module = nullptr;
     RayDispatchShaderContext *m_CGCtx = nullptr;
 
     // Maps a continuation ID to its corresponding continuation function.
     ContMap m_continuationMappings;
     SmallVector<ContinuationSignpostIntrinsic*, 4> m_Signposts;
+    SmallVector<PayloadPtrIntrinsic*, 4> m_Payloads;
     DenseMap<Function*, uint32_t> m_ContinuationToPayloadOffset;
+    DenseMap<Function*, Function*> m_ContinuationToParent;
     const DataLayout* m_DL = nullptr;
+    Function* m_UniqueCont = nullptr;
 private:
     // match a basic block that ends:
     // call TraceRayHL(...) | CallShaderHL(...) | TraceRay(...)
@@ -184,7 +188,9 @@ private:
     void invokeContinuationBTDStrategy(Value* ContAddr, RTBuilder& IRB);
     void invokeContinuationSwitchStrategy(Value* ContAddr, RTBuilder& IRB);
 
-    void recordContinuationPayloadOffset(Value* PayloadPtr, Function* Fn);
+    bool recordContinuationPayloadOffset(Value* PayloadPtr, Function* Fn);
+
+    static Function* getUniqueCont(const RayDispatchShaderContext* Ctx);
 };
 
 char RayTracingIntrinsicLoweringPass::ID = 0;
@@ -197,6 +203,43 @@ char RayTracingIntrinsicLoweringPass::ID = 0;
 IGC_INITIALIZE_PASS_BEGIN(RayTracingIntrinsicLoweringPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(RayTracingIntrinsicLoweringPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+Function* RayTracingIntrinsicLoweringPass::getUniqueCont(
+    const RayDispatchShaderContext* Ctx)
+{
+    auto* MMD = Ctx->getModuleMetaData();
+    if (!Ctx->tryPayloadSinking())
+        return nullptr;
+
+    if (MMD->rtInfo.NumContinuations != 1)
+        return nullptr;
+
+    if (!Ctx->canWholeProgramCompile())
+        return nullptr;
+
+    Function* ContFn = nullptr;
+    for (auto& F : *Ctx->getModule())
+    {
+        if (F.isDeclaration())
+            continue;
+        if (RTBuilder::isContinuation(F))
+        {
+            ContFn = &F;
+            break;
+        }
+    }
+
+    IGC_ASSERT(ContFn);
+    // The continuation address won't be patched if is was promoted to a shader
+    // identifer.
+    if (auto I = MMD->FuncMD.find(ContFn); I != MMD->FuncMD.end())
+    {
+        if (I->second.rtInfo.SlotNum)
+            return nullptr;
+    }
+
+    return ContFn;
+}
 
 static uint32_t getFrameAlignment(const Value* Ptr, const DataLayout &DL)
 {
@@ -217,11 +260,11 @@ static uint32_t getFrameAlignment(const Value* Ptr, const DataLayout &DL)
 // Calculate the byte offset from the base of the stack frame
 // to the payload so we can recompute the payload offset in the
 // inlined continuation.
-void RayTracingIntrinsicLoweringPass::recordContinuationPayloadOffset(
+bool RayTracingIntrinsicLoweringPass::recordContinuationPayloadOffset(
     Value* PayloadPtr, Function* Fn)
 {
     if (!m_CGCtx->tryPayloadSinking())
-        return;
+        return true;
 
     uint64_t Offset = 0;
     if (auto Region = getRegionOffset(PayloadPtr, m_DL, &Offset))
@@ -230,8 +273,11 @@ void RayTracingIntrinsicLoweringPass::recordContinuationPayloadOffset(
         {
             m_ContinuationToPayloadOffset[Fn] =
                 static_cast<uint32_t>(Offset);
+            return true;
         }
     }
+
+    return false;
 }
 
 // We inject this code at the top of the function to provide access to common
@@ -316,7 +362,7 @@ void RayTracingIntrinsicLoweringPass::patchMergeCalls(
     if (!MF)
         return;
 
-    IRBuilder<> IRB(C);
+    RTBuilder IRB(C, *m_CGCtx);
 
     auto getReturnIP = [&](Instruction* Pt)
     {
@@ -326,15 +372,30 @@ void RayTracingIntrinsicLoweringPass::patchMergeCalls(
         // but you would be missing out on vectorization if these two aren't
         // contiguous.
         static_assert(TraceRayRTArgs::PayloadSlot == 1);
-        Value* Ptr = IRB.CreateBitCast(
-            FrameAddr,
-            Type::getInt64PtrTy(C,
-                FrameAddr->getType()->getPointerAddressSpace()));
-        Value* ContinuationAddress = IRB.CreateLoad(
-            Ptr->getType()->getPointerElementType(),
-            Ptr,
-            VALUE_NAME("ContinuationAddress"));
-        return ContinuationAddress;
+        if (m_UniqueCont)
+        {
+            if (m_CGCtx->requiresIndirectContinuationHandling())
+            {
+                return IRB.computeReturnIP(*m_CGCtx, *m_UniqueCont);
+            }
+            else
+            {
+                Value* ID = IRB.getInt64(m_continuationMappings.begin()->first);
+                return ID;
+            }
+        }
+        else
+        {
+            Value* Ptr = IRB.CreateBitCast(
+                FrameAddr,
+                Type::getInt64PtrTy(C,
+                    FrameAddr->getType()->getPointerAddressSpace()));
+            Value* ContinuationAddress = IRB.CreateLoad(
+                Ptr->getType()->getPointerElementType(),
+                Ptr,
+                VALUE_NAME("ContinuationAddress"));
+            return ContinuationAddress;
+        }
     };
 
     Value* RetIP = nullptr;
@@ -1091,17 +1152,19 @@ void RayTracingIntrinsicLoweringPass::LowerTraces(
         bool WriteAddr = IGC_IS_FLAG_ENABLED(DisableRTStackOpts) ||
             (!SFI.isContinuation(&F) || trace->getContinuationFn() != &F);
 
-        // Store the continuation ID/address associated with this trace call.
-        if (WriteAddr)
+        if (!m_UniqueCont && WriteAddr)
         {
+            // Store the continuation ID/address associated with this trace call.
             builder.storeContinuationAddress(
                 SFI, trace->getPayload()->getType(), trace, NewStackPtrVal);
         }
 
-        recordContinuationPayloadOffset(
+        bool Ok = recordContinuationPayloadOffset(
             trace->getPayload(), trace->getContinuationFn());
+        IGC_ASSERT(Ok); // This is a performance assert
 
-        builder.storePayload(SFI, trace->getPayload(), NewStackPtrVal);
+        if (!m_UniqueCont || !Ok)
+            builder.storePayload(SFI, trace->getPayload(), NewStackPtrVal);
 
         //Initial BVH level is zero
         builder.createASyncTraceRay(
@@ -1173,14 +1236,19 @@ void RayTracingIntrinsicLoweringPass::LowerCallShaders(
                 FrameOffset,
                 StackPtrLocPtr);
 
-        //Store continuation address/ID. Serves as a return IP
-        builder.storeContinuationAddress(
-            SFI, call->getParameter()->getType(), call, NewStackPtrVal);
+        if (!m_UniqueCont)
+        {
+            //Store continuation address/ID. Serves as a return IP
+            builder.storeContinuationAddress(
+                SFI, call->getParameter()->getType(), call, NewStackPtrVal);
+        }
 
-        recordContinuationPayloadOffset(
+        bool Ok = recordContinuationPayloadOffset(
             call->getParameter(), call->getContinuationFn());
+        IGC_ASSERT(Ok); // This is a performance assert
 
-        builder.storePayload(SFI, call->getParameter(), NewStackPtrVal);
+        if (!m_UniqueCont || !Ok)
+            builder.storePayload(SFI, call->getParameter(), NewStackPtrVal);
 
         //Get Address to Shader being invoked
         Value* callableShaderPtr = builder.getpCallableShaderBasePtr();
@@ -1307,7 +1375,10 @@ Instruction* RayTracingIntrinsicLoweringPass::LowerPayload(
 
     RTBuilder RTB(PayloadPtr->getNextNode(), *m_CGCtx);
 
-    auto* II = RTB.getPayloadPtrIntrinsic(UndefValue::get(PayloadPtr->getType()));
+    auto* II = RTB.getPayloadPtrIntrinsic(
+        UndefValue::get(PayloadPtr->getType()),
+        FrameAddr);
+    m_Payloads.push_back(II);
     PayloadPtr->replaceAllUsesWith(II);
     II->setPayloadPtr(PayloadPtr);
     return II;
@@ -1338,6 +1409,42 @@ void RayTracingIntrinsicLoweringPass::patchSignposts()
             Post->replaceAllUsesWith(Post->getFrameAddr());
             Post->eraseFromParent();
         }
+    }
+}
+
+void RayTracingIntrinsicLoweringPass::patchPayloads()
+{
+    if (!m_UniqueCont)
+        return;
+
+    auto I = m_ContinuationToPayloadOffset.find(m_UniqueCont);
+    if (I == m_ContinuationToPayloadOffset.end())
+        return;
+
+    const uint32_t Offset = I->second;
+
+    Function* Root = m_ContinuationToParent.find(m_UniqueCont)->second;
+    auto* MMD = m_CGCtx->getModuleMetaData();
+    uint32_t StackSize = MMD->FuncMD.find(Root)->second.rtInfo.ShaderStackSize;
+
+    IRBuilder<> IRB(Root->getContext());
+
+    // Address = FrameAddr - StackSize + Offset
+    //         = FrameAddr - (StackSize - Offset)
+
+    IGC_ASSERT(StackSize > Offset);
+    const uint32_t Dist = StackSize - Offset;
+
+    for (auto* Payload : m_Payloads)
+    {
+        IRB.SetInsertPoint(Payload);
+        auto* FrameAddr = Payload->getFrameAddr();
+        uint32_t Addrspace = FrameAddr->getType()->getPointerAddressSpace();
+        FrameAddr = IRB.CreateBitCast(FrameAddr, IRB.getInt8PtrTy(Addrspace));
+        auto* NewLoc = IRB.CreateGEP(
+            IRB.getInt8Ty(), FrameAddr, IRB.getInt32(-int(Dist)));
+        NewLoc = IRB.CreateBitCast(NewLoc, Payload->getPayloadPtr()->getType());
+        Payload->setPayloadPtr(NewLoc);
     }
 }
 
@@ -1466,12 +1573,29 @@ bool RayTracingIntrinsicLoweringPass::runOnModule(Module &M)
         getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
     m_continuationMappings.clear();
     m_Signposts.clear();
+    m_Payloads.clear();
     m_ContinuationToPayloadOffset.clear();
+    m_ContinuationToParent.clear();
     m_DL = &M.getDataLayout();
+    m_UniqueCont = getUniqueCont(m_CGCtx);
     ModuleMetaData* modMD = m_CGCtx->getModuleMetaData();
     auto &FuncMD = modMD->FuncMD;
 
     vector<Function*> RootFunctions = getRootFunctions(m_CGCtx, M);
+
+    for (auto& F : M)
+    {
+        if (F.isDeclaration())
+            continue;
+        for (auto& I : instructions(F))
+        {
+            if (auto* CHLI = dyn_cast<ContinuationHLIntrinsic>(&I))
+            {
+                m_continuationMappings.insert(std::make_pair(
+                    CHLI->getContinuationID(), CHLI->getContinuationFn()));
+            }
+        }
+    }
 
     for (auto *RootFunction : RootFunctions)
     {
@@ -1480,8 +1604,9 @@ bool RayTracingIntrinsicLoweringPass::runOnModule(Module &M)
         SmallVector<Function*, 4> FuncGroup;
         for (auto& Entry : Entries)
         {
-            m_continuationMappings.insert(Entry);
-            FuncGroup.push_back(Entry.second);
+            Function* ContFn = Entry.second;
+            FuncGroup.push_back(ContFn);
+            m_ContinuationToParent[ContFn] = RootFunction;
         }
 
         // Process the root last so their allocas can be scanned by the
@@ -1552,6 +1677,7 @@ bool RayTracingIntrinsicLoweringPass::runOnModule(Module &M)
 
     mergeContinuationShaders();
     patchSignposts();
+    patchPayloads();
 
     DumpLLVMIR(m_CGCtx, "RayTracingIntrinsicLoweringPass");
     return true;
