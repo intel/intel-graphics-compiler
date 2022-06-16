@@ -7433,7 +7433,8 @@ bool GraphColor::regAlloc(
     {
         bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
-        bool willSpill = ((builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) && !hasStackCall) ||
+        bool willSpill = ((builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill))
+            && (!hasStackCall || builder.getOption(vISA_Partitioning))) ||
             (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
             rpe->getMaxRP() >= kernel.getNumRegTotal() + 24);
         if (willSpill)
@@ -10443,7 +10444,7 @@ int GlobalRA::coloringRegAlloc()
     unsigned fastCompileIter = 1;
     bool fastCompile =
         (builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) &&
-        !hasStackCall;
+        (!hasStackCall || builder.getOption(vISA_Partitioning));
 
     if (fastCompile)
     {
