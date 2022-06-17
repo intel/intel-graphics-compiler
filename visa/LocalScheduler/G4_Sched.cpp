@@ -26,7 +26,7 @@ static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
 static const unsigned PRESSURE_LOW_THRESHOLD = 60;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
-static const unsigned LATENCY_PRESSURE_THRESHOLD = 100;
+static const unsigned LATENCY_PRESSURE_THRESHOLD = 104;
 
 namespace {
 
@@ -500,7 +500,7 @@ public:
 
 private:
     void SethiUllmanScheduling();
-    void LatencyScheduling();
+    void LatencyScheduling(unsigned GroupingThreshold);
     bool verifyScheduling();
 
     // Relocate pseudo-kills right before its successors.
@@ -1275,13 +1275,16 @@ class LatencyQueue : public QueueBase {
 
     // TODO: Try to apply priority queue to SethiUllmanQueue as well.
     std::priority_queue<preNode*, std::vector<preNode*>, std::function<bool(preNode*, preNode*)>> ReadyList;
+    // The register-pressure limit we use to decide sub-blocking
+    unsigned GroupingPressureLimit;
 
 public:
     LatencyQueue(preDDD& ddd, RegisterPressure& rp, SchedConfig config,
-        const LatencyTable& LT)
+        const LatencyTable& LT, unsigned GroupingThreshold)
         : QueueBase(ddd, rp, config)
         , LT(LT)
         , ReadyList([this](preNode* a, preNode* b){ return compare(a, b);})
+        , GroupingPressureLimit(GroupingThreshold)
     {
         init();
     }
@@ -1356,24 +1359,35 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
 
     bool Changed = false;
     if (tryLatencyHiding()) {
-        ddd.reset(ReassignID);
-        LatencyScheduling();
-        if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
-            SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
-            Changed = true;
-            ddd.getBB()->setLatencySched(true);
-            kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
-                this->kernel.getSimdSize());
+        // try grouping-threshold decremently until we find a schedule likely won't spill
+        unsigned GTMax = 160;
+        unsigned GTMin = 96;
+        if (!kernel.getOptions()->getOption(vISA_preRA_ScheduleIterative))
+        {
+            GTMax = GTMin = getLatencyHidingThreshold(kernel);
+        }
+        for (unsigned GroupingThreshold = GTMax; GroupingThreshold >= GTMin; GroupingThreshold -= 16)
+        {
+            ddd.reset(ReassignID);
+            LatencyScheduling(GroupingThreshold);
+            if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
+                SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
+                Changed = true;
+                ddd.getBB()->setLatencySched(true);
+                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
+                    this->kernel.getSimdSize());
+                break;
+            }
         }
     }
     return Changed;
 }
 
 // Scheduling block to hide latency (top down).
-void BB_Scheduler::LatencyScheduling()
+void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold)
 {
     schedule.clear();
-    LatencyQueue Q(ddd, rp, config, LT);
+    LatencyQueue Q(ddd, rp, config, LT, GroupingThreshold);
     Q.push(ddd.getEntryNode());
 
     while (!Q.empty()) {
@@ -1530,8 +1544,7 @@ void LatencyQueue::init()
         // and starts a new group.
         //
         std::vector<unsigned> Segments;
-        unsigned Threshold = getLatencyHidingThreshold(ddd.getKernel());
-        mergeSegments(RPtrace, Max, Min, Segments, Threshold);
+        mergeSegments(RPtrace, Max, Min, Segments, GroupingPressureLimit);
 
         // Iterate segments and assign a group id to each insstruction.
         unsigned i = 0;
