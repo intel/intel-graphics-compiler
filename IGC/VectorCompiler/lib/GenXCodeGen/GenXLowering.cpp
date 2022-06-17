@@ -1432,20 +1432,14 @@ static Value *ExpandAddrOrData(CallInst *CI, unsigned ArgIdx, unsigned ArgWidth,
 //   x = <16> gather4_scaled2 <8> addrs
 // After:
 //   newaddrs = <16> wrregion undef, addrs
-// bale {
 //   tmp = <32> gather4_scaled2 newaddrs
-//   wrrpred = <32> shufflevec oldpred, undef, mask
-//   wrr = wrregion <32> undef, tmp, 0, xpred
-//  }
 // bale {
-//   chR = rdregion <8> wrr, 0
-//   chRpred = <8> shufflevec oldpred, undef, chmask
-//   partialx = wrregion <8> oldval, chR, 0, chRpred
+//   chR = rdregion <8> tmp, 0
+//   partialx = wrregion <8> oldval, chR, 0
 // }
 // bale {
-//   chG = rdregion <8> wrr, 16 * 4
-//   chGpred = <8> shuffleve oldpred, undef, chmask
-//   x = wrregion <8> partialx, chG, 8 * 4, chGpred
+//   chG = rdregion <8> tmp, 16 * 4
+//   x = wrregion <8> partialx, chG, 8 * 4
 // }
 static bool widenNewSIMD8Load(CallInst *CI, unsigned IID,
                               const GenXSubtarget *ST,
@@ -1501,6 +1495,7 @@ static bool widenNewSIMD8Load(CallInst *CI, unsigned IID,
 
   // Generate new wide load.
   Value *NewLoad;
+  Value *NewPred;
   {
     Type *NewLoadType = IGCLLVM::FixedVectorType::get(ElemType, NewLoadWidth);
     SmallVector<Value *, 8> Args(CI->arg_begin(), CI->arg_end());
@@ -1509,16 +1504,17 @@ static bool widenNewSIMD8Load(CallInst *CI, unsigned IID,
     switch (IID) {
     case GenXIntrinsic::genx_gather4_masked_scaled2: {
       IGC_ASSERT_MESSAGE(ChannelWidth == 8,
-                         "Unexpected gather4_maked_scaled width");
+                         "Unexpected gather4_masked_scaled width");
       Args[4] = NewAddrs;
       // Expand predicate to the size of NewAddrs
-      OldPred =
+      OldPred = CI->getOperand(5);
+      NewPred =
           ExpandPredicate(CI, 5 /* PredIdx */,
                           cast<IGCLLVM::FixedVectorType>(NewAddrs->getType())
                               ->getNumElements());
-      Args[5] = OldPred;
+      Args[5] = NewPred;
       Tys.push_back(NewAddrs->getType());
-      Tys.push_back(OldPred->getType());
+      Tys.push_back(NewPred->getType());
       break;
     }
     case GenXIntrinsic::genx_gather4_scaled2: {
@@ -1538,24 +1534,6 @@ static bool widenNewSIMD8Load(CallInst *CI, unsigned IID,
     NewLoad = NewCI;
   }
 
-  // Generate wrregion for new load.
-  {
-    Type *NewLoadType = NewLoad->getType();
-    Value *LoadPred = generatePredicateForLoadWrregion(
-        OldPred, 0, NewLoadWidth, NumChannels, CI, DL, "load.wide.pred");
-    Region Rgn(NewLoadType);
-    Rgn.Mask = LoadPred;
-    // If there is only one channel we can exit early.
-    if (NumChannels == 1) {
-      Rgn.Offset = InitialOffset;
-      NewResult = Rgn.createWrRegion(NewResult, NewLoad, "load.wide.wrregion", CI, DL);
-      InstToReplace->replaceAllUsesWith(NewResult);
-      return true;
-    }
-    NewLoad = Rgn.createWrRegion(UndefValue::get(NewLoadType), NewLoad,
-                                 "load.wide.wrregion", CI, DL);
-  }
-
   // Shuffle channels.
   unsigned ElemByteSize = ElemType->getScalarSizeInBits() / 8;
   Type *ChannelType = IGCLLVM::FixedVectorType::get(ElemType, ChannelWidth);
@@ -1565,10 +1543,8 @@ static bool widenNewSIMD8Load(CallInst *CI, unsigned IID,
     RdR.Offset = i * NewChannelWidth * ElemByteSize;
     Value *NewChannel =
         RdR.createRdRegion(NewLoad, "load.wide.channel.read", CI, DL);
-    Value *NewChannelPred = generatePredicateForLoadWrregion(
-        OldPred, 0, ChannelWidth, 1, CI, DL, "load.wide.channel.pred");
     WrR.Offset = InitialOffset + i * ChannelWidth * ElemByteSize;
-    WrR.Mask = NewChannelPred;
+    WrR.Mask = OldPred;
     NewResult = WrR.createWrRegion(NewResult, NewChannel,
                                    "load.wide.channel.write", CI, DL);
   }
