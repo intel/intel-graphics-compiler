@@ -37,22 +37,22 @@ if(IGC_METRICS)
     endif()
   endforeach()
 
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD .
-    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/proto_schema
-    OUTPUT_VARIABLE IGCMetricsVer
-    RESULT_VARIABLE IGCMetricsVer_RetCode
+  file(GLOB_RECURSE _proto_files "${CMAKE_CURRENT_LIST_DIR}/proto_schema/*.proto")
+  set(IGCMetricsVerFile "${IGC_METRICS_SOURCE_CODE}/IGCMetricsVer.h")
+  add_custom_command(
+      OUTPUT ${IGCMetricsVerFile}
+      COMMAND ${CMAKE_COMMAND}
+          "-DIGCMetricsVerFile=${IGCMetricsVerFile}"
+          -P "${CMAKE_CURRENT_LIST_DIR}/create_metrics_version_header.cmake"
+      COMMENT "Creating a metrics version header"
+      DEPENDS ${_proto_files}
+      WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+  )
+  add_custom_target(igc_metric_version_header_generator
+      DEPENDS ${_proto_files}
+      SOURCES "${CMAKE_CURRENT_LIST_DIR}/create_metrics_version_header.cmake"
   )
 
-  if(${IGCMetricsVer_RetCode} EQUAL 0)
-    message(STATUS "IGC\\Metrics - Data layout version ${IGCMetricsVer}")
-  else()
-    set(IGCMetricsVer "0")
-    message(STATUS "IGC\\Metrics - Data layout version not known - set to 0")
-  endif()
-
-  set(IGCMetricsVerFile "${IGC_METRICS_SOURCE_CODE}/IGCMetricsVer.h")
-  file(WRITE ${IGCMetricsVerFile} "#define IGCMetricsVer ${IGCMetricsVer}")
   list(APPEND IGC_METRICS_HDRS ${IGCMetricsVerFile})
 
   add_compile_definitions(IGC_METRICS__PROTOBUF_ATTACHED)
@@ -68,6 +68,9 @@ list(APPEND IGC_METRICS_HDRS "Metrics/IGCMetric.h")
 list(APPEND IGC_METRICS_HDRS "Metrics/IGCMetricImpl.h")
 
 add_library(igc_metric STATIC ${IGC_METRICS_SRCS} ${IGC_METRICS_HDRS})
+if(TARGET igc_metric_version_header_generator)
+  add_dependencies(igc_metric igc_metric_version_header_generator)
+endif()
 
 add_dependencies(igc_metric intrinsics_gen)
 add_dependencies(igc_metric ${IGC_BUILD__PROJ__GenISAIntrinsics})
