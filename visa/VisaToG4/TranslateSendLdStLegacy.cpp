@@ -2073,7 +2073,8 @@ int IR_Builder::translateGather4Inst(
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
         G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = createDstRegRegion(dcl, 1);
-        createInst(pred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt, true);
+        G4_Predicate* addPred = duplicateOperand(pred);
+        createInst(addPred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt, true);
         offsets = createSrcRegRegion(dcl, getRegionStride1());
     }
 
@@ -2175,7 +2176,8 @@ int IR_Builder::translateScatter4Inst(
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
         G4_Declare *dcl = createSendPayloadDcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = createDstRegRegion(dcl, 1);
-        createInst(pred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt, true);
+        G4_Predicate* addPred = duplicateOperand(pred);
+        createInst(addPred, G4_add, 0, g4::NOSAT, instExSize, tmp, offsets, globalOffset, instOpt, true);
         offsets = createSrcRegRegion(dcl, getRegionStride1());
     }
 
@@ -3094,7 +3096,7 @@ int IR_Builder::translateSVMGather4Inst(
     // offsets.
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0)
     {
-        offsets = getSVMOffset(globalOffset, offsets, exSize, pred, instOpt);
+        offsets = getSVMOffset(globalOffset, offsets, exSize, duplicateOperand(pred), instOpt);
     }
 
     PayloadSource sources[1]; // Maximal 1 sources, offsets
@@ -3169,7 +3171,7 @@ int IR_Builder::translateSVMScatter4Inst(
     // offsets.
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0)
     {
-        offsets = getSVMOffset(globalOffset, offsets, exSize, pred, instOpt);
+        offsets = getSVMOffset(globalOffset, offsets, exSize, duplicateOperand(pred), instOpt);
     }
 
     PayloadSource sources[2]; // Maximal 2 sources, offsets + src
