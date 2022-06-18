@@ -1388,35 +1388,7 @@ void CMemoryReport::CopyToSummary()
 
 const char* CMemoryReport::ShaderTypeText()
 {
-    if( m_type == ShaderType::PIXEL_SHADER )
-    {
-        return "PS";
-    }
-    else if( m_type == ShaderType::VERTEX_SHADER )
-    {
-        return "VS";
-    }
-    else if( m_type == ShaderType::GEOMETRY_SHADER )
-    {
-        return "GS";
-    }
-    else if( m_type == ShaderType::HULL_SHADER )
-    {
-        return "HS";
-    }
-    else if( m_type == ShaderType::DOMAIN_SHADER )
-    {
-        return "DS";
-    }
-    else if( m_type == ShaderType::COMPUTE_SHADER )
-    {
-        return "CS";
-    }
-    else if( m_type == ShaderType::OPENCL_SHADER )
-    {
-        return "OCL";
-    }
-    return "";
+    return IGC::Debug::GetShaderTypeAcronym(m_type);
 }
 
 void CMemoryReport::DumpSummaryStats()

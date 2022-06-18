@@ -47,7 +47,7 @@ namespace Debug
 char ModuleFlushDumpPass::ID = 0;
 char FunctionFlushDumpPass::ID = 0;
 
-std::string GetShaderTypeAcronym(ShaderType shaderType)
+const char* GetShaderTypeAcronym(ShaderType shaderType)
 {
     switch (shaderType)
     {
