@@ -262,7 +262,7 @@ std::string iga::FormatLastError(unsigned errCode)
 #else
     // Response to issue https://github.com/intel/intel-graphics-compiler/issues/213
     auto strerror_r_return_value = strerror_r(errCode, buf, sizeof(buf));
-    if(std::is_same<decltype(strerror_r_return_value), char*>::value)
+    if constexpr (std::is_same<decltype(strerror_r_return_value), char*>::value)
     {
         errMsg = strerror_r_return_value;
     }
