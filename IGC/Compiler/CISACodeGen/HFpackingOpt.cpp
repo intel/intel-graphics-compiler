@@ -825,7 +825,7 @@ bool HFpackingOpt::findStoreSequence(std::vector<Instruction*>& path, std::vecto
         uint srciCount = inst->getNumOperands();
         if (CallInst* cinst = dyn_cast<CallInst>(inst))
         {
-            srciCount = cinst->getNumArgOperands();
+            srciCount = IGCLLVM::getNumArgOperands(cinst);
         }
 
         for (uint srci = 0; srci < srciCount; srci++)
