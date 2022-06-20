@@ -61,7 +61,7 @@ namespace IGCMetrics
     bool IGCMetricImpl::Enable()
     {
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        return isEnabled && IGC_GET_FLAG_VALUE(MetricsDumpEnable) > 0;
+        return isEnabled;
 #else
         return false;
 #endif
