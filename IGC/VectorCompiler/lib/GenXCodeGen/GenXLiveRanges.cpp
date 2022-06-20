@@ -21,8 +21,6 @@ SPDX-License-Identifier: MIT
 /// we erase the LiveRange here.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_LIVERANGES"
-
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXBaling.h"
@@ -39,6 +37,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Type.h"
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "GENX_LIVERANGES"
 
 using namespace llvm;
 using namespace genx;

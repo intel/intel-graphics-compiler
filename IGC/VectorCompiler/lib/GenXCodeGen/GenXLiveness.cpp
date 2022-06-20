@@ -12,8 +12,6 @@ SPDX-License-Identifier: MIT
 // details.
 //
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_LIVENESS"
-
 #include "GenXLiveness.h"
 #include "GenX.h"
 #include "GenXBaling.h"
@@ -46,6 +44,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Support/Debug.h"
+
+#define DEBUG_TYPE "GENX_LIVENESS"
 
 #include <unordered_set>
 

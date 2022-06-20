@@ -13,8 +13,6 @@ SPDX-License-Identifier: MIT
 //
 //===----------------------------------------------------------------------===//
 
-#define DEBUG_TYPE "genx-simplify"
-
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/CallSite.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -43,6 +41,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "genx-simplify"
 
 using namespace llvm;
 

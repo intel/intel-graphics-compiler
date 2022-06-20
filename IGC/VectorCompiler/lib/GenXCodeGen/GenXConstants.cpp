@@ -80,8 +80,6 @@ SPDX-License-Identifier: MIT
 /// methods to insert the code to load the constant.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_CONSTANTS"
-
 #include "GenXConstants.h"
 #include "GenXGotoJoin.h"
 #include "GenXIntrinsics.h"
@@ -107,6 +105,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/MathExtras.h"
 #include "llvmWrapper/Support/TypeSize.h"
+
+#define DEBUG_TYPE "GENX_CONSTANTS"
 
 using namespace llvm;
 using namespace genx;

@@ -12,8 +12,6 @@ SPDX-License-Identifier: MIT
 // See the comment in GenXModule.h.
 //
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_MODULE"
-
 #include "GenXModule.h"
 #include "FunctionGroup.h"
 #include "GenX.h"

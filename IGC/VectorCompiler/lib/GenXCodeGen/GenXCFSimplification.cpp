@@ -19,8 +19,6 @@ SPDX-License-Identifier: MIT
 ///   removed later.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_CFSIMPLIFICATION"
-
 #include "GenX.h"
 #include "GenXIntrinsics.h"
 #include "GenXModule.h"
@@ -31,6 +29,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Support/Debug.h"
 #include "llvm-c/Core.h"
+
+#define DEBUG_TYPE "GENX_CFSIMPLIFICATION"
 
 using namespace llvm;
 using namespace genx;

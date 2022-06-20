@@ -18,8 +18,6 @@ SPDX-License-Identifier: MIT
 // values in a function being computed in a separate analysis pass.
 //
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_ALIGNMENT_INFO"
-
 #include "IGC/common/StringMacros.hpp"
 
 #include "GenX.h"
@@ -34,6 +32,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "GENX_ALIGNMENT_INFO"
 
 #include <algorithm>
 #include <set>

@@ -19,8 +19,6 @@ SPDX-License-Identifier: MIT
 /// histogram optimization, although it does also apply in a few other cases.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_ExtractVectorizer"
-
 #include "GenX.h"
 #include "GenXUtil.h"
 
@@ -36,6 +34,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+
+#define DEBUG_TYPE "GENX_ExtractVectorizer"
 
 using namespace llvm;
 using namespace genx;

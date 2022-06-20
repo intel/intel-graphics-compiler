@@ -68,8 +68,6 @@ SPDX-License-Identifier: MIT
 /// LiveRange.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_ADDRESSCOMMONING"
-
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXBaling.h"
@@ -98,6 +96,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
+
+#define DEBUG_TYPE "GENX_ADDRESSCOMMONING"
 
 using namespace llvm;
 using namespace genx;

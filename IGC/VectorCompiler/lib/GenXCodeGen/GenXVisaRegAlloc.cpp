@@ -11,8 +11,6 @@ SPDX-License-Identifier: MIT
 // LLVM IR values. See GenXVisaRegAlloc.h.
 //
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_REGALLOC"
-
 #include "GenXVisaRegAlloc.h"
 #include "GenX.h"
 #include "GenXIntrinsics.h"
@@ -42,6 +40,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+
+#define DEBUG_TYPE "GENX_REGALLOC"
 
 #include "Probe/Assertion.h"
 

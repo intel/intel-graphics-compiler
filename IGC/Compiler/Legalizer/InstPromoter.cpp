@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#define DEBUG_TYPE "type-legalizer"
 #include "TypeLegalizer.h"
 #include "InstPromoter.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -19,6 +18,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "type-legalizer"
 
 using namespace llvm;
 using namespace IGC::Legalizer;

@@ -11,8 +11,6 @@ SPDX-License-Identifier: MIT
 // to perform vector decomposition. See comment in GenXVectorDecomposer.h.
 //
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_POST_LEGALIZATION"
-
 #include "GenXVectorDecomposer.h"
 #include "GenX.h"
 #include "GenXBaling.h"
@@ -38,6 +36,8 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
+
+#define DEBUG_TYPE "GENX_POST_LEGALIZATION"
 
 using namespace llvm;
 using namespace genx;

@@ -115,8 +115,6 @@ SPDX-License-Identifier: MIT
 /// rdregion/wrregion.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_CATEGORY"
-
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXConstants.h"
@@ -148,6 +146,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/Support/Debug.h>
+
+#define DEBUG_TYPE "GENX_CATEGORY"
 
 using namespace llvm;
 using namespace genx;

@@ -184,8 +184,6 @@ SPDX-License-Identifier: MIT
 /// (since this pass lowers any that do not).
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_SIMDCFCONFORMANCE"
-
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXConstants.h"
@@ -222,6 +220,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/Support/TypeSize.h"
+
+#define DEBUG_TYPE "GENX_SIMDCFCONFORMANCE"
 
 using namespace llvm;
 using namespace genx;

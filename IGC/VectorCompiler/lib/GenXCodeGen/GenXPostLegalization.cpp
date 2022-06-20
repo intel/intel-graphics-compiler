@@ -26,8 +26,6 @@ SPDX-License-Identifier: MIT
 /// this pass.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_POST_LEGALIZATION"
-
 #include "GenX.h"
 #include "GenXBaling.h"
 #include "GenXConstants.h"
@@ -46,6 +44,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Debug.h"
+
+#define DEBUG_TYPE "GENX_POST_LEGALIZATION"
 
 #include <set>
 

@@ -11,8 +11,6 @@ SPDX-License-Identifier: MIT
 // detailed comment.
 //
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_INSTRUCTION_BALING"
-
 #include "GenXBaling.h"
 #include "GenXConstants.h"
 #include "GenXIntrinsics.h"
@@ -44,6 +42,8 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "GENX_INSTRUCTION_BALING"
 
 // Part of the bodge to allow abs to bale in to sext/zext. This needs to be set
 // to some arbitrary value that does not clash with any

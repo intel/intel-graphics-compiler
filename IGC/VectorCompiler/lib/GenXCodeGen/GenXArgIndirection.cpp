@@ -130,8 +130,6 @@ SPDX-License-Identifier: MIT
 /// might consider some changes to his/her kernel to optimize it.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_ARGINDIRECTION"
-
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXAlignmentInfo.h"
@@ -163,6 +161,8 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+
+#define DEBUG_TYPE "GENX_ARGINDIRECTION"
 
 using namespace llvm;
 using namespace genx;

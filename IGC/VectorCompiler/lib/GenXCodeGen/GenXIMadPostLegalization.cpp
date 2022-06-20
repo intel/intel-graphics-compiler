@@ -15,8 +15,6 @@ SPDX-License-Identifier: MIT
 /// register.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_IMAD_POST_LEGALIZATION"
-
 #include "GenX.h"
 #include "GenXBaling.h"
 #include "GenXModule.h"
@@ -29,6 +27,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "GENX_IMAD_POST_LEGALIZATION"
 
 using namespace llvm;
 using namespace genx;

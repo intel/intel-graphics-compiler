@@ -32,8 +32,6 @@ SPDX-License-Identifier: MIT
 /// between.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_RegionCollapsing"
-
 #include "GenX.h"
 #include "GenXBaling.h"
 #include "GenXUtil.h"
@@ -56,6 +54,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+
+#define DEBUG_TYPE "GENX_RegionCollapsing"
 
 using namespace llvm;
 using namespace genx;

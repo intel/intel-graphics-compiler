@@ -194,8 +194,6 @@ SPDX-License-Identifier: MIT
 /// is a handy place to put it.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_LEGALIZATION"
-
 #include "GenX.h"
 #include "GenXAlignmentInfo.h"
 #include "GenXBaling.h"
@@ -229,6 +227,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+
+#define DEBUG_TYPE "GENX_LEGALIZATION"
 
 #include <set>
 #include "Probe/Assertion.h"

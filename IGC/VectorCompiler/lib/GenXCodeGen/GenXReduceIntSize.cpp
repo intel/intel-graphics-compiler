@@ -42,8 +42,6 @@ SPDX-License-Identifier: MIT
 /// is propagated forwards.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_REDUCEINTSIZE"
-
 #include "GenX.h"
 #include "GenXIntrinsics.h"
 #include "GenXModule.h"
@@ -70,6 +68,8 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+
+#define DEBUG_TYPE "GENX_REDUCEINTSIZE"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;

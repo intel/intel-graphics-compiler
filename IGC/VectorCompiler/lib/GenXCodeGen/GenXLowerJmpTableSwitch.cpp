@@ -22,8 +22,6 @@ SPDX-License-Identifier: MIT
 ///   * holds the index of the BB that must be used in the visa switchjmp.
 ///
 
-#define DEBUG_TYPE "GENX_LOWERJMPTABLESWITCH"
-
 #include "GenX.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
@@ -39,6 +37,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
+
+#define DEBUG_TYPE "GENX_LOWERJMPTABLESWITCH"
 
 using namespace llvm;
 using namespace genx;

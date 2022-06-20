@@ -14,14 +14,14 @@ SPDX-License-Identifier: MIT
 /// operand when it's safe.
 //===----------------------------------------------------------------------===//
 //
-
-#define DEBUG_TYPE "GENX_RAWSENDRIPPER"
 #include "GenX.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
+
+#define DEBUG_TYPE "GENX_RAWSENDRIPPER"
 
 using namespace llvm;
 using namespace genx;

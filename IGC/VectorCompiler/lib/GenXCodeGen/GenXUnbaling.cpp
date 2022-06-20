@@ -254,8 +254,6 @@ SPDX-License-Identifier: MIT
 /// copy coalesced together anyway.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_UNBALING"
-
 #include "FunctionGroup.h"
 #include "GenX.h"
 #include "GenXBaling.h"
@@ -281,6 +279,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+
+#define DEBUG_TYPE "GENX_UNBALING"
 
 using namespace llvm;
 using namespace genx;

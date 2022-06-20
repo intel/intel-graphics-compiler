@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#define DEBUG_TYPE "gas-resolver"
 #include "Compiler/CISACodeGen/ResolveGAS.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/CastToGASAnalysis.h"
@@ -33,6 +32,8 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
 #include <llvm/IR/PatternMatch.h>
+
+#define DEBUG_TYPE "gas-resolver"
 
 using namespace llvm;
 using namespace IGC;

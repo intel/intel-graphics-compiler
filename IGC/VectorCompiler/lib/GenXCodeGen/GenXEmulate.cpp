@@ -15,8 +15,6 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "llvmWrapper/IR/Instructions.h"
-#define DEBUG_TYPE "GENX_EMULATION"
-
 #include "GenX.h"
 #include "GenXSubtarget.h"
 #include "GenXTargetMachine.h"
@@ -45,6 +43,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/raw_ostream.h>
+
+#define DEBUG_TYPE "GENX_EMULATION"
 
 #include "Probe/Assertion.h"
 

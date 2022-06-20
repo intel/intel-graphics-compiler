@@ -36,8 +36,6 @@ SPDX-License-Identifier: MIT
 /// Besides this pass removes all write intrinsics (wrregion, wrpredregion)
 /// that have undef input value and replaces their uses with the old value.
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_DEAD_VECTOR_REMOVAL"
-
 #include "GenX.h"
 #include "GenXBaling.h"
 #include "GenXUtil.h"
@@ -58,6 +56,8 @@ SPDX-License-Identifier: MIT
 #include <queue>
 #include <set>
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "GENX_DEAD_VECTOR_REMOVAL"
 
 using namespace llvm;
 using namespace genx;

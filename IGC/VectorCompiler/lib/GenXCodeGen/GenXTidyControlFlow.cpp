@@ -52,8 +52,6 @@ SPDX-License-Identifier: MIT
 ///    These are required by the vISA's structurizer.
 ///
 //===----------------------------------------------------------------------===//
-#define DEBUG_TYPE "GENX_TIDYCONTROLFLOW"
-
 #include "GenX.h"
 #include "GenXBaling.h"
 #include "GenXGotoJoin.h"
@@ -76,6 +74,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
+
+#define DEBUG_TYPE "GENX_TIDYCONTROLFLOW"
 
 using namespace llvm;
 using namespace genx;
