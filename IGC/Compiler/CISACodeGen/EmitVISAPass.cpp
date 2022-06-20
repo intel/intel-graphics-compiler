@@ -19791,44 +19791,72 @@ void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
 
     unsigned short NumElts = Dst->GetNumberElement();
     SIMDMode Mode = lanesToSIMDMode(NumElts);
+    bool isScalar = Mode == SIMDMode::SIMD1;
 
     VISA_Type NewType = ISA_TYPE_UD;
     CVariable* SrcAlias = m_currShader->GetNewAlias(Src0, NewType, 0, 0);
-    CVariable* L0 = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src0->getName(), "Lo32"));
-    CVariable* H0 = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src0->getName(), "Hi32"));
+    CVariable* newVar = isScalar ?
+        m_currShader->GetNewVariable(NumElts * 2, NewType, EALIGN_GRF, IsUniformDst, CName(Src0->getName(), "HiLo32")) :
+        nullptr;
+    CVariable* L0 = isScalar ?
+        m_currShader->GetNewAlias(newVar, NewType, 0, 0) :
+        m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src0->getName(), "Lo32"));
+    CVariable* H0 = isScalar ?
+        m_currShader->GetNewAlias(newVar, NewType, sizeof(uint32_t) * NumElts, 0) :
+        m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src0->getName(), "Hi32"));
 
-    // Split Src0 into L0 and H0
-    // L0 := Offset[0];
-    if (IsUniformDst) {
-        m_encoder->SetNoMask();
-        m_encoder->SetUniformSIMDSize(Mode);
+    if (isScalar)
+    {
+        if (IsUniformDst) {
+            m_encoder->SetNoMask();
+            m_encoder->SetUniformSIMDSize(lanesToSIMDMode(NumElts * 2));
+        }
+        m_encoder->SetSrcRegion(0, 1, 1, 0);
+        m_encoder->Copy(newVar, SrcAlias);
+        m_encoder->Push();
     }
-    if (Src0->IsUniform())
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
     else
-        m_encoder->SetSrcRegion(0, 2, 1, 0);
-    m_encoder->Copy(L0, SrcAlias);
-    m_encoder->Push();
-    // H0 := Offset[1];
-    if (IsUniformDst) {
-        m_encoder->SetNoMask();
-        m_encoder->SetUniformSIMDSize(Mode);
+    {
+        // Split Src0 into L0 and H0
+        // L0 := Offset[0];
+        if (IsUniformDst) {
+            m_encoder->SetNoMask();
+            m_encoder->SetUniformSIMDSize(Mode);
+        }
+        if (Src0->IsUniform())
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+        else
+            m_encoder->SetSrcRegion(0, 2, 1, 0);
+        m_encoder->Copy(L0, SrcAlias);
+        m_encoder->Push();
+        // H0 := Offset[1];
+        if (IsUniformDst) {
+            m_encoder->SetNoMask();
+            m_encoder->SetUniformSIMDSize(Mode);
+        }
+        m_encoder->SetSrcSubReg(0, 1);
+        if (Src0->IsUniform())
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+        else
+            m_encoder->SetSrcRegion(0, 2, 1, 0);
+        m_encoder->Copy(H0, SrcAlias);
+        m_encoder->Push();
     }
-    m_encoder->SetSrcSubReg(0, 1);
-    if (Src0->IsUniform())
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-    else
-        m_encoder->SetSrcRegion(0, 2, 1, 0);
-    m_encoder->Copy(H0, SrcAlias);
-    m_encoder->Push();
 
     // If rc1 is a signed type value, signed extend it to L1 and H1. Otherwise we can
     // ignore its high-32 bit part, which will be all zeros.
     CVariable* L1 = nullptr;
     CVariable* H1 = nullptr;
     if (Src1->GetType() == ISA_TYPE_D) {
-         L1 = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src1->getName(), "Lo32"));
-         H1 = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src1->getName(), "Hi32"));
+         newVar = isScalar ?
+             m_currShader->GetNewVariable(NumElts * 2, NewType, EALIGN_GRF, IsUniformDst, CName(Src1->getName(), "HiLo32")) :
+             nullptr;
+         L1 = isScalar ?
+             m_currShader->GetNewAlias(newVar, NewType, 0, 0) :
+             m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src1->getName(), "Lo32"));
+         H1 = isScalar ?
+             m_currShader->GetNewAlias(newVar, NewType, sizeof(uint32_t) * NumElts, 0) :
+             m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src1->getName(), "Hi32"));
 
          // L1 := Offset[0];
          if (IsUniformDst) {
@@ -19854,8 +19882,15 @@ void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
          m_encoder->Push();
      }
 
-    CVariable* Lo = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Dst->getName(), "Lo32"));
-    CVariable* Hi = m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Dst->getName(), "Lo32"));
+    newVar = isScalar ?
+        m_currShader->GetNewVariable(NumElts * 2, NewType, EALIGN_GRF, IsUniformDst, CName(Dst->getName(), "HiLo32")) :
+        nullptr;
+    CVariable* Lo = isScalar ?
+        m_currShader->GetNewAlias(newVar, NewType, 0, 0) :
+        m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Dst->getName(), "Lo32"));
+    CVariable* Hi = isScalar ?
+        m_currShader->GetNewAlias(newVar, NewType, sizeof(uint32_t) * NumElts, 0) :
+        m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Dst->getName(), "Lo32"));
     // (Lo, Hi) := AddPair(L0, H0, ImmLo, ImmHi);
     if (IsUniformDst) {
         m_encoder->SetNoMask();
@@ -19870,25 +19905,39 @@ void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
     m_encoder->Push();
 
     CVariable* DstAlias = m_currShader->GetNewAlias(Dst, NewType, 0, 0);
-    // Offset[0] := Lo;
-    if (IsUniformDst) {
-        m_encoder->SetNoMask();
-        m_encoder->SetUniformSIMDSize(Mode);
-        m_encoder->SetSrcRegion(0, 1, 1, 0);
+    if (isScalar)
+    {
+        if (IsUniformDst) {
+            m_encoder->SetNoMask();
+            m_encoder->SetUniformSIMDSize(lanesToSIMDMode(NumElts * 2));
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+        }
+        m_encoder->SetDstRegion(1);
+        m_encoder->Copy(DstAlias, newVar);
+        m_encoder->Push();
     }
-    m_encoder->SetDstRegion(2);
-    m_encoder->Copy(DstAlias, Lo);
-    m_encoder->Push();
-    // Offset[1] := Hi;
-    if (IsUniformDst) {
-        m_encoder->SetNoMask();
-        m_encoder->SetUniformSIMDSize(Mode);
-        m_encoder->SetSrcRegion(0, 1, 1, 0);
+    else
+    {
+        // Offset[0] := Lo;
+        if (IsUniformDst) {
+            m_encoder->SetNoMask();
+            m_encoder->SetUniformSIMDSize(Mode);
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+        }
+        m_encoder->SetDstRegion(2);
+        m_encoder->Copy(DstAlias, Lo);
+        m_encoder->Push();
+        // Offset[1] := Hi;
+        if (IsUniformDst) {
+            m_encoder->SetNoMask();
+            m_encoder->SetUniformSIMDSize(Mode);
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+        }
+        m_encoder->SetDstSubReg(1);
+        m_encoder->SetDstRegion(2);
+        m_encoder->Copy(DstAlias, Hi);
+        m_encoder->Push();
     }
-    m_encoder->SetDstSubReg(1);
-    m_encoder->SetDstRegion(2);
-    m_encoder->Copy(DstAlias, Hi);
-    m_encoder->Push();
 }
 
 /// \brief Copy all values from the src variable to the dst variable.
