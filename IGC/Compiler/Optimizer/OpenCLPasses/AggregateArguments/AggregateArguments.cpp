@@ -90,6 +90,13 @@ bool AggregateArgumentsAnalysis::runOnModule(Module& M)
         {
             Argument* arg = &(*argument);
 
+            // According to level-zero documentation https://spec.oneapi.io/level-zero/latest/core/SPIRV.html#kernel-arguments
+            // Array type is not allowed as a kernel argument
+            if (arg->getType()->isArrayTy())
+            {
+                getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Array type is not allowed as a kernel argument", arg);
+            }
+
             if (!isSupportedAggregateArgument(arg))
             {
                 continue;

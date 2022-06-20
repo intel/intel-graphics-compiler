@@ -39,6 +39,7 @@ namespace IGC
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
         virtual bool runOnModule(llvm::Module& M) override;
