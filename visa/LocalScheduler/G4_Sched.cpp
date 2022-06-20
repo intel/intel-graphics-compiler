@@ -1366,7 +1366,8 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
         {
             GTMax = GTMin = getLatencyHidingThreshold(kernel);
         }
-        for (unsigned GroupingThreshold = GTMax; GroupingThreshold >= GTMin; GroupingThreshold -= 16)
+        for (unsigned GroupingThreshold = GTMax; GroupingThreshold >= GTMin;
+             GroupingThreshold = GroupingThreshold - 16)
         {
             ddd.reset(ReassignID);
             LatencyScheduling(GroupingThreshold);
@@ -1827,6 +1828,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
     SCHED_DUMP(rp.dump(getBB(), "schedule reverted, "));
     CurInsts.clear();
     CurInsts.splice(CurInsts.begin(), TempInsts, TempInsts.begin(), TempInsts.end());
+    rp.recompute(getBB());
     return false;
 }
 
