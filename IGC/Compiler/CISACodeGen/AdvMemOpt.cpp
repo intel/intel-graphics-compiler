@@ -185,19 +185,46 @@ bool AdvMemOpt::runOnFunction(Function& F) {
         BasicBlock& EntryBlk = F.getEntryBlock();
         unsigned LiveOutPressure = 0;
         unsigned NumSampleInsts = 0;
-        // check how many sample instruction and the live-out registers in the entry-block
+        unsigned NumOtherInsts = 0;
+        unsigned MaxLevelDeps = 0;
+        std::map<Instruction*, unsigned> InstDepLevel;
+        // check several parameters as the indicator of sampler hoisting:
+        // the number of sample instructions
+        // the number of other instructions
+        // the level of dependencies on sample instructions
+        // the live-out registers in the entry-block
         for (auto BI = EntryBlk.begin(), BE = EntryBlk.end(); BI != BE; ++BI)
         {
             auto Inst = &*BI;
+            // compute instruction's dependency level
+            unsigned DepLevel = 0;
+            for (Value* Opnd : Inst->operands())
+            {
+                if (auto SrcI = dyn_cast<Instruction>(Opnd))
+                {
+                    if (InstDepLevel.find(SrcI) != InstDepLevel.end())
+                    {
+                        DepLevel = max(DepLevel, InstDepLevel[SrcI]);
+                    }
+                }
+            }
             if (isSampleLoadGather4InfoInstruction(Inst))
+            {
                 NumSampleInsts++;
+                DepLevel++;  // bump up the dependency-level
+            }
+            else
+                NumOtherInsts++;
+            InstDepLevel[Inst] = DepLevel;
+            MaxLevelDeps = max(MaxLevelDeps, DepLevel);
             if (Inst->isUsedOutsideOfBlock(&EntryBlk))
             {
                 LiveOutPressure += (uint)(DL.getTypeAllocSize(Inst->getType()));
             }
         }
         // hoist sampler instructions from the blocks post-dominiating the entry block
-        if (NumSampleInsts > 0 && NumSampleInsts <= 3 && LiveOutPressure <= 92)
+        if ((NumSampleInsts * 33) >= NumOtherInsts &&
+            MaxLevelDeps >= 2 && LiveOutPressure <= 96)
         {
             auto Node = PDT->getNode(&EntryBlk);
             unsigned NumSampleHoisted = 0;
