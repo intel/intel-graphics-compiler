@@ -284,11 +284,11 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         uint32_t align;
         if (LI)
         {
-            align = LI->getAlignment();
+            align = (uint32_t)LI->getAlignment();
         }
         else if (SI)
         {
-            align = SI->getAlignment();
+            align = (uint32_t)SI->getAlignment();
         }
         else
         {

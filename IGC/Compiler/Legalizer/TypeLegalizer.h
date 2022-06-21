@@ -578,17 +578,17 @@ namespace IGC {
 
         template<> inline
             unsigned TypeLegalizer::getAlignment(LoadInst* Ld) const {
-            unsigned Align = Ld->getAlignment();
+            unsigned Align = (unsigned)Ld->getAlignment();
             if (Align == 0)
-                Align = DL->getABITypeAlignment(Ld->getType());
+                Align = (unsigned)DL->getABITypeAlignment(Ld->getType());
             return Align;
         }
 
         template<> inline
             unsigned TypeLegalizer::getAlignment(StoreInst* St) const {
-            unsigned Align = St->getAlignment();
+            unsigned Align = (unsigned)St->getAlignment();
             if (Align == 0)
-                Align = DL->getABITypeAlignment(St->getValueOperand()->getType());
+                Align = (unsigned)DL->getABITypeAlignment(St->getValueOperand()->getType());
             return Align;
         }
 

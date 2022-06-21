@@ -101,11 +101,7 @@ auto AlignmentAnalysis::getConstantAlignment(uint64_t C) const
     {
         return Value::MaximumAlignment;
     }
-#if LLVM_VERSION_MAJOR >= 14
-    return iSTD::Min(Value::MaximumAlignment, 1UL << llvm::countTrailingZeros(C));
-#else
-    return iSTD::Min(Value::MaximumAlignment, 1U << llvm::countTrailingZeros(C));
-#endif
+    return iSTD::Min(Value::MaximumAlignment, (alignment_t)1U << (alignment_t)llvm::countTrailingZeros(C));
 }
 
 auto AlignmentAnalysis::getAlignValue(Value* V) const
@@ -181,7 +177,7 @@ auto AlignmentAnalysis::getAlignValue(Value* V) const
 bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
 {
     // Get the currently known alignment of I.
-    unsigned int currAlign = getAlignValue(I);
+    unsigned int currAlign = (unsigned)getAlignValue(I);
 
     // Compute the instruction's alignment
     // using the alignment of the arguments.
@@ -224,13 +220,13 @@ unsigned int AlignmentAnalysis::visitInstruction(Instruction& I)
 unsigned int AlignmentAnalysis::visitAllocaInst(AllocaInst& I)
 {
     // Return the alignment of the alloca, which ought to be correct
-    unsigned int newAlign = I.getAlignment();
+    unsigned int newAlign = (unsigned)I.getAlignment();
 
     // If the alloca uses the default alignment, pull it from the datalayout
     if (!newAlign)
     {
         Type* allocaType = I.getType();
-        newAlign = m_DL->getABITypeAlignment(allocaType->getPointerElementType());
+        newAlign = (unsigned)m_DL->getABITypeAlignment(allocaType->getPointerElementType());
     }
 
     return newAlign;
@@ -243,7 +239,7 @@ unsigned int AlignmentAnalysis::visitSelectInst(SelectInst& I)
 
     // In general this should be the GCD, but because we assume we are always aligned on
     // powers of 2, the GCD is the minimum.
-    return iSTD::Min(getAlignValue(srcTrue), getAlignValue(srcFalse));
+    return iSTD::Min((unsigned)getAlignValue(srcTrue), (unsigned)getAlignValue(srcFalse));
 }
 
 unsigned int AlignmentAnalysis::visitPHINode(PHINode& I)
@@ -259,7 +255,7 @@ unsigned int AlignmentAnalysis::visitPHINode(PHINode& I)
         newAlign = iSTD::Min(newAlign, getAlignValue(op));
     }
 
-    return newAlign;
+    return (unsigned)newAlign;
 }
 
 void AlignmentAnalysis::SetInstAlignment(llvm::Instruction& I)
@@ -316,7 +312,7 @@ unsigned int AlignmentAnalysis::visitAdd(BinaryOperator& I)
     Value* op0 = I.getOperand(0);
     Value* op1 = I.getOperand(1);
 
-    return iSTD::Min(getAlignValue(op0), getAlignValue(op1));
+    return iSTD::Min((unsigned)getAlignValue(op0), (unsigned)getAlignValue(op1));
 }
 
 unsigned int AlignmentAnalysis::visitMul(BinaryOperator& I)
@@ -326,8 +322,8 @@ unsigned int AlignmentAnalysis::visitMul(BinaryOperator& I)
     Value* op0 = I.getOperand(0);
     Value* op1 = I.getOperand(1);
 
-    return iSTD::Min(Value::MaximumAlignment,
-        getAlignValue(op0) * getAlignValue(op1));
+    return iSTD::Min((unsigned)Value::MaximumAlignment,
+        (unsigned)(getAlignValue(op0) * getAlignValue(op1)));
 }
 
 unsigned int AlignmentAnalysis::visitShl(BinaryOperator& I)
@@ -340,12 +336,12 @@ unsigned int AlignmentAnalysis::visitShl(BinaryOperator& I)
 
     if (ConstantInt * constOp1 = dyn_cast<ConstantInt>(op1))
     {
-        return iSTD::Min(Value::MaximumAlignment,
-            getAlignValue(op0) << constOp1->getZExtValue());
+        return iSTD::Min((unsigned)Value::MaximumAlignment,
+            (unsigned)getAlignValue(op0) << constOp1->getZExtValue());
     }
     else
     {
-        return getAlignValue(op0);
+        return (unsigned)getAlignValue(op0);
     }
 }
 
@@ -357,14 +353,14 @@ unsigned int AlignmentAnalysis::visitAnd(BinaryOperator& I)
     // If one of the operands has trailing zeroes up to some point,
     // then so will the result. So, the alignment is at least the maximum
     // of the operands.
-    return iSTD::Max(getAlignValue(op0),
-        getAlignValue(op1));
+    return iSTD::Max((unsigned)getAlignValue(op0),
+        (unsigned)getAlignValue(op1));
 }
 
 unsigned int AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst& I)
 {
     // The alignment can never be better than the alignment of the base pointer
-    unsigned int newAlign = getAlignValue(I.getPointerOperand());
+    unsigned int newAlign = (unsigned)getAlignValue(I.getPointerOperand());
 
     Type* Ty = I.getPointerOperand()->getType()->getScalarType();
     gep_type_iterator GTI = gep_type_begin(&I);
@@ -381,7 +377,7 @@ unsigned int AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst& I)
         {
             Ty = GTI.getIndexedType();
             unsigned int multiplier = int_cast<unsigned int>(m_DL->getTypeAllocSize(Ty));
-            offset = multiplier * getAlignValue(*op);
+            offset = multiplier * int_cast<unsigned int>(getAlignValue(*op));
         }
 
         // It's possible offset is not a power of 2, because struct fields
@@ -390,7 +386,7 @@ unsigned int AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst& I)
         // highest power of 2 that divides both.
 
         // x | y has trailing 0s exactly where both x and y have trailing 0s.
-        newAlign = getConstantAlignment(newAlign | offset);
+        newAlign = (unsigned)getConstantAlignment(newAlign | offset);
     }
 
     return newAlign;
@@ -401,32 +397,32 @@ unsigned int AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst& I)
 // but this doesn't seem important enough.
 unsigned int AlignmentAnalysis::visitBitCastInst(BitCastInst& I)
 {
-    return getAlignValue(I.getOperand(0));
+    return (unsigned)getAlignValue(I.getOperand(0));
 }
 
 unsigned int AlignmentAnalysis::visitPtrToIntInst(PtrToIntInst& I)
 {
-    return getAlignValue(I.getOperand(0));
+    return (unsigned)getAlignValue(I.getOperand(0));
 }
 
 unsigned int AlignmentAnalysis::visitIntToPtrInst(IntToPtrInst& I)
 {
-    return getAlignValue(I.getOperand(0));
+    return (unsigned)getAlignValue(I.getOperand(0));
 }
 
 unsigned int AlignmentAnalysis::visitTruncInst(TruncInst& I)
 {
-    return getAlignValue(I.getOperand(0));
+    return (unsigned)getAlignValue(I.getOperand(0));
 }
 
 unsigned int AlignmentAnalysis::visitZExtInst(ZExtInst& I)
 {
-    return getAlignValue(I.getOperand(0));
+    return (unsigned)getAlignValue(I.getOperand(0));
 }
 
 unsigned int AlignmentAnalysis::visitSExtInst(SExtInst& I)
 {
-    return getAlignValue(I.getOperand(0));
+    return (unsigned)getAlignValue(I.getOperand(0));
 }
 
 unsigned int AlignmentAnalysis::visitCallInst(CallInst& I)

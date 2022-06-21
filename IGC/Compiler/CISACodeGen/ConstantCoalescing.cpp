@@ -1165,7 +1165,7 @@ uint ConstantCoalescing::GetAlignment(Instruction* load) const
 
     if (isa<LoadInst>(load))
     {
-        alignment = cast<LoadInst>(load)->getAlignment();
+        alignment = (uint)cast<LoadInst>(load)->getAlignment();
     }
     else
     {

@@ -79,9 +79,9 @@ void PrivateMemoryBufferAnalysis::visitAllocaInst(AllocaInst& AI)
 
     m_privateInfoMap[pFunc].m_allocaInsts.push_back(&AI);
 
-    unsigned int alignment = AI.getAlignment();
+    unsigned int alignment = (unsigned)AI.getAlignment();
     if (alignment == 0) {
-        alignment = m_DL->getABITypeAlignment(AI.getAllocatedType());
+        alignment = (unsigned)m_DL->getABITypeAlignment(AI.getAllocatedType());
     }
 
     // Update max alignment

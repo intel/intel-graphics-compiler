@@ -399,7 +399,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     unsigned addressSpace)
 {
     // Initial alignment padding before insert the current constant into the buffer.
-    alignBuffer(inlineProgramScopeBuffer, m_DL->getABITypeAlignment(initializer->getType()));
+    alignBuffer(inlineProgramScopeBuffer, (unsigned)m_DL->getABITypeAlignment(initializer->getType()));
 
     // We need to do extra work with pointers here: we don't know their actual addresses
     // at compile time so we find the offset from the base of the buffer they point to
@@ -616,5 +616,5 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
 
     // final padding.  This gets used by the vec3 types that will insert zero padding at the
     // end after inserting the actual vector contents (this is due to sizeof(vec3) == 4 * sizeof(scalarType)).
-    alignBuffer(inlineProgramScopeBuffer, m_DL->getABITypeAlignment(initializer->getType()));
+    alignBuffer(inlineProgramScopeBuffer, (unsigned)m_DL->getABITypeAlignment(initializer->getType()));
 }

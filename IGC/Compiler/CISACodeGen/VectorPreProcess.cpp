@@ -115,7 +115,7 @@ namespace
         }
         unsigned int getAlignment() const
         {
-            return isa<LoadInst>(m_inst) ? getLoad()->getAlignment() : getLdRaw()->getAlignment();
+            return (unsigned)(isa<LoadInst>(m_inst) ? getLoad()->getAlignment() : getLdRaw()->getAlignment());
         }
         void setAlignment(unsigned int alignment)
         {
@@ -220,7 +220,7 @@ namespace
         }
         unsigned int getAlignment() const
         {
-            return isa<StoreInst>(m_inst) ? getStore()->getAlignment() : getStoreRaw()->getAlignment();
+            return (unsigned)(isa<StoreInst>(m_inst) ? getStore()->getAlignment() : getStoreRaw()->getAlignment());
         }
         void setAlignment(unsigned int alignment)
         {

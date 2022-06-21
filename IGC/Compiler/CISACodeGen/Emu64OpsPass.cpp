@@ -124,16 +124,16 @@ namespace {
         void setExpandedValues(Value* V, Value* Lo, Value* Hi);
 
         unsigned getAlignment(LoadInst* LD) const {
-            unsigned Align = LD->getAlignment();
+            unsigned Align = (unsigned)LD->getAlignment();
             if (Align == 0)
-                Align = DL->getABITypeAlignment(LD->getType());
+                Align = (unsigned)DL->getABITypeAlignment(LD->getType());
             return Align;
         }
 
         unsigned getAlignment(StoreInst* ST) const {
-            unsigned Align = ST->getAlignment();
+            unsigned Align = (unsigned)ST->getAlignment();
             if (Align == 0)
-                Align = DL->getABITypeAlignment(ST->getType());
+                Align = (unsigned)DL->getABITypeAlignment(ST->getType());
             return Align;
         }
 

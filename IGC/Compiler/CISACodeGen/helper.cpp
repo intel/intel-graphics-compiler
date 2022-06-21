@@ -359,9 +359,9 @@ namespace IGC
                 GenISAIntrinsic::GenISA_ldraw_indexed,
             tys);
 
-        unsigned alignment = inst->getAlignment();
+        unsigned alignment = (unsigned)inst->getAlignment();
         if (alignment == 0)
-            alignment = DL.getABITypeAlignment(inst->getType());
+            alignment = (unsigned)DL.getABITypeAlignment(inst->getType());
 
         IRBuilder<> builder(inst);
 
@@ -406,9 +406,9 @@ namespace IGC
             func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storeraw_indexed, types);
         }
         IRBuilder<> builder(inst);
-        unsigned alignment = inst->getAlignment();
+        unsigned alignment = (unsigned)inst->getAlignment();
         if (alignment == 0)
-            alignment = DL.getABITypeAlignment(storeVal->getType());
+            alignment = (unsigned)DL.getABITypeAlignment(storeVal->getType());
         Value* attr[] =
         {
             bufPtr,

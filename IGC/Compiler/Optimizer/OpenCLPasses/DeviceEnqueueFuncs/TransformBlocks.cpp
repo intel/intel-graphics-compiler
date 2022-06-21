@@ -2274,7 +2274,7 @@ namespace //Anonymous
             }
         }
 
-        auto align = _DL->getPrefTypeAlignment(destPtr->getType()->getPointerElementType());
+        unsigned align = (unsigned)_DL->getPrefTypeAlignment(destPtr->getType()->getPointerElementType());
 
         return (byVal && KindQuery::isStructType(typeToSelect))
             ? CreateMemCpy(destPtr, source, align)
@@ -2364,7 +2364,7 @@ namespace //Anonymous
             }
             align = elemAlign > align ? elemAlign : align;
         }
-        return align;
+        return (unsigned)align;
     }
 
     llvm::CallInst* BlockInvoke::EmitBlockInvokeCall(IGCLLVM::IRBuilder<>& builder, llvm::ArrayRef<llvm::Argument*> captures, llvm::ArrayRef<llvm::Argument*> tailingArgs) const

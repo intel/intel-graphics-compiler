@@ -60,7 +60,7 @@ namespace IGCLLVM {
         llvm::Align;
 #endif
 
-    inline Align getCorrectAlign(uint32_t Val)
+    inline Align getCorrectAlign(alignment_t Val)
     {
 #if LLVM_VERSION_MAJOR >= 11
         // llvm::Align does not accept 0 alignment.

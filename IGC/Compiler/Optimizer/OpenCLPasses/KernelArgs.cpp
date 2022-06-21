@@ -107,7 +107,7 @@ unsigned int KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL)
         typeToAlign = cast<PointerType>(typeToAlign)->getElementType();
     }
 
-    return DL->getABITypeAlignment(typeToAlign);
+    return (unsigned)DL->getABITypeAlignment(typeToAlign);
 }
 
 unsigned int KernelArg::calcElemAllocateSize(const Argument* arg, const DataLayout* DL) const

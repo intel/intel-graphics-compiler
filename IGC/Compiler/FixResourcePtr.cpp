@@ -249,7 +249,7 @@ Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst* inst, Instruction* bufPtr, 
     unsigned alignment = (inst->getType()->getScalarSizeInBits() / 8);
     if (inst->getAlignment() > 0)
     {
-        alignment = inst->getAlignment();
+        alignment = (unsigned)inst->getAlignment();
     }
 
     Value* attr[] =
