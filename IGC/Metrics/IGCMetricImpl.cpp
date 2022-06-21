@@ -1443,15 +1443,16 @@ namespace IGCMetrics
         ArrayRef<Value*> Args,
         llvm::Instruction* insertAfter)
     {
-        llvm::AttributeList atrr;
-        atrr.addAttribute(pModule->getContext(), 0, llvm::Attribute::AttrKind::OptimizeNone);
-        atrr.addAttribute(pModule->getContext(), 1, llvm::Attribute::AttrKind::NoInline);
-        atrr.addAttribute(pModule->getContext(), 2, llvm::Attribute::AttrKind::ReadNone);
-        atrr.addAttribute(pModule->getContext(), 3, llvm::Attribute::AttrKind::NoAlias);
+        auto& ctx = pModule->getContext();
+        auto atrr = llvm::AttributeList::get(ctx, {
+            {0, llvm::Attribute::get(ctx, llvm::Attribute::AttrKind::OptimizeNone)},
+            {1, llvm::Attribute::get(ctx, llvm::Attribute::AttrKind::NoInline)},
+            {2, llvm::Attribute::get(ctx, llvm::Attribute::AttrKind::ReadNone)},
+            {3, llvm::Attribute::get(ctx, llvm::Attribute::AttrKind::NoAlias)} });
 
         auto funcType = llvm::FunctionType::get(
-            llvm::Type::getVoidTy(pModule->getContext()),
-            { llvm::Type::getMetadataTy(pModule->getContext()), llvm::Type::getMetadataTy(pModule->getContext()) }, false);
+            llvm::Type::getVoidTy(ctx),
+            { llvm::Type::getMetadataTy(ctx), llvm::Type::getMetadataTy(ctx) }, false);
 
         auto funcVal = pModule->getOrInsertFunction(trackCall, funcType, atrr);
 
