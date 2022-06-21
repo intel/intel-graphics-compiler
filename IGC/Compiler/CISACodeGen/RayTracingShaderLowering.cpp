@@ -126,6 +126,9 @@ void RayTracingShaderLowering::simplifyCast(CastInst& CI)
             }
             else if (auto* NewCast = commonCastTransforms(*UserCI))
             {
+                const DebugLoc& DL = UserCI->getDebugLoc();
+                if (Instruction* NewCastInst = dyn_cast<Instruction>(NewCast))
+                    NewCastInst->setDebugLoc(DL);
                 NewCast->insertAfter(UserCI);
                 UserCI->replaceAllUsesWith(NewCast);
             }
