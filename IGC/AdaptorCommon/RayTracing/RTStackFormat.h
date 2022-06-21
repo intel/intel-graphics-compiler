@@ -98,7 +98,10 @@ DISABLE_WARNING_ANON_TYPES_IN_ANON_UNION
 namespace IGC {
 
 // will be patched with the global root signature at compile time
-struct alignas(8) TypeHoleGlobalRootSig {};
+struct alignas(8) TypeHoleGlobalRootSig
+{
+    char __Padding[8];
+};
 
 // This is currently all of the cross-thread constant data that will be populated
 // in the indirect data by the UMD (See D3D12RaytracingDispatch.h for more info).
@@ -193,7 +196,10 @@ static_assert(ShaderIdentifier::NumSlots == 4);
 static_assert(sizeof(ShaderIdentifier) == SHADER_IDENTIFIER_SIZE_IN_BYTES, "changed?");
 
 // will be patched with the local root signature at compile time
-struct alignas(32) TypeHoleLocalRootSig {};
+struct alignas(32) TypeHoleLocalRootSig
+{
+    char __Padding[32];
+};
 
 // A shader record is composed of two parts:
 // +-------------------+-------------------+
@@ -619,6 +625,16 @@ struct alignas(256) BVH
     ProceduralLeaf proceduralLeaf[1];
     InstanceLeaf   instLeaf[1];
     uint32_t       backPointers[1];
+
+    // array size = 256 - (sizeOfStructMembers % 256)
+    // sizeOfStructMembers = 8          //uint64_t rootNodeOffset
+    //                     + 2*12       // Vec3f   bounds_min; Vec3f   bounds_max;
+    //                     + 9 * 4      // 9 * uint32_t
+    //                     + 64         // InternalNode
+    //                     + 64         // QuadLeaf
+    //                     + 64         // ProceduralLeaf
+    //                     + 128        // InstanceLeaf
+    char __Padding[124];
 };
 
 struct NodeInfo
@@ -878,6 +894,7 @@ struct alignas(LSC_WRITE_GRANULARITY) SWHotZone_v1
     //uint8_t additional_bytes[];
 
     // pad to LSC write granularity (16B on Gen12)
+    char __Padding[LSC_WRITE_GRANULARITY - sizeof(StackPtrDRIEncoding)];
 };
 
 // We currently default to this encoding.  Set the 'EnableCompressedRayIndices'
