@@ -1362,7 +1362,9 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
         // try grouping-threshold decremently until we find a schedule likely won't spill
         unsigned GTMax = 160;
         unsigned GTMin = 96;
-        if (!kernel.getOptions()->getOption(vISA_preRA_ScheduleIterative))
+        // limit the iterative approach to DG2 for now
+        if (!kernel.getOptions()->getOption(vISA_preRA_ScheduleIterative) ||
+            kernel.getPlatform() != Xe_DG2)
         {
             GTMax = GTMin = getLatencyHidingThreshold(kernel);
         }
