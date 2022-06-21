@@ -526,7 +526,7 @@ bool GenXBaling::operandCanBeBaled(
     // - it is indirect.
     // as bitcast will not bale its operands and indirect multiple-use region
     // reads often lead to narrow simd width after legalization.
-    if (Opnd->getNumUses() > 1 && (Kind == BalingKind::BK_Legalization ||
+    if (Opnd->hasNUsesOrMore(2) && (Kind == BalingKind::BK_Legalization ||
                                    Kind == BalingKind::BK_Analysis)) {
       for (auto U : Opnd->users())
         if (isa<BitCastInst>(U))
@@ -1001,7 +1001,7 @@ void GenXBaling::processFuncPointer(Instruction *Inst) {
   IGC_ASSERT_MESSAGE(CI, "genx.faddr expected");
   IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(CI) == GenXIntrinsic::genx_faddr,
     "genx.faddr expected");
-  IGC_ASSERT(Inst->getNumUses() == 1);
+  IGC_ASSERT(Inst->hasOneUse());
   auto *NextUser = Inst->user_back();
   if (isa<BitCastInst>(NextUser)) {
     // bitcasts <N x i64> -> <2*N x i32> may appear after i64 emulation

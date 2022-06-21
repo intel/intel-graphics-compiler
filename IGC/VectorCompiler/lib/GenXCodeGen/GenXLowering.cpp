@@ -410,7 +410,7 @@ static bool isNewLoadInst(CallInst *Inst) {
 // Returns nullptr on failure.
 static CallInst *getLoadWrregion(CallInst *Inst) {
   IGC_ASSERT_MESSAGE(isNewLoadInst(Inst), "Expected new load intrinsics");
-  if (Inst->getNumUses() != 1)
+  if (!Inst->hasOneUse())
     return nullptr;
 
   auto *WrR = dyn_cast<CallInst>(Inst->user_back());
@@ -424,7 +424,7 @@ static CallInst *getLoadWrregion(CallInst *Inst) {
 // TODO: maybe just lower every select to wrregion in lowerSelect?
 static SelectInst *getLoadSelect(CallInst *Inst) {
   IGC_ASSERT_MESSAGE(isNewLoadInst(Inst), "Expected new load intrinsics");
-  if (Inst->getNumUses() != 1)
+  if (!Inst->hasOneUse())
     return nullptr;
 
   auto *SI = dyn_cast<SelectInst>(Inst->user_back());

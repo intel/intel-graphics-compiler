@@ -930,7 +930,7 @@ bool GenXPatternMatch::matchInverseSqrt(Instruction *I) {
 
   // Leave as it if sqrt has multiple uses:
   // generating rsqrt operation is not beneficial
-  if (OpInst->getNumUses() > 1)
+  if (OpInst->hasNUsesOrMore(2))
     return false;
 
   auto *Rsqrt = createInverseSqrt(OpInst->getOperand(0), I->getNextNode());
@@ -3595,14 +3595,14 @@ bool GenXPatternMatch::placeConstants(Function *F) {
 }
 
 bool GenXPatternMatch::simplifyNullDst(CallInst *Inst) {
-  if (Inst->getNumUses() != 1)
+  if (!Inst->hasOneUse())
     return false;
 
   PHINode *Phi = dyn_cast<PHINode>(Inst->use_begin()->getUser());
   if (Phi == nullptr)
     return false;
 
-  if (Phi->getNumUses() == 1 && Phi->use_begin()->getUser() == Inst) {
+  if (Phi->hasOneUse() && Phi->use_begin()->getUser() == Inst) {
     Phi->replaceAllUsesWith(UndefValue::get(Phi->getType()));
     Phi->eraseFromParent();
     return true;

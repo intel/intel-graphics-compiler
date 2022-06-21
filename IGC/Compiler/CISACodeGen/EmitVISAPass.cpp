@@ -21021,7 +21021,7 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
 
     // We can just drop the intrinsic if there are no uses for it.
     // It should have been lowered in LowerImplicitArgIntrinsics pass, but did not get cleaned up.
-    if (I->getNumUses() == 0) return;
+    if (I->use_empty()) return;
 
     if (I->getIntrinsicID() == GenISAIntrinsic::ID::GenISA_getR0)
     {

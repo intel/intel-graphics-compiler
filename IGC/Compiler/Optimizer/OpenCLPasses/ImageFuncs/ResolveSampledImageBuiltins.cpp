@@ -42,7 +42,7 @@ bool ResolveSampledImageBuiltins::runOnModule(Module& M) {
 
     for (auto builtin : m_builtinsToRemove)
     {
-        if (builtin->getNumUses())
+        if (!builtin->use_empty())
         {
             SmallVector<Instruction*, 4> usersToErase;
             for (auto* user : builtin->users())

@@ -622,7 +622,7 @@ namespace IGC
                 // Do not coalesce values having excessive number of uses.
                 // This otfen introduces many anti-dependencies.
                 const unsigned MAX_USE_COUNT = 20;
-                if (val->getNumUses() >= MAX_USE_COUNT)
+                if (val->hasNUsesOrMore(MAX_USE_COUNT))
                 {
                     isAnyNodeAnchored = true;
                 }

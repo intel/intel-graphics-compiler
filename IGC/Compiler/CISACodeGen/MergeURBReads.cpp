@@ -106,7 +106,7 @@ bool MergeURBReads::runOnFunction(Function& F)
         for (auto& entry : m_URBReads)
         {
             GenIntrinsicInst* intr = std::get<3>(entry);
-            if (intr->getNumUses() == 0)
+            if (intr->use_empty())
             {
                 intr->eraseFromParent();
             }
@@ -313,7 +313,7 @@ bool MergeURBReads::MergeReads()
         const URBReadEntry& curr = *cit;
         uint currConstOffset = std::get<2>(curr);
         GenIntrinsicInst* currIntr = std::get<3>(curr);
-        if (currIntr->getNumUses() == 0) // already merged
+        if (currIntr->use_empty()) // already merged
         {
             continue;
         }
@@ -324,7 +324,7 @@ bool MergeURBReads::MergeReads()
             const URBReadEntry& other = *oit;
             uint otherConstOffset = std::get<2>(other);
             GenIntrinsicInst* otherIntr = std::get<3>(other);
-            if (otherIntr->getNumUses() == 0 || // all uses merged
+            if (otherIntr->use_empty() || // all uses merged
                 std::get<0>(curr) != std::get<0>(other) || // different vertex index
                 std::get<1>(curr) != std::get<1>(other) || // different runtime offset
                 otherConstOffset > currConstOffset + 1) // too far in the URB

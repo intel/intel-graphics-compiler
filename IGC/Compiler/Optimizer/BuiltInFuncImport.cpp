@@ -1173,7 +1173,8 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                 isCandidate = true;
               }
 
-              if (isCandidate && fmulInst->getNumUses() > 1) {
+              // used to be: fmulInst->getNumUses() > 1
+              if (isCandidate && fmulInst->hasNUsesOrMore(2)) {
                 Value::use_iterator fmulUse = fmulInst->use_begin();
                 Value::use_iterator fmulUseEnd = fmulInst->use_end();
 

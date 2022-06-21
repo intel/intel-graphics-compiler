@@ -3474,7 +3474,7 @@ void GenSpecificPattern::visitLoadInst(LoadInst &LI) {
         return;
 
     auto VectorLoadInst = cast<LoadInst>(Op0->getVectorOperand());
-    if (VectorLoadInst->getNumUses() != 2)
+    if (!VectorLoadInst->hasNUses(2))
         return;
 
     auto PointerOperand = VectorLoadInst->getPointerOperand();
@@ -6247,7 +6247,7 @@ bool InsertBranchOpt::HasSrcFromEE(Instruction* I, uint selNum, Instruction*& lo
             }
             // load in the same BB as the extractElement
             if (load->getParent() == I->getParent() &&
-                load->getNumUses() <= selNum &&
+                !load->hasNUsesOrMore(1 + selNum) &&
                 eetemp->hasOneUse())
             {
                 loadInst = load;

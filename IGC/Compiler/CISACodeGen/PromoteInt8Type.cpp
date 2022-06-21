@@ -457,7 +457,7 @@ void PromoteInt8Type::promoteInstructions()
         Value* V = valinfo->Val;
         // If the number of promoted uses is larger than non-promoted uses,
         // set NeedPromote to true so that the promotion happens at its definition
-        if (valinfo->NPromotedUses > 0 && (int)V->getNumUses() < (2 * valinfo->NPromotedUses))
+        if (valinfo->NPromotedUses > 0 && !V->hasNUsesOrMore(2 * valinfo->NPromotedUses))
         {
             valinfo->NeedPromote = true;
         }

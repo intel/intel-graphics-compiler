@@ -106,7 +106,7 @@ void GenXRematerialization::remat(Function *F, PressureTracker &RP) {
         if (CI->getSrcTy()->getScalarSizeInBits() >=
             CI->getDestTy()->getScalarSizeInBits())
           continue;
-        if (Inst.isUsedOutsideOfBlock(&BB) || Inst.getNumUses() <= 2)
+        if (Inst.isUsedOutsideOfBlock(&BB) || !Inst.hasNUsesOrMore(3))
           continue;
         LiveRange *LR = Liveness->getLiveRangeOrNull(CI);
         if (!LR || LR->value_size() != 1)

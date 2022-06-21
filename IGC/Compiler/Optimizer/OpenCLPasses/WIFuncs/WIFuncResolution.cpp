@@ -661,7 +661,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
     if (argTy == ImplicitArg::ArgType::NUM_IMPLICIT_ARGS) return;
 
     // If the intrinsic no longer have a use, just remove it
-    if (inst->getNumUses() == 0)
+    if (inst->use_empty())
     {
         CI.eraseFromParent();
         return;
