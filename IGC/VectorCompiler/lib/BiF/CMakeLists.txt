@@ -280,4 +280,3 @@ add_library(VCEmbeddedBiF
 add_dependencies(VCBiFPreparation VCBifUtils)
 add_dependencies(VCEmbeddedBiF VCBiFPreparation)
 target_link_libraries(VCEmbeddedBiF VCHeaders)
-

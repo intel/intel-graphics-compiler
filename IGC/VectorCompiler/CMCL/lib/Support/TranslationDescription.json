@@ -228,6 +228,28 @@
         ]
       }
     },
+    "RSQRT": {
+      "Name": "rsqrt",
+      "Operands": [
+        {
+          "Name": "Source",
+          "Kind": "Input"
+        }
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_rsqrt",
+        "ReturnType": {
+          "GetBuiltinReturnType": []
+        },
+        "Operands": [
+          {
+            "GetBuiltinOperand": [
+              "Source"
+            ]
+          }
+        ]
+      }
+    },
     "LocalID": {
       "Name": "local_id",
       "Operands": [],

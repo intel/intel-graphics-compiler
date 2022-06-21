@@ -96,6 +96,8 @@ template <typename T> T __cm_cl_powr(T src0, T src1, bool use_fast);
 template <typename T> T __cm_cl_sin(T src, bool use_fast);
 template <typename T> T __cm_cl_cos(T src, bool use_fast);
 
+template <typename T> T __cm_cl_rsqrt(T src);
+
 vector_impl<uint32_t, 3> __cm_cl_local_id();
 vector_impl<uint32_t, 3> __cm_cl_local_size();
 vector_impl<uint32_t, 3> __cm_cl_group_count();
