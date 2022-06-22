@@ -10,7 +10,7 @@
 ##############################################
 # IGA dynamic and static library generation
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
 ##############################################
 # compute the version string from the git repo
