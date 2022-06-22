@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "kv.h"
 
 #include "../IR/Block.hpp"
+#include "../IR/Messages.hpp"
 #include "../Backend/GED/Decoder.hpp"
 #include "../Backend/GED/GEDUtil.hpp"
 #include "../Frontend/Formatter.hpp"
@@ -1165,4 +1166,40 @@ uint32_t kv_get_is_inverse_predicate(const kv_t *kv, int32_t pc)
         return 0;
     }
     return (uint32_t)inst->getPredication().inverse;
+}
+
+kv_status_t kv_get_cache_opt(
+    const kv_t *kv, int32_t pc, int32_t cache_level, int32_t *cacheopt_enum)
+{
+    if (!kv) {
+        return kv_status_t::KV_INVALID_ARGUMENT;
+    }
+
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst) {
+        return kv_status_t::KV_INVALID_PC;
+    } else if (!inst->getOpSpec().isSendOrSendsFamily()) {
+        return kv_status_t::KV_NON_SEND_INSTRUCTION;
+    }
+
+    const DecodeResult di = tryDecode(*inst, nullptr);
+    if (!di) {
+        return kv_status_t::KV_DECODE_ERROR;
+    }
+
+    IGA_ASSERT(di.info.isLoad() || di.info.isStore() || di.info.isAtomic(),
+        "decoded MessageInfo is not a send type");
+
+    switch (static_cast<CacheLevel>(cache_level)) {
+        case CacheLevel::L1:
+            *cacheopt_enum = static_cast<int32_t>(di.info.cachingL1);
+            break;
+        case CacheLevel::L3:
+            *cacheopt_enum = static_cast<int32_t>(di.info.cachingL3);
+            break;
+        default:
+            return kv_status_t::KV_INVALID_ARGUMENT;
+    }
+
+    return kv_status_t::KV_SUCCESS;
 }

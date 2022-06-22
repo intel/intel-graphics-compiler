@@ -263,5 +263,46 @@ namespace iga
                // implies CPS and Src1.Length come from EU encoding, not
         CPS,   // XE_HP coarse pixel shading
     };
+
+
+    enum class CacheOpt {
+        // Invalid value (not invalidate or anything)
+        INVALID = 0,
+        //
+        // the default caching state from MOCS or wherever
+        DEFAULT,
+        //
+        // a read is the last use and the lines should be invalidated
+        //   e.g. bit 13 in some HDC messages
+        READINVALIDATE,
+        //
+        // indicates a load should be cached
+        //
+        // e.g. in the BTI system 0xFD is used for this (non-coherent)
+        CACHED,
+        //
+        // indicates a message that bypasses the cache (and evicts the entry
+        // if present)
+        //
+        // e.g. in the BTI system 0xFF is used for this (coherent)
+        UNCACHED,
+        //
+        // a streaming access (line goes into LRU)
+        STREAMING,
+        //
+        // invalidates and writes back lines to the backing store
+        WRITEBACK,
+        //
+        // indicates lines should be written back to the backing store as well
+        // as retained in all levels
+        WRITETHROUGH,
+    };
+
+    enum class CacheLevel {
+        INVALID = 0,
+        L1,
+        L3,
+    };
+
 } // namespace iga
 #endif

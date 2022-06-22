@@ -323,6 +323,8 @@ typedef int32_t(CDECLATTRIBUTE *pIGAKVGetDstIndirectImmOff)(const kv_t *kv, int3
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSrcMMENumber)(const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *mme);
 #define IGA_KV_GET_DESTINATION_MME_NUMBER "kv_get_destination_mme_number"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetDstMMENumber)(const kv_t *kv, int32_t pc, int16_t *mme);
+#define IGA_KV_GET_CACHE_OPT "kv_get_cache_opt"
+typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetCacheOpt)(const kv_t *kv, int32_t pc, int32_t cache_level, int32_t *cacheopt_enum);
 /*
  * A table of IGA functions
  */
@@ -420,6 +422,7 @@ typedef struct
     pIGAKVGetDstIndirectImmOff   kv_get_destination_indirect_imm_off;
     pIGAKVGetSrcMMENumber        kv_get_source_mme_number;
     pIGAKVGetDstMMENumber        kv_get_destination_mme_number;
+    pIGAKVGetCacheOpt            kv_get_cache_opt;
 } kv_functions_t;
 
 #endif // _IGAD_H_

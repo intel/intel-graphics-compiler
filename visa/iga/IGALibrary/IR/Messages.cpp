@@ -353,26 +353,6 @@ std::string iga::ToSyntax(SendOp op)
     }
 }
 
-std::string iga::ToSymbol(CacheOpt op)
-{
-#define MK_CASE(X) case CacheOpt::X: return #X
-    switch (op) {
-    MK_CASE(INVALID);
-    MK_CASE(DEFAULT);
-    MK_CASE(READINVALIDATE);
-    MK_CASE(CACHED);
-    MK_CASE(UNCACHED);
-    MK_CASE(STREAMING);
-    MK_CASE(WRITEBACK);
-    MK_CASE(WRITETHROUGH);
-    default:
-        std::stringstream ss;
-        ss << "0x" << std::hex << (int)op << "?";
-        return ss.str();
-    }
-#undef MK_CASE
-}
-
 std::string iga::ToSymbol(AddrType op)
 {
 #define MK_CASE(X) case AddrType::X: return #X

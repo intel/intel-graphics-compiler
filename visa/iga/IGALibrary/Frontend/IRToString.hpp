@@ -360,6 +360,20 @@ static inline std::string ToSymbol(const SendDesc& x) {
     return ss.str();
 }
 
+static inline std::string ToSymbol(CacheOpt x) {
+
+    switch (x) {
+        MAKE_CASE(CacheOpt, INVALID);
+        MAKE_CASE(CacheOpt, DEFAULT);
+        MAKE_CASE(CacheOpt, READINVALIDATE);
+        MAKE_CASE(CacheOpt, CACHED);
+        MAKE_CASE(CacheOpt, UNCACHED);
+        MAKE_CASE(CacheOpt, STREAMING);
+        MAKE_CASE(CacheOpt, WRITEBACK);
+        MAKE_CASE(CacheOpt, WRITETHROUGH);
+        MAKE_DEFAULT_CASE(CacheOpt);
+    }
+}
 
 static inline std::string ToSyntax(Type ot) {
     switch (ot) {

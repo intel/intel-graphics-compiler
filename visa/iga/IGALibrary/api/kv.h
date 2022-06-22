@@ -535,6 +535,21 @@ IGA_API uint32_t kv_get_predicate(const kv_t *kv, int32_t pc);
  */
 IGA_API uint32_t kv_get_is_inverse_predicate(const kv_t *kv, int32_t pc);
 
+/*
+ * This function returns cache control options for a load/store instruction.
+ * Either L1 or L3 cache options can be queried by setting 'cache_level' with
+ * corresponding iga::CacheLevel value. The result is returned via the pointer
+ * 'cacheopt_enum' - an iga::CacheOpt value.
+ *
+ * RETURNS:
+ *  KV_SUCCESS               on success
+ *  KV_DECODE_ERROR          on decoding error
+ *  KV_NON_SEND_INSTRUCTION  if called on a non-send instruction
+ *  KV_INVALID_ARGUMENT      if cacheLevel is invalid
+ *  KV_INVALID_PC            if called on a non-instruction address
+ * Return value is a CachOpt enum value
+ */
+IGA_API kv_status_t kv_get_cache_opt(const kv_t *kv, int32_t pc, int32_t cache_level, int32_t* cacheopt_enum);
 
 
 #ifdef __cplusplus
