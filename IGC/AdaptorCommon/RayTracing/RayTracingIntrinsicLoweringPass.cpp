@@ -159,8 +159,8 @@ private:
     // Maps a continuation ID to its corresponding continuation function.
     ContMap m_continuationMappings;
     SmallVector<ContinuationSignpostIntrinsic*, 4> m_Signposts;
-    SmallVector<PayloadPtrIntrinsic*, 4> m_Payloads;
-    DenseMap<Function*, uint32_t> m_ContinuationToPayloadOffset;
+    SmallVector<StoreInst*, 4> m_NextFrameStores;
+    DenseMap<Function*, SmallSet<uint32_t, 4>> m_ContinuationToPayloadOffset;
     DenseMap<Function*, Function*> m_ContinuationToParent;
     const DataLayout* m_DL = nullptr;
     Function* m_UniqueCont = nullptr;
@@ -271,8 +271,8 @@ bool RayTracingIntrinsicLoweringPass::recordContinuationPayloadOffset(
     {
         if (*Region == RTMemRegion::SWStack)
         {
-            m_ContinuationToPayloadOffset[Fn] =
-                static_cast<uint32_t>(Offset);
+            m_ContinuationToPayloadOffset[Fn].insert(
+                static_cast<uint32_t>(Offset));
             return true;
         }
     }
@@ -1163,8 +1163,9 @@ void RayTracingIntrinsicLoweringPass::LowerTraces(
             trace->getPayload(), trace->getContinuationFn());
         IGC_ASSERT(Ok); // This is a performance assert
 
-        if (!m_UniqueCont || !Ok)
+        auto Stores =
             builder.storePayload(SFI, trace->getPayload(), NewStackPtrVal);
+        m_NextFrameStores.append(Stores.begin(), Stores.end());
 
         //Initial BVH level is zero
         builder.createASyncTraceRay(
@@ -1247,8 +1248,9 @@ void RayTracingIntrinsicLoweringPass::LowerCallShaders(
             call->getParameter(), call->getContinuationFn());
         IGC_ASSERT(Ok); // This is a performance assert
 
-        if (!m_UniqueCont || !Ok)
+        auto Stores =
             builder.storePayload(SFI, call->getParameter(), NewStackPtrVal);
+        m_NextFrameStores.append(Stores.begin(), Stores.end());
 
         //Get Address to Shader being invoked
         Value* callableShaderPtr = builder.getpCallableShaderBasePtr();
@@ -1378,7 +1380,6 @@ Instruction* RayTracingIntrinsicLoweringPass::LowerPayload(
     auto* II = RTB.getPayloadPtrIntrinsic(
         UndefValue::get(PayloadPtr->getType()),
         FrameAddr);
-    m_Payloads.push_back(II);
     PayloadPtr->replaceAllUsesWith(II);
     II->setPayloadPtr(PayloadPtr);
     return II;
@@ -1393,13 +1394,13 @@ void RayTracingIntrinsicLoweringPass::patchSignposts()
     for (auto* Post : m_Signposts)
     {
         auto I = m_ContinuationToPayloadOffset.find(Post->getFunction());
-        if (I == m_ContinuationToPayloadOffset.end())
+        if (I == m_ContinuationToPayloadOffset.end() || I->second.size() != 1)
         {
             Ok = false;
             break;
         }
 
-        Post->setOffset(I->second);
+        Post->setOffset(*I->second.begin());
     }
 
     if (!Ok)
@@ -1420,8 +1421,10 @@ void RayTracingIntrinsicLoweringPass::patchPayloads()
     auto I = m_ContinuationToPayloadOffset.find(m_UniqueCont);
     if (I == m_ContinuationToPayloadOffset.end())
         return;
+    if (I->second.size() != 1)
+        return;
 
-    const uint32_t Offset = I->second;
+    const uint32_t Offset = *I->second.begin();
 
     Function* Root = m_ContinuationToParent.find(m_UniqueCont)->second;
     auto* MMD = m_CGCtx->getModuleMetaData();
@@ -1435,8 +1438,9 @@ void RayTracingIntrinsicLoweringPass::patchPayloads()
     IGC_ASSERT(StackSize > Offset);
     const uint32_t Dist = StackSize - Offset;
 
-    for (auto* Payload : m_Payloads)
-    {
+    visitGenIntrinsic(*Root->getParent(), GenISAIntrinsic::GenISA_PayloadPtr,
+    [&](GenIntrinsicInst* GII) {
+        auto* Payload = cast<PayloadPtrIntrinsic>(GII);
         IRB.SetInsertPoint(Payload);
         auto* FrameAddr = Payload->getFrameAddr();
         uint32_t Addrspace = FrameAddr->getType()->getPointerAddressSpace();
@@ -1445,7 +1449,10 @@ void RayTracingIntrinsicLoweringPass::patchPayloads()
             IRB.getInt8Ty(), FrameAddr, IRB.getInt32(-int(Dist)));
         NewLoc = IRB.CreateBitCast(NewLoc, Payload->getPayloadPtr()->getType());
         Payload->setPayloadPtr(NewLoc);
-    }
+    });
+
+    for (auto* SI : m_NextFrameStores)
+        SI->eraseFromParent();
 }
 
 // Given a retrieved continuation address, BTD there.
@@ -1573,7 +1580,7 @@ bool RayTracingIntrinsicLoweringPass::runOnModule(Module &M)
         getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
     m_continuationMappings.clear();
     m_Signposts.clear();
-    m_Payloads.clear();
+    m_NextFrameStores.clear();
     m_ContinuationToPayloadOffset.clear();
     m_ContinuationToParent.clear();
     m_DL = &M.getDataLayout();

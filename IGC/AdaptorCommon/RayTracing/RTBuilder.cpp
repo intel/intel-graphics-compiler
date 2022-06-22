@@ -2536,15 +2536,17 @@ void RTBuilder::storeContinuationAddress(
     this->CreateStore(contId, Ptr);
 }
 
-void RTBuilder::storePayload(
+SmallVector<StoreInst*, 2> RTBuilder::storePayload(
     TraceRayRTArgs &Args,
     Value* Payload,
     RTBuilder::SWStackPtrVal* StackFrameVal)
 {
+    SmallVector<StoreInst*, 2> Stores;
     auto* Ptr = Args.getPayloadPtr(
         *this, Payload->getType(), StackFrameVal, VALUE_NAME("&NextFrame"));
 
-    this->CreateStore(Payload, Ptr);
+    auto *First = this->CreateStore(Payload, Ptr);
+    Stores.push_back(First);
 
     if (Args.needPayloadPadding())
     {
@@ -2553,8 +2555,10 @@ void RTBuilder::storePayload(
 
         // This is padded out to ensure we don't have a partial write. We just
         // write '0' here by convention but it shouldn't be read anywhere.
-        this->CreateStore(this->getInt32(0), PadPtr);
+        auto *Second = this->CreateStore(this->getInt32(0), PadPtr);
+        Stores.push_back(Second);
     }
+    return Stores;
 }
 
 // This function loads the ray payload from the RTStack that was previously stored

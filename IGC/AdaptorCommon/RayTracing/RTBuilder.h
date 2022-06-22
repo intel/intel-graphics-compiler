@@ -539,7 +539,7 @@ public:
         Type* PayloadTy,
         ContinuationHLIntrinsic* intrin,
         SWStackPtrVal* StackFrameVal);
-    void storePayload(
+    SmallVector<StoreInst*, 2> storePayload(
         IGC::TraceRayRTArgs &Args,
         Value* Payload,
         SWStackPtrVal* StackFrameVal);
