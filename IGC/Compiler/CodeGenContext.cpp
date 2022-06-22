@@ -587,7 +587,9 @@ namespace IGC
 
     bool OpenCLProgramContext::forceGlobalMemoryAllocation() const
     {
-        return m_InternalOptions.ForceGlobalMemoryAllocation;
+        return m_InternalOptions.ForceGlobalMemoryAllocation ||
+               (m_hasGlobalInPrivateAddressSpace &&
+                (m_InternalOptions.EnableZEBinary|| IGC_IS_FLAG_ENABLED(EnableZEBinary)));
     }
 
     bool OpenCLProgramContext::allocatePrivateAsGlobalBuffer() const

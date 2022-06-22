@@ -70,6 +70,11 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         // const unsigned AS = ptrType->getAddressSpace();
         const unsigned AS = ptrType->getAddressSpace() != ADDRESS_SPACE_PRIVATE ? ptrType->getAddressSpace() : ADDRESS_SPACE_CONSTANT;
 
+        if (ptrType->getAddressSpace() == ADDRESS_SPACE_PRIVATE)
+        {
+            Ctx->m_hasGlobalInPrivateAddressSpace = true;
+        }
+
         // local address space variables are also generated as GlobalVariables.
         // Ignore them here.
         if (AS == ADDRESS_SPACE_LOCAL)
