@@ -49,6 +49,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Analysis/LoopInfo.h>
+#include "llvmWrapper/Analysis/AliasAnalysis.h"
 #include "llvmWrapper/Analysis/MemoryLocation.h"
 #include "common/LLVMWarningsPop.hpp"
 
@@ -175,7 +176,7 @@ BasicBlock* StackIDSchedulingPass::schedule(
 ModRefInfo StackIDSchedulingPass::getModRefInfo(
     const CallBase* Call, const MemoryLocation& Loc)
 {
-    AAQueryInfo AAQIP;
+    AAQueryInfo AAQIP = IGCLLVM::makeAAQueryInfo();
     return AA->getModRefInfo(Call, Loc, AAQIP);
 }
 

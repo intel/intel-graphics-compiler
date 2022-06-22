@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/IntrinsicInst.h>
+#include <llvmWrapper/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -129,7 +130,7 @@ void rewriteTypes(
             "Only handles void right now!");
 
         SmallVector<Type*, 4> Tys;
-        for (auto &Op : II->arg_operands())
+        for (auto &Op : IGCLLVM::args(II))
             Tys.push_back(Op->getType());
 
         auto* NewFTy = FunctionType::get(

@@ -52,6 +52,15 @@ namespace IGCLLVM
         CI->addAttribute(llvm::AttributeList::FunctionIndex, Kind);
 #endif
     }
+
+    inline uint64_t getRetDereferenceableBytes(llvm::CallBase* Call)
+    {
+#if LLVM_VERSION_MAJOR >= 14
+        return Call->getRetDereferenceableBytes();
+#else
+        return Call->getDereferenceableBytes(llvm::AttributeList::ReturnIndex);
+#endif
+    }
 }
 
 #endif

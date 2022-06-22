@@ -114,7 +114,7 @@ bool RayTracingFinalizePass::runOnModule(Module &M)
             {
                 // Temporary WA to ensure we don't page fault on unaligned
                 // acceses.
-                uint32_t Align = LI->getAlignment();
+                uint32_t Align = (uint32_t)LI->getAlignment();
                 if (Align == 0)
                     Align = (uint32_t)DL.getTypeAllocSize(LI->getType());
 
@@ -125,7 +125,7 @@ bool RayTracingFinalizePass::runOnModule(Module &M)
             {
                 // Temporary WA to ensure we don't page fault on unaligned
                 // acceses.
-                uint32_t Align = SI->getAlignment();
+                uint32_t Align = (uint32_t)SI->getAlignment();
                 if (Align == 0)
                     Align = (uint32_t)DL.getTypeAllocSize(
                         SI->getValueOperand()->getType());

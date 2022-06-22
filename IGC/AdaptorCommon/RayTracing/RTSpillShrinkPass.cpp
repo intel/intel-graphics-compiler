@@ -61,9 +61,9 @@ private:
 
     unsigned getAlignment(const DataLayout& DL, StoreInst* ST) const
     {
-        unsigned Align = ST->getAlignment();
+        unsigned Align = (unsigned)ST->getAlignment();
         if (Align == 0)
-            Align = DL.getABITypeAlignment(ST->getType());
+            Align = (unsigned)DL.getABITypeAlignment(ST->getType());
         return Align;
     }
 

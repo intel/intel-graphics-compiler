@@ -46,6 +46,7 @@ SPDX-License-Identifier: MIT
 #include <vector>
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstIterator.h>
+#include <llvmWrapper/IR/InstrTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -155,7 +156,7 @@ bool BindlessInlineDataPass::runOnModule(Module &M)
                 // the size of the Shader Identifier + the size of the Local arguments
                 const uint64_t dereferenceable_size =
                     sizeof(ShaderIdentifier) +
-                    local_buffer_ptr->getDereferenceableBytes(AttributeList::ReturnIndex);
+                    IGCLLVM::getRetDereferenceableBytes(local_buffer_ptr);
 
                 // Return a CallInst* representing the InlinedData intrinsic call
                 // In the shader dumps,
