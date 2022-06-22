@@ -2368,6 +2368,13 @@ bool G4_INST::canPropagateTo(
         }
     }
 
+    if ((useInst_op == G4_rol || useInst_op == G4_ror) && opndNum == 0 &&
+        (TypeSize(dstType) != TypeSize(srcType) || TypeSize(dstType) != TypeSize(useType)))
+    {
+        // rotation's src0 is sensitive to its type size. No prop if type sizes are different.
+        return false;
+    }
+
     // In general, to check whether that MOV could be propagated:
     //
     //  dst/T1 = src/T0;
@@ -2934,6 +2941,13 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
             // Disable it; otherwise shift's mode is changed illegally!
             return false;
         }
+    }
+
+    if ((defInst->opcode() == G4_rol || defInst->opcode() == G4_ror) &&
+        (TypeSize(defDstType) != TypeSize(srcType) || TypeSize(defDstType) != TypeSize(dstType)))
+    {
+        // rotate's dst is sensitive to its size. Make sure operand's size remains unchanged.
+        return false;
     }
 
     // Cannot do hoisting if the use inst has src modifier.
