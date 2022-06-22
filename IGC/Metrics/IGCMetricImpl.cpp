@@ -61,7 +61,7 @@ namespace IGCMetrics
     bool IGCMetricImpl::Enable()
     {
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
-        return isEnabled && IGC_GET_FLAG_VALUE(MetricsDumpEnable) > 0;
+        return isEnabled;
 #else
         return false;
 #endif
@@ -744,12 +744,12 @@ namespace IGCMetrics
 
                 if (cvar == nullptr)
                 {
-                    // If not found check in whole shader data
-                    cvar = pDebugInfo->m_pShader->GetSymbol((llvm::Value*)pVal, false);
+                    // If not found, ignore
+                    continue;
                 }
 
-                    varInfo_m->set_size(cvar->GetSize());
-                    varInfo_m->set_type((IGC_METRICS::VarInfo_VarType)cvar->GetType());
+                varInfo_m->set_size(cvar->GetSize());
+                varInfo_m->set_type((IGC_METRICS::VarInfo_VarType)cvar->GetType());
 
                 auto fillRegister = [&](unsigned int reg)
                 {
