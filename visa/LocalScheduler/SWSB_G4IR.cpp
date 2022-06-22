@@ -3570,7 +3570,6 @@ bool SWSB::insertSyncTokenPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_
                 // or
                 //     mov        {$1.dst}
                 //     add        {$1.src}
-                removeAllToken = true; //In case the .dst is cleared
                 node->eraseDepToken(i);
                 continue;
             }
@@ -4118,6 +4117,12 @@ void SWSB::insertTest()
                 inst = *iInstNext;
                 inst->setLexicalId(newInstID);
                 iInstNext++;
+            }
+
+            if (tokenHonourInstruction(inst) && inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN)
+            {
+                dstTokens.set(inst->getSetToken(), false);
+                srcTokens.set(inst->getSetToken(), false);
             }
 
             newInstID++;
