@@ -1685,25 +1685,22 @@ bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB* bb)
     if (dst->getTypeSize() != src->getTypeSize())
     {
         // Expect rotate has the same size for its src0 and its dst.
-        // But visa could change the imm src0 to a different type
+        // But visa could change the src0 to a different type
         // Use the larger of src0 and dst as rotation type and keep exec type same.
         if (dst->getTypeSize() > src->getTypeSize())
         {
             // use dst type as rotation type
-            G4_Operand* newSrc = nullptr;
-            if (src->isImm())
-            {
-                newSrc = builder.createImm(newSrc->asImm()->getImm(), dst->getType());
-            }
-            else {
-                newSrc = insertMovBefore(i, 0, dst->getType(), bb);
-            }
+            G4_Operand* newSrc = insertMovBefore(i, 0, dst->getType(), bb);
             inst->setSrc(newSrc, 0);
+            assert(newSrc->isSrcRegRegion());
+            src = newSrc->asSrcRegRegion();
         }
         else
         {
-            // use src type as rotation type.
-            inst->setDest(insertMovAfter(i, dst, src->getType(), bb));
+            // use src type as rotation type. (note: can this happen ?)
+            G4_DstRegRegion* newDst = insertMovAfter(i, dst, src->getType(), bb);
+            inst->setDest(newDst);
+            dst = newDst;
         }
         // let it fall-thru
     }
