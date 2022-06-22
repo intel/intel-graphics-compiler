@@ -1362,17 +1362,21 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
         // try grouping-threshold decremently until we find a schedule likely won't spill
         unsigned GTMax = 160;
         unsigned GTMin = 96;
-        // limit the iterative approach to DG2 for now
+        unsigned NumGrfs = kernel.getNumRegTotal();
+        float Ratio = NumGrfs / 128.0f;
+        // limit the iterative approach to certain platforms for now
         if (!kernel.getOptions()->getOption(vISA_preRA_ScheduleIterative) ||
-            kernel.getPlatform() != Xe_DG2)
+            kernel.getPlatform() < Xe_DG2 ||
+            kernel.getPlatform() == Xe_PVC || kernel.getPlatform() == Xe_PVCXT)
         {
             GTMax = GTMin = getLatencyHidingThreshold(kernel);
+            Ratio = 1.0f;  // already adjusted inside getLatencyHidingThreshold
         }
         for (unsigned GroupingThreshold = GTMax; GroupingThreshold >= GTMin;
              GroupingThreshold = GroupingThreshold - 16)
         {
             ddd.reset(ReassignID);
-            LatencyScheduling(GroupingThreshold);
+            LatencyScheduling(unsigned(GroupingThreshold * Ratio));
             if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
                 SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
                 Changed = true;
