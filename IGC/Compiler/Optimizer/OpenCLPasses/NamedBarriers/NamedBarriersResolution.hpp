@@ -72,8 +72,8 @@ namespace IGC
         bool isNamedBarrierInit(llvm::StringRef& FuncionName);
         bool isNamedBarrierSync(llvm::StringRef& FuncionName);
 
-        void HandleNamedBarrierInit(llvm::CallInst& NBarrierInitCall);
-        void HandleNamedBarrierSync(llvm::CallInst& NBarrierSyncCall);
+        void HandleNamedBarrierInitSW(llvm::CallInst& NBarrierInitCall);
+        void HandleNamedBarrierSyncSW(llvm::CallInst& NBarrierSyncCall);
 
         struct s_namedBarrierInfo
         {
@@ -85,8 +85,10 @@ namespace IGC
 
         llvm::DenseMap<llvm::Value*, s_namedBarrierInfo> m_MapInitToID;
 
-        void HandleNamedBarrierInitPVC(llvm::CallInst& NBarrierInitCall);
-        void HandleNamedBarrierSyncPVC(llvm::CallInst& NBarrierSyncCall);
+        void HandleNamedBarrierInitHW(llvm::CallInst& NBarrierInitCall);
+        void HandleNamedBarrierSyncHW(llvm::CallInst& NBarrierSyncCall);
+
+        bool NamedBarrierHWSupport();
     };
 
 } // namespace IGC

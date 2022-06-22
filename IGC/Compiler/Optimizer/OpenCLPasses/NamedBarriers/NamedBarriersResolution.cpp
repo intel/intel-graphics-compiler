@@ -47,10 +47,11 @@ const char* NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG3 = "_Z24work_gro
 
 const int NamedBarriersResolution::GetMaxNamedBarriers()
 {
-    if (m_GFX_GEN == IGFX_PVC)
+    if (NamedBarrierHWSupport())
     {
-        //User can define only 31 named barriers, the first one is reserved for TG barrier
-        return 31;
+        // User can define only 32 named barriers,
+        // The TG barrier is an alias for named barrier 0
+        return 32;
     }
     return 8;
 }
@@ -125,7 +126,7 @@ bool NamedBarriersResolution::runOnModule(Module& M)
         }
     }
 
-    if (m_GFX_GEN == IGFX_PVC)
+    if (NamedBarrierHWSupport())
     {
         // Remove not needed wrapper for Init NBarrier built-in
         for (const auto& [barrierStruct, barrierData] : m_MapInitToID)
@@ -205,7 +206,7 @@ Value* NamedBarriersResolution::FindAllocStructNBarrier(Value* Val, bool IsNBarr
     return nullptr;
 }
 
-void NamedBarriersResolution::HandleNamedBarrierInitPVC(CallInst& NBarrierInitCall)
+void NamedBarriersResolution::HandleNamedBarrierInitHW(CallInst& NBarrierInitCall)
 {
 #ifndef DX_ONLY_IGC
 #ifndef VK_ONLY_IGC
@@ -217,7 +218,6 @@ void NamedBarriersResolution::HandleNamedBarrierInitPVC(CallInst& NBarrierInitCa
     Value* pointerToNBarrierStruct = FindAllocStructNBarrier((Value*)(&NBarrierInitCall), true);
 
     s_namedBarrierInfo structNb;
-    // ID for the user-defined named barriers should start from 1 (the 0 is reserved for the TG barrier)
     structNb.threadGroupNBarrierID = threadGroupNBarrierID;
     structNb.threadGroupNBarrierCount = NBarrierInitCall.getArgOperand(0);
     structNb.threadGroupNBarrierInit = &NBarrierInitCall;
@@ -229,7 +229,7 @@ void NamedBarriersResolution::HandleNamedBarrierInitPVC(CallInst& NBarrierInitCa
 #endif //#ifndef DX_ONLY_IGC
 }
 
-void NamedBarriersResolution::HandleNamedBarrierSyncPVC(CallInst& NBarrierSyncCall)
+void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst& NBarrierSyncCall)
 {
     Module* module = NBarrierSyncCall.getModule();
 
@@ -310,7 +310,7 @@ bool NamedBarriersResolution::isNamedBarrierSync(StringRef& FunctionName)
         FunctionName.equals(NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG3);
 }
 
-void NamedBarriersResolution::HandleNamedBarrierInit(CallInst& NBarrierInitCall)
+void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst& NBarrierInitCall)
 {
 #ifndef DX_ONLY_IGC
 #ifndef VK_ONLY_IGC
@@ -353,7 +353,7 @@ void NamedBarriersResolution::HandleNamedBarrierInit(CallInst& NBarrierInitCall)
 #endif //#ifndef DX_ONLY_IGC
 }
 
-void NamedBarriersResolution::HandleNamedBarrierSync(CallInst& NBarrierSyncCall)
+void NamedBarriersResolution::HandleNamedBarrierSyncSW(CallInst& NBarrierSyncCall)
 {
 #ifndef DX_ONLY_IGC
 #ifndef VK_ONLY_IGC
@@ -402,14 +402,21 @@ void NamedBarriersResolution::visitCallInst(CallInst& CI)
 
     if (isNamedBarrierInit(funcName))
     {
-        m_GFX_GEN == IGFX_PVC
-            ? HandleNamedBarrierInitPVC(CI)
-            : HandleNamedBarrierInit(CI);
+        NamedBarrierHWSupport()
+            ? HandleNamedBarrierInitHW(CI)
+            : HandleNamedBarrierInitSW(CI);
     }
     else if (isNamedBarrierSync(funcName))
     {
-        m_GFX_GEN == IGFX_PVC
-            ? HandleNamedBarrierSyncPVC(CI)
-            : HandleNamedBarrierSync(CI);
+        NamedBarrierHWSupport()
+            ? HandleNamedBarrierSyncHW(CI)
+            : HandleNamedBarrierSyncSW(CI);
     }
+}
+
+
+bool NamedBarriersResolution::NamedBarrierHWSupport()
+{
+    bool hwSupport = m_GFX_GEN == IGFX_PVC;
+    return hwSupport;
 }
