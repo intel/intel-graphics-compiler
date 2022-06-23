@@ -1917,11 +1917,11 @@ public:
                                   .getTM<GenXTargetMachine>()
                                   .getGenXSubtarget();
     for (Function &F : M) {
+      DeriveRoundingAttributes(F);
       if (!IsLibraryFunction(F)) {
         continue;
       }
       F.addFnAttr(vc::FunctionMD::VCEmulationRoutine);
-      DeriveRoundingAttributes(F);
     }
 
     PurgeUnneededEmulationFunctions(M, ST);
@@ -2004,9 +2004,6 @@ private:
   }
 
   static void DeriveRoundingAttributes(Function &F) {
-
-    IGC_ASSERT(IsLibraryFunction(F));
-
     const auto &Name = F.getName();
     if (Name.contains(RoundingRtzSuffix)) {
       F.addFnAttr(genx::FunctionMD::CMFloatControl,
