@@ -1588,7 +1588,7 @@ bool ConstantCoalescing::DecomposePtrExp(
     {
         // get the int-type address computation
         auto* expr = dyn_cast<Instruction>(i2p->getOperand(0));
-        if (!expr || !expr->getType()->isIntegerTy())
+        if (expr == nullptr || !(expr->getType()->isIntegerTy()))
         {
             return false;
         }
