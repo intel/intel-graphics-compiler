@@ -449,14 +449,13 @@ void DepSet::addDependency(const RegRangeListType& reg_range)
 }
 
 size_t DepSetBuilder::DpasMacroBuilder::getNumberOfSuppresionGroups(uint32_t srcIdx) const {
-    if (srcIdx == 1)
-        return m_model.platform > Platform::XE_HPC ? 2 : 1;
 
+    if (srcIdx == 1) {
+        return 1;
+    }
     if (srcIdx == 2) {
-        if (m_model.platform == Platform::XE_HPC)
+        if (m_model.platform >= Platform::XE_HPC)
             return 4;
-        if (m_model.platform > Platform::XE_HPC)
-            return 8;
     }
     return 0;
 }
