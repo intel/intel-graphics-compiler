@@ -26,7 +26,7 @@ static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
 static const unsigned PRESSURE_LOW_THRESHOLD = 60;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
-static const unsigned LATENCY_PRESSURE_THRESHOLD = 104;
+static const unsigned LATENCY_PRESSURE_THRESHOLD = 100;
 
 namespace {
 
@@ -1360,7 +1360,7 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
     bool Changed = false;
     if (tryLatencyHiding()) {
         // try grouping-threshold decremently until we find a schedule likely won't spill
-        unsigned GTMax = 160;
+        unsigned GTMax = 144;
         unsigned GTMin = 96;
         unsigned NumGrfs = kernel.getNumRegTotal();
         float Ratio = NumGrfs / 128.0f;

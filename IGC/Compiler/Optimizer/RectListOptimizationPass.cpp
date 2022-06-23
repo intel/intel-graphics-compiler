@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/CISACodeGen/CollectGeometryShaderProperties.hpp"
 #include "ShaderTypesEnum.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
@@ -83,7 +82,6 @@ public:
     RectListOptimizationPass() :
         FunctionPass(ID)
     {
-        initializeCollectGeometryShaderPropertiesPass(*PassRegistry::getPassRegistry());
         m_gsouputM.clear();
         m_gsouputM.resize(m_NUM_OUTPUT_VERT_FOR_RECTLIST);
     }
@@ -92,7 +90,6 @@ public:
     void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
     {
         AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<CollectGeometryShaderProperties>();
         AU.addRequired<CodeGenContextWrapper>();
     }
     virtual llvm::StringRef getPassName() const override { return "RectListOptimization"; }

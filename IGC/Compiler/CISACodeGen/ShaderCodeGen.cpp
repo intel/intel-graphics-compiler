@@ -11,13 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Legalizer/PeepholeTypeLegalizer.hpp"
 #include "Compiler/CISACodeGen/layout.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
-#include "Compiler/CISACodeGen/GeometryShaderLowering.hpp"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
-#include "Compiler/CISACodeGen/PixelShaderLowering.hpp"
-#include "Compiler/CISACodeGen/VertexShaderLowering.hpp"
-#include "Compiler/CISACodeGen/HullShaderLowering.hpp"
-#include "Compiler/CISACodeGen/HullShaderClearTessFactors.hpp"
-#include "Compiler/CISACodeGen/DomainShaderLowering.hpp"
 #include "Compiler/CISACodeGen/AdvCodeMotion.h"
 #include "Compiler/CISACodeGen/RematAddressArithmetic.h"
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
@@ -28,7 +22,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
 #include "Compiler/CISACodeGen/SinkCommonOffsetFromGEP.h"
-#include "Compiler/CISACodeGen/HoistURBWrites.hpp"
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CheckInstrTypes.hpp"
 #include "Compiler/CISACodeGen/EstimateFunctionSize.h"
@@ -38,7 +31,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/GenIRLowering.h"
 #include "Compiler/CISACodeGen/GenSimplification.h"
 #include "Compiler/CISACodeGen/LoopDCE.h"
-#include "Compiler/CISACodeGen/LowerGSInterface.h"
 #include "Compiler/CISACodeGen/LdShrink.h"
 #include "Compiler/CISACodeGen/MemOpt.h"
 #include "Compiler/CISACodeGen/MemOpt2.h"
@@ -53,18 +45,12 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/TypeDemote.h"
 #include "Compiler/CISACodeGen/UniformAssumptions.hpp"
 #include "Compiler/Optimizer/LinkMultiRateShaders.hpp"
-#include "Compiler/CISACodeGen/MergeURBWrites.hpp"
-#include "Compiler/CISACodeGen/MergeURBReads.hpp"
-#include "Compiler/CISACodeGen/URBPartialWrites.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/RuntimeValueLegalizationPass.h"
 #include "Compiler/CISACodeGen/InsertGenericPtrArithmeticMetadata.hpp"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
-#include "Compiler/CISACodeGen/ComputeShaderLowering.hpp"
-#include "Compiler/CISACodeGen/CrossPhaseConstProp.hpp"
-#include "Compiler/CISACodeGen/BindlessShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/RayTracingShaderLowering.hpp"
 #include "Compiler/CISACodeGen/RayTracingStatefulPass.h"
 #include "Compiler/CISACodeGen/LSCCacheOptimizationPass.h"
@@ -72,7 +58,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/ConvertMSAAPayloadTo16Bit.hpp"
 #include "Compiler/MSAAInsertDiscard.hpp"
 #include "Compiler/CISACodeGen/PromoteInt8Type.hpp"
-#include "Compiler/CISACodeGen/CalculateLocalIDs.hpp"
 #include "Compiler/CISACodeGen/PrepareLoadsStoresPass.h"
 #include "Compiler/CISACodeGen/HFpackingOpt.hpp"
 
@@ -201,45 +186,6 @@ const int LOOP_NUM_THRESHOLD = 2000;
 const int LOOP_INST_THRESHOLD = 65000;
 const int INST_THRESHOLD = 80000;
 
-static void AddURBWriteRelatedPass(CodeGenContext& ctx, IGCPassManager& mpm)
-{
-// 3D MergeURBWrite pass
-    switch (ctx.type)
-    {
-    case ShaderType::GEOMETRY_SHADER:
-    case ShaderType::VERTEX_SHADER:
-    case ShaderType::HULL_SHADER:
-    case ShaderType::DOMAIN_SHADER:
-        {
-        if (IGC_IS_FLAG_DISABLED(DisableURBWriteMerge))
-        {
-            // Run EarlyCSE to remove redundant calculations of per-vertex or
-            // per-primitive URB offsets created in lowering.
-            mpm.add(llvm::createEarlyCSEPass());
-            mpm.add(createMergeURBWritesPass());
-        }
-        if (IGC_IS_FLAG_DISABLED(DisableURBReadMerge))
-        {
-            mpm.add(createMergeURBReadsPass());
-        }
-        if (IGC_IS_FLAG_ENABLED(EnableTEFactorsClear) && (ctx.type == ShaderType::HULL_SHADER))
-        {
-            mpm.add(createClearTessFactorsPass());
-        }
-        if (IGC_IS_FLAG_DISABLED(DisableURBPartialWritesPass))
-        {
-            mpm.add(createURBPartialWritesPass());
-        }
-        if (IGC_IS_FLAG_DISABLED(DisableCodeHoisting))
-        {
-            mpm.add(new HoistURBWrites());
-        }
-        break;
-        }
-    default:
-        break;
-    }
-}
 
 static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
 {
@@ -268,19 +214,7 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     mpm.add(llvm::createBreakCriticalEdgesPass());
 
 
-    // 3D MergeURBWrite pass should be added after PushAnalysis and DeadCodeElimination
-    // to avoid URBRead/URBWrite interference
-    AddURBWriteRelatedPass(ctx, mpm);
 
-    // moving the scheduling and sample clustering passes right before code-sinking.
-    // Need to merge the scheduling, code-sinking and clustering passes better to avoid redundancy and better optimization
-    if (IGC_IS_FLAG_DISABLED(DisablePreRAScheduler) &&
-        ctx.type == ShaderType::PIXEL_SHADER &&
-        ctx.m_retryManager.AllowPreRAScheduler() &&
-        !ctx.m_enableSubroutine)
-    {
-        mpm.add(createPreRASchedulerPass());
-    }
 
     if (IGC_IS_FLAG_DISABLED(DisableMemOpt2) &&
         (ctx.type == ShaderType::COMPUTE_SHADER || (ctx.m_DriverInfo.WAEnableMemOpt2ForOCL())) &&
@@ -294,8 +228,6 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // Also need to understand the performance benefit better.
     mpm.add(new CodeSinking(true));
 
-    if (ctx.type == ShaderType::PIXEL_SHADER)
-        mpm.add(new PixelShaderAddMask());
 
     // Run flag re-materialization if it's beneficial.
     if (ctx.m_DriverInfo.benefitFromPreRARematFlag() &&
@@ -476,31 +408,7 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
     initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
 
-    if (ctx.type == ShaderType::COMPUTE_SHADER &&
-        (ctx.platform.HasKernelArguments() || IGC_IS_FLAG_ENABLED(EnableLocalIdCalculationInShader)))
-    {
-        mpm.add(createCalculateLocalIDsPass());
-    }
 
-    if (ctx.type == ShaderType::RAYTRACING_SHADER)
-    {
-        mpm.add(createLowerGlobalRootSignaturePass());
-    }
-
-    if (ctx.type == ShaderType::PIXEL_SHADER)
-    {
-        mpm.add(new DiscardLowering());
-        mpm.add(createPromoteMemoryToRegisterPass());
-        if (!isOptDisabled)
-        {
-            if (pSignature)
-            {
-                mpm.add(createCrossPhaseConstPropPass(pSignature));
-            }
-            mpm.add(llvm::createCFGSimplificationPass());
-            mpm.add(llvm::createLowerSwitchPass());
-        }
-    }
 
     if (ctx.m_threadCombiningOptDone)
     {
@@ -1053,35 +961,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
 
     mpm.add(new LowPrecisionOpt());
 
-    // 3D input/output lowering
-    switch (ctx.type)
-    {
-    case ShaderType::GEOMETRY_SHADER:
-        mpm.add(createGeometryShaderLoweringPass());
-        break;
-
-    case ShaderType::PIXEL_SHADER:
-        mpm.add(new PixelShaderLowering());
-        break;
-
-    case ShaderType::VERTEX_SHADER:
-        mpm.add(new VertexShaderLowering());
-        break;
-
-    case ShaderType::HULL_SHADER:
-        mpm.add(createHullShaderLoweringPass());
-        mpm.add(new GenSpecificPattern());
-        break;
-
-    case ShaderType::DOMAIN_SHADER:
-        mpm.add(createDomainShaderLoweringPass());
-        break;
-    case ShaderType::COMPUTE_SHADER:
-        mpm.add(CreateComputeShaderLowering());
-        break;
-    default:
-        break;
-    }
 
     mpm.add(new WAFMinFMax());
 
@@ -1765,30 +1644,6 @@ static void destroyShaderMap(CShaderProgram::KernelShaderMap& shaders)
     }
 }
 
-template<typename ContextType>
-void FillProgram(ContextType* ctx, CShaderProgram* shaderProgram)
-{
-    shaderProgram->FillProgram(&ctx->programOutput);
-}
-
-void FillProgram(RayDispatchShaderContext* ctx, CShaderProgram* shaderProgram)
-{
-    SBindlessProgram bindlessProgram;
-    CBindlessShader* shader = shaderProgram->FillProgram(&bindlessProgram);
-    if (shader->isBindless())
-    {
-        if (shader->isCallStackHandler())
-            ctx->programOutput.callStackHandler = bindlessProgram;
-        else if (shader->isContinuation())
-            ctx->programOutput.m_Continuations.push_back(bindlessProgram);
-        else
-            ctx->programOutput.m_CallableShaders.push_back(bindlessProgram);
-    }
-    else
-    {
-        ctx->programOutput.m_DispatchPrograms.push_back(bindlessProgram);
-    }
-}
 
 template<typename ContextType>
 void CodeGenCommon(ContextType* ctx)
@@ -1812,35 +1667,6 @@ CShaderProgram::KernelShaderMap shaders;
 }
 // CodeGenCommon
 
-void CodeGen(ComputeShaderContext* ctx)
-{
-    CodeGenCommon(ctx);
-}
-void CodeGen(DomainShaderContext* ctx)
-{
-    CodeGenCommon(ctx);
-}
-void CodeGen(HullShaderContext* ctx)
-{
-    CodeGenCommon(ctx);
-}
-void CodeGen(VertexShaderContext* ctx)
-{
-    CodeGenCommon(ctx);
-}
-void CodeGen(GeometryShaderContext* ctx)
-{
-    CodeGenCommon(ctx);
-}
-void CodeGen(RayDispatchShaderContext* ctx)
-{
-    CodeGenCommon(ctx);
-}
-
-void CodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders, PSSignature* pSignature)
-{
-    PSCodeGen(ctx, shaders, pSignature);
-} // CodeGen(PixelShaderContext*, ...)
 
 void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& shaders)
 {

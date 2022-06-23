@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "common/igc_regkeys.hpp"
@@ -709,17 +708,6 @@ namespace IGC
 
     bool PushAnalysis::AreUniformInputsBasedOnDispatchMode()
     {
-        if (m_context->type == ShaderType::DOMAIN_SHADER)
-        {
-            return true;
-        }
-        else if (m_context->type == ShaderType::HULL_SHADER)
-        {
-            if (m_hsProps->GetProperties().m_pShaderDispatchMode != EIGHT_PATCH_DISPATCH_MODE)
-            {
-                return true;
-            }
-        }
         return false;
     }
 
@@ -731,27 +719,6 @@ namespace IGC
             return true;
         }
 
-        if (m_context->type == ShaderType::HULL_SHADER)
-        {
-            if (m_hsProps->GetProperties().m_pShaderDispatchMode == EIGHT_PATCH_DISPATCH_MODE)
-            {
-                auto tooManyHandles =
-                    (m_hsProps->GetProperties().m_pInputControlPointCount >= 29);
-                // Can push constants if urb handles don't take too many registers.
-                return !tooManyHandles;
-            }
-            return true;
-        }
-        else if (m_context->type == ShaderType::GEOMETRY_SHADER)
-        {
-            // If we need to consider the WA, do the computations
-            auto inputVertexCount = m_gsProps->GetProperties().Input().VertexCount();
-            auto tooManyHandles =
-                inputVertexCount > 13 || (inputVertexCount > 12 && m_gsProps->GetProperties().Input().HasPrimitiveID());
-
-            // Can push constants if urb handles don't take too many registers.
-            return !tooManyHandles;
-        }
         return true;
     }
 
@@ -782,47 +749,6 @@ namespace IGC
             }
         }
 
-        switch (m_context->type)
-        {
-        case ShaderType::VERTEX_SHADER:
-            if (m_context->platform.WaDisableVSPushConstantsInFusedDownModeWithOnlyTwoSubslices())
-            {
-                return false;
-            }
-            return true;
-
-        case ShaderType::HULL_SHADER:
-            return DispatchGRFHardwareWAForHSAndGSDisabled() &&
-                !m_context->m_DriverInfo.WaDisablePushConstantsForHS();
-
-        case ShaderType::GEOMETRY_SHADER:
-            return DispatchGRFHardwareWAForHSAndGSDisabled();
-
-        case ShaderType::DOMAIN_SHADER:
-            if (m_context->platform.WaDisableDSPushConstantsInFusedDownModeWithOnlyTwoSubslices())
-            {
-                return false;
-            }
-            return true;
-
-        case ShaderType::PIXEL_SHADER:
-        {
-            NamedMDNode* coarseNode = m_pFunction->getParent()->getNamedMetadata(NAMED_METADATA_COARSE_PHASE);
-            NamedMDNode* pixelNode = m_pFunction->getParent()->getNamedMetadata(NAMED_METADATA_PIXEL_PHASE);
-            if (coarseNode && pixelNode)
-            {
-                Function* pixelPhase = llvm::mdconst::dyn_extract<Function>(pixelNode->getOperand(0)->getOperand(0));
-                if (pixelPhase == m_pFunction)
-                {
-                    // no push constants for pixel phase
-                    return false;
-                }
-            }
-        }
-        return true;
-        default:
-            break;
-        }
         return false;
     }
 
@@ -835,28 +761,6 @@ namespace IGC
             return 0;
         }
 
-        switch (m_context->type)
-        {
-        case ShaderType::VERTEX_SHADER:
-            return m_pMaxNumOfVSPushedInputs;
-        case ShaderType::HULL_SHADER:
-            return m_hsProps->GetProperties().GetMaxInputPushed();
-        case ShaderType::DOMAIN_SHADER:
-            return m_pMaxNumOfDSPushedInputs;
-        case ShaderType::GEOMETRY_SHADER:
-        {
-            const unsigned int MaxGSPayloadGRF = 96;
-            const unsigned int totalPayloadSize = m_gsProps->GetProperties().Input().VertexCount() *
-                Unit<Element>(m_gsProps->GetProperties().Input().PerVertex().Size()).Count();
-
-            // For now we either return the vertex size (so we push all attributes) or zero
-            // (so we use pure pull model).
-            return totalPayloadSize <= MaxGSPayloadGRF ?
-                m_gsProps->GetProperties().Input().PerVertex().Size().Count() : 0;
-        }
-        default:
-            break;
-        }
         return 0;
     }
 
@@ -1428,12 +1332,6 @@ namespace IGC
                 int urbOffset = static_cast<int>(pElementIndex->getZExtValue());
                 int urbReadOffsetForPush = 0;
 
-                if (m_context->type == ShaderType::HULL_SHADER)
-                {
-                    urbReadOffsetForPush = m_context->getModuleMetaData()->URBInfo.hasVertexHeader ?
-                        (m_hsProps->GetProperties().m_HasClipCullAsInput ? 4 : 2)
-                        : 0;
-                }
 
                 bool pushCondition = ((urbOffset >= urbReadOffsetForPush) && (urbOffset - urbReadOffsetForPush) < (int)numberOfElementsPerVertexThatAreGoingToBePushed);
 
@@ -1558,39 +1456,16 @@ namespace IGC
     {
         // if it's GS, get the properties object and find out if we use instancing
         // since then payload is laid out differently.
-        const bool gsInstancingUsed = m_gsProps && m_gsProps->GetProperties().Input().HasInstancing();
+        const bool gsInstancingUsed =
+            false;
 
         uint32_t vsUrbReadIndexForInstanceIdSGV = 0;
         bool vsHasConstantBufferIndexedWithInstanceId = false;
 
         m_funcTypeChanged = false;    // Reset flag at the beginning of processing every function
-        if (m_context->type == ShaderType::VERTEX_SHADER)
-        {
-            llvm::NamedMDNode* pMetaData = m_pFunction->getParent()->getNamedMetadata("ConstantBufferIndexedWithInstanceId");
-
-            if (pMetaData != nullptr)
-            {
-                llvm::MDNode* pMdNode = pMetaData->getOperand(0);
-                if (pMdNode)
-                {
-                    ConstantInt* pURBReadIndexForInstanceIdSGV = mdconst::dyn_extract<ConstantInt>(pMdNode->getOperand(0));
-                    vsUrbReadIndexForInstanceIdSGV = int_cast<uint32_t>(pURBReadIndexForInstanceIdSGV->getZExtValue());
-                    vsHasConstantBufferIndexedWithInstanceId = true;
-                }
-            }
-        }
 
         PushConstantMode pushConstantMode = GetPushConstantMode();
 
-        if (m_context->type == ShaderType::DOMAIN_SHADER)
-        {
-            auto valueU = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_U"), WIAnalysis::RANDOM);
-            auto valueV = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_V"), WIAnalysis::RANDOM);
-            auto valueW = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_W"), WIAnalysis::RANDOM);
-            m_dsProps->SetDomainPointUArgu(valueU);
-            m_dsProps->SetDomainPointVArgu(valueV);
-            m_dsProps->SetDomainPointWArgu(valueW);
-        }
 
         for (auto BB = m_pFunction->begin(), E = m_pFunction->end(); BB != E; ++BB)
         {
@@ -1602,30 +1477,6 @@ namespace IGC
                 if (inst->use_empty())
                 {
                     continue;
-                }
-                // TODO: we can find a better heuristic to figure out which constant we want to push
-                if (m_context->type == ShaderType::DOMAIN_SHADER)
-                {
-                    if (dyn_cast<GenIntrinsicInst>(inst) &&
-                        dyn_cast<GenIntrinsicInst>(inst)->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_SystemValue)
-                    {
-                        SGVUsage usage = static_cast<SGVUsage>(llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
-                        if (usage == DOMAIN_POINT_ID_X || usage == DOMAIN_POINT_ID_Y || usage == DOMAIN_POINT_ID_Z)
-                        {
-                            if (usage == DOMAIN_POINT_ID_X)
-                            {
-                                inst->replaceAllUsesWith(m_dsProps->GetProperties().m_UArg);
-                            }
-                            else if (usage == DOMAIN_POINT_ID_Y)
-                            {
-                                inst->replaceAllUsesWith(m_dsProps->GetProperties().m_VArg);
-                            }
-                            else if (usage == DOMAIN_POINT_ID_Z)
-                            {
-                                inst->replaceAllUsesWith(m_dsProps->GetProperties().m_WArg);
-                            }
-                        }
-                    }
                 }
                 // code to push constant-buffer value into thread-payload
                 SimplePushInfo info{};
@@ -1720,10 +1571,6 @@ namespace IGC
         m_DL = &M.getDataLayout();
         m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
-        m_hsProps = getAnalysisIfAvailable<CollectHullShaderProperties>();
-        m_dsProps = getAnalysisIfAvailable<CollectDomainShaderProperties>();
-        m_gsProps = getAnalysisIfAvailable<CollectGeometryShaderProperties>();
-        m_vsProps = getAnalysisIfAvailable<CollectVertexShaderProperties>();
         m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
         MapList<Function*, Function*> funcsMapping;
@@ -1752,19 +1599,6 @@ namespace IGC
                 // Create the new function body and insert it into the module
                 Function* pNewFunc = m_pFuncUpgrade.RebuildFunction();
 
-                // Reassign the arguments for domain shader to real arguments
-                if (m_context->type == ShaderType::DOMAIN_SHADER)
-                    // function right into the new function, leaving the old body of the function empty.
-                {
-                    // Loop over the argument list, transferring uses of the old arguments over to
-                    // the new arguments
-                    m_dsProps->SetDomainPointUArgu(
-                        m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointUArgu()));
-                    m_dsProps->SetDomainPointVArgu(
-                        m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointVArgu()));
-                    m_dsProps->SetDomainPointWArgu(
-                        m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointWArgu()));
-                }
 
                 // Map old func to new func
                 funcsMapping[pFunc] = pNewFunc;

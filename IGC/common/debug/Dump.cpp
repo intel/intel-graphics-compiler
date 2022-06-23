@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/customApi.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
 #include "common/igc_regkeys.hpp"
 
 #include <iStdLib/utility.h>
@@ -749,15 +748,6 @@ DumpName GetDumpNameObj(const IGC::CShader* pProgram, const char* ext)
     IGC::CodeGenContext* context = pProgram->GetContext();
 
     bool overrideHash = false;
-    if (context->type == ShaderType::RAYTRACING_SHADER && context->hash.asmHash == 0)
-    {
-        auto* RayCtx = static_cast<RayDispatchShaderContext*>(context);
-        if (QWORD Hash = RayCtx->getShaderHash(pProgram))
-        {
-            context->hash.asmHash = Hash;
-            overrideHash = true;
-        }
-    }
 
     DumpName dumpName =
         IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
@@ -771,18 +761,6 @@ DumpName GetDumpNameObj(const IGC::CShader* pProgram, const char* ext)
     if(pProgram->entry->getName() != "entry")
     {
         dumpName = dumpName.PostFix(pProgram->entry->getName().str());
-    }
-    if (pProgram->GetShaderType() == ShaderType::PIXEL_SHADER)
-    {
-        const IGC::CPixelShader* psProgram = static_cast<const IGC::CPixelShader*>(pProgram);
-        dumpName = dumpName.PSPhase(psProgram->GetPhase());
-    }
-    else if (pProgram->GetShaderType() == ShaderType::VERTEX_SHADER)
-    {
-        if (context->getModule()->getModuleFlag("IGC::PositionOnlyVertexShader"))
-        {
-            dumpName = dumpName.PostFix("posh");
-        }
     }
     dumpName = dumpName.DispatchMode(pProgram->m_ShaderDispatchMode);
     dumpName = dumpName.SIMDSize(pProgram->m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension(ext);

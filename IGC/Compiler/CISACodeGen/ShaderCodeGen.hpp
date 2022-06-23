@@ -55,7 +55,6 @@ uint64_t GetImmediateVal(llvm::Value* Const);
 e_alignment GetPreferredAlignment(llvm::Value* Val, WIAnalysis* WIA, CodeGenContext* pContext);
 
 class CShaderProgram;
-class CBindlessShader;
 
 ///--------------------------------------------------------------------------------------------------------
 class CShader
@@ -727,14 +726,7 @@ public:
     CShader* GetShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
     void DeleteShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
     CodeGenContext* GetContext() { return m_context; }
-    void FillProgram(SVertexShaderKernelProgram* pKernelProgram);
-    void FillProgram(SHullShaderKernelProgram* pKernelProgram);
-    void FillProgram(SDomainShaderKernelProgram* pKernelProgram);
-    void FillProgram(SGeometryShaderKernelProgram* pKernelProgram);
-    void FillProgram(SPixelShaderKernelProgram* pKernelProgram);
-    void FillProgram(SComputeShaderKernelProgram* pKernelProgram);
-    void FillProgram(SOpenCLProgramInfo* pKernelProgram);
-    CBindlessShader* FillProgram(SBindlessProgram* pKernelProgram);
+
     ShaderStats* m_shaderStats;
 
 protected:

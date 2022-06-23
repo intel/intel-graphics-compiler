@@ -1279,11 +1279,6 @@ namespace IGC
                 match = MatchBlockReadWritePointer(*GII) ||
                     MatchSingleInstruction(*GII);
                 break;
-            case GenISAIntrinsic::GenISA_URBRead:
-            case GenISAIntrinsic::GenISA_URBReadOutput:
-                match = MatchURBRead(*GII) ||
-                    MatchSingleInstruction(*GII);
-                break;
             case GenISAIntrinsic::GenISA_UnmaskedRegionBegin:
                 match = MatchUnmaskedRegionBoundary(I, true);
                 break;
@@ -2524,76 +2519,6 @@ namespace IGC
         return false;
     }
 
-    // 1. Detect and handle immediate URB read offsets - these can be put in message descriptor.
-    // 2. Detect offsets of the form "add dst, var, imm" - here we can remove the add, putting imm in message descriptor,
-    // and var in message payload.
-    bool CodeGenPatternMatch::MatchURBRead(llvm::GenIntrinsicInst& I)
-    {
-        struct URBReadPattern : public Pattern
-        {
-            explicit URBReadPattern(GenIntrinsicInst* I, QuadEltUnit globalOffset, llvm::Value* const perSlotOffset) :
-                m_inst(I), m_globalOffset(globalOffset), m_perSlotOffset(perSlotOffset)
-            {}
-
-            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
-            {
-                IGC_ASSERT(m_inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBRead ||
-                    m_inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBReadOutput);
-                pass->emitURBReadCommon(m_inst, m_globalOffset, m_perSlotOffset);
-            }
-
-        private:
-            GenIntrinsicInst* const m_inst;
-            const QuadEltUnit m_globalOffset;
-            llvm::Value* const m_perSlotOffset;
-        };
-
-        if (I.getIntrinsicID() != GenISAIntrinsic::GenISA_URBRead &&
-            I.getIntrinsicID() != GenISAIntrinsic::GenISA_URBReadOutput)
-        {
-            return false;
-        }
-
-        const bool hasVertexIndexAsArg0 = I.getIntrinsicID() == GenISAIntrinsic::GenISA_URBRead;
-        llvm::Value* const offset = I.getOperand(hasVertexIndexAsArg0 ? 1 : 0);
-        if (const ConstantInt * const constOffset = dyn_cast<ConstantInt>(offset))
-        {
-            const QuadEltUnit globalOffset = QuadEltUnit(int_cast<unsigned>(constOffset->getZExtValue()));
-            if (hasVertexIndexAsArg0)
-            {
-                MarkAsSource(I.getOperand(0));
-            }
-            URBReadPattern* pattern = new (m_allocator) URBReadPattern(&I, globalOffset, nullptr);
-            AddPattern(pattern);
-            return true;
-        }
-        else if (llvm::Instruction * const inst = llvm::dyn_cast<llvm::Instruction>(offset))
-        {
-            if (inst->getOpcode() == llvm::Instruction::Add)
-            {
-                const bool isConstant0 = llvm::isa<llvm::ConstantInt>(inst->getOperand(0));
-                const bool isConstant1 = llvm::isa<llvm::ConstantInt>(inst->getOperand(1));
-                if (isConstant0 || isConstant1)
-                {
-                    IGC_ASSERT_MESSAGE(!(isConstant0 && isConstant1), "Both operands are immediate - constants should be folded elsewhere.");
-
-                    if (hasVertexIndexAsArg0)
-                    {
-                        MarkAsSource(I.getOperand(0));
-                    }
-                    const QuadEltUnit globalOffset = QuadEltUnit(int_cast<unsigned>(cast<ConstantInt>(
-                        isConstant0 ? inst->getOperand(0) : inst->getOperand(1))->getZExtValue()));
-                    llvm::Value* const perSlotOffset = isConstant0 ? inst->getOperand(1) : inst->getOperand(0);
-                    MarkAsSource(perSlotOffset);
-                    URBReadPattern* pattern = new (m_allocator) URBReadPattern(&I, globalOffset, perSlotOffset);
-                    AddPattern(pattern);
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
 
     // Pattern matching to detect and handle immediate offsets in load/store
     // instructions.  It detects offsets of the form "add dst, var, imm"

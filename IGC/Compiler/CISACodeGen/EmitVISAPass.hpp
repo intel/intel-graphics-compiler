@@ -150,8 +150,6 @@ public:
     void emitSymbolRelocation(llvm::Function& F);
 
     void emitOutput(llvm::GenIntrinsicInst* inst);
-    void emitGS_SGV(llvm::SGVIntrinsic* inst);
-    void emitSampleOffset(llvm::GenIntrinsicInst* inst);
 
     // TODO: unify the functions below and clean up
     void emitStore(llvm::StoreInst* inst, llvm::Value* varOffset, llvm::ConstantInt* immOffset);
@@ -203,21 +201,8 @@ public:
         bool& payloadCovered
     );
 
-    template <typename T>
-    bool interceptRenderTargetWritePayloadCoalescing(
-        T* inst,
-        CVariable** src,
-        CVariable*& source0Alpha,
-        CVariable*& oMaskOpnd,
-        CVariable*& outputDepthOpnd,
-        CVariable*& vStencilOpnd,
-        llvm::DenseMap<llvm::Value*, CVariable**>& valueToVariableMap);
-
     // message emit functions
-    void emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet);
-    void emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool fromRet);
     void emitSimdLaneId(llvm::Instruction* inst);
-    void emitPatchInstanceId(llvm::Instruction* inst);
     void emitSimdSize(llvm::Instruction* inst);
     void emitSimdShuffle(llvm::Instruction* inst);
     void emitCrossInstanceMov(const SSource& source, const DstModifier& modifier);
@@ -232,10 +217,6 @@ public:
     void emitSimdMediaBlockWrite(llvm::Instruction* inst);
     void emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead);
     void emitMediaBlockRectangleRead(llvm::Instruction* inst);
-    void emitURBWrite(llvm::GenIntrinsicInst* inst);
-    void emitURBReadCommon(llvm::GenIntrinsicInst* inst, const QuadEltUnit globalOffset,
-        llvm::Value* const perSlotOffset);
-    void emitURBRead(llvm::GenIntrinsicInst* inst);
     void emitSampleInstruction(llvm::SampleIntrinsic* inst);
     void emitLdInstruction(llvm::Instruction* inst);
     void emitInfoInstruction(llvm::InfoIntrinsic* inst);
@@ -338,14 +319,9 @@ public:
     void setRovCacheCtrl(llvm::GenIntrinsicInst* inst);
     bool useRasterizerOrderedByteAddressBuffer(llvm::GenIntrinsicInst* inst);
     void emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInst);
-    void emitRenderTargetRead(llvm::GenIntrinsicInst* inst);
 
     void emitDiscard(llvm::Instruction* inst);
-    void emitInitDiscardMask(llvm::GenIntrinsicInst* inst);
-    void emitUpdateDiscardMask(llvm::GenIntrinsicInst* inst);
-    void emitGetPixelMask(llvm::GenIntrinsicInst* inst);
 
-    void emitInput(llvm::Instruction* inst);
     void emitcycleCounter(llvm::Instruction* inst);
     void emitSetDebugReg(llvm::Instruction* inst);
     void emitInsert(llvm::Instruction* inst);
@@ -358,32 +334,12 @@ public:
     void emitDiscardBranch(llvm::BranchInst* br, const SSource& cond);
     void emitAluNoModifier(llvm::GenIntrinsicInst* inst);
 
-    void emitSGV(llvm::SGVIntrinsic* inst);
-    void emitPSSGV(llvm::GenIntrinsicInst* inst);
-    void emitCSSGV(llvm::GenIntrinsicInst* inst);
-    void getCoarsePixelSize(CVariable* destination, const uint component, bool isCodePatchCandidate = false);
-    void getPixelPosition(CVariable* destination, const uint component, bool isCodePatchCandidate = false);
-    void emitPixelPosition(llvm::GenIntrinsicInst* inst);
-    void emitPhaseOutput(llvm::GenIntrinsicInst* inst);
-    void emitPhaseInput(llvm::GenIntrinsicInst* inst);
-
-    void emitPSInput(llvm::Instruction* inst);
-    void emitPSInputMADHalf(llvm::Instruction* inst);
-    void emitPSInputPln(llvm::Instruction* inst);
-    void emitPSInputCst(llvm::Instruction* inst);
-    void emitEvalAttribute(llvm::GenIntrinsicInst* inst);
-    void emitInterpolate(llvm::GenIntrinsicInst* inst);
-    void emitInterpolate2(llvm::GenIntrinsicInst* inst);
-    void emitInterpolant(llvm::GenIntrinsicInst* inst);
 
     void emitGradientX(const SSource& source, const DstModifier& modifier);
     void emitGradientY(const SSource& source, const DstModifier& modifier);
     void emitGradientXFine(const SSource& source, const DstModifier& modifier);
     void emitGradientYFine(const SSource& source, const DstModifier& modifier);
 
-    void emitHSTessFactors(llvm::Instruction* pInst);
-    void emitHSSGV(llvm::GenIntrinsicInst* inst);
-    void emitBindlessShaderSGV(llvm::GenIntrinsicInst* inst);
     void emitf32tof16_rtz(llvm::GenIntrinsicInst* inst);
     void emitfitof(llvm::GenIntrinsicInst* inst);
     void emitFPOrtz(llvm::GenIntrinsicInst* inst);
@@ -392,8 +348,6 @@ public:
     void emitftoi(llvm::GenIntrinsicInst* inst);
     void emitCtlz(const SSource& source);
 
-    void emitDSInput(llvm::Instruction* pInst);
-    void emitDSSGV(llvm::GenIntrinsicInst* inst);
 
     // VME
     void emitVMESendIME(llvm::GenIntrinsicInst* inst);

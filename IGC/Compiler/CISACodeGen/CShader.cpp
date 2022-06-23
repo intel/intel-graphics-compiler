@@ -16,15 +16,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/CISACodeGen/VariableReuseAnalysis.hpp"
-#include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/VertexShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/GeometryShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/ComputeShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/HullShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/DomainShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
-#include "Compiler/CISACodeGen/BindlessShaderCodeGen.hpp"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/secure_mem.h"
 #include "Probe/Assertion.h"
@@ -789,9 +782,9 @@ void CShader::MapPushedInputs()
 
 bool CShader::IsPatchablePS()
 {
-    return (GetShaderType() == ShaderType::PIXEL_SHADER &&
-        static_cast<CPixelShader*>(this)->GetPhase() != PSPHASE_PIXEL);
+    return false;
 }
+
 
 CVariable* CShader::GetR0()
 {
@@ -3119,11 +3112,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
             symbolMapping.insert(std::pair<Value*, CVariable*>(value, Alias));
             return Alias;
         }
-        if (genInst->getIntrinsicID() == GenISAIntrinsic::GenISA_UpdateDiscardMask)
-        {
-            IGC_ASSERT(GetShaderType() == ShaderType::PIXEL_SHADER);
-            return (static_cast<CPixelShader*>(this))->GetDiscardPixelMask();
-        }
+
     }
 
     if (m_coalescingEngine) {
@@ -3886,27 +3875,6 @@ CShader* CShaderProgram::CreateNewShader(SIMDMode simd)
         {
         case ShaderType::OPENCL_SHADER:
             pShader = new COpenCLKernel((OpenCLProgramContext*)m_context, m_kernel, this);
-            break;
-        case ShaderType::PIXEL_SHADER:
-            pShader = new CPixelShader(m_kernel, this);
-            break;
-        case ShaderType::VERTEX_SHADER:
-            pShader = new CVertexShader(m_kernel, this);
-            break;
-        case ShaderType::GEOMETRY_SHADER:
-            pShader = new CGeometryShader(m_kernel, this);
-            break;
-        case ShaderType::HULL_SHADER:
-            pShader = new CHullShader(m_kernel, this);
-            break;
-        case ShaderType::DOMAIN_SHADER:
-            pShader = new CDomainShader(m_kernel, this);
-            break;
-        case ShaderType::COMPUTE_SHADER:
-            pShader = new CComputeShader(m_kernel, this);
-            break;
-        case ShaderType::RAYTRACING_SHADER:
-            pShader = new CBindlessShader(m_kernel, this);
             break;
         default:
             IGC_ASSERT_MESSAGE(0, "wrong shader type");

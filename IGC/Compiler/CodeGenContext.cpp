@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DebugInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingConstantsEnums.h"
-#include "Compiler/CISACodeGen/ComputeShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
@@ -205,11 +204,6 @@ namespace IGC
 
     bool RetryManager::PickupKernels(CodeGenContext* cgCtx)
     {
-        if (cgCtx->type == ShaderType::COMPUTE_SHADER)
-        {
-            return PickupCS(static_cast<ComputeShaderContext*>(cgCtx));
-        }
-        else
         {
             IGC_ASSERT_MESSAGE(0, "TODO for other shader types");
             return true;
@@ -373,73 +367,6 @@ namespace IGC
         }
     }
 
-    bool RetryManager::PickupCS(ComputeShaderContext* cgCtx)
-    {
-        SIMDMode simdMode = SIMDMode::UNKNOWN;
-        CComputeShader* shader = nullptr;
-        SComputeShaderKernelProgram* pKernelProgram = &cgCtx->programOutput;
-
-        if (cgCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 0)
-        {
-            shader = static_cast<CComputeShader*>(
-                PickCSEntryForcedFromDriver(simdMode, cgCtx->getModuleMetaData()->csInfo.forcedSIMDSize));
-        }
-        if (!shader)
-        {
-            shader = static_cast<CComputeShader*>(
-                PickCSEntryByRegKey(simdMode, cgCtx));
-        }
-        if (!shader)
-        {
-            shader = static_cast<CComputeShader*>(
-                PickCSEntryEarly(simdMode, cgCtx));
-        }
-        if (!shader && IsLastTry())
-        {
-            shader = static_cast<CComputeShader*>(
-                PickCSEntryFinally(simdMode));
-            IGC_ASSERT(shader != nullptr);
-        }
-
-        if (shader)
-        {
-            switch (simdMode)
-            {
-            case SIMDMode::SIMD8:
-                pKernelProgram->simd8 = *shader->ProgramOutput();
-                pKernelProgram->SimdWidth = USC::GFXMEDIA_GPUWALKER_SIMD8;
-                cgCtx->SetSIMDInfo(SIMD_SELECTED, simdMode,
-                    ShaderDispatchMode::NOT_APPLICABLE);
-                break;
-
-            case SIMDMode::SIMD16:
-                pKernelProgram->simd16 = *shader->ProgramOutput();
-                pKernelProgram->SimdWidth = USC::GFXMEDIA_GPUWALKER_SIMD16;
-                cgCtx->SetSIMDInfo(SIMD_SELECTED, simdMode,
-                    ShaderDispatchMode::NOT_APPLICABLE);
-                break;
-
-            case SIMDMode::SIMD32:
-                pKernelProgram->simd32 = *shader->ProgramOutput();
-                pKernelProgram->SimdWidth = USC::GFXMEDIA_GPUWALKER_SIMD32;
-                cgCtx->SetSIMDInfo(SIMD_SELECTED, simdMode,
-                    ShaderDispatchMode::NOT_APPLICABLE);
-                break;
-
-            default:
-                IGC_ASSERT_MESSAGE(0, "Invalie SIMDMode");
-                break;
-            }
-            shader->FillProgram(pKernelProgram);
-            pKernelProgram->SIMDInfo = cgCtx->GetSIMDInfo();
-
-            // free allocated memory for the remaining kernels
-            FreeAllocatedMemForNotPickedCS(simdMode);
-
-            return true;
-        }
-        return false;
-    }
 
     RetryManager::CacheEntry* RetryManager::GetCacheEntry(SIMDMode simdMode)
     {

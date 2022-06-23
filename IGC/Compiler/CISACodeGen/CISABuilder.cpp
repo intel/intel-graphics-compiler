@@ -8,8 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/CISABuilder.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/ComputeShaderCodeGen.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "common/allocator.h"
 #include "common/Types.hpp"
@@ -3970,15 +3968,8 @@ namespace IGC
         }
 
         bool EnableBarrierInstCounterBits = false;
-        if (context->type == ShaderType::HULL_SHADER)
-        {
-            EnableBarrierInstCounterBits = true;
-        }
         bool preserveR0 = false;
-        if (context->type == ShaderType::PIXEL_SHADER)
-        {
-            preserveR0 = !static_cast<CPixelShader*>(m_program)->IsLastPhase();
-        }
+
         bool isOptDisabled = context->getModuleMetaData()->compOpt.OptDisable;
 
         // Set up options. This must be done before creating any variable/instructions
@@ -4630,12 +4621,7 @@ namespace IGC
             SaveOption(vISA_QuickTokenAllocation, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableSWSBStitch) ||
-            (context->type == ShaderType::PIXEL_SHADER &&
-             static_cast<CPixelShader*>(m_program)->GetPhase() == PSPHASE_PIXEL))
-        {
-            SaveOption(vISA_SWSBStitch, true);
-        }
+
 
         if (IGC_IS_FLAG_ENABLED(DisableRegDistDep))
         {
@@ -4819,7 +4805,6 @@ namespace IGC
         // TODO: Re-enable SendFusion when VMask is enabled. The hardware should support this, but
         //  more investigation needs to be done on whether simply replacing sr0.2 with sr0.3 is enough.
         if (IGC_IS_FLAG_ENABLED(EnableSendFusion) &&
-            !(context->type == ShaderType::PIXEL_SHADER && static_cast<CPixelShader*>(m_program)->NeedVMask()) &&
             m_program->GetContext()->platform.supportSplitSend() &&
             m_program->m_dispatchSize == SIMDMode::SIMD8 &&
             (IGC_GET_FLAG_VALUE(EnableSendFusion) == FLAG_LEVEL_2 ||   // 2: force send fusion

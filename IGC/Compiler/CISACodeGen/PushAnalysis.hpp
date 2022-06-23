@@ -10,10 +10,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/CISACodeGen/CollectGeometryShaderProperties.hpp"
-#include "Compiler/CISACodeGen/VertexShaderLowering.hpp"
-#include "Compiler/CISACodeGen/DomainShaderLowering.hpp"
-#include "Compiler/CISACodeGen/HullShaderLowering.hpp"
 #include "Compiler/CISACodeGen/PullConstantHeuristics.hpp"
 #include "ShaderCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
@@ -55,10 +51,6 @@ namespace IGC
 
         PullConstantHeuristics* m_pullConstantHeuristics;
 
-        CollectHullShaderProperties* m_hsProps;
-        CollectDomainShaderProperties* m_dsProps;
-        CollectVertexShaderProperties* m_vsProps;
-        CollectGeometryShaderProperties* m_gsProps;
         CodeGenContext* m_context;
         llvm::DenseMap<llvm::Instruction*, bool> m_statelessLoads;
         uint    m_cbToLoad;

@@ -212,7 +212,6 @@ namespace IGC
         bool MatchRsqrt(llvm::BinaryOperator& I);
         bool MatchLoadStorePointer(llvm::Instruction& I, llvm::Value& ptrVal);
         bool MatchBlockReadWritePointer(llvm::GenIntrinsicInst& I);
-        bool MatchURBRead(llvm::GenIntrinsicInst& I);
         bool MatchGradient(llvm::GenIntrinsicInst& I);
         bool MatchSampleDerivative(llvm::GenIntrinsicInst& I);
         bool MatchDbgInstruction(llvm::DbgInfoIntrinsic& I);
