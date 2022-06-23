@@ -112,8 +112,22 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                     continue;
                 }
 
-                auto trunc = new TruncInst(argsMap[&arg], int1type, "", F->getEntryBlock().getFirstNonPHI());
-                arg.replaceAllUsesWith(trunc);
+                auto newArg = argsMap[&arg];
+
+                std::vector<Instruction*> userInstructions;
+                for (auto user : newArg->users())
+                {
+                    if (auto instruction = dyn_cast<Instruction>(user))
+                    {
+                        userInstructions.push_back(instruction);
+                    }
+                }
+
+                auto trunc = new TruncInst(newArg, int1type, "", newFunction->getEntryBlock().getFirstNonPHI());
+                for (auto& instruction : userInstructions)
+                {
+                    instruction->replaceUsesOfWith(newArg, trunc);
+                }
             }
 
             // Fix ret statements
