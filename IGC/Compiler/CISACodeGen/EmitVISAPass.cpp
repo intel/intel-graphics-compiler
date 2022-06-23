@@ -937,7 +937,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         DebugOpts.EnableRelocation = IGC_IS_FLAG_ENABLED(EnableRelocations) || DebugOpts.ZeBinCompatible;
         DebugOpts.EnforceAMD64Machine = IGC_IS_FLAG_ENABLED(DebugInfoEnforceAmd64EM) || DebugOpts.ZeBinCompatible;
         DebugOpts.EnableDebugInfoValidation = IGC_IS_FLAG_ENABLED(DebugInfoValidation);
-        DebugOpts.ScratchOffsetInOW = !m_currShader->m_Platform->LSCEnabled(m_currShader->m_SIMDSize);
+        DebugOpts.ScratchOffsetInOW = !m_currShader->m_Platform->isProductChildOf(IGFX_DG2);
         m_pDebugEmitter = IDebugEmitter::Create();
         m_pDebugEmitter->Initialize(std::move(vMod), DebugOpts);
     }
