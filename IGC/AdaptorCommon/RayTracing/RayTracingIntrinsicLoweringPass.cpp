@@ -217,6 +217,12 @@ Function* RayTracingIntrinsicLoweringPass::getUniqueCont(
     if (!Ctx->canWholeProgramCompile())
         return nullptr;
 
+    if (Ctx->requiresIndirectContinuationHandling() &&
+        !Ctx->m_DriverInfo.supportsCallStackHandlerPatching())
+    {
+        return nullptr;
+    }
+
     Function* ContFn = nullptr;
     for (auto& F : *Ctx->getModule())
     {

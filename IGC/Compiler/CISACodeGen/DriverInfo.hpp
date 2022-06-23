@@ -341,6 +341,8 @@ namespace IGC
         virtual bool supportsRaytracingContinuationPromotion() const { return false; }
         // To support this, UMD must flip the X and Y dimensions
         virtual bool supportsRaytracingDispatchComputeWalkerAlongYFirst() const { return false; }
+        // Will the UMD patch the call stack handler with KSP pointers?
+        virtual bool supportsCallStackHandlerPatching() const { return false; }
 
         // Enable LSC on DG2 for the following:
         //   GenISAIntrinsic::GenISA_ldraw_indexed
