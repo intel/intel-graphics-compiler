@@ -465,7 +465,7 @@ namespace IGC
         {
             hwThreadPerWorkgroup = std::min(platform.getMaxNumberThreadPerWorkgroupPooledMax(), (unsigned)64);
         }
-        return hwThreadPerWorkgroup;
+        return hwThreadPerWorkgroup ? hwThreadPerWorkgroup : 1;
     }
 
     inline SIMDMode getLeastSIMDAllowed(unsigned int threadGroupSize, unsigned int hwThreadPerWorkgroup)

@@ -1365,7 +1365,7 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
         unsigned NumGrfs = kernel.getNumRegTotal();
         float Ratio = NumGrfs / 128.0f;
         // limit the iterative approach to certain platforms for now
-        if (!kernel.getOptions()->getOption(vISA_preRA_ScheduleIterative) ||
+        if (kernel.getOptions()->getOption(vISA_preRA_ScheduleNoIterative) ||
             kernel.getPlatform() < Xe_DG2 ||
             kernel.getPlatform() == Xe_PVC || kernel.getPlatform() == Xe_PVCXT)
         {
@@ -1640,7 +1640,6 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
                 break;
             }
         }
-
         Priority = std::max(Priority, SuccPriority + Latency);
     }
 
@@ -1655,6 +1654,12 @@ bool LatencyQueue::compare(preNode* N1, preNode* N2)
     assert(N1->getInst() && N2->getInst());
     assert(!N1->getInst()->isPseudoKill() &&
            !N2->getInst()->isPseudoKill());
+    auto isSendNoReturn = [](G4_INST* Inst)
+    {
+        if (Inst->isSend() && Inst->hasNULLDst())
+            return true;
+        return false;
+    };
 
     G4_INST* Inst1 = N1->getInst();
     G4_INST* Inst2 = N2->getInst();
@@ -1667,6 +1672,12 @@ bool LatencyQueue::compare(preNode* N1, preNode* N2)
     if (GID1 < GID2)
         return false;
 
+    // Favor sends without return such as stores or urb-writes
+    // because they likely release source registers
+    if (isSendNoReturn(Inst1) && !isSendNoReturn(Inst2))
+        return false;
+    else if (!isSendNoReturn(Inst1) && isSendNoReturn(Inst2))
+        return true;
     // Within the same group, compare their priority.
     unsigned P1 = Priorities[N1->getID()];
     unsigned P2 = Priorities[N2->getID()];
