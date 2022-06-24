@@ -24,6 +24,7 @@ if(NOT IGC_BUILD__LLVM_SOURCES)
 
   # Tell the build that we are using prebuilds.
   set(IGC_BUILD__LLVM_PREBUILDS ON)
+  set(IGC_OPTION__LLDELF_LIB_DIR ${LLVM_ROOT} PARENT_SCOPE)
 endif()
 
 # Include commonly used modules.

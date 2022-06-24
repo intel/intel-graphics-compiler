@@ -1310,6 +1310,7 @@ include(igc_llvm)
 
 # ==================================== LLD package ====================================================
 
+message(STATUS "[lld] option = ${IGC_OPTION__LLVM_LLD}")
 if(IGC_OPTION__LLVM_LLD)
   include(igc_find_liblldELF)
 endif()
