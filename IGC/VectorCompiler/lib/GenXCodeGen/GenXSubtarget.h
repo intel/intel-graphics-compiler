@@ -82,6 +82,9 @@ private:
   // HasFP64 - True if subtarget supports double type
   bool HasFP64 = false;
 
+  // HasIEEEDivSqrt - True if subtarget supports IEEE-754 div and sqrt
+  bool HasIEEEDivSqrt = false;
+
   // DisableJmpi - True if jmpi is disabled.
   bool DisableJmpi = false;
 
@@ -311,6 +314,9 @@ public:
 
   /// * hasFP64 - true if target supports double fp
   bool hasFP64() const { return HasFP64; }
+
+  /// * hasIEEEDivSqrt - true if target supports IEEE-754 div and sqrt
+  bool hasIEEEDivSqrt() const { return HasIEEEDivSqrt; }
 
   /// * hasAdd64 - true if target supports native 64-bit add/sub
   bool hasAdd64() const { return HasAdd64; }

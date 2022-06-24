@@ -4855,10 +4855,11 @@ bool GenXLowering::lowerSqrt(CallInst *CI) {
     "llvm.sqrt expected");
   auto *ResTy = CI->getType();
 
-  GenXIntrinsic::ID SqrtID = (CI->getType()->getScalarType()->isDoubleTy() ||
-                              !CI->getFastMathFlags().isFast())
-                                 ? GenXIntrinsic::genx_ieee_sqrt
-                                 : GenXIntrinsic::genx_sqrt;
+  auto *Ty = CI->getType()->getScalarType();
+  bool IsFast =
+      !Ty->isDoubleTy() && (CI->hasApproxFunc() || !ST->hasIEEEDivSqrt());
+  GenXIntrinsic::ID SqrtID =
+      IsFast ? GenXIntrinsic::genx_sqrt : GenXIntrinsic::genx_ieee_sqrt;
 
   auto *SqrtDecl =
       GenXIntrinsic::getGenXDeclaration(CI->getModule(), SqrtID, {ResTy});
