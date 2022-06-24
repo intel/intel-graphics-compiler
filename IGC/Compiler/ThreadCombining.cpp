@@ -541,8 +541,8 @@ void ThreadCombining::CreateNewKernel(llvm::Module& M,
             BasicBlock* oldBasicBlock = barrier->getParent();
             BasicBlock* NewBasicBlock = oldBasicBlock->splitBasicBlock(barrier);
             gotoAddresses.push_back(NewBasicBlock);
-            Instruction* oldTermInst = oldBasicBlock->getTerminator();
-            Instruction* newTermInst = ReturnInst::Create(M.getContext());
+            IGCLLVM::TerminatorInst* oldTermInst = oldBasicBlock->getTerminator();
+            IGCLLVM::TerminatorInst* newTermInst = ReturnInst::Create(M.getContext());
             llvm::ReplaceInstWithInst(oldTermInst, newTermInst);
         }
 

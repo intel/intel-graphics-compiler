@@ -803,7 +803,7 @@ public:
 
       auto flags = decodeFlag(spirvFlags);
 
-      return addMDNode(inst, Builder.createInheritance(type, base, offset, 0, flags));
+      return addMDNode(inst, Builder.createInheritance(type, base, offset, flags));
   }
 
   DIType* createPtrToMember(SPIRVExtInst* inst)
@@ -890,8 +890,11 @@ public:
       if (isa<DISubprogram>(target)) {
           // This constant matches with one used in
           // DISubprogram::getRawTemplateParams()
+#if LLVM_VERSION_MAJOR == 4
+          const unsigned TemplateParamsIndex = 8;
+#elif LLVM_VERSION_MAJOR >= 7
           const unsigned TemplateParamsIndex = 9;
-
+#endif
           target->replaceOperandWith(TemplateParamsIndex, TParams.get());
           IGC_ASSERT_MESSAGE(cast<DISubprogram>(target)->getRawTemplateParams() == TParams.get(), "Invalid template parameters");
           return target;
@@ -996,15 +999,11 @@ public:
       llvm::DITemplateParameterArray TParamsArray = TParams.get();
 
       if (isa<DICompositeType>(scope) || isa<DINamespace>(scope) || isa<DIModule>(scope))
-      {
           return addMDNode(inst, Builder.createMethod(scope, name, linkageName, file, line, type,
-              0, 0, nullptr, flags, llvm::DISubprogram::toSPFlags(isLocal, isDefinition, isOptimized), TParamsArray));
-      }
+              isLocal, isDefinition, 0, 0, 0, nullptr, flags, isOptimized, TParamsArray));
       else
-      {
-          return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName, file, line, type,
-              line, flags, DISubprogram::toSPFlags(isLocal, isDefinition, isOptimized)));
-      }
+        return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName, file, (unsigned int)line, type,
+          isLocal, isDefinition, (unsigned int)line, flags, isOptimized, TParamsArray));
   }
 
   bool isTemplateType(SPIRVExtInst* inst)
@@ -1081,13 +1080,13 @@ public:
       DISubprogram* diSP = nullptr;
       if ((isa<DICompositeType>(scope) || isa<DINamespace>(scope) || isa<DIModule>(scope)) && !isDefinition)
       {
-          diSP = Builder.createMethod(scope, name, linkageName, file, sp.getLine(), spType,
-              0, 0, nullptr, flags, DISubprogram::toSPFlags(isLocal, isDefinition, isOptimized), TParamsArray);
+          diSP = Builder.createMethod(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
+              0, 0, 0, nullptr, flags, isOptimized, TParamsArray);
       }
       else
       {
-          diSP = Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, sp.getScopeLine(),
-              flags, DISubprogram::toSPFlags(isLocal, isDefinition, isOptimized));
+          diSP = Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
+              sp.getScopeLine(), flags, isOptimized, TParamsArray, decl);
       }
       FuncIDToDISP[funcSPIRVId] = diSP;
       return addMDNode(inst, diSP);
@@ -1107,7 +1106,7 @@ public:
           return nullptr;
 
       if(lb.hasNameSpace() || isa<DICompileUnit>(scope))
-          return addMDNode(inst, Builder.createNameSpace(scope, lb.getNameSpace()->getStr(), false));
+          return addMDNode(inst, Builder.createNameSpace(scope, lb.getNameSpace()->getStr(), file, lb.getLine(), false));
 
       return addMDNode(inst, Builder.createLexicalBlock(scope, file, lb.getLine(), lb.getColumn()));
   }
@@ -1360,11 +1359,9 @@ public:
 
       auto scope = createScope(inst->getDIScope());
       auto iat = getInlinedAtFromScope(inst->getDIScope());
-
       if (!scope)
           return nullptr;
-
-      auto dbgValueInst = Builder.insertDbgValueIntrinsic(localVar,
+      auto dbgValueInst = Builder.insertDbgValueIntrinsic(localVar, 0,
           createLocalVar(BM->get<SPIRVExtInst>(dbgValue.getVar())),
           createExpression(BM->get<SPIRVExtInst>(dbgValue.getExpression())),
           createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), scope, iat),
@@ -2555,8 +2552,11 @@ SPIRVToLLVM::transLifetimeInst(SPIRVInstTemplateBase* BI, BasicBlock* BB, Functi
     auto ID = (BI->getOpCode() == OpLifetimeStart) ?
         Intrinsic::lifetime_start :
         Intrinsic::lifetime_end;
-
+#if LLVM_VERSION_MAJOR >= 7
     auto *pFunc = Intrinsic::getDeclaration(M, ID, llvm::ArrayRef<llvm::Type*>(PointerType::getInt8PtrTy(*Context)));
+#else
+    auto *pFunc = Intrinsic::getDeclaration(M, ID);
+#endif
     auto *pPtr = transValue(BI->getOperand(0), F, BB);
 
     Value *pArgs[] =
@@ -2680,7 +2680,9 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
       auto NewCI = CallInst::Create(NewF, Args, "", CI);
       NewCI->setCallingConv(CI->getCallingConv());
       auto Load = new LoadInst(
+#if LLVM_VERSION_MAJOR > 7
       Alloca->getType()->getPointerElementType(),
+#endif
       Alloca,"",CI);
       CI->replaceAllUsesWith(Load);
       CI->eraseFromParent();
@@ -3337,7 +3339,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         0, GlobalVariable::NotThreadLocal, 0);
 
     auto LD = new LoadInst(
+#if LLVM_VERSION_MAJOR > 7
       GV->getType()->getPointerElementType(),
+#endif
       GV, BV->getName(), BB);
     PlaceholderMap[BV] = LD;
     return mapValue(BV, LD);
@@ -3490,7 +3494,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     IGC_ASSERT_MESSAGE(BB, "Invalid BB");
     auto val = transValue(BL->getSrc(), F, BB);
     LoadInst* LI = new LoadInst(
+#if LLVM_VERSION_MAJOR > 7
       val->getType()->getPointerElementType(),
+#endif
       val,
       BV->getName(),
       BL->hasDecorate(DecorationVolatile) || BL->SPIRVMemoryAccess::isVolatile() != 0,
@@ -3797,8 +3803,10 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       static_cast<SPIRVFunctionPointerCallINTEL*>(BV);
     auto func = transValue(BC->getCalledValue(), F, BB);
     auto Call = CallInst::Create(
+#if LLVM_VERSION_MAJOR > 7
         llvm::cast<llvm::FunctionType>(
             llvm::cast<llvm::PointerType>(func->getType())->getElementType()),
+#endif
         func,
         transValue(BC->getArgumentValues(), F, BB),
         BC->getName(),

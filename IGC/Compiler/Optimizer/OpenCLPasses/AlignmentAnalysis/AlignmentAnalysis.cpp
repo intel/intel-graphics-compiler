@@ -434,6 +434,62 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst& I)
         // return value does not matter
         return MinimumAlignment;
 
+// deprecated code. TODO: remove?
+#if LLVM_VERSION_MAJOR < 7
+    StringRef calleeName = callee->getName();
+    IntrinsicInst* Intri = dyn_cast<IntrinsicInst>(&I);
+    llvm::Intrinsic::ID ID = llvm::Intrinsic::ID::not_intrinsic;
+
+    if (Intri)
+        ID = Intri->getIntrinsicID();
+
+    if ((Intri && ID == Intrinsic::memcpy) ||
+        (!Intri && calleeName.startswith("__builtin_IB_memcpy_")))
+    {
+        unsigned int origAlign = MinimumAlignment;
+        if (ConstantInt * CI = dyn_cast<ConstantInt>(I.getArgOperand(3)))
+        {
+            origAlign = (unsigned int)CI->getZExtValue();
+        }
+        unsigned int dstAlign = getAlignValue(I.getArgOperand(0));
+        unsigned int srcAlign = getAlignValue(I.getArgOperand(1));
+
+        // Need to get the Min of dest alignment and src alignment
+        unsigned int minAlign = iSTD::Min(dstAlign, srcAlign);
+
+        // As the original intrinsic's alignemnt is the minimum one, use
+        // max to get a better alignment.
+        if (minAlign > origAlign)
+        {
+            I.setArgOperand(3, ConstantInt::get(I.getArgOperand(3)->getType(), minAlign));
+        }
+
+        // return value does not matter
+        return MinimumAlignment;
+    }
+
+    if (Intri && ID == Intrinsic::memset)
+    {
+        unsigned int origAlign = MinimumAlignment;
+        if (ConstantInt * CI = dyn_cast<ConstantInt>(I.getArgOperand(3)))
+        {
+            origAlign = (unsigned int)CI->getZExtValue();
+        }
+        unsigned int dstAlign = getAlignValue(I.getArgOperand(0));
+
+        // As the original intrinsic's alignemnt is the minimum one, use
+        // max to get a better alignment.
+        if (dstAlign > origAlign)
+        {
+            I.setArgOperand(3, ConstantInt::get(I.getArgOperand(3)->getType(), dstAlign));
+        }
+
+        // return value does not matter
+        return MinimumAlignment;
+    }
+    return MinimumAlignment;
+#elif LLVM_VERSION_MAJOR >= 7
+
     MemIntrinsic* memIntr = dyn_cast<MemIntrinsic>(&I);
     if (!memIntr)
         return MinimumAlignment;
@@ -452,6 +508,8 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst& I)
     }
 
     return alignment;
+
+#endif
 }
 
 void AlignmentAnalysis::SetInstAlignment(MemSetInst& I)

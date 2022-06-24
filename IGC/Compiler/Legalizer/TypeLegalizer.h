@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/Instructions.h"
-#include "llvm/Analysis/InlineCost.h"
+#include "llvmWrapper/Analysis/InlineCost.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"

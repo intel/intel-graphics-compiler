@@ -541,7 +541,7 @@ void GenXCoalescing::visitCallInst(CallInst &CI) {
     }
     return;
   }
-  if (CI.isIndirectCall())
+  if (IGCLLVM::isIndirectCall(CI))
     return;
   // This is a non-intrinsic call. If it returns a value, mark
   // (elements of) the return value for coalescing with the

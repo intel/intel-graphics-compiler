@@ -1163,7 +1163,7 @@ namespace IGC
 
         //Check for EOT payload.
         if (payloadCovered) {
-            if (Instruction * terminator = inst->getParent()->getTerminator())
+            if (IGCLLVM::TerminatorInst * terminator = inst->getParent()->getTerminator())
             {
                 if (terminator != &(*terminator->getParent()->begin()))
                 {

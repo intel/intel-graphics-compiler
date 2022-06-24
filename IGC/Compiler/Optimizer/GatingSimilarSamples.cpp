@@ -454,7 +454,7 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function& F)
     Value* gatingVal2 = IRB.CreateBitCast(gatingValue_mul2, IRB.getFloatTy());
     Value* cnd2 = IRB.CreateFCmpONE(gatingVal2, ConstantFP::get(IRB.getFloatTy(), 0.0f));
     Value* isGatingValueNotZero = IRB.CreateOr(cnd1, cnd2);
-    Instruction* thenBlockTerminator = SplitBlockAndInsertIfThen(isGatingValueNotZero, similarSampleInsts[0], false);
+    IGCLLVM::TerminatorInst* thenBlockTerminator = SplitBlockAndInsertIfThen(isGatingValueNotZero, similarSampleInsts[0], false);
     BasicBlock* thenBlock = thenBlockTerminator->getParent();
     if (thenBlockTerminator->getNumSuccessors() != 1)
     {

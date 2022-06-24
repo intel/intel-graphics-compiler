@@ -761,7 +761,7 @@ bool TypeLegalizer::legalizeTerminators(Function& F) {
     bool Changed = false;
 
     for (auto& BB : F) {
-        Instruction* TI = BB.getTerminator();
+        IGCLLVM::TerminatorInst* TI = BB.getTerminator();
         IGC_ASSERT(TI);
 
         ReturnInst* RI = dyn_cast<ReturnInst>(TI);

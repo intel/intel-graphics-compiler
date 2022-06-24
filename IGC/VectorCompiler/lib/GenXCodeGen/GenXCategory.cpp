@@ -947,7 +947,7 @@ CategoryAndAlignment GenXCategory::getCategoryAndAlignmentForUse(
     if (CI->isInlineAsm())
       Category = getCategoryForInlasmConstraintedOp(CI, U->getOperandNo(),
                                                     false /*IsOutput*/);
-    else if (CI->isIndirectCall())
+    else if (IGCLLVM::isIndirectCall(*CI))
       Category = vc::RegCategory::General;
     else {
       Function *Callee = CI->getCalledFunction();

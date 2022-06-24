@@ -73,7 +73,7 @@ bool InstPromoter::visitInstruction(Instruction& I) {
 /// Terminator instructions
 ///
 
-bool InstPromoter::visitTerminatorInst(Instruction& I) {
+bool InstPromoter::visitTerminatorInst(IGCLLVM::TerminatorInst& I) {
     // All terminators are handled specially.
     return false;
 }

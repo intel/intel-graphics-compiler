@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvmWrapper/Bitcode/BitcodeWriter.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/Bitcode/BitcodeReader.h>
@@ -514,7 +514,7 @@ bool GenUpdateCB::runOnFunction(Function& F)
             // write the minishader Module to memory
             llvm::SmallVector<char, 4> bitcodeSV;
             llvm::raw_svector_ostream bitcodeSS(bitcodeSV);
-            llvm::WriteBitcodeToFile(*m_ConstantBufferReplaceShaderPatterns, bitcodeSS);
+            IGCLLVM::WriteBitcodeToFile(m_ConstantBufferReplaceShaderPatterns, bitcodeSS);
 
             IGC::Debug::DumpName name = IGC::Debug::GetLLDumpName(m_ctx, "gencb");
             IGC::Debug::DumpLLVMIRText(m_ConstantBufferReplaceShaderPatterns, name);

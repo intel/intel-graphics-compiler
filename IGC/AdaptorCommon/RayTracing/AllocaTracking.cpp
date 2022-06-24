@@ -130,7 +130,7 @@ void rewriteTypes(
             "Only handles void right now!");
 
         SmallVector<Type*, 4> Tys;
-        for (auto &Op : II->args())
+        for (auto &Op : IGCLLVM::args(II))
             Tys.push_back(Op->getType());
 
         auto* NewFTy = FunctionType::get(

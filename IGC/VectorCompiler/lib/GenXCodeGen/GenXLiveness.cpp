@@ -397,7 +397,7 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
       BB = UserHead->getParent();
       Num = Numbering->getNumber(UserHead);
       if (auto CI = dyn_cast<CallInst>(user)) {
-        if (CI->isInlineAsm() || CI->isIndirectCall())
+        if (CI->isInlineAsm() || IGCLLVM::isIndirectCall(*CI))
           Num = Numbering->getNumber(UserHead);
         else {
         switch (vc::getAnyIntrinsicID(CI)) {

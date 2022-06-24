@@ -19,12 +19,12 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/Scalar.h>
-#include <llvm/Transforms/Utils.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 
 #include <llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h>
+#include <llvmWrapper/Transforms/Utils.h>
 
 #include "common/LLVMWarningsPop.hpp"
 

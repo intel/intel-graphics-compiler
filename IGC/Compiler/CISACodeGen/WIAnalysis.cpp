@@ -160,11 +160,11 @@ namespace IGC {
     class BranchInfo
     {
     public:
-        BranchInfo(const llvm::Instruction* inst, const llvm::BasicBlock* ipd);
+        BranchInfo(const IGCLLVM::TerminatorInst* inst, const llvm::BasicBlock* ipd);
 
         void print(llvm::raw_ostream& OS) const;
 
-        const llvm::Instruction* cbr;
+        const IGCLLVM::TerminatorInst* cbr;
         const llvm::BasicBlock* full_join;
         llvm::DenseSet<llvm::BasicBlock*> influence_region;
         llvm::SmallPtrSet<llvm::BasicBlock*, 4> partial_joins;
@@ -228,9 +228,10 @@ void WIAnalysisRunner::print(raw_ostream& OS, const Module*) const
                 OS << "  unknown " << *I;
             }
             if (I->isTerminator()) {
+                IGCLLVM::TerminatorInst* TI = dyn_cast<IGCLLVM::TerminatorInst>(I);
                 OS << " [";
-                for (unsigned i = 0, e = I->getNumSuccessors(); i < e; ++i) {
-                    BasicBlock* succ = I->getSuccessor(i);
+                for (unsigned i = 0, e = TI->getNumSuccessors(); i < e; ++i) {
+                    BasicBlock* succ = TI->getSuccessor(i);
                     OS << " BB:" << BBIDs[succ];
                 }
                 OS << " ]";
@@ -824,7 +825,7 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
         else if (const PHINode* Phi = dyn_cast<PHINode>(inst))                      dep = calculate_dep(Phi);
         else if (isa<ShuffleVectorInst>(inst))                                      dep = calculate_dep_simple(inst);
         else if (isa<StoreInst>(inst))                                              dep = calculate_dep_simple(inst);
-        else if (inst->isTerminator())                                              dep = calculate_dep_terminator(inst);
+        else if (inst->isTerminator())                                              dep = calculate_dep_terminator(dyn_cast<IGCLLVM::TerminatorInst>(inst));
         else if (const SelectInst* SI = dyn_cast<SelectInst>(inst))                 dep = calculate_dep(SI);
         else if (const AllocaInst* AI = dyn_cast<AllocaInst>(inst))                 dep = calculate_dep(AI);
         else if (const CastInst* CI = dyn_cast<CastInst>(inst))                     dep = calculate_dep(CI);
@@ -860,7 +861,7 @@ void WIAnalysisRunner::calculate_dep(const Value* val)
             // divergent branch, trigger updates due to control-dependence
             if (inst->isTerminator() && dep != WIAnalysis::UNIFORM_GLOBAL)
             {
-                update_cf_dep(inst);
+                update_cf_dep(dyn_cast<IGCLLVM::TerminatorInst>(inst));
             }
         }
     }
@@ -897,7 +898,7 @@ bool WIAnalysisRunner::isRegionInvariant(const llvm::Instruction* defi, BranchIn
     return true;
 }
 
-void WIAnalysisRunner::update_cf_dep(const Instruction* inst)
+void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst* inst)
 {
     IGC_ASSERT(hasDependency(inst));
     WIBaseClass::WIDependancy instDep = getDependency(inst);
@@ -1677,7 +1678,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const PHINode* inst)
 }
 
 WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep_terminator(
-    const Instruction* inst)
+    const IGCLLVM::TerminatorInst* inst)
 {
     // Instruction has no return value
     // Just need to know if this inst is uniform or not
@@ -2037,7 +2038,7 @@ void WIAnalysisRunner::checkLocalIdUniform(
     }
 }
 
-BranchInfo::BranchInfo(const Instruction* inst, const BasicBlock* ipd)
+BranchInfo::BranchInfo(const IGCLLVM::TerminatorInst* inst, const BasicBlock* ipd)
     : cbr(inst),
     full_join(ipd)
 {

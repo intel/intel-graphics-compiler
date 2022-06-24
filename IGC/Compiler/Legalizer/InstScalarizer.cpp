@@ -45,7 +45,7 @@ bool InstScalarizer::visitInstruction(Instruction& I) {
 /// Terminator instructions
 ///
 
-bool InstScalarizer::visitTerminatorInst(Instruction& I) {
+bool InstScalarizer::visitTerminatorInst(IGCLLVM::TerminatorInst& I) {
     // All terminators are handled specially.
     return false;
 }

@@ -459,7 +459,7 @@ Value *GenXThreadPrivateMemory::lookForPtrReplacement(Value *Ptr) const {
       return lookForPtrReplacement(Splat.Input);
     }
   } else if (auto *CI = dyn_cast<CallInst>(Ptr)) {
-    if (!CI->isIndirectCall() &&
+    if (!IGCLLVM::isIndirectCall(*CI) &&
         (vc::getAnyIntrinsicID(CI->getCalledFunction()) ==
              GenXIntrinsic::genx_svm_block_ld ||
          vc::getAnyIntrinsicID(CI->getCalledFunction()) ==

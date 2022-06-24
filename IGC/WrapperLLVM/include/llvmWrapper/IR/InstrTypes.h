@@ -11,10 +11,30 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/InstrTypes.h"
-#include "llvm/IR/Instructions.h"
+#if LLVM_VERSION_MAJOR >= 8
+#include "llvm/IR/PatternMatch.h"
+#endif
 
 namespace IGCLLVM
 {
+#if LLVM_VERSION_MAJOR <= 7
+    using llvm::TerminatorInst;
+#else
+    using TerminatorInst = llvm::Instruction;
+#endif
+
+    namespace BinaryOperator
+    {
+        inline bool isNot(const llvm::Value *V)
+        {
+#if LLVM_VERSION_MAJOR <= 7
+            return llvm::BinaryOperator::isNot(V);
+#else
+            return llvm::PatternMatch::match(V, llvm::PatternMatch::m_Not(llvm::PatternMatch::m_Value()));
+#endif
+        }
+    }
+
     inline void removeFnAttr(llvm::CallInst *CI, llvm::Attribute::AttrKind Kind)
     {
 #if LLVM_VERSION_MAJOR >= 14

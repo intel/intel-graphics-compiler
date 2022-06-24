@@ -63,7 +63,7 @@ SPDX-License-Identifier: MIT
 #endif
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvmWrapper/Bitcode/BitcodeWriter.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <sstream>
@@ -658,7 +658,7 @@ bool ProcessElfInput(
             // serialized out
             std::string OutputString;
             llvm::raw_string_ostream OStream(OutputString);
-            llvm::WriteBitcodeToFile(*OutputModule.get(), OStream);
+            IGCLLVM::WriteBitcodeToFile(OutputModule.get(), OStream);
             OStream.flush();
 
             // Create a copy of the string to return to the caller. The output type
@@ -963,6 +963,7 @@ void dumpOCLProgramBinary(
     const char* binaryOutput,
     size_t binarySize)
 {
+#if LLVM_VERSION_MAJOR >= 7
     auto name = DumpName(IGC::Debug::GetShaderOutputName())
         .Hash(Ctx.hash)
         .Type(ShaderType::OPENCL_SHADER)
@@ -973,6 +974,7 @@ void dumpOCLProgramBinary(
 
     if (!EC)
         f.write(binaryOutput, binarySize);
+#endif
 }
 
 static std::unique_ptr<llvm::MemoryBuffer> GetGenericModuleBuffer()

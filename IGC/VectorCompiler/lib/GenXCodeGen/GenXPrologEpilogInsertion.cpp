@@ -693,7 +693,7 @@ void GenXPrologEpilogInsertion::visitCallInst(CallInst &I) {
     return;
   if (GenXIntrinsic::isAnyNonTrivialIntrinsic(&I))
     return;
-  bool IsIndirectCall = I.isIndirectCall();
+  bool IsIndirectCall = IGCLLVM::isIndirectCall(I);
 // FIXME: Temporary solution until SPIRV translator conversion of unnamed
 // structure types is fixed for intrinsics.
   bool IsIntrinsicIndirect = false;
