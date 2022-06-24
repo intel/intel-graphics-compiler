@@ -3570,6 +3570,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_
                 // or
                 //     mov        {$1.dst}
                 //     add        {$1.src}
+                removeAllToken = true;
                 node->eraseDepToken(i);
                 continue;
             }
