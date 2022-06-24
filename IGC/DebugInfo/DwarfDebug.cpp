@@ -3299,7 +3299,11 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
       write(data1, (uint8_t)llvm::dwarf::DW_OP_mul);
     }
 
-    encodeScratchAddrSpace(data1);
+    if (deref) {
+      // DW_OP_deref earlier causes CFA to be put on top of dwarf stack.
+      // Indicate that the address space of CFA is scratch.
+      encodeScratchAddrSpace(data1);
+    }
 
     writeULEB128(data, data1.size());
     for (auto item : data1)
