@@ -848,7 +848,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 auto getPointerOffset = [&](G4_INST *inst, long long offset)
                 {
                     auto execSize = static_cast<int>(inst->getExecSize());
-                    assert(execSize == 1);
+                    auto typeSize = inst->getSrc(0)->getTypeSize() * 8;
                     switch(inst->opcode())
                     {
                         case G4_mov:
@@ -856,7 +856,13 @@ void CISA_IR_Builder::LinkTimeOptimization(
                                 return offset;
                             }
                         case G4_add:
+                        case G4_addc:
                             {
+                                assert(execSize == 1);
+                                if (typeSize == 32 && inst->opcode() == G4_add)
+                                {
+                                    return offset;
+                                }
                                 assert(inst->getSrc(1)->isImm());
                                 return offset + inst->getSrc(1)->asImm()->getImm();
                             }
@@ -927,7 +933,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     }
                     auto instIt = defInst[src->getTopDcl()];
                     G4_INST *inst = *instIt;
-                    if (static_cast<int>(inst->getExecSize() != 1))
+                    if (static_cast<int>(inst->getExecSize() > 2))
                     {
                         return;
                     }
@@ -965,7 +971,8 @@ void CISA_IR_Builder::LinkTimeOptimization(
                         {
                             long long offset = stackPointers[rootDcl];
                             if (inst->opcode() == G4_mov ||
-                                inst->opcode() == G4_add)
+                                inst->opcode() == G4_add ||
+                                inst->opcode() == G4_addc)
                             {
                                 auto execSize = static_cast<int>(inst->getExecSize());
                                 if (execSize != 1)
@@ -1018,10 +1025,25 @@ void CISA_IR_Builder::LinkTimeOptimization(
                         else if (stackPointers.find(rootDcl) != stackPointers.end())
                         {
                             long long offset = stackPointers[rootDcl];
-                            if (inst->opcode() == G4_mov)
+                            auto execSize = static_cast<int>(inst->getExecSize());
+                            if (inst->opcode() == G4_add &&
+                                dst->getTopDcl()->getElemSize() == 4)
                             {
-                                auto execSize = static_cast<int>(inst->getExecSize());
                                 assert(execSize == 1);
+                                defInst[dst->getTopDcl()] = calleeIt;
+                                DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") 64-bit emulated Hi32 ");
+                                DEBUG_UTIL(inst->dump());
+                            }
+                            else if (inst->opcode() == G4_mov ||
+                                inst->opcode() == G4_add ||
+                                inst->opcode() == G4_addc)
+                            {
+                                if (execSize > 2)
+                                {
+                                    DEBUG_PRINT("Giving up tracking: ");
+                                    DEBUG_UTIL(inst->dump());
+                                    continue;
+                                }
                                 stackPointers[dst->getTopDcl()] = getPointerOffset(inst, offset);
                                 defInst[dst->getTopDcl()] = calleeIt;
                                 DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()] << ") ");
@@ -1085,7 +1107,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                             }
                             else
                             {
-                                //assert(0 && "not implemented");
+                                assert(0 && "not implemented");
                             }
                         }
                     }
