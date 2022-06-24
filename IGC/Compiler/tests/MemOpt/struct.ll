@@ -32,11 +32,15 @@ define float @f0(%struct.S* %src) {
 ; CHECK-LABEL: define float @f0
 ; CHECK: %1 = bitcast %struct.S* %src to <4 x float>*
 ; CHECK: %2 = load <4 x float>, <4 x float>* %1, align 4
-; CHECK: %3 = extractelement <4 x float> %2, i32 0
-; CHECK: %4 = extractelement <4 x float> %2, i32 1
-; CHECK: %5 = extractelement <4 x float> %2, i32 2
+; Note: starting from LLVM 14, InstCombine "canonicalizes"
+; extractelement/insertelement index types to i64, even though our MemOpt
+; initially sets the type to i32. Replace INDEX_TYPE with a clear i64
+; once a full LLVM 14+ switch is made.
+; CHECK: %3 = extractelement <4 x float> %2, [[INDEX_TYPE:i(32|64)]] 0
+; CHECK: %4 = extractelement <4 x float> %2, [[INDEX_TYPE]] 1
+; CHECK: %5 = extractelement <4 x float> %2, [[INDEX_TYPE]] 2
 ; CHECK: %bc = bitcast <4 x float> %2 to <4 x i32>
-; CHECK: %6 = extractelement <4 x i32> %bc, i32 3
+; CHECK: %6 = extractelement <4 x i32> %bc, [[INDEX_TYPE]] 3
 ; CHECK: %s0 = fadd float %3, %4
 ; CHECK: %s1 = fadd float %s0, %5
 ; CHECK: %w = uitofp i32 %6 to float
@@ -59,11 +63,11 @@ define void @f1(%struct.S* %dst, float %x, float %y, float %z, float %w) {
 
 ; CHECK-LABEL: define void @f1
 ; CHECK: %iw = fptoui float %w to i32
-; CHECK: %1 = insertelement <4 x float> undef, float %x, i32 0
-; CHECK: %2 = insertelement <4 x float> %1, float %y, i32 1
-; CHECK: %3 = insertelement <4 x float> %2, float %z, i32 2
+; CHECK: %1 = insertelement <4 x float> undef, float %x, [[INDEX_TYPE]] 0
+; CHECK: %2 = insertelement <4 x float> %1, float %y, [[INDEX_TYPE]] 1
+; CHECK: %3 = insertelement <4 x float> %2, float %z, [[INDEX_TYPE]] 2
 ; CHECK: %4 = bitcast i32 %iw to float
-; CHECK: %5 = insertelement <4 x float> %3, float %4, i32 3
+; CHECK: %5 = insertelement <4 x float> %3, float %4, [[INDEX_TYPE]] 3
 ; CHECK: %6 = bitcast %struct.S* %dst to <4 x float>*
 ; CHECK: store <4 x float> %5, <4 x float>* %6, align 4
 ; CHECK: ret void
@@ -89,12 +93,12 @@ define float @f2(%struct.S1* %src) {
 ; CHECK-LABEL: define float @f2
 ; CHECK: %1 = bitcast %struct.S1* %src to <4 x float>*
 ; CHECK: %2 = load <4 x float>, <4 x float>* %1, align 4
-; CHECK: %3 = extractelement <4 x float> %2, i32 0
-; CHECK: %4 = extractelement <4 x float> %2, i32 1
+; CHECK: %3 = extractelement <4 x float> %2, [[INDEX_TYPE]] 0
+; CHECK: %4 = extractelement <4 x float> %2, [[INDEX_TYPE]] 1
 ; CHECK: %bc = bitcast <4 x float> %2 to <4 x i32>
-; CHECK: %5 = extractelement <4 x i32> %bc, i32 2
+; CHECK: %5 = extractelement <4 x i32> %bc, [[INDEX_TYPE]] 2
 ; CHECK: %bc1 = bitcast <4 x float> %2 to <4 x i32>
-; CHECK: %6 = extractelement <4 x i32> %bc1, i32 3
+; CHECK: %6 = extractelement <4 x i32> %bc1, [[INDEX_TYPE]] 3
 ; CHECK: %s0 = fadd float %3, %4
 ; CHECK: %z = uitofp i32 %5 to float
 ; CHECK: %s1 = fadd float %s0, %z
@@ -116,12 +120,12 @@ define void @f3(%struct.S1* %dst, float %x, float %y, i32 %z, i32 %w) {
 }
 
 ; CHECK-LABEL: define void @f3
-; CHECK: %1 = insertelement <4 x float> undef, float %x, i32 0
-; CHECK: %2 = insertelement <4 x float> %1, float %y, i32 1
+; CHECK: %1 = insertelement <4 x float> undef, float %x, [[INDEX_TYPE]] 0
+; CHECK: %2 = insertelement <4 x float> %1, float %y, [[INDEX_TYPE]] 1
 ; CHECK: %3 = bitcast i32 %z to float
-; CHECK: %4 = insertelement <4 x float> %2, float %3, i32 2
+; CHECK: %4 = insertelement <4 x float> %2, float %3, [[INDEX_TYPE]] 2
 ; CHECK: %5 = bitcast i32 %w to float
-; CHECK: %6 = insertelement <4 x float> %4, float %5, i32 3
+; CHECK: %6 = insertelement <4 x float> %4, float %5, [[INDEX_TYPE]] 3
 ; CHECK: %7 = bitcast %struct.S1* %dst to <4 x float>*
 ; CHECK: store <4 x float> %6, <4 x float>* %7, align 4
 ; CHECK: ret void

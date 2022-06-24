@@ -12,7 +12,7 @@
 target triple = "igil_32_GEN9"
 
 ; Function Attrs: alwaysinline nounwind
-; CHECK: @alloca
+; CHECK-LABEL: @alloca
 define void @alloca() #0 {
 entry:
   %alloc = alloca <4 x i32>
@@ -22,7 +22,7 @@ entry:
   ret void
 }
 
-; CHECK: @param
+; CHECK-LABEL: @param
 define void @param(i8* %byteptr, <4 x i8>* %dwordptr) #0 {
 ; CHECK: load
 ; CHECK: align 1
@@ -33,7 +33,7 @@ define void @param(i8* %byteptr, <4 x i8>* %dwordptr) #0 {
   ret void
 }
 
-; CHECK: @bitcast_down
+; CHECK-LABEL: @bitcast_down
 define void @bitcast_down() #0 {
 entry:
   %alloc = alloca <4 x i32>
@@ -44,7 +44,7 @@ entry:
   ret void
 }
 
-; CHECK: @bitcast_up
+; CHECK-LABEL: @bitcast_up
 define void @bitcast_up() #0 {
 entry:
   %alloc = alloca i8
@@ -56,7 +56,7 @@ entry:
 }
 
 
-; CHECK: @ptrtointtoptr
+; CHECK-LABEL: @ptrtointtoptr
 define void @ptrtointtoptr() #0 {
 entry:
   %alloc = alloca <4 x i32>
@@ -68,7 +68,7 @@ entry:
   ret void
 }
 
-; CHECK: @add
+; CHECK-LABEL: @add
 define void @add(i32 %unknown) #0 {
 entry:
   %alloc = alloca <4 x i32>
@@ -105,7 +105,7 @@ entry:
   ret void
 }
 
-; CHECK: @mul
+; CHECK-LABEL: @mul
 define void @mul(i32 %unknown) #0 {
 entry:
   %alloc = alloca <4 x i8>
@@ -113,37 +113,37 @@ entry:
   %mul1 = mul i32 %int, 1
   %ptr1 = inttoptr i32 %mul1 to i8*
 ; CHECK: load
-; CHECK: align 4
+; CHECK: align {{1|4}}
   %val1 = load i8, i8* %ptr1
 
   %mul4 = mul i32 %int, 4
   %ptr4 = inttoptr i32 %mul4 to i8*
 ; CHECK: load
-; CHECK: align 16
+; CHECK: align {{1|16}}
   %val4 = load i8, i8* %ptr4
 
   %mul17 = mul i32 %int, 17
   %ptr17 = inttoptr i32 %mul17 to i8*
 ; CHECK: load
-; CHECK: align 4
+; CHECK: align {{1|4}}
   %val17 = load i8, i8* %ptr17
 
   %mul108 = mul i32 %int, 108
   %ptr108 = inttoptr i32 %mul108 to i8*
 ; CHECK: load
-; CHECK: align 16
+; CHECK: align {{1|16}}
   %val108 = load i8, i8* %ptr108
 
   %mulunk = mul i32 %int, %unknown
   %ptrunk = inttoptr i32 %mulunk to i8*
 ; CHECK: load
-; CHECK: align 4
+; CHECK: align {{1|4}}
   %valunk = load i8, i8* %ptrunk
 
   ret void
 }
 
-; CHECK: @muladd
+; CHECK-LABEL: @muladd
 define void @muladd(i32* %src, i32 %offset)
 {
   %int = ptrtoint i32* %src to i32
@@ -151,12 +151,12 @@ define void @muladd(i32* %src, i32 %offset)
   %add = add i32 %int, %mul
   %ptr = inttoptr i32 %add to i8*
 ; CHECK: load
-; CHECK: align 4
+; CHECK: align {{1|4}}
   %val = load i8, i8* %ptr
   ret void
 }
 
-; CHECK: @shl
+; CHECK-LABEL: @shl
 define void @shl(i32 %unknown) #0 {
 entry:
   %alloc = alloca <4 x i8>
@@ -164,13 +164,13 @@ entry:
   %shl1 = shl i32 %int, 0
   %ptr1 = inttoptr i32 %shl1 to i8*
 ; CHECK: load
-; CHECK: align 4
+; CHECK: align {{1|4}}
   %val1 = load i8, i8* %ptr1
 
   %shl2 = shl i32 %int, 2
   %ptr4 = inttoptr i32 %shl2 to i8*
 ; CHECK: load
-; CHECK: align 16
+; CHECK: align {{1|16}}
   %val4 = load i8, i8* %ptr4
 
   %shlunk = shl i32 %int, %unknown
@@ -182,7 +182,7 @@ entry:
   ret void
 }
 
-; CHECK: @and
+; CHECK-LABEL: @and
 define void @and (i8* %ptr) #0 {
 entry:
   %int = ptrtoint i8* %ptr to i32
@@ -202,7 +202,7 @@ entry:
   ret void
 }
 
-; CHECK: @select
+; CHECK-LABEL: @select
 define void @select(<4 x i8>* %char4ptr, <16 x i8>* %char16ptr, i1 %flag) #0 {
   %cast = bitcast <4 x i8>* %char4ptr to <16 x i8>*
   %ptr = select i1 %flag, <16 x i8>* %char16ptr, <16 x i8>* %cast
@@ -212,7 +212,7 @@ define void @select(<4 x i8>* %char4ptr, <16 x i8>* %char16ptr, i1 %flag) #0 {
   ret void
 }
 
-; CHECK: @loadval
+; CHECK-LABEL: @loadval
 define void @loadval(<4 x i8>* %src, i32* %offset) #0 {
 ; CHECK: load
 ; CHECK: align 4
@@ -226,7 +226,7 @@ define void @loadval(<4 x i8>* %src, i32* %offset) #0 {
   ret void
 }
 
-; CHECK: @simplephi
+; CHECK-LABEL: @simplephi
 define void @simplephi(<16 x i8>* %src, i1 %flag) #0 {
   %int = ptrtoint <16 x i8>* %src to i32
   br i1 %flag, label %true, label %false
@@ -255,7 +255,7 @@ end:
   ret void
 }
 
-; CHECK: @loop
+; CHECK-LABEL: @loop
 define void @loop(<4 x i8>* %src, i1 %flag) #0 {
 entry:
   br label %body
@@ -280,7 +280,7 @@ end:
   ret void
 }
 
-; CHECK: @gep1
+; CHECK-LABEL: @gep1
 define void @gep1(<4 x i8>* %src, i32 %offset) {
   %ptr = getelementptr <4 x i8>, <4 x i8>* %src, i32 %offset
 ; CHECK: load
@@ -289,7 +289,7 @@ define void @gep1(<4 x i8>* %src, i32 %offset) {
   ret void
 }
 
-; CHECK: @gep2
+; CHECK-LABEL: @gep2
 define void @gep2(<4 x i8>* %src, i32 %offset) {
   %bytesrc = bitcast <4 x i8>* %src to i8*
   %ptr = getelementptr i8, i8* %bytesrc, i32 %offset
@@ -299,7 +299,7 @@ define void @gep2(<4 x i8>* %src, i32 %offset) {
   ret void
 }
 
-; CHECK: @gep3
+; CHECK-LABEL: @gep3
 define void @gep3(<4 x i8>* %src) {
   %bytesrc = bitcast <4 x i8>* %src to i8*
   %ptr = getelementptr i8, i8* %bytesrc, i32 4
@@ -309,7 +309,7 @@ define void @gep3(<4 x i8>* %src) {
   ret void
 }
 
-; CHECK: @globalgep
+; CHECK-LABEL: @globalgep
 @globalarr = addrspace(3) global [10 x i32] [i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9], align 16
 define void @globalgep() {
   %start = getelementptr [10 x i32], [10 x i32] addrspace(3)* @globalarr, i32 0, i32 0
