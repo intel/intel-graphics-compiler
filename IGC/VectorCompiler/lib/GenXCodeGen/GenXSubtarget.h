@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -62,8 +62,9 @@ protected:
     GENX_TGLLP,
     GENX_RKL,
     GENX_DG1,
-    GENX_ADLS, // Gen12LP 1x2x16
-    GENX_ADLP, // Gen12LP 1x6x16
+    GENX_ADLS,
+    GENX_ADLP,
+    GENX_ADLN,
     XE_HP_SDV,
     XE_DG2,
     XE_PVC,
@@ -254,6 +255,8 @@ public:
   bool isADLS() const { return GenXVariant == GENX_ADLS; }
   /// * isADLP - true if target is ADLP
   bool isADLP() const { return GenXVariant == GENX_ADLP; }
+  /// * isADLN - true if target is ADLN
+  bool isADLN() const { return GenXVariant == GENX_ADLN; }
   /// * translateMediaWalker - true if translate media walker APIs
   bool translateMediaWalker() const { return GenXVariant >= XE_HP_SDV; }
   // TODO: consider implementing 2 different getters
@@ -426,6 +429,8 @@ public:
     case GENX_ADLS:
       return TARGET_PLATFORM::GENX_TGLLP;
     case GENX_ADLP:
+      return TARGET_PLATFORM::GENX_TGLLP;
+    case GENX_ADLN:
       return TARGET_PLATFORM::GENX_TGLLP;
     case XE_DG2:
       return TARGET_PLATFORM::Xe_DG2;

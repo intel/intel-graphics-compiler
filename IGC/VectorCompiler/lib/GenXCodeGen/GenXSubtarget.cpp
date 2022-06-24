@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -65,6 +65,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
     .Case("DG1", GENX_DG1)
     .Case("ADLS", GENX_ADLS)
     .Case("ADLP", GENX_ADLP)
+    .Case("ADLN", GENX_ADLN)
     .Cases("XEHP", "XEHP_SDV", XE_HP_SDV)
     .Case("DG2", XE_DG2)
     .Case("PVC", XE_PVC)

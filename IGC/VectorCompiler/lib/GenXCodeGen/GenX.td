@@ -235,6 +235,11 @@ def : Proc<"ADLP",            [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
                                FeaturePreemption, FeatureFusedEU]>;
+def : Proc<"ADLN",            [FeatureLongLongEmulation, FeatureIntDivRem32,
+                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
+                               FeatureHasPackedFloat,
+                               FeatureHWTIDFromPredef,
+                               FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"DG2",             [FeatureLongLongEmulation,
                                FeatureThreadPayloadInMemory,
                                FeatureHasPackedFloat,
