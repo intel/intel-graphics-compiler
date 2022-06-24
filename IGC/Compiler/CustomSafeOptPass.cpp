@@ -4346,7 +4346,7 @@ namespace {
             AU.addRequired<CodeGenContextWrapper>();
         }
     private:
-        bool isICBOffseted(llvm::LoadInst* inst, uint offset);
+        bool isICBOffseted(llvm::LoadInst* inst, uint offset, uint& offsetIntoMergedBuffer);
     };
 
 } // namespace
@@ -4364,8 +4364,6 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
         modMD->immConstant.data.size() &&
         modMD->immConstant.data.size() <= IGC_GET_FLAG_VALUE(MaxImmConstantSizePushed))
     {
-        uint maxImmConstantSizePushed = modMD->immConstant.data.size();
-        char* offset = &(modMD->immConstant.data[0]);
         IRBuilder<> m_builder(F.getContext());
 
         for (auto& BB : F)
@@ -4377,11 +4375,12 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
                     unsigned as = inst->getPointerAddressSpace();
                     bool directBuf = false;
                     unsigned bufId = 0;
+                    unsigned offsetIntoMergedBuffer = 0;
                     BufferType bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
                     bool bICBNoOffset =
                         (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR == modMD->pushInfo.inlineConstantBufferOffset && bufType == CONSTANT_BUFFER && directBuf && bufId == modMD->pushInfo.inlineConstantBufferSlot);
                     bool bICBOffseted =
-                        (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR != modMD->pushInfo.inlineConstantBufferOffset && ADDRESS_SPACE_CONSTANT == as && isICBOffseted(inst, modMD->pushInfo.inlineConstantBufferOffset));
+                        (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR != modMD->pushInfo.inlineConstantBufferOffset && ADDRESS_SPACE_CONSTANT == as && isICBOffseted(inst, modMD->pushInfo.inlineConstantBufferOffset, offsetIntoMergedBuffer));
                     if (bICBNoOffset || bICBOffseted)
                     {
                         Value* ptrVal = inst->getPointerOperand();
@@ -4417,6 +4416,8 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
                         unsigned int size_in_bytes = (unsigned int)inst->getType()->getPrimitiveSizeInBits() / 8;
                         if (size_in_bytes)
                         {
+                            uint maxImmConstantSizePushed = modMD->immConstant.sizes[offsetIntoMergedBuffer];
+                            char* offset = &(modMD->immConstant.data[0]) + offsetIntoMergedBuffer;
                             Value* ICBbuffer = UndefValue::get(IGCLLVM::FixedVectorType::get(inst->getType(), maxImmConstantSizePushed / size_in_bytes));
                             if (inst->getType()->isFloatTy())
                             {
@@ -4461,7 +4462,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
     return false;
 }
 
-bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset) {
+bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset, uint& offsetIntoMergedBuffer) {
     Value* ptrVal = inst->getPointerOperand();
     std::vector<Value*> srcInstList;
     IGC::TracePointerSource(ptrVal, false, true, true, srcInstList);
@@ -4471,6 +4472,19 @@ bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset) 
         GenIntrinsicInst* genIntr = inst ? dyn_cast<GenIntrinsicInst>(inst) : nullptr;
         if (!genIntr || (genIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_RuntimeValue))
             return false;
+
+        // ICB may contain multiple ICBs merged into one
+        // find getelementptr after GenISA_RuntimeValue to find offset to needed ICB in merged ICB
+        if (GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(srcInstList[srcInstList.size() - 2]))
+        {
+            if (gep->getNumOperands() == 2)
+            {
+                llvm::ConstantInt* ci = dyn_cast<llvm::ConstantInt>(gep->getOperand(1));
+
+                if (ci)
+                    offsetIntoMergedBuffer = (uint)ci->getZExtValue();
+            }
+        }
 
         llvm::ConstantInt* ci = dyn_cast<llvm::ConstantInt>(inst->getOperand(0));
         return ci && (uint)ci->getZExtValue() == offset;
@@ -5587,7 +5601,7 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst& I)
             continue;
 
         // Those 2 might be different, when cmp will get altered by it's operands, but EE index stays the same
-        ConstantInt* cmpIndexCI = llvm::ConstantInt::get(builder.getInt32Ty(), (uint64_t)cmpIndex);
+        ConstantInt* cmpIndexCI = llvm::ConstantInt::get(dyn_cast<IntegerType>(index->getType()), (uint64_t)cmpIndex);
         ConstantInt* eeiIndexCI = llvm::ConstantInt::get(builder.getInt32Ty(), (uint64_t)elemIndex);
 
         Value* cmp = builder.CreateICmp(CmpInst::Predicate::ICMP_EQ, index, cmpIndexCI);
