@@ -48,7 +48,7 @@ THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/Bitcode/BitcodeWriter.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/Support/ToolOutputFile.h"
 
@@ -72,7 +72,7 @@ saveLLVMModule(Module *M, const std::string &OutputFile) {
   std::error_code EC;
   llvm::ToolOutputFile Out(OutputFile.c_str(), EC, sys::fs::OF_None);
   IGC_ASSERT_EXIT_MESSAGE((!EC), "Failed to open file");
-  IGCLLVM::WriteBitcodeToFile(M, Out.os());
+  llvm::WriteBitcodeToFile(*M, Out.os());
   Out.keep();
 }
 

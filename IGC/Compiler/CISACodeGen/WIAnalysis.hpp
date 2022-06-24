@@ -184,7 +184,7 @@ namespace IGC
         WIBaseClass::WIDependancy calculate_dep(const llvm::VAArgInst* inst);
         WIBaseClass::WIDependancy calculate_dep(const llvm::LoadInst* inst);
 
-        WIBaseClass::WIDependancy calculate_dep_terminator(const IGCLLVM::TerminatorInst* inst);
+        WIBaseClass::WIDependancy calculate_dep_terminator(const llvm::Instruction* inst);
         /*! \} */
 
         /// @brief do the trivial checking WI-dep
@@ -196,7 +196,7 @@ namespace IGC
         /// @brief update the WI-dep from a divergent branch,
         ///        affected instructions are added to m_pChangedNew
         /// @param the divergent branch
-        void update_cf_dep(const IGCLLVM::TerminatorInst* TI);
+        void update_cf_dep(const llvm::Instruction* TI);
 
         /// @brief update the WI-dep for a sequence of insert-elements forming a vector
         ///        affected instructions are added to m_pChangedNew

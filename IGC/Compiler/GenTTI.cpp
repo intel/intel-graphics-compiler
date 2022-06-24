@@ -155,9 +155,7 @@ namespace llvm {
     }
 
     void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop* L,
-#if LLVM_VERSION_MAJOR >= 7
         ScalarEvolution& SE,
-#endif
         TTI::UnrollingPreferences& UP
 #if LLVM_VERSION_MAJOR >= 14
         , OptimizationRemarkEmitter* ORE
@@ -262,7 +260,7 @@ namespace llvm {
         // Do not enable partial unrolling if the loop counter is float. It can cause precision issue.
         if (ExitingBlock) {
             if (UP.Partial) {
-                IGCLLVM::TerminatorInst* Term = ExitingBlock->getTerminator();
+                Instruction* Term = ExitingBlock->getTerminator();
                 if (BranchInst* BI = dyn_cast<BranchInst>(Term))
                 {
                     if (dyn_cast<FCmpInst>(BI->getCondition()))
@@ -522,12 +520,7 @@ namespace llvm {
         if (auto* CI = dyn_cast<CallInst>(I))
         {
             if (CI->isConvergent() &&
-#if LLVM_VERSION_MAJOR >= 7
-                CI->onlyAccessesInaccessibleMemory()
-#else
-                CI->hasFnAttr(Attribute::InaccessibleMemOnly)
-#endif
-                )
+                CI->onlyAccessesInaccessibleMemory())
             {
                 return false;
             }

@@ -43,7 +43,7 @@ bool InstExpander::visitInstruction(Instruction& I) {
 /// Terminator instructions
 ///
 
-bool InstExpander::visitTerminatorInst(IGCLLVM::TerminatorInst& I) {
+bool InstExpander::visitTerminatorInst(Instruction& I) {
     // All terminators are handled specially.
     return false;
 }

@@ -900,7 +900,7 @@ unsigned Simd32ProfitabilityAnalysis::getLoopCyclomaticComplexity() {
         unsigned CC = 2;
         for (auto BI = L->block_begin(), BE = L->block_end(); BI != BE; ++BI) {
             BasicBlock* BB = *BI;
-            IGCLLVM::TerminatorInst* TI = BB->getTerminator();
+            Instruction* TI = BB->getTerminator();
             bool IsUniform = WI->isUniform(TI);
             CC += TI->getNumSuccessors() * (IsUniform ? 1 : 2);
         }
@@ -915,7 +915,7 @@ static unsigned getNumOfNonUniformExits(Loop* L, WIAnalysis* WI) {
     L->getExitingBlocks(ExistingBlocks);
     unsigned Count = 0;
     for (auto BB : ExistingBlocks) {
-        IGCLLVM::TerminatorInst* TI = BB->getTerminator();
+        Instruction* TI = BB->getTerminator();
         bool IsUniform = WI->isUniform(TI);
         Count += !IsUniform;
     }

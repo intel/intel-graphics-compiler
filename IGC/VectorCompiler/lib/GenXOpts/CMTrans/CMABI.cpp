@@ -1310,7 +1310,7 @@ void ArgRefPattern::process(DominatorTree &DT) {
     Builder.SetInsertPoint(LI);
     Value *SrcVal = Builder.CreateLoad(
         BaseAlloca->getType()->getPointerElementType(), BaseAlloca);
-    SmallVector<Value *, 8> Args(IGCLLVM::args(CopyInRegion));
+    SmallVector<Value *, 8> Args(CopyInRegion->args());
     Args[0] = SrcVal;
     Value *Val = Builder.CreateCall(RdFn, Args);
     LI->replaceAllUsesWith(Val);

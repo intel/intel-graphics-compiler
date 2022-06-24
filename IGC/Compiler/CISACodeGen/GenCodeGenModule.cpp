@@ -19,7 +19,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Argument.h"
 #include "llvmWrapper/IR/Attributes.h"
-#include "llvmWrapper/Analysis/InlineCost.h"
+#include "llvm/Analysis/InlineCost.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -977,25 +977,27 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
         )
     {
         if (CS.hasFnAttr(llvm::Attribute::AlwaysInline))
-            return IGCLLVM::InlineCost::getAlways();
+            return llvm::InlineCost::getAlways("Per AlwaysInline function attribute");
 
         int FCtrl = getFunctionControl(pCtx);
 
         if (IGC::ForceAlwaysInline(pCtx))
-            return IGCLLVM::InlineCost::getAlways();
+            return llvm::InlineCost::getAlways("IGC set force always inline");
 
         if (pCtx->m_enableSubroutine == false)
-            return IGCLLVM::InlineCost::getAlways();
+            return llvm::InlineCost::getAlways("Disabled subroutines/stackcalls");
 
-        if (pCtx->type == ShaderType::OPENCL_SHADER &&
-            Callee->hasFnAttribute(llvm::Attribute::NoInline))
-            return IGCLLVM::InlineCost::getNever();
+        if (Callee->hasFnAttribute(llvm::Attribute::NoInline))
+            return llvm::InlineCost::getNever("Per NoInline function attribute");
+
+        if (pCtx->type == ShaderType::OPENCL_SHADER)
+            return llvm::InlineCost::getNever("Is not a compute shader");
 
         if (Callee->hasFnAttribute("KMPLOCK"))
-            return IGCLLVM::InlineCost::getNever();
+            return llvm::InlineCost::getNever("Has KMPLOCK function attribute");
 
         if (Callee->hasFnAttribute("igc-force-stackcall"))
-            return IGCLLVM::InlineCost::getNever();
+            return llvm::InlineCost::getNever("Has igc-force-stackcall function attribute");
 
         if (FCtrl == FLAG_FCALL_DEFAULT)
         {
@@ -1010,22 +1012,26 @@ InlineCost SubroutineInliner::getInlineCost(IGCLLVM::CallSiteRef CS)
 
             if (FSA->getExpandedSize(Caller) <= PerFuncThreshold)
             {
-                return IGCLLVM::InlineCost::getAlways();
+                return llvm::InlineCost::getAlways("Caller size smaller than per func. threshold");
             }
-            else if (isTrivialCall(Callee) || FSA->onlyCalledOnce(Callee))
+            else if (isTrivialCall(Callee))
             {
-                return IGCLLVM::InlineCost::getAlways();
+                return llvm::InlineCost::getAlways("Callee is trivial");
+            }
+            else if (FSA->onlyCalledOnce(Callee))
+            {
+                return llvm::InlineCost::getAlways("Callee is called only once");
             }
             else if (!FSA->shouldEnableSubroutine())
             {
                 // This function returns true if the estimated total inlining size exceeds some module threshold.
                 // If we don't exceed it, and there's no preference on inline vs noinline, we just inline.
-                return IGCLLVM::InlineCost::getAlways();
+                return llvm::InlineCost::getAlways("Did not meet inline per function size threshold");
             }
         }
     }
 
-    return IGCLLVM::InlineCost::getNever();
+    return llvm::InlineCost::getNever("Did not meet any inlining conditions");
 }
 
 Pass* IGC::createSubroutineInlinerPass()

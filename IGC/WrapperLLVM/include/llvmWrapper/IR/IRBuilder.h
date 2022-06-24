@@ -153,20 +153,6 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::CreateAlloca(Ty, AddrSpace, ArraySize, Name);
         }
 
-        inline llvm::CallInst *CreateBinaryIntrinsic(llvm::Intrinsic::ID ID, llvm::Value *LHS,
-           llvm::Value *RHS,
-           llvm::Instruction *FMFSource = nullptr,
-           const llvm::Twine &Name = "")
-        {
-#if LLVM_VERSION_MAJOR > 7
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateBinaryIntrinsic(
-              ID, LHS, RHS, FMFSource, Name);
-#else
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateBinaryIntrinsic(ID, LHS,
-                                                                     RHS, Name);
-#endif
-        }
-
 #if LLVM_VERSION_MAJOR < 11
         using llvm::IRBuilder<T, InserterTyDef()>::CreateShuffleVector;
 

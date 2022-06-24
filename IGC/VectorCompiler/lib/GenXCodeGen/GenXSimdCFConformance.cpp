@@ -2239,13 +2239,12 @@ static BasicBlock *getEmptyCriticalEdgeSplitterSuccessor(BasicBlock *BB)
 {
   if (!BB->hasOneUse())
     return nullptr; // not exactly one predecessor
-  auto Term = dyn_cast<Instruction>(BB->getFirstNonPHIOrDbg());
+  Instruction *Term = BB->getFirstNonPHIOrDbg();
   if (!Term->isTerminator())
     return nullptr; // not empty
-  auto TI = cast<IGCLLVM::TerminatorInst>(Term);
-  if (TI->getNumSuccessors() != 1)
+  if (Term->getNumSuccessors() != 1)
     return nullptr; // not exactly one successor
-  return TI->getSuccessor(0);
+  return Term->getSuccessor(0);
 }
 
 /***********************************************************************

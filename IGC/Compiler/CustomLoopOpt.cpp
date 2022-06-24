@@ -821,7 +821,7 @@ static BasicBlock* insertUniqueBackedgeBlock(Loop* L, BasicBlock* Preheader,
     unsigned LoopMDKind = BEBlock->getContext().getMDKindID("llvm.loop");
     MDNode* LoopMD = nullptr;
     for (unsigned i = 0, e = BackedgeBlocks.size(); i != e; ++i) {
-        IGCLLVM::TerminatorInst* TI = BackedgeBlocks[i]->getTerminator();
+        Instruction* TI = BackedgeBlocks[i]->getTerminator();
         if (!LoopMD)
             LoopMD = TI->getMetadata(LoopMDKind);
         TI->setMetadata(LoopMDKind, nullptr);

@@ -28,7 +28,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/IR/ValueHandle.h"
-#include "llvmWrapper/Transforms/Utils.h"
+#include <llvm/Transforms/Utils.h>
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
@@ -839,7 +839,7 @@ namespace //Anonymous
             : ObjCBlockCallArgs(call, dataContext)
             , _block(nullptr)
         {
-            auto arg = IGCLLVM::args(call).begin();
+            auto arg = call.args().begin();
 
             _queue = *(arg++);
             _flags = *(arg++);
@@ -853,7 +853,7 @@ namespace //Anonymous
 
             _block = *(arg++);
 
-            while (arg != IGCLLVM::args(call).end())
+            while (arg != call.args().end())
             {
                 if ((*arg)->getType()->isIntegerTy(32))
                 {
@@ -1565,7 +1565,7 @@ namespace //Anonymous
                     auto callInst = dyn_cast<CallInst>(user);
                     if (!callInst) continue;
 
-                    for (auto& arg : IGCLLVM::args(callInst)) {
+                    for (auto& arg : callInst->args()) {
                         if (Function * invoke = dyn_cast<Function>(arg)) {
                             if (isInvokeFunctionKernelWrapper(invoke, dataContext)) {
                                 // Inline the wrapped invoke function.

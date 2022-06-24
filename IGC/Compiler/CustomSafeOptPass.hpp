@@ -102,7 +102,7 @@ namespace IGC
         llvm::Value* analyzeTreeForTrunc64bto32b(const llvm::Use& OperandUse, llvm::SmallVector<llvm::BinaryOperator*, 8>& OpsToDelete);
     };
 
-#if LLVM_VERSION_MAJOR >= 7
+
     class TrivialLocalMemoryOpsElimination : public llvm::FunctionPass, public llvm::InstVisitor<TrivialLocalMemoryOpsElimination>
     {
     public:
@@ -141,7 +141,6 @@ namespace IGC
         bool abortPass = false;
         const std::vector<bool> m_argumentsOfLocalMemoryBarrier{ true, false, false, false, false, false, true };
     };
-#endif
 
     class GenSpecificPattern : public llvm::FunctionPass, public llvm::InstVisitor<GenSpecificPattern>
     {

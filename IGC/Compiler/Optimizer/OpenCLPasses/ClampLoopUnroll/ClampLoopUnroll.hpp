@@ -42,7 +42,7 @@ namespace IGC
             AU.setPreservesCFG();
         }
 
-        void visitTerminatorInst(IGCLLVM::TerminatorInst& I);
+        void visitTerminatorInst(llvm::Instruction& I);
 
     private:
         unsigned m_MaxUnrollFactor;

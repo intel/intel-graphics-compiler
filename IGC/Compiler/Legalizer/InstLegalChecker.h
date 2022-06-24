@@ -41,7 +41,7 @@ namespace IGC {
             ///
 
             LegalizeAction visitReturnInst(ReturnInst& I);
-            LegalizeAction visitTerminatorInst(IGCLLVM::TerminatorInst&);
+            LegalizeAction visitTerminatorInst(Instruction&);
 
             /// Standard binary operators
             ///

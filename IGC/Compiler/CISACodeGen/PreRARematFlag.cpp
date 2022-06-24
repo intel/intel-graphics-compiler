@@ -29,19 +29,14 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 
 namespace {
-#if LLVM_VERSION_MAJOR == 4
-    typedef DominatorTreeBase<BasicBlock> DominatorTreeBasicBlock;
-#elif LLVM_VERSION_MAJOR >= 7
-    typedef DominatorTreeBase<BasicBlock, false> DominatorTreeBasicBlock;
-#endif
 
     class DominatedSubgraph {
-        DominatorTreeBasicBlock* DT;
+        DominatorTreeBase<BasicBlock, false>* DT;
         BasicBlock* Entry;
         SmallPtrSet<BasicBlock*, 32> Visited;
 
     public:
-        DominatedSubgraph(DominatorTreeBasicBlock* D, BasicBlock* N) : DT(D), Entry(N) {}
+        DominatedSubgraph(DominatorTreeBase<BasicBlock, false>* D, BasicBlock* N) : DT(D), Entry(N) {}
 
         bool preVisit(Optional<BasicBlock*> From, BasicBlock* To) {
             // Skip BB not dominated by the specified entry.

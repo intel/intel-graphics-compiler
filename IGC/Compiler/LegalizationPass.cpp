@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/InstIterator.h"
+#include "llvm/IR/PatternMatch.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvmWrapper/IR/InstrTypes.h"
@@ -204,8 +205,12 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
         // then remove the negate by flipping all the uses (select or branch)
         Value* src0 = I.getOperand(0);
         Value* src1 = I.getOperand(1);
-        if (IGCLLVM::BinaryOperator::isNot(src0) &&
-            IGCLLVM::BinaryOperator::isNot(src1) &&
+
+        auto isNot = [](Value* V) -> bool {
+            return llvm::PatternMatch::match(V, llvm::PatternMatch::m_Not(llvm::PatternMatch::m_Value()));
+        };
+
+        if (isNot(src0) && isNot(src1) &&
             src0->hasOneUse() && src1->hasOneUse()) {
             // check all uses are select or branch
             bool flippable = true;

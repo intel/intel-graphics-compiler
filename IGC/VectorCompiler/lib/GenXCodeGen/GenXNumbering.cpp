@@ -140,7 +140,7 @@ unsigned GenXNumbering::numberInstructionsInFunc(Function *Func, unsigned Num)
     // more than one successor (this is a critical edge), then allow for
     // whichever successor has the most phi nodes.
     BBNumber->PhiNumber = Num;
-    auto TI = cast<IGCLLVM::TerminatorInst>(Block->getTerminator());
+    auto TI = Block->getTerminator();
     unsigned MaxPhis = 0;
     for (unsigned i = 0, e = TI->getNumSuccessors(); i != e; ++i) {
       BasicBlock *Succ = TI->getSuccessor(i);
@@ -353,7 +353,7 @@ void GenXNumbering::print(raw_ostream &OS) const
         Inst->print(OS);
         OS << "\n";
       }
-      auto TI = cast<IGCLLVM::TerminatorInst>(BB->getTerminator());
+      auto TI = BB->getTerminator();
       if (TI->getNumSuccessors()) {
         BasicBlock *Succ = TI->getSuccessor(0);
         for (BasicBlock::iterator sbi = Succ->begin(), sbe = Succ->end(); sbi != sbe; ++sbi) {

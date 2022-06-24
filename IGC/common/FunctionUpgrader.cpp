@@ -104,11 +104,8 @@ Function* FunctionUpgrader::RebuildFunction()
     // Replace all usage in new method from old arguments to new arguments
     while(i_arg_old != m_pFunction->arg_end())
     {
-#if LLVM_VERSION_MAJOR == 4
-        i_arg_old->replaceAllUsesWith(&*i_arg_new);
-#elif LLVM_VERSION_MAJOR >= 7
         i_arg_old->replaceAllUsesWith(i_arg_new);
-#endif
+
         ++i_arg_old;
         ++i_arg_new;
     }
@@ -176,23 +173,13 @@ Function* FunctionUpgrader::UpgradeFunctionWithNewArgs()
     // and setname for new func args from old func args
     for (; i_arg_old != m_pFunction->arg_end(); ++i_arg_old, ++i_arg_new)
     {
-#if LLVM_VERSION_MAJOR == 4
-        auto arg_it = &*i_arg_old;
-#elif LLVM_VERSION_MAJOR >= 7
-        auto arg_it = i_arg_old;
-#endif
-        i_arg_new->takeName(arg_it);
+        i_arg_new->takeName(i_arg_old);
     }
     // setname for new func args which was added as new one
     for (auto it = m_pNewArguments.begin(); it != m_pNewArguments.end(); ++it)
     {
-#if LLVM_VERSION_MAJOR == 4
-        auto arg_it = &*i_arg_new;
-#elif LLVM_VERSION_MAJOR >= 7
-        auto arg_it = i_arg_new;
-#endif
         //add to map pointer of the new argument
-        m_pNewArguments[it->first] = arg_it;
+        m_pNewArguments[it->first] = i_arg_new;
 
         m_pNewArguments[it->first]->takeName(it->first);
 

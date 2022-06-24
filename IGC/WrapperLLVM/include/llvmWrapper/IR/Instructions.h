@@ -12,9 +12,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/User.h"
-#if LLVM_VERSION_MAJOR <= 7
-#include "llvm/Support/Casting.h"
-#endif
 
 #include "Probe/Assertion.h"
 
@@ -45,47 +42,6 @@ namespace IGCLLVM
         return CI->getCalledValue();
 #else
         return CI->getCalledOperand();
-#endif
-    }
-
-    inline bool isIndirectCall(const llvm::CallInst& CI)
-    {
-#if LLVM_VERSION_MAJOR == 7
-        const llvm::Value *V = CI.getCalledValue();
-        if (llvm::isa<llvm::Function>(V) || llvm::isa<llvm::Constant>(V))
-            return false;
-        if (CI.isInlineAsm())
-            return false;
-        return true;
-#else
-        return CI.isIndirectCall();
-#endif
-    }
-
-    inline unsigned arg_size(const llvm::CallInst& CI)
-    {
-#if LLVM_VERSION_MAJOR < 8
-        return (unsigned)(CI.arg_end() - CI.arg_begin());
-#else
-        return (unsigned)CI.arg_size();
-#endif
-    }
-
-    inline llvm::iterator_range<llvm::User::op_iterator> args(llvm::CallInst& CI)
-    {
-#if LLVM_VERSION_MAJOR < 8
-        return CI.arg_operands();
-#else
-        return CI.args();
-#endif
-    }
-
-    inline llvm::iterator_range<llvm::User::op_iterator> args(llvm::CallInst* CI)
-    {
-#if LLVM_VERSION_MAJOR < 8
-        return CI->arg_operands();
-#else
-        return CI->args();
 #endif
     }
 

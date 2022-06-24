@@ -43,7 +43,7 @@ namespace IGC {
             /// Terminator instructions
             ///
 
-            bool visitTerminatorInst(IGCLLVM::TerminatorInst& I);
+            bool visitTerminatorInst(Instruction& I);
 
             /// Standard binary operators
             ///

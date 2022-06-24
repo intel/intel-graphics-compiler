@@ -267,7 +267,6 @@ void dumpOCLKernelBinary(
     const IGC::COpenCLKernel *Kernel,
     const KernelData &data)
 {
-#if LLVM_VERSION_MAJOR >= 7
     using namespace IGC;
     using namespace IGC::Debug;
 
@@ -288,7 +287,6 @@ void dumpOCLKernelBinary(
     llvm::raw_fd_ostream f(name.str(), EC);
     if (!EC)
         f.write(KernBin->GetLinearPointer(), (size_t)KernBin->Size());
-#endif
 }
 
 void overrideOCLKernelBinary(

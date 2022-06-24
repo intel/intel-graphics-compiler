@@ -1387,7 +1387,7 @@ bool EmitPass::isCandidateIfStmt(
     }
 
     llvm::BasicBlock* S0 = Br->getSuccessor(0), * S1 = Br->getSuccessor(1);
-    IGCLLVM::TerminatorInst* T0 = S0->getTerminator(), * T1 = S1->getTerminator();
+    llvm::Instruction* T0 = S0->getTerminator(), * T1 = S1->getTerminator();
     IGC_ASSERT_MESSAGE(nullptr != T1, "BB is missing a terminator!");
     IGC_ASSERT_MESSAGE(nullptr != T0, "BB is missing a terminator!");
     bool  isMatch =
@@ -1427,7 +1427,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
     std::vector<std::pair<CVariable*, CVariable*>> emitList;
     std::map<CVariable*, unsigned int> dstVTyMap;
     llvm::BasicBlock* bb = aBB;
-    IGCLLVM::TerminatorInst* TI = aBB->getTerminator();
+    llvm::Instruction* TI = aBB->getTerminator();
     IGC_ASSERT(nullptr != TI);
 
     // main code to generate phi-mov
