@@ -177,17 +177,17 @@ auto AlignmentAnalysis::getAlignValue(Value* V) const
 bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
 {
     // Get the currently known alignment of I.
-    unsigned int currAlign = (unsigned)getAlignValue(I);
+    alignment_t currAlign = getAlignValue(I);
 
     // Compute the instruction's alignment
     // using the alignment of the arguments.
-    unsigned int newAlign = 0;
+    alignment_t newAlign = 0;
     if (I->getType()->isPointerTy())
     {
         // If a pointer is specifically given an 'align' field in the MD, use it.
         MDNode* alignmentMD = I->getMetadata("align");
         if (alignmentMD)
-            newAlign = (unsigned)mdconst::dyn_extract<ConstantInt>(alignmentMD->getOperand(0))->getZExtValue();
+            newAlign = (alignment_t)mdconst::dyn_extract<ConstantInt>(alignmentMD->getOperand(0))->getZExtValue();
     }
     if (!newAlign)
     {
@@ -204,7 +204,7 @@ bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
 
     if (newAlign != currAlign)
     {
-        m_alignmentMap[I] = newAlign;
+        m_alignmentMap[I] = (unsigned)newAlign;
         return true;
     }
 
@@ -377,7 +377,7 @@ unsigned int AlignmentAnalysis::visitGetElementPtrInst(GetElementPtrInst& I)
         {
             Ty = GTI.getIndexedType();
             unsigned int multiplier = int_cast<unsigned int>(m_DL->getTypeAllocSize(Ty));
-            offset = multiplier * int_cast<unsigned int>(getAlignValue(*op));
+            offset = multiplier * (unsigned)getAlignValue(*op);
         }
 
         // It's possible offset is not a power of 2, because struct fields
