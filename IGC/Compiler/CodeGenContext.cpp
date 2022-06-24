@@ -477,6 +477,12 @@ namespace IGC
     {
         isSpirV = true;
     }
+
+    bool OpenCLProgramContext::needsDivergentBarrierHandling() const {
+        return IGC_IS_FLAG_ENABLED(EnableDivergentBarrierWA) ||
+               m_InternalOptions.EnableDivergentBarrierHandling;
+    }
+
     float OpenCLProgramContext::getProfilingTimerResolution()
     {
         return m_ProfilingTimerResolution;
@@ -978,6 +984,10 @@ namespace IGC
                 }
                 Pos = valueEnd;
                 continue;
+            }
+            else if (suffix.equals("-enable-divergent-barrier-handling"))
+            {
+                EnableDivergentBarrierHandling = true;
             }
 
             // advance to the next flag

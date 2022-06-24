@@ -117,6 +117,13 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
                 implicitArgs.push_back(ImplicitArg::ArgType::LOCAL_ID_Z);
             }
         }
+
+        if (m_ctx->type == ShaderType::OPENCL_SHADER)
+        {
+            auto* Ctx = static_cast<OpenCLProgramContext*>(m_ctx);
+            if (Ctx->needsDivergentBarrierHandling())
+                m_hasLocalSize = true;
+        }
     }
     else
     {

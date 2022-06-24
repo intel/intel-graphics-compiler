@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ProcessFuncAttributes.h"
 #include "AdaptorCommon/LegalizeFunctionSignatures.h"
 #include "AdaptorCommon/TypesLegalizationPass.hpp"
+#include "AdaptorCommon/DivergentBarrierPass.h"
 #include "common/LLVMUtils.h"
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -507,9 +508,6 @@ static void CommonOCLBasedPasses(
     mpm.add(createDpasFuncsResolutionPass());
     mpm.add(createLSCFuncsResolutionPass());
 
-    // Run InlineLocals and GenericAddressDynamic together
-    mpm.add(new InlineLocalsResolution());
-
     mpm.add(new WGFuncResolution());
     mpm.add(new ResolveAggregateArguments());
     mpm.add(new ExtensionFuncsResolution());
@@ -518,6 +516,14 @@ static void CommonOCLBasedPasses(
     mpm.add(createDeadCodeEliminationPass());
 
     mpm.add(createBuiltinsConverterPass());
+
+    if (pContext->needsDivergentBarrierHandling())
+    {
+        mpm.add(createDivergentBarrierPass(nullptr));
+        mpm.add(new BreakConstantExpr());
+    }
+
+    mpm.add(new InlineLocalsResolution());
 
     // check for unsupported intrinsics
     mpm.add(new ErrorCheck());
