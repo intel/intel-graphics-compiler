@@ -149,11 +149,30 @@ void Encoder::encodeKernel(
 #endif
 }
 
+void Encoder::encodeInlineBinaryInst(Instruction& inst)
+{
+    setEncodedPC(&inst, currentPc());
+    for (auto i = 0, j = 3; i < 4; ++i, --j) {
+        uint8_t* src = (uint8_t*)&inst.getInlineBinary().at(j);
+        uint8_t* dst = m_instBuf + currentPc() + i*4 ;
+        memcpy_s(dst, 4, src, 4);
+    }
+
+    // Inline-binary-instruction must have size 16
+    advancePc(16);
+}
+
 void Encoder::encodeBlock(Block *blk)
 {
     m_blockToOffsetMap[blk] = currentPc();
     for (const auto inst : blk->getInstList()) {
         setCurrInst(inst);
+
+        if (inst->isInlineBinaryInstruction()) {
+            encodeInlineBinaryInst(*inst);
+            continue;
+        }
+
         encodeInstruction(*inst);
         if (hasFatalError()) {
             return;
@@ -205,7 +224,6 @@ void Encoder::encodeBlock(Block *blk)
                     gedReturnValueToString(status));
             }
         }
-
         advancePc(iLen);
     }
 }

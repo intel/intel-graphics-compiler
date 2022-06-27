@@ -36,6 +36,14 @@ namespace iga
     class Instruction
     {
     public:
+        // inlineBinaryType - Inline binary value container
+        // inlineBinaryType[0]: bit[127:96]
+        // inlineBinaryType[1]: bit[95:64]
+        // inlineBinaryType[2]: bit[63:32]
+        // inlineBinaryType[3]: bit[31:0]
+        typedef std::array<uint32_t, 4> InlineBinaryType;
+
+    public:
         Instruction(
             int id,
             PC pc,
@@ -256,10 +264,15 @@ namespace iga
         bool               isMovWithLabel() const;
 
 
+        void setInlineBinary(const InlineBinaryType& binary);
+        bool isInlineBinaryInstruction() const { return m_isInlineBinaryInst; }
+        const InlineBinaryType& getInlineBinary() const { return m_inlineBinary; }
+
         SWSB::InstType     getSWSBInstType(SWSB_ENCODE_MODE mode) const;
 
         void               validate() const; // asserts on malformed IR
         std::string        str() const; // returns syntax of this instruction
+
     private:
         const OpSpec&    m_opSpec; // information about the specific inst op
         Subfunction      m_sf; // e.g. MathFC::INV for math.inv, SFID::DC0 for send.dc0
@@ -332,6 +345,10 @@ namespace iga
 
         InstOptSet       m_instOpts; // miscellaneous instruction attributes
         SWSB             m_depInfo;
+
+        // Binary for inline binary instruction.
+        InlineBinaryType m_inlineBinary = {0};
+        bool             m_isInlineBinaryInst = false;
 
         int              m_instId; // unique id for this instruction
                                    // (unique in the kernel)

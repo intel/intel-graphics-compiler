@@ -140,6 +140,9 @@ class InstBuilder {
 
     InstOptSet                  m_instOpts;
 
+    Instruction::InlineBinaryType m_inlineInstBinary = {0};
+    bool                          m_isInlineBinaryInst = false;
+
     std::string                 m_comment;
 
     ////////////////////////////////////////////////////////////////////
@@ -242,6 +245,9 @@ private:
         m_depInfo = SWSBInfo();
 
         m_comment.clear();
+
+        m_isInlineBinaryInst = false;
+        m_inlineInstBinary.fill(0);
     }
 
 public:
@@ -393,7 +399,10 @@ public:
         } else if (m_opSpec->op == Op::NOP) {
             inst = m_kernel->createNopInstruction();
         } else if (m_opSpec->op == Op::ILLEGAL) {
-            inst = m_kernel->createIllegalInstruction();
+            if (m_isInlineBinaryInst)
+                inst = m_kernel->createInlineBinaryInstruction(m_inlineInstBinary);
+            else
+                inst = m_kernel->createIllegalInstruction();
         } else {
             inst =
                 m_kernel->createBasicInstruction(
@@ -1019,6 +1028,13 @@ public:
     void InstComment(std::string comment)
     {
         m_comment = comment;
+    }
+
+    // set inline binary instruction
+    void InstInlineBinary(const Instruction::InlineBinaryType& binary)
+    {
+        m_isInlineBinaryInst = true;
+        m_inlineInstBinary = binary;
     }
 
 }; // class ParseHandler

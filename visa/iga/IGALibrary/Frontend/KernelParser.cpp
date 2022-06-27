@@ -999,35 +999,55 @@ public:
         }
     }
 
-
-    // Instruction = RegularInst | LdStInst
-    // RegularInst = Predication? Mnemonic UniformType? EMask
-    //                 ConditionModifier? Operands InstOptions?
-    // LdStInst = ... comes from Sends/Interface.hpp ...
-    void ParseInstCanThrowException() {
-        // ShowCurrentLexicalContext();
-        const Loc startLoc = NextLoc();
-        m_builder.InstStart(startLoc);
-
+    // reset KernelParser information
+    void reset() {
         m_flagReg = REGREF_INVALID;
         m_execSizeLoc = Loc::INVALID;
         m_opSpec = nullptr;
         m_unifType = Type::INVALID;
         m_unifTypeTk = nullptr;
         m_mnemonicLoc = Loc::INVALID;
-        for (size_t i = 0; i < sizeof(m_srcKinds)/sizeof(m_srcKinds[0]); i++) {
+        for (size_t i = 0; i < sizeof(m_srcKinds) / sizeof(m_srcKinds[0]); i++) {
             m_srcLocs[i] = Loc::INVALID;
             m_srcKinds[i] = Operand::Kind::INVALID;
         }
         for (size_t i = 0;
-            i < sizeof(m_sendSrcLens)/sizeof(m_sendSrcLens[0]);
+            i < sizeof(m_sendSrcLens) / sizeof(m_sendSrcLens[0]);
             i++)
         {
             m_sendSrcLens[i] = -1;
             m_sendSrcLenLocs[i] = Loc::INVALID;
         }
         m_implicitExBSO = false;
+    }
 
+    // try if the instruction is an inline-binary-instruction
+    // return true if it is
+    bool tryParseInlineBinaryInst() {
+        if (!Consume(Lexeme::DOT))
+            return false;
+        if (!ConsumeIdentEq("inline_inst"))
+            return false;
+
+        // .inline_inst 0x123 0x123 0x123 0x123
+        Instruction::InlineBinaryType val = {0};
+        for (size_t i = 0; i < 4; ++i) {
+            if (LookingAt(INTLIT16)) {
+                ParseIntFrom<uint32_t>(NextLoc(), val[i]);
+                Skip();
+            } else {
+                FailT("Inline binary instruction must contain four 32b hexadecimal values");
+            }
+        }
+        m_builder.InstInlineBinary(val);
+        // set ILLEGAL as inline-binary-instruction's opSpec so that other passes such as SWSBSetter
+        // can bypass it
+        m_opSpec = &m_model.lookupOpSpec(Op::ILLEGAL);
+        m_builder.InstOp(m_opSpec);
+        return true;
+    }
+
+    void ParseRegularInst()  {
         // (W&~f0) mov (8|M0) r1 r2
         // ^
         ParseWrEnPred();
@@ -1043,12 +1063,27 @@ public:
             // looking at a regular instruction (non special-ld-st inst)
             m_builder.InstOp(m_opSpec);
             FinishNonLdStInstBody();
-        } else if (!ParseLdStInst()) {
+        }
+        else if (!ParseLdStInst()) {
             FailS(m_mnemonicLoc, "invalid mnemonic");
         }
 
         // .... {...}
         ParseInstOpts();
+    }
+
+    // Instruction = RegularInst | LdStInst
+    // RegularInst = Predication? Mnemonic UniformType? EMask
+    //                 ConditionModifier? Operands InstOptions?
+    // LdStInst = ... comes from Sends/Interface.hpp ...
+    void ParseInstCanThrowException() {
+        // ShowCurrentLexicalContext();
+        const Loc startLoc = NextLoc();
+        m_builder.InstStart(startLoc);
+        reset();
+
+        if (!tryParseInlineBinaryInst())
+            ParseRegularInst();
 
         if (!LookingAt(Lexeme::NEWLINE) &&
             !LookingAt(Lexeme::SEMI) &&

@@ -258,6 +258,13 @@ public:
         emit(ANSI_RESET);
     }
 
+    void formatInlineBinaryInstruction(const Instruction& i) {
+        emit(".inline_inst ");
+        for (auto val : i.getInlineBinary()) {
+            emitHex(val);
+            emit(" ");
+        }
+    }
 
     // for single instruction
     void formatInstruction(const Instruction& i, const void *vbits) {
@@ -267,6 +274,11 @@ public:
 
     void formatInstruction(const Instruction& i) {
         currInst = &i;
+        if (i.isInlineBinaryInstruction()) {
+            formatInlineBinaryInstruction(i);
+            currInst = nullptr;
+            return;
+        }
 
         if (opts.printInstDeps) {
             formatInstructionDeps(i);

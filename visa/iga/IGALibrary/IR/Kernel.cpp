@@ -184,6 +184,14 @@ Instruction *Kernel::createNopInstruction()
     return inst;
 }
 
+Instruction *Kernel::createInlineBinaryInstruction(
+    const Instruction::InlineBinaryType& binary)
+{
+    Instruction* inst = createIllegalInstruction();
+    inst->setInlineBinary(binary);
+    return inst;
+}
+
 
 Instruction *Kernel::createIllegalInstruction()
 {

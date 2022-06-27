@@ -209,6 +209,12 @@ bool Instruction::isMovWithLabel() const {
 }
 
 
+void Instruction::setInlineBinary(const Instruction::InlineBinaryType& binary) {
+
+    m_inlineBinary = binary;
+    m_isInlineBinaryInst = true;
+}
+
 void Instruction::validate() const
 {
     iga::SanityCheckIR(*this);

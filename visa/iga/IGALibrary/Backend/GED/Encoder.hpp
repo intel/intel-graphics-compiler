@@ -200,6 +200,7 @@ namespace iga
         void encodeSendDescsXeHP(const Instruction& inst);
         void encodeSendDescsXeHPG(const Instruction& inst);
 
+        void encodeInlineBinaryInst(Instruction& inst);
         ///////////////////////////////////////////////////////////////////////
         // SYNC INSTRUCTIONS
         ///////////////////////////////////////////////////////////////////////

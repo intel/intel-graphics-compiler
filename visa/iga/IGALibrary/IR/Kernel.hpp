@@ -88,6 +88,7 @@ namespace iga {
         Instruction *createSyncNopInstruction(SWSB sw);
         Instruction *createSyncAllRdInstruction(SWSB sw);
         Instruction *createSyncAllWrInstruction(SWSB sw);
+        Instruction* createInlineBinaryInstruction(const Instruction::InlineBinaryType& binary);
     private:
         const Model&                      m_model;
         MemManager                        m_mem;
