@@ -1297,22 +1297,22 @@ void CustomSafeOptPass::matchMixOperation(BinaryOperator& I)
                 bool doNotOptimize = false;
                 bool matchFound = false;
                 SmallVector<std::pair<Instruction*, Instruction*>, 3> fMulInsts;
+                SmallVector<Instruction*, 3> fAddInsts;
 
                 // Pattern Mix check step 2: there should be only FMul users of this FSub instruction
-                for (User* U : I.users())
+                for (User* subU : I.users())
                 {
                     matchFound = false;
-                    Instruction* fMul = dyn_cast_or_null<Instruction>(U);
+                    Instruction* fMul = dyn_cast_or_null<Instruction>(subU);
                     if (fMul && fMul->getOpcode() == BinaryOperator::FMul)
                     {
-                        // Pattern Mix check step 3: there should be only one fAdd user for such an FMul instruction
-                        if ((cast<Value>(fMul))->hasOneUse())
+                        // Pattern Mix check step 3: there should be only fAdd users for such an FMul instruction
+                        for (User* mulU : fMul->users())
                         {
-                            Instruction* fAdd = dyn_cast_or_null<Instruction>(*fMul->users().begin());
-
-                            // Pattern Mix check step 4: fAdd should be a user of two FMul instructions
+                            Instruction* fAdd = dyn_cast_or_null<Instruction>(mulU);
                             if (fAdd && fAdd->getOpcode() == BinaryOperator::FAdd)
                             {
+                                // Pattern Mix check step 4: fAdd should be a user of two FMul instructions
                                 unsigned int opIdx = 0;
                                 while (opIdx < 2 && fMul != fAdd->getOperand(opIdx))
                                 {
@@ -1329,14 +1329,16 @@ void CustomSafeOptPass::matchMixOperation(BinaryOperator& I)
                                     if (fMul2nd && fMul2nd->getOpcode() == BinaryOperator::FMul)
                                     {
                                         unsigned int fSubNon1OpIdx = 1 - fSubOpIdx; // 0 -> 1 or 1 -> 0
-                                        while (opIdx < 2 && fMul2nd->getOperand(opIdx) != I.getOperand(fSubNon1OpIdx))
+                                        unsigned int fMul2OpIdx = 0;
+                                        while (fMul2OpIdx < 2 && fMul2nd->getOperand(fMul2OpIdx) != I.getOperand(fSubNon1OpIdx))
                                         {
-                                            opIdx++;
+                                            fMul2OpIdx++;
                                         }
 
-                                        if (opIdx < 2)
+                                        if (fMul2OpIdx < 2)
                                         {
                                             fMulInsts.push_back(std::make_pair(fMul, fMul2nd));
+                                            fAddInsts.push_back(fAdd);
                                             matchFound = true;  // Pattern Mix (partially) detected.
                                         }
                                     }
@@ -1367,9 +1369,13 @@ void CustomSafeOptPass::matchMixOperation(BinaryOperator& I)
                     fSubOpIdx = 1 - fSubOpIdx; // 0 -> 1 or 1 -> 0, i.e. get another FSub operand
                     Value* r = I.getOperand(fSubOpIdx);
 
-                    for (std::pair<Instruction*, Instruction*> fMulPair : fMulInsts)
+                    while (!fMulInsts.empty())
                     {
-                        Instruction* fAdd = cast<Instruction>(*fMulPair.first->users().begin());
+                        std::pair<Instruction*, Instruction*> fMulPair = fMulInsts.back();
+                        fMulInsts.pop_back();
+
+                        Instruction* fAdd = fAddInsts.back();
+                        fAddInsts.pop_back();
 
                         unsigned int fMul2OpToFirstInstIdx = (r == fMulPair.second->getOperand(0)) ? 1 : 0;
                         Value* newFirstInstOp = fMulPair.second->getOperand(fMul2OpToFirstInstIdx);
