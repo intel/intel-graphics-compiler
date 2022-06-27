@@ -4481,9 +4481,14 @@ bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset, 
 
         // ICB may contain multiple ICBs merged into one
         // find getelementptr after GenISA_RuntimeValue to find offset to needed ICB in merged ICB
-        if (GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(srcInstList[srcInstList.size() - 2]))
+        if (srcInstList.size() >= 2)
         {
-            if (gep->getNumOperands() == 2)
+            GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(srcInstList[srcInstList.size() - 2]);
+
+            if (gep &&
+                gep->getNumOperands() == 2 &&
+                gep->getOperand(0) == genIntr &&
+                genIntr->getType() == PointerType::get(Type::getInt8Ty(inst->getContext()), ADDRESS_SPACE_CONSTANT))
             {
                 llvm::ConstantInt* ci = dyn_cast<llvm::ConstantInt>(gep->getOperand(1));
 
