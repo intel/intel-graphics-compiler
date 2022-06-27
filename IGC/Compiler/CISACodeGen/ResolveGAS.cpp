@@ -83,9 +83,6 @@ namespace {
         void convertLoadToGlobal(LoadInst* LI) const;
         bool isLoadGlobalCandidate(LoadInst* LI) const;
 
-        SmallVector<llvm::Instruction*, 8> branchInstInModule;
-        bool resolveAtomicBranches(Function*) const;
-
         bool canonicalizeAddrSpaceCasts(Function& F) const;
     };
 
@@ -216,9 +213,6 @@ bool GASResolving::runOnFunction(Function& F) {
         LocalChanged = resolveOnFunction(&F);
         Changed |= LocalChanged;
     } while (LocalChanged);
-
-    Changed |= resolveAtomicBranches(&F);
-
     return Changed;
 }
 
@@ -330,136 +324,6 @@ void GASPropagator::populateResolvableLoopPHIs() {
     for (auto& L : LI->getLoopsInPreorder()) {
         populateResolvableLoopPHIsForLoop(L);
     }
-}
-
-//Before -
-// %tobool = icmp eq i8 addrspace(3) * %3, null
-// br i1 % tobool, label% if.else, label% if.then
-//
-// if.then:; preds = % for.body20
-// %PtrDstToInt = ptrtoint i32 addrspace(3) * %arrayidx26 to i32,
-// %call3 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p3i32.i32(i32 addrspace(3) * %arrayidx26, i32 %PtrDstToInt, i32 1, i32 0),
-// br label % _Z16atomic_inc_localPU3AS3j.exit,
-//
-// if.else:; preds = % for.body20
-// %4 = addrspacecast i32 addrspace(4) * %2 to i32 addrspace(1)*,
-// %call19 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1) * %4, i32 addrspace(1) * %4, i32 1, i32 0),
-// br label % _Z16atomic_inc_localPU3AS3j.exit,
-//
-// _Z16atomic_inc_localPU3AS3j.exit:; preds = %if.then, %if.else
-// br label %for.inc28,
-//
-//
-//After resolving generic addressspace statically.
-//
-//In case of local addresssspace//
-//
-// %PtrDstToInt = ptrtoint i32 addrspace(3) * %arrayidx26 to i32,
-// %call3 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p3i32.i32(i32 addrspace(3) * %arrayidx26, i32 %PtrDstToInt, i32 1, i32 0),
-//
-//In case of global addresssspace//
-//
-// %4 = addrspacecast i32 addrspace(4) * %2 to i32 addrspace(1)*,
-// %call19 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1) * %4, i32 addrspace(1) * %4, i32 1, i32 0),
-
-bool GASResolving::resolveAtomicBranches(Function* F) const {
-    bool changed = false;
-    for (auto FB = F->begin(), FE = F->end(); FB != FE; ++FB)
-    {
-        for (auto BI = FB->begin(), BE = FB->end(); BI != BE;)
-        {
-            Instruction* I = &(*BI++);
-            BranchInst* BrI = dyn_cast<BranchInst>(I);
-            bool isAtomicBrInstr = false;
-            bool localAtomicCallInstFound = false;
-            bool globalAtomicCallInstFound = false;
-            //uint32_t numSuccessers = I.getNumSuccessors();
-            BasicBlock* toBeDeleted = nullptr;
-            BasicBlock* toBeKept = nullptr;
-
-            // check if the branch instruction is related to atomic op
-            if (BrI && BrI->isConditional()) {
-                BasicBlock* trueDestBB = I->getSuccessor(0);
-                BasicBlock* falseDestBB = I->getSuccessor(1);
-
-                for (auto BTI = trueDestBB->begin(), BTE = trueDestBB->end(); BTI != BTE;) {
-                    Instruction* I = &(*BTI++);
-                    CallInst* CI = dyn_cast<CallInst>(I);
-                    if (CI) {
-                        Function* Callee = CI->getCalledFunction();
-                        if (Callee && Callee->getName().contains("__builtin_IB_atomic") && Callee->getName().contains("global"))
-                            globalAtomicCallInstFound = true;
-                    }
-                }
-                for (auto BFI = falseDestBB->begin(), BFE = falseDestBB->end(); BFI != BFE;) {
-                    Instruction* I = &(*BFI++);
-                    CallInst* CI = dyn_cast<CallInst>(I);
-                    if (CI) {
-                        Function* Callee = CI->getCalledFunction();
-                        if (Callee && Callee->getName().contains("__builtin_IB_atomic") && Callee->getName().contains("local"))
-                            localAtomicCallInstFound = true;
-                    }
-                }
-                isAtomicBrInstr = globalAtomicCallInstFound & localAtomicCallInstFound;
-
-                if (isAtomicBrInstr) {
-
-                    Instruction* conditionInstruction = cast<Instruction>(BrI->getCondition());
-                    Value* ptr = conditionInstruction->getOperand(0);
-                    if (isa<ConstantPointerNull>(ptr)){
-                        return changed;
-                    }
-
-                    // check if pointer address space is local
-                    // initial assumtion - global
-                    bool isGlobalAtomic = false;
-                    toBeDeleted = BrI->getSuccessor(1);
-                    toBeKept = BrI->getSuccessor(0);
-
-                    if (ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL) {
-                        isGlobalAtomic = true;
-                        toBeDeleted = BrI->getSuccessor(0);
-                        toBeKept = BrI->getSuccessor(1);
-                    }
-
-                    // update phi node
-                    // find uses of deleted branch
-                    PHINode* PN;
-                    BasicBlock* phiNodeBlock = toBeKept->getUniqueSuccessor();
-                    for (auto BUI = phiNodeBlock->begin(), BUE = phiNodeBlock->end(); BUI != BUE;) {
-                        Instruction* I = &(*BUI++);
-                        PN = dyn_cast<PHINode>(I);
-                        if (PN) {
-                            PN->removeIncomingValue(toBeDeleted, false);
-                        }
-                    }
-
-                    // create new branch instruction
-                    BranchInst* newBranchInst = BranchInst::Create(toBeKept);
-                    newBranchInst->insertAfter(I);
-
-                    // erase old branch instruction & unneccessary BB (could be either local or global)
-                    BrI->eraseFromParent();
-                    toBeDeleted->eraseFromParent();
-
-                    // get successor BB
-                    BasicBlock* CommonSuccessor = toBeKept->getUniqueSuccessor();
-                    if(CommonSuccessor != nullptr){
-                        // merge basic blocks
-                        bool merged = MergeBlockIntoPredecessor(CommonSuccessor);
-                        assert(merged);
-                        merged = MergeBlockIntoPredecessor(toBeKept);
-                        assert(merged);
-
-                        //remove the condition instruction
-                        conditionInstruction->eraseFromParent();
-                        changed = true;
-                    }
-                }
-            }
-        }
-    }
-    return changed;
 }
 
 void GASPropagator::populateResolvableLoopPHIsForLoop(const Loop* L) {
