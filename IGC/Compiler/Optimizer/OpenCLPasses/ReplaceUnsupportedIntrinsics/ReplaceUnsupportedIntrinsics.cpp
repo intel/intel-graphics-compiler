@@ -892,7 +892,7 @@ void ReplaceUnsupportedIntrinsics::replaceExpect(IntrinsicInst* MS)
   Replaces llvm.fshl.* and llvm.fshr.* funnel shift intrinsics.
   E.g. for fshl we would produce a following sequence:
   %r = call i8 @llvm.fshl.i8(i8 %a, i8 %b, i8 %c) =>
-  %modRes = urem i8 %c, 8        // get the modulo of shift value
+  %modRes = and i8 %c, 7         // (urem i8 %c, 8 ) get the modulo of shift value
   %subRes = sub i8 8, %modRes    // subtract from the type's number of bits
   %shlRes = shl i8 %a, %modRes   // shift the bits according to instruction spec
   %shrRes = lshr i8 %b, %subRes
@@ -916,11 +916,14 @@ void ReplaceUnsupportedIntrinsics::replaceFunnelShift(IntrinsicInst* I) {
         }
     }
 
+    IGC_ASSERT(isPowerOf2_32(sizeInBits));
     Value* numBits = Builder.getIntN(sizeInBits, sizeInBits);
+    Value* mask = Builder.getIntN(sizeInBits, sizeInBits - 1);
     if (auto IVT = dyn_cast<IGCLLVM::FixedVectorType>(I->getType())) {
         numBits = ConstantVector::getSplat(IGCLLVM::getElementCount((uint32_t)IVT->getNumElements()), cast<Constant>(numBits));
+        mask = ConstantVector::getSplat(IGCLLVM::getElementCount((uint32_t)IVT->getNumElements()), cast<Constant>(mask));
     }
-    auto shiftModulo = Builder.CreateURem(I->getArgOperand(2), numBits);
+    auto shiftModulo = Builder.CreateAnd(I->getArgOperand(2), mask);
     auto negativeShift = Builder.CreateSub(numBits, shiftModulo);
     if (I->getIntrinsicID() == Intrinsic::fshr) {
         std::swap(shiftModulo, negativeShift);
