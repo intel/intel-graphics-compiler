@@ -4422,7 +4422,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
                         unsigned int size_in_bytes = (unsigned int)inst->getType()->getPrimitiveSizeInBits() / 8;
                         if (size_in_bytes)
                         {
-                            uint maxImmConstantSizePushed = modMD->immConstant.sizes[offsetIntoMergedBuffer];
+                            uint maxImmConstantSizePushed = !modMD->immConstant.sizes.empty() ? modMD->immConstant.sizes[offsetIntoMergedBuffer] : modMD->immConstant.data.size();
                             char* offset = &(modMD->immConstant.data[0]) + offsetIntoMergedBuffer;
                             Value* ICBbuffer = UndefValue::get(IGCLLVM::FixedVectorType::get(inst->getType(), maxImmConstantSizePushed / size_in_bytes));
                             if (inst->getType()->isFloatTy())
