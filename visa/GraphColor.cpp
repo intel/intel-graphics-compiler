@@ -10739,11 +10739,7 @@ int GlobalRA::coloringRegAlloc()
                 if (iterationNo == 0 && !fastCompile &&
                     kernel.getOption(vISA_DoSplitOnSpill))
                 {
-                    if (builder.getOption(vISA_RATrace))
-                    {
-                        std::cout << "\t--var split around loop\n";
-                    }
-                    LoopVarSplit loopSplit(kernel, &coloring, &liveAnalysis);
+                    LoopVarSplit loopSplit(kernel, &coloring, &rpe);
                     kernel.fg.getLoops().computePreheaders();
                     loopSplit.run();
                 }

@@ -32,23 +32,10 @@ public:
     std::unordered_map<G4_BB*, std::unordered_set<G4_INST*>> insts;
 };
 
-class CComparator
-{
-public:
-    bool operator()(const G4_Declare* first, const G4_Declare* second) const
-    {
-        return first->getDeclId() < second->getDeclId();
-    }
-};
-
 class LoopVarSplit
 {
 public:
-    LoopVarSplit(G4_Kernel& k, GraphColor* c, const LivenessAnalysis* liveAnalysis);
-    ~LoopVarSplit()
-    {
-        delete rpe;
-    }
+    LoopVarSplit(G4_Kernel& k, GraphColor* c, RPE* r);
 
     void run();
 
@@ -57,7 +44,6 @@ public:
     unsigned int getMaxRegPressureInLoop(Loop& loop);
     void dump(std::ostream& of = std::cerr);
 
-    static void removeAllSplitInsts(GlobalRA* gra, G4_Declare* dcl);
     static void removeSplitInsts(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb);
     static bool removeFromPreheader(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb, INST_LIST_ITER filledInstIter);
     static bool removeFromLoopExit(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb, INST_LIST_ITER filledInstIter);
@@ -65,12 +51,11 @@ public:
 
 private:
     bool split(G4_Declare* dcl, Loop& loop);
-    void copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, AugmentationMasks augMask, bool pushBack = true);
+    void copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, bool pushBack = true);
     void replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl);
     void replaceDst(G4_DstRegRegion* dst, G4_Declare* dcl);
     G4_Declare* getNewDcl(G4_Declare* dcl1, G4_Declare* dcl2);
     std::vector<Loop*> getLoopsToSplitAround(G4_Declare* dcl);
-    void adjustLoopMaxPressure(Loop& loop, unsigned int numRows);
 
     G4_Kernel& kernel;
     GraphColor* coloring = nullptr;
@@ -81,15 +66,13 @@ private:
     std::unordered_set<G4_Declare*> spilledDclSet;
 
     // store spill cost for each dcl
-    std::map<G4_Declare*, float, CComparator> dclSpillCost;
+    std::map<G4_Declare*, float> dclSpillCost;
 
     std::unordered_map<G4_Declare*, G4_Declare*> oldNewDcl;
 
     std::unordered_map<Loop*, std::unordered_set<G4_Declare*>> splitsPerLoop;
 
     std::unordered_map<Loop*, unsigned int> maxRegPressureCache;
-
-    std::unordered_map<Loop*, unsigned int> scalarBytesSplit;
 
     // a spilled dcl may be split multiple times, once per loop
     // store this information to uplevel to GlobalRA class so

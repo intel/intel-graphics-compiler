@@ -14,15 +14,10 @@ SPDX-License-Identifier: MIT
 
 namespace vISA
 {
-    RPE::RPE(const GlobalRA& g, const LivenessAnalysis* l, DECLARE_LIST* spills) : m(1024), gra(g), liveAnalysis(l), live(l->getNumSelectedVar()),
+    RPE::RPE(const GlobalRA& g, const LivenessAnalysis* l) : m(1024), gra(g), liveAnalysis(l), live(l->getNumSelectedVar()),
         vars(l->vars)
     {
         options = g.kernel.getOptions();
-        if (spills)
-        {
-            std::for_each(spills->begin(), spills->end(),
-                [&](const G4_Declare* dcl) { spilledVars.insert(dcl); });
-        }
     }
 
     void RPE::run()
@@ -144,8 +139,6 @@ namespace vISA
             {
                 auto range = vars[i];
                 G4_Declare* rootDcl = range->getDeclare()->getRootDeclare();
-                if (isSpilled(rootDcl))
-                    continue;
                 if (rootDcl->getNumElems() > 1)
                 {
                     regPressure += rootDcl->getNumRows();
@@ -173,21 +166,18 @@ namespace vISA
         auto change = before^after;
         if (change)
         {
-            auto dcl = vars[id]->getDeclare();
-            if (isSpilled(dcl))
-                return;
             // For <1 GRF variable we have to take alignment into consideration as well when computing register pressure.
             // For now we double each <1GRF variable's size if its alignment also exceeds its size.
             // Alternative is to simply take the alignment as the size, but it might cause performance regressions
             // due to being too conservative (i.e., a GRF-aligned variable may share physical GRF with several other
-            auto dclSize = dcl->getByteSize();
-            if (dclSize < gra.builder.getGRFSize() && dclSize < static_cast<uint32_t>(dcl->getSubRegAlign()) * 2)
+            auto dclSize = vars[id]->getDeclare()->getByteSize();
+            if (dclSize < gra.builder.getGRFSize() && dclSize < static_cast<uint32_t>(vars[id]->getDeclare()->getSubRegAlign()) * 2)
             {
                 dclSize *= 2;
             }
 
             double delta = dclSize < gra.builder.getGRFSize() ?
-                dclSize / (double) gra.builder.getGRFSize() : (double) dcl->getNumRows();
+                dclSize / (double) gra.builder.getGRFSize() : (double) vars[id]->getDeclare()->getNumRows();
             if (before & change)
             {
                 if (regPressure < delta)

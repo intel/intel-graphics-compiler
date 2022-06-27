@@ -947,8 +947,7 @@ bool VarSplitPass::isSplitVarLocal(G4_Declare* dcl)
     return (*it).second.isDefUsesInSameBB();
 }
 
-LoopVarSplit::LoopVarSplit(G4_Kernel& k, GraphColor* c, const LivenessAnalysis* liveAnalysis) :
-    kernel(k), coloring(c), references(k)
+LoopVarSplit::LoopVarSplit(G4_Kernel& k, GraphColor* c, RPE* r) : kernel(k), coloring(c), rpe(r), references(k)
 {
     for (auto spill : coloring->getSpilledLiveRanges())
     {
@@ -961,11 +960,6 @@ LoopVarSplit::LoopVarSplit(G4_Kernel& k, GraphColor* c, const LivenessAnalysis* 
         auto rootDcl = lrs[i]->getDcl();
         dclSpillCost[rootDcl] = lrs[i]->getSpillCost();
     }
-    DECLARE_LIST spills;
-    std::for_each(coloring->getSpilledLiveRanges().begin(), coloring->getSpilledLiveRanges().end(),
-        [&spills](LiveRange* lr) { spills.push_back(lr->getDcl()); });
-    rpe = new RPE(c->getGRA(), liveAnalysis, &spills);
-    rpe->run();
 }
 
 void LoopVarSplit::run()
@@ -1010,7 +1004,6 @@ void LoopVarSplit::run()
 std::vector<G4_SrcRegRegion*> LoopVarSplit::getReads(G4_Declare* dcl, Loop& loop)
 {
     std::vector<G4_SrcRegRegion*> reads;
-    std::unordered_set<G4_INST*> duplicates;
 
     const auto& uses = references.getUses(dcl);
     for (auto use : *uses)
@@ -1019,9 +1012,6 @@ std::vector<G4_SrcRegRegion*> LoopVarSplit::getReads(G4_Declare* dcl, Loop& loop
         if (loop.contains(bb))
         {
             auto inst = std::get<0>(use);
-            if (duplicates.find(inst) != duplicates.end())
-                continue;
-            duplicates.insert(inst);
             for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
             {
                 auto opnd = inst->getSrc(i);
@@ -1090,55 +1080,6 @@ void LoopVarSplit::dump(std::ostream& of)
     }
 }
 
-void LoopVarSplit::removeAllSplitInsts(GlobalRA* gra, G4_Declare* dcl)
-{
-    // dcl is a spilled split var. remove all split code
-    // for dcl from pre-header and loop exits.
-    // this method is invoked when a split dcl is spilled.
-    MUST_BE_TRUE(gra->splitResults.find(dcl) != gra->splitResults.end(),
-        "didnt find split result");
-    auto& bbs = gra->splitResults[dcl].insts;
-    for (auto& bb : bbs)
-    {
-        bb.first->getInstList().remove_if(
-            [&](G4_INST* candidate)
-            {
-                return (bb.second.find(candidate) != bb.second.end());
-            });
-    }
-}
-
-// This method is invoked to remove spilled split variables from
-// the program.
-//
-// Example before split:
-//
-// V10 = ...
-//
-// loop1:
-// ...
-//     = V10
-//
-// Assume V10 is spilled and split around loop1. Following code
-// would be generated:
-//
-// SP_V10 =
-// spill SP_V10 @ Offset 0
-//
-// preHeader_loop1:
-// fill FL_V10 @ Offset 0
-// LOOP_SPLIT_V10 = FL_V10
-//
-// loop1:
-// ...
-//     = LOOP_SPLIT_V10
-//
-// Now, assume LOOP_SPLIT_V10 spills in later RA iteration.
-// This makes copy to LOOP_SPLIT_V10 in preHeader_loop1 redundant.
-// So we eliminate the fill and copy from preHeader_loop1.
-// Similarly, such copies may also be present in loop exit BB that
-// require removal. This method eliminates such spilled split
-// variables from the program.
 void LoopVarSplit::removeSplitInsts(GlobalRA* gra, G4_Declare* spillDcl, G4_BB* bb)
 {
     auto it = gra->splitResults.find(spillDcl);
@@ -1178,6 +1119,11 @@ bool LoopVarSplit::removeFromPreheader(GlobalRA* gra, G4_Declare* spillDcl, G4_B
         auto inst = *filledInstIter;
         if (inst->isRawMov())
         {
+            auto dstTopDcl = inst->getDst()->getTopDcl();
+            auto it = gra->splitResults.find(dstTopDcl);
+            if (it == gra->splitResults.end())
+                return false;
+
             removeSplitInsts(gra, spillDcl, bb);
             return true;
         }
@@ -1244,15 +1190,13 @@ bool LoopVarSplit::split(G4_Declare* dcl, Loop& loop)
     auto& splitData = coloring->getGRA().splitResults[splitDcl];
     splitData.origDcl = dcl;
 
-    auto augMask = coloring->getGRA().getAugmentationMask(dcl);
-
     // emit TMP = dcl in preheader
-    copy(loop.preHeader, splitDcl, dcl, &splitData, augMask);
+    copy(loop.preHeader, splitDcl, dcl, &splitData);
 
     // emit dcl = TMP in loop exit
     if (dsts.size() > 0)
     {
-        copy(loop.getLoopExits().front(), dcl, splitDcl, &splitData, augMask, false);
+        copy(loop.getLoopExits().front(), dcl, splitDcl, &splitData, false);
     }
 
     // replace all occurences of dcl in loop with TMP
@@ -1267,7 +1211,7 @@ bool LoopVarSplit::split(G4_Declare* dcl, Loop& loop)
     return true;
 }
 
-void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, AugmentationMasks mask, bool pushBack)
+void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, bool pushBack)
 {
     // create mov instruction to copy dst->src
     // multiple mov instructions may be created depending on size of dcls
@@ -1292,8 +1236,8 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
             // insert immediately after label instruction, if one exists
             for (auto it = bb->begin(); it != bb->end(); ++it)
             {
-                auto cinst = (*it);
-                if (cinst->isLabel())
+                auto inst = (*it);
+                if (inst->isLabel())
                     continue;
                 bb->insertAfter(it, inst);
                 splitData->insts[bb].insert(inst);
@@ -1305,18 +1249,6 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
             coloring->getGRA().addEUFusionNoMaskWAInst(bb, inst);
         }
     };
-
-    // if variable fits within 1 or 2 GRFs and uses Default32Bit augmentation mask
-    // then make the copy use M0 mask instead of using WriteEnable.
-    unsigned int instOption = InstOpt_WriteEnable;
-    if (mask == AugmentationMasks::Default32Bit)
-    {
-        if (bytesRemaining % kernel.numEltPerGRF<Type_UD>() == 0 &&
-            bytesRemaining <= kernel.numEltPerGRF<Type_UB>() * 2)
-        {
-            instOption = G4_InstOption::InstOpt_M0;
-        }
-    }
 
     // first copy full GRF rows
     if (numRows > 1 || (dst->getTotalElems() * dst->getElemSize() == kernel.getGRFSize()))
@@ -1333,7 +1265,7 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
 
             auto dstRgn = kernel.fg.builder->createDst(dst->getRegVar(), (short)i, 0, 1, Type_F);
             auto srcRgn = kernel.fg.builder->createSrc(src->getRegVar(), (short)i, 0, rd, Type_F);
-            auto inst = kernel.fg.builder->createMov(execSize, dstRgn, srcRgn, instOption, false);
+            auto inst = kernel.fg.builder->createMov(execSize, dstRgn, srcRgn, InstOpt_WriteEnable, false);
 
             insertCopy(inst);
             bytesRemaining -= (execSize.value * G4_Type_Table[Type_F].byteSize);
@@ -1380,9 +1312,7 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
         G4_DstRegRegion* dstRgn = kernel.fg.builder->createDst(dst->getRegVar(), row, col, 1, type);
         G4_SrcRegRegion* srcRgn = kernel.fg.builder->createSrc(src->getRegVar(), row, col, rd, type);
 
-        MUST_BE_TRUE(instOption == InstOpt_WriteEnable, "Unexpected inst option");
-
-        auto inst = kernel.fg.builder->createMov(execSize, dstRgn, srcRgn, instOption, false);
+        auto inst = kernel.fg.builder->createMov(execSize, dstRgn, srcRgn, InstOpt_WriteEnable, false);
 
         insertCopy(inst);
 
@@ -1397,7 +1327,7 @@ void LoopVarSplit::replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl)
 
     auto newSrcRgn = kernel.fg.builder->createSrc(dcl->getRegVar(), src->getRegOff(),
         src->getSubRegOff(), src->getRegion(), src->getType(), src->getAccRegSel());
-    newSrcRgn->setModifier(src->getModifier());
+
     auto inst = src->getInst();
     for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
     {
@@ -1485,11 +1415,8 @@ std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
 
     auto OrderByRegPressure = [&](Loop* loop1, Loop* loop2)
     {
-        auto maxRP1 = getMaxRegPressureInLoop(*loop1);
-        auto maxRP2 = getMaxRegPressureInLoop(*loop2);
-        if (maxRP1 != maxRP2)
-            return maxRP1 > maxRP2;
-        return loop1->getNestingLevel() > loop2->getNestingLevel();
+        return getMaxRegPressureInLoop(*loop1) >
+            getMaxRegPressureInLoop(*loop2);
     };
 
     std::set<Loop*, decltype(OrderByRegPressure)> innerMostLoops(OrderByRegPressure);
@@ -1537,10 +1464,6 @@ std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
 
     for (auto loop : innerMostLoops)
     {
-        // cannot split without pre-header
-        if (!loop->preHeader)
-            continue;
-
         bool dontSplit = false;
         for (auto splitLoop : loopsToSplitAround)
         {
@@ -1555,78 +1478,26 @@ std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
         if (dontSplit)
             continue;
 
-        auto subRegAlign = coloring->getGRA().getSubRegAlign(dcl);
         // apply cost heuristic
-        if (dcl->getNumElems() == 1 && subRegAlign != coloring->getGRA().kernel.fg.builder->getGRFAlign())
+        if (dcl->getNumRows() <= 2)
         {
-            // unaligned scalars can be packed so dont adjust loop pressure for each unaligned scalar.
-            // we may not be able to trivially pack aligned scalars so use other branch to handle them.
-            if (getMaxRegPressureInLoop(*loop) < (unsigned int)(1.0f * (float)kernel.getNumRegTotal()))
-            {
-                auto scalarBytes = scalarBytesSplit[loop];
-                if (scalarBytes >= kernel.numEltPerGRF<Type_UB>())
-                {
-                    // After packing, scalars contribute to 1 full GRF worth of storage.
-                    // Adjust loop max pressure accordingly.
-                    adjustLoopMaxPressure(*loop, 1);
-                    scalarBytesSplit[loop] -= kernel.numEltPerGRF<Type_UB>();
-                }
-                // scalar
+            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(1.5f * (float)kernel.getNumRegTotal()))
                 loopsToSplitAround.push_back(loop);
-                scalarBytesSplit[loop] += dcl->getByteSize();
-            }
-        }
-        else if (dcl->getNumRows() <= 2)
-        {
-            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(0.95f * (float)kernel.getNumRegTotal()))
-            {
-                loopsToSplitAround.push_back(loop);
-                if (dcl->getNumElems() > 1 ||
-                    subRegAlign == coloring->getGRA().kernel.fg.builder->getGRFAlign())
-                    adjustLoopMaxPressure(*loop, dcl->getNumRows());
-            }
         }
         else if (dcl->getNumRows() <= 4)
         {
-            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(0.9f * (float)kernel.getNumRegTotal()))
-            {
+            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(0.95f * (float)kernel.getNumRegTotal()))
                 loopsToSplitAround.push_back(loop);
-                adjustLoopMaxPressure(*loop, dcl->getNumRows());
-            }
         }
         else if (dcl->getNumRows() > 4)
         {
             // splitting dcls with > 4 rows should be very rare
-            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(0.75f * (float)kernel.getNumRegTotal()))
-            {
+            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(0.6f * (float)kernel.getNumRegTotal()))
                 loopsToSplitAround.push_back(loop);
-                adjustLoopMaxPressure(*loop, dcl->getNumRows());
-            }
         }
     }
 
     return loopsToSplitAround;
-}
-
-// When a variable is split in a loop, it increases register pressure
-// in the loop because the split variable is live throughout the loop.
-// Adjust max reg pressure data structure accordingly as it is used in
-// cost heuristic for split decision.
-void LoopVarSplit::adjustLoopMaxPressure(Loop& loop, unsigned int numRows)
-{
-    unsigned int newMaxRegPressure = getMaxRegPressureInLoop(loop) + numRows;
-    maxRegPressureCache[&loop] = newMaxRegPressure;
-    for (auto& nested : loop.immNested)
-    {
-        adjustLoopMaxPressure(*nested, numRows);
-    }
-    Loop* parent = loop.parent;
-    while (parent)
-    {
-        if (getMaxRegPressureInLoop(*parent) < newMaxRegPressure)
-            maxRegPressureCache[parent] = newMaxRegPressure;
-        parent = parent->parent;
-    }
 }
 
 };
