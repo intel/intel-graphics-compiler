@@ -49,11 +49,14 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/PatternMatch.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/LoopPass.h>
+#include "llvm/IR/DebugInfo.h"
+#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <set>
 #include "Probe/Assertion.h"
@@ -1116,7 +1119,6 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator& I)
                         newConstantFloat.changeSign();
                         Constant* newConstant = ConstantFP::get(fmulSrc->getContext(), newConstantFloat);
                         fmulSrc->setOperand(i, newConstant);
-                        I.replaceAllUsesWith(fmulInst);
                         replaced = true;
                         break;
                     }
@@ -1127,11 +1129,33 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator& I)
             if (!replaced)
             {
                 fmulInst->setOperand(0, BinaryOperator::CreateFSub(ConstantFP::get(fmulInst->getType(), 0), fmulInst->getOperand(0), "", fmulInst));
-                I.replaceAllUsesWith(fmulInst);
+
+                // DIExpression in debug variable instructions must be extended with additional DWARF opcode:
+                // DW_OP_neg
+                Value* fsub = fmulInst->getOperand(0);
+                if (auto fsubInstr = dyn_cast<Instruction>(fsub)) {
+                    Value* fsubOp0 = fsubInstr->getOperand(1);
+                    if (auto fsubOp0Instr = dyn_cast<Instruction>(fsubOp0)) {
+                        if (Instruction* NewfmulInst = dyn_cast<Instruction>(fmulInst)) {
+                            const DebugLoc& DL = NewfmulInst->getDebugLoc();
+                            fsubInstr->setDebugLoc(DL);
+                            auto* Val = static_cast<Value*>(fmulInst);
+                            SmallVector<DbgValueInst*, 1> DbgValues;
+                            llvm::findDbgValues(DbgValues, Val);
+                            for (auto DV : DbgValues) {
+                                DIExpression* OldExpr = DV->getExpression();
+                                DIExpression* NewExpr = DIExpression::append(
+                                    OldExpr, { dwarf::DW_OP_neg });
+                                IGCLLVM::setExpression(DV, NewExpr);
+                            }
+                        }
+                    }
+                }
             }
             ++Stat_FloatRemoved;
             m_isChanged = true;
             patternFound = true;
+            I.replaceAllUsesWith(fmulInst);
         }
     }
     return patternFound;
@@ -1367,6 +1391,10 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator& I)
             if (faddInst->getOperand(i) == I.getOperand(1))
             {
                 Value* div = BinaryOperator::CreateFDiv(faddInst->getOperand(1 - i), I.getOperand(1), "", faddInst);
+                const DebugLoc& DL = faddInst->getDebugLoc();
+                if (Instruction* divInst = dyn_cast<Instruction>(div))
+                    divInst->setDebugLoc(DL);
+
                 Value* one = ConstantFP::get(I.getType(), 1.0);
 
                 if (faddInst->getOpcode() == Instruction::FAdd)
