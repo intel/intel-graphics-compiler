@@ -1923,73 +1923,70 @@ static void TranslateDWordAtomic(LSC_OP SubOp, CallInst *CI) {
 
 static void TranslateSVMAtomic(LSC_OP SubOp, CallInst *CI) {
   IntegerType *I8Ty = Type::getInt8Ty(CI->getContext());
-  auto CZeroInt8 = ConstantInt::get(I8Ty, 0);
+  auto *CZeroInt8 = ConstantInt::get(I8Ty, 0);
   IntegerType *I16Ty = Type::getInt16Ty(CI->getContext());
-  auto COneInt16 = ConstantInt::get(I16Ty, 1);
+  auto *COneInt16 = ConstantInt::get(I16Ty, 1);
   IntegerType *I32Ty = Type::getInt32Ty(CI->getContext());
-  auto CZeroInt32 = ConstantInt::get(I32Ty, 0);
+  auto *CZeroInt32 = ConstantInt::get(I32Ty, 0);
 
   unsigned DataIdx = 2;
   unsigned PredIdx = 0;
   unsigned AddrIdx = 1;
 
+  Value *Pred = CI->getArgOperand(PredIdx);
+  Value *Addr = CI->getArgOperand(AddrIdx);
+
   auto Width =
-      cast<IGCLLVM::FixedVectorType>(CI->getArgOperand(PredIdx)->getType())
-          ->getNumElements();
-  IGC_ASSERT(Width == 8 || Width == 16 || Width == 32);
-  SmallVector<Value *, 15> Args;
-  Args.push_back(ExpandPredicate(CI, PredIdx, 32));         // #0, Predicate
-  Args.push_back(ConstantInt::get(I8Ty, SubOp));            // #1, subopcode
-  Args.push_back(CZeroInt8);                                // #2, L1 control
-  Args.push_back(CZeroInt8);                                // #3, L3 control
-  Args.push_back(COneInt16);                                // #4, scale
-  Args.push_back(CZeroInt32);                               // #5, immed-offset
-  Args.push_back(LSCDatumSize(CI->getArgOperand(DataIdx))); // #6
-  Args.push_back(ConstantInt::get(I8Ty, LSC_DATA_ORDER_NONTRANSPOSE)); // #7
-  Args.push_back(
-      ConstantInt::get(I8Ty, LSCVectorSize(1))); // #8, num-elem is one
-  Args.push_back(CZeroInt8);                     // #9, no-channel-mask
-  Args.push_back(CZeroInt32);                    // #10, SurfaceIndex
-  Args.push_back(ExpandAddrOrData(CI, AddrIdx, Width, 1, 32)); // #11, address
+      cast<IGCLLVM::FixedVectorType>(Pred->getType())->getNumElements();
+  IGC_ASSERT(isPowerOf2_32(Width) && Width <= 32);
+
+  SmallVector<Value *, 15> Args = {
+      Pred,                                     // #0, Predicate
+      ConstantInt::get(I8Ty, SubOp),            // #1, subopcode
+      CZeroInt8,                                // #2, L1 control
+      CZeroInt8,                                // #3, L3 control
+      COneInt16,                                // #4, scale
+      CZeroInt32,                               // #5, immed-offset
+      LSCDatumSize(CI->getArgOperand(DataIdx)), // #6, datum size
+      ConstantInt::get(I8Ty, LSCVectorSize(1)), // #7, num-elem is one
+      ConstantInt::get(I8Ty, LSC_DATA_ORDER_NONTRANSPOSE), // #8
+      CZeroInt8, // #9, no-channel-mask
+      Addr,      // #10, address
+  };
 
   Value *DataV = CI->getArgOperand(DataIdx);
-  auto *DataVector = cast<IGCLLVM::FixedVectorType>(DataV->getType());
-  IGC_ASSERT_MESSAGE(Width == DataVector->getNumElements(),
-    "Cannot translate svm-atomics more than one element per lane");
-  auto DataV32Ty = IGCLLVM::FixedVectorType::get(
-      DataVector->getElementType(), 32);
+  auto *DataVTy = cast<IGCLLVM::FixedVectorType>(DataV->getType());
+  IGC_ASSERT_MESSAGE(
+      Width == DataVTy->getNumElements(),
+      "Cannot translate svm-atomics more than one element per lane");
+
   if (SubOp == LSC_ATOMIC_IINC || SubOp == LSC_ATOMIC_IDEC) {
-    Args.push_back(UndefValue::get(DataV32Ty));
-    Args.push_back(UndefValue::get(DataV32Ty));
+    Args.push_back(UndefValue::get(DataVTy)); // #11, nil
+    Args.push_back(UndefValue::get(DataVTy)); // #12, nil
   } else if (SubOp == LSC_ATOMIC_ICAS || SubOp == LSC_ATOMIC_FCAS) {
-    // exchange source ooperand order
-    Args.push_back(ExpandAddrOrData(CI, DataIdx+1, Width, 1, 32)); // #12, src1
-    Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #13, src0
+    // exchange source operand order
+    Args.push_back(CI->getArgOperand(DataIdx + 1)); // #11, src1
+    Args.push_back(CI->getArgOperand(DataIdx));     // #12, src0
     DataIdx += 2;
   } else {
-    Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #12, src0
-    Args.push_back(UndefValue::get(DataV32Ty));
+    Args.push_back(CI->getArgOperand(DataIdx)); // #11, src0
+    Args.push_back(UndefValue::get(DataVTy));   // #12, nil
     DataIdx++;
   }
+  Args.push_back(CZeroInt32);                 // #13, SurfaceIndex
+  Args.push_back(CI->getArgOperand(DataIdx)); // #14, old-data
 
-  Args.push_back(ExpandAddrOrData(CI, DataIdx, Width, 1, 32)); // #14, old-data
+  // create the call to lsc.xatomic.stateless instructions
+  Type *Tys[] = {DataVTy, Pred->getType(), Addr->getType()};
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GenXIntrinsic::genx_lsc_xatomic_stateless, Tys);
 
-  // create the call to 32 wide lsc.atomic.stateless instructions.
-  Type *Tys[] = {Args[0]->getType(), Args[11]->getType(), DataV32Ty};
-  auto Decl = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), GenXIntrinsic::genx_lsc_atomic_stateless, Tys);
-  auto NewInst = CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
+  auto *NewInst =
+      CallInst::Create(Decl, Args, CI->getName() + VALUE_NAME(".lsc"), CI);
   NewInst->setDebugLoc(CI->getDebugLoc());
-  if (!CI->use_empty()) {
-    if (Width < 32) {
-      Region R(CI->getType());
-      R.Width = Width;
-      R.NumElements = Width;
-      auto NewVec = R.createRdRegion(NewInst, "", CI, CI->getDebugLoc());
-      CI->replaceAllUsesWith(NewVec);
-    } else
-      CI->replaceAllUsesWith(NewInst);
-  }
+
+  if (!CI->use_empty())
+    CI->replaceAllUsesWith(NewInst);
 }
 
 static void ComputeScatterAddress(CallInst *CI, unsigned ScaleIdx,
