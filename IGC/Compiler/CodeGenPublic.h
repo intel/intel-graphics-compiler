@@ -1264,6 +1264,7 @@ namespace IGC
         virtual uint32_t getNumGRFPerThread() const;
         virtual bool forceGlobalMemoryAllocation() const;
         virtual bool allocatePrivateAsGlobalBuffer() const;
+        virtual bool noLocalToGenericOptionEnabled() const;
         virtual bool enableTakeGlobalAddress() const;
         virtual int16_t getVectorCoalescingControl() const;
         virtual uint32_t getPrivateMemoryMinimalSizePerThread() const;
@@ -1764,6 +1765,7 @@ namespace IGC
             bool CompileOneKernelAtTime = false;
 
             // Generic address related
+            bool NoLocalToGeneric = false;
             bool ForceGlobalMemoryAllocation = false;
 
             // -1 : initial value that means it is not set from cmdline
@@ -1914,6 +1916,7 @@ namespace IGC
         uint32_t getNumThreadsPerEU() const override;
         bool forceGlobalMemoryAllocation() const override;
         bool allocatePrivateAsGlobalBuffer() const override;
+        bool noLocalToGenericOptionEnabled() const override;
         bool enableTakeGlobalAddress() const override;
         int16_t getVectorCoalescingControl() const override;
         uint32_t getPrivateMemoryMinimalSizePerThread() const override;
