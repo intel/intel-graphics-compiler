@@ -149,6 +149,11 @@ elseif(IGC_BUILD__LLVM_PREBUILDS)
     ${LLD_ELF_LLVM_DEPS}
     lldCommon)
 
+  if(LLVM_ENABLE_ZLIB)
+    find_package(ZLIB)
+    target_link_libraries(lldELF INTERFACE ZLIB::ZLIB)
+  endif()
+
   if(NOT DEFINED IGC_OPTION__LLDELF_H_DIR)
     set(IGC_OPTION__LLDELF_H_DIR ${LLVM_ROOT})
   endif()
