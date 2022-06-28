@@ -2428,6 +2428,22 @@ namespace IGC
         int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
         bool noRetry = ((subGrpSize > 0 || pOutput->m_scratchSpaceUsedBySpills < 1000) &&
             ctx->m_instrTypes.mayHaveIndirectOperands);
+        float threshold = 0.0f;
+        if (ctx->platform.getGRFSize() >= 64)
+        {
+            if (pShader->m_dispatchSize == SIMDMode::SIMD32)
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold)) / 100.0f;
+            else if (pShader->m_dispatchSize == SIMDMode::SIMD16)
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold)) / 100.0f;
+        }
+        else
+        {
+            if (pShader->m_dispatchSize == SIMDMode::SIMD16)
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold)) / 100.0f;
+            else if (pShader->m_dispatchSize == SIMDMode::SIMD8)
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold)) / 100.0f;
+        }
+        noRetry = noRetry || (pShader->m_spillCost < threshold);
 
         bool optDisable = false;
         if (ctx->getModuleMetaData()->compOpt.OptDisable)

@@ -4181,25 +4181,35 @@ namespace IGC
         if (canAbortOnSpill)
         {
             SaveOption(vISA_AbortOnSpill, true);
-            if (AvoidRetryOnSmallSpill())
+            if (AvoidRetryOnSmallSpill())  // only applied to pixel shader
             {
                 // 2 means #spill/fill is roughly 1% of #inst
                 // ToDo: tune the threshold
                 if (m_program->m_dispatchSize == SIMDMode::SIMD8)
                     SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
-
                 else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                {
+                    if (m_program->m_Platform->getGRFSize() >= 64)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+                    else
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
+                }
+                else
                     SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
             }
         }
 
-        if (context->type == ShaderType::OPENCL_SHADER && m_program->m_dispatchSize == SIMDMode::SIMD8)
+        if (context->type == ShaderType::OPENCL_SHADER)
         {
             // AllowSpill is set to false if -cl-intel-no-spill internal option was passed from OpenCL Runtime.
             // It has been implemented to avoid scratch space usage for scheduler kernel.
             if (AllowSpill)
             {
-                SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+                if (m_program->m_dispatchSize == SIMDMode::SIMD8)
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+                else if (m_program->m_Platform->getGRFSize() >= 64 &&
+                         m_program->m_dispatchSize == SIMDMode::SIMD16)
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
             }
         }
 
@@ -5410,9 +5420,14 @@ namespace IGC
     bool CEncoder::AvoidRetryOnSmallSpill() const
     {
         CodeGenContext* context = m_program->GetContext();
-        return context->type == ShaderType::PIXEL_SHADER &&
-            (m_program->m_dispatchSize == SIMDMode::SIMD8 || m_program->m_dispatchSize == SIMDMode::SIMD16) &&
-            context->m_retryManager.IsFirstTry();
+        if (context->type == ShaderType::PIXEL_SHADER && context->m_retryManager.IsFirstTry())
+        {
+            if (m_program->m_Platform->getGRFSize() >= 64)
+                return true;
+            else
+                return m_program->m_dispatchSize == SIMDMode::SIMD8 || m_program->m_dispatchSize == SIMDMode::SIMD16;
+        }
+        return false;
     }
 
     void CEncoder::CreateLocalSymbol(const std::string& kernelName, vISA::GenSymType type,
