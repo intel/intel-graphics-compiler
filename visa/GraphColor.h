@@ -1463,6 +1463,30 @@ namespace vISA
         }
 
     };
+
+    class DynPerfModel
+    {
+    private:
+        std::string Buffer;
+
+    public:
+        G4_Kernel& Kernel;
+        unsigned int NumSpills = 0;
+        unsigned int NumFills = 0;
+        unsigned int NumRAIters = 0;
+        unsigned long long TotalDynInst = 0;
+        unsigned long long FillDynInst = 0;
+        unsigned long long SpillDynInst = 0;
+        // vector item at index i corresponds to nesting level i
+        // #Loops at this nesting level, #Spills, #Fills
+        std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> SpillFillPerNestingLevel;
+
+        DynPerfModel(G4_Kernel& K) : Kernel(K)
+        {}
+
+        void run();
+        void dump();
+    };
 }
 
 // TODO: Refactor code so that stack call related enums,

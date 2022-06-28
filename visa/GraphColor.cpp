@@ -10470,9 +10470,15 @@ int GlobalRA::coloringRegAlloc()
     bool rematDone = false, alignedScalarSplitDone = false;
     bool reserveSpillReg = false;
     VarSplit splitPass(*this);
+    DynPerfModel perfModel(kernel);
 
     while (iterationNo < maxRAIterations)
     {
+        if (builder.getOption(vISA_DynPerfModel))
+        {
+            perfModel.NumRAIters++;
+        }
+
         if (builder.getOption(vISA_RATrace))
         {
             std::cout << "--GRF RA iteration " << iterationNo << "--" << kernel.getName() << "\n";
@@ -10851,6 +10857,11 @@ int GlobalRA::coloringRegAlloc()
                     regChart->dumpRegChart(std::cerr);
                 }
 
+                if (builder.getOption(vISA_DynPerfModel))
+                {
+                    perfModel.run();
+                }
+
                 expandSpillFillIntrinsics(nextSpillOffset);
 
                 if (builder.getOption(vISA_OptReport))
@@ -10993,6 +11004,11 @@ int GlobalRA::coloringRegAlloc()
     if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
     {
         removeSplitDecl();
+    }
+
+    if (builder.getOption(vISA_DynPerfModel))
+    {
+        perfModel.dump();
     }
 
     return VISA_SUCCESS;
@@ -13827,4 +13843,111 @@ void RegChartDump::recordLiveIntervals(const std::vector<G4_Declare*>& dcls)
         auto end = gra.getEndInterval(dcl);
         startEnd.insert(std::make_pair(dcl, std::make_pair(start, end)));
     }
+}
+
+void DynPerfModel::run()
+{
+    char LocalBuffer[1024];
+    for (auto BB : Kernel.fg.getBBList())
+    {
+        for (auto Inst : BB->getInstList())
+        {
+            if (Inst->isLabel() || Inst->isPseudoKill())
+                continue;
+
+            if (Inst->isSpillIntrinsic())
+                NumSpills++;
+            if (Inst->isFillIntrinsic())
+                NumFills++;
+
+            auto InnerMostLoop = Kernel.fg.getLoops().getInnerMostLoop(BB);
+            auto NestingLevel = InnerMostLoop ? InnerMostLoop->getNestingLevel() : 0;
+            if (Inst->isFillIntrinsic())
+            {
+                FillDynInst += (unsigned int)std::pow<unsigned int>(10, NestingLevel) * 1;
+            }
+            else if (Inst->isSpillIntrinsic())
+            {
+                SpillDynInst += (unsigned int)std::pow<unsigned int>(10, NestingLevel) * 1;
+            }
+            TotalDynInst += (unsigned int)std::pow<unsigned int>(10, NestingLevel) * 1;
+        }
+    }
+
+    std::stack<Loop*> Loops;
+    for (auto Loop : Kernel.fg.getLoops().getTopLoops())
+    {
+        Loops.push(Loop);
+    }
+    while (Loops.size() > 0)
+    {
+        auto CurLoop = Loops.top();
+        Loops.pop();
+        unsigned int FillCount = 0;
+        unsigned int SpillCount = 0;
+        unsigned int TotalCount = 0;
+        unsigned int LoopLevel = CurLoop->getNestingLevel();
+        if (SpillFillPerNestingLevel.size() <= LoopLevel)
+            SpillFillPerNestingLevel.resize(LoopLevel + 1);
+        std::get<0>(SpillFillPerNestingLevel[LoopLevel]) += 1;
+        for (auto BB : CurLoop->getBBs())
+        {
+            for (auto Inst : BB->getInstList())
+            {
+                if (Inst->isLabel() || Inst->isPseudoKill())
+                    continue;
+                TotalCount++;
+                if (Inst->isFillIntrinsic())
+                {
+                    FillCount++;
+                    std::get<2>(SpillFillPerNestingLevel[LoopLevel]) += 1;
+                }
+                else if (Inst->isSpillIntrinsic())
+                {
+                    SpillCount++;
+                    std::get<1>(SpillFillPerNestingLevel[LoopLevel]) += 1;
+                }
+            }
+        }
+
+        sprintf_s(LocalBuffer, sizeof(LocalBuffer), "Loop %d @ level %d: %d total, %d fill, %d spill\n", CurLoop->id, LoopLevel, TotalCount, FillCount, SpillCount);
+        Buffer += std::string(LocalBuffer);
+
+        for (auto Child : CurLoop->immNested)
+            Loops.push(Child);
+    };
+}
+
+void DynPerfModel::dump()
+{
+    char LocalBuffer[1024];
+
+    unsigned int InstCount = 0;
+    for (auto BB : Kernel.fg.getBBList())
+    {
+        for (auto Inst : BB->getInstList())
+        {
+            if (!Inst->isLabel() && !Inst->isPseudoKill())
+                InstCount++;
+        }
+    }
+    auto AsmName = Kernel.getOptions()->getOptionCstr(VISA_AsmFileName);
+    auto SpillSize = Kernel.fg.builder->getJitInfo()->spillMemUsed;
+    sprintf_s(LocalBuffer, sizeof(LocalBuffer), "Kernel name: %s\n # BBs : %d\n # Asm Insts: %d\n # RA Iters = %d\n Spill Size = %d\n # Spills: %d\n # Fills : %d\n",
+        AsmName, (int)Kernel.fg.getBBList().size(), InstCount, NumRAIters, SpillSize, NumSpills, NumFills);
+    Buffer += std::string(LocalBuffer);
+
+    sprintf_s(LocalBuffer, sizeof(LocalBuffer), "Total dyn inst: %llu\nFill dyn inst: %llu\nSpill dyn inst: %llu\n", TotalDynInst, FillDynInst, SpillDynInst);
+    Buffer += std::string(LocalBuffer);
+
+    sprintf_s(LocalBuffer, sizeof(LocalBuffer), "Percent Fill/Total dyn inst: %f\n", (double)FillDynInst / ((double)TotalDynInst > 0 ? (double)TotalDynInst : 1) * 100.0f);
+    Buffer += std::string(LocalBuffer);
+
+    for (unsigned int I = 1; I != SpillFillPerNestingLevel.size() && SpillFillPerNestingLevel.size() > 0; ++I)
+    {
+        sprintf_s(LocalBuffer, sizeof(LocalBuffer), "LL%d(#%d): {S-%d, F-%d}, ", I, std::get<0>(SpillFillPerNestingLevel[I]), std::get<1>(SpillFillPerNestingLevel[I]), std::get<2>(SpillFillPerNestingLevel[I]));
+        Buffer += std::string(LocalBuffer);
+    }
+
+    std::cerr << Buffer << std::endl;
 }
