@@ -473,6 +473,8 @@ namespace IGC
         unsigned char NumSamples             = 0;
         std::vector<int> blendOptimizationMode;
         std::vector<int> colorOutputMask;
+
+        bool WaDisableVRS                                           = false;
     };
 
     struct MeshShaderInfo
