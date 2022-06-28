@@ -621,10 +621,17 @@ namespace IGCMetrics
 #endif
     }
 
-    void IGCMetricImpl::CollectDataFromDebugInfo(IGC::DebugInfoData *pDebugInfo, const IGC::VISADebugInfo *pVisaDbgInfo)
+    void IGCMetricImpl::CollectDataFromDebugInfo(llvm::Function* pFunc, IGC::DebugInfoData *pDebugInfo, const IGC::VISADebugInfo *pVisaDbgInfo)
     {
         if (!Enable()) return;
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
+
+        auto pDbgFunc = pFunc->getSubprogram();
+        if (!pDbgFunc || map_Func.find(pDbgFunc) == map_Func.end())
+        {
+            // For case if we have debugInfo not for user kernel
+            return;
+        }
 
         oclProgram.set_device((IGC_METRICS::DeviceType)
             pDebugInfo->m_pShader->m_Platform->getPlatformInfo().eProductFamily);
@@ -942,12 +949,28 @@ namespace IGCMetrics
 
         if (varData)
         {
-            auto callInstr = varData->varTracker;
             auto MDDILocalVariable = varData->varDILocalVariable;
             llvm::MetadataAsValue* MDValue = makeMDasVal(New);
 
-            map_Var[MDDILocalVariable].varTracker = makeTrackCall(
-                funcTrackValue, { MDValue, MDDILocalVariable }, callInstr);
+            llvm::Instruction* insertAfter = nullptr;
+            if (llvm::isa<llvm::Argument>(New))
+            {
+                auto firstInstr = &*llvm::dyn_cast<llvm::Argument>(New)
+                    ->getParent()->getEntryBlock().begin();
+
+                insertAfter = firstInstr;
+            }
+            else if (llvm::isa<llvm::Instruction>(New))
+            {
+                insertAfter = llvm::dyn_cast<llvm::Instruction>(New);
+            }
+            else
+            {
+                IGC_ASSERT_MESSAGE(false, "Unknown llvm type");
+            }
+
+            makeTrackCall(
+                funcTrackValue, { MDValue, MDDILocalVariable }, insertAfter);
         }
 #endif
     }
@@ -1093,7 +1116,7 @@ namespace IGCMetrics
         // spill/fills from IGC to vISA-ID
         CollectSpillFills metricPass(this, CurrentVISA);
 
-        metricPass.visit(pModule);
+        metricPass.visit((llvm::Function*)(CurrentVISA->GetEntryFunction()));
     }
 
     void IGCMetricImpl::UpdateFunctionArgumentsList()
@@ -1520,7 +1543,7 @@ namespace IGCMetrics
 
                 // Map in code any refrence to this variable (for metrics)
                 // by adding callinstr llvm.igc.metric.trackValue in module for tracking
-                map_Var[MDDILocalVariable].varTracker = makeTrackCall(
+                makeTrackCall(
                     funcTrackValue, {MDValue, MDDILocalVariable}, pInstr);
 
                 map_Var[MDDILocalVariable].varDILocalVariable = MDDILocalVariable;

@@ -237,11 +237,12 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
         currShader->ProgramOutput()->m_debugDataGenISASize = 0;
         currShader->ProgramOutput()->m_debugDataGenISA = nullptr;
 
+        m_currShader->GetContext()->metrics.CollectDataFromDebugInfo(
+            m_currShader->entry,
+            &m_currShader->GetDebugInfoData(), &VisaDbgInfo);
+
         if (finalize)
         {
-            m_currShader->GetContext()->metrics.CollectDataFromDebugInfo(
-                &m_currShader->GetDebugInfoData(), &VisaDbgInfo);
-
             IDebugEmitter::Release(m_pDebugEmitter);
         }
     }

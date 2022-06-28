@@ -40,7 +40,6 @@ namespace IGCMetrics
     struct VarData
     {
         IGC_METRICS::VarInfo* var_m;
-        llvm::CallInst* varTracker;
         llvm::MetadataAsValue* varDILocalVariable;
     };
 #endif
@@ -157,6 +156,7 @@ namespace IGCMetrics
             bool IsGeminiLakeWithDoubles);
 
         void CollectDataFromDebugInfo(
+            llvm::Function* pFunc,
             IGC::DebugInfoData *pDebugInfo,
             const IGC::VISADebugInfo *pVisaDbgInfo);
 

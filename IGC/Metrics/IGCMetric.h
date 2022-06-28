@@ -100,7 +100,7 @@ namespace IGCMetrics
 
         void CollectNonUniformLoop(llvm::Function* pFunc, short LoopCount, llvm::Loop* problematicLoop);
 
-        void CollectDataFromDebugInfo(IGC::DebugInfoData *pDebugInfo, const IGC::VISADebugInfo *pDebugDecoder);
+        void CollectDataFromDebugInfo(llvm::Function* pFunc, IGC::DebugInfoData *pDebugInfo, const IGC::VISADebugInfo *pDebugDecoder);
 
         void FinalizeStats();
 
