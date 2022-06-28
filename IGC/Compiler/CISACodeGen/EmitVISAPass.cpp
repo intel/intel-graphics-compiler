@@ -18687,6 +18687,37 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromValue(
         isLoad);
 }
 
+static Optional<LSC_CACHE_OPTS>
+setCacheOptionsForConstantBufferLoads(Instruction& inst, LSC_L1_L3_CC Ctrl)
+{
+    if (const Value* resourcePointer = GetBufferOperand(&inst))
+    {
+        uint addressSpace = resourcePointer->getType()->getPointerAddressSpace();
+        BufferType bufferType = GetBufferType(addressSpace);
+        if ((addressSpace == ADDRESS_SPACE_CONSTANT) ||
+            (bufferType == CONSTANT_BUFFER)          ||
+            (bufferType == BINDLESS_CONSTANT_BUFFER) ||
+            (bufferType == SSH_BINDLESS_CONSTANT_BUFFER))
+        {
+            return translateLSCCacheControlsEnum(Ctrl, true);
+        }
+    }
+    return None;
+}
+
+Optional<LSC_CACHE_OPTS>
+EmitPass::setCacheOptionsForConstantBufferLoads(Instruction& inst) const
+{
+    Optional<LSC_CACHE_OPTS> cacheOpts;
+    if (m_pCtx->type == ShaderType::RAYTRACING_SHADER &&
+        IGC_IS_FLAG_ENABLED(ForceRTConstantBufferCacheCtrl))
+    {
+        auto Ctrl = (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(RTConstantBufferCacheCtrl);
+        if (auto Opts = ::setCacheOptionsForConstantBufferLoads(inst, Ctrl))
+            cacheOpts = *Opts;
+    }
+    return cacheOpts;
+}
 
 static bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad)
 {
@@ -18770,6 +18801,11 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
         cacheOpts = getDefaultRaytracingCachePolicy(isLoad);
     }
 
+    if (inst && isLoad)
+    {
+        if (auto Opts = setCacheOptionsForConstantBufferLoads(*inst))
+            cacheOpts = *Opts;
+    }
 
     return cacheOpts;
 }
@@ -18971,6 +19007,11 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst* inst)
 
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
 
+    if (inst)
+    {
+        if (auto Opts = setCacheOptionsForConstantBufferLoads(*inst))
+            cacheOpts = *Opts;
+    }
 
     emitLscIntrinsicFragments(m_destination, dataSize, dataElems, immOffset,
         [&] (CVariable* gatherDst, int fragIx, LSC_DATA_ELEMS fragElems, int fragImmOffset) {
