@@ -26,8 +26,7 @@ const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
     PlatformInfo(GENX_ICLLP, PlatformGen::GEN11, 10, 32,
         "ICLLP", "ICL", "GEN11", "GEN11LP"),
     PlatformInfo(GENX_TGLLP, PlatformGen::XE, 12, 32,
-        "TGLLP", "DG1", "GEN12LP"
-    ),
+        "TGLLP", "DG1", "GEN12LP", "ADL"),
     PlatformInfo(Xe_XeHPSDV, PlatformGen::XE, 11, 32,
         "XeHP_SDV"),
     PlatformInfo(Xe_DG2, PlatformGen::XE, 13, 32,
