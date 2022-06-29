@@ -224,26 +224,26 @@ InvokeInst* INVOKE(Value *Callee, BasicBlock *NormalDest, BasicBlock *UnwindDest
 {
 #if LLVM_VERSION_MAJOR >= 11
     auto *PTy = cast<PointerType>(Callee->getType());
-    auto *FTy = cast<FunctionType>(PTy->getElementType());
+    auto *FTy = cast<FunctionType>(PTy->getPointerElementType());
 #endif
     return IRB()->CreateInvoke(
 #if LLVM_VERSION_MAJOR >= 11
-	    FTy,
+        FTy,
 #endif
-	    Callee, NormalDest, UnwindDest, Args, Name);
+        Callee, NormalDest, UnwindDest, Args, Name);
 }
 
 InvokeInst* INVOKE(Value *Callee, BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Value *> Args, ArrayRef<OperandBundleDef> OpBundles, const Twine &Name = "")
 {
 #if LLVM_VERSION_MAJOR >= 11
     auto *PTy = cast<PointerType>(Callee->getType());
-    auto *FTy = cast<FunctionType>(PTy->getElementType());
+    auto *FTy = cast<FunctionType>(PTy->getPointerElementType());
 #endif
     return IRB()->CreateInvoke(
 #if LLVM_VERSION_MAJOR >= 11
-	    FTy,
+        FTy,
 #endif
-	    Callee, NormalDest, UnwindDest, Args, OpBundles, Name);
+        Callee, NormalDest, UnwindDest, Args, OpBundles, Name);
 }
 
 ResumeInst* RESUME(Value *Exn)

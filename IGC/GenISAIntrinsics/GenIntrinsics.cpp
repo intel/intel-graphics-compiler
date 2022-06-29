@@ -396,7 +396,7 @@ static std::string getMangledTypeStr(Type* Ty) {
   std::string Result;
   if (PointerType* PTyp = dyn_cast<PointerType>(Ty)) {
     Result += "p" + llvm::utostr(PTyp->getAddressSpace()) +
-      getMangledTypeStr(PTyp->getElementType());
+      getMangledTypeStr(PTyp->getPointerElementType());
   } else if (ArrayType* ATyp = dyn_cast<ArrayType>(Ty)) {
     Result += "a" + llvm::utostr(ATyp->getNumElements()) +
       getMangledTypeStr(ATyp->getElementType());

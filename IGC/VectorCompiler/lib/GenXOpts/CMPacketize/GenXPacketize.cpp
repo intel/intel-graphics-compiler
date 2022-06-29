@@ -1810,7 +1810,7 @@ void GenXPacketize::fixupLLVMIntrinsics(Function &F) {
 GlobalVariable *GenXPacketize::findGlobalExecMask() {
   // look for the global EMask variable if exists
   for (auto &Global : M->getGlobalList()) {
-    auto Ty = Global.getType()->getElementType();
+    auto Ty = Global.getType()->getPointerElementType();
     if (Ty->isVectorTy() &&
         cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() ==
             CMSimdCFLower::MAX_SIMD_CF_WIDTH) {

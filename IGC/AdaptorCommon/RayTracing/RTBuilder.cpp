@@ -3044,7 +3044,7 @@ Value* RTBuilder::getSyncTraceRayControl(Value* ptrCtrl)
 
 void RTBuilder::setSyncTraceRayControl(Value* ptrCtrl, unsigned ctrl)
 {
-    Type* eleType = cast<PointerType>(ptrCtrl->getType())->getElementType();
+    Type* eleType = cast<PointerType>(ptrCtrl->getType())->getPointerElementType();
     this->CreateStore(llvm::ConstantInt::get(eleType, ctrl), ptrCtrl);
 }
 

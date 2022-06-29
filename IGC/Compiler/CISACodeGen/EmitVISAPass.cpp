@@ -19446,7 +19446,7 @@ void EmitPass::emitLSCAtomic(llvm::GenIntrinsicInst* inst)
     // take the bitwidth from the pointer type since the return type might
     // differ; e.g. uint lsc_atomic_add(ushort *, uint) D16U32
     unsigned short bitwidth =
-        ptrType->getElementType()->getScalarSizeInBits();
+        ptrType->getPointerElementType()->getScalarSizeInBits();
     pDstAddr = ReAlignUniformVariable(pDstAddr, EALIGN_GRF);
 
     auto cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(5), false);

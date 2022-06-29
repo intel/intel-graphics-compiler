@@ -112,7 +112,7 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst* bufPtr, Value* bufIdx)
 
         PointerType* const instType = dyn_cast<PointerType>(inst->getType());
         IGC_ASSERT(nullptr != instType);
-        Type* eltType = instType->getElementType();
+        Type* eltType = instType->getPointerElementType();
         PointerType* ptrType = PointerType::get(eltType, outAS);
         inst->mutateType(ptrType);
         // iterate all the uses, put bitcast on the worklist
@@ -211,7 +211,7 @@ Value* FixResourcePtr::GetByteOffset(Instruction* eltPtr)
     builder->SetInsertPoint(eltPtr);
     // decide offset in bytes
     //     may need to create shift
-    uint  eltBytes = int_cast<uint>(DL->getTypeStoreSize(ptrTy->getElementType()));
+    uint  eltBytes = int_cast<uint>(DL->getTypeStoreSize(ptrTy->getPointerElementType()));
     APInt eltSize = APInt(32, eltBytes);
 
     Value* offsetValue = eltIdx;

@@ -1058,7 +1058,7 @@ void TransposeHelperPromote::handlePrivateGather(IntrinsicInst *pInst,
   // count byte offset depending on the type of pointer in gather
   IGC_ASSERT(GatherPtrTy);
   unsigned GatherPtrNumBytes =
-      GatherPtrTy->getElementType()->getPrimitiveSizeInBits() / 8;
+      GatherPtrTy->getPointerElementType()->getPrimitiveSizeInBits() / 8;
   if (CI != nullptr &&
       IsLinearVectorConstantInts(pInst->getArgOperand(2), v0, diff)) {
     R.Indirect = nullptr;
@@ -1138,7 +1138,7 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
   // count byte offset depending on the type of pointer in scatter
   IGC_ASSERT(ScatterPtrTy);
   unsigned ScatterPtrNumBytes =
-      ScatterPtrTy->getElementType()->getPrimitiveSizeInBits() / 8;
+      ScatterPtrTy->getPointerElementType()->getPrimitiveSizeInBits() / 8;
   if (CI != nullptr && IsLinearVectorConstantInts(pInst->getArgOperand(2), v0, diff)) {
     R.Indirect = nullptr;
     R.Width = N;

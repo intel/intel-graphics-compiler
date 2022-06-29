@@ -347,7 +347,7 @@ public:
     IRBuilder<> IRB{&OrigLoad};
     Value *PointerOp = OrigLoad.getPointerOperand();
     Type *Ty = cast<PointerType>(PointerOp->getType()->getScalarType())
-                   ->getElementType();
+                   ->getPointerElementType();
     auto *GEP = IRB.CreateInBoundsGEP(Ty, PointerOp, CreateIdxListForGEP(IRB),
                                       OrigLoad.getName() + "aggr.gep");
     // FIXME: replace a structure alignment with an element alignment
@@ -361,7 +361,7 @@ public:
     IRBuilder<> IRB{&OrigStore};
     Value *PointerOp = OrigStore.getPointerOperand();
     Type *Ty = cast<PointerType>(PointerOp->getType()->getScalarType())
-                   ->getElementType();
+                   ->getPointerElementType();
     auto *GEP = IRB.CreateInBoundsGEP(Ty, PointerOp, CreateIdxListForGEP(IRB),
                                       OrigStore.getName() + "aggr.gep");
     // FIXME: replace a structure alignment with an element alignment

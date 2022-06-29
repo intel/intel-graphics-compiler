@@ -430,7 +430,7 @@ std::string getSPIRVImageSampledTypeName(SPIRVType* Ty) {
 
 bool isSPIRVSamplerType(llvm::Type* Ty) {
   if (auto PT = dyn_cast<PointerType>(Ty))
-    if (auto ST = dyn_cast<StructType>(PT->getElementType()))
+    if (auto ST = dyn_cast<StructType>(PT->getPointerElementType()))
       if (ST->isOpaque()) {
         auto Name = ST->getName();
         if (Name.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + kSPIRVTypeName::Sampler)) {

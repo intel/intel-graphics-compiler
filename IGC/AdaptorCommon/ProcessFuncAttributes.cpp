@@ -127,7 +127,7 @@ static void getContainedStructType(Type *T, SmallPtrSetImpl<StructType *> &Tys)
     }
     else if (auto PT = dyn_cast<PointerType>(T))
     {
-        return getContainedStructType(PT->getElementType(), Tys);
+        return getContainedStructType(PT->getPointerElementType(), Tys);
     }
     else if (auto AT = dyn_cast<ArrayType>(T))
     {

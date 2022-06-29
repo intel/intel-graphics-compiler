@@ -360,7 +360,7 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
     auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> unsigned {
         if (PointerType* PTy = dyn_cast<PointerType>(ptrVal->getType()))
         {
-            Type* pointeeTy = PTy->getElementType();
+            Type* pointeeTy = PTy->getPointerElementType();
             if (!pointeeTy->isSized()) {
                 return 0;
             }
@@ -562,7 +562,7 @@ void StatelessToStateful::visitCallInst(CallInst& I)
                 }
                 else if (isUntypedAtomics(intrinID))
                 {
-                    PointerType* pTy = PointerType::get(dyn_cast<PointerType>(ptr->getType())->getElementType(), addrSpace);
+                    PointerType* pTy = PointerType::get(dyn_cast<PointerType>(ptr->getType())->getPointerElementType(), addrSpace);
                     Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
                     Instruction* pIntrinInst = nullptr;
                     if (intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||

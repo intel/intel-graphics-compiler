@@ -238,7 +238,7 @@ void GenXLowerAggrCopies::expandMemMov2VecLoadStore(T *MemCall) {
   auto Len = (unsigned)cast<ConstantInt>(LenVal)->getZExtValue();
   auto DstPtrV = MemCall->getRawDest();
   IGC_ASSERT(DstPtrV->getType()->isPointerTy());
-  auto I8Ty = cast<PointerType>(DstPtrV->getType())->getElementType();
+  auto I8Ty = cast<PointerType>(DstPtrV->getType())->getPointerElementType();
   IGC_ASSERT(I8Ty->isIntegerTy(8));
   auto VecTy = IGCLLVM::FixedVectorType::get(I8Ty, Len);
   auto SrcAddr = MemCall->getRawSource();

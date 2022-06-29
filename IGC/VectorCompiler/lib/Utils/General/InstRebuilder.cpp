@@ -95,7 +95,7 @@ public:
   Instruction *visitLoadInst(LoadInst &OrigLoad) {
     Value &Ptr = getSingleNewOperand();
     auto *NewLoad =
-        new LoadInst{cast<PointerType>(Ptr.getType())->getElementType(),
+        new LoadInst{cast<PointerType>(Ptr.getType())->getPointerElementType(),
                      &Ptr,
                      "",
                      OrigLoad.isVolatile(),

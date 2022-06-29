@@ -104,7 +104,7 @@ unsigned int KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL)
     // For local pointers, we need the alignment of the *contained* type.
     if (m_argType == ArgType::PTR_LOCAL)
     {
-        typeToAlign = cast<PointerType>(typeToAlign)->getElementType();
+        typeToAlign = cast<PointerType>(typeToAlign)->getPointerElementType();
     }
 
     return (unsigned)DL->getABITypeAlignment(typeToAlign);

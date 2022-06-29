@@ -200,7 +200,7 @@ static unsigned parseNumber(StringRef name, unsigned *offset) {
  * following convention: intel.joint_matrix_acc_8x8_i32_t */
 static void parseMatrixTypeName(const Type *opaqueType, JointMatrixTypeDescription *outDescription) {
     const PointerType *ptrType = cast<PointerType>(opaqueType);
-    StringRef name = ptrType->getElementType()->getStructName();
+    StringRef name = ptrType->getPointerElementType()->getStructName();
 
     unsigned offset = 0;
     if (name.startswith("intel.joint_matrix_packedA_")) {

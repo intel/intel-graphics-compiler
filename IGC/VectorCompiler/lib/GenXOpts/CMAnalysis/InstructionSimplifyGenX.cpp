@@ -393,7 +393,7 @@ Value *llvm::SimplifyGenX(CallInst *I, const DataLayout &DL) {
   Value *V = IGCLLVM::getCalledValue(I);
   Type *Ty = V->getType();
   if (auto *PTy = dyn_cast<PointerType>(Ty))
-    Ty = PTy->getElementType();
+    Ty = PTy->getPointerElementType();
   auto *FTy = cast<FunctionType>(Ty);
   auto *F = dyn_cast<Function>(V);
   if (!F)

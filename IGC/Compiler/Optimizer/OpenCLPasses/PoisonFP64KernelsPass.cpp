@@ -118,7 +118,7 @@ static void poisonKernel(Function *Kernel) {
     }
 
     Constant *PoisonMessage = createPoisonMessage(M, Kernel);
-    Type *MessageType = static_cast<PointerType *>(PoisonMessage->getType())->getElementType();
+    Type *MessageType = static_cast<PointerType *>(PoisonMessage->getType())->getPointerElementType();
 
     std::vector<Value *> Indices = {
         ConstantInt::getSigned(Type::getInt32Ty(Ctx), 0),

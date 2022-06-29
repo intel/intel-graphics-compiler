@@ -36,7 +36,7 @@ enum Enum {
 // and the original pointee type.
 inline llvm::PointerType *changeAddrSpace(llvm::PointerType *OrigTy,
                                           int AddrSpace) {
-  return llvm::PointerType::get(OrigTy->getElementType(), AddrSpace);
+  return llvm::PointerType::get(OrigTy->getPointerElementType(), AddrSpace);
 }
 
 // Changes addrspace inside a vector of pointers type.

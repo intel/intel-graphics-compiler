@@ -301,7 +301,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     {
         BasicBlock* BB = BasicBlock::Create(I.getContext(), BlockName, convergeBlock->getParent(), convergeBlock);
         builder.SetInsertPoint(BB);
-        PointerType* ptrType = pointerType->getElementType()->getPointerTo(addressSpace);
+        PointerType* ptrType = pointerType->getPointerElementType()->getPointerTo(addressSpace);
         Value* ptr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
         if (LoadInst* LI = dyn_cast<LoadInst>(&I))
@@ -378,7 +378,7 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, 
 
     Value* nonLocalLoad = nullptr;
 
-    PointerType* ptrType = pointerType->getElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL);
+    PointerType* ptrType = pointerType->getPointerElementType()->getPointerTo(ADDRESS_SPACE_GLOBAL);
     Value* globalPtr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
 
     if (LoadInst* LI = dyn_cast<LoadInst>(&I))
@@ -458,7 +458,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
         // If Block
         {
             IRBuilder<> ifBuilder(ifBlock);
-            PointerType* ptrType = pointerType->getElementType()->getPointerTo(targetAS);
+            PointerType* ptrType = pointerType->getPointerElementType()->getPointerTo(targetAS);
             newPtr = ifBuilder.CreateAddrSpaceCast(arg, ptrType);
             ifBuilder.CreateBr(convergeBlock);
         }

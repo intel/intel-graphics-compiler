@@ -457,7 +457,7 @@ void CMKernelArgOffset::resolveByValArgs(Function *F) const {
                                                Base->getName() + ".i8");
     for (const auto &Info : KM->arg_lin(&Arg)) {
       Type *Ty = cast<PointerType>(BaseAsI8Ptr->getType()->getScalarType())
-                     ->getElementType();
+                     ->getPointerElementType();
       Value *StoreAddrUntyped = Builder.CreateGEP(Ty, BaseAsI8Ptr, Info.Offset);
       Value *StoreAddrTyped = Builder.CreateBitCast(
           StoreAddrUntyped, Info.Arg->getType()->getPointerTo());

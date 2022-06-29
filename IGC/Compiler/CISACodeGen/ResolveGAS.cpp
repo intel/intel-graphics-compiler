@@ -387,7 +387,7 @@ bool GASPropagator::visitAddrSpaceCastInst(AddrSpaceCastInst& I) {
         return false;
 
     Value* Src = TheVal;
-    if (SrcPtrTy->getElementType() != DstPtrTy->getElementType()) {
+    if (SrcPtrTy->getPointerElementType() != DstPtrTy->getPointerElementType()) {
         BuilderType::InsertPointGuard Guard(IRB);
         IRB.SetInsertPoint(&I);
         Src = IRB.CreateBitCast(Src, DstPtrTy);
@@ -406,11 +406,11 @@ bool GASPropagator::visitBitCastInst(BitCastInst& I) {
     IRB.SetInsertPoint(I.getNextNode());
     // Push `addrspacecast` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
-    Type* DstTy = DstPtrTy->getElementType();
+    Type* DstTy = DstPtrTy->getPointerElementType();
     PointerType* TransPtrTy =
         PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     Value* Src = TheVal;
-    if (SrcPtrTy->getElementType() != DstTy)
+    if (SrcPtrTy->getPointerElementType() != DstTy)
         Src = IRB.CreateBitCast(Src, TransPtrTy);
     Value* NewPtr = IRB.CreateAddrSpaceCast(Src, DstPtrTy);
     I.replaceAllUsesWith(NewPtr);
@@ -433,7 +433,7 @@ bool GASPropagator::visitGetElementPtrInst(GetElementPtrInst& I) {
     IRB.SetInsertPoint(I.getNextNode());
     // Push `getelementptr` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
-    Type* DstTy = DstPtrTy->getElementType();
+    Type* DstTy = DstPtrTy->getPointerElementType();
     PointerType* TransPtrTy =
         PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     TheUse->set(TheVal);
@@ -558,7 +558,7 @@ bool GASPropagator::visitSelect(SelectInst& I) {
 
     // Push 'addrspacecast' forward by changing the select return type to non-GAS pointer
     // followed by a new 'addrspacecast' to GAS
-    PointerType* TransPtrTy = PointerType::get(DstPtrTy->getElementType(), NonGASPtrTy->getAddressSpace());
+    PointerType* TransPtrTy = PointerType::get(DstPtrTy->getPointerElementType(), NonGASPtrTy->getAddressSpace());
     I.mutateType(TransPtrTy);
     Value* NewPtr = IRB.CreateAddrSpaceCast(&I, DstPtrTy);
 
@@ -884,7 +884,7 @@ void GASResolving::convertLoadToGlobal(LoadInst* LI) const {
 
     PointerType* PtrTy = cast<PointerType>(LI->getType());
     IRB->SetInsertPoint(LI->getNextNode());
-    PointerType* GlobalPtrTy = PointerType::get(PtrTy->getElementType(), ADDRESS_SPACE_GLOBAL);
+    PointerType* GlobalPtrTy = PointerType::get(PtrTy->getPointerElementType(), ADDRESS_SPACE_GLOBAL);
     Value* GlobalAddr = IRB->CreateAddrSpaceCast(LI, GlobalPtrTy);
     Value* GenericCopyAddr = IRB->CreateAddrSpaceCast(GlobalAddr, PtrTy);
 
@@ -905,7 +905,7 @@ bool GASResolving::checkGenericArguments(Function& F) const {
         if (auto Ty = dyn_cast<PointerType>(FT->getParamType(p))) {
             if (Ty->getAddressSpace() != ADDRESS_SPACE_GLOBAL)
                 continue;
-            auto PteeTy = Ty->getElementType();
+            auto PteeTy = Ty->getPointerElementType();
             if (auto PTy = dyn_cast<PointerType>(PteeTy)) {
                 if (PTy->getAddressSpace() == ADDRESS_SPACE_GENERIC)
                     return true;

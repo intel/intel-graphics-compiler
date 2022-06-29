@@ -252,7 +252,7 @@ namespace IGCLLVM
 
         inline llvm::Value* CreateInBoundsGEP(llvm::Value *Ptr, llvm::ArrayRef<llvm::Value*> IdxList,
                            const llvm::Twine &Name = "") {
-            llvm::Type *Ty = cast<PointerType>(Ptr->getType()->getScalarType())->getElementType();
+            llvm::Type *Ty = cast<PointerType>(Ptr->getType()->getScalarType())->getPointerElementType();
             return llvm::IRBuilder<T, InserterTyDef()>::CreateInBoundsGEP(Ty, Ptr, IdxList, Name);
         }
 
@@ -260,7 +260,7 @@ namespace IGCLLVM
 
         inline llvm::Value* CreateGEP(llvm::Value* Ptr, llvm::ArrayRef<llvm::Value*> IdxList,
             const llvm::Twine& Name = "") {
-            llvm::Type* Ty = cast<PointerType>(Ptr->getType()->getScalarType())->getElementType();
+            llvm::Type* Ty = cast<PointerType>(Ptr->getType()->getScalarType())->getPointerElementType();
             return llvm::IRBuilder<T, InserterTyDef()>::CreateGEP(Ty, Ptr, IdxList, Name);
         }
 
@@ -271,7 +271,7 @@ namespace IGCLLVM
           auto *PtrsTy = cast<FixedVectorType>(Ptrs->getType());
           auto *PtrTy = cast<PointerType>(PtrsTy->getElementType());
           unsigned NumElts = PtrsTy->getNumElements();
-          auto *Ty = FixedVectorType::get(PtrTy->getElementType(), NumElts);
+          auto *Ty = FixedVectorType::get(PtrTy->getPointerElementType(), NumElts);
           return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedGather(
               Ty, Ptrs, Alignment, Mask, PassThru, Name);
         }
@@ -294,7 +294,7 @@ namespace IGCLLVM
         CallInst *CreateMaskedLoad(Value *Ptr, Align Alignment, Value *Mask,
                                    Value *PassThru, const Twine &Name) {
           auto *PtrTy = cast<PointerType>(Ptr->getType());
-          Type *Ty = PtrTy->getElementType();
+          Type *Ty = PtrTy->getPointerElementType();
           return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedLoad(
               Ty, Ptr, Alignment, Mask, PassThru, Name);
         }
@@ -304,7 +304,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR >= 14
         Value* CreatePtrDiff(Value *LHS, Value *RHS, const Twine &Name = "") {
           auto *PtrTy = cast<PointerType>(LHS->getType());
-          Type *Ty = PtrTy->getElementType();
+          Type *Ty = PtrTy->getPointerElementType();
           return llvm::IRBuilder<T, InserterTyDef()>::CreatePtrDiff(Ty, LHS, RHS, Name);
         }
 #endif

@@ -472,7 +472,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         {
             inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
         }
-        else if (isa<FunctionType>(ptrType->getElementType()))
+        else if (isa<FunctionType>(ptrType->getPointerElementType()))
         {
             // Save patch info for function pointer to be patched later by runtime
             // The initializer value must be a function pointer and has the "referenced-indirectly" attribute

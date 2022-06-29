@@ -361,7 +361,7 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup& Group) {
         Value* PtrOperand   = IT.second.first;
         auto BaseIndices    = IT.second.second;
 
-        auto EType = dyn_cast<PointerType>(PtrOperand->getType())->getElementType();
+        auto EType = dyn_cast<PointerType>(PtrOperand->getType())->getPointerElementType();
         Value * NewPointer = PtrOperand;
         if (NewPointer == nullptr)
             return false;
@@ -401,7 +401,7 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup& Group) {
             Indices.push_back(ConstantInt::get(Offset->getType(), 0));
         Indices.push_back(Offset);
 
-        auto OffsetType = dyn_cast<PointerType>(BasePhi->getType())->getElementType();
+        auto OffsetType = dyn_cast<PointerType>(BasePhi->getType())->getPointerElementType();
         auto OffsetGEP = GetElementPtrInst::Create(OffsetType, BasePhi, Indices, "", BasePhi->getNextNonDebugInstruction());
 
         bool isInBounds = false;

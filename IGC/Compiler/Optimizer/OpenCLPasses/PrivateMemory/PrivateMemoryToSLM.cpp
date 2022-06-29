@@ -202,7 +202,7 @@ namespace IGC
             for (auto offsets : ModuleMD->FuncMD[F].localOffsets)
             {
                 PointerType* ptrType = dyn_cast<PointerType>(offsets.m_Var->getType());
-                Type* varType = ptrType->getElementType();
+                Type* varType = ptrType->getPointerElementType();
                 offset = iSTD::Align(offset, IGCLLVM::getPreferredAlignValue(&DL, offsets.m_Var));
                 offset += (unsigned int) DL.getTypeAllocSize(varType);
             }

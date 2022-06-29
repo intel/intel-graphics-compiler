@@ -115,7 +115,7 @@ static bool isPtrArgModified(const Value &Arg) {
 // Check if it is safe to pass structure by value.
 static bool structSafeToPassByVal(const Argument &Arg) {
   StructType *StrTy =
-      cast<StructType>(cast<PointerType>(Arg.getType())->getElementType());
+      cast<StructType>(cast<PointerType>(Arg.getType())->getPointerElementType());
 
   if (!containsOnlySuitableTypes(*StrTy))
     return false;
@@ -156,7 +156,7 @@ static bool argToTransform(const Argument &Arg,
   auto *PtrTy = dyn_cast<PointerType>(Arg.getType());
   if (!PtrTy)
     return false;
-  Type *ElemTy = PtrTy->getElementType();
+  Type *ElemTy = PtrTy->getPointerElementType();
   if ((ElemTy->isVectorTy() || onlyUsedBySimpleValueLoadStore(Arg)) &&
       (ElemTy->isIntOrIntVectorTy() || ElemTy->isFPOrFPVectorTy()))
     return true;
