@@ -62,6 +62,8 @@ function(igc_get_llvm_targets RET)
             IMPORTED_LOCATION_RELEASE "${found_name_release}"
             IMPORTED_LOCATION_RELEASEINTERNAL "${found_name_release}"
             IMPORTED_LOCATION_DEBUG "${found_name_debug}"
+            # Disable .pdb file not found warnings for imported llvm libs
+            LINK_FLAGS "/ignore:4099"
             )
         endif()
         list(APPEND PRE_BUILT_TARGETS ${tmp_name})
