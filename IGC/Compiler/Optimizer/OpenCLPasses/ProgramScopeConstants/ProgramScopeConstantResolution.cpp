@@ -72,6 +72,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
 
     MetaDataUtils* mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (modMD->inlineProgramScopeOffsets.empty())
     {
         // There are no constants, or no constants are used, so we have nothing to do.
@@ -175,7 +176,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             Function* userFunc = user->getParent()->getParent();
 
             // Skip functions called from function marked with stackcall attribute
-            if (AddImplicitArgs::hasStackCallInCG(userFunc))
+            if (AddImplicitArgs::hasStackCallInCG(userFunc, *pCtx))
                 continue;
 
             // Skip unused internal functions.

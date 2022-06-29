@@ -82,7 +82,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
         if (m_pMdUtils->findFunctionsInfoItem(&func) == m_pMdUtils->end_FunctionsInfo()) continue;
         // Skip functions called from functions marked with stackcall attribute
         // Also skip the dummy kernel if one was created
-        if (hasStackCallInCG(&func) || IGC::isIntelSymbolTableVoidProgram(&func))
+        if (hasStackCallInCG(&func, *ctx) || IGC::isIntelSymbolTableVoidProgram(&func))
         {
             FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(&func);
             funcInfo->clearImplicitArgInfoList();
@@ -182,17 +182,26 @@ bool AddImplicitArgs::runOnModule(Module &M)
     return true;
 }
 
-bool AddImplicitArgs::hasStackCallInCG(const Function* F)
+bool AddImplicitArgs::hasStackCallInCG(
+    const Function* F, const CodeGenContext& Ctx)
 {
-    if (F->hasFnAttribute("visaStackCall") || F->hasFnAttribute("referenced-indirectly"))
+    if (F->hasFnAttribute("visaStackCall"))
         return true;
+
+    if (F->hasFnAttribute("referenced-indirectly"))
+    {
+        auto* MD = Ctx.getModuleMetaData();
+        auto I = MD->FuncMD.find(const_cast<Function*>(F));
+        if (I == MD->FuncMD.end() || !isContinuation(I->second))
+            return true;
+    }
 
     for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
     {
         if (const CallInst* call = dyn_cast<CallInst>(*u))
         {
             const Function* parent = call->getParent()->getParent();
-            if (hasStackCallInCG(parent))
+            if (hasStackCallInCG(parent, Ctx))
                 return true;
         }
     }

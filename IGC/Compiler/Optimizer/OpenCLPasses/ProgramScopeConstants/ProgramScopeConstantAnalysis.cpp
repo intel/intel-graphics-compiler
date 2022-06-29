@@ -263,7 +263,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         {
             if (pFunc.isDeclaration()) continue;
             // Skip functions called from function marked with stackcall attribute
-            if (AddImplicitArgs::hasStackCallInCG(&pFunc)) continue;
+            if (AddImplicitArgs::hasStackCallInCG(&pFunc, *Ctx)) continue;
 
             // Always add for kernels and subroutines
             SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
@@ -278,7 +278,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         {
             if (pFunc.isDeclaration()) continue;
             // Skip functions called from function marked with stackcall attribute
-            if (AddImplicitArgs::hasStackCallInCG(&pFunc)) continue;
+            if (AddImplicitArgs::hasStackCallInCG(&pFunc, *Ctx)) continue;
 
             // Always add for kernels and subroutines
             SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
