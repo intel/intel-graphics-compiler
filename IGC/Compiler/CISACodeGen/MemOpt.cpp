@@ -544,6 +544,37 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
     if (NumElts > profitVec[0])
         return false;
 
+    // The following function "chainedSelectAndPhis" is designed to avoid going into SCEV in special circumstances
+    // when the shader has a large set of chained phi nodes and selects. One of the downsides of SCEV is it is a
+    // recursive approach and can cause a stack overflow when tracing back instructions.
+    bool chainTooLarge = false;
+    std::function<void(Instruction*, unsigned)> chainedSelectAndPhis = [&](Instruction* Inst, unsigned depth)
+    {
+        for (auto& operand : Inst->operands())
+        {
+            if (chainTooLarge)
+                return;
+            if (auto op_inst = dyn_cast<Instruction>(operand))
+            {
+                if (depth == 300) //I have hit 300 chained Phi/Select instructions time to bail
+                {
+                    chainTooLarge = true;
+                    return;
+                }
+                else if (isa<PHINode>(op_inst) || isa<SelectInst>(op_inst))
+                {
+                    chainedSelectAndPhis(op_inst, ++depth);
+                }
+            }
+        }
+    };
+
+    if(isa<Instruction>(LeadingLoad->getPointerOperand()))
+        chainedSelectAndPhis(cast<Instruction>(LeadingLoad->getPointerOperand()), 0);
+
+    if (chainTooLarge)
+        return false;
+
     const SCEV* LeadingPtr = SE->getSCEV(LeadingLoad->getPointerOperand());
     if (isa<SCEVCouldNotCompute>(LeadingPtr))
         return false;
