@@ -828,9 +828,9 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     }
     mpm.add(createRematAddressArithmeticPass());
 
-    // Enabling half promotion AIL for compute shaders only at this point. 
+    // Enabling half promotion AIL for compute shaders only at this point.
     // If needed ctx.type check can be removed to apply for all shader types
-    if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) || 
+    if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) ||
         (ctx.getModuleMetaData()->compOpt.WaForceHalfPromotion && ctx.type == ShaderType::COMPUTE_SHADER) ||
         (!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion)))
     {
