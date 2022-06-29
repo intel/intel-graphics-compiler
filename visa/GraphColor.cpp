@@ -6944,6 +6944,62 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         }
     }
 
+    if (failSafeIter)
+    {
+        // As per spec, EOT has to be allocated to r112+.
+        // When fail safe iteration is run, upper GRFs are
+        // reserved. It's possible that # of reserved
+        // GRFs are too many and r112+ allocation restriction
+        // on EOT cannot be fulfilled (eg, r116-r127 are reserved
+        // EOT src operand size is 8 GRFs). This causes EOT var
+        // to spill and then the spill range faces the same
+        // restriction. The fix here is to check whether
+        // reserved GRF restriction can be eased for EOT.
+        auto hasSpilledNeighbor = [&](unsigned int id)
+        {
+            for (const auto* spillLR : spilledLRs)
+            {
+                if (id != spillLR->getVar()->getId() &&
+                    getIntf()->interfereBetween(id, spillLR->getVar()->getId()))
+                    return true;
+            }
+            return false;
+        };
+
+        if (builder.getOption(vISA_HybridRAWithSpill))
+        {
+            // This local analysis is skipped in favor of
+            // compile time in global RA loop, so run it here
+            // when needed.
+            gra.markGraphBlockLocalVars();
+        }
+
+        for (auto lrIt = spilledLRs.begin();
+            lrIt != spilledLRs.end();
+            ++lrIt)
+        {
+            auto lr = (*lrIt);
+            bool needsEOTGRF = lr->getEOTSrc() && builder.hasEOTGRFBinding();
+            if (needsEOTGRF &&
+                gra.isBlockLocal(lr->getDcl()) &&
+                (totalGRFRegCount + lr->getNumRegNeeded()) <= kernel.getNumRegTotal() &&
+                !hasSpilledNeighbor(lr->getVar()->getId()))
+            {
+                // Following conditions true:
+                // 1. EOT range spilled that needs r112-r127 assignment,
+                // 2. Variable is local to a BB,
+                // 3. Reserved GRF start + # EOT GRFs fits within total GRFs,
+                // 4. Has no spilled neighbor
+                //
+                // This makes it safe to directly assign a reserved GRF to this
+                // variable than spill it.
+                lr->setPhyReg(builder.phyregpool.getGreg(kernel.getNumRegTotal() - lr->getNumRegNeeded()), 0);
+                spilledLRs.erase(lrIt);
+                break;
+            }
+        }
+    }
+
     // record RA type
     if (liveAnalysis.livenessClass(G4_GRF))
     {
@@ -7322,6 +7378,7 @@ bool GraphColor::regAlloc(
     unsigned reserveSpillSize = 0;
     if (reserveSpillReg)
     {
+        failSafeIter = reserveSpillReg;
         gra.determineSpillRegSize(spillRegSize, indrSpillRegSize);
         reserveSpillSize = spillRegSize + indrSpillRegSize;
         MUST_BE_TRUE(reserveSpillSize < kernel.getNumCalleeSaveRegs(), "Invalid reserveSpillSize in fail-safe RA!");

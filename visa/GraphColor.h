@@ -561,6 +561,8 @@ namespace vISA
         LIVERANGE_LIST constrainedWorklist;
         unsigned numColor = 0;
 
+        bool failSafeIter = false;
+
         unsigned edgeWeightGRF(const LiveRange* lr1, const LiveRange* lr2);
         unsigned edgeWeightARF(const LiveRange* lr1, const LiveRange* lr2);
 
