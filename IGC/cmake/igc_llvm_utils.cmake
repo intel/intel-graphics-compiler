@@ -93,6 +93,41 @@ function(igc_configure_lit_site_cfg in out)
     )
 endfunction()
 
+function(igc_add_lit_target target binary_dir comment)
+  cmake_parse_arguments(ARG "" "" "DEPENDS;SOURCES" ${ARGN})
+  set(LIT_ARGS "${LLVM_LIT_ARGS}")
+  separate_arguments(LIT_ARGS)
+  if (NOT CMAKE_CFG_INTDIR STREQUAL ".")
+    list(APPEND LIT_ARGS --param build_mode=${CMAKE_CFG_INTDIR})
+  endif ()
+
+  # Get the path to the lit to *run* tests with.  This can be overriden by
+  # the user by specifying -DLLVM_EXTERNAL_LIT=<path-to-lit.py>
+  get_llvm_lit_path(
+    lit_base_dir
+    lit_file_name
+    ALLOW_EXTERNAL
+    )
+
+  set(LIT_COMMAND "${PYTHON_EXECUTABLE};${lit_base_dir}/${lit_file_name}")
+  list(APPEND LIT_COMMAND ${LIT_ARGS})
+  set(run_tests_stamp_file "${binary_dir}/run_${target}.stamp")
+  add_custom_command(
+    OUTPUT "${run_tests_stamp_file}"
+    COMMAND ${LIT_COMMAND} "${binary_dir}"
+    COMMAND ${CMAKE_COMMAND} -E touch "${run_tests_stamp_file}"
+    DEPENDS ${ARG_DEPENDS}
+    COMMENT "${comment}"
+    USES_TERMINAL
+    )
+  add_custom_target(${target}
+    DEPENDS "${run_tests_stamp_file}"
+    SOURCES ${ARG_SOURCES}
+    )
+  # Tests should be excluded from "Build Solution".
+  set_target_properties(${target} PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD ON)
+endfunction()
+
 # Helper macro to set LLVM_EXTERNAL_LIT variable for LLVM lit tests.
 # Variable can be overridden from command line to set custom lit tool.
 macro(igc_find_external_lit)

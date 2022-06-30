@@ -38,20 +38,39 @@ set(IGC_LIT_TEST_DEPENDS
   "${IGC_BUILD__PROJ__igc_opt}"
   )
 
+
+# Note:
+# This command must be consistent with lit.cfg.py in the following points:
+# 1) the path to tests must be consistent with config.test_source_root
+# 2) the suffix must be consistent with config.suffixes
+# The consistency can be achived by calling a process which returns the list of tests.
+file(GLOB_RECURSE _tests "${IGC_TEST_SOURCE_DIR}/*.ll")
+if(MSVC)
+  source_group(TREE "${IGC_TEST_SOURCE_DIR}" PREFIX "tests" FILES ${_tests})
+endif()
+
 # This will create a target called `check-igc`, which will run all tests from
 # IGC/Compiler/tests directory. The tests will be run on files in the source
 # directory, since they are not modified, there doesn't seem to be any reason
 # for copying them.
-add_lit_testsuite(check-igc "Running the IGC LIT tests"
-  ${IGC_TEST_BINARY_DIR}
-  DEPENDS ${IGC_LIT_TEST_DEPENDS}
-  )
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
+  igc_add_lit_target(check-igc "${IGC_TEST_BINARY_DIR}" "Running the IGC LIT tests"
+    DEPENDS ${IGC_LIT_TEST_DEPENDS} ${_tests}
+    SOURCES ${_tests} ${CMAKE_CURRENT_SOURCE_DIR}/lit.cfg.py
+    )
+else()
+  add_lit_testsuite(check-igc "Running the IGC LIT tests"
+    ${IGC_TEST_BINARY_DIR}
+    DEPENDS ${IGC_LIT_TEST_DEPENDS}
+    )
+endif()
 
 # Tests should not be excluded from "Build Solution" in VS.
 set_target_properties(check-igc
-    PROPERTIES
-        EXCLUDE_FROM_DEFAULT_BUILD OFF
-        EXCLUDE_FROM_ALL OFF)
+  PROPERTIES
+    EXCLUDE_FROM_DEFAULT_BUILD OFF
+    EXCLUDE_FROM_ALL OFF
+  )
 
 # Line below is just used to group LIT reated targets in single directory
 # in IDE. This is completely optional.
