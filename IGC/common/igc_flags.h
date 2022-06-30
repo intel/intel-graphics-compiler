@@ -512,7 +512,6 @@ DECLARE_IGC_REGKEY(bool, EnableGlobalStateBuffer,              false, "This key 
 DECLARE_IGC_REGKEY(bool, LateInlineUnmaskedFunc,        false, "Postpone inlining of Unmasked functions till end of CG to avoid code movement inside/outside of unmasked region", false)
 DECLARE_IGC_REGKEY(bool, ForceFormatConversionDG2Plus,  false,
     "Forces SW image format conversion for R10G10B10A2_UNORM, R11G11B10_FLOAT, R10G10B10A2_UINT image formats on DG2+ platforms", true)
-DECLARE_IGC_REGKEY(bool, ForceSingleSourceRTWAfterDualSourceRTW, false, "Force the compiler to always send single-source RTW after the dual-source RTW", false)
 DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierWA, false, "Generate continuation code to handle shaders that places barriers in divergent control flow", false)
 
 DECLARE_IGC_GROUP("Performance experiments")
