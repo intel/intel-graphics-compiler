@@ -1084,13 +1084,18 @@ namespace IGCMetrics
             auto spillMD = instr.getMetadata(metric->fillInstrKindID);
             if (spillMD != nullptr)
             {
-                auto func_m = metric->GetFuncMetric(&instr);
-                auto spillFill_m = func_m->mutable_spillfill_stats();
+                // Some instructions dosen't have visa offset
+                // that means the instruction is a dead code
+                if (CurrentVISA->HasVisaOffset(&instr))
+                {
+                    auto func_m = metric->GetFuncMetric(&instr);
+                    auto spillFill_m = func_m->mutable_spillfill_stats();
 
-                spillFill_m->set_countfillinstr(spillFill_m->countfillinstr() + 1);
+                    spillFill_m->set_countfillinstr(spillFill_m->countfillinstr() + 1);
 
-                // Add spill instruction to metrics
-                spillFill_m->add_fillinstrvisaid(CurrentVISA->GetVisaOffset(&instr));
+                    // Add spill instruction to metrics
+                    spillFill_m->add_fillinstrvisaid(CurrentVISA->GetVisaOffset(&instr));
+                }
             }
         }
 
@@ -1099,13 +1104,18 @@ namespace IGCMetrics
             auto fillMD = instr.getMetadata(metric->spillInstrKindID);
             if (fillMD != nullptr)
             {
-                auto func_m = metric->GetFuncMetric(&instr);
-                auto spillFill_m = func_m->mutable_spillfill_stats();
+                // Some instructions dosen't have visa offset
+                // that means the instruction is a dead code
+                if (CurrentVISA->HasVisaOffset(&instr))
+                {
+                    auto func_m = metric->GetFuncMetric(&instr);
+                    auto spillFill_m = func_m->mutable_spillfill_stats();
 
-                spillFill_m->set_countspillinstr(spillFill_m->countspillinstr() + 1);
+                    spillFill_m->set_countspillinstr(spillFill_m->countspillinstr() + 1);
 
-                // Add spill instruction to metrics
-                spillFill_m->add_spillinstrvisaid(CurrentVISA->GetVisaOffset(&instr));
+                    // Add spill instruction to metrics
+                    spillFill_m->add_spillinstrvisaid(CurrentVISA->GetVisaOffset(&instr));
+                }
             }
         }
     };

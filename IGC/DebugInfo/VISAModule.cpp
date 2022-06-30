@@ -165,6 +165,10 @@ void VISAModule::BeginEncodingMark() { ValidateVisaId(); }
 
 void VISAModule::EndEncodingMark() { UpdateVisaId(); }
 
+bool VISAModule::HasVisaOffset(const llvm::Instruction *pInst) const {
+  return m_instInfoMap.find(pInst) != m_instInfoMap.end();
+}
+
 unsigned int VISAModule::GetVisaOffset(const llvm::Instruction *pInst) const {
   InstInfoMap::const_iterator itr = m_instInfoMap.find(pInst);
   IGC_ASSERT_MESSAGE(itr != m_instInfoMap.end(), "Invalid Instruction");

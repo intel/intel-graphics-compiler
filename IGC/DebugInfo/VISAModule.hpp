@@ -448,6 +448,11 @@ public:
   /// @brief Mark end of VISA code emitting section.
   void EndEncodingMark();
 
+  /// @brief Return true if instruction has VISA offset.
+  /// @param Instruction to query.
+  /// @return Return true if instruction has VISA offset, otherwise false.
+  bool HasVisaOffset(const llvm::Instruction *pInst) const;
+
   /// @brief Return VISA offset (in instructions) mapped to given instruction.
   /// @param Instruction to query.
   /// @return VISA offset (in instructions)
