@@ -8368,6 +8368,7 @@ namespace IGC
     }
 
     void CEncoder::LSC_TypedReadWrite(
+        LSC_CACHE_OPTS cacheOpts,
         LSC_OP subOp,
         ResourceDescriptor* resource,
         CVariable* pU,
@@ -8404,7 +8405,7 @@ namespace IGC
 
         VISA_EMask_Ctrl mask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
         VISA_VectorOpnd* globalOffsetOpnd = GetVISALSCSurfaceOpnd(resource->m_surfaceType, resource->m_resource);
-        LSC_CACHE_OPTS cache{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+
         LSC_DATA_SHAPE dataShape{};
         dataShape.size = LSC_GetElementSize(elemSize);
         dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
@@ -8416,7 +8417,7 @@ namespace IGC
             predOpnd,
             execSize,
             mask,
-            cache,
+            cacheOpts,
             getLSCAddrType(resource),
             addr_size,
             dataShape,

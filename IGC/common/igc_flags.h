@@ -503,6 +503,8 @@ DECLARE_IGC_REGKEY(bool, Enable_Wa22010493955, false, "Enable Wa_22010493955 reg
 DECLARE_IGC_REGKEY(bool, EnablePartialEmuI64,  true,  "Enable the partial I64 emulation for PVC-B", true)
 DECLARE_IGC_REGKEY_ENUM(LscLoadCacheControlOverride, 0, "Overrides cache-control options for non-intrinsic LSC loads.", LSC_CACHE_CTRL_OPTIONS, true)
 DECLARE_IGC_REGKEY_ENUM(LscStoreCacheControlOverride, 0, "Overrides cache-control options for non-intrinsic LSC stores.", LSC_CACHE_CTRL_OPTIONS, true)
+DECLARE_IGC_REGKEY_ENUM(TgmLoadCacheControlOverride, 0, "Overrides cache-control options for non-intrinsic LSC tgm loads.", LSC_CACHE_CTRL_OPTIONS, true)
+DECLARE_IGC_REGKEY_ENUM(TgmStoreCacheControlOverride, 0, "Overrides cache-control options for non-intrinsic LSC tgm stores.", LSC_CACHE_CTRL_OPTIONS, true)
 DECLARE_IGC_REGKEY(bool, LscForceSpillNonStackcall, false, "Non-stack call kernels that spill will use LSC on DG2+", true)
 DECLARE_IGC_REGKEY(bool, EnableQWAddSupport, true, "Enable QW Add support", true)
 DECLARE_IGC_REGKEY(bool, ForceQWAddSupport, false, "Force enabling the QW Add support along with ForcePartialInt64", true)
