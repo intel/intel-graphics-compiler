@@ -58,6 +58,7 @@ THE SOFTWARE.
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Analysis/CFG.h>
+#include <llvm/ADT/SmallSet.h>
 #include "libSPIRV/SPIRVDebugInfoExt.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -4706,11 +4707,15 @@ SPIRVToLLVM::transKernelMetadata()
     transCapsIntoMetadata(MD);
 
     NamedMDNode *KernelMDs = M->getOrInsertNamedMetadata(SPIR_MD_KERNELS);
+    SmallSet<Function*, 16> HandledLLVMKernels;
     for (unsigned I = 0, E = BM->getNumFunctions(); I != E; ++I)
     {
         SPIRVFunction *BF = BM->getFunction(I);
         Function *F = static_cast<Function *>(getTranslatedValue(BF));
         IGC_ASSERT_MESSAGE(F, "Invalid translated function");
+        if (HandledLLVMKernels.count(F))
+            continue;
+        HandledLLVMKernels.insert(F);
 
         // __attribute__((annotate("some_user_annotation"))) are passed via
         // UserSemantic decoration on functions.
