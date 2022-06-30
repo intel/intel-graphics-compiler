@@ -49,6 +49,7 @@ namespace vISA
     private:
         Mem_Manager m;
         const GlobalRA& gra;
+        const FlowGraph& fg;
         const LivenessAnalysis* const liveAnalysis;
         std::unordered_map<G4_INST*, unsigned int> rp;
         double regPressure = 0;
@@ -66,13 +67,33 @@ namespace vISA
         void updateRegisterPressure(unsigned int, unsigned int, unsigned int);
         void updateLiveness(SparseBitSet&, uint32_t, bool);
 
-
         bool isSpilled(const G4_Declare* dcl) const
         {
             auto it = spilledVars.find(dcl);
             if (it == spilledVars.end())
                 return false;
             return true;
+        }
+
+        bool isStackPseudoVar(G4_Declare* dcl) const
+        {
+            bool stackCall = fg.getIsStackCallFunc() || fg.getHasStackCalls();
+            if (stackCall)
+            {
+                if (fg.isPseudoDcl(dcl))
+                    return true;
+
+                auto phyReg = dcl->getRegVar()->getPhyReg();
+                if (phyReg && phyReg->isGreg())
+                {
+                    auto regNum = phyReg->asGreg()->getRegNum();
+                    // Pre-assigned variables like FP, SP from
+                    // reserved GRFs don't contribute to reg pressure.
+                    if (regNum >= fg.builder->kernel.getStackCallStartReg())
+                        return true;
+                }
+            }
+            return false;
         }
     };
 }

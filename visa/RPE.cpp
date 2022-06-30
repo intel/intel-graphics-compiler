@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 namespace vISA
 {
     RPE::RPE(const GlobalRA& g, const LivenessAnalysis* l, DECLARE_LIST* spills) : m(1024), gra(g), liveAnalysis(l), live(l->getNumSelectedVar()),
-        vars(l->vars)
+        vars(l->vars), fg(g.kernel.fg)
     {
         options = g.kernel.getOptions();
         if (spills)
@@ -146,6 +146,8 @@ namespace vISA
                 G4_Declare* rootDcl = range->getDeclare()->getRootDeclare();
                 if (isSpilled(rootDcl))
                     continue;
+                if (isStackPseudoVar(rootDcl))
+                    continue;
                 if (rootDcl->getNumElems() > 1)
                 {
                     regPressure += rootDcl->getNumRows();
@@ -175,6 +177,8 @@ namespace vISA
         {
             auto dcl = vars[id]->getDeclare();
             if (isSpilled(dcl))
+                return;
+            if (isStackPseudoVar(dcl))
                 return;
             // For <1 GRF variable we have to take alignment into consideration as well when computing register pressure.
             // For now we double each <1GRF variable's size if its alignment also exceeds its size.
