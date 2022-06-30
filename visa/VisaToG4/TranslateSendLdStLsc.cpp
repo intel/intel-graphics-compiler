@@ -16,7 +16,7 @@ using namespace vISA;
 G4_ExecSize IR_Builder::lscMinExecSize(LSC_SFID lscSfid) const
 {
     const TARGET_PLATFORM P = getPlatform();
-    uint32_t minExecSize = (P == Xe_DG2 ? 8 : 16);
+    uint32_t minExecSize = ((P == Xe_DG2 || P == Xe_MTL) ? 8 : 16);
     if (!hasLSCEnableHalfSIMD())
     {
         minExecSize *= 2;

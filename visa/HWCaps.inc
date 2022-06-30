@@ -513,7 +513,8 @@ SPDX-License-Identifier: MIT
 
     bool noInt64() const
     {
-        return getPlatform() == GENX_ICLLP || isXeLP() || getPlatform() == Xe_DG2;
+        return getPlatform() == GENX_ICLLP || isXeLP() || getPlatform() == Xe_DG2 ||
+               getPlatform() == Xe_MTL;
     }
 
     bool noFP64() const
@@ -524,7 +525,8 @@ SPDX-License-Identifier: MIT
     bool no64bitRegioning() const
     {
         return getPlatform() == GENX_CHV || getPlatform() == GENX_BXT ||
-               getPlatform() == GENX_ICLLP || isXeLP() || getPlatform() == Xe_DG2;
+               getPlatform() == GENX_ICLLP || isXeLP() ||
+               getPlatform() == Xe_DG2 || getPlatform() == Xe_MTL;
     }
 
     bool hasBankCollision() const
@@ -539,12 +541,15 @@ SPDX-License-Identifier: MIT
 
     bool oneGRFBankDivision() const
     {
-        return getPlatform() != Xe_XeHPSDV && getPlatform() != Xe_DG2 && !(getPlatform() == Xe_PVC && !getOption(vISA_HasPartialInt64));
+        return getPlatform() != Xe_XeHPSDV && getPlatform() != Xe_DG2 &&
+               getPlatform() != Xe_MTL &&
+               !(getPlatform() == Xe_PVC && !getOption(vISA_HasPartialInt64));
     }
 
     bool hasMadm() const
     {
-        return getPlatform() != GENX_ICLLP && !isXeLP() && getPlatform() != Xe_DG2;
+        return getPlatform() != GENX_ICLLP && !isXeLP() &&
+               getPlatform() != Xe_DG2 && getPlatform() != Xe_MTL;
     }
 
     bool hasSIMD16TypedRW() const
@@ -638,7 +643,7 @@ SPDX-License-Identifier: MIT
         {
             return 16;
         }
-        else if (plat == Xe_XeHPSDV || plat == Xe_DG2)
+        else if (plat == Xe_XeHPSDV || plat == Xe_DG2 || plat == Xe_MTL)
         {
             return 8;
         }
@@ -746,7 +751,7 @@ SPDX-License-Identifier: MIT
 
     bool hasFP64Acc() const
     {
-        return !noFP64();
+        return !noFP64() && getPlatform() != Xe_MTL;
     }
 
     bool hasMathAcc() const
@@ -829,13 +834,15 @@ SPDX-License-Identifier: MIT
     bool hasTwoGRFBank16Bundles() const
     {
         const TARGET_PLATFORM P = getPlatform();
-        return P == Xe_XeHPSDV || P == Xe_DG2 || (P == Xe_PVC && !getOption(vISA_HasPartialInt64));
+        return P == Xe_XeHPSDV || P == Xe_DG2 || P == Xe_MTL ||
+               (P == Xe_PVC && !getOption(vISA_HasPartialInt64));
     }
 
     bool hasOneGRFBank16Bundles() const
     {
     const TARGET_PLATFORM P = getPlatform();
-        return P != Xe_XeHPSDV && P != Xe_DG2 && !(P == Xe_PVC && !getOption(vISA_HasPartialInt64));
+        return P != Xe_XeHPSDV && P != Xe_DG2 && P != Xe_MTL &&
+               !(P == Xe_PVC && !getOption(vISA_HasPartialInt64));
     }
 
     bool hasDPASSrc0Src1BankConflict() const
@@ -850,7 +857,7 @@ SPDX-License-Identifier: MIT
 
     bool hasDPAS() const
     {
-        return getPlatform() >= Xe_XeHPSDV;
+        return getPlatform() >= Xe_XeHPSDV && getPlatform() != Xe_MTL;
     }
 
     bool hasAMFSFastClear() const
@@ -877,7 +884,7 @@ SPDX-License-Identifier: MIT
     bool hasThreeALUPipes() const
     {
         const TARGET_PLATFORM P = getPlatform();
-        return (P == Xe_XeHPSDV || P == Xe_DG2);
+        return (P == Xe_XeHPSDV || P == Xe_DG2 || P == Xe_MTL);
     }
 
     bool hasFusedEUWA() const
@@ -888,7 +895,8 @@ SPDX-License-Identifier: MIT
 
     bool hasFusedEU() const
     {
-        return (getPlatform() == GENX_TGLLP || getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_DG2);
+        return (getPlatform() == GENX_TGLLP || getPlatform() == Xe_XeHPSDV ||
+                getPlatform() == Xe_DG2 || getPlatform() == Xe_MTL);
     }
 
     bool hasFusedEUNoMaskWA() const
@@ -906,7 +914,7 @@ SPDX-License-Identifier: MIT
 
     bool hasSLMWARIssue() const
     {
-        return getPlatform() == Xe_DG2 || getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT;
+        return getPlatform() == Xe_DG2 || getPlatform() == Xe_MTL || getPlatform() == Xe_PVC || getPlatform() == Xe_PVCXT;
     }
 
     bool hasLongOperandTypeDepIssue() const
@@ -1023,7 +1031,8 @@ SPDX-License-Identifier: MIT
 
    bool hasA0WARHWissue()
    {
-       return (getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_DG2 || getPlatform() == Xe_PVC);
+       return (getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_DG2 ||
+               getPlatform() == Xe_MTL || getPlatform() == Xe_PVC);
    }
 
    bool hasFtoPackedHFMove() const

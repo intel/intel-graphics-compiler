@@ -344,6 +344,7 @@ Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
         platform = Platform::XE_HP;
         break;
     case Xe_DG2:
+    case Xe_MTL:
         platform = Platform::XE_HPG;
         break;
     case Xe_PVC:
@@ -1943,6 +1944,8 @@ SWSB_ENCODE_MODE vISA::GetIGASWSBEncodeMode(const IR_Builder& builder) {
         return SWSB_ENCODE_MODE::SWSBInvalidMode;
 
     if (builder.hasThreeALUPipes()) {
+        if (builder.getPlatform() == Xe_MTL)
+            return SWSB_ENCODE_MODE::ThreeDistPipeDPMath;
         return SWSB_ENCODE_MODE::ThreeDistPipe;
     }
     else if (builder.hasFourALUPipes()) {

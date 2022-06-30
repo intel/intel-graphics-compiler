@@ -393,6 +393,8 @@ namespace iga
             case SWSB_ENCODE_MODE::ThreeDistPipe:
                 return 16;
 
+            case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
+                return 16;
             case SWSB_ENCODE_MODE::FourDistPipe:
             case SWSB_ENCODE_MODE::FourDistPipeReduction:
                 return 32;

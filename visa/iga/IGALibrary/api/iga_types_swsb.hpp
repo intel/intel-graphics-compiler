@@ -31,6 +31,7 @@ namespace iga
         ThreeDistPipe         = 2, // XeHP/XeHPG: 3 distance pipe
         FourDistPipe          = 3, // XeHPC (early variant): 4 distance pipes
         FourDistPipeReduction = 6, // XeHPC variation: 4 distance pipes with Long pipe reduction
+        ThreeDistPipeDPMath   = 7, // MTL: 3 distance pipe with DP operations in Math pipe
 
     };
 

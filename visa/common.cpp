@@ -31,6 +31,8 @@ const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
         "XeHP_SDV"),
     PlatformInfo(Xe_DG2, PlatformGen::XE, 13, 32,
         "DG2"),
+    PlatformInfo(Xe_MTL, PlatformGen::XE, 13, 32,
+        "MTL"),
     PlatformInfo(Xe_PVC, PlatformGen::XE, 14, 64,
         "PVC"),
     PlatformInfo(Xe_PVCXT, PlatformGen::XE, 15, 64,

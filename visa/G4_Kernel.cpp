@@ -839,6 +839,7 @@ static iga_gen_t getIGAPlatform(TARGET_PLATFORM genPlatform)
     case GENX_TGLLP:platform = IGA_GEN12p1; break;
     case Xe_XeHPSDV: platform = IGA_XE_HP; break;
     case Xe_DG2:
+    case Xe_MTL:
         platform = IGA_XE_HPG;
         break;
     case Xe_PVC:
@@ -1031,6 +1032,7 @@ void G4_Kernel::setKernelParameters()
         {
         case Xe_XeHPSDV:
         case Xe_DG2:
+        case Xe_MTL:
             switch (overrideNumThreads)
             {
             case 4:
@@ -1154,6 +1156,7 @@ void G4_Kernel::setKernelParameters()
         {
         case Xe_XeHPSDV:
         case Xe_DG2:
+        case Xe_MTL:
             switch (overrideNumThreads)
             {
             case 4:
@@ -1196,6 +1199,7 @@ void G4_Kernel::setKernelParameters()
         {
         case Xe_XeHPSDV:
         case Xe_DG2:
+        case Xe_MTL:
         case Xe_PVC:
         case Xe_PVCXT:
             numAcc = 4;
@@ -1222,6 +1226,7 @@ void G4_Kernel::setKernelParameters()
             {
             case Xe_XeHPSDV:
             case Xe_DG2:
+            case Xe_MTL:
                 switch (numRegTotal)
                 {
                 case 256:

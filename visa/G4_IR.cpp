@@ -950,6 +950,11 @@ bool G4_INST::isMathPipeInst() const
         return true;
     }
 
+    if (isDFInstruction())
+    {
+        if (builder.getPlatform() == Xe_MTL)
+            return true;
+    }
 
     return false;
 }

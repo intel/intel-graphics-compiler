@@ -1835,8 +1835,10 @@ void vISAVerifier::verifyInstructionArith(
 
     // check for IEEE macros support
     // !hasMadm() check
-    bool noMadm = (platform == GENX_ICLLP || platform == GENX_TGLLP);
-    noMadm |= platform == Xe_DG2;
+    bool noMadm = platform == GENX_ICLLP ||
+                  platform == GENX_TGLLP ||
+                  platform == Xe_DG2 ||
+                  platform == Xe_MTL;
     if (noMadm)
     {
         bool fOpcodeIEEE = (opcode == ISA_DIVM) || (opcode == ISA_SQRTM);

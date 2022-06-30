@@ -637,6 +637,7 @@ GRFMode::GRFMode(TARGET_PLATFORM platform)
     case Xe_DG2:
     case Xe_PVC:
     case Xe_PVCXT:
+    case Xe_MTL:
         configurations.resize(2);
         // Configurations for this platform <GRF, numThreads>
         configurations[0] = std::make_pair(128, 8);

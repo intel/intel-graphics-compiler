@@ -484,6 +484,7 @@ typedef enum {
     GENX_TGLLP,
     Xe_XeHPSDV,
     Xe_DG2,
+    Xe_MTL,
     Xe_PVC,
     Xe_PVCXT,
     ALL

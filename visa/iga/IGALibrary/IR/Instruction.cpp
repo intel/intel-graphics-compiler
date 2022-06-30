@@ -176,6 +176,9 @@ SWSB::InstType Instruction::getSWSBInstType(SWSB_ENCODE_MODE mode) const {
     if (is(Op::MATH))
         return SWSB::InstType::MATH;
 
+    // instruction with any of operand type is DF belongs to Math pipe
+    if (mode == SWSB_ENCODE_MODE::ThreeDistPipeDPMath && isDF())
+        return SWSB::InstType::MATH;
 
     if (getOpSpec().isDpasFamily()) {
         return SWSB::InstType::DPAS;
