@@ -1086,6 +1086,7 @@ bool hasNoInt64Inst() const {
         m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
         m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
         m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
         m_platformInfo.eProductFamily == IGFX_DG1 ||
         m_platformInfo.eProductFamily == IGFX_DG2;
 }
@@ -1100,6 +1101,7 @@ bool hasNoFP64Inst() const {
         m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
         m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
         m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
         m_platformInfo.eProductFamily == IGFX_DG1 ||
         m_platformInfo.eProductFamily == IGFX_DG2;
 }
@@ -1114,6 +1116,7 @@ bool hasCorrectlyRoundedMacros() const {
         m_platformInfo.eProductFamily != IGFX_DG1 &&
         m_platformInfo.eProductFamily != IGFX_ALDERLAKE_S &&
         m_platformInfo.eProductFamily != IGFX_ALDERLAKE_P &&
+        m_platformInfo.eProductFamily != IGFX_ALDERLAKE_N &&
         m_platformInfo.eProductFamily != IGFX_DG2;
 }
 

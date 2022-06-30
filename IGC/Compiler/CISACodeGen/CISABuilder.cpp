@@ -3125,6 +3125,7 @@ namespace IGC
                 || platform->getPlatformInfo().eProductFamily == IGFX_ROCKETLAKE
                 || platform->getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_S
                 || platform->getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_P
+                || platform->getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_N
                )
             {
                 return GENX_TGLLP;

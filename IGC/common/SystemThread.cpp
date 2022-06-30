@@ -922,6 +922,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_DG1:
             case IGFX_ROCKETLAKE:
             case IGFX_ALDERLAKE_S:
+            case IGFX_ALDERLAKE_P:
+            case IGFX_ALDERLAKE_N:
                 SIPIndex = bindlessMode ? GEN12_LP_CSR_DEBUG_BINDLESS : GEN12_LP_CSR_DEBUG;
                 break;
             case IGFX_XE_HP_SDV:
@@ -951,6 +953,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             case IGFX_ROCKETLAKE:
             case IGFX_ALDERLAKE_S:
             case IGFX_ALDERLAKE_P:
+            case IGFX_ALDERLAKE_N:
                 SIPIndex = GEN12_LP_CSR;
                 break;
             case IGFX_XE_HP_SDV:
