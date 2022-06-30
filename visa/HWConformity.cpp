@@ -7864,25 +7864,6 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
 
         if (builder.hasPartialMixMode() && inst->getNumSrc() > 1)
         {
-            bool isPureBF = true;
-            if (inst->getDst()->getType() != Type_BF)
-            {
-                isPureBF = false;
-            }
-            for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
-            {
-                if (inst->getSrc(i)->getType() != Type_BF)
-                {
-                    isPureBF = false;
-                    break;
-                }
-            }
-            if (isPureBF)
-            {
-                // pure BF arithmetic instruction is not supported, we make src0 F
-                replaceSrc(instIter, 0, Type_F, bb);
-            }
-
             // no HF on mad src2 or mul src1
             if (inst->isMixedMode())
             {
