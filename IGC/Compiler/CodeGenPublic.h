@@ -1473,6 +1473,7 @@ namespace IGC
         SIMDMode GetMaxSIMDMode();
 
         float GetSpillThreshold() const;
+        bool CheckSLMLimit(SIMDMode simdMode);
     private:
         unsigned m_threadGroupSize_X;
         unsigned m_threadGroupSize_Y;

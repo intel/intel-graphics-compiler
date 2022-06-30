@@ -468,6 +468,46 @@ namespace IGC
         return m_slmSize ? spillThresholdSLM : spillThresholdNoSLM;
     }
 
+    bool ComputeShaderContext::CheckSLMLimit(SIMDMode simdMode)
+    {
+        // check if SLM fits in DSS
+        if (IGC_IS_FLAG_ENABLED(CheckCSSLMLimit) &&
+            getModuleMetaData()->csInfo.waveSize == 0 &&
+            platform.isProductChildOf(IGFX_DG2) &&
+            m_DriverInfo.SupportCSSLMLimit() &&
+            m_slmSize > 0)
+        {
+            unsigned int slmPerDSS = 0; // in kB
+            switch (simdMode)
+            {
+                // # Unfused EU = 16
+                // # HW threads/EU = 8
+                // SIMD16: 16*8*16 = 2048 pixelsPerDSS
+                // SIMD32: 16*8*32 = 4096 pixelsPerDSS
+                //
+                // To calculate SLM/DSS in kB
+                // ThreadGroupSize (TGSize) is # pixels in Thread Group
+                // (m_slmSize * pixelsPerDSS / TGSize) / 1024
+            case SIMDMode::SIMD16:
+                slmPerDSS = m_slmSize * 2 / GetThreadGroupSize();
+                break;
+            case SIMDMode::SIMD32:
+                slmPerDSS = m_slmSize * 4 / GetThreadGroupSize();
+                break;
+            default:
+                break;
+            }
+
+            if (slmPerDSS > 128) {
+                SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+                return false;
+            }
+
+        }
+
+        return true;
+    }
+
     bool OpenCLProgramContext::isSPIRV() const
     {
         return isSpirV;
