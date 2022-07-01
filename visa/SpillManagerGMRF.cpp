@@ -3268,14 +3268,6 @@ void SpillManagerGRF::insertSpillRangeCode(
         return;
     }
 
-    if (builder_->getOption(vISA_DoSplitOnSpill))
-    {
-        // if spilled inst is copy of original variable to it's split variable
-        // then simply remove the instruction.
-        if (LoopVarSplit::removeFromPreheader(&gra, spillDcl, bb, spilledInstIter))
-            return;
-    }
-
     auto checkRMWNeeded = [this, spilledRegion]()
     {
         return noRMWNeeded.find(spilledRegion) == noRMWNeeded.end();
@@ -3552,22 +3544,6 @@ void SpillManagerGRF::insertFillGRFRangeCode(
     auto dstRegion = inst->getDst();
     G4_INST* fillSendInst = nullptr;
     auto spillDcl = filledRegion->getTopDcl()->getRootDeclare();
-
-    if (builder_->getOption(vISA_DoSplitOnSpill))
-    {
-        // if spilled inst is copy of split variable to it's spilled variable
-        // then simply remove the instruction.
-        //
-        // if inst is:
-        // (W) mov (8|M0) SPLIT1    V10
-        //
-        // and SPLIT1 is marked as spilled then don't insert spill code for it.
-        // V10 is guaranteed to be spilled already so there is no point spilling
-        // SPLIT1. we simply remove above instruction and any fill emitted to load
-        // V10 and return.
-        if (LoopVarSplit::removeFromLoopExit(&gra, spillDcl, bb, filledInstIter))
-            return;
-    }
 
     auto sisIt = scalarImmSpill.find(spillDcl);
     if (sisIt != scalarImmSpill.end())
@@ -4539,6 +4515,20 @@ bool SpillManagerGRF::insertSpillFillCode(
     {
         DEBUG_MSG("Enough physical register not available for handling address taken spills" << std::endl);
         return false;
+    }
+
+    if (kernel->getOption(vISA_DoSplitOnSpill))
+    {
+        // remove all spilled splits
+        for (const LiveRange* lr : *spilledLRs_)
+        {
+            auto dcl = lr->getDcl();
+            // check whether spilled variable is one of split vars
+            if (gra.splitResults.find(dcl) == gra.splitResults.end())
+                continue;
+
+            LoopVarSplit::removeAllSplitInsts(&gra, dcl);
+        }
     }
 
     // Insert spill/fill code for all basic blocks.

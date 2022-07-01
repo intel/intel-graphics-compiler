@@ -18,7 +18,7 @@ namespace vISA
     class RPE
     {
     public:
-        RPE(const GlobalRA&, const LivenessAnalysis*);
+        RPE(const GlobalRA&, const LivenessAnalysis*, DECLARE_LIST* spills = nullptr);
 
         ~RPE()
         {
@@ -56,10 +56,24 @@ namespace vISA
         const Options* options;
         SparseBitSet live;
         const std::vector<G4_RegVar*>& vars;
+        // Variables part of spilledVars set dont contribute to
+        // program register pressure. This is useful to model
+        // register pressure immediately after coloring (spill
+        // iteration).
+        std::unordered_set<const G4_Declare*> spilledVars;
 
         void regPressureBBExit(G4_BB*);
         void updateRegisterPressure(unsigned int, unsigned int, unsigned int);
         void updateLiveness(SparseBitSet&, uint32_t, bool);
+
+
+        bool isSpilled(const G4_Declare* dcl) const
+        {
+            auto it = spilledVars.find(dcl);
+            if (it == spilledVars.end())
+                return false;
+            return true;
+        }
     };
 }
 #endif
