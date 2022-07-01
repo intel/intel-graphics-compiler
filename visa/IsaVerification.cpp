@@ -3472,11 +3472,13 @@ struct LscInstVerifier {
     void verifyCachingOpts() {
         auto l1 = getNextEnumU8<LSC_CACHE_OPT>();
         auto l3 = getNextEnumU8<LSC_CACHE_OPT>();
-        if (sfid == LSC_TGM || sfid == LSC_UGML) {
-            verify(l1 == LSC_CACHING_DEFAULT && l3 == LSC_CACHING_DEFAULT,
-                "Messages to UGML and TGM require default cache settings"
-                " (#53561)");
-            return;
+        {
+            if (sfid == LSC_TGM || sfid == LSC_UGML) {
+                verify(l1 == LSC_CACHING_DEFAULT && l3 == LSC_CACHING_DEFAULT,
+                    "Messages to UGML and TGM require default cache settings"
+                    " (#53561)");
+                return;
+            }
         }
         uint32_t enc = 0;
         LSC_CACHE_OPTS cacheOpts {l1, l3};
