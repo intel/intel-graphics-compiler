@@ -10436,7 +10436,7 @@ int GlobalRA::coloringRegAlloc()
                 return VISA_SPILL;
             }
         }
-        else if (builder.getOption(vISA_LocalRA) && !hasStackCall)
+        else if (builder.getOption(vISA_LocalRA) && (!hasStackCall || builder.getOption(vISA_Partitioning)))
         {
             copyMissingAlignment();
             BankConflictPass bc(*this, false);
