@@ -1145,7 +1145,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator& I)
                             for (auto DV : DbgValues) {
                                 DIExpression* OldExpr = DV->getExpression();
                                 DIExpression* NewExpr = DIExpression::append(
-                                    OldExpr, { dwarf::DW_OP_neg });
+                                    OldExpr, { dwarf::DW_OP_constu, 0, dwarf::DW_OP_swap, dwarf::DW_OP_minus });
                                 IGCLLVM::setExpression(DV, NewExpr);
                             }
                         }
