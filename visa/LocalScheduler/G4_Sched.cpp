@@ -1366,8 +1366,7 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
         float Ratio = NumGrfs / 128.0f;
         // limit the iterative approach to certain platforms for now
         if (kernel.getOptions()->getOption(vISA_preRA_ScheduleNoIterative) ||
-            kernel.getPlatform() < Xe_DG2 ||
-            kernel.getPlatform() == Xe_PVC || kernel.getPlatform() == Xe_PVCXT)
+            kernel.getPlatform() < Xe_DG2 )
         {
             GTMax = GTMin = getLatencyHidingThreshold(kernel);
             Ratio = 1.0f;  // already adjusted inside getLatencyHidingThreshold
