@@ -1171,33 +1171,25 @@ bool DDD::hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multiSup
     return suppressionSrcs > 1;
 }
 
+
+bool DDD::hsaSameTypesAllOperands(const G4_INST& curInst, const G4_INST& nextInst) const
+{
+    assert(curInst.getNumDst() == 1 && curInst.getNumDst() == nextInst.getNumDst());
+    if (curInst.getDst()->getType() != nextInst.getDst()->getType())
+        return false;
+
+    assert(curInst.getNumSrc() == nextInst.getNumSrc());
+    for (auto i = 0; i < curInst.getNumSrc(); ++i)
+        if (curInst.getSrc(i)->getType() != nextInst.getSrc(i)->getType())
+            return false;
+
+    return true;
+}
+
 bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst, BitSet &liveSrc)
 {
-    G4_Type curTypes[4];
-    G4_Type nextTypes[4];
-
-    //Get Types
-    for(int i = 0; i < 4; i++)
-    {
-        curTypes[i] = Type_UNDEF;
-        nextTypes[i] = Type_UNDEF;
-    }
-    curTypes[0] = curInst->getDst()->getType();
-    nextTypes[0] = nextInst->getDst()->getType();
-    for (int i = 0; i < 3; i++)
-    {
-        curTypes[i + 1] = curInst->getSrc(i)->getType();
-        nextTypes[i + 1] = nextInst->getSrc(i)->getType();
-    }
-
-    //Same type for all operands
-    for(int i = 0; i < 4; i++)
-    {
-        if (curTypes[i] != nextTypes[i])
-        {
-            return false;
-        }
-    }
+    if (!hsaSameTypesAllOperands(*curInst, *nextInst))
+        return false;
 
     G4_InstDpas* curDpasInst = curInst->asDpasInst();
     G4_InstDpas* nextDpasInst = nextInst->asDpasInst();
@@ -1404,9 +1396,14 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
                  liveSrc.clear();
                  liveDst.clear();
 
-                 while (nextInst->isDpas() &&
-                        hasSameSourceOneDPAS(curInst, nextInst, liveDst, liveSrc))
+                 // group continuous dpas in the same node if they can potentially form a dpas macro
+                 while (nextInst->isDpas())
                  {
+                     bool canGroup = false;
+                         canGroup = hasSameSourceOneDPAS(curInst, nextInst, liveDst, liveSrc);
+                     if (!canGroup)
+                         break;
+
                      //Pushed to the same node
                      node->instVec.insert(node->instVec.begin(), nextInst);
                      nodeId--;
@@ -2116,7 +2113,7 @@ struct criticalCmpForMad
 };
 
 // 1).The priority queue is ordered as original sequence order.
-// 2).If there is a mad instruction be scheduled, trying to search the candidate which has read suppression in src1and src2.
+// 2).If there is a mad instruction be scheduled, trying to search the candidate which has read suppression in src1 and src2.
 // 3).The scheduling is only applied to the BB whose instructions are mostly mad.
 // 4).This scheduling is not for general instruction scheduling, it's controlled by option vISA_ScheduleForReadSuppression
 uint32_t DDD::listScheduleForSuppression(G4_BB_Schedule* schedule)

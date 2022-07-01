@@ -255,8 +255,12 @@ public:
 
     bool hasReadSuppression(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst, BitSet &liveSrc);
     bool hasReadSuppression(G4_INST* prevInst, G4_INST* nextInst, bool multipSuppression);
-    bool hasSameSourceOneDPAS(G4_INST * curInst, G4_INST * nextInst, BitSet & liveDst, BitSet & liveSrc);
 
+private:
+    bool hasSameSourceOneDPAS(G4_INST* curInst, G4_INST* nextInst, BitSet& liveDst, BitSet& liveSrc);
+    bool hsaSameTypesAllOperands(const G4_INST& curInst, const G4_INST& nextInst) const;
+
+public:
     DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k);
     ~DDD()
     {
