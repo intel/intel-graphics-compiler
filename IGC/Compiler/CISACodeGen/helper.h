@@ -40,6 +40,7 @@ typedef unsigned int uint;
 #define SIZE_WORD   2
 #define SIZE_DWORD  4
 #define SIZE_OWORD 16
+#define SIZE_YWORD 32
 
 enum ADDRESS_SPACE : unsigned int;
 
