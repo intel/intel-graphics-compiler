@@ -8556,35 +8556,6 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
         }
     }
 
-    if (builder.hasFtoPackedHFMove() && inst->opcode() == G4_mov)
-    {
-        G4_Operand* src0 = inst->getSrc(0);
-        G4_Type src0Ty = src0->getType();
-        G4_SrcRegRegion* reg0 = src0->isSrcRegRegion() ? src0->asSrcRegRegion() : nullptr;
-        bool src0IsScalar = (!reg0 || reg0->getRegion()->isScalar());
-        if (!src0IsScalar &&
-            ((dstTy == Type_HF && dst->getHorzStride() == 1 && src0Ty == Type_F) ||
-             (dstTy == Type_F && src0Ty == Type_HF && reg0->getRegion()->isContiguous(inst->getExecSize()))))
-        {
-            uint32_t dstOffBytes = dst->getSubRegOff() * dst->getTypeSize();
-            uint32_t src0OffBytes = reg0->getSubRegOff() * reg0->getTypeSize();
-            const uint32_t halfGRFBytes = kernel.numEltPerGRF<Type_UB>() / 2;
-            // For F, use the half of its offset!
-            dstOffBytes = (dstTy == Type_F ? dstOffBytes / 2 : dstOffBytes);
-            src0OffBytes = (src0Ty == Type_F ? src0OffBytes / 2 : src0OffBytes);
-            const bool isAligned = (dstOffBytes % halfGRFBytes) == (src0OffBytes % halfGRFBytes);
-            if ((!isAligned && dstOffBytes != 0) || (dstTy == Type_F && dst->getHorzStride() != 1))
-            {
-                inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, builder.getGRFAlign()));
-            }
-            if ((!isAligned && src0OffBytes != 0) ||
-                (src0Ty == Type_F && !reg0->getRegion()->isContiguous(inst->getExecSize())))
-            {
-                inst->setSrc(insertMovBefore(it, 0, src0Ty, bb, builder.getGRFAlign()), 0);
-            }
-        }
-    }
-
     // fix Dst if necessary
     // some special mix mode dst are allowed provided the instruction has F type:
     // r1.0<2>:bf
