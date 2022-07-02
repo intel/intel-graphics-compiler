@@ -170,6 +170,7 @@ set(IGA_SOURCES
     ${GED_INCLUDE}/ged.h
 )
 
+
 set(BUILD_EXPOSURE_FLAG "")
 
 set(IGA_DEFINITIONS _CONSOLE _LIB ${VSVERSION} ${GED_BRANCH})
@@ -265,6 +266,7 @@ set(IGA_SOURCES_ENCODER_ONLY
   ${IGA_API_Source}
   ${IGA_API_EncoderInterface}
   ${IGA_Backend}
+  ${IGA_Backend_Messages}
   ${IGA_Backend_GED_EncoderOnly}
   ${IGA_Frontend_Formatter}
   ${IGA_IR}

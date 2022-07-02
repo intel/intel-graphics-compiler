@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Types.hpp"
 #include "Checker/IRChecker.hpp"
 #include "../Frontend/Formatter.hpp"
+#include "../IR/Messages.hpp"
 
 #include <sstream>
 

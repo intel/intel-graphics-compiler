@@ -47,7 +47,7 @@ namespace iga {
         bool              printAnsi = false;
         bool              printJson = false;
         DepAnalysis      *liveAnalysis = nullptr;
-        uint32_t basePCOffset              = 0;
+        uint32_t          basePCOffset = 0;
 
         // format with default labels
         FormatOpts(const Model &m)

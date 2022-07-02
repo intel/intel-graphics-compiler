@@ -247,7 +247,8 @@ SFID iga::sfidFromEncoding(Platform p, uint32_t sfidBits)
         break;
     case 0xA: sfid = SFID::DC0;  break;
     case 0xB: sfid = SFID::PIXI; break;
-    case 0xC: sfid = SFID::DC1;  break;
+    case 0xC:
+        sfid = SFID::DC1;  break;
     case 0xD:
         sfid = SFID::CRE;
         if (p >= Platform::XE_HPG) {
@@ -482,7 +483,7 @@ static void postProcessDecode(
                 i++;
             }
         }
-    }
+    } // fields
 
     // set the syntax kind
     if (result && !result.syntax.mnemonic.empty()) {

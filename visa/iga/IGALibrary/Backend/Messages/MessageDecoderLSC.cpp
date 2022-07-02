@@ -244,7 +244,7 @@ struct MessageDecoderLSC : MessageDecoder {
     }
 
 
-    void decodeLscCacheControl(
+    void decodeCacheControl(
         SendOp sop,
         CacheOpt &l1,
         CacheOpt &l3)
@@ -633,7 +633,7 @@ struct MessageDecoderLSC : MessageDecoder {
         bool hasCc =
             opInfo.isLoad() || opInfo.isStore() || opInfo.isAtomic();
         if (sfid != SFID::SLM && hasCc) {
-            decodeLscCacheControl(op, l1, l3);
+            decodeCacheControl(op, l1, l3);
         }
         //
         result.syntax.mnemonic = symbol;

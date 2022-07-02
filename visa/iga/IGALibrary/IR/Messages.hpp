@@ -42,32 +42,36 @@ namespace iga
     struct SendOpDefinition {
         SendOp op;
         const char *mnemonic; // e.g. "load" for SendOp::LOAD
-        const char *description; // a longer freer description
+        const char *description; // a longer description
 
         // typesafe bitset of send op attributes
         enum class Attr {
-            NONE = 0x0,
+            NONE           = 0x0000,
             //
             // the may have a destination (e.g. loads or atomics)
             // certain control ops may or may not have destinations
-            HAS_DST = 0x1,
+            HAS_DST        = 0x0001,
             //
             // is the address a scalar register (e.g. load_block)
-            IS_SCALAR_ADDR = 0x2,
+            IS_SCALAR_ADDR = 0x0002,
             //
             // if the operation supports a ChMask (e.g. load_quad)
-            HAS_CMASK = 0x4,
+            HAS_CMASK      = 0x0004,
+            //
+            // If the message is a sampler gather4
+            GATHER4        = 0x0008,
             //
             // the op is a load, store, or atomic
-            GROUP_LOAD   = 0x10,
-            GROUP_STORE  = 0x20,
-            GROUP_ATOMIC = 0x40,
-            GROUP_OTHER  = 0x80, // e.g. fence, barrier, etc...
+            GROUP_LOAD     = 0x0010,
+            GROUP_STORE    = 0x0020,
+            GROUP_ATOMIC   = 0x0040,
+            GROUP_SAMPLE   = 0x0080,
+            GROUP_OTHER    = 0x0100, // e.g. fence, barrier, eot, etc...
 
             // for atomics, the number of data arguments in src1
-            ATOMIC_UNARY   = 0x100, // none (atomic_iinc)
-            ATOMIC_BINARY  = 0x200, // one (atomic_fadd)
-            ATOMIC_TERNARY = 0x400, // two (atomic_icas)
+            ATOMIC_UNARY   = 0x1000, // none (atomic_iinc)
+            ATOMIC_BINARY  = 0x2000, // one (atomic_fadd)
+            ATOMIC_TERNARY = 0x4000, // two (atomic_icas)
         };
         Attr attrs;
 
@@ -90,6 +94,7 @@ namespace iga
         bool isLoad() const {return hasAttr(Attr::GROUP_LOAD);}
         bool isStore() const {return hasAttr(Attr::GROUP_STORE);}
         bool isAtomic() const {return hasAttr(Attr::GROUP_ATOMIC);}
+        bool isSample() const {return hasAttr(Attr::GROUP_SAMPLE);}
         bool isOther() const {return hasAttr(Attr::GROUP_OTHER);}
 
         int numAtomicArgs() const {
@@ -259,11 +264,13 @@ namespace iga
         // The surface identifier (if applicable).  E.g. BTI.
         SendDesc     surfaceId;
         //
-        // possible immediate offset if the encoding supports it
-        int immediateOffset = 0;
+        // Possible immediate offset (if the encoding supports it)
+        // This is in bytes not elements
+        int          immediateOffset = 0;
         //
         // same as the above but only for block2d (mutally exclusive with above)
-        int immediateOffsetBlock2dX = 0, immediateOffsetBlock2dY = 0;
+        // This is in dataSize elements
+        int          immediateOffsetBlock2dX = 0, immediateOffsetBlock2dY = 0;
         //
         // A symbol value for this message (syntax).
         // The syntax is not complete and IGA will not consume it directly
@@ -277,7 +284,7 @@ namespace iga
         // to change at any time. The nullptr is a possible value.
         std::string  description;
 
-        const char *docs = nullptr;
+        const char *docs[4] = {nullptr, nullptr, nullptr, nullptr};
         //
         // A block message
         bool isBlock() const {
@@ -287,6 +294,8 @@ namespace iga
         bool isLoad() const {return lookupSendOp(op).isLoad();}
         bool isStore() const {return lookupSendOp(op).isStore();}
         bool isAtomic() const {return lookupSendOp(op).isAtomic();}
+        bool isSample() const {return lookupSendOp(op).isSample();}
+        bool isOther() const {return lookupSendOp(op).isOther();}
         //
         // An atomic that returns a value
         bool isAtomicLoad() const {return hasAttr(Attr::ATOMIC_RETURNS);}

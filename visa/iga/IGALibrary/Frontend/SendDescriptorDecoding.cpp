@@ -73,6 +73,40 @@ static const char *getSFIDString(Platform p, uint32_t sfid)
 
 static uint32_t getHeaderBit(uint32_t desc) {return getBits(desc, 19, 1);}
 
+static void appendUVR(
+    Platform p, SFID sfid, int src0Len, const DecodeResult &dr,
+    std::stringstream &ss)
+{
+    bool appendUvrLod =
+        dr.info.hasAttr(MessageInfo::Attr::HAS_UVRLOD) && src0Len > 0;
+    if (appendUvrLod) {
+        // Deduce the number of typed coordinates included
+        // (e.g. U, V, R, LOD)
+        const int BITS_PER_REG = p >= Platform::XE_HPC ? 512 : 256;
+        // We do this by assuming address coordinates are in GRF padded
+        // SOA order:
+        //   - U's registers, then V's, then R's, the LOD's
+        //   - if a cooridate takes less than a full GRF, then we pad it up
+        //     to that
+        //   - not all decoded combinations are supported in hardware, but
+        //     that's between the user and their deity; we're an assembler
+        //     and can't track the endlessly changing spec
+        // Typical usage is the default message and a GRF's worth of A32
+        // elements as the SIMD size (e.g. 8 for TGL)
+        //
+        // bits for a full vector's worth of U's, V's, etc....
+        const int regsPerCoord =
+            std::max<int>(1,
+                dr.info.execWidth*dr.info.addrSizeBits/BITS_PER_REG);
+        switch (src0Len/regsPerCoord) {
+        case 1: ss << "; u"; break;
+        case 2: ss << "; u,v"; break;
+        case 3: ss << "; u,v,r"; break;
+        case 4: ss << "; u,v,r,lod"; break;
+        }
+    } // U,V,R,LOD
+}
+
 
 void iga::EmitSendDescriptorInfo(
     Platform p,
@@ -144,8 +178,7 @@ void iga::EmitSendDescriptorInfo(
     }
 
     if (desc.isImm()) {
-        const DecodeResult dr =
-            tryDecode(p, sfid, execSize,
+        const DecodeResult dr = tryDecode(p, sfid, execSize,
                 exDesc, desc, nullptr);
         if (dr.syntax.isValid()) {
             ss << "; " << dr.syntax.sym();
@@ -155,34 +188,7 @@ void iga::EmitSendDescriptorInfo(
             ss << "; ?";
         }
 
-        bool appendUvrLod =
-            dr.info.hasAttr(MessageInfo::Attr::HAS_UVRLOD) && src0Len > 0;
-        if (appendUvrLod) {
-            // Deduce the number of typed coordinates included
-            // (e.g. U, V, R, LOD)
-            const int BITS_PER_REG = p >= Platform::XE_HPC ? 512 : 256;
-            // We do this by assuming address coordinates are in GRF padded
-            // SOA order:
-            //   - U's registers, then V's, then R's, the LOD's
-            //   - if a cooridate takes less than a full GRF, then we pad it up
-            //     to that
-            //   - not all decoded combinations are supported in hardware, but
-            //     that's between the user and their deity; we're an assembler
-            //     and can't track the endlessly changing spec
-            // Typical usage is the default message and a GRF's worth of A32
-            // elements as the SIMD size (e.g. 8 for TGL)
-            //
-            // bits for a full vector's worth of U's, V's, etc....
-            const int regsPerCoord =
-                std::max<int>(1,
-                    dr.info.execWidth*dr.info.addrSizeBits/BITS_PER_REG);
-            switch (src0Len/regsPerCoord) {
-            case 1: ss << "; u"; break;
-            case 2: ss << "; u,v"; break;
-            case 3: ss << "; u,v,r"; break;
-            case 4: ss << "; u,v,r,lod"; break;
-            }
-        } // U,V,R,LOD
-    }
+        appendUVR(p, sfid, src0Len, dr, ss);
+    } // is imm desc
 } // iga::EmitSendDescriptorInfo
 

@@ -243,6 +243,11 @@ bool RegSet::addSendOperand(const Instruction &i, int opIx)
 {
     bool changed = false;
     const Operand &op = opIx < 0 ? i.getDestination() : i.getSource(opIx);
+    if (op.getDirRegName() != RegName::GRF_R) {
+        return false;
+    }
+
+
     // add special handling for send messages
     //  e.g.
     //   send (4) r10:1  ... untyped 32b read of X
@@ -251,8 +256,9 @@ bool RegSet::addSendOperand(const Instruction &i, int opIx)
     //  reads 128b ...
     //    load.ugm.d32x8t.a32.ca.ca (1|M0) ... 8 DW in a single register
     //    load.ugm.d32x4.a64 (4|M0) ... // four successive registers with 1 DW
-    const auto desc = i.getMsgDescriptor();
-    if (op.getDirRegName() == RegName::GRF_R && desc.isImm()) {
+    bool decodeFineGrained =
+        i.getMsgDescriptor().isImm();
+    if (op.getDirRegName() == RegName::GRF_R && decodeFineGrained) {
         const DecodeResult di = tryDecode(i, nullptr);
         if (di &&
             (di.info.isLoad() || di.info.isStore() || di.info.isAtomic()))

@@ -24,6 +24,7 @@ set(IGA_Backend_Messages
   PARENT_SCOPE
 )
 
+
 ##################################################################
 # GED encoder
 set(IGA_Backend_GED_EncoderOnly

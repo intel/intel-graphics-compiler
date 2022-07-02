@@ -26,7 +26,6 @@ namespace iga {
         std::function<void (std::stringstream &,uint32_t)>;
     static inline void NO_DECODE(std::stringstream &,uint32_t) { }
 
-
     struct MessageDecoder {
         // inputs
         const Model           &decodeModel;
@@ -68,7 +67,6 @@ namespace iga {
             result.info.addrType = AddrType::FLAT;
             result.info.surfaceId = 0;
             result.info.immediateOffset = 0;
-            result.info.docs = nullptr;
             //
             // syntax.sfid = _sfid;
             result.syntax.controls = "." + ToSyntax(_sfid);
@@ -92,7 +90,7 @@ namespace iga {
             setDoc(doc, doc, doc);
         }
         void setDoc(const char *preXe, const char *xe, const char *) {
-            result.info.docs = chooseDoc(preXe, xe, "?");
+            result.info.docs[0] = chooseDoc(preXe, xe, "?");
         }
         const char *chooseDoc(
             const char *preXe, const char *xe, const char *) const
@@ -437,6 +435,62 @@ namespace iga {
         SendDesc &desc,
         std::string &err);
 
+
+    enum class SamplerParam {
+        NONE = 0,
+        AI, // array index
+        BIAS,
+        BIAS_AI,
+        DUDX, // u derivative with respect to x?
+        DUDY, // u derivative with respect to y?
+        DUMMY, // dummy parameter for messages with no arguments
+               // sampler send requires src0 to be something
+        DVDX, // v derivative with respect to x?
+        DVDY, // v derivative with respect to y?
+        LOD, // level of detail
+        LOD_AI, // legel of detail ... array index
+        MCS0, // multi compartment sampler buffer 0
+        MCS1, // multi compartment sampler buffer 1
+        MCS2, // multi compartment sampler buffer 3
+        MCS3, // multi compartment sampler buffer 3
+        MLOD, // ... level of detail
+        MLOD_R,
+        R, // r-coordinate
+        REF,
+        SI,
+        U, // u-coordinate
+        V, // v-coordinate
+    }; // SamplerParam
+
+    struct SamplerMessageDescription {
+        SendOp op;
+        const char *mnemonic;
+        int required;
+        SamplerParam params[8];
+
+        constexpr SamplerMessageDescription(
+            SendOp o,
+            const char *mne,
+            int reqd,
+            SamplerParam p0 = SamplerParam::NONE,
+            SamplerParam p1 = SamplerParam::NONE,
+            SamplerParam p2 = SamplerParam::NONE,
+            SamplerParam p3 = SamplerParam::NONE,
+            SamplerParam p4 = SamplerParam::NONE,
+            SamplerParam p5 = SamplerParam::NONE,
+            SamplerParam p6 = SamplerParam::NONE,
+            SamplerParam p7 = SamplerParam::NONE)
+            : op(o), mnemonic(mne), required(reqd)
+            , params {p0, p1, p2, p3, p4, p5, p6, p7}
+        {
+        }
+
+        int countParams() const;
+
+        std::string describe(int srcsLen) const;
+    }; // SamplerMessageDescription
+
+    std::string ToSymbol(SamplerParam sp);
 } // iga::
 
 #endif // _IGA_BACKEND_MESSAGES_MESSAGEDECODER_HPP_

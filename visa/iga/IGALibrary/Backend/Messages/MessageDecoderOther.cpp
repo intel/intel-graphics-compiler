@@ -326,7 +326,7 @@ void MessageDecoderOther::tryDecodeRTA() {
         mi.addrType = AddrType::FLAT;
         mi.surfaceId = 0;
         mi.attributeSet = MessageInfo::Attr::NONE;
-        mi.docs = chooseDoc(nullptr, "47929", "57495");
+        mi.docs[0] = chooseDoc(nullptr, "47929", "57495");
         decodeMDC_HF();
     } else {
         error(14, 4, "unsupported RTA op");
@@ -349,7 +349,7 @@ void MessageDecoderOther::tryDecodeBTD() {
         mi.description = descs.str();
         mi.symbol = sym.str();
         mi.execWidth = simd;
-        mi.docs = chooseDoc(nullptr, "47923", "57487");
+        mi.docs[0] = chooseDoc(nullptr, "47923", "57487");
     } else {
         error(14, 4, "unsupported BTD op");
     }
@@ -510,36 +510,38 @@ static SamplerSIMD decodeSimdSize(
     return simdMode;
 }
 
+int SamplerMessageDescription::countParams() const  {
+    int n = 0;
+    for (SamplerParam sp : params) {
+        if (sp == SamplerParam::NONE)
+            break;
+    }
+    return n;
+}
 
+std::string SamplerMessageDescription::describe(int srcsLen) const {
+    std::stringstream ss;
+    ss << mnemonic;
+    bool first = true;
+    int n = 0;
+    for (SamplerParam sp : params) {
+        if (sp == SamplerParam::NONE)
+            break;
+        if (first) {
+            first = false;
+            ss << ":";
+        } else {
+            ss << "+";
+        }
+        ss << ToSymbol(sp);
+        // for optional parameters
+        if (srcsLen >= 0 && ++n >= srcsLen)
+            break;
+    }
+    return ss.str();
+}
 
-
-enum class SamplerParam {
-    NONE = 0,
-    AI, // array index
-    BIAS,
-    BIAS_AI,
-    DUDX, // u derivative with respect to x?
-    DUDY, // u derivative with respect to y?
-    DUMMY, // dummy parameter for messages with no arguments
-           // sampler send requires src0 to be something
-    DVDX, // v derivative with respect to x?
-    DVDY, // v derivative with respect to y?
-    LOD, // level of detail
-    LOD_AI, // legel of detail ... array index
-    MCS0, // multi compartment sampler buffer 0
-    MCS1, // multi compartment sampler buffer 1
-    MCS2, // multi compartment sampler buffer 3
-    MCS3, // multi compartment sampler buffer 3
-    MLOD, // ... level of detail
-    MLOD_R,
-    R, // r-coordinate
-    REF,
-    SI,
-    U, // u-coordinate
-    V, // v-coordinate
-};
-
-static std::string ToSymbol(SamplerParam sp) {
+std::string iga::ToSymbol(SamplerParam sp) {
     switch (sp) {
     case SamplerParam::AI:       return "ai";
     case SamplerParam::BIAS:     return "bias";
@@ -566,56 +568,7 @@ static std::string ToSymbol(SamplerParam sp) {
     }
 }
 
-struct SamplerMessageDescription {
-    const char *mnemonic;
-    SamplerParam params[8];
 
-    constexpr SamplerMessageDescription(
-        const char *mne,
-        SamplerParam p0 = SamplerParam::NONE,
-        SamplerParam p1 = SamplerParam::NONE,
-        SamplerParam p2 = SamplerParam::NONE,
-        SamplerParam p3 = SamplerParam::NONE,
-        SamplerParam p4 = SamplerParam::NONE,
-        SamplerParam p5 = SamplerParam::NONE,
-        SamplerParam p6 = SamplerParam::NONE,
-        SamplerParam p7 = SamplerParam::NONE)
-        : mnemonic(mne)
-        , params{p0, p1, p2, p3, p4, p5, p6, p7}
-    {
-    }
-
-    int countParams() const {
-        int n = 0;
-        for (SamplerParam sp : params) {
-            if (sp == SamplerParam::NONE)
-                break;
-        }
-        return n;
-    }
-
-    std::string describe(int src0Len) const {
-        std::stringstream ss;
-        ss << mnemonic;
-        bool first = true;
-        int n = 0;
-        for (SamplerParam sp : params) {
-            if (sp == SamplerParam::NONE)
-                break;
-            if (first) {
-                first = false;
-                ss << ":";
-            } else {
-                ss << "+";
-            }
-            ss << ToSymbol(sp);
-            // for optional parameters
-            if (src0Len >= 0 && ++n >= src0Len)
-                break;
-        }
-        return ss.str();
-    }
-};
 
 
 static void decodeSendMessage(
@@ -798,7 +751,6 @@ static void decodeSendMessage(
         case 0x1F:
             symbol = "sample_flush";
             desc = "sampler cache flush";
-            sendOp = SendOp::SAMPLER_FLUSH;
             params = 0; // certain
             break;
         default:
@@ -834,7 +786,7 @@ void MessageDecoderOther::tryDecodeSMPL()
     syms << "_";
     descs << " ";
 
-    SendOp sendOp = SendOp::SAMPLER_LOAD;
+    SendOp sendOp = SendOp::SAMPLE;
     int params = 0;
     std::string symbol, desc;
     auto opBits = getDescBits(12, 5);
