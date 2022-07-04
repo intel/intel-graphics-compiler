@@ -1432,6 +1432,7 @@ void LowerGPCallArg::processGASInst(Module& M)
         return true;
     };
 
+    bool changed = false;
     IRBuilder<> IRB(M.getContext());
     // Change GAS inst, such as ld/st, etc to global ld/st, etc.
     for (Function& F : M)
@@ -1464,7 +1465,7 @@ void LowerGPCallArg::processGASInst(Module& M)
                         tI->setDebugLoc(I->getDebugLoc());
                     }
 
-                    m_changed = true;
+                    changed = true;
                 }
             }
             else if (CallInst* CallI = dyn_cast<CallInst>(I))
@@ -1480,10 +1481,30 @@ void LowerGPCallArg::processGASInst(Module& M)
                     I->replaceAllUsesWith(NewPtr);
                     I->eraseFromParent();
 
-                    m_changed = true;
+                    changed = true;
                 }
             }
         }
+    }
+
+    if (changed)
+    {
+        // Above optimization changes an addrspace of load and store instructions
+        // operating on a generic pointer. One of the cases when optimization may
+        // be applied is when private memory is allocated in a global buffer. Together
+        // with an information that local pointers are not casted to generic addrspace,
+        // compiler is assured that all generic pointers point to a global memory.
+        // If the optimization happens, usage of generic pointer in any load and store
+        // instructions disappear.
+        //
+        // m_mustAllocatePrivateAsGlobalBuffer variable is necessary to point out that
+        // above optimization has been applied. Since PrivateMemoryResolution pass
+        // allocates private memory in a global buffer only if there is any load or
+        // store operating on a generic addrspace, the above optimization could mislead
+        // the logic in PrivateMemoryResolution causing private memory not being
+        // allocated in a global buffer.
+        m_ctx->m_mustAllocatePrivateAsGlobalBuffer = true;
+        m_changed = true;
     }
 }
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/CISACodeGen/CastToGASAnalysis.h"
+#include "Compiler/CodeGenPublic.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
@@ -127,6 +128,13 @@ void CastToGASWrapperPass::setInfoForGroup(
 
 bool CastToGASWrapperPass::runOnModule(Module& M)
 {
+    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    GI.noLocalToGenericOptionEnabled = m_ctx->noLocalToGenericOptionEnabled();
+    GI.allocatePrivateAsGlobalBuffer = m_ctx->allocatePrivateAsGlobalBuffer();
+
+    if (GI.noLocalToGenericOptionEnabled && GI.allocatePrivateAsGlobalBuffer)
+        return false;
+
     castInfoCache.clear();
     CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
     for (auto& F : M.functions()) {
