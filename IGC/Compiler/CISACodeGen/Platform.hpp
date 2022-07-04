@@ -137,37 +137,18 @@ bool support16BitImmSrcForMad() const {
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
 }
 
-//This function is for handling special cases,
-//where simple >= comparison between products/cores doesn't produce expected results.
+// This function checks if product is child of another product
 bool isProductChildOf(PRODUCT_FAMILY product) const
 {
-    bool result;
-    switch (product) {
-    case IGFX_PVC:
-        result = isCoreChildOf(IGFX_XE_HPC_CORE);
-        break;
-    case IGFX_XE_HP_SDV:
-        result = isCoreChildOf(IGFX_XE_HP_CORE);
-        break;
-    case IGFX_DG2:
-        result = isCoreChildOf(IGFX_XE_HPG_CORE);
-        break;
-    default:
-        result = m_platformInfo.eProductFamily >= product;
-        break;
-    }
-    return result;
+    if (product == IGFX_PVC)
+        return isCoreChildOf(IGFX_XE_HPC_CORE);
+    return m_platformInfo.eProductFamily >= product;
 }
 
+// This function checks if core is child of another core
 bool isCoreChildOf(GFXCORE_FAMILY core) const
 {
-    bool result;
-    switch (core) {
-    default:
-        result = m_platformInfo.eRenderCoreFamily >= core;
-        break;
-    }
-    return result;
+    return m_platformInfo.eRenderCoreFamily >= core;
 }
 
 bool supports8DWLSCMessage() const {
