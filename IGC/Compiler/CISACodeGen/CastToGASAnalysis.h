@@ -14,8 +14,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/CallGraph.h>
 #include "common/LLVMWarningsPop.hpp"
 
-#include "Compiler/CodeGenContextWrapper.hpp"
-
 namespace IGC
 {
     enum {
@@ -26,9 +24,6 @@ namespace IGC
     class GASInfo {
     public:
         bool canGenericPointToPrivate(llvm::Function& F) const {
-            if (allocatePrivateAsGlobalBuffer)
-                return false;
-
             auto E = FunctionMap.find(&F);
             if (E == FunctionMap.end())
                 return true;
@@ -37,9 +32,6 @@ namespace IGC
         }
 
         bool canGenericPointToLocal(llvm::Function& F) const {
-            if (noLocalToGenericOptionEnabled)
-                return false;
-
             auto E = FunctionMap.find(&F);
             if (E == FunctionMap.end())
                 return true;
@@ -49,10 +41,6 @@ namespace IGC
     private:
         using FunctionMapTy = llvm::DenseMap<const llvm::Function*, unsigned>;
         FunctionMapTy FunctionMap;
-
-        // True when -cl-intel-no-local-to-generic is enabled
-        bool noLocalToGenericOptionEnabled = false;
-        bool allocatePrivateAsGlobalBuffer = false;
 
         friend class CastToGASWrapperPass;
     };
@@ -75,13 +63,11 @@ namespace IGC
         void getAnalysisUsage(llvm::AnalysisUsage & AU) const override {
             AU.setPreservesAll();
             AU.addRequired<llvm::CallGraphWrapperPass>();
-            AU.addRequired<CodeGenContextWrapper>();
         }
 
         GASInfo& getGASInfo() { return GI; }
 
     private:
-        CodeGenContext* m_ctx = nullptr;
         GASInfo GI;
         llvm::DenseMap<const llvm::Function*, unsigned> castInfoCache;
 

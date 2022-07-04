@@ -8370,9 +8370,10 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 
     CVariable* srcV = GetSymbol(addrSpaceCast->getOperand(0));
 
-    if (!m_canGenericPointToPrivate && !m_canGenericPointToLocal)
+    if ((m_pCtx->allocatePrivateAsGlobalBuffer() || !m_canGenericPointToPrivate) &&
+        !m_canGenericPointToLocal)
     {
-        // If forcing global memory allocation and there are no generic pointers to local AS,
+        // If forcing global memory allocacion and there are no generic pointers to local AS,
         // there is no need to tag generic pointers.
         m_encoder->Cast(m_destination, srcV);
         m_encoder->Push();
