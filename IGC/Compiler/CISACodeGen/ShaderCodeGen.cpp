@@ -1431,10 +1431,9 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
             ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
         }
     }
-    else if (ctx->getCompilerOption().ForceMinSimdSizeForFastestCS &&
-            (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
+    else if (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
               IsStage1FastestCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
-              IGC_GET_FLAG_VALUE(ForceFastestSIMD)))
+              IGC_GET_FLAG_VALUE(ForceFastestSIMD))
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, minSimdModeAllowed, false);
     }
