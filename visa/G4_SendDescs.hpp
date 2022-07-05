@@ -74,7 +74,14 @@ enum class MsgOp {
     ATOMIC_XOR,
     ATOMIC_OR,
     // others ...
-    READ_STATE_INFO
+    READ_STATE_INFO,
+    //
+    FENCE,
+    //
+    // gateway operations
+    BARRIER,
+    NBARRIER,
+    EOT,
 };
 std::string ToSymbol(MsgOp);
 uint32_t GetMsgOpEncoding(MsgOp);

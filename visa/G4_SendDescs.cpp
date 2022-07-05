@@ -53,6 +53,10 @@ std::string vISA::ToSymbol(MsgOp op)
     case MsgOp::ATOMIC_AND:    return "atomic_and";
     case MsgOp::ATOMIC_XOR:    return "atomic_xor";
     case MsgOp::ATOMIC_OR:     return "atomic_or";
+    case MsgOp::EOT:           return "eot";
+    case MsgOp::FENCE:         return "fence";
+    case MsgOp::BARRIER:       return "barrier";
+    case MsgOp::NBARRIER:      return "named_barrier";
     default:
         break;
     }
@@ -107,6 +111,8 @@ MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
             return MsgOp::ATOMIC_XOR;
         case LSC_OP::LSC_ATOMIC_OR:
             return MsgOp::ATOMIC_OR;
+        case LSC_OP::LSC_FENCE:
+            return MsgOp::FENCE;
         default:
             return MsgOp::INVALID;
     }
@@ -140,6 +146,12 @@ uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
         case MsgOp::ATOMIC_AND: return 24;
         case MsgOp::ATOMIC_XOR: return 25;
         case MsgOp::ATOMIC_OR: return 26;
+        case MsgOp::READ_STATE_INFO: return 30;
+        case MsgOp::FENCE:     return 31;
+        //
+        case MsgOp::EOT:      return 0x0;
+        case MsgOp::BARRIER:  return 0x4;
+        case MsgOp::NBARRIER: return 0x5;
         // TODO: other ops
         default: MUST_BE_TRUE(false, "Invalid msg op");
     }

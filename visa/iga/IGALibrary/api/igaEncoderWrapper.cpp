@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 
 using namespace iga;
 
-iga_status_t KernelEncoder::encode()
+iga_status_t KernelEncoder::encode(std::ostream &errStr)
 {
 
     ErrorHandler errHandler;
@@ -30,10 +30,7 @@ iga_status_t KernelEncoder::encode()
     if (errHandler.hasErrors()) {
         // failed encode
         for (auto &e : errHandler.getErrors()) {
-            std::cerr <<
-                "line " << e.at.line <<
-                ", col " << e.at.col << ": " <<
-                e.message << "\n";
+            errStr << "vISA inst $" << e.at.offset << ": " << e.message << "\n";
         }
         return IGA_ERROR;
     }

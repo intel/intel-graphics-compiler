@@ -1643,17 +1643,25 @@ G4_INST* IR_Builder::createMov(
     G4_DstRegRegion* dst, G4_Operand* src0, G4_InstOpts options,
     bool appendToInstList)
 {
+    return createMov(nullptr, execSize, dst, src0, options, appendToInstList);
+}
+G4_INST* IR_Builder::createMov(
+    G4_Predicate *pred,
+    G4_ExecSize execSize,
+    G4_DstRegRegion* dst, G4_Operand* src0, G4_InstOpts options,
+    bool appendToInstList)
+{
     G4_INST* newInst = nullptr;
     if (appendToInstList)
     {
         newInst = createInst(
-            nullptr, G4_mov, nullptr, g4::NOSAT, execSize,
+            pred, G4_mov, nullptr, g4::NOSAT, execSize,
             dst, src0, nullptr, options, true);
     }
     else
     {
         newInst = createInternalInst(
-            nullptr, G4_mov, nullptr, g4::NOSAT, execSize,
+            pred, G4_mov, nullptr, g4::NOSAT, execSize,
             dst, src0, nullptr, options);
     }
     return newInst;

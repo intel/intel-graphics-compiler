@@ -1439,11 +1439,13 @@ INST_LIST_ITER G4_BB::getFirstInsertPos()
     return II;
 }
 
+
 //
 //  Add an EOT send to the end of this BB.
 //
 void G4_BB::addEOTSend(G4_INST* lastInst)
 {
+
     // mov (8) r1.0<1>:ud r0.0<8;8,1>:ud {NoMask}
     // send (8) null r1 0x27 desc
     IR_Builder* builder = parent->builder;

@@ -12,18 +12,50 @@ SPDX-License-Identifier: MIT
 using namespace vISA;
 
 
+// translates the fence fields to binary (without shifting)
+static bool encodeLscFenceSubOp(LSC_FENCE_OP fo, uint32_t &enc)
+{
+    switch (fo) {
+    case LSC_FENCE_OP_NONE:        enc = 0; return true;
+    case LSC_FENCE_OP_EVICT:       enc = 1; return true;
+    case LSC_FENCE_OP_INVALIDATE:  enc = 2; return true;
+    case LSC_FENCE_OP_DISCARD:     enc = 3; return true;
+    case LSC_FENCE_OP_CLEAN:       enc = 4; return true;
+    case LSC_FENCE_OP_FLUSHL3:     enc = 5; return true;
+    case LSC_FENCE_OP_TYPE6:       enc = 6; return true;
+    default: return false;
+    }
+}
+static bool encodeLscFenceScope(LSC_SCOPE fs, uint32_t &enc)
+{
+    switch (fs) {
+    case LSC_SCOPE_GROUP:   enc = 0; return true;
+    case LSC_SCOPE_LOCAL:   enc = 1; return true;
+    case LSC_SCOPE_TILE:    enc = 2; return true;
+    case LSC_SCOPE_GPU:     enc = 3; return true;
+    case LSC_SCOPE_GPUS:    enc = 4; return true;
+    case LSC_SCOPE_SYSREL:  enc = 5; return true;
+    case LSC_SCOPE_SYSACQ:  enc = 6; return true;
+    default: return false;
+    }
+}
+
+
 G4_INST* IR_Builder::translateLscFence(
+    G4_Predicate           *pred,
     SFID                    sfid,
     LSC_FENCE_OP            fenceOp,
     LSC_SCOPE               scope,
     int                    &status)
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
-
     status = VISA_SUCCESS;
+
+
     auto check =
         [&] (bool z, const char *what) {
         if (!z) {
+            criticalMsgStream() << what << "\n";
             MUST_BE_TRUE(false, what);
             status = VISA_FAILURE;
         }
@@ -71,26 +103,16 @@ G4_INST* IR_Builder::translateLscFence(
     desc |= 1 << 25;
     desc |= (hasFenceControl() ? 0 : 1) << 20;
     //
-    switch (fenceOp) {
-    case LSC_FENCE_OP_NONE:        desc |= 0 << 12; break;
-    case LSC_FENCE_OP_EVICT:       desc |= 1 << 12; break;
-    case LSC_FENCE_OP_INVALIDATE:  desc |= 2 << 12; break;
-    case LSC_FENCE_OP_DISCARD:     desc |= 3 << 12; break;
-    case LSC_FENCE_OP_CLEAN:       desc |= 4 << 12; break;
-    case LSC_FENCE_OP_FLUSHL3:     desc |= 5 << 12; break;
-    case LSC_FENCE_OP_TYPE6:       desc |= 6 << 12; break;
-    default: check(false, "invalid fence op");
+    uint32_t fOp = 0;
+    if (!encodeLscFenceSubOp(fenceOp, fOp)) {
+        check(false, "invalid fence op");
     }
-    switch (scope) {
-    case LSC_SCOPE_GROUP:   desc |= 0 << 9; break;
-    case LSC_SCOPE_LOCAL:   desc |= 1 << 9; break;
-    case LSC_SCOPE_TILE:    desc |= 2 << 9; break;
-    case LSC_SCOPE_GPU:     desc |= 3 << 9; break;
-    case LSC_SCOPE_GPUS:    desc |= 4 << 9; break;
-    case LSC_SCOPE_SYSREL:  desc |= 5 << 9; break;
-    case LSC_SCOPE_SYSACQ:  desc |= 6 << 9; break;
-    default: check(false, "invalid fence scope");
+    desc |= fOp << 12;
+    uint32_t fsEnc = 0;
+    if (!encodeLscFenceScope(scope, fsEnc)) {
+        check(false, "invalid fence scope");
     }
+    desc |= fsEnc << 9;
 
     if (sfid == SFID::UGM)
     {
@@ -101,7 +123,7 @@ G4_INST* IR_Builder::translateLscFence(
         desc |= getOption(vISA_LSCBackupMode) << 18;
     }
 
-    (void) lscEncodeAddrSize(LSC_ADDR_SIZE_32b, desc, status);
+    (void)lscEncodeAddrSize(LSC_ADDR_SIZE_32b, desc, status);
     G4_SendDescRaw *msgDesc = createSendMsgDesc(
         sfid,
         desc,
@@ -124,7 +146,9 @@ G4_INST* IR_Builder::translateLscFence(
     return fenceInst;
 }
 
+
 void IR_Builder::generateNamedBarrier(
+    G4_Predicate* prd,
     int numProducer, int numConsumer,
     NamedBarrierType type, G4_Operand* barrierId)
 {
@@ -171,7 +195,7 @@ void IR_Builder::generateNamedBarrier(
         payload.payload.id = (uint8_t)barrierId->asImm()->getInt();
         auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
         auto src = createImm(payload.data, Type_UD);
-        createMov(g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
+        createMov(prd, g4::SIMD1, dst, src, InstOpt_WriteEnable, true);
     }
     else
     {
@@ -181,12 +205,12 @@ void IR_Builder::generateNamedBarrier(
         assert(barrierId->isSrcRegRegion() && IS_INT(barrierId->getType()) && "expect barrier id to be int");
         auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
         auto src1 = createImm(0xFF, Type_UD);
-        createBinOp(G4_and, g4::SIMD1, dst, barrierId, src1, InstOpt_WriteEnable, true);
+        createBinOp(prd, G4_and, g4::SIMD1, dst, barrierId, src1, InstOpt_WriteEnable, true);
         dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
         auto orSrc0 = createSrc(header->getRegVar(), 0, 2,
             getRegionScalar(), Type_UD);
         auto orSrc1 = createImm(payload.data, Type_UD);
-        createBinOp(G4_or, g4::SIMD1, dst, orSrc0, orSrc1, InstOpt_WriteEnable, true);
+        createBinOp(prd, G4_or, g4::SIMD1, dst, orSrc0, orSrc1, InstOpt_WriteEnable, true);
     }
 
     // 1 message length, 0 response length, no header, no ack
@@ -194,7 +218,7 @@ void IR_Builder::generateNamedBarrier(
 
     auto msgDesc = createSyncMsgDesc(SFID::GATEWAY, desc);
     createSendInst(
-        nullptr,
+        prd,
         G4_send,
         g4::SIMD1,
         createNullDst(Type_UD),
@@ -205,7 +229,8 @@ void IR_Builder::generateNamedBarrier(
         true);
 }
 
-void IR_Builder::generateNamedBarrier(G4_Operand* barrierId, G4_SrcRegRegion* threadCount)
+void IR_Builder::generateNamedBarrier(
+    G4_Predicate* prd, G4_Operand* barrierId, G4_SrcRegRegion* threadCount)
 {
     G4_Declare* header = createTempVar(8, Type_UD, getGRFAlign());
 
@@ -236,7 +261,8 @@ void IR_Builder::generateNamedBarrier(G4_Operand* barrierId, G4_SrcRegRegion* th
         true);
 }
 
-void IR_Builder::generateSingleBarrier()
+
+void IR_Builder::generateSingleBarrier(G4_Predicate* prd)
 {
     // single barrier: # producer = # consumer = # threads, barrier id = 0
     // For now produce no fence
@@ -259,7 +285,7 @@ void IR_Builder::generateSingleBarrier()
 
     auto msgDesc = createSyncMsgDesc(SFID::GATEWAY, desc);
     createSendInst(
-        nullptr,
+        prd,
         G4_send,
         g4::SIMD1,
         createNullDst(Type_UD),
@@ -283,7 +309,7 @@ static void checkNamedBarrierSrc(G4_Operand* src, bool isBarrierId, const G4_Ker
     else if (src->isSrcRegRegion())
     {
         assert(src->asSrcRegRegion()->isScalar() && "barrier id should have scalar region");
-        assert(IS_BTYPE(src->getType()) && "illegal barrier opperand type");
+        assert(IS_BTYPE(src->getType()) && "illegal barrier operand type");
     }
     else
     {
@@ -309,7 +335,8 @@ void IR_Builder::updateNamedBarrier(G4_Operand* barrierId)
     }
 }
 
-int IR_Builder::translateVISANamedBarrierWait(G4_Operand* barrierId)
+int IR_Builder::translateVISANamedBarrierWait(
+    G4_Predicate* pred, G4_Operand* barrierId)
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
@@ -322,18 +349,19 @@ int IR_Builder::translateVISANamedBarrierWait(G4_Operand* barrierId)
         // sync can take only flag src
         G4_Declare* flagDecl = createTempFlag(1);
         flagDecl->setSubRegAlign(Even_Word);
-        createMov(g4::SIMD1, createDstRegRegion(flagDecl, 1), barrierId,
+        createMov(pred, g4::SIMD1, createDstRegRegion(flagDecl, 1), barrierId,
             InstOpt_WriteEnable, true);
         barSrc = createSrcRegRegion(flagDecl, getRegionScalar());
     }
     // wait barrierId
-    createInst(nullptr, G4_wait, nullptr, g4::NOSAT, g4::SIMD1, nullptr, barSrc, nullptr,
+    createInst(pred, G4_wait, nullptr, g4::NOSAT, g4::SIMD1, nullptr, barSrc, nullptr,
         InstOpt_WriteEnable, true);
 
     return VISA_SUCCESS;
 }
 
-int IR_Builder::translateVISANamedBarrierSignal(G4_Operand* barrierId, G4_Operand* threadCount)
+int IR_Builder::translateVISANamedBarrierSignal(
+    G4_Predicate *pred, G4_Operand* barrierId, G4_Operand* threadCount)
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
@@ -345,11 +373,12 @@ int IR_Builder::translateVISANamedBarrierSignal(G4_Operand* barrierId, G4_Operan
     if (threadCount->isImm())
     {
         int numThreads = (int)threadCount->asImm()->getInt();
-        generateNamedBarrier(numThreads, numThreads, NamedBarrierType::BOTH, barrierId);
+        generateNamedBarrier(pred,
+            numThreads, numThreads, NamedBarrierType::BOTH, barrierId);
     }
     else
     {
-        generateNamedBarrier(barrierId, threadCount->asSrcRegRegion());
+        generateNamedBarrier(pred, barrierId, threadCount->asSrcRegRegion());
     }
 
     return VISA_SUCCESS;
@@ -364,11 +393,13 @@ int IR_Builder::translateVISANamedBarrierSignal(G4_Operand* barrierId, G4_Operan
 //              bit 6 -- L1 flush
 //              bit 7 -- SW fence only; a scheduling barrier but does not generate any code
 // bit 7, if set, takes precedence over other bits
-G4_INST* IR_Builder::createFenceInstruction(
+G4_INST* IR_Builder::createFenceInstructionPreLSC(
+    G4_Predicate* prd,
     uint8_t flushParam, bool commitEnable, bool globalMemFence,
     bool isSendc = false)
 {
-#define L1_FLUSH_MASK 0x40
+
+    const uint32_t L1_FLUSH_MASK = 0x40;
 
     int flushBits = (flushParam >> 1) & 0xF;
     assert(!supportsLSC() && "LSC fence should be handled elsewhere");
@@ -387,7 +418,7 @@ G4_INST* IR_Builder::createFenceInstruction(
 
     if (L1Flush)
     {
-#define L1_FLUSH_BIT_LOC 8
+        const int L1_FLUSH_BIT_LOC = 8;
         desc |= 1 << L1_FLUSH_BIT_LOC;
     }
 
@@ -405,19 +436,21 @@ G4_INST* IR_Builder::createFenceInstruction(
 
     // commitEnable = true: msg length = 1, response length = 1, dst == src
     // commitEnable = false: msg length = 1, response length = 0, dst == null
-    return createSendInst(nullptr, sendDstOpnd, sendSrcOpnd, 1, (commitEnable ? 1 : 0), g4::SIMD8,
-        desc, SFID::DP_DC0, true, SendAccess::READ_WRITE, createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
+    return createSendInst(prd, sendDstOpnd, sendSrcOpnd, 1, (commitEnable ? 1 : 0), g4::SIMD8,
+        desc, SFID::DP_DC0, true, SendAccess::READ_WRITE,
+        createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
 }
 
 // create a default SLM fence (no flush)
-G4_INST* IR_Builder::createSLMFence()
+G4_INST* IR_Builder::createSLMFence(G4_Predicate* prd)
 {
     bool commitEnable = needsFenceCommitEnable();
     if (supportsLSC())
     {
-        return translateLscFence(SFID::SLM, LSC_FENCE_OP_NONE, LSC_SCOPE_GROUP);
+        return translateLscFence(
+            prd, SFID::SLM, LSC_FENCE_OP_NONE, LSC_SCOPE_GROUP);
     }
-    return createFenceInstruction(0, commitEnable, false, false);
+    return createFenceInstructionPreLSC(prd, 0, commitEnable, false, false);
 }
 
 
@@ -453,13 +486,13 @@ void IR_Builder::updateBarrier()
     usedBarriers.set(0, true);
 }
 
-void IR_Builder::generateBarrierSend()
+void IR_Builder::generateBarrierSend(G4_Predicate* prd)
 {
     updateBarrier();
 
     if (hasUnifiedBarrier())
     {
-        generateSingleBarrier();
+        generateSingleBarrier(prd);
         return;
     }
 
@@ -484,7 +517,9 @@ void IR_Builder::generateBarrierSend()
     G4_Imm *g4Imm = createImm(mask, Type_UD);
 
     createBinOp(
+        prd,
         G4_and,
+        // SPECIFY: why SIMD8?
         g4::SIMD8,
         dst1_opnd,
         r0_src_opnd,
@@ -495,7 +530,7 @@ void IR_Builder::generateBarrierSend()
     // Generate the barrier send message
     auto msgDesc = createSyncMsgDesc(SFID::GATEWAY, desc);
     createSendInst(
-        NULL,
+        prd,
         G4_send,
         g4::SIMD1,
         createNullDst(Type_UD),
@@ -506,7 +541,7 @@ void IR_Builder::generateBarrierSend()
         true);
 }
 
-void IR_Builder::generateBarrierWait()
+void IR_Builder::generateBarrierWait(G4_Predicate* prd)
 {
     updateBarrier();
 
@@ -531,7 +566,7 @@ void IR_Builder::generateBarrierWait()
             waitSrc = createNullSrc(Type_UD);
         }
     }
-    createInst(nullptr, G4_wait, nullptr, g4::NOSAT, g4::SIMD1,
+    createInst(prd, G4_wait, nullptr, g4::NOSAT, g4::SIMD1,
         nullptr, waitSrc, nullptr, InstOpt_WriteEnable, true);
 }
 
@@ -543,8 +578,8 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
     {
     case ISA_BARRIER:
     {
-        generateBarrierSend();
-        generateBarrierWait();
+        generateBarrierSend(nullptr);
+        generateBarrierWait(nullptr);
     }
     break;
     case ISA_SAMPLR_CACHE_FLUSH:
@@ -563,7 +598,8 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
         createSendInst(nullptr, G4_send, g4::SIMD8, sendDstOpnd, sendMsgOpnd,
             createImm(desc, Type_UD), 0, msgDesc, true);
 
-        G4_SrcRegRegion* moveSrcOpnd = createSrc(dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
+        G4_SrcRegRegion* moveSrcOpnd =
+            createSrc(dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
         createMovInst(dstDcl, 0, 0, g4::SIMD8, NULL, NULL, moveSrcOpnd);
     }
     break;
@@ -593,7 +629,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
     break;
     case ISA_FENCE:
     {
-#define GLOBAL_MASK 0x20
+        const uint32_t GLOBAL_MASK = 0x20;
         union fenceParam
         {
             VISAFenceMask mask;
@@ -614,7 +650,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
         {
             // write commit does not work under page fault
             // so we generate a fence without commit, followed by a read surface info to BTI 0
-            createFenceInstruction((uint8_t) mask & 0xFF, false, globalFence);
+            createFenceInstructionPreLSC(nullptr, (uint8_t) mask & 0xFF, false, globalFence);
             G4_Imm* surface = createImm(0, Type_UD);
             G4_Declare* zeroLOD = createTempVar(8, Type_UD, Any);
             createMovInst(zeroLOD, 0, 0, g4::SIMD8, NULL, NULL, createImm(0, Type_UD));
@@ -636,17 +672,18 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
                 {
                     fenceControl = LSC_FENCE_OP_FLUSHL3;
                 }
-                translateLscFence(SFID::UGM, fenceControl, LSC_SCOPE_GPU);
-                translateLscFence(SFID::TGM, fenceControl, LSC_SCOPE_GPU);
+                translateLscFence(nullptr, SFID::UGM, fenceControl, LSC_SCOPE_GPU);
+                translateLscFence(nullptr, SFID::TGM, fenceControl, LSC_SCOPE_GPU);
             }
             else
             {
-                translateLscFence(SFID::SLM, LSC_FENCE_OP_NONE, LSC_SCOPE_GROUP);
+                translateLscFence(nullptr, SFID::SLM, LSC_FENCE_OP_NONE, LSC_SCOPE_GROUP);
             }
         }
         else
         {
-            createFenceInstruction((uint8_t) mask & 0xFF, (mask & 0x1) == 0x1, globalFence);
+            createFenceInstructionPreLSC(nullptr,
+                (uint8_t) mask & 0xFF, (mask & 0x1) == 0x1, globalFence);
             // The move to ensure the fence is actually complete will be added at the end of compilation,
             // in Optimizer::HWWorkaround()
         }
@@ -659,18 +696,19 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
     return VISA_SUCCESS;
 }
 
-int IR_Builder::translateVISASplitBarrierInst(bool isSignal)
+int IR_Builder::translateVISASplitBarrierInst(G4_Predicate* prd, bool isSignal)
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
     if (isSignal)
     {
-        generateBarrierSend();
+        generateBarrierSend(prd);
     }
     else
     {
-        generateBarrierWait();
+        generateBarrierWait(prd);
     }
 
     return VISA_SUCCESS;
 }
+

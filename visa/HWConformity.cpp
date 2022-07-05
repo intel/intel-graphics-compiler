@@ -5213,6 +5213,8 @@ void HWConformity::fixSendInst(G4_BB* bb)
         // they satisfy EOT and preemption restrictions
         auto needsTempSrc = [this](G4_INST* inst, G4_Declare* dcl)
         {
+            if (dcl == nullptr) // %null is okay
+                return false;
             return dcl->getRegVar() && dcl->getRegVar()->getPhyReg() &&
                 ((inst->isEOT() && builder.hasEOTGRFBinding() &&
                     dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum() < 112) ||

@@ -1159,7 +1159,7 @@ void FlowGraph::handleWait()
                 }
                 if (!sunk)
                 {
-                    auto fenceInst = builder->createSLMFence();
+                    auto fenceInst = builder->createSLMFence(nullptr);
                     auto sendInst = fenceInst->asSendInst();
                     if (sendInst != NULL)
                     {

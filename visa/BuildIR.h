@@ -1370,6 +1370,12 @@ public:
         G4_DstRegRegion* dst, G4_Operand* src0,
         G4_InstOpts options,
         bool appendToInstList);
+    G4_INST* createMov(
+        G4_Predicate *pred,
+        G4_ExecSize execSize,
+        G4_DstRegRegion* dst, G4_Operand* src0,
+        G4_InstOpts options,
+        bool appendToInstList);
 
     G4_INST* createBinOp(
         G4_opcode op, G4_ExecSize execSize,
@@ -2715,20 +2721,22 @@ public:
 
     ///////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
-    // Raw send related members are in VisaToG4/TranslateSendSync.cpp
+    // Send sync related members are in VisaToG4/TranslateSendSync.cpp
     G4_INST* translateLscFence(
+        G4_Predicate           *pred,
         SFID                    sfid,
         LSC_FENCE_OP            fenceOp,
         LSC_SCOPE               scope,
         int&                    status);
 
     G4_INST* translateLscFence(
+        G4_Predicate           *pred,
         SFID                    sfid,
         LSC_FENCE_OP            fenceOp,
         LSC_SCOPE               scope)
     {
         int status = VISA_SUCCESS;
-        return translateLscFence(sfid, fenceOp, scope, status);
+        return translateLscFence(pred, sfid, fenceOp, scope, status);
     }
     enum class NamedBarrierType
     {
@@ -2737,29 +2745,44 @@ public:
         BOTH
     };
 
+    ////////////////////////////////////////////////////////////////////////
+    // default barrier functions
+    void generateSingleBarrier(G4_Predicate* prd);
+    void generateBarrierSend(G4_Predicate* prd);
+    void generateBarrierWait(G4_Predicate* prd);
+    int translateVISASplitBarrierInst(G4_Predicate* prd, bool isSignal);
+
+    ////////////////////////////////////////////////////////////////////////
+    // named barrier functions
+    int translateVISANamedBarrierSignal(
+        G4_Predicate* prd, G4_Operand* barrierId, G4_Operand* threadCount);
+    int translateVISANamedBarrierWait(
+        G4_Predicate* prd, G4_Operand* barrierId);
     void generateNamedBarrier(
-        int numProducer, int numConsumer, NamedBarrierType type, G4_Operand* barrierId);
+        G4_Predicate* prd,
+        int numProducer, int numConsumer,
+        NamedBarrierType type, G4_Operand* barrierId);
+    void generateNamedBarrier(
+        G4_Predicate* prd, G4_Operand* barrierId, G4_SrcRegRegion* threadValue);
 
-    void generateNamedBarrier(G4_Operand* barrierId, G4_SrcRegRegion* threadValue);
+    ////////////////////////////////////////////////////////////////////////
+    // fence etc
 
-    void generateSingleBarrier();
-
-    int translateVISANamedBarrierWait(G4_Operand* barrierId);
-    int translateVISANamedBarrierSignal(G4_Operand* barrierId, G4_Operand* threadCount);
-
-    G4_INST* createFenceInstruction(
+    // this is the old fence op
+    // post-LSC platforms should use LSC fences
+    G4_INST* createFenceInstructionPreLSC(
+        G4_Predicate* prd,
         uint8_t flushParam, bool commitEnable, bool globalMemFence, bool isSendc);
 
-    G4_INST* createSLMFence();
+    G4_INST* createSLMFence(G4_Predicate* prd);
 
+    ////////////////////////////////////////////////////////////////////////
+    // other mem sync ops
     int translateVISAWaitInst(G4_Operand* mask);
-
-    void generateBarrierSend();
-    void generateBarrierWait();
 
     int translateVISASyncInst(ISA_Opcode opcode, unsigned int mask);
 
-    int translateVISASplitBarrierInst(bool isSignal);
+
 
     ///////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////

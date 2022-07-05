@@ -843,7 +843,9 @@ public:
     void setEvenlySplitInst(bool val) { evenlySplitInst = val; }
     bool getEvenlySplitInst() { return evenlySplitInst; }
 
-    void setCISAOff(int offset) { srcCISAoff = offset; }
+    void setCISAOff(int offset) {
+        srcCISAoff = offset;
+    }
     int getCISAOff() const { return srcCISAoff; }
     bool isCISAOffValid() const { return getCISAOff() != UndefinedCisaOffset; }
 

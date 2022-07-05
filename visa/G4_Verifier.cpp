@@ -409,6 +409,9 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
         std::cerr << " in instruction:\n  ";
         inst->emit(std::cerr);
         std::cerr << "\n";
+        std::cerr << "   operand: ";
+        opnd->emit(std::cerr);
+        std::cerr << "\n";
 
         if (opnd->getInst() == NULL)
         {

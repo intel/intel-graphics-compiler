@@ -12,6 +12,8 @@ SPDX-License-Identifier: MIT
 #include "../IR/Kernel.hpp"
 #include "iga.h"
 
+#include <ostream>
+
 // entry point for binary encoding of a IGA IR kernel
 class KernelEncoder
 {
@@ -35,7 +37,7 @@ public:
         , m_autoCompact(compact)
     { }
 
-    iga_status_t encode();
+    iga_status_t encode(std::ostream &os);
     void* getBinary() const { return m_buf; }
     uint32_t getBinarySize() const { return m_binarySize; }
 
