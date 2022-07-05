@@ -66,9 +66,9 @@ public:
 private:
     bool split(G4_Declare* dcl, Loop& loop);
     void copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, AugmentationMasks augMask, bool pushBack = true);
-    void replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl, const Loop& loop);
-    void replaceDst(G4_DstRegRegion* dst, G4_Declare* dcl, const Loop& loop);
-    G4_Declare* getNewDcl(G4_Declare* dcl1, G4_Declare* dcl2, const Loop& loop);
+    void replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl);
+    void replaceDst(G4_DstRegRegion* dst, G4_Declare* dcl);
+    G4_Declare* getNewDcl(G4_Declare* dcl1, G4_Declare* dcl2);
     std::vector<Loop*> getLoopsToSplitAround(G4_Declare* dcl);
     void adjustLoopMaxPressure(Loop& loop, unsigned int numRows);
 
@@ -83,7 +83,7 @@ private:
     // store spill cost for each dcl
     std::map<G4_Declare*, float, CComparator> dclSpillCost;
 
-    std::unordered_map<const Loop*, std::unordered_map<G4_Declare*, G4_Declare*>> oldNewDclPerLoop;
+    std::unordered_map<G4_Declare*, G4_Declare*> oldNewDcl;
 
     std::unordered_map<Loop*, std::unordered_set<G4_Declare*>> splitsPerLoop;
 

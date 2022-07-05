@@ -1257,10 +1257,10 @@ bool LoopVarSplit::split(G4_Declare* dcl, Loop& loop)
 
     // replace all occurences of dcl in loop with TMP
     for (auto src : srcs)
-        replaceSrc(src, splitDcl, loop);
+        replaceSrc(src, splitDcl);
 
     for (auto dst : dsts)
-        replaceDst(dst, splitDcl, loop);
+        replaceDst(dst, splitDcl);
 
     splitResults[dcl].push_back(std::make_pair(splitDcl, &loop));
 
@@ -1328,8 +1328,7 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
             const RegionDesc* rd = kernel.fg.builder->getRegionStride1();
             G4_ExecSize execSize{ kernel.numEltPerGRF<Type_UD>() };
 
-            // copy 2 GRFs at a time if byte size permits
-            if (bytesRemaining >= kernel.numEltPerGRF<Type_UB>() * 2)
+            if ((i + 1) < numRows)
                 execSize = G4_ExecSize(kernel.numEltPerGRF<Type_UD>() * 2);
 
             auto dstRgn = kernel.fg.builder->createDst(dst->getRegVar(), (short)i, 0, 1, Type_F);
@@ -1337,8 +1336,6 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
             auto inst = kernel.fg.builder->createMov(execSize, dstRgn, srcRgn, instOption, false);
 
             insertCopy(inst);
-            MUST_BE_TRUE(bytesRemaining >= (unsigned int)(execSize.value * G4_Type_Table[Type_F].byteSize),
-                "Invalid copy exec size");
             bytesRemaining -= (execSize.value * G4_Type_Table[Type_F].byteSize);
 
             if (bytesRemaining < kernel.numEltPerGRF<Type_UB>())
@@ -1389,16 +1386,14 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
 
         insertCopy(inst);
 
-        MUST_BE_TRUE(bytesRemaining >= (execSize.value * (unsigned int)G4_Type_Table[type].byteSize),
-            "Invalid copy exec size");
         bytesRemaining -= (execSize.value * G4_Type_Table[type].byteSize);
     };
 }
 
-void LoopVarSplit::replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl, const Loop& loop)
+void LoopVarSplit::replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl)
 {
     auto srcDcl = src->getBase()->asRegVar()->getDeclare();
-    dcl = getNewDcl(srcDcl, dcl, loop);
+    dcl = getNewDcl(srcDcl, dcl);
 
     auto newSrcRgn = kernel.fg.builder->createSrc(dcl->getRegVar(), src->getRegOff(),
         src->getSubRegOff(), src->getRegion(), src->getType(), src->getAccRegSel());
@@ -1414,10 +1409,10 @@ void LoopVarSplit::replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl, const Loop&
     }
 }
 
-void LoopVarSplit::replaceDst(G4_DstRegRegion* dst, G4_Declare* dcl, const Loop& loop)
+void LoopVarSplit::replaceDst(G4_DstRegRegion* dst, G4_Declare* dcl)
 {
     auto dstDcl = dst->getBase()->asRegVar()->getDeclare();
-    dcl = getNewDcl(dstDcl, dcl, loop);
+    dcl = getNewDcl(dstDcl, dcl);
 
     auto newDstRgn = kernel.fg.builder->createDst(dcl->getRegVar(), dst->getRegOff(),
         dst->getSubRegOff(), dst->getHorzStride(), dst->getType(), dst->getAccRegSel());
@@ -1426,34 +1421,21 @@ void LoopVarSplit::replaceDst(G4_DstRegRegion* dst, G4_Declare* dcl, const Loop&
     inst->setDest(newDstRgn);
 }
 
-G4_Declare* LoopVarSplit::getNewDcl(G4_Declare* dcl1, G4_Declare* dcl2, const Loop& loop)
+G4_Declare* LoopVarSplit::getNewDcl(G4_Declare* dcl1, G4_Declare* dcl2)
 {
     // this method gets args dcl1, dcl2. this method is invoked
     // when the transformation replaces existing src/dst rgn with
-    // equivalent one but using split variable. for eg,
-    //
-    // op ... V10(0,5) ... <-- assume V10 is alias of V9
-    //
-    // assume V9 gets split so V10 src rgn above has to be replaced.
-    // say V9's split dcl is called LOOP_SPLIT_V9.
-    // so in this function we create a new dcl, LOOP_SPLIT_V10 that
-    // aliases LOOP_SPLIT_V9 exactly like V10 aliases V9. this
-    // way we dont need any complicated logic to flatten V10.
+    // equivalent one but using split variable.
     //
     // dcl1 is a dcl used to construct some src or dst rgn.
     // dcl2 is a new dcl that splits dcl1. dcl2 is always root dcl.
-    // dcl1 may or may not be alias of another dcl.
+    // dcl1 may or may not be aliased of another dcl.
     // if dcl1 is also root dcl, then return dcl2.
     // if dcl1 is an alias dcl, then construct new dcl that aliases
     //   dcl2 at similar offset.
     // mapping from old dcl to new dcl is stored for future invocations.
-    // this mapping is done per loop as a single spilled variable could
-    // be split in multiple loops and each split instance would use a
-    // different loop split variable.
 
     MUST_BE_TRUE(!dcl2->getAliasDeclare(), "Expecting to see root dcl for dcl2");
-
-    auto& oldNewDcl = oldNewDclPerLoop[&loop];
 
     auto it = oldNewDcl.find(dcl1);
     if (it != oldNewDcl.end())
@@ -1467,7 +1449,7 @@ G4_Declare* LoopVarSplit::getNewDcl(G4_Declare* dcl1, G4_Declare* dcl2, const Lo
 
     auto newDcl = kernel.fg.builder->createTempVar(dcl1->getTotalElems(), dcl1->getElemType(),
         dcl1->getSubRegAlign());
-    newDcl->setAliasDeclare(getNewDcl(dcl1->getRootDeclare(), dcl2, loop), dcl1->getOffsetFromBase());
+    newDcl->setAliasDeclare(getNewDcl(dcl1->getRootDeclare(), dcl2), dcl1->getOffsetFromBase());
 
     oldNewDcl[dcl1] = newDcl;
 
