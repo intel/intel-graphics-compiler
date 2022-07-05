@@ -4974,14 +4974,15 @@ void GlobalRA::saveRestoreA0(G4_BB * bb)
 
     auto a0SSOMove = [this]()
     {
-        // shr (1) a0.2   SSO   0x4 {NM}
         // SSO is stored in r126.7
         auto dst = builder.createDstRegRegion(builder.getBuiltinA0Dot2(), 1);
         auto SSOsrc = builder.createSrc(builder.getSpillSurfaceOffset()->getRegVar(),
             0, 0, builder.getRegionScalar(), Type_UD);
-        auto imm4 = builder.createImm(4, Type_UD);
-
-        return builder.createBinOp(G4_shr, g4::SIMD1, dst, SSOsrc, imm4, InstOpt_WriteEnable, false);
+        {
+            // shr (1) a0.2   SSO   0x4 {NM}
+            auto imm4 = builder.createImm(4, Type_UD);
+            return builder.createBinOp(G4_shr, g4::SIMD1, dst, SSOsrc, imm4, InstOpt_WriteEnable, false);
+        }
     };
 
     auto isPrologOrEpilog = [this](G4_INST* inst)
