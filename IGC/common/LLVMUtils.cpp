@@ -710,7 +710,7 @@ void IGCPassManager::addPrintPass(Pass* P, bool isBefore)
 {
     // Skip adding a printer pass for analysis passes.
     const PassInfo *PI = Pass::lookupPassInfo(P->getPassID());
-    if (!PI || PI->isAnalysis())
+    if (PI && PI->isAnalysis())
         return;
 
     std::string passName =
