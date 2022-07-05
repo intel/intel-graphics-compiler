@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2113,14 +2113,14 @@ unsigned genx::ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth) {
 bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {
   IGC_ASSERT_MESSAGE(GenXIntrinsic::getGenXIntrinsicID(&WrPredRegion) == GenXIntrinsic::genx_wrpredregion,
     "wrong argument: wrpredregion intrinsic was expected");
-  auto &NewValue = *WrPredRegion.getOperand(WrPredRegionOperand::NewValue);
+  auto &NewValue = *WrPredRegion.getOperand(vc::WrPredRegionOperand::NewValue);
   auto ExecSize =
       NewValue.getType()->isVectorTy()
           ? cast<IGCLLVM::FixedVectorType>(NewValue.getType())->getNumElements()
           : 1;
-  auto Offset =
-      cast<ConstantInt>(WrPredRegion.getOperand(WrPredRegionOperand::Offset))
-          ->getZExtValue();
+  auto Offset = cast<ConstantInt>(
+                    WrPredRegion.getOperand(vc::WrPredRegionOperand::Offset))
+                    ->getZExtValue();
   if (ExecSize >= 32 || !isPowerOf2_64(ExecSize))
     return false;
   if (ExecSize == 32)

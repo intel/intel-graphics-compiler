@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -195,7 +195,7 @@ static bool isWriteWithUndefInput(const Instruction &Inst) {
     return isa<UndefValue>(
         Inst.getOperand(GenXIntrinsic::GenXRegion::NewValueOperandNum));
   case GenXIntrinsic::genx_wrpredregion:
-    return isa<UndefValue>(Inst.getOperand(WrPredRegionOperand::NewValue));
+    return isa<UndefValue>(Inst.getOperand(vc::WrPredRegionOperand::NewValue));
   }
 }
 
@@ -207,7 +207,7 @@ static Value &getWriteOldValueOperand(Instruction &Inst) {
   case GenXIntrinsic::genx_wrregionf:
     return *Inst.getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
   case GenXIntrinsic::genx_wrpredregion:
-    return *Inst.getOperand(WrPredRegionOperand::OldValue);
+    return *Inst.getOperand(vc::WrPredRegionOperand::OldValue);
   }
 }
 

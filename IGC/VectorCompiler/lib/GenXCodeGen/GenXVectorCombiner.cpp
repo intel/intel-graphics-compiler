@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -175,8 +175,8 @@ bool GenXVectorCombiner::isSuitableRdRegion(Instruction &RdRegionInst) {
     return false;
   // we must check that wr region and rdregion use the same part of vector, and
   // splat is equal to one
-  CMRegion RdRegion{&RdRegionInst};
-  CMRegion WrRegion{WrRegionInst};
+  vc::CMRegion RdRegion{&RdRegionInst};
+  vc::CMRegion WrRegion{WrRegionInst};
 
   unsigned OriginalElementCount =
       cast<IGCLLVM::FixedVectorType>(Original->getType())->getNumElements();
@@ -237,15 +237,15 @@ bool GenXVectorCombiner::checkRdRegions(
 
   unsigned ElementSize = ElementSizeInBits / ByteBits;
 
-  CMRegion FirstRdRegion{List.front().RdRegion};
+  vc::CMRegion FirstRdRegion{List.front().RdRegion};
   if (FirstRdRegion.Offset != 0)
     return false;
 
   auto IteratorRes = std::adjacent_find(
       List.begin(), List.end(),
       [ElementSize](const auto &CurrentPack, const auto &NextPack) {
-        CMRegion RdRegionCurrent{CurrentPack.RdRegion};
-        CMRegion RdRegionNext{NextPack.RdRegion};
+        vc::CMRegion RdRegionCurrent{CurrentPack.RdRegion};
+        vc::CMRegion RdRegionNext{NextPack.RdRegion};
         IGC_ASSERT(RdRegionCurrent.Width == RdRegionCurrent.NumElements);
         return RdRegionCurrent.Offset + ElementSize * RdRegionCurrent.Width !=
                RdRegionNext.Offset;
@@ -253,7 +253,7 @@ bool GenXVectorCombiner::checkRdRegions(
   if (IteratorRes != List.end())
     return false;
 
-  CMRegion LastRdRegion{List.back().RdRegion};
+  vc::CMRegion LastRdRegion{List.back().RdRegion};
   IGC_ASSERT(LastRdRegion.Width == LastRdRegion.NumElements);
   return LastRdRegion.Offset + ElementSize * LastRdRegion.Width ==
          OriginalWidth * ElementSize;

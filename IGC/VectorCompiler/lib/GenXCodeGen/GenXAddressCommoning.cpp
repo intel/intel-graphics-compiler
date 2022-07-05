@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -776,7 +776,7 @@ bool GenXAddressCommoning::tryConvertWholeRegion(SmallVector<Extract, 4> &Extrac
   // check every extract
   for (unsigned Idx = 0, End = Extracts.size(); Idx < End; ++Idx) {
     Instruction *RdR = cast<Instruction>(Extracts[Idx].Addr->getOperand(0));
-    Region R = makeRegionFromBaleInfo(RdR, BaleInfo());
+    vc::Region R = makeRegionFromBaleInfo(RdR, BaleInfo());
     if (R.NumElements > 1 && R.Stride > 1)
       return false;
     // all address-conv must be in the same basic block
@@ -812,7 +812,7 @@ bool GenXAddressCommoning::tryConvertWholeRegion(SmallVector<Extract, 4> &Extrac
   for (unsigned Idx2 = 0, End2 = Extracts.size(); Idx2 < End2; ++Idx2) {
     auto OldConv = Extracts[Idx2].Addr;
     Instruction *OldExtract = cast<Instruction>(OldConv->getOperand(0));
-    Region R2 = makeRegionFromBaleInfo(OldExtract, BaleInfo());
+    vc::Region R2 = makeRegionFromBaleInfo(OldExtract, BaleInfo());
     while (!OldConv->use_empty()) {
       auto ui = OldConv->use_begin();
       auto user = cast<Instruction>(ui->getUser());
@@ -866,8 +866,8 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
     Instruction *Addr = *i;
     LLVM_DEBUG(Addr->dump());
 
-    Region R = makeRegionFromBaleInfo(cast<Instruction>(Addr->getOperand(0)),
-                                      BaleInfo());
+    vc::Region R = makeRegionFromBaleInfo(
+        cast<Instruction>(Addr->getOperand(0)), BaleInfo());
     LLVM_DEBUG(dbgs() << " [" << R.Offset << "]\n");
 
     Extracts.push_back(Extract(Addr, R.Offset));
@@ -941,7 +941,7 @@ bool GenXAddressCommoning::vectorizeAddrsFromOneVector(
     LLVM_DEBUG(dbgs() << "Sequence of " << Num << " instructions found. First one is:\n");
     LLVM_DEBUG(FirstRdR->dump());
     LLVM_DEBUG(dbgs() << "\n");
-    Region R = makeRegionFromBaleInfo(FirstRdR, BaleInfo());
+    vc::Region R = makeRegionFromBaleInfo(FirstRdR, BaleInfo());
     R.NumElements = R.Width = Num;
     R.Stride = Diff / R.ElementBytes;
     // See how big we can legally make the region.
@@ -1059,4 +1059,3 @@ bool GenXAddressCommoning::isValueInCurrentFunc(Value *V)
     return false;
   return cast<Argument>(V)->getParent() == F;
 }
-

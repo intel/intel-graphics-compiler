@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -440,7 +440,7 @@ public:
   static bool isBalableIndexOr(Value *V);
   // isBalableNewValueIntoWrr: check whether the new val operand can
   // be baled into wrr instruction
-  bool isBalableNewValueIntoWrr(Value *V, const Region &WrrR);
+  bool isBalableNewValueIntoWrr(Value *V, const vc::Region &WrrR);
 
   static bool isHighCostBaling(uint16_t Type, Instruction *Inst);
   // Debug dump/print
@@ -478,8 +478,8 @@ private:
   bool operandCanBeBaled(Instruction *Inst, unsigned OperandNum, int ModType,
                          unsigned ArgInfoBits);
 
-  bool  isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
-                         bool CanSplitBale);
+  bool isRegionOKForIntrinsic(unsigned ArgInfoBits, const vc::Region &R,
+                              bool CanSplitBale);
   bool isSafeToMove(Instruction *Op, Instruction *From, Instruction *To);
 
   // Cleanup and optimization before do baling on a function.

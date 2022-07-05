@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -40,7 +40,6 @@ SPDX-License-Identifier: MIT
 #include <set>
 
 namespace llvm {
-
 class Constant;
 class Instruction;
 class PHINode;
@@ -48,21 +47,36 @@ class Type;
 class Use;
 
 class GenXSubtarget;
+} // namespace llvm
+
+namespace vc {
 class Region;
 
 // VectorDecomposer : decomposes vectors in a function
 class VectorDecomposer {
+  using Constant = llvm::Constant;
+  using DataLayout = llvm::DataLayout;
+  using Instruction = llvm::Instruction;
+  using PHINode = llvm::PHINode;
+  using Type = llvm::Type;
+  using Twine = llvm::Twine;
+  using Use = llvm::Use;
+  using Value = llvm::Value;
+  using VectorType = llvm::VectorType;
+
+  using GenXSubtarget = llvm::GenXSubtarget;
+
   const DataLayout *DL = nullptr;
-  SmallVector<Instruction *, 16> StartWrRegions;
+  llvm::SmallVector<Instruction *, 16> StartWrRegions;
   std::set<Instruction *> Seen;
-  SmallVector<Instruction *, 16> Web;
-  SmallVector<Instruction *, 16> ToDelete;
+  llvm::SmallVector<Instruction *, 16> Web;
+  llvm::SmallVector<Instruction *, 16> ToDelete;
   bool NotDecomposing = false;
   Instruction *NotDecomposingReportInst = nullptr;
-  SmallVector<unsigned, 8> Decomposition;
-  SmallVector<unsigned, 8> Offsets;
-  std::map<PHINode *, SmallVector<Value *, 8>> PhiParts;
-  SmallVector<Instruction *, 8> NewInsts;
+  llvm::SmallVector<unsigned, 8> Decomposition;
+  llvm::SmallVector<unsigned, 8> Offsets;
+  std::map<PHINode *, llvm::SmallVector<Value *, 8>> PhiParts;
+  llvm::SmallVector<Instruction *, 8> NewInsts;
   unsigned DecomposedCount = 0;
 
 public:
@@ -94,13 +108,15 @@ private:
   void adjustDecomposition(Instruction *Inst);
   void setNotDecomposing(Instruction *Inst, const char *Text);
   void decompose();
-  void decomposeTree(Use *U, const SmallVectorImpl<Value *> *PartsIn);
+  void decomposeTree(Use *U, const llvm::SmallVectorImpl<Value *> *PartsIn);
   void decomposePhiIncoming(PHINode *Phi, unsigned OperandNum,
-                            const SmallVectorImpl<Value *> *PartsIn);
+                            const llvm::SmallVectorImpl<Value *> *PartsIn);
   void decomposeRdRegion(Instruction *RdRegion,
-                         const SmallVectorImpl<Value *> *PartsIn);
-  void decomposeWrRegion(Instruction *WrRegion, SmallVectorImpl<Value *> *Parts);
-  void decomposeBitCast(Instruction *Inst, SmallVectorImpl<Value *> *Parts);
+                         const llvm::SmallVectorImpl<Value *> *PartsIn);
+  void decomposeWrRegion(Instruction *WrRegion,
+                         llvm::SmallVectorImpl<Value *> *Parts);
+  void decomposeBitCast(Instruction *Inst,
+                        llvm::SmallVectorImpl<Value *> *Parts);
   unsigned getPartIndex(Region *R);
   unsigned getPartOffset(unsigned PartIndex);
   unsigned getPartNumBytes(Type *WholeTy, unsigned PartIndex);
@@ -116,16 +132,20 @@ private:
 // Decompose predicate computation sequences for select
 // to reduce flag register pressure.
 class SelectDecomposer {
+  using GenXSubtarget = llvm::GenXSubtarget;
+  using Instruction = llvm::Instruction;
+  using Value = llvm::Value;
+
   const GenXSubtarget *ST;
   bool NotDecomposing = false;
-  SmallVector<Instruction *, 8> StartSelects;
-  SmallVector<Instruction *, 16> Web;
-  SmallVector<unsigned, 8> Decomposition;
-  SmallVector<unsigned, 8> Offsets;
+  llvm::SmallVector<Instruction *, 8> StartSelects;
+  llvm::SmallVector<Instruction *, 16> Web;
+  llvm::SmallVector<unsigned, 8> Decomposition;
+  llvm::SmallVector<unsigned, 8> Offsets;
   std::set<Instruction *> Seen;
 
   // Map each decomposed instructions to its corresonding part values.
-  SmallDenseMap<Value *, SmallVector<Value *, 8>> DMap;
+  llvm::SmallDenseMap<Value *, llvm::SmallVector<Value *, 8>> DMap;
 
 public:
   explicit SelectDecomposer(const GenXSubtarget *ST) : ST(ST) {}
@@ -158,5 +178,4 @@ private:
   }
   Value *getPart(Value *Whole, unsigned PartIndex, Instruction *Inst) const;
 };
-
-} // end namespace llvm
+} // namespace vc

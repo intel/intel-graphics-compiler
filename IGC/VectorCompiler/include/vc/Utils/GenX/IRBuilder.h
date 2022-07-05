@@ -29,8 +29,8 @@ llvm::Value *getGroupThreadIDForPIM(llvm::IRBuilder<> &IRB);
 
 // Produces IR that reads a region \p R from a vISA variable \p Variable.
 llvm::CallInst *
-createReadVariableRegion(llvm::GlobalVariable &Variable,
-                         const llvm::CMRegion &R, llvm::IRBuilder<> &IRB,
+createReadVariableRegion(llvm::GlobalVariable &Variable, const vc::CMRegion &R,
+                         llvm::IRBuilder<> &IRB,
                          const llvm::Twine &Name = "rd.var.rgn");
 
 // Produces IR that reads a whole vISA variable \p Variable.
@@ -45,7 +45,7 @@ createReadVariableRegion(llvm::GlobalVariable &Variable, llvm::IRBuilder<> &IRB,
 // \p Variable.
 llvm::CallInst *createWriteVariableRegion(llvm::GlobalVariable &Variable,
                                           llvm::Value &Input,
-                                          const llvm::CMRegion &R,
+                                          const vc::CMRegion &R,
                                           llvm::IRBuilder<> &IRB);
 
 // Produces IR that writes \p Input to a whole vISA variable \p Variable.

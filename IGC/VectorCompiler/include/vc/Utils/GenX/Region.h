@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -40,15 +40,17 @@ SPDX-License-Identifier: MIT
 ///
 /// * Construct from a Type or Value, setting the GenXRegion to a region that
 ///   covers the whole value.
-/// * Construct from a rdregion/wrregion intrinsic, setting the GenXRegion to the
+/// * Construct from a rdregion/wrregion intrinsic, setting the GenXRegion to
+/// the
 ///   region described by the intrinsic.
 /// * Construct from a bitmap of which elements need to be in the region. This
 ///   is used from GenXConstants when constructing a splat region when loading
 ///   a constant in multiple stages.
 ///
-/// CMRegion is not used to represent the region parameters in predicate regions,
-/// since they are much simpler. But GenXRegion does contain static methods to create
-/// rdpredregion etc intrinsics given the predicate region parameters.
+/// CMRegion is not used to represent the region parameters in predicate
+/// regions, since they are much simpler. But GenXRegion does contain static
+/// methods to create rdpredregion etc intrinsics given the predicate region
+/// parameters.
 ///
 //===----------------------------------------------------------------------===//
 
@@ -61,24 +63,38 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 
 namespace llvm {
-
 class Constant;
 class DataLayout;
-class Value;
-class Function;
-class Module;
-class Type;
-class Instruction;
-class raw_ostream;
-class Twine;
 class DebugLoc;
+class Function;
+class Instruction;
+class Module;
+class Twine;
+class Type;
+class Value;
+class VectorType;
+class raw_ostream;
+} // namespace llvm
 
+namespace vc {
 namespace WrPredRegionOperand {
 enum { OldValue, NewValue, Offset };
 } // namespace WrPredRegionOperand
 
 // CMRegion : description of an operand's region
 class CMRegion {
+  using Constant = llvm::Constant;
+  using DataLayout = llvm::DataLayout;
+  using DebugLoc = llvm::DebugLoc;
+  using Function = llvm::Function;
+  using Instruction = llvm::Instruction;
+  using Module = llvm::Module;
+  using Twine = llvm::Twine;
+  using Type = llvm::Type;
+  using Value = llvm::Value;
+  using VectorType = llvm::VectorType;
+  using raw_ostream = llvm::raw_ostream;
+
 public:
   unsigned ElementBytes;
   Type *ElementTy;
@@ -162,8 +178,8 @@ public:
   // Compare two regions to see if they have the same region parameters (also
   // allowing element type to be different).
   bool operator==(const CMRegion &R2) const {
-    return isSimilar(R2) && Offset == R2.Offset && Indirect == R2.Indirect
-        && IndirectIdx == R2.IndirectIdx;
+    return isSimilar(R2) && Offset == R2.Offset && Indirect == R2.Indirect &&
+           IndirectIdx == R2.IndirectIdx;
   }
   bool operator!=(const CMRegion &R2) const { return !(*this == R2); }
   // Compare two regions to see if they overlaps each other.
@@ -206,13 +222,13 @@ public:
   // Check whether the region is multi indirect. Returns true if Indirect has
   // VectorType (a sign of multi indirection)
   bool isMultiIndirect() const {
-    return Indirect && isa<VectorType>(Indirect->getType());
+    return Indirect && llvm::isa<VectorType>(Indirect->getType());
   }
   // Get indices in vector that represent accessed elements for this region
-  SmallVector<unsigned, 8> getAccessIndices() const;
+  llvm::SmallVector<unsigned, 8> getAccessIndices() const;
   // Get bit mask in which ones values represent bytes which
   // were accessed by this region
-  SmallBitVector getAccessBitMap(int MinTrackingOffset = 0) const;
+  llvm::SmallBitVector getAccessBitMap(int MinTrackingOffset = 0) const;
   // Length of single row in bytes
   unsigned getRowLength() const {
     return Stride ? (Width * Stride * ElementBytes) : ElementBytes;
@@ -220,7 +236,7 @@ public:
   // Length of whole region in bytes
   unsigned getLength() const {
     return VStride * ((NumElements / Width) - 1) * ElementBytes +
-                getRowLength();
+           getRowLength();
   }
 
   // Returns the region offset in muber of elements.
@@ -230,7 +246,7 @@ public:
   // Returns selected region type. Corresonds to rdregion return value type or
   // wrregion new value operand type.
   // Set \p UseDegenerateVectorType to produce <1 x Ty> instead of Ty.
-  llvm::Type *getRegionType(bool UseDegenerateVectorType = false) const;
+  Type *getRegionType(bool UseDegenerateVectorType = false) const;
 
   // Sets \p ElementTy field with \p Ty and sets \p ElementByte accordingly.
   // Data layout \p DL must be provided for pointer types.
@@ -238,15 +254,18 @@ public:
 
 protected:
   // Create wrregion or wrconstregion intrinsic from this Region
-  Instruction *createWrCommonRegion(GenXIntrinsic::ID, Value *OldVal,
+  Instruction *createWrCommonRegion(llvm::GenXIntrinsic::ID IID, Value *OldVal,
                                     Value *Input, const Twine &Name,
                                     Instruction *InsertBefore,
                                     const DebugLoc &DL);
   // Get the function declaration for a region intrinsic
-  static Function *getGenXRegionDeclaration(Module *M, GenXIntrinsic::ID IID, Type *RetTy,
-                                        ArrayRef<Value *> Args);
+  static Function *getGenXRegionDeclaration(Module *M,
+                                            llvm::GenXIntrinsic::ID IID,
+                                            Type *RetTy,
+                                            llvm::ArrayRef<Value *> Args);
   // Get (or create instruction for) the start index of a region.
-  Value *getStartIdx(const Twine &Name, Instruction *InsertBefore, const DebugLoc &DL);
+  Value *getStartIdx(const Twine &Name, Instruction *InsertBefore,
+                     const DebugLoc &DL);
 };
 
 /* Note: Region is a more specialized class for constructing Regions,
@@ -254,23 +273,25 @@ protected:
    and is not aware about Instruction stuff.
 */
 class Region : public CMRegion {
+  using DataLayout = llvm::DataLayout;
+  using Type = llvm::Type;
+  using Value = llvm::Value;
+
 public:
   // Default constructor: assume single element
   Region() : CMRegion() {}
   // Construct from a type.
-  Region(Type *Ty, const DataLayout *DL = nullptr) : CMRegion(Ty, DL) {};
+  Region(Type *Ty, const DataLayout *DL = nullptr) : CMRegion(Ty, DL){};
   // Construct from a value.
   Region(const Value *V, const DataLayout *DL = nullptr) : CMRegion(V, DL){};
   // Construct from a bitmap of which elements to set (legal 1D region)
-  Region(unsigned Bits, unsigned ElementBytes)
-    : CMRegion(Bits, ElementBytes) {};
+  Region(unsigned Bits, unsigned ElementBytes) : CMRegion(Bits, ElementBytes){};
 };
 
-inline raw_ostream &operator<<(raw_ostream &OS, const CMRegion &R) {
+inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS, const CMRegion &R) {
   R.print(OS);
   return OS;
 }
-
-} // end namespace llvm
+} // namespace vc
 
 #endif // VC_UTILS_GENX_REGION_H

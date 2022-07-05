@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -249,7 +249,8 @@ void GenXBaling::processInst(Instruction *Inst)
  * otherwise, if the region is considered baled and skip legalization,
  * we may have illegal standalone read-region.
  */
-bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits, const Region &R,
+bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
+                                        const vc::Region &R,
                                         bool CanSplitBale) {
   GenXIntrinsicInfo::ArgInfo AI(ArgInfoBits);
   if (!AI.isGeneral())

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -42,6 +42,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace genx;
 using namespace GenXIntrinsic::GenXRegion;
+using namespace vc;
 
 static cl::opt<unsigned>
     LimitGenXVectorDecomposer("limit-genx-vector-decomposer",
@@ -72,7 +73,7 @@ private:
 public:
   DiagnosticVectorDecomposition(Instruction *I, const Twine &Desc,
                                 DiagnosticSeverity Severity = DS_Error)
-    : DiagnosticInfo(getKindID(), Severity), Description(Desc), Inst(I) {}
+      : DiagnosticInfo(getKindID(), Severity), Description(Desc), Inst(I) {}
 
   void print(DiagnosticPrinter &P) const override {
     std::string Str;
@@ -109,7 +110,7 @@ bool VectorDecomposer::run(const DataLayout &ArgDL) {
   bool Modified = false;
   // Process each start wrregion added with addStartWrRegion().
   for (auto swi = StartWrRegions.begin(), swe = StartWrRegions.end();
-      swi != swe; ++swi) {
+       swi != swe; ++swi) {
     Instruction *Inst = *swi;
     Modified |= processStartWrRegion(Inst);
     clearOne();
@@ -133,8 +134,7 @@ bool VectorDecomposer::run(const DataLayout &ArgDL) {
  *
  * Return:  true if code modified
  */
-bool VectorDecomposer::processStartWrRegion(Instruction *Inst)
-{
+bool VectorDecomposer::processStartWrRegion(Instruction *Inst) {
   // Determine the web of vectors related by wrregion, phi nodes, bitcast,
   // and determine the decomposition that we can do to the web.
   if (!determineDecomposition(Inst))
@@ -160,8 +160,7 @@ bool VectorDecomposer::processStartWrRegion(Instruction *Inst)
  * Return:  true if decomposition possible; Decomposition and Offsets set up
  *          as described in the comment near the end of this function
  */
-bool VectorDecomposer::determineDecomposition(Instruction *Inst)
-{
+bool VectorDecomposer::determineDecomposition(Instruction *Inst) {
   if (Seen.find(Inst) != Seen.end())
     return false; // This start wrregion already processed in some other web
                   // (and may have been erased).
@@ -207,8 +206,9 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst)
         setNotDecomposing(Inst, "use of function argument or constant");
     } else {
       // Any other def. This stops decomposition.
-      if ((isa<CallInst>(Inst) && !GenXIntrinsic::isAnyNonTrivialIntrinsic(Inst))
-          || isa<ExtractValueInst>(Inst))
+      if ((isa<CallInst>(Inst) &&
+           !GenXIntrinsic::isAnyNonTrivialIntrinsic(Inst)) ||
+          isa<ExtractValueInst>(Inst))
         setNotDecomposing(Inst, "return value from call");
       else
         setNotDecomposing(Inst, "other non-decomposable definition");
@@ -227,8 +227,8 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst)
         }
         continue;
       }
-      if ((GenXIntrinsic::isWrRegion(user) && !ui->getOperandNo())
-          || isa<BitCastInst>(user)) {
+      if ((GenXIntrinsic::isWrRegion(user) && !ui->getOperandNo()) ||
+          isa<BitCastInst>(user)) {
         // Use as the "old value of vector" operand of a wrregion, or in a
         // bitcast. Add the result of the wrregion to the web.
         addToWeb(user);
@@ -244,7 +244,8 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst)
       // in the Seen set.)
       if (isa<InsertValueInst>(user) || isa<ReturnInst>(user))
         setNotDecomposing(user, "use as return value");
-      else if (isa<CallInst>(user) && !GenXIntrinsic::isAnyNonTrivialIntrinsic(user))
+      else if (isa<CallInst>(user) &&
+               !GenXIntrinsic::isAnyNonTrivialIntrinsic(user))
         setNotDecomposing(user, "use as call argument");
       else
         setNotDecomposing(user, "other non-decomposable use");
@@ -270,7 +271,7 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst)
     }
     Decomposition[i] = Offsets.size() - 1;
   }
-  LLVM_DEBUG(
+  LLVM_DEBUG({
     dbgs() << "decompose to";
     for (unsigned i = 0; i != Decomposition.size(); ++i)
       dbgs() << " " << Decomposition[i];
@@ -280,8 +281,8 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst)
     dbgs() << ":";
     for (unsigned i = 0; i != Web.size(); ++i)
       dbgs() << " " << Web[i]->getName();
-    dbgs() << "\n"
-  );
+    dbgs() << "\n";
+  });
   if (Offsets.size() == 1) {
     setNotDecomposing(0, "reads and writes in overlapping regions");
     LLVM_DEBUG(dbgs() << "no decomposition\n");
@@ -298,8 +299,7 @@ bool VectorDecomposer::determineDecomposition(Instruction *Inst)
  *          User = instruction V is used in, for reporting failure to
  *                decompose if V is an Argument
  */
-void VectorDecomposer::addToWeb(Value *V, Instruction *User)
-{
+void VectorDecomposer::addToWeb(Value *V, Instruction *User) {
   if (isa<Constant>(V))
     return;
   auto Inst = dyn_cast<Instruction>(V);
@@ -330,11 +330,10 @@ void VectorDecomposer::addToWeb(Value *V, Instruction *User)
  * different decomposed vectors, and if so marks them as needing to be
  * in the same decomposed vector.
  */
-void VectorDecomposer::adjustDecomposition(Instruction *Inst)
-{
+void VectorDecomposer::adjustDecomposition(Instruction *Inst) {
   if (Decomposition.empty())
     return; // Decomposition[] not set up yet
-  Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
+  vc::Region R = makeRegionFromBaleInfo(Inst, BaleInfo());
   if (R.Indirect) {
     setNotDecomposing(Inst, "indirect region");
     return; // cannot decompose if indirect
@@ -359,8 +358,8 @@ void VectorDecomposer::adjustDecomposition(Instruction *Inst)
     // This region spans more than one GRF. Ensure they are all in the same
     // decomposed vector.
     for (unsigned i = Last + 1;
-        i != Decomposition.size() && Decomposition[i] == Decomposition[Last];
-        ++i)
+         i != Decomposition.size() && Decomposition[i] == Decomposition[Last];
+         ++i)
       Decomposition[i] = Decomposition[First];
     for (unsigned i = First + 1; i != Last + 1; ++i)
       Decomposition[i] = Decomposition[First];
@@ -370,8 +369,8 @@ void VectorDecomposer::adjustDecomposition(Instruction *Inst)
 /***********************************************************************
  * reportLocation : report location of a DebugLoc, with nested inline funcs
  */
-static void reportLocation(const LLVMContext &Ctx, const DebugLoc &DL, raw_ostream &OS)
-{
+static void reportLocation(const LLVMContext &Ctx, const DebugLoc &DL,
+                           raw_ostream &OS) {
   if (auto InlinedAt = DL.getInlinedAt()) {
     reportLocation(Ctx, DebugLoc(InlinedAt), OS);
     OS << ": in function inlined here:\n";
@@ -394,15 +393,15 @@ static void reportLocation(const LLVMContext &Ctx, const DebugLoc &DL, raw_ostre
 
 static DILocalVariable *getVariable(IntrinsicInst *II) {
   do {
-      Value *V = II->getOperand(0);
-      Metadata *M = ValueAsMetadata::get(V);
-      if (auto DbgNode = MetadataAsValue::getIfExists(V->getContext(), M))
-        for (auto *U : DbgNode->users())
-          if (auto DVI = dyn_cast<DbgValueInst>(U))
-            return DVI->getVariable();
-      if (!GenXIntrinsic::isWrRegion(V))
-        break;
-      II = cast<IntrinsicInst>(V);
+    Value *V = II->getOperand(0);
+    Metadata *M = ValueAsMetadata::get(V);
+    if (auto DbgNode = MetadataAsValue::getIfExists(V->getContext(), M))
+      for (auto *U : DbgNode->users())
+        if (auto DVI = dyn_cast<DbgValueInst>(U))
+          return DVI->getVariable();
+    if (!GenXIntrinsic::isWrRegion(V))
+      break;
+    II = cast<IntrinsicInst>(V);
   } while (1);
 
   return nullptr;
@@ -415,18 +414,17 @@ static DILocalVariable *getVariable(IntrinsicInst *II) {
  *                  NotDecomposingReportInst, the "first write" to the web)
  *          Text = message
  */
-void VectorDecomposer::setNotDecomposing(Instruction *Inst, const char *Text)
-{
+void VectorDecomposer::setNotDecomposing(Instruction *Inst, const char *Text) {
   NotDecomposing = true;
   if (NotDecomposingReportInst) {
-    unsigned Bytes = NotDecomposingReportInst->getType()
-          ->getPrimitiveSizeInBits() / 8U;
+    unsigned Bytes =
+        NotDecomposingReportInst->getType()->getPrimitiveSizeInBits() / 8U;
     if (Bytes < GenXReportVectorDecomposerFailureThreshold)
       return;
-    reportLocation(Inst->getContext(),
-        NotDecomposingReportInst->getDebugLoc(), dbgs());
-    dbgs() << ": in decomposition candidate ("
-        << Bytes << " byte vector/matrix) written to here:\n";
+    reportLocation(Inst->getContext(), NotDecomposingReportInst->getDebugLoc(),
+                   dbgs());
+    dbgs() << ": in decomposition candidate (" << Bytes
+           << " byte vector/matrix) written to here:\n";
     NotDecomposingReportInst = nullptr;
   }
   if (!Inst)
@@ -442,8 +440,7 @@ void VectorDecomposer::setNotDecomposing(Instruction *Inst, const char *Text)
  * VectorDecomposer::decompose : decompose web of vectors in Web based on
  *  Decomposition[] and Offsets[]
  */
-void VectorDecomposer::decompose()
-{
+void VectorDecomposer::decompose() {
   // For each phi node in the web, create a phi node for each decomposed
   // part, with all incomings set to the decomposed part of the original
   // incoming if it was constant, otherwise undef.
@@ -456,8 +453,9 @@ void VectorDecomposer::decompose()
     unsigned NumIncomings = Phi->getNumIncomingValues();
     for (unsigned PartIndex = 0; PartIndex != Offsets.size(); ++PartIndex) {
       auto PartTy = getPartType(Phi->getType(), PartIndex);
-      auto NewPhi = PHINode::Create(PartTy, NumIncomings,
-          Phi->getName() + ".decomp." + Twine(PartIndex), Phi);
+      auto NewPhi =
+          PHINode::Create(PartTy, NumIncomings,
+                          Phi->getName() + ".decomp." + Twine(PartIndex), Phi);
       for (unsigned ii = 0; ii != NumIncomings; ++ii) {
         auto Incoming = dyn_cast<Constant>(Phi->getIncomingValue(ii));
         if (!Incoming)
@@ -476,8 +474,8 @@ void VectorDecomposer::decompose()
   unsigned NewLen = 0;
   for (unsigned wi = 0, we = Web.size(); wi != we; ++wi) {
     Instruction *Inst = Web[wi];
-    if (isa<PHINode>(Inst) || (GenXIntrinsic::isWrRegion(Inst)
-          && isa<Constant>(Inst->getOperand(0))))
+    if (isa<PHINode>(Inst) ||
+        (GenXIntrinsic::isWrRegion(Inst) && isa<Constant>(Inst->getOperand(0))))
       Web[NewLen++] = Inst;
   }
   Web.resize(NewLen);
@@ -494,7 +492,8 @@ void VectorDecomposer::decompose()
       while (!Phi->use_empty())
         decomposeTree(&*Phi->use_begin(), Parts);
     } else {
-      IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst) && isa<Constant>(Inst->getOperand(0)));
+      IGC_ASSERT(GenXIntrinsic::isWrRegion(Inst) &&
+                 isa<Constant>(Inst->getOperand(0)));
       decomposeTree(&Inst->getOperandUse(0), nullptr);
     }
   }
@@ -523,8 +522,7 @@ void VectorDecomposer::decompose()
  * This function traverses the tree using self recursion.
  */
 void VectorDecomposer::decomposeTree(Use *U,
-    const SmallVectorImpl<Value *> *PartsIn)
-{
+                                     const SmallVectorImpl<Value *> *PartsIn) {
   auto Inst = cast<Instruction>(U->getUser());
   if (auto Phi = dyn_cast<PHINode>(Inst)) {
     decomposePhiIncoming(Phi, U->getOperandNo(), PartsIn);
@@ -560,14 +558,14 @@ void VectorDecomposer::decomposeTree(Use *U,
  *          OperandNum = operand number in the phi node
  *          PartsIn = decomposed parts of input (not modifiable)
  */
-void VectorDecomposer::decomposePhiIncoming(PHINode *Phi, unsigned OperandNum,
-    const SmallVectorImpl<Value *> *PartsIn)
-{
+void VectorDecomposer::decomposePhiIncoming(
+    PHINode *Phi, unsigned OperandNum,
+    const SmallVectorImpl<Value *> *PartsIn) {
   // For each part, find the decomposed phi node and set its
   // corresponding incoming.
   auto PhiPartsEntry = &PhiParts[Phi];
   for (unsigned PartIndex = 0, NumParts = PartsIn->size();
-      PartIndex != NumParts; ++PartIndex) {
+       PartIndex != NumParts; ++PartIndex) {
     auto PhiPart = cast<PHINode>((*PhiPartsEntry)[PartIndex]);
     PhiPart->setIncomingValue(OperandNum, (*PartsIn)[PartIndex]);
   }
@@ -581,10 +579,9 @@ void VectorDecomposer::decomposePhiIncoming(PHINode *Phi, unsigned OperandNum,
  * Enter:   RdRegion = the rdregion instruction
  *          PartsIn = decomposed parts of input (not modifiable)
  */
-void VectorDecomposer::decomposeRdRegion(Instruction *RdRegion,
-    const SmallVectorImpl<Value *> *PartsIn)
-{
-  Region RdR = makeRegionFromBaleInfo(RdRegion, BaleInfo());
+void VectorDecomposer::decomposeRdRegion(
+    Instruction *RdRegion, const SmallVectorImpl<Value *> *PartsIn) {
+  vc::Region RdR = makeRegionFromBaleInfo(RdRegion, BaleInfo());
   unsigned PartIndex = getPartIndex(&RdR);
   Value *Part = (*PartsIn)[PartIndex];
   if (isa<UndefValue>(Part)) {
@@ -606,14 +603,14 @@ void VectorDecomposer::decomposeRdRegion(Instruction *RdRegion,
     if (!isUsedInTwoAddr(RdRegion)) {
       if (auto N = getVariable(cast<IntrinsicInst>(RdRegion))) {
         emitWarning(RdRegion, "undefined value from '" + N->getName() +
-                              "' is referenced after decomposition");
+                                  "' is referenced after decomposition");
       } else
         emitWarning(RdRegion,
                     "undefined value is referenced after decomposition");
     }
   }
-  if (RdRegion->getType() == Part->getType() && RdR.isContiguous()
-      && isa<VectorType>(RdRegion->getType())) {
+  if (RdRegion->getType() == Part->getType() && RdR.isContiguous() &&
+      isa<VectorType>(RdRegion->getType())) {
     // The rdregion reads the whole of the decomposed part of the vector (and
     // has a vector result even if single element).
     // Just replace uses and erase.
@@ -624,9 +621,9 @@ void VectorDecomposer::decomposeRdRegion(Instruction *RdRegion,
   // The rdregion reads only some of the decomposed part of the vector.
   // Create a new rdregion to replace the old one, taking its name.
   RdR.Offset -= getPartOffset(PartIndex);
-  auto NewRdRegion = RdR.createRdRegion(Part,
-      "", RdRegion, RdRegion->getDebugLoc(),
-      /*AllowScalar=*/!isa<VectorType>(RdRegion->getType()));
+  auto NewRdRegion =
+      RdR.createRdRegion(Part, "", RdRegion, RdRegion->getDebugLoc(),
+                         /*AllowScalar=*/!isa<VectorType>(RdRegion->getType()));
   NewRdRegion->takeName(RdRegion);
   RdRegion->replaceAllUsesWith(NewRdRegion);
   IGC_ASSERT(Seen.find(RdRegion) == Seen.end());
@@ -640,13 +637,12 @@ void VectorDecomposer::decomposeRdRegion(Instruction *RdRegion,
  *          Parts = decomposed parts of input (modifiable)
  */
 void VectorDecomposer::decomposeWrRegion(Instruction *WrRegion,
-    SmallVectorImpl<Value *> *Parts)
-{
-  Region WrR = makeRegionFromBaleInfo(WrRegion, BaleInfo());
+                                         SmallVectorImpl<Value *> *Parts) {
+  vc::Region WrR = makeRegionFromBaleInfo(WrRegion, BaleInfo());
   unsigned PartIndex = getPartIndex(&WrR);
   Value *Part = (*Parts)[PartIndex];
-  if (WrRegion->getOperand(NewValueOperandNum)->getType() == Part->getType()
-      && !WrR.Mask) {
+  if (WrRegion->getOperand(NewValueOperandNum)->getType() == Part->getType() &&
+      !WrR.Mask) {
     // The wrregion writes the whole of the decomposed part of the vector.
     // We can just directly replace the part.
     (*Parts)[PartIndex] = WrRegion->getOperand(NewValueOperandNum);
@@ -676,20 +672,20 @@ void VectorDecomposer::decomposeWrRegion(Instruction *WrRegion,
  *          Parts = decomposed parts of input (modifiable)
  */
 void VectorDecomposer::decomposeBitCast(Instruction *Inst,
-    SmallVectorImpl<Value *> *Parts)
-{
+                                        SmallVectorImpl<Value *> *Parts) {
   // Create a new bitcast for each decomposed part, other than when the part
   // is undef. (We handle the undef case as it is common, when only some of the
   // vector has been set up. Other constant cases we leave to the EarlyCSE pass
   // that comes after this pass.)
-  for (unsigned PartIndex = 0, NumParts = Parts->size();
-      PartIndex != NumParts; ++PartIndex) {
+  for (unsigned PartIndex = 0, NumParts = Parts->size(); PartIndex != NumParts;
+       ++PartIndex) {
     Type *NewTy = getPartType(Inst->getType(), PartIndex);
     if (isa<UndefValue>((*Parts)[PartIndex]))
       (*Parts)[PartIndex] = UndefValue::get(NewTy);
     else {
-      auto NewInst = CastInst::Create(Instruction::BitCast, (*Parts)[PartIndex],
-          NewTy, Inst->getName() + ".decomp." + Twine(PartIndex), Inst);
+      auto NewInst = CastInst::Create(
+          Instruction::BitCast, (*Parts)[PartIndex], NewTy,
+          Inst->getName() + ".decomp." + Twine(PartIndex), Inst);
       NewInst->setDebugLoc(Inst->getDebugLoc());
       NewInsts.push_back(NewInst);
       (*Parts)[PartIndex] = NewInst;
@@ -706,16 +702,14 @@ void VectorDecomposer::decomposeBitCast(Instruction *Inst,
 /***********************************************************************
  * VectorDecomposer::getPartIndex : get the part index for the region
  */
-unsigned VectorDecomposer::getPartIndex(Region *R)
-{
+unsigned VectorDecomposer::getPartIndex(vc::Region *R) {
   return Decomposition[R->Offset / 32U];
 }
 
 /***********************************************************************
  * VectorDecomposer::getPartOffset : get the byte offset of a part
  */
-unsigned VectorDecomposer::getPartOffset(unsigned PartIndex)
-{
+unsigned VectorDecomposer::getPartOffset(unsigned PartIndex) {
   // Offsets[] has the index in GRFs.
   return Offsets[PartIndex] * 32;
 }
@@ -723,8 +717,7 @@ unsigned VectorDecomposer::getPartOffset(unsigned PartIndex)
 /***********************************************************************
  * VectorDecomposer::getPartNumBytes : get the size of a part in bytes
  */
-unsigned VectorDecomposer::getPartNumBytes(Type *WholeTy, unsigned PartIndex)
-{
+unsigned VectorDecomposer::getPartNumBytes(Type *WholeTy, unsigned PartIndex) {
   if (PartIndex + 1 != Offsets.size()) {
     // Not the last part. We can use the offset (in GRFs) difference.
     return 32 * (Offsets[PartIndex + 1] - Offsets[PartIndex]);
@@ -736,18 +729,17 @@ unsigned VectorDecomposer::getPartNumBytes(Type *WholeTy, unsigned PartIndex)
 /***********************************************************************
  * VectorDecomposer::getPartNumElements : get the size of a part in elements
  */
-unsigned VectorDecomposer::getPartNumElements(Type *WholeTy, unsigned PartIndex)
-{
+unsigned VectorDecomposer::getPartNumElements(Type *WholeTy,
+                                              unsigned PartIndex) {
   Type *ElementTy = WholeTy->getScalarType();
-  return getPartNumBytes(WholeTy, PartIndex)
-      / (DL->getTypeSizeInBits(ElementTy) >> 3);
+  return getPartNumBytes(WholeTy, PartIndex) /
+         (DL->getTypeSizeInBits(ElementTy) >> 3);
 }
 
 /***********************************************************************
  * VectorDecomposer::getPartType : get the type of a part
  */
-VectorType *VectorDecomposer::getPartType(Type *WholeTy, unsigned PartIndex)
-{
+VectorType *VectorDecomposer::getPartType(Type *WholeTy, unsigned PartIndex) {
   Type *ElementTy = WholeTy->getScalarType();
   return IGCLLVM::FixedVectorType::get(ElementTy,
                                        getPartNumElements(WholeTy, PartIndex));
@@ -756,9 +748,9 @@ VectorType *VectorDecomposer::getPartType(Type *WholeTy, unsigned PartIndex)
 /***********************************************************************
  * VectorDecomposer::getConstantPart : get the decomposed part of a constant
  */
-Constant *VectorDecomposer::getConstantPart(Constant *Whole, unsigned PartIndex)
-{
-  Region R(Whole, DL);
+Constant *VectorDecomposer::getConstantPart(Constant *Whole,
+                                            unsigned PartIndex) {
+  vc::Region R(Whole, DL);
   R.Offset = getPartOffset(PartIndex);
   R.NumElements = R.Width = getPartNumElements(Whole->getType(), PartIndex);
   return R.evaluateConstantRdRegion(Whole, /*AllowScalar=*/false);
@@ -770,8 +762,7 @@ Constant *VectorDecomposer::getConstantPart(Constant *Whole, unsigned PartIndex)
  *
  * NewInsts contains the instructions added.
  */
-void VectorDecomposer::removeDeadCode()
-{
+void VectorDecomposer::removeDeadCode() {
   SmallVector<Instruction *, 8> Stack; // the "to be processed" stack
   std::set<Instruction *> Unused;
   // Put all newly added instructions into the Unused set.
@@ -843,8 +834,7 @@ void VectorDecomposer::removeDeadCode()
  * set. So we delay actually deleting it until the end of processing the
  * function.
  */
-void VectorDecomposer::eraseInst(Instruction *Inst)
-{
+void VectorDecomposer::eraseInst(Instruction *Inst) {
   Inst->removeFromParent();
   ToDelete.push_back(Inst);
   // Remove all non-constant operands.
@@ -908,7 +898,7 @@ bool SelectDecomposer::processStartSelect(Instruction *Inst) {
   SmallVectorImpl<Value *> &Parts = DMap[Inst];
   Value *NewInst = UndefValue::get(Inst->getType());
   for (unsigned Idx = 0, N = Decomposition.size(); Idx < N; ++Idx) {
-    Region R(NewInst);
+    vc::Region R(NewInst);
     R.getSubregion(getPartOffset(Idx), getPartNumElements(Idx));
     NewInst = R.createWrRegion(NewInst, Parts[Idx], ".join", Inst,
                                Inst->getDebugLoc());
@@ -961,7 +951,7 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
   // - The input operands
   unsigned Width = GenXDefaultSelectPredicateWidth;
   if (Width > 32)
-     Width = 32;
+    Width = 32;
   else if (Width < 16)
     Width = 16;
   else if (SI->getType()->getScalarSizeInBits() >= 32)
@@ -974,7 +964,7 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
     // simd 32. Otherwise it makes difficult to bale in this region read.
     if (Width == 32 && GenXIntrinsic::isRdRegion(V)) {
       CallInst *CI = cast<CallInst>(V);
-      Region R = makeRegionFromBaleInfo(CI, BaleInfo());
+      vc::Region R = makeRegionFromBaleInfo(CI, BaleInfo());
       IGC_ASSERT(ST);
       unsigned LegalSize = getLegalRegionSizeForTarget(
           *ST, R, 0 /*idx*/, true /*Allow2D*/,
@@ -991,8 +981,7 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
     if (!check(Inst))
       break;
     unsigned OpCode = Inst->getOpcode();
-    switch (OpCode)
-    {
+    switch (OpCode) {
     default:
       setNotDecomposing();
       break;
@@ -1035,7 +1024,7 @@ bool SelectDecomposer::determineDecomposition(Instruction *Inst) {
     IGC_ASSERT((NumParts = (NumElts + Width - 1) / Width, 1));
     IGC_ASSERT(NumParts == Decomposition.size());
     IGC_ASSERT(NumParts == Offsets.size());
-    (void) NumParts;
+    (void)NumParts;
   }
 
   return true;
@@ -1064,8 +1053,8 @@ void SelectDecomposer::decompose(Instruction *Inst) {
     decomposeCmp(Inst);
   else {
     IGC_ASSERT(Inst->getOpcode() == Instruction::And ||
-           Inst->getOpcode() == Instruction::Or ||
-           Inst->getOpcode() == Instruction::Xor);
+               Inst->getOpcode() == Instruction::Or ||
+               Inst->getOpcode() == Instruction::Xor);
     decomposeBinOp(Inst);
   }
 }
@@ -1169,7 +1158,7 @@ Value *SelectDecomposer::getPart(Value *Whole, unsigned PartIndex,
   }
 
   const DataLayout &DL = Inst->getModule()->getDataLayout();
-  Region R(Whole, &DL);
+  vc::Region R(Whole, &DL);
   R.Offset = Offset * R.ElementBytes;
   R.NumElements = R.Width = NumElts;
 

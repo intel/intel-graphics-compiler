@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 using namespace llvm;
+using namespace vc;
 
 // Find the datalayout if possible.
 static const DataLayout *getDL(const Value *V) {

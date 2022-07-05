@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1002,7 +1002,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     auto ElemType = pInst->getType();
     auto VecDstTy = IGCLLVM::FixedVectorType::get(ElemType, B->mVWidth);
     // create an read-region
-    CMRegion R(VecDstTy);
+    vc::CMRegion R(VecDstTy);
     if (ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
       R.Offset = CI->getSExtValue() * ElemType->getPrimitiveSizeInBits() / 8;
       R.Indirect = nullptr;
@@ -1037,7 +1037,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
         cast<IGCLLVM::FixedVectorType>(OldVec->getType())->getNumElements();
     auto ElemType = pInst->getOperand(1)->getType();
     // create an write-region
-    CMRegion R(Vec->getType());
+    vc::CMRegion R(Vec->getType());
     if (ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
       // special case, this is really just like a bitcast
       if (CI->getZExtValue() == 0 && N == 1 && isa<UndefValue>(OldVec)) {
@@ -1528,7 +1528,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
         // packetize intrinsic operands
         const DebugLoc &DL = CI->getDebugLoc();
         auto OrigV0 = CI->getOperand(0);
-        CMRegion R(CI);
+        vc::CMRegion R(CI);
         IGC_ASSERT(R.Width == 1);
         if (cast<IGCLLVM::FixedVectorType>(OrigV0->getType())
                 ->getNumElements() == 1) {
@@ -1547,7 +1547,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *inst) {
       case GenXIntrinsic::genx_wrregioni: {
         auto NewV0 = CI->getOperand(1);
         const DebugLoc &DL = CI->getDebugLoc();
-        CMRegion R(CI);
+        vc::CMRegion R(CI);
         IGC_ASSERT(isa<IGCLLVM::FixedVectorType>(NewV0->getType()));
         IGC_ASSERT(cast<IGCLLVM::FixedVectorType>(NewV0->getType())
                        ->getNumElements() == 1);

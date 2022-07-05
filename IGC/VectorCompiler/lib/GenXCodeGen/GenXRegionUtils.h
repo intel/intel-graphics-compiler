@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -74,7 +74,7 @@ namespace genx {
 
 struct BaleInfo;
 
-using Region = llvm::Region;
+using Region = vc::Region;
 
 Region makeRegionWithOffset(const Instruction *Inst,
                             bool WantParentWidth = false);

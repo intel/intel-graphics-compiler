@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -211,7 +211,7 @@ Alignment AlignmentInfo::get(Value *V)
           // Handle the case of reading a scalar from element of a vector, as
           // a trunc from i32 to i16 is lowered to a bitcast to v2i16 then a
           // rdregion.
-          Region R = makeRegionFromBaleInfo(WorkInst, BaleInfo());
+          vc::Region R = makeRegionFromBaleInfo(WorkInst, BaleInfo());
           if (!R.Indirect && (R.NumElements == 1))
             A = getFromInstMap(WorkInst->getOperand(0));
           else

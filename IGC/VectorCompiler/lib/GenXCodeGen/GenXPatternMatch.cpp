@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -92,6 +92,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace llvm::PatternMatch;
 using namespace genx;
+using namespace vc;
 
 #define DEBUG_TYPE "GENX_PATTERN_MATCH"
 
@@ -624,7 +625,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
         BC->setDebugLoc(I.getDebugLoc());
 
         // Create the new rdregion.
-        Region R(BC);
+        vc::Region R(BC);
         R.NumElements = NElts;
         R.Stride = Stride;
         R.Width = NElts;
@@ -773,7 +774,7 @@ CmpInst *GenXPatternMatch::reduceCmpWidth(CmpInst *Cmp) {
   auto *VTy = cast<IGCLLVM::FixedVectorType>(V0->getType());
   unsigned NumElts = VTy->getNumElements();
 
-  Region R = makeRegionFromBaleInfo(WII, BaleInfo());
+  auto R = makeRegionFromBaleInfo(WII, BaleInfo());
   if (R.Indirect || R.Offset || R.VStride || R.Stride != 1 ||
       R.Width != NumElts)
     return nullptr;
@@ -1071,7 +1072,7 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
     return false;
   // Fold and into wrregion, giving rdregion, select and wrregion, as long
   // as the original wrregion is not indirect.
-  Region R = makeRegionFromBaleInfo(user, BaleInfo());
+  auto R = makeRegionFromBaleInfo(user, BaleInfo());
   if (R.Indirect)
     return false;
   auto NewRdRegion =
@@ -1140,14 +1141,14 @@ bool MadMatcher::isProfitable() const {
   auto isIndirectRdRegion = [](Value *V) -> bool {
     if (!GenXIntrinsic::isRdRegion(V))
       return false;
-    Region R = makeRegionFromBaleInfo(cast<Instruction>(V), BaleInfo());
+    auto R = makeRegionFromBaleInfo(cast<Instruction>(V), BaleInfo());
     return R.Indirect;
   };
 
   auto isIndirectWrRegion = [](User *U) -> bool {
     if (!GenXIntrinsic::isWrRegion(U))
       return false;
-    Region R = makeRegionFromBaleInfo(cast<Instruction>(U), BaleInfo());
+    auto R = makeRegionFromBaleInfo(cast<Instruction>(U), BaleInfo());
     return R.Indirect;
   };
 
@@ -1246,7 +1247,7 @@ static Value *getBroadcastFromScalar(Value *V) {
   if (!GenXIntrinsic::isRdRegion(V))
     return nullptr;
   GenXIntrinsicInst *RII = cast<GenXIntrinsicInst>(V);
-  Region R = makeRegionFromBaleInfo(RII, BaleInfo());
+  auto R = makeRegionFromBaleInfo(RII, BaleInfo());
   if (!R.isScalar() || R.Width != 1 || R.Offset != 0)
     return nullptr;
   Value *Src = RII->getArgOperand(0);
@@ -1317,7 +1318,7 @@ MadMatcher::getNarrowI16Vector(IRBuilder<> &Builder, Instruction *AInst,
       // Broadcast through rdregion.
       Type *NewTy = IGCLLVM::FixedVectorType::get(V->getType(), 1);
       V = Builder.CreateBitCast(V, NewTy);
-      Region R(V);
+      vc::Region R(V);
       R.Offset = 0;
       R.Width = 1;
       R.Stride = R.VStride = 0;
@@ -1537,7 +1538,7 @@ bool MadMatcher::emit() {
       Type *NewTy = IGCLLVM::FixedVectorType::get(V->getType(), 1);
       V = Builder.CreateBitCast(V, NewTy);
       // Broadcast through rdregin.
-      Region R(V);
+      vc::Region R(V);
       R.Offset = 0;
       R.Width = 1;
       R.Stride = R.VStride = 0;
@@ -1732,7 +1733,7 @@ Value *SplatValueIfNecessary(Value *V, IGCLLVM::FixedVectorType *VTy,
   Type *NewTy = IGCLLVM::FixedVectorType::get(V->getType(), 1);
   V = Builder.CreateBitCast(V, NewTy);
   // Broadcast through rdregin.
-  Region R(V);
+  vc::Region R(V);
   R.Offset = 0;
   R.Width = 1;
   R.Stride = R.VStride = 0;
@@ -2333,8 +2334,8 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
         GenXIntrinsicInst *WII = cast<GenXIntrinsicInst>(User);
         if (WII->getOperand(1) != Mul)
           continue;
-        Region W = makeRegionFromBaleInfo(WII, BaleInfo());
-        Region V(Mul);
+        auto W = makeRegionFromBaleInfo(WII, BaleInfo());
+        vc::Region V(Mul);
         // TODO: Consider the broadcast and similar cases.
         if (!W.isStrictlySimilar(V))
           continue;
@@ -2349,7 +2350,7 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
           for (auto *U : II->users()) {
             if (GenXIntrinsic::isRdRegion(U)) {
               GenXIntrinsicInst *RII = cast<GenXIntrinsicInst>(U);
-              Region R = makeRegionFromBaleInfo(RII, BaleInfo());
+              auto R = makeRegionFromBaleInfo(RII, BaleInfo());
               if (R == W) {
                 for (auto *U2 : RII->users())
                   if (!Ring.isAdd(U2)) {
@@ -2365,7 +2366,7 @@ bool GenXPatternMatch::propagateFoldableRegion(Function *F) {
               }
             } else if (GenXIntrinsic::isWrRegion(U)) {
               GenXIntrinsicInst *WII2 = cast<GenXIntrinsicInst>(U);
-              Region W2 = makeRegionFromBaleInfo(WII2, BaleInfo());
+              auto W2 = makeRegionFromBaleInfo(WII2, BaleInfo());
               if (W2 == W) {
                 // No more wrregion needs tracing. DO NOTHING.
               } else if (W2.overlap(W)) {
@@ -2515,7 +2516,7 @@ bool GenXPatternMatch::simplifyWrRegion(CallInst *Inst) {
       IRBuilder<> B(Inst);
       NewV = B.CreateBitCast(NewV, IGCLLVM::FixedVectorType::get(NewVTy, 1));
     }
-    Region R(Inst->getType());
+    vc::Region R(Inst->getType());
     R.Width = R.NumElements;
     R.Stride = 0;
     NewV = R.createRdRegion(NewV, "splat", Inst, Inst->getDebugLoc(),
@@ -2695,7 +2696,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
 
     Rd = cast<CallInst>(Val);
     Inverted = Val == SI->getTrueValue();
-    Region RdReg = makeRegionFromBaleInfo(Rd, BaleInfo());
+    auto RdReg = makeRegionFromBaleInfo(Rd, BaleInfo());
 
     auto CanMergeToWrRegion = [&](const Use &U) -> bool {
       if (!GenXIntrinsic::isWrRegion(U.getUser()))
@@ -2703,7 +2704,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
       if (U.getOperandNo() != NewValueOperandNum)
         return false;
       CallInst *Wr = cast<CallInst>(U.getUser());
-      Region WrReg = makeRegionFromBaleInfo(Wr, BaleInfo());
+      auto WrReg = makeRegionFromBaleInfo(Wr, BaleInfo());
       if (WrReg.Mask) {
         // If wrregion already has mask, it should be all ones constant.
         auto *C = dyn_cast<Constant>(WrReg.Mask);
@@ -2733,7 +2734,7 @@ static bool mergeToWrRegion(SelectInst *SI) {
       if (Inverted)
         Mask = llvm::genx::invertCondition(Mask);
       // Create new wrregion.
-      Region WrReg = makeRegionFromBaleInfo(Wr, BaleInfo());
+      auto WrReg = makeRegionFromBaleInfo(Wr, BaleInfo());
       WrReg.Mask = Mask;
       Value *NewWr = WrReg.createWrRegion(Rd->getOperand(OldValueOperandNum),
                                           Inverted ? SI->getFalseValue()
@@ -3433,7 +3434,7 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
           IRBuilder<> Builder(Inst);
           unsigned Width = cast<IGCLLVM::FixedVectorType>(ShtAmt[0]->getType())
                                ->getNumElements();
-          Region R(C->getType());
+          vc::Region R(C->getType());
           R.getSubregion(0, Width);
           Value *Val = UndefValue::get(C->getType());
           Val = R.createWrRegion(Val, Base, "", Inst, Inst->getDebugLoc());
@@ -3441,7 +3442,7 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
             auto Opc = C->getType()->isFPOrFPVectorTy() ? Instruction::FAdd
                                                         : Instruction::Add;
             auto Input = Builder.CreateBinOp(Opc, Base, ShtAmt[j]);
-            Region R1(C->getType());
+            vc::Region R1(C->getType());
             R1.getSubregion(Width * j, Width);
             Val = R1.createWrRegion(Val, Input, "", Inst, Inst->getDebugLoc());
           }
