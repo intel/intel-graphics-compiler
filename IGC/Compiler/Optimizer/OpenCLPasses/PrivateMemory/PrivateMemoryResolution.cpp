@@ -277,11 +277,14 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module& M) const
 
     //
     // Do not use scratch space if module has any stack call.
-    // Do not use scratch space if modeule has any variable length alloca
+    // Do not use scratch space if module has any variable length alloca
+    // Do not use scratch space if module has indirectly called functions
     //
     if (bOCLLegacyStatelessCheck) {
         if (auto * FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>()) {
             if (FGA->getModule() == &M) {
+                if (FGA->getIndirectCallGroup() != nullptr)
+                    return false;
                 for (auto& I : *FGA) {
                     if (I->hasStackCall())
                         return false;

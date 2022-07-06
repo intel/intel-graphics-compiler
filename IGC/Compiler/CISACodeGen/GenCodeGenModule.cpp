@@ -654,11 +654,9 @@ void GenXFunctionGroupAnalysis::setGroupAttributes()
 void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pModule)
 {
     auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    auto IFG = getOrCreateIndirectCallGroup(pModule);
-
-    if (!IFG) return;
 
     // Find all indirectly called functions that require a symbol
+    SmallVector<Function*, 16> indirectFunctions;
     for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I)
     {
         Function* F = &(*I);
@@ -667,6 +665,16 @@ void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module* pMod
         if (F->hasFnAttribute("referenced-indirectly"))
         {
             IGC_ASSERT(getGroup(F) == nullptr);
+            indirectFunctions.push_back(F);
+        }
+    }
+    // Add them to the indirect call group
+    if (!indirectFunctions.empty())
+    {
+        auto IFG = getOrCreateIndirectCallGroup(pModule);
+        IGC_ASSERT(IFG);
+        for (auto F : indirectFunctions)
+        {
             addToFunctionGroup(F, IFG, F);
         }
     }
