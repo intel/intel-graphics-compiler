@@ -74,7 +74,7 @@ public:
     void Floor(const SSource& source, const DstModifier& modifier);
     void Mad(const SSource sources[3], const DstModifier& modifier);
     void Lrp(const SSource sources[3], const DstModifier& modifier);
-    void Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier& modifier);
+    void Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier& modifier, uint8_t clearTagMask = 0);
     void Sub(const SSource[2], const DstModifier& mofidier);
     void Xor(const SSource[2], const DstModifier& modifier);
     void FDiv(const SSource[2], const DstModifier& modifier);
@@ -99,13 +99,15 @@ public:
     void Alu(e_opcode opCode, const SSource sources[N], const DstModifier& modifier);
 
     void BinaryUnary(llvm::Instruction* inst, const  SSource source[2], const DstModifier& modifier);
-    void CmpBoolOp(llvm::BinaryOperator* inst,
+    void CmpBoolOp(Pattern* cmpPattern,
+        llvm::BinaryOperator* inst,
         llvm::CmpInst::Predicate predicate,
         const  SSource source[2],
         const SSource& bitSource,
         const DstModifier& modifier);
     void emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, llvm::CmpInst* cmp, int aluOprdNum);
 
+    void EmitGenericPointersCmp(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier, uint8_t clearTagMask);
     void EmitAluIntrinsic(llvm::CallInst* I, const SSource source[2], const DstModifier& modifier);
     void EmitSimpleAlu(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier);
     void EmitSimpleAlu(llvm::Instruction* inst, CVariable* dst, CVariable* src0, CVariable* src1);

@@ -3613,6 +3613,14 @@ void EmitPass::emitVideoAnalyticGRF(llvm::GenIntrinsicInst* inst, const DWORD re
     m_encoder->Push();
 }
 
+void EmitPass::EmitGenericPointersCmp(llvm::Instruction* inst,
+    const SSource source[2],
+    const DstModifier& modifier,
+    uint8_t clearTagMask)
+{
+    Cmp(cast<CmpInst>(inst)->getPredicate(), source, modifier, clearTagMask);
+}
+
 void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier)
 {
     switch (inst->getOpcode())
@@ -3905,7 +3913,7 @@ void EmitPass::Xor(const SSource sources[2], const DstModifier& modifier)
     }
 }
 
-void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier& modifier)
+void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], const DstModifier& modifier, uint8_t clearTagMask)
 {
     IGC_ASSERT(modifier.sat == false);
     IGC_ASSERT(modifier.flag == nullptr);
@@ -3933,6 +3941,30 @@ void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], cons
         IGC_ASSERT_MESSAGE(CEncoder::GetCISADataTypeSize(dst->GetType()) == CEncoder::GetCISADataTypeSize(src0->GetType()),
             "Cmp to GRF must have the same size for source and destination");
         dst = m_currShader->BitCast(m_destination, src0->GetType());
+    }
+
+    if (clearTagMask)
+    {
+        auto clearTag = [&](CVariable*& ptr)
+        {
+            // Don't need to clear a tag on immediate pointers
+            if (ptr->IsImmediate()) return;
+
+            CVariable* pTempVar = m_currShader->GetNewVariable(
+                numLanes(m_currShader->m_SIMDSize),
+                ptr->GetType(), m_currShader->getGRFAlignment(),
+                ptr->IsUniform(), CName::NONE);
+            // Clear tag in the high part and restore address canonical form
+            m_encoder->Shl(pTempVar, ptr, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+            m_encoder->IShr(pTempVar, pTempVar, m_currShader->ImmToVariable(4, ISA_TYPE_D));
+            m_encoder->Push();
+            ptr = pTempVar;
+        };
+
+        if(clearTagMask & (1 << 0))
+            clearTag(src0);
+        if(clearTagMask & (1 << 1))
+            clearTag(src1);
     }
 
     SetSourceModifiers(0, sources[0]);
@@ -13860,15 +13892,15 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
-void EmitPass::CmpBoolOp(llvm::BinaryOperator* inst,
+void EmitPass::CmpBoolOp(Pattern* cmpPattern,
+    llvm::BinaryOperator* inst,
     llvm::CmpInst::Predicate predicate,
     const SSource cmpSources[2],
     const SSource& bitSource,
     const DstModifier& modifier)
 {
-
     DstModifier init;
-    Cmp(predicate, cmpSources, init);
+    cmpPattern->Emit(this, init);
 
     IGC_ASSERT(bitSource.mod == EMOD_NONE);
     CVariable* boolOpSource = GetSrcVariable(bitSource);

@@ -1180,7 +1180,9 @@ namespace IGC
 
     void CodeGenPatternMatch::visitCmpInst(llvm::CmpInst& I)
     {
-        bool match = MatchCondModifier(I) ||
+        bool match =
+            MatchGenericPointersCmp(I) ||
+            MatchCondModifier(I) ||
             MatchModifier(I);
         IGC_ASSERT(match);
     }
@@ -3926,6 +3928,136 @@ namespace IGC
         return found;
     }
 
+    // When a NULL pointer is directly assigned to a generic pointer, then
+    // it doesn't have a pointer tag, so comparing it with NULL pointers that
+    // were firstly assigned to a named addrspace and then casted to a
+    // generic pointer may lead to incorrect comparison results.
+    //
+    // Example pseudo-code:
+    //  null_generic_ptr = NULL               ; <-- not tagged generic NULL pointer
+    //  local_ptr = NULL
+    //  generic_ptr = local_ptr               ; <-- local NULL pointer gets tagged while casting to generic pointer
+    //  if(generic_ptr == null_generic_ptr)   ; <-- comparing tagged generic pointer with not-tagged one
+    //
+    // Pointer tag should not be taken into account during generic pointer
+    // comparison, so the following pattern match detects generic pointers
+    // comparisons and triggers a special handling for them. The special handling
+    // relies on clearing tag bits right before pointers comparison.
+    //
+    // It matches the following patterns, for platforms:
+    //  1. With a native support for 64-bit integer instructions:
+    //    a) Pointers comparison through integers
+    //      %pti0 = ptrtoint i32 addrspace(4)* %ptr0 to i64
+    //      %pti1 = ptrtoint i32 addrspace(4)* %ptr1 to i64
+    //      %cmp = icmp eq i64 %pti0, %pti1
+    //    b) Regular pointers comparison
+    //      %cmp = icmp eq i32 addrspace(4)* %ptr0, i32 addrspace(4)* %ptr1
+    //
+    //  2. Without a native support for 64-bit integer instructions:
+    //    %ptp0 = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4i32(i32 addrspace(4)* %ptr0)
+    //    %highAddr0 = extractvalue { i32, i32 } %ptp0, 1
+    //    %ptp1 = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4i32(i32 addrspace(4)* %ptr1)
+    //    %highAddr1 = extractvalue { i32, i32 } %ptp1, 1
+    //    %cmp = icmp eq i32 %highAddr0, %highAddr1
+    bool CodeGenPatternMatch::MatchGenericPointersCmp(llvm::CmpInst& I)
+    {
+        using namespace llvm::PatternMatch;
+        struct GenericPointersCmpPattern : public Pattern
+        {
+            llvm::CmpInst* cmp;
+            SSource cmpSources[2];
+            uint8_t clearTagMask;
+            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+            {
+                pass->EmitGenericPointersCmp(cmp, cmpSources, modifier, clearTagMask);
+            }
+        };
+
+        auto hasGenericPtrTy = [](Value* V) {
+            Type* Ty = V->getType();
+            return isa<PointerType>(Ty) && Ty->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC;
+        };
+
+        bool found = false;
+        uint8_t clearTagMask = 0;
+
+        if (m_ctx->m_hasEmu64BitInsts && m_Platform.hasNoFullI64Support())
+        {
+            // %ptp = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4i32(i32 addrspace(4)* %48)
+            // %highAddr = extractvalue { i32, i32 } %ptp, 1
+            // %cmp = icmp eq i32 %highAddr, 0
+            for (uint8_t i = 0; i < 2; ++i)
+            {
+                Value* src = I.getOperand(i);
+                auto e = dyn_cast<ExtractValueInst>(src);
+
+                if (!e) continue;
+                if (e->getNumIndices() != 1) continue;
+
+                unsigned index = e->getIndices()[0];
+                static const unsigned HIGH_ADDR_INDEX = 1;
+
+                if (index != HIGH_ADDR_INDEX) continue;
+
+                if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(e->getAggregateOperand()))
+                {
+                    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_ptr_to_pair)
+                    {
+                        Value* ptr = GII->getOperand(0);
+                        if (hasGenericPtrTy(ptr))
+                        {
+                            clearTagMask |= (!isa<ConstantPointerNull>(ptr) << i);
+                            found = true;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            Value* src0 = I.getOperand(0);
+            Value* src1 = I.getOperand(1);
+
+            Value* ptr0 = nullptr;
+            Value* ptr1 = nullptr;
+
+            // %cmp = icmp eq i32 addrspace(4)* %2, addrspace(4)* %2
+            if (hasGenericPtrTy(src0) && hasGenericPtrTy(src1))
+            {
+                ptr0 = src0;
+                ptr1 = src1;
+                found = true;
+            }
+            // %pti0 = ptrtoint i32 addrspace(4)* %ptr0 to i64
+            // %pti1 = ptrtoint i32 addrspace(4)* %ptr1 to i64
+            // %cmp = icmp eq i64 %pti0, %pti1
+            else if (match(src0, m_PtrToInt(m_Value(ptr0))) &&
+                     match(src1, m_PtrToInt(m_Value(ptr1))))
+                found = (hasGenericPtrTy(ptr0) && hasGenericPtrTy(ptr1));
+
+            if (found)
+            {
+                clearTagMask |= (!isa<ConstantPointerNull>(ptr0) << 0);
+                clearTagMask |= (!isa<ConstantPointerNull>(ptr1) << 1);
+            }
+        }
+
+        if (found)
+        {
+            GenericPointersCmpPattern* pattern = new (m_allocator) GenericPointersCmpPattern();
+
+            bool supportsMod = SupportsModifier(&I);
+            pattern->cmpSources[0] = GetSource(I.getOperand(0), supportsMod, false);
+            pattern->cmpSources[1] = GetSource(I.getOperand(1), supportsMod, false);
+            pattern->cmp = &I;
+            pattern->clearTagMask = clearTagMask;
+
+            AddPattern(pattern);
+        }
+
+        return found;
+    }
+
     // We match this pattern
     // %1 = add %2 %3
     // %b = %cmp %1 0
@@ -3975,13 +4107,14 @@ namespace IGC
     {
         struct BoolOpPattern : public Pattern
         {
+            Pattern* cmpPattern;
             llvm::BinaryOperator* boolOp;
             llvm::CmpInst::Predicate predicate;
             SSource cmpSource[2];
             SSource binarySource;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                pass->CmpBoolOp(boolOp, predicate, cmpSource, binarySource, modifier);
+                pass->CmpBoolOp(cmpPattern, boolOp, predicate, cmpSource, binarySource, modifier);
             }
         };
 
@@ -3998,6 +4131,7 @@ namespace IGC
                     {
                         BoolOpPattern* pattern = new (m_allocator) BoolOpPattern();
                         bool supportsMod = SupportsModifier(cmp);
+                        pattern->cmpPattern = Match(*cmp);
                         pattern->boolOp = &I;
                         pattern->predicate = cmp->getPredicate();
                         pattern->cmpSource[0] = GetSource(cmp->getOperand(0), supportsMod, false);

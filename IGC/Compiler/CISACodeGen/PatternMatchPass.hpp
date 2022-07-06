@@ -199,6 +199,7 @@ namespace IGC
         bool MatchPredicate(llvm::SelectInst& I);
         bool MatchSelectModifier(llvm::SelectInst& I);
         bool MatchPow(llvm::IntrinsicInst& I);
+        bool MatchGenericPointersCmp(llvm::CmpInst& I);
         bool MatchCondModifier(llvm::CmpInst& I);
         bool MatchBoolOp(llvm::BinaryOperator& I);
         bool MatchFunnelShiftRotate(llvm::IntrinsicInst& I);
