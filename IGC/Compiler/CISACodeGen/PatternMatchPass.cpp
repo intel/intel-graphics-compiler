@@ -4965,9 +4965,9 @@ namespace IGC
 
     bool CodeGenPatternMatch::MatchWaveShuffleIndex(llvm::GenIntrinsicInst& I)
     {
-        llvm::Value* helperLaneMode = I.getOperand(2);
+        auto helperLaneMode = cast<ConstantInt>(I.getOperand(2));
         IGC_ASSERT(helperLaneMode);
-        if (int_cast<int>(cast<ConstantInt>(helperLaneMode)->getSExtValue()) == 1)
+        if (int_cast<int>(helperLaneMode->getSExtValue()) == 1)
         {
             //only if helperLaneMode==1, we enable helper lane under some shuffleindex cases (not for all cases).
             HandleSubspanUse(I.getArgOperand(0));
@@ -4989,15 +4989,17 @@ namespace IGC
             helperLaneIndex = 1;
             break;
         case GenISAIntrinsic::GenISA_WaveClustered:
-        case GenISAIntrinsic::GenISA_WavePrefix:
             helperLaneIndex = 3;
+            break;
+        case GenISAIntrinsic::GenISA_WavePrefix:
+            helperLaneIndex = 4;
             break;
         default:
             IGC_ASSERT(false);
             break;
         }
-        llvm::Value* helperLaneMode = I.getArgOperand(helperLaneIndex);
-        if (int_cast<int>(cast<ConstantInt>(helperLaneMode)->getSExtValue()) == 1)
+        auto helperLaneMode = cast<ConstantInt>(I.getArgOperand(helperLaneIndex));
+        if (int_cast<int>(helperLaneMode->getSExtValue()) == 1)
         {
             m_NeedVMask = true;
         }

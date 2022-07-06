@@ -630,7 +630,6 @@ public:
     CVariable* GetExecutionMask();
     CVariable* GetExecutionMask(CVariable* &vecMaskVar);
     CVariable* GetHalfExecutionMask();
-    CVariable* GetDispatchMask();
     CVariable* UniformCopy(CVariable* var, bool doSub = false);
     CVariable* UniformCopy(CVariable* var, CVariable*& LaneOffset, CVariable* eMask = nullptr, bool doSub = false);
 

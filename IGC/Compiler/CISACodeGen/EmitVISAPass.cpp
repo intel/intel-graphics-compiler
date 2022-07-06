@@ -4580,6 +4580,11 @@ void EmitPass::emitCrossInstanceMov(const SSource& source, const DstModifier& mo
 /// Emits VISA instructions for SIMD_SHUFFLE.
 void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
 {
+    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getOperand(2))->getSExtValue()) == 2;
+    if (disableHelperLanes)
+    {
+        ForceDMask();
+    }
     CVariable* data = GetSymbol(inst->getOperand(0));
     CVariable* simdChannel = GetSymbol(inst->getOperand(1));
 
@@ -4768,6 +4773,10 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
                 m_encoder->Push();
                 m_encoder->SetSecondHalf(false);
             }
+            if (disableHelperLanes)
+            {
+                ResetVMask();
+            }
             return;
         }
 
@@ -4849,6 +4858,10 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
             m_encoder->Push();
             m_encoder->SetSecondHalf(false);
         }
+    }
+    if (disableHelperLanes)
+    {
+        ResetVMask();
     }
 }
 
@@ -17749,15 +17762,6 @@ void EmitPass::emitMulAdd16(Instruction* I, const SSource Sources[2], const DstM
     m_encoder->Push();
 }
 
-CVariable* EmitPass::GetDispatchMask()
-{
-    return m_currShader->GetNewAlias(
-        m_currShader->GetSR0(),
-        ISA_TYPE_UD,
-        (m_pattern->NeedVMask() ? 3 : 2) * SIZE_DWORD,
-        1);
-}
-
 void EmitPass::emitThreadPause(llvm::GenIntrinsicInst* inst)
 {
     CVariable* TSC_reg = m_currShader->GetTSC();
@@ -17776,6 +17780,11 @@ void EmitPass::emitThreadPause(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
 {
+    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(1))->getSExtValue()) == 2;
+    if (disableHelperLanes)
+    {
+        ForceDMask();
+    }
     CVariable* destination = m_destination;
     if (!m_destination->IsUniform())
     {
@@ -17802,7 +17811,12 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
         m_encoder->BoolToInt(destination, f0);
         if (!m_currShader->HasFullDispatchMask())
         {
-            m_encoder->And(destination, GetDispatchMask(), destination);
+            CVariable* dispatchMask = m_currShader->GetNewAlias(
+                m_currShader->GetSR0(),
+                ISA_TYPE_UD,
+                (m_pattern->NeedVMask() && !disableHelperLanes ? 3 : 2) * SIZE_DWORD,
+                1);
+            m_encoder->And(destination, dispatchMask, destination);
         }
     }
     else
@@ -17836,10 +17850,15 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
         m_encoder->Cast(m_destination, destination);
         m_encoder->Push();
     }
+    if (disableHelperLanes)
+    {
+        ResetVMask();
+    }
 }
 
 void EmitPass::emitWaveInverseBallot(llvm::GenIntrinsicInst* inst)
 {
+    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(1))->getSExtValue()) == 2;
     CVariable* Mask = GetSymbol(inst->getOperand(0));
 
     if (Mask->IsUniform())
@@ -17847,8 +17866,20 @@ void EmitPass::emitWaveInverseBallot(llvm::GenIntrinsicInst* inst)
         if (m_encoder->IsSecondHalf())
             return;
 
+        if (disableHelperLanes)
+        {
+            ForceDMask();
+        }
         m_encoder->SetP(m_destination, Mask);
+        if (disableHelperLanes)
+        {
+            ResetVMask();
+        }
         return;
+    }
+    if (disableHelperLanes)
+    {
+        ForceDMask();
     }
 
     // The uniform case should by far be the most common.  Otherwise,
@@ -17863,6 +17894,10 @@ void EmitPass::emitWaveInverseBallot(llvm::GenIntrinsicInst* inst)
     m_encoder->And(Temp, Mask, Temp);
     m_encoder->Cmp(EPREDICATE_NE,
         m_destination, Temp, m_currShader->ImmToVariable(0, ISA_TYPE_UD));
+    if (disableHelperLanes)
+    {
+        ResetVMask();
+    }
 }
 
 static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcode& opcode, VISA_Type& type)
@@ -18018,6 +18053,11 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
 
 void EmitPass::emitWavePrefix(WavePrefixIntrinsic* I)
 {
+    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(I->getArgOperand(4))->getSExtValue()) == 2;
+    if (disableHelperLanes)
+    {
+        ForceDMask();
+    }
     Value* Mask = I->getMask();
     if (auto * CI = dyn_cast<ConstantInt>(Mask))
     {
@@ -18030,6 +18070,10 @@ void EmitPass::emitWavePrefix(WavePrefixIntrinsic* I)
     m_encoder->SetSubSpanDestination(false);
     emitScan(
         I->getSrc(), I->getOpKind(), I->isInclusiveScan(), Mask, false);
+    if (disableHelperLanes)
+    {
+        ResetVMask();
+    }
 }
 
 void EmitPass::emitQuadPrefix(QuadPrefixIntrinsic* I)
@@ -18071,6 +18115,11 @@ void EmitPass::emitScan(
 
 void EmitPass::emitWaveAll(llvm::GenIntrinsicInst* inst)
 {
+    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(2))->getSExtValue()) == 2;
+    if (disableHelperLanes)
+    {
+        ForceDMask();
+    }
     CVariable* src = GetSymbol(inst->getOperand(0));
     const WaveOps op = static_cast<WaveOps>(cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
     VISA_Type type;
@@ -18080,10 +18129,19 @@ void EmitPass::emitWaveAll(llvm::GenIntrinsicInst* inst)
     CVariable* dst = m_destination;
     m_encoder->SetSubSpanDestination(false);
     emitReductionAll(opCode, identity, type, false, src, dst);
+    if (disableHelperLanes)
+    {
+        ResetVMask();
+    }
 }
 
 void EmitPass::emitWaveClustered(llvm::GenIntrinsicInst* inst)
 {
+    bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(3))->getSExtValue()) == 2;
+    if (disableHelperLanes)
+    {
+        ForceDMask();
+    }
     CVariable* src = GetSymbol(inst->getOperand(0));
     const WaveOps op = static_cast<WaveOps>(cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
     const unsigned int clusterSize = int_cast<uint32_t>(cast<llvm::ConstantInt>(inst->getOperand(2))->getZExtValue());
@@ -18094,6 +18152,10 @@ void EmitPass::emitWaveClustered(llvm::GenIntrinsicInst* inst)
     CVariable *dst = m_destination;
     m_encoder->SetSubSpanDestination(false);
     emitReductionClustered(opCode, identity, type, false, clusterSize, src, dst);
+    if (disableHelperLanes)
+    {
+        ResetVMask();
+    }
 }
 
 void EmitPass::emitDP4A(GenIntrinsicInst* GII, const SSource* Sources, const DstModifier& modifier, bool isAccSigned) {
