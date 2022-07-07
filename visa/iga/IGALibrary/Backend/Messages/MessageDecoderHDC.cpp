@@ -17,10 +17,6 @@ static const char *MDC_DS_MEANINGS[] {
     "DE8 (8 data elements per address)",
 };
 
-
-// https://gfxspecs.intel.com/Predator/Home/Index/44782
-// https://gfxspecs.intel.com/Predator/Home/Index/44783
-// https://gfxspecs.intel.com/Predator/Home/Index/44785
 using HDCOpcode = uint32_t;
 enum DC0 : uint32_t {
     /////////////////////////////////////////
@@ -836,7 +832,6 @@ struct MessageDecoderHDC : MessageDecoderLegacy {
 
 
 // Enum of all DCRO ops
-// https://gfxspecs.intel.com/Predator/Home/Index/44785
 enum DCRO_MT {
     MT_CC_OWB  = 0x00,
     MT_CC_OWAB = 0x01,
@@ -1028,7 +1023,6 @@ void MessageDecoderHDC::tryDecodeDCRO() {
     }
 }
 
-// XE: DC0 https://gfxspecs.intel.com/Predator/Home/Index/44782
 void MessageDecoderHDC::tryDecodeDC0()
 {
     const int msgType = getDescBits(14, 5);

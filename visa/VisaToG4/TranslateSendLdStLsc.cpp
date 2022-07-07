@@ -83,13 +83,6 @@ static int lscBlock2dComputeDataRegs(
         return n;
     };
 
-    // this comes out of the HAS (1408569497)
-    // non-transpose
-    //   5.1.2.3 non-vnni (HAS pg. 8)
-    //   5.1.1.2 vnni (pg.13) perversely, this comes after 5.1.2.3 in the doc
-    // transpose
-    //   5.1.3.2 non-vnni (HAS pg. 10)
-    //   5.1.2.2 vnni (HAS pg. 15)
     bool transpose = dataShape2d.order == LSC_DATA_ORDER_TRANSPOSE;
     int grfRowPitchElems =
         roundUpToPowerOf2(!transpose ? dataShape2d.width : dataShape2d.height);
@@ -102,7 +95,6 @@ static int lscBlock2dComputeDataRegs(
     //
     int dataRegs = dataShape2d.blocks*regsPerBlock;
     // C.f. DP_LOAD_2DBLOCK_ARRAY
-    //   https://gfxspecs.intel.com/Predator/Home/Index/53680
     //
     //   Data payload size, in registers. Destination length of 32 is
     //   encoded as 31.  Data port hardware derives the correct destination
@@ -202,7 +194,6 @@ int IR_Builder::translateLscUntypedInst(
     desc |= opInfo.encoding; // Desc[5:0]
 
     // build the descriptor (Sect. 3.3.1 of the HAS)
-    // (also https://gfxspecs.intel.com/Predator/Home/Index/53522)
     //
     //   Desc[5:0] = OPCODE {LOAD,STORE,LOAD_BLOCK,STORE_BLOCK,...}
     //   Desc[8:7] = addr size
@@ -1039,7 +1030,6 @@ G4_SrcRegRegion *IR_Builder::lscBuildBlock2DPayload(
     // Similar to lscBuildStridedPayload, but this formats the payload
     // as follows.
     //
-    // https://gfxspecs.intel.com/Predator/Home/Index/53567
     // A2DBLOCK_PAYLOAD:
     //   [31:0]:    base address lo (32b)
     //   [63:32]:   base address hi (32b)

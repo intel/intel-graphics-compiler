@@ -9394,7 +9394,6 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
     // case 1. src0 cannot be imm.
     // case 2. subreg must be zero  (must be grf-aligned)
     // case 3. For HF->BF8,  both dst and src must be packed
-    // srnd: https://gfxspecs.intel.com/Predator/Home/Index/67451
     G4_DstRegRegion* dst = inst->getDst();
     uint32_t execsize = inst->getExecSize();
     bool Packed = (dst->getType() == Type_UB);
