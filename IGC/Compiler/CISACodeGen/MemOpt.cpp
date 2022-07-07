@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/DebugCounter.h>
 #include <llvm/Support/raw_ostream.h>
+#include "llvm/Support/CommandLine.h"
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
@@ -38,6 +39,10 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
+
+static cl::opt<bool> EnableRemoveRedBlockreads(
+    "remove-red-blockreads", cl::init(false), cl::Hidden,
+    cl::desc("Enable removal of redundant blockread instructions."));
 
 DEBUG_COUNTER(MergeLoadCounter, "memopt-merge-load",
     "Controls count of merged loads");
@@ -109,9 +114,22 @@ namespace {
             MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt);
         bool mergeStore(StoreInst* LeadingStore, MemRefListTy::iterator MI,
             MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt);
+        bool removeRedBlockRead(GenIntrinsicInst* LeadingLoad, MemRefListTy::iterator MI,
+            MemRefListTy& MemRefs, TrivialMemRefListTy& ToOpt, unsigned& SimdSize);
+
+        void removeVectorBlockRead(Instruction* BlockReadToOptimize, Instruction* BlockReadToRemove,
+            Value* SgId, llvm::IRBuilder<>& Builder, unsigned& sg_size);
+        void removeScalarBlockRead(Instruction* BlockReadToOptimize, Instruction* BlockReadToRemove,
+            Value* SgId, llvm::IRBuilder<>& Builder);
+        Value* getShuffle(Value* ShflId, Instruction* BlockReadToOptimize,
+            Value* SgId, llvm::IRBuilder<>& Builder, unsigned& ToOptSize);
 
         unsigned getNumElements(Type* Ty) const {
             return Ty->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() : 1;
+        }
+
+        Type* getVectorElementType(Type* Ty) const {
+            return isa<VectorType>(Ty) ? cast<VectorType>(Ty)->getElementType() : Ty;
         }
 
         MemoryLocation getLocation(Instruction* I) const {
@@ -124,6 +142,12 @@ namespace {
 
             if (isa<LdRawIntrinsic>(I))
                 return IGCLLVM::MemoryLocation::getForArgument(I, 0, TLI);
+
+            if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(I)) {
+                if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead) {
+                    return IGCLLVM::MemoryLocation::getForArgument(I, 0, TLI);
+                }
+            }
 
             // TODO: Do coarse-grained thing so far. Need better checking for
             // non load or store instructions which may read/write memory.
@@ -207,6 +231,12 @@ namespace {
         bool shouldSkip(const Instruction* I) const {
             if (!I->mayReadOrWriteMemory())
                 return true;
+
+            if (auto GInst = dyn_cast<GenIntrinsicInst>(I)) {
+                if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead) {
+                    return shouldSkip(I->getOperand(0));
+                }
+            }
 
             if (auto LD = dyn_cast<LoadInst>(I))
                 return shouldSkip(LD->getPointerOperand());
@@ -440,6 +470,9 @@ bool MemOpt::runOnFunction(Function& F) {
 
     bool Changed = false;
 
+    IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDU->getFunctionsInfoItem(&F);
+    unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+
     for (Function::iterator BB = F.begin(), BBE = F.end(); BB != BBE; ++BB) {
         // Find all instructions with memory reference. Remember the distance one
         // by one.
@@ -474,6 +507,13 @@ bool MemOpt::runOnFunction(Function& F) {
                 Changed |= mergeLoad(LI, MI, MemRefs, MemRefsToOptimize);
             else if (StoreInst * SI = dyn_cast<StoreInst>(I))
                 Changed |= mergeStore(SI, MI, MemRefs, MemRefsToOptimize);
+            else if (EnableRemoveRedBlockreads) {
+                if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(I)) {
+                    if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead) {
+                        Changed |= removeRedBlockRead(GInst, MI, MemRefs, MemRefsToOptimize, SimdSize);
+                    }
+                }
+            }
         }
 
         // Optimize 64-bit GEP to reduce strength by factoring out `zext`/`sext`
@@ -487,6 +527,391 @@ bool MemOpt::runOnFunction(Function& F) {
     SE = nullptr;
 
     return Changed;
+}
+
+//This function removes redundant blockread instructions
+//if they read from addresses with the same base.
+//It replaces redundant blockread with a set of shuffle instructions.
+//
+//For example,
+//
+//before:
+// %0 = inttoptr i64 %i64input to i32 addrspace(1)*
+// %1 = inttoptr i64 %i64input to i8 addrspace(1)*
+// %2 = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p1i32(i32 addrspace(1)* %0)
+// %3 = call i8 @llvm.genx.GenISA.simdBlockRead.i8.p1i8(i8 addrspace(1)* %1)
+// store i32 %2, i32 addrspace(1)* %i32addr, align 4
+// store i8 %3, i8 addrspace(1)* %i8addr, align 1
+//
+//after:
+// %0 = inttoptr i64 %i64input to i32 addrspace(1)*
+// %1 = inttoptr i64 %i64input to i8 addrspace(1)*
+// %2 = call i32 @llvm.genx.GenISA.simdBlockRead.i32.p1i32(i32 addrspace(1)* %0)
+// %3 = call i16 @llvm.genx.GenISA.simdLaneId()
+// %4 = zext i16 %3 to i32
+// %5 = lshr i32 %4, 2
+// %6 = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %2, i32 %5, i32 0)
+// %7 = and i32 %4, 3
+// %8 = mul i32 %7, 8
+// %9 = lshr i32 %6, %8
+// %10 = trunc i32 %9 to i8
+// store i32 %2, i32 addrspace(1)* %i32addr, align 4
+// store i8 %10, i8 addrspace(1)* %i8addr, align 1
+bool MemOpt::removeRedBlockRead(GenIntrinsicInst* LeadingBlockRead,
+    MemRefListTy::iterator aMI, MemRefListTy& MemRefs,
+    TrivialMemRefListTy& ToOpt, unsigned& sg_size)
+{
+    MemRefListTy::iterator MI = aMI;
+    const unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
+    const unsigned windowEnd = Limit + MI->second;
+    auto ME = MemRefs.end();
+
+    MemoryLocation LeadingBlockReadMemLoc = getLocation(cast<Instruction>(LeadingBlockRead));
+    Type* LeadingBlockReadType = LeadingBlockRead->getType();
+    Value* LeadingBlockReadBase = LeadingBlockRead->getOperand(0)->stripPointerCasts();
+
+    Instruction* BlockReadToOptimize = LeadingBlockRead;
+    MemRefListTy::iterator MIToOpt = aMI;
+
+    llvm::SmallVector<std::tuple<Instruction*, MemRefListTy::iterator>, 8> BlockReadToRemove;
+    uint64_t MaxBlockReadSize = LeadingBlockReadType->getPrimitiveSizeInBits();
+
+    //Go through MemRefs to collect blockreads that can be removed.
+    for (++MI; MI != ME && MI->second <= windowEnd; ++MI) {
+        Instruction* NextMemRef = MI->first;
+        if (!NextMemRef) {
+            continue;
+        }
+
+        if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(NextMemRef)) {
+            if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead) {
+                Type* GInstType = GInst->getType();
+                uint64_t NextSize = GInstType->getPrimitiveSizeInBits();
+                Value* NextBlockReadBase = NextMemRef->getOperand(0)->stripPointerCasts();
+
+                if (isa<IntToPtrInst>(LeadingBlockReadBase) && isa<IntToPtrInst>(NextBlockReadBase)) {
+                    LeadingBlockReadBase = cast<IntToPtrInst>(LeadingBlockReadBase)->getOperand(0);
+                    NextBlockReadBase = cast<IntToPtrInst>(NextBlockReadBase)->getOperand(0);
+                }
+
+                if (LeadingBlockReadBase == NextBlockReadBase) {
+                    if (NextSize > MaxBlockReadSize) {
+                        BlockReadToRemove.push_back(std::make_tuple(BlockReadToOptimize, MIToOpt));
+                        MaxBlockReadSize = NextSize;
+                        BlockReadToOptimize = NextMemRef;
+                        MIToOpt = MI;
+                    }
+                    else {
+                        BlockReadToRemove.push_back(std::make_tuple(NextMemRef, MI));
+                    }
+                }
+            }
+        }
+        else if (NextMemRef->mayWriteToMemory()) {
+            MemoryLocation WriteInstrMemLoc = getLocation(NextMemRef);
+            if (!WriteInstrMemLoc.Ptr || !LeadingBlockReadMemLoc.Ptr || AA->alias(WriteInstrMemLoc, LeadingBlockReadMemLoc)) {
+                break;
+            }
+        }
+    }
+
+    if (BlockReadToRemove.size() == 0) {
+        return false;
+    }
+
+    IRBuilder<> Builder(LeadingBlockRead);
+
+    //Raise the blockread, which we will not remove, in place of the leading blockread.
+    if (BlockReadToOptimize != LeadingBlockRead) {
+        Type* ArgType = BlockReadToOptimize->getOperand(0)->getType();
+        BlockReadToOptimize->moveBefore(LeadingBlockRead);
+
+        Builder.SetInsertPoint(BlockReadToOptimize);
+        Value* BitCast = Builder.CreateBitCast(LeadingBlockRead->getOperand(0), ArgType);
+
+        BlockReadToOptimize->setOperand(0, BitCast);
+        aMI->first = BlockReadToOptimize;
+    }
+
+    Builder.SetInsertPoint(BlockReadToOptimize->getNextNonDebugInstruction());
+    Value* subgroupLocalInvocationId = nullptr;
+
+    //Go through the collected blockreads to replace them with shuffles
+    for (auto ITuple : BlockReadToRemove) {
+        Instruction* I = std::get<0>(ITuple);
+
+        if (BlockReadToOptimize != I) {
+            if (!subgroupLocalInvocationId) {
+                Function* simdLaneIdIntrinsic = GenISAIntrinsic::getDeclaration(
+                    BlockReadToOptimize->getModule(),
+                    GenISAIntrinsic::GenISA_simdLaneId);
+
+                subgroupLocalInvocationId = Builder.CreateZExtOrTrunc(
+                    Builder.CreateCall(simdLaneIdIntrinsic),
+                    Builder.getInt32Ty());
+            }
+
+            //Case when one of blockreads is vector
+            if (I->getType()->isVectorTy() || BlockReadToOptimize->getType()->isVectorTy()) {
+                MemOpt::removeVectorBlockRead(BlockReadToOptimize, I, subgroupLocalInvocationId, Builder, sg_size);
+            } //Case when blockreads are scalars
+            else {
+                MemOpt::removeScalarBlockRead(BlockReadToOptimize, I, subgroupLocalInvocationId, Builder);
+            }
+
+            std::get<1>(ITuple)->first = nullptr;
+            I->eraseFromParent();
+            Builder.SetInsertPoint(BlockReadToOptimize->getNextNonDebugInstruction());
+        }
+    }
+    aMI->first = BlockReadToOptimize;
+    return true;
+}
+
+//Removes redundant blockread if both blockreads are scalar.
+void MemOpt::removeScalarBlockRead(Instruction* BlockReadToOptimize,
+    Instruction* BlockReadToRemove, Value* SgId,
+    llvm::IRBuilder<>& Builder)
+{
+    Type* BlockReadToOptType = BlockReadToOptimize->getType();
+    unsigned ToOptSize = (unsigned)(BlockReadToOptType->getPrimitiveSizeInBits());
+    Type* BlockReadToRemoveType = BlockReadToRemove->getType();
+
+    int rat = (int)(ToOptSize / (2 * BlockReadToRemoveType->getPrimitiveSizeInBits()));
+    Value* LShr = Builder.CreateLShr(SgId, Builder.getInt32(rat));
+    Value* shuffle = getShuffle(LShr, BlockReadToOptimize, SgId, Builder, ToOptSize);
+
+    Value* and_instr = Builder.CreateAnd(SgId, Builder.getInt32(rat * 2 - 1));
+    Value* shift = Builder.CreateMul(and_instr, Builder.getInt32((int)(BlockReadToRemoveType->getPrimitiveSizeInBits())));
+    Value* extr_elem = Builder.CreateLShr(shuffle, Builder.CreateZExtOrTrunc(shift, BlockReadToOptType));
+    Value* TypeConvInstr = Builder.CreateTrunc(extr_elem, cast<Type>(BlockReadToRemoveType));
+
+    BlockReadToRemove->replaceAllUsesWith(TypeConvInstr);
+}
+
+//Removes redundant blockreads if one of the pair is a vector blockread.
+void MemOpt::removeVectorBlockRead(Instruction* BlockReadToOptimize,
+    Instruction* BlockReadToRemove, Value* SgId,
+    llvm::IRBuilder<>& Builder, unsigned& sg_size)
+{
+    Type* BlockReadToOptType = BlockReadToOptimize->getType();
+    Type* BlockReadToRemoveType = BlockReadToRemove->getType();
+    unsigned ToOptSize = BlockReadToOptType->getScalarSizeInBits();
+
+    if (BlockReadToOptType->getScalarSizeInBits() < BlockReadToRemoveType->getScalarSizeInBits()) {
+        unsigned step = BlockReadToRemoveType->getScalarSizeInBits() / BlockReadToOptType->getScalarSizeInBits();
+
+        unsigned ToRemoveNumElem = getNumElements(BlockReadToRemoveType);
+        Type* ElemType = getVectorElementType(BlockReadToRemoveType);
+
+        Function* shufflefn = GenISAIntrinsic::getDeclaration(
+            BlockReadToOptimize->getModule(),
+            GenISAIntrinsic::GenISA_WaveShuffleIndex,
+            getVectorElementType(BlockReadToOptType));
+
+        unsigned LimitElem = step * ToRemoveNumElem;
+        std::vector<Instruction*> ExtractElemInstrVector;
+        //Extracting elements from BlockReadToOptimize to use them in shuffles
+        for (unsigned i = 0; i < LimitElem; i++) {
+            Instruction* ExtrElemInstr = cast<Instruction>(Builder.CreateExtractElement(BlockReadToOptimize, Builder.getInt32(i)));
+            ExtractElemInstrVector.push_back(ExtrElemInstr);
+        }
+
+        Type* NewType = VectorType::get(getVectorElementType(BlockReadToOptType), LimitElem * sg_size, false);
+        std::vector<Instruction*> ShuffleInstrVector;
+        Value* CollectedData = nullptr;
+
+        //Generating set of shuffles and collecting them in vector
+        for (unsigned index = 0; index < LimitElem; index++) {
+            for (unsigned id = 0; id < sg_size; id++) {
+                SmallVector<Value*, 3> Args;
+                Args.push_back(cast<Value>(ExtractElemInstrVector[index]));
+                Args.push_back(Builder.getInt32(id));
+                Args.push_back(Builder.getInt32(0));
+                if (index == 0 && id == 0) {
+                    Value* ShuffleInstr = Builder.CreateCall(shufflefn, Args);
+                    Value* InsertIndex = cast<Value>(Builder.getInt64(0));
+                    CollectedData = Builder.CreateInsertElement(UndefValue::get(NewType), ShuffleInstr, InsertIndex);
+                }
+                else {
+                    Value* ShuffleInstr = Builder.CreateCall(shufflefn, Args);
+                    Value* InsertIndex = cast<Value>(Builder.getInt64(id + index * sg_size));
+                    CollectedData = Builder.CreateInsertElement(CollectedData, ShuffleInstr, InsertIndex);
+                }
+            }
+        }
+
+        Value* offset = Builder.CreateMul(SgId, Builder.getInt32(step));
+        Type* TypeVectForBitCast = VectorType::get(getVectorElementType(BlockReadToOptType), step, false);
+        Value* ResVect = nullptr;
+
+        //Getting the result of a blockread that has been deleted
+        for (unsigned k = 0; k < ToRemoveNumElem; k++) {
+            Value* VectForBitCast = nullptr;
+            Value* Index = Builder.CreateAdd(offset, Builder.getInt32(k * sg_size * step));
+            for (unsigned i = 0; i < step; i++) {
+                Value* AddInstr = Builder.CreateAdd(Index, Builder.getInt32(i));
+                Value* extr_elem = cast<Instruction>(Builder.CreateExtractElement(CollectedData, AddInstr));
+
+                if (i == 0) {
+                    VectForBitCast = Builder.CreateInsertElement(UndefValue::get(TypeVectForBitCast), extr_elem, cast<Value>(Builder.getInt64(0)));
+                }
+                else {
+                    VectForBitCast = Builder.CreateInsertElement(VectForBitCast, extr_elem, cast<Value>(Builder.getInt64(i)));
+                }
+            }
+
+            Value* BitCastInstr = Builder.CreateBitCast(VectForBitCast, ElemType);
+
+            if (BlockReadToRemoveType->isVectorTy()) {
+                if (k == 0) {
+                    ResVect = Builder.CreateInsertElement(UndefValue::get(BlockReadToRemoveType), BitCastInstr, cast<Value>(Builder.getInt64(0)));
+                }
+                else {
+                    ResVect = Builder.CreateInsertElement(ResVect, BitCastInstr, cast<Value>(Builder.getInt64(k)));
+                }
+            }
+            else {
+                ResVect = BitCastInstr;
+            }
+        }
+
+        BlockReadToRemove->replaceAllUsesWith(ResVect);
+    }
+    else if (BlockReadToOptType->getScalarSizeInBits() > BlockReadToRemoveType->getScalarSizeInBits()) {
+        unsigned step = BlockReadToOptType->getScalarSizeInBits() / BlockReadToRemoveType->getScalarSizeInBits();
+
+        unsigned ToRemoveNumElem = getNumElements(BlockReadToRemoveType);
+        Type* IElemType = getVectorElementType(BlockReadToRemoveType);
+
+        unsigned tmp = step;
+        int pw = 0;
+        while (tmp >>= 1) ++pw;
+
+        Value* SgidDivStep = Builder.CreateLShr(SgId, Builder.getInt32(pw));
+        Value* SimdDivStep = Builder.CreateLShr(Builder.getInt32(sg_size), Builder.getInt32(pw));
+
+        unsigned LimitElem = ToRemoveNumElem / step;
+        if (ToRemoveNumElem % step) {
+            LimitElem++;
+        }
+
+        std::vector<Instruction*> ExtractElemInstrVector;
+        //Extracting elements from BlockReadToOptimize to use them in shuffles
+        for (unsigned i = 0; i < LimitElem; i++) {
+            if (BlockReadToOptType->isVectorTy()) {
+                Instruction* ExtrElemInstr = cast<Instruction>(Builder.CreateExtractElement(BlockReadToOptimize, Builder.getInt32(i)));
+                ExtractElemInstrVector.push_back(ExtrElemInstr);
+            }
+            else {
+                ExtractElemInstrVector.push_back(BlockReadToOptimize);
+            }
+        }
+
+        std::vector<Instruction*> ShuffleInstrVector;
+
+        unsigned LimitId = step;
+        if (ToRemoveNumElem < step) {
+            LimitId = ToRemoveNumElem;
+        }
+        //Generating set of shuffles and collecting them in vector
+        for (unsigned k = 0; k < LimitElem; k++) {
+            for (unsigned i = 0; i < LimitId; i++) {
+                Value* SgIdShfl = Builder.CreateAdd(SgidDivStep, Builder.CreateMul(SimdDivStep, Builder.getInt32(i)));
+                Value* shuffle = getShuffle(SgIdShfl, ExtractElemInstrVector[k], SgId, Builder, ToOptSize);
+                ShuffleInstrVector.push_back(cast<Instruction>(shuffle));
+            }
+        }
+
+        unsigned ShufflesNum = LimitElem * LimitId;
+
+        Type* TypeVectForBitCast = VectorType::get(IElemType, step, false);
+        Value* ResVect = nullptr;
+        //Getting the result of a blockread that has been deleted
+        for (unsigned ShfflCnt = 0; ShfflCnt < ShufflesNum; ShfflCnt++) {
+            Value* VectBitcast = Builder.CreateBitCast(ShuffleInstrVector[ShfflCnt], TypeVectForBitCast);
+            Value* Index = Builder.CreateAnd(SgId, Builder.CreateSub(Builder.getInt32(step), Builder.getInt32(1)));
+            Value* Elem = Builder.CreateExtractElement(VectBitcast, Index);
+
+            if (BlockReadToRemoveType->isVectorTy()) {
+                if (ShfflCnt == 0) {
+                    ResVect = Builder.CreateInsertElement(UndefValue::get(BlockReadToRemoveType), Elem, Builder.getInt32(0));
+                }
+                else {
+                    ResVect = Builder.CreateInsertElement(ResVect, Elem, Builder.getInt32(ShfflCnt));
+                }
+            }
+            else {
+                ResVect = Elem;
+            }
+        }
+
+        BlockReadToRemove->replaceAllUsesWith(ResVect);
+    }
+    else {
+        BlockReadToRemove->replaceAllUsesWith(BlockReadToOptimize);
+    }
+}
+
+//This function return shuffle instruction(if BlockedToOptimize size < 64)
+//or it returns value which is concatenation of two shuffle instructions.
+Value* MemOpt::getShuffle(Value* ShflId,
+    Instruction* BlockReadToOptimize,
+    Value* SgId, llvm::IRBuilder<>&Builder,
+    unsigned& ToOptSize)
+{
+    Value* shuffle = nullptr;
+    Type* BlockReadToOptType = BlockReadToOptimize->getType();
+
+    if (ToOptSize < 64) {
+        Type* shufflefntype = getVectorElementType(BlockReadToOptType);
+
+        Function* shufflefn = GenISAIntrinsic::getDeclaration(
+            BlockReadToOptimize->getModule(),
+            GenISAIntrinsic::GenISA_WaveShuffleIndex,
+            shufflefntype);
+
+        SmallVector<Value*, 3> Args;
+        Args.push_back(cast<Value>(BlockReadToOptimize));
+        Args.push_back(ShflId);
+        Args.push_back(Builder.getInt32(0));
+
+        shuffle = Builder.CreateCall(shufflefn, Args);
+    }
+    else if (ToOptSize == 64) {
+        Type* NewType = VectorType::get(Builder.getInt32Ty(), 2, false);
+
+        Instruction* BitCastInstr = cast<Instruction>(Builder.CreateBitCast(BlockReadToOptimize, cast<Type>(NewType)));
+
+        Instruction* ExtractElemInstr0 = cast<Instruction>(Builder.CreateExtractElement(BitCastInstr, Builder.getInt32(0)));
+        Instruction* ExtractElemInstr1 = cast<Instruction>(Builder.CreateExtractElement(BitCastInstr, Builder.getInt32(1)));
+
+        Function* shufflefn = GenISAIntrinsic::getDeclaration(
+            BlockReadToOptimize->getModule(),
+            GenISAIntrinsic::GenISA_WaveShuffleIndex,
+            Builder.getInt32Ty());
+
+        SmallVector<Value*, 3> Args0;
+        Args0.push_back(cast<Value>(ExtractElemInstr0));
+        Args0.push_back(ShflId);
+        Args0.push_back(Builder.getInt32(0));
+
+        Value* shuffle0 = Builder.CreateCall(shufflefn, Args0);
+
+        SmallVector<Value*, 3> Args1;
+        Args1.push_back(cast<Value>(ExtractElemInstr1));
+        Args1.push_back(ShflId);
+        Args1.push_back(Builder.getInt32(0));
+
+        Value* shuffle1 = Builder.CreateCall(shufflefn, Args1);
+
+        Value* ins_elem0 = Builder.CreateInsertElement(UndefValue::get(NewType), shuffle0, cast<Value>(Builder.getInt64(0)));
+        Value* ins_elem1 = Builder.CreateInsertElement(ins_elem0, shuffle1, Builder.getInt64(1));
+
+        shuffle = Builder.CreateBitCast(ins_elem1, BlockReadToOptType);
+    }
+
+    return shuffle;
 }
 
 bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
