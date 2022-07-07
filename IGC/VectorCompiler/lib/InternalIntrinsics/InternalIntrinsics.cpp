@@ -51,6 +51,8 @@ static cl::opt<bool> EnableInternalIntrinsicsCache(
 // Metadata name for caching
 static StringRef InternalIntrinsicMDName{"internal_intrinsic_id"};
 
+namespace {
+
 /// IIT_Info - These are enumerators that describe the entries returned by the
 /// getIntrinsicInfoTableEntries function.
 ///
@@ -102,6 +104,8 @@ enum IIT_Info {
   IIT_STRUCT8 = 40,
   IIT_F128 = 41
 };
+
+} // namespace
 // define static const unsigned IIT_Table
 // define static const unsigned char IIT_LongEncodingTable
 #define GET_INTRINSIC_GENERATOR_GLOBAL

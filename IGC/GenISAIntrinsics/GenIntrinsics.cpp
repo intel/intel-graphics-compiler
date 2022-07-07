@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -89,6 +89,9 @@ void getIntrinsicInfoTableEntries(ID id, SmallVectorImpl<IITDescriptor> &T, Arra
 ID lookupGenIntrinsicID(const char *Name, unsigned int Len);
 }
 }
+
+namespace {
+
 enum IIT_Info {
   // Common values should be encoded with 0-15.
   IIT_Done = 0,
@@ -131,6 +134,8 @@ enum IIT_Info {
   IIT_V512 = 35,
   IIT_V1024 = 36
 };
+
+} // namespace
 
 static Type *DecodeFixedType(ArrayRef<GenISAIntrinsic::IITDescriptor> &Infos,
                              ArrayRef<Type*> Tys, LLVMContext &Context) {
