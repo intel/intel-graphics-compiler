@@ -453,12 +453,14 @@ struct SchedConfig
         MASK_SETHI_ULLMAN = 1U << 2,
         MASK_CLUSTTERING  = 1U << 3,
         MASK_HOLD_LIST    = 1U << 4,
+        MASK_NOT_ITERATE  = 1U << 5,
     };
     unsigned Dump : 1;
     unsigned UseLatency : 1;
     unsigned UseSethiUllman : 1;
     unsigned DoClustering : 1;
     unsigned UseHoldList : 1;
+    unsigned DoNotIterate : 1;   // default 0 i.e. iterative latency-scheduling
 
     explicit SchedConfig(unsigned Config)
         : Dump((Config & MASK_DUMP) != 0)
@@ -466,6 +468,7 @@ struct SchedConfig
         , UseSethiUllman((Config & MASK_SETHI_ULLMAN) != 0)
         , DoClustering((Config & MASK_CLUSTTERING) != 0)
         , UseHoldList((Config & MASK_HOLD_LIST) != 0)
+        , DoNotIterate((Config& MASK_NOT_ITERATE) != 0)
     {
     }
 };
@@ -1348,14 +1351,24 @@ public:
         return pseudoKills.empty() && ReadyList.empty();
     }
 
-    // moving instruction from HoldList to ReadyList
+    // move instruction from HoldList to ReadyList,
+    // also update current-cycle and current-group
     void advance(unsigned &CurCycle, unsigned& CurGroup)
     {
         if (!config.UseHoldList) {
             assert(HoldList.empty());
+            // tracking cycle and group in this mode is only useful
+            // for understanding the scheduling result
+            if (!ReadyList.empty()) {
+                preNode* N = ReadyList.top();
+                CurCycle = std::max(CurCycle, N->getReadyCycle());
+                if (N->getInst())
+                    CurGroup = std::max(CurGroup, GroupInfo[N->getInst()]);
+            }
             return;
         }
         GroupInfo[nullptr] = CurGroup;
+        // move inst out of hold-list based on current group and cycle
         while (!HoldList.empty()) {
             preNode* N = HoldList.top();
             if (GroupInfo[N->getInst()] <= CurGroup &&
@@ -1366,6 +1379,9 @@ public:
             else
                 break;
         }
+        // ready-list is still emtpy, then we need to move forward to
+        // the next group or the next cycle so that some instructions
+        // can come out of the hold-list.
         if (ReadyList.empty() && !HoldList.empty()) {
             preNode* N = HoldList.top();
             CurCycle = std::max(CurCycle, N->getReadyCycle());
@@ -1432,8 +1448,7 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
         unsigned NumGrfs = kernel.getNumRegTotal();
         float Ratio = NumGrfs / 128.0f;
         // limit the iterative approach to certain platforms for now
-        if (kernel.getOptions()->getOption(vISA_preRA_ScheduleNoIterative) ||
-            kernel.getPlatform() < Xe_DG2 )
+        if (config.DoNotIterate || kernel.getPlatform() < Xe_DG2 )
         {
             GTMax = GTMin = getLatencyHidingThreshold(kernel);
             Ratio = 1.0f;  // already adjusted inside getLatencyHidingThreshold

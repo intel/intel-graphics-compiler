@@ -196,7 +196,6 @@ DEF_VISA_OPTION(vISA_preRA_Schedule,        ET_BOOL, "-nopresched",      UNUSED,
 DEF_VISA_OPTION(vISA_preRA_ScheduleForce,   ET_BOOL, "-presched",        UNUSED, false)
 DEF_VISA_OPTION(vISA_preRA_ScheduleCtrl,      ET_INT32, "-presched-ctrl",      "USAGE: -presched-ctrl <ctrl>\n", 4)
 DEF_VISA_OPTION(vISA_preRA_ScheduleRPThreshold, ET_INT32, "-presched-rp",      "USAGE: -presched-rp <threshold>\n", 0)
-DEF_VISA_OPTION(vISA_preRA_ScheduleNoIterative, ET_BOOL, "-presched-noiterative", UNUSED, false)
 DEF_VISA_OPTION(vISA_ScheduleStartBBID, ET_INT32, "-sched-start",      "USAGE: -sched-start <BB ID>\n", 0)
 DEF_VISA_OPTION(vISA_ScheduleEndBBID, ET_INT32, "-sched-end",      "USAGE: -sched-end <BB ID>\n", 0)
 DEF_VISA_OPTION(vISA_DumpSchedule,          ET_BOOL, "-dumpSchedule",    UNUSED, false)
