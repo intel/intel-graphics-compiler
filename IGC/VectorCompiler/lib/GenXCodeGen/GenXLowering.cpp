@@ -3953,8 +3953,22 @@ bool GenXLowering::lowerBoolScalarSelect(SelectInst *SI) {
   //         BB4
   //
   auto BB1 = SI->getParent();
-  auto BB2 = SplitBlock(BB1, SI, DT);
-  auto BB4 = SplitEdge(BB1, BB2, DT);
+  auto BB_ReturnedBySpitBlock = SplitBlock(BB1, SI, DT);
+  auto BB_ReturnedBySplitEdge = SplitEdge(BB1, BB_ReturnedBySpitBlock, DT);
+
+  BasicBlock *BB2;
+  BasicBlock *BB4;
+  // Make sure that BB2 is predecessor of BB4
+  if (BB_ReturnedBySpitBlock->getSinglePredecessor() == BB_ReturnedBySplitEdge)
+  {
+    BB2 = BB_ReturnedBySplitEdge;
+    BB4 = BB_ReturnedBySpitBlock;
+  }
+  else
+  {
+    BB4 = BB_ReturnedBySplitEdge;
+    BB2 = BB_ReturnedBySpitBlock;
+  }
   BB2->setName("select.false");
   BB4->setName("select.true");
 
