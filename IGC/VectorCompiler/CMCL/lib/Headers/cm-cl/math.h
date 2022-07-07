@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -232,6 +232,11 @@ template <typename T> T truncate(T src) { return detail::trunc(src); }
 template <typename T, int width>
 vector<T, width> truncate(vector<T, width> src) {
   return detail::trunc(src.cl_vector());
+}
+
+template <typename T> T roundne(T src) { return detail::roundne(src); }
+template <typename T, int width> vector<T, width> roundne(vector<T, width> src) {
+  return detail::roundne(src.cl_vector());
 }
 
 /*================== Square root ===========================*/

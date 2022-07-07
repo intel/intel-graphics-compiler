@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -376,6 +376,7 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(popcount, ulong,
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(ceil, float, cm::math::ceil)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(floor, float, cm::math::floor)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(trunc, float, cm::math::truncate)
+SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(roundne, float, cm::math::roundne)
 
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, char, cm::math::absolute)
 SPIRV_MATH_BUILTIN_DECL_1ARG_SCALAR_CUSTOM(s_abs, short, cm::math::absolute)
@@ -676,6 +677,12 @@ SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(trunc, float, 3, cm::math::truncate)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(trunc, float, 4, cm::math::truncate)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(trunc, float, 8, cm::math::truncate)
 SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(trunc, float, 16, cm::math::truncate)
+
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 2, cm::math::roundne)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 3, cm::math::roundne)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 4, cm::math::roundne)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 8, cm::math::roundne)
+SPIRV_MATH_BUILTIN_DECL_1ARG_VECTOR_CUSTOM(roundne, float, 16, cm::math::roundne)
 
 #define SPIRV_MATH_BUILTIN_DECL_2ARG_VECTOR_CUSTOM(FUNC_NAME, ELEMENT_TYPE, N, \
                                                    CUSTOM_NAME)                \

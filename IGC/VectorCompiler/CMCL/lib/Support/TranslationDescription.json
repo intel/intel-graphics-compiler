@@ -2,7 +2,7 @@
   "copyright": [
     "============================ begin_copyright_notice ============================",
     "",
-    "Copyright (C) 2021 Intel Corporation",
+    "Copyright (C) 2021-2022 Intel Corporation",
     "",
     "SPDX-License-Identifier: MIT",
     "",
@@ -406,6 +406,19 @@
       ],
       "TranslateInto": {
         "LLVM-Intrinsic": "trunc",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
+    "Roundne": {
+      "Name": "roundne",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_rnde",
         "ReturnType": {"GetBuiltinReturnType": []},
         "Operands": [
           {"GetBuiltinOperand": ["Source"]}
