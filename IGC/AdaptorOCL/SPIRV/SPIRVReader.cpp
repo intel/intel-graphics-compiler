@@ -58,7 +58,6 @@ THE SOFTWARE.
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Analysis/CFG.h>
-#include <llvm/ADT/SmallSet.h>
 #include "libSPIRV/SPIRVDebugInfoExt.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -4707,15 +4706,11 @@ SPIRVToLLVM::transKernelMetadata()
     transCapsIntoMetadata(MD);
 
     NamedMDNode *KernelMDs = M->getOrInsertNamedMetadata(SPIR_MD_KERNELS);
-    SmallSet<Function*, 16> HandledLLVMKernels;
     for (unsigned I = 0, E = BM->getNumFunctions(); I != E; ++I)
     {
         SPIRVFunction *BF = BM->getFunction(I);
         Function *F = static_cast<Function *>(getTranslatedValue(BF));
         IGC_ASSERT_MESSAGE(F, "Invalid translated function");
-        if (HandledLLVMKernels.count(F))
-            continue;
-        HandledLLVMKernels.insert(F);
 
         // __attribute__((annotate("some_user_annotation"))) are passed via
         // UserSemantic decoration on functions.
@@ -4726,6 +4721,17 @@ SPIRVToLLVM::transKernelMetadata()
         }
 
         if (F->getCallingConv() != CallingConv::SPIR_KERNEL || F->isDeclaration())
+            continue;
+        // Kernel entry point wrappers and SPIR-V functions with actual kernel
+        // body resolve to the same LLVM functions. Only generate metadata upon
+        // encountering entry point wrappers, as SPIR-V stores all execution
+        // mode information at the entry point wrapper site.
+        // TODO: Instead, consider copying all SPIR-V function information from
+        // entry point wrappers to the actual SPIR-V funtions, and then
+        // erasing entry point wrappers as such from the SPIRVModule/
+        // SPIRVToLLVM classes. Preferably, such a rework should be done in the
+        // Khronos SPIR-V Translator and then downstreamed.
+        if (!isOpenCLKernel(BF))
             continue;
         std::vector<llvm::Metadata*> KernelMD;
         KernelMD.push_back(ValueAsMetadata::get(F));
