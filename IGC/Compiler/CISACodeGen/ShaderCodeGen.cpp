@@ -1178,6 +1178,9 @@ static void PSCodeGen(
     bool earlyExit =
         ctx->getCompilerOption().pixelShaderDoNotAbortOnSpill ? false : true;
 
+    bool enableDualSIMD8 =
+        ctx->platform.supportDualSimd8PS();
+
     // for versioned loop, in general SIMD16 with spill has better perf
     bool earlyExit16 = psInfo.hasVersionedLoop ? false : earlyExit;
     bool enableHigherSimd = false;
@@ -1209,7 +1212,7 @@ static void PSCodeGen(
         // don't retry SIMD16 for ForcePSBestSIMD
         if (enableHigherSimd || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
         {
-            if (ctx->platform.supportDualSimd8PS())
+            if (enableDualSIMD8)
             {
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, true, ShaderDispatchMode::DUAL_SIMD8, pSignature);
             }
@@ -1262,7 +1265,7 @@ static void PSCodeGen(
 
     if (!useRegKeySimd)
     {
-        if (ctx->platform.supportDualSimd8PS())
+        if (enableDualSIMD8)
         {
             // the condition for dualsimd8 should be the same as SIMD16, since they are very similar
             if (enableHigherSimd || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck)) {
