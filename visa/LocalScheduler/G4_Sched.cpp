@@ -38,6 +38,7 @@ public:
     preEdge(preNode* N, DepType Ty)
         : mNode(N)
         , mType(Ty)
+        , mLatency(-1)
     {
     }
 
@@ -59,12 +60,23 @@ public:
         return false;
     }
 
+    void setLatency(int L) { mLatency = L; }
+    int  getLatency()
+    {
+        return isDataDep() ? mLatency : 0;
+    }
+
 private:
     // Node at the end of this edge.
     preNode* mNode;
 
     // Type of dependence (RAW, WAW, WAR, etc.).
     DepType mType;
+
+    // data-dependence Latency used in Latency scheduling.
+    // only exists (i.e. >=0) on succ-edge during latency scheduling.
+    // set in LatencyQueue::calculatePriority
+    int mLatency;
 };
 
 class preNode {
@@ -139,9 +151,13 @@ public:
             return TupleParts;
         return TupleLead->TupleParts;
     }
-
+    // Used in latency scheduling
+    void setReadyCycle(unsigned cyc) { ReadyCycle = cyc; }
+    unsigned getReadyCycle() { return ReadyCycle; }
+    // Used in ACC scheduling
     void setACCCandidate() { ACCCandidate = true; }
     bool isACCCandidate() { return ACCCandidate; }
+
     void print(std::ostream& os) const;
     void dump() const;
 
@@ -170,6 +186,9 @@ private:
 
     // # of succs not scheduled.
     unsigned NumSuccsLeft = 0;
+
+    // the earliest cycle for latency scheduling
+    unsigned ReadyCycle = 0;
 
     // True once scheduled.
     bool isScheduled = false;
@@ -433,17 +452,20 @@ struct SchedConfig
         MASK_LATENCY      = 1U << 1,
         MASK_SETHI_ULLMAN = 1U << 2,
         MASK_CLUSTTERING  = 1U << 3,
+        MASK_HOLD_LIST    = 1U << 4,
     };
     unsigned Dump : 1;
     unsigned UseLatency : 1;
     unsigned UseSethiUllman : 1;
     unsigned DoClustering : 1;
+    unsigned UseHoldList : 1;
 
     explicit SchedConfig(unsigned Config)
         : Dump((Config & MASK_DUMP) != 0)
         , UseLatency((Config & MASK_LATENCY) != 0)
         , UseSethiUllman((Config & MASK_SETHI_ULLMAN) != 0)
         , DoClustering((Config & MASK_CLUSTTERING) != 0)
+        , UseHoldList((Config & MASK_HOLD_LIST) != 0)
     {
     }
 };
@@ -1275,7 +1297,11 @@ class LatencyQueue : public QueueBase {
     const LatencyTable &LT;
 
     // TODO: Try to apply priority queue to SethiUllmanQueue as well.
+
+    // nodes with all predecessors scheduled and ready-cycle <= current-cycle for topdown scheduling
     std::priority_queue<preNode*, std::vector<preNode*>, std::function<bool(preNode*, preNode*)>> ReadyList;
+    // nodes with all predecessors scheduled and ready-cycle > current-cycle for topdown scheduling
+    std::priority_queue<preNode*, std::vector<preNode*>, std::function<bool(preNode*, preNode*)>> HoldList;
     // The register-pressure limit we use to decide sub-blocking
     unsigned GroupingPressureLimit;
 
@@ -1284,17 +1310,20 @@ public:
         const LatencyTable& LT, unsigned GroupingThreshold)
         : QueueBase(ddd, rp, config)
         , LT(LT)
-        , ReadyList([this](preNode* a, preNode* b){ return compare(a, b);})
+        , ReadyList([this](preNode* a, preNode* b){ return compareReady(a, b);})
+        , HoldList([this](preNode* a, preNode* b) { return compareHold(a, b); })
         , GroupingPressureLimit(GroupingThreshold)
     {
         init();
     }
 
-    // Add a new ready node.
+    // Add a new node to queue.
     void push(preNode* N) override
     {
         if (N->getInst() && N->getInst()->isPseudoKill())
             pseudoKills.push_back(N);
+        else if (config.UseHoldList)
+            HoldList.push(N);
         else
             ReadyList.push(N);
     }
@@ -1319,13 +1348,50 @@ public:
         return pseudoKills.empty() && ReadyList.empty();
     }
 
+    // moving instruction from HoldList to ReadyList
+    void advance(unsigned &CurCycle, unsigned& CurGroup)
+    {
+        if (!config.UseHoldList) {
+            assert(HoldList.empty());
+            return;
+        }
+        GroupInfo[nullptr] = CurGroup;
+        while (!HoldList.empty()) {
+            preNode* N = HoldList.top();
+            if (GroupInfo[N->getInst()] <= CurGroup &&
+                N->getReadyCycle() <= CurCycle) {
+                HoldList.pop();
+                ReadyList.push(N);
+            }
+            else
+                break;
+        }
+        if (ReadyList.empty() && !HoldList.empty()) {
+            preNode* N = HoldList.top();
+            CurCycle = std::max(CurCycle, N->getReadyCycle());
+            CurGroup = std::max(CurGroup, GroupInfo[N->getInst()]);
+            do {
+                preNode* N = HoldList.top();
+                if (GroupInfo[N->getInst()] <= CurGroup &&
+                    N->getReadyCycle() <= CurCycle) {
+                    HoldList.pop();
+                    ReadyList.push(N);
+                }
+                else
+                    break;
+            } while (!HoldList.empty());
+        }
+    }
+
 private:
     void init();
     unsigned calculatePriority(preNode *N);
 
     // Compare two ready nodes and decide which one should be scheduled first.
     // Return true if N2 has a higher priority than N1, false otherwise.
-    bool compare(preNode* N1, preNode* N2);
+    bool compareReady(preNode* N1, preNode* N2);
+
+    bool compareHold(preNode* N1, preNode* N2);
 
     // The ready pseudo kills.
     std::vector<preNode *> pseudoKills;
@@ -1397,21 +1463,32 @@ void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold)
     LatencyQueue Q(ddd, rp, config, LT, GroupingThreshold);
     Q.push(ddd.getEntryNode());
 
+    unsigned CurrentCycle = 0;
+    unsigned CurrentGroup = 0;
+    Q.advance(CurrentCycle, CurrentGroup);
     while (!Q.empty()) {
         preNode *N = Q.pop();
         assert(N->NumPredsLeft == 0);
+        unsigned NextCycle = CurrentCycle;
         if (N->getInst() != nullptr) {
             schedule.push_back(N->getInst());
-            N->isScheduled = true;
+            NextCycle += LT.getOccupancy(N->getInst());
         }
-
+        N->isScheduled = true;
         for (auto I = N->succ_begin(), E = N->succ_end(); I != E; ++I) {
             preNode *Node = I->getNode();
             assert(!Node->isScheduled && Node->NumPredsLeft);
+            int L = (*I).getLatency();
+            assert(L >= 0);
+            if (Node->getReadyCycle() < CurrentCycle + (unsigned)L)
+                Node->setReadyCycle(CurrentCycle + (unsigned)L);
             --Node->NumPredsLeft;
-            if (Node->NumPredsLeft == 0)
+            if (Node->NumPredsLeft == 0) {
                 Q.push(Node);
+            }
         }
+        CurrentCycle = NextCycle;
+        Q.advance(CurrentCycle, CurrentGroup);
     }
 
     relocatePseudoKills();
@@ -1640,6 +1717,7 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
                 break;
             }
         }
+        Edge.setLatency(Latency);
         Priority = std::max(Priority, SuccPriority + Latency);
     }
 
@@ -1648,7 +1726,7 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
 
 // Compare two ready nodes and decide which one should be scheduled first.
 // Return true if N2 has a higher priority than N1, false otherwise.
-bool LatencyQueue::compare(preNode* N1, preNode* N2)
+bool LatencyQueue::compareReady(preNode* N1, preNode* N2)
 {
     assert(N1->getID() != N2->getID());
     assert(N1->getInst() && N2->getInst());
@@ -1691,6 +1769,37 @@ bool LatencyQueue::compare(preNode* N1, preNode* N2)
         return false;
     else if (!Inst1->isSend() && Inst2->isSend())
         return true;
+
+    // Otherwise, break tie on ID.
+    // Larger ID means higher priority.
+    return N2->getID() > N1->getID();
+}
+
+// hold-list is sorted by nodes' ready cycle
+bool LatencyQueue::compareHold(preNode* N1, preNode* N2)
+{
+    assert(N1->getID() != N2->getID());
+    assert(N1->getInst() && N2->getInst());
+    assert(!N1->getInst()->isPseudoKill() &&
+        !N2->getInst()->isPseudoKill());
+    G4_INST* Inst1 = N1->getInst();
+    G4_INST* Inst2 = N2->getInst();
+
+    // Group ID has higher priority, smaller ID means higher priority.
+    unsigned GID1 = GroupInfo[Inst1];
+    unsigned GID2 = GroupInfo[Inst2];
+    if (GID1 > GID2)
+        return true;
+    if (GID1 < GID2)
+        return false;
+
+    // compare ready cycle, smaller ready cycle means higher priority
+    unsigned cyc1 = N1->getReadyCycle();
+    unsigned cyc2 = N2->getReadyCycle();
+    if (cyc1 > cyc2)
+        return true;
+    if (cyc1 < cyc2)
+        return false;
 
     // Otherwise, break tie on ID.
     // Larger ID means higher priority.
@@ -2363,6 +2472,7 @@ void preDDD::reset(bool ReassignNodeID)
         N->NumPredsLeft = unsigned(N->Preds.size());
         N->NumSuccsLeft = unsigned(N->Succs.size());
         N->isScheduled = false;
+        N->setReadyCycle(0);
         N->isClustered = false;
         N->isClusterLead = false;
     }
@@ -2370,12 +2480,14 @@ void preDDD::reset(bool ReassignNodeID)
     EntryNode.NumPredsLeft = 0;
     EntryNode.NumSuccsLeft = unsigned(EntryNode.Succs.size());
     EntryNode.isScheduled = false;
+    EntryNode.setReadyCycle(0);
     EntryNode.isClustered = false;
     EntryNode.isClusterLead = false;
 
     ExitNode.NumPredsLeft = unsigned(ExitNode.Preds.size());
     ExitNode.NumSuccsLeft = 0;
     ExitNode.isScheduled = false;
+    ExitNode.setReadyCycle(0);
     ExitNode.isClustered = false;
     ExitNode.isClusterLead = false;
 }
