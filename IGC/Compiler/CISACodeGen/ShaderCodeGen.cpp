@@ -44,7 +44,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/TimeStatsCounter.h"
 #include "Compiler/CISACodeGen/TypeDemote.h"
 #include "Compiler/CISACodeGen/UniformAssumptions.hpp"
-#include "Compiler/Optimizer/LinkMultiRateShaders.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/RuntimeValueLegalizationPass.h"
 #include "Compiler/CISACodeGen/InsertGenericPtrArithmeticMetadata.hpp"
@@ -155,7 +154,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
 #include "Compiler/GenTTI.h"
 #include "Compiler/GenRotate.hpp"
-#include "Compiler/Optimizer/SetMathPrecisionForPositionOutput.hpp"
 #include "Compiler/SampleCmpToDiscard.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 #include "DebugInfo.hpp"
@@ -212,7 +210,6 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // WIAnalysis also requires BreakCriticalEdge because it assumes that
     // potential phi-moves will be placed at those blocks
     mpm.add(llvm::createBreakCriticalEdgesPass());
-
 
 
 
@@ -407,8 +404,6 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
     initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
     initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
     initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
-
-
 
     if (ctx.m_threadCombiningOptDone)
     {
@@ -1978,19 +1973,12 @@ void OptimizeIR(CodeGenContext* const pContext)
                     mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::END, licmTh));
                 }
 
-                mpm.add(CreateHoistFMulInLoopPass());
 
                 if (!pContext->m_retryManager.IsFirstTry())
                 {
                     mpm.add(new DisableLoopUnrollOnRetry());
                 }
 
-                if (IGC_IS_FLAG_ENABLED(EnableCustomLoopVersioning) &&
-                    pContext->type == ShaderType::PIXEL_SHADER)
-                {
-                    // custom loop versioning relies on LCSSA form
-                    mpm.add(new CustomLoopVersioning());
-                }
 
                 mpm.add(createIGCInstructionCombiningPass());
                 if (pContext->type == ShaderType::OPENCL_SHADER &&
@@ -2154,21 +2142,10 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(llvm::createDeadCodeEliminationPass());
             mpm.add(llvm::createEarlyCSEPass());
 
-            if (pContext->type == ShaderType::COMPUTE_SHADER)
-            {
-                mpm.add(CreateEarlyOutPatternsPass());
-            }
 
             // need to be before code sinking
             mpm.add(createInsertBranchOptPass());
 
-            if (pContext->type == ShaderType::PIXEL_SHADER)
-            {
-                // insert early output in case sampleC returns 0
-                mpm.add(new CodeSinking(true));
-                mpm.add(CreateEarlyOutPatternsPass());
-                mpm.add(createBlendToDiscardPass());
-            }
             mpm.add(new CustomSafeOptPass());
             if (!pContext->m_DriverInfo.WADisableCustomPass())
             {
@@ -2180,16 +2157,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt) && pContext->platform.enableImmConstantOpt())
             {
                 mpm.add(createIGCIndirectICBPropagaionPass());
-            }
-
-            if (pContext->type == ShaderType::PIXEL_SHADER ||
-                pContext->type == ShaderType::COMPUTE_SHADER)
-            {
-                mpm.add(CreateEarlyOutPatternsPass());
-            }
-            if (pContext->type == ShaderType::PIXEL_SHADER)
-            {
-                mpm.add(createBlendToDiscardPass());
             }
 
             //single basic block
@@ -2231,14 +2198,6 @@ void OptimizeIR(CodeGenContext* const pContext)
 #if LLVM_VERSION_MAJOR >= 7
         mpm.add(new TrivialLocalMemoryOpsElimination());
 #endif
-        if (
-            pContext->type == ShaderType::TASK_SHADER ||
-            pContext->type == ShaderType::MESH_SHADER ||
-            pContext->type == ShaderType::HULL_SHADER ||
-            pContext->type == ShaderType::COMPUTE_SHADER)
-        {
-            mpm.add(createSynchronizationObjectCoalescing());
-        }
         mpm.add(createGenSimplificationPass());
 
         if (pContext->m_instrTypes.hasLoadStore)

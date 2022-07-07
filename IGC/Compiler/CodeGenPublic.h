@@ -1030,7 +1030,6 @@ namespace IGC
         CShader* PickCSEntryByRegKey(SIMDMode& simdMode, ComputeShaderContext* cgCtx);
         CShader* PickCSEntryEarly(SIMDMode& simdMode, ComputeShaderContext* cgCtx);
         CShader* PickCSEntryFinally(SIMDMode& simdMode);
-        void FreeAllocatedMemForNotPickedCS(SIMDMode simdMode);
     };
 
     /// this class adds intrinsic cache to LLVM context

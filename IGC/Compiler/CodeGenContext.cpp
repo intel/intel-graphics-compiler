@@ -354,18 +354,6 @@ namespace IGC
         return nullptr;
     }
 
-    void RetryManager::FreeAllocatedMemForNotPickedCS(SIMDMode simdMode)
-    {
-        for (const auto& it : cache)
-        {
-            if (it.simdMode != simdMode
-                && it.shader != nullptr
-                && it.shader->ProgramOutput()->m_programBin != nullptr)
-            {
-                aligned_free(it.shader->ProgramOutput()->m_programBin);
-            }
-        }
-    }
 
 
     RetryManager::CacheEntry* RetryManager::GetCacheEntry(SIMDMode simdMode)
