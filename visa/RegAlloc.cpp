@@ -3217,16 +3217,11 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                     {
                         auto dstLB = dst->getLinearizedStart();
                         auto dstRB = dst->getLinearizedEnd();
-                        uint32_t idx = dstLB / G4_WSIZE;
 
-                        for (unsigned int dstOffset = dstLB; dstOffset <= dstRB; dstOffset += std::max((unsigned int)dst->getExecTypeSize(), (unsigned int)G4_WSIZE))
+                        for (unsigned int dstOffset = dstLB; dstOffset <= dstRB; dstOffset += G4_WSIZE)
                         {
-                            for (unsigned int elementOffset = 0; elementOffset < dst->getElemSize(); elementOffset += G4_WSIZE)
-                            {
-                                idx = (dstOffset + elementOffset) / G4_WSIZE;
-
-                                verifyDstRA(idx, regNum, regOff, suppressWarning);
-                            }
+                            uint32_t idx = dstOffset / G4_WSIZE;
+                            verifyDstRA(idx, regNum, regOff, suppressWarning);
                         }
                     }
                 }
@@ -3397,19 +3392,10 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         {
                             auto srcLB = src->getLinearizedStart();
                             auto srcRB = src->getLinearizedEnd();
-                            for (int i = 0; i < inst->getExecSize(); ++i)
+                            for (unsigned int srcOffset = srcLB; srcOffset <= srcRB; srcOffset += G4_WSIZE)
                             {
-                                unsigned off = srcLB + srcrgn->getByteOffset(i);
-                                // Here we check src within RB only. In some
-                                // cases like send instruction, RB is limited
-                                // to the size of variable.
-                                if (off + srcrgn->getElemSize() >= srcRB)
-                                    break;
-                                for (unsigned int suboff = 0; suboff < srcrgn->getElemSize(); suboff += G4_WSIZE)
-                                {
-                                    unsigned idx = (off + suboff) / G4_WSIZE;
-                                    verifySrcRA(idx, regNum, regOff);
-                                }
+                                unsigned idx = srcOffset / G4_WSIZE;
+                                verifySrcRA(idx, regNum, regOff);
                             }
                         }
                     }
