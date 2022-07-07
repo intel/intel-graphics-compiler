@@ -1315,6 +1315,8 @@ public:
         G4_InstOpts options, // FIXME: re-order options to follow all operands
         G4_SendDesc *msgDesc,
         bool addToInstList);
+
+
     G4_InstSend* createInternalSendInst(
         G4_Predicate* prd, G4_opcode op,
         G4_ExecSize execSize,
@@ -2060,6 +2062,7 @@ public:
         G4_DstRegRegion* dst,
         unsigned int numParms,
         G4_SrcRegRegion ** params);
+
 
     int translateVISALoad3DInst(
         VISASampler3DSubOpCode actualop,

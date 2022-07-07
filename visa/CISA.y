@@ -1310,8 +1310,10 @@ SampleInstruction:
            $5, $6, $7, $8, CISAlineno));
    }
 
+Sample3dInstruction: Sample3DInstruction
+
            //        1         2            3                      4            5                          6               7        8                     9   10  11
-Sample3dInstruction: Predicate SAMPLE_3D_OP PixelNullMaskEnableOpt CPSEnableOpt NonUniformSamplerEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var Var RawOperand
+Sample3DInstruction: Predicate SAMPLE_3D_OP PixelNullMaskEnableOpt CPSEnableOpt NonUniformSamplerEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var Var RawOperand
            //        12
                      RawOperandArray
    {
@@ -1322,6 +1324,9 @@ Sample3dInstruction: Predicate SAMPLE_3D_OP PixelNullMaskEnableOpt CPSEnableOpt 
 
     ABORT_ON_FAIL(success);
    }
+
+
+
 
 CPSEnableOpt: %empty {$$ = false;} | CPS  {$$ = true;}
 

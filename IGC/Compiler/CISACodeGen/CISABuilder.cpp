@@ -2589,7 +2589,8 @@ namespace IGC
         }
 
         {
-            int status = vKernel->AppendVISA3dSampler(
+        int status = -1; //VISA_FAILURE;
+            status = vKernel->AppendVISA3dSampler(
                 ConvertSubOpcode(subOpcode, zeroLOD),
                 feedbackEnable, // pixel null mask
                 cpsEnable,
@@ -4918,6 +4919,7 @@ namespace IGC
         {
             SaveOption(vISA_writeCombine, false);
         }
+
 
     } // InitVISABuilderOptions
 

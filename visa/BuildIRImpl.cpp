@@ -747,7 +747,6 @@ void IR_Builder::createBuiltinDecls()
     builtinHWTID->setBuiltin();
 
 
-
     builtinT252 = createDeclareNoLookup(vISAPreDefSurf[PREDEFINED_SURFACE_T252].name, G4_GRF, 1, 1, Type_UD);
     builtinT252->setBuiltin();
     builtinBindlessSampler = createDeclareNoLookup("B_S", G4_GRF, 1, 1, Type_UD);
@@ -2066,6 +2065,8 @@ G4_InstSend* IR_Builder::createInternalSendInst(
 // Create a split send (sends) instruction
 // sends (size) dst src0 src1 exDesc msgDesc
 //
+
+
 
 G4_InstSend* IR_Builder::createSplitSendInst(
     G4_Predicate* prd,

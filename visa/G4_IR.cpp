@@ -223,6 +223,7 @@ G4_INST::G4_INST(
     G4_Operand* s1,
     G4_Operand* s2,
     G4_Operand* s3,
+    G4_Operand* s4,
     G4_InstOpts opt) :
     op(o), dst(d), predicate(prd), mod(m), option(opt),
     useInstList(irb.getAllocator()),
@@ -240,6 +241,7 @@ G4_INST::G4_INST(
     srcs[1] = s1;
     srcs[2] = s2;
     srcs[3] = s3;
+    srcs[4] = s4;
 
     dead = false;
     skipPostRA = false;
@@ -252,6 +254,7 @@ G4_INST::G4_INST(
     resetRightBound(s1);
     resetRightBound(s2);
     resetRightBound(s3);
+    resetRightBound(s4);
     computeRightBound(predicate);
     computeRightBound(mod);
 
@@ -260,6 +263,7 @@ G4_INST::G4_INST(
     associateOpndWithInst(s1, this);
     associateOpndWithInst(s2, this);
     associateOpndWithInst(s3, this);
+    associateOpndWithInst(s4, this);
     associateOpndWithInst(predicate, this);
     associateOpndWithInst(mod, this);
 }
@@ -298,6 +302,7 @@ G4_InstSend::G4_InstSend(
     setSrc(extDesc, 3);
     md->setExecSize(size);
 }
+
 
 void G4_INST::setOpcode(G4_opcode opcd)
 {

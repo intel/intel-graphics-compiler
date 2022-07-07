@@ -5651,6 +5651,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
     return status;
 }
 
+
 int VISAKernelImpl::AppendVISA3dSampler(
     VISASampler3DSubOpCode subOpcode,
     bool pixelNullMask,
@@ -5685,6 +5686,7 @@ int VISAKernelImpl::AppendVISA3dSampler(
         numMsgSpecificOpnds,
         opndArray);
 }
+
 
 int VISAKernelImpl::AppendVISA3dLoad(
     VISASampler3DSubOpCode subOpcode,

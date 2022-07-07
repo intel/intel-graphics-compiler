@@ -613,6 +613,7 @@ public:
         VISA_RawOpnd** params,
         int lineNum);
 
+
     bool CISA_create_sample_instruction(
         ISA_Opcode opcode,
         ChannelMask channel,

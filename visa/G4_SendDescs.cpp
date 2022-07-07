@@ -63,6 +63,33 @@ std::string vISA::ToSymbol(MsgOp op)
     return "???";
 }
 
+MsgOp vISA::ConvertSamplerOpToMsgOp (VISASampler3DSubOpCode op) {
+    switch (op) {
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE:
+            return MsgOp::SAMPLE;
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE_B:
+            return MsgOp::SAMPLE_B;
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE_L:
+            return MsgOp::SAMPLE_L;
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE_C:
+            return MsgOp::SAMPLE_C;
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE_D:
+            return MsgOp::SAMPLE_D;
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE_B_C:
+            return MsgOp::SAMPLE_B_C;
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE_L_C:
+            return MsgOp::SAMPLE_L_C;
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE_D_C:
+            return MsgOp::SAMPLE_D_C;
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE_LZ:
+            return MsgOp::SAMPLE_LZ;
+        case VISASampler3DSubOpCode::VISA_3D_SAMPLE_C_LZ:
+            return MsgOp::SAMPLE_C_LZ;
+        default:
+            return MsgOp::INVALID;
+    }
+}
+
 MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
     switch(op) {
         case LSC_OP::LSC_LOAD:
@@ -118,8 +145,27 @@ MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
     }
 }
 
+uint32_t vISA::GetSamplerMsgOpEncoding(MsgOp m) {
+    switch(m) {
+        case MsgOp::SAMPLE: return 0;
+        case MsgOp::SAMPLE_B: return 1;
+        case MsgOp::SAMPLE_L: return 2;
+        case MsgOp::SAMPLE_C: return 3;
+        case MsgOp::SAMPLE_D: return 4;
+        case MsgOp::SAMPLE_B_C: return 5;
+        case MsgOp::SAMPLE_L_C: return 6;
+        case MsgOp::SAMPLE_D_C: return 20;
+        case MsgOp::SAMPLE_LZ: return 24;
+        case MsgOp::SAMPLE_C_LZ: return 25;
+        case MsgOp::GATHER4: return 8;
+        case MsgOp::GATHER4_L: return 13;
+        case MsgOp::GATHER4_B: return 14;
+        default: MUST_BE_TRUE(false, "Invalid msg op");
+    }
+    return 0;
+}
+
 uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
-    // source -- https://gfxspecs.intel.com/Predator/Home/Index/71890
     switch(m) {
         case MsgOp::LOAD: return 0;
         case MsgOp::LOAD_QUAD: return 2;

@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 #include "common.h"
 
-#define G4_MAX_SRCS       4
+#define G4_MAX_SRCS      5
 #define G4_MAX_INTRINSIC_SRCS       8
 #define UNDEFINED_VAL   0xFFFFFFFF
 #define UNDEFINED_SHORT 0x8000
