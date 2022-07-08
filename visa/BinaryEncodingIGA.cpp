@@ -9,14 +9,13 @@ SPDX-License-Identifier: MIT
 #include "BinaryEncodingIGA.h"
 #include "GTGPU_RT_ASM_Interface.h"
 #include "iga/IGALibrary/api/igaEncoderWrapper.hpp"
-#include "iga/IGALibrary/Frontend/FormatterJSON.hpp"
 #include "Timer.h"
 #include "BuildIR.h"
 #include "Common_ISA_framework.h"
 
-#include <fstream>
 #include <map>
 #include <utility>
+
 
 using namespace iga;
 using namespace vISA;
@@ -45,8 +44,6 @@ public:
 
     // translates and encodes (formerly "DoAll")
     void Encode();
-
-    void EmitJSON(int dumpJSON);
 
     ///////////////////////////////////////////////////////////////////////////
     // these function translate G4 IR to IGA IR
@@ -1037,19 +1034,6 @@ void BinaryEncodingIGA::Encode()
         kernel.fg.builder->getJitInfo()->offsetToSkipSetFFIDGP1 =
             kernel.getComputeFFIDGP1NextOff();
     }
-
-    int dumpJSON = kernel.fg.builder->getuint32Option(vISA_dumpIgaJson);
-    if (dumpJSON) {
-        EmitJSON(dumpJSON);
-    }
-}
-
-void BinaryEncodingIGA::EmitJSON(int dumpJSON) {
-    std::string jsonFileName = fileName + ".json";
-    std::ofstream ofs(jsonFileName, std::ofstream::out);
-    FormatOpts fos(*platformModel);
-    fos.printJson = true;
-    FormatJSON(ofs, fos, *IGAKernel, nullptr);
 }
 
 Instruction *BinaryEncodingIGA::translateInstruction(
@@ -2007,3 +1991,4 @@ bool vISA::InstSupportsSrcModifierIGA(TARGET_PLATFORM p, const G4_INST &i, const
         return false;
     }
 }
+
