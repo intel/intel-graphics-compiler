@@ -567,7 +567,15 @@ namespace IGC
 
     bool OpenCLProgramContext::allocatePrivateAsGlobalBuffer() const
     {
-        return forceGlobalMemoryAllocation() || (m_instrTypes.hasDynamicGenericLoadStore && platform.canForcePrivateToGlobal());
+        return forceGlobalMemoryAllocation() ||
+            (m_instrTypes.hasDynamicGenericLoadStore &&
+                platform.canForcePrivateToGlobal()) ||
+            m_mustAllocatePrivateAsGlobalBuffer;
+    }
+
+    bool OpenCLProgramContext::noLocalToGenericOptionEnabled() const
+    {
+        return m_InternalOptions.NoLocalToGeneric;
     }
 
     bool OpenCLProgramContext::enableTakeGlobalAddress() const
@@ -777,6 +785,11 @@ namespace IGC
             else if (suffix.equals("-no-prera-scheduling"))
             {
                 IntelEnablePreRAScheduling = false;
+            }
+            // -cl-intel-no-local-to-generic
+            else if (suffix.equals("-no-local-to-generic"))
+            {
+                NoLocalToGeneric = true;
             }
             // -cl-intel-force-global-mem-allocation
             else if (suffix.equals("-force-global-mem-allocation"))
@@ -1417,6 +1430,11 @@ namespace IGC
     }
 
     bool CodeGenContext::allocatePrivateAsGlobalBuffer() const
+    {
+        return false;
+    }
+
+    bool CodeGenContext::noLocalToGenericOptionEnabled() const
     {
         return false;
     }

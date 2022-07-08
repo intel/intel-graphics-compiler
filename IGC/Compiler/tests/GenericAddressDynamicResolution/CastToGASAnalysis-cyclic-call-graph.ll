@@ -31,13 +31,8 @@ define spir_func void @f2(i32 addrspace(4)* %ptr) {
     ; CHECK: %[[PTI:.*]] = ptrtoint i32 addrspace(4)* %ptr to i64
     ; CHECK: %[[TAG:.*]] = lshr i64 %1, 61
     ; CHECK: switch i64 %2, label %GlobalBlock [
-    ; CHECK:   i64 1, label %PrivateBlock
     ; CHECK:   i64 2, label %LocalBlock
     ; CHECK: ]
-
-    ; CHECK: PrivateBlock:
-    ; CHECK:   %[[PRIVATE_PTR:.*]] = addrspacecast i32 addrspace(4)* %ptr to i32*
-    ; CHECK:   store i32 123, i32* %[[PRIVATE_PTR]], align 4
 
     ; CHECK: LocalBlock:
     ; CHECK:   %[[LOCAL_PTR:.*]] = addrspacecast i32 addrspace(4)* %ptr to i32 addrspace(3)*
