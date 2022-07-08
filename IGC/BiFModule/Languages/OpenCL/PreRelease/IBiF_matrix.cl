@@ -92,22 +92,22 @@ INLINE short __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_1x16_i
 }
 
 /* PackedA load i8 SG16 */
-INLINE short8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x32_i16_v8i8_pi32_i32(char *mem, int stride) {
+INLINE short8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x32_i8_v8i8_pi32_i32(char *mem, int stride) {
     LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 8)
     return ARR_TO_VEC8(short, wi_contrib);
 }
 
-INLINE short4 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_4x32_i16_v8i8_pi32_i32(char *mem, int stride) {
+INLINE short4 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_4x32_i8_v8i8_pi32_i32(char *mem, int stride) {
     LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 4)
     return ARR_TO_VEC4(short, wi_contrib);
 }
 
-INLINE short2 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_2x32_i16_v8i8_pi32_i32(char *mem, int stride) {
+INLINE short2 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_2x32_i8_v8i8_pi32_i32(char *mem, int stride) {
     LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 2)
     return ARR_TO_VEC2(short, wi_contrib);
 }
 
-INLINE short __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_1x32_i16_v8i8_pi32_i32(char *mem, int stride) {
+INLINE short __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_1x32_i8_v8i8_pi32_i32(char *mem, int stride) {
     LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 2)
     return ARR_TO_VEC1(short, wi_contrib);
 }
@@ -145,15 +145,40 @@ INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_16x16_i16_v8i
     return ARR_TO_VEC8(int, wi_contrib);
 }
 
+INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_32x16_i8_v8i8_pi32_i32(char *mem, int stride) {
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, int, 8)
+    return ARR_TO_VEC8(int, wi_contrib);
+}
+
 /* Load accumulator is a special case of load packed A, both are row major: */
 INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_8x8_i32_v8i8_pi32_i32(char *mem, int stride) {
     LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, int, int, 8)
     return ARR_TO_VEC8(int, wi_contrib);
 }
 
+/* Experimental new implementation: */
+#define JOINT_MATRIX_USE_BLOCK_OPS 0
+
 INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_8x16_i32_v8i8_pi32_i32(char *mem, int stride) {
+#if JOINT_MATRIX_USE_BLOCK_OPS
     LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, int, int, 8)
     return ARR_TO_VEC8(int, wi_contrib);
+#else
+    __global uint *ptr = (__global uint *)mem;
+    int slid = get_sub_group_local_id();
+    int8 result;
+
+    result.s0 = (int) intel_sub_group_block_read(ptr + slid + (0 * stride));
+    result.s1 = (int) intel_sub_group_block_read(ptr + slid + (1 * stride));
+    result.s2 = (int) intel_sub_group_block_read(ptr + slid + (2 * stride));
+    result.s3 = (int) intel_sub_group_block_read(ptr + slid + (3 * stride));
+    result.s4 = (int) intel_sub_group_block_read(ptr + slid + (4 * stride));
+    result.s5 = (int) intel_sub_group_block_read(ptr + slid + (5 * stride));
+    result.s6 = (int) intel_sub_group_block_read(ptr + slid + (6 * stride));
+    result.s7 = (int) intel_sub_group_block_read(ptr + slid + (7 * stride));
+
+    return result;
+#endif
 }
 
 #define STORE_PACK_A_ROW_MAJOR(dst, stride, elem_t, contrib_t, M, N) \
@@ -209,7 +234,19 @@ INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_8x8_i32
 }
 
 INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_8x16_i32_pi64_v8i8(char *mem, int8 row, int stride) {
+#if JOINT_MATRIX_USE_BLOCK_OPS
     STORE_ACC_ROW_MAJOR(mem, stride, 8)
+#else
+    __global uint *ptr = (__global uint *)mem;
+    intel_sub_group_block_write(ptr + 0 * stride, (uint) row[0]);
+    intel_sub_group_block_write(ptr + 1 * stride, (uint) row[1]);
+    intel_sub_group_block_write(ptr + 2 * stride, (uint) row[2]);
+    intel_sub_group_block_write(ptr + 3 * stride, (uint) row[3]);
+    intel_sub_group_block_write(ptr + 4 * stride, (uint) row[4]);
+    intel_sub_group_block_write(ptr + 5 * stride, (uint) row[5]);
+    intel_sub_group_block_write(ptr + 6 * stride, (uint) row[6]);
+    intel_sub_group_block_write(ptr + 7 * stride, (uint) row[7]);
+#endif
 }
 
 #define STORE_ACC_COL_MAJOR(mem, stride, M) \
