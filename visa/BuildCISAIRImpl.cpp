@@ -1246,6 +1246,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     {
                         inst->asCFInst()->setUip(labelMap[fret->asCFInst()->getUip()]);
                     }
+                    else if ((inst->opcode() == G4_jmpi || inst->isCall()) && inst->getSrc(0) && inst->getSrc(0)->isLabel())
+                    {
+                        inst->setSrc(labelMap[fret->getSrc(0)->asLabel()], 0);
+                    }
                     cloneDcl(inst->getDst());
                     cloneDcl(inst->getPredicate());
                     // add predicate into declaration list
