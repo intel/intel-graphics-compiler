@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -20,9 +20,9 @@ SPDX-License-Identifier: MIT
  * and if the optimization is necessary and possible, the pass performs a Read Write Modify operation on the store instruction.
  *
  * The requirements for a store instruction to go into the L1 cache are:
- *   The address for the store needs to be 16-byte aligned.
- *   The size of the stored data needs to be a multiple of 16 bytes.
- *   .ca on load and store instructions should not be marked as uncached
+ *   The address for the store needs to be 16-byte aligned.
+ *   The size of the stored data needs to be a multiple of 16 bytes.
+ *   .ca on load and store instructions should not be marked as uncached
  * If these requirements are not satisfied then the store instruction is expanded to include the padding around the stored data.
  * This padding is preliminarily loaded into a virtual register to save those values.
  *
