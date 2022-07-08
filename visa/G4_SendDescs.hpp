@@ -98,11 +98,6 @@ enum class MsgOp {
     SAMPLE_C_LZ,
     GATHER_GROUP = MSGOP_GATHER_GROUP + 1,
     GATHER4,
-    GATHER4_L,
-    GATHER4_B,
-    GATHER4_I,
-    GATHER4_I_C,
-    GATHER4_L_C,
     GATHER4_C,
 };
 std::string ToSymbol(MsgOp);

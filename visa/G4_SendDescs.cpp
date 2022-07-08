@@ -79,6 +79,10 @@ MsgOp vISA::ConvertSamplerOpToMsgOp (VISASampler3DSubOpCode op) {
             return MsgOp::SAMPLE_B_C;
         case VISASampler3DSubOpCode::VISA_3D_SAMPLE_L_C:
             return MsgOp::SAMPLE_L_C;
+        case VISASampler3DSubOpCode::VISA_3D_GATHER4:
+            return MsgOp::GATHER4;
+        case VISASampler3DSubOpCode::VISA_3D_GATHER4_C:
+            return MsgOp::GATHER4_C;
         case VISASampler3DSubOpCode::VISA_3D_SAMPLE_D_C:
             return MsgOp::SAMPLE_D_C;
         case VISASampler3DSubOpCode::VISA_3D_SAMPLE_LZ:
@@ -158,8 +162,7 @@ uint32_t vISA::GetSamplerMsgOpEncoding(MsgOp m) {
         case MsgOp::SAMPLE_LZ: return 24;
         case MsgOp::SAMPLE_C_LZ: return 25;
         case MsgOp::GATHER4: return 8;
-        case MsgOp::GATHER4_L: return 13;
-        case MsgOp::GATHER4_B: return 14;
+        case MsgOp::GATHER4_C: return 16;
         default: MUST_BE_TRUE(false, "Invalid msg op");
     }
     return 0;

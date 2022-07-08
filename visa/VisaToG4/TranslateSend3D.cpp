@@ -1963,7 +1963,6 @@ int IR_Builder::translateVISASampler3DInst(
     return VISA_SUCCESS;
 }
 
-
 int IR_Builder::translateVISALoad3DInst(
     VISASampler3DSubOpCode actualop,
     bool pixelNullMask,

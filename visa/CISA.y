@@ -1345,8 +1345,10 @@ Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL E
     ABORT_ON_FAIL(success);
    }
 
+Gather43dInstruction: Gather43DInstruction
+
            //         1         2             3                      4               5        6                     7   8   9
-Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var Var RawOperand
+Gather43DInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var Var RawOperand
            //      10
                    RawOperandArray
    {
@@ -1357,6 +1359,7 @@ Gather43dInstruction: Predicate SAMPLE4_3D_OP PixelNullMaskEnableOpt SAMPLER_CHA
 
     ABORT_ON_FAIL(success);
    }
+
 
 PixelNullMaskEnableOpt: %empty {$$ = false;} | PIXEL_NULL_MASK {$$ = true;}
 

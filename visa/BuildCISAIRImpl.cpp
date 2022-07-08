@@ -3614,6 +3614,7 @@ bool CISA_IR_Builder::createSample4Instruction(
 }
 
 
+
 bool CISA_IR_Builder::create3DLoadInstruction(
     VISA_opnd* pred,
     VISASampler3DSubOpCode subOpcode,

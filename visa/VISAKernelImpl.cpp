@@ -5572,6 +5572,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
                                                           surface->g4opnd,
                                                           dst->g4opnd->asDstRegRegion(),
                                                           numMsgSpecificOpnds, g4params);
+
         }
         else
         {
@@ -5651,7 +5652,6 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
     return status;
 }
 
-
 int VISAKernelImpl::AppendVISA3dSampler(
     VISASampler3DSubOpCode subOpcode,
     bool pixelNullMask,
@@ -5686,7 +5686,6 @@ int VISAKernelImpl::AppendVISA3dSampler(
         numMsgSpecificOpnds,
         opndArray);
 }
-
 
 int VISAKernelImpl::AppendVISA3dLoad(
     VISASampler3DSubOpCode subOpcode,
@@ -5752,6 +5751,7 @@ int VISAKernelImpl::AppendVISA3dGather4(
         numMsgSpecificOpnds,
         opndArray);
 }
+
 
 int VISAKernelImpl::AppendVISA3dInfo(
     VISASampler3DSubOpCode subOpcode, VISA_EMask_Ctrl emask,
