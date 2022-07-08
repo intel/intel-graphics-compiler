@@ -220,7 +220,8 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
     }
 
     if (pointerAddressSpace == ADDRESS_SPACE_GENERIC) {
-        if(!m_needPrivateBranches && !m_needLocalBranches)
+        if((m_ctx->allocatePrivateAsGlobalBuffer() || !m_needPrivateBranches) &&
+            !m_needLocalBranches)
         {
             resolveGASWithoutBranches(I, pointerOperand);
         }
@@ -293,7 +294,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerO
     // GAS needs to resolve to private only if
     //     1) private is NOT allocated in global space; and
     //     2) there is a cast from private to GAS.
-    bool needPrivateBranch = m_needPrivateBranches;
+    bool needPrivateBranch = !(m_ctx->allocatePrivateAsGlobalBuffer()) || m_needPrivateBranches;
     bool needLocalBranch = m_needLocalBranches;
 
     auto createBlock = [&](const Twine& BlockName, const Twine& LoadName, IGC::ADDRESS_SPACE addressSpace, Value*& load)
