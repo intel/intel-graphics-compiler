@@ -58,6 +58,9 @@ jobs:
           - ubuntu_version: '22.04'
             llvm_ver: 13
             experimental: true
+          - ubuntu_version: '22.04'
+            llvm_ver: 14
+            experimental: true
     steps:
       - uses: actions/checkout@v2
       - name: cloning SPIRV-LLVM-Translator repository
@@ -121,6 +124,10 @@ jobs:
             experimental: true
           - ubuntu_version: '22.04'
             llvm_ver: 13
+            compiler: gcc
+            experimental: true
+          - ubuntu_version: '22.04'
+            llvm_ver: 14
             compiler: gcc
             experimental: true
     steps:
