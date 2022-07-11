@@ -1030,11 +1030,6 @@ namespace IGC
             {
                 EnableDivergentBarrierHandling = true;
             }
-            // -cl-intel-high-accuracy-nolut-math
-            else if (suffix.equals("-high-accuracy-nolut-math"))
-            {
-                UseHighAccuracyMathFuncs = true;
-            }
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);
