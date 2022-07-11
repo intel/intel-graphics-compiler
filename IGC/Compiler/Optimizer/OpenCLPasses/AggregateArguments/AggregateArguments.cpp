@@ -96,6 +96,16 @@ bool AggregateArgumentsAnalysis::runOnModule(Module& M)
             {
                 getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Array type is not allowed as a kernel argument", arg);
             }
+            // Handling case where array is passed as a pointer with byVal attribute
+            else if (arg->getType()->isPointerTy() && arg->hasByValAttr())
+            {
+                Type* type = arg->getType()->getPointerElementType();
+
+                if (ArrayType* arrayType = dyn_cast<ArrayType>(type))
+                {
+                    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Array type is not allowed as a kernel argument", arg);
+                }
+            }
 
             if (!isSupportedAggregateArgument(arg))
             {
