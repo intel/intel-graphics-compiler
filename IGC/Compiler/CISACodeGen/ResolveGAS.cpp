@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CastToGASAnalysis.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Metrics/IGCMetric.h"
 #include "Compiler/IGCPassSupport.h"
 #include "WrapperLLVM/Utils.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -1344,6 +1345,7 @@ namespace IGC
         void updateMetadata(Function* oldFunc, Function* newFunc);
         Function* createFuncWithLoweredArgs(Function* F, GenericPointerArgs& argsInfo);
         std::vector<Function*> findCandidates(CallGraph& CG);
+        void replaceValueInDbgInfoIntrinsic(llvm::Value* Old, llvm::Value* New, llvm::Module& M);
     };
 } // End anonymous namespace
 
@@ -1629,7 +1631,7 @@ void LowerGPCallArg::updateFunctionArgs(Function* oldFunc, Function* newFunc)
 // used to directly update uses in metadata node. In case of GAS, RAUW asserts because
 // addrspace used in Old/New values are different and this is interpreted as different
 // types by LLVM and RAUW on different types is forbidden.
-void replaceValueInDbgInfoIntrinsic(llvm::Value* Old, llvm::Value* New, llvm::Module& M)
+void LowerGPCallArg::replaceValueInDbgInfoIntrinsic(llvm::Value* Old, llvm::Value* New, llvm::Module& M)
 {
     if (Old->isUsedByMetadata())
     {
@@ -1638,10 +1640,10 @@ void replaceValueInDbgInfoIntrinsic(llvm::Value* Old, llvm::Value* New, llvm::Mo
         if (addrSpaceMD)
         {
             llvm::DIBuilder DIB(M);
-            std::vector<llvm::DbgInfoIntrinsic*> DbgInfoInstToDelete;
+            std::vector<llvm::Instruction*> instToDelete;
             for (auto* User : addrSpaceMD->users())
             {
-                if (cast<DbgInfoIntrinsic>(User))
+                if (isa<DbgInfoIntrinsic>(User))
                 {
                     //User->dump();
                     if (auto DbgV = cast<DbgValueInst>(User))
@@ -1656,12 +1658,26 @@ void replaceValueInDbgInfoIntrinsic(llvm::Value* Old, llvm::Value* New, llvm::Mo
                             DbgD->getVariable(), DbgD->getExpression(), DbgD->getDebugLoc().get(),
                             cast<llvm::Instruction>(User));
                     }
-                    DbgInfoInstToDelete.push_back(cast<llvm::DbgInfoIntrinsic>(User));
+
+                    instToDelete.push_back(cast<llvm::DbgInfoIntrinsic>(User));
+                }
+                else if (isa<CallInst>(User))
+                {
+                    if (auto callInst = cast<CallInst>(User))
+                    {
+                        if (IGCMetrics::IGCMetric::isMetricFuncCall(
+                            cast<CallInst>(User)))
+                        {
+                            m_ctx->metrics.UpdateVariable(Old, New);
+                        }
+                    }
+
+                    instToDelete.push_back(cast<llvm::CallInst>(User));
                 }
             }
 
-            for (auto DbgInfoInst : DbgInfoInstToDelete)
-                DbgInfoInst->eraseFromParent();
+            for (auto inst : instToDelete)
+                inst->eraseFromParent();
         }
     }
 }

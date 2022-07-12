@@ -37,6 +37,12 @@ SPDX-License-Identifier: MIT
 
 namespace IGCMetrics
 {
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+    uint IGCMetricImpl::fillInstrKindID = 0;
+    uint IGCMetricImpl::spillInstrKindID = 0;
+    uint IGCMetricImpl::metricInstrKindID = 0;
+#endif
+
     IGCMetricImpl::IGCMetricImpl()
     {
         this->isEnabled = false;
@@ -448,6 +454,7 @@ namespace IGCMetrics
         this->pModule = (IGCLLVM::Module*)pModule;
         fillInstrKindID = pModule->getMDKindID("FillInstr");
         spillInstrKindID = pModule->getMDKindID("SpillInstr");
+        metricInstrKindID = pModule->getMDKindID("MetricInstr");
         for (auto func_i = pModule->begin(); func_i != pModule->end(); ++func_i)
         {
             llvm::Function& func = *func_i;
@@ -969,8 +976,10 @@ namespace IGCMetrics
                 IGC_ASSERT_MESSAGE(false, "Unknown llvm type");
             }
 
-            makeTrackCall(
+            auto call = makeTrackCall(
                 funcTrackValue, { MDValue, MDDILocalVariable }, insertAfter);
+            MDNode* N = llvm::cast<DILocalVariable>(varData->varDILocalVariable->getMetadata());
+            call->setMetadata(metricInstrKindID, N);
         }
 #endif
     }
@@ -1062,6 +1071,18 @@ namespace IGCMetrics
             }
         }
 #endif
+    }
+
+    bool IGCMetricImpl::isMetricFuncCall(llvm::CallInst* pCall)
+    {
+#ifdef IGC_METRICS__PROTOBUF_ATTACHED
+        if (pCall && llvm::isa<llvm::CallInst>(pCall) &&
+            pCall->getMetadata(metricInstrKindID) != nullptr)
+        {
+            return true;
+        }
+#endif
+        return false;
     }
 
 #ifdef IGC_METRICS__PROTOBUF_ATTACHED
@@ -1553,8 +1574,11 @@ namespace IGCMetrics
 
                 // Map in code any refrence to this variable (for metrics)
                 // by adding callinstr llvm.igc.metric.trackValue in module for tracking
-                makeTrackCall(
+                auto call = makeTrackCall(
                     funcTrackValue, {MDValue, MDDILocalVariable}, pInstr);
+
+                MDNode* N = llvm::cast<DILocalVariable>(MDDILocalVariable->getMetadata());
+                call->setMetadata(metricInstrKindID, N);
 
                 map_Var[MDDILocalVariable].varDILocalVariable = MDDILocalVariable;
             }

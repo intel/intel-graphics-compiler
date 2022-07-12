@@ -201,12 +201,6 @@ namespace IGCMetrics
 
     bool IGCMetric::isMetricFuncCall(llvm::CallInst* pCall)
     {
-        if (pCall && llvm::isa<llvm::CallInst>(pCall) &&
-            pCall->getCalledFunction() != nullptr)
-        {
-            return
-                pCall->getCalledFunction()->getName().startswith(funcMetrics);
-        }
-        return false;
+       return IGCMetricImpl::isMetricFuncCall(pCall);
     }
 }
