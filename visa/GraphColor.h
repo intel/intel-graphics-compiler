@@ -568,7 +568,7 @@ namespace vISA
 
         void computeDegreeForGRF();
         void computeDegreeForARF();
-        void computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe);
+        void computeSpillCosts(bool useSplitLLRHeuristic);
         void determineColorOrdering();
         void removeConstrained();
         void relaxNeighborDegreeGRF(LiveRange* lr);

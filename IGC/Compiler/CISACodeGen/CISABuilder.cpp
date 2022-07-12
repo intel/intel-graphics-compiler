@@ -4925,10 +4925,6 @@ namespace IGC
         }
 
 
-
-        if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction)) {
-            SaveOption(vISA_NewSpillCostFunction, true);
-        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.

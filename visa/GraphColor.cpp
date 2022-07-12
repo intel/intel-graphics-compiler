@@ -6111,141 +6111,10 @@ void GraphColor::computeDegreeForARF()
     }
 }
 
-void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
+void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
 {
-    std::vector <LiveRange*> addressSensitiveVars;
+    std::vector <LiveRange *> addressSensitiveVars;
     float maxNormalCost = 0.0f;
-    VarReferences directRefs(kernel);
-    std::list<std::pair<G4_INST*, G4_BB*>> indirectRefs;
-    // when reg pressure is not very high in iter0, use spill cost function
-    // that favors allocating large variables
-    bool useNewSpillCost = builder.getOption(vISA_NewSpillCostFunction) && rpe &&
-        !(gra.getIterNo() == 0 && (float)rpe->getMaxRP() < (float)kernel.getNumRegTotal() * 0.80f);
-
-    if (builder.getOption(vISA_RATrace))
-    {
-        if (useNewSpillCost)
-            std::cout << "\t--using new spill cost function\n";
-    }
-
-    if (liveAnalysis.livenessClass(G4_GRF))
-    {
-        // gather all instructions with indirect operands
-        // for ref count computation once.
-        for (auto bb : kernel.fg.getBBList())
-        {
-            for (auto inst : bb->getInstList())
-            {
-                auto dst = inst->getDst();
-                if (dst && dst->isIndirect())
-                {
-                    indirectRefs.push_back(std::make_pair(inst, bb));
-                    continue;
-                }
-
-                for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
-                {
-                    auto src = inst->getSrc(i);
-                    if (!src || !src->isSrcRegRegion() || !src->asSrcRegRegion()->isIndirect())
-                    {
-                        continue;
-                    }
-                    indirectRefs.push_back(std::make_pair(inst, bb));
-                    continue;
-                }
-            }
-        }
-    }
-
-    auto getWeightedRefCount = [&](G4_Declare* dcl, unsigned int useWt = 1, unsigned int defWt = 1)
-    {
-        auto defs = directRefs.getDefs(dcl);
-        auto uses = directRefs.getUses(dcl);
-        auto& loops = kernel.fg.getLoops();
-
-        unsigned int refCount = 0;
-        const unsigned int assumeLoopIter = 10;
-
-        if (defs)
-        {
-            for (auto def : *defs)
-            {
-                auto* bb = std::get<1>(def);
-                auto* innerMostLoop = loops.getInnerMostLoop(bb);
-                if (innerMostLoop)
-                {
-                    auto nestingLevel = innerMostLoop->getNestingLevel();
-                    refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
-                }
-                else
-                    refCount += defWt;
-            }
-        }
-
-        if (uses)
-        {
-            for (auto use : *uses)
-            {
-                auto* bb = std::get<1>(use);
-                auto* innerMostLoop = loops.getInnerMostLoop(bb);
-                if (innerMostLoop)
-                {
-                    auto nestingLevel = innerMostLoop->getNestingLevel();
-                    refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
-                }
-                else
-                    refCount += useWt;
-            }
-        }
-
-        if (dcl->getAddressed())
-        {
-            for (auto& item : indirectRefs)
-            {
-                auto inst = item.first;
-                auto bb = item.second;
-
-                auto dst = inst->getDst();
-                if (dst && dst->isIndirect())
-                {
-                    if (liveAnalysis.getPointsToAnalysis().isPresentInPointsTo(dst->getTopDcl()->getRegVar(), dcl->getRegVar()))
-                    {
-                        auto* innerMostLoop = loops.getInnerMostLoop(bb);
-                        if (innerMostLoop)
-                        {
-                            auto nestingLevel = innerMostLoop->getNestingLevel();
-                            refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
-                        }
-                        else
-                            refCount += useWt;
-                    }
-                }
-
-                for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
-                {
-                    auto src = inst->getSrc(i);
-                    if (!src || !src->isSrcRegRegion() || !src->asSrcRegRegion()->isIndirect())
-                    {
-                        continue;
-                    }
-                    if (liveAnalysis.getPointsToAnalysis().isPresentInPointsTo(src->asSrcRegRegion()->getTopDcl()->getRegVar(), dcl->getRegVar()))
-                    {
-                        auto* innerMostLoop = loops.getInnerMostLoop(bb);
-                        if (innerMostLoop)
-                        {
-                            auto nestingLevel = innerMostLoop->getNestingLevel();
-                            refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
-                        }
-                        else
-                            refCount += useWt;
-                    }
-                }
-
-            }
-        }
-
-        return refCount == 0 ? 1 : refCount;
-    };
 
     auto incSpillCostCandidate = [&](LiveRange* lr)
     {
@@ -6257,7 +6126,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
 
         // this condition is a safety measure and isnt expected to be true.
         auto it = revAddrTakenMap.find(lr->getDcl());
-        if (it == revAddrTakenMap.end())
+        if(it == revAddrTakenMap.end())
             return true;
 
         for (auto& addrVar : (*it).second)
@@ -6335,44 +6204,22 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
             {
                 if (useSplitLLRHeuristic)
                 {
-                    spillCost = 1.0f * lrs[i]->getRefCount() / (lrs[i]->getDegree() + 1);
+                    spillCost = 1.0f*lrs[i]->getRefCount() / (lrs[i]->getDegree() + 1);
                 }
                 else
                 {
                     assert(lrs[i]->getDcl()->getTotalElems() > 0);
-                    if (!liveAnalysis.livenessClass(G4_GRF) ||
-                        !useNewSpillCost)
-                    {
-                        // address or flag variables
-                        unsigned short numRows = lrs[i]->getDcl()->getNumRows();
-                        spillCost = 1.0f * lrs[i]->getRefCount() * lrs[i]->getRefCount() * lrs[i]->getDcl()->getByteSize() *
-                            (float)sqrt(lrs[i]->getDcl()->getByteSize())
-                            / ((float)sqrt(lrs[i]->getDegree() + 1) * (float)(sqrt(sqrt(numRows))));
-                    }
-                    else
-                    {
-                        // GRF variables
-
-                        auto refCount = getWeightedRefCount(lrs[i]->getDcl());
-                        spillCost = 1.0f * refCount * refCount * refCount
-                            / ((float)(lrs[i]->getDegree() + 1) * (float)(lrs[i]->getDegree() + 1));
-                    }
+                    unsigned short numRows = lrs[i]->getDcl()->getNumRows();
+                    spillCost = 1.0f * lrs[i]->getRefCount() * lrs[i]->getRefCount() * lrs[i]->getDcl()->getByteSize() *
+                        (float)sqrt(lrs[i]->getDcl()->getByteSize())
+                        / ((float)sqrt(lrs[i]->getDegree() + 1) * (float)(sqrt(sqrt(numRows))));
                 }
             }
             else
             {
-                if (!useNewSpillCost)
-                {
-                    spillCost =
-                        liveAnalysis.livenessClass(G4_GRF) ?
-                        lrs[i]->getDegree() : 1.0f * lrs[i]->getRefCount() * lrs[i]->getRefCount() / (lrs[i]->getDegree() + 1);
-                }
-                else
-                {
-                    auto refCount = getWeightedRefCount(lrs[i]->getDcl());
-                    spillCost = 1.0f * refCount * refCount * refCount
-                        / ((float)(lrs[i]->getDegree() + 1) * (float)(lrs[i]->getDegree() + 1));
-                }
+                spillCost =
+                    liveAnalysis.livenessClass(G4_GRF) ?
+                    lrs[i]->getDegree() : 1.0f*lrs[i]->getRefCount()*lrs[i]->getRefCount() / (lrs[i]->getDegree() + 1);
             }
 
             lrs[i]->setSpillCost(spillCost);
@@ -6400,7 +6247,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
     // normal live ranges, so that they get colored before all the normal
     // live ranges.
     //
-    for (LiveRange* lr : addressSensitiveVars)
+    for (LiveRange *lr : addressSensitiveVars)
     {
         if (lr->getSpillCost() != MAXSPILLCOST)
         {
@@ -6408,7 +6255,6 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
         }
     }
 }
-
 
 
 //
@@ -7594,7 +7440,7 @@ bool GraphColor::regAlloc(
     {
         computeDegreeForARF();
     }
-    computeSpillCosts(useSplitLLRHeuristic, rpe);
+    computeSpillCosts(useSplitLLRHeuristic);
 
     if (kernel.getOption(vISA_DumpRAIntfGraph))
         intf.dumpInterference();
