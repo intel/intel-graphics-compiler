@@ -177,6 +177,7 @@ DEF_VISA_OPTION(vISA_LraFFWindowSize,       ET_INT32, "-lraFFWindowSize", UNUSED
 DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar", UNUSED, true)
 DEF_VISA_OPTION(vISA_DoSplitOnSpill,        ET_BOOL, "-splitonspill", UNUSED, false)
 DEF_VISA_OPTION(vISA_IncSpillCostAllAddrTaken, ET_BOOL, "-allowaddrtakenspill", UNUSED, false)
+DEF_VISA_OPTION(vISA_NewSpillCostFunction,  ET_BOOL, "-newspillcost", UNUSED, false)
 
 DEF_VISA_OPTION(vISA_VerifyAugmentation,    ET_BOOL, "-verifyaugmentation", UNUSED, false)
 DEF_VISA_OPTION(vISA_VerifyExplicitSplit,   ET_BOOL, "-verifysplit", UNUSED, false)
