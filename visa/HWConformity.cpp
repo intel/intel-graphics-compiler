@@ -8556,6 +8556,82 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
         }
     }
 
+    if (builder.hasFtoPackedHFMove() && inst->opcode() == G4_mov)
+    {
+        G4_Operand* src0 = inst->getSrc(0);
+        const G4_Type src0Ty = src0->getType();
+        G4_SrcRegRegion* reg0 = src0->isSrcRegRegion() ? src0->asSrcRegRegion() : nullptr;
+
+        // Indirect access (need to do it here ?) : assume they are misaligned.
+        if (dst->isIndirect())
+        {
+            dst = insertMovAfter(it, dst, dst->getType(), bb, builder.getGRFAlign());  // update dst
+            inst->setDest(dst);
+        }
+        if (reg0 && reg0->isIndirect())
+        {
+            src0 = insertMovBefore(it, 0, src0Ty, bb, builder.getGRFAlign());
+            assert(src0->isSrcRegRegion());
+            reg0 = src0->asSrcRegRegion();  // update reg0
+
+            inst->setSrc(src0, 0);
+        }
+
+        const bool isPackedMixedMode =
+            ((dstTy == Type_HF && dst->getHorzStride() == 1 && src0Ty == Type_F) ||
+             (dstTy == Type_F && src0Ty == Type_HF && reg0->getRegion()->isContiguous(inst->getExecSize())));
+        if (isPackedMixedMode)
+        {
+            bool src0IsScalar = (!reg0 || reg0->getRegion()->isScalar());
+
+            // If inst needs splitting, make sure to check if src0 after splitting is still scalar.
+            // For example on platform with native execsize = 8:
+            //    mov (16|M0)     r124.0<1>:hf  r2.3<8;8,0>:f
+            // It must be splitted into the following:
+            //    mov (8|M0)     r124.0<1>:hf  r2.3<0;1,0>:f
+            //    mov (8|M8)     r124.8<1>:hf  r3.3<0;1,0>:f
+            // After splitting, src0 becomes a scalar. Therefore, no need to do mov before
+            // splitting.
+            if (!src0IsScalar && inst->getExecSize() > builder.getNativeExecSize())
+            {
+                assert(reg0 != nullptr);
+                const RegionDesc* regDesc = reg0->getRegion();
+                if (regDesc->horzStride == 0 && regDesc->width == builder.getNativeExecSize())
+                {
+                    src0IsScalar = true;
+                }
+            }
+
+            // Check alignment.
+            if (!src0IsScalar)
+            {
+                uint32_t dstOffBytes = dst->getSubRegOff() * dst->getTypeSize();
+                uint32_t src0OffBytes = reg0->getSubRegOff() * reg0->getTypeSize();
+                const uint32_t halfGRFBytes = kernel.numEltPerGRF<Type_UB>() / 2;
+                // For F, use the half of its offset!
+                dstOffBytes = (dstTy == Type_F ? dstOffBytes / 2 : dstOffBytes);
+                src0OffBytes = (src0Ty == Type_F ? src0OffBytes / 2 : src0OffBytes);
+                const bool isAligned = (dstOffBytes % halfGRFBytes) == (src0OffBytes % halfGRFBytes);
+                if ((!isAligned && dstOffBytes != 0) || (dstTy == Type_F && dst->getHorzStride() != 1))
+                {
+                    inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, builder.getGRFAlign()));
+                }
+                if ((!isAligned && src0OffBytes != 0) ||
+                    (src0Ty == Type_F && !reg0->getRegion()->isContiguous(inst->getExecSize())))
+                {
+                    inst->setSrc(insertMovBefore(it, 0, src0Ty, bb, builder.getGRFAlign()), 0);
+                }
+            }
+
+            // Check if the execsize is legal
+            if (inst->getExecSize() > builder.getNativeExecSize())
+            {
+                evenlySplitInst(it, bb);
+            }
+            return;
+        }
+    }
+
     // fix Dst if necessary
     // some special mix mode dst are allowed provided the instruction has F type:
     // r1.0<2>:bf
@@ -8563,9 +8639,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
     // r1.0<1>:bf
     // r1.8<1>:bf
     bool isSpecialMixModeDst = false;
-    bool canDoPackedFtoHFMove = builder.hasFtoPackedHFMove() && inst->opcode() == G4_mov && inst->getExecSize() >= builder.getNativeExecSize() &&
-        dstTy == Type_HF && !dst->isIndirect();
-    if ((builder.getMixModeType() == dstTy || canDoPackedFtoHFMove) && IS_FTYPE(execTy))
+    if (builder.getMixModeType() == dstTy && IS_FTYPE(execTy))
     {
         uint16_t offset = 0;
         bool isAligned = builder.isOpndAligned(dst, offset, builder.getGRFSize() / 2);
@@ -8577,15 +8651,6 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
         {
             isSpecialMixModeDst = isAligned || (offset % 32) == 2;
         }
-    }
-
-    if (canDoPackedFtoHFMove && isSpecialMixModeDst)
-    {
-        if (inst->getExecSize() > builder.getNativeExecSize())
-        {
-            evenlySplitInst(it, bb);
-        }
-        return;
     }
 
     auto dstStride = TypeSize(dstTy) * dst->getHorzStride();
