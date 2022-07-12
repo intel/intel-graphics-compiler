@@ -5485,5 +5485,8 @@ void SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(prefetch, _p1v16f64_i64, )( global dou
 uint  __builtin_spirv_OpReadClockKHR_i32_i32(uint scope);
 ulong __builtin_spirv_OpReadClockKHR_i64_i32(uint scope);
 
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )(void);
+int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(GlobalHWThreadIDINTEL, , )(void);
+
 #endif // __SPIRV_H__
 

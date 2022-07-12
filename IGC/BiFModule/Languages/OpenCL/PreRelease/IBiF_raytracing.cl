@@ -30,7 +30,9 @@ void intel_rt_sync(rtfence_t fence) {
 }
 
 global void* intel_get_implicit_dispatch_globals() {
-    return __builtin_IB_intel_get_implicit_dispatch_globals();
+    global void** idg = __builtin_IB_intel_get_implicit_dispatch_globals();
+    int subdeviceID = SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )();
+    return idg[subdeviceID];
 }
 
 #endif
