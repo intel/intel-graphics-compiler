@@ -70,9 +70,8 @@ namespace IGCMetrics
         // Current count of instruction in function
         int countInstInFunc;
 
-        static uint fillInstrKindID;
-        static uint spillInstrKindID;
-        static uint metricInstrKindID;
+        uint fillInstrKindID = 0;
+        uint spillInstrKindID = 0;
 
         int CountInstInFunc(llvm::Function* pFunc);
 
@@ -191,7 +190,5 @@ namespace IGCMetrics
         void FinalizeStats();
 
         void OutputMetrics();
-
-        static bool isMetricFuncCall(llvm::CallInst* pCall);
     };
 }
