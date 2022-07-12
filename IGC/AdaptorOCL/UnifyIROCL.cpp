@@ -453,6 +453,7 @@ static void CommonOCLBasedPasses(
         {
             mpm.add(createLowerGPCallArg());
         }
+        mpm.add(createStaticGASResolution());
 
         mpm.add(createGASRetValuePropagatorPass());
 

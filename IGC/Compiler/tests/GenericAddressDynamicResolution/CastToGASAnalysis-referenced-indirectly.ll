@@ -27,13 +27,8 @@ define spir_kernel void @kernel(i32 addrspace(1)* %global_buffer) {
   ; CHECK: %[[PTI:.*]] = ptrtoint i32 addrspace(4)* %generic_ptr to i64
   ; CHECK: %[[TAG:.*]] = lshr i64 %[[PTI]], 61
   ; CHECK: switch i64 %[[TAG]], label %GlobalBlock [
-  ; CHECK:   i64 1, label %PrivateBlock
   ; CHECK:   i64 2, label %LocalBlock
   ; CHECK: ]
-
-  ; CHECK: PrivateBlock:
-  ; CHECK:   %[[PRIVATE_PTR:.*]] = addrspacecast i32 addrspace(4)* %generic_ptr to i32*
-  ; CHECK:   store i32 5, i32* %[[PRIVATE_PTR]], align 4
 
   ; CHECK: LocalBlock:
   ; CHECK:   %[[LOCAL_PTR:.*]] = addrspacecast i32 addrspace(4)* %generic_ptr to i32 addrspace(3)*

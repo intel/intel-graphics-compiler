@@ -1270,6 +1270,126 @@ void GASRetValuePropagator::updateMetadata(Function* oldFunc, Function* newFunc)
 
 namespace IGC
 {
+    class StaticGASResolution : public FunctionPass
+    {
+    public:
+        static char ID;
+
+        StaticGASResolution() : FunctionPass(ID)
+        {
+            initializeStaticGASResolutionPass(*PassRegistry::getPassRegistry());
+        }
+
+        bool runOnFunction(Function&) override;
+
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<CastToGASWrapperPass>();
+        }
+
+        virtual StringRef getPassName() const override
+        {
+            return "StaticGASResolution";
+        }
+    private:
+        GASInfo* m_GI = nullptr;
+    };
+} // End anonymous namespace
+
+FunctionPass* IGC::createStaticGASResolution() { return new StaticGASResolution(); }
+
+char StaticGASResolution::ID = 0;
+
+#define SGR_PASS_FLAG "static-gas-resolution"
+#define SGR_PASS_DESC "Statically resolves memory accesses operating on generic pointers"
+#define SGR_PASS_CFG_ONLY false
+#define SGR_PASS_ANALYSIS false
+namespace IGC
+{
+    IGC_INITIALIZE_PASS_BEGIN(StaticGASResolution, SGR_PASS_FLAG, SGR_PASS_DESC, SGR_PASS_CFG_ONLY, SGR_PASS_ANALYSIS)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+    IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASWrapperPass)
+    IGC_INITIALIZE_PASS_END(StaticGASResolution, SGR_PASS_FLAG, SGR_PASS_DESC, SGR_PASS_CFG_ONLY, SGR_PASS_ANALYSIS)
+}
+
+bool StaticGASResolution::runOnFunction(llvm::Function& F)
+{
+    m_GI = &getAnalysis<CastToGASWrapperPass>().getGASInfo();
+    // Change GAS inst, such as ld/st, etc to global ld/st, etc.
+    if (m_GI->canGenericPointToPrivate(F) || m_GI->canGenericPointToLocal(F))
+        return false;
+
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    // As AddrSpaceCast has been processed already in GASResolving,
+    // here only handle non-addrspacecast ptr
+    auto toSkip = [](Value* P) {
+        if (PointerType* PtrTy = dyn_cast<PointerType>(P->getType()))
+        {
+            if (PtrTy->getAddressSpace() == ADDRESS_SPACE_GENERIC && !isa<AddrSpaceCastInst>(P))
+            {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    IRBuilder<> IRB(F.getContext());
+    bool changed = false;
+    auto NI = inst_begin(F);
+    for (auto FI = NI, FE = inst_end(F); FI != FE; FI = NI)
+    {
+        ++NI;
+
+        Instruction* I = &(*FI);
+        LoadInst* LI = dyn_cast<LoadInst>(I);
+        StoreInst* SI = dyn_cast<StoreInst>(I);
+        if (LI || SI)
+        {
+            Value* Ptr = LI ? LI->getPointerOperand() : SI->getPointerOperand();
+            if (!toSkip(Ptr))
+            {
+                PointerType* PtrTy = cast<PointerType>(Ptr->getType());
+                Type* eltTy = PtrTy->getPointerElementType();
+                PointerType* glbPtrTy = PointerType::get(eltTy, ADDRESS_SPACE_GLOBAL);
+
+                IRB.SetInsertPoint(I);
+                Value* NewPtr = IRB.CreateAddrSpaceCast(Ptr, glbPtrTy);
+                I->setOperand(LI ? 0 : 1, NewPtr);
+                if (Instruction* tI = dyn_cast<Instruction>(NewPtr))
+                {
+                    tI->setDebugLoc(I->getDebugLoc());
+                }
+
+                changed = true;
+            }
+        }
+    }
+
+    if (changed)
+    {
+        // Above optimization changes an addrspace of load and store instructions
+        // operating on a generic pointer. One of the cases when optimization may
+        // be applied is when private memory is allocated in a global buffer. Together
+        // with an information that local pointers are not casted to generic addrspace,
+        // compiler is assured that all generic pointers point to a global memory.
+        // If the optimization happens, usage of generic pointer in any load and store
+        // instructions disappear.
+        //
+        // m_mustAllocatePrivateAsGlobalBuffer variable is necessary to point out that
+        // above optimization has been applied. Since PrivateMemoryResolution pass
+        // allocates private memory in a global buffer only if there is any load or
+        // store operating on a generic addrspace, the above optimization could mislead
+        // the logic in PrivateMemoryResolution causing private memory not being
+        // allocated in a global buffer.
+        ctx->m_mustAllocatePrivateAsGlobalBuffer = true;
+    }
+
+    return changed;
+}
+
+namespace IGC
+{
     //
     // (1)
     // Optimization pass to lower generic pointers in function arguments.
@@ -1311,7 +1431,6 @@ namespace IGC
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CallGraphWrapperPass>();
             AU.addRequired<LoopInfoWrapperPass>();
-            AU.addRequired<CastToGASWrapperPass>();
         }
 
         virtual StringRef getPassName() const override
@@ -1333,11 +1452,6 @@ namespace IGC
         IGCMD::MetaDataUtils* m_mdUtils = nullptr;
         CodeGenContext* m_ctx = nullptr;
         Module* m_module = nullptr;
-        GASInfo* m_GI = nullptr;
-        bool m_changed = false;
-
-        void processCallArg(Module& M);
-        void processGASInst(Module& M);
 
         std::optional<unsigned> getOriginAddressSpace(Function* func, unsigned argNo);
         void updateFunctionArgs(Function* oldFunc, Function* newFunc);
@@ -1364,7 +1478,6 @@ namespace IGC
     IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
     IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-    IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASWrapperPass)
     IGC_INITIALIZE_PASS_END(LowerGPCallArg, GP_PASS_FLAG, GP_PASS_DESC, GP_PASS_CFG_ONLY, GP_PASS_ANALYSIS)
 }
 
@@ -1372,22 +1485,11 @@ bool LowerGPCallArg::runOnModule(llvm::Module& M)
 {
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    m_GI = &getAnalysis<CastToGASWrapperPass>().getGASInfo();
     m_module = &M;
 
-    // (1) main work
-    processCallArg(M);
-
-    // (2) further static resolution
-    processGASInst(M);
-
-    return m_changed;
-}
-
-void LowerGPCallArg::processCallArg(Module& M)
-{
     CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
     std::vector<Function*> candidates = findCandidates(CG);
+    bool changed = false;
     for (auto F : reverse(candidates))
     {
         GenericPointerArgs genericArgsInfo;
@@ -1400,7 +1502,7 @@ void LowerGPCallArg::processCallArg(Module& M)
             if (argTy->isPointerTy() && argTy->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
             {
                 if (auto originAddrSpace = getOriginAddressSpace(F, arg.getArgNo()))
-                    genericArgsInfo.push_back({ arg.getArgNo(), originAddrSpace.value()});
+                    genericArgsInfo.push_back({ arg.getArgNo(), originAddrSpace.value() });
             }
         }
 
@@ -1413,78 +1515,10 @@ void LowerGPCallArg::processCallArg(Module& M)
         updateMetadata(F, newFunc);
 
         F->eraseFromParent();
-        m_changed = true;
+        changed = true;
     }
-}
 
-void LowerGPCallArg::processGASInst(Module& M)
-{
-    // As AddrSpaceCast has been processed already in GASResolving,
-    // here only handle non-addrspacecast ptr
-    auto toSkip = [](Value* P) {
-        if (PointerType* PtrTy = dyn_cast<PointerType>(P->getType()))
-        {
-            if (PtrTy->getAddressSpace() == ADDRESS_SPACE_GENERIC && !isa<AddrSpaceCastInst>(P))
-            {
-                return false;
-            }
-        }
-        return true;
-    };
-
-    IRBuilder<> IRB(M.getContext());
-    // Change GAS inst, such as ld/st, etc to global ld/st, etc.
-    for (Function& F : M)
-    {
-        if (m_GI->canGenericPointToPrivate(F) || m_GI->canGenericPointToLocal(F))
-            continue;
-
-        auto NI = inst_begin(F);
-        for (auto FI = NI, FE = inst_end(F); FI != FE; FI = NI)
-        {
-            ++NI;
-
-            Instruction* I = &(*FI);
-            LoadInst* LI = dyn_cast<LoadInst>(I);
-            StoreInst* SI = dyn_cast<StoreInst>(I);
-            if (LI || SI)
-            {
-                Value* Ptr = LI ? LI->getPointerOperand() : SI->getPointerOperand();
-                if (!toSkip(Ptr))
-                {
-                    PointerType* PtrTy = cast<PointerType>(Ptr->getType());
-                    Type* eltTy = PtrTy->getPointerElementType();
-                    PointerType* glbPtrTy = PointerType::get(eltTy, ADDRESS_SPACE_GLOBAL);
-
-                    IRB.SetInsertPoint(I);
-                    Value* NewPtr = IRB.CreateAddrSpaceCast(Ptr, glbPtrTy);
-                    I->setOperand(LI ? 0 : 1, NewPtr);
-                    if (Instruction* tI = dyn_cast<Instruction>(NewPtr))
-                    {
-                        tI->setDebugLoc(I->getDebugLoc());
-                    }
-
-                    m_changed = true;
-                }
-            }
-            else if (CallInst* CallI = dyn_cast<CallInst>(I))
-            {
-                Function* Callee = CallI->getCalledFunction();
-                if (Callee &&
-                    (Callee->getName().equals("__builtin_IB_to_local") ||
-                     Callee->getName().equals("__builtin_IB_to_private")) &&
-                    !toSkip(CallI->getOperand(0)))
-                {
-                    Type* DstTy = I->getType();
-                    Value* NewPtr = Constant::getNullValue(DstTy);
-                    I->replaceAllUsesWith(NewPtr);
-                    I->eraseFromParent();
-
-                    m_changed = true;
-                }
-            }
-        }
-    }
+    return changed;
 }
 
 std::vector<Function*> LowerGPCallArg::findCandidates(CallGraph& CG)
