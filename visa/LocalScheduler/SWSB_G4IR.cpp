@@ -5459,15 +5459,15 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
         return true;
     }
 
-    if (builder.getOption(vISA_forceDPASMacro))
-    {
-        return false;
-    }
-
     // dpas having dependency to other dpas in the macro cannot be part of the macro
     if (hasDependenceBetweenDPASNodes(curNode, nextNode))
     {
-        return true;
+        return !builder.getOption(vISA_forceDPASMacro);
+    }
+
+    if (builder.getOption(vISA_forceDPASMacro))
+    {
+        return false;
     }
 
     //Src1 read suppression:
