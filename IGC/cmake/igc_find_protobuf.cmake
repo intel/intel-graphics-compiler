@@ -130,33 +130,33 @@ else()
           set(_dll_desc_out "--descriptor_set_out=${_descriptor_file}")
           list(APPEND _generated_srcs ${_descriptor_file})
         endif()
-        list(APPEND _generated_srcs_all ${_generated_srcs})
 
         get_target_property(protobuf-comp protobuf::protoc IMPORTED_LOCATION_RELEASE)
-        message(STATUS "Running ${protobuf_generate_LANGUAGE} protocol buffer compiler on ${_proto}")
         get_filename_component(WRK_DIR_PROTO "${_abs_file}" DIRECTORY)
-        execute_process(
-          COMMAND ${protobuf-comp} --${protobuf_generate_LANGUAGE}_out ${_dll_export_decl}${protobuf_generate_PROTOC_OUT_DIR} ${_dll_desc_out} ${_protobuf_include_path} ${_abs_file}
-          WORKING_DIRECTORY ${WRK_DIR_PROTO}
-          RESULT_VARIABLE rv
-          OUTPUT_VARIABLE ov
-          ERROR_VARIABLE ev
+        add_custom_command(
+          OUTPUT ${_generated_srcs}
+          COMMAND ${CMAKE_COMMAND}
+            "-Dproto=${_proto}"
+            "-Dprotobuf-comp=${protobuf-comp}"
+            "-Dprotobuf_generate_LANGUAGE=${protobuf_generate_LANGUAGE}"
+            "-Ddll_export_decl=${_dll_export_decl}"
+            "-Dprotobuf_generate_PROTOC_OUT_DIR=${protobuf_generate_PROTOC_OUT_DIR}"
+            "-Ddll_desc_out=${_dll_desc_out}"
+            "-Dprotobuf_include_path=\"${_protobuf_include_path}\""
+            "-Dabs_file=${_abs_file}"
+            "-DWRK_DIR_PROTO=${WRK_DIR_PROTO}"
+            -P "${IGC_BUILD__IGC_SRC_DIR}/cmake/igc_run_protobuf_protocol.cmake"
+          DEPENDS ${protobuf-comp} "${IGC_BUILD__IGC_SRC_DIR}/cmake/igc_run_protobuf_protocol.cmake" ${IGC_METRICS_PROTO_SCHEMAS}
         )
-        if(NOT ${rv} EQUAL "0")
-          message("${protobuf-comp} --${protobuf_generate_LANGUAGE}_out ${_dll_export_decl}${protobuf_generate_PROTOC_OUT_DIR} ${_dll_desc_out} ${_protobuf_include_path} ${_abs_file}")
-          message("Result='${rv}'")
-          message("Output='${ov}'")
-          message("Error='${ev}'")
-          message(FATAL_ERROR "Protobuf compiler : failed to compile schema ${_abs_file}")
-        endif()
       endforeach()
 
-      set_source_files_properties(${_generated_srcs_all} PROPERTIES GENERATED TRUE)
+      set_source_files_properties(${_generated_srcs} PROPERTIES GENERATED TRUE)
+      list(APPEND _generated_srcs_all ${_generated_srcs})
       if(protobuf_generate_OUT_VAR)
         set(${protobuf_generate_OUT_VAR} ${_generated_srcs_all} PARENT_SCOPE)
       endif()
       if(protobuf_generate_TARGET)
-        target_sources(${protobuf_generate_TARGET} PRIVATE ${_generated_srcs_all})
+        target_sources(${protobuf_generate_TARGET} PRIVATE ${_generated_srcs})
       endif()
     endfunction()
 

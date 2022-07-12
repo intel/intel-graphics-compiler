@@ -24,6 +24,9 @@ if(IGC_METRICS)
     list(APPEND IGC_METRICS_SRCS ${IGC_METRICS_SRC})
     list(APPEND IGC_METRICS_HDRS ${IGC_METRICS_HDR})
   endforeach()
+  add_custom_target(igc_metric_proto_sources_generator
+    DEPENDS ${IGC_METRICS_SRC} ${IGC_METRICS_SRC}
+    SOURCES ${IGC_METRICS_PROTO_SCHEMAS})
 
   get_target_property(PROTOBUF_HDRS protobuf::libprotobuf INTERFACE_INCLUDE_DIRECTORIES)
 
@@ -68,9 +71,6 @@ list(APPEND IGC_METRICS_HDRS "Metrics/IGCMetric.h")
 list(APPEND IGC_METRICS_HDRS "Metrics/IGCMetricImpl.h")
 
 add_library(igc_metric STATIC ${IGC_METRICS_SRCS} ${IGC_METRICS_HDRS})
-if(TARGET igc_metric_version_header_generator)
-  add_dependencies(igc_metric igc_metric_version_header_generator)
-endif()
 
 add_dependencies(igc_metric intrinsics_gen)
 add_dependencies(igc_metric ${IGC_BUILD__PROJ__GenISAIntrinsics})
