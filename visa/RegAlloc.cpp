@@ -1658,7 +1658,7 @@ void LivenessAnalysis::hierarchicalIPA(const SparseBitSet& kernelInput, const Sp
     }
     for (auto subroutine : fg.sortedFuncTable)
     {
-        auto printVal = [&idToDecl](const BitSet& bs)
+        auto printVal = [&idToDecl](const SparseBitSet& bs)
         {
             for (int i = 0, size = (int)bs.getSize(); i < size; ++i)
             {
@@ -1674,14 +1674,14 @@ void LivenessAnalysis::hierarchicalIPA(const SparseBitSet& kernelInput, const Sp
         if (subroutine != fg.kernelInfo)
         {
             std::cerr << "\tArgs: ";
-            printVal(args[subroutine->getId()]);
+            printVal(args[subroutine]);
             std::cerr << "\n";
 
             std::cerr << "\tRetVal: ";
-            printVal(retVal[subroutine->getId()]);
+            printVal(retVal[subroutine]);
             std::cerr << "\n";
             std::cerr << "\tLiveThrough: ";
-            BitSet liveThrough = use_in[subroutine->getInitBB()->getId()];
+            SparseBitSet liveThrough = use_in[subroutine->getInitBB()->getId()];
             liveThrough &= use_out[subroutine->getExitBB()->getId()];
             printVal(liveThrough);
             //std::cerr << "\n";
@@ -3010,8 +3010,27 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             }
                             else
                             {
-                                MUST_BE_TRUE(false, "RA verification error: Found conflicting live-in variables: " << dcl->getName()
-                                    << " and " << LiveInRegMapIt->second->getName() << " assigned to r" <<
+                                // There's case that the 2 vars in outer scope are just live through the subroutine,
+                                // but IPA would mark 2 vars are live in the subroutine. So, here we report error only
+                                // if either var has the same scope id as the current BB. If any var is used in the
+                                // subroutine, we can still catch the conflict when verifying instructions later.
+                                //
+                                //     foo() {
+                                //         a = ...;
+                                //         bar();
+                                //         ... = a;
+                                //
+                                //         b = ...;
+                                //         bar();
+                                //         ... = b;
+                                //     }
+                                //     bar() {
+                                //         ...
+                                //     }
+                                MUST_BE_TRUE(bb->getScopeID() != dcl->getScopeID() &&
+                                    bb->getScopeID() != LiveInRegMapIt->second->getScopeID(),
+                                    "RA verification error: Found conflicting live-in variables: " << dcl->getName() <<
+                                    " and " << LiveInRegMapIt->second->getName() << " assigned to r" <<
                                     regNum << "." << regOff << "!\n");
                             }
 
@@ -3066,9 +3085,13 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                             }
                             else
                             {
-                                MUST_BE_TRUE(false, "RA verification error: Found conflicting live-out variables: " << dcl->getName()
-                                    << " and " << liveOutRegMapIt->second->getName() << " assigned to r" <<
-                                    regNum << "." << regOff << "!\n");
+                                // Same as the case of live-in verification. Also report error only if either var has
+                                // the same scope id as the current BB.
+                                MUST_BE_TRUE(bb->getScopeID() != dcl->getScopeID() &&
+                                    bb->getScopeID() != liveOutRegMapIt->second->getScopeID(),
+                                    "RA verification error: Found conflicting live-out variables: " <<
+                                    dcl->getName() << " and " << liveOutRegMapIt->second->getName() <<
+                                    " assigned to r" << regNum << "." << regOff << "!\n");
                             }
 
                         }
@@ -3699,7 +3722,9 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         LivenessAnalysis liveAnalysis(gra,
             G4_GRF | G4_INPUT, true);
         liveAnalysis.computeLiveness();
-        //kernel.dump();
+        // Mark scope so that verifier can leverage the scope information to
+        // verify live-in and live-out.
+        kernel.fg.markScope();
         gra.verifyRA(liveAnalysis);
     }
 
