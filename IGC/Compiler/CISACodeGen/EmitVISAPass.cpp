@@ -18368,12 +18368,7 @@ void EmitPass::emitDpas(GenIntrinsicInst* GII, const SSource* Sources, const Dst
     int RC = (int)rcount->getSExtValue();
     bool IsDpasw = dpasw->getValue().getBoolValue();
 
-    // Make sure all operands are non-uniform. If any of them are uniform
-    // broadcast them to a non-uniform variable.
-    // (Note that activation should be uniform for non-subgroup dpas)
-    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_sub_group_dpas) {
-        activation = BroadcastIfUniform(activation);
-    }
+    activation = BroadcastIfUniform(activation);
     weight = BroadcastIfUniform(weight);
     if (input) {
         input = BroadcastIfUniform(input);
