@@ -11502,7 +11502,7 @@ void EmitPass::emitReductionAll(
             }
         }
     }
-    if (m_currShader->m_dispatchSize >= SIMDMode::SIMD16)
+    else if (m_currShader->m_dispatchSize >= SIMDMode::SIMD16)
     {
         temp = ReductionReduceHelper(op, type, SIMDMode::SIMD8, temp);
     }
@@ -12501,6 +12501,12 @@ void EmitPass::emitScalarAtomicLoad(
     }
 }
 
+bool static OrWith0Atomic(llvm::Instruction* pInst, const uint op)
+{
+    return (isa<ConstantInt>(pInst->getOperand(op)) &&
+        cast<ConstantInt>(pInst->getOperand(op))->isZero());
+}
+
 bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
 {
     if (llvm::GenIntrinsicInst * pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(pInst))
@@ -12522,7 +12528,8 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
             {
                 AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(3))->getZExtValue());
 
-                bool isAddAtomic = atomic_op == EATOMIC_IADD ||
+                bool isAddAtomic =
+                    atomic_op == EATOMIC_IADD ||
                     atomic_op == EATOMIC_INC ||
                     atomic_op == EATOMIC_SUB ||
                     atomic_op == EATOMIC_DEC;
@@ -12534,7 +12541,7 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
 
                 // capture the special case of atomic_or with 0 (it's used to simulate atomic_load)
                 bool isOrWith0Atomic = atomic_op == EATOMIC_OR &&
-                    isa<ConstantInt>(pInst->getOperand(2)) && cast<ConstantInt>(pInst->getOperand(2))->isZero();
+                    OrWith0Atomic(pInst, 2);
 
                 if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrWith0Atomic)
                     return true;
@@ -12560,7 +12567,8 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
             {
                 AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(5))->getZExtValue());
 
-                bool isAddAtomic = atomic_op == EATOMIC_IADD ||
+                bool isAddAtomic =
+                    atomic_op == EATOMIC_IADD ||
                     atomic_op == EATOMIC_INC ||
                     atomic_op == EATOMIC_SUB ||
                     atomic_op == EATOMIC_DEC;
@@ -12572,7 +12580,7 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
 
                 // capture the special case of atomic_or with 0 (it's used to simulate atomic_load)
                 bool isOrWith0Atomic = atomic_op == EATOMIC_OR &&
-                    isa<ConstantInt>(pInst->getOperand(4)) && cast<ConstantInt>(pInst->getOperand(4))->isZero();
+                    OrWith0Atomic(pInst, 4);
 
                 if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrWith0Atomic)
                     return true;
