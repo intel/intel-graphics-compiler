@@ -1098,6 +1098,7 @@ void LowerIntersectionAnyHit::handleIntersectionAnyHitShaders(Module &M)
                     ReportHits.push_back(ReportHit);
             }
 
+            SmallVector<AllocaInst*, 4> inlinedStaticArrayAllocas;
             for (auto* RHI : ReportHits)
             {
                 auto *AnyHitCall = codeGenReportHit(
@@ -1108,6 +1109,34 @@ void LowerIntersectionAnyHit::handleIntersectionAnyHitShaders(Module &M)
                     bool CanInline = IGCLLVM::InlineFunction(AnyHitCall, IFI);
                     CanInline = CanInline;
                     IGC_ASSERT_MESSAGE(CanInline, "failed to inline?");
+                    // Merge static array allocas to reduce the use of private
+                    // memory. This is a similar optimization that exists in
+                    // the inliner, see mergeInlinedArrayAllocas().
+                    if (inlinedStaticArrayAllocas.empty())
+                    {
+                        for (AllocaInst* allocaInst : IFI.StaticAllocas)
+                        {
+                            if (!allocaInst->isArrayAllocation() &&
+                                allocaInst->getAllocatedType()->isArrayTy())
+                            {
+                                inlinedStaticArrayAllocas.push_back(allocaInst);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        auto it = inlinedStaticArrayAllocas.begin();
+                        for (AllocaInst* allocaInst : IFI.StaticAllocas)
+                        {
+                            if (!allocaInst->isArrayAllocation() &&
+                                allocaInst->getAllocatedType()->isArrayTy())
+                            {
+                                IGC_ASSERT((*it)->getAllocatedType() == allocaInst->getAllocatedType());
+                                allocaInst->replaceAllUsesWith(*it);
+                                ++it;
+                            }
+                        }
+                    }
                 }
             }
         }
