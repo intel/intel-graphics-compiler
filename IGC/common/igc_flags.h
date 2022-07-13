@@ -104,7 +104,6 @@ DECLARE_IGC_REGKEY(bool, DisableThreeALUPipes,          false,  "Disable three A
 DECLARE_IGC_REGKEY(bool, Enable16DWURBWrite,            false, "Enable 16 Dword URB Write messages", true)
 DECLARE_IGC_REGKEY(bool, Enable16OWSLMBlockRW,          true,  "Enable 16 OWord (8 GRF) SLM block read/write message", true)
 DECLARE_IGC_REGKEY(bool, Enable64BMediaBlockRW,         false,  "Enable 64 byte wide media block read/write message", true)
-DECLARE_IGC_REGKEY(bool, DisableRegSharingHeuristics,   false,  "Disable compiler heuristics to decide number of threads per EU.", false)
 DECLARE_IGC_REGKEY(bool, EnableUntypedSurfRWofSS,       true,   "Enable untyped surface RW to scratch space. XeHP A0 only.", true)
 
 DECLARE_IGC_REGKEY(DWORD, ForceHWThreadNumberPerEU,                   0,     "Total HW thread number per-EU.", false)

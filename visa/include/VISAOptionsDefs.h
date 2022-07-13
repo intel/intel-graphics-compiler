@@ -93,6 +93,7 @@ DEF_VISA_OPTION(vISA_disableSrc2AccSub, ET_BOOL, "-disableSrc2AccSub",    UNUSED
 DEF_VISA_OPTION(vISA_hasDoubleAcc, ET_BOOL, "-hasDoubleAcc",    UNUSED, false)
 DEF_VISA_OPTION(vISA_ifCvt,                 ET_BOOL, "-noifcvt",     UNUSED, true)
 DEF_VISA_OPTION(vISA_RegSharingHeuristics,  ET_BOOL, "-regSharingHeuristics", UNUSED, false)
+DEF_VISA_OPTION(vISA_MultiLevelRegSharing,  ET_BOOL, "-multiLevelRegSharing", UNUSED, false)
 DEF_VISA_OPTION(vISA_LVN,                   ET_BOOL, "-nolvn",       UNUSED, true)
 // only affects acc substitution for now
 DEF_VISA_OPTION(vISA_numGeneralAcc,         ET_INT32, "-numGeneralAcc", "USAGE: -numGeneralAcc <accNum>\n", 0)

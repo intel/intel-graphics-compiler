@@ -310,7 +310,7 @@ namespace IGC
         // Determines whether the PAYLOAD_HEADER implicit arg must be present
         virtual bool RequirePayloadHeader() const { return true; }
 
-        virtual bool supportsAutoGRFSelection() const { return autoGRFSelection; }
+        virtual bool supportsAutoGRFSelection() const { return autoGRFSelection || IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection); }
         virtual void setAutoGRFSelection(bool value) { autoGRFSelection = value; }
         virtual bool UseScratchSpaceForATSPlus() const { return false; }
         /// Enables HWGenerateThreadID from API level. To help debug, we must enable it from both API level AND IGC Core level.

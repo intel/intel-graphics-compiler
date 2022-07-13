@@ -739,10 +739,33 @@ bool preRA_RegSharing::run()
     // If maximum register pressure is higher than default GRF mode,
     // assign the smallest number of threads to this kernel.
     if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
+        !kernel.getOptions()->getOption(vISA_MultiLevelRegSharing) &&
         (maxPressure > getRPThresholdHigh(kernel.getNumRegTotal() - kernel.getOptions()->getuInt32Option(vISA_ReservedGRFNum))))
     {
         // Update number of threads, GRF, Acc and SWSB
         kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
+    }
+    else if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
+        kernel.getOptions()->getOption(vISA_MultiLevelRegSharing))
+    {
+        if (maxPressure <= 64)
+            kernel.updateKernelByNumThreads(12);
+        else if (maxPressure <= 80)
+            kernel.updateKernelByNumThreads(10);
+        else if (maxPressure <= 96)
+            kernel.updateKernelByNumThreads(9);
+        else if (maxPressure <= 112)
+            kernel.updateKernelByNumThreads(8);
+        else if (maxPressure <= 128)
+            kernel.updateKernelByNumThreads(7);
+        else if (maxPressure <= 144)
+            kernel.updateKernelByNumThreads(6);
+        else if (maxPressure <= 160)
+            kernel.updateKernelByNumThreads(6);
+        else if (maxPressure <= 192)
+            kernel.updateKernelByNumThreads(5);
+        else
+            kernel.updateKernelByNumThreads(4);
     }
 
     unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), isSlicedSIMD32(kernel));

@@ -1026,6 +1026,38 @@ void G4_Kernel::setKernelParameters()
         }
         callerSaveLastGRF = ((overrideGRFNum - 8) / 2) - 1;
     }
+    else if (m_options->getOption(vISA_MultiLevelRegSharing) && overrideNumThreads > 0)
+    {
+        switch (overrideNumThreads)
+        {
+        case 4:
+            numRegTotal = 256;
+            break;
+        case 5:
+            numRegTotal = 192;
+            break;
+        case 6:
+            numRegTotal = 160;
+            break;
+        case 7:
+            numRegTotal = 144;
+            break;
+        case 8:
+            numRegTotal = 128;
+            break;
+        case 9:
+            numRegTotal = 112;
+            break;
+        case 10:
+            numRegTotal = 96;
+            break;
+        case 12:
+            numRegTotal = 80;
+            break;
+        default:
+            numRegTotal = 128;
+        }
+    }
     else if (overrideNumThreads > 0)
     {
         switch (platform)
@@ -1055,14 +1087,20 @@ void G4_Kernel::setKernelParameters()
             case 6:
                 numRegTotal = 160;
                 break;
+            case 7:
+                numRegTotal = 144;
+                break;
             case 8:
                 numRegTotal = 128;
+                break;
+            case 9:
+                numRegTotal = 112;
                 break;
             case 10:
                 numRegTotal = 96;
                 break;
             case 12:
-                numRegTotal = 64;
+                numRegTotal = 80;
                 break;
             default:
                 numRegTotal = 128;
@@ -1107,9 +1145,11 @@ void G4_Kernel::setKernelParameters()
             case 6:
                 numSWSBTokens = 20;
                 break;
+            case 7:
             case 8:
                 numSWSBTokens = 16;
                 break;
+            case 9:
             case 10:
                 numSWSBTokens = 12;
                 break;
@@ -1177,9 +1217,11 @@ void G4_Kernel::setKernelParameters()
                 numAcc = 6;
                 break;
             case 6:
+            case 7:
             case 8:
                 numAcc = 4;
                 break;
+            case 9:
             case 10:
             case 12:
                 numAcc = 2;
@@ -1249,12 +1291,19 @@ void G4_Kernel::setKernelParameters()
                 case 160:
                     numThreads = 6;
                     break;
+                case 144:
+                    numThreads = 7;
+                    break;
                 case 128:
                     numThreads = 8;
+                    break;
+                case 112:
+                    numThreads = 9;
                     break;
                 case 96:
                     numThreads = 10;
                     break;
+                case 80:
                 case 64:
                     numThreads = 12;
                     break;
