@@ -61,6 +61,7 @@ namespace IGC
         bool visitBinaryOperatorAddDiv(llvm::BinaryOperator& I);
         bool visitBinaryOperatorFmulFaddPropagation(llvm::BinaryOperator& I);
         bool visitBinaryOperatorExtractCommonMultiplier(llvm::BinaryOperator& I);
+        bool visitBinaryOperatorXor(llvm::BinaryOperator& I);
         bool removeCommonMultiplier(llvm::Value* I, llvm::Value* commonMultiplier);
         bool visitBinaryOperatorFmulToFmad(llvm::BinaryOperator& I);
         bool visitBinaryOperatorToFmad(llvm::BinaryOperator& I);
@@ -95,6 +96,8 @@ namespace IGC
 
         void strengthReducePowOrExpLog(
             llvm::IntrinsicInst* intrin, llvm::Value* base, llvm::Value* exponent, bool isPow);
+
+        std::vector<llvm::Instruction*> m_instToDelete;
     };
 
 } // namespace IGC

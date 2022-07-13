@@ -143,6 +143,15 @@ bool CustomUnsafeOptPass::runOnFunction(Function& F)
         iterCount++;
         m_isChanged = false;
         visit(F);
+
+        if (!m_instToDelete.empty())
+        {
+            for (auto i : m_instToDelete)
+            {
+                i->eraseFromParent();
+            }
+            m_instToDelete.clear();
+        }
     }
 
     // Do reassociate to emit more mad.
@@ -681,6 +690,64 @@ bool CustomUnsafeOptPass::visitBinaryOperatorExtractCommonMultiplier(BinaryOpera
     return patternFound;
 }
 
+// Searches for negation via xor instruction and replaces with subtraction.
+//
+// Example for float:
+//   %22 = bitcast float %a to i32
+//   %23 = xor i32 %22, -2147483648
+//   %24 = bitcast i32 %23 to float
+//
+// Will be changed to:
+//   %22 = fsub float 0.000000e+00, %a
+bool CustomUnsafeOptPass::visitBinaryOperatorXor(llvm::BinaryOperator& I)
+{
+    using namespace llvm::PatternMatch;
+
+    if (!I.hasOneUse())
+    {
+        return false;
+    }
+
+    Value* fpValue = nullptr;
+    ConstantInt* mask = nullptr;
+    if (!match(&I, m_Xor(m_OneUse(m_BitCast(m_Value(fpValue))), m_ConstantInt(mask))))
+    {
+        return false;
+    }
+
+    // bitcast before xor, from fp to int
+    uint32_t fpBits = fpValue->getType()->getScalarSizeInBits();
+    BitCastInst* castF2I = cast<BitCastInst>(I.getOperand(0));
+    if (!fpValue->getType()->isFloatingPointTy() || !castF2I->getType()->isIntegerTy(fpBits))
+    {
+        return false;
+    }
+
+    // bitcast after xor, back to fp
+    BitCastInst* castI2F = dyn_cast<BitCastInst>(*I.user_begin());
+    if (!castI2F || castI2F->getType() != fpValue->getType())
+    {
+        return false;
+    }
+
+    // mask replaces only one bit representing sign
+    uint64_t expectedMask = 1ll << (fpBits - 1);
+    if (!mask || mask->getBitWidth() != fpBits || mask->getZExtValue() != expectedMask)
+    {
+        return false;
+    }
+
+    IRBuilder<> builder(&I);
+    auto fsub = builder.CreateFSub(ConstantFP::get(fpValue->getType(), 0.0f), fpValue);
+
+    castI2F->replaceAllUsesWith(fsub);
+
+    m_instToDelete.push_back(castI2F);
+    m_instToDelete.push_back(&I);
+    m_instToDelete.push_back(castF2I);
+
+    return true;
+}
 
 bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator& I)
 {
@@ -1781,6 +1848,10 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
             default:
                 break;
             }
+        }
+        else if (I.getOpcode() == Instruction::Xor)
+        {
+            m_isChanged = visitBinaryOperatorXor(I);
         }
     }
 }
