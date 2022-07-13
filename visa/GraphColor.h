@@ -1215,11 +1215,13 @@ namespace vISA
                 verifyAugmentation = std::make_unique<VerifyAugmentation>();
             }
 
-            // Need call WA for EU Fusion for non-entry function
+            // Set callWA condition.
+            //    Call return ip and mask need wa only for non-entry functions. As call WA
+            //    also needs a temp, we conservatively add WA for caller-save/callee-save
+            //    code too, which applies to all functions, including the entry function.
             m_EUFusionCallWANeeded = builder.hasFusedEU()
                 && builder.getOption(vISA_fusedCallWA)
                 && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall());
-                //&& !builder.getIsKernel(); // if caller save tmp is forced w/ M16, caller save/restore must be forced with M16.
         }
 
         void emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const;
