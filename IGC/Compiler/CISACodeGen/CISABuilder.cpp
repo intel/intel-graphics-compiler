@@ -4309,9 +4309,7 @@ namespace IGC
         }
 
         if (m_program->m_Platform->hasFusedEU()
-            && (IGC_GET_FLAG_VALUE(EnableCallWA) == 2 ||
-                (IGC_GET_FLAG_VALUE(EnableCallWA) == 1
-                 && m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_XE_HP_SDV))
+            && IGC_IS_FLAG_ENABLED(EnableCallWA)
             && (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram()))
         {
             SaveOption(vISA_fusedCallWA, (uint32_t)1);
