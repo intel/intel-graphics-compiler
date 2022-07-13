@@ -2060,6 +2060,9 @@ void CoalesceSpillFills::removeRedundantWrites()
             // in case fills are coalesced.
             for (auto fill : scratchAccess.second.second)
             {
+                if (*fill.second == gra.getRestoreBE_FPInst())
+                    continue;
+
                 bool fillRequired = false;
                 unsigned int offset, size;
                 getScratchMsgInfo(*fill.second, offset, size);
