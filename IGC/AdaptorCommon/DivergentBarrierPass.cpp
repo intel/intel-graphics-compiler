@@ -134,7 +134,10 @@ Function* DivergentBarrierPass::createContinuation(BasicBlock* EntryBB)
     }
 
     SmallVector<ReturnInst*, 8> Returns;
-    IGCLLVM::CloneFunctionInto(NewFunc, F, VMap, F->getSubprogram() != nullptr, Returns);
+    IGCLLVM::CloneFunctionChangeType ChangeType = F->getSubprogram()
+        ? IGCLLVM::CloneFunctionChangeType::DifferentModule
+        : IGCLLVM::CloneFunctionChangeType::LocalChangesOnly;
+    IGCLLVM::CloneFunctionInto(NewFunc, F, VMap, ChangeType, Returns);
 
     auto* ContEntryBB = cast<BasicBlock>(VMap.find(EntryBB)->second);
     ContEntryBB->moveBefore(&NewFunc->getEntryBlock());

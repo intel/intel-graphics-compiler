@@ -422,7 +422,8 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             }
 
             // Clone the old function body into the new
-            IGCLLVM::CloneFunctionInto(pNewFunc, pFunc, VMap, true, Returns);
+            IGCLLVM::CloneFunctionInto(pNewFunc, pFunc, VMap,
+                IGCLLVM::CloneFunctionChangeType::GlobalChanges, Returns);
 
             // Merge the BB for when extra instructions were created
             BasicBlock* ClonedEntryBB = cast<BasicBlock>(VMap[&*pFunc->begin()]);

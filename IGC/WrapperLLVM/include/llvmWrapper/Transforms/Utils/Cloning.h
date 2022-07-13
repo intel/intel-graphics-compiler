@@ -32,23 +32,26 @@ namespace IGCLLVM
             ;
     }
 
-#if LLVM_VERSION_MAJOR >= 13
+#if LLVM_VERSION_MAJOR < 13
+    enum CloneFunctionChangeType {
+        LocalChangesOnly,
+        GlobalChanges,
+        DifferentModule,
+        ClonedModule
+    };
     inline void CloneFunctionInto(llvm::Function *NewFunc, const llvm::Function *OldFunc,
-                       llvm::ValueToValueMapTy &VMap, bool ModuleLevelChanges,
+                       llvm::ValueToValueMapTy &VMap, IGCLLVM::CloneFunctionChangeType Changes,
                        llvm::SmallVectorImpl<llvm::ReturnInst *> &Returns,
                        const char *NameSuffix = "",
                        llvm::ClonedCodeInfo *CodeInfo = nullptr,
                        llvm::ValueMapTypeRemapper *TypeMapper = nullptr,
                        llvm::ValueMaterializer *Materializer = nullptr)
     {
-        // TODO: True/false ModuleLevelChanges may not exactly map to GlobalChanges & DifferentModule
-        llvm::CloneFunctionChangeType Changes = ModuleLevelChanges ?
-            llvm::CloneFunctionChangeType::DifferentModule :
-            llvm::CloneFunctionChangeType::GlobalChanges;
-
-        llvm::CloneFunctionInto(NewFunc, OldFunc, VMap, Changes, Returns, NameSuffix, CodeInfo, TypeMapper, Materializer);
+        bool ModuleLevelChanges = Changes > CloneFunctionChangeType::LocalChangesOnly;
+        llvm::CloneFunctionInto(NewFunc, OldFunc, VMap, ModuleLevelChanges, Returns, NameSuffix, CodeInfo, TypeMapper, Materializer);
     }
 #else
+    using llvm::CloneFunctionChangeType;
     using llvm::CloneFunctionInto;
 #endif
 }

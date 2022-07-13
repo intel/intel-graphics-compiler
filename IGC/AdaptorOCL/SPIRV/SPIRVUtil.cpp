@@ -320,7 +320,8 @@ mutateCallInst(Module *M, CallInst *CI,
       }
     }
 
-    IGCLLVM::CloneFunctionInto(NewF, OldF, VMap, true, Returns);
+    IGCLLVM::CloneFunctionInto(NewF, OldF, VMap,
+        IGCLLVM::CloneFunctionChangeType::DifferentModule, Returns);
 
     // Merge the basic block with Load instruction with the original entry basic block.
     BasicBlock* ClonedEntryBB = cast<BasicBlock>(VMap[&*OldF->begin()]);

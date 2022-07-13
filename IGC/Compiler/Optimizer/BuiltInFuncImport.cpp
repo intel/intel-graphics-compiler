@@ -878,7 +878,7 @@ void BIImport::removeFunctionBitcasts(Module& M)
                                 pDstFunc,
                                 funcTobeChanged,
                                 operandMap,
-                                false,
+                                IGCLLVM::CloneFunctionChangeType::LocalChangesOnly,
                                 Returns,
                                 "");
 

@@ -177,7 +177,8 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
             }
 
             SmallVector<ReturnInst*, 8> Returns;  // Ignore returns cloned.
-            IGCLLVM::CloneFunctionInto(F, &*I, VMap, /*ModuleLevelChanges=*/true, Returns);
+            IGCLLVM::CloneFunctionInto(F, &*I, VMap,
+                IGCLLVM::CloneFunctionChangeType::DifferentModule, Returns);
         }
 
         if (I->hasPersonalityFn())

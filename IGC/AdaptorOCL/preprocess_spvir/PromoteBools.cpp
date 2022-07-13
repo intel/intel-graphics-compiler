@@ -189,7 +189,8 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                 newFunctionArgIt->setName(functionArgIt->getName());
                 argsMap[&*functionArgIt++] = newFunctionArgIt++;
             }
-            IGCLLVM::CloneFunctionInto(newFunction, F, argsMap, false, returns);
+            IGCLLVM::CloneFunctionInto(newFunction, F, argsMap,
+                IGCLLVM::CloneFunctionChangeType::LocalChangesOnly, returns);
 
             // Fix body
             for (auto& arg : F->args())

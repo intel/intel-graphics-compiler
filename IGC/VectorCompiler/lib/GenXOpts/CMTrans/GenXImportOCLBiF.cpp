@@ -388,8 +388,8 @@ static void removeFunctionBitcasts(Module &M) {
 
               // Clone the body of the function into the dest function.
               SmallVector<ReturnInst *, 8> Returns; // Ignore returns.
-              IGCLLVM::CloneFunctionInto(pDstFunc, funcTobeChanged, operandMap, false,
-                                Returns, "");
+              IGCLLVM::CloneFunctionInto(pDstFunc, funcTobeChanged, operandMap,
+                  IGCLLVM::CloneFunctionChangeType::LocalChangesOnly, Returns, "");
 
               pDstFunc->setCallingConv(funcTobeChanged->getCallingConv());
               bitcastFunctionMap[funcTobeChanged].push_back(pDstFunc);

@@ -324,8 +324,9 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
   }
   SmallVector<ReturnInst *, 10> returns;
   ClonedCodeInfo CloneInfo;
-  IGCLLVM::CloneFunctionInto(ClonedFunc, F, ArgMap, true, returns, Suffix[Width / 8],
-                    &CloneInfo);
+  IGCLLVM::CloneFunctionInto(ClonedFunc, F, ArgMap,
+      IGCLLVM::CloneFunctionChangeType::DifferentModule,
+      returns, Suffix[Width / 8], &CloneInfo);
 
   ReplaceMap.clear();
   // find uniform instructions related to uniform arguments

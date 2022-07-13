@@ -2654,7 +2654,8 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
           NewArgIt->setName(OldArgIt->getName());
           VMap[&*OldArgIt] = &*NewArgIt;
       }
-      IGCLLVM::CloneFunctionInto(NewF, F, VMap, true, Returns);
+      IGCLLVM::CloneFunctionInto(NewF, F, VMap,
+          IGCLLVM::CloneFunctionChangeType::DifferentModule, Returns);
       auto DL = M->getDataLayout();
       const auto ptrSize = DL.getPointerSize();
 
