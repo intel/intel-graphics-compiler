@@ -25,6 +25,100 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
+static bool typeNeedsPromotion(Type* type)
+{
+    if (!type)
+    {
+        return false;
+    }
+    else if (type->isIntegerTy(1))
+    {
+        return true;
+    }
+    else if (auto vectorType = dyn_cast<VectorType>(type))
+    {
+        return typeNeedsPromotion(vectorType->getElementType());
+    }
+    else if (auto pointerType = dyn_cast<PointerType>(type))
+    {
+        return typeNeedsPromotion(type->getPointerElementType());
+    }
+    else if (auto arrayType = dyn_cast<ArrayType>(type))
+    {
+        return typeNeedsPromotion(arrayType->getElementType());
+    }
+    else if (auto structType = dyn_cast<StructType>(type))
+    {
+        return std::any_of(structType->element_begin(), structType->element_end(), [](const auto& element) {
+            return typeNeedsPromotion(element);
+        });
+    }
+    else if (auto functionType = dyn_cast<FunctionType>(type))
+    {
+        if (typeNeedsPromotion(functionType->getReturnType()))
+        {
+            return true;
+        }
+        return std::any_of(functionType->param_begin(), functionType->param_end(), [](const auto& element) {
+            return typeNeedsPromotion(element);
+        });
+    }
+
+    return false;
+}
+
+static Type* promoteType(Type* type)
+{
+    if (!type)
+    {
+        return nullptr;
+    }
+    else if (type->isIntegerTy(1))
+    {
+        return Type::getInt8Ty(type->getContext());
+    }
+    else if (auto vectorType = dyn_cast<VectorType>(type))
+    {
+        return VectorType::get(
+            promoteType(vectorType->getElementType()),
+            vectorType->getElementCount());
+    }
+    else if (auto pointerType = dyn_cast<PointerType>(type))
+    {
+        return PointerType::get(
+            promoteType(type->getPointerElementType()),
+            pointerType->getAddressSpace());
+    }
+    else if (auto arrayType = dyn_cast<ArrayType>(type))
+    {
+        return ArrayType::get(
+            promoteType(arrayType->getElementType()),
+            arrayType->getNumElements());
+    }
+    else if (auto structType = dyn_cast<StructType>(type))
+    {
+        auto name = structType->hasName() ? structType->getName() : "";
+        std::vector<Type*> elements;
+        for (const auto& element : structType->elements())
+        {
+            elements.push_back(promoteType(element));
+        }
+        return StructType::create(elements, name, structType->isPacked());
+    }
+    else if (auto functionType = dyn_cast<FunctionType>(type))
+    {
+        auto returnType = promoteType(functionType->getReturnType());
+        std::vector<Type*> arguments;
+        for (auto& type : functionType->params())
+        {
+            arguments.push_back(promoteType(type));
+        }
+        return FunctionType::get(returnType, arguments, functionType->isVarArg());
+    }
+
+    return type;
+}
+
 // Register pass to igc-opt
 #define PASS_FLAG "igc-promote-bools"
 #define PASS_DESCRIPTION "Promote bools"
@@ -77,14 +171,7 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     }
     else if (auto F = dyn_cast<Function>(value))
     {
-        auto newReturnType = F->getReturnType() != int1type ? F->getReturnType() : int8type;
-        std::vector<Type*> newArguments;
-        for (auto& type : F->getFunctionType()->params())
-        {
-            newArguments.push_back(type != int1type ? type : int8type);
-        }
-
-        auto newFunctionType = FunctionType::get(newReturnType, newArguments, F->getFunctionType()->isVarArg());
+        auto newFunctionType = dyn_cast<FunctionType>(promoteType(F->getFunctionType()));
         auto newFunction = Function::Create(newFunctionType, F->getLinkage(), F->getName(), F->getParent());
         newFunction->setCallingConv(F->getCallingConv());
         newFunction->setAttributes(F->getAttributes());
@@ -273,13 +360,7 @@ bool PromoteBools::functionNeedsPromotion(Function* function)
         return false;
     }
 
-    bool needsPromotion = function->getFunctionType()->getReturnType() == int1type;
-    for (const auto& type : function->getFunctionType()->params())
-    {
-        needsPromotion |= type == int1type;
-    }
-
-    return needsPromotion;
+    return typeNeedsPromotion(function->getFunctionType());
 }
 
 Value* PromoteBools::createZextIfNeeded(Value* argument, Instruction* insertBefore)
