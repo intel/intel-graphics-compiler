@@ -749,6 +749,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                                     src->asSrcRegRegion()->getSubRegOff(),
                                     src->asSrcRegRegion()->getRegion(),
                                     src->getType());
+                            replacedArgSrc->asSrcRegRegion()->setModifier(src->asSrcRegRegion()->getModifier());
                             inst->setSrc(replacedArgSrc, i);
                         }
                     }
@@ -827,6 +828,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                                     src->asSrcRegRegion()->getSubRegOff(),
                                     src->asSrcRegRegion()->getRegion(),
                                     src->getType());
+                            replacedRetSrc->asSrcRegRegion()->setModifier(src->asSrcRegRegion()->getModifier());
                             inst->setSrc(replacedRetSrc, i);
                         }
                     }
