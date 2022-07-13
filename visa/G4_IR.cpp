@@ -7313,6 +7313,13 @@ unsigned int G4_Operand::getLinearizedEnd()
     return (getRightBound() - getLeftBound() + getLinearizedStart());
 }
 
+std::string G4_Operand::print() const
+{
+    std::stringstream ss;
+    ss << *const_cast<G4_Operand *>(this);
+    return ss.str();
+}
+
 void G4_Operand::dump() const
 {
 #if _DEBUG

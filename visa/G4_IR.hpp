@@ -2344,6 +2344,7 @@ public:
     virtual bool isRelocImm() const { return false; }
     virtual void emit(std::ostream &output, bool symbolreg = false) = 0;
     void dump() const;
+    std::string print() const;
 
     bool isGreg() const;
     bool isAreg() const;
