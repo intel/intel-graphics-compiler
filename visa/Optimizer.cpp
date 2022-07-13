@@ -722,7 +722,7 @@ void Optimizer::zeroSomeARF()
 void Optimizer::addSWSBInfo()
 {
     bool do_fcall_wa = builder.hasFusedEU()
-        && builder.getOption(vISA_fusedCallWA)
+        && builder.getuint32Option(vISA_fusedCallWA) == 1
         && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall());
 
     if (do_fcall_wa)
@@ -7599,7 +7599,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
 
         // Call WA for fused EU
-        if (builder.hasFusedEU() && builder.getOption(vISA_fusedCallWA) &&
+        if (builder.hasFusedEU() && builder.getuint32Option(vISA_fusedCallWA) == 1 &&
             kernel.hasIndirectCall())
         {
             applyFusedCallWA();
@@ -9737,7 +9737,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     void Optimizer::expandIndirectCallWithRegTarget()
     {
-        if (builder.hasFusedEU() && builder.getOption(vISA_fusedCallWA))
+        if (builder.hasFusedEU() && builder.getuint32Option(vISA_fusedCallWA) == 1)
         {
             assert(!builder.needReplaceIndirectCallWithJmpi());
             // Relative IP has been applied in fusedCallWA()

@@ -6662,8 +6662,10 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-TotalGRFNum");
     addArgument("256");
   }
-  if (ST.hasFusedEU())
+  if (ST.hasFusedEU()) {
     addArgument("-fusedCallWA");
+    addArgument("1");
+  }
   return Argv;
 }
 

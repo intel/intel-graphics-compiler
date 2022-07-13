@@ -4314,7 +4314,7 @@ namespace IGC
                  && m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_XE_HP_SDV))
             && (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram()))
         {
-            SaveOption(vISA_fusedCallWA, true);
+            SaveOption(vISA_fusedCallWA, (uint32_t)1);
         }
 
         if (context->type == ShaderType::OPENCL_SHADER)

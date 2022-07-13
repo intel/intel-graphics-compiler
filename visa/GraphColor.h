@@ -1220,7 +1220,7 @@ namespace vISA
             //    also needs a temp, we conservatively add WA for caller-save/callee-save
             //    code too, which applies to all functions, including the entry function.
             m_EUFusionCallWANeeded = builder.hasFusedEU()
-                && builder.getOption(vISA_fusedCallWA)
+                && builder.getuint32Option(vISA_fusedCallWA) == 1
                 && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall());
         }
 
