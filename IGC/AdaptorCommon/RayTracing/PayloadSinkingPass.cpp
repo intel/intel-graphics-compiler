@@ -470,7 +470,8 @@ bool PayloadSinkingPass::runOnFunction(Function &F)
             IRB.SetInsertPoint(Location->getNextNode());
             Value* NewPayload =
                 IRB.CreateBitCast(Location, IRB.getInt8PtrTy(Addrspace));
-            NewPayload = IRB.CreateGEP(nullptr, NewPayload, Location->getOffset());
+
+            NewPayload = IRB.CreateGEP(IRB.getInt8Ty(), NewPayload, Location->getOffset());
             NewPayload = IRB.CreateBitCast(NewPayload, PayloadPtrs[0]->getType());
 
             sinkStore(SI, cast<Instruction>(NewPayload));

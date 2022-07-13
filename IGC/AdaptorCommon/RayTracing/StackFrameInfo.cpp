@@ -420,6 +420,7 @@ Value* StackFrameInfo::getSpillPtr(
     auto* BB = SI->getParent();
     auto I = SpillTyMap.find(BB);
     IGC_ASSERT_MESSAGE(I != SpillTyMap.end(), "missing?");
+
     auto* PtrTy = I->second->getPointerTo(SWStackAddrSpace);
 
     auto* Ptr = IRB.CreateBitOrPointerCast(
@@ -434,7 +435,7 @@ Value* StackFrameInfo::getSpillPtr(
         IRB.getInt32(IdxI->second)
     };
 
-    return IRB.CreateInBoundsGEP(nullptr, Ptr, Indices, Name);
+    return IRB.CreateInBoundsGEP(I->second, Ptr, Indices, Name);
 }
 
 Value* StackFrameInfo::getFillPtr(
@@ -445,6 +446,7 @@ Value* StackFrameInfo::getFillPtr(
 {
     auto I = FillTyMap.find(FI->getFunction());
     IGC_ASSERT_MESSAGE(I != FillTyMap.end(), "missing?");
+
     auto* PtrTy = I->second->getPointerTo(SWStackAddrSpace);
 
     auto* Ptr = IRB.CreateBitOrPointerCast(
@@ -459,7 +461,7 @@ Value* StackFrameInfo::getFillPtr(
         IRB.getInt32(IdxI->second)
     };
 
-    return IRB.CreateInBoundsGEP(nullptr, Ptr, Indices, Name);
+    return IRB.CreateInBoundsGEP(I->second, Ptr, Indices, Name);
 }
 
 Value* StackFrameInfo::getAllocaPtr(
@@ -482,7 +484,7 @@ Value* StackFrameInfo::getAllocaPtr(
         IRB.getInt32(IdxI->second)
     };
 
-    return IRB.CreateInBoundsGEP(nullptr, Ptr, Indices, Name);
+    return IRB.CreateInBoundsGEP(AllocaStructTy, Ptr, Indices, Name);
 }
 
 void StackFrameInfo::finalize()

@@ -234,7 +234,7 @@ Value* TraceRayRTArgs::getReturnIPPtr(
 
     Value* Indices[] = { IRB.getInt32(0), IRB.getInt32(ReturnIPSlot) };
 
-    return IRB.CreateInBoundsGEP(nullptr, Ptr, Indices, VALUE_NAME("&ReturnIP"));
+    return IRB.CreateInBoundsGEP(Ty->getPointerElementType(), Ptr, Indices, VALUE_NAME("&ReturnIP"));
 }
 
 Value* TraceRayRTArgs::getPayloadPtr(
@@ -250,7 +250,7 @@ Value* TraceRayRTArgs::getPayloadPtr(
 
     Value* Indices[] = { IRB.getInt32(0), IRB.getInt32(PayloadSlot) };
 
-    return IRB.CreateInBoundsGEP(nullptr, Ptr, Indices, VALUE_NAME("&Payload"));
+    return IRB.CreateInBoundsGEP(Ty->getPointerElementType(), Ptr, Indices, VALUE_NAME("&Payload"));
 }
 
 Value* TraceRayRTArgs::getPayloadPaddingPtr(
@@ -266,7 +266,7 @@ Value* TraceRayRTArgs::getPayloadPaddingPtr(
 
     Value* Indices[] = { IRB.getInt32(0), IRB.getInt32(PayloadPaddingSlot) };
 
-    return IRB.CreateInBoundsGEP(nullptr, Ptr, Indices, VALUE_NAME("&PayloadPad"));
+    return IRB.CreateInBoundsGEP(Ty->getPointerElementType(), Ptr, Indices, VALUE_NAME("&PayloadPad"));
 }
 
 RTArgs::TypeCacheTy& RTArgs::getCache()
@@ -337,14 +337,15 @@ Value* RTArgs::getCustomHitAttribPtr(
 {
     IGC_ASSERT_MESSAGE(isProcedural(), "not procedural?");
 
-    auto* Ty = getArgumentType(CustomHitAttrTy)->getPointerTo(SWStackAddrSpace);
+    auto* EltTy = getArgumentType(CustomHitAttrTy);
+    auto* PtrTy = EltTy->getPointerTo(SWStackAddrSpace);
 
     auto* Ptr = IRB.CreateBitOrPointerCast(
-        FrameAddr, Ty, VALUE_NAME("&Arguments"));
+        FrameAddr, PtrTy, VALUE_NAME("&Arguments"));
 
     Value* Indices[] = { IRB.getInt32(0), IRB.getInt32(*CustomHitAttrSlot) };
 
-    return IRB.CreateInBoundsGEP(nullptr, Ptr, Indices, VALUE_NAME("&CustomHitAttr"));
+    return IRB.CreateInBoundsGEP(EltTy, Ptr, Indices, VALUE_NAME("&CustomHitAttr"));
 }
 
 Value* RTArgs::getHitKindPtr(
@@ -352,14 +353,15 @@ Value* RTArgs::getHitKindPtr(
 {
     IGC_ASSERT_MESSAGE(isProcedural(), "not procedural?");
 
-    auto* Ty = getArgumentType()->getPointerTo(SWStackAddrSpace);
+    auto* EltTy = getArgumentType();
+    auto* PtrTy = EltTy->getPointerTo(SWStackAddrSpace);
 
     auto* Ptr = IRB.CreateBitOrPointerCast(
-        FrameAddr, Ty, VALUE_NAME("&Arguments"));
+        FrameAddr, PtrTy, VALUE_NAME("&Arguments"));
 
     Value* Indices[] = { IRB.getInt32(0), IRB.getInt32(*HitKindSlot) };
 
-    return IRB.CreateInBoundsGEP(nullptr, Ptr, Indices, VALUE_NAME("&HitKind"));
+    return IRB.CreateInBoundsGEP(EltTy, Ptr, Indices, VALUE_NAME("&HitKind"));
 }
 
 Argument* RTArgs::getPayloadArg(const Function* F) const

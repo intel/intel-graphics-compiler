@@ -624,11 +624,14 @@ void HFpackingOpt::PackHfResources(Function& F)
                 auto inst = GEP;
                 IRBuilder<> builder(inst);
 
-                Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(prevStore.offset),
-                    PointerType::get(ArrayType::get(builder.getInt32Ty(), prevStore.arraySize),
-                        ADDRESS_SPACE_LOCAL));
+                auto* PointeeTy = ArrayType::get(builder.getInt32Ty(), prevStore.arraySize);
+
+                Value* Int2Ptr = builder.CreateIntToPtr(
+                    builder.getInt32(prevStore.offset),
+                    PointerType::get(PointeeTy, ADDRESS_SPACE_LOCAL));
+
                 Value* gepArg[] = { prevStore.GEP->getOperand(1), prevStore.GEP->getOperand(2) };
-                Value* newGEP = builder.CreateGEP(nullptr, Int2Ptr, gepArg);
+                Value* newGEP = builder.CreateGEP(PointeeTy, Int2Ptr, gepArg);
 
                 replaceStores(GEP, newGEP, prevStore.Store, Store,
                     prevStore.bStoreConstZero, bStoreConstZero);
@@ -705,10 +708,14 @@ void HFpackingOpt::PackHfResources(Function& F)
                     startInst = GEP;
                     IRBuilder<> builder(startInst);
 
-                    Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(prevLoad.offset),
-                        PointerType::get(ArrayType::get(builder.getInt32Ty(), prevLoad.arraySize), ADDRESS_SPACE_LOCAL));
+                    auto* PointeeTy = ArrayType::get(builder.getInt32Ty(), prevLoad.arraySize);
+
+                    Value* Int2Ptr = builder.CreateIntToPtr(
+                        builder.getInt32(prevLoad.offset),
+                        PointerType::get(PointeeTy, ADDRESS_SPACE_LOCAL));
+
                     Value* gepArg[] = { prevLoad.GEP->getOperand(1), prevLoad.GEP->getOperand(2) };
-                    newGEP = builder.CreateGEP(nullptr, Int2Ptr, gepArg);
+                    newGEP = builder.CreateGEP(PointeeTy, Int2Ptr, gepArg);
                 }
 
                 replaceLoads(startInst, newGEP, prevLoad.Load, Load);
@@ -1217,11 +1224,15 @@ void HFpackingOpt::removeSlmGap(Function& F)
                         }
                         IRBuilder<> builder(GEP);
 
-                        Value* Int2Ptr = builder.CreateIntToPtr(builder.getInt32(offset),
-                            PointerType::get(ArrayType::get(builder.getInt32Ty(), arraySize>>1), ADDRESS_SPACE_LOCAL));
+                        auto* PointeeTy = ArrayType::get(builder.getInt32Ty(), arraySize >> 1);
+
+                        Value* Int2Ptr = builder.CreateIntToPtr(
+                            builder.getInt32(offset),
+                            PointerType::get(PointeeTy, ADDRESS_SPACE_LOCAL));
+
                         Value* div2 = builder.CreateLShr(GEP->getOperand(2), builder.getInt32(1));
                         Value* gepArg[] = { GEP->getOperand(1), div2 };
-                        Value* newGEP = builder.CreateGEP(nullptr, Int2Ptr, gepArg);
+                        Value* newGEP = builder.CreateGEP(PointeeTy, Int2Ptr, gepArg);
                         GEP->replaceAllUsesWith(newGEP);
 
                         if (GEP->use_empty())
