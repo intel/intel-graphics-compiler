@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include <stdint.h>
 #include <stddef.h>
+#include "CommonMacros.h"
 
 #if defined(_WIN32)
     // INSIDE_PLUGIN must be defined in the pre-processor definitions of the
@@ -252,8 +253,18 @@ public:
 
     virtual bool FreeAllocations( STB_TranslateOutputArgs* pOutput ) = 0;
 
-    virtual bool GetOpcodes( void* pOpcodes, uint32_t pOpcodesSize ) { return false; }
-    virtual bool GetOpcodesCount( uint32_t* pOpcodesCount, uint32_t* pOpcodeSize ){ return false; }
+    virtual bool GetOpcodes( void* pOpcodes, uint32_t pOpcodesSize )
+    {
+        IGC_UNUSED(pOpcodes);
+        IGC_UNUSED(pOpcodesSize);
+        return false;
+    }
+    virtual bool GetOpcodesCount( uint32_t* pOpcodesCount, uint32_t* pOpcodeSize )
+    {
+        IGC_UNUSED(pOpcodesCount);
+        IGC_UNUSED(pOpcodeSize);
+        return false;
+    }
     virtual TranslationBlockVersion GetVersion() const {
         TranslationBlockVersion tbv;
         tbv.TBVersion = TC::STB_VERSION;

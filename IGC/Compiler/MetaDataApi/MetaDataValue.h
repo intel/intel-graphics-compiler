@@ -87,6 +87,7 @@ namespace IGC
 
         void save(llvm::LLVMContext& context, llvm::Metadata* pNode) const
         {
+            IGC_UNUSED(context);
             if (m_pNode == pNode && !dirty())
             {
                 // we are saving to our own node but nothing was changed

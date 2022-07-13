@@ -48,13 +48,17 @@ namespace IGC {
 #ifdef IGC_MAP_LLVM_NAMES_TO_VISA
             : value(arg)
 #endif
-        { }
+        {
+            IGC_UNUSED(arg);
+        }
 
         CName(const llvm::StringRef &arg)
 #ifdef IGC_MAP_LLVM_NAMES_TO_VISA
             : value(arg.str())
 #endif
-        { }
+        {
+            IGC_UNUSED(arg);
+        }
 
         // explicit: some compilers are very liberal about what can be a
         // const char *; make sure the user really means it
@@ -65,7 +69,9 @@ namespace IGC {
 #ifdef IGC_MAP_LLVM_NAMES_TO_VISA
             : value(arg == nullptr ? "" : arg)
 #endif
-        { }
+        {
+            IGC_UNUSED(arg);
+        }
 
         // For split variables
         // For example, an LLVM instruction split for 64b into two halves
@@ -77,6 +83,8 @@ namespace IGC {
             : CName(prefix.value + suffix)
 #endif
         {
+            IGC_UNUSED(suffix);
+            IGC_UNUSED(prefix);
         }
 
         // For instance variables:
@@ -90,6 +98,8 @@ namespace IGC {
         }
 #else
         {
+            IGC_UNUSED(suffix);
+            IGC_UNUSED(prefix);
         }
 #endif
 

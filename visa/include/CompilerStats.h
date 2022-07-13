@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <map>
 #include <sstream>
 #include <memory>
+#include "common/CommonMacros.h"
 
 class CompilerStats {
     // Internal class for storing data. Every statistic knows its type and keeps values for
@@ -396,6 +397,7 @@ std::string CompilerStats::ToCsv() const
 // Create empty statistic if does not exist, return existing if it does.
 CompilerStats::Statistic& CompilerStats::PrivateInit(const std::string& name, Statistic::Type type, int simd)
 {
+    IGC_UNUSED(simd);
     Statistic s;
     s.type = type;
     m_pState->m_Stats[name] = s;
@@ -415,6 +417,7 @@ bool CompilerStats::PrivateFind(const std::string& name)
 // Try to find statistic. Return empty one if it does not exist.
 const CompilerStats::Statistic& CompilerStats::PrivateGet(const std::string& name, int simd) const
 {
+    IGC_UNUSED(simd);
     auto f = m_pState->m_Stats.find(name);
     if(f != m_pState->m_Stats.end())
     {

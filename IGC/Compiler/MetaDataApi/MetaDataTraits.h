@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "MetaDataApiUtils.h"
 #include "Probe/Assertion.h"
+#include "CommonMacros.h"
 
 namespace IGC
 {
@@ -101,15 +102,18 @@ namespace IGC
 
         static bool dirty(const value_type& val)
         {
+            IGC_UNUSED(val);
             return false;
         }
 
         static void discardChanges(value_type& val)
         {
+            IGC_UNUSED(val);
         }
 
         static void save(llvm::LLVMContext& context, llvm::Metadata* trgt, const value_type& val)
         {
+            IGC_UNUSED(trgt);
             generateValue(context, val);
         }
     };
@@ -143,6 +147,7 @@ namespace IGC
 
         static bool dirty(const value_type& val)
         {
+            IGC_UNUSED(val);
             return false;
         }
 
@@ -151,10 +156,12 @@ namespace IGC
         // that prevents us from taking bool& here.
         static void discardChanges(value_type val)
         {
+            IGC_UNUSED(val);
         }
 
         static void save(llvm::LLVMContext& context, llvm::Metadata* trgt, const value_type& val)
         {
+            IGC_UNUSED(trgt);
             generateValue(context, val);
         }
 
@@ -191,15 +198,18 @@ namespace IGC
 
         static bool dirty(const value_type& val)
         {
+            IGC_UNUSED(val);
             return false;
         }
 
         static void discardChanges(value_type& val)
         {
+            IGC_UNUSED(val);
         }
 
         static void save(llvm::LLVMContext& context, llvm::Metadata* trgt, const value_type& val)
         {
+            IGC_UNUSED(trgt);
             generateValue(context, val);
         }
     };
@@ -235,15 +245,18 @@ namespace IGC
 
         static bool dirty(const value_type& val)
         {
+            IGC_UNUSED(val);
             return false;
         }
 
         static void discardChanges(value_type& val)
         {
+            IGC_UNUSED(val);
         }
 
         static void save(llvm::LLVMContext& context, llvm::Metadata* trgt, const value_type& val)
         {
+            IGC_UNUSED(trgt);
             generateValue(context, val);
         }
     };
@@ -276,15 +289,18 @@ namespace IGC
 
         static bool dirty(const value_type& val)
         {
+            IGC_UNUSED(val);
             return false;
         }
 
         static void discardChanges(value_type& val)
         {
+            IGC_UNUSED(val);
         }
 
         static void save(llvm::LLVMContext& context, llvm::Metadata* trgt, const value_type& val)
         {
+            IGC_UNUSED(trgt);
             generateValue(context, val);
         }
     };
@@ -320,15 +336,18 @@ namespace IGC
 
         static bool dirty(const value_type& val)
         {
+            IGC_UNUSED(val);
             return false;
         }
 
         static void discardChanges(value_type& val)
         {
+            IGC_UNUSED(val);
         }
 
         static void save(llvm::LLVMContext& context, llvm::Metadata* trgt, const value_type& val)
         {
+            IGC_UNUSED(trgt);
             generateValue(context, val);
         }
     };
@@ -356,21 +375,25 @@ namespace IGC
 
         static llvm::Metadata* generateValue(llvm::LLVMContext& context, const value_type& val)
         {
+            IGC_UNUSED(context);
             //return static_cast<llvm::Value*>(const_cast<value_type>(val));
             return llvm::ConstantAsMetadata::get(val);
         }
 
         static bool dirty(const value_type& val)
         {
+            IGC_UNUSED(val);
             return false;
         }
 
         static void discardChanges(value_type& val)
         {
+            IGC_UNUSED(val);
         }
 
         static void save(llvm::LLVMContext& context, llvm::Metadata* trgt, const value_type& val)
         {
+            IGC_UNUSED(trgt);
             generateValue(context, val);
         }
     };
@@ -395,15 +418,17 @@ namespace IGC
         static llvm::Metadata* generateValue(
             llvm::LLVMContext& ctx, const value_type& val)
         {
+            IGC_UNUSED(ctx);
             return const_cast<value_type>(val);
         }
 
-        static bool dirty(const value_type& val) { return false; }
-        static void discardChanges(value_type& val) { }
+        static bool dirty(const value_type& val) { IGC_UNUSED(val); return false; }
+        static void discardChanges(value_type& val) { IGC_UNUSED(val); }
 
         static void save(llvm::LLVMContext& ctx,
             llvm::Metadata* trgt, const value_type& val)
         {
+            IGC_UNUSED(trgt);
             generateValue(ctx, val);
         }
     };
@@ -426,15 +451,17 @@ namespace IGC
         static llvm::Metadata* generateValue(
             llvm::LLVMContext& ctx, const value_type& val)
         {
+            IGC_UNUSED(ctx);
             return const_cast<value_type>(val);
         }
 
-        static bool dirty(const value_type& val) { return false; }
-        static void discardChanges(value_type& val) { }
+        static bool dirty(const value_type& val) { IGC_UNUSED(val); return false; }
+        static void discardChanges(value_type& val) { IGC_UNUSED(val); }
 
         static void save(llvm::LLVMContext& ctx,
             llvm::Metadata* trgt, const value_type& val)
         {
+            IGC_UNUSED(trgt);
             generateValue(ctx, val);
         }
     };

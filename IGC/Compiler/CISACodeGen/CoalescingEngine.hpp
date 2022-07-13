@@ -625,6 +625,7 @@ namespace IGC {
 
             virtual void SetIndex(int index)
             {
+                IGC_UNUSED(index);
             }
 
             virtual bool visitCopy()
@@ -665,12 +666,15 @@ namespace IGC {
                 llvm::Value* val,
                 const bool evictFullCongruenceClass)
             {
+                IGC_UNUSED(val);
+                IGC_UNUSED(evictFullCongruenceClass);
                 nNeedsDisplacement++;
                 return true;
             }
 
             virtual bool visitPackedNonInterfering(llvm::Value* val)
             {
+                IGC_UNUSED(val);
                 return true;
             }
 
@@ -793,6 +797,7 @@ namespace IGC {
 
             virtual bool visitInterfering(llvm::Value* val, const bool evictFullCongruenceClass)
             {
+                IGC_UNUSED(evictFullCongruenceClass);
                 if (m_forceEviction) {
 
                     // HEURISTIC:

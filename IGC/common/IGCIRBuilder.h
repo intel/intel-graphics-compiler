@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstrTypes.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
+#include "CommonMacros.h"
 
 //This Builder class provides definitions for functions calls that were once available till LLVM version 3.6.0
 //===--------------------------------------------------------------------===
@@ -52,24 +53,28 @@ namespace llvm {
 
         CallInst *CreateCall2(Value *Callee, Value *Arg1, Value *Arg2,
             const Twine &Name = "") {
+            IGC_UNUSED(Name);
             Value *Args[] = { Arg1, Arg2 };
             return this->CreateCall(Callee, Args);
         }
 
         CallInst *CreateCall3(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3,
             const Twine &Name = "") {
+            IGC_UNUSED(Name);
             Value *Args[] = { Arg1, Arg2, Arg3 };
             return this->CreateCall(Callee, Args);
         }
 
         CallInst *CreateCall4(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3,
             Value *Arg4, const Twine &Name = "") {
+            IGC_UNUSED(Name);
             Value *Args[] = { Arg1, Arg2, Arg3, Arg4 };
             return this->CreateCall(Callee, Args);
         }
 
         CallInst *CreateCall5(Value *Callee, Value *Arg1, Value *Arg2, Value *Arg3,
             Value *Arg4, Value *Arg5, const Twine &Name = "") {
+            IGC_UNUSED(Name);
             Value *Args[] = { Arg1, Arg2, Arg3, Arg4, Arg5 };
             return this->CreateCall(Callee, Args);
         }

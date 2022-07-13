@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "usc.h"
 #include "sp_g8.h"
 #include "zebin_builder.hpp"
+#include "CommonMacros.h"
 
 namespace IGC
 {
@@ -64,8 +65,11 @@ public:
 
 public:
     // GetZEBinary - get ZE binary object
-    virtual void GetZEBinary(llvm::raw_pwrite_stream& programBinary,
-        unsigned pointerSizeInBytes) {}
+    virtual void GetZEBinary(llvm::raw_pwrite_stream& programBinary, unsigned pointerSizeInBytes)
+    {
+        IGC_UNUSED(programBinary);
+        IGC_UNUSED(pointerSizeInBytes);
+    }
 
 protected:
     PLATFORM m_Platform;

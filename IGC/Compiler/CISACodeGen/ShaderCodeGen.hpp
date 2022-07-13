@@ -96,8 +96,8 @@ public:
     void        Destroy();
     virtual void InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE);
     virtual void PreCompile() {}
-    virtual void PreCompileFunction(llvm::Function& F) {}
-    virtual void ParseShaderSpecificOpcode(llvm::Instruction* inst) {}
+    virtual void PreCompileFunction(llvm::Function& F) { IGC_UNUSED(F); }
+    virtual void ParseShaderSpecificOpcode(llvm::Instruction* inst) { IGC_UNUSED(inst); }
     virtual void AllocatePayload() {}
     virtual void AddPrologue() {}
     virtual void PreAnalysisPass();
@@ -115,6 +115,7 @@ public:
     }
     virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex)
     {
+        IGC_UNUSED(pVertexIndex);
         IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
         return nullptr;
     }
@@ -130,9 +131,15 @@ public:
     virtual unsigned getAnnotatedNumThreads() { return 0; }
     virtual bool IsRegularGRFRequested() { return false; }
     virtual bool IsLargeGRFRequested() { return false; }
-    virtual bool hasReadWriteImage(llvm::Function& F) { return false; }
+    virtual bool hasReadWriteImage(llvm::Function& F)
+    {
+        IGC_UNUSED(F);
+        return false;
+    }
     virtual bool CompileSIMDSize(SIMDMode simdMode, EmitPass& EP, llvm::Function& F)
     {
+        IGC_UNUSED(F);
+        IGC_UNUSED(EP);
         return CompileSIMDSizeInCommon(simdMode);
     }
     CVariable* LazyCreateCCTupleBackingVariable(
@@ -281,7 +288,7 @@ public:
     void        SetScratchSpaceSize(uint size) { m_ScratchSpaceSize = size; }
     IGCMD::MetaDataUtils* GetMetaDataUtils() { return m_pMdUtils; }
 
-    virtual  void SetShaderSpecificHelper(EmitPass* emitPass) {}
+    virtual  void SetShaderSpecificHelper(EmitPass* emitPass) { IGC_UNUSED(emitPass); }
 
     void        AllocateConstants(uint& offset);
     void        AllocateSimplePushConstants(uint& offset);

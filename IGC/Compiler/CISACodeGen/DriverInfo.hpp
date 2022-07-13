@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 #include "common/Types.hpp"
 #include "inc/common/igfxfmid.h"
+#include "CommonMacros.h"
 
 /*
 This provides hook to query whether a feature is supported by the runtime we are compiling for
@@ -100,7 +101,7 @@ namespace IGC
         virtual bool CodeSinkingBeforeCFGSimplification() const { return false; }
 
         /// allow executing constant buffer on the CPU
-        virtual bool AllowGenUpdateCB(ShaderType shaderType) const { return false; }
+        virtual bool AllowGenUpdateCB(ShaderType shaderType) const { IGC_UNUSED(shaderType); return false; }
 
         /// The driver implements single instance vertex dispatch feature
         virtual bool SupportsSingleInstanceVertexDispatch() const { return false; }
@@ -132,7 +133,7 @@ namespace IGC
         virtual bool NeedI64BitDivRem() const { return false; }
 
         /// Return true if IGC needs FP64 emulation. (Valid if platform has no double inst.)
-        virtual bool NeedFP64(PRODUCT_FAMILY productFamily) const { return false; }
+        virtual bool NeedFP64(PRODUCT_FAMILY productFamily) const { IGC_UNUSED(productFamily); return false; }
 
         /// Needs IEEE fp64 div/sqrt
         virtual bool NeedFP64DivSqrt() const { return false; }

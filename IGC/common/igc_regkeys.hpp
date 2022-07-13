@@ -18,6 +18,7 @@ PURPOSE: Defines meta data for holding/defining regkey variables
 #include "common/shaderHash.hpp"
 #include "Probe/Assertion.h"
 #include <string>
+#include "CommonMacros.h"
 
 typedef char debugString[1024];
 
@@ -198,9 +199,20 @@ void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError = 
 void SetCurrentDebugHash(const ShaderHash &hash);
 #undef LINUX_RELEASE_MODE
 #else
-static inline void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys) {}
-static inline void SetCurrentDebugHash(const ShaderHash &hash) {}
-static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError=nullptr) {}
+static inline void GetKeysSetExplicitly(std::string* KeyValuePairs, std::string* OptionKeys)
+{
+    IGC_UNUSED(KeyValuePairs);
+    IGC_UNUSED(OptionKeys);
+}
+static inline void SetCurrentDebugHash(const ShaderHash &hash)
+{
+    IGC_UNUSED(hash);
+}
+static inline void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError=nullptr)
+{
+    IGC_UNUSED(options);
+    IGC_UNUSED(RegFlagNameError);
+}
 #define IGC_SET_FLAG_VALUE(name, regkeyValue)
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) \
     static const unsigned int regkeyName##default = (unsigned int)defaultValue;

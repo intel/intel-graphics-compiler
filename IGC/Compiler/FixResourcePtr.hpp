@@ -45,6 +45,7 @@ namespace IGC
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
+            IGC_UNUSED(AU);
         }
 
     private:

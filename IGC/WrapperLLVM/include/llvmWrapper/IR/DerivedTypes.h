@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
+#include "common/CommonMacros.h"
 
 namespace IGCLLVM
 {
@@ -38,11 +39,13 @@ namespace IGCLLVM
     {
 #if LLVM_VERSION_MAJOR < 9
         // There were no scalable vectors before LLVM-9
+        IGC_UNUSED(Ty);
         return false;
 #elif LLVM_VERSION_MAJOR < 11
         return Ty.isScalable();
 #else
         // Scalable vectors became a separate type since LLVM-11
+        IGC_UNUSED(Ty);
         return false;
 #endif
     }

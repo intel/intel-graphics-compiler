@@ -156,6 +156,7 @@ namespace IGC {
         }
 
         void replaceGroupHead(llvm::Function* OH, llvm::Function* NH) {
+            IGC_UNUSED(OH);
             auto headSG = Functions[0];
             llvm::AssertingVH<llvm::Function>& HVH = (*headSG)[0];
             IGC_ASSERT_MESSAGE(&(*HVH) == OH, "Group's head isn't set up correctly!");

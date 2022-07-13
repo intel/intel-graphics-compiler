@@ -704,6 +704,7 @@ namespace IGC
 
         void save(llvm::LLVMContext& context, llvm::Module* module, const char* nodeName)
         {
+            IGC_UNUSED(context);
             if (!dirty())
             {
                 return;

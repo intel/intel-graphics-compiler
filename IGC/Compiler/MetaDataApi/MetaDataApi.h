@@ -185,6 +185,7 @@ namespace IGC {
             // Returns true if the given MDNode could be saved to without replacement
             bool compatibleWith(const llvm::MDNode* pNode) const
             {
+                IGC_UNUSED(pNode);
                 return false;
             }
 
@@ -312,6 +313,7 @@ namespace IGC {
             // Returns true if the given MDNode could be saved to without replacement
             bool compatibleWith(const llvm::MDNode* pNode) const
             {
+                IGC_UNUSED(pNode);
                 return false;
             }
 
@@ -417,6 +419,7 @@ namespace IGC {
             // Returns true if the given MDNode could be saved to without replacement
             bool compatibleWith(const llvm::MDNode* pNode) const
             {
+                IGC_UNUSED(pNode);
                 return false;
             }
 
@@ -536,6 +539,7 @@ namespace IGC {
             // Returns true if the given MDNode could be saved to without replacement
             bool compatibleWith(const llvm::MDNode* pNode) const
             {
+                IGC_UNUSED(pNode);
                 return false;
             }
 
@@ -673,6 +677,7 @@ namespace IGC {
             // Returns true if the given MDNode could be saved to without replacement
             bool compatibleWith(const llvm::MDNode* pNode) const
             {
+                IGC_UNUSED(pNode);
                 return false;
             }
 
@@ -938,6 +943,7 @@ namespace IGC {
             // Returns true if the given MDNode could be saved to without replacement
             bool compatibleWith(const llvm::MDNode* pNode) const
             {
+                IGC_UNUSED(pNode);
                 return false;
             }
 

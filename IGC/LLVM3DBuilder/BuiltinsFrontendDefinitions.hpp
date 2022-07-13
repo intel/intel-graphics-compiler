@@ -2193,7 +2193,9 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
     //  Note that we first normalize coordinates and all derivatives, so calculations
     //  here use the form:
     //        (fA/fB)' = [fA'/fB] - [fB'/fB]*[fA/fB]
-
+    IGC_UNUSED(int32_offsetU);
+    IGC_UNUSED(int32_offsetV);
+    IGC_UNUSED(int32_offsetW);
     IGC_ASSERT(nullptr != this->GetInsertBlock());
     llvm::Function* const parentFunc = this->GetInsertBlock()->getParent();
     IGC_ASSERT(nullptr != float_src_r);
