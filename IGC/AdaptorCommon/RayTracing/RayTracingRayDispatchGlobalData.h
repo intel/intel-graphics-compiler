@@ -107,6 +107,7 @@ public:
     uint64_t GetBindlessHeapBasePtr() const { return 0; };
     uint64_t GetPrintfBufferBasePtr() const { return 0; };
     uint64_t GetProfilingBufferGpuVa() const { return 0; };
+    uint64_t GetStatelessScratchPtr() const { return 0; };
     uint32_t GetBaseSSHOffset() const { return 0; };
 };
 
@@ -156,6 +157,8 @@ struct RayDispatchGlobalData
         swStackSizePerRay   = umd.GetSWStackSizePerRay();
 
         ProfilingBufferGpuVa = umd.GetProfilingBufferGpuVa();
+
+        statelessScratchPtr = umd.GetStatelessScratchPtr();
 
         baseSSHOffset = umd.GetBaseSSHOffset();
     }
@@ -212,6 +215,7 @@ struct RayDispatchGlobalData
     uint32_t paddingBits2;              // 32-bits of padding
     uint64_t printfBufferBasePtr;       // base pointer of printf buffer
     uint64_t ProfilingBufferGpuVa;      // GTPin buffer to collect profiling data
+    uint64_t statelessScratchPtr;       // Stateless scratch buffer pointer
     uint64_t pCallableShaderBasePtr;    // base pointer of callable shader record array (8-bytes alignment)
     uint32_t pCallableShaderStride;     // stride of callable shader records (8-bytes alignment)
     uint32_t paddingBits3;              // 32-bits of padding
@@ -238,7 +242,7 @@ constexpr uint32_t RTGlobalsAlign = 256;
 constexpr uint32_t RTStackAlign = 128;
 static_assert(RTStackAlign % RayDispatchGlobalData::StackChunkSize == 0, "no?");
 
-static_assert(sizeof(RayDispatchGlobalData) == 176, "unexpected size?");
+static_assert(sizeof(RayDispatchGlobalData) == 184, "unexpected size?");
 #if !defined(__clang__) || (__clang_major__ >= 10)
 static_assert(std::is_standard_layout<RayDispatchGlobalData>::value, "no?");
 #endif

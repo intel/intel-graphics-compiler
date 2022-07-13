@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
+#include "AdaptorCommon/RayTracing/RTBuilder.h"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
@@ -1148,11 +1149,21 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             {
                 resultType = IGCLLVM::FixedVectorType::get(resultType, 2);
             }
-            Function* pFunc = GenISAIntrinsic::getDeclaration(
-                m_currFunction->getParent(),
-                GenISAIntrinsic::GenISA_RuntimeValue,
-                resultType);
-            privateBase = entryBuilder.CreateCall(pFunc, entryBuilder.getInt32(modMD->MinNOSPushConstantSize - pointerSizeInDwords));
+            if (Ctx.type == ShaderType::RAYTRACING_SHADER)
+            {
+                RTBuilder rtBuilder(m_currFunction->getContext(), Ctx);
+                rtBuilder.SetInsertPoint(entryBuilder.GetInsertBlock(), entryBuilder.GetInsertPoint());
+                privateBase = rtBuilder.getStatelessScratchPtr();
+                entryBuilder.SetInsertPoint(rtBuilder.GetInsertBlock(), rtBuilder.GetInsertPoint());
+            }
+            else
+            {
+                Function* pFunc = GenISAIntrinsic::getDeclaration(
+                    m_currFunction->getParent(),
+                    GenISAIntrinsic::GenISA_RuntimeValue,
+                    resultType);
+                privateBase = entryBuilder.CreateCall(pFunc, entryBuilder.getInt32(modMD->MinNOSPushConstantSize - pointerSizeInDwords));
+            }
             if (privateBase->getType()->isVectorTy())
             {
                 privateBase = entryBuilder.CreateBitCast(privateBase, entryBuilder.getInt64Ty());

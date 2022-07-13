@@ -357,6 +357,7 @@ public:
     Value* getpHitGroupBasePtr(void);
     Value* getMissShaderBasePtr(void);
     Value* getpMissShaderBasePtr(void);
+    Value* getStatelessScratchPtr(void);
     Value* getCallableShaderBasePtr(void);
     Value* getpCallableShaderBasePtr(void);
     Value* getBindlessHeapBasePtr(void);

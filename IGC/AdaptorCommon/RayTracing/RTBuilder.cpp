@@ -203,6 +203,15 @@ Value* RTBuilder::getpMissShaderBasePtr(void)
     return Val;
 }
 
+Value* RTBuilder::getStatelessScratchPtr(void)
+{
+    auto* BasePtr = this->getGlobalBufferPtr();
+    auto* Ptr = this->_gepof_statelessScratchPtr(BasePtr, VALUE_NAME("&statelessScratchPtr"));
+    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("statelessScratchPtr"));
+    setInvariantLoad(Val);
+    return Val;
+}
+
 Value* RTBuilder::getCallableShaderBasePtr(void)
 {
     auto* BasePtr = this->getGlobalBufferPtr();

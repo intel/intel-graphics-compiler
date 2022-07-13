@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -834,6 +834,7 @@ static Type* _gettype_RayDispatchGlobalData(Module &M)
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 64),
+      IntegerType::get(M.getContext(), 64),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 32),
       IntegerType::get(M.getContext(), 64),
@@ -1053,6 +1054,7 @@ static Type* _gettype_RTGlobalsAndRootSig(Module &M, Type* TypeHoleGlobalRootSig
           IntegerType::get(M.getContext(), 32),
           IntegerType::get(M.getContext(), 32),
           IntegerType::get(M.getContext(), 32),
+          IntegerType::get(M.getContext(), 64),
           IntegerType::get(M.getContext(), 64),
           IntegerType::get(M.getContext(), 64),
           IntegerType::get(M.getContext(), 64),
@@ -1530,7 +1532,7 @@ Value* _gepof_printfBufferBasePtr(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_pCallableShaderBasePtr(Value* p, const Twine &Name = "")
+Value* _gepof_statelessScratchPtr(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
@@ -1539,7 +1541,7 @@ Value* _gepof_pCallableShaderBasePtr(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_pCallableShaderStride(Value* p, const Twine &Name = "")
+Value* _gepof_pCallableShaderBasePtr(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
@@ -1548,16 +1550,16 @@ Value* _gepof_pCallableShaderStride(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_bindlessHeapBasePtr(Value* p, const Twine &Name = "")
+Value* _gepof_pCallableShaderStride(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
-    this->getInt32(18),
+    this->getInt32(17),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_pHitGroupBasePtr(Value* p, const Twine &Name = "")
+Value* _gepof_bindlessHeapBasePtr(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
@@ -1566,7 +1568,7 @@ Value* _gepof_pHitGroupBasePtr(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_pMissShaderBasePtr(Value* p, const Twine &Name = "")
+Value* _gepof_pHitGroupBasePtr(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
@@ -1575,7 +1577,7 @@ Value* _gepof_pMissShaderBasePtr(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_pHitGroupStride(Value* p, const Twine &Name = "")
+Value* _gepof_pMissShaderBasePtr(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
@@ -1584,7 +1586,7 @@ Value* _gepof_pHitGroupStride(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_pMissShaderStride(Value* p, const Twine &Name = "")
+Value* _gepof_pHitGroupStride(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
@@ -1593,7 +1595,7 @@ Value* _gepof_pMissShaderStride(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_pRtMemBasePtr(Value* p, const Twine &Name = "")
+Value* _gepof_pMissShaderStride(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
@@ -1602,16 +1604,16 @@ Value* _gepof_pRtMemBasePtr(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_pStackSizePerRay(Value* p, const Twine &Name = "")
+Value* _gepof_pRtMemBasePtr(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
-    this->getInt32(25),
+    this->getInt32(24),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_swStackSizePerRay(Value* p, const Twine &Name = "")
+Value* _gepof_pStackSizePerRay(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
@@ -1620,7 +1622,7 @@ Value* _gepof_swStackSizePerRay(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
-Value* _gepof_pNumDSSRTStacks(Value* p, const Twine &Name = "")
+Value* _gepof_swStackSizePerRay(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
@@ -1629,11 +1631,20 @@ Value* _gepof_pNumDSSRTStacks(Value* p, const Twine &Name = "")
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
+Value* _gepof_pNumDSSRTStacks(Value* p, const Twine &Name = "")
+{
+  Value* Indices[] = {
+    this->getInt32(0),
+    this->getInt32(28),
+  };
+  return this->CreateInBoundsGEP(p, Indices, Name);
+}
+
 Value* _gepof_baseSSHOffset(Value* p, const Twine &Name = "")
 {
   Value* Indices[] = {
     this->getInt32(0),
-    this->getInt32(24),
+    this->getInt32(25),
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
 }
@@ -1651,7 +1662,7 @@ Value* _gepof_dispatchRaysDimensions(Value* p, Value* idx1, const Twine &Name = 
 {
   Value* Indices[] = {
     this->getInt32(0),
-    this->getInt32(28),
+    this->getInt32(29),
     idx1,
   };
   return this->CreateInBoundsGEP(p, Indices, Name);
