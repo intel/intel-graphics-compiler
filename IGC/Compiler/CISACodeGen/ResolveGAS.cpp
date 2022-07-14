@@ -652,7 +652,6 @@ bool GASPropagator::visitCallInst(CallInst& I) {
     if (!Callee)
         return false;
 
-    PointerType* SrcPtrTy = cast<PointerType>(TheVal->getType());
     bool IsGAS2P =
         Callee->getName().equals("__builtin_IB_memcpy_generic_to_private");
     bool IsP2GAS =
@@ -698,34 +697,6 @@ bool GASPropagator::visitCallInst(CallInst& I) {
             TheUse->set(TheVal);
             return true;
         }
-    }
-
-    if (Callee->getName().equals("__builtin_IB_to_local")) {
-        Type* DstTy = I.getType();
-        Value* NewPtr = Constant::getNullValue(DstTy);
-        if (SrcPtrTy->getAddressSpace() == ADDRESS_SPACE_LOCAL) {
-            BuilderType::InsertPointGuard Guard(IRB);
-            IRB.SetInsertPoint(&I);
-            NewPtr = IRB.CreateBitCast(TheVal, DstTy);
-        }
-        I.replaceAllUsesWith(NewPtr);
-        I.eraseFromParent();
-
-        return true;
-    }
-
-    if (Callee->getName().equals("__builtin_IB_to_private")) {
-        Type* DstTy = I.getType();
-        Value* NewPtr = Constant::getNullValue(DstTy);
-        if (SrcPtrTy->getAddressSpace() == ADDRESS_SPACE_PRIVATE) {
-            BuilderType::InsertPointGuard Guard(IRB);
-            IRB.SetInsertPoint(&I);
-            NewPtr = IRB.CreateBitCast(TheVal, DstTy);
-        }
-        I.replaceAllUsesWith(NewPtr);
-        I.eraseFromParent();
-
-        return true;
     }
 
     return false;

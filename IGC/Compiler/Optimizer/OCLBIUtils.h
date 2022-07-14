@@ -243,9 +243,6 @@ namespace IGC
     {
     private:
         std::map<llvm::StringRef, std::unique_ptr<CCommand>> m_CommandMap;
-
-        // the list of known builtins not to be resolved
-        std::vector<llvm::StringRef> m_KnownBuiltins;
         CodeGenContext* m_CodeGenContext;
     public:
         CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::InlineMap* inlineMap, int* nextSampler, CodeGenContext* ctx);

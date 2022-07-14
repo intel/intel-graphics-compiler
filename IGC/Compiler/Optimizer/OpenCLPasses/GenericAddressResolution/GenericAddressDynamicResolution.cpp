@@ -115,7 +115,6 @@ namespace {
         virtual bool runOnFunction(Function& F) override;
 
         bool visitLoadStoreInst(Instruction& I);
-        bool visitIntrinsicCall(CallInst& I);
         Module* getModule() { return m_module; }
 
     private:
@@ -152,24 +151,6 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
 
     bool modified = false;
     bool changed = false;
-
-    // iterate for all the intrinisics used by to_local, to_global, and to_private
-    do {
-        changed = false;
-
-        for (inst_iterator i = inst_begin(F); i != inst_end(F); ++i) {
-            Instruction& instruction = (*i);
-
-            if (CallInst * intrinsic = dyn_cast<CallInst>(&instruction)) {
-                changed = visitIntrinsicCall(*intrinsic);
-            }
-
-            if (changed) {
-                modified = true;
-                break;
-            }
-        }
-    } while (changed);
 
     // iterate over all loads/stores with generic address space pointers
     do {
@@ -394,96 +375,6 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction& I, 
         I.replaceAllUsesWith(nonLocalLoad);
     }
     I.eraseFromParent();
-}
-
-bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
-{
-    bool changed = false;
-    Function* pCalledFunc = I.getCalledFunction();
-    if (pCalledFunc == nullptr)
-    {
-        // Indirect call
-        return false;
-    }
-
-    StringRef funcName = pCalledFunc->getName();
-
-    if ((funcName == "__builtin_IB_to_private") || (funcName == "__builtin_IB_to_local")
-        || (funcName == "__builtin_IB_to_global"))
-    {
-        IGC_ASSERT(IGCLLVM::getNumArgOperands(&I) == 1);
-        Value* arg = I.getArgOperand(0);
-        PointerType* dstType = dyn_cast<PointerType>(I.getType());
-        IGC_ASSERT( dstType != nullptr );
-        const unsigned targetAS = cast<PointerType>(I.getType())->getAddressSpace();
-
-        IGCLLVM::IRBuilder<> builder(&I);
-        PointerType* pointerType = dyn_cast<PointerType>(arg->getType());
-        IGC_ASSERT( pointerType != nullptr );
-        ConstantInt* globalTag = builder.getInt64(0);  // tag 000/111
-        ConstantInt* privateTag = builder.getInt64(1); // tag 001
-        ConstantInt* localTag = builder.getInt64(2);   // tag 010
-
-        Type* intPtrTy = getPointerAsIntType(arg->getContext(), ADDRESS_SPACE_GENERIC);
-        Value* ptrAsInt = PtrToIntInst::Create(Instruction::PtrToInt, arg, intPtrTy, "", &I);
-        // Get actual tag
-        Value* tag = builder.CreateLShr(ptrAsInt, ConstantInt::get(ptrAsInt->getType(), 61));
-
-        Value* newPtr = nullptr;
-        Value* newPtrNull = nullptr;
-        Value* cmpTag = nullptr;
-
-        // Tag was already obtained from GAS pointer, now we check its address space (AS)
-        // and the target AS for this intrinsic call
-        if (targetAS == ADDRESS_SPACE_PRIVATE)
-            cmpTag = builder.CreateICmpEQ(tag, privateTag, "cmpTag");
-        else if (targetAS == ADDRESS_SPACE_LOCAL)
-            cmpTag = builder.CreateICmpEQ(tag, localTag, "cmpTag");
-        else if (targetAS == ADDRESS_SPACE_GLOBAL)
-            cmpTag = builder.CreateICmpEQ(tag, globalTag, "cmpTag");
-
-        // Two cases:
-        // 1: Generic pointer's AS matches with instrinsic's target AS
-        //    So we create the address space cast
-        // 2: Generic pointer's AS does not match with instrinsic's target AS
-        //    So the instrinsic call returns NULL
-        BasicBlock* currentBlock = I.getParent();
-        BasicBlock* convergeBlock = currentBlock->splitBasicBlock(&I);
-        BasicBlock* ifBlock = BasicBlock::Create(I.getContext(), "IfBlock",
-            convergeBlock->getParent(), convergeBlock);
-        BasicBlock* elseBlock = BasicBlock::Create(I.getContext(), "ElseBlock",
-            convergeBlock->getParent(), convergeBlock);
-
-        // If Block
-        {
-            IRBuilder<> ifBuilder(ifBlock);
-            PointerType* ptrType = pointerType->getPointerElementType()->getPointerTo(targetAS);
-            newPtr = ifBuilder.CreateAddrSpaceCast(arg, ptrType);
-            ifBuilder.CreateBr(convergeBlock);
-        }
-
-        // Else Block
-        {
-            IRBuilder<> elseBuilder(elseBlock);
-            Value* ptrNull = Constant::getNullValue(I.getType());
-            newPtrNull = elseBuilder.CreatePointerCast(ptrNull, dstType, "");
-            elseBuilder.CreateBr(convergeBlock);
-        }
-
-        currentBlock->getTerminator()->eraseFromParent();
-        builder.SetInsertPoint(currentBlock);
-        builder.CreateCondBr(cmpTag, ifBlock, elseBlock);
-
-        IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
-        PHINode* phi = phiBuilder.CreatePHI(I.getType(), 2, I.getName());
-        phi->addIncoming(newPtr, ifBlock);
-        phi->addIncoming(newPtrNull, elseBlock);
-        I.replaceAllUsesWith(phi);
-        I.eraseFromParent();
-        changed = true;
-    }
-
-    return changed;
 }
 
 namespace IGC {

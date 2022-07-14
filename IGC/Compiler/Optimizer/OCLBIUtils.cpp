@@ -1543,12 +1543,6 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_dp4a_uu"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_uu, false);
     m_CommandMap["__builtin_IB_dp4a_su"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_su, false);
     m_CommandMap["__builtin_IB_dp4a_us"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_us, false);
-
-    m_KnownBuiltins = {
-        //resolved later in GenericAddressDynamicResolution pass:
-        "__builtin_IB_to_local",
-        "__builtin_IB_to_private"
-    };
 }
 
 bool CBuiltinsResolver::resolveBI(CallInst* Inst)
