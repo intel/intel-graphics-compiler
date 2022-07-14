@@ -2261,7 +2261,7 @@ namespace //Anonymous
         {
             if (KindQuery::isStructType(ptrType))
             {
-                destPtr = _builder.CreateStructGEP(nullptr, dest, static_cast<unsigned>(destIndex));
+                destPtr = _builder.CreateStructGEP(ptrType->getPointerElementType(), dest, static_cast<unsigned>(destIndex));
                 // If store to struct then use struct element type
                 // to select proper store instruction
                 typeToSelect = destPtr->getType();
@@ -2269,8 +2269,8 @@ namespace //Anonymous
             else
             {
                 destPtr = (_DL->getPointerTypeSize(ptrType) > 4)
-                    ? _builder.CreateConstInBoundsGEP2_64(dest, 0, destIndex)
-                    : _builder.CreateConstInBoundsGEP2_32(nullptr, dest, 0, (unsigned)destIndex);
+                    ? _builder.CreateConstInBoundsGEP2_64(ptrType->getPointerElementType(), dest, 0, destIndex)
+                    : _builder.CreateConstInBoundsGEP2_32(ptrType->getPointerElementType(), dest, 0, (unsigned)destIndex);
             }
         }
 

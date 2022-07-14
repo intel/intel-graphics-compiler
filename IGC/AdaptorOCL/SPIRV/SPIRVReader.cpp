@@ -2729,8 +2729,8 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
       builder.CreateMemCpy(Alloca, I, size, ptrSize);
       if (T->isArrayTy()) {
         I = ptrSize > 4
-          ? builder.CreateConstInBoundsGEP2_64(Alloca, 0, 0)
-          : builder.CreateConstInBoundsGEP2_32(nullptr, Alloca, 0, 0);
+          ? builder.CreateConstInBoundsGEP2_64(T, Alloca, 0, 0)
+          : builder.CreateConstInBoundsGEP2_32(T, Alloca, 0, 0);
       } else if (T->isStructTy()) {
         I = Alloca;
       } else {
@@ -3458,7 +3458,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
             for (unsigned I = 0, E = CS->getNumOperands(); I != E; I++)
             {
                 auto *op = CS->getOperand(I);
-                auto *pGEP = IRB.CreateConstInBoundsGEP2_32(nullptr, pointer, 0, I);
+                auto *pGEP = IRB.CreateConstInBoundsGEP2_32(pointer->getType()->getPointerElementType(), pointer, 0, I);
                 if (auto *InnerCS = dyn_cast<ConstantStruct>(op))
                     LowerConstantStructStore(InnerCS, pGEP);
                 else
