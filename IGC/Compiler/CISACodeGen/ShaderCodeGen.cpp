@@ -211,8 +211,7 @@ static void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // potential phi-moves will be placed at those blocks
     mpm.add(llvm::createBreakCriticalEdgesPass());
 
-    // clean up the redundent URBs from the merging and lowering
-    mpm.add(llvm::createEarlyCSEPass());
+
 
     if (IGC_IS_FLAG_DISABLED(DisableMemOpt2) &&
         (ctx.type == ShaderType::COMPUTE_SHADER || (ctx.m_DriverInfo.WAEnableMemOpt2ForOCL())) &&
