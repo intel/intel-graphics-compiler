@@ -8749,7 +8749,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         // |  cross thread data  | \                        |  per thread data T0 |
         // |                     |  numCrossThreadDW     R4 -----------------------
         // |                     | /                        |  inline data        |
-        // ----------------------- <-- localIDsOffset       |  (if enable)        |
+        // ----------------------- <-- localIDsOffset       |  (if enabled)       |
         // |  per thread data T0 |                       R5 ----------------------- <-- crossThreadLoadStart, crossThreadLoadStartGRF
         // -----------------------                          |  cross thread data  | \
         // |  per thread data T1 |                          |                     |  numCrossThreadDW
@@ -8913,7 +8913,6 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 LSC_OP op = LSC_LOAD;
                 LSC_SFID lscSfid = LSC_UGM;
                 LSC_CACHE_OPTS cacheOpts {LSC_CACHING_CACHED, LSC_CACHING_CACHED};
-
                 LSC_ADDR addrInfo { };
                 addrInfo.type = ADDR_TYPE; // use BTI 255 to access GSH (global state heap)
                 addrInfo.immScale = 1;
