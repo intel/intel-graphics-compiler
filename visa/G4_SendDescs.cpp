@@ -149,6 +149,16 @@ MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
     }
 }
 
+uint32_t vISA::GetRenderTargetMsgOpEncoding(MsgOp m) {
+    switch(m) {
+        case MsgOp::RTREAD: return 2;
+        case MsgOp::RTWRITE: return 6;
+        case MsgOp::RTDSWRITE: return 5;
+        default: MUST_BE_TRUE(false, "Invalid msg op");
+    }
+    return 0;
+}
+
 uint32_t vISA::GetSamplerMsgOpEncoding(MsgOp m) {
     switch(m) {
         case MsgOp::SAMPLE: return 0;

@@ -99,10 +99,14 @@ enum class MsgOp {
     GATHER_GROUP = MSGOP_GATHER_GROUP + 1,
     GATHER4,
     GATHER4_C,
+    RTREAD,
+    RTWRITE,
+    RTDSWRITE
 };
 std::string ToSymbol(MsgOp);
 uint32_t GetMsgOpEncoding(MsgOp);
 uint32_t GetSamplerMsgOpEncoding(MsgOp);
+uint32_t GetRenderTargetMsgOpEncoding(MsgOp);
 MsgOp ConvertLSCOpToMsgOp(LSC_OP op);
 MsgOp ConvertSamplerOpToMsgOp(VISASampler3DSubOpCode op);
 

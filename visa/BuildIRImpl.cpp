@@ -2981,7 +2981,7 @@ G4_InstSend *IR_Builder::createLscSendInstToScratch(
     return inst;
 }
 
-// for reder target messages,
+// for render target messages,
 // desc has a constant BTI value (i.e., no bindless) and no STI
 // extDesc may be indirect (MRT and other bits) and is passed in
 G4_InstSend *IR_Builder::createSplitSendToRenderTarget(

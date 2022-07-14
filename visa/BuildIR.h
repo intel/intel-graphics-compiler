@@ -2128,6 +2128,14 @@ public:
             (surface->asImm()->getImm() == PREDEF_SURF_255 || surface->asImm()->getImm() == PREDEF_SURF_253);
     }
 
+    std::tuple<G4_SrcRegRegion*, uint32_t, uint32_t>
+    constructSrcPayloadRenderTarget(
+        vISA_RT_CONTROLS cntrls,
+        G4_SrcRegRegion** msgOpnds,
+        unsigned int numMsgOpnds,
+        G4_ExecSize execSize,
+        G4_InstOpts instOpt);
+
     int translateVISAQWGatherInst(
         VISA_Exec_Size executionSize,
         VISA_EMask_Ctrl emask,

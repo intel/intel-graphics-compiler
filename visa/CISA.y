@@ -65,7 +65,7 @@ static bool ParseEMask(const char* sym, VISA_EMask_Ctrl &emask);
 
 std::deque<const char*> switchLabels;
 char * switch_label_array[32];
-std::vector<VISA_opnd*> RTRWOperands;
+std::vector<VISA_opnd*> RTRWOperandsVec;
 int num_parameters;
 
 VISA_RawOpnd* rawOperandArray[16];
@@ -443,7 +443,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %type <string> RTWriteModeOpt
 
 %type <intval> SwitchLabels
-%type <intval> RTWriteOperandParse
+%type <intval> RTWriteOperands
 
 %type <pred_reg>   Predicate
 %type <pred_sign>  PredSign
@@ -1379,28 +1379,33 @@ SampleInfo3dInstruction: SAMPLEINFO_OP_3D   SAMPLER_CHANNEL  ExecSize    Var    
             ChannelMask::createFromAPI($2), $4, NULL, $5, CISAlineno));
    }
 
-RTWriteOperandParse:
+RTWriteOperands:
     %empty
     {
     }
-    | RTWriteOperandParse VecSrcOperand_G_IMM
+    | RTWriteOperands VecSrcOperand_G_IMM
     {
-        RTRWOperands.push_back($2.cisa_gen_opnd);
+        RTRWOperandsVec.push_back($2.cisa_gen_opnd);
     }
-    | RTWriteOperandParse RawOperand
+    | RTWriteOperands RawOperand
     {
-        RTRWOperands.push_back($2);
+        RTRWOperandsVec.push_back($2);
     }
+
+RTWriteInstruction: RTWInstruction
+
             //      1            2                3                 4           5     6
-RTWriteInstruction: Predicate    RTWRITE_OP_3D    RTWriteModeOpt    ExecSize    Var   RTWriteOperandParse
+RTWInstruction: Predicate    RTWRITE_OP_3D    RTWriteModeOpt    ExecSize    Var
+              RTWriteOperands
    {
        bool result = pBuilder->CISA_create_rtwrite_3d_instruction(
            $1, $3, $4.emask, (unsigned int)$4.exec_size, $5,
-           RTRWOperands, CISAlineno);
-       RTRWOperands.clear();
+           RTRWOperandsVec, CISAlineno);
+       RTRWOperandsVec.clear();
        if (!result)
            YYABORT; // already reported
    }
+
 
 RTWriteModeOpt: %empty {$$ = 0;} | RTWRITE_OPTION
 
