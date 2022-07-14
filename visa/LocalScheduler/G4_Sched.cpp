@@ -1467,6 +1467,8 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
     // skip those improvements on those old platforms
     if (kernel.getPlatform() < Xe_DG2) {
         config.DoNotIterate = 1;
+    }
+    if (kernel.getPlatform() <= Xe_DG2) {
         config.SkipHoldList = 1;
     }
     if (tryLatencyHiding()) {
