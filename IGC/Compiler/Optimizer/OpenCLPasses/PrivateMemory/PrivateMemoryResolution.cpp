@@ -641,6 +641,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module& M)
 static void sinkAllocas(SmallVectorImpl<AllocaInst*>& Allocas) {
     IGC_ASSERT(false == Allocas.empty());
     DominatorTree DT;
+    llvm::LoopInfoBase<llvm::BasicBlock, llvm::Loop> LI;
     bool Calcuated = false;
 
     // For each alloca, sink it if it has a use that dominates all other uses.
@@ -671,6 +672,8 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst*>& Allocas) {
         if (!Calcuated) {
             Function* F = AI->getParent()->getParent();
             DT.recalculate(*F);
+            LI.releaseMemory();
+            LI.analyze(DT);
             Calcuated = true;
         }
 
@@ -684,6 +687,13 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst*>& Allocas) {
             if (!DomBB) {
                 break;
             }
+        }
+
+        // Find the nearest Denominator outside loops to prevent multiple allocations
+        BasicBlock* CurBB = AI->getParent();
+        while (DomBB && DomBB != CurBB && LI.getLoopFor(DomBB) != nullptr)
+        {
+            DomBB = DT.getNode(DomBB)->getIDom()->getBlock();
         }
 
         if (DomBB) {
