@@ -2075,6 +2075,20 @@ static uint64_t getFPOne(VISA_Type Ty)
     return ~0U;
 }
 
+static uint64_t getFPNegOne(VISA_Type Ty)
+{
+    switch (Ty)
+    {
+    case ISA_TYPE_DF:   return 0xBFF0000000000000;
+    case ISA_TYPE_F:    return 0xBF800000;
+    case ISA_TYPE_BF:   return 0xBF80;
+    case ISA_TYPE_HF:   return 0xBC00;
+    default: break;
+    }
+    IGC_ASSERT_MESSAGE(0, "unknown floating type!");
+    return ~0U;
+}
+
 CVariable* EmitPass::GetSrcVariable(const SSource& source, bool fromConstPool)
 {
     CVariable* src = m_currShader->GetSymbol(source.value, fromConstPool);
@@ -2261,12 +2275,13 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
     case llvm_uitofp:
         if (src0->GetType() == ISA_TYPE_BOOL)
         {
-            CVariable* one = m_currShader->ImmToVariable(getFPOne(dst->GetType()), dst->GetType());
+            auto val = (opCode == llvm_uitofp) ? getFPOne(dst->GetType()) : getFPNegOne(dst->GetType());
+            CVariable* trueVal = m_currShader->ImmToVariable(val, dst->GetType());
             CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
             if (doEmitCastSelect)
-                emitCastSelect(src0, dst, one, zero);
+                emitCastSelect(src0, dst, trueVal, zero);
             else
-                m_encoder->Select(src0, dst, one, zero);
+                m_encoder->Select(src0, dst, trueVal, zero);
         }
         else
         {
