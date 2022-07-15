@@ -353,13 +353,9 @@ TraceRayInlineLoweringPass::branchOnPotentialHitDone(
     RTBuilder& IRB,
     RayQueryInstrisicBase* P)
 {
-    Value* NotDone = nullptr;
-
-    {
-        auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(IRB, P->getQueryObjIndex());
-        Value* doneDW = IRB.getPotentialHitInfo(ShadowMemStackPointer, VALUE_NAME("DoneDW"));
-        NotDone = IRB.isDoneBitNotSet(doneDW);
-    }
+    auto* const ShadowMemStackPointer = getShMemRayQueryRTStack(IRB, P->getQueryObjIndex());
+    Value* doneDW = IRB.getPotentialHitInfo(ShadowMemStackPointer, VALUE_NAME("DoneDW"));
+    Value* NotDone = IRB.isDoneBitNotSet(doneDW);
 
     return IRB.createTriangleFlow(
         NotDone, P, VALUE_NAME("ProceedBB"), VALUE_NAME("ProceedEndBlock"));
@@ -506,17 +502,15 @@ TraceRayInlineLoweringPass::emitSyncStackToShadowMemory(
     auto* SMMemRayPtr_bot = builder.getMemRayPtr(ShadowMemStackPointer, false);
     builder.FillRayQueryShadowMemory(SMMemRayPtr_bot, HWMemRayPtr_bot, sizeof(float) * 6, 4);
 
-    Value* doneDW = nullptr;
     Value* isValidBit = nullptr;
-    Value* NotDone = nullptr;
 
     {
-        //Read done bit for return value
-        doneDW = builder.getPotentialHitInfo(ShadowMemStackPointer, VALUE_NAME("DoneDW"));
         isValidBit = builder.getHitValid(HWStackPointer, CallableShaderTypeMD::ClosestHit);
-
-        NotDone = builder.isDoneBitNotSet(doneDW);
     }
+
+    //Read done bit for return value
+    Value* doneDW = builder.getPotentialHitInfo(ShadowMemStackPointer, VALUE_NAME("DoneDW"));
+    Value* NotDone = builder.isDoneBitNotSet(doneDW);
 
     //Need To store Hit Info for current RayQuery Object
     //CommittedHit
