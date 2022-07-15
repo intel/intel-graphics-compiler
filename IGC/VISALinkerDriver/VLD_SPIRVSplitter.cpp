@@ -16,6 +16,11 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 namespace VLD {
 
+llvm::Expected<SPIRVTypeEnum> DetectSPIRVType(const char *spv_buffer,
+                                   uint32_t spv_buffer_size_in_bytes) {
+    return SpvSplitter().Detect(spv_buffer, spv_buffer_size_in_bytes);
+}
+
 llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
 SplitSPMDAndESIMD(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
 
@@ -23,8 +28,7 @@ SplitSPMDAndESIMD(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   return splitter.Split(spv_buffer, spv_buffer_size_in_bytes);
 }
 
-llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
-SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
+llvm::Expected<spv_result_t> SpvSplitter::ParseSPIRV(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   const spv_target_env target_env = SPV_ENV_UNIVERSAL_1_5;
   spv_context context = spvContextCreate(target_env);
   const uint32_t *const binary = reinterpret_cast<const uint32_t *>(spv_buffer);
@@ -33,21 +37,50 @@ SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   auto scope_exit = llvm::make_scope_exit([&] {
     spvDiagnosticDestroy(diagnostic);
     spvContextDestroy(context);
-  });
+    });
 
   const spv_result_t result = spvBinaryParse(
-      context, this, binary, word_count, SpvSplitter::HandleHeaderCallback,
-      SpvSplitter::HandleInstructionCallback, &diagnostic);
+    context, this, binary, word_count, SpvSplitter::HandleHeaderCallback,
+    SpvSplitter::HandleInstructionCallback, &diagnostic);
 
   if (result != SPV_SUCCESS) {
     return llvm::createStringError(llvm::inconvertibleErrorCode(),
-                                   diagnostic->error);
+      diagnostic->error);
   }
 
   if (!has_spmd_functions_ && !has_esimd_functions_) {
     return llvm::createStringError(
-        llvm::inconvertibleErrorCode(),
-        "SPIR-V file did not contain any SPMD or ESIMD functions!");
+      llvm::inconvertibleErrorCode(),
+      "SPIR-V file did not contain any SPMD or ESIMD functions!");
+  }
+
+  return result;
+}
+
+SPIRVTypeEnum SpvSplitter::GetCurrentSPIRVType() {
+  // If all entry points are marked as ESIMD, treat this as fully ESIMD module,
+  // even if there are functions that are not marked with ESIMD (known bug in
+  // VC).
+  if (!entry_points_.empty() && std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
+    return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
+    })) {
+    IGC_ASSERT(has_esimd_functions_);
+    return SPIRVTypeEnum::SPIRV_ESIMD;
+  } else if (!has_esimd_functions_) {
+    // This is SPMD module as entry points are included in the flag.
+    return SPIRVTypeEnum::SPIRV_SPMD;
+  }
+  return SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD;
+}
+
+llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
+SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
+  this->Reset();
+  this->only_detect_ = false;
+  auto result = ParseSPIRV(spv_buffer, spv_buffer_size_in_bytes);
+
+  if (!result) {
+    return result.takeError();
   }
 
   // Add declarations of ESIMD functions that are called from SPMD module,
@@ -65,20 +98,32 @@ SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
                          esimd_function_declarations_[esimd_func_id].end());
   }
 
-  // If all entry points are marked as ESIMD, treat this as fully ESIMD module,
-  // even if there are functions that are not marked with ESIMD (known bug in
-  // VC).
-  if (!entry_points_.empty() && std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
-        return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
-      })) {
+  switch (GetCurrentSPIRVType()) {
+  case SPIRVTypeEnum::SPIRV_ESIMD:
     spmd_program_.clear();
-    IGC_ASSERT(has_esimd_functions_);
-  } else if (!has_esimd_functions_) {
-    // This is SPMD module as entry points are included in the flag.
+    break;
+  case SPIRVTypeEnum::SPIRV_SPMD:
     esimd_program_.clear();
+    break;
+  case SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD:
+  default:
+    break;
   }
 
   return std::make_pair(spmd_program_, esimd_program_);
+}
+
+llvm::Expected<SPIRVTypeEnum>
+SpvSplitter::Detect(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes) {
+  this->Reset();
+  this->only_detect_ = true;
+  auto result = ParseSPIRV(spv_buffer, spv_buffer_size_in_bytes);
+
+  if (!result) {
+    return result.takeError();
+  }
+
+  return GetCurrentSPIRVType();
 }
 
 const std::string &SpvSplitter::GetErrorMessage() const {
@@ -86,6 +131,21 @@ const std::string &SpvSplitter::GetErrorMessage() const {
 }
 
 bool SpvSplitter::HasError() const { return !error_message_.empty(); }
+
+void SpvSplitter::Reset() {
+  spmd_program_.clear();
+  esimd_program_.clear();
+  esimd_decorated_ids_.clear();
+  entry_points_.clear();
+  esimd_function_declarations_.clear();
+  esimd_functions_to_declare_.clear();
+
+  is_inside_spmd_function_ = false;
+  is_inside_esimd_function_ = false;
+  has_spmd_functions_ = false;
+  has_esimd_functions_ = false;
+  cur_esimd_function_id_ = -1;
+}
 
 spv_result_t SpvSplitter::HandleInstructionCallback(
     void *user_data, const spv_parsed_instruction_t *parsed_instruction) {
@@ -111,19 +171,16 @@ spv_result_t SpvSplitter::HandleHeader(spv_endianness_t endian, uint32_t magic,
     programVector.insert(programVector.end(),
                          {magic, version, generator, id_bound, schema});
   };
-  append_header(spmd_program_);
-  append_header(esimd_program_);
+  if(!only_detect_) {
+    append_header(spmd_program_);
+    append_header(esimd_program_);
+  }
   return SPV_SUCCESS;
 }
 
 spv_result_t SpvSplitter::HandleInstruction(
     const spv_parsed_instruction_t *parsed_instruction) {
   spv_result_t ret = SPV_SUCCESS;
-
-  auto add_to_program = [parsed_instruction](decltype(spmd_program_) &p) {
-    p.insert(p.end(), parsed_instruction->words,
-             parsed_instruction->words + parsed_instruction->num_words);
-  };
 
   // Handlers decide if given instruction should be addded.
   switch (parsed_instruction->opcode) {
@@ -287,8 +344,10 @@ spv_result_t SpvSplitter::HandleEntryPoint(
 void SpvSplitter::AddInstToProgram(
     const spv_parsed_instruction_t *parsed_instruction,
     ProgramStreamType &program) {
-  program.insert(program.end(), parsed_instruction->words,
-                 parsed_instruction->words + parsed_instruction->num_words);
+  if (!only_detect_) {
+    program.insert(program.end(), parsed_instruction->words,
+                   parsed_instruction->words + parsed_instruction->num_words);
+  }
 }
 
 } // namespace VLD

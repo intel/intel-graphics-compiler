@@ -17,6 +17,12 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 namespace VLD {
 
+enum class SPIRVTypeEnum {
+    SPIRV_SPMD,
+    SPIRV_ESIMD,
+    SPIRV_SPMD_AND_ESIMD
+};
+
 using ProgramStreamType = std::vector<uint32_t>;
 
 // Splits SPIR-V module that contains ESIMD and SPMD parts into separate
@@ -24,6 +30,10 @@ using ProgramStreamType = std::vector<uint32_t>;
 // Returns a pair of binaries: first is SPMD module, second is ESIMD module.
 llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
 SplitSPMDAndESIMD(const char *spvBuffer, uint32_t spvBufferSizeInBytes);
+
+// Detects the type of the SPIR-V module, e.g. SPMD, ESIMD, SPMD+ESIMD
+llvm::Expected<SPIRVTypeEnum> DetectSPIRVType(const char* spv_buffer,
+  uint32_t spv_buffer_size_in_bytes);
 
 // Class used to split SPMD and ESIMD parts of input SPIR-V module.
 class SpvSplitter {
@@ -34,9 +44,15 @@ public:
   llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
   Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
 
+  // Detects the type of the SPIR-V module, e.g. SPMD, ESIMD, SPMD+ESIMD
+  llvm::Expected<SPIRVTypeEnum>
+  Detect(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
+
   const std::string &GetErrorMessage() const;
 
   bool HasError() const;
+
+  void Reset();
 
   // Callbacks used by SPIR-V Tools parser.
   static spv_result_t
@@ -80,6 +96,15 @@ private:
 
   void AddInstToProgram(const spv_parsed_instruction_t *parsed_instruction,
                         ProgramStreamType &program);
+
+  llvm::Expected<spv_result_t> ParseSPIRV(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes);
+
+  // Returns current SPIR-V Module type. Must be called after ParseSPIRV
+  SPIRVTypeEnum GetCurrentSPIRVType();
+
+  // When this flag is set to true, instructions will not be added to
+  // spmd_program_ and esimd_program_ buffers.
+  bool only_detect_ = false;
 
   ProgramStreamType spmd_program_;
   ProgramStreamType esimd_program_;

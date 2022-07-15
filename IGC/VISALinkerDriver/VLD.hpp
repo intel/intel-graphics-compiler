@@ -10,24 +10,35 @@ SPDX-License-Identifier: MIT
 // consists of combined SPMD and ESIMD parts.
 
 #include <string>
+
 #include "TranslationBlock.h"
 
 // Forward declarations.
 class ShaderHash;
 namespace IGC {
-    class CPlatform;
+class CPlatform;
 }
 
 namespace IGC {
 namespace VLD {
 
-bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs* pInputArgs,
-                                TC::STB_TranslateOutputArgs* pOutputArgs,
-                                TC::TB_DATA_FORMAT inputDataFormatTemp,
-                                const IGC::CPlatform& IGCPlatform,
-                                float profilingTimerResolution,
-                                const ShaderHash& inputShHash,
-                                std::string& errorMessage);
+// This function detects if binary passed in pInputArgs is SPMD, ESIMD or
+// SPMD+ESIMD
+bool TranslateBuildSPMDAndESIMD(
+    const TC::STB_TranslateInputArgs* pInputArgs,
+    TC::STB_TranslateOutputArgs* pOutputArgs,
+    TC::TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform& IGCPlatform,
+    float profilingTimerResolution, const ShaderHash& inputShHash,
+    std::string& errorMessage);
+
+// This function takes SPMD and ESIMD modules explicitly.
+bool TranslateBuildSPMDAndESIMD(
+    const TC::STB_TranslateInputArgs* pInputArgsSPMD,
+    const TC::STB_TranslateInputArgs* pInputArgsESIMD,
+    TC::STB_TranslateOutputArgs* pOutputArgs,
+    TC::TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform& IGCPlatform,
+    float profilingTimerResolution, const ShaderHash& inputShHash,
+    std::string& errorMessage);
 
 }  // namespace VLD
 }  // namespace IGC
