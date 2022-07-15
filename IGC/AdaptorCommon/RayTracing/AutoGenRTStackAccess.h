@@ -1417,8 +1417,7 @@ Value* _gepof_rtMemBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_callStackHandlerPtr(Value* p, const Twine &Name = "")
@@ -1427,8 +1426,7 @@ Value* _gepof_callStackHandlerPtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(1),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_stackSizePerRay(Value* p, const Twine &Name = "")
@@ -1438,8 +1436,7 @@ Value* _gepof_stackSizePerRay(Value* p, const Twine &Name = "")
     this->getInt32(2),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_numDSSRTStacks(Value* p, const Twine &Name = "")
@@ -1449,8 +1446,7 @@ Value* _gepof_numDSSRTStacks(Value* p, const Twine &Name = "")
     this->getInt32(3),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_maxBVHLevels(Value* p, const Twine &Name = "")
@@ -1459,8 +1455,7 @@ Value* _gepof_maxBVHLevels(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(4),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_paddingBits(Value* p, const Twine &Name = "")
@@ -1469,8 +1464,7 @@ Value* _gepof_paddingBits(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(5),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_hitGroupBasePtr(Value* p, const Twine &Name = "")
@@ -1479,8 +1473,7 @@ Value* _gepof_hitGroupBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(6),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_missShaderBasePtr(Value* p, const Twine &Name = "")
@@ -1489,8 +1482,7 @@ Value* _gepof_missShaderBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(7),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_callableShaderBasePtr(Value* p, const Twine &Name = "")
@@ -1499,8 +1491,7 @@ Value* _gepof_callableShaderBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(8),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_hitGroupStride(Value* p, const Twine &Name = "")
@@ -1509,8 +1500,7 @@ Value* _gepof_hitGroupStride(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(9),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_missShaderStride(Value* p, const Twine &Name = "")
@@ -1519,8 +1509,7 @@ Value* _gepof_missShaderStride(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(10),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_callableShaderStride(Value* p, const Twine &Name = "")
@@ -1529,8 +1518,7 @@ Value* _gepof_callableShaderStride(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(11),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_printfBufferBasePtr(Value* p, const Twine &Name = "")
@@ -1539,8 +1527,7 @@ Value* _gepof_printfBufferBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(13),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_pCallableShaderBasePtr(Value* p, const Twine &Name = "")
@@ -1549,8 +1536,7 @@ Value* _gepof_pCallableShaderBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(15),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_pCallableShaderStride(Value* p, const Twine &Name = "")
@@ -1559,8 +1545,7 @@ Value* _gepof_pCallableShaderStride(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(16),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_bindlessHeapBasePtr(Value* p, const Twine &Name = "")
@@ -1569,8 +1554,7 @@ Value* _gepof_bindlessHeapBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(18),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_pHitGroupBasePtr(Value* p, const Twine &Name = "")
@@ -1579,8 +1563,7 @@ Value* _gepof_pHitGroupBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(19),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_pMissShaderBasePtr(Value* p, const Twine &Name = "")
@@ -1589,8 +1572,7 @@ Value* _gepof_pMissShaderBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(20),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_pHitGroupStride(Value* p, const Twine &Name = "")
@@ -1599,8 +1581,7 @@ Value* _gepof_pHitGroupStride(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(21),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_pMissShaderStride(Value* p, const Twine &Name = "")
@@ -1609,8 +1590,7 @@ Value* _gepof_pMissShaderStride(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(22),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_pRtMemBasePtr(Value* p, const Twine &Name = "")
@@ -1619,8 +1599,7 @@ Value* _gepof_pRtMemBasePtr(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(23),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_pStackSizePerRay(Value* p, const Twine &Name = "")
@@ -1629,8 +1608,7 @@ Value* _gepof_pStackSizePerRay(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(25),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_swStackSizePerRay(Value* p, const Twine &Name = "")
@@ -1639,8 +1617,7 @@ Value* _gepof_swStackSizePerRay(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(26),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_pNumDSSRTStacks(Value* p, const Twine &Name = "")
@@ -1649,8 +1626,7 @@ Value* _gepof_pNumDSSRTStacks(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(27),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_baseSSHOffset(Value* p, const Twine &Name = "")
@@ -1659,8 +1635,7 @@ Value* _gepof_baseSSHOffset(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(24),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_BVH_rootNodeOffset(Value* p, const Twine &Name = "")
@@ -1669,8 +1644,7 @@ Value* _gepof_BVH_rootNodeOffset(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_dispatchRaysDimensions(Value* p, Value* idx1, const Twine &Name = "")
@@ -1680,8 +1654,7 @@ Value* _gepof_dispatchRaysDimensions(Value* p, Value* idx1, const Twine &Name = 
     this->getInt32(28),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_dispRaysIndex_v2(Value* p, Value* idx1, const Twine &Name = "")
@@ -1691,8 +1664,7 @@ Value* _gepof_dispRaysIndex_v2(Value* p, Value* idx1, const Twine &Name = "")
     this->getInt32(1),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_StackOffset_v2(Value* p, const Twine &Name = "")
@@ -1701,8 +1673,7 @@ Value* _gepof_StackOffset_v2(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_CompressedDispatchRayIndices_v1(Value* p, const Twine &Name = "")
@@ -1712,8 +1683,7 @@ Value* _gepof_CompressedDispatchRayIndices_v1(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(1),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_StackOffset_v1(Value* p, const Twine &Name = "")
@@ -1724,8 +1694,7 @@ Value* _gepof_StackOffset_v1(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_BudgeBits_v1(Value* p, const Twine &Name = "")
@@ -1737,8 +1706,7 @@ Value* _gepof_BudgeBits_v1(Value* p, const Twine &Name = "")
     this->getInt32(1),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_CommittedHitT(Value* p, const Twine &Name = "")
@@ -1749,8 +1717,7 @@ Value* _gepof_CommittedHitT(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_CommittedHitT2(Value* p, const Twine &Name = "")
@@ -1761,8 +1728,7 @@ Value* _gepof_CommittedHitT2(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_PotentialHitT(Value* p, const Twine &Name = "")
@@ -1773,8 +1739,7 @@ Value* _gepof_PotentialHitT(Value* p, const Twine &Name = "")
     this->getInt32(1),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_CommittedHitU(Value* p, const Twine &Name = "")
@@ -1785,8 +1750,7 @@ Value* _gepof_CommittedHitU(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(1),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_PotentialHitU(Value* p, const Twine &Name = "")
@@ -1797,8 +1761,7 @@ Value* _gepof_PotentialHitU(Value* p, const Twine &Name = "")
     this->getInt32(1),
     this->getInt32(1),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_CommittedHitTopOfInstLeafPtr(Value* p, const Twine &Name = "")
@@ -1810,8 +1773,7 @@ Value* _gepof_CommittedHitTopOfInstLeafPtr(Value* p, const Twine &Name = "")
     this->getInt32(5),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_PotentialHitTopOfInstLeafPtr(Value* p, const Twine &Name = "")
@@ -1823,8 +1785,7 @@ Value* _gepof_PotentialHitTopOfInstLeafPtr(Value* p, const Twine &Name = "")
     this->getInt32(5),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_CommittedHitTopOfPrimLeafPtr(Value* p, const Twine &Name = "")
@@ -1836,8 +1797,7 @@ Value* _gepof_CommittedHitTopOfPrimLeafPtr(Value* p, const Twine &Name = "")
     this->getInt32(4),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_PotentialHitTopOfPrimLeafPtr(Value* p, const Twine &Name = "")
@@ -1849,8 +1809,7 @@ Value* _gepof_PotentialHitTopOfPrimLeafPtr(Value* p, const Twine &Name = "")
     this->getInt32(4),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_CommittedHitTopOfPrimIndexDelta(Value* p, const Twine &Name = "")
@@ -1862,8 +1821,7 @@ Value* _gepof_CommittedHitTopOfPrimIndexDelta(Value* p, const Twine &Name = "")
     this->getInt32(3),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_PotentialHitTopOfPrimIndexDelta(Value* p, const Twine &Name = "")
@@ -1875,8 +1833,7 @@ Value* _gepof_PotentialHitTopOfPrimIndexDelta(Value* p, const Twine &Name = "")
     this->getInt32(3),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_CommittedHitFrontFaceDword(Value* p, const Twine &Name = "")
@@ -1888,8 +1845,7 @@ Value* _gepof_CommittedHitFrontFaceDword(Value* p, const Twine &Name = "")
     this->getInt32(3),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_PotentialHitFrontFaceDword(Value* p, const Twine &Name = "")
@@ -1901,8 +1857,7 @@ Value* _gepof_PotentialHitFrontFaceDword(Value* p, const Twine &Name = "")
     this->getInt32(3),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_topOfNodePtrAndFlags(Value* p, Value* idx1, const Twine &Name = "")
@@ -1915,8 +1870,7 @@ Value* _gepof_topOfNodePtrAndFlags(Value* p, Value* idx1, const Twine &Name = ""
     this->getInt32(4),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_hitGroupShaderRecordInfo(Value* p, Value* idx1, const Twine &Name = "")
@@ -1929,8 +1883,7 @@ Value* _gepof_hitGroupShaderRecordInfo(Value* p, Value* idx1, const Twine &Name 
     this->getInt32(5),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_missShaderRecordInfo(Value* p, Value* idx1, const Twine &Name = "")
@@ -1943,8 +1896,7 @@ Value* _gepof_missShaderRecordInfo(Value* p, Value* idx1, const Twine &Name = ""
     this->getInt32(6),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_topOfInstanceLeafPtr(Value* p, Value* idx1, const Twine &Name = "")
@@ -1957,8 +1909,7 @@ Value* _gepof_topOfInstanceLeafPtr(Value* p, Value* idx1, const Twine &Name = ""
     this->getInt32(7),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_MemRay_org(Value* p, Value* idx1, Value* idx2, const Twine &Name = "")
@@ -1971,8 +1922,7 @@ Value* _gepof_MemRay_org(Value* p, Value* idx1, Value* idx2, const Twine &Name =
     this->getInt32(0),
     idx2,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_MemRay_dir(Value* p, Value* idx1, Value* idx2, const Twine &Name = "")
@@ -1985,8 +1935,7 @@ Value* _gepof_MemRay_dir(Value* p, Value* idx1, Value* idx2, const Twine &Name =
     this->getInt32(1),
     idx2,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_MemRay_tnear(Value* p, Value* idx1, const Twine &Name = "")
@@ -1998,8 +1947,7 @@ Value* _gepof_MemRay_tnear(Value* p, Value* idx1, const Twine &Name = "")
     idx1,
     this->getInt32(2),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_MemRay_tfar(Value* p, Value* idx1, const Twine &Name = "")
@@ -2011,8 +1959,7 @@ Value* _gepof_MemRay_tfar(Value* p, Value* idx1, const Twine &Name = "")
     idx1,
     this->getInt32(3),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_RQO_rtStack(Value* p, const Twine &Name = "")
@@ -2021,8 +1968,7 @@ Value* _gepof_RQO_rtStack(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_RQO_TRCtrl(Value* p, const Twine &Name = "")
@@ -2032,8 +1978,7 @@ Value* _gepof_RQO_TRCtrl(Value* p, const Twine &Name = "")
     this->getInt32(1),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_instanceID(Value* p, const Twine &Name = "")
@@ -2043,8 +1988,7 @@ Value* _gepof_InstanceLeaf_instanceID(Value* p, const Twine &Name = "")
     this->getInt32(1),
     this->getInt32(1),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_instanceIndex(Value* p, const Twine &Name = "")
@@ -2054,8 +1998,7 @@ Value* _gepof_InstanceLeaf_instanceIndex(Value* p, const Twine &Name = "")
     this->getInt32(1),
     this->getInt32(2),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_world2obj_vx(Value* p, Value* idx1, const Twine &Name = "")
@@ -2066,8 +2009,7 @@ Value* _gepof_InstanceLeaf_world2obj_vx(Value* p, Value* idx1, const Twine &Name
     this->getInt32(3),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_world2obj_vy(Value* p, Value* idx1, const Twine &Name = "")
@@ -2078,8 +2020,7 @@ Value* _gepof_InstanceLeaf_world2obj_vy(Value* p, Value* idx1, const Twine &Name
     this->getInt32(4),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_world2obj_vz(Value* p, Value* idx1, const Twine &Name = "")
@@ -2090,8 +2031,7 @@ Value* _gepof_InstanceLeaf_world2obj_vz(Value* p, Value* idx1, const Twine &Name
     this->getInt32(5),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_obj2world_p(Value* p, Value* idx1, const Twine &Name = "")
@@ -2102,8 +2042,7 @@ Value* _gepof_InstanceLeaf_obj2world_p(Value* p, Value* idx1, const Twine &Name 
     this->getInt32(6),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_obj2world_vx(Value* p, Value* idx1, const Twine &Name = "")
@@ -2114,8 +2053,7 @@ Value* _gepof_InstanceLeaf_obj2world_vx(Value* p, Value* idx1, const Twine &Name
     this->getInt32(3),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_obj2world_vy(Value* p, Value* idx1, const Twine &Name = "")
@@ -2126,8 +2064,7 @@ Value* _gepof_InstanceLeaf_obj2world_vy(Value* p, Value* idx1, const Twine &Name
     this->getInt32(4),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_obj2world_vz(Value* p, Value* idx1, const Twine &Name = "")
@@ -2138,8 +2075,7 @@ Value* _gepof_InstanceLeaf_obj2world_vz(Value* p, Value* idx1, const Twine &Name
     this->getInt32(5),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_world2obj_p(Value* p, Value* idx1, const Twine &Name = "")
@@ -2150,8 +2086,7 @@ Value* _gepof_InstanceLeaf_world2obj_p(Value* p, Value* idx1, const Twine &Name 
     this->getInt32(6),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_InstanceLeaf_instContToHitGroupIndex(Value* p, const Twine &Name = "")
@@ -2162,8 +2097,7 @@ Value* _gepof_InstanceLeaf_instContToHitGroupIndex(Value* p, const Twine &Name =
     this->getInt32(1),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_QuadLeaf_primIndex0(Value* p, const Twine &Name = "")
@@ -2172,8 +2106,7 @@ Value* _gepof_QuadLeaf_primIndex0(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(1),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_QuadLeaf_topOfGeomIndex(Value* p, const Twine &Name = "")
@@ -2184,8 +2117,7 @@ Value* _gepof_QuadLeaf_topOfGeomIndex(Value* p, const Twine &Name = "")
     this->getInt32(1),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_ProceduralLeaf__primIndex(Value* p, Value* idx1, const Twine &Name = "")
@@ -2195,8 +2127,7 @@ Value* _gepof_ProceduralLeaf__primIndex(Value* p, Value* idx1, const Twine &Name
     this->getInt32(2),
     idx1,
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_ProceduralLeaf_topOfGeomIndex(Value* p, const Twine &Name = "")
@@ -2207,8 +2138,7 @@ Value* _gepof_ProceduralLeaf_topOfGeomIndex(Value* p, const Twine &Name = "")
     this->getInt32(1),
     this->getInt32(0),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 
 Value* _gepof_ShaderRecord_LocalRootSig(Value* p, const Twine &Name = "")
@@ -2217,7 +2147,6 @@ Value* _gepof_ShaderRecord_LocalRootSig(Value* p, const Twine &Name = "")
     this->getInt32(0),
     this->getInt32(1),
   };
-  return this->CreateInBoundsGEP(
-      p->getType()->getPointerElementType(), p, Indices, Name);
+  return this->CreateInBoundsGEP(p, Indices, Name);
 }
 

@@ -79,10 +79,10 @@ bool LowerGlobalRootSignaturePass::runOnFunction(Function &F)
         auto* GlobalPtr = RTB.getGlobalBufferPtr();
         uint32_t Addrspace = GlobalPtr->getType()->getPointerAddressSpace();
         GlobalPtr = RTB.CreateBitCast(GlobalPtr, RTB.getInt8PtrTy(Addrspace));
-        auto *RootSigBase = RTB.CreateGEP(
-            RTB.getInt8Ty(), GlobalPtr, RTB.getInt64(sizeof(RayDispatchGlobalData)));
+        auto *RootSigBase =
+            RTB.CreateGEP(GlobalPtr, RTB.getInt64(sizeof(RayDispatchGlobalData)));
         auto* Ptr = RTB.CreateGEP(
-            RTB.getInt8Ty(), RootSigBase,
+            RootSigBase,
             RTB.CreateShl(GII->getOperand(0), 2));
         Ptr = RTB.CreateBitCast(Ptr, PointerType::get(GII->getType(), Addrspace));
         auto* LI = RTB.CreateLoad(Ptr);

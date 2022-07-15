@@ -1328,8 +1328,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
         perLaneOffset = builder.CreateMul(perLaneOffset, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
         Value* totalOffset = builder.CreateAdd(bufferOffsetForThread, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
-        Value* privateBufferGEP = builder.CreateGEP(
-            privateMemPtr->getType()->getPointerElementType(), privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
+        Value* privateBufferGEP = builder.CreateGEP(privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
         auto DbgUses = llvm::FindDbgAddrUses(pAI);

@@ -2029,12 +2029,10 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
     indexList[0] = m_int0;
     for (unsigned faceid = 0; faceid < num_cube_faces; faceid++) {
         indexList[1] = this->getInt32(faceid);
-        row = this->CreateGEP(float_array_6_3->getType()->getPointerElementType(),
-            float_array_6_3, llvm::ArrayRef<llvm::Value*>(indexList, 2));
+        row = this->CreateGEP(float_array_6_3, llvm::ArrayRef<llvm::Value*>(indexList, 2));
         for (unsigned j = 0; j < num_dimensions; j++) {
             indexList[1] = this->getInt32(j);
-            elt = this->CreateGEP(row->getType()->getPointerElementType(),
-                row, llvm::ArrayRef<llvm::Value*>(indexList, 2));
+            elt = this->CreateGEP(row, llvm::ArrayRef<llvm::Value*>(indexList, 2));
             this->CreateStore(cubeCoordMap[faceid][j], elt);
         }
     }
@@ -2042,12 +2040,10 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
     //Now pick the one the row indexed by int32_faceid
     llvm::Value *finalCoords[3];
     indexList[1] = int32_faceid;
-    row = this->CreateGEP(float_array_6_3->getType()->getPointerElementType(),
-        float_array_6_3, llvm::ArrayRef<llvm::Value*>(indexList, 2));
+    row = this->CreateGEP(float_array_6_3, llvm::ArrayRef<llvm::Value*>(indexList, 2));
     for (unsigned i = 0; i < 3; i++) {
         indexList[1] = this->getInt32(i);
-        elt = this->CreateGEP(row->getType()->getPointerElementType(),
-            row, llvm::ArrayRef<llvm::Value*>(indexList, 2));
+        elt = this->CreateGEP(row, llvm::ArrayRef<llvm::Value*>(indexList, 2));
         finalCoords[i] = this->CreateLoad(elt);
     }
 

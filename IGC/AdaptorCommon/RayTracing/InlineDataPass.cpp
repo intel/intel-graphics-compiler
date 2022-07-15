@@ -177,7 +177,6 @@ bool BindlessInlineDataPass::runOnModule(Module &M)
                 // sizeof(ShaderIdentifier) the 32 bytes, to get the start of the Local arguments in the Shader Record.
                 // The pointer returned by the InlinedData intrinsic is treated as an operand to the getelementptr instruction
                 Value* Ptr = builder.CreateGEP(
-                    builder.getInt8Ty(),
                     basePtrAddr,
                     builder.getInt32(sizeof(ShaderIdentifier)),
                     VALUE_NAME("&localArgs")

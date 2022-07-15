@@ -494,9 +494,7 @@ namespace IGC {
                 if (Idx != 0) {
                     unsigned AS = BasePtrTy->getPointerAddressSpace();
                     NewPtr =
-                        IRB->CreateInBoundsGEP(
-                            BasePtr->getType()->getPointerElementType(),
-                            BasePtr,
+                        IRB->CreateInBoundsGEP(BasePtr,
                             ConstantInt::get(getIntPtrTy(AS), Idx), Name);
                 }
 

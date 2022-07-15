@@ -957,8 +957,7 @@ void RayTracingIntrinsicLoweringPass::padSpills(
     for (uint32_t i = 0; i < NumDWs; i++)
     {
         uint32_t CurOffset = PadStartOffset + 4 * i;
-        auto* Addr = RTB.CreateGEP(
-            RTB.getInt8Ty(), NewFrameAddr, RTB.getInt32(CurOffset));
+        auto* Addr = RTB.CreateGEP(NewFrameAddr, RTB.getInt32(CurOffset));
         Addr = RTB.CreateBitCast(Addr, RTB.getInt32PtrTy(Addrspace));
         RTB.CreateStore(Anchor, Addr);
     }

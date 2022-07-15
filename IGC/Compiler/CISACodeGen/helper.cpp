@@ -1964,7 +1964,7 @@ namespace IGC
         case llvm::Type::HalfTyID:
         case llvm::Type::IntegerTyID:
         case llvm::Type::DoubleTyID:
-            instList.push_back(builder.CreateInBoundsGEP(val->getType()->getPointerElementType(), val, makeArrayRef(indices)));
+            instList.push_back(builder.CreateInBoundsGEP(val, makeArrayRef(indices)));
             break;
         case llvm::Type::StructTyID:
             num = type->getStructNumElements();

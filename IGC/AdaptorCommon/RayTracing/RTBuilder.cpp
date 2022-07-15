@@ -398,8 +398,7 @@ RTBuilder::SWStackPtrVal* RTBuilder::bumpStackPtr(
     RTBuilder::StackOffsetIntVal *FrameOffset,
     RTBuilder::StackOffsetPtrVal* Ptr)
 {
-    auto* FrameTy = FrameAddr->getType()->getPointerElementType();
-    IGC_ASSERT(FrameTy == this->getInt8Ty());
+    IGC_ASSERT(FrameAddr->getType()->getPointerElementType() == this->getInt8Ty());
     IGC_ASSERT_MESSAGE(Amount < std::numeric_limits<uint32_t>::max(), "overflow?");
 
     auto* NewStackOffsetVal = this->CreateAdd(
@@ -409,7 +408,7 @@ RTBuilder::SWStackPtrVal* RTBuilder::bumpStackPtr(
     this->writeNewStackOffsetVal(NewStackOffsetVal, Ptr);
 
     auto* NewStackPtrVal = this->CreateGEP(
-        FrameTy, FrameAddr,
+        FrameAddr,
         this->getInt32((uint32_t)Amount),
         VALUE_NAME("bumped_stack_pointer_val"));
 
@@ -441,7 +440,7 @@ void RTBuilder::writeNewStackOffsetVal(
     for (uint32_t i = 0; i < 3; i++)
     {
         Value* Idx[] = { this->getInt32(0), this->getInt32(i + 1) };
-        Value* CurPtr = this->CreateInBoundsGEP(ArrTy, ArrayPtr, Idx);
+        Value* CurPtr = this->CreateInBoundsGEP(ArrayPtr, Idx);
         GEPs[i] = CurPtr;
         DWs[i] = this->CreateLoad(CurPtr, VALUE_NAME("reload"));
     }
@@ -638,8 +637,7 @@ RTBuilder::getSWStackPointer(
                 this->getAsyncRTStackSize(),
                 this->getNumAsyncStackSlots());
 
-        SWStacksBase = this->CreateGEP(this->getInt8Ty(), rtMemBasePtr,
-            AsyncStacksSize);
+        SWStacksBase = this->CreateGEP(rtMemBasePtr, AsyncStacksSize);
     }
 
     Value* StackID = this->getGlobalAsyncStackID();
@@ -647,19 +645,18 @@ RTBuilder::getSWStackPointer(
 
     Value* Offset = this->CreateMul(StackID, SWStackSizePerRay);
 
-    auto* SWStack = this->CreateGEP(this->getInt8Ty(), SWStacksBase, Offset);
+    auto* SWStack = this->CreateGEP(SWStacksBase, Offset);
 
     if (StackOffset)
-        SWStack = this->CreateGEP(this->getInt8Ty(), SWStack, *StackOffset);
+        SWStack = this->CreateGEP(SWStack, *StackOffset);
 
     CurStackVal = static_cast<RTBuilder::SWStackPtrVal*>(SWStack);
 
     if (SubtractFrameSize)
     {
         SWStack = this->CreateGEP(
-            this->getInt8Ty(),
-            SWStack,
-            this->getInt32(-FrameSize),
+                SWStack,
+                this->getInt32(-FrameSize),
             VALUE_NAME("ResetStackPointer"));
     }
 
@@ -1459,8 +1456,7 @@ Value* RTBuilder::getRayFlagsPtr(RTBuilder::SyncStackPointerVal* perLaneStackPtr
     static_assert((uint32_t)MemRay::Bits::rootNodePtr == 48, "Changed?");
     static_assert((uint32_t)MemRay::Bits::rayFlags == 16, "Changed?");
     Value* Indices[] = { this->getInt32(3) };
-    return this->CreateInBoundsGEP(
-        this->getInt16Ty(), Ptr, Indices, VALUE_NAME("&rayFlags"));
+    return this->CreateInBoundsGEP(Ptr, Indices, VALUE_NAME("&rayFlags"));
 }
 
 // returns an i16 value containing the current rayflags. Sync only.
@@ -2505,8 +2501,7 @@ Value* RTBuilder::computeReturnIP(
         auto* LP = this->getLocalBufferPtr(None);
         const int32_t Offset =
             (ShaderIdentifier::NumSlots - *SlotNum) * sizeof(KSP);
-        ShaderRecordPtr = this->CreateGEP(
-            LP->getType()->getPointerElementType(), LP, this->getInt32(-Offset));
+        ShaderRecordPtr = this->CreateGEP(LP, this->getInt32(-Offset));
     }
     else
     {

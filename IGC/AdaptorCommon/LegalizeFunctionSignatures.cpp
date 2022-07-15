@@ -215,7 +215,7 @@ inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* s
     for (unsigned i = 0; i < sTy->getNumElements(); i++)
     {
         Value* indices[] = { builder.getInt32(0), builder.getInt32(i) };
-        Value* elementPtr = builder.CreateInBoundsGEP(sTy, strPtr, indices);
+        Value* elementPtr = builder.CreateInBoundsGEP(strPtr, indices);
         Value* element = builder.CreateExtractValue(strVal, i);
         builder.CreateStore(element, elementPtr);
     }
@@ -232,7 +232,7 @@ inline Value* LoadFromStruct(IGCLLVM::IRBuilder<>& builder, Value* strPtr)
     for (unsigned i = 0; i < sTy->getNumElements(); i++)
     {
         Value* indices[] = { builder.getInt32(0), builder.getInt32(i) };
-        Value* elementPtr = builder.CreateInBoundsGEP(sTy, strPtr, indices);
+        Value* elementPtr = builder.CreateInBoundsGEP(strPtr, indices);
         Value* element = builder.CreateLoad(elementPtr);
         strVal = builder.CreateInsertValue(strVal, element, i);
     }

@@ -20,7 +20,7 @@ namespace pktz
 
     Value* PacketBuilder::GEP(Value* Ptr, Value* Idx, Type* Ty, const Twine& Name)
     {
-        return IRB()->CreateGEP(Ptr->getType()->getPointerElementType(), Ptr, Idx, Name);
+        return IRB()->CreateGEP(Ptr, Idx, Name);
     }
 
     Value* PacketBuilder::GEP(Type* Ty, Value* Ptr, Value* Idx, const Twine& Name)
@@ -46,7 +46,7 @@ namespace pktz
 
     Value* PacketBuilder::GEPA(Value* Ptr, ArrayRef<Value*> IdxList, const Twine& Name)
     {
-        return IRB()->CreateGEP(Ptr->getType()->getPointerElementType(), Ptr, IdxList, Name);
+        return IRB()->CreateGEP(Ptr, IdxList, Name);
     }
 
     Value* PacketBuilder::GEPA(Type* Ty, Value* Ptr, ArrayRef<Value*> IdxList, const Twine& Name)

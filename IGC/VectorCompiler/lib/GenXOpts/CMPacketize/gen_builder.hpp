@@ -553,7 +553,7 @@ AtomicRMWInst* ATOMIC_RMW(AtomicRMWInst::BinOp Op, Value *Ptr, Value *Val, Atomi
 
 Value* IN_BOUNDS_GEP(Value *Ptr, ArrayRef<Value *> IdxList, const Twine &Name = "")
 {
-    return IRB()->CreateInBoundsGEP(Ptr->getType()->getPointerElementType(), Ptr, IdxList, Name);
+    return IRB()->CreateInBoundsGEP(Ptr, IdxList, Name);
 }
 
 Value* IN_BOUNDS_GEP(Type *Ty, Value *Ptr, ArrayRef<Value *> IdxList, const Twine &Name = "")

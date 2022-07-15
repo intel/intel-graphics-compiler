@@ -216,9 +216,7 @@ void ThreadCombining::CreateLoopKernel(
         Value* rowMul = builder.CreateMul(X, builder.getInt32(numLoopsY));
         Value* index = builder.CreateAdd(rowMul, Y);
         Value* indexes[] = { builder.getInt32(0), index };
-        auto* alloca = llvm::cast<llvm::AllocaInst>(regToAllocaMap[aliveInst]);
-        Value* gepPtr = builder.CreateGEP(
-            alloca->getAllocatedType(), alloca, indexes);
+        Value* gepPtr = builder.CreateGEP(regToAllocaMap[aliveInst], indexes);
         callArgs.push_back(gepPtr);
     }
 

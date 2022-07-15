@@ -168,10 +168,9 @@ namespace
             IGCLLVM::IRBuilder<> builder(m_inst);
             if (isa<LoadInst>(m_inst))
             {
-                Type* scalarType = returnType->getScalarType();
-                Type* ePtrType = PointerType::get(scalarType, ptr->getType()->getPointerAddressSpace());
+                Type* ePtrType = PointerType::get(returnType->getScalarType(), ptr->getType()->getPointerAddressSpace());
                 ptr = builder.CreateBitCast(ptr, ePtrType);
-                return builder.CreateConstGEP1_32(scalarType, ptr, offset);
+                return builder.CreateConstGEP1_32(ptr, offset);
             }
             else
             {
@@ -274,10 +273,9 @@ namespace
             IGCLLVM::IRBuilder<> builder(m_inst);
             if (isa<StoreInst>(m_inst))
             {
-                Type* scalarType = storedType->getScalarType();
-                Type* ePtrType = PointerType::get(scalarType, ptr->getType()->getPointerAddressSpace());
+                Type* ePtrType = PointerType::get(storedType->getScalarType(), ptr->getType()->getPointerAddressSpace());
                 ptr = builder.CreateBitCast(ptr, ePtrType);
-                return builder.CreateConstGEP1_32(scalarType, ptr, offset);
+                return builder.CreateConstGEP1_32(ptr, offset);
             }
             else
             {

@@ -299,8 +299,7 @@ bool BindlessKernelArgLoweringPass::runOnModule(Module &M)
                 static_assert(offsetof(IGC::RTGlobalsAndRootSig, GlobalRootSig) ==
                     sizeof(RayDispatchGlobalData), "changed?");
 
-                basePtr = builder.CreateInBoundsGEP(
-                    basePtr->getType()->getPointerElementType(), basePtr, Indices,
+                basePtr = builder.CreateInBoundsGEP(basePtr, Indices,
                     VALUE_NAME("&GlobalRootSigElt[]"));
 
                 found = true;
@@ -365,8 +364,7 @@ bool BindlessKernelArgLoweringPass::runOnModule(Module &M)
                     };
                 }
 
-                basePtr = builder.CreateInBoundsGEP(
-                    basePtr->getType()->getPointerElementType(), basePtr, Indices,
+                basePtr = builder.CreateInBoundsGEP(basePtr, Indices,
                     VALUE_NAME("&LocalRootSigElt[]"));
 
                 found = true;
