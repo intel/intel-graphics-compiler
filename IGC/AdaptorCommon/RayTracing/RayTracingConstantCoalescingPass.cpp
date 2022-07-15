@@ -351,7 +351,8 @@ static SmallVector<BlockLoadInfo, 4> getBlockLoads(
         uint32_t NumElts = static_cast<uint32_t>(Size / EltSize);
 
         auto* VectorTy = IGCLLVM::FixedVectorType::get(EltTy, NumElts);
-        auto* Ptr = RTB.CreateGEP(GlobalPtr, RTB.getInt32((uint32_t)Start));
+        auto* Ptr = RTB.CreateGEP(GlobalPtr->getType()->getPointerElementType(),
+            GlobalPtr, RTB.getInt32((uint32_t)Start));
         Ptr = RTB.CreateBitCast(Ptr, VectorTy->getPointerTo(AddrSpace));
         auto *LI = RTB.CreateAlignedLoad(
             Ptr, IGCLLVM::getAlign(MinBlockAlign), VALUE_NAME("BlockLoad"));

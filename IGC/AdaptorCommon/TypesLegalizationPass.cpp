@@ -109,7 +109,7 @@ Value* TypesLegalizationPass::CreateGEP( IGCLLVM::IRBuilder<> &builder,Value *pt
   for(unsigned idx : indices) {
     gepIndices.push_back( builder.getInt32( idx ) );
   }
-  return builder.CreateGEP( ptr,gepIndices );
+  return builder.CreateGEP( ptr->getType()->getPointerElementType(),ptr,gepIndices );
 }
 
 ///////////////////////////////////////////////////////////////////////

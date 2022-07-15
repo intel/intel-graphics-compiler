@@ -378,7 +378,7 @@ namespace IGC
                             VALUE_NAME(pAI->getName() + ".totalOffset"));
 
                     Value* cast = ConstantExpr::getAddrSpaceCast(slmVar, pAI->getType());
-                    Value* ptr = builder.CreateGEP(cast, totalOffset);
+                    Value* ptr = builder.CreateGEP(origType, cast, totalOffset);
 
                     pAI->replaceAllUsesWith(ptr);
                     pAI->eraseFromParent();
