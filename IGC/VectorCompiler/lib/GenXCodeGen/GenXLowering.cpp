@@ -3425,17 +3425,15 @@ bool GenXLowering::processInst(Instruction *Inst) {
 bool GenXLowering::lowerAllAny(CallInst *CI) {
   auto *Op = CI->getArgOperand(0);
 
-  auto *SrcTy = Op->getType();
-  if (SrcTy->isIntOrIntVectorTy(1))
-    return false;
-
-  IGC_ASSERT(SrcTy->isVectorTy());
-
   IRBuilder<> Builder(CI);
 
-  auto NElem = cast<IGCLLVM::FixedVectorType>(SrcTy)->getNumElements();
+  auto *SrcTy = cast<IGCLLVM::FixedVectorType>(Op->getType());
+  auto NElem = SrcTy->getNumElements();
   Type *Int1Ty = Type::getInt1Ty(CI->getContext());
   Type *Ty = IGCLLVM::FixedVectorType::get(Int1Ty, NElem);
+
+  if (SrcTy->isIntOrIntVectorTy(1) && NElem > 1)
+    return false;
 
   Value *Arg = nullptr;
 
@@ -3443,8 +3441,10 @@ bool GenXLowering::lowerAllAny(CallInst *CI) {
     Arg = Ext->getOperand(0);
   else if (auto *Ext = dyn_cast<ZExtInst>(Op))
     Arg = Ext->getOperand(0);
-  else
+  else if (!SrcTy->isIntOrIntVectorTy(1))
     Arg = Builder.CreateICmpNE(Op, ConstantInt::get(SrcTy, 0));
+  else
+    Arg = Op;
 
   Value *NewInst = nullptr;
 
