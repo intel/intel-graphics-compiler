@@ -462,7 +462,7 @@ public:
     LSC_CACHE_OPTS translateLSCCacheControlsFromValue(
         llvm::Value *value, bool isLoad) const;
     LSC_CACHE_OPTS translateLSCCacheControlsFromMetadata(
-        llvm::Instruction* inst, bool isLoad) const;
+        llvm::Instruction* inst, bool isLoad, bool isTGM) const;
     struct LscMessageFragmentInfo {
         LSC_DATA_ELEMS fragElem;
         int            fragElemCount;
