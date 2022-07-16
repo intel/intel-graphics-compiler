@@ -650,7 +650,7 @@ void SpillManager::replaceSpilledFlagCondMod(G4_BB*         bb,
                 else
                 {
                     // insert kill for temp flag
-                    auto pseudoKill = builder.createPseudoKill(tmpDcl, PseudoKillType::Other);
+                    auto pseudoKill = builder.createPseudoKill(tmpDcl, PseudoKillType::Other, false);
                     bb->insertBefore(it, pseudoKill);
                 }
             }

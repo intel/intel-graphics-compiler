@@ -821,9 +821,9 @@ public:
     G4_Declare* createHardwiredDeclare(
         uint32_t numElements, G4_Type type, uint32_t regNum, uint32_t regOff);
 
-    G4_INST* createPseudoKills(std::initializer_list<G4_Declare*> dcls, PseudoKillType ty);
+    void createPseudoKills(std::initializer_list<G4_Declare*> dcls, PseudoKillType ty);
 
-    G4_INST* createPseudoKill(G4_Declare* dcl, PseudoKillType ty);
+    G4_INST* createPseudoKill(G4_Declare* dcl, PseudoKillType ty, bool addToInstList);
 
     G4_INST* createEUWASpill(bool addToInstList);
 

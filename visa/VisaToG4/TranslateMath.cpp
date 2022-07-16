@@ -353,7 +353,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     G4_Declare* t0 = getImmDcl(dbl_constant_0, exsize);
     G4_Declare* t1 = getImmDcl(dbl_constant_1, exsize);
 
-    inst = createPseudoKills({ t6, t7, t8, t9, t10, t11, t12, t13, tmpFlag }, PseudoKillType::Src);
+    createPseudoKills({ t6, t7, t8, t9, t10, t11, t12, t13, tmpFlag }, PseudoKillType::Src);
 
     G4_SrcRegRegion tsrc0(*this, Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
     G4_SrcRegRegion tsrc1(*this, Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
@@ -905,7 +905,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     G4_Declare *t2 = getImmDcl(flt_constant_0, exsize);
     G4_Declare *t5 = getImmDcl(flt_constant_1, exsize);
 
-    inst = createPseudoKills({ t1, t4, t6, t8, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
+    createPseudoKills({ t1, t4, t6, t8, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
 
     // those are for drcp
     G4_SrcRegRegion valueOneScalarReg(*this, Mod_src_undef, Direct, t2->getRegVar(), 0, 0, getRegionScalar(), Type_F);
@@ -1257,7 +1257,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     G4_Declare* t0 = getImmDcl(flt_constant_0, exsize);
     G4_Declare *t8 = getImmDcl(flt_constant_05, exsize);
 
-    inst = createPseudoKills ({ t6, t7, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
+    createPseudoKills ({ t6, t7, t9, t10, t11, tmpFlag }, PseudoKillType::Src);
 
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
 
@@ -1632,7 +1632,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
     G4_Declare *t10 = createTempVarWithNoSpill(element_size, Type_DF, Any);
     G4_Declare *t11 = createTempVarWithNoSpill(element_size, Type_DF, Any);
 
-    inst = createPseudoKills({t6, t7, t8, t9, t10, t11, flagReg }, PseudoKillType::Src);
+    createPseudoKills({t6, t7, t8, t9, t10, t11, flagReg }, PseudoKillType::Src);
 
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size, instExecSize);
 

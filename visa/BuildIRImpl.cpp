@@ -1023,23 +1023,20 @@ G4_Declare* IR_Builder::createHardwiredDeclare(
     return dcl;
 }
 
-G4_INST* IR_Builder::createPseudoKills(
+void IR_Builder::createPseudoKills(
     std::initializer_list<G4_Declare*> dcls, PseudoKillType ty)
 {
-    G4_INST* inst = nullptr;
     for (auto dcl : dcls)
     {
-        inst = createPseudoKill(dcl, ty);
+        createPseudoKill(dcl, ty, true);
     }
-
-    return inst;
 }
 
-G4_INST* IR_Builder::createPseudoKill(G4_Declare* dcl, PseudoKillType ty)
+G4_INST* IR_Builder::createPseudoKill(G4_Declare* dcl, PseudoKillType ty, bool addToInstList)
 {
     auto dstRgn = createDst(dcl->getRegVar(), 0, 0, 1, Type_UD);
     G4_INST* inst = createIntrinsicInst(nullptr, Intrinsic::PseudoKill, g4::SIMD1,
-        dstRgn, createImm((unsigned int)ty, Type_UD), nullptr, nullptr, InstOpt_WriteEnable, true);
+        dstRgn, createImm((unsigned int)ty, Type_UD), nullptr, nullptr, InstOpt_WriteEnable, addToInstList);
 
     return inst;
 }

@@ -2290,7 +2290,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         {
             --iterToInsert;
         } while ((*iterToInsert)->isPseudoKill());
-        G4_INST* killInst = fg.builder->createPseudoKill(pseudoKill.first, PseudoKillType::FromLiveness);
+        G4_INST* killInst = fg.builder->createPseudoKill(pseudoKill.first, PseudoKillType::FromLiveness, false);
         bb->insertBefore(iterToInsert, killInst);
     }
 

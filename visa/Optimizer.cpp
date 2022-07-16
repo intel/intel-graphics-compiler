@@ -12708,7 +12708,7 @@ void Optimizer::newDoNoMaskWA()
         flagDecl->setDoNotSpill();
 
         // 0: pseudo kill inst
-        aInstKill = builder.createPseudoKill(flagDecl, PseudoKillType::Src);
+        aInstKill = builder.createPseudoKill(flagDecl, PseudoKillType::Src, false);
         aBB->insertBefore(aInsertBeforeII, aInstKill);
 
         // 1: (W) mov DW0  flagVar
@@ -12792,7 +12792,7 @@ void Optimizer::newDoNoMaskWA()
         const G4_Declare* rDcl = decl->getRootDeclare();
         if ((aCondMod->getRightBound() - aCondMod->getLeftBound() + 1) >= rDcl->getNumberFlagElements())
         {
-            auto pseudoKill = builder.createPseudoKill(const_cast<G4_Declare*>(rDcl), PseudoKillType::Other);
+            auto pseudoKill = builder.createPseudoKill(const_cast<G4_Declare*>(rDcl), PseudoKillType::Other, false);
             aBB->insertBefore(aII, pseudoKill);
         }
     };
@@ -12858,7 +12858,7 @@ void Optimizer::newDoNoMaskWA()
 
         if (needKill)
         {
-            auto pseudoKill = builder.createPseudoKill(const_cast<G4_Declare*>(primaryDcl), PseudoKillType::Other);
+            auto pseudoKill = builder.createPseudoKill(const_cast<G4_Declare*>(primaryDcl), PseudoKillType::Other, false);
             aBB->insertBefore(aII, pseudoKill);
         }
     };
@@ -12904,7 +12904,7 @@ void Optimizer::newDoNoMaskWA()
 
         // (W) pseudo kill inst
         // (W) mov (1|M0) waTemp  tP
-        G4_INST* pseudoKill = builder.createPseudoKill(tPDecl, PseudoKillType::Src);
+        G4_INST* pseudoKill = builder.createPseudoKill(tPDecl, PseudoKillType::Src, false);
         aBB->insertBefore(aII, pseudoKill);
         G4_VarBase* tmp = getWATemp(1, Type_UD, Even_Word)->getRegVar();
         G4_DstRegRegion* dst_tmp = builder.createDst(tmp, 0, 0, 1, Ty);
@@ -14834,7 +14834,7 @@ void Optimizer::doNoMaskWA()
 
         if (needKill)
         {
-            auto pseudoKill = builder.createPseudoKill(const_cast<G4_Declare*>(primaryDcl), PseudoKillType::Other);
+            auto pseudoKill = builder.createPseudoKill(const_cast<G4_Declare*>(primaryDcl), PseudoKillType::Other, false);
             aBB->insertBefore(aII, pseudoKill);
         }
     };
