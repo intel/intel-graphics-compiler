@@ -12237,10 +12237,6 @@ void EmitPass::emitScalarAtomics(
     unsigned int identityValue = 0;
     switch (atomic_op)
     {
-    case EATOMIC_OR:
-        identityValue = 0;
-        op = EOPCODE_OR;
-        break;
     case EATOMIC_IADD:
     case EATOMIC_SUB:
     case EATOMIC_INC:
@@ -12589,8 +12585,10 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
                     atomic_op == EATOMIC_IMIN ||
                     atomic_op == EATOMIC_IMAX;
 
-                bool isOrAtomic = (atomic_op == EATOMIC_OR);
-                if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrAtomic)
+                // capture the special case of atomic_or with 0 (it's used to simulate atomic_load)
+                bool isOrWith0Atomic = atomic_op == EATOMIC_OR && OrWith0Atomic(pInst, 2);
+
+                if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrWith0Atomic)
                     return true;
             }
         }
@@ -12625,8 +12623,10 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
                     atomic_op == EATOMIC_IMIN ||
                     atomic_op == EATOMIC_IMAX;
 
-                bool isOrAtomic = (atomic_op == EATOMIC_OR);
-                if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrAtomic)
+                // capture the special case of atomic_or with 0 (it's used to simulate atomic_load)
+                bool isOrWith0Atomic = atomic_op == EATOMIC_OR && OrWith0Atomic(pInst, 4);
+
+                if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) || isOrWith0Atomic)
                     return true;
             }
         }
@@ -12746,7 +12746,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         e_alignment uniformAlign = isA64 ? EALIGN_2GRF : EALIGN_GRF;
         // Re-align the pointer if it's not GRF aligned.
         pDstAddr = ReAlignUniformVariable(pDstAddr, uniformAlign);
-        if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInsn, 2))
+        if (atomic_op == EATOMIC_OR)
         {
             // special case of atomic_load
             emitScalarAtomicLoad(pInsn, resource, pDstAddr, nullptr /*u*/, nullptr /*v*/, nullptr /*r*/, pSrc0, isA64, bitwidth);
@@ -12958,7 +12958,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
         pV = ReAlignUniformVariable(pV, EALIGN_GRF);
         pR = ReAlignUniformVariable(pR, EALIGN_GRF);
 
-        if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInsn, 4))
+        if (atomic_op == EATOMIC_OR)
         {
             // special case of atomic_load
             emitScalarAtomicLoad(pInsn, resource, nullptr /*pDstAddr*/, pU, pV, pR, pSrc0, false /*isA64*/, bitwidth);
