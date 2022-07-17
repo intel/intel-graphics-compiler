@@ -297,7 +297,6 @@ namespace IGC
             CVariable* flatImageHeight, CVariable* flatImagePitch);
         void NamedBarrier(e_barrierKind BarrierKind, CVariable* src0, CVariable* src1);
         void LSC_TypedReadWrite(
-            LSC_CACHE_OPTS cacheOpts,
             LSC_OP subOp, ResourceDescriptor* resource,
             CVariable* pU, CVariable* pV, CVariable* pR, CVariable* pLOD,
             CVariable* pSrcDst,

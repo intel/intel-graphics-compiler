@@ -8826,7 +8826,7 @@ void EmitPass::emitLoadRawIndexed(
             setRovCacheCtrl(inst);
         }
         LSC_CACHE_OPTS cacheOpts =
-            translateLSCCacheControlsFromMetadata(inst, true, false);
+            translateLSCCacheControlsFromMetadata(inst, true);
         emitLSCVectorLoad(
             bufPtrv,
             varOffset,
@@ -9134,7 +9134,7 @@ void EmitPass::emitLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)
     {
         offset = immOffset ? offset : inst->getPointerOperand();
         LSC_CACHE_OPTS cacheOpts =
-            translateLSCCacheControlsFromMetadata(inst, true, false);
+            translateLSCCacheControlsFromMetadata(inst, true);
         emitLSCVectorLoad(
             inst->getPointerOperand(),
             offset,
@@ -10090,7 +10090,7 @@ void EmitPass::emitStoreRawIndexed(
     if (shouldGenerateLSC(inst))
     {
         LSC_CACHE_OPTS cacheOpts =
-            translateLSCCacheControlsFromMetadata(inst, false, false);
+            translateLSCCacheControlsFromMetadata(inst, false);
         emitLSCVectorStore(
             pBufPtr,
             varOffset,
@@ -10253,7 +10253,7 @@ void EmitPass::emitStore(StoreInst* inst, Value* varOffset, ConstantInt* immOffs
     if (shouldGenerateLSC(inst))
     {
         LSC_CACHE_OPTS cacheOpts =
-            translateLSCCacheControlsFromMetadata(inst, false, false);
+            translateLSCCacheControlsFromMetadata(inst, false);
         emitLSCVectorStore(
             inst->getPointerOperand(),
             varOffset,
@@ -13131,7 +13131,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
     pLOD = pLOD ? BroadcastIfUniform(pLOD, m_currShader->GetIsUniform(pInsn)) : nullptr;
 
     ResourceDescriptor resource = GetResourceVariable(pllSrcBuffer);
-    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, true, true);
+
     uint numChannels = iSTD::BitCount(writeMask.getEM());
     auto doLSC = shouldGenerateLSC(pInsn);
 
@@ -13150,7 +13150,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
         if (doLSC)
         {
-            m_encoder->LSC_TypedReadWrite(cacheOpts, LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst, 4 * 8,
+            m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst, 4 * 8,
                 numLanes(nativeDispatchMode), LSC_ADDR_SIZE_32b, writeMask.getEM());
         }
         else
@@ -13194,7 +13194,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
             if (doLSC)
             {
-                m_encoder->LSC_TypedReadWrite(cacheOpts, LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, m_destination, 4 * 8,
+                m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, m_destination, 4 * 8,
                     numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM());
             }
             else
@@ -13226,7 +13226,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 
                 if (doLSC)
                 {
-                    m_encoder->LSC_TypedReadWrite(cacheOpts, LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst[i], 4 * 8,
+                    m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst[i], 4 * 8,
                         numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM());
                 }
                 else
@@ -13274,7 +13274,6 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
     pV = pV ? BroadcastIfUniform(pV) : nullptr;
     pR = pR ? BroadcastIfUniform(pR) : nullptr;
     pLOD = pLOD ? BroadcastIfUniform(pLOD) : nullptr;
-    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, false, true);
 
     uint writeMask =
         (!llvm::isa<UndefValue>(pllSrc_X) ? 1 : 0) |
@@ -18830,32 +18829,21 @@ EmitPass::setCacheOptionsForConstantBufferLoads(Instruction& inst) const
     return cacheOpts;
 }
 
-static bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad, bool isTGM)
+static bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad)
 {
-    uint32_t CacheVal = 0;
-    if (isTGM)
-    {
-        CacheVal = isLoad ?
-            IGC_GET_FLAG_VALUE(TgmLoadCacheControlOverride) :
-            IGC_GET_FLAG_VALUE(TgmStoreCacheControlOverride);
-    }
-    else
-    {
-        CacheVal = isLoad ?
-            IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride) :
-            IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride);
-    }
-
-    if (CacheVal != 0)
+    uint32_t l1l3CacheVal = isLoad ?
+        IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride) :
+        IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride);
+    if (l1l3CacheVal != 0)
     {
         cacheOpts = translateLSCCacheControlsEnum(
-            static_cast<LSC_L1_L3_CC>(CacheVal), isLoad);
+            static_cast<LSC_L1_L3_CC>(l1l3CacheVal), isLoad);
     }
-    return CacheVal != 0;
+    return l1l3CacheVal != 0;
 }
 
 LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
-    Instruction* inst, bool isLoad, bool isTGM) const
+    Instruction* inst, bool isLoad) const
 {
     LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
 
@@ -18894,7 +18882,7 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
         }
     }
 
-    if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM))
+    if (tryOverrideCacheOpts(cacheOpts, isLoad))
     {
         // global override cache settings have highest priority
         return cacheOpts;
@@ -19336,7 +19324,7 @@ void EmitPass::emitLSCLoad(
     LSC_DATA_ORDER data_order,
     int immOffset)
 {
-    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true, false);
+    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
     emitLSCLoad(cacheOpts, dst, offset, elemSize, numElems, blockOffset,
                 resource, addr_size, data_order, immOffset);
 }
@@ -19372,7 +19360,7 @@ void EmitPass::emitLSCStore(
     LSC_DATA_ORDER data_order,
     int immOffset)
 {
-    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false, false);
+    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, false);
     emitLSCStore(cacheOpts, src, offset, elemSize, numElems, blockOffset,
                  resource, addr_size, data_order, immOffset);
 }
