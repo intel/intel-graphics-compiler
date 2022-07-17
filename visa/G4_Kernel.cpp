@@ -2165,9 +2165,9 @@ G4_BB* G4_Kernel::getNextBB(G4_BB* bb) const
         auto curBB = (*it);
         if (curBB == bb)
         {
+            it++;
             if (it != ie)
             {
-                it++;
                 nextBB = (*it);
             }
             break;
@@ -2178,13 +2178,26 @@ G4_BB* G4_Kernel::getNextBB(G4_BB* bb) const
 }
 
 unsigned G4_Kernel::getBinOffsetOfBB(G4_BB* bb) const {
-    if (!bb)
-        return 0;
+    G4_INST* succInst = bb ? bb->getFirstInst() : nullptr;
 
-    // Given a bb, return the binary offset of first non-label of instruction.
-    auto it = std::find_if(bb->begin(), bb->end(), [](G4_INST* inst) { return !inst->isLabel(); });
-    assert(it != bb->end() && "expect at least one non-label inst in second BB");
-    return (unsigned)(*it)->getGenOffset();
+    if (succInst != nullptr) {
+      return (unsigned)succInst->getGenOffset();
+    }
+    else {
+      G4_BB* succBB = bb ? getNextBB(bb) : nullptr;
+
+      while ((succBB != nullptr) && (succInst == nullptr)) {
+        succInst = succBB->getFirstInst();
+        succBB = getNextBB(succBB);
+      }
+
+      if (succInst != nullptr) {
+        return (unsigned)succInst->getGenOffset();
+      }
+      else {
+        return 0;
+      }
+    }
 }
 
 unsigned G4_Kernel::getPerThreadNextOff() const
