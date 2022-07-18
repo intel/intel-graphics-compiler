@@ -4110,6 +4110,15 @@ namespace IGC
                 {
                     V = 4; // register pressure only
                 }
+                else  // platform-dependent setting for latency-scheduling
+                {
+                    if (!m_program->m_Platform->isCoreChildOf(IGFX_XE_HPG_CORE)) {
+                        V |= (1<<5);  // do not use iterative scheduling before DG2
+                    }
+                    if (!m_program->m_Platform->isCoreChildOf(IGFX_XE_HPC_CORE)) {
+                        V |= (1<<4);  // skip hold-list before PVC
+                    }
+                }
                 SaveOption(vISA_preRA_ScheduleCtrl, V);
             }
 

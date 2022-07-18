@@ -1464,13 +1464,6 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
     };
 
     bool Changed = false;
-    // skip those improvements on those old platforms
-    if (kernel.getPlatform() < Xe_DG2) {
-        config.DoNotIterate = 1;
-    }
-    if (kernel.getPlatform() <= Xe_DG2) {
-        config.SkipHoldList = 1;
-    }
     if (tryLatencyHiding()) {
         // try grouping-threshold decremently until we find a schedule likely won't spill
         unsigned GTMax = 144;
