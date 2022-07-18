@@ -442,8 +442,8 @@ void CGen8OpenCLProgram::GetZEBinary(
         (const uint8_t*)buildOptions, buildOptionsSize);
     zebuilder.setProductFamily(m_Platform.eProductFamily);
 
-    std::vector<string> elfVecNames;      // Vector of parameters for the linker, contains in/out ELF file names and params
-    std::vector<char*> elfVecPtrs;        // Vector of pointers to the elfVecNames vector elements
+    std::list<string> elfVecNames;      // List of parameters for the linker, contains in/out ELF file names and params
+    std::vector<const char*> elfVecPtrs;        // Vector of pointers to the elfVecNames vector elements
     SIMDMode simdMode = SIMDMode::SIMD8;  // Currently processed kernel's SIMD
 
     SmallString<64> tempDir;  // Do not worry its size, because system_temp_directory() appends if needed.
@@ -566,7 +566,7 @@ void CGen8OpenCLProgram::GetZEBinary(
                             IGC_ASSERT_MESSAGE(false, "A unique name for a linked ELF file not created");
                         }
                         elfVecNames.push_back(elfLinkerLogName);  // 1st element in this vector of names; required by the linker
-                        elfVecPtrs.push_back((char*)(elfVecNames.at(elfVecNames.size() - 1).c_str()));
+                        elfVecPtrs.push_back(elfVecNames.back().c_str());
 
                         ctx = kernel->GetContext();  // Remember context for future usage regarding warning emission (if needed).
                     }
@@ -598,7 +598,7 @@ void CGen8OpenCLProgram::GetZEBinary(
 
                         // A temporary input ELF file filled, so its name can be added to a vector of parameters for the linker
                         elfVecNames.push_back(elfFileNameStr);
-                        elfVecPtrs.push_back((char*)(elfVecNames.at(elfVecNames.size() - 1).c_str()));
+                        elfVecPtrs.push_back(elfVecNames.back().c_str());
                     }
                     else
                     {
@@ -632,11 +632,18 @@ void CGen8OpenCLProgram::GetZEBinary(
 
                 std::string linkedElfFileNameStrWithParam = "-o" + linkedElfFileNameStr;
                 elfVecNames.push_back(linkedElfFileNameStrWithParam);
-                elfVecPtrs.push_back((char*)(elfVecNames.at(elfVecNames.size() - 1).c_str()));
+                elfVecPtrs.push_back(elfVecNames.back().c_str());
 
                 std::string elfLinkerOpt2 = "--relocatable";
                 elfVecNames.push_back(elfLinkerOpt2);
-                elfVecPtrs.push_back((char*)(elfVecNames.at(elfVecNames.size() - 1).c_str()));
+                elfVecPtrs.push_back(elfVecNames.back().c_str());
+
+                if (IGC_IS_FLAG_DISABLED(UseMTInLLD))
+                {
+                    std::string elfLinkerOpt1 = "--no-threads";
+                    elfVecNames.push_back(elfLinkerOpt1);
+                    elfVecPtrs.push_back(elfVecNames.back().c_str());
+                }
 
                 // TODO: remove if not needed
                 //std::string elfLinkerOpt1 = "--emit-relocs";  // "-q"
