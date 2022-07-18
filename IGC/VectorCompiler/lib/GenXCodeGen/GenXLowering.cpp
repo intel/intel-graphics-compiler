@@ -219,6 +219,7 @@ private:
   bool splitGatherScatter(CallInst *CI, unsigned IID);
   bool processTwoAddressOpnd(CallInst *CI);
   bool processInst(Instruction *Inst);
+  bool lowerAbs(CallInst *CI);
   bool lowerAllAny(CallInst *CI);
   bool lowerRdRegion(Instruction *Inst);
   bool lowerWrRegion(Instruction *Inst);
@@ -265,7 +266,6 @@ private:
   bool lowerFMulAdd(CallInst *CI);
   bool lowerBitreverse(CallInst *CI);
   bool lowerFunnelShift(CallInst *CI, unsigned IntrinsicID);
-  bool lowerFAbs(CallInst *CI);
   bool lowerF32MathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID);
   bool lowerF32FastMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID);
   bool lowerSlmInit(CallInst *CI);
@@ -3341,6 +3341,12 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerTrap(CI);
     case Intrinsic::ctpop:
       return lowerCtpop(CI);
+#if LLVM_VERSION_MAJOR >= 12
+    case Intrinsic::smin:
+    case Intrinsic::smax:
+    case Intrinsic::umin:
+    case Intrinsic::umax:
+#endif
     case Intrinsic::minnum:
     case Intrinsic::maxnum:
       return lowerMinMax(CI, IntrinsicID);
@@ -3379,8 +3385,11 @@ bool GenXLowering::processInst(Instruction *Inst) {
     case Intrinsic::fshl:
     case Intrinsic::fshr:
       return lowerFunnelShift(CI, IntrinsicID);
+#if LLVM_VERSION_MAJOR >= 12
+    case Intrinsic::abs:
+#endif
     case Intrinsic::fabs:
-      return lowerFAbs(CI);
+      return lowerAbs(CI);
     case Intrinsic::ceil:
       return lowerF32MathIntrinsic(CI, GenXIntrinsic::genx_rndu);
     case Intrinsic::floor:
@@ -4839,6 +4848,16 @@ bool GenXLowering::lowerUnorderedFCmpInst(FCmpInst *Inst) {
 
 static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
   switch (ID) {
+#if LLVM_VERSION_MAJOR >= 12
+  case Intrinsic::smin:
+    return GenXIntrinsic::genx_smin;
+  case Intrinsic::smax:
+    return GenXIntrinsic::genx_smax;
+  case Intrinsic::umin:
+    return GenXIntrinsic::genx_umin;
+  case Intrinsic::umax:
+    return GenXIntrinsic::genx_umax;
+#endif
   case Intrinsic::minnum:
     return GenXIntrinsic::genx_fmin;
   case Intrinsic::maxnum:
@@ -4848,7 +4867,7 @@ static GenXIntrinsic::ID convertMinMaxIntrinsic(unsigned ID) {
   return GenXIntrinsic::not_any_intrinsic;
 }
 
-// Lower llvm minnum/maxnum to genx fmin/fmax.
+// Lower llvm min/max intrinsics to genx <ty>min/<ty>max.
 bool GenXLowering::lowerMinMax(CallInst *CI, unsigned IntrinsicID) {
   auto *ResTy = CI->getType();
   auto *MinMaxDecl = GenXIntrinsic::getGenXDeclaration(
@@ -5617,11 +5636,23 @@ bool GenXLowering::lowerFMulAdd(CallInst *CI) {
   return true;
 }
 
-bool GenXLowering::lowerFAbs(CallInst *CI) {
+bool GenXLowering::lowerAbs(CallInst *CI) {
   IGC_ASSERT(CI);
-  auto *Decl = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), GenXIntrinsic::genx_absf, {CI->getType()});
+  // Initialize values to those for FP types and then overwrite in
+  // case we're actually dealing with integer abs.
   SmallVector<Value *, 2> Args{CI->args()};
+  GenXIntrinsic::ID AbsID = GenXIntrinsic::genx_absf;
+  Type *Ty = CI->getType();
+  if (Ty->isIntOrIntVectorTy()) {
+    AbsID = GenXIntrinsic::genx_absi;
+    // Compared to llvm.fabs, llvm.abs has an additional
+    // 'is_int_min_poison' argument. Drop that for genx.absi
+    Args.assign({CI->getArgOperand(0)});
+  } else
+    IGC_ASSERT_MESSAGE(
+        Ty->isFPOrFPVectorTy(), "Unexpected type of abs/fabs intrinsic");
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), AbsID, {Ty});
   IRBuilder<> Builder{CI};
   auto *Res = Builder.CreateCall(Decl, Args, CI->getName());
   CI->replaceAllUsesWith(Res);
