@@ -16673,6 +16673,40 @@ void Optimizer::applyFusedCallWA()
         return nullptr;
     };
 
+    auto updateSubroutineTableIfNeeded = [&](G4_BB* aLeadBB,
+        G4_BB* aB0, G4_BB* aB1, G4_BB* aS0, G4_BB* aS1, G4_BB* aEndB_or_null)
+    {
+        if (int numFuncs = (int)fg.sortedFuncTable.size())
+        {
+            for (int i = 0; i < numFuncs; ++i)
+            {
+                FuncInfo* pFInfo = fg.sortedFuncTable[i];
+                assert(pFInfo);
+                auto& tBBs = pFInfo->getBBList();
+                auto tBI = std::find(tBBs.begin(), tBBs.end(), aLeadBB);
+                if (tBI != tBBs.end())
+                {
+                    // This is FuncInfo for the current func (including kernel entry func)
+                    // Make sure new BBs are in the FuncInfo's BBList.
+                    std::list<G4_BB*> toBeInserted;
+                    toBeInserted.push_back(aB0);
+                    toBeInserted.push_back(aB1);
+                    toBeInserted.push_back(aS0);
+                    toBeInserted.push_back(aS1);
+                    if (aEndB_or_null)
+                    {
+                        toBeInserted.push_back(aEndB_or_null);
+                    }
+                    tBBs.insert(tBI, toBeInserted.begin(), toBeInserted.end());
+
+                    // inc call count as a call is duplicated
+                    pFInfo->incrementCallCount();
+                    break;
+                }
+            }
+        }
+    };
+
     for (BB_LIST_ITER BI = fg.begin(), BE = fg.end(); BI != BE;)
     {
         BB_LIST_ITER currBI = BI;
@@ -16700,33 +16734,91 @@ void Optimizer::applyFusedCallWA()
         }
 
         BB_LIST_ITER nextBI = BI;
-        G4_BB* nextBB = (*nextBI);
+        G4_BB* origNextBB = (*nextBI);
+        G4_BB* nextBB = origNextBB;
+        G4_BB* newNextBB = nullptr;
         if (G4_INST* leadInst = nextBB->getFirstInst())
         {
             if (leadInst->opcode() == G4_while || leadInst->opcode() == G4_endif)
             {
                 // Cannot insert join, otherwise, label for while/endif would be wrong
                 // Here, create a new empty BB so that we can add join into it.
-                G4_BB* endBB = fg.createNewBBWithLabel("CallWA_EndBB", callI->getLineNo(), callI->getCISAOff());
-                nextBI = fg.insert(nextBI, endBB);
+                newNextBB = fg.createNewBBWithLabel("CallWA_EndBB", callI->getLineNo(), callI->getCISAOff());
+                nextBI = fg.insert(nextBI, newNextBB);
 
                 // Adjust control-flow
                 fg.removePredSuccEdges(BB, nextBB);
 
-                fg.addPredSuccEdges(BB, endBB, true);
-                fg.addPredSuccEdges(endBB, nextBB, false);
-                nextBB = endBB;
+                fg.addPredSuccEdges(BB, newNextBB, true);
+                fg.addPredSuccEdges(newNextBB, nextBB, false);
+                nextBB = newNextBB;
 
-                endBB->setDivergent(BB->isDivergent());
+                newNextBB->setDivergent(BB->isDivergent());
                 if ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
                     builder.getOption(vISA_forceNoMaskWA))
                 {
-                    endBB->setBBType(G4_BB_NM_WA_TYPE);
+                    newNextBB->setBBType(G4_BB_NM_WA_TYPE);
                 }
             }
         }
         G4_ExecSize simdsz = fg.getKernel()->getSimdSize();
         G4_SrcRegRegion* Target = callI->getSrc(0)->asSrcRegRegion();
+
+        // Create BBs, two for each then (BigEU) and else (SmallEU) branches.
+        G4_BB* bigB0 = fg.createNewBBWithLabel("CallWA_BigB0", callI->getLineNo(), callI->getCISAOff());
+        G4_BB* bigB1 = fg.createNewBBWithLabel("CallWA_BigB1", callI->getLineNo(), callI->getCISAOff());
+        G4_BB* smallB0 = fg.createNewBBWithLabel("CallWA_SmallB0", callI->getLineNo(), callI->getCISAOff());
+        G4_BB* smallB1 = fg.createNewBBWithLabel("CallWA_SmallB1", callI->getLineNo(), callI->getCISAOff());
+        // Note that nextBI points to the nextBB!
+        fg.insert(nextBI, bigB0);
+        fg.insert(nextBI, bigB1);
+        fg.insert(nextBI, smallB0);
+        fg.insert(nextBI, smallB1);    // this is an empty BB. Might be needed for stack restore, etc.
+
+        G4_Label* endLabel = nextBB->front()->getLabel();
+        G4_INST* joinSmallB0 = builder.createCFInst(nullptr, G4_join, simdsz, endLabel, nullptr, InstOpt_NoOpt, false);
+        smallB0->push_back(joinSmallB0);
+
+        G4_Label* smallB0Label = smallB0->front()->getLabel();
+        G4_INST* gotoEnd = builder.createCFInst(nullptr, G4_goto, simdsz, smallB0Label, endLabel, InstOpt_NoOpt, false);
+        bigB1->push_back(gotoEnd);
+
+        // Need to insert a join in nextBB
+        G4_INST* tjoin = nextBB->getFirstInst();
+        if (tjoin == nullptr || tjoin->opcode() != G4_join)
+        {
+            G4_INST* finalJoin = builder.createCFInst(nullptr, G4_join, simdsz, getNextJoinLabel(nextBI), nullptr, InstOpt_NoOpt, false);
+            if (tjoin == nullptr)
+            {
+                nextBB->insertBefore(nextBB->end(), finalJoin);
+            }
+            else
+            {
+                auto iter = std::find(nextBB->begin(), nextBB->end(), tjoin);
+                nextBB->insertBefore(iter, finalJoin);
+            }
+        }
+
+        fg.removePredSuccEdges(BB, nextBB);
+
+        fg.addPredSuccEdges(BB, bigB0, true);
+        fg.addPredSuccEdges(BB, smallB0, false);
+        fg.addPredSuccEdges(bigB0, bigB1);
+        fg.addPredSuccEdges(bigB1, nextBB);
+        fg.addPredSuccEdges(smallB0, smallB1);
+        fg.addPredSuccEdges(smallB1, nextBB, true);
+
+        // To make RA know that the real inst can flow from bigB1 to smallB0
+        // an edge is added from bigB1 to smallB0
+        fg.addPredSuccEdges(bigB1, smallB0);
+
+        // divergence property update
+        //   new BBs's divergence is the same as BB's
+        bool isDivergent = BB->isDivergent();
+        bigB0->setDivergent(isDivergent);
+        bigB1->setDivergent(isDivergent);
+        smallB0->setDivergent(isDivergent);
+        smallB1->setDivergent(isDivergent);
 
         // I0:  mov tmp  sr0.0
         G4_VarBase* V_sr0 = builder.phyregpool.getSr0Reg();
@@ -16769,21 +16861,6 @@ void Optimizer::applyFusedCallWA()
         BB->push_back(I1);
         BB->push_back(I2);
         BB->push_back(I3);
-
-        G4_BB* bigB0 = fg.createNewBBWithLabel("CallWA_BigB0", callI->getLineNo(), callI->getCISAOff());
-        G4_BB* bigB1 = fg.createNewBBWithLabel("CallWA_BigB1", callI->getLineNo(), callI->getCISAOff());
-        G4_BB* smallB0 = fg.createNewBBWithLabel("CallWA_SmallB0", callI->getLineNo(), callI->getCISAOff());
-        G4_BB* smallB1 = fg.createNewBBWithLabel("CallWA_SmallB1", callI->getLineNo(), callI->getCISAOff());
-        // Note that nextBI points to the nextBB!
-        fg.insert(nextBI, bigB0);
-        fg.insert(nextBI, bigB1);
-        fg.insert(nextBI, smallB0);
-        fg.insert(nextBI, smallB1);    // this is an empty BB. Might be needed for stack restore, etc.
-
-        // insert insts that goes before call/goto
-        G4_Label* endLabel = nextBB->front()->getLabel();
-        G4_INST* joinSmallB0 = builder.createCFInst(nullptr, G4_join, simdsz, endLabel, nullptr, InstOpt_NoOpt, false);
-        smallB0->push_back(joinSmallB0);
 
         // update local dataflow
         I0->addDefUse(I1, Opnd_src0);
@@ -16915,14 +16992,10 @@ void Optimizer::applyFusedCallWA()
             kernel.m_maskOffWAInsts.insert(std::make_pair(I4_patch_add, BB));
         }
 
-        G4_Label* smallB0Label = smallB0->front()->getLabel();
         G4_Predicate* pred_m1 = builder.createPredicate(PredState_Minus, F->getRegVar(), 0);
         G4_INST* gotoSmallB0 = builder.createCFInst(pred_m1, G4_goto, simdsz, smallB0Label, smallB0Label, InstOpt_NoOpt, false);
         BB->push_back(gotoSmallB0);
         I1->addDefUse(gotoSmallB0, Opnd_pred);
-
-        G4_INST* gotoEnd = builder.createCFInst(nullptr, G4_goto, simdsz, smallB0Label, endLabel, InstOpt_NoOpt, false);
-        bigB1->push_back(gotoEnd);
 
         // Need to create fcall info
         if (G4_FCALL* orig_fcallinfo = builder.getFcallInfo(callI))
@@ -16930,69 +17003,7 @@ void Optimizer::applyFusedCallWA()
             builder.addFcallInfo(nCallI, orig_fcallinfo->getArgSize(), orig_fcallinfo->getRetSize());
         }
         // Might need to update subroutine table
-        if (int numFuncs = (int)fg.sortedFuncTable.size())
-        {
-            for (int i = 0; i < numFuncs; ++i)
-            {
-                FuncInfo* pFInfo = fg.sortedFuncTable[i];
-                assert(pFInfo);
-                auto& tBBs = pFInfo->getBBList();
-                auto tBI = std::find(tBBs.begin(), tBBs.end(), nextBB);
-                if (tBI != tBBs.end())
-                {
-                    // This is FuncInfo for the current func (including kernel entry func)
-                    // Make sure new BBs are in the FuncInfo's BBList.
-                    std::list<G4_BB*> toBeInserted;
-                    toBeInserted.push_back(bigB0);
-                    toBeInserted.push_back(bigB1);
-                    toBeInserted.push_back(smallB0);
-                    toBeInserted.push_back(smallB1);
-                    tBBs.insert(tBI, toBeInserted.begin(), toBeInserted.end());
-
-                    // inc call count as a call is duplicated
-                    pFInfo->incrementCallCount();
-                    break;
-                }
-            }
-        }
-
-        // Need to insert a join in nextBB
-        G4_INST* tjoin = nextBB->getFirstInst();
-        if (tjoin == nullptr || tjoin->opcode() != G4_join)
-        {
-            G4_INST* finalJoin = builder.createCFInst(nullptr, G4_join, simdsz, getNextJoinLabel(nextBI), nullptr, InstOpt_NoOpt, false);
-            if (tjoin == nullptr)
-            {
-                nextBB->insertBefore(nextBB->end(), finalJoin);
-            }
-            else
-            {
-                auto iter = std::find(nextBB->begin(), nextBB->end(), tjoin);
-                nextBB->insertBefore(iter, finalJoin);
-            }
-        }
-
-        // build control-flow
-        fg.removePredSuccEdges(BB, nextBB);
-
-        fg.addPredSuccEdges(BB, bigB0, true);
-        fg.addPredSuccEdges(BB, smallB0, false);
-        fg.addPredSuccEdges(bigB0, bigB1);
-        fg.addPredSuccEdges(bigB1, nextBB);
-        fg.addPredSuccEdges(smallB0, smallB1);
-        fg.addPredSuccEdges(smallB1, nextBB, true);
-
-        // To make RA know that the real inst can flow from bigB1 to smallB0
-        // an edge is added from bigB1 to smallB0
-        fg.addPredSuccEdges(bigB1, smallB0);
-
-        // divergence property update
-        //   new BBs's divergence is the same as BB's
-        bool isDivergent = BB->isDivergent();
-        bigB0->setDivergent(isDivergent);
-        bigB1->setDivergent(isDivergent);
-        smallB0->setDivergent(isDivergent);
-        smallB1->setDivergent(isDivergent);
+        updateSubroutineTableIfNeeded(origNextBB, bigB0, bigB1, smallB0, smallB1, newNextBB);
 
         // nomask wa property
         //   if BB is marked with NM_WA_TYPE, set all new BBs with NM_WA_TYPE
