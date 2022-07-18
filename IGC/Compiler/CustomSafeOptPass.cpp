@@ -6820,6 +6820,62 @@ void typedWriteZeroStoreCheck(Function& F)
     }
 }
 
+void clampPowZeroOptimization(Function& F) {
+
+    std::vector<llvm::IntrinsicInst*> powInstructions;
+
+    for (auto BI = F.begin(), BE = F.end(); BI != BE; ++BI)
+    {
+        for (auto II = BI->begin(); II != BI->end(); ++II) {
+            llvm::IntrinsicInst* intrinsicInst = llvm::dyn_cast<llvm::IntrinsicInst>(II);
+            if (intrinsicInst && intrinsicInst->getIntrinsicID() == Intrinsic::pow) {
+                IRBuilder<> builder(intrinsicInst);
+                IntrinsicInst* minInst = dyn_cast<IntrinsicInst>(intrinsicInst->getOperand(0));
+                if (minInst && minInst->hasOneUse()) {
+                    IntrinsicInst* maxInst = dyn_cast<IntrinsicInst>(minInst->getOperand(0));
+                    if (maxInst) {
+                        auto minInstID = minInst->getIntrinsicID();
+                        auto maxInstID = maxInst->getIntrinsicID();
+                        Instruction* fsubInst = dyn_cast<Instruction>(maxInst->getOperand(0));
+                        if (fsubInst && minInstID == Intrinsic::minnum && maxInstID == Intrinsic::maxnum &&
+                            (fsubInst->getOpcode() == Instruction::FSub || fsubInst->getOpcode() == Instruction::FAdd)) {
+                            powInstructions.push_back(intrinsicInst);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (auto iter : powInstructions) {
+        Instruction* powInst = &(*iter);
+
+        IntrinsicInst* minInst = dyn_cast<IntrinsicInst>(powInst->getOperand(0));
+        IntrinsicInst* maxInst = dyn_cast<IntrinsicInst>(minInst->getOperand(0));
+        Instruction* fsubInst = dyn_cast<Instruction>(maxInst->getOperand(0));
+        IRBuilder<> builder(powInst);
+        llvm::Value* zeroF = ConstantFP::get(Type::getFloatTy(powInst->getContext()), 0);
+        builder.SetInsertPoint(maxInst);
+
+        //if true, do pow calculations, else bypass pow
+        llvm::Value* cmpZero = builder.CreateFCmpONE(zeroF, fsubInst);
+
+        Instruction* termatorInst = SplitBlockAndInsertIfThen(cmpZero, powInst, false);
+        BasicBlock* thenBlock = termatorInst->getParent();
+        BasicBlock* mainBlock = thenBlock->getSinglePredecessor();
+        BasicBlock* endBlock = termatorInst->getSuccessor(0);
+        maxInst->moveBefore(termatorInst);
+        minInst->moveBefore(termatorInst);
+        iter->moveBefore(termatorInst);
+
+        PHINode* newPhi = PHINode::Create(powInst->getType(), 2, "", &(endBlock->front()));
+        iter->replaceUsesOutsideBlock(newPhi, iter->getParent());
+
+        newPhi->addIncoming(powInst, thenBlock);
+        newPhi->addIncoming(zeroF, mainBlock);
+    }
+}
+
 bool InsertBranchOpt::runOnFunction(Function& F)
 {
     pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
@@ -6834,6 +6890,11 @@ bool InsertBranchOpt::runOnFunction(Function& F)
     }
 
     typedWriteZeroStoreCheck(F);
+
+    if (IGC_IS_FLAG_ENABLED(EnableClampPowOpt))
+    {
+        clampPowZeroOptimization(F);
+    }
 
     return false;
 }
