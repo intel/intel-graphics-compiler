@@ -10436,7 +10436,7 @@ int GlobalRA::coloringRegAlloc()
                 return VISA_SPILL;
             }
         }
-        else if (builder.getOption(vISA_LocalRA) && (!hasStackCall || builder.getOption(vISA_Partitioning)))
+        else if (builder.getOption(vISA_LocalRA) && (!hasStackCall))
         {
             copyMissingAlignment();
             BankConflictPass bc(*this, false);
@@ -10610,7 +10610,7 @@ int GlobalRA::coloringRegAlloc()
             !kernel.getHasAddrTaken();
         if (builder.getOption(vISA_FailSafeRA) &&
             kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
-            !hasStackCall &&
+            (!hasStackCall || builder.getOption(vISA_Partitioning)) &&
             ((iterationNo == maxRAIterations - 1) ||
              (allowAddrTaken &&
               iterationNo == failSafeRAIteration)))
