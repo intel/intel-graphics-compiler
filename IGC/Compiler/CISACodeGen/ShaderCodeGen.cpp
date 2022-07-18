@@ -1951,6 +1951,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         bool disableGOPT = ( (IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) ||
                                IGC_GET_FLAG_VALUE(ForceFastestSIMD)) &&
                              ((IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_GOPT) ||
+                               IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT ||
                                pContext->getModuleMetaData()->compOpt.DisableFastestGopt));
 
         if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT)
@@ -2155,6 +2156,41 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
         else
         {
+            if (pContext->m_instrTypes.hasMultipleBB)
+            {
+                assert(disableGOPT);
+                // disable loop unroll for excessive large shaders
+                if (pContext->m_instrTypes.numOfLoop)
+                {
+                    int LoopUnrollThreshold = pContext->m_DriverInfo.GetLoopUnrollThreshold();
+
+                    // override the LoopUnrollThreshold if the registry key is set
+                    if (IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold) != 0)
+                    {
+                        LoopUnrollThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold);
+                    }
+
+                    // if the shader contains indexable_temp, we'll keep unroll
+                    bool unroll = IGC_IS_FLAG_DISABLED(DisableLoopUnroll);
+                    bool hasIndexTemp = (pContext->m_indexableTempSize[0] > 0);
+                    // Enable loop unrolling for stage 1 for now due to persisting regressions
+                    bool disableLoopUnrollStage1 =
+                        IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) &&
+                           (//IGC_GET_FLAG_VALUE(FastestS1Experiments) == FCEXP_NO_EXPRIMENT ||
+                            (IGC_GET_FLAG_VALUE(FastestS1Experiments) & FCEXP_DISABLE_UNROLL));
+                    if ((LoopUnrollThreshold > 0 &&
+                         unroll &&
+                         !disableLoopUnrollStage1)
+                        || hasIndexTemp)
+                    {
+                        mpm.add(IGCLLVM::createLoopUnrollPass());
+                    }
+                }
+                if (IGC_IS_FLAG_ENABLED(EnableGVN))
+                {
+                    mpm.add(llvm::createGVNPass());
+                }
+            }
             if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt) && pContext->platform.enableImmConstantOpt())
             {
                 mpm.add(createIGCIndirectICBPropagaionPass());
