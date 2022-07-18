@@ -10515,7 +10515,18 @@ int GlobalRA::coloringRegAlloc()
         builder.getOldA0Dot2Temp();
         if (builder.hasScratchSurface())
         {
+            MUST_BE_TRUE(builder.instList.empty(),
+                "Inst list should be empty at this point before creating instruction that initializes SSO");
             builder.initScratchSurfaceOffset();
+            if (!builder.instList.empty())
+            {
+                // If SSO is not yet initialized, insert the created
+                // instruction into the entry BB.
+                auto entryBB = builder.kernel.fg.getEntryBB();
+                auto iter = std::find_if(entryBB->begin(), entryBB->end(),
+                    [](G4_INST* inst) { return !inst->isLabel(); });
+                entryBB->splice(iter, builder.instList);
+            }
         }
         //BuiltinR0 may be spilled which is not allowed.
         //FIXME: BuiltinR0 spill cost has been set to MAX already,
