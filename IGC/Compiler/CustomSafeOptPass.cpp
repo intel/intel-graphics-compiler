@@ -2695,6 +2695,28 @@ void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Va
     I.eraseFromParent();
 }
 
+void GenSpecificPattern::createAddcIntrinsicPattern(Instruction& ZEI, Value* val1, Value* val2, Instruction& addInst)
+{
+    IRBuilder<> Builder(&ZEI);
+
+    SmallVector<Value*, 2> packed_res_params;
+    packed_res_params.push_back(val1);
+    packed_res_params.push_back(val2);
+    Type* types[] = { IGCLLVM::FixedVectorType::get(val1->getType(), 2), val1->getType() };
+    Function* addcIntrinsic = llvm::GenISAIntrinsic::getDeclaration(ZEI.getModule(), GenISAIntrinsic::GenISA_uaddc, types);
+    Value* newVal = Builder.CreateCall(addcIntrinsic, packed_res_params);
+    CallInst* packed_res_call = cast<CallInst>(newVal);
+
+    SmallVector<Value*, 2> packed_res;
+    packed_res.push_back(Builder.CreateExtractElement(packed_res_call, Builder.getInt32(0)));
+    packed_res.push_back(Builder.CreateExtractElement(packed_res_call, Builder.getInt32(1)));
+
+    ZEI.replaceAllUsesWith(packed_res.back());
+    packed_res.pop_back();
+    addInst.replaceAllUsesWith(packed_res.back());
+    packed_res.pop_back();
+}
+
 void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
 {
     if (I.getOpcode() == Instruction::Or)
@@ -3500,12 +3522,67 @@ void GenSpecificPattern::visitZExtInst(ZExtInst& ZEI)
     if (!Cmp)
         return;
 
-    IRBuilder<> Builder(&ZEI);
+    using namespace llvm::PatternMatch;
+    CmpInst::Predicate pred;
+    Value* val1 = nullptr;
+    Value* val2 = nullptr;
+    Constant *C1, *C2;
 
-    Value* S = Builder.CreateSExt(Cmp, ZEI.getType());
-    Value* N = Builder.CreateNeg(S);
-    ZEI.replaceAllUsesWith(N);
-    ZEI.eraseFromParent();
+    /*
+    * from
+    *   %add = add i32 %0, 1
+    *   %cmp = icmp eq i32 %0, -1
+    *   %conv = zext i1 %cmp to i32
+    * to
+    *   %call = call <2 x i32> @llvm.genx.GenISA.uaddc.v2i32.i32(i32 %0, i32 1)
+    *   %zext.0 = extractelement <2 x i32> %call, i32 0     --> result
+    *   %zext.1 = extractelement <2 x i32> %call, i32 1     --> carry
+    */
+    auto addcPattern1 = m_Cmp(pred, m_Value(val1), m_Constant(C1));
+    auto addcPattern2 = m_Add(m_Value(val1), m_Constant(C2));
+
+    /*
+    * from
+    *   %add.1 = add i32 %1, %conv
+    *   %cmp.1 = icmp ult i32 %add.1, %1
+    *   %conv.1 = zext i1 %cmp.1 to i32
+    * to
+    *   %call.1 = call <2 x i32> @llvm.genx.GenISA.uaddc.v2i32.i32(i32 %1, i32 %zext.1)
+    *   %zext.2 = extractelement <2 x i32> %call.1, i32 0     --> result
+    *   %zext.3 = extractelement <2 x i32> %call.1, i32 1     --> carry
+    */
+    auto addcPattern3 = m_Cmp(pred, m_Add(m_Value(val1), m_Value(val2)), m_Value(val1));
+
+    if (match(Cmp, addcPattern1))
+    {
+        for (auto U : val1->users())
+        {
+            Instruction* inst = dyn_cast<Instruction>(U);
+            if (inst && inst->getOpcode() == Instruction::Add)
+            {
+                if (match(inst, addcPattern2))
+                {
+                    createAddcIntrinsicPattern(ZEI, val1, C2, *inst);
+                }
+            }
+        }
+    }
+    else if (match(Cmp, addcPattern3))
+    {
+        Instruction* inst = dyn_cast<Instruction>(Cmp->getOperand(0));
+        if (inst && inst->getOpcode() == Instruction::Add)
+        {
+            createAddcIntrinsicPattern(ZEI, val1, val2, *inst);
+        }
+    }
+    else
+    {
+        IRBuilder<> Builder(&ZEI);
+        Value* S = Builder.CreateSExt(Cmp, ZEI.getType());
+        Value* N = Builder.CreateNeg(S);
+        ZEI.replaceAllUsesWith(N);
+        ZEI.eraseFromParent();
+    }
 }
 
 void GenSpecificPattern::visitIntToPtr(llvm::IntToPtrInst& I)
