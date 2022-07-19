@@ -1810,6 +1810,7 @@ namespace IGC
             if (!nosBufferAllocated && isRuntimeValue) {
                 IGC_ASSERT_MESSAGE(arg.isConstantBuf(), "RuntimeValues must be marked as isConstantBuf");
                 AllocateNOSConstants(offset);
+                offset = iSTD::Align(offset, getGRFSize());
                 nosBufferAllocated = true;
             }
 
