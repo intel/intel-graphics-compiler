@@ -7007,13 +7007,9 @@ void G4_Operand::updateFootPrint(BitSet& footprint, bool isSet, const IR_Builder
         // 2. Skip FLAG now because IGC might create a predicate var with
         //    8 elements, i.e., SETP (8), while the access granularity of FLAG
         //    is a word (16 bits)
-        // 3. Skip predefined var now as vISA user might not emit the correct
-        //    ArgSize attribute in some cases.
         if (isAreg())
             return true;
         if (isFlag())
-            return true;
-        if (getTopDcl() && getTopDcl()->isPreDefinedVar())
             return true;
         return lb <= rb && rb < footprint.getSize();
     };
