@@ -248,17 +248,17 @@ GenXLoadStoreLowering::ZExtOrTruncIfNeeded(Value *From, Type *ToTy,
   Value *Res = From;
   if (auto *FromVTy = dyn_cast<IGCLLVM::FixedVectorType>(FromTy);
       FromVTy && FromVTy->getNumElements() == 1) {
-    auto *TmpRes = CastInst::CreateBitOrPointerCast(
-        Res, FromVTy->getElementType(), "", InsertBefore);
+    auto *TmpRes = Builder.CreateBitOrPointerCast(
+        Res, FromVTy->getElementType(), "");
     Res = TmpRes;
   }
   if (auto *ToVTy = dyn_cast<IGCLLVM::FixedVectorType>(ToTy))
     Res = Builder.CreateVectorSplat(ToVTy->getNumElements(), Res,
                                     Res->getName() + ".splat");
   if (FromTySz < ToTySz)
-    Res = CastInst::CreateZExtOrBitCast(Res, ToTy, "", InsertBefore);
+    Res = Builder.CreateZExtOrBitCast(Res, ToTy, "");
   else if (FromTySz > ToTySz)
-    Res = CastInst::CreateTruncOrBitCast(Res, ToTy, "", InsertBefore);
+    Res = Builder.CreateTruncOrBitCast(Res, ToTy, "");
   return Res;
 }
 
@@ -296,11 +296,11 @@ GenXLoadStoreLowering::normalizeDataVecForSVMIntrinsic(
   if (To->getScalarType()->isPointerTy() &&
       To->getScalarType()->getPointerElementType()->isFunctionTy()) {
     To = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
-    Res = CastInst::Create(Instruction::PtrToInt, From, To, "", Inst);
+    Res = Builder.CreatePtrToInt(From, To, "");
     NumElts *= 2;
     To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
     EltSz = I32Ty->getPrimitiveSizeInBits() / genx::ByteBits;
-    Res = CastInst::Create(Instruction::BitCast, Res, To, "", Inst);
+    Res = Builder.CreateBitCast(Res, To, "");
   } else if (DL_->getTypeSizeInBits(cast<VectorType>(To)->getElementType()) <
              genx::DWordBits) {
     auto EltTy = cast<VectorType>(To)->getElementType();
@@ -309,19 +309,19 @@ GenXLoadStoreLowering::normalizeDataVecForSVMIntrinsic(
     if (!EltTy->isIntegerTy()) {
       auto Ty = IntegerType::get(Inst->getContext(), EltTySz);
       To = IGCLLVM::FixedVectorType::get(Ty, NumElts);
-      From = CastInst::Create(Instruction::BitCast, From, To, "", Inst);
+      From = Builder.CreateBitCast(From, To, "");
     }
     To = IGCLLVM::FixedVectorType::get(I32Ty, NumElts);
-    Res = CastInst::CreateZExtOrBitCast(From, To, "", Inst);
+    Res = Builder.CreateZExtOrBitCast(From, To, "");
   } else if (DL_->getTypeSizeInBits(cast<VectorType>(To)->getElementType()) ==
              genx::QWordBits) {
     if (From->getType()->getScalarType()->isPointerTy()) {
       auto *NewType = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
-      From = CastInst::Create(CastInst::PtrToInt, From, NewType, "", Inst);
+      From = Builder.CreatePtrToInt(From, NewType, "");
       To = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
       EltSz = I64Ty->getPrimitiveSizeInBits() / genx::ByteBits;
     }
-    Res = CastInst::CreateBitOrPointerCast(From, To, "", Inst);
+    Res = Builder.CreateBitOrPointerCast(From, To, "");
   }
 
   return std::make_pair(Res, EltSz);
@@ -472,8 +472,7 @@ Instruction *GenXLoadStoreLowering::createSVMGatherImpl(
   Value *Pred = Builder.CreateVectorSplat(NumEltsToLoad, PredVal);
 
   Value *PointerOp = LdI.getPointerOperand();
-  Value *Offset =
-      CastInst::Create(Instruction::PtrToInt, PointerOp, I64Ty, "", &LdI);
+  Value *Offset = Builder.CreatePtrToInt(PointerOp, I64Ty, "");
 
   ZExtOrTruncIfNeeded(Offset, I64Ty, &LdI);
 
@@ -586,8 +585,7 @@ Instruction *GenXLoadStoreLowering::createSVMScatterImpl(
   Value *PointerOp = StI.getPointerOperand();
   Type *I64Ty = Builder.getInt64Ty();
   Value *PredVal = Builder.getTrue();
-  Value *Offset =
-      CastInst::Create(Instruction::PtrToInt, PointerOp, I64Ty, "", &StI);
+  Value *Offset = Builder.CreatePtrToInt(PointerOp, I64Ty, "");
 
   unsigned ValueNumElts =
       cast<IGCLLVM::FixedVectorType>(NormalizedOldVal.getType())
