@@ -181,8 +181,6 @@ namespace IGC
 
         void createBitcastExtractInsertPattern(llvm::BinaryOperator& I,
             llvm::Value* Op1, llvm::Value* Op2, unsigned extractNum1, unsigned extractNum2);
-
-        void createAddcIntrinsicPattern(llvm::Instruction& I, llvm::Value* val1, llvm::Value* val2, llvm::Instruction& inst);
     };
 
     class FCmpPaternMatch : public llvm::FunctionPass, public llvm::InstVisitor<FCmpPaternMatch>
