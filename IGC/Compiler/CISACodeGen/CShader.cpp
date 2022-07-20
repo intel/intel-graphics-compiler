@@ -1899,8 +1899,9 @@ CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
     IGC_ASSERT_MESSAGE(isConstBase(v) ||
         isa<InsertValueInst>(v) ||
         isa<CallInst>(v) ||
-        isa<Argument>(v),
-        "Invalid struct symbol usage! Struct symbol should only come from const, insertvalue, call, or function arg");
+        isa<Argument>(v) ||
+        isa<PHINode>(v),
+        "Invalid instruction using struct type!");
 
     if (isa<InsertValueInst>(v))
     {
@@ -1934,10 +1935,10 @@ CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
             return it->second;
         }
     }
-    else
+    else if (isConstBase(v))
     {
         // Const cannot be mapped
-        IGC_ASSERT(isConstBase(v) && symbolMapping.find(v) == symbolMapping.end());
+        IGC_ASSERT(symbolMapping.find(v) == symbolMapping.end());
     }
 
     bool isUniform = forceVectorInit ? false : m_WI->isUniform(v);
