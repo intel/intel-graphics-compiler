@@ -1108,6 +1108,14 @@ void DepSet::setOutputsDstDep()
     auto tType = op.getType();
     auto typeSizeBits = TypeSizeInBitsWithDefault(tType, 32);
 
+    // A trick to correct the call dst footprint that its dst type is implicit dw but it acutally writes to
+    // continuous two dw for each lane. Double the type size so that we will get the correct footprint in
+    // DepSet::setDstRegion
+    if (m_instruction->getOp() == Op::CALL || m_instruction->getOp() == Op::CALLA) {
+        assert(tType == Type::D && op.getKind() == Operand::Kind::DIRECT && op.getDirRegName() == RegName::GRF_R);
+        typeSizeBits = typeSizeBits * 2;
+    }
+
     // Instructions having implicit write to acc
     if (m_instruction->hasInstOpt(InstOpt::ACCWREN) ||
         m_instruction->getOp() == Op::SUBB ||
