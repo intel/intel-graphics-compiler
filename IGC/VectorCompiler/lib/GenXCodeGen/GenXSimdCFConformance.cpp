@@ -3718,8 +3718,9 @@ static void fixBlockDataBeforeRemoval(BasicBlock *BB, BasicBlock *SuccBB) {
   IGC_ASSERT_MESSAGE(BB->getSingleSuccessor() == SuccBB,
                      "Awaiting only one successor");
   bool HasOnePred = SuccBB->hasNPredecessors(1);
+  Instruction *InsertBefore = SuccBB->getFirstNonPHI();
   while (auto *DBG = dyn_cast<llvm::DbgVariableIntrinsic>(BB->begin())) {
-    DBG->moveBefore(SuccBB->getFirstNonPHI());
+    DBG->moveBefore(InsertBefore);
     if (!HasOnePred)
       IGCLLVM::setDbgVariableLocationToUndef(DBG);
   }

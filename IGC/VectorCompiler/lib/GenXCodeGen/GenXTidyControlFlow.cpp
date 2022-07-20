@@ -73,6 +73,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/PassRegistry.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "GENX_TIDYCONTROLFLOW"
@@ -142,6 +143,21 @@ FunctionPass *llvm::createGenXTidyControlFlowPass() {
 }
 
 /***********************************************************************
+ * moveDbgBeforeBlockRemoval : Move debug intrinsics from basic block
+ *    before erasing it
+ */
+static void moveDbgBeforeBlockRemoval(BasicBlock *BB, Instruction *InsertBefore,
+                                      bool MakeUndef = false) {
+
+  while (auto *DBG = dyn_cast<llvm::DbgVariableIntrinsic>(BB->begin())) {
+    DBG->moveBefore(InsertBefore);
+    if (MakeUndef)
+      IGCLLVM::setDbgVariableLocationToUndef(DBG);
+  }
+  IGC_ASSERT_MESSAGE(BB->front().isTerminator(), "Expected that only terminator instruction remains");
+}
+
+/***********************************************************************
  * GenXTidyControlFlow::runOnFunction : process a function
  */
 bool GenXTidyControlFlow::runOnFunction(Function &F)
@@ -174,7 +190,9 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F)
     // FIXME: By claiming preserving liveness, we cannot remove phi(s) in empty
     // blocks. Need to adjust the pass order if such phi(s) really need
     // eliminating.
-    BranchInst *BI = dyn_cast<BranchInst>(&BB->front());
+    if (dyn_cast<PHINode>(&BB->front()))
+      continue;
+    BranchInst *BI = dyn_cast<BranchInst>(BB->getFirstNonPHIOrDbg());
     if (!BI || !BI->isUnconditional())
       continue;
     // Do not remove BB if it has more than one predecessor.
@@ -193,10 +211,12 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F)
     }
     // We are removing this block. First adjust phi nodes in the successor.
     auto Succ = BI->getSuccessor(0);
+    bool HasOnePred = Succ->hasNPredecessors(1);
     adjustPhiNodesForBlockRemoval(Succ, BB);
     // Change all of BB's uses to use its successor instead.
     IGC_ASSERT_MESSAGE(BB->getSinglePredecessor() != BB, "self loop");
     BB->replaceAllUsesWith(BI->getSuccessor(0));
+    moveDbgBeforeBlockRemoval(BB, Succ->getFirstNonPHI(), !HasOnePred);
     BI->eraseFromParent();
     BB->eraseFromParent();
     Modified = true;
@@ -255,6 +275,7 @@ void GenXTidyControlFlow::fixGotoOverBranch(Function *F)
     // fallthrough. This then represents a backward goto.
     adjustPhiNodesForBlockRemoval(SuccBr->getSuccessor(0), Succ);
     Br->setSuccessor(1, SuccBr->getSuccessor(0));
+    moveDbgBeforeBlockRemoval(Succ, Br);
     Succ->eraseFromParent();
     Modified = true;
   }
