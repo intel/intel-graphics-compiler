@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,6 +23,8 @@ extern __constant int __UseNativeFP16AtomicMinMax;
 extern __constant int __HasInt64SLMAtomicCAS;
 extern __constant int __UseNativeFP64GlobalAtomicAdd;
 
+extern __constant int __HasThreadPauseSupport;
+
   __local int* __builtin_IB_get_local_lock();
   __global int* __builtin_IB_get_global_lock();
   void __builtin_IB_eu_thread_pause(uint value);
@@ -32,7 +34,8 @@ extern __constant int __UseNativeFP64GlobalAtomicAdd;
   { \
   volatile bool done = false; \
   while(!done) { \
-       __builtin_IB_eu_thread_pause(32); \
+       if(__HasThreadPauseSupport) \
+            __builtin_IB_eu_thread_pause(32); \
        if(SPIRV_BUILTIN(AtomicCompareExchange, _p3i32_i32_i32_i32_i32_i32, )(__builtin_IB_get_local_lock(), Device, Relaxed, Relaxed, 1, 0) == 0) {
 
 #define LOCAL_SPINLOCK_END() \
@@ -1863,7 +1866,8 @@ double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p0f64_i32_i32_f64, )( __
 
 double SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p1f64_i32_i32_f64, )( __global double *Pointer, int Scope, int Semantics, double Value)
 {
-    if (__UseNativeFP64GlobalAtomicAdd)
+    // We don't use __builtin_IB_eu_thread_pause() for platforms which don't support it
+    if (__UseNativeFP64GlobalAtomicAdd || !__HasThreadPauseSupport)
     {
         atomic_operation_1op_as_double( __builtin_IB_atomic_add_global_f64, double, Pointer, Scope, Semantics, Value, true );
     }
