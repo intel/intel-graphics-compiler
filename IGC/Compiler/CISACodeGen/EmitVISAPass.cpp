@@ -13520,7 +13520,7 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
             scope = LSC_SCOPE_TILE;
         }
         LSC_FENCE_OP op = getLSCMemoryFenceOp(Global_Mem_Fence, L1_Invalidate);
-        if (inst->getMetadata("forceFlushNone"))
+        if (inst->getMetadata("forceFlushNone") || sfid == LSC_SLM)
         {
             op = LSC_FENCE_OP_NONE;
         }

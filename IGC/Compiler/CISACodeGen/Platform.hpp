@@ -1332,5 +1332,12 @@ bool hasSIMD8Support() const
 {
     return !(m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE);
 }
+
+bool hasThreadPauseSupport() const
+{
+    if (isCoreChildOf(IGFX_XE_HPC_CORE))
+        return false;
+    return true;
+}
 };
 }//namespace IGC
