@@ -667,6 +667,7 @@ void Options::getOptionsFromEV()
     }
 
     std::cerr << "VISA Environment Variable in effect:\n"
+        << "  (Note: if scalar IGC sets the same flag, it overrides one set by VISA_OPTIONS here!)\n"
         << visaOptionsEV << " = " << pVisaEV << "\n";
 
     std::string ostr(pVisaEV);
