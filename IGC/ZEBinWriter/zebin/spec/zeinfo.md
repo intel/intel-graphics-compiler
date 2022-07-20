@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.14
+Version 1.15
 
 ## Grammar
 
@@ -300,6 +300,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.15**: Add NT_INTELGT_ZEBIN_VERSION note to represent the ZEBIN ELF file version.
 - **Version 1.14**: Add slm_alignment to payload argument.
 - **Version 1.13**: Add functions with the name and execution env.
 - **Version 1.12**: Add global_host_access_table to container.

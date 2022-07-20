@@ -176,7 +176,7 @@ struct zeInfoContainer
     HostAccessesTy global_host_access_table;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.14"; }
+    static zeinfo_str_t getVersionNumber() { return "1.15"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
