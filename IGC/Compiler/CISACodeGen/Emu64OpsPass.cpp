@@ -216,6 +216,7 @@ namespace {
         bool visitSRem(BinaryOperator&);
         bool visitURem(BinaryOperator&);
         bool visitFRem(BinaryOperator&) { return false; }
+        bool visitFNeg(UnaryOperator&) { return false; }
 
         bool visitShl(BinaryOperator&);
         bool visitLShr(BinaryOperator&);
