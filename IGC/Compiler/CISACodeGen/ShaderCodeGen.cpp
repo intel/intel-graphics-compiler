@@ -1421,18 +1421,12 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders
             ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD32, ShaderDispatchMode::NOT_APPLICABLE);
         }
     }
-    else if (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
+    else if (ctx->getCompilerOption().ForceMinSimdSizeForFastestCS &&
+            (IsStage1FastCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
               IsStage1FastestCompile(ctx->m_CgFlag, ctx->m_StagingCtx) ||
-              IGC_GET_FLAG_VALUE(ForceFastestSIMD))
+              IGC_GET_FLAG_VALUE(ForceFastestSIMD)))
     {
-        ctx->m_ForceOneSIMD = true;
-        SIMDMode simd = maxSimdModeAllowed;
-        if (minSimdModeAllowed <= SIMDMode::SIMD16 &&
-            maxSimdModeAllowed >= SIMDMode::SIMD16)
-        {
-            simd = SIMDMode::SIMD16;
-        }
-        AddCodeGenPasses(*ctx, shaders, PassMgr, simd, false);
+        AddCodeGenPasses(*ctx, shaders, PassMgr, minSimdModeAllowed, false);
     }
     else
     {
