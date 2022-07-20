@@ -621,8 +621,11 @@ bool LateRematPass::doCrossFillRemat(ContinuationInfo& ContInfo)
     SmallVector<RematSeq, 4> RematInsts;
     for (auto& [FillBB, SpillBBs] : ContInfo.spillfillblocks())
     {
+        auto VMsI = VMs.find(FillBB);
+        if (VMsI == VMs.end())
+            continue;
         auto *InsertPt = moveFills(*FillBB);
-        auto& VM = VMs.find(FillBB)->second;
+        auto& VM = VMsI->second;
         uint32_t NumInsts = 0;
         Instruction* HeadI = nullptr;
         for (auto& I : *FillBB)
