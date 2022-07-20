@@ -2100,15 +2100,17 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
                 os << "// text representation might not be correct";
             }
 
-            static const uint32_t IGA_FMT_OPTS =
-                getOption(vISA_PrintHexFloatInAsm) ? IGA_FORMATTING_OPT_PRINT_HEX_FLOATS : IGA_FORMATTING_OPTS_DEFAULT
+            uint32_t fmtOpts =
+                  IGA_FORMATTING_OPTS_DEFAULT
                 | IGA_FORMATTING_OPT_PRINT_LDST
                 | IGA_FORMATTING_OPT_PRINT_BFNEXPRS;
+            if (getOption(vISA_PrintHexFloatInAsm))
+                fmtOpts |= IGA_FORMATTING_OPT_PRINT_HEX_FLOATS;
             while (true) {
                 size_t nw = kv.getInstSyntax(
                     pc,
                     igaStringBuffer.data(), igaStringBuffer.size(),
-                    IGA_FMT_OPTS,
+                    fmtOpts,
                     labeler, &ls);
                 if (nw == 0) {
                     os << "<<error formatting instruction at PC " << pc << ">>\n";
