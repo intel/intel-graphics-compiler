@@ -44,7 +44,7 @@ EI_MAG2:    'L'
 EI_MAG3:    'F'
 EI_CLASS:   ELFCLASS32/ELFCLASS64 (for 32/64 objects)
 EI_DATA:    ELFDATA2LSB (2's complement, little endian)
-EI_VERSION: 0 (**TBD**)
+EI_VERSION: 1 (EV_CURRENT)
 EI_PAD:     0 (Start of padding bytes of e_ident)
 ~~~
 
@@ -59,7 +59,7 @@ enum {
 
 **e_version**
 ~~~
-0(TBD)
+1(EV_CURRENT)
 ~~~
 
 **e_flags**
