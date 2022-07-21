@@ -297,6 +297,10 @@ DEF_VISA_OPTION(vISA_encoderFile,       ET_CSTR, "-encoderStatisticsFile", "USAG
 DEF_VISA_OPTION(vISA_CISAbinary,        ET_CSTR, "-CISAbinary",            "USAGE: File Name with isaasm paths. ",  NULL)
 DEF_VISA_OPTION(vISA_DumpRegInfo, ET_BOOL, "-dumpRegInfo",            UNUSED, false)
 DEF_VISA_OPTION(vISA_PrintHexFloatInAsm, ET_BOOL, "-printHexFloatInAsm", UNUSED, false)
+DEF_VISA_OPTION(vISA_dumpIgaJson, ET_INT32, "-dumpIgaJson",
+  "Emits a .json file (peer to .asm) with final IGA output in JSON format; "
+  "1 enables basic output, 2 enables with def/use dataflow information "
+  "(may increase compile time significantly for large shaders)", 0)
 
 //=== misc options ===
 DEF_VISA_OPTION(vISA_PlatformSet,         ET_INT32, NULLSTR,              UNUSED, -1 /*GENX_NONE*/)
