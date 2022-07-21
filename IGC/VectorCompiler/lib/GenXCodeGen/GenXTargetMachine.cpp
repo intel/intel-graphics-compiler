@@ -150,6 +150,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXTrampolineInsertionPass(registry);
   initializeGenXPredRegionLoweringPass(registry);
   initializeGenXLinkageCorruptorPass(registry);
+  initializeGenXInlineAsmLoweringPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
