@@ -384,6 +384,7 @@ public:
     void convertGotoToJmpi(G4_INST *gotoInst);
     G4_BB* getSinglePredecessor(G4_BB* BB, G4_BB* ExcludedPred) const;
     bool convertJmpiToGoto();
+    bool convertPredCall(std::unordered_map<G4_Label*, G4_BB*>& aLabelMap); // for WA
 
     unsigned getNumFuncs() const {return unsigned(funcInfoTable.size());}
 

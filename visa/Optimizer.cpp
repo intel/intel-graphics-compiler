@@ -7599,8 +7599,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
 
         // Call WA for fused EU
-        if (builder.hasFusedEU() && builder.getuint32Option(vISA_fusedCallWA) == 1 &&
-            kernel.hasIndirectCall())
+        if (builder.hasFusedEU() && kernel.hasIndirectCall())
         {
             applyFusedCallWA();
         }
@@ -16587,30 +16586,64 @@ void Optimizer::doNoMaskWA_postRA()
     }
 }
 
-// Assumption:
+// Summary:
 //   vISA assumes the call's target would be uniform within a thread. This is consistent with
-//   hardware call instructions. Under EU fusion,  assume that an indirect call invokes A
-//   in thread 0 and invokes B in thread 1, which isn't supported.
+//   hardware call instructions. Under EU fusion, a pair of fused thread 0 and 1 might diverge,
+//   meaning that an indirect call invokes A in thread 0 and invokes B in thread 1, which isn't
+//   supported by fused EU hardware.
 //
-// This function does two things:
-//   1.  For any indirect call like the following:
-//          call
-//       changed it to:
+// This function is used to make sure each fused call will have a single target. As there are HW bugs
+// in fused calls, this function will WA HW bugs as well.  The general idea is:
+//     Given:
+//          (p) call  r5
+//     Changed it to:
 //          if (BigEU)
-//             call
+//             (p) call  r5
 //          else   // SmallEU
-//             call
-//   2. HW has a bug in which call always runs and it always uses BigEU's target as targets for both EUs.
-//      This causes several issues and the WA is used to fix this harware bug.
+//             (p) call  r5
 //
-// Details of 2
+// As HW has a bug in which call always runs (even no active channels) and it always uses BigEU's target
+// as targets for both EUs. This causes several issues and the software WA is used to fix this harware bug.
+// There are several cases:
+//   1. For platforms that has NO HW fix (fusedCallWA 1), applying software WA as described
+//      below in "Details of 1",
+//
+//   2. For platforms that has the PARTIAL HW fix (fusedCallWA 2)
+//      Any predicated call must be changed to unpredicated like the following:
+//           (p) call ...
+//       changed to
+//           if (p)
+//              call ...
+//
+//       This is done in Flowgraph::convertPredCall(), right after control-flow is
+//       constructed.
+//
+//      2.1 for direct call like the following
+//                (p) call r5
+//
+//           if (p)
+//               if (BigEU)  // BigEU
+//                  call  r5
+//               else  // SmallEU
+//                  call  r5
+//   3. For platforms that have a full fix (if any) (fusedCallWA 0),
+//      just do the following for indirect call.
+//         (p) call r5
+//         if (BigEU)  // BigEU
+//             (p) call  r5
+//         else  // SmallEU
+//             (p) call  r5
+//
+//  This function handles 1) and duplicating call for BigEU and SmallEU.
+//
+// Details of 1
 // ============
 //  Under EU fusion,  assume that an indirect call invokes A in thread 0 and invokes B in thread 1.
 //  Assume that these two threads are fused and run on a pair of fused EUs {bigEU, smallEU}. The hardware
-//  will always invoke A: the callee from thread 0 in bigEU even in else (smallEU) barnch, which is
-//  incorrect. To workaround this bug, we have to rely on the fact that cr0.2 is shared among the pair
-//  of fused EUs and copy thread 1's callee into thread 0 via cr0.2. In doing so, thread 1's callee
-//  can be invoked. The details are as follows:
+//  will always invoke A: the callee from thread 0 in bigEU even in else branch (in general case),
+//  which is incorrect. To workaround this bug, we have to rely on the fact that cr0.2 is shared among
+//  the pair of fused EUs and copy thread 1's callee B into thread 0 via cr0.2. In doing so, thread 1's
+//  callee can be invoked. The details are as follows:
 //
 //    before:
 //      BB:
@@ -16644,13 +16677,15 @@ void Optimizer::doNoMaskWA_postRA()
 //            join <nextJoin or null>                                       // finalJoin
 //
 // The BBs and those insts such as I4_patch_add/I5_patch_add, etc are added into m_indirectCallWAInfo
-// so that finishFusedCallWA() can finish post-processing to patch the relative IP and others.
+// so that finishFusedCallWA() can finish post-processing to patch the relative IP and others. If calla
+// can be used,  no IP patching is needed. See code for details.
 //
-// Note that there is another hardware bug. If BigEU is off, the mov instruction
+// In order to make the following to run always even through bigEU is off,
 //    "(W)     mov (1 |M0)  smallEUTarget:ud   cr0.2<0;1,0>:ud"
-// will not run, thus BigEU will not have smallEU's target. Since this WA requires
-// the above move must be run, a special maskOff (M16) must be used to force NoMask to run
-// no matter if the EU is off or on. This will be handled in finishFusedCallWA().
+// a special maskOff (M16) must be used to force NoMask to run no matter if the EU is off or on.
+// This will be handled in finishFusedCallWA().
+// (See details in finishFusedCallWA(). To make it work, any kernel with indirect call is required
+// to be simd16 or simd8, not simd32, so that M16 can be used to force running the inst always.)
 //
 void Optimizer::applyFusedCallWA()
 {
@@ -16706,6 +16741,12 @@ void Optimizer::applyFusedCallWA()
             }
         }
     };
+
+    // Only process call wa (fusedCallWA = 1) or indirect call is non-uniform
+    if (!((builder.getuint32Option(vISA_fusedCallWA) == 1) || !builder.getOption(vISA_fusedCallUniform)))
+    {
+        return;
+    }
 
     for (BB_LIST_ITER BI = fg.begin(), BE = fg.end(); BI != BE;)
     {
@@ -16836,6 +16877,53 @@ void Optimizer::applyFusedCallWA()
         G4_INST* I1 = builder.createInternalInst(nullptr, G4_and, F_cm, g4::NOSAT,
             simdsz > g4::SIMD16 ? g4::SIMD32 : g4::SIMD16,
             builder.createNullDst(Type_UW), I1_Src0, Bit7, InstOpt_WriteEnable);
+
+        if (builder.getuint32Option(vISA_fusedCallWA) != 1)
+        {
+            assert(!builder.getOption(vISA_fusedCallUniform));
+            // Just need to duplicate the call so that one is called under BigEU,
+            // and the other is under SmallEU.
+
+            BB->pop_back();   // unlink the call inst from BB
+            BB->push_back(I0);
+            BB->push_back(I1);
+
+            I0->addDefUse(I1, Opnd_src0);
+
+            G4_Predicate* pred_m1 = builder.createPredicate(PredState_Minus, F->getRegVar(), 0);
+            G4_INST* gotoSmallB0 = builder.createCFInst(pred_m1, G4_goto, simdsz, smallB0Label, smallB0Label, InstOpt_NoOpt, false);
+            BB->push_back(gotoSmallB0);
+            I1->addDefUse(gotoSmallB0, Opnd_pred);
+
+            G4_Predicate* nPred(callI->getPredicate());
+            G4_SrcRegRegion* nSrc = builder.createSrc(Target->getBase(), 0, 0, builder.getRegionScalar(), Type_UD);
+            G4_INST* nCallI = builder.createInternalInst(nPred, callI->opcode(),
+                nullptr, g4::NOSAT, callI->getExecSize(), nullptr, nSrc, nullptr, callI->getOption());
+            (void)bigB0->push_back(callI);
+            (void)smallB0->push_back(nCallI);
+
+            // Need to create fcall info
+            if (G4_FCALL* orig_fcallinfo = builder.getFcallInfo(callI))
+            {
+                builder.addFcallInfo(nCallI, orig_fcallinfo->getArgSize(), orig_fcallinfo->getRetSize());
+            }
+            // Might need to update subroutine table
+            updateSubroutineTableIfNeeded(origNextBB, bigB0, bigB1, smallB0, smallB1, newNextBB);
+
+            if (!fg.globalOpndHT.isOpndGlobal(Target))
+            {
+                callI->removeDefUse(Opnd_src0);
+            }
+            fg.globalOpndHT.addGlobalOpnd(Target);
+            fg.globalOpndHT.addGlobalOpnd(nSrc);
+
+            // done with this indirect call.
+            continue;
+        }
+
+        //
+        // main call WA under fusedCallWA = 1
+        //
 
         // I2:  (!flag) mov cr0.2  callee
         G4_VarBase* V_cr0 = builder.phyregpool.getCr0Reg();

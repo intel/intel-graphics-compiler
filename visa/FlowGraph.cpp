@@ -606,6 +606,8 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
 //
 void FlowGraph::preprocess(INST_LIST& instlist)
 {
+    // It is easier to add WA before control-flow is build for partial HW
+    // fix to fused call HW bug.
 
     std::unordered_set<G4_Label*> labels;   // label inst we have seen so far
 
@@ -988,6 +990,12 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     }
 
     pKernel->dumpToFile("after.CFGConstruction");
+
+    // Do call WA before return/exit processing.
+    if (builder->hasFusedEU() && builder->getuint32Option(vISA_fusedCallWA) == 2)
+    {
+        hasGoto |= convertPredCall(labelMap);
+    }
 
     removeRedundantLabels();
 
@@ -4878,6 +4886,137 @@ bool FlowGraph::convertJmpiToGoto()
         }
     }
     return Changed;
+}
+
+// Changes a predicated call to a unpredicated call like the following:
+//    BB:
+//      (p) call (execSize) ...
+//    NextBB:
+//
+// It is changed to
+//    BB:
+//      p1 = simdsize > execSize ? (p & ((1<<execSize) - 1)) : p
+//      (~p1) goto (simdsize) target_lbl
+//    newCallBB:
+//         call (execSize) ...
+//    newNextBB:
+//    NextBB:
+//  where target_lbl is newTargetBB.
+//
+bool FlowGraph::convertPredCall(std::unordered_map<G4_Label*, G4_BB*>& aLabelMap)
+{
+    bool changed = false;
+    // Add BB0 and BB1 into the subroutine in which aAnchorBB is.
+    auto updateSubroutineTab = [&](G4_BB* aAnchorBB, G4_BB* BB0, G4_BB* BB1)
+    {
+        for (auto MI : subroutines)
+        {
+            std::vector<G4_BB*>& bblists = MI.second;
+            auto BI = std::find(bblists.begin(), bblists.end(), aAnchorBB);
+            if (BI == bblists.end())
+            {
+                continue;
+            }
+            bblists.push_back(BB0);
+            bblists.push_back(BB1);
+        }
+    };
+
+    const G4_ExecSize SimdSize = pKernel->getSimdSize();
+    G4_Type PredTy = SimdSize > 16 ? Type_UD : Type_UW;
+    auto NextBI = BBs.begin();
+    for (auto BI = NextBI, BE = BBs.end(); BI != BE; BI = NextBI)
+    {
+        ++NextBI;
+        G4_BB* BB = *BI;
+        if (BB->empty())
+        {
+            continue;
+        }
+        G4_BB* NextBB = (NextBI == BE ? nullptr : *NextBI);
+
+        G4_INST* Inst = BB->back();
+        G4_Predicate* Pred = Inst->getPredicate();
+        if (!(Pred && (Inst->isCall() || Inst->isFCall())))
+        {
+            continue;
+        }
+
+        const bool hasFallThru = (NextBB && BB->Succs.size() >= 1 && BB->Succs.front() == NextBB);
+
+        G4_BB* newCallBB = createNewBBWithLabel("predCallWA", Inst->getLineNo(), Inst->getCISAOff());
+        insert(NextBI, newCallBB);
+        G4_Label* callBB_lbl = newCallBB->getLabel();
+        assert(callBB_lbl);
+        aLabelMap.insert(std::make_pair(callBB_lbl, newCallBB));
+
+        G4_BB* targetBB = createNewBBWithLabel("predCallWA", Inst->getLineNo(), Inst->getCISAOff());
+        insert(NextBI, targetBB);
+        G4_Label* target_lbl = targetBB->getLabel();
+        aLabelMap.insert(std::make_pair(target_lbl, targetBB));
+
+        // relink call's succs
+        if (hasFallThru)
+        {
+            removePredSuccEdges(BB, NextBB);
+        }
+        auto SI = BB->Succs.begin(), SE = BB->Succs.end();
+        while (SI != SE)
+        {
+            G4_BB* Succ = *SI;
+            ++SI;
+            removePredSuccEdges(BB, Succ);
+            addPredSuccEdges(newCallBB, Succ, false);
+        }
+        addPredSuccEdges(BB, newCallBB, true);
+        addPredSuccEdges(BB, targetBB, false);
+        addPredSuccEdges(newCallBB, targetBB, true);
+        if (hasFallThru)
+        {
+            addPredSuccEdges(targetBB, NextBB, true);
+        }
+
+        // delink call inst
+        BB->pop_back();
+
+        G4_Predicate* newPred;
+        const G4_ExecSize ExecSize = Inst->getExecSize();
+        if (SimdSize == ExecSize)
+        {
+            // negate predicate
+            newPred = builder->createPredicate(
+                Pred->getState() == PredState_Plus ? PredState_Minus : PredState_Plus,
+                Pred->getBase()->asRegVar(), 0, Pred->getControl());
+        }
+        else
+        {
+            // Common dst and src0 operand for flag.
+            G4_Type oldPredTy = ExecSize > 16 ? Type_UD : Type_UW;
+            G4_Declare* newDcl = builder->createTempFlag(PredTy == Type_UD ? 2 : 1);
+            auto pDst = builder->createDst(newDcl->getRegVar(), 0, 0, 1, PredTy);
+            auto pSrc0 = builder->createSrc(Pred->getBase(), 0, 0, builder->getRegionScalar(), oldPredTy);
+            auto pSrc1 = builder->createImm((1 << ExecSize) - 1, PredTy);
+            auto pInst = builder->createBinOp(
+                G4_and, g4::SIMD1, pDst, pSrc0, pSrc1,
+                InstOpt_M0 | InstOpt_WriteEnable, false);
+            BB->push_back(pInst);
+
+            newPred = builder->createPredicate(
+                Pred->getState() == PredState_Plus ? PredState_Minus : PredState_Plus,
+                newDcl->getRegVar(), 0, Pred->getControl());
+        }
+
+        G4_INST* gotoInst = builder->createGoto(newPred, SimdSize, target_lbl, InstOpt_NoOpt, false);
+        BB->push_back(gotoInst);
+
+        Inst->setPredicate(nullptr);
+        newCallBB->push_back(Inst);
+
+        updateSubroutineTab(BB, newCallBB, targetBB);
+        changed = true;
+    }
+    // if changed is true, it means goto has been added.
+    return changed;
 }
 
 void FlowGraph::print(std::ostream& OS) const
