@@ -13131,6 +13131,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
     pLOD = pLOD ? BroadcastIfUniform(pLOD, m_currShader->GetIsUniform(pInsn)) : nullptr;
 
     ResourceDescriptor resource = GetResourceVariable(pllSrcBuffer);
+    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, true, true);
 
     uint numChannels = iSTD::BitCount(writeMask.getEM());
     auto doLSC = shouldGenerateLSC(pInsn);
@@ -13151,7 +13152,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
         if (doLSC)
         {
             m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst, 4 * 8,
-                numLanes(nativeDispatchMode), LSC_ADDR_SIZE_32b, writeMask.getEM());
+                numLanes(nativeDispatchMode), LSC_ADDR_SIZE_32b, writeMask.getEM(), cacheOpts);
         }
         else
         {
@@ -13195,7 +13196,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
             if (doLSC)
             {
                 m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, m_destination, 4 * 8,
-                    numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM());
+                    numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM(), cacheOpts);
             }
             else
             {
@@ -13227,7 +13228,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
                 if (doLSC)
                 {
                     m_encoder->LSC_TypedReadWrite(LSC_LOAD_QUAD, &resource, pU, pV, pR, pLOD, tempdst[i], 4 * 8,
-                        numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM());
+                        numLanes(SIMDMode::SIMD16), LSC_ADDR_SIZE_32b, writeMask.getEM(), cacheOpts);
                 }
                 else
                 {
@@ -13282,6 +13283,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
         (!llvm::isa<UndefValue>(pllSrc_W) ? 8 : 0);
 
     ResourceDescriptor resource = GetResourceVariable(pllDstBuffer);
+    LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, false, true);
 
     if (m_currShader->GetIsUniform(pInsn))
     {
@@ -18829,11 +18831,23 @@ EmitPass::setCacheOptionsForConstantBufferLoads(Instruction& inst) const
     return cacheOpts;
 }
 
-static bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad)
+static bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad, bool isTGM)
 {
-    uint32_t l1l3CacheVal = isLoad ?
-        IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride) :
-        IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride);
+    uint32_t l1l3CacheVal = 0;
+
+    if (isTGM)
+    {
+        l1l3CacheVal = isLoad ?
+            IGC_GET_FLAG_VALUE(TgmLoadCacheControlOverride) :
+            IGC_GET_FLAG_VALUE(TgmStoreCacheControlOverride);
+    }
+    else
+    {
+        l1l3CacheVal = isLoad ?
+            IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride) :
+            IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride);
+    }
+
     if (l1l3CacheVal != 0)
     {
         cacheOpts = translateLSCCacheControlsEnum(
@@ -18843,9 +18857,14 @@ static bool tryOverrideCacheOpts(LSC_CACHE_OPTS& cacheOpts, bool isLoad)
 }
 
 LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
-    Instruction* inst, bool isLoad) const
+    Instruction* inst, bool isLoad, bool isTGM) const
 {
     LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+    if (isTGM)
+    {
+        tryOverrideCacheOpts(cacheOpts, isLoad, isTGM);
+        return cacheOpts;
+    }
 
     // If default setting is passed to igc, take it
     if (m_pCtx->type == ShaderType::OPENCL_SHADER)
@@ -18882,7 +18901,7 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
         }
     }
 
-    if (tryOverrideCacheOpts(cacheOpts, isLoad))
+    if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM))
     {
         // global override cache settings have highest priority
         return cacheOpts;
