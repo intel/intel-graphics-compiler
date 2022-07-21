@@ -6107,11 +6107,44 @@ namespace IGC
         m_program->m_loopNestedStallCycle = loopNestedStallCycle;
         m_program->m_loopNestedCycle = loopNestedCycle;
 
-        if ((jitInfo->isSpill && (AvoidRetryOnSmallSpill() || jitInfo->avoidRetry)) ||
-            (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram()))
+        bool isStackCallProgram =
+          m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
+        bool noRetry = (AvoidRetryOnSmallSpill() || jitInfo->avoidRetry);
+        if ((jitInfo->isSpill && noRetry) || isStackCallProgram)
         {
             context->m_retryManager.Disable();
             context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
+        }
+
+        if (jitInfo->isSpill &&
+            (noRetry || context->m_retryManager.IsLastTry()) &&
+            !isStackCallProgram)
+        {
+            // report a spill warning to build log only if we:
+            //   - spilled
+            //   - are not retrying (IsLastTry() wasn't considered above
+            //     in prev. code for some odd reason; keeping consistent)
+            //   - not using stack calls or the dummy function pointer program
+            std::stringstream ss;
+            ss << "kernel ";
+            const auto name = m_program->entry->getName();
+            if (!name.empty()) {
+                ss << name.str() << " ";
+            } else {
+                ss << "?";
+            }
+
+            ss << " compiled SIMD" <<
+              (m_program->m_dispatchSize == SIMDMode::SIMD32 ? 32 :
+                m_program->m_dispatchSize == SIMDMode::SIMD16 ? 16 : 8);
+            ss << " allocated " << jitInfo->numGRFTotal << " regs";
+            if (jitInfo->isSpill) {
+                auto spilledRegs = std::max<unsigned>(1,
+                    (jitInfo->spillMemUsed + getGRFSize() - 1) / getGRFSize());
+                ss << " and spilled around " << spilledRegs;
+            }
+
+            context->EmitWarning(ss.str().c_str());
         }
 
 #if (GET_SHADER_STATS && !PRINT_DETAIL_SHADER_STATS)
