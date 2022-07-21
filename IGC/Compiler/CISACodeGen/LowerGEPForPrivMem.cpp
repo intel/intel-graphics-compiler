@@ -242,12 +242,6 @@ static void GetAllocaLiverange(Instruction* I, unsigned int& liverangeStart, uns
 
 bool LowerGEPForPrivMem::IsNativeType(Type* type)
 {
-    if ((type->isDoubleTy() && m_ctx->platform.hasNoFP64Inst()) ||
-        (type->isIntegerTy(64) && m_ctx->platform.hasNoFullI64Support()))
-    {
-        return false;
-    }
-
     if (type->isIntegerTy(8) &&
         (IGC_IS_FLAG_ENABLED(ForcePromoteI8) ||
          (IGC_IS_FLAG_ENABLED(EnablePromoteI8) && !m_ctx->platform.supportByteALUOperation())))
