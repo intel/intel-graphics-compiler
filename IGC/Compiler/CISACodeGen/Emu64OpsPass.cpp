@@ -1912,6 +1912,8 @@ bool InstExpander::visitCall(CallInst& Call) {
         OutputHi = IRB->CreateExtractElement(V, IRB->getInt32(1));
     };
 
+    IGC_ASSERT(nullptr != Emu);
+
     const Function* F = Call.getCalledFunction();
     if (F && F->isDeclaration()) {
         switch (F->getIntrinsicID()) {
@@ -1930,9 +1932,32 @@ bool InstExpander::visitCall(CallInst& Call) {
         case Intrinsic::invariant_start:
         case Intrinsic::invariant_end:
             return false;
+#if LLVM_VERSION_MAJOR >= 12
+        // emulate @llvm.abs.i64
+        case Intrinsic::abs:
+        {
+            Value* OldVal = Call.getArgOperand(0);
+            Value* Lo = nullptr, * Hi = nullptr;
+            std::tie(Lo, Hi) = Emu->getExpandedValues(OldVal);
+
+            Value* Cmp = IRB->CreateICmpSLT(Hi, IRB->getInt32(0));
+
+            GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_sub_pair;
+            Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
+            Value* Sub = IRB->CreateCall4(IFunc, IRB->getInt32(0), IRB->getInt32(0), Lo, Hi);
+
+            Value* SubLo = IRB->CreateExtractValue(Sub, 0);
+            Value* SubHi = IRB->CreateExtractValue(Sub, 1);
+
+            Value* SelectLo = IRB->CreateSelect(Cmp, SubLo, Lo);
+            Value* SelectHo = IRB->CreateSelect(Cmp, SubHi, Hi);
+
+            Emu->setExpandedValues(&Call, SelectLo, SelectHo);
+            return true;
+        }
+#endif
         }
     }
-    IGC_ASSERT(nullptr != Emu);
     bool doInt64BitCall = Emu->isInt64(&Call);
     if (!doInt64BitCall) {
         for (auto& Op : Call.operands()) {
