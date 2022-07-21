@@ -153,6 +153,9 @@ struct GenXBackendOptions {
   // Ignore unrolling threshold on loops with #pragma unroll.
   bool IgnoreLoopUnrollThresholdOnPragma = false;
 
+  // Subgroup size used for cross-module calls/returns
+  unsigned InteropSubgroupSize = 16;
+
   // Calling enforceLLVMOptions queries the state of LLVM options and
   // updates BackendOptions accordingly.
   // Note: current implementation allows backend options to be configured by
@@ -329,6 +332,10 @@ public:
 
   bool ignoreLoopUnrollThresholdOnPragma() const {
     return Options.IgnoreLoopUnrollThresholdOnPragma;
+  }
+
+  unsigned getInteropSubgroupSize() const {
+    return Options.InteropSubgroupSize;
   }
 };
 } // namespace llvm

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -259,6 +259,10 @@ static void adjustTransformationsAndOptimizations(vc::CompileOptions &Opts) {
   if (IGC_IS_FLAG_ENABLED(VCIgnoreLoopUnrollThresholdOnPragma))
     Opts.IgnoreLoopUnrollThresholdOnPragma = true;
 
+  unsigned SIMDWidth = IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth);
+  if (SIMDWidth == 8 || SIMDWidth == 16 || SIMDWidth == 32)
+    Opts.InteropSubgroupSize = SIMDWidth;
+
   Opts.NoOptFinalizerMode =
       deriveDefaultableFlagValue<vc::NoOptFinalizerControl>(
           IGC_GET_FLAG_VALUE(VCNoOptFinalizerControl));
@@ -305,11 +309,11 @@ static void setErrorMessage(const std::string &ErrorMessage,
 static std::error_code getError(llvm::Error Err,
                                 TC::STB_TranslateOutputArgs *OutputArgs) {
   std::error_code Status;
-  llvm::handleAllErrors(
-      std::move(Err), [&Status, OutputArgs](const llvm::ErrorInfoBase &EI) {
-        Status = EI.convertToErrorCode();
-        setErrorMessage(EI.message(), *OutputArgs);
-      });
+  llvm::handleAllErrors(std::move(Err),
+                        [&Status, OutputArgs](const llvm::ErrorInfoBase &EI) {
+                          Status = EI.convertToErrorCode();
+                          setErrorMessage(EI.message(), *OutputArgs);
+                        });
   return Status;
 }
 
@@ -444,8 +448,7 @@ bool fillPrintfData(vc::ExternalData &ExtData) {
 static llvm::Optional<vc::ExternalData>
 fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr) {
   vc::ExternalData ExtData;
-  ExtData.OCLGenericBIFModule =
-      getGenericModuleBuffer(OCL_BC);
+  ExtData.OCLGenericBIFModule = getGenericModuleBuffer(OCL_BC);
   if (!ExtData.OCLGenericBIFModule)
     return {};
   switch (Binary) {
@@ -575,8 +578,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
   auto ExtData = fillExternalData(Opts.Binary, Opts.CPUStr);
   if (!ExtData)
-    return getError(vc::make_error_code(vc::errc::bif_load_fail),
-                    OutputArgs);
+    return getError(vc::make_error_code(vc::errc::bif_load_fail), OutputArgs);
   llvm::ArrayRef<uint32_t> SpecConstIds{InputArgs->pSpecConstantsIds,
                                         InputArgs->SpecConstantsSize};
   llvm::ArrayRef<uint64_t> SpecConstValues{InputArgs->pSpecConstantsValues,
@@ -595,7 +597,8 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   }
   case vc::BinaryKind::OpenCL: {
     auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
-    vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(), IGCPlatform.getWATable()};
+    vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(),
+                                 IGCPlatform.getWATable()};
     vc::createBinary(CMProgram, CompileResult);
     validateCMProgramForOCLBin(CMProgram);
     CMProgram.CreateKernelBinaries(Opts);
@@ -618,7 +621,8 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   }
   case vc::BinaryKind::ZE: {
     auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
-    vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(), IGCPlatform.getWATable()};
+    vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(),
+                                 IGCPlatform.getWATable()};
     vc::createBinary(CMProgram, CompileResult);
     llvm::SmallVector<char, 0> ProgramBinary;
     llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};

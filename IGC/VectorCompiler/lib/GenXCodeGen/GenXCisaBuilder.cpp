@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -522,6 +522,9 @@ class GenXKernelBuilder {
   bool UseNewStackBuilder = false;
   // GRF width in unit of byte
   unsigned GrfByteSize = defaultGRFByteSize;
+
+  // Default stackcall execution size
+  VISA_Exec_Size StackCallExecSize = EXEC_SIZE_16;
 
   // Line in code, filename and dir for emit loc/file in visa
   unsigned LastEmittedVisaLine = 0;
@@ -1158,6 +1161,8 @@ bool GenXKernelBuilder::run() {
 
   UseNewStackBuilder =
       BackendConfig->useNewStackBuilder() && Subtarget->isOCLRuntime();
+  StackCallExecSize =
+      getExecSizeFromValue(BackendConfig->getInteropSubgroupSize());
 
   IGC_ASSERT(Subtarget);
 
@@ -5488,7 +5493,7 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
   }
   if (vc::requiresStackCall(Func)) {
     CISA_CALL(Kernel->AppendVISACFFunctionRetInst(nullptr, vISA_EMASK_M1,
-                                                  EXEC_SIZE_16));
+                                                  StackCallExecSize));
   } else {
     CISA_CALL(Kernel->AppendVISACFRetInst(nullptr, vISA_EMASK_M1, EXEC_SIZE_1));
   }
@@ -6358,14 +6363,14 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
           ->getZExtValue();
   if (Callee) {
     CISA_CALL(Kernel->AppendVISACFFunctionCallInst(
-        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), EXEC_SIZE_16,
+        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), StackCallExecSize,
         Callee->getName().str(), ArgSize, RetSize));
   } else {
     auto *FuncAddr = createSource(IGCLLVM::getCalledValue(CI), DONTCARESIGNED);
     IGC_ASSERT(FuncAddr);
     CISA_CALL(Kernel->AppendVISACFIndirectFuncCallInst(
-        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), EXEC_SIZE_16,
-        FuncAddr, ArgSize, RetSize));
+        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), StackCallExecSize, FuncAddr,
+        ArgSize, RetSize));
   }
 }
 
@@ -6477,12 +6482,12 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
   }
 
   VISA_PredOpnd *Pred = nullptr;
-  VISA_Exec_Size Esz = EXEC_SIZE_16;
+  VISA_Exec_Size ExecSize = StackCallExecSize;
   if (EMOperandNum >= 0) {
     Pred = createPred(CI, BaleInfo(), EMOperandNum);
     auto *VTy = cast<IGCLLVM::FixedVectorType>(
         CI->getArgOperand(EMOperandNum)->getType());
-    Esz = getExecSizeFromValue(VTy->getNumElements());
+    ExecSize = getExecSizeFromValue(VTy->getNumElements());
   }
 
   auto *RetVar = &CisaVars[Kernel].at("retv");
@@ -6502,14 +6507,14 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
                 GrfByteSize;
   if (Callee) {
     CISA_CALL(Kernel->AppendVISACFFunctionCallInst(
-        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), EXEC_SIZE_16,
+        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), ExecSize,
         Callee->getName().str(), NoStackSize, RetSize));
   } else {
     auto *FuncAddr = createSource(IGCLLVM::getCalledValue(CI), DONTCARESIGNED);
     IGC_ASSERT(FuncAddr);
     CISA_CALL(Kernel->AppendVISACFIndirectFuncCallInst(
-        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), EXEC_SIZE_16,
-        FuncAddr, NoStackSize, RetSize));
+        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), ExecSize, FuncAddr,
+        NoStackSize, RetSize));
   }
 
   unsigned StackRetSz = 0;

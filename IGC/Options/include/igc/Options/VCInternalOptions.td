@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -75,5 +75,8 @@ def : PlainJoined<"vc-loop-unroll-threshold=">, Alias<vc_loop_unroll_threshold>,
 
 def vc_ignore_loop_unroll_threshold_on_pragma : PlainFlag<"vc-ignore-loop-unroll-threshold-on-pragma">,
   HelpText<"Ignore loop unroll threhsold on pragma for VC">;
+
+def vc_interop_subgroup_size : PlainSeparate<"vc-interop-subgroup-size">,
+  HelpText<"Set subgroup size used for cross-module calls/returns">;
 }
 // }} VC internal options

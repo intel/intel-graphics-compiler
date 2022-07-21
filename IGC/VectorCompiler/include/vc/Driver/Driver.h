@@ -144,6 +144,7 @@ struct CompileOptions {
   DebugInfoStripControl StripDebugInfoCtrl = DebugInfoStripControl::None;
   unsigned ForceLoopUnrollThreshold = 0;
   bool IgnoreLoopUnrollThresholdOnPragma = false;
+  unsigned InteropSubgroupSize = 16;
 };
 
 struct ExternalData {

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -141,6 +141,9 @@ static cl::opt<bool> VCIgnoreLoopUnrollThresholdOnPragma(
     cl::desc("Ignore threshold value for LLVM loop unroll pass when pragma is "
              "used"));
 
+static cl::opt<unsigned> InteropSubgroupSizeOpt("vc-interop-subgroup-size", cl::Hidden,
+    cl::desc("Set subgroup size used for cross-module calls"));
+
 //===----------------------------------------------------------------------===//
 //
 // Backend config related stuff.
@@ -184,6 +187,7 @@ void GenXBackendOptions::enforceLLVMOptions() {
   enforceOptionIfSpecified(LoopUnrollThreshold, VCLoopUnrollThreshold);
   enforceOptionIfSpecified(IgnoreLoopUnrollThresholdOnPragma,
                            VCIgnoreLoopUnrollThresholdOnPragma);
+  enforceOptionIfSpecified(InteropSubgroupSize, InteropSubgroupSizeOpt);
 }
 
 static std::unique_ptr<MemoryBuffer>

@@ -246,6 +246,9 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   BackendOpts.IgnoreLoopUnrollThresholdOnPragma =
       Opts.IgnoreLoopUnrollThresholdOnPragma;
 
+  if (Opts.InteropSubgroupSize)
+    BackendOpts.InteropSubgroupSize = Opts.InteropSubgroupSize;
+
   BackendOpts.DisableLiveRangesCoalescing =
       getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, false);
   BackendOpts.DisableExtraCoalescing =
@@ -772,6 +775,18 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.HasL3FlushForGlobal = true;
   if (InternalOptions.hasArg(OPT_vc_ignore_loop_unroll_threshold_on_pragma))
     Opts.IgnoreLoopUnrollThresholdOnPragma = true;
+
+  if (opt::Arg *A = InternalOptions.getLastArg(OPT_vc_interop_subgroup_size)) {
+    StringRef Val = A->getValue();
+    auto MaybeSize = StringSwitch<Optional<unsigned>>(Val)
+                         .Case("8", 8)
+                         .Case("16", 16)
+                         .Case("32", 32)
+                         .Default(None);
+    if (!MaybeSize)
+      return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
+    Opts.InteropSubgroupSize = MaybeSize.getValue();
+  }
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_binary_format)) {
     StringRef Val = A->getValue();
