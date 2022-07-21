@@ -1679,7 +1679,21 @@ PHINode* RTBuilder::getPrimitiveIndex(
     this->SetInsertPoint(CSBlock);
 
     Value* primLeafIndexTop = this->getHitInfoDWord(perLaneStackPtr, ShaderTy, VALUE_NAME("topOfPrimIndexDelta"));
-    Value* leafTyCmp = this->CreateICmpEQ(infoKind, this->getInt32(NODE_TYPE_PROCEDURAL));
+
+    // We are interested in only the LSB of leafType
+    // because we only check if type is procedural.
+
+    static_assert(
+        ((NODE_TYPE_PROCEDURAL & 1) == 1) &&
+        ((NODE_TYPE_QUAD & 1) == 0) &&
+        ((NODE_TYPE_MESHLET & 1) == 0),
+        "optimized CommittedStatus broken");
+
+    // At this point valid bit is expected to be right-shifted to the
+    // 0th bit.
+    Value* leafType = this->CreateAnd(infoKind, this->getInt32(1));
+    Value* leafTyCmp = this->CreateICmpEQ(leafType, this->getInt32(NODE_TYPE_PROCEDURAL & 1));
+
     this->CreateCondBr(leafTyCmp, prodeduralLeafBB, quadMeshLeafBB);
     auto& M = *this->GetInsertBlock()->getModule();
 
@@ -1774,7 +1788,21 @@ std::pair<Value*, BasicBlock*> RTBuilder::getGeometryIndex(
     BasicBlock* prodeduralLeafBB = BasicBlock::Create(C, VALUE_NAME("ProduralLeafBB"), F, endBlock);
     CSBlock->getTerminator()->eraseFromParent();
     this->SetInsertPoint(CSBlock);
-    Value* leafTyCmp = this->CreateICmpEQ(infoKind, this->getInt32(NODE_TYPE_PROCEDURAL));
+
+    // We are interested in only the LSB of leafType
+    // because we only check if type is procedural.
+
+    static_assert(
+        ((NODE_TYPE_PROCEDURAL & 1) == 1) &&
+        ((NODE_TYPE_QUAD & 1) == 0) &&
+        ((NODE_TYPE_MESHLET & 1) == 0),
+        "optimized CommittedStatus broken");
+
+    // At this point valid bit is expected to be right-shifted to the
+    // 0th bit.
+    Value* leafType = this->CreateAnd(infoKind, this->getInt32(1));
+    Value* leafTyCmp = this->CreateICmpEQ(leafType, this->getInt32(NODE_TYPE_PROCEDURAL & 1));
+
     this->CreateCondBr(leafTyCmp, prodeduralLeafBB, quadMeshLeafBB);
     auto& M = *this->GetInsertBlock()->getModule();
 
