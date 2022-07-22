@@ -526,10 +526,11 @@ public:
             // we succeeded in decoding; now format the output to text
             std::stringstream ss;
             FormatOpts fopts = formatterOpts(dopts, formatLbl, formatLblEnv);
-            DepAnalysis la;
             if (dopts.formatting_opts & IGA_FORMATTING_OPT_PRINT_DEFS) {
-                la = ComputeDepAnalysis(k);
-                fopts.liveAnalysis = &la;
+                // Set the IDs here (kernel helper function)
+                k->resetIds();
+                // set fopts.printInstDefs
+                fopts.printInstDefs = true;
             }
             FormatKernel(errHandler, ss, fopts, *k, bits);
 

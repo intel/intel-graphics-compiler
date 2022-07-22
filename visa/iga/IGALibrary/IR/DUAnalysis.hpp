@@ -102,7 +102,7 @@ namespace iga
 
     // The primary entry point for the live analysis
     // The counts are counts *going into* this instruction
-    DepAnalysis ComputeDepAnalysis(Kernel *k);
+    DepAnalysis ComputeDepAnalysis(const Kernel *k);
 } // namespace IGA
 
 #endif // _IGA_IR_ANALYSIS_HPP

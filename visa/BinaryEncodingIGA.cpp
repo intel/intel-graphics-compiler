@@ -31,6 +31,7 @@ struct SendExDescOpts {
 class BinaryEncodingIGA
 {
     int                     IGAInstId = 0;
+    int                     IGABlockId = 0;
     Mem_Manager&            mem;
     G4_Kernel&              kernel;
     std::string             fileName; // .dat filename
@@ -188,6 +189,7 @@ private:
         if (itr == labelToBlockMap.end())
         {
             b = IGAKernel.createBlock();
+            b->setID(IGABlockId++);
             labelToBlockMap[label] = b;
         }
         else {
@@ -913,6 +915,7 @@ void BinaryEncodingIGA::Encode()
     {
         // create a new BB if kernel does not start with label
         currBB = IGAKernel->createBlock();
+        currBB->setID(IGABlockId++);
         IGAKernel->appendBlock(currBB);
     }
 
@@ -1049,7 +1052,11 @@ void BinaryEncodingIGA::EmitJSON(int dumpJSON) {
     std::ofstream ofs(jsonFileName, std::ofstream::out);
     FormatOpts fos(*platformModel);
     fos.printJson = true;
-    FormatJSON(ofs, fos, *IGAKernel, nullptr);
+    if (dumpJSON > 1) {
+        fos.printInstDefs = true;
+    }
+    iga::ErrorHandler eh;
+    FormatKernel(eh, ofs, fos, *IGAKernel);
 }
 
 Instruction *BinaryEncodingIGA::translateInstruction(
@@ -1256,6 +1263,7 @@ void BinaryEncodingIGA::translateInstructionBranchSrcs(
     {
         // Creating a fall through block
         bbNew = IGAKernel->createBlock();
+        bbNew->setID(IGABlockId++);
         igaInst->setLabelSource(SourceIndex::SRC0, bbNew, Type::UD);
         IGAKernel->appendBlock(bbNew);
     }

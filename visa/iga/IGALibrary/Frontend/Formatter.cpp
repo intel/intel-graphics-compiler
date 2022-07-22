@@ -1483,6 +1483,13 @@ void FormatKernel(
 {
     IGA_ASSERT(k.getModel().platform == opts.model.platform,
         "kernel and options must have same platform");
+    if (opts.printInstDefs && opts.liveAnalysis == nullptr) {
+        DepAnalysis la = ComputeDepAnalysis(&k);
+        FormatOpts optsCopy = opts;
+        optsCopy.liveAnalysis = &la;
+        FormatKernel(e, o, optsCopy, k, bits);
+        return;
+    }
     if (!opts.printJson) {
         Formatter f(e, o, opts);
         f.formatKernel(k, (const uint8_t *)bits);

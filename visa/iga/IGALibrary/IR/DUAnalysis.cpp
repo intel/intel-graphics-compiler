@@ -609,7 +609,7 @@ struct BlockState
 struct DepAnalysisComputer
 {
     const Model                     &model;
-    Kernel                          *k;
+    const Kernel                    *k;
 
     // precomputed sources and destination sets indexed by instruction ID
     std::vector<RegSet>              instDstsUnion;
@@ -622,13 +622,14 @@ struct DepAnalysisComputer
     DepAnalysis                     &results;
 
     DepAnalysisComputer(
-        Kernel *_k,
+        const Kernel *_k,
         DepAnalysis &_results)
         : model(_k->getModel())
         , k(_k)
         , results(_results)
     {
         sanityCheckIR(k); // should nop in release
+        IGA_ASSERT(k->checkIdsUnique(), "call relabelIDs or setIDs; duplicates exist");
 
         results.deps.clear();
         results.liveIn.clear();
@@ -639,18 +640,15 @@ struct DepAnalysisComputer
 
         // we must do this so the vector doesn't resize
         blockState.reserve(k->getBlockList().size());
-        int bIx = 0, iIx = 0;
 
         // pre-assign ID's we know to be valid and
         // precompute instruction dependencies
         for (Block *b : k->getBlockList()) {
             blockState.emplace_back(b);
-            b->setID(bIx++);
 
             auto iitr = b->getInstList().begin();
             while (iitr != b->getInstList().end()) {
                 Instruction *i = *iitr;
-                i->setID(iIx++);
                 instSrcs.emplace_back(InstSrcs::compute(*i));
                 instDstsUnion.emplace_back(InstDsts::compute(*i).unionOf());
                 iitr++;
@@ -1109,7 +1107,7 @@ bool Dep::operator==(const Dep &p) const
 }
 
 
-DepAnalysis iga::ComputeDepAnalysis(Kernel *k)
+DepAnalysis iga::ComputeDepAnalysis(const Kernel *k)
 {
     DepAnalysis la;
 
