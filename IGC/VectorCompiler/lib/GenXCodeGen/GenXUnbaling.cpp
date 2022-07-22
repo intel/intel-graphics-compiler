@@ -438,8 +438,9 @@ bool canBeSafelyHoisted(Instruction *Inst, Instruction *InsertBefore) {
   // handling only cases, where U is a Constant/Declaration/etc
   auto IsDefinedAtInsertPoint = [](Value *V) { return !isa<Instruction>(V); };
 #else
-  IGC_ASSERT_MESSAGE(InsertBefore->comesBefore(Inst),
-                     "InsertBefore must come before Inst in IR");
+  // InsertBefore must come before Inst in IR
+  if (!InsertBefore->comesBefore(Inst))
+    return false;
   auto IsDefinedAtInsertPoint = [InsertBefore](Value *V) {
     return !isa<Instruction>(V) ||
            cast<Instruction>(V)->comesBefore(InsertBefore);
