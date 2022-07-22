@@ -6098,6 +6098,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
     unsigned RowOff = 0, ColOff = 0, SrcRowOff = 0, SrcColOff = 0;
     bool StackStarted = false;
     unsigned NoStackSize = 0;
+    unsigned ArgKernelSize = 0;
     // NOTE: using reverse iterators for args would be much better we don't have
     // any though
     for (auto &FArg : Func->args()) {
@@ -6109,10 +6110,9 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
       unsigned ArgSize = getValueSize(FArg.getType());
       if (SrcColOff &&
           (FArg.getType()->isVectorTy() || ArgSize > GrfByteSize)) {
-        unsigned IncrementSize = ArgSize/GrfByteSize > 0 ? ArgSize/GrfByteSize : 1;
-        SrcRowOff += IncrementSize;
+        SrcRowOff++;
         SrcColOff = 0;
-        NoStackSize += IncrementSize;
+        NoStackSize++;
       }
       if (Liveness->getLiveRange(&FArg)->getCategory() ==
           vc::RegCategory::Predicate) {
@@ -6143,12 +6143,11 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
                       SrcColOff, StackOff);
         }
       }
+      ArgKernelSize += ArgSize/GrfByteSize > 0 ? ArgSize/GrfByteSize : 1;
       Sz += ArgSize;
     }
-    if (!StackStarted && ColOff) {
+    if (!StackStarted && ColOff)
       NoStackSize++;
-      SrcRowOff++;
-    }
     auto *StackCallee = Func2Kern[Func];
     auto *FuncTy = Func->getFunctionType();
     int RetSize =
@@ -6160,7 +6159,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
 
     StackCallee->SetFunctionInputSize(NoStackSize);
     StackCallee->SetFunctionReturnSize(RetSize);
-    StackCallee->AddKernelAttribute("ArgSize", 1, &SrcRowOff);
+    StackCallee->AddKernelAttribute("ArgSize", 1, &ArgKernelSize);
     StackCallee->AddKernelAttribute("RetValSize", 1, &RetSize);
   }
 }
