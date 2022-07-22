@@ -1665,8 +1665,11 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream& os)
         os << name;
     }
 
+#if !Release
     os << "\n" << "//.platform " << getGenxPlatformString();
     os << "\n" << "//.thread_config " << "numGRF=" << numRegTotal << ", numAcc=" << numAcc;
+#endif
+
     if (fg.builder->hasSWSB())
     {
         os << ", numSWSB=" << numSWSBTokens;
