@@ -134,12 +134,8 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             continue;
         }
 
-        if (!pGlobalVar->hasInitializer())
-        {
-            continue;
-        }
-
         Constant* initializer = pGlobalVar->getInitializer();
+        IGC_ASSERT_MESSAGE(initializer, "Constant must be initialized");
         if (!initializer)
         {
             continue;
