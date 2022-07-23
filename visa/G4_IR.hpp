@@ -1074,6 +1074,7 @@ public:
     bool canSwapSource() const;
     bool canSupportSaturate() const;
     bool canSupportSrcModifier() const;
+    bool isSamePrePostConds() const;
 
     bool writesFlag() const;
 

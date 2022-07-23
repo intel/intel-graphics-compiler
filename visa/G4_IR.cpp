@@ -7478,6 +7478,27 @@ bool G4_INST::canSupportSaturate() const
     return InstSupportsSaturationIGA(getPlatform(), *this, builder);
 }
 
+// Because that op with BF type dest will have different pre and post conds.
+// we won't allow it to carry conditional modifier
+bool G4_INST::isSamePrePostConds() const
+{
+     if (getDst()->getType() != Type_BF)
+     {
+         return true;
+     }
+     return false;
+     /* Even if all src and dest are BF, late pass will convert one of the src to f,
+      * so the following evaded the restriction.
+     for (int i = 0, numSrc = getNumSrc(); i < numSrc; ++i) {
+         if (getSrc(i)->getType() != Type_BF) {
+             return false;
+         }
+     }
+     return true;
+     */
+}
+
+
 bool G4_INST::canSupportCondMod() const
 {
     if (!builder.hasCondModForTernary() && getNumSrc() == 3)
@@ -7521,7 +7542,7 @@ bool G4_INST::canSupportCondMod() const
     }
 
     // ToDo: replace with IGA model
-    return ((op == G4_add) ||
+    return (((op == G4_add) ||
         (op == G4_and) ||
         (op == G4_addc) ||
         (op == G4_asr) ||
@@ -7553,7 +7574,7 @@ bool G4_INST::canSupportCondMod() const
         (op == G4_shl) ||
         (op == G4_shr) ||
         (op == G4_subb) ||
-        (op == G4_xor));
+        (op == G4_xor)) && isSamePrePostConds());
 }
 
 bool G4_INST::canSupportSrcModifier() const
