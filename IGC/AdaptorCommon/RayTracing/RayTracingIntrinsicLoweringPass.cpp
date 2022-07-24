@@ -1250,9 +1250,8 @@ void RayTracingIntrinsicLoweringPass::LowerCallShaders(
                 SFI, call->getParameter()->getType(), call, NewStackPtrVal);
         }
 
-        bool Ok = recordContinuationPayloadOffset(
+        recordContinuationPayloadOffset(
             call->getParameter(), call->getContinuationFn());
-        IGC_ASSERT(Ok); // This is a performance assert
 
         auto Stores =
             builder.storePayload(SFI, call->getParameter(), NewStackPtrVal);
