@@ -353,6 +353,7 @@ DEF_VISA_OPTION(vISA_cloneEvaluateSampleInst,       ET_BOOL,  "-cloneEvaluateSam
 DEF_VISA_OPTION(vISA_expandMulPostSchedule,         ET_BOOL,  "-expandMulPostSchedule", UNUSED, true)
 DEF_VISA_OPTION(vISA_expandMadwPostSchedule,        ET_BOOL,  "-expandMadwPostSchedule", UNUSED, true)
 DEF_VISA_OPTION(vISA_disableRegDistDep,         ET_BOOL,  "-disableRegDistDep", UNUSED, false)
+DEF_VISA_OPTION(vISA_disableRegDistAllDep,         ET_BOOL,  "-disableRegDistAllDep", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceSrc0ToQwForQwShlWA,       ET_BOOL,  "-forceSrc0ToQwForQwShlWA", UNUSED, false)
 
 //=== HW debugging options ===

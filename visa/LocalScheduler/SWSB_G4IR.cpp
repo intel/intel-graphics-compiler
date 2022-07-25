@@ -3716,6 +3716,22 @@ bool SWSB::insertSyncTokenPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_
     return insertedSync;
 }
 
+bool SWSB::insertDistSyncPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it)
+{
+    for (int i = PIPE_INT; i < PIPE_DPAS; i++)
+    {
+        unsigned dist = node->getDistInfo((SB_INST_PIPE)i);
+        if (dist)
+        {
+            G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+            synInst->setDistance(dist);
+            synInst->setAccurateDistType((SB_INST_PIPE)i);
+        }
+    }
+
+    return true;
+}
+
 //If depends on multiple different ALU pipelines
 //    If all operands type matching the ALU pipelines --> regDist
 //    otherwise --> regDistAll
@@ -3879,6 +3895,11 @@ bool SWSB::insertSyncPVC(G4_BB * bb, SBNode * node, G4_INST * inst, INST_LIST_IT
         removeAllTokenDep = removeAllTokenDep || (inst->opcode() == G4_mad && inst->hasNoACCSBSet());
     //For out-of-order instruction, all dependence token will be moved out to sync
     insertedSync |= insertSyncTokenPVC(bb, node, inst, inst_it, newInstID, dstTokens, srcTokens, removeAllTokenDep);
+
+    if(fg.builder->getOptions()->getOption(vISA_disableRegDistAllDep))
+    {
+        insertDistSyncPVC(bb, node, inst, inst_it);
+    }
 
     return insertedSync;
 }
@@ -5194,7 +5215,8 @@ void G4_BB_SB::setDistance(const SBFootprint* footprint, SBNode* node, SBNode* l
             depItem.operandType = PIPE_SEND;
         }
         assert(currentID > prevID && "Wrong node ALU ID");
-        node->setDistance(currentID - prevID);
+        unsigned distance = node->setDistance(currentID - prevID);
+        node->setDistInfo(liveNode->ALUPipe, distance);
         node->distDep.push_back(depItem);
     }
     else
@@ -5228,6 +5250,7 @@ void G4_BB_SB::setSpecialDistance(SBNode* node)
         depItem.dstDep = false;
         node->setDistance(1);
         node->distDep.push_back(depItem);
+        node->setDistInfo(PIPE_FLOAT, 1);
     }
 
     return;
@@ -6228,7 +6251,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             }
         }
 
-        if (node->distDep.size())
+        if (node->distInfo.value)
         {
             if (builder.hasFiveALUPipes())
             {
@@ -6236,7 +6259,14 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             }
             else if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
             {
-                node->finalizeDistanceType1(builder, latestInstID);
+                if(builder.getOptions()->getOption(vISA_disableRegDistAllDep))
+                {
+                    node->finalizeDistanceType3(builder, latestInstID);
+                }
+                else
+                {
+                    node->finalizeDistanceType1(builder, latestInstID);
+                }
             }
         }
 

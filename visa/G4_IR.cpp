@@ -7921,6 +7921,31 @@ bool G4_INST::supportsNullDst() const
     return getNumSrc() != 3 && !(op == G4_pln && !builder.doPlane());
 }
 
+void G4_INST::setAccurateDistType(SB_INST_PIPE depPipe)
+{
+    switch (depPipe)
+    {
+    case PIPE_INT:
+        setDistanceTypeXe(G4_INST::DistanceType::DISTINT);
+        break;
+    case PIPE_FLOAT:
+        setDistanceTypeXe(G4_INST::DistanceType::DISTFLOAT);
+        break;
+    case PIPE_LONG:
+        setDistanceTypeXe(G4_INST::DistanceType::DISTLONG);
+        break;
+    case PIPE_MATH:
+        setDistanceTypeXe(G4_INST::DistanceType::DISTMATH);
+        break;
+    case PIPE_SEND:
+        setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+        break;
+    default:
+        assert(0 && "Wrong ALU PIPE");
+        break;
+    }
+}
+
 bool G4_INST::isAlign1Ternary() const
 {
     return builder.hasAlign1Ternary() && getNumSrc() == 3 && !mayExceedTwoGRF();

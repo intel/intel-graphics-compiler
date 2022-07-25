@@ -93,7 +93,15 @@ namespace vISA {
        bool dstDep;
    };
 
-    using SWSBTokenType = G4_INST::SWSBTokenType;
+   struct DistDepValue {
+       unsigned short intDist:3;
+       unsigned short floatDist : 3;
+       unsigned short longDist : 3;
+       unsigned short mathDist : 3;
+       unsigned short scalarDist : 3;
+   };
+
+   using SWSBTokenType = G4_INST::SWSBTokenType;
     void singleInstStallSWSB(G4_Kernel *kernel, uint32_t instID, uint32_t endInstID, bool is_barrier);
     void forceDebugSWSB(G4_Kernel *kernel);
     void forceFCSWSB(G4_Kernel *kernel);
@@ -105,6 +113,8 @@ typedef SBDEP_VECTOR::iterator SBDEP_VECTOR_ITER;
 
 typedef vISA::SBDISTDep SBDISTDEP_ITEM;
 typedef std::vector< SBDISTDEP_ITEM> SBDISTDEP_VECTOR;
+
+typedef vISA::DistDepValue DISTDEPINFO;
 
 namespace vISA
 {
@@ -428,6 +438,11 @@ namespace vISA
         SBNode *       tokenReusedNode = nullptr;  // For global token reuse optimization, the node whose token is reused by current one.
         SB_INST_PIPE   ALUPipe;
         SBDISTDEP_VECTOR  distDep;
+        union {
+            DISTDEPINFO info;
+            unsigned short value;
+        } distInfo;
+
         SBBitSets reachingSends;
         SBBitSets reachedUses;
         unsigned reuseOverhead = 0;
@@ -443,6 +458,7 @@ namespace vISA
             footprints(Opnd_total_num, nullptr)
         {
             ALUPipe = PIPE_NONE;
+            distInfo.value = 0;
             if (i->isDpas())
             {
                 G4_InstDpas* dpasInst = i->asDpasInst();
@@ -617,15 +633,16 @@ namespace vISA
             return footprints[opndNum];
         }
 
-        void setDistance(unsigned distance)
+        unsigned setDistance(unsigned s)
         {
-            distance = std::min(distance, SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE);
+            unsigned distance = std::min(s, SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE);
             unsigned curDistance = (unsigned)instVec.front()->getDistance();
             if (curDistance == 0 ||
                 curDistance > distance)
             {
                 instVec.front()->setDistance((unsigned char)distance);
             }
+            return distance;
         }
 
         void setAccurateDistType(SB_INST_PIPE depPipe)
@@ -646,6 +663,73 @@ namespace vISA
                 break;
             case PIPE_SEND:
                 instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                break;
+            default:
+                assert(0 && "Wrong ALU PIPE");
+                break;
+            }
+        }
+
+        unsigned getDistInfo(SB_INST_PIPE depPipe)
+        {
+            switch (depPipe)
+            {
+            case PIPE_INT:
+                return distInfo.info.intDist;
+            case PIPE_FLOAT:
+                return distInfo.info.floatDist;
+            case PIPE_LONG:
+                return distInfo.info.longDist;
+            case PIPE_MATH:
+                return distInfo.info.mathDist;
+            default:
+                assert(0 && "Wrong ALU PIPE");
+                return 0;
+            }
+        }
+
+        void setDistInfo(SB_INST_PIPE depPipe, unsigned distance)
+        {
+            switch (depPipe)
+            {
+            case PIPE_INT:
+                distInfo.info.intDist = (distInfo.info.intDist == 0 || distInfo.info.intDist > distance) ? distance :  distInfo.info.intDist;
+                break;
+            case PIPE_FLOAT:
+                distInfo.info.floatDist = (distInfo.info.floatDist == 0 || distInfo.info.floatDist > distance) ? distance : distInfo.info.floatDist;
+                break;
+            case PIPE_LONG:
+                distInfo.info.longDist = (distInfo.info.longDist == 0 || distInfo.info.longDist > distance) ? distance : distInfo.info.longDist;
+                break;
+            case PIPE_MATH:
+                distInfo.info.mathDist = (distInfo.info.mathDist == 0 || distInfo.info.mathDist > distance) ? distance : distInfo.info.mathDist;
+                break;
+            default:
+                assert(0 && "Wrong ALU PIPE");
+                break;
+            }
+        }
+
+        void clearAllDistInfo(SB_INST_PIPE depPipe)
+        {
+            distInfo.value = 0;
+        }
+
+        void clearDistInfo(SB_INST_PIPE depPipe)
+        {
+            switch (depPipe)
+            {
+            case PIPE_INT:
+                distInfo.info.intDist = 0;
+                break;
+            case PIPE_FLOAT:
+                distInfo.info.floatDist = 0;
+                break;
+            case PIPE_LONG:
+                distInfo.info.longDist = 0;
+                break;
+            case PIPE_MATH:
+                distInfo.info.mathDist = 0;
                 break;
             default:
                 assert(0 && "Wrong ALU PIPE");
@@ -1008,6 +1092,59 @@ namespace vISA
                             instVec.front()->setIsClosestALUType(isClosedALUType(latestInstID, curDistance, ALUPipe));
                         }
                     }
+                }
+            }
+        }
+
+        void finalizeDistanceType3(IR_Builder& builder, std::vector<unsigned>** latestInstID)
+        {
+            if (instVec.front()->getDistanceTypeXe() != G4_INST::DistanceType::DIST_NONE)
+            {  //Forced to a type already
+                distInfo.value = 0;
+                return;
+            }
+
+            if (builder.loadThreadPayload() && nodeID <= 8 &&
+                GetInstruction()->isSend() && distInfo.value)
+            {
+                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                distInfo.value = 0;
+                return;
+            }
+
+            if (builder.hasA0WARHWissue() && builder.hasFourALUPipes())
+            {
+                G4_INST* inst = GetInstruction();
+
+                if (inst->getDst() && inst->getDst()->isA0())
+                {
+                    instVec.front()->setDistance(1);
+                    instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                    distInfo.value = 0;
+                    return;
+                }
+            }
+
+            if (instVec.front()->getDistance() == 1 && (instVec.front()->getDistanceTypeXe() == G4_INST::DistanceType::DISTALL))
+            {
+                distInfo.value = 0;
+                return;
+            }
+
+            if (!distInfo.value)
+            {
+                return;
+            }
+
+            for (int i = PIPE_INT; i < PIPE_DPAS; i++)
+            {
+                unsigned dist = getDistInfo((SB_INST_PIPE)i);
+                if (dist)
+                {
+                    setAccurateDistType((SB_INST_PIPE)i);
+                    clearDistInfo((SB_INST_PIPE)i);
+                    instVec.front()->setDistance((unsigned char)dist);
+                    break;
                 }
             }
         }
@@ -1744,6 +1881,7 @@ namespace vISA
         void assignDepToken(SBNode *node);
         void assignDepTokens();
         bool insertSyncTokenPVC(G4_BB * bb, SBNode * node, G4_INST * inst, INST_LIST_ITER inst_it, int newInstID, BitSet * dstTokens, BitSet * srcTokens, bool removeAllToken);
+        bool insertDistSyncPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it);
         bool insertSyncPVC(G4_BB * bb, SBNode * node, G4_INST * inst, INST_LIST_ITER inst_it, int newInstID, BitSet * dstTokens, BitSet * srcTokens);
         bool insertSyncXe(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);
         void insertSync(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it, int newInstID, BitSet* dstTokens, BitSet* srcTokens);

@@ -573,6 +573,8 @@ public:
     G4_DstRegRegion* getDst() const { return dst; }
     bool supportsNullDst() const;
 
+    void setAccurateDistType(SB_INST_PIPE depPipe);
+
     bool isPseudoKill() const;
     bool isLifeTimeEnd() const;
     bool isSpillIntrinsic() const;
