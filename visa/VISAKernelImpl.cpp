@@ -9274,6 +9274,7 @@ G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(
     case PreDefinedVarsInternal::TSC:
     case PreDefinedVarsInternal::R0:
     case PreDefinedVarsInternal::SR0:
+    case PreDefinedVarsInternal::MSG0:
     case PreDefinedVarsInternal::CR0:
     case PreDefinedVarsInternal::CE0:
     case PreDefinedVarsInternal::ARG:

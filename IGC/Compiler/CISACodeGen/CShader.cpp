@@ -81,6 +81,7 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     m_CR0 = nullptr;
     m_CE0 = nullptr;
     m_DBG = nullptr;
+    m_MSG0 = nullptr;
     m_HW_TID = nullptr;
     m_SP = nullptr;
     m_FP = nullptr;
@@ -850,6 +851,17 @@ CVariable* CShader::GetDBG()
         encoder.GetVISAPredefinedVar(m_DBG, PREDEFINED_DBG);
     }
     return m_DBG;
+}
+
+CVariable* CShader::GetMSG0()
+{
+    if (!m_MSG0)
+    {
+        m_MSG0 = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, CName::NONE);
+
+        encoder.GetVISAPredefinedVar(m_MSG0, PREDEFINED_MSG0);
+    }
+    return m_MSG0;
 }
 
 CVariable* CShader::GetHWTID()

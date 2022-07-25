@@ -694,7 +694,13 @@ void IR_Builder::createPreDefinedVars()
                 dcl->getRegVar()->setPhyReg(phyReg, SubRegs_ImplPtrs::LocalIdBufPtr);
                 break;
             }
-
+            case PreDefinedVarsInternal::MSG0:
+            {
+                G4_Declare* msg0Dcl = createPreVar(i, 3, Type_UD);
+                msg0Dcl->getRegVar()->setPhyReg(phyregpool.getMsg0Reg(), 0);
+                dcl = msg0Dcl;
+                break;
+            }
             default:
             {
                 break;

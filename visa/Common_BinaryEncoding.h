@@ -1732,7 +1732,7 @@ namespace vISA
             case AREG_MASK0:
                 kind = ARCH_REG_FILE_CE_REG;
                 break;
-            case AREG_MS0:
+            case AREG_MSG0:
                 kind = ARCH_REG_FILE_MSG_REG;
                 break;
             case AREG_DBG:

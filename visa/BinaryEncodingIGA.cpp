@@ -1703,7 +1703,7 @@ RegName BinaryEncodingIGA::getIGAARFName(G4_ArchRegKind areg)
     case AREG_ACC0:
     case AREG_ACC1:     return RegName::ARF_ACC;
     case AREG_MASK0:    return RegName::ARF_CE;
-    case AREG_MS0:      return RegName::ARF_MSG;
+    case AREG_MSG0:     return RegName::ARF_MSG;
     case AREG_DBG:      return RegName::ARF_DBG;
     case AREG_SR0:      return RegName::ARF_SR;
     case AREG_CR0:      return RegName::ARF_CR;

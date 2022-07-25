@@ -421,6 +421,7 @@ bool hasSamplerSupport() const
         (IGC_IS_FLAG_ENABLED(EnableSamplerSupport)); // flag for IGFX_PVC
 }
 
+bool hasLogicalSSID() const { return false; }
 uint32_t getMinPushConstantBufferAlignment() const
 {
     return 8; // DWORDs

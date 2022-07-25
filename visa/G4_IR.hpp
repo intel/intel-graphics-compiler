@@ -2704,7 +2704,7 @@ public:
     bool isAccReg()  const { return getArchRegType() == AREG_ACC0    ||
                                getArchRegType() == AREG_ACC1;    }
     bool isMaskReg() const { return getArchRegType() == AREG_MASK0;   }
-    bool isMsReg()   const { return getArchRegType() == AREG_MS0;     }
+    bool isMsgReg()  const { return getArchRegType() == AREG_MSG0;    }
     bool isDbgReg()  const { return getArchRegType() == AREG_DBG;     }
     bool isSrReg()   const { return getArchRegType() == AREG_SR0;     }
     bool isCrReg()   const { return getArchRegType() == AREG_CR0;     }
@@ -2727,7 +2727,7 @@ public:
         case AREG_A0:
         case AREG_ACC0:
         case AREG_MASK0:
-        case AREG_MS0:
+        case AREG_MSG0:
         case AREG_DBG:
         case AREG_SR0:
         case AREG_CR0:
@@ -4031,7 +4031,7 @@ public:
     G4_Areg* getAcc0Reg() { return ARF_Table[AREG_ACC0]; }
     G4_Areg* getAcc1Reg() { return ARF_Table[AREG_ACC1]; }
     G4_Areg* getDbgReg() { return ARF_Table[AREG_DBG]; }
-    G4_Areg* getMs0Reg() { return ARF_Table[AREG_MS0]; }
+    G4_Areg* getMsg0Reg() { return ARF_Table[AREG_MSG0]; }
     G4_Areg* getSr0Reg() { return ARF_Table[AREG_SR0]; }
     G4_Areg* getCr0Reg() { return ARF_Table[AREG_CR0]; }
     G4_Areg* getTm0Reg() { return ARF_Table[AREG_TM0]; }

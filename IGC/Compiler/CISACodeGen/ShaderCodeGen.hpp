@@ -220,6 +220,7 @@ public:
     CVariable* GetCR0();
     CVariable* GetCE0();
     CVariable* GetDBG();
+    CVariable* GetMSG0();
     CVariable* GetHWTID();
     CVariable* GetSP();
     CVariable* GetFP();
@@ -654,6 +655,7 @@ protected:
     CVariable* m_SR0;
     CVariable* m_CR0;
     CVariable* m_CE0;
+    CVariable* m_MSG0;
     CVariable* m_DBG;
     CVariable* m_HW_TID;
     CVariable* m_SP;

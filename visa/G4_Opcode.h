@@ -423,7 +423,7 @@ enum G4_ArchRegKind {
     AREG_ACC0,        // accumulator register
     AREG_ACC1,        // accumulator register
     AREG_MASK0,       // mask register
-    AREG_MS0,         // mask stack register
+    AREG_MSG0,        // message control register
     AREG_DBG,         // mask stack depth register
     AREG_SR0,         // state register
     AREG_CR0,         // control register

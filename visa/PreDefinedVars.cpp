@@ -38,9 +38,12 @@ static const PreDefinedVarInfo preDefinedVarTable[static_cast<int>(PreDefinedVar
     { PreDefinedVarsInternal::DBG,           ISA_TYPE_UD, 3, false, false,  0,  2,   "%dbg0" },
     { PreDefinedVarsInternal::COLOR,         ISA_TYPE_UW, 3, true,  false,  0,  1,   "%color" },
     { PreDefinedVarsInternal::IMPL_ARG_BUF_PTR, ISA_TYPE_UQ, 3, false, false,  0,  1,   "%impl_arg_buf_ptr" },
-    { PreDefinedVarsInternal::LOCAL_ID_BUF_PTR, ISA_TYPE_UQ, 3, false, false,  0,  1,   "%local_id_buf_ptr" }
+    { PreDefinedVarsInternal::LOCAL_ID_BUF_PTR, ISA_TYPE_UQ, 3, false, false,  0,  1,   "%local_id_buf_ptr" },
+    { PreDefinedVarsInternal::MSG0,          ISA_TYPE_UD, 3, false, false,  0,  3,   "%msg0" },
 };
 
+// This is the same as visa_igc_common_header.h/PreDefined_Vars
+// (Why do we need this ?  For multi-version supports ?)
 enum class PreDefinedVarsInternal_3_4
 {
     VAR_NULL = 0,
@@ -63,7 +66,8 @@ enum class PreDefinedVarsInternal_3_4
     COLOR = 17,
     IMPL_ARG_BUF_PTR = 18,
     LOCAL_ID_BUF_PTR = 19,
-    VAR_LAST = LOCAL_ID_BUF_PTR
+    MSG0 = 20,
+    VAR_LAST = MSG0
 };
 
 PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id)
@@ -134,6 +138,9 @@ PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id)
                 break;
             case PreDefinedVarsInternal_3_4::LOCAL_ID_BUF_PTR:
                 newIndex = PreDefinedVarsInternal::LOCAL_ID_BUF_PTR;
+                break;
+            case PreDefinedVarsInternal_3_4::MSG0:
+                newIndex = PreDefinedVarsInternal::MSG0;
                 break;
             default:
                 break;

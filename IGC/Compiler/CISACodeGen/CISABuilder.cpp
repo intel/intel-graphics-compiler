@@ -5294,6 +5294,7 @@ namespace IGC
         case PREDEFINED_CR0:
         case PREDEFINED_CE0:
         case PREDEFINED_DBG:
+        case PREDEFINED_MSG0:
             // Creating alias to ARF is not allowed.
             return;
         default:

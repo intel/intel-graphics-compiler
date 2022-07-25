@@ -4104,7 +4104,7 @@ void G4_Areg::emit(std::ostream& output, bool symbolreg)
     case AREG_ACC0:    output << "acc0";  break;
     case AREG_ACC1:    output << "acc1";  break;
     case AREG_MASK0:   output << "ce0";   break;
-    case AREG_MS0:     output << "ms0";   break;
+    case AREG_MSG0:    output << "msg0";  break;
     case AREG_DBG:     output << "dbg0";  break;
     case AREG_SR0:     output << "sr0";   break;
     case AREG_CR0:     output << "cr0";   break;
@@ -5697,7 +5697,7 @@ PhyRegPool::PhyRegPool(Mem_Manager& m, unsigned int maxRegisterNumber)
     ARF_Table[AREG_ACC0]     = new (m) G4_Areg(AREG_ACC0);
     ARF_Table[AREG_ACC1]     = new (m) G4_Areg(AREG_ACC1);
     ARF_Table[AREG_MASK0]    = new (m) G4_Areg(AREG_MASK0);
-    ARF_Table[AREG_MS0]      = new (m) G4_Areg(AREG_MS0);
+    ARF_Table[AREG_MSG0]     = new (m) G4_Areg(AREG_MSG0);
     ARF_Table[AREG_DBG]      = new (m) G4_Areg(AREG_DBG);
     ARF_Table[AREG_SR0]      = new (m) G4_Areg(AREG_SR0);
     ARF_Table[AREG_CR0]      = new (m) G4_Areg(AREG_CR0);

@@ -46,6 +46,7 @@ typedef enum
     PREDEFINED_COLOR            = 17,
     PREDEFINED_IMPL_ARG_BUF_PTR = 18,
     PREDEFINED_LOCAL_ID_BUF_PTR = 19,
+    PREDEFINED_MSG0             = 20,
     PREDEFINED_VAR_INVALID
 } PreDefined_Vars;
 
