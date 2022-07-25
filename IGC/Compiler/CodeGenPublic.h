@@ -1761,6 +1761,7 @@ namespace IGC
             bool UseBindlessLegacyMode = true;
             bool EnableZEBinary = false;
             bool ExcludeIRFromZEBinary = false;
+            bool EmitZeBinVISASections = false;
             bool NoSpill = false;
             bool DisableNoMaskWA = false;
             bool IgnoreBFRounding = false;   // If true, ignore BFloat rounding when folding bf operations

@@ -906,6 +906,10 @@ namespace IGC
             {
                 ExcludeIRFromZEBinary = true;
             }
+            else if (suffix.equals("-emit-zebin-visa-sections"))
+            {
+                EmitZeBinVISASections = true;
+            }
             // -cl-intel-no-spill
             else if (suffix.equals("-no-spill"))
             {

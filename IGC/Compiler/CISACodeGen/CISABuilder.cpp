@@ -6179,6 +6179,11 @@ namespace IGC
         int size = 0, binSize = 0;
         bool binOverride = false;
 
+        if (context->getCompilerOption().EmitZeBinVISASections)
+        {
+            pOutput->m_VISAAsm.push_back({ kernelName, pMainKernel->getVISAAsm() });
+        }
+
         V(pMainKernel->GetGenxBinary(genxbin, binSize));
         if (IGC_IS_FLAG_ENABLED(ShaderOverride))
         {
