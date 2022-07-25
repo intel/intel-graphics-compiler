@@ -175,7 +175,18 @@ __impl_ui2fp__half__(vector<uint64_t, N> a) {
   auto NoZeroHi = Hi != Zero;
   Res.merge(vector<half, N>(Ones), NoZeroHi);
   return Res;
-};
+}
+
+static CM_NODEBUG CM_INLINE vector<half, 1>
+__impl_ui2fp__half__v1__(vector<uint64_t, 1> a) {
+  vector<uint16_t, 1> Inf(0x7c00u);
+  vector<uint32_t, 2> LoHi = a.template format<uint32_t>();
+  uint32_t Lo = LoHi[0];
+  uint32_t Hi = LoHi[1];
+  if (Hi == 0u)
+    return vector<half, 1>(Lo);
+  return Inf.template format<half>();
+}
 
 template <typename T, unsigned N> class __impl_ui2fp_runner {};
 
@@ -197,9 +208,15 @@ public:
     return __impl_ui2fp__half__<N>(arg);
   }
 };
+template <> class __impl_ui2fp_runner<half, 1> {
+public:
+  vector<half, 1> run(vector<uint64_t, 1> arg) {
+    return __impl_ui2fp__half__v1__(arg);
+  }
+};
 
 template <typename T, unsigned N>
-CM_NODEBUG CM_INLINE vector<float, N> __impl_si2fp__(vector<uint64_t, N> a) {
+CM_NODEBUG CM_INLINE vector<T, N> __impl_si2fp__(vector<uint64_t, N> a) {
   const vector<uint32_t, N> Zero(0);
 
   // NOTE: SIToFP is special, since it does not do the convert by itself,
