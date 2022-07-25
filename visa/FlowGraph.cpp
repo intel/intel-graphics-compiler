@@ -4067,7 +4067,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
     for (auto callSite : callSites)
     {
         const char* nameBase = "VCA_SAVE";  // sizeof(nameBase) = 9, including ending 0
-        const int maxIdLen = 10;
+        const int maxIdLen = 3;
         const char* name = builder.getNameString(mem, sizeof(nameBase) + maxIdLen, "%s_%d", nameBase, i);
         G4_Declare* VCA = builder.createDeclareNoLookup(name, G4_GRF, builder.numEltPerGRF<Type_UD>(), builder.kernel.getCallerSaveLastGRF(), Type_UD);
         name = builder.getNameString(mem, 50, "SA0_%d", i);
