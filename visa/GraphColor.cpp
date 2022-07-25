@@ -4341,7 +4341,8 @@ void Augmentation::buildLiveIntervals()
     {
         for (unsigned i = 0; i < liveAnalysis.getNumSelectedGlobalVar(); i++)
         {
-            if (liveAnalysis.isLiveAtEntry(bb, i) == true)
+            if (liveAnalysis.isLiveAtEntry(bb, i) == true &&
+                !kernel.fg.isPseudoDcl(lrs[i]->getDcl()))
             {
                 // Extend ith live-interval
                 G4_Declare* dcl = lrs[i]->getDcl()->getRootDeclare();
