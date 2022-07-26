@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 __constant int *__SubDeviceID;
 __constant int __MaxHWThreadIDPerSubDevice = 1;
 
+
 int SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )(void) {
     if (__SubDeviceID == NULL) {
         return 0;
