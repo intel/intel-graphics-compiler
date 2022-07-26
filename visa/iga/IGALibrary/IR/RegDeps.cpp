@@ -317,7 +317,7 @@ uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty)
         IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
         return 2;
     }
-    else if (src1_ty == Type::BF8) {
+    else if (src1_ty == Type::BF8 || src1_ty == Type::HF8) {
         IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
         return 4;
     }

@@ -1150,6 +1150,7 @@ void Formatter::formatSrcOp(
             }
             break;
         case Type::BF8:
+        case Type::HF8:
             emitHex(src.getImmediateValue().u8);
             break;
         case Type::V:

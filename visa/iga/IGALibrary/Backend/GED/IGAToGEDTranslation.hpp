@@ -324,12 +324,12 @@ namespace iga
         case Type::S4:
             dataType = GED_DATA_TYPE_b;
             break;
-            // case Type::U1: no mapping as of today
+        // case Type::U1: no mapping as of today
         case Type::U2:
         case Type::U4:
             dataType = GED_DATA_TYPE_ub;
             break;
-        case Type::QF: dataType = GED_DATA_TYPE_qf; break;
+        case Type::QF:   dataType = GED_DATA_TYPE_qf;   break;
         case Type::BF8:  dataType = GED_DATA_TYPE_bf8;  break;
         case Type::TF32: dataType = GED_DATA_TYPE_tf32; break;
         default:
@@ -342,15 +342,15 @@ namespace iga
     {
         GED_PRECISION precision = GED_PRECISION_INVALID;
         switch (t) {
-        case Type::U1: precision = GED_PRECISION_u1; break;
-        case Type::U2: precision = GED_PRECISION_u2; break;
-        case Type::U4: precision = GED_PRECISION_u4; break;
-        case Type::UB: precision = GED_PRECISION_u8; break;
-        case Type::S2: precision = GED_PRECISION_s2; break;
-        case Type::S4: precision = GED_PRECISION_s4; break;
-        case Type::B:  precision = GED_PRECISION_s8; break;
-        case Type::BF: precision = GED_PRECISION_bf16; break;
-        case Type::HF: precision = GED_PRECISION_f16; break;
+        case Type::U1:   precision = GED_PRECISION_u1;   break;
+        case Type::U2:   precision = GED_PRECISION_u2;   break;
+        case Type::U4:   precision = GED_PRECISION_u4;   break;
+        case Type::UB:   precision = GED_PRECISION_u8;   break;
+        case Type::S2:   precision = GED_PRECISION_s2;   break;
+        case Type::S4:   precision = GED_PRECISION_s4;   break;
+        case Type::B:    precision = GED_PRECISION_s8;   break;
+        case Type::BF:   precision = GED_PRECISION_bf16; break;
+        case Type::HF:   precision = GED_PRECISION_f16;  break;
         case Type::BF8:  precision = GED_PRECISION_bf8;  break;
         case Type::TF32: precision = GED_PRECISION_tf32; break;
         default:

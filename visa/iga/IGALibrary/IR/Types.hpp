@@ -118,6 +118,7 @@ static inline std::tuple<uint32_t, uint32_t>
 
     case Type::QF:
     case Type::BF8:
+    case Type::HF8:
         break;
     case Type::TF32:
         shr = 2;
@@ -174,6 +175,7 @@ static inline bool TypeIsFloating(Type t)
     case Type::BF:
     case Type::QF:
     case Type::BF8:
+    case Type::HF8:
     case Type::TF32:
     case Type::HF:
     case Type::DF:

@@ -70,8 +70,9 @@ static const IdentMap<Type> SRC_TYPES {
     {"nf", Type::NF},
     {"bf", Type::BF},
     {"bf16", Type::BF},
-    {"bf8", Type::BF8},
-    {"qf", Type::QF},
+    {"bf8",  Type::BF8},
+    {"hf8",  Type::HF8},
+    {"qf",   Type::QF},
     {"tf32", Type::TF32},
     ///////////////////////////////////////////
     // non-standard names
@@ -101,6 +102,7 @@ static const IdentMap<Type> DST_TYPES {
     {"bf", Type::BF},
     {"bf16", Type::BF},
     {"bf8", Type::BF8},
+    {"hf8", Type::HF8},
     {"qf", Type::QF},
     {"tf32", Type::TF32},
     {"f",  Type::F},

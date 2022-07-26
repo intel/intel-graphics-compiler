@@ -209,6 +209,7 @@ static inline std::string ToSymbol(Type x)
     MAKE_CASE(Type, BF);
 
     MAKE_CASE(Type, BF8);
+    MAKE_CASE(Type, HF8);
     MAKE_CASE(Type, QF);
     MAKE_CASE(Type, TF32);
     MAKE_DEFAULT_CASE(Type);
@@ -388,6 +389,7 @@ static inline std::string ToSyntax(Type ot) {
     case Type::BF: return ":bf";
     case Type::QF: return ":qf";
     case Type::BF8: return ":bf8";
+    case Type::HF8: return ":hf8";
     case Type::TF32: return ":tf32";
 
     case Type::INVALID: return ":Type::INVALID";
