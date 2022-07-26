@@ -42,16 +42,19 @@ namespace IGC
 
     private:
         bool changed;
-        llvm::Type* int1type;
-        llvm::Type* int8type;
-        llvm::DenseMap<llvm::Value*, llvm::Value*> promotedValuesCache;
 
-        llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
-
-        bool functionNeedsPromotion(llvm::Function* function);
+        bool typeNeedsPromotion(llvm::Type* type);
         llvm::Value* createZextIfNeeded(llvm::Value* argument, llvm::Instruction* insertBefore);
-
-        void promoteFunctions(llvm::Module& module);
         void cleanUp(llvm::Module& module);
+
+        // Promoting types
+        llvm::DenseMap<llvm::Type*, llvm::Type*> promotedTypesCache;
+        llvm::Type* getOrCreatePromotedType(llvm::Type* type);
+
+        // Promoting values
+        llvm::DenseMap<llvm::Value*, llvm::Value*> promotedValuesCache;
+        llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
+        llvm::Function* promoteFunction(llvm::Function* function);
+        llvm::GlobalVariable* promoteGlobalVariable(llvm::GlobalVariable* globalVariable);
     };
 }

@@ -10,6 +10,9 @@
 
 @global_variable = internal addrspace(3) global i1 false
 
+; CHECK:        @global_variable = internal addrspace(3) global i8 0
+
+
 define void @load_and_store_global_variable(i1 %input) {
   %value = load i1, i1 addrspace(3)* @global_variable
   store i1 false, i1 addrspace(3)* @global_variable
@@ -18,10 +21,8 @@ define void @load_and_store_global_variable(i1 %input) {
   ret void
 }
 
-; CHECK:        @global_variable = internal addrspace(3) global i8 0
-
 ; CHECK:        define void @load_and_store_global_variable(i8 %input) {
-; CHECK-NEXT:   load i8, i8 addrspace(3)* @global_variable
+; CHECK-NEXT:   %value = load i8, i8 addrspace(3)* @global_variable
 ; CHECK-NEXT:   store i8 0, i8 addrspace(3)* @global_variable
 ; CHECK-NEXT:   store i8 1, i8 addrspace(3)* @global_variable
 ; CHECK-NEXT:   store i8 {{%[a-zA-Z0-9]+}}, i8 addrspace(3)* @global_variable
