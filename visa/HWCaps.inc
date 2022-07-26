@@ -906,11 +906,7 @@ SPDX-License-Identifier: MIT
     }
 
     // temp
-    bool useNewNoMaskWA() const
-    {
-        return (getOption(vISA_newNoMaskWA) && m_options->getTarget() == VISA_CM)  // VC
-             || getuint32Option(vISA_newTmpNoMaskWA) > 0;                          // scalar igc
-    }
+    bool useNewNoMaskWA() const  { return true; }
 
     bool hasSLMWARIssue() const
     {
