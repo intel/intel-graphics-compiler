@@ -857,7 +857,7 @@ CVariable* CShader::GetMSG0()
 {
     if (!m_MSG0)
     {
-        m_MSG0 = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, CName::NONE);
+        m_MSG0 = GetNewVariable(4, ISA_TYPE_UD, EALIGN_DWORD, true, CName::NONE);
 
         encoder.GetVISAPredefinedVar(m_MSG0, PREDEFINED_MSG0);
     }
