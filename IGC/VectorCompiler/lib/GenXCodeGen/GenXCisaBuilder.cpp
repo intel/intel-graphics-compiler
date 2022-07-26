@@ -547,7 +547,15 @@ class GenXKernelBuilder {
   // control mask before exiting from the subroutine.
   uint32_t DefaultFloatControl = 0;
 
-  static const uint32_t CR_Mask = 0x1 << 10 | 0x3 << 6 | 0x3 << 4 | 0x1;
+  enum CRBits {
+    SinglePrecisionMode = 1,
+    RoundingMode = 3 << 4,
+    DoublePrecisionDenorm = 1 << 6,
+    SinglePrecisionDenorm = 1 << 7,
+    HalfPrecisionDenorm = 1 << 10,
+  };
+
+  uint32_t CRMask = 0;
 
   // normally false, set to true if there is any SIMD CF in the func or this is
   // (indirectly) called inside any SIMD CF.
@@ -1159,6 +1167,10 @@ bool GenXKernelBuilder::run() {
   GrfByteSize = Subtarget ? Subtarget->getGRFByteSize() : defaultGRFByteSize;
   StackSurf = Subtarget ? Subtarget->stackSurface() : PREDEFINED_SURFACE_STACK;
 
+  CRMask = CRBits::SinglePrecisionMode | CRBits::RoundingMode |
+           CRBits::DoublePrecisionDenorm | CRBits::SinglePrecisionDenorm |
+           CRBits::HalfPrecisionDenorm;
+
   UseNewStackBuilder =
       BackendConfig->useNewStackBuilder() && Subtarget->isOCLRuntime();
   StackCallExecSize =
@@ -1386,10 +1398,10 @@ void GenXKernelBuilder::buildInstructions() {
           .getAsInteger(0, FloatControl);
 
       // Clear current float control bits to known zero state
-      buildControlRegUpdate(CR_Mask, true);
+      buildControlRegUpdate(CRMask, true);
 
       // Set rounding mode to required state if that isn't zero
-      FloatControl &= CR_Mask;
+      FloatControl &= CRMask;
       if (FloatControl) {
         if (FG->getHead() == Func)
           DefaultFloatControl = FloatControl;
@@ -5485,9 +5497,9 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
   F->getFnAttribute(genx::FunctionMD::CMFloatControl)
       .getValueAsString()
       .getAsInteger(0, FloatControl);
-  FloatControl &= CR_Mask;
+  FloatControl &= CRMask;
   if (FloatControl != DefaultFloatControl) {
-    buildControlRegUpdate(CR_Mask, true);
+    buildControlRegUpdate(CRMask, true);
     if (DefaultFloatControl)
       buildControlRegUpdate(DefaultFloatControl, false);
   }
