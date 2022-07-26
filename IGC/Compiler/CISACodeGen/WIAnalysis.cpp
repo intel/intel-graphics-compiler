@@ -1470,6 +1470,10 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             case CLIP_DISTANCE_Y: // DX10 clip distance Y from VUE header in GS
             case CLIP_DISTANCE_Z: // DX10 clip distance Z from VUE header in GS
             case CLIP_DISTANCE_W: // DX10 clip distance W from VUE header in GS
+            case CLIP_DISTANCE_HI_X:
+            case CLIP_DISTANCE_HI_Y:
+            case CLIP_DISTANCE_HI_Z:
+            case CLIP_DISTANCE_HI_W:
             case POSITION_X_OFFSET: // pixel position offset X in PS
             case POSITION_Y_OFFSET: // pixel position offset Y in PS
             case POINT_COORD_X: // point-sprite coordinate X from PS attributes
