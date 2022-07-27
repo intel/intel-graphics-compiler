@@ -1873,6 +1873,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
 
     std::map<unsigned, BitSet> footprints;
     std::vector<std::pair<G4_Declare*, INST_LIST_RITER>> pseudoKills;
+    std::map<G4_Declare*, INST_LIST_RITER> pseudoKillsForSpills;
 
     for (INST_LIST::reverse_iterator rit = bb->rbegin(), rend = bb->rend(); rit != rend; ++rit)
     {
@@ -2185,6 +2186,8 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                 LocalLiveRange* topdclLR = nullptr;
 
                 if ((dstfootprint->isAllset() ||
+                    // Check whether the var is a spill and the inst does not write the whole region
+                    topdcl->getRegVar()->isRegVarTransient() ||
                     // Check whether local RA marked this range
                     (topdcl &&
                     (topdclLR = gra.getLocalLR(topdcl)) &&
@@ -2215,9 +2218,24 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     }
                     if (!foundKill)
                     {
-                        // All bytes of dst written at this point, so this is a good place to insert
-                        // pseudo kill inst
-                        pseudoKills.emplace_back(topdcl, rit);
+                        // If the original spill is coalesced, then its
+                        // corresponding pseudo kill would be erased in the
+                        // cleaning pass. On the other hand, if a kill for the
+                        // spill is found, the spill is not the candidate for
+                        // coalescing, and the existing kill will be good.
+                        if (topdcl->getRegVar()->isRegVarTransient())
+                        {
+                            // Here we keep tracking the most favorable
+                            // position, i.e., the topmost, to insert the
+                            // pseudo kill.
+                            pseudoKillsForSpills.insert_or_assign(topdcl, rit);
+                        }
+                        else
+                        {
+                            // All bytes of dst written at this point, so this is a good place to insert
+                            // pseudo kill inst
+                            pseudoKills.emplace_back(topdcl, rit);
+                        }
                     }
 
                     // Reset gen
@@ -2284,6 +2302,16 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
     // Insert pseudo_kill nodes in BB
     //
     for (auto&& pseudoKill : pseudoKills)
+    {
+        INST_LIST_ITER iterToInsert = pseudoKill.second.base();
+        do
+        {
+            --iterToInsert;
+        } while ((*iterToInsert)->isPseudoKill());
+        G4_INST* killInst = fg.builder->createPseudoKill(pseudoKill.first, PseudoKillType::FromLiveness, false);
+        bb->insertBefore(iterToInsert, killInst);
+    }
+    for (auto pseudoKill : pseudoKillsForSpills)
     {
         INST_LIST_ITER iterToInsert = pseudoKill.second.base();
         do
