@@ -130,7 +130,6 @@ struct CompileOptions {
   std::string LLVMOptions;
   bool UseBindlessBuffers = false;
   bool EmitZebinVisaSections = false;
-  bool HasGreaterThan4GBBuffer = false;
   bool HasL1ReadOnlyCache = false;
   bool HasLocalMemFenceSupress = false;
   bool HasMultiTile = false;

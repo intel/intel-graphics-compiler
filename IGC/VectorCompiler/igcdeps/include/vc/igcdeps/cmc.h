@@ -144,7 +144,6 @@ public:
 
 void createBinary(
     CGen8CMProgram &CMProgram,
-    const llvm::GenXOCLRuntimeInfo::CompiledModuleT &CompiledModule,
-    vc::CompileOptions &Opts);
+    const llvm::GenXOCLRuntimeInfo::CompiledModuleT &CompiledModule);
 
 } // namespace vc
