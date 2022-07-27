@@ -634,7 +634,7 @@ void CShader::AllocateConstants(uint& offset)
         m_ConstantBufferLength += var->GetSize();
     }
 
-    m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getMinPushConstantBufferAlignmentInBytes());
+    m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
     offset += m_ConstantBufferLength;
 }
 
@@ -663,7 +663,7 @@ void CShader::AllocateNOSConstants(uint& offset)
         maxConstantPushed = std::max(maxConstantPushed, I->first + numConstantsPushed);
     }
     maxConstantPushed = iSTD::Max(maxConstantPushed, static_cast<uint>(m_ModuleMetadata->MinNOSPushConstantSize));
-    m_NOSBufferSize = iSTD::Align(maxConstantPushed * SIZE_DWORD, getMinPushConstantBufferAlignmentInBytes());
+    m_NOSBufferSize = iSTD::Align(maxConstantPushed * SIZE_DWORD, getGRFSize());
     offset += m_NOSBufferSize;
 }
 
