@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-correctly-rounded-div-sqrt -S < %s | FileCheck %s
+; RUN: igc_opt -igc-correctly-rounded-div-sqrt -S < %s | FileCheck %s --check-prefixes=%SPV_CHECK_PREFIX%,CHECK
+
 ; ------------------------------------------------
 ; CorrectlyRoundedDivSqrt
 ; ------------------------------------------------
@@ -44,12 +45,15 @@ define spir_kernel void @test_fdiv(float %src1, float %src2) !dbg !9 {
 ; Testcase 3
 ; Check that sqrt calls are renamed
 ;
-; CHECK: call float @__builtin_spirv_OpenCL_sqrt_cr_f32({{.*}} !dbg [[FSQRT0_LOC:![0-9]*]]
+; CHECK-LEGACY: call float @__builtin_spirv_OpenCL_sqrt_cr_f32({{.*}} !dbg [[FSQRT0_LOC:![0-9]*]]
+; CHECK-KHR: call float @_Z19__spirv_ocl_sqrt_cr_f32({{.*}} !dbg [[FSQRT0_LOC:![0-9]*]]
 ; CHECK: call float @_Z7sqrt_cr_f32({{.*}} !dbg [[FSQRT1_LOC:![0-9]*]]
   %5 = call float @__builtin_spirv_OpenCL_sqrt_f32(float %src1), !dbg !24
   call void @llvm.dbg.value(metadata float %5, metadata !18, metadata !DIExpression()), !dbg !24
-  %6 = call float @_Z4sqrt_f32(float %src2), !dbg !25
-  call void @llvm.dbg.value(metadata float %6, metadata !19, metadata !DIExpression()), !dbg !25
+  %6 = call float @_Z16__spirv_ocl_sqrt_f32(float %src1), !dbg !24
+  call void @llvm.dbg.value(metadata float %6, metadata !18, metadata !DIExpression()), !dbg !24
+  %7 = call float @_Z4sqrt_f32(float %src2), !dbg !25
+  call void @llvm.dbg.value(metadata float %7, metadata !19, metadata !DIExpression()), !dbg !25
   ret void, !dbg !26
 }
 
@@ -62,10 +66,12 @@ define spir_kernel void @test_fdiv(float %src1, float %src2) !dbg !9 {
 ; CHECK-DAG: [[FDIV_VEC_MD]] = !DILocalVariable(name: "4", scope: !9, file: !4, line: 4, type: !15)
 
 ; Testcase 3 MD:
-; CHECK-DAG: [[FSQRT0_LOC]] = !DILocation(line: 5
+; CHECK-LEGACY-DAG: [[FSQRT0_LOC]] = !DILocation(line: 5
+; CHECK-KHR-DAG: [[FSQRT0_LOC]] = !DILocation(line: 5
 ; CHECK-DAG: [[FSQRT1_LOC]] = !DILocation(line: 6
 
 declare spir_func float @__builtin_spirv_OpenCL_sqrt_f32(float)
+declare spir_func float @_Z16__spirv_ocl_sqrt_f32(float)
 declare spir_func float @_Z4sqrt_f32(float)
 
 ; Function Attrs: nounwind readnone speculatable
