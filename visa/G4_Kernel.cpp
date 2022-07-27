@@ -1014,16 +1014,7 @@ void G4_Kernel::setKernelParameters()
     // Set the number of GRFs
     if (overrideGRFNum > 0)
     {
-        // User-provided number of GRFs
-        unsigned Val = m_options->getuInt32Option(vISA_GRFNumToUse);
-        if (Val > 0)
-        {
-            numRegTotal = std::min(Val, overrideGRFNum);
-        }
-        else
-        {
-            numRegTotal = overrideGRFNum;
-        }
+        numRegTotal = overrideGRFNum;
         callerSaveLastGRF = ((overrideGRFNum - 8) / 2) - 1;
     }
     else if (m_options->getOption(vISA_MultiLevelRegSharing) && overrideNumThreads > 0)
@@ -1113,9 +1104,7 @@ void G4_Kernel::setKernelParameters()
     }
     else
     {
-        // Default value for all other platforms
-        unsigned Val = m_options->getuInt32Option(vISA_GRFNumToUse);
-        numRegTotal = Val ? Val : 128;
+        numRegTotal = 128;
         callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
     }
     // For safety update TotalGRFNum, there may be some uses for this vISA option

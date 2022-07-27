@@ -3809,19 +3809,7 @@ bool CShader::CompileSIMDSizeInCommon(SIMDMode simdMode)
 
 uint32_t CShader::GetShaderThreadUsageRate()
 {
-    uint32_t grfNum = GRF_TOTAL_NUM;
-    if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
-    {
-        grfNum = IGC_GET_FLAG_VALUE(TotalGRFNum);
-    }
-    else if (GetContext()->hasSyncRTCalls() && IGC_GET_FLAG_VALUE(TotalGRFNum4RQ) != 0)
-    {
-        grfNum = IGC_GET_FLAG_VALUE(TotalGRFNum4RQ);
-    }
-    else if (GetContext()->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
-    {
-        grfNum = IGC_GET_FLAG_VALUE(TotalGRFNum4CS);
-    }
+    uint32_t grfNum = GetContext()->getNumGRFPerThread();
     // prevent callee divide by zero
     return std::max<uint32_t>(1, grfNum / GRF_TOTAL_NUM);
 }

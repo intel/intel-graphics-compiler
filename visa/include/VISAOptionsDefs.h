@@ -166,7 +166,6 @@ DEF_VISA_OPTION(vISA_ForceRemat,            ET_BOOL, "-forceremat",      UNUSED,
 DEF_VISA_OPTION(vISA_SpillMemOffset,        ET_INT32, "-spilloffset",           "USAGE: -spilloffset <offset>\n",     0)
 DEF_VISA_OPTION(vISA_ReservedGRFNum,        ET_INT32, "-reservedGRFNum",        "USAGE: -reservedGRFNum <regNum>\n",  0)
 DEF_VISA_OPTION(vISA_TotalGRFNum,           ET_INT32, "-TotalGRFNum",           "USAGE: -TotalGRFNum <regNum>\n",     128)
-DEF_VISA_OPTION(vISA_GRFNumToUse,           ET_INT32, "-GRFNumToUse",           "USAGE: -GRFNumToUse <regNum>\n",       0)
 DEF_VISA_OPTION(vISA_RATrace,               ET_BOOL, "-ratrace", UNUSED, false)
 DEF_VISA_OPTION(vISA_FastSpill,             ET_BOOL, "-fasterRA", UNUSED, false)
 DEF_VISA_OPTION(vISA_AbortOnSpillThreshold, ET_INT32, "-abortOnSpill", UNUSED, 0)

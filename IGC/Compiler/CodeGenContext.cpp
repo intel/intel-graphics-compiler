@@ -530,7 +530,7 @@ namespace IGC
         return 0;
     }
 
-    uint32_t OpenCLProgramContext::getNumGRFPerThread() const
+    uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault) const
     {
         if (platform.supportsStaticRegSharing())
         {
@@ -543,7 +543,7 @@ namespace IGC
                 return 256;
             }
         }
-        return CodeGenContext::getNumGRFPerThread();
+        return CodeGenContext::getNumGRFPerThread(returnDefault);
     }
 
     bool OpenCLProgramContext::forceGlobalMemoryAllocation() const
@@ -1391,7 +1391,9 @@ namespace IGC
         return 0;
     }
 
-    uint32_t CodeGenContext::getNumGRFPerThread() const
+    /// parameter "returnDefault" controls what to return when
+    /// there is no user-forced setting
+    uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault) const
     {
         constexpr uint32_t DEFAULT_TOTAL_GRF_NUM = 128;
 
@@ -1413,7 +1415,7 @@ namespace IGC
         {
             return IGC_GET_FLAG_VALUE(TotalGRFNum4CS);
         }
-        return DEFAULT_TOTAL_GRF_NUM;
+        return (returnDefault ? DEFAULT_TOTAL_GRF_NUM : 0);
     }
 
     bool CodeGenContext::forceGlobalMemoryAllocation() const

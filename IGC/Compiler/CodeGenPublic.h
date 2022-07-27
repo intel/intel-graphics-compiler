@@ -1262,7 +1262,7 @@ namespace IGC
         CompOptions& getCompilerOption();
         virtual void resetOnRetry();
         virtual uint32_t getNumThreadsPerEU() const;
-        virtual uint32_t getNumGRFPerThread() const;
+        virtual uint32_t getNumGRFPerThread(bool returnDefault = true) const;
         virtual bool forceGlobalMemoryAllocation() const;
         virtual bool allocatePrivateAsGlobalBuffer() const;
         virtual bool noLocalToGenericOptionEnabled() const;
@@ -1915,7 +1915,7 @@ namespace IGC
         bool isSPIRV() const;
         void setAsSPIRV();
         float getProfilingTimerResolution();
-        uint32_t getNumGRFPerThread() const override;
+        uint32_t getNumGRFPerThread(bool returnDefault = true) const override;
         uint32_t getNumThreadsPerEU() const override;
         bool forceGlobalMemoryAllocation() const override;
         bool allocatePrivateAsGlobalBuffer() const override;

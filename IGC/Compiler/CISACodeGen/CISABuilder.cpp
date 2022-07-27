@@ -4427,35 +4427,15 @@ namespace IGC
             SaveOption(vISA_enableUnsafeCP_DF, true);
         }
 
-        if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0 && (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0))
-        {
-            IGC_ASSERT_MESSAGE(0, "ReservedRegisterNum and TotalGRFNum registry keys cannot be used at the same time");
-        }
-
+        uint32_t NumGRFSetting = context->getNumGRFPerThread(/*returnDefault*/ false );
         if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0)
         {
+            IGC_ASSERT_MESSAGE(NumGRFSetting == 0, "ReservedRegisterNum and TotalGRFNum registry keys cannot be used at the same time");
             SaveOption(vISA_ReservedGRFNum, IGC_GET_FLAG_VALUE(ReservedRegisterNum));
         }
-        if (IGC_GET_FLAG_VALUE(GRFNumToUse) > 0)
+        else if (NumGRFSetting)
         {
-            SaveOption(vISA_GRFNumToUse, IGC_GET_FLAG_VALUE(GRFNumToUse));
-        }
-
-        if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
-        {
-            SaveOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum));
-        }
-        else if (context->hasSyncRTCalls() && IGC_GET_FLAG_VALUE(TotalGRFNum4RQ) != 0)
-        {
-            SaveOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum4RQ));
-        }
-        else if (context->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
-        {
-            SaveOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum4CS));
-        }
-        else
-        {
-            SaveOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
+            SaveOption(vISA_TotalGRFNum, NumGRFSetting);
         }
 
         if (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram())
