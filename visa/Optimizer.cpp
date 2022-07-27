@@ -7575,27 +7575,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // HW WAs that are done before RA.
     void Optimizer::preRA_HWWorkaround()
     {
-        // 3 versions: will keep one after the driver is stable
-        if (builder.useNewNoMaskWA())
+        if (builder.hasFusedEUNoMaskWA())
         {
-            if (builder.hasFusedEUNoMaskWA())
-            {
-                if (allPostRANoMaskWA())
-                {
-                    prepareNoMaskWA();
-                }
-                else
-                {
-                    newDoNoMaskWA();
-                }
-            }
-        }
-        else
-        {
-            if (builder.hasFusedEUNoMaskWA())
-            {
-                doNoMaskWA();
-            }
+            prepareNoMaskWA();
         }
 
         // Call WA for fused EU
@@ -7618,31 +7600,13 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     //    that BBs and insts between preRA pass and postRA pass remain undeleted (is it too strong?).
     //
     //    Note that for those WAs that should be done after inst scheduling, they should go to
-    //    HWWorkaround, not here, in order to prevent the scheduling from invalidating WAs.
+    //    HWWorkaround, not here.
     //
     void Optimizer::postRA_HWWorkaround()
     {
-        // 3 versions: will keep one after the driver is stable
-        if (builder.useNewNoMaskWA())
+        if (builder.hasFusedEUNoMaskWA())
         {
-            if (builder.hasFusedEUNoMaskWA())
-            {
-                if (allPostRANoMaskWA())
-                {
-                    applyNoMaskWA();
-                }
-                else
-                {
-                    newDoNoMaskWA_postRA();
-                }
-            }
-        }
-        else
-        {
-            if (builder.hasFusedEUNoMaskWA())
-            {
-                doNoMaskWA_postRA();
-            }
+            applyNoMaskWA();
         }
     }
 

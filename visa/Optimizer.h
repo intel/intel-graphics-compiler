@@ -457,19 +457,9 @@ public:
         // Normally, noMask Info will be freed in postRA workaround.
         // But in case RA fails, postRA will not be invoked. Thus, need
         // to free memory allocated in preRA_HWWorkaround() here as well.
-        if (builder.useNewNoMaskWA())
+        if (builder.hasFusedEUNoMaskWA())
         {
-            if (builder.hasFusedEUNoMaskWA())
-            {
-                if (allPostRANoMaskWA())
-                {
-                    kernel.deleteEUFusionNoMaskWAInfo();
-                }
-                else
-                {
-                    kernel.clearNoMaskInfo();
-                }
-            }
+            kernel.deleteEUFusionNoMaskWAInfo();
         }
     }
     int optimization();
