@@ -5180,6 +5180,11 @@ void GlobalRA::expandSpillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
     LSC_OP op = LSC_STORE;
     LSC_SFID lscSfid = LSC_UGM;
     LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+    LSC_L1_L3_CC store_cc = (LSC_L1_L3_CC)builder->getuint32Option(vISA_lscSpillStoreCCOverride);
+    if (store_cc != LSC_CACHING_DEFAULT)
+    {
+        cacheOpts = convertLSCLoadStoreCacheControlEnum(store_cc, false);
+    }
 
     LSC_ADDR addrInfo;
     addrInfo.type = LSC_ADDR_TYPE_SS; //Scratch memory
@@ -5285,6 +5290,11 @@ void GlobalRA::expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
     LSC_OP op = LSC_LOAD;
     LSC_SFID lscSfid = LSC_UGM;
     LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+    LSC_L1_L3_CC ld_cc = (LSC_L1_L3_CC)builder->getuint32Option(vISA_lscSpillLoadCCOverride);
+    if (ld_cc != LSC_CACHING_DEFAULT)
+    {
+        cacheOpts = convertLSCLoadStoreCacheControlEnum(ld_cc, true);
+    }
 
     LSC_ADDR addrInfo;
     addrInfo.type = LSC_ADDR_TYPE_SS; //Scratch memory

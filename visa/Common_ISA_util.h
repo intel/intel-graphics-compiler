@@ -189,5 +189,8 @@ bool strEndsWith(const std::string& str, const std::string& suffix);
 bool strStartsWith(const std::string& str, const std::string& prefix);
 bool isLocalLabelEndsWith(const std::string& str, const std::string& suffix);
 
+// utilities converting load/store cache control enum (LSC_L1_L3_CC) to LSC_CACHE_OPTS.
+LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc, bool isLoad);
+
 #endif  /* COMMON_ISA_UTIL_INCLUDED */
 

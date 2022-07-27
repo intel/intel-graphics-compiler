@@ -1614,3 +1614,54 @@ bool isLocalLabelEndsWith(const std::string& str, const std::string& suffix)
 {
     return str.size() > 0 && str[0] == '_' && strEndsWith(str, suffix);
 }
+
+LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc, bool isLoad)
+{
+    LSC_CACHE_OPTS cacheOpts{ LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+    switch (L1L3cc)
+    {
+    case LSC_L1DEF_L3DEF:
+        cacheOpts = { LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT };
+        break;
+    case LSC_L1UC_L3UC:
+        cacheOpts = { LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED };
+        break;
+    case LSC_L1UC_L3C_WB:
+        cacheOpts = {
+            LSC_CACHING_UNCACHED,
+            isLoad ? LSC_CACHING_CACHED : LSC_CACHING_WRITEBACK
+        };
+        break;
+    case LSC_L1C_WT_L3UC:
+        cacheOpts = {
+            isLoad ? LSC_CACHING_CACHED : LSC_CACHING_WRITETHROUGH,
+            LSC_CACHING_UNCACHED
+        };
+        break;
+    case LSC_L1C_WT_L3C_WB:
+        if (isLoad)
+            cacheOpts = { LSC_CACHING_CACHED, LSC_CACHING_CACHED };
+        else
+            cacheOpts = { LSC_CACHING_WRITETHROUGH, LSC_CACHING_WRITEBACK };
+        break;
+    case LSC_L1S_L3UC:
+        cacheOpts = { LSC_CACHING_STREAMING, LSC_CACHING_UNCACHED };
+        break;
+    case LSC_L1S_L3C_WB:
+        cacheOpts = {
+            LSC_CACHING_STREAMING,
+            isLoad ? LSC_CACHING_CACHED : LSC_CACHING_WRITEBACK
+        };
+        break;
+    case LSC_L1IAR_WB_L3C_WB:
+        if (isLoad)
+            cacheOpts = { LSC_CACHING_READINVALIDATE, LSC_CACHING_CACHED };
+        else
+            cacheOpts = { LSC_CACHING_WRITEBACK, LSC_CACHING_WRITEBACK };
+        break;
+    default:
+        assert(false && "unsupported caching option");
+        break;
+    }
+    return cacheOpts;
+}
