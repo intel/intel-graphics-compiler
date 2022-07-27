@@ -257,6 +257,7 @@ void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst& NBarrierSyncCal
             falseValue, // bool flushIcache
             isGlobal,   // bool isGlobal
             falseValue, // bool invalidateL1
+            falseValue, // bool foceLocalLSCScope
         },
         "",
         &(NBarrierSyncCall));

@@ -18,37 +18,39 @@ extern __constant int __OptDisable;
 
 // MEMFENCE IMPLEMENTATION
 
-void __attribute__((optnone)) __intel_memfence_optnone(bool flushRW, bool isGlobal, bool invalidateL1)
+void __attribute__((optnone)) __intel_memfence_optnone(bool flushRW, bool isGlobal, bool invalidateL1, bool forceLocalLSCScope)
 {
-#define MEMFENCE_IF(V1, V5, V6)                                    \
-if (flushRW == V1 && isGlobal == V5 && invalidateL1 == V6)         \
-{                                                                  \
-    __builtin_IB_memfence(true, V1, false, false, false, V5, V6);  \
+#define MEMFENCE_IF(V1, V5, V6, V7)                                                             \
+if (flushRW == V1 && isGlobal == V5 && invalidateL1 == V6 && forceLocalLSCScope == V7)          \
+{                                                                                               \
+    __builtin_IB_memfence(true, V1, false, false, false, V5, V6, V7);                           \
 } else
 
 // Generate combinations for all MEMFENCE_IF cases, e.g.:
-// true, true, true
-// true, true, false etc.
+// true, true, true, true
+// true, true, true, false etc.
+#define MF_L3(...) MF_L2(__VA_ARGS__,false) MF_L2(__VA_ARGS__,true)
 #define MF_L2(...) MF_L1(__VA_ARGS__,false) MF_L1(__VA_ARGS__,true)
 #define MF_L1(...) MEMFENCE_IF(__VA_ARGS__,false) MEMFENCE_IF(__VA_ARGS__,true)
-MF_L2(false)
-MF_L2(true) {}
+MF_L3(false)
+MF_L3(true) {}
 
 #undef MEMFENCE_IF
+#undef MF_L3
 #undef MF_L2
 #undef MF_L1
 }
-void __intel_memfence(bool flushRW, bool isGlobal, bool invalidateL1)
+void __intel_memfence(bool flushRW, bool isGlobal, bool invalidateL1, bool forceLocalLSCScope)
 {
-    __builtin_IB_memfence(true, flushRW, false, false, false, isGlobal, invalidateL1);
+    __builtin_IB_memfence(true, flushRW, false, false, false, isGlobal, invalidateL1, forceLocalLSCScope);
 }
 
-void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1)
+void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1, bool forceLocalLSCScope)
 {
     if (__OptDisable)
-        __intel_memfence_optnone(flushRW, isGlobal, invalidateL1);
+        __intel_memfence_optnone(flushRW, isGlobal, invalidateL1, forceLocalLSCScope);
     else
-        __intel_memfence(flushRW, isGlobal, invalidateL1);
+        __intel_memfence(flushRW, isGlobal, invalidateL1, forceLocalLSCScope);
 }
 
 // TYPEDMEMFENCE IMPLEMENTATION
@@ -97,12 +99,12 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
         // although on some platforms they may be elided; platform-specific checks are performed in codegen
         if (Semantics & WorkgroupMemory)
         {
-           __intel_memfence_handler(false, false, false);
+           __intel_memfence_handler(false, false, false,false);
         }
         if (Semantics & CrossWorkgroupMemory)
         {
            bool flushL3 = Memory == Device || Memory == CrossDevice;
-           __intel_memfence_handler(flushL3, true, invalidateL1);
+           __intel_memfence_handler(flushL3, true, invalidateL1, false);
         }
     }
 }
