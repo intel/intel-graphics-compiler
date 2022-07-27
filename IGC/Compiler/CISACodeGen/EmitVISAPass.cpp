@@ -536,7 +536,6 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext* ctx, MetaDataUtils* pMdUtil
 bool EmitPass::runOnFunction(llvm::Function& F)
 {
     m_currFuncHasSubroutine = false;
-    m_visitedScalarArgInst.clear();
 
     m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -10330,120 +10329,6 @@ bool EmitPass::IsIndirectAccess(llvm::Value* pointer)
     return isIndirect;
 }
 
-void EmitPass::CheckAccessFromScalar(llvm::Value* pointer)
-{
-    IGC_ASSERT_MESSAGE(isa<PointerType>(pointer->getType()), "Value should be a pointer");
-
-    if (GetResourceVariable(pointer).m_surfaceType != ESURFACE_STATELESS)
-        return;
-
-    Instruction* inst = dyn_cast<Instruction>(pointer);
-    if (!inst)
-        return;
-
-    llvm::Function* func = inst->getFunction();
-
-    // Skip non-kernel functions
-    if (!isEntryFunc(m_pCtx->getMetaDataUtils(), func))
-        return;
-
-    if (auto args = GetAccessFromScalar(inst))
-    {
-        for (auto it = args->begin(); it != args->end(); ++it)
-        {
-            MarkAsAccessFromScalar(func, *it);
-        }
-    }
-}
-
-// Returns a list of kernel arguments passed by value (instead of pointer) that are
-// used as pointer in load/store instruction. Returns null if load/store:
-//  (1) is indirect, or
-//  (2) uses pointer kernel argument
-// Results are cached for repeated use.
-const EmitPass::ScalarArgList* EmitPass::GetAccessFromScalar(llvm::Instruction* inst)
-{
-    // Skip already visited
-    if (m_visitedScalarArgInst.count(inst))
-        return &(*m_visitedScalarArgInst[inst]);
-
-    // Mark as visited
-    m_visitedScalarArgInst.try_emplace(inst, nullptr);
-
-    // Assume intrinsic call is simple arithmetic
-    if (isa<LoadInst>(inst) || (isa<CallInst>(inst) && !isa<GenIntrinsicInst>(inst)))
-    {
-        // (1) Found indirect access, fail search
-        return nullptr;
-    }
-
-    auto result = std::make_unique<EmitPass::ScalarArgList>();
-
-    for (unsigned int i = 0; i < inst->getNumOperands(); i++)
-    {
-        Value* op = inst->getOperand(i);
-
-        if (Argument* arg = dyn_cast<Argument>(op))
-        {
-            // Consider only integer arguments
-            if (arg->getType()->isIntegerTy())
-            {
-                result->push_back(arg);
-            }
-            else
-            {
-                // (2) Found non-compatible argument, fail
-                return nullptr;
-            }
-        }
-        else if (Instruction* opInst = dyn_cast<Instruction>(op))
-        {
-            auto* args = GetAccessFromScalar(opInst);
-
-            if (!args)
-            {
-                return nullptr; // propagate fail
-            }
-
-            result->append(args->begin(), args->end());
-        }
-    }
-
-    m_visitedScalarArgInst[inst] = std::move(result);
-    return &(*m_visitedScalarArgInst[inst]);
-}
-
-void EmitPass::MarkAsAccessFromScalar(llvm::Function* func, llvm::Argument* arg)
-{
-    FunctionMetaData& funcMD = m_moduleMD->FuncMD[func];
-    auto kernelArgs = funcMD.m_OpenCLArgAccessQualifiers.size();
-    auto index = arg->getArgNo();
-
-    if (index < kernelArgs)
-    {
-        // Fill with default values on first use
-        if (funcMD.m_OpenCLArgScalarAsPointers.empty())
-            funcMD.m_OpenCLArgScalarAsPointers.resize(kernelArgs, false);
-
-        funcMD.m_OpenCLArgScalarAsPointers[index] = true;
-    }
-    else
-    {
-        // Check implicit argument
-
-        MetaDataUtils* utils = m_pCtx->getMetaDataUtils();
-        FunctionInfoMetaDataHandle funcInfo = utils->getFunctionsInfoItem(func);
-
-        index = index - (func->arg_size() - funcInfo->size_ImplicitArgInfoList());
-        IGC_ASSERT_MESSAGE(index >= 0 && index < funcInfo->size_ImplicitArgInfoList(), "Invalid implicit argument index");
-
-        ArgInfoMetaDataHandle argInfo = funcInfo->getImplicitArgInfoListItem(index);
-        IGC_ASSERT_MESSAGE(argInfo->isExplicitArgNumHasValue(), "Failed to find explicit argument");
-
-        MarkAsAccessFromScalar(func, func->arg_begin() + argInfo->getExplicitArgNum());
-    }
-}
-
 void EmitPass::emitInsert(llvm::Instruction* inst)
 {
     auto IEI = llvm::cast<llvm::InsertElementInst>(inst);
@@ -15291,8 +15176,6 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
-    CheckAccessFromScalar(Ptr);
-
     // eOffset is in bytes
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(immOffset ? offset : Ptr);
@@ -15811,8 +15694,6 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
-    CheckAccessFromScalar(Ptr);
-
     if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
     {
         ForceDMask(false);
@@ -16512,8 +16393,6 @@ void EmitPass::emitLSCVectorLoad(
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
-    CheckAccessFromScalar(Ptr);
-
     // eOffset is in bytes
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(varOffset);
@@ -16802,8 +16681,6 @@ void EmitPass::emitLSCVectorStore(
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
-    CheckAccessFromScalar(Ptr);
-
     if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
     {
         ForceDMask(false);
