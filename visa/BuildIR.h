@@ -1157,9 +1157,10 @@ public:
     // kernel and all its functions (within CISA_IR_BUILDER).
     // It is in the form:
     //
-    //       label name:  _[<kernelName>|L]_f<functionId>_<func_local_label_id>_<lab>
+    //    label name:  _[<kernelName>|L]_[k|f]<functionId>_<func_local_label_id>_<lab>
     //
-    //    where optional <lab> is used for annotating the label for readability.
+    //    where optional <lab> is used for annotating the label for readability; and
+    //    'k' is for kernel entry and 'f' is for function.
     // If no kernel name or kernel name is too long, the label will start with "_L".
     //
     G4_Label* createLocalBlockLabel(const std::string& lab = "")
@@ -1170,7 +1171,9 @@ public:
         {
             std::string tName = sanitizeLabelString(cstr_kname);
             // cstr_kname is just for readability. If it is too long, don't use it.
-            if (tName.size() != 0 && tName.size() <= 30)
+            // Also, make sure cstr_kname does not start with "_L_" to make sure it
+            // would never be the same as any internal flag (starts with "_L_").
+            if (tName.size() != 0 && tName.size() <= 30 && tName.find("_L_") != 0)
             {
                 kname = tName;
             }
@@ -1178,7 +1181,12 @@ public:
 
         std::stringstream ss;
         uint32_t lbl_id = getAndUpdateNextLabelId();
-        ss  << "_" << kname << "_f" << kernel.getFunctionId() << "_" << lbl_id << "_" << lab;
+        // kernel and function (getFunctionId()) are numbered independently.
+        // Make sure to use "k" for kernel entry and "f" for function to avoid
+        // the same label in kernel entry and the first function.
+        ss  << "_" << kname
+            << (getIsKernel() ? "_k" : "_f")
+            << kernel.getFunctionId() << "_" << lbl_id << "_" << lab;
         size_t len = ss.str().size() + 1;
         char* new_str = (char*)mem.alloc(len);  // +1 for null that ends the string
         memcpy_s(new_str, len, ss.str().c_str(), len);
