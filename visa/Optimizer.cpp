@@ -8754,7 +8754,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             // per-thread payload vars
             localIDsOffset = CTIS;
-            localIDsOffset -= useInlineData ? kernel.getGRFSize() : 0;
+            localIDsOffset -= useInlineData ? builder.getInlineDataSize() : 0;
 
             // cross-thread payload vars
             numCrossThreadDW = CTIS / TypeSize(Type_UD);
