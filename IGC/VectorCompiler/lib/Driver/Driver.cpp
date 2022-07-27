@@ -747,7 +747,6 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 static Error fillInternalOptions(const opt::ArgList &InternalOptions,
                                  vc::CompileOptions &Opts) {
   using namespace IGC::options::internal;
-
   if (InternalOptions.hasArg(OPT_dump_isa_binary))
     Opts.DumpIsa = true;
   if (InternalOptions.hasArg(OPT_dump_llvm_ir))
@@ -775,6 +774,8 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.HasL3FlushForGlobal = true;
   if (InternalOptions.hasArg(OPT_vc_ignore_loop_unroll_threshold_on_pragma))
     Opts.IgnoreLoopUnrollThresholdOnPragma = true;
+  if (InternalOptions.hasArg(OPT_greater_than_4GB_buffer_required))
+    Opts.HasGreaterThan4GBBuffer = true;
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_vc_interop_subgroup_size)) {
     StringRef Val = A->getValue();

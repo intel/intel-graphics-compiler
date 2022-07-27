@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "common/secure_string.h"
 #include "inc/common/igfxfmid.h"
 #include "vc/igcdeps/cmc.h"
+#include "vc/Driver/Driver.h"
 
 #include <llvm/Support/raw_ostream.h>
 
@@ -675,7 +676,8 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
 
 static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
                              const FINALIZER_INFO &JitterInfo,
-                             CMKernel &Kernel) {
+                             CMKernel &Kernel,
+                             vc::CompileOptions &Opts) {
   Kernel.m_SupportsDebugging = BackendInfo.supportsDebugging();
   Kernel.m_GRFSizeInBytes = BackendInfo.getGRFSizeInBytes();
   Kernel.m_kernelInfo.m_kernelName = BackendInfo.getName();
@@ -726,14 +728,17 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   // cmc does not do stateless-to-stateful optimization, therefore
   // set >4GB to true by default, to false if we see any resource-type.
   ExecEnv.CompiledForGreaterThan4GBBuffers = true;
-  for (const GenXOCLRuntimeInfo::KernelArgInfo &Arg : BackendInfo.args()) {
-    if (Arg.isResource()) {
-      if (!Arg.isImage() || Arg.isWritable())
-        NumUAVs++;
-      else
-        NumResources++;
-      ExecEnv.CompiledForGreaterThan4GBBuffers = false;
-    }
+  if (!Opts.HasGreaterThan4GBBuffer)
+  {
+      for (const GenXOCLRuntimeInfo::KernelArgInfo &Arg : BackendInfo.args()) {
+        if (Arg.isResource()) {
+          if (!Arg.isImage() || Arg.isWritable())
+            NumUAVs++;
+          else
+            NumResources++;
+          ExecEnv.CompiledForGreaterThan4GBBuffers = false;
+        }
+      }
   }
   // Update BTI layout.
   Kernel.RecomputeBTLayout(NumUAVs, NumResources);
@@ -795,9 +800,10 @@ static void setGtpinInfo(const FINALIZER_INFO &JitterInfo,
 // Transform backend collected into encoder format (OCL patchtokens or L0
 // structures).
 static void fillKernelInfo(const GenXOCLRuntimeInfo::CompiledKernel &CompKernel,
-                           CMKernel &ResKernel) {
+                           CMKernel &ResKernel,
+                           vc::CompileOptions &Opts) {
   setExecutionInfo(CompKernel.getKernelInfo(), CompKernel.getJitterInfo(),
-                   ResKernel);
+                   ResKernel, Opts);
   setArgumentsInfo(CompKernel.getKernelInfo(), ResKernel);
   setFuncSectionInfo(CompKernel.getKernelInfo(), ResKernel.getProgramOutput());
 
@@ -869,12 +875,13 @@ fillOCLProgramInfo(IGC::SOpenCLProgramInfo &ProgramInfo,
 
 void vc::createBinary(
     vc::CGen8CMProgram &CMProgram,
-    const GenXOCLRuntimeInfo::CompiledModuleT &CompiledModule) {
+    const GenXOCLRuntimeInfo::CompiledModuleT &CompiledModule,
+    vc::CompileOptions &Opts) {
   fillOCLProgramInfo(*CMProgram.m_programInfo, CompiledModule.ModuleInfo);
   for (const GenXOCLRuntimeInfo::CompiledKernel &CompKernel :
        CompiledModule.Kernels) {
     auto K = std::make_unique<CMKernel>(CMProgram.getPlatform());
-    fillKernelInfo(CompKernel, *K);
+    fillKernelInfo(CompKernel, *K, Opts);
     CMProgram.m_kernels.push_back(std::move(K));
   }
 }

@@ -26,11 +26,6 @@ defm include_sip_kernel_local_debug :
 
 defm use_32_bit_ptr_arith : CommonFlag<"intel-use-32bit-ptr-arith">;
 
-def greater_than_4GB_buffer_required :
-  ZeFlag<"opt-greater-than-4GB-buffer-required">;
-def : ClFlag<"intel-greater-than-4GB-buffer-required">,
-  Alias<greater_than_4GB_buffer_required>;
-
 def has_buffer_offset_arg : ZeFlag<"opt-has-buffer-offset-arg">;
 def : ClFlag<"intel-has-buffer-offset-arg">, Alias<has_buffer_offset_arg>;
 
