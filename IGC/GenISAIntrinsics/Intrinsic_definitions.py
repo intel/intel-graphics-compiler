@@ -1426,8 +1426,7 @@ Imported_Intrinsics = \
      ("bool",                          "L3_Flush_Texture_Data"),
      ("bool",                          "L3_Flush_Instructions"),
      ("bool",                          "Fence has global effect"),
-     ("bool",                          "L1 Invalidate"),
-     ("bool",                          "Force Local LSC scope")],
+     ("bool",                          "L1 Invalidate")],
     "Convergent"]],
 ####################################################################################################
 "GenISA_mov_identity": ["",
