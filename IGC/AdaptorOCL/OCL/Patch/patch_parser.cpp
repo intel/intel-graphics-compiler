@@ -1014,6 +1014,9 @@ void DebugPatchList(
                     pPatchItem->TypeQualifierSize,
                     pStr );
                 pStr += pPatchItem->TypeQualifierSize;
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
+                    "\tIsScalarCastedToPointer = %s\n",
+                    pPatchItem->IsScalarCastedToPointer ? "true" : "false");
             }
             break;
 

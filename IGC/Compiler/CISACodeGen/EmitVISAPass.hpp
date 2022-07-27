@@ -702,6 +702,16 @@ public:
     // Otherwise the access is direct.
     bool IsIndirectAccess(llvm::Value* value);
 
+    // Checks if scalar kernel argument was used as pointer for stateless access. Example:
+    //
+    // kernel void f(long a) {
+    //   ((int*) a)[0] += 1;
+    // }
+    //
+    // Matcher fails if scalar argument is combined with pointer (scalar argument used as
+    // offset for pointer).
+    void CheckAccessFromScalar(llvm::Value* pointer);
+
     CVariable* GetSrcVariable(const SSource& source, bool fromConstPool = false);
     void SetSourceModifiers(unsigned int sourceIndex, const SSource& source);
 
@@ -737,6 +747,9 @@ private:
     uint m_labelForDMaskJmp;
 
     llvm::DenseMap<llvm::Instruction*, bool> instrMap;
+
+    typedef llvm::SmallVector<llvm::Argument*, 2> ScalarArgList;
+    llvm::DenseMap<llvm::Instruction*, std::unique_ptr<ScalarArgList>> m_visitedScalarArgInst;
 
     // Current rounding Mode
     //   As RM of FPCvtInt and FP could be different, there
@@ -792,6 +805,9 @@ private:
 
     void emitScan(llvm::Value* Src, IGC::WaveOps Op,
         bool isInclusiveScan, llvm::Value* Mask, bool isQuad);
+
+    const ScalarArgList* GetAccessFromScalar(llvm::Instruction* inst);
+    void MarkAsAccessFromScalar(llvm::Function* func, llvm::Argument* arg);
 
     // Cached per lane offset variables. This is a per basic block data
     // structure. For each entry, the first item is the scalar type size in
