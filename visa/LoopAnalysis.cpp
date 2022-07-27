@@ -636,6 +636,18 @@ G4_BB* LoopDetection::getPreheader(Loop* loop)
         }
     }
 
+    // insert new preHeader node in to any subroutines that header exists
+    for (auto& funcInfo : kernel.fg.sortedFuncTable)
+    {
+        auto foundIt = std::find_if(funcInfo->getBBList().begin(), funcInfo->getBBList().end(),
+            [header](const G4_BB* bb) { return bb == header; });
+        if (foundIt != funcInfo->getBBList().end())
+        {
+            funcInfo->addBB(preHeader);
+            break;
+        }
+    }
+
     loop->preHeader = preHeader;
     if (loop->parent)
         loop->parent->addBBToLoopHierarchy(preHeader);
