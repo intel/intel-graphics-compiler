@@ -62,7 +62,6 @@ private:
 
     uint32_t NumDSSPerSlice            = 0;
     uint32_t EuCountPerDSS             = 0;
-    uint32_t ThreadCountPerEU          = 0;
     uint32_t MaxDualSubSlicesSupported = 0;
 
     //TODO: this is hardcoded string, we might want to put all "printf" of different adaptors to one place eventually
@@ -198,9 +197,6 @@ private:
                 }
             }
         }
-
-        ThreadCountPerEU = SysInfo.ThreadCount / SysInfo.EUCount;
-
         DisableRTGlobalsKnownValues = IGC_IS_FLAG_ENABLED(DisableRTGlobalsKnownValues);
     }
 
