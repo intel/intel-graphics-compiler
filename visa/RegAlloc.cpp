@@ -3110,6 +3110,24 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
         for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
         {
             G4_INST* inst = (*rit);
+            // Skip the special case that is used to get the execution mask.
+            //
+            //     cmp.eq (M1, 16) P12 V0147(0,0)<0;1,0> V0147(0,0)<0;1,0>
+            //     cmp.eq (M5, 16) P12 V0147(0,0)<0;1,0> V0147(0,0)<0;1,0>
+            //
+            // FIXME: In the case, src0 and src1 are same and can be any
+            // register. In addition, the var might not be defined by vISA user
+            // resulting in imprecise liveness result. Some possible fix could
+            // be using the pre-defined var like R0, but it's not clear if the
+            // R0's live range would be affected a lot.
+            if (inst->opcode() == G4_cmp) {
+                const bool isModEq = inst->getCondMod() && inst->getCondMod()->getMod() == Mod_e;
+                const bool isNullDst = !inst->getDst() || inst->hasNULLDst();
+                const bool isSrc0SameAsSrc1 = inst->getSrc(0)->asSrcRegRegion() && inst->getSrc(1)->asSrcRegRegion() &&
+                    *inst->getSrc(0)->asSrcRegRegion() == *inst->getSrc(1)->asSrcRegRegion();
+                if (isModEq && isNullDst && isSrc0SameAsSrc1)
+                  continue;
+            }
             INST_LIST_RITER ritNext = rit;
             ritNext++;
             G4_INST* rNInst = nullptr;
