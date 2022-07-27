@@ -117,6 +117,7 @@ ModulePass *createGenXPromoteStatefulToBindlessPass();
 ModulePass *createGenXStackUsagePass();
 ModulePass *createGenXStructSplitterPass();
 FunctionPass *createGenXPredRegionLoweringPass();
+FunctionPass *createGenXDebugLegalizationPass();
 
 namespace genx {
 

@@ -252,6 +252,7 @@ void initializeCMLowerVLoadVStorePass(PassRegistry &);
 void initializeGenXStructSplitterPass(PassRegistry &);
 void initializeGenXPredRegionLoweringPass(PassRegistry &);
 void initializeGenXInlineAsmLoweringPass(PassRegistry &);
+void initializeGenXDebugLegalizationPass(PassRegistry &);
 } // End llvm namespace
 
 #endif

@@ -83,6 +83,7 @@ set(CODEGEN_SOURCES
   GenXVisa.cpp
   OCLRuntimeInfoPrinter.cpp
   GenXStructSplitter.cpp
+  GenXDebugLegalization.cpp
 )
 
 add_library(VCCodeGen ${CODEGEN_SOURCES})

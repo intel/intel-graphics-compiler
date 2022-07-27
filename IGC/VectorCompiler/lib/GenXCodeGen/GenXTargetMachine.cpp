@@ -151,6 +151,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXPredRegionLoweringPass(registry);
   initializeGenXLinkageCorruptorPass(registry);
   initializeGenXInlineAsmLoweringPass(registry);
+  initializeGenXDebugLegalizationPass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -313,6 +314,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, createInstructionCombiningPass());
 
   vc::addPass(PM, createGlobalDCEPass());
+  vc::addPass(PM, createGenXDebugLegalizationPass());
   vc::addPass(PM, createGenXLowerAggrCopiesPass());
   vc::addPass(PM, createInferAddressSpacesPass());
   /// .. include:: GenXStructSplitter.cpp
