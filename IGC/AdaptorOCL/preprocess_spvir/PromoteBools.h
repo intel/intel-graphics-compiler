@@ -39,6 +39,7 @@ namespace IGC
         void visitLoadInst(llvm::LoadInst& load);
         void visitStoreInst(llvm::StoreInst& store);
         void visitCallInst(llvm::CallInst& call);
+        void visitAllocaInst(llvm::AllocaInst& alloca);
 
     private:
         bool changed;
@@ -56,5 +57,6 @@ namespace IGC
         llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
         llvm::Function* promoteFunction(llvm::Function* function);
         llvm::GlobalVariable* promoteGlobalVariable(llvm::GlobalVariable* globalVariable);
+        llvm::AllocaInst* promoteAlloca(llvm::AllocaInst* alloca);
     };
 }

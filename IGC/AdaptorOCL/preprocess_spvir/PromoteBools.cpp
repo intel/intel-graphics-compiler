@@ -172,6 +172,11 @@ void PromoteBools::visitCallInst(CallInst& call)
     changed = true;
 }
 
+void PromoteBools::visitAllocaInst(AllocaInst& alloca)
+{
+    changed |= getOrCreatePromotedValue(&alloca) != &alloca;
+}
+
 bool PromoteBools::typeNeedsPromotion(Type* type)
 {
     if (!type)
@@ -245,6 +250,10 @@ void PromoteBools::cleanUp(Module& module)
         else if (auto function = dyn_cast<Function>(it.first))
         {
             renameAndClean(function, it.second);
+        }
+        else if (auto alloca = dyn_cast<AllocaInst>(it.first))
+        {
+            renameAndClean(alloca, it.second);
         }
     }
 
@@ -346,6 +355,10 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     else if (auto function = dyn_cast<Function>(value))
     {
         newValue = promoteFunction(function);
+    }
+    else if (auto alloca = dyn_cast<AllocaInst>(value))
+    {
+        newValue = promoteAlloca(alloca);
     }
 
     if (newValue != value)
@@ -450,4 +463,22 @@ GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariab
         nullptr,
         GlobalValue::ThreadLocalMode::NotThreadLocal,
         globalVariable->getType()->getPointerAddressSpace());
+}
+
+AllocaInst* PromoteBools::promoteAlloca(AllocaInst* alloca)
+{
+    if (!alloca || !typeNeedsPromotion(alloca->getAllocatedType()))
+    {
+        return alloca;
+    }
+
+    auto newAlloca = new AllocaInst(
+        getOrCreatePromotedType(alloca->getAllocatedType()),
+        alloca->getType()->getAddressSpace(),
+        alloca->isArrayAllocation() ? alloca->getArraySize() : nullptr,
+        alloca->getName(),
+        alloca);
+    newAlloca->setAlignment(IGCLLVM::getAlign(*alloca));
+
+    return newAlloca;
 }
