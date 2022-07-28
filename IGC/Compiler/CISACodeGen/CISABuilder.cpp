@@ -4556,18 +4556,18 @@ namespace IGC
             SaveOption(vISA_UseOldSubRoutineAugIntf, true);
         }
         if (IGC_IS_FLAG_ENABLED(FastCompileRA)
-            && (!hasStackCall || (IGC_GET_FLAG_VALUE(PartitionUnit) & 0x3) != 0))
+            && (!hasStackCall || IGC_IS_FLAG_ENABLED(PartitionWithFastHybridRA)))
         {
             SaveOption(vISA_FastCompileRA, true);
         }
         if (IGC_IS_FLAG_ENABLED(HybridRAWithSpill)
-            && (!hasStackCall || (IGC_GET_FLAG_VALUE(PartitionUnit) & 0x3) != 0))
+            && (!hasStackCall || IGC_IS_FLAG_ENABLED(PartitionWithFastHybridRA)))
         {
             SaveOption(vISA_HybridRAWithSpill, true);
         }
-        if ((IGC_GET_FLAG_VALUE(PartitionUnit) & 0x3) != 0)
+        if (IGC_IS_FLAG_ENABLED(PartitionWithFastHybridRA))
         {
-            SaveOption(vISA_Partitioning, true);
+            SaveOption(vISA_PartitionWithFastHybridRA, true);
         }
         if (IGC_IS_FLAG_ENABLED(DumpPayloadToScratch))
         {

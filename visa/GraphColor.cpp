@@ -7646,7 +7646,7 @@ bool GraphColor::regAlloc(
         bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
         bool willSpill = ((builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill))
-            && (!hasStackCall || builder.getOption(vISA_Partitioning))) ||
+            && (!hasStackCall || builder.getOption(vISA_PartitionWithFastHybridRA))) ||
             (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
             rpe->getMaxRP() >= kernel.getNumRegTotal() + 24);
         if (willSpill)
@@ -10639,7 +10639,7 @@ int GlobalRA::coloringRegAlloc()
     unsigned fastCompileIter = 1;
     bool fastCompile =
         (builder.getOption(vISA_FastCompileRA) || builder.getOption(vISA_HybridRAWithSpill)) &&
-        (!hasStackCall || builder.getOption(vISA_Partitioning));
+        (!hasStackCall || builder.getOption(vISA_PartitionWithFastHybridRA));
 
     if (fastCompile)
     {
@@ -10748,7 +10748,7 @@ int GlobalRA::coloringRegAlloc()
             !kernel.getHasAddrTaken();
         if (builder.getOption(vISA_FailSafeRA) &&
             kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
-            (!hasStackCall || builder.getOption(vISA_Partitioning)) &&
+            !hasStackCall &&
             ((iterationNo == maxRAIterations - 1) ||
              (allowAddrTaken &&
               iterationNo == failSafeRAIteration)))

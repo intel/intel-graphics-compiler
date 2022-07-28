@@ -554,6 +554,7 @@ DECLARE_IGC_REGKEY(bool, AddNoInlineToTrimmedFunctions, false, "Tell late passes
 DECLARE_IGC_REGKEY(bool, ForceInlineExternalFunctions,  false, "not to trim functions called from multiple kernels", true)
 DECLARE_IGC_REGKEY(DWORD, KernelTotalSizeThreshold,     50000, "Trimming target of kernel total size", true)
 DECLARE_IGC_REGKEY(DWORD, PartitionUnit,                    0, "Partition compilation unit", true)
+DECLARE_IGC_REGKEY(bool, PartitionWithFastHybridRA,     false, "Enable FastRA and HybridRA when partition is enabled", true)
 DECLARE_IGC_REGKEY(DWORD, UnitSizeThreshold,             3000, "Compilation unit size threshold", true)
 DECLARE_IGC_REGKEY(DWORD, PrintPartitionUnit,               0, "Print information about compilation unit partitioning", true)
 DECLARE_IGC_REGKEY(bool, ControlUnitSize,               false, "Control compilation unit size by unit trimming", true)
