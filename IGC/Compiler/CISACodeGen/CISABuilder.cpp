@@ -4535,6 +4535,10 @@ namespace IGC
         if (g4Subset != 0)
             SaveOption(vISA_DumpPassesSubset, g4Subset);
 
+        auto dumpJSON = (uint32_t)IGC_GET_FLAG_VALUE(ShaderDumpEnableIGAJSON);
+        if (dumpJSON != 0)
+            SaveOption(vISA_dumpIgaJson, dumpJSON);
+
         if (EnableBarrierInstCounterBits)
         {
             SaveOption(VISA_EnableBarrierInstCounterBits, true);
