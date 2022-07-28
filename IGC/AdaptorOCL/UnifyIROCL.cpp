@@ -415,6 +415,10 @@ static void CommonOCLBasedPasses(
 
         mpm.add(new LowerInvokeSIMD());
 
+        // Run BreakConstantExpr right before LegalizeFunctionSignatures, since
+        // input module may contain call sites with bitcast constant expressions
+        mpm.add(new BreakConstantExpr());
+
         // Fix illegal argument/return types in function calls not already inlined.
         // This pass changes all illegal function signatures to be passed by pointer instead.
         mpm.add(new LegalizeFunctionSignatures());
