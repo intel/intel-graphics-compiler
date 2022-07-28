@@ -517,8 +517,8 @@ void AlignmentAnalysis::SetInstAlignment(MemSetInst& I)
     // Set the align attribute of the memset according to the detected
     // alignment of its operand.
 #if LLVM_VERSION_MAJOR >= 14
-    uint64_t alignment_value = iSTD::Max(I.getDestAlign()->value(), getAlignValue(I.getRawDest()));
-    llvm::Align alignment = llvm::Align(alignment_value);
+    uint64_t alignment_value = getAlignValue(I.getRawDest());
+    llvm::Align alignment = llvm::max(I.getDestAlign(), llvm::Align(alignment_value));
     I.setDestAlignment(alignment);
 #else
     unsigned alignment = iSTD::Max(I.getDestAlignment(), getAlignValue(I.getRawDest()));
