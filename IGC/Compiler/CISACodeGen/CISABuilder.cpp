@@ -3878,7 +3878,7 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(VISAOptions))
         {
             std::vector<std::string> VISA_Opts;
-            const char* DELIMITERS = " \t\n\v\f\r,"; // isspace(c), and comma for igcstandalone
+            const char* DELIMITERS = " \t\n\v\f\r,="; // isspace(c), and comma/equal for igcstandalone
             std::string line(IGC_GET_REGKEYSTRING(VISAOptions));
             std::size_t pos = 0;
             std::size_t found;
