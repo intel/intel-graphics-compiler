@@ -3718,6 +3718,7 @@ bool SWSB::insertSyncTokenPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_
 
 bool SWSB::insertDistSyncPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_ITER inst_it)
 {
+    bool inserted = false;
     for (int i = PIPE_INT; i < PIPE_DPAS; i++)
     {
         unsigned dist = node->getDistInfo((SB_INST_PIPE)i);
@@ -3726,10 +3727,11 @@ bool SWSB::insertDistSyncPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_I
             G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
             synInst->setDistance(dist);
             synInst->setAccurateDistType((SB_INST_PIPE)i);
+            inserted = true;
         }
     }
 
-    return true;
+    return inserted;
 }
 
 //If depends on multiple different ALU pipelines
@@ -3898,7 +3900,7 @@ bool SWSB::insertSyncPVC(G4_BB * bb, SBNode * node, G4_INST * inst, INST_LIST_IT
 
     if(fg.builder->getOptions()->getOption(vISA_disableRegDistAllDep))
     {
-        insertDistSyncPVC(bb, node, inst, inst_it);
+        insertedSync |= insertDistSyncPVC(bb, node, inst, inst_it);
     }
 
     return insertedSync;
@@ -6251,7 +6253,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             }
         }
 
-        if (node->distInfo.value)
+        if (node->hasDistInfo())
         {
             if (builder.hasFiveALUPipes())
             {
