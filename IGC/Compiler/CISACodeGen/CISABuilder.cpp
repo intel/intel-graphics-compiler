@@ -4241,7 +4241,6 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(forceGlobalRA))
         {
             SaveOption(vISA_LocalRA, false);
-            SaveOption(vISA_LocalBankConflictReduction, false);
         }
 
         if (IGC_IS_FLAG_ENABLED(disableVarSplit))

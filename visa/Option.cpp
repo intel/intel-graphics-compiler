@@ -197,12 +197,6 @@ bool Options::parseOptions(int argc, const char* argv[])
     // Dependent arguments.
     // If setting an argument triggers more arguments, these should be
     // set here.
-    if (m_vISAOptions.isArgSetByUser(vISA_LocalRA)) {
-        m_vISAOptions.setBool(vISA_LocalBankConflictReduction, false);
-    }
-    if (m_vISAOptions.isArgSetByUser(vISA_LocalRARoundRobin)) {
-        m_vISAOptions.setBool(vISA_LocalBankConflictReduction, false);
-    }
     if (m_vISAOptions.isArgSetByUser(vISA_Debug)) {
         m_vISAOptions.setBool(vISA_EnableSendFusion, false);
         m_vISAOptions.setBool(vISA_LocalScheduling, false);
