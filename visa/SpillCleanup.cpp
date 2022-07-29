@@ -16,19 +16,6 @@ uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offset);
 
 namespace vISA
 {
-
-static bool isGRFAssigned(G4_Operand* opnd)
-{
-    MUST_BE_TRUE(opnd->isSrcRegRegion() ||
-        opnd->isDstRegRegion(),
-        "expecting src/dst reg region");
-    auto* topDcl = opnd->getTopDcl();
-    if (!topDcl)
-        return false;
-    auto* regVar = topDcl->getRegVar();
-    return regVar->getPhyReg() != nullptr;
-}
-
 G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(G4_SrcRegRegion* header, unsigned int scratchOffset, unsigned int payloadSize,
     bool useNoMask, G4_InstOption mask, G4_Declare* spillDcl, unsigned int row)
 {
@@ -175,9 +162,6 @@ void CoalesceSpillFills::coalesceSpills(
         auto curRow = src1Opnd->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
         declares.insert(src1Opnd->getTopDcl());
         minRow = minRow > curRow ? curRow : minRow;
-        MUST_BE_TRUE((*d)->isSpillIntrinsic() &&
-            !isGRFAssigned((*d)->asSpillIntrinsic()->getPayload()),
-            "shouldnt coalesce spill with assigned GRF");
     }
 
     G4_Declare* dcl = nullptr;
@@ -251,10 +235,6 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
 
         if (maxRow > dclSize)
             dclSize = maxRow;
-
-        MUST_BE_TRUE((*c)->isFillIntrinsic() &&
-            !isGRFAssigned((*c)->asFillIntrinsic()->getDst()),
-            "cannot coalesce fill with pre-assigned GRF");
     }
 
     auto leadInst = *coalesceableFills.front();
@@ -1102,9 +1082,7 @@ void CoalesceSpillFills::fills()
                     spills.clear();
                 }
 
-                if (!overlap(*instIter, spills) &&
-                    // dont coalesce fills that have physical GRF assigned
-                    !isGRFAssigned(inst->getDst()))
+                if (!overlap(*instIter, spills))
                 {
                     fillsToCoalesce.push_back(instIter);
                 }
@@ -1251,42 +1229,29 @@ void CoalesceSpillFills::spills()
                     spillsToCoalesce.clear();
                 }
 
-                if (isGRFAssigned(inst->asSpillIntrinsic()->getPayload()))
+                for (auto coalIt = spillsToCoalesce.begin();
+                    coalIt != spillsToCoalesce.end();
+                   )
                 {
-                    if (spillsToCoalesce.size() == 0)
+                    bool fullOverlap = false;
+                    if (overlap(*instIter, *(*coalIt), fullOverlap))
                     {
-                        ++instIter;
+                        if (fullOverlap)
+                        {
+#if 0
+                            printf("Deleting spill at $%d due to %d\n", (*(*coalIt))->getCISAOff(), (*instIter)->getCISAOff());
+#endif
+                            // Delete earlier spill since its made redundant
+                            // by current spill.
+                            bb->erase(*coalIt);
+                        }
+
+                        coalIt = spillsToCoalesce.erase(coalIt);
                         continue;
                     }
-                    // if spill intrinsic payload has physical GRF assigned then treat it as fence
-                    earlyCoalesce = true;
+                    coalIt++;
                 }
-                else
-                {
-                    for (auto coalIt = spillsToCoalesce.begin();
-                        coalIt != spillsToCoalesce.end();
-                        )
-                    {
-                        bool fullOverlap = false;
-                        if (overlap(*instIter, *(*coalIt), fullOverlap))
-                        {
-                            if (fullOverlap)
-                            {
-#if 0
-                                printf("Deleting spill at $%d due to %d\n", (*(*coalIt))->getCISAOff(), (*instIter)->getCISAOff());
-#endif
-                                // Delete earlier spill since its made redundant
-                                // by current spill.
-                                bb->erase(*coalIt);
-                            }
-
-                            coalIt = spillsToCoalesce.erase(coalIt);
-                            continue;
-                        }
-                        coalIt++;
-                    }
-                    spillsToCoalesce.push_back(instIter);
-                }
+                spillsToCoalesce.push_back(instIter);
             }
             else if (inst->isFillIntrinsic())
             {
@@ -1557,10 +1522,6 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
                     if (pDstDcl != src1Dcl)
                         break;
 
-                    // Don't remove inst with pre-assigned GRF
-                    if (pDstDcl->getRegVar()->getPhyReg())
-                        break;
-
                     unsigned int plb = pInst->getDst()->getLeftBound();
                     unsigned int prb = pInst->getDst()->getRightBound();
 
@@ -1803,12 +1764,6 @@ void CoalesceSpillFills::spillFillCleanup()
                     }
                 }
 
-                if (isGRFAssigned(inst->getDst()))
-                {
-                    // fill has GRF assigned so dont eliminate it
-                    continue;
-                }
-
                 while (pInstIt != startIt &&
                     w > 0)
                 {
@@ -2003,8 +1958,7 @@ void CoalesceSpillFills::removeRedundantWrites()
 #if 0
                         printf("Removing redundant successive write at $%d\n", inst->getCISAOff());
 #endif
-                        if(!isGRFAssigned(inst->getDst()))
-                            instIt = bb->erase(instIt);
+                        instIt = bb->erase(instIt);
                     }
                     else
                     {
@@ -2136,14 +2090,10 @@ void CoalesceSpillFills::removeRedundantWrites()
     for (auto removeSp : spillToRemove)
     {
         G4_BB* bb = removeSp.second.second;
-        auto* spillInst = *removeSp.second.first;
-        if (!isGRFAssigned(spillInst->asSpillIntrinsic()->getPayload()))
-        {
 #if 0
-            printf("Removing redundant scratch access at CISA $%d\n", removeSp.first->getCISAOff());
+        printf("Removing redundant scratch access at CISA $%d\n", removeSp.first->getCISAOff());
 #endif
-            bb->erase(removeSp.second.first);
-        }
+        bb->erase(removeSp.second.first);
     }
 }
 
