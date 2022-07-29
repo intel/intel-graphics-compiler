@@ -4127,7 +4127,7 @@ namespace IGC
                 VISAPreSchedVal = context->getModuleMetaData()->csInfo.VISAPreSchedRPThreshold;
             else if (context->type == ShaderType::PIXEL_SHADER)
                 VISAPreSchedVal = context->getModuleMetaData()->compOpt.VISAPreSchedRPThreshold;
-            else if (context->type == ShaderType::MESH_SHADER)
+            else if (context->type == ShaderType::TASK_SHADER)
                 VISAPreSchedVal = 100;
 
             // registry key setting has higher priority
