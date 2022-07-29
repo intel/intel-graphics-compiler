@@ -2667,7 +2667,8 @@ G4_SendDescRaw* IR_Builder::createLscMsgDesc(
     LSC_DATA_SHAPE              shape,
     G4_Operand                 *surface,
     uint32_t                    dstLen,
-    uint32_t                    addrRegs)
+    uint32_t                    addrRegs,
+    LdStAttrs                   otherAttrs)
 {
     //   Desc[5:0] = OPCODE {LOAD{_BLOCK,_QUAD},STORE{_BLOCK,_QUAD},ATOMIC*}
     //   Desc[8:7] = addr size
@@ -2812,6 +2813,7 @@ G4_SendDescRaw* IR_Builder::createLscMsgDesc(
         src1Len,
         access,
         surface);
+    g4desc->setLdStAttr(otherAttrs);
     return g4desc;
 }
 
@@ -2822,9 +2824,11 @@ G4_SendDescRaw * IR_Builder::createLscDesc(
     uint32_t extDesc,
     int src1Len,
     SendAccess access,
-    G4_Operand* bti)
+    G4_Operand* bti,
+    LdStAttrs otherAttrs)
 {
     auto msgDesc = new (mem) G4_SendDescRaw(sfid, desc, extDesc, src1Len, access, bti, true, *this);
+    msgDesc->setLdStAttr(otherAttrs);
     return msgDesc;
 }
 

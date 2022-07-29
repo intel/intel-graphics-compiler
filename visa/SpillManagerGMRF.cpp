@@ -5224,7 +5224,8 @@ void GlobalRA::expandSpillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
             dataShape,
             surface,
             0,
-            1);
+            1,
+            LdStAttrs::SCRATCH_SURFACE);
 
         auto sendInst = builder->createLscSendInst(
             nullptr,
@@ -5332,7 +5333,8 @@ void GlobalRA::expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt)
             dataShape,
             surface,
             responseLength,
-            1);
+            1,
+            LdStAttrs::SCRATCH_SURFACE);
 
         auto sendInst = builder->createLscSendInst(
             nullptr,

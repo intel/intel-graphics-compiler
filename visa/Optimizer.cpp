@@ -8905,7 +8905,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     dataShape,
                     surfaceBTI,
                     numDWToLoad < builder.numEltPerGRF<Type_UD>() ? 1 : numDWToLoad / builder.numEltPerGRF<Type_UD>(),
-                    1);
+                    1,
+                    LdStAttrs::NONE);
 
                 sendInst = builder.createLscSendInst(
                     nullptr,

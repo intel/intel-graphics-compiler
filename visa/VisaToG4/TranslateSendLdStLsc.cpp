@@ -455,7 +455,8 @@ int IR_Builder::translateLscUntypedInst(
         exDesc,
         src1Len,
         getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
-        surface);
+        surface,
+        LdStAttrs::NONE);
 
     createLscSendInst(
         pred,
@@ -561,7 +562,8 @@ int IR_Builder::translateLscUntypedBlock2DInst(
         exDesc,
         src1Len,
         getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
-        nullptr);
+        nullptr,
+        LdStAttrs::NONE);
 
 
     G4_InstSend *sendInst = createLscSendInst(
@@ -779,7 +781,8 @@ int IR_Builder::translateLscTypedInst(
         exDesc,
         src1Len,
         getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
-        surface);
+        surface,
+        LdStAttrs::NONE);
     G4_InstSend *sendInst = createLscSendInst(
         pred,
         dstData,

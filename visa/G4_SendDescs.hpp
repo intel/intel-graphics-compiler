@@ -632,6 +632,10 @@ private:
     int         src1Len;
     bool        eotAfterMessage = false;
 
+    // Mimic SendDescLdSt. Valid only for LSC msg. It's set via setLdStAttr(), not ctor
+    // (should be removed if lsc switchs to use SendDescLdSt
+    LdStAttrs attrs = LdStAttrs::NONE;
+
 public:
     static const int SLMIndex = 0xFE;
 
@@ -794,6 +798,10 @@ public:
 
     bool isScratchRW() const
     {
+        if (isLscDescriptor)
+        {
+            return hasAttrs(LdStAttrs::SCRATCH_SURFACE);
+        }
         // legacy DC0 scratch msg: bit[18] = 1
         return getSFID() == SFID::DP_DC0 && ((getFuncCtrl() & 0x40000u) != 0);
     }
@@ -846,6 +854,12 @@ public:
 
     uint32_t getDesc() const { return desc.value; }
     uint32_t getExtendedDesc() const { return extDesc.value; }
+
+    // LSC only
+    void setLdStAttr(LdStAttrs aVal) { attrs = aVal; }
+    bool hasAttrs(LdStAttrs a) const {
+        return (int(a) & int(attrs)) == int(a);
+    }
 
     std::string getDescription() const override;
 private:

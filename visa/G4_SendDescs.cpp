@@ -1673,6 +1673,9 @@ size_t G4_SendDescRaw::getDstLenBytes() const
 
 size_t G4_SendDescRaw::getSrc1LenBytes() const
 {
+    if (isLscDescriptor) {
+        return src1Len * irb.getGRFSize();
+    }
     if (isScratchRW()) {
         return 32 * getScratchRWSize(); // HWords
     }

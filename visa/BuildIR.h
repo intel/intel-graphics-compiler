@@ -1470,7 +1470,8 @@ public:
         LSC_DATA_SHAPE        shape,
         G4_Operand           *surface,
         uint32_t              dstLen,
-        uint32_t              addrRegs);
+        uint32_t              addrRegs,
+        LdStAttrs             otherAttrs);
 
     // ToDo: unify this with above function
     G4_SendDescRaw* createLscDesc(
@@ -1479,7 +1480,8 @@ public:
         uint32_t extDesc,
         int src1Len,
         SendAccess access,
-        G4_Operand* bti);
+        G4_Operand* bti,
+        LdStAttrs   otherAttrs);
 
 
     G4_InstSend *createLscSendInst(
