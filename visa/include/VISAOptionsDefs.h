@@ -346,7 +346,7 @@ DEF_VISA_OPTION(vISA_forceNoMaskWA,                 ET_BOOL,  "-forceNoMaskWA", 
 DEF_VISA_OPTION(vISA_newNoMaskWA,                   ET_BOOL,  "-newNoMaskWA", "Temp just for VC", true)
 DEF_VISA_OPTION(vISA_noMaskWAOnFuncEntry,           ET_BOOL,  "-noMaskWAOnFuncEntry", UNUSED, true)
 DEF_VISA_OPTION(vISA_newTmpNoMaskWA,                ET_INT32, "-newTmpNoMaskWA", "to control scalar IGC, temporary -newTempNoMaskWA 0|1|2", 0)
-DEF_VISA_OPTION(vISA_fusedCallWA,                   ET_INT32, "-fusedCallWA",   "EU Fusion call wa: 0: no hw bug, 1: sw wa w/o hw fix; 2: sw wa with partial HW fix", 0)
+DEF_VISA_OPTION(vISA_fusedCallWA,                   ET_INT32, "-fusedCallWA",   "EU Fusion call ww: 0: no wa; 1: sw wa w/o hw fix; 2: sw wa with partial HW fix", 0)
 DEF_VISA_OPTION(vISA_fusedCallUniform,              ET_BOOL,  "-fusedCallUniform", "true: fused call is uniform; false otherwise.", false)
 DEF_VISA_OPTION(vISA_DstSrcOverlapWA,               ET_BOOL,  "-dstSrcOverlapWA",  UNUSED, true)
 DEF_VISA_OPTION(vISA_Src1Src2OverlapWA,               ET_BOOL,  "-src1Src2OverlapWA",  UNUSED, false)
