@@ -141,25 +141,6 @@ class KernelDebugInfo;
 class VarSplitPass;
 
 
-// NoMask WA info : about WA applied in a BB.
-class NoMaskWA_info_t
-{
-public:
-    G4_INST* Inst_kill;        // (W) pseudoKill p  2
-    G4_INST* Inst_save;        // (W) mov (1|M0)  t  P
-    G4_INST* WAFlag_mov0;      // (W) mov (1|M0)  P  0
-    G4_INST* WAFlag_cmp;       //     cmp (simdsize|M0)  r0.0:uw r0.0:uw
-    G4_INST* WAFlag_allOne;    // (W&P.anyh) mov  P  0xFFFFFFFF
-    G4_INST* Inst_restore;     // (W) mov (1|M0)  P  t
-    // G4_INST* WAFlag_spill;  // (W) mov (1|M0)  DW1  P  [used by postRA]
-    std::list<std::tuple<G4_INST*, G4_INST*, G4_INST*> > WASequenceInfo;
-
-    NoMaskWA_info_t(std::list<std::tuple<G4_INST*, G4_INST*, G4_INST*> >& aWASeqInfo)
-        : WASequenceInfo(std::move(aWASeqInfo))
-    {}
-    G4_INST* getWAFlagDefInst() const { return WAFlag_allOne ? WAFlag_allOne : WAFlag_cmp; }
-};
-
 // NoMask WA Information
 class NoMaskWAInfo
 {
@@ -520,11 +501,7 @@ private:
 
     // WA related
 private:
-    // NoMaskWA under EU Fusion
-    //   PreRA WA creates WA flag and applies WA. This map keeps info around.
-    //   storage used will be freed after postRA WA is done.
-    std::unordered_map<G4_BB*, NoMaskWA_info_t*> m_noMaskWAInfo;
-    // Passing info from preRA to postRA
+    // NoMaskWA under EU Fusion: passing info from preRA to postRA
     NoMaskWAInfo* m_EUFusionNoMaskWAInfo;
 public:
     void createNoMaskWAInfo(G4_Declare* aWAFlag, G4_Declare* aWATemp, bool aInstNeedWA)
@@ -542,50 +519,8 @@ public:
         m_EUFusionNoMaskWAInfo = nullptr;
     }
     NoMaskWAInfo* getEUFusionNoMaskWAInfo() const { return m_EUFusionNoMaskWAInfo; }
-    void addNoMaskWAInfo(G4_BB* aBB,
-        G4_INST* aInstKill, G4_INST* aInstSave, G4_INST* aInstRestore,
-        G4_INST* aWAFlag_mov0, G4_INST* aWAFlag_cmp, G4_INST* aWAFlag_allOne,
-        std::list<std::tuple<G4_INST*, G4_INST*, G4_INST*> >& WASequenceInfo)
-    {
-        NoMaskWA_info_t* pinfo = new NoMaskWA_info_t(WASequenceInfo);
-        pinfo->Inst_kill = aInstKill;
-        pinfo->Inst_save = aInstSave;
-        pinfo->WAFlag_mov0 = aWAFlag_mov0;
-        pinfo->WAFlag_cmp = aWAFlag_cmp;
-        pinfo->WAFlag_allOne = aWAFlag_allOne;
-        pinfo->Inst_restore = aInstRestore;
-        //pinfo->WAFlag_spill = nullptr;
-        m_noMaskWAInfo.insert(std::make_pair(aBB, pinfo));
-    }
-    NoMaskWA_info_t* getNoMaskWAInfo(G4_BB* BB) const
-    {
-        auto iter = m_noMaskWAInfo.find(BB);
-        return iter != m_noMaskWAInfo.end() ? iter->second : nullptr;
-    }
-    void clearNoMaskInfo()
-    {
-        for (auto iter : m_noMaskWAInfo)
-        {
-            NoMaskWA_info_t* pinfo = iter.second;
-            delete pinfo;
-        }
-        m_noMaskWAInfo.clear();
-    }
-#if defined(_DEBUG) || defined(_INTERNAL)
-    void verifyNoMaskWAInfo()
-    {
-        for (auto iter : m_noMaskWAInfo)
-        {
-            G4_BB* bb = iter.first;
-            auto BI = std::find(fg.begin(), fg.end(), bb);
-            if (BI == fg.end())
-            {
-                assert(false && "Some BBs after RA have been removed, which breaks noMask WA!");
-            }
-        }
-    }
-#endif
 
+    // Call WA
     // m_maskOffWAInsts: insts whose MaskOff will be changed for this call WA.
     std::unordered_map <G4_INST*, G4_BB*> m_maskOffWAInsts;
     // m_indirectCallWAInfo : all info related to indirect call wa

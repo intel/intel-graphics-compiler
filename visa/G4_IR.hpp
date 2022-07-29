@@ -393,7 +393,6 @@ protected:
     // during optimization, an inst may become redundant and be marked dead
     unsigned short dead : 1;
     unsigned short evenlySplitInst : 1;
-    unsigned short skipPostRA : 1;  // for NoMaskWA; to be deleted
     unsigned short doPostRA : 1;  // for NoMaskWA
     unsigned short canBeAcc : 1; //The inst can be ACC, including the inst's dst and the use operands in the DU chain.
     G4_ExecSize    execSize;
@@ -1169,10 +1168,7 @@ public:
     // prefer addComment if don't wish to stomp earlier comments
     void setComments(const std::string& comments);
 
-    // For NoMaskWA. Set in PreRA WA for all instructions. PostRA WA will
-    // apply on new instructions created by RA only.
-    bool getSkipPostRA() const { return skipPostRA; }
-    void setSkipPostRA(bool V) { skipPostRA = V; }
+    // For NoMaskWA. If set, it needs WA.
     bool getNeedPostRA() const { return doPostRA; }
     void setNeedPostRA(bool V) { doPostRA = V; }
 

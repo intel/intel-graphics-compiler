@@ -274,15 +274,11 @@ private:
     void resetA0();
     void setA0toTdrForSendc();
     void replaceRetWithJmpi();
-    void doNoMaskWA();
-    void newDoNoMaskWA();
     void prepareNoMaskWA();
     void applyNoMaskWA();
     void applyFusedCallWA();
     void finishFusedCallWA_preSWSB();
     void finishFusedCallWA();
-    void doNoMaskWA_postRA();
-    void newDoNoMaskWA_postRA();
     bool NoMaskWAUseRAList() const { return true; }
     bool allPostRANoMaskWA() const { return true; }
     void insertFenceAtEntry();

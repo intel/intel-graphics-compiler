@@ -244,7 +244,6 @@ G4_INST::G4_INST(
     srcs[4] = s4;
 
     dead = false;
-    skipPostRA = false;
     doPostRA = false;
     implAccSrc = nullptr;
     implAccDst = nullptr;
