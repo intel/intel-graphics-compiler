@@ -18520,7 +18520,6 @@ void EmitPass::emitLoadLocalIdBufferPtr(llvm::GenIntrinsicInst* I)
 
 
 
-
 void EmitPass::emitDpas(GenIntrinsicInst* GII, const SSource* Sources, const DstModifier& modifier)
 {
     // Note that in intrinsic's arguments, activation goes before weight;

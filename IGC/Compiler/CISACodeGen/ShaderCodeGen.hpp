@@ -230,6 +230,7 @@ public:
     CVariable* GetPrivateBase();
     CVariable* GetImplArgBufPtr();
     CVariable* GetLocalIdBufPtr();
+
     void SaveSRet(CVariable* sretPtr);
     CVariable* GetAndResetSRet();
 
@@ -241,8 +242,6 @@ public:
     void RestoreStackState();
 
     void InitializeScratchSurfaceStateAddress();
-
-    void RemoveBitRange(CVariable*& src, unsigned removebit, unsigned range);
 
     void        AllocateInput(CVariable* var, uint offset, uint instance = 0, bool forceLiveOut = false);
     void        AllocateOutput(CVariable* var, uint offset, uint instance = 0);
