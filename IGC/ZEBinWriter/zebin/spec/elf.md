@@ -7,6 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ELF Layout
+The version information of ZEBIN can be found in version.md. ELF changes should
+be documented properly in version.md.
 
 | Contents | Description | Section Type |
 | ------ | ------ |  ------ |
