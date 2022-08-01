@@ -103,7 +103,7 @@ local uchar* __builtin_IB_AllocLocalMemPool(bool allocAllWorkgroups, uint numAdd
 
 // Memory fences
 // See GenISAIntrinsics.td for documentation
-void     __builtin_IB_memfence(bool commitEnable, bool flushRW, bool flushConstant, bool flushTexture, bool flushIcache, bool isGlobal, bool invalidateL1);
+void     __builtin_IB_memfence(bool commitEnable, bool flushRW, bool flushConstant, bool flushTexture, bool flushIcache, bool isGlobal, bool invalidateL1, bool forceLocalLSCScope);
 void     __builtin_IB_flush_sampler_cache(void);
 void     __builtin_IB_typedmemfence(bool invalidateCache);
 
