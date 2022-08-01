@@ -7584,6 +7584,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         if (builder.hasFusedEU() && kernel.hasIndirectCall())
         {
             applyFusedCallWA();
+            // Reset pre- and post-Id after FusedCallWA, which may add new
+            // basic blocks.
+            kernel.fg.findBackEdges();
         }
 
         insertFenceAtEntry();
