@@ -258,19 +258,6 @@ uint32_t vISA::GetDataSizeEncoding(DataSize ds) {
     return 0;
 }
 
-size_t vISA::GetDataSizeInBytes(DataSize ds) {
-    switch(ds) {
-    case DataSize::D8: return 1;
-    case DataSize::D16: return 2;
-    case DataSize::D32: return 4;
-    case DataSize::D64: return 8;
-    case DataSize::D8U32: return 4;
-    case DataSize::D16U32: return 4;
-    default: MUST_BE_TRUE(false, "invalid encoding");
-    }
-    return 0;
-}
-
 // data order
 std::string vISA::ToSymbol(DataOrder d) {
     switch(d) {
@@ -342,32 +329,6 @@ uint32_t vISA::GetVecElemsEncoding(VecElems ve) {
     default: MUST_BE_TRUE(false, "invalid vector elements");
     }
     return 0;
-}
-
-size_t vISA::GetNumVecElems(VecElems ve) {
-    switch(ve) {
-    case VecElems::V1: return 1;
-    case VecElems::V2: return 2;
-    case VecElems::V3: return 3;
-    case VecElems::V4: return 4;
-    case VecElems::V8: return 8;
-    case VecElems::V16: return 16;
-    case VecElems::V32: return 32;
-    case VecElems::V64: return 64;
-    default: MUST_BE_TRUE(false, "invalid encoding");
-    }
-    return 0;
-}
-
-// data chmask
-size_t vISA::GetNumVecElemsQuad(int chMask) {
-    size_t vecElems = 0;
-    if (chMask & DataChMask::X) vecElems++;
-    if (chMask & DataChMask::Y) vecElems++;
-    if (chMask & DataChMask::Z) vecElems++;
-    if (chMask & DataChMask::W) vecElems++;
-
-    return vecElems;
 }
 
 // Addr size type

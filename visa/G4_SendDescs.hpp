@@ -138,7 +138,6 @@ enum class DataSize {
 std::string ToSymbol(DataSize d);
 DataSize ConvertLSCDataSize(LSC_DATA_SIZE ds);
 uint32_t GetDataSizeEncoding(DataSize ds);
-size_t GetDataSizeInBytes(DataSize ds);
 
 // Data order
 enum class DataOrder {
