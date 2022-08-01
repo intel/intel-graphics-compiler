@@ -444,14 +444,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
                 continue;
             }
 
-            Function* parentF = user->getParent()->getParent();
-            if (parentF->hasFnAttribute("referenced-indirectly"))
-            {
-                IGC_ASSERT_MESSAGE(0, "Cannot reference localSLM in indirectly-called functions");
-                getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Cannot reference localSLM in indirectly-called functions", globalVar);
-                return;
-            }
-            m_FuncToVarsMap[parentF].insert(globalVar);
+            m_FuncToVarsMap[user->getParent()->getParent()].insert(globalVar);
         }
     }
 
