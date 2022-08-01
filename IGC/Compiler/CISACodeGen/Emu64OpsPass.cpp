@@ -1936,24 +1936,28 @@ bool InstExpander::visitCall(CallInst& Call) {
         // emulate @llvm.abs.i64
         case Intrinsic::abs:
         {
-            Value* OldVal = Call.getArgOperand(0);
-            Value* Lo = nullptr, * Hi = nullptr;
-            std::tie(Lo, Hi) = Emu->getExpandedValues(OldVal);
+            if (Emu->isInt64(&Call))
+            {
+                Value* OldVal = Call.getArgOperand(0);
+                Value* Lo = nullptr, * Hi = nullptr;
+                std::tie(Lo, Hi) = Emu->getExpandedValues(OldVal);
 
-            Value* Cmp = IRB->CreateICmpSLT(Hi, IRB->getInt32(0));
+                Value* Cmp = IRB->CreateICmpSLT(Hi, IRB->getInt32(0));
 
-            GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_sub_pair;
-            Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
-            Value* Sub = IRB->CreateCall4(IFunc, IRB->getInt32(0), IRB->getInt32(0), Lo, Hi);
+                GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_sub_pair;
+                Function* IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
+                Value* Sub = IRB->CreateCall4(IFunc, IRB->getInt32(0), IRB->getInt32(0), Lo, Hi);
 
-            Value* SubLo = IRB->CreateExtractValue(Sub, 0);
-            Value* SubHi = IRB->CreateExtractValue(Sub, 1);
+                Value* SubLo = IRB->CreateExtractValue(Sub, 0);
+                Value* SubHi = IRB->CreateExtractValue(Sub, 1);
 
-            Value* SelectLo = IRB->CreateSelect(Cmp, SubLo, Lo);
-            Value* SelectHo = IRB->CreateSelect(Cmp, SubHi, Hi);
+                Value* SelectLo = IRB->CreateSelect(Cmp, SubLo, Lo);
+                Value* SelectHo = IRB->CreateSelect(Cmp, SubHi, Hi);
 
-            Emu->setExpandedValues(&Call, SelectLo, SelectHo);
-            return true;
+                Emu->setExpandedValues(&Call, SelectLo, SelectHo);
+                return true;
+            }
+            return false;
         }
 #endif
         }
