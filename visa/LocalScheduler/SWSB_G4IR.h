@@ -742,40 +742,86 @@ namespace vISA
             }
         }
 
-        //This is to reduce the sync instructions.
-        //When A@1 is used to replace I@1, make sure it will not cause the stall for float or long pipelines
-        bool isClosestALUType(std::vector<unsigned>** latestInstID, unsigned distance, SB_INST_PIPE type)
+        // Calculate the difference between the inst distance and the ALU pipe
+        // dependence distance. The inst distance is the distance between the
+        // current inst and the dependent inst in the ALU pipe, and the ALU
+        // dependence distance is used to check for potential stall. So, the
+        // diff value can indicate a stall if the diff is negative, and no
+        // stall if it is 0 or positive.
+        int calcDiffBetweenInstDistAndPipeDepDist(std::vector<unsigned>** latestInstID,
+            unsigned distance, SB_INST_PIPE type)
         {
-            int instDist = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+            int i = static_cast<int>(type);
+            assert(latestInstID[i]->size() >= distance);
+            int diff = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+            if (i == PIPE_INT || i == PIPE_FLOAT)
+            {
+                diff = (int)nodeID - (*latestInstID[i])[latestInstID[i]->size() - distance] - SWSB_MAX_ALU_DEPENDENCE_DISTANCE;
+            }
+            if (i == PIPE_MATH)
+            {
+                diff = (int)nodeID - (*latestInstID[i])[latestInstID[i]->size() - distance] - SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+            }
+            if (i == PIPE_LONG)
+            {
+                diff = (int)nodeID - (*latestInstID[i])[latestInstID[i]->size() - distance] - SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT;
+            }
+            return diff;
+        }
+
+        // Calculate the closest dependent ALU pipe and the distance diff value
+        // given a same dependent inst distance for each pipe.
+        std::pair<SB_INST_PIPE, int>
+        calcClosestALUAndDistDiff(std::vector<unsigned>** latestInstID, unsigned distance)
+        {
             SB_INST_PIPE curType = PIPE_NONE;
+            int instDistDiff = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
 
             for (int i = PIPE_INT; i < PIPE_DPAS; i++)
             {
                 if (latestInstID[i]->size() < distance)
                     continue;
 
-                int dist = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
-                if (i == PIPE_INT || i == PIPE_FLOAT)
+                int diff = calcDiffBetweenInstDistAndPipeDepDist(latestInstID, distance, (SB_INST_PIPE)i);
+                if (diff < instDistDiff)
                 {
-                    dist = (int)nodeID - (*latestInstID[i])[latestInstID[i]->size() - distance] - SWSB_MAX_ALU_DEPENDENCE_DISTANCE;
-                }
-                if (i == PIPE_MATH)
-                {
-                    dist = (int)nodeID - (*latestInstID[i])[latestInstID[i]->size() - distance] - SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
-                }
-                if (i == PIPE_LONG)
-                {
-                    dist = (int)nodeID - (*latestInstID[i])[latestInstID[i]->size() - distance] - SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT;
-                }
-
-                if (dist < instDist)
-                {
-                    instDist = dist;
+                    instDistDiff = diff;
                     curType = (SB_INST_PIPE)i;
                 }
             }
+            return std::make_pair(curType, instDistDiff);
+        }
 
-            return type == curType;
+        // Calculate the closest dependent ALU pipe and the distance diff value
+        // using the true dependence for each pipe.
+        std::pair<SB_INST_PIPE, int>
+        calcClosestALUAndDistDiff(std::vector<unsigned>** latestInstID)
+        {
+            SB_INST_PIPE curType = PIPE_NONE;
+            int instDistDiff = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+
+            for (int i = PIPE_INT; i < PIPE_DPAS; i++)
+            {
+                unsigned dist = getDistInfo((SB_INST_PIPE)i);
+                if (dist == 0)
+                    continue;
+
+                int diff = calcDiffBetweenInstDistAndPipeDepDist(latestInstID, dist, (SB_INST_PIPE)i);
+                if (diff < instDistDiff)
+                {
+                    instDistDiff = diff;
+                    curType = (SB_INST_PIPE)i;
+                }
+            }
+            return std::make_pair(curType, instDistDiff);
+        }
+
+        //This is to reduce the sync instructions.
+        //When A@1 is used to replace I@1, make sure it will not cause the stall for float or long pipelines
+        bool isClosestALUType(std::vector<unsigned>** latestInstID, unsigned distance, SB_INST_PIPE type)
+        {
+            auto distAllDepRes = calcClosestALUAndDistDiff(latestInstID, distance);
+            return type == distAllDepRes.first;
         }
 
         void finalizeDistanceType1(IR_Builder& builder, std::vector<unsigned>** latestInstID)
@@ -1133,6 +1179,36 @@ namespace vISA
             if (!hasDistInfo())
             {
                 return;
+            }
+
+            // Check if there are multiple dependences and calculate the min
+            // distance used to compute the cost of DISTALL.
+            unsigned minDist = SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE;
+            unsigned numOfDep = 0;
+            for (int i = PIPE_INT; i < PIPE_DPAS; i++)
+            {
+                unsigned dist = getDistInfo((SB_INST_PIPE)i);
+                if (dist)
+                {
+                  minDist = std::min(minDist, dist);
+                  ++numOfDep;
+                }
+            }
+
+            if (numOfDep > 1)
+            {
+                // When the cost of using DISTALL dependence is same as the
+                // cost of calculating true dependence for each pipe, using
+                // DISTALL could save us from emitting sync.nop instructions.
+                auto distAllDepRes = calcClosestALUAndDistDiff(latestInstID, minDist);
+                auto trueDepRes = calcClosestALUAndDistDiff(latestInstID);
+                if (distAllDepRes.second == trueDepRes.second)
+                {
+                    instVec.front()->setDistance(minDist);
+                    instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+                    clearAllDistInfo();
+                    return;
+                }
             }
 
             for (int i = PIPE_INT; i < PIPE_DPAS; i++)
