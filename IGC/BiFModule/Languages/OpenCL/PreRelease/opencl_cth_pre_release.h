@@ -1744,6 +1744,176 @@ int2  __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(uint2 a
 int4  __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(uint4 a, uint8 b, int4 acc);
 int8  __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(uint8 a, uint8 b, int8 acc);
 
+// 8-bit and 4-bit matrices:
+int   __attribute__((overloadable)) intel_sub_group_i8_i4_matrix_mad_k32(int   a, int4  b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_i8_i4_matrix_mad_k32(int2  a, int4  b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_i8_i4_matrix_mad_k32(int4  a, int4  b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_i8_i4_matrix_mad_k32(int8  a, int4  b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_i8_u4_matrix_mad_k32(int   a, uint4 b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_i8_u4_matrix_mad_k32(int2  a, uint4 b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_i8_u4_matrix_mad_k32(int4  a, uint4 b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_i8_u4_matrix_mad_k32(int8  a, uint4 b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_u8_i4_matrix_mad_k32(uint  a, int4  b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_u8_i4_matrix_mad_k32(uint2 a, int4  b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_u8_i4_matrix_mad_k32(uint4 a, int4  b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_u8_i4_matrix_mad_k32(uint8 a, int4  b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_u8_u4_matrix_mad_k32(uint  a, uint4 b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_u8_u4_matrix_mad_k32(uint2 a, uint4 b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_u8_u4_matrix_mad_k32(uint4 a, uint4 b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_u8_u4_matrix_mad_k32(uint8 a, uint4 b, int8 acc);
+
+// 8-bit and 2-bit matrices:
+int   __attribute__((overloadable)) intel_sub_group_i8_i2_matrix_mad_k32(int   a, int2  b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_i8_i2_matrix_mad_k32(int2  a, int2  b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_i8_i2_matrix_mad_k32(int4  a, int2  b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_i8_i2_matrix_mad_k32(int8  a, int2  b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_i8_u2_matrix_mad_k32(int   a, uint2 b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_i8_u2_matrix_mad_k32(int2  a, uint2 b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_i8_u2_matrix_mad_k32(int4  a, uint2 b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_i8_u2_matrix_mad_k32(int8  a, uint2 b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_u8_i2_matrix_mad_k32(uint  a, int2  b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_u8_i2_matrix_mad_k32(uint2 a, int2  b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_u8_i2_matrix_mad_k32(uint4 a, int2  b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_u8_i2_matrix_mad_k32(uint8 a, int2  b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_u8_u2_matrix_mad_k32(uint  a, uint2 b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_u8_u2_matrix_mad_k32(uint2 a, uint2 b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_u8_u2_matrix_mad_k32(uint4 a, uint2 b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_u8_u2_matrix_mad_k32(uint8 a, uint2 b, int8 acc);
+
+// 4-bit and 8-bit matrices:
+int   __attribute__((overloadable)) intel_sub_group_i4_i8_matrix_mad_k32(short   a, int8  b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_i4_i8_matrix_mad_k32(short2  a, int8  b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_i4_i8_matrix_mad_k32(short4  a, int8  b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_i4_i8_matrix_mad_k32(short8  a, int8  b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_i4_u8_matrix_mad_k32(short   a, uint8 b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_i4_u8_matrix_mad_k32(short2  a, uint8 b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_i4_u8_matrix_mad_k32(short4  a, uint8 b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_i4_u8_matrix_mad_k32(short8  a, uint8 b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_u4_i8_matrix_mad_k32(ushort  a, int8  b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_u4_i8_matrix_mad_k32(ushort2 a, int8  b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_u4_i8_matrix_mad_k32(ushort4 a, int8  b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_u4_i8_matrix_mad_k32(ushort8 a, int8  b, int8 acc);
+
+int   __attribute__((overloadable)) intel_sub_group_u4_u8_matrix_mad_k32(ushort  a, uint8 b, int  acc);
+int2  __attribute__((overloadable)) intel_sub_group_u4_u8_matrix_mad_k32(ushort2 a, uint8 b, int2 acc);
+int4  __attribute__((overloadable)) intel_sub_group_u4_u8_matrix_mad_k32(ushort4 a, uint8 b, int4 acc);
+int8  __attribute__((overloadable)) intel_sub_group_u4_u8_matrix_mad_k32(ushort8 a, uint8 b, int8 acc);
+
+// 2-bit and 8-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i2_i8_matrix_mad_k32(char   a, int8  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_i8_matrix_mad_k32(char2  a, int8  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_i8_matrix_mad_k32(char4  a, int8  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_i8_matrix_mad_k32(char8  a, int8  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i2_u8_matrix_mad_k32(char   a, uint8 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_u8_matrix_mad_k32(char2  a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_u8_matrix_mad_k32(char4  a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_u8_matrix_mad_k32(char8  a, uint8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_i8_matrix_mad_k32(uchar  a, int8  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_i8_matrix_mad_k32(uchar2 a, int8  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_i8_matrix_mad_k32(uchar4 a, int8  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_i8_matrix_mad_k32(uchar8 a, int8  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_u8_matrix_mad_k32(uchar  a, uint8 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_u8_matrix_mad_k32(uchar2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_u8_matrix_mad_k32(uchar4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_u8_matrix_mad_k32(uchar8 a, uint8 b, int8 acc);
+
+/// double throughput versions (k64)
+///
+// 4-bit and 4-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i4_i4_matrix_mad_k64(int   a, int8  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_i4_matrix_mad_k64(int2  a, int8  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_i4_matrix_mad_k64(int4  a, int8  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_i4_matrix_mad_k64(int8  a, int8  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i4_u4_matrix_mad_k64(int   a, uint8 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_u4_matrix_mad_k64(int2  a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_u4_matrix_mad_k64(int4  a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_u4_matrix_mad_k64(int8  a, uint8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_i4_matrix_mad_k64(uint  a, int8  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_i4_matrix_mad_k64(uint2 a, int8  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_i4_matrix_mad_k64(uint4 a, int8  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_i4_matrix_mad_k64(uint8 a, int8  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_u4_matrix_mad_k64(uint  a, uint8 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_u4_matrix_mad_k64(uint2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_u4_matrix_mad_k64(uint4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_u4_matrix_mad_k64(uint8 a, uint8 b, int8 acc);
+
+// 4-bit and 2-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i4_i2_matrix_mad_k64(int   a, int4  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_i2_matrix_mad_k64(int2  a, int4  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_i2_matrix_mad_k64(int4  a, int4  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_i2_matrix_mad_k64(int8  a, int4  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i4_u2_matrix_mad_k64(int   a, uint4 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_u2_matrix_mad_k64(int2  a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_u2_matrix_mad_k64(int4  a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_u2_matrix_mad_k64(int8  a, uint4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_i2_matrix_mad_k64(uint  a, int4  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_i2_matrix_mad_k64(uint2 a, int4  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_i2_matrix_mad_k64(uint4 a, int4  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_i2_matrix_mad_k64(uint8 a, int4  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_u2_matrix_mad_k64(uint  a, uint4 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_u2_matrix_mad_k64(uint2 a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_u2_matrix_mad_k64(uint4 a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_u2_matrix_mad_k64(uint8 a, uint4 b, int8 acc);
+
+// 2-bit and 4-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i2_i4_matrix_mad_k64(short   a, int8  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_i4_matrix_mad_k64(short2  a, int8  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_i4_matrix_mad_k64(short4  a, int8  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_i4_matrix_mad_k64(short8  a, int8  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i2_u4_matrix_mad_k64(short   a, uint8 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_u4_matrix_mad_k64(short2  a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_u4_matrix_mad_k64(short4  a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_u4_matrix_mad_k64(short8  a, uint8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_i4_matrix_mad_k64(ushort  a, int8  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_i4_matrix_mad_k64(ushort2 a, int8  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_i4_matrix_mad_k64(ushort4 a, int8  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_i4_matrix_mad_k64(ushort8 a, int8  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_u4_matrix_mad_k64(ushort  a, uint8 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_u4_matrix_mad_k64(ushort2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_u4_matrix_mad_k64(ushort4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_u4_matrix_mad_k64(ushort8 a, uint8 b, int8 acc);
+
+// 2-bit and 2-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i2_i2_matrix_mad_k64(short   a, int4  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_i2_matrix_mad_k64(short2  a, int4  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_i2_matrix_mad_k64(short4  a, int4  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_i2_matrix_mad_k64(short8  a, int4  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i2_u2_matrix_mad_k64(short   a, uint4 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_u2_matrix_mad_k64(short2  a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_u2_matrix_mad_k64(short4  a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_u2_matrix_mad_k64(short8  a, uint4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_i2_matrix_mad_k64(ushort  a, int4  b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_i2_matrix_mad_k64(ushort2 a, int4  b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_i2_matrix_mad_k64(ushort4 a, int4  b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_i2_matrix_mad_k64(ushort8 a, int4  b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_u2_matrix_mad_k64(ushort  a, uint4 b, int  acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_u2_matrix_mad_k64(ushort2 a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_u2_matrix_mad_k64(ushort4 a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_u2_matrix_mad_k64(ushort8 a, uint4 b, int8 acc);
+
 // bfloat16 and bfloat16 matrices:
 float   __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int  a, int8 b, float  acc);
 float2  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(int2 a, int8 b, float2 acc);
@@ -1780,6 +1950,153 @@ int2 __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(ushort2 
 int4 __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(ushort4 a, uint8 b, int4 acc);
 int8 __attribute__((overloadable)) intel_sub_group_u8_u8_matrix_mad_k32(ushort8 a, uint8 b, int8 acc);
 
+// 8-bit and 4-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i8_i4_matrix_mad_k32(short a, int4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i8_i4_matrix_mad_k32(short2 a, int4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i8_i4_matrix_mad_k32(short4 a, int4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i8_i4_matrix_mad_k32(short8 a, int4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i8_u4_matrix_mad_k32(short a, uint4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i8_u4_matrix_mad_k32(short2 a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i8_u4_matrix_mad_k32(short4 a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i8_u4_matrix_mad_k32(short8 a, uint4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u8_i4_matrix_mad_k32(ushort a, int4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u8_i4_matrix_mad_k32(ushort2 a, int4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u8_i4_matrix_mad_k32(ushort4 a, int4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u8_i4_matrix_mad_k32(ushort8 a, int4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u8_u4_matrix_mad_k32(ushort a, uint4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u8_u4_matrix_mad_k32(ushort2 a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u8_u4_matrix_mad_k32(ushort4 a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u8_u4_matrix_mad_k32(ushort8 a, uint4 b, int8 acc);
+
+// 8-bit and 2-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i8_i2_matrix_mad_k32(short a, int2 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i8_i2_matrix_mad_k32(short2 a, int2 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i8_i2_matrix_mad_k32(short4 a, int2 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i8_i2_matrix_mad_k32(short8 a, int2 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i8_u2_matrix_mad_k32(short a, uint2 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i8_u2_matrix_mad_k32(short2 a, uint2 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i8_u2_matrix_mad_k32(short4 a, uint2 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i8_u2_matrix_mad_k32(short8 a, uint2 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u8_i2_matrix_mad_k32(ushort a, int2 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u8_i2_matrix_mad_k32(ushort2 a, int2 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u8_i2_matrix_mad_k32(ushort4 a, int2 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u8_i2_matrix_mad_k32(ushort8 a, int2 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u8_u2_matrix_mad_k32(ushort a, uint2 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u8_u2_matrix_mad_k32(ushort2 a, uint2 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u8_u2_matrix_mad_k32(ushort4 a, uint2 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u8_u2_matrix_mad_k32(ushort8 a, uint2 b, int8 acc);
+
+// 4-bit and 8-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i4_i8_matrix_mad_k32(char a, int8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_i8_matrix_mad_k32(char2 a, int8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_i8_matrix_mad_k32(char4 a, int8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_i8_matrix_mad_k32(char8 a, int8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i4_u8_matrix_mad_k32(char a, uint8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_u8_matrix_mad_k32(char2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_u8_matrix_mad_k32(char4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_u8_matrix_mad_k32(char8 a, uint8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_i8_matrix_mad_k32(uchar a, int8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_i8_matrix_mad_k32(uchar2 a, int8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_i8_matrix_mad_k32(uchar4 a, int8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_i8_matrix_mad_k32(uchar8 a, int8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_u8_matrix_mad_k32(uchar a, uint8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_u8_matrix_mad_k32(uchar2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_u8_matrix_mad_k32(uchar4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_u8_matrix_mad_k32(uchar8 a, uint8 b, int8 acc);
+
+// 4-bit and 4-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i4_i4_matrix_mad_k64(short a, int8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_i4_matrix_mad_k64(short2 a, int8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_i4_matrix_mad_k64(short4 a, int8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_i4_matrix_mad_k64(short8 a, int8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i4_u4_matrix_mad_k64(short a, uint8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_u4_matrix_mad_k64(short2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_u4_matrix_mad_k64(short4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_u4_matrix_mad_k64(short8 a, uint8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_i4_matrix_mad_k64(ushort a, int8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_i4_matrix_mad_k64(ushort2 a, int8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_i4_matrix_mad_k64(ushort4 a, int8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_i4_matrix_mad_k64(ushort8 a, int8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_u4_matrix_mad_k64(ushort a, uint8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_u4_matrix_mad_k64(ushort2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_u4_matrix_mad_k64(ushort4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_u4_matrix_mad_k64(ushort8 a, uint8 b, int8 acc);
+
+// 4-bit and 2-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i4_i2_matrix_mad_k64(short a, int4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_i2_matrix_mad_k64(short2 a, int4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_i2_matrix_mad_k64(short4 a, int4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_i2_matrix_mad_k64(short8 a, int4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i4_u2_matrix_mad_k64(short a, uint4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i4_u2_matrix_mad_k64(short2 a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i4_u2_matrix_mad_k64(short4 a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i4_u2_matrix_mad_k64(short8 a, uint4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_i2_matrix_mad_k64(ushort a, int4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_i2_matrix_mad_k64(ushort2 a, int4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_i2_matrix_mad_k64(ushort4 a, int4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_i2_matrix_mad_k64(ushort8 a, int4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u4_u2_matrix_mad_k64(ushort a, uint4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u4_u2_matrix_mad_k64(ushort2 a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u4_u2_matrix_mad_k64(ushort4 a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u4_u2_matrix_mad_k64(ushort8 a, uint4 b, int8 acc);
+
+// 2-bit and 4-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i2_i4_matrix_mad_k64(char a, int8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_i4_matrix_mad_k64(char2 a, int8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_i4_matrix_mad_k64(char4 a, int8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_i4_matrix_mad_k64(char8 a, int8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i2_u4_matrix_mad_k64(char a, uint8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_u4_matrix_mad_k64(char2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_u4_matrix_mad_k64(char4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_u4_matrix_mad_k64(char8 a, uint8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_i4_matrix_mad_k64(uchar a, int8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_i4_matrix_mad_k64(uchar2 a, int8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_i4_matrix_mad_k64(uchar4 a, int8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_i4_matrix_mad_k64(uchar8 a, int8 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_u4_matrix_mad_k64(uchar a, uint8 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_u4_matrix_mad_k64(uchar2 a, uint8 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_u4_matrix_mad_k64(uchar4 a, uint8 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_u4_matrix_mad_k64(uchar8 a, uint8 b, int8 acc);
+
+// 2-bit and 2-bit matrices:
+int  __attribute__((overloadable)) intel_sub_group_i2_i2_matrix_mad_k64(char a, int4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_i2_matrix_mad_k64(char2 a, int4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_i2_matrix_mad_k64(char4 a, int4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_i2_matrix_mad_k64(char8 a, int4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_i2_u2_matrix_mad_k64(char a, uint4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_i2_u2_matrix_mad_k64(char2 a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_i2_u2_matrix_mad_k64(char4 a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_i2_u2_matrix_mad_k64(char8 a, uint4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_i2_matrix_mad_k64(uchar a, int4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_i2_matrix_mad_k64(uchar2 a, int4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_i2_matrix_mad_k64(uchar4 a, int4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_i2_matrix_mad_k64(uchar8 a, int4 b, int8 acc);
+
+int  __attribute__((overloadable)) intel_sub_group_u2_u2_matrix_mad_k64(uchar a, uint4 b, int acc);
+int2 __attribute__((overloadable)) intel_sub_group_u2_u2_matrix_mad_k64(uchar2 a, uint4 b, int2 acc);
+int4 __attribute__((overloadable)) intel_sub_group_u2_u2_matrix_mad_k64(uchar4 a, uint4 b, int4 acc);
+int8 __attribute__((overloadable)) intel_sub_group_u2_u2_matrix_mad_k64(uchar8 a, uint4 b, int8 acc);
+
 // bfloat16 and bfloat16 matrices,
 // float acc, float return type:
 float  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short a, int8 b, float acc);
@@ -1787,12 +2104,31 @@ float2 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(sh
 float4 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short4 a, int8 b, float4 acc);
 float8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short8 a, int8 b, float8 acc);
 
+// bfloat16 and bfloat16 matrices,
+// bfloat16 acc, bfloat16 return type:
+short  __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short a, int8 b, short acc);
+short2 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short2 a, int8 b, short2 acc);
+short4 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short4 a, int8 b, short4 acc);
+short8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_matrix_mad_k16(short8 a, int8 b, short8 acc);
+
+#ifdef cl_khr_fp16
+
+// fp16 and fp16 matrices,
+// fp16 acc, fp16 return type:
+half  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short a, int8 b, half acc);
+half2 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short2 a, int8 b, half2 acc);
+half4 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short4 a, int8 b, half4 acc);
+half8 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short8 a, int8 b, half8 acc);
+
+#endif // cl_khr_fp16
+
 // fp16 and fp16 matrices,
 // float acc, float return type:
 float  __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short a, int8 b, float acc);
 float2 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short2 a, int8 b, float2 acc);
 float4 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short4 a, int8 b, float4 acc);
 float8 __attribute__((overloadable)) intel_sub_group_f16_f16_matrix_mad_k16(short8 a, int8 b, float8 acc);
+
 
 #ifdef cl_intel_subgroup_matrix_multiply_accumulate_tf32
 
@@ -1803,6 +2139,69 @@ float4 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32
 float8 __attribute__((overloadable)) intel_sub_group_tf32_tf32_matrix_mad_k8_f32(short8 a, int8 b, float8 acc);
 
 #endif // cl_intel_subgroup_matrix_multiply_accumulate_tf32
+
+#ifdef cl_intel_subgroup_matrix_multiply_accumulate_bf8
+
+// A: bfloat8 B: bfloat8 ACC: float DST: float
+float  __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short  a, int8 b, float  acc);
+float2 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short8 a, int8 b, float8 acc);
+
+// A: bfloat8 B: bfloat8 ACC: bfloat16 DST: float
+float  __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short  a, int8 b, short  acc);
+float2 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short2 a, int8 b, short2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short4 a, int8 b, short4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short8 a, int8 b, short8 acc);
+
+// A: bfloat8 B: bfloat8 ACC: float DST: bfloat16
+short  __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short  a, int8 b, float  acc);
+short2 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short2 a, int8 b, float2 acc);
+short4 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short4 a, int8 b, float4 acc);
+short8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short8 a, int8 b, float8 acc);
+
+// A: bfloat8 B: bfloat8 ACC: bfloat16 DST: bfloat16
+short  __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short  a, int8 b, short  acc);
+short2 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short2 a, int8 b, short2 acc);
+short4 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short4 a, int8 b, short4 acc);
+short8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short8 a, int8 b, short8 acc);
+
+#ifdef cl_khr_fp16
+
+// A: bfloat8 B: bfloat8 ACC: half DST: float
+float  __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short  a, int8 b, half  acc);
+float2 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short2 a, int8 b, half2 acc);
+float4 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short4 a, int8 b, half4 acc);
+float8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f32(short8 a, int8 b, half8 acc);
+
+// A: bfloat8 B: bfloat8 ACC: half DST: bfloat16
+short  __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short  a, int8 b, half  acc);
+short2 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short2 a, int8 b, half2 acc);
+short4 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short4 a, int8 b, half4 acc);
+short8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_bf16(short8 a, int8 b, half8 acc);
+
+// A: bfloat8 B: bfloat8 ACC: float DST: half
+half  __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short  a, int8 b, float  acc);
+half2 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short2 a, int8 b, float2 acc);
+half4 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short4 a, int8 b, float4 acc);
+half8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short8 a, int8 b, float8 acc);
+
+// A: bfloat8 B: bfloat8 ACC: half DST: half
+half  __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short  a, int8 b, half  acc);
+half2 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short2 a, int8 b, half2 acc);
+half4 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short4 a, int8 b, half4 acc);
+half8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short8 a, int8 b, half8 acc);
+
+// A: bfloat8 B: bfloat8 ACC: bfloat16 DST: half
+half  __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short  a, int8 b, short  acc);
+half2 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short2 a, int8 b, short2 acc);
+half4 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short4 a, int8 b, short4 acc);
+half8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_matrix_mad_k32_f16(short8 a, int8 b, short8 acc);
+
+#endif // cl_khr_fp16
+
+#endif // cl_intel_subgroup_matrix_multiply_accumulate_bf8
+
 #endif // cl_intel_subgroup_matrix_multiply_accumulate
 
 #ifdef cl_intel_subgroup_split_matrix_multiply_accumulate
