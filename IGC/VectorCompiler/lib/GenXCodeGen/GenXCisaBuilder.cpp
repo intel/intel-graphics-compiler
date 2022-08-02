@@ -6645,6 +6645,7 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     Argv.push_back(Saver.save(Arg).data());
   };
 
+  const WA_TABLE* WATable = BC.getWATable();
   // enable preemption if subtarget supports it
   if (ST.hasPreemption())
     addArgument("-enablePreemption");
