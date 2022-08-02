@@ -448,6 +448,9 @@ namespace IGC
         std::optional<ThreadIDLayout> neededThreadIdLayout;
         // force enable tile y optimization
         bool forceTileYWalk = false;
+        // force tile optimization by providing tile size and number of tiles in X dimension
+        unsigned forceTileWidth = 0;
+        unsigned forceNumTiles = 0;
         // enable atomic branch optimization
         bool atomicBranch = false;
         // resource index for hf packing (resourceRangeID, indexIntoRange)
