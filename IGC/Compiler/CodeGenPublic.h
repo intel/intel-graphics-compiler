@@ -1928,7 +1928,6 @@ namespace IGC
     private:
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
     };
-
     void CodeGen(PixelShaderContext* ctx);
     void CodeGen(ComputeShaderContext* ctx);
     void CodeGen(DomainShaderContext* ctx);

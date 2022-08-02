@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
+#include "Compiler/CISACodeGen/DebugInfo.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ResourceAllocator/ResourceAllocator.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LocalBuffers/InlineLocalsResolution.hpp"
@@ -36,12 +37,11 @@ SPDX-License-Identifier: MIT
 This file contains the code specific to opencl kernels
 ************************************************************************************/
 
-using namespace llvm;
-using namespace IGC;
-using namespace IGC::IGCMD;
-
 namespace IGC
 {
+    using namespace llvm;
+    using namespace IGC;
+    using namespace IGC::IGCMD;
 
     COpenCLKernel::COpenCLKernel(OpenCLProgramContext* ctx, Function* pFunc, CShaderProgram* pProgram) :
         CComputeShaderBase(pFunc, pProgram)
@@ -2471,6 +2471,115 @@ namespace IGC
         {
             ctx->m_retryManager.kernelSet.insert(pShader->m_kernelInfo.m_kernelName);
         }
+    }
+
+    static void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& shaders)
+    {
+        COMPILER_TIME_START(ctx, TIME_CodeGen);
+        COMPILER_TIME_START(ctx, TIME_CG_Add_Passes);
+
+        IGCPassManager Passes(ctx, "CG");
+
+        AddLegalizationPasses(*ctx, Passes);
+
+        AddAnalysisPasses(*ctx, Passes);
+
+        if (ctx->m_enableFunctionPointer
+            && (ctx->m_DriverInfo.sendMultipleSIMDModes() || ctx->m_enableSimdVariantCompilation)
+            && ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)
+        {
+            // In order to support compiling multiple SIMD modes for function pointer calls,
+            // we require a separate pass manager per SIMD mode, due to interdependencies across
+            // function compilations.
+            SIMDMode pass1Mode;
+            SIMDMode pass2Mode;
+
+            if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
+            {
+                pass1Mode = SIMDMode::SIMD32;
+                pass2Mode = SIMDMode::SIMD16;
+            }
+            else
+            {
+                pass1Mode = SIMDMode::SIMD16;
+                pass2Mode = SIMDMode::SIMD8;
+            }
+            // Run first pass
+            AddCodeGenPasses(*ctx, shaders, Passes, pass1Mode, false);
+            Passes.run(*(ctx->getModule()));
+
+            // Create and run second pass
+            IGCPassManager Passes2(ctx, "CG2");
+            // Add required immutable passes
+            Passes2.add(new MetaDataUtilsWrapper(ctx->getMetaDataUtils(), ctx->getModuleMetaData()));
+            Passes2.add(new CodeGenContextWrapper(ctx));
+            Passes2.add(createGenXFunctionGroupAnalysisPass());
+            AddCodeGenPasses(*ctx, shaders, Passes2, pass2Mode, false);
+            COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
+            Passes2.run(*(ctx->getModule()));
+
+            COMPILER_TIME_END(ctx, TIME_CodeGen);
+            DumpLLVMIR(ctx, "codegen");
+            return;
+        }
+
+        if (ctx->m_DriverInfo.sendMultipleSIMDModes())
+        {
+            unsigned int leastSIMD = 8;
+            if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize)
+            {
+                const SIMDMode leastSIMDMode = getLeastSIMDAllowed(ctx->getModuleMetaData()->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
+                leastSIMD = numLanes(leastSIMDMode);
+            }
+            if (ctx->getModuleMetaData()->csInfo.forcedSIMDSize)
+            {
+                IGC_ASSERT_MESSAGE((ctx->getModuleMetaData()->csInfo.forcedSIMDSize >= leastSIMD), "Incorrect SIMD forced");
+            }
+            if (leastSIMD <= 8)
+            {
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false);
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            }
+            else if (leastSIMD <= 16)
+            {
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+
+                ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
+            }
+            else
+            {
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, false);
+
+                ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
+                ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD16, ShaderDispatchMode::NOT_APPLICABLE);
+            }
+        }
+        else
+        {
+            if (ctx->platform.getMinDispatchMode() == SIMDMode::SIMD16)
+            {
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, false);
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, false);
+
+                ctx->SetSIMDInfo(SIMD_SKIP_HW, SIMDMode::SIMD8, ShaderDispatchMode::NOT_APPLICABLE);
+            }
+            else
+            {
+                // The order in which we call AddCodeGenPasses matters, please to not change order
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
+                AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false);
+            }
+        }
+
+        Passes.add(new DebugInfoPass(shaders));
+        COMPILER_TIME_END(ctx, TIME_CG_Add_Passes);
+
+        Passes.run(*(ctx->getModule()));
+        COMPILER_TIME_END(ctx, TIME_CodeGen);
+        DumpLLVMIR(ctx, "codegen");
     }
 
     void CodeGen(OpenCLProgramContext* ctx)

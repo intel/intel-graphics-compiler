@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/DebugInfoData.hpp"
 #include "Compiler/CISACodeGen/CVariable.hpp"
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
@@ -253,7 +254,6 @@ public:
     virtual unsigned int GetGlobalMappingValue(llvm::Value* c);
     virtual CVariable* GetGlobalMapping(llvm::Value* c);
     CVariable* BitCast(CVariable* var, VISA_Type newType);
-    void        ResolveAlias(CVariable* var);
     void        CacheArgumentsList();
     virtual void MapPushedInputs();
     void        CreateGatherMap();
@@ -265,7 +265,6 @@ public:
 
     void        CreateImplicitArgs();
     void        CreateAliasVars();
-    uint        GetBlockId(llvm::BasicBlock* block);
     uint        GetNumSBlocks() { return m_numBlocks; }
 
     void        SetUniformHelper(WIAnalysis* WI) { m_WI = WI; }
@@ -284,13 +283,11 @@ public:
     virtual  void SetShaderSpecificHelper(EmitPass* emitPass) {}
 
     void        AllocateConstants(uint& offset);
-    void        AllocateStatelessConstants(uint& offset);
     void        AllocateSimplePushConstants(uint& offset);
     void        AllocateNOSConstants(uint& offset);
     void        AllocateConstants3DShader(uint& offset);
     ShaderType  GetShaderType() const { return GetContext()->type; }
     bool        IsPatchablePS();
-    bool        IsValueCoalesced(llvm::Value* v);
 
     bool        GetHasBarrier() const { return m_BarrierNumber > 0; }
     void        SetHasBarrier() { if (m_BarrierNumber == 0) m_BarrierNumber = 1; }
@@ -775,9 +772,22 @@ static const SInstContext g_InitContext =
     false,
 };
 
-void unify_opt_PreProcess(CodeGenContext* pContext);
-// Forward declaration
 struct PSSignature;
-void CodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap& shaders, PSSignature* pSignature = nullptr);
-void CodeGen(OpenCLProgramContext* ctx, CShaderProgram::KernelShaderMap& shaders);
+
+void AddCodeGenPasses(
+    CodeGenContext& ctx,
+    CShaderProgram::KernelShaderMap& shaders,
+    IGCPassManager& Passes,
+    SIMDMode simdMode,
+    bool canAbortOnSpill,
+    ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE,
+    PSSignature* pSignature = nullptr);
+
+
+bool SimdEarlyCheck(CodeGenContext* ctx);
+bool ForceSimdWA(ComputeShaderContext& ctx, SIMDMode& forceSimd, SIMDMode minSimdMode, SIMDMode maxSimdMode);
+void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature* pSignature = nullptr);
+void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm);
+void destroyShaderMap(CShaderProgram::KernelShaderMap& shaders);
+void unify_opt_PreProcess(CodeGenContext* pContext);
 }
