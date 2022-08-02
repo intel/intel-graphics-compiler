@@ -16,7 +16,7 @@ Abstract:   Contains common patch structure definitions
 
 namespace iOpenCL
 {
-const uint32_t CURRENT_ICBE_VERSION = 1081;
+const uint32_t CURRENT_ICBE_VERSION = 1082;
 const uint32_t MAGIC_CL = 0x494E5443;      // 'I', 'N', 'T', 'C'
 const uint32_t INVALID_INDEX = 0xFFFFFFFF;
 
@@ -442,10 +442,11 @@ struct SPatchKernelArgumentInfo :
     uint32_t ArgumentNameSize;
     uint32_t TypeNameSize;
     uint32_t TypeQualifierSize;
+    uint32_t IsScalarCastedToPointer;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchKernelArgumentInfo ) == ( 24 + sizeof( SPatchItemHeader ) ) , "The size of SPatchKernelArgumentInfo is not what is expected" );
+static_assert( sizeof( SPatchKernelArgumentInfo ) == ( 28 + sizeof( SPatchItemHeader ) ) , "The size of SPatchKernelArgumentInfo is not what is expected" );
 
 /*****************************************************************************\
 STRUCT: SPatchKernelAttributesInfo

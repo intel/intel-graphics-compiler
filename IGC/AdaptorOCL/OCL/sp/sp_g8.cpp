@@ -2450,6 +2450,7 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelArgumentPatchItems(
          patch.Token = iOpenCL::PATCH_TOKEN_KERNEL_ARGUMENT_INFO;
          patch.Size  = sizeof( patch );
          patch.ArgumentNumber = index;
+         patch.IsScalarCastedToPointer = argInfo->IsScalarCastedToPointer;
 
          // We need to start writing after the token, but we don't know the sizes yet.
          // So write it as place-holder, then replace with the real token.
