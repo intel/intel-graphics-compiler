@@ -55,6 +55,9 @@ namespace llvm {
 #ifndef DW_OP_INTEL_bit_piece_stack
 #define DW_OP_INTEL_bit_piece_stack 0xef
 #endif
+#ifndef DW_OP_INTEL_regval_bits
+#define DW_OP_INTEL_regval_bits 0xfe
+#endif
 
 class MCSymbol;
 class raw_ostream;

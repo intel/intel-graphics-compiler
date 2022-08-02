@@ -483,10 +483,14 @@ void CompileUnit::addSourceLine(DIE *Die, DIType *Ty) {
   addSourceLine(Die, Ty, Ty->getLine());
 }
 
-void CompileUnit::addRegisterLoc(IGC::DIEBlock *TheDie, unsigned DWReg,
-                                 int64_t Offset,
-                                 const llvm::Instruction *dbgInst) {
-  addRegisterOp(TheDie, DWReg);
+void CompileUnit::addRegOrConst(IGC::DIEBlock *TheDie, unsigned DWReg) {
+  if (!DD->getEmitterSettings().EnableGTLocationDebugging) {
+    addRegisterOp(TheDie, DWReg);
+  } else {
+    // this branch is entered when DW_OP_INTEL_regval_bits is emitted
+    auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(DWReg);
+    addConstantUValue(TheDie, DWRegEncoded);
+  }
 }
 
 /// addRegisterOp - Add register operand.
@@ -886,6 +890,18 @@ bool CompileUnit::addGTRelativeLocation(IGC::DIEBlock *Block,
   return isSLM;
 }
 
+void CompileUnit::extractSubRegValue(IGC::DIEBlock *Block, unsigned char Sz) {
+  // This function expects that reg # and sub-reg in bits is
+  // already pushed to DWARF stack.
+  if (!DD->getEmitterSettings().EnableGTLocationDebugging) {
+    addConstantUValue(Block, Sz);
+    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+  } else {
+    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regval_bits);
+    addUInt(Block, dwarf::DW_FORM_data1, Sz);
+  }
+}
+
 // addBindlessOrStatelessLocation - add a sequence of attributes to calculate
 // stateless or bindless location of variable. baseAddr is one of the following
 // base addreses:
@@ -936,12 +952,10 @@ void CompileUnit::addBindlessOrStatelessLocation(
     addSInt(Block, dwarf::DW_FORM_sdata,
             0); // No literal offset to base address
 
-    addRegisterOp(Block, grfRegNum); // Surface offset (in GRF) to base address
+    addRegOrConst(Block, grfRegNum); // Surface offset (in GRF) to base address
 
     addConstantUValue(Block, bitOffsetToSurfReg);
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-    addUInt(Block, dwarf::DW_FORM_data1, varSizeInBits);
-    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+    extractSubRegValue(Block, varSizeInBits);
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
     return;
   }
@@ -1017,13 +1031,14 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block,
   uint16_t bitOffsetToBindlessReg =
       0; // TBD bit-offset to GRF with bindless offset
 
-  addRegisterOp(Block,
-                regNumWithBindlessOffset); // Bindless offset to base address
+  addRegOrConst(Block, // Bindless offset to base address
+                regNumWithBindlessOffset);
+
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
   addUInt(Block, dwarf::DW_FORM_data1, bitOffsetToBindlessReg);
-  addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-  addUInt(Block, dwarf::DW_FORM_data1, 32);
-  addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+
+  extractSubRegValue(Block, 32);
+
   addUInt(Block, dwarf::DW_FORM_data1,
           bindlessSurfBaseAddrEncoded); // Bindless Surface Base Address
   addUInt(Block, dwarf::DW_FORM_udata, 32);
@@ -1048,12 +1063,10 @@ void CompileUnit::addBindlessSurfaceLocation(IGC::DIEBlock *Block,
         subReg * 8; // Bit-offset to GRF with surface offset
     // auto sizeInBits = (VISAMod->m_pShader->getGRFSize() * 8) - offsetInBits;
 
-    addRegisterOp(
-        Block, regNumWithSurfOffset); // Surface offset (in GRF) to base address
+    addRegOrConst(Block, // Surface offset (in GRF) to base address
+                  regNumWithSurfOffset);
     addConstantUValue(Block, bitOffsetToSurfReg);
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-    addUInt(Block, dwarf::DW_FORM_data1, 32);
-    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+    extractSubRegValue(Block, 32);
   }
   if (Loc.HasLocation()) // Is surface offset available as literal?
   {
@@ -1105,17 +1118,12 @@ void CompileUnit::addBindlessScratchSpaceLocation(
 
   uint16_t regNumWithBindlessOffset = 0; // TBD Bindless offset in GRF
 
-  addRegisterOp(Block,
-                regNumWithBindlessOffset); // Bindless offset to base address
+  addRegOrConst(Block, // Bindless offset to base address
+                regNumWithBindlessOffset);
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
   addUInt(Block, dwarf::DW_FORM_data1,
           5 * 32); // bit offset to Scratch Space Pointer in r0.5
-  addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-  addUInt(Block, dwarf::DW_FORM_data1, 32);
-  addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const4u);
-  addUInt(Block, dwarf::DW_FORM_data4, 0xffffffc0);
-  addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
-  addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+  extractSubRegValue(Block, 32);
   addUInt(Block, dwarf::DW_FORM_data1,
           surfStateBaseAddrEncoded); // Bindless Surface Base Address
   addUInt(Block, dwarf::DW_FORM_udata, 32);
@@ -1140,12 +1148,10 @@ void CompileUnit::addBindlessScratchSpaceLocation(
         subReg * 8; // Bit-offset to GRF with surface offset
     // auto sizeInBits = (VISAMod->m_pShader->getGRFSize() * 8) - offsetInBits;
 
-    addRegisterOp(
-        Block, regNumWithSurfOffset); // Surface offset (in GRF) to base address
+    addRegOrConst(Block, // Surface offset (in GRF) to base address
+                  regNumWithSurfOffset);
     addConstantUValue(Block, bitOffsetToSurfReg);
-    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-    addUInt(Block, dwarf::DW_FORM_data1, 32);
-    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+    extractSubRegValue(Block, 32);
   } else if (Loc.HasLocation()) // Is surface offset available as literal?
   {
     uint32_t offset = Loc.GetOffset(); // Surface offset
@@ -1190,14 +1196,12 @@ void CompileUnit::addBE_FP(IGC::DIEBlock *Block) {
   if (!hasValidBEFP)
     return;
 
-  addRegisterOp(Block, BE_FP_RegNum); // Register ID will be shifted by offset
+  addRegOrConst(Block, BE_FP_RegNum); // Register ID will be shifted by offset
 
   addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
   addUInt(Block, dwarf::DW_FORM_data2,
           BE_FP_SubRegNum * 8u); // sub-reg offset in bits
-  addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
-  addUInt(Block, dwarf::DW_FORM_data1, 32); // size of BE_FP ptr
-  addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+  extractSubRegValue(Block, 32);
   if (EmitSettings.ScratchOffsetInOW) {
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const1u);
     addUInt(Block, dwarf::DW_FORM_data1, 16);
@@ -1286,18 +1290,13 @@ void CompileUnit::addSLMLocation(IGC::DIEBlock *Block, const DbgVariable &DV,
     auto bitOffsetToFPReg =
         grfSubRegNumFP * 8; // Bit-offset to GRF with Frame Pointer
 
-    addRegisterOp(Block,
-                  grfRegNumFP); // 1 DW_OP_regx <Frame Pointer reg encoded>
-                                //   Register ID is shifted by offset
+    addRegOrConst(Block,        // 1 DW_OP_regx <Frame Pointer reg encoded>
+                  grfRegNumFP); //   Register ID is shifted by offset
+
     addConstantUValue(Block,
                       bitOffsetToFPReg); // 2 DW_OP_const1u/2u <bit-offset to
                                          // Frame Pointer reg>
-    addUInt(Block, dwarf::DW_FORM_data1,
-            dwarf::DW_OP_const1u); // 3 DW_OP_const1u 64  , i.e. size in bits
-    addUInt(Block, dwarf::DW_FORM_data1, 64);
-    addUInt(
-        Block, dwarf::DW_FORM_data1,
-        DW_OP_INTEL_push_bit_piece_stack); // 4 DW_OP_INTEL_push_bit_piece_stack
+    extractSubRegValue(Block, 64);
 
     addUInt(Block, dwarf::DW_FORM_data1,
             dwarf::DW_OP_plus_uconst); // 5 DW_OP_plus_uconst  SIZE_OWORD (taken
@@ -1517,21 +1516,22 @@ void CompileUnit::addSimdLane(IGC::DIEBlock *Block, const DbgVariable &DV,
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus_uconst);
     addUInt(Block, dwarf::DW_FORM_udata,
             DWRegEncoded); // Register ID is shifted by offset
-    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);
+    if (!DD->getEmitterSettings().EnableGTLocationDebugging)
+      addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_regs);
+
     EmitPushSimdLane(Block, false);
 
     addConstantUValue(Block, variablesInSingleGRF - 1);
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
     addConstantUValue(Block, bitsUsedByVar);
     addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_mul);
-    addConstantUValue(Block, varSizeInBits);
+    extractSubRegValue(Block, varSizeInBits);
 
     if (isa<llvm::DbgDeclareInst>(DV.getDbgInst())) {
       // Pointer
-      addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
     } else {
       // Variable
-      addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_bit_piece_stack);
+      addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
     }
   }
 }
@@ -1553,7 +1553,7 @@ bool CompileUnit::emitBitPiecesForRegVal(
   for (unsigned i = 0, e = PieceBuilder.pieceCount(); i < e; ++i) {
     auto Piece = PieceBuilder.get(i);
     if (i != 0) // RegisterLoc is already emitted for the first Piece
-      addRegisterLoc(Block, lr.getGRF().regNum + i, 0, DV.getDbgInst());
+      addRegisterOp(Block, lr.getGRF().regNum + i);
     addBitPiece(Block, Piece.sizeBits, Piece.offsetBits);
   }
   return true;
@@ -1582,14 +1582,13 @@ void CompileUnit::addSimdLaneScalar(IGC::DIEBlock *Block, const DbgVariable &DV,
     // bit_piece onto DWARF stack, so expression could operate
     // on it.
     addConstantUValue(Block, offsetInBits);
-    addConstantUValue(Block, varSizeInBits);
 
     LLVM_DEBUG(dbgs() << "  value is pointer/indirect or an implicit\n");
     IGC_ASSERT_MESSAGE(
         varSizeInBits <= 64,
         "Entries pushed onto DWARF stack are limited to 8 bytes");
 
-    addUInt(Block, dwarf::DW_FORM_data1, DW_OP_INTEL_push_bit_piece_stack);
+    extractSubRegValue(Block, varSizeInBits);
   } else {
     emitBitPiecesForRegVal(Block, *Loc.GetVISAModule(), DV, *lr, varSizeInBits,
                            offsetInBits);
@@ -1621,7 +1620,7 @@ void CompileUnit::addSimdLaneRegionBase(
     IGC_ASSERT(Offset < Loc.GetVISAModule()->getGRFSizeInBits());
     // Generate piece for each element of address:
     // DW_OP_reg N; DW_OP_bit_piece: size: Size offset: Offset ;
-    addRegisterLoc(Block, Reg, 0, DV.getDbgInst());
+    addRegisterOp(Block, Reg);
     addBitPiece(Block, PieceSizeInBits, Offset);
   }
 }
@@ -2577,8 +2576,7 @@ IGC::DIEBlock *CompileUnit::buildSLM(const DbgVariable &var,
       Address addr;
       addr.Set(Address::Space::eLocal, 0, 0);
 
-      addRegisterLoc(Block, VarInfo->lrs.front().getGRF().regNum, 0,
-                     var.getDbgInst());
+      addRegisterOp(Block, VarInfo->lrs.front().getGRF().regNum);
 
       addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref_size);
       addUInt(Block, dwarf::DW_FORM_data1, 4);
@@ -2667,18 +2665,13 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
     auto bitOffsetToPrivBaseReg =
         grfSubRegNumPrivBase * 8; // Bit-offset to GRF with Private Base
 
-    addRegisterOp(Block,
-                  grfRegNumPrivBase); // 1 DW_OP_regx <Private Base reg encoded>
+    addRegOrConst(Block, // 1 DW_OP_regx <Private Base reg encoded>
+                  grfRegNumPrivBase);
     //   Register ID is shifted by offset
     addConstantUValue(Block,
                       bitOffsetToPrivBaseReg); // 2 DW_OP_const1u/2u <bit-offset
                                                // to Private Base reg>
-    addUInt(Block, dwarf::DW_FORM_data1,
-            dwarf::DW_OP_const1u); // 3 DW_OP_const1u 64  , i.e. size in bits
-    addUInt(Block, dwarf::DW_FORM_data1, 64);
-    addUInt(
-        Block, dwarf::DW_FORM_data1,
-        DW_OP_INTEL_push_bit_piece_stack); // 4 DW_OP_INTEL_push_bit_piece_stack
+    extractSubRegValue(Block, 64);
   } else if (VarInfoPrivBase->lrs.front().isSpill()) {
     unsigned int memOffsetPrivBase = 0;
     memOffsetPrivBase =
@@ -2717,18 +2710,15 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var,
             dwarf::DW_OP_constu); // 5 DW_OP_constu <Per Thread reg encoded>
     addUInt(Block, dwarf::DW_FORM_udata,
             DWRegPTOEncoded); // Register ID is shifted by offset
-    addUInt(
-        Block, dwarf::DW_FORM_data1,
-        DW_OP_INTEL_regs); // 6 DW_OP_INTEL_regs     , i.e. Per Thread Offset
+    if (!DD->getEmitterSettings().EnableGTLocationDebugging)
+      addUInt(
+          Block, dwarf::DW_FORM_data1,
+          DW_OP_INTEL_regs); // 6 DW_OP_INTEL_regs     , i.e. Per Thread Offset
+
     addConstantUValue(Block,
                       bitOffsetToPTOReg); // 7 DW_OP_const1u/2u <bit-offset to
                                           // Per Thread Offset>
-    addUInt(Block, dwarf::DW_FORM_data1,
-            dwarf::DW_OP_const1u); // 8 DW_OP_const1u 32  , i.e. size on bits
-    addUInt(Block, dwarf::DW_FORM_data1, 32);
-    addUInt(
-        Block, dwarf::DW_FORM_data1,
-        DW_OP_INTEL_push_bit_piece_stack); // 9 DW_OP_INTEL_push_bit_piece_stack
+    extractSubRegValue(Block, 32);
   } else if (VarInfoPerThOff->lrs.front().isSpill()) {
     unsigned int memOffsetPTO = 0;
     memOffsetPTO = VarInfoPerThOff->lrs.front().getSpillOffset().memoryOffset;
@@ -2811,17 +2801,13 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
   auto bitOffsetToFPReg =
       grfSubRegNumFP * 8; // Bit-offset to GRF with Frame Pointer
 
-  addRegisterOp(Block, grfRegNumFP); // 1 DW_OP_regx <Frame Pointer reg encoded>
+  addRegOrConst(Block, grfRegNumFP); // 1 DW_OP_regx <Frame Pointer reg encoded>
+
   //   Register ID is shifted by offset
   addConstantUValue(
       Block,
       bitOffsetToFPReg); // 2 DW_OP_const1u/2u <bit-offset to Frame Pointer reg>
-  addUInt(Block, dwarf::DW_FORM_data1,
-          dwarf::DW_OP_const1u); // 3 DW_OP_const1u 64  , i.e. size in bits
-  addUInt(Block, dwarf::DW_FORM_data1, 64);
-  addUInt(
-      Block, dwarf::DW_FORM_data1,
-      DW_OP_INTEL_push_bit_piece_stack); // 4 DW_OP_INTEL_push_bit_piece_stack
+  extractSubRegValue(Block, 64);
 
   addUInt(Block, dwarf::DW_FORM_data1,
           dwarf::DW_OP_plus_uconst); // 5 DW_OP_plus_uconst  SIZE_OWORD (taken
@@ -2925,7 +2911,7 @@ bool CompileUnit::buildValidVar(
           addSimdLaneRegionBase(Block, var, loc, &lrToUse);
         } else {
           unsigned int subReg = lrToUse.getGRF().subRegNum;
-          addRegisterLoc(Block, regNum, 0, var.getDbgInst());
+          addRegisterOp(Block, regNum);
           // Emit GT-relative location expression
           isSLM = addGTRelativeLocation(Block, var, loc);
           if (!isSLM && loc.IsRegister())

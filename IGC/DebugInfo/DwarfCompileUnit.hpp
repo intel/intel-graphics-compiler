@@ -242,9 +242,8 @@ public:
   /// addTemplateParams - Add template parameters in buffer.
   void addTemplateParams(DIE &Buffer, llvm::DINodeArray TParams);
 
-  ///  addRegisterLoc - Decide whether to emit regx or bregx
-  void addRegisterLoc(DIEBlock *TheDie, unsigned DWReg, int64_t Offset,
-                      const llvm::Instruction *dbgInst);
+  ///  addRegOrConst - Decide whether to emit regx or const
+  void addRegOrConst(DIEBlock *TheDie, unsigned DWReg);
 
   /// addRegisterOp - Add register operand.
   void addRegisterOp(DIEBlock *TheDie, unsigned Reg);
@@ -339,6 +338,9 @@ public:
   void addSimdLaneRegionBase(IGC::DIEBlock *Block, const DbgVariable &DV,
                              const VISAVariableLocation &Loc,
                              const DbgDecoder::LiveIntervalsVISA *lr);
+
+  // emit expression to extract sub-reg value
+  void extractSubRegValue(IGC::DIEBlock *Block, unsigned char Sz);
 
   // Decode line number, file name and location from a string, where a line no.
   // and file name (including directory) are separated by '-' character:
