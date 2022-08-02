@@ -18872,8 +18872,11 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromMetadata(
         return cacheOpts;
     }
 
-    // If default setting is passed to igc, take it
-    if (m_pCtx->type == ShaderType::OPENCL_SHADER)
+    // To get rid of UGM-before-EOT fence, NEO changes the default and passes it to IGC.
+    // Here, set per-inst cache control explicitly to the given default to skip visa's
+    // fence WA. And this is done if fence WA is needed.
+    if (m_pCtx->type == ShaderType::OPENCL_SHADER &&
+        IGC_IS_FLAG_ENABLED(EnableLSCFenceUGMBeforeEOT) && m_pCtx->platform.NeedsLSCFenceUGMBeforeEOT())
     {
         auto CLCtx = static_cast<const OpenCLProgramContext*>(m_pCtx);
         if (isLoad && CLCtx->m_InternalOptions.LoadCacheDefault != -1)
