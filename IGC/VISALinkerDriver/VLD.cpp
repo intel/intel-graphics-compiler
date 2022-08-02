@@ -182,7 +182,7 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
 
   STB_TranslateInputArgs newArgsSPMD = *pInputArgs;
   newArgsSPMD.pInput = reinterpret_cast<char *>(spmdProg.data());
-  newArgsSPMD.InputSize = esimdProg.size() * sizeof(*spmdProg.begin());
+  newArgsSPMD.InputSize = spmdProg.size() * sizeof(*spmdProg.begin());
 
   STB_TranslateInputArgs newArgsESIMD = *pInputArgs;
   newArgsESIMD.pInput = reinterpret_cast<char *>(esimdProg.data());
