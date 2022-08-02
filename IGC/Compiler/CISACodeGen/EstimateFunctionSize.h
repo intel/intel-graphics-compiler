@@ -111,10 +111,11 @@ namespace IGC {
         /// Internal data structure for the analysis which is approximately an
         /// extended call graph.
         llvm::SmallDenseMap<llvm::Function*, void*> ECG;
-        //Functions that are assigned stackcalls
-        llvm::SmallVector<void*, 64> stackCalls;
         //Kernel entries
         llvm::SmallVector<void*, 64> kernelEntries;
+        //Functions that are assigned stackcalls
+        llvm::SmallVector<void*, 64> stackCallFuncs;
+        llvm::SmallVector<void*, 64> addressTakenFuncs;
     };
 
     llvm::ModulePass* createEstimateFunctionSizePass();

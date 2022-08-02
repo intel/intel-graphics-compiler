@@ -97,6 +97,7 @@ namespace {
         FA_TRIMMED = (0x1 << 0x1),      /// \brief A flag to indicate whetehr it will be trimmed
         FA_STACKCALL = (0x1 << 0x2),    /// \brief A flag to indicate whether this node should be a stack call header
         FA_KERNEL_ENTRY = (0x1 << 0x3), /// \brief A flag to indicate whether this node is a kernel entry. It will be affected by any schemes.
+        FA_ADDR_TAKEN = (0x1 << 0x4),   /// \brief A flag to indicate whether this node is an address taken function.
     } FA_FLAG_t;
     /// Associate each function with a partially expanded size and remaining
     /// unexpanded function list, etc.
@@ -163,9 +164,14 @@ namespace {
             FunctionAttr = FA_KERNEL_ENTRY;
             return;
         }
+        void setAddressTaken()
+        {
+            FunctionAttr = FA_ADDR_TAKEN;
+        }
         void setForceInline()
         {
-            IGC_ASSERT(FunctionAttr != FA_KERNEL_ENTRY); //Can't force inline kernel entry
+            IGC_ASSERT(FunctionAttr != FA_KERNEL_ENTRY
+                && FunctionAttr != FA_ADDR_TAKEN); //Can't force inline a kernel entry or address taken function
             FunctionAttr = FA_FORCE_INLINE;
             return;
         }
@@ -178,13 +184,16 @@ namespace {
 
         void setStackCall()
         {
-            //Can't assign stack call to force inlined function, kernel entry, and functions that already assigned stack call
+            //Can't assign stack call to force inlined function, kernel entry,
+            //address taken functions and functions that already assigned stack call
             IGC_ASSERT(FunctionAttr == FA_BEST_EFFORT_INLINE || FunctionAttr ==  FA_TRIMMED);
             FunctionAttr = FA_STACKCALL;
             return;
         }
 
         bool isTrimmed() { return FunctionAttr == FA_TRIMMED; }
+        bool isEntryFunc() { return FunctionAttr == FA_KERNEL_ENTRY;}
+        bool isAddrTakenFunc() { return FunctionAttr == FA_ADDR_TAKEN; }
         bool willBeInlined() { return FunctionAttr == FA_BEST_EFFORT_INLINE || FunctionAttr == FA_FORCE_INLINE; }
         bool isStackCallAssigned() { return FA_STACKCALL == FunctionAttr; }
         bool canAssignStackCall()
@@ -214,9 +223,16 @@ namespace {
             TopDownQueue.push_back(this);
             visit.insert(this);
             uint32_t total = 0;
+            if ((IGC_GET_FLAG_VALUE(PrintControlUnitSize) & 0x1) != 0) {
+                std::cout << "-------------------------------------------------------------------------------------------------------------------------" << std::endl;
+                std::cout << "Functions in the unit " << F->getName().str() << std::endl;
+            }
             while (!TopDownQueue.empty())
             {
                 FunctionNode* Node = TopDownQueue.front();
+                if ((IGC_GET_FLAG_VALUE(PrintControlUnitSize) & 0x1) != 0) {
+                    std::cout << Node->F->getName().str() << ": " << Node->InitialSize << std::endl;
+                }
                 TopDownQueue.pop_front();
                 total += Node->InitialSize;
                 for (auto Callee : Node->CalleeList)
@@ -246,7 +262,7 @@ namespace {
                     std::cout << "Func " << this->F->getName().str() << " expands to has implicit arg due to " << callee->F->getName().str() << std::endl;
                 }
 
-                if (FunctionAttr != FA_KERNEL_ENTRY) //Can't inline kernel entry
+                if (FunctionAttr != FA_KERNEL_ENTRY && FunctionAttr != FA_ADDR_TAKEN) //Can't inline kernel entry or address taken functions
                 {
                     if (isStackCallAssigned()) //When stackcall is assigned we need to determine based on the flag
                     {
@@ -287,7 +303,8 @@ void EstimateFunctionSize::clear() {
     }
     ECG.clear();
     kernelEntries.clear();
-    stackCalls.clear();
+    stackCallFuncs.clear();
+    addressTakenFuncs.clear();
 }
 
 bool EstimateFunctionSize::matchImplicitArg( CallInst& CI )
@@ -410,6 +427,14 @@ void EstimateFunctionSize::analyze() {
             }
         }
     }
+    //Find all address taken functions
+    for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I)
+    {
+        FunctionNode* Node = (FunctionNode*)I->second;
+        //Address taken functions neither have callers nor is an entry function
+        if (Node->CallerList.empty() && !Node->isEntryFunc())
+            Node->setAddressTaken();
+    }
 
     bool needImplAnalysis = IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs) || IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg);
     // check functions and mark those that use implicit args.
@@ -435,10 +460,10 @@ void EstimateFunctionSize::analyze() {
                 std::cout << Name << " Func " << ++cnt << " " << Node->F->getName().str() << " calls implicit args so HasImplicitArg" << std::endl;
             }
 
-            if (Node->FunctionAttr == FA_KERNEL_ENTRY) //Can't inline kernel entry
+            if (Node->isEntryFunc() || Node->isAddrTakenFunc()) //Can't inline kernel entry or address taken functions
                 continue;
 
-            if (Node->isStackCallAssigned()) //When stackcall is assigned we need to determined based on the flag
+            if (Node->isStackCallAssigned()) //When stackcall is assigned we need to determine based on the flag
             {
                 if(IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg))
                     Node->setForceInline();
@@ -457,21 +482,38 @@ void EstimateFunctionSize::analyze() {
         FunctionNode* kernelEntry = (FunctionNode*)entry;
         updateExpandedUnitSize(kernelEntry->F, true);
         kernelEntry->updateUnitSize();
+        if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
+            std::cout << "The size of the unit head (kernel entry) " << kernelEntry->F->getName().str() << ": " << kernelEntry->UnitSize <<std::endl;
+        }
     }
 
-    // Find all survived stackcalls
+    // Find all survived stackcalls and address taken functions and update unit sizes
     for (auto I = ECG.begin(), E = ECG.end(); I != E; ++I)
     {
         FunctionNode* Node = (FunctionNode*)I->second;
         if (Node->isStackCallAssigned())
         {
-            stackCalls.push_back(Node);
+            stackCallFuncs.push_back(Node);
             Node->updateUnitSize();
+            if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
+                std::cout << "The size of the unit head (stack call)" << Node->F->getName().str() << ": " << Node->UnitSize << std::endl;
+            }
+        }
+        else if (Node->isAddrTakenFunc())
+        {
+            addressTakenFuncs.push_back(Node);
+            Node->updateUnitSize();
+            if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
+                std::cout << "The size of the unit head (address taken) " << Node->F->getName().str() << ": " << Node->UnitSize << std::endl;
+            }
         }
     }
 
-    if ((IGC_GET_FLAG_VALUE(PrintControlUnitSize) & 0x1) != 0) {
+    if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
         std::cout << "Function count= " << ECG.size() << std::endl;
+        std::cout << "Kernel count= " << kernelEntries.size() << std::endl;
+        std::cout << "Manual stack call count= " << stackCallFuncs.size() << std::endl;
+        std::cout << "Address taken function call count= " << addressTakenFuncs.size() << std::endl;
     }
 
     return;
@@ -501,6 +543,13 @@ void EstimateFunctionSize::checkSubroutine() {
     {
         uint32_t unitThreshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
         uint32_t maxUnitSize = getMaxUnitSize();
+        if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
+            std::cout << "AL: " << AL << std::endl;
+            std::cout << "AL_Module: " << AL_Module << std::endl;
+            std::cout << "PartitionUnit: " << IGC_GET_FLAG_VALUE(PartitionUnit) << std::endl;
+            std::cout << "Max unit size: " << maxUnitSize << std::endl;
+            std::cout << "Threshold: " << unitThreshold << std::endl;
+        }
         // If the max unit size exceeds threshold, do partitioning
         if (AL == AL_Module &&
             (IGC_GET_FLAG_VALUE(PartitionUnit) & 0x3) != 0 &&
@@ -588,7 +637,12 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function* F) {
 
 void EstimateFunctionSize::reduceKernelSize() {
     uint32_t threshold = IGC_GET_FLAG_VALUE(KernelTotalSizeThreshold);
-    trimCompilationUnit(kernelEntries, threshold, true);
+    llvm::SmallVector<void*, 64> unitHeads;
+    for (auto node : kernelEntries)
+        unitHeads.push_back((FunctionNode*)node);
+    for (auto node : addressTakenFuncs)
+        unitHeads.push_back((FunctionNode*)node);
+    trimCompilationUnit(unitHeads, threshold, true);
     return;
 }
 
@@ -701,7 +755,7 @@ uint32_t EstimateFunctionSize::bottomUpHeuristic(Function* F, uint32_t& stackCal
             if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x2) != 0) {
                 std::cout << "Stack call marked " << Node->F->getName().str() << " Unit size: " << Node->UnitSize << " > Threshold " << threshold << std::endl;
             }
-            stackCalls.push_back(Node); //We have a new unit head
+            stackCallFuncs.push_back(Node); //We have a new unit head
             Node->setStackCall();
             max_unit_size = std::max(max_unit_size, Node->UnitSize);
             stackCall_cnt += 1;
@@ -748,8 +802,11 @@ void EstimateFunctionSize::partitionKernel() {
     llvm::SmallVector<void*, 64> unitHeads;
     for (auto node : kernelEntries)
         unitHeads.push_back((FunctionNode*)node);
-    for (auto node : stackCalls)
+    for (auto node : stackCallFuncs)
         unitHeads.push_back((FunctionNode*)node);
+    for (auto node : addressTakenFuncs)
+        unitHeads.push_back((FunctionNode*)node);
+
     for (auto node : unitHeads) {
         FunctionNode* UnitHead = (FunctionNode*)node;
         if (UnitHead->UnitSize <= threshold) //Unit size is within threshold, skip
@@ -781,7 +838,9 @@ void EstimateFunctionSize::reduceCompilationUnitSize() {
     llvm::SmallVector<void*, 64> unitHeads;
     for (auto node : kernelEntries)
         unitHeads.push_back((FunctionNode*)node);
-    for (auto node : stackCalls)
+    for (auto node : stackCallFuncs)
+        unitHeads.push_back((FunctionNode*)node);
+    for (auto node : addressTakenFuncs)
         unitHeads.push_back((FunctionNode*)node);
 
     trimCompilationUnit(unitHeads, threshold,false);
@@ -951,6 +1010,16 @@ uint32_t EstimateFunctionSize::getMaxUnitSize() {
     for (auto kernelEntry : kernelEntries) //For all kernel, update unitsize
     {
         FunctionNode* head = (FunctionNode*)kernelEntry;
+        max_val = std::max(max_val, head->UnitSize);
+    }
+    for (auto stackCallFunc : stackCallFuncs) //For all address taken functions, update unitsize
+    {
+        FunctionNode* head = (FunctionNode*)stackCallFunc;
+        max_val = std::max(max_val, head->UnitSize);
+    }
+    for (auto addrTakenFunc : addressTakenFuncs) //For all address taken functions, update unitsize
+    {
+        FunctionNode* head = (FunctionNode*)addrTakenFunc;
         max_val = std::max(max_val, head->UnitSize);
     }
     return max_val;

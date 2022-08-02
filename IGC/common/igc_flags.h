@@ -545,6 +545,7 @@ DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeShaderHash,     0, "Shader hash for forc
 DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeX,              8, "force group size along X", false)
 DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeY,              8, "force group size along Y", false)
 DECLARE_IGC_REGKEY(bool, EnableThreadCombiningWithNoSLM, false, "Enable thread combining opt for shader without SLM", false)
+DECLARE_IGC_REGKEY(DWORD, PrintFunctionSizeAnalysis,     0, "Print analysis data of function sizes", true)
 DECLARE_IGC_REGKEY(DWORD, SubroutineThreshold,          110000, "Minimal kernel size to enable subroutines", false)
 DECLARE_IGC_REGKEY(DWORD, SubroutineInlinerThreshold,   3000, "Subroutine inliner threshold", false)
 DECLARE_IGC_REGKEY(bool, ControlKernelTotalSize,        true, "Control kernel total size", true)
