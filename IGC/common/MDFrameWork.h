@@ -580,6 +580,7 @@ namespace IGC
     struct ImmConstantInfo
     {
         std::vector<char> data;
+        std::map<unsigned, unsigned> sizes;
     };
 
     struct PointerProgramBinaryInfo
