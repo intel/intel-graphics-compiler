@@ -195,6 +195,8 @@ int IR_Builder::translateVISADpasInst(
     {
         // PVC allows BF dst and src0, and they are W/UW when coming into vISA,
         // so we fix the type here
+        // 8/22: Since visa introduced BF type, using W/UW for BF is no longer necessary.
+        //       After visa's inputs all use BF directly, this code should be deleted.
         if (dstOpnd->getType() == Type_W || dstOpnd->getType() == Type_UW)
         {
             dstOpnd->setType(*this, Type_BF);

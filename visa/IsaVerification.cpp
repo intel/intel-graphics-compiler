@@ -1405,8 +1405,8 @@ void vISAVerifier::verifyInstructionMisc(
                 return (Ty == ISA_TYPE_UD || Ty == ISA_TYPE_D || Ty == ISA_TYPE_F);
             };
             auto FNIsIntOrFloatXePVC = [](VISA_Type Ty) -> bool {
-                // W or UW means BF
-                bool isHFOrBF = (Ty == ISA_TYPE_HF || Ty == ISA_TYPE_UW || Ty == ISA_TYPE_W);
+                // Previously, W or UW means BF. keep it until visa's inputs no longer use W/UW to mean BF!
+                bool isHFOrBF = (Ty == ISA_TYPE_HF || Ty == ISA_TYPE_BF || Ty == ISA_TYPE_UW || Ty == ISA_TYPE_W);
                 return (Ty == ISA_TYPE_UD || Ty == ISA_TYPE_D || Ty == ISA_TYPE_F || isHFOrBF);
             };
             // No predicate

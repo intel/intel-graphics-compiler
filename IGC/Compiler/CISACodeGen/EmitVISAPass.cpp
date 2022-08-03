@@ -18559,6 +18559,14 @@ void EmitPass::emitDpas(GenIntrinsicInst* GII, const SSource* Sources, const Dst
     weight = BroadcastIfUniform(weight);
     if (input) {
         input = BroadcastIfUniform(input);
+        if (input->GetType() == ISA_TYPE_UW || input->GetType() == ISA_TYPE_W)
+        {
+            input = m_currShader->GetNewAlias(input, ISA_TYPE_BF, 0, 0);
+        }
+    }
+    if (dst->GetType() == ISA_TYPE_UW || dst->GetType() == ISA_TYPE_W)
+    {
+        dst = m_currShader->GetNewAlias(dst, ISA_TYPE_BF, 0, 0);
     }
 
     // Sanity: Make sure that activation and weight are D/UD always
