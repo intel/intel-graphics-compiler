@@ -321,6 +321,10 @@ void CMKernel::createPointerGlobalAnnotation(unsigned index, unsigned offset,
     auto ptrAnnotation = std::make_unique<iOpenCL::PointerArgumentAnnotation>();
     ptrAnnotation->IsStateless = !isBindless;
     ptrAnnotation->IsBindlessAccess = isBindless;
+    // TODO: Make an analysis whether a particular argument has any stateful access,
+    // and set the below variable appropriately. For now, make a safe bet and always
+    // assume that stateful access is present.
+    ptrAnnotation->HasStatefulAccess = true;
     ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
     ptrAnnotation->ArgumentNumber = index;
     ptrAnnotation->BindingTableIndex = BTI;
@@ -368,6 +372,9 @@ void CMKernel::createPrivateBaseAnnotation(
 void CMKernel::createBufferStatefulAnnotation(unsigned argNo,
                                               ArgAccessKind accessKind)
 {
+    // TODO: early return if there is no stateful access to this argument
+    // if(no_stateful_access) return;
+
     auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
     constInput->ConstantType = iOpenCL::DATA_PARAMETER_BUFFER_STATEFUL;
