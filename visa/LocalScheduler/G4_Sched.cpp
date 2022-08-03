@@ -26,7 +26,6 @@ static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
 static const unsigned PRESSURE_LOW_THRESHOLD = 60;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
-static const unsigned LATENCY_PRESSURE_THRESHOLD = 104;
 
 namespace {
 
@@ -577,14 +576,14 @@ static unsigned getRPThresholdLow(unsigned NumGrfs, unsigned simdSize)
 
 static unsigned getLatencyHidingThreshold(G4_Kernel &kernel)
 {
-    unsigned RPThreshold = kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleRPThreshold);
-    if (RPThreshold > 0)
-    {
-        return unsigned(RPThreshold);
-    }
     unsigned NumGrfs = kernel.getNumRegTotal();
     float Ratio = NumGrfs / 128.0f;
-    return unsigned(LATENCY_PRESSURE_THRESHOLD * Ratio);
+    unsigned RPThreshold = kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleRPThreshold);
+    if (RPThreshold == 0)
+    {
+        RPThreshold = 104;
+    }
+    return unsigned(RPThreshold * Ratio);
 }
 
 preRA_Scheduler::preRA_Scheduler(G4_Kernel& k, Mem_Manager& m, RPE* rpe)
