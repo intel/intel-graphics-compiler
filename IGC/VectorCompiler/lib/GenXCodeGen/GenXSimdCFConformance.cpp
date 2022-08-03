@@ -294,6 +294,8 @@ private:
     bool IsGoto;
     Value *GotoJoin;
 
+    std::string getNameForMissingEV(unsigned EVIndex) const;
+    void CanonicalizePHIs();
     void CollectEVs();
 
   public:
@@ -4396,6 +4398,93 @@ bool GenXSimdCFConformance::GotoJoinEVs::isJoin() const {
 }
 
 /***********************************************************************
+ * GotoJoinEVs::getNameForMissingEV : helper for generating variable
+ * names while creating missing EV instructions. Bases on the value
+ * extraction index.
+ */
+std::string GenXSimdCFConformance::GotoJoinEVs::getNameForMissingEV(
+    unsigned EVIndex) const {
+  std::string Name = "missing";
+  switch (EVIndex) {
+  case EMPos:
+    Name += "EMEV";
+    break;
+  case RMPos:
+    Name += "RMEV";
+    break;
+  case GotoCondPos:
+    Name += "CondEV";
+    break;
+  }
+  return Name;
+}
+
+/***********************************************************************
+ * GotoJoindEVs::CanonicalizePHIs : make goto/join -> EV -> PHI chains
+ * conformant to the same pattern.
+ *
+ * Check if goto/join is used by any PHI nodes directly. In such cases,
+ * unify the CFG through the following transformation:
+ *
+ * -----------------------------------------------------------------------
+ * | BB.phi:                                                             |
+ * | %phinode = phi %structtype [%gotojoin.1, %BB1], [%gotojoin.2, BB2]  |
+ * | %ev = extractvalue %structtype %phinode, <n>                        |
+ * | ; use %ev                                                           |
+ * -----------------------------------------------------------------------
+ *                          |       |       |
+ *                          V       V       V
+ * -----------------------------------------------------------------------
+ * | BB1:                                                                |
+ * | %ev.1 = extractvalue %structtype %gotojoin.1, <n>                   |
+ * | ...                                                                 |
+ * | BB2:                                                                |
+ * | %ev.2 = extractvalue %structtype %gotojoin.2, <n>                   |
+ * | ...                                                                 |
+ * | BB.phi:                                                             |
+ * | %phinode = phi %<extracted.type> [%ev.1, %BB1], [%ev.2, %BB.2]      |
+ * | ; use %phinode                                                      |
+ * -----------------------------------------------------------------------
+ */
+void GenXSimdCFConformance::GotoJoinEVs::CanonicalizePHIs() {
+  // Collect all PHIs from GotoJoin users.
+  llvm::SmallVector<PHINode *, 4> PHINodes;
+  for (auto *U : GotoJoin->users())
+    if (auto *PN = dyn_cast<PHINode>(U))
+      PHINodes.push_back(PN);
+
+  for (auto *PN : PHINodes) {
+    SmallVector<ExtractValueInst *, 4> EVsToReplace;
+    // Iterate over EVs for each PHI node.
+    for (auto *PHIUser : PN->users()) {
+      auto *EV = dyn_cast<ExtractValueInst>(PHIUser);
+      IGC_ASSERT_MESSAGE(EV, "Bad user of goto/join!");
+      IGC_ASSERT_MESSAGE(EV->getNumIndices() == 1, "Expected 1 index in Extract Value for goto/join!");
+      // Extract index info from the EV - we need to create similar EVs for the
+      // goto/join calls themselves.
+      ArrayRef<unsigned> idxArray = EV->getIndices();
+      // Create a corresponding EV for each of PHI's incoming goto/join calls,
+      // then reset the PHI node to reference these new EVs.
+      PN->mutateType(EV->getType());
+      for (unsigned i = 0; i < PN->getNumIncomingValues(); ++i) {
+        auto *newEV = ExtractValueInst::Create(
+            PN->getIncomingValue(i), idxArray, getNameForMissingEV(idxArray[0]),
+            PN->getIncomingBlock(i));
+        PN->setIncomingValue(i, newEV);
+      }
+      // Now that the PHI points to the goto/join EVs, it should be used
+      // instead of the pre-existing EV from PHI's basic block. Mark the
+      // EV for replacement and deletion.
+      EVsToReplace.push_back(EV);
+    }
+    for (auto *EV : EVsToReplace) {
+      EV->replaceAllUsesWith(PN);
+      EV->eraseFromParent();
+    }
+  }
+}
+
+/***********************************************************************
  * GotoJoindEVs::CollectEVs : handle and store goto/join EVs
  *
  * This does the following steps:
@@ -4410,7 +4499,11 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
 
   auto GotoJoinInst = dyn_cast<Instruction>(GotoJoin);
 
-  // Collect EVs, hoist them, resolve duplications
+  // Before handling EVs, ensure that PHIs always use extractvalue results
+  // instead of referencing goto/join results directly.
+  CanonicalizePHIs();
+  // Now that EV/PHI graph is canonical, collect EVs, hoist them, resolve
+  // duplications.
   for (auto ui = GotoJoin->use_begin(), ue = GotoJoin->use_end(); ui != ue;) {
 
     auto EV = dyn_cast<ExtractValueInst>(ui->getUser());
@@ -4441,20 +4534,8 @@ void GenXSimdCFConformance::GotoJoinEVs::CollectEVs() {
     if (EVs[idx])
       continue;
 
-    std::string Name = "missing";
-    switch (idx) {
-    case EMPos:
-      Name += "EMEV";
-      break;
-    case RMPos:
-      Name += "RMEV";
-      break;
-    case GotoCondPos:
-      Name += "CondEV";
-      break;
-    }
-
-    auto EV = ExtractValueInst::Create(GotoJoin, { idx }, Name, GotoJoinInst->getParent());
+    auto EV = ExtractValueInst::Create(
+        GotoJoin, { idx }, getNameForMissingEV(idx), GotoJoinInst->getParent());
     EVs[idx] = EV;
   }
 
