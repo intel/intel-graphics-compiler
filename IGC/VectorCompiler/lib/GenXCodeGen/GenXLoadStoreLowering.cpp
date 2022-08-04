@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2022 Intel Corporation
+Copyright (C) 2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -140,19 +140,16 @@ private:
   template <HWAddrSpace HWAS, MessageKind MK, Atomicity A, typename MemoryInstT>
   Instruction *createIntrinsic(MemoryInstT &I) const;
 
-  Instruction *createSVMLoad(LoadInst &LdI) const;
+  Instruction *createSVMGather(LoadInst &LdI) const;
   Instruction *createSVMGatherImpl(LoadInst &LdI, Value &NormalizedOldVal,
                                    unsigned ValueEltSz,
                                    IRBuilder<> &Builder) const;
-  Instruction *createSVMBlockLoadImpl(LoadInst &LdI,
-                                      IRBuilder<> &Builder) const;
   Instruction *createGatherScaled(LoadInst &OrigLoad,
                                   visa::ReservedSurfaceIndex Surface) const;
-  Instruction *createSVMStore(StoreInst &StI) const;
+  Instruction *createSVMScatter(StoreInst &StI) const;
   Instruction *createSVMScatterImpl(StoreInst &StI, Value &NormalizedOldVal,
                                     unsigned ValueEltSz,
                                     IRBuilder<> &Builder) const;
-  Instruction *createSVMBlockStoreImpl(StoreInst &StI, Value *Src, IRBuilder<> &Builder) const;
   Instruction *createScatterScaled(StoreInst &OrigStore,
                                    visa::ReservedSurfaceIndex Surface) const;
 
@@ -496,28 +493,6 @@ Instruction *GenXLoadStoreLowering::createSVMGatherImpl(
   return Gather;
 }
 
-// Creates svm.block.ld intrinsic and returns it.
-Instruction *
-GenXLoadStoreLowering::createSVMBlockLoadImpl(LoadInst &LdI,
-                                              IRBuilder<> &Builder) const {
-  Type *I64Ty = Builder.getInt64Ty();
-  LLVM_DEBUG(dbgs() << "Creating load from: " << LdI << "\n");
-  IGCLLVM::FixedVectorType *LdTy = getLoadVType(LdI);
-
-  Value *PointerOp = LdI.getPointerOperand();
-  Value *Offset = Builder.CreatePtrToInt(PointerOp, I64Ty, "");
-
-  auto IID = LdI.getAlignment() >= OWordBytes
-                 ? llvm::GenXIntrinsic::genx_svm_block_ld
-                 : llvm::GenXIntrinsic::genx_svm_block_ld_unaligned;
-  auto *F =
-      GenXIntrinsic::getGenXDeclaration(LdI.getModule(), IID, {LdTy, I64Ty});
-  CallInst *Load = IntrinsicInst::Create(F, {Offset}, LdI.getName());
-
-  LLVM_DEBUG(dbgs() << "Created: " << *Load << "\n");
-  return Load;
-}
-
 Instruction *GenXLoadStoreLowering::extractFirstElement(
     Instruction &ProperGather, Type &LdTy, IRBuilder<> &Builder) const {
   auto *GatheredTy = cast<IGCLLVM::FixedVectorType>(ProperGather.getType());
@@ -559,64 +534,48 @@ void GenXLoadStoreLowering::visitAtomicCmpXchgInst(
   Inst.eraseFromParent();
 }
 
-// Creates a svm.gather or svm.block.ld intrinsic replacement for the provided
-// \p LdI load instruction. Returns the replacement. The returned value may not
-// be a svm.gather intrinsic, e.g. when replacement is a chain
-// svm.gather/svm.block.ld -> bitcast, in this case bitcast is returned.
-Instruction *GenXLoadStoreLowering::createSVMLoad(LoadInst &LdI) const {
+// Creates a svm.gather intrinsic replacement for the provided \p LdI load
+// instruction. Returns the replacement. The returned value may not be a
+// svm.gather intrinsic, e.g. when replacement is a chain svm.gather -> bitcast,
+// in this case bitcast is returned.
+Instruction *GenXLoadStoreLowering::createSVMGather(LoadInst &LdI) const {
   IRBuilder<> Builder(&LdI);
 
   IGCLLVM::FixedVectorType *LdTy = getLoadVType(LdI);
   auto *LdEltTy = LdTy->getElementType();
-  unsigned ValueEltSize = LdEltTy->getPrimitiveSizeInBits() / genx::ByteBits;
   unsigned NumEltsToLoad = LdTy->getNumElements();
-  unsigned NumBytesToLoad = NumEltsToLoad * ValueEltSize;
-  auto Alignment = LdI.getAlignment();
-  auto IsBlock = ((Alignment == 0 && ValueEltSize >= 4) || Alignment >= 4) &&
-                 isPowerOf2_64(NumBytesToLoad) &&
-                 NumBytesToLoad >= OWordBytes &&
-                 NumBytesToLoad <= 8 * OWordBytes;
 
-  Instruction *Load = nullptr;
-  Instruction *ProperLoad = nullptr;
+  Value *OldValOfTheDataRead =
+      Builder.CreateVectorSplat(NumEltsToLoad, UndefValue::get(LdEltTy));
 
-  if (IsBlock) {
-    Load = createSVMBlockLoadImpl(LdI, Builder);
-    Load->setDebugLoc(LdI.getDebugLoc());
-    Load->insertAfter(&LdI);
-    ProperLoad = Load;
-  } else {
-    Value *OldValOfTheDataRead =
-        Builder.CreateVectorSplat(NumEltsToLoad, UndefValue::get(LdEltTy));
+  // normalize (see restore below)
+  auto [NormalizedOldVal, ValueEltSz] =
+      normalizeDataVecForSVMIntrinsic(OldValOfTheDataRead, LdTy, &LdI, Builder);
 
-    // normalize (see restore below)
-    auto [NormalizedOldVal, ValueEltSz] = normalizeDataVecForSVMIntrinsic(
-        OldValOfTheDataRead, LdTy, &LdI, Builder);
-    Load = createSVMGatherImpl(LdI, *NormalizedOldVal, ValueEltSz, Builder);
-    Load->setDebugLoc(LdI.getDebugLoc());
-    Load->insertAfter(&LdI);
+  auto *Gather =
+      createSVMGatherImpl(LdI, *NormalizedOldVal, ValueEltSz, Builder);
+  Gather->setDebugLoc(LdI.getDebugLoc());
+  Gather->insertAfter(&LdI);
 
-    // SVMBlockType metadata and ProperLoad insertion below
-    // is a part of obscure 8/16 gather support
-    // see comment in InternalMetadata.h
+  // SVMBlockType metadata and ProperGather insertion below
+  // is a part of obscure 8/16 gather support
+  // see comment in InternalMetadata.h
 
-    // restore (see normalize above)
-    ProperLoad = RestoreVectorAfterNormalization(Load, LdTy);
+  // restore (see normalize above)
+  Instruction *ProperGather = RestoreVectorAfterNormalization(Gather, LdTy);
 
-    // if LdI is not vector, extract first element from ProperLoad type
-    if (!isa<VectorType>(LdI.getType()) &&
-        isa<VectorType>(ProperLoad->getType()))
-      ProperLoad = extractFirstElement(*ProperLoad, *LdTy, Builder);
+  // if LdI is not vector, extract first element from ProperGather type
+  if (!isa<VectorType>(LdI.getType()) &&
+      isa<VectorType>(ProperGather->getType()))
+    ProperGather = extractFirstElement(*ProperGather, *LdTy, Builder);
 
-    Load->setMetadata(
-        vc::InstMD::SVMBlockType,
-        MDNode::get(LdI.getContext(),
-                    llvm::ValueAsMetadata::get(UndefValue::get(LdEltTy))));
-  }
-
-  LLVM_DEBUG(dbgs() << "Replaced with: " << *Load << "\n");
-  IGC_ASSERT(LdI.getType() == ProperLoad->getType());
-  return ProperLoad;
+  Gather->setMetadata(
+      vc::InstMD::SVMBlockType,
+      MDNode::get(LdI.getContext(),
+                  llvm::ValueAsMetadata::get(UndefValue::get(LdEltTy))));
+  LLVM_DEBUG(dbgs() << "Replaced with: " << *Gather << "\n");
+  IGC_ASSERT(LdI.getType() == ProperGather->getType());
+  return ProperGather;
 }
 
 // Creates svm.scatter intrinsic and returns it.
@@ -647,22 +606,6 @@ Instruction *GenXLoadStoreLowering::createSVMScatterImpl(
   auto *Scatter = IntrinsicInst::Create(
       F, {Pred, logNumBlocks, Offset, &NormalizedOldVal}, StI.getName());
   return Scatter;
-}
-
-// Creates svm.scatter intrinsic and returns it.
-Instruction *
-GenXLoadStoreLowering::createSVMBlockStoreImpl(StoreInst &StI, Value *Src,
-                                               IRBuilder<> &Builder) const {
-  Value *PointerOp = StI.getPointerOperand();
-  Type *I64Ty = Builder.getInt64Ty();
-  Value *Offset = Builder.CreatePtrToInt(PointerOp, I64Ty, "");
-
-  auto IID = llvm::GenXIntrinsic::genx_svm_block_st;
-
-  Function *F = GenXIntrinsic::getGenXDeclaration(
-      StI.getModule(), IID, {Offset->getType(), Src->getType()});
-  auto *Store = IntrinsicInst::Create(F, {Offset, Src}, StI.getName());
-  return Store;
 }
 
 // A kind of a transformation that should be applied to memory instruction
@@ -1174,41 +1117,28 @@ Instruction *GenXLoadStoreLowering::createLegacySVMAtomicCmpXchg(
   return cast<Instruction>(Res);
 }
 
-// Creates a svm.scatter or svm.block.st intrinsic replacement for the provided
-// \p StI store instruction. Returns the constructed svm.scatter. May insert
-// some additional instructions besides the svm.scatter.
-Instruction *GenXLoadStoreLowering::createSVMStore(StoreInst &StI) const {
+// Creates a svm.scatter intrinsic replacement for the provided \p StI store
+// instruction. Returns the constructed svm.scatter. May insert some additional
+// instructions besides the svm.scatter.
+Instruction *GenXLoadStoreLowering::createSVMScatter(StoreInst &StI) const {
   IRBuilder<> Builder(&StI);
   Value *ValueOp = vectorizeValueOperandIfNeeded(StI, Builder);
   // old Value type to restore into
-  auto *ValueOpTy = cast<IGCLLVM::FixedVectorType>(ValueOp->getType());
-  auto *EltTy = ValueOpTy->getElementType();
-  unsigned NumEltsToStore = ValueOpTy->getNumElements();
-  unsigned NumBytesToStore =
-      NumEltsToStore * EltTy->getScalarSizeInBits() / genx::ByteBits;
-  auto Alignment = StI.getAlignment();
-  auto IsBlock = Alignment >= OWordBytes && isPowerOf2_32(NumBytesToStore) &&
-                 NumBytesToStore >= OWordBytes &&
-                 NumBytesToStore <= 8 * OWordBytes;
+  Type *ValueOpTy = ValueOp->getType();
 
-  Instruction *Store = nullptr;
-  if (IsBlock) {
-    Store = createSVMBlockStoreImpl(StI, ValueOp, Builder);
-  } else {
-    auto [NormalizedOldVal, ValueEltSz] =
-        normalizeDataVecForSVMIntrinsic(ValueOp, ValueOpTy, &StI, Builder);
+  auto [NormalizedOldVal, ValueEltSz] =
+      normalizeDataVecForSVMIntrinsic(ValueOp, ValueOpTy, &StI, Builder);
 
-    // creating store after StI, using NormalizedOldVal
-    Store = createSVMScatterImpl(StI, *NormalizedOldVal, ValueEltSz, Builder);
-  }
-
-  Store->setDebugLoc(StI.getDebugLoc());
-  Store->insertAfter(&StI);
-  Store->setMetadata(
+  // creating store after StI, using NormalizedOldVal
+  auto *Scatter =
+      createSVMScatterImpl(StI, *NormalizedOldVal, ValueEltSz, Builder);
+  Scatter->setDebugLoc(StI.getDebugLoc());
+  Scatter->insertAfter(&StI);
+  Scatter->setMetadata(
       vc::InstMD::SVMBlockType,
       MDNode::get(StI.getContext(), llvm::ValueAsMetadata::get(UndefValue::get(
                                         ValueOpTy->getScalarType()))));
-  return Store;
+  return Scatter;
 }
 
 void GenXLoadStoreLowering::visitIntrinsicInst(IntrinsicInst &Intrinsic) const {
@@ -1267,7 +1197,7 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
                                        Atomicity::NonAtomic, LoadInst>(
     LoadInst &I) const {
-  return createSVMLoad(I);
+  return createSVMGather(I);
 }
 
 template <>
@@ -1275,7 +1205,7 @@ Instruction *
 GenXLoadStoreLowering::createIntrinsic<HWAddrSpace::A64, MessageKind::Legacy,
                                        Atomicity::NonAtomic, StoreInst>(
     StoreInst &I) const {
-  return createSVMStore(I);
+  return createSVMScatter(I);
 }
 
 template <>
