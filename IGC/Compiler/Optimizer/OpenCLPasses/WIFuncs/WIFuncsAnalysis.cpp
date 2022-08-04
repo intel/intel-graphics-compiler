@@ -103,7 +103,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
             implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
 
         if (!m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV) &&
-            IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg))
+            IGC_IS_FLAG_ENABLED(EnableGlobalStateBuffer))
         {
             if (m_hasStackCalls)
             {
