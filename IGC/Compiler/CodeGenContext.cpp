@@ -476,6 +476,9 @@ namespace IGC
                 // To calculate SLM/DSS in kB
                 // ThreadGroupSize (TGSize) is # pixels in Thread Group
                 // (m_slmSize * pixelsPerDSS / TGSize) / 1024
+            case SIMDMode::SIMD8:
+                slmPerDSS = m_slmSize / GetThreadGroupSize();
+                break;
             case SIMDMode::SIMD16:
                 slmPerDSS = m_slmSize * 2 / GetThreadGroupSize();
                 break;
@@ -486,7 +489,9 @@ namespace IGC
                 break;
             }
 
-            if (slmPerDSS > 128) {
+            unsigned int slmPerDSS_limit = 128;
+
+            if (slmPerDSS > slmPerDSS_limit) {
                 SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
                 return false;
             }

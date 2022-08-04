@@ -4195,7 +4195,7 @@ namespace IGC
         if (canAbortOnSpill)
         {
             SaveOption(vISA_AbortOnSpill, true);
-            if (AvoidRetryOnSmallSpill())  // only applied to pixel shader
+            if (AvoidRetryOnSmallSpill())  // applied to pixel shader and compute shader
             {
                 // 2 means #spill/fill is roughly 1% of #inst
                 // ToDo: tune the threshold
@@ -4208,8 +4208,14 @@ namespace IGC
                     else
                         SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
                 }
+                else if (context->type == ShaderType::COMPUTE_SHADER &&
+                    m_program->m_dispatchSize == SIMDMode::SIMD32)
+                {
+                    // Compile SIMD32 only, give extra spillThreshold
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
+                }
                 else
-                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 2);
             }
         }
 
@@ -5430,6 +5436,12 @@ namespace IGC
             else
                 return m_program->m_dispatchSize == SIMDMode::SIMD8 || m_program->m_dispatchSize == SIMDMode::SIMD16;
         }
+        else if (context->type == ShaderType::COMPUTE_SHADER && context->m_retryManager.IsFirstTry())
+        {
+            ComputeShaderContext* csCtx = static_cast<ComputeShaderContext*>(context);
+            return csCtx->m_ForceOneSIMD;
+        }
+
         return false;
     }
 
