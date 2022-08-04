@@ -4438,20 +4438,6 @@ bool CISA_IR_Builder::CISA_create_qword_scatter_instruction(
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_bf_cvt_instruction(
-    VISA_EMask_Ctrl emask,
-    unsigned exec_size,
-    VISA_opnd *dst,
-    VISA_opnd *src0,
-    int lineNum)
-{
-    VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-    VISA_CALL_TO_BOOL(AppendVISADataMovementInst,
-        ISA_BF_CVT, nullptr, false, emask, executionSize,
-        (VISA_VectorOpnd *)dst, (VISA_VectorOpnd *)src0);
-    return true;
-}
-
 bool CISA_IR_Builder::CISA_create_fcvt_instruction(
     VISA_EMask_Ctrl emask,
     unsigned exec_size,

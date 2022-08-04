@@ -599,24 +599,6 @@ int IR_Builder::translateVISADataMovementInst(
             return VISA_FAILURE;
         }
     }
-    else if (opcode == ISA_BF_CVT)
-    {
-        // translate UW to BF
-        if (dstOpnd->getType() == Type_UW ||
-            dstOpnd->getType() == Type_HF)    // Temp compatibility (toBeRemovedSoon)
-        {
-            dstOpnd->setType(*this, Type_BF);
-        }
-        else
-        {
-            assert(src0Opnd->isSrcRegRegion() &&
-                (src0Opnd->getType() == Type_UW || src0Opnd->getType() == Type_HF) &&
-                "src0Opnd must be a src region with HF type");
-            src0Opnd->asSrcRegRegion()->setType(*this, Type_BF);
-        }
-
-        createMov(exsize, dstOpnd, src0Opnd, inst_opt, true);
-    }
     else if (opcode == ISA_FCVT)
     {
         (void)createInst(nullptr, G4_fcvt, nullptr, g4::NOSAT, exsize,

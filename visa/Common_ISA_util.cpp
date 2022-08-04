@@ -182,7 +182,6 @@ G4_opcode GetGenOpcodeFromVISAOpcode(ISA_Opcode opcode)
             return G4_add3;
         case ISA_BFN:
             return G4_bfn;
-        case ISA_BF_CVT:
         case ISA_FCVT:
             return G4_fcvt;
         case ISA_SRND:
@@ -443,7 +442,7 @@ bool hasPredicate(ISA_Opcode op)
     switch (ISA_Inst_Table[op].type)
     {
     case ISA_Inst_Mov:
-        return !(op == ISA_SETP || op == ISA_MOVS || op == ISA_FMINMAX || op == ISA_BF_CVT || op == ISA_FCVT);
+        return !(op == ISA_SETP || op == ISA_MOVS || op == ISA_FMINMAX || op == ISA_FCVT);
     case ISA_Inst_Arith:
     case ISA_Inst_Logic:
     {

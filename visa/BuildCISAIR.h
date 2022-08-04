@@ -860,13 +860,6 @@ public:
         VISA_opnd *dstSrc,
         int lineNum);
 
-    bool CISA_create_bf_cvt_instruction(
-        VISA_EMask_Ctrl emask,
-        unsigned exec_size,
-        VISA_opnd *dst,
-        VISA_opnd *src0,
-        int lineNum);
-
     bool CISA_create_lsc_untyped_inst(
         VISA_opnd               *pred,
         LSC_OP                   opcode,

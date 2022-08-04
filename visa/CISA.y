@@ -942,7 +942,6 @@ Instruction:
         | DpasInstruction
         | BfnInstruction
         | QwScatterInstruction
-        | BF_CvtInstruction
         | LscInstruction
         | FCvtInstruction
 
@@ -1058,12 +1057,6 @@ QwScatterInstruction: Predicate QW_SCATTER_OP DOT DEC_LIT ExecSize Var RawOperan
     {
         ABORT_ON_FAIL(pBuilder->CISA_create_qword_scatter_instruction(
             $2, $1, $5.emask, $5.exec_size, (uint32_t)$4, $6, $7, $8, CISAlineno));
-    }
-
-               //    1         2           3              4
-BF_CvtInstruction: BF_CVT_OP ExecSize VecDstOperand_G VecSrcOperand_G_IMM
-    {
-        pBuilder->CISA_create_bf_cvt_instruction($2.emask, $2.exec_size, $3.cisa_gen_opnd, $4.cisa_gen_opnd, CISAlineno);
     }
 
                //   1        2            3            4

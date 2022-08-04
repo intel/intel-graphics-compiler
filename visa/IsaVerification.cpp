@@ -987,48 +987,6 @@ void vISAVerifier::verifyInstructionMove(
                                "supports general, indirect, and immediate operands.");
             break;
         }
-        case ISA_BF_CVT:
-        {
-            REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= Xe_XeHPSDV,
-                "BF_CVT is only supported on this platform");
-            REPORT_INSTRUCTION(options, operand_class_dst == OPERAND_GENERAL,
-                "Destination operand of BF_CVT instruction only "
-                "supports general and operands.");
-
-            REPORT_INSTRUCTION(options, operand_class_src0 == OPERAND_GENERAL,
-                "Source0 operand of BF_CVT instruction only "
-                "supports general,  operands.");
-
-            VISA_Type     dstType = getVectorOperandType(header, dst);
-            VISA_Type     src0Type = getVectorOperandType(header, src0);
-
-            // toBeDeletedSoon: checking ISA_TYPE_HF tool
-            if (dstType == ISA_TYPE_UW || dstType == ISA_TYPE_HF)
-            {
-                REPORT_INSTRUCTION(options, src0Type == ISA_TYPE_F,
-                    "BF_CVT with UW(actually BF) dst must have F src");
-            }
-            else if (src0Type == ISA_TYPE_UW || src0Type == ISA_TYPE_HF)
-            {
-                REPORT_INSTRUCTION(options, dstType == ISA_TYPE_F,
-                    "BF_CVT with UW(actually BF) src must have F dst");
-            }
-            else
-            {
-                REPORT_INSTRUCTION(options, false,
-                    "BF_CVT must have either UW(actually BF) dst or src");
-            }
-
-            VISA_Modifier dstModifier = dst.getOperandModifier();
-            REPORT_INSTRUCTION(options, dstModifier == MODIFIER_NONE,
-                "destination modifier not supported for BF conversion");
-
-            VISA_Modifier srcModifier = src0.getOperandModifier();
-            REPORT_INSTRUCTION(options, srcModifier == MODIFIER_NONE,
-                "source modifier not supported for BF conversion");
-            break;
-
-        }
         case ISA_FCVT:
         {
             REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= Xe_PVC,

@@ -395,7 +395,7 @@ typedef enum {
     ISA_BFN                = 0x85,
     ISA_QW_GATHER          = 0x86,
     ISA_QW_SCATTER         = 0x87,
-    ISA_BF_CVT             = 0x88,
+    ISA_RESERVED_88        = 0x88,
     ISA_LSC_UNTYPED        = 0x89,
     ISA_LSC_TYPED          = 0x8A,
     ISA_LSC_FENCE          = 0x8B,

@@ -156,7 +156,7 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_BFN,                ISA_Inst_Logic,      "bfn",                 3, 1 },
     { ISA_QW_GATHER,          ISA_Inst_Data_Port,  "qw_gather",           3, 1 },
     { ISA_QW_SCATTER,         ISA_Inst_Data_Port,  "qw_scatter",          4, 0 },
-    { ISA_BF_CVT,             ISA_Inst_Mov,        "bf_cvt",              1, 1 },
+    { ISA_RESERVED_88,        ISA_Inst_Mov,        "reserved88",          1, 1 },
     { ISA_LSC_UNTYPED,        ISA_Inst_LSC,        "lsc_untyped",         0, 0 },
     { ISA_LSC_TYPED,          ISA_Inst_LSC,        "lsc_typed",           0, 0 },
     { ISA_LSC_FENCE,          ISA_Inst_LSC,        "lsc_fence",           0, 0 },
@@ -1738,13 +1738,11 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 136 (0x88)
-    { Xe_XeHPSDV, ISA_BF_CVT, ISA_Inst_Mov, "bf_cvt", 3, SAME_SPECIAL_KIND,
-    {
-        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
-        { OPND_DST_GEN, ISA_TYPE_F, 0 },
-        { OPND_SRC_GEN, ISA_TYPE_HF, 0 },
+    { ALL, ISA_RESERVED_88, ISA_Inst_Reserved, "reserved_88", 0, 0,
+        {
+        },
     },
-    },
+
     /// 137 (0x89)
     { Xe_DG2, ISA_LSC_UNTYPED, ISA_Inst_LSC, "lsc_untyped", 1, SAME_SPECIAL_KIND,
         {
