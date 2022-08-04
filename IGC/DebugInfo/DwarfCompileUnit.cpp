@@ -2911,7 +2911,7 @@ bool CompileUnit::buildValidVar(
           addSimdLaneRegionBase(Block, var, loc, &lrToUse);
         } else {
           unsigned int subReg = lrToUse.getGRF().subRegNum;
-          addRegisterOp(Block, regNum);
+          addRegOrConst(Block, regNum);
           // Emit GT-relative location expression
           isSLM = addGTRelativeLocation(Block, var, loc);
           if (!isSLM && loc.IsRegister())
