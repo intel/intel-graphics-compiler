@@ -400,7 +400,7 @@ public:
         llvm::Type* Ty, LSC_CACHE_OPTS cacheOpts, uint32_t align);
     void emitLSCVectorStore(
         llvm::Value* Ptr, llvm::Value* offset, llvm::ConstantInt* immOffset,
-        llvm::Value* storedVal, LSC_CACHE_OPTS cacheOpts, uint32_t align);
+        llvm::Value* storedVal, LSC_CACHE_OPTS cacheOpts, uint32_t align, bool dontForceDMask);
     void emitGenISACopy(llvm::GenIntrinsicInst* GenCopyInst);
     void emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);

@@ -57,6 +57,11 @@ void LSCControlsAnalysisPass::visitStoreInst(StoreInst& I)
 
     if (cacheOpts)
     {
+        MDNode* node = MDNode::get(
+            I.getContext(),
+            ConstantAsMetadata::get(
+                ConstantInt::get(Type::getInt32Ty(I.getContext()), 0)));
+        I.setMetadata("enable.vmask", node);
         markCacheCtrl(I, *cacheOpts);
         Changed = true;
     }

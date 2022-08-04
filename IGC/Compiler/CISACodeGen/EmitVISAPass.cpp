@@ -10098,7 +10098,8 @@ void EmitPass::emitStoreRawIndexed(
             immOffset,
             pValToStore,
             cacheOpts,
-            inst->getAlignment());
+            inst->getAlignment(),
+            false);
         return;
     }
     IGC_ASSERT(immOffset == nullptr);
@@ -10261,7 +10262,8 @@ void EmitPass::emitStore(StoreInst* inst, Value* varOffset, ConstantInt* immOffs
             immOffset,
             inst->getValueOperand(),
             cacheOpts,
-            (uint32_t)inst->getAlignment());
+            (uint32_t)inst->getAlignment(),
+            inst->getMetadata("enable.vmask"));
         return;
     }
     emitVectorStore(inst, varOffset, immOffset);
@@ -16792,7 +16794,7 @@ void EmitPass::emitLSCVectorStore_uniform(
 
 void EmitPass::emitLSCVectorStore(
     Value* Ptr, Value* varOffset, ConstantInt* immOffset,
-    Value* storedVal, LSC_CACHE_OPTS cacheOpts, uint32_t align)
+    Value* storedVal, LSC_CACHE_OPTS cacheOpts, uint32_t align, bool dontForceDmask)
 {
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     Type* Ty = storedVal->getType();
@@ -16807,7 +16809,8 @@ void EmitPass::emitLSCVectorStore(
     CountStatelessIndirectAccess(Ptr, resource);
     CheckAccessFromScalar(Ptr);
 
-    if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+    if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE &&
+        !dontForceDmask)
     {
         ForceDMask(false);
     }
@@ -16927,7 +16930,8 @@ void EmitPass::emitLSCVectorStore(
         }
     });
 
-    if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+    if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE &&
+        !dontForceDmask)
     {
         ResetVMask(false);
     }
