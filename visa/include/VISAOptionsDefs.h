@@ -89,7 +89,7 @@ DEF_VISA_OPTION(vISA_EnableGatherWithImm,      ET_BOOL, "-gatherWithImm",       
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",    UNUSED, true)
 DEF_VISA_OPTION(vISA_localizationForAccSub, ET_BOOL, "-localizeForACC",    UNUSED, false)
 DEF_VISA_OPTION(vISA_mathAccSub, ET_BOOL, "-mathAccSub",    UNUSED, false)
-DEF_VISA_OPTION(vISA_disableSrc2AccSub, ET_BOOL, "-disableSrc2AccSub",    UNUSED, false)
+DEF_VISA_OPTION(vISA_disableSrc2AccSub, ET_BOOL, "-disableSrc2AccSub",    UNUSED, true)
 DEF_VISA_OPTION(vISA_hasDoubleAcc, ET_BOOL, "-hasDoubleAcc",    UNUSED, false)
 DEF_VISA_OPTION(vISA_ifCvt,                 ET_BOOL, "-noifcvt",     UNUSED, true)
 DEF_VISA_OPTION(vISA_RegSharingHeuristics,  ET_BOOL, "-regSharingHeuristics", UNUSED, false)
