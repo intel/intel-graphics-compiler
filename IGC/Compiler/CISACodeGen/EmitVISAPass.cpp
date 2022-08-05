@@ -12384,6 +12384,14 @@ void EmitPass::emitScalarAtomics(
         identityValue = 0;
         op = EOPCODE_OR;
         break;
+    case EATOMIC_AND:
+        identityValue = 0xFFFFFFFF;
+        op = EOPCODE_AND;
+        break;
+    case EATOMIC_XOR:
+        identityValue = 0;
+        op = EOPCODE_XOR;
+        break;
     default:
         IGC_ASSERT_MESSAGE(0, "unsupported scalar atomic type");
         break;
@@ -12698,20 +12706,22 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
             {
                 AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(3))->getZExtValue());
 
-                bool isAddAtomic =
+                bool isAtomicAdd =
                     atomic_op == EATOMIC_IADD ||
                     atomic_op == EATOMIC_INC ||
                     atomic_op == EATOMIC_SUB ||
                     atomic_op == EATOMIC_DEC;
-                bool isMinMaxAtomic =
+                bool isAtomicMinMax =
                     atomic_op == EATOMIC_UMAX ||
                     atomic_op == EATOMIC_UMIN ||
                     atomic_op == EATOMIC_IMIN ||
                     atomic_op == EATOMIC_IMAX;
-
-                bool isOrAtomic = (atomic_op == EATOMIC_OR);
-                if (isAddAtomic || (isMinMaxAtomic && pInst->use_empty()) ||
-                    (isOrAtomic && pInst->use_empty()))
+                bool isAtomicOr  = (atomic_op == EATOMIC_OR);
+                bool isAtomicAnd = (atomic_op == EATOMIC_AND);
+                bool isAtomicXor = (atomic_op == EATOMIC_XOR);
+                if (isAtomicAdd ||
+                    (pInst->use_empty() &&
+                        (isAtomicMinMax || isAtomicOr || isAtomicAnd || isAtomicXor)))
                     return true;
             }
         }
