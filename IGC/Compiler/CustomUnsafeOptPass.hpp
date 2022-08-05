@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
-#include "llvm/ADT/SetVector.h"
 #include <llvm/Analysis/LoopInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -98,10 +97,7 @@ namespace IGC
         void strengthReducePowOrExpLog(
             llvm::IntrinsicInst* intrin, llvm::Value* base, llvm::Value* exponent, bool isPow);
 
-        void collectForErase(llvm::Instruction& I, unsigned int operandsDepth = 1);
-        void eraseCollectedInst();
-
-        llvm::SetVector<llvm::Instruction*> m_instToErase;
+        std::vector<llvm::Instruction*> m_instToDelete;
     };
 
 } // namespace IGC

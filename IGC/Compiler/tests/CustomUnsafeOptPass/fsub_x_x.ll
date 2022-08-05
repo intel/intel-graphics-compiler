@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2022 Intel Corporation
+; Copyright (C) 2017-2021 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -16,7 +16,8 @@ entry:
   ret void
 }
 
-; CHECK-NOT:     fsub float %x, %x
+; CHECK:         [[SUB:%[a-zA-Z0-9]+]] = fsub float %x, %x
+; CHECK-NOT:     store float [[SUB]]
 ; CHECK:         store float 0.000000e+00
 
 !IGCMetadata = !{!0}
