@@ -345,13 +345,18 @@ std::string vISA::ToSymbol(AddrSizeType a) {
     }
 }
 
-AddrSizeType vISA::ConvertLSCAddrSizeType(LSC_ADDR_SIZE a) {
-    // TODO: This function may need an additional argument -- LSC_ADDR_TYPE
-    // TODO: expand the cases
-    switch(a) {
-    case LSC_ADDR_SIZE_32b: return AddrSizeType::FLAT_A64_A32;
-    case LSC_ADDR_SIZE_64b: return AddrSizeType::FLAT_A64_A64;
-    default: MUST_BE_TRUE(false, "address size");
+AddrSizeType vISA::ConvertLSCAddrSizeType(LSC_ADDR_SIZE size, LSC_ADDR_TYPE type) {
+    switch(type) {
+        case LSC_ADDR_TYPE_FLAT:
+            if (size == LSC_ADDR_SIZE_32b) return AddrSizeType::FLAT_A64_A32;
+            else if (size == LSC_ADDR_SIZE_64b) return AddrSizeType::FLAT_A64_A64;
+            MUST_BE_TRUE(false, "incorrect address size for flat/stateless");
+            break;
+        case LSC_ADDR_TYPE_BSS:
+        case LSC_ADDR_TYPE_SS:
+            return AddrSizeType::STATEFUL_A32;
+        default:
+            return AddrSizeType::INVALID;
     }
     return AddrSizeType::INVALID;
 }

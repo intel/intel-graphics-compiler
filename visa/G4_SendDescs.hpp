@@ -193,7 +193,7 @@ enum class AddrSizeType
 };
 
 std::string ToSymbol(AddrSizeType a);
-AddrSizeType ConvertLSCAddrSizeType(LSC_ADDR_SIZE a);
+AddrSizeType ConvertLSCAddrSizeType(LSC_ADDR_SIZE size, LSC_ADDR_TYPE type);
 uint32_t GetAddrSizeTypeEncoding(AddrSizeType a);
 
 // Cache controls

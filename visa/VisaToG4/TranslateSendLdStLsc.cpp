@@ -107,18 +107,18 @@ static int lscBlock2dComputeDataRegs(
 int IR_Builder::translateLscUntypedInst(
     LSC_OP                      op,
     LSC_SFID                    lscSfid,
-    G4_Predicate               *pred,
+    G4_Predicate                *pred,
     VISA_Exec_Size              visaExecSize,
     VISA_EMask_Ctrl             execCtrl,
     LSC_CACHE_OPTS              cacheOpts,
     LSC_ADDR                    addrInfo,
     LSC_DATA_SHAPE              dataShape,
-    G4_Operand                 *surface, // can be G4_Imm or G4_SrcRegRegion
-    G4_DstRegRegion            *dstRead,  // dst can be NULL reg (e.g store)
-    G4_SrcRegRegion            *src0Addr, // always the addresses (base for strided)
-    G4_Operand                 *src0AddrStride, // only for strided
-    G4_SrcRegRegion            *src1Data, // store data/extra atomic operands
-    G4_SrcRegRegion            *src2Data // store data/extra atomic operands
+    G4_Operand                  *surface, // can be G4_Imm or G4_SrcRegRegion
+    G4_DstRegRegion             *dstRead,  // dst can be NULL reg (e.g store)
+    G4_SrcRegRegion             *src0Addr, // always the addresses (base for strided)
+    G4_Operand                  *src0AddrStride, // only for strided
+    G4_SrcRegRegion             *src1Data, // store data/extra atomic operands
+    G4_SrcRegRegion             *src2Data // store data/extra atomic operands
 )
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
@@ -182,7 +182,6 @@ int IR_Builder::translateLscUntypedInst(
         opInfo.kind == LscOpInfo::STORE ||
         opInfo.kind == LscOpInfo::ATOMIC, "unhandled LSC op class");
 
-    {
     // send descriptor
     uint32_t desc = 0;
     uint32_t exDesc = 0;
@@ -470,21 +469,19 @@ int IR_Builder::translateLscUntypedInst(
         true);
 
     return status;
-
-    }
 }
 
 int IR_Builder::translateLscUntypedBlock2DInst(
     LSC_OP                      op,
     LSC_SFID                    lscSfid,
-    G4_Predicate               *pred,
+    G4_Predicate                *pred,
     VISA_Exec_Size              visaExecSize,
     VISA_EMask_Ctrl             emask,
     LSC_CACHE_OPTS              cacheOpts,
     LSC_DATA_SHAPE_BLOCK2D      dataShape2D,
-    G4_DstRegRegion            *dstRead,  // dst can be NULL reg (e.g store)
-    G4_Operand                 *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS], // always the addresses
-    G4_SrcRegRegion            *src1Data // store data
+    G4_DstRegRegion             *dstRead,  // dst can be NULL reg (e.g store)
+    G4_Operand                  *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS], // always the addresses
+    G4_SrcRegRegion             *src1Data // store data
 )
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
@@ -584,21 +581,21 @@ int IR_Builder::translateLscUntypedBlock2DInst(
 
 int IR_Builder::translateLscTypedInst(
     LSC_OP                  op,
-    G4_Predicate           *pred,
+    G4_Predicate            *pred,
     VISA_Exec_Size          execSizeEnum,
     VISA_EMask_Ctrl         emask,
     LSC_CACHE_OPTS          cacheOpts,
     LSC_ADDR_TYPE           addrModel,
     LSC_ADDR_SIZE           addrSize,
     LSC_DATA_SHAPE          shape,
-    G4_Operand             *surface,  // surface/bti
-    G4_DstRegRegion        *dstData,  // dst on load/atomic
-    G4_SrcRegRegion        *src0AddrUs,
-    G4_SrcRegRegion        *src0AddrVs,
-    G4_SrcRegRegion        *src0AddrRs,
-    G4_SrcRegRegion        *src0AddrLODs,
-    G4_SrcRegRegion        *src1Data, // store data/extra atomic operands
-    G4_SrcRegRegion        *src2Data // icas/fcas only
+    G4_Operand              *surface,  // surface/bti
+    G4_DstRegRegion         *dstData,  // dst on load/atomic
+    G4_SrcRegRegion         *src0AddrUs,
+    G4_SrcRegRegion         *src0AddrVs,
+    G4_SrcRegRegion         *src0AddrRs,
+    G4_SrcRegRegion         *src0AddrLODs,
+    G4_SrcRegRegion         *src1Data, // store data/extra atomic operands
+    G4_SrcRegRegion         *src2Data // icas/fcas only
 )
 {
     TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
@@ -699,7 +696,6 @@ int IR_Builder::translateLscTypedInst(
             BYTES_PER_GRF, BYTES_PER_GRF, std::max(getNativeExecSize(), execSize),
             execSize, {src1Data, src2Data}, emask);
     }
-
     surface = lscTryPromoteSurfaceImmToExDesc(surface, addrModel, exDesc);
 
     int numChannels = 0;

@@ -2450,47 +2450,47 @@ public:
     int translateLscUntypedInst(
         LSC_OP                  op,
         LSC_SFID                lscSfid,
-        G4_Predicate           *pred,
+        G4_Predicate            *pred,
         VISA_Exec_Size          execSize,
         VISA_EMask_Ctrl         emask,
         LSC_CACHE_OPTS          cacheOpts,
         LSC_ADDR                addrInfo,
         LSC_DATA_SHAPE          shape,
-        G4_Operand             *surface,  // surface/bti
-        G4_DstRegRegion        *dstData,
-        G4_SrcRegRegion        *src0AddrOrBlockY,
-        G4_Operand             *src0AddrStrideOrBlockX, // only for strided and block2d
-        G4_SrcRegRegion        *src1Data, // store data/extra atomic operands
-        G4_SrcRegRegion        *src2Data // only for fcas/icas
+        G4_Operand              *surface,  // surface/bti
+        G4_DstRegRegion         *dstData,
+        G4_SrcRegRegion         *src0AddrOrBlockY,
+        G4_Operand              *src0AddrStrideOrBlockX, // only for strided and block2d
+        G4_SrcRegRegion         *src1Data, // store data/extra atomic operands
+        G4_SrcRegRegion         *src2Data // only for fcas/icas
     );
     int translateLscUntypedBlock2DInst(
         LSC_OP                  op,
         LSC_SFID                lscSfid,
-        G4_Predicate           *pred,
+        G4_Predicate            *pred,
         VISA_Exec_Size          execSize,
         VISA_EMask_Ctrl         emask,
         LSC_CACHE_OPTS          cacheOpts,
         LSC_DATA_SHAPE_BLOCK2D  shape,
-        G4_DstRegRegion        *dstData,
-        G4_Operand             *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS],
-        G4_SrcRegRegion        *src1Data);
+        G4_DstRegRegion         *dstData,
+        G4_Operand              *src0Addrs[LSC_BLOCK2D_ADDR_PARAMS],
+        G4_SrcRegRegion         *src1Data);
     int translateLscTypedInst(
         LSC_OP                  op,
-        G4_Predicate           *pred,
+        G4_Predicate            *pred,
         VISA_Exec_Size          execSize,
         VISA_EMask_Ctrl         emask,
         LSC_CACHE_OPTS          cacheOpts,
         LSC_ADDR_TYPE           addrModel,
         LSC_ADDR_SIZE           addrSize,
         LSC_DATA_SHAPE          shape,
-        G4_Operand             *surface,  // surface/bti
-        G4_DstRegRegion        *dstData,  // dst on load/atomic
-        G4_SrcRegRegion        *src0AddrUs,
-        G4_SrcRegRegion        *src0AddrVs,
-        G4_SrcRegRegion        *src0AddrRs,
-        G4_SrcRegRegion        *src0AddrLODs,
-        G4_SrcRegRegion        *src1Data, // store data/extra atomic operands
-        G4_SrcRegRegion        *src2Data // icas/fcas only
+        G4_Operand              *surface,  // surface/bti
+        G4_DstRegRegion         *dstData,  // dst on load/atomic
+        G4_SrcRegRegion         *src0AddrUs,
+        G4_SrcRegRegion         *src0AddrVs,
+        G4_SrcRegRegion         *src0AddrRs,
+        G4_SrcRegRegion         *src0AddrLODs,
+        G4_SrcRegRegion         *src1Data, // store data/extra atomic operands
+        G4_SrcRegRegion         *src2Data // icas/fcas only
     );
 
     LSC_DATA_ELEMS lscGetElementNum(unsigned eNum) const;
