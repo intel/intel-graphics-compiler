@@ -4297,25 +4297,20 @@ namespace IGC
         if (m_program->m_Platform->getWATable().Wa_1808850743 ||
             m_program->m_Platform->getWATable().Wa_1409909237)
         {
-            uint32_t nomask_val = IGC_GET_FLAG_VALUE(NoMaskWA);
+            bool doNoMaskWA = IGC_IS_FLAG_ENABLED(NoMaskWA);
             if (context->type == ShaderType::OPENCL_SHADER)
             {
                 auto ClContext = static_cast<OpenCLProgramContext*>(context);
                 if (ClContext->m_InternalOptions.DisableNoMaskWA)
                 {
-                    nomask_val = 0;
+                    doNoMaskWA = false;
                 }
             }
-            SaveOption(vISA_noMaskWA, nomask_val);
-            if (nomask_val > 0)
+            SaveOption(vISA_noMaskWA, doNoMaskWA);
+            if (doNoMaskWA)
             {
                 // Turn off jmpi as there is no wa for jmpi
                 SaveOption(vISA_EnableScalarJmp, false);
-            }
-
-            // temp for testing
-            if (IGC_IS_FLAG_ENABLED(EnableNewNoMaskWA)) {
-                SaveOption(vISA_newTmpNoMaskWA, IGC_GET_FLAG_VALUE(EnableNewNoMaskWA));
             }
         }
 

@@ -887,12 +887,6 @@ SPDX-License-Identifier: MIT
         return (P == Xe_XeHPSDV || P == Xe_DG2 || P == Xe_MTL);
     }
 
-    bool hasFusedEUWA() const
-    {
-        return ((getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
-                getOption(vISA_forceNoMaskWA)) && !getOption(vISA_LinearScan) && hasFusedEU();
-    }
-
     bool hasFusedEU() const
     {
         return (getPlatform() == GENX_TGLLP || getPlatform() == Xe_XeHPSDV ||
@@ -901,12 +895,8 @@ SPDX-License-Identifier: MIT
 
     bool hasFusedEUNoMaskWA() const
     {
-        return (hasFusedEU() &&
-                ((getuint32Option(vISA_noMaskWA) & 0x3) > 0 || getOption(vISA_forceNoMaskWA)));
+        return (hasFusedEU() && (getOption(vISA_noMaskWA) || getOption(vISA_forceNoMaskWA)));
     }
-
-    // temp
-    bool useNewNoMaskWA() const  { return true; }
 
     bool hasSLMWARIssue() const
     {

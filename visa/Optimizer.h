@@ -279,8 +279,6 @@ private:
     void applyFusedCallWA();
     void finishFusedCallWA_preSWSB();
     void finishFusedCallWA();
-    bool NoMaskWAUseRAList() const { return true; }
-    bool allPostRANoMaskWA() const { return true; }
     void insertFenceAtEntry();
     void expandMulPostSchedule();
     void expandMadwPostSchedule();

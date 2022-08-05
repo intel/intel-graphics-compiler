@@ -335,6 +335,7 @@ set(GenX_Common_Headers
   SplitAlignedScalars.h
   VISAKernel.h
   VarSplit.h
+  HWCaps.inc
   include/JitterDataStruct.h
   include/KernelInfo.h
   include/RT_Jitter_Interface.h

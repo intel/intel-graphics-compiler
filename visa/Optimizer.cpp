@@ -13910,8 +13910,7 @@ void Optimizer::applyFusedCallWA()
                 nextBB = newNextBB;
 
                 newNextBB->setDivergent(BB->isDivergent());
-                if ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
-                    builder.getOption(vISA_forceNoMaskWA))
+                if (builder.hasFusedEUNoMaskWA())
                 {
                     newNextBB->setBBType(G4_BB_NM_WA_TYPE);
                 }
@@ -14212,8 +14211,7 @@ void Optimizer::applyFusedCallWA()
         //   if BB is marked with NM_WA_TYPE, set all new BBs with NM_WA_TYPE
         //   if BB is not marked with NM_WA_TYPE and is divergent, mark the smallB0/B1
         //       as NM_WA_TYPE
-        if ((builder.getuint32Option(vISA_noMaskWA) & 0x3) > 0 ||
-            builder.getOption(vISA_forceNoMaskWA))
+        if (builder.hasFusedEUNoMaskWA())
         {
             if ((BB->getBBType() & G4_BB_NM_WA_TYPE) != 0)
             {

@@ -6674,10 +6674,8 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-output");
     addArgument("-binary");
   }
-  if (ST.needsWANoMaskFusedEU() && !DisableNoMaskWA) {
+  if (ST.needsWANoMaskFusedEU() && !DisableNoMaskWA)
     addArgument("-noMaskWA");
-    addArgument("2");
-  }
   if (BC.isLargeGRFMode()) {
     addArgument("-TotalGRFNum");
     addArgument("256");
