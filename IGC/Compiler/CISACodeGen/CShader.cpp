@@ -327,7 +327,7 @@ void CShader::InitializeStackVariables()
     encoder.GetVISAPredefinedVar(m_FP, PREDEFINED_FE_FP);
     // create pointers locations to buffers
     if (!m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV) &&
-        IGC_IS_FLAG_ENABLED(EnableGlobalStateBuffer))
+        IGC_IS_FLAG_DISABLED(ForceInlineStackCallWithImplArg))
     {
         m_ImplArgBufPtr = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1, "ImplArgPtr");
         encoder.GetVISAPredefinedVar(m_ImplArgBufPtr, PREDEFINED_IMPL_ARG_BUF_PTR);
