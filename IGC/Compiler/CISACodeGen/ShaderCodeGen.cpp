@@ -812,6 +812,14 @@ static void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSi
         {
             mpm.add(createLICMPass());
         }
+
+        // Run GVN pass on last try to remove redundant phi instructions without triggering RetryManager disable flag
+        // running GVN earlier can cause reduction in spilling registers count, which can force RetryManager
+        // to forgone further runs
+        if(ctx.m_retryManager.IsLastTry()) {
+            mpm.add(createNewGVNPass());
+        }
+
         mpm.add(createAggressiveDCEPass());
         // As DPC++ FE apply LICM we cannot reduce register pressure just
         // by turning off LICM at IGC in some cases so apply sinking address arithmetic
