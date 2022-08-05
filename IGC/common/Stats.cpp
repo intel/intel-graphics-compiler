@@ -169,6 +169,38 @@ void ShaderStats::printSumShaderStats()
             fprintf(fileName_sqm, "total SIMD32 stall estimate = %d\n", m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE32]);
             printf("total SIMD32 stall estimate = %d\n", m_CompileShaderStats[STATS_ISA_STALL_ESTIMATE32]);
         }
+
+        if (m_CompileShaderStats[STATS_GRF_USED_SIMD8] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD8 grf used = %d\n", m_CompileShaderStats[STATS_GRF_USED_SIMD8]);
+            printf("total SIMD8 grf used = %d\n", m_CompileShaderStats[STATS_GRF_USED_SIMD8]);
+        }
+        if (m_CompileShaderStats[STATS_GRF_USED_SIMD16] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD16 grf used = %d\n", m_CompileShaderStats[STATS_GRF_USED_SIMD16]);
+            printf("total SIMD16 grf used = %d\n", m_CompileShaderStats[STATS_GRF_USED_SIMD16]);
+        }
+        if (m_CompileShaderStats[STATS_GRF_USED_SIMD32] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD32 grf used = %d\n", m_CompileShaderStats[STATS_GRF_USED_SIMD32]);
+            printf("total SIMD8 grf used = %d\n", m_CompileShaderStats[STATS_GRF_USED_SIMD32]);
+        }
+        if (m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD8] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD8 grf pressure = %d\n", m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD8]);
+            printf("total SIMD8 grf pressure = %d\n", m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD8]);
+        }
+        if (m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD16] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD16 grf pressure = %d\n", m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD16]);
+            printf("total SIMD16 grf pressure = %d\n", m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD16]);
+        }
+        if (m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD32] != 0)
+        {
+            fprintf(fileName_sqm, "total SIMD32 grf pressure = %d\n", m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD32]);
+            printf("total SIMD32 grf pressure = %d\n", m_CompileShaderStats[STATS_GRF_PRESSURE_SIMD32]);
+        }
+
         fprintf(fileName_sqm, "total SIMD8  shaders = %d\n", m_TotalSimd8);
         fprintf(fileName_sqm, "total SIMD16 shaders = %d\n", m_TotalSimd16);
         fprintf(fileName_sqm, "total SIMD32 shaders = %d\n", m_TotalSimd32);

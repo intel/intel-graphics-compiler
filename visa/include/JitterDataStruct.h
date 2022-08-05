@@ -25,6 +25,8 @@ typedef struct _FINALIZER_INFO{
     bool isSpill;
     int numGRFUsed;
     int numAsmCount;
+    // dump the max register pressure to compare with numGRFUsed
+    uint32_t maxGRFPressure = 0;
 
     // spillMemUsed is the scratch size in byte of entire vISA stack for this function/kernel
     // It contains spill size and caller/callee save size.
@@ -72,7 +74,6 @@ typedef struct _FINALIZER_INFO{
 
     uint32_t numGRFTotal = 0;
     uint32_t numThreads = 0;
-
 } FINALIZER_INFO;
 
 #endif // JITTERDATASTRUCT_

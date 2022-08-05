@@ -6153,6 +6153,8 @@ namespace IGC
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL8, (int)jitInfo->isSpill);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE8, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE8, (int)m_program->m_loopNestedStallCycle);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD8, jitInfo->numGRFTotal);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD8, jitInfo->maxGRFPressure);
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
         {
@@ -6160,6 +6162,8 @@ namespace IGC
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL16, (int)jitInfo->isSpill);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE16, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE16, (int)m_program->m_loopNestedStallCycle);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD16, jitInfo->numGRFTotal);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD16, jitInfo->maxGRFPressure);
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
         {
@@ -6167,6 +6171,8 @@ namespace IGC
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL32, (int)jitInfo->isSpill);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE32, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE32, (int)m_program->m_loopNestedStallCycle);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD32, jitInfo->numGRFTotal);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD32, jitInfo->maxGRFPressure);
         }
 #endif
         void* genxbin = nullptr;

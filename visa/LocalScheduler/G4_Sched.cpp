@@ -649,7 +649,10 @@ bool preRA_Scheduler::run()
         Changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
         Changed |= S.scheduleBlockForLatency(MaxPressure, Changed);
     }
-
+    if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
+        rp.rpe->run();
+        kernel.fg.builder->getJitInfo()->maxGRFPressure = rp.rpe->getMaxRP();
+    }
     return Changed;
 }
 
@@ -809,7 +812,10 @@ bool preRA_RegSharing::run()
         changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
         changed |= S.scheduleBlockForLatency(MaxPressure, changed);
     }
-
+    if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
+        rp.rpe->run();
+        kernel.fg.builder->getJitInfo()->maxGRFPressure = rp.rpe->getMaxRP();
+    }
     return changed;
 }
 
