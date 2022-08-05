@@ -138,7 +138,7 @@ namespace vISA
         // Iterate over all live variables and add up numRows required
         // for each. For scalar variables, add them up separately.
         regPressure = 0;
-        unsigned int numScalars = 0;
+        unsigned int numScalarBytes = 0;
         for (auto LI = live.begin(), LE = live.end(); LI != LE; ++LI) {
             unsigned i = *LI;
             {
@@ -154,12 +154,18 @@ namespace vISA
                 }
                 else
                 {
-                    numScalars++;
+                    auto dclSize = rootDcl->getByteSize();
+                    auto alignBytes = static_cast<uint32_t>(rootDcl->getSubRegAlign()) * 2;
+                    if (dclSize < gra.builder.getGRFSize() && dclSize < alignBytes)
+                    {
+                        dclSize = std::min(dclSize * 2, alignBytes);
+                    }
+                    numScalarBytes += dclSize;
                 }
             }
         }
 
-        regPressure += numScalars / 8.0;
+        regPressure += (double)numScalarBytes / gra.builder.getGRFSize();
     }
 
     void RPE::updateLiveness(SparseBitSet& live, uint32_t id, bool val)
@@ -185,9 +191,10 @@ namespace vISA
             // Alternative is to simply take the alignment as the size, but it might cause performance regressions
             // due to being too conservative (i.e., a GRF-aligned variable may share physical GRF with several other
             auto dclSize = dcl->getByteSize();
-            if (dclSize < gra.builder.getGRFSize() && dclSize < static_cast<uint32_t>(dcl->getSubRegAlign()) * 2)
+            auto alignBytes = static_cast<uint32_t>(dcl->getSubRegAlign()) * 2;
+            if (dclSize < gra.builder.getGRFSize() && dclSize < alignBytes)
             {
-                dclSize *= 2;
+                dclSize = std::min(dclSize*2, alignBytes);
             }
 
             double delta = dclSize < gra.builder.getGRFSize() ?

@@ -545,45 +545,38 @@ static bool isSlicedSIMD32(G4_Kernel& kernel)
 
 static unsigned getRPReductionThreshold(unsigned NumGrfs, bool SlicedSIMD32)
 {
-    float Ratio = NumGrfs / 128.0f;
-
     // For SIMD32 prior to PVC, use a higher threshold for rp reduction,
     // as it may not be beneficial.
     if (SlicedSIMD32)
-        return unsigned(PRESSURE_REDUCTION_THRESHOLD_SIMD32 * Ratio);
+        return unsigned(PRESSURE_REDUCTION_THRESHOLD_SIMD32 * NumGrfs / 128);
 
     // For all other kernels, use the default threshold.
-    return unsigned(PRESSURE_REDUCTION_THRESHOLD * Ratio);
+    return unsigned(PRESSURE_REDUCTION_THRESHOLD * NumGrfs / 128);
 }
 
 // Register pressure threshold to move to a larger GRF mode
 static unsigned getRPThresholdHigh(unsigned NumGrfs)
 {
-    float Ratio = NumGrfs / 128.0f;
-
     // For all other kernels, use the default threshold.
-    return unsigned(PRESSURE_HIGH_THRESHOLD * Ratio);
+    return unsigned(PRESSURE_HIGH_THRESHOLD * NumGrfs / 128);
 }
 
 // Register pressure threshold to move to a smaller GRF mode
 static unsigned getRPThresholdLow(unsigned NumGrfs, unsigned simdSize)
 {
-    float Ratio = NumGrfs / 128.0f;
-
     // For all other kernels, use the default threshold.
-    return unsigned(PRESSURE_LOW_THRESHOLD * Ratio);
+    return unsigned(PRESSURE_LOW_THRESHOLD * NumGrfs / 128);
 }
 
 static unsigned getLatencyHidingThreshold(G4_Kernel &kernel)
 {
     unsigned NumGrfs = kernel.getNumRegTotal();
-    float Ratio = NumGrfs / 128.0f;
     unsigned RPThreshold = kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleRPThreshold);
     if (RPThreshold == 0)
     {
         RPThreshold = 104;
     }
-    return unsigned(RPThreshold * Ratio);
+    return unsigned(RPThreshold * NumGrfs / 128);
 }
 
 preRA_Scheduler::preRA_Scheduler(G4_Kernel& k, Mem_Manager& m, RPE* rpe)
@@ -991,7 +984,14 @@ unsigned SethiUllmanQueue::calculateSethiUllmanNumber(preNode* N)
             // If a variable lives out, then there is no extra cost to hold the result.
             if (rp.isLiveOut(ddd.getBB(), Dst->getTopDcl()))
                 return 0;
-            return Dst->getTopDcl()->getByteSize();
+            auto rootDcl = Dst->getTopDcl();
+            auto dclSize = rootDcl->getByteSize();
+            auto alignBytes = static_cast<uint32_t>(rootDcl->getSubRegAlign()) * 2;
+            if (dclSize < alignBytes)
+            {
+                dclSize = std::min(dclSize * 2, alignBytes);
+            }
+            return dclSize;
         }
         return 0;
     };
