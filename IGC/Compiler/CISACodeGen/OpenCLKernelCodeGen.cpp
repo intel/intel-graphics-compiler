@@ -2431,9 +2431,9 @@ namespace IGC
         if (ctx->platform.getGRFSize() >= 64)
         {
             if (pShader->m_dispatchSize == SIMDMode::SIMD32)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold)) / 100.0f;
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold)) / 100.0f;
             else if (pShader->m_dispatchSize == SIMDMode::SIMD16)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold)) / 100.0f;
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2) / 100.0f;
         }
         else
         {
