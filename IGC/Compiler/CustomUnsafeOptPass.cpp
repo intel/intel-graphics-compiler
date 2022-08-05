@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -143,19 +143,13 @@ bool CustomUnsafeOptPass::runOnFunction(Function& F)
         iterCount++;
         m_isChanged = false;
         visit(F);
-
-        if (!m_instToDelete.empty())
-        {
-            for (auto i : m_instToDelete)
-            {
-                i->eraseFromParent();
-            }
-            m_instToDelete.clear();
-        }
+        eraseCollectedInst();
     }
 
     // Do reassociate to emit more mad.
     reassociateMulAdd(F);
+
+    eraseCollectedInst();
 
     return true;
 }
@@ -240,6 +234,7 @@ void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst& I)
                         if (allowOpt)
                         {
                             floorInst->replaceAllUsesWith(faddInst->getOperand(0));
+                            collectForErase(*floorInst);
                         }
                         InstList.clear();
                     }
@@ -496,6 +491,13 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator&
             instSrc1[0]->setOperand(1 - sameSrcId1, tempOp);
             // move instSrc1[0] to before base
             instSrc1[0]->moveBefore(instBase[0]);
+
+            for (int i = 1; i < numOfSet; ++i)
+            {
+                if (instSrc1[i]->hasNUses(0))
+                    instSrc1[i]->eraseFromParent();
+            }
+
             return true;
         }
     }
@@ -605,6 +607,13 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator&
                 instSrc2[i]->moveBefore(instBase[0]);
             }
             instSrc1[0]->moveBefore(instSrc2[0]);
+
+            for (int i = 1; i < numOfSet; ++i)
+            {
+                if (instSrc1[i]->hasNUses(0))
+                    instSrc1[i]->eraseFromParent();
+            }
+
             return true;
         }
     }
@@ -742,9 +751,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorXor(llvm::BinaryOperator& I)
 
     castI2F->replaceAllUsesWith(fsub);
 
-    m_instToDelete.push_back(castI2F);
-    m_instToDelete.push_back(&I);
-    m_instToDelete.push_back(castF2I);
+    collectForErase(*castI2F, 2);
 
     return true;
 }
@@ -808,6 +815,8 @@ bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator& I)
     {
         I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(op0, op1, "", &I), &I));
     }
+
+    collectForErase(I);
 
     m_isChanged = true;
 
@@ -916,6 +925,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator& I)
             I.replaceAllUsesWith(
                 copyIRFlags(BinaryOperator::CreateFAdd(op1, op2, "", &I), &I));
         }
+
+        collectForErase(I);
+
         m_isChanged = true;
         patternFound = true;
     }
@@ -974,6 +986,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivAddDiv(BinaryOperator& I)
         Value* mul2inv = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(mul2->getType(), 1.0), mul2, "", &I), &I);
         Value* add_mul0_mul1 = copyIRFlags(BinaryOperator::CreateFAdd(mul0, mul1, "", &I), &I);
         I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(add_mul0_mul1, mul2inv, "", &I), &I));
+
+        collectForErase(I);
+
         return true;
     }
     return false;
@@ -1014,6 +1029,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivDivOp(BinaryOperator& I)
                 I.replaceAllUsesWith(
                     copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(0), prevInst->getOperand(1), "", &I), &I));
             }
+            collectForErase(I);
             ++Stat_FloatRemoved;
             patternFound = true;
             m_isChanged = true;
@@ -1058,8 +1074,6 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator& I)
             if (op[1 - i] == sourceInst->getOperand(1))
             {
                 I.replaceAllUsesWith(sourceInst->getOperand(0));
-                ++Stat_FloatRemoved;
-                m_isChanged = true;
                 patternFound = true;
                 break;
             }
@@ -1073,9 +1087,8 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator& I)
             if (i == 1 && op[0] == sourceInst->getOperand(0))
             {
                 I.replaceAllUsesWith(sourceInst->getOperand(1));
-                ++Stat_FloatRemoved;
-                m_isChanged = true;
                 patternFound = true;
+                break;
             }
         }
         else if (I.getOpcode() == Instruction::FSub && sourceInst->getOpcode() == Instruction::FAdd)
@@ -1090,8 +1103,6 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator& I)
                     if (op[1 - i] == srcOp[srci])
                     {
                         I.replaceAllUsesWith(srcOp[1 - srci]);
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
                         patternFound = true;
                         break;
                     }
@@ -1107,8 +1118,6 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator& I)
                             copyIRFlags(BinaryOperator::CreateFSub(
                                 ConstantFP::get(op[0]->getType(), 0), srcOp[1 - srci], "", &I),
                                 &I));
-                        ++Stat_FloatRemoved;
-                        m_isChanged = true;
                         patternFound = true;
                         break;
                     }
@@ -1120,6 +1129,14 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator& I)
             continue;
         }
     }
+
+    if (patternFound)
+    {
+        collectForErase(I);
+        ++Stat_FloatRemoved;
+        m_isChanged = true;
+    }
+
     return patternFound;
 }
 
@@ -1150,6 +1167,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorPropNegate(BinaryOperator& I)
                     copyIRFlags(BinaryOperator::CreateFSub(
                         I.getOperand(1 - i), prevInst->getOperand(1), "", &I),
                         &I));
+                collectForErase(I);
                 ++Stat_FloatRemoved;
                 m_isChanged = true;
                 foundPattern = true;
@@ -1219,10 +1237,11 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator& I)
                     }
                 }
             }
+            I.replaceAllUsesWith(fmulInst);
+            I.eraseFromParent();
             ++Stat_FloatRemoved;
             m_isChanged = true;
             patternFound = true;
-            I.replaceAllUsesWith(fmulInst);
         }
     }
     return patternFound;
@@ -1410,6 +1429,18 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator& I)
             }
             patternFound = true;
         }
+
+        if (patternFound)
+        {
+            if (I.hasNUses(0))
+            {
+                collectForErase(I);
+            }
+            else if (prevInst->hasNUses(0))
+            {
+                prevInst->eraseFromParent();
+            }
+        }
     }
     return patternFound;
 }
@@ -1437,6 +1468,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivRsq(BinaryOperator& I)
                     I.replaceAllUsesWith(
                         copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(0), sqrt_call, "", &I), &I));
                 }
+                collectForErase(I);
                 return true;
             }
         }
@@ -1486,6 +1518,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator& I)
                         I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(div, one, "", &I), &I));
                     }
                 }
+                collectForErase(I);
                 return true;
             }
         }
@@ -1541,18 +1574,18 @@ bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator& I)
     hasCB = 0;
     for (int i = 0; i < 2; i++)
     {
-        if (LoadInst * ld1 = dyn_cast<LoadInst>(inst1->getOperand(i)))
+        if (LoadInst* ld1 = dyn_cast<LoadInst>(inst1->getOperand(i)))
         {
             if (IGC::DecodeAS4GFXResource(ld1->getPointerAddressSpace(), directBuf, bufId) == CONSTANT_BUFFER && directBuf)
             {
                 cbIndex1 = i;
                 hasCB++;
             }
-            else if (dyn_cast<Constant>(inst1->getOperand(i)))
-            {
-                cbIndex1 = i;
-                hasCB++;
-            }
+        }
+        else if (dyn_cast<Constant>(inst1->getOperand(i)))
+        {
+            cbIndex1 = i;
+            hasCB++;
         }
     }
 
@@ -1565,6 +1598,8 @@ bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator& I)
     // perform the change
     Value* CBsum = copyIRFlags(BinaryOperator::CreateFAdd(inst0->getOperand(cbIndex0), inst1->getOperand(cbIndex1), "", &I), &I);
     I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(inst0->getOperand(1 - cbIndex0), CBsum, "", &I), &I));
+
+    collectForErase(I);
 
     return true;
 }
@@ -1593,6 +1628,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     // X - X => 0
                     I.replaceAllUsesWith(ConstantFP::get(opType, 0));
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1600,6 +1636,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     // X - 0 => X
                     I.replaceAllUsesWith(op0);
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1636,6 +1673,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     // 0 + X => X
                     I.replaceAllUsesWith(op1);
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1643,6 +1681,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     // X + 0 => X
                     I.replaceAllUsesWith(op0);
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1711,6 +1750,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                     // X * 0 => 0
                     // 0 * X => 0
                     I.replaceAllUsesWith(ConstantFP::get(opType, 0));
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1718,6 +1758,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     // 1 * X => X
                     I.replaceAllUsesWith(op1);
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1725,6 +1766,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     // X * 1 => X
                     I.replaceAllUsesWith(op0);
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1733,6 +1775,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     I.replaceAllUsesWith(
                         copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op0, "", &I), &I));
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1740,6 +1783,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     I.replaceAllUsesWith(
                         copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op1, "", &I), &I));
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1783,6 +1827,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     // 0 / X => 0
                     I.replaceAllUsesWith(ConstantFP::get(opType, 0));
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1790,6 +1835,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 {
                     // X / 1 => X
                     I.replaceAllUsesWith(op0);
+                    I.eraseFromParent();
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }
@@ -1836,6 +1882,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                                     Value* invOp = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I), &I);
                                     I.replaceAllUsesWith(
                                         copyIRFlags(BinaryOperator::CreateFMul(op0, invOp, "", &I), &I));
+                                    I.eraseFromParent();
                                     patternFound = true;
                                 }
                             }
@@ -1894,6 +1941,7 @@ bool CustomUnsafeOptPass::visitFCmpInstFCmpFAddOp(FCmpInst& FC)
                 ConstantFP* newConstant = ConstantFP::get(fcmpConstant->getContext(), newConstantFloat);
                 FC.setOperand(0, faddInst->getOperand(0));
                 FC.setOperand(1, newConstant);
+                faddInst->eraseFromParent();
                 ++Stat_FcmpRemoved;
                 return true;
             }
@@ -2022,6 +2070,13 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst& FC)
             break;
         }
     }
+
+    if (patternFound)
+    {
+        collectForErase(
+            prevInst[0]->getOpcode() == Instruction::FSub ? *prevInst[0] : *prevInst[1]);
+    }
+
     return patternFound;
 }
 
@@ -2068,6 +2123,10 @@ bool CustomUnsafeOptPass::visitFCmpInstFCmpSelOp(FCmpInst& FC)
                     FC.setPredicate(dyn_cast<FCmpInst>(fCmpInst)->getPredicate());
                 }
                 Stat_FcmpRemoved += 3;
+
+                if (fSubInst->hasNUses(0))
+                    collectForErase(*fSubInst, 2);
+
                 return true;
             }
         }
@@ -2154,6 +2213,7 @@ void CustomUnsafeOptPass::visitSelectInst(SelectInst& I)
                                     if (mulInst->getOperand(k) == cmpInst->getOperand(0))
                                     {
                                         I.replaceAllUsesWith(I.getOperand(2));
+                                        collectForErase(I);
                                         foundPattern = true;
                                         break;
                                     }
@@ -2195,6 +2255,7 @@ void CustomUnsafeOptPass::visitSelectInst(SelectInst& I)
                                         mulInst->getOperand(1 - k) == cmpInst->getOperand(0))
                                     {
                                         I.replaceAllUsesWith(I.getOperand(2));
+                                        collectForErase(I);
                                         foundPattern = true;
                                         break;
                                     }
@@ -2319,6 +2380,7 @@ void CustomUnsafeOptPass::visitIntrinsicInst(IntrinsicInst& I)
     else if (ID == Intrinsic::sqrt)
     {
         // y*y = x if y = sqrt(x).
+        int replacedUses = 0;
         for (auto iter = I.user_begin(); iter != I.user_end(); iter++)
         {
             if (Instruction* mul = dyn_cast<Instruction>(*iter))
@@ -2327,9 +2389,13 @@ void CustomUnsafeOptPass::visitIntrinsicInst(IntrinsicInst& I)
                     mul->getOperand(0) == mul->getOperand(1))
                 {
                     mul->replaceAllUsesWith(I.getOperand(0));
+                    collectForErase(*mul, 0);
+                    ++replacedUses;
                 }
             }
         }
+        if (I.hasNUses(replacedUses))
+            collectForErase(I, 0);
     }
     // This optimization simplifies FMA expressions with zero arguments.
     else if (ID == Intrinsic::fma && I.isFast())
@@ -2413,7 +2479,7 @@ static bool searchFAdd(Instruction* DefI, Instruction* UseI, unsigned& level)
 
     // The rhs is not mul, so could be folded into a mad.
     auto RHS = dyn_cast<Instruction>(Op);
-    if (RHS && RHS->getOpcode() != Instruction::FMul)
+    if (!RHS || RHS->getOpcode() != Instruction::FMul)
         return true;
 
     // For simplicity, only allow the last level to be fsub.
@@ -2493,6 +2559,7 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
                         Value* NewInst = Builder.CreateBinOp(OpKind, T0, E, Inst->getName());
                         Value* NewL0 = Builder.CreateFAdd(NewInst, T1, L0->getName());
                         L0->replaceAllUsesWith(NewL0);
+                        collectForErase(*L0);
                         m_isChanged = true;
                     }
                     else if (level == 1)
@@ -2527,12 +2594,48 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function& F)
                         Value* NewL0 = Builder.CreateFAdd(NewInst, T2, L0->getName());
                         Value* NewL1 = Builder.CreateFAdd(NewL0, T1, L1->getName());
                         L1->replaceAllUsesWith(NewL1);
+                        collectForErase(*L1, 2);
                         m_isChanged = true;
                     }
                 }
             }
         }
     }
+}
+
+// Collects instructions that were optimized out and are safe to erase.
+// Instructions will be erased at the end of the function pass. This is
+// required if optimized instruction can't be removed during optimization
+// (e.g. is next instruction from currently visited).
+// Optional argument controls how many instructions back should be
+// considered for erase.
+inline void CustomUnsafeOptPass::collectForErase(llvm::Instruction& I, unsigned int operandsDepth)
+{
+    m_instToErase.insert(&I);
+
+    if (operandsDepth > 0)
+    {
+        for (auto it = I.op_begin(); it != I.op_end(); ++it)
+        {
+            Instruction* op = dyn_cast<Instruction>(*it);
+            if (op && op->hasOneUse())
+            {
+                collectForErase(*op, operandsDepth - 1);
+            }
+        }
+    }
+}
+
+void CustomUnsafeOptPass::eraseCollectedInst()
+{
+    if (m_instToErase.empty())
+        return;
+
+    for (auto i : m_instToErase)
+    {
+        i->eraseFromParent();
+    }
+    m_instToErase.clear();
 }
 
 // This pass looks for potential patterns where, if some value evaluates

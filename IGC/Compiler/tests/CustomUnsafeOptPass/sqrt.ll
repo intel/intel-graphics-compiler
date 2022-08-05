@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2022 Intel Corporation
+; Copyright (C) 2022 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,15 +9,20 @@
 ; RUN: igc_opt -igc-custom-unsafe-opt-pass -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
-define void @sample_test(float %x, float %y, float addrspace(1)* nocapture %res) nounwind {
+declare float @llvm.sqrt.f32(float)
+
+; y*y = x if y = sqrt(x)
+define float @sqrt(float %x) #0 {
 entry:
-  %sub = fsub float %x, %x
-  store float %sub, float addrspace(1)* %res
-  ret void
+  %0 = call float @llvm.sqrt.f32(float %x)
+  %1 = fmul float %0, %0
+  ret float %1
 }
 
-; CHECK-NOT:     fsub float %x, %x
-; CHECK:         store float 0.000000e+00
+; CHECK-LABEL: define float @sqrt
+; CHECK-NOT: llvm.sqrt.f32
+; CHECK-NOT: fmul float %0, %0
+; CHECK: ret float %x
 
 !IGCMetadata = !{!0}
 
