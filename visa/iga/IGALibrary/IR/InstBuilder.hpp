@@ -283,7 +283,7 @@ public:
     // Called at the beginning of the program
     void ProgramStart() {
         m_pc = 0;
-        m_nextId = 1;
+        m_nextId = 0;
     }
 
 
