@@ -4538,7 +4538,7 @@ Kernel *iga::ParseGenKernel(
         e,
         k->getMemManager(),
         insts);
-    int id = 0;
+    int id = 1;
     for (auto bitr : blockStarts) {
         bitr.second->setID(id++);
         k->appendBlock(bitr.second);

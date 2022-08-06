@@ -38,13 +38,32 @@ void Kernel::resetIds()
     // algorithm to set the IDs
     int blockIndex = 0, instIndex  = 0;
     for (Block *b : getBlockList()) {
-        b->setID(blockIndex);
-        blockIndex++;
+        b->setID(blockIndex++);
         for (Instruction *i : b->getInstList()) {
-            i->setID(instIndex);
-            instIndex++;
+            i->setID(instIndex++);
         }
     }
+}
+
+bool Kernel::checkIdsUnique() const
+{
+    // check to make sure no duplicate IDs
+    std::set<int> instIds, blockIds;
+    for (const Block *b : getBlockList()) {
+        int blockId = b->getID();
+        if (blockIds.count(blockId) > 0) {
+            return false;
+        }
+        blockIds.insert(blockId);
+        for (const Instruction *i : b->getInstList()) {
+            int instId = i->getID();
+            if (instIds.count(instId) > 0) {
+                return false;
+            }
+            instIds.insert(instId);
+        }
+    }
+    return true;
 }
 
 size_t Kernel::getInstructionCount() const
