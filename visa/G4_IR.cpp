@@ -2449,7 +2449,7 @@ bool G4_INST::canPropagateTo(
         // is really needed for G4_pseudo_mad source here? But the same check code in fixMADInst() seems very complicated?
         if (use->asSrcRegRegion()->hasModifier() && (useInst->isMov() || useInst->opcode() == G4_pseudo_mad))
         {
-            // BF operand does not like source modifier
+            // BF_CVT does not like source modifier
             return false;
         }
         if (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar() &&

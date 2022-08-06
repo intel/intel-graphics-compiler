@@ -322,6 +322,12 @@ qw_gather|qw_scatter {
         return QW_SCATTER_OP;
     }
 
+bf_cvt {
+        TRACE("** bfloat16 conversion INST");
+        CISAlval.opcode = str2opcode(yytext);
+        return BF_CVT_OP;
+    }
+
 "."(fadd|fsub) {
         TRACE("** Float Atomic add/sub");
         CISAlval.atomic_op = str2atomic_opcode(yytext + 1);

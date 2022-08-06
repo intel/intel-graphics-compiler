@@ -308,6 +308,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 %token SRCMOD_NOT           // (~)
 %token BFN_OP
 %token DPAS_OP
+%token BF_CVT_OP
 %token <opcode> NBARRIER_SIGNAL
 %token <opcode> NBARRIER_WAIT
 %token <type>   ITYPE
