@@ -68,7 +68,6 @@ namespace IGC
         void visitLdptr(llvm::SamplerLoadIntrinsic* inst);
         void visitLdRawVec(llvm::CallInst* inst);
         void visitLoadInst(llvm::LoadInst& I);
-        void earlyZDepthDetection(llvm::CallInst& C);
         void dp4WithIdentityMatrix(llvm::ExtractElementInst& I);
         bool isIdentityMatrix(llvm::ExtractElementInst& I);
         void visitAnd(llvm::BinaryOperator& I);
@@ -98,7 +97,7 @@ namespace IGC
         template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
     private:
         bool psHasSideEffect;
-        CodeGenContext* pContext=nullptr;
+
         bool lower64bto32b(llvm::BinaryOperator& AndInst);
         llvm::Value* analyzeTreeForTrunc64bto32b(const llvm::Use& OperandUse, llvm::SmallVector<llvm::BinaryOperator*, 8>& OpsToDelete);
     };

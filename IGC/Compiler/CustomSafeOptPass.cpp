@@ -114,8 +114,7 @@ STATISTIC(Stat_DiscardRemoved, "Number of insts removed in Discard Opt");
 
 bool CustomSafeOptPass::runOnFunction(Function& F)
 {
-    pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    psHasSideEffect = pContext->m_instrTypes.psHasSideEffect;
+    psHasSideEffect = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_instrTypes.psHasSideEffect;
     visit(F);
     return true;
 }
@@ -640,44 +639,6 @@ void CustomSafeOptPass::visitLoadInst(LoadInst& load)
     }
 }
 
-void IGC::CustomSafeOptPass::earlyZDepthDetection(llvm::CallInst& C)
-{
-    if (pContext->type == ShaderType::PIXEL_SHADER)
-    {
-        if (uint outputType = (uint)dyn_cast<ConstantInt>((&C)->getOperand(4))->getZExtValue())
-        {
-            if (outputType == SHADER_OUTPUT_TYPE_DEPTHOUT)
-            {
-                if (CallInst* minInst = dyn_cast<CallInst>((&C)->getOperand(0)))
-                {
-                    if ( GetOpCode(minInst) == llvm_min)
-                    {
-                        if (Instruction* divInst = dyn_cast<Instruction>(minInst->getOperand(0)))
-                        {
-                            if (divInst->getOpcode() == Instruction::FDiv)
-                            {
-                                if (Instruction* mulInst = dyn_cast<Instruction>(divInst->getOperand(0)))
-                                {
-                                    if (mulInst->getOpcode() == Instruction::FMul)
-                                    {
-                                        if (mulInst->getOperand(1) == divInst->getOperand(1))
-                                        {
-                                            (&C)->eraseFromParent();
-                                            IGC::PixelShaderContext* psContext = static_cast<IGC::PixelShaderContext*>(pContext);
-                                            psContext->programOutput.outputDepth = false;
-                                            return;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 void CustomSafeOptPass::visitCallInst(CallInst& C)
 {
     // discard optimizations
@@ -764,11 +725,6 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_ldrawvector_indexed:
         {
             visitLdRawVec(inst);
-            break;
-        }
-        case GenISAIntrinsic::GenISA_OUTPUT:
-        {
-            earlyZDepthDetection(C);
             break;
         }
         default:
