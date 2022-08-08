@@ -275,7 +275,7 @@ namespace iga
         int decodeDestinationRegNumAccBitsFromChEn();
         MathMacroExt decodeDestinationMathMacroRegFromChEn();
 
-        Subfunction decodeSubfunction();
+        Subfunction decodeSubfunction(bool &valid);
         bool hasImm64Src0Overlap();
 
         void decodeDstDirSubRegNum(DirRegOpInfo& dri);

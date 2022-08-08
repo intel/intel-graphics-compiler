@@ -208,10 +208,10 @@ Kernel *Decoder::decodeKernel(
     return kernel;
 }
 
-Subfunction Decoder::decodeSubfunction()
+Subfunction Decoder::decodeSubfunction(bool &valid)
 {
     Subfunction sf = InvalidFC::INVALID;
-
+    const auto errsBefore = getErrorCount();
     switch (m_opSpec->op) {
     case Op::IF:
     case Op::ELSE:
@@ -271,6 +271,10 @@ Subfunction Decoder::decodeSubfunction()
         sf = InvalidFC::INVALID;
         break;
     }
+
+    // GED_DECODE didn't fail anywhere above
+    valid = getErrorCount() == errsBefore;
+
     return sf;
 }
 
@@ -345,14 +349,24 @@ void Decoder::decodeInstructions(
                     binary,
                     iLen);
             } else {
-                m_subfunc = decodeSubfunction();
-                try {
-                    inst = decodeNextInstruction(kernel);
-                } catch (const FatalError &fe) {
+                bool validSf = false;
+                m_subfunc = decodeSubfunction(validSf);
+                if (validSf) {
+                    try {
+                        inst = decodeNextInstruction(kernel);
+                    } catch (const FatalError &fe) {
+                        // error is already logged
+                        inst = createErrorInstruction(
+                            kernel,
+                            fe.what(),
+                            binary,
+                            iLen);
+                    }
+                } else {
                     // error is already logged
                     inst = createErrorInstruction(
                         kernel,
-                        fe.what(),
+                        "invalid subfunction",
                         binary,
                         iLen);
                 }

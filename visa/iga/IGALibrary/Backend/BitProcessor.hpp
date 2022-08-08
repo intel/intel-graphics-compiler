@@ -111,6 +111,9 @@ namespace iga {
 
         ///////////////////////////////////////////////////////////////////////
         bool hasFatalError() const {return m_errorHandler.hasFatalError();}
+        size_t getErrorCount() const {
+          return m_errorHandler.getErrors().size();
+        }
     };
 
     //can be intialized in .h, but this is a work around for
