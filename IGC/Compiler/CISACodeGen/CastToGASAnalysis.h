@@ -26,6 +26,9 @@ namespace IGC
     class GASInfo {
     public:
         bool canGenericPointToPrivate(llvm::Function& F) const {
+            if (allocatePrivateAsGlobalBuffer)
+                return false;
+
             auto E = FunctionMap.find(&F);
             if (E == FunctionMap.end())
                 return true;
@@ -33,20 +36,15 @@ namespace IGC
             return E->second & HasPrivateToGenericCast;
         }
 
-        bool isPrivateAllocatedInGlobalMemory() const {
-            return allocatePrivateAsGlobalBuffer;
-        }
-
         bool canGenericPointToLocal(llvm::Function& F) const {
+            if (noLocalToGenericOptionEnabled)
+                return false;
+
             auto E = FunctionMap.find(&F);
             if (E == FunctionMap.end())
                 return true;
 
             return E->second & HasLocalToGenericCast;
-        }
-
-        bool isNoLocalToGenericOptionEnabled() const {
-            return noLocalToGenericOptionEnabled;
         }
     private:
         using FunctionMapTy = llvm::DenseMap<const llvm::Function*, unsigned>;
