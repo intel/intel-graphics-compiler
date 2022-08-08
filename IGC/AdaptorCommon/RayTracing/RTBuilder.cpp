@@ -2337,22 +2337,20 @@ Value* RTBuilder::getDualSubsliceID()
 // globalDSSID is the combined value of sliceID and dssID on slice.
 Value* RTBuilder::getGlobalDSSID()
 {
-    {
-        auto dssIDBits = getDualSubsliceIDBitsInSR0();
-        auto sliceIDBits = getSliceIDBitsInSR0();
+    auto dssIDBits = getDualSubsliceIDBitsInSR0();
+    auto sliceIDBits = getSliceIDBitsInSR0();
 
-        if (dssIDBits.first < sliceIDBits.first && sliceIDBits.first == dssIDBits.second + 1)
-        {
-            return emitStateRegID(dssIDBits.first, sliceIDBits.second);
-        }
-        else
-        {
-            Value* dssID = emitStateRegID(dssIDBits.first, dssIDBits.second);
-            Value* sliceID = emitStateRegID(sliceIDBits.first, sliceIDBits.second);
-            unsigned shiftAmount = dssIDBits.second - dssIDBits.first + 1;
-            Value* globalDSSID = CreateShl(sliceID, shiftAmount);
-            return CreateOr(globalDSSID, dssID);
-        }
+    if (dssIDBits.first < sliceIDBits.first && sliceIDBits.first == dssIDBits.second + 1)
+    {
+        return emitStateRegID(dssIDBits.first, sliceIDBits.second);
+    }
+    else
+    {
+        Value* dssID = emitStateRegID(dssIDBits.first, dssIDBits.second);
+        Value* sliceID = emitStateRegID(sliceIDBits.first, sliceIDBits.second);
+        unsigned shiftAmount = dssIDBits.second - dssIDBits.first + 1;
+        Value* globalDSSID = CreateShl(sliceID, shiftAmount);
+        return CreateOr(globalDSSID, dssID);
     }
 }
 
