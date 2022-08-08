@@ -1579,7 +1579,7 @@ std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
         {
             // unaligned scalars can be packed so dont adjust loop pressure for each unaligned scalar.
             // we may not be able to trivially pack aligned scalars so use other branch to handle them.
-            if (getMaxRegPressureInLoop(*loop) < (unsigned int)(1.0f * (float)kernel.getNumRegTotal()))
+            if (getMaxRegPressureInLoop(*loop) < (unsigned int)(1.0f * (float)kernel.getNumRegTotal() - 3.0f))
             {
                 auto scalarBytes = scalarBytesSplit[loop];
                 if (scalarBytes >= kernel.numEltPerGRF<Type_UB>())
