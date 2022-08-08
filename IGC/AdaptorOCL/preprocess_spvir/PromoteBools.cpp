@@ -455,10 +455,10 @@ GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariab
 
     return new GlobalVariable(
         *globalVariable->getParent(),
-        Type::getInt8Ty(globalVariable->getContext()),
+        getOrCreatePromotedType(globalVariable->getType()->getPointerElementType()),
         globalVariable->isConstant(),
         globalVariable->getLinkage(),
-        ConstantInt::get(Type::getInt8Ty(globalVariable->getContext()), globalVariable->getInitializer()->isOneValue() ? 1 : 0),
+        createPromotedConstant(globalVariable->getInitializer()),
         globalVariable->getName(),
         nullptr,
         GlobalValue::ThreadLocalMode::NotThreadLocal,
@@ -481,4 +481,84 @@ AllocaInst* PromoteBools::promoteAlloca(AllocaInst* alloca)
     newAlloca->setAlignment(IGCLLVM::getAlign(*alloca));
 
     return newAlloca;
+}
+
+Constant* PromoteBools::createPromotedConstant(Constant* constant)
+{
+    if (!constant)
+    {
+        return nullptr;
+    }
+
+    if (auto constantUndef = dyn_cast<UndefValue>(constant))
+    {
+        return UndefValue::get(getOrCreatePromotedType(constant->getType()));
+    }
+    else if (auto constantInteger = dyn_cast<ConstantInt>(constant))
+    {
+        if (!typeNeedsPromotion(constantInteger->getType()))
+        {
+            return constant;
+        }
+
+        return ConstantInt::get(Type::getInt8Ty(constant->getContext()), constant->isOneValue() ? 1 : 0);
+    }
+    else if (auto constantPointerNull = dyn_cast<ConstantPointerNull>(constant))
+    {
+        if (!typeNeedsPromotion(constantPointerNull->getType()->getPointerElementType()))
+        {
+            return constant;
+        }
+
+        auto newPointerElementType = getOrCreatePromotedType(constantPointerNull->getType()->getPointerElementType());
+        return ConstantPointerNull::get(PointerType::get(newPointerElementType, constantPointerNull->getType()->getAddressSpace()));
+    }
+    else if (auto constantVector = dyn_cast<ConstantVector>(constant))
+    {
+        if (!typeNeedsPromotion(constantVector->getType()))
+        {
+            return constant;
+        }
+
+        SmallVector<Constant*, 8> values;
+        for (unsigned i = 0; i < constantVector->getType()->getNumElements(); ++i)
+        {
+            values.push_back(createPromotedConstant(constantVector->getAggregateElement(i)));
+        }
+        return ConstantVector::get(values);
+    }
+    else if (auto constantArray = dyn_cast<ConstantArray>(constant))
+    {
+        if (!typeNeedsPromotion(constantArray->getType()))
+        {
+            return constant;
+        }
+
+        SmallVector<Constant*, 8> values;
+        for (unsigned i = 0; i < constantArray->getType()->getNumElements(); ++i)
+        {
+            values.push_back(createPromotedConstant(constantArray->getAggregateElement(i)));
+        }
+
+        auto newType = getOrCreatePromotedType(constantArray->getType());
+        return ConstantArray::get(dyn_cast<ArrayType>(newType), values);
+    }
+    else if (auto constantStruct = dyn_cast<ConstantStruct>(constant))
+    {
+        if (!typeNeedsPromotion(constantStruct->getType()))
+        {
+            return constant;
+        }
+
+        SmallVector<Constant*, 8> values;
+        for (unsigned i = 0; i < constantStruct->getType()->getNumElements(); ++i)
+        {
+            values.push_back(createPromotedConstant(constantStruct->getAggregateElement(i)));
+        }
+
+        auto newType = getOrCreatePromotedType(constantStruct->getType());
+        return ConstantStruct::get(dyn_cast<StructType>(newType), values);
+    }
+
+    return constant;
 }

@@ -58,5 +58,8 @@ namespace IGC
         llvm::Function* promoteFunction(llvm::Function* function);
         llvm::GlobalVariable* promoteGlobalVariable(llvm::GlobalVariable* globalVariable);
         llvm::AllocaInst* promoteAlloca(llvm::AllocaInst* alloca);
+
+        // Promoting contants
+        llvm::Constant* createPromotedConstant(llvm::Constant* constant);
     };
 }
