@@ -1353,11 +1353,11 @@ void CustomSafeOptPass::matchMixOperation(BinaryOperator& I)
                     }
                 }
 
-                if (!doNotOptimize && !fMulInsts.empty() && I.users().begin() != I.users().end())
+                if (!doNotOptimize && !fMulInsts.empty())
                 {
                     // Pattern Mix fully detected. Replace sequence of detected instructions with new ones.
                     IGC_ASSERT_MESSAGE(
-                        fMulInsts.size() == (int)std::distance(I.users().begin(), I.users().end()),
+                        fMulInsts.size() == fAddInsts.size(),
                         "Incorrect pattern match data");
                     // If Pattern Mix with 1-a in the first instruction was detected then create
                     // this sequence of new instructions: FSub, FMul, FAdd.
