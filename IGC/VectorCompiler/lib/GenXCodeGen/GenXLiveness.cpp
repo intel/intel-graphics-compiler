@@ -350,7 +350,6 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     // Phi node. Treat as defined at the start of the block.
     EndNum = Numbering->getNumber(Phi) + 1;
     BB = Phi->getParent();
-    Func = Phi->getFunction();
     StartNum = Numbering->getNumber(BB);
     // For a phi node, we also need to register an extra little live range at
     // the end of each predecessor, from where we will insert a copy to the
@@ -359,7 +358,6 @@ void GenXLiveness::rebuildLiveRangeForValue(LiveRange *LR, SimpleValue SV)
     StartNum = Numbering->getNumber(V);
     auto Inst = cast<Instruction>(V);
     BB = Inst->getParent();
-    Func = Inst->getFunction();
     auto CI = dyn_cast<CallInst>(V);
     if (CI) {
       if (!GenXIntrinsic::isAnyNonTrivialIntrinsic(V)) {
