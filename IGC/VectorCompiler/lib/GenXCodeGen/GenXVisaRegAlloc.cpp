@@ -909,8 +909,9 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const FunctionGroup *FG) const {
     RN->print(OS);
     Type *ElTy = IndexFlattener::getElementType(SV.getValue()->getType(),
           SV.getIndex());
-    unsigned Bytes = vc::getTypeSize(ElTy).inBytes();
     bool IsFlag = ElTy->getScalarType()->isIntegerTy(1);
+    unsigned Bytes = IsFlag ? vc::getTypeSize(ElTy).inBytesCeil() :
+                              vc::getTypeSize(ElTy).inBytes();
     OS << "] (" << Bytes << " bytes, length " << i->Length <<") ";
     // Dump some indication of what the live range is. For a kernel argument,
     // show its name. For an instruction with debug info, show the location.
