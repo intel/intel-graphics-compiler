@@ -1,10 +1,14 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2018-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
+// This is an auto-generated file. Please do not edit!
+// If changes are needed here please reach out to the codeowners, thanks.
+
 
 #include "wa_def.h"
 
@@ -18,14 +22,6 @@ void InitDg1HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
 
     SI_WA_ENABLE(
         Wa_220856683,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_DG1, DG1_REV_ID_A0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
-        Wa_1409392000,
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
@@ -72,7 +68,6 @@ void InitDg1HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         SI_WA_BETWEEN(iStepId_DG1, DG1_REV_ID_A0, FUTURE_PROJECT));
 
 
-    // Components affected: igc visa
     SI_WA_ENABLE(
         Wa_1607871015,
         "No link provided",
@@ -80,7 +75,7 @@ void InitDg1HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_DG1, DG1_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc
+
     SI_WA_ENABLE(
         Wa_16012061344,
         "No link provided",
@@ -88,7 +83,7 @@ void InitDg1HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_DG1, DG1_REV_ID_A0, FUTURE_PROJECT));
 
-    // Components affected: igc
+
     SI_WA_ENABLE(
         Wa_14013672992,
         "No link provided",

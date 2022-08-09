@@ -1,14 +1,14 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2020-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// Platform Revision Ids for PVC_XT
+// This is an auto-generated file. Please do not edit!
+// If changes are needed here please reach out to the codeowners, thanks.
 
-// AUTO-GENERATED FILE. DO NOT EDIT.
 
 #include "wa_def.h"
 

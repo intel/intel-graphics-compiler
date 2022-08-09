@@ -1,16 +1,18 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// This is an auto-generated file. Please do not edit!
+// If changes are needed here please reach out to the codeowners, thanks.
+
 
 #include "wa_def.h"
 #include "iacm_g12_rev_id.h"
 
-//******************* Main Wa Initializer for ACM_G12      ********************
 
 void InitAcm_G12HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {

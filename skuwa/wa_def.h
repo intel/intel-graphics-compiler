@@ -1,10 +1,14 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2011-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
+// This is an auto-generated file. Please do not edit!
+// If changes are needed here please reach out to the codeowners, thanks.
+
 
 #ifndef __WA_DEF_H__
 #define __WA_DEF_H__
@@ -13,15 +17,15 @@ SPDX-License-Identifier: MIT
     #include "ct.h"
     #include <ntddk.h>
     #include "vidmini.h"
-#else // if !defined(__KCH)*/
+#else
     #include "../inc/common/sku_wa.h"
     #include "../inc/common/igfxfmid.h"
-#endif // if !defined(__KCH)
+#endif
 #include "gtsysinfo.h"
 
-#define SIWA_TRUE               0x00000001    // force enable
-#define SIWA_FALSE              0x00000000    // force disable
-#define FUTURE_PROJECT          2147483647    // INT_MAX
+#define SIWA_TRUE               0x00000001
+#define SIWA_FALSE              0x00000000
+#define FUTURE_PROJECT          2147483647
 
 #define BXT_REV_ID_A0           SI_REV_ID(0,2)
 #define BXT_REV_ID_B0           SI_REV_ID(3,3)
@@ -31,20 +35,13 @@ SPDX-License-Identifier: MIT
 #define BXT_REV_ID_BX           SI_REV_ID(5,5)
 #define BXT_REV_ID_BX_PRIME     SI_REV_ID(8,8)
 #define BXT_REV_ID_C0           SI_REV_ID(9,9)
-#define BXT_REV_ID_CX_B1        SI_REV_ID(10,10) //PRQ Candidate- APL
+#define BXT_REV_ID_CX_B1        SI_REV_ID(10,10)
 #define BXT_REV_ID_CX_B2        SI_REV_ID(11,11)
-#define BXT_REV_ID_D0           SI_REV_ID(12,12) //PRQ Candidate - BXT
+#define BXT_REV_ID_D0           SI_REV_ID(12,12)
 #define BXT_REV_ID_DX           SI_REV_ID(13,13)
 
-///////////////////////////////////////// new definitions SKL+  //////////////////////////////////////
-//
-// for handling revID upto 16 bit values
-//
 
-// BXT onwards, each Stepping like A0 can have more than 1 stepping ID's.
-// So we define the highest cap and lower cap of stepping IDs
-
-#define SI_REV_ID(lo,hi) (lo | hi<<16) // LO represents the lowest revision ID for that stepping, HI is the highest for that stepping
+#define SI_REV_ID(lo,hi) (lo | hi<<16)
 
 #define SI_REV_HI(SteppingID) ((SteppingID & 0xFFFF0000) >> 16)
 #define SI_REV_LO(SteppingID) (SteppingID & 0xFFFF)
@@ -55,16 +52,14 @@ SPDX-License-Identifier: MIT
 }
 
 #define SI_WA_ONLY(ulRevID,STEPPING) ((ulRevID <= (int)SI_REV_HI(STEPPING)) && (ulRevID >= (int)SI_REV_LO(STEPPING)))
-#define SI_WA_AFTER(ulRevID, STEPPING) (ulRevID > (int)SI_REV_HI(STEPPING))                       // Current Rev ID is higher than the highest Rev ID for that STEPPING
-#define SI_WA_BEFORE(ulRevID, STEPPING) (ulRevID < (int)SI_REV_LO(STEPPING))                     // Current Rev ID is lower than the lowest Rev ID for that STEPPING
-#define SI_WA_UNTIL(ulRevID, STEPPING) (ulRevID <= (int)SI_REV_HI(STEPPING))                    // Current Rev ID is lower than or equal to the highest Rev ID for that STEPPING
-#define SI_WA_FROM(ulRevID, STEPPING) (ulRevID >= (int)SI_REV_LO(STEPPING))                    // Current Rev ID is higher than or equal to the lowest Rev ID for that STEPPING
-#define SI_WA_BETWEEN(ulRevID, StepOld, StepNew) ((ulRevID <= (int)SI_REV_HI(StepNew)) && (ulRevID >= (int)SI_REV_LO(StepOld))) // Current Rev ID is between the StepOld and StepNew (inclusive)
+#define SI_WA_AFTER(ulRevID, STEPPING) (ulRevID > (int)SI_REV_HI(STEPPING))
+#define SI_WA_BEFORE(ulRevID, STEPPING) (ulRevID < (int)SI_REV_LO(STEPPING))
+#define SI_WA_UNTIL(ulRevID, STEPPING) (ulRevID <= (int)SI_REV_HI(STEPPING))
+#define SI_WA_FROM(ulRevID, STEPPING) (ulRevID >= (int)SI_REV_LO(STEPPING))
+#define SI_WA_BETWEEN(ulRevID, StepOld, StepNew) ((ulRevID <= (int)SI_REV_HI(StepNew)) && (ulRevID >= (int)SI_REV_LO(StepOld)))
 #define SI_WA_FOR_EVER (SIWA_TRUE)
 #define SI_WA_NEVER (SIWA_FALSE)
 
-
-///////////////////////////////////////// new definitions SKL+  //////////////////////////////////////
 
 #define SIWA_ONLY_A0            0x0fff0001u
 #define SIWA_ONLY_A1            0x0fff0002u
@@ -80,8 +75,7 @@ SPDX-License-Identifier: MIT
 #define SIWA_ONLY_AB            0x0fff0800u
 #define SIWA_ONLY_AC            0x0fff1000u
 
-//Definition of SIWA_UNTIL_An:
-//  The workaround is to be applied to all revisions UP TO AND INCLUDING An.
+
 #define SIWA_UNTIL_A0            (SIWA_ONLY_A0)
 #define SIWA_UNTIL_A1            (SIWA_UNTIL_A0 | SIWA_ONLY_A1)
 #define SIWA_UNTIL_A2            (SIWA_UNTIL_A1 | SIWA_ONLY_A2)
@@ -96,8 +90,7 @@ SPDX-License-Identifier: MIT
 #define SIWA_UNTIL_AB            (SIWA_UNTIL_AA | SIWA_ONLY_AB)
 #define SIWA_UNTIL_AC            (SIWA_UNTIL_AB | SIWA_ONLY_AC)
 
-//Definition of SIWA_AFTER_An:
-//  The workaround is to be applied to all revisions AFTER An.
+
 #define SIWA_AFTER_A0            (0x0fff0000 | (~SIWA_UNTIL_A0))
 #define SIWA_AFTER_A1            (0x0fff0000 | (~SIWA_UNTIL_A1))
 #define SIWA_AFTER_A2            (0x0fff0000 | (~SIWA_UNTIL_A2))
@@ -112,8 +105,7 @@ SPDX-License-Identifier: MIT
 #define SIWA_AFTER_AB            (0x0fff0000 | (~SIWA_UNTIL_AB))
 #define SIWA_AFTER_AC            (0x0fff0000 | (~SIWA_UNTIL_AC))
 
-//Definition of SIWA_FROM_An:
-//  The workaround is to be applied to all revisions AFTER An AND An.
+
 #define SIWA_FROM_A0            (SIWA_AFTER_A0 | SIWA_ONLY_A0)
 #define SIWA_FROM_A1            (SIWA_AFTER_A1 | SIWA_ONLY_A1)
 #define SIWA_FROM_A2            (SIWA_AFTER_A2 | SIWA_ONLY_A2)
@@ -146,45 +138,31 @@ SPDX-License-Identifier: MIT
     #define __S_INLINE static __inline
 #endif
 
-// WA Init parameters
+
 typedef struct _WaInitParam
 {
     unsigned short   usRevId;
     unsigned short   usRevId_PCH;
     PLATFORM_TYPE    ePlatformType;
     PCH_PRODUCT_FAMILY  ePCHProductFamily;
-    const GT_SYSTEM_INFO   *pGtSysInfo;           // Required CNL+
-    unsigned char    bWinDoD;  // BOOLEAN
+    const GT_SYSTEM_INFO   *pGtSysInfo;
+    unsigned char    bWinDoD;
 } WA_INIT_PARAM, *PWA_INIT_PARAM;
 
-/********* Common functions to intialize wa table ************\
 
-    MACRO / Inline Function usage:
-
-    1. To enable any WA based on both Platform and stepping type use the PLATFORM_STEP_APPLICABLE() macro
-        e.g. pSkuTable->WAXYZ   = PLATFORM_STEP_APPLICABLE(ulStepId, PLATFORM_DESKTOP, SIWA_FOREVER);
-
-    2. If the WaBoolean() is called directly it will be enabled on ALL platforms
-
-    3. To enable any WA based on some boolean flag and platform use the following:
-        e.g. pSkuTable->WAXYZ   = PLATFORM_STEP_APPLICABLE(ulStepId, PLATFORM_DESKTOP, bFlag);
-
-\*************************************************************/
-//Function to return TRUE or FALSE based on rev id and wa mask
 __S_INLINE unsigned int WaBoolean(unsigned int ulStepId, unsigned int ulWaMask)
 {
-    //Check whether wa forced TRUE/FALSE
+
     if (ulWaMask < SIWA_UNTIL_A0)
     {
         return (ulWaMask != 0);
     }
 
-    //Check if wa mask contains current rev id
+
     return ((ulStepId & ulWaMask) ? 1 : 0);
 }
 
 
-// Macro to call the WaBoolean function based on platformType
 #define PLATFORM_STEP_APPLICABLE(ulStepId, ulPlatformMask, ulWaMask) \
     (pWaParam->ePlatformType & (ulPlatformMask)) ? WaBoolean((ulStepId), (ulWaMask)) : 0;
 
@@ -368,7 +346,7 @@ void InitPvc_XtHwWaTable(
        PSKU_FEATURE_TABLE              pSkuTable,
        PWA_INIT_PARAM                  pWaParam);
 #ifdef __cplusplus
-} // extern "C"
+}
 #endif
 
 #if defined(__KCH)
@@ -487,6 +465,6 @@ void InitAcm_G10HASWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
-#endif // #if defined(__KCH)
+#endif
 
-#endif // #ifndef __WA_DEF_H__
+#endif
