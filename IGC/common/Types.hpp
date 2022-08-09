@@ -35,6 +35,7 @@ namespace IGC
     enum PrecisionType : uint8_t
     {
         PRECISION_UNUSED, U8, U4, U2, S8, S4, S2,
+        BF8,
         TF32,
         BF16, FP16
     };

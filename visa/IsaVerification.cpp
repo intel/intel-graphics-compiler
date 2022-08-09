@@ -1029,10 +1029,11 @@ void vISAVerifier::verifyInstructionMove(
                     "F_CVT must have either UB(actually BF8) dst or src");
             }
 
+            bool supportSat = false;
             VISA_Modifier dstModifier = dst.getOperandModifier();
             VISA_Modifier srcModifier = src0.getOperandModifier();
-            REPORT_INSTRUCTION(options, dstModifier == MODIFIER_NONE,
-                "destination modifier not supported for BF8/TF32 conversion");
+            REPORT_INSTRUCTION(options, (supportSat || dstModifier == MODIFIER_NONE),
+                "destination modifier not supported for FP8/TF32 conversion");
             REPORT_INSTRUCTION(options, srcModifier == MODIFIER_NONE,
                 "source modifier not supported for BF8/TF32 conversion");
             break;
@@ -3884,12 +3885,13 @@ void vISAVerifier::verifyInstructionSrnd(const CISA_INST* inst)
     const vector_opnd&    dst = getVectorOperand(inst, 0);
     VISA_Type         dstType = getVectorOperandType(header, dst);
     VISA_Modifier dstModifier = dst.getOperandModifier();
+    bool allowSat = false;
 
     // dst
     REPORT_INSTRUCTION(options, dst.getOperandClass() == OPERAND_GENERAL,
         "Destination of this CISA instruction should be general operand.");
 
-    REPORT_INSTRUCTION(options, dstModifier == MODIFIER_NONE,
+    REPORT_INSTRUCTION(options, allowSat || dstModifier == MODIFIER_NONE,
         "Destination modifier for this CISA instruction is not allowed.");
 
     // src

@@ -2307,7 +2307,8 @@ Imported_Intrinsics = \
 "GenISA_hftobf8": ["half to bf8 conversion",
     [("anyint",                        "bf8 result (as char)"),
     [("anyfloat",                      "half source"),
-     ("int",                           "Rounding mode(ERoundingMode)")],
+     ("int",                           "Rounding mode(ERoundingMode)"),
+     ("bool",                          "saturation (true: sat; false: no)")],
     "NoMem"]],
 ####################################################################################################
 "GenISA_bf8tohf": ["bf8 to half conversion",
@@ -2329,7 +2330,8 @@ Imported_Intrinsics = \
 "GenISA_srnd": ["stochastic rounding:  srnd dst  src0  src1",
     [("anyvector",                     "dst: hf or bf8 (as ub)"),
     [("anyvector",                     "src0: F or HF"),
-     ("anyvector",                     "src1: random number. F or HF(the same as src0's)")],
+     ("anyvector",                     "src1: random number. F or HF(the same as src0's)"),
+     ("bool",                          "saturation (true: sat; false: no)")],
     "NoMem"]],
 ####################################################################################################
 "GenISA_OutputMeshPrimitiveData": ["",

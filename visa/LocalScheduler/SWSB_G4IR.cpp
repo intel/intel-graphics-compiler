@@ -241,7 +241,7 @@ SBFootprint* G4_BB_SB::getFootprintForGRF(
     int aregOffset = totalGRFNum;
     G4_Type type = opnd->getType();
     if (inst->opcode() == G4_fcvt &&
-        (type == Type_UB ||
+        (IS_BTYPE(type) ||
         (type == Type_UD && builder.hasPartialInt64Support())))
     {
         type = Type_F;

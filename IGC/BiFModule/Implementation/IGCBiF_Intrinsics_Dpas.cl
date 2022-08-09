@@ -337,6 +337,7 @@ float8  __builtin_IB_sub_group16_fdpas_f_hf_hf_hf_8_8  (half8  acc,  short8  a, 
 half8   __builtin_IB_sub_group16_fdpas_hf_hf_hf_hf_8_8 (half8  acc,  short8  a, int8 b) __attribute__((const));
 
 
+
 // tf32, rcount = 1, simd16
 float   __builtin_IB_sub_group16_fdpas_f_f_tf32_tf32_8_1  (float  acc, short  a, int8 b) __attribute__((const));
 
@@ -397,6 +398,7 @@ int16 __builtin_IB_2fto2bf_16(float16 a, float16 b) __attribute__((const));
 
 // bf8 <--> half float conversion
 //    bf8 : no igc type for bf8 yet. Use char as *opaque* type for it.
+//    Rounding: RTNE
 //
 // hf -> bf8 conversion builtins (rte rounding mode)
 char   __builtin_IB_hftobf8_1 (half   a) __attribute__((const));
@@ -413,6 +415,7 @@ half3  __builtin_IB_bf8tohf_3 (char3  a) __attribute__((const));
 half4  __builtin_IB_bf8tohf_4 (char4  a) __attribute__((const));
 half8  __builtin_IB_bf8tohf_8 (char8  a) __attribute__((const));
 half16 __builtin_IB_bf8tohf_16(char16 a) __attribute__((const));
+
 
 // tf32 <--> float float conversion
 //    tf32 : no igc type for tf32. Use int as *opaque* type for it.
@@ -445,6 +448,12 @@ char3  __builtin_IB_srnd_hftobf8_3 (half3  a, half3  r) __attribute__((const));
 char4  __builtin_IB_srnd_hftobf8_4 (half4  a, half4  r) __attribute__((const));
 char8  __builtin_IB_srnd_hftobf8_8 (half8  a, half8  r) __attribute__((const));
 char16 __builtin_IB_srnd_hftobf8_16(half16 a, half16 r) __attribute__((const));
+char   __builtin_IB_srnd_hftobf8_1_sat (half   a, half   r) __attribute__((const));
+char2  __builtin_IB_srnd_hftobf8_2_sat (half2  a, half2  r) __attribute__((const));
+char3  __builtin_IB_srnd_hftobf8_3_sat (half3  a, half3  r) __attribute__((const));
+char4  __builtin_IB_srnd_hftobf8_4_sat (half4  a, half4  r) __attribute__((const));
+char8  __builtin_IB_srnd_hftobf8_8_sat (half8  a, half8  r) __attribute__((const));
+char16 __builtin_IB_srnd_hftobf8_16_sat(half16 a, half16 r) __attribute__((const));
 
 // F -> HF
 half   __builtin_IB_srnd_ftohf_1 (float   a, float   r) __attribute__((const));

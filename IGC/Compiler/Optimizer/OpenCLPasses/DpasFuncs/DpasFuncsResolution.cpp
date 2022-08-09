@@ -68,7 +68,7 @@ namespace {
         /// Demangle the suffix of BFCvt. Return true if sucessful; false otherwise.
         ///   Suffix's format:  [<rm>_]<1|2|4|8|16>  (see description below)
         bool demangleFCvtSuffix(
-            StringRef FN, int StartPos, int* pRM, int* pVecLen);
+            StringRef FN, int StartPos, int* pRM, int* pVecLen, bool* pIsSat);
 
         /// Indicates if the pass changed the processed function
         bool m_changed;
@@ -169,7 +169,7 @@ namespace {
         //
         // Find the following patterns:
         //
-        //    "_bf" | "_hf" | "_<s|u><2|4|8>" | tf32 | bf8
+        //    "_bf" | "_hf" | "_<s|u><2|4|8>" | tf32
         //
         // If success, return the type denoted by this string pattern;
         // otherwise, return PrecisionType::PRECISION_UNUSED.
@@ -183,6 +183,7 @@ namespace {
         // Pattern:  '_<1-8>'
         // Return repeat count if valid, return -1 otherwise.
         int parseRCount(StringRef StrRef, size_t& StrPos, size_t& StrRem);
+
     };
 }
 
@@ -416,10 +417,11 @@ void DpasFuncsResolution::visitCallInst(CallInst& CI)
         }
         else
         {   // fdpas
+            bool precOk = (PA == PB);
             IGC_ASSERT_MESSAGE(D_nelts == RC, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
             IGC_ASSERT_MESSAGE(ACC_nelts == RC, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
             IGC_ASSERT_MESSAGE(B_nelts == SD, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
-            IGC_ASSERT_MESSAGE(PA == PB, "ICE: dpas's A and B must have the same type!");
+            IGC_ASSERT_MESSAGE(precOk, "ICE: dpas's A and B have illegal type combination!");
             IGC_ASSERT_MESSAGE(B_BaseTy->isIntegerTy(32), "ICE: dpas's arg B shall have base type int32!");
             IGC_ASSERT_MESSAGE(RC == (IsDpasw ? 2 * A_nelts : A_nelts), "ICE: dpas's arg A has wrong element size!");
 
@@ -490,15 +492,17 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
     StringRef funcName = func->getName();
     LLVMContext& Ctx = CI.getContext();
     Type* intTy = Type::getInt32Ty(Ctx);
+    Type* boolTy = Type::getInt1Ty(Ctx);
 
     int FP_RM = ROUND_TO_NEAREST_EVEN; // default
     int VecLen;
+    bool isSat;
     GenISAIntrinsic::ID iid;
     Value* args[3];
     uint32_t argslen;
     if (funcName.startswith("__builtin_IB_ftobf_"))
     {
-        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_ftobf_") - 1, &FP_RM, &VecLen))
+        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_ftobf_") - 1, &FP_RM, &VecLen, nullptr))
             return false;
 
         iid = GenISAIntrinsic::GenISA_ftobf;
@@ -510,7 +514,7 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
     {
         // It is a precise conversion, no RM needed!
         // Note that sizeof() includes the ending '\0', so need to do -1!
-        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_bftof_") - 1, nullptr, &VecLen))
+        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_bftof_") - 1, nullptr, &VecLen, nullptr))
             return false;
 
         iid = GenISAIntrinsic::GenISA_bftof;
@@ -519,7 +523,7 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
     }
     else if (funcName.startswith("__builtin_IB_2fto2bf_"))
     {
-        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_2fto2bf_") - 1, &FP_RM, &VecLen))
+        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_2fto2bf_") - 1, &FP_RM, &VecLen, nullptr))
             return false;
 
         iid = GenISAIntrinsic::GenISA_2fto2bf;
@@ -533,13 +537,14 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
     {
         int sz = funcName.startswith("__builtin_IB_hftoqf_")
             ? (int)sizeof("__builtin_IB_hftoqf_") : (int)sizeof("__builtin_IB_hftobf8_");
-        if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen))
+        if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, &isSat))
             return false;
 
         iid = GenISAIntrinsic::GenISA_hftobf8;
         args[0] = CI.getArgOperand(0);             // value to be converted
         args[1] = ConstantInt::get(intTy, FP_RM);  // rounding mode
-        argslen = 2;
+        args[2] = ConstantInt::get(boolTy, isSat); // saturation
+        argslen = 3;
     }
     else if (funcName.startswith("__builtin_IB_qftohf_") ||
              funcName.startswith("__builtin_IB_bf8tohf_"))
@@ -548,7 +553,7 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
             ? (int)sizeof("__builtin_IB_qftohf_") : (int)sizeof("__builtin_IB_bf8tohf_");
         // It is a precise conversion, no RM needed!
         // Note that sizeof() includes the ending '\0', so need to do -1!
-        if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen))
+        if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, nullptr))
             return false;
 
         iid = GenISAIntrinsic::GenISA_bf8tohf;
@@ -557,7 +562,7 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
     }
     else if (funcName.startswith("__builtin_IB_ftotf32_"))
     {
-        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_ftotf32_") - 1, nullptr, &VecLen))
+        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_ftotf32_") - 1, nullptr, &VecLen, nullptr))
             return false;
 
         iid = GenISAIntrinsic::GenISA_ftotf32;
@@ -569,7 +574,7 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
     {
         // It is a precise conversion, no RM needed!
         // Note that sizeof() includes the ending '\0', so need to do -1!
-        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_tf32tof_") - 1, nullptr, &VecLen))
+        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_tf32tof_") - 1, nullptr, &VecLen, nullptr))
             return false;
 
         iid = GenISAIntrinsic::GenISA_tf32tof;
@@ -650,7 +655,7 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
         args[0]->getType()
     };
     Function* cvtFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
-    auto cvt = "bf_cvt";
+    char* cvt = "bf_cvt";
     if (iid == GenISAIntrinsic::GenISA_hftobf8 ||
         iid == GenISAIntrinsic::GenISA_bf8tohf)
     {
@@ -680,14 +685,15 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
 
     StringRef funcName = func->getName();
     int VecLen;
+    bool isSat = false;
     if (funcName.startswith("__builtin_IB_srnd_ftohf_"))
     {
-        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_srnd_ftohf_") - 1, nullptr, &VecLen))
+        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_srnd_ftohf_") - 1, nullptr, &VecLen, nullptr))
             return false;
     }
     else if (funcName.startswith("__builtin_IB_srnd_hftobf8_"))
     {
-        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_srnd_hftobf8_") - 1, nullptr, &VecLen))
+        if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_srnd_hftobf8_") - 1, nullptr, &VecLen, &isSat))
             return false;
     }
     else
@@ -695,11 +701,12 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
         return false;
     }
 
+    Type* boolTy = Type::getInt1Ty(CI.getContext());
     GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_srnd;
-    Value* args[2] = { CI.getArgOperand(0), CI.getArgOperand(1) };
-    ArrayRef<Value*> ii_args(args, 2);
+    Value* args[3] = { CI.getArgOperand(0), CI.getArgOperand(1), ConstantInt::get(boolTy, isSat) };
+    ArrayRef<Value*> ii_args(args, 3);
 
-    Type* ITys[3] = { func->getReturnType(), args[0]->getType(), args[1]->getType()  };
+    Type* ITys[4] = { func->getReturnType(), args[0]->getType(), args[1]->getType(), boolTy };
     Function* srndFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
     Instruction* srndCall = CallInst::Create(srndFunc, ii_args, VALUE_NAME("srnd"), &CI);
 
@@ -801,17 +808,18 @@ bool DpasFuncsResolution::demangleSuffix(
 }
 
 bool DpasFuncsResolution::demangleFCvtSuffix(
-    StringRef FN, int StartPos, int* pRM, int* pVecLen)
+    StringRef FN, int StartPos, int* pRM, int* pVecLen, bool* pIsSat)
 {
     int sz = (int)FN.size();
     int rem = sz - StartPos;
     int RM = ROUND_TO_NEAREST_EVEN;
     int VecLen = 1;
+    bool isSat = false;
 
     int i = StartPos;
     if (rem >= 5 && pRM != nullptr)
     {
-        // if it is a valid intrinsic, it must be <rm>_<1|2|4|8|16>.
+        // if it is a valid intrinsic, it must be <rm>_<1|2|4|8|16>[_sat]
         // <rm> is rte|rtp|rtn|rtz.
         if (FN[i] != 'r' || FN[i + 1] != 't' || FN[i + 3] != '_') {
             return false;
@@ -841,13 +849,37 @@ bool DpasFuncsResolution::demangleFCvtSuffix(
     int c1 = (rem >= 2 ? (FN[i + 1] - '0') : 0);
 
     // relax vector size to be 1-16 here.
-    if (rem == 2 && c == 1 && c1 >= 0 && c1 <= 6) {
+    if (rem >= 2 && c == 1 && c1 >= 0 && c1 <= 6) {
         VecLen = 10 + c1;
+        i += 2;
+        rem -= 2;
     }
-    else if (rem == 1 && c >= 0 && c <= 9) {
+    else if (rem >= 1 && c >= 0 && c <= 9) {
         VecLen = c;
+        i += 1;
+        rem -= 1;
     }
     else {
+        // missing veclen
+        return false;
+    }
+
+    // saturation
+    if (pIsSat)
+    {
+        if (rem >= 1 && FN[i] == '_') {
+            ++i;
+            --rem;
+        }
+
+        if (rem == 3 && FN[i] == 's' && FN[i + 1] == 'a' && FN[i + 2] == 't') {
+            i += 3;
+            rem -= 3;
+            isSat = true;
+        }
+    }
+
+    if (rem != 0) {
         return false;
     }
 
@@ -855,6 +887,9 @@ bool DpasFuncsResolution::demangleFCvtSuffix(
         *pRM = RM;
     }
     *pVecLen = VecLen;
+    if (pIsSat) {
+        *pIsSat = isSat;
+    }
     return true;
 }
 

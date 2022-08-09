@@ -1731,6 +1731,10 @@ Type BinaryEncodingIGA::getIGAType(const G4_INST* I, Gen4_Operand_Number O, TARG
         {
             return Type::BF8;
         }
+        if (Ty == Type_B)
+        {
+            return Type::HF8;
+        }
         if (Ty == Type_UD)
         {
             return Type::TF32;

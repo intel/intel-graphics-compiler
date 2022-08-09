@@ -928,6 +928,7 @@ public:
         int                      lineNum);
 
     bool CISA_create_fcvt_instruction(
+        bool sat,
         VISA_EMask_Ctrl emask,
         unsigned exec_size,
         VISA_opnd* dst,

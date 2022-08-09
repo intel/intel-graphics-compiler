@@ -1058,10 +1058,10 @@ QwScatterInstruction: Predicate QW_SCATTER_OP DOT DEC_LIT ExecSize Var RawOperan
             $2, $1, $5.emask, $5.exec_size, (uint32_t)$4, $6, $7, $8, CISAlineno));
     }
 
-               //   1        2            3            4
-FCvtInstruction: FCVT_OP ExecSize VecDstOperand_G VecSrcOperand_G_IMM
+               //   1        2        3            4                5
+FCvtInstruction: FCVT_OP SatModOpt ExecSize VecDstOperand_G VecSrcOperand_G_IMM
     {
-        pBuilder->CISA_create_fcvt_instruction($2.emask, $2.exec_size, $3.cisa_gen_opnd, $4.cisa_gen_opnd, CISAlineno);
+        pBuilder->CISA_create_fcvt_instruction($2, $3.emask, $3.exec_size, $4.cisa_gen_opnd, $5.cisa_gen_opnd, CISAlineno);
     }
 
                      //  1            2           3            4             5                6

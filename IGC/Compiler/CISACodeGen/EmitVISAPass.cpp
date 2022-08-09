@@ -18671,6 +18671,19 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
     if (FP_RM != ERoundingMode::ROUND_TO_ANY)
         SetRoundingMode_FP(FP_RM);
 
+    // saturation
+    bool isSat = false;
+    switch (id)
+    {
+    case GenISAIntrinsic::GenISA_hftobf8:
+    {
+        ConstantInt* CI = cast<ConstantInt>(GII->getOperand(2));
+        isSat = CI->getValue().getBoolValue();
+    }
+    default:
+        break;
+    }
+
     // vISA instruction doesn't support immediate source of type BF
     if (id == GenISAIntrinsic::GenISA_bftof && src->IsImmediate())
     {
@@ -18683,13 +18696,13 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
     }
 
     if (id == GenISAIntrinsic::GenISA_ftobf ||
+        id == GenISAIntrinsic::GenISA_bftof ||
         id == GenISAIntrinsic::GenISA_hftobf8 ||
         id == GenISAIntrinsic::GenISA_bf8tohf ||
         id == GenISAIntrinsic::GenISA_ftotf32 ||
-        id == GenISAIntrinsic::GenISA_tf32tof ||
-        id == GenISAIntrinsic::GenISA_bftof)
+        id == GenISAIntrinsic::GenISA_tf32tof)
     {
-        CVariable* tDst = nullptr, * tSrc = nullptr;
+        CVariable* tDst = nullptr, *tSrc = nullptr;
         if (id == GenISAIntrinsic::GenISA_ftobf) {
             tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_BF, 0, 0);
             tSrc = src;
@@ -18698,7 +18711,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
             tDst = dst;
             tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_BF, 0, 0);
         }
-        /// Use UB as we are not exposing BF8 for now.
+        /// Use UB as we are not exposing BF8, UD for TF32
         else if (id == GenISAIntrinsic::GenISA_hftobf8) {
             tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
             tSrc = src;
@@ -18729,6 +18742,9 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                 SIMDMode simdMode = lanesToSIMDMode(esize);
                 uint32_t offset = insts[i + 1];
 
+                if (isSat) {
+                    m_encoder->SetDstModifier(EMOD_SAT);
+                }
                 m_encoder->SetNoMask();
                 m_encoder->SetUniformSIMDSize(simdMode);
                 m_encoder->SetDstSubReg(offset);
@@ -18758,6 +18774,9 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
             uint32_t dstOff = 0, srcOff = 0;
             for (int i = 0; i < nelts; ++i)
             {
+                if (isSat) {
+                    m_encoder->SetDstModifier(EMOD_SAT);
+                }
                 m_encoder->SetDstSubReg(dstOff);
                 m_encoder->SetSrcSubReg(0, srcOff);
                 if (id == GenISAIntrinsic::GenISA_hftobf8 ||
@@ -18799,6 +18818,9 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                     SIMDMode simdMode = lanesToSIMDMode(esize);
                     uint32_t offset = insts[i + 1];
 
+                    if (isSat) {
+                        m_encoder->SetDstModifier(EMOD_SAT);
+                    }
                     m_encoder->SetNoMask();
                     m_encoder->SetUniformSIMDSize(simdMode);
                     m_encoder->SetDstSubReg(2 * offset + e);
@@ -18818,6 +18840,9 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                 uint32_t dstOff = 0, srcOff = 0;
                 for (int i = 0; i < nelts; ++i)
                 {
+                    if (isSat) {
+                        m_encoder->SetDstModifier(EMOD_SAT);
+                    }
                     m_encoder->SetDstSubReg(2 * dstOff + e);
                     m_encoder->SetDstRegion(2);
                     m_encoder->SetSrcSubReg(0, srcOff);
@@ -18845,6 +18870,8 @@ void EmitPass::emitsrnd(llvm::GenIntrinsicInst* GII)
     CVariable* dst = m_destination;
     CVariable* src0 = GetSymbol(GII->getOperand(0));
     CVariable* src1 = GetSymbol(GII->getOperand(1));
+    ConstantInt* CI = cast<ConstantInt>(GII->getOperand(2));
+    bool isSat = CI->getValue().getBoolValue();
 
     if (dst->GetType() == ISA_TYPE_B)
     {   // always use UB for bf8
@@ -18865,6 +18892,9 @@ void EmitPass::emitsrnd(llvm::GenIntrinsicInst* GII)
             SIMDMode simdMode = lanesToSIMDMode(esize);
             uint32_t offset = insts[i + 1];
 
+            if (isSat) {
+                m_encoder->SetDstModifier(EMOD_SAT);
+            }
             m_encoder->SetNoMask();
             m_encoder->SetUniformSIMDSize(simdMode);
             m_encoder->SetDstSubReg(offset);
@@ -18881,6 +18911,9 @@ void EmitPass::emitsrnd(llvm::GenIntrinsicInst* GII)
         uint32_t dstOff = 0, s0Off = 0, s1Off = 0;
         for (int i = 0; i < nelts; ++i)
         {
+            if (isSat) {
+                m_encoder->SetDstModifier(EMOD_SAT);
+            }
             m_encoder->SetDstSubReg(dstOff);
             m_encoder->SetSrcSubReg(0, s0Off);
             m_encoder->SetSrcSubReg(1, s1Off);

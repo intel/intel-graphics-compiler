@@ -42,10 +42,6 @@ HANDLE_INST(sel,   2, 1, InstTypeMov, GENX_BDW, ATTR_NONE)
 HANDLE_INST(movi,  1, 1, InstTypeMov, GENX_BDW, ATTR_NONE)
 HANDLE_INST(smov,  2, 1, InstTypeMov, GENX_BDW, ATTR_NONE)
 HANDLE_INST(csel,  3, 1, InstTypeMov, GENX_SKL, ATTR_FLOAT_SRC_ONLY)
-  //
-  // fcvt: special pseudo instruction for converting b/w a standard float type
-  //       and bf8/tf32, which are denoted by Type_UB/Type_UD, respectively.
-  //
 HANDLE_INST(fcvt,  1, 1, InstTypeMov, Xe_PVCXT, ATTR_PSEUDO)
 
 //

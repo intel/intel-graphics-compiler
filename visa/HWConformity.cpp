@@ -8740,25 +8740,25 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         return false;
     }
 
-    // Format conversion allowed between fp16and fp8 operands in the following cases:
+    // Format conversion allowed between fp16 and fp8 operands in the following cases:
     // 1, Execution size must not be 1.
     // 2, fp8 operand is packed.
     // 3, Source and destination register offset is restricted to 0 (GRF aligned).
-    if (inst->getDst()->getType() == Type_UB || inst->getSrc(0)->getType() == Type_UB)
+    if (IS_BTYPE(inst->getDst()->getType()) || IS_BTYPE(inst->getSrc(0)->getType()))
     {
-        assert(((inst->getDst()->getType() == Type_UB && inst->getSrc(0)->getType() == Type_HF)
-            || (inst->getSrc(0)->getType() == Type_UB && inst->getDst()->getType() == Type_HF)) &&
-            "Only BF8<->HF conversion is supported");
+        assert(((IS_BTYPE(inst->getDst()->getType()) && inst->getSrc(0)->getType() == Type_HF)
+            || (IS_BTYPE(inst->getSrc(0)->getType()) && inst->getDst()->getType() == Type_HF)) &&
+            "Only FP8<->HF conversion is supported");
         assert(!inst->getPredicate() && !inst->getCondMod() && !inst->getSaturate() &&
-            "BF8<->HF move does not support pred/cond mod/sat");
+            "FP8<->HF move does not support pred/cond mod/sat");
         assert(inst->getSrc(0)->isSrcRegRegion() &&
-            "HF<->BF8 currently supports non-imm source only");
+            "HF<->FP8 currently supports non-imm source only");
         assert(inst->getSrc(0)->isSrcRegRegion() && inst->getSrc(0)->asSrcRegRegion()->getRegAccess() == Direct &&
             inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef &&
-            "BF8<->HF move does not support source modifier");
+            "FP8<->HF move does not support source modifier");
 
         if (!inst->getSrc(0)->asSrcRegRegion()->checkGRFAlign(builder) || //case 3
-            (inst->getSrc(0)->getType() == Type_UB && !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()))) // case 2
+            (IS_BTYPE(inst->getSrc(0)->getType()) && !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()))) // case 2
         {
             inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, builder.getGRFAlign()), 0);
             G4_INST* newMovInst = *(std::prev(i));
@@ -8780,9 +8780,9 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         // =>
         // (W)  mov (2|M0)   r20.0<1>:bf8   r12.0<0;1,0>:hf
         // (W)  mov (1|M0)   r10.0<1>:ub    r20.0<0;1,0>:ub
-        if (inst->getExecSize() == g4::SIMD1 && inst->getDst()->getType() == Type_UB)  //case 1.1
+        if (inst->getExecSize() == g4::SIMD1 && IS_BTYPE(inst->getDst()->getType()))  //case 1.1
         {
-            G4_Declare* dcl = builder.createTempVar(2, Type_UB, builder.getGRFAlign());
+            G4_Declare* dcl = builder.createTempVar(2, inst->getDst()->getType(), builder.getGRFAlign());
             G4_SrcRegRegion* srcRegion = builder.createSrcRegRegion(dcl, builder.getRegionScalar());
             uint32_t newOption = InstOpt_WriteEnable | inst->getMaskOption();
             G4_INST* newMovInst = builder.createMov(g4::SIMD1, inst->getDst(), srcRegion, newOption, false);
@@ -8793,7 +8793,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             inst->setExecSize(g4::SIMD2);
         }
 
-        if ((inst->getDst()->getType() == Type_UB && inst->getDst()->getHorzStride() != 1) ||  //case 2
+        if ((IS_BTYPE(inst->getDst()->getType()) && inst->getDst()->getHorzStride() != 1) ||  //case 2
             !inst->getDst()->checkGRFAlign(builder))  // case 3
         {
             replaceDst(i, inst->getDst()->getType(), builder.getGRFAlign());
@@ -8815,7 +8815,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         // (W)  mov (1|M0)   r10.0<1>:hf   r12.0<0;1,0>:bf8
         // =>
         // (W)  shl (1|M0)   r10.0<1>:uw   r12.0<0;1,0>:ub   0x8:uw
-        if (inst->getExecSize() == g4::SIMD1 && inst->getSrc(0)->getType() == Type_UB)
+        if (inst->getExecSize() == g4::SIMD1 && IS_BTYPE(inst->getSrc(0)->getType()))
         {
             inst->getDst()->setType(builder, Type_UW);
             auto newShlInst = builder.createBinOp(G4_shl,

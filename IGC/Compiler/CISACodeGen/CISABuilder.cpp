@@ -7429,6 +7429,7 @@ namespace IGC
         case PrecisionType::U8: return GenPrecision::U8;
         case PrecisionType::BF16: return GenPrecision::BF16;
         case PrecisionType::FP16: return GenPrecision::FP16;
+        case PrecisionType::BF8: return GenPrecision::BF8;
         case PrecisionType::TF32: return GenPrecision::TF32;
         }
 
@@ -7615,8 +7616,8 @@ namespace IGC
             addressOpnd, srcOpnd));
     }
 
-    // Special convert between a standard type and non-standard type bf8
-    // let's fcvt to handle bf8/tf32 conversion
+    // Special convert between a standard type and non-standard type fp8
+    // let's fcvt to handle fp8/tf32 conversion
     void CEncoder::fcvt(CVariable* dst, CVariable* src)
     {
         VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
@@ -7626,7 +7627,7 @@ namespace IGC
         V(vKernel->AppendVISADataMovementInst(
             ISA_FCVT,
             predOpnd,
-            false,
+            IsSat(),
             GetAluEMask(dst),
             visaExecSize(dst->IsUniform()
                 ? m_encoderState.m_uniformSIMDSize : m_encoderState.m_simdSize),
@@ -7643,7 +7644,7 @@ namespace IGC
         V(vKernel->AppendVISAArithmeticInst(
             ISA_SRND,
             nullptr,
-            false,
+            IsSat(),
             GetAluEMask(D),
             GetAluExecSize(D),
             dst,

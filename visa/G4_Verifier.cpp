@@ -1095,7 +1095,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
     {
         if (dTy != Type_F || s0Ty != Type_F)
         {
-            DEBUG_VERBOSE("dpas: incorrect TF32 type for dst or src0 (expected F)!");
+            DEBUG_VERBOSE("dpas: incorrect TF32 type for dst or src0 (expecting F)!");
             inst->emit(std::cerr);
             DEBUG_VERBOSE(std::endl);
             MUST_BE_TRUE(false, "dpas: should be float type for dst or src0");
