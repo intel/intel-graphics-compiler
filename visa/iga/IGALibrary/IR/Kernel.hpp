@@ -36,7 +36,6 @@ namespace iga {
         Kernel& operator=(const Kernel&) = delete;
 
         void              resetIds();
-        bool              checkIdsUnique() const;
 
         MemManager&       getMemManager() { return m_mem; }
         const Model&      getModel() const { return m_model; }
