@@ -30,7 +30,6 @@ struct SendExDescOpts {
 
 class BinaryEncodingIGA
 {
-    int                     IGAInstId = 0;
     int                     IGABlockId = 0;
     Mem_Manager&            mem;
     G4_Kernel&              kernel;
@@ -983,7 +982,7 @@ void BinaryEncodingIGA::Encode()
         }
     }
 
-    kernel.setAsmCount(IGAInstId);
+    kernel.setAsmCount(IGAKernel->getInstructionCount());
 
     if (m_kernelBuffer)
     {
