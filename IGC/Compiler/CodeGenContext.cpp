@@ -1137,7 +1137,9 @@ namespace IGC
             }
             break;
         default:
-            pointerSizeInRegister = 32;
+            {
+                pointerSizeInRegister = 32;
+            }
             break;
         }
         return pointerSizeInRegister;
