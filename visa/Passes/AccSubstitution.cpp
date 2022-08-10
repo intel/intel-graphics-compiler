@@ -56,7 +56,7 @@ struct AccInterval
         }
         int dist = lastUse - inst->getLocalId();
 
-        return (std::pow(((double)inst->use_size() ), 1) / dist);
+        return ((double)(inst->use_size() ? inst->use_size() : 1) / std::pow((double)dist, 2));
     }
 
     // see if this interval needs both halves of the acc
@@ -956,6 +956,7 @@ struct AccAssignment
     std::vector<bool> freeAccs;
     std::list<AccInterval*> activeIntervals;
     IR_Builder& builder;
+    int curAcc = 0;  //The allocation start point for round robin
 
     AccAssignment(int numGeneralAcc, IR_Builder& m_builder, bool initToTrue) : builder(m_builder)
     {
@@ -1032,7 +1033,6 @@ struct AccAssignment
         activeIntervals.push_back(interval);
     }
 
-
     bool assignAcc(AccInterval* interval, int startReg, int endReg, int step, unsigned forbidden)
     {
         for (int i = startReg; i < endReg; i += step)
@@ -1041,7 +1041,7 @@ struct AccAssignment
             {
                 continue;
             }
-            if (freeAccs[i] && (!interval->needBothAcc(builder) || freeAccs[i + 1]))
+            if (freeAccs[i] && (!interval->needBothAcc(builder) || ((i + 1 < endReg) && freeAccs[i + 1])))
             {
                 interval->assignedAcc = i;
                 freeAccs[i] = false;
@@ -1070,6 +1070,10 @@ struct AccAssignment
 
         int step = interval->needBothAcc(builder) ? 2 : 1;
         int startReg = 0;
+        if (builder.getOption(vISA_EnableRRAccSub))
+        {
+            startReg = curAcc;
+        }
         int endReg = 0;
         unsigned forbidden = 0;
 
@@ -1111,9 +1115,42 @@ struct AccAssignment
             endReg = (int)freeAccs.size();
         }
 
+         // apply pair restriction in round robin.
+        if (step == 2 && startReg % 2)
+        {
+            startReg++;
+            if (startReg >= endReg) //Wrap back
+            {
+                startReg = 0;
+            }
+        }
+
         if (assignAcc(interval, startReg, endReg, step, forbidden))
         {
+            if (builder.getOption(vISA_EnableRRAccSub))
+            {
+                curAcc = interval->assignedAcc;
+                curAcc += step; //Assign to next start
+                if (curAcc >= endReg) //Wrap back
+                {
+                    curAcc = 0;
+                }
+            }
             return true;
+        }
+        else if (curAcc != 0)
+        {
+            if (assignAcc(interval, 0, curAcc, step, forbidden))
+            {
+                curAcc = interval->assignedAcc;
+                curAcc += step;
+                if (curAcc >= endReg)
+                {
+                    curAcc = 0;
+                }
+
+                return true;
+            }
         }
 
         return false;
@@ -1310,7 +1347,6 @@ void AccSubPass::doAccSub(G4_BB* bb)
 
     return;
 }
-
 
 void AccSubPass::multiAccSub(G4_BB* bb)
 {
@@ -1543,6 +1579,7 @@ void AccSubPass::multiAccSub(G4_BB* bb)
                 }
                 return false;
             };
+
             auto spillIter = std::min_element(accAssign.activeIntervals.begin(), accAssign.activeIntervals.end(),
                 spillCostCmp);
             auto spillCandidate = *spillIter;
@@ -1615,6 +1652,7 @@ void AccSubPass::multiAccSub(G4_BB* bb)
 
             for (auto failInterval : failIntervals)
             {
+                // Will assign register only when the range of failIntervals fail covered by the spilled range
                 if (!((spillInterval->inst->getLocalId() <= failInterval->inst->getLocalId()) &&
                     (failInterval->lastUse <= spillInterval->lastUse)) ||
                     failInterval->assignedAcc != -1)

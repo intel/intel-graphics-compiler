@@ -267,7 +267,7 @@ DEF_VISA_OPTION(vISA_UseOldSubRoutineAugIntf,    ET_BOOL, "-useOldSubRoutineAugI
 DEF_VISA_OPTION(vISA_FastCompileRA,    ET_BOOL, "-fastCompileRA",     UNUSED, false)
 DEF_VISA_OPTION(vISA_HybridRAWithSpill,    ET_BOOL, "-hybridRAWithSpill",     UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableSwapAccSub,    ET_BOOL,  "-swapAccSub",      UNUSED, true)
-
+DEF_VISA_OPTION(vISA_EnableRRAccSub,        ET_BOOL,  "-roundRobinAccSub",      UNUSED, false)
 //=== binary emission options ===
 DEF_VISA_OPTION(vISA_Compaction,          ET_BOOL,  "-nocompaction",    UNUSED, true)
 DEF_VISA_OPTION(vISA_BXMLEncoder,         ET_BOOL,  "-nobxmlencoder",   UNUSED, true)
