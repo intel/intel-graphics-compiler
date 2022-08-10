@@ -171,6 +171,8 @@ public:
   virtual SPIRVLine *addLine(SPIRVString *FileName, SPIRVWord Line,
       SPIRVWord Column) override;
   virtual void addCapability(SPIRVCapabilityKind) override;
+  virtual SPIRVEntry* addModuleProcessed(const std::string&) override;
+  virtual std::vector<SPIRVModuleProcessed*> getModuleProcessedVec() override;
   virtual const SPIRVDecorateGeneric *addDecorate(const SPIRVDecorateGeneric *) override;
   virtual SPIRVDecorationGroup *addDecorationGroup() override;
   virtual SPIRVDecorationGroup *addDecorationGroup(SPIRVDecorationGroup *Group) override;
@@ -348,6 +350,7 @@ private:
   std::map<unsigned, SPIRVConstant*> LiteralMap;
   SPIRVAliasInstMDVec AliasInstMDVec;
   SPIRVAliasInstMDMap AliasInstMDMap;
+  std::vector<SPIRVModuleProcessed*> ModuleProcessedVec;
 
   void layoutEntry(SPIRVEntry* Entry);
 };
@@ -370,6 +373,15 @@ SPIRVModuleImpl::addLine(SPIRVString* FileName,
 void
 SPIRVModuleImpl::addCapability(SPIRVCapabilityKind Cap) {
   CapSet.insert(Cap);
+}
+
+SPIRVEntry* SPIRVModuleImpl::addModuleProcessed(const std::string& Process) {
+    ModuleProcessedVec.push_back(new SPIRVModuleProcessed(this, Process));
+    return ModuleProcessedVec.back();
+}
+
+std::vector<SPIRVModuleProcessed*> SPIRVModuleImpl::getModuleProcessedVec() {
+    return ModuleProcessedVec;
 }
 
 SPIRVConstant*

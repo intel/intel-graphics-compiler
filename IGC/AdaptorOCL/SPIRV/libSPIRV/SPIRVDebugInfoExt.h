@@ -30,6 +30,8 @@ namespace igc_spv {
 
         const unsigned int DebugInfoVersion = 10001;
 
+        static const std::string ProducerPrefix = { "Debug info producer: " };
+
         enum Instruction {
             DebugInfoNone = 0,
             CompilationUnit = 1,

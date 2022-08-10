@@ -593,11 +593,19 @@ SPIRVCapability::decode(std::istream &I) {
   Module->addCapability(Kind);
 }
 
+void SPIRVModuleProcessed::validate() const {
+    assert(WordCount == FixedWC + getSizeInWords(S) &&
+        "Incorrect word count in OpModuleProcessed");
+}
+
 void
 SPIRVModuleProcessed::decode(std::istream &I) {
     getDecoder(I) >> S;
     Module->setModuleProcessed(S);
+    Module->addModuleProcessed(S);
 }
+
+std::string SPIRVModuleProcessed::getProcessStr() { return S; }
 
 template <igc_spv::Op OC> void SPIRVContinuedInstINTELBase<OC>::validate() const {
     SPIRVEntry::validate();

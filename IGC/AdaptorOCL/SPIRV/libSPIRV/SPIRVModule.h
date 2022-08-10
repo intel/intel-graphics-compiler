@@ -207,6 +207,8 @@ public:
                                                 const std::vector<SPIRVWord> &,
                                                 SPIRVBasicBlock *) = 0;
   virtual void addCapability(SPIRVCapabilityKind) = 0;
+  virtual SPIRVEntry* addModuleProcessed(const std::string&) = 0;
+  virtual std::vector<SPIRVModuleProcessed*> getModuleProcessedVec() = 0;
 
   virtual SPIRVExtInst* getCompilationUnit() const = 0;
   virtual std::vector<SPIRVExtInst*> getGlobalVars() = 0;

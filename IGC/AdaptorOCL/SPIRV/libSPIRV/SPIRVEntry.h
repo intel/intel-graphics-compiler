@@ -646,11 +646,18 @@ private:
 
 class SPIRVModuleProcessed: public SPIRVEntryNoId<OpModuleProcessed> {
 public:
-  SPIRVModuleProcessed(SPIRVModule *M):SPIRVEntryNoId(M, 2){}
+    SPIRVModuleProcessed(SPIRVModule* M, const std::string& Process)
+        : SPIRVEntryNoId(M, FixedWC + getSizeInWords(Process)),
+        S(Process) {
+    }
   SPIRVModuleProcessed(){}
-  _SPIRV_DCL_DEC
+  _SPIRV_DCL_DEC_OVERRIDE
+  void validate() const override;
+  std::string getProcessStr();
+
 private:
   std::string S;
+  static const SPIRVWord FixedWC = 1;
 };
 
 template<class T>

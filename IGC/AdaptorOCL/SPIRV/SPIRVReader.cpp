@@ -211,7 +211,7 @@ public:
 
       auto lang = convertSPIRVSourceLangToDWARF(cunit.getLang());
       auto file = getDIFile(BM->get<SPIRVExtInst>(cunit.getSource()));
-      auto producer = "spirv";
+      auto producer = findModuleProducer();
       auto flags = "";
       auto rv = 0;
 
@@ -220,6 +220,16 @@ public:
       addDbgInfoVersion();
 
       return addMDNode(BM->getCompilationUnit(), cu);
+  }
+
+  std::string findModuleProducer() {
+      for (const auto& I : BM->getModuleProcessedVec()) {
+          if (I->getProcessStr().find(SPIRVDebug::ProducerPrefix) !=
+              std::string::npos) {
+              return I->getProcessStr().substr(SPIRVDebug::ProducerPrefix.size());
+          }
+      }
+      return "spirv";
   }
 
   DIExpression* createExpression(SPIRVExtInst* inst)
