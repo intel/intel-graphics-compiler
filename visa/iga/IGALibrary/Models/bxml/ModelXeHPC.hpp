@@ -285,8 +285,8 @@ namespace iga {
             {
                 // UD,D <- UD,D,UB,B,U4,S4,U2,S2
                 {TYPE(Type::UD)|TYPE(Type::D),TYPE(Type::UD)|TYPE(Type::D)|TYPE(Type::UB)|TYPE(Type::B)|TYPE(Type::U4)|TYPE(Type::S4)|TYPE(Type::U2)|TYPE(Type::S2)},
-                // F,HF,BF <- F,HF,BF8
-                {TYPE(Type::F)|TYPE(Type::HF)|TYPE(Type::BF),TYPE(Type::F)|TYPE(Type::HF)|TYPE(Type::BF8)},
+                // F <- F,BF8,HF8
+                {TYPE(Type::F),TYPE(Type::F)|TYPE(Type::BF8)|TYPE(Type::HF8)},
                 // F <- F,BF
                 {TYPE(Type::F),TYPE(Type::F)|TYPE(Type::BF)},
                 // BF <- F,BF
@@ -523,8 +523,12 @@ namespace iga {
                 {TYPE(Type::BF),TYPE(Type::F)},
                 // BF8 <- HF
                 {TYPE(Type::BF8),TYPE(Type::HF)},
+                // HF8 <- HF
+                {TYPE(Type::HF8),TYPE(Type::HF)},
                 // HF <- BF8
                 {TYPE(Type::HF),TYPE(Type::BF8)},
+                // HF <- HF8
+                {TYPE(Type::HF),TYPE(Type::HF8)},
                 // TF32 <- F
                 {TYPE(Type::TF32),TYPE(Type::F)},
                 // DF,F,UQ,Q,UW,W,UD,D <- DF
@@ -773,7 +777,7 @@ namespace iga {
                 // BF8 <- HF
                 {TYPE(Type::BF8),TYPE(Type::HF)}
             },
-            OpSpec::Attr::NONE
+            OpSpec::Attr::SUPPORTS_SATURATION
         },
         {Op::SUBB /* Op::84 */, Platform::XE_HPC, 0x4F,
             "subb",
