@@ -31,6 +31,10 @@ SplitSPMDAndESIMD(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
 llvm::Expected<spv_result_t> SpvSplitter::ParseSPIRV(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   const spv_target_env target_env = SPV_ENV_UNIVERSAL_1_5;
   spv_context context = spvContextCreate(target_env);
+  if (!context) {
+      return llvm::createStringError(llvm::inconvertibleErrorCode(),
+          "Couldn't create SPIR-V Tools context!");
+  }
   const uint32_t *const binary = reinterpret_cast<const uint32_t *>(spv_buffer);
   const size_t word_count = (spv_buffer_size_in_bytes / sizeof(uint32_t));
   spv_diagnostic diagnostic = nullptr;
