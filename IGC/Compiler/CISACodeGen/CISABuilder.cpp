@@ -6231,6 +6231,9 @@ namespace IGC
         if (context->getCompilerOption().EmitZeBinVISASections)
         {
             pOutput->m_VISAAsm.push_back({ kernelName, pMainKernel->getVISAAsm() });
+            for (auto& fun : stackFuncMap) {
+                pOutput->m_VISAAsm.push_back({ fun.first->getName().str(), fun.second->getVISAAsm()});
+            }
         }
 
         V(pMainKernel->GetGenxBinary(genxbin, binSize));
