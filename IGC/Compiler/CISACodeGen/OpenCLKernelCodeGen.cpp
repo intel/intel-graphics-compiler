@@ -752,8 +752,7 @@ namespace IGC
         case KernelArg::ArgType::IMAGE_CUBE_ARRAY:
         case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_ARRAY:
         case KernelArg::ArgType::IMAGE_CUBE_DEPTH_ARRAY:
-        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY:
-        {
+        case KernelArg::ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY: {
             // the image arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
             // For stateful image argument, the arg has 0 offset and 0 size
             zebin::PreDefinedAttrGetter::ArgAddrMode arg_addrmode =
@@ -783,19 +782,127 @@ namespace IGC
                 return zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
             } (kernelArg->getAccessQual());
 
-            // add the payload argument
-            zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
-                arg_off, arg_size, arg_idx, arg_addrmode,
-                zebin::PreDefinedAttrGetter::ArgAddrSpace::image,
-                access_type
-            );
-        }
-        break;
+            auto image_type = getZEImageType(getImageTypeFromKernelArg(*kernelArg));
 
+            // add the payload argument
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImage(m_kernelInfo.m_zePayloadArgs,
+                    arg_off, arg_size, arg_idx, arg_addrmode, access_type, image_type);
+            // TODO: When ZEBIN path supports inline sampler, follow Patch
+            // Token path to check InlineSamplersAllow3DImageTransformation().
+            arg.image_transformable =
+                kernelArg->getArgType() == KernelArg::ArgType::IMAGE_3D &&
+                kernelArg->getImgAccessedIntCoords() &&
+                !kernelArg->getImgAccessedFloatCoords();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_IMAGE_HEIGHT: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::image_height,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_IMAGE_WIDTH: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::image_width,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_IMAGE_DEPTH: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::image_depth,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_IMAGE_NUM_MIP_LEVELS: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::image_num_mip_levels,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_IMAGE_CHANNEL_DATA_TYPE: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::image_channel_data_type,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_IMAGE_CHANNEL_ORDER: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::image_channel_order,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_IMAGE_SRGB_CHANNEL_ORDER: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::image_srgb_channel_order,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_IMAGE_ARRAY_SIZE: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::image_array_size,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_IMAGE_NUM_SAMPLES: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::image_num_samples,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::flat_image_baseoffset,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::flat_image_height,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::flat_image_width,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::flat_image_pitch,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
         // sampler
         case KernelArg::ArgType::SAMPLER:
-        case KernelArg::ArgType::BINDLESS_SAMPLER:
-        {
+        case KernelArg::ArgType::BINDLESS_SAMPLER: {
             // the sampler arg is either bindless or stateful. check from "kernelArg->needsAllocation()"
             // For stateful image argument, the arg has 0 offset and 0 size
             // NOTE: we only have stateful sampler now
@@ -813,22 +920,45 @@ namespace IGC
 
             int arg_idx = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
+            auto sampler_type = getZESamplerType(getSamplerTypeFromKernelArg(*kernelArg));
             // add the payload argument
             zebin::ZEInfoBuilder::addPayloadArgumentSampler(m_kernelInfo.m_zePayloadArgs,
                 arg_off, arg_size, arg_idx, resInfo.Index, arg_addrmode,
-                zebin::PreDefinedAttrGetter::ArgAccessType::readwrite);
+                zebin::PreDefinedAttrGetter::ArgAccessType::readwrite, sampler_type);
+            break;
         }
-        break;
+        case KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::sampler_address,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::sampler_normalized,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
+        case KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA: {
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                    zebin::PreDefinedAttrGetter::ArgType::sampler_snap_wa,
+                    payloadPosition, kernelArg->getAllocateSize());
+            arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
+        }
 
-        case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET:
-        {
+        case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET: {
             zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::buffer_offset,
                 payloadPosition, kernelArg->getAllocateSize());
             arg.arg_index = kernelArg->getAssociatedArgNo();
+            break;
         }
-        break;
-
         case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
             zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                 zebin::PreDefinedAttrGetter::ArgType::printf_buffer,
@@ -845,8 +975,6 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_R0:
         case KernelArg::ArgType::R1:
         case KernelArg::ArgType::STRUCT:
-        // FIXME: this implicit arg is not used nowadays, should remove it completely
-        case KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA:
             break;
 
         // FIXME: should these be supported?
@@ -859,7 +987,6 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE:
         default:
             return false;
-            break;
         } // end switch (kernelArg->getArgType())
 
         return true;
@@ -1294,40 +1421,8 @@ namespace IGC
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = resInfo.Index;
 
-            iOpenCL::SAMPLER_OBJECT_TYPE samplerType;
-            if (getExtensionInfo(argNo) == ResourceExtensionTypeEnum::MediaSamplerType) {
-                samplerType = iOpenCL::SAMPLER_OBJECT_VME;
-            }
-            else if (getExtensionInfo(argNo) == ResourceExtensionTypeEnum::MediaSamplerTypeConvolve) {
-                samplerType = iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_2DCONVOLVE;
-            }
-            else if (getExtensionInfo(argNo) == ResourceExtensionTypeEnum::MediaSamplerTypeErode) {
-                samplerType = iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_ERODE;
-            }
-            else if (getExtensionInfo(argNo) == ResourceExtensionTypeEnum::MediaSamplerTypeDilate) {
-                samplerType = iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_DILATE;
-            }
-            else if (getExtensionInfo(argNo) == ResourceExtensionTypeEnum::MediaSamplerTypeMinMaxFilter) {
-                samplerType = iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_MINMAXFILTER;
-            }
-            else if (getExtensionInfo(argNo) == ResourceExtensionTypeEnum::MediaSamplerTypeMinMax) {
-                samplerType = iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_MINMAX;
-            }
-            else if (getExtensionInfo(argNo) == ResourceExtensionTypeEnum::MediaSamplerTypeCentroid) {
-                samplerType = iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_CENTROID;
-            }
-            else if (getExtensionInfo(argNo) == ResourceExtensionTypeEnum::MediaSamplerTypeBoolCentroid) {
-                samplerType = iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_BOOL_CENTROID;
-            }
-            else if (getExtensionInfo(argNo) == ResourceExtensionTypeEnum::MediaSamplerTypeBoolSum) {
-                samplerType = iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_BOOL_SUM;
-            }
-            else {
-                samplerType = iOpenCL::SAMPLER_OBJECT_TEXTURE;
-            }
-
             auto samplerArg = std::make_unique<iOpenCL::SamplerArgumentAnnotation>();
-            samplerArg->SamplerType = samplerType;
+            samplerArg->SamplerType = getSamplerTypeFromKernelArg(*kernelArg);
             samplerArg->ArgumentNumber = argNo;
             samplerArg->SamplerTableIndex = resInfo.Index;
             samplerArg->LocationIndex = kernelArg->getLocationIndex();
@@ -1610,6 +1705,43 @@ namespace IGC
        }
        return iOpenCL::IMAGE_MEMORY_OBJECT_INVALID;
    }
+
+    iOpenCL::SAMPLER_OBJECT_TYPE COpenCLKernel::getSamplerTypeFromKernelArg(const KernelArg& kernelArg)
+    {
+        IGC_ASSERT(kernelArg.getArgType() == KernelArg::ArgType::SAMPLER ||
+            kernelArg.getArgType() == KernelArg::ArgType::BINDLESS_SAMPLER);
+        switch (getExtensionInfo(kernelArg.getAssociatedArgNo())) {
+        case ResourceExtensionTypeEnum::MediaSamplerType:
+            return iOpenCL::SAMPLER_OBJECT_VME;
+
+        case ResourceExtensionTypeEnum::MediaSamplerTypeConvolve:
+            return iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_2DCONVOLVE;
+
+        case ResourceExtensionTypeEnum::MediaSamplerTypeErode:
+            return iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_ERODE;
+
+        case ResourceExtensionTypeEnum::MediaSamplerTypeDilate:
+            return iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_DILATE;
+
+        case ResourceExtensionTypeEnum::MediaSamplerTypeMinMaxFilter:
+            return iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_MINMAXFILTER;
+
+        case ResourceExtensionTypeEnum::MediaSamplerTypeMinMax:
+            return iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_MINMAX;
+
+        case ResourceExtensionTypeEnum::MediaSamplerTypeCentroid:
+            return iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_CENTROID;
+
+        case ResourceExtensionTypeEnum::MediaSamplerTypeBoolCentroid:
+            return iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_BOOL_CENTROID;
+
+        case ResourceExtensionTypeEnum::MediaSamplerTypeBoolSum:
+            return iOpenCL::SAMPLER_OBJECT_SAMPLE_8X8_BOOL_SUM;
+
+        default:
+            return iOpenCL::SAMPLER_OBJECT_TEXTURE;
+        }
+    }
 
     void COpenCLKernel::ParseShaderSpecificOpcode(llvm::Instruction* inst)
     {
