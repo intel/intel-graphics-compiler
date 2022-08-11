@@ -576,7 +576,7 @@ static unsigned getLatencyHidingThreshold(G4_Kernel &kernel)
     {
         RPThreshold = 104;
     }
-    return unsigned(RPThreshold * NumGrfs / 128);
+    return unsigned(RPThreshold * (std::max(NumGrfs, 128u) - 48u) / 80u);
 }
 
 preRA_Scheduler::preRA_Scheduler(G4_Kernel& k, Mem_Manager& m, RPE* rpe)
@@ -1474,7 +1474,7 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
         unsigned GTMax = 144;
         unsigned GTMin = 96;
         unsigned NumGrfs = kernel.getNumRegTotal();
-        float Ratio = NumGrfs / 128.0f;
+        float Ratio = (std::max(NumGrfs, 128u) - 48u) / 80.0f;
         // limit the iterative approach to certain platforms for now
         if (config.DoNotIterate)
         {
