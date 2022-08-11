@@ -873,7 +873,7 @@ bool GenXOCLRuntimeInfo::runOnModule(Module &M) {
   const auto &DBG = getAnalysis<GenXDebugInfo>();
 
   VISABuilder &VB =
-      *(GM.HasInlineAsm() ? GM.GetVISAAsmReader() : GM.GetCisaBuilder());
+      *((GM.HasInlineAsm() || !BC.getVISALTOStrings().empty()) ? GM.GetVISAAsmReader() : GM.GetCisaBuilder());
 
   CompiledModule = RuntimeInfoCollector{FGA, BC, VB, ST, M, DBG}.run();
   return false;

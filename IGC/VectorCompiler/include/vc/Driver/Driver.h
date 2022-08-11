@@ -153,6 +153,7 @@ struct ExternalData {
   std::unique_ptr<llvm::MemoryBuffer> VCPrintf64BIFModule;
   std::unique_ptr<llvm::MemoryBuffer> VCEmulationBIFModule;
   std::unique_ptr<llvm::MemoryBuffer> VCSPIRVBuiltinsBIFModule;
+  llvm::ArrayRef<const char*> VISALTOStrings;
 };
 
 llvm::Expected<CompileOutput> Compile(llvm::ArrayRef<char> Input,

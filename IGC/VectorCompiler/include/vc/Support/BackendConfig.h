@@ -185,6 +185,7 @@ class GenXBackendData {
 
 public:
   std::array<MemoryBufferRef, BiFKind::Size> BiFModule;
+  llvm::ArrayRef<const char*> VISALTOStrings;
 
   struct InitFromLLMVOpts {};
 
@@ -228,6 +229,10 @@ public:
 
   MemoryBufferRef getBiFModule(BiFKind Kind) const {
     return Data.BiFModule[Kind];
+  }
+
+  llvm::ArrayRef<const char*> getVISALTOStrings() const {
+      return Data.VISALTOStrings;
   }
 
   bool emitBreakpointAtKernelEntry() const {

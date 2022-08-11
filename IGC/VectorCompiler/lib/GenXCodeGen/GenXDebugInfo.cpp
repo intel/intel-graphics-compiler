@@ -1568,7 +1568,7 @@ bool GenXDebugInfo::runOnModule(Module &M) {
   const FunctionGroupAnalysis &FGA = getAnalysis<FunctionGroupAnalysis>();
 
   VISABuilder *VB = GM.GetCisaBuilder();
-  if (GM.HasInlineAsm())
+  if (GM.HasInlineAsm() || !BC.getVISALTOStrings().empty())
     VB = GM.GetVISAAsmReader();
   IGC_ASSERT(VB);
 

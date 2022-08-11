@@ -874,13 +874,18 @@ bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) {
   KernelBuilder->run();
 
   GenXModule *GM = KernelBuilder->GM;
-  if (GM->HasInlineAsm()) {
+  if (GM->HasInlineAsm() || !BC.getVISALTOStrings().empty()) {
     auto VISAAsmTextReader = GM->GetVISAAsmReader();
-    auto VISAText = KernelBuilder->CisaBuilder->GetAsmTextStream().str();
-    const int R = VISAAsmTextReader->ParseVISAText(VISAText, "");
-    if (R != 0)
-      handleInlineAsmParseError(BC, VISAAsmTextReader->GetCriticalMsg(),
-                                VISAText, *Ctx);
+    auto ParseVISA = [&](const std::string& text) {
+      const int R = VISAAsmTextReader->ParseVISAText(text, "");
+      if (R != 0)
+        handleInlineAsmParseError(BC, VISAAsmTextReader->GetCriticalMsg(), text,
+                                  *Ctx);
+    };
+    ParseVISA(KernelBuilder->CisaBuilder->GetAsmTextStream().str());
+    for (auto VisaAsm : BC.getVISALTOStrings()) {
+      ParseVISA(VisaAsm);
+    }
   }
 
   return false;
@@ -6603,7 +6608,7 @@ public:
     auto &GM = getAnalysis<GenXModule>();
     std::stringstream ss;
     VISABuilder *CisaBuilder = GM.GetCisaBuilder();
-    if (GM.HasInlineAsm())
+    if (GM.HasInlineAsm() || !BC->getVISALTOStrings().empty())
       CisaBuilder = GM.GetVISAAsmReader();
     CISA_CALL(CisaBuilder->Compile("genxir", &ss, EmitVisa));
 
@@ -6684,6 +6689,9 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-fusedCallWA");
     addArgument("1");
   }
+  if (!BC.getVISALTOStrings().empty()) {
+    addArgument("-noStitchExternFunc");
+  }
   return Argv;
 }
 
@@ -6744,7 +6752,10 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
 
 void GenXModule::InitCISABuilder() {
   IGC_ASSERT(ST);
-  const vISABuilderMode Mode = HasInlineAsm() ? vISA_ASM_WRITER : vISA_DEFAULT;
+  const vISABuilderMode Mode =
+    (HasInlineAsm() || !BC->getVISALTOStrings().empty())
+      ? vISA_ASM_WRITER
+      : vISA_DEFAULT;
   CisaBuilder = createVISABuilder(*ST, *BC, getInfoForFinalizer(), Mode,
                                   getContext(), ArgStorage);
 }

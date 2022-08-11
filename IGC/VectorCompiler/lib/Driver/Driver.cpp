@@ -279,6 +279,8 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
   else
     BackendData.BiFModule[BiFKind::VCPrintf] =
         IGCLLVM::makeMemoryBufferRef(*Data.VCPrintf32BIFModule);
+
+  BackendData.VISALTOStrings = Data.VISALTOStrings;
   return std::move(BackendData);
 }
 
