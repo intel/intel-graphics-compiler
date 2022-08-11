@@ -1225,8 +1225,6 @@ G4_SrcRegRegion *IR_Builder::lscMulAdd(
     }
 }
 
-
-
 static bool isPow2(int x)
 {
     return (x & (x - 1)) == 0;
@@ -1458,8 +1456,8 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(
             createSrc(TMP_HI32->getRegVar(), 0, 0, srcRgn1, Type_UD);
         createInst(
             duplicateOperand(pred),
-            G4_mov, nullptr, g4::NOSAT, passExecSize,
-            resultHi, tmpHiSrc, nullptr, Get_Gen4_Emask(passExecCtrl, passExecSize), true);
+            G4_mov, nullptr, g4::NOSAT, passExecSize, resultHi, tmpHiSrc, nullptr,
+            Get_Gen4_Emask(passExecCtrl, passExecSize), true);
         //
         passExecCtrl = Get_Next_EMask(passExecCtrl, passExecSize);
     }
@@ -1476,157 +1474,6 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(
 {
     if (mulImm == 1)
         return src0;
-
     MUST_BE_TRUE(false, "mul64-aos not supported yet");
     return nullptr;
-
-    /*
-    const auto *srcRgn1 = execSize == 1 ? getRegionScalar() : getRegionStride1();
-    const auto *srcRgn2 = execSize == 1 ? getRegionScalar() : getRegionStride2();
-    int dstRgnHz2 = execSize == 1 ? 1 : 2;
-
-    // int64 vs 16b multiply with int32 math
-    auto srcType = srcVar->getElemType();
-    MUST_BE_TRUE(srcType == Type_UQ || srcType == Type_Q, "type should be 64b");
-    //
-    // either way below we need the accumulator, so we're limited to using
-    // multiple passes to perform the math
-    const auto passExecSize = std::min<unsigned>(execSize, getNativeExecSize());
-    const int passes = std::max<int>(1, execSize/getNativeExecSize());
-
-    G4_Declare *result = createTempVar(execSize, srcType, GRFALIGN);
-    if (isPow2(mulImm)) {
-    // e.g. SIMD32 when SIMD8 is max HW size requires four passes
-    int shlAmt = intLog2(mulImm);
-    VISA_EMask_Ctrl passExecCtrl = execCtrl;
-    for (int pass = 0; pass < passes; pass++)
-    {
-    // e.g. someone tries to do a SIMD32 starting at M16
-    MUST_BE_TRUE(passExecCtrl != vISA_NUM_EMASK, "invalid exec mask");
-    //
-    // shr (E|M0)  TMP.1<1>:ud     SRC.0<2>       29
-    // shl (E|M0)  DST.0<2>:ud     SRC.0<2>        3
-    // shl (E|M0)  DST.1<2>:ud     SRC.0<2>        3
-    // or  (E|M0)  DST.1<2>:ud     DST.1<2>      TMP
-    int passInstOpt = Get_Gen4_Emask(passExecCtrl, passExecSize);
-    G4_Declare *TMP = createTempVar(passExecSize, Type_UD, GRFALIGN);
-    G4_DstRegRegion *dstTMP =
-    createDst(TMP->getRegVar(), 0, 0, 1, Type_UD);
-    G4_SrcRegRegion *srcLo32a =
-    createSrcRegRegion(srcVar->getRegVar(), 2*pass, 0, srcRgn2, Type_UD);
-    G4_Operand *shrImmAmt = createImm(32 - shlAmt, Type_W);
-    createBinOp(
-    duplicateOperand(pred),
-    G4_shr, passExecSize,
-    dstTMP, srcLo32a, shrImmAmt, passInstOpt);
-    //
-    G4_Operand *shlImmAmt = createImm(shlAmt, Type_W);
-    G4_DstRegRegion *dstLo32 =
-    createDst(result->getRegVar(), 2*pass, 0, dstRgnHz2, Type_UD);
-    G4_SrcRegRegion *srcLo32b =
-    createSrcRegRegion(srcVar->getRegVar(), 2*pass, 0, srcRgn2, Type_UD);
-    createBinOp(
-    duplicateOperand(pred),
-    G4_shl, passExecSize, dstLo32, srcLo32b, shlImmAmt, passInstOpt);
-    //
-    G4_DstRegRegion *dstHi32a =
-    createDst(result->getRegVar(), 2*pass, 1, dstRgnHz2, Type_UD);
-    G4_SrcRegRegion *srcHi32a =
-    createSrcRegRegion(srcVar->getRegVar(), 2*pass, 1, srcRgn2, Type_UD);
-    createBinOp(
-    duplicateOperand(pred),
-    G4_shl, passExecSize, dstHi32a, srcHi32a, shlImmAmt, passInstOpt);
-    //
-    G4_DstRegRegion *dstHi32b =
-    createDst(result->getRegVar(), 2*pass, 1, dstRgnHz2, Type_UD);
-    G4_SrcRegRegion *srcHi32b =
-    createSrcRegRegion(srcVar->getRegVar(), 2*pass, 1, srcRgn2, Type_UD);
-    G4_SrcRegRegion *srcTMP =
-    createSrcRegRegion(TMP->getRegVar(), 0, 1, srcRgn1, Type_UD);
-    createBinOp(
-    duplicateOperand(pred),
-    G4_or, passExecSize, dstHi32b, srcHi32b, srcTMP,
-    passInstOpt);
-
-    passExecCtrl = Get_Next_EMask(execCtrl, (int)passExecSize);
-    }
-    } else {
-    // have to use mul/mach
-    // SOA version
-    //     mul  (8|M0)   DST_LO32<1>:ud   SRC.lo32:ud      imm16:uw
-    // (W) mul  (8|M0)   acc0.0<1>:ud     SRC.lo32:ud      imm16:uw
-    //     mach (8|M0)   TMP0.0<1>:d      SRC.lo32:ud      imm16:ud {AccWrEn}
-    //     mul  (8|M0)   TMP1.0<1>:d      SRC.hi32:d       imm16:uw
-    //     add  (8|M0)   DST_HI32<1>:d    TMP0:d           TMP:d
-    // AOS version: pass execution size is int sizeof(acc0), with pass offset PO
-    //     mul  (P|PO)   DST.0<2>:ud    SRC.0<2>:ud  imm16:uw
-    // (W) mul  (P|M0)   acc0.0<1>:ud   SRC.0<2>:ud  imm16:uw
-    // (W) mach (P|M0)   TMP0<1>:d      SRC.0<2>:ud  imm16:ud {AccWrEn}
-    //     mul  (P|PO)   TMP1<1>:d      SRC.1<2>:d   imm16:uw
-    //     add  (P|PO)   DST.1<2>:d     TMP0:d       TMP1:d
-    VISA_EMask_Ctrl passExecCtrl = execCtrl;
-    G4_Operand *srcImm16 = createImm(mulImm, Type_UW);
-
-    for (int pass = 0; pass < passes; pass++)
-    {
-    // e.g. someone tries to do a SIMD32 starting at M16
-    MUST_BE_TRUE(passExecCtrl != vISA_NUM_EMASK, "invalid exec mask");
-    //
-    G4_DstRegRegion *dstMul1 =
-    createDst(result->getRegVar(), 2*pass, 0, dstRgnHz2, Type_UD);
-    G4_SrcRegRegion *srcMul1 =
-    createSrcRegRegion(srcVar->getRegVar(), 2*pass, 0, srcRgn2, Type_UD);
-    createInst(
-    duplicateOperand(pred),
-    G4_mul, nullptr, false, passExecSize,
-    dstMul1, srcMul1, srcImm16, Get_Gen4_Emask(passExecCtrl, passExecSize));
-    //
-    G4_Declare *TMP0 = createTempVar(passExecSize, Type_UD, GRFALIGN);
-    G4_DstRegRegion *dstMul2 =
-    createDst(phyregpool.getAcc0Reg(), 0, 0, 1, Type_UD);
-    G4_SrcRegRegion *srcMul2 = duplicateOperand(srcMul1);
-    createInst(
-    duplicateOperand(pred),
-    G4_mul, nullptr, false, passExecSize,
-    dstMul2, srcMul2, srcImm16,
-    Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize));
-    //
-    G4_DstRegRegion *dstMach3 =
-    createDst(TMP0->getRegVar(), 0, 0, 1, Type_D);
-    G4_SrcRegRegion *srcMach3 = duplicateOperand(srcMul1);
-    G4_INST *i = createInst(
-    duplicateOperand(pred),
-    G4_mach, nullptr, false, passExecSize,
-    dstMach3, srcMach3, srcImm16,
-    Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize) | InstOpt_AccWrCtrl);
-    G4_SrcRegRegion *srcImplAcc =
-    createSrcRegRegion(phyregpool.getAcc0Reg(), 0, 0, srcRgn1, Type_D);
-    i->setImplAccSrc(srcImplAcc);
-    //
-    G4_Declare *TMP1 = createTempVar(passExecSize, Type_D, GRFALIGN);
-    G4_DstRegRegion *dstMul4 =
-    createDst(TMP1->getRegVar(), 0, 0, 1, Type_D);
-    G4_SrcRegRegion *srcMul4 =
-    createSrcRegRegion(srcVar->getRegVar(), 2*pass, 1, srcRgn2, Type_D);
-    createInst(
-    duplicateOperand(pred),
-    G4_mul, nullptr, false, passExecSize,
-    dstMul4, srcMul4, srcImm16, Get_Gen4_Emask(passExecCtrl, passExecSize));
-    //
-    G4_DstRegRegion *dstAdd5 =
-    createDst(result->getRegVar(), 2*pass, 1, dstRgnHz2, Type_D);
-    G4_SrcRegRegion *src0Add5 =
-    createSrcRegRegion(TMP0->getRegVar(), 0, 1, srcRgn1, Type_D);
-    G4_SrcRegRegion *src1Add5 =
-    createSrcRegRegion(TMP1->getRegVar(), 0, 1, srcRgn1, Type_D);
-    createInst(
-    duplicateOperand(pred),
-    G4_mul, nullptr, false, passExecSize,
-    dstAdd5, src0Add5, src1Add5, Get_Gen4_Emask(passExecCtrl, passExecSize));
-    //
-    passExecCtrl = Get_Next_EMask(execCtrl, (int)passExecSize);
-    }
-    }
-    return result;
-    */
 }

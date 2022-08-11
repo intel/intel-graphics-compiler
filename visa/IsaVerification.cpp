@@ -3768,7 +3768,8 @@ struct LscInstVerifier {
         //
         auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
         uint16_t immediateScale = getNext<uint16_t>();
-        if ((immediateScale & (immediateScale-1)) != 0) {
+        if ((immediateScale & (immediateScale-1)) != 0
+                ) {
             error("immediate scale must be power of two "
                 "(someone could enable this though)");
         }
