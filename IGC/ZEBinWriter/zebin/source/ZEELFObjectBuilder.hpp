@@ -435,18 +435,6 @@ public:
         int32_t arg_index,
         int32_t source_offset);
 
-    // addPayloadArgumentImage - add explicit kernel argument for image
-    // into given arg_list
-    // The argument type will be set to by_pointer, and addr_space will be set to image
-    static zeInfoPayloadArgument& addPayloadArgumentImage(
-        PayloadArgumentsTy& arg_list,
-        int32_t offset,
-        int32_t size,
-        int32_t arg_index,
-        PreDefinedAttrGetter::ArgAddrMode addrmode,
-        PreDefinedAttrGetter::ArgAccessType access_type,
-        PreDefinedAttrGetter::ArgImageType image_type);
-
     // addPayloadArgumentSampler - add explicit kernel argument for sampler
     // into given arg_list
     // The argument type will be set to by_pointer, and addr_space will be set to sampler
@@ -457,8 +445,7 @@ public:
         int32_t arg_index,
         int32_t sampler_index,
         PreDefinedAttrGetter::ArgAddrMode addrmode,
-        PreDefinedAttrGetter::ArgAccessType access_type,
-        PreDefinedAttrGetter::ArgSamplerType sampler_type);
+        PreDefinedAttrGetter::ArgAccessType access_type);
 
     // addPayloadArgumentImplicit - add non-user argument (implicit argument)
     // into given arg_list. The type must be local_size, group_size,

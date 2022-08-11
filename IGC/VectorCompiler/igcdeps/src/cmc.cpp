@@ -247,8 +247,7 @@ void CMKernel::createSamplerAnnotation(unsigned argNo, unsigned BTI)
     constexpr auto ZeAccessType = zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
 
     zebin::ZEInfoBuilder::addPayloadArgumentSampler(m_kernelInfo.m_zePayloadArgs,
-       PayloadPosition, ArgSize, argNo, BTI, ZeAddrMode, ZeAccessType,
-       iOpenCL::getZESamplerType(samplerType));
+       PayloadPosition, ArgSize, argNo, BTI, ZeAddrMode, ZeAccessType);
 }
 
 static iOpenCL::IMAGE_MEMORY_OBJECT_TYPE
@@ -299,9 +298,10 @@ void CMKernel::createImageAnnotation(
     imageInput->Writeable = Access != ArgAccessKind::ReadOnly;
     m_kernelInfo.m_imageInputAnnotations.push_back(std::move(imageInput));
 
-    zebin::ZEInfoBuilder::addPayloadArgumentImage(m_kernelInfo.m_zePayloadArgs,
+    zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
         PayloadPosition, ArgSize, argNo, zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
-        getZEArgAccessType(Access), iOpenCL::getZEImageType(imageInput->ImageType));
+        zebin::PreDefinedAttrGetter::ArgAddrSpace::image,
+        getZEArgAccessType(Access));
     zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI,
                                                argNo);
 }

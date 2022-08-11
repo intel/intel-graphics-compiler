@@ -84,9 +84,6 @@ namespace IGC
         // a helper function to get image type from kernelArg
         iOpenCL::IMAGE_MEMORY_OBJECT_TYPE getImageTypeFromKernelArg(const KernelArg& kernelArg);
 
-        // a helper function to get sampler type from kernelArg
-        iOpenCL::SAMPLER_OBJECT_TYPE getSamplerTypeFromKernelArg(const KernelArg& kernelArg);
-
         // Creates annotations for inline sampler_t objects
         void CreateInlineSamplerAnnotations();
 

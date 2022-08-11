@@ -79,9 +79,6 @@ void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument
     io.mapOptional("sampler_index", info.sampler_index, -1);
     io.mapOptional("source_offset", info.source_offset, -1);
     io.mapOptional("slm_alignment", info.slm_alignment, 0);
-    io.mapOptional("image_type", info.image_type, std::string());
-    io.mapOptional("image_transformable", info.image_transformable, false);
-    io.mapOptional("sampler_type", info.sampler_type, std::string());
 }
 void MappingTraits<zeInfoPerThreadPayloadArgument>::mapping(IO& io, zeInfoPerThreadPayloadArgument& info)
 {
