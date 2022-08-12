@@ -2826,7 +2826,8 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::createGroupId(uns
         llvm::GenISAIntrinsic::GenISA_DCL_SystemValue,
         this->getFloatTy());
     return this->CreateBitCast(
-        this->CreateCall(pFunc, this->getInt32(IGC::THREAD_GROUP_ID_X + dim)), this->getInt32Ty());
+        this->CreateCall(pFunc, this->getInt32(IGC::THREAD_GROUP_ID_X + dim)), this->getInt32Ty(),
+        (dim == 0) ? "GroupID_X" : (dim == 1) ? "GroupID_Y" : "GroupID_Z");
 }
 
 template<bool preserveNames, typename T, typename Inserter>
