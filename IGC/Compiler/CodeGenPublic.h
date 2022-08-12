@@ -310,6 +310,7 @@ namespace IGC
         // Note: does not check for indirect sampler
         bool mayHaveIndirectResources;
         bool hasUniformAssumptions;
+        bool hasPullBary;
         bool sampleCmpToDiscardOptimizationPossible;
         bool hasRuntimeValueVector;
         unsigned int numCall;

@@ -92,6 +92,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList, IGCMetrics::IGCMet
     instrList->numLocalInsts = 0;
     instrList->sampleCmpToDiscardOptimizationPossible = false;
     instrList->sampleCmpToDiscardOptimizationSlot = 0;
+    instrList->hasPullBary = false;
     instrList->hasDynamicGenericLoadStore = false;  /* may use hasGenericAddressSpacePointers instead */
     instrList->hasUnmaskedRegion = false;
     instrList->hasRuntimeValueVector = false;
@@ -282,6 +283,11 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_DCL_inputVec:
         case GenISAIntrinsic::GenISA_DCL_ShaderInputVec:
             g_InstrTypes->numPsInputs++;
+            break;
+        case GenISAIntrinsic::GenISA_PullSampleIndexBarys:
+        case GenISAIntrinsic::GenISA_PullSnappedBarys:
+        case GenISAIntrinsic::GenISA_PullCentroidBarys:
+            g_InstrTypes->hasPullBary = true;
             break;
         case GenISAIntrinsic::GenISA_ldraw_indexed:
         case GenISAIntrinsic::GenISA_ldrawvector_indexed:
