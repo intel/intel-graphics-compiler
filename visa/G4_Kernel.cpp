@@ -979,6 +979,55 @@ VarSplitPass* G4_Kernel::getVarSplitPass()
     return varSplitPass;
 }
 
+unsigned G4_Kernel::getRegisterNumWithThreads(unsigned overrideNumThreads)
+{
+    unsigned numRegTotal = 128;
+
+    switch (overrideNumThreads)
+    {
+    case 4:
+        numRegTotal = 256;
+        break;
+    case 5:
+        numRegTotal = 192;
+        break;
+    case 6:
+        numRegTotal = 160;
+        break;
+    case 7:
+        numRegTotal = 144;
+        break;
+    case 8:
+        numRegTotal = 128;
+        break;
+    case 9:
+        numRegTotal = 112;
+        break;
+    case 10:
+        numRegTotal = 96;
+        break;
+    case 12:
+        numRegTotal = 80;
+        break;
+    default:
+        numRegTotal = 128;
+    }
+    return numRegTotal;
+}
+
+unsigned G4_Kernel::getLargestInputRegister()
+{
+    const unsigned inputCount = fg.builder->getInputCount();
+    unsigned regNum = 0;
+    if (inputCount)
+    {
+        const input_info_t* ii = fg.builder->getInputArg(inputCount - 1);
+        regNum = (ii->offset + ii->dcl->getByteSize()) / fg.builder->numEltPerGRF<Type_UB>();
+    }
+
+    return regNum;
+}
+
 void G4_Kernel::setKernelParameters()
 {
     unsigned overrideGRFNum = 0;

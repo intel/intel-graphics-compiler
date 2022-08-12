@@ -743,21 +743,19 @@ bool preRA_RegSharing::run()
     else if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
         kernel.getOptions()->getOption(vISA_MultiLevelRegSharing))
     {
-        if (maxPressure <= 64)
+        if (maxPressure <= 64 && kernel.getRegisterNumWithThreads(12) >= kernel.getLargestInputRegister())
             kernel.updateKernelByNumThreads(12);
-        else if (maxPressure <= 80)
+        else if (maxPressure <= 80 && kernel.getRegisterNumWithThreads(10) >= kernel.getLargestInputRegister())
             kernel.updateKernelByNumThreads(10);
-        else if (maxPressure <= 96)
+        else if (maxPressure <= 96 && kernel.getRegisterNumWithThreads(9) >= kernel.getLargestInputRegister())
             kernel.updateKernelByNumThreads(9);
-        else if (maxPressure <= 112)
+        else if (maxPressure <= 112 && kernel.getRegisterNumWithThreads(8) >= kernel.getLargestInputRegister())
             kernel.updateKernelByNumThreads(8);
-        else if (maxPressure <= 128)
+        else if (maxPressure <= 128 && kernel.getRegisterNumWithThreads(7) >= kernel.getLargestInputRegister())
             kernel.updateKernelByNumThreads(7);
-        else if (maxPressure <= 144)
+        else if (maxPressure <= 160 && kernel.getRegisterNumWithThreads(6) >= kernel.getLargestInputRegister())
             kernel.updateKernelByNumThreads(6);
-        else if (maxPressure <= 160)
-            kernel.updateKernelByNumThreads(6);
-        else if (maxPressure <= 192)
+        else if (maxPressure <= 192 && kernel.getRegisterNumWithThreads(5) >= kernel.getLargestInputRegister())
             kernel.updateKernelByNumThreads(5);
         else
             kernel.updateKernelByNumThreads(4);

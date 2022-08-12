@@ -483,6 +483,8 @@ public:
 
     bool isLocalSheduleable() const { return isLocalSchedulable; }
     void setLocalSheduleable(bool value) { isLocalSchedulable = value; }
+    unsigned getRegisterNumWithThreads(unsigned overrideNumThreads);
+    unsigned getLargestInputRegister();
 
 private:
     G4_BB* getNextBB(G4_BB* bb) const;
