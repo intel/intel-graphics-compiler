@@ -31,6 +31,7 @@ struct SendExDescOpts {
 class BinaryEncodingIGA
 {
     int                     IGABlockId = 0;
+    int                     IGAInstId = 0;
     Mem_Manager&            mem;
     G4_Kernel&              kernel;
     std::string             fileName; // .dat filename
@@ -188,6 +189,7 @@ private:
         if (itr == labelToBlockMap.end())
         {
             b = IGAKernel.createBlock();
+            b->setID(IGABlockId++);
             labelToBlockMap[label] = b;
         }
         else {
@@ -913,6 +915,7 @@ void BinaryEncodingIGA::Encode()
     {
         // create a new BB if kernel does not start with label
         currBB = IGAKernel->createBlock();
+        currBB->setID(IGABlockId++);
         IGAKernel->appendBlock(currBB);
     }
 
@@ -1049,7 +1052,6 @@ void BinaryEncodingIGA::EmitJSON(int dumpJSON) {
     std::ofstream ofs(jsonFileName, std::ofstream::out);
     FormatOpts fos(*platformModel);
     fos.printJson = true;
-    IGAKernel->resetIds();
     if (dumpJSON > 1) {
         fos.printInstDefs = true;
     }
@@ -1151,6 +1153,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(
         return nullptr;
     }
 
+    igaInst->setID(IGAInstId++);
     int visaOff = g4inst->getCISAOff();
     igaInst->setLoc(visaOff); // make IGA src off track CISA id
 
@@ -1260,6 +1263,7 @@ void BinaryEncodingIGA::translateInstructionBranchSrcs(
     {
         // Creating a fall through block
         bbNew = IGAKernel->createBlock();
+        bbNew->setID(IGABlockId++);
         igaInst->setLabelSource(SourceIndex::SRC0, bbNew, Type::UD);
         IGAKernel->appendBlock(bbNew);
     }

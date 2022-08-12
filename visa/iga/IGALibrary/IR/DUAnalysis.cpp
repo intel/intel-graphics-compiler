@@ -629,6 +629,7 @@ struct DepAnalysisComputer
         , results(_results)
     {
         sanityCheckIR(k); // should nop in release
+        IGA_ASSERT(k->checkIdsUnique(), "call relabelIDs or setIDs; duplicates exist");
 
         results.deps.clear();
         results.liveIn.clear();
@@ -643,21 +644,12 @@ struct DepAnalysisComputer
         // pre-assign ID's we know to be valid and
         // precompute instruction dependencies
         for (Block *b : k->getBlockList()) {
-            IGA_ASSERT(
-                (size_t)b->getID() == blockState.size(),
-                "we assume block ids go from 0 ... n-1");
             blockState.emplace_back(b);
 
             auto iitr = b->getInstList().begin();
             while (iitr != b->getInstList().end()) {
                 Instruction *i = *iitr;
-                IGA_ASSERT(
-                    (size_t)i->getID() == instSrcs.size(),
-                    "we assume block ids go from 0 ... n-1");
                 instSrcs.emplace_back(InstSrcs::compute(*i));
-                IGA_ASSERT(
-                    (size_t)i->getID() == instDstsUnion.size(),
-                    "we assume block ids go from 0 ... n-1");
                 instDstsUnion.emplace_back(InstDsts::compute(*i).unionOf());
                 iitr++;
             }
