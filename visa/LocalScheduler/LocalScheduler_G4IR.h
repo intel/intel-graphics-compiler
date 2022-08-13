@@ -396,7 +396,8 @@ private:
     G4_Kernel& kernel;
     Mem_Manager& mem;
     RPE* rpe;
-
+    // set kernel parameter based up register pressure
+    void adjustNumThreads(unsigned pressure);
 };
 // Restrictions of candidate for 2xDP:
 //    1, Only support SIMD16 DF mad with M0
