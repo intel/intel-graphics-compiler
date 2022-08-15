@@ -530,10 +530,10 @@ DECLARE_IGC_REGKEY(DWORD, SelectiveFunctionControl, 0,  "Selectively enables Fun
 DECLARE_IGC_REGKEY(bool, EnableStackCallFuncCall,       false, "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", false)
 DECLARE_IGC_REGKEY(bool, EnableByValStructArgPromotion, true, "If enabled, byval/sret struct arguments are promoted to pass-by-value if possible.", true)
 DECLARE_IGC_REGKEY(bool, ForceInlineStackCallWithImplArg, true, "If enabled, stack calls that uses implicit args will be force inlined.", true)
-DECLARE_IGC_REGKEY(DWORD, FunctionCloningThreshold,    0,
-    "Limits how many times functions can be cloned when called from multiple function groups." \
+DECLARE_IGC_REGKEY(DWORD, FunctionCloningThreshold,     1,
+    "Limits the number of cloned functions when called from multiple function groups." \
     "If exceeding the cloning threshold, compile the function only once and use address relocation instead." \
-    "A value of '0' means no limit on times it can be cloned", true)
+    "A value of '0' means no limit on times it can be cloned.", true)
 DECLARE_IGC_REGKEY(DWORD, OCLInlineThreshold,           512,  "Setting OCL inline thershold", true)
 DECLARE_IGC_REGKEY(bool, DisableAddingAlwaysAttribute,  false, "Disable adding always attribute", true)
 DECLARE_IGC_REGKEY(bool, EnableForceGroupSize,          false, "Enable forcing thread Group Size ForceGroupSizeX and ForceGroupSizeY", false)

@@ -155,8 +155,12 @@ void GenXCodeGenModule::processFunction(Function& F)
     // and use relocation instead. The function will only be compiled once and runtime must relocate
     // its address for each caller. This greatly saves on compile time when there are many function
     // groups that all call the same function.
-    auto cloneTheshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
-    if (F.hasFnAttribute("visaStackCall") && cloneTheshold > 0 && CallerFGs.size() > cloneTheshold)
+    auto cloneThreshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
+    bool zebinEnable = IGC_IS_FLAG_ENABLED(EnableZEBinary) || getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.EnableZEBinary;
+    if (F.hasFnAttribute("visaStackCall") &&
+        zebinEnable &&
+        cloneThreshold > 0 &&
+        CallerFGs.size() > cloneThreshold)
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto IFG = FGA->getOrCreateIndirectCallGroup(F.getParent());
@@ -232,8 +236,9 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
 
     // Use the same cloning threshold for single function SCCs, but making every function
     // in the SCC indirect calls to prevent cloning the entire SCC N times.
-    auto cloneTheshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
-    if (cloneTheshold > 0 && CallerFGs.size() > cloneTheshold)
+    auto cloneThreshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
+    bool zebinEnable = IGC_IS_FLAG_ENABLED(EnableZEBinary) || getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.EnableZEBinary;
+    if (zebinEnable && cloneThreshold > 0 && CallerFGs.size() > cloneThreshold)
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto Mod = (*SCCNodes).front()->getFunction()->getParent();
