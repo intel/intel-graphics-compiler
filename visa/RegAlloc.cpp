@@ -3015,6 +3015,15 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                 uint32_t varID = var->getId();
                 if (liveAnalysis.isLiveAtEntry(bb, dcl->getRegVar()->getId()))
                 {
+                    // Skip live-in that has no physical reg assigned.
+                    // Currently there might be some cases of a variable not
+                    // actually used but marked as live-in and live-out. For
+                    // example, spillHeader var is created for save/restore
+                    // spill/fill code in stack call case, and is not used when
+                    // expanding spill/fill using LSC.
+                    if (!var->isPhyRegAssigned())
+                        continue;
+
                     MUST_BE_TRUE(var->getPhyReg()->isGreg(), "RA verification error: Invalid preg assignment for variable " << dcl->getName() << "!");
 
                     uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
@@ -3090,6 +3099,10 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                 uint32_t varID = var->getId();
                 if (liveAnalysis.isLiveAtExit(bb, varID))
                 {
+                    // Skip live-out w/o physical reg assigned as well.
+                    if (!var->isPhyRegAssigned())
+                        continue;
+
                     MUST_BE_TRUE(var->getPhyReg()->isGreg(), "RA verification error: Invalid preg assignment for variable " << dcl->getName() << "!");
 
                     uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
@@ -3184,6 +3197,8 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
 
                 auto verifyDstRA = [&](uint32_t idx, uint32_t regNum, uint32_t regOff, bool& suppressWarning)
                 {
+                    MUST_BE_TRUE(dcl && dcl->getRegVar() && dcl->getRegVar()->isPhyRegAssigned(),
+                        "RA verification error: Found dst variable without physical register.");
                     liveOutRegMapIt = liveOutRegMap.find(idx);
                     if (liveOutRegVec[idx] == UINT_MAX)
                     {
@@ -3373,6 +3388,8 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                 G4_Declare* dcl = nullptr;
                 auto verifySrcRA = [&](uint32_t idx, uint32_t regNum, uint32_t regOff)
                 {
+                    MUST_BE_TRUE(dcl && dcl->getRegVar() && dcl->getRegVar()->isPhyRegAssigned(),
+                        "RA verification error: Found src variable without physical register.");
                     liveOutRegMapIt = liveOutRegMap.find(idx);
                     if (liveOutRegVec[idx] == UINT_MAX)
                     {
