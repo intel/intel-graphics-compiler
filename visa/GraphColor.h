@@ -279,7 +279,6 @@ namespace vISA
 
         bool updateDstMaskForGather(G4_INST* inst, std::vector<unsigned char>& mask);
         bool updateDstMaskForGatherRaw(G4_INST* inst, std::vector<unsigned char>& mask, const G4_SendDescRaw* raw);
-        bool updateDstMaskForGatherLdSt(G4_INST* inst, std::vector<unsigned char>& mask, const G4_SendDescLdSt *ldst);
         void updateDstMask(G4_INST* inst, bool checkCmodOnly);
         static unsigned getByteSizeFromMask(AugmentationMasks type);
         bool isDefaultMaskDcl(G4_Declare* dcl, unsigned simdSize, AugmentationMasks type);

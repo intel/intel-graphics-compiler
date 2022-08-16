@@ -524,7 +524,7 @@ public:
 
     // Call WA
     // m_maskOffWAInsts: insts whose MaskOff will be changed for this call WA.
-    std::unordered_map <G4_INST*, G4_BB*> m_maskOffWAInsts;
+    std::unordered_map<G4_INST*, G4_BB*> m_maskOffWAInsts;
     // m_indirectCallWAInfo : all info related to indirect call wa
     // such as BBs for smallEU's call/bigEu's call. If ip-relative call,
     // insts to calculate IP-relative address, etc.

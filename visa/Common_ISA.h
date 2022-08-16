@@ -817,7 +817,7 @@ namespace vISA
         SAMPLER    =  2,
         GATEWAY    =  3,
         DP_DC2     =  4,
-        DP_WRITE   =  5, //DATAPORT WRITE
+        DP_RC      =  5, //RENDER TARGET
         URB        =  6, //URB
         SPAWNER    =  7, //THREAD SPAWNER
         VME        =  8, //VIDEO MOTION ESTIMATION

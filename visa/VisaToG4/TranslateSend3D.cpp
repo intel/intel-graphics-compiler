@@ -1074,7 +1074,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         if (useHeader)
         {
             m0 = createSrcRegRegion(msg, getRegionStride1());
-            msgDesc = createSendMsgDesc(fc, 0, numHeaderGRF, SFID::DP_WRITE, numRows,
+            msgDesc = createSendMsgDesc(fc, 0, numHeaderGRF, SFID::DP_RC, numRows,
                 extFuncCtrl, SendAccess::WRITE_ONLY, surface);
             msgDesc->setHeaderPresent(useHeader);
         }
@@ -1083,7 +1083,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             if (!isRTIdxNonzero && !cntrls.s0aPresent)
             {
                 // direct imm is a-ok for ext desc
-                msgDesc = createSendMsgDesc(fc, 0, numRows, SFID::DP_WRITE, 0,
+                msgDesc = createSendMsgDesc(fc, 0, numRows, SFID::DP_RC, 0,
                     extFuncCtrl, SendAccess::WRITE_ONLY, surface);
             }
             else
@@ -1147,7 +1147,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         if (useHeader)
             m = createSrcRegRegion(msg, getRegionStride1());
         createSendInst(pred, createNullDst(Type_UD), m, numRows, 0,
-            execSize, fc, SFID::DP_WRITE, useHeader, SendAccess::WRITE_ONLY, surface, NULL, instOpt, true);
+            execSize, fc, SFID::DP_RC, useHeader, SendAccess::WRITE_ONLY, surface, NULL, instOpt, true);
     }
     return VISA_SUCCESS;
 

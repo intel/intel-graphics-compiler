@@ -503,158 +503,28 @@ bool G4_SendDesc::isLSC() const
     return false;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// G4_SendDescLdSt implementations
-///////////////////////////////////////////////////////////////////////////////
-G4_SendDescLdSt::G4_SendDescLdSt(
-    SFID sfid,
-    MsgOp _op,
-    G4_ExecSize _execSize,
-    //
-    // addr params
-    AddrType at, int _addrBits, int _addrDims,
-    //
-    // data params
-    int elemBitsMem, int elemBitsReg, int elemsPerAddr,
-    LdStOrder _order,
-    //
-    // ext info
-    Caching _l1, Caching _l3,
-    G4_Operand *surf,
-    ImmOff _immOff,
-    LdStAttrs _attrs,
-    const IR_Builder& builder)
-    : G4_SendDesc(G4_SendDesc::Kind::INVALID, sfid, _execSize, builder),
-    op(_op),
-    //
-    addrType(at), addrBits(_addrBits), addrDims(_addrDims),
-    //
-    elemBitsMem(elemBitsMem), elemBitsReg(elemBitsReg),
-    elemPerAddr(elemsPerAddr), order(_order),
-    l1(_l1), l3(_l3),
-    surface(surf), immOff(_immOff),
-    attrs(_attrs)
-{
-}
-
-static size_t toExecSlots(const G4_SendDescLdSt &d, TARGET_PLATFORM platform)
-{
-    int minExecSize = 8;
-    if (platform >= TARGET_PLATFORM::Xe_PVC)
-        minExecSize = 16;
-    MUST_BE_TRUE(false, "TODO: needs to deal with half size LSC messages");
-    MUST_BE_TRUE(false, "TODO: need to deal with varying typed message sizes");
-    // e.g. deal with
-    //   SIMD4 typed ...
-    //   SIMD4 untyped...
-    // (or we make the descriptor creator just pass the right exec size in)
-    int execSlots = std::max((int)d.getExecSize(), minExecSize);
-    return (size_t)execSlots;
-}
-
-size_t G4_SendDescLdSt::getSrc0LenBytes() const
-{
-    if (overrideSrc0LengthBytesValue >= 0) {
-        return (size_t)overrideSrc0LengthBytesValue;
-    }
-    switch (op) {
-    case MsgOp::LOAD_STRIDED:
-    case MsgOp::STORE_STRIDED:
-        return 8 + 4;  // address field is 64b (even for A32) + pitch is 32b
-    case MsgOp::LOAD_BLOCK2D:
-    case MsgOp::STORE_BLOCK2D:
-        // [243:0] ~ 256b = 32B
-        return 32;
-    default:
-        break; // fallthrough to other logic
-    }
-    if (order == LdStOrder::SCALAR) {
-        // transpose messages send one address only
-        return elemPerAddr / 8;
-    } else {
-        MUST_BE_TRUE(false, "TODO: needs to deal with half HDC gunk");
-        MUST_BE_TRUE(false, "TODO: needs to deal with addrDims");
-        int execSlots = std::max((int)execSize, 16);
-        return (size_t)(execSlots * elemPerAddr / 8);
-    }
-}
-
-size_t G4_SendDescLdSt::getSrc1LenBytes() const
-{
-    if (overrideSrc1LengthBytesValue >= 0) {
-        return (size_t)overrideSrc1LengthBytesValue;
-    }
-    if (order == LdStOrder::SCALAR) {
-        // transpose messages send one address only
-        return elemPerAddr / 8;
-    } else {
-        return toExecSlots(*this, irb.getPlatform()) * elemBitsReg;
-    }
-    MUST_BE_TRUE(false, "TODO: compute data bytes sent");
-    return (size_t)-1;
-}
-
-size_t G4_SendDescLdSt::getDstLenBytes() const
-{
-    if (overrideDstLengthBytesValue >= 0) {
-        return (size_t)overrideDstLengthBytesValue;
-    }
-    MUST_BE_TRUE(false, "TODO: compute bytes received");
-    return (size_t)-1;
-}
-void G4_SendDescLdSt::setCaching(Caching _l1, Caching _l3)
-{
-    l1 = _l1;
-    l3 = _l3;
-}
-bool G4_SendDescLdSt::isSLM() const
-{
-    if (getSFID() == SFID::SLM)
-        return true;
-    MUST_BE_TRUE(!isHDC(), "HDC SLM not supported (yet)");
-    return false;
-}
-
-SendAccess G4_SendDescLdSt::getAccessType() const
-{
-    if ((int(op) & int(MSGOP_BUFFER_LOAD_GROUP)) != 0)
-        return SendAccess::READ_ONLY;
-    else if ((int(op) & int(MSGOP_BUFFER_STORE_GROUP)) != 0)
-        return SendAccess::WRITE_ONLY;
-    else if ((int(op) & int(MSGOP_BUFFER_ATOMIC_GROUP)) != 0)
-        return hasAttrs(LdStAttrs::ATOMIC_RETURN) ?
-        SendAccess::READ_WRITE : SendAccess::WRITE_ONLY;
-
-    MUST_BE_TRUE(false, "unsupported op group");
-    return SendAccess::INVALID;
-}
-
-bool G4_SendDescLdSt::isAtomic() const
-{
-    return (int(op) & int(MSGOP_BUFFER_ATOMIC_GROUP)) != 0;
-}
-
-bool G4_SendDescLdSt::isTyped() const
-{
-    if (getSFID() == SFID::TGM)
-        return true;
-    return false;
-}
-
 static std::string ToSymbol(vISA::SFID sfid)
 {
     switch (sfid) {
-    case SFID::UGM:  return ".ugm";
-    case SFID::UGML: return ".ugml";
-    case SFID::SLM:  return ".slm";
-    case SFID::TGM:  return ".tgm";
-        // these aren't necessarily supported yet
+    case SFID::UGM:     return ".ugm";
+    case SFID::UGML:    return ".ugml";
+    case SFID::SLM:     return ".slm";
+    case SFID::TGM:     return ".tgm";
+    case SFID::URB:     return ".urb";
+    //
     case SFID::DP_DC0:  return ".dc0";
     case SFID::DP_DC1:  return ".dc1";
     case SFID::DP_DC2:  return ".dc2";
-    case SFID::DP_CC: return ".dcro";
-    case SFID::URB:  return ".urb";
-        // others not needed
+    case SFID::DP_CC:   return ".dcro";
+    case SFID::DP_RC:   return ".rc";
+    //
+    case SFID::RTHW:    return ".rta";
+    case SFID::BTD:     return ".btd";
+    //
+    case SFID::GATEWAY: return ".gtwy";
+    case SFID::SAMPLER: return ".smpl";
+    case SFID::NULL_SFID: return ".null";
+    case SFID::CRE:       return ".cre";
     default: break;
     }
     return ".?";
@@ -664,7 +534,7 @@ static std::string ToSymbolDataSize(int reg, int mem)
 {
     if (reg == mem)
         return "d" + std::to_string(reg);
-    return "d" + std::to_string(mem) + "a" + std::to_string(reg) ;
+    return "d" + std::to_string(mem) + "u" + std::to_string(reg) ;
 }
 
 static std::string ToSymbol(AddrType at)
@@ -679,50 +549,6 @@ static std::string ToSymbol(AddrType at)
     return "?";
 }
 
-static void GetMnemonicPart(std::ostream &os, const G4_SendDescLdSt &m)
-{
-    os << ToSymbol(m.op);
-    os << "." << ::ToSymbol(m.getSFID());
-    os << "." << ToSymbolDataSize(m.elemBitsReg, m.elemBitsReg);
-    os << ".a" << std::to_string(m.addrBits);
-    os << ToSymbol(m.l1, m.l3);
-}
-
-std::string G4_SendDescLdSt::str() const
-{
-    std::stringstream ss;
-    str(ss);
-    return ss.str();
-}
-
-void G4_SendDescLdSt::str(std::ostream &os) const
-{
-    auto fmtHex =
-        [] (int64_t x) {
-        std::stringstream ss;
-        ss << "0x" << std::hex << std::uppercase << x;
-        return ss.str();
-    };
-
-    GetMnemonicPart(os, *this);
-    os << " ";
-    os << ::ToSymbol(addrType);
-    if (addrType != AddrType::FLAT) {
-        os << "[";
-        if (const G4_Operand *surf = getSurface()) {
-            if (surf->isImm()) {
-                os << fmtHex(surf->asImm()->getImm());
-            } else if (surf->isA0() ){
-                os << "a0.?"; // how to find subreg
-            } else {
-                os << "A?";
-            }
-        } else {
-            os << "???";
-        }
-        os << "]";
-    }
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1493,7 +1319,7 @@ std::string G4_SendDescRaw::getDescription() const
         case DC2_BYTE_SCATTERED_WRITE: return "scaled byte scattede write";
         default: return "unrecognized DC2 message";
         }
-    case SFID::DP_WRITE:
+    case SFID::DP_RC:
         switch ((getFuncCtrl() >> 14) & 0x1F)
         {
         case 0xc: return "render target write";
