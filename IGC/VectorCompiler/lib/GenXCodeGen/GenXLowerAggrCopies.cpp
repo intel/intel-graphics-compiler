@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 #include <tuple>
 #include <vector>
@@ -82,16 +83,21 @@ namespace {
 struct SliceInfo {
   int Offset;
   int Width;
+  int Align;
 };
 } // namespace
 
-static std::vector<SliceInfo> getLegalLengths(int TotalLength) {
+static std::vector<SliceInfo> getLegalLengths(int TotalLength, int Align) {
   std::vector<SliceInfo> Slices;
   for (int Offset = 0; TotalLength;) {
     int Width = PowerOf2Floor(TotalLength);
-    Slices.push_back({Offset, Width});
+    Slices.push_back({Offset, Width, Align});
+
     Offset += Width;
     TotalLength -= Width;
+    if (Width != Align) {
+      Align = std::min(Width, Align);
+    }
   }
   return std::move(Slices);
 }
@@ -167,7 +173,9 @@ static void setMemorySliceWithVecStore(SliceInfo Slice, Value &SetVal,
                             BaseAddr.getName() + ".addr.offset");
   auto DstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
   auto *StoreVecPtr = IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(DstAS));
-  IRB.CreateStore(WriteOut, StoreVecPtr);
+  auto *Store = IRB.CreateStore(WriteOut, StoreVecPtr);
+  Store->setAlignment(IGCLLVM::getAlign(Slice.Align));
+  Store->setDebugLoc(InsertionPt->getDebugLoc());
 }
 
 bool GenXLowerAggrCopies::runOnFunction(Function &F) {
@@ -200,8 +208,9 @@ bool GenXLowerAggrCopies::runOnFunction(Function &F) {
 
   // Transform mem* intrinsic calls.
   for (MemIntrinsic *MemCall : MemCalls) {
-    bool doLinearExpand = !MemCall->isVolatile() && isa<ConstantInt>(MemCall->getLength()) &&
-      cast<ConstantInt>(MemCall->getLength())->getSExtValue() <= ExpandLimit;
+    bool doLinearExpand =
+        !MemCall->isVolatile() && isa<ConstantInt>(MemCall->getLength()) &&
+        cast<ConstantInt>(MemCall->getLength())->getSExtValue() <= ExpandLimit;
     if (MemCpyInst *Memcpy = dyn_cast<MemCpyInst>(MemCall)) {
       if (doLinearExpand) {
         expandMemMov2VecLoadStore(Memcpy);
@@ -217,7 +226,9 @@ bool GenXLowerAggrCopies::runOnFunction(Function &F) {
     } else if (MemSetInst *MemSet = dyn_cast<MemSetInst>(MemCall)) {
       if (doLinearExpand) {
         auto &&[SetVal, BaseAddr, Len] = defineOptimalValueAndLength(*MemSet);
-        std::vector<SliceInfo> LegalLengths = getLegalLengths(Len);
+        auto Align = MemSet->getDestAlignment();
+        std::vector<SliceInfo> LegalLengths =
+            getLegalLengths(Len, Align ? Align : 1);
         for (SliceInfo Slice : LegalLengths)
           setMemorySliceWithVecStore(Slice, SetVal, BaseAddr, MemSet);
       } else {
@@ -233,23 +244,34 @@ bool GenXLowerAggrCopies::runOnFunction(Function &F) {
 template <typename T>
 void GenXLowerAggrCopies::expandMemMov2VecLoadStore(T *MemCall) {
   IRBuilder<> IRB(MemCall);
-  llvm::Value *LenVal = MemCall->getLength();
+
+  auto *LenVal = MemCall->getLength();
   IGC_ASSERT(isa<Constant>(LenVal));
-  auto Len = (unsigned)cast<ConstantInt>(LenVal)->getZExtValue();
-  auto DstPtrV = MemCall->getRawDest();
-  IGC_ASSERT(DstPtrV->getType()->isPointerTy());
-  auto I8Ty = cast<PointerType>(DstPtrV->getType())->getPointerElementType();
+  unsigned Len = cast<ConstantInt>(LenVal)->getZExtValue();
+
+  auto DL = MemCall->getDebugLoc();
+
+  auto *DstAddr = MemCall->getRawDest();
+
+  auto *I8Ty = cast<PointerType>(DstAddr->getType())->getPointerElementType();
   IGC_ASSERT(I8Ty->isIntegerTy(8));
-  auto VecTy = IGCLLVM::FixedVectorType::get(I8Ty, Len);
-  auto SrcAddr = MemCall->getRawSource();
-  unsigned srcAS = cast<PointerType>(SrcAddr->getType())->getAddressSpace();
-  auto LoadPtrV = IRB.CreateBitCast(SrcAddr, VecTy->getPointerTo(srcAS));
+  auto *VecTy = IGCLLVM::FixedVectorType::get(I8Ty, Len);
+
+  auto *SrcAddr = MemCall->getRawSource();
+  unsigned SrcAddrSpace =
+      cast<PointerType>(SrcAddr->getType())->getAddressSpace();
+
+  auto *LoadPtrV = IRB.CreateBitCast(SrcAddr, VecTy->getPointerTo(SrcAddrSpace));
   Type *Ty = LoadPtrV->getType()->getPointerElementType();
-  auto ReadIn = IRB.CreateLoad(Ty, LoadPtrV);
-  auto DstAddr = MemCall->getRawDest();
-  unsigned dstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
-  auto StorePtrV = IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(dstAS));
-  IRB.CreateStore(ReadIn, StorePtrV);
+  auto *Load = IRB.CreateLoad(Ty, LoadPtrV);
+  Load->setAlignment(IGCLLVM::getSourceAlign(*MemCall));
+  Load->setDebugLoc(DL);
+
+  unsigned DstAddrSpace = cast<PointerType>(DstAddr->getType())->getAddressSpace();
+  auto *StorePtrV = IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(DstAddrSpace));
+  auto *Store = IRB.CreateStore(Load, StorePtrV);
+  Store->setAlignment(IGCLLVM::getDestAlign(*MemCall));
+  Store->setDebugLoc(DL);
 }
 
 } // namespace
@@ -258,13 +280,13 @@ namespace llvm {
 void initializeGenXLowerAggrCopiesPass(PassRegistry &);
 }
 
-INITIALIZE_PASS_BEGIN(GenXLowerAggrCopies, "genx-lower-aggr-copies",
-                "Lower aggregate copies, and llvm.mem* intrinsics into loops",
-                false, false)
+INITIALIZE_PASS_BEGIN(
+    GenXLowerAggrCopies, "genx-lower-aggr-copies",
+    "Lower aggregate copies, and llvm.mem* intrinsics into loops", false, false)
 INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
-INITIALIZE_PASS_END(GenXLowerAggrCopies, "genx-lower-aggr-copies",
-                "Lower aggregate copies, and llvm.mem* intrinsics into loops",
-                false, false)
+INITIALIZE_PASS_END(
+    GenXLowerAggrCopies, "genx-lower-aggr-copies",
+    "Lower aggregate copies, and llvm.mem* intrinsics into loops", false, false)
 
 FunctionPass *llvm::createGenXLowerAggrCopiesPass() {
   initializeGenXLowerAggrCopiesPass(*PassRegistry::getPassRegistry());

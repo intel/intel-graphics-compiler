@@ -75,7 +75,7 @@ namespace IGCLLVM {
     // it can be overcome by using auto or direct usage in another LLVM
     // interface.
     template <typename TValue,
-              std::enable_if_t<std::is_base_of<llvm::Value, TValue>::value, int> = 0>
+              std::enable_if_t<std::is_base_of_v<llvm::Value, TValue>, int> = 0>
     Align getAlign(const TValue &Val)
     {
 #if LLVM_VERSION_MAJOR <= 9
@@ -84,6 +84,30 @@ namespace IGCLLVM {
         return llvm::MaybeAlign(Val.getAlignment());
 #else
         return llvm::Align(Val.getAlignment());
+#endif
+    }
+
+    template <typename TValue,
+              std::enable_if_t<std::is_base_of_v<llvm::Value, TValue>, int> = 0>
+    Align getDestAlign(const TValue &Val) {
+#if LLVM_VERSION_MAJOR <= 9
+        return Val.getDestAlignment();
+#elif LLVM_VERSION_MAJOR <= 10
+        return Val.getDestAlign();
+#else
+        return Val.getDestAlign().valueOrOne();
+#endif
+    }
+
+    template <typename TValue,
+              std::enable_if_t<std::is_base_of_v<llvm::Value, TValue>, int> = 0>
+    Align getSourceAlign(const TValue &Val) {
+#if LLVM_VERSION_MAJOR <= 9
+        return Val.getSourceAlignment();
+#elif LLVM_VERSION_MAJOR <= 10
+        return Val.getSourceAlign();
+#else
+        return Val.getSourceAlign().valueOrOne();
 #endif
     }
 
