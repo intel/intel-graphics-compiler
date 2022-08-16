@@ -146,6 +146,8 @@ namespace IGC
                 waTable.Wa_22010493955 = 1;
 
             break;
+        case IGFX_METEORLAKE:
+            break;
         default:
             IGC_ASSERT(0);
             break;

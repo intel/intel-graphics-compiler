@@ -35,6 +35,7 @@ namespace IGC {
         {
         case IGFX_DG2:
         case IGFX_PVC:
+        case IGFX_METEORLAKE:
             pKernel = (void*)prologueShader_XeHP;
             size    = sizeof(prologueShader_XeHP);
             break;

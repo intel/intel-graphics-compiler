@@ -56,7 +56,8 @@ inline bool genplatform::hasSupportForAllOCLImageFormats() const
     bool isDG2G11EUConfig = GFX_IS_DG2_G11_CONFIG(m_platformInfo->usDeviceID);
     bool isDG2G12EUConfig = GFX_IS_DG2_G12_CONFIG(m_platformInfo->usDeviceID);
     if ((m_platformInfo->eProductFamily == IGFX_DG2 && isDG2C0Plus) ||
-        (m_platformInfo->eProductFamily == IGFX_DG2 && isDG2G11EUConfig && isDG2B0Plus))
+        (m_platformInfo->eProductFamily == IGFX_DG2 && isDG2G11EUConfig && isDG2B0Plus) ||
+        (m_platformInfo->eProductFamily == IGFX_METEORLAKE))
     {
         return true;
     }

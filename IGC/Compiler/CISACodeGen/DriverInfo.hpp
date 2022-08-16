@@ -353,7 +353,7 @@ namespace IGC
         virtual bool EnableLSCForLdRawAndStoreRawOnDG2() const { return false; }
         // Check SLM limit on compute shader to select SIMD8
         virtual bool SupportCSSLMLimit() const { return false; }
-
+        virtual bool supportsSIMD32forCPS() const { return true; }
 
         // When dual-source blending is enabled, enable sending the
         // single-source RTW message (with data for the second color) after the

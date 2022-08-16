@@ -36,6 +36,7 @@ typedef enum {
     IGFX_XE_HP_SDV = 1250,
     IGFX_DG2 = 1270, // aka - ACM/Alchemist
     IGFX_PVC = 1271,
+    IGFX_METEORLAKE = 1272,
     IGFX_MAX_PRODUCT,
 
 

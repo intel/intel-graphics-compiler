@@ -3139,6 +3139,10 @@ namespace IGC
             {
                 return Xe_DG2;
             }
+            else if (platform->getPlatformInfo().eProductFamily == IGFX_METEORLAKE)
+            {
+                return Xe_MTL;
+            }
             else if (platform->getPlatformInfo().eProductFamily == IGFX_PVC)
             {
                 if (platform->getPlatformInfo().usRevId >= REVISION_B)

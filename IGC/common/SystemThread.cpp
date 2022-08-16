@@ -930,6 +930,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 SIPIndex = bindlessMode ? XE_HP_CSR_DEBUG_BINDLESS : XE_HP_CSR_DEBUG;
                 break;
             case IGFX_DG2:
+            case IGFX_METEORLAKE:
                 SIPIndex =  bindlessMode ? XE_HPG_CSR_DEBUG_BINDLESS : XE_HPG_CSR_DEBUG;
                 break;
       // No support for Bindful mode for PVC.
@@ -960,6 +961,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 SIPIndex = XE_HP_CSR;
             case IGFX_DG2:
             case IGFX_PVC:
+            case IGFX_METEORLAKE:
 
             default:
                 break;

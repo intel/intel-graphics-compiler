@@ -215,6 +215,7 @@ bool LSCFuncsResolution::runOnFunction(Function &F)
     switch (m_pCtx->platform.getPlatformInfo().eProductFamily)
     {
     case IGFX_DG2:
+    case IGFX_METEORLAKE:
         defaultSimdSize = 16;
         break;
     default:

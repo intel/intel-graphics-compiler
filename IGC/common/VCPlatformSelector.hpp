@@ -56,7 +56,9 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
     else if (Product == IGFX_XE_HP_SDV)
       return "XEHP";
     else if (Product == IGFX_DG2)
-      return "DG2";
+        return "DG2";
+    else if (Product == IGFX_METEORLAKE)
+        return "MTL";
     else if (Product == IGFX_PVC) {
       // fixing revision id for PVC to compute tile
       RevId &= cmc::ComputeTileMaskPVC;

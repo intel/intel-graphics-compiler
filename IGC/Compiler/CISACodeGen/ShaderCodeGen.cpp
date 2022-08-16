@@ -447,7 +447,11 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         ((IGC_IS_FLAG_ENABLED(ForceSPDivEmulation) ||
             (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))
         ? EmuKind::EMU_SP_DIV : 0);
-    if (ctx.platform.Enable32BitIntDivRemEmu())
+    if (ctx.platform.preferFP32Emu() && IGC_IS_FLAG_DISABLED(Force32BitIntDivRemEmu)) {
+        // Prefer using FP32 emulation even though DP support is available
+        theEmuKind |= EmuKind::EMU_I32DIVREM_SP;
+    }
+    else if (ctx.platform.Enable32BitIntDivRemEmu())
     {
         if (!ctx.platform.hasNoFP64Inst())
         {

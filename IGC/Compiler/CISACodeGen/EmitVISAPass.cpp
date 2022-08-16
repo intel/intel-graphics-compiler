@@ -712,7 +712,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             }
             if ((IGC_GET_FLAG_VALUE(CodePatchFilter) & (0x1 << 0x4)) &&
                 (m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_DG2 ||
-                    m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_P)) {
+                 m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_ALDERLAKE_P ||
+                 m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_METEORLAKE)) {
                 m_encoder->SetIsCodePatchCandidate(false);
             }
         }
@@ -6669,6 +6670,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
 
     bool cpsEnable =
         false;
+    cpsEnable &= m_SimdMode != SIMDMode::SIMD32;
 
     SmallVector<CVariable*, 4>  payload;
 
@@ -13703,7 +13705,7 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         // When post-atomic fence is added with L1 invalidate, we may want to limit the scope to subslice.
         if (Force_Local_LSC_Scope)
             scope = (sfid == LSC_SLM) ? LSC_SCOPE_GROUP : LSC_SCOPE_LOCAL;
-        // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2
+        // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL
         if (scope == LSC_SCOPE_GPU &&
             !m_currShader->m_Platform->hasMultiTile() &&
             m_currShader->m_Platform->hasL3FlushOnGPUScopeInvalidate() &&
@@ -19178,7 +19180,8 @@ EmitPass::LscMessageFragmentInfo EmitPass::checkForLscMessageFragmentation(
     const int dataSizeRegBytes = toBytesGrf(dataSize);
     const int dataSizeMemBytes = toBytesMem(dataSize);
     // const int dataElemsCount = toCount(dataElems);
-    const bool isDg2 = m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG2;
+    const bool isDg2 = (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG2
+        || m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_METEORLAKE);
     const bool isPvcPlus = !isDg2;
     const int simdElems = numLanes(m_currShader->m_SIMDSize);
     bool halfSimdMode =
@@ -19719,7 +19722,7 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
     {
         flushType = LSC_FENCE_OP_INVALIDATE;
     }
-    // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2
+    // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL
     if (scope == LSC_SCOPE_GPU &&
         !m_currShader->m_Platform->hasMultiTile() &&
         m_currShader->m_Platform->hasL3FlushOnGPUScopeInvalidate() &&
@@ -19901,7 +19904,8 @@ void EmitPass::emitSyncStackID(llvm::GenIntrinsicInst* I)
     constexpr uint32_t ssid_bit_loc = 8;
     constexpr uint32_t ssid_mask = BIT(ssid_bit_loc);
 
-    if (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG2)
+    if (m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG2 ||
+        m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_METEORLAKE)
     {
         euid_offset = 7;
         euid_and_imm = BITMASK_RANGE(4, 7);
