@@ -122,7 +122,10 @@ namespace {
         bool m_needPrivateBranches = false;
         bool m_needLocalBranches = false;
 
+        uint64_t m_numAdditionalControlFlows = 0;
+
         Type* getPointerAsIntType(LLVMContext& Ctx, unsigned AS);
+        void emitVerboseWarning(Instruction& I);
         void resolveGAS(Instruction& I, Value* pointerOperand);
         void resolveGASWithoutBranches(Instruction& I, Value* pointerOperand);
     };
@@ -145,6 +148,7 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
 {
     m_module = F.getParent();
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_numAdditionalControlFlows = 0;
 
     GASInfo& GI = getAnalysis<CastToGASWrapperPass>().getGASInfo();
     m_needPrivateBranches = GI.canGenericPointToPrivate(F);
@@ -188,6 +192,17 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
             }
         }
     } while (changed);
+
+    if (m_numAdditionalControlFlows)
+    {
+        std::stringstream warningInfo;
+        warningInfo << "Adding ";
+        warningInfo << m_numAdditionalControlFlows;
+        warningInfo << " occurrences of additional control flow due to presence of generic address space operations\n";
+        warningInfo << "in function " << F.getName().str();
+        warningInfo << " (Enable PrintVerboseGenericControlFlowLog flag to acquire detailed log. Requires debuginfo!)";
+        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(warningInfo.str().c_str());
+    }
 
     return modified;
 }
@@ -234,33 +249,45 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction& I)
     return changed;
 }
 
-void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerOperand)
+void GenericAddressDynamicResolution::emitVerboseWarning(Instruction& I)
 {
     std::stringstream warningInfo;
-    if (m_ctx->m_instrTypes.hasDebugInfo)
-    {
-        llvm::DILocation* dbInfo = I.getDebugLoc();
-        llvm::Instruction* prevInst = I.getPrevNode();
+    llvm::DILocation* dbInfo = I.getDebugLoc();
+    llvm::Instruction* prevInst = I.getPrevNode();
+    bool debugInfoFound = false;
 
-        while (dbInfo == nullptr)
+    while (dbInfo == nullptr)
+    {
+        if (prevInst == nullptr)
         {
-            if (prevInst == nullptr)
-            {
-                break;
-            }
-            dbInfo = prevInst->getDebugLoc();
-            prevInst = prevInst->getPrevNode();
+            break;
         }
-        if (dbInfo != nullptr)
-        {
-            warningInfo << "from dir:" << dbInfo->getDirectory().str();
-            warningInfo << " from file:" << dbInfo->getFilename().str();
-            warningInfo << " line:" << dbInfo->getLine();
-            warningInfo << " :";
-        }
+        dbInfo = prevInst->getDebugLoc();
+        prevInst = prevInst->getPrevNode();
     }
+    if (dbInfo != nullptr)
+    {
+        warningInfo << "from dir:" << dbInfo->getDirectory().str();
+        warningInfo << " from file:" << dbInfo->getFilename().str();
+        warningInfo << " line:" << dbInfo->getLine();
+        warningInfo << " :";
+        debugInfoFound = true;
+    }
+
     warningInfo << "Adding additional control flow due to presence of generic address space operations";
+
+    if (!debugInfoFound)
+        warningInfo << "\nVerbose log requires debuginfo!";
+
     getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(warningInfo.str().c_str());
+}
+
+void GenericAddressDynamicResolution::resolveGAS(Instruction& I, Value* pointerOperand)
+{
+    if (m_ctx->m_instrTypes.hasDebugInfo && IGC_IS_FLAG_ENABLED(PrintVerboseGenericControlFlowLog))
+        emitVerboseWarning(I);
+    else
+        m_numAdditionalControlFlows++;
 
     // Every time there is a load/store from/to a generic pointer, we have to resolve
     // its corresponding address space by looking at its tag on bits[61:63].

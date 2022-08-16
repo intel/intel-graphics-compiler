@@ -296,6 +296,7 @@ DECLARE_IGC_REGKEY(debugString, ShaderPassDisable,      0,     "Disable specific
                                                                 disable all BreakConstantExprPass after his 6 occurrence \
                                                                 To show a list of pass names and their occurrence set ShaderDisplayAllPassesNames.\
                                                                 Must be used with ShaderDumpEnableAll flag.", false)
+DECLARE_IGC_REGKEY(bool, PrintVerboseGenericControlFlowLog, 0, "Forces compiler to print detailed log about additional control flow generated due to a presence of generic memory operations", true)
 DECLARE_IGC_REGKEY(bool, ForceStatelessForQueueT,       true,  "In OCL, force to use stateless memory to hold queue_t*. This is a legacy feature to be removed.", false)
 DECLARE_IGC_REGKEY(bool, ForceMemoryFenceBeforeEOT,     false, "Forces inserting SLM or gloabal memory fence before EOT if shader writes to SLM or goblam memory respectively.", false)
 DECLARE_IGC_REGKEY(bool, EnableRTmaskPso,               true,  "Enable render target mask optimization in PSO opt", false)
