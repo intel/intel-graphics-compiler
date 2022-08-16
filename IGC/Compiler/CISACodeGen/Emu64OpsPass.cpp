@@ -1936,6 +1936,9 @@ bool InstExpander::visitCall(CallInst& Call) {
         // emulate @llvm.abs.i64
         case Intrinsic::abs:
         {
+            if (!Emu->isInt64(&Call))
+                return false;
+
             Value* OldVal = Call.getArgOperand(0);
             Value* Lo = nullptr, * Hi = nullptr;
             std::tie(Lo, Hi) = Emu->getExpandedValues(OldVal);
