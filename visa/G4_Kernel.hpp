@@ -311,7 +311,11 @@ public:
 
     uint32_t getNumAcc() const { return numAcc; }
 
-    void     setAsmCount(int count) { asmInstCount = count; }
+    void     setAsmCount(int count)
+    {
+        assert(count > 0);
+        asmInstCount = count;
+    }
     uint32_t getAsmCount() const { return asmInstCount; }
 
     void     setKernelID(uint64_t ID) { kernelID = ID; }
