@@ -1382,7 +1382,21 @@ void G4_Kernel::dumpToFile(const std::string &suffixIn)
     // If vISA_DumpPassesSubset == 1 then we omit any files that don't change
     // the string representation of the kernel (i.e. skip passes that don't do anything).
     std::stringstream ss;
-    ss << (name ? name : "UnknownKernel");
+    if (m_options->getOption(vISA_DumpUseInternalName) || name == nullptr)
+    {
+        if (fg.builder->getIsKernel())
+        {
+            ss << "k" << getKernelID();
+        }
+        else
+        {
+            ss << "f" << getFunctionId();
+        }
+    }
+    else
+    {
+        ss << name;
+    }
     ss << "." << std::setfill('0') << std::setw(3) << nextDumpIndex++ << "." << suffixIn;
     std::string baseName = sanitizePathString(ss.str());
 
