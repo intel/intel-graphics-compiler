@@ -79,7 +79,7 @@ namespace IGC {
         void reduceCompilationUnitSize();
         void trimCompilationUnit(llvm::SmallVector<void*, 64> &unitHeads, uint32_t threshold, bool ignoreStackCallBoundary);
         uint32_t getMaxUnitSize();
-        void getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64> &functions_to_trim, bool ignoreStackCallBoundary);
+        void getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64> &functions_to_trim, bool ignoreStackCallBoundary, uint32_t& func_cnt);
 
         /// \brief The module being analyzed.
         llvm::Module* M;

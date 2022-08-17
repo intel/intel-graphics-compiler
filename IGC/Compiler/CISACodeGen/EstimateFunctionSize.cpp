@@ -216,6 +216,33 @@ namespace {
             return true;
         }
 
+        void printFuncAttr()
+        {
+            std::cout << "Function attribute of " << F->getName().str() << ": ";
+            switch (FunctionAttr) {
+            case FA_BEST_EFFORT_INLINE:
+                std::cout << "Best effor innline" << std::endl;
+                break;
+            case FA_FORCE_INLINE:
+                std::cout << "Force innline" << std::endl;
+                break;
+            case FA_TRIMMED:
+                std::cout << "Trimmed" << std::endl;
+                break;
+            case FA_STACKCALL:
+                std::cout << "Stack call" << std::endl;
+                break;
+            case FA_KERNEL_ENTRY:
+                std::cout << "Kernel entry" << std::endl;
+                break;
+            case FA_ADDR_TAKEN:
+                std::cout << "Address taken" << std::endl;
+                break;
+            default:
+                std::cout << "Wrong value" << std::endl;
+            }
+        }
+
         //Top down bfs to find the size of a compilation unit
         uint32_t updateUnitSize() {
             std::unordered_set<FunctionNode*> visit;
@@ -541,37 +568,37 @@ void EstimateFunctionSize::checkSubroutine() {
 
     if (EnableSubroutine)
     {
-        uint32_t unitThreshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
-        uint32_t maxUnitSize = getMaxUnitSize();
-        if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-            std::cout << "AL: " << AL << std::endl;
-            std::cout << "AL_Module: " << AL_Module << std::endl;
-            std::cout << "PartitionUnit: " << IGC_GET_FLAG_VALUE(PartitionUnit) << std::endl;
-            std::cout << "Max unit size: " << maxUnitSize << std::endl;
-            std::cout << "Threshold: " << unitThreshold << std::endl;
-        }
-        // If the max unit size exceeds threshold, do partitioning
-        if (AL == AL_Module &&
-            (IGC_GET_FLAG_VALUE(PartitionUnit) & 0x3) != 0 &&
-            maxUnitSize > unitThreshold)
-        {
-            if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0)
-            {
-                std::cout << "Max unit size " << maxUnitSize << " is larger than the threshold (to partition) " << unitThreshold << std::endl;
-            }
-            partitionKernel();
-        }
-
-        std::size_t subroutineThreshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
-        std::size_t expandedMaxSize = getMaxExpandedSize();
+        uint32_t subroutineThreshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
+        uint32_t expandedMaxSize = getMaxExpandedSize();
         if (expandedMaxSize <= subroutineThreshold && !HasRecursion)
         {
             EnableSubroutine = false;
         }
         else if (AL == AL_Module &&
-                expandedMaxSize > subroutineThreshold &&
-                IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
+            expandedMaxSize > subroutineThreshold &&
+            IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute))
         {
+            uint32_t unitThreshold = IGC_GET_FLAG_VALUE(UnitSizeThreshold);
+            uint32_t maxUnitSize = getMaxUnitSize();
+            if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
+                std::cout << "AL: " << AL << std::endl;
+                std::cout << "AL_Module: " << AL_Module << std::endl;
+                std::cout << "PartitionUnit: " << IGC_GET_FLAG_VALUE(PartitionUnit) << std::endl;
+                std::cout << "Max unit size: " << maxUnitSize << std::endl;
+                std::cout << "Threshold: " << unitThreshold << std::endl;
+            }
+
+            // If the max unit size exceeds threshold, do partitioning
+            if ((IGC_GET_FLAG_VALUE(PartitionUnit) & 0x3) != 0 &&
+                maxUnitSize > unitThreshold)
+            {
+                if ((IGC_GET_FLAG_VALUE(PrintPartitionUnit) & 0x1) != 0)
+                {
+                    std::cout << "Max unit size " << maxUnitSize << " is larger than the threshold (to partition) " << unitThreshold << std::endl;
+                }
+                partitionKernel();
+            }
+
             // If max threshold is exceeded, do analysis on kernel or unit trimming
             if (IGC_IS_FLAG_ENABLED(ControlKernelTotalSize))
             {
@@ -848,8 +875,9 @@ void EstimateFunctionSize::reduceCompilationUnitSize() {
 }
 
 //Top down traverse to find and retrieve functions that meet trimming criteria
-void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64>& functions_to_trim, bool ignoreStackCallBoundary)
+void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallVector<void*, 64>& functions_to_trim, bool ignoreStackCallBoundary, uint32_t &func_cnt)
 {
+    uint32_t PrintTrimUnit = IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) | IGC_GET_FLAG_VALUE(PrintControlUnitSize);
     FunctionNode* unitHead = get<FunctionNode>(root);
     std::unordered_set<FunctionNode*> visit;
     std::deque<FunctionNode*> TopDownQueue;
@@ -859,6 +887,10 @@ void EstimateFunctionSize::getFunctionsToTrim(llvm::Function* root, llvm::SmallV
     while (!TopDownQueue.empty())
     {
         FunctionNode* Node = TopDownQueue.front();TopDownQueue.pop_front();
+        func_cnt += 1;
+        if ((PrintTrimUnit & 0x4) != 0)
+            Node->printFuncAttr();
+
         if (Node->isGoodtoTrim())
         {
             functions_to_trim.push_back(Node);
@@ -932,17 +964,14 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void*, 64> &uni
 
     // Iterate over units
     for (auto unit : unitsToTrim) {
+        size_t expandedUnitSize = updateExpandedUnitSize(unit->F, ignoreStackCallBoundary); //A kernel size can be reduced by a function that is trimmed at previous kernels, so recompute it.
         if ((PrintTrimUnit & 0x1) != 0) {
-            std::cout << "Trimming kernel / unit " << unit->F->getName().str() << " expSize= " << unit->ExpandedSize << std::endl;
+            std::cout << "Trimming kernel / unit " << unit->F->getName().str() << " expanded size= " << expandedUnitSize << std::endl;
         }
-        size_t UnitSize = updateExpandedUnitSize(unit->F, ignoreStackCallBoundary); //A kernel size can be reduced by a function that is trimmed at previous kernels, so recompute it.
-        if ((PrintTrimUnit & 0x2) != 0) {
-            std::cout << "findKernelTotalSize " << UnitSize << std::endl;
-        }
-        if (UnitSize <= threshold) {
+        if (expandedUnitSize <= threshold) {
             if ((PrintTrimUnit & 0x2) != 0)
             {
-                std::cout << "Kernel " << unit->F->getName().str() << " ok size " << UnitSize << std::endl;
+                std::cout << "Kernel / unit " << unit->F->getName().str() << ": The expanded unit size(" << expandedUnitSize << ") is smaller than threshold("<< threshold <<")" << std::endl;
             }
             continue;
         }
@@ -955,7 +984,8 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void*, 64> &uni
         }
 
         SmallVector<void*, 64> functions_to_trim;
-        getFunctionsToTrim(unit->F,functions_to_trim, ignoreStackCallBoundary);
+        uint32_t func_cnt = 0;
+        getFunctionsToTrim(unit->F,functions_to_trim, ignoreStackCallBoundary, func_cnt);
         if (functions_to_trim.empty())
         {
             if ((PrintTrimUnit & 0x4) != 0)
@@ -971,7 +1001,7 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void*, 64> &uni
 
         if ((PrintTrimUnit & 0x1) != 0)
         {
-            std::cout << "Kernel / Unit " << unit->F->getName().str() << " has " << functions_to_trim.size() << " functions to consider for trimming" << std::endl;
+            std::cout << "Kernel / Unit " << unit->F->getName().str() << " has " << functions_to_trim.size() << " functions for trimming out of " << func_cnt <<std::endl;
         }
 
         //Repeat trimming functions until the unit size is smaller than threshold
