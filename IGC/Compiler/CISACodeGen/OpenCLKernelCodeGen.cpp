@@ -2450,6 +2450,13 @@ namespace IGC
             optDisable = true;
         }
 
+        // if we hit the case of noRetry heuristics and have no spill flag present
+        // we should try to recompile
+        if (ctx->m_InternalOptions.NoSpill)
+        {
+            noRetry = false;
+        }
+
         if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
             noRetry ||
             ctx->m_retryManager.IsLastTry() ||
