@@ -114,6 +114,8 @@ STATISTIC(Stat_DiscardRemoved, "Number of insts removed in Discard Opt");
 
 bool CustomSafeOptPass::runOnFunction(Function& F)
 {
+    pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     psHasSideEffect = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_instrTypes.psHasSideEffect;
     visit(F);
     return true;
@@ -727,8 +729,54 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             visitLdRawVec(inst);
             break;
         }
+        case GenISAIntrinsic::GenISA_OUTPUT:
+        {
+            earlyZDepthDetection(C);
+            break;
+        }
         default:
             break;
+        }
+    }
+}
+
+void IGC::CustomSafeOptPass::earlyZDepthDetection(llvm::CallInst& C)
+{
+    if (pContext->type == ShaderType::PIXEL_SHADER)
+    {
+        uint outputType = (uint)cast<ConstantInt>((&C)->getOperand(4))->getZExtValue();
+        if (outputType == SHADER_OUTPUT_TYPE_DEPTHOUT)
+        {
+            uint depthMask = (uint)cast<ConstantInt>((&C)->getOperand(5))->getZExtValue();
+            if (depthMask == 0)
+            {
+                if (CallInst* minInst = dyn_cast<CallInst>((&C)->getOperand(0)))
+                {
+                    if (GetOpCode(minInst) == llvm_min || GetOpCode(minInst) == llvm_max)
+                    {
+                        if (Instruction* divInst = dyn_cast<Instruction>(minInst->getOperand(0)))
+                        {
+                            if (divInst->getOpcode() == Instruction::FDiv)
+                            {
+                                if (Instruction* mulInst = dyn_cast<Instruction>(divInst->getOperand(0)))
+                                {
+                                    if (mulInst->getOpcode() == Instruction::FMul)
+                                    {
+                                        if (mulInst->getOperand(1) == divInst->getOperand(1))
+                                        {
+                                            (&C)->eraseFromParent();
+                                            IGC::PixelShaderContext* psContext = static_cast<IGC::PixelShaderContext*>(pContext);
+                                            psContext->programOutput.outputDepth = false;
+                                            m_modMD->psInfo.outputDepth = false;
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

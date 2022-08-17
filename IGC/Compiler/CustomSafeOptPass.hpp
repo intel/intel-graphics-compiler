@@ -41,6 +41,7 @@ namespace IGC
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
             AU.setPreservesCFG();
         }
 
@@ -55,6 +56,7 @@ namespace IGC
         void visitUDiv(llvm::BinaryOperator& I);
         void visitAllocaInst(llvm::AllocaInst& I);
         void visitCallInst(llvm::CallInst& C);
+        void earlyZDepthDetection(llvm::CallInst& C);
         void removeHftoFCast(llvm::Instruction& I);
         void visitBinaryOperator(llvm::BinaryOperator& I);
         bool isEmulatedAdd(llvm::BinaryOperator& I);
@@ -97,7 +99,8 @@ namespace IGC
         template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
     private:
         bool psHasSideEffect;
-
+        CodeGenContext* pContext = nullptr;
+        IGC::ModuleMetaData* m_modMD = nullptr;
         bool lower64bto32b(llvm::BinaryOperator& AndInst);
         llvm::Value* analyzeTreeForTrunc64bto32b(const llvm::Use& OperandUse, llvm::SmallVector<llvm::BinaryOperator*, 8>& OpsToDelete);
     };
