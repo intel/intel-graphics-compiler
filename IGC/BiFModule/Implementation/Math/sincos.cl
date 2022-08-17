@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/sincos_d_la.cl"
+    #include "../IMF/FP64/sincos_d_la_noLUT.cl"
 #endif
 
 static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, bool doFast )
@@ -24,24 +25,25 @@ static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, 
         sin_x = SPIRV_OCL_BUILTIN(native_sin, _f32, )(x);
         cos_x = SPIRV_OCL_BUILTIN(native_cos, _f32, )(x);
     }
+    else  if(__UseHighAccuracyMath)
+    {
+        sin_x = __ocl_svml_sincosf_noLUT(x, &cos_x);
+    }
+    else  if(__UseMathWithLUT)
+    {
+        __ocl_svml_sincosf(x, &sin_x, &cos_x);
+    }
     else
     {
-        if(__UseMathWithLUT)
+        float abs_float = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
+        if( abs_float > 10000.0f )
         {
-            __ocl_svml_sincosf(x, &sin_x, &cos_x);
+            sin_x = libclc_sin_f32(x);
+            cos_x = libclc_cos_f32(x);
         }
         else
         {
-            float abs_float = SPIRV_OCL_BUILTIN(fabs, _f32, )(x);
-            if( abs_float > 10000.0f )
-            {
-                sin_x = libclc_sin_f32(x);
-                cos_x = libclc_cos_f32(x);
-            }
-            else
-            {
-                sin_x = __ocl_svml_sincosf_noLUT(x, &cos_x);
-            }
+            sin_x = __ocl_svml_sincosf_noLUT(x, &cos_x);
         }
     }
     *cosval = cos_x;
@@ -149,7 +151,11 @@ INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sincos, _f64_p0f64, )( double
 {
     double sin_x, cos_x;
 
-    __ocl_svml_sincos(x, &sin_x, &cos_x);
+    if (__UseHighAccuracyMath) {
+        __ocl_svml_sincos_noLUT(x, &sin_x, &cos_x);
+    } else {
+        __ocl_svml_sincos(x, &sin_x, &cos_x);
+    }
 
     *cosval = cos_x;
     return sin_x;
