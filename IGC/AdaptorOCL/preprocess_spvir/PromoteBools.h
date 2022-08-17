@@ -44,7 +44,7 @@ namespace IGC
     private:
         bool changed;
 
-        bool typeNeedsPromotion(llvm::Type* type);
+        bool typeNeedsPromotion(llvm::Type* type, llvm::DenseSet<llvm::Type*> visitedTypes = {});
         llvm::Value* createZextIfNeeded(llvm::Value* argument, llvm::Instruction* insertBefore);
         void cleanUp(llvm::Module& module);
 

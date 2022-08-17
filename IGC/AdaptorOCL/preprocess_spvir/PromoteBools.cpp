@@ -177,43 +177,46 @@ void PromoteBools::visitAllocaInst(AllocaInst& alloca)
     changed |= getOrCreatePromotedValue(&alloca) != &alloca;
 }
 
-bool PromoteBools::typeNeedsPromotion(Type* type)
+bool PromoteBools::typeNeedsPromotion(Type* type, DenseSet<Type*> visitedTypes)
 {
-    if (!type)
+    if (!type || visitedTypes.count(type))
     {
         return false;
     }
-    else if (type->isIntegerTy(1))
+
+    visitedTypes.insert(type);
+
+    if (type->isIntegerTy(1))
     {
         return true;
     }
     else if (auto vectorType = dyn_cast<VectorType>(type))
     {
-        return typeNeedsPromotion(vectorType->getElementType());
+        return typeNeedsPromotion(vectorType->getElementType(), visitedTypes);
     }
     else if (auto pointerType = dyn_cast<PointerType>(type))
     {
-        return typeNeedsPromotion(type->getPointerElementType());
+        return typeNeedsPromotion(type->getPointerElementType(), visitedTypes);
     }
     else if (auto arrayType = dyn_cast<ArrayType>(type))
     {
-        return typeNeedsPromotion(arrayType->getElementType());
+        return typeNeedsPromotion(arrayType->getElementType(), visitedTypes);
     }
     else if (auto structType = dyn_cast<StructType>(type))
     {
-        return std::any_of(structType->element_begin(), structType->element_end(), [this](const auto& element) {
-            return typeNeedsPromotion(element);
-        });
+        return std::any_of(structType->element_begin(), structType->element_end(), [this, &visitedTypes](const auto& element) {
+            return typeNeedsPromotion(element, visitedTypes);
+            });
     }
     else if (auto functionType = dyn_cast<FunctionType>(type))
     {
-        if (typeNeedsPromotion(functionType->getReturnType()))
+        if (typeNeedsPromotion(functionType->getReturnType(), visitedTypes))
         {
             return true;
         }
-        return std::any_of(functionType->param_begin(), functionType->param_end(), [this](const auto& element) {
-            return typeNeedsPromotion(element);
-        });
+        return std::any_of(functionType->param_begin(), functionType->param_end(), [this, &visitedTypes](const auto& element) {
+            return typeNeedsPromotion(element, visitedTypes);
+            });
     }
 
     return false;
@@ -314,13 +317,20 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
     }
     else if (auto structType = dyn_cast<StructType>(type))
     {
+        // Create an opaque type to handle recursive types
         auto name = structType->hasName() ? structType->getName() : "";
+        auto newStructType = StructType::create(type->getContext(), name);
+        promotedTypesCache[type] = newStructType;
+
+        // Promote and update struct elements
         std::vector<Type*> elements;
         for (const auto& element : structType->elements())
         {
             elements.push_back(getOrCreatePromotedType(element));
         }
-        newType = StructType::create(elements, name, structType->isPacked());
+        newStructType->setBody(elements, structType->isPacked());
+
+        newType = newStructType;
     }
     else if (auto functionType = dyn_cast<FunctionType>(type))
     {
@@ -490,9 +500,13 @@ Constant* PromoteBools::createPromotedConstant(Constant* constant)
         return nullptr;
     }
 
-    if (auto constantUndef = dyn_cast<UndefValue>(constant))
+    if (isa<UndefValue>(constant))
     {
         return UndefValue::get(getOrCreatePromotedType(constant->getType()));
+    }
+    else if (isa<ConstantAggregateZero>(constant))
+    {
+        return ConstantAggregateZero::get(getOrCreatePromotedType(constant->getType()));
     }
     else if (auto constantInteger = dyn_cast<ConstantInt>(constant))
     {
