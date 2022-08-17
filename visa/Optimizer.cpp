@@ -1080,13 +1080,8 @@ void Optimizer::insertDummyMovForHWRSWADPAS(G4_BB *bb)
     }
 }
 
-void Optimizer::insertDummyMovForHWRSWA()
+void Optimizer::insertDummyMovForHWRSWAonaAllpipelines()
 {
-    if (!((VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344) || VISA_WA_CHECK(builder.getPWaTable(), Wa_22012856258) ||
-        VISA_WA_CHECK(builder.getPWaTable(), Wa_16012292205)) && builder.hasRSForSpecificPlatform()))
-    {
-        return;
-    }
     bool hasNonUniformBranch = false;
     bool hasPredicatedSendOrIndirect = false;
     BB_LIST dpasBBs;
@@ -1233,6 +1228,84 @@ void Optimizer::insertDummyMovForHWRSWA()
         {
             insertDummyMovForHWRSWADPAS(bb);
         }
+    }
+}
+
+void Optimizer::insertDummyMovForHWRSWAonDPAS()
+{
+    bool hasNonUniformBranch = false;
+    bool hasPredicatedSendOrIndirect = false;
+    BB_LIST dpasBBs;
+
+    for (BB_LIST_ITER bb_it = kernel.fg.begin();
+        bb_it != kernel.fg.end();
+        bb_it++)
+    {
+        G4_BB* bb = (*bb_it);
+
+        if (bb->empty())
+        {
+            continue;
+        }
+
+        INST_LIST_ITER curr_iter = bb->begin();
+        bool insertDPASBB = false;
+        while (curr_iter != bb->end())
+        {
+            G4_INST* inst = (*curr_iter);
+
+            if (inst->isDpas() && !insertDPASBB)
+            {
+                dpasBBs.push_back(bb);
+                insertDPASBB = true;
+            }
+
+            if (inst->getPredicate() &&
+                inst->getDst() &&
+                !inst->getDst()->isNullReg())
+            {
+                if (inst->isSend())
+                {
+                    hasPredicatedSendOrIndirect = true;
+                }
+            }
+
+            ++curr_iter;
+        }
+
+        G4_INST* inst = (bb->getInstList().back());
+        if (inst->isRSWADivergentInst() && !inst->asCFInst()->isUniform())
+        {
+            hasNonUniformBranch = true;
+        }
+    }
+
+    if (dpasBBs.size() &&
+        builder.getOptions()->getOption(vISA_InsertDummyMovForDPASRSWA) &&
+        (hasPredicatedSendOrIndirect || hasNonUniformBranch))
+    {
+        for (G4_BB* bb : dpasBBs)
+        {
+            insertDummyMovForHWRSWADPAS(bb);
+        }
+    }
+}
+
+void Optimizer::insertDummyMovForHWRSWA()
+{
+    if (!((VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344) || VISA_WA_CHECK(builder.getPWaTable(), Wa_22012856258) ||
+        VISA_WA_CHECK(builder.getPWaTable(), Wa_16012292205))))
+    {
+        return;
+    }
+
+    if (builder.hasRSForSpecificPlatform())
+    {
+        insertDummyMovForHWRSWAonaAllpipelines();
+    }
+    else
+    {
+        insertDummyMovForHWRSWAonDPAS();
     }
 }
 

@@ -309,6 +309,8 @@ private:
 
     void insertDummyMov(G4_BB* bb, INST_LIST_ITER inst_it, G4_Operand* opnd);
     void insertDummyMovForHWRSWADPAS(G4_BB* bb);
+    void insertDummyMovForHWRSWAonaAllpipelines();
+    void insertDummyMovForHWRSWAonDPAS();
     void insertDummyMovForHWRSWA();
     void insertHashMovs();
     void insertDummyCompactInst();
