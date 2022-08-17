@@ -532,11 +532,9 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
         args[2] = ConstantInt::get(intTy, FP_RM);  // rounding mode
         argslen = 3;
     }
-    else if (funcName.startswith("__builtin_IB_hftoqf_") ||
-             funcName.startswith("__builtin_IB_hftobf8_"))
+    else if (funcName.startswith("__builtin_IB_hftobf8_"))
     {
-        int sz = funcName.startswith("__builtin_IB_hftoqf_")
-            ? (int)sizeof("__builtin_IB_hftoqf_") : (int)sizeof("__builtin_IB_hftobf8_");
+        int sz = (int)sizeof("__builtin_IB_hftobf8_");
         if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, &isSat))
             return false;
 
@@ -546,11 +544,9 @@ bool DpasFuncsResolution::processCvt(CallInst& CI)
         args[2] = ConstantInt::get(boolTy, isSat); // saturation
         argslen = 3;
     }
-    else if (funcName.startswith("__builtin_IB_qftohf_") ||
-             funcName.startswith("__builtin_IB_bf8tohf_"))
+    else if (funcName.startswith("__builtin_IB_bf8tohf_"))
     {
-        int sz = funcName.startswith("__builtin_IB_qftohf_")
-            ? (int)sizeof("__builtin_IB_qftohf_") : (int)sizeof("__builtin_IB_bf8tohf_");
+        int sz = (int)sizeof("__builtin_IB_bf8tohf_");
         // It is a precise conversion, no RM needed!
         // Note that sizeof() includes the ending '\0', so need to do -1!
         if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, nullptr))

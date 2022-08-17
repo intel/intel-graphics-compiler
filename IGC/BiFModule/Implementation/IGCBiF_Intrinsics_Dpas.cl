@@ -463,28 +463,4 @@ half4  __builtin_IB_srnd_ftohf_4 (float4  a, float4  r) __attribute__((const));
 half8  __builtin_IB_srnd_ftohf_8 (float8  a, float8  r) __attribute__((const));
 half16 __builtin_IB_srnd_ftohf_16(float16 a, float16 r) __attribute__((const));
 
-// [Deprecated. Use bf8 version instead]
-// Note: qf is renamed to bf8. Those cvt builtins are the same as
-//       those cvt builtins between bf8 and hf (qf is deprecated)
-//       Once all apps/tests move to use bf8 cvt, those can be deleted
-//
-// quarter float <--> half float conversion
-//    qf : no igc type for qf yet. Use char as *opaque* type for it.
-//
-// hf -> qf conversion builtins (rte rounding mode)
-char   __builtin_IB_hftoqf_1 (half   a) __attribute__((const));
-char2  __builtin_IB_hftoqf_2 (half2  a) __attribute__((const));
-char3  __builtin_IB_hftoqf_3 (half3  a) __attribute__((const));
-char4  __builtin_IB_hftoqf_4 (half4  a) __attribute__((const));
-char8  __builtin_IB_hftoqf_8 (half8  a) __attribute__((const));
-char16 __builtin_IB_hftoqf_16(half16 a) __attribute__((const));
-
-// qf -> hf conversion builtins (precise conversion)
-half   __builtin_IB_qftohf_1 (char   a) __attribute__((const));
-half2  __builtin_IB_qftohf_2 (char2  a) __attribute__((const));
-half3  __builtin_IB_qftohf_3 (char3  a) __attribute__((const));
-half4  __builtin_IB_qftohf_4 (char4  a) __attribute__((const));
-half8  __builtin_IB_qftohf_8 (char8  a) __attribute__((const));
-half16 __builtin_IB_qftohf_16(char16 a) __attribute__((const));
-
 #endif // IGCBIF_INTRINSICS_DPAS_CL
