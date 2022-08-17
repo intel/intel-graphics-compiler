@@ -1713,13 +1713,15 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
                     {
                         unsigned int startIdx;
 
-                        //For the use only local variable, such as dummySource,
-                        //treat the use as the first ref so that the variable can join local register allocation.
                         if (lr->getFirstRef(startIdx) == NULL)
                         {
-                            lr->setFirstRef(curInst, idx);
-                            liveIntervals.push_back(lr);
+                            // Skip this lr and update its ref count,
+                            // So it will be treated as a global LR
+                            lr->recordRef(NULL);
+                            continue;
                         }
+
+                        MUST_BE_TRUE(idx > 0, "Candidate use found in first inst of basic block");
 
                         if ((builder.WaDisableSendSrcDstOverlap() &&
                             ((curInst->isSend() && i == 0) ||
