@@ -1507,7 +1507,9 @@ std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
         auto maxRP2 = getMaxRegPressureInLoop(*loop2);
         if (maxRP1 != maxRP2)
             return maxRP1 > maxRP2;
-        return loop1->getNestingLevel() > loop2->getNestingLevel();
+        if (loop1->getNestingLevel() != loop2->getNestingLevel())
+            return loop1->getNestingLevel() > loop2->getNestingLevel();
+        return loop1->id > loop2->id;
     };
 
     std::set<Loop*, decltype(OrderByRegPressure)> innerMostLoops(OrderByRegPressure);

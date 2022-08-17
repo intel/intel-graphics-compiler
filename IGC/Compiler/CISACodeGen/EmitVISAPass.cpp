@@ -7470,7 +7470,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_tf32tof:
         emitfcvt(inst);
         break;
-    case GenISAIntrinsic::GenISA_srnd:
+    case GenISAIntrinsic::GenISA_srnd_ftohf:
+    case GenISAIntrinsic::GenISA_srnd_hftobf8:
         emitsrnd(inst);
         break;
     case GenISAIntrinsic::GenISA_uavSerializeAll:
@@ -18872,10 +18873,20 @@ void EmitPass::emitsrnd(llvm::GenIntrinsicInst* GII)
     CVariable* src1 = GetSymbol(GII->getOperand(1));
     ConstantInt* CI = cast<ConstantInt>(GII->getOperand(2));
     bool isSat = CI->getValue().getBoolValue();
+    GenISAIntrinsic::ID GID = GII->getIntrinsicID();
 
-    if (dst->GetType() == ISA_TYPE_B)
-    {   // always use UB for bf8
-        dst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
+    switch (GID)
+    {
+    case GenISAIntrinsic::GenISA_srnd_hftobf8:
+    {
+        if (dst->GetType() != ISA_TYPE_UB)
+        {   // Use UB for bf8
+            dst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
+        }
+        break;
+    }
+    default:
+        break;
     }
 
     uint16_t nsimdsize = numLanes(m_currShader->m_SIMDSize);

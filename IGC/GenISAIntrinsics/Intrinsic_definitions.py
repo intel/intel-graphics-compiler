@@ -2327,11 +2327,18 @@ Imported_Intrinsics = \
     [("anyint",                        "tf32 source (as int)")],
     "NoMem"]],
 ####################################################################################################
-"GenISA_srnd": ["stochastic rounding:  srnd dst  src0  src1",
-    [("anyvector",                     "dst: hf or bf8 (as ub)"),
-    [("anyvector",                     "src0: F or HF"),
-     ("anyvector",                     "src1: random number. F or HF(the same as src0's)"),
-     ("bool",                          "saturation (true: sat; false: no)")],
+"GenISA_srnd_hftobf8": ["stochastic rounding:  srnd dst  src0  src1",
+    [("anyint",                       "dst: bf8 (as ub)"),
+    [("anyfloat",                     "src0: HF"),
+     (1,                              "src1: random number. HF(the same as src0's)"),
+     ("bool",                         "saturation (true: sat; false: no)")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_srnd_ftohf": ["stochastic rounding:  srnd dst  src0  src1",
+    [("anyfloat",                     "dst: hf"),
+    [("anyfloat",                     "src0: F"),
+     (1,                              "src1: random number. F(the same as src0's)"),
+     ("bool",                         "saturation (true: sat; false: no)")],
     "NoMem"]],
 ####################################################################################################
 "GenISA_OutputMeshPrimitiveData": ["",

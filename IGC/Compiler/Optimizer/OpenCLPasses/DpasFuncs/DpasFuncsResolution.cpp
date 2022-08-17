@@ -686,15 +686,18 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
     StringRef funcName = func->getName();
     int VecLen;
     bool isSat = false;
+    GenISAIntrinsic::ID iid;
     if (funcName.startswith("__builtin_IB_srnd_ftohf_"))
     {
         if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_srnd_ftohf_") - 1, nullptr, &VecLen, nullptr))
             return false;
+        iid = GenISAIntrinsic::GenISA_srnd_ftohf;
     }
     else if (funcName.startswith("__builtin_IB_srnd_hftobf8_"))
     {
         if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_srnd_hftobf8_") - 1, nullptr, &VecLen, &isSat))
             return false;
+        iid = GenISAIntrinsic::GenISA_srnd_hftobf8;
     }
     else
     {
@@ -702,11 +705,10 @@ bool DpasFuncsResolution::processSrnd(CallInst& CI)
     }
 
     Type* boolTy = Type::getInt1Ty(CI.getContext());
-    GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_srnd;
     Value* args[3] = { CI.getArgOperand(0), CI.getArgOperand(1), ConstantInt::get(boolTy, isSat) };
     ArrayRef<Value*> ii_args(args, 3);
 
-    Type* ITys[4] = { func->getReturnType(), args[0]->getType(), args[1]->getType(), boolTy };
+    Type* ITys[3] = { func->getReturnType(), args[0]->getType(), boolTy };
     Function* srndFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
     Instruction* srndCall = CallInst::Create(srndFunc, ii_args, VALUE_NAME("srnd"), &CI);
 
