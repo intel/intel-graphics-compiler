@@ -967,21 +967,19 @@ void BIImport::InitializeBIFlags(Module& M)
         initializeVarWithValue("__APIRS", false);
     }
 
-    bool useHighAccuracyMathFuncs = false;
     if (pCtx->type == ShaderType::OPENCL_SHADER)
     {
-        OpenCLProgramContext *OCLContext = static_cast<OpenCLProgramContext*>(pCtx);
-
-        initializeVarWithValue("__IsSPIRV", OCLContext->isSPIRV());
-
-        float profilingTimerResolution = OCLContext->getProfilingTimerResolution();
-        initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
-
-        useHighAccuracyMathFuncs = OCLContext->m_InternalOptions.UseHighAccuracyMathFuncs;
+        bool isSPIRV = static_cast<OpenCLProgramContext*>(pCtx)->isSPIRV();
+        initializeVarWithValue("__IsSPIRV", isSPIRV);
     }
 
     initializeVarWithValue("__EnableSWSrgbWrites", IGC_GET_FLAG_VALUE(cl_khr_srgb_image_writes));
-    initializeVarWithValue("__UseHighAccuracyMath", useHighAccuracyMathFuncs);
+
+    if (pCtx->type == ShaderType::OPENCL_SHADER)
+    {
+        float profilingTimerResolution = static_cast<OpenCLProgramContext*>(pCtx)->getProfilingTimerResolution();
+        initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
+    }
 
     makeVarExternal("__SubDeviceID");
     initializeVarWithValue("__MaxHWThreadIDPerSubDevice", pCtx->platform.GetGTSystemInfo().ThreadCount);

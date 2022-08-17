@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/log2_d_la.cl"
-    #include "../IMF/FP64/log2_d_la_noLUT.cl"
 #endif // defined(cl_khr_fp64)
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log2, _f32, )( float x )
@@ -39,13 +38,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log2, float, float, f32 )
 
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(log2, _f64, )( double x )
 {
-    double result;
-    if (__UseHighAccuracyMath) {
-        result = __ocl_svml_log2_noLUT(x);
-    } else {
-        result = __ocl_svml_log2_v2(x);
-    }
-    return result;
+    return __ocl_svml_log2_v2(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log2, double, double, f64 )

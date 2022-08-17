@@ -1801,8 +1801,6 @@ namespace IGC
             //   macro definitions in igc\common\igc_regkeys_enums_defs.h
             int StoreCacheDefault = -1;
             int LoadCacheDefault = -1;
-            // Force high-accuracy math functions from BiFModule
-            bool UseHighAccuracyMathFuncs = false;
 
             bool AllowRelocAdd = true;
 
