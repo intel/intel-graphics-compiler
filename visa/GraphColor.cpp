@@ -10609,6 +10609,16 @@ int GlobalRA::coloringRegAlloc()
                 std::cout << "\t--enable failSafe RA\n";
             }
             reserveSpillReg = true;
+
+            if (builder.hasScratchSurface() && !hasStackCall)
+            {
+                // Since this is fail safe RA iteration, we ensure the 2 special
+                // variables are created before coloring so spill code can use
+                // them, if needed.
+                (void)kernel.fg.builder->getOldA0Dot2Temp();
+                if (builder.supportsLSC())
+                    (void)kernel.fg.builder->getSpillFillHeader();
+            }
         }
 
         LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
