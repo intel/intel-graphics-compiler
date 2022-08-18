@@ -151,8 +151,8 @@ bool GenericAddressDynamicResolution::runOnFunction(Function& F)
     m_numAdditionalControlFlows = 0;
 
     GASInfo& GI = getAnalysis<CastToGASWrapperPass>().getGASInfo();
-    m_needPrivateBranches = GI.canGenericPointToPrivate(F);
-    m_needLocalBranches = GI.canGenericPointToLocal(F);
+    m_needPrivateBranches = !GI.isPrivateAllocatedInGlobalMemory() && GI.canGenericPointToPrivate(F);
+    m_needLocalBranches = !GI.isNoLocalToGenericOptionEnabled() && GI.canGenericPointToLocal(F);
 
     bool modified = false;
     bool changed = false;

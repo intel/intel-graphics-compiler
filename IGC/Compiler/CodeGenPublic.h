@@ -1089,8 +1089,6 @@ namespace IGC
         // When this is true, the flag "ForceGlobalMemoryAllocation" is enabled as a WA
         bool m_hasGlobalInPrivateAddressSpace = false;
 
-        bool m_mustAllocatePrivateAsGlobalBuffer = false;
-
         /////  used for instruction statistic before/after pass
         int instrStat[TOTAL_TYPES][TOTAL_STAGE];
 
