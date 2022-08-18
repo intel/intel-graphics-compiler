@@ -10895,7 +10895,8 @@ int GlobalRA::coloringRegAlloc()
                     continue;
                 }
 
-                if (iterationNo == 0 && !fastCompile &&
+                if (!kernel.getOption(vISA_Debug) &&
+                    iterationNo == 0 && !fastCompile &&
                     kernel.getOption(vISA_DoSplitOnSpill))
                 {
                     if (builder.getOption(vISA_RATrace))
