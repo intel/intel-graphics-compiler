@@ -19,7 +19,7 @@ PURPOSE: Defines meta data for holding/defining regkey variables
 #include "Probe/Assertion.h"
 #include <string>
 
-typedef char debugString[256];
+typedef char debugString[1024];
 
 #if defined(_DEBUG) || defined(_INTERNAL)
 #define IGC_DEBUG_VARIABLES
