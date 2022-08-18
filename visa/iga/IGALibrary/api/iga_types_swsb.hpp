@@ -24,6 +24,8 @@ namespace iga
         NONE
     };
 
+    // Note that we must not change the enum value after adding it. Otherwise
+    // it can cause compatibility issues to other tools using IGA.
     enum class SWSB_ENCODE_MODE : uint32_t
     {
         SWSBInvalidMode       = 0,
@@ -34,6 +36,13 @@ namespace iga
         ThreeDistPipeDPMath   = 7, // MTL: 3 distance pipe with DP operations in Math pipe
 
     };
+
+    static_assert((uint32_t)SWSB_ENCODE_MODE::SWSBInvalidMode == 0, "oops we need these enum values not to change");
+    static_assert((uint32_t)SWSB_ENCODE_MODE::SingleDistPipe == 1, "oops we need these enum values not to change");
+    static_assert((uint32_t)SWSB_ENCODE_MODE::ThreeDistPipe == 2, "oops we need these enum values not to change");
+    static_assert((uint32_t)SWSB_ENCODE_MODE::FourDistPipe == 3, "oops we need these enum values not to change");
+    static_assert((uint32_t)SWSB_ENCODE_MODE::FourDistPipeReduction == 6, "oops we need these enum values not to change");
+    static_assert((uint32_t)SWSB_ENCODE_MODE::ThreeDistPipeDPMath == 7, "oops we need these enum values not to change");
 
     struct SWSB
     {

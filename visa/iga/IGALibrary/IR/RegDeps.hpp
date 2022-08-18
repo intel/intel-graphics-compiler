@@ -45,9 +45,11 @@ enum class DEP_PIPE
     INTEGER,
     LONG64,
     DPAS,
-    SEND_SLM,     // XeHPG LSC SLM message
-    SEND_UNKNOWN, // XeHPG LSC desc is indirect, not sure if it's SLM
-    MATH_INORDER // XeHPC
+    // XeHPG+
+    SEND_SLM,     // LSC SLM message
+    SEND_UNKNOWN, // LSC desc is indirect, not sure if it's SLM
+    // XeHPC+
+    MATH_INORDER,
 };
 
 enum class DEP_CLASS
@@ -100,7 +102,8 @@ class DepSet {
                 uint32_t float_pipe_id,
                 uint32_t int_pipe_id,
                 uint32_t long_pipe_id,
-                uint32_t math_pipe_id)
+                uint32_t math_pipe_id
+        )
           : global(global_id),
             inOrder(in_order_id),
             floatPipe(float_pipe_id),
@@ -108,6 +111,16 @@ class DepSet {
             longPipe(long_pipe_id),
             mathPipe(math_pipe_id)
         { }
+
+        // set all pipe ids to 1
+        void init() {
+            global    = 1;
+            inOrder   = 1;
+            floatPipe = 1;
+            intPipe   = 1;
+            longPipe  = 1;
+            mathPipe  = 1;
+        }
 
         // unique id for all instructions
         uint32_t global = 0;
@@ -139,19 +152,6 @@ public:
     // FIXME: shold be moved to DepSetBuilder
     uint32_t addressOf(RegName rn, const RegRef &rr, uint32_t typeSizeBytes) const;
     bool isRegTracked(RegName rn) const;
-
-    void setDstRegion(
-        RegName rn,
-        RegRef rr,
-        Region r,
-        uint32_t execSize,
-        uint32_t typeSizeBits);
-    void setSrcRegion(
-        RegName rn,
-        RegRef rr,
-        Region r,
-        uint32_t execSize,
-        uint32_t typeSizeBits);
 
     void setDepType(DEP_TYPE type){ m_dType = type; }
     void setHasIndirect() { m_hasIndirect = true; }
@@ -200,11 +200,25 @@ private:
 
     void setOutputsFlagDep();
     void setOutputsDstDep();
-    // set the register footpring on full registers for all register
+    // set the register footprint on full registers for all registers
     // the given dst has touched. For example, consider the entire r2 as
-    // its footpring for a dst register "r2.2:d"
+    // its footprint for a dst register "r2.2:d"
     // This is a helper setter for some Workarounds
     void setOutputsDstDepFullGrf();
+
+    void setDstRegion(
+        RegName rn,
+        RegRef rr,
+        Region r,
+        uint32_t execSize,
+        uint32_t typeSizeBits);
+    void setSrcRegion(
+        RegName rn,
+        RegRef rr,
+        Region r,
+        uint32_t execSize,
+        uint32_t typeSizeBits);
+
 
     // Set the bits to this DepSet with the given reg_range
     void addDependency(const RegRangeType& reg_range);
@@ -304,6 +318,7 @@ public:
     DepSet* createDstDepSetFullGrf(const Instruction &i, const InstIDs& inst_id_counter,
         SWSB_ENCODE_MODE enc_mode, bool setFlagDep);
 
+    uint32_t getBYTES_PER_BUCKET()          const { return getGRF_BYTES_PER_REG(); }
 
     // Register File Size Info
     uint32_t getGRF_REGS()                  const { return GRF_REGS; }
@@ -326,16 +341,18 @@ public:
     uint32_t getARF_SPECIAL_BYTES_PER_REG() const { return ARF_SPECIAL_BYTES_PER_REG; }
     uint32_t getARF_SPECIAL_LEN()           const { return ARF_SPECIAL_REGS * ARF_SPECIAL_BYTES_PER_REG; }
 
+
+    // align each register files to bucket size so the different register files fall into different bucket
     uint32_t getGRF_START()                 const { return 0; }
-    uint32_t getARF_A_START()               const { return ALIGN_UP_TO(32, getGRF_START() + getGRF_LEN()); }
-    uint32_t getARF_ACC_START()             const { return ALIGN_UP_TO(32, getARF_A_START() + getARF_A_LEN()); }
-    uint32_t getARF_F_START()               const { return ALIGN_UP_TO(32, getARF_ACC_START() + getARF_ACC_LEN()); }
-    uint32_t getARF_SPECIAL_START()         const { return ALIGN_UP_TO(32, getARF_F_START() + getARF_F_LEN()); }
-    uint32_t getTOTAL_END()                 const { return ALIGN_UP_TO(32, getARF_SPECIAL_START() + getARF_SPECIAL_LEN()); }
+    uint32_t getARF_A_START()               const { return ALIGN_UP_TO(getBYTES_PER_BUCKET(), getGRF_START() + getGRF_LEN()); }
+    uint32_t getARF_ACC_START()             const { return ALIGN_UP_TO(getBYTES_PER_BUCKET(), getARF_A_START() + getARF_A_LEN()); }
+    uint32_t getARF_F_START()               const { return ALIGN_UP_TO(getBYTES_PER_BUCKET(), getARF_ACC_START() + getARF_ACC_LEN()); }
+    uint32_t getARF_SPECIAL_START()         const { return ALIGN_UP_TO(getBYTES_PER_BUCKET(), getARF_F_START() + getARF_F_LEN()); }
+    uint32_t getTOTAL_END()                 const { return ALIGN_UP_TO(getBYTES_PER_BUCKET(), getARF_SPECIAL_START() + getARF_SPECIAL_LEN()); }
+
 
     uint32_t getTOTAL_BITS()                const { return getTOTAL_END(); }
-    uint32_t getBYTES_PER_BUCKET()          const { return getGRF_BYTES_PER_REG(); }
-    uint32_t getTOTAL_BUCKETS()             const { return (getTOTAL_BITS() / getBYTES_PER_BUCKET()) + 1; }
+    uint32_t getTOTAL_BUCKETS()             const { return getTOTAL_BITS() / getBYTES_PER_BUCKET() + 1; }
 
     uint32_t getBucketStart(RegName regname) const
     {
@@ -385,6 +402,7 @@ private:
     //for registers that migh thave indirect dependence like CR and SR
     const uint32_t ARF_SPECIAL_REGS = 2;
     const uint32_t ARF_SPECIAL_BYTES_PER_REG = 4;
+
 
 private:
     // DpasMacroBuilder - a helper class for building dpas macro

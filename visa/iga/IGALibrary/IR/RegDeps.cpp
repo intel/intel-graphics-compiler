@@ -209,6 +209,9 @@ static void setDEPPipeClass_FourDistPipe(
 static void setDEPPipeClass_FourDistPipeReduction(
     DepSet &dep, const Instruction &inst, const Model &model)
 {
+    // The difference between FourDistPipe and FourDistPipeReduction
+    // is that for FourDistPipeReduction: only fp64-dst-instructions goto Long pipe (LONG64),
+    // and for FourDistPipe: instructions having 64b types on src or dst goto Long pipe.
     auto opsec = inst.getOpSpec();
 
     DEP_PIPE pipe_type = DEP_PIPE::NONE;
@@ -301,7 +304,8 @@ DepSet::DepSet(const InstIDs& instIdCntr, const DepSetBuilder& dsb)
                 instIdCntr.floatPipe,
                 instIdCntr.intPipe,
                 instIdCntr.longPipe,
-                instIdCntr.mathPipe),
+                instIdCntr.mathPipe
+                ),
       m_DB(dsb)
 {
     m_bucketList.reserve(4);
@@ -1038,6 +1042,8 @@ void DepSet::setInputsSrcDep()
         case Operand::Kind::INDIRECT: {
             setHasIndirect();
             setDepType(DEP_TYPE::READ_ALWAYS_INTERFERE);
+
+
             auto rgn = op.getRegion();
             if (rgn.getVt() == Region::Vert::VT_VxH) {
                 // VxH or Vx1 mode
@@ -1048,7 +1054,7 @@ void DepSet::setInputsSrcDep()
                     op.getIndAddrReg(),
                     Region::SRC110,
                     execSize/rgn.w, //
-                    2); // :w is 16-bits a piece
+                    16); // :w is 16-bits a piece
             } else {
                 // uniform: consumes one value in a0
                 // op (..)  dst   r[a0.0]<16,8,1>:w
@@ -1057,7 +1063,7 @@ void DepSet::setInputsSrcDep()
                     op.getIndAddrReg(),
                     Region::SRC110,
                     1, // 1 element only
-                    2); // :w is 16-bits a piece
+                    16); // :w is 16-bits a piece
             }
             // we can't do anything else for this
             break;
@@ -1557,19 +1563,23 @@ void DepSet::setDstRegion(
 uint32_t DepSet::addressOf(
     RegName rnm, const RegRef &rr, uint32_t typeSizeBits) const
 {
+    auto getAddressOf = [&rr, &typeSizeBits](uint32_t regStart, uint32_t bytePerReg) {
+        return regStart + rr.regNum * bytePerReg + rr.subRegNum * typeSizeBits / 8;
+    };
+
     switch (rnm) {
     case RegName::GRF_R:
-        return m_DB.getGRF_START() + rr.regNum*m_DB.getGRF_BYTES_PER_REG() + rr.subRegNum*typeSizeBits/8;
+        return getAddressOf(m_DB.getGRF_START(), m_DB.getGRF_BYTES_PER_REG());
     case RegName::ARF_A:
-        return m_DB.getARF_A_START() + rr.regNum*m_DB.getARF_A_BYTES_PER_REG() + rr.subRegNum*typeSizeBits/8;
+        return getAddressOf(m_DB.getARF_A_START(), m_DB.getARF_A_BYTES_PER_REG());
     case RegName::ARF_ACC:
-        return m_DB.getARF_ACC_START() +  rr.regNum*m_DB.getARF_ACC_BYTES_PER_REG() + rr.subRegNum*typeSizeBits/8;
+        return getAddressOf(m_DB.getARF_ACC_START(), m_DB.getARF_ACC_BYTES_PER_REG());
     case RegName::ARF_F:
-        return m_DB.getARF_F_START() + rr.regNum*m_DB.getARF_F_BYTES_PER_REG() + rr.subRegNum*typeSizeBits/8;
+        return getAddressOf(m_DB.getARF_F_START(), m_DB.getARF_F_BYTES_PER_REG());
     case RegName::ARF_CR:
     case RegName::ARF_SR:
     case RegName::ARF_CE:
-        return m_DB.getARF_SPECIAL_START() + rr.regNum*m_DB.getARF_SPECIAL_BYTES_PER_REG() + rr.subRegNum*typeSizeBits/8;
+        return getAddressOf(m_DB.getARF_SPECIAL_START(), m_DB.getARF_SPECIAL_BYTES_PER_REG());
     default:
         return m_DB.getTOTAL_BITS();
     }
@@ -1710,6 +1720,7 @@ void DepSet::str(std::ostream &os) const
             m_DB.getARF_F_START() + (size_t)fi * m_DB.getARF_F_BYTES_PER_REG(),
             m_DB.getARF_F_BYTES_PER_REG());
     }
+
 
     os << "}";
 }

@@ -281,7 +281,7 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                               prevDepClass == DEP_CLASS::OUT_OF_ORDER);
 
                 // Special case handling for acc/flag dependency:
-                // if the RAW dependency on acc and it's whithin the same pipe,
+                // if the RAW dependency on acc/flag and acc/flag only, and it's whithin the same pipe,
                 // HW can handle it that we don't need to set swsb
                 if (isRAW && currDepPipe == prevDepPipe) {
                     auto check_dep_reg = [&](DepSet* in_dep, uint32_t reg_start, uint32_t reg_len) {
@@ -308,13 +308,13 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
                     if (has_acc_dep(dep)) {
                         // and no dependency on other registers
                         if (!(has_grf_dep(dep) || has_arf_a_dep(dep) || has_flag_dep(dep) || has_sp_dep(dep)))
-                            isRAW = false;
+                                isRAW = false;
                     }
                     // is flag dependency
                     if (has_flag_dep(dep)) {
                         // and no dependency on other registers
                         if (!(has_grf_dep(dep) || has_arf_a_dep(dep) || has_acc_dep(dep) || has_sp_dep(dep)))
-                            isRAW = false;
+                                isRAW = false;
                         // flag and acc only
                         if (has_acc_dep(dep))
                             if (!(has_grf_dep(dep) || has_arf_a_dep(dep) || has_sp_dep(dep)))
@@ -1117,11 +1117,7 @@ void SWSBAnalyzer::run()
     }
 
     // init in order pipe id counters
-    m_InstIdCounter.inOrder = 1;
-    m_InstIdCounter.floatPipe = 1;
-    m_InstIdCounter.intPipe = 1;
-    m_InstIdCounter.longPipe = 1;
-    m_InstIdCounter.mathPipe = 1;
+    m_InstIdCounter.init();
     math_wa_info.reset();
 
     Instruction* inst = nullptr;
