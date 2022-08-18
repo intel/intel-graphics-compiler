@@ -4966,6 +4966,13 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction)) {
             SaveOption(vISA_NewSpillCostFunction, true);
         }
+
+        // visaasm in ZeBinary will be used for parsing.
+        // We need to set GenerateISAASM flag for the builder, because otherwise
+        // VISAKernelImpl::generateVariableName will generate non-unique names.
+        if (context->getCompilerOption().EmitZeBinVISASections) {
+            SaveOption(vISA_GenerateISAASM, true);
+        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.
