@@ -305,7 +305,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         }
 
         const uint32_t new_eTyBytes = useQW ? 8 : 4;
-        if (eTyBytes == new_eTyBytes)
+        if (eTyBytes == new_eTyBytes && !eTy->isAggregateType())
         {
             // The original vector is already a good one. Skip.
             return false;
@@ -376,6 +376,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         }
         else
         {
+            // TODO: if Ty is Aggregate type then this bitCast conradicts to LLVM spec
             V = Builder.CreateBitCast(V, Ty);
         }
         LI->replaceAllUsesWith(V);
