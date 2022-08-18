@@ -36,7 +36,8 @@ int CisaInst::createCisaInstruction(
     PredicateOpnd pred,
     VISA_opnd** opnd,
     int numOpnds,
-    const VISA_INST_Desc* inst_desc)
+    const VISA_INST_Desc* inst_desc,
+    vISAVerifier* verifier)
 {
     uint8_t subOpcode = 0;
     bool hasSubOpcode = false;
@@ -125,6 +126,16 @@ int CisaInst::createCisaInstruction(
         }
         m_size += opnd[i]->size;
     }
+
+#if defined(_DEBUG) || defined(_INTERNAL)
+    if (verifier) {
+        verifier->verifyInstruction(&m_cisa_instruction);
+        if (verifier->hasErrors()) {
+            std::cerr << verifier->getLastErrorFound().value_or("");
+            return VISA_FAILURE;
+        }
+    }
+#endif
 
     return VISA_SUCCESS;
 }

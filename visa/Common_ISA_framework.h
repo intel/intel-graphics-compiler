@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 #include "IsaDescription.h"
 #include "Mem_Manager.h"
+#include "IsaVerification.h"
 
 #define CISA_INVALID_ADDR_ID     -1
 #define CISA_INVALID_PRED_ID     -1
@@ -81,7 +82,7 @@ public:
     CISA_INST             m_cisa_instruction;
     const VISA_INST_Desc* m_inst_desc;
 
-    int createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size, unsigned char modifier, PredicateOpnd pred, VISA_opnd **opnd, int numOpnds, const VISA_INST_Desc* inst_desc);
+    int createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size, unsigned char modifier, PredicateOpnd pred, VISA_opnd **opnd, int numOpnds, const VISA_INST_Desc* inst_desc, vISAVerifier* verifier = nullptr);
 
     int getSize() const {return m_size;}
 

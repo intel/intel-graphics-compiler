@@ -814,6 +814,9 @@ int VISAKernelImpl::InitializeKernel(const char *kernel_name)
 
     CISABuildPreDefinedDecls();
 
+    fmt = new VISAKernel_format_provider(this);
+    verifier = new vISAVerifier(m_CISABuilder->m_header, fmt, m_options, m_builder);
+
     return status;
 }
 
@@ -8529,8 +8532,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscFence(
         unsigned size = EXEC_SIZE_1;
         PACK_EXEC_SIZE(size, vISA_EMASK_M1_NM);
 
-        inst->createCisaInstruction(
-            ISA_LSC_FENCE, (uint8_t)size, 0, PredicateOpnd::getNullPred(), opnds, numOpnds, instDesc);
+        status = inst->createCisaInstruction(
+            ISA_LSC_FENCE, (uint8_t)size, 0, PredicateOpnd::getNullPred(), opnds, numOpnds, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -9035,6 +9038,9 @@ VISAKernelImpl::~VISAKernelImpl()
     }
 
     destroyKernelAttributes();
+
+    delete fmt;
+    delete verifier;
 }
 
 int VISAKernelImpl::GetGenxBinary(void *&buffer, int &size) const

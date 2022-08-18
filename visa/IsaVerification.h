@@ -26,6 +26,7 @@ class vISAVerifier
     const common_isa_header& isaHeader;
     const print_format_provider_t* header;
     Options* options;
+    const vISA::IR_Builder* irBuilder = nullptr;  // for capability check
 
     std::vector<std::string> kerror_list;
     std::vector<std::string> error_list;
@@ -34,26 +35,31 @@ class vISAVerifier
     // false -- a label is used in the kernel but not yet defined
     std::map<int, bool> labelDefs;
 
-    const vISA::IR_Builder* irBuilder = nullptr;  // for capability check
 
 public:
 
-    vISAVerifier(const common_isa_header& vISAHeader, const print_format_provider_t* kernelHeader, Options* opt) :
-    isaHeader(vISAHeader), header(kernelHeader), options(opt) {}
+    vISAVerifier(const common_isa_header& vISAHeader, const print_format_provider_t* kernelHeader, Options* opt, const vISA::IR_Builder* ir_Builder) :
+    isaHeader(vISAHeader), header(kernelHeader), options(opt), irBuilder(ir_Builder) {}
 
     virtual ~vISAVerifier() = default;
 
     void run(VISAKernelImpl* kernel);
+
+    void verifyInstruction(const CISA_INST* inst);
 
     bool hasErrors() const { return kerror_list.size() + error_list.size() > 0; }
     size_t getNumErrors() const { return kerror_list.size() + error_list.size(); }
 
     void writeReport(const char* filename);
 
+    std::optional<std::string> getLastErrorFound() const {
+        if (error_list.empty()) return std::nullopt;
+        return error_list.back();
+    }
+
  private:
 
      void verifyKernelHeader();
-     void verifyInstruction(const CISA_INST* inst);
 
      // checks that can only be done once the whole kernel is processed.
      void finalize();

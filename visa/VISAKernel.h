@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 //#include "G4_IR.hpp"  // for PhyRegPool
 #include "Attributes.hpp"
 #include "CompilerStats.h"
+#include "IsaVerification.h"
 
 #include <list>
 #include <map>
@@ -34,7 +35,10 @@ namespace vISA
 class G4_Kernel;
 class DebugInfoFormat;
 class BinaryEncodingBase;
+
 }
+
+class VISAKernel_format_provider;
 
 // Class hierarchy is as follows:
 // VISAKernel -> Abstract class that declares virtual functions to build a kernel object
@@ -1212,6 +1216,10 @@ private:
 
     // Shared with G4_kernel
     vISA::Attributes* m_kernelAttrs;
+
+    // Instruction verifier that checks CISA instruction creation
+    VISAKernel_format_provider* fmt;
+    vISAVerifier* verifier;
 };
 
 class VISAKernel_format_provider : public print_format_provider_t

@@ -2126,7 +2126,7 @@ int CISA_IR_Builder::verifyVISAIR()
 
         VISAKernel_format_provider fmt(fmtKernel);
 
-        vISAVerifier verifier(m_header, &fmt, getOptions());
+        vISAVerifier verifier(m_header, &fmt, getOptions(), fmtKernel->getIRBuilder());
         verifier.run(kTemp);
 
         if (verifier.hasErrors())
