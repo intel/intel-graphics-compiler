@@ -2814,7 +2814,8 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::createThreadLocal
         module,
         llvm::GenISAIntrinsic::GenISA_DCL_SystemValue,
         this->getInt32Ty());
-    return this->CreateCall(pFunc, this->getInt32(IGC::THREAD_ID_IN_GROUP_X + dim));
+    return this->CreateCall(pFunc, this->getInt32(IGC::THREAD_ID_IN_GROUP_X + dim),
+        (dim == 0) ? "LocalID_X" : (dim == 1) ? "LocalID_Y" : "LocalID_Z");
 }
 
 template<bool preserveNames, typename T, typename Inserter>
