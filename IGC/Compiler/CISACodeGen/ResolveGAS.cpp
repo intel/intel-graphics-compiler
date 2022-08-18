@@ -1283,7 +1283,6 @@ namespace IGC
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
-            AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<CastToGASWrapperPass>();
         }
 
@@ -1307,7 +1306,6 @@ char StaticGASResolution::ID = 0;
 namespace IGC
 {
     IGC_INITIALIZE_PASS_BEGIN(StaticGASResolution, SGR_PASS_FLAG, SGR_PASS_DESC, SGR_PASS_CFG_ONLY, SGR_PASS_ANALYSIS)
-    IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASWrapperPass)
     IGC_INITIALIZE_PASS_END(StaticGASResolution, SGR_PASS_FLAG, SGR_PASS_DESC, SGR_PASS_CFG_ONLY, SGR_PASS_ANALYSIS)
 }
@@ -1319,7 +1317,6 @@ bool StaticGASResolution::runOnFunction(llvm::Function& F)
     if (m_GI->canGenericPointToPrivate(F) || m_GI->canGenericPointToLocal(F))
         return false;
 
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // As AddrSpaceCast has been processed already in GASResolving,
     // here only handle non-addrspacecast ptr
     auto toSkip = [](Value* P) {
@@ -1363,25 +1360,6 @@ bool StaticGASResolution::runOnFunction(llvm::Function& F)
                 changed = true;
             }
         }
-    }
-
-    if (changed)
-    {
-        // Above optimization changes an addrspace of load and store instructions
-        // operating on a generic pointer. One of the cases when optimization may
-        // be applied is when private memory is allocated in a global buffer. Together
-        // with an information that local pointers are not casted to generic addrspace,
-        // compiler is assured that all generic pointers point to a global memory.
-        // If the optimization happens, usage of generic pointer in any load and store
-        // instructions disappear.
-        //
-        // m_mustAllocatePrivateAsGlobalBuffer variable is necessary to point out that
-        // above optimization has been applied. Since PrivateMemoryResolution pass
-        // allocates private memory in a global buffer only if there is any load or
-        // store operating on a generic addrspace, the above optimization could mislead
-        // the logic in PrivateMemoryResolution causing private memory not being
-        // allocated in a global buffer.
-        ctx->m_mustAllocatePrivateAsGlobalBuffer = true;
     }
 
     return changed;

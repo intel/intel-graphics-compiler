@@ -562,8 +562,7 @@ namespace IGC
     {
         return forceGlobalMemoryAllocation() ||
             (m_instrTypes.hasDynamicGenericLoadStore &&
-                platform.canForcePrivateToGlobal()) ||
-            m_mustAllocatePrivateAsGlobalBuffer;
+                platform.canForcePrivateToGlobal());
     }
 
     bool OpenCLProgramContext::noLocalToGenericOptionEnabled() const

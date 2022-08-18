@@ -546,8 +546,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     GASInfo& GI = getAnalysis<CastToGASWrapperPass>().getGASInfo();
-    m_canGenericPointToPrivate = GI.canGenericPointToPrivate(F);
-    m_canGenericPointToLocal = GI.canGenericPointToLocal(F);
+    m_canGenericPointToPrivate = !GI.isPrivateAllocatedInGlobalMemory() && GI.canGenericPointToPrivate(F);
+    m_canGenericPointToLocal = !GI.isNoLocalToGenericOptionEnabled() && GI.canGenericPointToLocal(F);
 
     CreateKernelShaderMap(m_pCtx, pMdUtils, F);
 
