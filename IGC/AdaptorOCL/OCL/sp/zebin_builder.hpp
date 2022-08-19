@@ -221,4 +221,10 @@ private:
     zebin::ZEELFObjectBuilder::SectionID mGlobalSectID = -1;
 };
 
+// a helper function to get ZE image type from a OCL image type
+zebin::PreDefinedAttrGetter::ArgImageType getZEImageType(iOpenCL::IMAGE_MEMORY_OBJECT_TYPE);
+
+// a helper function to get ZE sampler type from a OCL sampler type
+zebin::PreDefinedAttrGetter::ArgSamplerType getZESamplerType(iOpenCL::SAMPLER_OBJECT_TYPE);
+
 } //namespace iOpenCL
