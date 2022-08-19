@@ -4409,6 +4409,124 @@ bool IGCConstProp::runOnFunction(Function& F)
     return Changed;
 }
 
+static bool isICBOffseted(llvm::LoadInst* inst, uint offset, uint& offsetIntoMergedBuffer)
+{
+    Value* ptrVal = inst->getPointerOperand();
+    std::vector<Value*> srcInstList;
+    IGC::TracePointerSource(ptrVal, false, true, true, srcInstList);
+    if (srcInstList.size())
+    {
+        CallInst* inst = dyn_cast<CallInst>(srcInstList.back());
+        GenIntrinsicInst* genIntr = inst ? dyn_cast<GenIntrinsicInst>(inst) : nullptr;
+        if (!genIntr || (genIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_RuntimeValue))
+            return false;
+
+        // ICB may contain multiple ICBs merged into one
+        // find getelementptr after GenISA_RuntimeValue to find offset to needed ICB in merged ICB
+        if (srcInstList.size() >= 2)
+        {
+            GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(srcInstList[srcInstList.size() - 2]);
+
+            if (gep &&
+                gep->getNumOperands() == 2 &&
+                gep->getOperand(0) == genIntr &&
+                genIntr->getType() == PointerType::get(Type::getInt8Ty(inst->getContext()), ADDRESS_SPACE_CONSTANT))
+            {
+                llvm::ConstantInt* ci = dyn_cast<llvm::ConstantInt>(gep->getOperand(1));
+
+                if (ci)
+                    offsetIntoMergedBuffer = (uint)ci->getZExtValue();
+            }
+        }
+
+        llvm::ConstantInt* ci = dyn_cast<llvm::ConstantInt>(inst->getOperand(0));
+        return ci && (uint)ci->getZExtValue() == offset;
+    }
+
+    return false;
+}
+
+namespace {
+
+    class ClampICBOOBAccess : public FunctionPass
+    {
+    public:
+        static char ID;
+        ClampICBOOBAccess() : FunctionPass(ID)
+        {
+            initializeClampICBOOBAccessPass(*PassRegistry::getPassRegistry());
+        }
+        virtual llvm::StringRef getPassName() const { return "Clamp ICB OOB Access"; }
+        virtual bool runOnFunction(Function& F);
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+        {
+            AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
+        }
+    };
+
+} // namespace
+
+char ClampICBOOBAccess::ID = 0;
+FunctionPass* IGC::createClampICBOOBAccess() { return new ClampICBOOBAccess(); }
+
+IGC_INITIALIZE_PASS_BEGIN(ClampICBOOBAccess, "ClampICBOOBAccess", "ClampICBOOBAccess", false, false)
+IGC_INITIALIZE_PASS_END(ClampICBOOBAccess, "ClampICBOOBAccess", "ClampICBOOBAccess", false, false)
+
+bool ClampICBOOBAccess::runOnFunction(Function& F)
+{
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    ModuleMetaData* modMD = ctx->getModuleMetaData();
+    IRBuilder<> m_builder(F.getContext());
+    bool changed = false;
+
+    for (auto& BB : F)
+    {
+        for (auto BI = BB.begin(), BE = BB.end(); BI != BE;)
+        {
+            if (llvm::LoadInst* inst = llvm::dyn_cast<llvm::LoadInst>(&(*BI++)))
+            {
+                unsigned offsetIntoMergedBuffer = 0;
+
+                if (isICBOffseted(inst, modMD->pushInfo.inlineConstantBufferOffset, offsetIntoMergedBuffer))
+                {
+                    Value* ptrVal = inst->getPointerOperand();
+
+                    if (GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(ptrVal))
+                    {
+                        if (gep->getNumOperands() != 3)
+                        {
+                            continue;
+                        }
+
+                        Type* eleType = gep->getPointerOperandType()->getPointerElementType();
+                        if (!eleType->isArrayTy() ||
+                            !(eleType->getArrayElementType()->isFloatTy() || eleType->getArrayElementType()->isIntegerTy(32)))
+                        {
+                            continue;
+                        }
+
+                        // Want to compare index into ICB to ensure index doesn't go past the size of the ICB
+                        // If it does clamp to some index where a zero is stored
+                        m_builder.SetInsertPoint(gep);
+                        uint64_t arrSize = gep->getPointerOperandType()->getPointerElementType()->getArrayNumElements();
+                        Value* eltIdx = gep->getOperand(2);
+                        Value* isOOB = m_builder.CreateICmp(ICmpInst::ICMP_UGE, eltIdx, llvm::ConstantInt::get(eltIdx->getType(), arrSize));
+                        unsigned zeroIndex = modMD->immConstant.zeroIdxs[offsetIntoMergedBuffer];
+                        Value* eltIdxClampped = m_builder.CreateSelect(isOOB, llvm::ConstantInt::get(eltIdx->getType(), zeroIndex), eltIdx);
+
+                        gep->replaceUsesOfWith(eltIdx, eltIdxClampped);
+
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+
+    return changed;
+}
+
 namespace {
 
     class IGCIndirectICBPropagaion : public FunctionPass
@@ -4426,8 +4544,6 @@ namespace {
             AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
         }
-    private:
-        bool isICBOffseted(llvm::LoadInst* inst, uint offset, uint& offsetIntoMergedBuffer);
     };
 
 } // namespace
@@ -4538,42 +4654,6 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
                 }
             }
         }
-    }
-
-    return false;
-}
-
-bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset, uint& offsetIntoMergedBuffer) {
-    Value* ptrVal = inst->getPointerOperand();
-    std::vector<Value*> srcInstList;
-    IGC::TracePointerSource(ptrVal, false, true, true, srcInstList);
-    if (srcInstList.size())
-    {
-        CallInst* inst = dyn_cast<CallInst>(srcInstList.back());
-        GenIntrinsicInst* genIntr = inst ? dyn_cast<GenIntrinsicInst>(inst) : nullptr;
-        if (!genIntr || (genIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_RuntimeValue))
-            return false;
-
-        // ICB may contain multiple ICBs merged into one
-        // find getelementptr after GenISA_RuntimeValue to find offset to needed ICB in merged ICB
-        if (srcInstList.size() >= 2)
-        {
-            GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(srcInstList[srcInstList.size() - 2]);
-
-            if (gep &&
-                gep->getNumOperands() == 2 &&
-                gep->getOperand(0) == genIntr &&
-                genIntr->getType() == PointerType::get(Type::getInt8Ty(inst->getContext()), ADDRESS_SPACE_CONSTANT))
-            {
-                llvm::ConstantInt* ci = dyn_cast<llvm::ConstantInt>(gep->getOperand(1));
-
-                if (ci)
-                    offsetIntoMergedBuffer = (uint)ci->getZExtValue();
-            }
-        }
-
-        llvm::ConstantInt* ci = dyn_cast<llvm::ConstantInt>(inst->getOperand(0));
-        return ci && (uint)ci->getZExtValue() == offset;
     }
 
     return false;

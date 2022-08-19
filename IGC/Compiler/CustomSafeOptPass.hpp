@@ -247,6 +247,7 @@ namespace IGC
     llvm::FunctionPass* createNanHandlingPass();
     llvm::FunctionPass* createFlattenSmallSwitchPass();
     llvm::FunctionPass* createSplitIndirectEEtoSelPass();
+    llvm::FunctionPass* createClampICBOOBAccess();
     llvm::FunctionPass* createIGCIndirectICBPropagaionPass();
     llvm::FunctionPass* createBlendToDiscardPass();
     llvm::FunctionPass* createMarkReadOnlyLoadPass();

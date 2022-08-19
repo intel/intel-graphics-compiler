@@ -58,6 +58,7 @@ void initializeGenIRLoweringPass(llvm::PassRegistry&);
 void initializeGEPLoweringPass(llvm::PassRegistry&);
 void initializeGenSpecificPatternPass(llvm::PassRegistry&);
 void initializeGreedyLiveRangeReductionPass(llvm::PassRegistry&);
+void initializeClampICBOOBAccessPass(llvm::PassRegistry&);
 void initializeIGCIndirectICBPropagaionPass(llvm::PassRegistry&);
 void initializeGenUpdateCBPass(llvm::PassRegistry&);
 void initializeGenStrengthReductionPass(llvm::PassRegistry&);
