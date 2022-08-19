@@ -1244,7 +1244,7 @@ public:
     {
         return m_kernel->m_string_pool.size();
     }
-    const label_info_t* getLabel(uint16_t label_id) const
+    const label_info_t* getLabel(uint32_t label_id) const
     {
         assert(label_id < m_kernel->m_label_info_list.size());
         return m_kernel->m_label_info_list[label_id];

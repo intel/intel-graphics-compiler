@@ -831,7 +831,7 @@ static std::string printInstructionCommon(
 
         if (opcode == ISA_GOTO)
         {
-            uint16_t label_id = getPrimitiveOperand<uint16_t>(inst, i++);
+            uint32_t label_id = getPrimitiveOperand<uint32_t>(inst, i++);
             sstr << " " << header->getString(header->getLabel(label_id)->name_index);
         }
 
@@ -949,7 +949,7 @@ static std::string printInstructionControlFlow(
 {
     const ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     unsigned i = 0;
-    uint16_t label_id  = 0;
+    uint32_t label_id  = 0;
 
     std::stringstream sstr;
 
@@ -1002,7 +1002,7 @@ static std::string printInstructionControlFlow(
     else if (opcode == ISA_CALL)
     {
         // Special handlling of CALL to distinguish fc_call from subroutine call
-        label_id = getPrimitiveOperand<uint16_t>(inst, i++);
+        label_id = getPrimitiveOperand<uint32_t>(inst, i++);
 
         const label_info_t* lblinfo = header->getLabel(label_id);
         const char* instName = (lblinfo->kind == LABEL_FC ? "fccall" : ISA_Inst_Table[opcode].str);
@@ -1029,7 +1029,7 @@ static std::string printInstructionControlFlow(
             case ISA_FCALL:
             {
                 /// label / function id to jump / call to.
-                label_id = getPrimitiveOperand<uint16_t>(inst, i++);
+                label_id = getPrimitiveOperand<uint32_t>(inst, i++);
 
                 if (opcode == ISA_FCALL)
                 {
@@ -1066,7 +1066,7 @@ static std::string printInstructionControlFlow(
             case ISA_FADDR:
             {
                 /// symbol name in string
-                const char* sym = header->getString(getPrimitiveOperand<uint16_t>(inst, i++));
+                const char* sym = header->getString(getPrimitiveOperand<uint32_t>(inst, i++));
                 if (isIdentifier(sym)) {
                     sstr << sym;
                 } else {
@@ -1086,7 +1086,7 @@ static std::string printInstructionControlFlow(
                 for (bool first = true; i < inst->opnd_count; i++)
                 {
                     if (!first) { sstr << ", "; }
-                    label_id = getPrimitiveOperand<uint16_t>(inst, i);
+                    label_id = getPrimitiveOperand<uint32_t>(inst, i);
                     sstr << header->getString(header->getLabel(label_id)->name_index);
                     if (first) { first = false; }
                 }

@@ -103,6 +103,8 @@ template <typename T> T getPrimitiveOperand(const CISA_INST* inst, unsigned i)
 {
     MUST_BE_TRUE(inst, "Argument Exception: argument inst is NULL.");
     MUST_BE_TRUE(inst->opnd_count > i, "No such operand, i, for instruction inst.");
+    MUST_BE_TRUE((T)inst->opnd_array[i]->_opnd.other_opnd ==
+                 inst->opnd_array[i]->_opnd.other_opnd, "Mismatched value.");
     return (T)inst->opnd_array[i]->_opnd.other_opnd;
 }
 

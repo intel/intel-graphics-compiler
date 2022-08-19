@@ -468,7 +468,7 @@ public:
     virtual const char* getString(uint32_t str_id) const = 0;
     virtual uint32_t getStringCount() const = 0;
 
-    virtual const label_info_t* getLabel(uint16_t label_id) const = 0;
+    virtual const label_info_t* getLabel(uint32_t label_id) const = 0;
     virtual unsigned short getLabelCount() const = 0;
 
     virtual const var_info_t* getPredefVar(unsigned var_id) const = 0;
