@@ -130,13 +130,6 @@ namespace {
             return Align;
         }
 
-        unsigned getAlignment(StoreInst* ST) const {
-            unsigned Align = (unsigned)ST->getAlignment();
-            if (Align == 0)
-                Align = (unsigned)DL->getABITypeAlignment(ST->getType());
-            return Align;
-        }
-
         void copyKnownMetadata(Instruction* NewI, Instruction* OldI) const
         {
             unsigned LscCacheCtrlID =
@@ -156,17 +149,17 @@ namespace {
             unsigned alignment = getAlignment(RefLD);
 
             NewLD->setVolatile(RefLD->isVolatile());
-            NewLD->setAlignment(IGCLLVM::getAlign(unsigned(MinAlign(alignment, Off))));
+            NewLD->setAlignment(IGCLLVM::getAlign(MinAlign(alignment, Off)));
             NewLD->setOrdering(RefLD->getOrdering());
             NewLD->setSyncScopeID(RefLD->getSyncScopeID());
             copyKnownMetadata(NewLD, RefLD);
         }
 
         void dupMemoryAttribute(StoreInst* NewST, StoreInst* RefST, unsigned Off) const {
-            unsigned alignment = getAlignment(RefST);
+            auto alignment = RefST->getAlignment();
 
             NewST->setVolatile(RefST->isVolatile());
-            NewST->setAlignment(IGCLLVM::getAlign(unsigned(MinAlign(alignment, Off))));
+            NewST->setAlignment(IGCLLVM::getAlign(MinAlign(alignment, Off)));
             NewST->setOrdering(RefST->getOrdering());
             NewST->setSyncScopeID(RefST->getSyncScopeID());
             copyKnownMetadata(NewST, RefST);
