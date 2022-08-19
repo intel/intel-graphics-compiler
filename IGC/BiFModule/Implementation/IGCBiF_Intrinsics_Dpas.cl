@@ -448,12 +448,7 @@ char3  __builtin_IB_srnd_hftobf8_3 (half3  a, half3  r) __attribute__((const));
 char4  __builtin_IB_srnd_hftobf8_4 (half4  a, half4  r) __attribute__((const));
 char8  __builtin_IB_srnd_hftobf8_8 (half8  a, half8  r) __attribute__((const));
 char16 __builtin_IB_srnd_hftobf8_16(half16 a, half16 r) __attribute__((const));
-char   __builtin_IB_srnd_hftobf8_1_sat (half   a, half   r) __attribute__((const));
-char2  __builtin_IB_srnd_hftobf8_2_sat (half2  a, half2  r) __attribute__((const));
-char3  __builtin_IB_srnd_hftobf8_3_sat (half3  a, half3  r) __attribute__((const));
-char4  __builtin_IB_srnd_hftobf8_4_sat (half4  a, half4  r) __attribute__((const));
-char8  __builtin_IB_srnd_hftobf8_8_sat (half8  a, half8  r) __attribute__((const));
-char16 __builtin_IB_srnd_hftobf8_16_sat(half16 a, half16 r) __attribute__((const));
+
 
 // F -> HF
 half   __builtin_IB_srnd_ftohf_1 (float   a, float   r) __attribute__((const));
