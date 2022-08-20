@@ -61,7 +61,7 @@ struct zeInfoPayloadArgument
 {
     bool operator==(const zeInfoPayloadArgument& other) const
     {
-        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index && source_offset == other.source_offset && slm_alignment == other.slm_alignment && image_type == other.image_type && image_transformable == other.image_transformable && sampler_type == other.sampler_type;
+        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index && source_offset == other.source_offset && slm_alignment == other.slm_alignment;
     }
     zeinfo_str_t arg_type;
     zeinfo_int32_t offset = 0;
@@ -73,9 +73,6 @@ struct zeInfoPayloadArgument
     zeinfo_int32_t sampler_index = -1;
     zeinfo_int32_t source_offset = -1;
     zeinfo_int32_t slm_alignment = 0;
-    zeinfo_str_t image_type;
-    zeinfo_bool_t image_transformable = false;
-    zeinfo_str_t sampler_type;
 };
 struct zeInfoPerThreadPayloadArgument
 {
@@ -179,7 +176,7 @@ struct zeInfoContainer
     HostAccessesTy global_host_access_table;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.15"; }
+    static zeinfo_str_t getVersionNumber() { return "1.14"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
@@ -200,23 +197,7 @@ struct PreDefinedAttrGetter{
         printf_buffer,
         implicit_arg_buffer,
         arg_byvalue,
-        arg_bypointer,
-        image_height,
-        image_width,
-        image_depth,
-        image_num_mip_levels,
-        image_channel_data_type,
-        image_channel_order,
-        image_srgb_channel_order,
-        image_array_size,
-        image_num_samples,
-        flat_image_baseoffset,
-        flat_image_height,
-        flat_image_width,
-        flat_image_pitch,
-        sampler_address,
-        sampler_normalized,
-        sampler_snap_wa
+        arg_bypointer
     };
     enum class ArgAddrMode {
         stateless,
@@ -235,36 +216,6 @@ struct PreDefinedAttrGetter{
         readonly,
         writeonly,
         readwrite
-    };
-    enum class ArgImageType {
-        image_buffer,
-        image_1d,
-        image_1d_array,
-        image_2d,
-        image_2d_array,
-        image_3d,
-        image_cube,
-        image_cube_array,
-        image_2d_depth,
-        image_2d_array_depth,
-        image_2d_msaa,
-        image_2d_msaa_depth,
-        image_2d_array_msaa,
-        image_2d_array_msaa_depth,
-        image_2d_media,
-        image_2d_media_block
-    };
-    enum class ArgSamplerType {
-        texture,
-        sample_8x8,
-        sample_8x8_2dconvolve,
-        sample_8x8_erode,
-        sample_8x8_dilate,
-        sample_8x8_minmaxfilter,
-        sample_8x8_minmax,
-        sample_8x8_centroid,
-        sample_8x8_bool_centroid,
-        sample_8x8_bool_sum
     };
     enum class MemBufferType {
         global,
@@ -319,38 +270,6 @@ struct PreDefinedAttrGetter{
             return "arg_byvalue";
         case ArgType::arg_bypointer:
             return "arg_bypointer";
-        case ArgType::image_height:
-            return "image_height";
-        case ArgType::image_width:
-            return "image_width";
-        case ArgType::image_depth:
-            return "image_depth";
-        case ArgType::image_num_mip_levels:
-            return "image_num_mip_levels";
-        case ArgType::image_channel_data_type:
-            return "image_channel_data_type";
-        case ArgType::image_channel_order:
-            return "image_channel_order";
-        case ArgType::image_srgb_channel_order:
-            return "image_srgb_channel_order";
-        case ArgType::image_array_size:
-            return "image_array_size";
-        case ArgType::image_num_samples:
-            return "image_num_samples";
-        case ArgType::flat_image_baseoffset:
-            return "flat_image_baseoffset";
-        case ArgType::flat_image_height:
-            return "flat_image_height";
-        case ArgType::flat_image_width:
-            return "flat_image_width";
-        case ArgType::flat_image_pitch:
-            return "flat_image_pitch";
-        case ArgType::sampler_address:
-            return "sampler_address";
-        case ArgType::sampler_normalized:
-            return "sampler_normalized";
-        case ArgType::sampler_snap_wa:
-            return "sampler_snap_wa";
         default:
             break;
         }
@@ -396,72 +315,6 @@ struct PreDefinedAttrGetter{
             return "writeonly";
         case ArgAccessType::readwrite:
             return "readwrite";
-        default:
-            break;
-        }
-        return "";
-    }
-    static zeinfo_str_t get(ArgImageType val) {
-        switch(val) {
-        case ArgImageType::image_buffer:
-            return "image_buffer";
-        case ArgImageType::image_1d:
-            return "image_1d";
-        case ArgImageType::image_1d_array:
-            return "image_1d_array";
-        case ArgImageType::image_2d:
-            return "image_2d";
-        case ArgImageType::image_2d_array:
-            return "image_2d_array";
-        case ArgImageType::image_3d:
-            return "image_3d";
-        case ArgImageType::image_cube:
-            return "image_cube";
-        case ArgImageType::image_cube_array:
-            return "image_cube_array";
-        case ArgImageType::image_2d_depth:
-            return "image_2d_depth";
-        case ArgImageType::image_2d_array_depth:
-            return "image_2d_array_depth";
-        case ArgImageType::image_2d_msaa:
-            return "image_2d_msaa";
-        case ArgImageType::image_2d_msaa_depth:
-            return "image_2d_msaa_depth";
-        case ArgImageType::image_2d_array_msaa:
-            return "image_2d_array_msaa";
-        case ArgImageType::image_2d_array_msaa_depth:
-            return "image_2d_array_msaa_depth";
-        case ArgImageType::image_2d_media:
-            return "image_2d_media";
-        case ArgImageType::image_2d_media_block:
-            return "image_2d_media_block";
-        default:
-            break;
-        }
-        return "";
-    }
-    static zeinfo_str_t get(ArgSamplerType val) {
-        switch(val) {
-        case ArgSamplerType::texture:
-            return "texture";
-        case ArgSamplerType::sample_8x8:
-            return "sample_8x8";
-        case ArgSamplerType::sample_8x8_2dconvolve:
-            return "sample_8x8_2dconvolve";
-        case ArgSamplerType::sample_8x8_erode:
-            return "sample_8x8_erode";
-        case ArgSamplerType::sample_8x8_dilate:
-            return "sample_8x8_dilate";
-        case ArgSamplerType::sample_8x8_minmaxfilter:
-            return "sample_8x8_minmaxfilter";
-        case ArgSamplerType::sample_8x8_minmax:
-            return "sample_8x8_minmax";
-        case ArgSamplerType::sample_8x8_centroid:
-            return "sample_8x8_centroid";
-        case ArgSamplerType::sample_8x8_bool_centroid:
-            return "sample_8x8_bool_centroid";
-        case ArgSamplerType::sample_8x8_bool_sum:
-            return "sample_8x8_bool_sum";
         default:
             break;
         }
