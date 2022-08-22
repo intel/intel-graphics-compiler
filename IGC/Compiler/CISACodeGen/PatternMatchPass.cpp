@@ -3496,7 +3496,7 @@ namespace IGC
         };
 
         CanonicalizeInstPattern* pattern = new (m_allocator) CanonicalizeInstPattern(&I);
-        IGC_ASSERT(isa<Instruction>(I.getOperand(0)));
+        IGC_ASSERT(isa<Instruction>(I.getOperand(0)) || isa<Argument>(I.getOperand(0)));
         // Current implementation assumes that mix mode is disabled if
         // half float or 32-bit float denorms must be flushed.
         if (m_ctx->m_floatDenormMode16 == IGC::FLOAT_DENORM_FLUSH_TO_ZERO ||
@@ -3504,7 +3504,7 @@ namespace IGC
         {
             IGC_ASSERT(!m_Platform.supportMixMode() || m_ctx->getModuleMetaData()->disableMixMode);
         }
-        if (!FlushesDenormsOnOutput(*(cast<Instruction>(I.getOperand(0)))))
+        if (isa<Argument>(I.getOperand(0)) || !FlushesDenormsOnOutput(*(cast<Instruction>(I.getOperand(0)))))
         {
             MarkAsSource(I.getOperand(0));
         }
