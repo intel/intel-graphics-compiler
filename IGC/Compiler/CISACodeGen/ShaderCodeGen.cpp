@@ -1337,6 +1337,10 @@ void OptimizeIR(CodeGenContext* const pContext)
             // disable loop unroll for excessive large shaders
             if (pContext->m_instrTypes.numOfLoop)
             {
+                if (IGC_IS_FLAG_ENABLED(EnableLoopHoistConstant))
+                {
+                    mpm.add(createLoopHoistConstant());
+                }
                 mpm.add(createLoopDeadCodeEliminationPass());
                 mpm.add(createLoopCanonicalization());
                 mpm.add(llvm::createLoopDeletionPass());

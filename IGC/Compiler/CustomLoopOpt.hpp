@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/PassRegistry.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/Analysis/LoopPass.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include <llvm/Transforms/Scalar.h>
 
@@ -155,6 +156,9 @@ namespace IGC
         void rewriteLoopSeg3(llvm::BasicBlock* bb,
             llvm::Value* range_y);
     };
+
+
+    llvm::LoopPass* createLoopHoistConstant();
 
 } // namespace IGC
 
