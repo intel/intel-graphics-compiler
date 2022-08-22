@@ -2499,6 +2499,7 @@ void GenOptLegalizer::visitLoadInst(LoadInst& I) {
                 m_Builder->CreateZExt(L1, NewTy),
                 uint64_t(8)));
         Value* L2 = m_Builder->CreateExtractElement(NewLD, uint64_t(2));
+        m_Builder->SetCurrentDebugLocation(ZEI->getDebugLoc());
         NewVal = m_Builder->CreateOr(NewVal,
             m_Builder->CreateShl(
                 m_Builder->CreateZExt(L2, NewTy),

@@ -8,7 +8,7 @@
 ; 1) Pass adds fences for calls
 ; it's good practice to copy debug info for them, but overall this is excessive check
 ; 2) Replaces AsyncStackPtr
-; 3) Reduces redundant converts, check that no info is lost. <- This fails
+; 3) Reduces redundant converts, check that no info is lost.
 
 ; CHECK: @rtlow{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: call {{.*}} !dbg [[TRACE_LOC:![0-9]*]]
@@ -27,7 +27,7 @@
 ;
 ; check: @llvm.dbg.value(metadata i32 addrspace(1)* %{{.*}}, metadata [[PTR32_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTR32_LOC:![0-9]*]]
 ;
-; Fails here
+
 ; CHECK-DAG: @llvm.dbg.value(metadata float addrspace(1)* [[FPTR_V:%[A-z0-9]*]], metadata [[FPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FPTR_LOC:![0-9]*]]
 ; CHECK-DAG: [[FPTR_V]] = {{.*}}float addrspace(1)*{{.*}} !dbg [[FPTR_LOC]]
 ;

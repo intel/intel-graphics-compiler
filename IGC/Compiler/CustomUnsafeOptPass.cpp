@@ -3611,16 +3611,10 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
     BasicBlock* ifBlock = CloneBasicBlock(elseBlock, VMap);
     ifBlock->setName(VALUE_NAME("EO_IF"));
     currentBB->getParent()->getBasicBlockList().insert(endifBlock->getIterator(), ifBlock);
-    for (auto II = ifBlock->begin(), IE = ifBlock->end(); II != IE; ++II)
-    {
-        for (unsigned op = 0, E = II->getNumOperands(); op != E; ++op)
-        {
-            Value* Op = II->getOperand(op);
-            ValueToValueMapTy::iterator It = VMap.find(Op);
-            if (It != VMap.end())
-                II->setOperand(op, It->second);
-        }
-    }
+
+    for (auto &Inst : *ifBlock)
+      RemapInstruction(&Inst, VMap, RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
+
     // create phi instruction
     for (auto II = elseBlock->begin(), IE = elseBlock->end(); II != IE; ++II)
     {

@@ -1753,6 +1753,8 @@ void CustomSafeOptPass::removeHftoFCast(Instruction& I)
                 Instruction* faddInst = dyn_cast<Instruction>(newFadd);
                 fmulInst->copyFastMathFlags(fmulInst);
                 faddInst->copyFastMathFlags(&I);
+                faddInst->setDebugLoc(castInst->getDebugLoc());
+
                 castInst->replaceAllUsesWith(faddInst);
                 return;
             }
@@ -1784,6 +1786,7 @@ void CustomSafeOptPass::removeHftoFCast(Instruction& I)
         newInst = BinaryOperator::Create(bo->getOpcode(), S1, S2, "", &I);
         Instruction* inst = dyn_cast<Instruction>(newInst);
         inst->copyFastMathFlags(&I);
+        inst->setDebugLoc(castInst->getDebugLoc());
         castInst->replaceAllUsesWith(inst);
     }
 }
@@ -2031,7 +2034,8 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic* sampleInst)
             GenISAIntrinsic::GenISA_sampleptr,
             overloadedTys);
 
-        llvm::Value* newSample = llvm::CallInst::Create(sampleIntr, args, "", sampleInst);
+        llvm::Instruction* newSample = llvm::CallInst::Create(sampleIntr, args, "", sampleInst);
+        newSample->setDebugLoc(sampleInst->getDebugLoc());
         sampleInst->replaceAllUsesWith(newSample);
     }
 }
@@ -2695,356 +2699,357 @@ void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Va
     I.eraseFromParent();
 }
 
-void GenSpecificPattern::visitBinaryOperator(BinaryOperator& I)
-{
-    if (I.getOpcode() == Instruction::Or)
-    {
-        using namespace llvm::PatternMatch;
-
-        /*
-        llvm changes ADD to OR when possible, and this optimization changes it back and allow 2 ADDs to merge.
-        This can avoid scattered read for constant buffer when the index is calculated by shl + or + add.
-
-        ex:
-        from
-        %22 = shl i32 %14, 2
-        %23 = or i32 %22, 3
+void GenSpecificPattern::visitAdd(BinaryOperator& I) {
+    /*
+    from
+        %23 = add i32 %22, 3
         %24 = add i32 %23, 16
-        to
-        %22 = shl i32 %14, 2
-        %23 = add i32 %22, 19
-        */
-        Value* AndOp1 = nullptr, * EltOp1 = nullptr;
-        auto pattern1 = m_Or(
-            m_And(m_Value(AndOp1), m_SpecificInt(0xFFFFFFFF)),
-            m_Shl(m_Value(EltOp1), m_SpecificInt(32)));
-#if LLVM_VERSION_MAJOR >= 7
-        Value* AndOp2 = nullptr, * EltOp2 = nullptr, * VecOp = nullptr;
-        auto pattern2 = m_Or(
-            m_And(m_Value(AndOp2), m_SpecificInt(0xFFFFFFFF)),
-            m_BitCast(m_InsertElt(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
-#endif // LLVM_VERSION_MAJOR >= 7
-        if (match(&I, pattern1) && AndOp1->getType()->isIntegerTy(64))
+    to
+        %24 = add i32 %22, 19
+    */
+
+    llvm::IRBuilder<> builder(&I);
+    for (int ImmSrcId1 = 0; ImmSrcId1 < 2; ImmSrcId1++)
+    {
+        ConstantInt* IConstant = dyn_cast<ConstantInt>(I.getOperand(ImmSrcId1));
+        if (IConstant)
         {
-            createBitcastExtractInsertPattern(I, AndOp1, EltOp1, 0, 1);
-        }
-#if LLVM_VERSION_MAJOR >= 7
-        else if (match(&I, pattern2) && AndOp2->getType()->isIntegerTy(64))
-        {
-            ConstantVector* cVec = dyn_cast<ConstantVector>(VecOp);
-            IGCLLVM::FixedVectorType* vector_type = dyn_cast<IGCLLVM::FixedVectorType>(VecOp->getType());
-            if (cVec && vector_type &&
-                isa<ConstantInt>(cVec->getOperand(0)) &&
-                cast<ConstantInt>(cVec->getOperand(0))->isZero() &&
-                vector_type->getElementType()->isIntegerTy(32) &&
-                vector_type->getNumElements() == 2)
+            llvm::Instruction* AddInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1 - ImmSrcId1));
+            if (AddInst && AddInst->getOpcode() == Instruction::Add)
             {
-                auto InsertOp = cast<BitCastInst>(I.getOperand(1))->getOperand(0);
-                createBitcastExtractInsertPattern(I, AndOp2, InsertOp, 0, 1);
-            }
-        }
-#endif // LLVM_VERSION_MAJOR >= 7
-        else
-        {
-            /*
-            from
-                % 22 = shl i32 % 14, 2
-                % 23 = or i32 % 22, 3
-            to
-                % 22 = shl i32 % 14, 2
-                % 23 = add i32 % 22, 3
-            */
-            ConstantInt* OrConstant = dyn_cast<ConstantInt>(I.getOperand(1));
-            if (OrConstant)
-            {
-                llvm::Instruction* ShlInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
-                if (ShlInst && ShlInst->getOpcode() == Instruction::Shl)
+                for (int ImmSrcId2 = 0; ImmSrcId2 < 2; ImmSrcId2++)
                 {
-                    ConstantInt* ShlConstant = dyn_cast<ConstantInt>(ShlInst->getOperand(1));
-                    if (ShlConstant)
+                    ConstantInt* AddConstant = dyn_cast<ConstantInt>(AddInst->getOperand(ImmSrcId2));
+                    if (AddConstant)
                     {
-                        // if the constant bit width is larger than 64, we cannot store ShlIntValue and OrIntValue rawdata as uint64_t.
-                        // will need a fix then
-                        IGC_ASSERT(ShlConstant->getBitWidth() <= 64);
-                        IGC_ASSERT(OrConstant->getBitWidth() <= 64);
-
-                        uint64_t ShlIntValue = *(ShlConstant->getValue()).getRawData();
-                        uint64_t OrIntValue = *(OrConstant->getValue()).getRawData();
-
-                        if (OrIntValue < pow(2, ShlIntValue))
-                        {
-                            Value* newAdd = BinaryOperator::CreateAdd(I.getOperand(0), I.getOperand(1), "", &I);
-                            I.replaceAllUsesWith(newAdd);
-                        }
+                        llvm::APInt CombineAddValue = AddConstant->getValue() + IConstant->getValue();
+                        I.setOperand(0, AddInst->getOperand(1 - ImmSrcId2));
+                        I.setOperand(1, ConstantInt::get(I.getType(), CombineAddValue));
                     }
                 }
             }
-        }
-    }
-    else if (I.getOpcode() == Instruction::Add)
-    {
-        /*
-        from
-            %23 = add i32 %22, 3
-            %24 = add i32 %23, 16
-        to
-            %24 = add i32 %22, 19
-        */
-        for (int ImmSrcId1 = 0; ImmSrcId1 < 2; ImmSrcId1++)
-        {
-            ConstantInt* IConstant = dyn_cast<ConstantInt>(I.getOperand(ImmSrcId1));
-            if (IConstant)
-            {
-                llvm::Instruction* AddInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(1 - ImmSrcId1));
-                if (AddInst && AddInst->getOpcode() == Instruction::Add)
-                {
-                    for (int ImmSrcId2 = 0; ImmSrcId2 < 2; ImmSrcId2++)
-                    {
-                        ConstantInt* AddConstant = dyn_cast<ConstantInt>(AddInst->getOperand(ImmSrcId2));
-                        if (AddConstant)
-                        {
-                            llvm::APInt CombineAddValue = AddConstant->getValue() + IConstant->getValue();
-                            I.setOperand(0, AddInst->getOperand(1 - ImmSrcId2));
-                            I.setOperand(1, ConstantInt::get(I.getType(), CombineAddValue));
-                        }
-                    }
-                }
-            }
-        }
-    }
-    else if (I.getOpcode() == Instruction::Shl)
-    {
-        /*
-          From:
-              %5 = zext i32 %a to i64 <--- optional
-              %6 = shl i64 %5, 32
-
-          To:
-              %BC = bitcast i64 %5 to <2 x i32> <---- not needed when %5 is zext
-              %6 = extractelement <2 x i32> %BC, i32 0 <---- not needed when %5 is zext
-              %7 = insertelement <2 x i32> %vec, i32 0, i32 0
-              %8 = insertelement <2 x i32> %vec, %6, i32 1
-              %9 = bitcast <2 x i32> %8 to i64
-        */
-
-        using namespace llvm::PatternMatch;
-        Instruction* inst = nullptr;
-
-        auto pattern1 = m_Shl(m_Instruction(inst), m_SpecificInt(32));
-
-        if (match(&I, pattern1) && I.getType()->isIntegerTy(64))
-        {
-            createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 0);
-        }
-    }
-    else if (I.getOpcode() == Instruction::And)
-    {
-        /*  This `and` is basically fabs() done on high part of int representation.
-            For float instructions minus operand can end as SrcMod, but since we cast it
-            from double to int it will end as additional mov, and we can ignore this m_FNeg
-            anyway.
-
-            From :
-                %sub = fsub double -0.000000e+00, %res.039
-                %25 = bitcast double %sub to i64
-                %26 = bitcast i64 %25 to <2 x i32> // or directly double to <2xi32>
-                %27 = extractelement <2 x i32> %26, i32 1
-                %and31.i = and i32 %27, 2147483647
-
-            To:
-                %25 = bitcast double %res.039 to <2 x i32>
-                %27 = extractelement <2 x i32> %26, i32 1
-                %and31.i = and i32 %27, 2147483647
-
-            Or on Int64 without extract:
-            From:
-                %sub = fsub double -0.000000e+00, %res.039
-                %astype.i112.i.i = bitcast double %sub to i64
-                %and107.i.i = and i64 %astype.i112.i.i, 9223372032559808512 // 0x7FFFFFFF00000000
-            To:
-                %bit_cast = bitcast double %res.039 to i64
-                %and107.i.i = and i64 %bit_cast, 9223372032559808512 // 0x7FFFFFFF00000000
-
-        */
-
-        /*  Get src of either 2 bitcast chain: double -> i64, i64 -> 2xi32
-            or from single direct: double -> 2xi32
-        */
-        auto getValidBitcastSrc = [](Instruction* op) -> llvm::Value*
-        {
-            if (!(isa<BitCastInst>(op)))
-                return nullptr;
-
-            BitCastInst* opBC = cast<BitCastInst>(op);
-
-            auto opType = opBC->getType();
-            if (!(opType->isVectorTy() && cast<VectorType>(opType)->getElementType()->isIntegerTy(32) && cast<IGCLLVM::FixedVectorType>(opType)->getNumElements() == 2))
-                return nullptr;
-
-            if (opBC->getSrcTy()->isDoubleTy())
-                return opBC->getOperand(0); // double -> 2xi32
-
-            BitCastInst* bitCastSrc = dyn_cast<BitCastInst>(opBC->getOperand(0));
-
-            if (bitCastSrc && bitCastSrc->getDestTy()->isIntegerTy(64) && bitCastSrc->getSrcTy()->isDoubleTy())
-                return bitCastSrc->getOperand(0); // double -> i64, i64 -> 2xi32
-
-            return nullptr;
-        };
-
-        using namespace llvm::PatternMatch;
-        Value* src_of_FNeg = nullptr;
-        Instruction* inst = nullptr;
-
-        auto fabs_on_int_pattern1 = m_And(m_ExtractElt(m_Instruction(inst), m_SpecificInt(1)), m_SpecificInt(0x7FFFFFFF));
-        auto fabs_on_int_pattern2 = m_And(m_Instruction(inst), m_SpecificInt(0x7FFFFFFF00000000));
-        auto fneg_pattern = m_FNeg(m_Value(src_of_FNeg));
-
-        /*
-        From:
-            %5 = zext i32 %a to i64 <--- optional
-            %6 = and i64 %5, 0xFFFFFFFF00000000 (-4294967296)
-        To:
-            %BC = bitcast i64 %5 to <2 x i32> <---- not needed when %5 is zext
-            %6 = extractelement <2 x i32> %BC, i32 1 <---- not needed when %5 is zext
-            %7 = insertelement <2 x i32> %vec, i32 0, i32 0
-            %8 = insertelement <2 x i32> %vec, %6, i32 1
-            %9 = bitcast <2 x i32> %8 to i64
-        */
-
-        auto pattern1 = m_And(m_Instruction(inst), m_SpecificInt(0xFFFFFFFF00000000));
-
-        if (match(&I, fabs_on_int_pattern1))
-        {
-            Value* src = getValidBitcastSrc(inst);
-            if (src && match(src, fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
-            {
-                llvm::IRBuilder<> builder(&I);
-                VectorType* vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
-                Value* BC = builder.CreateBitCast(src_of_FNeg, vec2);
-                Value* EE = builder.CreateExtractElement(BC, builder.getInt32(1));
-                Value* AI = builder.CreateAnd(EE, builder.getInt32(0x7FFFFFFF));
-                I.replaceAllUsesWith(AI);
-                I.eraseFromParent();
-            }
-        }
-        else if (match(&I, fabs_on_int_pattern2))
-        {
-            BitCastInst* bitcast = dyn_cast<BitCastInst>(inst);
-            bool bitcastValid = bitcast && bitcast->getDestTy()->isIntegerTy(64) && bitcast->getSrcTy()->isDoubleTy();
-
-            if (bitcastValid && match(bitcast->getOperand(0), fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
-            {
-                llvm::IRBuilder<> builder(&I);
-                Value* BC = builder.CreateBitCast(src_of_FNeg, I.getType());
-                Value* AI = builder.CreateAnd(BC, builder.getInt64(0x7FFFFFFF00000000));
-                I.replaceAllUsesWith(AI);
-                I.eraseFromParent();
-            }
-        }
-        else if (match(&I, pattern1) && I.getType()->isIntegerTy(64))
-        {
-            createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 1);
-        }
-        else
-        {
-
-            Instruction* AndSrc = nullptr;
-            ConstantInt* CI;
-
-            /*
-            From:
-              %28 = and i32 %24, 255
-              %29 = lshr i32 %24, 8
-              %30 = and i32 %29, 255
-              %31 = lshr i32 %24, 16
-              %32 = and i32 %31, 255
-            To:
-              %temp = bitcast i32 %24 to <4 x i8>
-              %ee1 = extractelement <4 x i8> %temp, i32 0
-              %ee2 = extractelement <4 x i8> %temp, i32 1
-              %ee3 = extractelement <4 x i8> %temp, i32 2
-              %28 = zext i8 %ee1 to i32
-              %30 = zext i8 %ee2 to i32
-              %32 = zext i8 %ee3 to i32
-            */
-            auto pattern_And_0xFF = m_And(m_Instruction(AndSrc), m_SpecificInt(0xFF));
-
-            if (match(&I, pattern_And_0xFF) && I.getType()->isIntegerTy(32) && AndSrc->getType()->isIntegerTy(32))
-            {
-                Instruction* LhsSrc = nullptr;
-
-                auto LShr_Pattern = m_LShr(m_Instruction(LhsSrc), m_ConstantInt(CI));
-                bool LShrMatch = match(AndSrc, LShr_Pattern) && LhsSrc->getType()->isIntegerTy(32) && (CI->getZExtValue() % 8 == 0);
-
-                // in case there's no shr, it will be 0
-                uint32_t newIndex = 0;
-
-                if (LShrMatch) // extract inner
-                {
-                    AndSrc = LhsSrc;
-                    newIndex = (uint32_t)CI->getZExtValue() / 8;
-                    llvm::IRBuilder<> builder(&I);
-                    VectorType* vec4 = VectorType::get(builder.getInt8Ty(), 4, false);
-                    Value* BC = builder.CreateBitCast(AndSrc, vec4);
-                    Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
-                    Value* Zext = builder.CreateZExt(EE, builder.getInt32Ty());
-                    I.replaceAllUsesWith(Zext);
-                    I.eraseFromParent();
-                }
-            }
-
-        }
-    }
-    else if (I.getOpcode() == Instruction::AShr)
-    {
-        /*
-            From:
-            %129 = i32...
-            %Temp = shl i32 %129, 16
-            %132 = ashr exact i32 %Temp, 16
-            %133 = ashr i32 %129, 16
-            To:
-            %129 = i32...
-            %temp = bitcast i32 %129 to <2 x i16>
-            %ee1 = extractelement <2 x i16> %temp, i32 0
-            %ee2 = extractelement <2 x i16> %temp, i32 1
-            %132 = sext i8 %ee1 to i32
-            %133 = sext i8 %ee2 to i32
-            Which will end up as regioning instead of 2 isntr.
-        */
-        using namespace llvm::PatternMatch;
-
-        Instruction* AShrSrc = nullptr;
-        auto pattern_1 = m_AShr(m_Instruction(AShrSrc), m_SpecificInt(16));
-
-        if (match(&I, pattern_1) && I.getType()->isIntegerTy(32) && AShrSrc->getType()->isIntegerTy(32))
-        {
-            Instruction* ShlSrc = nullptr;
-
-            auto Shl_Pattern = m_Shl(m_Instruction(ShlSrc), m_SpecificInt(16));
-            bool submatch = match(AShrSrc, Shl_Pattern) && ShlSrc->getType()->isIntegerTy(32);
-
-            // in case there's no shr, we take upper half
-            uint32_t newIndex = 1;
-
-            // if there was Shl, we take lower half
-            if (submatch)
-            {
-                AShrSrc = ShlSrc;
-                newIndex = 0;
-            }
-            llvm::IRBuilder<> builder(&I);
-            VectorType* vec2 = VectorType::get(builder.getInt16Ty(), 2, false);
-            Value* BC = builder.CreateBitCast(AShrSrc, vec2);
-            Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
-            Value* Sext = builder.CreateSExt(EE, builder.getInt32Ty());
-            I.replaceAllUsesWith(Sext);
-            I.eraseFromParent();
         }
     }
 }
 
+void GenSpecificPattern::visitAnd(BinaryOperator& I)
+{
+    /*  This `and` is basically fabs() done on high part of int representation.
+        For float instructions minus operand can end as SrcMod, but since we cast it
+        from double to int it will end as additional mov, and we can ignore this m_FNeg
+        anyway.
+
+        From :
+            %sub = fsub double -0.000000e+00, %res.039
+            %25 = bitcast double %sub to i64
+            %26 = bitcast i64 %25 to <2 x i32> // or directly double to <2xi32>
+            %27 = extractelement <2 x i32> %26, i32 1
+            %and31.i = and i32 %27, 2147483647
+
+        To:
+            %25 = bitcast double %res.039 to <2 x i32>
+            %27 = extractelement <2 x i32> %26, i32 1
+            %and31.i = and i32 %27, 2147483647
+
+        Or on Int64 without extract:
+        From:
+            %sub = fsub double -0.000000e+00, %res.039
+            %astype.i112.i.i = bitcast double %sub to i64
+            %and107.i.i = and i64 %astype.i112.i.i, 9223372032559808512 // 0x7FFFFFFF00000000
+        To:
+            %bit_cast = bitcast double %res.039 to i64
+            %and107.i.i = and i64 %bit_cast, 9223372032559808512 // 0x7FFFFFFF00000000
+
+    */
+
+    /*  Get src of either 2 bitcast chain: double -> i64, i64 -> 2xi32
+        or from single direct: double -> 2xi32
+    */
+
+    auto getValidBitcastSrc = [](Instruction* op) -> llvm::Value*
+    {
+        if (!(isa<BitCastInst>(op)))
+            return nullptr;
+
+        BitCastInst* opBC = cast<BitCastInst>(op);
+
+        auto opType = opBC->getType();
+        if (!(opType->isVectorTy() && cast<VectorType>(opType)->getElementType()->isIntegerTy(32) && cast<IGCLLVM::FixedVectorType>(opType)->getNumElements() == 2))
+            return nullptr;
+
+        if (opBC->getSrcTy()->isDoubleTy())
+            return opBC->getOperand(0); // double -> 2xi32
+
+        BitCastInst* bitCastSrc = dyn_cast<BitCastInst>(opBC->getOperand(0));
+
+        if (bitCastSrc && bitCastSrc->getDestTy()->isIntegerTy(64) && bitCastSrc->getSrcTy()->isDoubleTy())
+            return bitCastSrc->getOperand(0); // double -> i64, i64 -> 2xi32
+
+        return nullptr;
+    };
+
+    llvm::IRBuilder<> builder(&I);
+    using namespace llvm::PatternMatch;
+    Value* src_of_FNeg = nullptr;
+    Instruction* inst = nullptr;
+
+    auto fabs_on_int_pattern1 = m_And(m_ExtractElt(m_Instruction(inst), m_SpecificInt(1)), m_SpecificInt(0x7FFFFFFF));
+    auto fabs_on_int_pattern2 = m_And(m_Instruction(inst), m_SpecificInt(0x7FFFFFFF00000000));
+    auto fneg_pattern = m_FNeg(m_Value(src_of_FNeg));
+
+    /*
+    From:
+        %5 = zext i32 %a to i64 <--- optional
+        %6 = and i64 %5, 0xFFFFFFFF00000000 (-4294967296)
+    To:
+        %BC = bitcast i64 %5 to <2 x i32> <---- not needed when %5 is zext
+        %6 = extractelement <2 x i32> %BC, i32 1 <---- not needed when %5 is zext
+        %7 = insertelement <2 x i32> %vec, i32 0, i32 0
+        %8 = insertelement <2 x i32> %vec, %6, i32 1
+        %9 = bitcast <2 x i32> %8 to i64
+    */
+
+    auto pattern1 = m_And(m_Instruction(inst), m_SpecificInt(0xFFFFFFFF00000000));
+
+    if (match(&I, fabs_on_int_pattern1))
+    {
+        Value* src = getValidBitcastSrc(inst);
+        if (src && match(src, fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
+        {
+            VectorType* vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
+            Value* BC = builder.CreateBitCast(src_of_FNeg, vec2);
+            Value* EE = builder.CreateExtractElement(BC, builder.getInt32(1));
+            Value* AI = builder.CreateAnd(EE, builder.getInt32(0x7FFFFFFF));
+            I.replaceAllUsesWith(AI);
+            I.eraseFromParent();
+        }
+    }
+    else if (match(&I, fabs_on_int_pattern2))
+    {
+        BitCastInst* bitcast = dyn_cast<BitCastInst>(inst);
+        bool bitcastValid = bitcast && bitcast->getDestTy()->isIntegerTy(64) && bitcast->getSrcTy()->isDoubleTy();
+
+        if (bitcastValid && match(bitcast->getOperand(0), fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
+        {
+            Value* BC = builder.CreateBitCast(src_of_FNeg, I.getType());
+            Value* AI = builder.CreateAnd(BC, builder.getInt64(0x7FFFFFFF00000000));
+            I.replaceAllUsesWith(AI);
+            I.eraseFromParent();
+        }
+    }
+    else if (match(&I, pattern1) && I.getType()->isIntegerTy(64))
+    {
+        createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 1);
+    }
+    else
+    {
+
+        Instruction* AndSrc = nullptr;
+        ConstantInt* CI;
+
+        /*
+        From:
+          %28 = and i32 %24, 255
+          %29 = lshr i32 %24, 8
+          %30 = and i32 %29, 255
+          %31 = lshr i32 %24, 16
+          %32 = and i32 %31, 255
+        To:
+          %temp = bitcast i32 %24 to <4 x i8>
+          %ee1 = extractelement <4 x i8> %temp, i32 0
+          %ee2 = extractelement <4 x i8> %temp, i32 1
+          %ee3 = extractelement <4 x i8> %temp, i32 2
+          %28 = zext i8 %ee1 to i32
+          %30 = zext i8 %ee2 to i32
+          %32 = zext i8 %ee3 to i32
+        */
+        auto pattern_And_0xFF = m_And(m_Instruction(AndSrc), m_SpecificInt(0xFF));
+
+        if (match(&I, pattern_And_0xFF) && I.getType()->isIntegerTy(32) && AndSrc->getType()->isIntegerTy(32))
+        {
+            Instruction* LhsSrc = nullptr;
+
+            auto LShr_Pattern = m_LShr(m_Instruction(LhsSrc), m_ConstantInt(CI));
+            bool LShrMatch = match(AndSrc, LShr_Pattern) && LhsSrc->getType()->isIntegerTy(32) && (CI->getZExtValue() % 8 == 0);
+
+            // in case there's no shr, it will be 0
+            uint32_t newIndex = 0;
+
+            if (LShrMatch) // extract inner
+            {
+                AndSrc = LhsSrc;
+                newIndex = (uint32_t)CI->getZExtValue() / 8;
+                VectorType* vec4 = VectorType::get(builder.getInt8Ty(), 4, false);
+                Value* BC = builder.CreateBitCast(AndSrc, vec4);
+                Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
+                Value* Zext = builder.CreateZExt(EE, builder.getInt32Ty());
+                I.replaceAllUsesWith(Zext);
+                I.eraseFromParent();
+            }
+        }
+    }
+}
+
+void GenSpecificPattern::visitAShr(BinaryOperator& I)
+{
+    /*
+        From:
+        %129 = i32...
+        %Temp = shl i32 %129, 16
+        %132 = ashr exact i32 %Temp, 16
+        %133 = ashr i32 %129, 16
+        To:
+        %129 = i32...
+        %temp = bitcast i32 %129 to <2 x i16>
+        %ee1 = extractelement <2 x i16> %temp, i32 0
+        %ee2 = extractelement <2 x i16> %temp, i32 1
+        %132 = sext i8 %ee1 to i32
+        %133 = sext i8 %ee2 to i32
+        Which will end up as regioning instead of 2 isntr.
+    */
+
+    llvm::IRBuilder<> builder(&I);
+    using namespace llvm::PatternMatch;
+
+    Instruction* AShrSrc = nullptr;
+    auto pattern_1 = m_AShr(m_Instruction(AShrSrc), m_SpecificInt(16));
+
+    if (match(&I, pattern_1) && I.getType()->isIntegerTy(32) && AShrSrc->getType()->isIntegerTy(32))
+    {
+        Instruction* ShlSrc = nullptr;
+
+        auto Shl_Pattern = m_Shl(m_Instruction(ShlSrc), m_SpecificInt(16));
+        bool submatch = match(AShrSrc, Shl_Pattern) && ShlSrc->getType()->isIntegerTy(32);
+
+        // in case there's no shr, we take upper half
+        uint32_t newIndex = 1;
+
+        // if there was Shl, we take lower half
+        if (submatch)
+        {
+            AShrSrc = ShlSrc;
+            newIndex = 0;
+        }
+        VectorType* vec2 = VectorType::get(builder.getInt16Ty(), 2, false);
+        Value* BC = builder.CreateBitCast(AShrSrc, vec2);
+        Value* EE = builder.CreateExtractElement(BC, builder.getInt32(newIndex));
+        Value* Sext = builder.CreateSExt(EE, builder.getInt32Ty());
+        I.replaceAllUsesWith(Sext);
+        I.eraseFromParent();
+    }
+}
+
+void GenSpecificPattern::visitShl(BinaryOperator& I)
+{
+    /*
+      From:
+          %5 = zext i32 %a to i64 <--- optional
+          %6 = shl i64 %5, 32
+
+      To:
+          %BC = bitcast i64 %5 to <2 x i32> <---- not needed when %5 is zext
+          %6 = extractelement <2 x i32> %BC, i32 0 <---- not needed when %5 is zext
+          %7 = insertelement <2 x i32> %vec, i32 0, i32 0
+          %8 = insertelement <2 x i32> %vec, %6, i32 1
+          %9 = bitcast <2 x i32> %8 to i64
+    */
+
+    using namespace llvm::PatternMatch;
+    Instruction* inst = nullptr;
+
+    auto pattern1 = m_Shl(m_Instruction(inst), m_SpecificInt(32));
+
+    if (match(&I, pattern1) && I.getType()->isIntegerTy(64))
+    {
+        createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 0);
+    }
+}
+
+void GenSpecificPattern::visitOr(BinaryOperator& I)
+{
+    llvm::IRBuilder<> builder(&I);
+    using namespace llvm::PatternMatch;
+
+    /*
+    llvm changes ADD to OR when possible, and this optimization changes it back and allow 2 ADDs to merge.
+    This can avoid scattered read for constant buffer when the index is calculated by shl + or + add.
+
+    ex:
+    from
+    %22 = shl i32 %14, 2
+    %23 = or i32 %22, 3
+    %24 = add i32 %23, 16
+    to
+    %22 = shl i32 %14, 2
+    %23 = add i32 %22, 19
+    */
+    Value* AndOp1 = nullptr, * EltOp1 = nullptr;
+    auto pattern1 = m_Or(
+        m_And(m_Value(AndOp1), m_SpecificInt(0xFFFFFFFF)),
+        m_Shl(m_Value(EltOp1), m_SpecificInt(32)));
+#if LLVM_VERSION_MAJOR >= 7
+    Value* AndOp2 = nullptr, * EltOp2 = nullptr, * VecOp = nullptr;
+    auto pattern2 = m_Or(
+        m_And(m_Value(AndOp2), m_SpecificInt(0xFFFFFFFF)),
+        m_BitCast(m_InsertElt(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
+#endif // LLVM_VERSION_MAJOR >= 7
+    if (match(&I, pattern1) && AndOp1->getType()->isIntegerTy(64))
+    {
+        createBitcastExtractInsertPattern(I, AndOp1, EltOp1, 0, 1);
+    }
+#if LLVM_VERSION_MAJOR >= 7
+    else if (match(&I, pattern2) && AndOp2->getType()->isIntegerTy(64))
+    {
+        ConstantVector* cVec = dyn_cast<ConstantVector>(VecOp);
+        IGCLLVM::FixedVectorType* vector_type = dyn_cast<IGCLLVM::FixedVectorType>(VecOp->getType());
+        if (cVec && vector_type &&
+            isa<ConstantInt>(cVec->getOperand(0)) &&
+            cast<ConstantInt>(cVec->getOperand(0))->isZero() &&
+            vector_type->getElementType()->isIntegerTy(32) &&
+            vector_type->getNumElements() == 2)
+        {
+            auto InsertOp = cast<BitCastInst>(I.getOperand(1))->getOperand(0);
+            createBitcastExtractInsertPattern(I, AndOp2, InsertOp, 0, 1);
+        }
+    }
+#endif // LLVM_VERSION_MAJOR >= 7
+    else
+    {
+        /*
+        from
+            % 22 = shl i32 % 14, 2
+            % 23 = or i32 % 22, 3
+        to
+            % 22 = shl i32 % 14, 2
+            % 23 = add i32 % 22, 3
+        */
+        ConstantInt* OrConstant = dyn_cast<ConstantInt>(I.getOperand(1));
+        if (OrConstant)
+        {
+            llvm::Instruction* ShlInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
+            if (ShlInst && ShlInst->getOpcode() == Instruction::Shl)
+            {
+                ConstantInt* ShlConstant = dyn_cast<ConstantInt>(ShlInst->getOperand(1));
+                if (ShlConstant)
+                {
+                    // if the constant bit width is larger than 64, we cannot store ShlIntValue and OrIntValue rawdata as uint64_t.
+                    // will need a fix then
+                    IGC_ASSERT(ShlConstant->getBitWidth() <= 64);
+                    IGC_ASSERT(OrConstant->getBitWidth() <= 64);
+
+                    uint64_t ShlIntValue = *(ShlConstant->getValue()).getRawData();
+                    uint64_t OrIntValue = *(OrConstant->getValue()).getRawData();
+
+                    if (OrIntValue < pow(2, ShlIntValue))
+                    {
+                        Value* newAdd = builder.CreateAdd(I.getOperand(0), I.getOperand(1));
+                        I.replaceAllUsesWith(newAdd);
+                    }
+                }
+            }
+        }
+    }
+}
 
 void GenSpecificPattern::visitCmpInst(CmpInst& I)
 {
@@ -3107,6 +3112,7 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
 
     IGC_ASSERT(I.getOpcode() == Instruction::Select);
 
+    llvm::IRBuilder<> builder(&I);
     bool skipOpt = false;
 
     ConstantInt* Cint = dyn_cast<ConstantInt>(I.getOperand(2));
@@ -3144,8 +3150,9 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
 
             if (!skipOpt)
             {
-                Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), I.getType(), "", &I);
-                Value* newValueAnd = BinaryOperator::CreateAnd(I.getOperand(1), newValueSext, "", &I);
+                llvm::IRBuilder<> builder(&I);
+                Value* newValueSext = builder.CreateSExtOrBitCast(I.getOperand(0), I.getType());
+                Value* newValueAnd = builder.CreateAnd(I.getOperand(1), newValueSext);
                 I.replaceAllUsesWith(newValueAnd);
             }
         }
@@ -3207,18 +3214,18 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
                     {
                         if (C1->getType()->isHalfTy())
                         {
-                            Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt16Ty(I.getContext()), "", &I);
+                            Value* newValueSext = builder.CreateSExtOrBitCast(I.getOperand(0), Type::getInt16Ty(I.getContext()));
                             Value* newConstant = ConstantInt::get(I.getContext(), C1->getValueAPF().bitcastToAPInt());
-                            Value* newValueAnd = BinaryOperator::CreateAnd(newValueSext, newConstant, "", &I);
-                            Value* newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getHalfTy(I.getContext()), "", &I);
+                            Value* newValueAnd = builder.CreateAnd(newValueSext, newConstant);
+                            Value* newValueCastFP = builder.CreateZExtOrBitCast(newValueAnd, Type::getHalfTy(I.getContext()));
                             I.replaceAllUsesWith(newValueCastFP);
                         }
                         else if (C1->getType()->isFloatTy())
                         {
-                            Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt32Ty(I.getContext()), "", &I);
+                            Value* newValueSext = builder.CreateSExtOrBitCast(I.getOperand(0), Type::getInt32Ty(I.getContext()));
                             Value* newConstant = ConstantInt::get(I.getContext(), C1->getValueAPF().bitcastToAPInt());
-                            Value* newValueAnd = BinaryOperator::CreateAnd(newValueSext, newConstant, "", &I);
-                            Value* newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getFloatTy(I.getContext()), "", &I);
+                            Value* newValueAnd = builder.CreateAnd(newValueSext, newConstant);
+                            Value* newValueCastFP = builder.CreateZExtOrBitCast(newValueAnd, Type::getFloatTy(I.getContext()));
                             I.replaceAllUsesWith(newValueCastFP);
                         }
                     }
@@ -3226,19 +3233,19 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
                     {
                         if (I.getOperand(1)->getType()->isHalfTy())
                         {
-                            Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt16Ty(I.getContext()), "", &I);
-                            Value* newValueBitcast = CastInst::CreateZExtOrBitCast(I.getOperand(1), Type::getInt16Ty(I.getContext()), "", &I);
-                            Value* newValueAnd = BinaryOperator::CreateAnd(newValueSext, newValueBitcast, "", &I);
-                            Value* newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getHalfTy(I.getContext()), "", &I); \
-                                I.replaceAllUsesWith(newValueCastFP);
+                            Value* newValueSext = builder.CreateSExtOrBitCast(I.getOperand(0), Type::getInt16Ty(I.getContext()));
+                            Value* newValueBitcast = builder.CreateZExtOrBitCast(I.getOperand(1), Type::getInt16Ty(I.getContext()));
+                            Value* newValueAnd = builder.CreateAnd(newValueSext, newValueBitcast);
+                            Value* newValueCastFP = builder.CreateZExtOrBitCast(newValueAnd, Type::getHalfTy(I.getContext()));
+                            I.replaceAllUsesWith(newValueCastFP);
                         }
                         else if (I.getOperand(1)->getType()->isFloatTy())
                         {
-                            Value* newValueSext = CastInst::CreateSExtOrBitCast(I.getOperand(0), Type::getInt32Ty(I.getContext()), "", &I);
-                            Value* newValueBitcast = CastInst::CreateZExtOrBitCast(I.getOperand(1), Type::getInt32Ty(I.getContext()), "", &I);
-                            Value* newValueAnd = BinaryOperator::CreateAnd(newValueSext, newValueBitcast, "", &I);
-                            Value* newValueCastFP = CastInst::CreateZExtOrBitCast(newValueAnd, Type::getFloatTy(I.getContext()), "", &I); \
-                                I.replaceAllUsesWith(newValueCastFP);
+                            Value* newValueSext = builder.CreateSExtOrBitCast(I.getOperand(0), Type::getInt32Ty(I.getContext()));
+                            Value* newValueBitcast = builder.CreateZExtOrBitCast(I.getOperand(1), Type::getInt32Ty(I.getContext()));
+                            Value* newValueAnd = builder.CreateAnd(newValueSext, newValueBitcast);
+                            Value* newValueCastFP = builder.CreateZExtOrBitCast(newValueAnd, Type::getFloatTy(I.getContext()));
+                            I.replaceAllUsesWith(newValueCastFP);
                         }
                     }
                 }
@@ -3329,8 +3336,8 @@ void GenSpecificPattern::visitSelectInst(SelectInst& I)
 
             if (newSelOp1 && newSelOp2)
             {
-                auto newSelInst = SelectInst::Create(I.getCondition(), newSelOp1, newSelOp2, "", &I);
-                auto newTruncInst = TruncInst::CreateTruncOrBitCast(newSelInst, selOp1->getType(), "", &I);
+                auto newSelInst = builder.CreateSelect(I.getCondition(), newSelOp1, newSelOp2);
+                auto newTruncInst = builder.CreateTruncOrBitCast(newSelInst, selOp1->getType());
                 I.replaceAllUsesWith(newTruncInst);
                 I.eraseFromParent();
             }
@@ -5343,6 +5350,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
             Value* selTrueValue = Phi->getIncomingValueForBlock(CaseDest);
             builder.SetInsertPoint(SI);
             Value* cmp = builder.CreateICmp(CmpInst::Predicate::ICMP_EQ, Val, CaseValue);
+            builder.SetCurrentDebugLocation(Phi->getDebugLoc());
             Value* sel = builder.CreateSelect(cmp, selTrueValue, vTemp);
             vTemp = sel;
         }
@@ -5818,22 +5826,29 @@ bool LogicalAndToBranch::scheduleUp(BasicBlock* bb, Value* V,
 void LogicalAndToBranch::convertAndToBranch(Instruction* opAnd,
     Instruction* cond0, Instruction* cond1, BasicBlock*& newBB)
 {
+
     BasicBlock* bb = opAnd->getParent();
     BasicBlock* bbThen, * bbElse, * bbEnd;
 
-    bbThen = bb->splitBasicBlock(cond0->getNextNode(), "if.then");
+    Instruction* splitBefore = cond0->getNextNonDebugInstruction();
+    bbThen = bb->splitBasicBlock(splitBefore->getIterator(), "if.then");
     bbElse = bbThen->splitBasicBlock(opAnd, "if.else");
     bbEnd = bbElse->splitBasicBlock(opAnd, "if.end");
 
     bb->getTerminator()->eraseFromParent();
     BranchInst* br = BranchInst::Create(bbThen, bbElse, cond0, bb);
+    br->setDebugLoc(splitBefore->getDebugLoc());
 
     bbThen->getTerminator()->eraseFromParent();
     br = BranchInst::Create(bbEnd, bbThen);
+    br->setDebugLoc(opAnd->getDebugLoc());
+
 
     PHINode* phi = PHINode::Create(opAnd->getType(), 2, "", opAnd);
     phi->addIncoming(cond1, bbThen);
     phi->addIncoming(ConstantInt::getFalse(opAnd->getType()), bbElse);
+    phi->setDebugLoc(opAnd->getDebugLoc());
+
     opAnd->replaceAllUsesWith(phi);
     opAnd->eraseFromParent();
 

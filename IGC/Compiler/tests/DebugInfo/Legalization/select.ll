@@ -20,7 +20,7 @@
 source_filename = "Select.ll"
 
 define spir_kernel void @test_select(i64 %src1, i64 %src2, i1 %src3, i1 %src4) !dbg !7 {
-; Testcase 1 (Fails)
+; Testcase 1
 ;
 ; CHECK: [[ZEXT1_V:%[0-9]*]] = zext i1 %src3 to i32
 ; CHECK-NEXT: [[ZEXT2_V:%[0-9]*]] = zext i1 %src4 to i32

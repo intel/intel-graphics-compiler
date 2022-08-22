@@ -165,7 +165,11 @@ namespace IGC
             return "GenSpecificPattern";
         }
 
-        void visitBinaryOperator(llvm::BinaryOperator& I);
+        void visitAdd(llvm::BinaryOperator& I);
+        void visitAnd(llvm::BinaryOperator& I);
+        void visitAShr(llvm::BinaryOperator& I);
+        void visitOr(llvm::BinaryOperator& I);
+        void visitShl(llvm::BinaryOperator& I);
         void visitSelectInst(llvm::SelectInst& I);
         void visitCmpInst(llvm::CmpInst& I);
         void visitZExtInst(llvm::ZExtInst& I);

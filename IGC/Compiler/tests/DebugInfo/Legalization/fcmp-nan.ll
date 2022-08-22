@@ -36,7 +36,7 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
   %2 = zext i1 %1 to i32, !dbg !24
   call void @llvm.dbg.value(metadata i32 %2, metadata !12, metadata !DIExpression()), !dbg !24
 
-; Testcase 2 (Failing)
+; Testcase 2
 ; cmp uno to or(une,une)
 ; CHECK-NEXT: [[FCMP_UNE1:%[0-9]*]] = fcmp une float %src1, %src1
 ; CHECK-NEXT: [[FCMP_UNE2:%[0-9]*]] = fcmp une float %src2, %src2
@@ -50,7 +50,7 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
   %4 = zext i1 %3 to i32, !dbg !26
   call void @llvm.dbg.value(metadata i32 %4, metadata !15, metadata !DIExpression()), !dbg !26
 
-; Testcase 3 (Failing)
+; Testcase 3
 ; cmp one to and(une, and(oeq,oeq))
 
 ; CHECK-NEXT: [[FCMP_OEQ2:%[0-9]*]] = fcmp oeq float %src2, %src2
@@ -67,7 +67,7 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
   %6 = zext i1 %5 to i32, !dbg !28
   call void @llvm.dbg.value(metadata i32 %6, metadata !17, metadata !DIExpression()), !dbg !28
 
-; Testcase 4 (Failing)
+; Testcase 4
 ; cmp ueq to or(oeq, or(une,une))
 ; CHECK-NEXT: [[FCMP_UNE1:%[0-9]*]] = fcmp une float %src1, %src1
 ; CHECK-NEXT: [[FCMP_UNE2:%[0-9]*]] = fcmp une float %src2, %src2
@@ -83,7 +83,7 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
   %8 = zext i1 %7 to i32, !dbg !30
   call void @llvm.dbg.value(metadata i32 %8, metadata !19, metadata !DIExpression()), !dbg !30
 
-; Testcase 5 (Failing)
+; Testcase 5
 ; cmp uge to !olt
 
 ; CHECK-NEXT: [[FCMP_OLT:%[0-9]*]] = fcmp olt float %src1, %src2

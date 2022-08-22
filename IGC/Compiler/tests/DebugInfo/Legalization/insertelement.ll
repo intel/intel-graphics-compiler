@@ -20,7 +20,7 @@
 source_filename = "InsertElement.ll"
 
 define spir_kernel void @test_insert(i32 %src1, <3 x i1> %src2) !dbg !7 {
-; Testcase 1(Failed)
+; Testcase 1
 ; insertelement with const vector to several insertelements
 ; CHECK: [[INS1_V:%[0-9]*]] = insertelement <3 x i32> undef, i32 0, i32 0
 ; CHECK-NEXT: [[INS2_V:%[0-9]*]] = insertelement <3 x i32> [[INS1_V]], i32 1, i32 1
@@ -31,7 +31,7 @@ define spir_kernel void @test_insert(i32 %src1, <3 x i1> %src2) !dbg !7 {
   %1 = insertelement <3 x i32> <i32 0, i32 1, i32 2>, i32 %src1, i32 0, !dbg !18
   call void @llvm.dbg.value(metadata <3 x i32> %1, metadata !10, metadata !DIExpression()), !dbg !18
 
-; Testcase 2(Failed)
+; Testcase 2
 ; insertelement with i1 propagated to i32
 ; CHECK-NEXT: [[EXTR_V:%[0-9]*]] = extractelement <3 x i1> %src2, i32 2, !dbg [[EXTR_LOC:![0-9]*]]
 ; CHECK: [[SEXT_V:%[0-9]*]] = sext i1 [[EXTR_V]] to i32

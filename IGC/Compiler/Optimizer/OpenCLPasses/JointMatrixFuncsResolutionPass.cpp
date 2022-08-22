@@ -311,8 +311,10 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
     InstsToErase.insert(CI);
 
     Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "matrix", CI);
+    newCall->setDebugLoc(CI->getDebugLoc());
     if (retTy != matTy) {
         newCall = BitCastInst::Create(Instruction::BitCast, newCall, matTy,"matrix.load.cast", CI);
+        newCall->setDebugLoc(CI->getDebugLoc());
     }
     return newCall;
 }
@@ -344,8 +346,9 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
     std::vector<Value *> Args = { ptrVal, matVal, strideVal };
 
     InstsToErase.insert(CI);
-
-    return CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
+    Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
+    newCall->setDebugLoc(CI->getDebugLoc());
+    return newCall;
 }
 
 static PrecisionType getElementPrecison(const JointMatrixTypeDescription *desc, bool floatOp, bool isUnsigned) {
@@ -414,6 +417,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
     GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_sub_group_dpas;
     Function *dpasFunc = GenISAIntrinsic::getDeclaration(Mod, iid, ITys);
     Instruction *dpasCall = CallInst::Create(dpasFunc, args, VALUE_NAME("dpas"), CI);
+    dpasCall->setDebugLoc(CI->getDebugLoc());
 
     InstsToErase.insert(CI);
 
@@ -723,6 +727,7 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v)
 
         Type *type = ResolveType(v->getType(), nullptr);
         PHINode *NewPN = PHINode::Create(type, IncomingCount, "matrix.phi.node", PN);
+        NewPN->setDebugLoc(PN->getDebugLoc());
         CacheResolvedValue(v, NewPN);
 
         for (unsigned i = 0; i < IncomingCount; i++) {
