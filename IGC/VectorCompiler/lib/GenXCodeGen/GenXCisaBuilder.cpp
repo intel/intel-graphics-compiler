@@ -214,9 +214,7 @@ CHANNEL_OUTPUT_FORMAT getChannelOutputFormat(uint8_t ChannelOutput) {
 }
 
 static std::string cutString(const Twine &Str) {
-  // vISA is limited to 64 byte strings. But old fe-compiler seems to ignore
-  // that for source filenames.
-  constexpr size_t MaxVisaLabelLength = 64;
+  constexpr size_t MaxVisaLabelLength = 1023;
   auto Result = Str.str();
   if (Result.size() > MaxVisaLabelLength)
     Result.erase(MaxVisaLabelLength);
