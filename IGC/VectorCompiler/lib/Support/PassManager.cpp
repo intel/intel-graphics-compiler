@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include <string>
+#include <sstream>
 #include <utility>
 
 using namespace llvm;
@@ -158,12 +159,19 @@ enum class IRDumpType { Before, After };
 
 llvm::raw_ostream &getOutputStreamForIRDump(IRDumpType DumpType,
                                             StringRef PassArg, PassNumber N) {
+  static int Id = 0;
+  std::stringstream ss;
+  ss.fill('0');
+  ss.width(3);
+  ss << Id++;
+
   // FIXME: this won't work well for online compilations and multi-theaded
   // compilations. We need extra facilities to ensure that created
   // files are unique for every compilation process
   if (!SplitIRDumps)
     return llvm::errs();
-  std::string DumpName =
+
+  std::string DumpName = ss.str() + "_" +
       (((DumpType == IRDumpType::Before) ? Twine("before_") : Twine("after_")) +
        PassArg + N.str() + ".ll")
           .str();
