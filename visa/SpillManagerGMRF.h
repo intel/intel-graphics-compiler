@@ -43,6 +43,206 @@ struct RegionDesc;
 namespace vISA
 {
 
+// New fail safeRA implemenetation
+class BoundedRA
+{
+public:
+    // "Push" is inserted after prev iter
+    // "Pop" is inserted before next iter
+    INST_LIST_ITER prev, next;
+
+    static const unsigned int NOT_FOUND = 0xffffffff;
+
+    // Upper threshold of # variables spilled in current iteration
+    // to convert current regular (ie, non-fail safe) RA iteration
+    // in to fail-safe RA iteration.
+    static const unsigned int MaxSpillNumVars = 5;
+
+    // Lower threshold # variables to convert current regular RA
+    // iteration in to fail safe RA iteration.
+    static const unsigned int LargeProgramSize = 2000;
+
+    static unsigned int getNumPhyVarSlots(G4_Kernel& kernel)
+    {
+        return kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>();
+    }
+
+    void setInst(const G4_INST* i, G4_BB* bb)
+    {
+        curInst = i;
+        curBB = bb;
+        computeBusy();
+    }
+
+    const G4_INST* getInst() const
+    {
+        return curInst;
+    }
+
+    bool isFreeGRF(unsigned int reg)
+    {
+        auto& entry = busyGRF[curInst];
+        return !entry.test(reg);
+    }
+
+    bool isFreeGRFOtherInst(unsigned int reg, const G4_INST* inst)
+    {
+        // Used only when looking up free GRFs in non-curInst
+        auto& entry = busyGRF[inst];
+        return !entry.test(reg);
+    }
+
+    void markGRF(unsigned int reg)
+    {
+        auto& entry = busyGRF[curInst];
+        entry.set(reg, true);
+    }
+
+    void markGRFs(unsigned int reg, unsigned int num);
+
+    unsigned int getConsecutiveFree(unsigned int num, unsigned int forceStart = NOT_FOUND, bool isIndirect = false)
+    {
+        unsigned int start = forceStart, sizeFound = 0;
+        unsigned int lastReg = kernel.getNumRegTotal();
+
+        if (start > kernel.getNumRegTotal())
+            start = 0;
+
+        bool scannedOnce = false;
+        for (unsigned int i = start; ; ++i)
+        {
+            // No block found in entire GRF file search
+            if (scannedOnce && i == forceStart)
+            {
+                MUST_BE_TRUE(false, "no free GRF found in fail safe");
+                return NOT_FOUND;
+            }
+
+            if (i == lastReg+1)
+            {
+                // Wrap around
+                i = 0;
+                sizeFound = 0;
+                start = i + 1;
+                scannedOnce = true;
+                continue;
+            }
+
+            if (sizeFound == num)
+            {
+                markGRFs(start, num);
+                if (isIndirect)
+                {
+                    MUST_BE_TRUE(addrDcl, "expecting non-nullptr addrDcl");
+                    markIndirBusy(start, num);
+                }
+                return start;
+            }
+            if (!isFreeGRF(i) ||
+                (isIndirect && !isFreeIndir(i)))
+            {
+                sizeFound = 0;
+                start = i + 1;
+                continue;
+            }
+            ++sizeFound;
+        }
+        return NOT_FOUND;
+    }
+
+    unsigned int getFreeGRFIndir(unsigned int num, unsigned int forceStart = NOT_FOUND)
+    {
+        return getFreeGRF(num, forceStart, true);
+    }
+
+    unsigned int getFreeGRF(unsigned int num, unsigned int forceStart = NOT_FOUND, bool isIndirect = false)
+    {
+        // EOT inst requires max GRF - 16 or higher allocation as per HW
+        if(!curInst->isEOT())
+            return getConsecutiveFree(num, forceStart == NOT_FOUND ? reservedGRFStart : forceStart, isIndirect);
+        else
+        {
+            auto freeGRFStart = getConsecutiveFree(num, kernel.getNumRegTotal() - 16, isIndirect);
+            MUST_BE_TRUE(freeGRFStart >= (kernel.getNumRegTotal() - 16) &&
+                (freeGRFStart+num) < kernel.getNumRegTotal(), "unexpected EOT allocation");
+            return freeGRFStart;
+        }
+    }
+
+    void setSpillOff(unsigned int off)
+    {
+        // This is scratch offset after considering private storage used by IGC
+        spillOffset = off;
+    }
+
+    void setReservedStart(unsigned int s)
+    {
+        reservedGRFStart = s;
+    }
+
+    void insertPushPop(bool useLSCMsg);
+
+    void markIndirIntfs();
+    void setAddrDcl(G4_Declare* a) { addrDcl = a; }
+    void resetAddrDcl() { addrDcl = nullptr; }
+
+    void computeAllBusy()
+    {
+        for (auto bb : kernel.fg.getBBList())
+            for (auto inst : bb->getInstList())
+                setInst(inst, bb);
+    }
+
+    BoundedRA(GlobalRA& ra, LiveRange** l);
+
+private:
+    GlobalRA& gra;
+    G4_Kernel& kernel;
+    LiveRange** lrs = nullptr;
+    static const unsigned int bitsetSz = 256;
+    // Map each inst -> list of busy GRFs
+    std::unordered_map<const G4_INST*, std::bitset<bitsetSz>> busyGRF;
+    std::unordered_map<const G4_INST*, std::vector<unsigned short>> clobberedGRFs;
+    std::unordered_map<G4_Declare*, std::list<const G4_INST*>> busyIndir;
+
+    const G4_INST* curInst = nullptr;
+    G4_BB* curBB = nullptr;
+    G4_Declare* addrDcl = nullptr;
+    unsigned int lastGRF = 1;
+    unsigned int spillOffset = NOT_FOUND;
+    unsigned int reservedGRFStart = NOT_FOUND;
+
+    void markBusyGRFs();
+    void computeBusy()
+    {
+        if (!curInst)
+            return;
+        markBusyGRFs();
+    }
+    // Forbidden is marked per LR in GRA. In this case, we
+    // club forbidden for all operands in a instruction and
+    // apply it to the instruction for simplicity.
+    void markForbidden(LiveRange* lr);
+
+    void markIndirBusy(unsigned int start, unsigned int num)
+    {
+        MUST_BE_TRUE(busyIndir.find(addrDcl) != busyIndir.end(),
+            "no inst found referencing addrDcl");
+
+        auto& refs = busyIndir[addrDcl];
+
+        // Mark GRFs as busy in all instruction where current
+        // address register is used as indirect.
+        for (auto inst : refs)
+        {
+            for (unsigned int reg = start; reg != (start + num); ++reg)
+                busyGRF[inst].set(reg);
+        }
+    }
+
+    bool isFreeIndir(unsigned int r);
+};
+
 class SpillManagerGRF
 {
 public:
@@ -680,6 +880,9 @@ private:
 
     bool useLSCMsg = false;
     bool useLscNonstackCall = false;
+
+    // Used for new fail safe RA mechanism.
+    BoundedRA context;
 
     bool headerNeeded() const
     {

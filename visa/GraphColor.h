@@ -611,6 +611,7 @@ namespace vISA
         G4_SrcRegRegion* getScratchSurface() const;
         LiveRange** getLRs() const { return lrs; }
         unsigned int getNumVars() const { return numVar; }
+        void markFailSafeIter(bool f) { failSafeIter = f; }
     };
 
     struct BundleConflict
@@ -796,6 +797,8 @@ namespace vISA
 
         uint32_t numGRFSpill = 0;
         uint32_t numGRFFill = 0;
+
+        unsigned int numReservedGRFsFailSafe = BoundedRA::NOT_FOUND;
 
         bool spillFillIntrinUsesLSC(G4_INST* spillFillIntrin);
         void expandFillLSC(G4_BB* bb, INST_LIST_ITER& instIt);
@@ -1309,6 +1312,27 @@ namespace vISA
         void addNoRemat(G4_INST* inst)
         {
             dontRemat.insert(inst);
+        }
+
+        unsigned int getNumReservedGRFs()
+        {
+            // Return # GRFs reserved for new fail safe mechanism
+            // 1. If fail safe mechanism is invoked before coloring then
+            //    # reserved GRFs is updated explicitly before this method
+            //    is invoked.
+            // 2. If a regular (ie, non-fail safe) RA iteration spill
+            //    very little then we may convert it to fail safe but with
+            //    0 reserved GRFs as it it too late to reserve a GRF after
+            //    coloring.
+            if (numReservedGRFsFailSafe == BoundedRA::NOT_FOUND)
+                numReservedGRFsFailSafe = kernel.getSimdSize() == kernel.numEltPerGRF<Type_UD>() ? 1 : 2;
+
+            return numReservedGRFsFailSafe;
+        }
+
+        void setNumReservedGRFsFailSafe(unsigned int num)
+        {
+            numReservedGRFsFailSafe = num;
         }
     };
 

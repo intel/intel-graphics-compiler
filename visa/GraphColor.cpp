@@ -7534,7 +7534,17 @@ bool GraphColor::regAlloc(
     if (reserveSpillReg)
     {
         failSafeIter = reserveSpillReg;
-        gra.determineSpillRegSize(spillRegSize, indrSpillRegSize);
+
+        if (kernel.getOption(vISA_NewFailSafeRA))
+        {
+            spillRegSize = gra.getNumReservedGRFs();
+            indrSpillRegSize = 0;
+        }
+        else
+        {
+            gra.determineSpillRegSize(spillRegSize, indrSpillRegSize);
+        }
+
         reserveSpillSize = spillRegSize + indrSpillRegSize;
         MUST_BE_TRUE(reserveSpillSize < kernel.getNumCalleeSaveRegs(), "Invalid reserveSpillSize in fail-safe RA!");
         totalGRFRegCount -= reserveSpillSize;
@@ -10908,6 +10918,36 @@ int GlobalRA::coloringRegAlloc()
                     loopSplit.run();
                 }
 
+                // Very few spills in this iter. Check if we can convert this to fail safe iter.
+                // By converting this iter to fail safe we can save (at least) 1 additional iter
+                // to allocate spilled temps. But converting to fail safe needs extra checks
+                // because no reserved GRF may exist at this point. So push/pop needs to succeed
+                // without additional GRF potentially.
+                if (!kernel.getOption(vISA_Debug) &&
+                    iterationNo >= 1 && kernel.getOption(vISA_NewFailSafeRA) && !reserveSpillReg &&
+                    coloring.getSpilledLiveRanges().size() <= BoundedRA::MaxSpillNumVars &&
+                    liveAnalysis.getNumSelectedVar() > BoundedRA::LargeProgramSize)
+                {
+                    // Stack call always has free GRF so it is safe to convert this iter to fail safe
+                    if (builder.usesStack() ||
+                        // If LSC has to be used for spill/fill then we need to ensure spillHeader is created
+                        (!useLscForNonStackCallSpillFill || builder.hasValidSpillFillHeader()) ||
+                        // If scratch is to be used then max spill offset must be within addressable range
+                        ((nextSpillOffset + BoundedRA::getNumPhyVarSlots(kernel)) < SCRATCH_MSG_LIMIT))
+                    {
+                        // Few ranges are spilled but this was not executed as fail
+                        // safe iteration. However, we've the capability of doing
+                        // push/pop with new fail safe RA implementation. So for very
+                        // few spills, we insert push/pop to free up some GRFs rather
+                        // than executing a new RA iteration. When doing so, we mark
+                        // this RA iteration as fail safe.
+                        reserveSpillReg = true;
+                        coloring.markFailSafeIter(true);
+                        // No reserved GRFs
+                        setNumReservedGRFsFailSafe(0);
+                    }
+                }
+
                 //Calculate the spill caused by send to decide if global splitting is required or not
                 for (auto spilled : coloring.getSpilledLiveRanges())
                 {
@@ -11037,6 +11077,10 @@ int GlobalRA::coloringRegAlloc()
 
                 if (!reserveSpillReg && !disableSpillCoalecse && builder.useSends())
                 {
+                    if (builder.getOption(vISA_RATrace))
+                    {
+                        std::cout << "\t--spill/fill cleanup\n";
+                    }
                     CoalesceSpillFills c(kernel, liveAnalysis, coloring, spillGRF, iterationNo, rpe, *this);
                     c.run();
                 }

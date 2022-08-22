@@ -641,6 +641,7 @@ public:
     void createBuiltinDecls();
 
     G4_Declare* getSpillFillHeader();
+    bool hasValidSpillFillHeader() { return spillFillHeader; }
 
     G4_Declare* getEUFusionWATmpVar();
 

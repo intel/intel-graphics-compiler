@@ -141,6 +141,7 @@ SpillManagerGRF::SpillManagerGRF(
     , useScratchMsg_(useScratchMsg)
     , avoidDstSrcOverlap_(avoidDstSrcOverlap)
     , refs(g.kernel)
+    , context(g, lrInfo)
 {
     const unsigned size = sizeof(unsigned) * varIdCount;
     spillRangeCount_ = (unsigned*)allocMem(size);
@@ -182,6 +183,22 @@ SpillManagerGRF::SpillManagerGRF(
     // b. Spill size exceeds what can be represented using hword msg on PVC+
     useLSCMsg = gra.useLscForSpillFill;
     useLscNonstackCall = gra.useLscForNonStackCallSpillFill;
+
+    if (failSafeSpill_)
+    {
+        if (gra.kernel.getOption(vISA_NewFailSafeRA))
+        {
+            unsigned int spaceForPhyGRFSpill =
+                BoundedRA::getNumPhyVarSlots(gra.kernel);
+            int off = (int)spillAreaOffset;
+            getSpillOffset(off);
+            context.setSpillOff(off);
+            spillAreaOffset_ += spaceForPhyGRFSpill;
+            nextSpillOffset_ += spaceForPhyGRFSpill;
+            if(gra.getNumReservedGRFs() > 0)
+                context.setReservedStart(spillRegStart_);
+        }
+    }
 }
 
 SpillManagerGRF::SpillManagerGRF(
@@ -206,6 +223,7 @@ SpillManagerGRF::SpillManagerGRF(
     , useScratchMsg_(useScratchMsg)
     , avoidDstSrcOverlap_(avoidDstSrcOverlap)
     , refs(g.kernel)
+    , context(g, nullptr)
 {
     const unsigned size = sizeof(unsigned) * varIdCount;
     spillRangeCount_ = (unsigned*)allocMem(size);
@@ -1202,9 +1220,17 @@ G4_Declare * SpillManagerGRF::createTransientGRFRangeDeclare(
 
     if (failSafeSpill_)
     {
-        transientRangeDeclare->getRegVar()->setPhyReg(
-            builder_->phyregpool.getGreg(spillRegOffset_), 0);
-        spillRegOffset_ += height;
+        if (!gra.kernel.getOption(vISA_NewFailSafeRA))
+        {
+            transientRangeDeclare->getRegVar()->setPhyReg(
+                builder_->phyregpool.getGreg(spillRegOffset_), 0);
+            spillRegOffset_ += height;
+        }
+        else
+        {
+            transientRangeDeclare->getRegVar()->setPhyReg(
+                builder_->phyregpool.getGreg(context.getFreeGRF(height)), 0);
+        }
     }
 
     // FIXME: We should take the original declare's alignment too, but I'm worried
@@ -1271,17 +1297,26 @@ G4_Declare * SpillManagerGRF::createPostDstSpillRangeDeclare(G4_INST *sendOut)
 
     if (failSafeSpill_)
     {
-        if (useSplitSend())
+        if (!builder_->getOption(vISA_NewFailSafeRA))
         {
-            transientRangeDeclare->getRegVar()->setPhyReg(
-                builder_->phyregpool.getGreg(spillRegStart_), 0);
-            spillRegOffset_ += nRows;
+            if (useSplitSend())
+            {
+                transientRangeDeclare->getRegVar()->setPhyReg(
+                    builder_->phyregpool.getGreg(spillRegStart_), 0);
+                spillRegOffset_ += nRows;
+            }
+            else
+            {
+                transientRangeDeclare->getRegVar()->setPhyReg(
+                    builder_->phyregpool.getGreg(spillRegStart_ + 1), 0);
+                spillRegOffset_ += nRows + 1;
+            }
         }
         else
         {
+            MUST_BE_TRUE(useSplitSend(), "split send disabled");
             transientRangeDeclare->getRegVar()->setPhyReg(
-                builder_->phyregpool.getGreg(spillRegStart_+1), 0);
-            spillRegOffset_ += nRows + 1;
+                builder_->phyregpool.getGreg(context.getFreeGRF(nRows)), 0);
         }
     }
 
@@ -1385,17 +1420,27 @@ G4_Declare * SpillManagerGRF::createSendFillRangeDeclare(
 
     if (failSafeSpill_)
     {
-        if (sendInst->isEOT() && builder_->hasEOTGRFBinding())
+        if (!builder_->getOption(vISA_NewFailSafeRA))
         {
-            // make sure eot src is in last 16 GRF
-            uint32_t eotStart = gra.kernel.getNumRegTotal() - 16;
-            if (spillRegOffset_ < eotStart)
+            if (sendInst->isEOT() && builder_->hasEOTGRFBinding())
             {
-                spillRegOffset_ = eotStart;
+                // make sure eot src is in last 16 GRF
+                uint32_t eotStart = gra.kernel.getNumRegTotal() - 16;
+                if (spillRegOffset_ < eotStart)
+                {
+                    spillRegOffset_ = eotStart;
+                }
             }
+            transientRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
+            spillRegOffset_ += nRows;
         }
-        transientRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
-        spillRegOffset_ += nRows;
+        else
+        {
+            bool isEOT = sendInst->isEOT() && builder_->hasEOTGRFBinding();
+            unsigned int startGRF = isEOT ? gra.kernel.getNumRegTotal() - 16 : BoundedRA::NOT_FOUND;
+            transientRangeDeclare->getRegVar()->setPhyReg(
+                builder_->phyregpool.getGreg(context.getFreeGRF(nRows, startGRF)), 0);
+        }
     }
 
     return transientRangeDeclare;
@@ -1447,8 +1492,16 @@ G4_Declare * SpillManagerGRF::createTemporaryRangeDeclare(
 
     if (failSafeSpill_)
     {
-        temporaryRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
-        spillRegOffset_ += height;
+        if (!builder_->getOption(vISA_NewFailSafeRA))
+        {
+            temporaryRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
+            spillRegOffset_ += height;
+        }
+        else
+        {
+            temporaryRangeDeclare->getRegVar()->setPhyReg(
+                builder_->phyregpool.getGreg(context.getFreeGRF(height)), 0);
+        }
     }
 
     setNewDclAlignment(gra, temporaryRangeDeclare, false);
@@ -1628,7 +1681,14 @@ G4_Declare * SpillManagerGRF::createMRangeDeclare(G4_RegVar * regVar)
 
     if (failSafeSpill_)
     {
-        msgRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegStart_), 0);
+        if (!builder_->getOption(vISA_NewFailSafeRA))
+        {
+            msgRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegStart_), 0);
+        }
+        else
+        {
+            MUST_BE_TRUE(false, "unexpected condition");
+        }
     }
 
     return msgRangeDeclare;
@@ -1678,8 +1738,16 @@ G4_Declare * SpillManagerGRF::createMRangeDeclare(
 
     if (failSafeSpill_)
     {
-        msgRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
-        spillRegOffset_ += height;
+        if (!builder_->getOption(vISA_NewFailSafeRA))
+        {
+            msgRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
+            spillRegOffset_ += height;
+        }
+        else
+        {
+            msgRangeDeclare->getRegVar()->setPhyReg(
+                builder_->phyregpool.getGreg(context.getFreeGRF(height)), 0);
+        }
     }
 
     return msgRangeDeclare;
@@ -1734,8 +1802,16 @@ SpillManagerGRF::createMRangeDeclare(
 
     if (failSafeSpill_)
     {
-        msgRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
-        spillRegOffset_ += height;
+        if (!builder_->getOption(vISA_NewFailSafeRA))
+        {
+            msgRangeDeclare->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
+            spillRegOffset_ += height;
+        }
+        else
+        {
+            msgRangeDeclare->getRegVar()->setPhyReg(
+                builder_->phyregpool.getGreg(context.getFreeGRF(height)), 0);
+        }
     }
 
     return msgRangeDeclare;
@@ -3832,8 +3908,26 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
             if (failSafeSpill_ &&
                 temp->getRegVar()->getPhyReg() == NULL)
             {
-                temp->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
-                spillRegOffset_ += numrows;
+                if (!kernel->getOption(vISA_NewFailSafeRA))
+                {
+                    temp->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
+                    spillRegOffset_ += numrows;
+                }
+                else
+                {
+                    context.setInst(curInst, bb);
+                    context.prev = inst_it;
+                    if (curInst == bb->front())
+                        context.prev = bb->begin();
+                    else
+                        --context.prev;
+                    context.next = next_inst_it;
+                    context.setAddrDcl(var->getDeclare());
+                    // choose GRFs to assign to new range
+                    temp->getRegVar()->setPhyReg(
+                        builder_->phyregpool.getGreg(context.getFreeGRFIndir(numrows)), 0);
+                    context.resetAddrDcl();
+                }
             }
 
             if (numrows > 1 || (lr->getDcl()->getNumElems() * lr->getDcl()->getElemSize() == builder_->getGRFSize()))
@@ -3988,6 +4082,11 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
                 bb->insertBefore(next_inst_it, pseudoUseInst);
             }
 
+            if (failSafeSpill_ &&
+                builder_->getOption(vISA_NewFailSafeRA))
+            {
+                context.insertPushPop(useLSCMsg);
+            }
         }
     }
 }
@@ -4025,6 +4124,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
             if (failSafeSpill_ &&
                 temp->getRegVar()->getPhyReg() == NULL)
             {
+
                 temp->getRegVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegOffset_), 0);
                 spillRegOffset_ += numrows;
             }
@@ -4195,6 +4295,14 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
 void SpillManagerGRF::insertAddrTakenSpillFill(
     G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis)
 {
+    if (failSafeSpill_)
+    {
+        if (kernel->getOption(vISA_NewFailSafeRA))
+        {
+            context.markIndirIntfs();
+        }
+    }
+
     for (auto bb : kernel->fg)
     {
         for (INST_LIST_ITER inst_it = bb->begin();
@@ -4486,7 +4594,10 @@ bool SpillManagerGRF::insertSpillFillCode(
                 (lr->getVar()->isRegVarTransient() ||
                     lr->getVar()->isRegVarTmp()))
             {
-                lr->getVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegStart_ > (kernel->getNumRegTotal() - 16) ? spillRegStart_ : (kernel->getNumRegTotal() - 16)), 0);
+                if (!builder_->getOption(vISA_NewFailSafeRA))
+                {
+                    lr->getVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegStart_ > (kernel->getNumRegTotal() - 16) ? spillRegStart_ : (kernel->getNumRegTotal() - 16)), 0);
+                }
                 continue;
             }
             return false;
@@ -4506,6 +4617,11 @@ bool SpillManagerGRF::insertSpillFillCode(
             if (dcl->isSpilled())
                 spillingIntervals.push_back(dcl);
         }
+    }
+
+    if (failSafeSpill_ && builder_->getOption(vISA_NewFailSafeRA))
+    {
+        context.computeAllBusy();
     }
 
     // Handle address taken spills
@@ -4552,6 +4668,18 @@ bool SpillManagerGRF::insertSpillFillCode(
             if (failSafeSpill_)
             {
                 spillRegOffset_ = spillRegStart_;
+                if (kernel->getOption(vISA_NewFailSafeRA))
+                {
+                    context.setInst(curInst, (*it));
+                    context.next = kt;
+                    if ((*it)->front() == inst)
+                        context.prev = (*it)->begin();
+                    else
+                    {
+                        auto prev = jt;
+                        context.prev = --prev;
+                    }
+                }
             }
 
             // Insert spill code, when the target is a spilled register.
@@ -4574,7 +4702,6 @@ bool SpillManagerGRF::insertSpillFillCode(
                             jt = kt;
                             continue;
                         }
-
                         insertSpillRangeCode(jt, (*it));
                     }
                     else
@@ -4644,6 +4771,12 @@ bool SpillManagerGRF::insertSpillFillCode(
                             assert(0);
                     }
                 }
+            }
+
+            if (failSafeSpill_ &&
+                builder_->getOption(vISA_NewFailSafeRA))
+            {
+                context.insertPushPop(useLSCMsg);
             }
 
             jt = kt;
@@ -6199,4 +6332,376 @@ std::vector<G4_BB*> vISA::SpillAnalysis::GetIntervalBBs(G4_INST* Start, G4_INST*
     }
 
     return BBs;
+}
+
+BoundedRA::BoundedRA(GlobalRA& ra, LiveRange** l) : gra(ra), kernel(ra.kernel), lrs(l) {}
+
+void vISA::BoundedRA::markBusyGRFs()
+{
+    auto dst = curInst->getDst();
+    if (dst &&
+        dst->isDstRegRegion())
+    {
+        if (!dst->isIndirect() &&
+            dst->getTopDcl() &&
+            dst->getTopDcl()->getRegVar()->isRegAllocPartaker())
+        {
+            auto id = dst->getTopDcl()->getRegVar()->getId();
+            auto phyReg = dst->getTopDcl()->getRegVar()->getPhyReg();
+            if (!phyReg)
+                phyReg = lrs[id]->getPhyReg();
+            if (phyReg)
+            {
+                auto regLB = phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
+                regLB += dst->getTopDcl()->getRegVar()->getPhyRegOff() * TypeSize(dst->getType());
+                regLB += dst->getLeftBound();
+                auto regRB = regLB + dst->getRightBound() - dst->getLeftBound();
+                auto startGRF = regLB / kernel.numEltPerGRF<Type_UB>();
+                auto endGRF = regRB / kernel.numEltPerGRF<Type_UB>();
+                for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
+                    markGRF(reg);
+            }
+            else
+                markForbidden(lrs[id]);
+        }
+        else if (dst->isIndirect())
+        {
+            auto& p2a = gra.pointsToAnalysis;
+            auto pointees = p2a.getAllInPointsTo(dst->getTopDcl()->getRegVar());
+            for (auto& pointee : *pointees)
+            {
+                if (!pointee.var->isRegAllocPartaker())
+                    continue;
+                auto id = pointee.var->getId();
+                auto phyReg = pointee.var->getPhyReg();
+                if (!phyReg)
+                    phyReg = lrs[id]->getPhyReg();
+                if (phyReg)
+                {
+                    auto regLB = phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
+                    auto regRB = regLB + pointee.var->getDeclare()->getRootDeclare()->getByteSize();
+                    auto startGRF = regLB / kernel.numEltPerGRF<Type_UB>();
+                    auto endGRF = regRB / kernel.numEltPerGRF<Type_UB>();
+                    for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
+                        markGRF(reg);
+                }
+                else
+                    markForbidden(lrs[id]);
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i != curInst->getNumSrc(); ++i)
+    {
+        auto src = curInst->getSrc(i);
+        if (src &&
+            src->isSrcRegRegion())
+        {
+            if (!src->asSrcRegRegion()->isIndirect() &&
+                src->getTopDcl() &&
+                src->getTopDcl()->getRegVar()->isRegAllocPartaker())
+            {
+                auto id = src->getTopDcl()->getRegVar()->getId();
+                auto phyReg = src->getTopDcl()->getRegVar()->getPhyReg();
+                if (!phyReg)
+                    phyReg = lrs[id]->getPhyReg();
+                if (phyReg)
+                {
+                    auto regLB = phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
+                    regLB += src->getTopDcl()->getRegVar()->getPhyRegOff() * TypeSize(src->getType());
+                    regLB += src->getLeftBound();
+                    auto regRB = regLB + src->getRightBound() - src->getLeftBound();
+                    auto startGRF = regLB / kernel.numEltPerGRF<Type_UB>();
+                    auto endGRF = regRB / kernel.numEltPerGRF<Type_UB>();
+                    for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
+                        markGRF(reg);
+                }
+                else
+                    markForbidden(lrs[id]);
+            }
+            else if (src->asSrcRegRegion()->isIndirect())
+            {
+                auto& p2a = gra.pointsToAnalysis;
+                auto pointees = p2a.getAllInPointsTo(src->getTopDcl()->getRegVar());
+                for (auto& pointee : *pointees)
+                {
+                    if (!pointee.var->isRegAllocPartaker())
+                        continue;
+                    auto id = pointee.var->getId();
+                    auto phyReg = pointee.var->getPhyReg();
+                    if(!phyReg)
+                        phyReg = lrs[id]->getPhyReg();
+                    if (phyReg)
+                    {
+                        auto regLB = phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
+                        auto regRB = regLB + pointee.var->getDeclare()->getRootDeclare()->getByteSize();
+                        auto startGRF = regLB / kernel.numEltPerGRF<Type_UB>();
+                        auto endGRF = regRB / kernel.numEltPerGRF<Type_UB>();
+                        for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
+                            markGRF(reg);
+                    }
+                    else
+                        markForbidden(lrs[id]);
+                }
+            }
+        }
+    }
+}
+
+void BoundedRA::markForbidden(LiveRange* lr)
+{
+    auto numForbidden = lr->getNumForbidden();
+    auto forbidden = lr->getForbidden();
+    for (unsigned int i = 0; i != numForbidden; ++i)
+        if (forbidden[i])
+            markGRF(i);
+
+    // r0 is special and shouldnt be used for allocation to temps
+    markGRF(0);
+    auto dcl = kernel.fg.builder->getBuiltinR0();
+    if (dcl &&
+        dcl->getRegVar() &&
+        dcl->getRegVar()->getPhyReg())
+    {
+        // BuiltInR0 is also a forbidden register
+        auto r0 = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+        markGRF(r0);
+    }
+}
+
+void BoundedRA::markGRFs(unsigned int reg, unsigned int num)
+{
+    for (unsigned int r = reg; r != (reg + num); ++r)
+    {
+        markGRF(r);
+        // Reserved  GRFs shouldnt be marked as clobbered
+        if (reservedGRFStart != NOT_FOUND &&
+            reg >= reservedGRFStart &&
+            reg < (reservedGRFStart + gra.getNumReservedGRFs()))
+            continue;
+        clobberedGRFs[curInst].push_back(r);
+    }
+}
+
+void BoundedRA::insertPushPop(bool useLSCMsg)
+{
+    // List of clobbered GRFs is available.
+    // prev and next iters are available.
+    // Insert push (spill) and pop (fill) from clobbered physical GRFs here.
+    auto cIt = clobberedGRFs.find(curInst);
+    if (cIt == clobberedGRFs.end() ||
+        (*cIt).second.size() == 0)
+        return;
+
+    auto& clobbered = clobberedGRFs[curInst];
+    // list of <leading GRF, # GRFs>
+    std::list<std::pair<unsigned int, unsigned int>> segments;
+
+    auto segmentClobbered = [&]()
+    {
+        for (auto grf : clobbered)
+        {
+            if (segments.size() > 0 &&
+                (segments.back().first + segments.back().second) == grf)
+            {
+                segments.back().second += 1;
+                continue;
+            }
+            segments.push_back(std::make_pair(grf, 1));
+        }
+
+        // Ensure each segment size is power of 2
+        for (auto it = segments.begin(); it != segments.end();)
+        {
+            auto& sz = (*it).second;
+            if (sz == 1 || sz == 2 || sz == 4 || sz == 8)
+            {
+                ++it;
+                continue;
+            }
+            // non-power of 2 found
+            auto grf = (*it).first;
+            if (sz > 8)
+            {
+                it = segments.insert(it, std::make_pair(grf + 8, sz - 8));
+                sz = 8;
+                continue;
+            }
+            else if (sz > 4)
+            {
+                it = segments.insert(it, std::make_pair(grf + 4, sz - 4));
+                sz = 4;
+                continue;
+            }
+            else if (sz > 2)
+            {
+                it = segments.insert(it, std::make_pair(grf + 2, sz - 2));
+                sz = 2;
+                continue;
+            }
+            ++it;
+        }
+    };
+
+    // Aim to minimize # spill/fill instructions.
+    segmentClobbered();
+
+    G4_Declare* fp = kernel.fg.builder->usesStack() ? kernel.fg.getFramePtrDcl() : nullptr;
+    auto* builder = kernel.fg.builder;
+    const unsigned int DclSize = 16;
+
+    for (auto& segment : segments)
+    {
+        G4_SrcRegRegion* headerOpnd = nullptr;
+        G4_SrcRegRegion* headerOpnd1 = nullptr;
+        G4_INST* movInst = nullptr;
+
+        unsigned int off = spillOffset;
+        off += segment.first * kernel.numEltPerGRF<Type_UB>();
+        if (off < SCRATCH_MSG_LIMIT && !gra.useLscForNonStackCallSpillFill)
+        {
+            // Stack call, HWord cases can take BuiltInR0 as header
+            headerOpnd = builder->createSrcRegRegion(builder->getBuiltinR0(), builder->getRegionStride1());
+            headerOpnd1 = builder->createSrcRegRegion(builder->getBuiltinR0(), builder->getRegionStride1());
+        }
+        else if(useLSCMsg)
+        {
+            // LSC needs its own spill/fill header
+            headerOpnd = getSpillFillHeader(*builder, nullptr);
+            headerOpnd1 = getSpillFillHeader(*builder, nullptr);
+        }
+        else
+        {
+            // off is beyond HWord addressable range
+            // LSC is not available on platform
+            // Use OWord. Header needs to be initialized separately when using OWord.
+            MUST_BE_TRUE(reservedGRFStart != NOT_FOUND, "expecting valid reserved GRF");
+            auto* immOpnd = builder->createImm(off / OWORD_BYTE_SIZE, Type_UD);
+            auto* tmp = builder->createDeclareNoLookup("TMP", G4_GRF, kernel.numEltPerGRF<Type_UD>(), 1, Type_UD);
+            tmp->getRegVar()->setPhyReg(builder->phyregpool.getGreg(reservedGRFStart), 0);
+            auto* dstMov = builder->createDstRegRegion(tmp, 1);
+            movInst = builder->createMov(G4_ExecSize(1), dstMov, immOpnd, InstOpt_WriteEnable, false);
+            movInst->inheritDIFrom(curInst);
+        }
+
+        G4_ExecSize execSize(16);
+        const char* dclName = builder->getNameString(kernel.fg.mem, DclSize,
+            "PUSH%d_%d", segment.first, segment.second);
+        G4_Declare* tmp = builder->createDeclareNoLookup(dclName, G4_GRF, kernel.numEltPerGRF<Type_D>(), segment.second, Type_D);
+        tmp->getRegVar()->setPhyReg(builder->phyregpool.getGreg(segment.first), 0);
+
+        MUST_BE_TRUE(off <= 128 * 1024, "offset out of hword msg bounds");
+        off = off >> SCRATCH_SPACE_ADDRESS_UNIT;
+
+        // Push
+        G4_DstRegRegion* postDst = builder->createNullDst(Type_UD);
+        auto srcOpnd = builder->createSrc(tmp->getRegVar(), 0, 0, builder->getRegionStride1(), Type_D);
+
+        auto spill = builder->createSpill(postDst, headerOpnd, srcOpnd, execSize, segment.second, off, fp, InstOpt_WriteEnable, false);
+
+        curBB->insertAfter(prev, spill, false);
+        spill->inheritDIFrom(curInst);
+        if (movInst)
+            curBB->insertAfter(prev, movInst, false);
+
+        if (!(next == curBB->end() &&
+            curBB->back()->isEOT()))
+        {
+            // Pop
+            if (movInst)
+                curBB->insertBefore(next, movInst->cloneInst(), false);
+            auto dst = builder->createDst(tmp->getRegVar(), 0, 0, 1, Type_D);
+            auto fill = builder->createFill(headerOpnd1, dst, execSize, segment.second, off, fp, InstOpt_WriteEnable, false);
+
+            curBB->insertBefore(next, fill, false);
+            fill->inheritDIFrom(curInst);
+        }
+    }
+
+    // Reset clobbered after inserting push/pop
+    clobbered.clear();
+}
+
+void BoundedRA::markIndirIntfs()
+{
+    // In this function we create ref list of all addr
+    // dcls and instructions where they appear.
+    //
+    // A0 -> {List of instructions where r[A0] occurs}
+    // A1 -> {List of instructions where r[A1] occurs}
+
+    for (auto bb : kernel.fg)
+    {
+        for (INST_LIST_ITER inst_it = bb->begin();
+            inst_it != bb->end();
+            inst_it++)
+        {
+            G4_INST* curInst = (*inst_it);
+
+            // Handle indirect destination
+            G4_DstRegRegion* dst = curInst->getDst();
+
+            if (dst && dst->getRegAccess() == IndirGRF)
+            {
+                setInst(curInst, bb);
+
+                auto topdcl = dst->getTopDcl();
+                busyIndir[topdcl].push_back(curInst);
+            }
+
+            for (int i = 0; i < G4_MAX_SRCS; i++)
+            {
+                G4_Operand* src = curInst->getSrc(i);
+
+                if (src && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() == IndirGRF)
+                {
+                    setInst(curInst, bb);
+
+                    auto topdcl = src->asSrcRegRegion()->getTopDcl();
+                    busyIndir[topdcl].push_back(curInst);
+                }
+            }
+        }
+    }
+}
+
+bool BoundedRA::isFreeIndir(unsigned int r)
+{
+    // A0 = &V10
+    // A1 = &V11
+    // A2 = &V12
+    //
+    // Assume V10, V11, V12 are spilled
+    //
+    //                             Busy:
+    // r1 = r[A1] + r2             r1, r2 -  (1)
+    // r5 = r[A2] + r10            r5, r10 - (2)
+    // r20 = r[A1] + r3            r20, r3 - (3)
+    // r[A2] = r[A1] + r6          r6      - (4)
+    // r[A3] = r[A2] + r12         r12     - (5)
+    //
+    // Busy for r[A1] -> (1) + (3) + (4)
+    // Busy for r[A2] -> (2) + (4) + (5)
+    // Busy for r[A3] -> (5)
+
+    // When choosing a GRF to use for an indirect
+    // operand, we need to lookup a data structure to
+    // find free GRFs. It is not sufficient to find free
+    // GRF from current instruction only because the
+    // chosen GRF has to be free in all instructions
+    // where the indirect appears. For eg, in above
+    // sequence we cannot use r6 to load r[A1] in (1)
+    // even though r6 is not busy in (1) - because it's
+    // busy in (4).
+
+    MUST_BE_TRUE(addrDcl, "expecting non-nullptr addrDcl");
+    auto& refs = busyIndir[addrDcl];
+
+    for (auto ref : refs)
+    {
+        if (!isFreeGRFOtherInst(r, ref))
+            return false;
+    }
+
+    return true;
 }
