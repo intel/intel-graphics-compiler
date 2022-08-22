@@ -6116,8 +6116,8 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
 {
     std::vector <LiveRange*> addressSensitiveVars;
     float maxNormalCost = 0.0f;
-    VarReferences directRefs(kernel);
-    std::list<std::pair<G4_INST*, G4_BB*>> indirectRefs;
+    VarReferences directRefs(kernel, true, false);
+    std::unordered_map<G4_Declare*, std::list<std::pair<G4_INST*, G4_BB*>>> indirectRefs;
     // when reg pressure is not very high in iter0, use spill cost function
     // that favors allocating large variables
     bool useNewSpillCost = builder.getOption(vISA_NewSpillCostFunction) && rpe &&
@@ -6129,7 +6129,8 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
             std::cout << "\t--using new spill cost function\n";
     }
 
-    if (liveAnalysis.livenessClass(G4_GRF))
+    if (useNewSpillCost &&
+        liveAnalysis.livenessClass(G4_GRF))
     {
         // gather all instructions with indirect operands
         // for ref count computation once.
@@ -6140,7 +6141,12 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
                 auto dst = inst->getDst();
                 if (dst && dst->isIndirect())
                 {
-                    indirectRefs.push_back(std::make_pair(inst, bb));
+                    auto pointsTo = liveAnalysis.getPointsToAnalysis().getAllInPointsTo(dst->getBase()->asRegVar()->getDeclare()->getRootDeclare()->getRegVar());
+                    if (pointsTo)
+                    {
+                        for (auto& pointee : *pointsTo)
+                            indirectRefs[pointee.var->getDeclare()->getRootDeclare()].push_back(std::make_pair(inst, bb));
+                    }
                     continue;
                 }
 
@@ -6151,7 +6157,12 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
                     {
                         continue;
                     }
-                    indirectRefs.push_back(std::make_pair(inst, bb));
+                    auto pointsTo = liveAnalysis.getPointsToAnalysis().getAllInPointsTo(src->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare()->getRegVar());
+                    if (pointsTo)
+                    {
+                        for (auto& pointee : *pointsTo)
+                            indirectRefs[pointee.var->getDeclare()->getRootDeclare()].push_back(std::make_pair(inst, bb));
+                    }
                     continue;
                 }
             }
@@ -6163,13 +6174,12 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
         auto defs = directRefs.getDefs(dcl);
         auto uses = directRefs.getUses(dcl);
         auto& loops = kernel.fg.getLoops();
-
         unsigned int refCount = 0;
         const unsigned int assumeLoopIter = 10;
 
         if (defs)
         {
-            for (auto def : *defs)
+            for (auto& def : *defs)
             {
                 auto* bb = std::get<1>(def);
                 auto* innerMostLoop = loops.getInnerMostLoop(bb);
@@ -6185,7 +6195,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
 
         if (uses)
         {
-            for (auto use : *uses)
+            for (auto& use : *uses)
             {
                 auto* bb = std::get<1>(use);
                 auto* innerMostLoop = loops.getInnerMostLoop(bb);
@@ -6201,47 +6211,23 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE* rpe)
 
         if (dcl->getAddressed())
         {
-            for (auto& item : indirectRefs)
+            auto indirectRefsIt = indirectRefs.find(dcl);
+            if (indirectRefsIt != indirectRefs.end())
             {
-                auto inst = item.first;
-                auto bb = item.second;
-
-                auto dst = inst->getDst();
-                if (dst && dst->isIndirect())
+                auto& dclIndirRefs = (*indirectRefsIt).second;
+                for (auto& item : dclIndirRefs)
                 {
-                    if (liveAnalysis.getPointsToAnalysis().isPresentInPointsTo(dst->getTopDcl()->getRegVar(), dcl->getRegVar()))
-                    {
-                        auto* innerMostLoop = loops.getInnerMostLoop(bb);
-                        if (innerMostLoop)
-                        {
-                            auto nestingLevel = innerMostLoop->getNestingLevel();
-                            refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
-                        }
-                        else
-                            refCount += useWt;
-                    }
-                }
+                    auto bb = item.second;
 
-                for (unsigned int i = 0; i != inst->getNumSrc(); ++i)
-                {
-                    auto src = inst->getSrc(i);
-                    if (!src || !src->isSrcRegRegion() || !src->asSrcRegRegion()->isIndirect())
+                    auto* innerMostLoop = loops.getInnerMostLoop(bb);
+                    if (innerMostLoop)
                     {
-                        continue;
+                        auto nestingLevel = innerMostLoop->getNestingLevel();
+                        refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
                     }
-                    if (liveAnalysis.getPointsToAnalysis().isPresentInPointsTo(src->asSrcRegRegion()->getTopDcl()->getRegVar(), dcl->getRegVar()))
-                    {
-                        auto* innerMostLoop = loops.getInnerMostLoop(bb);
-                        if (innerMostLoop)
-                        {
-                            auto nestingLevel = innerMostLoop->getNestingLevel();
-                            refCount += (unsigned int)std::pow(assumeLoopIter, nestingLevel);
-                        }
-                        else
-                            refCount += useWt;
-                    }
+                    else
+                        refCount += useWt;
                 }
-
             }
         }
 

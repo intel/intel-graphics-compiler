@@ -667,9 +667,9 @@ Loop* LoopDetection::getInnerMostLoop(const G4_BB* bb)
 {
     recomputeIfStale();
 
-    for (auto& loop : topLoops)
-        if (auto innerMost = loop->getInnerMostLoop(bb))
-            return innerMost;
+    auto it = innerMostLoop.find(bb);
+    if (it != innerMostLoop.end())
+        return (*it).second;
 
     return nullptr;
 }
@@ -688,6 +688,7 @@ void LoopDetection::reset()
 {
     allLoops.clear();
     topLoops.clear();
+    innerMostLoop.clear();
 
     PreIdRPostId.clear();
 
@@ -942,7 +943,31 @@ void LoopDetection::run()
 
     computeLoopTree();
 
+    computeInnermostLoops();
+
     setValid();
+}
+
+void LoopDetection::computeInnermostLoops()
+{
+    MUST_BE_TRUE(innerMostLoop.size() == 0, "expecting empty map");
+
+
+    for (auto& loop : allLoops)
+    {
+        for (const auto* bb : loop.getBBs())
+        {
+            auto res = innerMostLoop.insert({ bb, &loop });
+            if (!res.second)
+            {
+                auto closestLoopIt = res.first;
+                if (closestLoopIt->second->getBBSize() > loop.getBBSize())
+                {
+                    closestLoopIt->second = &loop;
+                }
+            }
+        }
+    }
 }
 
 void LoopDetection::dump(std::ostream& os)
@@ -1145,7 +1170,7 @@ void VarReferences::run()
         {
             if (inst->isPseudoKill())
                 continue;
-
+            unsigned int lb = 0, rb = 0;
             auto dst = inst->getDst();
 
             if (dst && !dst->isNullReg())
@@ -1154,23 +1179,32 @@ void VarReferences::run()
 
                 if (topdcl)
                 {
-                    auto lb = dst->getLeftBound();
-                    auto rb = dst->getRightBound();
+                    if (needBounds)
+                    {
+                        lb = dst->getLeftBound();
+                        rb = dst->getRightBound();
+                    }
                     auto& Defs = VarRefs[topdcl].first;
                     Defs.push_back(std::make_tuple(inst, bb, lb, rb));
                 }
             }
 
-            auto condMod = inst->getCondMod();
-            if (condMod)
+            if (!onlyGRF)
             {
-                auto topdcl = condMod->getTopDcl();
-                if (topdcl)
+                auto condMod = inst->getCondMod();
+                if (condMod)
                 {
-                    auto lb = condMod->getLeftBound();
-                    auto rb = condMod->getRightBound();
-                    auto& Defs = VarRefs[topdcl].first;
-                    Defs.push_back(std::make_tuple(inst, bb, lb, rb));
+                    auto topdcl = condMod->getTopDcl();
+                    if (topdcl)
+                    {
+                        if (needBounds)
+                        {
+                            lb = condMod->getLeftBound();
+                            rb = condMod->getRightBound();
+                        }
+                        auto& Defs = VarRefs[topdcl].first;
+                        Defs.push_back(std::make_tuple(inst, bb, lb, rb));
+                    }
                 }
             }
 
@@ -1188,14 +1222,17 @@ void VarReferences::run()
                 }
             }
 
-            auto pred = inst->getPredicate();
-            if (pred)
+            if (!onlyGRF)
             {
-                auto topdcl = pred->getTopDcl();
-                if (topdcl)
+                auto pred = inst->getPredicate();
+                if (pred)
                 {
-                    auto& Uses = VarRefs[topdcl].second;
-                    Uses.push_back(std::make_tuple(inst, bb));
+                    auto topdcl = pred->getTopDcl();
+                    if (topdcl)
+                    {
+                        auto& Uses = VarRefs[topdcl].second;
+                        Uses.push_back(std::make_tuple(inst, bb));
+                    }
                 }
             }
         }

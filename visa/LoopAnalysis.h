@@ -99,7 +99,7 @@ namespace vISA
     class VarReferences : public Analysis
     {
     public:
-        VarReferences(G4_Kernel& k) : kernel(k) {}
+        VarReferences(G4_Kernel& k, bool GRF = false, bool bounds = true) : kernel(k), onlyGRF(GRF), needBounds(bounds) {}
 
         // Defs -> vector[tuple<inst, bb, lb, rb>]
         // Uses -> vector[tuple<inst, bb>]
@@ -118,6 +118,8 @@ namespace vISA
         // has multiple definitions in the program.
         std::unordered_map<G4_Declare*, std::pair<Defs, Uses>> VarRefs;
         G4_Kernel& kernel;
+        bool onlyGRF = false;
+        bool needBounds = true;
 
         void reset() override;
         void run() override;
@@ -187,6 +189,9 @@ namespace vISA
         std::vector<Loop*> topLoops;
         // list owns memory, so no need for dynamic allocation
         std::list<Loop> allLoops;
+        // closest Loop per G4_BB* to speed up lookup for programs
+        // with lots of loops
+        std::unordered_map<const G4_BB*, Loop*> innerMostLoop;
 
         // store G4_BB -> <preId, rpostId>
         std::unordered_map<const G4_BB*, std::pair<unsigned int, unsigned int>> PreIdRPostId;
@@ -204,6 +209,7 @@ namespace vISA
         void computeLoopTree();
         void addLoop(Loop* newLoop, Loop* aParent);
         G4_BB* getPreheader(Loop* loop);
+        void computeInnermostLoops();
     };
 }
 
