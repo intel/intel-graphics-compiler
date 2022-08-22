@@ -1323,14 +1323,18 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
     {
         // dcls are GRF sized so emit max SIMD size possible and copy 2 rows at
         // a time
-        for (unsigned int i = 0; i < numRows; i++)
+        for (unsigned int i = 0; i < numRows;)
         {
             const RegionDesc* rd = kernel.fg.builder->getRegionStride1();
             G4_ExecSize execSize{ kernel.numEltPerGRF<Type_UD>() };
 
             // copy 2 GRFs at a time if byte size permits
+            unsigned int rowsCopied = 1;
             if (bytesRemaining >= kernel.numEltPerGRF<Type_UB>() * 2)
+            {
                 execSize = G4_ExecSize(kernel.numEltPerGRF<Type_UD>() * 2);
+                rowsCopied = 2;
+            }
 
             auto dstRgn = kernel.fg.builder->createDst(dst->getRegVar(), (short)i, 0, 1, Type_F);
             auto srcRgn = kernel.fg.builder->createSrc(src->getRegVar(), (short)i, 0, rd, Type_F);
@@ -1340,6 +1344,8 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
             MUST_BE_TRUE(bytesRemaining >= (unsigned int)(execSize.value * G4_Type_Table[Type_F].byteSize),
                 "Invalid copy exec size");
             bytesRemaining -= (execSize.value * G4_Type_Table[Type_F].byteSize);
+
+            i += rowsCopied;
 
             if (bytesRemaining < kernel.numEltPerGRF<Type_UB>())
                 break;
@@ -1489,16 +1495,22 @@ std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
     };
     std::set<G4_BB*, decltype(StableOrder)> bbsWithRefToDcl(StableOrder);
 
-    for (auto& use : *uses)
+    if (uses)
     {
-        auto bb = std::get<1>(use);
-        bbsWithRefToDcl.insert(bb);
+        for (auto& use : *uses)
+        {
+            auto bb = std::get<1>(use);
+            bbsWithRefToDcl.insert(bb);
+        }
     }
 
-    for (auto& def : *defs)
+    if (defs)
     {
-        auto bb = std::get<1>(def);
-        bbsWithRefToDcl.insert(bb);
+        for (auto& def : *defs)
+        {
+            auto bb = std::get<1>(def);
+            bbsWithRefToDcl.insert(bb);
+        }
     }
 
     auto OrderByRegPressure = [&](Loop* loop1, Loop* loop2)
