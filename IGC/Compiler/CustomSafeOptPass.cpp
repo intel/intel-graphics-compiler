@@ -5079,6 +5079,7 @@ bool GenStrengthReduction::processInst(Instruction* Inst)
 
                 Instruction* Mul = BinaryOperator::CreateFMul(I->getOperand(0), Inv, "", I);
                 Mul->setFastMathFlags(Inst->getFastMathFlags());
+                Mul->setDebugLoc(I->getDebugLoc());
                 I->replaceAllUsesWith(Mul);
                 // Don't erase it as doing so would invalidate iterator in this func's caller
                 // Instead, erase it in the caller.
@@ -5091,10 +5092,12 @@ bool GenStrengthReduction::processInst(Instruction* Inst)
             // Only a single use of 1 / Src1. Create Inv right before the use.
             Inv = BinaryOperator::CreateFDiv(Src0, Src1, "", Inst);
             Inv->setFastMathFlags(Inst->getFastMathFlags());
+            Inv->setDebugLoc(Inst->getDebugLoc());
         }
 
         auto Mul = BinaryOperator::CreateFMul(Inst->getOperand(0), Inv, "", Inst);
         Mul->setFastMathFlags(Inst->getFastMathFlags());
+        Mul->setDebugLoc(Inst->getDebugLoc());
         Inst->replaceAllUsesWith(Mul);
         Inst->eraseFromParent();
         return true;
