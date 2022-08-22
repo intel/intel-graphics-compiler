@@ -863,6 +863,21 @@ CVariable* CShader::GetMSG0()
     }
     return m_MSG0;
 }
+void CShader::RemoveBitRange(CVariable*& src, unsigned removebit, unsigned range)
+{
+    CVariable* leftHalf = GetNewVariable(src);
+    CVariable* rightHalf = GetNewVariable(src);
+    uint32_t mask = BITMASK(removebit);
+    // src = (src & mask) | ((src >> range) & ~mask)
+    encoder.And(rightHalf, src, ImmToVariable(mask, ISA_TYPE_D));
+    encoder.Push();
+    encoder.IShr(leftHalf, src, ImmToVariable(range, ISA_TYPE_D));
+    encoder.Push();
+    encoder.And(leftHalf, leftHalf, ImmToVariable(~mask, ISA_TYPE_D));
+    encoder.Push();
+    encoder.Or(src, rightHalf, leftHalf);
+    encoder.Push();
+}
 
 CVariable* CShader::GetHWTID()
 {
@@ -870,22 +885,6 @@ CVariable* CShader::GetHWTID()
     {
         if (m_Platform->getHWTIDFromSR0())
         {
-            auto RemoveBitRange = [this](CVariable* &src, unsigned removebit, unsigned range)->void
-            {
-                CVariable* leftHalf = GetNewVariable(src);
-                CVariable* rightHalf = GetNewVariable(src);
-                uint32_t mask = BITMASK(removebit);
-                // src = (src & mask) | ((src >> range) & ~mask)
-                encoder.And(rightHalf, src, ImmToVariable(mask, ISA_TYPE_D));
-                encoder.Push();
-                encoder.IShr(leftHalf, src, ImmToVariable(range, ISA_TYPE_D));
-                encoder.Push();
-                encoder.And(leftHalf, leftHalf, ImmToVariable(~mask, ISA_TYPE_D));
-                encoder.Push();
-                encoder.Or(src, rightHalf, leftHalf);
-                encoder.Push();
-            };
-
             if (m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC)
             {
                 // [14:12] Slice ID.
