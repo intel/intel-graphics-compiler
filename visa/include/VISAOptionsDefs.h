@@ -181,7 +181,7 @@ DEF_VISA_OPTION(vISA_enableBundleCR, ET_BOOL, "-enableBundleCR",   UNUSED, true)
 DEF_VISA_OPTION(vISA_IntrinsicSplit,       ET_BOOL, "-doSplit", UNUSED, false)
 DEF_VISA_OPTION(vISA_LraFFWindowSize,       ET_INT32, "-lraFFWindowSize", UNUSED, 12)
 DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar", UNUSED, true)
-DEF_VISA_OPTION(vISA_DoSplitOnSpill,        ET_BOOL, "-splitonspill", UNUSED, false)
+DEF_VISA_OPTION(vISA_DoSplitOnSpill,        ET_BOOL, "-nosplitonspill", UNUSED, true)
 DEF_VISA_OPTION(vISA_IncSpillCostAllAddrTaken, ET_BOOL, "-allowaddrtakenspill", UNUSED, false)
 DEF_VISA_OPTION(vISA_NewSpillCostFunction,  ET_BOOL, "-newspillcost", UNUSED, false)
 
