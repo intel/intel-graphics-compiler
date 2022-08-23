@@ -407,7 +407,7 @@ Function* PromoteBools::promoteFunction(Function* function)
             argsMap[&*functionArgIt++] = newFunctionArgIt++;
         }
         IGCLLVM::CloneFunctionInto(newFunction, function, argsMap,
-            IGCLLVM::CloneFunctionChangeType::LocalChangesOnly, returns);
+            IGCLLVM::CloneFunctionChangeType::GlobalChanges, returns);
 
         // Fix body
         for (auto& arg : function->args())
