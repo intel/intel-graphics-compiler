@@ -29,7 +29,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/User.h>
-#include <llvmWrapper/Support/Alignment.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/Support/Debug.h>
 
@@ -577,13 +576,9 @@ static std::vector<Value *> handleGlobalArgs(Function &NewFunc,
                   [InsertPt](Argument &GVArg) -> Value * {
                     if (GVArg.getType()->isPointerTy())
                       return &GVArg;
-                    const DataLayout &DL = GVArg.getParent()->getParent()->getDataLayout();
-                    auto A = IGCLLVM::Align(DL.getABITypeAlignment(GVArg.getType()));
                     AllocaInst *Alloca = new AllocaInst(
                         GVArg.getType(), vc::AddrSpace::Private, "", InsertPt);
-                    Alloca->setAlignment(A);
-                    StoreInst *SI = new StoreInst(&GVArg, Alloca, InsertPt);
-                    SI->setAlignment(A);
+                    new StoreInst(&GVArg, Alloca, InsertPt);
                     return Alloca;
                   });
   // Fancy naming and debug info.
@@ -798,13 +793,9 @@ std::vector<Value *> vc::FuncBodyTransfer::handleTransformedFuncArgs() {
         case ArgKind::CopyIn:
         case ArgKind::CopyInOut: {
           auto *NewArg = IGCLLVM::getArg(NewFunc, OrigArgData.getNewIdx());
-          const DataLayout &DL = NewArg->getParent()->getParent()->getDataLayout();
-          auto A = IGCLLVM::Align(DL.getABITypeAlignment(NewArg->getType()));
           auto *Alloca = new AllocaInst(NewArg->getType(),
                                         vc::AddrSpace::Private, "", InsertPt);
-          Alloca->setAlignment(A);
-          StoreInst *SI = new StoreInst{NewArg, Alloca, InsertPt};
-          SI->setAlignment(A);
+          new StoreInst{NewArg, Alloca, InsertPt};
           return Alloca;
         }
         case ArgKind::CopyOut: {

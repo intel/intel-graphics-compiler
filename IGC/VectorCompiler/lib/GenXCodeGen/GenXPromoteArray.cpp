@@ -249,7 +249,6 @@ TransformPrivMem::createVectorForAlloca(llvm::AllocaInst *pAlloca,
   IRBuilder<> IRB(pAlloca);
   auto &VecType = getVectorTypeForAlloca(*pAlloca, *pBaseType, *m_pDL);
   AllocaInst *pAllocaValue = IRB.CreateAlloca(&VecType);
-  pAllocaValue->setAlignment(IGCLLVM::Align(m_pDL->getABITypeAlignment(pBaseType)));
   return pAllocaValue;
 }
 
