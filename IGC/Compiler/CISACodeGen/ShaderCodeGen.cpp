@@ -1463,8 +1463,14 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(new BreakConstantExpr());
             mpm.add(new IGCConstProp(IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
 
-            if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt) && pContext->platform.enableImmConstantOpt())
+            if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
             {
+                // If we have ICBs, need to emit clamp code so OOB access doesn't occur
+                if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size())
+                {
+                    mpm.add(createClampICBOOBAccess());
+                }
+
                 mpm.add(createIGCIndirectICBPropagaionPass());
             }
 
@@ -1574,8 +1580,14 @@ void OptimizeIR(CodeGenContext* const pContext)
                     mpm.add(llvm::createGVNPass());
                 }
             }
-            if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt) && pContext->platform.enableImmConstantOpt())
+            if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
             {
+                // If we have ICBs, need to emit clamp code so OOB access doesn't occur
+                if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size())
+                {
+                    mpm.add(createClampICBOOBAccess());
+                }
+
                 mpm.add(createIGCIndirectICBPropagaionPass());
             }
 
@@ -1588,6 +1600,12 @@ void OptimizeIR(CodeGenContext* const pContext)
             }
             mpm.add(createGenOptLegalizer());
             mpm.add(createInsertBranchOptPass());
+        }
+
+        // If we have ICBs, need to emit clamp code so OOB access doesn't occur
+        if (pContext->getModuleMetaData()->immConstant.zeroIdxs.size() && IGC_IS_FLAG_ENABLED(DisableImmConstantOpt))
+        {
+            mpm.add(createClampICBOOBAccess());
         }
 
         if (pContext->m_instrTypes.hasRuntimeValueVector)
