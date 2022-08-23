@@ -150,17 +150,10 @@ void GenXCodeGenModule::processFunction(Function& F)
 
     IGC_ASSERT(CallerFGs.size() >= 1);
 
-    // Get the cloning threshold. If the number of function groups a function belongs to
-    // exceeds the threshold, instead of cloning the function N times, make it an indirect call
-    // and use relocation instead. The function will only be compiled once and runtime must relocate
-    // its address for each caller. This greatly saves on compile time when there are many function
-    // groups that all call the same function.
-    auto cloneThreshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
-    bool zebinEnable = IGC_IS_FLAG_ENABLED(EnableZEBinary) || getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.EnableZEBinary;
+    // Make the function indirect if cloning exceeds the threshold
     if (F.hasFnAttribute("visaStackCall") &&
-        zebinEnable &&
-        cloneThreshold > 0 &&
-        CallerFGs.size() > cloneThreshold)
+        m_FunctionCloningThreshold > 0 &&
+        CallerFGs.size() > m_FunctionCloningThreshold)
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto IFG = FGA->getOrCreateIndirectCallGroup(F.getParent());
@@ -234,11 +227,8 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode*>* SCCNodes)
     }
     IGC_ASSERT(CallerFGs.size() >= 1);
 
-    // Use the same cloning threshold for single function SCCs, but making every function
-    // in the SCC indirect calls to prevent cloning the entire SCC N times.
-    auto cloneThreshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
-    bool zebinEnable = IGC_IS_FLAG_ENABLED(EnableZEBinary) || getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.EnableZEBinary;
-    if (zebinEnable && cloneThreshold > 0 && CallerFGs.size() > cloneThreshold)
+    // To prevent cloning if it exceeds the threshold, make every function in the SCC an indirect call
+    if (m_FunctionCloningThreshold > 0 && CallerFGs.size() > m_FunctionCloningThreshold)
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto Mod = (*SCCNodes).front()->getFunction()->getParent();
@@ -388,6 +378,21 @@ bool GenXCodeGenModule::runOnModule(Module& M)
     // Already built.
     if (FGA->getModule())
         return false;
+
+    // Set the cloning threshold. This determins the number of times a function called from multiple
+    // function groups can be cloned. If the number exceeds the threshold, instead of cloning the
+    // function N times, make it an indirect call and use relocation instead. The function will only be
+    // compiled once and runtime must relocate its address for each caller.
+    if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.EnableZEBinary)
+    {
+        // Enable by default for zebin
+        m_FunctionCloningThreshold = 1;
+    }
+    if (IGC_GET_FLAG_VALUE(FunctionCloningThreshold) != 0)
+    {
+        // Overwrite with debug flag
+        m_FunctionCloningThreshold = IGC_GET_FLAG_VALUE(FunctionCloningThreshold);
+    }
 
     pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     CallGraph& CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();

@@ -52,6 +52,7 @@ namespace IGC {
         GenXFunctionGroupAnalysis* FGA;
         IGC::IGCMD::MetaDataUtils* pMdUtils;
         bool Modified;
+        unsigned m_FunctionCloningThreshold = 0;
     };
 
     /// \brief A collection of functions that are reachable from a kernel.

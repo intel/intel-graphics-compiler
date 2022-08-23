@@ -991,9 +991,9 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
             // Create one also if global variables are present and require symbols
             needDummyKernel = true;
         }
-        else if (IGC_GET_FLAG_VALUE(FunctionCloningThreshold) > 0 && pCtx->enableFunctionCall()) {
-            // If this flag is enabled and there are any function calls, conservatively create a dummy kernel
-            // in case we need to transform normal calls into indirect calls to avoid cloning in GenCodeGenModule.cpp
+        else if (pCtx->m_hasStackCalls && !getUniqueEntryFunc(pMdUtils, modMD)) {
+            // If there are stackcalls and multiple kernels from which it could be called, conservatively create a
+            // dummy kernel in case we need to transform them into indirect calls to avoid cloning in GenCodeGenModule.cpp
             needDummyKernel = true;
         }
     }
