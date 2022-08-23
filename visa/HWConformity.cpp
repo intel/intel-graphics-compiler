@@ -3155,8 +3155,6 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB* bb)
             {
                 // this will be broken up in to 2 instructions
                 auto factor = src0RR->getTypeSize() / dst->getTypeSize();
-                if (src0RR->getTypeSize() == dst->getTypeSize())
-                    factor *= 2;
                 auto vs = src0RR->getRegion()->vertStride * factor;
                 auto w = src0RR->getRegion()->width;
                 auto hs = src0RR->getRegion()->horzStride * factor;
