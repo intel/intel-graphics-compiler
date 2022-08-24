@@ -8052,7 +8052,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
         PACK_EXEC_SIZE(size, emask);
 
         inst->createCisaInstruction(
-            ISA_LSC_UNTYPED, (uint8_t)size, 0, predOpnd, opnds, numOpnds, instDesc);
+            ISA_LSC_UNTYPED, (uint8_t)size, 0, predOpnd, opnds, numOpnds, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -8184,7 +8184,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedStridedInst(
         PACK_EXEC_SIZE(size, emask);
 
         inst->createCisaInstruction(
-            ISA_LSC_UNTYPED, (uint8_t)size, 0, predOpnd, opnds, numOpnds, instDesc);
+            ISA_LSC_UNTYPED, (uint8_t)size, 0, predOpnd, opnds, numOpnds, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -8275,7 +8275,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
         PACK_EXEC_SIZE(size, emask);
 
         inst->createCisaInstruction(
-            ISA_LSC_UNTYPED, (uint8_t)size, 0, predOpnd, opnds, numOpnds, instDesc);
+            ISA_LSC_UNTYPED, (uint8_t)size, 0, predOpnd, opnds, numOpnds, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -8487,7 +8487,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
         PACK_EXEC_SIZE(size, emask);
 
         inst->createCisaInstruction(
-            ISA_LSC_TYPED, (uint8_t)size, 0, predOpnd, opnds, numOpnds, instDesc);
+            ISA_LSC_TYPED, (uint8_t)size, 0, predOpnd, opnds, numOpnds, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
