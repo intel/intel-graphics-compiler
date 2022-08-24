@@ -5175,10 +5175,31 @@ bool GenStrengthReduction::processInst(Instruction* Inst)
             Inv->setDebugLoc(Inst->getDebugLoc());
         }
 
-        auto Mul = BinaryOperator::CreateFMul(Inst->getOperand(0), Inv, "", Inst);
-        Mul->setFastMathFlags(Inst->getFastMathFlags());
-        Mul->setDebugLoc(Inst->getDebugLoc());
-        Inst->replaceAllUsesWith(Mul);
+        bool bUseFSub = false;
+        if (ConstantFP* CF = dyn_cast<ConstantFP>(Inst->getOperand(0)))
+        {
+            // Rewrite
+            // %1 = fdiv float -1.0, %x
+            // into
+            // %1 = fdiv float 1.0, %x
+            // %2 = fsub float 0, %1
+            if (CF->isExactlyValue(-1))
+                bUseFSub = true;
+        }
+
+        Instruction *NewInst = nullptr;
+        if (bUseFSub)
+        {
+            NewInst = BinaryOperator::CreateFSub(
+                ConstantFP::get(Inst->getType(), 0), Inv, "", Inst);
+        }
+        else
+        {
+            NewInst = BinaryOperator::CreateFMul(Inst->getOperand(0), Inv, "", Inst);
+        }
+        NewInst->setFastMathFlags(Inst->getFastMathFlags());
+        NewInst->setDebugLoc(Inst->getDebugLoc());
+        Inst->replaceAllUsesWith(NewInst);
         Inst->eraseFromParent();
         return true;
     }
