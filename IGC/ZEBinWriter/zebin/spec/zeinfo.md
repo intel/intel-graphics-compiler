@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZE Info
-Version 1.14
+Version 1.15
 
 ## Grammar
 
@@ -143,13 +143,16 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | arg_type | <argument_type> | Required | | |
 | offset | int32 | Required | | |
 | size | int32 | Required | | |
-| arg_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer", "arg_byvalue" or "buffer_offset". For "arg_bypointer" and "arg_byvalue", this is the kernel argument index. For "buffer_offset", this is the index of the associated kernel argument. |
+| arg_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer", "arg_byvalue", "buffer_offset", or other implicit *image_* and sampler_* types. The value is the index of the associated kernel argument. |
 | addrmode | <memory_addressing_mode> | Optional | | Present when arg_type is "arg_bypointer" |
 | addrspace | <address_space> | Optional | | Present when arg_type is "arg_bypointer" |
 | access_type | <access_type> | Optional | | Present when arg_type is "arg_bypointer" |
 | sampler_index | int32 | Optional | -1 | Present when arg_type is "arg_bypointer" and address_space is "sampler" |
 | source_offset | int32 | Optional | -1 | Present when arg_type is "arg_byvalue" and the arg is a flattened aggregate element |
 | slm_alignment | int32 | Optional | 0 | Present when arg_type is "arg_bypointer", addrmode is "slm" and address_space is "local" |
+| image_type | <image_type> | Optional | | Present when addrspace is "image" |
+| image_transformable | bool | Optional | false | Present when addrspace is "image" and image is transformable |
+| sampler_type | <sampler_type> | Optional | | Present when addrspace is "sampler" |
 <!--- PayloadArgument PayloadArguments -->
 
 ### Supported argument types:
@@ -171,6 +174,22 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | implicit_arg_buffer | int64 | The base address of implicit arg buffer |
 | arg_byvalue | | Explicit kernel argument |
 | arg_bypointer | | Explicit kernel argument |
+| image_height | | Image height |
+| image_width | | Image width |
+| image_depth | | Image depth |
+| image_num_mip_levels | | The number of mip-levels |
+| image_channel_data_type | | Image channel data type |
+| image_channel_order | | Image channel order |
+| image_srgb_channel_order | | Image srgb channel order |
+| image_array_size | | Image array size |
+| image_num_samples | | The number of samples |
+| flat_image_baseoffset | | Flat image base offset |
+| flat_image_height | | Flat image height |
+| flat_image_width | | Flat image width |
+| flat_image_pitch | | Flat image pitch |
+| sampler_address | | Sampler descriptor specifying the image addressing mode |
+| sampler_normalized | | Sampler descriptor specifying whether the coordinates are passed in as normalized or unnormalized values |
+| sampler_snap_wa | | Sampler descriptor specifying whether snap coordinate workaround is required |
 <!--- <argument_type> ArgType -->
 
 arg_byvalue and arg_bypointer are user arguments that are explicitly passed in from the applications. Other kinds of arguments are implicit arguments that are passed in by runtime.
@@ -207,6 +226,46 @@ Supported <access_type> of payload_arguments.
 | writeonly | |
 | readwrite | |
 <!--- <access_type> ArgAccessType -->
+
+### Supported image types:
+Supported <image_type> of payload_arguments.
+
+| Access Type | Description |
+| ----- | ----- |
+| image_buffer | A 1D image created from a buffer object |
+| image_1d | A 1D image |
+| image_1d_array | A 1D image array |
+| image_2d | A 2D image |
+| image_2d_array | A 2D image array |
+| image_3d | A 3D image |
+| image_cube | A cube image |
+| image_cube_array | A cube image array |
+| image_2d_depth | A 2D depth image |
+| image_2d_array_depth | A 2D depth image array |
+| image_2d_msaa | A 2D multi-sample color image |
+| image_2d_msaa_depth | A 2D multi-sample depth image |
+| image_2d_array_msaa | A 2D multi-sample color image array |
+| image_2d_array_msaa_depth | A 2D multi-sample depth image array |
+| image_2d_media | A 2D media image |
+| image_2d_media_block | A 2D media block image |
+<!--- <image_type> ArgImageType -->
+
+### Supported sampler types:
+Supported <sampler_type> of payload arguments.
+
+| Access Type | Description |
+| ----- | ----- |
+| texture | A texture sampler |
+| sample_8x8 | A 8x8 sampler |
+| sample_8x8_2dconvolve | A 8x8 2D convolution sampler |
+| sample_8x8_erode | A 8x8 erode sampler |
+| sample_8x8_dilate | A 8x8 dilate sampler |
+| sample_8x8_minmaxfilter | A 8x8 minmax filter sampler |
+| sample_8x8_minmax | A 8x8 minmax sampler |
+| sample_8x8_centroid | A 8x8 centroid sampler |
+| sample_8x8_bool_centroid | A 8x8 bool centroid sampler |
+| sample_8x8_bool_sum | A 8x8 bool sum sampler |
+<!--- <sampler_type> ArgSamplerType -->
 
 ## Per Thread Payload Arguments
 This section defines per_thread_payload_arguments attribute.
@@ -300,6 +359,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.15**: Add image_type, image_transformable, and sampler_type attributes to payload argument. Add new image and sampler argument types.
 - **Version 1.14**: Add slm_alignment to payload argument.
 - **Version 1.13**: Add functions with the name and execution env.
 - **Version 1.12**: Add global_host_access_table to container.

@@ -1050,6 +1050,24 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByPointer(
     return arg;
 }
 
+// addPayloadArgumentImage - add explicit kernel argument for image
+// into given arg_list
+// The argument type will be set to by_pointer, and addr_space will be set to image
+zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentImage(
+    PayloadArgumentsTy& arg_list,
+    int32_t offset,
+    int32_t size,
+    int32_t arg_index,
+    PreDefinedAttrGetter::ArgAddrMode addrmode,
+    PreDefinedAttrGetter::ArgAccessType access_type,
+    PreDefinedAttrGetter::ArgImageType image_type)
+{
+    zeInfoPayloadArgument& arg = addPayloadArgumentByPointer(arg_list, offset, size, arg_index, addrmode,
+        PreDefinedAttrGetter::ArgAddrSpace::image, access_type);
+    arg.image_type = PreDefinedAttrGetter::get(image_type);
+    return arg;
+}
+
 // addPayloadArgumentSampler - add explicit kernel argument for sampler
 // into given arg_list
 // The argument type will be set to by_pointer, and addr_space will be set to sampler
@@ -1060,11 +1078,13 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentSampler(
     int32_t arg_index,
     int32_t sampler_index,
     PreDefinedAttrGetter::ArgAddrMode addrmode,
-    PreDefinedAttrGetter::ArgAccessType access_type)
+    PreDefinedAttrGetter::ArgAccessType access_type,
+    PreDefinedAttrGetter::ArgSamplerType sampler_type)
 {
     zeInfoPayloadArgument& arg = addPayloadArgumentByPointer(arg_list, offset, size, arg_index, addrmode,
         PreDefinedAttrGetter::ArgAddrSpace::sampler, access_type);
     arg.sampler_index = sampler_index;
+    arg.sampler_type = PreDefinedAttrGetter::get(sampler_type);
     return arg;
 }
 
