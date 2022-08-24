@@ -396,6 +396,11 @@ SPDX-License-Identifier: MIT
         return true;
     }
 
+    bool hasDPASFuseRSWA() const
+    {
+        return (getPlatform() == Xe_DG2 && getOption(vISA_DPASFuseRSWA));
+    }
+
     bool hasSrc1ReadSuppressionIssue() const
     {
         return getPlatform() == Xe_PVC && hasRSForSpecificPlatform();

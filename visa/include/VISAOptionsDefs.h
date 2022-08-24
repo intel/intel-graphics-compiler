@@ -347,6 +347,7 @@ DEF_VISA_OPTION(vISA_setFFID,                       ET_INT32, "-setFFID", "USAGE
 DEF_VISA_OPTION(vISA_replaceIndirectCallWithJmpi,   ET_BOOL,  "-replaceIndirectCallWithJmpi",  UNUSED, false)
 DEF_VISA_OPTION(vISA_noMaskWA,                      ET_BOOL,  "-noMaskWA",  UNUSED, false)
 DEF_VISA_OPTION(vISA_forceNoMaskWA,                 ET_BOOL,  "-forceNoMaskWA",  UNUSED, false)
+DEF_VISA_OPTION(vISA_DPASFuseRSWA,                  ET_BOOL,  "-DPASFuseRSWA", UNUSED, false)
 DEF_VISA_OPTION(vISA_noMaskWAOnFuncEntry,           ET_BOOL,  "-noMaskWAOnFuncEntry", UNUSED, true)
 DEF_VISA_OPTION(vISA_fusedCallWA,                   ET_INT32, "-fusedCallWA",   "EU Fusion call ww: 0: no wa; 1: sw wa w/o hw fix; 2: sw wa with partial HW fix", 0)
 DEF_VISA_OPTION(vISA_fusedCallUniform,              ET_BOOL,  "-fusedCallUniform", "true: fused call is uniform; false otherwise.", false)

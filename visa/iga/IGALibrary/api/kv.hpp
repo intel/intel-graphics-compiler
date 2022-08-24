@@ -351,7 +351,7 @@ public:
         return static_cast<iga::ExecSize>(kv_get_execution_size(m_kv, pc));
     }
 
-    iga::SWSB getSWSBInfo(int32_t pc, iga::SWSB_ENCODE_MODE encdoe_mode) {
+    iga::SWSB getSWSBInfo(int32_t pc, iga::SWSB_ENCODE_MODE encdoe_mode) const {
         iga::SWSB swsb;
         kv_get_swsb_info(m_kv, pc, encdoe_mode, swsb);
         return swsb;

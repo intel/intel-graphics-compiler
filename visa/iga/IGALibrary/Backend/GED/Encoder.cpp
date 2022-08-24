@@ -124,7 +124,7 @@ void Encoder::encodeKernel(
 
         for (auto blk : k.getBlockList()) {
             START_ENCODER_TIMER();
-            encodeBlock(blk);
+            encodeBlock(k,blk);
             STOP_ENCODER_TIMER();
             if (hasFatalError()) {
                 return;
@@ -162,10 +162,42 @@ void Encoder::encodeInlineBinaryInst(Instruction& inst)
     advancePc(16);
 }
 
-void Encoder::encodeBlock(Block *blk)
-{
+void Encoder::encodeBlock(Kernel &k, Block *blk) {
     m_blockToOffsetMap[blk] = currentPc();
-    for (const auto inst : blk->getInstList()) {
+
+    InstList &instList = blk->getInstList();
+    const auto instListEnd = instList.end();
+    for (auto instIter = instList.begin(); instIter != instListEnd; ++instIter) {
+        Instruction *inst = *instIter;
+
+        if (inst->hasInstOpt(InstOpt::CACHELINEALIGN)) {
+            while (currentPc() / 64 != (currentPc() + 31) / 64) {
+                SWSB swsb(
+                    SWSB::DistType::NO_DIST,
+                    SWSB::TokenType::NOTOKEN,
+                    0,
+                    0);
+                Instruction *syncInst = k.createSyncNopInstruction(swsb);
+                setCurrInst(syncInst);
+                encodeInstruction(*syncInst);
+                if (hasFatalError()) {
+                    return;
+                }
+                setEncodedPC(syncInst, currentPc());
+                GED_RETURN_VALUE status = GED_RETURN_VALUE_SIZE;
+                status                  = GED_EncodeIns(
+                    &m_gedInst, GED_INS_TYPE_NATIVE, m_instBuf + currentPc());
+                if (status != GED_RETURN_VALUE_SUCCESS) {
+                    errorAtT(
+                        inst->getLoc(),
+                        "GED unable to encode instruction: ",
+                        gedReturnValueToString(status));
+                }
+                blk->insertInstBefore(instIter, syncInst);
+                advancePc(16);
+            }
+        }
+
         setCurrInst(inst);
 
         if (inst->isInlineBinaryInstruction()) {

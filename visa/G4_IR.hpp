@@ -840,6 +840,7 @@ public:
     bool isNoDDChkInst()   const { return (option & InstOpt_NoDDChk)    ? true : false; }
     bool isNoDDClrInst()   const { return (option & InstOpt_NoDDClr)    ? true : false; }
     bool isBreakPointInst() const { return (option & InstOpt_BreakPoint) ? true : false; }
+    bool isCachelineAligned() const { return (option & InstOpt_CachelineAligned) ? true : false; }
     // true if inst reads/writes acc either implicitly or explicitly
     bool useAcc() const
     {
@@ -1254,6 +1255,7 @@ class G4_InstDpas : public G4_INST
     GenPrecision Src2Precision;   // Activation
     uint8_t      SystolicDepth;   // 1|2|4|8
     uint8_t      RepeatCount;     // 1-8
+    bool mayNeedRSWA = false;
 
     enum {
         OPS_PER_CHAN_1 = 1,
@@ -1317,6 +1319,8 @@ class G4_InstDpas : public G4_INST
 
         bool mayExceedTwoGRF() const override { return true; }
         void computeRightBound(G4_Operand* opnd) override;
+        void setMayNeedWA(bool b) { mayNeedRSWA = b; }
+        bool mayNeedWA() const { return mayNeedRSWA; }
 };
 
 class G4_InstMath : public G4_INST

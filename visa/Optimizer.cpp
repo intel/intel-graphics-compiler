@@ -1641,6 +1641,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(removeInstrinsics,       vISA_removeInstrinsics,       TimerID::MISC_OPTS);
     INITIALIZE_PASS(expandMulPostSchedule,   vISA_expandMulPostSchedule,   TimerID::MISC_OPTS);
     INITIALIZE_PASS(zeroSomeARF,             vISA_zeroSomeARF,             TimerID::MISC_OPTS);
+    INITIALIZE_PASS(prepareDPASFuseRSWA,             vISA_DPASFuseRSWA,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(addSWSBInfo,             vISA_addSWSBInfo,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(expandMadwPostSchedule,  vISA_expandMadwPostSchedule,  TimerID::MISC_OPTS);
     INITIALIZE_PASS(ACCSchedule,          vISA_PreSchedForAcc,          TimerID::PRERA_SCHEDULING);
@@ -2279,6 +2280,7 @@ int Optimizer::optimization()
 
     runPass(PI_zeroSomeARF);
 
+    runPass(PI_prepareDPASFuseRSWA);
     //-----------------------------------------------------------------------------------------------------------------
     //------NOTE!!!! No instruction change(add/remove, or operand associated change) is allowed after SWSB-------------
     //-----------------------------------------------------------------------------------------------------------------
@@ -14608,6 +14610,100 @@ void Optimizer::fixReadSuppressioninFPU0()
             }
             prev = cur;
             isPrevOnSPPath = isCurOnSPPath;
+        }
+    }
+}
+
+void Optimizer::prepareDPASFuseRSWA()
+{
+    if (!builder.hasDPAS() || !builder.hasDPASFuseRSWA())
+    {
+        return;
+    }
+
+    kernel.fg.resetLocalDataFlowData();
+    kernel.fg.localDataFlowAnalysis();
+
+    BitSet GRFwriteByALU(kernel.getNumRegTotal(), false);
+    builder.src1FirstGRFOfLastDpas.resize(kernel.getNumRegTotal());
+    builder.src1FirstGRFOfLastDpas.clear();
+
+    std::list<G4_INST*> dpasList;
+
+    for (auto BI : fg)
+    {
+        G4_BB* BB = BI;
+        G4_INST* lastDpas = nullptr;
+        for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
+        {
+            G4_INST* I = *II;
+
+            if (!I->isSend())
+            {
+                G4_Operand* dst = I->getDst();
+                if (dst && !dst->isNullReg() && dst->isGreg())
+                {
+                    unsigned int LB = 0;
+                    unsigned int RB = 0;
+
+                    LB = (unsigned int)(dst->getLinearizedStart() / builder.numEltPerGRF<Type_UB>());
+                    RB = (unsigned int)(dst->getLinearizedEnd() / builder.numEltPerGRF<Type_UB>());
+                    GRFwriteByALU.set(LB, RB);
+                }
+            }
+
+            if (I->isDpas())
+            {
+                dpasList.push_back(I);
+                lastDpas = I;
+            }
+        }
+        if (lastDpas != nullptr)
+        {
+            G4_Operand* src1Opnd = lastDpas->asDpasInst()->getSrc(1);
+            unsigned int LB = (unsigned int)(src1Opnd->getLinearizedStart() / builder.numEltPerGRF<Type_UB>());
+            builder.src1FirstGRFOfLastDpas.set(LB, true);
+        }
+    }
+    MUST_BE_TRUE(!builder.src1FirstGRFOfLastDpas.isAllset(),
+        "Do not expect the first GRF of src1 in last dpas inst of every BB touches all GRFs");
+
+    for (auto I : dpasList)
+    {
+        bool found_src1_def = false;
+        bool sendDefineOnly = true;
+        for (auto i = I->def_begin(), E = I->def_end(); i != E; ++i)
+        {
+            if (i->second == Opnd_src1)
+            {
+                found_src1_def = true;
+                auto defInst = i->first;
+                if (!defInst->isSend())
+                {
+                    sendDefineOnly = false;
+                    kernel.setNeedDPASWA(true);
+                    I->asDpasInst()->setMayNeedWA(true);
+                }
+            }
+        }
+
+        if (sendDefineOnly)
+        {
+            G4_Operand* src1Opnd = I->asDpasInst()->getSrc(1);
+            unsigned int LB = (unsigned int)(src1Opnd->getLinearizedStart() / builder.numEltPerGRF<Type_UB>());
+            unsigned int RB = (unsigned int)(src1Opnd->getLinearizedEnd() / builder.numEltPerGRF<Type_UB>());
+
+            if (!GRFwriteByALU.isEmpty(LB, RB))
+            {
+                kernel.setNeedDPASWA(true);
+                I->asDpasInst()->setMayNeedWA(true);
+            }
+        }
+
+        if (!found_src1_def)
+        {
+            kernel.setNeedDPASWA(true);
+            I->asDpasInst()->setMayNeedWA(true);
         }
     }
 }

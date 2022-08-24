@@ -161,8 +161,8 @@ namespace iga
         void operator delete(void*, MemManager*) { };
         void *operator new(size_t sz, MemManager* m) {return m->alloc(sz);};
 
-        void encodeBlock(Block* blk);
-        void encodeInstruction(Instruction& inst);
+        void encodeBlock(Kernel &k, Block *blk);
+        void encodeInstruction(Instruction &inst);
         void patchJumpOffsets();
 
         ///////////////////////////////////////////////////////////////////////
@@ -200,7 +200,7 @@ namespace iga
         void encodeSendDescsXeHP(const Instruction& inst);
         void encodeSendDescsXeHPG(const Instruction& inst);
 
-        void encodeInlineBinaryInst(Instruction& inst);
+        void encodeInlineBinaryInst(Instruction &inst);
         ///////////////////////////////////////////////////////////////////////
         // SYNC INSTRUCTIONS
         ///////////////////////////////////////////////////////////////////////

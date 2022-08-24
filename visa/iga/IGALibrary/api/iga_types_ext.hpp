@@ -262,6 +262,7 @@ namespace iga
         EXBSO, // XE_HP extended bindless surface offset
                // implies CPS and Src1.Length come from EU encoding, not
         CPS,   // XE_HP coarse pixel shading
+        CACHELINEALIGN
     };
 
 

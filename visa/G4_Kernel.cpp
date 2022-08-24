@@ -1971,6 +1971,21 @@ static BlockOffsets precomputeBlockOffsets(
                     return blockOffsets;
                 }
                 lastInstSize = kv.getInstSize(currPc);
+
+                G4_INST* inst = (*itInst);
+                if (g4k.fg.builder->getOption(vISA_DPASFuseRSWA) && inst->isCachelineAligned())
+                {
+                    iga::Op opcode = kv.getOpcode(currPc);
+                    iga::SWSB sw = kv.getSWSBInfo(currPc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
+
+                    while (opcode == iga::Op::SYNC && !sw.hasDist() && !sw.hasSWSB() && !sw.hasSpecialToken() && !sw.hasToken())
+                    {
+                        currPc += lastInstSize;
+                        opcode = kv.getOpcode(currPc);
+                        sw = kv.getSWSBInfo(currPc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
+                        lastInstSize = kv.getInstSize(currPc);
+                    }
+                }
                 currPc += lastInstSize;
             }
         }
@@ -2161,6 +2176,42 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
                 | IGA_FORMATTING_OPT_PRINT_BFNEXPRS;
             if (getOption(vISA_PrintHexFloatInAsm))
                 fmtOpts |= IGA_FORMATTING_OPT_PRINT_HEX_FLOATS;
+
+            if (fg.builder->getOption(vISA_DPASFuseRSWA) && i->isCachelineAligned())
+            {
+                iga::Op opcode = kv.getOpcode(pc);
+                iga::SWSB sw = kv.getSWSBInfo(pc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
+                while (opcode == iga::Op::SYNC && !sw.hasDist() && !sw.hasSWSB() && !sw.hasSpecialToken() && !sw.hasToken())
+                {
+                    while (true) {
+                        size_t nw = kv.getInstSyntax(
+                            pc,
+                            igaStringBuffer.data(), igaStringBuffer.size(),
+                            fmtOpts,
+                            labeler, &ls);
+                        if (nw == 0) {
+                            os << "<<error formatting instruction at PC " << pc << ">>\n";
+                            break;
+                        }
+                        else if (nw <= igaStringBuffer.size()) {
+                            // print it (pad it out so comments line up on most instructions)
+                            std::string line = igaStringBuffer.data();
+                            while (line.size() < 100)
+                                line += ' ';
+                            os << line;
+                            break;
+                        }
+                        else {
+                            igaStringBuffer.resize(igaStringBuffer.size() + 512);
+                            // try again
+                        }
+                    }
+                    os << "\n";
+                    pc += kv.getInstSize(pc);
+                    opcode = kv.getOpcode(pc);
+                    sw = kv.getSWSBInfo(pc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
+                }
+            }
             while (true) {
                 size_t nw = kv.getInstSyntax(
                     pc,

@@ -499,6 +499,7 @@ namespace vISA
         /* Member functions */
         G4_INST*  GetInstruction() const { return instVec.front(); }
         void addInstruction(G4_INST *i) { instVec.push_back(i); }
+        void addInstructionAtBegin(G4_INST *i) { instVec.insert(instVec.begin(), i); }
         G4_INST*  getLastInstruction() const { return instVec.back(); }
         void setDepDelay(unsigned val) { depDelay = val; }
         unsigned getDepDelay() const { return depDelay; }
@@ -1583,8 +1584,6 @@ namespace vISA
         int nodeID;
         int ALUID;
 
-        SBNode*           dpasNode = nullptr;
-        SBNode*           lastDpasNode = nullptr;
         int integerID;
         int floatID;
         int longID;
@@ -1739,6 +1738,12 @@ namespace vISA
             PointsToAnalysis& p,
             std::map<G4_Label*, G4_BB_SB*> *LabelToBlockMap);
 
+        G4_INST* createADummyDpasRSWAInst(LiveGRFBuckets* LB,
+                                          SBNode* curDpasNode,
+                                          G4_InstDpas* curInst,
+                                          SBNode* lastDpasNode,
+                                          bool& sameDstSrc);
+
         //Global SBID dependence analysis
         void setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB, SBNODE_VECT *SBNodes, PointsToAnalysis &p);
         void dumpTokenLiveInfo(SBNODE_VECT * SBSendNodes);
@@ -1750,6 +1755,7 @@ namespace vISA
 
         bool hasInternalDependenceWithinDPAS(SBNode *node) const;
         bool hasDependenceBetweenDPASNodes(SBNode * node, SBNode * nextNode);
+        bool hasRAWDependenceBetweenDPASNodes(SBNode * node, SBNode * nextNode) const;
         // check if the given src can be cached (by src suppression buffer)
         bool dpasSrcFootPrintCache(Gen4_Operand_Number opNum, SBNode* curNode, SBNode* nextNode) const;
         bool src2SameFootPrintDiffType(SBNode* curNode, SBNode* nextNode) const;

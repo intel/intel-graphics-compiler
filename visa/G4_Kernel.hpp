@@ -223,6 +223,7 @@ private:
     bool channelSliced = true;
     bool hasAddrTaken;
     bool regSharingHeuristics;
+    bool needDPASWA = false;
     Options *m_options;
     const Attributes* m_kernelAttrs;
     const uint32_t m_function_id;
@@ -341,6 +342,9 @@ public:
 
     void setHasAddrTaken(bool val) { hasAddrTaken = val; }
     bool getHasAddrTaken() { return hasAddrTaken;  }
+
+    void setNeedDPASWA(bool val) { needDPASWA = val; }
+    bool getNeedDPASWA() const { return needDPASWA; }
 
     void setNumRegTotal(unsigned num) { numRegTotal = num; }
     unsigned getNumRegTotal() const { return numRegTotal; }

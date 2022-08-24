@@ -474,6 +474,7 @@ public:
     // number of temp GRF vars created to hold spilled addr/flag
     uint32_t            numAddrFlagSpillLoc = 0;
     std::vector<input_info_t*> m_inputVect;
+    BitSet                src1FirstGRFOfLastDpas;
 
     const Options* getOptions() const { return m_options; }
     bool           getOption(vISAOptions opt) const {return m_options->getOption(opt); }

@@ -386,6 +386,10 @@ InstOptSet BinaryEncodingIGA::getIGAInstOptSet(G4_INST* inst) const
     {
         options.add(InstOpt::BREAKPOINT);
     }
+    if (inst->isCachelineAligned())
+    {
+        options.add(InstOpt::CACHELINEALIGN);
+    }
     if (inst->isNoDDChkInst())
     {
         options.add(InstOpt::NODDCHK);

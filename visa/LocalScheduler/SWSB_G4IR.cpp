@@ -5348,6 +5348,31 @@ bool G4_BB_SB::hasDependenceBetweenDPASNodes(SBNode* node, SBNode* nextNode)
     return false;
 }
 
+bool G4_BB_SB::hasRAWDependenceBetweenDPASNodes(SBNode* node, SBNode* nextNode) const
+{
+    const SBFootprint* fp = node->getFirstFootprint(Opnd_dst);
+    if (fp)
+    {
+        for (Gen4_Operand_Number opndNum2 : {Opnd_src0, Opnd_src1, Opnd_src2})
+        {
+            const SBFootprint* nextfp = nextNode->getFirstFootprint(opndNum2);
+            unsigned short internalOffset = 0;
+            if (nextfp && nextfp->hasOverlap(fp, internalOffset))
+            {
+                //Exception: if the dependence distance is far enough, it's ok
+                if (node->getDPASSize() - internalOffset > tokenAfterDPASCycle)
+                {
+                    return false;
+                }
+
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 unsigned short G4_BB_SB::getDpasSrcCacheSize(Gen4_Operand_Number opNum) const
 {
     if (opNum == Gen4_Operand_Number::Opnd_src1) {
@@ -5626,6 +5651,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
     DPASID = indexes->DPASIndex;
     mathID = indexes->mathIndex;
     first_DPASID = indexes->DPASIndex;
+    SBNode* lastDpasNode = nullptr;
 
     for (int i = 0; i < PIPE_DPAS; i++)
     {
@@ -5782,6 +5808,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
         //Keeping the dependence within a DPAS block will drop performance a lot.
         if (curInst->isDpas())
         {
+            auto DpasRSWAInsertionPos = iInst;
             unsigned dpas_count = 0;
             if (nextInst && nextInst->isDpas())
             {
@@ -5843,11 +5870,89 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 }
                 curInst = node->GetInstruction();
             }
-        }
-        if (node->getLastInstruction()->isDpas())
-        {
+
+            auto needWA = [&]() -> bool {
+                // Always insert WA for the 1st dpas of the BB.
+                if (lastDpasNode == nullptr)
+                    return true;
+                // If current node is a dpas block, insert WA when there's src1 RS in the first 2 instructions.
+                if (node->instVec.size() > 1) {
+                    G4_INST* first = node->instVec[0];
+                    G4_INST* second = node->instVec[1];
+                    MUST_BE_TRUE(first->getSrc(1)->isSrcRegRegion() && second->getSrc(1)->isSrcRegRegion(),
+                        "Both dpas src1 operands should be src reg region");
+                    if (first->getSrc(1)->asSrcRegRegion()->sameSrcRegRegion(*second->getSrc(1)->asSrcRegRegion()))
+                        return true;
+                }
+                // Handle other cases.
+                // 1. When the last dpas node is a block, WA is not needed.
+                if (lastDpasNode->instVec.size() > 1) {
+                    return false;
+                } else {
+                    // 2. No WA is needed if the last dpas has any SWSB dependency.
+                    if (hasRAWDependenceBetweenDPASNodes(lastDpasNode, node) ||
+                        !lastDpasNode->succs.empty())
+                        return false;
+                    // 3. WA is needed if there's RS between the last dpas and the current dpas.
+                    G4_INST* last = lastDpasNode->instVec[0];
+                    G4_INST* cur = node->instVec[0];
+                    MUST_BE_TRUE(last->getSrc(1)->isSrcRegRegion() && cur->getSrc(1)->isSrcRegRegion(),
+                        "Both dpas src1 operands should be src reg region");
+                    if (last->getSrc(1)->asSrcRegRegion()->sameSrcRegRegion(*cur->getSrc(1)->asSrcRegRegion()))
+                        return true;
+                    // WA is not needed if there's no RS.
+                    return false;
+                }
+            };
+
+            // As a WA a dummy dpas inst is needed only when dpas is 8x8.
+            if (builder.hasDPASFuseRSWA() &&
+                curInst->asDpasInst()->getSystolicDepth() == 8 &&
+                curInst->asDpasInst()->getRepeatCount() == 8 &&
+                curInst->asDpasInst()->mayNeedWA() &&
+                needWA())
+            {
+                bool sameDstSrc = false;
+                G4_INST* dummyDpasWAInst = createADummyDpasRSWAInst(LB, node, curInst->asDpasInst(), lastDpasNode, sameDstSrc);
+                // Mark the dummy inst as atomic as we want to add it into the
+                // SBNode and the built macro.
+                dummyDpasWAInst->setOptionOn(InstOpt_Atomic);
+                if (sameDstSrc)
+                {
+                    dummyDpasWAInst->setOptionOn(InstOpt_CachelineAligned);
+                }
+                // Insert dummy inst to the BB.
+                bb->insertBefore(DpasRSWAInsertionPos, dummyDpasWAInst);
+                // Add the dummy dpas wa inst to the node and do the footprint
+                // merge after building the macro.
+                node->addInstructionAtBegin(dummyDpasWAInst);
+                node->addDPASSize(dummyDpasWAInst->asDpasInst()->getRepeatCount());
+                // Create a dummy SBNode for merging footprints
+                SBNode dummyNode(nodeID, ALUID, bb->getId(), dummyDpasWAInst);
+                getGRFFootPrint(&dummyNode, p);
+                for (Gen4_Operand_Number opndNum
+                    : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
+                {
+                    SBFootprint* dummyFp = dummyNode.getFirstFootprint(opndNum);
+                    if (!dummyFp)
+                        continue;
+
+                    SBFootprint* fp = node->getFirstFootprint(opndNum);
+                    while (fp)
+                    {
+                        fp->setOffset(fp->offset + dummyNode.getDPASSize());
+                        if (!fp->next)
+                        {
+                            fp->next = dummyFp;
+                            break;
+                        }
+                        fp = fp->next;
+                    }
+                }
+            }
             node->setDPASID(DPASID);
             DPASID += node->getDPASSize();
+            lastDpasNode = node;
         }
 
         //Get buckets for all GRF registers which are used in curInst
@@ -6422,6 +6527,116 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 #endif
 
     return;
+}
+
+G4_INST* G4_BB_SB::createADummyDpasRSWAInst(LiveGRFBuckets* LB,
+                                            SBNode* curNode,
+                                            G4_InstDpas* curInst,
+                                            SBNode* lastDpasNode,
+                                            bool & sameDstSrc)
+{
+    MUST_BE_TRUE(!lastDpasNode || lastDpasNode->getLastInstruction(),
+        "When there is a previous dpas node, there is at least one dpas inst");
+
+    // Reuse dst as src1 when dst start is not same as the src1 of the previous dpas.
+    auto canUseDstAsSrc1 = [&](unsigned dstLB, unsigned lastSrc1LB) -> bool {
+        if (lastDpasNode)
+            return dstLB != lastSrc1LB;
+        return !builder.src1FirstGRFOfLastDpas.isSet(dstLB);
+    };
+    // Try to select a src1 by shifting the src1 of curInst by a stepping value
+    // starting with 1. There are 2 cases need to be considered.
+    // 1. When there's a previous dpas node before the current dpas in the BB,
+    // we check if the shifted value is different than the last src1 of the
+    // previous dpas node. We expect only 1 iteration (+/- 1) is needed to
+    // select a src1 in this case.
+    // 2. When the current dpas is the first dpas of the BB, currently we check
+    // the shifted value is not touched by any src1 of the last dpas in every
+    // BB. We don't expect full GRFs would be unavailable in real cases, and a
+    // src1 is likely found before out-of-bounds.
+    auto trySelectingSrc1 = [&](unsigned src1LB, unsigned src1RB, unsigned lastSrc1LB) -> unsigned {
+        bool rbInBound = true;
+        bool lbInBound = true;
+        unsigned stepping = 1;
+        while (rbInBound || lbInBound) {
+            rbInBound = (src1RB + stepping < builder.kernel.getNumRegTotal());
+            if (rbInBound) {
+                unsigned newSrc1LB = src1LB + stepping;
+                if (lastDpasNode) {
+                    if (newSrc1LB != lastSrc1LB)
+                        return newSrc1LB;
+                } else if (!builder.src1FirstGRFOfLastDpas.isSet(newSrc1LB)) {
+                    return newSrc1LB;
+                }
+            }
+            lbInBound = src1LB >= stepping;
+            if (lbInBound) {
+                unsigned newSrc1LB = src1LB - stepping;
+                if (lastDpasNode) {
+                    if (newSrc1LB != lastSrc1LB)
+                        return newSrc1LB;
+                } else if (!builder.src1FirstGRFOfLastDpas.isSet(newSrc1LB)) {
+                    return newSrc1LB;
+                }
+            }
+            stepping++;
+        }
+        return std::numeric_limits<unsigned>::max();
+    };
+
+    G4_DstRegRegion* newDst = builder.duplicateOperand(curInst->getDst());
+    G4_Operand* newSrc[3];
+    newSrc[0] = builder.duplicateOperand(curInst->getSrc(0));
+    newSrc[2] = builder.duplicateOperand(curInst->getSrc(2));
+
+    unsigned dstLB = curInst->getDst()->getLinearizedStart();
+    unsigned dstRB = curInst->getDst()->getLinearizedEnd();
+    unsigned src1LB = curInst->getSrc(1)->getLinearizedStart();
+    unsigned src1RB = curInst->getSrc(1)->getLinearizedEnd();
+    unsigned src2LB = curInst->getSrc(2)->getLinearizedStart();
+    unsigned src2RB = curInst->getSrc(2)->getLinearizedEnd();
+
+    //dst overlaps src1 or src2
+    sameDstSrc = !(dstLB > src1RB || dstRB < src1LB) ||
+        !(dstLB > src2RB || dstRB < src2LB);
+
+    //dst overlaps src0
+    if (curInst->getSrc(0) && !curInst->getSrc(0)->isNullReg())
+    {
+        unsigned src0LB = curInst->getSrc(0)->getLinearizedStart();
+        unsigned src0RB = curInst->getSrc(0)->getLinearizedEnd();
+        sameDstSrc = sameDstSrc || !(dstLB > src0RB || dstRB < src0LB);
+    }
+
+
+    dstLB = dstLB / builder.numEltPerGRF<Type_UB>();
+    src1LB = src1LB / builder.numEltPerGRF<Type_UB>();
+    src1RB = src1RB / builder.numEltPerGRF<Type_UB>();
+    unsigned lastSrc1LB = lastDpasNode ?
+        lastDpasNode->getLastInstruction()->getSrc(1)->getLinearizedStart() / builder.numEltPerGRF<Type_UB>() :
+        std::numeric_limits<unsigned>::max();
+    unsigned newSrc1LB = src1LB;
+
+    if (canUseDstAsSrc1(dstLB, lastSrc1LB)) {
+        newSrc1LB = dstLB;
+    } else {
+        newSrc1LB = trySelectingSrc1(src1LB, src1RB, lastSrc1LB);
+    }
+    MUST_BE_TRUE(newSrc1LB >= 0 && newSrc1LB < builder.kernel.getNumRegTotal() &&
+        newSrc1LB != lastSrc1LB && newSrc1LB != src1LB, "Unable to find a src1 for the WA");
+
+    auto src1 = curInst->getSrc(1)->asSrcRegRegion();
+    G4_Declare* tempDcl = builder.createHardwiredDeclare(
+        src1->getBase()->asRegVar()->getDeclare()->getTotalElems(),
+        src1->getType(), newSrc1LB, src1->getSubRegOff());
+    newSrc[1] = builder.createSrcRegRegion(tempDcl, src1->getRegion());
+    G4_INST* dummyInst = builder.createInternalDpasInst(curInst->opcode(),
+        curInst->getExecSize(),
+        newDst,
+        newSrc[0], newSrc[1], newSrc[2], nullptr,
+        curInst->getOption(), curInst->getSrc2Precision(), curInst->getSrc1Precision(),
+        curInst->getSystolicDepth(), curInst->getRepeatCount());
+    return dummyInst;
 }
 
 //#ifdef DEBUG_VERBOSE_ON

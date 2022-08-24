@@ -52,6 +52,11 @@ size_t Kernel::getInstructionCount() const
     size_t n = 0;
     for (const Block *b : getBlockList()) {
         n += b->getInstList().size();
+        for (Instruction *i : b->getInstList()) {
+            if (i->hasInstOpt(InstOpt::CACHELINEALIGN)) {
+                n += 2;
+            }
+        }
     }
     return n;
 }
