@@ -277,7 +277,6 @@ Value* ValueTracker::findAllocaValue(Value* V, const uint depth)
 {
     if (!V) return nullptr;
 
-    visitedValues.insert(V);
     for (auto U : V->users())
     {
         if (visitedValues.find(U) != visitedValues.end()) continue;
@@ -401,8 +400,6 @@ Value* ValueTracker::trackValue(Value* I)
             baseValue = workList.back();
             workList.pop_back();
         }
-
-        visitedValues.insert(baseValue);
 
         if (auto* I = dyn_cast<Argument>(baseValue))
         {
