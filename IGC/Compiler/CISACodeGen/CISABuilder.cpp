@@ -7503,23 +7503,25 @@ namespace IGC
 
             CVariable* input0 = nullptr;
             CVariable* input1 = nullptr;
-            uint16_t newNumElemsSrc0 = (uint16_t)(visaNumLanes(toExecSize) * repeatCount);
-            IGC_ASSERT(newNumElemsSrc0 <= input->GetNumberElement());
-            input0 = m_program->GetNewVariable(
-                newNumElemsSrc0,
-                input->GetType(),
-                input->GetAlign(),
-                input->IsUniform(),
-                CName::NONE);
-            input1 = m_program->GetNewVariable(
-                newNumElemsSrc0,
-                input->GetType(),
-                input->GetAlign(),
-                input->IsUniform(),
-                CName::NONE);
-            // Starting offset is calculated from AliasOffset only (subVar not used).
-            uint32_t srcOfstBytesSrc0 = input->GetAliasOffset();
-            SplitPayloadToLowerSIMD(input, srcOfstBytesSrc0, repeatCount, input0, input1, visaNumLanes(fromExecSize));
+            if(input) {
+                uint16_t newNumElemsSrc0 = (uint16_t)(visaNumLanes(toExecSize) * repeatCount);
+                IGC_ASSERT(newNumElemsSrc0 <= input->GetNumberElement());
+                input0 = m_program->GetNewVariable(
+                    newNumElemsSrc0,
+                    input->GetType(),
+                    input->GetAlign(),
+                    input->IsUniform(),
+                    CName::NONE);
+                input1 = m_program->GetNewVariable(
+                    newNumElemsSrc0,
+                    input->GetType(),
+                    input->GetAlign(),
+                    input->IsUniform(),
+                    CName::NONE);
+                // Starting offset is calculated from AliasOffset only (subVar not used).
+                uint32_t srcOfstBytesSrc0 = input->GetAliasOffset();
+                SplitPayloadToLowerSIMD(input, srcOfstBytesSrc0, repeatCount, input0, input1, visaNumLanes(fromExecSize));
+            }
 
             CVariable* dst0 = input0, * dst1 = input1;
             if (dst != input)
