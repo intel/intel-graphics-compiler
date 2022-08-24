@@ -308,6 +308,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
         unsigned maxAlignOnModule = 0;
 
         unsigned int maxWorkGroupSize = 448;
+        maxWorkGroupSize = pCtx->platform.getOfflineCompilerMaxWorkGroupSize();
         if (pCtx->platform.enableMaxWorkGroupSizeCalculation() &&
             platform.EUCount != 0 && platform.SubSliceCount != 0)
         {

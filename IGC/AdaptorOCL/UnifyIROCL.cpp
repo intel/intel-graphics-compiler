@@ -281,6 +281,11 @@ static void CommonOCLBasedPasses(
     if (CompilerOpts.PreferBindlessImages) {
         pContext->getModuleMetaData()->UseBindlessImage = true;
     }
+    CompilerOpts.ForceInt32DivRemEmu =
+        pContext->m_InternalOptions.IntelForceInt32DivRemEmu;
+
+    CompilerOpts.ForceInt32DivRemEmuSP =
+        pContext->m_InternalOptions.IntelForceInt32DivRemEmuSP;
 
     CompilerOpts.EnableTakeGlobalAddress =
         pContext->m_Options.EnableTakeGlobalAddress;

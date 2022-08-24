@@ -454,18 +454,22 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         // Prefer using FP32 emulation even though DP support is available
         theEmuKind |= EmuKind::EMU_I32DIVREM_SP;
     }
-    else if (ctx.platform.Enable32BitIntDivRemEmu())
+    else if (!ctx.platform.hasNoFP64Inst() &&
+            (IGC_IS_FLAG_ENABLED(Force32BitIntDivRemEmu) ||
+            ctx.getCompilerOption().ForceInt32DivRemEmu ||
+            (ctx.platform.Enable32BitIntDivRemEmu() &&
+                !ctx.getCompilerOption().ForceInt32DivRemEmuSP &&
+                IGC_IS_FLAG_DISABLED(Force32BitIntDivRemEmuSP))))
     {
-        if (!ctx.platform.hasNoFP64Inst())
-        {
-            // Use DP (and float) opeations to emulate int32 div/rem
-            theEmuKind |= EmuKind::EMU_I32DIVREM;
-        }
-        else
-        {
-            // Use SP floating operations to emulate int32 div/rem
-            theEmuKind |= EmuKind::EMU_I32DIVREM_SP;
-        }
+        // Use DP (and float) opeations to emulate int32 div/rem
+        theEmuKind |= EmuKind::EMU_I32DIVREM;
+    }
+    else if (ctx.platform.Enable32BitIntDivRemEmu() ||
+                ctx.getCompilerOption().ForceInt32DivRemEmuSP ||
+                IGC_IS_FLAG_ENABLED(Force32BitIntDivRemEmuSP))
+    {
+        // Use SP floating operations to emulate int32 div/rem
+        theEmuKind |= EmuKind::EMU_I32DIVREM_SP;
     }
 
     if (IGC_IS_FLAG_ENABLED(RayTracingKeepUDivRemWA))
