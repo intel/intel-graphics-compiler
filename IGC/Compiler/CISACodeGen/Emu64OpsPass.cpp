@@ -196,6 +196,9 @@ namespace {
         bool visitInvoke(InvokeInst&) { return false; }
         bool visitResume(ResumeInst&) { return false; }
         bool visitUnreachable(UnreachableInst&) { return false; }
+#if LLVM_VERSION_MAJOR >= 10
+        bool visitFreeze(FreezeInst&) { return false; }
+#endif
 
         bool visitAdd(BinaryOperator&);
         bool visitFAdd(BinaryOperator&) { return false; }

@@ -100,6 +100,7 @@ IGC_IR_LLVM_INTRINSIC(sadd_sat)
 #endif
 #if LLVM_VERSION_MAJOR >= 12
 IGC_IR_LLVM_INTRINSIC(abs)
+IGC_IR_LLVM_INTRINSIC(experimental_noalias_scope_decl)
 #endif
 
 // LLVM instructions allowed in IGC IR

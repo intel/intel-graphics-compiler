@@ -7773,6 +7773,9 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
     case Intrinsic::lifetime_end:
     case Intrinsic::fabs:
     case Intrinsic::trap:
+#if LLVM_VERSION_MAJOR >= 12
+    case Intrinsic::experimental_noalias_scope_decl:
+#endif
         // do nothing
         break;
     case Intrinsic::stacksave:
