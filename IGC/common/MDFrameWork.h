@@ -586,7 +586,6 @@ namespace IGC
     {
         std::vector<char> data;
         std::map<unsigned, unsigned> sizes;
-        std::map<unsigned, unsigned> zeroIdxs;
     };
 
     struct PointerProgramBinaryInfo
