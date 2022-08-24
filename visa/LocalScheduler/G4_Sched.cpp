@@ -31,6 +31,7 @@ namespace {
 
 // Forward declaration.
 class preNode;
+struct RegisterPressure;
 
 class preEdge {
 public:
@@ -252,6 +253,9 @@ public:
     // could be used for scheduling.
     void reset(bool ReassignNodeID = false);
 
+    // Dump the DDD into a text file
+    // need RegisterPressure to get LiveOut info
+    void dumpDagTxt(RegisterPressure &rp);
     // Dump the DDD into a dot file.
     void dumpDagDot();
 
@@ -1261,6 +1265,10 @@ bool BB_Scheduler::scheduleBlockForPressure(unsigned& MaxPressure, unsigned Thre
     bool Changed = false;
     if (tryRPReduction()) {
         ddd.buildGraph();
+        if (kernel.getOptions()->getOption(vISA_DumpDagTxt))
+        {
+            ddd.dumpDagTxt(rp);
+        }
         SethiUllmanScheduling();
         if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ false)) {
             SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
@@ -2543,6 +2551,83 @@ void preDDD::reset(bool ReassignNodeID)
     ExitNode.setReadyCycle(0);
     ExitNode.isClustered = false;
     ExitNode.isClusterLead = false;
+}
+
+void preDDD::dumpDagTxt(RegisterPressure &rp)
+{
+    const char* asmFileName = "nullasm";
+    getOptions()->getOption(VISA_AsmFileName, asmFileName);
+    std::string fileName(asmFileName);
+    fileName.append(".bb")
+        .append(std::to_string(getBB()->getId()))
+        .append(".preDDD.txt");
+    std::fstream ofile(fileName, std::ios::out);
+
+    std::vector<unsigned> LiveOutNodeIDs;
+    std::set<vISA::G4_Declare*> LiveOutSet;
+    // 1) dump node-id, dst-size, instruction, ...
+    // nodes are ordered bottom-up from block exit
+    for (auto N : SNodes) {
+        // Node
+        ofile << "NodeInfo, " << N->ID << ", ";
+        if (N->getInst()) {
+            // dst-size
+            unsigned dclSize = 0;
+            G4_INST* Inst = N->getInst();
+            G4_DstRegRegion* Dst = Inst->getDst();
+            if (!Inst->isPseudoKill() && Dst && Dst->getTopDcl()) {
+                auto rootDcl = Dst->getTopDcl();
+                dclSize = rootDcl->getByteSize();
+                auto alignBytes = static_cast<uint32_t>(rootDcl->getSubRegAlign()) * 2;
+                if (dclSize < alignBytes)
+                {
+                    dclSize = std::min(dclSize * 2, alignBytes);
+                }
+                // first time seeing a a live-out variable, record the node-id
+                if (rp.isLiveOut(m_BB, rootDcl) && !LiveOutSet.count(rootDcl)) {
+                    LiveOutNodeIDs.push_back(N->ID);
+                    LiveOutSet.insert(rootDcl);
+                }
+            }
+            ofile << dclSize << ", ";
+            // inst text
+            N->getInst()->emit(ofile);
+            ofile << "\n";
+        }
+        else
+            ofile << "0, " << "null\n";
+    }
+    // 2) dump node-id then predecessor-ids
+    for (auto N : SNodes) {
+        // Node
+        ofile << "PredInfo, " << N->ID;
+        // Edge
+        for (auto& E : N->Preds) {
+            ofile << ", " << E.getNode()->ID;
+        }
+        ofile << "\n";
+    }
+    // 3) dump node-id then use-ids
+    for (auto N : SNodes) {
+        // Node
+        ofile << "UseInfo, " << N->ID;
+        if (N == &ExitNode) {
+            for (auto OutID : LiveOutNodeIDs)
+                ofile << ", " << OutID;
+            ofile << "\n";
+            continue;
+        }
+        // Edge
+        for (auto& E : N->Preds) {
+            DepType depType = E.getType();
+            auto DefInst = E.getNode()->getInst();
+            if (DefInst && !DefInst->isPseudoKill() &&
+               (depType == RAW || depType == WAW))
+                ofile << ", " << E.getNode()->ID;
+        }
+        ofile << "\n";
+    }
+    ofile.close();
 }
 
 void preDDD::dumpDagDot()
