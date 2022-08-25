@@ -638,11 +638,6 @@ bool hasLocalMemory() const
     return m_SkuTable.FtrLocalMemory != 0;
 }
 
-bool enableImmConstantOpt() const
-{
-    return !isProductChildOf(IGFX_XE_HP_SDV);
-}
-
 bool supportsTier2VRS() const
 {
     return m_platformInfo.eProductFamily >= IGFX_DG2;
