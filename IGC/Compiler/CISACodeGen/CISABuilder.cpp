@@ -5107,7 +5107,10 @@ namespace IGC
         }
 
         COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISACompile);
-        bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
+        bool enableVISADump =
+            IGC_IS_FLAG_ENABLED(EnableVISASlowpath) ||
+            IGC_IS_FLAG_ENABLED(ShaderDumpEnable) ||
+            context->getCompilerOption().EmitZeBinVISASections;
         auto builderMode = m_hasInlineAsm || hasAdditionalVisaAsmToLink ? vISA_ASM_WRITER : vISA_DEFAULT;
         auto builderOpt = (enableVISADump || m_hasInlineAsm || hasAdditionalVisaAsmToLink) ? VISA_BUILDER_BOTH : VISA_BUILDER_GEN;
         V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
