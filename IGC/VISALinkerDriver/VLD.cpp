@@ -37,14 +37,13 @@ namespace {
 
 // Extracts .visaasm sections from input zeBinary ELF.
 // Returns a vector of strings - one for each section.
-llvm::Expected<std::vector<std::string>>
-GetVISAAsmFromZEBinary(const char *zeBinary, size_t zeBinarySize) {
+llvm::Expected<std::vector<llvm::StringRef>>
+GetVISAAsmFromZEBinary(llvm::StringRef ZeBinary) {
   using namespace llvm;
 
-  std::vector<std::string> OutVISAAsmStrings;
+  std::vector<llvm::StringRef> OutVISAAsmStrings;
 
-  StringRef zeBinaryData(zeBinary, zeBinarySize);
-  MemoryBufferRef inputRef(zeBinaryData, "zebin");
+  MemoryBufferRef inputRef(ZeBinary, "zebin");
   auto ElfOrErr = object::ObjectFile::createELFObjectFile(inputRef);
   if (!ElfOrErr)
     return ElfOrErr.takeError();
@@ -67,7 +66,7 @@ GetVISAAsmFromZEBinary(const char *zeBinary, size_t zeBinarySize) {
         return SectionDataOrErr.takeError();
       StringRef Data(reinterpret_cast<const char *>((*SectionDataOrErr).data()),
                      (size_t)sect.sh_size);
-      OutVISAAsmStrings.push_back(Data.str());
+      OutVISAAsmStrings.push_back(Data);
     }
   }
 
@@ -190,97 +189,113 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
   newArgsESIMD.pOptions = esimdOptions.data();
   newArgsESIMD.OptionsSize = esimdOptions.size();
 
+  std::array<SPVTranslationPair, 2> SpvArr{
+      std::make_pair(SPIRVTypeEnum::SPIRV_ESIMD, newArgsESIMD),
+      std::make_pair(SPIRVTypeEnum::SPIRV_SPMD, newArgsSPMD)
+  };
+
   return TranslateBuildSPMDAndESIMD(
-      &newArgsSPMD, &newArgsESIMD, pOutputArgs, inputDataFormatTemp,
+      SpvArr, pOutputArgs, inputDataFormatTemp,
       IGCPlatform, profilingTimerResolution, inputShHash, errorMessage);
 }
 
 bool TranslateBuildSPMDAndESIMD(
-    const TC::STB_TranslateInputArgs *pInputArgsSPMD,
-    const TC::STB_TranslateInputArgs *pInputArgsESIMD,
+    llvm::ArrayRef<SPVTranslationPair> InputModules,
     TC::STB_TranslateOutputArgs *pOutputArgs,
     TC::TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform &IGCPlatform,
     float profilingTimerResolution, const ShaderHash &inputShHash,
     std::string &errorMessage) {
 #if defined(IGC_VC_ENABLED)
 
-  TC::STB_TranslateOutputArgs outputArgs;
-  CIF::SafeZeroOut(outputArgs);
-  STB_TranslateInputArgs newArgsESIMD = *pInputArgsESIMD;
-  std::string esimdInternalOptions{pInputArgsESIMD->pInternalOptions
-                                       ? pInputArgsESIMD->pInternalOptions
-                                       : ""};
-  esimdInternalOptions += " -emit-zebin-visa-sections";
-  esimdInternalOptions += " -binary-format=ze";
-  newArgsESIMD.pInternalOptions = esimdInternalOptions.data();
-  newArgsESIMD.InternalOptionsSize = esimdInternalOptions.size();
+  std::vector<std::string> visaStrings;
+  std::vector<const char*> visaCStrings;
+  int SimdSize = 0;
 
-  const bool success =
-      TranslateBuildVC(&newArgsESIMD, &outputArgs, inputDataFormatTemp, IGCPlatform,
-                       profilingTimerResolution, inputShHash);
+  for (auto& InputArgsPair : InputModules) {
+    auto& InputArgs = InputArgsPair.second;
 
-  auto outputData = std::unique_ptr<char[]>(outputArgs.pOutput);
-  auto errorString = std::unique_ptr<char[]>(outputArgs.pErrorString);
-  auto debugData = std::unique_ptr<char[]>(outputArgs.pDebugData);
+    TC::STB_TranslateOutputArgs NewOutputArgs;
+    CIF::SafeZeroOut(NewOutputArgs);
+    auto outputData = std::unique_ptr<char[]>(NewOutputArgs.pOutput);
+    auto errorString = std::unique_ptr<char[]>(NewOutputArgs.pErrorString);
+    auto debugData = std::unique_ptr<char[]>(NewOutputArgs.pDebugData);
 
-  if (!success) {
-    errorMessage = "VLD: Failed to compile ESIMD part with following error: \n";
-    errorMessage += outputArgs.pErrorString;
-    return false;
-  }
+    STB_TranslateInputArgs NewInputArgs = InputArgs;
+    std::string NewInternalOptions{InputArgs.pInternalOptions
+      ? InputArgs.pInternalOptions
+      : ""};
 
-  auto esimdVISA =
-      GetVISAAsmFromZEBinary(outputArgs.pOutput, outputArgs.OutputSize);
-
-  if (!esimdVISA) {
-    errorMessage =
-        "VLD: Failed to compile ESIMD part with following error: \n" +
-        llvm::toString(esimdVISA.takeError());
-    return false;
-  }
-
-#if (defined(__GNUC__) && __GNUC__ >= 9) || (defined(_MSC_VER) && (_MSVC_LANG >= 201703L))
-  if (esimdVISA->empty()) {
-    // Temporary hack. VC backend currently doesn't populate the .visaasm
-    // section. Get it from the dumps, if they are enabled.
-    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
-      const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
-      if (pOutputFolder && std::strlen(pOutputFolder) == 0) pOutputFolder = ".";
-
-      for (auto &p : std::filesystem::directory_iterator{pOutputFolder}) {
-        if (p.is_regular_file() && p.path().extension() == ".visaasm" &&
-            llvm::StringRef(p.path().filename().string()).startswith("VC")) {
-          std::ifstream file(p.path().string());
-          std::stringstream ss;
-          ss << file.rdbuf();
-          esimdVISA->push_back(ss.str());
-        }
+    switch (InputArgsPair.first) {
+    case VLD::SPIRVTypeEnum::SPIRV_SPMD:
+      NewInternalOptions += " -ze-emit-zebin-visa-sections";
+      break;
+    case VLD::SPIRVTypeEnum::SPIRV_ESIMD:
+      NewInternalOptions += " -emit-zebin-visa-sections";
+      NewInternalOptions += " -binary-format=ze";
+      if (SimdSize != 0) {
+        NewInternalOptions += " -vc-interop-subgroup-size ";
+        NewInternalOptions += std::to_string(SimdSize);
       }
+      break;
+    default:
+      errorMessage = "Unsupported SPIR-V flavour detected!";
+      return false;
+    }
+
+    NewInputArgs.pVISAAsmToLinkArray = (!visaCStrings.empty()) ? visaCStrings.data() : nullptr;
+    NewInputArgs.NumVISAAsmsToLink = visaCStrings.size();
+    NewInputArgs.pInternalOptions = NewInternalOptions.data();
+    NewInputArgs.InternalOptionsSize = NewInternalOptions.size();
+    bool success = false;
+    if (InputArgsPair.first == VLD::SPIRVTypeEnum::SPIRV_SPMD) {
+      success = TranslateBuildSPMD(&NewInputArgs, &NewOutputArgs,
+                                   inputDataFormatTemp, IGCPlatform,
+                                   profilingTimerResolution, inputShHash);
+    } else {
+      IGC_ASSERT(InputArgsPair.first == VLD::SPIRVTypeEnum::SPIRV_ESIMD);
+      success =
+          TranslateBuildVC(&NewInputArgs, &NewOutputArgs, inputDataFormatTemp,
+                           IGCPlatform, profilingTimerResolution, inputShHash);
+    }
+
+    if (!success) {
+      errorMessage = "VLD: Failed to compile SPIR-V with following error: \n";
+      errorMessage += NewOutputArgs.pErrorString;
+      return false;
+    }
+
+    // If this is the last SPIR-V to compile, stop here. The rest of the code handles
+    // extracting information for further compilations.
+    if(&InputArgsPair == &InputModules.back()) {
+      *pOutputArgs = NewOutputArgs;
+      break;
+    }
+
+    llvm::StringRef ZeBinary(NewOutputArgs.pOutput, NewOutputArgs.OutputSize);
+
+    auto VISAAsm =
+      GetVISAAsmFromZEBinary(ZeBinary);
+
+    if (!VISAAsm) {
+      errorMessage =
+        "VLD: Failed to compile SPIR-V with following error: \n" +
+        llvm::toString(VISAAsm.takeError());
+      return false;
+    }
+
+    if (VISAAsm->empty()) {
+      errorMessage = "VLD: ZeBinary did not contain any .visaasm sections!";
+      return false;
+    }
+
+    // ZeBinary contains non-null terminated strings, add the null via std::string ownership.
+    for (auto& s : *VISAAsm) {
+      visaStrings.push_back(s.str());
+      visaCStrings.push_back(visaStrings.back().c_str());
     }
   }
-#endif // compiler version check
 
-  if (esimdVISA->empty()) {
-      errorMessage = "VLD: ZeBinary did not contain any .visaasm sections for "
-          "ESIMD kernel!";
-      return false;
-  }
-
-  auto visaStrings = std::make_unique<const char* []>(esimdVISA.get().size());
-  int i = 0;
-  for (auto& s : esimdVISA.get()) {
-    visaStrings[i++] = s.c_str();
-  }
-
-  // Compile SPMD part with ESIMD visaasm attached.
-  STB_TranslateInputArgs newArgsSPMD = *pInputArgsSPMD;
-
-  newArgsSPMD.pVISAAsmToLinkArray = visaStrings.get();
-  newArgsSPMD.NumVISAAsmsToLink = esimdVISA.get().size();
-
-  return TranslateBuildSPMD(&newArgsSPMD, pOutputArgs, inputDataFormatTemp,
-      IGCPlatform, profilingTimerResolution,
-      inputShHash);
+  return true;
 
 #else // defined(IGC_VC_ENABLED)
     errorMessage = "Could not compile ESIMD part of SPIR-V module, as VC is not included in this build.";

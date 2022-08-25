@@ -10,8 +10,10 @@ SPDX-License-Identifier: MIT
 // consists of combined SPMD and ESIMD parts.
 
 #include <string>
-
+#include <llvm/ADT/ArrayRef.h>
 #include "TranslationBlock.h"
+
+#pragma once
 
 // Forward declarations.
 class ShaderHash;
@@ -21,6 +23,14 @@ class CPlatform;
 
 namespace IGC {
 namespace VLD {
+
+  enum class SPIRVTypeEnum {
+    SPIRV_SPMD,
+    SPIRV_ESIMD,
+    SPIRV_SPMD_AND_ESIMD
+  };
+
+  using SPVTranslationPair = std::pair<SPIRVTypeEnum, TC::STB_TranslateInputArgs>;
 
 // This function detects if binary passed in pInputArgs is SPMD, ESIMD or
 // SPMD+ESIMD
@@ -33,8 +43,7 @@ bool TranslateBuildSPMDAndESIMD(
 
 // This function takes SPMD and ESIMD modules explicitly.
 bool TranslateBuildSPMDAndESIMD(
-    const TC::STB_TranslateInputArgs* pInputArgsSPMD,
-    const TC::STB_TranslateInputArgs* pInputArgsESIMD,
+    llvm::ArrayRef<SPVTranslationPair> inputModules,
     TC::STB_TranslateOutputArgs* pOutputArgs,
     TC::TB_DATA_FORMAT inputDataFormatTemp, const IGC::CPlatform& IGCPlatform,
     float profilingTimerResolution, const ShaderHash& inputShHash,

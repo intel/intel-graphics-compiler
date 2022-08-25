@@ -12,16 +12,12 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 #include <vector>
 
+#include "VLD.hpp"
+
 #pragma once
 
 namespace IGC {
 namespace VLD {
-
-enum class SPIRVTypeEnum {
-    SPIRV_SPMD,
-    SPIRV_ESIMD,
-    SPIRV_SPMD_AND_ESIMD
-};
 
 using ProgramStreamType = std::vector<uint32_t>;
 
