@@ -402,17 +402,18 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
                 return false;
             }
             G4_Declare* srcDcl = src->getTopDcl();
-            if (srcDcl == nullptr)
-            {
-                return false;
+            if (srcDcl) {
+                if (!srcDcl->useGRF() /* || srcDcl->getTotalElems() != 1 */)
+                {
+                    return false;
+                }
+                // can't do opt if source decl type is inconsistent with its use
+                if (TypeSize(srcDcl->getElemType()) != src->getTypeSize())
+                {
+                    return false;
+                }
             }
-
-            if (!srcDcl->useGRF() /* || srcDcl->getTotalElems() != 1 */)
-            {
-                return false;
-            }
-            // can't do opt if source decl type is inconsistent with its use
-            if (TypeSize(srcDcl->getElemType()) != src->getTypeSize())
+            else if (!src->isNullReg()) // Skip null reg.
             {
                 return false;
             }
