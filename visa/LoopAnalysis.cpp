@@ -75,6 +75,8 @@ void ImmDominator::runIDOM()
     iDoms.resize(kernel.fg.size());
     immDoms.resize(kernel.fg.size());
 
+    kernel.fg.recomputePreId();
+
     for (auto I = kernel.fg.cbegin(), E = kernel.fg.cend(); I != E; ++I)
     {
         auto bb = *I;

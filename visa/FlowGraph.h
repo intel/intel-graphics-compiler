@@ -479,6 +479,11 @@ public:
     //
     void removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT);
 
+    //
+    // Recompute preId of all BBs in FlowGraph
+    //
+    void recomputePreId();
+
     void constructFlowGraph(INST_LIST& instlist);
     bool matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it);
 

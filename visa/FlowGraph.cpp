@@ -1764,14 +1764,7 @@ void doDFS(G4_BB* startBB, unsigned int p)
     }
 }
 
-//
-// The optimization pass will remove unreachable blocks from functions. Later compilation phases
-// assume that the only unreachable code that can exist in a function is the block with
-// return/pseudo_fret instruction. All other unreachable code should be removed. The only time
-// blocks with return/pseudo_fret will be removed is when the header of that function itself
-// is deemed unreachable.
-//
-void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
+void FlowGraph::recomputePreId()
 {
     unsigned preId = 0;
     //
@@ -1785,6 +1778,18 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
     // assign DFS based pre/rpost ids to all blocks in the main program
     //
     doDFS(getEntryBB(), preId);
+}
+
+//
+// The optimization pass will remove unreachable blocks from functions. Later compilation phases
+// assume that the only unreachable code that can exist in a function is the block with
+// return/pseudo_fret instruction. All other unreachable code should be removed. The only time
+// blocks with return/pseudo_fret will be removed is when the header of that function itself
+// is deemed unreachable.
+//
+void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable& funcInfoHT)
+{
+    recomputePreId();
 
     //
     // Basic blocks with preId/rpostId set to UINT_MAX are unreachable.
