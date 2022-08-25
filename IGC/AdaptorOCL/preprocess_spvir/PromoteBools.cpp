@@ -206,7 +206,7 @@ bool PromoteBools::typeNeedsPromotion(Type* type, DenseSet<Type*> visitedTypes)
     {
         return std::any_of(structType->element_begin(), structType->element_end(), [this, &visitedTypes](const auto& element) {
             return typeNeedsPromotion(element, visitedTypes);
-            });
+        });
     }
     else if (auto functionType = dyn_cast<FunctionType>(type))
     {
@@ -216,7 +216,7 @@ bool PromoteBools::typeNeedsPromotion(Type* type, DenseSet<Type*> visitedTypes)
         }
         return std::any_of(functionType->param_begin(), functionType->param_end(), [this, &visitedTypes](const auto& element) {
             return typeNeedsPromotion(element, visitedTypes);
-            });
+        });
     }
 
     return false;
@@ -317,20 +317,26 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
     }
     else if (auto structType = dyn_cast<StructType>(type))
     {
-        // Create an opaque type to handle recursive types
-        auto name = structType->hasName() ? structType->getName() : "";
-        auto newStructType = StructType::create(type->getContext(), name);
-        promotedTypesCache[type] = newStructType;
-
-        // Promote and update struct elements
-        std::vector<Type*> elements;
-        for (const auto& element : structType->elements())
+        // Check if promotion is needed because otherwise new structures
+        // will be created even if promotion is not needed. The other data
+        // types do not have this problem.
+        if (typeNeedsPromotion(structType))
         {
-            elements.push_back(getOrCreatePromotedType(element));
-        }
-        newStructType->setBody(elements, structType->isPacked());
+            // Create an opaque type to handle recursive types
+            auto name = structType->hasName() ? structType->getName() : "";
+            auto newStructType = StructType::create(type->getContext(), name);
+            promotedTypesCache[type] = newStructType;
 
-        newType = newStructType;
+            // Promote and update struct elements
+            std::vector<Type*> elements;
+            for (const auto& element : structType->elements())
+            {
+                elements.push_back(getOrCreatePromotedType(element));
+            }
+            newStructType->setBody(elements, structType->isPacked());
+
+            newType = newStructType;
+        }
     }
     else if (auto functionType = dyn_cast<FunctionType>(type))
     {

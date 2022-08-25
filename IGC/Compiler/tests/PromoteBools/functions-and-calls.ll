@@ -6,11 +6,22 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-promote-bools -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-promote-bools -S %s -o %t.ll
+; RUN: FileCheck %s --input-file=%t.ll
 
+%struct_without_bools = type { i8 }
 %struct = type { [4 x <8 x i1*>], [4 x <8 x i1>*]* }
 
+; CHECK:        %struct_without_bools = type { i8 }
 ; CHECK:        [[NEW_STRUCT:%struct.[0-9]+]] = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
+
+
+define spir_func void @fun_struct_without_bools(i1 %input1, %struct_without_bools %input2) {
+  ret void
+}
+
+; CHECK:        define spir_func void @fun_struct_without_bools(i8 %input1, %struct_without_bools %input2)
+
 
 define spir_func i1 @callee(i1 %input) {
   ret i1 %input
