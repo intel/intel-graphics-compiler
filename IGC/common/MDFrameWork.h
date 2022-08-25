@@ -400,10 +400,6 @@ namespace IGC
         bool FastVISACompile                            = false;
         bool MatchSinCosPi                              = false;
         bool CaptureCompilerStats                       = false;
-        // Suggest to enableZEBinary. IGC could still fall-back to legacy
-        // patch-token based binary if the input contains features those
-        // are not supported by ZEBinary
-        bool EnableZEBinary                             = false;
         bool ExcludeIRFromZEBinary                      = false;
         bool EmitZeBinVISASections                      = false;
 

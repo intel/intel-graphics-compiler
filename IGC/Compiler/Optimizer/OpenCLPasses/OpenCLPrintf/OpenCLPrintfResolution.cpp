@@ -389,8 +389,8 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F
             IGC_ASSERT_MESSAGE(0, "Instructions in the vector are not supported!");
         }
     }
-    ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary)
+
+    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
     {
         return printfArg;
     }
@@ -603,9 +603,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
         writeOffsetPtr = generateCastToPtr(argDesc, writeOffset, bblockTrue);
         writeOffsetPtr->setDebugLoc(m_DL);
 
-        ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        if (dataType == SHADER_PRINTF_STRING_LITERAL && (
-            IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary))
+        if (dataType == SHADER_PRINTF_STRING_LITERAL && IGC_IS_FLAG_ENABLED(EnableZEBinary))
         {
             printfArg = CastInst::Create(Instruction::CastOps::PtrToInt,
                 argDesc->value,
@@ -816,8 +814,7 @@ unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argT
         return vecSize * 8;
 
     case IGC::SHADER_PRINTF_STRING_LITERAL: {
-        ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary) {
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
             // The size of the format string address
             return 8;
         } else {
@@ -949,8 +946,7 @@ Instruction* OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor* arg
     }
 
     case IGC::SHADER_PRINTF_STRING_LITERAL: {
-        ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary)
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
             castedType = m_ptrSizeIntType->getPointerTo(ADDRESS_SPACE_GLOBAL);
         else
             castedType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);

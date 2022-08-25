@@ -4484,7 +4484,7 @@ namespace IGC
 
         if (m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram())
         {
-            bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary) || context->getCompilerOption().EnableZEBinary;
+            bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary);
 
             // pass higher ABI version when using ZEBinary
             if (ZEBinEnabled)
@@ -6335,7 +6335,7 @@ namespace IGC
 
         pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
-        bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary) || context->getCompilerOption().EnableZEBinary;
+        bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary);
 
         if (hasSymbolTable)
         {

@@ -159,8 +159,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             // will be stored in the second const buffer
             ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
             bool isStringConst = cds && (cds->isCString() || cds->isString());
-            if ((IGC_IS_FLAG_ENABLED(EnableZEBinary) || m_pModuleMd->compOpt.EnableZEBinary) &&
-                isStringConst)
+            if (IGC_IS_FLAG_ENABLED(EnableZEBinary) && isStringConst)
             {
                 inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[1].Buffer;
             }
@@ -243,7 +242,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     }
 
     // Check if zebin is enabled
-    bool zebinEnable = IGC_IS_FLAG_ENABLED(EnableZEBinary) || m_pModuleMd->compOpt.EnableZEBinary;
+    bool zebinEnable = IGC_IS_FLAG_ENABLED(EnableZEBinary);
 
     // patch-token-path:
     //     Just add the implicit argument to each function if a constant
@@ -424,7 +423,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
             // We can only patch global and constant pointers.
             if (pointedToAddrSpace == ADDRESS_SPACE_GLOBAL || pointedToAddrSpace == ADDRESS_SPACE_CONSTANT)
             {
-                if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || m_pModuleMd->compOpt.EnableZEBinary)
+                if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
                 {
                     // For zebin, instead of relying on the old patching logic, we can let RT directly patch the
                     // physical address of the previously defined global into the current buffer that uses it.
