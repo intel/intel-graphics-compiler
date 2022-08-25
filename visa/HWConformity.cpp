@@ -8611,8 +8611,15 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
             // Check alignment.
             if (!src0IsScalar)
             {
-                uint32_t dstOffBytes = dst->getSubRegOff() * dst->getTypeSize();
-                uint32_t src0OffBytes = reg0->getSubRegOff() * reg0->getTypeSize();
+                bool d_isvalid, s_isvalid;
+                uint32_t dstOffBytes = dst->ExSubRegNum(d_isvalid) * dst->getTypeSize();
+                uint32_t src0OffBytes = reg0->ExSubRegNum(s_isvalid) * reg0->getTypeSize();
+
+                // sanity check
+                assert(d_isvalid&& s_isvalid && "ICE: Register region not valid!");
+                assert(dst->getBase()->isRegVar() && reg0->getBase()->isRegVar() &&
+                    "ICE: incorrect mov operands for packed HF mov");
+
                 const uint32_t halfGRFBytes = kernel.numEltPerGRF<Type_UB>() / 2;
                 // For F operand, use the half of its offset in bytes!
                 //
@@ -8630,7 +8637,8 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
                 //       which is equal to float src0's subreg 3 (No.4).
                 //
                 // Note that all this checking assumes vars are properly aligned
-                // that is, HF is at least aligned at halfGRF and F at GRF.
+                // that is, HF is at least aligned at halfGRF and F at GRF. May need to adjust
+                // the alignment(cannot adjust the alignment if it is assigned reg already).
                 dstOffBytes = (dstTy == Type_F ? dstOffBytes / 2 : dstOffBytes);
                 src0OffBytes = (src0Ty == Type_F ? src0OffBytes / 2 : src0OffBytes);
                 const bool isAligned = (dstOffBytes % halfGRFBytes) == (src0OffBytes % halfGRFBytes);
@@ -8638,6 +8646,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
                                                                 : builder.getGRFAlign());
                 G4_SubReg_Align src0MinAlign = (src0Ty == Type_HF ? builder.getHalfGRFAlign()
                                                                   : builder.getGRFAlign());
+
                 if ((!isAligned && dstOffBytes != 0) || (dstTy == Type_F && dst->getHorzStride() != 1))
                 {
                     inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, dstMinAlign));
@@ -8647,8 +8656,12 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
                 }
                 else
                 {
-                    G4_Declare* dstDcl = dst->getBaseRegVarRootDeclare();
-                    dstDcl->setSubRegAlign(dstMinAlign);
+                    G4_RegVar* baseVar = static_cast<G4_RegVar*>(dst->getBase());
+                    if (!baseVar->isPhyRegAssigned())
+                    {
+                        G4_Declare* dstDcl = dst->getBaseRegVarRootDeclare();
+                        dstDcl->setSubRegAlign(dstMinAlign);
+                    }
                 }
                 if ((!isAligned && src0OffBytes != 0) ||
                     (src0Ty == Type_F && !reg0->getRegion()->isContiguous(inst->getExecSize())))
@@ -8660,8 +8673,12 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
                 }
                 else
                 {
-                    G4_Declare* src0Dcl = reg0->getBaseRegVarRootDeclare();
-                    src0Dcl->setSubRegAlign(src0MinAlign);
+                    G4_RegVar* baseVar = static_cast<G4_RegVar*>(reg0->getBase());
+                    if (!baseVar->isPhyRegAssigned())
+                    {
+                        G4_Declare* src0Dcl = reg0->getBaseRegVarRootDeclare();
+                        src0Dcl->setSubRegAlign(src0MinAlign);
+                    }
                 }
             }
 
