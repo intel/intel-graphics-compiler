@@ -13520,12 +13520,12 @@ LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool Invalidat
 
 void EmitPass::emitMemoryFence(llvm::Instruction* inst)
 {
-    static constexpr int ExpectedNumberOfArguments = 8;
+    static constexpr int ExpectedNumberOfArguments = 7;
     IGC_ASSERT(IGCLLVM::getNumArgOperands(cast<CallInst>(inst)) == ExpectedNumberOfArguments);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     // If passed a non-constant value for any of the parameters,
-    // be conservative and assume the default value defined below.
+    // be conservative and assume that the parameter is true.
     // This could happen in "optnone" scenarios.
     bool CommitEnable = true;
     bool L3_Flush_RW_Data = true;
@@ -13534,7 +13534,6 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     bool L3_Flush_Instructions = true;
     bool Global_Mem_Fence = true;
     bool L1_Invalidate = ctx->platform.hasL1ReadOnlyCache();
-    bool Force_Local_LSC_Scope = false;
 
     std::array<reference_wrapper<bool>, ExpectedNumberOfArguments> MemFenceArguments{
       CommitEnable,
@@ -13544,13 +13543,12 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
       L3_Flush_Instructions,
       Global_Mem_Fence,
       L1_Invalidate,
-      Force_Local_LSC_Scope
     };
 
     for (size_t i = 0; i < MemFenceArguments.size(); ++i) {
         if (ConstantInt* CI = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(i)))
         {
-            MemFenceArguments[i].get() = CI->getValue().getBoolValue();
+            MemFenceArguments[i] &= CI->getValue().getBoolValue();
         }
     }
 
@@ -13584,9 +13582,6 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         LSC_SFID sfid = Global_Mem_Fence ? LSC_UGM : LSC_SLM;
         // ToDo: replace with fence instrinsics that take scope/op
         LSC_SCOPE scope = Global_Mem_Fence ? LSC_SCOPE_GPU : LSC_SCOPE_GROUP;
-        // When post-atomic fence is added with L1 invalidate, we may want to limit the scope to subslice.
-        if (Force_Local_LSC_Scope)
-            scope = (sfid == LSC_SLM) ? LSC_SCOPE_GROUP : LSC_SCOPE_LOCAL;
         // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL
         if (scope == LSC_SCOPE_GPU &&
             !m_currShader->m_Platform->hasMultiTile() &&
