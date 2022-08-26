@@ -874,7 +874,6 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_MemoryFence(
         this->getInt1(flushInstructionCache),
         this->getInt1(globalFence),
         this->getInt1(false),
-        this->getInt1(false),
     };
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     return this->CreateCall(
