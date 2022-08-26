@@ -732,7 +732,18 @@ public:
     void DeleteShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
     CodeGenContext* GetContext() { return m_context; }
 
+    llvm::Function* getLLVMFunction() const { return m_kernel; }
     ShaderStats* m_shaderStats;
+
+    // invoked to clear Func ptr when the current module is deleted (so is func within it).
+    void clearBeforeRetry() {
+        m_kernel = nullptr;
+        for (auto S : m_SIMDshaders) {
+            if (S != nullptr) {
+                S->entry = nullptr;
+            }
+        }
+    }
 
 protected:
     CShader*& GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode);

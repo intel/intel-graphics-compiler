@@ -137,6 +137,13 @@ CGen8OpenCLProgram::~CGen8OpenCLProgram()
     m_ShaderProgramList.clear();
 }
 
+void CGen8OpenCLProgram::clearBeforeRetry()
+{
+    for (auto P : m_ShaderProgramList) {
+        P->clearBeforeRetry();
+    }
+}
+
 RETVAL CGen8OpenCLProgramBase::GetProgramDebugData(Util::BinaryStream& programDebugData)
 {
     // Used by VC only

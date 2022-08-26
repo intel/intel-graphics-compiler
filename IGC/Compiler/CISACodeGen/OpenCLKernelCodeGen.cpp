@@ -2787,6 +2787,8 @@ namespace IGC
         // Clear the retry set and collect kernels for retry in the loop below.
         ctx->m_retryManager.kernelSet.clear();
 
+        // If kernel needs retry, its shaderProgram should be deleted
+        SmallVector<CShaderProgram*, 8> toBeDeleted;
         // gather data to send back to the driver
         for (const auto& k : shaders)
         {
@@ -2817,6 +2819,20 @@ namespace IGC
                 else if (COpenCLKernel::IsValidShader(simd8Shader))
                     GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD8);
             }
+
+            if (ctx->m_programOutput.m_ShaderProgramList.empty() ||
+                (ctx->m_programOutput.m_ShaderProgramList.back() != pKernel))
+            {
+                // This CShaderProgram needs rebuilding in retry run.
+                toBeDeleted.push_back(pKernel);
+            }
+        }
+
+        for (int i=0, sz = (int)toBeDeleted.size(); i < sz; ++i)
+        {
+            CShaderProgram* SP = toBeDeleted[i];
+            shaders.erase(SP->getLLVMFunction());
+            delete SP;
         }
 
         // The skip set to avoid retry is not needed. Clear it and collect a new set

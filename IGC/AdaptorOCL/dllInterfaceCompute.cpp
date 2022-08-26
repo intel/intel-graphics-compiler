@@ -1452,6 +1452,7 @@ bool TranslateBuildSPMD(
             {
                 splitter.retry();
                 kernelFunctions.clear();
+                oclContext.clearBeforeRetry();
                 oclContext.clear();
 
                 // Create a new LLVMContext

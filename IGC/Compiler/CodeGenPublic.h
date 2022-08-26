@@ -1936,6 +1936,10 @@ namespace IGC
         uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const override;
         void failOnSpills();
         bool needsDivergentBarrierHandling() const;
+
+        void clearBeforeRetry() {
+            m_programOutput.clearBeforeRetry();
+        }
     private:
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
     };

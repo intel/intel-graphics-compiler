@@ -98,6 +98,9 @@ public:
     // Used to track the kernel info from CodeGen
     std::vector<IGC::CShaderProgram*> m_ShaderProgramList;
 
+    // invoked when the current module is deleted to avoid dangling Function ptr.
+    void clearBeforeRetry();
+
 private:
 
     class CLProgramCtxProvider : public CGen8OpenCLStateProcessor::IProgramContext {
