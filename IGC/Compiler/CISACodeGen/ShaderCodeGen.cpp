@@ -828,6 +828,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             mpm.add(new AddressArithmeticSinking());
         }
     }
+    mpm.add(createRematAddressArithmeticPass());
 
     // Enabling half promotion AIL for compute shaders only at this point.
     // If needed ctx.type check can be removed to apply for all shader types
@@ -839,11 +840,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(createGVNPass());
         mpm.add(createDeadCodeEliminationPass());
     }
-
-    // Run address remat after GVN as it may hoist address calculations and
-    // create PHI nodes with addresses.
-    mpm.add(createRematAddressArithmeticPass());
-
 
     // Run type demotion if it's beneficial.
     if (ctx.m_DriverInfo.benefitFromTypeDemotion() &&
