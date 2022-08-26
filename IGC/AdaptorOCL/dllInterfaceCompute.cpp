@@ -71,6 +71,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "common/StringMacros.hpp"
 #include "VISALinkerDriver/VLD.hpp"
+#include "VISALinkerDriver/VLD_SPIRVSplitter.hpp"
 
 // In case of use GT_SYSTEM_INFO in GlobalData.h from inc/umKmInc/sharedata.h
 // We have to do this temporary defines
@@ -554,6 +555,9 @@ bool ProcessElfInput(
         }
 #endif // defined(IGC_SPIRV_ENABLED)
 
+        std::vector<std::unique_ptr<llvm::Module>> LLVMBinariesToLink;
+        std::vector<std::pair<VLD::SPIRVTypeEnum, STB_TranslateInputArgs>> SPIRVToLink;
+
         // Iterate over all the input modules.
         for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
         {
@@ -585,28 +589,36 @@ bool ProcessElfInput(
                 // Create input module from the buffer
                 llvm::StringRef buf(pData, dataSize);
 
-                std::unique_ptr<llvm::Module> InputModule = nullptr;
-
                 if (pSectionHeader->Type == CLElfLib::SH_TYPE_SPIRV)
                 {
-                    llvm::Module* pKernelModule = nullptr;
-#if defined(IGC_SPIRV_ENABLED)
-                    Context.setAsSPIRV();
-                    std::string stringErrMsg;
-                    bool success = TranslateSPIRVToLLVM(InputArgs, *Context.getLLVMContext(), buf, pKernelModule, stringErrMsg);
-#else
-                    std::string stringErrMsg{ "SPIRV consumption not enabled for the TARGET." };
-                    bool success = false;
-#endif
-                    // unset specialization constants, to avoid using them by subsequent SPIR-V modules
-                    InputArgs.pSpecConstantsIds = nullptr;
-                    InputArgs.pSpecConstantsValues = nullptr;
-                    InputArgs.SpecConstantsSize = 0;
-
-                    if (success)
+                    auto spvType = VLD::DetectSPIRVType(buf.data(), buf.size());
+                    if (!spvType)
                     {
-                        InputModule.reset(pKernelModule);
+                        SetErrorMessage(llvm::toString(spvType.takeError()),
+                            OutputArgs);
+                        success = false;
+                        break;
                     }
+                    if (*spvType != VLD::SPIRVTypeEnum::SPIRV_SPMD &&
+                        *spvType != VLD::SPIRVTypeEnum::SPIRV_ESIMD)
+                    {
+                        SetErrorMessage("Unsupported SPIR-V in ELF file!",
+                            OutputArgs);
+                        success = false;
+                        break;
+                    }
+
+                  // Copy args, as they hold optional spec constants.
+                  STB_TranslateInputArgs SpvArgs = InputArgs;
+                  SpvArgs.pInput = pData;
+                  SpvArgs.InputSize = dataSize;
+                  SPIRVToLink.push_back({*spvType, SpvArgs});
+
+                  // unset specialization constants, to avoid using them by
+                  // subsequent SPIR-V modules
+                  InputArgs.pSpecConstantsIds = nullptr;
+                  InputArgs.pSpecConstantsValues = nullptr;
+                  InputArgs.SpecConstantsSize = 0;
                 }
                 else
                 {
@@ -617,6 +629,7 @@ bool ProcessElfInput(
                     llvm::parseBitcodeFile(pInputBuffer->getMemBufferRef(), *Context.getLLVMContext());
                     if (llvm::Error EC = errorOrModule.takeError())
                     {
+                        success = false;
                         std::string errMsg;
                         llvm::handleAllErrors(std::move(EC), [&](llvm::ErrorInfoBase &EIB)
                         {
@@ -625,30 +638,66 @@ bool ProcessElfInput(
                         });
                         IGC_ASSERT_MESSAGE(errMsg.empty(), "parsing bitcode failed");
                     }
-
-                    InputModule = std::move(errorOrModule.get());
-                }
-
-                if (InputModule.get() == NULL)
-                {
-                    success = false;
-                    break;
-                }
-
-                // Link modules
-                if (OutputModule.get() == NULL)
-                {
-                    InputModule.swap(OutputModule);
-                }
-                else
-                {
-                    success = !llvm::Linker::linkModules(*OutputModule, std::move(InputModule));
+                    LLVMBinariesToLink.push_back(std::move(errorOrModule.get()));
                 }
 
                 if (!success)
                 {
-                    break;
+                    return false;
                 }
+            }
+        }
+
+        bool hasESIMD = std::any_of(SPIRVToLink.begin(), SPIRVToLink.end(), [](auto& el) {
+            return el.first == VLD::SPIRVTypeEnum::SPIRV_ESIMD;
+        });
+        bool hasLLVMBinaries = !LLVMBinariesToLink.empty();
+        if (hasESIMD && hasLLVMBinaries)
+        {
+            SetErrorMessage("ELF file contained ESIMD SPIR-V and LLVM binaries "
+                "to be linked. This use-case is not supported.",
+                OutputArgs);
+            return false;
+        }
+
+        if (!hasESIMD)
+        {
+            for (auto& SpvPair : SPIRVToLink)
+            {
+                llvm::Module* pKernelModule = nullptr;
+#if defined(IGC_SPIRV_ENABLED)
+                Context.setAsSPIRV();
+                std::string stringErrMsg;
+                llvm::StringRef buf(SpvPair.second.pInput, SpvPair.second.InputSize);
+                success = TranslateSPIRVToLLVM(InputArgs, *Context.getLLVMContext(), buf, pKernelModule, stringErrMsg);
+                if (!success)
+                {
+                    SetErrorMessage(stringErrMsg, OutputArgs);
+                    return false;
+                }
+                LLVMBinariesToLink.push_back(std::unique_ptr<llvm::Module>(pKernelModule));
+#else
+                std::string stringErrMsg{ "SPIRV consumption not enabled for the TARGET." };
+                bool success = false;
+#endif
+            }
+        }
+
+        for (auto& InputModule : LLVMBinariesToLink)
+        {
+            if (OutputModule.get() == NULL)
+            {
+                InputModule.swap(OutputModule);
+            }
+            else
+            {
+                success = !llvm::Linker::linkModules(*OutputModule,
+                    std::move(InputModule));
+            }
+
+            if (!success)
+            {
+                break;
             }
         }
 
@@ -658,8 +707,16 @@ bool ProcessElfInput(
             // serialized out
             std::string OutputString;
             llvm::raw_string_ostream OStream(OutputString);
-            IGCLLVM::WriteBitcodeToFile(OutputModule.get(), OStream);
-            OStream.flush();
+            if (OutputModule.get())
+            {
+                IGCLLVM::WriteBitcodeToFile(OutputModule.get(), OStream);
+                OStream.flush();
+            }
+            else
+            {
+                // OutputModule can be null only if we have ESIMD module to link.
+                IGC_ASSERT(hasESIMD);
+            }
 
             // Create a copy of the string to return to the caller. The output type
             // determines how the buffer gets managed
@@ -668,7 +725,7 @@ bool ProcessElfInput(
             {
                 if (outType == TB_DATA_FORMAT_LLVM_BINARY)
                 {
-                    memcpy_s(pBufResult, OutputString.size(), OutputString.c_str(), OutputString.size());
+                    memcpy_s(pBufResult, OutputString.size(), OutputString.data(), OutputString.size());
 
                     // The buffer is returned to the runtime. When the buffer is not
                     // needed anymore the runtime ir responsible to call the module for
@@ -753,14 +810,35 @@ bool ProcessElfInput(
                 }
                 else if (IsDeviceBinaryFormat(outType))
                 {
-                    InputArgs.pInput = OutputString.data();
-                    InputArgs.InputSize = OutputString.size();
-                    success = TC::TranslateBuild(
-                        &InputArgs,
-                        &OutputArgs,
-                        TB_DATA_FORMAT_LLVM_BINARY,
-                        Context.platform,
-                        profilingTimerResolution);
+                    if (hasESIMD)
+                    {
+                        ShaderHash hash = ShaderHashOCL(
+                            reinterpret_cast<const UINT*>(InputArgs.pInput),
+                            InputArgs.InputSize / 4);
+                        std::string errorMessage;
+
+                        // Temporary workaround for invoke_sycl case.
+                        std::reverse(SPIRVToLink.begin(), SPIRVToLink.end());
+
+                        success = VLD::TranslateBuildSPMDAndESIMD(
+                            SPIRVToLink, &OutputArgs, TB_DATA_FORMAT_SPIR_V,
+                            Context.platform, profilingTimerResolution, hash,
+                            errorMessage);
+
+                        if (!success)
+                        {
+                            SetErrorMessage(errorMessage, OutputArgs);
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        InputArgs.pInput = OutputString.data();
+                        InputArgs.InputSize = OutputString.size();
+                        success = TC::TranslateBuild(
+                            &InputArgs, &OutputArgs, TB_DATA_FORMAT_LLVM_BINARY,
+                            Context.platform, profilingTimerResolution);
+                    }
                 }
                 else
                 {
