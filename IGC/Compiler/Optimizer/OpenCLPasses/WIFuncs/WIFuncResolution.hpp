@@ -178,6 +178,8 @@ namespace IGC
     private:
         GenXFunctionGroupAnalysis* m_FGA = nullptr;
         IGC::CodeGenContext* m_ctx = nullptr;
+        std::map<llvm::GenISAIntrinsic::ID, llvm::Instruction*> usedIntrinsicsMap;
         llvm::Value* BuildLoadInst(llvm::CallInst& CI, unsigned int Offset, llvm::Type* DataType);
+        llvm::Value* getIntrinsicCall(llvm::Function* F, llvm::GenISAIntrinsic::ID IntrinsicID, llvm::Type* DataType);
     };
 } // namespace IGC

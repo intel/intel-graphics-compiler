@@ -2420,8 +2420,6 @@ void SaveRestoreInfo::update(G4_INST* inst, int32_t memOffset, uint32_t regWithM
     {
         // send/read, send/write
         // sends/read, sends/write
-        MUST_BE_TRUE(!inst->getMsgDesc()->isScratch(),
-            "Not expecting scratch msg in save/restore code");
         if (inst->getMsgDesc()->isWrite())
         {
             uint32_t srcreg, extsrcreg = 0;

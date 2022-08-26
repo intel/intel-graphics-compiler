@@ -681,6 +681,10 @@ Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType
                 {
                     if (inst->getIntrinsicID() == genID)
                     {
+                        // Make sure that intrinsic that we use is called before we use it's result
+                        auto parentFunction = inst->getParent()->getParent();
+                        auto firstFunc = parentFunction->getEntryBlock().getFirstNonPHI();
+                        inst->moveBefore(firstFunc);
                         return inst;
                     }
                 }

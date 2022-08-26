@@ -630,6 +630,7 @@ bool LowerImplicitArgIntrinsics::runOnFunction(Function& F)
 {
     m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    usedIntrinsicsMap.clear();
 
     visit(F);
 
@@ -645,6 +646,37 @@ bool LowerImplicitArgIntrinsics::runOnFunction(Function& F)
 
     return false;
 }
+
+llvm::Value* LowerImplicitArgIntrinsics::getIntrinsicCall(llvm::Function* F, llvm::GenISAIntrinsic::ID IntrinsicID,  llvm::Type* DataType)
+{
+    auto entry = usedIntrinsicsMap.find(IntrinsicID);
+    if (entry != usedIntrinsicsMap.end())
+        return entry->second;
+
+    for (auto II = inst_begin(F), IE = inst_end(F); II != IE; II++)
+    {
+        if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(&*II))
+        {
+            // if intrinsic call exists - use it
+            if (inst->getIntrinsicID() == IntrinsicID)
+            {
+                // Make sure that intrinsic that we use is called before we use it's result
+                auto parentFunction = inst->getParent()->getParent();
+                auto firstFunc = parentFunction->getEntryBlock().getFirstNonPHI();
+                inst->moveBefore(firstFunc);
+                return inst;
+            }
+        }
+    }
+
+    // if intrinsic call doesn't exist - create it
+    auto getFunctionDeclaration = GenISAIntrinsic::getDeclaration(F->getParent(), IntrinsicID, DataType);
+    llvm::IRBuilder<> Builder(&*F->getEntryBlock().begin());
+    auto callValue = Builder.CreateCall(getFunctionDeclaration);
+    usedIntrinsicsMap.insert(std::pair(IntrinsicID, callValue));
+    return callValue;
+}
+
 
 void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
 {
@@ -707,10 +739,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
         case GenISAIntrinsic::GenISA_getLocalID_Z:
         {
             // Get SIMD lane id
-            auto DataTypeI16 = Type::getInt16Ty(F->getParent()->getContext());
-            auto GetSimdLaneId = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_simdLaneId, DataTypeI16);
-            llvm::Value* SimdLaneId = Builder.CreateCall(GetSimdLaneId);
-
+            llvm::Value* SimdLaneId = getIntrinsicCall(F, GenISAIntrinsic::ID::GenISA_simdLaneId, Type::getInt16Ty(F->getParent()->getContext()));
             llvm::Value* Result = nullptr;
             if (!m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV))
             {
@@ -753,9 +782,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst& CI)
                 // Load from BaseOffset_[X|Y|Z]
 
                 // Get SIMD Size
-                auto DataTypeI32 = Type::getInt32Ty(F->getParent()->getContext());
-                auto GetSimdSize = GenISAIntrinsic::getDeclaration(F->getParent(), GenISAIntrinsic::ID::GenISA_simdSize, DataTypeI32);
-                llvm::Value* SimdSize = Builder.CreateCall(GetSimdSize);
+                llvm::Value* SimdSize = getIntrinsicCall(F, GenISAIntrinsic::ID::GenISA_simdSize, Type::getInt32Ty(F->getParent()->getContext()));
 
                 // SimdSize = max(SimdSize, 16)
                 auto CmpInst = Builder.CreateICmpSGT(SimdSize, ConstantInt::get(SimdSize->getType(), (uint64_t)16));
