@@ -1289,16 +1289,12 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
         }
         else
         {
-            // insert immediately after label instruction, if one exists
-            for (auto it = bb->begin(); it != bb->end(); ++it)
-            {
-                auto cinst = (*it);
-                if (cinst->isLabel())
-                    continue;
-                bb->insertAfter(it, inst);
-                splitData->insts[bb].insert(inst);
-                break;
-            }
+            if (bb->front()->isLabel())
+                bb->insertAfter(bb->begin(), inst);
+            else
+                bb->push_front(inst);
+
+            splitData->insts[bb].insert(inst);
         }
         if (inst->isWriteEnableInst() && coloring->getGRA().EUFusionNoMaskWANeeded())
         {
