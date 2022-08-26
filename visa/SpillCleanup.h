@@ -36,12 +36,10 @@ namespace vISA
         const unsigned int cFillWindowThreshold128GRF = 180;
         const unsigned int cSpillWindowThreshold128GRF = 120;
         const unsigned int cHighRegPressureForCleanup = 100;
-        const unsigned int cHighRegPressureForWindow = 90;
 
         unsigned int fillWindowSizeThreshold = 0;
         unsigned int spillWindowSizeThreshold = 0;
         unsigned int highRegPressureForCleanup = 0;
-        unsigned int highRegPressureForWindow = 0;
 
         // <Old fill declare*, std::pair<Coalesced Decl*, Row Off>>
         // This data structure is used to replaced old spill/fill operands
@@ -85,21 +83,19 @@ namespace vISA
         void spillFillCleanup();
         void removeRedundantWrites();
 
-        unsigned int scale(unsigned threshold) {
-            unsigned int numGRFs = kernel.getNumRegTotal();
-            float ratio = 1.0f - (128 - threshold) / 128.0f;
-            return static_cast<unsigned>(numGRFs * ratio);
-        };
-
     public:
         CoalesceSpillFills(G4_Kernel& k, LivenessAnalysis& l, GraphColor& g,
             SpillManagerGRF& s, unsigned int iterationNo, RPE& r, GlobalRA& gr) :
             kernel(k), liveness(l), graphColor(g), gra(gr), spill(s), iterNo(iterationNo), rpe(r)
         {
+            unsigned int numGRFs = k.getNumRegTotal();
+            auto scale = [=](unsigned threshold) -> unsigned {
+                float ratio = 1.0f - (128 - threshold) / 128.0f;
+                return static_cast<unsigned>(numGRFs * ratio);
+            };
             fillWindowSizeThreshold = scale(cFillWindowThreshold128GRF);
             spillWindowSizeThreshold = scale(cSpillWindowThreshold128GRF);
             highRegPressureForCleanup = scale(cHighRegPressureForCleanup);
-            highRegPressureForWindow = scale(cHighRegPressureForWindow);
         }
 
         void run();

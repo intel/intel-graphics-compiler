@@ -476,9 +476,6 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER>& instList,
         getScratchMsgInfo(inst, scratchOffset, sizeInGrfUnit);
         lastScratchOffset = scratchOffset + sizeInGrfUnit - 1;
 
-        MUST_BE_TRUE(isGRFAssigned(inst->getDst()) == false,
-            "fill candidate has GRF assigned");
-
         if (min == 0xffffffff && max == 0)
         {
             // First spill is definitely a candidate
@@ -624,9 +621,6 @@ void CoalesceSpillFills::keepConsecutiveSpills(std::list<INST_LIST_ITER>& instLi
                     // address taken variable.
                     continue;
                 }
-
-                MUST_BE_TRUE(isGRFAssigned(src1) == false,
-                    "found GRF assigned on src1");
 
                 if (// Consecutive scratch offsets
                     scratchOffset == maxOffset + 1 &&
@@ -1123,12 +1117,6 @@ void CoalesceSpillFills::fills()
                 w = (cWindowSize - w > 3) ? cWindowSize - 3 : w;
             }
 
-            if (w == cWindowSize &&
-                rpe.getRegisterPressure(inst) < scale(highRegPressureForWindow))
-            {
-                --w;
-            }
-
             if (w == cWindowSize || inst == bb->back())
             {
                 if (fillsToCoalesce.size() > 1)
@@ -1339,13 +1327,6 @@ void CoalesceSpillFills::spills()
                         rpe.getRegisterPressure(inst), inst->getCISAOff());
 #endif
                 }
-            }
-
-            if (w == cWindowSize &&
-                rpe.getRegisterPressure(inst) < scale(highRegPressureForWindow))
-            {
-                // When reg pressure is lower than threshold, increase window size
-                --w;
             }
 
             if (w == cWindowSize || inst == bb->back() ||
@@ -1879,9 +1860,6 @@ void CoalesceSpillFills::spillFillCleanup()
 
                     w--;
                     pInstIt--;
-
-                    if (w == 0 && rpe.getRegisterPressure(pInst) < scale(highRegPressureForWindow))
-                        ++w;
                 }
 
                 // Check whether writes for all rows were found
@@ -1942,11 +1920,6 @@ void CoalesceSpillFills::spillFillCleanup()
                     G4_INST* mov = kernel.fg.builder->createMov(
                         execSize, nDst, nSrc, InstOpt_WriteEnable, false);
                     bb->insertBefore(instIt, mov);
-
-                    MUST_BE_TRUE(isGRFAssigned(mov->getDst()) == false,
-                        "found physical assignment on dst");
-                    MUST_BE_TRUE(isGRFAssigned(mov->getSrc(0)) == false,
-                        "found physical assignment on src0");
 
                     if (gra.EUFusionNoMaskWANeeded())
                     {
