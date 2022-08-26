@@ -11,11 +11,13 @@ SPDX-License-Identifier: MIT
 #include "VLD_SPIRVSplitter.hpp"
 #include "ocl_igc_interface/impl/igc_ocl_translation_ctx_impl.h"
 #include "spirv/unified1/spirv.hpp"
+#include <ZEInfoYAML.hpp>
 
 #include <llvm/Object/ELFObjectFile.h>
 #include <llvm/Object/ObjectFile.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/YAMLTraits.h>
 
 #include <algorithm>
 #if (defined(__GNUC__) && __GNUC__ >= 9) || (defined(_MSC_VER) && (_MSVC_LANG >= 201703L))
@@ -34,43 +36,87 @@ namespace TC {
 }
 
 namespace {
+  static const std::string ERROR_VLD = "VLD: Failed to compile SPIR-V with following error: \n";
+
+  llvm::Expected<std::vector<llvm::StringRef>> getZeBinSectionsData(llvm::StringRef ZeBinary, zebin::SHT_ZEBIN SectionType) {
+    using namespace llvm;
+    MemoryBufferRef inputRef(ZeBinary, "zebin");
+    std::vector<StringRef> OutVec;
+
+    auto ElfOrErr = object::ObjectFile::createELFObjectFile(inputRef);
+    if (!ElfOrErr)
+      return ElfOrErr.takeError();
+#if LLVM_VERSION_MAJOR < 12
+    auto ElfFilePointer = cast<object::ELF64LEObjectFile>(*ElfOrErr.get()).getELFFile();
+    IGC_ASSERT(ElfFilePointer);
+    auto ElfFile = *ElfFilePointer;
+#else
+    auto ElfFile = cast<object::ELF64LEObjectFile>(*ElfOrErr.get()).getELFFile();
+#endif
+    auto ElfSections = ElfFile.sections();
+    if (!ElfSections)
+      return ElfSections.takeError();
+
+    for (auto &Sect : *ElfSections) {
+      if (Sect.sh_type == SectionType) {
+#if LLVM_VERSION_MAJOR < 12
+        auto SectionDataOrErr = ElfFile.getSectionContents(&Sect);
+#else
+        auto SectionDataOrErr = ElfFile.getSectionContents(Sect);
+#endif
+        if (!SectionDataOrErr)
+          return SectionDataOrErr.takeError();
+        StringRef Data(reinterpret_cast<const char *>((*SectionDataOrErr).data()),
+          (size_t)Sect.sh_size);
+        OutVec.push_back(Data);
+      }
+    }
+
+    return OutVec;
+  }
 
 // Extracts .visaasm sections from input zeBinary ELF.
 // Returns a vector of strings - one for each section.
 llvm::Expected<std::vector<llvm::StringRef>>
 GetVISAAsmFromZEBinary(llvm::StringRef ZeBinary) {
+  return getZeBinSectionsData(ZeBinary, zebin::SHT_ZEBIN_VISAASM);
+}
+
+llvm::Expected<int> GetSIMDSizeFromZeBinary(llvm::StringRef ZeBinary) {
   using namespace llvm;
-
-  std::vector<llvm::StringRef> OutVISAAsmStrings;
-
-  MemoryBufferRef inputRef(ZeBinary, "zebin");
-  auto ElfOrErr = object::ObjectFile::createELFObjectFile(inputRef);
-  if (!ElfOrErr)
-    return ElfOrErr.takeError();
-#if LLVM_VERSION_MAJOR < 12
-  auto ElfFilePointer = cast<object::ELF64LEObjectFile>(*ElfOrErr.get()).getELFFile();
-  IGC_ASSERT(ElfFilePointer);
-  auto ElfFile = *ElfFilePointer;
-#else
-  auto ElfFile = cast<object::ELF64LEObjectFile>(*ElfOrErr.get()).getELFFile();
-#endif
-  auto ElfSections = llvm::cantFail(ElfFile.sections());
-  for (auto &sect : ElfSections) {
-    if (sect.sh_type == zebin::SHT_ZEBIN_VISAASM) {
-#if LLVM_VERSION_MAJOR < 12
-      auto SectionDataOrErr = ElfFile.getSectionContents(&sect);
-#else
-      auto SectionDataOrErr = ElfFile.getSectionContents(sect);
-#endif
-      if (!SectionDataOrErr)
-        return SectionDataOrErr.takeError();
-      StringRef Data(reinterpret_cast<const char *>((*SectionDataOrErr).data()),
-                     (size_t)sect.sh_size);
-      OutVISAAsmStrings.push_back(Data);
-    }
+  auto ZeInfoYAMLOrErr = getZeBinSectionsData(ZeBinary, zebin::SHT_ZEBIN_ZEINFO);
+  if (!ZeInfoYAMLOrErr) {
+    return ZeInfoYAMLOrErr.takeError();
+  }
+  if (ZeInfoYAMLOrErr->size() != 1) {
+    return llvm::createStringError(llvm::inconvertibleErrorCode(), "ZEBinary expected to contain exactly one .ze_info section!");
   }
 
-  return OutVISAAsmStrings;
+  // ZeBinary strings are not null-terminated, so copy it to std::string.
+  std::string ZeInfoYAML = (*(ZeInfoYAMLOrErr->begin())).str();
+
+  llvm::yaml::Input yin(ZeInfoYAML.c_str());
+  zebin::zeInfoContainer ZeInfo;
+  yin >> ZeInfo;
+  if (yin.error()) {
+    return llvm::createStringError(llvm::inconvertibleErrorCode(), "Failed to parse .ze_info section!");
+  }
+
+  std::vector<int> SimdSizes;
+  for (auto& Kernel : ZeInfo.kernels) {
+    SimdSizes.push_back(Kernel.execution_env.simd_size);
+  }
+  for (auto& Func : ZeInfo.functions) {
+    SimdSizes.push_back(Func.execution_env.simd_size);
+  }
+  if (SimdSizes.size() == 0) {
+    return llvm::createStringError(llvm::inconvertibleErrorCode(), "Couldn't find any compiled kernel or function SIMD size!");
+  }
+  if (!std::all_of(SimdSizes.begin(), SimdSizes.end(), [&](auto& SimdSize) { return SimdSize == *SimdSizes.begin(); })) {
+    return llvm::createStringError(llvm::inconvertibleErrorCode(), "SIMD sizes in the module are not uniform!");
+  }
+
+  return *SimdSizes.begin();
 }
 
 void DumpSPIRVFile(const char *programData, size_t programSizeInBytes,
@@ -272,6 +318,23 @@ bool TranslateBuildSPMDAndESIMD(
     }
 
     llvm::StringRef ZeBinary(NewOutputArgs.pOutput, NewOutputArgs.OutputSize);
+
+    // Set SimdSize based on first SPMD module, as ESIMD always returns 1.
+    if (InputArgsPair.first == SPIRVTypeEnum::SPIRV_SPMD) {
+      auto SimdSizeOrErr = GetSIMDSizeFromZeBinary(ZeBinary);
+      if (!SimdSizeOrErr) {
+        errorMessage = ERROR_VLD + llvm::toString(SimdSizeOrErr.takeError());
+        return false;
+      }
+      if (SimdSize != 0 && SimdSize != *SimdSizeOrErr) {
+        errorMessage =
+            ERROR_VLD +
+            "Compilation of SPIR-V modules resulted in different SIMD sizes!";
+        return false;
+      }
+      if (SimdSize == 0)
+        SimdSize = *SimdSizeOrErr;
+    }
 
     auto VISAAsm =
       GetVISAAsmFromZEBinary(ZeBinary);
