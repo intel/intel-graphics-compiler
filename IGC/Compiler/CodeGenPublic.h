@@ -1060,6 +1060,10 @@ namespace IGC
 
     class CodeGenContext
     {
+    private:
+        // For assigning a unique Function ID within CodeGenContext.
+        std::unordered_map<std::string, int> m_functionIDs;
+        bool m_enableDumpUseShorterName = false;
     public:
         /// input: hash key
         ShaderHash    hash;
@@ -1354,6 +1358,11 @@ namespace IGC
         {
             return (getModuleMetaData()->rtInfo.RayQueryAllocSizeInBytes != 0);
         }
+
+        // For creating internal names with function IDs.
+        void createFunctionIDs();
+        int getFunctionID(llvm::Function* F);
+        bool dumpUseShorterName() const { return m_enableDumpUseShorterName; }
     };
 
     class VertexShaderContext : public CodeGenContext

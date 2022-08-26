@@ -582,10 +582,15 @@ public:
     bool forceCacheCtrl(llvm::Instruction* vectorLdStInst = nullptr);
     uint32_t totalBytesToStoreOrLoad(llvm::Instruction* vectorLdStInst);
 
+    void setShaderProgramID(int aID) { m_shaderProgramID = aID; }
+    int getShaderProgramID() const { return m_shaderProgramID; }
+    void getShaderFileName(std::string& ShaderName) const;
+
 protected:
     bool CompileSIMDSizeInCommon(SIMDMode simdMode);
     uint32_t GetShaderThreadUsageRate();
 private:
+    int m_shaderProgramID = 0;   // unique for each shaderProgram
     // Return DefInst's CVariable if it could be reused for UseInst, and return
     // nullptr otherwise.
     CVariable* reuseSourceVar(llvm::Instruction* UseInst,

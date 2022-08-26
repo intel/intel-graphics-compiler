@@ -273,7 +273,8 @@ void dumpOCLKernelBinary(
 
     auto *Ctx = Kernel->GetContext();
 
-    auto &kernelName = Kernel->m_kernelInfo.m_kernelName;
+    std::string kernelName(Kernel->m_kernelInfo.m_kernelName);
+    Kernel->getShaderFileName(kernelName);
 
     auto name = DumpName(IGC::Debug::GetShaderOutputName())
         .Hash(Ctx->hash)
@@ -300,7 +301,8 @@ void overrideOCLKernelBinary(
 
     auto *Ctx = Kernel->GetContext();
 
-    auto &kernelName = Kernel->m_kernelInfo.m_kernelName;
+    std::string kernelName(Kernel->m_kernelInfo.m_kernelName);
+    Kernel->getShaderFileName(kernelName);
 
     auto name = DumpName(IGC::Debug::GetShaderOutputName())
         .Hash(Ctx->hash)
@@ -342,14 +344,8 @@ void dumpOCLCos(const IGC::COpenCLKernel *Kernel, const std::string &stateDebugM
         .Hash(context->hash)
         .StagedInfo(context);
 
-    std::string kernelName = Kernel->m_kernelInfo.m_kernelName;
-    const int MAX_KERNEL_NAME = 180;
-
-    // Shorten kernel name to avoid issues with too long file name
-    if (kernelName.size() > MAX_KERNEL_NAME)
-    {
-        kernelName.resize(MAX_KERNEL_NAME);
-    }
+    std::string kernelName(Kernel->m_kernelInfo.m_kernelName);
+    Kernel->getShaderFileName(kernelName);
     dumpName = dumpName.PostFix(kernelName);
 
     dumpName = dumpName.DispatchMode(Kernel->m_ShaderDispatchMode);

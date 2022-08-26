@@ -22,6 +22,8 @@ SPDX-License-Identifier: MIT
 #include "common/secure_mem.h"
 #include "Probe/Assertion.h"
 
+#include <iomanip>
+
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -4152,3 +4154,30 @@ uint32_t CShader::totalBytesToStoreOrLoad(llvm::Instruction* vectorLdStInst)
     }
     return 0;
 } // totalBytesToStoreOrLoad
+
+// getShaderFileName() returns the shader name that will be used to form a dump file name.
+//   Input: shader name
+//   Output: either the exact input or modified input.
+void CShader::getShaderFileName(std::string& ShaderName) const
+{
+    // Use shorter shader name except for some special shaders like the following
+    // for readability:
+    //    Symbol_Table_Void program
+    //    entry
+    if (GetContext()->dumpUseShorterName() &&
+        !IsIntelSymbolTableVoidProgram() &&
+        ShaderName != "entry")
+    {
+        std::stringstream ss;
+        ss << "entry_" << std::setfill('0') << std::setw(4) << getShaderProgramID();
+        ShaderName = ss.str();
+        return;
+    }
+
+    // Special case for "entry", use empty name to keep the old behavior unchanged.
+    if (ShaderName == "entry")
+    {
+        ShaderName = "";
+    }
+    return;
+}

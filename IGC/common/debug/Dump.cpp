@@ -758,10 +758,11 @@ DumpName GetDumpNameObj(const IGC::CShader* pProgram, const char* ext)
     if (overrideHash)
         context->hash.asmHash = 0;
 
-    if(pProgram->entry->getName() != "entry")
-    {
-        dumpName = dumpName.PostFix(pProgram->entry->getName().str());
-    }
+    IGC_ASSERT_MESSAGE(pProgram->entry, "ICE: entry should be setup  and valid!");
+    std::string shaderName(pProgram->entry->getName().str());
+    pProgram->getShaderFileName(shaderName);
+
+    dumpName = dumpName.PostFix(shaderName);
     dumpName = dumpName.DispatchMode(pProgram->m_ShaderDispatchMode);
     dumpName = dumpName.SIMDSize(pProgram->m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension(ext);
 

@@ -1475,6 +1475,44 @@ namespace IGC
         }
     }
 
+    void CodeGenContext::createFunctionIDs()
+    {
+        // Assign a unique ID for each entry function.
+        if (IGC_IS_FLAG_ENABLED(DumpUseShorterName) &&
+            m_functionIDs.empty() &&  module != nullptr && m_pMdUtils != nullptr)
+        {
+            int id = 0;
+            for (auto i = m_pMdUtils->begin_FunctionsInfo(), e = m_pMdUtils->end_FunctionsInfo(); i != e; ++i)
+            {
+                Function* pFunc = i->first;
+                // Skip non-entry functions.
+                if (!isEntryFunc(m_pMdUtils, pFunc))
+                {
+                    continue;
+                }
+
+                // Use kernel name so that it is created once and will work for both the first and retry.
+                StringRef kernelName = pFunc->getName();
+                if (!kernelName.empty()) {
+                    // entry without name will not be in the map (getFunctionID() will
+                    // return 0. Thus, ID here starts from 1.
+                    m_functionIDs[kernelName.str()] = ++id;
+                }
+            }
+            m_enableDumpUseShorterName = true;
+        }
+    }
+
+    int CodeGenContext::getFunctionID(Function* F)
+    {
+        StringRef kernelName = F->getName();
+        auto MI = m_functionIDs.find(kernelName.str());
+        if (MI == m_functionIDs.end()) {
+            return 0;
+        }
+        return MI->second;
+    }
+
     unsigned MeshShaderContext::GetThreadGroupSize()
     {
         unsigned int threadGroupSize = ((type == ShaderType::MESH_SHADER) ?

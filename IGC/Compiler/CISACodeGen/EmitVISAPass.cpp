@@ -551,6 +551,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
 
     CreateKernelShaderMap(m_pCtx, pMdUtils, F);
 
+    m_pCtx->createFunctionIDs();
+
     m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
     if ((IsStage1BestPerf(m_pCtx->m_CgFlag, m_pCtx->m_StagingCtx) ||
@@ -619,6 +621,14 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         m_currShader->SetCoalescingEngineHelper(m_CE);
     }
 
+    if (IGC_IS_FLAG_ENABLED(DumpUseShorterName))
+    {
+        Function* entryF = &F;
+        if (m_FGA) {
+            entryF = m_FGA->getGroupHead(&F);
+        }
+        m_currShader->setShaderProgramID(m_pCtx->getFunctionID(entryF));
+    }
 
     CShader* prevShader = m_pCtx->m_prevShader;
     if (isFuncGroupHead)
@@ -919,7 +929,9 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                   break;
               ++id;
           }
-          std::string postfix = group->getHead()->getName().str() + "_f" + std::to_string(id);
+          std::string kname(group->getHead()->getName().str());
+          m_currShader->getShaderFileName(kname);
+          std::string postfix = kname + "_f" + std::to_string(id);
           name = name.PostFix(postfix);
         }
         if (name.allow())
