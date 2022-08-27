@@ -598,7 +598,7 @@ bool PhyRegUsage::findContiguousNoWrapGRF(bool availRegs[],
 //
 bool PhyRegUsage::findContiguousNoWrapAddrFlag(bool availRegs[],
     const bool forbidden[],
-    G4_SubReg_Align subAlign, //Sub align is used only for Flag and Address registers
+    G4_SubReg_Align subAlign,
     unsigned numRegNeeded,
     unsigned startPos,
     unsigned endPos,
@@ -611,11 +611,15 @@ bool PhyRegUsage::findContiguousNoWrapAddrFlag(bool availRegs[],
         // some register assignments need special alignment, we check
         // whether the alignment criteria is met.
         //
-        if (subAlign == Sixteen_Word && i != 0)
-        {    // Sixteen_Word sub-align should have i=0
+        if (endPos <= 16 && subAlign == Sixteen_Word && i != 0)
+        {
+            // for addr-reg, Sixteen_Word sub - align should have i = 0
             return false;
-        } else if ((subAlign == Eight_Word && i % 8 != 0) ||    // 8_Word align, i must be divided by 8
-            (i & 0x1 && subAlign == Even_Word) || // i is odd but intv needs to be even aligned
+        }
+        else if ((subAlign == ThirtyTwo_Word && i % 32 != 0) || // 32_word align
+            (subAlign == Sixteen_Word && i % 16 != 0) || // 16_word align check
+            (subAlign == Eight_Word && i % 8 != 0) ||    // 8_Word align check
+            (i & 0x1 && subAlign == Even_Word) || // even aligned check
             (subAlign == Four_Word && (i % 4 != 0))) // 4_word alignment
             i++;
         else
@@ -1441,10 +1445,10 @@ void LiveRange::dump() const
 
 PhyRegUsageParms::PhyRegUsageParms(
     GlobalRA& g, LiveRange* l[], G4_RegFileKind r, unsigned int m,
-    unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
+    unsigned int& startARF, unsigned int& startFlag,  unsigned int& startGRF,
     unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e,
-    bool doBC, bool* avaGReg, uint32_t* avaSubReg,
-    bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges)
+    bool doBC, bool* avaGReg, uint32_t* avaSubReg, bool* avaAddrs, bool* avaFlags,
+    uint8_t* weakEdges)
     : gra(g), startARFReg(startARF), startFlagReg(startFlag), startGRFReg(startGRF),
     bank1_start(bank1_s), bank1_end(bank1_e), bank2_start(bank2_s), bank2_end(bank2_e)
 {

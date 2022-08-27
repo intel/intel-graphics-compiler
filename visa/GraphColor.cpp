@@ -6674,7 +6674,7 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr)
             PhyRegUsage::numAllocUnit(dcl->getNumElems(), dcl->getElemType()),
             dcl->getNumRows());
     }
-    else if (pr->isAreg())
+    else if (pr->isA0())
     {
         markBusyAddress(0,
             PhyRegUsage::offsetAllocUnit(lr->getPhyRegOff(), dcl->getElemType()),
@@ -6736,8 +6736,10 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         rFile = G4_ADDRESS;
 
     unsigned maxGRFCanBeUsed = totalGRFRegCount;
-    PhyRegUsageParms parms(gra, lrs, rFile, maxGRFCanBeUsed, startARFReg, startFLAGReg, startGRFReg, bank1_start, bank1_end, bank2_start, bank2_end,
-        doBankConflict, availableGregs, availableSubRegs, availableAddrs, availableFlags, weakEdgeUsage);
+    PhyRegUsageParms parms(gra, lrs, rFile, maxGRFCanBeUsed, startARFReg, startFLAGReg, startGRFReg,
+        bank1_start, bank1_end, bank2_start, bank2_end, doBankConflict,
+        availableGregs, availableSubRegs, availableAddrs, availableFlags,
+        weakEdgeUsage);
     bool noIndirForceSpills = builder.getOption(vISA_NoIndirectForceSpills);
 
     auto& varSplitPass = *gra.getVarSplitPass();
@@ -10448,7 +10450,6 @@ bool canDoHRA(G4_Kernel& kernel)
 
     return ret;
 }
-
 //
 // graph coloring entry point.  returns nonzero if RA fails
 //
@@ -10484,10 +10485,10 @@ int GlobalRA::coloringRegAlloc()
 
         flagRegAlloc();
     }
-
     // LSC messages are used when:
     // a. Stack call is used on PVC+,
     // b. Spill size exceeds what can be represented using hword msg on PVC+
+
     if (builder.supportsLSC()) {
         useLscForSpillFill = true;
         useLscForNonStackCallSpillFill =

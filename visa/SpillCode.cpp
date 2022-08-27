@@ -31,7 +31,7 @@ G4_Declare* SpillManager::createNewSpillLocDeclare(G4_Declare* dcl)
         MUST_BE_TRUE(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W, "flag reg's type should be UW");
         MUST_BE_TRUE(dcl->getNumElems() <= builder.getNumFlagRegisters(), "Flag reg Spill size exceeds limit");
     }
-    else
+    else if (dcl->getRegFile() == G4_ADDRESS)
     {
         // if we are dealing with type other than UW, e.g., B, then we need to
         // take care different data type reg moves of spill code. For now, just
@@ -42,9 +42,8 @@ G4_Declare* SpillManager::createNewSpillLocDeclare(G4_Declare* dcl)
                      type == Type_W ||
                      type == Type_UD ||
                      type == Type_D, "addr reg's type should be UW or UD");
-        MUST_BE_TRUE(dcl->getNumElems() <= getNumAddrRegisters(), "Addr reg Spill size exceeds 16 bytes");
+        MUST_BE_TRUE(dcl->getNumElems() <= getNumAddrRegisters(), "Addr reg Spill size exceeds limit");
     }
-
     G4_Declare* sp = dcl->getSpilledDeclare();
     if (sp == NULL) // not yet created
     {

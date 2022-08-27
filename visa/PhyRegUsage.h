@@ -43,9 +43,11 @@ public:
     unsigned int totalGRF;
     LiveRange** lrs;
 
-    PhyRegUsageParms(GlobalRA& g, LiveRange* l[], G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
-        unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e, bool doBC, bool* avaGReg,
-        uint32_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges);
+    PhyRegUsageParms(GlobalRA& g, LiveRange* l[], G4_RegFileKind r, unsigned int m,
+        unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
+        unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e,
+        bool doBC, bool* avaGReg, uint32_t* avaSubReg, bool* avaAddrs, bool* avaFlags,
+        uint8_t* weakEdges);
 };
 
 //
@@ -70,8 +72,6 @@ class PhyRegUsage
     unsigned& startARFReg;                        // round-robin reg  start bias
     unsigned& startFLAGReg;
     unsigned& startGRFReg;                        // round-robin reg  start bias
-
-
     unsigned &bank1_start;
     unsigned &bank2_start;
     unsigned &bank1_end;
@@ -247,7 +247,6 @@ public:
         for (unsigned i = regOff; i < regOff + nunits; i++)
             availableFlags[i] = false;
     }
-
     static unsigned numAllocUnit(unsigned nelems, G4_Type ty)
     {
         //

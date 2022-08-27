@@ -457,6 +457,7 @@ enum G4_AccRegSel
 
 // global functions
 inline unsigned int getNumAddrRegisters(void) { return 16; }
+
 uint8_t roundDownPow2(uint8_t n);
 
 // G4_type related global functions
