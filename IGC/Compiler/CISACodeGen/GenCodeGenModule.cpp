@@ -477,6 +477,20 @@ bool GenXCodeGenModule::runOnModule(Module& M)
         }
     }
 
+    // Changing simd size from 32 to 16 for function groups with function calls due to slicing
+    for (auto GI = FGA->begin(), GE = FGA->end(); GI != GE; ++GI)
+    {
+        FunctionGroup* FG = *GI;
+        if (!FG->isSingle() || FG->hasStackCall())
+        {
+            Function* Kernel = FG->getHead();
+            IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
+            int simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
+            if (simd_size == 32)
+                funcInfoMD->getSubGroupSize()->setSIMD_size(16);
+        }
+    }
+
     IGC_ASSERT(FGA->verify());
 
     FGA->setModule(&M);

@@ -2966,7 +2966,7 @@ namespace IGC
 
         bool optDisable = this->GetContext()->getModuleMetaData()->compOpt.OptDisable;
 
-        if (optDisable && simd_size == 0) // if simd size not requested in MD
+        if (optDisable)
         {
             if (simdMode == SIMDMode::SIMD32)
             {
