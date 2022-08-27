@@ -738,16 +738,10 @@ bool preRA_RegSharing::run()
     // If maximum register pressure is higher than default GRF mode,
     // assign the smallest number of threads to this kernel.
     if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
-        !kernel.getOptions()->getOption(vISA_MultiLevelRegSharing) &&
         (maxPressure > getRPThresholdHigh(kernel.getNumRegTotal() - kernel.getOptions()->getuInt32Option(vISA_ReservedGRFNum))))
     {
         // Update number of threads, GRF, Acc and SWSB
         kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
-    }
-    else if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
-        kernel.getOptions()->getOption(vISA_MultiLevelRegSharing))
-    {
-        adjustNumThreads(maxPressure);
     }
 
     unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), isSlicedSIMD32(kernel));
@@ -796,35 +790,9 @@ bool preRA_RegSharing::run()
         rp.rpe->run();
         kernel.fg.builder->getJitInfo()->maxGRFPressure = rp.rpe->getMaxRP();
     }
-    else if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
-        kernel.getOptions()->getOption(vISA_MultiLevelRegSharing))
-    {
-        rp.rpe->run();
-        kernel.fg.builder->getJitInfo()->maxGRFPressure = maxPressure = rp.rpe->getMaxRP();
-        adjustNumThreads(maxPressure);
-    }
     return changed;
 }
 
-void preRA_RegSharing::adjustNumThreads(unsigned maxPressure)
-{
-    if (maxPressure <= 64 && kernel.getRegisterNumWithThreads(12) >= kernel.getLargestInputRegister())
-        kernel.updateKernelByNumThreads(12);
-    else if (maxPressure <= 80 && kernel.getRegisterNumWithThreads(10) >= kernel.getLargestInputRegister())
-        kernel.updateKernelByNumThreads(10);
-    else if (maxPressure <= 96 && kernel.getRegisterNumWithThreads(9) >= kernel.getLargestInputRegister())
-        kernel.updateKernelByNumThreads(9);
-    else if (maxPressure <= 112 && kernel.getRegisterNumWithThreads(8) >= kernel.getLargestInputRegister())
-        kernel.updateKernelByNumThreads(8);
-    else if (maxPressure <= 128 && kernel.getRegisterNumWithThreads(7) >= kernel.getLargestInputRegister())
-        kernel.updateKernelByNumThreads(7);
-    else if (maxPressure <= 160 && kernel.getRegisterNumWithThreads(6) >= kernel.getLargestInputRegister())
-        kernel.updateKernelByNumThreads(6);
-    else if (maxPressure <= 192 && kernel.getRegisterNumWithThreads(5) >= kernel.getLargestInputRegister())
-        kernel.updateKernelByNumThreads(5);
-    else
-        kernel.updateKernelByNumThreads(4);
-}
 
 bool BB_Scheduler::verifyScheduling()
 {
