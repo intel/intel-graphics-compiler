@@ -302,7 +302,16 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* arg, Function& F)
     {
         IGC_ASSERT_MESSAGE(0, "Unsupported Instruction!");
     }
-    return ConstantInt::get(m_int32Type, -1);
+
+    ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary)
+    {
+        return arg;
+    }
+    else
+    {
+        return ConstantInt::get(m_int32Type, -1);
+    }
 }
 
 // Checks pathes to global variables and returns true if all paths lead to constant strings.
@@ -532,7 +541,9 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
         writeOffsetPtr = generateCastToPtr(argDesc, writeOffset, bblockTrue);
         writeOffsetPtr->setDebugLoc(m_DL);
 
-        if (dataType == SHADER_PRINTF_STRING_LITERAL && IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        if (dataType == SHADER_PRINTF_STRING_LITERAL && (
+            IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary))
         {
             printfArg = CastInst::Create(Instruction::CastOps::PtrToInt,
                 argDesc->value,
@@ -743,7 +754,8 @@ unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argT
         return vecSize * 8;
 
     case IGC::SHADER_PRINTF_STRING_LITERAL: {
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+        ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary) {
             // The size of the format string address
             return 8;
         } else {
@@ -875,7 +887,8 @@ Instruction* OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor* arg
     }
 
     case IGC::SHADER_PRINTF_STRING_LITERAL: {
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        ModuleMetaData* modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary) || modMd->compOpt.EnableZEBinary)
             castedType = m_ptrSizeIntType->getPointerTo(ADDRESS_SPACE_GLOBAL);
         else
             castedType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);

@@ -554,7 +554,8 @@ namespace IGC
     bool OpenCLProgramContext::forceGlobalMemoryAllocation() const
     {
         return m_InternalOptions.ForceGlobalMemoryAllocation ||
-               (m_hasGlobalInPrivateAddressSpace && IGC_IS_FLAG_ENABLED(EnableZEBinary));
+               (m_hasGlobalInPrivateAddressSpace &&
+                (m_InternalOptions.EnableZEBinary|| IGC_IS_FLAG_ENABLED(EnableZEBinary)));
     }
 
     bool OpenCLProgramContext::allocatePrivateAsGlobalBuffer() const
@@ -902,12 +903,7 @@ namespace IGC
             // -cl-intel-allow-zebin
             else if (suffix.equals("-allow-zebin"))
             {
-                IGC_SET_FLAG_VALUE(EnableZEBinary, true);
-            }
-            // -c-intel-disable-zebin
-            else if (suffix.equals("-disable-zebin"))
-            {
-                IGC_SET_FLAG_VALUE(EnableZEBinary, false);
+                EnableZEBinary = true;
             }
             // -cl-intel-exclude-ir-from-zebin
             else if (suffix.equals("-exclude-ir-from-zebin"))
