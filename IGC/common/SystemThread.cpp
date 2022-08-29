@@ -70,10 +70,10 @@ struct XeHPCDebugSurfaceLayout
     static constexpr size_t EXEC_MASK_ELEMENT_SIZE = 4;
     static constexpr size_t EXEC_MASK_ALIGN = 0;
 
-    static constexpr size_t SR_COUNT = 2;
+    static constexpr size_t SR_COUNT = 1;
     static constexpr size_t SR_ELEMENTS = 4;
     static constexpr size_t SR_ELEMENT_SIZE = 4;
-    static constexpr size_t SR_ALIGN = 0;
+    static constexpr size_t SR_ALIGN = 16;
 
     static constexpr size_t CR_COUNT = 1;
     static constexpr size_t CR_ELEMENTS = 4;
@@ -243,10 +243,10 @@ struct DebugSurfaceLayout
     static constexpr size_t EXEC_MASK_ELEMENT_SIZE = 4;
     static constexpr size_t EXEC_MASK_ALIGN = 0;
 
-    static constexpr size_t SR_COUNT = 2;
+    static constexpr size_t SR_COUNT = 1;
     static constexpr size_t SR_ELEMENTS = 4;
     static constexpr size_t SR_ELEMENT_SIZE = 4;
-    static constexpr size_t SR_ALIGN = 0;
+    static constexpr size_t SR_ALIGN = 16;
 
     static constexpr size_t CR_COUNT = 1;
     static constexpr size_t CR_ELEMENTS = 4;
@@ -408,10 +408,10 @@ struct XeHPGDebugSurfaceLayout
     static constexpr size_t EXEC_MASK_ELEMENT_SIZE = 4;
     static constexpr size_t EXEC_MASK_ALIGN = 0;
 
-    static constexpr size_t SR_COUNT = 2;
+    static constexpr size_t SR_COUNT = 1;
     static constexpr size_t SR_ELEMENTS = 4;
     static constexpr size_t SR_ELEMENT_SIZE = 4;
-    static constexpr size_t SR_ALIGN = 0;
+    static constexpr size_t SR_ALIGN = 16;
 
     static constexpr size_t CR_COUNT = 1;
     static constexpr size_t CR_ELEMENTS = 4;
