@@ -258,6 +258,14 @@ void PromoteBools::cleanUp(Module& module)
         {
             renameAndClean(alloca, it.second);
         }
+        else if (auto bitcast = dyn_cast<BitCastInst>(it.first))
+        {
+            renameAndClean(bitcast, it.second);
+        }
+        else if (auto addrSpaceCast = dyn_cast<AddrSpaceCastInst>(it.first))
+        {
+            renameAndClean(addrSpaceCast, it.second);
+        }
     }
 
     std::vector<Instruction*> deadTruncs;
@@ -376,6 +384,14 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteAlloca(alloca);
     }
+    else if (auto bitcast = dyn_cast<BitCastInst>(value))
+    {
+        newValue = promoteBitCast(bitcast);
+    }
+    else if (auto addrSpaceCast = dyn_cast<AddrSpaceCastInst>(value))
+    {
+        newValue = promoteAddrSpaceCast(addrSpaceCast);
+    }
 
     if (newValue != value)
     {
@@ -481,22 +497,74 @@ GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariab
         globalVariable->getType()->getPointerAddressSpace());
 }
 
-AllocaInst* PromoteBools::promoteAlloca(AllocaInst* alloca)
+Value* PromoteBools::promoteAlloca(AllocaInst* alloca)
 {
     if (!alloca || !typeNeedsPromotion(alloca->getAllocatedType()))
     {
         return alloca;
     }
 
+    auto oldAllocaName = alloca->getName().str();
+    alloca->setName(oldAllocaName + "_bitcast");
+
     auto newAlloca = new AllocaInst(
         getOrCreatePromotedType(alloca->getAllocatedType()),
         alloca->getType()->getAddressSpace(),
         alloca->isArrayAllocation() ? alloca->getArraySize() : nullptr,
-        alloca->getName(),
+        oldAllocaName,
         alloca);
     newAlloca->setAlignment(IGCLLVM::getAlign(*alloca));
 
-    return newAlloca;
+    IRBuilder<> builder(alloca);
+    auto bitcast = builder.CreateBitCast(newAlloca, alloca->getType());
+    alloca->replaceAllUsesWith(bitcast);
+
+    return bitcast;
+}
+
+Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
+{
+    if (!bitcast || !typeNeedsPromotion(bitcast->getDestTy()))
+    {
+        return bitcast;
+    }
+
+    auto newType = getOrCreatePromotedType(bitcast->getDestTy());
+    if (bitcast->getSrcTy() == newType)
+    {
+        auto result = bitcast->getOperand(0);
+
+        // swap names
+        auto name = result->getName().str();
+        result->setName(name + "_tmp");
+        bitcast->setName(name);
+
+        return result;
+    }
+
+    auto newBitCast = new BitCastInst(
+        bitcast->getOperand(0),
+        getOrCreatePromotedType(bitcast->getDestTy()),
+        bitcast->getName(),
+        bitcast
+    );
+    return newBitCast;
+}
+
+Value* PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst* addrSpaceCast)
+{
+    if (!addrSpaceCast || !typeNeedsPromotion(addrSpaceCast->getDestTy()))
+    {
+        return addrSpaceCast;
+    }
+
+    auto newAddrSpaceCast = new AddrSpaceCastInst(
+        addrSpaceCast->getOperand(0),
+        getOrCreatePromotedType(addrSpaceCast->getDestTy()),
+        addrSpaceCast->getName(),
+        addrSpaceCast
+    );
+    return newAddrSpaceCast;
 }
 
 Constant* PromoteBools::createPromotedConstant(Constant* constant)

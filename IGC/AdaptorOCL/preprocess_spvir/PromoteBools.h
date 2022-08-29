@@ -57,7 +57,9 @@ namespace IGC
         llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
         llvm::Function* promoteFunction(llvm::Function* function);
         llvm::GlobalVariable* promoteGlobalVariable(llvm::GlobalVariable* globalVariable);
-        llvm::AllocaInst* promoteAlloca(llvm::AllocaInst* alloca);
+        llvm::Value* promoteAlloca(llvm::AllocaInst* alloca);
+        llvm::Value* promoteBitCast(llvm::BitCastInst* bitcast);
+        llvm::Value* promoteAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast);
 
         // Promoting contants
         llvm::Constant* createPromotedConstant(llvm::Constant* constant);
