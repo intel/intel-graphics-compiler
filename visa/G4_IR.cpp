@@ -2901,6 +2901,15 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const
         return false;
     }
 
+    // Don't hoist if the composed dst stride is illegal
+    G4_DstRegRegion *defDstRegion = def_dst->asDstRegRegion();
+    uint16_t defDstHS = defDstRegion->getHorzStride();
+    G4_CmpRelation rel = srcs[0]->compareOperand(defDstRegion, builder);
+    if (rel == Rel_gt && dstHS * defDstHS > 4)
+    {
+      return false;
+    }
+
     // Don't hoist stack calls related variables (Arg, Retval, SP, FP)
     if (defInst->getDst() && defInst->getDst()->getTopDcl())
     {
