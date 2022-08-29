@@ -2400,7 +2400,8 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelAttributePatchItems(
             if ( s.find("reqd_sub_group_size") != std::string::npos
               || s.find("reqd_work_group_size") != std::string::npos
               || s.find("vec_type_hint") != std::string::npos
-              || s.find("work_group_size_hint") != std::string::npos )
+              || s.find("work_group_size_hint") != std::string::npos 
+              || s.find("invalid_kernel") != std::string::npos )
             {
                 if ( !filteredAttributes.empty() )
                 {

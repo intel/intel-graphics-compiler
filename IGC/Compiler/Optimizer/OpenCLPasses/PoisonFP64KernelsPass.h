@@ -24,6 +24,7 @@ namespace IGC
     {
     public:
         static char ID;
+        static const char *attributeName;
 
         PoisonFP64Kernels();
 

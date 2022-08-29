@@ -22,7 +22,7 @@ using namespace llvm;
 using namespace IGC;
 
 char PoisonFP64Kernels::ID = 0;
-
+const char *PoisonFP64Kernels::attributeName = "invalid_kernel(\"uses-fp64-math\")";
 // Register pass to igc-opt
 #define PASS_FLAG "igc-poison-fp64-kernels"
 #define PASS_DESCRIPTION "Poison kernels using FP64 on unsupported platforms."
@@ -105,6 +105,7 @@ static void poisonKernel(Function *Kernel) {
     LLVMContext &Ctx = M->getContext();
 
     Kernel->removeFnAttr("uses-fp64-math");
+    Kernel->addFnAttr(PoisonFP64Kernels::attributeName);
     Kernel->deleteBody();
     BasicBlock* BB = BasicBlock::Create(Ctx, "entry", Kernel);
 
