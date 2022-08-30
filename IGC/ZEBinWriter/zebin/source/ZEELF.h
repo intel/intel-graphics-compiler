@@ -46,9 +46,16 @@ enum R_TYPE_ZEBIN
 
 // ELF note type for INTELGT
 enum {
+    // The description is the Product family stored in a 4-byte ELF word
     NT_INTELGT_PRODUCT_FAMILY = 1,
+    // The description is the GFXCORE family stored in a 4-byte ELF word
     NT_INTELGT_GFXCORE_FAMILY = 2,
+    // The description is the TargetMetadata structure defined below
     NT_INTELGT_TARGET_METADATA = 3,
+    // The description represents the ZEBIN ELF file version that reflects the
+    // attribute and section changes. The content is stored in a nul-terminated
+    // string and the format is "<Major number>.<Minor number>".
+    NT_INTELGT_ZEBIN_VERSION = 4,
 };
 
 struct TargetMetadata {
