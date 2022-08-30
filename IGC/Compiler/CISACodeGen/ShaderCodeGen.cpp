@@ -1341,10 +1341,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             // disable loop unroll for excessive large shaders
             if (pContext->m_instrTypes.numOfLoop)
             {
-                if (IGC_IS_FLAG_ENABLED(EnableLoopHoistConstant))
-                {
-                    mpm.add(createLoopHoistConstant());
-                }
                 mpm.add(createLoopDeadCodeEliminationPass());
                 mpm.add(createLoopCanonicalization());
                 mpm.add(llvm::createLoopDeletionPass());
@@ -1369,6 +1365,12 @@ void OptimizeIR(CodeGenContext* const pContext)
 
 
                 mpm.add(createIGCInstructionCombiningPass());
+
+                if (IGC_IS_FLAG_ENABLED(EnableLoopHoistConstant))
+                {
+                    mpm.add(createLoopHoistConstant());
+                }
+
                 if (pContext->type == ShaderType::OPENCL_SHADER &&
                     static_cast<OpenCLProgramContext*>(pContext)->m_InternalOptions.KernelDebugEnable)
                 {

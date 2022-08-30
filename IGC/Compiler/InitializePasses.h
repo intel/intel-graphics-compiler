@@ -189,6 +189,7 @@ void initializePingPongTexturesAnalysisPass(llvm::PassRegistry&);
 void initializePingPongTexturesOptPass(llvm::PassRegistry&);
 void initializeSampleMultiversioningPass(llvm::PassRegistry&);
 void initializeLoopCanonicalizationPass(llvm::PassRegistry&);
+void initializeLoopHoistConstantPass(llvm::PassRegistry&);
 void initializeMemOptPass(llvm::PassRegistry&);
 void initializePreRASchedulerPass(llvm::PassRegistry&);
 void initializeBIFTransformsPass(llvm::PassRegistry&);

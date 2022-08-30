@@ -918,45 +918,50 @@ namespace IGC
 // which case we can hoist these values out of the loop.
 //
 // Input Loop:
+//  Input loop compares the loop induction variable to the loop size using a min
+//  instruction. The ALU instructions dependent on the result of the 'min' can
+//  be done at compile time for most iterations of the loop.
 //
-// loop1.header:
-// %prePHI = phi float[%132, %preheader], [%Inc, %loop.end]
-// %postPHI = phi float[%132, %preheader], [%Inc, %loop.end]
-// %Inc = fmul fast float %prePHI, %176
-// %177 = fcmp fast ult float %postPHI, %size
-// br i1 %177, label %loop1.body, label %loop1.end
-//
-// loop1.body:
-// %178 = call fast float @llvm.minnum.f32(float %Inc, float %size)
-// %179 = fsub fast float %178, %postPHI
-// %180 = fdiv fast float %178, %postPHI
+// loop.header:
+// %preInc = phi float[%132, %preheader], [%Inc, %loop.end]
+// %postInc = fmul fast float %preInc, %x
+// %178 = call fast float @llvm.minnum.f32(float %postInc, float %LoopSize)
+// %179 = fsub fast float %178, %preInc
+// %180 = fdiv fast float %178, %preInc
 // ...
+// %cmp = fcmp fast ult float %postInc, %LoopSize
+// br i1 %cmp, label %loop.header, label %loop.end
 //
 //
 // Transformed Loop:
+//  Loop is split into if/then/else branch, where the if block is only entered
+//  if (%preInc < %LoopSize). This allows later passes to simpifly instructions
+//  in the if BB by doing the computation at compile time.
 //
-// loop1.header:
-// %prePHI = phi float[%132, %preheader], [%Inc, %loop.end]
-// %postPHI = phi float[%132, %preheader], [%Inc, %loop.end]
-// %Inc = fmul fast float %prePHI, %176
-// %177 = fcmp fast ult float %Inc, %size
-// br i1 %177, label %loop1.body.if.hoist.const, label %loop1.body.else.hoist.const
+// loop.header:
+// %preInc = phi float[%132, %preheader], [%Inc, %loop.end]
+// %postInc = fmul fast float %preInc, %x
+// %cmpHoist = fcmp ult float %preInc, %LoopSize
+// br i1 %cmpHoist, label %loop.if.hoist, label %loop.else.hoist
 //
-// loop1.body.if.hoist.const:
-// %179 = fsub fast float %postPHI, %postPHI
-// %180 = fdiv fast float %postPHI, %postPHI
+// loop.if.hoist:
+// %180 = fsub fast float %preInc, %preInc
+// %181 = fdiv fast float %preInc, %preInc
+// br label %loop.end.hoist
+//
+// loop.else.hoist:
+// %190 = call fast float @llvm.minnum.f32(float %postInc, float %LoopSize)
+// %191 = fsub fast float %190, %preInc
+// %192 = fdiv fast float %190, %preInc
+// br label %loop.end.hoist
+//
+// loop.end.hoist:
+// %200 = phi float [ %180, %loop.if.hoist ], [ %191, %loop.else.hoist ]
+// %201 = phi float [ %181, %loop.if.hoist ], [ %192, %loop.else.hoist ]
 // ...
+// %cmp = fcmp fast ult float %postInc, %LoopSize
+// br i1 %cmp, label %loop.header, label %loop.end
 //
-// loop1.body.else.hoist.const:
-// %177 = fcmp fast ult float %postPHI, %size
-// br i1 %177, label %loop1.body, label %loop1.end
-//
-// loop1.body:
-// %178 = call fast float @llvm.minnum.f32(float %Inc, float %size)
-// %179 = fsub fast float %178, %postPHI
-// %180 = fdiv fast float %178, %postPHI
-// ...
-
 class LoopHoistConstant : public llvm::LoopPass
 {
 public:
@@ -996,173 +1001,146 @@ char LoopHoistConstant::ID = 0;
 
 LoopHoistConstant::LoopHoistConstant() : LoopPass(ID)
 {
-    initializeLoopCanonicalizationPass(*PassRegistry::getPassRegistry());
+    initializeLoopHoistConstantPass(*PassRegistry::getPassRegistry());
 }
 
 bool LoopHoistConstant::runOnLoop(Loop* L, LPPassManager& LPM)
 {
-    bool canHoist = false;
     LoopInfo* LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
-    if (L->getLoopPreheader() && L->getLoopLatch() &&
-        L->isSafeToClone() && L->getNumBackEdges() == 1 && L->getBlocks().size() >= 2)
+    if (!L->getLoopPreheader() || !L->getLoopLatch() || !L->isSafeToClone() || L->getNumBackEdges() != 1)
+        return false;
+
+    BasicBlock* Header = L->getHeader();
+    BasicBlock* LoopLatch = L->getLoopLatch();
+
+    PHINode* InductionPreInc = nullptr; // Induction variable pre-increment
+    BinaryOperator* InductionPostInc = nullptr; // // Induction variable post-increment
+    FCmpInst* LoopCond = nullptr; // The loop exit condition
+    BranchInst* LoopBranch = nullptr; // The pre-hoisted loop branching instruction
+    Value* LoopSize = nullptr;
+    IntrinsicInst* MinInst = nullptr;
+
+    // Match the loop induction variable
+    InductionPostInc = dyn_cast<BinaryOperator>(Header->getFirstNonPHI());
+    if (InductionPostInc && InductionPostInc->getOpcode() == BinaryOperator::FMul)
     {
-        canHoist = true;
-        BasicBlock* Header = L->getHeader();
-        BasicBlock* Body = L->getBlocks()[1];
+        InductionPreInc = dyn_cast<PHINode>(InductionPostInc->getOperand(0));
+        if (!InductionPreInc)
+            InductionPreInc = dyn_cast<PHINode>(InductionPostInc->getOperand(1));
+    }
+    if (!InductionPreInc || !InductionPostInc)
+        return false;
+    if (InductionPreInc->getIncomingValueForBlock(LoopLatch) != InductionPostInc)
+        return false;
 
-        Value* MaxVal = nullptr; // The larger of the minnum compare values, also the loop bound size
-        Value* InductionV = nullptr; // The loop induction variable
-        IntrinsicInst* MinInst = nullptr; // The minnum instruction comparing the induction var and the loop bound size
-        FCmpInst* FI = nullptr; // The loop exit condition
-        BranchInst* BI = nullptr; // The pre-hoisted loop branching instruction
-        PHINode* PreIncPHI = nullptr; // The PHINode that's the base of the induction var, multiplied by increment value
-        PHINode* PostIncPHI = nullptr; // The PHINode used as the smaller of the minnum compare values
-
-        // Match the "minnum" instruction where the operands compare the post-incremented loop counter and the loop boundry size.
-        // Should always be the first instruction of the loop body for this specific pattern.
-        MinInst = dyn_cast<IntrinsicInst>(Body->begin());
-        if (MinInst && MinInst->getIntrinsicID() == llvm::Intrinsic::minnum)
+    // Match the loop exit condition and branch
+    LoopBranch = dyn_cast<BranchInst>(LoopLatch->getTerminator());
+    if (LoopBranch && LoopBranch->isConditional())
+    {
+        LoopCond = dyn_cast<FCmpInst>(LoopBranch->getCondition());
+        if (LoopCond && (LoopCond->getPredicate() == CmpInst::FCMP_ULT || LoopCond->getPredicate() == CmpInst::FCMP_OLT))
         {
-            // All uses of the minnum should be within the loop body BB
-            for (auto user : MinInst->users()) {
-                if (Instruction* inst = dyn_cast<Instruction>(user)) {
-                    if (inst->getParent() != Body) {
-                        canHoist = false;
-                        break;
-                    }
-                }
-            }
-            if (canHoist)
+            if (LoopCond->getOperand(0) == InductionPostInc)
             {
-                // Match both operands, since either one can be either the induction variable, or the loop bound size.
-                // TODO: Only matching increments using the FMUL instruction. We can also match a cannonical loop with
-                // regular increasing counters.
-                Value* minVal1 = MinInst->getOperand(0);
-                Value* minVal2 = MinInst->getOperand(1);
-                BinaryOperator* Ind1 = dyn_cast<BinaryOperator>(minVal1);
-                BinaryOperator* Ind2 = dyn_cast<BinaryOperator>(minVal2);
-                if (Ind1 && Ind1->getOpcode() == BinaryOperator::FMul)
-                {
-                    // Try both operands
-                    PreIncPHI = dyn_cast<PHINode>(Ind1->getOperand(0));
-                    if (!PreIncPHI)
-                        PreIncPHI = dyn_cast<PHINode>(Ind1->getOperand(1));
-                    MaxVal = minVal2;
-                    InductionV = Ind1;
-                }
-                else if (Ind2 && Ind2->getOpcode() == BinaryOperator::FMul)
-                {
-                    // Try both operands
-                    PreIncPHI = dyn_cast<PHINode>(Ind2->getOperand(0));
-                    if (!PreIncPHI)
-                        PreIncPHI = dyn_cast<PHINode>(Ind2->getOperand(1));
-                    MaxVal = minVal1;
-                    InductionV = Ind2;
-                }
+                LoopSize = LoopCond->getOperand(1);
             }
-        }
-
-        // Match the fcmp instruction used for the branch condition
-        BI = dyn_cast<BranchInst>(Header->getTerminator());
-        if (BI && BI->isConditional())
-        {
-            FI = dyn_cast<FCmpInst>(BI->getCondition());
-            if (FI && FI->getPredicate() == CmpInst::FCMP_ULT)
-            {
-                PostIncPHI = dyn_cast<PHINode>(FI->getOperand(0));
-            }
-        }
-
-        // Sanity check if loop pattern is found
-        if (!PreIncPHI || !PostIncPHI || FI->getOperand(1) != MaxVal)
-        {
-            canHoist = false;
-        }
-        else if (PreIncPHI && PostIncPHI)
-        {
-            // Make sure the PHIs found have the same incoming values
-            for (unsigned i = 0; i < PreIncPHI->getNumIncomingValues(); i++) {
-                if ((PreIncPHI->getIncomingBlock(i) != PostIncPHI->getIncomingBlock(i)) ||
-                    (PreIncPHI->getIncomingValue(i) != PostIncPHI->getIncomingValue(i))) {
-                    canHoist = false;
-                    break;
-                }
-            }
-        }
-
-        if (canHoist)
-        {
-            // Clone the loop BB that contains the hoisted values and update operands
-            ValueToValueMapTy VMap;
-            BasicBlock* ifBB = CloneBasicBlock(Body, VMap);
-            ifBB->setName(Body->getName() + ".if.hoist");
-            ifBB->insertInto(Body->getParent(), Body);
-            for (auto II = ifBB->begin(), IE = ifBB->end(); II != IE; ++II)
-            {
-                for (unsigned op = 0, E = II->getNumOperands(); op != E; ++op)
-                {
-                    Value* Op = II->getOperand(op);
-                    ValueToValueMapTy::iterator It = VMap.find(Op);
-                    if (It != VMap.end())
-                        II->setOperand(op, It->second);
-                }
-            }
-            L->addBasicBlockToLoop(ifBB, *LI);
-
-            // Create an else block for the last iteration of the loop
-            // Use the original fcmp instruction for the branch condition
-            BasicBlock* elseBB = BasicBlock::Create(Body->getContext(), Body->getName() + ".else.hoist", Body->getParent(), Body);
-            auto origFCMP = FCmpInst::Create(FI->getOpcode(), FI->getPredicate(), FI->getOperand(0), FI->getOperand(1), "", elseBB);
-            BranchInst::Create(Body, BI->getSuccessor(1), origFCMP, elseBB);
-            L->addBasicBlockToLoop(elseBB, *LI);
-
-            // Replace the result of the minnum with the hoisted value
-            Value* newMinInst = VMap[MinInst];
-            newMinInst->replaceAllUsesWith(PostIncPHI);
-
-            // Find all successors of the loop body BB, and add an Incoming Value for PHINodes for the cloned BB
-            for (BasicBlock* Succ : successors(Body))
-            {
-                for (Instruction& I : *Succ)
-                {
-                    if (PHINode* PN = dyn_cast<PHINode>(&I))
-                    {
-                        if (Value* inV = PN->getIncomingValueForBlock(Body))
-                        {
-                            if (isa<Instruction>(inV)) {
-                                PN->addIncoming(VMap[inV], ifBB);
-                            }
-                            else if (isa<Constant>(inV)) {
-                                PN->addIncoming(inV, ifBB);
-                            }
-                            else {
-                                IGC_ASSERT(0);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Now for the successors of the loop header, replace incoming block with the else block
-            for (BasicBlock* Succ : successors(Header))
-            {
-                for (Instruction& I : *Succ)
-                {
-                    if (PHINode* PN = dyn_cast<PHINode>(&I))
-                    {
-                        PN->replaceIncomingBlockWith(Header, elseBB);
-                    }
-                }
-            }
-
-            // Update branches and successors
-            FI->replaceUsesOfWith(PostIncPHI, InductionV);
-            BI->replaceUsesOfWith(BI->getSuccessor(0), ifBB);
-            BI->replaceUsesOfWith(BI->getSuccessor(1), elseBB);
         }
     }
-    return canHoist;
+    if (!LoopBranch || !LoopCond || !LoopSize)
+        return false;
+
+    // Match the minnum comparison between the induction var and the loop size
+    // Should appear right after the post-incremented induction variable
+    MinInst = dyn_cast<IntrinsicInst>(InductionPostInc->getNextNode());
+    if (MinInst && MinInst->getIntrinsicID() == llvm::Intrinsic::minnum)
+    {
+        Value* min1 = MinInst->getOperand(0);
+        Value* min2 = MinInst->getOperand(1);
+        if ((min1 == InductionPostInc && min2 == LoopSize) ||
+            (min2 == InductionPostInc && min1 == LoopSize)) {
+        }
+        else {
+            return false;
+        }
+        // All uses of the minnum should be within the loop body BB
+        if (MinInst->isUsedOutsideOfBlock(Header))
+            return false;
+    }
+    else {
+        return false;
+    }
+
+    // We now have all the info to hoist out the constant variables.
+    // First split the HeaderBB into if/then/else blocks.
+    Instruction* ifTerm;
+    Instruction* elseTerm;
+    auto cmpIfHoist = FCmpInst::Create(LoopCond->getOpcode(), LoopCond->getPredicate(), InductionPreInc, LoopSize, "", MinInst);
+    llvm::SplitBlockAndInsertIfThenElse(cmpIfHoist, MinInst, &ifTerm, &elseTerm);
+
+    BasicBlock* ifHoistBB = ifTerm->getParent();
+    BasicBlock* elseHoistBB = elseTerm->getParent();
+    BasicBlock* endHoistBB = elseHoistBB->getNextNode();
+
+    // Set the new block names
+    ifHoistBB->setName(Header->getName() + ".if.hoist");
+    elseHoistBB->setName(Header->getName() + ".else.hoist");
+    endHoistBB->setName(Header->getName() + ".end.hoist");
+
+    // Add new blocks to the current loop
+    L->addBasicBlockToLoop(ifHoistBB, *LI);
+    L->addBasicBlockToLoop(elseHoistBB, *LI);
+    L->addBasicBlockToLoop(endHoistBB, *LI);
+
+    // Clone the instructions starting from the minnum up to the terminator.
+    // The cloned instructions go into the if block, and the original instructions
+    // are moved into the else block.
+    ValueToValueMapTy VMap;
+    Instruction* II = cast<Instruction>(endHoistBB->begin());
+    while(II != endHoistBB->getTerminator())
+    {
+        Instruction* currI = II;
+        II = II->getNextNode();
+
+        Instruction* clonedI = currI->clone();
+        clonedI->insertBefore(ifTerm);
+        currI->moveBefore(elseTerm);
+        VMap[currI] = clonedI;
+    }
+    // Update the operands for the cloned instructions
+    for (auto II = ifHoistBB->begin(), IE = ifHoistBB->end(); II != IE; ++II)
+    {
+        for (unsigned op = 0, E = II->getNumOperands(); op != E; ++op)
+        {
+            Value* Op = II->getOperand(op);
+            ValueToValueMapTy::iterator It = VMap.find(Op);
+            if (It != VMap.end())
+                II->setOperand(op, It->second);
+        }
+    }
+
+    // Replace the minnum instruction with the known value in the if block
+    Instruction* newMinInst = dyn_cast<Instruction>(VMap[MinInst]);
+    IGC_ASSERT(newMinInst && newMinInst->getParent() == ifHoistBB);
+    newMinInst->replaceAllUsesWith(InductionPreInc);
+
+    // Update successors and users of the original BB
+    Header->replaceSuccessorsPhiUsesWith(endHoistBB);
+    for (auto &II : *elseHoistBB)
+    {
+        // For users of the original instruction outside of the HeaderBB, we need a new PHINode
+        // to pick between the if.hoist and else.hoist blocks
+        if (II.isUsedOutsideOfBlock(elseHoistBB) &&
+            VMap.find(&II) != VMap.end())
+        {
+            PHINode* PN = PHINode::Create(II.getType(), 2, "", endHoistBB->getTerminator());
+            II.replaceUsesOutsideBlock(PN, elseHoistBB);
+            PN->addIncoming(VMap[&II], ifHoistBB);
+            PN->addIncoming(&II, elseHoistBB);
+        }
+    }
+
+    return true;
 }
 
 namespace IGC
