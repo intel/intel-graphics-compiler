@@ -7,8 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ELF Layout
-The version information of ZEBIN can be found in version.md. ELF changes should
-be documented properly in version.md.
 
 | Contents | Description | Section Type |
 | ------ | ------ |  ------ |
@@ -104,16 +102,9 @@ recognize both the owner name (INTELGT) and the type of an ELF note entry to
 interpret its description.
 ~~~
 enum {
-    // The description is the Product family stored in a 4-byte ELF word
-    NT_INTELGT_PRODUCT_FAMILY = 1,
-    // The description is the GFXCORE family stored in a 4-byte ELF word
-    NT_INTELGT_GFXCORE_FAMILY = 2,
-    // The description is the TargetMetadata structure defined below
-    NT_INTELGT_TARGET_METADATA = 3,
-    // The description represents the ZEBIN ELF file version that reflects the
-    // attribute and section changes. The content is stored in a nul-terminated
-    // string and the format is "<Major number>.<Minor number>".
-    NT_INTELGT_ZEBIN_VERSION = 4,
+    NT_INTELGT_PRODUCT_FAMILY = 1, // the description is the Product family stored in a 4-byte ELF word
+    NT_INTELGT_GFXCORE_FAMILY = 2, // the description is the GFXCORE family stored in a 4-byte ELF word
+    NT_INTELGT_TARGET_METADATA = 3, // the description is the TargetMetadata structure defined below
 };
 ~~~
 
