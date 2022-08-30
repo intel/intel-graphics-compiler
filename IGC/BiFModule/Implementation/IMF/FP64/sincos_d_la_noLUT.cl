@@ -341,7 +341,7 @@ inline int __internal_dsincos_nolut_cout (double *a, double *psin, double *pcos)
     goto SINCOS_MAIN_PATH;
 }
 
-void __ocl_svml_sincos_noLUT (double a,  double *b, __global double *c)
+void __ocl_svml_sincos_noLUT (double a,  double *b, double *c)
 {
     double va1;
     double vr1;

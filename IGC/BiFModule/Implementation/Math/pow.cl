@@ -10,10 +10,12 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 #include "../IMF/FP32/pow_s_la.cl"
+#include "../IMF/FP32/pow_s_la_noLUT.cl"
 #include "../IMF/FP32/pow_s_prev.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/pow_d_la.cl"
+    #include "../IMF/FP64/pow_d_la_noLUT.cl"
 #endif // defined(cl_khr_fp64)
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f32_f32, )( float x, float y )
@@ -57,6 +59,10 @@ INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f32_f32, )( float x, flo
 
         return result;
     }
+    else if (__UseHighAccuracyMath)
+    {
+        return __ocl_svml_powf_noLUT(x, y);
+    }
     else
     {
         bool precisionWA =
@@ -78,7 +84,13 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pow, float, float, float, f32
 
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(pow, _f64_f64, )( double x, double y )
 {
-    return __ocl_svml_pow(x, y);
+    double result;
+    if (__UseHighAccuracyMath) {
+        result = __ocl_svml_pow_noLUT(x, y);
+    } else {
+        result = __ocl_svml_pow(x, y);
+    }
+    return result;
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( pow, double, double, double, f64, f64 )
