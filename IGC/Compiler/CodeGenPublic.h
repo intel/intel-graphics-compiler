@@ -1764,7 +1764,6 @@ namespace IGC
             bool UseBindlessMode = false;
             bool UseBindlessPrintf = false;
             bool UseBindlessLegacyMode = true;
-            bool EnableZEBinary = false;
             bool ExcludeIRFromZEBinary = false;
             bool EmitZeBinVISASections = false;
             bool NoSpill = false;

@@ -293,9 +293,6 @@ static void CommonOCLBasedPasses(
     CompilerOpts.IsLibraryCompilation =
         pContext->m_Options.IsLibraryCompilation;
 
-    CompilerOpts.EnableZEBinary =
-        pContext->m_InternalOptions.EnableZEBinary;
-
     CompilerOpts.ExcludeIRFromZEBinary =
         pContext->m_InternalOptions.ExcludeIRFromZEBinary;
 

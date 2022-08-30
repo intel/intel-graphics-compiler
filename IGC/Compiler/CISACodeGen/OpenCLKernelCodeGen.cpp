@@ -2075,25 +2075,14 @@ namespace IGC
                 // If an arg is unused, don't generate patch token for it.
                 CreateAnnotations(&arg, offsetInPayload);
 
-                if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
-                    m_Context->getCompilerOption().EnableZEBinary) {
+                if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
                     // FIXME: once we transit to zebin completely, we don't need to do
                     // CreateAnnotations above. Only CreateZEPayloadArguments is required
-
-                    // During the transition, we disable ZEBinary if there are unsupported
-                    // arguments
-                    bool success = CreateZEPayloadArguments(&arg, offsetInPayload);
-
-                    if (!success) {
-                        // assertion tests if we force to EnableZEBinary but encounter unsupported features
-                        IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary),
-                            "ZEBin: unsupported KernelArg Type");
-
-                        // fall back to patch-token if ZEBinary is enabled by CodeGenContext::CompOptions
-                        if (m_Context->getCompilerOption().EnableZEBinary)
-                            m_Context->getCompilerOption().EnableZEBinary = false;
-                    }
+                    bool Res = CreateZEPayloadArguments(&arg, offsetInPayload);
+                    IGC_ASSERT_MESSAGE(Res, "ZEBin: unsupported KernelArg Type");
+                    (void) Res;
                 }
+
                 if (arg.needsAllocation())
                 {
                     for (int i = 0; i < numAllocInstances; ++i)
@@ -2147,9 +2136,6 @@ namespace IGC
         bool hasInlineSampler = m_kernelInfo.m_HasInlineVmeSamplers || !m_kernelInfo.m_samplerInput.empty();
         IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary) || !hasInlineSampler,
             "ZEBin: Inline sampler unsupported");
-        // fall back to patch-token if ZEBinary is enabled by CodeGenContext::CompOptions
-        if (m_Context->getCompilerOption().EnableZEBinary && hasInlineSampler)
-            m_Context->getCompilerOption().EnableZEBinary = false;
 
         // Handle kernel reflection
         CreateKernelArgInfo();
@@ -2441,8 +2427,7 @@ namespace IGC
 
             ctx->m_programInfo.m_initConstantAnnotation = std::move(initConstant);
 
-            if (IGC_IS_FLAG_ENABLED(EnableZEBinary) ||
-                modMD->compOpt.EnableZEBinary)
+            if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
             {
                 // String literals
                 auto ipsbStringMDHandle = modMD->inlineConstantBuffers[1];
@@ -2726,8 +2711,7 @@ namespace IGC
         if (ctx->m_retryManager.IsFirstTry())
         {
             CollectProgramInfo(ctx);
-            if (IGC_IS_FLAG_DISABLED(EnableZEBinary) &&
-                !ctx->getCompilerOption().EnableZEBinary)
+            if (IGC_IS_FLAG_DISABLED(EnableZEBinary))
             {
                 ctx->m_programOutput.CreateProgramScopePatchStream(ctx->m_programInfo);
             }

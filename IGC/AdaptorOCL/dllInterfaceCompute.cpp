@@ -1500,8 +1500,7 @@ bool TranslateBuildSPMD(
     oclContext.metrics.FinalizeStats();
     oclContext.metrics.OutputMetrics();
 
-    if (!IGC_IS_FLAG_ENABLED(EnableZEBinary) &&
-        !oclContext.getModuleMetaData()->compOpt.EnableZEBinary)
+    if (!IGC_IS_FLAG_ENABLED(EnableZEBinary))
     {
         Util::BinaryStream programBinary;
         // Patch token based binary format

@@ -445,7 +445,7 @@ bool EmitPass::isSymbolTableRequired(llvm::Function* F)
         // Check has global symbols attached
         else if (!m_moduleMD->inlineProgramScopeOffsets.empty())
         {
-            bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary) || m_pCtx->getCompilerOption().EnableZEBinary;
+            bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary);
             for (auto it : m_moduleMD->inlineProgramScopeOffsets)
             {
                 GlobalVariable* pGlobal = it.first;
