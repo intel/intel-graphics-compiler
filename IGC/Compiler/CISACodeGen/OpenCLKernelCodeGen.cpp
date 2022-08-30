@@ -1485,6 +1485,7 @@ namespace IGC
 
             m_kernelInfo.m_rtGlobalBufferAnnotation = std::move(rtGlobalBuffer);
         }
+        break;
 
         case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
         {
