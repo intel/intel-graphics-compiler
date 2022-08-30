@@ -419,6 +419,7 @@ namespace IGC
         bool WaForceHalfPromotion                       = false;
 
         bool EnableUndefAlphaOutputAsRed                = true;
+        bool WaEnableALTModeVisaWA                      = false;
     };
 
     enum class ThreadIDLayout

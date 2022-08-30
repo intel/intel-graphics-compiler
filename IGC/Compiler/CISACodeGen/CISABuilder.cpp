@@ -4491,6 +4491,11 @@ namespace IGC
                 SaveOption(vISA_StackCallABIVer, (uint32_t)2);
         }
 
+        if (context->getModuleMetaData()->compOpt.WaEnableALTModeVisaWA)
+        {
+            SaveOption(vISA_ALTMode, true);
+        }
+
         //
         // Setting number of GRF and threads per EU is restricted to OCL only
         // Number of threads can be set by:
