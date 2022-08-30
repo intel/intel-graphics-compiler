@@ -101,8 +101,6 @@ public:
     void BinaryUnary(llvm::Instruction* inst, const  SSource source[2], const DstModifier& modifier);
     void CmpBoolOp(Pattern* cmpPattern,
         llvm::BinaryOperator* inst,
-        llvm::CmpInst::Predicate predicate,
-        const  SSource source[2],
         const SSource& bitSource,
         const DstModifier& modifier);
     void emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, llvm::CmpInst* cmp, int aluOprdNum);

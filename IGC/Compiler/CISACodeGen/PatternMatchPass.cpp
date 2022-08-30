@@ -4109,12 +4109,10 @@ namespace IGC
         {
             Pattern* cmpPattern;
             llvm::BinaryOperator* boolOp;
-            llvm::CmpInst::Predicate predicate;
-            SSource cmpSource[2];
             SSource binarySource;
             virtual void Emit(EmitPass* pass, const DstModifier& modifier)
             {
-                pass->CmpBoolOp(cmpPattern, boolOp, predicate, cmpSource, binarySource, modifier);
+                pass->CmpBoolOp(cmpPattern, boolOp, binarySource, modifier);
             }
         };
 
@@ -4130,12 +4128,8 @@ namespace IGC
                     if (I.getOperand(1 - i)->hasOneUse())
                     {
                         BoolOpPattern* pattern = new (m_allocator) BoolOpPattern();
-                        bool supportsMod = SupportsModifier(cmp);
                         pattern->cmpPattern = Match(*cmp);
                         pattern->boolOp = &I;
-                        pattern->predicate = cmp->getPredicate();
-                        pattern->cmpSource[0] = GetSource(cmp->getOperand(0), supportsMod, false);
-                        pattern->cmpSource[1] = GetSource(cmp->getOperand(1), supportsMod, false);
                         pattern->binarySource = GetSource(I.getOperand(1 - i), false, false);
                         AddPattern(pattern);
                         found = true;

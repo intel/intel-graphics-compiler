@@ -13943,8 +13943,6 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 
 void EmitPass::CmpBoolOp(Pattern* cmpPattern,
     llvm::BinaryOperator* inst,
-    llvm::CmpInst::Predicate predicate,
-    const SSource cmpSources[2],
     const SSource& bitSource,
     const DstModifier& modifier)
 {
