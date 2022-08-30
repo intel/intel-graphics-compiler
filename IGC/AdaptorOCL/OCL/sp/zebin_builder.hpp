@@ -106,7 +106,7 @@ private:
     void addMiscInfoSection(std::string sectName, const uint8_t* data, uint32_t size);
 
     /// add runtime symbols
-    void addRuntimeSymbols();
+    void addRuntimeSymbols(const IGC::SOpenCLProgramInfo& annotations);
 
     /// add note section for IGC metrics
     void addMetrics(const uint8_t* data, uint32_t size);

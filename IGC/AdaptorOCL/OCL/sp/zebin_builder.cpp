@@ -160,7 +160,7 @@ void ZEBinaryBuilder::addProgramScopeInfo(const IGC::SOpenCLProgramInfo& program
 {
     addGlobalConstants(programInfo);
     addGlobals(programInfo);
-    addRuntimeSymbols();
+    addRuntimeSymbols(programInfo);
     addProgramSymbols(programInfo);
     addProgramRelocations(programInfo);
     addGlobalHostAccessInfo(programInfo);
@@ -375,10 +375,10 @@ void ZEBinaryBuilder::addSymbol(const vISA::ZESymEntry& sym, uint8_t binding,
         getSymbolElfType(sym), targetSect);
 }
 
-void ZEBinaryBuilder::addRuntimeSymbols()
+void ZEBinaryBuilder::addRuntimeSymbols(const IGC::SOpenCLProgramInfo& annotations)
 {
-    if (IGC_IS_FLAG_ENABLED(EnableGlobalStateBuffer))
-        mBuilder.addSymbol("__INTEL_PATCH_CROSS_THREAD_OFFSET_OFF_R0", /*addr*/0, /*size*/0,
+    if (annotations.m_hasCrossThreadOffsetRelocations)
+        mBuilder.addSymbol(vISA::CROSS_THREAD_OFF_R0_RELOCATION_NAME, /*addr*/0, /*size*/0,
             llvm::ELF::STB_GLOBAL, llvm::ELF::STT_NOTYPE, /*sectionId*/-1);
 }
 

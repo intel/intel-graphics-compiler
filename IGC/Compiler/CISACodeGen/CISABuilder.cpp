@@ -6424,6 +6424,16 @@ namespace IGC
         if (ZEBinEnabled)
         {
             CreateRelocationTable(pMainKernel, pOutput->m_relocs);
+            for (const auto& reloc : pOutput->m_relocs)
+            {
+                if (reloc.r_symbol == vISA::CROSS_THREAD_OFF_R0_RELOCATION_NAME)
+                {
+                    IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
+                    auto cl_context = static_cast<OpenCLProgramContext*>(context);
+                    cl_context->m_programInfo.m_hasCrossThreadOffsetRelocations = true;
+                    break;
+                }
+            }
         }
         else
         {

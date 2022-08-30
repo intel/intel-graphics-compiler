@@ -894,6 +894,7 @@ namespace IGC
         ZEBinProgramSymbolTable m_zebinSymbolTable;
         LegacySymbolTable m_legacySymbolTable;
         ZEBinGlobalHostAccessTable m_zebinGlobalHostAccessTable;
+        bool m_hasCrossThreadOffsetRelocations = false;
     };
 
     class CBTILayout

@@ -219,3 +219,14 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   }
   zebuilder.getBinaryObject(programBinary);
 }
+
+bool CGen8CMProgram::HasCrossThreadOffsetRelocations() {
+  for (const auto &kernel : m_kernels) {
+    for (const auto &reloc : kernel->getProgramOutput().m_relocs) {
+      if (reloc.r_symbol == vISA::CROSS_THREAD_OFF_R0_RELOCATION_NAME) {
+        return true;
+      }
+    }
+  }
+  return false;
+}

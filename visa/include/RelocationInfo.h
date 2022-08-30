@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 namespace vISA {
 
 static const uint32_t MAX_SYMBOL_NAME_LENGTH = 1024;
+constexpr const char* CROSS_THREAD_OFF_R0_RELOCATION_NAME = "__INTEL_PATCH_CROSS_THREAD_OFFSET_OFF_R0";
 
 /// GenSymType - Specify the symbol's type
 enum GenSymType {

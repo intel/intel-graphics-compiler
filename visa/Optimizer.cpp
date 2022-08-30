@@ -9027,7 +9027,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             auto addInst = builder.createBinOp(G4_add, g4::SIMD1, dst, src0, src1,
                 InstOpt_WriteEnable | InstOpt_NoCompact, false);
             RelocationEntry::createRelocation(builder.kernel, *addInst,
-                1, "__INTEL_PATCH_CROSS_THREAD_OFFSET_OFF_R0", GenRelocType::R_SYM_ADDR_32);
+                1, CROSS_THREAD_OFF_R0_RELOCATION_NAME, GenRelocType::R_SYM_ADDR_32);
             instBuffer.push_back(addInst);
         };
 

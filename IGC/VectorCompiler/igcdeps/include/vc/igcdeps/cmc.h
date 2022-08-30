@@ -129,6 +129,7 @@ public:
   void GetZEBinary(llvm::raw_pwrite_stream &programBinary,
                    unsigned pointerSizeInBytes) override;
   bool HasErrors() const { return !m_ErrorLog.empty(); };
+  bool HasCrossThreadOffsetRelocations();
   llvm::Error GetError() const;
 
   // CM kernel list.
