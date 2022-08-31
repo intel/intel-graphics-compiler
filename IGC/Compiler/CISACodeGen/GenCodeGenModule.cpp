@@ -899,8 +899,9 @@ namespace {
 
         void getAnalysisUsage(AnalysisUsage& AU) const override;
         bool runOnSCC(CallGraphSCC& SCC) override;
-        void verifyIfGEPIandLoadHasTheSameAS(CallGraphSCC& SCC);
+        void verifyAddrSpaceMismatch(CallGraphSCC& SCC);
         void visitGetElementPtrInst(GetElementPtrInst& I);
+        void visitMemCpyInst(MemCpyInst& I);
 
         using llvm::Pass::doFinalization;
         bool doFinalization(CallGraph& CG) override {
@@ -953,14 +954,43 @@ void SubroutineInliner::visitGetElementPtrInst(GetElementPtrInst& GEPI)
     }
 }
 
+void SubroutineInliner::visitMemCpyInst(MemCpyInst& I)
+{
+    Value* Src = I.getRawSource();
+    Value* Dst = I.getRawDest();
+    Value* origSrc = I.getSource();
+    Value* origDst = I.getDest();
+    // Copying from alloca to alloca, but has addrspace mismatch due to incorrect bitcast
+    if (isa<AllocaInst>(origSrc) && isa<AllocaInst>(origDst))
+    {
+        if (origSrc->getType()->getPointerAddressSpace() != Src->getType()->getPointerAddressSpace())
+        {
+            Value* SrcCast = BitCastInst::Create(Instruction::BitCast, origSrc,
+                PointerType::get(Src->getType()->getPointerElementType(), origSrc->getType()->getPointerAddressSpace()),
+                "", &I);
+            I.replaceUsesOfWith(Src, SrcCast);
+        }
+        if (origDst->getType()->getPointerAddressSpace() != Dst->getType()->getPointerAddressSpace())
+        {
+            Value* DstCast = BitCastInst::Create(Instruction::BitCast, origDst,
+                PointerType::get(Dst->getType()->getPointerElementType(), origDst->getType()->getPointerAddressSpace()),
+                "", &I);
+            I.replaceUsesOfWith(Dst, DstCast);
+        }
+    }
+}
+
 // When this pass encounters a byVal argument, it creates an alloca to then copy the data from global memory to local memory.
 // When creating a new alloca, it replaces all occurrences of the argument in the function with that alloca.
-// The problem arises when the pointer operant (or more precisely its address space) is replaced in GetElementPtrInst.
-// Because from now on the resulting pointer of this instruction is in a different address space.
-// On the other hand, a load instruction that uses the returned GetElementPtrInst pointer still operates on the old address space.
-// By which we are referring to the wrong area of ​​memory. The resolution for this problem is to create new load instruction.
+// Problems arises when the pointer operant (or more precisely its address space) is replaced:
+// 1. In GetElementPtrInst, the resulting pointer of this instruction is in a different address space.
+//    On the other hand, a load instruction that uses the returned GetElementPtrInst pointer still operates on the old address space.
+//    By which we are referring to the wrong area of ​​memory. The resolution for this problem is to create new load instruction.
+// 2. In MemCpyInst, specifically generated for structs used in loops, where two allocas of the same struct type are created used
+//    to save and restore struct values. When one is copied to another, this pass incorrectly uses the addrspace of the ByVal argument
+//    instead of the local addrspace of the alloca. We fix this by casting the src and dst of the memcpy to the correct addrspace.
 // This is WA for a bug in LLVM 11.
-void SubroutineInliner::verifyIfGEPIandLoadHasTheSameAS(CallGraphSCC& SCC)
+void SubroutineInliner::verifyAddrSpaceMismatch(CallGraphSCC& SCC)
 {
     for (CallGraphNode* Node : SCC)
     {
@@ -973,7 +1003,7 @@ bool SubroutineInliner::runOnSCC(CallGraphSCC& SCC)
 {
     FSA = &getAnalysis<EstimateFunctionSize>();
     bool changed = LegacyInlinerBase::runOnSCC(SCC);
-    if (changed) verifyIfGEPIandLoadHasTheSameAS(SCC);
+    if (changed) verifyAddrSpaceMismatch(SCC);
 
     return changed;
 }
