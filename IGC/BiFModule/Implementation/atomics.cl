@@ -1315,11 +1315,11 @@ long SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicSMin, _p4i64_i32_i32_i64, )( __gener
     __builtin_assume((__local long*)Pointer != 0);
     if(SPIRV_BUILTIN(GenericCastToPtrExplicit, _p3i8_p4i8_i32, _ToLocal)(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
     {
-        return SPIRV_BUILTIN(AtomicSMin, _p3i64_i32_i32_i64, )((__local int*)Pointer, Scope, Semantics, Value );
+        return SPIRV_BUILTIN(AtomicSMin, _p3i64_i32_i32_i64, )((__local long*)Pointer, Scope, Semantics, Value );
     }
     else
     {
-        return SPIRV_BUILTIN(AtomicSMin, _p1i64_i32_i32_i64, )((__global int*)Pointer, Scope, Semantics, Value );
+        return SPIRV_BUILTIN(AtomicSMin, _p1i64_i32_i32_i64, )((__global long*)Pointer, Scope, Semantics, Value );
     }
 }
 
