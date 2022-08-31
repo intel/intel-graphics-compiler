@@ -793,6 +793,8 @@ std::vector<Value*> RayTracingIntrinsicLoweringPass::calcDispatchRayIndex(
             if (m_CGCtx->canEfficientTile())
             {
                 auto* Y1D = builder.createTileYOffset(TileXDim1D, 0, 0);
+                if (TileYDim1D == 1)
+                    Y1D = ConstantInt::get(Y1D->getType(), 0);
                 auto* Y2D = builder.createTileYOffset(
                     TileXDim2D, SubtileXDim2D, SubtileYDim2D);
                 LocalID = builder.CreateSelect(Do1D, Y1D, Y2D);
