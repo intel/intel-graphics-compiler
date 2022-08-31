@@ -1589,19 +1589,12 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
             switch (I.getOpcode())
             {
             case Instruction::FSub:
-                if (op0 == op1)
+                // X - X => 0
+                // X - 0 = > X
+                if ((op0 == op1) ||
+                    (fp1 && fp1->isZero()))
                 {
-                    // X - X => 0
-                    I.replaceAllUsesWith(ConstantFP::get(opType, 0));
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
-                }
-                else if (fp1 && fp1->isZero())
-                {
-                    // X - 0 => X
-                    I.replaceAllUsesWith(op0);
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
+                    return;
                 }
                 else if (fp0 && fp0->isZero())
                 {
@@ -1632,19 +1625,12 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 break;
 
             case Instruction::FAdd:
-                if (fp0 && fp0->isZero())
+                // 0 + X => X
+                // X + 0 => X
+                if ((fp0 && fp0->isZero()) ||
+                    (fp1 && fp1->isZero()))
                 {
-                    // 0 + X => X
-                    I.replaceAllUsesWith(op1);
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
-                }
-                else if (fp1 && fp1->isZero())
-                {
-                    // X + 0 => X
-                    I.replaceAllUsesWith(op0);
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
+                    return;
                 }
                 else
                 {
@@ -1705,43 +1691,20 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 break;
 
             case Instruction::FMul:
-                if ((fp0 && fp0->isZero()) ||
-                    (fp1 && fp1->isZero()))
-                {
-                    // X * 0 => 0
-                    // 0 * X => 0
-                    I.replaceAllUsesWith(ConstantFP::get(opType, 0));
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
-                }
-                else if (fp0 && fp0->isExactlyValue(1.0))
-                {
-                    // 1 * X => X
-                    I.replaceAllUsesWith(op1);
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
-                }
-                else if (fp1 && fp1->isExactlyValue(1.0))
-                {
-                    // X * 1 => X
-                    I.replaceAllUsesWith(op0);
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
-                }
+                // X * 0 => 0
+                // 0 * X => 0
+                // 1 * X => X
+                // X * 1 => X
                 // X * -1 => -X
-                else if (fp1 && fp1->isExactlyValue(-1.0))
+                // -1 * X => -X
+                if ((fp0 && fp0->isZero()) ||
+                    (fp1 && fp1->isZero()) ||
+                    (fp0 && fp0->isExactlyValue(1.0)) ||
+                    (fp1 && fp1->isExactlyValue(1.0)) ||
+                    (fp1 && fp1->isExactlyValue(-1.0)) ||
+                    (fp0 && fp0->isExactlyValue(-1.0)))
                 {
-                    I.replaceAllUsesWith(
-                        copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op0, "", &I), &I));
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
-                }
-                else if (fp0 && fp0->isExactlyValue(-1.0))
-                {
-                    I.replaceAllUsesWith(
-                        copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op1, "", &I), &I));
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
+                    return;
                 }
                 else
                 {
@@ -1779,17 +1742,15 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator& I)
                 break;
 
             case Instruction::FDiv:
-                if (fp0 && fp0->isZero())
+                // X / 1 => X
+                if (fp1 && fp1->isExactlyValue(1.0))
+                {
+                    return;
+                }
+                else if (fp0 && fp0->isZero())
                 {
                     // 0 / X => 0
                     I.replaceAllUsesWith(ConstantFP::get(opType, 0));
-                    ++Stat_FloatRemoved;
-                    m_isChanged = true;
-                }
-                else if (fp1 && fp1->isExactlyValue(1.0))
-                {
-                    // X / 1 => X
-                    I.replaceAllUsesWith(op0);
                     ++Stat_FloatRemoved;
                     m_isChanged = true;
                 }

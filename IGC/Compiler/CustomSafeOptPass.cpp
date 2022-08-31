@@ -111,6 +111,7 @@ CustomSafeOptPass::CustomSafeOptPass() : FunctionPass(ID)
 #define DEBUG_TYPE "CustomSafeOptPass"
 
 STATISTIC(Stat_DiscardRemoved, "Number of insts removed in Discard Opt");
+STATISTIC(Stat_ConstFloatRemoved, "Number of insts removed in Const Float Opt");
 
 bool CustomSafeOptPass::runOnFunction(Function& F)
 {
@@ -1791,9 +1792,110 @@ void CustomSafeOptPass::removeHftoFCast(Instruction& I)
     }
 }
 
+void CustomSafeOptPass::matchConstFPOp(BinaryOperator& I)
+{
+    if (I.use_empty())
+    {
+        return;
+    }
+
+    Value* op0 = I.getOperand(0);
+    Value* op1 = I.getOperand(1);
+    if (!op0->getType()->isFPOrFPVectorTy() ||
+        !op1->getType()->isFPOrFPVectorTy())
+        return;
+
+    ConstantFP* fp0 = dyn_cast<ConstantFP>(op0);
+    ConstantFP* fp1 = dyn_cast<ConstantFP>(op1);
+    Type* opType = op0->getType();
+
+    switch (I.getOpcode())
+    {
+    case Instruction::FSub:
+        if (op0 == op1)
+        {
+            // X - X => 0
+            I.replaceAllUsesWith(ConstantFP::get(opType, 0));
+            ++Stat_ConstFloatRemoved;
+        }
+        else if (fp1 && fp1->isZero())
+        {
+            // X - 0 => X
+            I.replaceAllUsesWith(op0);
+            ++Stat_ConstFloatRemoved;
+        }
+        break;
+
+    case Instruction::FAdd:
+        if (fp0 && fp0->isZero())
+        {
+            // 0 + X => X
+            I.replaceAllUsesWith(op1);
+            ++Stat_ConstFloatRemoved;
+        }
+        else if (fp1 && fp1->isZero())
+        {
+            // X + 0 => X
+            I.replaceAllUsesWith(op0);
+            ++Stat_ConstFloatRemoved;
+        }
+        break;
+
+    case Instruction::FMul:
+        if ((fp0 && fp0->isZero()) ||
+            (fp1 && fp1->isZero()))
+        {
+            // X * 0 => 0
+            // 0 * X => 0
+            I.replaceAllUsesWith(ConstantFP::get(opType, 0));
+            ++Stat_ConstFloatRemoved;
+        }
+        else if (fp0 && fp0->isExactlyValue(1.0))
+        {
+            // 1 * X => X
+            I.replaceAllUsesWith(op1);
+            ++Stat_ConstFloatRemoved;
+        }
+        else if (fp1 && fp1->isExactlyValue(1.0))
+        {
+            // X * 1 => X
+            I.replaceAllUsesWith(op0);
+            ++Stat_ConstFloatRemoved;
+        }
+        else if (fp1 && fp1->isExactlyValue(-1.0))
+        {
+            // X * -1 => -X
+            I.replaceAllUsesWith(
+                copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op0, "", &I), &I));
+            ++Stat_ConstFloatRemoved;
+        }
+        else if (fp0 && fp0->isExactlyValue(-1.0))
+        {
+            // -1 * X => -X
+            I.replaceAllUsesWith(
+                copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op1, "", &I), &I));
+            ++Stat_ConstFloatRemoved;
+        }
+        break;
+
+    case Instruction::FDiv:
+        if (fp1 && fp1->isExactlyValue(1.0))
+        {
+            // X / 1 => X
+            I.replaceAllUsesWith(op0);
+            ++Stat_ConstFloatRemoved;
+        }
+        break;
+
+    default:
+        break;
+    }
+}
+
 void CustomSafeOptPass::visitBinaryOperator(BinaryOperator& I)
 {
     matchDp4a(I);
+    matchConstFPOp(I);
 
     CodeGenContext* pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 

@@ -6,11 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-custom-unsafe-opt-pass -S < %s | FileCheck %s
+; RUN: igc_opt -igc-custom-safe-opt -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CustomUnsafeOptPass
 ; ------------------------------------------------
-; This test checks that CustomUnsafeOptPass pass follows
+; This test checks that CustomSafeOptPass pass follows
 ; 'How to Update Debug Info' llvm guideline.
 ;
 ; Debug MD for this test was created with debugify pass.

@@ -92,6 +92,7 @@ namespace IGC
 
         void matchDp4a(llvm::BinaryOperator& I);
         void matchMixOperation(llvm::BinaryOperator& I);
+        void matchConstFPOp(llvm::BinaryOperator& I);
         void hoistDp3(llvm::BinaryOperator& I);
 
         template <typename MaskType> void matchReverse(llvm::BinaryOperator& I);
@@ -100,6 +101,18 @@ namespace IGC
 
         bool lower64bto32b(llvm::BinaryOperator& AndInst);
         llvm::Value* analyzeTreeForTrunc64bto32b(const llvm::Use& OperandUse, llvm::SmallVector<llvm::BinaryOperator*, 8>& OpsToDelete);
+        inline llvm::BinaryOperator* copyIRFlags(
+            llvm::BinaryOperator* newOp,
+            llvm::Value* oldOp)
+        {
+            newOp->copyIRFlags(oldOp);
+
+            llvm::DebugLoc dbg = ((llvm::Instruction*)oldOp)->getDebugLoc();
+            newOp->setDebugLoc(dbg);
+
+            return newOp;
+        }
+
     };
 
 #if LLVM_VERSION_MAJOR >= 7

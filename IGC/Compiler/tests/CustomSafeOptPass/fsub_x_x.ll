@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-custom-unsafe-opt-pass -S %s -o %t.ll
+; RUN: igc_opt -igc-custom-safe-opt -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define void @sample_test(float %x, float %y, float addrspace(1)* nocapture %res) nounwind {
