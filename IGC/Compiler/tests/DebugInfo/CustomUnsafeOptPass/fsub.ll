@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-custom-safe-opt -S < %s | FileCheck %s
+; RUN: igc_opt -igc-custom-unsafe-opt-pass -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CustomUnsafeOptPass
 ; ------------------------------------------------
@@ -21,20 +21,19 @@
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
 ; CHECK: void @llvm.dbg.value(metadata float 0.0{{.*}}, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float %a, metadata [[TEMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TEMP_LOC:![0-9]*]]
+; CHECK: void @llvm.dbg.value(metadata float %a, metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
 ; CHECK: store float %a,{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
-; CHECK: [[VAL3_V:%[A-z0-9]*]] = fmul float [[VAL1_V]],{{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK: [[VAL4_V:%[A-z0-9]*]] = fsub float 0{{.*}}, !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK: store float [[VAL4_V]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
+; CHECK: [[TEMP_V:%[A-z0-9]*]] = fsub float 0{{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK: [[VAL5_V:%[A-z0-9]*]] = fmul float [[TEMP_V]],{{.*}}, !dbg [[VAL5_LOC]]
+; CHECK: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression({{.*}}{{DW_OP_neg|(DW_OP_constu, 0, DW_OP_swap, DW_OP_minus)}}{{.*}})), !dbg [[VAL4_LOC:![0-9]*]]
+; CHECK: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK: store float [[VAL5_V]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
 ; this value is unsalvageble
 ; CHECK: void @llvm.dbg.value({{.*}}
-; CHECK: [[VAL6_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL6_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL6_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
-; CHECK: store float [[VAL6_V]]{{.*}}, !dbg [[STORE3_LOC:![0-9]*]]
-; CHECK: [[VAL8_V:%[A-z0-9]*]] = fsub float {{.*}}, !dbg [[VAL8_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL8_V]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC:![0-9]*]]
+; CHECK: [[VAL7_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
+; CHECK: store float [[VAL7_V]]{{.*}}, !dbg [[STORE3_LOC:![0-9]*]]
+; CHECK: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL10_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL10_LOC:![0-9]*]]
 
 define spir_kernel void @test_custom(float %a, float addrspace(65549)* %b) !dbg !9 {
 entry:
@@ -69,18 +68,19 @@ entry:
 ; CHECK-DAG: [[VAL1_LOC]] = !DILocation(line: 1, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[VAL2_MD]] = !DILocalVariable(name: "2", scope: [[SCOPE]], file: [[FILE]], line: 2
 ; CHECK-DAG: [[VAL2_LOC]] = !DILocation(line: 2, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[TEMP_MD]] = !DILocalVariable(name: "3", scope: [[SCOPE]], file: [[FILE]], line: 3
-; CHECK-DAG: [[TEMP_LOC]] = !DILocation(line: 3, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[VAL3_MD]] = !DILocalVariable(name: "4", scope: [[SCOPE]], file: [[FILE]], line: 5
-; CHECK-DAG: [[VAL3_LOC]] = !DILocation(line: 5, column: 1, scope: [[SCOPE]])
+; CHECK-DAG: [[VAL3_MD]] = !DILocalVariable(name: "3", scope: [[SCOPE]], file: [[FILE]], line: 3
+; CHECK-DAG: [[VAL3_LOC]] = !DILocation(line: 3, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[STORE1_LOC]] = !DILocation(line: 4, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[VAL4_MD]] = !DILocalVariable(name: "5", scope: [[SCOPE]], file: [[FILE]], line: 6
-; CHECK-DAG: [[VAL4_LOC]] = !DILocation(line: 6, column: 1, scope: [[SCOPE]])
+; CHECK-DAG: [[VAL4_MD]] = !DILocalVariable(name: "4", scope: [[SCOPE]], file: [[FILE]], line: 5
+; CHECK-DAG: [[VAL4_LOC]] = !DILocation(line: 5, column: 1, scope: [[SCOPE]])
+; CHECK-DAG: [[VAL5_MD]] = !DILocalVariable(name: "5", scope: [[SCOPE]], file: [[FILE]], line: 6
+; CHECK-DAG: [[VAL5_LOC]] = !DILocation(line: 6, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[STORE2_LOC]] = !DILocation(line: 7, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[VAL7_MD]] = !DILocalVariable(name: "7", scope: [[SCOPE]], file: [[FILE]], line: 9
+; CHECK-DAG: [[VAL7_LOC]] = !DILocation(line: 9, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[STORE3_LOC]] = !DILocation(line: 10, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[VAL8_MD]] = !DILocalVariable(name: "9", scope: [[SCOPE]], file: [[FILE]], line: 12
-; CHECK-DAG: [[VAL8_LOC]] = !DILocation(line: 12, column: 1, scope: [[SCOPE]])
+; CHECK-DAG: [[VAL10_MD]] = !DILocalVariable(name: "9", scope: [[SCOPE]], file: [[FILE]], line: 12
+; CHECK-DAG: [[VAL10_LOC]] = !DILocation(line: 12, column: 1, scope: [[SCOPE]])
 
 
 ; Function Attrs: nounwind readnone speculatable
