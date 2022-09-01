@@ -1290,9 +1290,23 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
         else
         {
             if (bb->front()->isLabel())
-                bb->insertAfter(bb->begin(), inst);
+            {
+                auto insertAfterIt = bb->begin();
+                ++insertAfterIt;
+                if (insertAfterIt != bb->end() &&
+                    (*insertAfterIt)->opcode() == G4_join)
+                {
+                    bb->insertAfter(insertAfterIt, inst);
+                }
+                else
+                    bb->insertAfter(bb->begin(), inst);
+            }
             else
+            {
+                MUST_BE_TRUE(bb->size() == 0 || bb->front()->opcode() != G4_join,
+                    "shouldnt insert copy before join");
                 bb->push_front(inst);
+            }
 
             splitData->insts[bb].insert(inst);
         }
