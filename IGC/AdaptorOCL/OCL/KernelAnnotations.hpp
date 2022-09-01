@@ -70,7 +70,6 @@ struct PointerArgumentAnnotation : KernelArgumentAnnotation
     DWORD  SecondPayloadSizeInBytes;
     bool   IsEmulationArgument;
     bool   IsBindlessAccess;
-    bool   HasStatefulAccess;
 
     static bool compare( const PointerArgumentAnnotation* a, const PointerArgumentAnnotation* b )
     {

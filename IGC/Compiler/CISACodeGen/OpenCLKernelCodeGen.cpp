@@ -640,30 +640,24 @@ namespace IGC
                 funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "const")
                 access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readonly;
 
-            ResourceAllocMD& resAllocMD = GetContext()->getModuleMetaData()->FuncMD[entry].resAllocMD;
-            IGC_ASSERT_MESSAGE(resAllocMD.argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
-            ArgAllocMD& argAlloc = resAllocMD.argAllocMDList[arg_idx];
-
-            if (argAlloc.hasStatefulAccess) {
-                // Add BTI argument if being promoted
-                // FIXME: do not set bti if the number is 0xffffffff (?)
-                SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
-                uint32_t bti_idx = getBTI(resInfo);
-                if (bti_idx != 0xffffffff) {
-                    // add BTI argument with addr_mode set to stateful
-                    // promoted arg has 0 offset and 0 size
-                    zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
-                        0, 0, arg_idx,
-                        zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
-                        (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL) ?
-                        zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
-                        zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
-                        access_type
-                    );
-                    // add the corresponding BTI table index
-                    zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
-                        bti_idx, arg_idx);
-                }
+            // Add BTI argument if being promoted
+            // FIXME: do not set bti if the number is 0xffffffff (?)
+            SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
+            uint32_t bti_idx = getBTI(resInfo);
+            if (bti_idx != 0xffffffff) {
+                // add BTI argument with addr_mode set to stateful
+                // promoted arg has 0 offset and 0 size
+                zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+                    0, 0, arg_idx,
+                    zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
+                    (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
+                      zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
+                      zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
+                    access_type
+                );
+                // add the corresponding BTI table index
+                zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
+                    bti_idx, arg_idx);
             }
             // FIXME: check if all reference are promoted, if it is, we can skip
             // creating non-bti payload arg
@@ -681,6 +675,11 @@ namespace IGC
             if (is_bti_only)
                 break;
              */
+
+            ResourceAllocMD& resAllocMD = GetContext()->getModuleMetaData()->FuncMD[entry].resAllocMD;
+            IGC_ASSERT_MESSAGE(resAllocMD.argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
+
+            ArgAllocMD& argAlloc = resAllocMD.argAllocMDList[arg_idx];
 
             zebin::PreDefinedAttrGetter::ArgAddrMode addr_mode =
                 zebin::PreDefinedAttrGetter::ArgAddrMode::stateless;
@@ -1124,7 +1123,6 @@ namespace IGC
 
                 m_kernelInfo.m_argOffsetMap[argNo] = ptrAnnotation;
 
-                ptrAnnotation->HasStatefulAccess = argAlloc->hasStatefulAccess;
                 ptrAnnotation->AddressSpace = addressSpace;
                 ptrAnnotation->ArgumentNumber = argNo;
                 ptrAnnotation->BindingTableIndex = getBTI(resInfo);

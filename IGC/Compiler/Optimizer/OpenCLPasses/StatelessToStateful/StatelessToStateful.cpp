@@ -182,20 +182,6 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
     visit(F);
 
     finalizeArgInitialValue(&F);
-
-    if (!m_promotedKernelArgs.empty())
-    {
-        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        FunctionMetaData* funcMD = &modMD->FuncMD[&F];
-        ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-        IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
-        for (auto promotedArg : m_promotedKernelArgs)
-        {
-            ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[promotedArg->getAssociatedArgNo()];
-            argAlloc->hasStatefulAccess = true;
-        }
-    }
-
     delete m_pImplicitArgs;
     delete m_pKernelArgs;
     m_promotedKernelArgs.clear();

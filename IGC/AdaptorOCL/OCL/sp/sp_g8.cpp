@@ -685,20 +685,17 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
 
     for (const auto& annotation: annotations.m_pointerArgument)
     {
-        if (annotation->HasStatefulAccess)
-        {
-            unsigned int bti = annotations.m_argIndexMap.at(annotation->ArgumentNumber);
-            context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
+        unsigned int bti = annotations.m_argIndexMap.at(annotation->ArgumentNumber);
+        context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
 
-            SurfaceStates.insert(
-                std::make_pair(
-                    bti,
-                    SurfaceState(
-                        SURFACE_BUFFER,
-                        SURFACE_FORMAT_UNKNOWN,
-                        0,
-                        false)));
-        }
+        SurfaceStates.insert(
+            std::make_pair(
+                bti,
+                SurfaceState(
+                    SURFACE_BUFFER,
+                    SURFACE_FORMAT_UNKNOWN,
+                    0,
+                    false)));
     }
 
     // Images
@@ -1559,10 +1556,11 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                             dataParameterStreamSize,
                             ptrArg->BindingTableIndex + ptrArg->SecondPayloadSizeInBytes
                             );
+
                     }
                     else
                     {
-                        patch.SurfaceStateHeapOffset = ptrArg->HasStatefulAccess ? context.Surface.SurfaceOffset[bti] : UINT32_MAX;
+                       patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
                     }
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;

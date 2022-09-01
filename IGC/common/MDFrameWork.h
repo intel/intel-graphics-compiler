@@ -117,7 +117,6 @@ namespace IGC
         int type = -1;
         int extensionType = -1;
         int indexType = -1;
-        int hasStatefulAccess = false;
     };
 
     struct InlineSamplersMD
