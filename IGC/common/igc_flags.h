@@ -509,8 +509,7 @@ DECLARE_IGC_REGKEY(bool, LscForceSpillNonStackcall, false, "Non-stack call kerne
 DECLARE_IGC_REGKEY(bool, EnableQWAddSupport, true, "Enable QW Add support", true)
 DECLARE_IGC_REGKEY(bool, ForceQWAddSupport, false, "Force enabling the QW Add support along with ForcePartialInt64", true)
 DECLARE_IGC_REGKEY(bool, ForcePartialInt64, false, "Force hasPartialInt64Support() regardless of the stepping", true)
-
-DECLARE_IGC_REGKEY(bool, EnableGlobalStateBuffer,              false, "This key allows stack calls to read implicit args from side buffer. It also emits a relocatable add in VISA.", true)
+DECLARE_IGC_REGKEY(bool, EnableGlobalStateBuffer,       true, "This key allows stack calls to read implicit args from side buffer. It also emits a relocatable add in VISA.", true)
 DECLARE_IGC_REGKEY(bool, LateInlineUnmaskedFunc,        false, "Postpone inlining of Unmasked functions till end of CG to avoid code movement inside/outside of unmasked region", false)
 DECLARE_IGC_REGKEY(bool, ForceFormatConversionDG2Plus,  false,
     "Forces SW image format conversion for R10G10B10A2_UNORM, R11G11B10_FLOAT, R10G10B10A2_UINT image formats on DG2+ platforms", true)
