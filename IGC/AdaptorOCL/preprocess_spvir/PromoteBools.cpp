@@ -250,10 +250,6 @@ void PromoteBools::cleanUp(Module& module)
         {
             renameAndClean(globalVariable, it.second);
         }
-        else if (auto function = dyn_cast<Function>(it.first))
-        {
-            renameAndClean(function, it.second);
-        }
         else if (auto alloca = dyn_cast<AllocaInst>(it.first))
         {
             renameAndClean(alloca, it.second);
@@ -290,6 +286,15 @@ void PromoteBools::cleanUp(Module& module)
     for (auto& trunc : deadTruncs)
     {
         trunc->eraseFromParent();
+    }
+
+    // Remove old version of functions
+    for (auto& it : promotedValuesCache)
+    {
+        if (auto function = dyn_cast<Function>(it.first))
+        {
+            renameAndClean(function, it.second);
+        }
     }
 }
 
