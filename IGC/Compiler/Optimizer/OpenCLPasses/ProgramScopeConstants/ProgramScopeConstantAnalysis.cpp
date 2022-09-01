@@ -57,18 +57,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
 
     SmallVector<GlobalVariable*, 32> zeroInitializedGlobals;
 
-    auto getOrAllocateGlobalBuffer = [&]{
-        if (!hasInlineGlobalBuffer)
-        {
-            InlineProgramScopeBuffer ilpsb;
-            ilpsb.alignment = 0;
-            ilpsb.allocSize = 0;
-            m_pModuleMd->inlineGlobalBuffers.push_back(ilpsb);
-            hasInlineGlobalBuffer = true;
-        }
-        return &m_pModuleMd->inlineGlobalBuffers.back().Buffer;
-    };
-
     for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I)
     {
         GlobalVariable* globalVar = &(*I);
@@ -101,19 +89,25 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             continue;
         }
 
-        // Handle external symbols without initializers.
         if (!globalVar->hasInitializer())
         {
-            // Include the variable in 'inlineProgramScopeOffsets'. otherwise
-            // code gen will not emit relocation.
-            inlineProgramScopeOffsets[globalVar] = -1;
+            Value* inst = nullptr;
+            for (auto u : globalVar->users())
+            {
+                if (dyn_cast_or_null<Instruction>(u))
+                {
+                    inst = u;
+                }
+            }
+            std::string ErrorMsg = "Global constant without initializer!";
+            Ctx->EmitError(ErrorMsg.c_str(), inst);
             continue;
         }
 
         // The only way to get a null initializer is via an external variable.
-        // Linking has already occurred; everything should be resolved or
-        // handled before this point.
+        // Linking has already occurred; everything should be resolved.
         Constant* initializer = globalVar->getInitializer();
+        IGC_ASSERT_MESSAGE(initializer, "Constant must be initialized");
         if (!initializer)
         {
             continue;
@@ -133,7 +127,15 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         DataVector* inlineProgramScopeBuffer = nullptr;
         if (AS == ADDRESS_SPACE_GLOBAL)
         {
-            inlineProgramScopeBuffer = getOrAllocateGlobalBuffer();
+            if (!hasInlineGlobalBuffer)
+            {
+                InlineProgramScopeBuffer ilpsb;
+                ilpsb.alignment = 0;
+                ilpsb.allocSize = 0;
+                m_pModuleMd->inlineGlobalBuffers.push_back(ilpsb);
+                hasInlineGlobalBuffer = true;
+            }
+            inlineProgramScopeBuffer = &m_pModuleMd->inlineGlobalBuffers.back().Buffer;
         }
         else
         {

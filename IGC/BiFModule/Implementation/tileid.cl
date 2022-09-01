@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-extern int *__SubDeviceID;
+__constant int *__SubDeviceID;
 __constant int __MaxHWThreadIDPerSubDevice = 1;
 
 
