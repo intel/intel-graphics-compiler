@@ -120,6 +120,7 @@ G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl, uint16_t num
     return sp;
 }
 
+
 //
 // generate a reg to reg mov inst for addr/flag spill
 // mov  dst(dRegOff,dSubRegOff)<1>  src(sRegOff,sSubRegOff)<nRegs;nRegs,1>
@@ -323,7 +324,8 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
         // original src region  V100_uw(0,0)<0;1,0>:uw
         // new src region SP_uw(0,0)<0;1,0>:uw
         G4_SrcRegRegion* ss = src->asSrcRegRegion();
-        G4_Declare* spDcl = ss->getBase()->asRegVar()->getDeclare()->getSpilledDeclare();
+        G4_Declare* srcDcl = ss->getBase()->asRegVar()->getDeclare();
+        G4_Declare* spDcl = srcDcl->getSpilledDeclare();
         if (ss->getRegAccess() == Direct)
         {
             G4_SrcRegRegion* s;
