@@ -9475,6 +9475,29 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
                 inst->setDest(builder.createDstRegRegion(tmpDstDcl, 1));
             }
         }
+
+        // For src2,register regioning patterns where register data bit location of the LSB of
+        // the channels are changed between source and destination are not supported except for
+        // broadcast of a scalar. The src2 regioning should have been conformed before this function
+        // for ternary instructions like mad, add3, etc. But here to resolve the byte XBar restriction,
+        // the dst region has been changed. So we need to fix src2 accordingly.
+        //
+        // For example, before fixByteXBarRestriction the src region is legal:
+        //    add3 (8)   V39(0,0)<1>:w  V36(0,0)<0;0>:w  V37(0,0)<4;0>:w  TV8(0,0)<1;0>:w
+        // After fixing Byte XBar restriction, src2 region pattern is not the same as dst any more:
+        //    add3 (8)   TV10(0,0)<2>:w  V36(0,0)<0;0>:w  V37(0,0)<4;0>:w  TV8(0,0)<1;0>:w
+        //    mov (8)    V39(0,0)<1>:w  TV10(0,0)<2;1,0>:w
+        // So need to fix the src2 region here to make it aligned with dst:
+        //    mov (8)    TV11(0,0)<1>:d  TV8(0,0)<1;1,0>:w
+        //    add3 (8)   TV10(0,0)<2>:w  V36(0,0)<0;0>:w  V37(0,0)<4;0>:w  TV8(0,0)<1;0>:d
+        //    mov (8)    V39(0,0)<1>:w  TV10(0,0)<2;1,0>:w
+        if (inst->getNumSrc() == 3 &&
+            builder.noSrc2Regioning() &&
+            inst->getSrc(2)->isSrcRegRegion() &&
+            !isGoodAlign1TernarySrc(inst, 2, false))
+        {
+            fixSrc2(it, bb, false);
+        }
     }
 }
 
