@@ -1394,6 +1394,7 @@ void LinearScanRA::setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcId
             if (lr->isGRFRegAssigned() && dcl->getRegVar()->getPhyReg()->isGreg())
             {
                 lr->setFirstRef(nullptr, 1);
+                lr->setValid(false);
                 setPreAssignedLR(lr, preAssignedLiveIntervals);
             }
             else //Not pre-asssigned, temp

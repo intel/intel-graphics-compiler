@@ -180,6 +180,7 @@ private:
     bool isActive;
     bool _isCall;
     bool _isCallSite;
+    bool valid;
 
     //std::unordered_set<unsigned int> forbiddenGRFs;
     //std::unordered_set<unsigned int> retGRFs;
@@ -203,6 +204,7 @@ public:
         isActive = false;
         _isCall = false;
         _isCallSite = false;
+        valid = true;
     }
 
     void setActiveLR(bool a) { isActive = a; }
@@ -215,6 +217,8 @@ public:
     bool isUseUnAvailableReg() { return useUnAvailableReg; }
     void setPushed(bool p) { pushed = p; }
     bool isPushedToIntervalList() { return pushed; }
+    bool isValid() { return valid; }
+    void setValid(bool v) { valid = v; }
 
     // A reference to this live range exists in bb basic block, record it
     void markIndirectRef(bool indirectAccess) { isIndirectAccess = indirectAccess; }

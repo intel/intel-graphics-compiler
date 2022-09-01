@@ -1916,7 +1916,7 @@ void updateDebugInfo(vISA::G4_Kernel& kernel, std::vector<vISA::LSLiveRange*>& l
         G4_INST* startInst = lr->getFirstRef(start);
         G4_INST* endInst = lr->getLastRef(end);
 
-        if (!start || !end)
+        if (!start || !end || !lr->isValid())
             continue;
 
         start = startInst->getCISAOff();
