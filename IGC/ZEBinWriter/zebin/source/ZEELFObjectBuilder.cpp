@@ -591,6 +591,16 @@ std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
         padToRequiredAlign();
     };
 
+    auto writeOneStrNote = [&](StringRef owner, StringRef desc, uint32_t type) {
+        m_W.write<uint32_t>(owner.size() + 1);
+        m_W.write<uint32_t>(desc.size() + 1);
+        m_W.write<uint32_t>(type);
+        m_W.OS << owner << '\0';
+        padToRequiredAlign();
+        m_W.OS << desc << '\0';
+        padToRequiredAlign();
+    };
+
     // Align the section offset to the required alignment first.
     // TODO: Handle the section alignment in a more generic place..
     padToRequiredAlign();
@@ -609,6 +619,11 @@ std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
     writeOneNote("IntelGT",
                  m_ObjBuilder.m_metadata.packed,
                  NT_INTELGT_TARGET_METADATA);
+
+    // write NT_INTELGT_ZEBIN_VERSION
+    writeOneStrNote("IntelGT",
+                    PreDefinedAttrGetter::getVersionNumber(),
+                    NT_INTELGT_ZEBIN_VERSION);
     return std::make_pair(start_off, m_W.OS.tell() - start_off);
 }
 
