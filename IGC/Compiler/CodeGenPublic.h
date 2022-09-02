@@ -649,6 +649,7 @@ namespace IGC
 
         unsigned int                        NumChannelsUsed;
         bool                                DisableMidThreadPreemption;
+        bool                                HasDPAS;
 
         DWORD m_AccessedBySampleC[4];
     };
