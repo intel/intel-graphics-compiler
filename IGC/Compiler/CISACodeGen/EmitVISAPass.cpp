@@ -10845,6 +10845,7 @@ CVariable* EmitPass::GetHalfExecutionMask()
     return eMask;
 }
 
+// Execution mask for the entire dispatch size, not for either first or second half instance.
 CVariable* EmitPass::GetExecutionMask(CVariable*& vecMaskVar)
 {
     bool isSecondHalf = m_encoder->IsSecondHalf();
@@ -10854,15 +10855,14 @@ CVariable* EmitPass::GetExecutionMask(CVariable*& vecMaskVar)
     CVariable* flag = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
 
     CVariable* dummyVar = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true, CName::NONE);
+    if (m_currShader->m_dispatchSize > SIMDMode::SIMD16)
+    {
+        // Make sure to use simd32 always.
+        m_encoder->SetSimdSize(SIMDMode::SIMD32);
+    }
     m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
     m_encoder->Push();
 
-    if (m_currShader->m_dispatchSize > SIMDMode::SIMD16 && m_currShader->m_SIMDSize != SIMDMode::SIMD32)
-    {
-        m_encoder->SetSecondHalf(true);
-        m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
-        m_encoder->Push();
-    }
     m_encoder->SetSecondHalf(isSecondHalf);
     m_encoder->SetSubSpanDestination(isSubSpanDst);
     vecMaskVar = flag;
