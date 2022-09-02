@@ -625,6 +625,12 @@ void SplitAsyncPass::compactifySpills(
     auto* M = Info.begin()->first->getParent();
     auto& C = M->getContext();
 
+    auto getDT = [](FuncInfo& FI, Function* F) {
+        if (!FI.DT)
+            FI.DT = std::make_unique<DominatorTree>(*F);
+        return FI.DT.get();
+    };
+
     RTBuilder RTB(C, *m_CGCtx);
 
     // 1. add an entry block to place the fills
@@ -693,11 +699,7 @@ void SplitAsyncPass::compactifySpills(
         }
 
         if (NeedsUpdate)
-        {
-            if (!FI.DT)
-                FI.DT = std::make_unique<DominatorTree>(*F);
-            Updater.RewriteAllUses(FI.DT.get());
-        }
+            Updater.RewriteAllUses(getDT(FI, F));
 
         for (auto& [Idx, Fills] : FI.Fills)
         {
@@ -725,8 +727,18 @@ void SplitAsyncPass::compactifySpills(
                 auto& ChildFI = Info.find(CurChild)->second;
                 for (auto& [Idx, Fills] : ChildFI.Fills)
                 {
-                    if (FI.Spills.count(Idx) != 0)
-                        continue;
+                    auto SpillI = FI.Spills.find(Idx);
+                    if (SpillI != FI.Spills.end())
+                    {
+                        auto& Spills = SpillI->second;
+                        auto* DT = getDT(FI, F);
+                        if (llvm::all_of(Spills, [=](SpillValueIntrinsic* SI) {
+                            return DT->dominates(SI, CHLI);
+                        }))
+                        {
+                            continue;
+                        }
+                    }
 
                     if (FI.Fills.count(Idx) == 0)
                     {
@@ -800,11 +812,7 @@ void SplitAsyncPass::compactifySpills(
         }
 
         if (NeedsUpdate)
-        {
-            if (!FI.DT)
-                FI.DT = std::make_unique<DominatorTree>(*F);
-            Updater.RewriteAllUses(FI.DT.get());
-        }
+            Updater.RewriteAllUses(getDT(FI, F));
 
         for (auto* CHLI : FI.ContinuationPoints)
             updateOffsets(RTB, *CHLI->getParent());
