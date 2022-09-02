@@ -967,11 +967,7 @@ void BIImport::InitializeBIFlags(Module& M)
         initializeVarWithValue("__APIRS", false);
     }
 
-    // High accuracy implementations are also more performant on newer cores,
-    // select them by default.
-    bool useHighAccuracyMathFuncs =
-                  pCtx->platform.isProductChildOf(IGFX_PVC);
-
+    bool useHighAccuracyMathFuncs = false;
     if (pCtx->type == ShaderType::OPENCL_SHADER)
     {
         OpenCLProgramContext *OCLContext = static_cast<OpenCLProgramContext*>(pCtx);
@@ -981,7 +977,7 @@ void BIImport::InitializeBIFlags(Module& M)
         float profilingTimerResolution = OCLContext->getProfilingTimerResolution();
         initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
 
-        useHighAccuracyMathFuncs = useHighAccuracyMathFuncs || OCLContext->m_InternalOptions.UseHighAccuracyMathFuncs;
+        useHighAccuracyMathFuncs = OCLContext->m_InternalOptions.UseHighAccuracyMathFuncs;
     }
 
     initializeVarWithValue("__EnableSWSrgbWrites", IGC_GET_FLAG_VALUE(cl_khr_srgb_image_writes));
