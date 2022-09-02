@@ -124,6 +124,11 @@ void PromoteBools::visitStoreInst(StoreInst& store)
 void PromoteBools::visitCallInst(CallInst& call)
 {
     auto function = call.getCalledFunction();
+    if (!function)
+    {
+        return;
+    }
+
     auto functionType = call.getFunctionType();
 
     auto promotedValue = getOrCreatePromotedValue(function);
