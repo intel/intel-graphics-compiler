@@ -106,6 +106,12 @@ namespace IGC
         // caches the active lane mask (a flag variable) for this BB
         // this is currently set only when we enable the A64 WA
         CVariable* m_activeMask = nullptr;
+        // caching of the number of active lanes under dispatch size (not 1st or 2nd instances)
+        CVariable* m_numActiveLanes;
+        void clearCaching() {
+            m_activeMask = nullptr;
+            m_numActiveLanes = nullptr;
+        }
     };
 
     class CodeGenPatternMatch : public llvm::FunctionPass, public llvm::InstVisitor<CodeGenPatternMatch>
