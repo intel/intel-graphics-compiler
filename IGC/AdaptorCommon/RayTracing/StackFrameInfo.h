@@ -68,7 +68,9 @@ private:
     void addSpillsCompacted(const llvm::Function *F);
     void addSpillsUncompacted(const llvm::Function *F);
     // Just used for shader dumping
-    void recordAllocaEntry(const llvm::AllocaInst* AI, uint32_t Size);
+    void recordAllocaEntries(
+        llvm::ArrayRef<const llvm::AllocaInst*> Allocas,
+        llvm::StructType* StructTy);
     void recordSpillUnionEntry(
         const llvm::SpillValueIntrinsic* SV,
         std::vector<StackFrameEntry> &Entries,

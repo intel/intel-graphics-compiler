@@ -145,61 +145,73 @@ void StackFrameInfo::addAllocas(const Function *F)
     auto &DL = F->getParent()->getDataLayout();
     auto& C = F->getContext();
 
-    uint64_t CurOffset = 0;
-    uint32_t CurAllocaIdx = 0;
-
     SmallVector<Type*, 4> Tys;
 
-    for (auto &I : instructions(*F))
+    auto getAlignment = [=](const AllocaInst* AI) -> unsigned {
+        unsigned Alignment = (unsigned)AI->getAlignment();
+        if (Alignment == 0)
+            Alignment = (unsigned)DL.getABITypeAlignment(AI->getAllocatedType());
+        return Alignment;
+    };
+
+    SmallVector<const AllocaInst*, 4> Allocas;
+
+    for (auto& I : instructions(*F))
     {
-        if (auto *AI = dyn_cast<AllocaInst>(&I))
+        if (auto* AI = dyn_cast<AllocaInst>(&I))
         {
             if (!RTBuilder::isNonLocalAlloca(AI))
                 continue;
 
-            uint32_t Offset = TotalAllocaSize;
-            uint32_t TypeSize =
-                (uint32_t)DL.getTypeAllocSize(AI->getAllocatedType());
-
-            if (CurOffset != Offset)
-            {
-                IGC_ASSERT_MESSAGE((CurOffset < Offset), "bad offset!");
-                // insert padding
-                uint64_t Diff = Offset - CurOffset;
-                auto* Padding = ArrayType::get(Type::getInt8Ty(C), Diff);
-                Tys.push_back(Padding);
-                CurAllocaIdx++;
-            }
-
-            Tys.push_back(AI->getAllocatedType());
-            AllocaIdxMap[AI] = CurAllocaIdx++;
-            CurOffset = Offset + TypeSize;
-
-            recordAllocaEntry(AI, TypeSize);
-
-            TotalAllocaSize += TypeSize;
+            Allocas.push_back(AI);
         }
+    }
+
+    llvm::stable_sort(Allocas,
+        [=](const AllocaInst* AI1, const AllocaInst* AI2) {
+        return getAlignment(AI1) > getAlignment(AI2);
+    });
+
+    uint32_t CurAllocaIdx = 0;
+    for (auto* AI : Allocas)
+    {
+        Tys.push_back(AI->getAllocatedType());
+        AllocaIdxMap[AI] = CurAllocaIdx++;
     }
 
     AllocaStructTy = Tys.empty() ?
         StructType::get(C, true) :
-        StructType::create(C, Tys, "IGC::Allocas", true);
+        StructType::create(C, Tys, "IGC::Allocas", false);
+
+    TotalAllocaSize = int_cast<uint32_t>(DL.getTypeAllocSize(AllocaStructTy));
+    recordAllocaEntries(Allocas, AllocaStructTy);
 }
 
-void StackFrameInfo::recordAllocaEntry(const AllocaInst* AI, uint32_t Size)
+void StackFrameInfo::recordAllocaEntries(
+    ArrayRef<const AllocaInst*> Allocas,
+    StructType* StructTy)
 {
     if (skipRecording())
         return;
 
-    StackFrameEntry Entry;
-    Entry.Name = "N/A";
-    if (AI->hasName())
-        Entry.Name = AI->getName().str();
-    Entry.Offset = TotalAllocaSize;
-    Entry.TypeRepr = getTypeRepr(AI->getAllocatedType());
-    Entry.EntryType = ENTRY_ALLOCA;
-    Entry.Size = Size;
-    AllocaEntries.push_back(Entry);
+    auto *Layout = DL.getStructLayout(StructTy);
+
+    for (uint32_t i = 0; i < Allocas.size(); i++)
+    {
+        auto* AI = Allocas[i];
+
+        StackFrameEntry Entry;
+        Entry.Name = "N/A";
+        if (AI->hasName())
+            Entry.Name = AI->getName().str();
+        Entry.Offset = int_cast<uint32_t>(Layout->getElementOffset(i));
+        Entry.TypeRepr = getTypeRepr(AI->getAllocatedType());
+        Entry.EntryType = ENTRY_ALLOCA;
+        Entry.Size =
+            int_cast<uint32_t>(DL.getTypeAllocSize(AI->getAllocatedType()));
+        AllocaEntries.push_back(Entry);
+    }
+
 }
 
 void StackFrameInfo::addFills(const Function* F)
