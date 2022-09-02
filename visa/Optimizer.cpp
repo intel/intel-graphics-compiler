@@ -9140,7 +9140,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 // payload in memory. when implicit arg buffer
                 // pointer is present, we need to shift load address
                 // of per thread payload as well.
-                emitRelocAddInst(addrSubreg);
+                emitRelocAddInst(2);
             }
 
             // (W) mad (1) r127.2 r127.2 r127.0 per_thread_size
