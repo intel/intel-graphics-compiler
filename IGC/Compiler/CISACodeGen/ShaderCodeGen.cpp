@@ -291,9 +291,6 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     if (IGC_IS_FLAG_ENABLED(ForceRPE)) {
         mpm.add(new RegisterEstimator());
     }
-    // Instruction combining may merge instruction back into unsupported intrinsics.
-    // We have to split these for codegen.
-    mpm.add(createReplaceUnsupportedIntrinsicsPass());
 
     mpm.add(createFixInvalidFuncNamePass());
 
@@ -906,6 +903,13 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         if (IGC_IS_FLAG_DISABLED(DisableRTFenceElision))
             mpm.add(createSynchronizationObjectCoalescing());
     }
+
+    // Instruction combining may merge instruction back into unsupported intrinsics.
+    // Therefore last Replace Unsupported Intrinsics Pass must be after last
+    // Instruction combining pass.
+    // Replace Unsupported Intrinsics Pass may generate new 64 bit operations.
+    // Therefore last 64bit emulation pass must be after the last Replace Unsupported Intrinsics Pass.
+    mpm.add(createReplaceUnsupportedIntrinsicsPass());
 
     // When needDPEmu is true, enable Emu64Ops as well for now until
     // DPEmu is able to get rid of all 64bit integer ops fully.
