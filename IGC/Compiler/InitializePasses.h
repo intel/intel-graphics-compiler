@@ -159,7 +159,6 @@ void initializeBindlessInlineDataPassPass(llvm::PassRegistry&);
 void initializeRayTracingConstantCoalescingPassPass(llvm::PassRegistry&);
 void initializeStackIDSchedulingPassPass(llvm::PassRegistry&);
 void initializeRayTracingFinalizePassPass(llvm::PassRegistry&);
-void initializePayloadSinkingAnalysisPassPass(llvm::PassRegistry&);
 void initializePayloadSinkingPassPass(llvm::PassRegistry&);
 void initializeDeadPayloadStoreEliminationPassPass(llvm::PassRegistry&);
 void initializeInlineMergeCallsPassPass(llvm::PassRegistry&);

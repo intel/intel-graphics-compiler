@@ -208,10 +208,6 @@ void RayTracingLowering(RayDispatchShaderContext* pContext)
         // spills/fills that were not handled earlier.
         mpm.add(createLateRematPass());
     }
-    if (pContext->tryPayloadSinking() && pContext->hasUnsupportedPayloadSinkingCaseWAenabled)
-    {
-        mpm.add(createPayloadSinkingAnalysisPass());
-    }
     // Lower intrinsics to RTStack operations.
     mpm.add(createRayTracingIntrinsicLoweringPass());
     {
