@@ -54,7 +54,6 @@ SPDX-License-Identifier: MIT
 /// write if there is a StackIDRelease after it.
 //===----------------------------------------------------------------------===//
 
-
 #include "RTBuilder.h"
 #include "Compiler/IGCPassSupport.h"
 #include "iStdLib/utility.h"
@@ -72,193 +71,6 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 using namespace ShaderProperties;
-
-
-class PayloadSinkingAnalysisPass : public FunctionPass
-{
-public:
-    PayloadSinkingAnalysisPass() : FunctionPass(ID)
-    {
-        initializePayloadSinkingAnalysisPassPass(*PassRegistry::getPassRegistry());
-    }
-
-    bool runOnFunction(Function& F) override;
-    StringRef getPassName() const override
-    {
-        return "PayloadSinkingAnalysisPass";
-    }
-
-    void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
-    {
-        AU.setPreservesCFG();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
-
-    static char ID;
-private:
-    std::vector<llvm::CallShaderHLIntrinsic*> m_CallShaders;
-    std::vector<llvm::TraceRayAsyncHLIntrinsic*> m_TraceRays;
-    std::vector<llvm::SwitchInst*> m_Switches;
-    std::vector<llvm::BranchInst*> m_ContidionalBranches;
-};
-
-char PayloadSinkingAnalysisPass::ID = 0;
-
-
-// Register pass to igc-opt
-#define PASS_FLAG "payload-sinking-analysis"
-#define PASS_DESCRIPTION "Perform analysis on whether Payload Sinking optimization should be applied or not"
-#define PASS_CFG_ONLY false
-#define PASS_ANALYSIS true
-IGC_INITIALIZE_PASS_BEGIN(PayloadSinkingAnalysisPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(PayloadSinkingAnalysisPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-#undef PASS_FLAG
-#undef PASS_DESCRIPTION
-#undef PASS_CFG_ONLY
-#undef PASS_ANALYSIS
-
-
-bool PayloadSinkingAnalysisPass::runOnFunction(Function& F)
-{
-    RayDispatchShaderContext* CGCtx = (RayDispatchShaderContext*)getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    // early return if we already don't want payload sinking
-    if (CGCtx->hasUnsupportedPayloadSinkingCase)
-    {
-        return false;
-    }
-
-    // collect callable and switch instructions
-    for (auto BI = F.begin(); BI != F.end(); BI++)
-    {
-        for (auto II = BI->begin(); II != BI->end(); II++)
-        {
-            if (llvm::CallShaderHLIntrinsic* inst = llvm::dyn_cast<llvm::CallShaderHLIntrinsic>(II))
-            {
-                m_CallShaders.push_back(inst);
-            }
-            else if (llvm::TraceRayAsyncHLIntrinsic* inst = llvm::dyn_cast<llvm::TraceRayAsyncHLIntrinsic>(II))
-            {
-                m_TraceRays.push_back(inst);
-            }
-            else if (llvm::SwitchInst* inst = llvm::dyn_cast<llvm::SwitchInst>(II))
-            {
-                m_Switches.push_back(inst);
-            }
-            else if (llvm::BranchInst* inst = llvm::dyn_cast<llvm::BranchInst>(II))
-            {
-                if (inst->isConditional())
-                {
-                    m_ContidionalBranches.push_back(inst);
-                }
-            }
-        }
-    }
-
-    // early return if shader doesn't have switches and if-else or callables and tracerays
-    if ((m_CallShaders.size() == 0 && m_TraceRays.size() == 0) ||
-        (m_Switches.size() == 0 && m_ContidionalBranches.size() == 0))
-    {
-        return false;
-    }
-
-    for (auto s : m_Switches)
-    {
-        // This map<ShaderIndex,Parameter> stores param of the first call of
-        // given shader index callable shader. All calls of the same call shader
-        // must have the same parameter in all switch-cases
-        std::unordered_map<llvm::Value*, llvm::Value*> callableAndAllowedParam;
-        // Same purpose as above, but for trace rays
-        llvm::Value* allowedRayPayload = nullptr;
-        for (auto c : s->cases())
-        {
-            for (auto callShader : m_CallShaders)
-            {
-                // check if call shader is under switch-case label
-                // TODO: what if there is additional control flow under case label?
-                if (callShader->getParent() == c.getCaseSuccessor())
-                {
-                    auto firstCall = callableAndAllowedParam.find(callShader->getShaderIndex());
-                    if (firstCall == callableAndAllowedParam.end())
-                    {
-                        // if it is the first call shader with this shader index
-                        // under this switch, remember it
-                        callableAndAllowedParam[callShader->getShaderIndex()] = callShader->getParameter();
-                    }
-                    else if (firstCall->second != callShader->getParameter())
-                    {
-                        // if its not the first call shader with this shader index
-                        // ant it doesn't have the same param as the first,
-                        // then we cannot do payload sinking
-                        CGCtx->hasUnsupportedPayloadSinkingCase = true;
-                        return false;
-                    }
-                }
-            }
-
-            for (auto rayTrace : m_TraceRays)
-            {
-                if (rayTrace->getParent() == c.getCaseSuccessor())
-                {
-                    if (!allowedRayPayload)
-                    {
-                        allowedRayPayload = rayTrace->getPayload();
-                    }
-                    else if (allowedRayPayload != rayTrace->getPayload())
-                    {
-                        CGCtx->hasUnsupportedPayloadSinkingCase = true;
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-
-    for (auto cb : m_ContidionalBranches)
-    {
-        // see above comments for switches
-        std::unordered_map<llvm::Value*, llvm::Value*> callableAndAllowedParam;
-        llvm::Value* allowedRayPayload = nullptr;
-        for (auto s : cb->successors())
-        {
-            for (auto callShader : m_CallShaders)
-            {
-                if (callShader->getParent() == s)
-                {
-                    auto firstCall = callableAndAllowedParam.find(callShader->getShaderIndex());
-                    if (firstCall == callableAndAllowedParam.end())
-                    {
-                        callableAndAllowedParam[callShader->getShaderIndex()] = callShader->getParameter();
-                    }
-                    else if (firstCall->second != callShader->getParameter())
-                    {
-                        CGCtx->hasUnsupportedPayloadSinkingCase = true;
-                        return false;
-                    }
-                }
-            }
-
-            for (auto rayTrace : m_TraceRays)
-            {
-                if (rayTrace->getParent() == s)
-                {
-                    if (!allowedRayPayload)
-                    {
-                        allowedRayPayload = rayTrace->getPayload();
-                    }
-                    else if (allowedRayPayload != rayTrace->getPayload())
-                    {
-                        CGCtx->hasUnsupportedPayloadSinkingCase = true;
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
 
 class PayloadSinkingPass : public FunctionPass
 {
@@ -394,13 +206,11 @@ bool PayloadSinkingPass::canSink(
     // If this shader returns to a continuation, this guarantees that all the
     // inlined continuations collectively post dominate all payload writes
     // in the current shader.
-    const RayDispatchShaderContext& rdsC = (const RayDispatchShaderContext&)Ctx;
     return (shaderReturnsToContinuation(ShaderTy) || ShaderTy == AnyHit) &&
-           !rtInfo.isContinuation &&
-           // Don't sink in callable since we don't know what the recursion
-           // limit is. If there is 1, that is safe.
-           (ShaderTy != Callable || modMD->rtInfo.NumContinuations == 1) &&
-           !rdsC.hasUnsupportedPayloadSinkingCase;
+            !rtInfo.isContinuation &&
+            // Don't sink in callable since we don't know what the recursion
+            // limit is. If there is 1, that is safe.
+            (ShaderTy != Callable || modMD->rtInfo.NumContinuations == 1);
 }
 
 bool PayloadSinkingPass::runOnFunction(Function &F)
@@ -485,11 +295,6 @@ bool PayloadSinkingPass::runOnFunction(Function &F)
 
 namespace IGC
 {
-
-Pass* createPayloadSinkingAnalysisPass(void)
-{
-    return new PayloadSinkingAnalysisPass();
-}
 
 Pass* createPayloadSinkingPass(void)
 {
