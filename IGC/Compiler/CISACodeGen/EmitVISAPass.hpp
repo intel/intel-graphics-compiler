@@ -736,12 +736,6 @@ private:
 
     llvm::DenseMap<llvm::Instruction*, bool> instrMap;
 
-    // caching the number of instances for the current inst.
-    int16_t m_currInstNumInstances = -1;
-    inline void resetCurrInstNumInstances() { m_currInstNumInstances = -1; }
-    inline void setCurrInstNumInstances(int16_t aV) { m_currInstNumInstances = aV; }
-    inline int16_t getCurrInstNumInstances() const { return m_currInstNumInstances; }
-
     // Current rounding Mode
     //   As RM of FPCvtInt and FP could be different, there
     //   are two fields to keep track of their current values.

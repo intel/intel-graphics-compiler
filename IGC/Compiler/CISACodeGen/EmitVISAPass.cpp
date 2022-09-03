@@ -943,7 +943,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     for (uint i = 0; i < m_pattern->m_numBlocks; i++)
     {
         SBasicBlock& block = m_pattern->m_blocks[i];
-        block.clearCaching();   // clear for each SIMD size
+        block.m_activeMask = nullptr;   // clear for each SIMD size
         m_currentBlock = i;
         if (m_blockCoalescing->IsEmptyBlock(block.bb))
         {
@@ -975,8 +975,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         while (I != E)
         {
             Instruction* llvmInst = I->m_root;
-            resetCurrInstNumInstances();
-
             if (llvmInst->getDebugLoc())
             {
                 unsigned int curLineNumber = llvmInst->getDebugLoc().getLine();
@@ -1006,8 +1004,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
             bool slicing = false;
             uint numInstance = DecideInstanceAndSlice(*block.bb, *I, slicing);
             IGC_ASSERT(numInstance == 1 || numInstance == 2);
-            // caching the number of instance
-            setCurrInstNumInstances(numInstance);
 
             if (slicing && !disableSlicing)
             {
@@ -1037,7 +1033,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 if (slicing)
                 {
                     numInstance = DecideInstanceAndSlice(*block.bb, *I, slicing);
-                    setCurrInstNumInstances(numInstance);
                 }
 
                 if (llvmtoVISADump)
@@ -12332,93 +12327,32 @@ void EmitPass::emitScalarAtomics(
         uniformAtomicOp = EATOMIC_IADD;
     }
     bool returnsImmValue = (!pInst->use_empty());
-    CVariable* pFinalAtomicSrcVal;
+    CVariable* pFinalAtomicSrcVal = m_currShader->GetNewVariable(
+        1,
+        type,
+        isA64 ? EALIGN_2GRF : EALIGN_GRF,
+        true,
+        CName::NONE);
     CVariable* pSrcsArr[2] = { nullptr, nullptr };
-
-    if (op == EOPCODE_ADD && bitWidth == 32 && pSrc->IsUniform() &&
-        getCurrInstNumInstances() == 1 && !returnsImmValue)
+    if (returnsImmValue)
     {
-        // Special case for uniform DW src (like atomic_add(1) without return value.
-        // Note: limit this code for a single instance for now as scalar atomic must have
-        //       instance = 1 (see DecideInstanceAndSlice()).
-        //
-        // The following sequence will be generated:
-        //    (W) mov (16|M0)  f0.0<1>:uw  0:uw
-        //        cmp.eq.f0.0  (16|M0)  dummy:uw dummy:uw
-        //    (W) mov (1|M0)   r2.0<1>:uw   f0.0:uw
-        //    (W) cbit (1|M0)  r1.0:uw  r2.0:uw         <-- r1.0 : number of active lanes
-        //    (W) mul  (1|M0)  r10:ud   pSrc  r1.0:uw
-        SBasicBlock& currBlk = getCurrentBlock();
-        CVariable* numActiveLanes = currBlk.m_numActiveLanes;
-        if (numActiveLanes == nullptr)
-        {
-            CVariable* emask = GetExecutionMask();  // execution mask for the entire dispatch size
-            // Count the number of '1' bits we have in the execmask to get the number of active lanes.
-            // For example, given emask = 1011011000100010b,  numActiveLanes = 7
-            // This will handle cases in which not all lanes are active.
-            numActiveLanes = m_currShader->GetNewVariable(1, ISA_TYPE_W, EALIGN_DWORD, true, CName::NONE);
-            m_encoder->CBit(numActiveLanes, emask);
-            m_encoder->Push();
+        // sum all the lanes
+        emitPreOrPostFixOp(op, identityValue, type, negateSrc, pSrc, pSrcsArr);
 
-            // save it for possible re-use later.
-            currBlk.m_numActiveLanes = numActiveLanes;
+        CVariable* pSrcCopy = pSrcsArr[0];
+        if (m_currShader->m_numberInstance == 2)
+        {
+            pSrcCopy = pSrcsArr[1];
         }
 
-        // pFinalAtomicSrcVal is used in msg's payload and thus needs to be GRF-aligned
-        pFinalAtomicSrcVal = m_currShader->GetNewVariable(1, ISA_TYPE_D, EALIGN_GRF, true, CName::NONE);
-        if (pSrc->IsImmediate() && pSrc->GetImmediateValue() == 1)
-        {
-            if (negateSrc)
-            {
-                m_encoder->SetSrcModifier(0, EMOD_NEG);
-            }
-            m_encoder->Cast(pFinalAtomicSrcVal, numActiveLanes);
-            m_encoder->Push();
-        }
-        else
-        {
-            m_encoder->Mul(pFinalAtomicSrcVal, pSrc, numActiveLanes);
-            m_encoder->Push();
-
-            // using neg srcmod with mul will end up with more insts, thus using srcmod on mov
-            if (negateSrc)
-            {
-                m_encoder->SetSrcModifier(0, EMOD_NEG);
-            }
-            m_encoder->Copy(pFinalAtomicSrcVal, pFinalAtomicSrcVal);
-            m_encoder->Push();
-        }
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, numLanes(m_currShader->m_SIMDSize) - 1);
+        m_encoder->Copy(pFinalAtomicSrcVal, pSrcCopy);
+        m_encoder->Push();
     }
     else
     {
-        // general case
-        pFinalAtomicSrcVal = m_currShader->GetNewVariable(
-            1,
-            type,
-            isA64 ? EALIGN_2GRF : EALIGN_GRF,
-            true,
-            CName::NONE);
-
-        if (returnsImmValue)
-        {
-            // sum all the lanes
-            emitPreOrPostFixOp(op, identityValue, type, negateSrc, pSrc, pSrcsArr);
-
-            CVariable* pSrcCopy = pSrcsArr[0];
-            if (m_currShader->m_numberInstance == 2)
-            {
-                pSrcCopy = pSrcsArr[1];
-            }
-
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-            m_encoder->SetSrcSubReg(0, numLanes(m_currShader->m_SIMDSize) - 1);
-            m_encoder->Copy(pFinalAtomicSrcVal, pSrcCopy);
-            m_encoder->Push();
-        }
-        else
-        {
-            emitReductionAll(op, identityValue, type, negateSrc, pSrc, pFinalAtomicSrcVal);
-        }
+        emitReductionAll(op, identityValue, type, negateSrc, pSrc, pFinalAtomicSrcVal);
     }
 
     auto moveToReg = [&](CVariable*& pVar)
@@ -12454,6 +12388,11 @@ void EmitPass::emitScalarAtomics(
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetNoMask();
 
+    CVariable* pReturnVal = returnsImmValue ?
+        m_currShader->GetNewVariable(
+            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE) :
+        nullptr;
+
     if (bitWidth == 16)
     {
         CVariable* pCastAtomicSrcVal =
@@ -12462,11 +12401,6 @@ void EmitPass::emitScalarAtomics(
         m_encoder->Cast(pCastAtomicSrcVal, pFinalAtomicSrcVal);
         pFinalAtomicSrcVal = pCastAtomicSrcVal;
     }
-
-    CVariable* pReturnVal = returnsImmValue ?
-        m_currShader->GetNewVariable(
-            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE) :
-        nullptr;
 
     if (shouldGenerateLSC(pInst))
     {
