@@ -43,10 +43,11 @@ namespace IGCLLVM
         }
 #else
         inline llvm::Constant *getShuffleVector(llvm::Constant *V1,
-            llvm::Constant *V2, llvm::ArrayRef<int> Mask,
+            llvm::Constant *V2, uint64_t Mask,
             llvm::Type *OnlyIfReducedTy = nullptr) {
-            return llvm::ConstantExpr::getShuffleVector(V1, V2, Mask,
-                                                        OnlyIfReducedTy);
+            return llvm::ConstantExpr::getShuffleVector(V1, V2,
+                static_cast<int>(Mask),
+                OnlyIfReducedTy);
         }
 #endif
     }
