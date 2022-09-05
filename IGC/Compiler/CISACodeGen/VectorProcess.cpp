@@ -646,7 +646,7 @@ bool VectorProcess::runOnFunction(Function& F)
 // (Note that VectorMessage and VectorProcess must be in sync with regard
 //  to this agreetment.)
 //
-void VectorMessage::getInfo(Type* Ty, uint32_t Align, bool useA32,
+void VectorMessage::getInfo(Type* Ty, uint64_t Align, bool useA32,
     bool forceByteScatteredRW)
 {
     VectorType* VTy = dyn_cast<VectorType>(Ty);

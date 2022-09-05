@@ -80,7 +80,7 @@ namespace IGC
 
         VectorMessage(EmitPass* emitter);
         VectorMessage(CShader* shader) : Shader(shader) {}
-        void getInfo(llvm::Type* Ty, uint32_t Align, bool useA32,
+        void getInfo(llvm::Type* Ty, uint64_t Align, bool useA32,
             bool forceByteScatteredRW = false);
 
 
