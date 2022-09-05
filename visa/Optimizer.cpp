@@ -8780,6 +8780,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
 
         const bool useInlineData = builder.getOption(vISA_useInlineData);
+        const bool isOCLRuntime = builder.getOption(vISA_OCLRuntime);
 
         // preparation of thread payload size and start offsets
 
@@ -8821,11 +8822,11 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             // Because of this we need to calculate localID offset:
             const uint32_t inlineDataSize = builder.getInlineDataSize();
             uint32_t correction = useInlineData ? inlineDataSize : 0;
-            localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, 32);
+            localIDsOffset = AlignUp(loadedCrossThreadInputSize + correction, isOCLRuntime ? 32 : kernel.getGRFSize());
             localIDsOffset -= useInlineData ? inlineDataSize : 0;
 
             // cross-thread payload vars
-            numCrossThreadDW = AlignUp(loadedCrossThreadInputSize, 32) / TypeSize(Type_UD);
+            numCrossThreadDW = AlignUp(loadedCrossThreadInputSize, isOCLRuntime ? 32 : kernel.getGRFSize()) / TypeSize(Type_UD);
             crossThreadLoadStartGRF = crossThreadLoadStart / kernel.getGRFSize();
         }
         else

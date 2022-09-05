@@ -4730,6 +4730,11 @@ namespace IGC
 
         SaveOption(vISA_useInlineData, m_program->passNOSInlineData());
 
+        if (context->type == ShaderType::OPENCL_SHADER)
+        {
+            SaveOption(vISA_OCLRuntime, true);
+        }
+
         if (m_program->m_Platform->supportLoadThreadPayloadForCompute())
         {
             SaveOption(vISA_loadThreadPayload, m_program->loadThreadPayload());
