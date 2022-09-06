@@ -589,31 +589,43 @@ G4_BB* LoopDetection::getPreheader(Loop* loop)
     }
 
     // a valid pre-header wasnt found, so create one and return it
-    // unless any pred uses SIMD CF goto in to loop header
+    // unless any pred uses SIMD CF to loop header
     if (header->getLabel())
     {
         auto headerLblStr = std::string(header->getLabel()->getLabel());
         for (auto pred : headerPreds)
         {
-            if (pred->isEndWithGoto())
+            if (pred->size() == 0 ||
+                loop->contains(pred))
+                continue;
+
+            // Handle following (loop header is else_lbl, pred is if BB):
+            // if     else_lbl    endif_lbl
+            //   ...
+            // else   endif_lbl   endif_lbl
+            // else_lbl:
+            // ...
+            // jmpi   else_lbl
+            // ...
+            // endif_lbl:
+            // endif
+            //
+            // Loop exists in else block with else_lbl as header BB. To create
+            // pre-header for this  loop, we need to insert new BB before else_lbl.
+            // But this requires modification of JIP/UIP label of if instruction.
+            // We don't handle modification of JIP/UIP CF in this module yet,
+            // so we punt out whenever this happens.
+
+            if (pred->back()->isCFInst())
             {
-                auto gotoInst = pred->back()->asCFInst();
-                auto jipStr = std::string(gotoInst->getJipLabelStr());
-                auto uipStr = std::string(gotoInst->getUipLabelStr());
-                if (jipStr == headerLblStr ||
-                    uipStr == headerLblStr)
-                {
-                    // dont create preheader for this loop as a predecessor
-                    // of header has SIMD CF in to loop header.
+                auto cfInst = pred->back()->asCFInst();
+                // Punt if pred refers to header's label in JIP/UIP field.
+                if (cfInst->getJip() &&
+                    headerLblStr == cfInst->getJipLabelStr())
                     return nullptr;
-                }
-            }
-            else if (pred->size() > 0 &&
-                pred->back()->opcode() == G4_jmpi)
-            {
-                // TODO: may be safe to alter CF by changing jmpi destination
-                // to preheader instead of header.
-                return nullptr;
+                if (cfInst->getUip() &&
+                    headerLblStr == cfInst->getUipLabelStr())
+                    return nullptr;
             }
         }
     }
