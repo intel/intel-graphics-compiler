@@ -63,7 +63,6 @@ enum class MsgOp {
     ATOMIC_SMAX,
     ATOMIC_UMIN,
     ATOMIC_UMAX,
-    ATOMIC_CAS,
     //
     ATOMIC_FADD,
     ATOMIC_FSUB,

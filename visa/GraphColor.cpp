@@ -2942,12 +2942,15 @@ Augmentation::Augmentation(G4_Kernel& k, Interference& i, const LivenessAnalysis
 // Update the emask according to the definition of VISA
 bool Augmentation::updateDstMaskForGather(G4_INST* inst, std::vector<unsigned char>& mask)
 {
-    if (const G4_SendDescRaw *d = inst->getMsgDescRaw()) {
-        return updateDstMaskForGatherRaw(inst, mask, d);
-    } else {
-        ASSERT_USER(false, "unexpected descriptor");
-        return false;
+    G4_InstSend* sendInst = reinterpret_cast<G4_InstSend*>(inst);
+    G4_SendDesc* msgDesc = sendInst->getMsgDesc();
+
+    if (msgDesc->isRaw()) {
+        return updateDstMaskForGatherRaw(inst, mask,
+                reinterpret_cast<const G4_SendDescRaw*>(msgDesc));
     }
+    ASSERT_USER(false, "unexpected descriptor");
+    return false;
 }
 
 static void updateMaskSIMT(
@@ -3179,7 +3182,6 @@ bool Augmentation::updateDstMaskForGatherRaw(
 
     return false;
 }
-
 #if 0 // TODO: replace with newer approach
 bool Augmentation::updateDstMaskForGatherLdSt(
     G4_INST* inst, std::vector<unsigned char>& mask, const G4_SendDescLdSt *msgDesc)

@@ -7937,7 +7937,6 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedAtomic(
         src1AtomOpnd1,
         src2AtomOpnd2);
 }
-
 static const int LSC_ZERO = 0;
 
 #define LSC_CHECK_NULL_VECTOR_OPERAND(X) \

@@ -2581,8 +2581,8 @@ class LscInstFormatter {
     const CISA_INST                   *inst;
     const Options                     *opts;
 
-    int                                currOpIx = 0;
-    bool                               error = false;
+    int                               currOpIx = 0;
+    bool                              error = false;
 
 public:
     LscInstFormatter(
@@ -2602,7 +2602,6 @@ public:
         }
         opInfo = LscOpInfoGet(subOp);
     }
-
 private:
     template <typename T>
     T getNextEnumU8() {
@@ -2617,7 +2616,6 @@ private:
     T getPrimitive(int absOpIx) {
         return getPrimitiveOperand<T>(inst, absOpIx);
     }
-
     // LSC_TYPED and non-block2d LSC_UNTYPED
     // "next" because it advances the operand pointer
     LSC_DATA_SHAPE getNextDataShape() {
@@ -2724,6 +2722,7 @@ private:
         default: break;
         }
     }
+
 
     void formatAddrSize(LSC_ADDR_SIZE addrSize) {
         ss << ":";
@@ -2924,7 +2923,8 @@ private:
             if (immediateScale > 1) {
               ss << "0x" << std::hex << immediateScale << "*";
             }
-            formatRawOperand(currOpIx + 2);
+            unsigned int src0Ix = currOpIx + 2;
+            formatRawOperand(src0Ix);
             if (immediateOffset != 0) {
                 if (immediateOffset < 0) {
                     immediateOffset = -immediateOffset;
@@ -2945,7 +2945,7 @@ private:
             ss << "]";
             formatAddrSize(addrSize);
         };
-
+        {
         // parameter order (c.f. IsaDescription.cpp)
         // =============================+===========================
         //  regular                     |  strided
@@ -2976,6 +2976,7 @@ private:
             formatRawOperand(src1AbsIx + 1); // src2
         } else {
             MUST_BE_TRUE(false, "must be load or store or atomic");
+        }
         }
     } // formatUntypedSimple
 
@@ -3072,6 +3073,7 @@ private:
             // 0 dst, 1-4 u/v/r/lod, 5 src1, 6 src2
             formatAddrType(addrType, currOpIx);
             ss << "[";
+            {
             for (int i = 0; i < 4; i++) {
                 // +2 skip surface and dst
                 const raw_opnd &ro = getRawOperand(inst, currOpIx+2+i);
@@ -3083,12 +3085,15 @@ private:
                     ss << ", ";
                 ss << reg;
             }
+            }
             ss << "]";
             formatAddrSize(addrSize);
         };
 
         ss << "  ";
-
+        int dstIx = currOpIx + 1;
+        int src1Ix = currOpIx + 6;
+        int src2Ix = currOpIx + 7;
         // parameter order (cf IsaDescription.cpp)
         //   0 - surface
         //   1 - dst (data read)
@@ -3099,21 +3104,21 @@ private:
         //   6 - src1 (data sent)
         //   7 - src2 (extra data sent for atomic)
         if (opInfo.isLoad()) {
-            formatDataOperand(dataShape, currOpIx + 1);
+            formatDataOperand(dataShape, dstIx);
             ss << "  ";
             fmtAddrOperand();
         } else if (opInfo.isStore()) {
             fmtAddrOperand();
             ss << "  ";
-            formatDataOperand(dataShape, currOpIx + 6);
+            formatDataOperand(dataShape, src1Ix);
         } else if (opInfo.isAtomic()) {
-            formatDataOperand(dataShape, currOpIx + 1); // dst write back
+            formatDataOperand(dataShape, dstIx); // dst write back
             ss << "  ";
             fmtAddrOperand();
             ss << "  ";
-            formatRawOperand(currOpIx + 6); // iadd, etc
+            formatRawOperand(src1Ix); // iadd, etc
             ss << "  ";
-            formatRawOperand(currOpIx + 7); // for {i,f}cas
+            formatRawOperand(src2Ix); // for {i,f}cas
         } else {
             error = true;
             MUST_BE_TRUE(false, "printInstructionLscTyped unexpected category");
@@ -3172,7 +3177,6 @@ static std::string printInstructionLsc(
     LscInstFormatter formatter(opcode, header, inst, opt);
     return formatter.format();
 }
-
 std::string VISAKernel_format_provider::printKernelHeader(
     const common_isa_header& isaHeader)
 {
@@ -3318,7 +3322,6 @@ std::string printInstruction(
         {
             sstr << "    ";
         }
-
         switch (ISA_Inst_Table[opcode].type)
         {
             case ISA_Inst_Mov:
@@ -3341,7 +3344,6 @@ std::string printInstruction(
                 MUST_BE_TRUE(false, sstr.str());
             }
         }
-
         switch (opcode)
         {
             case ISA_LOC:

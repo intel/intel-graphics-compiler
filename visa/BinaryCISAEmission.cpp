@@ -161,8 +161,7 @@ int CBinaryCISAEmitter::emitCisaInst(
     cisa_kernel->writeInToCisaBinaryBuffer(&desc->opcode, sizeof(desc->opcode));
 
     unsigned opndCount = desc->opnd_num;
-
-    for (unsigned i = 0; i < opndCount; i++)
+    for (unsigned i = 0; i < std::min(inst->opnd_count, opndCount); i++)
     {
         unsigned currendOpndIndex = i - reverseOffset;
 

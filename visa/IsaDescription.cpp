@@ -2169,9 +2169,8 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] =
 
 ///////////////////////////////////////////////////////////////////////////
 // New LSC ops
-//
 #define LSC_UNTYPED_OP(ISA_OP, MNEMONIC) \
-    {(ISA_OP), ISA_Inst_LSC, (MNEMONIC), 18, \
+    {(ISA_OP), ISA_Inst_LSC, (MNEMONIC), 19, \
     { \
         /* execution control */\
         {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */ \
@@ -2193,12 +2192,14 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] =
         {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */ \
         /* operands */ \
         {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* Surface */ \
+        {OPND_OTHER,    ISA_TYPE_UD, 0}, /* Reserved */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* DstData */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* Src0Addr */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* Src1Data */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* Src2Data */ \
     } \
     }
+//{OPND_OTHER,    ISA_TYPE_UD, 0}, /* surface index
 #define LSC_UNTYPED_STRIDED_OP(ISA_OP, MNEMONIC) \
     {(ISA_OP), ISA_Inst_LSC, (MNEMONIC), 18, \
     { \
@@ -2261,7 +2262,7 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] =
 
 // All LSC typed ops encode the same
 #define LSC_TYPED_OP(ISA_OP, MNEMONIC) \
-    {(ISA_OP), ISA_Inst_LSC, (MNEMONIC), 18, \
+    {(ISA_OP), ISA_Inst_LSC, (MNEMONIC), 22, \
     { \
         /* execution control */\
         {OPND_EXECSIZE, ISA_TYPE_UB, 0}, /* execution size */ \
@@ -2281,16 +2282,19 @@ static const ISA_SubInst_Desc SVMSubOpcodeDesc[] =
         {OPND_OTHER,    ISA_TYPE_UB, 0}, /* LSC_DATA_SHAPE::cmask */ \
         /* operands */ \
         {OPND_SRC_GEN|OPND_IMM|OPND_SRC_ADDR,  ISA_TYPE_UB, 0}, /* surface reg or imm */ \
+        {OPND_OTHER,    ISA_TYPE_UD, 0}, /* Reserved */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* dst */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Us */ \
+        {OPND_OTHER,    ISA_TYPE_D, 0}, /* Reserved */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Vs */ \
+        {OPND_OTHER,    ISA_TYPE_D, 0}, /* Reserved */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr Rs */ \
+        {OPND_OTHER,    ISA_TYPE_D, 0}, /* Reserved */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src0 addr LODs */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src1 data */ \
         {OPND_RAW,      ISA_TYPE_UB, GRF_ALIGNED}, /* src2 data */ \
     } \
     }
-
 #define LSC_OP_INVALID { }
 
 static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
@@ -2328,7 +2332,6 @@ static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
     LSC_UNTYPED_OP(LSC_CCS_UPDATE,         "lsc_ccs_update"),
     LSC_OP_INVALID, // lsc_read_state_info only for typed
     LSC_OP_INVALID, // fence handled separately
-
     };
 
 static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
@@ -2366,7 +2369,6 @@ static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
     LSC_TYPED_OP(LSC_READ_STATE_INFO,    "lsc_read_state_info"),
     LSC_OP_INVALID, // fence handled separately
     };
-
 LscOpInfo LscOpInfoGet(LSC_OP op)
 {
     LscOpInfo opInfo { };

@@ -196,7 +196,7 @@ uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
         case MsgOp::ATOMIC_SMAX: return 15;
         case MsgOp::ATOMIC_UMIN: return 16;
         case MsgOp::ATOMIC_UMAX: return 17;
-        case MsgOp::ATOMIC_CAS: return 18;
+        case MsgOp::ATOMIC_ICAS: return 18;
         case MsgOp::ATOMIC_FADD: return 19;
         case MsgOp::ATOMIC_FSUB: return 20;
         case MsgOp::ATOMIC_FMIN: return 21;

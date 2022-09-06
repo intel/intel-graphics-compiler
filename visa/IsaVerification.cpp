@@ -3788,10 +3788,12 @@ struct LscInstVerifier {
 
         // now we are at the registers
         verifyAddressType(addrType, currOpIx); // Surface
-
+        int dstIx = currOpIx + 1;
+        int src1DataIx = currOpIx + 3;
+        int src0Ix = currOpIx + 2;
+        if (opInfo.isStrided()) src1DataIx = currOpIx + 4;
         const char *src0Name = opInfo.isStrided() ? "Src0AddrBase" : "Src0Addr";
-        int src1DataIx = !opInfo.isStrided() ? currOpIx+3 : currOpIx+4;
-        verifyRawOperand(src0Name, currOpIx+2);  // Src0Addr
+        verifyRawOperand(src0Name, src0Ix);  // Src0Addr
         if (opInfo.isStrided()) {
             if (verifyVectorOperand("Src0AddrStride", currOpIx+3)) {
                 const auto &vo = getVectorOperand(inst, currOpIx+3);
@@ -3812,8 +3814,7 @@ struct LscInstVerifier {
                 }
             }
         }
-
-        verifyDataOperands(currOpIx+1, src1DataIx);
+        verifyDataOperands(dstIx, src1DataIx);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -3828,22 +3829,27 @@ struct LscInstVerifier {
         verifyDataShape(dataShape);
 
         verifyAddressType(addrType, currOpIx);
-
+        unsigned int uIx = currOpIx+2;
+        unsigned int vIx = currOpIx+3;
+        unsigned int rIx = currOpIx+4;
+        unsigned int lodIx = currOpIx+5;
+        unsigned int dstOpIx = currOpIx+1;
+        unsigned int src1OpIx = currOpIx+6;
         // check all the Src0Addr fields (U, V, R, LOD)
         if (opInfo.op == LSC_READ_STATE_INFO) {
-            verifyRawOperandNull("Src0Addr_Us", currOpIx+2); // U's
-            verifyRawOperandNull("Src0Addr_Vs", currOpIx+3); // V's
-            verifyRawOperandNull("Src0Addr_Rs", currOpIx+4); // R's
-            verifyRawOperandNull("Src0Addr_LODs", currOpIx+5); // LOD's
+            verifyRawOperandNull("Src0Addr_Us", uIx); // U's
+            verifyRawOperandNull("Src0Addr_Vs", vIx); // V's
+            verifyRawOperandNull("Src0Addr_Rs", rIx); // R's
+            verifyRawOperandNull("Src0Addr_LODs", lodIx); // LOD's
         } else {
-            verifyRawOperandNonNull("Src0Addr_Us", currOpIx+2); // U's
-            verifyRawOperand("Src0Addr_Vs", currOpIx+3);        // V's
-            verifyRawOperand("Src0Addr_Rs", currOpIx+4);        // R's
-            verifyRawOperand("Src0Addr_LODs", currOpIx+5);      // LOD's
+            verifyRawOperandNonNull("Src0Addr_Us", uIx); // U's
+            verifyRawOperand("Src0Addr_Vs", vIx);        // V's
+            verifyRawOperand("Src0Addr_Rs", rIx);        // R's
+            verifyRawOperand("Src0Addr_LODs", lodIx);      // LOD's
         }
 
         // check Dst, Src1, and Src2
-        verifyDataOperands(currOpIx+1, currOpIx+6);
+        verifyDataOperands(dstOpIx, src1OpIx);
     }
 
     void verify() {
@@ -3880,7 +3886,6 @@ void vISAVerifier::verifyInstructionLsc(const CISA_INST *inst)
         error_list.push_back(ss.str());
     }
 }
-
 void vISAVerifier::verifyInstructionSrnd(const CISA_INST* inst)
 {
     const vector_opnd&    dst = getVectorOperand(inst, 0);
@@ -4109,9 +4114,7 @@ void vISAVerifier::finalize()
     }
 }
 
-void vISAVerifier::verifyInstruction(
-    const CISA_INST* inst)
-{
+void vISAVerifier::verifyInstruction(const CISA_INST* inst) {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
     if (!(ISA_RESERVED_0 < opcode && opcode < ISA_NUM_OPCODE))

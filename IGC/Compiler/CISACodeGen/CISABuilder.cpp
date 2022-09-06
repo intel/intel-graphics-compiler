@@ -8126,7 +8126,6 @@ namespace IGC
 
             return;
         }
-
         V(vKernel->AppendVISALscUntypedStore(
             subOp,
             lscSfid,
@@ -8387,7 +8386,8 @@ namespace IGC
             subOp,
             lscSfid,
             predOpnd,
-            visaExecSize(offset->IsUniform() ? lanesToSIMDMode(offset->GetNumberElement()) : m_encoderState.m_simdSize),
+            visaExecSize(offset->IsUniform() ?
+                lanesToSIMDMode(offset->GetNumberElement()) : m_encoderState.m_simdSize),
             ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask),
             cacheOpts,
             addr,
@@ -8553,7 +8553,6 @@ namespace IGC
         dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
         dataShape.elems = LSC_GetElementNum(numElems);
         dataShape.chmask = chMask;
-
         V(vKernel->AppendVISALscTypedInst(
             subOp,
             predOpnd,
