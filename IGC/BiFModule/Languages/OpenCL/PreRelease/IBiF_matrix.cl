@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT
 #define LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, element_type, contrib_type, M) \
     contrib_type *ptr = (contrib_type *)mem; \
     int slid = get_sub_group_local_id(); \
-    int pack_factor = sizeof (int) / sizeof (element_type); \
+    int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
     stride = stride / pack_factor; \
     contrib_type wi_contrib[M]; \
     for (int i = 0; i < M; i++) \
