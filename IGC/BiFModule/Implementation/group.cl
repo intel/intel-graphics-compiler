@@ -2239,7 +2239,7 @@ DEFN_ARITH_OPERATIONS(double)
 DEFN_ARITH_OPERATIONS(half)
 #endif // defined(cl_khr_fp16)
 
-#define DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op)                                                  \
+#define DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op, identity)                                        \
 type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                                             \
 {                                                                                                          \
     type sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, X);     \
@@ -2248,19 +2248,38 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
     uint num_sg = SPIRV_BUILTIN_NO_OP(BuiltInNumSubgroups, , )();                                          \
     uint sg_lid = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )();                             \
     uint sg_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupSize, , )();                                         \
+    uint sg_max_size = SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();                                  \
                                                                                                            \
-    if (sg_lid == sg_size - 1) {                                                                           \
+    if (sg_lid == 0) {                                                                                     \
         scratch[sg_id] = sg_x;                                                                             \
     }                                                                                                      \
     SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
                                                                                                            \
-    type sg_aggregate = scratch[0];                                                                        \
-    for (int s = 1; s < num_sg; ++s) {                                                                     \
-        sg_aggregate = op(sg_aggregate, scratch[s]);                                                       \
+    uint values_num = num_sg;                                                                              \
+    while(values_num > sg_max_size) {                                                                      \
+        uint max_id = ((values_num + sg_max_size - 1) / sg_max_size) * sg_max_size;                        \
+        uint global_id = sg_id * sg_max_size + sg_lid;                                                     \
+        if (global_id < max_id) {                                                                          \
+            type value = global_id < values_num ? scratch[sg_id * sg_max_size + sg_lid] : identity;        \
+            sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);\
+            if (sg_lid == 0) {                                                                             \
+                scratch[sg_id] = sg_x;                                                                     \
+            }                                                                                              \
+        }                                                                                                  \
+        values_num = max_id / sg_max_size;                                                                 \
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
     }                                                                                                      \
                                                                                                            \
-    SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
-    return sg_aggregate;                                                                                   \
+    if (values_num > sg_size) {                                                                            \
+        type sg_aggregate = scratch[0];                                                                    \
+        for (int s = 1; s < values_num; ++s) {                                                             \
+            sg_aggregate = op(sg_aggregate, scratch[s]);                                                   \
+        }                                                                                                  \
+        return sg_aggregate;                                                                               \
+    } else {                                                                                               \
+        type value = sg_lid < values_num ? scratch[sg_lid] : identity;                                     \
+        return SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);  \
+    }                                                                                                      \
 }
 
 
@@ -2463,7 +2482,7 @@ DEFN_SUB_GROUP_REDUCE(func, type_abbr, type, op, identity, signed_cast)         
 DEFN_SUB_GROUP_SCAN_INCL(func, type_abbr, type, op, identity)                                     \
 DEFN_SUB_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                     \
                                                                                                   \
-DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op)                                                 \
+DEFN_WORK_GROUP_REDUCE(func, type_abbr, type, op, identity)                                       \
 DEFN_WORK_GROUP_SCAN_INCL(func, type_abbr, type, op)                                              \
 DEFN_WORK_GROUP_SCAN_EXCL(func, type_abbr, type, op, identity)                                    \
                                                                                                   \
