@@ -47,8 +47,6 @@ enum class FileType { SPIRV, LLVM_TEXT, LLVM_BINARY };
 
 enum class OptimizerLevel { None, Full };
 
-enum class BinaryKind { CM, OpenCL, ZE };
-
 enum class GlobalsLocalizationMode { All, No, Vector, Partial };
 
 enum class DisableLRCoalescingControl { Default, Disable, Enable };

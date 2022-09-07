@@ -42,6 +42,10 @@ SPDX-License-Identifier: MIT
 
 enum class FunctionControl { Default, StackCall };
 
+namespace vc {
+enum class BinaryKind { CM, OpenCL, ZE };
+} // namespace vc
+
 namespace llvm {
 
 void initializeGenXBackendConfigPass(PassRegistry &PR);
@@ -116,6 +120,9 @@ struct GenXBackendOptions {
 
   // Use bindless mode for buffers.
   bool UseBindlessBuffers = false;
+
+  // Output binary format
+  vc::BinaryKind Binary = vc::BinaryKind::OpenCL;
 
   // Add vISA asm as sections in ZeBin
   bool EmitZebinVisaSections = false;
@@ -342,6 +349,8 @@ public:
   unsigned getInteropSubgroupSize() const {
     return Options.InteropSubgroupSize;
   }
+
+  vc::BinaryKind getBinaryFormat() const { return Options.Binary; }
 };
 } // namespace llvm
 

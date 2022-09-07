@@ -6688,10 +6688,14 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("1");
   }
   if (ST.isOCLRuntime()) {
-      addArgument("-oclRuntime");
+    addArgument("-oclRuntime");
   }
   if (!BC.getVISALTOStrings().empty()) {
     addArgument("-noStitchExternFunc");
+  }
+  if (BC.getBinaryFormat() == vc::BinaryKind::ZE) {
+    addArgument("-abiver");
+    addArgument("2");
   }
   return Argv;
 }

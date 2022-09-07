@@ -249,6 +249,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
   if (Opts.InteropSubgroupSize)
     BackendOpts.InteropSubgroupSize = Opts.InteropSubgroupSize;
 
+  BackendOpts.Binary = Opts.Binary;
+
   BackendOpts.DisableLiveRangesCoalescing =
       getDefaultOverridableFlag(Opts.DisableLRCoalescingMode, false);
   BackendOpts.DisableExtraCoalescing =
