@@ -212,8 +212,6 @@ namespace IGC
 
         unsigned getRegisterPressureForInstructionFromRPMap(unsigned number) const;
 
-        unsigned getRegisterWeightForInstruction(llvm::Instruction* Inst) const;
-
         void buildRPMapPerInstruction();
 
     private:

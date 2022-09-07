@@ -76,14 +76,6 @@ namespace IGC {
     public:
         static char ID;
 
-        struct PromotedLiverange
-        {
-            unsigned int lowId;
-            unsigned int highId;
-            unsigned int varSize;
-            RegisterPressureEstimate::LiveRange* LR;
-        };
-
     private:
         const llvm::DataLayout* m_pDL = nullptr;
         CodeGenContext* m_ctx = nullptr;
@@ -95,6 +87,13 @@ namespace IGC {
 
         /// Keep track of each BB affected by promoting MemtoReg and the current pressure at that block
         llvm::DenseMap<llvm::BasicBlock*, unsigned> m_pBBPressure;
+
+        struct PromotedLiverange
+        {
+            unsigned int lowId;
+            unsigned int highId;
+            unsigned int varSize;
+        };
 
         std::vector<PromotedLiverange> m_promotedLiveranges;
     };
@@ -222,8 +221,7 @@ unsigned int LowerGEPForPrivMem::extractConstAllocaSize(llvm::AllocaInst* pAlloc
     return totalArrayStructureSize;
 }
 
-static void GetAllocaLiverange(Instruction* I, unsigned int& liverangeStart, unsigned int& liverangeEnd,
-    RegisterPressureEstimate* rpe, SmallVector<LowerGEPForPrivMem::PromotedLiverange, 16>& GEPliveranges)
+static void GetAllocaLiverange(Instruction* I, unsigned int& liverangeStart, unsigned int& liverangeEnd, RegisterPressureEstimate* rpe)
 {
     IGC_ASSERT(nullptr != I);
 
@@ -231,17 +229,7 @@ static void GetAllocaLiverange(Instruction* I, unsigned int& liverangeStart, uns
     {
         if (isa<GetElementPtrInst>(*use_it) || isa<BitCastInst>(*use_it))
         {
-            // collect liveranges for GEP operations related to alloca
-            Instruction* Inst = cast<Instruction>(*use_it);
-            LowerGEPForPrivMem::PromotedLiverange GEPliverange;
-            GEPliverange.LR = rpe->getLiveRangeOrNull(Inst);
-            GEPliverange.lowId = GEPliverange.highId = rpe->getAssignedNumberForInst(Inst);
-            GetAllocaLiverange(Inst, GEPliverange.lowId, GEPliverange.highId, rpe, GEPliveranges);
-            GEPliverange.varSize = rpe->getRegisterWeightForInstruction(Inst);
-            GEPliveranges.push_back(GEPliverange);
-
-            liverangeStart = std::min(liverangeStart, GEPliverange.lowId);
-            liverangeEnd = std::max(liverangeEnd, GEPliverange.highId);
+            GetAllocaLiverange(cast<Instruction>(*use_it), liverangeStart, liverangeEnd, rpe);
         }
         else if (isa<LoadInst>(*use_it) || isa<StoreInst>(*use_it) || isa<llvm::IntrinsicInst>(*use_it))
         {
@@ -337,26 +325,16 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     // then estimate how much changing this alloca to register adds to the pressure at that block.
     unsigned int lowestAssignedNumber = 0xFFFFFFFF;
     unsigned int highestAssignedNumber = 0;
-    SmallVector<PromotedLiverange, 16> GEPliveranges;
 
-    GetAllocaLiverange(pAlloca, lowestAssignedNumber, highestAssignedNumber, m_pRegisterPressureEstimate, GEPliveranges);
+    GetAllocaLiverange(pAlloca, lowestAssignedNumber, highestAssignedNumber, m_pRegisterPressureEstimate);
 
     uint32_t maxGRFPressure = (uint32_t)(grfRatio * MAX_PRESSURE_GRF_NUM * 4);
 
     unsigned int pressure = 0;
     for (unsigned int i = lowestAssignedNumber; i <= highestAssignedNumber; i++)
     {
-        // subtract impact from GEP operations related to alloca from the register pressure
-        // since after promotion alloca to register these GEPs will be eliminated
-        unsigned int GEPImpact = 0;
-        for (auto GEPinst : GEPliveranges)
-        {
-            if (GEPinst.LR->contains(i))
-                GEPImpact += GEPinst.varSize;
-        }
-
-        unsigned RPinst = m_pRegisterPressureEstimate->getRegisterPressureForInstructionFromRPMap(i);
-        pressure = std::max(pressure, RPinst - GEPImpact);
+        pressure = std::max(
+            pressure, m_pRegisterPressureEstimate->getRegisterPressureForInstructionFromRPMap(i));
     }
 
     for (auto it : m_promotedLiveranges)

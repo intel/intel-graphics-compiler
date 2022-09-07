@@ -525,11 +525,6 @@ namespace IGC
         return;
     }
 
-    unsigned RegisterPressureEstimate::getRegisterWeightForInstruction(llvm::Instruction* Inst) const
-    {
-        return iSTD::Round(getValueBytes(Inst), SIMD_PRESSURE_MULTIPLIER) / SIMD_PRESSURE_MULTIPLIER;
-    }
-
     unsigned RegisterPressureEstimate::getRegisterPressure(Instruction* Inst) const
     {
         auto Iter = m_pNumbers.find(Inst);
