@@ -312,11 +312,15 @@ DepSet::DepSet(const InstIDs& instIdCntr, const DepSetBuilder& dsb)
     bits = new BitSet<>(dsb.getTOTAL_BITS());
 }
 
-uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty)
+uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF)
 {
     // get OPS_PER_CHAN, the number of dot product operations per dword channel, depending on element type
     // for src1, src2 region calculation, only hf, bf, ub, b, u4, s4, u2, s2 should be given
     // mixed mode of int and float at src1/src2 are not allowed
+
+    if (isDF)
+        return 1;
+
     if (src1_ty == Type::HF || src1_ty == Type::BF) {
         IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
         return 2;
@@ -369,13 +373,14 @@ void DepSet::getDpasSrcDependency(
 {
     uint32_t execSize = static_cast<uint32_t>(inst.getExecSize());
 
-    IGA_ASSERT(execSize == (m_DB.getGRF_BYTES_PER_REG() / 4),
-        "Invalid ExecSize for this op");
+    IGA_ASSERT((!inst.isDF() && execSize == (m_DB.getGRF_BYTES_PER_REG() / 4)) ||
+                (inst.isDF() && execSize == 8),
+               "Invalid ExecSize for this op");
 
     // check src operand and add the dependency
     uint32_t repeatCount = GetDpasRepeatCount(inst.getDpasFc());
     uint32_t systolicDepth = GetDpasSystolicDepth(inst.getDpasFc());
-    uint32_t ops_per_chan = getDPASOpsPerChan(inst.getSource(1).getType(), inst.getSource(2).getType());
+    uint32_t ops_per_chan = getDPASOpsPerChan(inst.getSource(1).getType(), inst.getSource(2).getType(), inst.isDF());
 
     for (unsigned srcIx = 0; srcIx < inst.getSourceCount(); ++srcIx) {
         const Operand &op = inst.getSource(srcIx);

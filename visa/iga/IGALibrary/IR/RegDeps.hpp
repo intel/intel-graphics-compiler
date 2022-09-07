@@ -240,7 +240,7 @@ private:
     uint32_t getDPASSrcDepUpBound(unsigned idx, Type srcType, uint32_t execSize, uint32_t lowBound,
         uint32_t systolicDepth, uint32_t repeatCount, uint32_t opsPerChan);
     // helper function to get dpas OPS_PER_CHAN
-    uint32_t getDPASOpsPerChan(Type src1_ty, Type src2_ty);
+    uint32_t getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF);
 private:
     const Instruction* m_instruction;
 
@@ -285,7 +285,9 @@ public:
           GRF_BYTES_PER_REG(model.getGRFByteSize()),
           ARF_F_REGS(model.getNumFlagReg()),
           mPlatformModel(model)
-    {}
+    {
+
+    }
 
     ~DepSetBuilder()
     {
