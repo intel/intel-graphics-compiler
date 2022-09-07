@@ -64,6 +64,11 @@ bool PromoteBools::runOnModule(Module& module)
 
 void PromoteBools::visitLoadInst(LoadInst& load)
 {
+    if (promotedValuesCache.count(load.getFunction()))
+    {
+        return;
+    }
+
     auto src = load.getOperand(0);
 
     // Check if promotion is needed
@@ -93,6 +98,11 @@ void PromoteBools::visitLoadInst(LoadInst& load)
 
 void PromoteBools::visitStoreInst(StoreInst& store)
 {
+    if (promotedValuesCache.count(store.getFunction()))
+    {
+        return;
+    }
+
     auto src = store.getOperand(0);
     auto dst = store.getOperand(1);
 
@@ -123,6 +133,11 @@ void PromoteBools::visitStoreInst(StoreInst& store)
 
 void PromoteBools::visitCallInst(CallInst& call)
 {
+    if (promotedValuesCache.count(call.getFunction()))
+    {
+        return;
+    }
+
     auto function = call.getCalledFunction();
     if (!function)
     {
@@ -179,6 +194,11 @@ void PromoteBools::visitCallInst(CallInst& call)
 
 void PromoteBools::visitAllocaInst(AllocaInst& alloca)
 {
+    if (promotedValuesCache.count(alloca.getFunction()))
+    {
+        return;
+    }
+
     changed |= getOrCreatePromotedValue(&alloca) != &alloca;
 }
 
@@ -245,27 +265,27 @@ void PromoteBools::cleanUp(Module& module)
 {
     auto renameAndClean = [](auto src, auto dst) {
         auto name = src->getName().str();
+
+        // Replace all src uses by undef. It allows us not to worry about
+        // the proper order in which we delete unpromoted values.
+        src->replaceAllUsesWith(UndefValue::get(src->getType()));
         src->eraseFromParent();
         dst->setName(name);
     };
 
     for (auto& it : promotedValuesCache)
     {
-        if (auto globalVariable = dyn_cast<GlobalVariable>(it.first))
+        if (auto function = dyn_cast<Function>(it.first))
+        {
+            renameAndClean(function, it.second);
+        }
+        else if (auto globalVariable = dyn_cast<GlobalVariable>(it.first))
         {
             renameAndClean(globalVariable, it.second);
         }
-        else if (auto alloca = dyn_cast<AllocaInst>(it.first))
+        else if (auto instruction = dyn_cast<Instruction>(it.first))
         {
-            renameAndClean(alloca, it.second);
-        }
-        else if (auto bitcast = dyn_cast<BitCastInst>(it.first))
-        {
-            renameAndClean(bitcast, it.second);
-        }
-        else if (auto addrSpaceCast = dyn_cast<AddrSpaceCastInst>(it.first))
-        {
-            renameAndClean(addrSpaceCast, it.second);
+            renameAndClean(instruction, it.second);
         }
     }
 
@@ -291,15 +311,6 @@ void PromoteBools::cleanUp(Module& module)
     for (auto& trunc : deadTruncs)
     {
         trunc->eraseFromParent();
-    }
-
-    // Remove old version of functions
-    for (auto& it : promotedValuesCache)
-    {
-        if (auto function = dyn_cast<Function>(it.first))
-        {
-            renameAndClean(function, it.second);
-        }
     }
 }
 
