@@ -21,7 +21,7 @@ define void @load_and_store_global_variable(i1 %input) {
   ret void
 }
 
-; CHECK:        define void @load_and_store_global_variable(i8 %input) {
+; CHECK:        define void @load_and_store_global_variable(i8 %input)
 ; CHECK-NEXT:   %value = load i8, i8 addrspace(3)* @global_variable
 ; CHECK-NEXT:   store i8 0, i8 addrspace(3)* @global_variable
 ; CHECK-NEXT:   store i8 1, i8 addrspace(3)* @global_variable

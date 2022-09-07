@@ -6,8 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-promote-bools -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: igc_opt -igc-promote-bools -S %s -o - | FileCheck %s
 
 %struct_without_bools = type { i8 }
 %struct = type { [4 x <8 x i1*>], [4 x <8 x i1>*]* }

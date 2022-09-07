@@ -6,8 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-promote-bools  -S %s -o %t.ll
-; RUN: FileCheck %s --input-file=%t.ll
+; RUN: igc_opt -igc-promote-bools -S %s -o - | FileCheck %s
 
 define spir_func void @bitcast_i32_to_i1() {
   %allocated = alloca i32, align 1
