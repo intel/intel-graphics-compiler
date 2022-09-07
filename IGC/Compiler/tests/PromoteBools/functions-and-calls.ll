@@ -13,7 +13,7 @@
 %struct = type { [4 x <8 x i1*>], [4 x <8 x i1>*]* }
 
 ; CHECK:        %struct_without_bools = type { i8 }
-; CHECK:        [[NEW_STRUCT:%struct.[0-9]+]] = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
+; CHECK:        %struct = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
 
 
 define spir_func void @fun_struct_without_bools(i1 %input1, %struct_without_bools %input2) {
@@ -38,7 +38,7 @@ define spir_func void @caller(i1 %input, %struct %input_struct) {
   ret void
 }
 
-; CHECK:        define spir_func void @caller(i8 %input, [[NEW_STRUCT]] %input_struct)
+; CHECK:        define spir_func void @caller(i8 %input, %struct %input_struct)
 ; CHECK-NEXT:   %result_false = call i8 @callee(i8 0)
 ; CHECK-NEXT:   %result_true = call i8 @callee(i8 1)
 ; CHECK-NEXT:   %result = call i8 @callee(i8 {{%[a-zA-Z0-9]+}})

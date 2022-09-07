@@ -341,7 +341,9 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
         if (typeNeedsPromotion(structType))
         {
             // Create an opaque type to handle recursive types
-            auto name = structType->hasName() ? structType->getName() : "";
+            auto name = structType->hasName() ? structType->getName().str() : "";
+            structType->setName(name + ".unpromoted");
+
             auto newStructType = StructType::create(type->getContext(), name);
             promotedTypesCache[type] = newStructType;
 

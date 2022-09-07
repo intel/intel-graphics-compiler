@@ -10,7 +10,7 @@
 
 %struct = type { [4 x <8 x i1*>], [4 x <8 x i1>*]* }
 
-; CHECK:        [[NEW_STRUCT:%struct.[0-9]+]] = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
+; CHECK:        %struct = type { [4 x <8 x i8*>], [4 x <8 x i8>*]* }
 
 
 define spir_func void @scalar_alloca() {
@@ -28,4 +28,4 @@ define spir_func void @struct_alloca() {
 }
 
 ; CHECK:        define spir_func void @struct_alloca()
-; CHECK-NEXT:   %allocated = alloca [[NEW_STRUCT]], align 64
+; CHECK-NEXT:   %allocated = alloca %struct, align 64
