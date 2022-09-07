@@ -1750,7 +1750,6 @@ G4_INST::MovType G4_INST::canPropagate() const
         }
     }
 
-
     // Do not eliminate MOV/COPY to Acc/flag registers.
     if (dst->isAccReg() || dst->isFlag())
     {
@@ -2204,7 +2203,10 @@ bool G4_INST::canPropagateTo(
         return false;
 
     // limit flag copy propagation to opcode known to work for now
-    if (src->isFlag() && (useInst->opcode() != G4_not && useInst->opcode() != G4_and))
+    if (src->isFlag() &&
+        useInst->opcode() != G4_not &&
+        useInst->opcode() != G4_and &&
+        useInst->opcode() != G4_cbit)
     {
         return false;
     }
