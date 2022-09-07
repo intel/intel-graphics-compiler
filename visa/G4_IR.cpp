@@ -8074,7 +8074,18 @@ bool G4_INST::canExecSizeBeAcc(Gen4_Operand_Number opndNum) const
     {
     case Type_HF:
     case Type_BF:
-        if (builder.relaxedACCRestrictions())
+        if (builder.relaxedACCRestrictions4())
+        {
+            if (dst->getType() == Type_BF) //BF is not supported
+            {
+                return false;
+            }
+            if (getExecSize() != G4_ExecSize(builder.getNativeExecSize() * 2))
+            {
+                return false;
+            }
+        }
+        else if (builder.relaxedACCRestrictions())
         {
             if (!((isMixedMode() && getExecSize() == g4::SIMD8) ||
                 (getExecSize() == g4::SIMD16)))
@@ -8436,6 +8447,7 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const
         // no int acc if it's used as mul operand
         return builder.canMadHaveAcc() &&
             ((srcId == 1 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) ||
+                (builder.relaxedACCRestrictions4() && srcId == 1 && (IS_TYPE_FLOAT_FOR_ACC(src->getType()))) ||
                 (srcId == 0 && src->getModifier() == Mod_src_undef) ||
                 (srcId == 0 && builder.relaxedACCRestrictions_1()) ||
                 (srcId == 2 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))));

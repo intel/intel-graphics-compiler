@@ -772,6 +772,11 @@ SPDX-License-Identifier: MIT
         return false;
     }
 
+    bool relaxedACCRestrictions4() const
+    {
+        return false;
+    }
+
     bool enableACCBeforRA() const
     {
         return false;
