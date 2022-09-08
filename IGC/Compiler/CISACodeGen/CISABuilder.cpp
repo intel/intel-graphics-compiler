@@ -5122,7 +5122,13 @@ namespace IGC
             IGC_IS_FLAG_ENABLED(ShaderDumpEnable) ||
             context->getCompilerOption().EmitZeBinVISASections;
         auto builderMode = m_hasInlineAsm || hasAdditionalVisaAsmToLink ? vISA_ASM_WRITER : vISA_DEFAULT;
+
+        // Build options. If in Debug mode, always enable VISA IR
         auto builderOpt = (enableVISADump || m_hasInlineAsm || hasAdditionalVisaAsmToLink) ? VISA_BUILDER_BOTH : VISA_BUILDER_GEN;
+#if defined(_DEBUG)
+        builderOpt = VISA_BUILDER_BOTH;
+#endif
+
         V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
             &m_vISAWaTable));
 

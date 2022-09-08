@@ -172,8 +172,12 @@ int JITCompileAllOptions(const char* kernelName,
 
     char* isafilebuf = (char*)kernelIsa;
     CISA_IR_Builder* cisa_builder = NULL;
-    // HW mode: default: GEN path; if dump/verify: Both path
+
+    // HW mode: default: GEN path; if dump/verify/debug: Both path
     VISA_BUILDER_OPTION builderOption = VISA_BUILDER_GEN;
+#if defined(_DEBUG)
+    builderOption = VISA_BUILDER_BOTH;
+#endif
 
     CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption, platform, numArgs, args);
     cisa_builder->setGtpinInit(gtpin_init);
