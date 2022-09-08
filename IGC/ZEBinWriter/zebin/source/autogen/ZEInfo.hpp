@@ -179,7 +179,7 @@ struct zeInfoContainer
     HostAccessesTy global_host_access_table;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.16"; }
+    static zeinfo_str_t getVersionNumber() { return "1.17"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
@@ -196,6 +196,7 @@ struct PreDefinedAttrGetter{
         enqueued_local_size,
         global_id_offset,
         private_base_stateless,
+        buffer_address,
         buffer_offset,
         printf_buffer,
         implicit_arg_buffer,
@@ -309,6 +310,8 @@ struct PreDefinedAttrGetter{
             return "global_id_offset";
         case ArgType::private_base_stateless:
             return "private_base_stateless";
+        case ArgType::buffer_address:
+            return "buffer_address";
         case ArgType::buffer_offset:
             return "buffer_offset";
         case ArgType::printf_buffer:
