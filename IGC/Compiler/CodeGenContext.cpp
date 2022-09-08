@@ -802,6 +802,10 @@ namespace IGC
                 Intel256GRFPerThread = true;
                 numThreadsPerEU = 4;
             }
+            else if (suffix.equals("-enable-auto-large-GRF-mode"))
+            {
+                IntelEnableAutoLargeGRF = true;
+            }
             else if (suffix.equals("-num-thread-per-eu"))
             {
                 IntelNumThreadPerEU = true;

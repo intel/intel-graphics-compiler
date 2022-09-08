@@ -1782,6 +1782,7 @@ namespace IGC
 
             bool Intel128GRFPerThread = false;
             bool Intel256GRFPerThread = false;
+            bool IntelEnableAutoLargeGRF = false;
             bool IntelNumThreadPerEU = false;
             uint32_t numThreadsPerEU = 0;
             std::vector<std::string> LargeGRFKernels;
