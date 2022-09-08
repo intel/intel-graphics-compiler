@@ -18,6 +18,26 @@ namespace cm {
 namespace exec {
 
 enum dimension : int { x = 0, y = 1, z = 2 };
+enum scope : int {
+  cross_device = 0,
+  device = 1,
+  workgroup = 2,
+  subgroup = 3,
+  invocation = 4
+};
+
+namespace detail {
+enum fence : uint8_t {
+  global_coherent_fence = 1,
+  l3_flush_instructions = 2,
+  l3_flush_texture_data = 4,
+  l3_flush_constant_data = 8,
+  l3_flush_rw_data = 16,
+  local_barrier = 32,
+  l1_flush_ro_data = 64,
+  sw_barrier = 128,
+};
+} // namespace detail
 
 inline uint32_t get_local_id(int dim) {
   if (dim > dimension::z || dim < dimension::x)
@@ -48,6 +68,30 @@ inline uint32_t get_group_id(int dim) {
   default:
     return 0;
   }
+}
+
+inline void barrier(int scope) {
+  if (scope == scope::workgroup)
+    cm::detail::__cm_cl_barrier();
+}
+
+inline void barrier_arrive(int scope) {
+  if (scope == scope::workgroup)
+    cm::detail::__cm_cl_sbarrier(1);
+}
+
+inline void barrier_wait(int scope) {
+  if (scope == scope::workgroup)
+    cm::detail::__cm_cl_sbarrier(0);
+}
+
+inline void fence(int scope, int semantics) {
+  const uint8_t mode = detail::fence::global_coherent_fence |
+                       detail::fence::local_barrier |
+                       detail::fence::sw_barrier;
+
+  if (semantics != 0)
+    cm::detail::__cm_cl_fence(mode);
 }
 
 } // namespace exec
