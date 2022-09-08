@@ -3311,11 +3311,17 @@ bool GenXPatternMatch::distributeIntegerMul(Function *F) {
 // where ShtAmt[0] is a constant vector and ShtAmt[i] are constant splats.
 static bool analyzeForShiftPattern(Constant *C,
                                    SmallVectorImpl<Constant *> &ShtAmt,
-                                   const DataLayout &DL) {
-  unsigned Width = 8;
+                                   const DataLayout &DL,
+                                   const llvm::GenXSubtarget &Subtarget) {
   auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(C->getType());
-  if (!VT || VT->getNumElements() <= Width || VT->getScalarSizeInBits() == 1)
+  if (!VT || VT->getScalarSizeInBits() == 1)
     return false;
+
+  unsigned ElmSz = VT->getScalarSizeInBits() / genx::ByteBits;
+  unsigned Width = Subtarget.getGRFByteSize() / ElmSz;
+  if (cast<IGCLLVM::FixedVectorType>(VT)->getNumElements() <= Width)
+    return false;
+
   unsigned NElts = VT->getNumElements();
   if (NElts % Width != 0)
     return false;
@@ -3388,6 +3394,9 @@ static bool analyzeForShiftPattern(Constant *C,
 }
 
 bool GenXPatternMatch::vectorizeConstants(Function *F) {
+  const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
+                                 .getTM<GenXTargetMachine>()
+                                 .getGenXSubtarget();
   bool Changed = false;
   for (auto &BB : F->getBasicBlockList()) {
     for (auto I = BB.begin(); I != BB.end();) {
@@ -3410,7 +3419,7 @@ bool GenXPatternMatch::vectorizeConstants(Function *F) {
             C->getSplatValue())
           continue;
         SmallVector<Constant *, 8> ShtAmt;
-        if (analyzeForShiftPattern(C, ShtAmt, *DL)) {
+        if (analyzeForShiftPattern(C, ShtAmt, *DL, *ST)) {
           // W1 = wrrregion(undef, ShtAmt[0], 0);
           // V2 = fadd ShtAmt[0], ShtAmt[1]
           // W2 = wrregion(W1, V2, Width)
