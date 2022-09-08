@@ -1563,9 +1563,6 @@ public:
   // which are supposed to be replaced by the real values later.
   typedef std::map<SPIRVValue *, LoadInst*> SPIRVToLLVMPlaceholderMap;
 
-  typedef std::map<const BasicBlock*, const SPIRVValue*>
-      SPIRVToLLVMLoopMetadataMap;
-
   Value *getTranslatedValue(SPIRVValue *BV);
 
 private:
@@ -1587,11 +1584,6 @@ private:
   SPIRVToLLVMMDAliasInstMap MDAliasDomainMap;
   SPIRVToLLVMMDAliasInstMap MDAliasScopeMap;
   SPIRVToLLVMMDAliasInstMap MDAliasListMap;
-
-  // Loops metadata is translated in the end of a function translation.
-  // This storage contains pairs of translated loop header basic block and loop
-  // metadata SPIR-V instruction in SPIR-V representation of this basic block.
-  SPIRVToLLVMLoopMetadataMap FuncLoopMetadataMap;
 
   Type *mapType(SPIRVType *BT, Type *T) {
     TypeMap[BT] = T;
@@ -1675,7 +1667,7 @@ private:
 
   template <typename LoopInstType>
   void setLLVMLoopMetadata(const LoopInstType* LM, Instruction* BI);
-  void transLLVMLoopMetadata(const Function* F);
+  void transLLVMLoopMetadata(const Function* F, SPIRVToLLVMLoopMetadataMap& FuncLoopMetadataMap);
   inline llvm::Metadata *getMetadataFromName(std::string Name);
   inline std::vector<llvm::Metadata *>
     getMetadataFromNameAndParameter(std::string Name, SPIRVWord Parameter);
@@ -2136,7 +2128,8 @@ void SPIRVToLLVM::setLLVMLoopMetadata(const LoopInstType* LM, Instruction* BI) {
   BI->setMetadata("llvm.loop", Node);
 }
 
-void SPIRVToLLVM::transLLVMLoopMetadata(const Function *F) {
+ void SPIRVToLLVM::transLLVMLoopMetadata(const Function * F,
+    SPIRVToLLVMLoopMetadataMap & FuncLoopMetadataMap) {
   assert(F);
 
   if (!FuncLoopMetadataMap.empty()) {
@@ -3580,11 +3573,24 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     break;
   case OpLoopMerge:          // Will be translated after all other function's
   case OpLoopControlINTEL:   // instructions are translated.
-    {
-    FuncLoopMetadataMap[BB] = BV;
-    return nullptr;
-    }
-    break;
+  {
+      auto result = std::find_if(
+          FuncMap.begin(),
+          FuncMap.end(),
+          [F](const auto& mapPair) {return mapPair.second == F; });
+
+      if (result != FuncMap.end())
+      {
+          SPIRVFunction* spvFunc = result->first;
+          spvFunc->getFuncLoopMetadataMap()[BB] = BV;
+      }
+      else
+      {
+          IGC_ASSERT_MESSAGE(false, "Cannot find function for FuncLoopMetadataMap");
+      }
+      return nullptr;
+  }
+  break;
 
   case OpSwitch: {
     auto BS = static_cast<SPIRVSwitch *>(BV);
@@ -4242,7 +4248,7 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
     }
   }
 
-  transLLVMLoopMetadata(F);
+  transLLVMLoopMetadata(F, BF->getFuncLoopMetadataMap());
 
   return F;
 }

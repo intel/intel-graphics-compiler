@@ -90,6 +90,9 @@ private:
   unsigned ArgNo;
 };
 
+typedef std::map<const llvm::BasicBlock*, const igc_spv::SPIRVValue*>
+SPIRVToLLVMLoopMetadataMap;
+
 class SPIRVFunction: public SPIRVValue, public SPIRVComponentExecutionModes {
 public:
   // Complete constructor. It does not construct basic blocks.
@@ -107,6 +110,7 @@ public:
   SPIRVDecoder getDecoder(std::istream &IS);
   SPIRVTypeFunction *getFunctionType() const { return FuncType;}
   SPIRVWord getFuncCtlMask() const { return FCtrlMask;}
+  SPIRVToLLVMLoopMetadataMap& getFuncLoopMetadataMap() { return FuncLoopMetadataMap; }
   size_t getNumBasicBlock() const { return BBVec.size();}
   SPIRVBasicBlock *getBasicBlock(size_t i) const { return BBVec[i];}
   size_t getNumArguments() const {
@@ -167,6 +171,10 @@ private:
   std::vector<SPIRVFunctionParameter *> Parameters;
   typedef std::vector<SPIRVBasicBlock *> SPIRVLBasicBlockVector;
   SPIRVLBasicBlockVector BBVec;
+  // Loops metadata is translated in the end of a function translation.
+  // This storage contains pairs of translated loop header basic block and loop
+  // metadata SPIR-V instruction in SPIR-V representation of this basic block.
+  SPIRVToLLVMLoopMetadataMap FuncLoopMetadataMap;
 };
 
 typedef SPIRVEntryOpCodeOnly<OpFunctionEnd> SPIRVFunctionEnd;
