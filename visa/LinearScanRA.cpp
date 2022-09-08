@@ -1406,12 +1406,13 @@ void LinearScanRA::setSrcReferences(G4_BB* bb, INST_LIST_ITER inst_it, int srcId
 
     lr->setLastRef(curInst, curInst->getLexicalId() * 2);
 
+    unsigned firstIdx = 0;
     if ((builder.WaDisableSendSrcDstOverlap() &&
         ((curInst->isSend() && srcIdx == 0) ||
-            (curInst->isSplitSend() && srcIdx == 1)))
-        || (curInst->isDpas() && srcIdx == 1)  //For DPAS, as part of same instruction, src1 should not have overlap with dst.
-        || (builder.avoidDstSrcOverlap() && curInst->getDst() != NULL && hasDstSrcOverlapPotential(curInst->getDst(), curInst->getSrc(srcIdx)->asSrcRegRegion()))
-        )
+            (curInst->isSplitSend() && srcIdx == 1))) ||
+        (curInst->isDpas() && srcIdx == 1) || //For DPAS, as part of same instruction, src1 should not have overlap with dst.
+        (builder.avoidDstSrcOverlap() && curInst->getDst() != NULL && hasDstSrcOverlapPotential(curInst->getDst(), curInst->getSrc(srcIdx)->asSrcRegRegion())) ||
+        lr->getFirstRef(firstIdx) == curInst)
     {
         lr->setLastRef(curInst, curInst->getLexicalId() * 2 + 1);
     }
@@ -1726,7 +1727,6 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(G4_BB* bb, std::vector<LSLive
             {
                 assert(stackCallArgLR);
                 stackCallArgLR->setLastRef(curInst, curInst->getLexicalId() * 2 - 1); //Minus one so that arguments will not be spilled
-                stackCallArgLR = nullptr;
             }
         }
 
