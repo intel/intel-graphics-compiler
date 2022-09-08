@@ -304,6 +304,41 @@
         "Operands": []
       }
     },
+    "Barrier": {
+      "Name": "barrier",
+      "Operands": [],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_barrier",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": []
+      }
+    },
+    "SplitBarrier": {
+      "Name": "sbarrier",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_sbarrier",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
+    "Fence": {
+      "Name": "fence",
+      "Operands": [
+        {"Name": "Source", "Kind": "Input"}
+      ],
+      "TranslateInto": {
+        "VC-Intrinsic": "genx_fence",
+        "ReturnType": {"GetBuiltinReturnType": []},
+        "Operands": [
+          {"GetBuiltinOperand": ["Source"]}
+        ]
+      }
+    },
     "CBit": {
       "Name": "cbit",
       "Operands": [

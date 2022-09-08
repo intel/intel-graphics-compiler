@@ -106,6 +106,10 @@ uint32_t __cm_cl_group_id_x();
 uint32_t __cm_cl_group_id_y();
 uint32_t __cm_cl_group_id_z();
 
+void __cm_cl_barrier();
+void __cm_cl_sbarrier(uint8_t);
+void __cm_cl_fence(uint8_t);
+
 template <typename T>
 T __cm_cl_atomicrmw(__global T *ptr, atomic::operation operation, T operand,
                     memory_order semantics, memory_scope scope);
