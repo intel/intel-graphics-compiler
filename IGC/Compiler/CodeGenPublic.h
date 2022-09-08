@@ -1106,7 +1106,8 @@ namespace IGC
         bool m_enableSimdVariantCompilation = false;
         // Module flag to indicate if non-inlinable stack functions are present
         bool m_hasStackCalls = false;
-
+        // Flag to determine if early Z culling should be called for certain patterns
+        bool m_ForceEarlyZMathCheck = false;
         // Adding multiversioning to partially redundant samples, if AIL is on.
         bool m_enableSampleMultiversioning = false;
 
