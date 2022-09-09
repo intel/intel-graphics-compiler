@@ -3640,15 +3640,14 @@ void IR_Builder::doSimplification(G4_INST *inst)
 
 
     // Perform 'mov' to 'movi' transform when it's a 'mov' of
+    // - simd8
     // - it's a raw mov
     // - dst is within a single GRF.
     // - src uses VxH indirect access.
     // - src is within one GRF.
     // - indices to src are all within src.
     // - destination stride in bytes must be equal to the source element size in bytes.
-    // - both src and dst are B/UB/W/UW/D/UD/F data types
-    // - not support F data type for XeHPSDV+
-    bool canConvertMovToMovi = inst->opcode() == G4_mov && inst->getExecSize() <= g4::SIMD16 &&
+    bool canConvertMovToMovi = inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD8 &&
         inst->isRawMov() && inst->getDst() &&
         !inst->getDst()->asDstRegRegion()->isCrossGRFDst(*this) &&
         inst->getSrc(0) && inst->getSrc(0)->isSrcRegRegion() &&
@@ -3656,29 +3655,18 @@ void IR_Builder::doSimplification(G4_INST *inst)
         inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH() &&
         inst->getSrc(0)->asSrcRegRegion()->getRegion()->width == 1 &&
         inst->getSrc(0)->getTypeSize() == inst->getDst()->getTypeSize() * inst->getDst()->asDstRegRegion()->getHorzStride();
-
-    G4_Type dstType = inst->getDst()->getType();
-    if (getPlatform() < Xe_XeHPSDV)
-    {
-        canConvertMovToMovi = canConvertMovToMovi && (IS_BTYPE(dstType) || IS_WTYPE(dstType) || IS_DTYPE(dstType) || IS_FTYPE(dstType));
-    }
-    else
-    {
-        canConvertMovToMovi = canConvertMovToMovi && (IS_BTYPE(dstType) || IS_WTYPE(dstType) || IS_DTYPE(dstType));
-    }
-
     if (canConvertMovToMovi)
     {
         // Convert 'mov' to 'movi' if the following conditions are met.
-        auto getSingleDefInst = [](G4_INST *UI, Gen4_Operand_Number OpndNum) -> G4_INST *
-        {
+
+        auto getSingleDefInst = [](G4_INST *UI,
+            Gen4_Operand_Number OpndNum)
+            -> G4_INST * {
             G4_INST *Def = nullptr;
-            for (auto I = UI->def_begin(), E = UI->def_end(); I != E; ++I)
-            {
+            for (auto I = UI->def_begin(), E = UI->def_end(); I != E; ++I) {
                 if (I->second != OpndNum)
                     continue;
-                if (Def)
-                {
+                if (Def) {
                     // Not single defined, bail out
                     Def = nullptr;
                     break;
@@ -3688,44 +3676,44 @@ void IR_Builder::doSimplification(G4_INST *inst)
             return Def;
         };
 
-        G4_INST* LEA = getSingleDefInst(inst, Opnd_src0);
-        if (LEA && LEA->opcode() == G4_add &&
-            LEA->getExecSize() == inst->getExecSize())
+        unsigned SrcSizeInBytes =
+            inst->getExecSize() * inst->getSrc(0)->getTypeSize();
+        if (SrcSizeInBytes == numEltPerGRF<Type_UB>()/2 ||
+            SrcSizeInBytes == numEltPerGRF<Type_UB>())
         {
-            G4_Operand* Op0 = LEA->getSrc(0);
-            G4_Operand* Op1 = LEA->getSrc(1);
-            G4_Declare* Dcl = nullptr;
-            int Offset = 0;
-            if (Op0->isAddrExp())
-            {
-                G4_AddrExp* AE = Op0->asAddrExp();
-                Dcl = AE->getRegVar()->getDeclare();
-                Offset = AE->getOffset();
-            }
-
-            unsigned SrcSizeInBytes = inst->getExecSize() * inst->getSrc(0)->getTypeSize();
-            // Op0's root declare size can make sure if all channels of indirect access fall into 1 grf
-            if (Dcl && Dcl->getRootDeclare()->getByteSize() <= numEltPerGRF<Type_UB>() &&
-                (Offset % SrcSizeInBytes) == 0 &&
-                (!Op1->isImm() || Op1->getType() == Type_UV))
-            {
-                // Immeidates in 'uv' ensures each element is a
-                // byte-offset within half-GRF.
-                G4_SubReg_Align SubAlign = getGRFAlign();
-                if (SrcSizeInBytes <= numEltPerGRF<Type_UB>() / 2u)
-                    SubAlign = (G4_SubReg_Align)(numEltPerGRF<Type_UW>() / 2);
-                inst->setOpcode(G4_movi);
-                if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != getGRFAlign())
-                {
-                    Dcl->setSubRegAlign(SubAlign);
+            G4_INST *LEA = getSingleDefInst(inst, Opnd_src0);
+            if (LEA && LEA->opcode() == G4_add &&
+                LEA->getExecSize() == inst->getExecSize()) {
+                G4_Operand *Op0 = LEA->getSrc(0);
+                G4_Operand *Op1 = LEA->getSrc(1);
+                G4_Declare *Dcl = nullptr;
+                int Offset = 0;
+                if (Op0->isAddrExp()) {
+                    G4_AddrExp *AE = Op0->asAddrExp();
+                    Dcl = AE->getRegVar()->getDeclare();
+                    Offset = AE->getOffset();
                 }
-                const RegionDesc* rd = getRegionStride1();
-                inst->getSrc(0)->asSrcRegRegion()->setRegion(*this, rd);
-                // Set subreg alignment for the address variable.
-                Dcl = LEA->getDst()->getBase()->asRegVar()->getDeclare();
-                assert(Dcl->getRegFile() == G4_ADDRESS &&
-                    "Address variable is required.");
-                Dcl->setSubRegAlign(Eight_Word);
+                if (Dcl && (Offset % SrcSizeInBytes) == 0 &&
+                    Op1->isImm() && Op1->getType() == Type_UV) {
+                    // Immeidates in 'uv' ensures each element is a
+                    // byte-offset within half-GRF.
+                    G4_SubReg_Align SubAlign = getGRFAlign();
+                    if (SrcSizeInBytes <= numEltPerGRF<Type_UB>()/2u)
+                        SubAlign = (G4_SubReg_Align)(numEltPerGRF<Type_UW>()/2);
+                    inst->setOpcode(G4_movi);
+                    if (!Dcl->isEvenAlign() && Dcl->getSubRegAlign() != getGRFAlign())
+                    {
+                        Dcl->setSubRegAlign(SubAlign);
+                    }
+                    const RegionDesc *rd = getRegionStride1();
+                    inst->getSrc(0)->asSrcRegRegion()->setRegion(*this, rd);
+                    // Set subreg alignment for the address variable.
+                    Dcl =
+                        LEA->getDst()->getBase()->asRegVar()->getDeclare();
+                    assert(Dcl->getRegFile() == G4_ADDRESS &&
+                        "Address variable is required.");
+                    Dcl->setSubRegAlign(Eight_Word);
+                }
             }
         }
     }
