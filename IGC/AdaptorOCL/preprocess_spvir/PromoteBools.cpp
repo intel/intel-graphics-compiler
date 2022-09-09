@@ -62,6 +62,77 @@ bool PromoteBools::runOnModule(Module& module)
     return changed;
 }
 
+void PromoteBools::visitAllocaInst(AllocaInst& alloca)
+{
+    if (promotedValuesCache.count(alloca.getFunction()))
+    {
+        return;
+    }
+
+    changed |= getOrCreatePromotedValue(&alloca) != &alloca;
+}
+
+void PromoteBools::visitCallInst(CallInst& call)
+{
+    if (promotedValuesCache.count(call.getFunction()))
+    {
+        return;
+    }
+
+    auto function = call.getCalledFunction();
+    if (!function)
+    {
+        return;
+    }
+
+    auto functionType = call.getFunctionType();
+
+    auto promotedValue = getOrCreatePromotedValue(function);
+    if (!promotedValue)
+    {
+        return;
+    }
+
+    auto newFunction = dyn_cast<Function>(promotedValue);
+
+    // Promotion is not needed.
+    if (newFunction == function)
+    {
+        return;
+    }
+
+    IRBuilder<> builder(&call);
+    std::vector<Value*> newCallArguments;
+    for (auto& arg : call.args())
+    {
+        if (!arg->getType()->isIntegerTy(1))
+        {
+            newCallArguments.push_back(arg);
+        }
+        else
+        {
+            auto zext = createZextIfNeeded(arg, &call);
+            newCallArguments.push_back(zext);
+        }
+    }
+
+    auto newCall = builder.CreateCall(newFunction->getFunctionType(), newFunction, newCallArguments);
+    if (!functionType->getReturnType()->isIntegerTy(1))
+    {
+        call.replaceAllUsesWith(newCall);
+    }
+    else
+    {
+        auto trunc = builder.CreateTrunc(newCall, Type::getInt1Ty(call.getContext()));
+        call.replaceAllUsesWith(trunc);
+    }
+    auto name = call.getName().str();
+    call.eraseFromParent();
+    newCall->setName(name);
+
+    changed = true;
+}
+
 void PromoteBools::visitLoadInst(LoadInst& load)
 {
     if (promotedValuesCache.count(load.getFunction()))
@@ -131,122 +202,6 @@ void PromoteBools::visitStoreInst(StoreInst& store)
     changed = true;
 }
 
-void PromoteBools::visitCallInst(CallInst& call)
-{
-    if (promotedValuesCache.count(call.getFunction()))
-    {
-        return;
-    }
-
-    auto function = call.getCalledFunction();
-    if (!function)
-    {
-        return;
-    }
-
-    auto functionType = call.getFunctionType();
-
-    auto promotedValue = getOrCreatePromotedValue(function);
-    if (!promotedValue)
-    {
-        return;
-    }
-
-    auto newFunction = dyn_cast<Function>(promotedValue);
-
-    // Promotion is not needed.
-    if (newFunction == function)
-    {
-        return;
-    }
-
-    IRBuilder<> builder(&call);
-    std::vector<Value*> newCallArguments;
-    for (auto& arg : call.args())
-    {
-        if (!arg->getType()->isIntegerTy(1))
-        {
-            newCallArguments.push_back(arg);
-        }
-        else
-        {
-            auto zext = createZextIfNeeded(arg, &call);
-            newCallArguments.push_back(zext);
-        }
-    }
-
-    auto newCall = builder.CreateCall(newFunction->getFunctionType(), newFunction, newCallArguments);
-    if (!functionType->getReturnType()->isIntegerTy(1))
-    {
-        call.replaceAllUsesWith(newCall);
-    }
-    else
-    {
-        auto trunc = builder.CreateTrunc(newCall, Type::getInt1Ty(call.getContext()));
-        call.replaceAllUsesWith(trunc);
-    }
-    auto name = call.getName().str();
-    call.eraseFromParent();
-    newCall->setName(name);
-
-    changed = true;
-}
-
-void PromoteBools::visitAllocaInst(AllocaInst& alloca)
-{
-    if (promotedValuesCache.count(alloca.getFunction()))
-    {
-        return;
-    }
-
-    changed |= getOrCreatePromotedValue(&alloca) != &alloca;
-}
-
-bool PromoteBools::typeNeedsPromotion(Type* type, DenseSet<Type*> visitedTypes)
-{
-    if (!type || visitedTypes.count(type))
-    {
-        return false;
-    }
-
-    visitedTypes.insert(type);
-
-    if (type->isIntegerTy(1))
-    {
-        return true;
-    }
-    else if (auto vectorType = dyn_cast<VectorType>(type))
-    {
-        return typeNeedsPromotion(vectorType->getElementType(), visitedTypes);
-    }
-    else if (auto pointerType = dyn_cast<PointerType>(type))
-    {
-        return typeNeedsPromotion(type->getPointerElementType(), visitedTypes);
-    }
-    else if (auto arrayType = dyn_cast<ArrayType>(type))
-    {
-        return typeNeedsPromotion(arrayType->getElementType(), visitedTypes);
-    }
-    else if (auto structType = dyn_cast<StructType>(type))
-    {
-        return std::any_of(structType->element_begin(), structType->element_end(), [this, &visitedTypes](const auto& element) {
-            return typeNeedsPromotion(element, visitedTypes);
-        });
-    }
-    else if (auto functionType = dyn_cast<FunctionType>(type))
-    {
-        if (typeNeedsPromotion(functionType->getReturnType(), visitedTypes))
-        {
-            return true;
-        }
-        return std::any_of(functionType->param_begin(), functionType->param_end(), [this, &visitedTypes](const auto& element) {
-            return typeNeedsPromotion(element, visitedTypes);
-        });
-    }
-
-    return false;
-}
-
 Value* PromoteBools::createZextIfNeeded(Value* argument, Instruction* insertBefore)
 {
     auto trunc = dyn_cast<TruncInst>(argument);
@@ -314,6 +269,61 @@ void PromoteBools::cleanUp(Module& module)
     }
 }
 
+//------------------------------------------------------------------------------
+//
+// Checking if type needs promotion
+//
+//------------------------------------------------------------------------------
+bool PromoteBools::typeNeedsPromotion(Type* type, DenseSet<Type*> visitedTypes)
+{
+    if (!type || visitedTypes.count(type))
+    {
+        return false;
+    }
+
+    visitedTypes.insert(type);
+
+    if (type->isIntegerTy(1))
+    {
+        return true;
+    }
+    else if (auto vectorType = dyn_cast<VectorType>(type))
+    {
+        return typeNeedsPromotion(vectorType->getElementType(), visitedTypes);
+    }
+    else if (auto pointerType = dyn_cast<PointerType>(type))
+    {
+        return typeNeedsPromotion(type->getPointerElementType(), visitedTypes);
+    }
+    else if (auto arrayType = dyn_cast<ArrayType>(type))
+    {
+        return typeNeedsPromotion(arrayType->getElementType(), visitedTypes);
+    }
+    else if (auto structType = dyn_cast<StructType>(type))
+    {
+        return std::any_of(structType->element_begin(), structType->element_end(), [this, &visitedTypes](const auto& element) {
+            return typeNeedsPromotion(element, visitedTypes);
+        });
+    }
+    else if (auto functionType = dyn_cast<FunctionType>(type))
+    {
+        if (typeNeedsPromotion(functionType->getReturnType(), visitedTypes))
+        {
+            return true;
+        }
+        return std::any_of(functionType->param_begin(), functionType->param_end(), [this, &visitedTypes](const auto& element) {
+            return typeNeedsPromotion(element, visitedTypes);
+        });
+    }
+
+    return false;
+}
+
+//------------------------------------------------------------------------------
+//
+// Promoting types
+//
+//------------------------------------------------------------------------------
 Type* PromoteBools::getOrCreatePromotedType(Type* type)
 {
     if (promotedTypesCache.count(type))
@@ -387,6 +397,11 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
     return newType;
 }
 
+//------------------------------------------------------------------------------
+//
+// Promoting values
+//
+//------------------------------------------------------------------------------
 Value* PromoteBools::getOrCreatePromotedValue(Value* value)
 {
     if (promotedValuesCache.count(value))
@@ -403,6 +418,10 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteFunction(function);
     }
+    else if (auto addrSpaceCast = dyn_cast<AddrSpaceCastInst>(value))
+    {
+        newValue = promoteAddrSpaceCast(addrSpaceCast);
+    }
     else if (auto alloca = dyn_cast<AllocaInst>(value))
     {
         newValue = promoteAlloca(alloca);
@@ -410,10 +429,6 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     else if (auto bitcast = dyn_cast<BitCastInst>(value))
     {
         newValue = promoteBitCast(bitcast);
-    }
-    else if (auto addrSpaceCast = dyn_cast<AddrSpaceCastInst>(value))
-    {
-        newValue = promoteAddrSpaceCast(addrSpaceCast);
     }
 
     if (newValue != value)
@@ -513,11 +528,111 @@ GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariab
         getOrCreatePromotedType(globalVariable->getType()->getPointerElementType()),
         globalVariable->isConstant(),
         globalVariable->getLinkage(),
-        createPromotedConstant(globalVariable->getInitializer()),
+        promoteConstant(globalVariable->getInitializer()),
         globalVariable->getName(),
         nullptr,
         GlobalValue::ThreadLocalMode::NotThreadLocal,
         globalVariable->getType()->getPointerAddressSpace());
+}
+
+Constant* PromoteBools::promoteConstant(Constant* constant)
+{
+    if (!constant)
+    {
+        return nullptr;
+    }
+
+    if (isa<UndefValue>(constant))
+    {
+        return UndefValue::get(getOrCreatePromotedType(constant->getType()));
+    }
+    else if (isa<ConstantAggregateZero>(constant))
+    {
+        return ConstantAggregateZero::get(getOrCreatePromotedType(constant->getType()));
+    }
+    else if (auto constantInteger = dyn_cast<ConstantInt>(constant))
+    {
+        if (!typeNeedsPromotion(constantInteger->getType()))
+        {
+            return constant;
+        }
+
+        return ConstantInt::get(Type::getInt8Ty(constant->getContext()), constant->isOneValue() ? 1 : 0);
+    }
+    else if (auto constantPointerNull = dyn_cast<ConstantPointerNull>(constant))
+    {
+        if (!typeNeedsPromotion(constantPointerNull->getType()->getPointerElementType()))
+        {
+            return constant;
+        }
+
+        auto newPointerElementType = getOrCreatePromotedType(constantPointerNull->getType()->getPointerElementType());
+        return ConstantPointerNull::get(PointerType::get(newPointerElementType, constantPointerNull->getType()->getAddressSpace()));
+    }
+    else if (auto constantVector = dyn_cast<ConstantVector>(constant))
+    {
+        if (!typeNeedsPromotion(constantVector->getType()))
+        {
+            return constant;
+        }
+
+        SmallVector<Constant*, 8> values;
+        for (unsigned i = 0; i < constantVector->getType()->getNumElements(); ++i)
+        {
+            values.push_back(promoteConstant(constantVector->getAggregateElement(i)));
+        }
+        return ConstantVector::get(values);
+    }
+    else if (auto constantArray = dyn_cast<ConstantArray>(constant))
+    {
+        if (!typeNeedsPromotion(constantArray->getType()))
+        {
+            return constant;
+        }
+
+        SmallVector<Constant*, 8> values;
+        for (unsigned i = 0; i < constantArray->getType()->getNumElements(); ++i)
+        {
+            values.push_back(promoteConstant(constantArray->getAggregateElement(i)));
+        }
+
+        auto newType = getOrCreatePromotedType(constantArray->getType());
+        return ConstantArray::get(dyn_cast<ArrayType>(newType), values);
+    }
+    else if (auto constantStruct = dyn_cast<ConstantStruct>(constant))
+    {
+        if (!typeNeedsPromotion(constantStruct->getType()))
+        {
+            return constant;
+        }
+
+        SmallVector<Constant*, 8> values;
+        for (unsigned i = 0; i < constantStruct->getType()->getNumElements(); ++i)
+        {
+            values.push_back(promoteConstant(constantStruct->getAggregateElement(i)));
+        }
+
+        auto newType = getOrCreatePromotedType(constantStruct->getType());
+        return ConstantStruct::get(dyn_cast<StructType>(newType), values);
+    }
+
+    return constant;
+}
+
+Value* PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst* addrSpaceCast)
+{
+    if (!addrSpaceCast || !typeNeedsPromotion(addrSpaceCast->getDestTy()))
+    {
+        return addrSpaceCast;
+    }
+
+    auto newAddrSpaceCast = new AddrSpaceCastInst(
+        addrSpaceCast->getOperand(0),
+        getOrCreatePromotedType(addrSpaceCast->getDestTy()),
+        addrSpaceCast->getName(),
+        addrSpaceCast
+    );
+    return newAddrSpaceCast;
 }
 
 Value* PromoteBools::promoteAlloca(AllocaInst* alloca)
@@ -572,104 +687,4 @@ Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
         bitcast
     );
     return newBitCast;
-}
-
-Value* PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst* addrSpaceCast)
-{
-    if (!addrSpaceCast || !typeNeedsPromotion(addrSpaceCast->getDestTy()))
-    {
-        return addrSpaceCast;
-    }
-
-    auto newAddrSpaceCast = new AddrSpaceCastInst(
-        addrSpaceCast->getOperand(0),
-        getOrCreatePromotedType(addrSpaceCast->getDestTy()),
-        addrSpaceCast->getName(),
-        addrSpaceCast
-    );
-    return newAddrSpaceCast;
-}
-
-Constant* PromoteBools::createPromotedConstant(Constant* constant)
-{
-    if (!constant)
-    {
-        return nullptr;
-    }
-
-    if (isa<UndefValue>(constant))
-    {
-        return UndefValue::get(getOrCreatePromotedType(constant->getType()));
-    }
-    else if (isa<ConstantAggregateZero>(constant))
-    {
-        return ConstantAggregateZero::get(getOrCreatePromotedType(constant->getType()));
-    }
-    else if (auto constantInteger = dyn_cast<ConstantInt>(constant))
-    {
-        if (!typeNeedsPromotion(constantInteger->getType()))
-        {
-            return constant;
-        }
-
-        return ConstantInt::get(Type::getInt8Ty(constant->getContext()), constant->isOneValue() ? 1 : 0);
-    }
-    else if (auto constantPointerNull = dyn_cast<ConstantPointerNull>(constant))
-    {
-        if (!typeNeedsPromotion(constantPointerNull->getType()->getPointerElementType()))
-        {
-            return constant;
-        }
-
-        auto newPointerElementType = getOrCreatePromotedType(constantPointerNull->getType()->getPointerElementType());
-        return ConstantPointerNull::get(PointerType::get(newPointerElementType, constantPointerNull->getType()->getAddressSpace()));
-    }
-    else if (auto constantVector = dyn_cast<ConstantVector>(constant))
-    {
-        if (!typeNeedsPromotion(constantVector->getType()))
-        {
-            return constant;
-        }
-
-        SmallVector<Constant*, 8> values;
-        for (unsigned i = 0; i < constantVector->getType()->getNumElements(); ++i)
-        {
-            values.push_back(createPromotedConstant(constantVector->getAggregateElement(i)));
-        }
-        return ConstantVector::get(values);
-    }
-    else if (auto constantArray = dyn_cast<ConstantArray>(constant))
-    {
-        if (!typeNeedsPromotion(constantArray->getType()))
-        {
-            return constant;
-        }
-
-        SmallVector<Constant*, 8> values;
-        for (unsigned i = 0; i < constantArray->getType()->getNumElements(); ++i)
-        {
-            values.push_back(createPromotedConstant(constantArray->getAggregateElement(i)));
-        }
-
-        auto newType = getOrCreatePromotedType(constantArray->getType());
-        return ConstantArray::get(dyn_cast<ArrayType>(newType), values);
-    }
-    else if (auto constantStruct = dyn_cast<ConstantStruct>(constant))
-    {
-        if (!typeNeedsPromotion(constantStruct->getType()))
-        {
-            return constant;
-        }
-
-        SmallVector<Constant*, 8> values;
-        for (unsigned i = 0; i < constantStruct->getType()->getNumElements(); ++i)
-        {
-            values.push_back(createPromotedConstant(constantStruct->getAggregateElement(i)));
-        }
-
-        auto newType = getOrCreatePromotedType(constantStruct->getType());
-        return ConstantStruct::get(dyn_cast<StructType>(newType), values);
-    }
-
-    return constant;
 }

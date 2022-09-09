@@ -36,17 +36,19 @@ namespace IGC
 
         virtual bool runOnModule(llvm::Module& module) override;
 
+        void visitAllocaInst(llvm::AllocaInst& alloca);
+        void visitCallInst(llvm::CallInst& call);
         void visitLoadInst(llvm::LoadInst& load);
         void visitStoreInst(llvm::StoreInst& store);
-        void visitCallInst(llvm::CallInst& call);
-        void visitAllocaInst(llvm::AllocaInst& alloca);
 
     private:
         bool changed;
 
-        bool typeNeedsPromotion(llvm::Type* type, llvm::DenseSet<llvm::Type*> visitedTypes = {});
         llvm::Value* createZextIfNeeded(llvm::Value* argument, llvm::Instruction* insertBefore);
         void cleanUp(llvm::Module& module);
+
+        // Checking if type needs promotion
+        bool typeNeedsPromotion(llvm::Type* type, llvm::DenseSet<llvm::Type*> visitedTypes = {});
 
         // Promoting types
         llvm::DenseMap<llvm::Type*, llvm::Type*> promotedTypesCache;
@@ -57,11 +59,9 @@ namespace IGC
         llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
         llvm::Function* promoteFunction(llvm::Function* function);
         llvm::GlobalVariable* promoteGlobalVariable(llvm::GlobalVariable* globalVariable);
+        llvm::Constant* promoteConstant(llvm::Constant* constant);
         llvm::Value* promoteAlloca(llvm::AllocaInst* alloca);
-        llvm::Value* promoteBitCast(llvm::BitCastInst* bitcast);
         llvm::Value* promoteAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast);
-
-        // Promoting contants
-        llvm::Constant* createPromotedConstant(llvm::Constant* constant);
+        llvm::Value* promoteBitCast(llvm::BitCastInst* bitcast);
     };
 }
