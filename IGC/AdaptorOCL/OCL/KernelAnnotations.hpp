@@ -341,7 +341,6 @@ struct KernelArgumentInfoAnnotation
     std::string ArgumentName;
     std::string TypeName;
     std::string TypeQualifier;
-    bool IsScalarCastedToPointer = false;
 };
 
 struct StartGASAnnotation

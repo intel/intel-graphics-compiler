@@ -389,11 +389,6 @@ namespace IGC
                 kernelArgInfo->TypeQualifier = "NONE";
             }
 
-            if (!funcMD->m_OpenCLArgScalarAsPointers.empty())
-            {
-                kernelArgInfo->IsScalarCastedToPointer = funcMD->m_OpenCLArgScalarAsPointers[i];
-            }
-
             m_kernelInfo.m_kernelArgInfo.push_back(std::move(kernelArgInfo));
         }
     }
