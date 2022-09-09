@@ -30,6 +30,7 @@ std::string vISA::ToSymbol(MsgOp op)
     case MsgOp::STORE_QUAD:    return "store_quad";
     case MsgOp::STORE_STRIDED: return "store_strided";
     case MsgOp::STORE_BLOCK2D: return "store_block2d";
+    case MsgOp::LOAD_STATUS:   return "load_status";
     // general atomics
     case MsgOp::ATOMIC_LOAD:   return "atomic_load";
     case MsgOp::ATOMIC_STORE:  return "atomic_store";
@@ -104,6 +105,8 @@ MsgOp vISA::ConvertLSCOpToMsgOp(LSC_OP op) {
             return MsgOp::LOAD_QUAD;
         case LSC_OP::LSC_LOAD_BLOCK2D:
             return MsgOp::LOAD_BLOCK2D;
+        case LSC_OP::LSC_LOAD_STATUS:
+            return MsgOp::LOAD_STATUS;
         case LSC_OP::LSC_STORE:
             return MsgOp::STORE;
         case LSC_OP::LSC_STORE_STRIDED:
@@ -205,6 +208,7 @@ uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
         case MsgOp::ATOMIC_AND: return 24;
         case MsgOp::ATOMIC_XOR: return 25;
         case MsgOp::ATOMIC_OR: return 26;
+        case MsgOp::LOAD_STATUS: return 27;
         case MsgOp::READ_STATE_INFO: return 30;
         case MsgOp::FENCE:     return 31;
         //
