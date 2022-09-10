@@ -625,11 +625,7 @@ public:
     CVariable* ComputeSampleIntOffset(llvm::Instruction* sample, uint sourceIndex);
     void emitPlnInterpolation(CVariable* bary, CVariable* inputvar);
 
-    // emask for the entire dispatch. It is read only as it is cached for reuse.
     CVariable* GetExecutionMask();
-    // the number of lanes of the entire dispatch. It is read only as it is cached for reuse.
-    CVariable* GetNumActiveLanes();
-
     CVariable* GetExecutionMask(CVariable* &vecMaskVar);
     CVariable* GetHalfExecutionMask();
     CVariable* UniformCopy(CVariable* var, bool doSub = false);
@@ -707,9 +703,7 @@ public:
     CVariable* GetSrcVariable(const SSource& source, bool fromConstPool = false);
     void SetSourceModifiers(unsigned int sourceIndex, const SSource& source);
 
-    SBasicBlock* getCurrentBlock() const {
-        return m_currentBlock < 0 ? nullptr : &(m_pattern->m_blocks[m_currentBlock]);
-    }
+    SBasicBlock& getCurrentBlock() const { return m_pattern->m_blocks[m_currentBlock]; }
 
     CodeGenContext* m_pCtx = nullptr;
     CVariable* m_destination = nullptr;

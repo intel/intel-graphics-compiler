@@ -103,17 +103,12 @@ namespace IGC
         uint id;
         llvm::BasicBlock* bb;
         std::vector<SDAG> m_dags;
-
-        //
-        // Caching some variables for re-use, mostly within the same BB.
-        //
-        CVariable* m_execMask = nullptr; // general var (not a flag), execution mask for the entire dispatch.
-        // caches the active lane mask (a flag variable) for the current instance in this BB
+        // caches the active lane mask (a flag variable) for this BB
         // this is currently set only when we enable the A64 WA
-        CVariable* m_activeMask = nullptr;   // flag var
-        CVariable* m_numActiveLanes = nullptr;  // general var, #lanes for the entire dispatch size.
+        CVariable* m_activeMask = nullptr;
+        // caching of the number of active lanes under dispatch size (not 1st or 2nd instances)
+        CVariable* m_numActiveLanes;
         void clearCaching() {
-            m_execMask = nullptr;
             m_activeMask = nullptr;
             m_numActiveLanes = nullptr;
         }
