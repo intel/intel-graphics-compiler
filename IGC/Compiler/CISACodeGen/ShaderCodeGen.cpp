@@ -58,6 +58,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PromoteInt8Type.hpp"
 #include "Compiler/CISACodeGen/PrepareLoadsStoresPass.h"
 #include "Compiler/CISACodeGen/HFpackingOpt.hpp"
+#include "Compiler/CISACodeGen/EvaluateFreeze.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
@@ -300,6 +301,9 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     //
     // Generally, passes that change IR should be prior to this place!
     //
+
+    // Evaluates LLVM 10+ freeze instructions so EmitPass does not need to handle them
+    mpm.add(createEvaluateFreezePass());
 
     // let CleanPHINode be right before Layout
     mpm.add(createCleanPHINodePass());
