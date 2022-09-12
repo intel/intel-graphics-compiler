@@ -12472,6 +12472,11 @@ void EmitPass::emitScalarAtomics(
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetNoMask();
 
+    CVariable* pReturnVal = returnsImmValue ?
+        m_currShader->GetNewVariable(
+            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE) :
+        nullptr;
+
     if (bitWidth == 16)
     {
         CVariable* pCastAtomicSrcVal =
@@ -12480,27 +12485,6 @@ void EmitPass::emitScalarAtomics(
         m_encoder->Cast(pCastAtomicSrcVal, pFinalAtomicSrcVal);
         pFinalAtomicSrcVal = pCastAtomicSrcVal;
     }
-
-    CVariable* pReturnVal = returnsImmValue ?
-        m_currShader->GetNewVariable(
-            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE) :
-        nullptr;
-
-    if (shouldGenerateLSC(pInst))
-    {
-        m_encoder->LSC_AtomicRaw(
-            uniformAtomicOp,
-            pReturnVal,
-            pDstAddr,
-            pFinalAtomicSrcVal,
-            nullptr,
-            bitWidth,
-            &resource,
-            isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b,
-            0,
-            LSC_DEFAULT_CACHING);
-    }
-    else
     {
         if (isA64)
         {
@@ -12607,23 +12591,7 @@ void EmitPass::emitScalarAtomicLoad(
             GetTypeFromSize(bitWidth / 8),
             isA64 ? EALIGN_2GRF : EALIGN_GRF,
             true,
-            pDstAddr->getName()) : nullptr;
-
-    if (shouldGenerateLSC(pInst))
-    {
-        m_encoder->LSC_AtomicRaw(
-            EATOMIC_OR,
-            atomicDst,
-            pDstAddr,
-            pSrc,
-            nullptr,
-            bitWidth,
-            &resource,
-            isA64 ? LSC_ADDR_SIZE_64b : LSC_ADDR_SIZE_32b,
-            0,
-            LSC_DEFAULT_CACHING);
-    }
-    else
+            pDstAddr ? pDstAddr->getName() : CName::NONE) : nullptr;
     {
         if (isA64)
         {
