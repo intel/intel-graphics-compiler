@@ -121,7 +121,6 @@ namespace IGC
         void SetEncoderState(SEncoderState& newState);
         VISA_Align GetVISAAlign(CVariable* var);
 
-        void SetAbortOnSpillThreshold(bool canAbortOnSpill, bool AllowSpill);
         void SetDispatchSimdSize();
         void SetSpillMemOffset();
         void SetStackFunctionArgSize(uint size);  // size in GRFs
