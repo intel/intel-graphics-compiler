@@ -2952,7 +2952,7 @@ int VISAKernelImpl::AppendVISAArithmeticInst(
 
         unsigned char size = executionSize;
         size += emask << 4;
-        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3023,7 +3023,7 @@ int VISAKernelImpl::AppendVISATwoDstArithmeticInst(
 
         unsigned char size = executionSize;
         size += emask << 4;
-        status = inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        status = inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3109,7 +3109,7 @@ int VISAKernelImpl::AppendVISALogicOrShiftInst(
 
         unsigned char size = executionSize;
         size += emask << 4;
-        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3162,7 +3162,7 @@ int VISAKernelImpl::AppendVISAAddrAddInst(
 
         unsigned char size = executionSize;
         size += emask << 4;
-        status = inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        status = inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3226,7 +3226,7 @@ int VISAKernelImpl::AppendVISAMinMaxInst(
         unsigned char size = executionSize;
         size += emask << 4;
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3319,7 +3319,7 @@ int VISAKernelImpl::AppendVISADataMovementInst(
         unsigned char size = executionSize;
         size += emask << 4;
         CisaFramework::CisaInst* inst = new(m_mem)CisaFramework::CisaInst(m_mem);
-        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3366,7 +3366,7 @@ int VISAKernelImpl::AppendVISAComparisonInst(
         unsigned char size = executionSize;
         size += emask << 4;
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3411,7 +3411,7 @@ int VISAKernelImpl::AppendVISAComparisonInst(VISA_Cond_Mod sub_op, VISA_EMask_Ct
         unsigned char size = executionSize;
         size += emask << 4;
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3454,7 +3454,7 @@ int VISAKernelImpl::AppendVISACFGotoInst(
 
         unsigned char size = executionSize;
         size += emask << 4;
-        inst->createCisaInstruction(ISA_GOTO, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_GOTO, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3492,7 +3492,7 @@ int VISAKernelImpl::AppendVISACFJmpInst(VISA_PredOpnd *pred, VISA_LabelOpnd *lab
 
         unsigned char size = EXEC_SIZE_1;
         size += vISA_EMASK_M1 << 4;
-        inst->createCisaInstruction(ISA_JMP, size, 0, predOpnd, opnd, 1, inst_desc);
+        inst->createCisaInstruction(ISA_JMP, size, 0, predOpnd, opnd, 1, inst_desc, verifier);
 
         addInstructionToEnd(inst);
     }
@@ -3535,7 +3535,7 @@ int VISAKernelImpl::AppendVISACFCallInst(
 
         unsigned char size = executionSize;
         size += emask << 4;
-        inst->createCisaInstruction(ISA_CALL, size, 0, predOpnd, opnd, 1, inst_desc);
+        inst->createCisaInstruction(ISA_CALL, size, 0, predOpnd, opnd, 1, inst_desc, verifier);
 
         addInstructionToEnd(inst);
     }
@@ -3570,7 +3570,7 @@ int VISAKernelImpl::AppendVISACFRetInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl ema
         CisaFramework::CisaInst* inst = new(m_mem)CisaFramework::CisaInst(m_mem);
         unsigned char size = executionSize;
         size += emask << 4;
-        inst->createCisaInstruction(opcode, size, 0, predOpnd, NULL, 0, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, predOpnd, NULL, 0, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3595,7 +3595,7 @@ int VISAKernelImpl::AppendVISACFLabelInst(VISA_LabelOpnd *label)
         inst_desc = &CISA_INST_table[(ISA_Opcode)label->tag];
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
-        inst->createCisaInstruction((ISA_Opcode)label->tag, 1, 0, PredicateOpnd::getNullPred(), opnd, 1, inst_desc);
+        inst->createCisaInstruction((ISA_Opcode)label->tag, 1, 0, PredicateOpnd::getNullPred(), opnd, 1, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3647,7 +3647,7 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(
 
         unsigned char size = executionSize;
         size += emask << 4;
-        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3699,7 +3699,7 @@ int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(
 
         unsigned char size = executionSize;
         size += emask << 4;
-        inst->createCisaInstruction(ISA_IFCALL, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_IFCALL, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3732,7 +3732,7 @@ int VISAKernelImpl::AppendVISACFSymbolInst(std::string symbolName, VISA_VectorOp
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(ISA_FADDR, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_FADDR, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3762,7 +3762,7 @@ int VISAKernelImpl::AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, VISA_EMask_
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
         unsigned char size = executionSize;
         size += emask << 4;
-        inst->createCisaInstruction(opcode, size, 0, predOpnd, NULL, 0, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, predOpnd, NULL, 0, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3828,7 +3828,7 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
 
         unsigned char size = EXEC_SIZE_1;
         size += vISA_EMASK_M1 << 4;
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, labelCount + num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, labelCount + num_operands, inst_desc, verifier);
 
         addInstructionToEnd(inst);
     }
@@ -3894,7 +3894,7 @@ int VISAKernelImpl::AppendVISASurfAccessDwordAtomicInst(
         unsigned size = execSize;
         PACK_EXEC_SIZE(size, eMask);
 
-        inst->createCisaInstruction(opcode, (uint8_t)size, 0, predOpnd, ops, numOps, instDesc);
+        inst->createCisaInstruction(opcode, (uint8_t)size, 0, predOpnd, ops, numOps, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -3985,7 +3985,7 @@ int VISAKernelImpl::AppendVISASurfAccessGatherScatterInst(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4050,7 +4050,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4TypedInst(
         unsigned size = executionSize;
         PACK_EXEC_SIZE(size, emask);
 
-        int status = inst->createCisaInstruction(opcode, (uint8_t)size, 0, predOpnd, opnd, num_operands, inst_desc);
+        int status = inst->createCisaInstruction(opcode, (uint8_t)size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         if (status != VISA_SUCCESS)
         {
             assert(0);
@@ -4137,7 +4137,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4ScaledInst(
         unsigned size = execSize;
         PACK_EXEC_SIZE(size, eMask);
 
-        inst->createCisaInstruction(opcode, (uint8_t)size, 0, predOpnd, ops, numOps, instDesc);
+        inst->createCisaInstruction(opcode, (uint8_t)size, 0, predOpnd, ops, numOps, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4217,7 +4217,7 @@ int VISAKernelImpl::AppendVISASurfAccessScatterScaledInst(
         unsigned size = execSize;
         PACK_EXEC_SIZE(size, eMask);
 
-        inst->createCisaInstruction(opcode, (uint8_t)size, 0, predOpnd, ops, numOps, instDesc);
+        inst->createCisaInstruction(opcode, (uint8_t)size, 0, predOpnd, ops, numOps, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4299,7 +4299,7 @@ int VISAKernelImpl::AppendVISASurfAccessMediaLoadStoreInst(
         CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4362,7 +4362,7 @@ CisaFramework::CisaInst* VISAKernelImpl::AppendVISASvmGeneralScatterInst(
 
     CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-    inst->createCisaInstruction(ISA_SVM, size, 0, predOpnd, opnd, num_operands, inst_desc);
+    inst->createCisaInstruction(ISA_SVM, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
     return inst;
 }
 
@@ -4533,7 +4533,7 @@ int VISAKernelImpl::AppendVISASvmAtomicInst(
 
         PredicateOpnd predOpnd = pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
 
-        inst->createCisaInstruction(ISA_SVM, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_SVM, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4574,7 +4574,7 @@ CisaFramework::CisaInst *VISAKernelImpl::PackCisaInsnForSVMGather4Scatter4Scaled
     PACK_EXEC_SIZE(size, eMask);
 
     insn->createCisaInstruction(ISA_SVM, (uint8_t)size, 0, predOpnd, ops, numOps,
-                                instDesc);
+                                instDesc, verifier);
 
     return insn;
 }
@@ -4719,7 +4719,7 @@ int VISAKernelImpl::AppendVISASurfAccessOwordLoadStoreInst(
         CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1 , 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1 , 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4776,7 +4776,7 @@ int VISAKernelImpl::AppendVISASILoad(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0 , PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0 , PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4833,7 +4833,7 @@ int VISAKernelImpl::AppendVISASISample(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0 , PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0 , PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4886,7 +4886,7 @@ int VISAKernelImpl::AppendVISASISampleUnorm(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4926,7 +4926,7 @@ int VISAKernelImpl::AppendVISAWaitInst(VISA_VectorOpnd* mask)
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(ISA_WAIT, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_WAIT, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -4965,7 +4965,7 @@ int VISAKernelImpl::AppendVISASyncInst(ISA_Opcode opcode, unsigned char mask)
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5002,7 +5002,7 @@ int VISAKernelImpl::AppendVISASplitBarrierInst(bool isSignal)
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(ISA_SBARRIER, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_SBARRIER, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5039,7 +5039,7 @@ int VISAKernelImpl::AppendVISAMiscFileInst(const char *fileName)
 
         opnd[0]->size = Get_VISA_Type_Size((VISA_Type)inst_desc->opnd_desc[0].data_type);
         opnd[0]->tag = (uint8_t)inst_desc->opnd_desc[0].opnd_type;
-        inst->createCisaInstruction(opcode, 1, 0, PredicateOpnd::getNullPred(), opnd, 1, inst_desc);
+        inst->createCisaInstruction(opcode, 1, 0, PredicateOpnd::getNullPred(), opnd, 1, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5089,7 +5089,7 @@ int VISAKernelImpl::AppendVISAMiscLOC(unsigned int lineNumber)
 
         opnd[0]->size = Get_VISA_Type_Size((VISA_Type)inst_desc->opnd_desc[0].data_type);
         opnd[0]->tag = (uint8_t)inst_desc->opnd_desc[0].opnd_type;
-        inst->createCisaInstruction(opcode, 1, 0, PredicateOpnd::getNullPred(), opnd, 1, inst_desc);
+        inst->createCisaInstruction(opcode, 1, 0, PredicateOpnd::getNullPred(), opnd, 1, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5155,7 +5155,7 @@ int VISAKernelImpl::AppendVISAMiscRawSend(
 
         PredicateOpnd predOpnd = pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
 
-        inst->createCisaInstruction(opcode, size, modifiers, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, modifiers, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5236,7 +5236,7 @@ int VISAKernelImpl::AppendVISAMiscRawSends(
 
         PredicateOpnd predOpnd = pred ? pred->convertToPred() : PredicateOpnd::getNullPred();
 
-        inst->createCisaInstruction(opcode, size, modifiers, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, modifiers, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5291,7 +5291,7 @@ int VISAKernelImpl::AppendVISAMiscVME_FBR(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5354,7 +5354,7 @@ int VISAKernelImpl::AppendVISAMiscVME_IME(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5396,7 +5396,7 @@ int VISAKernelImpl::AppendVISAMiscVME_SIC(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5440,7 +5440,7 @@ int VISAKernelImpl::AppendVISAMiscVME_IDM(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5500,7 +5500,7 @@ int VISAKernelImpl::AppendVISAMEAVS(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5648,7 +5648,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
 
         inst_desc->opnd_num = num_pred_desc_operands + num_operands;
 
-        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5827,7 +5827,7 @@ int VISAKernelImpl::AppendVISA3dInfo(
         num_pred_desc_operands = 1;
         inst_desc->opnd_num = num_pred_desc_operands + num_operands;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -5964,7 +5964,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
 
         inst_desc->opnd_num = num_pred_desc_operands + num_operands;
 
-        inst->createCisaInstruction(opcode, size, 0 , predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0 , predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
     return status;
@@ -6027,7 +6027,7 @@ int VISAKernelImpl::AppendVISA3dURBWrite(
 
         inst_desc->opnd_num = num_pred_desc_operands + num_operands;
 
-        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6106,7 +6106,7 @@ int VISAKernelImpl::AppendVISA3dTypedAtomic(
 
         inst_desc->opnd_num = num_pred_desc_operands + num_operands;
 
-        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6154,7 +6154,7 @@ int VISAKernelImpl::AppendVISAVABooleanCentroid(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6201,7 +6201,7 @@ int VISAKernelImpl::AppendVISAVACentroid(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0 , PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0 , PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6252,7 +6252,7 @@ int VISAKernelImpl::AppendVISAVAConvolve(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6308,7 +6308,7 @@ int VISAKernelImpl::AppendVISAVAErodeDilate(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6357,7 +6357,7 @@ int VISAKernelImpl::AppendVISAVAMinMax(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6416,7 +6416,7 @@ int VISAKernelImpl::AppendVISAVAMinMaxFilter(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6504,7 +6504,7 @@ int VISAKernelImpl::AppendVISAVACorrelationSearch(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6587,7 +6587,7 @@ int VISAKernelImpl::AppendVISAVAFloodFill(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6670,7 +6670,7 @@ int VISAKernelImpl::AppendVISAVALBPCorrelation(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6753,7 +6753,7 @@ int VISAKernelImpl::AppendVISAVALBPCreation(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6839,7 +6839,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1D(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -6924,7 +6924,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1Pixel(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7003,7 +7003,7 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7083,7 +7083,7 @@ int VISAKernelImpl::AppendVISAVAHDCErodeDilate(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7162,7 +7162,7 @@ int VISAKernelImpl::AppendVISAVAHDCMinMaxFilter(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7239,7 +7239,7 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCorrelation(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7322,7 +7322,7 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCreation(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7405,7 +7405,7 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve1D(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7485,7 +7485,7 @@ int VISAKernelImpl::AppendVISAVAHDCConvolve1Pixel(
 
         unsigned char size = EXEC_SIZE_1;
 
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, instDesc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7554,7 +7554,7 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd, VISA_VectorOp
         opnd[1]->size = Get_VISA_Type_Size((VISA_Type)inst_desc->opnd_desc[1].data_type);
         opnd[1]->tag = (uint8_t) inst_desc->opnd_desc[1].opnd_type;
 
-        inst->createCisaInstruction(opcode, 1, 0, PredicateOpnd::getNullPred(), opnd, 2, inst_desc);
+        inst->createCisaInstruction(opcode, 1, 0, PredicateOpnd::getNullPred(), opnd, 2, inst_desc, verifier);
         addInstructionToEnd(inst);
 
     }
@@ -7673,7 +7673,7 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
 
         unsigned char size = executionSize;
         size += (emask << 4);
-        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7750,7 +7750,7 @@ int VISAKernelImpl::AppendVISABfnInst(
 
         unsigned char size = executionSize;
         size += emask << 4;
-        inst->createCisaInstruction(ISA_BFN, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_BFN, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7797,7 +7797,7 @@ int VISAKernelImpl::AppendVISAQwordGatherInst(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(ISA_QW_GATHER, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_QW_GATHER, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -7843,7 +7843,7 @@ int VISAKernelImpl::AppendVISAQwordScatterInst(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(ISA_QW_SCATTER, size, 0, predOpnd, opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_QW_SCATTER, size, 0, predOpnd, opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -8568,7 +8568,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISANamedBarrierWait(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(ISA_NBARRIER, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_NBARRIER, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
@@ -8603,7 +8603,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISANamedBarrierSignal(
 
         CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
 
-        inst->createCisaInstruction(ISA_NBARRIER, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc);
+        inst->createCisaInstruction(ISA_NBARRIER, EXEC_SIZE_1, 0, PredicateOpnd::getNullPred(), opnd, num_operands, inst_desc, verifier);
         addInstructionToEnd(inst);
     }
 
