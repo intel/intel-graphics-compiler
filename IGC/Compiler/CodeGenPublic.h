@@ -1174,6 +1174,7 @@ namespace IGC
         uint64_t m_SIMDInfo;
         uint32_t HdcEnableIndexSize = 0;
         std::vector<RoutingIndex> HdcEnableIndexValues;
+        uint32_t m_NumGRFPerThread = 0;
 
         // Raytracing (any shader type)
         // If provided, the BVH has been constructed such that the root node
@@ -1267,7 +1268,8 @@ namespace IGC
         CompOptions& getCompilerOption();
         virtual void resetOnRetry();
         virtual uint32_t getNumThreadsPerEU() const;
-        virtual uint32_t getNumGRFPerThread(bool returnDefault = true) const;
+        virtual uint32_t getNumGRFPerThread(bool returnDefault = true);
+        virtual void setNumGRFPerThread(uint32_t value) { m_NumGRFPerThread = value; }
         virtual bool forceGlobalMemoryAllocation() const;
         virtual bool allocatePrivateAsGlobalBuffer() const;
         virtual bool noLocalToGenericOptionEnabled() const;
@@ -1923,7 +1925,7 @@ namespace IGC
         bool isSPIRV() const;
         void setAsSPIRV();
         float getProfilingTimerResolution();
-        uint32_t getNumGRFPerThread(bool returnDefault = true) const override;
+        uint32_t getNumGRFPerThread(bool returnDefault = true) override;
         uint32_t getNumThreadsPerEU() const override;
         bool forceGlobalMemoryAllocation() const override;
         bool allocatePrivateAsGlobalBuffer() const override;

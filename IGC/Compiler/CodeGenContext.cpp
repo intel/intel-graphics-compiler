@@ -535,7 +535,7 @@ namespace IGC
         return 0;
     }
 
-    uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault) const
+    uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault)
     {
         if (platform.supportsStaticRegSharing())
         {
@@ -1412,27 +1412,34 @@ namespace IGC
 
     /// parameter "returnDefault" controls what to return when
     /// there is no user-forced setting
-    uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault) const
+    uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault)
     {
         constexpr uint32_t DEFAULT_TOTAL_GRF_NUM = 128;
 
+        if (m_NumGRFPerThread)
+            return m_NumGRFPerThread;
+
         if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
         {
-            return IGC_GET_FLAG_VALUE(TotalGRFNum);
+            m_NumGRFPerThread = IGC_GET_FLAG_VALUE(TotalGRFNum);
+            return m_NumGRFPerThread;
         }
         if (getModuleMetaData()->csInfo.forceTotalGRFNum != 0)
         {
             {
-                return getModuleMetaData()->csInfo.forceTotalGRFNum;
+                m_NumGRFPerThread = getModuleMetaData()->csInfo.forceTotalGRFNum;
+                return m_NumGRFPerThread;
             }
         }
         if (hasSyncRTCalls() && IGC_GET_FLAG_VALUE(TotalGRFNum4RQ) != 0)
         {
-            return IGC_GET_FLAG_VALUE(TotalGRFNum4RQ);
+            m_NumGRFPerThread = IGC_GET_FLAG_VALUE(TotalGRFNum4RQ);
+            return m_NumGRFPerThread;
         }
         if (this->type == ShaderType::COMPUTE_SHADER && IGC_GET_FLAG_VALUE(TotalGRFNum4CS) != 0)
         {
-            return IGC_GET_FLAG_VALUE(TotalGRFNum4CS);
+            m_NumGRFPerThread = IGC_GET_FLAG_VALUE(TotalGRFNum4CS);
+            return m_NumGRFPerThread;
         }
         return (returnDefault ? DEFAULT_TOTAL_GRF_NUM : 0);
     }
