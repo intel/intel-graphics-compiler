@@ -844,6 +844,8 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
         }
         Changed = true;
     }
+    if (Changed)
+      m_pMdUtil->save(M.getContext());
 
     return Changed;
 }
