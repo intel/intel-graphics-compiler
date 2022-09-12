@@ -6,36 +6,23 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/RematAddressArithmetic.h"
-#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CodeGenContextWrapper.hpp"
-#include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
-#include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
-#include "llvm/ADT/PostOrderIterator.h"
-#include "llvm/Analysis/LoopInfo.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/Pass.h"
-#include "llvm/Transforms/Scalar.h"
-#include "common/LLVMWarningsPop.hpp"
-#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
+
+#include "common/LLVMWarningsPush.hpp"
+#include "llvm/Analysis/PostDominators.h"
+#include "llvm/ADT/BreadthFirstIterator.h"
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 using namespace IGC;
-using namespace IGC::IGCMD;
 
 static Value* getPrivateMemoryValue(Function& F);
 
 namespace {
 
 class RematAddressArithmetic : public FunctionPass {
-
-private:
-    DominatorTree* DT;
-    LoopInfo* LI;
 
 public:
     static char ID;
@@ -45,10 +32,17 @@ public:
         initializeRematAddressArithmeticPass(*PassRegistry::getPassRegistry());
     }
 
+    virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+    {
+        AU.setPreservesCFG();
+        AU.addRequired<PostDominatorTreeWrapperPass>();
+    }
+
     bool runOnFunction(Function&) override;
 
 private:
     bool rematerializePrivateMemoryAddressCalculation(Function& F);
+    bool rematerializePhiMemoryAddressCalculation(Function& F);
     bool rematerialize(Instruction* I, SmallVectorImpl<Value*>& Chain);
 };
 
@@ -66,14 +60,154 @@ char RematAddressArithmetic::ID = 0;
 #define PASS_ANALYSIS false
 namespace IGC {
 IGC_INITIALIZE_PASS_BEGIN(RematAddressArithmetic, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_END(RematAddressArithmetic, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 }
 
 bool RematAddressArithmetic::runOnFunction(Function& F)
 {
-    return rematerializePrivateMemoryAddressCalculation(F);
+    bool modified = false;
+    modified |= rematerializePhiMemoryAddressCalculation(F);
+    modified |= rematerializePrivateMemoryAddressCalculation(F);
+    return modified;
+}
+
+// Compares if two instructions are of the same kind, have the same return
+// type and the same types of operands.
+template<typename InstT>
+static inline bool CompareInst(Value* a, Value* b)
+{
+    if (a == nullptr || b == nullptr ||
+        a->getType() != b->getType() ||
+        !isa<InstT>(a) || !isa<InstT>(b))
+    {
+        return false;
+    }
+    if (isa<Instruction>(a))
+    {
+        // For instructions also check opcode and operand types
+        InstT* instA = cast<InstT>(a);
+        InstT* instB = cast<InstT>(b);
+        if (instA->getOpcode() != instB->getOpcode())
+        {
+            return false;
+        }
+        for (uint i = 0; i < instA->getNumOperands(); ++i)
+        {
+            if (instA->getOperand(i)->getType() != instB->getOperand(i)->getType())
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// Rematerialize address calculations if address is a Phi instruction and all
+// incoming values are results of identical address calculations, e.g.:
+//
+// true-bb:
+//   %addrTrue = add i64 %base, 4
+//   %ptrTrue  = inttoptr i64 %addrTrue to i64 addrspace(2)*
+//   br label %merge-bb
+//
+// false-bb:
+//   %addrFalse = add i64 %base, 4
+//   %ptrFalse  = inttoptr i64 %addrFalse to i64 addrspace(2)*
+//   br label %merge-bb
+//
+// merge-bb:
+//   %addr = phi i64 addrspace(2)* [ %ptrTrue, %true-bb ], [ %ptrFalse, %false-bb ]
+//   %result = load i64, i64 addrspace(2)* %addr, align 4
+//
+// Such "diamond-like" pattern can be created by GVN.
+//
+// The goal of the optimization is to potentially make the final memory
+// operation uniform. Note that it many cases it would also be possible
+// to hoist address calculations to the dominator basic block instead
+// of rematerialization but hoisting could increase register pressure.
+bool RematAddressArithmetic::rematerializePhiMemoryAddressCalculation(Function& F)
+{
+    bool modified = false;
+    auto PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+    // Process all basic blocks in postdominator tree breadth first traversal.
+    for (auto domIter = bf_begin(PDT->getRootNode()),
+        domEnd = bf_end(PDT->getRootNode());
+        domIter != domEnd;
+        ++domIter)
+    {
+        BasicBlock* BB = domIter->getBlock();
+        if (BB == nullptr)
+        {
+            continue;
+        }
+        for (auto II = BB->begin(), IE = BB->end();
+            II != IE;
+            ++II)
+        {
+            PHINode* phi = dyn_cast<PHINode>(&*II);
+            if (!phi)
+            {
+                // No more Phi nodes in this BB, go to the next BB
+                break;
+            }
+            if (!phi->getType()->isPointerTy() ||
+                phi->hasNUses(0))
+            {
+                // Not an address, go to the next Phi
+                continue;
+            }
+            bool doRemat = true;
+            // For all incoming values compare the address calculations in
+            // predecessors.
+            for (uint i = 0; i < phi->getNumIncomingValues(); ++i)
+            {
+                // Current implementation only detects the inttoptr + add
+                // pattern, e.g.:
+                //   %offset = add i64 %2, 168
+                //   %ptr = inttoptr i64 %offset to i64 addrspace(2)*
+                Value* first = phi->getIncomingValue(0);
+                Value* other = phi->getIncomingValue(i);
+                if (!CompareInst<IntToPtrInst>(first, other))
+                {
+                    doRemat = false;
+                    break;
+                }
+                first = cast<IntToPtrInst>(first)->getOperand(0);
+                other = cast<IntToPtrInst>(other)->getOperand(0);
+                if (!CompareInst<BinaryOperator>(first, other))
+                {
+                    doRemat = false;
+                    break;
+                }
+                BinaryOperator* firstBinOp = cast<BinaryOperator>(first);
+                BinaryOperator* otherBinOp = cast<BinaryOperator>(other);
+                if (firstBinOp->getOpcode() != Instruction::Add ||
+                    firstBinOp->getOperand(0) != otherBinOp->getOperand(0) ||
+                    firstBinOp->getOperand(1) != otherBinOp->getOperand(1))
+                {
+                    doRemat = false;
+                    break;
+                }
+            }
+            if (doRemat)
+            {
+                IntToPtrInst* intToPtr = cast<IntToPtrInst>(phi->getIncomingValue(0));
+                BinaryOperator* add = cast<BinaryOperator>(intToPtr->getOperand(0));
+                // Clone address computations
+                Instruction* newAdd = add->clone();
+                Instruction* newIntToPtr = intToPtr->clone();
+                newIntToPtr->setOperand(0, newAdd);
+                // and insert in after the phi
+                Instruction* insertPoint = BB->getFirstNonPHIOrDbgOrLifetime();
+                newAdd->insertBefore(insertPoint);
+                newIntToPtr->insertBefore(insertPoint);
+                phi->replaceAllUsesWith(newIntToPtr);
+                modified = true;
+            }
+        }
+    }
+    return modified;
 }
 
 bool RematAddressArithmetic::rematerializePrivateMemoryAddressCalculation(Function& F)
