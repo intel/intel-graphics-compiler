@@ -1187,18 +1187,15 @@ kv_status_t kv_get_cache_opt(
         return kv_status_t::KV_DECODE_ERROR;
     }
 
-    IGA_ASSERT(di.info.isLoad() || di.info.isStore() || di.info.isAtomic(),
-        "decoded MessageInfo is not a send type");
-
     switch (static_cast<CacheLevel>(cache_level)) {
-        case CacheLevel::L1:
-            *cacheopt_enum = static_cast<int32_t>(di.info.cachingL1);
-            break;
-        case CacheLevel::L3:
-            *cacheopt_enum = static_cast<int32_t>(di.info.cachingL3);
-            break;
-        default:
-            return kv_status_t::KV_INVALID_ARGUMENT;
+    case CacheLevel::L1:
+        *cacheopt_enum = static_cast<int32_t>(di.info.cachingL1);
+        break;
+    case CacheLevel::L3:
+        *cacheopt_enum = static_cast<int32_t>(di.info.cachingL3);
+        break;
+    default:
+        return kv_status_t::KV_INVALID_ARGUMENT;
     }
 
     return kv_status_t::KV_SUCCESS;
