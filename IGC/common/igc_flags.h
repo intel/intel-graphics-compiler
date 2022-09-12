@@ -350,6 +350,7 @@ DECLARE_IGC_REGKEY(bool, DumpTimeStatsCoarse,           false, "Only collect/dum
 DECLARE_IGC_REGKEY(bool, DumpTimeStatsPerPass,          false, "Collect Timing of IGC/LLVM passes", true)
 DECLARE_IGC_REGKEY(bool, DumpHasNonKernelArgLdSt,       false, "Print if hasNonKernelArg load/store to stderr", true)
 DECLARE_IGC_REGKEY(bool, PrintPsoDdiHash,               true,  "Print psoDDIHash in TimeStats_Shaders.csv file", true)
+DECLARE_IGC_REGKEY(bool, ShaderDataBaseStats,           false, "Enable gathering sends' sizes for shader statistics", false)
 DECLARE_IGC_REGKEY(bool, AddExtraIntfInfo,                false, "Will add extra inteference info from .extraintf files from c:\\Intel\\IGC\\ShaderOverride", false)
 
 DECLARE_IGC_GROUP("Debugging features")

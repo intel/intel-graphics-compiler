@@ -384,7 +384,7 @@ DEF_VISA_OPTION(vISA_ScratchAllocForStackInKB, ET_INT32, "-scratchAllocForStackI
 DEF_VISA_OPTION(vISA_dumpToCurrentDir,    ET_BOOL, "-dumpToCurrentDir",   UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpTimer,           ET_BOOL, "-timestats",          UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableCompilerStats,   ET_BOOL, "-compilerStats",      UNUSED, false)
-
+DEF_VISA_OPTION(vISA_ShaderDataBaseStats, ET_BOOL, "--sdbStats",            UNUSED, false)
 DEF_VISA_OPTION(vISA_3DOption,            ET_BOOL, "-3d",                 UNUSED, false)
 DEF_VISA_OPTION(vISA_Stepping,          ET_CSTR, "-stepping",              "USAGE: missing stepping string. ",      NULL)
 DEF_VISA_OPTION(vISA_Platform,          ET_CSTR, "-platform",              "USAGE: missing platform string. ",      NULL)

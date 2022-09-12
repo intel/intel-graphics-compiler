@@ -3990,6 +3990,11 @@ namespace IGC
             SaveOption(vISA_EnableCompilerStats, true);
         }
 
+        if (IGC_IS_FLAG_ENABLED(ShaderDataBaseStats))
+        {
+            SaveOption(vISA_ShaderDataBaseStats, true);
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableSamplerSplit))
         {
             SaveOption(vISA_enableCloneSampleInst, true);

@@ -1514,6 +1514,17 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     const G4_Operand* exDescG4 = sendInst->getSrc(3);
     const G4_SendDescRaw* descG4 = (G4_SendDescRaw*)sendInst->getMsgDesc();
     assert(descG4 != nullptr && "expected raw descriptor");
+    if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats))
+    {
+        uint32_t src0Len = descG4->getSrc0LenBytes() / 32;
+        uint32_t src1Len = descG4->getSrc1LenBytes() / 32;
+        uint32_t dstLen = descG4->getDstLenBytes() / 32;
+        FILE* f = fopen("C:\\Intel\\IGC\\sendInfo.txt", "w");
+
+        fprintf(f, "src0Len=%d src1Len=%d dstLen=%d \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
+
+        fclose(f);
+    }
 
     sdos.xlen = (int)descG4->extMessageLength();
 
@@ -1571,7 +1582,17 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(
     G4_Operand* exDescG4 = sendInst->getSrc(3);
     const G4_SendDescRaw* descG4 = sendInst->getMsgDescRaw();
     assert(descG4 != nullptr && "expected raw descriptor");
+    if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats))
+    {
+        uint32_t src0Len = descG4->getSrc0LenBytes() / 32;
+        uint32_t src1Len = descG4->getSrc1LenBytes() / 32;
+        uint32_t dstLen = descG4->getDstLenBytes() / 32;
+        FILE* f = fopen("C:\\Intel\\IGC\\sendInfo.txt", "w");
 
+        fprintf(f, "encodeExDescRegA0: src0Len=%d src1Len=%d dstLen=%d \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
+
+        fclose(f);
+    }
     SendDesc exDescIga;
     exDescIga.type = SendDesc::Kind::REG32A;
     exDescIga.reg.regNum = 0; // must be a0

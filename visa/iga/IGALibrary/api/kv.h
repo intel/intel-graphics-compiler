@@ -551,6 +551,10 @@ IGA_API uint32_t kv_get_is_inverse_predicate(const kv_t *kv, int32_t pc);
  */
 IGA_API kv_status_t kv_get_cache_opt(const kv_t *kv, int32_t pc, int32_t cache_level, int32_t* cacheopt_enum);
 
+/*
+ * This function returns the sync function of a sync instruction
+ */
+IGA_API int32_t kv_get_syncfc(const kv_t *kv, int32_t pc);
 
 #ifdef __cplusplus
 }

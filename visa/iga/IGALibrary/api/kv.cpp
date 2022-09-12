@@ -1203,3 +1203,17 @@ kv_status_t kv_get_cache_opt(
 
     return kv_status_t::KV_SUCCESS;
 }
+
+int32_t kv_get_syncfc(const kv_t *kv, int32_t pc)
+{
+    if (!kv) {
+        return static_cast<int32_t>(iga::SyncFC::INVALID);
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst || inst->getOp() != iga::Op::SYNC) {
+        return static_cast<int32_t>(iga::SyncFC::INVALID);
+    }
+
+    // for send, get_message_sfid to support decoding SFID from exDesc
+    return static_cast<int32_t>(inst->getSyncFc());
+}

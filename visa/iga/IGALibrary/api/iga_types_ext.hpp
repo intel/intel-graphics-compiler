@@ -173,6 +173,17 @@ namespace iga
         SIMD32 = 32,
     };
 
+    enum class ExecSizeEncoded
+    {
+        EXEC_SIZE_1   = 0x0,
+        EXEC_SIZE_2   = 0x1,
+        EXEC_SIZE_4   = 0x2,
+        EXEC_SIZE_8   = 0x3,
+        EXEC_SIZE_16  = 0x4,
+        EXEC_SIZE_32  = 0x5,
+        EXEC_SIZE_SUM = 0x6
+    };
+
     enum class ChannelOffset
     {
         M0,
