@@ -45,7 +45,7 @@ public:
 
     void run(VISAKernelImpl* kernel);
 
-    void verifyInstruction(const CISA_INST* inst);
+    int verifyInstruction(const CISA_INST* inst);
 
     bool hasErrors() const { return kerror_list.size() + error_list.size() > 0; }
     size_t getNumErrors() const { return kerror_list.size() + error_list.size(); }

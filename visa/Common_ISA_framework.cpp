@@ -129,9 +129,10 @@ int CisaInst::createCisaInstruction(
 
 #if defined(_DEBUG) || defined(_INTERNAL)
     if (verifier) {
-        verifier->verifyInstruction(&m_cisa_instruction);
-        if (verifier->hasErrors()) {
+        int status = verifier->verifyInstruction(&m_cisa_instruction);
+        if (status == VISA_FAILURE) {
             std::cerr << verifier->getLastErrorFound().value_or("");
+            assert(0);
             return VISA_FAILURE;
         }
     }

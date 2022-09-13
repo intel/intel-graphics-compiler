@@ -4114,13 +4114,14 @@ void vISAVerifier::finalize()
     }
 }
 
-void vISAVerifier::verifyInstruction(const CISA_INST* inst) {
+int vISAVerifier::verifyInstruction(const CISA_INST* inst) {
+    size_t initialErrors = getNumErrors();
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
     if (!(ISA_RESERVED_0 < opcode && opcode < ISA_NUM_OPCODE))
     {
         REPORT_INSTRUCTION(options, false, "Invalid vISA opcode: %d", opcode);
-        return;
+        return VISA_FAILURE;
     }
 
     TARGET_PLATFORM instPlatform = CISA_INST_table[opcode].platf;
@@ -4166,15 +4167,16 @@ void vISAVerifier::verifyInstruction(const CISA_INST* inst) {
         case ISA_Inst_LSC:       verifyInstructionLsc         (inst); break;
         default:
         {
-            std::stringstream sstr;
-            sstr << "Illegal or unimplemented CISA instruction (opcode, type): (" <<
-                opcode << ", " << ISA_Inst_Table[opcode].type << ").";
-            ASSERT_USER(false, sstr.str());
+            REPORT_INSTRUCTION(options, false, "Illegal or unimplemented CISA instruction (opcode, type): (%d, %d).",
+                opcode, ISA_Inst_Table[opcode].type);
+            return VISA_FAILURE;
         }
     }
 
     // Verify particular features
     verifyBFMixedMode(inst);
+
+    return initialErrors == getNumErrors() ? VISA_SUCCESS : VISA_FAILURE;
 }
 
 #endif // IS_RELEASE_DLL
