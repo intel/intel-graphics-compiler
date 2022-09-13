@@ -64,6 +64,8 @@ public:
     static const std::unordered_set<G4_INST*> getSplitInsts(GlobalRA* gra, G4_BB* bb);
 
 private:
+    const unsigned int cLargeLoop = 500;
+
     bool split(G4_Declare* dcl, Loop& loop);
     void copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, AugmentationMasks augMask, bool pushBack = true);
     void replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl, const Loop& loop);
@@ -96,6 +98,33 @@ private:
     // anytime we spill a split variable, we reuse spill location.
     // Orig dcl, vector<Tmp Dcl, Loop>
     std::unordered_map<G4_Declare*, std::vector<std::pair<G4_Declare*, Loop*>>> splitResults;
+
+    class Size
+    {
+    public:
+        enum class State {
+            Undef = 0,
+            Small = 1,
+            Large = 2,
+        };
+        State state = State::Undef;
+    };
+
+    std::unordered_map<Loop*, Size> loopSizeCache;
+
+    bool isLargeLoop(Loop& loop)
+    {
+        auto& size = loopSizeCache[&loop];
+        if (size.state != Size::State::Undef)
+            return size.state == Size::State::Large;
+        unsigned int instCount = 0;
+        std::for_each(loop.getBBs().begin(), loop.getBBs().end(),
+            [&instCount](G4_BB* bb) { instCount += bb->size(); }
+        );
+        if (instCount > cLargeLoop)
+            size.state = Size::State::Large;
+        return size.state == Size::State::Large;
+    }
 };
 
 class VarProperties

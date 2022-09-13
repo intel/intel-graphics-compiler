@@ -1594,6 +1594,7 @@ std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
                 break;
             }
         }
+
         if (dontSplit)
             continue;
 
@@ -1620,7 +1621,12 @@ std::vector<Loop*> LoopVarSplit::getLoopsToSplitAround(G4_Declare* dcl)
         }
         else if (dcl->getNumRows() <= 2)
         {
-            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(0.95f * (float)kernel.getNumRegTotal()))
+            float Coeff = 0.95f;
+            // if loop is large and has close to high RPE, reduce coeff to be less aggressive
+            if (isLargeLoop(*loop) &&
+                getMaxRegPressureInLoop(*loop) >= 0.98f * (float)rpe->getMaxRP())
+                Coeff = 0.9f;
+            if (getMaxRegPressureInLoop(*loop) <= (unsigned int)(Coeff * (float)kernel.getNumRegTotal()))
             {
                 loopsToSplitAround.push_back(loop);
                 if (dcl->getNumElems() > 1 ||
