@@ -517,14 +517,15 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     if (ctx.m_instrTypes.hasReadOnlyArray)
     {
         mpm.add(createDeadCodeEliminationPass());
-        mpm.add(createSROAPass());
     }
+
+    // running this after ReplaceUnsupportedIntrinsics in order to avoid unneeded private memory usage
+    mpm.add(createSROAPass());
 
     if (ctx.m_instrTypes.hasGenericAddressSpacePointers)
     {
         if (IGC_IS_FLAG_ENABLED(EnableGASResolver))
         {
-            mpm.add(createSROAPass());
             mpm.add(createFixAddrSpaceCastPass());
             mpm.add(createResolveGASPass());
         }
