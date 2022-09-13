@@ -33,7 +33,7 @@ See LICENSE.TXT for details.
 namespace IGC
 {
     constexpr unsigned int SIMD_PRESSURE_MULTIPLIER = 8;
-    constexpr unsigned int OVERALL_PRESSURE_UPBOUND = 512;
+    constexpr unsigned int OVERALL_PRESSURE_UPBOUND = 4048;
 
     class RegisterPressureEstimate : public llvm::FunctionPass
     {
