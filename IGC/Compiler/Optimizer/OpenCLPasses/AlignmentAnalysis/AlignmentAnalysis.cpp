@@ -535,6 +535,7 @@ void AlignmentAnalysis::SetInstAlignment(MemCpyInst& I)
     I.setDestAlignment(alignment);
 #else
     unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
+    alignment = iSTD::Max(I.getDestAlignment(), alignment);
     I.setDestAlignment(alignment);
 #endif
 }
