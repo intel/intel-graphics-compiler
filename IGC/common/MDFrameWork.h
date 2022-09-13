@@ -616,7 +616,6 @@ namespace IGC
         unsigned int runtimeValue;
         unsigned int ptrAddressSpace;
     };
-
     struct URBLayoutInfo
     {
         bool has64BVertexHeaderInput = false;
