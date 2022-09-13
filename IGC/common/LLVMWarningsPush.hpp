@@ -115,6 +115,9 @@ SPDX-License-Identifier: MIT
 // cast truncates constatnt value
 #   pragma warning( disable : 4310 )
 
+// unreachable code
+#   pragma warning( disable : 4702 )
+
 #endif
 
 #ifdef _WIN64
