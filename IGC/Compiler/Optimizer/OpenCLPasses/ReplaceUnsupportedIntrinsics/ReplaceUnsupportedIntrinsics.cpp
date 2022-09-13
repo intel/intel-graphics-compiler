@@ -96,6 +96,9 @@ namespace
         void generalGroupI8Stream(
             LLVMContext& C, uint32_t NumI8, uint32_t Align,
             uint32_t& NumI32, Type** Vecs, uint32_t& L, uint32_t BaseTypeSize);
+        // support function for replaceCountTheLeadingZeros
+        Value* evaluateCtlzUpto32bit(IGCLLVM::IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison);
+        Value* evaluateCtlz64bit(IGCLLVM::IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison);
 
         /// replace member function
         void replaceMemcpy(IntrinsicInst* I);
@@ -104,6 +107,7 @@ namespace
         void replaceExpect(IntrinsicInst* I);
         void replaceFunnelShift(IntrinsicInst* I);
         void replaceLRound(IntrinsicInst* I);
+        void replaceCountTheLeadingZeros(IntrinsicInst* I);
 
         static const std::map< Intrinsic::ID, MemFuncPtr_t > m_intrinsicToFunc;
     };
@@ -129,7 +133,8 @@ const std::map< Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t > Repl
     { Intrinsic::memmove,    &ReplaceUnsupportedIntrinsics::replaceMemMove },
     { Intrinsic::expect,     &ReplaceUnsupportedIntrinsics::replaceExpect },
     { Intrinsic::lround,     &ReplaceUnsupportedIntrinsics::replaceLRound },
-    { Intrinsic::llround,    &ReplaceUnsupportedIntrinsics::replaceLRound }
+    { Intrinsic::llround,    &ReplaceUnsupportedIntrinsics::replaceLRound },
+    { Intrinsic::ctlz,       &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros }
 };
 
 ReplaceUnsupportedIntrinsics::ReplaceUnsupportedIntrinsics() : FunctionPass(ID)
@@ -983,6 +988,113 @@ void ReplaceUnsupportedIntrinsics::replaceLRound(IntrinsicInst* I) {
     Value* conv = Builder.CreateFPToSI(add, dstType);
     I->replaceAllUsesWith(conv);
     I->eraseFromParent();
+}
+
+/*
+  Replaces llvm.ctlz.* intrinsics (count the leading zeros)
+  to llvm.ctlz.i32 because we support llvm.ctlz intrinsic
+  only with source type i32.
+
+  E.g.
+  %1 = call <2 x i8> @llvm.ctlz.v2i8(<2 x i8> %0, i1 false)
+  ret <2 x i8> %1
+  =>
+  %1 = extractelement <2 x i8> %0, i64 0
+  %2 = zext i8 %1 to i32
+  %3 = call i32 @llvm.ctlz.i32(i32 %2, i1 false)
+  %4 = trunc i32 %3 to i8
+  %5 = add nsw i8 %4, -24
+  %6 = insertelement <2 x i8> undef, i8 %5, i32 0
+  %7 = extractelement <2 x i8> %0, i64 1
+  %8 = zext i8 %7 to i32
+  %9 = call i32 @llvm.ctlz.i32(i32 %8, i1 false)
+  %10 = trunc i32 %9 to i8
+  %11 = add nsw i8 %10, -24
+  %12 = insertelement <2 x i8> %6, i8 %11, i32 1
+  %13 = call <2 x i8> @llvm.ctlz.v2i8(<2 x i8> %0, i1 false)
+  ret <2 x i8> %12
+*/
+void ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros(IntrinsicInst* I) {
+    IGC_ASSERT(I->getIntrinsicID() == Intrinsic::ctlz);
+
+    Type* oldIntrinsicDstType = I->getType();
+    Type* singleElementType = oldIntrinsicDstType;
+    uint32_t numOfElements = 1;
+    bool isVector = oldIntrinsicDstType->isVectorTy();
+
+    if (isVector)
+    {
+        auto oldIntrinsicDstTypeFVT = dyn_cast<IGCLLVM::FixedVectorType>(oldIntrinsicDstType);
+        numOfElements = (uint32_t)oldIntrinsicDstTypeFVT->getNumElements();
+        singleElementType = oldIntrinsicDstTypeFVT->getElementType();
+    }
+
+    int singleElementSizeInBits = singleElementType->getScalarSizeInBits();
+
+    IGC_ASSERT_MESSAGE(singleElementSizeInBits == 8 || singleElementSizeInBits == 16 ||
+        singleElementSizeInBits == 32 || singleElementSizeInBits == 64,
+        "Currently for Intrinsic::ctlz we support source bit size: 8,16,32,64");
+
+    // noting to replace, early return
+    if (!isVector && singleElementSizeInBits == 32) return;
+
+    bool bitSizeLowerThan32 = singleElementSizeInBits < 32;
+    bool bitSizeEqual64 = singleElementSizeInBits == 64;
+
+    IGCLLVM::IRBuilder<> Builder(I);
+
+    Value* inputVal = I->getArgOperand(0);
+    Value* canBePoison = I->getArgOperand(1);
+    Value* outputVal = llvm::UndefValue::get(oldIntrinsicDstType); // Will be overwritten in scalar case.
+    Value* retVal = inputVal;
+
+    for (uint32_t i = 0; i < numOfElements; i++)
+    {
+        if (isVector) retVal = Builder.CreateExtractElement(inputVal, i);
+
+        if (bitSizeLowerThan32)
+            retVal = evaluateCtlzUpto32bit(&Builder, retVal, singleElementType, canBePoison);
+        else if (bitSizeEqual64)
+            retVal = evaluateCtlz64bit(&Builder, retVal, singleElementType, canBePoison);
+
+        if (singleElementSizeInBits == 32)
+            retVal = Builder.CreateIntrinsic(Intrinsic::ctlz, { Builder.getInt32Ty() }, { retVal, canBePoison });
+
+        if (isVector)
+            outputVal = Builder.CreateInsertElement(outputVal, retVal, Builder.getInt32(i));
+        else // for scalar type
+            outputVal = retVal;
+    }
+    I->replaceAllUsesWith(outputVal);
+}
+
+Value* ReplaceUnsupportedIntrinsics::evaluateCtlzUpto32bit(IGCLLVM::IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison) {
+    int sizeInBits = singleElementType->getScalarSizeInBits();
+    Value* retVal = Builder->CreateZExt(inVal, Builder->getInt32Ty());
+    retVal = Builder->CreateIntrinsic(Intrinsic::ctlz, { Builder->getInt32Ty() }, { retVal, canBePoison });
+    retVal = Builder->CreateTrunc(retVal, singleElementType);
+    auto constInt = Builder->getIntN(sizeInBits, sizeInBits - 32);
+    retVal = Builder->CreateNSWAdd(retVal, constInt);
+    return retVal;
+}
+
+Value* ReplaceUnsupportedIntrinsics::evaluateCtlz64bit(IGCLLVM::IRBuilder<>* Builder, Value* inVal, Type* singleElementType, Value* canBePoison) {
+    Value* lowBits = Builder->CreateTrunc(inVal, Builder->getInt32Ty());
+    lowBits = Builder->CreateIntrinsic(Intrinsic::ctlz, { Builder->getInt32Ty() }, { lowBits, canBePoison });
+
+    Value* hiBits = Builder->CreateLShr(inVal, 32);
+    hiBits = Builder->CreateTrunc(hiBits, Builder->getInt32Ty());
+    hiBits = Builder->CreateIntrinsic(Intrinsic::ctlz, { Builder->getInt32Ty() }, { hiBits, canBePoison });
+
+    auto maxValueIn32BitsPlusOne = Builder->getInt64((uint64_t)(0xffffffff) + 1); // maxValueIn32Bits + 1
+    Value* cmp = Builder->CreateICmp(CmpInst::Predicate::ICMP_ULT, inVal, maxValueIn32BitsPlusOne);
+
+    auto constInt = Builder->getInt32(32);
+    lowBits = Builder->CreateAdd(lowBits, constInt);
+
+    Value* retVal = Builder->CreateSelect(cmp, lowBits, hiBits);
+    retVal = Builder->CreateZExt(retVal, singleElementType);
+    return retVal;
 }
 
 void ReplaceUnsupportedIntrinsics::visitIntrinsicInst(IntrinsicInst& I) {
