@@ -4902,47 +4902,11 @@ namespace IGC
             for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*EMPTY*/) {
                 BitCastInst* BC = dyn_cast<BitCastInst>(&*BI++);
                 if (!BC) continue;
+                // Skip non-element-wise bitcast.
                 IGCLLVM::FixedVectorType* DstVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getType());
                 IGCLLVM::FixedVectorType* SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getOperand(0)->getType());
-                // Currently supported cases:
-                // - element-wise bitcast
-                //   Example:
-                //     %1 = bitcast <2 x i32> %src to <2 x float>
-                //     %2 = extractelement <2 x float> %1, i32 1
-                //   is transformed to:
-                //     %1 = extractelement <2 x i32> %src, i32 1
-                //     %2 = bitcast i32 %1 to float
-                // - source element size in bits is multiple of destination element size in bits
-                //   Example:
-                //     %1 = bitcast <4 x i32> %src to <2 x i64>
-                //     %2 = extractelement <2 x i64> %1, i32 1
-                //   is transformed to:
-                //     %1 = extractelement <4 x i32> %src, i32 2
-                //     %2 = insertelement <2 x i32> undef, i32 %1, i64 0
-                //     %3 = extractelement <4 x i32> %src, i32 3
-                //     %4 = insertelement <2 x i32> %2, i32 %3, i64 1
-                //     %5 = bitcast <2 x i32> %4 to i64
-                // - destination element size in bits is multiple of source element size in bits
-                //   Example:
-                //       %1 = bitcast <2 x i64> %src to <4 x i32>
-                //       %2 = extractelement <4 x i32> %1, i32 3
-                //   is transformed to:
-                //      %1 = extractelement <2 x i64> %src, i32 1
-                //      %2 = bitcast i64 %1 to <2 x i32>
-                //      %3 = extractelement <2 x i32> %2, i32 1
-                if (!DstVTy || !SrcVTy)
-                {
+                if (!DstVTy || !SrcVTy || DstVTy->getNumElements() != SrcVTy->getNumElements())
                     continue;
-                }
-                const bool isElementWiseBitcast = DstVTy->getNumElements() == SrcVTy->getNumElements();
-                const uint dstEltSize = DstVTy->getElementType()->getScalarSizeInBits();
-                const uint srcEltSize = SrcVTy->getElementType()->getScalarSizeInBits();
-                const bool isCastToLargerType = dstEltSize > srcEltSize && dstEltSize % srcEltSize == 0;
-                const bool isCastToSmallerType = srcEltSize > dstEltSize && srcEltSize % dstEltSize == 0;
-                if (!isElementWiseBitcast && !isCastToLargerType && !isCastToSmallerType)
-                {
-                    continue;
-                }
                 // Skip if it's not used only all extractelement.
                 bool ExactOnly = true;
                 for (auto User : BC->users()) {
@@ -4955,52 +4919,13 @@ namespace IGC
                 // Autobots, transform and roll out!
                 Value* Src = BC->getOperand(0);
                 Type* DstEltTy = DstVTy->getElementType();
-                Type* SrcEltTy = SrcVTy->getElementType();
                 for (auto UI = BC->user_begin(), UE = BC->user_end(); UI != UE;
                     /*EMPTY*/) {
                     auto EEI = cast<ExtractElementInst>(*UI++);
                     Builder.SetInsertPoint(EEI);
-                    Value* newVal = nullptr;
-                    if (isElementWiseBitcast)
-                    {
-                        IGC_ASSERT(srcEltSize == dstEltSize);
-                        newVal = Builder.CreateExtractElement(Src, EEI->getIndexOperand());
-                        newVal = Builder.CreateBitCast(newVal, DstEltTy);
-                    }
-                    else if (isCastToLargerType)
-                    {
-                        IGC_ASSERT(dstEltSize / srcEltSize == SrcVTy->getNumElements() / DstVTy->getNumElements());
-                        IGC_ASSERT(isPowerOf2_32(dstEltSize / srcEltSize));
-                        newVal = UndefValue::get(
-                            IGCLLVM::FixedVectorType::get(SrcEltTy, dstEltSize / srcEltSize));
-                        for (uint i = 0; i < dstEltSize / srcEltSize; ++i)
-                        {
-                            Value* srcElementIndex = Builder.CreateAdd(
-                                Builder.CreateShl(EEI->getIndexOperand(), (uint64_t)(Log2_32(dstEltSize / srcEltSize))),
-                                ConstantInt::get(EEI->getIndexOperand()->getType(), i));
-                            Value* temp = Builder.CreateExtractElement(Src, srcElementIndex);
-                            newVal = Builder.CreateInsertElement(newVal, temp, (uint64_t)i);
-                        }
-                        newVal = Builder.CreateBitCast(newVal, DstEltTy);
-                    }
-                    else
-                    {
-                        IGC_ASSERT(isCastToSmallerType);
-                        IGC_ASSERT(srcEltSize / dstEltSize == DstVTy->getNumElements() / SrcVTy->getNumElements());
-                        IGC_ASSERT(isPowerOf2_32(srcEltSize / dstEltSize));
-                        Value* srcElementIndex = Builder.CreateLShr(
-                            EEI->getIndexOperand(),
-                            (uint64_t)(Log2_32(srcEltSize / dstEltSize)));
-                        newVal = Builder.CreateExtractElement(Src, srcElementIndex);
-                        newVal = Builder.CreateBitCast(newVal,
-                            IGCLLVM::FixedVectorType::get(DstEltTy, srcEltSize / dstEltSize));
-                        Value* dstElementIndex = Builder.CreateAnd(
-                            EEI->getIndexOperand(),
-                            maskTrailingOnes<uint64_t>(Log2_32(srcEltSize / dstEltSize)));
-                        newVal = Builder.CreateExtractElement(newVal, dstElementIndex);
-                        newVal = Builder.CreateBitCast(newVal, DstEltTy);
-                    }
-                    EEI->replaceAllUsesWith(newVal);
+                    auto NewVal = Builder.CreateExtractElement(Src, EEI->getIndexOperand());
+                    NewVal = Builder.CreateBitCast(NewVal, DstEltTy);
+                    EEI->replaceAllUsesWith(NewVal);
                     EEI->eraseFromParent();
                 }
                 BI = BC->eraseFromParent();
