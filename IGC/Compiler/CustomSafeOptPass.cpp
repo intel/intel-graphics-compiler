@@ -2896,7 +2896,7 @@ void GenSpecificPattern::visitAnd(BinaryOperator& I)
     {
 
         Instruction* AndSrc = nullptr;
-        ConstantInt* CI;
+        ConstantInt* CI = nullptr;
 
         /*
         From:
@@ -2916,12 +2916,11 @@ void GenSpecificPattern::visitAnd(BinaryOperator& I)
         */
         auto pattern_And_0xFF = m_And(m_Instruction(AndSrc), m_SpecificInt(0xFF));
 
-        if (match(&I, pattern_And_0xFF) && I.getType()->isIntegerTy(32) && AndSrc->getType()->isIntegerTy(32))
+        if (match(&I, pattern_And_0xFF) && I.getType()->isIntegerTy(32) && AndSrc && AndSrc->getType()->isIntegerTy(32))
         {
             Instruction* LhsSrc = nullptr;
-
             auto LShr_Pattern = m_LShr(m_Instruction(LhsSrc), m_ConstantInt(CI));
-            bool LShrMatch = match(AndSrc, LShr_Pattern) && LhsSrc->getType()->isIntegerTy(32) && (CI->getZExtValue() % 8 == 0);
+            bool LShrMatch = match(AndSrc, LShr_Pattern) && LhsSrc->getType()->isIntegerTy(32) && CI && (CI->getZExtValue() % 8 == 0);
 
             // in case there's no shr, it will be 0
             uint32_t newIndex = 0;

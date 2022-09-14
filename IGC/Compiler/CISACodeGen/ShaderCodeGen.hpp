@@ -339,12 +339,12 @@ public:
         return std::make_pair(true, It->second);
     }
 
-    llvm::Function* entry;
-    const CBTILayout* m_pBtiLayout;
-    const CPlatform* m_Platform;
-    const CDriverInfo* m_DriverInfo;
+    llvm::Function* entry = nullptr;
+    const CBTILayout* m_pBtiLayout = nullptr;
+    const CPlatform* m_Platform = nullptr;
+    const CDriverInfo* m_DriverInfo = nullptr;
 
-    ModuleMetaData* m_ModuleMetadata;
+    ModuleMetaData* m_ModuleMetadata = nullptr;
 
     /// Dispatch size is the number of logical threads running in one hardware thread
     SIMDMode m_dispatchSize;
@@ -354,14 +354,14 @@ public:
     /// as the default execution size for each instruction. encoder may override it explicitly
     /// via CEncoder::SetSIMDSize
     SIMDMode m_SIMDSize;
-    uint8_t m_numberInstance;
+    uint8_t m_numberInstance = 0;
     PushInfo pushInfo;
     bool isInputsPulled; //true if any input is pulled, false otherwise
     bool isMessageTargetDataCacheDataPort;
-    uint m_sendStallCycle;
-    uint m_staticCycle;
-    uint m_loopNestedStallCycle;
-    uint m_loopNestedCycle;
+    uint m_sendStallCycle = 0;
+    uint m_staticCycle = 0;
+    uint m_loopNestedStallCycle = 0;
+    uint m_loopNestedCycle= 0;
     unsigned m_spillSize = 0;
     float m_spillCost = 0;          // num weighted spill inst / total inst
 
@@ -370,11 +370,11 @@ public:
     /// The size in byte used by igc (non-spill space). And this
     /// is the value passed to VISA so that VISA's spill, if any,
     /// will go after this space.
-    uint m_ScratchSpaceSize;
+    uint m_ScratchSpaceSize = 0;
 
     CVariable* m_ScratchSurfaceAddress = nullptr;
 
-    ShaderStats* m_shaderStats;
+    ShaderStats* m_shaderStats = nullptr;
 
     // Number of binding table entries per cache line.
     static constexpr DWORD cBTEntriesPerCacheLine = 32;

@@ -62,6 +62,10 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_HasConstantStatelessMemoryAccess = false;
     m_HasDPAS = false;
 
+    m_SavedSRetPtr = nullptr;
+    m_FP = nullptr;
+    m_SavedFP = nullptr;
+
     bool SepSpillPvtSS = m_ctx->platform.hasScratchSurface() &&
         m_ctx->m_DriverInfo.supportsSeparatingSpillAndPrivateScratchMemorySpace();
     m_simdProgram.init(!m_ctx->platform.hasScratchSurface(),

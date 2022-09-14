@@ -223,8 +223,8 @@ bool RematAddressArithmetic::rematerializePrivateMemoryAddressCalculation(Functi
     SmallVector<std::pair<Value*, Value*>, 16> WorkList;
     WorkList.push_back(std::make_pair(PrivateBase, nullptr));
     while (!WorkList.empty()) {
-        Value* V;
-        Value* U;
+        Value* V = nullptr;
+        Value* U = nullptr;
 
         std::tie(V, U) = WorkList.back();
         WorkList.pop_back();
