@@ -513,3 +513,9 @@ SPDX-License-Identifier: MIT
         WA_BUG_TYPE_HANG,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
+        WA_DECLARE(
+        Wa_14017322320,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+

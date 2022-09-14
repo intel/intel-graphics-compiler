@@ -1293,7 +1293,9 @@ void Optimizer::insertDummyMovForHWRSWAonDPAS()
 
 void Optimizer::insertDummyMovForHWRSWA()
 {
-    if (!((VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344) || VISA_WA_CHECK(builder.getPWaTable(), Wa_22012856258) ||
+    if (!((VISA_WA_CHECK(builder.getPWaTable(), Wa_16012061344) ||
+        VISA_WA_CHECK(builder.getPWaTable(), Wa_22012856258) ||
+        VISA_WA_CHECK(builder.getPWaTable(), Wa_14017322320) ||
         VISA_WA_CHECK(builder.getPWaTable(), Wa_16012292205))))
     {
         return;
