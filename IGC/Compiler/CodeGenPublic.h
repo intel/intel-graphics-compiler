@@ -1176,12 +1176,6 @@ namespace IGC
         std::vector<RoutingIndex> HdcEnableIndexValues;
         uint32_t m_NumGRFPerThread = 0;
 
-        // Flag per function/kernel informing about if it has
-        // expensive loops and needs trigger retry compilation
-        std::map<llvm::Function*, bool> m_FuncHasExpensiveLoops;
-
-        bool HasFuncExpensiveLoop(llvm::Function* pFunc);
-
         // Raytracing (any shader type)
         // If provided, the BVH has been constructed such that the root node
         // is at a constant offset from the start of the BVH. This allows

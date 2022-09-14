@@ -2543,7 +2543,8 @@ namespace IGC
 
         //  Need a better heuristic for NoRetry
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
-        bool noRetry = ((pOutput->m_scratchSpaceUsedBySpills < 1000) &&
+        int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
+        bool noRetry = ((subGrpSize > 0 || pOutput->m_scratchSpaceUsedBySpills < 1000) &&
             ctx->m_instrTypes.mayHaveIndirectOperands);
         float threshold = 0.0f;
         if (ctx->platform.getGRFSize() >= 64)
