@@ -22,7 +22,7 @@ namespace llvm
 namespace IGC
 {
     /// Generic Polynomial Symbolic Expression (PSE)
-    ///   PSE = C0*T0 + C1*T2 + C2*T3 + ... + Cn;     (n = #terms)
+    ///   PSE = C0*T0 + C1*T1 + C2*T2 + ... + Cn;     (n = #terms)
     ///   where each Ti = Vi0 * Vi1 * Vi2 * ... * Vim (m = #Values)
     //
     // class SymTerm : symbolic term for denoting Ci * Ti
@@ -163,7 +163,6 @@ namespace IGC
         // V is an integer constant. Instead, return constant as 'C'.
         void getSymExprOrConstant(llvm::Value* V, SymExpr*& S, int64_t& C);
 
-        // set & get functions to SymInfoMap
         ValueSymInfo* getSymInfo(llvm::Value* V)
         {
             auto SIIter = m_symInfos.find(V);

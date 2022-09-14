@@ -256,6 +256,8 @@ SymExpr* SymbolicEvaluation::getSymExpr(Value* V)
     return expr;
 }
 
+// Return : S if S != nullptr;
+//          C if S == nullptr;
 void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
 {
     S = nullptr;
@@ -293,7 +295,14 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
             bool negateS1 = (opc == Instruction::Sub);
             if (!S0 && !S1)
             {
-                C = C0 + C1;
+                if (negateS1)
+                {
+                    C = C0 - C1;
+                }
+                else
+                {
+                    C = C0 + C1;
+                }
                 return;
             }
             if (S0 && S1)
@@ -307,7 +316,7 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
             }
             else
             {
-                // S1 is't null
+                // S1 isn't null
                 if (negateS1) {
                     S = mul(S1, -1);
                     S->ConstTerm += C0;
