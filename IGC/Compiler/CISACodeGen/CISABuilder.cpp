@@ -3939,6 +3939,75 @@ namespace IGC
                 addHash("-hashmovs1", context->hash.getPerShaderPsoHash());
         }
     }
+
+    void CEncoder::SetAbortOnSpillThreshold(bool canAbortOnSpill, bool AllowSpill)
+    {
+        CodeGenContext* context = m_program->GetContext();
+
+        switch (context->type)
+        {
+        case ShaderType::PIXEL_SHADER:
+            if (canAbortOnSpill && AvoidRetryOnSmallSpill())
+            {
+                // 2 means #spill/fill is roughly 1% of #inst
+                // ToDo: tune the threshold
+                if (m_program->m_Platform->getGRFSize() >= 64)
+                {
+                    if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                         SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 4);
+                    else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
+                }
+                else
+                {
+                    if (m_program->m_dispatchSize == SIMDMode::SIMD8)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+                    else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
+                    else
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 2);
+                }
+            }
+            break;
+
+        case ShaderType::COMPUTE_SHADER:
+            if (canAbortOnSpill && AvoidRetryOnSmallSpill())
+            {
+                // Currently, this section is met only if m_ForceOneSIMD is true
+                if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 4);
+                else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
+                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
+            }
+            break;
+
+        case ShaderType::OPENCL_SHADER:
+            // AllowSpill is set to false if -cl-intel-no-spill internal option was passed from OpenCL Runtime.
+            // It has been implemented to avoid scratch space usage for scheduler kernel.
+            if (AllowSpill)
+            {
+                if (m_program->m_Platform->getGRFSize() >= 64)
+                {
+                    if (m_program->m_dispatchSize == SIMDMode::SIMD8)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+                    else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 4);
+                    else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
+                }
+                else
+                {
+                    if (m_program->m_dispatchSize == SIMDMode::SIMD8)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
+                }
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+
     void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall, bool enableVISA_IR)
     {
         CodeGenContext* context = m_program->GetContext();
@@ -4204,43 +4273,10 @@ namespace IGC
         if (canAbortOnSpill)
         {
             SaveOption(vISA_AbortOnSpill, true);
-            if (AvoidRetryOnSmallSpill())  // applied to pixel shader and compute shader
-            {
-                // 2 means #spill/fill is roughly 1% of #inst
-                // ToDo: tune the threshold
-                if (m_program->m_dispatchSize == SIMDMode::SIMD8)
-                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
-                else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                {
-                    if (m_program->m_Platform->getGRFSize() >= 64)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
-                    else
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
-                }
-                else if (context->type == ShaderType::COMPUTE_SHADER &&
-                    m_program->m_dispatchSize == SIMDMode::SIMD32)
-                {
-                    // Compile SIMD32 only, give extra spillThreshold
-                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
-                }
-                else
-                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 2);
-            }
         }
 
-        if (context->type == ShaderType::OPENCL_SHADER)
-        {
-            // AllowSpill is set to false if -cl-intel-no-spill internal option was passed from OpenCL Runtime.
-            // It has been implemented to avoid scratch space usage for scheduler kernel.
-            if (AllowSpill)
-            {
-                if (m_program->m_dispatchSize == SIMDMode::SIMD8)
-                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
-                else if (m_program->m_Platform->getGRFSize() >= 64 &&
-                         m_program->m_dispatchSize == SIMDMode::SIMD16)
-                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold) * 2);
-            }
-        }
+        SetAbortOnSpillThreshold(canAbortOnSpill, AllowSpill);
+
 
         if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
             (m_program->m_Platform->preemptionSupported() || IGC_IS_FLAG_ENABLED(ForcePreemptionWA)) &&
