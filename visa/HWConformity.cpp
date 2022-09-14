@@ -4727,6 +4727,219 @@ static bool isSameOperand(G4_Operand* srcOpnd, struct LiveNode* ln)
     return false;
 }
 
+bool HWConformity::checkDPASSrcDstOverlap(INST_LIST_ITER iter, G4_BB* bb)
+{
+    G4_INST* inst = *iter;
+    G4_Operand* srcs[3];
+    bool hasOverlap = false;
+    G4_DstRegRegion* dst = inst->getDst();
+
+    for (int i = 0; i < inst->getNumSrc(); i++)
+    {
+        srcs[i] = inst->getSrc(i);
+    }
+
+    if (dst && !inst->hasNULLDst())
+    {
+        for (int i = 0; i < inst->getNumSrc(); i++)
+        {
+            G4_CmpRelation rel = dst->compareOperand(srcs[i], builder);
+            if (rel != Rel_disjoint)
+            {
+                unsigned int src_l = srcs[i]->getLinearizedStart();
+                unsigned int src_r = srcs[i]->getLinearizedEnd();
+                unsigned int dstGRFSize = src_r - src_l + 1;
+                unsigned int elements = dstGRFSize / srcs[i]->getTypeSize();
+
+                G4_Declare* dcl = builder.createTempVar(elements, srcs[i]->getType(), ThirtyTwo_Word);
+                //Move 2 GRFs, per instruction
+                unsigned movInstNum = (((dstGRFSize + builder.getGRFSize() - 1) / builder.getGRFSize()) + 1) / 2;
+
+                for (unsigned k = 0; k < movInstNum; k++)
+                {
+                    G4_DstRegRegion* newDst = builder.createDst(
+                        dcl->getRegVar(),
+                        2 * k,
+                        0,
+                        dst->getHorzStride(),
+                        Type_F);
+
+                    G4_Operand* newSrc = builder.createSrc(
+                        srcs[i]->getBase(),
+                        srcs[i]->asSrcRegRegion()->getRegOff() + 2 * k,
+                        srcs[i]->asSrcRegRegion()->getSubRegOff(),
+                        builder.getRegionStride1(),
+                        Type_F);
+
+                    G4_ExecSize numOfF{ (2 * builder.getGRFSize()) / TypeSize(Type_F) };
+                    if (k == movInstNum - 1)
+                    {
+                        numOfF = G4_ExecSize((dstGRFSize / TypeSize(Type_F)) - k * numOfF);
+                    }
+                    G4_INST* newInst = builder.createMov(numOfF, newDst, newSrc, InstOpt_WriteEnable, false);
+
+                    bb->insertBefore(iter, newInst);
+                }
+
+                //Replace the original source with the float type operand
+                G4_Operand* newSrc0 = builder.createSrc(
+                    dcl->getRegVar(),
+                    0,
+                    0,
+                    builder.getRegionStride1(),
+                    dcl->getElemType());
+                inst->setSrc(newSrc0, 0);
+                hasOverlap = true;
+            }
+        }
+    }
+
+    return hasOverlap;
+}
+
+G4_INST* HWConformity::evenlySplitDPAS8x8Inst(INST_LIST_ITER iter, G4_BB* bb)
+{
+    auto* inst = *iter;
+
+    //Insert mov if there is dst/src overlap
+    checkDPASSrcDstOverlap(iter, bb);
+
+    auto dst = inst->getDst();
+    G4_Operand* src[3];
+    for (int i = 0; i < 3; i++)
+    {
+        src[i] = inst->getSrc(i);
+    }
+
+    G4_DstRegRegion* newDst = nullptr;
+    if (dst && !inst->hasNULLDst())
+    {
+        unsigned int dst_l = dst->getLinearizedStart();
+        unsigned int dst_r = dst->getLinearizedEnd();
+        unsigned int GRFSize = (dst_r - dst_l + 1) / kernel.getGRFSize();
+        newDst = builder.createDst(
+            dst->getBase(),
+            dst->getRegOff() + GRFSize / 2,
+            dst->getSubRegOff(),
+            dst->getHorzStride(),
+            dst->getType());
+        dst->unsetRightBound();
+    }
+    else if (inst->hasNULLDst()) //In case null dst
+    {
+        newDst = builder.duplicateOperand(dst);
+    }
+    else
+    {
+        newDst = nullptr;
+    }
+
+    G4_Operand* newSrc[3];
+    for (int i = 0; i < 3; i++)
+    {
+        if (i == 1) //Src1 is not changed
+        {
+            if (src[i])
+            {
+                newSrc[i] = builder.duplicateOperand(src[i]);
+            }
+            else
+            {
+                newSrc[i] = nullptr;
+            }
+            continue;
+        }
+
+        if (src[i] && !src[i]->isNullReg())
+        {
+            unsigned int src_l = src[i]->getLinearizedStart();
+            unsigned int src_r = src[i]->getLinearizedEnd();
+            unsigned int GRFSize = (src_r - src_l + 1) / kernel.getGRFSize();
+            assert(((src_r - src_l + 1) % kernel.getGRFSize() == 0) && "DPAS GRF size not aligned");
+
+            if (GRFSize >= 2)
+            {
+                newSrc[i] = builder.createSrc(
+                    src[i]->getBase(),
+                    src[i]->asSrcRegRegion()->getRegOff() + GRFSize / 2,
+                    src[i]->asSrcRegRegion()->getSubRegOff(),
+                    builder.getRegionStride1(),
+                    src[i]->asSrcRegRegion()->getType());
+                src[i]->unsetRightBound();
+            }
+            else
+            {
+                short subRegOff = src[i]->asSrcRegRegion()->getSubRegOff() + ((src_r - src_l + 1) / src[i]->getTypeSize()) / 2;
+                newSrc[i] = builder.createSrc(
+                    src[i]->getBase(),
+                    src[i]->asSrcRegRegion()->getRegOff(),
+                    subRegOff,
+                    builder.getRegionStride1(),
+                    src[i]->asSrcRegRegion()->getType());
+                src[i]->unsetRightBound();
+            }
+        }
+        else if (src[i]->isNullReg())
+        {
+            newSrc[i] = builder.createNullSrc(src[i]->getType());
+        }
+        else
+        {
+            newSrc[i] = nullptr;
+        }
+    }
+
+    G4_InstDpas* dpasInst = inst->asDpasInst();
+    G4_INST* newInst = builder.createInternalDpasInst(inst->opcode(),
+        inst->getExecSize(),
+        newDst,
+        newSrc[0], newSrc[1], newSrc[2], nullptr,
+        inst->getOption(), dpasInst->getSrc2Precision(), dpasInst->getSrc1Precision(),
+        dpasInst->getSystolicDepth(), dpasInst->getRepeatCount() / 2);
+
+    dpasInst->setRepeatCount(dpasInst->getRepeatCount() / 2);
+
+    return newInst;
+}
+
+void HWConformity::DPASWA(G4_BB* bb, DPASSrc2RSCache* src2GRFCache)
+{
+    INST_LIST_ITER i = bb->begin(), iEnd = bb->end();
+    INST_LIST_ITER next_iter = i;
+    for (; i != iEnd; i = next_iter)
+    {
+        ++next_iter;
+        G4_INST* inst = *i;
+
+        if (inst->isDpas())
+        {
+            G4_INST* inst = *i;
+            G4_InstDpas* dpasInst = inst->asDpasInst();
+            uint8_t depth = dpasInst->getSystolicDepth();
+            uint8_t repeatC = dpasInst->getRepeatCount();
+
+            //Always split the first dpas8x8 of the BB, in case the HW issue happens cross BB
+            if (depth == 8 && repeatC == 8 && src2GRFCache->firstDpas)
+            {
+                G4_INST* newInst = evenlySplitDPAS8x8Inst(i, bb);
+                INST_LIST_ITER nextIter = i;
+                nextIter++;
+                i = bb->insertBefore(nextIter, newInst);
+                src2GRFCache->firstDpas = false;
+            }
+
+            //DPAS8x8, to disable the read suppression in src2
+            if (hasDPASSourceTwoReuse(src2GRFCache, inst))
+            {
+                G4_INST* newInst = evenlySplitDPAS8x8Inst(i, bb);
+                INST_LIST_ITER nextIter = i;
+                nextIter++;
+                i = bb->insertBefore(nextIter, newInst);
+            }
+        }
+    }
+}
+
 void HWConformity::localizeForAcc(G4_BB* bb)
 {
     std::map<const G4_Declare*, G4_Operand*> replacedOperand;
@@ -5663,6 +5876,59 @@ void HWConformity::replaceHFBFwithFloat(INST_LIST_ITER it, G4_BB* bb)
     inst->setSrc(newSrc0, 0);
 
     return;
+}
+
+bool HWConformity::hasDPASSourceTwoReuse(DPASSrc2RSCache* src2GRFCache, G4_INST* inst)
+{
+    G4_InstDpas* dpasInst = inst->asDpasInst();
+    uint8_t depth = dpasInst->getSystolicDepth();
+    uint8_t repeatC = dpasInst->getRepeatCount();
+
+    //Any non8x8 dpas will flush the src2 read suppression cache
+    if (!(depth == 8 && repeatC == 8))
+    {
+        for (int i = 0; i < 16; i++)
+        {
+            src2GRFCache->GRFCache[i] = nullptr;
+        }
+        return false;
+    }
+    G4_Operand* opnd = inst->getOperand(Opnd_src2);
+
+    int LB = opnd->getLinearizedStart();
+    int RB = opnd->getLinearizedEnd();
+
+    int startReg = LB / kernel.numEltPerGRF<Type_UB>();
+    int endReg = RB / kernel.numEltPerGRF<Type_UB>();
+    G4_Declare* src2Dcl = opnd->getTopDcl();
+    //Cached?
+    for (int i = 0; i < 16; i++)
+    {
+        if (src2GRFCache->GRFCache[i] == src2Dcl)
+        {
+            for (int i = 0; i < 16; i++)
+            {
+                src2GRFCache->GRFCache[i] = nullptr;
+            }
+
+            return true;
+        }
+    }
+
+    //Add to cache
+    for (int i = startReg; i <= endReg; i++)
+    {
+        src2GRFCache->latestID = src2GRFCache->latestID % 16;
+        src2GRFCache->GRFCache[src2GRFCache->latestID] = src2Dcl;
+        if (src2GRFCache->latestID % 4 == 0) //4GRF per block, one is polluted, all others cannot be reuse
+        {
+            src2GRFCache->GRFCache[src2GRFCache->latestID + 1] = nullptr;
+            src2GRFCache->GRFCache[src2GRFCache->latestID + 2] = nullptr;
+            src2GRFCache->GRFCache[src2GRFCache->latestID + 3] = nullptr;
+        }
+        src2GRFCache->latestID++;
+    }
+    return false;
 }
 
 void HWConformity::fixDPAS(INST_LIST_ITER it, G4_BB *bb)
@@ -6614,6 +6880,16 @@ void HWConformity::chkHWConformity()
 #endif
 
         conformBB(bb);
+
+#ifdef _DEBUG
+        verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
+#endif
+
+        if (builder.hasDPASSrc2ReadSuppressionIssue())
+        {
+            DPASSrc2RSCache src2GRFCache;
+            DPASWA(bb, &src2GRFCache);
+        }
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
