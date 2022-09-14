@@ -19,6 +19,24 @@ SPDX-License-Identifier: MIT
 
 namespace vISA
 {
+    class DPASSrc2RSCache
+    {
+    public:
+        std::vector<G4_Declare *> GRFCache;
+        unsigned latestID;
+        bool firstDpas;
+
+        DPASSrc2RSCache()
+        {
+            latestID = 0;
+            firstDpas = true;
+            GRFCache.resize(16, nullptr);
+        }
+        ~DPASSrc2RSCache()
+        {
+        }
+    };
+
     class HWConformity
     {
         IR_Builder& builder;
@@ -208,6 +226,8 @@ namespace vISA
 
         void replaceHFBFwithFloat(INST_LIST_ITER it, G4_BB* bb);
 
+        bool hasDPASSourceTwoReuse(DPASSrc2RSCache* src2GRFCache, G4_INST* inst);
+
         void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
 
         bool checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos);
@@ -243,6 +263,9 @@ namespace vISA
         }
         void chkHWConformity();
         static void tryEliminateMadSrcModifier(IR_Builder &builder, G4_INST *inst);
+        bool checkDPASSrcDstOverlap(INST_LIST_ITER iter, G4_BB* bb);
+        G4_INST* evenlySplitDPAS8x8Inst(INST_LIST_ITER iter, G4_BB* bb);
+        void DPASWA(G4_BB* bb, DPASSrc2RSCache* src2GRFCache);
         void localizeForAcc(G4_BB* bb);
         void splitDWMULInst(INST_LIST_ITER& start, INST_LIST_ITER& end, G4_BB* bb);
         void fixMulSrc1(INST_LIST_ITER i, G4_BB* bb);
