@@ -8169,7 +8169,7 @@ bool G4_INST::canDstBeAcc() const
         return false;
     }
 
-    if (!builder.hasFP64Acc() && dst->getType() == Type_DF)
+    if (!builder.useAccForDF() && dst->getType() == Type_DF)
     {
         return false;
     }

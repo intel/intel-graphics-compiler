@@ -711,7 +711,10 @@ SPDX-License-Identifier: MIT
 
     bool useAccForDF() const
     {
-        return getPlatform() >= Xe_XeHPSDV;
+        return
+            getPlatform() == Xe_PVCXT ||
+            getPlatform() == Xe_PVC ||
+            getPlatform() == Xe_XeHPSDV;
     }
 
     bool useAccForMadm() const
@@ -752,11 +755,6 @@ SPDX-License-Identifier: MIT
     bool hasTwoGRFMathMacro() const
     {
         return getPlatform() >= Xe_PVC;
-    }
-
-    bool hasFP64Acc() const
-    {
-        return !noFP64() && getPlatform() != Xe_MTL;
     }
 
     bool hasMathAcc() const
