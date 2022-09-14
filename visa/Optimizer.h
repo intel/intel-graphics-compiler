@@ -41,23 +41,6 @@ typedef enum _HEADER_ORDER_
 
 namespace vISA
 {
-class DPASSrc2RSCache
-{
-public:
-    std::vector<int> GRFCache;
-    unsigned latestID;
-    bool firstDpas;
-
-    DPASSrc2RSCache()
-    {
-        latestID = 0;
-        firstDpas = true;
-        GRFCache.resize(16, -1);
-    }
-    ~DPASSrc2RSCache()
-    {
-    }
-};
 class MSGTable
 {
 public:
@@ -153,9 +136,6 @@ class Optimizer
     void HWWorkaround();
     void preRA_HWWorkaround();
     void postRA_HWWorkaround();
-    G4_INST* evenlySplitDPASInst(INST_LIST_ITER iter, G4_BB* bb);
-    bool hasDPASSourceTwoReuse(DPASSrc2RSCache* src2GRFCache, G4_INST* inst);
-    void DPASWA(G4_BB* bb, INST_LIST_ITER ii, DPASSrc2RSCache* src2GRFCache);
     void normalizeRegion();
     void initializePayload();
     void dumpPayload();
