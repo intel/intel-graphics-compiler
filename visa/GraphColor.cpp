@@ -5329,6 +5329,144 @@ void Augmentation::buildSummaryForCallees()
     }
 }
 
+void dumpLiveRanges(GlobalRA& gra, DECLARE_LIST& sortedIntervals)
+{
+    // Emit Python file to draw chart.
+    auto& kernel = gra.kernel;
+    std::ofstream of;
+    std::string fname;
+    if (kernel.getOptions()->getOptionCstr(VISA_AsmFileName))
+        fname = std::string(kernel.getOptions()->getOptionCstr(VISA_AsmFileName)) + "-";
+    fname += "iter-" + std::to_string(gra.getIterNo()) + std::string(".py");
+    of.open(fname, std::ofstream::out);
+    of << "import matplotlib.pyplot as plt" << std::endl;
+    of << "import numpy as np" << std::endl;
+    of << "fig,ax = plt.subplots()" << std::endl;
+    unsigned int x = 10;
+
+    // draw line from (x1, y2) -> (x2, y2)
+    // lbl is either "label" or "marker". Latter is used to mark def/use locations.
+    // name contains variable name to write out
+    auto plot = [&of](int x1, int y1, int x2, int y2, std::string lbl, std::string name)
+    {
+        {
+            std::string var = "x1 = [";
+            var += std::to_string(x1);
+            var += std::string(", ");
+            var += std::to_string(x2);
+            var += std::string("]\n");
+
+            of << var;
+        }
+
+        {
+            std::string var = std::string("y1");
+            var += std::string(" = [");
+            var += std::to_string(y1);
+            var += std::string(", ");
+            var += std::to_string(y2);
+            var += std::string("]\n");
+
+            of << var;
+        }
+
+        if (lbl == "label")
+            of << "th1 = ax.text(*[" << x1 << "," << y1 + 1 << "], \"" << name << "\", fontsize=8,rotation=90, rotation_mode='anchor')" << std::endl;
+
+        of << "plt.plot(x1,y1, " << lbl << " = \"" << name << "\"";
+        of << ")\n\n";
+    };
+
+    VarReferences refs(kernel);
+    for (auto interval : sortedIntervals)
+    {
+        auto start = gra.getStartInterval(interval);
+        auto end = gra.getEndInterval(interval);
+        int startLexId = 0, endLexId = 0;
+        if (!start || !end)
+            continue;
+
+        // Live-intervals are dumped top-down. So plot
+        // them in 4th quadrant.
+        startLexId = -(int)start->getLexicalId();
+        endLexId = -(int)end->getLexicalId();
+
+        plot(x, startLexId, x, endLexId, "label", interval->getName());
+
+        // Add def/use markers
+        // Def indicated by '+' sign on chart
+        // Use indicated by a circle on chart
+        // Note: Indirect refs are not indicated on chart as they're
+        // not computed by VarReferences class.
+        auto defs = refs.getDefs(interval);
+        auto uses = refs.getUses(interval);
+
+        if (defs)
+        {
+            for (auto& def : *defs)
+            {
+                auto defInst = std::get<0>(def);
+                auto lexId = defInst->getLexicalId();
+                plot(x, -(int)lexId, x, -(int)lexId, "marker", "+");
+            }
+        }
+
+        if (uses)
+        {
+            for (auto& use : *uses)
+            {
+                auto useInst = std::get<0>(use);
+                auto lexId = useInst->getLexicalId();
+                plot(x, -(int)lexId, x, -(int)lexId, "marker", ".");
+            }
+        }
+        ++x;
+    }
+
+    // Demarcate loops by drawing a box around them
+    std::vector<Loop*> allLoops;
+    for (auto loop : kernel.fg.getLoops().getTopLoops())
+    {
+        std::stack<Loop*> nested;
+        nested.push(loop);
+        while (nested.size() > 0)
+        {
+            auto top = nested.top();
+            allLoops.push_back(loop);
+            nested.pop();
+            for (auto child : top->immNested)
+            {
+                nested.push(child);
+            }
+        }
+    }
+
+    for (auto loop : allLoops)
+    {
+        unsigned int minLexId = 0xffffffff, maxLexId = 0;
+        for (auto bb : loop->getBBs())
+        {
+            for (auto inst : bb->getInstList())
+            {
+                if (inst->getLexicalId() != UNDEFINED_VAL && inst->getLexicalId() != 0)
+                {
+                    minLexId = std::min(minLexId, inst->getLexicalId());
+                    maxLexId = std::max(maxLexId, inst->getLexicalId());
+                }
+            }
+        }
+
+        plot(0, -(int)minLexId, 0, -(int)maxLexId, "label", std::string("L") + std::to_string(loop->id));
+        plot(x + 10, -(int)minLexId, x + 10, -(int)maxLexId, "label", std::string("L") + std::to_string(loop->id));
+        plot(0, -(int)minLexId, x + 10, -(int)minLexId, "label", std::string("L") + std::to_string(loop->id));
+        plot(0, -(int)maxLexId, x + 10, -(int)maxLexId, "label", std::string("L") + std::to_string(loop->id));
+
+    }
+
+    of << "plt.show()" << std::endl;
+    of.close();
+}
+
 void Augmentation::augmentIntfGraph()
 {
     if (!(kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D &&
@@ -5368,6 +5506,11 @@ void Augmentation::augmentIntfGraph()
 
         // Sort live-intervals based on their start
         sortLiveIntervals();
+
+        if (kernel.getOption(vISA_DumpLiveRanges))
+        {
+            dumpLiveRanges(gra, sortedIntervals);
+        }
 
         if (kernel.getOption(vISA_DumpRegChart))
         {
