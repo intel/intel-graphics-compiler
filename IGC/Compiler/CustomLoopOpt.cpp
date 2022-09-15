@@ -1134,9 +1134,12 @@ bool LoopHoistConstant::runOnLoop(Loop* L, LPPassManager& LPM)
             VMap.find(&II) != VMap.end())
         {
             PHINode* PN = PHINode::Create(II.getType(), 2, "", endHoistBB->getTerminator());
-            II.replaceUsesOutsideBlock(PN, elseHoistBB);
-            PN->addIncoming(VMap[&II], ifHoistBB);
-            PN->addIncoming(&II, elseHoistBB);
+            if (PN)
+            {
+                II.replaceUsesOutsideBlock(PN, elseHoistBB);
+                PN->addIncoming(VMap[&II], ifHoistBB);
+                PN->addIncoming(&II, elseHoistBB);
+            }
         }
     }
 

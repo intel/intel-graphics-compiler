@@ -863,4 +863,7 @@ void VectorMessage::getLSCInfo(llvm::Type* Ty, uint32_t Align, CodeGenContext* c
     IGC_ASSERT_MESSAGE(numInsts <= (sizeof(insts) / sizeof(*insts)), "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
 }
 
-VectorMessage::VectorMessage(EmitPass* emitter) : Shader(emitter->m_currShader) {}
+VectorMessage::VectorMessage(EmitPass* emitter) : Shader(emitter->m_currShader)
+{
+    numInsts = 0;
+}

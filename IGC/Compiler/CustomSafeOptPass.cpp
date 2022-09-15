@@ -2865,7 +2865,7 @@ void GenSpecificPattern::visitAnd(BinaryOperator& I)
     if (match(&I, fabs_on_int_pattern1))
     {
         Value* src = getValidBitcastSrc(inst);
-        if (src && match(src, fneg_pattern) && src_of_FNeg->getType()->isDoubleTy())
+        if (src && match(src, fneg_pattern) && src_of_FNeg && src_of_FNeg->getType()->isDoubleTy())
         {
             VectorType* vec2 = IGCLLVM::FixedVectorType::get(builder.getInt32Ty(), 2);
             Value* BC = builder.CreateBitCast(src_of_FNeg, vec2);
@@ -2920,7 +2920,7 @@ void GenSpecificPattern::visitAnd(BinaryOperator& I)
         {
             Instruction* LhsSrc = nullptr;
             auto LShr_Pattern = m_LShr(m_Instruction(LhsSrc), m_ConstantInt(CI));
-            bool LShrMatch = match(AndSrc, LShr_Pattern) && LhsSrc->getType()->isIntegerTy(32) && CI && (CI->getZExtValue() % 8 == 0);
+            bool LShrMatch = match(AndSrc, LShr_Pattern) && LhsSrc && LhsSrc->getType()->isIntegerTy(32) && CI && (CI->getZExtValue() % 8 == 0);
 
             // in case there's no shr, it will be 0
             uint32_t newIndex = 0;
@@ -2964,12 +2964,12 @@ void GenSpecificPattern::visitAShr(BinaryOperator& I)
     Instruction* AShrSrc = nullptr;
     auto pattern_1 = m_AShr(m_Instruction(AShrSrc), m_SpecificInt(16));
 
-    if (match(&I, pattern_1) && I.getType()->isIntegerTy(32) && AShrSrc->getType()->isIntegerTy(32))
+    if (match(&I, pattern_1) && I.getType()->isIntegerTy(32) && AShrSrc && AShrSrc->getType()->isIntegerTy(32))
     {
         Instruction* ShlSrc = nullptr;
 
         auto Shl_Pattern = m_Shl(m_Instruction(ShlSrc), m_SpecificInt(16));
-        bool submatch = match(AShrSrc, Shl_Pattern) && ShlSrc->getType()->isIntegerTy(32);
+        bool submatch = match(AShrSrc, Shl_Pattern) && ShlSrc && ShlSrc->getType()->isIntegerTy(32);
 
         // in case there's no shr, we take upper half
         uint32_t newIndex = 1;
@@ -3043,23 +3043,26 @@ void GenSpecificPattern::visitOr(BinaryOperator& I)
         m_And(m_Value(AndOp2), m_SpecificInt(0xFFFFFFFF)),
         m_BitCast(m_InsertElt(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
 #endif // LLVM_VERSION_MAJOR >= 7
-    if (match(&I, pattern1) && AndOp1->getType()->isIntegerTy(64))
+    if (match(&I, pattern1) && AndOp1 && AndOp1->getType()->isIntegerTy(64))
     {
         createBitcastExtractInsertPattern(I, AndOp1, EltOp1, 0, 1);
     }
 #if LLVM_VERSION_MAJOR >= 7
-    else if (match(&I, pattern2) && AndOp2->getType()->isIntegerTy(64))
+    else if (match(&I, pattern2) && AndOp2 && AndOp2->getType()->isIntegerTy(64))
     {
         ConstantVector* cVec = dyn_cast<ConstantVector>(VecOp);
-        IGCLLVM::FixedVectorType* vector_type = dyn_cast<IGCLLVM::FixedVectorType>(VecOp->getType());
-        if (cVec && vector_type &&
-            isa<ConstantInt>(cVec->getOperand(0)) &&
-            cast<ConstantInt>(cVec->getOperand(0))->isZero() &&
-            vector_type->getElementType()->isIntegerTy(32) &&
-            vector_type->getNumElements() == 2)
+        if (cVec)
         {
-            auto InsertOp = cast<BitCastInst>(I.getOperand(1))->getOperand(0);
-            createBitcastExtractInsertPattern(I, AndOp2, InsertOp, 0, 1);
+            IGCLLVM::FixedVectorType* vector_type = dyn_cast<IGCLLVM::FixedVectorType>(VecOp->getType());
+            if (vector_type &&
+                isa<ConstantInt>(cVec->getOperand(0)) &&
+                cast<ConstantInt>(cVec->getOperand(0))->isZero() &&
+                vector_type->getElementType()->isIntegerTy(32) &&
+                vector_type->getNumElements() == 2)
+            {
+                auto InsertOp = cast<BitCastInst>(I.getOperand(1))->getOperand(0);
+                createBitcastExtractInsertPattern(I, AndOp2, InsertOp, 0, 1);
+            }
         }
     }
 #endif // LLVM_VERSION_MAJOR >= 7

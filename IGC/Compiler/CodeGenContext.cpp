@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -891,7 +891,7 @@ namespace IGC
                 size_t valEnd = opts.find_first_of(' ', valStart);
                 llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
 
-                int16_t val;
+                int16_t val = 0;
                 if (valStr.getAsInteger(10, val))
                 {
                     IGC_ASSERT_MESSAGE(false, "-cl-intel-vector-coalescing: invalid value, ignored!");
@@ -962,7 +962,7 @@ namespace IGC
             // -ze-intel-functionControl [<n>]
             else if (suffix.equals("-functionControl"))
             {
-                int val;
+                int val = 0;
                 size_t valStart = opts.find_first_not_of(' ', ePos + 1);
                 size_t valEnd = opts.find_first_of(' ', valStart);
                 llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
@@ -985,7 +985,7 @@ namespace IGC
             else if (suffix.equals("-load-cache-default") || suffix.equals("-store-cache-default"))
             {
                 bool isLoad = suffix.equals("-load-cache-default");
-                int val;
+                int val = 0;
                 size_t valStart = opts.find_first_not_of(' ', ePos + 1);
                 size_t valEnd = opts.find_first_of(' ', valStart);
                 llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);

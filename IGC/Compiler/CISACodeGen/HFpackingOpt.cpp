@@ -961,7 +961,7 @@ void HFpackingOpt::removeRedundantChannels(Function& F)
         {
             if (GetElementPtrInst* GEP = dyn_cast<GetElementPtrInst>(&ii))
             {
-                uint32_t arraySize, elmBytes, offset;
+                uint32_t arraySize = 0, elmBytes = 0, offset = 0;
                 if (getGEPInfo(GEP, arraySize, elmBytes, offset))
                 {
                     allGEP[offset]++;
