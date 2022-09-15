@@ -2638,7 +2638,9 @@ namespace IGC
         VISA_VectorOpnd* aoffimmi = GetSourceOperandNoModifier(offset);
 
         {
-            int status = vKernel->AppendVISA3dLoad(
+
+        int status = -1; // VISA_FAILURE
+            status = vKernel->AppendVISA3dLoad(
                 ConvertSubOpcode(subOpcode, zeroLOD),
                 feedbackEnable, // pixel null mask
                 predOpnd,

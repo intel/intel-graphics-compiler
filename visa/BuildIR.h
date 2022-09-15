@@ -49,13 +49,6 @@ typedef struct FCCalls
     const char* calleeLabelString;
 } FCCalls;
 
-struct OperandLengths
-{
-    int dstLen;
-    int src0Len;
-    int src1Len;
-};
-
 enum DeclareType
 {
     Regular = 0,

@@ -98,6 +98,9 @@ enum class MsgOp {
     GATHER_GROUP = MSGOP_GATHER_GROUP + 1,
     GATHER4,
     GATHER4_C,
+    LD_LZ,
+    LD2DMS_W,
+    LD_MCS,
     RTREAD,
     RTWRITE,
     RTDSWRITE
