@@ -83,7 +83,7 @@ namespace IGC
 
         // If printfArg is string, adds the string into metadata.
         // Returns the string index if the argument is string, and -1 otherwise.
-        llvm::Value* processPrintfString(llvm::Value* arg, llvm::Function& F);
+        llvm::Value* processPrintfString(llvm::Value* printfArg, llvm::Function& F);
 
         // Replaces a printf call with a sequence of IR instrictions.
         void expandPrintfCall(llvm::CallInst& printfCall, llvm::Function& F);
@@ -129,7 +129,6 @@ namespace IGC
         llvm::LLVMContext* m_context;
         llvm::Function* m_atomicAddFunc;
         unsigned int         m_stringIndex;
-        std::map<std::string, unsigned int> m_MapStringStringIndex;
         llvm::IntegerType* m_ptrSizeIntType;
         llvm::IntegerType* m_int32Type;
         llvm::DebugLoc       m_DL;
