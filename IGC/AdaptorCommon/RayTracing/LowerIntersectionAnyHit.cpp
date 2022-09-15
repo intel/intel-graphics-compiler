@@ -102,6 +102,9 @@ private:
         RTBuilder& IRB,
         RTBuilder::StackPointerVal* StackPointer,
         Value* THit,
+        Value* PotentialHitU,
+        Value* PotentialHitV,
+        Value* PotentialHitInfo,
         Value* PotentialPrimVal,
         Value* PotentialInstVal);
     void injectExitCode(
@@ -168,6 +171,9 @@ void LowerIntersectionAnyHit::initializeCommittedHit(
     RTBuilder &IRB,
     RTBuilder::StackPointerVal* StackPointer,
     Value* THit,
+    Value* PotentialHitU,
+    Value* PotentialHitV,
+    Value* PotentialHitInfo,
     Value* PotentialPrimVal,
     Value* PotentialInstVal)
 {
@@ -179,6 +185,15 @@ void LowerIntersectionAnyHit::initializeCommittedHit(
     //stack->committedHit.instLeafPtr = stack->potentialHit.instLeafPtr;
     //stack->committedHit.hitGroupRecPtr1 = stack->potentialHit.hitGroupRecPtr1;
     IRB.setCommittedHitTopInstLeafPtr(StackPointer, PotentialInstVal);
+
+    //stack->committedHit.u = stack->potentialHit.u;
+    IRB.setHitBaryCentric(StackPointer, PotentialHitU, CallableShaderTypeMD::ClosestHit, 0);
+
+    //stack->committedHit.v = stack->potentialHit.v;
+    IRB.setHitBaryCentric(StackPointer, PotentialHitV, CallableShaderTypeMD::ClosestHit, 1);
+
+    //stack->committedHit.'hitInfoDword' = stack->potentialHit.'hitInfoDword';
+    IRB.setHitInfoDWord(StackPointer, CallableShaderTypeMD::ClosestHit, PotentialHitInfo);
 }
 
 Value* LowerIntersectionAnyHit::isClosestHitNull(
@@ -345,11 +360,18 @@ void LowerIntersectionAnyHit::injectExitCode(
         StackPointer, CallableShaderTypeMD::AnyHit);
     Value* PotentialInstVal = IRB.getPotentialHitTopInstLeafPtr(StackPointer);
 
+    Value* PotentialHitU = IRB.getHitBaryCentric(StackPointer, CallableShaderTypeMD::AnyHit, 0);
+    Value* PotentialHitV = IRB.getHitBaryCentric(StackPointer, CallableShaderTypeMD::AnyHit, 1);
+    Value* PotentialHitInfo = IRB.getHitInfoDWord(StackPointer, CallableShaderTypeMD::AnyHit);
+
     auto InitForCHS = [=](RTBuilder& IRB) {
         initializeCommittedHit(
             IRB,
             StackPointer,
             RayTFar,
+            PotentialHitU,
+            PotentialHitV,
+            PotentialHitInfo,
             PotentialPrimVal,
             PotentialInstVal);
     };
@@ -547,12 +569,20 @@ CallInst* LowerIntersectionAnyHit::codeGenReportHit(
     IRB.SetInsertPoint(TermTrueBB);
     Value* PotentialPrimVal = IRB.getHitTopOfPrimLeafPtr(
         StackPointer, CallableShaderTypeMD::AnyHit);
+
     Value* PotentialInstVal = IRB.getPotentialHitTopInstLeafPtr(StackPointer);
+    Value* PotentialHitU = IRB.getHitBaryCentric(StackPointer, CallableShaderTypeMD::AnyHit, 0);
+    Value* PotentialHitV = IRB.getHitBaryCentric(StackPointer, CallableShaderTypeMD::AnyHit, 1);
+    Value* PotentialHitInfo = IRB.getHitInfoDWord(StackPointer, CallableShaderTypeMD::AnyHit);
+
     auto InitForCHS = [=](RTBuilder& IRB) {
         initializeCommittedHit(
             IRB,
             StackPointer,
             RHI->getTHit(),
+            PotentialHitU,
+            PotentialHitV,
+            PotentialHitInfo,
             PotentialPrimVal,
             PotentialInstVal);
     };
