@@ -4732,7 +4732,7 @@ static bool isSameOperand(G4_Operand* srcOpnd, struct LiveNode* ln)
 bool HWConformity::checkDPASSrcDstOverlap(INST_LIST_ITER iter, G4_BB* bb)
 {
     G4_INST* inst = *iter;
-    G4_Operand* srcs[3];
+    G4_Operand* srcs[3] = {nullptr, nullptr, nullptr};
     bool hasOverlap = false;
     G4_DstRegRegion* dst = inst->getDst();
 
@@ -5897,38 +5897,41 @@ bool HWConformity::hasDPASSourceTwoReuse(DPASSrc2RSCache* src2GRFCache, G4_INST*
     }
     G4_Operand* opnd = inst->getOperand(Opnd_src2);
 
-    int LB = opnd->getLinearizedStart();
-    int RB = opnd->getLinearizedEnd();
-
-    int startReg = LB / kernel.numEltPerGRF<Type_UB>();
-    int endReg = RB / kernel.numEltPerGRF<Type_UB>();
-    G4_Declare* src2Dcl = opnd->getTopDcl();
-    //Cached?
-    for (int i = 0; i < 16; i++)
+    if (opnd)
     {
-        if (src2GRFCache->GRFCache[i] == src2Dcl)
+        int LB = opnd->getLinearizedStart();
+        int RB = opnd->getLinearizedEnd();
+
+        int startReg = LB / kernel.numEltPerGRF<Type_UB>();
+        int endReg = RB / kernel.numEltPerGRF<Type_UB>();
+        G4_Declare* src2Dcl = opnd->getTopDcl();
+        //Cached?
+        for (int i = 0; i < 16; i++)
         {
-            for (int i = 0; i < 16; i++)
+            if (src2GRFCache->GRFCache[i] == src2Dcl)
             {
-                src2GRFCache->GRFCache[i] = nullptr;
+                for (int i = 0; i < 16; i++)
+                {
+                    src2GRFCache->GRFCache[i] = nullptr;
+                }
+
+                return true;
             }
-
-            return true;
         }
-    }
 
-    //Add to cache
-    for (int i = startReg; i <= endReg; i++)
-    {
-        src2GRFCache->latestID = src2GRFCache->latestID % 16;
-        src2GRFCache->GRFCache[src2GRFCache->latestID] = src2Dcl;
-        if (src2GRFCache->latestID % 4 == 0) //4GRF per block, one is polluted, all others cannot be reuse
+        //Add to cache
+        for (int i = startReg; i <= endReg; i++)
         {
-            src2GRFCache->GRFCache[src2GRFCache->latestID + 1] = nullptr;
-            src2GRFCache->GRFCache[src2GRFCache->latestID + 2] = nullptr;
-            src2GRFCache->GRFCache[src2GRFCache->latestID + 3] = nullptr;
+            src2GRFCache->latestID = src2GRFCache->latestID % 16;
+            src2GRFCache->GRFCache[src2GRFCache->latestID] = src2Dcl;
+            if (src2GRFCache->latestID % 4 == 0) //4GRF per block, one is polluted, all others cannot be reuse
+            {
+                src2GRFCache->GRFCache[src2GRFCache->latestID + 1] = nullptr;
+                src2GRFCache->GRFCache[src2GRFCache->latestID + 2] = nullptr;
+                src2GRFCache->GRFCache[src2GRFCache->latestID + 3] = nullptr;
+            }
+            src2GRFCache->latestID++;
         }
-        src2GRFCache->latestID++;
     }
     return false;
 }

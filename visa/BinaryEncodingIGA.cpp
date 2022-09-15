@@ -1521,7 +1521,7 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
         uint32_t dstLen = descG4->getDstLenBytes() / 32;
         FILE* f = fopen("C:\\Intel\\IGC\\sendInfo.txt", "w");
 
-        fprintf(f, "src0Len=%d src1Len=%d dstLen=%d \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
+        fprintf(f, "src0Len=%u src1Len=%u dstLen=%u \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
 
         fclose(f);
     }
@@ -1589,7 +1589,7 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(
         uint32_t dstLen = descG4->getDstLenBytes() / 32;
         FILE* f = fopen("C:\\Intel\\IGC\\sendInfo.txt", "w");
 
-        fprintf(f, "encodeExDescRegA0: src0Len=%d src1Len=%d dstLen=%d \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
+        fprintf(f, "encodeExDescRegA0: src0Len=%u src1Len=%u dstLen=%u \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
 
         fclose(f);
     }
