@@ -469,6 +469,7 @@ size_t DepSetBuilder::DpasMacroBuilder::getNumberOfSuppresionGroups(uint32_t src
     return 0;
 }
 
+
 size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
     InstListIterator startIt, uint32_t srcIdx) {
     // get the candidate block
@@ -553,9 +554,10 @@ DepSetBuilder::DpasMacroBuilder::SuppressBlockPtrTy
 DepSetBuilder::DpasMacroBuilder::getSuppressionBlockCandidate(
     InstListIterator startIt, uint32_t srcIdx,
     BitSet<>& allDstBits, BitSet<>& allSrcBits,
-    BitSet<>& allDstNoLastBits, BitSet<>& allSrcNoLastBits) const {
+    BitSet<>& allDstNoLastBits, BitSet<>& allSrcNoLastBits,
+    int forceGroupNum) const {
     assert(srcIdx == 1 || srcIdx == 2);
-    size_t maxGroupNum = getNumberOfSuppresionGroups(srcIdx);
+    size_t maxGroupNum = forceGroupNum < 0 ? getNumberOfSuppresionGroups(srcIdx) : forceGroupNum;
     // return null if the given src can't be suppressed
     if (!maxGroupNum)
         return nullptr;
@@ -612,13 +614,12 @@ bool DepSetBuilder::DpasMacroBuilder::srcIsSuppressCandidate(const Instruction& 
     if (srcIdx == 1)
         return true;
     if (srcIdx == 2) {
-        // can't be DP dpas
+        // DP dpas must have rep count 4
         if (inst.isDF())
-            return false;
+            return GetDpasRepeatCount(inst.getDpasFc()) == 4;
 
-        if (GetDpasRepeatCount(inst.getDpasFc()) != 8)
-            return false;
-        return true;
+        // allow only rep count 8 for non-DP dpase
+        return GetDpasRepeatCount(inst.getDpasFc()) == 8;
     }
     return false;
 }
@@ -631,10 +632,8 @@ bool DepSetBuilder::DpasMacroBuilder::hasProducerConsumerDep(
     BitSet<> new_dstbits(m_dsBuilder.getGRF_LEN());
     setDstSrcBits(src_range, dst_range, new_srcbits, new_dstbits);
 
-    // check if there is WAR/RAW/WAW dependency
-    if (target_src_bits.intersects(new_dstbits) ||
-        target_dst_bits.intersects(new_srcbits) ||
-        target_dst_bits.intersects(new_dstbits))
+    // check if there is RAW dependency
+    if (target_dst_bits.intersects(new_srcbits))
         return true;
     return false;
 }
@@ -663,13 +662,16 @@ const Instruction& DepSetBuilder::DpasMacroBuilder::formMacro(size_t& dpasCnt) {
     m_inps.getDpasDstDependency(**cur, dst_range);
     InstListIterator next = cur;
     next++;
-    // early exit if there is no following instructions
-    if (next == m_instList.end()) {
+    // early exit if there is no following instructions or dpas depth is not 8
+    if (next == m_instList.end() || GetDpasSystolicDepth((*cur)->getDpasFc()) != 8) {
         updateRegFootprintsToDepSets(src_range, src_extra_range, dst_range);
         return **cur;
     }
 
-    dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 1));
+    bool formMacroForSrc1 = false;
+
+    if (!formMacroForSrc1)
+        dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 1));
     dpasCnt = std::max(dpasCnt, formSrcSuppressionBlock(m_firstDpasIt, 2));
 
     if (dpasCnt == 1) {

@@ -414,12 +414,18 @@ private:
     // 1. consecutive DPAS instructions of the same opcode
     // 2. same datatype of the same operand across all instructions
     // 3. same execution mask across all instructions
-    // 4. same depth
-    // 5. has no internal dependency within the instruction
-    //    with an exception that for depth 8 dpas, src0and dst dependency is allowed if they are completely the same
-    // 6. One of below conditions is met:
-    //    a) src1 read suppression is fulfilled
-    //    b) src2 read suppression is fulfilled
+    // 4. depth is 8
+    // 5. has no internal dependency within each instruction
+    //    - with an exception that for depth 8 dpas, src0 and dst dependency is allowed if they are completely the same
+    // 6. no producer-consumer relationships (RAW) within the macro
+    //    - WAW and WAR are allowed since dpas are in ordered within the dpas pipe
+    // 7. For a DPAS 8xN sequence, where N !=8, a macro has to have at least two dpas b2b instructions that share the same
+    //    src1 and that the sum of the number of either Src0 or Src2 registers they read is 8 or more after the same macro
+    //    can change to another sequence of dpas instructions with different Src1
+    //    (** Note that violating this rule causes functional issue)
+    // 8. One of below conditions is met:
+    //    a) for src1 read suppression
+    //    b) for src2 read suppression
     class DpasMacroBuilder {
     public:
         DpasMacroBuilder(
@@ -569,18 +575,22 @@ private:
         // to srcIdx suppression. Return number of instructions found
         size_t formSrcSuppressionBlock(InstListIterator startIt, uint32_t srcIdx);
 
+
         // return the candidate SuppressBlock that is found fulfilling read suppression requirement
         // of given src index, start from the give instruction. This block is the first candidate block
         // of instructions register those can be suppressed. Will need to check if the following instructions
         // having the same registers so that they can actually being suppressed.
-        // return nullptr if there is no chance to suppress the given src
-        // allDstBits, allSrcBits - all used grf bits in the return suppressBlock
-        // allDstNoLastBits, allSrcNoLastBits - all used grf in the return suppressBlock except the
-        // last instruction's
+        // * return nullptr if there is no chance to suppress the given src
+        // * allDstBits, allSrcBits - all used grf bits in the return suppressBlock
+        // * allDstNoLastBits, allSrcNoLastBits - all used grf in the return suppressBlock except the
+        //   last instruction's
+        // * forceGroupNum - force to use the given value as maximum number of suppression groups instead of
+        //   getting it from getNumberOfSuppresionGroups
         SuppressBlockPtrTy getSuppressionBlockCandidate(
             InstListIterator startIt, uint32_t srcIdx,
             BitSet<>& allDstBits, BitSet<>& allSrcBits,
-            BitSet<>& allDstNoLastBits, BitSet<>& allSrcNoLastBits) const;
+            BitSet<>& allDstNoLastBits, BitSet<>& allSrcNoLastBits,
+            int forceGroupNum = -1) const;
 
         bool srcIsSuppressCandidate(const Instruction& inst, uint32_t srcIdx) const;
 
