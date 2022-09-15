@@ -289,6 +289,9 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
         mpm.add(CreatePrivateMemoryResolution());
     }
 
+    // Evaluates LLVM 10+ freeze instructions so EmitPass does not need to handle them
+    mpm.add(createEvaluateFreezePass());
+
     // This is for dumping register pressure info
     if (IGC_IS_FLAG_ENABLED(ForceRPE)) {
         mpm.add(new RegisterEstimator());
@@ -302,9 +305,6 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     //
     // Generally, passes that change IR should be prior to this place!
     //
-
-    // Evaluates LLVM 10+ freeze instructions so EmitPass does not need to handle them
-    mpm.add(createEvaluateFreezePass());
 
     // let CleanPHINode be right before Layout
     mpm.add(createCleanPHINodePass());
