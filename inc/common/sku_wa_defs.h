@@ -10,16 +10,118 @@ SPDX-License-Identifier: MIT
 // If changes are needed here please reach out to the codeowners, thanks.
 
         WA_DECLARE(
-        WaSendSEnableIndirectMsgDesc,
+        Wa_1409909237,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT, WA_COMPONENT_UNKNOWN)
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        WaSamplerResponseLengthMustBeGreaterThan1,
+        WaDisableDSPushConstantsInFusedDownModeWithOnlyTwoSubslices,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_1406950495,
         "Workaround",
         WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT, WA_COMPONENT_UNKNOWN)
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_16012383669,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_22010725011,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_22014559856,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaSPTMmioAccessSbi,
+        "Workaround",
+        WA_BUG_TYPE_FUNCTIONAL,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaPruneModeWithIncorrectHsyncOffset,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_16011698357,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14012562260,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaFloatMixedModeSelNotAllowedWithPackedDestination,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_1406306137,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_22012532006,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_OGL | WA_COMPONENT_D3D)
+
+        WA_DECLARE(
+        WaDisableIndirectDataForIndirectDispatch,
+        "Workaround",
+        WA_BUG_TYPE_HANG | WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14012504847,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaDoNotPushConstantsForAllPulledGSTopologies,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaDstSubRegNumNotAllowedWithLowPrecPacked,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaMixModeSelInstDstNotPacked,
+        "Workaround",
+        WA_BUG_TYPE_FAIL,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaSendsSrc1SizeLimitWhenEOT,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
         Wa_14012688715,
@@ -28,9 +130,123 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_1609337546,
+        WaMipiDPOUnitClkGateEnable,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaForceCB0ToBeZeroWhenSendingPC,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_OGL)
+
+        WA_DECLARE(
+        WaConservativeRasterization,
+        "Workaround",
+        WA_BUG_TYPE_FUNCTIONAL,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN )
+
+        WA_DECLARE(
+        WaDisableDSDualPatchMode,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_18012201914,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaDisableMixedModePow,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaClearTDRRegBeforeEOTForNonPS,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_1409460247,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaClearArfDependenciesBeforeEot,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14013672992,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaDisallow64BitImmMov,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_1507979211,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_18013852970,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_16012292205,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_1607871015,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaSPTMmioReadFailure,
+        "Workaround",
+        WA_BUG_TYPE_FUNCTIONAL,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14013297064,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaOCLEnableFMaxFMinPlusZero,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_1807084924,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaForceMinMaxGSThreadCount,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
@@ -40,21 +256,69 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_1409909237,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14012437816,
+        Wa_14012688258,
         "Workaround",
         WA_BUG_TYPE_CORRUPTION,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        WaDisableIndirectDataForIndirectDispatch,
+        Wa_22012856258,
         "Workaround",
-        WA_BUG_TYPE_HANG | WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_TYPE_PERF,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_18015444900,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaResetN0BeforeGatewayMessage,
+        "Workaround",
+        WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaDispatchGRFHWIssueInGSAndHSUnit,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_1808850743,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_1609337769,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14012420496,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaDisableSIMD16On3SrcInstr,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_16011859583,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaLimitSizeOfSDEPolyFifo,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
@@ -70,211 +334,25 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        WaClearTDRRegBeforeEOTForNonPS,
-        "Workaround",
-        WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WADisableWriteCommitForPageFault,
-        "Workaround",
-        WA_BUG_TYPE_FUNCTIONAL,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaReturnZeroforRTReadOutsidePrimitive,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaMixModeSelInstDstNotPacked,
-        "Workaround",
-        WA_BUG_TYPE_FAIL,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaDisableDSPushConstantsInFusedDownModeWithOnlyTwoSubslices,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaSendsSrc1SizeLimitWhenEOT,
-        "Workaround",
-        WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_16013338947,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaDoNotPushConstantsForAllPulledGSTopologies,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_1507979211,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_1409460247,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14013672992,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_22011157800,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaConservativeRasterization,
-        "Workaround",
-        WA_BUG_TYPE_FUNCTIONAL,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN )
-
-        WA_DECLARE(
-        Wa_16012383669,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaDispatchGRFHWIssueInGSAndHSUnit,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaResetN0BeforeGatewayMessage,
-        "Workaround",
-        WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_18012660806,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_D3D | WA_COMPONENT_OGL | WA_COMPONENT_KMD)
-
-        WA_DECLARE(
-        WaDisallow64BitImmMov,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14013297064,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_16011983264,
-        "Workaround",
-        WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_1808850743,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_16011859583,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14014414195,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_OGL)
-
-        WA_DECLARE(
-        Wa_14012688258,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaHeaderRequiredOnSimd16Sample16bit,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
         Wa_14010017096,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_D3D | WA_COMPONENT_OGL)
 
         WA_DECLARE(
-        WaEnablePooledEuFor2x6,
+        Wa_14012437816,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_220856683,
         "Workaround",
         WA_BUG_TYPE_FUNCTIONAL,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_D3D)
 
         WA_DECLARE(
-        Wa_18015444900,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaDisableMixedModeFdiv,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14013677893,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14010595310,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_22012532006,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_OGL | WA_COMPONENT_D3D)
-
-        WA_DECLARE(
-        Wa_14013341720,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION | WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaDisableSIMD16On3SrcInstr,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_16012292205,
+        Wa_16011983264,
         "Workaround",
         WA_BUG_TYPE_HANG,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
@@ -286,81 +364,15 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_1607871015,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14012760189,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION | WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_18012201914,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaDisableDSDualPatchMode,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaNoA32ByteScatteredStatelessMessages,
+        Wa_18012660806,
         "Workaround",
         WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_D3D | WA_COMPONENT_OGL | WA_COMPONENT_KMD)
 
         WA_DECLARE(
-        Wa_22013880840,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14012562260,
-        "Workaround",
-        WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_1609337769,
+        Wa_22011157800,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaDisableMixedModePow,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_1406306137,
-        "Workaround",
-        WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaOCLEnableFMaxFMinPlusZero,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaClearArfDependenciesBeforeEot,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_22014559856,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
@@ -370,19 +382,13 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        WaDstSubRegNumNotAllowedWithLowPrecPacked,
+        Wa_22013689345,
         "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_TYPE_CORRUPTION | WA_BUG_TYPE_HANG,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        WaDisableVSPushConstantsInFusedDownModeWithOnlyTwoSubslices,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaThreadSwitchAfterCall,
+        Wa_22010487853,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
@@ -391,12 +397,6 @@ SPDX-License-Identifier: MIT
         WaSrc1ImmHfNotAllowed,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaForceMinMaxGSThreadCount,
-        "Workaround",
-        WA_BUG_TYPE_HANG,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
@@ -412,16 +412,22 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        WaFloatMixedModeSelNotAllowedWithPackedDestination,
+        Wa_1609337546,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_22013689345,
+        WaHeaderRequiredOnSimd16Sample16bit,
         "Workaround",
-        WA_BUG_TYPE_CORRUPTION | WA_BUG_TYPE_HANG,
+        WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaSendSEnableIndirectMsgDesc,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
         WaDisableSendsSrc0DstOverlap,
@@ -430,16 +436,10 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_1406950495,
+        WaSamplerResponseLengthMustBeGreaterThan1,
         "Workaround",
         WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_16011698357,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+        WA_BUG_PERF_IMPACT, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
         Wa_22010811838,
@@ -448,21 +448,45 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_22010487853,
+        WaNoA32ByteScatteredStatelessMessages,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14014414195,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_OGL)
+
+        WA_DECLARE(
+        WaDisableVSPushConstantsInFusedDownModeWithOnlyTwoSubslices,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_22012856258,
+        WaThreadSwitchAfterCall,
         "Workaround",
-        WA_BUG_TYPE_PERF,
+        WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_22010725011,
+        WADisableWriteCommitForPageFault,
         "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_TYPE_FUNCTIONAL,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14012760189,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION | WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14013677893,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
@@ -472,45 +496,51 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_18013852970,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
         Wa_22010493955,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_1807084924,
+        Wa_16013338947,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_14012420496,
+        WaReturnZeroforRTReadOutsidePrimitive,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14013341720,
+        "Workaround",
+        WA_BUG_TYPE_CORRUPTION | WA_BUG_TYPE_HANG,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14010595310,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        WaEnablePooledEuFor2x6,
+        "Workaround",
+        WA_BUG_TYPE_FUNCTIONAL,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_22013880840,
         "Workaround",
         WA_BUG_TYPE_CORRUPTION,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        WaForceCB0ToBeZeroWhenSendingPC,
+        WaDisableMixedModeFdiv,
         "Workaround",
-        WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_OGL)
-
-        WA_DECLARE(
-        Wa_220856683,
-        "Workaround",
-        WA_BUG_TYPE_FUNCTIONAL,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_D3D)
-
-        WA_DECLARE(
-        Wa_14012504847,
-        "Workaround",
-        WA_BUG_TYPE_HANG,
+        WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
