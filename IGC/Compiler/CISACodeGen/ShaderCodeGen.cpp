@@ -212,11 +212,8 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
 
 
 
-    // only enable MemOpt2ForOCL before DG2
-    bool MemOpt2ForOCL = !ctx.platform.isCoreChildOf(IGFX_XE_HPG_CORE) &&
-        ctx.m_DriverInfo.WAEnableMemOpt2ForOCL();
     if (IGC_IS_FLAG_DISABLED(DisableMemOpt2) &&
-        (ctx.type == ShaderType::COMPUTE_SHADER || MemOpt2ForOCL) &&
+        (ctx.type == ShaderType::COMPUTE_SHADER || (ctx.m_DriverInfo.WAEnableMemOpt2ForOCL())) &&
         !isOptDisabled)
     {
         mpm.add(createMemOpt2Pass(16));
