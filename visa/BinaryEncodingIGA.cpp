@@ -1502,6 +1502,20 @@ static SendDesc encodeExDescSendUnary(
     return exDescIga;
 }
 
+// A helper function to print send src/dst length information to a file. vISA_ShaderDataBaseStats key a requirement to use
+void printSendDataToFile(const G4_SendDescRaw* descG4)
+{
+    uint32_t src0Len = descG4->getSrc0LenBytes() / 32;
+    uint32_t src1Len = descG4->getSrc1LenBytes() / 32;
+    uint32_t dstLen = descG4->getDstLenBytes() / 32;
+    FILE* f = fopen("Z:\\ShaderStatsRuns\\SendInfo\\sendInfo.txt", "w");
+    if (f)
+    {
+        fprintf(f, "src0Len=%d src1Len=%d dstLen=%d \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
+        fclose(f);
+    }
+}
+
 ////////////////////////////////////////////////////////////////////
 // these handle binary sends (old "sends" and Xe+ "send"
 //
@@ -1516,14 +1530,7 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     assert(descG4 != nullptr && "expected raw descriptor");
     if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats))
     {
-        uint32_t src0Len = descG4->getSrc0LenBytes() / 32;
-        uint32_t src1Len = descG4->getSrc1LenBytes() / 32;
-        uint32_t dstLen = descG4->getDstLenBytes() / 32;
-        FILE* f = fopen("C:\\Intel\\IGC\\sendInfo.txt", "w");
-
-        fprintf(f, "src0Len=%u src1Len=%u dstLen=%u \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
-
-        fclose(f);
+        printSendDataToFile(descG4);
     }
 
     sdos.xlen = (int)descG4->extMessageLength();
@@ -1584,14 +1591,7 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(
     assert(descG4 != nullptr && "expected raw descriptor");
     if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats))
     {
-        uint32_t src0Len = descG4->getSrc0LenBytes() / 32;
-        uint32_t src1Len = descG4->getSrc1LenBytes() / 32;
-        uint32_t dstLen = descG4->getDstLenBytes() / 32;
-        FILE* f = fopen("C:\\Intel\\IGC\\sendInfo.txt", "w");
-
-        fprintf(f, "encodeExDescRegA0: src0Len=%u src1Len=%u dstLen=%u \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
-
-        fclose(f);
+        printSendDataToFile(descG4);
     }
     SendDesc exDescIga;
     exDescIga.type = SendDesc::Kind::REG32A;
