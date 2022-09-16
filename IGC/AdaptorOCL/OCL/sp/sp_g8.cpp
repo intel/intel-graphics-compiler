@@ -788,21 +788,6 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
         }
     }
 
-    if (annotations.m_printfBufferAnnotation != NULL)
-    {
-        unsigned int bti = annotations.m_argIndexMap.at(annotations.m_printfBufferAnnotation->ArgumentNumber);
-        context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
-
-        SurfaceStates.insert(
-            std::make_pair(
-                bti,
-                SurfaceState(
-                    SURFACE_BUFFER,
-                    SURFACE_FORMAT_RAW,
-                    0,
-                    false)));
-    }
-
     if (annotations.m_syncBufferAnnotation != NULL)
     {
         unsigned int bti = annotations.m_argIndexMap.at(annotations.m_syncBufferAnnotation->ArgumentNumber);
@@ -1653,12 +1638,10 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             iOpenCL::SPatchAllocateStatelessPrintfSurface  patch;
             memset(&patch, 0, sizeof(patch));
 
-            unsigned int bti = annotations.m_argIndexMap.at(printfBufAnn->ArgumentNumber);
-
             patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_PRINTF_SURFACE;
             patch.Size = sizeof(patch);
             patch.PrintfSurfaceIndex = printfBufAnn->Index;
-            patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+            patch.SurfaceStateHeapOffset = UINT32_MAX;
             patch.DataParamOffset = printfBufAnn->PayloadPosition;
             patch.DataParamSize = printfBufAnn->DataSize;
 

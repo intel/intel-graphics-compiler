@@ -1495,13 +1495,9 @@ namespace IGC
 
         case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
         {
-            int argNo = kernelArg->getAssociatedArgNo();
-            SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
-
             auto printfBuffer = std::make_unique<iOpenCL::PrintfBufferAnnotation>();
 
-            printfBuffer->ArgumentNumber = argNo;
+            printfBuffer->ArgumentNumber = kernelArg->getAssociatedArgNo();
             printfBuffer->PayloadPosition = payloadPosition;
             printfBuffer->DataSize = kernelArg->getAllocateSize();
             printfBuffer->Index = 0; // This value is not used by Runtime.
