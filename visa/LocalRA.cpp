@@ -545,31 +545,6 @@ void LocalRA::resetMasks()
     }
 }
 
-unsigned int LocalRA::getLargestInputGRF()
-{
-    unsigned int largestInput = 0;
-
-    for (auto dcl : kernel.Declares)
-    {
-        //Find out the largest GRF regsiter occupied by input variable
-        //In case overlap with reserved registers
-        if ((dcl->getRegFile() == G4_INPUT || dcl->isLiveIn()) &&
-            dcl->isOutput() == false &&
-            !(dcl->getRegVar()->isAreg()) &&
-            dcl->getRegVar()->isPhyRegAssigned())
-        {
-            G4_RegVar* var = dcl->getRegVar();
-            unsigned int regNum = var->getPhyReg()->asGreg()->getRegNum();
-            unsigned int regOff = var->getPhyRegOff();
-            unsigned int largestGRF = (regNum * kernel.numEltPerGRF<Type_UW>() +
-                (regOff * dcl->getElemSize()) / G4_WSIZE + dcl->getWordSize() - 1) / (kernel.numEltPerGRF<Type_UW>());
-            largestInput = largestInput < largestGRF ? largestGRF : largestInput;
-        }
-    }
-
-    return largestInput;
-}
-
 void LocalRA::blockOutputPhyRegs()
 {
     for (auto dcl : kernel.Declares)
@@ -794,8 +769,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, b
     std::unordered_set<unsigned int> emptyForbidden;
     auto varSplitPass = gra.getVarSplitPass();
 
-    unsigned int largestInput = getLargestInputGRF();
-    if (((nextEOTGRF < (kernel.getNumRegTotal() - 16)) || (nextEOTGRF < largestInput)) && builder.hasEOTGRFBinding() )
+    if (nextEOTGRF < 112 && builder.hasEOTGRFBinding())
     {
         // we can't guarantee unique assignments for all the EOT sources
         // punt to global RA

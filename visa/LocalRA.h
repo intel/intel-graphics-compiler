@@ -66,7 +66,6 @@ namespace vISA
         void trivialAssignRA(bool& needGlobalRA, bool threeSourceCandidate);
         bool localRAPass(bool doRoundRobin, bool doSplitLLR);
         void resetMasks();
-        unsigned int getLargestInputGRF();
         void blockOutputPhyRegs();
         void removeUnrequiredLifetimeOps();
         bool assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, bool hybridWithSpill);
