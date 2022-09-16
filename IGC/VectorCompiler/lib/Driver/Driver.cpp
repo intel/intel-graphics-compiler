@@ -792,16 +792,25 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     Opts.InteropSubgroupSize = MaybeSize.getValue();
   }
 
-  if (opt::Arg *A = InternalOptions.getLastArg(OPT_binary_format)) {
-    StringRef Val = A->getValue();
-    auto MaybeBinary = StringSwitch<Optional<vc::BinaryKind>>(Val)
-                           .Case("cm", vc::BinaryKind::CM)
-                           .Case("ocl", vc::BinaryKind::OpenCL)
-                           .Case("ze", vc::BinaryKind::ZE)
-                           .Default(None);
-    if (!MaybeBinary)
-      return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
-    Opts.Binary = MaybeBinary.getValue();
+  if (opt::Arg *A = InternalOptions.getLastArg(
+          OPT_binary_format, OPT_allow_zebin_ze, OPT_disable_zebin_ze)) {
+    auto OptID = A->getOption().getID();
+
+    if (OptID == OPT_allow_zebin_ze)
+      Opts.Binary = vc::BinaryKind::ZE;
+    else if (OptID == OPT_disable_zebin_ze)
+      Opts.Binary = vc::BinaryKind::OpenCL;
+    else {
+      StringRef Val = A->getValue();
+      auto MaybeBinary = StringSwitch<Optional<vc::BinaryKind>>(Val)
+                             .Case("cm", vc::BinaryKind::CM)
+                             .Case("ocl", vc::BinaryKind::OpenCL)
+                             .Case("ze", vc::BinaryKind::ZE)
+                             .Default(None);
+      if (!MaybeBinary)
+        return makeOptionError(*A, InternalOptions, /*IsInternal=*/true);
+      Opts.Binary = MaybeBinary.getValue();
+    }
   }
 
   if (opt::Arg *A = InternalOptions.getLastArg(OPT_vc_loop_unroll_threshold)) {

@@ -74,8 +74,6 @@ defm intel_no_local_to_generic : CommonFlag<"intel-no-local-to-generic">;
 
 defm intel_vector_coalescing : CommonJoined<"intel-vector-coalesing=">;
 
-defm allow_zebin : CommonFlag<"allow-zebin">;
-
 defm intel_no_spill : CommonFlag<"intel-no-spill">;
 // }} Backend internal options
 

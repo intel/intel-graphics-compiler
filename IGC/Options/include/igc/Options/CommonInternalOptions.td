@@ -18,5 +18,13 @@ defm intel_use_bindless_buffers : CommonFlag<"intel-use-bindless-buffers">,
 def emit_zebin_visa_sections : PlainFlag<"emit-zebin-visa-sections">,
   HelpText<"Add vISA asm as sections in ZeBin">;
 
+defm allow_zebin : CommonFlag<"allow-zebin">,
+  HelpText<"Emit level zero binary">;
+def intel_allow_zebin : ClFlag<"intel-allow-zebin">,
+  Alias<allow_zebin_ze>;
+
+defm disable_zebin : CommonFlag<"disable-zebin">,
+  HelpText<"Emit binary in legacy format">;
+
 }
 // }} Common internal options
