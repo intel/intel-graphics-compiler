@@ -32,12 +32,14 @@ namespace IGC
         bool allowVISAPreRAScheduler;
         bool allowLargeURBWrite;
         bool allowConstantCoalescing;
+        bool allowLargeGRF;
         unsigned nextState;
     };
 
     static const RetryState RetryTable[] = {
-        { true, true, false, false, true, true, true, true, true, 1 },
-        { false, true, true, true, false, false, false, false, false, 500 }
+        // licm  codSk AdrSk  Slice  PrivM  PreRA  VISAP  URBWr  Coals  GRF
+        { true,  true, false, false, true,  true,  true,  true,  true,  false, 1 },
+        { false, true, true,  true,  false, false, false, false, false, true, 500 }
     };
 
     static constexpr size_t RetryTableSize = sizeof(RetryTable) / sizeof(RetryState);
@@ -112,6 +114,12 @@ namespace IGC
     {
         IGC_ASSERT(stateId < RetryTableSize);
         return RetryTable[stateId].allowConstantCoalescing;
+    }
+
+    bool RetryManager::AllowLargeGRF() const
+    {
+        IGC_ASSERT(stateId < RetryTableSize);
+        return RetryTable[stateId].allowLargeGRF;
     }
 
     void RetryManager::SetFirstStateId(int id)

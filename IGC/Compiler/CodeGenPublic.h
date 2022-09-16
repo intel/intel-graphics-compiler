@@ -968,6 +968,7 @@ namespace IGC
         bool AllowSimd32Slicing() const;
         bool AllowLargeURBWrite() const;
         bool AllowConstantCoalescing() const;
+        bool AllowLargeGRF() const;
         void SetFirstStateId(int id);
         bool IsFirstTry() const;
         bool IsLastTry() const;
