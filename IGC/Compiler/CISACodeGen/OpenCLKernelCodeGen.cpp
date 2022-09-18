@@ -2572,7 +2572,37 @@ namespace IGC
             noRetry = false;
         }
 
-        if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
+        auto pSelectedKernel = pKernel;
+        bool isWorstThanPrv = false;
+        // Look for previous generated shaders
+        // ignoring case for multi-simd compilation
+        if (!ctx->m_enableSimdVariantCompilation)
+        {
+            isWorstThanPrv =
+                !ctx->m_retryManager.IsBetterThanPrevious(pKernel);
+            auto previousKernel = ctx->m_retryManager.GetPrevious(pKernel);
+
+            if (isWorstThanPrv)
+            {
+                // In case retry compilation give worst generated kernel
+                // consider using the previous one do not retry on this
+                // kernel again
+                pSelectedKernel = previousKernel;
+                ctx->m_retryManager.RemovePrevious(pKernel);
+            }
+            else // isBetterThanPrv
+            {
+                // Collect the current compilation for the next compare
+                ctx->m_retryManager.Collect(pKernel);
+                if (previousKernel)
+                {
+                    delete previousKernel;
+                }
+            }
+        }
+
+        if (isWorstThanPrv ||
+            pOutput->m_scratchSpaceUsedBySpills == 0 ||
             noRetry ||
             ctx->m_retryManager.IsLastTry() ||
             (!ctx->m_retryManager.kernelSkip.empty() &&
@@ -2581,13 +2611,13 @@ namespace IGC
         {
             // Save the shader program to the state processor to be handled later
             if (ctx->m_programOutput.m_ShaderProgramList.size() == 0 ||
-                ctx->m_programOutput.m_ShaderProgramList.back() != pKernel)
+                ctx->m_programOutput.m_ShaderProgramList.back() != pSelectedKernel)
             {
-                ctx->m_programOutput.m_ShaderProgramList.push_back(pKernel);
+                ctx->m_programOutput.m_ShaderProgramList.push_back(pSelectedKernel);
             }
-            COMPILER_SHADER_STATS_PRINT(pKernel->m_shaderStats, ShaderType::OPENCL_SHADER, ctx->hash, pFunc->getName().str());
-            COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, pKernel->m_shaderStats, ShaderType::OPENCL_SHADER);
-            COMPILER_SHADER_STATS_DEL(pKernel->m_shaderStats);
+            COMPILER_SHADER_STATS_PRINT(pSelectedKernel->m_shaderStats, ShaderType::OPENCL_SHADER, ctx->hash, pFunc->getName().str());
+            COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, pSelectedKernel->m_shaderStats, ShaderType::OPENCL_SHADER);
+            COMPILER_SHADER_STATS_DEL(pSelectedKernel->m_shaderStats);
         }
         else
         {
@@ -2813,7 +2843,13 @@ namespace IGC
         {
             CShaderProgram* SP = toBeDeleted[i];
             shaders.erase(SP->getLLVMFunction());
-            delete SP;
+
+            // Do not delete shader programs which will be used
+            // for later compare
+            if (!ctx->m_retryManager.GetPrevious(SP))
+            {
+                delete SP;
+            }
         }
 
         // The skip set to avoid retry is not needed. Clear it and collect a new set
