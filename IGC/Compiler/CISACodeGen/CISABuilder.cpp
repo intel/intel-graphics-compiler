@@ -6112,7 +6112,6 @@ namespace IGC
 
             context->m_retryManager.numInstructions = jitInfo->numAsmCount;
         }
-        m_program->m_asmInstrCount = jitInfo->numAsmCount;
 
         if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
         {
