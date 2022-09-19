@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.17
+Version 1.18
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.18**: Add user_attributes to kernels.
 - **Version 1.17**: Add buffer_address to payload argument type.
 - **Version 1.16**: Add NT_INTELGT_ZEBIN_VERSION note to represent the ZEBIN ELF file version.
 - **Version 1.15**: Add image_type, image_transformable, and sampler_type attributes to payload argument. Add new image and sampler argument types.

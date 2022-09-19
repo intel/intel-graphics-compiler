@@ -123,6 +123,10 @@ private:
         const std::string& kernelName, const char* kernelBinary,
         unsigned int kernelBinarySize);
 
+    /// add user attributes (kernel attributes)
+    void addUserAttributes(const IGC::SOpenCLKernelInfo& annotations,
+                           zebin::zeInfoKernel& zeinfoKernel);
+
     /// add kernel execution environment
     void addKernelExecEnv(const IGC::SOpenCLKernelInfo& annotations,
                           zebin::zeInfoKernel& zeinfoKernel);

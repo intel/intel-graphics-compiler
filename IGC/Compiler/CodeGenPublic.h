@@ -846,7 +846,9 @@ namespace IGC
 
         SKernelProgram                m_kernelProgram = {};
 
-        // Information for zebin
+        // ----- Information for zebin ----- //
+        // Kernel attributes. zeinfo's user_attributes of kernels
+        zebin::zeInfoUserAttribute m_zeUserAttributes;
         // Cross-thread payload arguments
         zebin::PayloadArgumentsTy m_zePayloadArgs;
         // BTI information for payload arguments

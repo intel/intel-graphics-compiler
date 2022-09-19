@@ -81,6 +81,9 @@ namespace IGC
         // Return false: if the argument cannot be supported by ZEBinary
         bool CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition);
 
+        // Fill SOpenCLKernelInfo::m_zeUserAttribute
+        void FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle& funcInfoMD);
+
         // a helper function to get image type from kernelArg
         iOpenCL::IMAGE_MEMORY_OBJECT_TYPE getImageTypeFromKernelArg(const KernelArg& kernelArg);
 
@@ -95,7 +98,8 @@ namespace IGC
 
         // Creates annotations for kernel attribution information (kernel reflection)
         void CreateKernelAttributeInfo();
-        std::string getVecTypeHintString(IGC::IGCMD::VectorTypeHintMetaDataHandle& vecTypeHintInfo);
+        std::string getVecTypeHintString(const IGC::IGCMD::VectorTypeHintMetaDataHandle& vecTypeHintInfo) const;
+        std::string getVecTypeHintTypeString(const IGC::IGCMD::VectorTypeHintMetaDataHandle& vecTypeHintInfo) const;
         std::string getThreadGroupSizeString(IGC::IGCMD::ThreadGroupSizeMetaDataHandle& threadGroupSize, bool isHint);
         std::string getSubGroupSizeString(IGC::IGCMD::SubGroupSizeMetaDataHandle& subGroupSize);
         std::string getWorkgroupWalkOrderString(const IGC::WorkGroupWalkOrderMD& workgroupWalkOrder);

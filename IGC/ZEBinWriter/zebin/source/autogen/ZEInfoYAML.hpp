@@ -51,6 +51,10 @@ namespace llvm {
             static void mapping(IO& io, zebin::zeInfoFunction& info);
         };
         template<>
+        struct MappingTraits<zebin::zeInfoUserAttribute> {
+            static void mapping(IO& io, zebin::zeInfoUserAttribute& info);
+        };
+        template<>
         struct MappingTraits<zebin::zeInfoExecutionEnv> {
             static void mapping(IO& io, zebin::zeInfoExecutionEnv& info);
         };

@@ -491,9 +491,10 @@ namespace IGC
         subTypeString += ")";
         return subTypeString;
     }
-    std::string COpenCLKernel::getVecTypeHintString(VectorTypeHintMetaDataHandle& vecTypeHintInfo)
+
+    std::string COpenCLKernel::getVecTypeHintTypeString(const VectorTypeHintMetaDataHandle& vecTypeHintInfo) const
     {
-        std::string vecTypeString = "vec_type_hint(";
+        std::string vecTypeString;
 
         // Get the information about the type
         Type* baseType = vecTypeHintInfo->getVecType()->getType();
@@ -552,8 +553,14 @@ namespace IGC
             vecTypeString += utostr(numElements);
         }
 
-        vecTypeString += ")";
+        return vecTypeString;
+    }
 
+    std::string COpenCLKernel::getVecTypeHintString(const VectorTypeHintMetaDataHandle& vecTypeHintInfo) const
+    {
+        std::string vecTypeString = "vec_type_hint(";
+        vecTypeString += getVecTypeHintTypeString(vecTypeHintInfo);
+        vecTypeString += ")";
         return vecTypeString;
     }
 
@@ -2213,6 +2220,62 @@ namespace IGC
         return funcMD->second.localSize;
     }
 
+    void COpenCLKernel::FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle& funcInfoMD)
+    {
+        // intel_reqd_sub_group_size
+        SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
+        if (subGroupSize->hasValue())
+        {
+            m_kernelInfo.m_zeUserAttributes.intel_reqd_sub_group_size = subGroupSize->getSIMD_size();
+        }
+
+        // intel_reqd_workgroup_walk_order
+        auto it = m_Context->getModuleMetaData()->FuncMD.find(entry);
+        if (it != m_Context->getModuleMetaData()->FuncMD.end())
+        {
+            WorkGroupWalkOrderMD workgroupWalkOrder = it->second.workGroupWalkOrder;
+            if (workgroupWalkOrder.dim0 || workgroupWalkOrder.dim1 || workgroupWalkOrder.dim2)
+            {
+                m_kernelInfo.m_zeUserAttributes.intel_reqd_workgroup_walk_order.push_back(workgroupWalkOrder.dim0);
+                m_kernelInfo.m_zeUserAttributes.intel_reqd_workgroup_walk_order.push_back(workgroupWalkOrder.dim1);
+                m_kernelInfo.m_zeUserAttributes.intel_reqd_workgroup_walk_order.push_back(workgroupWalkOrder.dim2);
+            }
+        }
+
+        // reqd_work_group_size
+        ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
+        if (threadGroupSize->hasValue())
+        {
+            m_kernelInfo.m_zeUserAttributes.reqd_work_group_size.push_back(threadGroupSize->getXDim());
+            m_kernelInfo.m_zeUserAttributes.reqd_work_group_size.push_back(threadGroupSize->getYDim());
+            m_kernelInfo.m_zeUserAttributes.reqd_work_group_size.push_back(threadGroupSize->getZDim());
+        }
+
+        // vec_type_hint
+        VectorTypeHintMetaDataHandle vecTypeHintInfo = funcInfoMD->getOpenCLVectorTypeHint();
+        if (vecTypeHintInfo->hasValue())
+        {
+            m_kernelInfo.m_zeUserAttributes.vec_type_hint = getVecTypeHintTypeString(vecTypeHintInfo);
+        }
+
+        // work_group_size_hint
+        ThreadGroupSizeMetaDataHandle threadGroupSizeHint = funcInfoMD->getThreadGroupSizeHint();
+        if (threadGroupSizeHint->hasValue())
+        {
+            m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint->getXDim());
+            m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint->getYDim());
+            m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint->getZDim());
+        }
+
+        // function attribute added at PoisonFP64KernelsPass for describing the invalid kernel reason "uses-fp64-math"
+        const std::string invalidAttributeName = "invalid_kernel(\"uses-fp64-math\")";
+        std::string llvmFnAttrStr = entry->getAttributes().getAsString(AttributeList::FunctionIndex);
+        if (llvmFnAttrStr.find(invalidAttributeName) != std::string::npos)
+        {
+            m_kernelInfo.m_zeUserAttributes.invalid_kernel = "uses-fp64-math";
+        }
+    }
+
     void COpenCLKernel::FillKernel(SIMDMode simdMode)
     {
         auto pOutput = ProgramOutput();
@@ -2256,9 +2319,8 @@ namespace IGC
         m_kernelInfo.m_ShaderHashCode = m_Context->hash.getAsmHash();
 
         FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
-        ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
-        SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
 
+        ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
         if (threadGroupSize->hasValue())
         {
             m_kernelInfo.m_executionEnvironment.HasFixedWorkGroupSize = true;
@@ -2266,6 +2328,8 @@ namespace IGC
             m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[1] = threadGroupSize->getYDim();
             m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[2] = threadGroupSize->getZDim();
         }
+
+        SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
         if (subGroupSize->hasValue())
         {
             m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = subGroupSize->getSIMD_size();
@@ -2306,6 +2370,8 @@ namespace IGC
 
         m_kernelInfo.m_executionEnvironment.UseBindlessMode = m_Context->m_InternalOptions.UseBindlessMode;
         m_kernelInfo.m_executionEnvironment.HasStackCalls = HasStackCalls();
+
+        FillZEUserAttributes(funcInfoMD);
     }
 
     void COpenCLKernel::RecomputeBTLayout()

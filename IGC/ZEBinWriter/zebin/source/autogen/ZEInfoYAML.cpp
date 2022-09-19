@@ -29,6 +29,7 @@ void MappingTraits<zeInfoContainer>::mapping(IO& io, zeInfoContainer& info)
 void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
 {
     io.mapRequired("name", info.name);
+    io.mapOptional("user_attributes", info.user_attributes, zeInfoUserAttribute());
     io.mapRequired("execution_env", info.execution_env);
     io.mapOptional("payload_arguments", info.payload_arguments, PayloadArgumentsTy());
     io.mapOptional("per_thread_payload_arguments", info.per_thread_payload_arguments, PerThreadPayloadArgumentsTy());
@@ -41,6 +42,15 @@ void MappingTraits<zeInfoFunction>::mapping(IO& io, zeInfoFunction& info)
 {
     io.mapRequired("name", info.name);
     io.mapRequired("execution_env", info.execution_env);
+}
+void MappingTraits<zeInfoUserAttribute>::mapping(IO& io, zeInfoUserAttribute& info)
+{
+    io.mapOptional("intel_reqd_sub_group_size", info.intel_reqd_sub_group_size, 0);
+    io.mapOptional("intel_reqd_workgroup_walk_order", info.intel_reqd_workgroup_walk_order);
+    io.mapOptional("invalid_kernel", info.invalid_kernel, std::string());
+    io.mapOptional("reqd_work_group_size", info.reqd_work_group_size);
+    io.mapOptional("vec_type_hint", info.vec_type_hint, std::string());
+    io.mapOptional("work_group_size_hint", info.work_group_size_hint);
 }
 void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info)
 {

@@ -80,6 +80,7 @@ void ZEBinaryBuilder::createKernel(
 
     zeInfoKernel& zeKernel = mZEInfoBuilder.createKernel(annotations.m_kernelName);
     addKernelExecEnv(annotations, zeKernel);
+    addUserAttributes(annotations, zeKernel);
     addKernelExperimentalProperties(annotations, zeKernel);
     if (annotations.m_threadPayload.HasLocalIDx ||
         annotations.m_threadPayload.HasLocalIDy ||
@@ -482,6 +483,12 @@ void ZEBinaryBuilder::addKernelExperimentalProperties(const SOpenCLKernelInfo& a
             annotations.m_hasNonKernelArgStore,
             annotations.m_hasNonKernelArgAtomic);
     }
+}
+
+void ZEBinaryBuilder::addUserAttributes(const IGC::SOpenCLKernelInfo& annotations,
+    zebin::zeInfoKernel& zeinfoKernel)
+{
+    zeinfoKernel.user_attributes = annotations.m_zeUserAttributes;
 }
 
 void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,

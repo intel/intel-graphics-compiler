@@ -44,6 +44,7 @@ All **literals** have one of the following types:
 | Attribute | Type | Required/Optional | Description |
 | ----- | ----- | ------ | ----- |
 | name | str | Required | |
+| user_attributes | UserAttribute | Optional | A set of attributes given by the user in the kernel signature. |
 | execution_env | ExecutionEnv | Required | |
 | payload_arguments | PayloadArgumentsTy | Optional | vector |
 | per_thread_payload_arguments | PerThreadPayloadArgumentsTy | Optional | vector |
@@ -82,6 +83,20 @@ function name.
 Function attributes may only present when the function can be externally called.
 
 The attributes that are supported in function are: **name** and **Execution Environment**.
+
+### Supported attributes in User Attributes:
+This section defines the supported user_attributes.
+The user attributes are kernel attributes set by the user in the kernel signature.
+
+| Attribute | Type | Required/Optional | Default | Description |
+| ------ | ------ |  ------ | ------ | ------ |
+| intel_reqd_sub_group_size  | int32 | Optional | 0 | |
+| intel_reqd_workgroup_walk_order  | int32x3 | Optional | [0, 0, 0] | |
+| invalid_kernel  | str | Optional | | Describe the invalid kernel reason |
+| reqd_work_group_size  | int32x3 | Optional | [0, 0, 0] | |
+| vec_type_hint  | str | Optional | | |
+| work_group_size_hint  | int32x3 | Optional | [0, 0, 0] | |
+<!--- UserAttribute -->
 
 ## Execution Environment
 

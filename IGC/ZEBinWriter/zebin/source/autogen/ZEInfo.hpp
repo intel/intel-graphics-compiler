@@ -28,6 +28,19 @@ typedef int64_t     zeinfo_int64_t;
 typedef int32_t     zeinfo_int32_t;
 typedef bool        zeinfo_bool_t;
 typedef std::string zeinfo_str_t;
+struct zeInfoUserAttribute
+{
+    bool operator==(const zeInfoUserAttribute& other) const
+    {
+        return intel_reqd_sub_group_size == other.intel_reqd_sub_group_size && intel_reqd_workgroup_walk_order == other.intel_reqd_workgroup_walk_order && invalid_kernel == other.invalid_kernel && reqd_work_group_size == other.reqd_work_group_size && vec_type_hint == other.vec_type_hint && work_group_size_hint == other.work_group_size_hint;
+    }
+    zeinfo_int32_t intel_reqd_sub_group_size = 0;
+    std::vector<zeinfo_int32_t> intel_reqd_workgroup_walk_order;
+    zeinfo_str_t invalid_kernel;
+    std::vector<zeinfo_int32_t> reqd_work_group_size;
+    zeinfo_str_t vec_type_hint;
+    std::vector<zeinfo_int32_t> work_group_size_hint;
+};
 struct zeInfoExecutionEnv
 {
     bool operator==(const zeInfoExecutionEnv& other) const
@@ -144,9 +157,10 @@ struct zeInfoKernel
 {
     bool operator==(const zeInfoKernel& other) const
     {
-        return name == other.name && execution_env == other.execution_env && payload_arguments == other.payload_arguments && per_thread_payload_arguments == other.per_thread_payload_arguments && binding_table_indices == other.binding_table_indices && per_thread_memory_buffers == other.per_thread_memory_buffers && experimental_properties == other.experimental_properties && debug_env == other.debug_env;
+        return name == other.name && user_attributes == other.user_attributes && execution_env == other.execution_env && payload_arguments == other.payload_arguments && per_thread_payload_arguments == other.per_thread_payload_arguments && binding_table_indices == other.binding_table_indices && per_thread_memory_buffers == other.per_thread_memory_buffers && experimental_properties == other.experimental_properties && debug_env == other.debug_env;
     }
     zeinfo_str_t name;
+    zeInfoUserAttribute user_attributes;
     zeInfoExecutionEnv execution_env;
     PayloadArgumentsTy payload_arguments;
     PerThreadPayloadArgumentsTy per_thread_payload_arguments;
@@ -179,7 +193,7 @@ struct zeInfoContainer
     HostAccessesTy global_host_access_table;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.17"; }
+    static zeinfo_str_t getVersionNumber() { return "1.18"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
