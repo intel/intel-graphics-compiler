@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -380,14 +380,11 @@ class GenXEmulate : public ModulePass {
     Value *visitInstruction(Instruction &I) { return nullptr; }
     Value *visitCallInst(CallInst &CI) {
       switch (vc::getAnyIntrinsicID(&CI)) {
-        // saturated add
+        // saturated add is not supported
         case GenXIntrinsic::genx_suadd_sat:
         case GenXIntrinsic::genx_usadd_sat:
         case GenXIntrinsic::genx_uuadd_sat:
         case GenXIntrinsic::genx_ssadd_sat:
-          if (E.getSubtarget().hasAdd64())
-            return nullptr;
-        // fall through is expected
         case GenXIntrinsic::genx_umin:
         case GenXIntrinsic::genx_umax:
         case GenXIntrinsic::genx_smin:
@@ -1106,6 +1103,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
           Builder.CreateOr(Builder.CreateOr(Src0.Hi, Src1.Hi), LoAdd.CB);
       auto *Saturated =
           Builder.CreateICmpNE(PosSat, K.getZero(), "int_emu.uuadd.sat");
+
       Result = Builder.CreateSelect(Saturated, K.getOnes(), LoAdd.Val);
     } else {
       auto LoAdd =
