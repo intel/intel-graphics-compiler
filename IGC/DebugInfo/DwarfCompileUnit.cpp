@@ -2838,6 +2838,8 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block,
           dwarf::DW_OP_plus_uconst); // 10 DW_OP_plus_uconst storageOffset
   addUInt(Block, dwarf::DW_FORM_udata, storageOffset); // storageOffset
 
+  var.emitExpression(this, Block);
+
   return true;
 }
 
