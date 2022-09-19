@@ -223,65 +223,6 @@ void CustomSafeOptPass::visitXor(Instruction& XorInstr) {
     ICmpInstr->eraseFromParent();
 }
 
-void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
-{
-    using namespace llvm::PatternMatch;
-
-    bool patternFound = false;
-    Value* simdLaneId = nullptr;
-    if (match(I->getOperand(1), m_ZExt(m_c_Xor(m_Value(simdLaneId), m_SpecificInt(1)))))
-    {
-        if (CallInst* CI = dyn_cast<CallInst>(simdLaneId))
-        {
-            Function* simdIdF = CI->getCalledFunction();
-            if (!simdIdF) return;
-            patternFound =
-                GenISAIntrinsic::getIntrinsicID(simdIdF) == GenISAIntrinsic::GenISA_simdLaneId;
-        }
-    }
-
-    if (patternFound)
-    {
-        Instruction* zextInst = cast<Instruction>(I->getOperand(1));
-        Instruction* xorInst = cast<Instruction>(zextInst->getOperand(0));
-        Value* value = I->getOperand(0);
-        IRBuilder<> builder(xorInst);
-
-        Value* simdLaneId32 = builder.CreateZExt(simdLaneId, builder.getInt32Ty());
-
-        Function* simdSizeFunc = GenISAIntrinsic::getDeclaration(I->getCalledFunction()->getParent(),
-            GenISAIntrinsic::GenISA_simdSize);
-        Instruction* simdSize = builder.CreateCall(simdSizeFunc);
-
-        ConstantInt* one = builder.getInt32(1);
-
-        Value* simdLaneAnd = builder.CreateAdd(simdLaneId32, one);
-        Value* isOdd = builder.CreateTrunc(simdLaneAnd, builder.getInt1Ty(), "isOdd");
-
-        Value* sub = builder.CreateSub(simdSize, one);
-
-        builder.SetInsertPoint(I);
-
-        Function* simdShuffleDownFunc = GenISAIntrinsic::getDeclaration(I->getCalledFunction()->getParent(),
-            GenISAIntrinsic::GenISA_simdShuffleDown,
-            value->getType());
-        Instruction* simdShuffleDown = builder.CreateCall(simdShuffleDownFunc, { value, value, one }, "simdShuffleDown");
-
-        Instruction* simdShuffleUp = builder.CreateCall(simdShuffleDownFunc, { value, value, sub }, "simdShuffleUp");
-
-        Value* sel = builder.CreateSelect(isOdd, simdShuffleDown, simdShuffleUp);
-
-        if (Instruction* selInst = dyn_cast<Instruction> (sel))
-        {
-            updateDebugLoc(I, selInst);
-            I->replaceAllUsesWith(selInst);
-            I->eraseFromParent();
-            zextInst->eraseFromParent();
-            xorInst->eraseFromParent();
-        }
-    }
-}
-
 //  Searches for following pattern:
 //    %cmp = icmp slt i32 %x, %y
 //    %cond.not = xor i1 %cond, true
@@ -794,11 +735,6 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             {
                 earlyZDepthDetection(C);
             }
-            break;
-        }
-        case GenISAIntrinsic::GenISA_WaveShuffleIndex:
-        {
-            visitShuffleIndex(inst);
             break;
         }
         default:
