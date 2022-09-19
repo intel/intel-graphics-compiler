@@ -1596,6 +1596,25 @@ void OptimizeIR(CodeGenContext* const pContext)
                 {
                     mpm.add(llvm::createGVNPass());
                 }
+
+                mpm.add(llvm::createCFGSimplificationPass());
+
+                if (pContext->m_instrTypes.hasNonPrimitiveAlloca)
+                {
+                    // run custom safe opts to potentially get rid of indirect
+                    // addressing of private arrays, see visitLoadInst
+                    mpm.add(new CustomSafeOptPass());
+                    mpm.add(createSROAPass());
+                }
+
+                // Conditions apply just as above due to problems with atomics
+                // (see comment above for details).
+                if (!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
+                {
+                    // After lowering 'switch', run jump threading to remove redundant jumps.
+                    mpm.add(llvm::createJumpThreadingPass());
+                }
+
             }
             if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
             {
