@@ -850,7 +850,16 @@ namespace IGC
                 Pos = valEnd;
                 continue;
             }
-
+            // -cl-intel-force-emu-int32divrem
+            else if (suffix.equals("-force-emu-int32divrem"))
+            {
+                IntelForceInt32DivRemEmu = true;
+            }
+            // -cl-intel-force-emu-sp-int32divrem
+            else if (suffix.equals("-force-emu-sp-int32divrem"))
+            {
+                IntelForceInt32DivRemEmuSP = true;
+            }
             // -cl-intel-force-disable-4GB-buffer
             else if (suffix.equals("-force-disable-4GB-buffer"))
             {
