@@ -2431,9 +2431,40 @@ void GenXKernelBuilder::buildSelectInst(SelectInst *SI, BaleInfo BI,
       createPredicateDeclFromSelect(SI, BI, Control, State, &MaskCtrl);
   VISA_PredOpnd* PredOp = createPredOperand(PredDecl, State, Control);
 
-  VISA_VectorOpnd *Dst = createDestination(SI, DONTCARESIGNED, Mod, DstDesc);
-  VISA_VectorOpnd *Src0 = createSourceOperand(SI, DONTCARESIGNED, 1, BI);
-  VISA_VectorOpnd *Src1 = createSourceOperand(SI, DONTCARESIGNED, 2, BI);
+  genx::Signedness DstSignedness = DONTCARESIGNED;
+  genx::Signedness SrcSignedness = DONTCARESIGNED;
+
+  if (Mod & MODIFIER_SAT) {
+    IGC_ASSERT(SI->getNumUses() == 1);
+    auto *UserCI = dyn_cast<CallInst>(*SI->user_begin());
+    IGC_ASSERT(UserCI);
+
+    auto ID = GenXIntrinsic::getGenXIntrinsicID(UserCI);
+    switch (ID) {
+    case GenXIntrinsic::genx_uutrunc_sat:
+      DstSignedness = UNSIGNED;
+      SrcSignedness = UNSIGNED;
+      break;
+    case GenXIntrinsic::genx_ustrunc_sat:
+      DstSignedness = UNSIGNED;
+      SrcSignedness = SIGNED;
+      break;
+    case GenXIntrinsic::genx_sutrunc_sat:
+      DstSignedness = SIGNED;
+      SrcSignedness = UNSIGNED;
+      break;
+    case GenXIntrinsic::genx_sstrunc_sat:
+      DstSignedness = SIGNED;
+      SrcSignedness = SIGNED;
+      break;
+    default:
+      IGC_ASSERT_MESSAGE(0, "Unsupported saturation intrinsic");
+    }
+  }
+
+  VISA_VectorOpnd *Dst = createDestination(SI, DstSignedness, Mod, DstDesc);
+  VISA_VectorOpnd *Src0 = createSourceOperand(SI, SrcSignedness, 1, BI);
+  VISA_VectorOpnd *Src1 = createSourceOperand(SI, SrcSignedness, 2, BI);
 
   CISA_CALL(Kernel->AppendVISADataMovementInst(
       ISA_SEL, PredOp, Mod & MODIFIER_SAT, MaskCtrl,
