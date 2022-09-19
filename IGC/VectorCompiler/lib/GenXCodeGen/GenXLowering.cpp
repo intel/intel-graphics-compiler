@@ -4099,12 +4099,17 @@ bool GenXLowering::lowerBoolShuffle(ShuffleVectorInst *SI) {
   if (SliceStart >= 0) {
     unsigned Width =
         cast<IGCLLVM::FixedVectorType>(SI->getType())->getNumElements();
-    auto RPR = Region::createRdPredRegion(SI->getOperand(0), SliceStart, Width,
-                                          "", SI, SI->getDebugLoc());
-    RPR->takeName(SI);
-    SI->replaceAllUsesWith(RPR);
-    ToErase.push_back(SI);
-    return true;
+    // For llvm.genx.rdpredregion the number of elements to read is determined from the number of elements in the return type,
+    // and must be 4, 8 or 16.
+    if (Width == 4 || Width == 8 || Width == 16)
+    {
+        auto RPR = Region::createRdPredRegion(SI->getOperand(0), SliceStart, Width,
+            "", SI, SI->getDebugLoc());
+        RPR->takeName(SI);
+        SI->replaceAllUsesWith(RPR);
+        ToErase.push_back(SI);
+        return true;
+    }
   }
   // 2. Check for a splat.
   auto Splat = SVA.getAsSplat();
