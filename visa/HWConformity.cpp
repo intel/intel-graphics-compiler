@@ -8881,7 +8881,6 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
             // splitting.
             if (!src0IsScalar && inst->getExecSize() > builder.getNativeExecSize())
             {
-                assert(reg0 != nullptr);
                 const RegionDesc* regDesc = reg0->getRegion();
                 if (regDesc->horzStride == 0 && regDesc->width == builder.getNativeExecSize())
                 {
@@ -8889,63 +8888,93 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
                 }
             }
 
-            // Check alignment.
+            bool d_isvalid = true, s_isvalid = true;
+            uint32_t dstOffBytes = dst->ExSubRegNum(d_isvalid) * dst->getTypeSize();
+            uint32_t src0OffBytes = 0;
             if (!src0IsScalar)
             {
-                bool d_isvalid, s_isvalid;
-                uint32_t dstOffBytes = dst->ExSubRegNum(d_isvalid) * dst->getTypeSize();
-                uint32_t src0OffBytes = reg0->ExSubRegNum(s_isvalid) * reg0->getTypeSize();
+                src0OffBytes = reg0->ExSubRegNum(s_isvalid) * reg0->getTypeSize();
+            }
 
-                // sanity check
-                assert(d_isvalid&& s_isvalid && "ICE: Register region not valid!");
-                assert(dst->getBase()->isRegVar() && reg0->getBase()->isRegVar() &&
-                    "ICE: incorrect mov operands for packed HF mov");
+            // sanity check
+            assert(d_isvalid && s_isvalid && "ICE: Register region not valid!");
+            assert(dst->getBase()->isRegVar() && (!reg0 || reg0->getBase()->isRegVar()) &&
+                "ICE: incorrect mov operands for packed HF mov");
 
-                const uint32_t halfGRFBytes = kernel.numEltPerGRF<Type_UB>() / 2;
-                // For F operand, use the half of its offset in bytes!
-                //
-                // The rule is that HF operand's subreg within the first half or within
-                // the second half must be the same as float operand's subreg. The idea
-                // is to map HF operands to either the first half GRF or second half GRF.
-                // For example,
-                //   (1) The first half for hf operand
-                //          mov (4|M0) r12.3<1>:hf  r10.3<1;1,0>:f
-                //       r12.3 has subreg=3, it is No.4 in the first half GRF, which
-                //       is equal to float src0's subreg 3 (No.4).
-                //   (2) The second half for hf operand
-                //          mov (4|M0) r12.11<1>:hf r10.3<1;1,0>:f
-                //       r12.11 has subreg=11, it is still No.4 in the second half GRF,
-                //       which is equal to float src0's subreg 3 (No.4).
-                //
-                // Note that all this checking assumes vars are properly aligned
-                // that is, HF is at least aligned at halfGRF and F at GRF. May need to adjust
-                // the alignment(cannot adjust the alignment if it is assigned reg already).
-                dstOffBytes = (dstTy == Type_F ? dstOffBytes / 2 : dstOffBytes);
-                src0OffBytes = (src0Ty == Type_F ? src0OffBytes / 2 : src0OffBytes);
-                const bool isAligned = (dstOffBytes % halfGRFBytes) == (src0OffBytes % halfGRFBytes);
-                G4_SubReg_Align dstMinAlign = (dstTy == Type_HF ? builder.getHalfGRFAlign()
-                                                                : builder.getGRFAlign());
-                G4_SubReg_Align src0MinAlign = (src0Ty == Type_HF ? builder.getHalfGRFAlign()
-                                                                  : builder.getGRFAlign());
+            const uint32_t halfGRFBytes = kernel.numEltPerGRF<Type_UB>() / 2;
+            // For F operand, use the half of its offset in bytes!
+            //
+            // The rule is that HF operand's subreg within the first half or within
+            // the second half must be the same as float operand's subreg. The idea
+            // is to map HF operands to either the first half GRF or second half GRF.
+            // For example,
+            //   (1) The first half for hf operand
+            //          mov (4|M0) r12.3<1>:hf  r10.3<1;1,0>:f
+            //       r12.3 has subreg=3, it is No.4 in the first half GRF, which
+            //       is equal to float src0's subreg 3 (No.4).
+            //   (2) The second half for hf operand
+            //          mov (4|M0) r12.11<1>:hf r10.3<1;1,0>:f
+            //       r12.11 has subreg=11, it is still No.4 in the second half GRF,
+            //       which is equal to float src0's subreg 3 (No.4).
+            //
+            // Note that all this checking assumes vars are properly aligned
+            // that is, HF is at least aligned at halfGRF and F at GRF. May need to adjust
+            // the alignment(cannot adjust the alignment if it is assigned reg already).
+            dstOffBytes = (dstTy == Type_F ? dstOffBytes / 2 : dstOffBytes);
+            src0OffBytes = (src0Ty == Type_F ? src0OffBytes / 2 : src0OffBytes);
+            bool isAligned;
+            if (src0IsScalar)
+            {
+                // always aligned
+                isAligned = true;
+            }
+            else
+            {
+                // make sure the 1st and the rest of subregs are aligned!
+                isAligned = (dstOffBytes % halfGRFBytes) == (src0OffBytes % halfGRFBytes) &&  // 1st subreg
+                    ((dstTy == Type_F && dst->getHorzStride() == 1) ||                        // 2nd ... subreg
+                     (src0Ty == Type_F && reg0->getRegion()->isContiguous(inst->getExecSize())));
+            }
 
-                if ((!isAligned && dstOffBytes != 0) || (dstTy == Type_F && dst->getHorzStride() != 1))
+            G4_SubReg_Align dstMinAlign = (dstTy == Type_HF ? builder.getHalfGRFAlign()
+                : builder.getGRFAlign());
+            G4_SubReg_Align src0MinAlign = (src0Ty == Type_HF ? builder.getHalfGRFAlign()
+                : builder.getGRFAlign());
+
+            // Checking if HF opnd crosses the half GRF (as HF and F must be aligned, it implies
+            // that F will not cross the GRF). As both offsets are already in terms of hf, just need
+            // to check crossing half GRF!
+            // Note no need to consider the case when dst subreg == 0 as this case will be
+            //      handled when doing evenly split.  Also, no need to consider none-1 stride as
+            //      none-1 stride has been checked in isAligned!
+            bool dstCrossHalfGRF = (dstOffBytes != 0 &&
+                (((dstOffBytes + 2 * inst->getExecSize() - 1) / halfGRFBytes) != (dstOffBytes / halfGRFBytes)));
+
+            if ((!isAligned && (dstOffBytes != 0 || dst->getHorzStride() != 1)) ||
+                (dstCrossHalfGRF && (!src0IsScalar || dstTy == Type_HF)))
+            {
+                inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, dstMinAlign));
+
+                // The new mov may need more fixing.
+                fixUnalignedRegions(std::next(it), bb);
+            }
+            else
+            {
+                G4_RegVar* baseVar = static_cast<G4_RegVar*>(dst->getBase());
+                if (!baseVar->isPhyRegAssigned())
                 {
-                    inst->setDest(insertMovAfter(it, dst, dst->getType(), bb, dstMinAlign));
+                    G4_Declare* dstDcl = dst->getBaseRegVarRootDeclare();
+                    dstDcl->setSubRegAlign(dstMinAlign);
+                }
+            }
+            if (!src0IsScalar)
+            {
+                // Similar to dstCrossHalfGRF, check src0 for crossing half grf.
+                const bool src0CrossHalfGRF = (src0OffBytes != 0 &&
+                    (((src0OffBytes + 2 * inst->getExecSize() - 1) / halfGRFBytes) != (src0OffBytes / halfGRFBytes)));
 
-                    // The new mov may need more fixing.
-                    fixUnalignedRegions(std::next(it), bb);
-                }
-                else
-                {
-                    G4_RegVar* baseVar = static_cast<G4_RegVar*>(dst->getBase());
-                    if (!baseVar->isPhyRegAssigned())
-                    {
-                        G4_Declare* dstDcl = dst->getBaseRegVarRootDeclare();
-                        dstDcl->setSubRegAlign(dstMinAlign);
-                    }
-                }
-                if ((!isAligned && src0OffBytes != 0) ||
-                    (src0Ty == Type_F && !reg0->getRegion()->isContiguous(inst->getExecSize())))
+                if ((!isAligned && (src0OffBytes != 0 || !reg0->getRegion()->isContiguous(inst->getExecSize()))) ||
+                    src0CrossHalfGRF)
                 {
                     inst->setSrc(insertMovBefore(it, 0, src0Ty, bb, src0MinAlign), 0);
 
