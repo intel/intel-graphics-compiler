@@ -4742,10 +4742,7 @@ namespace IGC
 
         SaveOption(vISA_useInlineData, m_program->passNOSInlineData());
 
-        if (context->type == ShaderType::OPENCL_SHADER)
-        {
-            SaveOption(vISA_OCLRuntime, true);
-        }
+        SaveOption(vISA_crossThreadDataAlignment, context->m_DriverInfo.getCrossThreadDataAlignment());
 
         if (m_program->m_Platform->supportLoadThreadPayloadForCompute())
         {
