@@ -84,7 +84,7 @@ namespace IGC
             bool forceByteScatteredRW = false);
 
 
-        void getLSCInfo(llvm::Type* Ty, uint32_t Align, CodeGenContext* ctx, bool useA32, bool transpose);
+        void getLSCInfo(llvm::Type* Ty, uint64_t Align, CodeGenContext* ctx, bool useA32, bool transpose);
 
     private:
         const CShader *Shader;

@@ -768,7 +768,7 @@ void VectorMessage::getInfo(Type* Ty, uint64_t Align, bool useA32,
     IGC_ASSERT_MESSAGE(numInsts <= (sizeof(insts) / sizeof(*insts)), "Vector's size is too big, increase MAX_VECMESSAGEINFO_LEN to fix it!");
 }
 
-void VectorMessage::getLSCInfo(llvm::Type* Ty, uint32_t Align, CodeGenContext* ctx, bool useA32, bool transpose)
+void VectorMessage::getLSCInfo(llvm::Type* Ty, uint64_t Align, CodeGenContext* ctx, bool useA32, bool transpose)
 {
     IGC_ASSERT(nullptr != ctx);
     IGC_ASSERT(nullptr != Shader);

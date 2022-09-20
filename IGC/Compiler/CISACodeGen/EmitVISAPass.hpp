@@ -395,7 +395,7 @@ public:
     void emitVectorStore(llvm::StoreInst* SI, llvm::Value* offset, llvm::ConstantInt* immOffset);
     void emitLSCVectorLoad(
         llvm::Value* Ptr, llvm::Value* offset, llvm::ConstantInt* immOffset,
-        llvm::Type* Ty, LSC_CACHE_OPTS cacheOpts, uint32_t align);
+        llvm::Type* Ty, LSC_CACHE_OPTS cacheOpts, uint64_t align);
     void emitLSCVectorStore(
         llvm::Value* Ptr, llvm::Value* offset, llvm::ConstantInt* immOffset,
         llvm::Value* storedVal, LSC_CACHE_OPTS cacheOpts, uint32_t align, bool dontForceDMask);
@@ -883,11 +883,11 @@ private:
     void emitLSCVectorLoad_subDW(
         LSC_CACHE_OPTS cacheOpts, bool UseA32,
         ResourceDescriptor& Resource, CVariable* Dest, CVariable* Offset, int ImmOffset,
-        uint32_t NumElts, uint32_t EltBytes, int Align);
+        uint32_t NumElts, uint32_t EltBytes);
     void emitLSCVectorLoad_uniform(
         LSC_CACHE_OPTS cacheOpts, bool UseA32,
         ResourceDescriptor& Resource, CVariable* Dest, CVariable* Offset, int ImmOffset,
-        uint32_t NumElts, uint32_t EltBytes, int Align, uint32_t Addrspace);
+        uint32_t NumElts, uint32_t EltBytes, uint64_t Align, uint32_t Addrspace);
     void emitLSCVectorStore_subDW(
         LSC_CACHE_OPTS cacheOpts, bool UseA32,
         ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,

@@ -9164,7 +9164,7 @@ void EmitPass::emitLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)
             immOffset,
             inst->getType(),
             cacheOpts,
-            (uint32_t)inst->getAlignment());
+            inst->getAlignment());
         return;
     }
     emitVectorLoad(inst, offset, immOffset);
@@ -16284,7 +16284,7 @@ CVariable* EmitPass::prepareDataForUniform(
 void EmitPass::emitLSCVectorLoad_subDW(
     LSC_CACHE_OPTS cacheOpts, bool UseA32,
     ResourceDescriptor& Resource, CVariable* Dest, CVariable* Offset, int ImmOffset,
-    uint32_t NumElts, uint32_t EltBytes, int Alignment)
+    uint32_t NumElts, uint32_t EltBytes)
 {
     // NumElts must be 1 !
     IGC_ASSERT(NumElts == 1 && (EltBytes == 1 || EltBytes == 2));
@@ -16364,7 +16364,7 @@ void EmitPass::emitLSCVectorLoad_subDW(
 void EmitPass::emitLSCVectorLoad_uniform(
     LSC_CACHE_OPTS cacheOpts, bool UseA32,
     ResourceDescriptor& Resource, CVariable* Dest, CVariable* Offset, int ImmOffset,
-    uint32_t NumElts, uint32_t EltBytes, int Align, uint32_t Addrspace)
+    uint32_t NumElts, uint32_t EltBytes, uint64_t Align, uint32_t Addrspace)
 {
     IGC_ASSERT(Offset->IsUniform() && (EltBytes == 4 || EltBytes == 8));
     CVariable* eOffset = Offset;
@@ -16458,7 +16458,7 @@ void EmitPass::emitLSCVectorLoad_uniform(
 
 void EmitPass::emitLSCVectorLoad(
     Value* Ptr, Value* varOffset, ConstantInt* immOffset,
-    Type* Ty, LSC_CACHE_OPTS cacheOpts, uint32_t align)
+    Type* Ty, LSC_CACHE_OPTS cacheOpts, uint64_t align)
 {
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
@@ -16492,7 +16492,7 @@ void EmitPass::emitLSCVectorLoad(
         IGC_ASSERT(elts == 1);
         emitLSCVectorLoad_subDW(
             cacheOpts, useA32,
-            resource, destCVar, eOffset, immOffsetInt, 1, eltBytes, align);
+            resource, destCVar, eOffset, immOffsetInt, 1, eltBytes);
         return;
     }
 
