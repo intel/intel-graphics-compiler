@@ -7649,6 +7649,90 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
     }
 }
 
+void GraphColor::gatherScatterForbiddenWA()
+{
+    if (!liveAnalysis.livenessClass(G4_GRF))
+        return;
+
+    // VISA spec supports gather.1 and scatter.1 instructions.
+    // But they're not natively supported across platforms. When
+    // lowering gather.1 (scatter.1) on unsupported platforms, we
+    // use rsp len (msg len) = 2 while actual dst (payload) may be
+    // smaller in size. This could cause a problem if dst (payload)
+    // gets assigned to r127 as rsp len (msg len) = 2 could make
+    // it access beyond last GRF. For eg,
+    //
+    // VISA:
+    //.decl Rsp v_type=G type=q num_elts=1
+    //.decl Addr v_type=G type=q num_elts=1
+    // svm_gather.8.1 (M1, 1)   Addr   Rsp
+    //
+    // asm:
+    // send.dc1 (1|M0)   r127   r4   null:0   exMSD   MSD   // wr:2+0, rd:2; a64 qword gathering read
+    //
+    // This asm instruction is illegal as Rsp (size = 8 bytes) was assigned r127
+    // but send response length = 2.
+    //
+    // We fix such cases by looking them up and marking upper GRFs
+    // as forbidden for allocation.
+    for (auto bb : kernel.fg.getBBList())
+    {
+        for (auto inst : bb->getInstList())
+        {
+            if (!inst->isSend() ||
+                inst->getExecSize().value >= 8)
+                continue;
+
+            // dstLen is actual # of GRFs written based on rb, lb
+            // src0Len is actual # of GRFs read based on rb, lb
+            // src1Len is actual # of GRFs read based on rb, lb
+            unsigned int dstLen = 0, src0Len = 0, src1Len = 0;
+            auto sendDst = inst->getDst();
+            auto sendHdr = inst->getSrc(0);
+            auto sendPayload = inst->getSrc(1);
+
+            auto getLenInGRF = [&](G4_Operand* opnd)
+            {
+                unsigned int sz = 0;
+                if (opnd && !opnd->isNullReg() && opnd->getTopDcl())
+                    sz = (opnd->getRightBound() - opnd->getLeftBound() + kernel.getGRFSize() - 1) / kernel.getGRFSize();
+                return sz;
+            };
+
+            dstLen = getLenInGRF(sendDst);
+            src0Len = getLenInGRF(sendHdr);
+            src1Len = getLenInGRF(sendPayload);
+
+            auto sendRspLen = inst->asSendInst()->getMsgDesc()->getDstLenRegs();
+            auto headerLen = inst->asSendInst()->getMsgDesc()->getSrc0LenRegs();
+            auto payloadLen = inst->asSendInst()->getMsgDesc()->getSrc1LenRegs();
+
+            // For gather.[1|2|4] (scatter.[1|2|4]) difference in actual dst (src0/src1) size and rspLen (msg len/ext msg len)
+            // should not exceed 1 GRF.
+            auto markForbiddenForDcl = [&](unsigned int opndLen, G4_Declare* dcl, unsigned int lenInSend)
+            {
+                if (opndLen > 0 &&
+                    dcl &&
+                    dcl->getRegVar() &&
+                    dcl->getRegVar()->isRegAllocPartaker())
+                {
+                    if (lenInSend == (opndLen + 1))
+                    {
+                        lrs[dcl->getRegVar()->getId()]->markForbidden(kernel.getNumRegTotal() - 1, 1);
+                    }
+                    else if (lenInSend > opndLen)
+                    {
+                        MUST_BE_TRUE(false, "mismatch between len in send and that of operand");
+                    }
+                }
+            };
+
+            markForbiddenForDcl(dstLen, sendDst->getTopDcl(), sendRspLen);
+            markForbiddenForDcl(src0Len, sendHdr->getTopDcl(), headerLen);
+            markForbiddenForDcl(src1Len, sendPayload->getTopDcl(), payloadLen);
+        }
+    }
+}
 
 bool GraphColor::regAlloc(
     bool doBankConflictReduction,
@@ -7780,6 +7864,9 @@ bool GraphColor::regAlloc(
             }
         }
     }
+
+    gatherScatterForbiddenWA();
+
     //
     // assign registers for GRFs, GRFs are first attempted to be assigned using round-robin and if it fails
     // then we retry using a first-fit heuristic.

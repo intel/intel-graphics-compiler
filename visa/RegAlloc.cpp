@@ -2975,6 +2975,8 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
 {
     for (auto bb : kernel.fg)
     {
+        unsigned int numGRF = kernel.getNumRegTotal();
+
         // Verify PREG assignment
         for (auto inst : *bb)
         {
@@ -2996,9 +2998,46 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         "RA verification error: No PREG assigned for variable " << GetTopDclFromRegRegion(src->asSrcRegRegion())->getName() << "!");
                 }
             }
+
+            if (inst->isSend())
+            {
+                if (dst &&
+                    !dst->isNullReg() &&
+                    dst->getTopDcl())
+                {
+                    auto preg = dst->getTopDcl()->getRegVar()->getPhyReg();
+                    if (preg &&
+                        preg->isGreg())
+                    {
+                        MUST_BE_TRUE(numGRF >= (preg->asGreg()->getRegNum() + inst->asSendInst()->getMsgDesc()->getDstLenRegs()),
+                            "dst response length goes beyond last GRF");
+                    }
+                }
+
+                for (unsigned j = 0; j < G4_MAX_SRCS; j++)
+                {
+                    G4_Operand* src = inst->getSrc(j);
+                    if (src != nullptr &&
+                        src->isSrcRegRegion())
+                    {
+                        auto preg = src->getTopDcl()->getRegVar()->getPhyReg();
+                        if (preg &&
+                            preg->isGreg())
+                        {
+                            unsigned int srcLen = 0;
+                            if (j == 0)
+                                srcLen = inst->asSendInst()->getMsgDesc()->getSrc0LenRegs();
+                            else if (j == 1)
+                                srcLen = inst->asSendInst()->getMsgDesc()->getSrc1LenRegs();
+
+                            MUST_BE_TRUE(numGRF >= (preg->asGreg()->getRegNum() + srcLen),
+                                "src payload length goes beyond last GRF");
+                        }
+                    }
+                }
+            }
         }
 
-        int numGRF = kernel.getNumRegTotal();
         // Verify Live-in
         std::map<uint32_t, G4_Declare*> LiveInRegMap;
         std::map<uint32_t, G4_Declare*>::iterator LiveInRegMapIt;

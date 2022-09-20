@@ -583,6 +583,7 @@ namespace vISA
         void updateActiveSpillAddrLocs(G4_DstRegRegion*, G4_SrcRegRegion*, unsigned execSize);
         bool redundantAddrFill(G4_DstRegRegion*, G4_SrcRegRegion*, unsigned execSize);
 
+        void gatherScatterForbiddenWA();
     public:
         G4_Declare* findDeclare(char* name);
         void getExtraInterferenceInfo();
