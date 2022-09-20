@@ -1070,6 +1070,7 @@ public:
         return (option & InstOpt_NoSrcDepSet) != 0;
     }
     bool isMixedMode() const;
+    bool isIllegalMixedMode() const;
     bool canSupportCondMod() const;
     bool canSwapSource() const;
     bool canSupportSaturate() const;

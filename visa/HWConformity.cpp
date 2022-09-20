@@ -8147,6 +8147,20 @@ void HWConformity::fixMixedHFInst(G4_BB* bb)
 
         if (builder.hasPartialMixMode() && inst->getNumSrc() > 1)
         {
+            if (inst->isIllegalMixedMode()) {
+                // Convert the unsupported low precision float types to Type_F.
+                if (isLowPrecisionFloatTy(inst->getDst()->getType()) &&
+                    inst->getDst()->getType() != builder.getMixModeType()) {
+                    inst->setDest(insertMovAfter(instIter, inst->getDst(), Type_F, bb));
+                }
+                for (int i = 0; i < inst->getNumSrc(); ++i) {
+                    if (isLowPrecisionFloatTy(inst->getSrc(i)->getType()) &&
+                        inst->getSrc(i)->getType() != builder.getMixModeType()) {
+                        inst->setSrc(insertMovBefore(instIter, i, Type_F, bb), i);
+                    }
+                }
+            }
+
             // no HF on mad src2 or mul src1
             if (inst->isMixedMode())
             {
