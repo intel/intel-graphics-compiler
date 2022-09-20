@@ -1778,9 +1778,9 @@ G4_INST::MovType G4_INST::canPropagate() const
         }
     }
 
-    // Do not propagate through copy of `acc0` if its execution size does not match the native size,
-    // as some latest passes (e.g., fixAddCSubb) rely on the acc0 copy move for correctness
-    if (src->isAccReg() && getExecSize() != builder.getNativeExecSize())
+    // Do not propagate through copy of `acc0', acc substitutuion rely on the mov instruction for implicit acc
+    // FXIME: local data flow analysis cannot analyze the acc regsiter def_use chain accurately.
+    if (src->isAccReg())
     {
         return SuperMov;
     }
