@@ -2537,6 +2537,15 @@ namespace IGC
     //   %724 = call <4 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v4i32.p2621448v4f32(
     //            <4 x float> addrspace(2621448)* %runtime_value_1, i32 %723, i32 4, i1 false)
     // Fold to lsc_load [%713 + 16].
+    static uint GetNbSources(llvm::Instruction& v)
+    {
+        if (llvm::CallInst* intrin = llvm::dyn_cast<llvm::CallInst>(&v))
+        {
+            return IGCLLVM::getNumArgOperands(intrin);
+        }
+        return v.getNumOperands();
+    }
+
     bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction& I)
     {
         struct LSCImmOffsetPattern : public Pattern
@@ -5767,4 +5776,5 @@ namespace IGC
         uint blockID = it->second->id;
         return blockID;
     }
+
 }//namespace IGC

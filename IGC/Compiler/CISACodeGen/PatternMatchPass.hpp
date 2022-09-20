@@ -346,13 +346,4 @@ namespace IGC
     bool isCandidateForConstantPool(llvm::Value * val);
     e_modifier CombineModifier(e_modifier mod1, e_modifier mod2);
 
-    static uint GetNbSources(llvm::Instruction& v)
-    {
-        if (llvm::CallInst * intrin = llvm::dyn_cast<llvm::CallInst>(&v))
-        {
-            return IGCLLVM::getNumArgOperands(intrin);
-        }
-        return v.getNumOperands();
-    }
-
 } // namespace IGC
