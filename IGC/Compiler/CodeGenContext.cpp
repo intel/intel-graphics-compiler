@@ -228,23 +228,26 @@ namespace IGC
                 }
             }
 
-            // Compare previous with current shader
-            const float maxTolerance = 110.0f;
-
-            // Check if current shader has more than 110% of previous spill cost
-            bool spillCostBigger =
-                (currentShader->m_spillCost * 100.0f) / previousShader->m_spillCost > maxTolerance;
-            // Check if current shader has more than 110% of previous spill size
-            bool spillSizeBigger =
-                (currentShader->m_spillSize * 100.0f) / previousShader->m_spillSize > maxTolerance;
-            // Check if current shader has more than 110% of previous asm instruction count
-            bool asmInstrCountBigger =
-                (currentShader->m_asmInstrCount * 100.0f) / previousShader->m_asmInstrCount > maxTolerance;
-
-            if (spillCostBigger && spillSizeBigger && asmInstrCountBigger)
+            if (previousShader && currentShader)
             {
-                // The previous shader was better, ignore any future retry compilation
-                isBetter = false;
+                // Compare previous with current shader
+                const float maxTolerance = 110.0f;
+
+                // Check if current shader has more than 110% of previous spill cost
+                bool spillCostBigger =
+                    (currentShader->m_spillCost * 100.0f) / previousShader->m_spillCost > maxTolerance;
+                // Check if current shader has more than 110% of previous spill size
+                bool spillSizeBigger =
+                    (currentShader->m_spillSize * 100.0f) / previousShader->m_spillSize > maxTolerance;
+                // Check if current shader has more than 110% of previous asm instruction count
+                bool asmInstrCountBigger =
+                    (currentShader->m_asmInstrCount * 100.0f) / previousShader->m_asmInstrCount > maxTolerance;
+
+                if (spillCostBigger && spillSizeBigger && asmInstrCountBigger)
+                {
+                    // The previous shader was better, ignore any future retry compilation
+                    isBetter = false;
+                }
             }
         }
         else
