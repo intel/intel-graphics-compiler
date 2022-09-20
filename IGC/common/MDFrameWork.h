@@ -413,7 +413,7 @@ namespace IGC
 
         bool DisableFastestGopt                         = false;
         bool WaForceHalfPromotion                       = false;
-
+        bool DisableConstantCoalescing                  = false;
         bool EnableUndefAlphaOutputAsRed                = true;
         bool WaEnableALTModeVisaWA                      = false;
     };
