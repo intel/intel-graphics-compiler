@@ -131,7 +131,7 @@ DEF_VISA_OPTION(vISA_noStitchExternFunc,    ET_BOOL, "-noStitchExternFunc", UNUS
 DEF_VISA_OPTION(vISA_autoLoadLocalID,       ET_BOOL, "-autoLocalId",        UNUSED, false)
 DEF_VISA_OPTION(vISA_loadCrossThreadConstantData, ET_BOOL, "-loadCTCD",     UNUSED, true)
 DEF_VISA_OPTION(vISA_useInlineData,         ET_BOOL, "-useInlineData",   UNUSED, false)
-DEF_VISA_OPTION(vISA_crossThreadDataAlignment, ET_INT32, "-crossThreadDataAlignment", UNUSED, 32)
+DEF_VISA_OPTION(vISA_OCLRuntime, ET_BOOL, "-oclRuntime", "Temporarily used to control alignment for inlineData", false)
 DEF_VISA_OPTION(vISA_loadThreadPayloadStartReg, ET_INT32, "-setStartReg",UNUSED, 1)
 DEF_VISA_OPTION(vISA_emitCrossThreadOffR0Reloc,  ET_BOOL, "-emitCrossThreadOffR0Reloc",    UNUSED, false)
 DEF_VISA_OPTION(vISA_CodePatch,   ET_INT32, "-codePatch",        UNUSED, 0)
