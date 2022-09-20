@@ -557,7 +557,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
     }
 
     unsigned int newSize = index_ub + 1 - index_lb;
-    if (newSize >= pType->getArrayNumElements())
+    if (newSize >= pType->getArrayNumElements() || newSize == 0)
         return;
     // found a case to optimize
     IGCLLVM::IRBuilder<> IRB(&I);
