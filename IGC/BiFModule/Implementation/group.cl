@@ -965,6 +965,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAll, _i32_i1, )(int Execution, bool P
             return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)(Predicate) );
 
         GET_MEMPOOL_PTR(tmp, int, false, 1)
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for any prev mempool usage to finish before overwrite
         *tmp = 1;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         if(Predicate == 0)
@@ -987,6 +988,7 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAny, _i32_i1, )(int Execution, bool P
             return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)Predicate );
 
         GET_MEMPOOL_PTR(tmp, int, false, 1)
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for any prev mempool usage to finish before overwrite
         *tmp = 0;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         if(Predicate == 1)
