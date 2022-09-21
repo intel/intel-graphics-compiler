@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/MathExtras.h>
@@ -133,9 +134,9 @@ void SymbolicEvaluation::dump_symbols()
         "ValueInfoMap has the incorrect number of entries!");
 
     // for sorting symbols in increasing ID.
-    std::vector<Value*> Vals(m_nextValueID);
+    std::vector<const Value*> Vals(m_nextValueID);
     for (auto II : m_symInfos) {
-        Value* V = II.first;
+        const Value* V = II.first;
         ValueSymInfo* VSI = II.second;
         IGC_ASSERT(nullptr != VSI);
         IGC_ASSERT_MESSAGE(VSI->ID < m_nextValueID, "Incorrect value ID!");
@@ -144,7 +145,7 @@ void SymbolicEvaluation::dump_symbols()
 
     dbgs() << "\nSymbols used\n";
     for (int i = 0; i < m_nextValueID; ++i) {
-        Value* V = Vals[i];
+        const Value* V = Vals[i];
         // V should not be nullptr, but check it
         // for safety.
         IGC_ASSERT(nullptr != V);
@@ -162,7 +163,7 @@ void SymbolicEvaluation::print(raw_ostream& OS, SymProd* P)
 {
     bool hasError = false;
     for (int i = 0; i < (int)P->Prod.size(); ++i) {
-        Value* V = P->Prod[i];
+        const Value* V = P->Prod[i];
         if (ValueSymInfo * VSI = getSymInfo(V)) {
             OS << (i == 0 ? "V" : " * V")
                 << VSI->ID;
@@ -177,13 +178,47 @@ void SymbolicEvaluation::print(raw_ostream& OS, SymProd* P)
     }
 }
 
+void SymbolicEvaluation::print_varMapping(raw_ostream& OS, SymProd* P)
+{
+    std::map<const Value*, int> varMap;
+    const int psz = (int)P->Prod.size();
+    for (int i = 0; i < psz; ++i) {
+        const Value* V = P->Prod[i];
+        if (ValueSymInfo* VSI = getSymInfo(V)) {
+            varMap[V] = VSI->ID;
+        }
+    }
+
+    if (!varMap.empty())
+    {
+        OS << "\n";
+        for (auto MI : varMap)
+        {
+            const Value* V = MI.first;
+            int VID = MI.second;
+            OS << "    V" << VID << ": " << *V << "\n";
+        }
+        OS << "\n";
+    }
+}
+
 void SymbolicEvaluation::print(raw_ostream& OS, SymTerm* T)
 {
-    OS << T->Coeff;
     if (T->Term->Prod.size() > 0) {
-        OS << " * ";
+        if (T->Coeff != 1) {
+            OS << T->Coeff;
+            OS << " * ";
+        }
+        print(OS, T->Term);
     }
-    print(OS, T->Term);
+    else {
+        OS << T->Coeff;
+    }
+}
+
+void SymbolicEvaluation::print_varMapping(raw_ostream& OS, SymTerm* T)
+{
+    print_varMapping(OS, T->Term);
 }
 
 void SymbolicEvaluation::print(raw_ostream& OS, SymExpr* SE)
@@ -195,8 +230,64 @@ void SymbolicEvaluation::print(raw_ostream& OS, SymExpr* SE)
         }
         print(OS, SE->SymTerms[i]);
     }
-    if (e > 0) {
+    if (SE->ConstTerm != 0)
+    {
+        if (e > 0) {
+            OS << " + ";
+        }
+        OS << SE->ConstTerm << "\n";
+    }
+}
+
+void SymbolicEvaluation::print_varMapping(raw_ostream& OS, SymExpr* SE)
+{
+    std::map<const Value*, int> varMap;
+    const int e = (int)SE->SymTerms.size();
+    for (int i = 0; i < e; ++i) {
+        const SymProd* P = SE->SymTerms[i]->Term;
+        const int psz = (int)P->Prod.size();
+        for (int i = 0; i < psz; ++i) {
+            const Value* V = P->Prod[i];
+            if (ValueSymInfo* VSI = getSymInfo(V)) {
+                varMap[V] = VSI->ID;
+            }
+        }
+    }
+
+    if (!varMap.empty())
+    {
         OS << "\n";
+        for (auto MI : varMap)
+        {
+            const Value* V = MI.first;
+            int VID = MI.second;
+            OS << "    V" << VID << ": " << *V << "\n";
+        }
+        OS << "\n";
+    }
+}
+
+void SymbolicEvaluation::print(raw_ostream& OS, const Value* V)
+{
+    ValueSymInfo* VSI = getSymInfo(V);
+    OS << "   Symbolic expression for\n";
+    OS << "       " << *V << "\n\n";
+
+    if (VSI)
+    {
+        print(OS, VSI->symExpr);
+    }
+    else
+    {
+        OS << "    No symbolic expression available\n\n";
+    }
+}
+
+void SymbolicEvaluation::print_varMapping(raw_ostream& OS, const Value* V)
+{
+    ValueSymInfo* VSI = getSymInfo(V);
+    if (VSI) {
+        print_varMapping(OS, VSI->symExpr);
     }
 }
 
@@ -204,6 +295,7 @@ void SymbolicEvaluation::dump(SymProd* P)
 {
     dbgs() << "\n";
     print(dbgs(), P);
+    print_varMapping(dbgs(), P);
     dbgs() << "\n";
 }
 
@@ -211,6 +303,7 @@ void SymbolicEvaluation::dump(SymTerm* T)
 {
     dbgs() << "\n";
     print(dbgs(), T);
+    print_varMapping(dbgs(), T);
     dbgs() << "\n";
 }
 
@@ -218,12 +311,22 @@ void SymbolicEvaluation::dump(SymExpr* SE)
 {
     dbgs() << "\n";
     print(dbgs(), SE);
+    print_varMapping(dbgs(), SE);
     dbgs() << "\n";
 }
 
+void SymbolicEvaluation::dump(const Value* V)
+{
+    dbgs() << "\n";
+    print(dbgs(), V);
+    print_varMapping(dbgs(), V);
+    dbgs() << "\n";
+}
+
+
 #endif
 
-SymExpr* SymbolicEvaluation::getSymExpr(Value* V)
+SymExpr* SymbolicEvaluation::getSymExpr(const Value* V)
 {
     // Stop if non-Pointer type or non-integer type.
     // Since systemValue is prototyped as to return a float,
@@ -258,7 +361,7 @@ SymExpr* SymbolicEvaluation::getSymExpr(Value* V)
 
 // Return : S if S != nullptr;
 //          C if S == nullptr;
-void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
+void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64_t& C)
 {
     S = nullptr;
     if (ValueSymInfo * VSI = getSymInfo(V))
@@ -267,28 +370,113 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
         return;
     }
 
-    if (ConstantInt * CI = dyn_cast<ConstantInt>(V))
+    if (const ConstantInt * CI = dyn_cast<const ConstantInt>(V))
     {
         C = CI->getSExtValue();
         return;
     }
 
-    // Instructions to be handled:
+    // Instructions/Operators handled for now:
+    //   GEP
     //   bitcast (inttoptr, ptrtoint, etc)
     //   mul, add, sub.
-    // Stop otherwise.
     SymExpr* S0;
     SymExpr* S1;
     int64_t  C0, C1;
-    if (Instruction * I = dyn_cast<Instruction>(V))
+    if (const Operator* Op = dyn_cast<Operator>(V))
     {
-        unsigned opc = I->getOpcode();
+        unsigned opc = Op->getOpcode();
         switch (opc) {
+        case Instruction::GetElementPtr:
+        {
+            const GEPOperator* GEPOp = static_cast<const GEPOperator*>(Op);
+            const Value* V0 = GEPOp->getPointerOperand();
+            if (GEPOp->hasAllZeroIndices())
+            {
+                // V is the same as V0.
+                getSymExprOrConstant(V0, S, C);
+                if (S == nullptr)
+                {
+                    // V is constant, return the constant
+                    return;
+                }
+            }
+            else  if (V0->getType()->getPointerElementType()->isSized() &&
+                !V0->getType()->isVectorTy() &&
+                m_DL != nullptr)
+            {
+                //
+                // 1. Traverse all indexes to accumulate offset;
+                // 2. Add the pointer operand at the last.
+                //
+                int64_t ByteOffset = 0;  // holding the constant part of this GEP
+                S0 = nullptr;            // If not null, S0 is GEP's symbolic expression.
+                for (gep_type_iterator GII = gep_type_begin(GEPOp), GIE = gep_type_end(GEPOp); GII != GIE; ++GII)
+                {
+                    Value* Idx = GII.getOperand();
+                    ConstantInt* CIdx = dyn_cast<ConstantInt>(Idx);
+                    if (StructType* STy = GII.getStructTypeOrNull())
+                    {
+                        // struct needs special handling. For struct, idx must be a constant.
+                        IGC_ASSERT(CIdx != nullptr);
+                        uint32_t EltIdx = (uint32_t)CIdx->getZExtValue();
+                        const StructLayout* SL = m_DL->getStructLayout(STy);
+                        ByteOffset += SL->getElementOffset(EltIdx);
+                        continue;
+                    }
+
+                    int64_t eltByteSize = m_DL->getTypeAllocSize(GII.getIndexedType());
+                    if (CIdx)
+                    {
+                        ByteOffset += (CIdx->getSExtValue() * eltByteSize);
+                        continue;
+                    }
+
+                    getSymExprOrConstant(Idx, S1, C1);
+                    if (!S1)
+                    {
+                        C1 = C1 * eltByteSize;
+                        ByteOffset += C1;
+                    }
+                    else
+                    {
+                        SymExpr* T = mul(S1, eltByteSize);
+                        S0 = S0 ? add(S0, T, false) : T;
+                    }
+                }
+
+                // Get symExpr for pointer operand.
+                getSymExprOrConstant(GEPOp->getPointerOperand(), S1, C1);
+                if (S0 && S1)
+                {
+                    S = add(S0, S1, false);
+                    if (ByteOffset != 0)
+                    {
+                        S = add(S, ByteOffset);
+                    }
+                }
+                else if (!S0 || !S1)
+                {
+                    int64_t tC = S1 ? ByteOffset : (ByteOffset + C1);
+                    S = S1 ? S1 : S0;
+                    if (tC != 0)
+                    {
+                        S = add(S, tC);
+                    }
+                }
+                else
+                {
+                    C = ByteOffset + C1;
+                    return;
+                }
+            }
+            break;
+        }
         case Instruction::Sub:
         case Instruction::Add:
         {
-            Value* V0 = I->getOperand(0);
-            Value* V1 = I->getOperand(1);
+            const Value* V0 = Op->getOperand(0);
+            const Value* V1 = Op->getOperand(1);
             getSymExprOrConstant(V0, S0, C0);
             getSymExprOrConstant(V1, S1, C1);
 
@@ -329,8 +517,8 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
         }
         case Instruction::Mul:
         {
-            Value* V0 = I->getOperand(0);
-            Value* V1 = I->getOperand(1);
+            const Value* V0 = Op->getOperand(0);
+            const Value* V1 = Op->getOperand(1);
             getSymExprOrConstant(V0, S0, C0);
             getSymExprOrConstant(V1, S1, C1);
             if (!S0 && !S1)
@@ -355,7 +543,7 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
         case Instruction::IntToPtr:
         case Instruction::PtrToInt:
         {
-            Value* V0 = I->getOperand(0);
+            Value* V0 = Op->getOperand(0);
             getSymExprOrConstant(V0, S, C);
             if (!S)
             {
@@ -366,7 +554,7 @@ void SymbolicEvaluation::getSymExprOrConstant(Value* V, SymExpr*& S, int64_t& C)
         }
     }
 
-    // Unevaluable for V.
+    // Unevaluable for V. Its symExpr is itself.
     if (S == nullptr)
     {
         SymProd* P = new (m_symEvaAllocator) SymProd();
@@ -395,8 +583,8 @@ int SymbolicEvaluation::cmp(const SymProd* T0, const SymProd* T1)
     }
     for (int i = 0; i < sz0; ++i)
     {
-        Value* V0 = T0->Prod[i];
-        Value* V1 = T1->Prod[i];
+        const Value* V0 = T0->Prod[i];
+        const Value* V1 = T1->Prod[i];
         if (V0 == V1) {
             continue;
         }
@@ -566,10 +754,10 @@ bool SLMConstProp::isLinearFuncOfLocalIds(SymExpr* SE)
         if (aT->Term->Prod.size() > 1) {
             return false;
         }
-        Value* Val = aT->Term->Prod[0];
+        const Value* Val = aT->Term->Prod[0];
 
         // Check if val is local ids, if not, quit
-        GenIntrinsicInst* sysVal = dyn_cast<llvm::GenIntrinsicInst>(Val);
+        const GenIntrinsicInst* sysVal = dyn_cast<const llvm::GenIntrinsicInst>(Val);
         if (!sysVal ||
             sysVal->getIntrinsicID() != GenISAIntrinsic::GenISA_DCL_SystemValue) {
             return false;
@@ -1182,6 +1370,7 @@ bool SLMConstProp::runOnFunction(Function& F)
 
     Module* M = m_F->getParent();
     m_DL = &M->getDataLayout();
+    m_SymEval.setDataLayout(m_DL);
 
     // Analyze the constant stores and see if they have a particular pattern
     if (!analyzeConstantStores()) {

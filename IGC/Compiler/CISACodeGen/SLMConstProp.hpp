@@ -36,7 +36,7 @@ namespace IGC
     //
     class SymProd {
     public:
-        llvm::SmallVector<llvm::Value*, 2> Prod;
+        llvm::SmallVector<const llvm::Value*, 2> Prod;
 
         SymProd() {}
         SymProd(const SymProd& P) : Prod(P.Prod) {}
@@ -83,10 +83,11 @@ namespace IGC
     {
     public:
 
-        SymbolicEvaluation() : m_nextValueID(0) {}
+        SymbolicEvaluation() : m_DL(nullptr), m_nextValueID(0) {}
+        void setDataLayout(const llvm::DataLayout* aDL) { m_DL = aDL; }
 
         // Return a Canonicalized Polynomial Expression.
-        SymExpr* getSymExpr(llvm::Value* V);
+        SymExpr* getSymExpr(const llvm::Value* V);
 
         // If S1 - S0 = constant, return true and set "COff" to that constant
         bool isOffByConstant(SymExpr* S0, SymExpr* S1, int64_t& COff);
@@ -136,22 +137,28 @@ namespace IGC
         void print(llvm::raw_ostream& OS, SymProd* P);
         void print(llvm::raw_ostream& OS, SymTerm* T);
         void print(llvm::raw_ostream& OS, SymExpr* SE);
+        void print(llvm::raw_ostream& OS, const llvm::Value* V);
+        void print_varMapping(llvm::raw_ostream& OS, SymProd* P);
+        void print_varMapping(llvm::raw_ostream& OS, SymTerm* T);
+        void print_varMapping(llvm::raw_ostream& OS, SymExpr* SE);
+        void print_varMapping(llvm::raw_ostream& OS, const llvm::Value* V);
 
         void dump_symbols();
         void dump(SymProd* P);
         void dump(SymTerm* T);
         void dump(SymExpr* SE);
+        void dump(const llvm::Value* V);
 #endif
 
-
     private:
+        const llvm::DataLayout* m_DL;
         // This struct is to hold info about symbol (Value), such as its ID,
         // and its equivalent symbolic expression.
         typedef struct {
             int ID;
             SymExpr* symExpr;
         } ValueSymInfo;
-        typedef llvm::DenseMap<llvm::Value*, ValueSymInfo*> SymInfoMap;
+        typedef llvm::DenseMap<const llvm::Value*, ValueSymInfo*> SymInfoMap;
 
         // Used to assign a unique ID to ValueSymInfo
         int m_nextValueID;
@@ -161,9 +168,9 @@ namespace IGC
 
         // A varaint of getSymExpr.  This one does not create SymExpr if
         // V is an integer constant. Instead, return constant as 'C'.
-        void getSymExprOrConstant(llvm::Value* V, SymExpr*& S, int64_t& C);
+        void getSymExprOrConstant(const llvm::Value* V, SymExpr*& S, int64_t& C);
 
-        ValueSymInfo* getSymInfo(llvm::Value* V)
+        ValueSymInfo* getSymInfo(const llvm::Value* V)
         {
             auto SIIter = m_symInfos.find(V);
             if (SIIter != m_symInfos.end())
@@ -174,7 +181,7 @@ namespace IGC
             return nullptr;
         }
 
-        void setSymInfo(llvm::Value* V, SymExpr* E)
+        void setSymInfo(const llvm::Value* V, SymExpr* E)
         {
             ValueSymInfo* VSI = new (m_symEvaAllocator) ValueSymInfo();
             VSI->ID = m_nextValueID++;
