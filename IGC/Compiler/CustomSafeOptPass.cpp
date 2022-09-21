@@ -7019,7 +7019,7 @@ bool InsertBranchOpt::runOnFunction(Function& F)
         atomicSpiltOpt(F);
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableThreeWayLoadSpiltOpt))
+    if (IGC_IS_FLAG_ENABLED(EnableThreeWayLoadSpiltOpt) || pContext->getModuleMetaData()->enableThreeWayLoadSpiltOpt)
     {
         ThreeWayLoadSpiltOpt(F);
     }

@@ -667,6 +667,8 @@ namespace IGC
 
         bool disableMemOptforNegativeOffsetLoads = false;
 
+        bool enableThreeWayLoadSpiltOpt = false;
+
         // When true compiler can assume that resources bound to two different
         // bindings do not alias.
         bool statefulResourcesNotAliased = false;
