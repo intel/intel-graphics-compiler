@@ -965,13 +965,13 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAll, _i32_i1, )(int Execution, bool P
             return SPIRV_BUILTIN(GroupUMin, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)(Predicate) );
 
         GET_MEMPOOL_PTR(tmp, int, false, 1)
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for any prev mempool usage to finish before overwrite
         *tmp = 1;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         if(Predicate == 0)
             *tmp = 0; // intentional data race here, as we do not care for the value itself, rather than the fact it was overriden
+        bool ret = *tmp; // Ensure result is copied from mempool before further builtins
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for threads
-        return *tmp; // Return true if none of them failed the test
+        return ret; // Return true if none of them failed the test
     }
     else
     {
@@ -988,13 +988,13 @@ bool SPIRV_OVERLOADABLE SPIRV_BUILTIN(GroupAny, _i32_i1, )(int Execution, bool P
             return SPIRV_BUILTIN(GroupUMax, _i32_i32_i32, )(Subgroup, GroupOperationReduce, (uint)Predicate );
 
         GET_MEMPOOL_PTR(tmp, int, false, 1)
-        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for any prev mempool usage to finish before overwrite
         *tmp = 0;
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         if(Predicate == 1)
             *tmp = 1; // intentional data race here, as we do not care for the value itself, rather than the fact it was overriden
+        bool ret = *tmp; // Ensure result is copied from mempool before further builtins
         SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Execution, 0, AcquireRelease | WorkgroupMemory);
-        return *tmp; // Return true if any of them passed the test
+        return ret; // Return true if any of them passed the test
     }
     else
     {
