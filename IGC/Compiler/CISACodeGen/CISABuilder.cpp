@@ -4997,6 +4997,11 @@ namespace IGC
             SaveOption(vISA_writeCombine, false);
         }
 
+        if (IGC_IS_FLAG_ENABLED(EnableCoalesceScalarMoves))
+        {
+            SaveOption(vISA_CoalesceScalarMoves, true);
+        }
+
 
 
         if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction)) {

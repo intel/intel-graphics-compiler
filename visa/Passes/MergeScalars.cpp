@@ -25,10 +25,10 @@ static G4_Declare* getInputDeclare(
     int bundleSize,
     int firstEltOffset)
 {
-    MUST_BE_TRUE(input->isInput() && input->getAliasDeclare() == NULL, "Expect root input variable");
+    MUST_BE_TRUE(input->isInput() && input->getAliasDeclare() == nullptr, "Expect root input variable");
     for (auto dcl : declares)
     {
-        MUST_BE_TRUE(dcl->isInput() && dcl->getAliasDeclare() == NULL, "declare must be root input variable");
+        MUST_BE_TRUE(dcl->isInput() && dcl->getAliasDeclare() == nullptr, "declare must be root input variable");
         if (dcl->getRegVar()->getByteAddr(builder) == input->getRegVar()->getByteAddr(builder) &&
             dcl->getElemType() == eltType &&
             dcl->getTotalElems() >= bundleSize)
@@ -102,12 +102,12 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
             G4_Declare* dcl = dst->getTopDcl();
             if (dcl->getAliasDeclare() != rootDcl)
             {
-                // all dsts in the bundle should have the same base variable (or NULL)
+                // all dsts in the bundle should have the same base variable (or nullptr)
                 // this is to avoid the situation where {V1, V2} is in one bundle and {V1, V3}
                 // is in another bundle, and we can't optimize both since V2 and V3 may be both live
                 return false;
             }
-            if (dcl->getAliasDeclare() != NULL)
+            if (dcl->getAliasDeclare() != nullptr)
             {
                 if (dcl->getAliasOffset() != dst->getTypeSize() * instId)
                 {
@@ -132,7 +132,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
                     // see comments from above for dst
                     return false;
                 }
-                if (dcl->getAliasDeclare() != NULL)
+                if (dcl->getAliasDeclare() != nullptr)
                 {
                     if (dcl->getAliasOffset() != src->getTypeSize() * instId)
                     {
@@ -157,8 +157,8 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
     {
         G4_Type dstType = newInst->getDst()->getType();
         // create a new declare with bundle size and have the original dsts alias to it
-        G4_Declare* newDcl = NULL;
-        if (newInst->getDst()->getTopDcl()->getAliasDeclare() != NULL)
+        G4_Declare* newDcl = nullptr;
+        if (newInst->getDst()->getTopDcl()->getAliasDeclare() != nullptr)
         {
             newDcl = newInst->getDst()->getTopDcl()->getAliasDeclare();
         }
@@ -169,7 +169,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
         for (int i = 0; i < size; ++i)
         {
             G4_Declare* dstDcl = inst[i]->getDst()->getTopDcl();
-            if (dstDcl->getAliasDeclare() == NULL)
+            if (dstDcl->getAliasDeclare() == nullptr)
             {
                 dstDcl->setAliasDeclare(newDcl, i * TypeSize(dstType));
                 modifiedDcl.insert(dstDcl);
@@ -194,8 +194,8 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
             G4_Operand* oldSrc = newInst->getSrc(i);
             G4_Type srcType = oldSrc->getType();
             // create a new declare with bundle size and have the original dsts alias to it
-            G4_Declare* newDcl = NULL;
-            if (oldSrc->getTopDcl()->getAliasDeclare() != NULL)
+            G4_Declare* newDcl = nullptr;
+            if (oldSrc->getTopDcl()->getAliasDeclare() != nullptr)
             {
                 newDcl = oldSrc->getTopDcl()->getAliasDeclare();
             }
@@ -208,7 +208,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
                 MUST_BE_TRUE(inst[j]->getSrc(i)->isSrcRegRegion(), "Src must be a region");
                 G4_SrcRegRegion* src = inst[j]->getSrc(i)->asSrcRegRegion();
                 G4_Declare* srcDcl = src->getTopDcl();
-                if (srcDcl->getAliasDeclare() == NULL)
+                if (srcDcl->getAliasDeclare() == nullptr)
                 {
                     srcDcl->setAliasDeclare(newDcl, j * TypeSize(srcType));
                     modifiedDcl.insert(srcDcl);
@@ -266,6 +266,90 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
             {
                 src->setRegion(builder, builder.getRegionStride1());
             }
+
+            newInst->setExecSize(execSize);
+        }
+        else if (srcPattern[i] == OPND_PATTERN::PACKED) {
+
+            // lambda to compute the data type based on how many values we
+            // packed into a single value
+            auto dataTypeSize = [&](G4_Operand* dst) {
+                uint32_t totalBytes = size * dst->getTypeSize();
+                if (totalBytes < 4) return std::make_tuple(Type_UW, 2);
+                if (totalBytes == 4) return std::make_tuple(Type_UD, 4);
+                if (totalBytes > 4 && totalBytes <= 8) return std::make_tuple(Type_UQ, 8);
+                else MUST_BE_TRUE (false, "invalid data type size");
+                return std::make_tuple(Type_UNDEF, 0);
+            };
+
+            // In canMergeSource, we check only on whether the instructions
+            // operate on different immediate values. Here, we do a complete check for
+            // coalescing scalar moves based on the following conditions:
+            // 1. check if instruction in bundle is mov
+            // 2. check if mov instructions in bundle are operating on same
+            //    destination
+            // 3. check if mov execution mask is no mask SIMD1
+            // 4. check if srcs in bundle are immediate values (handled in
+            //    canMergeSrc)
+
+            if (!inst[0]->isMov()) return false;
+            for (int j = 1; j < size; j++) {
+                if (!inst[j]->isMov() ||
+                    inst[j-1]->getDst()->getTopDcl() != inst[j]->getDst()->getTopDcl()) {
+                    return false;
+                }
+            }
+
+            // create the packed value
+            // since we also create packed values with non-motonic subregs, the
+            // shift amount is subregID * type size (bytes) * 8
+            uint64_t packedVal = 0;
+            for (int j = 0; j < size; j++) {
+                G4_Imm* immValue = inst[j]->getSrc(0)->asImm();
+                uint32_t shiftVal = j * newInst->getDst()->getTypeSize() * 8;
+                uint64_t val = 0;
+                switch(inst[j]->getDst()->getType()) {
+                    case G4_Type::Type_UD:
+                    case G4_Type::Type_D:
+                        val = (uint32_t)immValue->getImm();
+                        break;
+                    case G4_Type::Type_UW:
+                    case G4_Type::Type_W:
+                        val = (uint16_t)immValue->getImm();
+                        break;
+                    case G4_Type::Type_UB:
+                    case G4_Type::Type_B:
+                        val = (uint8_t)immValue->getImm();
+                        break;
+                    default:
+                        MUST_BE_TRUE(false, "unsupported data type");
+                }
+                packedVal += ((uint64_t)val << shiftVal);
+            }
+
+            auto packedTypeSize = dataTypeSize(newInst->getDst());
+            G4_Type packedType = std::get<0>(packedTypeSize);
+            unsigned packedSize = std::get<1>(packedTypeSize);
+            // check alignment
+            // if destination alignment is less than the datatype of packed value, we cannot do the coalescing
+            if (!builder.isOpndAligned(newInst->getDst(), packedSize)) {
+                return false;
+            }
+            // set the source of packed instruction with immediate value equal
+            // to the new packed value
+            newInst->setSrc(builder.createImm(packedVal, packedType), i);
+
+            // create a packed type dcl
+            G4_Declare* newDcl = builder.createTempVar(0, packedType, Any, "Packed");
+            // set the newDcl dcl alias to the instruction destination dcl
+            newDcl->setAliasDeclare(newInst->getDst()->getTopDcl(), newInst->getDst()->getSubRegOff());
+
+            // set the destination of new packed instruction
+            G4_DstRegRegion* newDst = builder.createDst(
+                    newDcl->getRegVar(), 0, 0, 1, packedType);
+            newInst->setDest(newDst);
+
+            execSize = g4::SIMD1;
         }
         else
         {
@@ -364,7 +448,7 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
         return false;
     }
 
-    MUST_BE_TRUE(inst->getDst() != NULL, "dst must not be NULL");
+    MUST_BE_TRUE(inst->getDst() != nullptr, "dst must not be nullptr");
     if (inst->getDst()->isIndirect())
     {
         return false;
@@ -379,6 +463,19 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
 
     G4_VarBase* dstBase = inst->getDst()->getBase();
     G4_Declare* dstDcl = dstBase->isRegVar() ? dstBase->asRegVar()->getDeclare() : nullptr;
+
+    /*
+     // fixme: Why is the below condition enforced?
+     // It prevents the following merging of scalar moves:
+     // (W) mov (1)              v_b(0,0)<1>:b  0x4:w
+     // (W) mov (1)              v_b(0,1)<1>:b  0x5:w
+     // (W) mov (1)              v_b(0,2)<1>:b  0x6:w
+     // (W) mov (1)              v_b(0,3)<1>:b  0x7:w
+     //     mov (16)             dst(0,0)<1>:d v(0,0)<0;1,0>:d
+     // into
+     // (W) mov (1)              v(0,0)<1>:d 0x7060504:d
+     //     mov (16)              dst(0,0)<1>:d v(0,0)<0;1,0>:d
+    */
     if (dstDcl != nullptr &&
         (dstDcl->getAliasDeclare() != nullptr ||
             inst->getDst()->getTypeSize() != dstDcl->getElemSize() ||
@@ -435,7 +532,7 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST* inst, const IR_Builder& builder, boo
 // Note that this also rules out input
 static bool isScalarNaturalAlignedVar(G4_Declare* dcl)
 {
-    return dcl->getTotalElems() == 1 && dcl->getAliasDeclare() == NULL &&
+    return dcl->getTotalElems() == 1 && dcl->getAliasDeclare() == nullptr &&
         dcl->getByteAlignment() == TypeSize(dcl->getElemType()) && !dcl->isInput();
 }
 
@@ -532,7 +629,7 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion* dst, const IR_Builder& builder)
         {
             G4_Operand* src = inst[i]->getSrc(srcPos);
             // since both are scalar, check is as simple as comparing the dcl
-            if (src->getTopDcl() != NULL && src->getTopDcl() == dst->getTopDcl())
+            if (src->getTopDcl() != nullptr && src->getTopDcl() == dst->getTopDcl())
             {
                 return false;
             }
@@ -544,11 +641,12 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion* dst, const IR_Builder& builder)
 
 //
 // Check if this src at srcPos can be combined into the bundle
-// There are 3 scenarios:
+// There are 4 scenarios:
 // IDENTICAL: all sources in the bundle are the same scalar variable
 // CONTIGUOUS: the sources together form a contiguous region
 // DISJOINT: all sources are distinct scalar, naturally aligned root variables
-//
+// PACKED: all sources in the bundle are different scalar imm values that can be
+// packed into a wider scalar imm value
 bool BUNDLE_INFO::canMergeSource(G4_Operand* src, int srcPos, const IR_Builder& builder)
 {
     // src must be either Imm or SrcRegRegion
@@ -573,18 +671,33 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand* src, int srcPos, const IR_Builder& 
     {
         return false;
     }
-    if (prevSrc->isImm())
-    {
-        // ToDo: can add packed vector support later
-        if (!src->isImm() ||
-            prevSrc->asImm()->getImm() != src->asImm()->getImm())
-        {
+    if (prevSrc->isImm()) {
+        if (!src->isImm()) {
+            // no coalescing of immediate values possible
             return false;
         }
-        srcPattern[srcPos] = OPND_PATTERN::IDENTICAL;
+        else {
+            if (builder.getOption(vISA_CoalesceScalarMoves)) {
+                if (dstPattern == OPND_PATTERN::CONTIGUOUS) {
+                    // writing immediate values to different subregs of same
+                    // GRF
+                    srcPattern[srcPos] = OPND_PATTERN::PACKED;
+                }
+                else {
+                    // destination pattern is something other than contiguous
+                    // we cannot do packing in this case
+                    return false;
+                }
+            }
+            else if (prevSrc->asImm()->getImm() == src->asImm()->getImm()) {
+                srcPattern[srcPos] = OPND_PATTERN::IDENTICAL;
+            }
+            else {
+                return false;
+            }
+        }
     }
-    else
-    {
+    else {
         if (!src->isSrcRegRegion())
         {
             return false;
@@ -759,7 +872,6 @@ bool BUNDLE_INFO::canMerge(G4_INST* inst, const IR_Builder& builder)
     // append instruction to bundle
     appendInst(inst);
     return true;
-
 }
 
 //

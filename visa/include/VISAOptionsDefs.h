@@ -106,6 +106,7 @@ DEF_VISA_OPTION(vISA_ignoreBFRounding,      ET_BOOL, "-ignoreBFRounding", UNUSED
 DEF_VISA_OPTION(vISA_scheduleFenceCommit,   ET_BOOL, "-fenceCommit", UNUSED, true)
 DEF_VISA_OPTION(vISA_SkipRedundantFillInRMW,ET_BOOL, "-normwopt", UNUSED, true)
 DEF_VISA_OPTION(vISA_ALTMode,               ET_BOOL, "-nonALTMode", UNUSED, false)
+DEF_VISA_OPTION(vISA_CoalesceScalarMoves,  ET_BOOL, "-enableCoalesceScalarMoves", UNUSED, false)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte,          ET_BOOL, "-nosrc1byte",         UNUSED, false)

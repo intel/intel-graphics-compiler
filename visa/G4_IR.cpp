@@ -5815,6 +5815,7 @@ void G4_Declare::ElemInfo::reset(unsigned numElems, const IR_Builder& irb)
     numElemsPerRow = numRows > 1 ? irb.numEltPerGRF<Type_UB>() / getElemSize() : numElements;
 }
 
+
 void G4_Declare::resizeNumRows(unsigned int numrows)
 {
     unsigned byteSize = numrows * irb.numEltPerGRF<Type_UB>();

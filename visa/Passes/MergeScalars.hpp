@@ -20,7 +20,8 @@ namespace vISA {
     DO(UNKNOWN) \
     DO(IDENTICAL) \
     DO(CONTIGUOUS) \
-    DO(DISJOINT)
+    DO(DISJOINT) \
+    DO(PACKED)
 
 enum OPND_PATTERN
 {
