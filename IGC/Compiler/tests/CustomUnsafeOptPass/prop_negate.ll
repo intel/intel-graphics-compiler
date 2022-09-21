@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2017-2022 Intel Corporation
+; Copyright (C) 2022 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,15 +9,20 @@
 ; RUN: igc_opt -igc-custom-unsafe-opt-pass -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
-define void @sample_test(float %x, float %y, float addrspace(1)* nocapture %res) nounwind {
+; tests CustomUnsafeOptPass::visitBinaryOperatorPropNegate
+
+; -x + y = y -x
+define float @test1(float %x, float %y) #0 {
 entry:
-  %sub = fsub float %x, %x
-  store float %sub, float addrspace(1)* %res
-  ret void
+  %0 = fsub float 0.000000e+00, %x
+  %1 = fadd float %0, %y
+  ret float %1
 }
 
-; CHECK-NOT:     fsub float %x, %x
-; CHECK:         store float 0.000000e+00
+; CHECK-LABEL: define float @test1
+; CHECK-NOT: fadd
+; CHECK: %0 = fsub float %y, %x
+; CHECK: ret float %0
 
 !IGCMetadata = !{!0}
 
