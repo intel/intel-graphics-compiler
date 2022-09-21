@@ -431,9 +431,9 @@ uint32_t getMinPushConstantBufferAlignment() const
     return 8; // DWORDs
 }
 
-// Returns the default limit of pushed constant data in GRFs. This value limits
+// Returns the default limit of pushed constant data in 32-byte units. This value limits
 // the amount of constant buffer data promoted to registers.
-uint32_t getBlockPushConstantGRFThreshold() const
+uint32_t getBlockPushConstantThreshold() const
 {
     constexpr uint32_t defaultThreshold = 31;
     constexpr uint32_t gen9GT2Threshold = 15;

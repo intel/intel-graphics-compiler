@@ -980,10 +980,12 @@ namespace IGC
         {
             return;
         }
-        // push up to 31 GRFs of constants
+        // push up to 992 bytes of constants (31 32-byte units; this is
+        // the maximum value the read length in 3DSTATE_CONSTANT_ALL allows)
         // The maximum number of GRFs used for all pushed data is 96.
         const unsigned int cthreshold =
-            std::min(m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction), maxPushedGRFs - largestIndex) * getGRFSize();
+            std::min(m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * getMinPushConstantBufferAlignmentInBytes(),
+                     (maxPushedGRFs - largestIndex) * getGRFSize());
         unsigned int sizePushed = 0;
         m_entryBB = &m_pFunction->getEntryBlock();
 

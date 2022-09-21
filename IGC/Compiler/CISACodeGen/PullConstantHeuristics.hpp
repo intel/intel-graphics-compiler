@@ -40,23 +40,24 @@ namespace IGC
         bool runOnModule(llvm::Module& M) override;
         unsigned getPSDBottleNeckThreshold(const llvm::Function& F);
 
+        // This function returns the push constant threshold in 32-byte units.
         unsigned getPushConstantThreshold(llvm::Function* F)
         {
+            const CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
             if (thresholdMap.find(F) != thresholdMap.end())
             {
-                return thresholdMap[F];
+                return thresholdMap[F] * ctx->platform.getGRFSize() / (ctx->platform.getMinPushConstantBufferAlignment() * sizeof(DWORD));
             }
 
             const DWORD pushConstantGRFThreshold = IGC_GET_FLAG_VALUE(BlockPushConstantGRFThreshold);
             if (pushConstantGRFThreshold != 0xFFFFFFFF)
             {
-                return pushConstantGRFThreshold;
+                return pushConstantGRFThreshold * ctx->platform.getGRFSize() / (ctx->platform.getMinPushConstantBufferAlignment() * sizeof(DWORD));
             }
             else
             {
-                const CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
                 IGC_ASSERT_MESSAGE(ctx, "CodeGenContext not initialized.");
-                return ctx->platform.getBlockPushConstantGRFThreshold();
+                return ctx->platform.getBlockPushConstantThreshold();
             }
 
         }
