@@ -1874,6 +1874,10 @@ namespace IGC
                     // atoi(..) ignores leading white spaces and characters after the actual number
                     requiredEUThreadCount = atoi(op + strlen("-intel-reqd-eu-thread-count="));
                 }
+                if (strstr(options, "-intel-enable-auto-large-GRF-mode"))
+                {
+                    IntelEnableAutoLargeGRF = true;
+                }
             }
 
             bool CorrectlyRoundedSqrt;
@@ -1883,6 +1887,8 @@ namespace IGC
             bool IsLibraryCompilation = false;
             bool IntelRequiredEUThreadCount = false;
             uint32_t requiredEUThreadCount = 0;
+            // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
+            bool IntelEnableAutoLargeGRF = false;
         };
 
         // output: shader information
