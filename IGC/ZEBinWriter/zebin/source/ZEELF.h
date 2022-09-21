@@ -18,6 +18,9 @@ SPDX-License-Identifier: MIT
 
 #include <cstdint>
 
+#pragma warning(push)
+#pragma warning(disable : 4201)
+
 namespace zebin {
 
 // ELF machine architecture
@@ -99,5 +102,7 @@ struct TargetMetadata {
 static_assert(sizeof(TargetMetadata) == sizeof(uint32_t), "TargetMetadata should be packed");
 
 } // namespace zebin
+
+#pragma warning(pop)
 
 #endif // ZE_ELF_H
