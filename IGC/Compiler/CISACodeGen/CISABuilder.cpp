@@ -4495,7 +4495,8 @@ namespace IGC
                     SaveOption(vISA_HWThreadNumberPerEU, ClContext->getNumThreadsPerEU());
                 }
                 else if (m_program->m_Platform->supportsAutoGRFSelection() &&
-                    context->m_DriverInfo.supportsAutoGRFSelection() &&
+                    (context->m_DriverInfo.supportsAutoGRFSelection() ||
+                      ClContext->m_Options.IntelEnableAutoLargeGRF) &&
                     !IGC_IS_FLAG_ENABLED(DisableRegSharingHeuristics) &&
                     !ClContext->m_InternalOptions.Intel128GRFPerThread &&
                     !ClContext->m_InternalOptions.Intel256GRFPerThread)

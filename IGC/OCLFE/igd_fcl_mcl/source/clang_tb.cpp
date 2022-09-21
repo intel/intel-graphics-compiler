@@ -1351,11 +1351,9 @@ namespace TC
                             (strcmp(pParam, "-cl-intel-disable-a64WA") == 0) || //temporary options
                             (strcmp(pParam, "-ze-gtpin-rera") == 0) || //used by GTPin
                             (strcmp(pParam, "-ze-gtpin-grf-info") == 0) || //used by GTPin
-                            (strcmp(pParam, "-ze-gtpin-scratch-area-size") == 0);  //used by GTPin
-
-
-
-
+                            (strcmp(pParam, "-ze-gtpin-scratch-area-size") == 0) || //used by GTPin
+                            (strcmp(pParam, "-ze-opt-enable-auto-large-GRF-mode") == 0) ||
+                            (strcmp(pParam, "-cl-intel-enable-auto-large-GRF-mode") == 0);
 
                         if (isCommonOption)
                         {
