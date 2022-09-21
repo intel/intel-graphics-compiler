@@ -4699,14 +4699,18 @@ void G4_BB_SB::setSendOpndMayKilled(LiveGRFBuckets* globalSendsLB,
                 //Fix me, this is not right, for math instruction, less than 1 GRF may happen.
                 //Find DEP type
                 unsigned short internalOffset = 0;
+                DepType dep = getDepForOpnd(liveOpnd, curOpnd);
                 bool hasOverlap = curFootprint->hasOverlap(liveFootprint, internalOffset);
+                if (!hasOverlap && dep == RAW)
+                {
+                    hasOverlap = hasExtraOverlap(liveInst, curInst, liveFootprint, curFootprint, curOpnd, &builder);
+                }
+
                 if (!hasOverlap)
                 {
                     ++bn_it;
                     continue;
                 }
-
-                DepType dep = getDepForOpnd(liveOpnd, curOpnd);
 
                 //For SBID global liveness analysis, both explicit and implicit kill counted.
                 if (dep == RAW || dep == WAW)
@@ -5632,6 +5636,37 @@ bool G4_BB_SB::is2xDPBlockCandidate(G4_INST* inst, bool accDST)
     return true;
 }
 
+bool G4_BB_SB::hasExtraOverlap(G4_INST *liveInst, G4_INST* curInst,
+                               const SBFootprint* liveFootprint, const SBFootprint* curFootprint,
+                               const Gen4_Operand_Number curOpnd,
+                               IR_Builder* builder)
+{
+    //W/A for the read suppression caused issue
+    //1)(~f0.0.anyv) math.cos(2 | M0)      r23.7<2>:hf   r11.7<4; 2, 2> : hf{ $14 }
+    //2)             mul(8 | M0)               acc0.0<1>:ud  r35.3<8; 8, 0> : ud   r23.0<8; 4, 0> : uw   //With execution mask, only r23.0~r23.3 are read
+    //3)             mach(8 | M0)              r52.0<1>:ud   r35.3<8; 8, 0> : ud   r23.0<4; 4, 0> : ud{ $14.dst }
+    //FIXME, For performance, we need check the 3rd instruction as well
+
+    //W/A for src1 read suppression of all ALUG instructions on PVC:
+    //  Whenever there is GRF crossover for src1 (for src1, the read data is distributed over 2  GRFs), we need always set a
+    //  Read after Write (RAW)  dependency to any element in the 2 GRFs we are reading for src1  in the current instruction.
+    //      (W)     add (16|M0)     r7.14<1>:f    r61.14<1;1,0>:f   r9.14<1;1,0>:f
+    //      (W)     mad (16|M0)     r26.10<1>:f   r20.10<1;0>:f     r6.10<1;0>:f      r101.10<1>:f     {F@1}
+    if (((!builder->hasFixedCycleMathPipe() &&
+        liveInst->isMath() && !curInst->isMath() &&
+        builder->hasRSForSpecificPlatform() &&
+        (!hasSamePredicator(liveInst, curInst) || builder->hasMathRSIsuue())) ||
+        (builder->hasSrc1ReadSuppressionIssue() &&
+            distanceHonourInstruction(curInst) &&
+            curOpnd == Opnd_src1 && curInst->getSrc(1) && curInst->getSrc(1)->asSrcRegRegion() &&
+            curInst->getSrc(1)->asSrcRegRegion()->crossGRF(*builder)) ||
+        (builder->hasRMWReadSuppressionIssue() && (liveInst->isMathPipeInst()))))
+    {
+        return curFootprint->hasGRFGrainOverlap(liveFootprint);
+    }
+    return false;
+}
+
 void G4_BB_SB::SBDDD(G4_BB* bb,
     LiveGRFBuckets*& LB,
     LiveGRFBuckets*& globalSendsLB,
@@ -6089,29 +6124,9 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                 //Find DEP type
                 DepType dep = getDepForOpnd(liveOpnd, curOpnd);
 
-                //W/A for the read suppression caused issue
-                //1)(~f0.0.anyv) math.cos(2 | M0)      r23.7<2>:hf   r11.7<4; 2, 2> : hf{ $14 }
-                //2)             mul(8 | M0)               acc0.0<1>:ud  r35.3<8; 8, 0> : ud   r23.0<8; 4, 0> : uw   //With execution mask, only r23.0~r23.3 are read
-                //3)             mach(8 | M0)              r52.0<1>:ud   r35.3<8; 8, 0> : ud   r23.0<4; 4, 0> : ud{ $14.dst }
-                //FIXME, For performance, we need check the 3rd instruction as well
-
-                //W/A for src1 read suppression of all ALUG instructions on PVC:
-                //  Whenever there is GRF crossover for src1 (for src1, the read data is distributed over 2  GRFs), we need always set a
-                //  Read after Write (RAW)  dependency to any element in the 2 GRFs we are reading for src1  in the current instruction.
-                //      (W)     add (16|M0)     r7.14<1>:f    r61.14<1;1,0>:f   r9.14<1;1,0>:f
-                //      (W)     mad (16|M0)     r26.10<1>:f   r20.10<1;0>:f     r6.10<1;0>:f      r101.10<1>:f     {F@1}
-                if (!hasOverlap && dep == RAW &&
-                    ((!builder.hasFixedCycleMathPipe() &&
-                        liveInst->isMath() && !curInst->isMath() &&
-                        builder.hasRSForSpecificPlatform() &&
-                        (!hasSamePredicator(liveInst, curInst) || builder.hasMathRSIsuue())) ||
-                    (builder.hasSrc1ReadSuppressionIssue() &&
-                        distanceHonourInstruction(curInst) &&
-                        curOpnd == Opnd_src1 && curInst->getSrc(1) && curInst->getSrc(1)->asSrcRegRegion() &&
-                        curInst->getSrc(1)->asSrcRegRegion()->crossGRF(builder)) ||
-                        (builder.hasRMWReadSuppressionIssue() && (liveInst->isMathPipeInst()))))
+                if (!hasOverlap && dep == RAW)
                 {
-                    hasOverlap = curFootprint->hasGRFGrainOverlap(liveFootprint);
+                    hasOverlap = hasExtraOverlap(liveInst, curInst, liveFootprint, curFootprint, curOpnd, &builder);
                 }
 
                 if (!hasOverlap)
@@ -7047,6 +7062,10 @@ void SWSB::addGlobalDependence(unsigned globalSendNum, SBBUCKET_VECTOR* globalSe
 
                     //Find DEP type
                     DepType dep = getDepForOpnd(liveOpnd, curOpnd);
+                    if (!hasOverlap && dep == RAW)
+                    {
+                        hasOverlap = sb_bb->hasExtraOverlap(liveInst, curInst, liveFootprint, curFootprint, curOpnd, fg.builder);
+                    }
 
                     //RAW:                     R kill W    R-->live       explicit dependence
                     //WAW:                     W2 kill W1  W2-->live      explicit dependence
@@ -7422,6 +7441,10 @@ void SWSB::addGlobalDependenceWithReachingDef(unsigned globalSendNum, SBBUCKET_V
 
                     //Find DEP type
                     DepType dep = getDepForOpnd(liveOpnd, curOpnd);
+                    if (!hasOverlap && dep == RAW)
+                    {
+                        hasOverlap = BBVector[i]->hasExtraOverlap(liveInst, curInst, liveFootprint, curFootprint, curOpnd, fg.builder);
+                    }
 
                     //RAW:                     R kill W    R-->live       explicit dependence
                     //WAW:                     W2 kill W1  W2-->live      explicit dependence

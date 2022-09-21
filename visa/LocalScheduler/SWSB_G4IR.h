@@ -1726,6 +1726,7 @@ namespace vISA
         bool hasInternalDependence(SBNode* nodeFirst, SBNode* nodeNext);
 
         bool is2xDPBlockCandidate(G4_INST* inst, bool accDST);
+        bool hasExtraOverlap(G4_INST* liveInst, G4_INST* curInst, const SBFootprint* liveFootprint, const SBFootprint* curFootprint, const Gen4_Operand_Number curOpnd, IR_Builder* builder);
         //Local distance dependence analysis and assignment
         void SBDDD(G4_BB* bb,
             LiveGRFBuckets* &LB,
