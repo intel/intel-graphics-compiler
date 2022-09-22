@@ -106,97 +106,6 @@ char OpenCLPrintfResolution::ID = 0;
 // |      < vec_element_3 >       |
 // |------------------------------|
 
-// Looks for a GlobalVariable related with given value.
-// Returns nullptr if on the way to the global variable
-// found anything that is not :
-// * a CastInst
-// * a GEP with non-zero indices
-// * a SelectInst
-// * a PHINode
-// In case of select or phi instruction two operands are added to the vector.
-// In another case only one is added.
-inline SmallVector<Value*, 2> getGlobalVariable(Value* const v)
-{
-    SmallVector<Value *, 2> curr;
-    curr.push_back(v);
-
-    while (nullptr != curr.front() || nullptr != curr.back())
-    {
-        if (curr.size() == 1 && isa<GlobalVariable>(curr.front()))
-        {
-            break;
-        }
-        else if (curr.size() == 2 && (isa<GlobalVariable>(curr.front()) && isa<GlobalVariable>(curr.back())))
-        {
-            break;
-        }
-
-        if (CastInst* castInst = dyn_cast<CastInst>(curr.front()))
-        {
-            curr.pop_back();
-            curr.push_back(castInst->getOperand(0));
-        }
-        else if (GetElementPtrInst* getElemPtrInst = dyn_cast<GetElementPtrInst>(curr.front()))
-        {
-            if (curr.size() == 2)
-            {
-                if (GetElementPtrInst* getElemPtrInst2 = dyn_cast<GetElementPtrInst>(curr.back()))
-                {
-                    curr.pop_back();
-                    curr.pop_back();
-                    curr.push_back(getElemPtrInst->hasAllZeroIndices() ? getElemPtrInst->getPointerOperand() : nullptr);
-                    curr.push_back(getElemPtrInst2->hasAllZeroIndices() ? getElemPtrInst2->getPointerOperand() : nullptr);
-                }
-            }
-            else
-            {
-                curr.pop_back();
-                curr.push_back(getElemPtrInst->hasAllZeroIndices() ? getElemPtrInst->getPointerOperand() : nullptr);
-            }
-        }
-        else if (SelectInst* selectInst = dyn_cast<SelectInst>(curr.front()))
-        {
-            if (curr.size() == 2)
-            {
-                //  Nested select instruction is not supported
-                curr.front() = nullptr;
-                curr.back() = nullptr;
-            }
-            else
-            {
-                curr.pop_back();
-                curr.push_back(selectInst->getOperand(1));
-                curr.push_back(selectInst->getOperand(2));
-            }
-        }
-        else if (PHINode* phiNode = dyn_cast<PHINode>(curr.front()))
-        {
-            if (curr.size() == 2)
-            {
-                //  Nested phi instruction is not supported
-                curr.front() = nullptr;
-                curr.back() = nullptr;
-            }
-            else
-            {
-                curr.pop_back();
-                curr.push_back(phiNode->getOperand(0));
-                curr.push_back(phiNode->getOperand(1));
-            }
-        }
-        else
-        {
-            // Unhandled value type
-            curr.front() = nullptr;
-            if (curr.size() == 2)
-            {
-                curr.back() = nullptr;
-            }
-        }
-    }
-    return curr;
-}
-
 OpenCLPrintfResolution::OpenCLPrintfResolution() : FunctionPass(ID), m_atomicAddFunc(nullptr)
 {
     initializeOpenCLPrintfResolutionPass(*PassRegistry::getPassRegistry());
@@ -316,24 +225,29 @@ std::string OpenCLPrintfResolution::getEscapedString(const ConstantDataSequentia
     return Name;
 }
 
-Value* OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F)
+Value* OpenCLPrintfResolution::processPrintfString(Value* arg, Function& F)
 {
-    GlobalVariable* formatString = nullptr;
-    SmallVector<Value*, 2> curr = getGlobalVariable(printfArg);
-    SmallVector<unsigned int, 2> sv;
-    for (auto curr_i : curr)
+    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
     {
-        auto& curr_e = *curr_i;
+        return arg;
+    }
 
-        formatString = dyn_cast_or_null<GlobalVariable>(&curr_e);
-        ConstantDataArray* formatStringConst = ((nullptr != formatString) && (formatString->hasInitializer())) ?
-            dyn_cast<ConstantDataArray>(formatString->getInitializer()) :
-            nullptr;
+    GlobalVariable* formatString = nullptr;
 
-        if (nullptr == formatStringConst)
+    if (isa<GlobalVariable>(arg))
+    {
+        formatString = dyn_cast_or_null<GlobalVariable>(arg);
+        if ((nullptr == formatString) || !formatString->hasInitializer())
         {
             IGC_ASSERT_MESSAGE(0, "Unexpected printf argument (expected string literal)");
-            return 0;
+            return ConstantInt::get(m_int32Type, -1);
+        }
+        ConstantDataArray* formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
+        std::string escaped_string = getEscapedString(formatStringConst);
+
+        // preventing MD enries duplication
+        if (m_MapStringStringIndex.find(escaped_string) != m_MapStringStringIndex.end()) {
+            return ConstantInt::get(m_int32Type, m_MapStringStringIndex[escaped_string]);
         }
 
         if (m_CGContext->type == ShaderType::RAYTRACING_SHADER)
@@ -350,9 +264,6 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F
         Metadata* stringIndexVal = ConstantAsMetadata::get(
             ConstantInt::get(m_int32Type, m_stringIndex));
 
-        sv.push_back(m_stringIndex++);
-
-        std::string escaped_string = getEscapedString(formatStringConst);
         MDString* final_string = MDString::get(*m_context, escaped_string);
 
         args.push_back(stringIndexVal);
@@ -360,56 +271,58 @@ Value* OpenCLPrintfResolution::processPrintfString(Value* printfArg, Function& F
 
         MDNode* itemMDNode = MDNode::get(*m_context, args);
         namedMDNode->addOperand(itemMDNode);
-    }
 
-    // Checks if the vector have two elements.
-    // If it has it adds a new phi/select instruction that is responsible
-    // for the correct execution of the basic instruction.
-    // This information is forwarded to the store instruction.
-    if (curr.size() == 2)
-    {
-        if (GetElementPtrInst* getElemPtrInst = dyn_cast<GetElementPtrInst>(printfArg))
-        {
-            if (PHINode* phiNode = dyn_cast<PHINode>(getElemPtrInst->getPointerOperand()))
-            {
-                PHINode* phiNode2 = PHINode::Create(m_int32Type, 2, "", phiNode);
-                phiNode2->addIncoming(ConstantInt::get(m_int32Type, sv.front()), phiNode->getIncomingBlock(0));
-                phiNode2->addIncoming(ConstantInt::get(m_int32Type, sv.back()), phiNode->getIncomingBlock(1));
-                return phiNode2;
-            }
-        }
-        else if (SelectInst* selectInst = dyn_cast<SelectInst>(printfArg))
-        {
-            SelectInst* selectInst2 = SelectInst::Create(selectInst->getOperand(0), ConstantInt::get(m_int32Type, sv.front()),
-                ConstantInt::get(m_int32Type, sv.back()), "", selectInst);
-            return selectInst2;
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(0, "Instructions in the vector are not supported!");
-        }
-    }
+        m_MapStringStringIndex[escaped_string] = m_stringIndex;
 
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        return ConstantInt::get(m_int32Type, m_stringIndex++);
+    }
+    else if (CastInst* castInst = dyn_cast<CastInst>(arg))
     {
-        return printfArg;
+        return processPrintfString(castInst->getOperand(0), F);
+    }
+    else if (GetElementPtrInst* getElemPtrInst = dyn_cast<GetElementPtrInst>(arg))
+    {
+        IGC_ASSERT_MESSAGE(getElemPtrInst->hasAllZeroIndices(), "Only All Zero indices GEP supported");
+        return processPrintfString(getElemPtrInst->getPointerOperand(), F);
+    }
+    else if (SelectInst* selectInst = dyn_cast<SelectInst>(arg))
+    {
+        SelectInst* selectInst2 = SelectInst::Create(selectInst->getOperand(0),
+            processPrintfString(selectInst->getOperand(1), F),
+            processPrintfString(selectInst->getOperand(2), F),
+            "", selectInst);
+        return selectInst2;
+    }
+    else if (PHINode* phiNode = dyn_cast<PHINode>(arg))
+    {
+        unsigned inNum = phiNode->getNumIncomingValues();
+        PHINode* phiNode2 = PHINode::Create(m_int32Type, inNum, "", phiNode);
+        for (unsigned i = 0; i < inNum; i++)
+        {
+            phiNode2->addIncoming(processPrintfString(phiNode->getIncomingValue(i), F), phiNode->getIncomingBlock(i));
+        }
+        return phiNode2;
     }
     else
     {
-        return ConstantInt::get(m_int32Type, m_stringIndex - 1);
+        IGC_ASSERT_MESSAGE(0, "Unsupported Instruction!");
     }
+
+    return ConstantInt::get(m_int32Type, -1);
 }
 
-
-bool OpenCLPrintfResolution::argIsString(Value* printfArg)
+// Checks pathes to global variables and returns true if all paths lead to constant strings.
+// Only these instructions acepted in pathes:
+// * a CastInst
+// * a GEP with all-zero indices
+// * a SelectInst
+// * a PHINode
+// It is expected that the paths are not looped.
+bool OpenCLPrintfResolution::argIsString(Value* arg)
 {
-    GlobalVariable* formatString = nullptr;
-    SmallVector<Value*, 2> curr = getGlobalVariable(printfArg);
-
-    for (auto curr_i : curr)
+    if (isa<GlobalVariable>(arg))
     {
-        auto& curr_e = *curr_i;
-        formatString = dyn_cast_or_null<GlobalVariable>(&curr_e);
+        GlobalVariable* formatString = dyn_cast_or_null<GlobalVariable>(arg);
         if (nullptr == formatString || !formatString->hasInitializer())
         {
             return false;
@@ -417,10 +330,33 @@ bool OpenCLPrintfResolution::argIsString(Value* printfArg)
         ConstantDataArray* formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
         if (!formatStringConst || !formatStringConst->isCString())
         {
-            return false;
+             return false;
         }
+        return true;
     }
-    return true;
+    else if (CastInst* castInst = dyn_cast<CastInst>(arg))
+    {
+        return argIsString(castInst->getOperand(0));
+    }
+    if (GetElementPtrInst* getElemPtrInst = dyn_cast<GetElementPtrInst>(arg))
+    {
+        return getElemPtrInst->hasAllZeroIndices() && argIsString(getElemPtrInst->getPointerOperand());
+    }
+    else if (SelectInst* selectInst = dyn_cast<SelectInst>(arg))
+    {
+        return argIsString(selectInst->getOperand(1)) &&
+            argIsString(selectInst->getOperand(2));
+    }
+    else if (PHINode* phiNode = dyn_cast<PHINode>(arg))
+    {
+        for (unsigned i = 0; i < phiNode->getNumIncomingValues(); i++)
+        {
+            if (!argIsString(phiNode->getIncomingValue(i)))
+                return false;
+        }
+        return true;
+    }
+    return false;
 }
 
 std::string OpenCLPrintfResolution::getPrintfStringsMDNodeName(Function& F)
