@@ -3975,7 +3975,6 @@ namespace IGC
         case ShaderType::COMPUTE_SHADER:
             if (canAbortOnSpill && AvoidRetryOnSmallSpill())
             {
-                // Currently, this section is met only if m_ForceOneSIMD is true
                 if (m_program->m_dispatchSize == SIMDMode::SIMD16)
                     SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 4);
                 else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
