@@ -1600,10 +1600,11 @@ static std::string printInstructionSampler(
             sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
             sstr << printOperand(header, inst, i++, opt);
-
-            // surface
-            uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << " " << printSurfaceName(surface);
+            {
+                // surface
+                uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
+                sstr << " " << printSurfaceName(surface);
+            }
 
             // dst
             sstr << printOperand(header, inst, i++, opt);

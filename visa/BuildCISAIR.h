@@ -595,7 +595,6 @@ public:
         unsigned int numParameters,
         VISA_RawOpnd** params,
         int lineNum);
-
     bool create3DSampleInstruction(
         VISA_opnd* pred,
         VISASampler3DSubOpCode subOpcode,

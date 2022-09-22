@@ -1324,8 +1324,10 @@ CPSEnableOpt: %empty {$$ = false;} | CPS  {$$ = true;}
 
 NonUniformSamplerEnableOpt: %empty {$$ = false;} | NON_UNIFORM_SAMPLER {$$ = true;}
 
+Load3dInstruction: Load3DInstruction
+
            //      1         2          3                      4               5        6                     7   8
-Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var RawOperand
+Load3DInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM Var RawOperand
            //      9
                    RawOperandArray
    {
@@ -1336,6 +1338,7 @@ Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL E
 
     ABORT_ON_FAIL(success);
    }
+
 
 Gather43dInstruction: Gather43DInstruction
 
