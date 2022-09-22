@@ -197,7 +197,7 @@ namespace {
         bool visitResume(ResumeInst&) { return false; }
         bool visitUnreachable(UnreachableInst&) { return false; }
 #if LLVM_VERSION_MAJOR >= 10
-        bool visitFreeze(FreezeInst&) { return false; }
+        bool visitFreeze(FreezeInst&);
 #endif
 
         bool visitAdd(BinaryOperator&);
@@ -697,6 +697,27 @@ bool InstExpander::visitRet(ReturnInst& RI) {
     }
     return false;
 }
+
+#if LLVM_VERSION_MAJOR >= 10
+bool InstExpander::visitFreeze(FreezeInst& FI) {
+    IGC_ASSERT(nullptr != Emu);
+    // Skip if it's not 64-bit integer.
+    if (!Emu->isInt64(&FI))
+        return false;
+
+    Value* Src = FI.getOperand(0);
+    IGC_ASSERT(nullptr != Src);
+
+    Value* Lo = nullptr, * Hi = nullptr;
+    std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
+
+    Value* newLo = IRB->CreateFreeze(Lo);
+    Value* newHi = IRB->CreateFreeze(Hi);
+
+    Emu->setExpandedValues(&FI, newLo, newHi);
+    return true;
+}
+#endif
 
 bool InstExpander::visitAdd(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
