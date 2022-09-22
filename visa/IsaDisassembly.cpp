@@ -1448,14 +1448,22 @@ static std::string printInstructionMisc(
 // Bit   5: pixelNullMask
 // Bit   6: cpsEnable
 //
-static VISA3DSamplerOp getSubOpcodeByte(
-    const CISA_INST* inst, unsigned i)
+static VISA3DSamplerOp getSamplerSubOpcode(
+    const common_isa_header& isaHeader, const CISA_INST* inst, unsigned i)
 {
-    uint8_t val = getPrimitiveOperand<uint8_t>(inst, i);
+    // The vISA version that widens the opcode field is 4
+    // the below check is necessary to pick the correct
+    // width during decoding based on input binary version
+    const int WIDE_OPCODE_ISA_VER = 4;
+
+    auto val = ((int)(isaHeader.major_version) >= WIDE_OPCODE_ISA_VER) ?
+        getPrimitiveOperand<uint16_t>(inst, i) :
+        getPrimitiveOperand<uint8_t>(inst, i);
     return VISA3DSamplerOp::extractSamplerOp(val);
 }
 
 static std::string printInstructionSampler(
+    const common_isa_header& isaHeader,
     const print_format_provider_t* header,
     const CISA_INST* inst,
     const Options *opt)
@@ -1526,7 +1534,7 @@ static std::string printInstructionSampler(
             // [(P)] SAMPLE_3d[.pixel_null_mask][.cps][.divS].<channels> (exec_size)
             //   [(u_aoffimmi, v_aoffimii, r_aoffimmi)] <sampler> <surface>
             //   <dst> <u> <v> <r> <ai>
-            auto subop = getSubOpcodeByte(inst, i++);
+            auto subop = getSamplerSubOpcode(isaHeader, inst, i++);
 
             TARGET_PLATFORM platform =
                 static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
@@ -1579,7 +1587,7 @@ static std::string printInstructionSampler(
         }
         case ISA_3D_LOAD:
         {
-            auto subop = getSubOpcodeByte(inst, i++);
+            auto subop = getSamplerSubOpcode(isaHeader, inst, i++);
 
             TARGET_PLATFORM platform =
                 static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
@@ -1621,7 +1629,7 @@ static std::string printInstructionSampler(
         }
         case ISA_3D_GATHER4:
         {
-            auto subop = getSubOpcodeByte(inst, i++);
+            auto subop = getSamplerSubOpcode(isaHeader, inst, i++);
 
             TARGET_PLATFORM platform =
                 static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
@@ -3310,6 +3318,7 @@ std::string printBuildVersion(const common_isa_header& isaHeader)
 }
 
 std::string printInstruction(
+    const common_isa_header& isaHeader,
     const print_format_provider_t* header,
     const CISA_INST* instruction,
     const Options *opt)
@@ -3335,7 +3344,7 @@ std::string printInstruction(
             case ISA_Inst_SVM:       sstr << printInstructionSVM         (header, instruction, opt); break;
             case ISA_Inst_Flow:      sstr << printInstructionControlFlow (header, instruction, opt); break;
             case ISA_Inst_Misc:      sstr << printInstructionMisc        (header, instruction, opt); break;
-            case ISA_Inst_Sampler:   sstr << printInstructionSampler     (header, instruction, opt); break;
+            case ISA_Inst_Sampler:   sstr << printInstructionSampler     (isaHeader, header, instruction, opt); break;
             case ISA_Inst_Data_Port: sstr << printInstructionDataport    (header, instruction, opt); break;
             case ISA_Inst_LSC:       sstr << printInstructionLsc         (opcode, header, instruction, opt); break;
             default:

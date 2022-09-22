@@ -464,7 +464,7 @@ std::string CisaBinary::isaDump(const VISAKernelImpl* kernel,
     {
         CisaFramework::CisaInst * cisa_inst = *inst_iter;
         const CISA_INST * inst = cisa_inst->getCISAInst();
-        sstr << printInstruction(&fmt, inst, kernel->getOptions()) << "\n";
+        sstr << printInstruction(m_header, &fmt, inst, kernel->getOptions()) << "\n";
     }
 
     return sstr.str();

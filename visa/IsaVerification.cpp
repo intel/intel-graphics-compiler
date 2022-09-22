@@ -191,7 +191,7 @@ static std::string createIsaError(
         sstr << std::setw(33) << "Diagnostics:\n";
         sstr << std::setw(33) << " Instruction variables' decls: ";
         sstr << diagDumpInstructionOperandDecls(isaHeader, header, inst, opt) << "\n";
-        sstr << std::setw(33) << " Violating Instruction: "  << printInstruction(header, inst, opt) << "\n";
+        sstr << std::setw(33) << " Violating Instruction: "  << printInstruction(isaHeader, header, inst, opt) << "\n";
     }
 
     sstr << "\\----------------------------------------------------------------------------------------------------------------------/\n";
@@ -661,7 +661,7 @@ void vISAVerifier::verifyRegion(
                             i << " * " << v_stride_val <<") + (" << j <<" * " << h_stride_val << ")) * " << VN_size <<
                             ") < " << VN_size << " * " << num_elements << "\n";
                         std::cout << "Violating Instruction: " <<
-                            printInstruction(header, inst, options) << "\n";
+                            printInstruction(isaHeader, header, inst, options) << "\n";
 #endif // DLL_MODE
                     }
                 }
@@ -3881,7 +3881,7 @@ void vISAVerifier::verifyInstructionLsc(const CISA_INST *inst)
     verifier.verify();
     if (verifier.errorStream.tellp() > 0) {
         std::stringstream ss;
-        ss << "in instruction " << printInstruction(header, inst, options) << "\n";
+        ss << "in instruction " << printInstruction(isaHeader, header, inst, options) << "\n";
         ss << verifier.errorStream.str();
         error_list.push_back(ss.str());
     }

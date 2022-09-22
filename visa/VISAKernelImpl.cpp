@@ -8633,7 +8633,7 @@ void VISAKernelImpl::addInstructionToEnd(CisaInst * inst)
     {
         // Print instructions
         VISAKernel_format_provider fmt(this);
-        m_CISABuilder->m_ssIsaAsm << printInstruction(&fmt, inst->getCISAInst(), getOptions()) << "\n";
+        m_CISABuilder->m_ssIsaAsm << printInstruction(m_CISABuilder->m_header, &fmt, inst->getCISAInst(), getOptions()) << "\n";
     }
 }
 

@@ -24,6 +24,7 @@ const char* getGenVarName(int id, const print_format_provider_t& header);
 ///   returns a string contraining the instruction's isaasm.
 ///
 std::string printInstruction(
+    const common_isa_header& isaHeader,
     const print_format_provider_t* header,
     const CISA_INST* instruction,
     const Options *opt);
