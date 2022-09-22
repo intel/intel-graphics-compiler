@@ -2513,6 +2513,10 @@ IGC_INITIALIZE_PASS_END(GenSpecificPattern, PASS_FLAG2, PASS_DESCRIPTION2, PASS_
 
 char GenSpecificPattern::ID = 0;
 
+// m_Add is able to match add and equivalent sub instructions.
+// This predicate is useful for patterns where only add should be matched:
+bool isActualAddInstr(const Instruction* inst) { return inst && inst->getOpcode() == Instruction::Add; }
+
 GenSpecificPattern::GenSpecificPattern() : FunctionPass(ID)
 {
     initializeGenSpecificPatternPass(*PassRegistry::getPassRegistry());
@@ -2748,6 +2752,25 @@ void GenSpecificPattern::createBitcastExtractInsertPattern(BinaryOperator& I, Va
     vec = builder.CreateBitCast(vec, builder.getInt64Ty());
     I.replaceAllUsesWith(vec);
     I.eraseFromParent();
+}
+
+void GenSpecificPattern::createAddcIntrinsicPattern(Instruction& ZEI, Value* val1, Value* val2, Value* val3, Instruction& addInst)
+{
+    IRBuilder<> Builder(&addInst);
+
+    SmallVector<Value*, 2> packed_res_params;
+    packed_res_params.push_back(val1);
+    packed_res_params.push_back(val2);
+    Type* types[] = { IGCLLVM::FixedVectorType::get(val3->getType(), 2), val3->getType() };
+    Function* addcIntrinsic = llvm::GenISAIntrinsic::getDeclaration(ZEI.getModule(), GenISAIntrinsic::GenISA_uaddc, types);
+    Value* newVal = Builder.CreateCall(addcIntrinsic, packed_res_params);
+    CallInst* packed_res_call = cast<CallInst>(newVal);
+
+    Value* result = Builder.CreateExtractElement(packed_res_call, Builder.getInt32(0));
+    Value* carryFlag = Builder.CreateExtractElement(packed_res_call, Builder.getInt32(1));
+
+    ZEI.replaceAllUsesWith(carryFlag);
+    addInst.replaceAllUsesWith(result);
 }
 
 void GenSpecificPattern::visitAdd(BinaryOperator& I) {
@@ -3560,8 +3583,69 @@ void GenSpecificPattern::visitZExtInst(ZExtInst& ZEI)
     if (!Cmp)
         return;
 
-    IRBuilder<> Builder(&ZEI);
+    using namespace llvm::PatternMatch;
+    CmpInst::Predicate pred;
+    Instruction* I1 = nullptr;
+    Instruction* I2 = nullptr;
+    Instruction* I3 = nullptr;
+    ConstantInt* C1, *C2;
 
+    /*
+    * from
+    *   %add = add i32 %0, 1
+    *   %cmp = icmp eq i32 %0, -1
+    *   %conv = zext i1 %cmp to i32
+    * to
+    *   %call = call <2 x i32> @llvm.genx.GenISA.uaddc.v2i32.i32(i32 %0, i32 1)
+    *   %zext.0 = extractelement <2 x i32> %call, i32 0     --> result
+    *   %zext.1 = extractelement <2 x i32> %call, i32 1     --> carry
+    */
+    auto addcPattern1 = m_Cmp(pred, m_Instruction(I1), m_ConstantInt(C2));
+    auto addcPattern2 = m_Add(m_Instruction(I2), m_ConstantInt(C1));
+
+    /*
+    * from
+    *   %add.1 = add i32 %1, %conv
+    *   %cmp.1 = icmp ult i32 %add.1, %1
+    *   %conv.1 = zext i1 %cmp.1 to i32
+    * to
+    *   %call.1 = call <2 x i32> @llvm.genx.GenISA.uaddc.v2i32.i32(i32 %1, i32 %zext.1)
+    *   %zext.2 = extractelement <2 x i32> %call.1, i32 0     --> result
+    *   %zext.3 = extractelement <2 x i32> %call.1, i32 1     --> carry
+    */
+    auto addcPattern3 = m_Cmp(pred, m_Add(m_Instruction(I1), m_Instruction(I2)), m_Instruction(I3));
+
+    if (match(Cmp, addcPattern1) && pred == CmpInst::Predicate::ICMP_EQ && C2->isMinusOne())
+    {
+        for (auto U : I1->users())
+        {
+            Instruction* inst = dyn_cast<Instruction>(U);
+            if (isActualAddInstr(inst) &&
+                match(inst, addcPattern2) &&
+                I1 == I2 &&
+                ZEI.getType() == I2->getType() &&
+                I2->getType()->isIntegerTy(32))
+            {
+                createAddcIntrinsicPattern(ZEI, I1, C1, I2, *inst);
+                return;
+            }
+        }
+    }
+    else if (match(Cmp, addcPattern3) &&
+             pred == CmpInst::Predicate::ICMP_ULT &&
+             (I1 == I3 || I2 == I3) &&
+             ZEI.getType() == I3->getType() &&
+             I3->getType()->isIntegerTy(32))
+    {
+        Instruction* inst = dyn_cast<Instruction>(Cmp->getOperand(0));
+        if (isActualAddInstr(inst))
+        {
+            createAddcIntrinsicPattern(ZEI, I1, I2, I3, *inst);
+            return;
+        }
+    }
+
+    IRBuilder<> Builder(&ZEI);
     Value* S = Builder.CreateSExt(Cmp, ZEI.getType());
     Value* N = Builder.CreateNeg(S);
     ZEI.replaceAllUsesWith(N);
