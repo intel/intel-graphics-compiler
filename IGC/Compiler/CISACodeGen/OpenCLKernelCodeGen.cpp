@@ -584,6 +584,8 @@ namespace IGC
 
     bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition)
     {
+#ifndef DX_ONLY_IGC
+#ifndef VK_ONLY_IGC
         switch (kernelArg->getArgType()) {
 
         case KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER:{
@@ -996,7 +998,8 @@ namespace IGC
         default:
             return false;
         } // end switch (kernelArg->getArgType())
-
+#endif // ifndef VK_ONLY_IGC
+#endif // ifndef DX_ONLY_IGC
         return true;
     }
 
