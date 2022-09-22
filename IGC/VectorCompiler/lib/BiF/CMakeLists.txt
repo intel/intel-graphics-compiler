@@ -225,6 +225,8 @@ set(PRINTF_NOT_CM_COMMON_H_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_not_cm_common
 set(PRINTF_OCL_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ocl_genx.cpp)
 set(PRINTF_ZE_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/printf_ze_genx.cpp)
 set(EMU_DIVREM_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/emulation_divrem.cpp)
+set(EMU_FDIV_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/emulation_fdiv.cpp)
+set(EMU_FSQRT_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/emulation_fsqrt.cpp)
 set(FP2UI_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/fp2ui_conversion.cpp)
 set(SPIRV_MATH_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_math_builtins_genx.cpp)
 set(SPIRV_ATOMIC_BUILTINS_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/spirv_atomic_builtins_genx.cpp)
@@ -240,8 +242,10 @@ vc_embed_bif(PRINTF_ZE_64_CPP_PATH ${PRINTF_ZE_SRC_PATH} VCBiFPrintfZE 64
              DEPENDS ${PRINTF_NOT_CM_COMMON_H_PATH})
 
 get_target_property(DIVREM_EXTRA_SOURCES VCEmuDivremBoilerplate SOURCES)
-vc_embed_emulation_bif(EMULATION_CPP_PATH "${FP2UI_SRC_PATH};${EMU_DIVREM_SRC_PATH}" VCEmulation 64
-    DEPENDS "${DIVREM_EXTRA_SOURCES}")
+get_target_property(FDIV_EXTRA_SOURCES VCEmuFDivBoilerplate SOURCES)
+get_target_property(FSQRT_EXTRA_SOURCES VCEmuFSqrtBoilerplate SOURCES)
+vc_embed_emulation_bif(EMULATION_CPP_PATH "${FP2UI_SRC_PATH};${EMU_DIVREM_SRC_PATH};${EMU_FDIV_SRC_PATH};${EMU_FSQRT_SRC_PATH}" VCEmulation 64
+    DEPENDS "${DIVREM_EXTRA_SOURCES}" "${FDIV_EXTRA_SOURCES}" "${FSQRT_EXTRA_SOURCES}")
 
 #Define the macro if Khronos SPIR-V translator is used.
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
@@ -265,6 +269,8 @@ add_custom_target(VCBiFPreparation
           ${SPIRV_BUILTINS_CPP_PATH}
   SOURCES ${PRINTF_OCL_SRC_PATH}
           ${EMU_DIVREM_SRC_PATH}
+          ${EMU_FDIV_SRC_PATH}
+          ${EMU_FSQRT_SRC_PATH}
           ${SPIRV_MATH_BUILTINS_SRC_PATH}
           ${SPIRV_EXEC_BUILTINS_SRC_PATH}
           ${SPIRV_ATOMIC_BUILTINS_SRC_PATH})

@@ -63,6 +63,14 @@ static constexpr const char *EmuLibFP2UIPrefix = "__cm_intrinsic_impl_fp2ui";
 static constexpr const char *EmuLibFP2SIPrefix = "__cm_intrinsic_impl_fp2si";
 static constexpr const char *EmuLibUI2FPPrefix = "__cm_intrinsic_impl_ui2fp";
 static constexpr const char *EmuLibSI2FPPrefix = "__cm_intrinsic_impl_si2fp";
+static constexpr const char *EmuLibFDivIEEEPrefix =
+    "__cm_intrinsic_impl_fdiv__ieee";
+static constexpr const char *EmuLibFDivFastPrefix =
+    "__cm_intrinsic_impl_fdiv__fast";
+static constexpr const char *EmuLibFSqrtIEEEPrefix =
+    "__cm_intrinsic_impl_fsqrt__ieee";
+static constexpr const char *EmuLibFSqrtFastPrefix =
+    "__cm_intrinsic_impl_fsqrt__fast";
 
 struct PrefixOpcode {
   const char *Prefix;
@@ -79,6 +87,13 @@ constexpr std::array<PrefixOpcode, 4> EmulationFPConvertsPrefixes = {
      {EmuLibFP2SIPrefix, Instruction::FPToSI},
      {EmuLibUI2FPPrefix, Instruction::UIToFP},
      {EmuLibSI2FPPrefix, Instruction::SIToFP}}};
+
+constexpr std::array<PrefixOpcode, 4> EmulationFDivFSqrtPrefixes = {{
+    {EmuLibFDivIEEEPrefix, BinaryOperator::FDiv},
+    {EmuLibFDivFastPrefix, BinaryOperator::FDiv},
+    {EmuLibFSqrtIEEEPrefix, 0}, // sqrt intrinsic call
+    {EmuLibFSqrtFastPrefix, 0},
+}};
 
 static constexpr const char *RoundingRtzSuffix = "__rtz_";
 static constexpr const char *RoundingRteSuffix = "__rte_";
@@ -411,6 +426,126 @@ class GenXEmulate : public ModulePass {
       return Result;
     }
   };
+
+  class EmuFDivFSqrtExpander
+      : public InstVisitor<EmuFDivFSqrtExpander, Value *> {
+    friend InstVisitor<EmuFDivFSqrtExpander, Value *>;
+
+    const GenXSubtarget &ST;
+    Instruction &Inst;
+
+    IRBuilder getIRBuilder() {
+      return IRBuilder(Inst.getParent(), BasicBlock::iterator(&Inst),
+                       TargetFolder(Inst.getModule()->getDataLayout()));
+    }
+
+    static std::string getFunctionName(const std::string &Prefix,
+                                       const Instruction &Inst) {
+      std::string FuncName = Prefix;
+      auto *Ty = Inst.getType();
+
+      if (Ty->isVectorTy()) {
+        auto *VTy = cast<IGCLLVM::FixedVectorType>(Ty);
+        FuncName += "__v";
+        FuncName += std::to_string(VTy->getNumElements());
+      }
+
+      FuncName += "__";
+      if (Inst.hasNoNaNs())
+        FuncName += "nnan";
+
+      FuncName += "__";
+      if (Inst.hasNoInfs())
+        FuncName += "ninf";
+
+      FuncName += "__";
+      if (Inst.hasNoSignedZeros())
+        FuncName += "nsz";
+
+      return FuncName;
+    }
+
+    Value *emulateFDiv(Instruction &Op, bool IsFast) {
+      std::string FuncName = getFunctionName(
+          IsFast ? EmuLibFDivFastPrefix : EmuLibFDivIEEEPrefix, Op);
+
+      auto *M = Op.getModule();
+      auto *Func = M->getFunction(FuncName);
+
+      auto Builder = getIRBuilder();
+
+      SmallVector<Value *, 2> Args = {Op.getOperand(0), Op.getOperand(1)};
+      auto *Call = Builder.CreateCall(Func, Args, Op.getName() + ".emu");
+
+      return Call;
+    }
+
+    Value *visitFDiv(BinaryOperator &Op) {
+      return emulateFDiv(Op, Op.hasAllowReciprocal());
+    }
+    Value *visitCallInst(CallInst &CI) {
+      bool IsFast = false;
+
+      switch (vc::getAnyIntrinsicID(&CI)) {
+      default:
+        return nullptr;
+      case Intrinsic::sqrt:
+        IsFast = CI.hasApproxFunc();
+        break;
+      case GenXIntrinsic::genx_sqrt:
+        IsFast = true;
+        LLVM_FALLTHROUGH;
+      case GenXIntrinsic::genx_ieee_sqrt:
+        break;
+      case GenXIntrinsic::genx_ieee_div:
+        return emulateFDiv(CI, IsFast);
+      }
+
+      std::string FuncName = getFunctionName(
+          IsFast ? EmuLibFSqrtFastPrefix : EmuLibFSqrtIEEEPrefix, CI);
+
+      auto *M = CI.getModule();
+      auto *Func = M->getFunction(FuncName);
+
+      auto Builder = getIRBuilder();
+      auto *Call =
+          Builder.CreateCall(Func, {CI.getOperand(0)}, CI.getName() + ".emu");
+
+      return Call;
+    }
+    Value *visitInstruction(Instruction &I) { return nullptr; }
+
+  public:
+    EmuFDivFSqrtExpander(const GenXSubtarget &ST, Instruction &I)
+        : ST(ST), Inst(I) {}
+
+    Value *tryExpand() {
+      if (!ST.emulateFDivFSqrt64())
+        return nullptr;
+
+      auto *Ty = Inst.getType();
+      Type *ElementTy = Ty;
+
+      if (Ty->isVectorTy()) {
+        auto VTy = cast<IGCLLVM::FixedVectorType>(Ty);
+        ElementTy = VTy->getElementType();
+      }
+
+      if (!ElementTy->isDoubleTy())
+        return nullptr;
+
+      LLVM_DEBUG(dbgs() << "fdiv-fsqrt-emu: trying " << Inst << "\n");
+
+      auto *Result = visit(Inst);
+
+      if (Result)
+        LLVM_DEBUG(dbgs() << "fdiv-fsqrt-emu: replaced with " << *Result
+                          << "\n");
+
+      return Result;
+    }
+  };
+
 public:
   static char ID;
   explicit GenXEmulate() : ModulePass(ID) {}
@@ -1794,6 +1929,11 @@ Value *GenXEmulate::emulateInst(Instruction *Inst) {
     return Builder.CreateCall(EmuFn, Args);
   }
   IGC_ASSERT(ST);
+  if (ST->emulateFDivFSqrt64()) {
+    auto *NewInst = EmuFDivFSqrtExpander(*ST, *Inst).tryExpand();
+    if (NewInst)
+      return NewInst;
+  }
   if (ST->emulateLongLong()) {
     Value *NewInst = Emu64Expander(*ST, *Inst, &EmulationFuns).tryExpand();
     if (!NewInst) {
@@ -1983,10 +2123,27 @@ private:
     processToEraseList(ToErase);
   }
 
+  static void PurgeFDivFSqrt64Functions(Module &M) {
+    auto ToErase = selectEmulationFunctions(M, [](Function &F) {
+      if (std::any_of(EmulationFDivFSqrtPrefixes.begin(),
+                      EmulationFDivFSqrtPrefixes.end(), [&F](const auto &PrOp) {
+                        return F.getName().startswith(PrOp.Prefix);
+                      })) {
+        return true;
+      }
+
+      return false;
+    });
+    return processToEraseList(ToErase);
+  }
+
   static void PurgeUnneededEmulationFunctions(Module &ModEmuFun,
                                              const GenXSubtarget &ST) {
     if (ST.hasIntDivRem32())
       PurgeNon64BitDivRemFunctions(ModEmuFun);
+
+    if (!ST.emulateFDivFSqrt64())
+      PurgeFDivFSqrt64Functions(ModEmuFun);
 
     PurgeFPConversionFunctions(ModEmuFun, ST.hasFP64(), !ST.emulateLongLong());
   }

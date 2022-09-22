@@ -66,6 +66,7 @@ protected:
     GENX_ADLP,
     GENX_ADLN,
     XE_HP_SDV,
+    XE_MTL,
     XE_DG2,
     XE_PVC,
     XE_PVCXT_A0,
@@ -84,6 +85,9 @@ private:
 
   // HasIEEEDivSqrt - True if subtarget supports IEEE-754 div and sqrt
   bool HasIEEEDivSqrt = false;
+
+  // FDivFSqrt64Emu - True if subtarget requires partial fp64 emulation
+  bool FDivFSqrt64Emu = false;
 
   // DisableJmpi - True if jmpi is disabled.
   bool DisableJmpi = false;
@@ -260,6 +264,8 @@ public:
   bool isADLP() const { return GenXVariant == GENX_ADLP; }
   /// * isADLN - true if target is ADLN
   bool isADLN() const { return GenXVariant == GENX_ADLN; }
+   /// * isMTL - true if target is MTL
+  bool isMTL() const { return GenXVariant == XE_MTL; }
   /// * translateMediaWalker - true if translate media walker APIs
   bool translateMediaWalker() const { return GenXVariant >= XE_HP_SDV; }
   // TODO: consider implementing 2 different getters
@@ -318,6 +324,9 @@ public:
   /// * hasIEEEDivSqrt - true if target supports IEEE-754 div and sqrt
   bool hasIEEEDivSqrt() const { return HasIEEEDivSqrt; }
 
+  /// * emulateFDivFSqrt64 - true if target requires partial fp64 emulation
+  bool emulateFDivFSqrt64() const { return FDivFSqrt64Emu; }
+
   /// * hasAdd64 - true if target supports native 64-bit add/sub
   bool hasAdd64() const { return HasAdd64; }
 
@@ -374,7 +383,7 @@ public:
 
   /// * getMaxSlmSize - returns maximum allowed SLM size (in KB)
   unsigned getMaxSlmSize() const {
-    if (isXEHP() || isDG2() || isPVC())
+    if (isXEHP() || isDG2() || isMTL() || isPVC())
       return 128;
     return 64;
   }
@@ -438,6 +447,8 @@ public:
       return TARGET_PLATFORM::GENX_TGLLP;
     case GENX_ADLN:
       return TARGET_PLATFORM::GENX_TGLLP;
+    case XE_MTL:
+      return TARGET_PLATFORM::Xe_MTL;
     case XE_DG2:
       return TARGET_PLATFORM::Xe_DG2;
     case XE_PVC:

@@ -27,6 +27,10 @@ def FeatureIEEEDivSqrt : SubtargetFeature<"ieee_div_sqrt",
                                           "HasIEEEDivSqrt",
                                           "true",
                                           "supports IEEE-754 div and sqrt">;
+def FeatureFDivFSqrt64Emulation :
+  SubtargetFeature<"fp64_fdiv_fsqrt_emu", "FDivFSqrt64Emu", "true",
+                   "emulate double precision division and square root",
+                   [FeatureFP64]>;
 def FeatureGRFByteSize64 : SubtargetFeature<"grf_byte_size_64",
                                             "GRFByteSize",
                                             "64",
@@ -287,6 +291,14 @@ def : Proc<"PVCXT",           [FeatureLongLong, FeatureGRFByteSize64,
                                FeatureInstr64BitRotate,
                                FeatureBfMixedModeWidth16,
                                FeatureHasLSC]>;
+def : Proc<"MTL",             [FeatureLongLongEmulation,
+                               FeatureFP64,
+                               FeatureFDivFSqrt64Emulation,
+                               FeatureHasPackedFloat,
+                               FeatureThreadPayloadInMemory,
+                               FeatureInstrBitRotate,
+                               FeatureBfMixedModeWidth16,
+                               FeatureHasLSC, FeatureFusedEU]>;
 
 def GenX : Target {
   // Nothing here (yet?)

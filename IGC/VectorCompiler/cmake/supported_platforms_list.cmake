@@ -17,4 +17,5 @@ set(SUPPORTED_VC_PLATFORMS
     "PVC"
     "PVCXT_A0"
     "PVCXT"
+    "MTL"
     )
