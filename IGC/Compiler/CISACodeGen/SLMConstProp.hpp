@@ -133,6 +133,13 @@ namespace IGC
             D->ConstTerm = S->ConstTerm;
         }
 
+        void clear() {
+            m_nextValueID = 0;
+            m_DL = nullptr;
+            m_symInfos.clear();
+            m_symEvaAllocator.Reset();
+        }
+
 #if defined(_DEBUG)
         void print(llvm::raw_ostream& OS, SymProd* P);
         void print(llvm::raw_ostream& OS, SymTerm* T);
