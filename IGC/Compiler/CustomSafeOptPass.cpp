@@ -3652,7 +3652,7 @@ void GenSpecificPattern::visitZExtInst(ZExtInst& ZEI)
     Instruction* I1 = nullptr;
     Instruction* I2 = nullptr;
     Instruction* I3 = nullptr;
-    ConstantInt* C1, *C2;
+    ConstantInt* C1 = nullptr, *C2 = nullptr;
 
     /*
     * from
@@ -3681,6 +3681,7 @@ void GenSpecificPattern::visitZExtInst(ZExtInst& ZEI)
 
     if (match(Cmp, addcPattern1) && pred == CmpInst::Predicate::ICMP_EQ && C2->isMinusOne())
     {
+        IGC_ASSERT(I1);
         for (auto U : I1->users())
         {
             Instruction* inst = dyn_cast<Instruction>(U);
@@ -3711,7 +3712,9 @@ void GenSpecificPattern::visitZExtInst(ZExtInst& ZEI)
 
     IRBuilder<> Builder(&ZEI);
     Value* S = Builder.CreateSExt(Cmp, ZEI.getType());
+    IGC_ASSERT(S);
     Value* N = Builder.CreateNeg(S);
+    IGC_ASSERT(N);
     ZEI.replaceAllUsesWith(N);
     ZEI.eraseFromParent();
 }
