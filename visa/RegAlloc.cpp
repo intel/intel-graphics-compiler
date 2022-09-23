@@ -1775,7 +1775,7 @@ bool LivenessAnalysis::writeWholeRegion(const G4_BB* bb,
     //
     // If the region does not cover the whole declare then it does not write the whole region.
     //
-    if (!primaryDcl->getRegVar()->isRegVarTransient() && (dst->getTypeSize() * execSize !=
+    if ((dst->getTypeSize() * execSize !=
         primaryDcl->getElemSize() * primaryDcl->getNumElems() * primaryDcl->getNumRows())) {
            return false;
     }
