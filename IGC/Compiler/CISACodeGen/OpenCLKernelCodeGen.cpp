@@ -2194,9 +2194,14 @@ namespace IGC
 
     CVariable* COpenCLKernel::GetGlobalMapping(llvm::Value* c)
     {
-        unsigned int val = GetGlobalMappingValue(c);
-
+        GlobalVariable* globalVar = cast<GlobalVariable>(c);
         VISA_Type type = GetType(c->getType());
+
+        if (!globalVar->hasInitializer()) {
+            return GetUndef(type);
+        }
+
+        unsigned int val = GetGlobalMappingValue(c);
         return ImmToVariable(val, type);
     }
 

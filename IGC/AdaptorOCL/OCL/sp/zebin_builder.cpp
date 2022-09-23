@@ -396,11 +396,10 @@ void ZEBinaryBuilder::addProgramSymbols(const IGC::SOpenCLProgramInfo& annotatio
     for (auto sym : symbols.globalStringConst)
         addSymbol(sym, llvm::ELF::STB_GLOBAL, mConstStringSectID);
 
-    // add symbols defined in global section
-    IGC_ASSERT(symbols.global.empty() || mGlobalSectID != -1);
+    // add symbols defined in global section, mGlobalSectID may be unallocated
+    // at this point if symbols are undef
     for (auto sym : symbols.global)
         addSymbol(sym, llvm::ELF::STB_GLOBAL, mGlobalSectID);
-
 }
 
 void ZEBinaryBuilder::addKernelSymbols(
