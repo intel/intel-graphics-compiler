@@ -1508,10 +1508,15 @@ void printSendDataToFile(const G4_SendDescRaw* descG4)
     uint32_t src0Len = descG4->getSrc0LenBytes() / 32;
     uint32_t src1Len = descG4->getSrc1LenBytes() / 32;
     uint32_t dstLen = descG4->getDstLenBytes() / 32;
-    FILE* f = fopen("Z:\\ShaderStatsRuns\\SendInfo\\sendInfo.txt", "w");
+    const char* filePath = "Z:\\ShaderStatsRuns\\SendInfo\\sendInfo.txt";
+    FILE* f = fopen(filePath, "w");
+    std::string fileName(filePath);
     if (f)
     {
-        fprintf(f, "src0Len=%d src1Len=%d dstLen=%d \n", src0Len, src1Len, dstLen); // Do not remove a white space at the end!
+        uint32_t namePos = fileName.find_last_of('\\', fileName.size());
+        if (namePos > 0)
+            namePos++;
+        fprintf(f, "file = %s src0Len = % d src1Len = % d dstLen = % d \n", fileName.substr(namePos, fileName.size()).data(), src0Len, src1Len, dstLen); // Do not remove a white space at the end!
         fclose(f);
     }
 }
