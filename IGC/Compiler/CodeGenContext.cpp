@@ -1000,15 +1000,21 @@ namespace IGC
                 Pos = valEnd;
                 continue;
             }
-            // -cl-intel-allow-zebin
+            // -cl-allow-zebin
             else if (suffix.equals("-allow-zebin"))
             {
-                IGC_SET_FLAG_VALUE(EnableZEBinary, true);
+                if (!IGC_IS_FLAG_SET(EnableZEBinary))
+                {
+                    IGC_SET_FLAG_VALUE(EnableZEBinary, true);
+                }
             }
-            // -c-intel-disable-zebin
+            // -cl-disable-zebin
             else if (suffix.equals("-disable-zebin"))
             {
-                IGC_SET_FLAG_VALUE(EnableZEBinary, false);
+                if (!IGC_IS_FLAG_SET(EnableZEBinary))
+                {
+                    IGC_SET_FLAG_VALUE(EnableZEBinary, false);
+                }
             }
             // -cl-intel-exclude-ir-from-zebin
             else if (suffix.equals("-exclude-ir-from-zebin"))
