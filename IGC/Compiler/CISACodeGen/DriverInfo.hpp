@@ -362,6 +362,9 @@ namespace IGC
         // when the state of dual-source blending is not known at compile time.
         virtual bool sendSingleSourceRTWAfterDualSourceRTW() const { return true; }
 
+
+        // Specifies alignment of indirect data
+        virtual unsigned getCrossThreadDataAlignment() const { return 32; }
 protected:
     bool autoGRFSelection = false;
     };

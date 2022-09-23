@@ -6719,9 +6719,6 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-fusedCallWA");
     addArgument("1");
   }
-  if (ST.isOCLRuntime()) {
-    addArgument("-oclRuntime");
-  }
   if (!BC.getVISALTOStrings().empty()) {
     addArgument("-noStitchExternFunc");
   }
