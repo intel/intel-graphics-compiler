@@ -460,6 +460,12 @@ public:
           flags |= llvm::DINode::FlagObjectPointer;
       if (spirvFlags & SPIRVDebug::FlagIsStaticMember)
           flags |= llvm::DINode::FlagStaticMember;
+      if (spirvFlags & SPIRVDebug::FlagTypePassByValue)
+          flags |= llvm::DINode::FlagTypePassByValue;
+      if (spirvFlags & SPIRVDebug::FlagTypePassByReference)
+          flags |= llvm::DINode::FlagTypePassByReference;
+      if (spirvFlags & SPIRVDebug::FlagIsFwdDecl)
+          flags |= llvm::DINode::FlagFwdDecl;
 
       return flags;
   }

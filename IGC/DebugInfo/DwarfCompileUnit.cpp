@@ -1938,6 +1938,14 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
   if (shouldCreateTypeUnit(CTy, DD)) {
     DD->addTypeUnitType(&Buffer);
   }
+
+  // Add flags if available
+  if (CTy->isTypePassByValue())
+    addUInt(&Buffer, dwarf::DW_AT_calling_convention, dwarf::DW_FORM_data1,
+            dwarf::DW_CC_pass_by_value);
+  if (CTy->isTypePassByReference())
+    addUInt(&Buffer, dwarf::DW_AT_calling_convention, dwarf::DW_FORM_data1,
+            dwarf::DW_CC_pass_by_reference);
 }
 
 /// constructTemplateTypeParameterDIE - Construct new DIE for the given
