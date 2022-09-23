@@ -7775,6 +7775,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             addSwitchOptionToBB(fg.getEntryBB(), true);
         }
 
+        DPASSrc2RSCache src2GRFCache;
         // set physical pred/succ as it's needed for the call WA
         fg.setPhysicalPredSucc();
         const bool scheduleFenceCommit = builder.getOption(vISA_scheduleFenceCommit) && builder.getPlatform() >= GENX_TGLLP;
