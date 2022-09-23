@@ -3593,6 +3593,10 @@ static void emitInstructionStartColumn(std::ostream& output, G4_INST &inst)
     else if (inst.isBfn()) {
         oupPfx << "." << fmtHex(inst.asBfnInst()->getBooleanFuncCtrl(), 2);
     }
+    else if (inst.isDpas())
+    {
+        oupPfx << "." << (int)inst.asDpasInst()->getSystolicDepth() << "x" << (int)inst.asDpasInst()->getRepeatCount();
+    }
     else if (inst.isMath() && inst.asMathInst()->getMathCtrl() != MATH_RESERVED)
     {
         oupPfx << "." << MathOpNames[inst.asMathInst()->getMathCtrl()];
