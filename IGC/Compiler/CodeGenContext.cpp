@@ -231,7 +231,7 @@ namespace IGC
             if (previousShader && currentShader)
             {
                 // Compare previous with current shader
-                const float maxTolerance = 110.0f;
+                const float maxTolerance = 120.0f;
 
                 // Check if current shader has more than 110% of previous spill cost
                 bool spillCostBigger =
