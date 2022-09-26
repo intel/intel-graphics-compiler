@@ -519,7 +519,6 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
 
         // at this point, we can add this DPAS into the macro
         ++numSuppressed;
-        (*it)->addInstOpt(InstOpt::ATOMIC);
         bptr->addRegRanges(src_range, src_extra_range, dst_range);
         if (!skipSetLastBits) {
             allSrcNoLastBits = allSrcBits;
@@ -538,11 +537,6 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
         // at least one instruction can be suppressed, the candidate block can be in the macro
         // udpate register footprint into DepSet
         updateRegFootprintsToDepSets(bptr->allSrcRange, bptr->allExtraSrcRange, bptr->allDstRange);
-        InstListIterator bptr_it = startIt;
-        for (size_t i = 0; i < bptr->size(); ++i) {
-            (*bptr_it)->addInstOpt(InstOpt::ATOMIC);
-            ++bptr_it;
-        }
 
         // return the total instructions found can be in the macro
         return bptr->size() + numSuppressed;
@@ -679,11 +673,17 @@ const Instruction& DepSetBuilder::DpasMacroBuilder::formMacro(size_t& dpasCnt) {
         return **cur;
     }
 
+    // Set Atomic to all dpas in the macro except the last one
+    // Also clean-up their SWSB if set from the input.
+    InstListIterator it = m_firstDpasIt;
+    for (size_t i = 0; i < dpasCnt - 1; ++it, ++i) {
+        (*it)->addInstOpt(InstOpt::ATOMIC);
+        (*it)->setSWSB(SWSB());
+    }
+
     InstListIterator last = m_firstDpasIt;
     std::advance(last, dpasCnt-1);
     assert(last != m_instList.end());
-    // remove the Atomic set at the last dpas
-    (*last)->removeInstOpt(InstOpt::ATOMIC);
     return **last;
 }
 
