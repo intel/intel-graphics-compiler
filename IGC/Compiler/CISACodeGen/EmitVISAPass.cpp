@@ -443,7 +443,6 @@ bool EmitPass::isSymbolTableRequired(llvm::Function* F)
         // Check has global symbols attached
         else if (!m_moduleMD->inlineProgramScopeOffsets.empty())
         {
-            bool ZEBinEnabled = IGC_IS_FLAG_ENABLED(EnableZEBinary);
             for (auto it : m_moduleMD->inlineProgramScopeOffsets)
             {
                 GlobalVariable* pGlobal = it.first;
@@ -460,7 +459,7 @@ bool EmitPass::isSymbolTableRequired(llvm::Function* F)
 
                 // FIXME: Ideally we should emit symtab for the global if
                 // there's an user in both ZEBIN and PT.
-                if (ZEBinEnabled && !pGlobal->user_empty())
+                if (m_pCtx->enableZEBinary() && !pGlobal->user_empty())
                     return true;
 
                 for (auto user : pGlobal->users())
@@ -879,7 +878,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         DebugOpts.UseOffsetInLocation = IGC_IS_FLAG_ENABLED(UseOffsetInLocation);
         DebugOpts.EmitDebugLoc = IGC_IS_FLAG_ENABLED(EmitDebugLoc);
         DebugOpts.EmitOffsetInDbgLoc = IGC_IS_FLAG_ENABLED(EmitOffsetInDbgLoc);
-        DebugOpts.ZeBinCompatible = IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging) && IGC_IS_FLAG_ENABLED(EnableZEBinary);
+        DebugOpts.ZeBinCompatible = IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging) && m_pCtx->enableZEBinary();
         DebugOpts.EnableRelocation = IGC_IS_FLAG_ENABLED(EnableRelocations) || DebugOpts.ZeBinCompatible;
         DebugOpts.EnforceAMD64Machine = IGC_IS_FLAG_ENABLED(DebugInfoEnforceAmd64EM) || DebugOpts.ZeBinCompatible;
         DebugOpts.EnableDebugInfoValidation = IGC_IS_FLAG_ENABLED(DebugInfoValidation);

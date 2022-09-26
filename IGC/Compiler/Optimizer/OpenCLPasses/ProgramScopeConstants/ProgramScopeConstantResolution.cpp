@@ -79,7 +79,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
         return false;
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+    if (pCtx->enableZEBinary())
     {
         // ZEBinary always relies on relocation, so we can ignore this pass
         return false;

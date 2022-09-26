@@ -1291,6 +1291,7 @@ namespace IGC
         virtual int16_t getVectorCoalescingControl() const;
         virtual uint32_t getPrivateMemoryMinimalSizePerThread() const;
         virtual uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const;
+        virtual bool enableZEBinary() const;
         bool isPOSH() const;
 
         CompilerStats& Stats()
@@ -1838,6 +1839,7 @@ namespace IGC
             uint32_t IntelScratchSpacePrivateMemoryMinimalSizePerThread = 0;
 
             bool EnableDivergentBarrierHandling = false;
+            std::optional<bool> EnableZEBinary;
 
             private:
                 void parseOptions(const char* IntOptStr);
@@ -1905,6 +1907,14 @@ namespace IGC
                 {
                     IntelEnableAutoLargeGRF = true;
                 }
+                if (strstr(options, "-disable-zebin"))
+                {
+                    EnableZEBinary = false;
+                }
+                if (strstr(options, "-enable-zebin"))
+                {
+                    EnableZEBinary = true;
+                }
             }
 
             bool CorrectlyRoundedSqrt;
@@ -1917,6 +1927,7 @@ namespace IGC
             uint32_t requiredEUThreadCount = 0;
             // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
             bool IntelEnableAutoLargeGRF = false;
+            std::optional<bool> EnableZEBinary;
         };
 
         // output: shader information
@@ -1929,6 +1940,10 @@ namespace IGC
         bool m_ShouldUseNonCoherentStatelessBTI;
         uint32_t m_numUAVs = 0;
 
+      private:
+        bool m_enableZEBinary;
+
+      public:
         // Additional text visaasm to link.
         std::vector<const char*> m_VISAAsmToLink;
 
@@ -1952,7 +1967,19 @@ namespace IGC
                     m_VISAAsmToLink.push_back(pInputArgs->pVISAAsmToLinkArray[i]);
                 }
             }
+
+            // regkey overrides options. Options have been parsed in Options and InternalOptions
+            if (IGC_IS_FLAG_SET(EnableZEBinary))
+                m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
+            else if (m_Options.EnableZEBinary)
+                m_enableZEBinary = *m_Options.EnableZEBinary;
+            else if (m_InternalOptions.EnableZEBinary)
+                m_enableZEBinary = *m_InternalOptions.EnableZEBinary;
+            else
+                m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
         }
+
+        bool enableZEBinary() const override { return m_enableZEBinary; }
         bool isSPIRV() const;
         void setAsSPIRV();
         float getProfilingTimerResolution();

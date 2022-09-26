@@ -308,7 +308,7 @@ namespace IGC
 
     void COpenCLKernel::CreateZEInlineSamplerAnnotations()
     {
-        IGC_ASSERT(IGC_IS_FLAG_ENABLED(EnableZEBinary));
+        IGC_ASSERT(m_Context->enableZEBinary());
 
         auto getZESamplerAddrMode = [](int addrMode) -> zebin::PreDefinedAttrGetter::ArgSamplerAddrMode
         {
@@ -2146,7 +2146,7 @@ namespace IGC
                 // If an arg is unused, don't generate patch token for it.
                 CreateAnnotations(&arg, offsetInPayload);
 
-                if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+                if (m_Context->enableZEBinary()) {
                     // FIXME: once we transit to zebin completely, we don't need to do
                     // CreateAnnotations above. Only CreateZEPayloadArguments is required
                     bool Res = CreateZEPayloadArguments(&arg, offsetInPayload);
@@ -2201,8 +2201,9 @@ namespace IGC
 
         m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
 
+        // FIXME: skip this function when EnableZEBinary
         CreateInlineSamplerAnnotations();
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        if (m_Context->enableZEBinary())
         {
             CreateZEInlineSamplerAnnotations();
             // Currently we don't support inline vme sampler in zebin.
@@ -2210,8 +2211,8 @@ namespace IGC
             IGC_ASSERT_MESSAGE(!m_kernelInfo.m_HasInlineVmeSamplers, "ZEBin: Inline vme sampler unsupported");
         }
 
-        if (!IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
-            // Handle kernel reflection
+        // Handle kernel reflection for patch-token format
+        if (!m_Context->enableZEBinary()) {
             CreateKernelArgInfo();
             CreateKernelAttributeInfo();
         }
@@ -2458,7 +2459,7 @@ namespace IGC
         m_kernelInfo.m_executionEnvironment.UseBindlessMode = m_Context->m_InternalOptions.UseBindlessMode;
         m_kernelInfo.m_executionEnvironment.HasStackCalls = HasStackCalls();
 
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+        if (m_Context->enableZEBinary()) {
             FillZEKernelArgInfo();
             FillZEUserAttributes(funcInfoMD);
         }
@@ -2585,7 +2586,7 @@ namespace IGC
 
             ctx->m_programInfo.m_initConstantAnnotation = std::move(initConstant);
 
-            if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+            if (ctx->enableZEBinary())
             {
                 // String literals
                 auto ipsbStringMDHandle = modMD->inlineConstantBuffers[1];
@@ -2870,7 +2871,7 @@ namespace IGC
         if (ctx->m_retryManager.IsFirstTry())
         {
             CollectProgramInfo(ctx);
-            if (IGC_IS_FLAG_DISABLED(EnableZEBinary))
+            if (!ctx->enableZEBinary())
             {
                 ctx->m_programOutput.CreateProgramScopePatchStream(ctx->m_programInfo);
             }

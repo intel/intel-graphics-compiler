@@ -227,7 +227,7 @@ std::string OpenCLPrintfResolution::getEscapedString(const ConstantDataSequentia
 
 Value* OpenCLPrintfResolution::processPrintfString(Value* arg, Function& F)
 {
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+    if (m_CGContext->enableZEBinary())
     {
         return arg;
     }
@@ -538,7 +538,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
         writeOffsetPtr = generateCastToPtr(argDesc, writeOffset, bblockTrue);
         writeOffsetPtr->setDebugLoc(m_DL);
 
-        if (dataType == SHADER_PRINTF_STRING_LITERAL && IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        if (dataType == SHADER_PRINTF_STRING_LITERAL && m_CGContext->enableZEBinary())
         {
             printfArg = CastInst::Create(Instruction::CastOps::PtrToInt,
                 argDesc->value,
@@ -745,7 +745,7 @@ unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argT
         return vecSize * 8;
 
     case IGC::SHADER_PRINTF_STRING_LITERAL: {
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+        if (m_CGContext->enableZEBinary()) {
             // The size of the format string address
             return 8;
         } else {
@@ -877,7 +877,7 @@ Instruction* OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor* arg
     }
 
     case IGC::SHADER_PRINTF_STRING_LITERAL: {
-        if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        if (m_CGContext->enableZEBinary())
             castedType = m_ptrSizeIntType->getPointerTo(ADDRESS_SPACE_GLOBAL);
         else
             castedType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);

@@ -566,7 +566,7 @@ namespace IGC
     bool OpenCLProgramContext::forceGlobalMemoryAllocation() const
     {
         return m_InternalOptions.ForceGlobalMemoryAllocation ||
-               (m_hasGlobalInPrivateAddressSpace && IGC_IS_FLAG_ENABLED(EnableZEBinary));
+               (m_hasGlobalInPrivateAddressSpace && enableZEBinary());
     }
 
     bool OpenCLProgramContext::allocatePrivateAsGlobalBuffer() const
@@ -923,18 +923,12 @@ namespace IGC
             // -cl-allow-zebin
             else if (suffix.equals("-allow-zebin"))
             {
-                if (!IGC_IS_FLAG_SET(EnableZEBinary))
-                {
-                    IGC_SET_FLAG_VALUE(EnableZEBinary, true);
-                }
+                EnableZEBinary = true;
             }
             // -cl-disable-zebin
             else if (suffix.equals("-disable-zebin"))
             {
-                if (!IGC_IS_FLAG_SET(EnableZEBinary))
-                {
-                    IGC_SET_FLAG_VALUE(EnableZEBinary, false);
-                }
+                EnableZEBinary = false;
             }
             // -cl-intel-exclude-ir-from-zebin
             else if (suffix.equals("-exclude-ir-from-zebin"))
@@ -1441,6 +1435,11 @@ namespace IGC
     uint32_t CodeGenContext::getNumThreadsPerEU() const
     {
         return 0;
+    }
+
+    bool CodeGenContext::enableZEBinary() const
+    {
+        return false;
     }
 
     /// parameter "returnDefault" controls what to return when

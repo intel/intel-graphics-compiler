@@ -383,7 +383,7 @@ bool GenXCodeGenModule::runOnModule(Module& M)
     // function groups can be cloned. If the number exceeds the threshold, instead of cloning the
     // function N times, make it an indirect call and use relocation instead. The function will only be
     // compiled once and runtime must relocate its address for each caller.
-    if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+    if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->enableZEBinary())
     {
         // Enable by default for zebin
         m_FunctionCloningThreshold = 1;
