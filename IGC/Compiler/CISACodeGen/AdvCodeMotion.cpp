@@ -779,6 +779,28 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
         return false;
     };
 
+    auto IsIMAD = [](const Instruction *I) {
+        if (!I->getType()->isIntegerTy(32))
+            return false;
+        if (I->getOpcode() == Instruction::Mul) {
+            // If this `mul` is single-used by `add`, it's part of that `imad`.
+            if (!I->hasOneUse())
+                return false;
+            auto *AI = dyn_cast<Instruction>(*I->user_begin());
+            return (AI && AI->getOpcode() == Instruction::Add);
+        }
+        if (I->getOpcode() == Instruction::Add) {
+            // If this `add` has a single-used `mul`, it's part of that `imad`.
+            auto *LHS = dyn_cast<Instruction>(I->getOperand(0));
+            if (LHS && LHS->getOpcode() == Instruction::Mul && LHS->hasOneUse())
+                return true;
+            auto *RHS = dyn_cast<Instruction>(I->getOperand(1));
+            if (RHS && RHS->getOpcode() == Instruction::Mul && RHS->hasOneUse())
+                return true;
+        }
+        return false;
+    };
+
     EquivalenceClasses<Instruction *> ECs;
     for (Instruction &I : *BB) {
         for (Value *O : I.operands()) {
@@ -799,7 +821,7 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
         for (auto MI = ECs.member_begin(I), ME = ECs.member_end(); MI != ME;
              ++MI) {
             // Skip the slicing if there is non-MAD instructions.
-            if (!isa<PHINode>(*MI) && !IsDMAD(*MI))
+            if (!isa<PHINode>(*MI) && !IsDMAD(*MI) && !IsIMAD(*MI))
                 return false;
         }
         Leaders.insert(std::make_pair(Leader, nullptr));
