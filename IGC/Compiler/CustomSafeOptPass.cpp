@@ -6014,8 +6014,10 @@ bool LogicalAndToBranch::runOnFunction(Function& F)
                     }
                     BasicBlock::iterator is0(s0);
                     BasicBlock::iterator is1(s1);
+                    auto distance = std::count_if(is0, is1,
+                                                 [](const auto& i){return !isa<DbgInfoIntrinsic>(i);});
 
-                    if (std::distance(is0, is1) < NUM_INST_THRESHOLD)
+                    if (distance < NUM_INST_THRESHOLD)
                     {
                         continue;
                     }

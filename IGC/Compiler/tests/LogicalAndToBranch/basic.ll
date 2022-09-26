@@ -10,6 +10,13 @@
 ; ------------------------------------------------
 ; LogicalAndToBranch
 ; ------------------------------------------------
+;
+; Test has 34 instructions between arguments of "and i1", resulting in
+; distance of 35 which is greater than default NUM_INST_THRESHOLD = 32
+; that is required for transformation to occure.
+;
+; Check that basic block is correctly split.
+
 
 ; Debug-info related check
 ; CHECK-NOT: WARNING
