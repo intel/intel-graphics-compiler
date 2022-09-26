@@ -380,7 +380,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
     G4_DstRegRegion tdst_src0(*this, Direct, t6->getRegVar(), 0, 0, 1, Type_DF);
     G4_DstRegRegion tdst_src1(*this, Direct, t7->getRegVar(), 0, 0, 1, Type_DF);
 
-    bool needsSrc0Move = src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef;
+    bool needsSrc0Move = src0RR->isScalar() ||
+                         src0RR->getModifier() != Mod_src_undef ||
+                         !isOpndAligned(src0Opnd, getGRFSize());
     if (needsSrc0Move)
     {
         if (opcode == ISA_DIV || opcode == ISA_DIVM)
@@ -390,7 +392,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
                 instOpt, true); // mov (element_size) t6_dst_src0_opnd, src0RR {Q1/N1}
         }
     }
-    bool needsSrc1Move = src1RR->isScalar() || src1RR->getModifier() != Mod_src_undef;
+    bool needsSrc1Move = src1RR->isScalar() ||
+                         src1RR->getModifier() != Mod_src_undef ||
+                         !isOpndAligned(src1Opnd, getGRFSize());
     if (needsSrc1Move)
     {
         G4_DstRegRegion *t7_dst_src1_opnd = createDstRegRegion(tdst_src1);
