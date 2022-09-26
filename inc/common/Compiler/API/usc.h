@@ -110,6 +110,7 @@ typedef struct _SUscAilInfo
     unsigned int EnableWaCheckResourceFormatForNFSRivals          : 1;  // Enables the WaCheckResourceFormatForNFSRivals w/a based on UMD AIL
     unsigned int WaDisableUnsafeArithmeticOperationRefactoring    : 1;  // Holds the WaDisableUnsafeArithmeticOperationRefactoring w/a passed from UMD AIL
     unsigned int WaTrigFuncRangeReduction                         : 1;  // Compiler Workaround for affected games to do range reduction of trig functions
+    unsigned int WaEnableTrivialEmulateSinCos                     : 1;  // Compiler Workaround for games that have issues with HW version of sin/cos
     unsigned int WaHiddenIndexableTempSlot                        : 1;  // Reserve extra space for indexable temp for out-of-bound access
 } SUscAilInfo, SCompilerAilInfo;
 
