@@ -10208,7 +10208,6 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
             if (m_currShader->m_Platform->emulateByteScraterMsgForSS() &&
                 (ESURFACE_SCRATCH == resource.m_surfaceType))
             {
-                setPredicateForDiscard(flag);
                 bool isUniformInst = (ptrOriginal->IsUniform() && storedValOriginal->IsUniform());
                 ptrOriginal = (isUniformInst ? ReAlignUniformVariable(ptrOriginal, EALIGN_GRF) : ptr);
                 storedValOriginal = (isUniformInst ? ReAlignUniformVariable(storedValOriginal, EALIGN_GRF) : storedVal);
@@ -10240,7 +10239,13 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
             numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
         storedVal = m_currShader->GetNewAlias(storedVal, elementType, 0, 0);
         m_encoder->Cast(val, storedVal);
-        setPredicateForDiscard(flag);
+        // no need for discard predicate if we are writing to scratch - this is our
+        // internal memory, shader output remain the same, but we avoid problems
+        // when, for example, texture coordinates are spilled
+        if (resource.m_surfaceType != ESURFACE_SCRATCH)
+        {
+            setPredicateForDiscard(flag);
+        }
         m_encoder->ByteScatter(
             val,
             resource,
@@ -10255,13 +10260,25 @@ void EmitPass::emitStore3DInner(Value* pllValToStore, Value* pllDstPtr, Value* p
         IGCLLVM::FixedVectorType* vecType = dyn_cast<IGCLLVM::FixedVectorType>(storeType);
         uint32_t numElems = (uint32_t)(vecType ? vecType->getNumElements() : 1);
         IGC_ASSERT_MESSAGE(numElems == 1, "QW vector store not supported yet!");
-        setPredicateForDiscard(flag);
+        // no need for discard predicate if we are writing to scratch - this is our
+        // internal memory, shader output remain the same, but we avoid problems
+        // when, for example, texture coordinates are spilled
+        if (resource.m_surfaceType != ESURFACE_SCRATCH)
+        {
+            setPredicateForDiscard(flag);
+        }
         m_encoder->QWScatter(storedVal, resource, ptr, sizeInBits, numElems);
         m_encoder->Push();
     }
     else  // (sizeInBits > 32)
     {
-        setPredicateForDiscard(flag);
+        // no need for discard predicate if we are writing to scratch - this is our
+        // internal memory, shader output remain the same, but we avoid problems
+        // when, for example, texture coordinates are spilled
+        if (resource.m_surfaceType != ESURFACE_SCRATCH)
+        {
+            setPredicateForDiscard(flag);
+        }
         m_encoder->Scatter4Scaled(storedVal, resource, ptr);
         m_encoder->Push();
     }
@@ -15984,7 +16001,14 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
             blkBits = useA32 ? 8 : ((eltBytes >= 4 && align >= eltBytes) ? eltBytes * 8 : 8);
             nBlks = (totalBytes * 8) / blkBits;
         }
-        setPredicateForDiscard();
+
+        // no need for discard predicate if we are writing to scratch - this is our
+        // internal memory, shader output remain the same, but we avoid problems
+        // when, for example, texture coordinates are spilled
+        if (resource.m_surfaceType != ESURFACE_SCRATCH)
+        {
+            setPredicateForDiscard();
+        }
 
         if (useA32)
         {
@@ -16039,7 +16063,14 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
             {
                 rawAddrVar = eOffset;
             }
-            setPredicateForDiscard();
+
+            // no need for discard predicate if we are writing to scratch - this is our
+            // internal memory, shader output remain the same, but we avoid problems
+            // when, for example, texture coordinates are spilled
+            if (resource.m_surfaceType != ESURFACE_SCRATCH)
+            {
+                setPredicateForDiscard();
+            }
             VISA_Type storedType = storedVar->GetType();
             IGC_ASSERT_MESSAGE((eltOffBytes < (UINT16_MAX)), "eltOffBytes > higher than 64k");
             IGC_ASSERT_MESSAGE((nbelts < (UINT16_MAX)), "nbelts > higher than 64k");
@@ -16635,7 +16666,13 @@ void EmitPass::emitLSCVectorStore_subDW(
     }
 
     ResourceLoop(Resource, [&](CVariable* flag) {
-        setPredicateForDiscard(doUniformStore ? nullptr : flag);
+        // no need for discard predicate if we are writing to scratch - this is our
+        // internal memory, shader output remain the same, but we avoid problems
+        // when, for example, texture coordinates are spilled
+        if (Resource.m_surfaceType != ESURFACE_SCRATCH)
+        {
+            setPredicateForDiscard(doUniformStore ? nullptr : flag);
+        }
 
         if (doUniformStore)
         {
@@ -16706,7 +16743,13 @@ void EmitPass::emitLSCVectorStore_uniform(
         CVariable* new_stVar = prepareDataForUniform(stVar, requiredVSize, dataAlign);
 
         ResourceLoop(Resource, [&](CVariable* /*flag*/) {
-            setPredicateForDiscard();
+            // no need for discard predicate if we are writing to scratch - this is our
+            // internal memory, shader output remain the same, but we avoid problems
+            // when, for example, texture coordinates are spilled
+            if (Resource.m_surfaceType != ESURFACE_SCRATCH)
+            {
+                setPredicateForDiscard();
+            }
 
             m_encoder->SetNoMask();
             emitLSCStore(cacheOpts, new_stVar, new_eoff, dSize * 8, 1, 0, &Resource,
@@ -16729,7 +16772,13 @@ void EmitPass::emitLSCVectorStore_uniform(
     eOffset = ReAlignUniformVariable(eOffset, EALIGN_GRF);
 
     ResourceLoop(Resource, [&](CVariable* /*flag*/) {
-        setPredicateForDiscard();
+        // no need for discard predicate if we are writing to scratch - this is our
+        // internal memory, shader output remain the same, but we avoid problems
+        // when, for example, texture coordinates are spilled
+        if (Resource.m_surfaceType != ESURFACE_SCRATCH)
+        {
+            setPredicateForDiscard();
+        }
 
         m_encoder->SetUniformSIMDSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
@@ -16854,7 +16903,13 @@ void EmitPass::emitLSCVectorStore(
             {
                 rawAddrVar = eOffset;
             }
-            setPredicateForDiscard(flag);
+            // no need for discard predicate if we are writing to scratch - this is our
+            // internal memory, shader output remain the same, but we avoid problems
+            // when, for example, texture coordinates are spilled
+            if (resource.m_surfaceType != ESURFACE_SCRATCH)
+            {
+                setPredicateForDiscard(flag);
+            }
             VISA_Type storedType = storedVar->GetType();
             IGC_ASSERT_MESSAGE(eltOffBytes < (UINT16_MAX), "eltOffBytes > higher than 64k");
             IGC_ASSERT_MESSAGE(nbelts < (UINT16_MAX), "nbelts > higher than 64k");
