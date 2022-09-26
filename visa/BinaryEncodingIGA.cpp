@@ -135,6 +135,7 @@ private:
 
     SendDesc getIGASendDesc(G4_INST* sendInst) const;
     SendExDescOpts getIGASendExDesc(G4_INST* sendInst) const;
+    void printSendDataToFile(const G4_SendDescRaw* descG4) const;
     SendDesc encodeExDescImm(G4_INST* sendInst, SendExDescOpts &sdos) const;
     SendDesc encodeExDescRegA0(G4_INST* sendInst, SendExDescOpts &sdos) const;
 
@@ -1503,20 +1504,19 @@ static SendDesc encodeExDescSendUnary(
 }
 
 // A helper function to print send src/dst length information to a file. vISA_ShaderDataBaseStats key a requirement to use
-void printSendDataToFile(const G4_SendDescRaw* descG4)
+void BinaryEncodingIGA::printSendDataToFile(const G4_SendDescRaw* descG4) const
 {
     uint32_t src0Len = descG4->getSrc0LenBytes() / 32;
     uint32_t src1Len = descG4->getSrc1LenBytes() / 32;
     uint32_t dstLen = descG4->getDstLenBytes() / 32;
     const char* filePath = "Z:\\ShaderStatsRuns\\SendInfo\\sendInfo.txt";
     FILE* f = fopen(filePath, "w");
-    std::string fileName(filePath);
     if (f)
     {
         uint32_t namePos = fileName.find_last_of('\\', fileName.size());
         if (namePos > 0)
             namePos++;
-        fprintf(f, "file = %s src0Len = % d src1Len = % d dstLen = % d \n", fileName.substr(namePos, fileName.size()).data(), src0Len, src1Len, dstLen); // Do not remove a white space at the end!
+        fprintf(f, "file=%s src0Len=%d src1Len=%d dstLen=%d \n", fileName.substr(namePos, fileName.size()).data(), src0Len, src1Len, dstLen); // Do not remove a white space at the end!
         fclose(f);
     }
 }
