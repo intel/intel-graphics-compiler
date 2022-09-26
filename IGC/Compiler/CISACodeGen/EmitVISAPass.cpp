@@ -7817,24 +7817,6 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
         emitSqrt(inst);
         break;
 
-#if LLVM_VERSION_MAJOR >= 12
-    case Intrinsic::umax:
-        emitUmax(inst);
-        break;
-
-    case Intrinsic::smax:
-        emitSmax(inst);
-        break;
-
-    case Intrinsic::umin:
-        emitUmin(inst);
-        break;
-
-    case Intrinsic::smin:
-        emitSmin(inst);
-        break;
-#endif
-
     default:
         inst->print(IGC::Debug::ods());
         IGC_ASSERT_MESSAGE(0, "unknown intrinsic");
@@ -17340,42 +17322,6 @@ void EmitPass::emitSqrt(Instruction* inst)
     src0 = BroadcastIfUniform(src0);
 
     m_encoder->Sqrt(m_destination, src0);
-}
-
-void EmitPass::emitUmin(llvm::IntrinsicInst* inst)
-{
-    CVariable* srcs[2] = { nullptr, nullptr };
-    CVariable* dst = m_destination;
-    srcs[0] = GetSymbol(inst->getArgOperand(0));
-    srcs[1] = GetSymbol(inst->getArgOperand(1));
-    srcs[0] = m_currShader->BitCast(srcs[0], GetUnsignedType(srcs[0]->GetType()));
-    srcs[1] = m_currShader->BitCast(srcs[1], GetUnsignedType(srcs[1]->GetType()));
-    dst = m_currShader->BitCast(m_destination, GetUnsignedType(m_destination->GetType()));
-
-    m_encoder->Min(dst, srcs[0], srcs[1]);
-}
-
-void EmitPass::emitSmin(llvm::IntrinsicInst* inst)
-{
-    m_encoder->Min(m_destination, GetSymbol(inst->getArgOperand(0)), GetSymbol(inst->getArgOperand(1)));
-}
-
-void EmitPass::emitUmax(llvm::IntrinsicInst* inst)
-{
-    CVariable* srcs[2] = { nullptr, nullptr };
-    CVariable* dst = m_destination;
-    srcs[0] = GetSymbol(inst->getArgOperand(0));
-    srcs[1] = GetSymbol(inst->getArgOperand(1));
-    srcs[0] = m_currShader->BitCast(srcs[0], GetUnsignedType(srcs[0]->GetType()));
-    srcs[1] = m_currShader->BitCast(srcs[1], GetUnsignedType(srcs[1]->GetType()));
-    dst = m_currShader->BitCast(m_destination, GetUnsignedType(m_destination->GetType()));
-
-    m_encoder->Max(dst, srcs[0], srcs[1]);
-}
-
-void EmitPass::emitSmax(llvm::IntrinsicInst* inst)
-{
-    m_encoder->Max(m_destination, GetSymbol(inst->getArgOperand(0)), GetSymbol(inst->getArgOperand(1)));
 }
 
 void EmitPass::emitFrc(llvm::GenIntrinsicInst* inst)
