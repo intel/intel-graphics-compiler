@@ -5294,26 +5294,16 @@ bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode* node) const
         unsigned short internalOffset = 0;
         if (dstfp->hasOverlap(srcfp, internalOffset))
         {
-            if (opndNum == Opnd_src1)
-            {
-                assert(0);
-            }
-            //For 8X8, it's allowed that dst and src0 share same registers (not internal dep). But not including partial overlap.
+            assert(opndNum != Opnd_src1);
+
+            //It's allowed that dst and src0 share same registers (not internal dep). But not including partial overlap.
             if (opndNum == Opnd_src0)
             {
-                const G4_INST* curInst = node->getLastInstruction();
-                const G4_InstDpas* dpasInst = curInst->asDpasInst();
-                uint8_t D = dpasInst->getSystolicDepth();
-
-                if (D == 8) //Works only for 8x8
+                if ((dstfp->LeftB == srcfp->LeftB) && (dstfp->RightB == srcfp->RightB))
                 {
-                    if ((dstfp->LeftB == srcfp->LeftB) && (dstfp->RightB == srcfp->RightB))
-                    {
-                        continue;
-                    }
+                    continue;
                 }
             }
-
             return true;
         }
     }
@@ -5324,27 +5314,23 @@ bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode* node) const
 //No RAW/WAW dependence within a DPAS macro
 bool G4_BB_SB::hasDependenceBetweenDPASNodes(SBNode* node, SBNode* nextNode)
 {
-    for (Gen4_Operand_Number opndNum
-        : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
+    const SBFootprint* fpDst = node->getFirstFootprint(Opnd_dst);
+    if (fpDst)
     {
-        const SBFootprint* fp = node->getFirstFootprint(opndNum);
-        if (fp && opndNum == Opnd_dst)
+        for (Gen4_Operand_Number opndNum
+            : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
         {
-            for (Gen4_Operand_Number opndNum2
-                : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
+            const SBFootprint* nextfp = nextNode->getFirstFootprint(opndNum);
+            unsigned short internalOffset = 0;
+            if (nextfp && nextfp->hasOverlap(fpDst, internalOffset))
             {
-                const SBFootprint* nextfp = nextNode->getFirstFootprint(opndNum2);
-                unsigned short internalOffset = 0;
-                if (nextfp && nextfp->hasOverlap(fp, internalOffset))
+                //Exception: if the dependence distance is far enough, it's ok
+                if (node->getDPASSize() - internalOffset > tokenAfterDPASCycle)
                 {
-                    //Exception: if the dependence distance is far enough, it's ok
-                    if (node->getDPASSize() - internalOffset > tokenAfterDPASCycle)
-                    {
-                        return false;
-                    }
-
-                    return true;
+                    return false;
                 }
+
+                return true;
             }
         }
     }
@@ -5455,23 +5441,41 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) co
 }
 
 
-//restrict a macro to :
-//  1. Consecutive instructions of same opcode, same datatype in all sources and dest and same register for Src1.
-//  2. Allow having variable repeat count
+//Rules for a dpas macro :
+//  1, consecutive DPAS instructions of the same opcode
+//  2, same datatype of the same operand across all instructions
+//  3, same execution mask across all instructions
+//  4, depth is 8
+//  5, has no internal dependency within each instruction
+//      5.1, with an exception that src0 and dst dependency is allowed if they are completely the same register/subregister
+//  6, no producer to consumer relationships (RAW, WAW) within the macro
+//      6.1, Unless compiler knows that the distance between the two instructions causing the RAW hazard is enough to handle it
+//  7, for a DPAS 8xN sequence, where N !=8
+//      7.1, for PVC, A macro cannot have different Src1 when N != 8
+//  8, One of below conditions is met:
+//      8.1, For Src1 read suppression is defined as:
+//          a) for PVC: 1 group (up to 8 consecutive registers in a group) - 512K byte
+//      8.2, For src2 read suppression is defined as:
+//          a) Only when repcount is 8. DP-DPAS is an special case since repcount is 4.
+//          b) for PVC, 4 groups of 4 consecutive registers - 1K byte
 bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
 {
     G4_INST* curInst = curNode->getLastInstruction();
     G4_INST* nextInst = nextNode->GetInstruction();
+
+    // A consecutive DPAS instructions of the same opcode
     if (nextInst == nullptr || !nextInst->isDpas())
     {
         return true;
     }
 
+    //  Same execution mask across all instructions
     if (!hasSameExecMask(curInst, nextInst))
     {
         return true;
     }
-    //All types should be same for all operands.
+
+    //Same datatype of the same operand across all instructions
     for (Gen4_Operand_Number opndNum
         : {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst})
     {
@@ -5489,18 +5493,25 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
     G4_InstDpas* nextDpasInst = nextInst->asDpasInst();
     uint8_t nextD = nextDpasInst->getSystolicDepth();
     uint8_t nextC = nextDpasInst->getRepeatCount();
-
-    //Same depth
-    if (curD != nextD)
+    // depth is 8
+    if (curD != 8 || nextD != 8)
     {
         return true;
+    }
+
+    // check dependency within each instruction
+    if (hasInternalDependenceWithinDPAS(curNode))
+    {
+        {
+            return true;
+        }
     }
 
     if (VISA_WA_CHECK(builder.getPWaTable(), Wa_16011859583) ||
         VISA_WA_CHECK(builder.getPWaTable(), Wa_14012420496) ||
         builder.getOption(vISA_NoDPASMacro))
     {
-        if (curD != 8 || nextD != 8 || curC != 8 || nextC != 8)
+        if (curC != 8 || nextC != 8)
         {
             return true;
         }
@@ -5513,7 +5524,7 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
         return true;
     }
 
-    // dpas having dependency to other dpas in the macro cannot be part of the macro
+    // No producer to consumer relationships (RAW, WAW) within the macro
     if (hasDependenceBetweenDPASNodes(curNode, nextNode))
     {
         return !builder.getOption(vISA_forceDPASMacro);
@@ -5524,7 +5535,8 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
         return false;
     }
 
-    //Src1 read suppression:
+
+    //Src1 read suppression
     if (dpasSrcFootPrintCache(Gen4_Operand_Number::Opnd_src1, curNode, nextNode) &&
         curNode->getFirstFootprint(Opnd_src1)->isSameOrNoOverlap(nextNode->getFirstFootprint(Opnd_src1)))
     {
@@ -5536,7 +5548,6 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
     //1. In 8x8 macros (such as the one you pasted) is fine.
     //2. In other repetitions, it will cause that the src1 of the next macro will be ignored.
     // Hardware uses {Atomic} to indicate that the next instruction will reuse the src1. In an 8x8, they always verify
-    //3. non-df dpas
     auto isDFInst = [](G4_INST& inst) {
         for (Gen4_Operand_Number opndNum : {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2})
             if (inst.getOperand(opndNum)->getType() == G4_Type::Type_DF)
@@ -5546,8 +5557,7 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
 
     if (builder.hasDpasSrc2ReadSupression() &&
         curC == nextC &&
-        curC == 8 &&
-        !isDFInst(*nextDpasInst) &&
+        ((curC == 8 && !isDFInst(*nextDpasInst)) || (curC == 4 && isDFInst(*nextDpasInst))) &&
         dpasSrcFootPrintCache(Gen4_Operand_Number::Opnd_src2, curNode, nextNode) &&
         curNode->getFirstFootprint(Opnd_src2)->isSameOrNoOverlap(nextNode->getFirstFootprint(Opnd_src2)))
     {
@@ -5848,7 +5858,6 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
             if (nextInst && nextInst->isDpas())
             {
                 SBNode nextNode;
-                bool sameSrcDst = false;
                 while (curInst != nullptr && curInst->isDpas())
                 {
                     //following instructions, first instruction is in node already
@@ -5862,27 +5871,14 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                         const G4_InstDpas* dpasInst = curInst->asDpasInst();
                         node->addDPASSize(dpasInst->getRepeatCount());
                     }
-                    else  //If the first node has internal dependence, break immediately
-                    {
-                        if (hasInternalDependenceWithinDPAS(node))
-                        {
-                            break;
-                        }
-                    }
 
                     nextNode = SBNode(nodeID, ALUID, bb->getId(), nextInst);
                     getGRFFootPrint(&nextNode, p);
 
-                    //Has dependence cannot be merged into same node.
-                    //Different Depth, src1 and type cannot be merged
-                    //Same register reuse in dest and src cannot be a part of a macro, even the last one.
-                    if (sameSrcDst ||
-                        isLastDpas(node, &nextNode)) // if isLastDpas is true, it might still can be fwd
-                        break;
-
-                    if (hasInternalDependenceWithinDPAS(&nextNode))
+                    // check if current dpas instruction can be added into the macro
+                    if (isLastDpas(node, &nextNode))
                     {
-                        sameSrcDst = true;
+                        break;
                     }
 
                     curInst->setOptionOn(InstOpt_Atomic);
@@ -5903,6 +5899,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
                     }
                     nextInst = *iInstNext;
                 }
+
                 curInst = node->GetInstruction();
             }
 
