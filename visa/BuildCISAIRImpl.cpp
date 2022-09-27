@@ -381,6 +381,12 @@ int CISA_IR_Builder::ClearAsmTextStreams()
     return VISA_FAILURE;
 }
 
+void CISA_IR_Builder::SetDirectCallFunctionSet(
+    const std::unordered_set<std::string>& directCallFunctions)
+{
+    m_directCallFunctions = directCallFunctions;
+}
+
 int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 {
     if (kernel)
@@ -1930,7 +1936,9 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 mainFunctions.push_back(func);
                 continue;
             } else {
-                if (!m_options.getOption(vISA_noStitchExternFunc)) {
+
+                if (!m_options.getOption(vISA_noStitchExternFunc) ||
+                    m_directCallFunctions.count(func->getName())) {
                     // Policy 1: all functions will stitch to kernels
                     subFunctions.push_back(func);
                     subFunctionsNameMap[std::string(func->getName())] = func->getKernel();

@@ -155,7 +155,7 @@ bool GenXGlobalValueLowering::runOnModule(Module &M) {
     if (vc::isRealGlobalVariable(GV))
       fillWorkListForGV(GV);
   for (auto &F : M)
-    if (vc::isIndirect(F) && !BECfg.directCallsOnly())
+    if (vc::isIndirect(F) && !BECfg.directCallsOnly(F.getName()))
       fillWorkListForGV(F);
 
   if (WorkList.empty())

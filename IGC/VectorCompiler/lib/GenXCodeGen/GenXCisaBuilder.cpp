@@ -6111,7 +6111,7 @@ void GenXKernelBuilder::beginFunction(Function *Func) {
     unsigned SMO = BackendConfig->getStackSurfaceMaxSize();
     Kernel->AddKernelAttribute("SpillMemOffset", 4, &SMO);
   } else if (vc::requiresStackCall(Func)) {
-    if (vc::isIndirect(Func) && !BackendConfig->directCallsOnly()) {
+    if (vc::isIndirect(Func) && !BackendConfig->directCallsOnly(Func->getName())) {
       int ExtVal = 1;
       Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
     }
@@ -6216,7 +6216,7 @@ void GenXKernelBuilder::beginFunctionLight(Function *Func) {
     return;
   if (!vc::requiresStackCall(Func))
     return;
-  if (vc::isIndirect(Func) && !BackendConfig->directCallsOnly()) {
+  if (vc::isIndirect(Func) && !BackendConfig->directCallsOnly(Func->getName())) {
     int ExtVal = 1;
     Kernel->AddKernelAttribute("Extern", 4, &ExtVal);
   }
@@ -6719,9 +6719,6 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-fusedCallWA");
     addArgument("1");
   }
-  if (!BC.getVISALTOStrings().empty()) {
-    addArgument("-noStitchExternFunc");
-  }
   if (BC.getBinaryFormat() == vc::BinaryKind::ZE) {
     addArgument("-abiver");
     addArgument("2");
@@ -6781,6 +6778,14 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
     Os << "Platform: " << ST.getVisaPlatform() << "\n";
     vc::diagnose(Ctx, "GenXCisaBuilder", Os.str().c_str());
   }
+
+  std::unordered_set<std::string> DirectCallFunctions;
+  for (auto& FuncName : BC.getDirectCallFunctionsSet())
+  {
+    DirectCallFunctions.insert(FuncName.getKey().str());
+  }
+  VB->SetDirectCallFunctionSet(DirectCallFunctions);
+
   return VB;
 }
 

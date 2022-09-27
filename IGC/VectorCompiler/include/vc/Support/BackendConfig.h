@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/Pass.h>
 #include <llvm/PassRegistry.h>
+#include <llvm/ADT/StringSet.h>
 
 #include <limits>
 #include <memory>
@@ -193,6 +194,7 @@ class GenXBackendData {
 public:
   std::array<MemoryBufferRef, BiFKind::Size> BiFModule;
   llvm::ArrayRef<const char*> VISALTOStrings;
+  llvm::StringSet<> DirectCallFunctions;
 
   struct InitFromLLMVOpts {};
 
@@ -239,7 +241,11 @@ public:
   }
 
   llvm::ArrayRef<const char*> getVISALTOStrings() const {
-      return Data.VISALTOStrings;
+    return Data.VISALTOStrings;
+  }
+
+  llvm::StringSet<> getDirectCallFunctionsSet() const {
+    return Data.DirectCallFunctions;
   }
 
   bool emitBreakpointAtKernelEntry() const {
@@ -336,7 +342,9 @@ public:
 
   bool enablePreemption() const { return Options.EnablePreemption; }
 
-  bool directCallsOnly() const { return Options.DirectCallsOnly; }
+  bool directCallsOnly(llvm::StringRef FunctionName = "") const {
+      return Options.DirectCallsOnly || Data.DirectCallFunctions.count(FunctionName);
+  }
 
   unsigned getLoopUnrollThreshold() const {
     return Options.LoopUnrollThreshold;

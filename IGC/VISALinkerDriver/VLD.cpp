@@ -81,8 +81,7 @@ llvm::Expected<std::vector<llvm::StringRef>>
 GetVISAAsmFromZEBinary(llvm::StringRef ZeBinary) {
   return getZeBinSectionsData(ZeBinary, zebin::SHT_ZEBIN_VISAASM);
 }
-
-llvm::Expected<int> GetSIMDSizeFromZeBinary(llvm::StringRef ZeBinary) {
+llvm::Expected<zebin::zeInfoContainer> GetZeInfoFromZeBinary(llvm::StringRef ZeBinary) {
   using namespace llvm;
   auto ZeInfoYAMLOrErr = getZeBinSectionsData(ZeBinary, zebin::SHT_ZEBIN_ZEINFO);
   if (!ZeInfoYAMLOrErr) {
@@ -102,6 +101,10 @@ llvm::Expected<int> GetSIMDSizeFromZeBinary(llvm::StringRef ZeBinary) {
     return llvm::createStringError(llvm::inconvertibleErrorCode(), "Failed to parse .ze_info section!");
   }
 
+  return ZeInfo;
+}
+
+llvm::Expected<int> GetSIMDSizeFromZeInfo(const zebin::zeInfoContainer& ZeInfo) {
   std::vector<int> SimdSizes;
   for (auto& Kernel : ZeInfo.kernels) {
     SimdSizes.push_back(Kernel.execution_env.simd_size);
@@ -253,8 +256,9 @@ bool TranslateBuildSPMDAndESIMD(
     std::string &errorMessage) {
 #if defined(IGC_VC_ENABLED)
 
-  std::vector<std::string> visaStrings;
+  std::vector<std::string> ownerStrings;
   std::vector<const char*> visaCStrings;
+  std::vector<const char*> DirectCallFunctions;
   int SimdSize = 0;
 
   for (auto& InputArgsPair : InputModules) {
@@ -290,6 +294,8 @@ bool TranslateBuildSPMDAndESIMD(
 
     NewInputArgs.pVISAAsmToLinkArray = (!visaCStrings.empty()) ? visaCStrings.data() : nullptr;
     NewInputArgs.NumVISAAsmsToLink = visaCStrings.size();
+    NewInputArgs.pDirectCallFunctions = DirectCallFunctions.data();
+    NewInputArgs.NumDirectCallFunctions = DirectCallFunctions.size();
     NewInputArgs.pInternalOptions = NewInternalOptions.data();
     NewInputArgs.InternalOptionsSize = NewInternalOptions.size();
     bool success = false;
@@ -318,10 +324,16 @@ bool TranslateBuildSPMDAndESIMD(
     }
 
     llvm::StringRef ZeBinary(NewOutputArgs.pOutput, NewOutputArgs.OutputSize);
+    auto ZeInfoOrErr = GetZeInfoFromZeBinary(ZeBinary);
+    if(!ZeInfoOrErr) {
+      errorMessage = ERROR_VLD + llvm::toString(ZeInfoOrErr.takeError());
+      return false;
+    }
 
     // Set SimdSize based on first SPMD module, as ESIMD always returns 1.
     if (InputArgsPair.first == SPIRVTypeEnum::SPIRV_SPMD) {
-      auto SimdSizeOrErr = GetSIMDSizeFromZeBinary(ZeBinary);
+
+      auto SimdSizeOrErr = GetSIMDSizeFromZeInfo(*ZeInfoOrErr);
       if (!SimdSizeOrErr) {
         errorMessage = ERROR_VLD + llvm::toString(SimdSizeOrErr.takeError());
         return false;
@@ -353,9 +365,16 @@ bool TranslateBuildSPMDAndESIMD(
 
     // ZeBinary contains non-null terminated strings, add the null via std::string ownership.
     for (auto& s : *VISAAsm) {
-      visaStrings.push_back(s.str());
-      visaCStrings.push_back(visaStrings.back().c_str());
+      ownerStrings.push_back(s.str());
+      visaCStrings.push_back(ownerStrings.back().c_str());
     }
+
+    for (auto& F : ZeInfoOrErr->functions)
+    {
+      ownerStrings.push_back(std::move(F.name));
+      DirectCallFunctions.push_back(ownerStrings.back().c_str());
+    }
+
   }
 
   return true;

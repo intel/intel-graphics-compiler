@@ -1064,6 +1064,8 @@ public:
     VISA_BUILDER_API virtual void SetOption(vISAOptions option, uint32_t val) = 0;
     VISA_BUILDER_API virtual void SetOption(vISAOptions option, const char *val) = 0;
 
+    VISA_BUILDER_API virtual void SetDirectCallFunctionSet(const std::unordered_set<std::string>& directCallFunctions) = 0;
+
     // For inline asm code generation
     VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaText, const std::string& visaTextFile) = 0;
     VISA_BUILDER_API virtual int ParseVISAText(const std::string& visaFile) = 0;

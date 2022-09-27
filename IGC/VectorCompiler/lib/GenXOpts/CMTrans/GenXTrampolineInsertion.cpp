@@ -170,13 +170,17 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
   if (!EnableTrampolineInsertion)
     return false;
 
+  bool Modified = false;
+
   auto &&BECfg = getAnalysis<GenXBackendConfig>();
+  IGC_ASSERT_MESSAGE(
+      llvm::none_of(M.functions(),
+        [&](const Function& F) { return F.hasAddressTaken() && BECfg.directCallsOnly(F.getName()); }),
+      "A function has address taken inside the module that contradicts "
+      "DirectCallsOnly option");
+
+  // If direct calls are forced for all functions.
   if (BECfg.directCallsOnly()) {
-    IGC_ASSERT_MESSAGE(
-        llvm::none_of(M.functions(),
-                      [](const Function &F) { return F.hasAddressTaken(); }),
-        "A function has address taken inside the module that contradicts "
-        "DirectCallsOnly option");
     return false;
   }
 
@@ -185,6 +189,8 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
   IRBuilder<> IRB(M.getContext());
 
   for (auto *F : ExternalFuncs) {
+    if (BECfg.directCallsOnly(F->getName()))
+      continue;
     if (F->isDeclaration()) {
       if (!vc::requiresStackCall(F))
         F->addFnAttr(genx::FunctionMD::CMStackCall);
@@ -193,6 +199,7 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
       continue;
     }
     createTrampoline(*F, GlobalValue::ExternalLinkage, IRB);
+    Modified = true;
   }
 
   for (auto *F : InternalIndirectFuncs) {
@@ -211,9 +218,9 @@ bool GenXTrampolineInsertion::runOnModule(Module &M) {
     }
 
     createTrampoline(*F, GlobalValue::InternalLinkage, IRB);
+    Modified = true;
   }
 
-  bool Modified = ExternalFuncs.size() || InternalIndirectFuncs.size();
   ExternalFuncs.clear();
   InternalIndirectFuncs.clear();
   return Modified;

@@ -81,6 +81,10 @@ public:
     VISA_BUILDER_API VISAKernel* GetVISAKernel(const std::string& kernelName) const override;
     VISA_BUILDER_API int ClearAsmTextStreams() override;
 
+    // Pass a set of functions that should be called directly (vs. indirect calls).
+    // Used in ESIMD+SPMD interop scenarios.
+    VISA_BUILDER_API void SetDirectCallFunctionSet(const std::unordered_set<std::string>& directCallFunctions) override;
+
     /**************END VISA BUILDER API*************************/
 
     string_pool_entry** branch_targets;
@@ -959,6 +963,10 @@ private:
     std::map<std::string, vISA::G4_Kernel*> functionsNameMap;
     vISA::G4_Kernel* GetCallerKernel(vISA::G4_INST*);
     vISA::G4_Kernel* GetCalleeKernel(vISA::G4_INST*);
+
+    // Set of functions that should be called directly (vs. indirect calls).
+    // Used in ESIMD+SPMD interop scenarios.
+    std::unordered_set<std::string> m_directCallFunctions;
 
     // To collect call related info for LinkTimeOptimization
     void CollectCallSites(

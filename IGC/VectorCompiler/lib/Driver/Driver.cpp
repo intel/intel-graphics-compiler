@@ -283,6 +283,9 @@ static GenXBackendData createBackendData(const vc::ExternalData &Data,
         IGCLLVM::makeMemoryBufferRef(*Data.VCPrintf32BIFModule);
 
   BackendData.VISALTOStrings = Data.VISALTOStrings;
+  for(auto& FName : Data.DirectCallFunctions) {
+    BackendData.DirectCallFunctions.insert(FName);
+  }
   return std::move(BackendData);
 }
 

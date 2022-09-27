@@ -446,7 +446,9 @@ bool fillPrintfData(vc::ExternalData &ExtData) {
 }
 
 static llvm::Optional<vc::ExternalData>
-fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr, llvm::ArrayRef<const char*> VISALTOStrings) {
+fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr,
+                 llvm::ArrayRef<const char *> VISALTOStrings,
+                 llvm::ArrayRef<const char *> DirectCallFunctions) {
   vc::ExternalData ExtData;
   ExtData.OCLGenericBIFModule = getGenericModuleBuffer(OCL_BC);
   if (!ExtData.OCLGenericBIFModule)
@@ -478,6 +480,7 @@ fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr, llvm::ArrayRef<c
     return {};
 
   ExtData.VISALTOStrings = VISALTOStrings;
+  ExtData.DirectCallFunctions = DirectCallFunctions;
 
   return std::move(ExtData);
 }
@@ -582,8 +585,11 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   llvm::ArrayRef<const char *> VISALTOStrings{
       InputArgs->pVISAAsmToLinkArray, InputArgs->NumVISAAsmsToLink};
 
+  llvm::ArrayRef<const char *> DirectCallFunctions{
+      InputArgs->pDirectCallFunctions, InputArgs->NumDirectCallFunctions};
+
   auto ExtData =
-      fillExternalData(Opts.Binary, Opts.CPUStr, VISALTOStrings);
+      fillExternalData(Opts.Binary, Opts.CPUStr, VISALTOStrings, DirectCallFunctions);
   if (!ExtData)
     return getError(vc::make_error_code(vc::errc::bif_load_fail), OutputArgs);
   llvm::ArrayRef<uint32_t> SpecConstIds{InputArgs->pSpecConstantsIds,

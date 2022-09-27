@@ -724,7 +724,7 @@ RuntimeInfoCollector::CompiledModuleT RuntimeInfoCollector::run() {
                std::back_inserter(IndirectlyReferencedFuncs),
                [&BECfg = BC](const FunctionGroup *FG) {
                  return vc::isIndirect(FG->getHead()) &&
-                        !BECfg.directCallsOnly();
+                        !BECfg.directCallsOnly(FG->getHead()->getName());
                });
   auto &&DeclsRange =
       llvm::make_filter_range(M.functions(), [](const Function &F) {

@@ -145,12 +145,14 @@ bool GenXCloneIndirectFunctions::runOnModule(Module &M) {
     return false;
 
   auto &&BECfg = getAnalysis<GenXBackendConfig>();
+  IGC_ASSERT_MESSAGE(
+    llvm::none_of(M.functions(),
+      [&](const Function& F) { return F.hasAddressTaken() && BECfg.directCallsOnly(F.getName()); }),
+    "A function has address taken inside the module that contradicts "
+    "DirectCallsOnly option");
+
+  // If direct calls are forced for all functions.
   if (BECfg.directCallsOnly()) {
-    IGC_ASSERT_MESSAGE(
-        llvm::none_of(M.functions(),
-                      [](const Function &F) { return F.hasAddressTaken(); }),
-        "A function has address taken inside the module that contradicts "
-        "DirectCallsOnly option");
     return false;
   }
 
@@ -159,6 +161,8 @@ bool GenXCloneIndirectFunctions::runOnModule(Module &M) {
   bool Modified = false;
 
   for (auto [F, IsExternal] : IndirectFuncs) {
+    if (BECfg.directCallsOnly(F->getName())) continue;
+
     auto CheckDirectCall = [Func = F](User *U) {
       auto *CI = dyn_cast<CallInst>(U);
       return CI && CI->getCalledFunction() == Func;

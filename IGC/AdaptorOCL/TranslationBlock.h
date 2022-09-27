@@ -180,24 +180,28 @@ struct STB_TranslateInputArgs
                                           // that should be linked with compiled module.
                                           // Used e.g. for "sginvoke" functionality.
     uint32_t        NumVISAAsmsToLink;
+    const char**    pDirectCallFunctions;
+    uint32_t        NumDirectCallFunctions;
 
     STB_TranslateInputArgs()
     {
-        pInput                = NULL;
-        InputSize             = 0;
-        pOptions              = NULL;
-        OptionsSize           = 0;
-        pInternalOptions      = NULL;
-        InternalOptionsSize   = 0;
-        pTracingOptions       = NULL;
-        TracingOptionsCount   = 0;
-        GTPinInput            = NULL;
+        pInput                      = NULL;
+        InputSize                   = 0;
+        pOptions                    = NULL;
+        OptionsSize                 = 0;
+        pInternalOptions            = NULL;
+        InternalOptionsSize         = 0;
+        pTracingOptions             = NULL;
+        TracingOptionsCount         = 0;
+        GTPinInput                  = NULL;
         CompileTimeStatisticsEnable = false;
-        pSpecConstantsIds     = NULL;
-        pSpecConstantsValues  = NULL;
-        SpecConstantsSize     = 0;
-        pVISAAsmToLinkArray   = NULL;
-        NumVISAAsmsToLink     = 0;
+        pSpecConstantsIds           = NULL;
+        pSpecConstantsValues        = NULL;
+        SpecConstantsSize           = 0;
+        pVISAAsmToLinkArray         = NULL;
+        NumVISAAsmsToLink           = 0;
+        pDirectCallFunctions        = NULL;
+        NumDirectCallFunctions      = 0;
     }
 };
 
