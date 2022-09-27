@@ -1778,12 +1778,16 @@ G4_INST::MovType G4_INST::canPropagate() const
         }
     }
 
-    // Do not propagate through copy of `acc0` if its execution size does not match the native size,
-    // as some latest passes (e.g., fixAddCSubb) rely on the acc0 copy move for correctness
-    // If there are mulitple use of the current instruction, don't propagate as well. Because acc sub rely on singl def/use.
-    if (src->isAccReg() &&
-       (getExecSize() != builder.getNativeExecSize() ||
-       this->use_size() > 1))
+    // Do not propagate through copy of `acc0`
+    // Even single use, the propagation may introduce issue.
+    // Such as in following case:
+    // addc
+    // mov  V1, acc0
+    // mulh
+    // add   V2, V1, V3
+    // Since HW conformity will replace mulh with mul + acc0 dst,
+    // the propagation acc0 through V1 will introduce correctness issue.
+    if (src->isAccReg())
     {
         return SuperMov;
     }
