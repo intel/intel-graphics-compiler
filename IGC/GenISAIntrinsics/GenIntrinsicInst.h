@@ -1622,6 +1622,46 @@ public:
     }
 };
 
+class FPBinaryOperatorIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst* I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        if (ID == GenISAIntrinsic::GenISA_FPBinaryOperator)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool classof(const Value* V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+    inline Value* getLValue() const
+    {
+        return getOperand(0);
+    }
+    inline Value* getRValue() const {
+        return getOperand(1);
+    }
+    inline uint32_t getFPInstOpcode() const {
+        return (uint32_t)cast<ConstantInt>(getOperand(2))->getZExtValue();
+    }
+    inline bool isFast() const {
+        return cast<ConstantInt>(getOperand(3))->isOne();
+    }
+
+    enum class FPBinaryOperators : uint32_t
+    {
+        FAdd,
+        FSub,
+        FMul,
+        FDiv,
+        FRem
+    };
+
+};
+
 template <class X, class Y>
 inline bool isa(const Y &Val, GenISAIntrinsic::ID id)
 {
@@ -1665,7 +1705,6 @@ dyn_cast(Y &Val, GenISAIntrinsic::ID id)
     }
     return nullptr;
 }
-
 // TODO: add more classes to make our intrinsics easier to use
 
 }

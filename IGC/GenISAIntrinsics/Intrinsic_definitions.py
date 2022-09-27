@@ -2721,5 +2721,12 @@ Imported_Intrinsics = \
 "GenISA_rt_spill_anchor": ["Raytracing: Marker for spilled values",
     [("anyint",                         "return the input"),
     [(0,                                "input value")],
+    "NoMem"]],
+####################################################################################################
+"GenISA_FPBinaryOperator": ["Represents a generic intrinsic for fadd,fsub,fmul,fdiv",
+    [("anyfloat",                       "return value of operation"),
+    [(0,                                "operand 0 of binary operator"),
+     (0,                                "operand 1 of binary operator"),
+     ("int",                            "instruction 0:fadd, 1:fsub, 2:fmul, 3:fdiv, 4:frem")],
     "NoMem"]]
 }

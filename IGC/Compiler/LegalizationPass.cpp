@@ -277,6 +277,43 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator& I)
 
 void Legalization::visitCallInst(llvm::CallInst& I)
 {
+    if (auto FPIntrin = dyn_cast<FPBinaryOperatorIntrinsic>(&I))
+    {
+        Value* L = FPIntrin->getLValue();
+        Value* R = FPIntrin->getRValue();
+        using FPOp = FPBinaryOperatorIntrinsic::FPBinaryOperators;
+        FPOp opcode = static_cast<FPOp>(FPIntrin->getFPInstOpcode());
+        Value* newInst = nullptr;
+        m_builder->SetInsertPoint(&I);
+
+        switch (opcode)
+        {
+            case FPOp::FAdd:
+                newInst = m_builder->CreateFAdd(L, R);
+                break;
+            case FPOp::FSub:
+                newInst = m_builder->CreateFSub(L, R);
+                break;
+            case FPOp::FMul:
+                newInst = m_builder->CreateFMul(L, R);
+                break;
+            case FPOp::FDiv:
+                newInst = m_builder->CreateFDiv(L, R);
+                break;
+            case FPOp::FRem:
+                newInst = m_builder->CreateFRem(L, R);
+                break;
+        };
+
+        if (isa<Instruction>(newInst))
+        {
+            FastMathFlags Flags = I.getFastMathFlags();
+            cast<Instruction>(newInst)->setFastMathFlags(Flags);
+        }
+
+        I.replaceAllUsesWith(newInst);
+        I.eraseFromParent();
+    }
     m_ctx->m_instrTypes.numInsts++;
     if (!m_ctx->platform.supportSamplerFp16Input())
     {
