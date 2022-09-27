@@ -391,7 +391,7 @@ namespace IGC
 
             if (simd32info.noSpill)
             {
-                if (simd32info.occupancy == maxOccupancy || (!simd16info.shader && !simd8info.shader))
+                if (simd32info.occupancy == maxOccupancy || cgCtx->m_ForceOneSIMD)
                 {
                     simdMode = simd32info.simdMode;
                     return simd32info.shader;
@@ -403,7 +403,7 @@ namespace IGC
 
             if (simd16info.noSpill)
             {
-                if (simd16info.occupancy == maxOccupancy || (!simd32info.shader && !simd8info.shader))
+                if (simd16info.occupancy == maxOccupancy || cgCtx->m_ForceOneSIMD)
                 {
                     simdMode = simd16info.simdMode;
                     return simd16info.shader;
