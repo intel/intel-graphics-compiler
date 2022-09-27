@@ -2645,7 +2645,8 @@ namespace IGC
         bool isWorstThanPrv = false;
         // Look for previous generated shaders
         // ignoring case for multi-simd compilation
-        if (!ctx->m_enableSimdVariantCompilation)
+        // disabling for now this part of code
+        /*if (!ctx->m_enableSimdVariantCompilation)
         {
             isWorstThanPrv =
                 !ctx->m_retryManager.IsBetterThanPrevious(pKernel);
@@ -2668,7 +2669,7 @@ namespace IGC
                     delete previousKernel;
                 }
             }
-        }
+        }*/
 
         if (isWorstThanPrv ||
             pOutput->m_scratchSpaceUsedBySpills == 0 ||
