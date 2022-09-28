@@ -415,6 +415,14 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
     // Each visited base pointer have a collection of base expr.
     DenseMap<Value *, SmallVector<PointerExpr, 128>> Pointers;
 
+    auto IsUsedByBindless = [](const GetElementPtrInst *GEP) {
+        for (auto *U : GEP->users())
+            if (auto *P2I = dyn_cast<PtrToIntInst>(U))
+                if (P2I->getType()->isIntegerTy(32))
+                    return true;
+        return false;
+    };
+
     bool Changed = false;
     for (auto BI = BB.begin(), BE = BB.end(); BI != BE; ++BI) {
         auto *GEP = dyn_cast<GetElementPtrInst>(BI);
@@ -424,15 +432,17 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
         if (!GEP || !GEP->isInBounds() || GEP->getNumIndices() != 1 ||
             (GEP->getAddressSpace() != ADDRESS_SPACE_GLOBAL &&
              GEP->getAddressSpace() != ADDRESS_SPACE_GENERIC))
-          continue;
+            continue;
+        if (IsUsedByBindless(GEP))
+            continue;
         auto *ZExt = dyn_cast<ZExtInst>(GEP->getOperand(1));
         if (!ZExt) // TODO: sext may also be considered.
-          continue;
+            continue;
         auto *Idx = ZExt->getOperand(0);
         const SCEV *E = SE->getSCEV(Idx);
         // Skip if the offset to the base is already a constant.
         if (isa<SCEVConstant>(E))
-          continue;
+            continue;
         Value *Base = GEP->getPointerOperand();
         auto &Exprs = Pointers[Base];
 
@@ -502,8 +512,10 @@ bool GEPLowering::runOnFunction(Function& F) {
 
     bool Changed = false;
 
-    for (auto &BB : F)
-        Changed |= simplifyGEP(BB);
+    if (IGC_IS_FLAG_ENABLED(EnableGEPSimplification)) {
+        for (auto &BB : F)
+            Changed |= simplifyGEP(BB);
+    }
 
     for (auto& BB : F) {
         for (auto BI = BB.begin(), BE = BB.end(); BI != BE;) {
