@@ -3975,10 +3975,20 @@ namespace IGC
         case ShaderType::COMPUTE_SHADER:
             if (canAbortOnSpill && AvoidRetryOnSmallSpill())
             {
-                if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 4);
-                else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
-                    SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
+                if (m_program->m_Platform->getGRFSize() >= 64)
+                {
+                    if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 4);
+                    else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
+                }
+                else
+                {
+                    if (m_program->m_dispatchSize == SIMDMode::SIMD16)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
+                    else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 2);
+                }
             }
             break;
 
@@ -6185,7 +6195,7 @@ namespace IGC
 
         bool isStackCallProgram =
           m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
-        bool noRetry = (AvoidRetryOnSmallSpill() || jitInfo->avoidRetry);
+        bool noRetry = jitInfo->avoidRetry;
         if ((jitInfo->isSpill && noRetry) || isStackCallProgram)
         {
             context->m_retryManager.Disable();
