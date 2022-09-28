@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/GenIRLowering.h"
 #include "Compiler/CISACodeGen/GenSimplification.h"
 #include "Compiler/CISACodeGen/LoopDCE.h"
+#include "Compiler/CISACodeGen/CustomControlFlowOpt.hpp"
 #include "Compiler/CISACodeGen/LdShrink.h"
 #include "Compiler/CISACodeGen/MemOpt.h"
 #include "Compiler/CISACodeGen/MemOpt2.h"
@@ -1434,6 +1435,7 @@ void OptimizeIR(CodeGenContext* const pContext)
 
             // Use CFGSimplification to do clean-up. Needs to be invoked before lowerSwitch.
             mpm.add(llvm::createCFGSimplificationPass());
+            mpm.add(createCustomControlFlowOptPass());
 
             if (IGC_IS_FLAG_DISABLED(DisableFlattenSmallSwitch))
             {
