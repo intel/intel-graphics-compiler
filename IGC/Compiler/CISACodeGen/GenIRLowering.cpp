@@ -409,7 +409,7 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
     struct PointerExpr {
         GetElementPtrInst *GEP;
         const SCEV *Idx;
-        struct PointerExpr *Base = nullptr;
+        GetElementPtrInst *Base = nullptr; // A simplified offset if any.
         const SCEV *Offset = nullptr; // A simplified offset if any.
     };
     // Each visited base pointer have a collection of base expr.
@@ -450,7 +450,7 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
         auto EE = Exprs.end();
         const SCEV *Offset = nullptr;
         unsigned MinDiff = UINT_MAX;
-        PointerExpr *BaseWithMinDiff = nullptr;
+        GetElementPtrInst *BaseWithMinDiff = nullptr;
         for (/*EMPTY*/; EI != EE; ++EI) {
             // Skip if the result types do not match.
             if (EI->GEP->getType() != GEP->getType())
@@ -458,7 +458,7 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
             auto *Diff = SE->getMinusSCEV(E, EI->Idx);
             if (Diff->getExpressionSize() < 4 &&
                 Diff->getExpressionSize() < MinDiff) {
-                BaseWithMinDiff = &*EI;
+                BaseWithMinDiff = EI->GEP;
                 Offset = Diff;
             }
         }
@@ -479,7 +479,7 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
                 Value *V = E.expandCodeFor(P.Offset, P.Idx->getType(), P.GEP);
                 Builder->SetInsertPoint(P.GEP);
                 auto *NewGEP = Builder->CreateInBoundsGEP(
-                    P.Base->GEP,
+                    P.Base,
                     Builder->CreateZExt(V, P.GEP->getOperand(1)->getType()));
                 P.GEP->replaceAllUsesWith(NewGEP);
                 DeadInsts.push_back(P.GEP);
