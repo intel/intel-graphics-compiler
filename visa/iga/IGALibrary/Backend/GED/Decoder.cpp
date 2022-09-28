@@ -937,7 +937,7 @@ void Decoder::decodeTernarySourceAlign16(Instruction *inst)
 
 static bool ternaryDstOmitsHzStride(const OpSpec &os)
 {
-    if (os.isDpasFamily())
+    if (os.isDpasFormat())
         return true;
 
     return false;
@@ -1004,7 +1004,7 @@ void Decoder::decodeTernarySourceAlign1(Instruction *inst)
 
     GED_REG_FILE regFile = decodeSrcRegFile<S>();
     const OpSpec &os = inst->getOpSpec();
-    if (os.isDpasFamily()) {
+    if (os.isDpasFormat()) {
         // DPAS specific
         // DPAS allowed src0 as null:
         // When Src0 is specified as null, it is treated as an immediate value of +0
@@ -1244,7 +1244,7 @@ Instruction *Decoder::decodeSendInstruction(Kernel& kernel)
             // we can still assume it's 0.
             sdi.src1Len = 0;
         }
-    } else { // if (m_opSpec->isSendFamily()) {
+    } else { // if (m_opSpec->isSendFormat()) {
         decodeSendDestination(inst);
         decodeSendSource0(inst);
     }
@@ -1332,7 +1332,7 @@ void Decoder::decodeSendSource0(Instruction *inst)
             0,
             inst->getExecSize(),
             isMacro());
-        bool hasSrcRgnEncoding = inst->getOpSpec().isSendFamily()
+        bool hasSrcRgnEncoding = inst->getOpSpec().isSendFormat()
             && platform() < Platform::GEN9;
 
         hasSrcRgnEncoding &= platform() <= Platform::GEN11;
@@ -1781,7 +1781,7 @@ MathMacroExt Decoder::decodeDestinationMathMacroRegFromChEn()
 
 void Decoder::decodeDstDirSubRegNum(DirRegOpInfo& dri)
 {
-    if (isMacro() || m_opSpec->isSendOrSendsFamily()) {
+    if (isMacro() || m_opSpec->isAnySendFormat()) {
         dri.regRef.subRegNum = 0;
     } else {
         Type scalingType = dri.type;
@@ -1834,7 +1834,7 @@ DirRegOpInfo Decoder::decodeDstDirRegInfo() {
     dri.type = m_opSpec->implicitDstType();
     bool hasDstType = true;
     if (platform() >= Platform::XE) {
-        hasDstType &= !m_opSpec->isSendOrSendsFamily();
+        hasDstType &= !m_opSpec->isAnySendFormat();
         hasDstType &= !m_opSpec->isBranching();
     }
     if (hasDstType) {
@@ -1858,7 +1858,7 @@ bool Decoder::hasImplicitScalingType(Type& type, DirRegOpInfo& dri)
 {
     // FIXME: when entering this function, assuming it MUST NOT be imm or label src
     if (platform() >= Platform::XE &&
-        (m_opSpec->isSendFamily() || m_opSpec->isBranching()))
+        (m_opSpec->isSendFormat() || m_opSpec->isBranching()))
     {
         dri.type = m_opSpec->implicitSrcType(
             static_cast<int>(SourceIndex::SRC0), false);
@@ -1903,13 +1903,13 @@ void Decoder::decodeSourceBasicAlign1(
                 toSrcIx, inst->getExecSize(), isMacro());
         }
         Region decRgn = Region::INVALID;
-        if (m_opSpec->isSendOrSendsFamily()) {
+        if (m_opSpec->isAnySendFormat()) {
             decRgn = implRgn;
         } else {
             decRgn = decodeSrcRegionVWH<S>();
         }
         // ensure the region matches any implicit region rules
-        if (!m_opSpec->isSendOrSendsFamily() &&
+        if (!m_opSpec->isAnySendFormat() &&
             inst->getOpSpec().hasImplicitSrcRegion(
                 toSrcIx, inst->getExecSize(), isMacro()))
         {
@@ -2151,7 +2151,7 @@ void Decoder::decodeOptions(Instruction *inst)
         }
     }
 
-    if (os.isSendOrSendsFamily()) {
+    if (os.isAnySendFormat()) {
         GED_EOT eot = GED_EOT_None;
         GED_DECODE_RAW_TO(EOT, eot);
         if (eot == GED_EOT_EOT) {
@@ -2174,8 +2174,8 @@ void Decoder::decodeOptions(Instruction *inst)
     }
 
     bool hasThreadCtrl =
-      !os.isSendOrSendsFamily() && os.supportsThreadCtrl() ||
-      (os.isSendOrSendsFamily() && platform() >= Platform::GEN9);
+      !os.isAnySendFormat() && os.supportsThreadCtrl() ||
+      (os.isAnySendFormat() && platform() >= Platform::GEN9);
     if (hasThreadCtrl) {
         GED_THREAD_CTRL trdCntrl = GED_THREAD_CTRL_Normal;
         GED_DECODE_RAW_TO(ThreadCtrl, trdCntrl);
@@ -2183,7 +2183,7 @@ void Decoder::decodeOptions(Instruction *inst)
     }
 
     if (m_model.supportNoSrcDepSet() &&
-        os.isSendOrSendsFamily())
+        os.isAnySendFormat())
     {
         GED_NO_SRC_DEP_SET srcDep;
         GED_DECODE_RAW_TO(NoSrcDepSet, srcDep);

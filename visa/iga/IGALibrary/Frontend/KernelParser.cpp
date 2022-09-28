@@ -1289,7 +1289,7 @@ public:
             }
             break;
         case OpSpec::TERNARY_REGIMM_REG_REGIMM:
-            if (m_opSpec->isDpasFamily()) {
+            if (m_opSpec->isDpasFormat()) {
                 ParseDpasOp(-1, true);    // dst
                 ParseDpasOp(0, false);    // src0
                 ParseDpasOp(1, false);    // src1
@@ -1699,7 +1699,7 @@ public:
             // isOldSend: pre XE will have a subfunction,
             // but we pull it from ExDesc
             bool isOldSend =
-                platform() < Platform::XE || pOs->isSendOrSendsFamily();
+                platform() < Platform::XE || pOs->isAnySendFormat();
             IGA_ASSERT(!pOs->supportsSubfunction() || isOldSend,
                 "INTERNAL ERROR: subfunction expected");
         }
@@ -1970,7 +1970,7 @@ public:
         Region::Horz rgnHz = Region::Horz::HZ_1;
 
         MathMacroExt mmeReg = MathMacroExt::INVALID;
-        if (m_opSpec->isSendOrSendsFamily() && Consume(DOT)) {
+        if (m_opSpec->isAnySendFormat() && Consume(DOT)) {
             ConsumeIntLitOrFail(subregNum, "expected subregister");
             // whine about them using a subregister on a send operand
             if (m_opts.deprecatedSyntaxWarnings) {
@@ -1978,7 +1978,7 @@ public:
                     "send operand subregisters have no effect"
                     " and are deprecated syntax");
             }
-            if (m_opSpec->isSendOrSendsFamily() && LookingAt(LANGLE)) {
+            if (m_opSpec->isAnySendFormat() && LookingAt(LANGLE)) {
                 if (m_opts.deprecatedSyntaxWarnings) {
                     // whine about them using a region
                     WarningT("send operand region has no effect and is"
@@ -2006,7 +2006,7 @@ public:
 
         // :t
         Type dty = Type::INVALID;
-        if (m_opSpec->isSendOrSendsFamily()) {
+        if (m_opSpec->isAnySendFormat()) {
             // special handling for send types
             dty = ParseSendOperandTypeWithDefault(-1);
         } else {
@@ -2398,7 +2398,7 @@ public:
 
         // :t
         Type sty = Type::INVALID;
-        if (m_opSpec->isSendOrSendsFamily()) {
+        if (m_opSpec->isAnySendFormat()) {
             sty = ParseSendOperandTypeWithDefault(srcOpIx);
         } else {
             sty = ParseSrcOpTypeWithDefault(srcOpIx, false);
@@ -2467,7 +2467,7 @@ public:
             ConsumeOrFailAfterPrev(COMMA, "expected ,");
             rgn.set(ParseRegionHorz());
             ConsumeOrFailAfterPrev(RANGLE, "expected >");
-        } else if (m_opSpec->isSendOrSendsFamily()) {
+        } else if (m_opSpec->isAnySendFormat()) {
             rgn = defaultSendOperandRegion(ri.regName, srcOpIx);
         } else if (ri.supportsRegioning()) {
             // N.B. <1;1,0> won't coissue on PreGEN11
@@ -3198,7 +3198,7 @@ public:
         if (t == Type::INVALID) {
             if (m_defaultRegisterType != Type::INVALID) {
                 t = m_defaultRegisterType;
-            } else if (m_opSpec->isSendOrSendsFamily()) {
+            } else if (m_opSpec->isAnySendFormat()) {
                 t = Type::UD;
             } else if (m_opSpec->isBranching() &&
                 m_model.supportsSimplifiedBranches())
@@ -3519,7 +3519,7 @@ public:
             }
         } else if (ConsumeIdentEq("EOT")) {
             newOpt = InstOpt::EOT;
-            if (!m_opSpec->isSendOrSendsFamily()) {
+            if (!m_opSpec->isAnySendFormat()) {
                 FailAtT(loc, "EOT is only allowed on send instructions");
             }
         } else if (ConsumeIdentEq("NoCompact") ||
@@ -3626,7 +3626,7 @@ public:
             } else if (ConsumeIdentEq("ExBSO")) {
                 if (platform() < Platform::XE_HP) {
                     FailAtT(loc, "ExBSO not supported on this platform");
-                } else if (!m_opSpec->isSendOrSendsFamily()) {
+                } else if (!m_opSpec->isAnySendFormat()) {
                     FailAtT(loc, "ExBSO is not allowed for non-send instructions");
                 }
                 newOpt = InstOpt::EXBSO;
@@ -3635,7 +3635,7 @@ public:
                     )
                 {
                     FailAtT(loc, "CPS not supported on this platform");
-                } else if (!m_opSpec->isSendOrSendsFamily()) {
+                } else if (!m_opSpec->isAnySendFormat()) {
                     FailAtT(loc, "CPS is not allowed for non-send instructions");
                 }
                 newOpt = InstOpt::CPS;

@@ -487,6 +487,10 @@ static void emitDecodeOutput(
 }
 
 
+// iga.cpp
+namespace iga {iga::Platform ToPlatform(iga_gen_t gen);}
+
+
 bool decodeSendDescriptor(const Opts &opts)
 {
     std::ofstream ofs(opts.outputFile);
@@ -582,7 +586,7 @@ bool decodeSendDescriptor(const Opts &opts)
         // decode it from ex_desc[3:0]
         if (exDesc.isImm())
             sfid = iga::sfidFromEncoding(
-                static_cast<iga::Platform>(opts.platform),
+                iga::ToPlatform(opts.platform),
                 exDesc.imm & 0xF);
         if (sfid == iga::SFID::INVALID) {
             std::stringstream ss;

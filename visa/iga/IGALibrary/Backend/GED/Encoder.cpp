@@ -305,12 +305,12 @@ void Encoder::encodeFC(const Instruction &i)
         GED_ENCODE(MathFC, mfc);
     } else if (os.is(Op::BFN)) {
         GED_ENCODE(BfnFC, i.getBfnFc().value);
-    } else if (os.isDpasFamily()) {
+    } else if (os.isDpasFormat()) {
         auto sf = i.getDpasFc();
         auto sdepth = GetDpasSystolicDepth(sf);
         GED_ENCODE(SystolicDepth, sdepth);
         GED_ENCODE(RepeatCount, GetDpasRepeatCount(sf));
-    } else if (os.isSendOrSendsFamily()) {
+    } else if (os.isAnySendFormat()) {
         if (platform() >= Platform::XE) {
             // on earlier platforms this is stowed in ExDesc
             auto sfid = lowerSFID(i.getSendFc());
@@ -456,7 +456,7 @@ void Encoder::encodeInstruction(Instruction& inst)
         // options encoded internally
     } else if (os.isTernary()) {
         encodeTernaryInstruction(inst, accessMode);
-    } else if (os.isSendOrSendsFamily()) {
+    } else if (os.isAnySendFormat()) {
         encodeSendInstruction(inst);
     } else if (os.is(Op::SYNC)) {
         encodeSyncInstruction(inst);
@@ -527,7 +527,7 @@ void Encoder::encodeTernaryDestinationAlign1(const Instruction& inst)
             dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType(), m_model.platform));
         bool hasDstRgnHz = true;
         // dpas does not have a dst region
-        hasDstRgnHz = !inst.getOpSpec().isDpasFamily();
+        hasDstRgnHz = !inst.getOpSpec().isDpasFormat();
         if (hasDstRgnHz) {
             GED_ENCODE(DstHorzStride, static_cast<int>(dst.getRegion().getHz()));
         }
@@ -547,7 +547,7 @@ void Encoder::encodeTernarySourceAlign1(const Instruction& inst)
     const Operand& src = inst.getSource(S);
     Type srcType = src.getType();
     // DPAS
-    if (inst.getOpSpec().isDpasFamily()) {
+    if (inst.getOpSpec().isDpasFormat()) {
         // src0's type is the type for all sources
 
         if (S == SourceIndex::SRC0) {
@@ -870,13 +870,13 @@ void Encoder::encodeSendInstruction(const Instruction& i)
     ////////////////////////////////////////////
     // send operands
     const OpSpec& os = i.getOpSpec();
-    if (os.isSendFamily()) {
+    if (os.isSendFormat()) {
         encodeSendDestination(i.getDestination());
         encodeSendSource0(i.getSource(0));
         if (m_model.supportsXeSend()) {
             encodeSendsSource1(i.getSource(1));
         }
-    } else if (os.isSendsFamily()) {
+    } else if (os.isSendsFormat()) {
         encodeSendDestination(i.getDestination());
         encodeSendsSource0(i.getSource(0));
         encodeSendsSource1(i.getSource(1));
@@ -932,7 +932,7 @@ void Encoder::encodeSendDescsPreXe(const Instruction& i)
     SendDesc exDesc = i.getExtMsgDescriptor();
     const OpSpec& os = i.getOpSpec();
     if (exDesc.isReg()) {
-        if (os.isSendFamily()) {
+        if (os.isSendFormat()) {
             errorT("unary send forbids register ExDesc");
         }
         GED_ENCODE(ExDescRegFile, GED_REG_FILE_ARF);
@@ -1916,7 +1916,7 @@ void Encoder::encodeOptions(const Instruction& inst)
         {
             GED_ENCODE(DepCtrl, GED_DEP_CTRL_NoDDClr_NoDDChk);
         }
-        else if (!inst.getOpSpec().isSendOrSendsFamily() && inst.getOp() != Op::NOP)
+        else if (!inst.getOpSpec().isAnySendFormat() && inst.getOp() != Op::NOP)
         {
             GED_ENCODE(DepCtrl, GED_DEP_CTRL_Normal);
         }
@@ -1941,7 +1941,7 @@ void Encoder::encodeOptions(const Instruction& inst)
     if (!inst.hasInstOpt(InstOpt::ATOMIC) &&
         !inst.hasInstOpt(InstOpt::SWITCH) &&
         !inst.hasInstOpt(InstOpt::NOPREEMPT) &&
-        !inst.getOpSpec().isSendOrSendsFamily() &&
+        !inst.getOpSpec().isAnySendFormat() &&
         inst.getOp() != Op::NOP)
     {
         GED_ENCODE(ThreadCtrl, GED_THREAD_CTRL_Normal);
@@ -1951,7 +1951,7 @@ void Encoder::encodeOptions(const Instruction& inst)
     {
         GED_ENCODE(NoSrcDepSet, GED_NO_SRC_DEP_SET_NoSrcDepSet);
     }
-    else if (inst.getOpSpec().isSendOrSendsFamily() &&
+    else if (inst.getOpSpec().isAnySendFormat() &&
              m_model.supportNoSrcDepSet())
     {
         GED_ENCODE(NoSrcDepSet, GED_NO_SRC_DEP_SET_Normal);

@@ -92,7 +92,7 @@ public:
 };
 
 // iga.cpp
-Platform ToPlatform(iga_gen_t gen);
+namespace iga {Platform ToPlatform(iga_gen_t gen);}
 
 kv_t *kv_create(
     iga_gen_t gen_platf,
@@ -328,7 +328,7 @@ int32_t kv_get_opgroup(const kv_t *kv, int32_t pc)
     case Op::ELSE:  return (int32_t)kv_opgroup_t::KV_OPGROUP_ELSE;
     case Op::WHILE: return (int32_t)kv_opgroup_t::KV_OPGROUP_WHILE;
     default:
-        if (inst->getOpSpec().isSendOrSendsFamily() &&
+        if (inst->getOpSpec().isAnySendFormat() &&
             inst->hasInstOpt(InstOpt::EOT))
         {
             return (int32_t)kv_opgroup_t::KV_OPGROUP_SEND_EOT;
@@ -346,7 +346,7 @@ uint32_t kv_get_send_descs(
     if (!kv || !ex_desc || !desc)
         return 0;
     const Instruction *inst = ((KernelViewImpl *)kv)->getInstruction(pc);
-    if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+    if (!inst || !inst->getOpSpec().isAnySendFormat()) {
         *ex_desc = *desc = KV_INVALID_SEND_DESC;
         return 0;
     }
@@ -377,7 +377,7 @@ void kv_get_send_indirect_descs(
         return;
 
     const Instruction *inst = ((KernelViewImpl *)kv)->getInstruction(pc);
-    if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+    if (!inst || !inst->getOpSpec().isAnySendFormat()) {
         *ex_desc_reg = *ex_desc_subreg = *desc_reg = *desc_subreg = KV_INVALID_REG;
         return;
     }
@@ -426,7 +426,7 @@ kv_status_t kv_get_send_exbso(
     const Instruction *inst = getInstruction(kv, pc);
     if (!inst) {
         return kv_status_t::KV_INVALID_PC;
-    } else if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+    } else if (!inst || !inst->getOpSpec().isAnySendFormat()) {
         return kv_status_t::KV_NON_SEND_INSTRUCTION;
     }
 
@@ -447,7 +447,7 @@ kv_status_t kv_get_message_type(
     const Instruction *inst = getInstruction(kv, pc);
     if (!inst) {
         return kv_status_t::KV_INVALID_PC;
-    } else if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+    } else if (!inst || !inst->getOpSpec().isAnySendFormat()) {
         return kv_status_t::KV_NON_SEND_INSTRUCTION;
     }
 
@@ -479,7 +479,7 @@ kv_status_t kv_get_message_type_ext(
     if (!inst) {
         return kv_status_t::KV_INVALID_PC;
     }
-    else if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+    else if (!inst || !inst->getOpSpec().isAnySendFormat()) {
         return kv_status_t::KV_NON_SEND_INSTRUCTION;
     }
 
@@ -503,7 +503,7 @@ kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc, int32_t *sfid_enum)
     const Instruction *inst = getInstruction(kv, pc);
     if (!inst) {
         return kv_status_t::KV_INVALID_PC;
-    } else if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+    } else if (!inst || !inst->getOpSpec().isAnySendFormat()) {
         return kv_status_t::KV_NON_SEND_INSTRUCTION;
     }
 
@@ -534,7 +534,7 @@ uint32_t kv_get_message_len(
     const Instruction *inst = getInstruction(kv, pc);
     if (!inst)
         return 0;
-    else if (!inst->getOpSpec().isSendOrSendsFamily())
+    else if (!inst->getOpSpec().isAnySendFormat())
         return 0;
 
     // set the values and count how many are valid
@@ -634,7 +634,7 @@ kv_status_t kv_get_subfunction(const kv_t *kv, int32_t pc, uint32_t* subfunc)
     }
 
     // for send, get_message_sfid to support decoding SFID from exDesc
-    if (inst->getOpSpec().isSendOrSendsFamily()) {
+    if (inst->getOpSpec().isAnySendFormat()) {
         int32_t sfid = -1;
         kv_status_t st = kv_get_message_sfid(kv, pc, &sfid);
         *subfunc = static_cast<uint32_t>(sfid);
@@ -1178,7 +1178,7 @@ kv_status_t kv_get_cache_opt(
     const Instruction *inst = getInstruction(kv, pc);
     if (!inst) {
         return kv_status_t::KV_INVALID_PC;
-    } else if (!inst->getOpSpec().isSendOrSendsFamily()) {
+    } else if (!inst->getOpSpec().isAnySendFormat()) {
         return kv_status_t::KV_NON_SEND_INSTRUCTION;
     }
 

@@ -789,14 +789,16 @@ namespace iga {
             { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        {Op::SENDS /* Op::77 */, Platform::GEN9, 0x33,
+        {Op::INVALID, Platform::GEN9, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::INVALID, Platform::GEN9, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
+        {Op::SENDS /* Op::79 */, Platform::GEN9, 0x33,
             "sends",
             "Split Send Message",
             OpSpec::Format::SEND_BINARY,
             { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        {Op::SENDSC /* Op::78 */, Platform::GEN9, 0x34,
+        {Op::SENDSC /* Op::80 */, Platform::GEN9, 0x34,
             "sendsc",
             "Conditional Split Send Message",
             OpSpec::Format::SEND_BINARY,
@@ -804,7 +806,7 @@ namespace iga {
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
         {Op::INVALID, Platform::GEN9, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        {Op::SHL /* Op::80 */, Platform::GEN9, 0x09,
+        {Op::SHL /* Op::82 */, Platform::GEN9, 0x09,
             "shl",
             "Shift Left",
             OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -822,7 +824,7 @@ namespace iga {
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        {Op::SHR /* Op::81 */, Platform::GEN9, 0x08,
+        {Op::SHR /* Op::83 */, Platform::GEN9, 0x08,
             "shr",
             "Shift Right",
             OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -840,7 +842,7 @@ namespace iga {
             },
             OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
         },
-        {Op::SMOV /* Op::82 */, Platform::GEN9, 0x0A,
+        {Op::SMOV /* Op::84 */, Platform::GEN9, 0x0A,
             "smov",
             "Scattered Move",
             OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -857,7 +859,7 @@ namespace iga {
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
         {Op::INVALID, Platform::GEN9, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        {Op::SUBB /* Op::84 */, Platform::GEN9, 0x4F,
+        {Op::SUBB /* Op::86 */, Platform::GEN9, 0x4F,
             "subb",
             "Integer Subtraction with Borrow",
             OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -868,7 +870,7 @@ namespace iga {
             OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
         },
         {Op::INVALID, Platform::GEN9, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE,         },
-        {Op::WAIT /* Op::86 */, Platform::GEN9, 0x30,
+        {Op::WAIT /* Op::88 */, Platform::GEN9, 0x30,
             "wait",
             "Wait Notification",
             OpSpec::Format::SYNC_UNARY,
@@ -878,14 +880,14 @@ namespace iga {
             },
             OpSpec::Attr::NONE
         },
-        {Op::WHILE /* Op::87 */, Platform::GEN9, 0x27,
+        {Op::WHILE /* Op::89 */, Platform::GEN9, 0x27,
             "while",
             "While",
             OpSpec::Format::JUMP_UNARY_IMM,
             { }, // no type mappings
             OpSpec::Attr::SUPPORTS_PREDICATION
         },
-        {Op::XOR /* Op::88 */, Platform::GEN9, 0x07,
+        {Op::XOR /* Op::90 */, Platform::GEN9, 0x07,
             "xor",
             "Logic Xor",
             OpSpec::Format::BASIC_BINARY_REG_REGIMM,

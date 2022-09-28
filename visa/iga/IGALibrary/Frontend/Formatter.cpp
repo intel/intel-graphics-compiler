@@ -402,7 +402,7 @@ public:
             if (nSrcs >= 2) {
                 emit("  ");
                 formatSrcOp(SourceIndex::SRC1, i);
-            } else if (!os.isSendFamily()) {
+            } else if (!os.isSendFormat()) {
                 // ensure at least two columns worth of sources, with
                 // an exception for send.  We poach those spaces for the
                 // descriptors.
@@ -416,7 +416,7 @@ public:
         }
 
         // send descriptors
-        if (os.isSendOrSendsFamily()) {
+        if (os.isAnySendFormat()) {
             emit("  ");
             formatSendDesc(i.getExtMsgDescriptor());
             emit("  ");
@@ -582,7 +582,7 @@ private:
         // should be check for suportsFlagModifier, but looks like our
         // models are wrong on math instruction.
         /*&& i.getOpSpec().supportsFlagModifier()*/
-        if (i.hasFlagModifier() && !i.getOpSpec().isSendOrSendsFamily()) {
+        if (i.hasFlagModifier() && !i.getOpSpec().isAnySendFormat()) {
             emitAnsi(ANSI_FLAGMODIFIER,
                 '(', ToSyntax(i.getFlagModifier()), ')');
 
@@ -784,7 +784,7 @@ private:
             ss << comment;
         }
 
-        if (i.getOpSpec().isSendOrSendsFamily()) {
+        if (i.getOpSpec().isAnySendFormat()) {
             // send with immediate descriptors, we can decode this to
             // something more sane in comments
             const SendDesc exDesc = i.getExtMsgDescriptor(),
@@ -987,7 +987,7 @@ void Formatter::formatDstOp(const Instruction &i)
     const OpSpec &os = i.getOpSpec();
     const Operand &dst = i.getDestination();
 
-    startColumn(os.isSendOrSendsFamily() ? cols.sendDstOp : cols.dstOp);
+    startColumn(os.isAnySendFormat() ? cols.sendDstOp : cols.dstOp);
 
     if (dst.getDstModifier() == DstModifier::SAT) {
         emit("(sat)");
@@ -1055,11 +1055,11 @@ void Formatter::formatSrcOp(
     const Operand &src = i.getSource(srcIx);
     const OpSpec &os = i.getOpSpec();
 
-    startColumn(os.isSendOrSendsFamily() ? cols.sendSrcOp : cols.srcOp);
+    startColumn(os.isAnySendFormat() ? cols.sendSrcOp : cols.srcOp);
 
     switch (src.getKind()) {
     case Operand::Kind::DIRECT: {
-        if (os.isSendOrSendsFamily() &&
+        if (os.isAnySendFormat() &&
             srcIx == SourceIndex::SRC1 &&
             sendSrc1NeedsLengthSuffix(*this, i))
         {

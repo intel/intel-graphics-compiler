@@ -483,11 +483,12 @@ static void postProcessDecode(
 
 DecodeResult iga::tryDecode(const Instruction &i, DecodedDescFields *fields)
 {
-    if (!i.getOpSpec().isSendOrSendsFamily()) {
+    if (!i.getOpSpec().isAnySendFormat()) {
         return DecodeResult();
     }
     return
-        tryDecode(i.getOpSpec().platform,
+        tryDecode(
+            i.getOpSpec().platform,
             i.getSubfunction().send,
             i.getExecSize(),
             i.getExtMsgDescriptor(), i.getMsgDescriptor(),

@@ -347,7 +347,7 @@ namespace iga
             RegName regName = RegName::INVALID;
             GED_REG_FILE regFile = decodeSrcRegFile<S>();
             decodeReg((int)S, regFile, regNumBits, regName, regRef);
-            if (!m_opSpec->isSendOrSendsFamily() && !isMacro()) {
+            if (!m_opSpec->isAnySendFormat() && !isMacro()) {
                 regRef.subRegNum = (uint16_t)decodeSrcSubRegNum<S>();
             } else {
                 regRef.subRegNum = 0;

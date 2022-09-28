@@ -135,7 +135,7 @@ public:
     void emitInst(const Instruction &i) {
         comments.clear();
 
-        //const bool isSend = i.getOpSpec().isSendOrSendsFamily();
+        //const bool isSend = i.getOpSpec().isAnySendFormat();
         emitIndent();
         emit("{");
         emit("\"kind\":\"I\"");
@@ -262,7 +262,7 @@ public:
                         emit(",\n");
                 }
                 // if it's a send, create fake extra send parameters
-                if (i.getOpSpec().isSendOrSendsFamily()) {
+                if (i.getOpSpec().isAnySendFormat()) {
                     auto emitDesc = [&](SendDesc sd) {
                         emit(",\n"); emitIndent();
                         emit("{");
@@ -442,7 +442,7 @@ public:
     //     type:IR.Types.D
     void emitDst(const Instruction &i) {
         const OpSpec &os = i.getOpSpec();
-        if (os.isSendOrSendsFamily()) {
+        if (os.isAnySendFormat()) {
             emitSendDst(i);
             return;
         }
@@ -498,7 +498,7 @@ public:
 
     void emitSrc(const Instruction &i, int srcIx) {
         const OpSpec &os = i.getOpSpec();
-        if (os.isSendOrSendsFamily()) {
+        if (os.isAnySendFormat()) {
             emitSendSrc(i, srcIx);
             return;
         }

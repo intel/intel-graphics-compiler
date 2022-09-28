@@ -374,7 +374,7 @@ public:
                     m_chOff,
                     m_maskCtrl,
                     m_subfunc);
-        } else if (m_opSpec->isSendOrSendsFamily()) {
+        } else if (m_opSpec->isAnySendFormat()) {
             if (m_subfunc.send == SFID::INVALID) {
                 if (platform() <= Platform::GEN11 && m_exDesc.isImm()) {
                     m_subfunc.send =

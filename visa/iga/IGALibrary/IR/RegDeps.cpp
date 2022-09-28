@@ -55,7 +55,7 @@ static void setDEPPipeClass_SingleDistPipe(DepSet &dep, const Instruction &inst)
     {
         dep.setDepPipe(DEP_PIPE::MATH);
     }
-    else if (opsec.isSendOrSendsFamily())
+    else if (opsec.isAnySendFormat())
     {
         dep.setDepPipe(DEP_PIPE::SEND);
     }
@@ -97,7 +97,7 @@ static void setSendPipeType(
     const Instruction &inst,
     const Model &model)
 {
-    assert(inst.getOpSpec().isSendOrSendsFamily());
+    assert(inst.getOpSpec().isAnySendFormat());
     pipe_type = DEP_PIPE::SEND;
     // XeHPG+: slm send should be considered in different pipes
     // Check if it's SLM
@@ -139,11 +139,11 @@ static void setDEPPipeClass_ThreeDistPipe(
     {
         pipe_type = DEP_PIPE::MATH;
     }
-    else if (opsec.isSendOrSendsFamily())
+    else if (opsec.isAnySendFormat())
     {
         setSendPipeType(pipe_type, inst, model);
     }
-    else if (opsec.isDpasFamily())
+    else if (opsec.isDpasFormat())
     {
         pipe_type = DEP_PIPE::DPAS;
     }
@@ -221,11 +221,11 @@ static void setDEPPipeClass_FourDistPipeReduction(
         dep.setDepPipe(DEP_PIPE::MATH_INORDER);
         return;
     }
-    else if (opsec.isSendOrSendsFamily())
+    else if (opsec.isAnySendFormat())
     {
         setSendPipeType(pipe_type, inst, model);
     }
-    else if (opsec.isDpasFamily())
+    else if (opsec.isDpasFormat())
     {
         pipe_type = DEP_PIPE::DPAS;
     }
@@ -689,7 +689,7 @@ const Instruction& DepSetBuilder::DpasMacroBuilder::formMacro(size_t& dpasCnt) {
 
 bool DepSetBuilder::DpasMacroBuilder::nextIsNotMacroCandidate(
     const Instruction &dpas, const Instruction &next_inst) const {
-    if (!next_inst.getOpSpec().isDpasFamily())
+    if (!next_inst.getOpSpec().isDpasFormat())
         return true;
 
     // DPAS and DPASW should not be in the same macro
@@ -880,7 +880,7 @@ void DepSet::setInputsFlagDep()
     }
 
     // immediate send descriptors
-    if (m_instruction->getOpSpec().isSendOrSendsFamily()) {
+    if (m_instruction->getOpSpec().isAnySendFormat()) {
         auto desc = m_instruction->getMsgDescriptor();
         if (desc.isReg()) {
             addA_D(desc.reg); // e.g. a0.0
@@ -991,7 +991,7 @@ void DepSet::setInputsSrcDep()
 
         switch (op.getKind()) {
         case Operand::Kind::DIRECT:
-            if (m_instruction->getOpSpec().isSendOrSendsFamily()) {
+            if (m_instruction->getOpSpec().isAnySendFormat()) {
                 if (op.getDirRegName() == RegName::GRF_R) {
                     // send source GRF (not null reg)
                     int nregs =
@@ -1152,7 +1152,7 @@ void DepSet::setOutputsDstDep()
     switch (op.getKind()) {
     case Operand::Kind::DIRECT:
         // send target (a GRF, not null reg)
-        if (m_instruction->getOpSpec().isSendOrSendsFamily() &&
+        if (m_instruction->getOpSpec().isAnySendFormat() &&
             op.getDirRegName() == RegName::GRF_R)
         {
             int nregs = m_instruction->getDstLength();

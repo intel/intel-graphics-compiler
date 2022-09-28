@@ -1099,7 +1099,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(
             maskCtrl,
             brnchCtrl);
     }
-    else if (opSpec->isSendOrSendsFamily())
+    else if (opSpec->isAnySendFormat())
     {
         {
         SendDesc desc = getIGASendDesc(g4inst);
@@ -1331,7 +1331,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(
             Type type = Type::INVALID;
 
             // let IGA take care of types for send/s instructions
-            if (!igaInst->getOpSpec().isSendOrSendsFamily())
+            if (!igaInst->getOpSpec().isAnySendFormat())
             {
                 type = getIGAType(inst, inst->getSrcOperandNum(i), platform);
             }

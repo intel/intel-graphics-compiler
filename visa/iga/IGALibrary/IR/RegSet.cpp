@@ -435,11 +435,11 @@ bool RegSet::addSourceOperandInput(const Instruction &i, int srcIx)
     switch (op.getKind()) {
     case Operand::Kind::DIRECT:
         added = true;
-        if (i.getOpSpec().isSendOrSendsFamily()) {
+        if (i.getOpSpec().isAnySendFormat()) {
             if (op.getDirRegName() == RegName::GRF_R) {
                 addSendOperand(i, srcIx);
             }
-        } else if (i.getOpSpec().isDpasFamily()) {
+        } else if (i.getOpSpec().isDpasFormat()) {
             added |= addDpasOperand(i, srcIx);
         } else {
             setSrcRegion(
@@ -532,7 +532,7 @@ bool RegSet::addSourceDescriptorInputs(const Instruction &i)
 {
     bool added = false;
 
-    if (i.getOpSpec().isSendOrSendsFamily()) {
+    if (i.getOpSpec().isAnySendFormat()) {
         addSendDescriptors(i, *this);
     }
 
@@ -583,11 +583,11 @@ bool RegSet::addExplicitDestinationOutputs(const Instruction &i)
     switch (op.getKind()) {
     case Operand::Kind::DIRECT:
         // send target (a GRF, not null reg)
-        if (i.getOpSpec().isSendOrSendsFamily() &&
+        if (i.getOpSpec().isAnySendFormat() &&
             op.getDirRegName() == RegName::GRF_R)
         {
             addSendOperand(i, -1);
-        } else if (i.getOpSpec().isDpasFamily()) {
+        } else if (i.getOpSpec().isDpasFormat()) {
             // destination is mirror of src0
             added |= addDpasOperand(i, -1);
         } else if (op.getDirRegName() == RegName::ARF_ACC &&

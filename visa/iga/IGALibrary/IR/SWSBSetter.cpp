@@ -251,8 +251,8 @@ void SWSBAnalyzer::calculateDependence(DepSet &currDep, SWSB &distanceDependency
 
                 // Send with different SFID could write to different pipes
                 bool sendInDiffPipe = false;
-                if (dep->getInstruction()->getOpSpec().isSendFamily() &&
-                    currDep.getInstruction()->getOpSpec().isSendFamily())
+                if (dep->getInstruction()->getOpSpec().isSendFormat() &&
+                    currDep.getInstruction()->getOpSpec().isSendFormat())
                 {
                     sendInDiffPipe =
                         (dep->getInstruction()->getSendFc() !=
@@ -579,7 +579,7 @@ void SWSBAnalyzer::clearSBIDDependence(InstList::iterator insertPoint, Instructi
 
     // if last instruction in basic block is EOT no need to generate flushes
     // hardware will take care of it
-    if (lastInst && lastInst->getOpSpec().isSendFamily() && lastInst->hasInstOpt(InstOpt::EOT))
+    if (lastInst && lastInst->getOpSpec().isSendFormat() && lastInst->hasInstOpt(InstOpt::EOT))
     {
         sbidInUse = false;
     }
@@ -1149,7 +1149,7 @@ void SWSBAnalyzer::run()
             // recored the first instruction of a dpas macro, in case that inserting instructions (e.g. sync)
             // before the macro, those instructions have to be insert before first_inst_in_dpas_macro
             InstListIterator first_inst_in_dpas_macro = instList.end();
-            if (inst->getOpSpec().isDpasFamily()) {
+            if (inst->getOpSpec().isDpasFormat()) {
                 std::pair<DepSet*, DepSet*> dep_set_pair =
                     m_DB->createDPASSrcDstDepSet(
                         instList, instIter, m_InstIdCounter, dpas_cnt_in_macro, m_swsbMode);
@@ -1272,7 +1272,7 @@ void SWSBAnalyzer::run()
 
             // Need to set SBID
             if (output->getDepClass() == DEP_CLASS::OUT_OF_ORDER &&
-                !(inst->getOpSpec().isSendFamily() && inst->hasInstOpt(InstOpt::EOT)))
+                !(inst->getOpSpec().isSendFormat() && inst->hasInstOpt(InstOpt::EOT)))
             {
                 InstList::iterator insertPoint = instIter;
                 if (first_inst_in_dpas_macro != instList.end())
@@ -1295,7 +1295,7 @@ void SWSBAnalyzer::run()
              *           ...
              *           ret (16|M0)                          r8.0
              */
-            if (!(inst->getOpSpec().isSendFamily() && inst->hasInstOpt(InstOpt::EOT)))
+            if (!(inst->getOpSpec().isSendFormat() && inst->hasInstOpt(InstOpt::EOT)))
             {
                 //adding dependencies to buckets
                 for (auto bucketID : input->getBuckets())
@@ -1376,8 +1376,8 @@ void SWSBAnalyzer::run()
     // if last instruction is not EOT we will insert flush instructions
     // and stall the pipeline since we do not do global analysis
     if (inst &&
-        ((inst->getOpSpec().isSendFamily() &&
-            !inst->getInstOpts().contains(InstOpt::EOT)) || !inst->getOpSpec().isSendFamily()))
+        ((inst->getOpSpec().isSendFormat() &&
+            !inst->getInstOpts().contains(InstOpt::EOT)) || !inst->getOpSpec().isSendFormat()))
     {
         SWSB swsb;
         if (getNumOfDistPipe() == 1)

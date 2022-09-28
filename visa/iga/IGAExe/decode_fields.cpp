@@ -258,6 +258,9 @@ static igax::Bits parseBits(const std::string &inp, Opts &opts)
     return bits;
 }
 
+// iga.cpp
+namespace iga {iga::Platform ToPlatform(iga_gen_t gen);}
+
 static bool decodeFieldsSingle(Opts opts)
 {
     inferPlatformAndMode(opts.inputFiles[0], opts);
@@ -269,10 +272,10 @@ static bool decodeFieldsSingle(Opts opts)
         outfile = new std::ofstream(opts.outputFile, std::ios::out);
     }
     std::ostream &os = outfile ? *outfile : std::cout;
-    uint32_t fmtOpts =  makeFormattingOpts(opts);
+    uint32_t fmtOpts = makeFormattingOpts(opts);
     iga_status_t st =
         iga::DecodeFields(
-            static_cast<iga::Platform>(opts.platform),
+            iga::ToPlatform(opts.platform),
             opts.verbosity,
             opts.useNativeEncoder,
             fmtOpts,
@@ -401,7 +404,7 @@ bool debugCompaction(Opts opts)
     std::string warnings;
     iga_status_t st =
         iga::DebugCompaction(
-            static_cast<iga::Platform>(opts.platform),
+            iga::ToPlatform(opts.platform),
             opts.verbosity,
             opts.useNativeEncoder,
             fmtOpts,

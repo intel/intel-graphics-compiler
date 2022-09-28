@@ -130,10 +130,10 @@ uint32_t iga::getMessageLengths(
 {
     GED_MODEL gedP = lowerPlatform(p);
     GED_OPCODE gedOp = GED_OPCODE_INVALID;
-    if (os.isSendFamily()) {
+    if (os.isSendFormat()) {
         gedOp = GED_OPCODE_send;
     }
-    else if (os.isSendsFamily()) {
+    else if (os.isSendsFormat()) {
         gedOp = GED_OPCODE_sends;
     }
 
@@ -142,7 +142,7 @@ uint32_t iga::getMessageLengths(
 
     ged_ins_t gedInst;
     auto getRetVal = constructPartialGEDSendInstruction(
-        &gedInst, gedP, gedOp, os.isSendsFamily(), exDesc, desc);
+        &gedInst, gedP, gedOp, os.isSendsFormat(), exDesc, desc);
 
     const uint32_t INVALID = ((uint32_t)0xFFFFFFFFF); // TODO: include macro in iga.h?
 
@@ -154,7 +154,7 @@ uint32_t iga::getMessageLengths(
     }
     else n++;
 
-    if (os.isSendsFamily()) {
+    if (os.isSendsFormat()) {
         *emLen = GED_GetExMsgLength(&gedInst, &getRetVal);
         if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
             *emLen = getSplitSendMsgLength(exDesc);

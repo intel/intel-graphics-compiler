@@ -27,9 +27,9 @@ bool OpSpec::hasImpicitEm() const {
 
 
 bool OpSpec::hasDstSubregister(bool isMacro) const {
-    if (isDpasFamily())
+    if (isDpasFormat())
         return false;
-    return !isMacro && !isSendOrSendsFamily();
+    return !isMacro && !isAnySendFormat();
 }
 
 
@@ -44,7 +44,7 @@ Region OpSpec::implicitDstRegion(bool isMacro) const {
 bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const
 {
     // TODO: pull from BXML tables
-    if (isSendOrSendsFamily()) {
+    if (isAnySendFormat()) {
         rgn = Region::DST1;
         return true;
     } else if (isTypedBranch()) {
@@ -55,7 +55,7 @@ bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const
         // e.g. madm and math.invm/sqrtm
         rgn = Region::DST1;
         return true;
-    } else if (isDpasFamily()) {
+    } else if (isDpasFormat()) {
         rgn = Region::DST1;
         return true;
     } else {
@@ -66,7 +66,7 @@ bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const
 
 
 bool OpSpec::implicitDstTypeVal(Type &type) const {
-  if (isSendFamily() && platform >= Platform::GEN8) {
+  if (isSendFormat() && platform >= Platform::GEN8) {
         type = Type::UD;
         if (platform >= Platform::XE) {
             type = Type::UB;
@@ -84,14 +84,14 @@ bool OpSpec::implicitDstTypeVal(Type &type) const {
 bool OpSpec::hasSrcSubregister(int srcOpIx, bool isMacro) const
 {
     // only src2 of dpas has a subregister
-    if (isDpasFamily() && srcOpIx < 2)
+    if (isDpasFormat() && srcOpIx < 2)
         return false;
     // from the formatter used to use:
-    //   emitSubReg = !os.isSendOrSendsFamily() && (os.op != Op::BRC || srcIx != 1)
+    //   emitSubReg = !os.isAnySendFormat() && (os.op != Op::BRC || srcIx != 1)
     // => why BRC?
     // send instructions and math macros (including madm) don't emit
     // subregisters
-    return !isSendOrSendsFamily() && !isMacro;
+    return !isAnySendFormat() && !isMacro;
 }
 
 
@@ -108,7 +108,7 @@ Region OpSpec::implicitSrcRegion(
     // TODO: fold this into implicitSrcRegionPtr and elide the macro hacking
     //
     // TODO: this needs to work off the table from BXML
-    if (isSendFamily() && platform < Platform::XE) {
+    if (isSendFormat() && platform < Platform::XE) {
         return Region::SRC010;
     } else if (isMacro) {
         if (isTernary()) {
@@ -134,10 +134,10 @@ Region OpSpec::implicitSrcRegion(
                 return Region::SRC221;
             }
         }
-    } else if (isSendFamily() || isSendsFamily()) {
+    } else if (isSendFormat() || isSendsFormat()) {
         // no regions on send's
         return Region::SRC010;
-    } else if (isDpasFamily()) {
+    } else if (isDpasFormat()) {
         if (srcOpIx == 2) {
             // only an implicit region on src1
             return Region::SRCXX1;
@@ -204,23 +204,19 @@ bool OpSpec::supportsAccWrEn() const  {
         (platform <= Platform::XE_HPG) &&
         !supportsBranchCtrl() &&
         !isBranching() &&
-        !isSendOrSendsFamily() &&
+        !isAnySendFormat() &&
         !is(Op::NOP) &&
         !is(Op::ILLEGAL);
 }
 
 
 bool OpSpec::supportsSubfunction() const {
-    // TODO: this should be generated via the BXML generator
-    // and accessed via
     return supportsBranchCtrl()
+        || isAnySendFormat()
         || op == Op::MATH
-        || op == Op::SEND || op == Op::SENDC
-        || op == Op::SENDS || op == Op::SENDSC
-        || op == Op::SEND
         || op == Op::SYNC
         || op == Op::BFN
-        || isDpasFamily()
+        || isDpasFormat()
         ;
 }
 
@@ -241,9 +237,9 @@ unsigned OpSpec::getSourceCount(Subfunction sf) const {
 
 
 bool OpSpec::isVariableLatency() const {
-    return isSendOrSendsFamily()
+    return isAnySendFormat()
         || (is(Op::MATH) && platform < Platform::XE_HPC) // XeHPC+ math is fixed
-        || isDpasFamily();
+        || isDpasFormat();
 }
 
 
@@ -289,7 +285,7 @@ bool OpSpec::implicitSrcTypeVal(
         // let GED pick the defaults
         type = Type::INVALID;
         return true;
-    } else if (isSendFamily() && platform < Platform::XE) {
+    } else if (isSendFormat() && platform < Platform::XE) {
         // TRB: we don't print the type on send instructions unless it's
         // not :ud, this allows us to phase out types on send operands
         // while meaningless, apparently there is a requirement on SKL
@@ -298,7 +294,7 @@ bool OpSpec::implicitSrcTypeVal(
         // Types on sends are totally gone in XE.
         type = Type::UD;
         return true;
-    } else if (isSendOrSendsFamily()) {
+    } else if (isAnySendFormat()) {
         // for sends src0 is :ud, src1 has no type bits
         if (platform < Platform::XE) {
             type = srcOpIx == 0 ? Type::UD : Type::INVALID;

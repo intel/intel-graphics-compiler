@@ -305,9 +305,12 @@ namespace iga
         // in some cases we can elide this from syntax, in others we must
         // represent the type explicitly
         bool isTypedBranch() const;
-        bool isSendFamily() const {return isOneOf(Op::SEND, Op::SENDC);}
-        bool isSendsFamily() const {return isOneOf(Op::SENDS, Op::SENDSC);}
-        bool isSendOrSendsFamily() const {return (format & SEND) != 0;}
+
+        bool isSendFormat() const {return isOneOf(Op::SEND, Op::SENDC);}
+        bool isSendsFormat() const {return isOneOf(Op::SENDS, Op::SENDSC);}
+        // includes send, sends, or any other send formats
+        bool isAnySendFormat() const {return (format & SEND) != 0;}
+
         bool isTernary() const {return (format & TERNARY) != 0;}
 
         // GED doesn't permit us to set execution offset for jmpi
@@ -375,14 +378,14 @@ namespace iga
         // if an instruction supports {NoDDClr,NoDDChk}
         bool supportsDepCtrl() const {
             return
-                !isSendOrSendsFamily() &&
+                !isAnySendFormat() &&
                 platform < Platform::XE &&
                 !is(Op::NOP) &&
                 !is(Op::ILLEGAL);
         }
 
 
-        bool isDpasFamily() const {
+        bool isDpasFormat() const {
             return isOneOf(Op::DPAS, Op::DPASW
             );
         }

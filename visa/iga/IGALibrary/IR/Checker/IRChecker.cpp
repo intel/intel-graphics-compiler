@@ -215,7 +215,7 @@ struct SemanticChecker : LOCChecker {
         const OpSpec &instSpec = i.getOpSpec();
         if ((m_enabled_warnings & IGA_WARNINGS_REGIONS) &&
             instSpec.supportsDestination() &&
-            !instSpec.isSendOrSendsFamily())
+            !instSpec.isAnySendFormat())
         {
             checkRegRegioningRestrictions(
                 i.getExecSize(),

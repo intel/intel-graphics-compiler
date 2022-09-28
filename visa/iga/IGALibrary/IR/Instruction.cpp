@@ -32,7 +32,7 @@ void Instruction::setDirectDestination(
     Region::Horz rgnH,
     Type type)
 {
-    if (getOpSpec().isSendOrSendsFamily() &&
+    if (getOpSpec().isAnySendFormat() &&
         m_sendDstLength < 0 &&
         rnm == RegName::ARF_NULL)
     {
@@ -74,7 +74,7 @@ void Instruction::setDirectSource(
     Type type)
 {
     unsigned ix = static_cast<unsigned>(srcIx);
-    if (getOpSpec().isSendOrSendsFamily() &&
+    if (getOpSpec().isAnySendFormat() &&
         rnm == RegName::ARF_NULL)
     {
         // send with a null operand must have a 0 length
@@ -139,7 +139,7 @@ void Instruction::setLabelSource(SourceIndex srcIx, Block *block, Type type)
 void Instruction::setSource(SourceIndex srcIx, const Operand &op)
 {
     unsigned ix = static_cast<unsigned>(srcIx);
-    if (getOpSpec().isSendOrSendsFamily() &&
+    if (getOpSpec().isAnySendFormat() &&
         op.getKind() == Operand::Kind::DIRECT &&
         op.getDirRegName() == RegName::ARF_NULL)
     {
@@ -170,7 +170,7 @@ SWSB::InstType Instruction::getSWSBInstType(SWSB_ENCODE_MODE mode) const {
     if (mode == SWSB_ENCODE_MODE::SWSBInvalidMode)
         return SWSB::InstType::UNKNOWN;
 
-    if (getOpSpec().isSendOrSendsFamily())
+    if (getOpSpec().isAnySendFormat())
         return SWSB::InstType::SEND;
 
     if (is(Op::MATH))
@@ -180,7 +180,7 @@ SWSB::InstType Instruction::getSWSBInstType(SWSB_ENCODE_MODE mode) const {
     if (mode == SWSB_ENCODE_MODE::ThreeDistPipeDPMath && isDF())
         return SWSB::InstType::MATH;
 
-    if (getOpSpec().isDpasFamily()) {
+    if (getOpSpec().isDpasFormat()) {
         return SWSB::InstType::DPAS;
     }
 
