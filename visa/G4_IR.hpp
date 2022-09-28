@@ -2319,6 +2319,7 @@ protected:
 public:
     Kind getKind() const { return kind; }
     G4_Type getType() const { return type; }
+    void setType(G4_Type newType) { type = newType; }
     unsigned short getTypeSize() const { return TypeSize(getType()); }
 
     bool isImm() const { return kind == Kind::immediate; }

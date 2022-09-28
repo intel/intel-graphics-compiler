@@ -1117,7 +1117,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
                                 inst->setOpcode(G4_mov);
                                 auto newSrc = storeInst->getSrc(1);
                                 loadInst->setSrc(newSrc, 0);
+                                dst->setType(newSrc->getType());
                                 avoidCloning.insert(newSrc->getTopDcl());
+                                // recompute right bound of region
+                                newSrc->computeRightBound(inst->getExecSize());
                                 DEBUG_PRINT("\tforwarded:");
                                 DEBUG_UTIL(inst->dump());
                                 // erase the store
@@ -1138,12 +1141,18 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     DEBUG_PRINT("removed:");
                     DEBUG_UTIL((*defInst[callerBuilder->getFE_SP()])->dump());
                     callerInsts.erase(defInst[callerBuilder->getFE_SP()]);
-                    DEBUG_PRINT("removed:");
-                    DEBUG_UTIL((*defInst[calleeBuilder->getFE_SP()])->dump());
-                    calleeInsts.erase(defInst[calleeBuilder->getFE_SP()]);
-                    DEBUG_PRINT("removed:");
-                    DEBUG_UTIL((*defInst[calleeBuilder->getFE_FP()])->dump());
-                    calleeInsts.erase(defInst[calleeBuilder->getFE_FP()]);
+                    if (defInst.find(calleeBuilder->getFE_SP()) != defInst.end())
+                    {
+                        DEBUG_PRINT("removed:");
+                        DEBUG_UTIL((*defInst[calleeBuilder->getFE_SP()])->dump());
+                        calleeInsts.erase(defInst[calleeBuilder->getFE_SP()]);
+                    }
+                    if (defInst.find(calleeBuilder->getFE_FP()) != defInst.end())
+                    {
+                        DEBUG_PRINT("removed:");
+                        DEBUG_UTIL((*defInst[calleeBuilder->getFE_FP()])->dump());
+                        calleeInsts.erase(defInst[calleeBuilder->getFE_FP()]);
+                    }
                 }
 
             }
@@ -1245,6 +1254,10 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     else
                     {
                         inst = fret->cloneInst();
+                    }
+                    if (inst->opcode() == G4_mov)
+                    {
+                        inst->getSrc(0)->computeRightBound(inst->getExecSize());
                     }
                     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
                     {
