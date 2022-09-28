@@ -147,6 +147,11 @@ typedef struct _WaInitParam
     PCH_PRODUCT_FAMILY  ePCHProductFamily;
     const GT_SYSTEM_INFO   *pGtSysInfo;
     unsigned char    bWinDoD;
+    // Rev IDs for each IP blocks.
+    unsigned short  usDisplayRevID;
+    unsigned short  usRenderRevID;
+    unsigned short  usMediaRevID;
+    unsigned short  usDeviceID;
 } WA_INIT_PARAM, *PWA_INIT_PARAM;
 
 
@@ -342,6 +347,18 @@ void InitPvcHwWaTable(
        PSKU_FEATURE_TABLE              pSkuTable,
        PWA_INIT_PARAM                  pWaParam);
 void InitPvc_XtHwWaTable(
+       PWA_TABLE                       pWaTable,
+       PSKU_FEATURE_TABLE              pSkuTable,
+       PWA_INIT_PARAM                  pWaParam);
+void InitGt_12_70HwWaTable(
+       PWA_TABLE                       pWaTable,
+       PSKU_FEATURE_TABLE              pSkuTable,
+       PWA_INIT_PARAM                  pWaParam);
+void InitGt_12_71HwWaTable(
+       PWA_TABLE                       pWaTable,
+       PSKU_FEATURE_TABLE              pSkuTable,
+       PWA_INIT_PARAM                  pWaParam);
+void InitGt_12_70SwWaTable(
        PWA_TABLE                       pWaTable,
        PSKU_FEATURE_TABLE              pSkuTable,
        PWA_INIT_PARAM                  pWaParam);

@@ -25,6 +25,7 @@ namespace IGC
         if (IGC_GET_FLAG_VALUE(OverrideDeviceIdForWA))
             platform->OverrideDeviceId(IGC_GET_FLAG_VALUE(OverrideDeviceIdForWA));
         stWaInitParam.usRevId = platform->getPlatformInfo().usRevId;
+        stWaInitParam.usRenderRevID = GFX_GET_GMD_REV_ID_RENDER(platform->getPlatformInfo());
         stWaInitParam.usRevId_PCH = platform->getPlatformInfo().usRevId_PCH;
         GT_SYSTEM_INFO sysInfo = platform->GetGTSystemInfo();
         stWaInitParam.pGtSysInfo = &sysInfo;
@@ -151,6 +152,35 @@ namespace IGC
         default:
             IGC_ASSERT(0);
             break;
+        }
+        if (GFX_GET_CURRENT_PRODUCT(platform->getPlatformInfo()) >= IGFX_METEORLAKE)
+        {
+
+            stWaInitParam.usDisplayRevID = (unsigned short)GFX_GET_GMD_REV_ID_DISPLAY(platform->getPlatformInfo());
+            stWaInitParam.usRenderRevID = (unsigned short)GFX_GET_GMD_REV_ID_RENDER(platform->getPlatformInfo());
+            stWaInitParam.usMediaRevID = (unsigned short)GFX_GET_GMD_REV_ID_MEDIA(platform->getPlatformInfo());
+
+             // Applying GT WAs
+            switch (GFX_GET_CURRENT_RENDERCORE(platform->getPlatformInfo()))
+            {
+            case IGFX_XE_HPG_CORE:
+            {
+                if (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()) == GFX_GMD_ARCH_12_RELEASE_XE_LP_MD)
+                {
+                    InitGt_12_70HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                }
+                else if (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo()) == GFX_GMD_ARCH_12_RELEASE_XE_LP_LG)
+                {
+                    InitGt_12_71HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+                }
+
+                InitGt_12_70SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            }
+            break;
+            default:
+                // SKUs with no GT IP. So do nothing.
+                break;
+            }
         }
         platform->SetWATable(waTable);
         platform->SetSkuTable(*pSkuFeatureTable);

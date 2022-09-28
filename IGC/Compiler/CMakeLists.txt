@@ -105,6 +105,9 @@ set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iehl_sw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ijsl_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ijsl_sw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_12_70_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_12_70_sw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_12_71_hw_wa.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/SamplerPerfOptPass.cpp"
     ${IGC_BUILD__SRC__Compiler_CISACodeGen}
     ${IGC_BUILD__SRC__Compiler_DebugInfo}

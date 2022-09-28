@@ -125,6 +125,34 @@ typedef enum __GTTYPE
     GTTYPE_UNDEFINED,//Always at the end.
 }GTTYPE, *PGTTYPE;
 
+// *************************************************************************
+// GFX_GMD_ID: Definition to hold IP major/minor version and the revision ID
+// *************************************************************************
+typedef struct GFX_GMD_ID_DEF
+{
+    union
+    {
+        struct
+        {
+            unsigned int    RevisionID : 6;
+            unsigned int    Reserved : 8;
+            unsigned int    GMDRelease : 8;
+            unsigned int    GMDArch : 10;
+        }GmdID;
+        unsigned int    Value;
+    };
+}GFX_GMD_ID;
+
+#define GFX_GMD_ARCH_12_RELEASE_XE_LP_MD                 (70)
+#define GFX_GMD_ARCH_12_RELEASE_XE_LP_LG                 (71)
+
+#define GFX_GET_GMD_RELEASE_VERSION_RENDER(p)             ((p).sRenderBlockID.GmdID.GMDRelease)
+#define GFX_GET_GMD_RELEASE_VERSION_DISPLAY(p)            ((p).sDisplayBlockID.GmdID.GMDRelease)
+#define GFX_GET_GMD_RELEASE_VERSION_MEDIA(p)              ((p).sMediaBlockID.GmdID.GMDRelease)
+#define GFX_GET_GMD_REV_ID_RENDER(p)                      ((p).sRenderBlockID.GmdID.RevisionID)
+#define GFX_GET_GMD_REV_ID_DISPLAY(p)                     ((p).sDisplayBlockID.GmdID.RevisionID)
+#define GFX_GET_GMD_REV_ID_MEDIA(p)                       ((p).sMediaBlockID.GmdID.RevisionID)
+
 /////////////////////////////////////////////////////////////////
 //
 //    Platform types which are used during Sku/Wa initialization.
@@ -154,6 +182,11 @@ typedef struct PLATFORM_STR {
     // GT Type
     // Note: Is valid only till Gen9. From Gen10 SKUs are not identified by any GT flags. 'GT_SYSTEM_INFO' should be used instead.
     GTTYPE              eGTType;
+
+    // Supported from MTL onwards that will hold IP's major/minor version and their individual RevID
+    GFX_GMD_ID          sDisplayBlockID;
+    GFX_GMD_ID          sRenderBlockID;
+    GFX_GMD_ID          sMediaBlockID;
 } PLATFORM;
 
 // add enums at the end
