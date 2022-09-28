@@ -2053,15 +2053,8 @@ void PreCompiledFuncImport::createFuncWithIA()
         }
 
         // Assign metadata for old_func to new_func
-        auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(pFunc);
-        m_pMdUtils->setFunctionsInfoItem(pNewFunc, oldFuncIter->second);
-        m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
-
-        if (m_pCtx->getModuleMetaData()->FuncMD.find(pFunc) != m_pCtx->getModuleMetaData()->FuncMD.end())
-        {
-            m_pCtx->getModuleMetaData()->FuncMD[pNewFunc] = m_pCtx->getModuleMetaData()->FuncMD[pFunc];
-            m_pCtx->getModuleMetaData()->FuncMD.erase(pFunc);
-        }
+        IGCMD::IGCMetaDataHelper::moveFunction(
+            *m_pMdUtils, *m_pCtx->getModuleMetaData(), pFunc, pNewFunc);
 
         // Map old func to new func
         NewFuncWithIA.push_back(pNewFunc);

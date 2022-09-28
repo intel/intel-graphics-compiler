@@ -1250,19 +1250,9 @@ Function* GASRetValuePropagator::cloneFunctionWithModifiedRetType(Function* F, P
 
 void GASRetValuePropagator::updateMetadata(Function* oldFunc, Function* newFunc) {
     MetadataBuilder mbuilder(m_module);
-    auto& FuncMD = m_ctx->getModuleMetaData()->FuncMD;
-
-    auto oldFuncIter = m_mdUtils->findFunctionsInfoItem(oldFunc);
-    m_mdUtils->setFunctionsInfoItem(newFunc, oldFuncIter->second);
-    m_mdUtils->eraseFunctionsInfoItem(oldFuncIter);
     mbuilder.UpdateShadingRate(oldFunc, newFunc);
-    auto loc = FuncMD.find(oldFunc);
-    if (loc != FuncMD.end())
-    {
-        auto funcInfo = loc->second;
-        FuncMD.erase(oldFunc);
-        FuncMD[newFunc] = funcInfo;
-    }
+    IGCMD::IGCMetaDataHelper::moveFunction(
+        *m_mdUtils, *m_ctx->getModuleMetaData(), oldFunc, newFunc);
 
     m_mdUtils->save(m_module->getContext());
 }
@@ -1536,20 +1526,10 @@ std::vector<Function*> LowerGPCallArg::findCandidates(CallGraph& CG)
 
 void LowerGPCallArg::updateMetadata(Function* oldFunc, Function* newFunc) {
     MetadataBuilder mbuilder(m_module);
-    auto& FuncMD = m_ctx->getModuleMetaData()->FuncMD;
 
-    auto oldFuncIter = m_mdUtils->findFunctionsInfoItem(oldFunc);
-    m_mdUtils->setFunctionsInfoItem(newFunc, oldFuncIter->second);
-    m_mdUtils->eraseFunctionsInfoItem(oldFuncIter);
     mbuilder.UpdateShadingRate(oldFunc, newFunc);
-    auto loc = FuncMD.find(oldFunc);
-    if (loc != FuncMD.end())
-    {
-        auto funcInfo = loc->second;
-        FuncMD.erase(oldFunc);
-        FuncMD[newFunc] = funcInfo;
-    }
-
+    IGCMD::IGCMetaDataHelper::moveFunction(
+        *m_mdUtils, *m_ctx->getModuleMetaData(), oldFunc, newFunc);
     m_mdUtils->save(m_module->getContext());
 }
 

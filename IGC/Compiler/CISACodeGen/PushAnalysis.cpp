@@ -1576,9 +1576,6 @@ namespace IGC
         MapList<Function*, Function*> funcsMapping;
         bool retValue = false;
 
-        m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-        m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
         for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
         {
             Function* pFunc = &(*I);
@@ -1612,24 +1609,14 @@ namespace IGC
         // Update IGC Metadata and shaders map
         // Function declarations are changing, this needs to be reflected in the metadata.
         MetadataBuilder mbuilder(&M);
-        auto& FuncMD = m_context->getModuleMetaData()->FuncMD;
         for (auto i : funcsMapping)
         {
-            auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(i.first);
-            m_pMdUtils->setFunctionsInfoItem(i.second, oldFuncIter->second);
-            m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
-
+            IGCMD::IGCMetaDataHelper::moveFunction(
+                *m_pMdUtils, *m_context->getModuleMetaData(), i.first, i.second);
             mbuilder.UpdateShadingRate(i.first, i.second);
-            auto loc = FuncMD.find(i.first);
-            if (loc != FuncMD.end())
-            {
-                auto funcInfo = loc->second;
-                FuncMD.erase(i.first);
-                FuncMD[i.second] = funcInfo;
-                auto& privateMemoryPerFG = m_context->getModuleMetaData()->PrivateMemoryPerFG;
-                privateMemoryPerFG[i.second] = privateMemoryPerFG[i.first];
-                privateMemoryPerFG.erase(i.first);
-            }
+            auto& privateMemoryPerFG = m_context->getModuleMetaData()->PrivateMemoryPerFG;
+            privateMemoryPerFG[i.second] = privateMemoryPerFG[i.first];
+            privateMemoryPerFG.erase(i.first);
         }
         m_pMdUtils->save(M.getContext());
 

@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
+#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "LLVM3DBuilder/MetadataBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SCCIterator.h"
@@ -141,23 +142,14 @@ bool AddImplicitArgs::runOnModule(Module &M)
 
     // Update IGC Metadata
     // Function declarations are changing, this needs to be reflected in the metadata.
-    MetadataBuilder mbuilder(&M);
-    auto &FuncMD = ctx->getModuleMetaData()->FuncMD;
     for (auto i : funcsMapping)
     {
-        auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(i.first);
-        m_pMdUtils->setFunctionsInfoItem(i.second, oldFuncIter->second);
-        m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
-        mbuilder.UpdateShadingRate(i.first, i.second);
-        auto loc = FuncMD.find(i.first);
-        if (loc != FuncMD.end())
-        {
-            auto funcInfo = loc->second;
-            FuncMD.erase(i.first);
-            FuncMD[i.second] = funcInfo;
-        }
-    }
+        IGCMD::IGCMetaDataHelper::moveFunction(
+            *m_pMdUtils, *ctx->getModuleMetaData(), i.first, i.second);
 
+        MetadataBuilder mbuilder(&M);
+        mbuilder.UpdateShadingRate(i.first, i.second);
+    }
     // Update LLVM metadata based on IGC MetadataUtils
     m_pMdUtils->save(M.getContext());
 
