@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "G4_Kernel.hpp"
 #include "G4_BB.hpp"
 #include "BitSet.h"
-#include "BuildIR.h"
 
 using namespace vISA;
 
@@ -636,19 +635,6 @@ G4_BB* LoopDetection::getPreheader(Loop* loop)
     {
         if (loop->contains(pred))
             continue;
-
-        if (pred->back()->isCFInst())
-        {
-            auto cfInst = pred->back()->asCFInst();
-            MUST_BE_TRUE(cfInst->isUniform() && cfInst->opcode() == G4_jmpi,
-                "non-uniform branch");
-            auto lbl = cfInst->getSrc(0);
-            if (lbl->isLabel() &&
-                header->getLabel() == lbl->asLabel())
-            {
-                pred->back()->setSrc(preHeader->getLabel(), 0);
-            }
-        }
 
         kernel.fg.removePredSuccEdges(pred, header);
         kernel.fg.addPredSuccEdges(pred, preHeader);
