@@ -1068,6 +1068,28 @@ SBID& SWSBAnalyzer::assignSBID(DepSet* input, DepSet* output, Instruction& inst,
         m_IdToDepSetMap.erase(sbidFree->sbid);
     m_IdToDepSetMap.emplace(sbidFree->sbid, std::make_pair(input, output));
 
+    if (needSyncForShootDown) {
+        // check if the instruction has A@1 on it. If it does, create another sync to
+        // move A@1 to before the sync.nop in case of violating the rule
+        // "When certain Arch Registers (sr, cr, ce) are used, the very next instruction
+        // requires dependency to be set on all pipes {A@1}".
+        // At this point we do not know if the A@1 is inserted for this rule or other
+        // dependency. Conservatively move A@1 above to the very first sync after the
+        // previous non-sync instruction
+        if (distanceDependency.hasDist() &&
+            (distanceDependency.distType == SWSB::DistType::REG_DIST_ALL ||
+                distanceDependency.distType == SWSB::DistType::REG_DIST) &&
+            distanceDependency.minDist == 1) {
+            SWSB ss(distanceDependency.distType, SWSB::TokenType::NOTOKEN, 1, 0);
+            curBB->insertInstBefore(insertPoint, m_kernel.createSyncNopInstruction(ss));
+            distanceDependency.distType = SWSB::DistType::NO_DIST;
+            distanceDependency.minDist = 0;
+        }
+        // add a sync to preserve the token for possibly shooting down instruction
+        SWSB tDep(SWSB::DistType::NO_DIST, SWSB::TokenType::SET, 0, sbidFree->sbid);
+        curBB->insertInstBefore(insertPoint, m_kernel.createSyncNopInstruction(tDep));
+    }
+
     // adding the set for this SBID
     // if the swsb has the token set already, move it out to a sync
     if (distanceDependency.tokenType != SWSB::TokenType::NOTOKEN) {
@@ -1081,8 +1103,9 @@ SBID& SWSBAnalyzer::assignSBID(DepSet* input, DepSet* output, Instruction& inst,
     distanceDependency.sbid = sbidFree->sbid;
 
     // verify if the token and dist combination is valid, if not, move the dist out to a sync
-    // FIXME: move the dist out here to let the sbid set on the instruction could have better readability
-    // but a potential issue is that A@1 is required to be set on the instruction having
+    // move the dist out here to let the sbid set on the instruction so that other instructions
+    // having dependency to this SBID is sync to the correct instruction (but not a sync.nop)
+    // FIXME: a potential issue is that A@1 is required to be set on the instruction having
     // architecture read/write. This case A@1 will be moved out from the instruction
     if (!distanceDependency.verify(m_swsbMode, inst.getSWSBInstType(m_swsbMode))) {
         SWSB tDep(distanceDependency.distType, SWSB::TokenType::NOTOKEN,
@@ -1093,15 +1116,6 @@ SBID& SWSBAnalyzer::assignSBID(DepSet* input, DepSet* output, Instruction& inst,
         distanceDependency.minDist = 0;
     }
     assert(distanceDependency.verify(m_swsbMode, inst.getSWSBInstType(m_swsbMode)));
-
-    // add a sync to preserve the token for possibly shooting down instruction
-    if (needSyncForShootDown) {
-        SWSB tDep(SWSB::DistType::NO_DIST, distanceDependency.tokenType,
-            0, distanceDependency.sbid);
-        Instruction* tInst = m_kernel.createSyncNopInstruction(tDep);
-        curBB->insertInstBefore(insertPoint, tInst);
-    }
-
     assert(sbidFree != nullptr);
     return *sbidFree;
 }
