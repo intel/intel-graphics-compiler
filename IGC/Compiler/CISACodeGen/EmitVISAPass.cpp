@@ -343,6 +343,9 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
                 slicing = false;
             }
             else if (
+                id == GenISAIntrinsic::GenISA_LSCFence ||
+                id == GenISAIntrinsic::GenISA_systemmemoryfence ||
+                id == GenISAIntrinsic::GenISA_urbfence ||
                 id == GenISAIntrinsic::GenISA_threadgroupnamedbarriers_signal ||
                 id == GenISAIntrinsic::GenISA_threadgroupnamedbarriers_wait)
             {
