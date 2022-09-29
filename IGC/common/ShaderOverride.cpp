@@ -125,6 +125,8 @@ iga_gen_t GetIGAPlatform(PLATFORM const & platform)
     case IGFX_GEN12_CORE:
     case IGFX_GEN12LP_CORE:
     case IGFX_XE_HP_CORE:
+    case IGFX_XE_HPG_CORE:
+    case IGFX_XE_HPC_CORE:
         if (   ProductFamily == IGFX_TIGERLAKE_LP
             || ProductFamily == IGFX_DG1
             || ProductFamily == IGFX_ROCKETLAKE
@@ -138,6 +140,14 @@ iga_gen_t GetIGAPlatform(PLATFORM const & platform)
         else if (ProductFamily == IGFX_XE_HP_SDV)
         {
             return IGA_XE_HP;
+        }
+        else if (ProductFamily == IGFX_DG2)
+        {
+            return IGA_XE_HPG;
+        }
+        else if (ProductFamily == IGFX_PVC)
+        {
+            return IGA_XE_HPC;
         }
     default:
         IGC_ASSERT_MESSAGE(0, "unsupported platform");
