@@ -5446,8 +5446,8 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) co
 //  2, same datatype of the same operand across all instructions
 //  3, same execution mask across all instructions
 //  4, depth is 8
-//  5, has no internal dependency within each instruction
-//      5.1, with an exception that src0 and dst dependency is allowed if they are completely the same register/subregister
+//  5, has no internal dependency within each instruction with an exception that src0 and dst dependency is allowed if they
+//     are completely the same register/subregister
 //  6, no producer to consumer relationships (RAW, WAW) within the macro
 //      6.1, Unless compiler knows that the distance between the two instructions causing the RAW hazard is enough to handle it
 //  7, for a DPAS 8xN sequence, where N !=8
@@ -5502,9 +5502,7 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
     // check dependency within each instruction
     if (hasInternalDependenceWithinDPAS(curNode))
     {
-        {
-            return true;
-        }
+        return true;
     }
 
     if (VISA_WA_CHECK(builder.getPWaTable(), Wa_16011859583) ||
