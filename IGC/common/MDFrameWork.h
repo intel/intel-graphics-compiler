@@ -533,7 +533,6 @@ namespace IGC
         unsigned int addressOffset = 0;
         bool isStatic = false;
     };
-
     struct DynamicBufferInfo
     {
         // If numOffsets > 0, dynamic buffer offsets occupy a contiguous region

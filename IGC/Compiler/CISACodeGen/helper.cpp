@@ -850,7 +850,7 @@ namespace IGC
     }
 
     // Get constant address from load/ldraw instruction
-    bool getConstantAddress(llvm::Instruction& I, ConstantAddress& cl, CodeGenContext* pContext, bool& directBuf, bool& statelessBuf, bool& bindlessBuf, unsigned int& TableOffset)
+    bool getConstantAddress(llvm::Instruction& I, ConstantAddress& cl, CodeGenContext* pContext, bool& directBuf, bool& statelessBuf, bool& bindlessBuf, bool& rootconstantBuf, unsigned int& TableOffset)
     {
         // Check if the load instruction is with constant buffer address
         unsigned as;
@@ -883,7 +883,6 @@ namespace IGC
         }
         else
             return false;
-
         size_in_bytes = 0;
         BufferType bufType;
         Value* pointerSrc = nullptr;
