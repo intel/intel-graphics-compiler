@@ -636,6 +636,18 @@ G4_BB* LoopDetection::getPreheader(Loop* loop)
         if (loop->contains(pred))
             continue;
 
+        if (pred->back()->isCFInst() &&
+            pred->back()->opcode() == G4_jmpi)
+        {
+            auto cfInst = pred->back()->asCFInst();
+            auto lbl = cfInst->getSrc(0);
+            if (lbl->isLabel() &&
+                header->getLabel() == lbl->asLabel())
+            {
+                pred->back()->setSrc(preHeader->getLabel(), 0);
+            }
+        }
+
         kernel.fg.removePredSuccEdges(pred, header);
         kernel.fg.addPredSuccEdges(pred, preHeader);
     }
