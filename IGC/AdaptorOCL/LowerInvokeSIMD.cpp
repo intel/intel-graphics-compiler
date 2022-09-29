@@ -108,6 +108,7 @@ void LowerInvokeSIMD::visitCallInst(CallInst& CI)
       auto CastedPointer = m_Builder->CreateBitCast(CI.getArgOperand(0), PTy);
       NewCall = m_Builder->CreateCall(CastedPointer, ArgVals);
     }
+    NewCall->setCallingConv(CallingConv::SPIR_FUNC);
     CI.replaceAllUsesWith(NewCall);
     CI.eraseFromParent();
     m_changed = true;
