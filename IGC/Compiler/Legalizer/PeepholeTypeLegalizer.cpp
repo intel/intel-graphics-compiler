@@ -18,10 +18,15 @@ FIXME? ::
 #include "PeepholeTypeLegalizer.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvm/IR/NoFolder.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
+#include "common/igc_regkeys.hpp"
+#include "Compiler/CodeGenContextWrapper.hpp"
+#include "Compiler/CodeGenPublic.h"
+#include "CISACodeGen/PrepareLoadsStoresUtils.h"
 
 using namespace llvm;
 using namespace IGC::Legalizer;
@@ -32,7 +37,7 @@ char PeepholeTypeLegalizer::ID = 0;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(PeepholeTypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-//IGC_INITIALIZE_PASS_DEPENDENCY(DataLayout);
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(PeepholeTypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 
@@ -46,6 +51,7 @@ Bitcast_BitcastWithIntermediateIllegalsEliminated(false), Changed(false), DL(nul
 
 void PeepholeTypeLegalizer::getAnalysisUsage(AnalysisUsage& AU) const {
     AU.setPreservesCFG();
+    AU.addRequired<IGC::CodeGenContextWrapper>();
 }
 
 FunctionPass* createPeepholeTypeLegalizerPass() { return new PeepholeTypeLegalizer(); }
@@ -54,6 +60,12 @@ FunctionPass* createPeepholeTypeLegalizerPass() { return new PeepholeTypeLegaliz
 bool PeepholeTypeLegalizer::runOnFunction(Function& F) {
     DL = &F.getParent()->getDataLayout();
     IGC_ASSERT_MESSAGE(DL->isLittleEndian(), "ONLY SUPPORT LITTLE ENDIANNESS!");
+
+    auto* ctx = getAnalysis<IGC::CodeGenContextWrapper>().getCodeGenContext();
+
+    MustLegalizeScratch =
+        IGC_IS_FLAG_ENABLED(EnableScratchMessageD64WA) &&
+        ctx->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory;
 
     IGCLLVM::IRBuilder<> builder(F.getContext());
     m_builder = &builder;
@@ -128,6 +140,36 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction& I) {
     else if (!Bitcast_BitcastWithIntermediateIllegalsEliminated) { // Eliminate redundant bitcast-bitcast pairs and eliminate intermediate ILLEGAL operands in bitcast-bitcast pairs with src == dest OR src != dest
         if (dyn_cast<BitCastInst>(&I))
             cleanupBitCastInst(I);
+    }
+}
+
+void PeepholeTypeLegalizer::visitLoadInst(LoadInst& LI)
+{
+    if (!MustLegalizeScratch || LI.getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+        return;
+
+    IRBuilder<NoFolder> IRB(&LI);
+
+    if (auto [NewVal, _] = expand64BitLoad(IRB, *DL, &LI); NewVal)
+    {
+        Changed = true;
+        NewVal->takeName(&LI);
+        LI.replaceAllUsesWith(NewVal);
+        LI.eraseFromParent();
+    }
+}
+
+void PeepholeTypeLegalizer::visitStoreInst(StoreInst& SI)
+{
+    if (!MustLegalizeScratch || SI.getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+        return;
+
+    IRBuilder<NoFolder> IRB(&SI);
+
+    if (expand64BitStore(IRB, *DL, &SI))
+    {
+        Changed = true;
+        SI.eraseFromParent();
     }
 }
 

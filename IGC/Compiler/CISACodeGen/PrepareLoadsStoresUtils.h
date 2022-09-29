@@ -14,12 +14,14 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
+    template <typename T>
     std::pair<llvm::Value*, llvm::LoadInst*> expand64BitLoad(
-        llvm::IRBuilder<> &IRB,
+        llvm::IRBuilder<T> &IRB,
         const llvm::DataLayout &DL,
         llvm::LoadInst* LI);
+    template <typename T>
     llvm::StoreInst* expand64BitStore(
-        llvm::IRBuilder<> &IRB,
+        llvm::IRBuilder<T> &IRB,
         const llvm::DataLayout &DL,
         llvm::StoreInst* SI);
 } // namespace IGC

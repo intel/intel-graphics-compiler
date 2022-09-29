@@ -35,13 +35,15 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
+#include <llvm/IR/NoFolder.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 using namespace IGC;
 using IGCLLVM::getAlign;
 
-static Value* getIntToPtr(IRBuilder<> &IRB, Value* NewVal, Type* Ty)
+template <typename T>
+static Value* getIntToPtr(IRBuilder<T> &IRB, Value* NewVal, Type* Ty)
 {
     // We must emit scalar inttoptr this late in compilation otherwise it won't
     // be handled correctly (by e.g., Emu64Ops).
@@ -67,7 +69,8 @@ static Value* getIntToPtr(IRBuilder<> &IRB, Value* NewVal, Type* Ty)
     return ResultVec;
 }
 
-static Value* getPtrToInt(IRBuilder<> &IRB, Value* NewVal, Type* Ty)
+template <typename T>
+static Value* getPtrToInt(IRBuilder<T> &IRB, Value* NewVal, Type* Ty)
 {
     // We must emit scalar ptrtoint this late in compilation otherwise it won't
     // be handled correctly (by e.g., Emu64Ops).
@@ -95,8 +98,9 @@ static Value* getPtrToInt(IRBuilder<> &IRB, Value* NewVal, Type* Ty)
 
 namespace IGC {
 
+    template <typename T>
     std::pair<Value*, LoadInst*>
-    expand64BitLoad(IRBuilder<>& IRB, const DataLayout &DL, LoadInst* LI)
+    expand64BitLoad(IRBuilder<T>& IRB, const DataLayout &DL, LoadInst* LI)
     {
         auto* Ty = LI->getType();
         if (Ty->isAggregateType())
@@ -141,7 +145,8 @@ namespace IGC {
         return { NewVal, NewLI };
     }
 
-    StoreInst* expand64BitStore(IRBuilder<>& IRB, const DataLayout &DL, StoreInst* SI)
+    template <typename T>
+    StoreInst* expand64BitStore(IRBuilder<T>& IRB, const DataLayout &DL, StoreInst* SI)
     {
         auto* Ty = SI->getValueOperand()->getType();
         if (Ty->isAggregateType())
@@ -180,5 +185,17 @@ namespace IGC {
 
         return NewST;
     }
+
+    template std::pair<Value*, LoadInst*>
+        expand64BitLoad(IRBuilder<>& IRB, const DataLayout& DL, LoadInst* LI);
+
+    template StoreInst* expand64BitStore(
+        IRBuilder<>& IRB, const DataLayout& DL, StoreInst* SI);
+
+    template std::pair<Value*, LoadInst*>
+        expand64BitLoad(IRBuilder<NoFolder>& IRB, const DataLayout& DL, LoadInst* LI);
+
+    template StoreInst* expand64BitStore(
+        IRBuilder<NoFolder>& IRB, const DataLayout& DL, StoreInst* SI);
 }
 

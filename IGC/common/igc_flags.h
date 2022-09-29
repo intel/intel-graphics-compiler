@@ -490,6 +490,7 @@ DECLARE_IGC_REGKEY(bool, ForceNoLSC, false, "Disables the new dataport encoding 
 DECLARE_IGC_REGKEY(bool, EnableMadLoopSlice, true, "Enables the slicing of mad loops.", true)
 
 DECLARE_IGC_REGKEY(bool, EnableDG2LSCSIMD8WA, true, "Enables WA for DG2 LSC simd8 d32-v8/d64-v3/d64-v4. [temp, should be replaced with WA id", false)
+DECLARE_IGC_REGKEY(bool, EnableScratchMessageD64WA, false, "Enables WA to legalize D64 scratch messages to D32", false)
 DECLARE_IGC_REGKEY(DWORD, LscImmOffsMatch, 1, \
     "Match address patterns that have an immediate offset for the vISA LSC API" \
     "(0 means off/no matching," \

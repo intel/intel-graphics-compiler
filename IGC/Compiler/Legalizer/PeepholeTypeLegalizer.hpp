@@ -43,6 +43,8 @@ namespace IGC {
             bool runOnFunction(Function& F) override;
 
             void visitInstruction(Instruction& I);
+            void visitLoadInst(LoadInst& LI);
+            void visitStoreInst(StoreInst& SI);
             void legalizePhiInstruction(Instruction& I);
             void legalizeUnaryInstruction(Instruction& I);
             void legalizeBinaryOperator(Instruction& I);
@@ -58,9 +60,15 @@ namespace IGC {
             bool Bitcast_BitcastWithIntermediateIllegalsEliminated;
             bool Changed;
 
+            bool MustLegalizeScratch = false;
+
             const DataLayout* DL;
 
             void getAnalysisUsage(AnalysisUsage& AU) const override;
+
+            StringRef getPassName() const override {
+                return "PeepholeTypeLegalizer";
+            }
 
             LLVMContext& getContext() const { return TheModule->getContext(); }
             Module* getModule() const { return TheModule; }
