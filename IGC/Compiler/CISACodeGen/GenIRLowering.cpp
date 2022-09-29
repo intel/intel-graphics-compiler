@@ -20,17 +20,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/IR/PatternMatch.h>
-#include <llvm/Analysis/ScalarEvolution.h>
-#if LLVM_VERSION_MAJOR < 11
-#include <llvm/Analysis/ScalarEvolutionExpander.h>
-#endif
-#include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Analysis/TargetFolder.h>
-#include <llvm/IR/GetElementPtrTypeIterator.h>
-#if LLVM_VERSION_MAJOR >= 11
-#include <llvm/Transforms/Utils/ScalarEvolutionExpander.h>
-#endif
-#include <llvm/Transforms/Utils/Local.h>
+#include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -238,7 +229,6 @@ namespace {
         BuilderTy* Builder = nullptr;
         llvm::LoopInfo* m_LI = nullptr;
         ModuleMetaData* modMD = nullptr;
-        ScalarEvolution* SE = nullptr;
     public:
         static char ID;
 
@@ -255,15 +245,13 @@ namespace {
             AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<LoopInfoWrapperPass>();
-            AU.addRequired<ScalarEvolutionWrapperPass>();
         }
 
-    protected:
+    private:
         // Helpers
         Value* getSExtOrTrunc(Value*, Type*) const;
         Value* truncExpr(Value*, Type*) const;
 
-        bool simplifyGEP(BasicBlock &BB) const;
         bool lowerGetElementPtrInst(GetElementPtrInst* GEP) const;
     };
 
@@ -403,95 +391,6 @@ bool GenIRLowering::runOnFunction(Function& F) {
     return Changed;
 }
 
-// For each basic block, simplify GEPs based on the analysis result from SCEV.
-bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
-    // Pointers with the form base + zext(idx).
-    struct PointerExpr {
-        GetElementPtrInst *GEP;
-        const SCEV *Idx;
-        GetElementPtrInst *Base = nullptr; // A simplified offset if any.
-        const SCEV *Offset = nullptr; // A simplified offset if any.
-    };
-    // Each visited base pointer have a collection of base expr.
-    DenseMap<Value *, SmallVector<PointerExpr, 128>> Pointers;
-
-    auto IsUsedByBindless = [](const GetElementPtrInst *GEP) {
-        for (auto *U : GEP->users())
-            if (auto *P2I = dyn_cast<PtrToIntInst>(U))
-                if (P2I->getType()->isIntegerTy(32))
-                    return true;
-        return false;
-    };
-
-    bool Changed = false;
-    for (auto BI = BB.begin(), BE = BB.end(); BI != BE; ++BI) {
-        auto *GEP = dyn_cast<GetElementPtrInst>(BI);
-        // So far, for simplicity, consider GEPs on the generic/global address
-        // with a single index only. It should be straight-forward to extend
-        // the support to other cases, where multiple indices are present.
-        if (!GEP || !GEP->isInBounds() || GEP->getNumIndices() != 1 ||
-            (GEP->getAddressSpace() != ADDRESS_SPACE_GLOBAL &&
-             GEP->getAddressSpace() != ADDRESS_SPACE_GENERIC))
-            continue;
-        if (IsUsedByBindless(GEP))
-            continue;
-        auto *ZExt = dyn_cast<ZExtInst>(GEP->getOperand(1));
-        if (!ZExt) // TODO: sext may also be considered.
-            continue;
-        auto *Idx = ZExt->getOperand(0);
-        const SCEV *E = SE->getSCEV(Idx);
-        // Skip if the offset to the base is already a constant.
-        if (isa<SCEVConstant>(E))
-            continue;
-        Value *Base = GEP->getPointerOperand();
-        auto &Exprs = Pointers[Base];
-
-        auto EI = Exprs.begin();
-        auto EE = Exprs.end();
-        const SCEV *Offset = nullptr;
-        unsigned MinDiff = UINT_MAX;
-        GetElementPtrInst *BaseWithMinDiff = nullptr;
-        for (/*EMPTY*/; EI != EE; ++EI) {
-            // Skip if the result types do not match.
-            if (EI->GEP->getType() != GEP->getType())
-                continue;
-            auto *Diff = SE->getMinusSCEV(E, EI->Idx);
-            if (Diff->getExpressionSize() < 4 &&
-                Diff->getExpressionSize() < MinDiff) {
-                BaseWithMinDiff = EI->GEP;
-                Offset = Diff;
-            }
-        }
-        // Not found, add this GEP as a potential base expr.
-        if (!Offset) {
-            Exprs.emplace_back(PointerExpr{GEP, E, nullptr, nullptr});
-            continue;
-        }
-        Exprs.emplace_back(PointerExpr{GEP, E, BaseWithMinDiff, Offset});
-    }
-    std::vector<Instruction *> DeadInsts;
-    for (auto B : Pointers) {
-        for (auto PI = B.second.rbegin(),
-                  PE = B.second.rend(); PI != PE; ++PI) {
-            auto &P = *PI;
-            if (P.Offset) {
-                SCEVExpander E(*SE, *DL, "gep-simplification");
-                Value *V = E.expandCodeFor(P.Offset, P.Idx->getType(), P.GEP);
-                Builder->SetInsertPoint(P.GEP);
-                auto *NewGEP = Builder->CreateInBoundsGEP(
-                    P.Base,
-                    Builder->CreateZExt(V, P.GEP->getOperand(1)->getType()));
-                P.GEP->replaceAllUsesWith(NewGEP);
-                DeadInsts.push_back(P.GEP);
-                Changed = true;
-            }
-        }
-    }
-    for (auto *I : DeadInsts)
-        RecursivelyDeleteTriviallyDeadInstructions(I);
-    return Changed;
-}
-
 bool GEPLowering::runOnFunction(Function& F) {
     // Skip non-kernel function.
     modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -505,17 +404,11 @@ bool GEPLowering::runOnFunction(Function& F) {
     m_ctx = pCtxWrapper->getCodeGenContext();
 
     DL = &F.getParent()->getDataLayout();
-    SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
 
     BuilderTy TheBuilder(F.getContext(), TargetFolder(*DL));
     Builder = &TheBuilder;
 
     bool Changed = false;
-
-    if (IGC_IS_FLAG_ENABLED(EnableGEPSimplification)) {
-        for (auto &BB : F)
-            Changed |= simplifyGEP(BB);
-    }
 
     for (auto& BB : F) {
         for (auto BI = BB.begin(), BE = BB.end(); BI != BE;) {
@@ -1090,6 +983,5 @@ IGC_INITIALIZE_PASS_BEGIN(GEPLowering, PASS_FLAG2, PASS_DESCRIPTION2,
     IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
     IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-    IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass);
     IGC_INITIALIZE_PASS_END(GEPLowering, PASS_FLAG2, PASS_DESCRIPTION2,
         PASS_CFG_ONLY2, PASS_ANALYSIS2)
