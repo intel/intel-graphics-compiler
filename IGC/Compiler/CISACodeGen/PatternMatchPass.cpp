@@ -1373,6 +1373,10 @@ namespace IGC
         case Intrinsic::ctpop:
         case Intrinsic::ctlz:
         case Intrinsic::cttz:
+        case Intrinsic::usub_sat:
+        case Intrinsic::ssub_sat:
+        case Intrinsic::uadd_sat:
+        case Intrinsic::sadd_sat:
             match = MatchModifier(I);
             break;
         case Intrinsic::exp2:

@@ -9,6 +9,67 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
+INLINE
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i8_i8, )( char x,
+                                          char y )
+{
+    short tmp = (short)x - (short)y;
+    return (char) SPIRV_OCL_BUILTIN(s_clamp, _i16_i16_i16, )(tmp, (short)CHAR_MIN, (short)CHAR_MAX);
+}
+
+INLINE
+uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i8_i8, )( uchar x,
+                                           uchar y )
+{
+    return ( x <= y ) ? 0 : x - y;
+}
+
+INLINE
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i16_i16, )( short x,
+                                           short y )
+{
+    int tmp = (int)x - (int)y;
+    return (short) SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )( tmp, (int)SHRT_MIN, (int)SHRT_MAX);
+}
+
+INLINE
+ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i16_i16, )( ushort x,
+                                            ushort y )
+{
+    return ( x <= y ) ? 0 : x - y;
+}
+
+INLINE
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i32_i32, )( int x,
+                                         int y )
+{
+    long tmp = (long)x - (long)y;
+    return (int) SPIRV_OCL_BUILTIN(s_clamp, _i64_i64_i64, )( tmp, (long)INT_MIN, (long)INT_MAX);
+}
+
+INLINE
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i32_i32, )( uint x,
+                                          uint y )
+{
+    return ( x <= y ) ? 0 : x - y;
+}
+
+INLINE
+long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i64_i64, )( long x,
+                                          long y )
+{
+    long temp = x - y;
+    return ((x ^ ~y | ~(x ^ temp)) >> 63) ? temp     :
+           (temp > 0)                     ? LONG_MIN :
+                                            LONG_MAX ;
+}
+
+INLINE
+ulong SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i64_i64, )( ulong x,
+                                           ulong y )
+{
+    return ( x <= y ) ? 0 : x - y;
+}
 
 INLINE
 char2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _v2i8_v2i8, )( char2 x,
@@ -458,16 +519,6 @@ uint16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _v16i32_v16i32, )( uint16
 }
 
 INLINE
-long SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i64_i64, )( long x,
-                                        long y )
-{
-    long temp = x - y;
-    return ((x ^ ~y | ~(x ^ temp)) >> 63) ? temp     :
-           (temp > 0)                     ? LONG_MIN :
-                                            LONG_MAX ;
-}
-
-INLINE
 long2 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _v2i64_v2i64, )( long2 x,
                                              long2 y )
 {
@@ -538,14 +589,6 @@ long16 SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _v16i64_v16i64, )( long16
     temp.se = SPIRV_OCL_BUILTIN(s_sub_sat, _i64_i64, )(x.se, y.se);
     temp.sf = SPIRV_OCL_BUILTIN(s_sub_sat, _i64_i64, )(x.sf, y.sf);
     return temp;
-}
-
-INLINE
-ulong SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i64_i64, )( ulong x,
-                                         ulong y )
-{
-    ulong temp = x - y;
-    return ((temp <= x)) ? temp : 0;
 }
 
 INLINE
