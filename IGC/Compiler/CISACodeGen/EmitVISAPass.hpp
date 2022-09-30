@@ -412,6 +412,10 @@ public:
     void emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1);
 
     void emitSqrt(llvm::Instruction* inst);
+    void emitUmin(llvm::IntrinsicInst* inst);
+    void emitSmin(llvm::IntrinsicInst* inst);
+    void emitUmax(llvm::IntrinsicInst* inst);
+    void emitSmax(llvm::IntrinsicInst* inst);
     void emitCanonicalize(llvm::Instruction* inst, const DstModifier& modifier);
     void emitRsq(llvm::Instruction* inst);
     void emitFrc(llvm::GenIntrinsicInst* inst);
