@@ -25,6 +25,21 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
+static void swapNames(Value* value1, Value* value2)
+{
+    if (value1->getType()->isVoidTy()
+        || value2->getType()->isVoidTy()
+        || (!value1->hasName() && !value2->hasName()))
+    {
+        return;
+    }
+
+    auto name1 = value1->getName().str();
+    auto name2 = value2->getName().str();
+    value1->setName(name2);
+    value2->setName(name1);
+}
+
 // Register pass to igc-opt
 #define PASS_FLAG "igc-promote-bools"
 #define PASS_DESCRIPTION "Promote bools"
@@ -57,6 +72,24 @@ bool PromoteBools::runOnModule(Module& module)
     }
 
     visit(module);
+
+    while (!promotionQueue.empty())
+    {
+        auto value = promotionQueue.front();
+        promotionQueue.pop();
+        if (!wasPromoted(value))
+        {
+            if (auto inst = dyn_cast<Instruction>(value))
+            {
+                if (wasPromoted(inst->getFunction()))
+                {
+                    continue;
+                }
+            }
+            getOrCreatePromotedValue(value);
+        }
+    }
+
     cleanUp(module);
 
     return changed;
@@ -64,7 +97,7 @@ bool PromoteBools::runOnModule(Module& module)
 
 void PromoteBools::visitAllocaInst(AllocaInst& alloca)
 {
-    if (promotedValuesCache.count(alloca.getFunction()))
+    if (wasPromoted(alloca.getFunction()))
     {
         return;
     }
@@ -74,132 +107,32 @@ void PromoteBools::visitAllocaInst(AllocaInst& alloca)
 
 void PromoteBools::visitCallInst(CallInst& call)
 {
-    if (promotedValuesCache.count(call.getFunction()))
+    if (wasPromoted(call.getFunction()))
     {
         return;
     }
 
-    auto function = call.getCalledFunction();
-    if (!function)
-    {
-        return;
-    }
-
-    auto functionType = call.getFunctionType();
-
-    auto promotedValue = getOrCreatePromotedValue(function);
-    if (!promotedValue)
-    {
-        return;
-    }
-
-    auto newFunction = dyn_cast<Function>(promotedValue);
-
-    // Promotion is not needed.
-    if (newFunction == function)
-    {
-        return;
-    }
-
-    IRBuilder<> builder(&call);
-    std::vector<Value*> newCallArguments;
-    for (auto& arg : call.args())
-    {
-        if (!arg->getType()->isIntegerTy(1))
-        {
-            newCallArguments.push_back(arg);
-        }
-        else
-        {
-            auto zext = createZextIfNeeded(arg, &call);
-            newCallArguments.push_back(zext);
-        }
-    }
-
-    auto newCall = builder.CreateCall(newFunction->getFunctionType(), newFunction, newCallArguments);
-    if (!functionType->getReturnType()->isIntegerTy(1))
-    {
-        call.replaceAllUsesWith(newCall);
-    }
-    else
-    {
-        auto trunc = builder.CreateTrunc(newCall, Type::getInt1Ty(call.getContext()));
-        call.replaceAllUsesWith(trunc);
-    }
-    auto name = call.getName().str();
-    call.eraseFromParent();
-    newCall->setName(name);
-
-    changed = true;
+    changed |= getOrCreatePromotedValue(&call) != &call;
 }
 
 void PromoteBools::visitLoadInst(LoadInst& load)
 {
-    if (promotedValuesCache.count(load.getFunction()))
+    if (wasPromoted(load.getFunction()))
     {
         return;
     }
 
-    auto src = load.getOperand(0);
-
-    // Check if promotion is needed
-    if (!typeNeedsPromotion(src->getType()))
-    {
-        return;
-    }
-
-    // Promote
-    auto newSrc = getOrCreatePromotedValue(src);
-    if (!newSrc)
-    {
-        return;
-    }
-
-    IRBuilder<> builder(&load);
-    auto newLoad = builder.CreateLoad(newSrc->getType()->getPointerElementType(), newSrc);
-    newLoad->setAlignment(IGCLLVM::getAlign(load));
-    auto trunc = builder.CreateTrunc(newLoad, Type::getInt1Ty(load.getContext()));
-    load.replaceAllUsesWith(trunc);
-    auto name = load.getName().str();
-    load.eraseFromParent();
-    newLoad->setName(name);
-
-    changed = true;
+    changed |= getOrCreatePromotedValue(&load) != &load;
 }
 
 void PromoteBools::visitStoreInst(StoreInst& store)
 {
-    if (promotedValuesCache.count(store.getFunction()))
+    if (wasPromoted(store.getFunction()))
     {
         return;
     }
 
-    auto src = store.getOperand(0);
-    auto dst = store.getOperand(1);
-
-    // Check if promotion is needed
-    if (!typeNeedsPromotion(dst->getType()))
-    {
-        return;
-    }
-
-    // Promote
-    auto newDst = getOrCreatePromotedValue(dst);
-    if (!newDst)
-    {
-        return;
-    }
-
-    auto zext = createZextIfNeeded(src, &store);
-    IRBuilder<> builder(&store);
-    auto newStore = builder.CreateStore(zext, newDst);
-    newStore->setAlignment(IGCLLVM::getAlign(store));
-    store.replaceAllUsesWith(newStore);
-    auto name = store.getName().str();
-    store.eraseFromParent();
-    newStore->setName(name);
-
-    changed = true;
+    changed |= getOrCreatePromotedValue(&store) != &store;
 }
 
 Value* PromoteBools::createZextIfNeeded(Value* argument, Instruction* insertBefore)
@@ -218,33 +151,37 @@ Value* PromoteBools::createZextIfNeeded(Value* argument, Instruction* insertBefo
 
 void PromoteBools::cleanUp(Module& module)
 {
-    auto renameAndClean = [](auto src, auto dst) {
-        auto name = src->getName().str();
+    auto erase = [&doNotRemove = this->doNotRemove](auto v) {
+        if (doNotRemove.find(v) != doNotRemove.end())
+        {
+            return;
+        }
 
-        // Replace all src uses by undef. It allows us not to worry about
-        // the proper order in which we delete unpromoted values.
-        src->replaceAllUsesWith(UndefValue::get(src->getType()));
-        src->eraseFromParent();
-        dst->setName(name);
+        // Replace all v uses by undef. It allows us not to worry about
+        // the order in which we delete unpromoted values.
+        v->replaceAllUsesWith(UndefValue::get(v->getType()));
+        v->eraseFromParent();
     };
 
     for (auto& it : promotedValuesCache)
     {
         if (auto function = dyn_cast<Function>(it.first))
         {
-            renameAndClean(function, it.second);
+            swapNames(function, it.second);
+            erase(function);
         }
         else if (auto globalVariable = dyn_cast<GlobalVariable>(it.first))
         {
-            renameAndClean(globalVariable, it.second);
+            swapNames(globalVariable, it.second);
+            erase(globalVariable);
         }
         else if (auto instruction = dyn_cast<Instruction>(it.first))
         {
-            renameAndClean(instruction, it.second);
+            erase(instruction);
         }
     }
 
-    std::vector<Instruction*> deadTruncs;
+    SmallVector<Instruction*, 8> deadInstructions;
     for (auto& function : module)
     {
         for (auto& basicBlock : function)
@@ -252,20 +189,20 @@ void PromoteBools::cleanUp(Module& module)
             for (auto it = basicBlock.rbegin(); it != basicBlock.rend(); ++it)
             {
                 Instruction* instruction = &*it;
-                if (isa<TruncInst>(instruction))
+                if (isa<TruncInst>(instruction) || isa<ZExtInst>(instruction))
                 {
                     if (instruction->hasNUses(0))
                     {
-                        deadTruncs.push_back(instruction);
+                        deadInstructions.push_back(instruction);
                     }
                 }
             }
         }
     }
 
-    for (auto& trunc : deadTruncs)
+    for (auto& instruction : deadInstructions)
     {
-        trunc->eraseFromParent();
+        instruction->eraseFromParent();
     }
 }
 
@@ -369,7 +306,7 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
             promotedTypesCache[type] = newStructType;
 
             // Promote and update struct elements
-            std::vector<Type*> elements;
+            SmallVector<Type*, 8> elements;
             for (const auto& element : structType->elements())
             {
                 elements.push_back(getOrCreatePromotedType(element));
@@ -382,7 +319,7 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
     else if (auto functionType = dyn_cast<FunctionType>(type))
     {
         auto returnType = getOrCreatePromotedType(functionType->getReturnType());
-        std::vector<Type*> arguments;
+        SmallVector<Type*, 8> arguments;
         for (auto& type : functionType->params())
         {
             arguments.push_back(getOrCreatePromotedType(type));
@@ -404,19 +341,29 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
 //------------------------------------------------------------------------------
 Value* PromoteBools::getOrCreatePromotedValue(Value* value)
 {
-    if (promotedValuesCache.count(value))
+    if (wasPromoted(value))
     {
         return promotedValuesCache[value];
     }
 
+    // Skip some instruction types
+    if (isa<ZExtInst>(value))
+    {
+        return value;
+    }
+
     Value* newValue = value;
-    if (auto globalVariable = dyn_cast<GlobalVariable>(value))
+    if (auto function = dyn_cast<Function>(value))
+    {
+        newValue = promoteFunction(function);
+    }
+    else if (auto globalVariable = dyn_cast<GlobalVariable>(value))
     {
         newValue = promoteGlobalVariable(globalVariable);
     }
-    else if (auto function = dyn_cast<Function>(value))
+    else if (auto constant = dyn_cast<Constant>(value))
     {
-        newValue = promoteFunction(function);
+        newValue = promoteConstant(constant);
     }
     else if (auto addrSpaceCast = dyn_cast<AddrSpaceCastInst>(value))
     {
@@ -430,12 +377,71 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteBitCast(bitcast);
     }
+    else if (auto call = dyn_cast<CallInst>(value))
+    {
+        newValue = promoteCall(call);
+    }
+    else if (auto load = dyn_cast<LoadInst>(value))
+    {
+        newValue = promoteLoad(load);
+    }
+    else if (auto store = dyn_cast<StoreInst>(value))
+    {
+        newValue = promoteStore(store);
+    }
+    else if (auto instruction = dyn_cast<Instruction>(value))
+    {
+        IRBuilder<> builder(instruction);
+        for (auto& operand : instruction->operands())
+        {
+            if (wasPromoted(operand))
+            {
+                auto promoted = promotedValuesCache[operand];
+                if (auto zext = dyn_cast<ZExtInst>(promoted))
+                {
+                    instruction->replaceUsesOfWith(operand, zext->getOperand(0));
+                }
+                else
+                {
+                    auto trunc = builder.CreateTrunc(
+                        promoted,
+                        operand->getType(),
+                        ""
+                    );
+                    instruction->replaceUsesOfWith(operand, trunc);
+                }
+            }
+        }
+
+        if (value->getType()->isIntegerTy(1))
+        {
+            newValue = new ZExtInst(
+                instruction,
+                Type::getInt8Ty(instruction->getContext()),
+                "",
+                instruction->getNextNode()
+            );
+            doNotRemove.insert(instruction);
+        }
+    }
 
     if (newValue != value)
     {
         promotedValuesCache[value] = newValue;
+        for (const auto& user : value->users())
+        {
+            if (!wasPromoted(user))
+            {
+                promotionQueue.push(user);
+            }
+        }
     }
     return newValue;
+}
+
+bool PromoteBools::wasPromoted(llvm::Value* value)
+{
+    return promotedValuesCache.count(value);
 }
 
 Function* PromoteBools::promoteFunction(Function* function)
@@ -448,8 +454,12 @@ Function* PromoteBools::promoteFunction(Function* function)
         return function;
     }
 
-    auto newFunctionType = dyn_cast<FunctionType>(getOrCreatePromotedType(function->getFunctionType()));
-    auto newFunction = Function::Create(newFunctionType, function->getLinkage(), function->getName(), function->getParent());
+    auto newFunction = Function::Create(
+        dyn_cast<FunctionType>(getOrCreatePromotedType(function->getFunctionType())),
+        function->getLinkage(),
+        function->getName() + ".promoted",
+        function->getParent()
+    );
     newFunction->setCallingConv(function->getCallingConv());
     newFunction->setAttributes(function->getAttributes());
 
@@ -472,14 +482,14 @@ Function* PromoteBools::promoteFunction(Function* function)
         // Fix body
         for (auto& arg : function->args())
         {
-            if (!arg.getType()->isIntegerTy(1) || arg.hasNUses(0))
+            if (!typeNeedsPromotion(arg.getType()) || arg.hasNUses(0))
             {
                 continue;
             }
 
             auto newArg = argsMap[&arg];
 
-            std::vector<Instruction*> userInstructions;
+            SmallVector<Instruction*, 8> userInstructions;
             for (auto user : newArg->users())
             {
                 if (auto instruction = dyn_cast<Instruction>(user))
@@ -529,7 +539,7 @@ GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariab
         globalVariable->isConstant(),
         globalVariable->getLinkage(),
         promoteConstant(globalVariable->getInitializer()),
-        globalVariable->getName(),
+        globalVariable->getName() + ".promoted",
         nullptr,
         GlobalValue::ThreadLocalMode::NotThreadLocal,
         globalVariable->getType()->getPointerAddressSpace());
@@ -619,45 +629,38 @@ Constant* PromoteBools::promoteConstant(Constant* constant)
     return constant;
 }
 
-Value* PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst* addrSpaceCast)
+AddrSpaceCastInst* PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst* addrSpaceCast)
 {
     if (!addrSpaceCast || !typeNeedsPromotion(addrSpaceCast->getDestTy()))
     {
         return addrSpaceCast;
     }
 
-    auto newAddrSpaceCast = new AddrSpaceCastInst(
-        addrSpaceCast->getOperand(0),
+    return new AddrSpaceCastInst(
+        getOrCreatePromotedValue(addrSpaceCast->getOperand(0)),
         getOrCreatePromotedType(addrSpaceCast->getDestTy()),
-        addrSpaceCast->getName(),
+        "",
         addrSpaceCast
     );
-    return newAddrSpaceCast;
 }
 
-Value* PromoteBools::promoteAlloca(AllocaInst* alloca)
+
+AllocaInst* PromoteBools::promoteAlloca(AllocaInst* alloca)
 {
     if (!alloca || !typeNeedsPromotion(alloca->getAllocatedType()))
     {
         return alloca;
     }
 
-    auto oldAllocaName = alloca->getName().str();
-    alloca->setName(oldAllocaName + "_bitcast");
-
     auto newAlloca = new AllocaInst(
         getOrCreatePromotedType(alloca->getAllocatedType()),
         alloca->getType()->getAddressSpace(),
         alloca->isArrayAllocation() ? alloca->getArraySize() : nullptr,
-        oldAllocaName,
+        "",
         alloca);
     newAlloca->setAlignment(IGCLLVM::getAlign(*alloca));
 
-    IRBuilder<> builder(alloca);
-    auto bitcast = builder.CreateBitCast(newAlloca, alloca->getType());
-    alloca->replaceAllUsesWith(bitcast);
-
-    return bitcast;
+    return newAlloca;
 }
 
 Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
@@ -670,21 +673,96 @@ Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
     auto newType = getOrCreatePromotedType(bitcast->getDestTy());
     if (bitcast->getSrcTy() == newType)
     {
-        auto result = bitcast->getOperand(0);
-
-        // swap names
-        auto name = result->getName().str();
-        result->setName(name + "_tmp");
-        bitcast->setName(name);
-
-        return result;
+        return bitcast->getOperand(0);
     }
 
-    auto newBitCast = new BitCastInst(
-        bitcast->getOperand(0),
+    return new BitCastInst(
+        getOrCreatePromotedValue(bitcast->getOperand(0)),
         getOrCreatePromotedType(bitcast->getDestTy()),
-        bitcast->getName(),
+        "",
         bitcast
     );
-    return newBitCast;
+}
+
+CallInst* PromoteBools::promoteCall(CallInst* call)
+{
+    auto function = call->getCalledFunction();
+    auto functionType = call->getFunctionType();
+
+    if (!function || !typeNeedsPromotion(functionType))
+    {
+        return call;
+    }
+
+    auto newFunction = dyn_cast<Function>(getOrCreatePromotedValue(function));
+    if (newFunction == function)
+    {
+        return call;
+    }
+
+    SmallVector<Value*, 8> newCallArguments;
+    for (auto& arg : call->args())
+    {
+        newCallArguments.push_back(getOrCreatePromotedValue(arg));
+    }
+
+    return CallInst::Create(
+        newFunction->getFunctionType(),
+        newFunction,
+        newCallArguments,
+        "",
+        call
+    );
+}
+
+LoadInst* PromoteBools::promoteLoad(LoadInst* load)
+{
+    if (!load)
+    {
+        return load;
+    }
+
+    auto src = load->getOperand(0);
+
+    if (!wasPromoted(src) && !typeNeedsPromotion(src->getType()))
+    {
+        return load;
+    }
+
+    auto newSrc = getOrCreatePromotedValue(src);
+    auto newLoad = new LoadInst(
+        newSrc->getType()->getPointerElementType(),
+        newSrc,
+        "",
+        load
+    );
+    newLoad->setAlignment(IGCLLVM::getAlign(*load));
+
+    return newLoad;
+}
+
+StoreInst* PromoteBools::promoteStore(StoreInst* store)
+{
+    if (!store)
+    {
+        return store;
+    }
+
+    auto src = store->getOperand(0);
+    auto dst = store->getOperand(1);
+
+    if (!wasPromoted(src) && !wasPromoted(dst) && !typeNeedsPromotion(src->getType()))
+    {
+        return store;
+    }
+
+    auto newStore = new StoreInst(
+        getOrCreatePromotedValue(src),
+        getOrCreatePromotedValue(dst),
+        store->isVolatile(),
+        store
+    );
+    newStore->setAlignment(IGCLLVM::getAlign(*store));
+
+    return newStore;
 }

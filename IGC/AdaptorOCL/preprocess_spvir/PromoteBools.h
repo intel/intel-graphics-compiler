@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 
 #include <string>
+#include <queue>
 
 namespace IGC
 {
@@ -56,12 +57,18 @@ namespace IGC
 
         // Promoting values
         llvm::DenseMap<llvm::Value*, llvm::Value*> promotedValuesCache;
+        llvm::DenseSet<llvm::Value*> doNotRemove;
+        std::queue<llvm::Value*> promotionQueue;
         llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
+        bool wasPromoted(llvm::Value* value);
         llvm::Function* promoteFunction(llvm::Function* function);
         llvm::GlobalVariable* promoteGlobalVariable(llvm::GlobalVariable* globalVariable);
         llvm::Constant* promoteConstant(llvm::Constant* constant);
-        llvm::Value* promoteAlloca(llvm::AllocaInst* alloca);
-        llvm::Value* promoteAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast);
+        llvm::AllocaInst* promoteAlloca(llvm::AllocaInst* alloca);
+        llvm::AddrSpaceCastInst* promoteAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast);
         llvm::Value* promoteBitCast(llvm::BitCastInst* bitcast);
+        llvm::CallInst* promoteCall(llvm::CallInst* call);
+        llvm::LoadInst* promoteLoad(llvm::LoadInst* load);
+        llvm::StoreInst* promoteStore(llvm::StoreInst* store);
     };
 }

@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-promote-bools -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-promote-bools -S %s -o %t.ll
+; RUN: FileCheck %s --input-file=%t.ll
 
 %struct = type { i1, i1, [2 x i1], [2 x <2 x i1>], i1* }
 %struct_rec = type { %struct_rec*, i1 }

@@ -6,55 +6,55 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-promote-bools -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-promote-bools -S %s -o %t.ll
+; RUN: FileCheck %s --input-file=%t.ll
 
 define spir_func void @bitcast_i32_to_i1() {
-  %allocated = alloca i32, align 1
-  %casted = bitcast i32* %allocated to i1*
-  %value = load i1, i1* %casted
+  %1 = alloca i32, align 1
+  %2 = bitcast i32* %1 to i1*
+  %3 = load i1, i1* %2
   ret void
 }
 
 ; CHECK-LABEL:  define spir_func void @bitcast_i32_to_i1()
-; CHECK-NEXT:   %allocated = alloca i32, align 1
-; CHECK-NEXT:   %casted = bitcast i32* %allocated to i8*
-; CHECK-NEXT:   %value = load i8, i8* %casted
+; CHECK-NEXT:   %1 = alloca i32, align 1
+; CHECK-NEXT:   %2 = bitcast i32* %1 to i8*
+; CHECK-NEXT:   %3 = load i8, i8* %2
 
 
 define spir_func void @bitcast_i8_to_i1() {
-  %allocated = alloca i8, align 1
-  %casted = bitcast i8* %allocated to i1*
-  %value = load i1, i1* %casted
+  %1 = alloca i8, align 1
+  %2 = bitcast i8* %1 to i1*
+  %3 = load i1, i1* %2
   ret void
 }
 
 ; CHECK-LABEL:  define spir_func void @bitcast_i8_to_i1()
-; CHECK-NEXT:   %allocated = alloca i8, align 1
-; CHECK-NEXT:   %value = load i8, i8* %allocated
+; CHECK-NEXT:   %1 = alloca i8, align 1
+; CHECK-NEXT:   %2 = load i8, i8* %1
 
 
 define spir_func void @addrspacecast_i32_to_i1() {
-  %allocated = alloca i32, align 1
-  %casted = addrspacecast i32* %allocated to i1 addrspace(4)*
-  %value = load i1, i1 addrspace(4)* %casted
+  %1 = alloca i32, align 1
+  %2 = addrspacecast i32* %1 to i1 addrspace(4)*
+  %3 = load i1, i1 addrspace(4)* %2
   ret void
 }
 
 ; CHECK-LABEL:  define spir_func void @addrspacecast_i32_to_i1()
-; CHECK-NEXT:   %allocated = alloca i32, align 1
-; CHECK-NEXT:   %casted = addrspacecast i32* %allocated to i8 addrspace(4)*
-; CHECK-NEXT:   %value = load i8, i8 addrspace(4)* %casted
+; CHECK-NEXT:   %1 = alloca i32, align 1
+; CHECK-NEXT:   %2 = addrspacecast i32* %1 to i8 addrspace(4)*
+; CHECK-NEXT:   %3 = load i8, i8 addrspace(4)* %2
 
 
 define spir_func void @addrspacecast_i1() {
-  %allocated = alloca i1, align 1
-  %casted = addrspacecast i1* %allocated to i1 addrspace(4)*
-  %value = load i1, i1 addrspace(4)* %casted
+  %1 = alloca i1, align 1
+  %2 = addrspacecast i1* %1 to i1 addrspace(4)*
+  %3 = load i1, i1 addrspace(4)* %2
   ret void
 }
 
 ; CHECK-LABEL:  define spir_func void @addrspacecast_i1()
-; CHECK-NEXT:   %allocated = alloca i8, align 1
-; CHECK-NEXT:   %allocated_bitcast = bitcast i8* %allocated to i1*
-; CHECK-NEXT:   %casted = addrspacecast i1* %allocated_bitcast to i8 addrspace(4)*
-; CHECK-NEXT:   %value = load i8, i8 addrspace(4)* %casted
+; CHECK-NEXT:   %1 = alloca i8, align 1
+; CHECK-NEXT:   %2 = addrspacecast i8* %1 to i8 addrspace(4)*
+; CHECK-NEXT:   %3 = load i8, i8 addrspace(4)* %2
