@@ -61,6 +61,7 @@ protected:
     void formatDstOp(const Instruction &i);
 
     void formatSrcOp(SourceIndex ix, const Instruction &i);
+
     void formatSyncAllSrc0(const Instruction &i);
     void formatBareRegisterUnescaped(RegName regName, int regNum);
     void formatRegister(
@@ -365,6 +366,7 @@ public:
         const std::string& debugSendDecode)
     {
 
+
         formatInstructionPrefix(i);
 
         int nSrcs = i.getSourceCount();
@@ -431,8 +433,6 @@ public:
         formatEolComments(i, debugSendDecode);
     }
 private:
-
-
 
     void formatInstructionPrefix(const Instruction& i) {
         formatMaskAndPredication(i);
@@ -1034,6 +1034,7 @@ void Formatter::formatDstOp(const Instruction &i)
 
     finishColumn();
 }
+
 
 static bool sendSrc1NeedsLengthSuffix(const Formatter &f, const Instruction &i)
 {

@@ -870,17 +870,19 @@ void Encoder::encodeSendInstruction(const Instruction& i)
     ////////////////////////////////////////////
     // send operands
     const OpSpec& os = i.getOpSpec();
-    if (os.isSendFormat()) {
+    if (os.isSendsFormat()) {
+        // old sends sources get special treatment
+        encodeSendDestination(i.getDestination());
+        encodeSendsSource0(i.getSource(0));
+        encodeSendsSource1(i.getSource(1));
+    } else {
         encodeSendDestination(i.getDestination());
         encodeSendSource0(i.getSource(0));
         if (m_model.supportsXeSend()) {
             encodeSendsSource1(i.getSource(1));
         }
-    } else if (os.isSendsFormat()) {
-        encodeSendDestination(i.getDestination());
-        encodeSendsSource0(i.getSource(0));
-        encodeSendsSource1(i.getSource(1));
     }
+
 
     ////////////////////////////////////////////
     // send descriptors and other gunk
@@ -1526,7 +1528,7 @@ void Encoder::encodeSendSource0(const Operand& src)
             GED_ENCODE(Src0AddrSubRegNum, src.getIndAddrReg().subRegNum);
             // For platform >= XeHPC, the ImmAddr is represented in Word Offset in binary,
             //     platform <  XeHPC, the ImmAddr is represented in Byte Offset in binary
-            // And for all platforms, the ImmAddr is represented in Byte Offset in assembly
+            // And for all platforms, the ImmAddr is represented in Byte Offset in assembly syntax
             if (platform() >= Platform::XE_HPC) {
                 GED_ENCODE(Src0AddrImm, src.getIndImmAddr() / 2);
             } else {

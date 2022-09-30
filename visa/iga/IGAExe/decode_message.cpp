@@ -498,7 +498,7 @@ bool decodeSendDescriptor(const Opts &opts)
 
     ensurePlatformIsSet(opts);
 
-    const iga::Platform p = iga::Platform(opts.platform);
+    const iga::Platform p = iga::ToPlatform(opts.platform);
 
     size_t minArgs = opts.platform < IGA_XE ? 2 : 3;
     size_t maxArgs = minArgs + 1;
