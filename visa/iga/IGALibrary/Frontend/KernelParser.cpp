@@ -819,21 +819,21 @@ class KernelParser : GenParser
     bool                  m_implicitExBSO; // send src1 suffixed with length implies exBSO, but ensure the inst opt is given
 
 private:
-    void addNullSendSrc1() {
+    // A helper function to add ARF_NULL src to given src operand
+    void addNullSrc(int srcOpIx, bool isImmOrLbl) {
         // For instructions those have implicit types, match the type to
         // the expected one. Otherwise, ARF_NULL operand should have Type::INVALID
         Type type = Type::INVALID;
-        m_opSpec->implicitSrcTypeVal(1, false, type);
+        m_opSpec->implicitSrcTypeVal(srcOpIx, isImmOrLbl, type);
         m_builder.InstSrcOpRegDirect(
-            1,
-            m_srcLocs[0], // use src0 loc
+            srcOpIx,
+            m_srcLocs[srcOpIx],
             SrcModifier::NONE,
             RegName::ARF_NULL,
             REGREF_ZERO_ZERO,
-            Region::INVALID,
+            Region::SRC010,
             type);
     }
-
 
 public:
     KernelParser(
@@ -1686,19 +1686,20 @@ public:
             m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<MathFC>());
         } else if (pOs->is(Op::SYNC)) {
             m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<SyncFC>());
-        } else if (platform() >= Platform::XE && pOs->isAnySendFormat()) {
-            m_builder.InstSubfunction(
-                ParseSubfunctionFromBxmlEnum<SFID>());
+        } else if (pOs->isOneOf(Op::SEND, Op::SENDC)) {
+            if (platform() >= Platform::XE)
+                m_builder.InstSubfunction(
+                    ParseSubfunctionFromBxmlEnum<SFID>());
             // else: it's part of ExDesc
         } else if (pOs->is(Op::BFN)) {
             m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnumBfnFC());
-        } else if (pOs->isDpasFormat()) {
+        } else if (pOs->isOneOf(Op::DPAS, Op::DPASW)) {
             m_builder.InstSubfunction(ParseSubfunctionFromBxmlEnum<DpasFC>());
         } else {
             // isOldSend: pre XE will have a subfunction,
             // but we pull it from ExDesc
             bool isOldSend =
-                platform() < Platform::XE && pOs->isAnySendFormat();
+                platform() < Platform::XE || pOs->isAnySendFormat();
             IGA_ASSERT(!pOs->supportsSubfunction() || isOldSend,
                 "INTERNAL ERROR: subfunction expected");
         }
@@ -3441,6 +3442,8 @@ public:
             ConsumeOrFail(RBRACE, "expected }");
         }
 
+        // TODO: sink this into the instop parsing once we remerge
+        // that with KernelParser... (after we rip out the legacy ld/st tables)
         bool src1LengthSuffixSet = m_sendSrcLens[1] != -1;
         if (instOpts.contains(InstOpt::EXBSO) && !src1LengthSuffixSet
             ) {

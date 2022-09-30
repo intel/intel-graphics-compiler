@@ -280,7 +280,6 @@ public:
     }
 
 
-
     /*************************Analysis APIs **********************************/
 
     // Returns the number of expicit sources this instruction has.

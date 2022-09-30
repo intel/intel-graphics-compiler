@@ -90,6 +90,7 @@ namespace iga
         case Op::SEL:   op = GED_OPCODE_sel;  break;
         //
         case Op::SEND:  op = GED_OPCODE_send; break;
+        //
         case Op::SENDC: op = GED_OPCODE_sendc; break;
         case Op::SENDS:  op = GED_OPCODE_sends; break;
         case Op::SENDSC: op = GED_OPCODE_sendsc; break;
