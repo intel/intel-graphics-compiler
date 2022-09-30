@@ -138,7 +138,11 @@ uint16_t LatencyTable::getLatencyG12(const G4_INST* Inst) const
         G4_SendDesc* MsgDesc = Inst->getMsgDesc();
         if (MsgDesc->isLSC())
         {
-            if (MsgDesc->isFence())
+            if (MsgDesc->getSFID() == SFID::SLM)
+            {
+                return MsgDesc->isFence() ? LatenciesXe::SLM_FENCE : LatenciesXe::SLM;
+            }
+            else if (MsgDesc->isFence())
             {
                 return MsgDesc->isTyped() ?
                     LatenciesXe::LSC_TYPED_FENCE : LatenciesXe::LSC_UNTYPED_FENCE;
