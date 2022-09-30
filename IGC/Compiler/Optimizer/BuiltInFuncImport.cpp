@@ -959,6 +959,7 @@ void BIImport::InitializeBIFlags(Module& M)
     initializeVarWithValue("__UseNative64BitIntBuiltin", pCtx->platform.hasNoFullI64Support() ? 0 : 1);
     initializeVarWithValue("__HasThreadPauseSupport", pCtx->platform.hasThreadPauseSupport() ? 1 : 0);
     initializeVarWithValue("__UseNative64BitFloatBuiltin", pCtx->platform.hasNoFP64Inst() ? 0 : 1);
+    initializeVarWithValue("__hasHWLocalThreadID", pCtx->platform.hasHWLocalThreadID() ? 1 : 0);
     initializeVarWithValue("__CRMacros",
         pCtx->platform.hasCorrectlyRoundedMacros() ? 1 : 0);
 
@@ -1123,13 +1124,7 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                          funcName == OCL_GET_SUBGROUP_ID_KHR_SPVIR ||
                          funcName == OCL_GET_SUBGROUP_ID)
                 {
-                  if (pCtx->platform.hasHWLocalThreadID())
-                  {
-                    pFunc->setName("__builtin_IB_get_local_thread_id");
-                    // We change the name of the function, so 'funcName' StringRef is no longer valid, need to reassign.
-                    funcName = pFunc->getName();
-                  }
-                  else
+                  if (!pCtx->platform.hasHWLocalThreadID())
                   {
                     // For pre-XeHP_SDV currently without using patch tokens to request local thread id from UMD,
                     // we are forcing walk order 0 1 2 when we have get_subgroup_id in kernel.
