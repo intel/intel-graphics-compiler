@@ -7998,6 +7998,25 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     *ii = movInst2;
                     inst->removeAllDefs();
                 }
+
+                if (builder.kernel.getNumRegTotal() == 256 &&
+                    inst->isEOT() &&
+                    VISA_WA_CHECK(builder.getPWaTable(), Wa_14016880151))
+                {
+                    INST_LIST_ITER preIter = std::prev(ii);
+                    if (preIter != ii)
+                    {
+                        G4_INST* preInst = (*preIter);
+                        if (preInst->isAtomicInst())
+                        {
+                            insertDummyCsel(bb, preIter, false);
+                        }
+                        else
+                        {
+                            insertDummyCsel(bb, ii, false);
+                        }
+                    }
+                }
                 ii++;
             }
         }

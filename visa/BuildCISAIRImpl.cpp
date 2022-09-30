@@ -225,6 +225,9 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform, Stepping step
                 VISA_WA_ENABLE(pWaTable, Wa_16012725276);
             }
             break;
+        case Xe_MTL:
+            VISA_WA_ENABLE(pWaTable, Wa_14016880151);
+            break;
         default:
             break;
     }
