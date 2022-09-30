@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CodeGenContextWrapper.hpp"
+#include "Compiler/MetaDataUtilsWrapper.h"
 
 #include <string>
 
@@ -36,6 +37,7 @@ namespace IGC
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<MetaDataUtilsWrapper>();
             AU.setPreservesCFG();
         }
 
@@ -47,6 +49,6 @@ namespace IGC
         llvm::ValueMap<llvm::Function*, llvm::Function*> m_OldFuncToNewFuncMap;
         bool m_changed = false;
 
-        void detectUniformParams(const llvm::Function* ESIMDFunction, llvm::CallInst& NewCall);
+        void fixUniformParamsAndSIMDSize(const llvm::Function* ESIMDFunction, llvm::CallInst& NewCall);
     };
 }
