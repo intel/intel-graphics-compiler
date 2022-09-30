@@ -6790,10 +6790,6 @@ uint __attribute__((overloadable)) intel_get_accelerator_mb_search_path_type(
     sampler_t a );
 
 #ifdef cl_khr_integer_dot_product
-uint __attribute__((overloadable)) dot(uint, uint, int);
-int __attribute__((overloadable)) dot(uint, int, int);
-int __attribute__((overloadable)) dot(int, uint, int);
-int __attribute__((overloadable)) dot(int, int, int);
 
 uint __attribute__((overloadable)) dot(ushort2, ushort2);
 int __attribute__((overloadable)) dot(ushort2, short2);
@@ -6805,10 +6801,10 @@ int __attribute__((overloadable)) dot(char4, char4);
 int __attribute__((overloadable)) dot(char4, uchar4);
 int __attribute__((overloadable)) dot(uchar4, char4);
 
-int __attribute__((overloadable)) dot_acc_sat(uint, uint, uint, int);
-int __attribute__((overloadable)) dot_acc_sat(uint, int, int, int);
-int __attribute__((overloadable)) dot_acc_sat(int, uint, int, int);
-int __attribute__((overloadable)) dot_acc_sat(int, int, int, int);
+uint __attribute__((overloadable)) dot_4x8packed_uu_uint(uint, uint);
+int __attribute__((overloadable)) dot_4x8packed_ss_int(uint, uint);
+int __attribute__((overloadable)) dot_4x8packed_us_int(uint, uint);
+int __attribute__((overloadable)) dot_4x8packed_su_int(uint, uint);
 
 uint __attribute__((overloadable)) dot_acc_sat(uchar4, uchar4, uint);
 int __attribute__((overloadable)) dot_acc_sat(char4, char4, int);
@@ -6819,6 +6815,12 @@ uint __attribute__((overloadable)) dot_acc_sat(ushort2, ushort2, uint);
 int __attribute__((overloadable)) dot_acc_sat(short2, short2, int);
 int __attribute__((overloadable)) dot_acc_sat(short2, ushort2, int);
 int __attribute__((overloadable)) dot_acc_sat(ushort2, short2, int);
+
+uint __attribute__((overloadable)) dot_acc_sat_4x8packed_uu_uint(uint, uint, uint);
+int __attribute__((overloadable)) dot_acc_sat_4x8packed_ss_int(uint, uint, int);
+int __attribute__((overloadable)) dot_acc_sat_4x8packed_us_int(uint, uint, int);
+int __attribute__((overloadable)) dot_acc_sat_4x8packed_su_int(uint, uint, int);
+
 #endif
 
 #ifdef __opencl_c_images
