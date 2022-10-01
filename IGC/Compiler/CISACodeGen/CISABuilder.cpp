@@ -4073,6 +4073,10 @@ namespace IGC
         if (IGC_IS_FLAG_ENABLED(ShaderDataBaseStats))
         {
             SaveOption(vISA_ShaderDataBaseStats, true);
+            if (auto* filePath = IGC_GET_REGKEYSTRING(ShaderDataBaseStatsFilePath))
+            {
+                SaveOption(vISA_ShaderDataBaseStatsFilePath, filePath);
+            }
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableSamplerSplit))

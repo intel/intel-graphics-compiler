@@ -135,7 +135,7 @@ private:
 
     SendDesc getIGASendDesc(G4_INST* sendInst) const;
     SendExDescOpts getIGASendExDesc(G4_INST* sendInst) const;
-    void printSendDataToFile(const G4_SendDescRaw* descG4) const;
+    void printSendDataToFile(const G4_SendDescRaw* descG4, const char* filePath) const;
     SendDesc encodeExDescImm(G4_INST* sendInst, SendExDescOpts &sdos) const;
     SendDesc encodeExDescRegA0(G4_INST* sendInst, SendExDescOpts &sdos) const;
 
@@ -1504,13 +1504,12 @@ static SendDesc encodeExDescSendUnary(
 }
 
 // A helper function to print send src/dst length information to a file. vISA_ShaderDataBaseStats key a requirement to use
-void BinaryEncodingIGA::printSendDataToFile(const G4_SendDescRaw* descG4) const
+void BinaryEncodingIGA::printSendDataToFile(const G4_SendDescRaw* descG4, const char* filePath) const
 {
     uint32_t src0Len = descG4->getSrc0LenBytes() / 32;
     uint32_t src1Len = descG4->getSrc1LenBytes() / 32;
     uint32_t dstLen = descG4->getDstLenBytes() / 32;
-    const char* filePath = "Z:\\ShaderStatsRuns\\SendInfo\\sendInfo.txt";
-    FILE* f = fopen(filePath, "w");
+    FILE* f = fopen(filePath, "a");
     if (f)
     {
         uint32_t namePos = fileName.find_last_of('\\', fileName.size());
@@ -1535,7 +1534,7 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(
     assert(descG4 != nullptr && "expected raw descriptor");
     if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats))
     {
-        printSendDataToFile(descG4);
+        printSendDataToFile(descG4, sendInst->getBuilder().getOptions()->getOptionCstr(vISA_ShaderDataBaseStatsFilePath));
     }
 
     sdos.xlen = (int)descG4->extMessageLength();
@@ -1596,7 +1595,7 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(
     assert(descG4 != nullptr && "expected raw descriptor");
     if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats))
     {
-        printSendDataToFile(descG4);
+        printSendDataToFile(descG4, sendInst->getBuilder().getOptions()->getOptionCstr(vISA_ShaderDataBaseStatsFilePath));
     }
     SendDesc exDescIga;
     exDescIga.type = SendDesc::Kind::REG32A;
