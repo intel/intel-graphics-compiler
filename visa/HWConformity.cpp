@@ -9223,12 +9223,12 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             inst->setOptionOn(InstOpt_WriteEnable);
         }
 
-        // case 1.1: SIMD1 hf->bf8
+        // case 1.1: SIMD1 hf<->fp8
         // (W)  mov (1|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
         // =>
         // (W)  mov (2|M0)   r20.0<1>:bf8   r12.0<0;1,0>:hf
         // (W)  mov (1|M0)   r10.0<1>:ub    r20.0<0;1,0>:ub
-        if (inst->getExecSize() == g4::SIMD1 && IS_BTYPE(inst->getDst()->getType()))  //case 1.1
+        if (inst->getExecSize() == g4::SIMD1)  //case 1.1
         {
             G4_Declare* dcl = builder.createTempVar(2, inst->getDst()->getType(), builder.getGRFAlign());
             G4_SrcRegRegion* srcRegion = builder.createSrcRegRegion(dcl, builder.getRegionScalar());
@@ -9257,19 +9257,6 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             }
             inst->getDst()->setHorzStride(1);
             inst->setOptionOn(InstOpt_WriteEnable);
-        }
-
-        // case 1.2: SIMD1 bf8->hf
-        // (W)  mov (1|M0)   r10.0<1>:hf   r12.0<0;1,0>:bf8
-        // =>
-        // (W)  shl (1|M0)   r10.0<1>:uw   r12.0<0;1,0>:ub   0x8:uw
-        if (inst->getExecSize() == g4::SIMD1 && IS_BTYPE(inst->getSrc(0)->getType()))
-        {
-            inst->getDst()->setType(builder, Type_UW);
-            auto newShlInst = builder.createBinOp(G4_shl,
-                inst->getExecSize(), inst->getDst(), inst->getSrc(0)->asSrcRegRegion(), builder.createImm(8, Type_UW), inst->getOption(), false);
-            bb->insertBefore(i, newShlInst);
-            bb->erase(i);
         }
 
         return true;
