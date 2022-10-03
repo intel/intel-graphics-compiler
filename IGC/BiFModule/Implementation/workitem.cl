@@ -352,5 +352,12 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInNumEnqueuedSubgroups, , )()
 
 uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupLocalInvocationId, , )()
 {
-    return __builtin_IB_get_simd_id();
+    uint simd_id = __builtin_IB_get_simd_id();
+
+#ifndef NO_ASSUME_SUPPORT
+    __builtin_assume(simd_id >= 0);
+    __builtin_assume(simd_id < 32);
+#endif
+
+    return simd_id;
 }
