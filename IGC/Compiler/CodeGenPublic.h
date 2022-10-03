@@ -1674,6 +1674,10 @@ namespace IGC
         // implies that shaders were compiled separately (ala DXR collection
         // state objects).
         bool forceIndirectContinuations = false;
+
+        // see PayloadSinkingPass.cpp
+        bool hasUnsupportedPayloadSinkingCaseWAenabled = false;
+        bool hasUnsupportedPayloadSinkingCase = false;
     public:
         mutable RTLoggingManager LogMgr;
     private:

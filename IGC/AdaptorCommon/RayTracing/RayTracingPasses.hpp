@@ -38,6 +38,7 @@ llvm::Pass* createInlineMergeCallsPass();
 llvm::Pass* createPromoteToScratchPass();
 llvm::Pass* createRayInfoCSEPass();
 llvm::Pass* createRayTracingPrintfPostProcessPass();
+llvm::Pass* createPayloadSinkingAnalysisPass();
 llvm::Pass* createPayloadSinkingPass();
 llvm::Pass* createLowerGlobalRootSignaturePass();
 llvm::Pass* createRayTracingMemDSEPass();
