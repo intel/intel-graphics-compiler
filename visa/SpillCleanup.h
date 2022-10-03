@@ -36,12 +36,10 @@ namespace vISA
         const unsigned int cFillWindowThreshold128GRF = 180;
         const unsigned int cSpillWindowThreshold128GRF = 120;
         const unsigned int cHighRegPressureForCleanup = 100;
-        const unsigned int cHighRegPressureForWindow = 90;
 
         unsigned int fillWindowSizeThreshold = 0;
         unsigned int spillWindowSizeThreshold = 0;
         unsigned int highRegPressureForCleanup = 0;
-        unsigned int highRegPressureForWindow = 0;
 
         // <Old fill declare*, std::pair<Coalesced Decl*, Row Off>>
         // This data structure is used to replaced old spill/fill operands
@@ -85,32 +83,6 @@ namespace vISA
         void spillFillCleanup();
         void removeRedundantWrites();
 
-        unsigned int scale(unsigned threshold) {
-            unsigned int numGRFs = kernel.getNumRegTotal();
-            float ratio = 1.0f - (128 - threshold) / 128.0f;
-            return static_cast<unsigned>(numGRFs * ratio);
-        };
-
-        unsigned int getNumRowsToCoalesce(std::list<INST_LIST_ITER>& instsToCoalesce ) {
-            unsigned int numRows = 0;
-            for (auto instIter : instsToCoalesce) {
-                auto inst = (*instIter);
-                if (inst->isSpillIntrinsic())
-                {
-                    numRows += inst->asSpillIntrinsic()->getNumRows();
-                }
-                else if (inst->isFillIntrinsic())
-                {
-                    numRows += inst->asFillIntrinsic()->getNumRows();
-                }
-                else
-                {
-                    MUST_BE_TRUE(false, "Unknown inst type");
-                }
-            }
-            return numRows;
-        }
-
     public:
         CoalesceSpillFills(G4_Kernel& k, LivenessAnalysis& l, GraphColor& g,
             SpillManagerGRF& s, unsigned int iterationNo, RPE& r, GlobalRA& gr) :
@@ -124,7 +96,6 @@ namespace vISA
             fillWindowSizeThreshold = scale(cFillWindowThreshold128GRF);
             spillWindowSizeThreshold = scale(cSpillWindowThreshold128GRF);
             highRegPressureForCleanup = scale(cHighRegPressureForCleanup);
-            highRegPressureForWindow = scale(cHighRegPressureForWindow);
         }
 
         void run();

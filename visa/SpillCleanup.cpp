@@ -1110,23 +1110,12 @@ void CoalesceSpillFills::fills()
                 }
             }
 
-            // Determine window size based on register pressure
-            unsigned int instRP = rpe.getRegisterPressure(inst);
-
-            if (fillsToCoalesce.size() > 0 &&  instRP > fillWindowSizeThreshold)
+            if (fillsToCoalesce.size() > 0 &&
+                rpe.getRegisterPressure(inst) > fillWindowSizeThreshold)
             {
                 // High register pressure region so reduce window size to 3
                 w = (cWindowSize - w > 3) ? cWindowSize - 3 : w;
             }
-
-            if (w == cWindowSize &&
-                (instRP + getNumRowsToCoalesce(fillsToCoalesce)) < highRegPressureForWindow)
-            {
-                // If register pressure is below the threshold even when considering potential increase,
-                // continue coalescing fills in current BB
-                --w;
-            }
-
 
             if (w == cWindowSize || inst == bb->back())
             {
@@ -1323,10 +1312,8 @@ void CoalesceSpillFills::spills()
                 }
             }
 
-            // Determine window size based on register pressure
-            unsigned int instRP = rpe.getRegisterPressure(inst);
-
-            if (spillsToCoalesce.size() > 0 && instRP > spillWindowSizeThreshold)
+            if (spillsToCoalesce.size() > 0 &&
+                rpe.getRegisterPressure(inst) > spillWindowSizeThreshold)
             {
                 if (!allSpillsSameVar(spillsToCoalesce))
                 {
@@ -1340,14 +1327,6 @@ void CoalesceSpillFills::spills()
                         rpe.getRegisterPressure(inst), inst->getCISAOff());
 #endif
                 }
-            }
-
-            if (w == cWindowSize &&
-                (instRP + getNumRowsToCoalesce(spillsToCoalesce)) < highRegPressureForWindow)
-            {
-                // If register pressure is below the threshold even when considering potential increase,
-                // continue coalescing spills in current BB
-                --w;
             }
 
             if (w == cWindowSize || inst == bb->back() ||
@@ -1881,11 +1860,6 @@ void CoalesceSpillFills::spillFillCleanup()
 
                     w--;
                     pInstIt--;
-
-                    if (w == 0 &&
-                        (rpe.getRegisterPressure(pInst) + numRows) < highRegPressureForWindow)
-                        // Continue cleanup conservatively considering potential increase in register pressure
-                        ++w;
                 }
 
                 // Check whether writes for all rows were found
@@ -1951,6 +1925,7 @@ void CoalesceSpillFills::spillFillCleanup()
                     {
                         gra.addEUFusionNoMaskWAInst(bb, mov);
                     }
+
                     row += execSize / 8;
                 }
 
