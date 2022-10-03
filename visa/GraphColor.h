@@ -360,7 +360,6 @@ namespace vISA
         // like dense matrix, interference is not symmetric (that is, if v1 and v2 interfere and v1 < v2,
         // we insert (v1, v2) but not (v2, v1)) for better cache behavior
         std::vector<std::unordered_set<uint32_t> > sparseMatrix;
-        static const uint32_t denseMatrixLimit = 0x80000;
 
         static void updateLiveness(SparseBitSet& live, uint32_t id, bool val)
         {
@@ -371,7 +370,7 @@ namespace vISA
 
         bool useDenseMatrix() const
         {
-            return maxId < denseMatrixLimit;
+            return maxId < builder.getuint32Option(vISA_DenseMatrixLimit);
         }
 
         // Only upper-half matrix is now used in intf graph.

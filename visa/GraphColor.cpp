@@ -32,7 +32,6 @@ using namespace vISA;
 
 #define GRAPH_COLOR_MEM_SIZE 16*1024
 #define SCRATCH_MSG_LIMIT (128 * 1024)
-#define FAIL_SAFE_RA_LIMIT 3
 
 const RAVarInfo GlobalRA::defaultValues;
 const char GlobalRA::StackCallStr[] = "StackCall";
@@ -10875,7 +10874,7 @@ int GlobalRA::coloringRegAlloc()
         fastCompileIter = 0;
     }
 
-    unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : FAIL_SAFE_RA_LIMIT;
+    unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : builder.getuint32Option(vISA_FailSafeRALimit);
     if (failSafeRAIteration == 0)
     {
         builder.getSpillFillHeader();
@@ -11304,7 +11303,7 @@ int GlobalRA::coloringRegAlloc()
                     c.run();
                 }
 
-                if (iterationNo == FAIL_SAFE_RA_LIMIT)
+                if (iterationNo == builder.getuint32Option(vISA_FailSafeRALimit))
                 {
                     if (coloring.getSpilledLiveRanges().size() < 2)
                     {

@@ -197,6 +197,8 @@ DEF_VISA_OPTION(vISA_verifyLinearScan,               ET_BOOL, "-verifyLinearScan
 DEF_VISA_OPTION(vISA_boundsChecking,        ET_BOOL, "-boundsChecking", UNUSED, false)
 DEF_VISA_OPTION(vISA_PartitionWithFastHybridRA,          ET_BOOL, "-partitionWithFastHybridRA", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpLiveRanges,        ET_BOOL, "-dumplrs", UNUSED, false)
+DEF_VISA_OPTION(vISA_FailSafeRALimit,  ET_INT32, "-failSafeRALimit", UNUSED, 3)
+DEF_VISA_OPTION(vISA_DenseMatrixLimit,  ET_INT32, "-denseMatrixLimit", UNUSED, 0x80000)
 
 //=== scheduler options ===
 DEF_VISA_OPTION(vISA_LocalScheduling,       ET_BOOL, "-noschedule",      UNUSED, true)
