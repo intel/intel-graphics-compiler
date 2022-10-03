@@ -1537,6 +1537,10 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
         case GenXIntrinsic::genx_lsc_load_stateless:
         case GenXIntrinsic::genx_lsc_load_bindless:
         case GenXIntrinsic::genx_lsc_load_bti:
+        case GenXIntrinsic::genx_lsc_load_merge_slm:
+        case GenXIntrinsic::genx_lsc_load_merge_stateless:
+        case GenXIntrinsic::genx_lsc_load_merge_bindless:
+        case GenXIntrinsic::genx_lsc_load_merge_bti:
         case GenXIntrinsic::genx_lsc_prefetch_bti:
         case GenXIntrinsic::genx_lsc_prefetch_stateless:
         case GenXIntrinsic::genx_lsc_prefetch_bindless:
