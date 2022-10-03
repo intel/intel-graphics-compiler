@@ -113,7 +113,7 @@ namespace IGC
 
         /// @brief  The max alignment needed by an alloca instruction in this function
         ///         Used for calculating the alignment of the private memory buffer size
-        unsigned int m_maxAlignment;
+        alignment_t m_maxAlignment;
 
         typedef struct {
             /// @brief - Total amount of private memory size per thread

@@ -340,10 +340,10 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
     return changed;
 }
 
-void ProgramScopeConstantAnalysis::alignBuffer(DataVector& buffer, unsigned int alignment)
+void ProgramScopeConstantAnalysis::alignBuffer(DataVector& buffer, alignment_t alignment)
 {
     int bufferLen = buffer.size();
-    int alignedLen = iSTD::Align(bufferLen, alignment);
+    int alignedLen = iSTD::Align(bufferLen, (size_t)alignment);
     if (alignedLen > bufferLen)
     {
         buffer.insert(buffer.end(), alignedLen - bufferLen, 0);
@@ -407,7 +407,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
     unsigned addressSpace)
 {
     // Initial alignment padding before insert the current constant into the buffer.
-    alignBuffer(inlineProgramScopeBuffer, (unsigned)m_DL->getABITypeAlignment(initializer->getType()));
+    alignBuffer(inlineProgramScopeBuffer, m_DL->getABITypeAlignment(initializer->getType()));
 
     // We need to do extra work with pointers here: we don't know their actual addresses
     // at compile time so we find the offset from the base of the buffer they point to
@@ -624,5 +624,5 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
 
     // final padding.  This gets used by the vec3 types that will insert zero padding at the
     // end after inserting the actual vector contents (this is due to sizeof(vec3) == 4 * sizeof(scalarType)).
-    alignBuffer(inlineProgramScopeBuffer, (unsigned)m_DL->getABITypeAlignment(initializer->getType()));
+    alignBuffer(inlineProgramScopeBuffer, m_DL->getABITypeAlignment(initializer->getType()));
 }

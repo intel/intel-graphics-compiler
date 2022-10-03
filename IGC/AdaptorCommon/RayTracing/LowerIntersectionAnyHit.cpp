@@ -471,7 +471,7 @@ CallInst* LowerIntersectionAnyHit::codeGenReportHit(
                 CustomHitAttrPtr,
                 4,
                 Attrs,
-                std::min(4U, (unsigned)DL.getABITypeAlignment(AttrTy->getPointerElementType())),
+                std::min((alignment_t)4, DL.getABITypeAlignment(AttrTy->getPointerElementType())),
                 IRB.getInt64(DL.getTypeAllocSize(AttrTy->getPointerElementType())));
         }
 

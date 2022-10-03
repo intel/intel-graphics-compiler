@@ -59,7 +59,7 @@ KernelArg::KernelArg(const Argument* arg, const DataLayout* DL, const StringRef 
 {
     m_allocateSize = calcAllocateSize(arg, DL);
     m_elemAllocateSize = calcElemAllocateSize(arg, DL);
-    m_align = calcAlignment(arg, DL);
+    m_align = (size_t)calcAlignment(arg, DL);
 }
 
 KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const Argument* arg, unsigned int ExplicitArgNo, unsigned int structArgOffset, unsigned int GRFSize) :
@@ -94,7 +94,7 @@ unsigned int KernelArg::calcAllocateSize(const Argument* arg, const DataLayout* 
     return int_cast<unsigned int>(DL->getTypeAllocSize(arg->getType()));
 }
 
-unsigned int KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL) const
+alignment_t KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL) const
 {
     // If we don't need to allocate, we certainly don't need alignment
     if (!needsAllocation()) return 0;
@@ -107,7 +107,7 @@ unsigned int KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL)
         typeToAlign = cast<PointerType>(typeToAlign)->getPointerElementType();
     }
 
-    return (unsigned)DL->getABITypeAlignment(typeToAlign);
+    return DL->getABITypeAlignment(typeToAlign);
 }
 
 unsigned int KernelArg::calcElemAllocateSize(const Argument* arg, const DataLayout* DL) const

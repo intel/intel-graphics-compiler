@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Support/Alignment.h"
 
 namespace IGC
 {
@@ -27,7 +28,7 @@ namespace IGC
     ///         are always aligned on their data type.
     ///         The result is an underapproximation of the actual alignment, so it
     ///         is always safe.
-    class AlignmentAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<AlignmentAnalysis, unsigned int>
+    class AlignmentAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<AlignmentAnalysis, alignment_t>
     {
     public:
         // Pass identification, replacement for typeid
@@ -54,22 +55,22 @@ namespace IGC
         virtual bool runOnFunction(llvm::Function& F) override;
 
         // @ brief Instruction visitors
-        unsigned int visitInstruction(llvm::Instruction& I);
-        unsigned int visitAllocaInst(llvm::AllocaInst& I);
-        unsigned int visitIntToPtrInst(llvm::IntToPtrInst& I);
-        unsigned int visitPtrToIntInst(llvm::PtrToIntInst& I);
-        unsigned int visitSelectInst(llvm::SelectInst& I);
-        unsigned int visitGetElementPtrInst(llvm::GetElementPtrInst& I);
-        unsigned int visitPHINode(llvm::PHINode& I);
-        unsigned int visitBitCastInst(llvm::BitCastInst& I);
-        unsigned int visitAdd(llvm::BinaryOperator& I);
-        unsigned int visitMul(llvm::BinaryOperator& I);
-        unsigned int visitShl(llvm::BinaryOperator& I);
-        unsigned int visitAnd(llvm::BinaryOperator& I);
-        unsigned int visitTruncInst(llvm::TruncInst& I);
-        unsigned int visitZExtInst(llvm::ZExtInst& I);
-        unsigned int visitSExtInst(llvm::SExtInst& I);
-        unsigned int visitCallInst(llvm::CallInst& I);
+        alignment_t visitInstruction(llvm::Instruction& I);
+        alignment_t visitAllocaInst(llvm::AllocaInst& I);
+        alignment_t visitIntToPtrInst(llvm::IntToPtrInst& I);
+        alignment_t visitPtrToIntInst(llvm::PtrToIntInst& I);
+        alignment_t visitSelectInst(llvm::SelectInst& I);
+        alignment_t visitGetElementPtrInst(llvm::GetElementPtrInst& I);
+        alignment_t visitPHINode(llvm::PHINode& I);
+        alignment_t visitBitCastInst(llvm::BitCastInst& I);
+        alignment_t visitAdd(llvm::BinaryOperator& I);
+        alignment_t visitMul(llvm::BinaryOperator& I);
+        alignment_t visitShl(llvm::BinaryOperator& I);
+        alignment_t visitAnd(llvm::BinaryOperator& I);
+        alignment_t visitTruncInst(llvm::TruncInst& I);
+        alignment_t visitZExtInst(llvm::ZExtInst& I);
+        alignment_t visitSExtInst(llvm::SExtInst& I);
+        alignment_t visitCallInst(llvm::CallInst& I);
 
         void SetInstAlignment(llvm::Instruction& I);
         void SetInstAlignment(llvm::LoadInst& I);
@@ -96,9 +97,9 @@ namespace IGC
         auto getConstantAlignment(uint64_t C) const;
 
         /// @brief This map stores the known alignment of every value.
-        llvm::MapVector<llvm::Value*, unsigned int> m_alignmentMap;
+        llvm::MapVector<llvm::Value*, alignment_t> m_alignmentMap;
 
-        static const unsigned int MinimumAlignment = 1;
+        static const alignment_t MinimumAlignment = 1;
 
         const llvm::DataLayout* m_DL;
     };

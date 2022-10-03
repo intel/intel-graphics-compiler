@@ -124,17 +124,17 @@ namespace {
         void setExpandedValues(Value* V, Value* Lo, Value* Hi);
         bool valueNotStored(Value* V);
 
-        unsigned getAlignment(LoadInst* LD) const {
-            unsigned Align = (unsigned)LD->getAlignment();
+        alignment_t getAlignment(LoadInst* LD) const {
+            auto Align = LD->getAlignment();
             if (Align == 0)
-                Align = (unsigned)DL->getABITypeAlignment(LD->getType());
+                Align = DL->getABITypeAlignment(LD->getType());
             return Align;
         }
 
-        unsigned getAlignment(StoreInst* ST) const {
-            unsigned Align = (unsigned)ST->getAlignment();
+        alignment_t getAlignment(StoreInst* ST) const {
+            auto Align = ST->getAlignment();
             if (Align == 0)
-                Align = (unsigned)DL->getABITypeAlignment(ST->getType());
+                Align = DL->getABITypeAlignment(ST->getType());
             return Align;
         }
 
@@ -155,7 +155,7 @@ namespace {
         }
 
         void dupMemoryAttribute(LoadInst* NewLD, LoadInst* RefLD, unsigned Off) const {
-            unsigned alignment = getAlignment(RefLD);
+            auto alignment = getAlignment(RefLD);
 
             NewLD->setVolatile(RefLD->isVolatile());
             NewLD->setAlignment(IGCLLVM::getAlign(unsigned(MinAlign(alignment, Off))));
@@ -165,10 +165,10 @@ namespace {
         }
 
         void dupMemoryAttribute(StoreInst* NewST, StoreInst* RefST, unsigned Off) const {
-            unsigned alignment = getAlignment(RefST);
+            auto alignment = getAlignment(RefST);
 
             NewST->setVolatile(RefST->isVolatile());
-            NewST->setAlignment(IGCLLVM::getAlign(unsigned(MinAlign(alignment, Off))));
+            NewST->setAlignment(IGCLLVM::getAlign(MinAlign(alignment, Off)));
             NewST->setOrdering(RefST->getOrdering());
             NewST->setSyncScopeID(RefST->getSyncScopeID());
             copyKnownMetadata(NewST, RefST);

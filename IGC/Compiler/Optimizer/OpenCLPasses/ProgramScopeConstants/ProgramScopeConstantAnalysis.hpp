@@ -86,7 +86,7 @@ namespace IGC
         /// @brief  Align the buffer according to the required alignment
         /// @param  buffer     The buffer to align.
         /// @param  alignment  Required alignment in bytes.
-        void alignBuffer(DataVector& buffer, unsigned int alignment);
+        void alignBuffer(DataVector& buffer, alignment_t alignment);
 
         const llvm::DataLayout* m_DL;
         ModuleMetaData* m_pModuleMd;

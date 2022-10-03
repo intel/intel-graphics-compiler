@@ -147,10 +147,10 @@ void StackFrameInfo::addAllocas(const Function *F)
 
     SmallVector<Type*, 4> Tys;
 
-    auto getAlignment = [=](const AllocaInst* AI) -> unsigned {
-        unsigned Alignment = (unsigned)AI->getAlignment();
+    auto getAlignment = [=](const AllocaInst* AI) -> alignment_t {
+        auto Alignment = AI->getAlignment();
         if (Alignment == 0)
-            Alignment = (unsigned)DL.getABITypeAlignment(AI->getAllocatedType());
+            Alignment = DL.getABITypeAlignment(AI->getAllocatedType());
         return Alignment;
     };
 

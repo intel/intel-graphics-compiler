@@ -359,9 +359,9 @@ namespace IGC
                 GenISAIntrinsic::GenISA_ldraw_indexed,
             tys);
 
-        unsigned alignment = (unsigned)inst->getAlignment();
+        auto alignment = inst->getAlignment();
         if (alignment == 0)
-            alignment = (unsigned)DL.getABITypeAlignment(inst->getType());
+            alignment = DL.getABITypeAlignment(inst->getType());
 
         IRBuilder<> builder(inst);
 
@@ -369,7 +369,7 @@ namespace IGC
         {
             bufPtr,
             offsetVal,
-            builder.getInt32(alignment),
+            builder.getInt32((unsigned)alignment),
             builder.getInt1(inst->isVolatile()) // volatile
         };
         auto* ld = builder.CreateCall(func, attr);
@@ -406,15 +406,15 @@ namespace IGC
             func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storeraw_indexed, types);
         }
         IRBuilder<> builder(inst);
-        unsigned alignment = (unsigned)inst->getAlignment();
+        auto alignment = inst->getAlignment();
         if (alignment == 0)
-            alignment = (unsigned)DL.getABITypeAlignment(storeVal->getType());
+            alignment = DL.getABITypeAlignment(storeVal->getType());
         Value* attr[] =
         {
             bufPtr,
             offsetVal,
             storeVal,
-            builder.getInt32(alignment),
+            builder.getInt32((unsigned)alignment),
             builder.getInt1(inst->isVolatile()) // volatile
         };
         auto* st = builder.CreateCall(func, attr);

@@ -62,7 +62,7 @@ void PrivateMemoryBufferAnalysis::runOnFunction(llvm::Function& F)
     visit(F);
 
     // Align total size for the next WI
-    m_currentOffset = iSTD::Align(m_currentOffset, m_maxAlignment);
+    m_currentOffset = iSTD::Align(m_currentOffset, (size_t)m_maxAlignment);
 
     // Map total private buffer size to current function
     m_privateInfoMap[&F].m_bufferTotalSize = m_currentOffset;
@@ -79,9 +79,9 @@ void PrivateMemoryBufferAnalysis::visitAllocaInst(AllocaInst& AI)
 
     m_privateInfoMap[pFunc].m_allocaInsts.push_back(&AI);
 
-    unsigned int alignment = (unsigned)AI.getAlignment();
+    alignment_t alignment = AI.getAlignment();
     if (alignment == 0) {
-        alignment = (unsigned)m_DL->getABITypeAlignment(AI.getAllocatedType());
+        alignment = m_DL->getABITypeAlignment(AI.getAllocatedType());
     }
 
     // Update max alignment
@@ -91,7 +91,7 @@ void PrivateMemoryBufferAnalysis::visitAllocaInst(AllocaInst& AI)
     }
 
     // Determine buffer offset
-    m_currentOffset = iSTD::Align(m_currentOffset, alignment);
+    m_currentOffset = iSTD::Align(m_currentOffset, (size_t)alignment);
     m_privateInfoMap[pFunc].m_bufferOffsets[&AI] = m_currentOffset;
 
     // Determine buffer size

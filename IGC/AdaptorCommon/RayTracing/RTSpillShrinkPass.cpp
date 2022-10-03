@@ -59,11 +59,11 @@ private:
         StoreInst* SI, const DataLayout& DL, uint32_t NewNumElts, uint32_t StartElt);
     static uint32_t getNewSize(uint32_t Size);
 
-    unsigned getAlignment(const DataLayout& DL, StoreInst* ST) const
+    alignment_t getAlignment(const DataLayout& DL, StoreInst* ST) const
     {
-        unsigned Align = (unsigned)ST->getAlignment();
+        auto Align = (alignment_t)ST->getAlignment();
         if (Align == 0)
-            Align = (unsigned)DL.getABITypeAlignment(ST->getType());
+            Align = DL.getABITypeAlignment(ST->getType());
         return Align;
     }
 
@@ -112,10 +112,10 @@ StoreInst* RTSpillShrinkPass::shrinkSpill(
     NewPtr = IRB.CreateBitCast(
         NewPtr,
         Vec->getType()->getPointerTo(Addrspace));
-    unsigned OldAlign = getAlignment(DL, SI);
+    auto OldAlign = getAlignment(DL, SI);
     uint32_t Offset =
         int_cast<uint32_t>((DL.getTypeSizeInBits(EltTy) / 8) * StartElt);
-    unsigned NewAlign = gcd(OldAlign, Offset);
+    auto NewAlign = gcd(OldAlign, (alignment_t)Offset);
     return IRB.CreateAlignedStore(Vec, NewPtr, IGCLLVM::getAlign(NewAlign));
 }
 

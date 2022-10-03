@@ -155,4 +155,14 @@ unsigned gcd(unsigned Dividend, unsigned Divisor) {
     return Dividend;
 }
 
+uint64_t gcd(uint64_t Dividend, uint64_t Divisor) {
+    // Dividend and Divisor will be naturally swapped as needed.
+    while (Divisor) {
+        uint64_t Rem = Dividend % Divisor;
+        Dividend = Divisor;
+        Divisor = Rem;
+    };
+    return Dividend;
+}
+
 } // namespace IGC

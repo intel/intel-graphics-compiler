@@ -357,7 +357,7 @@ namespace IGC {
             /// getAlignment() - Return the alignment of the memory access being
             /// performed.
             template<typename InstTy>
-            unsigned getAlignment(InstTy*) const {
+            alignment_t getAlignment(InstTy*) const {
                 IGC_ASSERT_EXIT_MESSAGE(0, "ALIGNMENT IS CHECKED ON NON MEMORY INSTRUCTION!");
             }
 
@@ -577,18 +577,18 @@ namespace IGC {
         ///
 
         template<> inline
-            unsigned TypeLegalizer::getAlignment(LoadInst* Ld) const {
-            unsigned Align = (unsigned)Ld->getAlignment();
+            alignment_t TypeLegalizer::getAlignment(LoadInst* Ld) const {
+            auto Align = Ld->getAlignment();
             if (Align == 0)
-                Align = (unsigned)DL->getABITypeAlignment(Ld->getType());
+                Align = DL->getABITypeAlignment(Ld->getType());
             return Align;
         }
 
         template<> inline
-            unsigned TypeLegalizer::getAlignment(StoreInst* St) const {
-            unsigned Align = (unsigned)St->getAlignment();
+            alignment_t TypeLegalizer::getAlignment(StoreInst* St) const {
+            auto Align = St->getAlignment();
             if (Align == 0)
-                Align = (unsigned)DL->getABITypeAlignment(St->getValueOperand()->getType());
+                Align = DL->getABITypeAlignment(St->getValueOperand()->getType());
             return Align;
         }
 
@@ -596,10 +596,10 @@ namespace IGC {
             void TypeLegalizer::dupMemoryAttribute(LoadInst* NewLd, LoadInst* RefLd,
                 unsigned Off) const {
             // Duplicate attributes. TODO: Duplicate necessary metadata!
-            unsigned Align = getAlignment(RefLd);
+            auto Align = getAlignment(RefLd);
 
             NewLd->setVolatile(RefLd->isVolatile());
-            NewLd->setAlignment(IGCLLVM::getCorrectAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
+            NewLd->setAlignment(IGCLLVM::getCorrectAlign(int_cast<alignment_t>(MinAlign(Align, Off))));
             NewLd->setOrdering(RefLd->getOrdering());
             NewLd->setSyncScopeID(RefLd->getSyncScopeID());
         }
@@ -608,10 +608,10 @@ namespace IGC {
             void TypeLegalizer::dupMemoryAttribute(StoreInst* NewSt, StoreInst* RefSt,
                 unsigned Off) const {
             // Duplicate attributes. TODO: Duplicate necessary metadata!
-            unsigned Align = getAlignment(RefSt);
+            auto Align = getAlignment(RefSt);
 
             NewSt->setVolatile(RefSt->isVolatile());
-            NewSt->setAlignment(IGCLLVM::getCorrectAlign(int_cast<unsigned int>(MinAlign(Align, Off))));
+            NewSt->setAlignment(IGCLLVM::getCorrectAlign(int_cast<alignment_t>(MinAlign(Align, Off))));
             NewSt->setOrdering(RefSt->getOrdering());
             NewSt->setSyncScopeID(RefSt->getSyncScopeID());
         }

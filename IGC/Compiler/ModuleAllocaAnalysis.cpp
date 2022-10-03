@@ -103,7 +103,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const
     if (bOCLLegacyStatelessCheck) {
         if (auto * FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>()) {
             if (FGA->getModule() == M) {
-                if (FGA->getIndirectCallGroup() != nullptr)	
+                if (FGA->getIndirectCallGroup() != nullptr)
                     return false;
                 for (auto& I : *FGA) {
                     if (I->hasStackCall())
@@ -296,10 +296,10 @@ void ModuleAllocaAnalysis::analyze() {
                 continue;
 
             unsigned Offset = 0;
-            unsigned Alignment = 0;
+            alignment_t Alignment = 0;
             analyze(&F, Offset, Alignment);
             if (Alignment > 0)
-                Offset = iSTD::Align(Offset, Alignment);
+                Offset = iSTD::Align(Offset, (size_t)Alignment);
             getOrCreateFuncAllocaInfo(&F)->TotalSize = Offset;
         }
     }
@@ -315,7 +315,7 @@ void ModuleAllocaAnalysis::analyze(IGC::FunctionGroup* FG)
     //
     for (auto SubG : FG->Functions) {
         unsigned Offset = 0;
-        unsigned Alignment = 0;
+        alignment_t Alignment = 0;
         for (Function* F : *SubG) {
             if (F->empty())
                 continue;
@@ -324,7 +324,7 @@ void ModuleAllocaAnalysis::analyze(IGC::FunctionGroup* FG)
 
         // Use the final offset as the total size.
         if (Alignment > 0)
-            Offset = iSTD::Align(Offset, Alignment);
+            Offset = iSTD::Align(Offset, (size_t)Alignment);
 
         // All functions in this group will get the same final size.
         for (Function* F : *SubG) {
@@ -335,7 +335,7 @@ void ModuleAllocaAnalysis::analyze(IGC::FunctionGroup* FG)
     }
 }
 
-void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, unsigned& MaxAlignment)
+void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, alignment_t& MaxAlignment)
 {
     const DataLayout* DL = &M->getDataLayout();
 
@@ -357,10 +357,10 @@ void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, unsigned& MaxA
         return;
 
     // Group by alignment and smallest first.
-    auto getAlignment = [=](AllocaInst* AI) -> unsigned {
-        unsigned Alignment = (unsigned)(AI->getAlignment());
+    auto getAlignment = [=](AllocaInst* AI) -> alignment_t {
+        alignment_t Alignment = AI->getAlignment();
         if (Alignment == 0)
-            Alignment = (unsigned)DL->getABITypeAlignment(AI->getAllocatedType());
+            Alignment = DL->getABITypeAlignment(AI->getAllocatedType());
         return Alignment;
     };
 
@@ -371,8 +371,8 @@ void ModuleAllocaAnalysis::analyze(Function* F, unsigned& Offset, unsigned& MaxA
 
     for (auto AI : Allocas) {
         // Align alloca offset.
-        unsigned Alignment = getAlignment(AI);
-        Offset = iSTD::Align(Offset, Alignment);
+        auto Alignment = getAlignment(AI);
+        Offset = iSTD::Align(Offset, (size_t)Alignment);
 
         // Keep track of the maximal alignment seen so far.
         if (Alignment > MaxAlignment)

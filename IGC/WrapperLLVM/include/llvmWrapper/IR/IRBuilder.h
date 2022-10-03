@@ -64,7 +64,7 @@ namespace IGCLLVM
 
         using llvm::IRBuilder<T, InserterTyDef()>::CreateMemCpy;
 
-        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, uint64_t Size, unsigned Align,
+        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, uint64_t Size, alignment_t Align,
             bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
             llvm::MDNode *TBAAStructTag = nullptr,
             llvm::MDNode *ScopeTag = nullptr,
@@ -75,7 +75,7 @@ namespace IGCLLVM
                 NoAliasTag);
         }
 
-        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, llvm::Value *Size, unsigned Align,
+        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, llvm::Value *Size, alignment_t Align,
             bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
             llvm::MDNode *TBAAStructTag = nullptr,
             llvm::MDNode *ScopeTag = nullptr,
@@ -86,7 +86,7 @@ namespace IGCLLVM
                 NoAliasTag);
         }
 
-        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, unsigned DstAlign, llvm::Value *Src, unsigned SrcAlign,
+        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, alignment_t DstAlign, llvm::Value *Src, alignment_t SrcAlign,
             llvm::Value *Size, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
             llvm::MDNode *TBAAStructTag = nullptr,
             llvm::MDNode *ScopeTag = nullptr,
@@ -97,7 +97,7 @@ namespace IGCLLVM
                 NoAliasTag);
         }
 
-        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, unsigned DstAlign, llvm::Value *Src, unsigned SrcAlign,
+        inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, alignment_t DstAlign, llvm::Value *Src, alignment_t SrcAlign,
             uint64_t Size, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
             llvm::MDNode *TBAAStructTag = nullptr,
             llvm::MDNode *ScopeTag = nullptr,

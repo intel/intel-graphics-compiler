@@ -357,14 +357,14 @@ bool StatelessToStateful::pointerIsFromKernelArgument(Value& ptr)
 bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
     Function* F, Value* V, Value*& offset, unsigned int& argNumber, const KernelArg*& kernelArg)
 {
-    auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> unsigned {
+    auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> alignment_t {
         if (PointerType* PTy = dyn_cast<PointerType>(ptrVal->getType()))
         {
             Type* pointeeTy = PTy->getPointerElementType();
             if (!pointeeTy->isSized()) {
                 return 0;
             }
-            return (unsigned)DL->getABITypeAlignment(pointeeTy);
+            return DL->getABITypeAlignment(pointeeTy);
         }
         return 0;
     };

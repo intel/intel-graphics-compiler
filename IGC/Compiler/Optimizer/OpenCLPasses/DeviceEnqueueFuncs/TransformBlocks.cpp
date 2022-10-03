@@ -541,7 +541,7 @@ namespace //Anonymous
         IGCLLVM::IRBuilder<>& _builder;
         const llvm::DataLayout* _DL;
 
-        uint64_t CreateStore(llvm::Value* dest, llvm::Value* source, unsigned align) const
+        uint64_t CreateStore(llvm::Value* dest, llvm::Value* source, alignment_t align) const
         {
             auto destPtr = dest;
 
@@ -554,7 +554,7 @@ namespace //Anonymous
             return _DL->getTypeAllocSize(sourceType);
         }
 
-        uint64_t CreateMemCpy(llvm::Value* dest, llvm::Value* source, unsigned align) const
+        uint64_t CreateMemCpy(llvm::Value* dest, llvm::Value* source, alignment_t align) const
         {
             IGC_ASSERT(source->getType()->isPointerTy());
 
@@ -591,7 +591,7 @@ namespace //Anonymous
         void analyzeInvokeFunction();
 
         /// Return preferred struct alignment based on max preferred alignment of its elements
-        static unsigned getPrefStructAlignment(llvm::StructType* structType, const llvm::DataLayout* dl);
+        static alignment_t getPrefStructAlignment(llvm::StructType* structType, const llvm::DataLayout* dl);
     public:
         explicit BlockInvoke(const llvm::Function* invokeFunc) : _invokeFunc(invokeFunc), _captureStructType(nullptr)
         {
@@ -2274,7 +2274,7 @@ namespace //Anonymous
             }
         }
 
-        unsigned align = (unsigned)_DL->getPrefTypeAlignment(destPtr->getType()->getPointerElementType());
+        auto align = _DL->getPrefTypeAlignment(destPtr->getType()->getPointerElementType());
 
         return (byVal && KindQuery::isStructType(typeToSelect))
             ? CreateMemCpy(destPtr, source, align)
@@ -2352,7 +2352,7 @@ namespace //Anonymous
         }
     }
 
-    unsigned BlockInvoke::getPrefStructAlignment(llvm::StructType* structType, const llvm::DataLayout* dl)
+    alignment_t BlockInvoke::getPrefStructAlignment(llvm::StructType* structType, const llvm::DataLayout* dl)
     {
         auto align = dl->getPrefTypeAlignment(structType);
         for (auto elemType : structType->elements())
@@ -2364,7 +2364,7 @@ namespace //Anonymous
             }
             align = elemAlign > align ? elemAlign : align;
         }
-        return (unsigned)align;
+        return align;
     }
 
     llvm::CallInst* BlockInvoke::EmitBlockInvokeCall(IGCLLVM::IRBuilder<>& builder, llvm::ArrayRef<llvm::Argument*> captures, llvm::ArrayRef<llvm::Argument*> tailingArgs) const

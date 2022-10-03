@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Support/Alignment.h"
 
 namespace llvm{
     class AllocaInst;
@@ -99,7 +100,7 @@ namespace IGC
         void analyze(IGC::FunctionGroup* FG);
 
         /// \brief Analyze individual functions.
-        void analyze(llvm::Function* F, unsigned& gOffset, unsigned& gAlignment);
+        void analyze(llvm::Function* F, unsigned& gOffset, alignment_t& gAlignment);
     };
 
     void initializeModuleAllocaAnalysisPass(llvm::PassRegistry&);

@@ -264,7 +264,7 @@ namespace IGC
         /// @param  arg         The kernel argument
         /// @param  DL          The DataLayout, used to determine alignment size
         /// @return The alignment needed for the given explicit argument
-        unsigned int calcAlignment(const llvm::Argument* arg, const llvm::DataLayout* DL) const;
+        alignment_t calcAlignment(const llvm::Argument* arg, const llvm::DataLayout* DL) const;
 
         /// @brief  Calculates the allocation size needed for one vector element of the given
         ///         explicit argument. IF the argument is scalar, it will return the allocation
