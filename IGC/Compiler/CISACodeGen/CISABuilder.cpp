@@ -3978,16 +3978,16 @@ namespace IGC
                 if (m_program->m_Platform->getGRFSize() >= 64)
                 {
                     if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 4);
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD16_SpillThreshold) * 4);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 4);
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold) * 4);
                 }
                 else
                 {
                     if (m_program->m_dispatchSize == SIMDMode::SIMD16)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2);
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD16_SpillThreshold) * 2);
                     else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
-                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold) * 2);
+                        SaveOption(vISA_AbortOnSpillThreshold, IGC_GET_FLAG_VALUE(CSSIMD32_SpillThreshold) * 2);
                 }
             }
             break;
