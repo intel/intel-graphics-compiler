@@ -5645,13 +5645,7 @@ namespace IGC
                 }
                 else
                 {
-                    uint32_t type = vISA::GenSymType::S_GLOBAL_VAR_CONST;
-                    if (addrSpace == ADDRESS_SPACE_GLOBAL)
-                        type = vISA::GenSymType::S_GLOBAL_VAR;
-                    if (!pGlobal->hasInitializer())
-                        type = vISA::GenSymType::S_UNDEF;
-
-                    sEntry.s_type = type;
+                    sEntry.s_type = (addrSpace == ADDRESS_SPACE_GLOBAL) ? vISA::GenSymType::S_GLOBAL_VAR : vISA::GenSymType::S_GLOBAL_VAR_CONST;
                     sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
                 }
@@ -5710,8 +5704,8 @@ namespace IGC
                 if (symbolEntry.s_type == vISA::GenSymType::S_CONST_SAMPLER) {
                     funcSyms.sampler.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
                 }
-                // global variables, including external variables (S_UNDEF)
-                else if (symbolEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR || symbolEntry.s_type == vISA::GenSymType::S_UNDEF) {
+                // global variables
+                else if (symbolEntry.s_type == vISA::GenSymType::S_GLOBAL_VAR) {
                     programSyms.global.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
                 }
                 // global constants and string literals

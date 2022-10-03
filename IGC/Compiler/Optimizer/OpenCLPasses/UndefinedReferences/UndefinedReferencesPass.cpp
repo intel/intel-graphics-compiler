@@ -56,6 +56,8 @@ static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC
 {
     bool foundUndef = false;
 
+    std::string msg = "undefined reference to `";
+
     Module::global_iterator GVarIter = module.global_begin();
     for (; GVarIter != module.global_end();)
     {
@@ -64,14 +66,15 @@ static bool ExistUndefinedReferencesInModule(Module& module, CodeGenContext *CGC
         // Increment the iterator before attempting to remove a global variable
         GVarIter++;
 
-        if (pGVar->hasExternalLinkage() || pGVar->hasCommonLinkage())
+        if ((pGVar->hasAtLeastLocalUnnamedAddr() == false) &&
+            (pGVar->hasExternalLinkage() || pGVar->hasCommonLinkage()))
         {
             continue;
         }
 
         if (pGVar->isDeclaration() && pGVar->hasNUsesOrMore(1))
         {
-            ReportUndefinedReference(CGC, pGVar->getName(), pGVar);
+            ReportUndefinedReference(CGC, GVarIter->getName(), pGVar);
             foundUndef = true;
         }
 
