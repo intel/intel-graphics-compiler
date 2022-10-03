@@ -1048,12 +1048,6 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 emitLifetimeStart(m_destination, block.bb, llvmInst, true);
 
                 DstModifier init;
-
-                auto opCode = GetOpCode(llvmInst);
-                if(opCode == llvm_usub_sat || opCode == llvm_usub_sat || opCode == llvm_uadd_sat || opCode == llvm_sadd_sat) {
-                    init.sat = true;
-                }
-
                 if (numInstance < 2)
                 {
                     m_encoder->SetSecondHalf(false);
@@ -2174,9 +2168,7 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, const SSource sources[2], const Dst
         srcs[1] = GetSrcVariable(sources[1], sources[1].fromConstantPool);
         SetSourceModifiers(1, sources[1]);
     }
-
     m_encoder->SetDstModifier(modifier);
-
     EmitSimpleAlu(opCode, m_destination, srcs[0], srcs[1]);
 }
 
@@ -2195,24 +2187,6 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         break;
     case llvm_fadd:
     case llvm_add:
-    case llvm_sadd_sat:
-        m_encoder->Add(dst, src0, src1);
-        break;
-    case llvm_uadd_sat:
-        src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
-        src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
-        dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
-        m_encoder->Add(dst, src0, src1);
-        break;
-    case llvm_ssub_sat:
-        m_encoder->SetSrcModifier(1, EMOD_NEG);
-        m_encoder->Add(dst, src0, src1);
-        break;
-    case llvm_usub_sat:
-        src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
-        src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
-        dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
-        m_encoder->SetSrcModifier(1, EMOD_NEG);
         m_encoder->Add(dst, src0, src1);
         break;
     case llvm_cos:

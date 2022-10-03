@@ -32,6 +32,50 @@ uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_abs, _i32, )(int x ){
 }
 
 INLINE
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_add_sat, _i8_i8, )( char x,
+                                      char y )
+{
+    return (char)SPIRV_OCL_BUILTIN(s_min, _i32_i32, )( SPIRV_OCL_BUILTIN(s_max, _i32_i32, )( (int)x + (int)y , CHAR_MIN), CHAR_MAX);
+}
+
+INLINE
+uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_add_sat, _i8_i8, )( uchar x,
+                                       uchar y )
+{
+    return (uchar)SPIRV_OCL_BUILTIN(u_min, _i32_i32, )( SPIRV_OCL_BUILTIN(u_max, _i32_i32, )( (uint)x + (uint)y , 0), UCHAR_MAX);
+}
+
+INLINE
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_add_sat, _i16_i16, )( short x,
+                                         short y )
+{
+    return (short)SPIRV_OCL_BUILTIN(s_min, _i32_i32, )( SPIRV_OCL_BUILTIN(s_max, _i32_i32, )( (int)x + (int)y , SHRT_MIN), SHRT_MAX);
+}
+
+INLINE
+ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_add_sat, _i16_i16, )( ushort x,
+                                          ushort y )
+{
+    return (ushort)SPIRV_OCL_BUILTIN(u_min, _i32_i32, )(SPIRV_OCL_BUILTIN(u_max, _i32_i32, )( (uint)x + (uint)y, 0), USHRT_MAX);
+}
+
+INLINE
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_add_sat, _i32_i32, )( int x,
+                                       int y )
+{
+    long tmp = (long) x + (long) y;
+    return (int) SPIRV_OCL_BUILTIN(s_clamp, _i64_i64_i64, )( tmp, (long)INT_MIN, (long)INT_MAX);
+}
+
+INLINE
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_add_sat, _i32_i32, )( uint x,
+                                        uint y )
+{
+    long tmp = (long) x + (long) y;
+    return (uint) SPIRV_OCL_BUILTIN(s_clamp, _i64_i64_i64, )( tmp, 0L, (long)UINT_MAX);
+}
+
+INLINE
 char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(ctz, _i8, )(char x ){
     return (char)SPIRV_OCL_BUILTIN(ctz, _i32, )(as_int((uint)x | (1U << sizeof(x) * 8)));
 }
@@ -224,6 +268,51 @@ short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(popcount, _i16, )(short x ){
 INLINE
 int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(popcount, _i32, )(int x ){
     return __builtin_IB_popcount_1u32(x);
+}
+
+INLINE
+char SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i8_i8, )( char x,
+                                      char y )
+{
+    short tmp = (short)x - (short)y;
+    return (char) SPIRV_OCL_BUILTIN(s_clamp, _i16_i16_i16, )(tmp, (short)CHAR_MIN, (short)CHAR_MAX);
+}
+
+INLINE
+uchar SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i8_i8, )( uchar x,
+                                       uchar y )
+{
+    return ( x <= y ) ? 0 : x - y;
+}
+
+INLINE
+short SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i16_i16, )( short x,
+                                         short y )
+{
+    int tmp = (int)x - (int)y;
+    return (short) SPIRV_OCL_BUILTIN(s_clamp, _i32_i32_i32, )( tmp, (int)SHRT_MIN, (int)SHRT_MAX);
+}
+
+INLINE
+ushort SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i16_i16, )( ushort x,
+                                          ushort y )
+{
+    return ( x <= y ) ? 0 : x - y;
+}
+
+INLINE
+int SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(s_sub_sat, _i32_i32, )( int x,
+                                       int y )
+{
+    long tmp = (long)x - (long)y;
+    return (int) SPIRV_OCL_BUILTIN(s_clamp, _i64_i64_i64, )( tmp, (long)INT_MIN, (long)INT_MAX);
+}
+
+INLINE
+uint SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(u_sub_sat, _i32_i32, )( uint x,
+                                        uint y )
+{
+    return ( x <= y ) ? 0 : x - y;
 }
 
 INLINE

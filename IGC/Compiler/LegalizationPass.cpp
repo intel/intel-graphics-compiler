@@ -1775,23 +1775,23 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
 #if LLVM_VERSION_MAJOR >= 9
     case Intrinsic::usub_sat:
     case Intrinsic::ssub_sat:
+#if LLVM_VERSION_MAJOR >= 10
     case Intrinsic::uadd_sat:
     case Intrinsic::sadd_sat:
+#endif
     {
-        int bitWidth = I.getType()->getIntegerBitWidth();
-        if(bitWidth != 64 || !m_ctx->platform.need64BitEmulation()) {
-            break;
-        }
-
         llvm::Intrinsic::ID OverflowIntrinID = Intrinsic::not_intrinsic;
         switch (I.getIntrinsicID()) {
         case Intrinsic::usub_sat: OverflowIntrinID = Intrinsic::usub_with_overflow; break;
         case Intrinsic::ssub_sat: OverflowIntrinID = Intrinsic::ssub_with_overflow; break;
+#if LLVM_VERSION_MAJOR >= 10
         case Intrinsic::uadd_sat: OverflowIntrinID = Intrinsic::uadd_with_overflow; break;
         case Intrinsic::sadd_sat: OverflowIntrinID = Intrinsic::sadd_with_overflow; break;
+#endif
         default: IGC_ASSERT_MESSAGE(0, "Incorrect intrinsic"); break;
         }
 
+        int BitWidth = I.getType()->getIntegerBitWidth();
         auto OverFlowIntrin = Builder.CreateIntrinsic(OverflowIntrinID,
             { I.getArgOperand(0)->getType(), I.getArgOperand(1)->getType() },
             { I.getArgOperand(0), I.getArgOperand(1) }
@@ -1802,25 +1802,27 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
         Value* Boundary = nullptr;
         switch (I.getIntrinsicID()) {
         case Intrinsic::usub_sat:
-            Boundary = Builder.getInt(APInt::getMinValue(bitWidth));
+            Boundary = Builder.getInt(APInt::getMinValue(BitWidth));
             break;
         case Intrinsic::ssub_sat: {
-            Value* isMaxOrMinOverflow = Builder.CreateICmpSLT(Builder.getIntN(bitWidth, 0), I.getArgOperand(1));
-            APInt MinVal = APInt::getSignedMinValue(bitWidth);
-            APInt MaxVal = APInt::getSignedMaxValue(bitWidth);
+            Value* isMaxOrMinOverflow = Builder.CreateICmpSLT(Builder.getIntN(BitWidth, 0), I.getArgOperand(1));
+            APInt MinVal = APInt::getSignedMinValue(BitWidth);
+            APInt MaxVal = APInt::getSignedMaxValue(BitWidth);
             Boundary = Builder.CreateSelect(isMaxOrMinOverflow, Builder.getInt(MinVal), Builder.getInt(MaxVal));
         }
             break;
+#if LLVM_VERSION_MAJOR >= 10
         case Intrinsic::uadd_sat:
-            Boundary = Builder.getInt(APInt::getMaxValue(bitWidth));
+            Boundary = Builder.getInt(APInt::getMaxValue(BitWidth));
             break;
         case Intrinsic::sadd_sat: {
-            Value* isMaxOrMinOverflow = Builder.CreateICmpSLT(Builder.getIntN(bitWidth, 0), I.getArgOperand(1));
-            APInt MinVal = APInt::getSignedMinValue(bitWidth);
-            APInt MaxVal = APInt::getSignedMaxValue(bitWidth);
+            Value* isMaxOrMinOverflow = Builder.CreateICmpSLT(Builder.getIntN(BitWidth, 0), I.getArgOperand(1));
+            APInt MinVal = APInt::getSignedMinValue(BitWidth);
+            APInt MaxVal = APInt::getSignedMaxValue(BitWidth);
             Boundary = Builder.CreateSelect(isMaxOrMinOverflow, Builder.getInt(MaxVal), Builder.getInt(MinVal));
         }
             break;
+#endif
         default:
             IGC_ASSERT_MESSAGE(0, "Incorrect intrinsic");
             break;
