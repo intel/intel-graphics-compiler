@@ -323,11 +323,7 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )()
 
     uint v = (uint)SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )() / SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
 
-#ifndef NO_ASSUME_SUPPORT
-    __builtin_assume(v >= 0);
-    __builtin_assume(v < 32);
-#endif
-
+    BuiltinAssumeGE0(v);
     return v;
 }
 
