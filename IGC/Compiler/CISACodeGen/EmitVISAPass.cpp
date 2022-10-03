@@ -219,8 +219,13 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
     m_encoder->SetSubSpanDestination(false);
     uint numInstance = m_currShader->m_numberInstance;
 
+    if (!shouldGenerateLSC())
     {
         slicing = (m_SimdMode == SIMDMode::SIMD32);
+    }
+    else
+    {
+        slicing = false;  // set to false, not matter SIMD32 or SIMD16 of PVC, no slicing
     }
 
     bool hasValidDestination = (sdag.m_root->getType()->getTypeID() != llvm::Type::VoidTyID);
@@ -1001,7 +1006,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 }
             }
 
-            bool slicing = !disableSlicing;
+            bool slicing = false;
             uint numInstance = DecideInstanceAndSlice(*block.bb, *I, slicing);
             IGC_ASSERT(numInstance == 1 || numInstance == 2);
             // caching the number of instance
