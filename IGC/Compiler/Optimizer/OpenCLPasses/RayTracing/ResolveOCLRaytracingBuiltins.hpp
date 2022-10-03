@@ -49,7 +49,7 @@ namespace IGC {
     void handleGetGlobalBTDStack(llvm::CallInst& callInst);
     void handleDispatchTraceRayQuery(llvm::CallInst& callInst);
     void handleRTSync(llvm::CallInst& callInst);
-    void handleGetImplicitDG(llvm::CallInst& callInst);
+    void handleGetRTGlobalBuffer(llvm::CallInst& callInst);
 
   private:
     CodeGenContext* m_pCtx;

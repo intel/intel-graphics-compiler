@@ -449,6 +449,7 @@ set(IGC_BUILD__BIF_OCL_COMMON_INC_DIRS
     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL"
     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PointerSize"
     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Headers"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_shared"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_shared/device_enqueue"
   )
 
