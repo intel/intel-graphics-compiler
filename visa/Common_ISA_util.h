@@ -158,6 +158,24 @@ inline uint32_t getvISAMaskOffset(VISA_EMask_Ctrl emask)
     }
 }
 
+inline bool isNoMask(VISA_EMask_Ctrl eMask)
+{
+    switch (eMask) {
+    case vISA_EMASK_M1_NM:
+    case vISA_EMASK_M2_NM:
+    case vISA_EMASK_M3_NM:
+    case vISA_EMASK_M4_NM:
+    case vISA_EMASK_M5_NM:
+    case vISA_EMASK_M6_NM:
+    case vISA_EMASK_M7_NM:
+    case vISA_EMASK_M8_NM:
+        return true;
+    default:
+        break;
+    }
+    return false;
+}
+
 const char* toString(GenPrecision P);
 
 inline uint32_t DpasInfoToUI32(GenPrecision A, GenPrecision W, uint8_t D, uint8_t C)

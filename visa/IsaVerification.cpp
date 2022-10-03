@@ -1003,6 +1003,7 @@ void vISAVerifier::verifyInstructionMove(
             VISA_Type     dstType = getVectorOperandType(header, dst);
             VISA_Type     src0Type = getVectorOperandType(header, src0);
 
+
             if (dstType == ISA_TYPE_UB)
             {
                 REPORT_INSTRUCTION(options, src0Type == ISA_TYPE_HF,
@@ -1027,6 +1028,18 @@ void vISAVerifier::verifyInstructionMove(
             {
                 REPORT_INSTRUCTION(options, false,
                     "F_CVT must have either UB(actually BF8) dst or src");
+            }
+
+            // Check if NoMask is required
+            switch (dstType)
+            {
+            case ISA_TYPE_UB:
+            {
+                REPORT_INSTRUCTION(options, isNoMask(inst->getExecMask()),
+                    "F_CVT must use noMask for HF to FP8 conversion");
+            }
+            default:
+                break;
             }
 
             bool supportSat = false;
@@ -3892,6 +3905,8 @@ void vISAVerifier::verifyInstructionSrnd(const CISA_INST* inst)
     VISA_Type         dstType = getVectorOperandType(header, dst);
     VISA_Modifier dstModifier = dst.getOperandModifier();
     bool allowSat = false;
+
+    REPORT_INSTRUCTION(options, isNoMask(inst->getExecMask()), "srnd must use noMask");
 
     // dst
     REPORT_INSTRUCTION(options, dst.getOperandClass() == OPERAND_GENERAL,

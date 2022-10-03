@@ -1866,7 +1866,6 @@ public:
     // category are in VisaToG4/TranslateMisc.cpp
     //
     // (As stated above some of this could move to BuildIRImpl.cpp.)
-    static bool isNoMask(VISA_EMask_Ctrl eMask);
     static G4_ExecSize toExecSize(VISA_Exec_Size execSize);
 
     VISA_Exec_Size roundUpExecSize(VISA_Exec_Size execSize);

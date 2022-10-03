@@ -11,22 +11,6 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-bool IR_Builder::isNoMask(VISA_EMask_Ctrl eMask) {
-    switch (eMask) {
-    case vISA_EMASK_M1_NM:
-    case vISA_EMASK_M2_NM:
-    case vISA_EMASK_M3_NM:
-    case vISA_EMASK_M4_NM:
-    case vISA_EMASK_M5_NM:
-    case vISA_EMASK_M6_NM:
-    case vISA_EMASK_M7_NM:
-    case vISA_EMASK_M8_NM:
-        return true;
-    default:
-        return false;
-    }
-}
-
 G4_ExecSize IR_Builder::toExecSize(VISA_Exec_Size execSize)
 {
     switch (execSize) {

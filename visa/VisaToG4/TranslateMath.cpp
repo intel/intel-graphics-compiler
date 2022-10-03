@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Common_ISA_util.h"
 #include "BuildIR.h"
 #include "../Timer.h"
 
