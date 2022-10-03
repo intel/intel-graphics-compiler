@@ -1189,7 +1189,7 @@ bool MadMatcher::isProfitable() const {
   if (isa<Constant>(Srcs[2]))
     return false;
 
-  // Do not match unless both of multiplicants are of type *B/*W
+  // Do not match unless both of multiplicants are of type *B/*W.
   bool IsProfitable = true;
 
   auto Checker = [](Value *V) -> bool {
