@@ -440,7 +440,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   ///
   vc::addPass(PM, createEarlyCSEPass());
   /// .. include:: GenXPatternMatch.cpp
-  vc::addPass(PM, createGenXPatternMatchPass());
+  vc::addPass(PM, createGenXPatternMatchPass(PatternMatchKind::PreLegalization));
   if (!DisableVerify)
     vc::addPass(PM, createVerifierPass());
   /// .. include:: GenXExtractVectorizer.cpp
@@ -492,6 +492,10 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// subexpressions are related by one dominating the other.
   ///
   vc::addPass(PM, createEarlyCSEPass());
+  /// .. include:: GenXPatternMatch.cpp
+  vc::addPass(PM, createGenXPatternMatchPass(PatternMatchKind::PostLegalization));
+  if (!DisableVerify)
+    vc::addPass(PM, createVerifierPass());
   /// LICM
   /// ----
   /// This is a standard LLVM pass to hoist/sink the loop invariant code after
