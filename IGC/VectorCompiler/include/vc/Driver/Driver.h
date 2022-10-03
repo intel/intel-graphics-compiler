@@ -68,6 +68,18 @@ struct CompileOptions {
   // Optional Shader Overrider
   std::unique_ptr<vc::ShaderOverrider> ShaderOverrider = nullptr;
 
+  // Output binary format
+  // API options:
+  //   -[cl,ze]-enable-zebin
+  ///  -[cl,ze]-disable-zebin
+  // Internal options:
+  //   -[cl,ze]-allow-zebin
+  //   -[cl,ze]-disable-zebin
+  //   -binary-format=[ocl,ze,cm]
+  // Debug keys:
+  //   IGC_EnableZEBinary=[0,1]
+  BinaryKind Binary = BinaryKind::Default;
+
   // Api accessible options.
   // -ze-no-vector-decomposition
   bool NoVecDecomp = false;
@@ -113,7 +125,6 @@ struct CompileOptions {
 
   // Internal options.
   std::string FeaturesString; // format is: [+-]<feature1>,[+-]<feature2>,...
-  BinaryKind Binary = BinaryKind::OpenCL;
   bool DumpIsa = false;
   bool DumpIR = false;
   bool DumpAsm = false;

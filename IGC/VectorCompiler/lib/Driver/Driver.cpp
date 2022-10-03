@@ -167,7 +167,8 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
     Features.AddFeature("disable_jump_tables");
   if (Opts.TranslateLegacyMemoryIntrinsics)
     Features.AddFeature("translate_legacy_message");
-  if (Opts.Binary == vc::BinaryKind::OpenCL ||
+  if (Opts.Binary == vc::BinaryKind::Default ||
+      Opts.Binary == vc::BinaryKind::OpenCL ||
       Opts.Binary == vc::BinaryKind::ZE)
     Features.AddFeature("ocl_runtime");
   if (Opts.HasHalfSIMDLSC)
@@ -439,8 +440,9 @@ static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
   case vc::BinaryKind::OpenCL:
   case vc::BinaryKind::ZE:
     return runOclCodeGen(Opts, ExtData, TM, M);
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unknown binary format");
   }
-  IGC_ASSERT_EXIT_MESSAGE(0, "Unknown runtime kind");
 }
 
 // Parse global llvm cl options.
@@ -706,6 +708,19 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.SaveStackCallLinkage = true;
   if (ApiOptions.hasArg(OPT_vc_disable_non_overlapping_region_opt))
     Opts.ForceDisableNonOverlappingRegionOpt = true;
+
+  if (opt::Arg *A =
+          ApiOptions.getLastArg(OPT_enable_zebin_ze, OPT_disable_zebin_ze))
+    switch (A->getOption().getID()) {
+    case OPT_enable_zebin_ze:
+      Opts.Binary = vc::BinaryKind::ZE;
+      break;
+    case OPT_disable_zebin_ze:
+      Opts.Binary = vc::BinaryKind::OpenCL;
+      break;
+    default:
+      break;
+    }
 
   if (opt::Arg *A = ApiOptions.getLastArg(OPT_fp_contract)) {
     StringRef Val = A->getValue();

@@ -44,7 +44,7 @@ SPDX-License-Identifier: MIT
 enum class FunctionControl { Default, StackCall };
 
 namespace vc {
-enum class BinaryKind { CM, OpenCL, ZE };
+enum class BinaryKind { Default, CM, OpenCL, ZE };
 } // namespace vc
 
 namespace llvm {

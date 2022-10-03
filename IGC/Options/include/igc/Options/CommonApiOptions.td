@@ -34,5 +34,17 @@ defm opt_disable : CommonFlag<"opt-disable">,
 
 defm library_compilation : CommonFlag<"library-compilation">;
 
+defm enable_zebin : CommonFlag<"enable-zebin">,
+  HelpText<"Emit level zero binary (zebin)">;
+def intel_enable_zebin : ClFlag<"intel-enable-zebin">,
+  Alias<enable_zebin_ze>,
+  HelpText<"Alias for -cl-enable-zebin">;
+
+defm disable_zebin : CommonFlag<"disable-zebin">,
+  HelpText<"Emit binary in legacy format">;
+def intel_disable_zebin : ClFlag<"intel-disable-zebin">,
+  Alias<disable_zebin_ze>,
+  HelpText<"Alias for -cl-disable-zebin">;
+
 }
 // }} Common API options

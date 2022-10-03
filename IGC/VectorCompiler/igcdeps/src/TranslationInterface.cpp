@@ -221,8 +221,16 @@ static void adjustDebugStrippingPolicy(vc::CompileOptions &Opts) {
 // Overwrite binary format option for backward compatibility with
 // environment variable approach.
 static void adjustBinaryFormat(vc::BinaryKind &Binary) {
-  if (Binary == vc::BinaryKind::OpenCL && IGC_IS_FLAG_ENABLED(EnableZEBinary))
+  if (Binary == vc::BinaryKind::CM)
+    return;
+
+  if (Binary != vc::BinaryKind::Default && !IGC_IS_FLAG_SET(EnableZEBinary))
+    return;
+
+  if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
     Binary = vc::BinaryKind::ZE;
+  else
+    Binary = vc::BinaryKind::OpenCL;
 }
 
 template <typename T> T deriveDefaultableFlagValue(int Flag) {
@@ -469,6 +477,8 @@ fillExternalData(vc::BinaryKind Binary, llvm::StringRef CPUStr,
                         vc::bif::RawKind::PrintfZE64>(ExtData))
       return {};
     break;
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unknown binary format");
   }
   ExtData.VCEmulationBIFModule =
       getVCModuleBufferForArch<vc::bif::RawKind::Emulation>(CPUStr);
@@ -648,6 +658,8 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
     outputBinary(BinaryRef, {}, Diag, OutputArgs);
     break;
   }
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unknown binary format");
   }
 
   return {};
