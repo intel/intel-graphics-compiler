@@ -24,7 +24,6 @@ static const unsigned LARGE_BLOCK_SIZE_RPE = 32000;
 static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
-static const unsigned PRESSURE_LOW_THRESHOLD = 60;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
 
 namespace {
@@ -547,15 +546,19 @@ static bool isSlicedSIMD32(G4_Kernel& kernel)
         kernel.fg.builder->getNativeExecSize() < g4::SIMD16);
 }
 
-static unsigned getRPReductionThreshold(unsigned NumGrfs, bool SlicedSIMD32)
+static unsigned getRPReductionThreshold(G4_Kernel& kernel)
 {
-    // For SIMD32 prior to PVC, use a higher threshold for rp reduction,
-    // as it may not be beneficial.
-    if (SlicedSIMD32)
-        return unsigned(PRESSURE_REDUCTION_THRESHOLD_SIMD32 * NumGrfs / 128);
-
-    // For all other kernels, use the default threshold.
-    return unsigned(PRESSURE_REDUCTION_THRESHOLD * NumGrfs / 128);
+    unsigned NumGrfs = kernel.getNumRegTotal();
+    unsigned RPThreshold = kernel.getOptions()->getuInt32Option(vISA_preRA_MinRegThreshold);
+    if (RPThreshold == 0)
+    {
+        // For SIMD32 prior to PVC, use a higher threshold for rp reduction,
+        // as it may not be beneficial.
+        RPThreshold = isSlicedSIMD32(kernel) ?
+            PRESSURE_REDUCTION_THRESHOLD_SIMD32 :
+            PRESSURE_REDUCTION_THRESHOLD;
+    }
+    return unsigned(RPThreshold * NumGrfs / 128);
 }
 
 // Register pressure threshold to move to a larger GRF mode
@@ -563,13 +566,6 @@ static unsigned getRPThresholdHigh(unsigned NumGrfs)
 {
     // For all other kernels, use the default threshold.
     return unsigned(PRESSURE_HIGH_THRESHOLD * NumGrfs / 128);
-}
-
-// Register pressure threshold to move to a smaller GRF mode
-static unsigned getRPThresholdLow(unsigned NumGrfs, unsigned simdSize)
-{
-    // For all other kernels, use the default threshold.
-    return unsigned(PRESSURE_LOW_THRESHOLD * NumGrfs / 128);
 }
 
 static unsigned getLatencyHidingThreshold(G4_Kernel &kernel)
@@ -602,7 +598,7 @@ bool preRA_Scheduler::run()
             return false;
     }
 
-    unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), isSlicedSIMD32(kernel));
+    unsigned Threshold = getRPReductionThreshold(kernel);
     unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
 
     LatencyTable LT(kernel.fg.builder);
@@ -744,7 +740,7 @@ bool preRA_RegSharing::run()
         kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
     }
 
-    unsigned Threshold = getRPReductionThreshold(kernel.getNumRegTotal(), isSlicedSIMD32(kernel));
+    unsigned Threshold = getRPReductionThreshold(kernel);
     LatencyTable LT(kernel.fg.builder);
 
     for (auto bb : kernel.fg)

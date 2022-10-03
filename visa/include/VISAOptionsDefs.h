@@ -209,6 +209,7 @@ DEF_VISA_OPTION(vISA_preRA_ScheduleRPThreshold, ET_INT32, "-presched-rp",      "
 DEF_VISA_OPTION(vISA_ScheduleStartBBID, ET_INT32, "-sched-start",      "USAGE: -sched-start <BB ID>\n", 0)
 DEF_VISA_OPTION(vISA_ScheduleEndBBID, ET_INT32, "-sched-end",      "USAGE: -sched-end <BB ID>\n", 0)
 DEF_VISA_OPTION(vISA_PreSchedGRFPressure, ET_BOOL, "-rp-aft-sched", "USAGE: -rp-aft-sched\n", false)
+DEF_VISA_OPTION(vISA_preRA_MinRegThreshold, ET_INT32, "-minreg-rp", "USAGE: -minreg-rp <threshold>\n", 0)
 DEF_VISA_OPTION(vISA_DumpSchedule,          ET_BOOL, "-dumpSchedule",    UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpDagDot,            ET_BOOL, "-dumpDagDot",      UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpDagTxt,            ET_BOOL, "-dumpDagTxt",      UNUSED, false)
