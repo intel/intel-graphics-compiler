@@ -141,7 +141,8 @@ iga_gen_t GetIGAPlatform(PLATFORM const & platform)
         {
             return IGA_XE_HP;
         }
-        else if (ProductFamily == IGFX_DG2)
+        else if (ProductFamily == IGFX_DG2
+            || ProductFamily == IGFX_METEORLAKE)
         {
             return IGA_XE_HPG;
         }
