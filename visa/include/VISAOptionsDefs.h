@@ -317,6 +317,7 @@ DEF_VISA_OPTION(vISA_dumpIgaJson, ET_INT32, "-dumpIgaJson",
 DEF_VISA_OPTION(vISA_PlatformSet,         ET_INT32, NULLSTR,              UNUSED, -1 /*GENX_NONE*/)
 DEF_VISA_OPTION(vISA_NoVerifyvISA,        ET_BOOL,  "-noverifyCISA",      UNUSED, false)
 DEF_VISA_OPTION(vISA_InitPayload,         ET_BOOL,  "-initializePayload", UNUSED, false)
+DEF_VISA_OPTION(vISA_AvoidUsingR0R1,           ET_BOOL,  "-avoidR0R1",    UNUSED, false)
 DEF_VISA_OPTION(vISA_isParseMode,         ET_BOOL,  NULLSTR,              UNUSED, false)
 //   rerun RA post scheduling for gtpin
 DEF_VISA_OPTION(vISA_ReRAPostSchedule,    ET_BOOL,  "-rerapostschedule",  UNUSED, false)

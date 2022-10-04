@@ -361,6 +361,7 @@ DECLARE_IGC_REGKEY(debugString, ForceAssignRhysicalReg,     0, "Force assigning 
 DECLARE_IGC_REGKEY(bool, InitializeUndefValueEnable,    false, "Setting this to 1/true initializes all undefs in URB payload to 0", false)
 DECLARE_IGC_REGKEY(bool, InitializeRegistersEnable,     false, "Setting this to 1/true initializes all GRFs, Flag and address registers to 0 at the beginning of the shader", false)
 DECLARE_IGC_REGKEY(bool, InitializeAddressRegistersBeforeUse,     false, "Setting this to 1 (true) initializes address register to 0 before each use", false)
+DECLARE_IGC_REGKEY(bool, AvoidUsingR0R1,                false, "Do not use r0 and r1 as generic usage registers", false)
 DECLARE_IGC_REGKEY(bool, EnableGTLocationDebugging,     false, "Setting this to 1 (true) enables GT location expression emmitions for GPU debugger", true)
 DECLARE_IGC_REGKEY(bool, UseOffsetInLocation,           true,  "Setting this to 1 (true) preserves private base and per thread offset and removes preservation of any other debug variables", true)
 DECLARE_IGC_REGKEY(bool, EnableRelocations,             false, "Setting this to 1 (true) makes IGC emit relocatable ELF with debug info", true)

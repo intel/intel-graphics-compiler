@@ -145,6 +145,12 @@ public:
         assigned = false;
         eot = false;
         isSplit = false;
+
+        if (builder.kernel.getOptions()->getOption(vISA_AvoidUsingR0R1))
+        {
+            addForbidden(0);
+            addForbidden(1);
+        }
     }
 
     // A reference to this live range exists in bb basic block, record it

@@ -34,6 +34,12 @@ void LinearScanRA::allocForbiddenVector(LSLiveRange* lr)
     bool* forbidden = (bool*)mem.alloc(sizeof(bool) * size);
     memset(forbidden, false, size);
     lr->setForbidden(forbidden);
+
+    if (builder.kernel.getOptions()->getOption(vISA_AvoidUsingR0R1))
+    {
+        lr->addForbidden(0);
+        lr->addForbidden(1);
+    }
 }
 
 void globalLinearScan::allocRetRegsVector(LSLiveRange* lr)

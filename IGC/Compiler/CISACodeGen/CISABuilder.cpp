@@ -4623,6 +4623,10 @@ namespace IGC
         {
             SaveOption(vISA_InitPayload, true);
         }
+        if (IGC_IS_FLAG_ENABLED(AvoidUsingR0R1))
+        {
+            SaveOption(vISA_AvoidUsingR0R1, true);
+        }
         if (IGC_IS_FLAG_ENABLED(UseOldSubRoutineAugIntf))
         {
             SaveOption(vISA_UseOldSubRoutineAugIntf, true);
