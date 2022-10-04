@@ -13016,13 +13016,25 @@ void Optimizer::applyNoMaskWA()
         G4_INST* I0 = builder.createMov(g4::SIMD1, D, builder.createImm(0, aTy), InstOpt_WriteEnable, false);
         aBB->insertBefore(aInsertBeforePos, I0);
 
-        G4_RegVar* r0Var = builder.getRealR0()->getRegVar();
-        G4_SrcRegRegion* r0_0 = builder.createSrc(r0Var, 0, 0, ScalarReg, Type_UW);
-        G4_SrcRegRegion* r0_1 = builder.createSrc(r0Var, 0, 0, ScalarReg, Type_UW);
+        G4_RegVar* cmpVar;
+        const bool USE_R0_FOR_EMASK_CMP = false;
+        if (USE_R0_FOR_EMASK_CMP)
+        {
+            cmpVar = builder.getRealR0()->getRegVar();
+        }
+        else
+        {
+            // using r2.0:uw for cmp
+            G4_Declare* cmpDcl = builder.createHardwiredDeclare(1, Type_UW, 2, 0);
+            cmpVar = cmpDcl->getRegVar();
+        }
+
+        G4_SrcRegRegion* r_0 = builder.createSrc(cmpVar, 0, 0, ScalarReg, Type_UW);
+        G4_SrcRegRegion* r_1 = builder.createSrc(cmpVar, 0, 0, ScalarReg, Type_UW);
         G4_CondMod* flagCM = builder.createCondMod(Mod_e, aFlag, 0);
         G4_DstRegRegion* nullDst = builder.createNullDst(Type_UW);
         G4_INST* I1 = builder.createInternalInst(
-            NULL, G4_cmp, flagCM, g4::NOSAT, Simdsize, nullDst, r0_0, r0_1, InstOpt_M0);
+            NULL, G4_cmp, flagCM, g4::NOSAT, Simdsize, nullDst, r_0, r_1, InstOpt_M0);
         aBB->insertBefore(aInsertBeforePos, I1);
 
         if (!UseAnyh)
