@@ -1453,19 +1453,20 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
     bool Changed = false;
     if (tryLatencyHiding()) {
         // try grouping-threshold decremently until we find a schedule likely won't spill
-        unsigned GTMax = 144;
-        unsigned GTMin = 96;
+        unsigned Thresholds[] = { 144, 128, 112, 104, 96 };
+        unsigned Iterations = 5;
         unsigned NumGrfs = kernel.getNumRegTotal();
         float Ratio = (std::max(NumGrfs, 128u) - 48u) / 80.0f;
         // limit the iterative approach to certain platforms for now
         if (config.DoNotIterate)
         {
-            GTMax = GTMin = getLatencyHidingThreshold(kernel);
+            Thresholds[0] = getLatencyHidingThreshold(kernel);
+            Iterations = 1;
             Ratio = 1.0f;  // already adjusted inside getLatencyHidingThreshold
         }
-        for (unsigned GroupingThreshold = GTMax; GroupingThreshold >= GTMin;
-             GroupingThreshold = GroupingThreshold - 16)
+        for (unsigned i = 0; i < Iterations; ++i)
         {
+            auto GroupingThreshold = Thresholds[i];
             ddd.reset(ReassignID);
             LatencyScheduling(unsigned(GroupingThreshold * Ratio));
             if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
