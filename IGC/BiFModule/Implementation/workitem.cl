@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-extern __constant int __hasHWLocalThreadID;
-
 
 #define MAX_DIM 2
 #define BuiltinVector(BuiltinName) \
@@ -316,11 +314,6 @@ uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )()
 
 uint SPIRV_OVERLOADABLE SPIRV_BUILTIN_NO_OP(BuiltInSubgroupId, , )()
 {
-    if(__hasHWLocalThreadID)
-    {
-        return __builtin_IB_get_local_thread_id();
-    }
-
     uint v = (uint)SPIRV_BUILTIN_NO_OP(BuiltInLocalInvocationIndex, , )() / SPIRV_BUILTIN_NO_OP(BuiltInSubgroupMaxSize, , )();
 
 #ifndef NO_ASSUME_SUPPORT

@@ -959,7 +959,6 @@ void BIImport::InitializeBIFlags(Module& M)
     initializeVarWithValue("__UseNative64BitIntBuiltin", pCtx->platform.hasNoFullI64Support() ? 0 : 1);
     initializeVarWithValue("__HasThreadPauseSupport", pCtx->platform.hasThreadPauseSupport() ? 1 : 0);
     initializeVarWithValue("__UseNative64BitFloatBuiltin", pCtx->platform.hasNoFP64Inst() ? 0 : 1);
-    initializeVarWithValue("__hasHWLocalThreadID", pCtx->platform.hasHWLocalThreadID() ? 1 : 0);
     initializeVarWithValue("__CRMacros",
         pCtx->platform.hasCorrectlyRoundedMacros() ? 1 : 0);
 
@@ -1016,8 +1015,6 @@ const llvm::StringRef PreBIImportAnalysis::OCL_GET_GROUP_ID = "_Z12get_group_idj
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID_IGC_SPVIR = "__builtin_spirv_BuiltInSubgroupId";
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID_KHR_SPVIR = "_Z25__spirv_BuiltInSubgroupIdv";
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID = "_Z16get_sub_group_idv";
-const llvm::StringRef PreBIImportAnalysis::OCL_SUBGROUP_BLOCK_PREFIX = "__builtin_spirv_OpSubgroupBlock";
-const llvm::StringRef PreBIImportAnalysis::OCL_SUBGROUP_IMAGE_BLOCK_PREFIX = "__builtin_spirv_OpSubgroupImageBlock";
 
 PreBIImportAnalysis::PreBIImportAnalysis() : ModulePass(ID)
 {
@@ -1042,14 +1039,6 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
             funcName == OCL_GET_SUBGROUP_ID_IGC_SPVIR ||
             funcName == OCL_GET_SUBGROUP_ID_KHR_SPVIR ||
             funcName == OCL_GET_SUBGROUP_ID);
-        bool isSubgroupBlockFunc = false;
-        const auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        if (pCtx->platform.hasHWLocalThreadID())
-        {
-            isSubgroupBlockFunc = funcName.contains(OCL_SUBGROUP_BLOCK_PREFIX) ||
-                funcName.contains(OCL_SUBGROUP_IMAGE_BLOCK_PREFIX);
-            isFuncNameToSearch |= isSubgroupBlockFunc;
-        }
         if (isFuncNameToSearch)
         {
             MetaDataUtils* pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -1124,14 +1113,9 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                          funcName == OCL_GET_SUBGROUP_ID_KHR_SPVIR ||
                          funcName == OCL_GET_SUBGROUP_ID)
                 {
-                  if (!pCtx->platform.hasHWLocalThreadID())
-                  {
-                    // For pre-XeHP_SDV currently without using patch tokens to request local thread id from UMD,
-                    // we are forcing walk order 0 1 2 when we have get_subgroup_id in kernel.
                     modMD->FuncMD[f].workGroupWalkOrder.dim0 = 0;
                     modMD->FuncMD[f].workGroupWalkOrder.dim1 = 1;
                     modMD->FuncMD[f].workGroupWalkOrder.dim2 = 2;
-                  }
                 }
               }
             }
