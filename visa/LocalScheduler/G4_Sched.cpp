@@ -1759,7 +1759,7 @@ bool LatencyQueue::compareReady(preNode* N1, preNode* N2)
            !N2->getInst()->isPseudoKill());
     auto isSendNoReturn = [](G4_INST* Inst)
     {
-        if (Inst->isSend() && Inst->hasNULLDst())
+        if (Inst->isSend() && (Inst->getDst() == nullptr || Inst->getDst()->isNullReg()))
             return true;
         return false;
     };
