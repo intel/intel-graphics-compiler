@@ -435,10 +435,17 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
             continue;
         if (IsUsedByBindless(GEP))
             continue;
-        auto *ZExt = dyn_cast<ZExtInst>(GEP->getOperand(1));
-        if (!ZExt) // TODO: sext may also be considered.
+        auto *Idx = GEP->getOperand(1);
+        if (auto *ZExt = dyn_cast<ZExtInst>(Idx)) {
+            Idx = ZExt->getOperand(0);
+        } else if (auto *SExt = dyn_cast<SExtInst>(Idx)) {
+            Idx = SExt->getOperand(0);
+            auto *Op = dyn_cast<OverflowingBinaryOperator>(Idx);
+            if (!Op || !Op->hasNoSignedWrap())
+                continue;
+        } else {
             continue;
-        auto *Idx = ZExt->getOperand(0);
+        }
         const SCEV *E = SE->getSCEV(Idx);
         // Skip if the offset to the base is already a constant.
         if (isa<SCEVConstant>(E))
