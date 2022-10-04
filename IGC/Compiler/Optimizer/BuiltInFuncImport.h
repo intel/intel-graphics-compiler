@@ -127,8 +127,6 @@ namespace IGC
         static const llvm::StringRef OCL_GET_SUBGROUP_ID_IGC_SPVIR;
         static const llvm::StringRef OCL_GET_SUBGROUP_ID_KHR_SPVIR;
         static const llvm::StringRef OCL_GET_SUBGROUP_ID;
-        static const llvm::StringRef OCL_SUBGROUP_BLOCK_PREFIX;
-        static const llvm::StringRef OCL_SUBGROUP_IMAGE_BLOCK_PREFIX;
     };
 
 } // namespace IGC

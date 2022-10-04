@@ -115,7 +115,6 @@ void     __builtin_IB_thread_group_barrier_wait(void) __attribute__((convergent)
 // Workitem functions
 uint     __builtin_IB_get_work_dim(void) __attribute__((const));
 uint     __builtin_IB_get_group_id(uint) __attribute__((const));
-uint     __builtin_IB_get_local_thread_id() __attribute__((const));
 uint     __builtin_IB_get_global_offset(uint) __attribute__((const));
 uint     __builtin_IB_get_local_size(uint) __attribute__((const));
 uint     __builtin_IB_get_local_id_x(void) __attribute__((const));
