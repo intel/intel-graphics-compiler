@@ -381,6 +381,14 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteCall(call);
     }
+    else if (auto extractValue = dyn_cast<ExtractValueInst>(value))
+    {
+        newValue = promoteExtractValue(extractValue);
+    }
+    else if (auto insertValue = dyn_cast<InsertValueInst>(value))
+    {
+        newValue = promoteInsertValue(insertValue);
+    }
     else if (auto load = dyn_cast<LoadInst>(value))
     {
         newValue = promoteLoad(load);
@@ -712,6 +720,53 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
         newCallArguments,
         "",
         call
+    );
+}
+
+ExtractValueInst* PromoteBools::promoteExtractValue(ExtractValueInst* extractValue)
+{
+    if (!extractValue)
+    {
+        return extractValue;
+    }
+
+    auto aggregateOp = extractValue->getAggregateOperand();
+    if (!typeNeedsPromotion(aggregateOp->getType()))
+    {
+        return extractValue;
+    }
+
+    return ExtractValueInst::Create(
+        getOrCreatePromotedValue(aggregateOp),
+        extractValue->getIndices(),
+        "",
+        extractValue
+    );
+}
+
+InsertValueInst* PromoteBools::promoteInsertValue(InsertValueInst* insertValue)
+{
+    if (!insertValue)
+    {
+        return insertValue;
+    }
+
+    auto aggregateOp = insertValue->getAggregateOperand();
+    auto insertedValueOp = insertValue->getInsertedValueOperand();
+    if (!typeNeedsPromotion(aggregateOp->getType()) && !typeNeedsPromotion(insertedValueOp->getType()))
+    {
+        return insertValue;
+    }
+
+    auto newAggregateOp = typeNeedsPromotion(aggregateOp->getType()) ? getOrCreatePromotedValue(aggregateOp) : aggregateOp;
+    auto newInsertedValueOp = typeNeedsPromotion(insertedValueOp->getType()) ? getOrCreatePromotedValue(insertedValueOp) : insertedValueOp;
+
+    return InsertValueInst::Create(
+        newAggregateOp,
+        newInsertedValueOp,
+        insertValue->getIndices(),
+        "",
+        insertValue
     );
 }
 

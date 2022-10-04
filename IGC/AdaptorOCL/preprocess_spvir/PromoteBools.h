@@ -68,6 +68,8 @@ namespace IGC
         llvm::AddrSpaceCastInst* promoteAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast);
         llvm::Value* promoteBitCast(llvm::BitCastInst* bitcast);
         llvm::CallInst* promoteCall(llvm::CallInst* call);
+        llvm::ExtractValueInst* promoteExtractValue(llvm::ExtractValueInst* extractValue);
+        llvm::InsertValueInst* promoteInsertValue(llvm::InsertValueInst* insertValue);
         llvm::LoadInst* promoteLoad(llvm::LoadInst* load);
         llvm::StoreInst* promoteStore(llvm::StoreInst* store);
     };
