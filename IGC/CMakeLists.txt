@@ -298,7 +298,9 @@ endif()
 set(IGC_OPTION__IST_IGCC_ONLY ON CACHE BOOL
     "Only building igcc part of IST (IGCStandalone).")
 
-set(IGC_OPTION__BUILD_IGC_OPT ON CACHE BOOL "Build project igc_opt.")
+if(NOT DEFINED IGC_OPTION__BUILD_IGC_OPT)
+    set(IGC_OPTION__BUILD_IGC_OPT OFF)
+endif()
 
 igc_arch_get_cpu(_cpuSuffix)
 if(NOT DEFINED IGC_OPTION__OUTPUT_DIR)
@@ -1603,7 +1605,7 @@ if(MSVC AND IGC_OPTION__UNIVERSAL_DRIVER)
     windows_libs_props_universal(${IGC_BUILD__PROJ__fcl_dll})
 endif()
 
-if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
+if(IGC_OPTION__BUILD_IGC_OPT OR IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
   # NOTE: Remember to always pass resources when linking with static library.
   #       Use igc_rc_get_resource() with resource identifier like IGC__igc_lib
   #       Also use IGC_BUILD__LINK_LINE__igc_lib variable to get target_link_libraries()'s line which
@@ -1880,11 +1882,11 @@ unset(_targetLinkLine)
 endif() #FCL_ENABLED
 
 
+if (IGC_OPTION__BUILD_IGC_OPT)
+  add_subdirectory(igc_opt)
+endif()
 
 if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
-  if (IGC_OPTION__BUILD_IGC_OPT)
-    add_subdirectory(igc_opt)
-  endif()
   # TODO: If we want IGCStandalone on Linux, someone must clean the code, so it will be compiling.
   if(LLVM_ON_UNIX)
     add_subdirectory("${IGC_BUILD__TOOLS_IGC_DIR}" tools)
@@ -1894,7 +1896,7 @@ if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
   endif()
 endif()
 
-if(MSVC AND IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS AND IGC_OPTION__BUILD_IGC_OPT)
+if(MSVC AND IGC_OPTION__BUILD_IGC_OPT)
   add_custom_command( TARGET ${IGC_BUILD__PROJ__igc_dll}
     POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${IGC_BUILD__PROJ__igc_dll}>" "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_opt}>"

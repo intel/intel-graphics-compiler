@@ -224,4 +224,4 @@ void initializePromoteConstantStructsPass(llvm::PassRegistry&);
 void initializeLowerInvokeSIMDPass(llvm::PassRegistry&);
 void initializeImplicitGIDRestoringPass(llvm::PassRegistry&);
 void initializeRemoveCodeAssumptionsPass(llvm::PassRegistry&);
-void  initializePromoteBoolsPass(llvm::PassRegistry&);
+void initializePromoteBoolsPass(llvm::PassRegistry&);
