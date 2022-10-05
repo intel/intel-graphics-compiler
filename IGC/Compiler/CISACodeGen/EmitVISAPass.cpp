@@ -18835,6 +18835,17 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst* GII)
                     id == GenISAIntrinsic::GenISA_ftotf32
                    )
                 {
+                    switch (id)
+                    {
+                    case GenISAIntrinsic::GenISA_hftobf8:
+                    {
+                        // HW requires NoMask
+                        m_encoder->SetNoMask();
+                        break;
+                    }
+                    default:
+                        break;
+                    }
                     m_encoder->fcvt(tDst, tSrc);
                 }
                 else
@@ -18974,6 +18985,7 @@ void EmitPass::emitsrnd(llvm::GenIntrinsicInst* GII)
             if (isSat) {
                 m_encoder->SetDstModifier(EMOD_SAT);
             }
+            m_encoder->SetNoMask();
             m_encoder->SetDstSubReg(dstOff);
             m_encoder->SetSrcSubReg(0, s0Off);
             m_encoder->SetSrcSubReg(1, s1Off);
