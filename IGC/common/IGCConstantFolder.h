@@ -22,6 +22,9 @@ namespace IGC
 class IGCConstantFolder : public IGCLLVM::ConstantFolderBase
 {
 public:
+    // TODO: Once the switch to LLVM 15 is complete, align the method names
+    // with those in the base ConstantFolder class, i.e. migrate from
+    // llvm::Constant* Create* to llvm::Value* Fold* infrastructure.
     llvm::Constant* CreateGradientXFine(llvm::Constant* C0) const;
     llvm::Constant* CreateGradientYFine(llvm::Constant* C0) const;
     llvm::Constant* CreateGradientX(llvm::Constant* C0) const;
