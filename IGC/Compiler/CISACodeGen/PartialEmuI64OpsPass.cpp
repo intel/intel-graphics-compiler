@@ -619,6 +619,7 @@ ValuePair InstExpander::getExpandedValues(Value* V)
         switch (instrOp->getOpcode())
         {
         case llvm::Instruction::Add:
+        case llvm::Instruction::Sub:
             if (Emu->CGC->platform.hasQWAddSupport()) {
                 if (Emu->valueNotStored(V)) {
                     Value* _V = IRB->CreateBitCast(instrOp, Emu->getV2Int32Ty());
@@ -629,7 +630,6 @@ ValuePair InstExpander::getExpandedValues(Value* V)
             }
             break;
         case llvm::Instruction::Mul:
-        case llvm::Instruction::Sub:
         case llvm::Instruction::Xor:
         case llvm::Instruction::And:
         case llvm::Instruction::Or:
@@ -718,7 +718,7 @@ bool PartialEmuI64Ops::hasNoInt64HWSupport(Instruction* instr) {
         //list of the instructions without Int64 HW support on PVC-B0+
         (instr->getOpcode() == llvm::Instruction::Mul)
         || (instr->getOpcode() == llvm::Instruction::Add && !CGC->platform.hasQWAddSupport())
-        || (instr->getOpcode() == llvm::Instruction::Sub)
+        || (instr->getOpcode() == llvm::Instruction::Sub && !CGC->platform.hasQWAddSupport())
         || (instr->getOpcode() == llvm::Instruction::Xor)
         || (instr->getOpcode() == llvm::Instruction::And)
         || (instr->getOpcode() == llvm::Instruction::Or)
@@ -807,6 +807,9 @@ bool InstExpander::visitAdd(BinaryOperator& BinOp) {
 bool InstExpander::visitSub(BinaryOperator& BinOp) {
     IGC_ASSERT(nullptr != Emu);
     if (!Emu->isInt64(&BinOp))
+        return false;
+
+    if (Emu->CGC->platform.hasQWAddSupport())
         return false;
 
     setCurrentInstruction(&BinOp);
