@@ -368,9 +368,15 @@ namespace vISA
 
         G4_Declare* getGRFDclForHRA(int GRFNum) const;
 
-        bool useDenseMatrix() const
-        {
-            return maxId < builder.getuint32Option(vISA_DenseMatrixLimit);
+        bool useDenseMatrix() const {
+            // The size check is added to prevent offset overflow in
+            // generateSparseIntfGraph() and help avoid out-of-memory
+            // issue in dense matrix allocation.
+            unsigned long long size = static_cast<unsigned long long>(rowSize) *
+                                      static_cast<unsigned long long>(maxId);
+            unsigned long long max = std::numeric_limits<unsigned int>::max();
+            return (maxId < builder.getuint32Option(vISA_DenseMatrixLimit)) &&
+                   (size < max);
         }
 
         // Only upper-half matrix is now used in intf graph.
