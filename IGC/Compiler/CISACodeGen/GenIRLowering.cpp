@@ -487,7 +487,7 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
                 Builder->SetInsertPoint(P.GEP);
                 auto *NewGEP = Builder->CreateInBoundsGEP(
                     P.Base,
-                    Builder->CreateZExt(V, P.GEP->getOperand(1)->getType()));
+                    Builder->CreateSExt(V, P.GEP->getOperand(1)->getType()));
                 P.GEP->replaceAllUsesWith(NewGEP);
                 DeadInsts.push_back(P.GEP);
                 Changed = true;
