@@ -92,6 +92,7 @@ DEF_VISA_OPTION(vISA_localizationForAccSub, ET_BOOL, "-localizeForACC",    UNUSE
 DEF_VISA_OPTION(vISA_mathAccSub, ET_BOOL, "-mathAccSub",    UNUSED, false)
 DEF_VISA_OPTION(vISA_disableSrc2AccSub, ET_BOOL, "-disableSrc2AccSub",    UNUSED, true)
 DEF_VISA_OPTION(vISA_hasDoubleAcc, ET_BOOL, "-hasDoubleAcc",    UNUSED, false)
+DEF_VISA_OPTION(vISA_finiteMathOnly,        ET_BOOL, "-finiteMathOnly", "If set, float operands do not have NaN/Inf", false)
 DEF_VISA_OPTION(vISA_ifCvt,                 ET_BOOL, "-noifcvt",     UNUSED, true)
 DEF_VISA_OPTION(vISA_RegSharingHeuristics,  ET_BOOL, "-regSharingHeuristics", UNUSED, false)
 DEF_VISA_OPTION(vISA_LVN,                   ET_BOOL, "-nolvn",       UNUSED, true)

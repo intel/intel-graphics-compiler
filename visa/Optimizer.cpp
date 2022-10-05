@@ -5079,7 +5079,11 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
         if (IsEqual(sel_src0, cmp_src1, builder) && IsEqual(sel_src1, cmp_src0, builder))
         {
             reversed = true;
-            return true;
+            // In case of float cmp with possible NaN operands, should not swap operands.
+            if (builder.getOption(vISA_finiteMathOnly) || !IS_TYPE_FLOAT_ALL(cmp_src0->getType()))
+            {
+                return true;
+            }
         }
         return false;
     };
