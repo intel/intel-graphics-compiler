@@ -9205,8 +9205,8 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef &&
             "FP8<->HF move does not support source modifier");
 
-        if (!inst->getSrc(0)->asSrcRegRegion()->checkGRFAlign(builder) || //case 3
-            (IS_BTYPE(inst->getSrc(0)->getType()) && !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()))) // case 2
+        if (!inst->getSrc(0)->asSrcRegRegion()->checkGRFAlign(builder) || //case 3 for src
+            (IS_BTYPE(inst->getSrc(0)->getType()) && !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()))) // case 2 for src
         {
             inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, builder.getGRFAlign()), 0);
             G4_INST* newMovInst = *(std::prev(i));
@@ -9223,26 +9223,52 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             inst->setOptionOn(InstOpt_WriteEnable);
         }
 
-        // case 1.1: SIMD1 hf<->fp8
-        // (W)  mov (1|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
-        // =>
-        // (W)  mov (2|M0)   r20.0<1>:bf8   r12.0<0;1,0>:hf
-        // (W)  mov (1|M0)   r10.0<1>:ub    r20.0<0;1,0>:ub
-        if (inst->getExecSize() == g4::SIMD1)  //case 1.1
+        // case 1: SIMD1 hf<->fp8, in general we do below transform:
+        //     (W)  mov (1|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
+        //     =>
+        //     (W)  mov (2|M0)   r20.0<1>:bf8   r12.0<0;1,0>:hf
+        //     (W)  mov (1|M0)   r10.0<1>:ub    r20.0<0;1,0>:ub
+        // If the root declare is fully used by dst, we can avoid generating the extra mov by enlarging the declares' size:
+        //      //.declare V0039 (41)  rf=r size=1 type=ub align=32 words (r10.0)
+        //      (W)  mov (1|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
+        //      =>
+        //      //.declare V0039 (41)  rf=r size=2 type=ub align=32 words (r10.0)
+        //      (W)  mov (2|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
+        if (inst->getExecSize() == g4::SIMD1)  //case 1
         {
-            G4_Declare* dcl = builder.createTempVar(2, inst->getDst()->getType(), builder.getGRFAlign());
-            G4_SrcRegRegion* srcRegion = builder.createSrcRegRegion(dcl, builder.getRegionScalar());
-            uint32_t newOption = InstOpt_WriteEnable | inst->getMaskOption();
-            G4_INST* newMovInst = builder.createMov(g4::SIMD1, inst->getDst(), srcRegion, newOption, false);
-            bb->insertAfter(i, newMovInst);
+            G4_DstRegRegion* dst = inst->getDst();
+            G4_Declare* rootDcl = nullptr;
+            if (dst->getBase() && dst->getBase()->isRegVar())
+            {
+                rootDcl = dst->getBaseRegVarRootDeclare();
+            }
+            if (rootDcl && rootDcl->getByteSize() == dst->getTypeSize())
+            {
+                G4_Declare* dcl = dst->getBase()->asRegVar()->getDeclare();
+                while (dcl)
+                {
+                    dcl->setTotalElems(dcl->getTotalElems() * 2);
+                    dcl = dcl->getAliasDeclare();
+                }
+                inst->setExecSize(g4::SIMD2);
+            }
+            else
+            {
+                G4_Declare* dcl = builder.createTempVar(2, inst->getDst()->getType(), builder.getGRFAlign());
+                G4_SrcRegRegion* srcRegion = builder.createSrcRegRegion(dcl, builder.getRegionScalar());
+                uint32_t newOption = InstOpt_WriteEnable | inst->getMaskOption();
+                G4_INST* newMovInst = builder.createMov(g4::SIMD1, inst->getDst(), srcRegion, newOption, false);
+                bb->insertAfter(i, newMovInst);
 
-            G4_DstRegRegion* newDst = builder.createDstRegRegion(dcl, 1);
-            inst->setDest(newDst);
-            inst->setExecSize(g4::SIMD2);
+                G4_DstRegRegion* newDst = builder.createDstRegRegion(dcl, 1);
+                inst->setDest(newDst);
+                inst->setExecSize(g4::SIMD2);
+            }
+
         }
 
-        if ((IS_BTYPE(inst->getDst()->getType()) && inst->getDst()->getHorzStride() != 1) ||  //case 2
-            !inst->getDst()->checkGRFAlign(builder))  // case 3
+        if ((IS_BTYPE(inst->getDst()->getType()) && inst->getDst()->getHorzStride() != 1) ||  //case 2 for dst
+            !inst->getDst()->checkGRFAlign(builder))  // case 3 for dst
         {
             replaceDst(i, inst->getDst()->getType(), builder.getGRFAlign());
             G4_INST* newMovInst = *(std::next(i));
