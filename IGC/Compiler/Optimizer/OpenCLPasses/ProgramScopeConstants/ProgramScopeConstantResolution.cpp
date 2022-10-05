@@ -134,13 +134,6 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
             continue;
         }
 
-        Constant* initializer = pGlobalVar->getInitializer();
-        IGC_ASSERT_MESSAGE(initializer, "Constant must be initialized");
-        if (!initializer)
-        {
-            continue;
-        }
-
         // Get the offset of this constant from the base.
         int offset = -1;
 
