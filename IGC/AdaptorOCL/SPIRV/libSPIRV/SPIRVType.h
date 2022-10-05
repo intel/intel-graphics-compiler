@@ -680,58 +680,69 @@ protected:
 class SPIRVTypeJointMatrixINTEL : public SPIRVType {
 public:
     const static Op OC = OpTypeJointMatrixINTEL;
-    const static SPIRVWord FixedWC = 7;
+    const static SPIRVWord FixedWC = 3;
     // Complete constructor
     SPIRVTypeJointMatrixINTEL(SPIRVModule *M, SPIRVId TheId, SPIRVType *ElemType,
-                              SPIRVId Rows, SPIRVId Columns,
-                              SPIRVId Layout, SPIRVId Scope)
-        : SPIRVType(M, FixedWC, OC, TheId), ElemType(ElemType),
-          Rows(Rows), Columns(Columns), Layout(Layout), Scope(Scope) {
+                              std::vector<SPIRVId> Args)
+        : SPIRVType(M, FixedWC, OC, TheId), ElemType(ElemType), Args(Args) {
         validate();
     }
 
     // Incomplete constructor
     SPIRVTypeJointMatrixINTEL()
-        : SPIRVType(OC), ElemType(0), Rows(0), Columns(0),
-          Layout(0), Scope(0) {
+        : SPIRVType(OC), ElemType(0), Args({0, 0, 0, 0}) {
     }
 
     CapVec getRequiredCapability() const override {
         return getVec(SPIRVCapabilityKind::CapabilityJointMatrixINTEL);
     }
 
+    void setWordCount(SPIRVWord WordCount) override {
+        SPIRVType::setWordCount(WordCount);
+        Args.resize(WordCount - FixedWC);
+    }
+
     SPIRVType *getElemType() const { return ElemType; }
 
     unsigned getLayout() const;
+    unsigned getUse() const;
     unsigned getRows() const;
     unsigned getColumns() const;
     unsigned getScope() const;
+
     std::string getMangledName() const;
+    bool isUseParameterPresent() const;
 
     enum {
         LayoutColumnMajor = 0,
         LayoutRowMajor = 1,
         LayoutPackedA = 2,
         LayoutPackedB = 3,
+        LayoutUnused = 4,
         LayoutMAX
     };
 
+    enum {
+        UseMatrixA = 0,
+        UseMatrixB = 1,
+        UseAccumulator = 2,
+        UseMAX
+    };
+
 protected:
-    _SPIRV_DEF_DEC6(Id, ElemType, Rows, Columns, Layout, Scope)
+    _SPIRV_DEF_DEC3_OVERRIDE(Id, ElemType, Args)
     void validate() const override {
         SPIRVEntry::validate();
         ElemType->validate();
         IGC_ASSERT_EXIT_MESSAGE(getRows()    <= 64, "Unsupported rows size.");
         IGC_ASSERT_EXIT_MESSAGE(getColumns() <= 64, "Unsupported columns size.");
         IGC_ASSERT_EXIT_MESSAGE(getLayout() < LayoutMAX, "Unsupported layout.");
+        IGC_ASSERT_EXIT_MESSAGE(getUse() < UseMAX, "Unsupported use parameter.");
     }
 
 private:
     SPIRVType *ElemType;
-    SPIRVId Rows;
-    SPIRVId Columns;
-    SPIRVId Layout;
-    SPIRVId Scope;
+    std::vector<SPIRVId> Args;
 };
 
 

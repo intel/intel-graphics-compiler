@@ -354,34 +354,58 @@ void SPIRVTypeForwardPointer::decode(std::istream& I) {
 }
 
 unsigned SPIRVTypeJointMatrixINTEL::getLayout() const {
-  return (unsigned)get<SPIRVConstant>(Layout)->getZExtIntValue();
+  return (unsigned)get<SPIRVConstant>(Args[2])->getZExtIntValue();
+}
+
+unsigned SPIRVTypeJointMatrixINTEL::getUse() const {
+  if (isUseParameterPresent())
+      return (unsigned)get<SPIRVConstant>(Args[4])->getZExtIntValue();
+  return 0;
 }
 
 unsigned SPIRVTypeJointMatrixINTEL::getRows() const {
-  return (unsigned)get<SPIRVConstant>(Rows)->getZExtIntValue();
+  return (unsigned)get<SPIRVConstant>(Args[0])->getZExtIntValue();
 }
 
 unsigned SPIRVTypeJointMatrixINTEL::getColumns() const {
-  return (unsigned)get<SPIRVConstant>(Columns)->getZExtIntValue();
+  return (unsigned)get<SPIRVConstant>(Args[1])->getZExtIntValue();
 }
 
 unsigned SPIRVTypeJointMatrixINTEL::getScope() const {
-  return (unsigned)get<SPIRVConstant>(Scope)->getZExtIntValue();
+  return (unsigned)get<SPIRVConstant>(Args[3])->getZExtIntValue();
+}
+
+bool SPIRVTypeJointMatrixINTEL::isUseParameterPresent() const {
+  return Args.size() > 4;
 }
 
 std::string SPIRVTypeJointMatrixINTEL::getMangledName() const {
     std::string name;
-    switch (getLayout()) {
-      case SPIRVTypeJointMatrixINTEL::LayoutPackedA:
-        name += "packedA_";
-        break;
-      case SPIRVTypeJointMatrixINTEL::LayoutPackedB:
-        name += "packedB_";
-        break;
-      case SPIRVTypeJointMatrixINTEL::LayoutRowMajor:
-      case SPIRVTypeJointMatrixINTEL::LayoutColumnMajor:
-        name += "acc_";
-        break;
+    if (isUseParameterPresent()) {
+      switch (getUse()) {
+        case SPIRVTypeJointMatrixINTEL::UseMatrixA:
+          name += "packedA_";
+          break;
+        case SPIRVTypeJointMatrixINTEL::UseMatrixB:
+          name += "packedB_";
+          break;
+        case SPIRVTypeJointMatrixINTEL::UseAccumulator:
+          name += "acc_";
+          break;
+      }
+    } else {
+      switch (getLayout()) {
+        case SPIRVTypeJointMatrixINTEL::LayoutPackedA:
+          name += "packedA_";
+          break;
+        case SPIRVTypeJointMatrixINTEL::LayoutPackedB:
+          name += "packedB_";
+          break;
+        case SPIRVTypeJointMatrixINTEL::LayoutRowMajor:
+        case SPIRVTypeJointMatrixINTEL::LayoutColumnMajor:
+          name += "acc_";
+          break;
+      }
     }
     name += std::to_string(getRows());
     name += "x";
