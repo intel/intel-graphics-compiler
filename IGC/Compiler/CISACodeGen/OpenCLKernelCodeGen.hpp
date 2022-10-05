@@ -81,8 +81,13 @@ namespace IGC
         // Return false: if the argument cannot be supported by ZEBinary
         bool CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition);
 
-        // Fill SOpenCLKernelInfo::m_zeUserAttribute
+        // Fill SOpenCLKernelInfo::m_zeUserAttribute for ZEBinary
+        // (PT pass: CreateKernelAttributeInfo)
         void FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle& funcInfoMD);
+
+        // Fill SOpenCLKernelInfo::m_zeKernelArgInfo for ZEBinary
+        // (PT pass: CreateKernelArgInfo)
+        void FillZEKernelArgInfo();
 
         // a helper function to get image type from kernelArg
         iOpenCL::IMAGE_MEMORY_OBJECT_TYPE getImageTypeFromKernelArg(const KernelArg& kernelArg);
@@ -135,6 +140,12 @@ namespace IGC
     private:
         WorkGroupWalkOrderMD getWorkGroupWalkOrder();
         void tryHWGenerateLocalIDs();
+        // helper functions for collecting kernel argument info
+        // Format the strings the way the OpenCL runtime expects them
+        std::string getKernelArgTypeName(const FunctionMetaData& funcMD, uint argIndex) const;
+        std::string getKernelArgTypeQualifier(const FunctionMetaData& funcMD, uint argIndex) const;
+        std::string getKernelArgAddressQualifier(const FunctionMetaData& funcMD, uint argIndex) const;
+        std::string getKernelArgAccessQualifier(const FunctionMetaData& funcMD, uint argIndex) const;
     };
 
 }

@@ -78,6 +78,7 @@ void ZEBinaryBuilder::createKernel(
     addKernelSymbols(textID, annotations);
     addKernelRelocations(textID, annotations);
 
+    // zeinfo kernels
     zeInfoKernel& zeKernel = mZEInfoBuilder.createKernel(annotations.m_kernelName);
     addKernelExecEnv(annotations, zeKernel);
     addUserAttributes(annotations, zeKernel);
@@ -94,6 +95,11 @@ void ZEBinaryBuilder::createKernel(
     }
     addPayloadArgsAndBTI(annotations, zeKernel);
     addMemoryBuffer(annotations, zeKernel);
+
+    // zeinfo kernels_misc_info
+    zeInfoKernelMiscInfo& kernelMisc = mZEInfoBuilder.createKernelMiscInfo(annotations.m_kernelName);
+    addKernelArgInfo(annotations, kernelMisc);
+
     addGTPinInfo(annotations);
     addFunctionAttrs(annotations);
     for (auto &&[name, visa] : visaasm)
@@ -581,6 +587,14 @@ void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize,
     mZEInfoBuilder.addPerThreadPayloadArgument(
         zeinfoKernel.per_thread_payload_arguments,
         PreDefinedAttrGetter::ArgType::local_id, 0, total_size);
+}
+
+void ZEBinaryBuilder::addKernelArgInfo(
+    const IGC::SOpenCLKernelInfo& annotations,
+    zeInfoKernelMiscInfo& zeinfoKernelMisc)
+{
+    // copy kernel args info into zeinfoKernelMisc
+    zeinfoKernelMisc.args_info = annotations.m_zeKernelArgsInfo;
 }
 
 // Calculate correct (pure) size of ELF binary, because debugDataSize taken from pOutput->m_debugDataVISASize

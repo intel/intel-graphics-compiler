@@ -36,6 +36,8 @@ LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoPerThreadPayloadArgument)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoBindingTableIndex)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoPerThreadMemoryBuffer)
 LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoHostAccess)
+LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoKernelMiscInfo)
+LLVM_YAML_IS_SEQUENCE_VECTOR(zebin::zeInfoArgInfo)
 namespace llvm {
     namespace yaml{
         template<>
@@ -85,6 +87,14 @@ namespace llvm {
         template<>
         struct MappingTraits<zebin::zeInfoHostAccess> {
             static void mapping(IO& io, zebin::zeInfoHostAccess& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoKernelMiscInfo> {
+            static void mapping(IO& io, zebin::zeInfoKernelMiscInfo& info);
+        };
+        template<>
+        struct MappingTraits<zebin::zeInfoArgInfo> {
+            static void mapping(IO& io, zebin::zeInfoArgInfo& info);
         };
     }
 }

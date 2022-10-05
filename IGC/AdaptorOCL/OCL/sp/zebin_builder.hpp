@@ -185,6 +185,11 @@ private:
     /// Add function attributes for external functions.
     void addFunctionAttrs(const IGC::SOpenCLKernelInfo& annotations);
 
+    /// Add kernel arg info
+    void addKernelArgInfo(
+        const IGC::SOpenCLKernelInfo& annotations,
+        zebin::zeInfoKernelMiscInfo& zeinfoKernelMisc);
+
     /// ------------ Verifier sub-functions ------------
     bool hasSystemKernel(
         const IGC::OpenCLProgramContext* clContext,

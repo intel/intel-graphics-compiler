@@ -149,6 +149,19 @@ struct zeInfoHostAccess
     zeinfo_str_t device_name;
     zeinfo_str_t host_name;
 };
+struct zeInfoArgInfo
+{
+    bool operator==(const zeInfoArgInfo& other) const
+    {
+        return index == other.index && name == other.name && address_qualifier == other.address_qualifier && access_qualifier == other.access_qualifier && type_name == other.type_name && type_qualifiers == other.type_qualifiers;
+    }
+    zeinfo_int32_t index = 0;
+    zeinfo_str_t name;
+    zeinfo_str_t address_qualifier;
+    zeinfo_str_t access_qualifier;
+    zeinfo_str_t type_name;
+    zeinfo_str_t type_qualifiers;
+};
 typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
 typedef std::vector<zeInfoPerThreadPayloadArgument> PerThreadPayloadArgumentsTy;
 typedef std::vector<zeInfoBindingTableIndex> BindingTableIndicesTy;
@@ -178,22 +191,34 @@ struct zeInfoFunction
     zeinfo_str_t name;
     zeInfoExecutionEnv execution_env;
 };
+typedef std::vector<zeInfoArgInfo> ArgsInfoTy;
+struct zeInfoKernelMiscInfo
+{
+    bool operator==(const zeInfoKernelMiscInfo& other) const
+    {
+        return name == other.name && args_info == other.args_info;
+    }
+    zeinfo_str_t name;
+    ArgsInfoTy args_info;
+};
 typedef std::vector<zeInfoKernel> KernelsTy;
 typedef std::vector<zeInfoFunction> FunctionsTy;
 typedef std::vector<zeInfoHostAccess> HostAccessesTy;
+typedef std::vector<zeInfoKernelMiscInfo> KernelsMiscInfoTy;
 struct zeInfoContainer
 {
     bool operator==(const zeInfoContainer& other) const
     {
-        return version == other.version && kernels == other.kernels && functions == other.functions && global_host_access_table == other.global_host_access_table;
+        return version == other.version && kernels == other.kernels && functions == other.functions && global_host_access_table == other.global_host_access_table && kernels_misc_info == other.kernels_misc_info;
     }
     zeinfo_str_t version;
     KernelsTy kernels;
     FunctionsTy functions;
     HostAccessesTy global_host_access_table;
+    KernelsMiscInfoTy kernels_misc_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.18"; }
+    static zeinfo_str_t getVersionNumber() { return "1.19"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,

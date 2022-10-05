@@ -306,88 +306,95 @@ namespace IGC
         }
     }
 
-    void COpenCLKernel::CreateKernelArgInfo()
+    std::string COpenCLKernel::getKernelArgTypeName(const FunctionMetaData& funcMD, uint argIndex) const
     {
-        FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
+        // The type name is expected to also have the type size, appended after a ";"
+        std::string result = funcMD.m_OpenCLArgTypes[argIndex] + ";";
 
-        uint count = 0;
-        if (m_Context->getModuleMetaData()->FuncMD.find(entry) != m_Context->getModuleMetaData()->FuncMD.end())
+        // Unfortunately, unlike SPIR, legacy OCL uses an ABI that has byval pointers.
+        // So, if the parameter is a byval pointer, look at the contained type
+        Function::arg_iterator argumentIter = entry->arg_begin();
+        std::advance(argumentIter, argIndex);
+
+        Type* argType = entry->getFunctionType()->getParamType(argIndex);
+        if (argumentIter->hasByValAttr())
         {
-            FunctionMetaData* funcMD = &m_Context->getModuleMetaData()->FuncMD[entry];
-            count = funcMD->m_OpenCLArgAccessQualifiers.size();
+            argType = argType->getContainedType(0);
         }
 
+        result += utostr(m_DL->getTypeAllocSize(argType));
+        return result;
+    }
+
+    std::string COpenCLKernel::getKernelArgTypeQualifier(const FunctionMetaData& funcMD, uint argIndex) const
+    {
+        // If there are no type qualifiers, "NONE" is expected
+        std::string result = funcMD.m_OpenCLArgTypeQualifiers[argIndex];
+        if (result.empty())
+        {
+            result = "NONE";
+        }
+        return result;
+    }
+
+    std::string COpenCLKernel::getKernelArgAddressQualifier(const FunctionMetaData& funcMD, uint argIndex) const
+    {
+        // The address space is expected to have a __ prefix
+        switch (funcMD.m_OpenCLArgAddressSpaces[argIndex])
+        {
+        case ADDRESS_SPACE_CONSTANT:
+            return "__constant";
+        case ADDRESS_SPACE_GLOBAL:
+            return "__global";
+        case ADDRESS_SPACE_LOCAL:
+            return "__local";
+        case ADDRESS_SPACE_PRIVATE:
+            return "__private";
+        default:
+            m_Context->EmitError("Generic pointers are not allowed as kernel argument storage class!", nullptr);
+            IGC_ASSERT_MESSAGE(0, "Unexpected address space");
+            break;
+        }
+        return "";
+    }
+
+    std::string COpenCLKernel::getKernelArgAccessQualifier(const FunctionMetaData& funcMD, uint argIndex) const
+    {
+        // The access qualifier is expected to have a "__" prefix, or an upper-case "NONE" if there is no qualifier
+        std::string result = funcMD.m_OpenCLArgAccessQualifiers[argIndex];
+        if (result == "none" || result == "")
+        {
+            result = "NONE";
+        }
+        else if (result[0] != '_')
+        {
+            result = "__" + result;
+        }
+        return result;
+    }
+
+    void COpenCLKernel::CreateKernelArgInfo()
+    {
+        auto funcMDIt = m_Context->getModuleMetaData()->FuncMD.find(entry);
+        if (funcMDIt == m_Context->getModuleMetaData()->FuncMD.end())
+            return;
+
+        FunctionMetaData& funcMD = (*funcMDIt).second;
+        uint count = funcMD.m_OpenCLArgAccessQualifiers.size();
         for (uint i = 0; i < count; ++i)
         {
             auto kernelArgInfo = std::make_unique<iOpenCL::KernelArgumentInfoAnnotation>();
-            FunctionMetaData* funcMD = &m_Context->getModuleMetaData()->FuncMD[entry];
 
-            // Format the strings the way the OpenCL runtime expects them
-
-            // The access qualifier is expected to have a "__" prefix,
-            // or an upper-case "NONE" if there is no qualifier
-            kernelArgInfo->AccessQualifier = funcMD->m_OpenCLArgAccessQualifiers[i];
-            if (kernelArgInfo->AccessQualifier == "none" || kernelArgInfo->AccessQualifier == "")
-            {
-                kernelArgInfo->AccessQualifier = "NONE";
-            }
-            else if (kernelArgInfo->AccessQualifier[0] != '_')
-            {
-                kernelArgInfo->AccessQualifier = "__" + kernelArgInfo->AccessQualifier;
-            }
-
-            // The address space is expected to have a __ prefix
-            switch (funcMD->m_OpenCLArgAddressSpaces[i])
-            {
-            case ADDRESS_SPACE_CONSTANT:
-                kernelArgInfo->AddressQualifier = "__constant";
-                break;
-            case ADDRESS_SPACE_GLOBAL:
-                kernelArgInfo->AddressQualifier = "__global";
-                break;
-            case ADDRESS_SPACE_LOCAL:
-                kernelArgInfo->AddressQualifier = "__local";
-                break;
-            case ADDRESS_SPACE_PRIVATE:
-                kernelArgInfo->AddressQualifier = "__private";
-                break;
-            default:
-                m_Context->EmitError("Generic pointers are not allowed as kernel argument storage class!", nullptr);
-                IGC_ASSERT_MESSAGE(0, "Unexpected address space");
-                break;
-            }
-
+            kernelArgInfo->AccessQualifier = getKernelArgAccessQualifier(funcMD, i);
+            kernelArgInfo->AddressQualifier = getKernelArgAddressQualifier(funcMD, i);
             // ArgNames is not guaranteed to be present if -cl-kernel-arg-info
             // is not passed in.
-            if (funcMD->m_OpenCLArgNames.size() > i)
+            if (funcMD.m_OpenCLArgNames.size() > i)
             {
-                kernelArgInfo->ArgumentName = funcMD->m_OpenCLArgNames[i];
+                kernelArgInfo->ArgumentName = funcMD.m_OpenCLArgNames[i];
             }
-
-            // The type name is expected to also have the type size, appended after a ";"
-            kernelArgInfo->TypeName = funcMD->m_OpenCLArgTypes[i] + ";";
-
-            // Unfortunately, unlike SPIR, legacy OCL uses an ABI that has byval pointers.
-            // So, if the parameter is a byval pointer, look at the contained type
-            {
-                Function::arg_iterator argumentIter = entry->arg_begin();
-                std::advance(argumentIter, i);
-
-                Type* argType = entry->getFunctionType()->getParamType(i);
-                if (argumentIter->hasByValAttr())
-                {
-                    argType = argType->getContainedType(0);
-                }
-
-                kernelArgInfo->TypeName += utostr(m_DL->getTypeAllocSize(argType));
-            }
-
-            // If there are no type qualifiers, "NONE" is expected
-            kernelArgInfo->TypeQualifier = funcMD->m_OpenCLArgTypeQualifiers[i];
-            if (kernelArgInfo->TypeQualifier == "")
-            {
-                kernelArgInfo->TypeQualifier = "NONE";
-            }
+            kernelArgInfo->TypeName = getKernelArgTypeName(funcMD, i);
+            kernelArgInfo->TypeQualifier = getKernelArgTypeQualifier(funcMD, i);
 
             m_kernelInfo.m_kernelArgInfo.push_back(std::move(kernelArgInfo));
         }
@@ -2149,9 +2156,11 @@ namespace IGC
         IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary) || !hasInlineSampler,
             "ZEBin: Inline sampler unsupported");
 
-        // Handle kernel reflection
-        CreateKernelArgInfo();
-        CreateKernelAttributeInfo();
+        if (!IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+            // Handle kernel reflection
+            CreateKernelArgInfo();
+            CreateKernelAttributeInfo();
+        }
 
         // Create annotations for printf string.
         CreatePrintfStringAnnotations();
@@ -2226,6 +2235,28 @@ namespace IGC
             return 0;
         }
         return funcMD->second.localSize;
+    }
+
+    void COpenCLKernel::FillZEKernelArgInfo()
+    {
+        auto funcMDIt = m_Context->getModuleMetaData()->FuncMD.find(entry);
+        if (funcMDIt == m_Context->getModuleMetaData()->FuncMD.end())
+            return;
+
+        FunctionMetaData& funcMD = (*funcMDIt).second;
+        uint count = funcMD.m_OpenCLArgAccessQualifiers.size();
+        for (uint i = 0; i < count; ++i)
+        {
+            zebin::zeInfoArgInfo& argInfo = m_kernelInfo.m_zeKernelArgsInfo.emplace_back();
+            argInfo.index = i;
+            // argument name is not guaranteed to be present if -cl-kernel-arg-info is not passed in.
+            if (funcMD.m_OpenCLArgNames.size() > i)
+                argInfo.name = funcMD.m_OpenCLArgNames[i];
+            argInfo.address_qualifier = getKernelArgAddressQualifier(funcMD, i);
+            argInfo.access_qualifier = getKernelArgAccessQualifier(funcMD, i);
+            argInfo.type_name = getKernelArgTypeName(funcMD, i);
+            argInfo.type_qualifiers = getKernelArgTypeQualifier(funcMD, i);
+        }
     }
 
     void COpenCLKernel::FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle& funcInfoMD)
@@ -2379,7 +2410,10 @@ namespace IGC
         m_kernelInfo.m_executionEnvironment.UseBindlessMode = m_Context->m_InternalOptions.UseBindlessMode;
         m_kernelInfo.m_executionEnvironment.HasStackCalls = HasStackCalls();
 
-        FillZEUserAttributes(funcInfoMD);
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
+            FillZEKernelArgInfo();
+            FillZEUserAttributes(funcInfoMD);
+        }
     }
 
     void COpenCLKernel::RecomputeBTLayout()

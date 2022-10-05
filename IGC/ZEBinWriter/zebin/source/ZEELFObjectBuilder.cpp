@@ -1029,6 +1029,14 @@ zeInfoFunction& ZEInfoBuilder::createFunction(const std::string& name)
     return f;
 }
 
+zeInfoKernelMiscInfo& ZEInfoBuilder::createKernelMiscInfo(const std::string& name)
+{
+    mContainer.kernels_misc_info.emplace_back();
+    zeInfoKernelMiscInfo& m = mContainer.kernels_misc_info.back();
+    m.name = name;
+    return m;
+}
+
 bool ZEInfoBuilder::empty() const
 {
     return mContainer.kernels.empty();

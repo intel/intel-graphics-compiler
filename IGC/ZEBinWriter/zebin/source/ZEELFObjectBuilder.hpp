@@ -410,6 +410,9 @@ public:
     // createFunction - create a zeInfoFunction and add it into zeInfoContainer
     zeInfoFunction& createFunction(const std::string& name);
 
+    // createKernelMiscInfo - create a zeKernelMiscInfo and add it into zeInfoContainer
+    zeInfoKernelMiscInfo& createKernelMiscInfo(const std::string& name);
+
     // addGlobalHostAccessSymbol - create a zeInfo global_host_access_table section
     // which is used by Runtime to identify a global variable based on host name
     void addGlobalHostAccessSymbol(const std::string& device_name, const std::string& host_name);

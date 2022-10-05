@@ -25,6 +25,7 @@ void MappingTraits<zeInfoContainer>::mapping(IO& io, zeInfoContainer& info)
     io.mapRequired("kernels", info.kernels);
     io.mapOptional("functions", info.functions, FunctionsTy());
     io.mapOptional("global_host_access_table", info.global_host_access_table, HostAccessesTy());
+    io.mapOptional("kernels_misc_info", info.kernels_misc_info, KernelsMiscInfoTy());
 }
 void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
 {
@@ -127,4 +128,18 @@ void MappingTraits<zeInfoHostAccess>::mapping(IO& io, zeInfoHostAccess& info)
 {
     io.mapRequired("device_name", info.device_name);
     io.mapRequired("host_name", info.host_name);
+}
+void MappingTraits<zeInfoKernelMiscInfo>::mapping(IO& io, zeInfoKernelMiscInfo& info)
+{
+    io.mapRequired("name", info.name);
+    io.mapOptional("args_info", info.args_info, ArgsInfoTy());
+}
+void MappingTraits<zeInfoArgInfo>::mapping(IO& io, zeInfoArgInfo& info)
+{
+    io.mapRequired("index", info.index);
+    io.mapOptional("name", info.name, std::string());
+    io.mapRequired("address_qualifier", info.address_qualifier);
+    io.mapRequired("access_qualifier", info.access_qualifier);
+    io.mapRequired("type_name", info.type_name);
+    io.mapRequired("type_qualifiers", info.type_qualifiers);
 }

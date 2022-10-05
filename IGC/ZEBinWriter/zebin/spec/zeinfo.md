@@ -38,6 +38,7 @@ All **literals** have one of the following types:
 | kernels | KernelsTy | Required | vector |
 | functions | FunctionsTy | Optional | vector |
 | global_host_access_table | HostAccessesTy | Optional | vector |
+| kernels_misc_info | KernelsMiscInfoTy | Optional | vector. Other miscellaneous kernel information which is required by certain API requesters, but is not necessary for kernel execution. |
 <!--- Container --->
 
 # Kernel Attributes
@@ -369,4 +370,26 @@ This section defines mapping between device and host name of a global variable.
 | device_name | str | Mangled global variable name derived from Name parameter LinkageAttributes. |
 | host_name | str | User-specified global variable name derived from HostAccesINTEL decoration. Used to access global variable from host API calls. |
 <!--- HostAccess HostAccesses --->
+
+# Kernel Misc Attributes
+This section defines the supported attribute for kernel_misc_info.
+
+| Attribute | Type | Required/Optional | Description |
+| ----- | ----- | ------ | ----- |
+| name | str | Required | kernel name |
+| args_info | ArgsInfoTy | Optional | vector. kernel arguments info used by OpenCL API: clGetKernelArgInfo. |
+<!--- KernelMiscInfo KernelsMiscInfo --->
+
+## Kernel Argument Info Attributes
+This section defines the supported attribute for args_info.
+
+| Attribute | Type | Required/Optional | Default | Description |
+| ----- | ----- | ------ | ----- |
+| index | int32 | Required | | argument index |
+| name | str | Optional | | argument name |
+| address_qualifier | str | Required | | |
+| access_qualifier | str | Required | | |
+| type_name | str | Required | | |
+| type_qualifiers | str | Required | | |
+<!--- ArgInfo ArgsInfo --->
 
