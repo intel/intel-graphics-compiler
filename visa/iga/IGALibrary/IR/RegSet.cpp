@@ -241,6 +241,8 @@ bool RegSet::addSourceInputs(const Instruction &i)
 
 bool RegSet::addSendOperand(const Instruction &i, int opIx)
 {
+    IGA_ASSERT(i.getOpSpec().isAnySendFormat(), "Expected a send format");
+
     bool changed = false;
     const Operand &op = opIx < 0 ? i.getDestination() : i.getSource(opIx);
     if (op.getDirRegName() != RegName::GRF_R) {

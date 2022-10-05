@@ -89,9 +89,7 @@ const char *iga_status_to_string(iga_status_t st) {
 }
 
 // suppress -Wmissing-declarations
-namespace iga {
-iga::Platform ToPlatform(iga_gen_t gen);
-}
+namespace iga {iga::Platform ToPlatform(iga_gen_t gen);}
 
 // Conversion to an internal platform
 // we could just re-interpret the bits but this checks for garbage
