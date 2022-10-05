@@ -89,25 +89,28 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             continue;
         }
 
+        // Handle external symbols without initializers.
         if (!globalVar->hasInitializer())
         {
-            Value* inst = nullptr;
-            for (auto u : globalVar->users())
+            // Ignore const samplers, in case of const samplers offset is used
+            // to encode sampler ID.
+            if (globalVar->getMetadata("ConstSampler"))
             {
-                if (dyn_cast_or_null<Instruction>(u))
-                {
-                    inst = u;
-                }
+                continue;
             }
-            std::string ErrorMsg = "Global constant without initializer!";
-            Ctx->EmitError(ErrorMsg.c_str(), inst);
+            // Include the variable in 'inlineProgramScopeOffsets', otherwise
+            // code gen will not emit relocation. In case of S_UNDEF/extenal
+            // variable offset is not expected to be used. Using -1 as a
+            // placeholder so the unexpected usage will fail visibly when
+            // trying to emit variable with 0xffffffff offset
+            inlineProgramScopeOffsets[globalVar] = -1;
             continue;
         }
 
         // The only way to get a null initializer is via an external variable.
-        // Linking has already occurred; everything should be resolved.
+        // Linking has already occurred; everything should be resolved or
+        // handled before this point.
         Constant* initializer = globalVar->getInitializer();
-        IGC_ASSERT_MESSAGE(initializer, "Constant must be initialized");
         if (!initializer)
         {
             continue;
@@ -136,6 +139,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
                 hasInlineGlobalBuffer = true;
             }
             inlineProgramScopeBuffer = &m_pModuleMd->inlineGlobalBuffers.back().Buffer;
+
         }
         else
         {
