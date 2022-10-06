@@ -84,6 +84,14 @@ void LowerInvokeSIMD::visitCallInst(CallInst &CI) {
   CallInst *NewCall = nullptr;
   std::error_code EC;
   if (Function *Callee = dyn_cast<Function>(CI.getArgOperand(0))) {
+
+    if (!Callee->isDeclaration()) {
+      OCLCtx->EmitError("invoke_simd has SPMD function as invoke target."
+                        "Only ESIMD functions can be invoked by this function.",
+                        &CI);
+      return;
+    }
+
     Function *NewFunc = nullptr;
     if (m_OldFuncToNewFuncMap.find(Callee) == m_OldFuncToNewFuncMap.end()) {
       std::string oldName = std::string(Callee->getName());
