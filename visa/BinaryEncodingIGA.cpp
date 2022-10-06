@@ -477,7 +477,7 @@ iga::SFID BinaryEncodingIGA::getSFID(const G4_INST *inst)
     case vISA::SFID::SAMPLER:   sfid = iga::SFID::SMPL; break;
     case vISA::SFID::GATEWAY:   sfid = iga::SFID::GTWY; break;
     case vISA::SFID::DP_DC2:    sfid = iga::SFID::DC2; break;
-    case vISA::SFID::DP_RC:  sfid = iga::SFID::RC; break;
+    case vISA::SFID::DP_RC:     sfid = iga::SFID::RC; break;
     case vISA::SFID::URB:       sfid = iga::SFID::URB; break;
     case vISA::SFID::SPAWNER:   sfid = iga::SFID::TS; break;
     case vISA::SFID::VME:       sfid = iga::SFID::VME; break;
