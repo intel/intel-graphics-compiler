@@ -306,6 +306,58 @@ namespace IGC
         }
     }
 
+    void COpenCLKernel::CreateZEInlineSamplerAnnotations()
+    {
+        IGC_ASSERT(IGC_IS_FLAG_ENABLED(EnableZEBinary));
+
+        auto getZESamplerAddrMode = [](int addrMode) -> zebin::PreDefinedAttrGetter::ArgSamplerAddrMode
+        {
+            switch (addrMode) {
+            case LEGACY_CLK_ADDRESS_NONE:
+                return zebin::PreDefinedAttrGetter::ArgSamplerAddrMode::none;
+            case LEGACY_CLK_ADDRESS_CLAMP:
+                return zebin::PreDefinedAttrGetter::ArgSamplerAddrMode::clamp_border;
+            case LEGACY_CLK_ADDRESS_CLAMP_TO_EDGE:
+                return zebin::PreDefinedAttrGetter::ArgSamplerAddrMode::clamp_edge;
+            case LEGACY_CLK_ADDRESS_REPEAT:
+                return zebin::PreDefinedAttrGetter::ArgSamplerAddrMode::repeat;
+            case LEGACY_CLK_ADDRESS_MIRRORED_REPEAT:
+                return zebin::PreDefinedAttrGetter::ArgSamplerAddrMode::mirror;
+            default:
+                IGC_ASSERT_MESSAGE(false, "Unsupported sampler addressing mode");
+                return zebin::PreDefinedAttrGetter::ArgSamplerAddrMode::none;
+            }
+        };
+
+        auto getZESamplerFilterMode = [](int filterMode) -> zebin::PreDefinedAttrGetter::ArgSamplerFilterMode
+        {
+            switch (filterMode) {
+            case iOpenCL::SAMPLER_MAPFILTER_POINT:
+                return zebin::PreDefinedAttrGetter::ArgSamplerFilterMode::nearest;
+            case iOpenCL::SAMPLER_MAPFILTER_LINEAR:
+                return zebin::PreDefinedAttrGetter::ArgSamplerFilterMode::linear;
+            default:
+                IGC_ASSERT_MESSAGE(false, "Unsupported sampler filter mode");
+                return zebin::PreDefinedAttrGetter::ArgSamplerFilterMode::nearest;
+            }
+        };
+
+        auto funcMDIter = m_Context->getModuleMetaData()->FuncMD.find(entry);
+        if (funcMDIter != m_Context->getModuleMetaData()->FuncMD.end())
+        {
+            const ResourceAllocMD& resAllocMD = funcMDIter->second.resAllocMD;
+
+            for (const auto &inlineSamplerMD : resAllocMD.inlineSamplersMD)
+            {
+                auto addrMode = getZESamplerAddrMode(inlineSamplerMD.addressMode);
+                auto filterMode = getZESamplerFilterMode(inlineSamplerMD.MagFilterType);
+                bool normalized = inlineSamplerMD.NormalizedCoords != 0 ? true : false;
+                zebin::ZEInfoBuilder::addInlineSampler(m_kernelInfo.m_zeInlineSamplers,
+                    inlineSamplerMD.index, addrMode, filterMode, normalized);
+            }
+        }
+    }
+
     std::string COpenCLKernel::getKernelArgTypeName(const FunctionMetaData& funcMD, uint argIndex) const
     {
         // The type name is expected to also have the type size, appended after a ";"
@@ -2150,11 +2202,13 @@ namespace IGC
         m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
 
         CreateInlineSamplerAnnotations();
-        // Currently we can't support inline sampler in zebin
-        // assertion tests if we force to EnableZEBinary but encounter inline sampler
-        bool hasInlineSampler = m_kernelInfo.m_HasInlineVmeSamplers || !m_kernelInfo.m_samplerInput.empty();
-        IGC_ASSERT_MESSAGE(!IGC_IS_FLAG_ENABLED(EnableZEBinary) || !hasInlineSampler,
-            "ZEBin: Inline sampler unsupported");
+        if (IGC_IS_FLAG_ENABLED(EnableZEBinary))
+        {
+            CreateZEInlineSamplerAnnotations();
+            // Currently we don't support inline vme sampler in zebin.
+            // assertion tests if we force to EnableZEBinary but encounter inline vme sampler.
+            IGC_ASSERT_MESSAGE(!m_kernelInfo.m_HasInlineVmeSamplers, "ZEBin: Inline vme sampler unsupported");
+        }
 
         if (!IGC_IS_FLAG_ENABLED(EnableZEBinary)) {
             // Handle kernel reflection

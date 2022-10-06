@@ -172,6 +172,12 @@ private:
         const IGC::SOpenCLKernelInfo& annotations,
         zebin::zeInfoKernel& zeinfoKernel);
 
+    /// add inline samplers in IGC::SOpenCLKernelInfo created from
+    /// COpenCLKernel::CreateZEInlineSamplerPayloadArguments()
+    void addInlineSamplers(
+        const IGC::SOpenCLKernelInfo& annotations,
+        zebin::zeInfoKernel& zeinfoKernel);
+
     /// add Memory buffer information
     void addMemoryBuffer(
         const IGC::SOpenCLKernelInfo& annotations,

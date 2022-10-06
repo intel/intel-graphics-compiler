@@ -94,6 +94,7 @@ void ZEBinaryBuilder::createKernel(
             zeKernel);
     }
     addPayloadArgsAndBTI(annotations, zeKernel);
+    addInlineSamplers(annotations, zeKernel);
     addMemoryBuffer(annotations, zeKernel);
 
     // zeinfo kernels_misc_info
@@ -300,6 +301,17 @@ void ZEBinaryBuilder::addPayloadArgsAndBTI(
         zeinfoKernel.binding_table_indices.end(),
         annotations.m_zeBTIArgs.begin(),
         annotations.m_zeBTIArgs.end());
+}
+
+void ZEBinaryBuilder::addInlineSamplers(
+    const SOpenCLKernelInfo& annotations,
+    zeInfoKernel& zeinfoKernel)
+{
+    // copy the inline samplers into zeinfoKernel
+    zeinfoKernel.inline_samplers.insert(
+        zeinfoKernel.inline_samplers.end(),
+        annotations.m_zeInlineSamplers.begin(),
+        annotations.m_zeInlineSamplers.end());
 }
 
 void ZEBinaryBuilder::addMemoryBuffer(

@@ -51,6 +51,7 @@ All **literals** have one of the following types:
 | per_thread_payload_arguments | PerThreadPayloadArgumentsTy | Optional | vector |
 | binding_table_indices | BindingTableIndicesTy | Optional | vector |
 | per_thread_memory_buffers | PerThreadMemoryBuffersTy | Optional | vector |
+| inline_samplers | InlineSamplersTy | Optional | vector |
 | experimental_properties | ExperimentalProperties | Optional | A set of experimental attributes. |
 | debug_env | DebugEnv | Optional | |
 <!--- Kernel Kernels --->
@@ -339,6 +340,38 @@ Supported <memory_usage> of Per Thread Memory Buffer.
 | spill_fill_space | Memory space for register spill/fill and caller/callee saved for stack call |
 | single_space | All compiler required memory space (privates, arguments passing, spill/fill, call/callee saved) are allocated in one single buffer |
 <!--- <memory_usage> MemBufferUsage -->
+
+## Inline samplers
+This section defines inline_samplers of a kernel or an external function.
+
+| Attribute | Type | Required/Optional | Default | Description |
+| ------ | ------ | ------ | ------ | ------ |
+| sampler_index | int32 | Required | | sampler index |
+| addrmode | <sampler_desc_addrmode> | Required | | addressing mode |
+| filtermode | <sampler_desc_filtermode> | Required | | filter mode |
+| normalized | bool | Optional | false | normalized coordinates, present when inline sampler is normalized |
+<!--- InlineSampler InlineSamplers -->
+
+### Supported sampler addressing modes:
+Supported <sampler_desc_addrmode> of inline sampler.
+
+| Access Type | Description |
+| ----- | ----- |
+| none | CLK_ADDRESS_NONE |
+| clamp_border | CLK_ADDRESS_CLAMP |
+| clamp_edge | CLK_ADDRESS_CLAMP_TO_EDGE |
+| repeat | CLK_ADDRESS_REPEAT |
+| mirror | CLK_ADDRESS_MIRRORED_REPEAT |
+<!--- <sampler_desc_addrmode> ArgSamplerAddrMode -->
+
+### Supported sampler filter modes:
+Supported <sampler_desc_filtermode> of inline sampler.
+
+| Access Type | Description |
+| ----- | ----- |
+| nearest | CLK_FILTER_NEAREST |
+| linear | CLK_FILTER_LINEAR |
+<!--- <sampler_desc_filtermode> ArgSamplerFilterMode -->
 
 ## Experimental Properties
 This section defines experimental_properties of a kernel/function.

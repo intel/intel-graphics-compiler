@@ -1111,6 +1111,22 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentSampler(
     return arg;
 }
 
+// addInlineSampler - add inline sampler into given inline_sampler_list.
+zeInfoInlineSampler& ZEInfoBuilder::addInlineSampler(
+    InlineSamplersTy& inline_sampler_list,
+    int32_t sampler_index,
+    PreDefinedAttrGetter::ArgSamplerAddrMode addr_mode,
+    PreDefinedAttrGetter::ArgSamplerFilterMode filter_mode,
+    bool normalized)
+{
+    zeInfoInlineSampler& sampler = inline_sampler_list.emplace_back();
+    sampler.sampler_index = sampler_index;
+    sampler.addrmode = PreDefinedAttrGetter::get(addr_mode);
+    sampler.filtermode = PreDefinedAttrGetter::get(filter_mode);
+    sampler.normalized = normalized;
+    return sampler;
+}
+
 // addPayloadArgumentByValue - add explicit kernel argument with pass by
 // value type into given arg_list
 zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(

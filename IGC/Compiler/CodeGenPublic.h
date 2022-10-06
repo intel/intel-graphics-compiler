@@ -855,6 +855,8 @@ namespace IGC
         zebin::zeInfoUserAttribute m_zeUserAttributes;
         // Kernel args info
         zebin::ArgsInfoTy m_zeKernelArgsInfo;
+        // Inline samplers
+        zebin::InlineSamplersTy m_zeInlineSamplers;
 
         // Analysis result of if there are non-kernel-argument ld/st in the kernel
         // If all false, we can avoid expensive memory setting of each kernel during runtime

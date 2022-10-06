@@ -97,6 +97,7 @@ namespace IGC
 
         // Creates annotations for inline sampler_t objects
         void CreateInlineSamplerAnnotations();
+        void CreateZEInlineSamplerAnnotations();
 
         // Creates annotations for kernel argument information (kernel reflection)
         void CreateKernelArgInfo();

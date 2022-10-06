@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.19
+Version 1.20
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.20**: Add inline samplers to kernel.
 - **Version 1.19**: Add a top layer attribute kernel_misc_info with arg_info attribute.
 - **Version 1.18**: Add user_attributes to kernels.
 - **Version 1.17**: Add buffer_address to payload argument type.

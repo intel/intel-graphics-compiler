@@ -463,6 +463,14 @@ public:
         PreDefinedAttrGetter::ArgAccessType access_type,
         PreDefinedAttrGetter::ArgSamplerType sampler_type);
 
+    // addInlineSampler - add inline sampler into given inline_sampler_list.
+    static zeInfoInlineSampler& addInlineSampler(
+        InlineSamplersTy& inline_sampler_list,
+        int32_t sampler_index,
+        PreDefinedAttrGetter::ArgSamplerAddrMode addr_mode,
+        PreDefinedAttrGetter::ArgSamplerFilterMode filter_mode,
+        bool normalized);
+
     // addPayloadArgumentImplicit - add non-user argument (implicit argument)
     // into given arg_list. The type must be local_size, group_size,
     // global_id_offset or private_base_stateless

@@ -121,6 +121,17 @@ struct zeInfoPerThreadMemoryBuffer
     zeinfo_int32_t slot = 0;
     zeinfo_bool_t is_simt_thread = false;
 };
+struct zeInfoInlineSampler
+{
+    bool operator==(const zeInfoInlineSampler& other) const
+    {
+        return sampler_index == other.sampler_index && addrmode == other.addrmode && filtermode == other.filtermode && normalized == other.normalized;
+    }
+    zeinfo_int32_t sampler_index = 0;
+    zeinfo_str_t addrmode;
+    zeinfo_str_t filtermode;
+    zeinfo_bool_t normalized = false;
+};
 struct zeInfoExperimentalProperties
 {
     bool operator==(const zeInfoExperimentalProperties& other) const
@@ -166,11 +177,12 @@ typedef std::vector<zeInfoPayloadArgument> PayloadArgumentsTy;
 typedef std::vector<zeInfoPerThreadPayloadArgument> PerThreadPayloadArgumentsTy;
 typedef std::vector<zeInfoBindingTableIndex> BindingTableIndicesTy;
 typedef std::vector<zeInfoPerThreadMemoryBuffer> PerThreadMemoryBuffersTy;
+typedef std::vector<zeInfoInlineSampler> InlineSamplersTy;
 struct zeInfoKernel
 {
     bool operator==(const zeInfoKernel& other) const
     {
-        return name == other.name && user_attributes == other.user_attributes && execution_env == other.execution_env && payload_arguments == other.payload_arguments && per_thread_payload_arguments == other.per_thread_payload_arguments && binding_table_indices == other.binding_table_indices && per_thread_memory_buffers == other.per_thread_memory_buffers && experimental_properties == other.experimental_properties && debug_env == other.debug_env;
+        return name == other.name && user_attributes == other.user_attributes && execution_env == other.execution_env && payload_arguments == other.payload_arguments && per_thread_payload_arguments == other.per_thread_payload_arguments && binding_table_indices == other.binding_table_indices && per_thread_memory_buffers == other.per_thread_memory_buffers && inline_samplers == other.inline_samplers && experimental_properties == other.experimental_properties && debug_env == other.debug_env;
     }
     zeinfo_str_t name;
     zeInfoUserAttribute user_attributes;
@@ -179,6 +191,7 @@ struct zeInfoKernel
     PerThreadPayloadArgumentsTy per_thread_payload_arguments;
     BindingTableIndicesTy binding_table_indices;
     PerThreadMemoryBuffersTy per_thread_memory_buffers;
+    InlineSamplersTy inline_samplers;
     zeInfoExperimentalProperties experimental_properties;
     zeInfoDebugEnv debug_env;
 };
@@ -218,7 +231,7 @@ struct zeInfoContainer
     KernelsMiscInfoTy kernels_misc_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.19"; }
+    static zeinfo_str_t getVersionNumber() { return "1.20"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
@@ -315,6 +328,17 @@ struct PreDefinedAttrGetter{
         private_space,
         spill_fill_space,
         single_space
+    };
+    enum class ArgSamplerAddrMode {
+        none,
+        clamp_border,
+        clamp_edge,
+        repeat,
+        mirror
+    };
+    enum class ArgSamplerFilterMode {
+        nearest,
+        linear
     };
     static zeinfo_str_t get(ArgThreadSchedulingMode val) {
         switch(val) {
@@ -530,6 +554,34 @@ struct PreDefinedAttrGetter{
             return "spill_fill_space";
         case MemBufferUsage::single_space:
             return "single_space";
+        default:
+            break;
+        }
+        return "";
+    }
+    static zeinfo_str_t get(ArgSamplerAddrMode val) {
+        switch(val) {
+        case ArgSamplerAddrMode::none:
+            return "none";
+        case ArgSamplerAddrMode::clamp_border:
+            return "clamp_border";
+        case ArgSamplerAddrMode::clamp_edge:
+            return "clamp_edge";
+        case ArgSamplerAddrMode::repeat:
+            return "repeat";
+        case ArgSamplerAddrMode::mirror:
+            return "mirror";
+        default:
+            break;
+        }
+        return "";
+    }
+    static zeinfo_str_t get(ArgSamplerFilterMode val) {
+        switch(val) {
+        case ArgSamplerFilterMode::nearest:
+            return "nearest";
+        case ArgSamplerFilterMode::linear:
+            return "linear";
         default:
             break;
         }

@@ -36,6 +36,7 @@ void MappingTraits<zeInfoKernel>::mapping(IO& io, zeInfoKernel& info)
     io.mapOptional("per_thread_payload_arguments", info.per_thread_payload_arguments, PerThreadPayloadArgumentsTy());
     io.mapOptional("binding_table_indices", info.binding_table_indices, BindingTableIndicesTy());
     io.mapOptional("per_thread_memory_buffers", info.per_thread_memory_buffers, PerThreadMemoryBuffersTy());
+    io.mapOptional("inline_samplers", info.inline_samplers, InlineSamplersTy());
     io.mapOptional("experimental_properties", info.experimental_properties, zeInfoExperimentalProperties());
     io.mapOptional("debug_env", info.debug_env, zeInfoDebugEnv());
 }
@@ -112,6 +113,13 @@ void MappingTraits<zeInfoPerThreadMemoryBuffer>::mapping(IO& io, zeInfoPerThread
     io.mapRequired("size", info.size);
     io.mapOptional("slot", info.slot, 0);
     io.mapOptional("is_simt_thread", info.is_simt_thread, false);
+}
+void MappingTraits<zeInfoInlineSampler>::mapping(IO& io, zeInfoInlineSampler& info)
+{
+    io.mapRequired("sampler_index", info.sampler_index);
+    io.mapRequired("addrmode", info.addrmode);
+    io.mapRequired("filtermode", info.filtermode);
+    io.mapOptional("normalized", info.normalized, false);
 }
 void MappingTraits<zeInfoExperimentalProperties>::mapping(IO& io, zeInfoExperimentalProperties& info)
 {
