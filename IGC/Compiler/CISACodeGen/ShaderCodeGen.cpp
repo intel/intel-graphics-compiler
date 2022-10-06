@@ -288,6 +288,9 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
     // Evaluates LLVM 10+ freeze instructions so EmitPass does not need to handle them
     mpm.add(createEvaluateFreezePass());
 
+    // clean up constexpressions after EarlyCSE
+    mpm.add( new BreakConstantExpr() );
+
     // This is for dumping register pressure info
     if (IGC_IS_FLAG_ENABLED(ForceRPE)) {
         mpm.add(new RegisterEstimator());
