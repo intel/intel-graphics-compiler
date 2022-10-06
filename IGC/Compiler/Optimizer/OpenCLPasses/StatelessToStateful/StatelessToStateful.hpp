@@ -57,10 +57,39 @@ namespace IGC
         void visitCallInst(llvm::CallInst& I);
 
     private:
+        struct InstructionInfo {
+            InstructionInfo(llvm::Instruction* I, llvm::Value* ptr, llvm::Value* offset):
+                statelessInst(I), ptr(ptr), offset(offset) {}
+            InstructionInfo() = delete;
+
+            void setStatefulAddrspace(unsigned addrspace) { statefulAddrSpace = addrspace; }
+            unsigned getStatefulAddrSpace() {
+                IGC_ASSERT(statefulAddrSpace);
+                return *statefulAddrSpace;
+            }
+            llvm::Instruction* const statelessInst;
+            llvm::Value* const ptr;
+            llvm::Value* const offset;
+        private:
+            std::optional<unsigned> statefulAddrSpace;
+        };
+
+        void findPromotableInstructions();
+        void addToPromotionMap(llvm::Instruction& I, llvm::Value* Ptr);
+
+        void promote();
+        void promoteInstruction(InstructionInfo& InstInfo);
+        void promoteLoad(InstructionInfo& InstInfo);
+        void promoteStore(InstructionInfo& InstInfo);
+        void promoteIntrinsic(InstructionInfo& InstInfo);
+
+        bool doPromoteUntypedAtomics(const llvm::GenISAIntrinsic::ID intrinID, const llvm::GenIntrinsicInst* Inst);
+        bool isUntypedAtomic(const llvm::GenISAIntrinsic::ID intrinID);
+
         llvm::CallInst* createBufferPtr(
             unsigned addrSpace, llvm::Constant* argNumber, llvm::Instruction* InsertBefore);
         bool pointerIsPositiveOffsetFromKernelArgument(
-            llvm::Function* F, llvm::Value* V, llvm::Value*& offset, unsigned int& argNumber, const KernelArg*& kernelArg);
+            llvm::Function* F, llvm::Value* V, llvm::Value*& offset, unsigned int& argNumber);
 
         // Check if the given pointer value can be traced back to any kernel argument.
         // return the kernel argument if found, otherwise return nullptr.
@@ -74,6 +103,14 @@ namespace IGC
             uint32_t argNumber, bool isImplicitArg, llvm::Value*& offset);
         llvm::Argument* getBufferOffsetArg(llvm::Function* F, uint32_t ArgNumber);
         void setPointerSizeTo32bit(int32_t AddrSpace, llvm::Module* M);
+
+        // Encode uavIndex in addrspace. Note that uavIndex is not always the same as BTI.
+        // Read only images are qualified as SRV resources and have separate indices space.
+        // Writeable images and buffers are qualified as UAV resources and also have a
+        // separate indices space. So if there is a read_only image and global buffer in the kernel,
+        // they will both have `0` encoded in addrspace. The actual BTI will be computed based
+        // on BTLayout in EmitVISAPass.
+        unsigned encodeStatefulAddrspace(unsigned uavIndex);
 
         void updateArgInfo(const KernelArg* KA, bool IsPositive);
         void finalizeArgInitialValue(llvm::Function* F);
@@ -133,7 +170,11 @@ namespace IGC
         KernelArgs* m_pKernelArgs;
         ArgInfoMap   m_argsInfo;
         bool m_changed;
-        std::unordered_set<const KernelArg*> m_promotedKernelArgs; // ptr args which have been promoted to stateful
+        llvm::Function* m_F;
+        llvm::Module* m_Module;
+
+        // Map argument index to a vector of instructions that should be promoted to stateful.
+        std::map<unsigned int, std::vector<InstructionInfo>> m_promotionMap;
     };
 
 }

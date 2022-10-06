@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
+#include <set>
 #include <unordered_map>
 
 namespace IGC
@@ -48,6 +49,7 @@ namespace IGC
         void PromoteStatelessToBindlessBuffers(llvm::Function& F) const;
         void CheckPrintfBuffer(llvm::Function& F);
 
+        std::set<unsigned> m_promotedArgs;
         std::unordered_map<llvm::Value*, llvm::Value*> m_AccessToSrcPtrMap;
         std::unordered_map<llvm::Value*, llvm::Value*> m_AddressUsedSrcPtrMap;
         llvm::Value* m_PrintfBuffer;

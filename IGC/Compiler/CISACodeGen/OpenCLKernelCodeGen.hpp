@@ -120,6 +120,8 @@ namespace IGC
         // Resolve the binding table index for resource resInfo (using the BTL)
         unsigned int getBTI(SOpenCLKernelInfo::SResourceInfo& resInfo);
 
+        bool hasStatefulAccess(unsigned bti);
+
         // Find the sum of inline local sizes used by this kernel
         unsigned int getSumFixedTGSMSizes(llvm::Function* F);
 

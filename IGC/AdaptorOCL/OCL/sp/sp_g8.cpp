@@ -670,6 +670,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
     // Now, add the constant buffer, if present.
     for (const auto& annotation : annotations.m_pointerInput)
     {
+        if (!annotation->HasStatefulAccess) continue;
+
         unsigned int bti = annotations.m_argIndexMap.at(annotation->ArgumentNumber);
         context.Surface.SurfaceOffset[ bti ] = (DWORD)membuf.Size();
 
@@ -685,6 +687,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
 
     for (const auto& annotation: annotations.m_pointerArgument)
     {
+        if (!annotation->HasStatefulAccess) continue;
+
         unsigned int bti = annotations.m_argIndexMap.at(annotation->ArgumentNumber);
         context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
 
@@ -790,32 +794,38 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
 
     if (annotations.m_syncBufferAnnotation != NULL)
     {
-        unsigned int bti = annotations.m_argIndexMap.at(annotations.m_syncBufferAnnotation->ArgumentNumber);
-        context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
+        if (annotations.m_syncBufferAnnotation->HasStatefulAccess)
+        {
+            unsigned int bti = annotations.m_argIndexMap.at(annotations.m_syncBufferAnnotation->ArgumentNumber);
+            context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
 
-        SurfaceStates.insert(
-            std::make_pair(
-                bti,
-                SurfaceState(
-                    SURFACE_BUFFER,
-                    SURFACE_FORMAT_RAW,
-                    0,
-                    false)));
+            SurfaceStates.insert(
+                std::make_pair(
+                    bti,
+                    SurfaceState(
+                        SURFACE_BUFFER,
+                        SURFACE_FORMAT_RAW,
+                        0,
+                        false)));
+        }
     }
 
     if (annotations.m_rtGlobalBufferAnnotation != NULL)
     {
-        unsigned int bti = annotations.m_argIndexMap.at(annotations.m_rtGlobalBufferAnnotation->ArgumentNumber);
-        context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
+        if (annotations.m_rtGlobalBufferAnnotation->HasStatefulAccess)
+        {
+            unsigned int bti = annotations.m_argIndexMap.at(annotations.m_rtGlobalBufferAnnotation->ArgumentNumber);
+            context.Surface.SurfaceOffset[bti] = (DWORD)membuf.Size();
 
-        SurfaceStates.insert(
-            std::make_pair(
-                bti,
-                SurfaceState(
-                    SURFACE_BUFFER,
-                    SURFACE_FORMAT_RAW,
-                    0,
-                    false)));
+            SurfaceStates.insert(
+                std::make_pair(
+                    bti,
+                    SurfaceState(
+                        SURFACE_BUFFER,
+                        SURFACE_FORMAT_RAW,
+                        0,
+                        false)));
+        }
     }
 
     // Fill up the SSH with BTI offsets increasing.  The runtime currently
@@ -1529,24 +1539,25 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
                     memset( &patch, 0, sizeof( patch ) );
 
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_STATELESS_GLOBAL_MEMORY_OBJECT_KERNEL_ARGUMENT;
                     patch.Size = sizeof( patch );
                     patch.ArgumentNumber = ptrArg->ArgumentNumber;
+                    patch.SurfaceStateHeapOffset = UINT32_MAX;
+
                     if (m_Context.useBindlessMode() && !m_Context.useBindlessLegacyMode())
                     {
-                        IGC_ASSERT(ptrArg->BindingTableIndex != bti);
                         patch.SurfaceStateHeapOffset = ptrArg->BindingTableIndex;
                         dataParameterStreamSize = std::max(
                             dataParameterStreamSize,
                             ptrArg->BindingTableIndex + ptrArg->SecondPayloadSizeInBytes
                             );
-
                     }
-                    else
+                    else if (ptrArg->HasStatefulAccess)
                     {
-                       patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+                        unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
+                        patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
                     }
+
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
                     patch.LocationIndex = ptrArg->LocationIndex;
@@ -1567,16 +1578,21 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
                     memset( &patch, 0, sizeof( patch ) );
 
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_STATELESS_CONSTANT_MEMORY_OBJECT_KERNEL_ARGUMENT;
                     patch.Size = sizeof( patch );
                     patch.ArgumentNumber = ptrArg->ArgumentNumber;
-                    patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[ bti ];
+                    patch.SurfaceStateHeapOffset = UINT32_MAX;
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
                     patch.LocationIndex = ptrArg->LocationIndex;
                     patch.LocationIndex2 = ptrArg->LocationCount;
                     patch.IsEmulationArgument = ptrArg->IsEmulationArgument;
+
+                    if (ptrArg->HasStatefulAccess)
+                    {
+                        unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
+                        patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+                    }
 
                     dataParameterStreamSize = std::max(
                         dataParameterStreamSize,
@@ -1594,17 +1610,21 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
                     hasDeviceEnqueue.hasQueueArg = true;
 
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
-
                     patch.Token = iOpenCL::PATCH_TOKEN_STATELESS_DEVICE_QUEUE_KERNEL_ARGUMENT;
                     patch.Size = sizeof(patch);
                     patch.ArgumentNumber = ptrArg->ArgumentNumber;
-                    patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];;
+                    patch.SurfaceStateHeapOffset = UINT32_MAX;
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
                     patch.LocationIndex = ptrArg->LocationIndex;
                     patch.LocationIndex2 = ptrArg->LocationCount;
                     patch.IsEmulationArgument = ptrArg->IsEmulationArgument;
+
+                    if (ptrArg->HasStatefulAccess)
+                    {
+                        unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
+                        patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+                    }
 
                     dataParameterStreamSize = std::max(
                         dataParameterStreamSize,
@@ -1663,13 +1683,17 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             iOpenCL::SPatchAllocateSyncBuffer  patch;
             memset(&patch, 0, sizeof(patch));
 
-            unsigned int bti = annotations.m_argIndexMap.at(syncBufAnn->ArgumentNumber);
-
             patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_SYNC_BUFFER;
             patch.Size = sizeof(patch);
-            patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+            patch.SurfaceStateHeapOffset = UINT32_MAX;
             patch.DataParamOffset = syncBufAnn->PayloadPosition;
             patch.DataParamSize = syncBufAnn->DataSize;
+
+            if (syncBufAnn->HasStatefulAccess)
+            {
+                unsigned int bti = annotations.m_argIndexMap.at(syncBufAnn->ArgumentNumber);
+                patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+            }
 
             dataParameterStreamSize = std::max(
                 dataParameterStreamSize,
@@ -1689,13 +1713,17 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             iOpenCL::SPatchAllocateRTGlobalBuffer patch;
             memset(&patch, 0, sizeof(patch));
 
-            unsigned int bti = annotations.m_argIndexMap.at(rtGlobalBufAnn->ArgumentNumber);
-
             patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_RT_GLOBAL_BUFFER;
             patch.Size = sizeof(patch);
-            patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+            patch.SurfaceStateHeapOffset = UINT32_MAX;
             patch.DataParamOffset = rtGlobalBufAnn->PayloadPosition;
             patch.DataParamSize = rtGlobalBufAnn->DataSize;
+
+            if (rtGlobalBufAnn->HasStatefulAccess)
+            {
+                unsigned int bti = annotations.m_argIndexMap.at(rtGlobalBufAnn->ArgumentNumber);
+                patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+            }
 
             dataParameterStreamSize = std::max(
                 dataParameterStreamSize,
@@ -1717,13 +1745,18 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     iOpenCL::SPatchAllocateStatelessConstantMemorySurfaceWithInitialization patch;
                     memset( &patch, 0, sizeof( patch ) );
 
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_CONSTANT_MEMORY_SURFACE_WITH_INITIALIZATION;
                     patch.Size = sizeof( patch );
-                    patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[ bti ];
+                    patch.SurfaceStateHeapOffset = UINT32_MAX;
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
                     patch.ConstantBufferIndex = DEFAULT_CONSTANT_BUFFER_INDEX;
+
+                    if (ptrArg->HasStatefulAccess)
+                    {
+                        unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
+                        patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+                    }
 
                     dataParameterStreamSize = std::max(
                         dataParameterStreamSize,
@@ -1738,13 +1771,18 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     iOpenCL::SPatchAllocateStatelessGlobalMemorySurfaceWithInitialization patch;
                     memset( &patch, 0, sizeof( patch ) );
 
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_GLOBAL_MEMORY_SURFACE_WITH_INITIALIZATION;
                     patch.Size = sizeof( patch );
-                    patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[ bti ];
+                    patch.SurfaceStateHeapOffset = UINT32_MAX;
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
                     patch.GlobalBufferIndex = 0;
+
+                    if (ptrArg->HasStatefulAccess)
+                    {
+                        unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
+                        patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+                    }
 
                     dataParameterStreamSize = std::max(
                         dataParameterStreamSize,
@@ -1760,10 +1798,9 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     memset( &patch, 0, sizeof( patch ) );
 
                     PrivateInputAnnotation* privInput = static_cast<PrivateInputAnnotation*>(ptrArg.get());
-                    unsigned int bti = annotations.m_argIndexMap.at(privInput->ArgumentNumber);
                     patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_PRIVATE_MEMORY;
                     patch.Size = sizeof( patch );
-                    patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[ bti ];
+                    patch.SurfaceStateHeapOffset = UINT32_MAX;
                     //FIXME: IGC currently set PerThreadPrivateMemorySize with size assumed to be per-simt-thread by setting IsSimtThread==1
                     patch.IsSimtThread = 1;
                     patch.PerThreadPrivateMemorySize =
@@ -1789,13 +1826,17 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
                     hasDeviceEnqueue.hasDefaultQueue = true;
 
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
-
                     patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_DEFAULT_DEVICE_QUEUE_SURFACE;
                     patch.Size = sizeof(patch);
-                    patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+                    patch.SurfaceStateHeapOffset = UINT32_MAX;
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
+
+                    if (ptrArg->HasStatefulAccess)
+                    {
+                        unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
+                        patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+                    }
 
                     dataParameterStreamSize = std::max(
                         dataParameterStreamSize,
@@ -1812,13 +1853,17 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
                     memset(&patch, 0, sizeof(patch));
 
-                    unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
-
                     patch.Token = iOpenCL::PATCH_TOKEN_ALLOCATE_STATELESS_EVENT_POOL_SURFACE;
                     patch.Size = sizeof(patch);
-                    patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+                    patch.SurfaceStateHeapOffset = UINT32_MAX;
                     patch.DataParamOffset = ptrArg->PayloadPosition;
                     patch.DataParamSize = ptrArg->PayloadSizeInBytes;
+
+                    if (ptrArg->HasStatefulAccess)
+                    {
+                        unsigned int bti = annotations.m_argIndexMap.at(ptrArg->ArgumentNumber);
+                        patch.SurfaceStateHeapOffset = context.Surface.SurfaceOffset[bti];
+                    }
 
                     dataParameterStreamSize = std::max(
                         dataParameterStreamSize,
@@ -2383,7 +2428,7 @@ RETVAL CGen8OpenCLStateProcessor::AddKernelAttributePatchItems(
             if ( s.find("reqd_sub_group_size") != std::string::npos
               || s.find("reqd_work_group_size") != std::string::npos
               || s.find("vec_type_hint") != std::string::npos
-              || s.find("work_group_size_hint") != std::string::npos 
+              || s.find("work_group_size_hint") != std::string::npos
               || s.find("invalid_kernel") != std::string::npos )
             {
                 if ( !filteredAttributes.empty() )
