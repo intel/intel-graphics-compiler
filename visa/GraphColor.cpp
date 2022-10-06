@@ -5693,6 +5693,18 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                     updateLiveness(live, id, false);
                 }
             }
+            else if (dst->isIndirect() && liveAnalysis->livenessClass(G4_GRF))
+            {
+                // make every var in points-to set live
+                const REGVAR_VECTOR& pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(dst, bb);
+                for (auto pt : pointsToSet)
+                {
+                    if (pt.var->isRegAllocPartaker())
+                    {
+                        updateLiveness(live, pt.var->getId(), true);
+                    }
+                }
+            }
         }
 
         // Any physical registers used by src opnds will be busy before the current inst
@@ -5747,6 +5759,21 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                     // Mark operand as live from this inst upwards
                     auto id = src->asSrcRegRegion()->getBase()->asRegVar()->getId();
                     updateLiveness(live, id, true);
+                }
+                else if (src->asSrcRegRegion()->isIndirect() && liveAnalysis->livenessClass(G4_GRF))
+                {
+                    // make every var in points-to set live
+                    const REGVAR_VECTOR& pointsToSet = liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(src->asSrcRegRegion(), bb);
+                    for (auto pt : pointsToSet)
+                    {
+                        if (pt.var->isRegAllocPartaker())
+                        {
+                            if (live.isSet(pt.var->getId()) == false)
+                                update = true;
+
+                            updateLiveness(live, pt.var->getId(), true);
+                        }
+                    }
                 }
             }
         }
