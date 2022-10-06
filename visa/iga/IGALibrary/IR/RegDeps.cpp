@@ -650,6 +650,10 @@ void DepSetBuilder::DpasMacroBuilder::updateRegFootprintsToDepSets(
 const Instruction& DepSetBuilder::DpasMacroBuilder::formMacro(size_t& dpasCnt) {
     dpasCnt = 1;
     InstListIterator cur = m_firstDpasIt;
+    // We can't support src1/src2 mixed-mode dpas now. By pass the case.
+    if ((*cur)->getSource(1).getType() != (*cur)->getSource(2).getType())
+        return **cur;
+
     SrcRegRangeType src_range, src_extra_range;
     DstRegRangeType dst_range;
     m_inps.getDpasSrcDependency(**cur, src_range, src_extra_range, m_model);
