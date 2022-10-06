@@ -9356,8 +9356,8 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB* bb)
 {
     G4_INST* inst = *it;
 
-    // G4_fcvt should be fixed in fixFcvt()
-    if (inst->opcode() == G4_fcvt)
+    // G4_fcvt/G4_srnd should be fixed in fixFcvt()/fixSrnd().
+    if (inst->opcode() == G4_fcvt || inst->opcode() == G4_srnd)
     {
         return;
     }
