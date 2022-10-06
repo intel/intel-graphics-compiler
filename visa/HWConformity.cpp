@@ -9009,7 +9009,19 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB* bb)
             // Check if the execsize is legal
             if (inst->getExecSize() > builder.getNativeExecSize())
             {
-                evenlySplitInst(it, bb);
+                // If both dst and src are grf-aligned with subreg = 0, no need to split.
+                const int grfBytes = (int)kernel.numEltPerGRF<Type_UB>();
+                bool bothSubreg_0 = builder.isOpndAligned(inst->getDst(), grfBytes);
+                if (bothSubreg_0 && inst->getSrc(0)->isSrcRegRegion())
+                {
+                    G4_SrcRegRegion* s_reg = inst->getSrc(0)->asSrcRegRegion();
+                    bothSubreg_0 = (s_reg->isScalar() || builder.isOpndAligned(s_reg, grfBytes));
+                }
+
+                if (!bothSubreg_0)
+                {
+                    evenlySplitInst(it, bb);
+                }
             }
             return;
         }
