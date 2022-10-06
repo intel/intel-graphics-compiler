@@ -2475,7 +2475,7 @@
     },
     "genx_srnd": {
       "opc": "ISA_SRND",
-      "exec_size": [ "EXECSIZE" ],
+      "exec_size": [ "EXECSIZE_NOMASK" ],
       "elementwise": [ "ELEMENTWISE" ],
       "pred": [ "IMPLICITPRED" ],
       "dst": [ "GENERAL", "UNSIGNED", 0 ],
