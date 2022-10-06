@@ -79,6 +79,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/RegPressureLoopControl/RegPressureLoopControl.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
@@ -822,6 +823,11 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM())
         {
             mpm.add(createLICMPass());
+            if (ctx.type == ShaderType::OPENCL_SHADER ||
+                ctx.type == ShaderType::COMPUTE_SHADER)
+            {
+                mpm.add(new RegPressureLoopControl());
+            }
         }
         mpm.add(createAggressiveDCEPass());
         // As DPC++ FE apply LICM we cannot reduce register pressure just

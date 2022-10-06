@@ -6221,7 +6221,10 @@ namespace IGC
         bool isStackCallProgram =
           m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
         bool noRetry = jitInfo->avoidRetry;
-        if ((jitInfo->isSpill && noRetry) || isStackCallProgram)
+
+        if ((jitInfo->isSpill && noRetry) ||
+            (isStackCallProgram &&
+                !context->HasFuncExpensiveLoop(m_program->entry)))
         {
             context->m_retryManager.Disable();
             context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
