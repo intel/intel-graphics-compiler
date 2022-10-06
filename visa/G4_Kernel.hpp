@@ -464,7 +464,7 @@ public:
     void dump(std::ostream &os = std::cerr) const;  // used in debugger
 
     // dumps .dot files (if enabled) and .g4 (if enabled)
-    void dumpToFile(const std::string &suffix);
+    void dumpToFile(const std::string& suffix, bool forceG4Dump=false);
     void dumpToFile(char* file) {dumpToFile(std::string(file));}
 
     void emitDeviceAsm(std::ostream& output, const void * binary, uint32_t binarySize);

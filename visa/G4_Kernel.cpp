@@ -1334,10 +1334,10 @@ void G4_Kernel::dump(std::ostream &os) const
     fg.print(os);
 }
 
-void G4_Kernel::dumpToFile(const std::string &suffixIn)
+void G4_Kernel::dumpToFile(const std::string& suffixIn, bool forceG4Dump)
 {
     bool dumpDot = m_options->getOption(vISA_DumpDot);
-    bool dumpG4 =
+    bool dumpG4 = forceG4Dump ||
         m_options->getOption(vISA_DumpPasses) ||
         m_options->getuInt32Option(vISA_DumpPassesSubset) >= 1;
     if (!dumpDot && !dumpG4)

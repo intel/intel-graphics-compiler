@@ -1835,6 +1835,10 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             if (status != VISA_SUCCESS)
             {
                 stopTimer(TimerID::TOTAL);
+                if (status == VISA_EARLY_EXIT)
+                    // Consider early exit to still be a success as test run
+                    // lines may check exit status.
+                    status = VISA_SUCCESS;
                 return status;
             }
             if (kernel->getIsPayload())

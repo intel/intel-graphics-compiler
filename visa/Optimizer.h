@@ -410,6 +410,10 @@ private:
 
     // indicates whether RA has failed
     bool RAFail;
+    // Name of the pass that we should stop after, from the -stopafter flag.
+    std::string StopAfterPass;
+    // Whether we have hit the stop-after pass.
+    bool EarlyExited = false;
 
     /// Initialize all passes during the construction.
     void initOptimizations();
@@ -428,6 +432,9 @@ public:
         builder(b), kernel(k), fg(f), mem(m), RAFail(false)
     {
         numBankConflicts = 0;
+        auto PassName = k.getOptions()->getOptionCstr(vISA_StopAfterPass);
+        if (PassName)
+            StopAfterPass = std::string(PassName);
         initOptimizations();
     }
     ~Optimizer()

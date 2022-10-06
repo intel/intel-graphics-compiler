@@ -97,6 +97,8 @@ union LARGE_INTEGER {
 
 #define VISA_SUCCESS                0
 #define VISA_FAILURE               (-1)
+// User has requested vISA to early exit after a pass via the -stopafter option.
+#define VISA_EARLY_EXIT            (-2)
 #define VISA_SPILL                 (-3)
 
 // stream for error messages

@@ -1545,7 +1545,7 @@ void Optimizer::runPass(PassIndex Index)
     const PassInfo &PI = Passes[Index];
 
     // Do not execute.
-    if (PI.Option != vISA_EnableAlways && !builder.getOption(PI.Option))
+    if ((PI.Option != vISA_EnableAlways && !builder.getOption(PI.Option)) || EarlyExited)
         return;
 
     std::string Name = PI.Name;
@@ -1562,6 +1562,15 @@ void Optimizer::runPass(PassIndex Index)
         stopTimer(PI.Timer);
 
     kernel.dumpToFile("after." + Name);
+#ifndef DLL_MODE
+    // Only check for stop-after in offline build as it's intended for vISA debugging only.
+    // Note that stop-after does not work if the pass is not executed.
+    if (StopAfterPass == Name)
+    {
+        EarlyExited = true;
+        kernel.dumpToFile("stopafter." + Name, true);
+    }
+#endif // DLL_MODE
 
 #ifdef _DEBUG
     bool skipVerify = Index == PI_regAlloc && RAFail == true;
@@ -1999,6 +2008,7 @@ void Optimizer::reRAPostSchedule()
         }
     }
 
+
     kernel.fg.clearBBLRASummaries();
 
     gtpin->setRAPass(gtPinData::RAPass::ReRAPass);
@@ -2112,6 +2122,14 @@ bool Optimizer::R0CopyNeeded()
 
 int Optimizer::optimization()
 {
+#ifndef DLL_MODE
+    if (StopAfterPass == "CFG")
+    {
+        EarlyExited = true;
+        kernel.dumpToFile("stopafter.CFG", true);
+    }
+#endif // DLL_MODE
+
     // remove redundant message headers.
     runPass(PI_cleanMessageHeader);
 
@@ -2289,6 +2307,10 @@ int Optimizer::optimization()
     runPass(PI_addSWSBInfo);
 
 
+    if (EarlyExited)
+    {
+        return VISA_EARLY_EXIT;
+    }
     return VISA_SUCCESS;
 }
 
