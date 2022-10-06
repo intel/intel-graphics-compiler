@@ -5014,6 +5014,13 @@ namespace IGC
         if (context->getCompilerOption().EmitZeBinVISASections) {
             SaveOption(vISA_GenerateISAASM, true);
         }
+
+        if (context->getModuleMetaData()->compOpt.FastRelaxedMath ||
+            context->getModuleMetaData()->compOpt.FiniteMathOnly)
+        {
+            // Safely assume no NaN/Inf for float operands
+            SaveOption(vISA_finiteMathOnly, true);
+        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.
