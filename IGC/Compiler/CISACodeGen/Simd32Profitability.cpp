@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/ConstantFold.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvmWrapper/Transforms/Utils/LoopUtils.h>
 #include <llvm/IR/InstIterator.h>
@@ -447,10 +448,11 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop* L) {
         ConstantInt* E0 = dyn_cast<ConstantInt>(Op1);
         if (!E0)
             continue;
+        unsigned OpCode = Pred == ICmpInst::ICMP_SLT ? Instruction::SDiv
+                                                     : Instruction::UDiv;
         ConstantInt* N = dyn_cast<ConstantInt>(
-            Pred == ICmpInst::ICMP_SLT
-            ? ConstantExpr::getSDiv(ConstantExpr::getSub(E0, I0), S0)
-            : ConstantExpr::getUDiv(ConstantExpr::getSub(E0, I0), S0));
+            IGCLLVM::ConstantFoldBinaryInstruction(
+                OpCode, ConstantExpr::getSub(E0, I0), S0));
         if (!N)
             continue;
         if (N->getValue().slt(0))
