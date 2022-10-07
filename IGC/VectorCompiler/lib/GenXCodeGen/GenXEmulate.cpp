@@ -1063,109 +1063,134 @@ Value *GenXEmulate::Emu64Expander::visitIntToPtr(IntToPtrInst &I) {
   }
   return Result;
 }
-Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
 
-  auto IID = vc::getAnyIntrinsicID(&Inst);
+Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
   unsigned DstSize = CI.getType()->getScalarType()->getPrimitiveSizeInBits();
   IGC_ASSERT(DstSize == 8 || DstSize == 16 || DstSize == 32 || DstSize == 64);
 
-  // early exit
-  if (IID == GenXIntrinsic::genx_uutrunc_sat ||
-      IID == GenXIntrinsic::genx_sstrunc_sat) {
-    if (DstSize == 64)
-      return CI.getOperand(0);
-  }
-
+  auto IID = vc::getAnyIntrinsicID(&Inst);
   auto Builder = getIRBuilder();
   auto VOp = toVector(Builder, CI.getOperand(0));
 
-  auto MakeConstantSplat64 = [](IRBuilder &B, IGCLLVM::FixedVectorType *VTy,
-                                uint64_t Value) {
-    auto *KV = Constant::getIntegerValue(B.getInt64Ty(), APInt(64, Value));
-    return ConstantDataVector::getSplat(VTy->getNumElements(), KV);
-  };
-  auto MaxDstSigned   = [&](unsigned DstSize) {
-     uint64_t MaxVal = (1ull << (DstSize - 1)) - 1;
-     return MakeConstantSplat64(Builder, VOp.VTy, MaxVal);
-  };
-  auto MinDstSigned   = [&](unsigned DstSize) {
-     uint64_t Ones = ~0ull;
-     uint64_t MinVal = Ones << (DstSize - 1);
-     return MakeConstantSplat64(Builder, VOp.VTy, MinVal);
-  };
-  auto MaxDstUnsigned = [&](unsigned DstSize) {
-     uint64_t MaxVal = ~0ull;
-     MaxVal = MaxVal >> (64 - DstSize);
-     return MakeConstantSplat64(Builder, VOp.VTy, MaxVal);
-  };
-  auto MinDstUnsigned = [&](unsigned DstSize) {
-     return MakeConstantSplat64(Builder, VOp.VTy, 0);
-  };
+  Value *Result = nullptr;
 
-  Value *Cond1 = nullptr;
-  Value *Limit1 = nullptr;
-  // optional
-  Value *Cond2 = nullptr;
-  Value *Limit2 = nullptr;
+  if (DstSize == 64) {
+    // Conversion from smaller type to 64-bit type
+    // In such case we don't have to check for limits and can just extend
+    // But we still have to check for negative values when converting from
+    // signed to unsigned
+    auto *VTy64 = IGCLLVM::FixedVectorType::get(Builder.getInt64Ty(),
+                                                VOp.VTy->getNumElements());
+    switch (IID) {
+    case GenXIntrinsic::genx_uutrunc_sat:
+    case GenXIntrinsic::genx_sutrunc_sat: {
+      Result = ensureEmulated(Builder.CreateZExt(VOp.V, VTy64));
+      break;
+    case GenXIntrinsic::genx_sstrunc_sat:
+      Result = ensureEmulated(Builder.CreateSExt(VOp.V, VTy64));
+      break;
+    case GenXIntrinsic::genx_ustrunc_sat:
+      Value *Zero = Constant::getNullValue(VOp.VTy);
+      Value *Cond = ensureEmulated(Builder.CreateICmpSLT(VOp.V, Zero));
+      Value *Select = ensureEmulated(Builder.CreateSelect(Cond, Zero, VOp.V));
+      Result = ensureEmulated(Builder.CreateZExt(Select, VTy64));
+    }
+    }
+  } else {
+    // Conversion from 64-bit to smaller type
+    // We have to check for destination type's limits and then truncate
+    auto MakeConstantSplat64 = [](IRBuilder &B, IGCLLVM::FixedVectorType *VTy,
+                                  uint64_t Value) {
+      auto *KV = Constant::getIntegerValue(B.getInt64Ty(), APInt(64, Value));
+      return ConstantDataVector::getSplat(VTy->getNumElements(), KV);
+    };
+    auto MaxDstSigned = [&](unsigned DstSize) {
+      uint64_t MaxVal = (1ull << (DstSize - 1)) - 1;
+      return MakeConstantSplat64(Builder, VOp.VTy, MaxVal);
+    };
+    auto MinDstSigned = [&](unsigned DstSize) {
+      uint64_t Ones = ~0ull;
+      uint64_t MinVal = Ones << (DstSize - 1);
+      return MakeConstantSplat64(Builder, VOp.VTy, MinVal);
+    };
+    auto MaxDstUnsigned = [&](unsigned DstSize) {
+      uint64_t MaxVal = ~0ull;
+      MaxVal = MaxVal >> (64 - DstSize);
+      return MakeConstantSplat64(Builder, VOp.VTy, MaxVal);
+    };
+    auto MinDstUnsigned = [&](unsigned DstSize) {
+      return MakeConstantSplat64(Builder, VOp.VTy, 0);
+    };
 
-  switch (IID) {
-  case GenXIntrinsic::genx_uutrunc_sat:
-    // UGT maxDstUnsigend -> maxDstUnsigned
-    Limit1 = MaxDstUnsigned(DstSize);
-    Cond1 = ensureEmulated(Builder.CreateICmpUGT(VOp.V, Limit1));
-  break;
-  case GenXIntrinsic::genx_sstrunc_sat:
-    // Result = Operand
-    // SGT (maxDstSigned) -> maxDstSigned
-    // SLT (minDstSigned) -> minDstSigned
-    // trunc
-    Limit1 = MaxDstSigned(DstSize);
-    Cond1 = ensureEmulated(Builder.CreateICmpSGT(VOp.V, Limit1));
-    Limit2 = MinDstSigned(DstSize);
-    Cond2 = ensureEmulated(Builder.CreateICmpSLT(VOp.V, Limit2));
-  break;
-  case GenXIntrinsic::genx_ustrunc_sat: // unsigned result, signed operand
-    // UGE (maxDstUnsigned) -> maxDstSigned
-    // Operand < 0 -> 0
-    // trunc
-    Limit1 = MaxDstUnsigned(DstSize);
-    Cond1 = ensureEmulated(Builder.CreateICmpUGE(VOp.V, Limit1));
-    Limit2 = MinDstUnsigned(DstSize);
-    Cond2 = ensureEmulated(Builder.CreateICmpSLT(VOp.V, Limit2));
-  break;
-  case GenXIntrinsic::genx_sutrunc_sat: // signed result, unsigned operand
-    // UGT (maxDstSigned) -> maxDstSigned
-    // trunc
-    Limit1 = MaxDstSigned(DstSize);
-    Cond1 = ensureEmulated(Builder.CreateICmpUGT(VOp.V, Limit1));
-  break;
-  }
-  IGC_ASSERT(Cond1 && Limit1);
-  auto *Result = ensureEmulated(Builder.CreateSelect(Cond1, Limit1, VOp.V));
-  if (Cond2) {
-    Result = ensureEmulated(Builder.CreateSelect(Cond2, Limit2, Result));
-  }
-  if (DstSize <= 32) {
-    auto Splitted = SplitBuilder.splitValueLoHi(*Result);
-    if (DstSize == 32) {
-      Result = Splitted.Lo;
-    } else {
-      // DIRTY HACK: since currently our backend does not support
-      // llvm trunc instruction, we just build a 32-bit trunc.sat instead
-      unsigned ElNum = VOp.VTy->getNumElements();
-      auto *CnvType =
-          IGCLLVM::FixedVectorType::get(CI.getType()->getScalarType(), ElNum);
-      // Result = Builder.CreateTrunc(Result, CnvType);
-      Function *TrSatF = GenXIntrinsic::getAnyDeclaration(
-              CI.getModule(), IID, {CnvType, Splitted.Lo->getType()});
-      Result = Builder.CreateCall(TrSatF, Splitted.Lo, "int_emu.trunc.sat.small.");
+    Value *Cond1 = nullptr;
+    Value *Limit1 = nullptr;
+    // Optional
+    Value *Cond2 = nullptr;
+    Value *Limit2 = nullptr;
+
+    switch (IID) {
+    case GenXIntrinsic::genx_uutrunc_sat:
+      // UGT maxDstUnsigend -> maxDstUnsigned
+      Limit1 = MaxDstUnsigned(DstSize);
+      Cond1 = ensureEmulated(Builder.CreateICmpUGT(VOp.V, Limit1));
+      break;
+    case GenXIntrinsic::genx_sstrunc_sat:
+      // Result = Operand
+      // SGT (maxDstSigned) -> maxDstSigned
+      // SLT (minDstSigned) -> minDstSigned
+      // trunc
+      Limit1 = MaxDstSigned(DstSize);
+      Cond1 = ensureEmulated(Builder.CreateICmpSGT(VOp.V, Limit1));
+      Limit2 = MinDstSigned(DstSize);
+      Cond2 = ensureEmulated(Builder.CreateICmpSLT(VOp.V, Limit2));
+      break;
+    case GenXIntrinsic::genx_ustrunc_sat: // unsigned result, signed operand
+      // UGE (maxDstUnsigned) -> maxDstSigned
+      // Operand < 0 -> 0
+      // trunc
+      Limit1 = MaxDstUnsigned(DstSize);
+      Cond1 = ensureEmulated(Builder.CreateICmpUGE(VOp.V, Limit1));
+      Limit2 = MinDstUnsigned(DstSize);
+      Cond2 = ensureEmulated(Builder.CreateICmpSLT(VOp.V, Limit2));
+      break;
+    case GenXIntrinsic::genx_sutrunc_sat: // signed result, unsigned operand
+      // UGT (maxDstSigned) -> maxDstSigned
+      // trunc
+      Limit1 = MaxDstSigned(DstSize);
+      Cond1 = ensureEmulated(Builder.CreateICmpUGT(VOp.V, Limit1));
+      break;
+    }
+    IGC_ASSERT(Cond1 && Limit1);
+    Result = ensureEmulated(Builder.CreateSelect(Cond1, Limit1, VOp.V));
+    if (Cond2) {
+      Result = ensureEmulated(Builder.CreateSelect(Cond2, Limit2, Result));
+    }
+
+    if (DstSize <= 32) {
+      auto Splitted = SplitBuilder.splitValueLoHi(*Result);
+      if (DstSize == 32) {
+        Result = Splitted.Lo;
+      } else {
+        // DIRTY HACK: since currently our backend does not support
+        // llvm trunc instruction, we just build a 32-bit trunc.sat instead
+        unsigned ElNum = VOp.VTy->getNumElements();
+        auto *CnvType =
+            IGCLLVM::FixedVectorType::get(CI.getType()->getScalarType(), ElNum);
+        // Result = Builder.CreateTrunc(Result, CnvType);
+        Function *TrSatF = GenXIntrinsic::getAnyDeclaration(
+            CI.getModule(), IID, {CnvType, Splitted.Lo->getType()});
+        Result =
+            Builder.CreateCall(TrSatF, Splitted.Lo, "int_emu.trunc.sat.small.");
+      }
     }
   }
-  if (Result->getType() == CI.getType())
-    return Result;
 
-  return Builder.CreateBitCast(Result, CI.getType());
+  if (Result->getType() != CI.getType())
+    Result = Builder.CreateBitCast(Result, CI.getType());
+
+  return Result;
 }
+
 Value *GenXEmulate::Emu64Expander::visitGenxMinMax(CallInst &CI) {
 
   auto Builder = getIRBuilder();
