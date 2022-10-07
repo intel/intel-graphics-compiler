@@ -222,6 +222,23 @@ public:
         return true;
     }
 
+    unsigned count() const
+    {
+        unsigned count = 0;
+        unsigned arraySize = (m_Size + NUM_BITS_PER_ELT - 1) / NUM_BITS_PER_ELT;
+
+        for (unsigned i = 0; i < arraySize; i++)
+        {
+            BITSET_ARRAY_TYPE value = m_BitSetArray[i];
+            while (value)
+            {
+                ++count;
+                value = value & (value - 1);
+            }
+        }
+        return count;
+    }
+
     BITSET_ARRAY_TYPE getElt(unsigned eltIndex) const
     {
         MUST_BE_TRUE(eltIndex < m_Size, "Invalid bitSet Index");

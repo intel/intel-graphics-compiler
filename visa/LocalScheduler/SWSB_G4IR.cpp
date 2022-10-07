@@ -5384,32 +5384,19 @@ bool G4_BB_SB::dpasSrcFootPrintCache(Gen4_Operand_Number opNum, SBNode * curNode
 
     for (const SBFootprint* fp = curNode->getFirstFootprint(opNum); fp; fp = fp->next)
     {
-        unsigned short leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
-        unsigned short rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
-        for (unsigned short i = leftB; i <= rightB; i++)
-        {
-            cachedGRF.set(i, true);
-        }
+        unsigned leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
+        unsigned rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
+        cachedGRF.set(leftB, rightB);
     }
 
     for (const SBFootprint* fp = nextNode->getFirstFootprint(opNum); fp; fp = fp->next)
     {
-        unsigned short leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
-        unsigned short rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
-        for (unsigned short i = leftB; i <= rightB; i++)
-        {
-            cachedGRF.set(i, true);
-        }
+        unsigned leftB = fp->LeftB / builder.numEltPerGRF<Type_UB>();
+        unsigned rightB = fp->RightB / builder.numEltPerGRF<Type_UB>();
+        cachedGRF.set(leftB, rightB);
     }
 
-    unsigned short cachedGRFNum = 0;
-    for (unsigned short i = 0; i < totalGRFNum; i++)
-    {
-        if (cachedGRF.isSet(i))
-        {
-            cachedGRFNum++;
-        }
-    }
+    unsigned cachedGRFNum = cachedGRF.count();
     return cachedGRFNum <= (getDpasSrcCacheSize(opNum) + builder.numEltPerGRF<Type_UB>() - 1) / builder.numEltPerGRF<Type_UB>();
 }
 
@@ -5454,10 +5441,14 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode * curNode, SBNode * nextNode) co
 //      7.1, for PVC, A macro cannot have different Src1 when N != 8
 //  8, One of below conditions is met:
 //      8.1, For Src1 read suppression is defined as:
-//          a) for PVC: 1 group (up to 8 consecutive registers in a group) - 512K byte
+//          a) A sequential pair of dpas instructions where the second instruction reuses the same group of Src1
+//             registers as the first one
+//          b) for PVC: 1 group (up to 8 consecutive registers in a group) - 512K byte
+//          c) Only instructions that read 8 Src1 registers can have Src1 suppression
 //      8.2, For src2 read suppression is defined as:
 //          a) Only when repcount is 8. DP-DPAS is an special case since repcount is 4.
 //          b) for PVC, 4 groups of 4 consecutive registers - 1K byte
+//           c) Only instructions that read 4 Src2 registers can have Src2 suppression
 bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
 {
     G4_INST* curInst = curNode->getLastInstruction();
@@ -5534,9 +5525,18 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
     }
 
 
+    auto numOfGRFAccessed = [&](SBFootprint* fp)
+    {
+        BitSet GRFBitset(totalGRFNum, false);
+        GRFBitset.set(fp->LeftB / builder.numEltPerGRF<Type_UB>(), fp->RightB / builder.numEltPerGRF<Type_UB>());
+        return GRFBitset.count();
+    };
+
     //Src1 read suppression
-    if (dpasSrcFootPrintCache(Gen4_Operand_Number::Opnd_src1, curNode, nextNode) &&
-        curNode->getFirstFootprint(Opnd_src1)->isSameOrNoOverlap(nextNode->getFirstFootprint(Opnd_src1)))
+    if (dpasSrcFootPrintCache(Opnd_src1, curNode, nextNode) &&
+        curNode->getFirstFootprint(Opnd_src1)->isSameOrNoOverlap(nextNode->getFirstFootprint(Opnd_src1)) &&
+        numOfGRFAccessed(curNode->getFirstFootprint(Opnd_src1)) >= 8 &&
+        numOfGRFAccessed(nextNode->getFirstFootprint(Opnd_src1)) >= 8)
     {
         return false;
     }
@@ -5556,8 +5556,10 @@ bool G4_BB_SB::isLastDpas(SBNode* curNode, SBNode* nextNode)
     if (builder.hasDpasSrc2ReadSupression() &&
         curC == nextC &&
         ((curC == 8 && !isDFInst(*nextDpasInst)) || (curC == 4 && isDFInst(*nextDpasInst))) &&
-        dpasSrcFootPrintCache(Gen4_Operand_Number::Opnd_src2, curNode, nextNode) &&
-        curNode->getFirstFootprint(Opnd_src2)->isSameOrNoOverlap(nextNode->getFirstFootprint(Opnd_src2)))
+        dpasSrcFootPrintCache(Opnd_src2, curNode, nextNode) &&
+        curNode->getFirstFootprint(Opnd_src2)->isSameOrNoOverlap(nextNode->getFirstFootprint(Opnd_src2)) &&
+        numOfGRFAccessed(curNode->getFirstFootprint(Opnd_src2)) >= 4 &&
+        numOfGRFAccessed(nextNode->getFirstFootprint(Opnd_src2)) >= 4)
     {
         return false;
     }
