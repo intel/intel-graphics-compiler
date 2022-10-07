@@ -326,7 +326,8 @@ uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF)
         return 2;
     }
     else if (src1_ty == Type::BF8 || src1_ty == Type::HF8) {
-        IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
+        IGA_ASSERT(src2_ty == Type::BF8 || src2_ty == Type::HF8 ,
+            "src1/src2 must have the same type");
         return 4;
     }
     else if (src1_ty == Type::TF32) {
@@ -650,9 +651,6 @@ void DepSetBuilder::DpasMacroBuilder::updateRegFootprintsToDepSets(
 const Instruction& DepSetBuilder::DpasMacroBuilder::formMacro(size_t& dpasCnt) {
     dpasCnt = 1;
     InstListIterator cur = m_firstDpasIt;
-    // We can't support src1/src2 mixed-mode dpas now. By pass the case.
-    if ((*cur)->getSource(1).getType() != (*cur)->getSource(2).getType())
-        return **cur;
 
     SrcRegRangeType src_range, src_extra_range;
     DstRegRangeType dst_range;
