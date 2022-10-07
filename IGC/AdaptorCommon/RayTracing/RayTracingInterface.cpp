@@ -190,7 +190,6 @@ void RayTracingLowering(RayDispatchShaderContext* pContext)
     // After this pass, all shaders with TraceRay() or CallShader() calls will
     // be split into continuations at those call sites.
     mpm.add(createSplitAsyncPass());
-    mpm.add(createCFGSimplificationPass());
     if (IGC_IS_FLAG_DISABLED(DisablePromoteToScratch) &&
         pContext->m_DriverInfo.supportsRTScratchSpace())
     {
@@ -210,6 +209,7 @@ void RayTracingLowering(RayDispatchShaderContext* pContext)
     }
     // Lower intrinsics to RTStack operations.
     mpm.add(createRayTracingIntrinsicLoweringPass());
+    mpm.add(createCFGSimplificationPass());
     {
         // When we arrive here, the continuations will all be marked as
         // 'alwaysinline' but __mergeContinuations will not be.
