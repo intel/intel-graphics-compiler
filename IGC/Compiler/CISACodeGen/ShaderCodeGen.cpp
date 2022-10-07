@@ -1569,6 +1569,8 @@ void OptimizeIR(CodeGenContext* const pContext)
                 if (pContext->m_instrTypes.numOfLoop)
                 {
                     mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
+
+
                     int LoopUnrollThreshold = pContext->m_DriverInfo.GetLoopUnrollThreshold();
 
                     // override the LoopUnrollThreshold if the registry key is set
@@ -1593,6 +1595,7 @@ void OptimizeIR(CodeGenContext* const pContext)
                         mpm.add(IGCLLVM::createLoopUnrollPass());
                     }
                 }
+
                 if (IGC_IS_FLAG_ENABLED(EnableGVN))
                 {
                     mpm.add(llvm::createGVNPass());
