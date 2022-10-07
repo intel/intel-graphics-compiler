@@ -327,10 +327,9 @@ bool ResourceAllocator::runOnFunction(llvm::Function& F)
             break;
 
         case AllocationType::Other:
-            // Use default arg allocator for UAV resources
-            // Intentionally not allocating index here, since it will
-            // be done in StatelessToSatefull or PromoteStatelessToBindless
-            argAlloc = defaultArgAlloc;
+            argAlloc.type = ResourceTypeEnum::UAVResourceType;
+            argAlloc.indexType = numUAVs;
+            numUAVs++;
             break;
 
         default:

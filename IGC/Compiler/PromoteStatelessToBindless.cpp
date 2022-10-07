@@ -132,8 +132,6 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction* inst,
         return;
     }
 
-    m_promotedArgs.insert(cast<Argument>(srcPtr)->getArgNo());
-
     // Save the instruction, which makes access (load/store/intrinsic) to the buffer
     m_AccessToSrcPtrMap[inst] = srcPtr;
     // Save the instruction, which generate an address of the buffer. This is the
@@ -154,12 +152,6 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
     MetaDataUtils * pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ImplicitArgs implicitArgs(F, pMdUtils);
 
-    if (modMD->FuncMD.find(&F) == modMD->FuncMD.end())
-        return;
-
-    FunctionMetaData* funcMD = &modMD->FuncMD[&F];
-    ResourceAllocMD* resourceAlloc = &funcMD->resAllocMD;
-
     // Modify the reference to the buffer not through all users but only in instructions
     // which are used in accesing (load/store) the buffer.
     for (auto inst : m_AddressUsedSrcPtrMap)
@@ -169,17 +161,19 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function& F) 
 
         Value* nullSrcPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
         accessInst->replaceUsesOfWith(srcPtr, nullSrcPtr);
-
-        ArgAllocMD* argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
-        IGC_ASSERT_MESSAGE((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size(), "ArgAllocMD List Out of Bounds");
-        // Update metadata to show bindless resource type
-        argInfo->type = ResourceTypeEnum::BindlessUAVResourceType;
-        argInfo->indexType =
-            resourceAlloc->uavsNumType +
-            (unsigned)std::distance(m_promotedArgs.begin(), m_promotedArgs.find(srcPtr->getArgNo()));
+        if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
+        {
+            FunctionMetaData* funcMD = &modMD->FuncMD[&F];
+            ResourceAllocMD* resourceAlloc = &funcMD->resAllocMD;
+            ArgAllocMD* argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
+            IGC_ASSERT_MESSAGE((size_t)srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size(), "ArgAllocMD List Out of Bounds");
+            if (argInfo->type == ResourceTypeEnum::UAVResourceType)
+            {
+                // Update metadata to show bindless resource type
+                argInfo->type = ResourceTypeEnum::BindlessUAVResourceType;
+            }
+        }
     }
-
-    resourceAlloc->uavsNumType += m_promotedArgs.size();
 
     for (auto inst : m_AccessToSrcPtrMap)
     {
