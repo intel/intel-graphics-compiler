@@ -1592,6 +1592,7 @@ namespace IGC
             CompOptions.RematThreshold = GET(RematThreshold, RematThreshold);
             CompOptions.HoistRemat = GET(HoistRemat, EnableHoistRemat);
             CompOptions.DispatchAlongY = GET(DispatchAlongY, EnableRTDispatchAlongY);
+            CompOptions.UseSyncDispatchRays = GET(UseSyncDispatchRays, EnableSyncDispatchRays);
 #undef GET
         }
 
@@ -1626,6 +1627,9 @@ namespace IGC
             getHitGroupType(const std::string &Name) const;
         llvm::Optional<std::string> getIntersectionAnyHit(
             const std::string &IntersectionName) const;
+
+        uint32_t m_MissShaderCount = 0;
+        uint32_t getMissShaderCount() const;
 
         // Return the SIMD size that we known we will compile for upfront.
         // This is optional in the event that we want to do late determination
@@ -1671,6 +1675,9 @@ namespace IGC
 
         // widen spills to use padded area of SWStack
         bool doSpillWidening() const;
+
+        // use sync implementation of DispatchRays
+        bool doSyncDispatchRays() const;
 
         enum class CompileConfig
         {

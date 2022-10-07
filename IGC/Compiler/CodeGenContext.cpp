@@ -1871,4 +1871,28 @@ namespace IGC
             return 0;
     }
 
+    uint32_t RayDispatchShaderContext::getMissShaderCount() const
+    {
+        return m_MissShaderCount;
+    }
+
+    bool RayDispatchShaderContext::doSyncDispatchRays() const
+    {
+        if (opts().UseSyncDispatchRays ||
+            pipelineConfig.maxTraceRecursionDepth != 1)
+        {
+            return false;
+        }
+
+        // temporary phase 1 checks
+        if (!canWholeProgramCompile() ||
+            hitgroups().size() > 1 ||
+            getMissShaderCount() > 1)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
 }

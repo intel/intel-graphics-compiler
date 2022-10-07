@@ -788,6 +788,7 @@ DECLARE_IGC_GROUP("Raytracing Options")
     DECLARE_IGC_REGKEY(bool, DisablePredicatedStackIDRelease, false, "Emit a single stack ID release at the end of the shader", true)
     DECLARE_IGC_REGKEY(bool, DisableCrossFillRemat, false, "Rematerialize values if they use already spilled values", true)
     DECLARE_IGC_REGKEY(bool, EnableSpillWidening, false, "Expand SWStack spills into padding of stack frame", true)
+    DECLARE_IGC_REGKEY(bool, EnableSyncDispatchRays, false, "Enable sync DispatchRays implementation", false)
 
 DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, DisableEuFusion, false, "Require disable of EU fusion", true)
