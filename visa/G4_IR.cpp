@@ -7726,10 +7726,10 @@ void G4_DstRegRegion::setWriteMask(ChannelEnable wm)
     writeMask = wm;
 }
 
-void G4_SrcRegRegion::setSwizzle(const char* sw)
+void G4_SrcRegRegion::setSwizzle(std::string_view sw)
 {
-    MUST_BE_TRUE((int)strlen(sw) <  max_swizzle, ERROR_INTERNAL_ARGUMENT);
-    strcpy_s(swizzle, max_swizzle, sw);
+    MUST_BE_TRUE((int)sw.size() < max_swizzle, ERROR_INTERNAL_ARGUMENT);
+    strcpy_s(swizzle, max_swizzle, sw.data());
 }
 
 // convert contiguous regions to <N;N,1> form subject to the requirment

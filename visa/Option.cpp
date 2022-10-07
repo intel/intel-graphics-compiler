@@ -13,14 +13,15 @@ SPDX-License-Identifier: MIT
 #include "PlatformInfo.h"
 #include "IGC/common/StringMacros.hpp"
 
-#include <cstring>
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <sstream>
+#include <string_view>
 
 #ifdef _MSC_VER
 // MAX : Disable security enhancements warning (VC2005)
@@ -301,7 +302,7 @@ bool Options::parseOptions(int argc, const char* argv[])
     }
 
     if (m_vISAOptions.isArgSetByUser(vISA_LabelStr)) {
-        ASSERT_USER(strlen(m_vISAOptions.getCstr(vISA_LabelStr))
+        ASSERT_USER(std::string_view(m_vISAOptions.getCstr(vISA_LabelStr)).size()
                     < MAX_LABEL_STR_LENGTH,
                     "String length for unique labels is too long. Should be no larger than 8.");
         m_vISAOptions.setBool(vISA_UniqueLabels, true);         //uniqueLabels = true;

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "VISAKernel.h"
 
 #include <fstream>
+#include <string_view>
 
 #define SIZE_VALUE cisa_kernel->getBytesWritten()
 #define SIZE_VALUE_INST cisa_kernel->getBytesWritten() - cisa_kernel->getKernelDataSize()
@@ -26,7 +27,8 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     for (uint32_t i = 0; i < kernelInfo->string_count; i++)
     {
-        cisa_kernel->writeInToCisaBinaryBuffer(kernelInfo->strings[i], (int) strlen(kernelInfo->strings[i])+1);
+        cisa_kernel->writeInToCisaBinaryBuffer(kernelInfo->strings[i],
+            (int)std::string_view(kernelInfo->strings[i]).size() + 1);
     }
 
     DEBUG_PRINT_SIZE("size after string_count: ", SIZE_VALUE);

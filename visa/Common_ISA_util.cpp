@@ -1511,22 +1511,21 @@ int Get_PreDefined_Surf_Index(int index, TARGET_PLATFORM platform)
 
 }
 
-const char* createStringCopy(const char* name, vISA::Mem_Manager &m_mem)
+const char* createStringCopy(std::string_view name, vISA::Mem_Manager &m_mem)
 {
-    if (*name == '\0') {
+    if (name.size() == 0)
         return "";
-    }
 
     // TODO: look into relaxing this
     static const size_t MAX_VISA_BINARY_STRING_LENGTH = 256;
 
-    size_t copyLen = strlen(name);
+    size_t copyLen = name.size();
     if (copyLen >= MAX_VISA_BINARY_STRING_LENGTH)
     {
         copyLen = MAX_VISA_BINARY_STRING_LENGTH - 1;
     }
     char* copy = (char*)m_mem.alloc(copyLen + 1);
-    strncpy_s(copy, copyLen + 1, name, copyLen);
+    strncpy_s(copy, copyLen + 1, name.data(), copyLen);
     return copy;
 }
 

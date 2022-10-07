@@ -17,8 +17,9 @@ class G4_Declare;
 #include "visa_igc_common_header.h"
 #include "IsaDescription.h"
 #include "common.h"
-#include <string>
+#include <algorithm>
 #include <cctype>
+#include <string>
 
 /*
  * Constant literals for the common ISA
@@ -966,23 +967,15 @@ private:
 
 public:
 
-  /// createFromString() - Create channel mask from its string representation.
-  /// If the given string is not an valid representation, NOMASK is returned
-  /// and (optional) error is set.
-    static ChannelMask createFromString(const char *name, int *pError = 0) {
-        char upperName[16];
-        size_t strSize = strlen(name);
-        memcpy_s(upperName, 16, name, strSize);
-
-        for (unsigned i = 0; i < strSize; ++i)
-        {
-            upperName[i] = static_cast<char>(std::toupper(name[i]));
-        }
-        upperName[strSize] = '\0';
-
+    /// createFromString() - Create channel mask from its string representation.
+    /// If the given string is not an valid representation, NOMASK is returned
+    /// and (optional) error is set.
+    static ChannelMask createFromString(std::string name, int* pError = 0) {
+        std::transform(name.begin(), name.end(), name.begin(),
+            [](unsigned char c) { return std::toupper(c); });
         for (unsigned i = 1; i < 16; ++i)
         {
-            if (strcmp((const char *)upperName, Names[i]) == 0) {
+            if (name == Names[i]) {
                 if (pError)
                     *pError = 0;
                 return ChannelMask(Encoding(i));

@@ -259,9 +259,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager& m, G4_BB* block,
     }
     if (getOptions()->getOption(vISA_DumpDot))
     {
-        std::stringstream sstr;
-        sstr << "BB" << bb->getId();
-        ddd.DumpDotFile(sstr.str().c_str(), "nodes");
+        ddd.DumpDotFile(bb);
     }
 
     // Update the listing of the basic block with the reordered code.
@@ -2937,19 +2935,18 @@ void LocalScheduler::EmitNode(Node *node) {
 /* ================ Below are printout methods only  ================   */
 /************************************************************************/
 
-void DDD::DumpDotFile(const char *name, const char* appendix){
+void DDD::DumpDotFile(G4_BB* bb) {
 
-    MUST_BE_TRUE(name && strlen(name) < 220 && strlen(appendix) < 30,
-        ERROR_SCHEDULER);
-    std::string fileName = std::string(name) + "." + appendix + ".dot";
+    std::stringstream ss;
+    ss << "BB" << bb->getId() << ".nodes.dot";
+    auto fileName = ss.str();
     std::ofstream ofile(fileName, std::ios::out);
     if (!ofile)
     {
         MUST_BE_TRUE(false, "[Scheduling]:ERROR: Cannot open file " <<
             fileName << ", dump failed." << std::endl);
     }
-
-    ofile << "digraph " << name << " {" << std::endl;
+    ofile << "digraph " << "BB" << bb->getId()  << " {\n";
     ofile << "\n" << "\t// Setup\n";
     ofile << "\tsize = \"80, 100\";\n";
     ofile << "\n" << "\t// Nodes\n";

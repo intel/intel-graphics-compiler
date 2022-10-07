@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 #include "Common_ISA.h"
 #include "G4_IR.hpp"
+#include <string_view>
 
  const char* Common_ISA_Get_Align_Name(VISA_Align);
  uint32_t getAlignInBytes(VISA_Align A, unsigned grfSize);
@@ -65,7 +66,7 @@ inline unsigned int Get_CISA_PreDefined_Var_Count()
     return COMMON_ISA_NUM_PREDEFINED_VAR_VER_3;
 }
 
-const char* createStringCopy(const char* name, vISA::Mem_Manager &m_mem);
+const char* createStringCopy(std::string_view name, vISA::Mem_Manager &m_mem);
 
 std::string sanitizePathString(std::string str);
 std::string sanitizeLabelString(std::string str);

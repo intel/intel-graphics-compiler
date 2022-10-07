@@ -1132,12 +1132,11 @@ public:
     //
     // a new null-terminated copy of "lab" is created for the new label, so
     // caller does not have to allocate memory for lab
-    //
     // Note that "lab" should be unique within CISA_IR_BUILDER.
-    G4_Label* createLabel(const std::string &lab, VISA_Label_Kind kind)
+    G4_Label* createLabel(std::string_view lab, VISA_Label_Kind kind)
     {
-        auto labStr = lab.c_str();
-        size_t len = strlen(labStr) + 1;
+        auto labStr = lab.data();
+        size_t len = lab.size() + 1;
         char* new_str = (char*)mem.alloc(len);  // +1 for null that ends the string
         memcpy_s(new_str, len, labStr, len);
         return new (mem) G4_Label(new_str);

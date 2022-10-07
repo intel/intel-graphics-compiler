@@ -283,7 +283,7 @@ public:
     uint32_t listSchedule(G4_BB_Schedule*);
     void setPriority(Node *pred, const Edge &edge);
     void createAddEdge(Node* pred, Node* succ, DepType d);
-    void DumpDotFile(const char*, const char*);
+    void DumpDotFile(G4_BB* bb);
 
     void getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
                               G4_Operand *opnd,

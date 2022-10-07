@@ -155,7 +155,7 @@ int JITCompileAllOptions(const char* kernelName,
     void* gtpin_init)
 {
     // This function becomes the new entry point even for JITCompile clients.
-    if (kernelName == NULL || kernelIsa == NULL || strlen(kernelName) > COMMON_ISA_MAX_KERNEL_NAME_LEN)
+    if (kernelName == NULL || kernelIsa == NULL || std::string_view(kernelName).size() > COMMON_ISA_MAX_KERNEL_NAME_LEN)
     {
         return JIT_INVALID_INPUT;
     }

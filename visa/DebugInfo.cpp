@@ -955,13 +955,13 @@ uint32_t KernelDebugInfo::getVarIndex(G4_Declare* dcl)
 }
 
 template<class T>
-void emitDataName(const char* name, T& t)
+void emitDataName(std::string_view name, T& t)
 {
-    auto length = (uint16_t)strlen(name);
+    auto length = (uint16_t) name.size();
     // Length
     insertData(&length, sizeof(uint16_t), t);
     // Actual name
-    insertData(name, (uint32_t) (sizeof(uint8_t) * length), t);
+    insertData(name.data(), (uint32_t)(sizeof(uint8_t) * length), t);
 }
 
 template<class T>

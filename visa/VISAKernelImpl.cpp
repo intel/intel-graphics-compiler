@@ -882,7 +882,6 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
     //SLM T0/Global Vars
     for (int i = 0; i < (int) Get_CISA_PreDefined_Surf_Count(); i++)
     {
-        //string_pool_lookup_and_insert(name, SURFACE_VAR, ISA_TYPE_ADDR);
         VISA_SurfaceVar* decl = (VISA_SurfaceVar *)m_mem.alloc(sizeof(CISA_GEN_VAR));
         ////memset(decl, 0, sizeof(CISA_GEN_VAR));
         decl->type = SURFACE_VAR;
@@ -994,7 +993,7 @@ void VISAKernelImpl::ensureVariableNameUnique(const char *&varName)
         escdName << '_';
 
     // step 2
-    for (size_t i = 0, slen = strlen(varName); i < slen; i++) {
+    for (size_t i = 0, slen = std::string_view(varName).size(); i < slen; i++) {
         char c = varName[i];
         if (!isalnum(c)) {
             c = '_';
@@ -5019,7 +5018,7 @@ int VISAKernelImpl::AppendVISAMiscFileInst(const char *fileName)
 
     if (IS_GEN_BOTH_PATH)
     {
-        size_t fileLen = strlen(fileName) + 1;
+        size_t fileLen = std::string_view(fileName).size() + 1;
         char *newFile = (char*)m_mem.alloc(fileLen);
         m_builder->curFile = newFile;
         strcpy_s(newFile, fileLen, fileName);
@@ -9425,11 +9424,10 @@ void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)
                 // pseudo_fc_call
                 FCCalls* callToPatch = (FCCalls*)builder->mem.alloc(sizeof(FCCalls));
                 callToPatch->callOffset = i;
-                unsigned int strLength = (uint32_t) strlen(((G4_Label*)(fcMapIt->second.first->getSrc(0)))->getLabel());
+                std::string_view labelStr(static_cast<G4_Label*>(fcMapIt->second.first->getSrc(0))->getLabel());
+                unsigned int strLength = (uint32_t) labelStr.size();
                 char* labelString = (char*)builder->mem.alloc(strLength + 1);
-
-                strcpy_s(labelString, strLength + 1, ((G4_Label*)(fcMapIt->second.first->getSrc(0)))->getLabel());
-
+                strcpy_s(labelString, strLength + 1, labelStr.data());
                 callToPatch->calleeLabelString = labelString;
 
                 builder->getFCPatchInfo()->getFCCallsToPatch().push_back(callToPatch);
@@ -9480,7 +9478,7 @@ void VISAKernelImpl::computeFCInfo() {
                 FCCalls *CallToPatch = (FCCalls *)builder->mem.alloc(sizeof(FCCalls));
                 CallToPatch->callOffset = Slot;
                 G4_Label *Label = inst->getSrc(0)->asLabel();
-                size_t Len = strlen(Label->getLabel());
+                size_t Len = std::string_view(Label->getLabel()).size();
                 char *S = (char *)builder->mem.alloc(Len + 1);
                 strcpy_s(S, Len + 1, Label->getLabel());
                 CallToPatch->calleeLabelString = S;

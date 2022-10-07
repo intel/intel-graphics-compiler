@@ -28,12 +28,13 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/StringMacros.hpp"
 
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <list>
-#include <string>
-#include <sstream>
-#include <functional>
 #include <mutex>
+#include <sstream>
+#include <string>
+#include <string_view>
 
 using namespace vISA;
 extern "C" int64_t getTimerTicks(unsigned int idx);
@@ -1792,10 +1793,10 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
                 {
                     kernel->getIRBuilder()->setRetVarSize(kernel->getKernelFormat()->return_value_size);
                 }
-
-                auto nameLen = strlen((*iter)->getKernel()->getName()) + 1;
+                std::string_view kernelName((*iter)->getKernel()->getName());
+                auto nameLen = kernelName.size() + 1;
                 pseudoHeader.functions[k].name = (char*)mem.alloc(nameLen);
-                strcpy_s(pseudoHeader.functions[k].name, nameLen, (*iter)->getKernel()->getName());
+                strcpy_s(pseudoHeader.functions[k].name, nameLen, kernelName.data());
                 k++;
             }
 
@@ -2428,17 +2429,19 @@ bool CISA_IR_Builder::CISA_implicit_input_directive(
     short offset, unsigned short size, int lineNum)
 {
     std::string implicitArgName = argName;
-    auto pos = implicitArgName.find("UNDEFINED_");
+    std::string undefStr("UNDEFINED_");
+    auto pos = implicitArgName.find(undefStr);
     uint32_t numVal = 0;
-    if (pos!= std::string::npos)
+    if (pos != std::string::npos)
     {
-        pos += strlen("UNDEFINED_");
+        pos += undefStr.length();
         auto numValString = implicitArgName.substr(pos, implicitArgName.length());
         numVal = std::stoi(numValString);
     }
     else
     {
-        auto implicitInputName = implicitArgName.substr(strlen(".implicit_"), implicitArgName.length());
+        std::string implicitStr(".implicit_");
+        auto implicitInputName = implicitArgName.substr(implicitStr.length(), implicitArgName.length());
         for (; numVal < IMPLICIT_INPUT_COUNT; ++numVal)
         {
             if (!implicitInputName.compare(input_info_t::getImplicitKindString(numVal)))
@@ -2524,7 +2527,7 @@ bool CISA_IR_Builder::CISA_attr_directive(
     else
     {
         m_kernel->AddKernelAttribute(input_name,
-          input_var == nullptr ? 0 : (int)strlen(input_var), input_var);
+          input_var == nullptr ? 0 : (int) std::string_view(input_var).size(), input_var);
     }
 
     return true;
@@ -4312,7 +4315,7 @@ bool CISA_IR_Builder::addAllVarAttributes(
         }
         else if (Attributes::isCStr(aID))
         {
-            unsigned int sz = (unsigned)strlen(pAttr->string_val);
+            unsigned int sz = (unsigned) std::string_view(pAttr->string_val).size();
             m_kernel->AddAttributeToVarGeneric(GenVar, pAttr->name, sz, &pAttr->string_val);
         }
         else
@@ -4321,41 +4324,6 @@ bool CISA_IR_Builder::addAllVarAttributes(
             return false;
         }
     }
-    return true;
-}
-
-bool CISA_IR_Builder::string_pool_lookup_and_insert(
-    string_pool_entry **spool,
-    const char *str,
-    Common_ISA_Var_Class type,
-    VISA_Type data_type)
-{
-    unsigned short key = 0;
-    string_pool_entry* entry;
-    char *s;
-    int len = (int) strlen(str);
-
-    key = get_hash_key(str);
-
-    for (entry = spool[key]; entry != NULL; entry = entry->next) {
-        s = (char *)entry->value;
-        if (!strcmp(s, str))
-            return false;
-    }
-
-    s = (char*)m_mem.alloc(len + 1);
-    memcpy_s(s, len + 1, str, len+1);
-    s[len] = '\0';
-
-    entry = (string_pool_entry*)m_mem.alloc(sizeof(string_pool_entry));
-    memset(entry, 0, sizeof(*entry));
-    entry->value = s;
-    entry->type = type;
-    entry->data_type = data_type;
-
-    entry->next = spool[key];
-    spool[key] = entry;
-
     return true;
 }
 

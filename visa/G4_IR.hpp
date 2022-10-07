@@ -3179,7 +3179,7 @@ namespace vISA
 
         void setImmAddrOff(short off) { immAddrOff = off; }
         void setModifier(G4_SrcModifier m) { mod = m; }
-        void setSwizzle(const char* sw);
+        void setSwizzle(std::string_view sw);
 
         bool sameSrcRegRegion(G4_SrcRegRegion& rgn);
         bool obeySymbolRegRule() const;

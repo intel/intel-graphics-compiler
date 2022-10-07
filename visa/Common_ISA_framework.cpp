@@ -160,7 +160,7 @@ void CisaBinary::initKernel(int kernelIndex, VISAKernelImpl * kernel)
     MUST_BE_TRUE(kernelIndex < (m_upper_bound_kernels + m_upper_bound_functions) && kernelIndex >= 0,
         "Invalid kernelIndex in CisaBinary initialization.\n");
 
-    int nameLen = (int) strlen(kernel->getName());
+    int nameLen = (int) std::string_view(kernel->getName()).size();
 
     if (this->getMajorVersion())
     {

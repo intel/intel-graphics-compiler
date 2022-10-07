@@ -355,9 +355,9 @@ static std::string printOperand(
     return sstr.str();
 }
 
-static void encodeStringLiteral(std::stringstream &ss, const char *str) {
+static void encodeStringLiteral(std::stringstream &ss, std::string_view str) {
   ss << '"';
-  for (size_t i = 0, slen = strlen(str); i < slen; i++) {
+  for (size_t i = 0, slen = str.size(); i < slen; i++) {
       switch (str[i]) { // unsigned so >0x7F doesn't sign ext.
       case '\a': ss << '\\'; ss << 'a'; break;
       case '\b': ss << '\\'; ss << 'b'; break;

@@ -804,9 +804,6 @@ public:
     unsigned short get_hash_key(const char* str);
     string_pool_entry** new_string_pool();
     string_pool_entry * string_pool_lookup(string_pool_entry **spool, const char *str);
-    bool string_pool_lookup_and_insert(
-        string_pool_entry **spool, const char *str,
-        Common_ISA_Var_Class type, VISA_Type data_type);
 
     // getKernels - get all kernels and functions added into this builder
     std::list<VISAKernelImpl*>& getKernels() { return m_kernelsAndFunctions; }
