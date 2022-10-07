@@ -101,7 +101,14 @@ size_t OVERLOADABLE __intel_GlobalInvocationId(uint dim)
         __builtin_IB_get_group_id(dim) * __builtin_IB_get_enqueued_local_size(dim) +
         __intel_LocalInvocationId(dim) + __builtin_IB_get_global_offset(dim);
 
-    BuiltinAssumeGE0(v);
+#ifndef NO_ASSUME_SUPPORT
+     BuiltinAssumeGE0(v);
+     // We want to show, that the value is positive.
+     // On LLVM level, where the signedness of the type is lost, the only way to prove
+     // that the value is positive is to check the sign bit.
+     __builtin_assume((v & 0x8000000000000000ULL) == 0);
+#endif
+
     return v;
 }
 
