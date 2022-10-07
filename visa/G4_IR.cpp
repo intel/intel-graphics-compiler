@@ -1936,6 +1936,13 @@ bool G4_INST::isLegalType(G4_Type type, Gen4_Operand_Number opndNum) const
         // ToDo: Make this function more complete by adding more opcodes
         // keep alphabetical order when adding to make it easier to maintain
         return true;
+    case G4_add:
+        // An add instruction with Type_Q as the destination does not support Type_UB and Type_B as a source.
+        if (IS_QTYPE(dst->getType()) && IS_BTYPE(type))
+        {
+            return false;
+        }
+        return true;
     case G4_addc:
         return type == Type_UD;
     case G4_bfe:
