@@ -88,4 +88,11 @@ void InitAcm_G12HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_ACM_G12, ACM_G12_GT_REV_ID_A0, FUTURE_PROJECT));
+
+    SI_WA_ENABLE(
+        Wa_15010203763,
+        "No link provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_ACM_G12, ACM_G12_GT_REV_ID_A0, FUTURE_PROJECT));
 }

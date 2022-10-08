@@ -1356,5 +1356,11 @@ bool hasThreadPauseSupport() const
         return false;
     return true;
 }
+
+bool WaDisableD64ScratchMessage() const
+{
+    return getWATable().Wa_15010203763 != 0;
+}
+
 };
 }//namespace IGC

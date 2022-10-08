@@ -64,7 +64,8 @@ bool PeepholeTypeLegalizer::runOnFunction(Function& F) {
     auto* ctx = getAnalysis<IGC::CodeGenContextWrapper>().getCodeGenContext();
 
     MustLegalizeScratch =
-        IGC_IS_FLAG_ENABLED(EnableScratchMessageD64WA) &&
+        (IGC_IS_FLAG_ENABLED(EnableScratchMessageD64WA) ||
+         ctx->platform.WaDisableD64ScratchMessage()) &&
         ctx->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory;
 
     IGCLLVM::IRBuilder<> builder(F.getContext());
