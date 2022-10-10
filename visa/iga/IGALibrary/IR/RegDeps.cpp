@@ -315,23 +315,20 @@ DepSet::DepSet(const InstIDs& instIdCntr, const DepSetBuilder& dsb)
 uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF)
 {
     // get OPS_PER_CHAN, the number of dot product operations per dword channel, depending on element type
-    // for src1, src2 region calculation, only hf, bf, ub, b, u4, s4, u2, s2 should be given
-    // mixed mode of int and float at src1/src2 are not allowed
-
     if (isDF)
         return 1;
 
     if (src1_ty == Type::HF || src1_ty == Type::BF) {
-        IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
+        IGA_ASSERT(src1_ty == src2_ty, "dpas: invalid src1/src2 types combination");
         return 2;
     }
     else if (src1_ty == Type::BF8 || src1_ty == Type::HF8) {
-        IGA_ASSERT(src2_ty == Type::BF8 || src2_ty == Type::HF8 ,
-            "src1/src2 must have the same type");
+        IGA_ASSERT(src2_ty == Type::BF8 || src2_ty == Type::HF8,
+            "dpas: invalid src1/src2 types combination");
         return 4;
     }
     else if (src1_ty == Type::TF32) {
-        IGA_ASSERT(src1_ty == src2_ty, "src1/src2 must have the same type");
+        IGA_ASSERT(src1_ty == src2_ty, "dpas: invalid src1/src2 types combination");
         return 1;
     }
     else {
@@ -339,8 +336,8 @@ uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF)
         int src1_size = TypeSizeInBits(src1_ty);
         int src2_size = TypeSizeInBits(src2_ty);
         // Type: ub, b, u4, s4, u2, s2
-        IGA_ASSERT((src1_size <= 8), "OPS_PER_CHAN: unsupported type of src1");
-        IGA_ASSERT((src2_size <= 8), "OPS_PER_CHAN: unsupported type of src2");
+        IGA_ASSERT((src1_size <= 8), "OPS_PER_CHAN: unsupported src1 type");
+        IGA_ASSERT((src2_size <= 8), "OPS_PER_CHAN: unsupported src2 type");
         if ((src1_size == 2 || src1_size == 4) && (src2_size == 2 || src2_size == 4))
             return 8;
         return 4;
