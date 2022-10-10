@@ -3926,41 +3926,6 @@ bool G4_INST::isMixedMode() const
     return false;
 }
 
-// Return true if the inst is a mixed mode float operation with unsupported low
-// precision float type.
-// TODO: Merge the logics with isMixedMode()?
-bool G4_INST::isIllegalMixedMode() const
-{
-    if (mayExceedTwoGRF() || !getDst())
-    {
-        return false;
-    }
-    for (int i = 0; i < getNumSrc(); ++i)
-    {
-        G4_Operand *tOpnd = getSrc(i);
-        if (!tOpnd)
-        {
-            continue;
-        }
-
-        G4_Type srcType = tOpnd->getType();
-        G4_Type dstType = getDst()->getType();
-
-        if (((isLowPrecisionFloatTy(dstType) && dstType != builder.getMixModeType()) ||
-             (isLowPrecisionFloatTy(srcType) && srcType != builder.getMixModeType())) &&
-            dstType != srcType)
-        {
-            // do not consider int<->float conversion as mixed type
-            if (!IS_TYPE_INT(dstType) && !IS_TYPE_INT(srcType))
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 void G4_InstSend::setMsgDesc(G4_SendDesc *in)
 {
     assert(in && "null descriptor not expected");
