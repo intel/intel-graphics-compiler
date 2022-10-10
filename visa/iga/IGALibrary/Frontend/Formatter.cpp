@@ -781,7 +781,15 @@ private:
         if (!comment.empty()) {
             // custom comment attached to the instruction by some processor
             semiColon.insert();
-            ss << comment;
+            //
+            // if the comment contains newlines, change them to ; so that
+            // the EOL comment won't be broken
+            for (size_t i = 0; i < comment.size(); i++) {
+                if (comment[i] == '\r' || comment[i] == '\n')
+                    ss << "; ";
+                else
+                    ss << comment[i];
+            }
         }
 
         if (i.getOpSpec().isAnySendFormat()) {

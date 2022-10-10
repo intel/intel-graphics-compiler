@@ -339,7 +339,7 @@ void Decoder::decodeInstructions(
                 // or if it's an unmapped subfunction (e.g. math function)
                 auto os = m_model.lookupOpSpec(op);
                 std::stringstream ss;
-                ss << "0x" << std::hex << (unsigned)op <<
+                ss << "GED_OPCODE 0x" << iga::hex((unsigned)op, 2) <<
                     ": unsupported opcode on this platform";
                 std::string str = ss.str();
                 errorT(str);
@@ -354,11 +354,11 @@ void Decoder::decodeInstructions(
                 if (validSf) {
                     try {
                         inst = decodeNextInstruction(kernel);
-                    } catch (const FatalError &fe) {
+                    } catch (const FatalError &) {
                         // error is already logged
                         inst = createErrorInstruction(
                             kernel,
-                            fe.what(),
+                            errorHandler().getErrors().back().message.c_str(),
                             binary,
                             iLen);
                     }
@@ -2242,18 +2242,14 @@ void Decoder::handleGedDecoderError(
       std::stringstream ss;
       ss << "GED reports ";
       if (status == GED_RETURN_VALUE_INVALID_VALUE) {
-          // bad user bits -> report a warning
           ss << "invalid value";
       } else if (status == GED_RETURN_VALUE_INVALID_FIELD) {
-          // our bad -> take it seriously
           ss << "invalid field";
       } else if (status != GED_RETURN_VALUE_SUCCESS) {
-          // some other error -> our bad -> take it seriously and assert!
           ss << "error (" << (int)status << ")";
       }
       ss << " for field " << field << " (line " << line << ")\n";
       ss << FormatOpBits(m_model, (const char *)m_binary + currentPc());
-      // std::cout << "pc[" << currentPc() << "] " << ss.str() << std::endl;
       if (status == GED_RETURN_VALUE_INVALID_VALUE) {
           // indicates something wrong with the bits given, but we can
           // continue trying to decode things

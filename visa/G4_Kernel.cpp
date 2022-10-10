@@ -1874,45 +1874,6 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream& os)
     fg.numRMWs = 0;
 }
 
-
-static std::map<int, std::string> parseDecodeErrors(
-    KernelView &kView, const char *errBuf, size_t errBufSize)
-{
-    // FIXME: IGA KernelView should be refactored to just return PC's
-    // paired with diagnostic strings for each
-    // (automatically allocate in IGA and cleanup when KV is deleted)
-    bool dissasemblyFailed = !kView.decodeSucceeded();
-    std::string igaErrMsgs;
-    std::vector<std::string> igaErrMsgsVector;
-    std::map<int, std::string> errorToStringMap;
-    if (dissasemblyFailed)
-    {
-        std::cerr << "failed to decode binary for asm output";
-        igaErrMsgs = errBuf;
-        igaErrMsgsVector = split(igaErrMsgs, "\n");
-        for (auto msg : igaErrMsgsVector)
-        {
-            auto pos = msg.find("ERROR");
-            if (pos != std::string::npos)
-            {
-                std::cerr << msg << "\n";
-                std::vector<std::string> aString = split(msg, " ");
-                for (auto token : aString)
-                {
-                    if (token.find_first_of("0123456789") != std::string::npos)
-                    {
-                        int errorPC = std::atoi(token.c_str());
-                        errorToStringMap[errorPC] = msg;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    return errorToStringMap;
-}
-
 using BlockOffsets = std::map<int32_t,std::vector<std::string>>;
 
 static BlockOffsets precomputeBlockOffsets(
@@ -1920,7 +1881,7 @@ static BlockOffsets precomputeBlockOffsets(
 {
     // pre-compute the PCs of each basic block
     int32_t currPc = 0, lastInstSize = -1;
-    std::map<int32_t,std::vector<std::string>> blockOffsets;
+    BlockOffsets blockOffsets;
     for (BB_LIST_ITER itBB = g4k.fg.begin(); itBB != g4k.fg.end(); ++itBB) {
         for (INST_LIST_ITER itInst = (*itBB)->begin(); itInst != (*itBB)->end(); ++itInst) {
             if ((*itInst)->isLabel()) {
@@ -1981,12 +1942,21 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
     if (!errBuf)
         return;
     TARGET_PLATFORM p = getPlatform();
+
     KernelView kv(
         getIGAPlatform(p), binary, binarySize,
         GetIGASWSBEncodeMode(*fg.builder),
         errBuf, ERROR_STRING_MAX_LENGTH);
-    const auto errorMap =
-        parseDecodeErrors(kv, errBuf, ERROR_STRING_MAX_LENGTH);
+    if (!kv.decodeSucceeded()) {
+        const char *MSG = "vISA asm emission: failed to re-decode binary for asm output\n";
+        // trb: do we really need to clobber std::cerr from a driver?
+        // Shader dump output will have the message.
+        std::cerr << MSG;
+        std::cerr << errBuf << "\n";
+        os << MSG;
+        os << errBuf << "\n";
+        // still continue since parital output might be present
+    }
     delete [] errBuf;
 
     const auto blockOffsets = precomputeBlockOffsets(os, *this, kv);
@@ -2132,12 +2102,6 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
                 (*itBB)->emitInstructionSourceLineMapping(os, itInst);
             }
 
-            auto eitr = errorMap.find(pc);
-            if (eitr != errorMap.end()) {
-                os << "// " << eitr->second << "\n";
-                os << "// text representation might not be correct";
-            }
-
             uint32_t fmtOpts =
                   IGA_FORMATTING_OPTS_DEFAULT
                 | IGA_FORMATTING_OPT_PRINT_LDST
@@ -2145,12 +2109,10 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
             if (getOption(vISA_PrintHexFloatInAsm))
                 fmtOpts |= IGA_FORMATTING_OPT_PRINT_HEX_FLOATS;
 
-            if (fg.builder->getOption(vISA_DPASFuseRSWA) && i->isCachelineAligned())
-            {
-                iga::Op opcode = kv.getOpcode(pc);
-                iga::SWSB sw = kv.getSWSBInfo(pc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
-                while (opcode == iga::Op::SYNC && !sw.hasDist() && !sw.hasSWSB() && !sw.hasSpecialToken() && !sw.hasToken())
-                {
+            auto formatToInstToStream =
+                [&](int32_t pc, std::ostream &os) {
+                    // multiple calls to getInstSyntax since we may have to
+                    // dynamically resize buffer
                     while (true) {
                         size_t nw = kv.getInstSyntax(
                             pc,
@@ -2158,49 +2120,38 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
                             fmtOpts,
                             labeler, &ls);
                         if (nw == 0) {
-                            os << "<<error formatting instruction at PC " << pc << ">>\n";
+                            os << "<<error formatting instruction at "
+                                "PC 0x" << std::uppercase << std::hex << pc << ">>\n";
                             break;
-                        }
-                        else if (nw <= igaStringBuffer.size()) {
+                        } else if (nw <= igaStringBuffer.size()) {
                             // print it (pad it out so comments line up on most instructions)
                             std::string line = igaStringBuffer.data();
                             while (line.size() < 100)
                                 line += ' ';
                             os << line;
                             break;
-                        }
-                        else {
+                        } else {
                             igaStringBuffer.resize(igaStringBuffer.size() + 512);
                             // try again
                         }
                     }
+                };
+
+            if (fg.builder->getOption(vISA_DPASFuseRSWA) && i->isCachelineAligned())
+            {
+                iga::Op opcode = kv.getOpcode(pc);
+                iga::SWSB sw = kv.getSWSBInfo(pc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
+                while (opcode == iga::Op::SYNC && !sw.hasDist() && !sw.hasSWSB() && !sw.hasSpecialToken() && !sw.hasToken())
+                {
+                    // What's going on here???  Someone please give us a clue.
+                    formatToInstToStream(pc, os);
                     os << "\n";
                     pc += kv.getInstSize(pc);
                     opcode = kv.getOpcode(pc);
                     sw = kv.getSWSBInfo(pc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
                 }
             }
-            while (true) {
-                size_t nw = kv.getInstSyntax(
-                    pc,
-                    igaStringBuffer.data(), igaStringBuffer.size(),
-                    fmtOpts,
-                    labeler, &ls);
-                if (nw == 0) {
-                    os << "<<error formatting instruction at PC " << pc << ">>\n";
-                    break;
-                } else if (nw <= igaStringBuffer.size()) {
-                    // print it (pad it out so comments line up on most instructions)
-                    std::string line =igaStringBuffer.data();
-                    while (line.size() < 100)
-                        line += ' ';
-                    os << line;
-                    break;
-                } else {
-                    igaStringBuffer.resize(igaStringBuffer.size() + 512);
-                    // try again
-                }
-            }
+            formatToInstToStream(pc, os);
 
             (*itBB)->emitBasicInstructionComment(os, itInst, suppressRegs, lastRegs);
             os << "\n";

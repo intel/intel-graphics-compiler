@@ -1664,11 +1664,11 @@ void *BinaryEncodingIGA::EmitBinary(size_t& binarySize)
         std::string binFileName = fileName + ".dat";
         if (CisaFramework::allowDump(*kernel.getOptions(), binFileName))
         {
-            std::string errStr;
             std::ofstream os(binFileName, std::ios::binary);
             if (!os)
             {
-                errStr = "Can't open " + binFileName + ".\n";
+                std::string errStr;
+                errStr = "BinaryEncodingIGA: unable to open output path for write: " + binFileName + "\n";
                 MUST_BE_TRUE(0, errStr);
                 return nullptr;
             }

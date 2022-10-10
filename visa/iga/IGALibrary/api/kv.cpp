@@ -144,25 +144,22 @@ kv_t *kv_create(
     // copy out the errors and warnings
     if (kvImpl) {
         std::stringstream ss;
+        auto fmtDiag = [&](const char *what, const Diagnostic &d) {
+            ss << what << ": PC[0x" << iga::hex(d.at.offset) << "] " <<
+                d.message << "\n";
+        };
         if (kvImpl->m_errHandler.hasErrors()) {
             for (auto d : kvImpl->m_errHandler.getErrors()) {
-                ss << "ERROR: " << d.at.offset << ". " << d.message << "\n";
+                fmtDiag("ERROR", d);
             }
         }
         for (auto d : kvImpl->m_errHandler.getWarnings()) {
-            ss << "WARNING: " << d.at.offset << ". " << d.message << "\n";
+            fmtDiag("WARNING", d);
         }
         (void)copyOut(errbuf, errbuf_cap, ss);
     }
 
     if (kvImpl->m_errHandler.hasErrors()) {
-        /*
-        if (kvImpl) {
-        // free the KernelViewImpl since we are failing
-        delete kvImpl;
-        kvImpl = nullptr;
-        }
-        */
         // copy out the error status
         if (status)
             *status = IGA_DECODE_ERROR;

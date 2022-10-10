@@ -2124,6 +2124,7 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
     if (criticalMsg.str().length() > 0)
     {
         std::cerr << "[vISA Finalizer Messages]\n" << criticalMsg.str();
+        status = VISA_FAILURE; // TODO: move this out of #ifdef so IGC/VC can see the error code
     }
 #endif //DLL_MODE
 
