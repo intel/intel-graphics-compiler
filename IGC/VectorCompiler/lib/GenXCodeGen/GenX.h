@@ -55,11 +55,6 @@ enum BalingKind {
   BK_Analysis,     // build baling info for analysis (register pressure)
 };
 
-enum class PatternMatchKind {
-  PreLegalization,   // pattern match before legalization
-  PostLegalization,  // pattern match after legalization
-};
-
 FunctionPass *createGenXPrinterPass(raw_ostream &O, const std::string &Banner);
 ModulePass *createGenXGroupPrinterPass(raw_ostream &O,
                                        const std::string &Banner);
@@ -89,7 +84,7 @@ ModulePass *createGenXEmulatePass();
 ModulePass *createGenXEmulationImportPass();
 ModulePass *createGenXEmulationModulePreparePass();
 FunctionPass *createGenXDeadVectorRemovalPass();
-FunctionPass *createGenXPatternMatchPass(PatternMatchKind Kind);
+FunctionPass *createGenXPatternMatchPass();
 FunctionPass *createGenXPostLegalizationPass();
 FunctionPass *createTransformPrivMemPass();
 ModulePass *createGenXThreadPrivateMemoryPass();

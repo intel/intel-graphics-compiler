@@ -133,9 +133,7 @@ class GenXPatternMatch : public FunctionPass,
 
 public:
   static char ID;
-  explicit GenXPatternMatch(
-      PatternMatchKind PMKind = PatternMatchKind::PreLegalization)
-      : FunctionPass(ID), Kind(PMKind) {}
+  GenXPatternMatch() : FunctionPass(ID) {}
 
   StringRef getPassName() const override { return "GenX pattern match"; }
 
@@ -177,7 +175,6 @@ public:
   }
 
 private:
-  PatternMatchKind Kind;
   // flipBoolNot : flip a (vector) bool not instruction if beneficial
   bool flipBoolNot(Instruction *Inst);
   // foldBoolAnd : fold a (vector) bool and into sel/wrregion if beneficial
@@ -217,9 +214,9 @@ INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_END(GenXPatternMatch, "GenXPatternMatch", "GenXPatternMatch",
                     false, false)
 
-FunctionPass *llvm::createGenXPatternMatchPass(PatternMatchKind Kind) {
+FunctionPass *llvm::createGenXPatternMatchPass() {
   initializeGenXPatternMatchPass(*PassRegistry::getPassRegistry());
-  return new GenXPatternMatch(Kind);
+  return new GenXPatternMatch();
 }
 
 bool GenXPatternMatch::runOnFunction(Function &F) {
@@ -233,29 +230,24 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
   const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
                                  .getTM<GenXTargetMachine>()
                                  .getGenXSubtarget();
-  if (Kind == PatternMatchKind::PreLegalization) {
-    loadPhiConstants(F, DT, *ST, *DL, true);
-    Changed |= distributeIntegerMul(&F);
-    Changed |= propagateFoldableRegion(&F);
-    Changed |= reassociateIntegerMad(&F);
-    Changed |= placeConstants(&F);
-    Changed |= vectorizeConstants(&F);
+  loadPhiConstants(F, DT, *ST, *DL, true);
+  Changed |= distributeIntegerMul(&F);
+  Changed |= propagateFoldableRegion(&F);
+  Changed |= reassociateIntegerMad(&F);
+  Changed |= placeConstants(&F);
+  Changed |= vectorizeConstants(&F);
 
-    visit(F);
+  visit(F);
 
-    Changed |= simplifyVolatileGlobals(&F);
+  Changed |= simplifyVolatileGlobals(&F);
 
-    Changed |= simplifySelect(&F);
-    // Break big predicate variables and run after min/max pattern match.
-    Changed |= decomposeSelect(&F);
+  Changed |= simplifySelect(&F);
+  // Break big predicate variables and run after min/max pattern match.
+  Changed |= decomposeSelect(&F);
 
-    // Simplify instructions after select decomposition and clear dead ones.
-    for (auto& BB : F)
-      Changed |= SimplifyInstructionsInBlock(&BB);
-  }
-  else {
-    visit(F);
-  }
+  // Simplify instructions after select decomposition and clear dead ones.
+  for (auto &BB : F)
+    Changed |= SimplifyInstructionsInBlock(&BB);
 
   return Changed;
 }
@@ -473,47 +465,9 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
   const GenXSubtarget *ST = &getAnalysis<TargetPassConfig>()
                                  .getTM<GenXTargetMachine>()
                                  .getGenXSubtarget();
-  if (Kind == PatternMatchKind::PreLegalization) {
-    if (isPredNot(&I))
-      Changed |= flipBoolNot(&I);
-    else
-      switch (I.getOpcode()) {
-      default:
-        break;
-      case Instruction::FAdd:
-      case Instruction::FSub:
-        Changed |= isFpMadEnabled() && MadMatcher(&I).matchFpMad();
-        break;
-      case Instruction::Add:
-      case Instruction::Sub:
-        if (EnableMadMatcher && MadMatcher(&I).matchIntegerMad())
-          Changed = true;
-        else if (ST && (ST->hasAdd3Bfn()))
-          Changed |= EnableAdd3Matcher && Add3Matcher(&I).matchIntegerAdd3();
-        break;
-      case Instruction::And:
-        if (I.getType()->getScalarType()->isIntegerTy(1)) {
-          if (foldBoolAnd(&I))
-            Changed = true;
-        }
-        else if (extendMask(&I))
-          Changed = true;
-        else if (ST && (ST->hasAdd3Bfn()))
-          Changed |= EnableBfnMatcher && BfnMatcher(&I).match();
-        break;
-      case Instruction::Or:
-      case Instruction::Xor:
-        if (!I.getType()->getScalarType()->isIntegerTy(1) &&
-          (ST && ST->hasAdd3Bfn())) {
-          Changed |= EnableBfnMatcher && BfnMatcher(&I).match();
-        }
-        else
-          if (extendMask(&I))
-            Changed = true;
-        break;
-      }
-  }
-  else {
+  if (isPredNot(&I))
+    Changed |= flipBoolNot(&I);
+  else
     switch (I.getOpcode()) {
     default:
       break;
@@ -525,16 +479,31 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
     case Instruction::Sub:
       if (EnableMadMatcher && MadMatcher(&I).matchIntegerMad())
         Changed = true;
+      else if (ST && (ST->hasAdd3Bfn()))
+        Changed |= EnableAdd3Matcher && Add3Matcher(&I).matchIntegerAdd3();
+      break;
+    case Instruction::And:
+      if (I.getType()->getScalarType()->isIntegerTy(1)) {
+        if (foldBoolAnd(&I))
+          Changed = true;
+      } else if (extendMask(&I))
+        Changed = true;
+      else if (ST && (ST->hasAdd3Bfn()))
+        Changed |= EnableBfnMatcher && BfnMatcher(&I).match();
+      break;
+    case Instruction::Or:
+    case Instruction::Xor:
+      if (!I.getType()->getScalarType()->isIntegerTy(1) &&
+          (ST && ST->hasAdd3Bfn())) {
+        Changed |= EnableBfnMatcher && BfnMatcher(&I).match();
+      } else
+      if (extendMask(&I))
+        Changed = true;
       break;
     }
-  }
 }
 
 void GenXPatternMatch::visitCallInst(CallInst &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
-    return;
-  }
-
   switch (unsigned ID = GenXIntrinsic::getGenXIntrinsicID(&I)) {
   default:
     break;
@@ -610,10 +579,6 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
 }
 
 void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
-    return;
-  }
-
   // Ignore dead comparison.
   if (I.use_empty())
     return;
@@ -1130,8 +1095,7 @@ bool GenXPatternMatch::foldBoolAnd(Instruction *Inst) {
 }
 
 void GenXPatternMatch::visitSelectInst(SelectInst &I) {
-  Changed |= (Kind == PatternMatchKind::PreLegalization) && MinMaxMatcher::isEnabled() &&
-             MinMaxMatcher(&I).matchMinMax();
+  Changed |= MinMaxMatcher::isEnabled() && MinMaxMatcher(&I).matchMinMax();
 }
 
 // Trace the def-use chain and return the first non up-cast related value.
@@ -1229,7 +1193,7 @@ bool MadMatcher::isProfitable() const {
   if (isa<Constant>(Srcs[2]))
     return false;
 
-  // Do not match unless both of multiplicants are of type *B/*W
+  // Do not match unless both of multiplicants are of type *B/*W.
   bool IsProfitable = true;
 
   auto Checker = [](Value *V) -> bool {
@@ -2206,10 +2170,6 @@ static Value *getReciprocal(IRBuilder<> &IRB, Value *V,
 /// reciprocal is exact.
 ///
 void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
-    return;
-  }
-
   if (isInstructionTriviallyDead(&I)) {
     // Clean up dead 'fdiv', which may be left due to the limitation of
     // iterator used in instruction visitor, where only the instruction being
@@ -2949,10 +2909,6 @@ static void decomposeSDivPow2(BinaryOperator &SDivOp) {
 }
 
 void GenXPatternMatch::visitSDiv(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
-    return;
-  }
-
   auto CheckRes = isSuitableSDivSRemOperand(I.getOperand(1));
   if (CheckRes == DivRemOptimize::Not)
     return;
@@ -3058,10 +3014,6 @@ static void decomposeUDivNotPow2(BinaryOperator &UDivOp) {
 }
 
 void GenXPatternMatch::visitUDiv(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
-    return;
-  }
-
   auto CheckRes = isSuitableUDivURemOperand(I.getOperand(1));
   if (CheckRes == DivRemOptimize::Not)
     return;
@@ -3099,10 +3051,6 @@ static void decomposeSRemPow2(BinaryOperator &SRemOp) {
 }
 
 void GenXPatternMatch::visitSRem(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
-    return;
-  }
-
   auto CheckRes = isSuitableSDivSRemOperand(I.getOperand(1));
   if (CheckRes == DivRemOptimize::Not)
     return;
@@ -3153,10 +3101,6 @@ static void decomposeURemNotPow2(BinaryOperator &URemOp) {
 }
 
 void GenXPatternMatch::visitURem(BinaryOperator &I) {
-  if (Kind == PatternMatchKind::PostLegalization) {
-    return;
-  }
-
   auto CheckRes = isSuitableUDivURemOperand(I.getOperand(1));
   if (CheckRes == DivRemOptimize::Not)
     return;
