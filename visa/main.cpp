@@ -291,7 +291,7 @@ int main(int argc, const char *argv[])
     std::cout << argv[0];
     for (int i = 1; i < argc; i++)
         std::cout << " " << argv[i];
-    std::cout << std::endl;
+    std::cout << "\n";
 
 #if 0
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -372,7 +372,7 @@ int main(int argc, const char *argv[])
         //
         std::string cmdLine = argv[1];
         if (!PrepareInput(cmdLine, filesList)) {
-            std::cerr << "ERROR: Unable to open input file(s)." << std::endl;
+            std::cerr << "ERROR: Unable to open input file(s)." << "\n";
             return 1;
         }
         std::string::size_type testNameEnd = cmdLine.find_last_of(".");

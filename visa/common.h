@@ -141,7 +141,7 @@ extern std::stringstream errorMsgs;
     do {\
         if (!(x))   \
         {           \
-            errorMsgs << "Error in Common ISA file:" << errormsg << std::endl; \
+            errorMsgs << "Error in Common ISA file:" << errormsg << "\n"; \
             assert(false); \
         } \
     } while (0)
@@ -150,7 +150,7 @@ extern std::stringstream errorMsgs;
     do { \
         if (!(x))   \
         { \
-            errorMsgs << "Error in Common ISA file(" << file << ":" << line << "): " << errormsg << std::endl; \
+            errorMsgs << "Error in Common ISA file(" << file << ":" << line << "): " << errormsg << "\n"; \
             assert(false); \
         }    \
     } while(0)
@@ -160,9 +160,9 @@ extern std::stringstream errorMsgs;
     do {\
         if (!(x))   \
         { \
-            std::cerr <<errormsg << std::endl;  \
+            std::cerr <<errormsg << "\n";  \
             inst->emit(errorMsgs, true); \
-            std::cerr << std::endl; \
+            std::cerr << "\n"; \
             assert(false); \
         } \
     } while (0)
@@ -171,7 +171,7 @@ extern std::stringstream errorMsgs;
     do { \
         if (!(x)) \
         { \
-            std::cerr << __FILE__ << ":" << __LINE__ << " " << errormsg << std::endl; \
+            std::cerr << __FILE__ << ":" << __LINE__ << " " << errormsg << "\n"; \
             assert(false); \
         } \
     } while (0)
@@ -180,7 +180,7 @@ extern std::stringstream errorMsgs;
     do { \
         if (!(x)) \
         { \
-            std::cerr << "(Source Line " << lineno << ") " << errormsg << std::endl;  \
+            std::cerr << "(Source Line " << lineno << ") " << errormsg << "\n";  \
             assert(false); \
         } \
     } while (0)
@@ -192,6 +192,58 @@ extern std::stringstream errorMsgs;
 #define MUST_BE_TRUE1(x, lineno, errormsg)
 #define MUST_BE_TRUE2(x, errormsg, inst)
 #endif
+
+namespace vISA {
+#if !defined(NDEBUG) && !defined(DLL_MODE)
+// Emitting debug information similar to the LLVM_DEBUG() macro.
+// You can wrap your code around the VISA_DEBUG() macro, which is disabled by
+// default. A "-debug-only foo" option is also added to enable debugging
+// for a given pass with name foo. Unlike LLVM where DEBUG_TYPE is explicitly
+// defined as a macro, the current pass name (defined in PassInfo) is compared
+// against the pass(es) that are to be debugged. You can also explicitly set the
+// current pass name via setCurrentPass(). "-debug-only all" will enable
+// VISA_DEBUG() globally.
+
+// This boolean is set to true if the '-debug-only' command line option
+// is specified.
+extern bool DebugFlag;
+
+// This boolean is set to true if the '-debug-only=all' command line option
+// is specified.
+extern bool DebugAllFlag;
+
+// Add a pass that should emit debug information
+// This should only be called once when processing "-debug-only" option.
+void addPassToDebug(std::string name);
+
+// Set the current pass's name. To avoid unnecessary memory allocation, this
+// function does not perform a copy. This means that name should either be a
+// string literal, or the caller must ensure that its lifetime is the same as
+// the pass's lifetime.
+void setCurrentDebugPass(const char* name);
+
+// Don't call this directly, use the VISA_DEBUG macro instead.
+bool isCurrentDebugPass();
+
+// VISA_DEBUG macro - You can include any code that should only be executed
+// when debug information is enabled. Example:
+// VISA_DEBUG(std::cerr << "foo\n");
+// VISA_DEBUG(printf("id = %d\n", bb->getID()));
+// VISA_DEBUG({
+//   for (auto dcl : Declares)
+//      dcl->emit(std::cout);
+// })
+//
+#define VISA_DEBUG(X)                                        \
+  do { if (::DebugFlag && ::isCurrentDebugPass()) { X; } \
+  } while (false)
+#else
+#define addPassToDebug(X)
+#define isCurrentDebugPass() (false)
+#define setCurrentDebugPass(X)
+#define VISA_DEBUG(X) do { } while (false)
+#endif //NDEBUG
+}
 
 enum class PlatformGen
 {

@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #include "VarSplit.h"
 #include "GraphColor.h"
 
+using namespace vISA;
+
 namespace vISA
 {
 
@@ -239,7 +241,7 @@ void VarSplitPass::verifyOverlap()
         }
     }
 
-    printf("Split assignment overlap passed successfully - %d splits left\n", numSplitLeft);
+    VISA_DEBUG(printf("Split assignment overlap passed successfully - %d splits left\n", numSplitLeft));
 }
 
 void VarSplitPass::run()
@@ -451,7 +453,7 @@ void VarSplitPass::split()
         return bb->end();
     };
 
-#ifdef DEBUG_VERBOSE_ON
+#ifndef NDEBUG
     unsigned int numIntrinsicsInserted = 0;
 #endif
     // Do actual splitting
@@ -513,7 +515,7 @@ void VarSplitPass::split()
             item.second.def.second->insertBefore(it, intrin);
             splitDcls.push_back(std::make_tuple(lb, rb, splitDcl));
             IRchanged = true;
-#ifdef DEBUG_VERBOSE_ON
+#ifndef NDEBUG
             numIntrinsicsInserted++;
 #endif
         }
@@ -565,12 +567,12 @@ void VarSplitPass::split()
         }
     }
 
-    DEBUG_VERBOSE("Number of split intrinsincs inserted " << numIntrinsicsInserted << std::endl);
+    VISA_DEBUG(std::cout << "Number of split intrinsincs inserted " << numIntrinsicsInserted << "\n");
 }
 
 void VarSplitPass::replaceIntrinsics()
 {
-#ifdef DEBUG_VERBOSE_ON
+#ifndef NDEBUG
     unsigned int numSplitMovs = 0;
 #endif
 
@@ -589,7 +591,7 @@ void VarSplitPass::replaceIntrinsics()
             if (inst->isSplitIntrinsic())
             {
                 inst->setOpcode(G4_mov);
-#ifdef DEBUG_VERBOSE_ON
+#ifndef NDEBUG
                 if (inst->getDst()->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() !=
                     inst->getSrc(0)->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum())
                     numSplitMovs++;
@@ -598,7 +600,7 @@ void VarSplitPass::replaceIntrinsics()
         }
     }
 
-    DEBUG_VERBOSE("Number of split movs left behind " << numSplitMovs << std::endl);
+    VISA_DEBUG(std::cout << "Number of split movs left behind " << numSplitMovs << "\n");
 }
 
 G4_Declare* VarSplitPass::getParentDcl(G4_Declare* splitDcl)
@@ -1081,12 +1083,12 @@ void LoopVarSplit::dump(std::ostream& of)
 {
     for (auto dcl : splitResults)
     {
-        of << "Spilled dcl: " << dcl.first->getName() << std::endl;
+        of << "Spilled dcl: " << dcl.first->getName() << "\n";
         for (auto split : dcl.second)
         {
-            of << "\tSplit dcl: " << split.first->getName() << ", for loop L" << split.second->id << std::endl;
+            of << "\tSplit dcl: " << split.first->getName() << ", for loop L" << split.second->id << "\n";
         }
-        of << std::endl;
+        of << "\n";
     }
 }
 

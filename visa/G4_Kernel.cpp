@@ -1491,9 +1491,9 @@ void G4_Kernel::dumpDotFileInternal(const std::string &baseName)
     const char* asmFileName = NULL;
     m_options->getOption(VISA_AsmFileName, asmFileName);
     if (asmFileName == NULL)
-        ofile << "digraph UnknownKernel" << " {" << std::endl;
+        ofile << "digraph UnknownKernel" << " {" << "\n";
     else
-        ofile << "digraph " << asmFileName << " {" << std::endl;
+        ofile << "digraph " << asmFileName << " {" << "\n";
     //
     // keep the graph width 8, estimate a reasonable graph height
     //
@@ -1522,7 +1522,7 @@ void G4_Kernel::dumpDotFileInternal(const std::string &baseName)
     //
     //  ofile << "\\l";  // left adjusted
     //}
-    //ofile << "}\"];" << std::endl;
+    //ofile << "}\"];" << "\n";
     //
     // dump out flow graph
     //
@@ -1544,8 +1544,8 @@ void G4_Kernel::dumpDotFileInternal(const std::string &baseName)
         //
         ofile << "\t";
         bb->writeBBId(ofile);
-        ofile << " [shape=plaintext, label=<" << std::endl;
-        ofile << "\t\t\t    <TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">" << std::endl;
+        ofile << " [shape=plaintext, label=<" << "\n";
+        ofile << "\t\t\t    <TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">" << "\n";
         ofile << "\t\t\t\t<TR><TD ALIGN=\"CENTER\">";
         bb->writeBBId(ofile);
         ofile << ": ";
@@ -1554,13 +1554,13 @@ void G4_Kernel::dumpDotFileInternal(const std::string &baseName)
         {
             bb->front()->getSrc(0)->emit(ofile);
         }
-        ofile << "</TD></TR>" << std::endl;
+        ofile << "</TD></TR>" << "\n";
         //emit all instructions within basic block
-        ofile << "\t\t\t\t<TR><TD>" << std::endl;
+        ofile << "\t\t\t\t<TR><TD>" << "\n";
 
         if (!bb->empty())
         {
-            ofile << "\t\t\t\t\t    <TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\">" << std::endl;
+            ofile << "\t\t\t\t\t    <TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\">" << "\n";
             for (INST_LIST_ITER i = bb->begin(); i != bb->end(); i++)
             {
                 //
@@ -1583,14 +1583,14 @@ void G4_Kernel::dumpDotFileInternal(const std::string &baseName)
                 std::replace_if(dotStr.begin(), dotStr.end(), std::bind(std::equal_to<char>(), std::placeholders::_1, '&'), '$');
                 ofile << dotStr;
 
-                ofile << "</FONT></TD></TR>" << std::endl;
+                ofile << "</FONT></TD></TR>" << "\n";
                 //ofile << "\\l"; // left adjusted
             }
-            ofile << "\t\t\t\t\t    </TABLE>" << std::endl;
+            ofile << "\t\t\t\t\t    </TABLE>" << "\n";
         }
 
-        ofile << "\t\t\t\t</TD></TR>" << std::endl;
-        ofile << "\t\t\t    </TABLE>>];" << std::endl;
+        ofile << "\t\t\t\t</TD></TR>" << "\n";
+        ofile << "\t\t\t    </TABLE>>];" << "\n";
         //
         // dump out succ edges
         // BB12 -> BB10
@@ -1601,13 +1601,13 @@ void G4_Kernel::dumpDotFileInternal(const std::string &baseName)
             bb->writeBBId(ofile);
             ofile << " -> ";
             (*sit)->writeBBId(ofile);
-            ofile << std::endl;
+            ofile << "\n";
         }
     }
     //
     // write "}" to end digraph
     //
-    ofile << std::endl << " }" << std::endl;
+    ofile << "\n" << " }" << "\n";
     //
     // close dot file
     //
@@ -2216,17 +2216,17 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
 // parsable by IGA
 void G4_Kernel::emitDeviceAsmInstructionsOldAsm(std::ostream& os)
 {
-    os << std::endl << ".code";
+    os << "\n" << ".code";
     for (BB_LIST_ITER it = fg.begin(); it != fg.end(); ++it)
     {
         os << "\n";
         (*it)->emit(os);
     }
     //Step4: emit clean-up.
-    os << std::endl;
-    os << ".end_code" << std::endl;
-    os << ".end_kernel" << std::endl;
-    os << std::endl;
+    os << "\n";
+    os << ".end_code" << "\n";
+    os << ".end_kernel" << "\n";
+    os << "\n";
 }
 
 G4_BB* G4_Kernel::getNextBB(G4_BB* bb) const

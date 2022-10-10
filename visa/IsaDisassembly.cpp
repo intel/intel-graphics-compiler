@@ -3193,8 +3193,8 @@ std::string VISAKernel_format_provider::printKernelHeader(
 
     bool isKernel = m_kernel->getIsKernel();
 
-    sstr << printBuildVersion(isaHeader) << std::endl;
-    sstr << printFunctionDecl(this, isKernel) << std::endl;
+    sstr << printBuildVersion(isaHeader) << "\n";
+    sstr << printFunctionDecl(this, isKernel) << "\n";
 
     // Print all functions in the same object
     if (isKernel)

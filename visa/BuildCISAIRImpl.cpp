@@ -306,6 +306,30 @@ int CISA_IR_Builder::CreateBuilder(
     builder->m_options.getOptionsFromEV();
 #endif
 
+#if !defined(NDEBUG) && !defined(DLL_MODE)
+    auto debugPassesCstr = builder->m_options.getOptionCstr(vISA_DebugOnly);
+    if (debugPassesCstr)
+    {
+        DebugFlag = true;
+        std::string debugPasses(debugPassesCstr);
+        if (debugPasses == "all")
+            DebugAllFlag = true;
+        else
+        {
+            // Support a comma separated list of pass names.
+            for (int firstComma = debugPasses.find_first_of(",");
+                firstComma != std::string::npos;
+                firstComma = debugPasses.find_first_of(","))
+            {
+                auto name = debugPasses.substr(0, firstComma);
+                addPassToDebug(name);
+                debugPasses = debugPasses.substr(firstComma + 1);
+            }
+            addPassToDebug(debugPasses);
+        }
+    }
+#endif // NDEBUG
+
     // This should not matter anymore since each kernel should set its Target attribute to 3D/CM
     auto targetMode = VISA_3D;
     builder->m_options.setTarget(targetMode);
@@ -340,6 +364,9 @@ int CISA_IR_Builder::CreateBuilder(
         builder->m_ssIsaAsm << printBuildVersion(builder->m_header) << "\n";
     }
 
+    // Give builder phase a name so that we could control debug information in
+    // various translateVisaToG4 functions.
+    setCurrentDebugPass("translate");
     return VISA_SUCCESS;
 }
 
@@ -1739,7 +1766,6 @@ int CISA_IR_Builder::Compile(const char* nameInput, std::ostream* os, bool emit_
             }
         }
      }
-
 
     VISAKernelImpl* oldMainKernel = nullptr;
     if (IS_GEN_BOTH_PATH)

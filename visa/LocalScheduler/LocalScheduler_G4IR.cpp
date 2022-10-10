@@ -180,7 +180,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
                 } else {
                     ofile << " ... ";
                 }
-                ofile << std::endl;
+                ofile << "\n";
             }
             cycle -= 1; // Since the external for loop will ++ anyway
             ++nodeIT;
@@ -199,7 +199,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
             }
             else
             {
-                ofile << std::setw(4) << cycle << " " << std::endl;
+                ofile << std::setw(4) << cycle << " " << "\n";
             }
         }
     }
@@ -1917,7 +1917,7 @@ void DDD::dumpDagDot(G4_BB *bb)
     getOptions()->getOption(VISA_AsmFileName, asmName);
     std::string dumpFileName = std::string(asmName) + ".bb" + std::to_string(bb->getId()) + ".dag.dot";
     std::ofstream ofile(dumpFileName, std::ios::out);
-    ofile << "digraph DAG {" << std::endl;
+    ofile << "digraph DAG {" << "\n";
 
     // 1. Get an ordering of the nodes
     std::vector<Node *> DFSordering;
@@ -1971,7 +1971,7 @@ void DDD::dumpDagDot(G4_BB *bb)
             << "\""
             << ", style=\"filled\", fillcolor=\"" << fillColor << "\""
             << "]"
-            << std::endl;
+            << "\n";
         // 2. EDGES
         for (Edge &succDep : node->succs)
         {
@@ -1990,10 +1990,10 @@ void DDD::dumpDagDot(G4_BB *bb)
             ofile << node->nodeID << "->" << succNode->nodeID
                 << "[label=\"" << edgeLatency << "\""
                 << ",color=\"" << depColor << "\""
-                << "];" << std::endl;
+                << "];" << "\n";
         }
     }
-    ofile << "}" << std::endl;
+    ofile << "}" << "\n";
     ofile.close();
 }
 
@@ -2020,7 +2020,7 @@ void DDD::dumpNodes(G4_BB *bb)
                 << " Prio:" << node->priority
                 << "  " << *inst;
         }
-        ofile << std::endl;
+        ofile << "\n";
     }
 
     for (auto it = allNodes.rbegin(), ite = allNodes.rend(); it != ite; ++it) {
@@ -2043,7 +2043,7 @@ void DDD::dumpNodes(G4_BB *bb)
             ofile << node->nodeID << "->" << succNode->nodeID
                 << "[label=\"" << edgeLatency << "\""
                 << ",type=\"" << depTypeStr << "\""
-                << "];" << std::endl;
+                << "];" << "\n";
         }
     }
     ofile.close();
@@ -2944,7 +2944,7 @@ void DDD::DumpDotFile(G4_BB* bb) {
     if (!ofile)
     {
         MUST_BE_TRUE(false, "[Scheduling]:ERROR: Cannot open file " <<
-            fileName << ", dump failed." << std::endl);
+            fileName << ", dump failed." << "\n");
     }
     ofile << "digraph " << "BB" << bb->getId()  << " {\n";
     ofile << "\n" << "\t// Setup\n";
@@ -2978,7 +2978,7 @@ void DDD::DumpDotFile(G4_BB* bb) {
 
             ofile << dotStr;
             ofile << "\\l";
-            ofile << "} \"];" << std::endl;
+            ofile << "} \"];" << "\n";
         }
     }
     ofile << "\n" << "\t// Edges\n";
@@ -2992,7 +2992,7 @@ void DDD::DumpDotFile(G4_BB* bb) {
             ofile << "\tID_" << node->nodeID << " -> " << "ID_" << (*iEdge).getNode()->nodeID;
         }
     }
-    ofile << " }" << std::endl;
+    ofile << " }" << "\n";
     ofile.close();
 }
 

@@ -1318,15 +1318,15 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const
 #ifdef DEBUG_VERBOSE_ON
     for (G4_BB* bb : kernel.fg)
     {
-        DEBUG_VERBOSE(std::endl << "-----------------------------------------------------------------");
-        DEBUG_VERBOSE(std::endl << "BB" << bb->getId() << ":");
-        DEBUG_VERBOSE(std::endl << "Preds: ");
+        DEBUG_VERBOSE("\n" << "-----------------------------------------------------------------");
+        DEBUG_VERBOSE("\n" << "BB" << bb->getId() << ":");
+        DEBUG_VERBOSE("\n" << "Preds: ");
         for (const G4_BB* pred : bb->Preds)
         {
             DEBUG_VERBOSE("BB" << pred->getId() << ", ");
         }
 
-        DEBUG_VERBOSE(std::endl << "Succs: ");
+        DEBUG_VERBOSE("\n" << "Succs: ");
         for (const G4_BB* succ : bb->Succs)
         {
             DEBUG_VERBOSE("BB" << succ->getId() << ", ");
@@ -1336,7 +1336,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const
         {
             if (auto summary = kernel.fg.getBBLRASummary(bb))
             {
-                DEBUG_VERBOSE(std::endl << "Local RA: ");
+                DEBUG_VERBOSE("\n" << "Local RA: ");
                 {
                     for (unsigned i = 0; i < kernel.getNumRegTotal(); i++)
                     {
@@ -1349,7 +1349,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const
             }
         }
 
-        DEBUG_VERBOSE(std::endl << "Gen: ");
+        DEBUG_VERBOSE("\n" << "Gen: ");
         for (const G4_Declare * dcl : kernel.Declares)
         {
             if (dcl->getAliasDeclare() != NULL)
@@ -1364,7 +1364,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const
             }
         }
 
-        DEBUG_VERBOSE(std::endl << "Kill: ");
+        DEBUG_VERBOSE("\n" << "Kill: ");
         for (const G4_Declare * dcl : kernel.Declares)
         {
             if (dcl->getAliasDeclare() != NULL)
@@ -1379,7 +1379,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const
             }
         }
 
-        DEBUG_VERBOSE(std::endl << "Live-in: ");
+        DEBUG_VERBOSE("\n" << "Live-in: ");
         for (const G4_Declare * dcl : kernel.Declares)
         {
             if (dcl->getAliasDeclare() != NULL)
@@ -1394,7 +1394,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const
             }
         }
 
-        DEBUG_VERBOSE(std::endl << "Live-out: ");
+        DEBUG_VERBOSE("\n" << "Live-out: ");
         for (const G4_Declare * dcl : kernel.Declares)
         {
             if (dcl->getAliasDeclare() != NULL)
@@ -1409,7 +1409,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis& liveAnalysis) const
             }
         }
 
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
 
         bb->emit(COUT_ERROR);
     }
@@ -1431,7 +1431,7 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis& liveness, const GraphColo
             const G4_RegVar* spillVar = slr->getVar();
             optreport << "Spill candidate " << spillVar->getName() << " intf:";
             optreport << "\t(" << spillVar->getDeclare()->getTotalElems() << "):" <<
-                TypeSymbol(spillVar->getDeclare()->getElemType()) << std::endl;
+                TypeSymbol(spillVar->getDeclare()->getElemType()) << "\n";
 
             if (getLocalLR(spillVar->getDeclare()) != NULL)
             {
@@ -1443,7 +1443,7 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis& liveness, const GraphColo
                     end = getLocalLR(spillVar->getDeclare())->getLastRef(dummy)->getLineNo();
 
                     optreport << "(Liverange is local starting at line #" << start <<
-                        " and ending at line #" << end << ")" << std::endl;
+                        " and ending at line #" << end << ")" << "\n";
                 }
             }
 
@@ -1465,11 +1465,11 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis& liveness, const GraphColo
                         optreport << " --- spilled";
                     }
 
-                    optreport << ", " << std::endl;
+                    optreport << ", " << "\n";
                 }
             }
 
-            optreport << std::endl << std::endl;
+            optreport << "\n" << "\n";
         }
     }
 
@@ -1654,7 +1654,7 @@ void LiveRange::checkForInfiniteSpillCost(G4_BB* bb, std::list<G4_INST*>::revers
         if (isInfiniteCost == true)
         {
             DEBUG_VERBOSE("Marking " << this->getDcl()->getName() <<
-                " as having infinite spill cost due to back-to-back def-use" << std::endl);
+                " as having infinite spill cost due to back-to-back def-use" << "\n");
         }
 #endif
 
@@ -1667,7 +1667,7 @@ void LiveRange::checkForInfiniteSpillCost(G4_BB* bb, std::list<G4_INST*>::revers
         if (isInfiniteCost == true)
         {
             DEBUG_VERBOSE("Unmarking " << this->getDcl()->getName() <<
-                " as having infinite spill cost" << std::endl);
+                " as having infinite spill cost" << "\n");
         }
 #endif
         isCandidate = false;
@@ -4025,7 +4025,7 @@ void GlobalRA::printLiveIntervals()
                 DEBUG_VERBOSE("*");
             }
 
-            DEBUG_VERBOSE("] " << std::endl);
+            DEBUG_VERBOSE("] " << "\n");
         }
     }
 }
@@ -4361,7 +4361,7 @@ void Augmentation::buildLiveIntervals()
                         oldStart << " to " <<
                         startInst->getLexicalId() <<
                         " due to back-edge" <<
-                        std::endl;
+                        "\n";
                 }
 #endif
             }
@@ -4424,7 +4424,7 @@ void Augmentation::buildLiveIntervals()
                         }
 
 #ifdef DEBUG_VERBOSE_ON
-                        std::cout << "==> Extend live-in for BB" << exitBB->getId() << std::endl;
+                        std::cout << "==> Extend live-in for BB" << exitBB->getId() << "\n";
                         exitBB->emit(std::cout);
 #endif
                         extendVarLiveness(exitBB, startInst);
@@ -4454,7 +4454,7 @@ void Augmentation::buildLiveIntervals()
                             oldEnd << " to " <<
                             dcl->getEndInterval()->getLexicalId() <<
                             " due to back-edge" <<
-                            std::endl;
+                            "\n";
                     }
 #endif
                 }
@@ -4516,13 +4516,13 @@ void Augmentation::sortLiveIntervals()
     std::sort(sortedIntervals.begin(), sortedIntervals.end(), compareInterval(gra));
 
 #ifdef DEBUG_VERBOSE_ON
-    DEBUG_VERBOSE("Live-intervals in sorted order: " << std::endl);
+    DEBUG_VERBOSE("Live-intervals in sorted order: " << "\n");
     for (const G4_Declare* dcl : sortedIntervals)
     {
         DEBUG_VERBOSE(dcl->getName() << " - " <<
             "(" << dcl->getStartInterval()->getLexicalId() <<
             ", " << dcl->getEndInterval()->getLexicalId() <<
-            "]" << std::endl);
+            "]" << "\n");
     }
 #endif
 }
@@ -4551,7 +4551,7 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
 
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("Marking interference between " << firstDcl->getName() <<
-                " and " << GRFDcl->getName() << std::endl);
+                " and " << GRFDcl->getName() << "\n");
 #endif
         }
     };
@@ -4630,7 +4630,7 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
             }
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("Marking interference between " << firstDcl->getName() <<
-                " and " << secondDcl->getName() << std::endl);
+                " and " << secondDcl->getName() << "\n");
 #endif
         }
     }
@@ -4751,7 +4751,7 @@ void Augmentation::expireIntervals(unsigned startIdx)
         if (gra.getEndInterval(defaultMask.front())->getLexicalId() <= startIdx)
         {
 #ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("Expiring " << defaultMask.front()->getName() << std::endl);
+            DEBUG_VERBOSE("Expiring " << defaultMask.front()->getName() << "\n");
 #endif
             defaultMask.pop_front();
         }
@@ -4766,7 +4766,7 @@ void Augmentation::expireIntervals(unsigned startIdx)
         if (gra.getEndInterval(nonDefaultMask.front())->getLexicalId() <= startIdx)
         {
 #ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("Expiring " << nonDefaultMask.front()->getName() << std::endl);
+            DEBUG_VERBOSE("Expiring " << nonDefaultMask.front()->getName() << "\n");
 #endif
             nonDefaultMask.pop_front();
         }
@@ -5130,7 +5130,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
     {
         unsigned startIdx = gra.getStartInterval(newDcl)->getLexicalId();
 #ifdef DEBUG_VERBOSE_ON
-        DEBUG_VERBOSE("New idx " << startIdx << std::endl);
+        DEBUG_VERBOSE("New idx " << startIdx << "\n");
 #endif
 
         expireIntervals(startIdx);
@@ -5149,7 +5149,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
             updateActiveList(newDcl, &nonDefaultMask);
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("Adding " << newDcl->getName() <<
-                " to non-default list" << std::endl);
+                " to non-default list" << "\n");
 #endif
         }
         else
@@ -5157,7 +5157,7 @@ void Augmentation::buildInterferenceIncompatibleMask()
             updateActiveList(newDcl, &defaultMask);
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("Adding " << newDcl->getName() <<
-                " to default list" << std::endl);
+                " to default list" << "\n");
 #endif
         }
     }
@@ -5338,9 +5338,9 @@ void dumpLiveRanges(GlobalRA& gra, DECLARE_LIST& sortedIntervals)
         fname = std::string(kernel.getOptions()->getOptionCstr(VISA_AsmFileName)) + "-";
     fname += "iter-" + std::to_string(gra.getIterNo()) + std::string(".py");
     of.open(fname, std::ofstream::out);
-    of << "import matplotlib.pyplot as plt" << std::endl;
-    of << "import numpy as np" << std::endl;
-    of << "fig,ax = plt.subplots()" << std::endl;
+    of << "import matplotlib.pyplot as plt" << "\n";
+    of << "import numpy as np" << "\n";
+    of << "fig,ax = plt.subplots()" << "\n";
     unsigned int x = 10;
 
     // draw line from (x1, y2) -> (x2, y2)
@@ -5370,7 +5370,7 @@ void dumpLiveRanges(GlobalRA& gra, DECLARE_LIST& sortedIntervals)
         }
 
         if (lbl == "label")
-            of << "th1 = ax.text(*[" << x1 << "," << y1 + 1 << "], \"" << name << "\", fontsize=8,rotation=90, rotation_mode='anchor')" << std::endl;
+            of << "th1 = ax.text(*[" << x1 << "," << y1 + 1 << "], \"" << name << "\", fontsize=8,rotation=90, rotation_mode='anchor')" << "\n";
 
         of << "plt.plot(x1,y1, " << lbl << " = \"" << name << "\"";
         of << ")\n\n";
@@ -5462,7 +5462,7 @@ void dumpLiveRanges(GlobalRA& gra, DECLARE_LIST& sortedIntervals)
 
     }
 
-    of << "plt.show()" << std::endl;
+    of << "plt.show()" << "\n";
     of.close();
 }
 
@@ -5552,7 +5552,7 @@ void Augmentation::augmentIntfGraph()
                 // Set alignment of all GRF candidates
                 // to 2GRF except for NoMask variables
 #ifdef DEBUG_VERBOSE_ON
-                DEBUG_VERBOSE("Kernel size is SIMD" << kernel.getSimdSize() << " so updating all GRFs to be 2GRF aligned" << std::endl);
+                DEBUG_VERBOSE("Kernel size is SIMD" << kernel.getSimdSize() << " so updating all GRFs to be 2GRF aligned" << "\n");
 #endif
                 gra.evenAlign();
             }
@@ -5576,7 +5576,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
     buildInterferenceAtBBExit(bb, live);
 
 #ifdef DEBUG_VERBOSE_ON
-    DEBUG_VERBOSE("BB" << bb->getId() << std::endl);
+    DEBUG_VERBOSE("BB" << bb->getId() << "\n");
 #endif
 
     for (INST_LIST_RITER rit = bb->rbegin(), rend = bb->rend();
@@ -5590,7 +5590,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
 #ifdef DEBUG_VERBOSE_ON
         inst->emit(COUT_ERROR);
         DEBUG_VERBOSE("    //" << inst->getLineNo() << ":$" << inst->getCISAOff());
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
 #endif
 
         // Any physical registers defined will be marked available if
@@ -5629,7 +5629,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                     {
                         buildInterferenceWithLive(live, k);
 #ifdef DEBUG_VERBOSE_ON
-                        DEBUG_VERBOSE("Found no use for r" << j << ".0 so marking it as interfering with live set" << std::endl);
+                        DEBUG_VERBOSE("Found no use for r" << j << ".0 so marking it as interfering with live set" << "\n");
 #endif
                     }
                 }
@@ -5648,7 +5648,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                     {
                         cur.set(j, true);
 #ifdef DEBUG_VERBOSE_ON
-                        DEBUG_VERBOSE("Setting r" << j << ".0 available" << std::endl);
+                        DEBUG_VERBOSE("Setting r" << j << ".0 available" << "\n");
 #endif
                     }
 
@@ -5747,7 +5747,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
 
                         cur.set(j, false);
 #ifdef DEBUG_VERBOSE_ON
-                        DEBUG_VERBOSE("Setting r" << j << ".0 busy" << std::endl);
+                        DEBUG_VERBOSE("Setting r" << j << ".0 busy" << "\n");
 #endif
                     }
                 }
@@ -6591,7 +6591,7 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange* lr)
 #ifdef DEBUG_VERBOSE_ON
                 DEBUG_VERBOSE("\t relax ");
                 lr1->dump();
-                DEBUG_VERBOSE(" degree(" << lr1->getDegree() << ") - " << w << std::endl);
+                DEBUG_VERBOSE(" degree(" << lr1->getDegree() << ") - " << w << "\n");
 #endif
                 lr1->subtractDegree(w);
 
@@ -6645,7 +6645,7 @@ void GraphColor::relaxNeighborDegreeARF(LiveRange* lr)
 #ifdef DEBUG_VERBOSE_ON
                 DEBUG_VERBOSE("\t relax ");
                 lrs_it->dump();
-                DEBUG_VERBOSE(" degree(" << lrs_it->getDegree() << ") - " << w << std::endl);
+                DEBUG_VERBOSE(" degree(" << lrs_it->getDegree() << ") - " << w << "\n");
 #endif
                 lrs_it->subtractDegree(w);
 
@@ -6685,7 +6685,7 @@ void GraphColor::removeConstrained()
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE(".... Remove Constrained ");
             lr->dump();
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
 #endif
 
             if (liveAnalysis.livenessClass(G4_GRF))
@@ -6755,7 +6755,7 @@ void GraphColor::determineColorOrdering()
     }
 
 #ifdef DEBUG_VERBOSE_ON
-    DEBUG_VERBOSE("\nSPILL COST" << std::endl);
+    DEBUG_VERBOSE("\nSPILL COST" << "\n");
     for (unsigned i = 0; i < numUnassignedVar; i++)
     {
         sorted[i]->dump();
@@ -6763,9 +6763,9 @@ void GraphColor::determineColorOrdering()
         DEBUG_VERBOSE("\t degree=" << sorted[i]->getDegree());
         DEBUG_VERBOSE("\t refCnt=" << sorted[i]->getRefCount());
         DEBUG_VERBOSE("\t size=" << sorted[i]->getDcl()->getByteSize());
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
     }
-    DEBUG_VERBOSE(std::endl);
+    DEBUG_VERBOSE("\n");
 #endif
 
     while (!constrainedWorklist.empty() ||
@@ -6779,7 +6779,7 @@ void GraphColor::determineColorOrdering()
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE(".... Remove Unconstrained ");
             lr->dump();
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
 #endif
 
             if (liveAnalysis.livenessClass(G4_GRF))
@@ -7141,7 +7141,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         }
 #ifdef DEBUG_VERBOSE_ON
         lr->dump();
-        COUT_ERROR << std::endl;
+        COUT_ERROR << "\n";
 #endif
         return true;
     };
@@ -8623,7 +8623,7 @@ void GraphColor::getCallerSaveRegisters()
                 getOptReportStream(optreport, builder.kernel.getOptions());
                 optreport << "Caller save size: " << callerSaveRegCount * builder.getGRFSize() <<
                     " bytes for fcall at cisa id " <<
-                    (*it)->back()->getCISAOff() << std::endl;
+                    (*it)->back()->getCISAOff() << "\n";
                 closeOptReportStream(optreport);
             }
         }
@@ -8862,7 +8862,7 @@ void GlobalRA::addCalleeSaveRestoreCode()
         std::ofstream optreport;
         getOptReportStream(optreport, builder.kernel.getOptions());
         optreport << "Callee save size: " << calleeSaveRegCount * builder.getGRFSize() <<
-            " bytes" << std::endl;
+            " bytes" << "\n";
         closeOptReportStream(optreport);
     }
 }
@@ -8917,7 +8917,7 @@ void GlobalRA::addGenxMainStackSetupCode()
     {
         std::ofstream optreport;
         getOptReportStream(optreport, builder.kernel.getOptions());
-        optreport << "Total frame size: " << frameSize * 16 << " bytes" << std::endl;
+        optreport << "Total frame size: " << frameSize * 16 << " bytes" << "\n";
         closeOptReportStream(optreport);
     }
 }
@@ -8987,8 +8987,8 @@ void GlobalRA::addCalleeStackSetupCode()
     {
         std::ofstream optreport;
         getOptReportStream(optreport, builder.kernel.getOptions());
-        optreport << std::endl << "Total frame size: "
-            << frameSize * 16 << " bytes" << std::endl;
+        optreport << "\n" << "Total frame size: "
+            << frameSize * 16 << " bytes" << "\n";
         closeOptReportStream(optreport);
     }
 }
@@ -9395,9 +9395,9 @@ void GlobalRA::reportUndefinedUses(
             // Def not found for use so report it
             optreport << "Def not found for use " << referencedDcl->getName() <<
                 " (" << opndName << ") at CISA offset " << inst->getCISAOff() << ", src line " <<
-                inst->getLineNo() << ":" << std::endl;
+                inst->getLineNo() << ":" << "\n";
             inst->emit(optreport);
-            optreport << std::endl << std::endl;
+            optreport << "\n" << "\n";
         }
     }
 }
@@ -9421,22 +9421,22 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& ke
     std::ofstream optreport;
     getOptReportStream(optreport, kernel.getOptions());
 
-    optreport << std::endl;
+    optreport << "\n";
     if (liveAnalysis.livenessClass(G4_FLAG))
     {
-        optreport << "=== Uses with reaching def - Flags ===" << std::endl;
+        optreport << "=== Uses with reaching def - Flags ===" << "\n";
     }
     else if (liveAnalysis.livenessClass(G4_ADDRESS))
     {
-        optreport << "=== Uses with reaching def - Address ===" << std::endl;
+        optreport << "=== Uses with reaching def - Address ===" << "\n";
     }
     else
     {
-        optreport << "=== Uses with reaching def - GRF ===" << std::endl;
+        optreport << "=== Uses with reaching def - GRF ===" << "\n";
     }
     if (kernel.getOption(vISA_LocalRA))
     {
-        optreport << "(Use -nolocalra switch for accurate results of uses without reaching defs)" << std::endl;
+        optreport << "(Use -nolocalra switch for accurate results of uses without reaching defs)" << "\n";
     }
 
     for (G4_BB* bb : kernel.fg)
@@ -9492,7 +9492,7 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& ke
         }
     }
 
-    optreport << std::endl << std::endl;
+    optreport << "\n" << "\n";
 
     closeOptReportStream(optreport);
 }
@@ -9585,7 +9585,7 @@ void GlobalRA::detectNeverDefinedUses()
 
     std::ofstream optreport;
     getOptReportStream(optreport, kernel.getOptions());
-    optreport << std::endl << "=== Variables used but never defined ===" << std::endl << std::endl;
+    optreport << "\n" << "=== Variables used but never defined ===" << "\n" << "\n";
 
     for (auto dcl : kernel.Declares)
     {
@@ -9617,12 +9617,12 @@ void GlobalRA::detectNeverDefinedUses()
                     optreport << " (Flag)";
                 }
 
-                optreport << std::endl;
+                optreport << "\n";
             }
         }
     }
 
-    optreport << std::endl << std::endl;
+    optreport << "\n" << "\n";
 
     closeOptReportStream(optreport);
 }
@@ -10360,7 +10360,7 @@ void VarSplit::localSplit(IR_Builder& builder,
             gra.addSubDcl(topDcl, partialDcl);
             splitVarNum++;
 #ifdef DEBUG_VERBOSE_ON
-            std::cout << "==> Sub Declare: " << splitid << "::" << name << std::endl;
+            std::cout << "==> Sub Declare: " << splitid << "::" << name << "\n";
 #endif
             splitid++;
         }
@@ -10717,14 +10717,14 @@ int GlobalRA::coloringRegAlloc()
     {
         std::ofstream optreport;
         getOptReportStream(optreport, builder.getOptions());
-        optreport << std::endl << "=== Register Allocation ===" << std::endl;
+        optreport << "\n" << "=== Register Allocation ===" << "\n";
         if (builder.getIsKernel() == false)
         {
-            optreport << "Function: " << kernel.getName() << std::endl;
+            optreport << "Function: " << kernel.getName() << "\n";
         }
         else
         {
-            optreport << "Kernel: " << kernel.getName() << std::endl;
+            optreport << "Kernel: " << kernel.getName() << "\n";
         }
         closeOptReportStream(optreport);
 
@@ -13118,23 +13118,23 @@ bool VerifyAugmentation::interfereBetween(G4_Declare* dcl1, G4_Declare* dcl2)
 
 void VerifyAugmentation::verify()
 {
-    std::cerr << "Start verification for kernel: " << kernel->getOptions()->getOptionCstr(VISA_AsmFileName) << std::endl;
+    std::cerr << "Start verification for kernel: " << kernel->getOptions()->getOptionCstr(VISA_AsmFileName) << "\n";
 
     for (auto dcl : kernel->Declares)
     {
         if (dcl->getIsSplittedDcl())
         {
             auto& tup = masks[dcl];
-            std::cerr << dcl->getName() << "(" << getStr(std::get<1>(tup)) << ") is split" << std::endl;
+            std::cerr << dcl->getName() << "(" << getStr(std::get<1>(tup)) << ") is split" << "\n";
             for (const G4_Declare *subDcl : gra->getSubDclList(dcl))
             {
                 auto& tupSub = masks[subDcl];
-                std::cerr << "\t" << subDcl->getName() << " (" << getStr(std::get<1>(tupSub)) << ")" << std::endl;
+                std::cerr << "\t" << subDcl->getName() << " (" << getStr(std::get<1>(tupSub)) << ")" << "\n";
             }
         }
     }
 
-    std::cerr << std::endl << std::endl << std::endl;
+    std::cerr << "\n" << "\n" << "\n";
 
     auto overlapDcl = [this](G4_Declare* dcl1, G4_Declare* dcl2)
     {
@@ -13213,7 +13213,7 @@ void VerifyAugmentation::verify()
                 if (!interfere)
                 {
                     std::cerr << dcl->getRegVar()->getName() << "(" << getStr(dclMask) << ") and " << activeDcl->getRegVar()->getName() << "(" <<
-                        getStr(aDclMask) << ") are overlapping with incompatible emask but not masked as interfering" << std::endl;
+                        getStr(aDclMask) << ") are overlapping with incompatible emask but not masked as interfering" << "\n";
                 }
 
                 if (overlapDcl(activeDcl, dcl))
@@ -13221,7 +13221,7 @@ void VerifyAugmentation::verify()
                     if (!interfere)
                     {
                         std::cerr << dcl->getRegVar()->getName() << "(" << getStr(dclMask) << ") and " << activeDcl->getName() << "(" <<
-                            getStr(aDclMask) << ") use overlapping physical assignments but not marked as interfering" << std::endl;
+                            getStr(aDclMask) << ") use overlapping physical assignments but not marked as interfering" << "\n";
                     }
                 }
             }
@@ -13230,7 +13230,7 @@ void VerifyAugmentation::verify()
         active.push_back(dcl);
     }
 
-    std::cerr << "End verification for kenel: " << kernel->getOptions()->getOptionCstr(VISA_AsmFileName) << std::endl << std::endl << std::endl;
+    std::cerr << "End verification for kenel: " << kernel->getOptions()->getOptionCstr(VISA_AsmFileName) << "\n" << "\n" << "\n";
 
     return;
 
@@ -13692,7 +13692,7 @@ void GlobalRA::assignLocForReturnAddr()
         }
     }
 #ifdef DEBUG_VERBOSE_ON
-    DEBUG_MSG(std::endl << "Before merge indirect call: " << std::endl);
+    DEBUG_MSG("\n" << "Before merge indirect call: " << "\n");
     for (unsigned i = 0; i < fg.getNumBB(); i++)
         if (retLoc[i] == UNDEFINED_VAL) {
             DEBUG_MSG("BB" << i << ": X   ");
@@ -13700,7 +13700,7 @@ void GlobalRA::assignLocForReturnAddr()
         else {
             DEBUG_MSG("BB" << i << ": " << retLoc[i] << "   ");
         }
-        DEBUG_MSG(std::endl);
+        DEBUG_MSG("\n");
 #endif
 
         //
@@ -13776,7 +13776,7 @@ void GlobalRA::assignLocForReturnAddr()
         }
 
 #ifdef DEBUG_VERBOSE_ON
-        DEBUG_MSG(std::endl << "After merge indirect call: " << std::endl);
+        DEBUG_MSG("\n" << "After merge indirect call: " << "\n");
         for (unsigned i = 0; i < fg.getNumBB(); i++)
             if (retLoc[i] == UNDEFINED_VAL) {
                 DEBUG_MSG("BB" << i << ": X   ");
@@ -13784,7 +13784,7 @@ void GlobalRA::assignLocForReturnAddr()
             else {
                 DEBUG_MSG("BB" << i << ": " << retLoc[i] << "   ");
             }
-            DEBUG_MSG(std::endl << std::endl);
+            DEBUG_MSG("\n" << "\n");
 #endif
 
             //
@@ -13832,7 +13832,7 @@ void GlobalRA::assignLocForReturnAddr()
                     if (!bb->empty() && bb->front()->isLabel())
                     {
                         DEBUG_VERBOSE(((G4_Label*)bb->front()->getSrc(0))->getLabel()
-                            << " assigned location " << getSubRetLoc(bb) << std::endl);
+                            << " assigned location " << getSubRetLoc(bb) << "\n");
                     }
                 }
             }
@@ -14334,9 +14334,9 @@ void RegChartDump::dumpRegChart(std::ostream& os, LiveRange** lrs, unsigned numL
                     printf("r%d:%4x      ", i, busyGRFs);
                 }
             }
-            os << std::endl;
+            os << "\n";
         }
-        os << std::endl;
+        os << "\n";
     }
 }
 
@@ -14455,5 +14455,5 @@ void DynPerfModel::dump()
         Buffer += std::string(LocalBuffer);
     }
 
-    std::cerr << Buffer << std::endl;
+    std::cerr << Buffer << "\n";
 }

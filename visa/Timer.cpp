@@ -268,9 +268,9 @@ void dumpAllTimers(const char *asmFileName, bool outputTime)
     for (unsigned i = 0, e = getTotalTimers(); i < e; i++) {
         timerFile << timerNames[i] << ":";
         if (outputTime) {
-            timerFile << timers[i].time << std::endl;
+            timerFile << timers[i].time << "\n";
         } else {
-            timerFile << timers[i].ticks << std::endl;
+            timerFile << timers[i].ticks << "\n";
         }
     }
     timerFile.close();

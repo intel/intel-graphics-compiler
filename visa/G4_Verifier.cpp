@@ -423,7 +423,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             DEBUG_VERBOSE("operand pointer is shared by another instruction");
             MUST_BE_TRUE(false, "operand pointer is shared by another instruction");
         }
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
     }
 
     if (inst->isSend())
@@ -460,10 +460,10 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 if (opnd->getRightBound() != correctRB)
                 {
                     DEBUG_VERBOSE("Right bound mismatch for send inst dst. Orig rb = " <<
-                        opnd->getRightBound() << ", correct rb = " << correctRB << std::endl);
+                        opnd->getRightBound() << ", correct rb = " << correctRB << "\n");
 
                     inst->emit(std::cerr);
-                    DEBUG_VERBOSE(std::endl);
+                    DEBUG_VERBOSE("\n");
                     MUST_BE_TRUE(false, "Right bound mismatch!");
                 }
             }
@@ -496,10 +496,10 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 if (opnd->getRightBound() != correctRB)
                 {
                     DEBUG_VERBOSE("Right bound mismatch for send inst src0. Orig rb = " <<
-                        opnd->getRightBound() << ", correct rb = " << correctRB << std::endl);
+                        opnd->getRightBound() << ", correct rb = " << correctRB << "\n");
 
                     inst->emit(std::cerr);
-                    DEBUG_VERBOSE(std::endl);
+                    DEBUG_VERBOSE("\n");
                     MUST_BE_TRUE(false, "Right bound mismatch!");
                 }
             }
@@ -534,9 +534,9 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 if (!(inst->opcode() == G4_pln && inst->getSrc(1) == opnd))
                 {
                     DEBUG_VERBOSE("Difference between left/right bound is greater than 2 GRF for src region. Single non-send opnd cannot span 2 GRFs. lb = " <<
-                        opnd->getLeftBound() << ", rb = " << opnd->getRightBound() << std::endl);
+                        opnd->getLeftBound() << ", rb = " << opnd->getRightBound() << "\n");
                     inst->emit(std::cerr);
-                    DEBUG_VERBOSE(std::endl);
+                    DEBUG_VERBOSE("\n");
                     MUST_BE_TRUE(false, "Left/right bound span incorrect!");
                 }
             }
@@ -589,19 +589,19 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             if (opnd->getLeftBound() != newRgn.getLeftBound())
             {
                 DEBUG_VERBOSE("Left bound mismatch for src opnd for following inst. Orig lb = " <<
-                    opnd->getLeftBound() << ", recomputed lb = " << newRgn.getLeftBound() << std::endl);
+                    opnd->getLeftBound() << ", recomputed lb = " << newRgn.getLeftBound() << "\n");
                 inst->emit(std::cerr);
-                DEBUG_VERBOSE(std::endl);
+                DEBUG_VERBOSE("\n");
                 MUST_BE_TRUE(false, "Left bound mismatch!");
             }
 
             if (opnd->getRightBound() != newRgn.getRightBound())
             {
                 DEBUG_VERBOSE("Right bound mismatch for src opnd for following inst. Orig rb = " <<
-                    opnd->getRightBound() << ", recomputed rb = " << newRgn.getRightBound() << std::endl);
+                    opnd->getRightBound() << ", recomputed rb = " << newRgn.getRightBound() << "\n");
 
                 inst->emit(std::cerr);
-                DEBUG_VERBOSE(std::endl);
+                DEBUG_VERBOSE("\n");
                 MUST_BE_TRUE(false, "Right bound mismatch!");
             }
         }
@@ -629,9 +629,9 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 (inst->isPseudoKill() == false) && (inst->opcode() != G4_madw))
             {
                 DEBUG_VERBOSE("Difference between left/right bound is greater than 2 GRF for dst region. Single non-send opnd cannot span 2 GRFs. lb = " <<
-                    opnd->getLeftBound() << ", rb = " << opnd->getRightBound() << std::endl);
+                    opnd->getLeftBound() << ", rb = " << opnd->getRightBound() << "\n");
                 inst->emit(std::cerr);
-                DEBUG_VERBOSE(std::endl);
+                DEBUG_VERBOSE("\n");
                 MUST_BE_TRUE(false, "Left/right bound span incorrect!");
             }
 
@@ -670,20 +670,20 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             if (opnd->getLeftBound() != newRgn.getLeftBound())
             {
                 DEBUG_VERBOSE("Left bound mismatch for dst opnd for following inst. Orig lb = " <<
-                    opnd->getLeftBound() << ", recomputed lb = " << newRgn.getLeftBound() << std::endl);
+                    opnd->getLeftBound() << ", recomputed lb = " << newRgn.getLeftBound() << "\n");
 
                 inst->emit(std::cerr);
-                DEBUG_VERBOSE(std::endl);
+                DEBUG_VERBOSE("\n");
                 MUST_BE_TRUE(false, "Left bound mismatch");
             }
 
             if (opnd->getRightBound() != newRgn.getRightBound())
             {
                 DEBUG_VERBOSE("Right bound mismatch for dst opnd for following inst. Orig rb = " <<
-                    opnd->getRightBound() << ", recomputed rb = " << newRgn.getRightBound() << std::endl);
+                    opnd->getRightBound() << ", recomputed rb = " << newRgn.getRightBound() << "\n");
 
                 inst->emit(std::cerr);
-                DEBUG_VERBOSE(std::endl);
+                DEBUG_VERBOSE("\n");
                 MUST_BE_TRUE(false, "Right bound mismatch!");
             }
         }
@@ -705,20 +705,20 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             if (opnd->getLeftBound() != newRgn.getLeftBound())
             {
                 DEBUG_VERBOSE("Left bound mismatch for pred opnd for following inst. Orig lb = " <<
-                    opnd->getLeftBound() << ", recomputed lb = " << newRgn.getLeftBound() << std::endl);
+                    opnd->getLeftBound() << ", recomputed lb = " << newRgn.getLeftBound() << "\n");
 
                 inst->emit(std::cerr);
-                DEBUG_VERBOSE(std::endl);
+                DEBUG_VERBOSE("\n");
                 MUST_BE_TRUE(false, "Left bound mismatch");
             }
 
             if (opnd->getRightBound() != newRgn.getRightBound())
             {
                 DEBUG_VERBOSE("Right bound mismatch for pred opnd for following inst. Orig rb = " <<
-                    opnd->getRightBound() << ", recomputed rb = " << newRgn.getRightBound() << std::endl);
+                    opnd->getRightBound() << ", recomputed rb = " << newRgn.getRightBound() << "\n");
 
                 inst->emit(std::cerr);
-                DEBUG_VERBOSE(std::endl);
+                DEBUG_VERBOSE("\n");
                 MUST_BE_TRUE(false, "Right bound mismatch!");
             }
         }
@@ -740,20 +740,20 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
             if (opnd->getLeftBound() != newRgn.getLeftBound())
             {
                 DEBUG_VERBOSE("Left bound mismatch for cond mod opnd for following inst. Orig lb = " <<
-                    opnd->getLeftBound() << ", recomputed lb = " << newRgn.getLeftBound() << std::endl);
+                    opnd->getLeftBound() << ", recomputed lb = " << newRgn.getLeftBound() << "\n");
 
                 inst->emit(std::cerr);
-                DEBUG_VERBOSE(std::endl);
+                DEBUG_VERBOSE("\n");
                 MUST_BE_TRUE(false, "Left bound mismatch");
             }
 
             if (opnd->getRightBound() != newRgn.getRightBound())
             {
                 DEBUG_VERBOSE("Right bound mismatch for cond mod opnd for following inst. Orig rb = " <<
-                    opnd->getRightBound() << ", recomputed rb = " << newRgn.getRightBound() << std::endl);
+                    opnd->getRightBound() << ", recomputed rb = " << newRgn.getRightBound() << "\n");
 
                 inst->emit(std::cerr);
-                DEBUG_VERBOSE(std::endl);
+                DEBUG_VERBOSE("\n");
                 MUST_BE_TRUE(false, "Right bound mismatch!");
             }
         }
@@ -954,9 +954,9 @@ void verifyLifetimeConsistency(G4_BB* bb)
                         {
                             DEBUG_VERBOSE("Found a definition before pseudo_kill.");
                             (*killsIt).second.first->emit(std::cerr);
-                            DEBUG_VERBOSE(std::endl);
+                            DEBUG_VERBOSE("\n");
                             curInst->emit(std::cerr);
-                            DEBUG_VERBOSE(std::endl);
+                            DEBUG_VERBOSE("\n");
                         }
                     }
 
@@ -970,9 +970,9 @@ void verifyLifetimeConsistency(G4_BB* bb)
                         {
                             DEBUG_VERBOSE("Found a use after lifetime.end.");
                             (*lifetimeEndIter).second.first->emit(std::cerr);
-                            DEBUG_VERBOSE(std::endl);
+                            DEBUG_VERBOSE("\n");
                             curInst->emit(std::cerr);
-                            DEBUG_VERBOSE(std::endl);
+                            DEBUG_VERBOSE("\n");
                         }
                     }
                 }
@@ -1022,7 +1022,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
     {
         DEBUG_VERBOSE("dpas: should not have predicate nor condMod");
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, "dpas: may not have predicate/condMod");
     }
 
@@ -1044,7 +1044,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
     {
         DEBUG_VERBOSE("dpas: should not have source modifier");
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, "dpas: may not have source modifier");
     }
 
@@ -1054,7 +1054,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
     {
         DEBUG_VERBOSE("dpas: no indirect register access supported!");
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, "dpas: no indirect register access supported!");
     }
 
@@ -1062,7 +1062,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
     {
         DEBUG_VERBOSE("dpas: incorrect type for src1 or src2!");
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, "dpas: wrong type for src1 or src2");
     }
 
@@ -1072,7 +1072,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
         {
             DEBUG_VERBOSE("dpas: incorrect int type for src0 or dst!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "dpas: wrong int type for src0 or dst");
         }
     }
@@ -1087,7 +1087,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
         {
             DEBUG_VERBOSE("dpas: incorrect float type for dst or src0!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "dpas: wrong float type for dst or src0");
         }
     }
@@ -1097,7 +1097,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
         {
             DEBUG_VERBOSE("dpas: incorrect TF32 type for dst or src0 (expecting F)!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "dpas: should be float type for dst or src0");
         }
     }
@@ -1105,7 +1105,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
     {
         DEBUG_VERBOSE("dpas: invalid!");
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, "dpas: invalid");
     }
 
@@ -1122,7 +1122,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
     {
         DEBUG_VERBOSE("dpas: src region should be <1;1,0> and dst region <1>!");
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, "dpas: src region should be <1;1,0> and dst region <1>!");
     }
 
@@ -1144,7 +1144,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
         {
             DEBUG_VERBOSE("dpas: dst/src0's subreg offset should be multiple of execsize!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "dpas: dst/src0's subreg offset should be multiple of execsize!");
         }
 
@@ -1154,7 +1154,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
         {
             DEBUG_VERBOSE("dpas: dst/src0's size is wrong!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "dpas: dst/src0's size is wrong!");
         }
 
@@ -1162,7 +1162,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
         {
             DEBUG_VERBOSE("dpas: src1's subreg offset should be 0!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "dpas: src1's subreg offset should be 0!");
         }
 
@@ -1174,7 +1174,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
         {
             DEBUG_VERBOSE("dpas: src1's size is wrong!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "dpas: src1's size is wrong!");
         }
 
@@ -1183,7 +1183,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
         {
             DEBUG_VERBOSE("dpas: src2's subreg offset is incorrec!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "dpas: src2's subreg offset is incorrect!");
         }
 
@@ -1196,7 +1196,7 @@ void G4Verifier::verifyDpas(G4_INST* inst)
         {
             DEBUG_VERBOSE("dpas: src2's size is wrong!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "dpas: src2's size is wrong!");
         }
 
@@ -1221,7 +1221,7 @@ void G4Verifier::verifyAccMov(G4_INST* inst)
         {
             DEBUG_VERBOSE("Invalid type combination during mov format conversion when accumulator is used as src or dst!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "Invalid type combination during mov format conversion when accumulator is used as src or dst!");
         }
     }
@@ -1295,7 +1295,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
     {
         DEBUG_VERBOSE("BF type: BF mixed mode not supported!");
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, "BF type: BF mixed mode not supported!!");
     }
 
@@ -1304,7 +1304,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
     {
         DEBUG_VERBOSE("Pure BF operands are not supported!");
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, "Pure BF operands are not supported!!");
     }
 
@@ -1319,7 +1319,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
         {
             DEBUG_VERBOSE("Src1 in BF mixed mode must be F!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "Src1 in BF mixed mode must be F!");
         }
         break;
@@ -1336,7 +1336,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
         {
             DEBUG_VERBOSE("Src2 in BF mixed mode must be F!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "Src2 in BF mixed mode must be F!");
         }
         break;
@@ -1360,7 +1360,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
     default:
         DEBUG_VERBOSE("Instruction does not support BF type!");
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, "Instruction does not support BF type!");
         break;
     }
@@ -1383,7 +1383,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
             // case 5 & 6
             DEBUG_VERBOSE("BF/F Dst has illegal region and type combination!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "BF/F Dst has illegal region and type combination!");
         }
     }
@@ -1403,7 +1403,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
             // case 4
             DEBUG_VERBOSE(" Src: Imm BF/broadcast scalar BF are not supported!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "Src: Imm BF/broadcast scalar BF are not supported!");
         }
 
@@ -1422,7 +1422,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
             // case 5 & 6
             DEBUG_VERBOSE("Src has illegal region and type combination!");
             inst->emit(std::cerr);
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
             MUST_BE_TRUE(false, "Src has illegal region and type combination!");
         }
     }
@@ -1434,7 +1434,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST* inst)
         ss << "Inst in BF mixed mode should have execsize <= " << nativeES << '\n';
         DEBUG_VERBOSE(ss.str().c_str());
         inst->emit(std::cerr);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
         MUST_BE_TRUE(false, ss.str().c_str());
     }
     return;

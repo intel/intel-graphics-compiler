@@ -528,6 +528,6 @@ void SplitAlignedScalars::run()
 
 void SplitAlignedScalars::dump(std::ostream& os)
 {
-    os << "# GRF aligned scalar dcls replaced: " << numDclsReplaced << std::endl;
-    os << "# movs added: " << numMovsAdded << std::endl;
+    os << "# GRF aligned scalar dcls replaced: " << numDclsReplaced << "\n";
+    os << "# movs added: " << numMovsAdded << "\n";
 }

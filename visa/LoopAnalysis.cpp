@@ -1097,7 +1097,7 @@ void Loop::dump(std::ostream& os)
     exitBBs += " }";
 
     os << " BE: {BB" << be.first->getId() << " -> BB" << be.second->getId() << "}, " <<
-        "PreHeader: " << labelStr << ", " << "Loop exits: " << exitBBs << std::endl;
+        "PreHeader: " << labelStr << ", " << "Loop exits: " << exitBBs << "\n";
 
     for (auto& nested : immNested)
     {

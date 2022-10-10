@@ -319,7 +319,7 @@ void globalLinearScan::freeAllocedRegs(LSLiveRange* lr, bool setInstID)
 
 void globalLinearScan::printActives()
 {
-    std::cout << "====================ACTIVATE START===================" << std::endl;
+    std::cout << "====================ACTIVATE START===================" << "\n";
     for (auto lr : active)
     {
         unsigned int start, end;
@@ -365,7 +365,7 @@ void globalLinearScan::printActives()
         std::cout << lr->getTopDcl()->getName() << "(" << start << ", " << end << ", " << lr->getTopDcl()->getByteSize() << ")";
         std::cout << " (r" << startregnum << "." << startsregnum << ":w - " <<
             "r" << endregnum << "." << endsregnum << ":w)";
-        std::cout << std::endl;
+        std::cout << "\n";
     }
     for (int i = 0; i < (int)(numRegLRA); i++)
     {
@@ -397,7 +397,6 @@ void globalLinearScan::printActives()
                 std::cout << "\tIN: " << lr->getTopDcl()->getName();
                 std::cout << "(r" << startregnum << "." << startsregnum << ":w - " <<
                     "r" << endregnum << "." << endsregnum << ":w)";
-                //std::cout << std::endl;
             }
         }
 
@@ -431,7 +430,7 @@ void globalLinearScan::printActives()
             }
         }
     }
-    std::cout << "====================ACTIVATE END===================" << std::endl;
+    std::cout << "====================ACTIVATE END===================" << "\n";
 }
 
 void globalLinearScan::expireAllActive()
@@ -933,14 +932,14 @@ int LinearScanRA::linearScanRA()
         calculateFuncLastID();
 
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << "=============  ITERATION: " << iterator << "============" << std::endl;
+        COUT_ERROR << "=============  ITERATION: " << iterator << "============" << "\n";
 #endif
 
         //Input
         PhyRegsLocalRA initPregs = (*pregs);
         calculateInputIntervalsGlobal(initPregs);
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << "===== printInputLiveIntervalsGlobal============" << kernel.getName() << std::endl;
+        COUT_ERROR << "===== printInputLiveIntervalsGlobal============" << kernel.getName() << "\n";
         printInputLiveIntervalsGlobal();
 #endif
 
@@ -967,7 +966,7 @@ int LinearScanRA::linearScanRA()
         }
 
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << "===== globalLiveIntervals============" << std::endl;
+        COUT_ERROR << "===== globalLiveIntervals============" << "\n";
         printLiveIntervals(globalLiveIntervals);
 #endif
 
@@ -980,7 +979,7 @@ int LinearScanRA::linearScanRA()
             }
         }
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << "===== preAssignedLiveIntervals============" << std::endl;
+        COUT_ERROR << "===== preAssignedLiveIntervals============" << "\n";
         printLiveIntervals(preAssignedLiveIntervals);
 #endif
         // Copy over alignment for vars inserted by RA
@@ -1064,7 +1063,7 @@ int LinearScanRA::linearScanRA()
             nextSpillOffset = spillGRF.getNextOffset();;
             scratchOffset = std::max(scratchOffset, spillGRF.getNextScratchOffset());
 #ifdef DEBUG_VERBOSE_ON
-            COUT_ERROR << "===== printSpillLiveIntervals============" << std::endl;
+            COUT_ERROR << "===== printSpillLiveIntervals============" << "\n";
             printSpillLiveIntervals(spillLRs);
 #endif
             if (builder.hasScratchSurface() && !hasStackCall &&
@@ -1897,10 +1896,10 @@ void LinearScanRA::printLiveIntervals(std::vector<LSLiveRange*>& liveIntervals)
         lr->getLastRef(end);
 
         std::cout << lr->getTopDcl()->getName() << "(" << start << ", " << end << ", " << lr->getTopDcl()->getByteSize() << ")";
-        std::cout << std::endl;
+        std::cout << "\n";
     }
 
-    std::cout << std::endl;
+    std::cout << "\n";
 }
 
 void LinearScanRA::printSpillLiveIntervals(std::list<LSLiveRange*>& liveIntervals)
@@ -1913,15 +1912,15 @@ void LinearScanRA::printSpillLiveIntervals(std::list<LSLiveRange*>& liveInterval
         lr->getLastRef(end);
 
         std::cout << lr->getTopDcl()->getName() << "(" << start << ", " << end << ", " << lr->getTopDcl()->getByteSize() << ")";
-        std::cout << std::endl;
+        std::cout << "\n";
     }
 
-    std::cout << std::endl;
+    std::cout << "\n";
 }
 
 void LinearScanRA::printInputLiveIntervalsGlobal()
 {
-    COUT_ERROR << std::endl << "Input Live intervals " << std::endl;
+    COUT_ERROR << "\n" << "Input Live intervals " << "\n";
 
     for (std::list<LSInputLiveRange*>::iterator it = inputIntervals.begin();
         it != inputIntervals.end();
@@ -1937,10 +1936,10 @@ void LinearScanRA::printInputLiveIntervalsGlobal()
         lrEndIdx = lr->getLrEndIdx();
 
         COUT_ERROR << "r" << regNum << "." << subRegInWord << " " << lrEndIdx;
-        COUT_ERROR << std::endl;
+        COUT_ERROR << "\n";
     }
 
-    COUT_ERROR << std::endl;
+    COUT_ERROR << "\n";
 }
 
 static inline void printLiveInterval(LSLiveRange* lr, bool assign, const IR_Builder& builder)
@@ -1973,7 +1972,7 @@ static inline void printLiveInterval(LSLiveRange* lr, bool assign, const IR_Buil
     }
     COUT_ERROR << lr->getTopDcl()->getName() <<
         " (r" << startregnum << "." << startsregnum << ":w - " <<
-        "r" << endregnum << "." << endsregnum << ":w)" << std::endl;
+        "r" << endregnum << "." << endsregnum << ":w)" << "\n";
 
     return;
 }
@@ -2106,7 +2105,7 @@ bool LinearScanRA::isUseUnAvailableRegister(uint32_t startReg, uint32_t regNum)
 bool LinearScanRA::assignEOTLiveRanges(IR_Builder& builder, std::vector<LSLiveRange*>& liveIntervals)
 {
 #ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << "--------------------------------- " << std::endl;
+    COUT_ERROR << "--------------------------------- " << "\n";
 #endif
     uint32_t nextEOTGRF = numRegLRA - numRowsEOT;
     for (auto lr : liveIntervals)
@@ -2164,7 +2163,7 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
     bool allocateRegResult = false;
 
 #ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << "--------------------------------- " <<  std::endl;
+    COUT_ERROR << "--------------------------------- " <<  "\n";
 #endif
 
     for (auto lr : liveIntervals)
@@ -2209,7 +2208,7 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
         }
 
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << "-------- IDX: " << idx << "---------" << std::endl;
+        COUT_ERROR << "-------- IDX: " << idx << "---------" << "\n";
 #endif
 
         //Expire the live ranges ended befoe idx
@@ -2328,7 +2327,7 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
                 if (!allocateRegResult)
                 {
 #ifdef DEBUG_VERBOSE_ON
-                    COUT_ERROR << "Failed assigned physical register to " << lr->getTopDcl()->getName() << ", rows :" << lr->getTopDcl()->getNumRows() << std::endl;
+                    COUT_ERROR << "Failed assigned physical register to " << lr->getTopDcl()->getName() << ", rows :" << lr->getTopDcl()->getNumRows() << "\n";
                     printActives();
 #endif
                     return false;
@@ -2344,7 +2343,7 @@ bool globalLinearScan::runLinearScan(IR_Builder& builder, std::vector<LSLiveRang
             else
             {
 #ifdef DEBUG_VERBOSE_ON
-                COUT_ERROR << "Failed to spill registers for " << lr->getTopDcl()->getName() << ", rows :" << lr->getTopDcl()->getNumRows() << std::endl;
+                COUT_ERROR << "Failed to spill registers for " << lr->getTopDcl()->getName() << ", rows :" << lr->getTopDcl()->getNumRows() << "\n";
                 printActives();
 #endif
                 return false;
@@ -2398,7 +2397,7 @@ void globalLinearScan::updateGlobalActiveList(LSLiveRange* lr)
         active.push_back(lr);
 
 #ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << "Add active " << lr->getTopDcl()->getName() << std::endl;
+    COUT_ERROR << "Add active " << lr->getTopDcl()->getName() << "\n";
 #endif
 
     G4_VarBase* op;
@@ -2410,7 +2409,7 @@ void globalLinearScan::updateGlobalActiveList(LSLiveRange* lr)
     {
         activeGRF[i].activeLV.push_back(lr);
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << "Add activeGRF " << lr->getTopDcl()->getName() << " Reg: " << i << std::endl;
+        COUT_ERROR << "Add activeGRF " << lr->getTopDcl()->getName() << " Reg: " << i << "\n";
 #endif
     }
 }
@@ -2607,7 +2606,7 @@ void globalLinearScan::freeSelectedRegistsers(int startGRF, LSLiveRange* tlr, st
 {
     unsigned short requiredRows = tlr->getTopDcl()->getNumRows();
 #ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << "Required GRF size for spill: " << requiredRows << std::endl;
+    COUT_ERROR << "Required GRF size for spill: " << requiredRows << "\n";
 #endif
 
         //Free registers.
@@ -2616,7 +2615,7 @@ void globalLinearScan::freeSelectedRegistsers(int startGRF, LSLiveRange* tlr, st
 #ifdef DEBUG_VERBOSE_ON
         if (!activeGRF[k].activeLV.size())
         {
-            COUT_ERROR << "Pick free GRF for spill: " << " GRF:" << k << std::endl;
+            COUT_ERROR << "Pick free GRF for spill: " << " GRF:" << k << "\n";
         }
 #endif
 
@@ -2640,7 +2639,7 @@ void globalLinearScan::freeSelectedRegistsers(int startGRF, LSLiveRange* tlr, st
                 if (it != activeGRF[s].activeLV.end())
                 {
 #ifdef DEBUG_VERBOSE_ON
-                    COUT_ERROR << "SPILL: Free activeGRF from : " << (lr)->getTopDcl()->getName() << " GRF:" << s << std::endl;
+                    COUT_ERROR << "SPILL: Free activeGRF from : " << (lr)->getTopDcl()->getName() << " GRF:" << s << "\n";
 #endif
                     activeGRF[s].activeLV.erase(it);
                 }
@@ -2669,7 +2668,7 @@ void globalLinearScan::freeSelectedRegistsers(int startGRF, LSLiveRange* tlr, st
                 if ((*activeListIter) == lr)
                 {
 #ifdef DEBUG_VERBOSE_ON
-                    COUT_ERROR << "SPILL: Free active lr: " << (*activeListIter)->getTopDcl()->getName() << std::endl;
+                    COUT_ERROR << "SPILL: Free active lr: " << (*activeListIter)->getTopDcl()->getName() << "\n";
 #endif
                     active.erase(activeListIter);
                     break;
@@ -2742,7 +2741,7 @@ void globalLinearScan::expireGlobalRanges(unsigned int idx)
                         {
                             activeGRF[i].activeLV.erase(activeListIter);
 #ifdef DEBUG_VERBOSE_ON
-                            COUT_ERROR << "Remove range " << lr->getTopDcl()->getName() << " from activeGRF: " << i << std::endl;
+                            COUT_ERROR << "Remove range " << lr->getTopDcl()->getName() << " from activeGRF: " << i << "\n";
 #endif
                             break;
                         }
@@ -2795,7 +2794,7 @@ void globalLinearScan::expireInputRanges(unsigned int global_idx)
             pregManager.freeRegs(regnum, subRegInWord, 1, endIdx);
 
 #ifdef DEBUG_VERBOSE_ON
-            COUT_ERROR << "Expiring input r" << regnum << "." << subRegInWord << std::endl;
+            COUT_ERROR << "Expiring input r" << regnum << "." << subRegInWord << "\n";
 #endif
 
             // Remove range from inputIntervals list
@@ -2856,7 +2855,7 @@ bool globalLinearScan::allocateRegsLinearScan(LSLiveRange* lr, IR_Builder& build
     if (nrows)
     {
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << (int)bankAlign << std::endl;
+        COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << (int)bankAlign << "\n";
 #endif
         lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
         if (!builder.getOptions()->getOption(vISA_LSFristFit))
@@ -2885,7 +2884,7 @@ bool globalLinearScan::allocateRegsLinearScan(LSLiveRange* lr, IR_Builder& build
         if (nrows)
         {
 #ifdef DEBUG_VERBOSE_ON
-            COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << (int)bankAlign << std::endl;
+            COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << (int)bankAlign << "\n";
 #endif
             lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
             startGRFReg = (startGRFReg + nrows) % localRABound;
@@ -2893,7 +2892,7 @@ bool globalLinearScan::allocateRegsLinearScan(LSLiveRange* lr, IR_Builder& build
         }
     }
 #ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << lr->getTopDcl()->getName() << ": failed to allocate" << std::endl;
+    COUT_ERROR << lr->getTopDcl()->getName() << ": failed to allocate" << "\n";
 #endif
 
     return false;

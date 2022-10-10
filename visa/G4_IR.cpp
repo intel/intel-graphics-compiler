@@ -3765,7 +3765,7 @@ void G4_INST::emit(std::ostream& output, bool symbolreg, bool dotStyle)
                 for (unsigned i = 0; i < G4_MAX_SRCS; i++)
                     srcs_valid1[i] = true;
                 emit_inst(output, true, srcs_valid1); // emit comments
-                output << std::endl;
+                output << "\n";
             }
         }
         emit_inst(output, dst_valid, srcs_valid); // emit instruction

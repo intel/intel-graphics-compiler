@@ -69,8 +69,8 @@ static int CHECK_NUM_OPNDS(VISA_INST_Desc *instDesc, int numOperands, int predOp
     if ((instDesc->opnd_num -predOpnds) != numOperands)
     {
         ERROR_PRINT("Number of parameters does not match");
-        std::cerr << "LINE: " << __LINE__ << std::endl;
-        std::cerr << "FUNCTION: " << __FUNCTION__ << std::endl;
+        std::cerr << "LINE: " << __LINE__ << "\n";
+        std::cerr << "FUNCTION: " << __FUNCTION__ << "\n";
         assert(0);
         return VISA_FAILURE;
     }
@@ -368,6 +368,7 @@ void* VISAKernelImpl::encodeAndEmit(unsigned int& binarySize)
     // Entry point to LIR conversion & transformations
     //
     startTimer(TimerID::ENCODE_AND_EMIT);
+    setCurrentDebugPass("encode");
     if (m_builder->useIGAEncoder())
     {
         auto r = EncodeKernelIGA(*m_kernelMem, *m_kernel, m_asmName);
@@ -3148,8 +3149,8 @@ int VISAKernelImpl::AppendVISAAddrAddInst(
         if ((inst_desc->opnd_num -num_pred_desc_operands) != num_operands)
         {
             ERROR_PRINT("Number of parameters does not match");
-            std::cerr<<"LINE: "<<__LINE__<<std::endl;
-            std::cerr<<"FUNCTION: "<<__FUNCTION__<<std::endl;
+            std::cerr<<"LINE: "<<__LINE__<<"\n";
+            std::cerr<<"FUNCTION: "<<__FUNCTION__<<"\n";
             assert(0);
             return VISA_FAILURE;
         }

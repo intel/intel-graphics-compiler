@@ -4489,28 +4489,28 @@ void SWSB::tokenEdgePrune(unsigned& prunedEdgeNum,
                                     {
                                         prunedDiffBBEdgeNum++;
 #ifdef DEBUG_VERBOSE_ON
-                                        std::cerr << "Diff BB Token: " << predNode->getLastInstruction()->getSetToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << std::endl;;
+                                        std::cerr << "Diff BB Token: " << predNode->getLastInstruction()->getSetToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << "\n";;
 #endif
                                     }
                                     else if (predNode->getBBID() != node->getBBID())
                                     {
                                         prunedDiffBBSameTokenEdgeNum++;
 #ifdef DEBUG_VERBOSE_ON
-                                        std::cerr << "Diff BB Same Token: " << predNode->getLastInstruction()->getSetToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << std::endl;;
+                                        std::cerr << "Diff BB Same Token: " << predNode->getLastInstruction()->getSetToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << "\n";;
 #endif
                                     }
                                     else
                                     {
                                         prunedGlobalEdgeNum++;
 #ifdef DEBUG_VERBOSE_ON
-                                        std::cerr << "Global Token: " << predNode->getLastInstruction()->getSetToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << std::endl;;
+                                        std::cerr << "Global Token: " << predNode->getLastInstruction()->getSetToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << "\n";;
 #endif
                                     }
                                 }
 #ifdef DEBUG_VERBOSE_ON
                                 else
                                 {
-                                    std::cerr << "Local Token: " << predNode->getLastInstruction()->getSetToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << std::endl;;
+                                    std::cerr << "Local Token: " << predNode->getLastInstruction()->getSetToken() << " <Pred: " << predNode->getNodeID() << ", Succ: " << node->getNodeID() << ">" << "\n";;
                                 }
 #endif
                                 break;
@@ -4869,7 +4869,7 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
     MUST_BE_TRUE(addrdcl != nullptr, "address declare can not be nullptr");
 
 #ifdef DEBUG_VERBOSE_ON
-    std::cerr << addrdcl->getName() << ":" << std::endl;
+    std::cerr << addrdcl->getName() << ":" << "\n";
     std::cerr << node->getNodeID() << ":";
     node->GetInstruction()->dump();
     std::cerr << "Point to: ";
@@ -4908,7 +4908,7 @@ void G4_BB_SB::getGRFFootprintForIndirect(SBNode* node,
 #endif
     }
 #ifdef DEBUG_VERBOSE_ON
-    std::cerr << std::endl;
+    std::cerr << "\n";
 #endif
     return;
 }
@@ -6693,7 +6693,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
     {
         std::cerr << ":RETURN";
     }
-    std::cerr << std::endl;
+    std::cerr << "\n";
 
     for (size_t i = 0; i < globalSendOpndList->size(); i++)
     {
@@ -6701,10 +6701,10 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
         std::cerr << i << ": ";
         sNode->dump();
     }
-    std::cerr << std::endl;
+    std::cerr << "\n";
 
     std::cerr << "Live In:  ";
-    std::cerr << std::endl;
+    std::cerr << "\n";
     if (send_live_in.getSize() != 0)
     {
         std::cerr << "\tdst:  ";
@@ -6716,7 +6716,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
 
         std::cerr << "\tsrc:  ";
         for (const SBBucketNode* sNode : *globalSendOpndList)
@@ -6727,12 +6727,12 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
     }
-    std::cerr << std::endl;
+    std::cerr << "\n";
 
     std::cerr << "May Kill: ";
-    std::cerr << std::endl;
+    std::cerr << "\n";
     if (send_may_kill.getSize() != 0)
     {
         std::cerr << "\tdst:  ";
@@ -6744,7 +6744,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
         std::cerr << "\tsrc:  ";
         for (const SBBucketNode* sNode : *globalSendOpndList)
         {
@@ -6754,12 +6754,12 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
     }
-    std::cerr << std::endl;
+    std::cerr << "\n";
 
     std::cerr << "WAW May Kill: ";
-    std::cerr << std::endl;
+    std::cerr << "\n";
     if (send_WAW_may_kill.getSize() != 0)
     {
         std::cerr << "\tdst:  ";
@@ -6771,12 +6771,12 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
     }
-    std::cerr << std::endl;
+    std::cerr << "\n";
 
     std::cerr << "Killed:   ";
-    std::cerr << std::endl;
+    std::cerr << "\n";
     if (send_kill != nullptr)
     {
         std::cerr << "\tdst:  ";
@@ -6788,7 +6788,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
         std::cerr << "\tsrc:  ";
         for (const SBBucketNode* sNode : *globalSendOpndList)
         {
@@ -6798,12 +6798,12 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
     }
-    std::cerr << std::endl;
+    std::cerr << "\n";
 
     std::cerr << "Scalar Killed:   ";
-    std::cerr << std::endl;
+    std::cerr << "\n";
     if (send_live_out.getSize() != 0)
     {
         std::cerr << "\tdst:  ";
@@ -6815,7 +6815,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
         std::cerr << "\tsrc:  ";
         for (const SBBucketNode* sNode : *globalSendOpndList)
         {
@@ -6825,12 +6825,12 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
     }
-    std::cerr << std::endl;
+    std::cerr << "\n";
 
     std::cerr << "Live Out: ";
-    std::cerr << std::endl;
+    std::cerr << "\n";
     if (send_live_out.getSize() != 0)
     {
         std::cerr << "\tdst:  ";
@@ -6842,7 +6842,7 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
         std::cerr << "\tsrc:  ";
         for (const SBBucketNode* sNode : *globalSendOpndList)
         {
@@ -6852,9 +6852,9 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR* globalSendOpndList, unsigned 
                 sNode->dump();
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
     }
-    std::cerr << std::endl;
+    std::cerr << "\n";
 
 }
 //#endif
@@ -6903,7 +6903,7 @@ void SWSB::dumpTokenLiveInfo()
         {
             std::cerr << ":RETURN";
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
 
         if (fg.builder->getOptions()->getOption(vISA_GlobalTokenAllocation) ||
             fg.builder->getOptions()->getOption(vISA_DistPropTokenAllocation))
@@ -6918,11 +6918,11 @@ void SWSB::dumpTokenLiveInfo()
                     std::cerr << "#BB" << k << ", ";
                 }
             }
-            std::cerr << std::endl;
+            std::cerr << "\n";
         }
 
         std::cerr << "Live Out: ";
-        std::cerr << std::endl;
+        std::cerr << "\n";
         if (BBVector[i]->liveOutTokenNodes.getSize() != 0)
         {
             for (SBNODE_VECT_ITER node_it = SBSendNodes.begin();
@@ -6935,11 +6935,11 @@ void SWSB::dumpTokenLiveInfo()
                     std::cerr << " #" << node->getNodeID() << ":" << node->sendID << ":" << node->GetInstruction()->getSetToken();
                 }
             }
-            std::cerr << std::endl;
+            std::cerr << "\n";
         }
 
         std::cerr << "Killed Tokens: ";
-        std::cerr << std::endl;
+        std::cerr << "\n";
         if (BBVector[i]->killedTokens.getSize() != 0)
         {
             uint32_t totalTokenNum = kernel.getNumSWSBTokens();
@@ -6951,7 +6951,7 @@ void SWSB::dumpTokenLiveInfo()
                 }
             }
         }
-        std::cerr << std::endl;
+        std::cerr << "\n";
 
     }
 
@@ -7783,7 +7783,7 @@ void G4_BB::emitRegInfo(std::ostream& output, G4_INST* inst, int offset)
         }
     }
 
-    output << std::endl;
+    output << "\n";
     return;
 }
 

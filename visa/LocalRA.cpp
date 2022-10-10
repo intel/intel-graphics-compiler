@@ -114,7 +114,7 @@ void LocalRA::evenAlign()
             // Set alignment of all GRF candidates
             // to 2GRF except for NoMask variables
 #ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("Updating alignment to Even for GRF candidates" << std::endl);
+            DEBUG_VERBOSE("Updating alignment to Even for GRF candidates" << "\n");
 #endif
             gra.evenAlign();
         }
@@ -360,7 +360,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR)
         ra.run(curBB, builder, LLRUseMap);
 
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << "BB" << curBB->getId() << std::endl;
+        COUT_ERROR << "BB" << curBB->getId() << "\n";
         summary->printBusyRegs();
 #endif
 
@@ -377,7 +377,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR)
     {
         needGlobalRA = false;
 #ifdef DEBUG_VERBOSE_ON
-        DEBUG_VERBOSE("Skipping global RA because local RA allocated all live-ranges." << std::endl);
+        DEBUG_VERBOSE("Skipping global RA because local RA allocated all live-ranges." << "\n");
 #endif
     }
 
@@ -414,7 +414,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR)
     {
         std::ofstream optreport;
         getOptReportStream(optreport, builder.getOptions());
-        optreport << "Allocated 100% GRF ranges without graph coloring." << std::endl;
+        optreport << "Allocated 100% GRF ranges without graph coloring." << "\n";
         closeOptReportStream(optreport);
     }
 
@@ -891,7 +891,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, b
         needGlobalRA = hybridWithSpill;
         bool assignFromFront = true;
 #ifdef DEBUG_VERBOSE_ON
-        COUT_ERROR << "Trival RA: " << std::endl;
+        COUT_ERROR << "Trival RA: " << "\n";
 #endif
         for (auto dcl : unallocatedRanges)
         {
@@ -1024,7 +1024,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign, b
         needGlobalRA = true;
     }
 #ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << std::endl;
+    COUT_ERROR << "\n";
 #endif
 
     return needGlobalRA;
@@ -1117,13 +1117,13 @@ void LocalRA::localRAOptReport()
     {
         std::ofstream optreport;
         getOptReportStream(optreport, kernel.getOptions());
-        optreport << std::endl;
-        optreport << "Total GRF ranges: " << totalRanges << std::endl;
-        optreport << "GRF ranges allocated by local RA: " << localRanges << std::endl;
+        optreport << "\n";
+        optreport << "Total GRF ranges: " << totalRanges << "\n";
+        optreport << "GRF ranges allocated by local RA: " << localRanges << "\n";
         if (totalRanges)
         {
             optreport << (int)(localRanges * 100 / totalRanges) <<
-                "% allocated by local RA" << std::endl << std::endl;
+                "% allocated by local RA" << "\n" << "\n";
         }
         closeOptReportStream(optreport);
     }
@@ -1177,7 +1177,7 @@ void LocalRA::undoLocalRAAssignments(bool clearInterval)
     {
         std::ofstream optreport;
         getOptReportStream(optreport, kernel.getOptions());
-        optreport << "Undoing local RA assignments" << std::endl;
+        optreport << "Undoing local RA assignments" << "\n";
         closeOptReportStream(optreport);
     }
 
@@ -1755,7 +1755,7 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
 
 void LocalRA::printAddressTakenDecls()
 {
-    DEBUG_VERBOSE("Address taken decls:" << std::endl);
+    DEBUG_VERBOSE("Address taken decls:" << "\n");
 
     for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
         dcl_it != kernel.Declares.end();
@@ -1776,12 +1776,12 @@ void LocalRA::printAddressTakenDecls()
         }
     }
 
-    DEBUG_VERBOSE(std::endl);
+    DEBUG_VERBOSE("\n");
 }
 
 void LocalRA::printLocalRACandidates()
 {
-    DEBUG_VERBOSE("Local RA candidates:" << std::endl);
+    DEBUG_VERBOSE("Local RA candidates:" << "\n");
 
     for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
         dcl_it != kernel.Declares.end();
@@ -1803,12 +1803,12 @@ void LocalRA::printLocalRACandidates()
         }
     }
 
-    DEBUG_VERBOSE(std::endl);
+    DEBUG_VERBOSE("\n");
 }
 
 void LocalRA::printLocalLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& liveIntervals)
 {
-    DEBUG_VERBOSE("Live intervals for bb " << bb->getId() << std::endl);
+    DEBUG_VERBOSE("Live intervals for bb " << bb->getId() << "\n");
 
     for (auto lr : liveIntervals)
     {
@@ -1818,15 +1818,15 @@ void LocalRA::printLocalLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& l
         lr->getLastRef(end);
 
         DEBUG_VERBOSE(lr->getTopDcl()->getName() << "(" << start << ", " << end << ", " << lr->getTopDcl()->getByteSize() << ")");
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
     }
 
-    DEBUG_VERBOSE(std::endl);
+    DEBUG_VERBOSE("\n");
 }
 
 void LocalRA::printInputLiveIntervals()
 {
-    DEBUG_VERBOSE(std::endl << "Input Live intervals " << std::endl);
+    DEBUG_VERBOSE("\n" << "Input Live intervals " << "\n");
 
     for (std::list<InputLiveRange*>::iterator it = inputIntervals.begin();
         it != inputIntervals.end();
@@ -1842,10 +1842,10 @@ void LocalRA::printInputLiveIntervals()
         lrEndIdx = lr->getLrEndIdx();
 
         DEBUG_VERBOSE("r" << regNum << "." << subRegInWord << " " << lrEndIdx);
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
     }
 
-    DEBUG_VERBOSE(std::endl);
+    DEBUG_VERBOSE("\n");
 }
 
 void LocalRA::countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveIntervals, unsigned grfSize)
@@ -1885,13 +1885,13 @@ void LocalRA::printLocalLiveIntervalDistribution(unsigned int numScalars,
     unsigned int numHalfGRF, unsigned int numOneGRF, unsigned int numTwoOrMoreGRF,
     unsigned int numTotal)
 {
-    DEBUG_VERBOSE("In units of num of live ranges:" << std::endl);
-    DEBUG_VERBOSE("Total local live ranges: " << numTotal << std::endl);
-    DEBUG_VERBOSE("2 GRFs or more: " << numTwoOrMoreGRF << std::endl);
-    DEBUG_VERBOSE("1 GRF: " << numOneGRF << std::endl);
-    DEBUG_VERBOSE("Half GRF: " << numHalfGRF << std::endl);
-    DEBUG_VERBOSE("Scalar: " << numScalars << std::endl);
-    DEBUG_VERBOSE(std::endl);
+    DEBUG_VERBOSE("In units of num of live ranges:" << "\n");
+    DEBUG_VERBOSE("Total local live ranges: " << numTotal << "\n");
+    DEBUG_VERBOSE("2 GRFs or more: " << numTwoOrMoreGRF << "\n");
+    DEBUG_VERBOSE("1 GRF: " << numOneGRF << "\n");
+    DEBUG_VERBOSE("Half GRF: " << numHalfGRF << "\n");
+    DEBUG_VERBOSE("Scalar: " << numScalars << "\n");
+    DEBUG_VERBOSE("\n");
 }
 
 // return false if roundrobin RA should be disabled
@@ -2371,7 +2371,7 @@ void PhyRegsLocalRA::printBusyRegs()
         {
             if (isWordBusy(i, j) == true)
             {
-                DEBUG_VERBOSE("r" << i << "." << j << ":w, " << std::endl);
+                DEBUG_VERBOSE("r" << i << "." << j << ":w, " << "\n");
             }
         }
     }
@@ -2697,7 +2697,7 @@ void LinearScan::run(G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_VERBOSE("Assigned physical register to " << lr->getTopDcl()->getName() <<
                 " (r" << startregnum << "." << startsregnum << ":w - " <<
-                "r" << endregnum << "." << endsregnum << ":w)" << std::endl);
+                "r" << endregnum << "." << endsregnum << ":w)" << "\n");
 #endif
 #endif
         }
@@ -2789,7 +2789,7 @@ void LinearScan::expireRanges(unsigned int idx)
             freeAllocedRegs(lr, true);
 
 #ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("Expiring range " << lr->getTopDcl()->getName() << std::endl);
+            DEBUG_VERBOSE("Expiring range " << lr->getTopDcl()->getName() << "\n");
 #endif
 
             // Remove range from active list
@@ -2821,7 +2821,7 @@ void LinearScan::expireInputRanges(unsigned int global_idx, unsigned int local_i
             initPregs.setWordNotBusy(regnum, subRegInWord, 0);
 
 #ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("Expiring input r" << regnum << "." << subRegInWord << std::endl);
+            DEBUG_VERBOSE("Expiring input r" << regnum << "." << subRegInWord << "\n");
 #endif
 
             // Remove range from inputIntervals list
@@ -2985,7 +2985,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                 {
                     // Range in active is longer, so spill it
 #ifdef DEBUG_VERBOSE_ON
-                    DEBUG_VERBOSE("Spilling range " << activeLR->getTopDcl()->getName() << std::endl);
+                    DEBUG_VERBOSE("Spilling range " << activeLR->getTopDcl()->getName() << "\n");
 #endif
 
                     freeAllocedRegs(activeLR, false);
@@ -3162,14 +3162,14 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
         }
 
 #ifdef DEBUG_VERBOSE_ON
-        DEBUG_VERBOSE("Spilling range " << lr->getTopDcl()->getName() << std::endl);
+        DEBUG_VERBOSE("Spilling range " << lr->getTopDcl()->getName() << "\n");
 #endif
 
         // Even after spilling everything could not find an allocation
         return false;
     }
 #ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << gra.getBankConflict(lr->getTopDcl()) << std::endl;
+    COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << gra.getBankConflict(lr->getTopDcl()) << "\n";
 #endif
 
     lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
@@ -3486,7 +3486,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
         || !lr->hasHint(), "not expecting to use this allocate method for split dcl");
 
 #ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << gra.getBankConflict(lr->getTopDcl()) << std::endl;
+    COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << gra.getBankConflict(lr->getTopDcl()) << "\n";
 #endif
     return true;
 }
@@ -3550,5 +3550,5 @@ void PhyRegSummary::printBusyRegs()
         }
     }
 
-    DEBUG_VERBOSE(std::endl << std::endl);
+    DEBUG_VERBOSE("\n" << "\n");
 }

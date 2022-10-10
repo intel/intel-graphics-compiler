@@ -725,7 +725,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                     if (builder.getOption(vISA_OptReport))
                     {
                         (*tmpIter)->emit(std::cout);
-                        std::cout << std::endl;
+                        std::cout << "\n";
                     }
                     reduceExecSize(tmpIter, bb);
                 }
@@ -780,9 +780,9 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                 if (builder.getOption(vISA_OptReport))
                 {
                     (*tmpIter)->emit(std::cout);
-                    std::cout << std::endl;
+                    std::cout << "\n";
                     inst->emit(std::cout);
-                    std::cout << std::endl;
+                    std::cout << "\n";
                 }
                 // Fix up the move to load dst.  We can split the move instruction as it is NoMask
                 reduceExecSize(tmpIter, bb);
@@ -799,7 +799,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                     tmpIter = iter;
                     tmpIter++;
                     (*tmpIter)->emit(std::cout);
-                    std::cout << std::endl;
+                    std::cout << "\n";
                 }
             }
             else
@@ -810,7 +810,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
                     INST_LIST_ITER tmpIter = iter;
                     tmpIter++;
                     (*tmpIter)->emit(std::cout);
-                    std::cout << std::endl;
+                    std::cout << "\n";
                 }
             }
             goodOneGRFDst = true;
@@ -837,11 +837,11 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB* bb)
         if (builder.getOption(vISA_OptReport))
         {
             inst->emit(std::cout);
-            std::cout << std::endl;
+            std::cout << "\n";
             INST_LIST_ITER tmpIter = iter;
             tmpIter++;
             (*tmpIter)->emit(std::cout);
-            std::cout << std::endl;
+            std::cout << "\n";
         }
         return true;
     }
@@ -1242,7 +1242,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
                     if (builder.getOption(vISA_OptReport))
                     {
                         (*newMovIter)->emit(std::cout);
-                        std::cout << std::endl;
+                        std::cout << "\n";
                     }
                 }
             }
@@ -1250,7 +1250,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
         if (builder.getOption(vISA_OptReport))
         {
             newInst->emit(std::cout);
-            std::cout << std::endl;
+            std::cout << "\n";
         }
         // dst
         if (needMov && opndExSize[0] < currExSize)
@@ -1263,7 +1263,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             if (builder.getOption(vISA_OptReport))
             {
                 (*newMovIter)->emit(std::cout);
-                std::cout << std::endl;
+                std::cout << "\n";
             }
         }
     }
@@ -1440,7 +1440,7 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb, bool checkOve
         if (builder.getOption(vISA_OptReport))
         {
             newInst->emit(std::cout);
-            std::cout << std::endl;
+            std::cout << "\n";
         }
     }
 
@@ -1717,7 +1717,7 @@ void  HWConformity::removeBadSrc(INST_LIST_ITER& iter, G4_BB *bb, bool crossGRFD
             if (builder.getOption(vISA_OptReport))
             {
                 (*tmpIter)->emit(std::cout);
-                std::cout << std::endl;
+                std::cout << "\n";
             }
         }
     }

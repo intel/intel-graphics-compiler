@@ -233,7 +233,7 @@ private:
                           << options->get_vISAOptionsToStr(pair.first)
                           << ": ";
                 line.dump();
-                std::cerr << std::endl;
+                std::cerr << "\n";
             }
         }
         // Debug print a single entry

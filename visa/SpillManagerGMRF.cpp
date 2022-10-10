@@ -4629,7 +4629,7 @@ bool SpillManagerGRF::insertSpillFillCode(
 
     if (!success)
     {
-        DEBUG_MSG("Enough physical register not available for handling address taken spills" << std::endl);
+        DEBUG_MSG("Enough physical register not available for handling address taken spills" << "\n");
         return false;
     }
 
@@ -4834,7 +4834,7 @@ void SpillManagerGRF::expireRanges(
         if (endIdx <= idx)
         {
 #ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("Expiring range " << lr->getTopDcl()->getName() << std::endl);
+            DEBUG_VERBOSE("Expiring range " << lr->getTopDcl()->getName() << "\n");
 #endif
             // Remove range from active list
             liveList->pop_front();
@@ -6103,7 +6103,7 @@ void SpillAnalysis::Dump(std::ostream& OS)
         for (auto* Inst : BB->getInstList())
             InstBBMap[Inst] = BB;
 
-    OS << "Name, Dcl Byte Size, Spill Cost, Degree, #Defs, #Uses, Distance, #BBs, All BBs Where Live" << std::endl;
+    OS << "Name, Dcl Byte Size, Spill Cost, Degree, #Defs, #Uses, Distance, #BBs, All BBs Where Live" << "\n";
 
     for (auto* Spill : Spills)
     {
@@ -6132,7 +6132,7 @@ void SpillAnalysis::Dump(std::ostream& OS)
             OS << " ";
         }
 
-        OS << std::endl;
+        OS << "\n";
     }
 }
 
@@ -6217,13 +6217,13 @@ void SpillAnalysis::DumpHistogram(std::ostream& OS)
         SpillSizeHistogram[ByteSize] += 1;
     }
 
-    OS << "Spill Size Histogram For Iter#" << GC->getGRA().getIterNo() << " : " << std::endl;
+    OS << "Spill Size Histogram For Iter#" << GC->getGRA().getIterNo() << " : " << "\n";
     for (auto& Item : SpillSizeHistogram)
     {
-        OS << "# vars of " << Item.first << " bytes spilled: " << Item.second << std::endl;
+        OS << "# vars of " << Item.first << " bytes spilled: " << Item.second << "\n";
     }
 
-    OS << std::endl;
+    OS << "\n";
 }
 
 void SpillAnalysis::Do(LivenessAnalysis* L, GraphColor* C, SpillManagerGRF* S)

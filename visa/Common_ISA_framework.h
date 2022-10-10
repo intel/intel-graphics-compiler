@@ -37,8 +37,8 @@ SPDX-License-Identifier: MIT
 #define COMMON_ISA_NUM_PREDEFINED_PRED      1
 
 #if 0
-#define DEBUG_PRINT_SIZE(msg, value) {std::cout<< msg << value << std::endl; }
-#define DEBUG_PRINT_SIZE_INSTRUCTION(msg, inst ,value) {std::cerr<< msg << ISA_Inst_Table[inst].str <<" : " << value << std::endl; }
+#define DEBUG_PRINT_SIZE(msg, value) {std::cout<< msg << value << "\n"; }
+#define DEBUG_PRINT_SIZE_INSTRUCTION(msg, inst ,value) {std::cerr<< msg << ISA_Inst_Table[inst].str <<" : " << value << "\n"; }
 #else
 #define DEBUG_PRINT_SIZE(msg, value)
 #define DEBUG_PRINT_SIZE_INSTRUCTION(msg, inst ,value)

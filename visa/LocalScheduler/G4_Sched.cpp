@@ -2605,7 +2605,7 @@ void preDDD::dumpDagDot()
             .append(".preDDD.dot");
 
     std::fstream ofile(fileName, std::ios::out);
-    ofile << "digraph DAG {" << std::endl;
+    ofile << "digraph DAG {" << "\n";
 
     for (auto N : SNodes) {
         // Node

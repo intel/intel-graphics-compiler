@@ -55,6 +55,7 @@ DEF_VISA_OPTION(vISA_DumpRAIntfGraph,       ET_BOOL, "-dumpintf",        UNUSED,
 DEF_VISA_OPTION(vISA_DumpGenOffset,         ET_BOOL, "-dumpgenoffset",   UNUSED, false)
 DEF_VISA_OPTION(vISA_ForceAssignRhysicalReg,ET_CSTR, "-forceAssignRhysicalReg", UNUSED, NULL)
 DEF_VISA_OPTION(vISA_StopAfterPass,         ET_CSTR, "-stopafter", UNUSED, NULL)
+DEF_VISA_OPTION(vISA_DebugOnly,             ET_CSTR, "-debug-only", UNUSED, NULL)
 
 //=== Optimization options ===
 DEF_VISA_OPTION(vISA_EnableAlways,          ET_BOOL, NULLSTR,            UNUSED, true)

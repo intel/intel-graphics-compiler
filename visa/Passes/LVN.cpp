@@ -173,14 +173,14 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
     G4_Declare* lvnDstTopDcl = lvnDst->getTopDcl();
 
 #ifdef DEBUG_LVN_ON
-    std::cerr << "Inst with same value in LVN Table:" << std::endl;
+    std::cerr << "Inst with same value in LVN Table:" << "\n";
     lvnInst->emit(std::cerr);
     std::cerr << " #" << lvnInst->getLineNo() << ":$" << lvnInst->getCISAOff();
-    std::cerr << std::endl;
-    std::cerr << "Current inst:" << std::endl;
+    std::cerr << "\n";
+    std::cerr << "Current inst:" << "\n";
     defInst->emit(std::cerr);
     std::cerr << " #" << defInst->getLineNo() << ":$" << defInst->getCISAOff();
-    std::cerr << std::endl << "Uses:" << std::endl;
+    std::cerr << "\n" << "Uses:" << "\n";
 
     char shouldReplace[2];
 #endif
@@ -450,15 +450,15 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
             use_it++)
         {
             (*use_it).first->emit(std::cerr);
-            std::cerr << std::endl;
+            std::cerr << "\n";
         }
 
-        std::cerr << std::endl << std::endl << "Replace this occurence?";
+        std::cerr << "\n" << "\n" << "Replace this occurence?";
         scanf("%1s", &shouldReplace);
 
         canReplace = (shouldReplace[0] == 'y' ? true : false);
         if (canReplace)
-            std::cerr << "Ok, will replace" << std::endl;
+            std::cerr << "Ok, will replace" << "\n";
     }
 #endif
 
@@ -496,16 +496,16 @@ void LVN::replaceAllUses(G4_INST* defInst, bool negate, UseList& uses, G4_INST* 
     // Ensure most constrained alignment gets applied to lvnInst's dst
     transferAlign(dstTopDcl, defInst->getDst()->getTopDcl());
 
-#ifdef DEBUG_VERBOSE_ON
-    std::cerr << "Inst with same value in LVN Table:" << std::endl;
-    lvnInst->emit(std::cerr);
-    std::cerr << " #" << lvnInst->getLineNo() << ":$" << lvnInst->getCISAOff();
-    std::cerr << std::endl;
-    std::cerr << "Current inst:" << std::endl;
-    defInst->emit(std::cerr);
-    std::cerr << " #" << defInst->getLineNo() << ":$" << defInst->getCISAOff();
-    std::cerr << std::endl << "Uses:" << std::endl;
-#endif
+    VISA_DEBUG({
+        std::cerr << "Inst with same value in LVN Table:" << "\n";
+        lvnInst->emit(std::cerr);
+        std::cerr << " #" << lvnInst->getLineNo() << ":$" << lvnInst->getCISAOff();
+        std::cerr << "\n";
+        std::cerr << "Current inst:" << "\n";
+        defInst->emit(std::cerr);
+        std::cerr << " #" << defInst->getLineNo() << ":$" << defInst->getCISAOff();
+        std::cerr << "\n" << "Uses:" << "\n";
+        });
 
     for (auto use : uses)
     {
@@ -780,14 +780,14 @@ void LVN::removeAliases(G4_INST* inst)
         for (auto d : it->second)
         {
             d->active = false;
-#ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("Removing inst from LVN table for indirect dst conflict:");
-            d->inst->emit(std::cerr);
-            DEBUG_VERBOSE(" #" << d->inst->getLineNo() << ":$" << d->inst->getCISAOff() << std::endl);
-            DEBUG_VERBOSE("Due to indirect dst in:" << std::endl);
-            inst->emit(std::cerr);
-            DEBUG_VERBOSE(" #" << inst->getLineNo() << ":$" << inst->getCISAOff() << std::endl << std::endl);
-#endif
+            VISA_DEBUG({
+                std::cout << "Removing inst from LVN table for indirect dst conflict:";
+                d->inst->emit(std::cerr);
+                std::cout << " #" << d->inst->getLineNo() << ":$" << d->inst->getCISAOff() << "\n";
+                std::cout << "Due to indirect dst in:" << "\n";
+                inst->emit(std::cerr);
+                std::cout << " #" << inst->getLineNo() << ":$" << inst->getCISAOff() << "\n" << "\n";
+                });
         }
     }
 }

@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "G4_Opcode.h"
 #include "PlatformInfo.h"
 #include <cctype>
+#include <vector>
 
 //for exception handling
 //FIXME: potentially not thread safe, but should be ok since it's debugging code
@@ -149,3 +150,36 @@ int PlatformInfo::getGenxPlatformEncoding(TARGET_PLATFORM platform)
         return -1;
     }
 }
+
+#if !defined(NDEBUG) && !defined(DLL_MODE)
+namespace vISA {
+    bool DebugFlag = false;
+    bool DebugAllFlag = false;
+
+    // This should set by each pass via setCurrentDebugPass()
+    static const char* CurrentDebugPass = nullptr;
+    // This is set when processing the vISA "-debug-only" option.
+    static std::vector<std::string> PassesToDebug;
+
+    void setCurrentDebugPass(const char* Name) {
+        CurrentDebugPass = Name;
+    }
+
+    void addPassToDebug(std::string Name) {
+        PassesToDebug.push_back(Name);
+    }
+
+    bool isCurrentDebugPass() {
+        if (DebugAllFlag)
+            return true;
+        if (!CurrentDebugPass)
+            return false;
+        for (auto& pass : PassesToDebug) {
+            if (pass.compare(CurrentDebugPass) == 0)
+                return true;
+        }
+        return false;
+    }
+}
+#endif // NDEBUG
+

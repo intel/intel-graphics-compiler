@@ -726,6 +726,8 @@ void FlowGraph::normalizeFlowGraph()
 void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 {
     MUST_BE_TRUE(!instlist.empty(), ERROR_SYNTAX("empty instruction list"));
+    setCurrentDebugPass("CFG");
+    VISA_DEBUG(std::cout << "Entering CFG construction\n");
 
     if (builder->hasScratchSurface() && (isStackCallFunc || hasStackCalls))
     {
@@ -1086,6 +1088,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     localDataFlowAnalysis();
 
     markStale();
+    setCurrentDebugPass(nullptr);
 }
 
 void FlowGraph::normalizeRegionDescriptors()
@@ -3301,11 +3304,11 @@ void FlowGraph::setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB)
     }
     endif->asCFInst()->setJip(label);
 
-#ifdef DEBUG_VERBOSE_ON
-    cout << "set JIP for: \n";
-    endif->emit(cout);
-    cout << "\n";
-#endif
+    VISA_DEBUG({
+        std::cout << "set JIP for: \n";
+        endif->emit(std::cout);
+        std::cout << "\n";
+        });
 }
 
 void FlowGraph::convertGotoToJmpi(G4_INST *gotoInst)

@@ -637,7 +637,7 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned)
             }
 #ifdef DEBUG_VERBOSE_ON
             DEBUG_EMIT(decl->getRegVar());
-            DEBUG_VERBOSE(" id = " << decl->getRegVar()->getId() << std::endl);
+            DEBUG_VERBOSE(" id = " << decl->getRegVar()->getId() << "\n");
 #endif
         }
         //
@@ -694,7 +694,7 @@ LivenessAnalysis::LivenessAnalysis(
         }
 #ifdef DEBUG_VERBOSE_ON
         DEBUG_EMIT(decl->getRegVar());
-        DEBUG_VERBOSE(" id = " << decl->getRegVar()->getId() << std::endl);
+        DEBUG_VERBOSE(" id = " << decl->getRegVar()->getId() << "\n");
 #endif
     }
 
@@ -818,7 +818,7 @@ void LivenessAnalysis::updateKillSetForDcl(G4_Declare* dcl, SparseBitSet* curBBG
         entryBBKill->set(dcl->getRegVar()->getId(), true);
         entryBBGen->set(dcl->getRegVar()->getId(), false);
 #ifdef DEBUG_VERBOSE_ON
-        DEBUG_VERBOSE("Killed sub-routine scope " << dcl->getName() << " at bb with id = " << entryBB->getId() << std::endl);
+        DEBUG_VERBOSE("Killed sub-routine scope " << dcl->getName() << " at bb with id = " << entryBB->getId() << "\n");
 #endif
     }
 }
@@ -1005,7 +1005,7 @@ void LivenessAnalysis::computeLiveness()
         {
             inputDefs.set(i, true);
 #ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("First def input = " << decl->getName() << std::endl);
+            DEBUG_VERBOSE("First def input = " << decl->getName() << "\n");
 #endif
         }
 
@@ -1025,7 +1025,7 @@ void LivenessAnalysis::computeLiveness()
         {
             outputUses.set(i, true);
 #ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("First def output    = " << decl->getName() << std::endl);
+            DEBUG_VERBOSE("First def output    = " << decl->getName() << "\n");
 #endif
         }
     }
@@ -2054,7 +2054,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                             srcfootprint->clear();
 
                             DEBUG_VERBOSE("Found potential indirect use of " << grf->getDeclare()->getName() <<
-                                " so resetting its footprint" << std::endl);
+                                " so resetting its footprint" << "\n");
                         }
                     }
                 }
@@ -2249,7 +2249,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     fwdIter--;
                     (*fwdIter)->emit_inst(std::cout, false, NULL);
                     DEBUG_VERBOSE(" // $" << (*fwdIter)->getCISAOff());
-                    DEBUG_VERBOSE(std::endl);
+                    DEBUG_VERBOSE("\n");
 #endif
                 }
             }
@@ -2291,7 +2291,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     fwdIter--;
                     (*fwdIter)->emit_inst(std::cout, false, NULL);
                     DEBUG_VERBOSE(" // $" << (*fwdIter)->getCISAOff());
-                    DEBUG_VERBOSE(std::endl);
+                    DEBUG_VERBOSE("\n");
 #endif
                 }
             }
@@ -2435,12 +2435,12 @@ void LivenessAnalysis::dump_bb_vector(char* vname, std::vector<BitSet>& vec)
 
 void LivenessAnalysis::dump_fn_vector(char* vname, std::vector<FuncInfo*>& fns, std::vector<BitSet>& vec)
 {
-    DEBUG_VERBOSE(vname << std::endl);
+    DEBUG_VERBOSE(vname << "\n");
     for (std::vector<FuncInfo*>::iterator it = fns.begin(); it != fns.end(); it++)
     {
         FuncInfo* funcInfo = (*it);
 
-        DEBUG_VERBOSE("    FN" << funcInfo->getId() << std::endl);
+        DEBUG_VERBOSE("    FN" << funcInfo->getId() << "\n");
         const BitSet& in = vec[funcInfo->getId()];
         DEBUG_VERBOSE("        ");
         for (unsigned i = 0; i < in.getSize(); i += 10)
@@ -2454,7 +2454,7 @@ void LivenessAnalysis::dump_fn_vector(char* vname, std::vector<FuncInfo*>& fns, 
             }
             DEBUG_VERBOSE(" ");
         }
-        DEBUG_VERBOSE(std::endl);
+        DEBUG_VERBOSE("\n");
     }
 }
 
@@ -3739,7 +3739,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
             {
                 DEBUG_VERBOSE("\tBB" << block->getId());
             }
-            DEBUG_VERBOSE(std::endl);
+            DEBUG_VERBOSE("\n");
         }
 #endif
     }

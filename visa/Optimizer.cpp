@@ -60,8 +60,8 @@ void Optimizer::LVN()
     {
         std::ofstream optreport;
         getOptReportStream(optreport, kernel.getOptions());
-        optreport << "===== LVN =====" << std::endl;
-        optreport << "Number of instructions removed: " << numInstsRemoved << std::endl << std::endl;
+        optreport << "===== LVN =====" << "\n";
+        optreport << "Number of instructions removed: " << numInstsRemoved << "\n" << "\n";
         closeOptReportStream(optreport);
     }
 }
@@ -896,17 +896,17 @@ void Optimizer::countBankConflicts()
         std::ofstream optreport;
         getOptReportStream(optreport, builder.getOptions());
 
-        optreport << std::endl << std::endl;
+        optreport << "\n" << "\n";
 
-        optreport << "===== Bank conflicts =====" << std::endl;
-        optreport << "Found " << numBankConflicts << " conflicts (" << numLocals << " locals, " << numGlobals << " globals) in kernel: " << kernel.getName() << std::endl;
+        optreport << "===== Bank conflicts =====" << "\n";
+        optreport << "Found " << numBankConflicts << " conflicts (" << numLocals << " locals, " << numGlobals << " globals) in kernel: " << kernel.getName() << "\n";
         for (G4_INST* i : conflicts)
         {
             i->emit(optreport);
-            optreport << " // $" << i->getCISAOff() << ":#" << i->getLineNo() << std::endl;
+            optreport << " // $" << i->getCISAOff() << ":#" << i->getLineNo() << "\n";
         }
 
-        optreport << std::endl << std::endl;
+        optreport << "\n" << "\n";
 
         closeOptReportStream(optreport);
     }
@@ -1549,6 +1549,7 @@ void Optimizer::runPass(PassIndex Index)
         return;
 
     std::string Name = PI.Name;
+    setCurrentDebugPass(PI.Name);
 
     if (PI.Timer != TimerID::NUM_TIMERS)
         startTimer(PI.Timer);
@@ -1579,6 +1580,7 @@ void Optimizer::runPass(PassIndex Index)
         verifyG4Kernel(kernel, Index, true, G4Verifier::VC_ASSERT);
     }
 #endif
+    setCurrentDebugPass(nullptr);
 }
 
 void Optimizer::initOptimizations()
