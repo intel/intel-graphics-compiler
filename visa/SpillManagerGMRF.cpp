@@ -6030,11 +6030,12 @@ void GlobalRA::expandFillIntrinsic(G4_BB* bb)
 void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes)
 {
     auto globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
+    bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
 
     for (auto bb : kernel.fg)
     {
         if (builder.hasScratchSurface() &&
-            (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc() || kernel.fg.builder->hasValidOldA0Dot2()
+            (hasStackCall || kernel.fg.builder->hasValidOldA0Dot2()
                 || (useLscForSpillFill && (spillSizeInBytes + globalScratchOffset) > SCRATCH_MSG_LIMIT &&
                     spillSizeInBytes > 0)
                 || (useLscForNonStackCallSpillFill && spillSizeInBytes > 0)
