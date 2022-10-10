@@ -126,7 +126,7 @@ DECLARE_IGC_REGKEY(bool, DisableCodeSinking,            false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, DisableCodeSinkingInputVec,    false, "Setting this to 1/true disable sinking inputVec inst (test)", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkMinSave,              5,  "If loop sink can have save more than this Minimum, do it; otherwise, skip", false)
 DECLARE_IGC_REGKEY(DWORD, LoopSinkThresholdDelta,       50,  "Do loop sink If the estimated register pressure is higher than this + #avaialble registers", false)
-DECLARE_IGC_REGKEY(bool, EnableLoopHoistConstant,       true, "Enables pass to check for specific loop patterns where variables are constant across all but the last iteration, and hoist them out of the loop.", false)
+DECLARE_IGC_REGKEY(bool, EnableLoopHoistConstant,       false, "Enables pass to check for specific loop patterns where variables are constant across all but the last iteration, and hoist them out of the loop.", false)
 DECLARE_IGC_REGKEY(bool, DisableCodeHoisting,           false, "Setting this to 1/true adds a compiler switch to disable code-hoisting", false)
 DECLARE_IGC_REGKEY(bool, DisableDeSSA,                  false, "Setting this to 1/true adds a compiler switch to disable optimized De-SSA", false)
 DECLARE_IGC_REGKEY(bool, EnableDeSSAWA,                 true,  "[tmp]Keep some piece of code to avoid perf regression", false)
