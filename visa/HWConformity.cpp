@@ -9835,11 +9835,12 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
     // case 1. src0 cannot be imm.
     // case 2. subreg must be zero  (must be grf-aligned)
     // case 3. For HF->BF8,  both dst and src must be packed
+    // case 4. For HF->BF8, no simd1
     G4_DstRegRegion* dst = inst->getDst();
     uint32_t execsize = inst->getExecSize();
-    bool Packed = (dst->getType() == Type_UB);
+    bool isHF2BF8 = (dst->getType() == Type_UB);
     if (!dst->checkGRFAlign(builder) ||                // case 2
-        (Packed && dst->getHorzStride() != 1))  // case 3
+        (isHF2BF8 && dst->getHorzStride() != 1))  // case 3
     {
         G4_Declare* dcl = builder.createTempVar(execsize, dst->getType(), builder.getGRFAlign());
         G4_SrcRegRegion* srcRegion = builder.createSrcRegRegion(
@@ -9857,7 +9858,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
     G4_Operand* opnd0 = inst->getSrc(0);
     if (opnd0->isImm() || // case 1
         !opnd0->asSrcRegRegion()->checkGRFAlign(builder) ||  // case 2
-        (Packed && !opnd0->asSrcRegRegion()->getRegion()->isContiguous(execsize))) // case 3
+        (isHF2BF8 && !opnd0->asSrcRegRegion()->getRegion()->isContiguous(execsize))) // case 3
     {
         G4_Operand* newSrc0 = insertMovBefore(it, 0, opnd0->getType(), bb, builder.getGRFAlign());
         inst->setSrc(newSrc0, 0);
@@ -9869,12 +9870,48 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB* bb)
     G4_Operand* opnd1 = inst->getSrc(1);
     if (opnd1->isSrcRegRegion() &&
         (!opnd1->asSrcRegRegion()->checkGRFAlign(builder) || // case 2
-         (Packed && !opnd1->asSrcRegRegion()->getRegion()->isContiguous(execsize)))) // case 3
+         (isHF2BF8 && !opnd1->asSrcRegRegion()->getRegion()->isContiguous(execsize)))) // case 3
     {
         G4_Operand* newSrc1 = insertMovBefore(it, 1, opnd1->getType(), bb, builder.getGRFAlign());
         inst->setSrc(newSrc1, 1);
         G4_INST* newMovInst = *(std::prev(it));
         newMovInst->setNoMask(true);
+        changed = true;
+    }
+
+    dst = inst->getDst();
+    if (isHF2BF8 && inst->getExecSize() == g4::SIMD1)  // case 4
+    {
+        G4_Declare* rootDcl = dst->getBaseRegVarRootDeclare();
+        if (rootDcl->getElemSize() == TypeSize(Type_UB) && rootDcl->getNumElems() == 1)
+        {
+            // Extend dcl by one more element so we can do simd2.
+            rootDcl->setTotalElems(2);
+
+            G4_Declare* dcl = dst->getBase()->asRegVar()->getDeclare();
+            if (dcl != rootDcl)
+            {
+                G4_DstRegRegion* nDst = builder.createDst(rootDcl->getRegVar(), dst->getType());
+                inst->setDest(nDst);
+            }
+            inst->setExecSize(g4::SIMD2);
+        }
+        else
+        {
+            //    (W) srnd (1)  r10:ub  r11:hf r12:hf
+            // to
+            //    (W) srnd (2)  tmp  r11:hf r12:hf
+            //    (W) mov  (1)  r10:ub  tmp:ub
+            const RegionDesc* ScalarReg = builder.getRegionScalar();
+            G4_Declare* nDcl = builder.createTempVar(2, dst->getType(), builder.getGRFAlign());
+            G4_DstRegRegion* nDst = builder.createDst(nDcl->getRegVar(), dst->getType());
+            inst->setDest(nDst);
+            inst->setExecSize(g4::SIMD2);
+
+            G4_SrcRegRegion* nSrc = builder.createSrc(nDcl->getRegVar(), 0, 0, ScalarReg, dst->getType());
+            G4_INST* newInst = builder.createMov(g4::SIMD1, dst, nSrc, InstOpt_WriteEnable, false);
+            bb->insertAfter(it, newInst);
+        }
         changed = true;
     }
     return changed;
