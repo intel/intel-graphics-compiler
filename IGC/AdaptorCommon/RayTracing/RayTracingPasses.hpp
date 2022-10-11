@@ -33,6 +33,7 @@ llvm::Pass* createPrivateToGlobalPointerPass();
 llvm::Pass* createLowerIntersectionAnyHitPass();
 llvm::Pass* createSplitPreparePass();
 llvm::Pass* createSplitAsyncPass();
+llvm::Pass* createSyncHandlingPass();
 llvm::Pass* createRayTracingFinalizePass();
 llvm::Pass* createInlineMergeCallsPass();
 llvm::Pass* createPromoteToScratchPass();

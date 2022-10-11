@@ -207,6 +207,10 @@ void RayTracingLowering(RayDispatchShaderContext* pContext)
         // spills/fills that were not handled earlier.
         mpm.add(createLateRematPass());
     }
+
+    if (pContext->doSyncDispatchRays())
+        mpm.add(createSyncHandlingPass());
+
     // Lower intrinsics to RTStack operations.
     mpm.add(createRayTracingIntrinsicLoweringPass());
     mpm.add(createCFGSimplificationPass());
