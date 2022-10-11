@@ -10865,7 +10865,7 @@ int GlobalRA::coloringRegAlloc()
     }
 
     startTimer(TimerID::GRF_GLOBAL_RA);
-    const unsigned maxRAIterations = 10;
+    unsigned maxRAIterations = 10;
     unsigned iterationNo = 0;
 
     int globalScratchOffset = kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
@@ -10899,6 +10899,11 @@ int GlobalRA::coloringRegAlloc()
     if (fastCompile)
     {
         fastCompileIter = 0;
+    }
+
+    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM)
+    {
+        maxRAIterations = 12;
     }
 
     unsigned failSafeRAIteration = (builder.getOption(vISA_FastSpill) || fastCompile) ? fastCompileIter : builder.getuint32Option(vISA_FailSafeRALimit);
