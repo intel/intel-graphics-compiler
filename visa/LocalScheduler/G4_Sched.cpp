@@ -2805,13 +2805,6 @@ preRA_ACC_Scheduler::~preRA_ACC_Scheduler() {}
 
 bool preRA_ACC_Scheduler::run()
 {
-    if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D)
-    {
-        // Do not run pre-RA scheduler for CM unless user forces it.
-        if (!m_options->getOption(vISA_preRA_ScheduleForce))
-            return false;
-    }
-
     AccSubPass accSub(*kernel.fg.builder, kernel);
 
     for (auto bb : kernel.fg) {
