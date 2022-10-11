@@ -778,30 +778,65 @@ public:
         int numMsgSpecificOpnds,
         VISA_RawOpnd ** opndArray) override;
 
-    VISA_BUILDER_API int AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISAChannelMask srcChannel, VISA_StateOpndHandle *surface, VISA_RawOpnd *lod, VISA_RawOpnd *dst) override;
+    VISA_BUILDER_API int AppendVISA3dInfo(
+        VISASampler3DSubOpCode subOpcode,
+        VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize,
+        VISAChannelMask srcChannel,
+        VISA_StateOpndHandle *surface,
+        VISA_RawOpnd *lod,
+        VISA_RawOpnd *dst) override;
 
     VISA_BUILDER_API int AppendVISA3dRTWrite(
-        VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
-        VISA_StateOpndHandle *surface, VISA_RawOpnd *r1HeaderOpnd, VISA_VectorOpnd *sampleIndex,
-        uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray) override;
+        VISA_PredOpnd *pred,
+        VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize,
+        VISA_VectorOpnd* renderTargetIndex,
+        vISA_RT_CONTROLS cntrls,
+        VISA_StateOpndHandle *surface,
+        VISA_RawOpnd *r1HeaderOpnd,
+        VISA_VectorOpnd *sampleIndex,
+        uint8_t numMsgSpecificOpnds,
+        VISA_RawOpnd **opndArray) override;
 
     VISA_BUILDER_API int AppendVISA3dRTWriteCPS(
-        VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, VISA_VectorOpnd* renderTargetIndex, vISA_RT_CONTROLS cntrls,
-        VISA_StateOpndHandle *surface, VISA_RawOpnd *r1HeaderOpnd, VISA_VectorOpnd *sampleIndex,
-        VISA_VectorOpnd *cPSCounter, uint8_t numMsgSpecificOpnds, VISA_RawOpnd **opndArray) override;
+        VISA_PredOpnd *pred,
+        VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize,
+        VISA_VectorOpnd* renderTargetIndex,
+        vISA_RT_CONTROLS cntrls,
+        VISA_StateOpndHandle *surface,
+        VISA_RawOpnd *r1HeaderOpnd,
+        VISA_VectorOpnd *sampleIndex,
+        VISA_VectorOpnd *cPSCounter,
+        uint8_t numMsgSpecificOpnds,
+        VISA_RawOpnd **opndArray) override;
 
     VISA_BUILDER_API int AppendVISA3dURBWrite(
-        VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
-        VISA_Exec_Size executionSize, unsigned char numberOutputParams,
-        VISA_RawOpnd *channelMask, unsigned short globalOffset, VISA_RawOpnd *URBHandle,
-        VISA_RawOpnd *perSLotOffset, VISA_RawOpnd *vertexData) override;
+        VISA_PredOpnd *pred,
+        VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize,
+        unsigned char numberOutputParams,
+        VISA_RawOpnd *channelMask,
+        unsigned short globalOffset,
+        VISA_RawOpnd *URBHandle,
+        VISA_RawOpnd *perSLotOffset,
+        VISA_RawOpnd *vertexData) override;
 
     VISA_BUILDER_API int AppendVISA3dTypedAtomic(
-        VISAAtomicOps subOp, bool is16Bit, VISA_PredOpnd *pred,
-        VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-        VISA_StateOpndHandle *surface, VISA_RawOpnd *u, VISA_RawOpnd *v,
-        VISA_RawOpnd *r, VISA_RawOpnd *lod, VISA_RawOpnd *src0,
-        VISA_RawOpnd *src1, VISA_RawOpnd *dst) override;
+        VISAAtomicOps subOp,
+        bool is16Bit,
+        VISA_PredOpnd *pred,
+        VISA_EMask_Ctrl emask,
+        VISA_Exec_Size executionSize,
+        VISA_StateOpndHandle *surface,
+        VISA_RawOpnd *u,
+        VISA_RawOpnd *v,
+        VISA_RawOpnd *r,
+        VISA_RawOpnd *lod,
+        VISA_RawOpnd *src0,
+        VISA_RawOpnd *src1,
+        VISA_RawOpnd *dst) override;
 
     /********** APPEND 3D Instructions END ******************/
 
@@ -813,7 +848,8 @@ public:
     VISA_BUILDER_API int GetErrorMessage(const char *&errorMsg) const override;
     VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size) const override;
     /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
-    VISA_BUILDER_API int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries) override;
+    VISA_BUILDER_API int GetGenRelocEntryBuffer(void *&buffer,
+            unsigned int &byteSize, unsigned int &numEntries) override;
     /// GetRelocations -- add vISA created relocations into given relocation list
     /// This get the same information as GetGenRelocEntryBuffer, but in different foramt
     VISA_BUILDER_API int GetRelocations(RelocListType &relocs) override;
@@ -872,17 +908,35 @@ public:
 
     int CreateVISAPredicateDstOperand(VISA_VectorOpnd *& opnd, VISA_PredVar *decl, uint32_t size);
 
-    int CreateVISAAddressOperand(VISA_VectorOpnd *&opnd, VISA_AddrVar *decl, unsigned int offset, unsigned int width, bool isDst);
+    int CreateVISAAddressOperand(
+        VISA_VectorOpnd *&opnd,
+        VISA_AddrVar *decl,
+        unsigned int offset,
+        unsigned int width,
+        bool isDst);
 
-    int CreateVISAPredicateOperandvISA(VISA_PredOpnd *& opnd, VISA_PredVar *decl, VISA_PREDICATE_STATE state, VISA_PREDICATE_CONTROL cntrl);
+    int CreateVISAPredicateOperandvISA(
+        VISA_PredOpnd *& opnd,
+        VISA_PredVar *decl,
+        VISA_PREDICATE_STATE state,
+        VISA_PREDICATE_CONTROL cntrl);
 
     int CreateGenNullRawOperand(VISA_RawOpnd *& opnd, bool isDst);
 
     int CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd);
     int CreateGenRawDstOperand(VISA_RawOpnd *& cisa_opnd);
 
-    int CreateVISAIndirectGeneralOperand(VISA_VectorOpnd *& opnd, VISA_AddrVar *cisa_decl, VISA_Modifier mod, unsigned int addrOffset, unsigned short immediateOffset,
-        unsigned short verticalStride, unsigned short width, unsigned short horizontalStride, VISA_Type type, bool isDst);
+    int CreateVISAIndirectGeneralOperand(
+        VISA_VectorOpnd *& opnd,
+        VISA_AddrVar *cisa_decl,
+        VISA_Modifier mod,
+        unsigned int addrOffset,
+        unsigned short immediateOffset,
+        unsigned short verticalStride,
+        unsigned short width,
+        unsigned short horizontalStride,
+        VISA_Type type,
+        bool isDst);
 
     int AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
         VISASampler3DSubOpCode subOpcode,
@@ -911,15 +965,32 @@ public:
 
     int AddAttributeToVarGeneric(CISA_GEN_VAR *decl, const char* varName, unsigned int size, const void *val);
 
-    int CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class type, const char* name, unsigned int numberElements);
+    int CreateStateVar(
+        CISA_GEN_VAR *&decl,
+        Common_ISA_Var_Class type,
+        const char* name,
+        unsigned int numberElements);
 
     int CreateVISAInputVar(CISA_GEN_VAR *decl, uint16_t offset, uint16_t size, uint8_t implicitKind);
 
-    int CreateVISAAddressOfOperandGeneric(VISA_VectorOpnd *&cisa_opnd, CISA_GEN_VAR *decl, unsigned int offset);
+    int CreateVISAAddressOfOperandGeneric(
+        VISA_VectorOpnd *&cisa_opnd,
+        CISA_GEN_VAR *decl,
+        unsigned int offset);
 
-    int CreateVISAStateOperand(VISA_VectorOpnd *& opnd, CISA_GEN_VAR *decl, Common_ISA_State_Opnd_Class opnd_class, uint8_t size, unsigned char offset, bool useAsDst);
+    int CreateVISAStateOperand(
+        VISA_VectorOpnd *& opnd,
+        CISA_GEN_VAR *decl,
+        Common_ISA_State_Opnd_Class opnd_class,
+        uint8_t size,
+        unsigned char offset,
+        bool useAsDst);
 
-    void setGenxBinaryBuffer(void *buffer, int size) { m_genx_binary_buffer = static_cast<char *>(buffer); m_genx_binary_size = size; }
+    void setGenxBinaryBuffer(void *buffer, int size) {
+        m_genx_binary_buffer = static_cast<char *>(buffer);
+        m_genx_binary_size = size;
+    }
+
     void setJitInfo(FINALIZER_INFO* jitInfo) { m_jitInfo = jitInfo; }
 
     std::string getOutputAsmPath() const { return m_asmName; }

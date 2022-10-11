@@ -3678,7 +3678,6 @@ bool CISA_IR_Builder::createSample4Instruction(
 }
 
 
-
 bool CISA_IR_Builder::create3DLoadInstruction(
     VISA_opnd* pred,
     VISASampler3DSubOpCode subOpcode,
@@ -3705,7 +3704,6 @@ bool CISA_IR_Builder::create3DLoadInstruction(
     VISA_RESULT_CALL_TO_BOOL(status);
     return true;
 }
-
 bool CISA_IR_Builder::create3DSampleInstruction(
     VISA_opnd* pred,
     VISASampler3DSubOpCode subOpcode,
@@ -3743,7 +3741,6 @@ bool CISA_IR_Builder::create3DSampleInstruction(
     VISA_RESULT_CALL_TO_BOOL(status);
     return true;
 }
-
 bool CISA_IR_Builder::CISA_create_sample_instruction(
     ISA_Opcode opcode,
     ChannelMask channel,

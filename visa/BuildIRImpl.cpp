@@ -2070,7 +2070,6 @@ G4_InstSend* IR_Builder::createInternalSendInst(
 //
 
 
-
 G4_InstSend* IR_Builder::createSplitSendInst(
     G4_Predicate* prd,
     G4_opcode op,
