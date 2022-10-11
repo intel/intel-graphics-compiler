@@ -152,6 +152,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXLinkageCorruptorPass(registry);
   initializeGenXInlineAsmLoweringPass(registry);
   initializeGenXDebugLegalizationPass(registry);
+  initializeGenXFixInvalidFuncNamePass(registry);
 
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
@@ -299,6 +300,8 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   GenXPassConfig *PassConfig = createGenXPassConfig(*this, PM);
   vc::addPass(PM, PassConfig);
   const GenXBackendConfig &BackendConfig = PassConfig->getBackendConfig();
+
+  vc::addPass(PM, createGenXFixInvalidFuncNamePass());
 
   // Install GenX-specific TargetTransformInfo for passes such as
   // LowerAggrCopies and InfoAddressSpace
@@ -592,6 +595,13 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
 }
 
 void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
+  // Fix function names.
+  PMBuilder.addExtension(
+      PassManagerBuilder::EP_EarlyAsPossible,
+      [](const PassManagerBuilder &Builder, PassManagerBase &PM) {
+        PM.add(createGenXFixInvalidFuncNamePass());
+      });
+
   // Lower aggr copies.
   PMBuilder.addExtension(
       PassManagerBuilder::EP_EarlyAsPossible,

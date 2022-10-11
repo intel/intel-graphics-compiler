@@ -118,6 +118,7 @@ ModulePass *createGenXStackUsagePass();
 ModulePass *createGenXStructSplitterPass();
 FunctionPass *createGenXPredRegionLoweringPass();
 FunctionPass *createGenXDebugLegalizationPass();
+FunctionPass *createGenXFixInvalidFuncNamePass();
 
 namespace genx {
 

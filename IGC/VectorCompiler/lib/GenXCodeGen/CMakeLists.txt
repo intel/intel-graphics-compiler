@@ -84,6 +84,7 @@ set(CODEGEN_SOURCES
   OCLRuntimeInfoPrinter.cpp
   GenXStructSplitter.cpp
   GenXDebugLegalization.cpp
+  GenXFixInvalidFuncName.cpp
 )
 
 add_library(VCCodeGen ${CODEGEN_SOURCES})
