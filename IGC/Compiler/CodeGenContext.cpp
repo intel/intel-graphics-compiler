@@ -1888,7 +1888,7 @@ namespace IGC
 
     bool RayDispatchShaderContext::doSyncDispatchRays() const
     {
-        if (opts().UseSyncDispatchRays ||
+        if (!opts().UseSyncDispatchRays ||
             pipelineConfig.maxTraceRecursionDepth != 1)
         {
             return false;
