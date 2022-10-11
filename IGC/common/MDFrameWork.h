@@ -228,9 +228,8 @@ namespace IGC
         uint32_t RayQueryAllocSizeInBytes = 0;
 
         // SplitAsyncPass sets the number of continuations that were generated.
-        // This is heuristically used to determine whether we should inline
-        // or indirectly BTD to the continuations.
-        uint32_t NumContinuations = UINT_MAX;
+        // However, with sync DispatchRays SplitAsyncPass is not guaranteed to run.
+        uint32_t NumContinuations = 0;
 
         // Track the address spaces and SSH offsets for indirect stateful
         // accesses.

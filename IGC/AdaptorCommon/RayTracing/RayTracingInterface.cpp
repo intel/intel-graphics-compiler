@@ -192,9 +192,12 @@ void RayTracingLowering(RayDispatchShaderContext* pContext)
         // multiple times.
         mpm.add(createRayInfoCSEPass());
     }
+
     // After this pass, all shaders with TraceRay() or CallShader() calls will
     // be split into continuations at those call sites.
-    mpm.add(createSplitAsyncPass());
+    if (!pContext->doSyncDispatchRays())
+        mpm.add(createSplitAsyncPass());
+
     if (IGC_IS_FLAG_DISABLED(DisablePromoteToScratch) &&
         pContext->m_DriverInfo.supportsRTScratchSpace())
     {

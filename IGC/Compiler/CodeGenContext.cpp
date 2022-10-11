@@ -1791,9 +1791,6 @@ namespace IGC
 
     bool RayDispatchShaderContext::requiresIndirectContinuationHandling() const
     {
-        IGC_ASSERT_MESSAGE(modMD->rtInfo.NumContinuations != UINT_MAX,
-            "not computed yet!");
-
         if (IGC_IS_FLAG_ENABLED(EnableInlinedContinuations) &&
             canWholeProgramCompile())
         {
