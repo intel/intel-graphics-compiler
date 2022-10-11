@@ -148,13 +148,18 @@ void RayTracingLowering(RayDispatchShaderContext* pContext)
     // splitting.  This may allow us to do less spill/fills to the RTStack.
     // Will investigate further as we have more workloads.
     mpm.add(CreateTraceRayInlineLoweringPass());
+
     // Eliminate any obvious dead stores from rayquery
     mpm.add(createDeadStoreEliminationPass());
+
     // convert to global pointers first since all downstream passes will be
     // doing operations to the RTStack which will involve A64 stateless
     // operations.  If we enable stateful SWStacks, then this will convert
     // to the address space associated with the SWStack.
-    mpm.add(createPrivateToGlobalPointerPass());
+    // This pass is not needed when doing sync DispatchRays since there's no SWStack
+    if (!pContext->doSyncDispatchRays())
+        mpm.add(createPrivateToGlobalPointerPass());
+
     // Inject BTD Stack ID release calls before every return in raygen shaders.
     mpm.add(CreateStackIDRetirement());
     if (IGC_IS_FLAG_DISABLED(DisableEarlyRemat))
