@@ -126,8 +126,12 @@ G4_DstRegRegion* HWConformity::insertMovAfter(INST_LIST_ITER& it, G4_DstRegRegio
         }
     }
 
+    // fcvt/srnd do not support simd1
+    const bool sameExecSize = (inst->opcode() == G4_fcvt || inst->opcode() == G4_srnd);
     G4_ExecSize newExecSize =
-        ((inst->opcode() == G4_sel || inst->getImplAccSrc() || !scalarSrc) ? exec_size : g4::SIMD1);
+        ((inst->opcode() == G4_sel || sameExecSize || inst->getImplAccSrc() || !scalarSrc)
+        ? exec_size
+        : g4::SIMD1);
 
     uint32_t opExecWidthBytes = newExecSize * TypeSize(execType);
     if (execType == Type_DF && IS_BTYPE(type))
@@ -146,7 +150,11 @@ G4_DstRegRegion* HWConformity::insertMovAfter(INST_LIST_ITER& it, G4_DstRegRegio
         mad (8) r56.0.xyzw:hf -r37.0.xyzw:f r59.0.xyzw:hf r58.0.xyzw:hf {Align16, NoMask}
         mov (16) r44.0<2>:hf r56.0<16;8,2>:hf {Align1, H1} // #??:$39:%66
     */
-    if (scale == 0 || (builder.getPlatform() >= GENX_CHV && execType == Type_F && type == builder.getMixModeType()))
+    // fcvt/srnd need to be packed, so scale should be 1
+    const bool isPacked = (inst->opcode() == G4_fcvt || inst->opcode() == G4_srnd);
+    if (scale == 0 ||
+        isPacked ||
+        (builder.getPlatform() >= GENX_CHV && execType == Type_F && type == builder.getMixModeType()))
     {
         scale = 1;
     }
@@ -9193,6 +9201,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
     // 1, Execution size must not be 1.
     // 2, fp8 operand is packed.
     // 3, Source and destination register offset is restricted to 0 (GRF aligned).
+    // 4. no scalar fp8 broadcast (as there is no simd1, fp8 operand should not be a scalar).
     if (IS_BTYPE(inst->getDst()->getType()) || IS_BTYPE(inst->getSrc(0)->getType()))
     {
         assert(((IS_BTYPE(inst->getDst()->getType()) && inst->getSrc(0)->getType() == Type_HF)
@@ -9206,7 +9215,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef &&
             "FP8<->HF move does not support source modifier");
 
-        if (!inst->getSrc(0)->asSrcRegRegion()->checkGRFAlign(builder) || //case 3 for src
+        if (!builder.isOpndAligned(inst->getSrc(0), builder.numEltPerGRF<Type_UB>())  || //case 3 for src
             (IS_BTYPE(inst->getSrc(0)->getType()) && !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(inst->getExecSize()))) // case 2 for src
         {
             inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb, builder.getGRFAlign()), 0);
@@ -9224,6 +9233,24 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             inst->setOptionOn(InstOpt_WriteEnable);
         }
 
+        if ((IS_BTYPE(inst->getDst()->getType()) && inst->getDst()->getHorzStride() != 1) ||  //case 2 for dst
+            !builder.isOpndAligned(inst->getDst(), builder.numEltPerGRF<Type_UB>()))  // case 3 for dst
+        {
+            replaceDst(i, inst->getDst()->getType(), builder.getGRFAlign());
+            G4_INST* newMovInst = *(std::next(i));
+            if (newMovInst->getDst()->getType() == Type_HF)
+            {
+                newMovInst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UW);
+                newMovInst->getDst()->asDstRegRegion()->setType(builder, Type_UW);
+            }
+            if (inst->getExecSize() != g4::SIMD1)
+            {
+                newMovInst->getSrc(0)->asSrcRegRegion()->setRegion(builder, builder.getRegionStride1());
+            }
+            inst->getDst()->setHorzStride(1);
+            inst->setOptionOn(InstOpt_WriteEnable);
+        }
+
         // case 1: SIMD1 hf<->fp8, in general we do below transform:
         //     (W)  mov (1|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
         //     =>
@@ -9235,6 +9262,14 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
         //      =>
         //      //.declare V0039 (41)  rf=r size=2 type=ub align=32 words (r10.0)
         //      (W)  mov (2|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
+        // case 4: scalar fp8 src0
+        //      mov (2|M0)   r10.0<1>:hf  r12.0<0;1,0>:bf8
+        //   ==>
+        //      mov (2|M0)   r20.0<1>:ub  r12.0<0;1,0>:ub
+        //      mov (2|M0)   r10.0<1>:hf  r20.0<1;1,0>:bf8
+        //  Note if src0 dcl's size can be increased safely, it will be changed directly to
+        //      mov (2|M0)   r10.0<1>:hf  r12.0<1;1,0>:bf8
+        //    where r12.1:bf8 is not used and isn't initialized.
         if (inst->getExecSize() == g4::SIMD1)  //case 1
         {
             G4_DstRegRegion* dst = inst->getDst();
@@ -9266,24 +9301,27 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
                 inst->setExecSize(g4::SIMD2);
             }
 
-        }
-
-        if ((IS_BTYPE(inst->getDst()->getType()) && inst->getDst()->getHorzStride() != 1) ||  //case 2 for dst
-            !inst->getDst()->checkGRFAlign(builder))  // case 3 for dst
-        {
-            replaceDst(i, inst->getDst()->getType(), builder.getGRFAlign());
-            G4_INST* newMovInst = *(std::next(i));
-            if (newMovInst->getDst()->getType() == Type_HF)
+            // case 4: if src is fp8, may insert mov as scalar broadcast is not allowed.
+            G4_SrcRegRegion* src0 = inst->getSrc(0)->asSrcRegRegion();
+            assert(src0->getRegion()->isScalar());
+            if (IS_BTYPE(src0->getType()))
             {
-                newMovInst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UW);
-                newMovInst->getDst()->asDstRegRegion()->setType(builder, Type_UW);
+                G4_Declare* src0RootDcl = dst->getBaseRegVarRootDeclare();
+                if (src0RootDcl->getByteSize() == src0->getTypeSize())
+                {
+                    G4_Declare* dcl = src0->getBase()->asRegVar()->getDeclare();
+                    while (dcl)
+                    {
+                        dcl->setTotalElems(dcl->getTotalElems() * 2);
+                        dcl = dcl->getAliasDeclare();
+                    }
+                    src0->setRegion(builder, builder.getRegionStride1());
+                }
+                else
+                {
+                    broadcast(bb, i, 0, builder.getGRFAlign());
+                }
             }
-            if (inst->getExecSize() != g4::SIMD1)
-            {
-                newMovInst->getSrc(0)->asSrcRegRegion()->setRegion(builder, builder.getRegionStride1());
-            }
-            inst->getDst()->setHorzStride(1);
-            inst->setOptionOn(InstOpt_WriteEnable);
         }
 
         return true;
