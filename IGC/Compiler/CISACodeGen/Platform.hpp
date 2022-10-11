@@ -845,12 +845,6 @@ SIMDMode getMinDispatchMode() const
     return isCoreChildOf(IGFX_XE_HPC_CORE) ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
 }
 
-bool forceSIMD32Only() const
-{
-    // add dg2 later when switching to simd32 only for dg2
-    return isCoreChildOf(IGFX_XE_HPC_CORE);
-}
-
 bool hasLSCTypedMessage() const
 {
     return isCoreChildOf(IGFX_XE_HPC_CORE);
