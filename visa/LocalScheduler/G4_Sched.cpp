@@ -493,8 +493,11 @@ class BB_Scheduler {
     // Register pressure estimation and tracking.
     RegisterPressure& rp;
 
-    // The schedule result.
+    // The most recent schedule result.
     std::vector<G4_INST*> schedule;
+    unsigned CycleEstimation;
+    // save the original list before any scheduling
+    INST_LIST OrigInstList;
 
     // Options to customize scheduler.
     SchedConfig config;
@@ -511,6 +514,10 @@ public:
         , LT(LT)
     {
     }
+    ~BB_Scheduler() {
+        schedule.clear();
+        OrigInstList.clear();
+    }
 
     void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
 
@@ -521,9 +528,10 @@ public:
     // MaxPressure is the BB pressure before and after scheduling
     bool scheduleBlockForPressure(unsigned& MaxPressure, unsigned Threshold);
 
-    // MaxPressure is the BB pressure before and after scheduling
+    // MaxPressure is the BB reg-pressure before and after scheduling
     // ReassignID of PreNodes when this is not 1st-round scheduling
-    bool scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignID);
+    // KernelRP is the measure max reg-pressure of this kernel before scheduling
+    bool scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignID, unsigned KernelRP);
 
 private:
     void SethiUllmanScheduling();
@@ -533,7 +541,22 @@ private:
     // Relocate pseudo-kills right before its successors.
     void relocatePseudoKills();
     // Commit this scheduling if it reduces register pressure.
-    bool commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown);
+    bool commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown = false, unsigned NumGrfs = 128);
+    // save the original inst list
+    void saveOriginalList() {
+        INST_LIST& CurInsts = getBB()->getInstList();
+        OrigInstList.clear();
+        OrigInstList.splice(OrigInstList.begin(), CurInsts, CurInsts.begin(), CurInsts.end());
+        assert(CurInsts.empty());
+    }
+    // restore the original inst list
+    void restoreOriginalList() {
+        INST_LIST& CurInsts = getBB()->getInstList();
+        assert(CurInsts.size() == OrigInstList.size());
+        CurInsts.clear();
+        CurInsts.splice(CurInsts.begin(), OrigInstList, OrigInstList.begin(), OrigInstList.end());
+        rp.recompute(getBB());
+    }
 };
 
 
@@ -568,9 +591,8 @@ static unsigned getRPThresholdHigh(unsigned NumGrfs)
     return unsigned(PRESSURE_HIGH_THRESHOLD * NumGrfs / 128);
 }
 
-static unsigned getLatencyHidingThreshold(G4_Kernel &kernel)
+static unsigned getLatencyHidingThreshold(G4_Kernel &kernel, unsigned NumGrfs)
 {
-    unsigned NumGrfs = kernel.getNumRegTotal();
     unsigned RPThreshold = kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleRPThreshold);
     if (RPThreshold == 0)
     {
@@ -640,7 +662,7 @@ bool preRA_Scheduler::run()
         BB_Scheduler S(kernel, ddd, rp, config, LT);
 
         Changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
-        Changed |= S.scheduleBlockForLatency(MaxPressure, Changed);
+        Changed |= S.scheduleBlockForLatency(MaxPressure, Changed, 0);
     }
     if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
         rp.rpe->run();
@@ -709,7 +731,7 @@ bool preRA_RegSharing::run()
     RegisterPressure rp(kernel, mem, rpe);
 
     std::unordered_map<G4_BB*, unsigned int> rpBB;
-    unsigned maxPressure = 0;
+    unsigned KernelPressure = 0;
 
     // Obtain register pressure estimate of every BB
     for (auto bb : kernel.fg)
@@ -724,9 +746,9 @@ bool preRA_RegSharing::run()
         unsigned pressure = rp.getPressure(bb);
         rpBB[bb] = pressure;
 
-        if (pressure > maxPressure)
+        if (pressure > KernelPressure)
         {
-            maxPressure = pressure;
+            KernelPressure = pressure;
         }
     }
 
@@ -734,7 +756,7 @@ bool preRA_RegSharing::run()
     // If maximum register pressure is higher than default GRF mode,
     // assign the smallest number of threads to this kernel.
     if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
-        (maxPressure > getRPThresholdHigh(kernel.getNumRegTotal() - kernel.getOptions()->getuInt32Option(vISA_ReservedGRFNum))))
+        (KernelPressure > getRPThresholdHigh(kernel.getNumRegTotal() - kernel.getOptions()->getuInt32Option(vISA_ReservedGRFNum))))
     {
         // Update number of threads, GRF, Acc and SWSB
         kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
@@ -780,7 +802,7 @@ bool preRA_RegSharing::run()
         BB_Scheduler S(kernel, ddd, rp, config, LT);
 
         changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
-        changed |= S.scheduleBlockForLatency(MaxPressure, changed);
+        changed |= S.scheduleBlockForLatency(MaxPressure, changed, KernelPressure);
     }
     if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
         rp.rpe->run();
@@ -1234,7 +1256,7 @@ bool BB_Scheduler::scheduleBlockForPressure(unsigned& MaxPressure, unsigned Thre
             ddd.dumpDagTxt(rp);
         }
         SethiUllmanScheduling();
-        if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ false)) {
+        if (commitIfBeneficial(MaxPressure)) {
             SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
             Changed = true;
             kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
@@ -1247,7 +1269,7 @@ bool BB_Scheduler::scheduleBlockForPressure(unsigned& MaxPressure, unsigned Thre
             config.DoClustering = 1;
             SethiUllmanScheduling();
             config.DoClustering = SaveClustering;
-            if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ false))
+            if (commitIfBeneficial(MaxPressure))
             {
                 SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
                 Changed = true;
@@ -1426,13 +1448,14 @@ private:
 } // namespace
 
 //
-bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignID)
+bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignID, unsigned KernelRP)
 {
-    auto tryLatencyHiding = [=]() {
+    auto tryLatencyHiding = [=](unsigned nr) {
         if (!config.UseLatency)
             return false;
 
-        if (MaxPressure >= getLatencyHidingThreshold(kernel))
+        // KernelRP == 0 means we are scheduling for the fixed number of GRF
+        if (KernelRP == 0 && MaxPressure >= getLatencyHidingThreshold(kernel, nr))
             return false;
 
         // simple ROI check.
@@ -1450,36 +1473,97 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned& MaxPressure, bool ReassignI
         return NumOfHighLatencyInsts >= 2;
     };
 
-    bool Changed = false;
-    if (tryLatencyHiding()) {
+    unsigned NumGrfs = kernel.getNumRegTotal();
+    if (!tryLatencyHiding(NumGrfs))
+        return false;
+
+    // UpperBoundGRF == NumGrfs means we only schedule under single NumGRF
+    // setting for this block instead of trying to find the best schedule
+    // among multiple NumGRF setting.
+    unsigned UpperBoundGRF = NumGrfs;
+    unsigned SavedEstimation = 0;
+    std::vector<G4_INST*> SavedSchedule;
+
+    // multiple settings are applied only to some blocks to save time
+    if (KernelRP > 0 && MaxPressure > 40 && MaxPressure * 2 > KernelRP)
+        UpperBoundGRF = std::max(256U, UpperBoundGRF);
+
+    for (; NumGrfs <= UpperBoundGRF; NumGrfs += 32) {
         // try grouping-threshold decremently until we find a schedule likely won't spill
         unsigned Thresholds[] = { 144, 128, 112, 104, 96 };
         unsigned Iterations = 5;
-        unsigned NumGrfs = kernel.getNumRegTotal();
         float Ratio = (std::max(NumGrfs, 128u) - 48u) / 80.0f;
         // limit the iterative approach to certain platforms for now
-        if (config.DoNotIterate)
-        {
-            Thresholds[0] = getLatencyHidingThreshold(kernel);
+        if (config.DoNotIterate) {
+            Thresholds[0] = getLatencyHidingThreshold(kernel, NumGrfs);
             Iterations = 1;
             Ratio = 1.0f;  // already adjusted inside getLatencyHidingThreshold
         }
-        for (unsigned i = 0; i < Iterations; ++i)
-        {
+        for (unsigned i = 0; i < Iterations; ++i) {
             auto GroupingThreshold = Thresholds[i];
             ddd.reset(ReassignID);
+            ReassignID = false; // only reassign inst-local-id at most once
             LatencyScheduling(unsigned(GroupingThreshold * Ratio));
-            if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
-                SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
-                Changed = true;
-                ddd.getBB()->setLatencySched(true);
-                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
-                    this->kernel.getSimdSize());
+            if (commitIfBeneficial(MaxPressure, /*IsTopDown*/ true, NumGrfs)) {
+                if (NumGrfs >= UpperBoundGRF && SavedEstimation == 0) {
+                    SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
+                    ddd.getBB()->setLatencySched(true);
+                    kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
+                        this->kernel.getSimdSize());
+                    return true;
+                }
+                // if this schedule does not provide expected gain from
+                // previous schedule, stop searching
+                if (SavedEstimation > 0 &&
+                    SavedSchedule.size() == schedule.size() &&
+                    CycleEstimation * 4 > SavedEstimation * 3) {
+                    // commit the previous schedule as the best
+                    INST_LIST& CurInsts = getBB()->getInstList();
+                    CurInsts.clear();
+                    for (auto Inst : SavedSchedule)
+                        CurInsts.push_back(Inst);
+                    rp.recompute(getBB());
+                    SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
+                    ddd.getBB()->setLatencySched(true);
+                    kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
+                        this->kernel.getSimdSize());
+                    return true;
+                }
+                if (NumGrfs >= UpperBoundGRF) {
+                    // best schedule is found with the max GRF setting
+                    SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
+                    ddd.getBB()->setLatencySched(true);
+                    kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
+                        this->kernel.getSimdSize());
+                    return true;
+                }
+                // save the current schedule as the potential choice
+                // but do not commit it
+                SavedSchedule.swap(schedule);
+                SavedEstimation = CycleEstimation;
+                schedule.clear();
+                // restore the original instruction order
+                restoreOriginalList();
+                // try the next GRF level
                 break;
             }
         }
     }
-    return Changed;
+    if (SavedEstimation > 0 && SavedSchedule.size() > 0) {
+        // commit the previous schedule as the best
+        INST_LIST& CurInsts = getBB()->getInstList();
+        assert(SavedSchedule.size() == CurInsts.size());
+        CurInsts.clear();
+        for (auto Inst : SavedSchedule)
+            CurInsts.push_back(Inst);
+        rp.recompute(getBB());
+        SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
+        ddd.getBB()->setLatencySched(true);
+        kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
+            this->kernel.getSimdSize());
+        return true;
+    }
+    return false;
 }
 
 // Scheduling block to hide latency (top down).
@@ -1516,7 +1600,7 @@ void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold)
         CurrentCycle = NextCycle;
         Q.advance(CurrentCycle, CurrentGroup);
     }
-
+    CycleEstimation = CurrentCycle;
     relocatePseudoKills();
     assert(verifyScheduling());
 }
@@ -1911,7 +1995,7 @@ void BB_Scheduler::relocatePseudoKills()
 }
 
 // Commit this scheduling if it is better.
-bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
+bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown, unsigned NumGrfs)
 {
     INST_LIST& CurInsts = getBB()->getInstList();
     if (schedule.size() != CurInsts.size()) {
@@ -1927,12 +2011,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
         SCHED_DUMP(std::cerr << "schedule not committed due to no change.\n\n");
         return false;
     }
-
-    // Note that list::swap does not work for some reason, but list::splice works.
-    INST_LIST TempInsts;
-    TempInsts.splice(TempInsts.begin(), CurInsts, CurInsts.begin(), CurInsts.end());
-    assert(CurInsts.empty());
-
+    saveOriginalList();
     // evaluate this scheduling.
     if (IsTopDown)
         for (auto Inst : schedule)
@@ -1943,7 +2022,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
 
     rp.recompute(getBB());
     unsigned NewRPE = rp.getPressure(getBB());
-    unsigned LatencyPressureThreshold = getLatencyHidingThreshold(kernel);
+    unsigned LatencyPressureThreshold = getLatencyHidingThreshold(kernel, NumGrfs);
     if (config.UseLatency && IsTopDown) {
         // For hiding latency.
         if (NewRPE <= LatencyPressureThreshold) {
@@ -1978,9 +2057,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
     }
 
     SCHED_DUMP(rp.dump(getBB(), "schedule reverted, "));
-    CurInsts.clear();
-    CurInsts.splice(CurInsts.begin(), TempInsts, TempInsts.begin(), TempInsts.end());
-    rp.recompute(getBB());
+    restoreOriginalList();
     return false;
 }
 
