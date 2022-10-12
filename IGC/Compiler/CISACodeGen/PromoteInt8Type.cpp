@@ -28,6 +28,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <algorithm>
 #include <list>
+#include "llvm/IR/Constants.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -863,6 +865,36 @@ Value* PromoteInt8Type::getI16Value(Value* V, bool IsZExt)
         }
         ArrayRef<uint16_t> CElts(Elts);
         return ConstantDataVector::get(m_F->getContext(), CElts);
+    }
+
+    if (ConstantVector* CVI = dyn_cast<ConstantVector>(V))
+    {
+        Type* Ty = dyn_cast<VectorType>(CVI->getType())->getElementType();
+        IGC_ASSERT(nullptr != Ty);
+
+        if (!Ty->isIntegerTy()) {
+            IGC_ASSERT_MESSAGE(0, "unsupported constant expression");
+            return nullptr;
+        }
+
+        uint32_t nelts = CVI->getNumOperands();
+
+        SmallVector<Constant*, 16> Vals(nelts, nullptr);
+        for (unsigned idx = 0; idx < nelts; ++idx)
+        {
+            auto elem= CVI->getOperand(idx);
+            auto CstI = dyn_cast<ConstantInt>(elem);
+            if (CstI)
+            {
+                uint64_t n = IsZExt ? CstI->getZExtValue() : CstI->getSExtValue();
+                Vals[idx] = ConstantInt::get(i16Ty, n, IsZExt);
+            }
+            else
+            {
+                Vals[idx] = UndefValue::get(i16Ty);
+            }
+        }
+        return ConstantVector::get(Vals);
     }
 
     if (isa<UndefValue>(V)) {
