@@ -266,12 +266,16 @@ constexpr Type Align(const Type value, const size_t alignment)
 // Maximum size of a block read that we will do from RayDispatchGlobalData.
 static constexpr uint32_t MAX_BLOCK_SIZE = 256;
 
-inline uint32_t GlobalsAllocationSize(uint32_t GlobalRootSigSize, uint32_t *RTGlobalsSize = nullptr)
+inline uint32_t GlobalsAllocationSize(uint32_t GlobalRootSigSize, uint32_t numOfRTGlobalDataStructs, uint32_t *pGlobalRootSigOffset = nullptr, uint32_t *pRTGlobalsPointerIncrementSize = nullptr)
 {
-    constexpr uint32_t GlobalRootSigOffset = uint32_t(Align(sizeof(RayDispatchGlobalData), sizeof(uint64_t)));
+    constexpr uint32_t RTGlobalsPointerIncrementSize = uint32_t(Align(sizeof(RayDispatchGlobalData), RTGlobalsAlign));
+    uint32_t GlobalRootSigOffset = (numOfRTGlobalDataStructs - 1) * RTGlobalsPointerIncrementSize + uint32_t(Align(sizeof(RayDispatchGlobalData), sizeof(uint64_t)));
 
-    if (RTGlobalsSize)
-        *RTGlobalsSize = GlobalRootSigOffset;
+    if (pGlobalRootSigOffset)
+        *pGlobalRootSigOffset = GlobalRootSigOffset;
+
+    if (pRTGlobalsPointerIncrementSize)
+        *pRTGlobalsPointerIncrementSize = RTGlobalsPointerIncrementSize;
 
     uint32_t TotalSize = GlobalRootSigOffset + GlobalRootSigSize + MAX_BLOCK_SIZE;
 
