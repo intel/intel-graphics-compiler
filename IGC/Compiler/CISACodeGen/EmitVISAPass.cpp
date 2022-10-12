@@ -12506,11 +12506,6 @@ void EmitPass::emitScalarAtomics(
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetNoMask();
 
-    CVariable* pReturnVal = returnsImmValue ?
-        m_currShader->GetNewVariable(
-            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE) :
-        nullptr;
-
     if (bitWidth == 16)
     {
         CVariable* pCastAtomicSrcVal =
@@ -12519,6 +12514,11 @@ void EmitPass::emitScalarAtomics(
         m_encoder->Cast(pCastAtomicSrcVal, pFinalAtomicSrcVal);
         pFinalAtomicSrcVal = pCastAtomicSrcVal;
     }
+
+    CVariable* pReturnVal = returnsImmValue ?
+        m_currShader->GetNewVariable(
+            1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE) :
+        nullptr;
     {
         if (isA64)
         {
@@ -12625,7 +12625,7 @@ void EmitPass::emitScalarAtomicLoad(
             GetTypeFromSize(bitWidth / 8),
             isA64 ? EALIGN_2GRF : EALIGN_GRF,
             true,
-            pDstAddr ? pDstAddr->getName() : CName::NONE) : nullptr;
+            pDstAddr->getName()) : nullptr;
     {
         if (isA64)
         {
