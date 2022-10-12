@@ -100,6 +100,16 @@ static Constant *createPoisonMessage(Module *M, Function *Kernel) {
     return GV;
 }
 
+static Function *getOrDeclareFunction(Module *M, const char *name, FunctionType *type) {
+    Function *f = M->getFunction(name);
+    if (f == nullptr) {
+        f = Function::Create(type, GlobalValue::ExternalLinkage, name, M);
+        f->setCallingConv(CallingConv::SPIR_FUNC);
+        f->addFnAttr(llvm::Attribute::NoUnwind);
+    }
+    return f;
+}
+
 static void poisonKernel(Function *Kernel) {
     Module *M = Kernel->getParent();
     LLVMContext &Ctx = M->getContext();
@@ -107,16 +117,43 @@ static void poisonKernel(Function *Kernel) {
     Kernel->removeFnAttr("uses-fp64-math");
     Kernel->addFnAttr(PoisonFP64Kernels::attributeName);
     Kernel->deleteBody();
-    BasicBlock* BB = BasicBlock::Create(Ctx, "entry", Kernel);
 
-    Function *F = M->getFunction("printf");
-    if (F == nullptr) {
-        FunctionType *FT = FunctionType::get(
-            Type::getInt32Ty(Ctx), { Type::getInt8PtrTy(Ctx, 2) }, true);
-        F = Function::Create(FT, GlobalValue::ExternalLinkage, "printf", M);
-        F->setCallingConv(CallingConv::SPIR_FUNC);
-        F->addFnAttr(llvm::Attribute::NoUnwind);
+    BasicBlock* EntryBB = BasicBlock::Create(Ctx, "entry", Kernel);
+    BasicBlock* ThenBB = BasicBlock::Create(Ctx, "then", Kernel);
+    BasicBlock* ElseBB = BasicBlock::Create(Ctx, "else", Kernel);
+
+    /* Entry block : */
+
+    Type *Int32Ty = Type::getInt32Ty(Ctx);
+    /* Get and merge all local and global IDs to make sure that error message is only printed once. */
+    Function *GetGlobalID = getOrDeclareFunction(M, "__builtin_IB_get_group_id", FunctionType::get(Int32Ty, { Int32Ty }, true));
+    Function *GetLocalIDX = getOrDeclareFunction(M, "__builtin_IB_get_local_id_x", FunctionType::get(Int32Ty, { }, true));
+    Function *GetLocalIDY = getOrDeclareFunction(M, "__builtin_IB_get_local_id_y", FunctionType::get(Int32Ty, { }, true));
+    Function *GetLocalIDZ = getOrDeclareFunction(M, "__builtin_IB_get_local_id_z", FunctionType::get(Int32Ty, { }, true));
+
+    auto getInt32Const = [&](int v) { return ConstantInt::get(Type::getInt32Ty(Ctx), v);};
+    /* Collect all IDs: */
+    Value *Ids[6] = {
+        CallInst::Create(GetGlobalID, { getInt32Const(0) }, "gid0", EntryBB),
+        CallInst::Create(GetGlobalID, { getInt32Const(1) }, "gid1", EntryBB),
+        CallInst::Create(GetGlobalID, { getInt32Const(2) }, "gid2", EntryBB),
+        CallInst::Create(GetLocalIDX, { }, "lid0", EntryBB),
+        CallInst::Create(GetLocalIDY, { }, "lid1", EntryBB),
+        CallInst::Create(GetLocalIDZ, { }, "lid2", EntryBB),
+    };
+    /* Merge IDs into a single value: */
+    Value *GlobalID = Ids[0];
+    for (int i = 1; i < 6; i++) {
+        GlobalID = BinaryOperator::CreateOr(GlobalID, Ids[i], "id.merge", EntryBB);
     }
+
+    Value *Zero = ConstantInt::get(GlobalID->getType(), 0);
+    Value *Cond = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_EQ, GlobalID, Zero, "id.is.zero", EntryBB);
+    BranchInst::Create(ThenBB, ElseBB, Cond, EntryBB);
+
+    /* Then block : */
+
+    Function *Printf = getOrDeclareFunction(M, "printf", FunctionType::get(Int32Ty, { Type::getInt8PtrTy(Ctx, 2) }, true));
 
     Constant *PoisonMessage = createPoisonMessage(M, Kernel);
     Type *MessageType = static_cast<PointerType *>(PoisonMessage->getType())->getPointerElementType();
@@ -125,11 +162,15 @@ static void poisonKernel(Function *Kernel) {
         ConstantInt::getSigned(Type::getInt32Ty(Ctx), 0),
         ConstantInt::getSigned(Type::getInt32Ty(Ctx), 0)
     };
-    GetElementPtrInst *GEP = GetElementPtrInst::Create(MessageType, PoisonMessage, Indices, "posion.message.gep", BB);
+    GetElementPtrInst *GEP = GetElementPtrInst::Create(MessageType, PoisonMessage, Indices, "posion.message.gep", ThenBB);
     GEP->setIsInBounds(true);
 
-    CallInst::Create(F, { GEP }, "printf.result", BB);
-    ReturnInst::Create(Ctx, BB);
+    CallInst::Create(Printf, { GEP }, "printf.result", ThenBB);
+    ReturnInst::Create(Ctx, ThenBB);
+
+    /* Else block : */
+
+    ReturnInst::Create(Ctx, ElseBB);
 }
 
 bool PoisonFP64Kernels::doFinalization(CallGraph &CG) {
