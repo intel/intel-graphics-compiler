@@ -133,6 +133,58 @@ struct VarnameMap
 // on G4_Kernel.
 namespace vISA
 {
+    class LiveIntervalInfo
+    {
+    public:
+        enum DebugLiveIntervalState
+        {
+            Open = 0,
+            Closed = 1
+        };
+
+    private:
+        std::list<std::pair<uint32_t, uint32_t>> liveIntervals;
+        uint32_t cleanedAt;
+        DebugLiveIntervalState state;
+        uint32_t openIntervalVISAIndex;
+
+    public:
+        void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
+
+        void addLiveInterval(uint32_t start, uint32_t end);
+        void liveAt(uint32_t cisaOff);
+        void getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>>& intervals);
+        void clearLiveIntervals() { liveIntervals.clear(); }
+
+        DebugLiveIntervalState getState() const { return state; }
+
+        void setStateOpen(uint32_t VISAIndex)
+        {
+            //MUST_BE_TRUE(state == Closed, "Cannot open internal in Open state");
+            state = Open;
+            openIntervalVISAIndex = VISAIndex;
+        }
+
+        void setStateClosed(uint32_t VISAIndex)
+        {
+            //MUST_BE_TRUE(state == Open, "Cannot close interval in Close state");
+            state = Closed;
+            addLiveInterval(VISAIndex, openIntervalVISAIndex);
+        }
+
+        bool isLiveAt(uint32_t VISAIndex) const
+        {
+            for (auto& k : liveIntervals)
+            {
+                if (k.first <= VISAIndex && k.second >= VISAIndex)
+                    return true;
+            }
+            return false;
+        }
+
+        LiveIntervalInfo() { cleanedAt = 0; state = Closed; openIntervalVISAIndex = 0; }
+    };
+
 class KernelDebugInfo
 {
 private:

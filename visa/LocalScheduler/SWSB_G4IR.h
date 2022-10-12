@@ -73,6 +73,18 @@ typedef enum  _DPAS_DEP
 #define UNINIT_BUCKET         -1
 
 namespace vISA {
+
+    typedef enum  _SB_INST_PIPE
+    {
+        PIPE_NONE = 0,
+        PIPE_INT = 1,
+        PIPE_FLOAT = 2,
+        PIPE_LONG = 3,
+        PIPE_MATH = 4,
+        PIPE_DPAS = 6,
+        PIPE_SEND = 7,
+    } SB_INST_PIPE;
+
     struct SBDep {
         SBDep(SBNode *SBNode, DepType Type, SBDependenceAttr Attr) {
             node = SBNode;
@@ -116,6 +128,12 @@ typedef std::vector< SBDISTDEP_ITEM> SBDISTDEP_VECTOR;
 
 typedef vISA::DistDepValue DISTDEPINFO;
 
+// TODO: we have to leave this in the header file right now due to the huge
+//       amount of implementation code in the header that refer to it. We
+//       need to move all of the implementation code out of header.
+namespace SWSB_global {
+    void setAccurateDistType(vISA::G4_INST* inst, vISA::SB_INST_PIPE depPipe);
+};
 namespace vISA
 {
     typedef enum  _FOOTPRINT_TYPE
@@ -648,27 +666,7 @@ namespace vISA
 
         void setAccurateDistType(SB_INST_PIPE depPipe)
         {
-            switch (depPipe)
-            {
-            case PIPE_INT:
-                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTINT);
-                break;
-            case PIPE_FLOAT:
-                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTFLOAT);
-                break;
-            case PIPE_LONG:
-                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTLONG);
-                break;
-            case PIPE_MATH:
-                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTMATH);
-                break;
-            case PIPE_SEND:
-                instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
-                break;
-            default:
-                assert(0 && "Wrong ALU PIPE");
-                break;
-            }
+            SWSB_global::setAccurateDistType(instVec.front(), depPipe);
         }
 
         unsigned getDistInfo(SB_INST_PIPE depPipe)
@@ -1680,12 +1678,6 @@ namespace vISA
         SBFootprint* getFootprintForFlag(G4_Operand* opnd,
             Gen4_Operand_Number opnd_num,
             G4_INST* inst);
-        bool isLongPipeType(G4_Type type) const;
-        bool isIntegerPipeType(G4_Type type) const;
-        bool isLongPipeInstructionXe(const G4_INST* inst) const;
-        bool isIntegerPipeInstructionXe(const G4_INST* inst) const;
-        bool isFloatPipeInstructionXe(const G4_INST* inst) const;
-        SB_INST_PIPE getInstructionPipeXe(const G4_INST* inst);
         bool getFootprintForOperand(SBNode *node,
             G4_INST *inst,
             G4_Operand* opnd,

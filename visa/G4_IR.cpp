@@ -1224,91 +1224,6 @@ bool G4_INST::isFloatPipeInstructionXe() const
     return false;
 }
 
-SB_INST_PIPE G4_INST::getDataTypePipeXe(G4_Type type)
-{
-    switch (type)
-    {
-    case Type_UB:
-    case Type_B:
-    case Type_UW:
-    case Type_W:
-    case Type_UD:
-    case Type_D:
-    case Type_UV:
-    case Type_V:
-        return PIPE_INT;
-
-    case Type_Q:
-    case Type_UQ:
-        if (builder.hasPartialInt64Support())
-        {
-            return PIPE_INT;
-        }
-        return PIPE_LONG;
-
-    case Type_DF:
-        return PIPE_LONG;
-
-    case Type_HF:
-    case Type_F:
-    case Type_VF:
-    case Type_NF:
-    case Type_BF:
-        return PIPE_FLOAT;
-
-    default:
-        return PIPE_NONE;
-    }
-
-    return PIPE_NONE;
-}
-
-SB_INST_PIPE G4_INST::getInstructionPipeXe()
-{
-
-    if (isLongPipeInstructionXe())
-    {
-        return PIPE_LONG;
-    }
-
-    if (isIntegerPipeInstructionXe())
-    {
-        return PIPE_INT;
-    }
-
-    if (isFloatPipeInstructionXe())
-    {
-        return PIPE_FLOAT;
-    }
-
-    if (builder.hasFixedCycleMathPipeline() &&
-        isMath())
-    {
-        return PIPE_MATH;
-    }
-
-    if (tokenHonourInstruction())
-    {
-        if (isDpas())
-        {
-            return PIPE_DPAS;
-        }
-        if (isMathPipeInst())
-        {
-            return PIPE_MATH;
-        }
-        if (isSend())
-        {
-            return PIPE_SEND;
-        }
-
-        ASSERT_USER(0, "Wrong token pipe instruction!");
-    }
-
-    ASSERT_USER(hasNoPipe(), "No pipe instruction");
-    return PIPE_NONE;
-}
-
 template <typename T>
 static std::string fmtHexBody(T t, int cols = 0)
 {
@@ -3577,6 +3492,25 @@ static void emitExecSize(std::ostream& output, const G4_INST &inst)
 //         and (16|M0)  ...
 //                      ^ aligns operand start to same place here
 static const int INST_START_COLUMN_WIDTH = 24;
+const char* const MathOpNames[16] =
+{
+    "reserved",
+    "inv",
+    "log",
+    "exp",
+    "sqrt",
+    "rsq",
+    "sin",
+    "cos",
+    "undefined",
+    "fdiv",
+    "pow",
+    "intdiv",
+    "quot",
+    "rem",
+    "invm",
+    "rsqrtm"
+};
 
 // emits the first part of an instruction in an aligned column
 static void emitInstructionStartColumn(std::ostream& output, G4_INST &inst)
@@ -7819,179 +7753,6 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
     }
 }
 
-void LiveIntervalInfo::getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>>& intervals)
-{
-    for (auto&& it : liveIntervals)
-    {
-        intervals.push_back(it);
-    }
-}
-
-void LiveIntervalInfo::addLiveInterval(uint32_t start, uint32_t end)
-{
-    if (liveIntervals.size() == 0)
-    {
-        liveIntervals.emplace_back(start, end);
-    }
-    else if (start - liveIntervals.back().second <= 1)
-    {
-        liveIntervals.back().second = end;
-    }
-    else if (liveIntervals.back().second < start)
-    {
-        liveIntervals.emplace_back(start, end);
-    }
-    else if (liveIntervals.front().first >= start && liveIntervals.back().second <= end)
-    {
-        liveIntervals.clear();
-        liveIntervals.emplace_back(start, end);
-    }
-    else
-    {
-        bool inserted = false;
-        uint32_t newEnd = end;
-        for (auto liveIt = liveIntervals.begin(); liveIt != liveIntervals.end();)
-        {
-            auto& lr = (*liveIt);
-
-            if (!inserted)
-            {
-                if (lr.first <= start && lr.second >= newEnd)
-                {
-                    inserted = true;
-                    break;
-                }
-                else if (lr.first <= start && lr.second > start && lr.second <= newEnd)
-                {
-                    // Extend existing sub-interval
-                    lr.second = newEnd;
-                    inserted = true;
-                    ++liveIt;
-                    continue;
-                }
-                else if ((start - lr.second) <= 1u)
-                {
-                    lr.second = newEnd;
-                    inserted = true;
-                    ++liveIt;
-                    continue;
-                }
-                else if (lr.first > start)
-                {
-                    // Insert new sub-interval
-                    liveIntervals.insert(liveIt, std::make_pair(start, newEnd));
-                    inserted = true;
-                    continue;
-                }
-            }
-            else
-            {
-                if (lr.first > newEnd)
-                    break;
-                else if (lr.first == newEnd)
-                {
-                    newEnd = lr.second;
-                    auto newLRIt = liveIt;
-                    --newLRIt;
-                    (*newLRIt).second = newEnd;
-                    liveIt = liveIntervals.erase(liveIt);
-                    continue;
-                }
-                else if (lr.second <= newEnd)
-                {
-                    liveIt = liveIntervals.erase(liveIt);
-                    continue;
-                }
-                else if(lr.first < newEnd && lr.second > newEnd)
-                {
-                    auto newLRIt = liveIt;
-                    --newLRIt;
-                    (*newLRIt).second = lr.second;
-                    liveIntervals.erase(liveIt);
-                    break;
-                }
-            }
-            ++liveIt;
-        }
-
-        if (!inserted)
-        {
-            if (start - liveIntervals.back().second <= 1)
-                liveIntervals.back().second = end;
-            else
-                liveIntervals.emplace_back(start, end);
-        }
-    }
-}
-
-void LiveIntervalInfo::liveAt(uint32_t cisaOff)
-{
-    if (cisaOff == UNMAPPABLE_VISA_INDEX)
-        return;
-
-    // Now iterate over all intervals and check which one should
-    // be extended. If none, start a new one.
-    bool added = false;
-    auto prev = liveIntervals.begin();
-
-    for (auto it = liveIntervals.begin(), itEnd = liveIntervals.end();
-        it != itEnd;
-        prev = it++)
-    {
-        auto& item = (*it);
-
-        if (added)
-        {
-            // Check whether prev and current one can be merged
-            if (((*prev).second == item.first) ||
-                ((*prev).second == item.first - 1))
-            {
-                prev->second = item.second;
-                it = liveIntervals.erase(it);
-                break;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        if (item.first == cisaOff + 1)
-        {
-            item.first = cisaOff;
-            added = true;
-            break;
-        }
-
-        if (item.second == cisaOff - 1)
-        {
-            item.second = cisaOff;
-            added = true;
-            continue;
-        }
-
-        if (!added &&
-            item.first <= cisaOff &&
-            item.second >= cisaOff)
-        {
-            added = true;
-            break;
-        }
-
-        if (item.first > cisaOff)
-        {
-            liveIntervals.insert(it, std::make_pair(cisaOff, cisaOff));
-            added = true;
-            break;
-        }
-    }
-
-    if (!added)
-    {
-        liveIntervals.push_back(std::make_pair(cisaOff, cisaOff));
-    }
-}
-
 bool G4_INST::supportsNullDst() const
 {
     if (isSend())
@@ -8004,31 +7765,6 @@ bool G4_INST::supportsNullDst() const
         return false;
     }
     return getNumSrc() != 3 && !(op == G4_pln && !builder.doPlane());
-}
-
-void G4_INST::setAccurateDistType(SB_INST_PIPE depPipe)
-{
-    switch (depPipe)
-    {
-    case PIPE_INT:
-        setDistanceTypeXe(G4_INST::DistanceType::DISTINT);
-        break;
-    case PIPE_FLOAT:
-        setDistanceTypeXe(G4_INST::DistanceType::DISTFLOAT);
-        break;
-    case PIPE_LONG:
-        setDistanceTypeXe(G4_INST::DistanceType::DISTLONG);
-        break;
-    case PIPE_MATH:
-        setDistanceTypeXe(G4_INST::DistanceType::DISTMATH);
-        break;
-    case PIPE_SEND:
-        setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
-        break;
-    default:
-        assert(0 && "Wrong ALU PIPE");
-        break;
-    }
 }
 
 bool G4_INST::isAlign1Ternary() const

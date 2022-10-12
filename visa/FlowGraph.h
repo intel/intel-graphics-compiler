@@ -112,6 +112,66 @@ public:
 typedef std::unordered_map<int, FuncInfo*> FuncInfoHashTable;
 typedef std::unordered_map<G4_Label*, G4_BB*> Label_BB_Map;
 
+///
+/// A hashtable of <declare, node> where every node is a vector of
+/// {LB, RB} (left-bounds and right-bounds)
+/// A source operand (either SrcRegRegion or Predicate) is considered to be global
+/// if it is not fully defined in one BB
+///
+class GlobalOpndHashTable
+{
+    Mem_Manager& mem;
+    std_arena_based_allocator<uint32_t> private_arena_allocator;
+
+    static uint32_t packBound(uint16_t lb, uint16_t rb)
+    {
+        return (rb << 16) + lb;
+    }
+
+    static uint16_t getLB(uint32_t value)
+    {
+        return (uint16_t)(value & 0xFFFF);
+    }
+    static uint16_t getRB(uint32_t value)
+    {
+        return (uint16_t)(value >> 16);
+    }
+
+    struct HashNode
+    {
+        // each elements is {LB, RB} pair where [0:15] is LB and [16:31] is RB
+        std::vector<uint32_t, std_arena_based_allocator<uint32_t>> bounds;
+
+        HashNode(uint16_t lb, uint16_t rb, std_arena_based_allocator<uint32_t>& m)
+            : bounds(m)
+        {
+            bounds.push_back(packBound(lb, rb));
+        }
+
+        void* operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
+
+        void insert(uint16_t newLB, uint16_t newRB);
+        bool isInNode(uint16_t lb, uint16_t rb) const;
+    };
+
+    // "global" refers to declares with elements that are used without a preceding define in the same BB
+    std::map<G4_Declare*, HashNode*> globalVars;
+    // for debugging it's often useful to dump out the global operands, not just declares.
+    // Note that this may not be an exhaustive list, for example it does not cover dst global operands;
+    // for accuracy one should use isOpndGlobal()
+    std::vector<G4_Operand*> globalOpnds;
+
+public:
+    GlobalOpndHashTable(Mem_Manager& m) : mem(m) { }
+
+    void addGlobalOpnd(G4_Operand* opnd);
+    // returns true if def may possibly define a global variable
+    bool isOpndGlobal(G4_Operand* def) const;
+    void clearHashTable();
+
+    void dump(std::ostream& os = std::cerr) const;
+}; // GlobalOpndHashTable
+
 class FlowGraph
 {
     // This list maintains the ordering of the basic blocks (i.e., asm and binary emission will output
@@ -177,6 +237,9 @@ public:
     FuncInfo* kernelInfo;                       // the call info for the kernel function
 
     IR_Builder *builder;                        // needed to create new instructions (mainly labels)
+
+    // TODO: This rather strange that global operand table is part of FlowGraph.
+    //       Consider moving it and the class elsewhere.
     GlobalOpndHashTable globalOpndHT;
 
     G4_Declare *            framePtrDcl;

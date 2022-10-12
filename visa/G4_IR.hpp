@@ -39,94 +39,6 @@ SPDX-License-Identifier: MIT
 #include "BitSet.h"
 #include "IGC/common/StringMacros.hpp"
 
-#include <memory>
-
-namespace vISA
-{
-    template <class T>
-    class std_arena_based_allocator
-    {
-    protected:
-    std::shared_ptr<Mem_Manager> mem_manager_ptr;
-
-    public:
-
-        //for allocator_traits
-        typedef std::size_t    size_type;
-        typedef std::ptrdiff_t difference_type;
-        typedef T*             pointer;
-        typedef const T*       const_pointer;
-        typedef T&             reference;
-        typedef const T&       const_reference;
-        typedef T              value_type;
-
-        explicit std_arena_based_allocator(std::shared_ptr<Mem_Manager> _other_ptr)
-            :mem_manager_ptr(_other_ptr)
-        {
-        }
-
-        explicit std_arena_based_allocator()
-            :mem_manager_ptr(nullptr)
-        {
-            //This implicitly calls Mem_manager constructor.
-        mem_manager_ptr = std::make_shared<Mem_Manager>(4096);
-        }
-
-        explicit std_arena_based_allocator(const std_arena_based_allocator& other)
-            : mem_manager_ptr(other.mem_manager_ptr)
-        {}
-
-
-        template <class U>
-        std_arena_based_allocator(const std_arena_based_allocator<U>& other)
-            : mem_manager_ptr(other.mem_manager_ptr)
-        {}
-
-        template <class U>
-        std_arena_based_allocator& operator=(const std_arena_based_allocator<U>& other)
-        {
-            mem_manager_ptr = other.mem_manager_ptr;
-            return *this;
-        }
-
-        template <class U>
-        struct rebind { typedef std_arena_based_allocator<U> other; };
-
-        template <class U> friend class std_arena_based_allocator;
-
-        pointer allocate(size_type n, const void * = 0)
-        {
-            T* t = (T*)mem_manager_ptr->alloc(n * sizeof(T));
-            return t;
-        }
-
-        void deallocate(void* p, size_type)
-        {
-            //No deallocation for arena allocator.
-        }
-
-        pointer           address(reference x) const { return &x; }
-        const_pointer     address(const_reference x) const { return &x; }
-
-        std_arena_based_allocator<T>&  operator=(const std_arena_based_allocator&)
-        {
-            return *this;
-        }
-
-        void              construct(pointer p, const T& val)
-        {
-            new ((T*)p) T(val);
-        }
-        void              destroy(pointer p) { p->~T(); }
-
-        size_type         max_size() const { return size_t(-1); }
-
-        bool operator==(const std_arena_based_allocator &) const { return true; }
-
-        bool operator!=(const std_arena_based_allocator & a) const { return !operator==(a); }
-    };
-}
-
 // We use memory manager.  Memory manager will free all the space at once so that
 // there is no need to call destructor or delete to free up space.
 #ifdef _MSC_VER
@@ -144,7 +56,6 @@ class G4_Declare;
 class G4_Operand;
 class G4_CondMod;
 class G4_Predicate;
-class GlobalRA;
 
 class G4_Imm;
 class G4_Greg;
@@ -152,18 +63,14 @@ class G4_Label;
 class G4_AddrExp;
 class G4_DstRegRegion;
 class G4_SrcRegRegion;
-
 class IR_Builder;
 
-class LocalLiveRange;
 class G4_Kernel;
 class G4_VarBase;
 
 class G4_SpillIntrinsic;
 class G4_FillIntrinsic;
 class G4_PseudoAddrMovIntrinsic;
-
-
 }
 
 // Forward declarations for global opt report related functions
@@ -171,78 +78,6 @@ void getOptReportStream(std::ofstream& reportStream, const Options *options);
 void closeOptReportStream(std::ofstream& reportStream);
 
 vISA::G4_Declare* GetTopDclFromRegRegion(vISA::G4_Operand* opnd);
-
-enum BankConflict {
-    BANK_CONFLICT_NONE,
-    BANK_CONFLICT_FIRST_HALF_EVEN,
-    BANK_CONFLICT_FIRST_HALF_ODD,
-    BANK_CONFLICT_SECOND_HALF_EVEN,
-    BANK_CONFLICT_SECOND_HALF_ODD};
-
-typedef enum
-{
-    MATH_RESERVED = 0,
-    MATH_INV = 1,
-    MATH_LOG = 2,
-    MATH_EXP = 3,
-    MATH_SQRT = 4,
-    MATH_RSQ = 5,
-    MATH_SIN = 6,
-    MATH_COS = 7,
-    // 8 is skipped
-    MATH_FDIV = 9,
-    MATH_POW = 0xA,
-    MATH_INT_DIV = 0xB,
-    MATH_INT_DIV_QUOT = 0xC,
-    MATH_INT_DIV_REM = 0xD,
-    MATH_INVM = 0xE,
-    MATH_RSQRTM = 0xF
-} G4_MathOp;
-
-inline const char* const MathOpNames[16] =
-{
-    "reserved",
-    "inv",
-    "log",
-    "exp",
-    "sqrt",
-    "rsq",
-    "sin",
-    "cos",
-    "undefined",
-    "fdiv",
-    "pow",
-    "intdiv",
-    "quot",
-    "rem",
-    "invm",
-    "rsqrtm"
-};
-
-typedef enum  _SB_INST_PIPE
-{
-    PIPE_NONE = 0,
-    PIPE_INT = 1,
-    PIPE_FLOAT = 2,
-    PIPE_LONG = 3,
-    PIPE_MATH = 4,
-    PIPE_DPAS = 6,
-    PIPE_SEND = 7,
-} SB_INST_PIPE;
-
-struct lsc_descriptor {
-    uint32_t opcode     : 6; // [5:0]
-    uint32_t reserved6  : 1; // [6]
-    uint32_t addr_size  : 2; // [8:7]
-    uint32_t data_size  : 3; // [11:9]
-    uint32_t data_vec   : 3; // [14:12]
-    uint32_t data_order : 1; // [15]
-    uint32_t reserved16 : 1; // [16]
-    uint32_t cache_opts : 3; // [19:17]
-    uint32_t rlen       : 5; // [24:20]
-    uint32_t mlen       : 5; // [29:25]
-    uint32_t addr_type  : 2; // [31:30]
-};
 
 typedef vISA::std_arena_based_allocator<vISA::G4_INST*> INST_LIST_NODE_ALLOCATOR;
 
@@ -261,72 +96,8 @@ typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR >::iterator DEF_EDGE_LIST_ITER
 
 namespace vISA
 {
-
-
-
 //forward declaration for the binary of an instruction
 class BinInst;
-
-
-///
-/// A hashtable of <declare, node> where every node is a vector of
-/// {LB, RB} (left-bounds and right-bounds)
-/// A source operand (either SrcRegRegion or Predicate) is considered to be global
-/// if it is not fully defined in one BB
-///
-class GlobalOpndHashTable
-{
-    Mem_Manager& mem;
-    std_arena_based_allocator<uint32_t> private_arena_allocator;
-
-    static uint32_t packBound(uint16_t lb, uint16_t rb)
-    {
-        return (rb << 16) + lb;
-    }
-
-    static uint16_t getLB(uint32_t value)
-    {
-        return (uint16_t) (value & 0xFFFF);
-    }
-    static uint16_t getRB(uint32_t value)
-    {
-        return (uint16_t) (value >> 16);
-    }
-
-    struct HashNode
-    {
-        // each elements is {LB, RB} pair where [0:15] is LB and [16:31] is RB
-        std::vector<uint32_t, std_arena_based_allocator<uint32_t>> bounds;
-
-        HashNode(uint16_t lb, uint16_t rb, std_arena_based_allocator<uint32_t>& m)
-            : bounds(m)
-        {
-            bounds.push_back(packBound(lb, rb));
-        }
-
-        void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
-
-        void insert(uint16_t newLB, uint16_t newRB);
-        bool isInNode(uint16_t lb, uint16_t rb) const;
-    };
-
-    // "global" refers to declares with elements that are used without a preceding define in the same BB
-    std::map<G4_Declare*, HashNode*> globalVars;
-    // for debugging it's often useful to dump out the global operands, not just declares.
-    // Note that this may not be an exhaustive list, for example it does not cover dst global operands;
-    // for accuracy one should use isOpndGlobal()
-    std::vector<G4_Operand*> globalOpnds;
-
-public:
-    GlobalOpndHashTable(Mem_Manager& m) : mem(m) { }
-
-    void addGlobalOpnd(G4_Operand * opnd);
-    // returns true if def may possibly define a global variable
-    bool isOpndGlobal(G4_Operand * def) const;
-    void clearHashTable();
-
-    void dump(std::ostream &os = std::cerr) const;
-}; // GlobalOpndHashTable
 
 class G4_FCALL
 {
@@ -343,14 +114,14 @@ public:
     uint16_t getRetSize() const { return retSize; }
 };
 
-//forward references.
+//Forward references for classes used by G4_INST.
 class G4_InstMath;
 class G4_InstCF;
 class G4_InstIntrinsic;
-class G4_PseudoAddrMovIntrinsic;
 class G4_InstSend;
 class G4_InstBfn;
 class G4_InstDpas;
+class GlobalOpndHashTable;
 
 class G4_INST
 {
@@ -571,8 +342,6 @@ public:
 
     G4_DstRegRegion* getDst() const { return dst; }
     bool supportsNullDst() const;
-
-    void setAccurateDistType(SB_INST_PIPE depPipe);
 
     bool isPseudoKill() const;
     bool isLifeTimeEnd() const;
@@ -955,8 +724,6 @@ public:
     bool isLongPipeInstructionXe() const;
     bool isIntegerPipeInstructionXe() const;
     bool isFloatPipeInstructionXe() const;
-    SB_INST_PIPE getDataTypePipeXe(G4_Type type);
-    SB_INST_PIPE getInstructionPipeXe();
 
     void swapDefUse(
         Gen4_Operand_Number srcIxA = Opnd_src0,
@@ -1324,6 +1091,27 @@ class G4_InstDpas : public G4_INST
         bool mayNeedWA() const { return mayNeedRSWA; }
 };
 
+// TODO: move this into G4_InstMath.
+typedef enum
+{
+    MATH_RESERVED = 0,
+    MATH_INV = 1,
+    MATH_LOG = 2,
+    MATH_EXP = 3,
+    MATH_SQRT = 4,
+    MATH_RSQ = 5,
+    MATH_SIN = 6,
+    MATH_COS = 7,
+    // 8 is skipped
+    MATH_FDIV = 9,
+    MATH_POW = 0xA,
+    MATH_INT_DIV = 0xB,
+    MATH_INT_DIV_QUOT = 0xC,
+    MATH_INT_DIV_REM = 0xD,
+    MATH_INVM = 0xE,
+    MATH_RSQRTM = 0xF
+} G4_MathOp;
+
 class G4_InstMath : public G4_INST
 {
     G4_MathOp mathOp;
@@ -1344,7 +1132,6 @@ public:
         G4_INST(builder, prd, o, m, sat, execSize, d, s0, s1, opt),
         mathOp(mOp)
     {
-
     }
 
     G4_INST* cloneInst() override;
@@ -1611,7 +1398,7 @@ public:
 
 }
 
-enum PseudoKillType
+enum class PseudoKillType
 {
     FromLiveness = 1,
     Src = 2,
@@ -1687,8 +1474,8 @@ static const IntrinsicInfo G4_Intrinsics[(int)Intrinsic::NumIntrinsics] =
     {Intrinsic::CallerRestore,  "caller_restore", 0,    1,      Phase::RA,              { 0, 0, 0, false, false } },
     {Intrinsic::CalleeSave,     "callee_save",  1,      0,      Phase::RA,              { 0, 0, 0, false, false } },
     {Intrinsic::CalleeRestore,  "callee_restore", 0,    1,      Phase::RA,              { 0, 0, 0, false, false } },
-    {Intrinsic::FlagSpill,            "flagSpill",          0,      1,      Phase::RA,       { 0, 0, 0, false, false } },
-    {Intrinsic::PseudoAddrMov,            "pseudo_addr_mov",          1,      8,      Phase::Optimizer,       { 0, 0, 0, false, false } },
+    {Intrinsic::FlagSpill,      "flagSpill",    0,      1,      Phase::RA,              { 0, 0, 0, false, false } },
+    {Intrinsic::PseudoAddrMov,  "pseudo_addr_mov", 1,   8,      Phase::Optimizer,       { 0, 0, 0, false, false } },
 };
 
 namespace vISA
@@ -1828,71 +1615,6 @@ struct RegionDesc
         return isSingleStride(execSize, stride);
     }
 };
-
-namespace vISA
-{
-    class LiveIntervalInfo
-    {
-    public:
-        enum DebugLiveIntervalState
-        {
-            Open = 0,
-            Closed = 1
-        };
-
-    private:
-        std::list<std::pair<uint32_t, uint32_t>> liveIntervals;
-        uint32_t cleanedAt;
-        DebugLiveIntervalState state;
-        uint32_t openIntervalVISAIndex;
-
-    public:
-        void *operator new(size_t sz, Mem_Manager& m) { return m.alloc(sz); }
-
-        void addLiveInterval(uint32_t start, uint32_t end);
-        void liveAt(uint32_t cisaOff);
-        void getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>>& intervals);
-        void clearLiveIntervals() { liveIntervals.clear(); }
-
-        DebugLiveIntervalState getState() const { return state; }
-
-        void setStateOpen(uint32_t VISAIndex)
-        {
-            //MUST_BE_TRUE(state == Closed, "Cannot open internal in Open state");
-            state = Open;
-            openIntervalVISAIndex = VISAIndex;
-        }
-
-        void setStateClosed(uint32_t VISAIndex)
-        {
-            //MUST_BE_TRUE(state == Open, "Cannot close interval in Close state");
-            state = Closed;
-            addLiveInterval(VISAIndex, openIntervalVISAIndex);
-        }
-
-        bool isLiveAt(uint32_t VISAIndex) const
-        {
-            for (auto& k : liveIntervals)
-            {
-                if (k.first <= VISAIndex && k.second >= VISAIndex)
-                    return true;
-            }
-            return false;
-        }
-
-        LiveIntervalInfo() { cleanedAt = 0; state = Closed; openIntervalVISAIndex = 0; }
-    };
-}
-
-typedef enum class AugmentationMasks
-{
-    Undetermined = 0,
-    Default16Bit = 1,
-    Default32Bit = 2,
-    Default64Bit = 3,
-    DefaultPredicateMask = 4,
-    NonDefault = 5,
-} AugmentationMasks;
 
 namespace vISA
 {

@@ -367,6 +367,50 @@ bool needBothAcc(IR_Builder& builder, G4_INST* inst, G4_Operand * opnd)
     }
 }
 
+static SB_INST_PIPE getInstructionPipeXe(G4_INST* inst)
+{
+
+    if (inst->isLongPipeInstructionXe())
+    {
+        return PIPE_LONG;
+    }
+
+    if (inst->isIntegerPipeInstructionXe())
+    {
+        return PIPE_INT;
+    }
+
+    if (inst->isFloatPipeInstructionXe())
+    {
+        return PIPE_FLOAT;
+    }
+
+    if (inst->getBuilder().hasFixedCycleMathPipeline() &&
+        inst->isMath())
+    {
+        return PIPE_MATH;
+    }
+
+    if (inst->tokenHonourInstruction())
+    {
+        if (inst->isDpas())
+        {
+            return PIPE_DPAS;
+        }
+        if (inst->isMathPipeInst())
+        {
+            return PIPE_MATH;
+        }
+        if (inst->isSend())
+        {
+            return PIPE_SEND;
+        }
+        ASSERT_USER(0, "Wrong token pipe instruction!");
+    }
+
+    ASSERT_USER(inst->hasNoPipe(), "No pipe instruction");
+    return PIPE_NONE;
+}
 
 // Compute the range of registers touched by OPND.
 SBFootprint* G4_BB_SB::getFootprintForACC(G4_Operand* opnd,
@@ -3721,12 +3765,13 @@ bool SWSB::insertDistSyncPVC(G4_BB* bb, SBNode* node, G4_INST* inst, INST_LIST_I
     bool inserted = false;
     for (int i = PIPE_INT; i < PIPE_DPAS; i++)
     {
-        unsigned dist = node->getDistInfo((SB_INST_PIPE)i);
+        SB_INST_PIPE pipe = static_cast<SB_INST_PIPE>(i);
+        unsigned dist = node->getDistInfo(pipe);
         if (dist)
         {
             G4_INST* synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(), inst->getLineNo());
             synInst->setDistance(dist);
-            synInst->setAccurateDistType((SB_INST_PIPE)i);
+            SWSB_global::setAccurateDistType(synInst, pipe);
             inserted = true;
         }
     }
@@ -5163,6 +5208,45 @@ void G4_BB_SB::clearSLMWARWAissue(SBNode* curNode, LiveGRFBuckets* LB)
     }
 }
 
+static SB_INST_PIPE getDataTypePipeXe(const IR_Builder& builder, G4_Type type)
+{
+    switch (type)
+    {
+    case Type_UB:
+    case Type_B:
+    case Type_UW:
+    case Type_W:
+    case Type_UD:
+    case Type_D:
+    case Type_UV:
+    case Type_V:
+        return PIPE_INT;
+
+    case Type_Q:
+    case Type_UQ:
+        if (builder.hasPartialInt64Support())
+        {
+            return PIPE_INT;
+        }
+        return PIPE_LONG;
+
+    case Type_DF:
+        return PIPE_LONG;
+
+    case Type_HF:
+    case Type_F:
+    case Type_VF:
+    case Type_NF:
+    case Type_BF:
+        return PIPE_FLOAT;
+
+    default:
+        return PIPE_NONE;
+    }
+
+    return PIPE_NONE;
+}
+
 void G4_BB_SB::setDistance(const SBFootprint* footprint, SBNode* node, SBNode* liveNode, bool dstDep)
 {
     if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
@@ -5214,7 +5298,7 @@ void G4_BB_SB::setDistance(const SBFootprint* footprint, SBNode* node, SBNode* l
         SBDISTDEP_ITEM depItem;
         depItem.liveNodePipe = liveNode->ALUPipe;
         depItem.nodePipe = node->ALUPipe;
-        depItem.operandType = node->GetInstruction()->getDataTypePipeXe(footprint->type);
+        depItem.operandType = getDataTypePipeXe(builder, footprint->type);
         depItem.dstDep = dstDep;
         if (node->GetInstruction()->isSend())
         {
@@ -6001,7 +6085,7 @@ void G4_BB_SB::SBDDD(G4_BB* bb,
 
         if (builder.hasThreeALUPipes() || builder.hasFourALUPipes())
         {
-            node->ALUPipe = curInst->getInstructionPipeXe();
+            node->ALUPipe = getInstructionPipeXe(curInst);
         }
 
         // For ALU instructions without GRF usage
@@ -8081,5 +8165,32 @@ void SWSB::dumpImmDom(ImmDominator* dom) const
             printf("BB%d, ", succ->getBB()->getId());
         }
         printf("\n");
+    }
+}
+
+namespace SWSB_global {
+    void setAccurateDistType(G4_INST* inst, SB_INST_PIPE depPipe)
+    {
+        switch (depPipe)
+        {
+        case PIPE_INT:
+            inst->setDistanceTypeXe(G4_INST::DistanceType::DISTINT);
+            break;
+        case PIPE_FLOAT:
+            inst->setDistanceTypeXe(G4_INST::DistanceType::DISTFLOAT);
+            break;
+        case PIPE_LONG:
+            inst->setDistanceTypeXe(G4_INST::DistanceType::DISTLONG);
+            break;
+        case PIPE_MATH:
+            inst->setDistanceTypeXe(G4_INST::DistanceType::DISTMATH);
+            break;
+        case PIPE_SEND:
+            inst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+            break;
+        default:
+            assert(0 && "Wrong ALU PIPE");
+            break;
+        }
     }
 }

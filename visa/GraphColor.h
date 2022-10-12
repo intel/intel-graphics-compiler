@@ -31,6 +31,14 @@ namespace vISA
     const float MAXSPILLCOST = (std::numeric_limits<float>::max());
     const float MINSPILLCOST = -(std::numeric_limits<float>::max());
 
+    enum BankConflict {
+        BANK_CONFLICT_NONE,
+        BANK_CONFLICT_FIRST_HALF_EVEN,
+        BANK_CONFLICT_FIRST_HALF_ODD,
+        BANK_CONFLICT_SECOND_HALF_EVEN,
+        BANK_CONFLICT_SECOND_HALF_ODD
+    };
+
     class BankConflictPass
     {
     private:
@@ -64,6 +72,16 @@ namespace vISA
         }
     };
 
+    enum class AugmentationMasks
+    {
+        Undetermined = 0,
+        Default16Bit = 1,
+        Default32Bit = 2,
+        Default64Bit = 3,
+        DefaultPredicateMask = 4,
+        NonDefault = 5,
+    };
+
 class LiveRange final
 {
     G4_RegVar* const var;
@@ -80,7 +98,7 @@ class LiveRange final
     unsigned parentLRID;
     AssignedReg reg;
     float spillCost;
-    BankConflict bc = BankConflict::BANK_CONFLICT_NONE;
+    BankConflict bc = BANK_CONFLICT_NONE;
     const static unsigned UndefHint = 0xffffffff;
     unsigned allocHint = UndefHint;
 
@@ -1245,7 +1263,6 @@ namespace vISA
         void printLiveIntervals();
         void reportUndefinedUses(LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl, std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum);
         void detectNeverDefinedUses();
-        void emitVarLiveIntervals();
 
         void determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpillRegSize);
         G4_Imm* createMsgDesc(unsigned owordSize, bool writeType, bool isSplitSend);

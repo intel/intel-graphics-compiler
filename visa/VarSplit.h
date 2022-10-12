@@ -67,7 +67,7 @@ private:
     const unsigned int cLargeLoop = 500;
 
     bool split(G4_Declare* dcl, Loop& loop);
-    void copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, AugmentationMasks augMask, bool pushBack = true);
+    void copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, bool isDefault32bMask, bool pushBack = true);
     void replaceSrc(G4_SrcRegRegion* src, G4_Declare* dcl, const Loop& loop);
     void replaceDst(G4_DstRegRegion* dst, G4_Declare* dcl, const Loop& loop);
     G4_Declare* getNewDcl(G4_Declare* dcl1, G4_Declare* dcl2, const Loop& loop);

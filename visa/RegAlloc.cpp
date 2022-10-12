@@ -769,7 +769,7 @@ LivenessAnalysis::~LivenessAnalysis()
             {
                 auto src0 = inst->getSrc(0);
                 MUST_BE_TRUE(src0 && src0->isImm(), "expecting src0 immediate for pseudo kill");
-                if (src0->asImm()->getImm() == PseudoKillType::FromLiveness)
+                if (src0->asImm()->getImm() == static_cast<int64_t>(PseudoKillType::FromLiveness))
                 {
                     instIt = bb->erase(instIt);
                     continue;

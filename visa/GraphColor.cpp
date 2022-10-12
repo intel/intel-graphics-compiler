@@ -9627,30 +9627,6 @@ void GlobalRA::detectNeverDefinedUses()
     closeOptReportStream(optreport);
 }
 
-void GlobalRA::emitVarLiveIntervals()
-{
-    for (auto dcl : kernel.Declares)
-    {
-        std::vector<std::pair<uint32_t, uint32_t>> liveIntervals;
-        LiveIntervalInfo* lr = kernel.getKernelDebugInfo()->getLiveIntervalInfo(dcl, false);
-
-        if (lr != NULL)
-        {
-            lr->getLiveIntervals(liveIntervals);
-
-            if (liveIntervals.size() > 0)
-            {
-                DEBUG_VERBOSE(dcl->getName() << " - ");
-            }
-
-            for (auto&& i : liveIntervals)
-            {
-                std::cerr << "(" << i.first << ", " << i.second << ")\n";
-            }
-        }
-    }
-}
-
 //
 //  Check the overlap of two sources' ranges and do range splitting
 //  Such as, range1: 0~63, range2: 32~95  --> 0~31,32~63,64~95

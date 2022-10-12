@@ -2759,33 +2759,6 @@ BinaryEncoding::Status BinaryEncoding::DoAllEncoding(G4_INST* inst)
     return myStatus;
 }
 
-//inline void dumpOptReport(int totalInst,
-//                          int numCompactedInst,
-//                          int numCompacted3SrcInst,
-//                          G4_Kernel& kernel)
-//{
-//    if (kernel.getOption(vISA_OptReport))
-//    {
-//        std::ofstream optReport;
-//        getOptReportStream(optReport, kernel.fg.builder->getOptions());
-//        optReport << "             === Binary Compaction ===" <<endl;
-//        optReport<< fixed << endl;
-//        optReport<< kernel.getName() <<": "
-//            << numCompactedInst <<" out of " <<totalInst <<" instructions are compacted."<<endl;
-//        if (numCompacted3SrcInst>0)
-//        {
-//            optReport<< kernel.getName() <<": "
-//            << numCompacted3SrcInst <<" instructions of 3 src (mad/pln) are compacted."<<endl;
-//        }
-//        optReport<< setprecision(0)
-//            << (float)(numCompactedInst*100)/(float)(totalInst)
-//            << "% instructions of this kernel are compacted."
-//            <<endl;
-//        optReport<<endl;
-//        closeOptReportStream(optReport);
-//    }
-//}
-
 inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
 {
     Status myStatus = FAILURE;

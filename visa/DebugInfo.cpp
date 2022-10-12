@@ -2743,4 +2743,177 @@ LiveIntervalInfo* KernelDebugInfo::getLiveIntervalInfo(G4_Declare* dcl, bool cre
     return lr;
 }
 
+void LiveIntervalInfo::getLiveIntervals(std::vector<std::pair<uint32_t, uint32_t>>& intervals)
+{
+    for (auto&& it : liveIntervals)
+    {
+        intervals.push_back(it);
+    }
+}
+
+void LiveIntervalInfo::addLiveInterval(uint32_t start, uint32_t end)
+{
+    if (liveIntervals.size() == 0)
+    {
+        liveIntervals.emplace_back(start, end);
+    }
+    else if (start - liveIntervals.back().second <= 1)
+    {
+        liveIntervals.back().second = end;
+    }
+    else if (liveIntervals.back().second < start)
+    {
+        liveIntervals.emplace_back(start, end);
+    }
+    else if (liveIntervals.front().first >= start && liveIntervals.back().second <= end)
+    {
+        liveIntervals.clear();
+        liveIntervals.emplace_back(start, end);
+    }
+    else
+    {
+        bool inserted = false;
+        uint32_t newEnd = end;
+        for (auto liveIt = liveIntervals.begin(); liveIt != liveIntervals.end();)
+        {
+            auto& lr = (*liveIt);
+
+            if (!inserted)
+            {
+                if (lr.first <= start && lr.second >= newEnd)
+                {
+                    inserted = true;
+                    break;
+                }
+                else if (lr.first <= start && lr.second > start && lr.second <= newEnd)
+                {
+                    // Extend existing sub-interval
+                    lr.second = newEnd;
+                    inserted = true;
+                    ++liveIt;
+                    continue;
+                }
+                else if ((start - lr.second) <= 1u)
+                {
+                    lr.second = newEnd;
+                    inserted = true;
+                    ++liveIt;
+                    continue;
+                }
+                else if (lr.first > start)
+                {
+                    // Insert new sub-interval
+                    liveIntervals.insert(liveIt, std::make_pair(start, newEnd));
+                    inserted = true;
+                    continue;
+                }
+            }
+            else
+            {
+                if (lr.first > newEnd)
+                    break;
+                else if (lr.first == newEnd)
+                {
+                    newEnd = lr.second;
+                    auto newLRIt = liveIt;
+                    --newLRIt;
+                    (*newLRIt).second = newEnd;
+                    liveIt = liveIntervals.erase(liveIt);
+                    continue;
+                }
+                else if (lr.second <= newEnd)
+                {
+                    liveIt = liveIntervals.erase(liveIt);
+                    continue;
+                }
+                else if (lr.first < newEnd && lr.second > newEnd)
+                {
+                    auto newLRIt = liveIt;
+                    --newLRIt;
+                    (*newLRIt).second = lr.second;
+                    liveIntervals.erase(liveIt);
+                    break;
+                }
+            }
+            ++liveIt;
+        }
+
+        if (!inserted)
+        {
+            if (start - liveIntervals.back().second <= 1)
+                liveIntervals.back().second = end;
+            else
+                liveIntervals.emplace_back(start, end);
+        }
+    }
+}
+
+void LiveIntervalInfo::liveAt(uint32_t cisaOff)
+{
+    if (cisaOff == UNMAPPABLE_VISA_INDEX)
+        return;
+
+    // Now iterate over all intervals and check which one should
+    // be extended. If none, start a new one.
+    bool added = false;
+    auto prev = liveIntervals.begin();
+
+    for (auto it = liveIntervals.begin(), itEnd = liveIntervals.end();
+        it != itEnd;
+        prev = it++)
+    {
+        auto& item = (*it);
+
+        if (added)
+        {
+            // Check whether prev and current one can be merged
+            if (((*prev).second == item.first) ||
+                ((*prev).second == item.first - 1))
+            {
+                prev->second = item.second;
+                it = liveIntervals.erase(it);
+                break;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        if (item.first == cisaOff + 1)
+        {
+            item.first = cisaOff;
+            added = true;
+            break;
+        }
+
+        if (item.second == cisaOff - 1)
+        {
+            item.second = cisaOff;
+            added = true;
+            continue;
+        }
+
+        if (!added &&
+            item.first <= cisaOff &&
+            item.second >= cisaOff)
+        {
+            added = true;
+            break;
+        }
+
+        if (item.first > cisaOff)
+        {
+            liveIntervals.insert(it, std::make_pair(cisaOff, cisaOff));
+            added = true;
+            break;
+        }
+    }
+
+    if (!added)
+    {
+        liveIntervals.push_back(std::make_pair(cisaOff, cisaOff));
+    }
+}
+
 // TODO: Check result in presence of spill code and stack calling convention

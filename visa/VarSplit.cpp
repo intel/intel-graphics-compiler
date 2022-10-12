@@ -1245,16 +1245,16 @@ bool LoopVarSplit::split(G4_Declare* dcl, Loop& loop)
 
     auto& splitData = coloring->getGRA().splitResults[splitDcl];
     splitData.origDcl = dcl;
-
-    auto augMask = coloring->getGRA().getAugmentationMask(dcl);
+    bool isDefault32bMask = coloring->getGRA().getAugmentationMask(dcl) ==
+        AugmentationMasks::Default32Bit;
 
     // emit TMP = dcl in preheader
-    copy(loop.preHeader, splitDcl, dcl, &splitData, augMask);
+    copy(loop.preHeader, splitDcl, dcl, &splitData, isDefault32bMask);
 
     // emit dcl = TMP in loop exit
     if (dsts.size() > 0)
     {
-        copy(loop.getLoopExits().front(), dcl, splitDcl, &splitData, augMask, false);
+        copy(loop.getLoopExits().front(), dcl, splitDcl, &splitData, isDefault32bMask, /*pushBack*/false);
     }
 
     // replace all occurences of dcl in loop with TMP
@@ -1269,7 +1269,7 @@ bool LoopVarSplit::split(G4_Declare* dcl, Loop& loop)
     return true;
 }
 
-void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, AugmentationMasks mask, bool pushBack)
+void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResults* splitData, bool isDefault32bMask, bool pushBack)
 {
     // create mov instruction to copy dst->src
     // multiple mov instructions may be created depending on size of dcls
@@ -1321,7 +1321,7 @@ void LoopVarSplit::copy(G4_BB* bb, G4_Declare* dst, G4_Declare* src, SplitResult
     // if variable fits within 1 or 2 GRFs and uses Default32Bit augmentation mask
     // then make the copy use M0 mask instead of using WriteEnable.
     unsigned int instOption = InstOpt_WriteEnable;
-    if (mask == AugmentationMasks::Default32Bit)
+    if (isDefault32bMask)
     {
         if (bytesRemaining % kernel.numEltPerGRF<Type_UD>() == 0 &&
             bytesRemaining <= kernel.numEltPerGRF<Type_UB>() * 2)

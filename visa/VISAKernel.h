@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #include "Mem_Manager.h"
 #include "JitterDataStruct.h"
 #include "KernelInfo.h"
-//#include "G4_IR.hpp"  // for PhyRegPool
 #include "Attributes.hpp"
 #include "CompilerStats.h"
 #include "IsaVerification.h"
