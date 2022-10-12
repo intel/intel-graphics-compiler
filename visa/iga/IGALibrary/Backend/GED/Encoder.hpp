@@ -48,7 +48,7 @@ namespace iga
 
 #ifdef TRACE_GED_CALLS
 #define TRACE_GED_SETTER(FIELD, ARG, STATUS) \
-     std::cout << "Encoder.cpp:" << __LINE__ << ": GED_Set" << #FIELD << \
+     std::cerr << "Encoder.cpp:" << __LINE__ << ": GED_Set" << #FIELD << \
         "(..," << (ARG) << ") results in " << (STATUS) << "\n"
 #else
 #define TRACE_GED_SETTER(FIELD, ARG, STATUS)

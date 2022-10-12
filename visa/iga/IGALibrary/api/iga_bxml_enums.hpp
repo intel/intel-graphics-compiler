@@ -191,10 +191,9 @@ namespace iga
     static inline uint32_t GetDpasRepeatCount(DpasFC sf) {
         return uint32_t(sf) & 0xFF;
     }
-    static inline uint32_t GetDpasSystolicDepthEncoding(
-        DpasFC sf, uint32_t divisor)
+    static inline uint32_t GetDpasSystolicDepthEncoding(DpasFC sf)
     {
-        switch (GetDpasSystolicDepth(sf)/divisor) {
+        switch (GetDpasSystolicDepth(sf)) {
         case 1: return 0;
         case 2: return 1;
         case 4: return 2;
