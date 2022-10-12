@@ -310,7 +310,6 @@ DECLARE_IGC_REGKEY(bool, EnableLSCFenceUGMBeforeEOT,    true, "Enable inserting 
 DECLARE_IGC_REGKEY(bool, EnableRTLSCFenceUGMBeforeEOT,  true, "[tmp]Enable inserting fence.ugm.06.tile before EOT for RT shader [XeHPC, PVC].", false)
 DECLARE_IGC_REGKEY(bool, manualEnableRSWA,    false, "Enable read suppression WA for the send and indirect access", false)
 DECLARE_IGC_REGKEY(bool, DPASReadSuppressionWA,    true, "Enable read suppression WA for the send and indirect access", false)
-DECLARE_IGC_REGKEY(DWORD, RSWARegNum,    0, "dummy register used for EnablerReadSuppressionWA", false)
 DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierCheck,   false,  "Uses WIAnalysis to find barriers in divergent flow control. May have false positives.", false)
 DECLARE_IGC_REGKEY(bool, EnableBitcastExtractInsertPattern,   true,  "Enable BitcastExtractInsertPattern in CustomSafeOptPass.", true)
 

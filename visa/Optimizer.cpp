@@ -949,10 +949,9 @@ void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
 
     const RegionDesc* region = builder.createRegionDesc(8, 8, 1);
 
-    unsigned rsReg = builder.getOptions()->getuInt32Option(vISA_registerHWRSWA);
     //Src0
-    auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_W, rsReg, 0);
-    auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, rsReg, 0);
+    auto src0Dcl_0 = builder.createHardwiredDeclare(1, Type_W, 1, 0);
+    auto src0Dcl_1 = builder.createHardwiredDeclare(1, Type_F, 1, 0);
     G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->createSrcRegRegion(src0Dcl_0, region);
     G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->createSrcRegRegion(src0Dcl_1, region);
 
@@ -985,12 +984,11 @@ void Optimizer::insertDummyMad(G4_BB* bb, INST_LIST_ITER inst_it)
 void Optimizer::insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it, bool newBB)
 {
     const RegionDesc* region = builder.createRegionDesc(4, 4, 1);
-    unsigned rsReg = builder.getOptions()->getuInt32Option(vISA_registerHWRSWA);
 
     G4_Declare* dummyFlagDcl = builder.createTempFlag(1, "dmflag");
     dummyFlagDcl->getRegVar()->setPhyReg(builder.phyregpool.getFlagAreg(0), 0);
     auto dummyCondMod0 = builder.createCondMod(Mod_e, dummyFlagDcl->getRegVar(), 0);
-    auto src0Dcl_0 = builder.createHardwiredDeclare(4, Type_W, rsReg, 0);
+    auto src0Dcl_0 = builder.createHardwiredDeclare(4, Type_W, 1, 0);
     G4_SrcRegRegion* src0Opnd_0 = kernel.fg.builder->createSrcRegRegion(src0Dcl_0, region);
     G4_SrcRegRegion* src1Opnd_0 = kernel.fg.builder->createSrcRegRegion(src0Dcl_0, region);
     G4_SrcRegRegion* src2Opnd_0 = kernel.fg.builder->createSrcRegRegion(src0Dcl_0, region);
@@ -1011,7 +1009,7 @@ void Optimizer::insertDummyCsel(G4_BB* bb, INST_LIST_ITER inst_it, bool newBB)
 
     if (!builder.hasSingleALUPipe())
     {
-        auto src0Dcl_1 = builder.createHardwiredDeclare(4, Type_F, rsReg, 4);
+        auto src0Dcl_1 = builder.createHardwiredDeclare(4, Type_F, 1, 4);
         G4_SrcRegRegion* src0Opnd_1 = kernel.fg.builder->createSrcRegRegion(src0Dcl_1, region);
         G4_SrcRegRegion* src1Opnd_1 = kernel.fg.builder->createSrcRegRegion(src0Dcl_1, region);
         G4_SrcRegRegion* src2Opnd_1 = kernel.fg.builder->createSrcRegRegion(src0Dcl_1, region);
@@ -14463,8 +14461,7 @@ void Optimizer::fixReadSuppressioninFPU0()
                 if (srcToFix)
                 {
                     const RegionDesc* region = builder.createRegionDesc(4, 4, 1);
-                    unsigned rsReg = builder.getOptions()->getuInt32Option(vISA_registerHWRSWA);
-                    G4_Declare* decl = builder.createHardwiredDeclare(4, Type_F, rsReg, 0);
+                    G4_Declare* decl = builder.createHardwiredDeclare(4, Type_F, 1, 0);
                     G4_SrcRegRegion* src0 = fg.builder->createSrcRegRegion(decl, region);
                     G4_SrcRegRegion* src1 = fg.builder->createSrcRegRegion(decl, region);
                     G4_SrcRegRegion* src2 = fg.builder->createSrcRegRegion(decl, region);

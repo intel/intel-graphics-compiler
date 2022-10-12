@@ -379,7 +379,6 @@ DEF_VISA_OPTION(vISA_InsertDummyMovForHWRSWA,      ET_BOOL,  "-insertRSDummyMov"
 DEF_VISA_OPTION(vISA_GenerateKernelInfo,  ET_BOOL, "-generateKernelInfo", UNUSED, false)
 DEF_VISA_OPTION(vISA_ManualEnableRSWA,      ET_BOOL,  "-manualEnableRSWA",              UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertDummyMovForDPASRSWA,      ET_BOOL,  "-insertDPASRSDummyMov",              UNUSED, true)
-DEF_VISA_OPTION(vISA_registerHWRSWA,      ET_INT32,  "-dummyRegisterHWRSWA",              UNUSED, 0)
 DEF_VISA_OPTION(vISA_InsertDummyCompactInst, ET_BOOL, "-insertDummyCompactInst", UNUSED, false)
 DEF_VISA_OPTION(vISA_AsmFileNameOverridden,  ET_BOOL,  NULLSTR,        UNUSED, false)
 DEF_VISA_OPTION(vISA_HashVal,             ET_2xINT32, "-hashmovs", "USAGE: -hashmovs hi32 lo32\n", 0)
