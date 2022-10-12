@@ -47,11 +47,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ '18.04', '20.04']
+        ubuntu_version: [ '20.04' ]
         llvm_ver: [ 10, 11 ]
         include:
-          - ubuntu_version: '20.04'
-            llvm_ver: 12
           - ubuntu_version: '22.04'
             llvm_ver: 12
             experimental: true
@@ -105,19 +103,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu_version: [ '18.04', '20.04' ]
+        ubuntu_version: [ '20.04' ]
         llvm_ver: [ 10, 11 ]
         compiler: [ gcc, clang ]
-        exclude:
-          - ubuntu_version: '18.04'
-            compiler: clang
         include:
-          - ubuntu_version: '20.04'
-            llvm_ver: 12
-            compiler: gcc
-          - ubuntu_version: '20.04'
-            llvm_ver: 12
-            compiler: clang
           - ubuntu_version: '22.04'
             llvm_ver: 12
             compiler: gcc
@@ -210,23 +199,7 @@ jobs:
       - name: copying artifact from docker to github host
         run: sudo docker cp buildigc:/workspace/igc/build/DEB-FILES ./Artifacts
       - uses: actions/upload-artifact@v2
-        continue-on-error: true
         with:
           name: IGC_Ubuntu${{ matrix.ubuntu_version }}_llvm${{ matrix.llvm_ver }}_${{ matrix.compiler }}-${{ steps.igc-current-short-Hash.outputs.sha_short }}
           path: ./Artifacts/DEB-FILES/*.deb
           retention-days: 7
-      - name: Send mail
-        if: ${{ failure() }}
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{secrets.MAIL_ADDRESS}}
-          password: ${{secrets.MAIL_PASSWORD}}
-          subject: Github Actions IGC build failed
-          to: marcin.naczk@intel.com
-          from: Github Action
-          secure: true
-          body: Build Failed. The job ${{github.job}} of ${{github.repository}}--${github.sha} Failed. Run ID ${{github.run_id}}. Run Number ${{github.run_number}}
-          ignore_cert: true
-          priority: low
