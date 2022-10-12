@@ -39,6 +39,7 @@ namespace IGC
 
         void visitAllocaInst(llvm::AllocaInst& alloca);
         void visitCallInst(llvm::CallInst& call);
+        void visitGetElementPtrInst(llvm::GetElementPtrInst& getElementPtr);
         void visitLoadInst(llvm::LoadInst& load);
         void visitStoreInst(llvm::StoreInst& store);
 
@@ -69,6 +70,7 @@ namespace IGC
         llvm::Value* promoteBitCast(llvm::BitCastInst* bitcast);
         llvm::CallInst* promoteCall(llvm::CallInst* call);
         llvm::ExtractValueInst* promoteExtractValue(llvm::ExtractValueInst* extractValue);
+        llvm::GetElementPtrInst* promoteGetElementPtr(llvm::GetElementPtrInst* getElementPtr);
         llvm::InsertValueInst* promoteInsertValue(llvm::InsertValueInst* insertValue);
         llvm::LoadInst* promoteLoad(llvm::LoadInst* load);
         llvm::StoreInst* promoteStore(llvm::StoreInst* store);

@@ -115,6 +115,16 @@ void PromoteBools::visitCallInst(CallInst& call)
     changed |= getOrCreatePromotedValue(&call) != &call;
 }
 
+void PromoteBools::visitGetElementPtrInst(llvm::GetElementPtrInst& getElementPtr)
+{
+    if (wasPromoted(getElementPtr.getFunction()))
+    {
+        return;
+    }
+
+    changed |= getOrCreatePromotedValue(&getElementPtr) != &getElementPtr;
+}
+
 void PromoteBools::visitLoadInst(LoadInst& load)
 {
     if (wasPromoted(load.getFunction()))
@@ -384,6 +394,10 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     else if (auto extractValue = dyn_cast<ExtractValueInst>(value))
     {
         newValue = promoteExtractValue(extractValue);
+    }
+    else if (auto getElementPtr = dyn_cast<GetElementPtrInst>(value))
+    {
+        newValue = promoteGetElementPtr(getElementPtr);
     }
     else if (auto insertValue = dyn_cast<InsertValueInst>(value))
     {
@@ -741,6 +755,25 @@ ExtractValueInst* PromoteBools::promoteExtractValue(ExtractValueInst* extractVal
         extractValue->getIndices(),
         "",
         extractValue
+    );
+}
+
+GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElementPtr)
+{
+    if (!getElementPtr || !typeNeedsPromotion(getElementPtr->getResultElementType()))
+    {
+        return getElementPtr;
+    }
+
+    auto promotedOperand = getOrCreatePromotedValue(getElementPtr->getPointerOperand());
+    auto indices = SmallVector<Value*, 8>(getElementPtr->idx_begin(), getElementPtr->idx_end());
+
+    return GetElementPtrInst::Create(
+        promotedOperand->getType()->getPointerElementType(),
+        promotedOperand,
+        indices,
+        "",
+        getElementPtr
     );
 }
 
