@@ -138,6 +138,7 @@ namespace IGC
         bool            m_SeparatingSpillAndPrivateScratchMemorySpace = false;
         unsigned int m_scratchSpaceSizeLimit = 0;
         unsigned int m_numGRFTotal = 128;
+        unsigned int m_numGRFSpillFill = 0;
         using NamedVISAAsm = std::pair<std::string, std::string>; // Pair of name for the section (1st elem) and VISA asm text (2nd elem).
         std::vector<NamedVISAAsm> m_VISAAsm;
 

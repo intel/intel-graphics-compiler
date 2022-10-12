@@ -6506,6 +6506,7 @@ namespace IGC
         if (jitInfo->isSpill == true)
         {
             pOutput->m_scratchSpaceUsedBySpills = jitInfo->spillMemUsed;
+            pOutput->m_numGRFSpillFill = jitInfo->numGRFSpillFill;
         }
 
         pOutput->setScratchSpaceUsedByShader(m_program->m_ScratchSpaceSize);
