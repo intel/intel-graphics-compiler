@@ -190,7 +190,7 @@ static bool convertRecursionToStackCall(CallGraph& CG)
         {
             // Check self-recursion.
             auto Node = SCCNodes.back();
-            for (auto Callee : *Node)
+            for (const auto& Callee : *Node)
             {
                 if (Callee.second == Node)
                 {

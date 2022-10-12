@@ -350,7 +350,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module& M)
 
 void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
 {
-    for (auto iter : oldToNewFuncMap)
+    for (const auto& iter : oldToNewFuncMap)
     {
         Function* pFunc = iter.first;
         Function* pNewFunc = iter.second;
@@ -483,7 +483,7 @@ void LegalizeFunctionSignatures::FixFunctionUsers(Module& M)
     std::vector<CallInst*> callsToFix;
 
     // Check for all users of the old function and replace with the new signature
-    for (auto it : oldToNewFuncMap)
+    for (const auto& it : oldToNewFuncMap)
     {
         Function* pFunc = it.first;
         Function* pNewFunc = it.second;

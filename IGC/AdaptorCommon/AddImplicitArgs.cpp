@@ -134,7 +134,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
 
     if (!IGC::ForceAlwaysInline(ctx))
     {
-        for (auto I : funcsMappingForReplacement)
+        for (const auto& I : funcsMappingForReplacement)
         {
             replaceAllUsesWithNewOCLBuiltinFunction(I.first, I.second);
         }
@@ -142,7 +142,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
 
     // Update IGC Metadata
     // Function declarations are changing, this needs to be reflected in the metadata.
-    for (auto i : funcsMapping)
+    for (const auto& i : funcsMapping)
     {
         IGCMD::IGCMetaDataHelper::moveFunction(
             *m_pMdUtils, *ctx->getModuleMetaData(), i.first, i.second);
@@ -275,7 +275,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
     // byval. Bug#GD-429 had this exact issue. If we don't do this then we lose
     // mapping of argument to dbg.declare and elf file comes up with empty
     // storage location for the variable.
-    for (auto toReplace : newAddr)
+    for (const auto& toReplace : newAddr)
     {
         auto d = dyn_cast<DbgDeclareInst>(toReplace.first);
 
@@ -600,7 +600,7 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
         // calculate args from sub-routine.
         // This function have not been processed yet, therefore no map-entry for it yet
         IGC_ASSERT(argMap.count(f) == 0);
-        for (auto N : (*CGN))
+        for (const auto& N : (*CGN))
         {
             Function *sub = N.second->getFunction();
             // if callee has not been visited
