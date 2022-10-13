@@ -219,9 +219,8 @@ uint EmitPass::DecideInstanceAndSlice(const llvm::BasicBlock& blk, SDAG& sdag, b
     m_encoder->SetSubSpanDestination(false);
     uint numInstance = m_currShader->m_numberInstance;
 
-    if (m_SimdMode != SIMDMode::SIMD32)
     {
-        slicing = false;
+        slicing = (m_SimdMode == SIMDMode::SIMD32);
     }
 
     bool hasValidDestination = (sdag.m_root->getType()->getTypeID() != llvm::Type::VoidTyID);
