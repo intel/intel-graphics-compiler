@@ -12,4 +12,4 @@ SPDX-License-Identifier: MIT
 // if GTGPU is defined, the definitions of the two routines are
 // in GTGPU runtime
 //
-extern "C" void* allocCodeBlock(size_t sz);
+extern "C" void *allocCodeBlock(size_t sz);

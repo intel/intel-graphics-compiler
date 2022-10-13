@@ -13,10 +13,6 @@ SPDX-License-Identifier: MIT
 #include "Mem_Manager.h"
 using namespace vISA;
 Mem_Manager::Mem_Manager(size_t defaultArenaSize)
-    : _arenaManager (defaultArenaSize)
-{
-}
+    : _arenaManager(defaultArenaSize) {}
 
-Mem_Manager::~Mem_Manager()
-{
-}
+Mem_Manager::~Mem_Manager() {}

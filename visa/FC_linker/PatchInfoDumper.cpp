@@ -45,9 +45,8 @@ class PatchInfoDumper {
 public:
   PatchInfoDumper(char *D, std::size_t S, char *B, std::size_t BS,
                   std::FILE *fp)
-    : Data(D), Size(S),
-      Binary(B), BinarySize(BS), Header(nullptr),
-      SectionHdrStart(nullptr), SectionHdrEntries(0), OF(fp) {}
+      : Data(D), Size(S), Binary(B), BinarySize(BS), Header(nullptr),
+        SectionHdrStart(nullptr), SectionHdrEntries(0), OF(fp) {}
 
   void dump();
 
@@ -60,14 +59,12 @@ protected:
   int dumpUnknownSection(unsigned i);
   int dumpBinary(unsigned i, char *Start, std::size_t Sz);
   int dumpRelocation(unsigned i, char *Start, std::size_t Sz,
-                     cm::patch::PInfo_U16 Lnk,
-                     cm::patch::PInfo_U16 Lnk2);
+                     cm::patch::PInfo_U16 Lnk, cm::patch::PInfo_U16 Lnk2);
   int dumpSymbolTable(unsigned i, char *Start, std::size_t Sz,
                       cm::patch::PInfo_U16 Lnk);
   int dumpStringTable(unsigned i, char *Start, std::size_t Sz);
   int dumpRegAccessTable(unsigned i, char *Start, std::size_t Sz,
-                         cm::patch::PInfo_U16 Type,
-                         cm::patch::PInfo_U16 Lnk2);
+                         cm::patch::PInfo_U16 Type, cm::patch::PInfo_U16 Lnk2);
   int dumpTokenTable(unsigned i, char *Start, std::size_t Sz,
                      cm::patch::PInfo_U16 Lnk2);
 
@@ -80,9 +77,7 @@ protected:
 } // End anonymous namespace
 
 void PatchInfoDumper::dump() {
-  dumpHeader() ||
-  dumpSectionHeaders() ||
-  dumpSections();
+  dumpHeader() || dumpSectionHeaders() || dumpSections();
 }
 
 int PatchInfoDumper::dumpHeader() {
@@ -109,8 +104,8 @@ int PatchInfoDumper::dumpHeader() {
 
   u.m = H->Magic;
   std::fprintf(OF, "Patch Info Header:\n");
-  std::fprintf(OF, "  Magic: %08x ('%c', '%c', '%c', '%c')\n", H->Magic,
-               u.c[0], u.c[1], u.c[2], u.c[3]);
+  std::fprintf(OF, "  Magic: %08x ('%c', '%c', '%c', '%c')\n", H->Magic, u.c[0],
+               u.c[1], u.c[2], u.c[3]);
   std::fprintf(OF, "  Version: %u\n", H->Version);
   std::fprintf(OF, "  Platform: %u\n", H->Platform);
   std::fprintf(OF, "\n");
@@ -129,10 +124,10 @@ int PatchInfoDumper::dumpSectionHeaders() {
 
   auto getShTypeString = [](unsigned ShType) {
     static const char *ShTypeStrs[] = {
-      "NONE", "BINARY", "RELOC", "SYMTBL", "STRTBL",
-      "INITREGTAB", "FINIREGTAB", "TOKTAB",
+        "NONE",   "BINARY",     "RELOC",      "SYMTBL",
+        "STRTBL", "INITREGTAB", "FINIREGTAB", "TOKTAB",
     };
-    unsigned NumTys = sizeof(ShTypeStrs)/sizeof(ShTypeStrs[0]);
+    unsigned NumTys = sizeof(ShTypeStrs) / sizeof(ShTypeStrs[0]);
     if (ShType < NumTys)
       return ShTypeStrs[ShType];
     return "UNKNOWN";
@@ -140,10 +135,10 @@ int PatchInfoDumper::dumpSectionHeaders() {
 
   std::fprintf(OF, "Section Headers:\n");
   cm::patch::PInfoSectionHdr *Sh =
-    reinterpret_cast<cm::patch::PInfoSectionHdr *>(SectionHdrStart);
+      reinterpret_cast<cm::patch::PInfoSectionHdr *>(SectionHdrStart);
   for (unsigned i = 0, e = SectionHdrEntries; i != e; ++i) {
-    std::fprintf(OF, "  [%3u] %04x(%10s) %4u %4u %08x %08x\n", i,
-                 Sh->ShType, getShTypeString(Sh->ShType), Sh->ShLink, Sh->ShLink2,
+    std::fprintf(OF, "  [%3u] %04x(%10s) %4u %4u %08x %08x\n", i, Sh->ShType,
+                 getShTypeString(Sh->ShType), Sh->ShLink, Sh->ShLink2,
                  Sh->ShOffset, Sh->ShSize);
     ++Sh;
   }
@@ -157,7 +152,7 @@ int PatchInfoDumper::dumpSections() {
     return 1;
 
   cm::patch::PInfoSectionHdr *Sh =
-    reinterpret_cast<cm::patch::PInfoSectionHdr *>(SectionHdrStart);
+      reinterpret_cast<cm::patch::PInfoSectionHdr *>(SectionHdrStart);
   for (unsigned i = 0, e = SectionHdrEntries; i != e; ++i, ++Sh) {
     if (Sh->ShOffset >= Size) {
       error("Invalid section!");
@@ -215,37 +210,35 @@ int PatchInfoDumper::dumpUnknownSection(unsigned i) {
   return 0;
 }
 
-int PatchInfoDumper::dumpBinary(unsigned i, char *Start, std::size_t Sz)
-{
-    std::fprintf(OF, "Binary section [%u]:\n", i);
-    if (BinarySize == 0) {
-        // If there's no binary specified, use the one from patch info.
-        Binary = Start;
-        BinarySize = Sz;
-    }
-    if (Sz > 0) {
-        std::fprintf(OF, " %zd\n", Sz);
-    }
-    else
-        std::fprintf(OF, "  dummy\n");
-    std::fprintf(OF, "\n");
-    return 0;
+int PatchInfoDumper::dumpBinary(unsigned i, char *Start, std::size_t Sz) {
+  std::fprintf(OF, "Binary section [%u]:\n", i);
+  if (BinarySize == 0) {
+    // If there's no binary specified, use the one from patch info.
+    Binary = Start;
+    BinarySize = Sz;
+  }
+  if (Sz > 0) {
+    std::fprintf(OF, " %zd\n", Sz);
+  } else
+    std::fprintf(OF, "  dummy\n");
+  std::fprintf(OF, "\n");
+  return 0;
 }
 
 int PatchInfoDumper::dumpRelocation(unsigned i, char *Start, std::size_t Sz,
                                     cm::patch::PInfo_U16 Lnk,
                                     cm::patch::PInfo_U16 Lnk2) {
-  std::fprintf(OF, "Relocation section [%u] for binary section [%u]:\n",
-               i, Lnk2);
+  std::fprintf(OF, "Relocation section [%u] for binary section [%u]:\n", i,
+               Lnk2);
 
   cm::patch::PInfoSectionHdr *Sh =
-    reinterpret_cast<cm::patch::PInfoSectionHdr *>(SectionHdrStart);
+      reinterpret_cast<cm::patch::PInfoSectionHdr *>(SectionHdrStart);
   char *StringTable = Data + Sh[Sh[Lnk].ShLink].ShOffset;
   cm::patch::PInfoSymbol *Sym =
-    reinterpret_cast<cm::patch::PInfoSymbol *>(Data + Sh[Lnk].ShOffset);
+      reinterpret_cast<cm::patch::PInfoSymbol *>(Data + Sh[Lnk].ShOffset);
 
   cm::patch::PInfoRelocation *Rel =
-    reinterpret_cast<cm::patch::PInfoRelocation *>(Start);
+      reinterpret_cast<cm::patch::PInfoRelocation *>(Start);
   unsigned n = 0;
   for (; Sz > 0; ++n, ++Rel, Sz -= sizeof(cm::patch::PInfoRelocation)) {
     std::fprintf(OF, "  [%3u]:", n);
@@ -263,11 +256,11 @@ int PatchInfoDumper::dumpSymbolTable(unsigned i, char *Start, std::size_t Sz,
   std::fprintf(OF, "Symbol Table section [%u]:\n", i);
 
   cm::patch::PInfoSectionHdr *Sh =
-    reinterpret_cast<cm::patch::PInfoSectionHdr *>(SectionHdrStart);
+      reinterpret_cast<cm::patch::PInfoSectionHdr *>(SectionHdrStart);
   char *StringTable = Data + Sh[Lnk].ShOffset;
 
   cm::patch::PInfoSymbol *Sym =
-    reinterpret_cast<cm::patch::PInfoSymbol *>(Start);
+      reinterpret_cast<cm::patch::PInfoSymbol *>(Start);
   unsigned n = 0;
   for (; Sz > 0; ++n, ++Sym, Sz -= sizeof(cm::patch::PInfoSymbol)) {
     std::fprintf(OF, "  [%3u]: %08x", n, Sym->SymValue);
@@ -296,16 +289,14 @@ int PatchInfoDumper::dumpStringTable(unsigned i, char *Start, std::size_t Sz) {
   return 0;
 }
 
-int
-PatchInfoDumper::dumpRegAccessTable(unsigned i, char *Start, std::size_t Sz,
-                                    cm::patch::PInfo_U16 Type,
-                                    cm::patch::PInfo_U16 Lnk2) {
+int PatchInfoDumper::dumpRegAccessTable(unsigned i, char *Start, std::size_t Sz,
+                                        cm::patch::PInfo_U16 Type,
+                                        cm::patch::PInfo_U16 Lnk2) {
   std::fprintf(OF, "%s Register Table section [%u] for binary section [%u]:\n",
-               (Type == cm::patch::PSHT_INITREGTAB) ? "Init" : "Fini" , i,
-               Lnk2);
+               (Type == cm::patch::PSHT_INITREGTAB) ? "Init" : "Fini", i, Lnk2);
 
   cm::patch::PInfoRegAccess *RegAcc =
-    reinterpret_cast<cm::patch::PInfoRegAccess *>(Start);
+      reinterpret_cast<cm::patch::PInfoRegAccess *>(Start);
 
   for (unsigned n = 0; Sz > 0;
        ++n, ++RegAcc, Sz -= sizeof(cm::patch::PInfoRegAccess)) {
@@ -326,8 +317,7 @@ int PatchInfoDumper::dumpTokenTable(unsigned i, char *Start, std::size_t Sz,
                Lnk2);
   std::fprintf(OF, "\n");
 
-  cm::patch::PInfoToken *Tok =
-    reinterpret_cast<cm::patch::PInfoToken *>(Start);
+  cm::patch::PInfoToken *Tok = reinterpret_cast<cm::patch::PInfoToken *>(Start);
 
   bool First = true;
   for (unsigned n = 0; Sz > 0;

@@ -14,20 +14,19 @@ SPDX-License-Identifier: MIT
 #endif
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #include <wchar.h>
 }
 #include <climits>
 #include <cstring>
 #else
-#include <wchar.h>
 #include <limits.h>
 #include <string.h>
+#include <wchar.h>
 #endif
 
-#define DIR_WIN32_SEPARATOR   "\\"
-#define DIR_UNIX_SEPARATOR   "/"
+#define DIR_WIN32_SEPARATOR "\\"
+#define DIR_UNIX_SEPARATOR "/"
 
 /* declspecs */
 #ifdef _WIN32
@@ -52,20 +51,20 @@ extern "C"
 #endif
 
 #if defined(DLL_MODE) && defined(vISA_LINK_DLL)
-    #ifdef _WIN32
-        #define VISA_BUILDER_API __declspec(dllexport)
-    #else
-        #define VISA_BUILDER_API __attribute__((visibility("default")))
-    #endif
+#ifdef _WIN32
+#define VISA_BUILDER_API __declspec(dllexport)
+#else
+#define VISA_BUILDER_API __attribute__((visibility("default")))
+#endif
 #else
 #define VISA_BUILDER_API
 #endif
 
 #ifndef SNPRINTF
 #if defined(ISTDLIB_KMD) || !defined(_WIN32)
-#define SNPRINTF( dst, size, ... ) snprintf( (dst), (size), __VA_ARGS__  )
+#define SNPRINTF(dst, size, ...) snprintf((dst), (size), __VA_ARGS__)
 #else
-#define SNPRINTF( dst, size, ... ) sprintf_s( (dst), (size), __VA_ARGS__ )
+#define SNPRINTF(dst, size, ...) sprintf_s((dst), (size), __VA_ARGS__)
 #endif
 #endif
 

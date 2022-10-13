@@ -9,13 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef VISA_PASSES_SENDFUSION_HPP
 #define VISA_PASSES_SENDFUSION_HPP
 
-namespace vISA
-{
-    class FlowGraph;
-    class G4_BB;
-    class Mem_Manager;
+namespace vISA {
+class FlowGraph;
+class G4_BB;
+class Mem_Manager;
 
-    bool doSendFusion(FlowGraph* CFG, vISA::Mem_Manager* MMgr);
-}
+bool doSendFusion(FlowGraph *CFG, vISA::Mem_Manager *MMgr);
+} // namespace vISA
 
 #endif

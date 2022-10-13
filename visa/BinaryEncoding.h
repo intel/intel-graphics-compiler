@@ -9,279 +9,238 @@ SPDX-License-Identifier: MIT
 #ifndef _BINARYENCODING_H_
 #define _BINARYENCODING_H_
 
-#include <string>
 #include <fstream>
+#include <string>
 
-#include "FlowGraph.h"
 #include "Common_BinaryEncoding.h"
+#include "FlowGraph.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Constants
 ///////////////////////////////////////////////////////////////////////////////
 
 typedef enum _AccessMode_ {
-    ACCESS_MODE_ALIGN1,
-    ACCESS_MODE_ALIGN16
+  ACCESS_MODE_ALIGN1,
+  ACCESS_MODE_ALIGN16
 } AccessMode;
 
 typedef enum _predicate_state_ {
-    PREDICATE_STATE_NORMAL,
-    PREDICATE_STATE_INVERT
+  PREDICATE_STATE_NORMAL,
+  PREDICATE_STATE_INVERT
 } PredicateState;
 
-typedef enum _predicate_
-{
-    PREDICATE_OFF,
-    PREDICATE_ALIGN16_SEQUENTIAL,
-    PREDICATE_ALIGN16_REP_X,
-    PREDICATE_ALIGN16_REP_Y,
-    PREDICATE_ALIGN16_REP_Z,
-    PREDICATE_ALIGN16_REP_W,
-    PREDICATE_ALIGN16_ANY4H,
-    PREDICATE_ALIGN16_ALL4H,
+typedef enum _predicate_ {
+  PREDICATE_OFF,
+  PREDICATE_ALIGN16_SEQUENTIAL,
+  PREDICATE_ALIGN16_REP_X,
+  PREDICATE_ALIGN16_REP_Y,
+  PREDICATE_ALIGN16_REP_Z,
+  PREDICATE_ALIGN16_REP_W,
+  PREDICATE_ALIGN16_ANY4H,
+  PREDICATE_ALIGN16_ALL4H,
 
-    PREDICATE_ALIGN1_SEQUENTIAL = 1,
-    PREDICATE_ALIGN1_ANYV,
-    PREDICATE_ALIGN1_ALLV,
-    PREDICATE_ALIGN1_ANY2H,
-    PREDICATE_ALIGN1_ALL2H,
-    PREDICATE_ALIGN1_ANY4H,
-    PREDICATE_ALIGN1_ALL4H,
-    PREDICATE_ALIGN1_ANY8H,
-    PREDICATE_ALIGN1_ALL8H,
-    PREDICATE_ALIGN1_ANY16H,
-    PREDICATE_ALIGN1_ALL16H,
-    // valid for Gen7 only
-    PREDICATE_ALIGN1_ANY32H,
-    PREDICATE_ALIGN1_ALL32H
+  PREDICATE_ALIGN1_SEQUENTIAL = 1,
+  PREDICATE_ALIGN1_ANYV,
+  PREDICATE_ALIGN1_ALLV,
+  PREDICATE_ALIGN1_ANY2H,
+  PREDICATE_ALIGN1_ALL2H,
+  PREDICATE_ALIGN1_ANY4H,
+  PREDICATE_ALIGN1_ALL4H,
+  PREDICATE_ALIGN1_ANY8H,
+  PREDICATE_ALIGN1_ALL8H,
+  PREDICATE_ALIGN1_ANY16H,
+  PREDICATE_ALIGN1_ALL16H,
+  // valid for Gen7 only
+  PREDICATE_ALIGN1_ANY32H,
+  PREDICATE_ALIGN1_ALL32H
 } Predicate;
 
-typedef enum _ConditionCodes_
-{
-    COND_CODE_NONE,
-    COND_CODE_Z,
-    COND_CODE_NZ,
-    COND_CODE_G,
-    COND_CODE_GE,
-    COND_CODE_L,
-    COND_CODE_LE,
-    COND_CODE_C,
-    COND_CODE_O,
-    COND_CODE_ANY,
-    COND_CODE_ALL
+typedef enum _ConditionCodes_ {
+  COND_CODE_NONE,
+  COND_CODE_Z,
+  COND_CODE_NZ,
+  COND_CODE_G,
+  COND_CODE_GE,
+  COND_CODE_L,
+  COND_CODE_LE,
+  COND_CODE_C,
+  COND_CODE_O,
+  COND_CODE_ANY,
+  COND_CODE_ALL
 } ConditionCodes;
 
-typedef enum _QtrCtrl_
-{
-    QTR_CTRL_1Q,
-    QTR_CTRL_2Q,
-    QTR_CTRL_3Q,
-    QTR_CTRL_4Q
+typedef enum _QtrCtrl_ {
+  QTR_CTRL_1Q,
+  QTR_CTRL_2Q,
+  QTR_CTRL_3Q,
+  QTR_CTRL_4Q
 } QtrCtrl;
 
-typedef enum _ComprCtrl_
-{
-    COMPR_CTRL_NORMAL,
-    COMPR_CTRL_COMPRESSED
-} ComprCtrl;
+typedef enum _ComprCtrl_ { COMPR_CTRL_NORMAL, COMPR_CTRL_COMPRESSED } ComprCtrl;
 
 // GT
-typedef enum _CmptCtrl_
-{
-    CMPT_CTRL_NORMAL,
-    CMPT_CTRL_COMPACTED
-} CmptCtrl;
-
+typedef enum _CmptCtrl_ { CMPT_CTRL_NORMAL, CMPT_CTRL_COMPACTED } CmptCtrl;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Gen7 specific fields
 ///////////////////////////////////////////////////////////////////////////////
-typedef enum _ThreeSrcType_
-{
-    THREE_SRC_TYPE_F = 0,
-    THREE_SRC_TYPE_D = 1,
-    THREE_SRC_TYPE_UD = 2,
-    THREE_SRC_TYPE_DF = 3,
-    THREE_SRC_TYPE_HF = 4,
+typedef enum _ThreeSrcType_ {
+  THREE_SRC_TYPE_F = 0,
+  THREE_SRC_TYPE_D = 1,
+  THREE_SRC_TYPE_UD = 2,
+  THREE_SRC_TYPE_DF = 3,
+  THREE_SRC_TYPE_HF = 4,
 } ThreeSrcType;
 
-typedef enum _NibCtrl_
-{
-    NIB_FALSE = 0,
-    NIB_TRUE = 1
-} NibCtrl;
+typedef enum _NibCtrl_ { NIB_FALSE = 0, NIB_TRUE = 1 } NibCtrl;
 
 ///////////////////////////////////////////////////////////////////////////////
 // End of Gen7 specific fields
 ///////////////////////////////////////////////////////////////////////////////
 typedef enum _threadControl_ {
-    THREAD_CTRL_NORMAL,
-    THREAD_CTRL_ATOMIC,
-    THREAD_CTRL_SWITCH
+  THREAD_CTRL_NORMAL,
+  THREAD_CTRL_ATOMIC,
+  THREAD_CTRL_SWITCH
 } ThreadCtrl;
 
-typedef enum _CInstModifier_
-{
-    INST_MOD_NONE,
-    INST_MOD_SAT
-} InstModifier;
+typedef enum _CInstModifier_ { INST_MOD_NONE, INST_MOD_SAT } InstModifier;
 
-typedef enum _DepCtrl_
-{
-    DEP_CTRL_NORMAL,
-    DEP_CTRL_DIS_CLEAR,
-    DEP_CTRL_DIS_CHECK,
-    DEP_CTRL_DIS_CHECK_CLEAR_DEST
+typedef enum _DepCtrl_ {
+  DEP_CTRL_NORMAL,
+  DEP_CTRL_DIS_CLEAR,
+  DEP_CTRL_DIS_CHECK,
+  DEP_CTRL_DIS_CHECK_CLEAR_DEST
 } DepCtrl;
 
-typedef enum _SrcMod_
-{
-    SRC_MOD_NONE,
-    SRC_MOD_ABSOLUTE,
-    SRC_MOD_NEGATE,
-    SRC_MOD_NEGATE_OF_ABSOLUTE
+typedef enum _SrcMod_ {
+  SRC_MOD_NONE,
+  SRC_MOD_ABSOLUTE,
+  SRC_MOD_NEGATE,
+  SRC_MOD_NEGATE_OF_ABSOLUTE
 } SrcMod;
 
-typedef enum _SrcType_
-{
-    SRC_TYPE_UD,
-    SRC_TYPE_D,
-    SRC_TYPE_UW,
-    SRC_TYPE_W,
-    SRC_TYPE_UB,
-    SRC_TYPE_B,
-    SRC_TYPE_DF,
-    SRC_TYPE_F,
-    SRC_TYPE_UQ = 8,
-    SRC_TYPE_Q = 9,
-    SRC_TYPE_HF = 10,
-    SRC_TYPE_UNDEF = 0xFFFFFFFF
+typedef enum _SrcType_ {
+  SRC_TYPE_UD,
+  SRC_TYPE_D,
+  SRC_TYPE_UW,
+  SRC_TYPE_W,
+  SRC_TYPE_UB,
+  SRC_TYPE_B,
+  SRC_TYPE_DF,
+  SRC_TYPE_F,
+  SRC_TYPE_UQ = 8,
+  SRC_TYPE_Q = 9,
+  SRC_TYPE_HF = 10,
+  SRC_TYPE_UNDEF = 0xFFFFFFFF
 } SrcType;
 
-typedef enum _SrcImmType_
-{
-    SRC_IMM_TYPE_UD,
-    SRC_IMM_TYPE_D,
-    SRC_IMM_TYPE_UW,
-    SRC_IMM_TYPE_W,
-    SRC_IMM_TYPE_UV,
-    SRC_IMM_TYPE_VF,
-    SRC_IMM_TYPE_V,
-    SRC_IMM_TYPE_F,
-    SRC_IMM_TYPE_UQ = 8,
-    SRC_IMM_TYPE_Q = 9,
-    SRC_IMM_TYPE_DF = 10,
-    SRC_IMM_TYPE_HF = 11,
-    SRC_IMM_TYPE_UNDEF = 0xFFFFFFFF
+typedef enum _SrcImmType_ {
+  SRC_IMM_TYPE_UD,
+  SRC_IMM_TYPE_D,
+  SRC_IMM_TYPE_UW,
+  SRC_IMM_TYPE_W,
+  SRC_IMM_TYPE_UV,
+  SRC_IMM_TYPE_VF,
+  SRC_IMM_TYPE_V,
+  SRC_IMM_TYPE_F,
+  SRC_IMM_TYPE_UQ = 8,
+  SRC_IMM_TYPE_Q = 9,
+  SRC_IMM_TYPE_DF = 10,
+  SRC_IMM_TYPE_HF = 11,
+  SRC_IMM_TYPE_UNDEF = 0xFFFFFFFF
 } SrcImmType;
 
-const int aSrcImmType[] =
-{
+const int aSrcImmType[] = {
     // byte counts
-    4,// UD
-    4,// D
-    2,// UW
-    2,// W
-    4,// UV
-    4,// VF
-    4,// V
-    4               // F
+    4, // UD
+    4, // D
+    2, // UW
+    2, // W
+    4, // UV
+    4, // VF
+    4, // V
+    4  // F
 };
 
-typedef enum _DstType_
-{
-    DST_TYPE_UD,
-    DST_TYPE_D,
-    DST_TYPE_UW,
-    DST_TYPE_W,
-    DST_TYPE_UB,
-    DST_TYPE_B,
-    DST_TYPE_DF,
-    DST_TYPE_F = 7,
-    DST_TYPE_UQ = 8,
-    DST_TYPE_Q = 9,
-    DST_TYPE_HF = 10, // for half float
-    DST_TYPE_UNDEF = 0xFFFFFFFF
+typedef enum _DstType_ {
+  DST_TYPE_UD,
+  DST_TYPE_D,
+  DST_TYPE_UW,
+  DST_TYPE_W,
+  DST_TYPE_UB,
+  DST_TYPE_B,
+  DST_TYPE_DF,
+  DST_TYPE_F = 7,
+  DST_TYPE_UQ = 8,
+  DST_TYPE_Q = 9,
+  DST_TYPE_HF = 10, // for half float
+  DST_TYPE_UNDEF = 0xFFFFFFFF
 } DstType;
 
-typedef enum _IdxType_
-{
-    IDX_TYPE_D,
-    IDX_TYPE_W
-} IdxType;
+typedef enum _IdxType_ { IDX_TYPE_D, IDX_TYPE_W } IdxType;
 
-typedef enum _VertStride_
-{
-    VERT_STRIDE_0,
-    VERT_STRIDE_1,
-    VERT_STRIDE_2,
-    VERT_STRIDE_4,
-    VERT_STRIDE_8,
-    VERT_STRIDE_16,
-    VERT_STRIDE_32,
-    VERT_STRIDE_ONE_DIMEN = 15
-} EncVertStride, *pEncVertStride;
+typedef enum _VertStride_ {
+  VERT_STRIDE_0,
+  VERT_STRIDE_1,
+  VERT_STRIDE_2,
+  VERT_STRIDE_4,
+  VERT_STRIDE_8,
+  VERT_STRIDE_16,
+  VERT_STRIDE_32,
+  VERT_STRIDE_ONE_DIMEN = 15
+} EncVertStride,
+    *pEncVertStride;
 
-typedef enum _Width_
-{
-    WIDTH_1,
-    WIDTH_2,
-    WIDTH_4,
-    WIDTH_8,
-    WIDTH_16
-} EncWidth, *pEncWidth;
+typedef enum _Width_ {
+  WIDTH_1,
+  WIDTH_2,
+  WIDTH_4,
+  WIDTH_8,
+  WIDTH_16
+} EncWidth,
+    *pEncWidth;
 
-typedef enum _HorzStride_
-{
-    HORZ_STRIDE_0,
-    HORZ_STRIDE_1,
-    HORZ_STRIDE_2,
-    HORZ_STRIDE_4
-} EncHorzStride, *pEncHorzStride;
+typedef enum _HorzStride_ {
+  HORZ_STRIDE_0,
+  HORZ_STRIDE_1,
+  HORZ_STRIDE_2,
+  HORZ_STRIDE_4
+} EncHorzStride,
+    *pEncHorzStride;
 
 const uint32_t VERT_STRIDE_VxH = 0xFFFFFFFF;
 
 ///////////////////////////////////////////////////
 //// 32 bit message descriptor in send instruction
 ///////////////////////////////////////////////////
-//typedef struct _sEncMsgDescriptor_
+// typedef struct _sEncMsgDescriptor_
 //{
-//    unsigned short  ResponseLength  : 4,
-//                    MessageLength   : 4,
-//                    TargetUnitId    : 6,
-//                    Reserved        : 1,
-//                    EndOfThread     : 1;
-//} * psEncMsgDescriptor, sEncMsgDescriptor;
+//     unsigned short  ResponseLength  : 4,
+//                     MessageLength   : 4,
+//                     TargetUnitId    : 6,
+//                     Reserved        : 1,
+//                     EndOfThread     : 1;
+// } * psEncMsgDescriptor, sEncMsgDescriptor;
 
 /////////////////////////////////////////////////
 // 6 bit extended message descriptor in send instruction
 /////////////////////////////////////////////////
-typedef struct _sEncExtMsgDescriptor_
-{
-    uint32_t TargetUnitId : 4,
-    Reserved : 1,
-           EndOfThread : 1,
-                     ExtMessageLength : 4,
-                                    Reserved2 : 1,
-                                            CPSLODCompensation : 1,
-                                                             Reserved3 : 4,
-                                                                     ExtFunctionControl : 16;
+typedef struct _sEncExtMsgDescriptor_ {
+  uint32_t TargetUnitId : 4, Reserved : 1, EndOfThread : 1,
+      ExtMessageLength : 4, Reserved2 : 1, CPSLODCompensation : 1,
+      Reserved3 : 4, ExtFunctionControl : 16;
 } *psEncExtMsgDescriptor, sEncExtMsgDescriptor;
 //
-//typedef union _EncMsgDescriptor_
+// typedef union _EncMsgDescriptor_
 //{
 //    uint32_t        ulData;
 //    sEncMsgDescriptor   MsgDescriptor;
 //} * pEncMsgDescriptor, EncMsgDescriptor;
 
-typedef union _EncExtMsgDescriptor_
-{
-    uint32_t            ulData;
-    sEncExtMsgDescriptor    ExtMsgDescriptor;
+typedef union _EncExtMsgDescriptor_ {
+  uint32_t ulData;
+  sEncExtMsgDescriptor ExtMsgDescriptor;
 } *pEncExtMsgDescriptor, EncExtMsgDescriptor;
-
-
-
 
 ////////////////////////////////////////////////
 // 128 bit ISA instruction
@@ -460,7 +419,7 @@ typedef union _EncExtMsgDescriptor_
 #define bits3SrcDstRegNumDWord_0 63
 #define bits3SrcDstRegNumDWord_1 53
 
-//                                                       src0      src1      src2
+//                                                       src0      src1 src2
 #define bits3SrcRepCtrl_0 64
 #define bits3SrcRepCtrl_1 64
 #define bits3SrcRepCtrl_2 85
@@ -593,7 +552,6 @@ typedef union _EncExtMsgDescriptor_
 #define bitsSendsExDescRegNum_0 82
 #define bitsSendsExDescRegNum_1 80
 
-
 // Reserved [84:84], [105:105]
 
 ////////////////////////////////////////////////
@@ -602,8 +560,6 @@ typedef union _EncExtMsgDescriptor_
 ////////////////////////////////////////////////
 
 // Opcode [6:0] same as 128 bit
-
-
 
 // SKL 3src special bits
 #define bits3SrcSrc1Type 36
@@ -642,23 +598,23 @@ extern unsigned long bitsJIP[2];
 extern unsigned long bitsUIP[2];
 extern unsigned long bits3SrcSrcMod[6];
 
-#define SET_BIT_RANGE(field, high, low) \
-    (field)[0] = high;  \
-    (field)[1] = low;
+#define SET_BIT_RANGE(field, high, low)                                        \
+  (field)[0] = high;                                                           \
+  (field)[1] = low;
 
-#define SET_BIT_RANGES(field, high1, low1, high2, low2) \
-    (field)[0] = high1;  \
-    (field)[1] = low1;   \
-    (field)[2] = high2;  \
-    (field)[3] = low2;
+#define SET_BIT_RANGES(field, high1, low1, high2, low2)                        \
+  (field)[0] = high1;                                                          \
+  (field)[1] = low1;                                                           \
+  (field)[2] = high2;                                                          \
+  (field)[3] = low2;
 
-#define SET_BIT_RANGES2(field, high1, low1, high2, low2, high3, low3) \
-    (field)[0] = high1;  \
-    (field)[1] = low1;   \
-    (field)[2] = high2;  \
-    (field)[3] = low2;   \
-    (field)[4] = high3;  \
-    (field)[5] = low3;
+#define SET_BIT_RANGES2(field, high1, low1, high2, low2, high3, low3)          \
+  (field)[0] = high1;                                                          \
+  (field)[1] = low1;                                                           \
+  (field)[2] = high2;                                                          \
+  (field)[3] = low2;                                                           \
+  (field)[4] = high3;                                                          \
+  (field)[5] = low3;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Data Structure for Binary Instructions
@@ -667,154 +623,140 @@ extern unsigned long bits3SrcSrcMod[6];
 ///////////////////////////////////////////////////////////////////////////////
 // Data Structure for Binary Encoding
 ///////////////////////////////////////////////////////////////////////////////
-namespace vISA
-{
-    class BinaryEncoding : public BinaryEncodingBase
-    {
+namespace vISA {
+class BinaryEncoding : public BinaryEncodingBase {
 
-    public:
-        BinaryEncoding(Mem_Manager &m, G4_Kernel& k, std::string fname)
-            :
-            BinaryEncodingBase(m, k, fname) {}
+public:
+  BinaryEncoding(Mem_Manager &m, G4_Kernel &k, std::string fname)
+      : BinaryEncodingBase(m, k, fname) {}
 
-        virtual ~BinaryEncoding()
-        {
+  virtual ~BinaryEncoding(){
 
-        };
+  };
 
-    private:
+private:
+  void insertWaitDst(G4_INST *);
+  // void insertInstPointer(G4_INST*);
+  void EncodeOpCode(G4_INST *);
+  void EncodeExecSize(G4_INST *);
+  void EncodeQtrControl(G4_INST *);
+  void EncodeAccessMode(G4_INST *);
+  void EncodeFlagReg(G4_INST *);
+  void EncodeFlagRegPredicate(G4_INST *);
+  void EncodeCondModifier(G4_INST *);
+  void EncodeInstModifier(G4_INST *);
+  void EncodeMathControl(G4_INST *);
+  void EncodeInstOptionsString(G4_INST *);
+  void EncodeSendMsgDesc29_30(G4_INST *);
 
-        void insertWaitDst(G4_INST*);
-        //void insertInstPointer(G4_INST*);
-        void EncodeOpCode(G4_INST*);
-        void EncodeExecSize(G4_INST*);
-        void EncodeQtrControl(G4_INST*);
-        void EncodeAccessMode(G4_INST*);
-        void EncodeFlagReg(G4_INST*);
-        void EncodeFlagRegPredicate(G4_INST*);
-        void EncodeCondModifier(G4_INST*);
-        void EncodeInstModifier(G4_INST*);
-        void EncodeMathControl(G4_INST*);
-        void EncodeInstOptionsString(G4_INST*);
-        void EncodeSendMsgDesc29_30(G4_INST*);
+  void EncodeSrc2RegNum(G4_INST *inst, BinInst *mybin, G4_Operand *src2);
+  void EncodeSrc1RegNum(G4_INST *inst, BinInst *mybin, G4_Operand *src1);
+  void EncodeSrc0RegNum(G4_INST *inst, BinInst *mybin, G4_Operand *src0);
+  void EncodeDstRegNum(G4_INST *inst, BinInst *mybin, G4_DstRegRegion *dst);
 
-        void EncodeSrc2RegNum(G4_INST* inst, BinInst *mybin, G4_Operand *src2);
-        void EncodeSrc1RegNum(G4_INST *inst, BinInst *mybin, G4_Operand *src1);
-        void EncodeSrc0RegNum(G4_INST* inst, BinInst *mybin, G4_Operand *src0);
-        void EncodeDstRegNum(G4_INST* inst, BinInst *mybin, G4_DstRegRegion *dst);
+  /*
+   * encoding operands
+   */
+  Status EncodeOperandDst(G4_INST *);
+  Status EncodeOperandSrc0(G4_INST *);
+  Status EncodeOperandSrc1(G4_INST *);
+  Status EncodeOperandSrc2(G4_INST *);
+  Status EncodeExtMsgDescr(G4_INST *);
+  Status EncodeOperands(G4_INST *);
+  Status DoAllEncoding(G4_INST *);
+  Status EncodeSplitSendDst(G4_INST *);
+  Status EncodeSplitSendSrc0(G4_INST *);
+  Status EncodeSplitSendSrc1(G4_INST *);
+  Status EncodeSplitSendSrc2(G4_INST *);
 
-        /*
-        * encoding operands
-        */
-        Status EncodeOperandDst(G4_INST*);
-        Status EncodeOperandSrc0(G4_INST*);
-        Status EncodeOperandSrc1(G4_INST*);
-        Status EncodeOperandSrc2(G4_INST*);
-        Status EncodeExtMsgDescr(G4_INST*);
-        Status EncodeOperands(G4_INST*);
-        Status DoAllEncoding(G4_INST*);
-        Status EncodeSplitSendDst(G4_INST*);
-        Status EncodeSplitSendSrc0(G4_INST*);
-        Status EncodeSplitSendSrc1(G4_INST*);
-        Status EncodeSplitSendSrc2(G4_INST*);
+  Status EncodeIndirectCallTarget(G4_INST *);
 
-        Status EncodeIndirectCallTarget(G4_INST*);
+  void SetCmpSrc1Imm32(BinInst *mybin, uint32_t immediateData, G4_Operand *src);
 
-        void SetCmpSrc1Imm32(BinInst *mybin, uint32_t immediateData, G4_Operand* src);
+  virtual void SetCompactCtrl(BinInst *mybin, uint32_t value);
+  virtual uint32_t GetCompactCtrl(BinInst *mybin);
 
-        virtual void SetCompactCtrl(BinInst *mybin, uint32_t value);
-        virtual uint32_t GetCompactCtrl(BinInst *mybin);
+  void SetBranchOffsets(G4_INST *inst, uint32_t JIP, uint32_t UIP = 0);
 
-        void SetBranchOffsets(G4_INST* inst,
-            uint32_t JIP,
-            uint32_t UIP = 0);
+  // return true for backfard jumps/calls, false for forward ones
+  bool EncodeConditionalBranches(G4_INST *, uint32_t);
 
-        // return true for backfard jumps/calls, false for forward ones
-        bool EncodeConditionalBranches(G4_INST *, uint32_t);
+public:
+  // all platform specific bit locations are initialized here
+  static void InitPlatform(TARGET_PLATFORM platform) {
+    BinaryEncodingBase::InitPlatform();
 
-    public:
+    // BDW+ encoding
+    SET_BIT_RANGE(bitsFlagRegNum, 33, 33);
+    SET_BIT_RANGE(bitsFlagSubRegNum, 32, 32);
+    SET_BIT_RANGE(bitsNibCtrl, 11, 11);
+    SET_BIT_RANGE(bits3SrcFlagSubRegNum, 32, 32);
+    SET_BIT_RANGE(bits3SrcFlagRegNum, 33, 33);
+    SET_BIT_RANGE(bits3SrcSrcType, 45, 43);
+    SET_BIT_RANGE(bits3SrcDstType, 48, 46);
+    SET_BIT_RANGE(bits3SrcNibCtrl, 11, 11);
 
-        // all platform specific bit locations are initialized here
-        static void InitPlatform(TARGET_PLATFORM platform)
-        {
-            BinaryEncodingBase::InitPlatform();
+    SET_BIT_RANGE(bitsDepCtrl, 10, 9);
+    SET_BIT_RANGE(bitsWECtrl, 34, 34);
+    SET_BIT_RANGE(bitsDstRegFile, 36, 35);
+    SET_BIT_RANGE(bitsDstType, 40, 37);
+    SET_BIT_RANGE(bitsDstIdxRegNum, 60, 57);
+    SET_BIT_RANGE(bitsDstIdxImmOWord, 56, 52);
+    SET_BIT_RANGE(bitsDstIdxImmByte, 56, 48);
+    SET_BIT_RANGE(bitsDstIdxImmMSB, 47, 47);
+    SET_BIT_RANGES(bitsSrcRegFile, 42, 41, 90, 89);
+    SET_BIT_RANGES(bitsSrcType, 46, 43, 94, 91);
+    SET_BIT_RANGES(bitsSrcIdxRegNum, 76, 73, 108, 105);
+    SET_BIT_RANGES(bitsSrcIdxImmOWord, 72, 68, 104, 100);
+    SET_BIT_RANGES(bitsSrcIdxImmByte, 72, 64, 104, 96);
+    SET_BIT_RANGES(bitsSrcIdxImmMSB, 95, 95, 121, 121);
+    SET_BIT_RANGE(bitsJIP, 127, 96);
+    SET_BIT_RANGE(bitsUIP, 95, 64);
+    SET_BIT_RANGES2(bits3SrcSrcMod, 38, 37, 40, 39, 42, 41);
+  }
 
-            // BDW+ encoding
-            SET_BIT_RANGE(bitsFlagRegNum, 33, 33);
-            SET_BIT_RANGE(bitsFlagSubRegNum, 32, 32);
-            SET_BIT_RANGE(bitsNibCtrl, 11, 11);
-            SET_BIT_RANGE(bits3SrcFlagSubRegNum, 32, 32);
-            SET_BIT_RANGE(bits3SrcFlagRegNum, 33, 33);
-            SET_BIT_RANGE(bits3SrcSrcType, 45, 43);
-            SET_BIT_RANGE(bits3SrcDstType, 48, 46);
-            SET_BIT_RANGE(bits3SrcNibCtrl, 11, 11);
+  Status ProduceBinaryInstructions();
 
-            SET_BIT_RANGE(bitsDepCtrl, 10, 9);
-            SET_BIT_RANGE(bitsWECtrl, 34, 34);
-            SET_BIT_RANGE(bitsDstRegFile, 36, 35);
-            SET_BIT_RANGE(bitsDstType, 40, 37);
-            SET_BIT_RANGE(bitsDstIdxRegNum, 60, 57);
-            SET_BIT_RANGE(bitsDstIdxImmOWord, 56, 52);
-            SET_BIT_RANGE(bitsDstIdxImmByte, 56, 48);
-            SET_BIT_RANGE(bitsDstIdxImmMSB, 47, 47);
-            SET_BIT_RANGES(bitsSrcRegFile, 42, 41, 90, 89);
-            SET_BIT_RANGES(bitsSrcType, 46, 43, 94, 91);
-            SET_BIT_RANGES(bitsSrcIdxRegNum, 76, 73, 108, 105);
-            SET_BIT_RANGES(bitsSrcIdxImmOWord, 72, 68, 104, 100);
-            SET_BIT_RANGES(bitsSrcIdxImmByte, 72, 64, 104, 96);
-            SET_BIT_RANGES(bitsSrcIdxImmMSB, 95, 95, 121, 121);
-            SET_BIT_RANGE(bitsJIP, 127, 96);
-            SET_BIT_RANGE(bitsUIP, 95, 64);
-            SET_BIT_RANGES2(bits3SrcSrcMod, 38, 37, 40, 39, 42, 41);
-        }
+  // Status commitLabels();
+  // Status CommitRelativeAddresses();
 
+  virtual void DoAll();
 
-        Status ProduceBinaryInstructions();
+  // Status DeleteMemForBins();
 
-        //Status commitLabels();
-        //Status CommitRelativeAddresses();
+  void CompactInstructions();
+  void Compact();
 
-        virtual void DoAll();
+  // char *GetKernelBuffer() { return buffer; };
+  // void SetKernelBuffer(char *_buffer) { buffer = _buffer; };
 
-        //Status DeleteMemForBins();
+  void *alloc(size_t size) { return mem.alloc(size); };
 
-        void CompactInstructions();
-        void Compact();
+  inline bool compactOneInstruction(G4_INST *inst) {
+    G4_opcode op = inst->opcode();
+    BinInst *mybin = inst->getBinInst();
+    if (op == G4_if || op == G4_else || op == G4_endif || op == G4_while ||
+        op == G4_halt || op == G4_break || op == G4_cont ||
+        /* GetComprCtrl(mybin) == COMPR_CTRL_COMPRESSED  || */
+        mybin->GetDontCompactFlag()) {
+      // do not compact conditional branches
+      return false;
+    }
 
-        //char *GetKernelBuffer() { return buffer; };
-        //void SetKernelBuffer(char *_buffer) { buffer = _buffer; };
+    // ToDo: disable compacting nop/return until it is clear that we can compact
+    // them
+    if (op == G4_nop || op == G4_return) {
+      return false;
+    }
 
-        void *alloc(size_t size) { return mem.alloc(size); };
+    // temporary WA, to be removed later
+    if (op == G4_call) {
+      return false;
+    }
 
-        inline bool compactOneInstruction(G4_INST *inst)
-        {
-            G4_opcode op = inst->opcode();
-            BinInst *mybin = inst->getBinInst();
-            if (op == G4_if || op == G4_else || op == G4_endif ||
-                op == G4_while || op == G4_halt ||
-                op == G4_break || op == G4_cont ||
-                /* GetComprCtrl(mybin) == COMPR_CTRL_COMPRESSED  || */
-                mybin->GetDontCompactFlag())
-            {
-                // do not compact conditional branches
-                return false;
-            }
-
-            // ToDo: disable compacting nop/return until it is clear that we can compact them
-            if (op == G4_nop || op == G4_return)
-            {
-                return false;
-            }
-
-            // temporary WA, to be removed later
-            if (op == G4_call)
-            {
-                return false;
-            }
-
-            return BDWcompactOneInstruction(inst);
-        }
-    };
-}
+    return BDWcompactOneInstruction(inst);
+  }
+};
+} // namespace vISA
 
 #endif

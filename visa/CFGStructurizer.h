@@ -8,8 +8,7 @@ SPDX-License-Identifier: MIT
 
 #ifndef _CFGSTRUCTURIZER_H_
 #define _CFGSTRUCTURIZER_H_
-namespace vISA
-{
+namespace vISA {
 class FlowGraph;
 }
 void doCFGStructurize(vISA::FlowGraph *FG);

@@ -13,11 +13,10 @@ SPDX-License-Identifier: MIT
 #undef DEF_VISA_OPTION
 #define DEF_VISA_OPTION(ENUM, TYPE, STR, VALorMSG, DEFAULT_VAL) ENUM,
 
-typedef enum
-{
-    vISA_OPTIONS_UNINIT = 0,
-    #include "VISAOptionsDefs.h"
-    vISA_NUM_OPTIONS
+typedef enum {
+  vISA_OPTIONS_UNINIT = 0,
+#include "VISAOptionsDefs.h"
+  vISA_NUM_OPTIONS
 } vISAOptions;
 
 #endif

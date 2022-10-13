@@ -17,63 +17,46 @@ SPDX-License-Identifier: MIT
 #include <string>
 
 /// Looks up a GEN variable name
-const char* getGenVarName(int id, const print_format_provider_t& header);
+const char *getGenVarName(int id, const print_format_provider_t &header);
 
 ///
 /// - Takes an isa header, a kernel/function header, and isa instruction and
 ///   returns a string contraining the instruction's isaasm.
 ///
-std::string printInstruction(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    const CISA_INST* instruction,
-    const Options *opt);
+std::string printInstruction(const common_isa_header &isaHeader,
+                             const print_format_provider_t *header,
+                             const CISA_INST *instruction, const Options *opt);
 
 /// Exposing these declare print functions for use by verifier diagnostics code
 /// or for disassembly output.
-std::string printPredicateDecl(
-    const print_format_provider_t* header,
-    unsigned declID);
-std::string printVariableDecl (
-    const print_format_provider_t* header,
-    unsigned declID,
-    const Options *options);
-std::string printAddressDecl(
-    const common_isa_header& isaHeader,
-    const print_format_provider_t* header,
-    unsigned declID);
-std::string printSamplerDecl(
-    const print_format_provider_t* header,
-    unsigned declID);
-std::string printSurfaceDecl(
-    const print_format_provider_t* header,
-    unsigned declID,
-    unsigned numPredefinedSurfaces);
-std::string printFuncInput(
-    const print_format_provider_t* header,
-    unsigned declID,
-    bool isKernel,
-    const Options* options);
-const char* printAsmName(
-    const print_format_provider_t* header);
-std::string printOneAttribute(
-    const print_format_provider_t* kernel,
-    const attribute_info_t* attr);
+std::string printPredicateDecl(const print_format_provider_t *header,
+                               unsigned declID);
+std::string printVariableDecl(const print_format_provider_t *header,
+                              unsigned declID, const Options *options);
+std::string printAddressDecl(const common_isa_header &isaHeader,
+                             const print_format_provider_t *header,
+                             unsigned declID);
+std::string printSamplerDecl(const print_format_provider_t *header,
+                             unsigned declID);
+std::string printSurfaceDecl(const print_format_provider_t *header,
+                             unsigned declID, unsigned numPredefinedSurfaces);
+std::string printFuncInput(const print_format_provider_t *header,
+                           unsigned declID, bool isKernel,
+                           const Options *options);
+const char *printAsmName(const print_format_provider_t *header);
+std::string printOneAttribute(const print_format_provider_t *kernel,
+                              const attribute_info_t *attr);
 // Used for printing non-kernel attributes
-// format:  attrs={attr0,attr1,......attrn}, where  each attr is AttrName|AttrName=<V>
-std::string printAttributes(
-    const print_format_provider_t* header,
-    const int attr_count,
-    const attribute_info_t* attrs);
+// format:  attrs={attr0,attr1,......attrn}, where  each attr is
+// AttrName|AttrName=<V>
+std::string printAttributes(const print_format_provider_t *header,
+                            const int attr_count,
+                            const attribute_info_t *attrs);
 
 /// Exposing these for inline asm code generation
-std::string printVectorOperand(
-    const print_format_provider_t* header,
-    const VISA_opnd* opnd,
-    const Options *opt,
-    bool showRegion);
-std::string printFunctionDecl(
-    const print_format_provider_t* header,
-    bool isKernel);
-std::string printBuildVersion(
-    const common_isa_header& isaHeader);
+std::string printVectorOperand(const print_format_provider_t *header,
+                               const VISA_opnd *opnd, const Options *opt,
+                               bool showRegion);
+std::string printFunctionDecl(const print_format_provider_t *header,
+                              bool isKernel);
+std::string printBuildVersion(const common_isa_header &isaHeader);

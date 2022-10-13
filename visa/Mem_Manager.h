@@ -16,110 +16,92 @@ SPDX-License-Identifier: MIT
 #include "Arena.h"
 #include <memory>
 
-namespace vISA
-{
-    class Mem_Manager {
-    public:
+namespace vISA {
+class Mem_Manager {
+public:
+  Mem_Manager(size_t defaultArenaSize);
+  ~Mem_Manager();
 
-        Mem_Manager(size_t defaultArenaSize);
-        ~Mem_Manager();
+  void *alloc(size_t size) {
+    return _arenaManager.AllocDataSpace(size, ArenaHeader::defaultAlign);
+  }
 
-        void* alloc(size_t size)
-        {
-            return _arenaManager.AllocDataSpace(size, ArenaHeader::defaultAlign);
-        }
+  void *alloc(size_t size, std::align_val_t al) {
+    return _arenaManager.AllocDataSpace(size, static_cast<size_t>(al));
+  }
 
-        void* alloc(size_t size, std::align_val_t al)
-        {
-            return _arenaManager.AllocDataSpace(size, static_cast<size_t>(al));
-        }
+private:
+  vISA::ArenaManager _arenaManager;
+};
 
-    private:
+template <class T> class std_arena_based_allocator {
+protected:
+  std::shared_ptr<Mem_Manager> mem_manager_ptr;
 
-        vISA::ArenaManager _arenaManager;
-    };
+public:
+  // for allocator_traits
+  typedef std::size_t size_type;
+  typedef std::ptrdiff_t difference_type;
+  typedef T *pointer;
+  typedef const T *const_pointer;
+  typedef T &reference;
+  typedef const T &const_reference;
+  typedef T value_type;
 
-    template <class T>
-    class std_arena_based_allocator
-    {
-    protected:
-        std::shared_ptr<Mem_Manager> mem_manager_ptr;
+  explicit std_arena_based_allocator(std::shared_ptr<Mem_Manager> _other_ptr)
+      : mem_manager_ptr(_other_ptr) {}
 
-    public:
+  explicit std_arena_based_allocator() : mem_manager_ptr(nullptr) {
+    // This implicitly calls Mem_manager constructor.
+    mem_manager_ptr = std::make_shared<Mem_Manager>(4096);
+  }
 
-        //for allocator_traits
-        typedef std::size_t    size_type;
-        typedef std::ptrdiff_t difference_type;
-        typedef T* pointer;
-        typedef const T* const_pointer;
-        typedef T& reference;
-        typedef const T& const_reference;
-        typedef T              value_type;
+  explicit std_arena_based_allocator(const std_arena_based_allocator &other)
+      : mem_manager_ptr(other.mem_manager_ptr) {}
 
-        explicit std_arena_based_allocator(std::shared_ptr<Mem_Manager> _other_ptr)
-            :mem_manager_ptr(_other_ptr)
-        {
-        }
+  template <class U>
+  std_arena_based_allocator(const std_arena_based_allocator<U> &other)
+      : mem_manager_ptr(other.mem_manager_ptr) {}
 
-        explicit std_arena_based_allocator()
-            :mem_manager_ptr(nullptr)
-        {
-            //This implicitly calls Mem_manager constructor.
-            mem_manager_ptr = std::make_shared<Mem_Manager>(4096);
-        }
+  template <class U>
+  std_arena_based_allocator &
+  operator=(const std_arena_based_allocator<U> &other) {
+    mem_manager_ptr = other.mem_manager_ptr;
+    return *this;
+  }
 
-        explicit std_arena_based_allocator(const std_arena_based_allocator& other)
-            : mem_manager_ptr(other.mem_manager_ptr)
-        {}
+  template <class U> struct rebind {
+    typedef std_arena_based_allocator<U> other;
+  };
 
+  template <class U> friend class std_arena_based_allocator;
 
-        template <class U>
-        std_arena_based_allocator(const std_arena_based_allocator<U>& other)
-            : mem_manager_ptr(other.mem_manager_ptr)
-        {}
+  pointer allocate(size_type n, const void * = 0) {
+    T *t = (T *)mem_manager_ptr->alloc(n * sizeof(T));
+    return t;
+  }
 
-        template <class U>
-        std_arena_based_allocator& operator=(const std_arena_based_allocator<U>& other)
-        {
-            mem_manager_ptr = other.mem_manager_ptr;
-            return *this;
-        }
+  void deallocate(void *p, size_type) {
+    // No deallocation for arena allocator.
+  }
 
-        template <class U>
-        struct rebind { typedef std_arena_based_allocator<U> other; };
+  pointer address(reference x) const { return &x; }
+  const_pointer address(const_reference x) const { return &x; }
 
-        template <class U> friend class std_arena_based_allocator;
+  std_arena_based_allocator<T> &operator=(const std_arena_based_allocator &) {
+    return *this;
+  }
 
-        pointer allocate(size_type n, const void* = 0)
-        {
-            T* t = (T*)mem_manager_ptr->alloc(n * sizeof(T));
-            return t;
-        }
+  void construct(pointer p, const T &val) { new ((T *)p) T(val); }
+  void destroy(pointer p) { p->~T(); }
 
-        void deallocate(void* p, size_type)
-        {
-            //No deallocation for arena allocator.
-        }
+  size_type max_size() const { return size_t(-1); }
 
-        pointer           address(reference x) const { return &x; }
-        const_pointer     address(const_reference x) const { return &x; }
+  bool operator==(const std_arena_based_allocator &) const { return true; }
 
-        std_arena_based_allocator<T>& operator=(const std_arena_based_allocator&)
-        {
-            return *this;
-        }
-
-        void              construct(pointer p, const T& val)
-        {
-            new ((T*)p) T(val);
-        }
-        void              destroy(pointer p) { p->~T(); }
-
-        size_type         max_size() const { return size_t(-1); }
-
-        bool operator==(const std_arena_based_allocator&) const { return true; }
-
-        bool operator!=(const std_arena_based_allocator& a) const { return !operator==(a); }
-    };
-}
+  bool operator!=(const std_arena_based_allocator &a) const {
+    return !operator==(a);
+  }
+};
+} // namespace vISA
 #endif

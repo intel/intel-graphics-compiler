@@ -9,8 +9,8 @@ SPDX-License-Identifier: MIT
 // The offline linker of CM FC.
 //
 
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #include <fstream>
@@ -19,11 +19,11 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 #if defined(_MSC_VER)
-static int  opterr = 1, // if error message should be printed.
-            optind = 1, // index into parent argv vector.
-            optopt,     // character checked for validity.
-            optreset;   // reset getopt.
-static char *optarg;    // argument associated with option.
+static int opterr = 1, // if error message should be printed.
+    optind = 1,        // index into parent argv vector.
+    optopt,            // character checked for validity.
+    optreset;          // reset getopt.
+static char *optarg;   // argument associated with option.
 
 static const char BADCH = '?';
 static const char BADARG = ':';
@@ -33,10 +33,10 @@ static char *EMSG = "";
 /// @brief getopt Parse argc/argv argument vector.
 ///
 int getopt(int nargc, char *const nargv[], const char *ostr) {
-  static char *place = EMSG;  // option letter processing
-  const char *oli;            // option letter list index
+  static char *place = EMSG; // option letter processing
+  const char *oli;           // option letter list index
 
-  if (optreset || !*place) {  // update scanning pointer
+  if (optreset || !*place) { // update scanning pointer
     optreset = 0;
     if (optind >= nargc || *(place = nargv[optind]) != '-') {
       place = EMSG;
@@ -59,11 +59,11 @@ int getopt(int nargc, char *const nargv[], const char *ostr) {
       (void)printf("illegal option -- %c\n", optopt);
     return (BADCH);
   }
-  if (*++oli != ':') {  // don't need argument.
+  if (*++oli != ':') { // don't need argument.
     optarg = NULL;
     if (!*place)
       ++optind;
-  } else {              // need an argument.
+  } else {      // need an argument.
     if (*place) // no white space
       optarg = place;
     else if (nargc <= ++optind) { // no arg
@@ -73,7 +73,7 @@ int getopt(int nargc, char *const nargv[], const char *ostr) {
       if (opterr)
         (void)printf("option requires an argument -- %c\n", optopt);
       return (BADCH);
-    } else    // white space
+    } else // white space
       optarg = nargv[optind];
     place = EMSG;
     ++optind;
@@ -84,12 +84,11 @@ int getopt(int nargc, char *const nargv[], const char *ostr) {
 #include <getopt.h>
 #endif
 
-
-#include "cm_fc_ld.h"
 #include "PatchInfoDumper.h"
 #include "PatchInfoLinker.h"
 #include "PatchInfoReader.h"
 #include "PatchInfoRecord.h"
+#include "cm_fc_ld.h"
 
 static bool Brief = false;
 
@@ -117,14 +116,13 @@ static std::string loadFile(const char *FPath) {
   return std::move(SS.str());
 }
 
-static void
-dump(const char *FPath, const char *BinPath, FILE *fp) {
+static void dump(const char *FPath, const char *BinPath, FILE *fp) {
   std::string Buf = loadFile(FPath);
   std::string Bin;
   if (BinPath)
     Bin = loadFile(BinPath);
-  dumpPatchInfo((void *)Buf.data(), Buf.size(),
-                (void *)Bin.data(), Bin.size(), fp);
+  dumpPatchInfo((void *)Buf.data(), Buf.size(), (void *)Bin.data(), Bin.size(),
+                fp);
   return;
 }
 
@@ -153,7 +151,7 @@ static void dump_args(int argc, char *argv[], const char *Out) {
 
 static void query(const char *FPath, FILE *fp) {
   std::string Buf = loadFile(FPath);
-  //std::size_t Size = 256;
+  // std::size_t Size = 256;
   const char *Name = nullptr;
   cm_fc_link_type LinkType = CM_FC_LINK_TYPE_NONE;
   cm::patch::Collection C;
@@ -165,9 +163,7 @@ static void query(const char *FPath, FILE *fp) {
     Name = Rel.getSymbol()->getName();
   }
 
-  static const char *LinkTypeString[] = {
-    "NONE", "CALLER", "CALLEE"
-  };
+  static const char *LinkTypeString[] = {"NONE", "CALLER", "CALLEE"};
 
   std::cout << "Link Type: " << LinkTypeString[LinkType] << '\n';
   if (Name == nullptr)
@@ -196,8 +192,8 @@ static void query_args(int argc, char *argv[], const char *Out) {
     fclose(fp);
 }
 
-static void combine(const std::vector<std::string> &Bufs,
-                    char *argv[], FILE *fp, const char *ExtraOpts) {
+static void combine(const std::vector<std::string> &Bufs, char *argv[],
+                    FILE *fp, const char *ExtraOpts) {
   std::vector<cm_fc_kernel_t> Kernels;
   cm::patch::Collection C;
 
@@ -205,8 +201,8 @@ static void combine(const std::vector<std::string> &Bufs,
     cm_fc_kernel_t K;
     K.patch_buf = Bufs[i].data();
     K.patch_size = Bufs[i].size();
-    K.binary_buf = Bufs[i+1].data();
-    K.binary_size = Bufs[i+1].size();
+    K.binary_buf = Bufs[i + 1].data();
+    K.binary_size = Bufs[i + 1].size();
     Kernels.push_back(K);
   }
 
@@ -253,8 +249,7 @@ static void combine_args(int argc, char *argv[], const char *Out,
     fclose(fp);
 }
 
-static void
-read(const char *FPath, const char *BinPath, FILE *fp) {
+static void read(const char *FPath, const char *BinPath, FILE *fp) {
   std::string Buf = loadFile(FPath);
   std::string Bin;
   if (BinPath)
@@ -270,8 +265,8 @@ read(const char *FPath, const char *BinPath, FILE *fp) {
   auto &Binary = *C.bin_begin();
 
   unsigned n = 0;
-  for (auto RI = Binary.initreg_begin(),
-            RE = Binary.initreg_end(); RI != RE; ++RI, ++n) {
+  for (auto RI = Binary.initreg_begin(), RE = Binary.initreg_end(); RI != RE;
+       ++RI, ++n) {
     std::fprintf(fp, "  [%3u]:", n);
     std::fprintf(fp, "  %08x", RI->getOffset());
     std::fprintf(fp, "  r%-3u", RI->getRegNo());
@@ -280,8 +275,8 @@ read(const char *FPath, const char *BinPath, FILE *fp) {
   }
 
   n = 0;
-  for (auto RI = Binary.finireg_begin(),
-            RE = Binary.finireg_end(); RI != RE; ++RI, ++n) {
+  for (auto RI = Binary.finireg_begin(), RE = Binary.finireg_end(); RI != RE;
+       ++RI, ++n) {
     std::fprintf(fp, "  [%3u]:", n);
     std::fprintf(fp, "  %08x", RI->getOffset());
     std::fprintf(fp, "  r%-3u", RI->getRegNo());

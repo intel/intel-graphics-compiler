@@ -30,7 +30,6 @@ namespace cm {
 
 namespace patch {
 
-
 class Binary;
 
 /// Symbol has @p Name and its definition by @p Bin and @p Addr within that
@@ -45,7 +44,7 @@ class Symbol {
 
 public:
   Symbol(const char *N, unsigned E, Binary *B, unsigned A)
-    : Name(N), Extra(E), Bin(B), Addr(A) {}
+      : Name(N), Extra(E), Bin(B), Addr(A) {}
 
   bool isUnresolved() const { return !Bin; }
 
@@ -67,8 +66,8 @@ public:
 /// refrenced.
 ///
 class Relocation {
-  unsigned Offset;  ///< The offset in that binary where the relocation applies.
-  Symbol *Sym;      ///< The symbol this relocation uses.
+  unsigned Offset; ///< The offset in that binary where the relocation applies.
+  Symbol *Sym;     ///< The symbol this relocation uses.
 
 public:
   Relocation(unsigned Off, Symbol *S) : Offset(Off), Sym(S) {}
@@ -79,7 +78,6 @@ public:
   unsigned getOffset() const { return Offset; }
   void setOffset(unsigned Off) { Offset = Off; }
 };
-
 
 class RegAccess {
   unsigned Offset;
@@ -133,8 +131,7 @@ public:
   }
 
   bool operator==(RegAccess &Other) const {
-    return Offset == Other.Offset &&
-           RegNo == Other.RegNo &&
+    return Offset == Other.Offset && RegNo == Other.RegNo &&
            DefUseToken == Other.DefUseToken;
   }
 };
@@ -172,8 +169,8 @@ class DepNode {
 
 public:
   DepNode(Binary *B, unsigned Off, bool IsBarrier)
-    : Bin(B), Offset(Off), Barrier(IsBarrier), Distance(0),
-      RdTokenMask(0), WrTokenMask(0) {}
+      : Bin(B), Offset(Off), Barrier(IsBarrier), Distance(0), RdTokenMask(0),
+        WrTokenMask(0) {}
 
   Binary *getBinary() const { return Bin; }
   unsigned getOffset() const { return Offset; }
@@ -199,17 +196,15 @@ public:
   bool to_empty(bool FromDef) const { return ToList[FromDef].empty(); }
 
   RegAccRefList::iterator acc_begin() { return AccList.begin(); }
-  RegAccRefList::iterator acc_end()   { return AccList.end(); }
+  RegAccRefList::iterator acc_end() { return AccList.end(); }
 
   NodeRefList::iterator from_begin() { return FromList.begin(); }
-  NodeRefList::iterator from_end()   { return FromList.end(); }
+  NodeRefList::iterator from_end() { return FromList.end(); }
 
   NodeRefList::iterator to_begin(bool FromDef) {
     return ToList[FromDef].begin();
   }
-  NodeRefList::iterator to_end(bool FromDef) {
-    return ToList[FromDef].end();
-  }
+  NodeRefList::iterator to_end(bool FromDef) { return ToList[FromDef].end(); }
 
   unsigned getDistance() const { return Distance; }
   void setDistance(unsigned D) { Distance = D; }
@@ -315,7 +310,6 @@ public:
   bool isHeadDef() const { return HeadDef; }
 };
 
-
 /// Binary is a sequence of byte containing the machine code specified by @p
 /// Data and @p Size. It has 0 or more reference to symbol and 0 or more
 /// relocations.
@@ -323,8 +317,8 @@ public:
 class Binary {
 public:
   typedef std::list<Relocation> RelList;
-  typedef std::list<RegAccess>  RegAccList;
-  typedef std::list<Token>      TokList;
+  typedef std::list<RegAccess> RegAccList;
+  typedef std::list<Token> TokList;
 
   struct DepNodeCompare {
     bool operator()(DepNode *A, DepNode *B) {
@@ -334,14 +328,14 @@ public:
   typedef std::list<DepNode *> SyncPointList;
 
 private:
-  const char *Data;     ///< The buffer containing the binary.
-  std::size_t Size;     ///< The size of that binary.
-  unsigned    LinkType; ///< The type of linkage, i.e., NONE, CALLER, or CALLEE.
+  const char *Data;  ///< The buffer containing the binary.
+  std::size_t Size;  ///< The size of that binary.
+  unsigned LinkType; ///< The type of linkage, i.e., NONE, CALLER, or CALLEE.
 
-  RelList     Rels;
-  RegAccList  InitRegAcc;
-  RegAccList  FiniRegAcc;
-  TokList     Toks;
+  RelList Rels;
+  RegAccList InitRegAcc;
+  RegAccList FiniRegAcc;
+  TokList Toks;
   SyncPointList SyncPoints;
 
   unsigned Order;
@@ -350,40 +344,36 @@ private:
   const Symbol *Name;
 
 public:
-  Binary(const char *B, std::size_t S) :
-    Data(B), Size(S), LinkType(0), Order(0), Position(unsigned(-1)), Name(nullptr) {}
+  Binary(const char *B, std::size_t S)
+      : Data(B), Size(S), LinkType(0), Order(0), Position(unsigned(-1)),
+        Name(nullptr) {}
 
   RelList::const_iterator rel_begin() const { return Rels.begin(); }
-  RelList::const_iterator rel_end()   const { return Rels.end(); }
+  RelList::const_iterator rel_end() const { return Rels.end(); }
 
   RelList::iterator rel_begin() { return Rels.begin(); }
-  RelList::iterator rel_end()   { return Rels.end(); }
+  RelList::iterator rel_end() { return Rels.end(); }
 
   Relocation *addReloc(unsigned Off, Symbol *S) {
     Rels.push_back(Relocation(Off, S));
     return &Rels.back();
   }
 
-
   RegAccList::const_iterator initreg_begin() const {
     return InitRegAcc.begin();
   }
-  RegAccList::const_iterator initreg_end() const {
-    return InitRegAcc.end();
-  }
+  RegAccList::const_iterator initreg_end() const { return InitRegAcc.end(); }
 
   RegAccList::iterator initreg_begin() { return InitRegAcc.begin(); }
-  RegAccList::iterator initreg_end()   { return InitRegAcc.end(); }
+  RegAccList::iterator initreg_end() { return InitRegAcc.end(); }
 
   RegAccList::const_iterator finireg_begin() const {
     return FiniRegAcc.begin();
   }
-  RegAccList::const_iterator finireg_end() const {
-    return FiniRegAcc.end();
-  }
+  RegAccList::const_iterator finireg_end() const { return FiniRegAcc.end(); }
 
   RegAccList::iterator finireg_begin() { return FiniRegAcc.begin(); }
-  RegAccList::iterator finireg_end()   { return FiniRegAcc.end(); }
+  RegAccList::iterator finireg_end() { return FiniRegAcc.end(); }
 
   RegAccess *addInitRegAccess(unsigned Off, unsigned RegNo, unsigned DUT) {
     InitRegAcc.push_back(RegAccess(Off, RegNo, DUT));
@@ -396,10 +386,10 @@ public:
   }
 
   TokList::const_iterator tok_begin() const { return Toks.begin(); }
-  TokList::const_iterator tok_end()   const { return Toks.end(); }
+  TokList::const_iterator tok_end() const { return Toks.end(); }
 
   TokList::iterator tok_begin() { return Toks.begin(); }
-  TokList::iterator tok_end()   { return Toks.end(); }
+  TokList::iterator tok_end() { return Toks.end(); }
 
   Token *addToken(unsigned T) {
     Toks.push_back(Token(T));
@@ -411,10 +401,9 @@ public:
   void sortSyncPoints() { SyncPoints.sort(DepNodeCompare()); }
 
   SyncPointList::const_iterator sp_begin() const { return SyncPoints.begin(); }
-  SyncPointList::const_iterator sp_end()   const { return SyncPoints.end(); }
+  SyncPointList::const_iterator sp_end() const { return SyncPoints.end(); }
   SyncPointList::iterator sp_begin() { return SyncPoints.begin(); }
-  SyncPointList::iterator sp_end()   { return SyncPoints.end(); }
-
+  SyncPointList::iterator sp_end() { return SyncPoints.end(); }
 
   const char *getData() const { return Data; }
   void setData(const char *Buf) { Data = Buf; }
@@ -467,16 +456,16 @@ public:
   void setPlatform(unsigned P) { Platform = P; }
 
   BinaryList::const_iterator bin_begin() const { return Binaries.begin(); }
-  BinaryList::const_iterator bin_end()   const { return Binaries.end(); }
+  BinaryList::const_iterator bin_end() const { return Binaries.end(); }
 
   BinaryList::iterator bin_begin() { return Binaries.begin(); }
-  BinaryList::iterator bin_end()   { return Binaries.end(); }
+  BinaryList::iterator bin_end() { return Binaries.end(); }
 
   SymbolList::const_iterator sym_begin() const { return Symbols.begin(); }
-  SymbolList::const_iterator sym_end()   const { return Symbols.end(); }
+  SymbolList::const_iterator sym_end() const { return Symbols.end(); }
 
   SymbolList::iterator sym_begin() { return Symbols.begin(); }
-  SymbolList::iterator sym_end()   { return Symbols.end(); }
+  SymbolList::iterator sym_end() { return Symbols.end(); }
 
   Binary *addBinary(const char *B, std::size_t S) {
     Binaries.push_back(Binary(B, S));

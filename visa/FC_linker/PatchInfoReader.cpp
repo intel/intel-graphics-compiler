@@ -14,8 +14,8 @@ SPDX-License-Identifier: MIT
 #include <map>
 
 #include "../PatchInfo.h"
-#include "PatchInfoRecord.h"
 #include "PatchInfoReader.h"
+#include "PatchInfoRecord.h"
 
 namespace {
 
@@ -35,7 +35,10 @@ class PatchInfoReader {
   SymbolTableSectionMapTy SymbolTableSectionMap;
 
 public:
-  PatchInfoReader(const char *B, std::size_t S) : Data(B), Size(S), ShEntries(0){Sh = nullptr;}
+  PatchInfoReader(const char *B, std::size_t S)
+      : Data(B), Size(S), ShEntries(0) {
+    Sh = nullptr;
+  }
 
   bool read(cm::patch::Collection &C);
 
@@ -59,9 +62,7 @@ protected:
   bool isValidSection(unsigned n) {
     if (n >= ShEntries)
       return false;
-    if (!Sh ||
-        Sh[n].ShOffset >= Size ||
-        Sh[n].ShOffset + Sh[n].ShSize > Size)
+    if (!Sh || Sh[n].ShOffset >= Size || Sh[n].ShOffset + Sh[n].ShSize > Size)
       return false;
     return true;
   }
@@ -77,10 +78,10 @@ protected:
   }
 
   std::pair<BinarySectionMapTy::iterator, bool>
-      getOrReadBinarySection(cm::patch::Collection &C, unsigned n);
+  getOrReadBinarySection(cm::patch::Collection &C, unsigned n);
 
   std::pair<SymbolTableSectionMapTy::iterator, bool>
-      getOrReadSymbolTableSection(cm::patch::Collection &C, unsigned n);
+  getOrReadSymbolTableSection(cm::patch::Collection &C, unsigned n);
 };
 
 } // End anonymous namespace
@@ -99,7 +100,7 @@ bool PatchInfoReader::readHeader(cm::patch::Collection &C) {
     return true;
 
   const cm::patch::PInfoHdr *H =
-    reinterpret_cast<const cm::patch::PInfoHdr *>(Data);
+      reinterpret_cast<const cm::patch::PInfoHdr *>(Data);
   if (!H->checkMagic())
     return true;
   if (H->Version != cm::patch::PV_0)
@@ -151,31 +152,40 @@ bool PatchInfoReader::readSections(cm::patch::Collection &C) {
 
     switch (Sh[n].ShType) {
     case cm::patch::PSHT_NONE:
-      if (readDummySection(C, n)) return true;
+      if (readDummySection(C, n))
+        return true;
       break;
     case cm::patch::PSHT_BINARY:
-      if (readBinarySection(C, n)) return true;
+      if (readBinarySection(C, n))
+        return true;
       break;
     case cm::patch::PSHT_REL:
-      if (readRelocationSection(C, n)) return true;
+      if (readRelocationSection(C, n))
+        return true;
       break;
     case cm::patch::PSHT_SYMTAB:
-      if (readSymbolTableSection(C, n)) return true;
+      if (readSymbolTableSection(C, n))
+        return true;
       break;
     case cm::patch::PSHT_STRTAB:
-      if (readStringTableSection(C, n)) return true;
+      if (readStringTableSection(C, n))
+        return true;
       break;
     case cm::patch::PSHT_INITREGTAB:
-      if (readInitRegAccessTableSection(C, n)) return true;
+      if (readInitRegAccessTableSection(C, n))
+        return true;
       break;
     case cm::patch::PSHT_FINIREGTAB:
-      if (readFiniRegAccessTableSection(C, n)) return true;
+      if (readFiniRegAccessTableSection(C, n))
+        return true;
       break;
     case cm::patch::PSHT_TOKTAB:
-      if (readTokenTableSection(C, n)) return true;
+      if (readTokenTableSection(C, n))
+        return true;
       break;
     default:
-      if (readUnknownSection(C, n)) return true;
+      if (readUnknownSection(C, n))
+        return true;
       break;
     }
   }
@@ -184,7 +194,8 @@ bool PatchInfoReader::readSections(cm::patch::Collection &C) {
 }
 
 bool PatchInfoReader::readDummySection(cm::patch::Collection &C, unsigned n) {
-  if (!isValidSectionOfType(n, cm::patch::PSHT_NONE)) return true;
+  if (!isValidSectionOfType(n, cm::patch::PSHT_NONE))
+    return true;
   return false;
 }
 
@@ -229,7 +240,8 @@ bool PatchInfoReader::readRelocationSection(cm::patch::Collection &C,
   // Scan through relocations.
   std::size_t Sz = Sh[n].ShSize;
   const cm::patch::PInfoRelocation *Rel =
-    reinterpret_cast<const cm::patch::PInfoRelocation *>(Data + Sh[n].ShOffset);
+      reinterpret_cast<const cm::patch::PInfoRelocation *>(Data +
+                                                           Sh[n].ShOffset);
   for (unsigned i = 0; Sz > 0; ++i, Sz -= sizeof(cm::patch::PInfoRelocation)) {
     auto I = SymbolTable.find(Rel[i].RelSym);
     if (I == SymbolTable.end())
@@ -242,7 +254,7 @@ bool PatchInfoReader::readRelocationSection(cm::patch::Collection &C,
 }
 
 bool PatchInfoReader::readSymbolTableSection(cm::patch::Collection &C,
-                                            unsigned n) {
+                                             unsigned n) {
   // Skip if this section is ready read.
   if (SymbolTableSectionMap.count(n))
     return false;
@@ -258,7 +270,7 @@ bool PatchInfoReader::readSymbolTableSection(cm::patch::Collection &C,
 
   // Scan through the symbol table.
   const cm::patch::PInfoSymbol *Sym =
-    reinterpret_cast<const cm::patch::PInfoSymbol *>(Data + Sh[n].ShOffset);
+      reinterpret_cast<const cm::patch::PInfoSymbol *>(Data + Sh[n].ShOffset);
   std::size_t Sz = Sh[n].ShSize;
   for (unsigned i = 0; Sz > 0; ++i, Sz -= sizeof(cm::patch::PInfoSymbol)) {
     // Skip unamed symbol.
@@ -306,11 +318,8 @@ bool PatchInfoReader::readStringTableSection(cm::patch::Collection &C,
   return false;
 }
 
-
-bool
-PatchInfoReader::readRegisterAccessTableSection(cm::patch::Collection &C,
-                                                unsigned n,
-                                                cm::patch::PInfo_U16 ShType) {
+bool PatchInfoReader::readRegisterAccessTableSection(
+    cm::patch::Collection &C, unsigned n, cm::patch::PInfo_U16 ShType) {
   if (!isValidSectionOfType(n, ShType))
     return true;
 
@@ -324,7 +333,8 @@ PatchInfoReader::readRegisterAccessTableSection(cm::patch::Collection &C,
   // Scan through register accesses.
   std::size_t Sz = Sh[n].ShSize;
   const cm::patch::PInfoRegAccess *Acc =
-    reinterpret_cast<const cm::patch::PInfoRegAccess *>(Data + Sh[n].ShOffset);
+      reinterpret_cast<const cm::patch::PInfoRegAccess *>(Data +
+                                                          Sh[n].ShOffset);
   switch (ShType) {
   default:
     return true;
@@ -369,13 +379,12 @@ bool PatchInfoReader::readTokenTableSection(cm::patch::Collection &C,
   // Scan through tokens.
   std::size_t Sz = Sh[n].ShSize;
   const cm::patch::PInfoToken *Tok =
-    reinterpret_cast<const cm::patch::PInfoToken *>(Data + Sh[n].ShOffset);
+      reinterpret_cast<const cm::patch::PInfoToken *>(Data + Sh[n].ShOffset);
   for (unsigned i = 0; Sz > 0; ++i, Sz -= sizeof(cm::patch::PInfoToken))
     Bin->addToken(Tok[i].TokenNo);
 
   return false;
 }
-
 
 bool PatchInfoReader::readUnknownSection(cm::patch::Collection &C, unsigned n) {
   if (!isValidSection(n))

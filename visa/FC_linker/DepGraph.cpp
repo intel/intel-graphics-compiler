@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 
 using namespace cm::patch;
 
-
 DepNode *DepGraph::getDepNode(Binary *B, unsigned Off, bool Barrier = false) {
   auto P = std::make_tuple(B, Off, Barrier);
   auto I = NodeMap.find(P);
@@ -80,8 +79,8 @@ void DepGraph::build() {
       Binary &Callee = *Sym->getBinary();
       // Add a barrier node just before 'call' to resolve dependency.
       DepNode *Node = getDepNode(&B, Rel.getOffset(), true);
-      for (auto RI = Callee.initreg_begin(),
-                RE = Callee.initreg_end(); RI != RE; ++RI) {
+      for (auto RI = Callee.initreg_begin(), RE = Callee.initreg_end();
+           RI != RE; ++RI) {
         unsigned Reg = RI->getRegNo();
         if (Reg == cm::patch::REG_NONE) {
           /// Check if it's necessary to insert sync points.
@@ -89,12 +88,14 @@ void DepGraph::build() {
           bool reqUseSync = requireUseSync(State);
           if (reqDefSync || reqUseSync) {
             Node->clearAccList();
-            if (reqDefSync) Node->setRdTokenMask(unsigned(-1));
-            if (reqUseSync) Node->setWrTokenMask(unsigned(-1));
+            if (reqDefSync)
+              Node->setRdTokenMask(unsigned(-1));
+            if (reqUseSync)
+              Node->setWrTokenMask(unsigned(-1));
             B.insertSyncPoint(Node);
-          // Clear state after barrier.
-          State.clear();
-          break;
+            // Clear state after barrier.
+            State.clear();
+            break;
           }
         }
         // Only build token-based dependency.
@@ -109,12 +110,12 @@ void DepGraph::build() {
         if (From->isUseOnly(Reg) && RI->isUse())
           continue;
         Node->appendRegAcc(&*RI);
-        //auto E = getDepEdge(From, Node, From->isDef(Reg));
+        // auto E = getDepEdge(From, Node, From->isDef(Reg));
       }
       // Only update token-based dependency.
       Node = getDepNode(&B, Rel.getOffset());
-      for (auto RI = Callee.finireg_begin(),
-                RE = Callee.finireg_end(); RI != RE; ++RI) {
+      for (auto RI = Callee.finireg_begin(), RE = Callee.finireg_end();
+           RI != RE; ++RI) {
         // Skip use-only access without token associated.
         if (RI->isDefNotByToken())
           continue;
@@ -134,12 +135,14 @@ void DepGraph::build() {
         bool reqUseSync = requireUseSync(State);
         if (reqDefSync || reqUseSync) {
           DepNode *Node = getDepNode(&B, RI->getOffset(), true);
-          if (reqDefSync) Node->setRdTokenMask(unsigned(-1));
-          if (reqUseSync) Node->setWrTokenMask(unsigned(-1));
+          if (reqDefSync)
+            Node->setRdTokenMask(unsigned(-1));
+          if (reqUseSync)
+            Node->setWrTokenMask(unsigned(-1));
           B.insertSyncPoint(Node);
-        // Clean state after barrier.
-        State.clear();
-        break;
+          // Clean state after barrier.
+          State.clear();
+          break;
         }
       }
       auto SI = State.find(Reg);
@@ -155,7 +158,7 @@ void DepGraph::build() {
         continue;
       auto To = getDepNode(&B, RI->getOffset());
       To->appendRegAcc(&*RI);
-      //auto E = getDepEdge(From, To, From->isDef(Reg));
+      // auto E = getDepEdge(From, To, From->isDef(Reg));
     }
     // Update the current from the last access list.
     for (auto RI = B.finireg_begin(), RE = B.finireg_end(); RI != RE; ++RI) {
@@ -200,9 +203,8 @@ void DepGraph::resolve() {
     return 0U;
   };
 
-  auto calcDistance = [](Collection &C,
-                         Binary *From, unsigned FOff,
-                         Binary *To, unsigned TOff) {
+  auto calcDistance = [](Collection &C, Binary *From, unsigned FOff, Binary *To,
+                         unsigned TOff) {
     // Always assuem there's no compact instruction.
     if (From == To)
       return (TOff - FOff) / 16;
@@ -265,9 +267,9 @@ void DepGraph::resolve() {
             if (HasToken)
               T->mergeWrTokenMask(1 << Tok);
             else
-              T->updateDistance(calcDistance(C,
-                                             Def->getBinary(), Def->getOffset(),
-                                             T->getBinary(), T->getOffset()));
+              T->updateDistance(calcDistance(C, Def->getBinary(),
+                                             Def->getOffset(), T->getBinary(),
+                                             T->getOffset()));
           } else if (To->isDef()) {
             // WAR
             if (HasToken)
@@ -312,4 +314,3 @@ void DepGraph::resolve() {
     T->clearFromNodes();
   }
 }
-

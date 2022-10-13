@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 namespace cm {
 namespace patch {
 
-
 class DepGraph {
   Collection &C;
 
@@ -34,12 +33,8 @@ class DepGraph {
   std::map<std::pair<DepNode *, DepNode *>, DepEdge *> EdgeMap;
 
 public:
-  enum {
-    SWSB_POLICY_0,
-    SWSB_POLICY_1,
-    SWSB_POLICY_2
-  };
-  DepGraph(Collection &_C, unsigned P) : C(_C), Policy(P) {};
+  enum { SWSB_POLICY_0, SWSB_POLICY_1, SWSB_POLICY_2 };
+  DepGraph(Collection &_C, unsigned P) : C(_C), Policy(P){};
   void build();
   void resolve();
 
@@ -47,7 +42,6 @@ protected:
   DepNode *getDepNode(Binary *B, unsigned R, bool Barrier);
   DepEdge *getDepEdge(DepNode *From, DepNode *To, bool FromDef);
 };
-
 
 } // End namespace patch
 } // End namespace cm

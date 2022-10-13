@@ -17,19 +17,21 @@ namespace vISA {
 
 class G4_INST;
 
-enum DepType
-{
-    NODEP = 0,
-    RAW, RAW_MEMORY,
-    WAR, WAR_MEMORY,
-    WAW, WAW_MEMORY,
-    CONTROL_FLOW_BARRIER,
-    SEND_BARRIER,
-    INDIRECT_ADDR_BARRIER,
-    MSG_BARRIER,
-    DEP_LABEL,
-    OPT_BARRIER,
-    DEPTYPE_MAX
+enum DepType {
+  NODEP = 0,
+  RAW,
+  RAW_MEMORY,
+  WAR,
+  WAR_MEMORY,
+  WAW,
+  WAW_MEMORY,
+  CONTROL_FLOW_BARRIER,
+  SEND_BARRIER,
+  INDIRECT_ADDR_BARRIER,
+  MSG_BARRIER,
+  DEP_LABEL,
+  OPT_BARRIER,
+  DEPTYPE_MAX
 };
 
 DepType getDepSend(G4_INST *curInst, G4_INST *liveInst, bool BTIIsRestrict);

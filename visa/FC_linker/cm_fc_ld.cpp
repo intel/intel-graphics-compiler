@@ -17,8 +17,7 @@ SPDX-License-Identifier: MIT
 #include "PatchInfoReader.h"
 #include "PatchInfoRecord.h"
 
-int cm_fc_get_callee_info(const char *buf, size_t size,
-                          void *c,
+int cm_fc_get_callee_info(const char *buf, size_t size, void *c,
                           cm_fc_link_type *out_link_type) {
 
   if (readPatchInfo(buf, size, *((cm::patch::Collection *)c)))

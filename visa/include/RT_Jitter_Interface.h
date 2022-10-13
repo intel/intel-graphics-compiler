@@ -7,8 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #pragma once
-#include "VISADefines.h"
 #include "JitterDataStruct.h"
+#include "VISADefines.h"
 
 /**
     API between CMRT and Jitter:
@@ -34,37 +34,31 @@ SPDX-License-Identifier: MIT
  *                  and it should support any CISA file below that version
  *  minorVersion:   minor version of the CISA binary
  *  numArgs:        number of arguments for this JIT compilation.
- *  args:           list of arguments to the Jitter.  The complete list of options
-*                   can be found in Option.cpp
- *  errorMsg:       If JIT compiling fails, the error message will be returned via
- *                  this parameter.  This buffer is allocated by the runtime.
- *  jitInfo:        A structure containing auxiliary information about the JIT
- *                  compilation that the jitter can pass back to the runtime.
+ *  args:           list of arguments to the Jitter.  The complete list of
+ * options can be found in Option.cpp errorMsg:       If JIT compiling fails,
+ * the error message will be returned via this parameter.  This buffer is
+ * allocated by the runtime. jitInfo:        A structure containing auxiliary
+ * information about the JIT compilation that the jitter can pass back to the
+ * runtime.
  */
-DLL_EXPORT int JITCompile(const char* kernelName,
-                          const void* kernelIsa,
-                          unsigned int kernelIsaSize,
-                          void* &genBinary,
-                          unsigned int& genBinarySize,
-                          const char* platform,
-                          int majorVersion,
-                          int minorVersion,
-                          int numArgs,
-                          const char* args[],
-                          char* errorMsg,
-                          FINALIZER_INFO* jitInfo);
+DLL_EXPORT int JITCompile(const char *kernelName, const void *kernelIsa,
+                          unsigned int kernelIsaSize, void *&genBinary,
+                          unsigned int &genBinarySize, const char *platform,
+                          int majorVersion, int minorVersion, int numArgs,
+                          const char *args[], char *errorMsg,
+                          FINALIZER_INFO *jitInfo);
 
 /**
  *
  *  Interface for CMRT to free the kernel binary allocated by the Jitter
  */
-DLL_EXPORT void freeBlock(void* ptr);
+DLL_EXPORT void freeBlock(void *ptr);
 
 /**
  *
  *  Returns the CISA version #(<major_version>.<minor_version>) for this jitter.
- *  a jitter will support all vISA objects whose major version is the same as the jiter
- *  and whose minor version is <= jitter's minor version.
+ *  a jitter will support all vISA objects whose major version is the same as
+ * the jiter and whose minor version is <= jitter's minor version.
  *
  */
-DLL_EXPORT void getJITVersion(unsigned int& majorV, unsigned int& minorV);
+DLL_EXPORT void getJITVersion(unsigned int &majorV, unsigned int &minorV);

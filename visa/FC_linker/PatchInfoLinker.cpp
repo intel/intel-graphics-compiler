@@ -28,8 +28,8 @@ namespace cm {
 namespace toolchain {
 
 // Dummy hook for policy 2.
-std::pair<int, std::string>
-resolvDep(unsigned P, const char *Bin, std::size_t Sz) {
+std::pair<int, std::string> resolvDep(unsigned P, const char *Bin,
+                                      std::size_t Sz) {
   std::string Buf(Bin, Sz);
   return std::make_pair(0, Buf);
 }
@@ -56,11 +56,9 @@ class PatchInfoLinker {
 
 public:
   PatchInfoLinker(std::size_t NK, cm_fc_kernel_t *K, const char *O = nullptr)
-    : NumKernels(NK), Kernels(K), Options(O),
-      Policy(cm::patch::DepGraph::SWSB_POLICY_1),
-      r127Token((unsigned)-1),
-      hasR127Token(false),
-      Platform(0) {
+      : NumKernels(NK), Kernels(K), Options(O),
+        Policy(cm::patch::DepGraph::SWSB_POLICY_1), r127Token((unsigned)-1),
+        hasR127Token(false), Platform(0) {
     parseOptions();
   }
 
@@ -122,9 +120,8 @@ protected:
 
 } // End anonymous namespace
 
-bool linkPatchInfo(cm::patch::Collection &C,
-                   std::size_t NumKernels, cm_fc_kernel_t *Kernels,
-                   const char *Options) {
+bool linkPatchInfo(cm::patch::Collection &C, std::size_t NumKernels,
+                   cm_fc_kernel_t *Kernels, const char *Options) {
   PatchInfoLinker LD(NumKernels, Kernels, Options);
   return LD.link(C);
 }
@@ -165,19 +162,18 @@ bool PatchInfoLinker::link(cm::patch::Collection &C) {
       return true;
     auto S = M->second;
     B.setLinkType(S->getExtra() & 0x3);
-    if (B.getLinkType() != CM_FC_LINK_TYPE_CALLEE)
-    {
+    if (B.getLinkType() != CM_FC_LINK_TYPE_CALLEE) {
       LastTopBin = &B;
-        for (auto RI = LastTopBin->finireg_begin(),
-            RE = LastTopBin->finireg_end(); RI != RE; ++RI) {
-            if (RI->isDefNotByToken())
-                continue;
-            unsigned Reg = RI->getRegNo();
-            if (Reg == 127)
-            {
-                std::tie(hasR127Token, r127Token) = RI->getToken();
-            }
+      for (auto RI = LastTopBin->finireg_begin(),
+                RE = LastTopBin->finireg_end();
+           RI != RE; ++RI) {
+        if (RI->isDefNotByToken())
+          continue;
+        unsigned Reg = RI->getRegNo();
+        if (Reg == 127) {
+          std::tie(hasR127Token, r127Token) = RI->getToken();
         }
+      }
     }
   }
   // Bail out if there is mismatch.
@@ -252,7 +248,7 @@ bool PatchInfoLinker::link(cm::patch::Collection &C) {
     std::string Out;
     int Ret;
     std::tie(Ret, Out) =
-      cm::toolchain::resolvDep(Platform, Linked.data(), Linked.size());
+        cm::toolchain::resolvDep(Platform, Linked.data(), Linked.size());
     if (Ret < 0)
       return true;
     Linked.swap(Out);
@@ -313,21 +309,18 @@ unsigned PatchInfoLinker::writeEOT() {
   uint64_t r127_sync1 = 0;
   switch (Platform) {
   case cm::patch::PP_TGL:
-  case cm::patch::PP_XeHP_SDV:
-  {
-      if (hasR127Token)
-      {
-          uint8_t  *sync0Ptr = (uint8_t *)&r127_sync0;
-          r127_sync0 = 0x0001000000002001ULL;
-          r127_sync1 = 0x0000000000000000ULL;
-          sync0Ptr[1] |= (uint8_t)r127Token;
-      }
+  case cm::patch::PP_XeHP_SDV: {
+    if (hasR127Token) {
+      uint8_t *sync0Ptr = (uint8_t *)&r127_sync0;
+      r127_sync0 = 0x0001000000002001ULL;
+      r127_sync1 = 0x0000000000000000ULL;
+      sync0Ptr[1] |= (uint8_t)r127Token;
+    }
     mov0 = 0x7f050aa080030161ULL;
     mov1 = 0x0000000000460005ULL;
     snd0 = 0x0000000400000131ULL;
     snd1 = 0x0000000070207f0cULL;
-  }
-    break;
+  } break;
   default:
     mov0 = 0x2fe0020c00600001ULL;
     mov1 = 0x00000000008d0000ULL;
@@ -336,12 +329,11 @@ unsigned PatchInfoLinker::writeEOT() {
     break;
   }
   unsigned B = 0;
-  if (hasR127Token)
-  {
-      Linked.append(reinterpret_cast<char *>(&r127_sync0), sizeof(r127_sync0));
-      B += sizeof(r127_sync0);
-      Linked.append(reinterpret_cast<char *>(&r127_sync1), sizeof(r127_sync1));
-      B += sizeof(r127_sync1);
+  if (hasR127Token) {
+    Linked.append(reinterpret_cast<char *>(&r127_sync0), sizeof(r127_sync0));
+    B += sizeof(r127_sync0);
+    Linked.append(reinterpret_cast<char *>(&r127_sync1), sizeof(r127_sync1));
+    B += sizeof(r127_sync1);
   }
   Linked.append(reinterpret_cast<char *>(&mov0), sizeof(mov0));
   B += sizeof(mov0);
@@ -355,7 +347,6 @@ unsigned PatchInfoLinker::writeEOT() {
   return B;
 }
 
-
 unsigned PatchInfoLinker::writeSync(unsigned RdMask, unsigned WrMask) {
   uint64_t sysrd0 = 0x0001000000000101;
   uint64_t sysrd1 = 0x0000000020000000;
@@ -365,9 +356,9 @@ unsigned PatchInfoLinker::writeSync(unsigned RdMask, unsigned WrMask) {
 
   // Subfuncs on qword1.
   uint64_t fc_mask = 0x00000000F0000000;
-  uint64_t   nop   = 0x0000000000000000;
-  uint64_t allrd   = 0x0000000020000000;
-  uint64_t allwr   = 0x0000000030000000;
+  uint64_t nop = 0x0000000000000000;
+  uint64_t allrd = 0x0000000020000000;
+  uint64_t allwr = 0x0000000030000000;
 
   uint64_t dist = 1;
   unsigned B = 0;

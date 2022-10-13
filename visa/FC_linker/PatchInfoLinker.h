@@ -18,8 +18,7 @@ SPDX-License-Identifier: MIT
 
 #include "PatchInfoRecord.h"
 
-bool linkPatchInfo(cm::patch::Collection &C,
-                   std::size_t NumKernels, cm_fc_kernel_t *Kernels,
-                   const char *Options);
+bool linkPatchInfo(cm::patch::Collection &C, std::size_t NumKernels,
+                   cm_fc_kernel_t *Kernels, const char *Options);
 
 #endif // __CM_FC_PATCHINFO_LINKER_H__
