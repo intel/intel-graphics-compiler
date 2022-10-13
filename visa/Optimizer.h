@@ -397,7 +397,6 @@ public:
         PI_removeInstrinsics,
         PI_expandMulPostSchedule,
         PI_zeroSomeARF,
-        PI_prepareDPASFuseRSWA,
         PI_addSWSBInfo,
         PI_expandMadwPostSchedule,
         PI_ACCSchedule,

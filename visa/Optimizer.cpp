@@ -721,6 +721,13 @@ void Optimizer::zeroSomeARF()
 
 void Optimizer::addSWSBInfo()
 {
+    if (builder.hasDPAS() && builder.hasDPASFuseRSWA())
+    {
+        // Currently the DPASFuseRSWA is tied to SWSB, so we make the
+        // preparation work the first part of addSWSBInfo.
+        prepareDPASFuseRSWA();
+    }
+
     bool do_fcall_wa = builder.hasFusedEU()
         && builder.getuint32Option(vISA_fusedCallWA) == 1
         && (kernel.fg.getHasStackCalls() || kernel.hasIndirectCall());
@@ -1652,7 +1659,6 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(removeInstrinsics,       vISA_removeInstrinsics,       TimerID::MISC_OPTS);
     INITIALIZE_PASS(expandMulPostSchedule,   vISA_expandMulPostSchedule,   TimerID::MISC_OPTS);
     INITIALIZE_PASS(zeroSomeARF,             vISA_zeroSomeARF,             TimerID::MISC_OPTS);
-    INITIALIZE_PASS(prepareDPASFuseRSWA,             vISA_DPASFuseRSWA,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(addSWSBInfo,             vISA_addSWSBInfo,             TimerID::MISC_OPTS);
     INITIALIZE_PASS(expandMadwPostSchedule,  vISA_expandMadwPostSchedule,  TimerID::MISC_OPTS);
     INITIALIZE_PASS(ACCSchedule,          vISA_PreSchedForAcc,          TimerID::PRERA_SCHEDULING);
@@ -2300,7 +2306,6 @@ int Optimizer::optimization()
 
     runPass(PI_zeroSomeARF);
 
-    runPass(PI_prepareDPASFuseRSWA);
     //-----------------------------------------------------------------------------------------------------------------
     //------NOTE!!!! No instruction change(add/remove, or operand associated change) is allowed after SWSB-------------
     //-----------------------------------------------------------------------------------------------------------------
@@ -14480,10 +14485,8 @@ void Optimizer::fixReadSuppressioninFPU0()
 
 void Optimizer::prepareDPASFuseRSWA()
 {
-    if (!builder.hasDPAS() || !builder.hasDPASFuseRSWA())
-    {
-        return;
-    }
+    MUST_BE_TRUE(builder.hasDPAS() && builder.hasDPASFuseRSWA(),
+        "Expected the function is called only when WA is specified in WATable or options");
 
     kernel.fg.resetLocalDataFlowData();
     kernel.fg.localDataFlowAnalysis();

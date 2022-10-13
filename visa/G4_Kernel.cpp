@@ -1863,7 +1863,7 @@ static BlockOffsets precomputeBlockOffsets(
                 lastInstSize = kv.getInstSize(currPc);
 
                 G4_INST* inst = (*itInst);
-                if (g4k.fg.builder->getOption(vISA_DPASFuseRSWA) && inst->isCachelineAligned())
+                if (g4k.fg.builder->hasDPASFuseRSWA() && inst->isCachelineAligned())
                 {
                     iga::Op opcode = kv.getOpcode(currPc);
                     iga::SWSB sw = kv.getSWSBInfo(currPc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);
@@ -2098,7 +2098,7 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(
                     }
                 };
 
-            if (fg.builder->getOption(vISA_DPASFuseRSWA) && i->isCachelineAligned())
+            if (fg.builder->hasDPASFuseRSWA() && i->isCachelineAligned())
             {
                 iga::Op opcode = kv.getOpcode(pc);
                 iga::SWSB sw = kv.getSWSBInfo(pc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);

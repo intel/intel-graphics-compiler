@@ -398,7 +398,8 @@ SPDX-License-Identifier: MIT
 
     bool hasDPASFuseRSWA() const
     {
-        return (getPlatform() == Xe_DG2 && getOption(vISA_DPASFuseRSWA));
+        return VISA_WA_CHECK(getPWaTable(), Wa_18023229625) ||
+               getOption(vISA_DPASFuseRSWA);
     }
 
     bool hasSrc1ReadSuppressionIssue() const
