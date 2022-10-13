@@ -296,11 +296,10 @@ bool InlineLocalsResolution::unusedGlobal(Value* V, std::unordered_set<Value*>& 
 
 void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
 {
-
+    const auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // first we collect SLM usage on GET_MEMPOOL_PTR
     if (M.getFunction(BUILTIN_MEMPOOL) != nullptr)
     {
-        const auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         const GT_SYSTEM_INFO platform = pCtx->platform.GetGTSystemInfo();
 
         SmallVector<CallInst*, 8> callsToReplace;
@@ -446,7 +445,14 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
             }
 
             Function* parentF = user->getParent()->getParent();
-            if (parentF->hasFnAttribute("referenced-indirectly"))
+            bool emitError = false;
+            if (pCtx->type == ShaderType::OPENCL_SHADER)
+            {
+                // If this option is passed, emit error when extern functions use local SLM
+                auto ClContext = static_cast<OpenCLProgramContext*>(pCtx);
+                emitError = ClContext->m_Options.EmitErrorsForLibCompilation;
+            }
+            if (parentF->hasFnAttribute("referenced-indirectly") && emitError)
             {
                 IGC_ASSERT_MESSAGE(0, "Cannot reference localSLM in indirectly-called functions");
                 getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Cannot reference localSLM in indirectly-called functions", globalVar);
