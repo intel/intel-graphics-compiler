@@ -1867,6 +1867,10 @@ namespace IGC
                 {
                     IsLibraryCompilation = true;
                 }
+                if (strstr(options, "-emit-lib-compile-errors"))
+                {
+                    EmitErrorsForLibCompilation = true;
+                }
                 if (const char* op = strstr(options, "-intel-reqd-eu-thread-count"))
                 {
                     IntelRequiredEUThreadCount = true;
@@ -1886,6 +1890,7 @@ namespace IGC
             bool EnableTakeGlobalAddress = false;
             bool IsLibraryCompilation = false;
             bool IntelRequiredEUThreadCount = false;
+            bool EmitErrorsForLibCompilation = false;
             uint32_t requiredEUThreadCount = 0;
             // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
             bool IntelEnableAutoLargeGRF = false;

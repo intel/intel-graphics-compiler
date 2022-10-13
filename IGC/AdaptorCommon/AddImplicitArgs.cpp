@@ -565,7 +565,15 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph& CG)
         // since these attributes are always coupled together.
         if (pF->hasFnAttribute("referenced-indirectly"))
         {
-            if (IGC_IS_FLAG_DISABLED(EnableGlobalStateBuffer))
+            CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+            bool emitError = false;
+            if (pCtx->type == ShaderType::OPENCL_SHADER)
+            {
+                // If this option is passed, emit error when extern functions use implicit arg buffer
+                auto ClContext = static_cast<OpenCLProgramContext*>(pCtx);
+                emitError = ClContext->m_Options.EmitErrorsForLibCompilation;
+            }
+            if (IGC_IS_FLAG_DISABLED(EnableGlobalStateBuffer) && emitError)
             {
                 IGC_ASSERT_MESSAGE(0, "Cannot force inline indirect calls! Requires IA Buffer support, i.e. EnableGlobalStateBuffer = 1");
                 getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Exported functions does not support implicit arguments", pF);
