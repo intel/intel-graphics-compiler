@@ -63,6 +63,86 @@ To customize the process use configuration flags. Here are some of them:
 
 You can learn more about dumping options in configuration flags documentation [here](https://github.com/intel/intel-graphics-compiler/blob/master/documentation/configuration_flags.md).
 
+## Disabling compilation passes
+
+This functionality allows disabling specific passes from IGC compilation runtime. IGC debug build is required.
+
+Disabling some of the passes from the compilation stack can cause a compilation crash, as some passes are essential.
+
+### `ShaderPassDisable` flag overview
+#### Print out information about compilation passes
+Print all passes' IDs, names, and their occurrence number with flag `IGC_ShaderDisplayAllPassesNames=1`. Note: this does not correspond 1:1 to what the shader dumps are called.
+
+Example output:
+
+```bash
+Pass number Pass name                                         Pass occurrence
+0           CheckInstrTypes                                   1
+1           Types Legalization Pass                           1
+2           Target Library Information                        1
+3           Dead Code Elimination                             1
+...
+...
+...
+225         Layout                                            1
+226         TimeStatsCounter Start/Stop                       6
+227         EmitPass                                          1
+228         EmitPass                                          2
+229         EmitPass                                          3
+230         DebugInfoPass                                     1
+```
+#### `ShaderPassDisable` flag syntax
+
+```bash
+ShaderPassDisable="TOKEN1;TOKEN2;..."
+TOKEN:
+* Pass number                           PASS_NUMBER                                 example: 14
+* Range                                 PASS_NUMBER_START-PASS_NUMBER_STOP          example: 10-50
+* Open range                            PASS_NUMBER_START-                          example: 60-
+* Pass name                             PASS_NAME                                   example: BreakConstantExprPass
+* Specific pass occurrence              PASS_NAME:occurrence                        example: BreakConstantExprPass:0
+* Specific pass occurrences range       PASS_NAME:OCCURRANCE_START-OCCURRANCE_STOP  example: BreakConstantExprPass:2-4
+* Specific pass occurrences open range  PASS_NAME:OCCURRANCE_START-                 example: BreakConstantExprPass:3-
+```
+
+Example:
+```bash
+IGC_ShaderPassDisable="9;17-19;239-;Error Check;ResolveOCLAtomics:2;Dead Code Elimination:3-5;BreakConstantExprPass:7-"
+You want to skip pass ID 9
+You want to skip passes from 17 to 19
+You want to skip passes from 239 to end
+You want to skip all occurrence of Error Check
+You want to skip pass ResolveOCLAtomics occurrence 2
+You want to skip pass Dead Code Elimination from occurrence 3 to occurrence 5
+You want to skip pass BreakConstantExprPass from occurrence 7 to end
+Pass number    Pass name                                         Pass occurrence     skippedBy
+9              LowerInvokeSIMD                                   1                   PassNumber
+17             CorrectlyRoundedDivSqrt                           1                   Range
+18             CodeAssumption                                    1                   Range
+19             JointMatrixFuncsResolutionPass                    1                   Range
+32             Error Check                                       1                   PassName
+65             ResolveOCLAtomics                                 2                   SpecificPassOccurrence
+75             Dead Code Elimination                             3                   SpecificPassOccurrenceRange
+77             Error Check                                       2                   PassName
+121            Dead Code Elimination                             4                   SpecificPassOccurrenceRange
+143            Dead Code Elimination                             5                   SpecificPassOccurrenceRange
+145            BreakConstantExprPass                             7                   SpecificPassOccurrenceOpenRange
+181            BreakConstantExprPass                             8                   SpecificPassOccurrenceOpenRange
+183            BreakConstantExprPass                             9                   SpecificPassOccurrenceOpenRange
+189            BreakConstantExprPass                             10                  SpecificPassOccurrenceOpenRange
+214            BreakConstantExprPass                             11                  SpecificPassOccurrenceOpenRange
+221            BreakConstantExprPass                             12                  SpecificPassOccurrenceOpenRange
+239            Layout                                            1                   OpenRange
+240            TimeStatsCounter Start/Stop                       6                   OpenRange
+241            EmitPass                                          1                   OpenRange
+242            EmitPass                                          2                   OpenRange
+243            EmitPass                                          3                   OpenRange
+244            DebugInfoPass                                     1                   OpenRange
+```
+#### Implementation of `ShaderPassDisable`
+Implementation of `ShaderPassDisable` flag can be found [here](https://github.com/intel/intel-graphics-compiler/blob/master/IGC/common/LLVMUtils.cpp#L81)
+
+
 ## Shader overriding
 
 This is a more advanced debugging functionality that allows overriding most of the compilation steps with own dumps during IGC runtime. This option requires Debug IGC build.
