@@ -4192,7 +4192,7 @@ bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
     R.NumElements = Width;
     R.Stride = 0;
     R.VStride = 0;
-    R.Offset = (int)Idx;
+    R.Offset = Idx * R.ElementBytes;
     V = R.createRdRegion(V, "splat", SI, SI->getDebugLoc());
     V = B.CreateICmpNE(V, C0);
     SI->replaceAllUsesWith(V);
