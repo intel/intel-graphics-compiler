@@ -9306,7 +9306,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB* bb)
             assert(src0->getRegion()->isScalar());
             if (IS_BTYPE(src0->getType()))
             {
-                G4_Declare* src0RootDcl = dst->getBaseRegVarRootDeclare();
+                G4_Declare* src0RootDcl = src0->getBaseRegVarRootDeclare();
                 if (src0RootDcl->getByteSize() == src0->getTypeSize())
                 {
                     G4_Declare* dcl = src0->getBase()->asRegVar()->getDeclare();
