@@ -1145,23 +1145,6 @@ void G4_Kernel::setKernelParameters()
             case 4:
                 numSWSBTokens = 32;
                 break;
-            case 5:
-                numSWSBTokens = 24;
-                break;
-            case 6:
-                numSWSBTokens = 20;
-                break;
-            case 7:
-            case 8:
-                numSWSBTokens = 16;
-                break;
-            case 9:
-            case 10:
-                numSWSBTokens = 12;
-                break;
-            case 12:
-                numSWSBTokens = 8;
-                break;
             default:
                 numSWSBTokens = 16;
             }
@@ -1203,15 +1186,6 @@ void G4_Kernel::setKernelParameters()
         case Xe_XeHPSDV:
         case Xe_DG2:
         case Xe_MTL:
-            switch (overrideNumThreads)
-            {
-            case 4:
-                numAcc = 8;
-                break;
-            default:
-                numAcc = 4;
-            }
-            break;
         case Xe_PVC:
         case Xe_PVCXT:
             switch (overrideNumThreads)
@@ -1219,21 +1193,8 @@ void G4_Kernel::setKernelParameters()
             case 4:
                 numAcc = 8;
                 break;
-            case 5:
-                numAcc = 6;
-                break;
-            case 6:
-            case 7:
-            case 8:
-                numAcc = 4;
-                break;
-            case 9:
-            case 10:
-            case 12:
-                numAcc = 2;
-                break;
             default:
-                numAcc = 8;
+                numAcc = 4;
             }
             break;
         default:
