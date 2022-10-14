@@ -95,56 +95,6 @@ bool PromoteBools::runOnModule(Module& module)
     return changed;
 }
 
-void PromoteBools::visitAllocaInst(AllocaInst& alloca)
-{
-    if (wasPromoted(alloca.getFunction()))
-    {
-        return;
-    }
-
-    changed |= getOrCreatePromotedValue(&alloca) != &alloca;
-}
-
-void PromoteBools::visitCallInst(CallInst& call)
-{
-    if (wasPromoted(call.getFunction()))
-    {
-        return;
-    }
-
-    changed |= getOrCreatePromotedValue(&call) != &call;
-}
-
-void PromoteBools::visitGetElementPtrInst(llvm::GetElementPtrInst& getElementPtr)
-{
-    if (wasPromoted(getElementPtr.getFunction()))
-    {
-        return;
-    }
-
-    changed |= getOrCreatePromotedValue(&getElementPtr) != &getElementPtr;
-}
-
-void PromoteBools::visitLoadInst(LoadInst& load)
-{
-    if (wasPromoted(load.getFunction()))
-    {
-        return;
-    }
-
-    changed |= getOrCreatePromotedValue(&load) != &load;
-}
-
-void PromoteBools::visitStoreInst(StoreInst& store)
-{
-    if (wasPromoted(store.getFunction()))
-    {
-        return;
-    }
-
-    changed |= getOrCreatePromotedValue(&store) != &store;
-}
-
 Value* PromoteBools::createZextIfNeeded(Value* argument, Instruction* insertBefore)
 {
     auto trunc = dyn_cast<TruncInst>(argument);

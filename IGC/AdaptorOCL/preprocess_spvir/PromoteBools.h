@@ -20,6 +20,13 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <queue>
 
+#define VISIT_FUNCTION_IMPL(InstructionType) \
+    void visit##InstructionType(llvm::InstructionType& instruction) \
+    { \
+        changed |= !wasPromoted(instruction.getFunction()) \
+                   && getOrCreatePromotedValue(&instruction) != &instruction; \
+    }
+
 namespace IGC
 {
     class PromoteBools : public llvm::ModulePass, public llvm::InstVisitor<PromoteBools>
@@ -37,11 +44,11 @@ namespace IGC
 
         virtual bool runOnModule(llvm::Module& module) override;
 
-        void visitAllocaInst(llvm::AllocaInst& alloca);
-        void visitCallInst(llvm::CallInst& call);
-        void visitGetElementPtrInst(llvm::GetElementPtrInst& getElementPtr);
-        void visitLoadInst(llvm::LoadInst& load);
-        void visitStoreInst(llvm::StoreInst& store);
+        VISIT_FUNCTION_IMPL(AllocaInst)
+        VISIT_FUNCTION_IMPL(CallInst)
+        VISIT_FUNCTION_IMPL(GetElementPtrInst)
+        VISIT_FUNCTION_IMPL(LoadInst)
+        VISIT_FUNCTION_IMPL(StoreInst)
 
     private:
         bool changed;
