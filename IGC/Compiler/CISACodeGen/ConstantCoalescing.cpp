@@ -332,7 +332,7 @@ void ConstantCoalescing::VectorizePrep(llvm::BasicBlock* bb)
 // check if it is safe to move "inst" to right after "newLocation"
 bool ConstantCoalescing::safeToMoveInstUp(Instruction* inst, Instruction* newLocation)
 {
-    if (inst->mayHaveSideEffects() || inst->mayReadFromMemory() || inst->getParent() != newLocation->getParent())
+    if (inst->mayHaveSideEffects() || inst->mayReadFromMemory() || inst->getParent() != newLocation->getParent() || isa<PHINode>(inst))
     {
         return false;
     }
