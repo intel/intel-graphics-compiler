@@ -525,6 +525,7 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
     env.has_no_stateless_write = (annotations.m_executionEnvironment.StatelessWritesCount == 0);
     env.has_stack_calls = annotations.m_executionEnvironment.HasStackCalls;
     env.require_disable_eufusion = annotations.m_executionEnvironment.RequireDisableEUFusion;
+    env.indirect_stateless_count = annotations.m_executionEnvironment.IndirectStatelessCount;
     env.inline_data_payload_size = annotations.m_threadPayload.PassInlineDataSize;
     env.offset_to_skip_per_thread_data_load = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;;
     env.offset_to_skip_set_ffid_gp = annotations.m_threadPayload.OffsetToSkipSetFFIDGP;

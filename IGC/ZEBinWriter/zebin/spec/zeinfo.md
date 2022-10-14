@@ -125,6 +125,7 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | has_no_stateless_write | bool | Optional | false | |
 | has_stack_calls | bool | Optional | false | When this value is true, it indicates that program uses stack calls |
 | require_disable_eufusion | bool | Optional | false | When this value is true, it indicates that program requires EU fusion disable |
+| indirect_stateless_count | int32 | Optional | 0 | |
 | inline_data_payload_size | int32 | Optional | 0 | Size of inline data in cross-thread-payload in byte. The value is 0 when inline data is disabled (default). |
 | offset_to_skip_per_thread_data_load | int32 | Optional | 0 | |
 | offset_to_skip_set_ffid_gp | int32 | Optional | 0 | |

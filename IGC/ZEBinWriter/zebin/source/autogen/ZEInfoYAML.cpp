@@ -68,6 +68,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("has_no_stateless_write", info.has_no_stateless_write, false);
     io.mapOptional("has_stack_calls", info.has_stack_calls, false);
     io.mapOptional("require_disable_eufusion", info.require_disable_eufusion, false);
+    io.mapOptional("indirect_stateless_count", info.indirect_stateless_count, 0);
     io.mapOptional("inline_data_payload_size", info.inline_data_payload_size, 0);
     io.mapOptional("offset_to_skip_per_thread_data_load", info.offset_to_skip_per_thread_data_load, 0);
     io.mapOptional("offset_to_skip_set_ffid_gp", info.offset_to_skip_set_ffid_gp, 0);
