@@ -1031,8 +1031,7 @@ bool LoopHoistConstant::runOnLoop(Loop* L, LPPassManager& LPM)
     }
     if (!InductionPreInc || !InductionPostInc)
         return false;
-    if (InductionPreInc->getBasicBlockIndex(LoopLatch) < 0 ||
-        InductionPreInc->getIncomingValueForBlock(LoopLatch) != InductionPostInc)
+    if (InductionPreInc->getIncomingValueForBlock(LoopLatch) != InductionPostInc)
         return false;
 
     // Match the loop exit condition and branch
