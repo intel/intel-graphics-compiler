@@ -4240,13 +4240,19 @@ bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
     return true;
   }
   // Default code. Select int and bitcast to vector of i1.
-  if (isa<VectorType>(In->getType())) {
+  if (IsFixedVectorOfWidth(In->getType(), 1)) {
     // First convert v1i1 to i1.
     auto NewBC = CastInst::Create(Instruction::BitCast, In,
                                   In->getType()->getScalarType(),
                                   In->getName() + ".scalar", SI);
     NewBC->setDebugLoc(SI->getDebugLoc());
     In = NewBC;
+  } else if (isa<VectorType>(In->getType())) {
+    auto Index = ConstantInt::get(Type::getInt32Ty(SI->getContext()), Idx);
+    auto Extract =
+        ExtractElementInst::Create(In, Index, SI->getName() + ".scalar", SI);
+    Extract->setDebugLoc(SI->getDebugLoc());
+    In = Extract;
   }
   if (Width == 8 || Width == 16 || Width == 32) {
     auto IntTy = Type::getIntNTy(SI->getContext(), Width);
