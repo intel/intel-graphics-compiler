@@ -4570,6 +4570,21 @@ namespace IGC
             SaveOption(vISA_RegSharingHeuristics, true);
         }
 
+        if (IGC_GET_FLAG_VALUE(OptInstNumThresholdLow) != 0)
+        {
+            SaveOption(vISA_OptInstNumThresholdLow, IGC_GET_FLAG_VALUE(OptInstNumThresholdLow));
+        }
+
+        if (IGC_GET_FLAG_VALUE(OptInstNumThresholdHigh) != 0)
+        {
+            SaveOption(vISA_OptInstNumThresholdHigh, IGC_GET_FLAG_VALUE(OptInstNumThresholdHigh));
+        }
+
+        if (IGC_GET_FLAG_VALUE(ACCPreSchedThresholdPerc) != 0)
+        {
+            SaveOption(vISA_ACCPreSchedThresholdPerc, IGC_GET_FLAG_VALUE(ACCPreSchedThresholdPerc));
+        }
+
         if (IGC_IS_FLAG_ENABLED(EnableHashMovsAtPrologue))
         {
             SaveOption(vISA_HashMovsAtPrologue, true);

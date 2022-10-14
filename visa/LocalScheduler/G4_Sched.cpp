@@ -237,7 +237,7 @@ public:
   // Dump the DDD into a dot file.
   void dumpDagDot();
 
-  void buildGraphForACC();
+  bool buildGraphForACC();
 
   // Each instruction creates live nodes for adding dependency edges.
   struct LiveNode {
@@ -2730,6 +2730,26 @@ preRA_ACC_Scheduler::preRA_ACC_Scheduler(G4_Kernel &k, Mem_Manager &m)
 preRA_ACC_Scheduler::~preRA_ACC_Scheduler() {}
 
 bool preRA_ACC_Scheduler::run() {
+  if (kernel.getOptions()->getuInt32Option(vISA_OptInstNumThresholdLow) ||
+      kernel.getOptions()->getuInt32Option(vISA_OptInstNumThresholdHigh)) {
+    size_t instNum = 0;
+    for (auto bb : kernel.fg) {
+      instNum += bb->size();
+    }
+
+    if (kernel.getOptions()->getuInt32Option(vISA_OptInstNumThresholdLow) &&
+        instNum < (int)kernel.getOptions()->getuInt32Option(
+                      vISA_OptInstNumThresholdLow)) {
+      return false;
+    }
+
+    if (kernel.getOptions()->getuInt32Option(vISA_OptInstNumThresholdHigh) &&
+        instNum > kernel.getOptions()->getuInt32Option(
+                      vISA_OptInstNumThresholdHigh)) {
+      return false;
+    }
+  }
+
   AccSubPass accSub(*kernel.fg.builder, kernel);
 
   for (auto bb : kernel.fg) {
@@ -2738,14 +2758,27 @@ bool preRA_ACC_Scheduler::run() {
       continue;
     }
 
+    if (kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID) &&
+        (bb->getId() <
+         kernel.getOptions()->getuInt32Option(vISA_ScheduleStartBBID))) {
+      continue;
+    }
+
+    if (kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID) &&
+        (bb->getId() >
+         kernel.getOptions()->getuInt32Option(vISA_ScheduleEndBBID))) {
+      continue;
+    }
+
     preDDD ddd(mem, kernel, bb);
     SchedConfig config(0);
     BB_ACC_Scheduler S(kernel, ddd);
 
-    ddd.buildGraphForACC();
-    S.scheduleBlockForACC();
-    S.commit();
-    accSub.doAccSub(bb);
+    if (ddd.buildGraphForACC()) {
+      S.scheduleBlockForACC();
+      S.commit();
+      accSub.doAccSub(bb);
+    }
   }
 
   kernel.fg.XeBCStats.setAccSubDef(accSub.getNumAccSubDef());
@@ -2875,7 +2908,7 @@ preNode *SethiUllmanACCQueue::select() {
 
 // Build the data dependency bottom up with two simple
 // special nodes.
-void preDDD::buildGraphForACC() {
+bool preDDD::buildGraphForACC() {
   assert(!IsDagBuilt);
 
   // Starts with the exit node.
@@ -2884,6 +2917,7 @@ void preDDD::buildGraphForACC() {
   unsigned NumOfInsts = (unsigned)m_BB->size();
   SNodes.reserve(NumOfInsts);
 
+  unsigned candidateNum = 0;
   auto I = m_BB->rbegin(), E = m_BB->rend();
   for (unsigned i = 0; I != E; ++I) {
     preNode *N = new (mem) preNode(*I, i++);
@@ -2894,7 +2928,14 @@ void preDDD::buildGraphForACC() {
     addNodeToGraph(N);
     if ((*I)->canInstBeAcc(&kernel.fg.globalOpndHT)) {
       N->setACCCandidate();
+      candidateNum++;
     }
+  }
+
+  if ((float)candidateNum / (float)m_BB->size() <
+      ((float)kernel.getOptions()->getuInt32Option(
+       vISA_ACCPreSchedThresholdPerc) / 100)) {
+    return false;
   }
 
   // Ends with the entry node.
@@ -2908,4 +2949,6 @@ void preDDD::buildGraphForACC() {
 
   // Initialize perNode data.
   reset();
+
+  return true;
 }

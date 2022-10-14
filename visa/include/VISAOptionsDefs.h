@@ -576,3 +576,9 @@ DEF_VISA_OPTION(vISA_Stepping, ET_CSTR, "-stepping",
 DEF_VISA_OPTION(vISA_Platform, ET_CSTR, "-platform",
                 "USAGE: missing platform string. ", NULL)
 DEF_VISA_OPTION(vISA_HasEarlyGRFRead, ET_BOOL, "-earlyGRFRead", UNUSED, false)
+DEF_VISA_OPTION(vISA_OptInstNumThresholdLow, ET_INT32,
+                "-optInstNumThresholdLow", UNUSED, 0)
+DEF_VISA_OPTION(vISA_OptInstNumThresholdHigh, ET_INT32,
+                "-optInstNumThresholdHigh", UNUSED, 0)
+DEF_VISA_OPTION(vISA_ACCPreSchedThresholdPerc, ET_INT32,
+                "-optInstNumThresholdHigh", UNUSED, 4)
