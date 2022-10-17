@@ -1444,7 +1444,8 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_RegVar *regVar) {
       msgRangeDeclare->getRegVar()->setPhyReg(
           builder_->phyregpool.getGreg(spillRegStart_), 0);
     } else {
-      MUST_BE_TRUE(false, "unexpected condition");
+      msgRangeDeclare->getRegVar()->setPhyReg(
+          builder_->phyregpool.getGreg(context.getFreeGRF(height)), 0);
     }
   }
 
@@ -4754,11 +4755,21 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
       createSpillFillAddr(*builder, spillAddr, inst->getFP(), spillOffset);
     }
 
+    unsigned int elemSize = 4;
     LSC_DATA_SHAPE dataShape;
     dataShape.size = LSC_DATA_SIZE_32b;
+    if (builder->getGRFSize() > 32 && numGRFToWrite > 4) {
+      if (inst->isWriteEnableInst()) {
+        elemSize = 8;
+        dataShape.size = LSC_DATA_SIZE_64b;
+      } else {
+        // don't change type if instruction isn't WriteEnable
+        numGRFToWrite = 4;
+      }
+    }
     dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
-    dataShape.elems =
-        builder->lscGetElementNum(numGRFToWrite * builder->getGRFSize() / 4);
+    dataShape.elems = builder->lscGetElementNum(
+        numGRFToWrite * builder->getGRFSize() / elemSize);
 
     auto src0Addr =
         builder->createSrcRegRegion(spillAddr, builder->getRegionStride1());
@@ -4835,13 +4846,22 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   builder->instList.clear();
 
   while (numRows > 0) {
+    unsigned int elemSize = 4;
     unsigned responseLength = getPayloadSizeGRF(numRows);
     LSC_DATA_SHAPE dataShape;
     dataShape.size = LSC_DATA_SIZE_32b;
+    if (builder->getGRFSize() > 32 && responseLength > 4) {
+      if (inst->isWriteEnableInst()) {
+        elemSize = 8;
+        dataShape.size = LSC_DATA_SIZE_64b;
+      } else {
+        // don't change type if instruction isn't WriteEnable
+        responseLength = 4;
+      }
+    }
     dataShape.order = LSC_DATA_ORDER_TRANSPOSE;
-    dataShape.elems =
-        builder->lscGetElementNum(responseLength * builder->getGRFSize() / 4);
-
+    dataShape.elems = builder->lscGetElementNum(
+        responseLength * builder->getGRFSize() / elemSize);
     G4_Declare *fillAddr = inst->getFP() ? kernel.fg.scratchRegDcl
                                          : inst->getHeader()->getTopDcl();
     {
@@ -5792,7 +5812,7 @@ void vISA::BoundedRA::markBusyGRFs() {
 }
 
 void BoundedRA::markForbidden(LiveRange *lr) {
-  auto numForbidden = lr->getNumForbidden();
+  auto numForbidden = gra.kernel.getNumRegTotal();
   auto forbidden = lr->getForbidden();
   for (unsigned int i = 0; i != numForbidden; ++i)
     if (forbidden[i])

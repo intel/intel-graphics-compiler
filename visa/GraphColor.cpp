@@ -7628,6 +7628,11 @@ void GraphColor::getCallerSaveRegisters() {
             kernel.fg.isPseudoVCEDcl(lrs[i]->getDcl()) != true &&
             intf.interfereBetween(pseudoVCAId, i) == true) {
           if (!builder.isPreDefArg(lrs[i]->getDcl())) {
+            // It is possible that we end up with unallocated spill variable
+            // when using new fail safe RA.
+            if (lrs[i]->getDcl()->isSpilled() &&
+                kernel.getOption(vISA_NewFailSafeRA))
+              continue;
             // NOTE: Spilled live ranges should not be caller-save.
             MUST_BE_TRUE(lrs[i]->getPhyReg()->isGreg(), ERROR_REGALLOC);
             unsigned startReg = lrs[i]->getPhyReg()->asGreg()->getRegNum();
@@ -10101,6 +10106,9 @@ int GlobalRA::coloringRegAlloc() {
             coloring.markFailSafeIter(true);
             // No reserved GRFs
             setNumReservedGRFsFailSafe(0);
+            if (builder.getOption(vISA_RATrace)) {
+              std::cout << "\t--enabling new fail safe RA\n";
+            }
           }
         }
 
