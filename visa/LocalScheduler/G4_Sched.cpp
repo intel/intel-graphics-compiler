@@ -20,7 +20,7 @@ using namespace vISA;
 static const unsigned SMALL_BLOCK_SIZE = 10;
 static const unsigned LARGE_BLOCK_SIZE = 20000;
 static const unsigned LARGE_BLOCK_SIZE_RPE = 32000;
-static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
+static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5; // percentage
 static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_HIGH_THRESHOLD = 128;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
@@ -803,7 +803,9 @@ protected:
 // Queue for Sethi-Ullman scheduling to reduce register pressure.
 class SethiUllmanQueue : public QueueBase {
   // Sethi-Ullman numbers.
-  std::vector<unsigned> Numbers;
+  // max-reg-pressure for the sub-exp-tree starting from a node
+  std::vector<int> MaxRegs;
+  std::vector<int> DstSizes;
 
   // The clustering nodes.
   std::vector<preNode *> Clusterings;
@@ -848,7 +850,7 @@ private:
   bool compare(preNode *N1, preNode *N2);
 
   // Compute the Sethi-Ullman number for a node.
-  unsigned calculateSethiUllmanNumber(preNode *N);
+  void calculateSethiUllmanNumber(preNode *N);
 };
 
 } // namespace
@@ -857,29 +859,8 @@ private:
 //
 // Generalizations of the Sethi-Ullman algorithm for register allocation
 //
-unsigned SethiUllmanQueue::calculateSethiUllmanNumber(preNode *N) {
-  assert(N->getID() < Numbers.size());
-  unsigned CurNum = Numbers[N->getID()];
-  if (CurNum != 0)
-    return CurNum;
-
-  std::vector<std::pair<preNode *, unsigned>> Preds;
-  for (auto I = N->pred_begin(), E = N->pred_end(); I != E; ++I) {
-    auto &Edge = *I;
-    if (!Edge.isDataDep())
-      continue;
-
-    // Skip pseudo-kills as they are lifetime markers.
-    auto DefInst = Edge.getNode()->getInst();
-    if (DefInst && DefInst->isPseudoKill())
-      continue;
-
-    // Recurse on the predecessors.
-    unsigned Num = calculateSethiUllmanNumber(Edge.getNode());
-    Preds.emplace_back(Edge.getNode(), Num);
-  }
-
-  auto getDstByteSize = [&](preNode *Node) -> unsigned {
+void SethiUllmanQueue::calculateSethiUllmanNumber(preNode *N) {
+  auto getDstByteSize = [&](preNode *Node) -> int {
     G4_INST *Inst = Node->getInst();
     if (!Inst)
       return 0;
@@ -900,37 +881,63 @@ unsigned SethiUllmanQueue::calculateSethiUllmanNumber(preNode *N) {
     return 0;
   };
 
-  if (Preds.size() > 0) {
-    std::sort(Preds.begin(), Preds.end(),
-              [](std::pair<preNode *, unsigned> lhs,
-                 std::pair<preNode *, unsigned> rhs) {
-                return lhs.second < rhs.second;
-              });
-    CurNum = Preds[0].second;
-    for (unsigned i = 1, e = (unsigned)Preds.size(); i < e; ++i) {
-      unsigned DstSize = getDstByteSize(Preds[i].first);
-      CurNum = std::max(CurNum + DstSize, Preds[i].second);
-    }
-    return CurNum + getDstByteSize(N);
+  assert(N->getID() < MaxRegs.size());
+  assert(N->getID() < DstSizes.size());
+  auto CurNum = MaxRegs[N->getID()];
+  if (CurNum != 0 || DstSizes[N->getID()] != 0)
+    return;
+  // record the destination register requirement
+  DstSizes[N->getID()] = getDstByteSize(N);
+  // compute max-reg
+  std::vector<std::pair<preNode *, int>> Preds;
+  for (auto I = N->pred_begin(), E = N->pred_end(); I != E; ++I) {
+    auto &Edge = *I;
+    auto DepType = Edge.getType();
+    if (DepType != RAW && DepType != WAW)
+      continue;
+
+    // Skip pseudo-kills as they are lifetime markers.
+    auto DefInst = Edge.getNode()->getInst();
+    if (DefInst && DefInst->isPseudoKill())
+      continue;
+
+    // Recurse on the predecessors.
+    calculateSethiUllmanNumber(Edge.getNode());
+    auto MaxReg = MaxRegs[Edge.getNode()->getID()];
+    auto DstSize = DstSizes[Edge.getNode()->getID()];
+    Preds.emplace_back(Edge.getNode(), MaxReg - DstSize);
   }
 
-  // Leaf node.
-  return std::max(1U, getDstByteSize(N));
+  assert(CurNum == 0);
+  if (Preds.size() > 0) {
+    std::sort(Preds.begin(), Preds.end(),
+              [](std::pair<preNode *, int> lhs, std::pair<preNode *, int> rhs) {
+                return lhs.second < rhs.second;
+              });
+    for (unsigned i = 0, e = (unsigned)Preds.size(); i < e; ++i) {
+      auto PN = Preds[i].first;
+      auto DstSize = DstSizes[PN->getID()];
+      auto MaxReg = MaxRegs[PN->getID()];
+      CurNum = std::max(MaxReg, CurNum + DstSize);
+    }
+  }
+  MaxRegs[N->getID()] = CurNum;
+  return;
 }
 
 void SethiUllmanQueue::init() {
   auto &Nodes = ddd.getNodes();
   unsigned N = (unsigned)Nodes.size();
-  Numbers.resize(N, 0);
-  for (unsigned i = 0; i < N; ++i) {
-    unsigned j = N - 1 - i;
-    Numbers[j] = calculateSethiUllmanNumber(Nodes[j]);
+  MaxRegs.resize(N, 0);
+  DstSizes.resize(N, 0);
+  for (auto I = Nodes.rbegin(); I != Nodes.rend(); ++I) {
+    calculateSethiUllmanNumber((*I));
   }
 
 #if 0
     std::cerr << "\n\n";
     for (auto I = Nodes.rbegin(); I != Nodes.rend(); ++I) {
-        std::cerr << "SU[" << Numbers[(*I)->getID()] << "] ";
+        std::cerr << "MaxRegs[" << MaxRegs[(*I)->getID()] << "] ";
         (*I)->getInst()->dump();
     }
     std::cerr << "\n\n";
@@ -941,8 +948,8 @@ void SethiUllmanQueue::init() {
 // Return true if N2 has a higher priority than N1, false otherwise.
 bool SethiUllmanQueue::compare(preNode *N1, preNode *N2) {
   // TODO. Introduce heuristics before comparing SU numbers.
-  assert(N1->getID() < Numbers.size());
-  assert(N2->getID() < Numbers.size());
+  assert(N1->getID() < MaxRegs.size());
+  assert(N2->getID() < MaxRegs.size());
   assert(N1->getID() != N2->getID());
 
   // Pseudo kill always has higher priority.
@@ -964,8 +971,8 @@ bool SethiUllmanQueue::compare(preNode *N1, preNode *N2) {
     }
   }
 
-  unsigned SU1 = Numbers[N1->getID()];
-  unsigned SU2 = Numbers[N2->getID()];
+  auto SU1 = MaxRegs[N1->getID()] - DstSizes[N1->getID()];
+  auto SU2 = MaxRegs[N2->getID()] - DstSizes[N2->getID()];
 
   // This is a bottom-up scheduling. Smaller SU number means higher priority.
   if (SU1 < SU2)
@@ -1919,7 +1926,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned &MaxRPE, bool IsTopDown,
     }
   } else {
     // For reducing rpe.
-    if (NewRPE + PRESSURE_REDUCTION_MIN_BENEFIT <= MaxRPE) {
+    if ((MaxRPE - NewRPE) * 100 >= PRESSURE_REDUCTION_MIN_BENEFIT * MaxRPE) {
       bool AbortOnSpill = kernel.getOptions()->getOption(vISA_AbortOnSpill);
       if (isSlicedSIMD32(kernel) && AbortOnSpill) {
         // It turns out that simd32 kernels may be scheduled like slicing, which
