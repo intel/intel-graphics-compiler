@@ -429,7 +429,7 @@ bool createElfFileName(std::string &name, unsigned int maxNameLen, SIMDMode simd
     return retValue;
 }
 
-void CGen8OpenCLProgram::GetZEBinary(
+bool CGen8OpenCLProgram::GetZEBinary(
     llvm::raw_pwrite_stream& programBinary,
     unsigned pointerSizeInBytes,
     const char* spv, uint32_t spvSize,
@@ -437,6 +437,7 @@ void CGen8OpenCLProgram::GetZEBinary(
     const char* buildOptions, uint32_t buildOptionsSize)
 {
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> elfStorage;
+    bool retValue = true;
 
     ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
         m_Context.m_programInfo,
@@ -555,6 +556,8 @@ void CGen8OpenCLProgram::GetZEBinary(
                         // - build for the linker a name of an output file, and
                         // - add a log name, as a first element, to a vector of the linker parameters.
 
+                        ctx = kernel->GetContext();  // Remember context for future usage regarding warning emission (if needed).
+
                         // Build a temporary output file name (with a path) for the linker
 
                         if (!createElfFileName(
@@ -566,12 +569,12 @@ void CGen8OpenCLProgram::GetZEBinary(
                             uniqueLockFilePartStr,  // unique part only result, i.e. _%%%%%%%% replaced with unique sequence of characters
                             linkedElfFileNameStr))  // full name with a path result
                         {
-                            IGC_ASSERT_MESSAGE(false, "A unique name for a linked ELF file not created");
+                            ctx->EmitError((std::string("unable to create unique name for linked ELF file for kernel: ") + kernel->m_kernelInfo.m_kernelName).c_str(), nullptr);
+                            elfTmpFilesError = true; // Handle this error at the end of this function
+                            break;
                         }
                         elfVecNames.push_back(elfLinkerLogName);  // 1st element in this vector of names; required by the linker
                         elfVecPtrs.push_back(elfVecNames.back().c_str());
-
-                        ctx = kernel->GetContext();  // Remember context for future usage regarding warning emission (if needed).
                     }
 
                     std::string elfFileNameStr = "";
@@ -585,7 +588,9 @@ void CGen8OpenCLProgram::GetZEBinary(
                         uniqueLockFilePartStr,  // unique part only result should remain the same as the previous parameter
                         elfFileNameStr))        // full name with a path result
                     {
-                        IGC_ASSERT_MESSAGE(false, "A unique name for an input ELF file not created");
+                        ctx->EmitError((std::string("unable to create temporary ELF file for kernel: ") + kernel->m_kernelInfo.m_kernelName).c_str(), nullptr);
+                        elfTmpFilesError = true; // Handle this error at the end of this function
+                        break;
                     }
 
                     int writeFD = 0;
@@ -605,7 +610,7 @@ void CGen8OpenCLProgram::GetZEBinary(
                     }
                     else
                     {
-                        ctx->EmitError("ELF file opening error", nullptr);
+                        ctx->EmitError((std::string("failed to open ELF file: ") + elfFileNameStr).c_str(), nullptr);
                         elfTmpFilesError = true; // Handle this error at the end of this function
                         break;
                     }
@@ -734,6 +739,7 @@ void CGen8OpenCLProgram::GetZEBinary(
         {
             // Nothing to do with the linker when any error with temporary files occured.
             ctx->EmitError("ZeBinary will not contain correct debug info due to an ELF temporary files error", nullptr);
+            retValue = false;
         }
 
         if (IGC_IS_FLAG_DISABLED(ElfTempDumpEnable))
@@ -759,6 +765,7 @@ void CGen8OpenCLProgram::GetZEBinary(
     }
 
     zebuilder.getBinaryObject(programBinary);
+    return retValue;
 }
 
 void CGen8OpenCLProgram::CreateKernelBinaries()

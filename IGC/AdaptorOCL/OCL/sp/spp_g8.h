@@ -92,7 +92,7 @@ public:
 
     /// getZEBinary - create and get ZE Binary
     /// if spv and spvSize are given, a .spv section will be created in the output ZEBinary
-    void GetZEBinary(
+    bool GetZEBinary(
         llvm::raw_pwrite_stream& programBinary,
         unsigned pointerSizeInBytes,
         const char* spv,          uint32_t spvSize,
