@@ -87,7 +87,8 @@ CM_NODEBUG CM_INLINE uint __spirv_BuiltInSubgroupId() {
 }
 
 CM_NODEBUG CM_INLINE uint __spirv_BuiltInSubgroupLocalInvocationId() {
-  return __spirv_BuiltInLocalInvocationIndex();
+  // VC code always uses SubgroupSize == 1
+  return 0;
 }
 
 CM_NODEBUG CM_INLINE void __spirv_ControlBarrier(int scope, int memory_scope,
