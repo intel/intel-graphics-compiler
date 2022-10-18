@@ -49,6 +49,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/RayTracingShaderLowering.hpp"
 #include "Compiler/CISACodeGen/RayTracingStatefulPass.h"
 #include "Compiler/CISACodeGen/LSCCacheOptimizationPass.h"
@@ -57,7 +58,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MSAAInsertDiscard.hpp"
 #include "Compiler/CISACodeGen/PromoteInt8Type.hpp"
 #include "Compiler/CISACodeGen/PrepareLoadsStoresPass.h"
-#include "Compiler/CISACodeGen/HFpackingOpt.hpp"
 #include "Compiler/CISACodeGen/EvaluateFreeze.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
@@ -81,7 +81,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/RegPressureLoopControl/RegPressureLoopControl.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
-#include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/Optimizer/IntDivRemCombine.hpp"
@@ -108,7 +107,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/DynamicTextureFolding.h"
 #include "Compiler/SampleMultiversioning.hpp"
-#include "Compiler/ThreadCombining.hpp"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/GenRotate.hpp"
 #include "Compiler/Optimizer/Scalarizer.h"
@@ -409,6 +407,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
     initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
 
+
     if (ctx.m_threadCombiningOptDone)
     {
         mpm.add(createLoopCanonicalization());
@@ -632,7 +631,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
             mpm.add(createAdvMemOptPass());
 
         bool AllowNegativeSymPtrsForLoad =
-            ctx.type == ShaderType::RAYTRACING_SHADER ||
             ctx.type == ShaderType::OPENCL_SHADER;
 
         bool AllowVector8LoadStore =
@@ -641,12 +639,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 
         mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore));
 
-        if (ctx.type == ShaderType::RAYTRACING_SHADER &&
-            static_cast<RayDispatchShaderContext&>(ctx).doSpillWidening())
-        {
-            mpm.add(createRTSpillShrinkPass());
-            mpm.add(createMemOptPass(AllowNegativeSymPtrsForLoad, AllowVector8LoadStore));
-        }
 
         if ((ctx.type == ShaderType::RAYTRACING_SHADER || ctx.hasSyncRTCalls())
             && IGC_IS_FLAG_ENABLED(EnableLSCCacheOptimization))
@@ -664,27 +656,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         }
     }
 
-    if (ctx.type == ShaderType::RAYTRACING_SHADER)
-    {
-        if (IGC_IS_FLAG_ENABLED(EnableStackIDReleaseScheduling))
-            mpm.add(createStackIDSchedulingPass());
-        // This will help eliminate some redundant loads in some cases. Need
-        // to run this before create ldraw*/storeraw* intrinsics for raytracing
-        // memory.
-        mpm.add(createEarlyCSEPass());
-        if (IGC_IS_FLAG_DISABLED(DisableRTMemDSE))
-            mpm.add(createRayTracingMemDSEPass());
-        // Convert load/store to ldraw*/storeraw*
-        mpm.add(createRaytracingStatefulPass());
-        if (IGC_IS_FLAG_DISABLED(DisableRayTracingConstantCoalescing))
-        {
-            // block load RTGlobals
-            mpm.add(createRayTracingConstantCoalescingPass());
-        }
-        // lift raygen shader global and local pointer to inline data access.
-        mpm.add(CreateBindlessInlineDataPass());
-    }
-    else if (ctx.hasSyncRTCalls())
+    if (ctx.hasSyncRTCalls())
     {
         mpm.add(createRaytracingStatefulPass());
     }
@@ -909,14 +881,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(CreateRayTracingShaderLowering());
     }
 
-    if (ctx.type == ShaderType::RAYTRACING_SHADER)
-    {
-        if (ctx.platform.WaPredicatedStackIDRelease())
-            mpm.add(createRayTracingPredicatedStackIDReleasePass());
-
-        if (IGC_IS_FLAG_DISABLED(DisableRTFenceElision))
-            mpm.add(createSynchronizationObjectCoalescing());
-    }
 
     // Instruction combining may merge instruction back into unsupported intrinsics.
     // Therefore last Replace Unsupported Intrinsics Pass must be after last
@@ -1025,36 +989,6 @@ bool SimdEarlyCheck(CodeGenContext* ctx)
     return false;
 }
 
-bool ForceSimdWA(ComputeShaderContext& ctx, SIMDMode & forceSimd, SIMDMode minSimdMode, SIMDMode maxSimdMode)
-{
-    // WA for better utilization of SIMD lanes
-    if (ctx.platform.needsWAForThreadsUtilization() &&
-        ctx.getModuleMetaData()->csInfo.waveSize == 0)
-    {
-        unsigned sizeX = ctx.GetThreadGroupSizeX();
-        unsigned sizeY = ctx.GetThreadGroupSizeY();
-        unsigned sizeZ = ctx.GetThreadGroupSizeZ();
-
-        // Force SIMD8 on thread group size 16x1x1
-        if (sizeX == 16 && sizeY == 1 && sizeZ == 1 &&
-            minSimdMode >= SIMDMode::SIMD8)
-        {
-            forceSimd = SIMDMode::SIMD8;
-            return true;
-        }
-        // Force SIMD16 or lower on thread group size 32x1x1
-        else if (sizeX == 32 && sizeY == 1 && sizeZ == 1 &&
-            minSimdMode <= SIMDMode::SIMD16 &&
-            maxSimdMode >= SIMDMode::SIMD16)
-        {
-            forceSimd = SIMDMode::SIMD16;
-            return true;
-        }
-    }
-
-    forceSimd = SIMDMode::UNKNOWN;
-    return false;
-}
 
 void destroyShaderMap(CShaderProgram::KernelShaderMap& shaders)
 {
@@ -1069,7 +1003,6 @@ void destroyShaderMap(CShaderProgram::KernelShaderMap& shaders)
         delete shader;
     }
 }
-
 
 void unify_opt_PreProcess(CodeGenContext* pContext)
 {
@@ -1248,20 +1181,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
         mpm.add(createSamplerPerfOptPass());
 
-        // enable this only when Pooled EU is not supported
-        if ((IGC_IS_FLAG_ENABLED(EnableThreadCombiningOpt) ||
-             IGC_IS_FLAG_ENABLED(EnableForceThreadCombining) ||
-             IGC_IS_FLAG_ENABLED(EnableForceGroupSize)) &&
-            (pContext->type == ShaderType::COMPUTE_SHADER) &&
-            !pContext->platform.supportPooledEU() &&
-            pContext->platform.supportsThreadCombining()&&
-            SimdEarlyCheck(pContext))
-        {
-            initializePostDominatorTreeWrapperPassPass(*PassRegistry::getPassRegistry());
-            mpm.add(new ThreadCombining());
-            mpm.add(createAlwaysInlinerLegacyPass());
-            mpm.add(createPromoteMemoryToRegisterPass());
-        }
 
         if ((!IGC_IS_FLAG_ENABLED(DisableDynamicTextureFolding) && pContext->getModuleMetaData()->inlineDynTextures.size() > 0) ||
             (!IGC_IS_FLAG_ENABLED(DisableDynamicResInfoFolding)))
@@ -1269,11 +1188,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(new DynamicTextureFolding());
         }
 
-        if (IGC_IS_FLAG_ENABLED(EnableSLMConstProp) &&
-            pContext->type == ShaderType::COMPUTE_SHADER)
-        {
-            mpm.add(createSLMConstPropPass());
-        }
 
         if (pContext->m_DriverInfo.CodeSinkingBeforeCFGSimplification())
         {
@@ -1301,11 +1215,6 @@ void OptimizeIR(CodeGenContext* const pContext)
         mpm.add(createLogicalAndToBranchPass());
         mpm.add(llvm::createEarlyCSEPass());
 
-        if (IGC_IS_FLAG_ENABLED(EnableHFpacking) &&
-            pContext->type == ShaderType::COMPUTE_SHADER)
-        {
-            mpm.add(createHFpackingOptPass());
-        }
 
         if (pContext->m_instrTypes.CorrelatedValuePropagationEnable)
         {
@@ -1700,8 +1609,6 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(CreateMCSOptimization());
 
-        if (pContext->type == ShaderType::GEOMETRY_SHADER)
-            mpm.add(createRectListOptimizationPass());
 
         mpm.add(CreateGatingSimilarSamples());
 

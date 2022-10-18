@@ -291,41 +291,9 @@ void DynamicTextureFolding::copyResInfoData(ContextT* pShaderCtx)
         pShaderCtx->programOutput.m_ResInfoFoldingOutput.push_back(m_ResInfoFoldingOutput[i]);
     }
 }
+
 bool DynamicTextureFolding::doFinalization(llvm::Module& M)
 {
-    if (m_ResInfoFoldingOutput.size() != 0)
-    {
-        if (m_context->type == ShaderType::PIXEL_SHADER)
-        {
-            PixelShaderContext* pShaderCtx = static_cast <PixelShaderContext*>(m_context);
-            copyResInfoData(pShaderCtx);
-        }
-        else if (m_context->type == ShaderType::VERTEX_SHADER)
-        {
-            VertexShaderContext* pShaderCtx = static_cast <VertexShaderContext*>(m_context);
-            copyResInfoData(pShaderCtx);
-        }
-        else if (m_context->type == ShaderType::GEOMETRY_SHADER)
-        {
-            GeometryShaderContext* pShaderCtx = static_cast <GeometryShaderContext*>(m_context);
-            copyResInfoData(pShaderCtx);
-        }
-        else if (m_context->type == ShaderType::HULL_SHADER)
-        {
-            HullShaderContext* pShaderCtx = static_cast <HullShaderContext*>(m_context);
-            copyResInfoData(pShaderCtx);
-        }
-        else if (m_context->type == ShaderType::DOMAIN_SHADER)
-        {
-            DomainShaderContext* pShaderCtx = static_cast <DomainShaderContext*>(m_context);
-            copyResInfoData(pShaderCtx);
-        }
-        else if (m_context->type == ShaderType::COMPUTE_SHADER)
-        {
-            ComputeShaderContext* pShaderCtx = static_cast <ComputeShaderContext*>(m_context);
-            copyResInfoData(pShaderCtx);
-        }
-    }
     return false;
 }
 

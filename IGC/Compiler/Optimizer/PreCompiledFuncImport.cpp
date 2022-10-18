@@ -2158,14 +2158,6 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
         return;
     }
 
-    // Only simd8 is supported for subroutine. Make sure simd8 is allowed!
-    if (m_pCtx->type == ShaderType::COMPUTE_SHADER)
-    {
-        ComputeShaderContext* ctx = static_cast<ComputeShaderContext*>(m_pCtx);
-        SIMDMode simdMode = ctx->GetLeastSIMDModeAllowed();
-        if (simdMode != SIMDMode::SIMD8)
-            return;
-    }
 
     bool SPDiv = isSPDiv();
     bool DPEmu = isDPEmu();

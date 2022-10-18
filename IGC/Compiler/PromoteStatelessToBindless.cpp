@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CISACodeGen/helper.h"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Probe/Assertion.h"
 using namespace IGC::IGCMD;
 

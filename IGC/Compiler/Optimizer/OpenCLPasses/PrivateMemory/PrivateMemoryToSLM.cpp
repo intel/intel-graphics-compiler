@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/ModuleAllocaAnalysis.hpp"
 
@@ -171,17 +172,6 @@ namespace IGC
                 yDim = threadGroupSize->getYDim();
                 zDim = threadGroupSize->getZDim();
             }
-            else if (CodeGenCtx->type == ShaderType::COMPUTE_SHADER)
-            {
-                GlobalVariable* pGlobal = M.getGlobalVariable("ThreadGroupSize_X");
-                xDim = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-
-                pGlobal = M.getGlobalVariable("ThreadGroupSize_Y");
-                yDim = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-
-                pGlobal = M.getGlobalVariable("ThreadGroupSize_Z");
-                zDim = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-            }
 
             uint64_t threadsNum = xDim * yDim * zDim;
 
@@ -190,10 +180,14 @@ namespace IGC
                 continue;
             }
 
-            // TODO: Is there an API to request SLM size in the case of OpenCL shader?
-            // For now implement it the same way as for a compute shader.
-            ComputeShaderContext* computeCtx = (ComputeShaderContext*)CodeGenCtx;
-            uint64_t slmSizePerSubslice = computeCtx->GetSlmSizePerSubslice();
+            uint64_t slmSizePerSubslice = 0;
+
+            if (CodeGenCtx->type == ShaderType::OPENCL_SHADER)
+            {
+                OpenCLProgramContext* oclCtx = static_cast<OpenCLProgramContext*>(CodeGenCtx);
+                slmSizePerSubslice = oclCtx->GetSlmSizePerSubslice();
+            }
+
 
             // Calculate an offset for new SLM variables.
             unsigned int offset = 0;
@@ -329,30 +323,6 @@ namespace IGC
                                 false,
                                 VALUE_NAME("localIdZ"),
                                 pEntryPoint);
-                    }
-                    else if (CodeGenCtx->type == ShaderType::COMPUTE_SHADER)
-                    {
-                        // *  R0
-                        //    DWord Bit     Description
-                        //    R0.1  31:0    Thread Group ID X
-                        //    R0.6  31:0    Thread Group ID Y
-                        //    R0.7  31:0    Thread Group ID Z
-                        Value* r0Val = implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, MD);
-                        localIdX =
-                            builder.CreateExtractElement(
-                                r0Val,
-                                ConstantInt::get(typeInt32, 1),
-                                VALUE_NAME("localIdX"));
-                        localIdY =
-                            builder.CreateExtractElement(
-                                r0Val,
-                                ConstantInt::get(typeInt32, 6),
-                                VALUE_NAME("localIdY"));
-                        localIdZ =
-                            builder.CreateExtractElement(
-                                r0Val,
-                                ConstantInt::get(typeInt32, 7),
-                                VALUE_NAME("localIdZ"));
                     }
 
                     Value* xOffset = localIdX;

@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <common/LLVMUtils.h>
 #include <common/ModuleSplitter.h>
 #include <Compiler/CodeGenPublic.h>
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 
 namespace IGC {
 KernelModuleSplitter::KernelModuleSplitter(

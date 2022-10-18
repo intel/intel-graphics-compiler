@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/CISABuilder.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "common/allocator.h"
 #include "common/Types.hpp"
@@ -3923,12 +3924,6 @@ namespace IGC
 
             QWORD AssemblyHash = context->hash.getAsmHash();
 
-            if (context->type == ShaderType::RAYTRACING_SHADER && AssemblyHash == 0)
-            {
-                auto* Ctx = static_cast<RayDispatchShaderContext*>(context);
-                if (QWORD Hash = Ctx->getShaderHash(m_program))
-                    AssemblyHash = Hash;
-            }
 
             addHash("-hashmovs", AssemblyHash);
 
@@ -5526,20 +5521,6 @@ namespace IGC
 
     bool CEncoder::AvoidRetryOnSmallSpill() const
     {
-        CodeGenContext* context = m_program->GetContext();
-        if (context->type == ShaderType::PIXEL_SHADER && context->m_retryManager.IsFirstTry())
-        {
-            if (m_program->m_Platform->getGRFSize() >= 64)
-                return true;
-            else
-                return m_program->m_dispatchSize == SIMDMode::SIMD8 || m_program->m_dispatchSize == SIMDMode::SIMD16;
-        }
-        else if (context->type == ShaderType::COMPUTE_SHADER && context->m_retryManager.IsFirstTry())
-        {
-            ComputeShaderContext* csCtx = static_cast<ComputeShaderContext*>(context);
-            return csCtx->m_ForceOneSIMD;
-        }
-
         return false;
     }
 

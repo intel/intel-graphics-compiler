@@ -650,43 +650,6 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
         // try to prune the destination size
         switch (id)
         {
-        case GenISAIntrinsic::GenISA_discard:
-        {
-            Value* srcVal0 = C.getOperand(0);
-            if (ConstantInt * CI = dyn_cast<ConstantInt>(srcVal0))
-            {
-                if (CI->isZero()) { // i1 is false
-                    C.eraseFromParent();
-                    ++Stat_DiscardRemoved;
-                }
-                else if (!psHasSideEffect)
-                {
-                    BasicBlock* blk = C.getParent();
-                    BasicBlock* pred = blk->getSinglePredecessor();
-                    if (blk && pred)
-                    {
-                        BranchInst* cbr = dyn_cast<BranchInst>(pred->getTerminator());
-                        if (cbr && cbr->isConditional())
-                        {
-                            if (blk == cbr->getSuccessor(0))
-                            {
-                                C.setOperand(0, cbr->getCondition());
-                                C.removeFromParent();
-                                C.insertBefore(cbr);
-                            }
-                            else if (blk == cbr->getSuccessor(1))
-                            {
-                                Value* flipCond = llvm::BinaryOperator::CreateNot(cbr->getCondition(), "", cbr);
-                                C.setOperand(0, flipCond);
-                                C.removeFromParent();
-                                C.insertBefore(cbr);
-                            }
-                        }
-                    }
-                }
-            }
-            break;
-        }
 
         case GenISAIntrinsic::GenISA_bfi:
         {
@@ -729,60 +692,12 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
             visitLdRawVec(inst);
             break;
         }
-        case GenISAIntrinsic::GenISA_OUTPUT:
-        {
-            if (pContext->m_ForceEarlyZMathCheck)
-            {
-                earlyZDepthDetection(C);
-            }
-            break;
-        }
         default:
             break;
         }
     }
 }
 
-void IGC::CustomSafeOptPass::earlyZDepthDetection(llvm::CallInst& C)
-{
-    if (pContext->type == ShaderType::PIXEL_SHADER)
-    {
-        uint outputType = (uint)cast<ConstantInt>((&C)->getOperand(4))->getZExtValue();
-        if (outputType == SHADER_OUTPUT_TYPE_DEPTHOUT)
-        {
-            uint depthMask = (uint)cast<ConstantInt>((&C)->getOperand(5))->getZExtValue();
-            if (depthMask == 0)
-            {
-                if (CallInst* minInst = dyn_cast<CallInst>((&C)->getOperand(0)))
-                {
-                    if (GetOpCode(minInst) == llvm_min || GetOpCode(minInst) == llvm_max)
-                    {
-                        if (Instruction* divInst = dyn_cast<Instruction>(minInst->getOperand(0)))
-                        {
-                            if (divInst->getOpcode() == Instruction::FDiv)
-                            {
-                                if (Instruction* mulInst = dyn_cast<Instruction>(divInst->getOperand(0)))
-                                {
-                                    if (mulInst->getOpcode() == Instruction::FMul)
-                                    {
-                                        if (mulInst->getOperand(1) == divInst->getOperand(1))
-                                        {
-                                            (&C)->eraseFromParent();
-                                            IGC::PixelShaderContext* psContext = static_cast<IGC::PixelShaderContext*>(pContext);
-                                            psContext->programOutput.outputDepth = false;
-                                            m_modMD->psInfo.outputDepth = false;
-                                            return;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 //
 // pattern match packing of two half float from f32tof16:

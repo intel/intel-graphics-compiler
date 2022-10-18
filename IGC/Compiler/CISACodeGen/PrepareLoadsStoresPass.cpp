@@ -92,11 +92,6 @@ bool PrepareLoadsStoresPass::runOnFunction(Function &F)
     auto *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     auto& rtInfo = Ctx->getModuleMetaData()->rtInfo;
 
-    if (rtInfo.RTAsyncStackSurfaceStateOffset)
-    {
-        RTAsyncStackAddrSpace =
-            RTBuilder::getRTAsyncStackStatefulAddrSpace(*Ctx->getModuleMetaData());
-    }
     if (rtInfo.SWStackSurfaceStateOffset)
     {
         SWStackAddrSpace =

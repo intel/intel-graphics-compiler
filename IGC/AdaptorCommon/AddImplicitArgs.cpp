@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"

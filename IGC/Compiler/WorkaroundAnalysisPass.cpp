@@ -239,38 +239,6 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
     }
 
 
-
-    // TODO: Fix this for all Shaders once and for all
-    if (pCodeGenCtx->type == ShaderType::VERTEX_SHADER && pCodeGenCtx->isPOSH())
-    {
-        if (const GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(&I))
-        {
-            VertexShaderContext* pShaderCtx = static_cast <VertexShaderContext*>(pCodeGenCtx);
-            switch (intr->getIntrinsicID())
-            {
-            case llvm::GenISAIntrinsic::GenISA_gather4Cptr:
-            case llvm::GenISAIntrinsic::GenISA_gather4POCptr:
-            case llvm::GenISAIntrinsic::GenISA_gather4POptr:
-            case llvm::GenISAIntrinsic::GenISA_gather4ptr:
-            case llvm::GenISAIntrinsic::GenISA_sampleptr:
-            case llvm::GenISAIntrinsic::GenISA_sampleLptr:
-            case llvm::GenISAIntrinsic::GenISA_sampleBCptr:
-            case llvm::GenISAIntrinsic::GenISA_sampleBptr:
-            case llvm::GenISAIntrinsic::GenISA_sampleCptr:
-            case llvm::GenISAIntrinsic::GenISA_sampleDCptr:
-            case llvm::GenISAIntrinsic::GenISA_sampleDptr:
-            case llvm::GenISAIntrinsic::GenISA_sampleKillPix:
-            case llvm::GenISAIntrinsic::GenISA_sampleLCptr:
-            case llvm::GenISAIntrinsic::GenISA_sampleinfoptr:
-                pShaderCtx->programOutput.m_SamplerCount = 1;
-                break;
-            default:
-                break;
-            }
-        }
-    }
-
-
     if (const GenIntrinsicInst * intr = dyn_cast<GenIntrinsicInst>(&I))
     {
         switch (intr->getIntrinsicID())
@@ -282,49 +250,6 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst& I)
         case GenISAIntrinsic::GenISA_ldmsptr:
             ldmsOffsetWorkaournd(cast<LdMSIntrinsic>(&I));
             break;
-        case llvm::GenISAIntrinsic::GenISA_sampleBCptr:
-        case llvm::GenISAIntrinsic::GenISA_sampleCptr:
-        case llvm::GenISAIntrinsic::GenISA_sampleDCptr:
-        case llvm::GenISAIntrinsic::GenISA_sampleLCptr:
-        {
-
-            uint bufferIndex = GetSampleCResourceIdx(I);
-            if (bufferIndex == -1) break;
-
-            IGC_ASSERT(bufferIndex < 256);
-
-            if (pCodeGenCtx->type == ShaderType::PIXEL_SHADER)
-            {
-                PixelShaderContext* pShaderCtx = static_cast <PixelShaderContext*>(pCodeGenCtx);
-                pShaderCtx->programOutput.m_AccessedBySampleC[bufferIndex / 32] |= BIT(bufferIndex % 32);
-            }
-            else if (pCodeGenCtx->type == ShaderType::VERTEX_SHADER)
-            {
-                VertexShaderContext* pShaderCtx = static_cast <VertexShaderContext*>(pCodeGenCtx);
-                pShaderCtx->programOutput.m_AccessedBySampleC[bufferIndex / 32] |= BIT(bufferIndex % 32);
-            }
-            else if (pCodeGenCtx->type == ShaderType::GEOMETRY_SHADER)
-            {
-                GeometryShaderContext* pShaderCtx = static_cast <GeometryShaderContext*>(pCodeGenCtx);
-                pShaderCtx->programOutput.m_AccessedBySampleC[bufferIndex / 32] |= BIT(bufferIndex % 32);
-            }
-            else if (pCodeGenCtx->type == ShaderType::HULL_SHADER)
-            {
-                HullShaderContext* pShaderCtx = static_cast <HullShaderContext*>(pCodeGenCtx);
-                pShaderCtx->programOutput.m_AccessedBySampleC[bufferIndex / 32] |= BIT(bufferIndex % 32);
-            }
-            else if (pCodeGenCtx->type == ShaderType::DOMAIN_SHADER)
-            {
-                DomainShaderContext* pShaderCtx = static_cast <DomainShaderContext*>(pCodeGenCtx);
-                pShaderCtx->programOutput.m_AccessedBySampleC[bufferIndex / 32] |= BIT(bufferIndex % 32);
-            }
-            else if (pCodeGenCtx->type == ShaderType::COMPUTE_SHADER)
-            {
-                ComputeShaderContext* pShaderCtx = static_cast <ComputeShaderContext*>(pCodeGenCtx);
-                pShaderCtx->programOutput.m_AccessedBySampleC[bufferIndex / 32] |= BIT(bufferIndex % 32);
-            }
-        }
-        break;
         case llvm::GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
         {
             //Render target read should return 0 when the sample is outside primitive processed.

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/DwarfDebug.hpp"
 #include "DebugInfo/VISADebugInfo.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "llvm/IR/IntrinsicInst.h"
 
 using namespace llvm;

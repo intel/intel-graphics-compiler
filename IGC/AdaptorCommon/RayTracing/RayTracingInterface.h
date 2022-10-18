@@ -25,6 +25,5 @@ SPDX-License-Identifier: MIT
 
 namespace IGC
 {
-void RayTracingLowering(RayDispatchShaderContext* pContext);
-void RayTracingInlineLowering(CodeGenContext* pContext);
+    void RayTracingInlineLowering(CodeGenContext* pContext);
 }

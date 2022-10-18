@@ -32,11 +32,10 @@ Abstract:  Provides all the registry reading/writing code for Intel
 
 #include <stdlib.h>
 
-//TO REMOVE
-typedef unsigned char byte;
-
 namespace llvm
 {
+//TO REMOVE
+//typedef unsigned char byte;
 
 /*****************************************************************************\
                                     Windows
@@ -70,7 +69,7 @@ inline DWORD ReadRegistry( const char* pKeyName, const DWORD defaultValue )
                                     pKeyName,
                                     NULL,
                                     &regType,
-                                    (byte*) &value,
+                                    (unsigned char*) &value,
                                     &size );
 
         // close key
@@ -236,7 +235,7 @@ inline bool WriteRegistry( const char* pKeyName, const unsigned long value )
                         pKeyName,
                         0,
                         REG_DWORD,
-                        (byte*) &value,
+                        (unsigned char*) &value,
                         size );
 
         RegCloseKey( Key );

@@ -15,34 +15,10 @@ namespace llvm
 
 namespace IGC
 {
-llvm::Pass* createRayTracingIntrinsicLoweringPass();
-llvm::Pass* createEarlyRematPass();
-llvm::Pass* createLateRematPass();
-llvm::Pass* CreateBindlessKernelArgLoweringPass();
-llvm::Pass* CreateBindlessInlineDataPass();
-llvm::Pass* createRayTracingConstantCoalescingPass();
-llvm::Pass* createStackIDSchedulingPass();
-llvm::Pass* CreateStackIDRetirement();
 llvm::Pass* createRayTracingIntrinsicAnalysisPass();
 llvm::Pass* createRayTracingIntrinsicResolutionPass();
 llvm::Pass* createTraceRayInlinePrepPass();
 llvm::Pass* createTraceRayInlineLatencySchedulerPass();
 llvm::Pass* CreateTraceRayInlineLoweringPass();
 llvm::Pass* CreateRTGlobalsPointerLoweringPass();
-llvm::Pass* createPrivateToGlobalPointerPass();
-llvm::Pass* createLowerIntersectionAnyHitPass();
-llvm::Pass* createSplitPreparePass();
-llvm::Pass* createSplitAsyncPass();
-llvm::Pass* createSyncHandlingPass();
-llvm::Pass* createRayTracingFinalizePass();
-llvm::Pass* createInlineMergeCallsPass();
-llvm::Pass* createPromoteToScratchPass();
-llvm::Pass* createRayInfoCSEPass();
-llvm::Pass* createRayTracingPrintfPostProcessPass();
-llvm::Pass* createPayloadSinkingPass();
-llvm::Pass* createLowerGlobalRootSignaturePass();
-llvm::Pass* createRayTracingMemDSEPass();
-llvm::Pass* createRayTracingPredicatedStackIDReleasePass();
-llvm::Pass* createRTSpillShrinkPass();
-llvm::Pass* createDeadPayloadStoreEliminationPass();
 }

@@ -752,15 +752,16 @@ public:
         }
     }
 
-protected:
-    CShader*& GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode);
-    CShader* CreateNewShader(SIMDMode simd);
-    void ClearShaderPtr(SIMDMode simd);
-
     inline bool hasShaderOutput(CShader* shader)
     {
         return (shader && shader->ProgramOutput()->m_programSize > 0);
     }
+
+    void ClearShaderPtr(SIMDMode simd);
+
+protected:
+    CShader*& GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode);
+    CShader* CreateNewShader(SIMDMode simd);
 
     inline void freeShaderOutput(CShader* shader)
     {
@@ -809,7 +810,6 @@ void AddCodeGenPasses(
 
 
 bool SimdEarlyCheck(CodeGenContext* ctx);
-bool ForceSimdWA(ComputeShaderContext& ctx, SIMDMode& forceSimd, SIMDMode minSimdMode, SIMDMode maxSimdMode);
 void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature* pSignature = nullptr);
 void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm);
 void destroyShaderMap(CShaderProgram::KernelShaderMap& shaders);

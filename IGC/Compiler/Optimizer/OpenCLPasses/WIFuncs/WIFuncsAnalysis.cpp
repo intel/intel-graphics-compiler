@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"

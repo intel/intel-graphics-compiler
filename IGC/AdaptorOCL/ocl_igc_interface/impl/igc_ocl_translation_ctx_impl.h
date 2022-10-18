@@ -26,6 +26,8 @@ SPDX-License-Identifier: MIT
 #include "cif/macros/enable.h"
 #include <spirv-tools/libspirv.h>
 
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+
 namespace TC{
 
 // Taken from dllInterfaceCompute

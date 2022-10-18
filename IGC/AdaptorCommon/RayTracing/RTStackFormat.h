@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "RayTracingRayDispatchGlobalData.h"
-#include "RayTracingConstantsEnums.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -173,48 +172,6 @@ public:
 
 static_assert(sizeof(KSP) == 8, "changed?");
 
-// This is the structure of a shader identifier as of DG2 at least.  The compiler
-// output structure (i.e., RayTracingPipelineOutput) must obey this format as
-// this is where HW expects the shaders to be.
-struct ShaderIdentifier
-{
-    KSP ClosestHit;
-    union
-    {
-        KSP Intersection;
-        KSP AnyHit;
-    };
-    KSP Unused1;
-    KSP Unused2;
-
-    static constexpr uint32_t NumSlots = SHADER_IDENTIFIER_SIZE_IN_BYTES / sizeof(KSP);
-    static constexpr uint32_t RaygenFirstOpenSlot = 1;
-    static constexpr uint32_t NumRaygenOpenSlots  = NumSlots - RaygenFirstOpenSlot;
-};
-
-static_assert(ShaderIdentifier::NumSlots == 4);
-static_assert(sizeof(ShaderIdentifier) == SHADER_IDENTIFIER_SIZE_IN_BYTES, "changed?");
-
-// will be patched with the local root signature at compile time
-struct alignas(32) TypeHoleLocalRootSig
-{
-    char __Padding[32];
-};
-
-// A shader record is composed of two parts:
-// +-------------------+-------------------+
-// | Shader Identifier |     Local Args    |
-// +-------------------+-------------------+
-//  <----32 bytes-----> <--(4K - 32) max-->
-//
-// That is, the entire record can be at most 4096 bytes so at
-// most 4096 - 32 = 4064 bytes can be referenced by a local
-// root signature.
-struct alignas(RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT) ShaderRecord
-{
-    ShaderIdentifier ID;
-    TypeHoleLocalRootSig LocalRootSig;
-};
 
 struct MemHit {
     float    t;                    // hit distance of current hit (or initial traversal distance)

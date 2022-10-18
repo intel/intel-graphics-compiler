@@ -81,11 +81,6 @@ static StoreInst* legalizeStore(StoreInst* SI)
 }
 
 Value* getBaseSSHOffset(CodeGenContext* Ctx, RTBuilder& RTB) {
-    if (Ctx->type == ShaderType::RAYTRACING_SHADER)
-    {
-        return RTB.getBaseSSHOffset();
-    }
-    else
     {
         Function* pFunc = GenISAIntrinsic::getDeclaration(
             Ctx->getModule(),

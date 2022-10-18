@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorOCL/UnifyIROCL.hpp"
 #include "AdaptorOCL/DriverInfoOCL.hpp"
 
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "common/debug/Dump.hpp"
 #include "common/debug/Debug.hpp"

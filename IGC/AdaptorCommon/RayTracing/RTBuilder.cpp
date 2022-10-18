@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
 
+
 using namespace llvm;
 using namespace RTStackFormat;
 using namespace IGC;
@@ -72,88 +73,6 @@ Value* RTBuilder::getRtMemBasePtr(void)
     return Val;
 }
 
-Value* RTBuilder::getpRtMemBasePtr(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_pRtMemBasePtr(BasePtr, VALUE_NAME("&pRtMemBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("pRtMemBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getCallStackHandler(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_callStackHandlerPtr(BasePtr, VALUE_NAME("&callStackHandlerPtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("callStackHandlerPtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getStackSizePerRay(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_stackSizePerRay(BasePtr, VALUE_NAME("&stackSizePerRay"));
-    LoadInst* stackSizePerRay =
-        this->CreateLoad(Ptr, VALUE_NAME("stackSizePerRay"));
-    setInvariantLoad(stackSizePerRay);
-
-    // Multiply by 64 to return the required stack size in bytes.
-    Value* StackSizePerRayInBytes = this->CreateShl(
-        this->CreateTrunc(stackSizePerRay, this->getInt16Ty()),
-        this->getInt16(6),
-        VALUE_NAME("StackSizePerRayInBytes"));
-
-    return StackSizePerRayInBytes;
-}
-
-Value* RTBuilder::getpStackSizePerRay(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_pStackSizePerRay(BasePtr, VALUE_NAME("&pStackSizePerRay"));
-    LoadInst* stackSizePerRay =
-        this->CreateLoad(Ptr, VALUE_NAME("pStackSizePerRay"));
-    setInvariantLoad(stackSizePerRay);
-
-    // Multiply by 64 to return the required stack size in bytes.
-    Value* StackSizePerRayInBytes = this->CreateShl(
-        this->CreateTrunc(stackSizePerRay, this->getInt16Ty()),
-        this->getInt16(6),
-        VALUE_NAME("StackSizePerRayInBytes"));
-
-    return StackSizePerRayInBytes;
-}
-
-Value* RTBuilder::getSWStackSizePerRay(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_swStackSizePerRay(
-        BasePtr,
-        VALUE_NAME("&swStackSizePerRay"));
-    LoadInst* SWStackSizePerRay =
-        this->CreateLoad(Ptr, VALUE_NAME("swStackSizePerRay"));
-    setInvariantLoad(SWStackSizePerRay);
-
-    return SWStackSizePerRay;
-}
-
-Value* RTBuilder::getNumDSSRTStacks(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_numDSSRTStacks(BasePtr, VALUE_NAME("&numDSSRTStacks"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("numDSSRTStacks"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getpNumDSSRTStacks(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_pNumDSSRTStacks(BasePtr, VALUE_NAME("&pNumDSSRTStacks"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("pNumDSSRTStacks"));
-    setInvariantLoad(Val);
-    return Val;
-}
 
 Value* RTBuilder::getMaxBVHLevels(void)
 {
@@ -167,41 +86,6 @@ Value* RTBuilder::getMaxBVHLevels(void)
     return Val;
 }
 
-Value* RTBuilder::getHitGroupBasePtr(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_hitGroupBasePtr(BasePtr, VALUE_NAME("&hitGroupBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("hitGroupBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getpHitGroupBasePtr(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_pHitGroupBasePtr(BasePtr, VALUE_NAME("&pHitGroupBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("pHitGroupBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getMissShaderBasePtr(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_missShaderBasePtr(BasePtr, VALUE_NAME("&missShaderBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("missShaderBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getpMissShaderBasePtr(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_pMissShaderBasePtr(BasePtr, VALUE_NAME("&pMissShaderBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("pMissShaderBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
 
 Value* RTBuilder::getStatelessScratchPtr(void)
 {
@@ -212,117 +96,6 @@ Value* RTBuilder::getStatelessScratchPtr(void)
     return Val;
 }
 
-Value* RTBuilder::getCallableShaderBasePtr(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_callableShaderBasePtr(BasePtr, VALUE_NAME("&callableShaderBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("callableShaderBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getpCallableShaderBasePtr(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_pCallableShaderBasePtr(BasePtr, VALUE_NAME("&pCallableShaderBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("pCallableShaderBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getBindlessHeapBasePtr(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_bindlessHeapBasePtr(BasePtr, VALUE_NAME("&bindlessHeapBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("bindlessHeapBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getBaseSSHOffset(void)
-{
-    if (IGC_IS_FLAG_ENABLED(EnableKnownBTIBase))
-        return this->getInt32(IGC_GET_FLAG_VALUE(KnownBTIBaseValue));
-
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_baseSSHOffset(BasePtr, VALUE_NAME("&baseSSHOffset"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("baseSSHOffset"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getPrintfBufferBasePtr(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_printfBufferBasePtr(BasePtr, VALUE_NAME("&printfBufferBasePtr"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("printfBufferBasePtr"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getHitGroupStride(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_hitGroupStride(BasePtr, VALUE_NAME("&hitGroupStride"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("hitGroupStride"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getpHitGroupStride(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_pHitGroupStride(BasePtr, VALUE_NAME("&pHitGroupStride"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("pHitGroupStride"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getMissShaderStride(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_missShaderStride(BasePtr, VALUE_NAME("&missShaderStride"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("missShaderStride"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getpMissShaderStride(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_pMissShaderStride(BasePtr, VALUE_NAME("&pMissShaderStride"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("pMissShaderStride"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getCallableShaderStride(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_callableShaderStride(BasePtr, VALUE_NAME("&callableShaderStride"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("callableShaderStride"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getpCallableShaderStride(void)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_pCallableShaderStride(BasePtr, VALUE_NAME("&pCallableShaderStride"));
-    LoadInst* Val = this->CreateLoad(Ptr, VALUE_NAME("pCallableShaderStride"));
-    setInvariantLoad(Val);
-    return Val;
-}
-
-Value* RTBuilder::getDispatchRayDimension(unsigned int dim)
-{
-    auto* BasePtr = this->getGlobalBufferPtr();
-    auto* Ptr = this->_gepof_dispatchRaysDimensions(BasePtr, this->getInt32(dim));
-    LoadInst* Val = this->CreateLoad(Ptr,
-        VALUE_NAME("dispatchRaysDimensions[" + Twine(dim) + "]"));
-    setInvariantLoad(Val);
-    return Val;
-}
 
 //get MemHit.topOfPrimIndexDelta/frontFaceDword/hitInfoDWord
 //to avoid confusion, let's use one single method to represent all 3 union fields
@@ -375,214 +148,6 @@ Value* RTBuilder::getIsFrontFace(
         VALUE_NAME("is_front_face"));
 }
 
-Value* RTBuilder::getTriangleHitKind(
-    RTBuilder::StackPointerVal* StackPointer, IGC::CallableShaderTypeMD ShaderTy)
-{
-    Value* IsFrontFace = getIsFrontFace(StackPointer, ShaderTy);
-    Value* RetVal = this->CreateSelect(IsFrontFace,
-        this->getInt32(HIT_KIND_TRIANGLE_FRONT_FACE),
-        this->getInt32(HIT_KIND_TRIANGLE_BACK_FACE),
-        VALUE_NAME("hit_kind_enum_val"));
-
-    return RetVal;
-}
-
-RTBuilder::StackOffsetIntVal* RTBuilder::getFirstFrameOffset()
-{
-    Value* Offset = nullptr;
-    if (IGC_IS_FLAG_DISABLED(EnableCompressedRayIndices))
-        Offset = this->getInt32(0);
-    else
-        Offset = this->getInt16(0);
-
-    return static_cast<StackOffsetIntVal*>(Offset);
-}
-
-// Given a pointer to the stack pointer location, this will bump
-// the 'FrameAddr' by 'Amount', update the stack pointer, and return its new
-// value.
-RTBuilder::SWStackPtrVal* RTBuilder::bumpStackPtr(
-    RTBuilder::SWStackPtrVal* FrameAddr,
-    uint64_t Amount,
-    RTBuilder::StackOffsetIntVal *FrameOffset,
-    RTBuilder::StackOffsetPtrVal* Ptr)
-{
-    IGC_ASSERT(FrameAddr->getType()->getPointerElementType() == this->getInt8Ty());
-    IGC_ASSERT_MESSAGE(Amount < std::numeric_limits<uint32_t>::max(), "overflow?");
-
-    auto* NewStackOffsetVal = this->CreateAdd(
-        FrameOffset,
-        this->getIntN(FrameOffset->getType()->getIntegerBitWidth(), Amount),
-        VALUE_NAME("bumped_stack_offset_val"));
-    this->writeNewStackOffsetVal(NewStackOffsetVal, Ptr);
-
-    auto* NewStackPtrVal = this->CreateGEP(
-        FrameAddr,
-        this->getInt32((uint32_t)Amount),
-        VALUE_NAME("bumped_stack_pointer_val"));
-
-    return static_cast<RTBuilder::SWStackPtrVal*>(NewStackPtrVal);
-}
-
-// We want to L1$ the stack pointer. Whenever we write the stack offset back
-// to the hotzone, we ensure it will be at least 16 bytes wide.
-void RTBuilder::writeNewStackOffsetVal(
-    Value* Offset,
-    RTBuilder::StackOffsetPtrVal* Ptr)
-{
-    if (IGC_IS_FLAG_ENABLED(EnableCompressedRayIndices))
-    {
-        this->CreateStore(Offset, Ptr);
-        return;
-    }
-
-    IGC_ASSERT_MESSAGE(Offset->getType()->isIntegerTy(32), "changed?");
-    static_assert(sizeof(SWHotZone_v2) == 16, "changed?");
-    static_assert(offsetof(SWHotZone_v2, StackOffset) == 0, "changed?");
-
-    uint32_t AddrSpace = Ptr->getType()->getPointerAddressSpace();
-    Type* ArrTy = ArrayType::get(this->getInt32Ty(), 4);
-    Value* ArrayPtr = this->CreateBitCast(Ptr, ArrTy->getPointerTo(AddrSpace));
-
-    Value* GEPs[3];
-    Value* DWs[3];
-    for (uint32_t i = 0; i < 3; i++)
-    {
-        Value* Idx[] = { this->getInt32(0), this->getInt32(i + 1) };
-        Value* CurPtr = this->CreateInBoundsGEP(ArrayPtr, Idx);
-        GEPs[i] = CurPtr;
-        DWs[i] = this->CreateLoad(CurPtr, VALUE_NAME("reload"));
-    }
-
-    //FIXME: store vector instead of scalar to avoid those 3 DWs being optimized away by DSE.
-    //We might want to revisit this because DSE's behavior might be changed
-    //and these 3DWs could be opted away by other passes as well.
-    //LSCCacheOptimizationPass or a similar pass could help to resolve this issue totally?
-    IGC_ASSERT(Offset->getType() == DWs[0]->getType());
-    Type* vecType = IGCLLVM::FixedVectorType::get(Offset->getType(), 4);
-    Value* vecPointer = this->CreateBitCast(Ptr, vecType->getPointerTo(AddrSpace));
-    Value* vecVals = llvm::UndefValue::get(vecType);
-    vecVals = this->CreateInsertElement(vecVals, Offset, getInt32(0));
-    for (uint32_t i = 0; i < 3; i++)
-    {
-        vecVals = this->CreateInsertElement(vecVals, DWs[i], getInt32(i+1));
-    }
-    this->CreateAlignedStore(vecVals, vecPointer, IGCLLVM::Align(LSC_WRITE_GRANULARITY));
-}
-
-RTBuilder::StackOffsetPtrVal* RTBuilder::getAddrOfSWStackOffset(
-    SWHotZonePtrVal* SWHotZonePtr)
-{
-    Value* Ptr = nullptr;
-    if (IGC_IS_FLAG_DISABLED(EnableCompressedRayIndices))
-    {
-        Ptr = this->_gepof_StackOffset_v2(
-            SWHotZonePtr,
-            VALUE_NAME("&SWStackOffset"));
-    }
-    else
-    {
-        Ptr = this->_gepof_StackOffset_v1(
-            SWHotZonePtr,
-            VALUE_NAME("&SWStackOffset"));
-    }
-    return static_cast<StackOffsetPtrVal*>(Ptr);
-}
-
-RTBuilder::StackOffsetIntVal* RTBuilder::getSWStackOffset(
-    RTBuilder::StackOffsetPtrVal* OffsetPtr)
-{
-    if (IGC_IS_FLAG_DISABLED(EnableCompressedRayIndices))
-    {
-        Value* Load = this->CreateLoad(OffsetPtr, VALUE_NAME("SWStackOffset"));
-        return static_cast<StackOffsetIntVal*>(Load);
-    }
-    else
-    {
-        // Load this as a dword to make vectorization easier with the adjacent
-        // dword.
-        static_assert(offsetof(StackPtrAndBudges, StackOffset) == 0, "changed?");
-        static_assert(sizeof(StackPtrAndBudges) >= 4, "not large enough!");
-        auto* Ptr = this->CreateBitCast(
-            OffsetPtr,
-            this->getInt32PtrTy(OffsetPtr->getType()->getPointerAddressSpace()));
-        Value* Load = this->CreateLoad(Ptr,
-            VALUE_NAME("SWStackOffset"));
-        Load = this->CreateBitCast(Load, IGCLLVM::FixedVectorType::get(this->getInt16Ty(), 2));
-        Load = this->CreateExtractElement(Load, (uint64_t)0, VALUE_NAME("SWStackOffset"));
-        return static_cast<StackOffsetIntVal*>(Load);
-    }
-}
-
-RTBuilder::StackOffsetIntVal* RTBuilder::getSWStackOffset(
-    SWHotZonePtrVal* SWHotZonePtr)
-{
-    if (IGC_IS_FLAG_DISABLED(EnableCompressedRayIndices))
-    {
-        Value* Ptr = this->_gepof_StackOffset_v2(
-            SWHotZonePtr, VALUE_NAME("&SWStackOffset"));
-
-        return this->getSWStackOffset(static_cast<StackOffsetPtrVal*>(Ptr));
-    }
-    else
-    {
-        Value* Ptr = this->_gepof_StackOffset_v1(
-            SWHotZonePtr, VALUE_NAME("&SWStackOffset"));
-
-        return this->getSWStackOffset(static_cast<StackOffsetPtrVal*>(Ptr));
-    }
-}
-
-Value* RTBuilder::CreateSWHotZonePtrIntrinsic(
-    Value *Addr,
-    Type *PtrTy,
-    bool AddDecoration)
-{
-    Module* M = this->GetInsertBlock()->getModule();
-    Type* Tys[] = { PtrTy, Addr->getType() };
-    CallInst* HotZone = this->CreateCall(
-        GenISAIntrinsic::getDeclaration(
-            M, GenISAIntrinsic::GenISA_SWHotZonePtr, Tys),
-        Addr,
-        VALUE_NAME("&SWHotZone"));
-
-    constexpr uint32_t Align = alignof(SWHotZone_v2);
-    static_assert(Align == 16, "changed?");
-
-    if (AddDecoration)
-    {
-        this->setReturnAlignment(HotZone, Align);
-        if (IGC_IS_FLAG_DISABLED(DisableRaytracingIntrinsicAttributes))
-        {
-            this->setDereferenceable(HotZone, this->getSWHotZoneSize());
-        }
-    }
-
-    return HotZone;
-}
-
-Value* RTBuilder::CreateAsyncStackPtrIntrinsic(
-    Value* Addr, Type* PtrTy, bool AddDecoration)
-{
-    Module* M = this->GetInsertBlock()->getModule();
-    Type* Tys[] = { PtrTy, Addr->getType() };
-    CallInst* StackPtr = this->CreateCall(
-        GenISAIntrinsic::getDeclaration(
-            M, GenISAIntrinsic::GenISA_AsyncStackPtr, Tys),
-        Addr,
-        VALUE_NAME("perLaneAsyncStackPointer"));
-
-    if (AddDecoration)
-    {
-        this->setReturnAlignment(StackPtr, RTStackAlign);
-        if (IGC_IS_FLAG_DISABLED(DisableRaytracingIntrinsicAttributes))
-        {
-            this->setDereferenceable(StackPtr, sizeof(RTStack2));
-        }
-    }
-
-    return StackPtr;
-}
 
 Value* RTBuilder::CreateSyncStackPtrIntrinsic(
     Value* Addr, Type* PtrTy, bool AddDecoration)
@@ -608,266 +173,6 @@ Value* RTBuilder::CreateSyncStackPtrIntrinsic(
 }
 
 
-RTBuilder::SWStackPtrVal* RTBuilder::getSWStackPointer(const Twine& Name)
-{
-    auto* CI = this->CreateSWStackPtrIntrinsic(nullptr, false, Name);
-    return static_cast<RTBuilder::SWStackPtrVal*>(cast<Value>(CI));
-}
-
-RTBuilder::SWStackPtrVal*
-RTBuilder::getSWStackPointer(
-    Optional<RTBuilder::StackOffsetIntVal*> StackOffset,
-    int32_t FrameSize,
-    bool SubtractFrameSize,
-    SWStackPtrVal*& CurStackVal,
-    const Twine& Name)
-{
-    // Hop over the async stacks
-
-    // HWStack AsyncStacks[DSS_COUNT * NumDSSRTStacks];
-
-    Value* SWStacksBase = nullptr;
-
-    if (Ctx.getModuleMetaData()->rtInfo.SWStackSurfaceStateOffset)
-    {
-        uint32_t AddrSpace =
-            getSWStackStatefulAddrSpace(*Ctx.getModuleMetaData());
-
-        SWStacksBase = Constant::getNullValue(this->getInt8PtrTy(AddrSpace));
-    }
-    else
-    {
-        Value* rtMemBasePtr = this->getpRtMemBasePtr();
-        rtMemBasePtr = this->CreateBitOrPointerCast(
-            rtMemBasePtr, this->getInt8PtrTy(ADDRESS_SPACE_GLOBAL));
-
-        auto* AsyncStacksSize =
-            this->CreateMul(
-                this->getAsyncRTStackSize(),
-                this->getNumAsyncStackSlots());
-
-        SWStacksBase = this->CreateGEP(rtMemBasePtr, AsyncStacksSize);
-    }
-
-    Value* StackID = this->getGlobalAsyncStackID();
-    Value* SWStackSizePerRay = this->getSWStackSizePerRay();
-
-    Value* Offset = this->CreateMul(StackID, SWStackSizePerRay);
-
-    auto* SWStack = this->CreateGEP(SWStacksBase, Offset);
-
-    if (StackOffset)
-        SWStack = this->CreateGEP(SWStack, *StackOffset);
-
-    CurStackVal = static_cast<RTBuilder::SWStackPtrVal*>(SWStack);
-
-    if (SubtractFrameSize)
-    {
-        SWStack = this->CreateGEP(
-                SWStack,
-                this->getInt32(-FrameSize),
-            VALUE_NAME("ResetStackPointer"));
-    }
-
-    auto* CI = this->CreateSWStackPtrIntrinsic(SWStack, true, Name);
-
-    if (!SubtractFrameSize)
-        CurStackVal = static_cast<RTBuilder::SWStackPtrVal*>(cast<Value>(CI));
-
-    if (IGC_IS_FLAG_DISABLED(DisableRaytracingIntrinsicAttributes))
-        this->setDereferenceable(CI, FrameSize);
-
-    return static_cast<RTBuilder::SWStackPtrVal*>(cast<Value>(CI));
-}
-
-CallInst* RTBuilder::CreateSWStackPtrIntrinsic(
-    Value* Addr, bool AddDecoration, const Twine &Name)
-{
-    Module* M = this->GetInsertBlock()->getModule();
-
-    uint32_t AddrSpace = getSWStackAddrSpace(*Ctx.getModuleMetaData());
-
-    if (!Addr)
-    {
-        auto* AddrTy = this->getInt8PtrTy(AddrSpace);
-        Addr = Constant::getNullValue(AddrTy);
-    }
-
-    auto* RetTy = this->getInt8PtrTy(AddrSpace);
-    CallInst* SWStackPtr = this->CreateCall(
-        GenISAIntrinsic::getDeclaration(
-            M, GenISAIntrinsic::GenISA_SWStackPtr, RetTy),
-        Addr,
-        Name);
-
-    if (AddDecoration)
-    {
-        this->setReturnAlignment(SWStackPtr, StackFrameAlign);
-    }
-
-    return SWStackPtr;
-}
-
-CallInst* RTBuilder::createMergeCall()
-{
-    IGCLLVM::Module* M = (IGCLLVM::Module*)this->GetInsertBlock()->getModule();
-    auto* FTy = FunctionType::get(
-        this->getVoidTy(), this->getInt64Ty(), false);
-
-    auto* MergeFunc = cast<Function>(M->getOrInsertFunction(
-        MergeFuncName, FTy));
-
-    // initialize with a default value that will be patched later in lowering.
-    return this->CreateCall(MergeFunc, this->getInt64(-1));
-}
-
-// Calculates the address of a ray's SWHotZone.
-RTBuilder::SWHotZonePtrVal* RTBuilder::getSWHotZonePointer(bool BuildAddress)
-{
-    auto Mode = Ctx.getModuleMetaData()->rtInfo.SWHotZoneSurfaceStateOffset ?
-        RTBuilder::STATEFUL :
-        RTBuilder::STATELESS;
-
-    auto* PtrTy = this->getSWHotZonePtrTy(Ctx, Mode);
-
-    if (!BuildAddress)
-    {
-        auto* Val = Constant::getNullValue(this->getInt32Ty());
-        return static_cast<RTBuilder::SWHotZonePtrVal*>(
-            this->CreateSWHotZonePtrIntrinsic(Val, PtrTy, false));
-    }
-
-    Value* stackID = this->getGlobalAsyncStackID();
-    Value* BaseOffset =
-        this->CreateMul(stackID, this->getInt32(getSWHotZoneSize()));
-
-    // RTDispatchGlobals_HW.rtMemBasePointer -
-    //    (sizeof(RTMemory.SyncStacks) + sizeof(RTMemory.HotZones)) +
-    //    globalAsyncStackID * getSWHotZoneSize(); // 16B aligned
-    // ===>
-    // rearrange slightly to compute the offset with 32-bit arithmetic:
-    //
-    // RTDispatchGlobals_HW.rtMemBasePointer -
-    //    ((sizeof(RTMemory.SyncStacks) + sizeof(RTMemory.HotZones)) -
-    //       globalAsyncStackID * getSWHotZoneSize()); // 16B aligned
-    //
-
-    if (Mode == RTBuilder::STATEFUL)
-    {
-        return static_cast<RTBuilder::SWHotZonePtrVal*>(
-            this->CreateSWHotZonePtrIntrinsic(BaseOffset, PtrTy, true));
-    }
-    else
-    {
-        Value* rtMemBasePtr = this->getpRtMemBasePtr();
-        Value* SyncAndHotZonesSize =
-            this->CreateAdd(
-                this->getInt32(getSumSyncStackSize()),
-                getSumSWHotZoneSize());
-        Value* Offset = this->CreateSub(
-            SyncAndHotZonesSize,
-            BaseOffset);
-        Value* Addr = this->CreateSub(
-            rtMemBasePtr,
-            this->CreateZExt(Offset, this->getInt64Ty()));
-
-        return static_cast<RTBuilder::SWHotZonePtrVal*>(
-            this->CreateSWHotZonePtrIntrinsic(Addr, PtrTy, true));
-    }
-}
-
-Value* RTBuilder::GetAsyncStackOffset()
-{
-    // Per thread Asynchronous RTStack is calculated using the following formula:
-    //       rtMemBasePtr + globalAsyncStackID * stackSizePerRay
-
-    Value* stackSize = this->getAsyncRTStackSize();
-    if (!isa<Constant>(stackSize))
-        stackSize = this->getpStackSizePerRay();
-
-    Value* globalStackID = this->getGlobalAsyncStackID();
-
-    return this->CreateMul(
-        globalStackID,
-        this->CreateZExt(stackSize, globalStackID->getType()),
-        VALUE_NAME("AsyncStackOffset"));
-}
-
-// It is the return value of this method that is passed into the 'StackPointer'
-// argument of many of the functions in this class.
-RTBuilder::AsyncStackPointerVal* RTBuilder::getAsyncStackPointer(bool BuildAddress)
-{
-    auto Mode = Ctx.getModuleMetaData()->rtInfo.RTAsyncStackSurfaceStateOffset ?
-        RTBuilder::STATEFUL :
-        RTBuilder::STATELESS;
-    // requests for the async stack pointer in early phases of compilation
-    // will just return a marker without the address computation.
-    // In RayTracingFinalizePass, we will then update them to actually compute
-    // the address.
-    if (!BuildAddress)
-    {
-        auto* PtrTy = this->getRTStack2PtrTy(
-            Ctx, Mode);
-
-        auto* Val = Constant::getNullValue(PtrTy);
-
-        return static_cast<RTBuilder::AsyncStackPointerVal*>(
-            this->CreateAsyncStackPtrIntrinsic(Val, PtrTy, false));
-    }
-
-    Value* stackOffset = this->GetAsyncStackOffset();
-    return this->getAsyncStackPointer(stackOffset, Mode);
-}
-
-// Returns an integer value corresponding to the address of the base
-// of the per lane stack (each ray gets its own private stack).
-// That is, this points to the base of the RTStack.
-RTBuilder::AsyncStackPointerVal* RTBuilder::getAsyncStackPointer(
-    Value* asyncStackOffset,
-    RTBuilder::RTMemoryAccessMode Mode)
-{
-    auto* PtrTy = this->getRTStack2PtrTy(Ctx, Mode);
-
-    if (Mode == RTBuilder::STATEFUL)
-    {
-        IGC_ASSERT_MESSAGE((this->Ctx.type == ShaderType::RAYTRACING_SHADER), "only raytracing shaders for now!");
-
-        return static_cast<RTBuilder::AsyncStackPointerVal*>(
-            this->CreateAsyncStackPtrIntrinsic(asyncStackOffset, PtrTy, true));
-    }
-    else
-    {
-        Value* memBasePtr = this->getpRtMemBasePtr();
-        Value* stackBase = this->CreatePtrToInt(memBasePtr, this->getInt64Ty());
-
-        Value* perLaneStackPointer = this->CreateAdd(
-            stackBase,
-            this->CreateZExt(asyncStackOffset, stackBase->getType()));
-
-        return static_cast<RTBuilder::AsyncStackPointerVal*>(
-            this->CreateAsyncStackPtrIntrinsic(perLaneStackPointer, PtrTy, true));
-    }
-}
-
-// If we imagine the collection of the RTStacks for all rays laid out
-// contiguously, this returns the ith stack in the sequence.  It is *not* an
-// address, just the "global id" (not to be confused with the stack ID which is
-// unique within a DSS.  This is across all DSSs).
-Value* RTBuilder::getGlobalAsyncStackID()
-{
-    // global stack id = (dssIDGlobal * numDSSRTStacks + stackID)
-    Value* IDGlobal = this->getGlobalDSSID();
-
-    Value* stackID = this->getAsyncStackID();
-    Value* numberOfDSSRTStacks = this->getpNumDSSRTStacks();
-
-    Value* val = this->CreateMul(IDGlobal, numberOfDSSRTStacks);
-    val = this->CreateAdd(
-        val,
-        this->CreateZExt(stackID, val->getType()));
-
-    return val;
-}
 
 Value* RTBuilder::getGlobalSyncStackID()
 {
@@ -903,10 +208,6 @@ Value* RTBuilder::getRTStackSize(uint32_t Align)
     return stackSize;
 }
 
-Value* RTBuilder::getAsyncRTStackSize()
-{
-    return this->getRTStackSize(RTStackAlign);
-}
 
 Value* RTBuilder::getSyncRTStackSize()
 {
@@ -947,9 +248,12 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer(Value* syncStackO
     }
     else
     {
-        Value* memBasePtr = (this->Ctx.type == ShaderType::RAYTRACING_SHADER) ?
-            this->getpRtMemBasePtr() :
-            this->getRtMemBasePtr();
+        Value* memBasePtr = nullptr;
+        {
+            memBasePtr = this->getRtMemBasePtr();;
+        }
+        IGC_ASSERT(memBasePtr != nullptr);
+
         Value* stackBase = this->CreatePtrToInt(memBasePtr, this->getInt64Ty());
         Value* perLaneStackPointer = this->CreateSub(
             stackBase,
@@ -977,40 +281,6 @@ RTBuilder::SyncStackPointerVal* RTBuilder::getSyncStackPointer()
         this->CreateSyncStackPtrIntrinsic(stackOffset, PtrTy, true));
 }
 
-CallInst* RTBuilder::CreateBTDCall(Value* RecordPointer)
-{
-    Module* module = this->GetInsertBlock()->getModule();
-    Value* GlobalPointer = this->getGlobalBufferPtr();
-    Value* stackID = this->getAsyncStackID();
-
-    Function* BTDCall = GenISAIntrinsic::getDeclaration(
-        module,
-        GenISAIntrinsic::GenISA_BindlessThreadDispatch,
-        GlobalPointer->getType());
-
-    Value* args[] = {
-        GlobalPointer,
-        stackID,
-        RecordPointer
-    };
-    return this->CreateCall(BTDCall, args);
-}
-
-StackIDReleaseIntrinsic* RTBuilder::CreateStackIDRelease(
-    Value* StackID, Value* Flag)
-{
-    Module* module = this->GetInsertBlock()->getModule();
-    Value* stackID = StackID ? StackID : this->getAsyncStackID();
-
-    Function* BTDCall = GenISAIntrinsic::getDeclaration(
-        module,
-        GenISAIntrinsic::GenISA_StackIDRelease);
-
-    auto* Predicate = Flag ? Flag : getTrue();
-
-    return cast<StackIDReleaseIntrinsic>(
-        this->CreateCall2(BTDCall, stackID, Predicate));
-}
 
 // Note: 'traceRayCtrl' should be already by 8 bits to its location
 // in the payload before passing as an argument to this function.
@@ -1070,29 +340,6 @@ Value* RTBuilder::createSyncTraceRay(
     return createTraceRay(this->getInt32(bvhLevel), this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true, PayloadName);
 }
 
-Value* RTBuilder::createASyncTraceRay(
-    Value* bvhLevel,
-    unsigned int traceRayCtrl,
-    const Twine& PayloadName)
-{
-    return createTraceRay(bvhLevel, this->getInt32(traceRayCtrl), false, PayloadName);
-}
-
-Value* RTBuilder::createASyncTraceRay(
-    Value* bvhLevel,
-    Value* traceRayCtrl,
-    const Twine& PayloadName)
-{
-    return createTraceRay(bvhLevel, traceRayCtrl, false, PayloadName);
-}
-
-Value* RTBuilder::createASyncTraceRay(
-    uint8_t bvhLevel,
-    unsigned int traceRayCtrl,
-    const Twine& PayloadName)
-{
-    return createTraceRay(this->getInt32(bvhLevel), this->getInt32(traceRayCtrl), false, PayloadName);
-}
 
 //FIXME: this is a temp solution and eventually, we want to have a general solution to coalesce this kind of store
 //this method write a block of data (== size bytes) specified by vals into dstPtr.
@@ -1280,14 +527,6 @@ std::pair<Value*, Value*> RTBuilder::createAllocaRayQueryObjects(unsigned int si
     return std::make_pair(rtStacks, rtCtrls);
 }
 
-void RTBuilder::SpillRayQueryShadowMemory(Value* dst, Value* shMem, uint64_t size, unsigned align)
-{
-    this->CreateMemCpy(
-        dst,
-        this->CreatePointerCast(shMem, PointerType::get(this->getInt32Ty(), ADDRESS_SPACE_PRIVATE)),
-        size,
-        align);
-}
 
 void RTBuilder::FillRayQueryShadowMemory(Value* shMem, Value* src, uint64_t size, unsigned align)
 {
@@ -1298,16 +537,6 @@ void RTBuilder::FillRayQueryShadowMemory(Value* shMem, Value* src, uint64_t size
         align);
 }
 
-Value* RTBuilder::LoadInstanceContributionToHitGroupIndex(Value* instLeafPtr)
-{
-    uint32_t offset = offsetof(InstanceLeaf, part0.instContToHitGroupIndex);
-    Value* offsetVal = this->CreateAdd(instLeafPtr, this->getInt64(offset));
-    Value* valuePtr = this->CreateIntToPtr(offsetVal, PointerType::get(this->getInt32Ty(), ADDRESS_SPACE_GLOBAL));
-    Value* value = this->CreateLoad(valuePtr);
-
-    //Only lower 24bits for the Dword read are valid for Index
-    return this->CreateAnd(value, this->getInt32(BITMASK((uint32_t)InstanceLeaf::Part0::Bits::instContToHitGrpIndex)));
-}
 
 void RTBuilder::MemCpyPotentialHit2CommitHit(RTBuilder::StackPointerVal* StackPointer)
 {
@@ -1335,32 +564,6 @@ void RTBuilder::CreateAbort(RTBuilder::StackPointerVal* StackPointer)
     setPotentialDoneBit(StackPointer);
 }
 
-uint32_t RTBuilder::getSWHotZoneSize()
-{
-    return IGC_IS_FLAG_ENABLED(EnableCompressedRayIndices) ?
-        sizeof(SWHotZone_v1) :
-        sizeof(SWHotZone_v2);
-}
-
-Value* RTBuilder::getNumAsyncStackSlots()
-{
-    // NumSlots = DSS_COUNT * NumDSSRTStacks
-    Value* NumSlots = this->CreateMul(
-        this->getpNumDSSRTStacks(),
-        this->getInt32(MaxDualSubSlicesSupported));
-    return NumSlots;
-}
-
-// These computations should match RTStackFormat::calcRTMemoryAllocSize().
-Value* RTBuilder::getSumSWHotZoneSize()
-{
-    // Align(SWHotZoneSize * DSS_COUNT * NumDSSRTStacks, RTStackAlign)
-    Value* Size = this->CreateMul(
-        this->getInt32(getSWHotZoneSize()),
-        this->getNumAsyncStackSlots());
-    Size = this->alignVal(Size, RTStackAlign);
-    return Size;
-}
 
 uint32_t RTBuilder::getSyncStackSize()
 {
@@ -1372,12 +575,6 @@ uint32_t RTBuilder::getNumSyncStackSlots()
     return MaxDualSubSlicesSupported * Ctx.platform.getRTStackDSSMultiplier();
 }
 
-uint32_t RTBuilder::getSumSyncStackSize()
-{
-    // Align(SyncStackSize * DSS_COUNT * SIMD_LANES_PER_DSS, RTStackAlign)
-    uint32_t Val = IGC::Align(getSyncStackSize()* getNumSyncStackSlots(), RTStackAlign);
-    return Val;
-}
 
 Value* RTBuilder::alignVal(Value* V, uint64_t Align)
 {
@@ -1439,12 +636,6 @@ Value* RTBuilder::getRayInfoPtr(
     return Ptr;
 }
 
-Value* RTBuilder::getRayInfo(StackPointerVal* perLaneStackPtr, uint32_t Idx)
-{
-    Value* Ptr = this->getRayInfoPtr(perLaneStackPtr, Idx, TOP_LEVEL_BVH);
-    Value* info = this->CreateLoad(Ptr, VALUE_NAME("RayInfo." + Twine(Idx)));
-    return info;
-}
 
 Value* RTBuilder::getRayTMin(RTBuilder::StackPointerVal* perLaneStackPtr)
 {
@@ -1479,26 +670,6 @@ void RTBuilder::setRayFlags(RTBuilder::SyncStackPointerVal* perLaneStackPtr, Val
     this->CreateStore(V, this->getRayFlagsPtr(perLaneStackPtr));
 }
 
-Value* RTBuilder::getRayFlagsPtr(RTBuilder::AsyncStackPointerVal* perLaneStackPtr)
-{
-    auto* Ptr = this->_gepof_topOfInstanceLeafPtr(
-        perLaneStackPtr, this->getInt32(TOP_LEVEL_BVH));
-    Ptr = this->CreateBitCast(
-        Ptr,
-        PointerType::get(
-            this->getInt16Ty(), Ptr->getType()->getPointerAddressSpace()),
-        VALUE_NAME("&rayFlags"));
-    static_assert((uint32_t)MemRay::Offset::rayFlagsCopy == 0, "Changed?");
-    static_assert((uint32_t)MemRay::Bits::rayFlagsCopy == 16, "Changed?");
-
-    return Ptr;
-}
-
-// returns an i16 value containing the current rayflags. Async only.
-Value* RTBuilder::getRayFlags(RTBuilder::AsyncStackPointerVal* perLaneStackPtr)
-{
-    return this->CreateLoad(this->getRayFlagsPtr(perLaneStackPtr), VALUE_NAME("rayFlags"));
-}
 
 Value* RTBuilder::getWorldRayOrig(RTBuilder::StackPointerVal* perLaneStackPtr, uint32_t dim)
 {
@@ -2154,53 +1325,6 @@ Value* RTBuilder::getInstanceLeafPtr(Value* instLeafTopPtr)
     return ptrValue;
 }
 
-// Both input values come in as i64 values.  Each has 22 active bits
-// and they are in the low 22 bits of the value.
-// The final address is computed as:
-// uint64_t hitGroupRecPtr;
-// hitGroupRecPtr = uint64_t(hitGroupRecPtr0);
-// hitGroupRecPtr |= uint64_t(hitGroupRecPtr1) << 22;
-// return 16 * hitGroupRecPtr;
-Value* RTBuilder::getHitGroupRecPtr(
-    Value* hitGroupRecPtr0, Value* hitGroupRecPtr1)
-{
-    auto* Combo = this->CreateOr(
-        hitGroupRecPtr0,
-        this->CreateShl(
-            hitGroupRecPtr1,
-            (uint32_t)MemHit::Bits::hitGroupRecPtr0));
-    return this->canonizePointer(CreateShl(Combo, 4, VALUE_NAME("hitGroupRecPtr")));
-}
-
-Value* RTBuilder::getHitGroupRecPtrFromPrimAndInstVals(
-    Value* PotentialPrimVal, Value* PotentialInstVal)
-{
-    // hitGroupRecPtr0 and hitGroupRecPtr1 from potentialHit have already
-    // been populated with the address prior to the start of the shader.
-    Value* hitGroupRecPtr0 = this->CreateLShr(
-        PotentialPrimVal,
-        (uint32_t)MemHit::Bits::primLeafPtr);
-    Value* hitGroupRecPtr1 = this->CreateLShr(
-        PotentialInstVal,
-        (uint32_t)MemHit::Bits::instLeafPtr);
-
-    Value* ClosestHitAddress = this->getHitGroupRecPtr(
-        hitGroupRecPtr0, hitGroupRecPtr1);
-
-    return ClosestHitAddress;
-}
-
-Value* RTBuilder::CreateShaderType()
-{
-    auto* M = this->GetInsertBlock()->getModule();
-    Function* Func = GenISAIntrinsic::getDeclaration(
-        M,
-        GenISAIntrinsic::GenISA_DCL_SystemValue,
-        this->getInt32Ty());
-
-    return this->CreateCall(
-        Func, this->getInt32(IGC::SHADER_TYPE), VALUE_NAME("shader_type"));
-}
 
 Value* RTBuilder::getTraceRayPayload(
     Value* bvhLevel,
@@ -2220,11 +1344,6 @@ Value* RTBuilder::getTraceRayPayload(
     {
         //For RayQuery/TraceRayInline - set stack ID to zero since hardware will not use this field
         stackId = this->getInt32(0);
-    }
-    else
-    {
-        stackId = this->getAsyncStackID();
-        stackId = this->CreateZExt(stackId, this->getInt32Ty());
     }
 
     constexpr uint16_t StackIDOffset =
@@ -2283,17 +1402,6 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSliceIDBitsInSR0() const {
     }
 }
 
-std::pair<uint32_t, uint32_t> RTBuilder::getSubsliceIDBitsInSR0() const {
-    if (Ctx.platform.GetPlatformFamily() == IGFX_GEN8_CORE ||
-        Ctx.platform.GetPlatformFamily() == IGFX_GEN9_CORE)
-    {
-        return {12, 13};
-    }
-    else
-    {
-        return {8, 8};
-    }
-}
 
 std::pair<uint32_t, uint32_t> RTBuilder::getDualSubsliceIDBitsInSR0() const {
     if (Ctx.platform.GetPlatformFamily() == IGFX_GEN11_CORE   ||
@@ -2316,23 +1424,6 @@ std::pair<uint32_t, uint32_t> RTBuilder::getDualSubsliceIDBitsInSR0() const {
     }
 }
 
-Value* RTBuilder::getSliceID()
-{
-    auto bitsInSR0 = getSliceIDBitsInSR0();
-    return emitStateRegID(bitsInSR0.first, bitsInSR0.second);
-}
-
-Value* RTBuilder::getSubsliceID()
-{
-    auto bitsInSR0 = getSubsliceIDBitsInSR0();
-    return emitStateRegID(bitsInSR0.first, bitsInSR0.second);
-}
-
-Value* RTBuilder::getDualSubsliceID()
-{
-    auto bitsInSR0 = getDualSubsliceIDBitsInSR0();
-    return emitStateRegID(bitsInSR0.first, bitsInSR0.second);
-}
 
 // globalDSSID is the combined value of sliceID and dssID on slice.
 Value* RTBuilder::getGlobalDSSID()
@@ -2356,357 +1447,6 @@ Value* RTBuilder::getGlobalDSSID()
     }
 }
 
-bool RTBuilder::isNonLocalAlloca(uint32_t AddrSpace)
-{
-    return (AddrSpace != ADDRESS_SPACE_PRIVATE);
-}
-
-bool RTBuilder::isNonLocalAlloca(const AllocaInst* AI)
-{
-    return isNonLocalAlloca(AI->getType()->getPointerAddressSpace());
-}
-
-Function* RTBuilder::updateIntrinsicMangle(FunctionType* NewFuncTy, Function& F)
-{
-    auto* TmpFunc = Function::Create(
-        NewFuncTy, F.getLinkage(), F.getName(), F.getParent());
-    Optional<Function*> NewFunc =
-        Intrinsic::remangleIntrinsicFunction(TmpFunc);
-    TmpFunc->eraseFromParent();
-
-    if (NewFunc.hasValue())
-    {
-        auto* Func = *NewFunc;
-        Func->copyMetadata(&F, 0);
-        Func->copyAttributesFrom(&F);
-        return Func;
-    }
-
-    IGC_ASSERT_MESSAGE(0, "remangle failed?");
-    return nullptr;
-}
-
-Value* RTBuilder::getDispatchRayIndex(
-    RTBuilder::SWHotZonePtrVal* SWHotZonePtr, uint32_t Dim)
-{
-    IGC_ASSERT_MESSAGE((Dim < 3), "Dim out of bounds!");
-
-    if (IGC_IS_FLAG_DISABLED(EnableCompressedRayIndices))
-    {
-        Value* Ptr = this->_gepof_dispRaysIndex_v2(
-            SWHotZonePtr,
-            this->getInt32(Dim),
-            VALUE_NAME("&DispatchRayIndex[" + Twine(Dim) + "]"));
-
-        Value* Load = this->CreateLoad(Ptr,
-            VALUE_NAME("DispatchRayIndex" + Twine(Dim)));
-
-        return Load;
-    }
-
-    // Just load as a dword and extract the upper bits
-    static_assert(offsetof(StackPtrAndBudges, StackOffset) == 0, "changed?");
-    static_assert(offsetof(StackPtrAndBudges, BudgeBits) == 2, "changed?");
-
-    Value* Ptr = this->_gepof_BudgeBits_v1(SWHotZonePtr, VALUE_NAME("&Budges"));
-
-    Value* Budges = this->CreateLoad(Ptr, VALUE_NAME("Budges"));
-
-    Value* CompressedPtr =
-        this->_gepof_CompressedDispatchRayIndices_v1(SWHotZonePtr,
-            VALUE_NAME("&CompressedDispatchRayIndices"));
-
-    Value* CompressedVal = this->CreateLoad(
-        CompressedPtr, VALUE_NAME("CompressedVal"));
-
-    auto Bits = [&](uint32_t Dim)
-    {
-        Value* NeededBits = this->CreateLShr(
-            Budges, Dim * (uint64_t)StackPtrAndBudges::Bits::DimBits);
-        NeededBits = this->CreateAnd(
-            NeededBits,
-            this->getInt16(BITMASK((uint32_t)StackPtrAndBudges::Bits::DimBits)),
-            VALUE_NAME("NeededBits[" + Twine(Dim) + "]"));
-
-        return NeededBits;
-    };
-
-    Value* PriorBits = this->getInt16(0);
-    for (uint32_t i = 0; i < Dim; i++)
-    {
-        PriorBits = this->CreateAdd(PriorBits, Bits(i), VALUE_NAME("PriorBits"));
-    }
-
-    Value* SelfBits = this->CreateZExt(Bits(Dim), this->getInt32Ty());
-    SelfBits = this->CreateShl(this->getInt32(1), SelfBits);
-    SelfBits = this->CreateSub(
-        SelfBits, this->getInt32(1), VALUE_NAME("SelfBits"));
-
-    Value* DispatchRayIndex = this->CreateLShr(
-        CompressedVal, this->CreateZExt(PriorBits, this->getInt32Ty()));
-    DispatchRayIndex = this->CreateAnd(
-        DispatchRayIndex,
-        SelfBits,
-        VALUE_NAME("DispatchRayIndex[" + Twine(Dim) + "]"));
-
-    return DispatchRayIndex;
-}
-
-void RTBuilder::setDispatchRayIndices(
-    RTBuilder::SWHotZonePtrVal* SWHotZonePtr,
-    const std::vector<Value*>& Indices)
-{
-    IGC_ASSERT_MESSAGE((Indices.size() == 3), "Wrong size!");
-
-    if (IGC_IS_FLAG_DISABLED(EnableCompressedRayIndices))
-    {
-        for (uint32_t Dim = 0; Dim < Indices.size(); Dim++)
-        {
-            auto* V = Indices[Dim];
-            Value* Ptr = this->_gepof_dispRaysIndex_v2(
-                SWHotZonePtr,
-                this->getInt32(Dim),
-                VALUE_NAME("&DispatchRayIndex[" + Twine(Dim) + "]"));
-
-            this->CreateStore(V, Ptr);
-        }
-
-        return;
-    }
-
-    auto* M = this->GetInsertBlock()->getModule();
-
-    Value* Budges = this->getInt16(0);
-    Value* CompressedVal = this->getInt32(0);
-    Value* CurLoc = this->getInt32(0);
-    auto* Ctlz = Intrinsic::getDeclaration(
-        M, Intrinsic::ctlz, this->getInt32Ty());
-    for (uint32_t i = 0; i < 3; i++)
-    {
-        auto& V = Indices[i];
-        auto* Lzd = this->CreateCall2(
-            Ctlz, V, this->getFalse(), VALUE_NAME("Lzd"));
-        auto* UsedBits = this->CreateSub(
-            this->getInt32(32),
-            Lzd,
-            VALUE_NAME("UsedBits[" + Twine(i) + "]"));
-
-        auto* ShiftedV = this->CreateShl(
-            V, CurLoc, VALUE_NAME("Shifted[" + Twine(i) + "]"));
-        CompressedVal = this->CreateOr(
-            CompressedVal, ShiftedV, VALUE_NAME("CompressedVal"));
-        Budges = this->CreateOr(
-            Budges,
-            this->CreateShl(
-                this->CreateTrunc(UsedBits, this->getInt16Ty()),
-                this->getInt16(i * (uint32_t)StackPtrAndBudges::Bits::DimBits)),
-            VALUE_NAME("CurBudges"));
-
-        CurLoc = this->CreateAdd(CurLoc, UsedBits, VALUE_NAME("CurLoc"));
-    }
-
-    Value* BudgesPtr = this->_gepof_BudgeBits_v1(SWHotZonePtr,
-        VALUE_NAME("&Budges"));
-
-    Value* CompressedPtr =
-        this->_gepof_CompressedDispatchRayIndices_v1(SWHotZonePtr,
-            VALUE_NAME("&CompressedDispatchRayIndices"));
-
-    this->CreateStore(Budges, BudgesPtr);
-    this->CreateStore(CompressedVal, CompressedPtr);
-}
-
-Value* RTBuilder::computeReturnIP(
-    const IGC::RayDispatchShaderContext& RayCtx,
-    Function& F)
-{
-    IGC_ASSERT(RayCtx.requiresIndirectContinuationHandling());
-
-    auto* modMD = RayCtx.getModuleMetaData();
-    auto& FuncMD = modMD->FuncMD;
-    auto I = FuncMD.find(&F);
-
-    std::optional<uint32_t> SlotNum;
-    if (I != FuncMD.end())
-        SlotNum = I->second.rtInfo.SlotNum;
-
-    Value* ShaderRecordPtr = nullptr;
-
-    if (SlotNum)
-    {
-        // Compute the KSP pointer by subtracting back from the local
-        // pointer
-        IGC_ASSERT(ShaderIdentifier::NumSlots > *SlotNum);
-        auto* LP = this->getLocalBufferPtr(None);
-        const int32_t Offset =
-            (ShaderIdentifier::NumSlots - *SlotNum) * sizeof(KSP);
-        ShaderRecordPtr = this->CreateGEP(LP, this->getInt32(-Offset));
-    }
-    else
-    {
-        ShaderRecordPtr = this->getShaderRecordPtr(&F);
-    }
-    Value* contId = this->CreatePtrToInt(ShaderRecordPtr, this->getInt64Ty());
-    return contId;
-}
-
-void RTBuilder::storeContinuationAddress(
-    TraceRayRTArgs &Args,
-    Type *PayloadTy,
-    ContinuationHLIntrinsic* intrin,
-    RTBuilder::SWStackPtrVal* StackFrameVal)
-{
-    IGC_ASSERT_MESSAGE(intrin->isValidContinuationID(), "invalid ID!");
-
-    Value* contId = nullptr;
-
-    IGC_ASSERT_MESSAGE((this->Ctx.type == ShaderType::RAYTRACING_SHADER), "only raytracing shaders for now!");
-
-    auto& RayCtx = static_cast<const RayDispatchShaderContext&>(this->Ctx);
-
-    if (RayCtx.requiresIndirectContinuationHandling())
-        contId = computeReturnIP(RayCtx, *intrin->getContinuationFn());
-    else
-        contId = this->getInt64(intrin->getContinuationID());
-
-    Value* Ptr = Args.getReturnIPPtr(
-        *this, PayloadTy, StackFrameVal, VALUE_NAME("&NextFrame"));
-
-    this->CreateStore(contId, Ptr);
-}
-
-SmallVector<StoreInst*, 2> RTBuilder::storePayload(
-    TraceRayRTArgs &Args,
-    Value* Payload,
-    RTBuilder::SWStackPtrVal* StackFrameVal)
-{
-    SmallVector<StoreInst*, 2> Stores;
-    auto* Ptr = Args.getPayloadPtr(
-        *this, Payload->getType(), StackFrameVal, VALUE_NAME("&NextFrame"));
-
-    auto *First = this->CreateStore(Payload, Ptr);
-    Stores.push_back(First);
-
-    if (Args.needPayloadPadding())
-    {
-        auto* PadPtr = Args.getPayloadPaddingPtr(
-            *this, Payload->getType(), StackFrameVal, VALUE_NAME("&NextFrame"));
-
-        // This is padded out to ensure we don't have a partial write. We just
-        // write '0' here by convention but it shouldn't be read anywhere.
-        auto *Second = this->CreateStore(this->getInt32(0), PadPtr);
-        Stores.push_back(Second);
-    }
-    return Stores;
-}
-
-// This function loads the ray payload from the RTStack that was previously stored
-// by a caller function. This is the way that arguments are passed between functions
-// in our raytracing implementation.
-Instruction* RTBuilder::LowerPayload(
-    Function* F, RTArgs& Args, RTBuilder::SWStackPtrVal* FrameAddr)
-{
-    Argument* Arg = Args.getPayloadArg(F);
-    // not specified
-    if (!Arg)
-        return nullptr;
-
-    if (Arg->use_empty())
-        return nullptr;
-
-    auto* IP = isa<Instruction>(FrameAddr) ?
-        cast<Instruction>(FrameAddr)->getNextNode() :
-        &*F->getEntryBlock().getFirstInsertionPt();
-
-    IRBuilder<> IRB(IP);
-
-    auto* Ptr = Args.getPayloadPtr(
-        IRB,
-        Arg->getType(),
-        FrameAddr,
-        VALUE_NAME("&Frame"));
-
-    auto* stackVal = IRB.CreateLoad(Ptr);
-
-    stackVal->takeName(Arg);
-
-    Arg->replaceAllUsesWith(stackVal);
-
-    return stackVal;
-}
-
-void RTBuilder::loadCustomHitAttribsFromStack(
-    Function &F,
-    RTArgs &Args,
-    RTBuilder::SWStackPtrVal *FrameAddr)
-{
-    Argument* Arg = Args.getHitAttribArg(&F);
-    // not specified
-    if (!Arg)
-        return;
-
-    if (Arg->use_empty())
-        return;
-
-    auto* IP = isa<Instruction>(FrameAddr) ?
-        cast<Instruction>(FrameAddr)->getNextNode() :
-        &*F.getEntryBlock().getFirstInsertionPt();
-
-    RTBuilder IRB(IP, Args.Ctx);
-
-    Type* AttrTy = Arg->getType()->getPointerElementType();
-    Value* CustomHitAttrPtr = Args.getCustomHitAttribPtr(IRB, FrameAddr, AttrTy);
-
-    CustomHitAttrPtr->takeName(Arg);
-    Arg->replaceAllUsesWith(CustomHitAttrPtr);
-}
-
-//Lowering of Intersection Attribute -  lowers Ray Intersection attribute which consists
-//of 2 floats (float2 barycentrics). This info is pulled from the MemHit
-// members from RTStack.  Custom attributes (from an intersection shader)
-// can be of arbitrary type.
-//These attributes are only applicable to anyHit and closestHit Shaders
-void RTBuilder::lowerIntersectionAttributeFromMemHit(
-    Function &F,
-    const RTArgs &Args,
-    StackPointerVal *StackPointer)
-{
-    Argument* Arg = Args.getHitAttribArg(&F);
-    // not specified
-    if (!Arg)
-        return;
-
-    if (Arg->use_empty())
-        return;
-
-    auto* IP = isa<Instruction>(StackPointer) ?
-        cast<Instruction>(StackPointer)->getNextNode() :
-        &*F.getEntryBlock().getFirstInsertionPt();
-
-    RTBuilder builder(IP, Args.Ctx);
-
-    Value* uPtr = builder.getHitUPtr(StackPointer, Args.FuncType);
-
-    uint32_t SWStackAddrSpace =
-        RTBuilder::getSWStackAddrSpace(*Args.Ctx.getModuleMetaData());
-
-    // write the values to a stack slot
-    auto *Storage = builder.CreateAlloca(
-        IGCLLVM::FixedVectorType::get(builder.getFloatTy(), 2), nullptr, "", SWStackAddrSpace);
-
-    builder.CreateMemCpy(
-        Storage, 4,
-        uPtr, 4,
-        builder.getInt64(2 * sizeof(float)));
-
-    auto *NewAddr = builder.CreatePointerBitCastOrAddrSpaceCast(
-        Storage,
-        Arg->getType());
-
-    NewAddr->takeName(Arg);
-
-    Arg->replaceAllUsesWith(NewAddr);
-}
 
 void RTBuilder::setRayInfo(
     RTBuilder::StackPointerVal* StackPointer, Value* V, uint32_t Idx, uint32_t BvhLevel)
@@ -2859,32 +1599,6 @@ void RTBuilder::setNodePtrAndFlags(
     this->CreateStore(V, this->getNodePtrAndFlagsPtr(StackPointer, BvhLevel));
 }
 
-void RTBuilder::setHitGroupPtrAndStride(
-    RTBuilder::StackPointerVal* StackPointer, Value* V, uint32_t BvhLevel)
-{
-    auto* Ptr = _gepof_hitGroupShaderRecordInfo(
-        StackPointer, this->getInt32(BvhLevel),
-        VALUE_NAME("&MemRay::hitGroupShaderRecordInfo"));
-    this->CreateStore(V, Ptr);
-}
-
-Value* RTBuilder::getMissShaderPtr(
-    RTBuilder::StackPointerVal* StackPointer, uint32_t BvhLevel)
-{
-    auto* Ptr = _gepof_missShaderRecordInfo(
-        StackPointer, this->getInt32(BvhLevel),
-        VALUE_NAME("&MemRay::missShaderRecordInfo"));
-    return this->CreateLoad(Ptr);
-}
-
-void RTBuilder::setMissShaderPtr(
-    RTBuilder::StackPointerVal* StackPointer, Value* V, uint32_t BvhLevel)
-{
-    auto* Ptr = _gepof_missShaderRecordInfo(
-        StackPointer, this->getInt32(BvhLevel),
-        VALUE_NAME("&MemRay::missShaderRecordInfo"));
-    this->CreateStore(V, Ptr);
-}
 
 Value* RTBuilder::getInstLeafPtrAndRayMask(
     RTBuilder::StackPointerVal* StackPointer, uint32_t BvhLevel)
@@ -2931,18 +1645,6 @@ void RTBuilder::setPotentialHitT(RTBuilder::StackPointerVal* StackPointer, Value
     this->CreateStore(V, Ptr);
 }
 
-Value* RTBuilder::getPotentialHitTopPrimLeafPtr(RTBuilder::StackPointerVal* StackPointer)
-{
-    auto* Ptr = this->_gepof_PotentialHitTopOfPrimLeafPtr(StackPointer,
-        VALUE_NAME("&potentialHit.topOfPrimLeafPtr"));
-
-    // upper 22 bits contains hitGroupRecPtr0
-    Value* PotentialPrimVal = this->CreateLoad(
-        Ptr,
-        VALUE_NAME("potential_prim_leaf"));
-
-    return PotentialPrimVal;
-}
 
 void RTBuilder::setCommittedHitTopPrimLeafPtr(RTBuilder::StackPointerVal* StackPointer, Value *V)
 {
@@ -3045,11 +1747,6 @@ Value* RTBuilder::getMemHitBvhLevel(Value* MemHitInfoVal)
     return Level;
 }
 
-Value* RTBuilder::getPotentialHitBvhLevel(RTBuilder::StackPointerVal* StackPointer)
-{
-    auto *DW = this->getHitInfoDWord(StackPointer, CallableShaderTypeMD::AnyHit, VALUE_NAME("BvhLevelDW"));
-    return this->getMemHitBvhLevel(DW);
-}
 
 Value* RTBuilder::getPotentialHitInfo(RTBuilder::StackPointerVal* StackPointer, const Twine& Name)
 {
@@ -3153,17 +1850,6 @@ Value* RTBuilder::getInstContToHitGroupIndex(RTBuilder::StackPointerVal* perLane
     return this->CreateAnd(value, this->getInt32(BITMASK((uint32_t)InstanceLeaf::Part0::Bits::instContToHitGrpIndex)));
 }
 
-void RTBuilder::setProceduralHitKind(
-    RTArgs &Args,
-    RTBuilder::SWStackPtrVal* FrameAddr, Value* V)
-{
-    // This function is only supposed to be invoked from an intersection shader.
-    IGC_ASSERT_MESSAGE(V->getType() == this->getInt32Ty(), "wrong type?");
-
-    auto* Ptr = Args.getHitKindPtr(*this, FrameAddr);
-
-    this->CreateStore(V, Ptr);
-}
 
 Value* RTBuilder::getLeafType(
     StackPointerVal* StackPointer, CallableShaderTypeMD ShaderTy)
@@ -3180,14 +1866,6 @@ Value* RTBuilder::getLeafType(
     return Val;
 }
 
-Value* RTBuilder::getProceduralHitKind(
-    RTArgs &Args,
-    SWStackPtrVal* FrameAddr)
-{
-    auto* Ptr = Args.getHitKindPtr(*this, FrameAddr);
-
-    return this->CreateLoad(Ptr, VALUE_NAME("HitKind"));
-}
 
 CallInst* RTBuilder::CreateLSCFence(
     LSC_SFID SFID, LSC_SCOPE Scope, LSC_FENCE_OP FenceOp)
@@ -3233,76 +1911,12 @@ Value* RTBuilder::canonizePointer(Value* Ptr)
     return Canonized;
 }
 
-DenseMap<const AllocaInst*, uint32_t>
-RTBuilder::getAllocaNumberMap(const Function& F)
-{
-    DenseMap<const AllocaInst*, uint32_t> M;
-
-    uint32_t Cnt = 0;
-    for (auto& I : F.getEntryBlock())
-    {
-        if (auto * AI = dyn_cast<AllocaInst>(&I))
-        {
-            if (!RTBuilder::isNonLocalAlloca(AI))
-                continue;
-
-            M[AI] = Cnt++;
-        }
-    }
-
-    return M;
-}
-
-DenseMap<uint32_t, const AllocaInst*>
-RTBuilder::getNumberAllocaMap(const Function& F)
-{
-    DenseMap<uint32_t, const AllocaInst*> M;
-
-    uint32_t Cnt = 0;
-    for (auto& I : F.getEntryBlock())
-    {
-        if (auto * AI = dyn_cast<AllocaInst>(&I))
-        {
-            if (!RTBuilder::isNonLocalAlloca(AI))
-                continue;
-
-            M[Cnt++] = AI;
-        }
-    }
-
-    return M;
-}
-
-Value* RTBuilder::createAllocaNumber(const AllocaInst* AI, uint32_t Number)
-{
-    auto* M = this->GetInsertBlock()->getModule();
-    Function* Func = GenISAIntrinsic::getDeclaration(
-        M,
-        GenISAIntrinsic::GenISA_AllocaNumber,
-        AI->getType());
-
-    Value* Call = this->CreateCall(
-        Func,
-        this->getInt32(Number), VALUE_NAME("AllocaNumber-" + Twine(Number)));
-
-    return Call;
-}
 
 void RTBuilder::setReturnAlignment(CallInst* CI, uint32_t AlignVal)
 {
     auto Attrs = CI->getAttributes();
     IGCLLVM::AttrBuilder AB { CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex)};
     AB.addAlignmentAttr(AlignVal);
-    auto AL =
-        IGCLLVM::addAttributesAtIndex(Attrs, CI->getContext(), AttributeList::ReturnIndex, AB);
-    CI->setAttributes(AL);
-}
-
-void RTBuilder::setNoAlias(CallInst* CI)
-{
-    auto Attrs = CI->getAttributes();
-    IGCLLVM::AttrBuilder AB{ CI->getContext(), Attrs.getAttributes(AttributeList::ReturnIndex) };
-    AB.addAttribute(Attribute::AttrKind::NoAlias);
     auto AL =
         IGCLLVM::addAttributesAtIndex(Attrs, CI->getContext(), AttributeList::ReturnIndex, AB);
     CI->setAttributes(AL);
@@ -3344,112 +1958,6 @@ Value* RTBuilder::getGlobalBufferPtr()
     return CI;
 }
 
-Value* RTBuilder::getLocalBufferPtr(llvm::Optional<uint32_t> root_sig_size)
-{
-    auto* M = this->GetInsertBlock()->getModule();
-
-    Function* Func = GenISAIntrinsic::getDeclaration(
-        M,
-        GenISAIntrinsic::GenISA_LocalBufferPointer,
-        this->getInt8PtrTy(ADDRESS_SPACE_CONSTANT));
-
-    constexpr uint32_t LocalAlign = offsetof(ShaderRecord, LocalRootSig);
-
-    static_assert(alignof(ShaderRecord) == 32, "changed?");
-    static_assert(LocalAlign == 32, "changed?");
-
-    CallInst *CI = this->CreateCall(Func, None, VALUE_NAME("localPtr"));
-
-    /* Add the dereferenceable(root_sig_size) attribute to the return pointer */
-    if (IGC_IS_FLAG_DISABLED(DisableRaytracingIntrinsicAttributes))
-    {
-        if (root_sig_size)
-        {
-            this->setDereferenceable(CI, *root_sig_size);
-        }
-        this->setNoAlias(CI);
-    }
-
-    this->setReturnAlignment(CI, LocalAlign);
-
-    return CI;
-}
-
-CallInst* RTBuilder::getInlineData(Type* RetTy, uint32_t QwordOffset, uint32_t Alignment, llvm::Optional<uint32_t> root_sig_size /* = None */)
-{
-    uint32_t AddrSpace = RetTy->getPointerAddressSpace();
-
-    auto* M = this->GetInsertBlock()->getModule();
-    Function* pFunc = GenISAIntrinsic::getDeclaration(
-        M,
-        GenISAIntrinsic::GenISA_InlinedData,
-        this->getInt8PtrTy(AddrSpace)
-    );
-
-    CallInst* CI = this->CreateCall(
-        pFunc,
-        this->getInt32(QwordOffset),
-        VALUE_NAME("inlineData")
-    );
-
-    if (IGC_IS_FLAG_DISABLED(DisableRaytracingIntrinsicAttributes))
-        this->setReturnAlignment(CI, Alignment);
-
-    /* Add the dereferenceable(root_sig_size) attribute to the return pointer */
-    // If the optional is None, I wouldn't even set the dereferenceable attribute, rather than default setting it to zero.
-    if (root_sig_size) {
-        if (IGC_IS_FLAG_DISABLED(DisableRaytracingIntrinsicAttributes))
-        {
-            this->setDereferenceable(CI, *root_sig_size);
-        }
-    }
-
-    return CI;
-}
-
-PayloadPtrIntrinsic* RTBuilder::getPayloadPtrIntrinsic(
-    Value* PayloadPtr, SWStackPtrVal* FrameAddr)
-{
-    Module* M = this->GetInsertBlock()->getModule();
-    Type* Tys[] = {
-        PayloadPtr->getType(),
-        FrameAddr->getType()
-    };
-    auto *CI = this->CreateCall2(
-        GenISAIntrinsic::getDeclaration(
-            M,
-            GenISAIntrinsic::GenISA_PayloadPtr,
-            Tys),
-        PayloadPtr,
-        FrameAddr,
-        VALUE_NAME("&Payload"));
-    return cast<PayloadPtrIntrinsic>(CI);
-}
-
-ContinuationSignpostIntrinsic* RTBuilder::getContinuationSignpost(
-    Value* FrameAddr, Value* Offset)
-{
-    Module* M = this->GetInsertBlock()->getModule();
-    auto *CI = this->CreateCall2(
-        GenISAIntrinsic::getDeclaration(
-            M,
-            GenISAIntrinsic::GenISA_ContinuationSignpost,
-            FrameAddr->getType()),
-        FrameAddr,
-        Offset,
-        VALUE_NAME("FrameAddr"));
-    return cast<ContinuationSignpostIntrinsic>(CI);
-}
-
-Value* RTBuilder::getAsyncStackID()
-{
-    Module* module = this->GetInsertBlock()->getModule();
-    return this->CreateCall(
-        GenISAIntrinsic::getDeclaration(
-            module, GenISAIntrinsic::GenISA_AsyncStackID),
-        None,
-        VALUE_NAME("AsyncStackID"));
-}
 
 Value* RTBuilder::getSyncStackID()
 {
@@ -3463,27 +1971,8 @@ Value* RTBuilder::getSyncStackID()
     return stackID;
 }
 
-void RTBuilder::injectPadding(
-    Module& M,
-    SmallVector<Type*, 4>& Tys,
-    uint32_t Align,
-    bool IsPacked)
-{
-    auto& C = M.getContext();
-    auto& DL = M.getDataLayout();
-    auto* Tmp = StructType::get(C, Tys, IsPacked);
-    auto Layout = DL.getStructLayout(Tmp);
-    uint64_t Size = Layout->getSizeInBytes();
-    uint64_t Diff = iSTD::Align(Size, Align) - Size;
-    if (Diff != 0)
-    {
-        auto* VTy = ArrayType::get(Type::getInt8Ty(C), Diff);
-        Tys.push_back(VTy);
-    }
-}
-
 bool RTBuilder::checkAlign(
-    Module &M,
+    Module& M,
     StructType* StructTy,
     uint32_t Align)
 {
@@ -3495,19 +1984,6 @@ bool RTBuilder::checkAlign(
     return (Diff == 0);
 }
 
-uint32_t RTBuilder::getRTAsyncStackStatefulAddrSpace(const ModuleMetaData &MMD)
-{
-    auto& rtInfo = MMD.rtInfo;
-    IGC_ASSERT_MESSAGE(rtInfo.RTAsyncStackAddrspace != UINT_MAX, "not initialized?");
-    return rtInfo.RTAsyncStackAddrspace;
-}
-
-uint32_t RTBuilder::getSWHotZoneStatefulAddrSpace(const ModuleMetaData &MMD)
-{
-    auto& rtInfo = MMD.rtInfo;
-    IGC_ASSERT_MESSAGE(rtInfo.SWHotZoneAddrspace != UINT_MAX, "not initialized?");
-    return rtInfo.SWHotZoneAddrspace;
-}
 
 uint32_t RTBuilder::getSWStackStatefulAddrSpace(const ModuleMetaData &MMD)
 {
@@ -3523,15 +1999,6 @@ uint32_t RTBuilder::getRTSyncStackStatefulAddrSpace(const ModuleMetaData& MMD)
     return rtInfo.RTSyncStackAddrspace;
 }
 
-uint32_t RTBuilder::getSWStackAddrSpace(const ModuleMetaData &MMD)
-{
-    uint32_t SWStackAddrSpace = ADDRESS_SPACE_GLOBAL;
-
-    if (MMD.rtInfo.SWStackSurfaceStateOffset)
-        SWStackAddrSpace = getSWStackStatefulAddrSpace(MMD);
-
-    return SWStackAddrSpace;
-}
 
 static const char* RaytracingTypesMDName = "igc.magic.raytracing.types";
 
@@ -3609,9 +2076,19 @@ Type* RTBuilder::getRTStack2PtrTy(
     IGC_ASSERT_MESSAGE((Mode == RTBuilder::STATELESS || Mode == RTBuilder::STATEFUL), "unknown?");
 
     auto addTy = [&](NamedMDNode *TypesMD, RaytracingType Idx) {
-        uint32_t AddrSpace = (Mode == RTBuilder::STATELESS) ?
-            ADDRESS_SPACE_GLOBAL :
-            (async ? getRTAsyncStackStatefulAddrSpace(*Ctx.getModuleMetaData()) : getRTSyncStackStatefulAddrSpace(*Ctx.getModuleMetaData()));
+        uint32_t AddrSpace = ADDRESS_SPACE_NUM_ADDRESSES;
+        if (Mode == RTBuilder::STATELESS)
+        {
+            AddrSpace = ADDRESS_SPACE_GLOBAL;
+        }
+        else
+        {
+            {
+                AddrSpace = getRTSyncStackStatefulAddrSpace(*Ctx.getModuleMetaData());
+            }
+        }
+        IGC_ASSERT(AddrSpace != ADDRESS_SPACE_NUM_ADDRESSES);
+
         auto* Ty = _gettype_RTStack2(*Ctx.getModule());
         return setRTTypeMD(
             *Ctx.getModule(),
@@ -3644,46 +2121,6 @@ Type* RTBuilder::getRayDispatchGlobalDataPtrTy(Module &M)
     return lazyGetRTType(M, RaytracingType::RayDispatchGlobalData, addTy);
 }
 
-Type* RTBuilder::getHWRayData2PtrTy(Module &M)
-{
-    auto addTy = [&](NamedMDNode *TypesMD, RaytracingType Idx) {
-        auto* Ty = _gettype_HWRayData2(M);
-        return setRTTypeMD(
-            M,
-            Idx,
-            TypesMD,
-            Ty,
-            sizeof(HWRayData2),
-            ADDRESS_SPACE_GLOBAL);
-    };
-
-    return lazyGetRTType(M, RaytracingType::HWRayData2, addTy);
-}
-
-Type* RTBuilder::getSWHotZonePtrTy(
-    const IGC::CodeGenContext& Ctx,
-    RTMemoryAccessMode Mode)
-{
-    auto addTy = [&](NamedMDNode *TypesMD, RaytracingType Idx) {
-        auto& M = *Ctx.getModule();
-        uint32_t AddrSpace = (Mode == RTBuilder::STATELESS) ?
-            ADDRESS_SPACE_GLOBAL :
-            getSWHotZoneStatefulAddrSpace(*Ctx.getModuleMetaData());
-        auto* Ty = IGC_IS_FLAG_ENABLED(EnableCompressedRayIndices) ?
-            _gettype_SWHotZone_v1(M) :
-            _gettype_SWHotZone_v2(M);
-        return setRTTypeMD(
-            M,
-            Idx,
-            TypesMD,
-            Ty,
-            getSWHotZoneSize(),
-            AddrSpace);
-    };
-
-    auto& M = *Ctx.getModule();
-    return lazyGetRTType(M, RaytracingType::SWHotZone, addTy);
-}
 
 Type* RTBuilder::getInstanceLeafPtrTy(Module &M)
 {
@@ -3749,39 +2186,11 @@ Type* RTBuilder::getBVHPtrTy(Module &M)
     return lazyGetRTType(M, RaytracingType::BVH, addTy);
 }
 
-// We don't store this in metadata since we generate a new one of these for
-// every shader
-StructType* RTBuilder::getRTGlobalsAndRootSig(
-    Module& M, Type* TypeHoleGlobalRootSig, StringRef Name)
-{
-    auto *Ty = cast<StructType>(_gettype_RTGlobalsAndRootSig(M, TypeHoleGlobalRootSig));
-    Ty->setName(Name);
-    return Ty;
-}
-
-StructType* RTBuilder::getShaderRecordTy(
-    Module& M, Type* TypeHoleLocalRootSig, StringRef Name)
-{
-    auto *Ty = cast<StructType>(_gettype_ShaderRecord(M, TypeHoleLocalRootSig));
-    Ty->setName(Name);
-    return Ty;
-}
-
-Type* RTBuilder::getInt64PtrTy(unsigned int AddrSpace) const
-{
-    return Type::getInt64PtrTy(this->Context, AddrSpace);
-}
-
-Type* RTBuilder::getInt32PtrTy(unsigned int AddrSpace) const
-{
-    return Type::getInt32PtrTy(this->Context, AddrSpace);
-}
-
 // Find the Insert point which is placed
 // after all Allocas and after all the Instructions
 // from the optional vector additionalInstructionsToSkip.
 Instruction* RTBuilder::getEntryFirstInsertionPt(
-    Function &F,
+    Function& F,
     const std::vector<Value*>* additionalInstructionsToSkip)
 {
     auto& EntryBB = F.getEntryBlock();
@@ -3812,84 +2221,6 @@ Instruction* RTBuilder::getEntryFirstInsertionPt(
     return CurIP;
 }
 
-const IGC::RayDispatchShaderContext& RTBuilder::RtCtx() const
-{
-    IGC_ASSERT_MESSAGE(Ctx.type == ShaderType::RAYTRACING_SHADER,
-        "only raytracing shaders for now!");
-    return static_cast<const RayDispatchShaderContext&>(Ctx);
-}
-
-void RTBuilder::printf(Constant* formatStrPtr, ArrayRef<Value*> Args)
-{
-    auto* M = Ctx.getModule();
-
-    Function* funcPrintf = M->getFunction(PrintfFuncName);
-
-    if (!funcPrintf)
-    {
-        FunctionType* funcTypePrintf = FunctionType::get(
-            getInt32Ty(),
-            formatStrPtr->getType(),
-            true);
-        funcPrintf = Function::Create(funcTypePrintf,
-            GlobalValue::ExternalLinkage,
-            PrintfFuncName,
-            M);
-    }
-
-    CreateCall(funcPrintf, Args, VALUE_NAME("callPrintf"));
-}
-
-void RTBuilder::printTraceRay(const TraceRayAsyncHLIntrinsic* trace)
-{
-    auto& LogMgr = RtCtx().LogMgr;
-    if (!LogMgr.isEnabled())
-        return;
-
-    Constant* printfStr = LogMgr.getFormatString(
-        RTLoggingManager::TRACE_RAY,
-        [&](StringRef FormatString) {
-            return CreateGlobalStringPtr(
-                       FormatString,
-                       VALUE_NAME("printf.format.RayDesc"));
-        });
-
-    Value* argsPrintf[] = {
-        printfStr,
-        trace->getRayOrig(0),
-        trace->getRayOrig(1),
-        trace->getRayOrig(2),
-        trace->getRayDir(0),
-        trace->getRayDir(1),
-        trace->getRayDir(2),
-        trace->getTMin(),
-        trace->getTMax(),
-    };
-
-    printf(printfStr, argsPrintf);
-}
-
-
-void RTBuilder::printDispatchRayIndex(const std::vector<Value*>& Indices)
-{
-    auto& LogMgr = RtCtx().LogMgr;
-    if (!LogMgr.isEnabled())
-        return;
-
-    Constant* printfStr = LogMgr.getFormatString(
-        RTLoggingManager::DISPATCH_RAY_INDEX,
-        [&](StringRef FormatString) {
-            return CreateGlobalStringPtr(
-                       FormatString,
-                       VALUE_NAME("printf.format.DispatchRayIndex"));
-        });
-
-    SmallVector<Value*, 4> argsPrintf{ printfStr };
-    for (auto *Index : Indices)
-        argsPrintf.push_back(Index);
-
-    printf(printfStr, argsPrintf);
-}
 
 SpillValueIntrinsic* RTBuilder::getSpillValue(Value* Val, uint64_t Offset)
 {
@@ -3932,59 +2263,3 @@ void RTBuilder::setDisableRTGlobalsKnownValues(bool Disable) {
     this->DisableRTGlobalsKnownValues = Disable;
 }
 
-GenIntrinsicInst* RTBuilder::getSpillAnchor(Value* V)
-{
-    auto* M = GetInsertBlock()->getModule();
-    CallInst* Anchor = this->CreateCall(
-        GenISAIntrinsic::getDeclaration(
-            M, GenISAIntrinsic::GenISA_rt_spill_anchor, V->getType()),
-        V,
-        VALUE_NAME(V->getName() + Twine(".anchor")));
-    return cast<GenIntrinsicInst>(Anchor);
-}
-
-void RTBuilder::setSpillSize(ContinuationHLIntrinsic& CI, uint32_t SpillSize)
-{
-    auto& C = CI.getContext();
-    MDNode* node = MDNode::get(
-        C,
-        ConstantAsMetadata::get(
-            ConstantInt::get(Type::getInt32Ty(C), SpillSize)));
-    CI.setMetadata(RTBuilder::SpillSize, node);
-}
-
-Optional<uint32_t> RTBuilder::getSpillSize(const ContinuationHLIntrinsic& CI)
-{
-    auto* MD = CI.getMetadata(RTBuilder::SpillSize);
-    if (!MD)
-        return None;
-
-    auto* CMD = cast<ConstantAsMetadata>(MD->getOperand(0));
-    auto* C = cast<ConstantInt>(CMD->getValue());
-    return static_cast<uint32_t>(C->getZExtValue());
-}
-
-void RTBuilder::markAsContinuation(Function& F)
-{
-    F.addFnAttr(IsContinuation);
-}
-
-bool RTBuilder::isContinuation(const Function& F)
-{
-    return F.hasFnAttribute(IsContinuation);
-}
-
-GetShaderRecordPtrIntrinsic* RTBuilder::getShaderRecordPtr(Function* F)
-{
-    Function* pFunc = GenISAIntrinsic::getDeclaration(
-        this->GetInsertBlock()->getModule(),
-        GenISAIntrinsic::GenISA_GetShaderRecordPtr);
-    auto* Cast = this->CreatePointerBitCastOrAddrSpaceCast(
-        F,
-        this->getInt8PtrTy());
-    auto *CI = this->CreateCall(
-        pFunc,
-        Cast,
-        VALUE_NAME("&ShaderRecord"));
-    return cast<GetShaderRecordPtrIntrinsic>(CI);
-}

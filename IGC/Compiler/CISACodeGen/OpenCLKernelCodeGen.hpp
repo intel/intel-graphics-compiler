@@ -16,6 +16,287 @@ namespace IGC
 
 namespace IGC
 {
+    class OpenCLProgramContext : public CodeGenContext
+    {
+    public:
+        // We should probably replace all of this with proper option parsing,
+        // like RS does
+        class InternalOptions
+        {
+        public:
+            InternalOptions(const TC::STB_TranslateInputArgs* pInputArgs) :
+                KernelDebugEnable(false),
+                IncludeSIPCSR(false),
+                IncludeSIPKernelDebug(false),
+                IntelGreaterThan4GBBufferRequired(false),
+                Use32BitPtrArith(false),
+                IncludeSIPKernelDebugWithLocalMemory(false),
+                IntelHasPositivePointerOffset(false),
+                IntelHasBufferOffsetArg(false),
+                IntelBufferOffsetArgOptional(true),
+                IntelHasSubDWAlignedPtrArg(false),
+                LargeGRFKernels(),
+                RegularGRFKernels()
+            {
+                if (pInputArgs == nullptr)
+                    return;
+
+                if (pInputArgs->pInternalOptions != nullptr)
+                {
+                    parseOptions(pInputArgs->pInternalOptions);
+                }
+
+                // Internal options are passed in via pOptions as well.
+                if (pInputArgs->pOptions != nullptr)
+                {
+                    parseOptions(pInputArgs->pOptions);
+                }
+            }
+
+            bool KernelDebugEnable;
+            bool IncludeSIPCSR;
+            bool IncludeSIPKernelDebug;
+            bool IntelGreaterThan4GBBufferRequired;
+            bool IntelDisableA64WA = false;
+            bool IntelForceEnableA64WA = false;
+            bool Use32BitPtrArith = false;
+            bool IncludeSIPKernelDebugWithLocalMemory;
+
+            bool GTPinReRA = false;
+            bool GTPinGRFInfo = false;
+            bool GTPinScratchAreaSize = false;
+            bool GTPinIndirRef = false;
+            uint32_t GTPinScratchAreaSizeValue = 0;
+
+            // stateless to stateful optimization
+            bool IntelHasPositivePointerOffset; // default: false
+            bool IntelHasBufferOffsetArg;       // default: false
+            bool IntelBufferOffsetArgOptional;  // default: true
+            bool IntelHasSubDWAlignedPtrArg;
+            // default: false, meaning kernel's sub-DW ptrArgs (char*, short*) are DW-aligned.
+            // This default is stronger than the natural alignment implied by char*/short*. But
+            // for historical reason, we have this.
+
+            bool replaceGlobalOffsetsByZero = false;
+            bool IntelEnablePreRAScheduling = true;
+            bool PromoteStatelessToBindless = false;
+            bool PreferBindlessImages = false;
+            bool UseBindlessMode = false;
+            bool UseBindlessPrintf = false;
+            bool UseBindlessLegacyMode = true;
+            bool ExcludeIRFromZEBinary = false;
+            bool EmitZeBinVISASections = false;
+            bool NoSpill = false;
+            bool DisableNoMaskWA = false;
+            bool IgnoreBFRounding = false;   // If true, ignore BFloat rounding when folding bf operations
+            bool CompileOneKernelAtTime = false;
+
+            // Generic address related
+            bool NoLocalToGeneric = false;
+            bool ForceGlobalMemoryAllocation = false;
+
+            // -1 : initial value that means it is not set from cmdline
+            // 0-5: valid values set from the cmdline
+            int16_t VectorCoalescingControl = -1;
+
+            bool Intel128GRFPerThread = false;
+            bool Intel256GRFPerThread = false;
+            bool IntelNumThreadPerEU = false;
+            uint32_t numThreadsPerEU = 0;
+            std::vector<std::string> LargeGRFKernels;
+            std::vector<std::string> RegularGRFKernels;
+            // IntelForceInt32DivRemEmu is used only if fp64 is supported natively.
+            // IntelForceInt32DivRemEmu wins if both are set and can be applied.
+            bool IntelForceInt32DivRemEmu = false;
+            bool IntelForceInt32DivRemEmuSP = false;
+            bool IntelForceDisable4GBBuffer = false;
+            // user-controled option to disable EU Fusion
+            bool DisableEUFusion = false;
+            // Function Control (same as IGC key FunctionControl)
+            int FunctionControl = -1;
+            // Fail comilation if spills are present in compiled kernel
+            bool FailOnSpill = false;
+            // This option forces IGC to poison kernels using fp64
+            // operations on platforms without HW support for fp64.
+            bool EnableUnsupportedFP64Poisoning = false;
+            // Cache default. -1 menans not set (thus not used by igc);
+            // Valid values are defined as enum type LSC_L1_L3_CC in
+            //   visa\include\visa_igc_common_header.h, which are from
+            //   macro definitions in igc\common\igc_regkeys_enums_defs.h
+            int StoreCacheDefault = -1;
+            int LoadCacheDefault = -1;
+            // Force high-accuracy math functions from BiFModule
+            bool UseHighAccuracyMathFuncs = false;
+
+            bool AllowRelocAdd = true;
+
+            uint32_t IntelPrivateMemoryMinimalSizePerThread = 0;
+            uint32_t IntelScratchSpacePrivateMemoryMinimalSizePerThread = 0;
+
+            bool EnableDivergentBarrierHandling = false;
+            std::optional<bool> EnableZEBinary;
+
+        private:
+            void parseOptions(const char* IntOptStr);
+        };
+
+        class Options
+        {
+        public:
+            Options(const TC::STB_TranslateInputArgs* pInputArgs) :
+                CorrectlyRoundedSqrt(false),
+                NoSubgroupIFP(false),
+                UniformWGS(false)
+            {
+                if (pInputArgs == nullptr)
+                    return;
+
+                if (pInputArgs->pOptions == nullptr)
+                    return;
+
+                // Build options are of the form -cl-xxxx and -ze-xxxx
+                // So we skip these prefixes when reading the options to be agnostic of their source
+
+                // Runtime passes internal options via pOptions as well, and those
+                // internal options will be handled by InternalOptions class (parseOptions).
+                // !!! When adding a new internal option, please add it into internalOptions class!!!
+                // (Might combine both Options and InternalOptions into a single class!)
+                const char* options = pInputArgs->pOptions;
+                if (strstr(options, "-fp32-correctly-rounded-divide-sqrt"))
+                {
+                    CorrectlyRoundedSqrt = true;
+                }
+
+                if (strstr(options, "-no-subgroup-ifp"))
+                {
+                    NoSubgroupIFP = true;
+                }
+
+                if (strstr(options, "-uniform-work-group-size"))
+                {
+                    // Note that this is only available for -cl-std >= 2.0.
+                    // This will be checked before we place this into the
+                    // the module metadata.
+                    UniformWGS = true;
+                }
+                if (strstr(options, "-take-global-address"))
+                {
+                    EnableTakeGlobalAddress = true;
+                }
+                if (strstr(options, "-library-compilation"))
+                {
+                    IsLibraryCompilation = true;
+                }
+                if (strstr(options, "-emit-lib-compile-errors"))
+                {
+                    EmitErrorsForLibCompilation = true;
+                }
+                if (const char* op = strstr(options, "-intel-reqd-eu-thread-count"))
+                {
+                    IntelRequiredEUThreadCount = true;
+                    // Take an integer value after this option
+                    // atoi(..) ignores leading white spaces and characters after the actual number
+                    requiredEUThreadCount = atoi(op + strlen("-intel-reqd-eu-thread-count="));
+                }
+                if (strstr(options, "-intel-enable-auto-large-GRF-mode"))
+                {
+                    IntelEnableAutoLargeGRF = true;
+                }
+                if (strstr(options, "-disable-zebin"))
+                {
+                    EnableZEBinary = false;
+                }
+                if (strstr(options, "-enable-zebin"))
+                {
+                    EnableZEBinary = true;
+                }
+            }
+
+            bool CorrectlyRoundedSqrt;
+            bool NoSubgroupIFP;
+            bool UniformWGS;
+            bool EnableTakeGlobalAddress = false;
+            bool IsLibraryCompilation = false;
+            bool IntelRequiredEUThreadCount = false;
+            bool EmitErrorsForLibCompilation = false;
+            uint32_t requiredEUThreadCount = 0;
+            // Enable compiler heuristics ("regSharingHeuristics" in VISA) for large GRF selection.
+            bool IntelEnableAutoLargeGRF = false;
+            std::optional<bool> EnableZEBinary;
+        };
+
+        // output: shader information
+        iOpenCL::CGen8OpenCLProgram m_programOutput;
+        SOpenCLProgramInfo m_programInfo;
+        const InternalOptions m_InternalOptions;
+        const Options m_Options;
+        bool isSpirV;
+        float m_ProfilingTimerResolution;
+        bool m_ShouldUseNonCoherentStatelessBTI;
+        uint32_t m_numUAVs = 0;
+
+    private:
+        bool m_enableZEBinary;
+
+    public:
+        // Additional text visaasm to link.
+        std::vector<const char*> m_VISAAsmToLink;
+
+        OpenCLProgramContext(
+            const COCLBTILayout& btiLayout,
+            const CPlatform& platform,
+            const TC::STB_TranslateInputArgs* pInputArgs,
+            const CDriverInfo& driverInfo,
+            LLVMContextWrapper* llvmContext = nullptr,
+            bool shouldUseNonCoherentStatelessBTI = false,
+            const bool createResourceDimTypes = true)
+            : CodeGenContext(ShaderType::OPENCL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmContext),
+            m_programOutput(platform.getPlatformInfo(), *this),
+            m_InternalOptions(pInputArgs),
+            m_Options(pInputArgs),
+            isSpirV(false),
+            m_ShouldUseNonCoherentStatelessBTI(shouldUseNonCoherentStatelessBTI)
+        {
+            if (pInputArgs && pInputArgs->pVISAAsmToLinkArray) {
+                for (uint32_t i = 0; i < pInputArgs->NumVISAAsmsToLink; ++i) {
+                    m_VISAAsmToLink.push_back(pInputArgs->pVISAAsmToLinkArray[i]);
+                }
+            }
+
+            // regkey overrides options. Options have been parsed in Options and InternalOptions
+            if (IGC_IS_FLAG_SET(EnableZEBinary))
+                m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
+            else if (m_Options.EnableZEBinary)
+                m_enableZEBinary = *m_Options.EnableZEBinary;
+            else if (m_InternalOptions.EnableZEBinary)
+                m_enableZEBinary = *m_InternalOptions.EnableZEBinary;
+            else
+                m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
+        }
+
+        bool enableZEBinary() const override { return m_enableZEBinary; }
+        bool isSPIRV() const;
+        void setAsSPIRV();
+        float getProfilingTimerResolution();
+        uint32_t getNumGRFPerThread(bool returnDefault = true) override;
+        uint32_t getNumThreadsPerEU() const override;
+        bool forceGlobalMemoryAllocation() const override;
+        bool allocatePrivateAsGlobalBuffer() const override;
+        bool noLocalToGenericOptionEnabled() const override;
+        bool enableTakeGlobalAddress() const override;
+        int16_t getVectorCoalescingControl() const override;
+        uint32_t getPrivateMemoryMinimalSizePerThread() const override;
+        uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const override;
+        void failOnSpills();
+        bool needsDivergentBarrierHandling() const;
+        unsigned GetSlmSizePerSubslice();
+
+        void clearBeforeRetry() {
+            m_programOutput.clearBeforeRetry();
+        }
+    private:
+        llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
+    };
 
     class COpenCLKernel : public CComputeShaderBase
     {
@@ -149,4 +430,5 @@ namespace IGC
         std::string getKernelArgAccessQualifier(const FunctionMetaData& funcMD, uint argIndex) const;
     };
 
+    void CodeGen(OpenCLProgramContext* ctx);
 }

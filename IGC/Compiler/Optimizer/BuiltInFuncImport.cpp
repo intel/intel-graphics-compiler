@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "llvmWrapper/IR/Attributes.h"

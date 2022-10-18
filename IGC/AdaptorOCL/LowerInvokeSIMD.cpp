@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "LowerInvokeSIMD.hpp"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 

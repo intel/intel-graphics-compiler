@@ -42,6 +42,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ResolvePredefinedConstant.h"
 #include "Compiler/CISACodeGen/SimplifyConstant.h"
 #include "Compiler/CISACodeGen/FoldKnownWorkGroupSizes.h"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 
 #include "Compiler/HandleFRemInstructions.hpp"
 #include "Compiler/Optimizer/BuiltInFuncImport.h"
@@ -133,10 +134,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <algorithm>
 
-
 #include <Metrics/IGCMetric.h>
-
-
 
 using namespace llvm;
 using namespace IGC::IGCMD;
