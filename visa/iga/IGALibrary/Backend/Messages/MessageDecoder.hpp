@@ -337,6 +337,7 @@ namespace iga {
         static const int SLM_BTI = 0xFE;
         static const int COHERENT_BTI = 0xFF;
         static const int NONCOHERENT_BTI = 0xFD;
+
         MessageDecoderLegacy(
             Platform _platform,
             SFID _sfid,
@@ -435,29 +436,29 @@ namespace iga {
         SendDesc &desc,
         std::string &err);
 
-
+    // Different parameters that sampler messages allow.
     enum class SamplerParam {
         NONE = 0,
         AI, // array index
-        BIAS,
-        BIAS_AI,
-        DUDX, // u derivative with respect to x?
-        DUDY, // u derivative with respect to y?
+        BIAS, // depth bias
+        BIAS_AI, // bias packed with AI
+        DUDX, // u derivative with respect to x
+        DUDY, // u derivative with respect to y
         DUMMY, // dummy parameter for messages with no arguments
                // sampler send requires src0 to be something
-        DVDX, // v derivative with respect to x?
-        DVDY, // v derivative with respect to y?
+        DVDX, // v derivative with respect to x
+        DVDY, // v derivative with respect to y
         LOD, // level of detail
-        LOD_AI, // legel of detail ... array index
-        MCS0, // multi compartment sampler buffer 0
-        MCS1, // multi compartment sampler buffer 1
-        MCS2, // multi compartment sampler buffer 3
-        MCS3, // multi compartment sampler buffer 3
-        MLOD, // ... level of detail
-        MLOD_R,
-        R, // r-coordinate
-        REF,
-        SI,
+        LOD_AI, // legel of detail packed with array index
+        MCS0, // multi control surface buffer 0
+        MCS1, // multi control surface buffer 1
+        MCS2, // multi control surface buffer 2
+        MCS3, // multi control surface buffer 3
+        MLOD, // min level of detail
+        MLOD_R, // mlod packed with R
+        R, // r-coordinate (depth)
+        REF, // reference value (_c)
+        SI, // sampler index?
         U, // u-coordinate
         V, // v-coordinate
     }; // SamplerParam
