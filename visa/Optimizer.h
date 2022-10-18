@@ -103,6 +103,7 @@ class Optimizer {
   //
   G4_SrcModifier mergeModifier(G4_Operand *def, G4_Operand *use);
   void cleanMessageHeader();
+  void forceNoMaskOnM0();
   void sendFusion();
   void renameRegister();
   void localDefHoisting();
@@ -330,6 +331,7 @@ public:
   /// Index enum for each pass in the pass array.
   enum PassIndex {
     PI_cleanMessageHeader = 0,
+    PI_forceNoMaskOnM0,
     PI_sendFusion,
     PI_renameRegister,
     PI_localDefHoisting,

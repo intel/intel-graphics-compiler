@@ -1522,6 +1522,7 @@ void Optimizer::initOptimizations() {
   //
   INITIALIZE_PASS(cleanMessageHeader, vISA_LocalCleanMessageHeader,
                   TimerID::OPTIMIZER);
+  INITIALIZE_PASS(forceNoMaskOnM0, vISA_forceNoMaskOnM0, TimerID::OPTIMIZER);
   INITIALIZE_PASS(sendFusion, vISA_EnableSendFusion, TimerID::OPTIMIZER);
   INITIALIZE_PASS(renameRegister, vISA_LocalRenameRegister, TimerID::OPTIMIZER);
   INITIALIZE_PASS(localDefHoisting, vISA_LocalDefHoist, TimerID::OPTIMIZER);
@@ -1994,6 +1995,9 @@ int Optimizer::optimization() {
 
   // remove redundant message headers.
   runPass(PI_cleanMessageHeader);
+
+  // Set NoMask inst's mask offset to 0 if possible
+  runPass(PI_forceNoMaskOnM0);
 
 
   runPass(PI_sendFusion);
@@ -6463,6 +6467,27 @@ void getOptReportStream(std::ofstream &reportStream, const Options *opt) {
 }
 
 void closeOptReportStream(std::ofstream &reportStream) { reportStream.close(); }
+
+// For NoMask inst with non-zero mask offset, set maskoffset = 0 if possible.
+//
+// For any NoMask inst with non-zero mask offset, if it does not access any
+// ARF and it is not a CF instruction, set its mask offset to zero.
+void Optimizer::forceNoMaskOnM0() {
+  for (G4_BB* currBB : fg) {
+    for (auto& I : *currBB) {
+      if (!I->isWriteEnableInst() ||
+        I->isCFInst() ||
+        I->getPredicate() ||
+        I->getCondMod() ||
+        I->getMaskOffset() == 0 ||
+        I->hasImplicitAccDst() ||
+        I->hasImplicitAccSrc())
+        continue;
+
+      I->setMaskOption(InstOpt_M0);
+    }
+  }
+}
 
 void Optimizer::sendFusion() {
   // Potential problem related to noMask WA

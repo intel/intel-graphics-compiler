@@ -81,6 +81,7 @@ bool G4Verifier::verifyInst(G4_INST *inst) {
     verifyDstSrcOverlap(inst);
 
     if (passIndex == Optimizer::PI_cleanMessageHeader ||
+        passIndex == Optimizer::PI_forceNoMaskOnM0 ||
         passIndex == Optimizer::PI_renameRegister ||
         passIndex == Optimizer::PI_localDefHoisting ||
         passIndex == Optimizer::PI_localCopyPropagation ||
