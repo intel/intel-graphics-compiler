@@ -1031,7 +1031,8 @@ bool LoopHoistConstant::runOnLoop(Loop* L, LPPassManager& LPM)
     }
     if (!InductionPreInc || !InductionPostInc)
         return false;
-    if (InductionPreInc->getIncomingValueForBlock(LoopLatch) != InductionPostInc)
+    if (InductionPreInc->getBasicBlockIndex(LoopLatch) < 0 ||
+        InductionPreInc->getIncomingValueForBlock(LoopLatch) != InductionPostInc)
         return false;
 
     // Match the loop exit condition and branch
@@ -1075,7 +1076,7 @@ bool LoopHoistConstant::runOnLoop(Loop* L, LPPassManager& LPM)
     // First split the HeaderBB into if/then/else blocks.
     Instruction* ifTerm;
     Instruction* elseTerm;
-    auto cmpIfHoist = FCmpInst::Create(LoopCond->getOpcode(), LoopCond->getPredicate(), InductionPreInc, LoopSize, "", MinInst);
+    auto cmpIfHoist = FCmpInst::Create(LoopCond->getOpcode(), LoopCond->getPredicate(), InductionPostInc, LoopSize, "", MinInst);
     llvm::SplitBlockAndInsertIfThenElse(cmpIfHoist, MinInst, &ifTerm, &elseTerm);
 
     BasicBlock* ifHoistBB = ifTerm->getParent();
@@ -1122,7 +1123,10 @@ bool LoopHoistConstant::runOnLoop(Loop* L, LPPassManager& LPM)
     // Replace the minnum instruction with the known value in the if block
     Instruction* newMinInst = dyn_cast<Instruction>(VMap[MinInst]);
     IGC_ASSERT(newMinInst && newMinInst->getParent() == ifHoistBB);
-    newMinInst->replaceAllUsesWith(InductionPreInc);
+    newMinInst->replaceAllUsesWith(InductionPostInc);
+
+    // Replace the minnum instruction with the known value in the else block
+    MinInst->replaceAllUsesWith(LoopSize);
 
     // Update successors and users of the original BB
     Header->replaceSuccessorsPhiUsesWith(endHoistBB);
