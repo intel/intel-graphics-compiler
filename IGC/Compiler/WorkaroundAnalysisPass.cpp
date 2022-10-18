@@ -331,6 +331,10 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     const bool hasRef = gatherpo->getIntrinsicID() == GenISAIntrinsic::GenISA_gather4POCptr;
     const uint extraBeginArgsNo = hasRef ? 1 : 0;
 
+    if (m_pCtxWrapper->getCodeGenContext()->platform.supportsGather4PO() && !hasRef)
+    {
+        return;
+    }
     unsigned int offsetArgumentIndices[] = {
         7u + extraBeginArgsNo,
         8u + extraBeginArgsNo,

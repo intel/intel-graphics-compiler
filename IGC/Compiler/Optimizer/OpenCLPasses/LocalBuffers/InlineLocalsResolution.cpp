@@ -319,6 +319,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
             }
             const unsigned int numThreadsPerEU = platform.ThreadCount / platform.EUCount;
             unsigned int simdSizeUsed = 8;
+            simdSizeUsed = numLanes(pCtx->platform.getMinDispatchMode());
             unsigned int maxWS = maxNumEUsPerSubSlice * numThreadsPerEU * simdSizeUsed;
             if (!iSTD::IsPowerOfTwo(maxWS))
             {
