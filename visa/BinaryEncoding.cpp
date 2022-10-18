@@ -588,14 +588,14 @@ inline void EncodeDstHorzStride(G4_INST *inst, BinInst *mybin,
 }
 
 inline void EncodeDstChanEn(G4_INST *inst, BinInst *mybin,
-                            G4_DstRegRegion *dst) {
+                            G4_DstRegRegion *dst, BinaryEncoding &encoder) {
 
   if (dst->isAccRegValid()) {
     SetDstChanEn(mybin, dst->getAccRegSel());
     return;
   }
 
-  SetDstChanEn(mybin, dst->getWriteMask());
+  SetDstChanEn(mybin, encoder.getWriteMask(dst));
 }
 
 inline void BinaryEncoding::EncodeDstRegNum(G4_INST *inst, BinInst *mybin,
@@ -907,7 +907,8 @@ inline void EncodeSrc0AddrMode(BinInst *mybin, G4_Operand *src0) {
 }
 
 inline void EncodeSrc0ChanSelect(G4_INST *inst, BinInst *mybin,
-                                 G4_Operand *src0, G4_SrcRegRegion *srcRegion) {
+                                 G4_Operand *src0, G4_SrcRegRegion *srcRegion,
+                                 BinaryEncoding &encoder) {
   // encode acc2~acc9 if it is valid
   if (src0->isAccRegValid()) {
     if (inst->opcode() == G4_madm ||
@@ -923,12 +924,16 @@ inline void EncodeSrc0ChanSelect(G4_INST *inst, BinInst *mybin,
     ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
   }
 
-  const char *swizzle = srcRegion->getSwizzle();
-  if (swizzle[0] != '\0' && swizzle[0] != 'r') {
-    ChanSel ch0 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0);
-    ChanSel ch1 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1);
-    ChanSel ch2 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 2);
-    ChanSel ch3 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 3);
+  auto maybeSwizzle = encoder.getSwizzle(srcRegion);
+  if (maybeSwizzle && *maybeSwizzle != SrcSwizzle::R) {
+    ChanSel ch0 =
+        EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0, encoder);
+    ChanSel ch1 =
+        EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1, encoder);
+    ChanSel ch2 =
+        EncodingHelper::GetSrcChannelSelectValue(srcRegion, 2, encoder);
+    ChanSel ch3 =
+        EncodingHelper::GetSrcChannelSelectValue(srcRegion, 3, encoder);
     if (ch0 != CHAN_SEL_UNDEF)
       SetSrc0ChanSel_0(mybin, ch0);
     if (ch1 != CHAN_SEL_UNDEF)
@@ -939,7 +944,7 @@ inline void EncodeSrc0ChanSelect(G4_INST *inst, BinInst *mybin,
       SetSrc0ChanSel_3(mybin, ch3);
   }
 
-  if (swizzle[0] == '\0') {
+  if (!maybeSwizzle) {
     if (inst->isAligned16Inst()) {
       SetSrc0ChanSel_0(mybin, CHAN_SEL_X);
       SetSrc0ChanSel_1(mybin, CHAN_SEL_Y);
@@ -947,7 +952,7 @@ inline void EncodeSrc0ChanSelect(G4_INST *inst, BinInst *mybin,
       SetSrc0ChanSel_3(mybin, CHAN_SEL_W);
     }
   } else if (inst->getNumSrc() == 3 && !inst->isSend()) {
-    if (swizzle[0] == 'r') {
+    if (*maybeSwizzle == SrcSwizzle::R) {
       if (inst->isAligned16Inst()) {
         SetSrc0ChanSel_0(mybin, CHAN_SEL_X);
         SetSrc0ChanSel_1(mybin, CHAN_SEL_Y);
@@ -958,9 +963,10 @@ inline void EncodeSrc0ChanSelect(G4_INST *inst, BinInst *mybin,
   }
 }
 
-inline void EncodeSrc0RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion) {
-  const char *swizzle = srcRegion->getSwizzle();
-  if (swizzle[0] == 'r')
+inline void EncodeSrc0RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion,
+                              BinaryEncoding &encoder) {
+  auto maybeSwizzle = encoder.getSwizzle(srcRegion);
+  if (maybeSwizzle && *maybeSwizzle == SrcSwizzle::R)
     SetSrc0RepCtrl(mybin, 0x1);
   else
     SetSrc0RepCtrl(mybin, 0x0);
@@ -1183,7 +1189,7 @@ inline void BinaryEncoding::EncodeSrc0RegNum(G4_INST *inst, BinInst *mybin,
                                              G4_Operand *src0) {
   if (EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
       EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED) {
-    bool repControl = EncodingHelper::GetRepControl(src0);
+    bool repControl = EncodingHelper::GetRepControl(src0, *this);
     uint32_t byteAddress = src0->getLinearizedStart();
     MUST_BE_TRUE(byteAddress <
                      kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(),
@@ -1343,7 +1349,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandDst(G4_INST *inst) {
   EncodeDstAddrMode(mybin, dst);
   // Note: dst doesn't have the vertical stride and width
   EncodeDstHorzStride(inst, mybin, dst);
-  EncodeDstChanEn(inst, mybin, dst);
+  EncodeDstChanEn(inst, mybin, dst, *this);
   EncodeDstRegNum(inst, mybin, dst);
   EncodeDstIndirectRegNum(inst, mybin, dst);
   EncodeDstArchRegNum(inst, mybin, dst);
@@ -1379,8 +1385,8 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST *inst) {
   } else {
     G4_SrcRegRegion *src0Region = src0->asSrcRegRegion();
     EncodeSrc0AddrMode(mybin, src0);
-    EncodeSrc0ChanSelect(inst, mybin, src0, src0Region);
-    EncodeSrc0RepCtrl(mybin, src0Region);
+    EncodeSrc0ChanSelect(inst, mybin, src0, src0Region, *this);
+    EncodeSrc0RepCtrl(mybin, src0Region, *this);
     EncodeSrc0Modifier(mybin, src0, src0Region);
 
     const RegionDesc *rd = src0Region->getRegion();
@@ -1584,7 +1590,8 @@ inline void EncodeSrc1AddrMode(BinInst *mybin, G4_Operand *src1) {
 }
 
 inline void EncodeSrc1ChanSelect(G4_INST *inst, BinInst *mybin,
-                                 G4_SrcRegRegion *srcRegion) {
+                                 G4_SrcRegRegion *srcRegion,
+                                 BinaryEncoding &encoder) {
   // encode acc2~acc9 if it is valid
   if (srcRegion->isAccRegValid()) {
     if (inst->opcode() == G4_madm ||
@@ -1600,12 +1607,16 @@ inline void EncodeSrc1ChanSelect(G4_INST *inst, BinInst *mybin,
     ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
   }
 
-  const char *swizzle = srcRegion->getSwizzle();
-  if (swizzle[0] != '\0' && swizzle[0] != 'r') {
-    ChanSel ch0 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0);
-    ChanSel ch1 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1);
-    ChanSel ch2 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 2);
-    ChanSel ch3 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 3);
+  auto maybeSwizzle = encoder.getSwizzle(srcRegion);
+  if (maybeSwizzle && *maybeSwizzle != SrcSwizzle::R) {
+    ChanSel ch0 =
+        EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0, encoder);
+    ChanSel ch1 =
+        EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1, encoder);
+    ChanSel ch2 =
+        EncodingHelper::GetSrcChannelSelectValue(srcRegion, 2, encoder);
+    ChanSel ch3 =
+        EncodingHelper::GetSrcChannelSelectValue(srcRegion, 3, encoder);
     if (ch0 != CHAN_SEL_UNDEF)
       SetSrc1ChanSel_0(mybin, ch0);
     if (ch1 != CHAN_SEL_UNDEF)
@@ -1616,7 +1627,7 @@ inline void EncodeSrc1ChanSelect(G4_INST *inst, BinInst *mybin,
       SetSrc1ChanSel_3(mybin, ch3);
   }
 
-  if (swizzle[0] == '\0') {
+  if (!maybeSwizzle) {
     if (inst->isAligned16Inst()) {
       SetSrc1ChanSel_0(mybin, CHAN_SEL_X);
       SetSrc1ChanSel_1(mybin, CHAN_SEL_Y);
@@ -1624,7 +1635,7 @@ inline void EncodeSrc1ChanSelect(G4_INST *inst, BinInst *mybin,
       SetSrc1ChanSel_3(mybin, CHAN_SEL_W);
     }
   } else if (inst->getNumSrc() == 3 && !inst->isSend()) {
-    if (swizzle[0] == 'r') {
+    if (*maybeSwizzle == SrcSwizzle::R) {
       if (inst->isAligned16Inst()) {
         SetSrc1ChanSel_0(mybin, CHAN_SEL_X);
         SetSrc1ChanSel_1(mybin, CHAN_SEL_Y);
@@ -1635,9 +1646,10 @@ inline void EncodeSrc1ChanSelect(G4_INST *inst, BinInst *mybin,
   }
 }
 
-inline void EncodeSrc1RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion) {
-  const char *swizzle = srcRegion->getSwizzle();
-  if (swizzle[0] == 'r')
+inline void EncodeSrc1RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion,
+                              BinaryEncoding &encoder) {
+  auto maybeSwizzle = encoder.getSwizzle(srcRegion);
+  if (maybeSwizzle && *maybeSwizzle == SrcSwizzle::R)
     SetSrc1RepCtrl(mybin, 0x1);
   else
     SetSrc1RepCtrl(mybin, 0x0);
@@ -1819,7 +1831,7 @@ inline void BinaryEncoding::EncodeSrc1RegNum(G4_INST *inst, BinInst *mybin,
                                              G4_Operand *src1) {
   if (EncodingHelper::GetSrcRegFile(src1) != REG_FILE_A &&
       EncodingHelper::GetSrcAddrMode(src1) == ADDR_MODE_IMMED) {
-    bool repControl = EncodingHelper::GetRepControl(src1);
+    bool repControl = EncodingHelper::GetRepControl(src1, *this);
     uint32_t byteAddress = src1->getLinearizedStart();
     MUST_BE_TRUE(byteAddress <
                      kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(),
@@ -2035,9 +2047,9 @@ BinaryEncoding::Status BinaryEncoding::EncodeIndirectCallTarget(G4_INST *inst) {
     EncodeSrc1ArchRegNum(inst, mybin, srcRegion);
     EncodeSrc1IndirectRegNum(inst, mybin, srcRegion);
     EncodeSrc1AddrMode(mybin, srcRegion);
-    EncodeSrc1RepCtrl(mybin, srcRegion);
+    EncodeSrc1RepCtrl(mybin, srcRegion, *this);
     EncodeSrc1Modifier(mybin, srcRegion);
-    EncodeSrc1ChanSelect(inst, mybin, srcRegion);
+    EncodeSrc1ChanSelect(inst, mybin, srcRegion, *this);
     const RegionDesc *rd = srcRegion->getRegion();
     bool WidthValid = EncodeSrc1Width(inst, mybin, rd, srcRegion);
     bool HorzStrideValid = EncodeSrc1HorzStride(inst, mybin, rd, srcRegion);
@@ -2089,9 +2101,9 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST *inst) {
     EncodeSrc1ArchRegNum(inst, mybin, srcRegion);
     EncodeSrc1IndirectRegNum(inst, mybin, srcRegion);
     EncodeSrc1AddrMode(mybin, src1);
-    EncodeSrc1RepCtrl(mybin, srcRegion);
+    EncodeSrc1RepCtrl(mybin, srcRegion, *this);
     EncodeSrc1Modifier(mybin, srcRegion);
-    EncodeSrc1ChanSelect(inst, mybin, srcRegion);
+    EncodeSrc1ChanSelect(inst, mybin, srcRegion, *this);
     const RegionDesc *rd = srcRegion->getRegion();
     bool WidthValid = EncodeSrc1Width(inst, mybin, rd, src1);
     bool HorzStrideValid = EncodeSrc1HorzStride(inst, mybin, rd, src1);
@@ -2176,7 +2188,8 @@ inline void SetSrc2RegNumDWord(BinInst *mybin, uint32_t value) {
 }
 
 inline void EncodeSrc2ChanSelect(G4_INST *inst, BinInst *mybin,
-                                 G4_SrcRegRegion *srcRegion, G4_Operand *src2) {
+                                 G4_SrcRegRegion *srcRegion, G4_Operand *src2,
+                                 BinaryEncoding &encoder) {
   if (src2->isAccRegValid()) {
     if (inst->opcode() == G4_madm) {
       uint32_t value = src2->getAccRegSel();
@@ -2188,14 +2201,17 @@ inline void EncodeSrc2ChanSelect(G4_INST *inst, BinInst *mybin,
     }
     ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
   }
-
-  const char *swizzle = srcRegion->getSwizzle();
+  auto maybeSwizzle = encoder.getSwizzle(srcRegion);
   {
-    if (swizzle[0] != '\0' && swizzle[0] != 'r') {
-      ChanSel ch0 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0);
-      ChanSel ch1 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1);
-      ChanSel ch2 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 2);
-      ChanSel ch3 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 3);
+    if (maybeSwizzle && *maybeSwizzle != SrcSwizzle::R) {
+      ChanSel ch0 =
+          EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0, encoder);
+      ChanSel ch1 =
+          EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1, encoder);
+      ChanSel ch2 =
+          EncodingHelper::GetSrcChannelSelectValue(srcRegion, 2, encoder);
+      ChanSel ch3 =
+          EncodingHelper::GetSrcChannelSelectValue(srcRegion, 3, encoder);
       if (ch0 != CHAN_SEL_UNDEF)
         SetSrc2ChanSel_0(mybin, ch0);
       if (ch1 != CHAN_SEL_UNDEF)
@@ -2209,7 +2225,7 @@ inline void EncodeSrc2ChanSelect(G4_INST *inst, BinInst *mybin,
 
   // Following ISAASM example which encodes it to xyzw and is able to compact as
   // a result.
-  if (swizzle[0] == '\0' || swizzle[0] == 'r') {
+  if (!maybeSwizzle || *maybeSwizzle == SrcSwizzle::R) {
     if (inst->isAligned16Inst()) {
       SetSrc2ChanSel_0(mybin, CHAN_SEL_X);
       SetSrc2ChanSel_1(mybin, CHAN_SEL_Y);
@@ -2219,9 +2235,10 @@ inline void EncodeSrc2ChanSelect(G4_INST *inst, BinInst *mybin,
   }
 }
 
-inline void EncodeSrc2RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion) {
-  const char *swizzle = srcRegion->getSwizzle();
-  if (swizzle[0] == 'r')
+inline void EncodeSrc2RepCtrl(BinInst *mybin, G4_SrcRegRegion *srcRegion,
+                              BinaryEncoding &encoder) {
+  auto maybeSwizzle = encoder.getSwizzle(srcRegion);
+  if (maybeSwizzle && *maybeSwizzle == SrcSwizzle::R)
     SetSrc2RepCtrl(mybin, 0x1);
   else
     SetSrc2RepCtrl(mybin, 0x0);
@@ -2266,8 +2283,8 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc2(G4_INST *inst) {
 
   if (!src2->isImm()) {
     G4_SrcRegRegion *srcRegion = src2->asSrcRegRegion();
-    EncodeSrc2ChanSelect(inst, mybin, srcRegion, src2);
-    EncodeSrc2RepCtrl(mybin, srcRegion);
+    EncodeSrc2ChanSelect(inst, mybin, srcRegion, src2, *this);
+    EncodeSrc2RepCtrl(mybin, srcRegion, *this);
     EncodeSrc2Modifier(mybin, srcRegion, src2);
     EncodeSrc2RegNum(inst, mybin, src2);
   }
@@ -2373,7 +2390,7 @@ void BinaryEncoding::insertWaitDst(G4_INST *inst) {
     // set dst's RegNum and RegSubNum according to its src0's.
     if (EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
         EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED) {
-      bool repControl = EncodingHelper::GetRepControl(src0);
+      bool repControl = EncodingHelper::GetRepControl(src0, *this);
       uint32_t byteAddress = src0->getLinearizedStart();
 
       if (inst->isAligned1Inst() || repControl) {

@@ -89,6 +89,16 @@ typedef enum _ChanSel_ {
   CHAN_SEL_UNDEF
 } ChanSel;
 
+// Source operand swizzles for Align16 instructions. While ISA supports
+// all permutations of .xyzw, compiler only ever generates "xyzw" (default),
+// "r" (scalar), or "xyxy" and "zwzw" (for 64-bit type).
+enum class SrcSwizzle {
+  XYZW,
+  R,
+  XYXY,
+  ZWZW,
+};
+
 #define NUM_REGISTER_CHANNELS 4
 
 namespace vISA {
@@ -98,88 +108,6 @@ public:
   int32_t offset;
   ForwardJmpOffset(G4_INST *_inst, int32_t _offset)
       : inst(_inst), offset(_offset){};
-};
-
-class EncodingHelper {
-public:
-  static inline RegFile GetDstRegFile(G4_DstRegRegion *dst);
-  static inline RegFile GetSrcRegFile(G4_Operand *src);
-  static inline uint32_t GetArchRegType(G4_VarBase *opnd);
-  static inline uint32_t GetDstArchRegType(G4_DstRegRegion *opnd);
-  static inline unsigned short GetElementSizeValue(G4_Operand *opnd);
-  static inline AddrMode GetDstAddrMode(G4_DstRegRegion *dst);
-  static inline AddrMode GetSrcAddrMode(G4_Operand *src);
-  static inline void mark3Src(G4_INST *inst);
-  static void dumpOptReport(int totalInst, int numCompactedInst,
-                            int numCompacted3SrcInst, G4_Kernel &kernel);
-  static inline bool hasLabelString(G4_INST *inst);
-
-  static inline bool isSrcSubRegNumValid(G4_Operand *src) {
-    bool valid = false;
-    if (EncodingHelper::GetSrcRegFile(src) != REG_FILE_A ||
-        EncodingHelper::GetSrcArchRegType(src) != ARCH_REG_FILE_NULL) {
-      if (EncodingHelper::GetSrcAddrMode(src) == ADDR_MODE_IMMED) {
-        if (!src->isSrcRegRegion() ||
-            src->asSrcRegRegion()->getSubRegOff() != (short)UNDEFINED_SHORT) {
-          valid = true;
-        }
-      }
-    }
-
-    return valid;
-  }
-
-  static inline uint32_t GetSrcArchRegType(G4_Operand *opnd) {
-    if (opnd->isSrcRegRegion()) {
-      G4_VarBase *base = opnd->asSrcRegRegion()->getBase();
-
-      if (base->isRegVar()) {
-        G4_VarBase *preg = base->asRegVar()->getPhyReg();
-        return EncodingHelper::GetArchRegType(preg);
-      } else {
-        return EncodingHelper::GetArchRegType(base);
-      }
-    }
-
-    return ARCH_REG_FILE_NULL;
-  }
-
-  static inline ChanSel GetSrcChannelSelectValue(G4_SrcRegRegion *srcRegion,
-                                                 int i) {
-    ChanSel ChanSelectValue = CHAN_SEL_UNDEF;
-
-    const char *swizzle = srcRegion->getSwizzle();
-
-    if (i < NUM_REGISTER_CHANNELS) {
-      switch (swizzle[i]) {
-      case 'x':
-        ChanSelectValue = CHAN_SEL_X;
-        break;
-      case 'y':
-        ChanSelectValue = CHAN_SEL_Y;
-        break;
-      case 'z':
-        ChanSelectValue = CHAN_SEL_Z;
-        break;
-      case 'w':
-        ChanSelectValue = CHAN_SEL_W;
-        break;
-      }
-    }
-    return ChanSelectValue;
-  }
-
-  static inline bool GetRepControl(G4_Operand *src) {
-    if (src->isSrcRegRegion()) {
-      const char *swizzle = src->asSrcRegRegion()->getSwizzle();
-      if (swizzle[0] != '\0') {
-        if (swizzle[0] == 'r') {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
 };
 
 //===----------------------------------------------------------------------===//
@@ -1268,6 +1196,10 @@ protected:
 
   uint32_t instCounts;
 
+  // Maps for Align16 operands' swizzle (source) and write mask (dst).
+  std::map<G4_SrcRegRegion *, SrcSwizzle> align16SrcSwizzle;
+  std::map<G4_DstRegRegion *, ChannelEnable> align16DstWriteMask;
+
 public:
   // all platform specific bit locations are initialized here
   static void InitPlatform() {
@@ -1303,10 +1235,126 @@ public:
       mybin->SetBits(bitsFlagRegNum[0], bitsFlagRegNum[1], value);
   }
 
+  void setSwizzle(G4_SrcRegRegion *src, SrcSwizzle swizzle) {
+    align16SrcSwizzle[src] = swizzle;
+  }
+  void setWriteMask(G4_DstRegRegion *dst, ChannelEnable writeMask) {
+    align16DstWriteMask[dst] = writeMask;
+  }
+
+  std::optional<SrcSwizzle> getSwizzle(G4_SrcRegRegion *src) {
+    auto iter = align16SrcSwizzle.find(src);
+    return iter == align16SrcSwizzle.end() ? std::nullopt
+                                           : std::optional(iter->second);
+  }
+  ChannelEnable getWriteMask(G4_DstRegRegion *dst) {
+    auto iter = align16DstWriteMask.find(dst);
+    return iter == align16DstWriteMask.end() ? NoChannelEnable : iter->second;
+  }
+
   // Should use G9HDL::EU_OPCODE as return type. But Forward declaration of enum
   // fails for linux, so use uint32_t as WA for now.
   uint32_t getEUOpcode(G4_opcode g4opc); // defined in BinaryEncodingCNL.cpp
 };                                       // BinaryEncodingBase
+} // namespace vISA
+
+namespace vISA {
+class EncodingHelper {
+public:
+  static inline RegFile GetDstRegFile(G4_DstRegRegion *dst);
+  static inline RegFile GetSrcRegFile(G4_Operand *src);
+  static inline uint32_t GetArchRegType(G4_VarBase *opnd);
+  static inline uint32_t GetDstArchRegType(G4_DstRegRegion *opnd);
+  static inline unsigned short GetElementSizeValue(G4_Operand *opnd);
+  static inline AddrMode GetDstAddrMode(G4_DstRegRegion *dst);
+  static inline AddrMode GetSrcAddrMode(G4_Operand *src);
+  static inline void mark3Src(G4_INST *inst);
+  static void dumpOptReport(int totalInst, int numCompactedInst,
+                            int numCompacted3SrcInst, G4_Kernel &kernel);
+  static inline bool hasLabelString(G4_INST *inst);
+
+  static inline bool isSrcSubRegNumValid(G4_Operand *src) {
+    bool valid = false;
+    if (EncodingHelper::GetSrcRegFile(src) != REG_FILE_A ||
+        EncodingHelper::GetSrcArchRegType(src) != ARCH_REG_FILE_NULL) {
+      if (EncodingHelper::GetSrcAddrMode(src) == ADDR_MODE_IMMED) {
+        if (!src->isSrcRegRegion() ||
+            src->asSrcRegRegion()->getSubRegOff() != (short)UNDEFINED_SHORT) {
+          valid = true;
+        }
+      }
+    }
+
+    return valid;
+  }
+
+  static inline uint32_t GetSrcArchRegType(G4_Operand *opnd) {
+    if (opnd->isSrcRegRegion()) {
+      G4_VarBase *base = opnd->asSrcRegRegion()->getBase();
+
+      if (base->isRegVar()) {
+        G4_VarBase *preg = base->asRegVar()->getPhyReg();
+        return EncodingHelper::GetArchRegType(preg);
+      } else {
+        return EncodingHelper::GetArchRegType(base);
+      }
+    }
+
+    return ARCH_REG_FILE_NULL;
+  }
+  static inline ChanSel GetSrcChannelSelectValue(G4_SrcRegRegion *srcRegion,
+                                                 int i,
+                                                 BinaryEncodingBase &encoder) {
+    ChanSel ChanSelectValue = CHAN_SEL_UNDEF;
+
+    auto getSrcSwizzleStr = [](SrcSwizzle sw) {
+      switch (sw) {
+      case SrcSwizzle::R:
+        return "r";
+      case SrcSwizzle::XYZW:
+        return "xyzw";
+      case SrcSwizzle::XYXY:
+        return "xyxy";
+      case SrcSwizzle::ZWZW:
+        return "zwzw";
+      }
+      return "";
+    };
+
+    auto maybeSwizzle = encoder.getSwizzle(srcRegion);
+    if (!maybeSwizzle)
+      return ChanSelectValue;
+    // Note that below is not legal for "r", caller should check.
+    const char *swizzleStr = getSrcSwizzleStr(*maybeSwizzle);
+    if (i < NUM_REGISTER_CHANNELS) {
+      switch (swizzleStr[i]) {
+      case 'x':
+        ChanSelectValue = CHAN_SEL_X;
+        break;
+      case 'y':
+        ChanSelectValue = CHAN_SEL_Y;
+        break;
+      case 'z':
+        ChanSelectValue = CHAN_SEL_Z;
+        break;
+      case 'w':
+        ChanSelectValue = CHAN_SEL_W;
+        break;
+      }
+    }
+    return ChanSelectValue;
+  }
+
+  static inline bool GetRepControl(G4_Operand *src,
+                                   BinaryEncodingBase &encoder) {
+    if (src->isSrcRegRegion()) {
+      auto maybeSwizzle = encoder.getSwizzle(src->asSrcRegRegion());
+      if (maybeSwizzle && *maybeSwizzle == SrcSwizzle::R)
+        return true;
+    }
+    return false;
+  }
+};
 } // namespace vISA
 
 namespace vISA {

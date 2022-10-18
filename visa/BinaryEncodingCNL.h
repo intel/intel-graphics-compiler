@@ -861,9 +861,10 @@ public:
   /// \brief Template based field encoder for replicate control field
   ///        of 3src instruction types
   ///
-  static void Encode3SrcReplicateControl(T *myBin, G4_SrcRegRegion *srcRegion) {
-    const char *swizzle = srcRegion->getSwizzle();
-    if (swizzle[0] == 'r')
+  static void Encode3SrcReplicateControl(T *myBin, G4_SrcRegRegion *srcRegion,
+                                         BinaryEncodingBase &encoder) {
+    auto maybeSwizzle = encoder.getSwizzle(srcRegion);
+    if (maybeSwizzle && *maybeSwizzle == SrcSwizzle::R)
       SrcOperandEncoder<T, SrcNum>::SrcReplicateControl(
           myBin, G9HDL::REPCTRL_REPLICATE_ACROSS_ALL_CHANNELS);
     else
@@ -875,7 +876,8 @@ public:
   /// \brief Template based field encoder for ChanSel
   ///
   static void EncodeSrcChanSelect(T *myBin, G4_INST *inst, G4_Operand *src0,
-                                  G4_SrcRegRegion *srcRegion) {
+                                  G4_SrcRegRegion *srcRegion,
+                                  BinaryEncodingBase &encoder) {
     bool ChanSelectValid = false;
 
     // encode acc2~acc9 if it is valid
@@ -891,13 +893,17 @@ public:
       ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
     }
 
-    const char *swizzle = srcRegion->getSwizzle();
-    if (swizzle[0] != '\0' && swizzle[0] != 'r') {
+    auto maybeSwizzle = encoder.getSwizzle(srcRegion);
+    if (maybeSwizzle && *maybeSwizzle != SrcSwizzle::R) {
       ChanSelectValid = true;
-      ChanSel ch0 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0);
-      ChanSel ch1 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1);
-      ChanSel ch2 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 2);
-      ChanSel ch3 = EncodingHelper::GetSrcChannelSelectValue(srcRegion, 3);
+      ChanSel ch0 =
+          EncodingHelper::GetSrcChannelSelectValue(srcRegion, 0, encoder);
+      ChanSel ch1 =
+          EncodingHelper::GetSrcChannelSelectValue(srcRegion, 1, encoder);
+      ChanSel ch2 =
+          EncodingHelper::GetSrcChannelSelectValue(srcRegion, 2, encoder);
+      ChanSel ch3 =
+          EncodingHelper::GetSrcChannelSelectValue(srcRegion, 3, encoder);
       uint32_t value = 0;
 
       if (ch0 != CHAN_SEL_UNDEF)
@@ -1200,7 +1206,6 @@ public:
   static void EncodeSrcRegNum(G4_INST *inst, G4_Operand *src0, T &sourcesReg) {
     if (EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A &&
         EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED) {
-      // bool repControl = EncodingHelper::GetRepControl(src0);
       uint32_t byteAddress = src0->getLinearizedStart();
 
       // repCtrl is only set for 3src instructions
@@ -1336,7 +1341,8 @@ public:
   ///        fields (width,stride, regnum, modifier, chan-sel) for both align1
   ///        and align16 modes.
   static void EncodeEuInstructionSourcesReg(G4_INST *inst, G4_Operand *src,
-                                            T &sourcesReg) {
+                                            T &sourcesReg,
+                                            BinaryEncodingBase &encoder) {
     if (src->isSrcRegRegion()) {
       G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
       const RegionDesc *rd = srcRegion->getRegion();
@@ -1344,7 +1350,7 @@ public:
       SrcBuilder<T, SrcNum>::EncodeSrcAddrMode(&sourcesReg, inst, src);
       if (inst->isAligned16Inst()) {
         SrcBuilder<T, SrcNum>::EncodeSrcChanSelect(&sourcesReg, inst, src,
-                                                   srcRegion);
+                                                   srcRegion, encoder);
       }
       SrcBuilder<T, SrcNum>::EncodeSrcModifier(inst, src, sourcesReg);
       if (!inst->isSend()) {

@@ -155,7 +155,7 @@ enum G4_SubReg_Align {
   ThirtyTwo_Word = 32
 };
 
-enum G4_SrcModifier {
+enum G4_SrcModifier : unsigned char {
   Mod_Minus = 0, // "-", negative
   Mod_Abs,       // (abs), absolute value
   Mod_Minus_Abs, // -(abs)
@@ -184,7 +184,7 @@ enum G4_PredState {
   PredState_undef     // undefined
 };
 
-enum G4_RegAccess {
+enum G4_RegAccess : unsigned char {
   Direct,
   IndirGRF,
 };
@@ -193,7 +193,7 @@ enum G4_RegAccess {
 // register and Imm data type
 // Note: Check G4_Type_ByteFootprint if this is modified
 //
-enum G4_Type {
+enum G4_Type : unsigned char {
   Type_UD = 0, // unsigned double word integer
   Type_D,      // signed double word integer
   Type_UW,     // unsigned word integer
@@ -403,7 +403,7 @@ enum G4_CmpRelation {
   DO(Opnd_implAccDst)                                                          \
   DO(Opnd_total_num)
 
-enum Gen4_Operand_Number { OPND_NUM_ENUM(MAKE_ENUM) };
+enum Gen4_Operand_Number : unsigned char { OPND_NUM_ENUM(MAKE_ENUM) };
 
 enum G4_ArchRegKind {
   // Note that the enum values are different from HW values,
@@ -430,7 +430,7 @@ enum G4_ArchRegKind {
   AREG_LAST
 };
 
-enum G4_AccRegSel {
+enum G4_AccRegSel : unsigned char {
   ACC2 = 0,
   ACC3,
   ACC4,

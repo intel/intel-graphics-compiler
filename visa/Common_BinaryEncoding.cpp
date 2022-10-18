@@ -119,14 +119,14 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
 
   // convert dst to align16
   G4_DstRegRegion *dst = inst->getDst();
-  dst->setWriteMask(ChannelEnable_XYZW);
+  setWriteMask(dst, ChannelEnable_XYZW);
 
   // convert sources to align16
   for (int k = 0, numSrc = inst->getNumSrc(); k < numSrc; k++) {
     ASSERT_USER(inst->getSrc(k)->isSrcRegRegion(),
                 "Unexpected src to be converted to ALIGN16!");
     G4_SrcRegRegion *src = inst->getSrc(k)->asSrcRegRegion();
-    src->setSwizzle(src->isScalar() ? "r" : "xyzw");
+    setSwizzle(src, src->isScalar() ? SrcSwizzle::R : SrcSwizzle::XYZW);
     if (inst->opcode() == G4_math &&
         (inst->asMathInst()->getMathCtrl() == MATH_INVM ||
          inst->asMathInst()->getMathCtrl() == MATH_RSQRTM)) {
@@ -175,7 +175,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
     default:
       MUST_BE_TRUE(false, "unexpected subreg value");
     }
-    dst->setWriteMask(writeMask);
+    setWriteMask(dst, writeMask);
     dst->setLeftBound(dst->getLeftBound() - subRegOffset);
     dst->setRightBound(dst->getLeftBound() + 16);
     inst->setExecSize(isDoubleInst ? g4::SIMD2 : g4::SIMD4);
@@ -196,7 +196,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
     default:
       assert(false && "dst must be 8 byte aligned");
     }
-    dst->setWriteMask(writeMask);
+    setWriteMask(dst, writeMask);
     dst->setLeftBound(dst->getLeftBound() - subRegOffset);
     dst->setRightBound(dst->getLeftBound() + 16);
     inst->setExecSize(g4::SIMD4);
@@ -216,7 +216,8 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
         int subRegOffset = src->getLinearizedStart() % 16;
         MUST_BE_TRUE(subRegOffset == 0 || subRegOffset == 8,
                      "double source must be 8 byte aligned");
-        src->setSwizzle((char *)(subRegOffset == 0 ? "xyxy" : "zwzw"));
+        setSwizzle(src,
+                   subRegOffset == 0 ? SrcSwizzle::XYXY : SrcSwizzle::ZWZW);
         // this forces to subreg to be 16 byte aligned
         src->setLeftBound(src->getLeftBound() - subRegOffset);
         src->setRightBound(src->getLeftBound() + 16);

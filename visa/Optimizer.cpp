@@ -6917,6 +6917,17 @@ void Optimizer::postRA_HWWorkaround() {
   }
 }
 
+// should only be called post-RA, return true if this operand has overlapping
+// GRF with other ToDo: extend to non-GRF operands?
+static bool hasOverlappingGRF(G4_Operand *opnd, G4_Operand *other) {
+  if (!opnd || !other || !opnd->isGreg() || !other->isGreg())
+    return false;
+  auto LB = opnd->getLinearizedStart(), RB = opnd->getLinearizedEnd();
+  auto otherLB = other->getLinearizedStart(),
+       otherRB = other->getLinearizedEnd();
+  return !(RB < otherLB || LB > otherRB);
+}
+
 // returns for this fence instruction the iterator position where the commit
 // move should be inserted. We conservatively assume a commit is needed before
 // -- another send
@@ -6936,12 +6947,12 @@ Optimizer::findFenceCommitPos(INST_LIST_ITER fence, G4_BB *bb) const {
         inst->isOptBarrier()) {
       break;
     }
-    if (dst->hasOverlappingGRF(inst->getDst())) {
+    if (hasOverlappingGRF(dst, inst->getDst())) {
       break;
     }
     for (auto SI = inst->src_begin(), SE = inst->src_end(); SI != SE; ++SI) {
       auto src = *SI;
-      if (dst->hasOverlappingGRF(src)) {
+      if (hasOverlappingGRF(dst, src)) {
         return std::nullopt;
       }
     }

@@ -1853,7 +1853,7 @@ class G4_Operand {
   friend class G4_InstDpas;
 
 public:
-  enum Kind {
+  enum Kind : unsigned char {
     immediate,
     srcRegRegion,
     dstRegRegion,
@@ -1865,19 +1865,21 @@ public:
   virtual ~G4_Operand() {}
 
 protected:
-  Kind kind;
-  G4_Type type;
   G4_INST *inst;
 
-  // fields used to compare operands
+  // FIXME: It's redundant to keep both top_dcl and base. We should have a union
+  // based on operand kind.
   G4_Declare *top_dcl;
   G4_VarBase *base;
 
+  // TODO: Should we track footprint at word granularity instead?
   uint64_t bitVec[2]; // bit masks at byte granularity (for flags, at bit
                       // granularity)
 
+  // Group byte-sized fields together.
+  Kind kind;
+  G4_Type type;
   bool rightBoundSet;
-  unsigned byteOffset;
   G4_AccRegSel accRegSel;
 
   // [left_bound, right_bound] describes the region in the root variable that
@@ -1893,8 +1895,9 @@ protected:
   //  (rb - lb) < 32 always holds for flags
   //  for predicate and conditonal modifers, the bounds are also effected by the
   //  quarter control
-  unsigned left_bound;
-  unsigned right_bound;
+  uint16_t left_bound;
+  uint16_t right_bound;
+  uint16_t byteOffset;
 
   explicit G4_Operand(Kind k, G4_Type ty = Type_UNDEF,
                       G4_VarBase *base = nullptr)
@@ -2115,18 +2118,6 @@ public:
   virtual G4_CmpRelation compareOperand(G4_Operand *opnd,
                                         const IR_Builder &builder) {
     return Rel_disjoint;
-  }
-
-  // should only be called post-RA, return true if this operand has overlapping
-  // GRF with other ToDo: extend to non-GRF operands?
-  bool hasOverlappingGRF(G4_Operand *other) {
-    if (!other || !isGreg() || !other->isGreg()) {
-      return false;
-    }
-    auto LB = getLinearizedStart(), RB = getLinearizedEnd();
-    auto otherLB = other->getLinearizedStart(),
-         otherRB = other->getLinearizedEnd();
-    return !(RB < otherLB || LB > otherRB);
   }
 
   static G4_Type GetNonVectorImmType(G4_Type type) {
@@ -2659,15 +2650,14 @@ public:
 class G4_SrcRegRegion final : public G4_Operand {
   friend class IR_Builder;
 
-  const static int max_swizzle = 5;
-  char swizzle[max_swizzle]; // this should only be set in binary encoding
-
-  G4_SrcModifier mod;
-  const G4_RegAccess acc;
   const RegionDesc *desc;
   const short regOff;    // base+regOff is the starting register of the region
   const short subRegOff; // sub reg offset related to the regVar in "base"
-  short immAddrOff;      // imm addr offset
+  // FIXME: regOff (direct) and immAddrOff (indriect) should be mutually
+  // exclusive. We should place them in a union.
+  short immAddrOff; // imm addr offset
+  G4_SrcModifier mod;
+  const G4_RegAccess acc;
 
   G4_SrcRegRegion(const IR_Builder &builder, G4_SrcModifier m, G4_RegAccess a,
                   G4_VarBase *b, short roff, short sroff, const RegionDesc *rd,
@@ -2675,7 +2665,6 @@ class G4_SrcRegRegion final : public G4_Operand {
       : G4_Operand(G4_Operand::srcRegRegion, ty, b), mod(m), acc(a), desc(rd),
         regOff(roff), subRegOff(sroff) {
     immAddrOff = 0;
-    swizzle[0] = '\0';
     accRegSel = regSel;
 
     computeLeftBound(builder);
@@ -2709,7 +2698,6 @@ public:
   short getRegOff() const { return regOff; }
   short getSubRegOff() const { return subRegOff; }
 
-  const char *getSwizzle() const { return swizzle; }
   G4_SrcModifier getModifier() const { return mod; }
   bool hasModifier() const { return mod != Mod_src_undef; }
   const RegionDesc *getRegion() const { return desc; }
@@ -2719,7 +2707,6 @@ public:
 
   void setImmAddrOff(short off) { immAddrOff = off; }
   void setModifier(G4_SrcModifier m) { mod = m; }
-  void setSwizzle(std::string_view sw);
 
   bool sameSrcRegRegion(G4_SrcRegRegion &rgn);
   bool obeySymbolRegRule() const;
@@ -2741,7 +2728,6 @@ public:
   bool isTDRReg() const { return base->isTDRReg(); }
   bool isA0() const { return base->isA0(); }
   bool isGreg() const { return base->isGreg(); }
-  bool isWithSwizzle() const { return (swizzle[0] != '\0'); }
   bool isScalar() const;
   bool isAddress() const { return base->isAddress(); }
   bool isScalarAddr() const { return base->isScalarAddr(); }
@@ -2836,11 +2822,12 @@ namespace vISA {
 
 class G4_DstRegRegion final : public G4_Operand {
   friend class IR_Builder;
-  ChannelEnable writeMask; // this should only be set in binary encoding
 
   G4_RegAccess acc; // direct, indirect GenReg or indirect MsgReg
   short regOff;     // base+regOff is the starting register of the region
   short subRegOff;  // sub reg offset related to the regVar in "base"
+  // FIXME: regOff (direct) and immAddrOff (indriect) should be mutually
+  // exclusive. We should place them in a union.
   short immAddrOff; // imm addr offset for indirect dst
   unsigned short horzStride; // <DstRegion> has only horzStride
 
@@ -2850,7 +2837,6 @@ class G4_DstRegRegion final : public G4_Operand {
       : G4_Operand(G4_Operand::dstRegRegion, ty, b), acc(a),
         horzStride(hstride) {
     immAddrOff = 0;
-    writeMask = NoChannelEnable;
     accRegSel = regSel;
 
     regOff = (roff == ((short)UNDEFINED_SHORT)) ? 0 : roff;
@@ -2876,8 +2862,6 @@ public:
 
   bool isCrossGRFDst(const IR_Builder &builder);
   unsigned short getHorzStride() const { return horzStride; }
-  ChannelEnable getWriteMask() const { return writeMask; }
-  void setWriteMask(ChannelEnable channels);
   short getAddrImm() const { return immAddrOff; }
   unsigned short getElemSize() const { return getTypeSize(); }
   unsigned short getExecTypeSize() const { return horzStride * getElemSize(); }

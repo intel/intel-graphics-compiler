@@ -21,6 +21,14 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
+// Asserts to ensure that the size of core IR classes do not increase.
+static_assert(sizeof(G4_Operand) <= 64 &&
+              "There should not be new fields to G4_Operand");
+static_assert(sizeof(G4_DstRegRegion) <= 80 &&
+              "There should not be new fields to G4_DstRegRegion");
+static_assert(sizeof(G4_SrcRegRegion) <= 80 &&
+              "There should not be new fields to G4_SrcRegRegion");
+
 static const char *const SrcModifierStr[Mod_src_undef] = {
     "-",      // Mod_Minus
     "(abs)",  // Mod_Abs
@@ -3646,11 +3654,6 @@ G4_SrcRegRegion::G4_SrcRegRegion(G4_SrcRegRegion &rgn)
   immAddrOff = rgn.immAddrOff;
   desc = rgn.desc;
   type = rgn.type;
-  // copy swizzle value
-  char *sw1 = swizzle, *sw2 = rgn.swizzle;
-  while (*sw2)
-    *sw1++ = *sw2++;
-  *sw1 = *sw2;
   accRegSel = rgn.accRegSel;
 
   // FIXME: it's rather suspicious that we are copying internal fields this way
@@ -3669,10 +3672,9 @@ G4_SrcRegRegion::G4_SrcRegRegion(G4_SrcRegRegion &rgn)
 //
 bool G4_SrcRegRegion::sameSrcRegRegion(G4_SrcRegRegion &rgn) {
   return base == rgn.base && acc == rgn.acc && mod == rgn.mod &&
-         strcmp(swizzle, rgn.swizzle) == 0 && desc == rgn.desc &&
-         regOff == rgn.regOff && subRegOff == rgn.subRegOff &&
-         immAddrOff == rgn.immAddrOff && type == rgn.type &&
-         accRegSel == rgn.accRegSel;
+         desc == rgn.desc && regOff == rgn.regOff &&
+         subRegOff == rgn.subRegOff && immAddrOff == rgn.immAddrOff &&
+         type == rgn.type && accRegSel == rgn.accRegSel;
 }
 
 // compute max execution size starting from the current pos.
@@ -4141,8 +4143,7 @@ void G4_SrcRegRegion::emit(std::ostream &output, bool symbolreg) {
       if (align1ternary) {
         // format is <V;H> with W derived from V and H
         output << "<" << desc->vertStride << ";" << desc->horzStride << ">";
-      } else if (!isWithSwizzle()) {
-        // do not print region for align16 sources
+      } else {
         output << "<" << desc->vertStride << ";" << desc->width << ","
                << desc->horzStride << ">";
       }
@@ -4161,8 +4162,6 @@ void G4_SrcRegRegion::emit(std::ostream &output, bool symbolreg) {
     } else {
       output << ".acc" << (getAccRegSel() + 2);
     }
-  } else if (*swizzle) {
-    output << "." << swizzle;
   }
 
   if (Type_UNDEF != type) {
@@ -4172,26 +4171,8 @@ void G4_SrcRegRegion::emit(std::ostream &output, bool symbolreg) {
   }
 }
 
-//
-
-// return true if this src is a scalar
-
-// V82(1,0)<0>.xxxx:f
-
-// V82(1,0)<0;1,0>:f  --- detect via
-
-//
-
-bool G4_SrcRegRegion::isScalar() const
-
-{
-
-  if (!isWithSwizzle()) {
-
-    return getRegion()->isScalar(); // check <0;1,0>
-  } else {
-    return swizzle[0] == 'r';
-  }
+bool G4_SrcRegRegion::isScalar() const {
+  return getRegion()->isScalar(); // check <0;1,0>
 }
 
 //
@@ -4207,12 +4188,6 @@ bool G4_SrcRegRegion::obeySymbolRegRule() const {
     return false;
   }
 
-  //
-  // Rule-3: No swizzle .xyzw
-  //
-  if (*swizzle) {
-    return false;
-  }
   //
   // Rule-4: do not support date type redefinition in direct addressing
   //
@@ -4256,7 +4231,6 @@ G4_DstRegRegion::G4_DstRegRegion(G4_DstRegRegion &rgn)
   immAddrOff = rgn.immAddrOff;
   horzStride = rgn.horzStride;
   type = rgn.type;
-  writeMask = rgn.writeMask;
   accRegSel = rgn.accRegSel;
 
   top_dcl = rgn.top_dcl;
@@ -4352,7 +4326,6 @@ G4_DstRegRegion::G4_DstRegRegion(const IR_Builder &builder,
   immAddrOff = rgn.immAddrOff;
   horzStride = rgn.horzStride;
   type = rgn.type;
-  writeMask = rgn.writeMask;
   base = new_base;
 
   computeLeftBound(builder);
@@ -4945,8 +4918,6 @@ void G4_DstRegRegion::emit(std::ostream &output, bool symbolreg) {
   //
   if (inst != NULL && inst->isSplitSend()) {
     // do nothing for sends
-  } else if (writeMask != NoChannelEnable) {
-    // do nothing for align16 instructions
   } else if (isAccRegValid()) {
     // do nothing for madm
   } else if (horzStride != UNDEFINED_SHORT) {
@@ -4968,8 +4939,6 @@ void G4_DstRegRegion::emit(std::ostream &output, bool symbolreg) {
     } else {
       output << ".acc" << (getAccRegSel() + 2);
     }
-  } else if (writeMask != NoChannelEnable) {
-    output << "." << getChannelEnableStr(writeMask);
   }
 
   if (Type_UNDEF != type) {
@@ -4994,11 +4963,7 @@ bool G4_DstRegRegion::obeySymbolRegRule() const {
   // For dst operand, we do not have Rule-2
   // Rule-2: must have register region or default register region
   //
-  // Rule-3: No swizzle .xyzw
-  //
-  if (writeMask != NoChannelEnable) {
-    return false;
-  }
+
   //
   // Rule-4: do not support date type redefinition in direct addressing
   //
@@ -6697,13 +6662,6 @@ G4_InstOption G4_INST::offsetToMask(int execSize, int offset, bool nibOk) {
   default:
     return InstOpt_NoOpt;
   }
-}
-
-void G4_DstRegRegion::setWriteMask(ChannelEnable wm) { writeMask = wm; }
-
-void G4_SrcRegRegion::setSwizzle(std::string_view sw) {
-  MUST_BE_TRUE((int)sw.size() < max_swizzle, ERROR_INTERNAL_ARGUMENT);
-  strcpy_s(swizzle, max_swizzle, sw.data());
 }
 
 // convert contiguous regions to <N;N,1> form subject to the requirment

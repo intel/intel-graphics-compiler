@@ -702,7 +702,7 @@ void BinaryEncodingCNL::EncodeDstChanEn(
     G4_DstRegRegion *dstRegion = static_cast<G4_DstRegRegion *>(dst);
 
     opnds.GetDestinationRegisterRegion_Align16().SetDestinationChannelEnable(
-        dstRegion->getWriteMask());
+        getWriteMask(dstRegion));
   }
 }
 
@@ -959,9 +959,10 @@ inline void BinaryEncodingCNL::EncodeOneSrcInst(
           oneSrc.GetImmsource(), src0);
     }
   } else {
-    SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG, 0>::
-        EncodeEuInstructionSourcesReg(inst, src0,
-                                      oneSrc.GetRegsource()); // by reference
+    SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG,
+               0>::EncodeEuInstructionSourcesReg(inst, src0,
+                                                 oneSrc.GetRegsource(),
+                                                 *this); // by reference
   }
 }
 
@@ -1001,9 +1002,10 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(
     SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_IMM, 1>::EncodeSrcImmData(
         twoSrc.GetImmsource(), src0);
   } else {
-    SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG, 0>::
-        EncodeEuInstructionSourcesReg(inst, src0,
-                                      twoSrc.GetRegsource()); // by reference
+    SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG,
+               0>::EncodeEuInstructionSourcesReg(inst, src0,
+                                                 twoSrc.GetRegsource(),
+                                                 *this); // by reference
   }
 
   // no need to encode one src math instruction
@@ -1039,9 +1041,10 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(
       MUST_BE_TRUE(src1->isNullReg(),
                    "src1 must be null ARF if src0 is immediate");
     } else {
-      SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG, 1>::
-          EncodeEuInstructionSourcesReg(inst, src1,
-                                        twoSrc.GetRegsource()); // by reference
+      SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG,
+                 1>::EncodeEuInstructionSourcesReg(inst, src1,
+                                                   twoSrc.GetRegsource(),
+                                                   *this); // by reference
     }
   }
 }
@@ -1216,7 +1219,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInst(
       // accumulators
     } else {
       G4_DstRegRegion *dstRegion = static_cast<G4_DstRegRegion *>(dst);
-      threeSrc.SetDestinationChannelEnable(dstRegion->getWriteMask());
+      threeSrc.SetDestinationChannelEnable(getWriteMask(dstRegion));
     }
 
     if (EncodingHelper::GetDstRegFile(dst) != REG_FILE_A &&
@@ -1238,12 +1241,6 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInst(
       G4_SrcRegRegion *src1Region = src1->asSrcRegRegion();
       G4_SrcRegRegion *src2Region = src2->asSrcRegRegion();
 
-      // char *swizzle = src0Region->getSwizzle();
-      // if (swizzle[0] == 'r')
-      //     threeSrc.SetSource0_SourceReplicateControl(G9HDL::REPCTRL_REPLICATE_ACROSS_ALL_CHANNELS);
-      // else
-      //     threeSrc.SetSource0_SourceReplicateControl(G9HDL::REPCTRL_NO_REPLICATION);
-
       // source modifiers:
       SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::EncodeSrcModifier(
           inst, src0, threeSrc);
@@ -1254,19 +1251,19 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInst(
 
       // rep control:
       SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC,
-                 0>::Encode3SrcReplicateControl(&threeSrc, src0Region);
+                 0>::Encode3SrcReplicateControl(&threeSrc, src0Region, *this);
       SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC,
-                 1>::Encode3SrcReplicateControl(&threeSrc, src1Region);
+                 1>::Encode3SrcReplicateControl(&threeSrc, src1Region, *this);
       SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC,
-                 2>::Encode3SrcReplicateControl(&threeSrc, src2Region);
+                 2>::Encode3SrcReplicateControl(&threeSrc, src2Region, *this);
 
       // chan select:
       SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::EncodeSrcChanSelect(
-          &threeSrc, inst, src0, src0Region);
+          &threeSrc, inst, src0, src0Region, *this);
       SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 1>::EncodeSrcChanSelect(
-          &threeSrc, inst, src1, src1Region);
+          &threeSrc, inst, src1, src1Region, *this);
       SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 2>::EncodeSrcChanSelect(
-          &threeSrc, inst, src2, src2Region);
+          &threeSrc, inst, src2, src2Region, *this);
 
       SrcBuilder<G9HDL::EU_INSTRUCTION_BASIC_THREE_SRC, 0>::EncodeSrcRegNum3Src(
           inst, src0, threeSrc);
@@ -2073,9 +2070,10 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingWAIT(G4_INST *inst) {
         GetOperandSrcHDLType(src0->getType()));
   }
 
-  SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG, 0>::
-      EncodeEuInstructionSourcesReg(inst, src0,
-                                    oneSrc.GetRegsource()); // by reference
+  SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG,
+             0>::EncodeEuInstructionSourcesReg(inst, src0,
+                                               oneSrc.GetRegsource(),
+                                               *this); // by reference
 
   // Dst patching:
 
@@ -2127,21 +2125,6 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingWAIT(G4_INST *inst) {
 
   oneSrc.Common.OperandControls.SetDestinationAddressingMode(
       TranslateVisaToHDLAddrMode(EncodingHelper::GetSrcAddrMode(src0)));
-
-  // if (EncodingHelper::GetSrcRegFile(src0)!=REG_FILE_A &&
-  //     EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED)
-  //{
-  //     bool repControl = EncodingHelper::GetRepControl(src0);
-  //     uint32_t byteAddress = src0->getLinearizedStart();
-
-  //    if (inst->isAligned1Inst() || repControl)
-  //    {
-  //        SetDstRegNumByte(mybin, byteAddress);
-  //    } else {
-  //        SetDstRegNumOWord(mybin, byteAddress/BYTES_PER_OWORD);
-  //    }
-
-  //}
 
   BinInst *bin = inst->getBinInst();
   bin->DWords[0] = oneSrc.GetDWord(0);
@@ -2230,9 +2213,10 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingJMPI(G4_INST *inst) {
     G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC *ptr =
         (G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC *)&brOneSrc;
 
-    SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG, 1>::
-        EncodeEuInstructionSourcesReg(inst, inst->getSrc(0),
-                                      ptr->GetRegsource()); // by reference
+    SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG,
+               1>::EncodeEuInstructionSourcesReg(inst, inst->getSrc(0),
+                                                 ptr->GetRegsource(),
+                                                 *this); // by reference
 
     ptr->GetRegsource().SetSrc1Regfile(TranslateVisaToHDLRegFile(
         EncodingHelper::GetSrcRegFile(inst->getSrc(0))));
@@ -2272,9 +2256,10 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingCALL(G4_INST *inst) {
     G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC *ptr =
         (G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC *)&oneSrc;
 
-    SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG, 1>::
-        EncodeEuInstructionSourcesReg(inst, inst->getSrc(0),
-                                      ptr->GetRegsource()); // by reference
+    SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG,
+               1>::EncodeEuInstructionSourcesReg(inst, inst->getSrc(0),
+                                                 ptr->GetRegsource(),
+                                                 *this); // by reference
 
     ptr->GetRegsource().SetSrc1Regfile(TranslateVisaToHDLRegFile(
         EncodingHelper::GetSrcRegFile(inst->getSrc(0))));
