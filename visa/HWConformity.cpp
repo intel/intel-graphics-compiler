@@ -5989,7 +5989,7 @@ void HWConformity::conformBB(G4_BB* bb)
         }
         // do this early since otherwise the moves inserted by other passes may still
         // inherit bad regions from the original inst
-        fixSrcRegion(inst);
+        fixSrcRegion(i, bb);
 
         bool changed = fixMov(i, bb);
         if (changed)
@@ -7298,8 +7298,8 @@ G4_INST* HWConformity::splitInstWithByteDst(G4_INST* expand_op)
 //  7. Dst.HorzStride must not be 0.        -- this needs not to be checked.
 //  8. VertStride must be used to cross GRF register boundaries. This rule implies that
 //      elements within a 'Width' cannot cross GRF boundaries.
-void HWConformity::fixSrcRegion(G4_INST* inst)
-{
+void HWConformity::fixSrcRegion(INST_LIST_ITER i, G4_BB *bb) {
+    G4_INST *inst = *i;
     bool comprInst = isCompressedInst(inst);
     for (int i = 0; i < G4_MAX_SRCS; i++)
     {
@@ -7411,10 +7411,27 @@ void HWConformity::fixSrcRegion(G4_INST* inst)
             }
         }
     }
+
     if (inst->getDst() && !inst->hasNULLDst())
     {
         MUST_BE_TRUE(inst->getDst()->getHorzStride() != 0,
             "Bad source region: Width is greater than execution size.");
+
+        if (builder.hasBDstWSrc1EvenAlignIssue()) {
+            G4_Operand *src1 = inst->getSrc(1);
+            if (src1 && src1->isSrcRegRegion()) {
+                G4_Operand *dst = inst->getDst();
+                if (dst && dst->isDstRegRegion() &&
+                    dst->asDstRegRegion()->getHorzStride() > 2 &&
+                    (dst->getType() == Type_B || dst->getType() == Type_UB) &&
+                    (src1->getType() == Type_W || src1->getType() == Type_UW) &&
+                    (src1->asSrcRegRegion()->getSubRegOff() % 2)) {
+                    G4_Operand *new_src1 =
+                        insertMovBefore(i, 1, src1->getType(), bb, Even_Word);
+                    inst->setSrc(new_src1, 1);
+                }
+            }
+        }
     }
 }
 

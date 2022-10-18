@@ -1077,4 +1077,9 @@ SPDX-License-Identifier: MIT
    {
        return (getPlatform() < Xe_DG2);
    }
+
+   bool hasBDstWSrc1EvenAlignIssue() const {
+       return getPlatform() == Xe_PVCXT;
+   }
+
    // end HW capabilities
