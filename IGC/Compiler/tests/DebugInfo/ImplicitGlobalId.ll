@@ -1,4 +1,5 @@
-; RUN: igc_opt -igc-add-implicit-gid -S < %s | FileCheck %s
+; REQUIRES: regkeys
+; RUN: igc_opt --regkey EmitPreDefinedForAllFunctions -igc-add-implicit-gid -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ImplicitGlobalId
 ; ------------------------------------------------
@@ -6,7 +7,6 @@
 ; ImplicitGlobalId:
 ; Creates implicit global and local id variables and debug info for them for each
 ; function in module
-; FIXME: Check lineinfo for foo function
 ; ModuleID = 'ImplicitGlobalId.ll'
 source_filename = "ImplicitGlobalId.ll"
 
@@ -60,31 +60,31 @@ define float @foo(i32 %src1) !dbg !14 {
   ; Disabled this test case until proper ENV setting is not supported by igc_opt
   ; Checks that global id values are added for @foo scope
   ; CHECK: @foo
-  ; cHECK: %globalId = call <3 x i64> @{{.*Global.*}}
-  ; cHECK-NEXT: [[FOO_GID0:%__ocl_dbg_gid0]] = extractelement {{.*}}
-  ; cHECK-NEXT: [[FOO_GID1:%__ocl_dbg_gid1]] = extractelement {{.*}}
-  ; cHECK-NEXT: [[FOO_GID2:%__ocl_dbg_gid2]] = extractelement {{.*}}
-  ; cHECK-NEXT: [[DBG_VALUE]] i64 [[FOO_GID0]], metadata [[FOO_GID0_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC:![0-9]*]]
-  ; cHECK-NEXT: [[DBG_VALUE]] i64 [[FOO_GID1]], metadata [[FOO_GID1_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
-  ; cHECK-NEXT: [[DBG_VALUE]] i64 [[FOO_GID2]], metadata [[FOO_GID2_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
+  ; CHECK: %globalId = call <3 x i64> @{{.*Global.*}}
+  ; CHECK-NEXT: [[FOO_GID0:%__ocl_dbg_gid0]] = extractelement {{.*}}
+  ; CHECK-NEXT: [[FOO_GID1:%__ocl_dbg_gid1]] = extractelement {{.*}}
+  ; CHECK-NEXT: [[FOO_GID2:%__ocl_dbg_gid2]] = extractelement {{.*}}
+  ; CHECK: [[DBG_VALUE]] i64 [[FOO_GID0]], metadata [[FOO_GID0_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC:![0-9]*]]
+  ; CHECK: [[DBG_VALUE]] i64 [[FOO_GID1]], metadata [[FOO_GID1_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
+  ; CHECK: [[DBG_VALUE]] i64 [[FOO_GID2]], metadata [[FOO_GID2_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
   ;
   ; Checks that local id values are added for @test_gid scope
-  ; cHECK-NEXT: %globalId1 = call <3 x i64> @{{.*Local.*}}
-  ; cHECK-NEXT: [[FOO_LID0:%__ocl_dbg_lid0]] = extractelement {{.*}}
-  ; cHECK-NEXT: [[FOO_LID1:%__ocl_dbg_lid1]] = extractelement {{.*}}
-  ; cHECK-NEXT: [[FOO_LID2:%__ocl_dbg_lid2]] = extractelement {{.*}}
-  ; cHECK-NEXT: [[DBG_VALUE]] i64 [[FOO_LID0]], metadata [[FOO_LID0_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
-  ; cHECK-NEXT: [[DBG_VALUE]] i64 [[FOO_LID1]], metadata [[FOO_LID1_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
-  ; cHECK-NEXT: [[DBG_VALUE]] i64 [[FOO_LID2]], metadata [[FOO_LID2_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
+  ; CHECK: %globalId1 = call <3 x i64> @{{.*Local.*}}
+  ; CHECK-NEXT: [[FOO_LID0:%__ocl_dbg_lid0]] = extractelement {{.*}}
+  ; CHECK-NEXT: [[FOO_LID1:%__ocl_dbg_lid1]] = extractelement {{.*}}
+  ; CHECK-NEXT: [[FOO_LID2:%__ocl_dbg_lid2]] = extractelement {{.*}}
+  ; CHECK: [[DBG_VALUE]] i64 [[FOO_LID0]], metadata [[FOO_LID0_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
+  ; CHECK: [[DBG_VALUE]] i64 [[FOO_LID1]], metadata [[FOO_LID1_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
+  ; CHECK: [[DBG_VALUE]] i64 [[FOO_LID2]], metadata [[FOO_LID2_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
   ;
   ; Checks that workgroup id values are added for @test_gid scope
-  ; cHECK-NEXT: %globalId2 = call <3 x i64> @{{.*Workgroup.*}}
-  ; cHECK-NEXT: [[FOO_WID0:%__ocl_dbg_grid0]] = extractelement {{.*}}
-  ; cHECK-NEXT: [[FOO_WID1:%__ocl_dbg_grid1]] = extractelement {{.*}}
-  ; cHECK-NEXT: [[FOO_WID2:%__ocl_dbg_grid2]] = extractelement {{.*}}
-  ; cHECK-NEXT: [[DBG_VALUE]] i64 [[FOO_WID0]], metadata [[FOO_WID0_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
-  ; cHECK-NEXT: [[DBG_VALUE]] i64 [[FOO_WID1]], metadata [[FOO_WID1_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
-  ; cHECK-NEXT: [[DBG_VALUE]] i64 [[FOO_WID2]], metadata [[FOO_WID2_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
+  ; CHECK: %globalId2 = call <3 x i64> @{{.*Workgroup.*}}
+  ; CHECK-NEXT: [[FOO_WID0:%__ocl_dbg_grid0]] = extractelement {{.*}}
+  ; CHECK-NEXT: [[FOO_WID1:%__ocl_dbg_grid1]] = extractelement {{.*}}
+  ; CHECK-NEXT: [[FOO_WID2:%__ocl_dbg_grid2]] = extractelement {{.*}}
+  ; CHECK: [[DBG_VALUE]] i64 [[FOO_WID0]], metadata [[FOO_WID0_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
+  ; CHECK: [[DBG_VALUE]] i64 [[FOO_WID1]], metadata [[FOO_WID1_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
+  ; CHECK: [[DBG_VALUE]] i64 [[FOO_WID2]], metadata [[FOO_WID2_MD:![0-9]*]], {{.*}}, !dbg [[FOO_LOC]]
   ;
   ; Checks that debug info of function is not modified
   ; CHECK: [[CAST_V:%[0-9]*]] = bitcast {{.*}} !dbg [[CAST_LOC:![0-9]*]]
@@ -112,16 +112,16 @@ define float @foo(i32 %src1) !dbg !14 {
 
 ; Testcase 2 MD:
 ; CHECK-DAG: [[FOO_SCOPE:![0-9]*]] = distinct !DISubprogram(name: "foo"
-; cHECK-DAG: [[FOO_LOC]] = !DILocation(line: 4, scope: [[FOO_SCOPE]])
-; cHECK-DAG: [[FOO_GID0_MD]] = !DILocalVariable(name: "__ocl_dbg_gid0", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
-; cHECK-DAG: [[FOO_GID1_MD]] = !DILocalVariable(name: "__ocl_dbg_gid1", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
-; cHECK-DAG: [[FOO_GID2_MD]] = !DILocalVariable(name: "__ocl_dbg_gid2", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
-; cHECK-DAG: [[FOO_LID0_MD]] = !DILocalVariable(name: "__ocl_dbg_lid0", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
-; cHECK-DAG: [[FOO_LID1_MD]] = !DILocalVariable(name: "__ocl_dbg_lid1", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
-; cHECK-DAG: [[FOO_LID2_MD]] = !DILocalVariable(name: "__ocl_dbg_lid2", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
-; cHECK-DAG: [[FOO_WID0_MD]] = !DILocalVariable(name: "__ocl_dbg_grid0", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
-; cHECK-DAG: [[FOO_WID1_MD]] = !DILocalVariable(name: "__ocl_dbg_grid1", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
-; cHECK-DAG: [[FOO_WID2_MD]] = !DILocalVariable(name: "__ocl_dbg_grid2", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
+; CHECK-DAG: [[FOO_LOC]] = !DILocation(line: 4, scope: [[FOO_SCOPE]])
+; CHECK-DAG: [[FOO_GID0_MD]] = !DILocalVariable(name: "__ocl_dbg_gid0", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
+; CHECK-DAG: [[FOO_GID1_MD]] = !DILocalVariable(name: "__ocl_dbg_gid1", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
+; CHECK-DAG: [[FOO_GID2_MD]] = !DILocalVariable(name: "__ocl_dbg_gid2", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
+; CHECK-DAG: [[FOO_LID0_MD]] = !DILocalVariable(name: "__ocl_dbg_lid0", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
+; CHECK-DAG: [[FOO_LID1_MD]] = !DILocalVariable(name: "__ocl_dbg_lid1", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
+; CHECK-DAG: [[FOO_LID2_MD]] = !DILocalVariable(name: "__ocl_dbg_lid2", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
+; CHECK-DAG: [[FOO_WID0_MD]] = !DILocalVariable(name: "__ocl_dbg_grid0", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
+; CHECK-DAG: [[FOO_WID1_MD]] = !DILocalVariable(name: "__ocl_dbg_grid1", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
+; CHECK-DAG: [[FOO_WID2_MD]] = !DILocalVariable(name: "__ocl_dbg_grid2", scope: [[FOO_SCOPE]], line: 1, type: [[LONG_LONG_T]])
 ; CHECK-DAG: [[CAST_LOC]] = !DILocation(line: 4, column: 1, scope: [[FOO_SCOPE]])
 ; CHECK-DAG: [[CAST_MD]] = !DILocalVariable(name: "2", scope: [[FOO_SCOPE]]
 
