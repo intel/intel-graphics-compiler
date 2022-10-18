@@ -1529,15 +1529,8 @@ bool TranslateBuildSPMD(
         size_t metricDataSize = oclContext.metrics.getMetricDataSize();
         auto metricData = reinterpret_cast<const char*>(oclContext.metrics.getMetricData());
 
-        if (!oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes,
-            spv_data, spv_size, metricData, metricDataSize, pInputArgs->pOptions, pInputArgs->OptionsSize))
-        {
-            if (oclContext.HasError())
-            {
-                SetOutputMessage(oclContext.GetError(), *pOutputArgs);
-            }
-            return false;
-        }
+        oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes,
+            spv_data, spv_size, metricData, metricDataSize, pInputArgs->pOptions, pInputArgs->OptionsSize);
 
         // FIXME: try to avoid memory copy here
         binarySize = buf.size();
