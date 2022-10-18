@@ -44,12 +44,8 @@ namespace IGC
 
     RetryManager::RetryManager() : enabled(false), perKernel(false)
     {
-        auto id = IGC_GET_FLAG_VALUE(RetryManagerFirstStateId);
-        // We set firstStateId to be 0 even if RetryManagerFirstStateId is set
-        // because it will have side effects on IsFirstTry. By doing so, we will
-        // treat new retry state as NOT a first try which aligned with default compilation
-        firstStateId = 0;
-        stateId = id;
+        firstStateId = IGC_GET_FLAG_VALUE(RetryManagerFirstStateId);
+        stateId = firstStateId;
         IGC_ASSERT(stateId < RetryTableSize);
     }
 
