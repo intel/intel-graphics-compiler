@@ -204,6 +204,803 @@ static G4_Type getDPASDataType(GenPrecision p) {
   }
 }
 
+bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
+                unsigned short &internalOffset) const {
+  for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
+       curFootprintPtr = curFootprintPtr->next) {
+    FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
+    for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr;
+         curFootprint2Ptr = curFootprint2Ptr->next) {
+      // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB
+      // < curFootprint2Ptr->LeftB)
+      if (curFType == curFootprint2Ptr->fType &&
+          curFootprintPtr->LeftB <= curFootprint2Ptr->RightB &&
+          curFootprintPtr->RightB >= curFootprint2Ptr->LeftB) {
+        internalOffset = curFootprint2Ptr->offset;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint, bool &isRMWOverlap,
+                unsigned short &internalOffset) const {
+  // Overlap with other ranges.
+  for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
+       curFootprintPtr = curFootprintPtr->next) {
+    FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
+    G4_Type curType = curFootprintPtr->type;
+    for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr;
+         curFootprint2Ptr = curFootprint2Ptr->next) {
+      // Negative of no overlap: !(LeftB > curFootprint2Ptr->RightB || RightB
+      // < curFootprint2Ptr->LeftB)
+      if (curFType == curFootprint2Ptr->fType) {
+        if (curFootprintPtr->LeftB <= curFootprint2Ptr->RightB &&
+            curFootprintPtr->RightB >= curFootprint2Ptr->LeftB) {
+          internalOffset = curFootprint2Ptr->offset;
+          if (curFType == GRF_T && IS_BTYPE(curType)) {
+            isRMWOverlap = true;
+          }
+          return true;
+        } else if (curFType == GRF_T && IS_BTYPE(curType)) {
+          unsigned short w_LeftB = curFootprintPtr->LeftB / 2;
+          unsigned short w_RightB = curFootprintPtr->RightB / 2;
+          unsigned short w_curLeftB = curFootprint2Ptr->LeftB / 2;
+          unsigned short w_curRightB = curFootprint2Ptr->RightB / 2;
+          if (w_LeftB <= w_curRightB && w_RightB >= w_curLeftB) {
+            isRMWOverlap = true;
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+bool SBFootprint::hasGRFGrainOverlap(const SBFootprint *liveFootprint) const {
+  assert(inst != nullptr);
+  const IR_Builder &irb = inst->getBuilder();
+  for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
+       curFootprintPtr = curFootprintPtr->next) {
+    FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
+    assert(fType == curFType);
+    for (const SBFootprint *curFootprint2Ptr = liveFootprint; curFootprint2Ptr;
+         curFootprint2Ptr = curFootprint2Ptr->next) {
+      if (curFType == curFootprint2Ptr->fType &&
+          ((curFootprintPtr->LeftB / irb.numEltPerGRF<Type_UB>()) <=
+           (curFootprint2Ptr->RightB / irb.numEltPerGRF<Type_UB>())) &&
+          ((curFootprintPtr->RightB / irb.numEltPerGRF<Type_UB>()) >=
+           (curFootprint2Ptr->LeftB / irb.numEltPerGRF<Type_UB>()))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// Check if current footprint overlaps footprint2
+// FIXME: it's conservative. Because for the indirect, the ranges may be
+// contiguous?
+bool SBFootprint::isWholeOverlap(const SBFootprint *liveFootprint) const {
+  bool findOverlap = false;
+
+  for (const SBFootprint *footprint2Ptr = liveFootprint; footprint2Ptr;
+       footprint2Ptr = footprint2Ptr->next) {
+    findOverlap = false;
+
+    if (fType == footprint2Ptr->fType && LeftB <= footprint2Ptr->LeftB &&
+        RightB >= footprint2Ptr->RightB) {
+      findOverlap = true;
+      continue;
+    }
+    for (const SBFootprint *curFootprintPtr = next; curFootprintPtr;
+         curFootprintPtr = curFootprintPtr->next) {
+      FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
+      if (curFType == footprint2Ptr->fType &&
+          curFootprintPtr->LeftB <= footprint2Ptr->LeftB &&
+          curFootprintPtr->RightB >= footprint2Ptr->RightB) {
+        findOverlap = true;
+        break;
+      }
+    }
+
+    if (!findOverlap) {
+      return false;
+    }
+  }
+
+  return findOverlap;
+}
+
+// check if the current footprint has the same range with given one, or they
+// are not overlapped at all
+bool SBFootprint::isSameOrNoOverlap(const SBFootprint *liveFootprint) const {
+  unsigned short offset = 0;
+  if (!hasOverlap(liveFootprint, offset))
+    return true;
+
+  for (const SBFootprint *footprint2Ptr = liveFootprint; footprint2Ptr;
+       footprint2Ptr = footprint2Ptr->next) {
+    if (fType == footprint2Ptr->fType && LeftB == footprint2Ptr->LeftB &&
+        RightB == footprint2Ptr->RightB)
+      continue;
+
+    bool findSame = false;
+    for (const SBFootprint *curFootprintPtr = next; curFootprintPtr;
+         curFootprintPtr = curFootprintPtr->next) {
+      FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
+      if (curFType == footprint2Ptr->fType &&
+          curFootprintPtr->LeftB == footprint2Ptr->LeftB &&
+          curFootprintPtr->RightB == footprint2Ptr->RightB) {
+        findSame = true;
+        break;
+      }
+    }
+
+    if (!findSame)
+      return false;
+  }
+  return true;
+}
+
+unsigned SBNode::getDistInfo(SB_INST_PIPE depPipe) {
+  switch (depPipe) {
+  case PIPE_INT:
+    return distInfo.info.intDist;
+  case PIPE_FLOAT:
+    return distInfo.info.floatDist;
+  case PIPE_LONG:
+    return distInfo.info.longDist;
+  case PIPE_MATH:
+    return distInfo.info.mathDist;
+  default:
+    assert(0 && "Wrong ALU PIPE");
+    return 0;
+  }
+}
+
+void SBNode::setDistInfo(SB_INST_PIPE depPipe, unsigned distance) {
+  switch (depPipe) {
+  case PIPE_INT:
+    distInfo.info.intDist =
+        (distInfo.info.intDist == 0 || distInfo.info.intDist > distance)
+            ? distance
+            : distInfo.info.intDist;
+    break;
+  case PIPE_FLOAT:
+    distInfo.info.floatDist =
+        (distInfo.info.floatDist == 0 || distInfo.info.floatDist > distance)
+            ? distance
+            : distInfo.info.floatDist;
+    break;
+  case PIPE_LONG:
+    distInfo.info.longDist =
+        (distInfo.info.longDist == 0 || distInfo.info.longDist > distance)
+            ? distance
+            : distInfo.info.longDist;
+    break;
+  case PIPE_MATH:
+    distInfo.info.mathDist =
+        (distInfo.info.mathDist == 0 || distInfo.info.mathDist > distance)
+            ? distance
+            : distInfo.info.mathDist;
+    break;
+  default:
+    assert(0 && "Wrong ALU PIPE");
+    break;
+  }
+}
+
+int SBNode::getMaxDepDistance() const {
+  auto inst = GetInstruction();
+  if (inst->getDst() &&
+      inst->getDst()->getTypeSize() ==
+          8) { // Note that for XeLP, there are no 8 bytes ALU instruction.
+    return SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT;
+  } else {
+    return SWSB_MAX_ALU_DEPENDENCE_DISTANCE;
+  }
+}
+
+void SBNode::setDepToken(unsigned short token, SWSBTokenType type,
+                         SBNode *node) {
+  for (DepToken &depToken : depTokens) {
+    if (depToken.token == token) {
+      if (depToken.type == SWSBTokenType::AFTER_WRITE) {
+        return;
+      }
+      if (type == SWSBTokenType::AFTER_WRITE) {
+        depToken.type = type;
+        depToken.depNode = node;
+      }
+      return;
+    }
+  }
+
+  struct DepToken dt;
+  dt.token = token;
+  dt.type = type;
+  dt.depNode = node;
+  depTokens.push_back(dt);
+}
+
+void SBNode::clearDistInfo(SB_INST_PIPE depPipe) {
+  switch (depPipe) {
+  case PIPE_INT:
+    distInfo.info.intDist = 0;
+    break;
+  case PIPE_FLOAT:
+    distInfo.info.floatDist = 0;
+    break;
+  case PIPE_LONG:
+    distInfo.info.longDist = 0;
+    break;
+  case PIPE_MATH:
+    distInfo.info.mathDist = 0;
+    break;
+  default:
+    assert(0 && "Wrong ALU PIPE");
+    break;
+  }
+}
+
+// Calculate the difference between the inst distance and the ALU pipe
+// dependence distance. The inst distance is the distance between the
+// current inst and the dependent inst in the ALU pipe, and the ALU
+// dependence distance is used to check for potential stall. So, the
+// diff value can indicate a stall if the diff is negative, and no
+// stall if it is 0 or positive.
+int SBNode::calcDiffBetweenInstDistAndPipeDepDist(
+    std::vector<unsigned> **latestInstID, unsigned distance,
+    SB_INST_PIPE type) {
+  int i = static_cast<int>(type);
+  assert(latestInstID[i]->size() >= distance);
+  int diff = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+  if (i == PIPE_INT || i == PIPE_FLOAT) {
+    diff = (int)nodeID -
+           (*latestInstID[i])[latestInstID[i]->size() - distance] -
+           SWSB_MAX_ALU_DEPENDENCE_DISTANCE;
+  }
+  if (i == PIPE_MATH) {
+    diff = (int)nodeID -
+           (*latestInstID[i])[latestInstID[i]->size() - distance] -
+           SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+  }
+  if (i == PIPE_LONG) {
+    diff = (int)nodeID -
+           (*latestInstID[i])[latestInstID[i]->size() - distance] -
+           SWSB_MAX_ALU_DEPENDENCE_DISTANCE_64BIT;
+  }
+  return diff;
+}
+
+// Calculate the closest dependent ALU pipe and the distance diff value
+// given a same dependent inst distance for each pipe.
+std::pair<SB_INST_PIPE, int>
+SBNode::calcClosestALUAndDistDiff(std::vector<unsigned> **latestInstID,
+                          unsigned distance) {
+  SB_INST_PIPE curType = PIPE_NONE;
+  int instDistDiff = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+
+  for (int i = PIPE_INT; i < PIPE_DPAS; i++) {
+    if (latestInstID[i]->size() < distance)
+      continue;
+
+    int diff = calcDiffBetweenInstDistAndPipeDepDist(latestInstID, distance,
+                                                     (SB_INST_PIPE)i);
+    if (diff < instDistDiff) {
+      instDistDiff = diff;
+      curType = (SB_INST_PIPE)i;
+    }
+  }
+  return std::make_pair(curType, instDistDiff);
+}
+
+// Calculate the closest dependent ALU pipe and the distance diff value
+// using the true dependence for each pipe.
+std::pair<SB_INST_PIPE, int>
+SBNode::calcClosestALUAndDistDiff(std::vector<unsigned> **latestInstID) {
+  SB_INST_PIPE curType = PIPE_NONE;
+  int instDistDiff = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
+
+  for (int i = PIPE_INT; i < PIPE_DPAS; i++) {
+    unsigned dist = getDistInfo((SB_INST_PIPE)i);
+    if (dist == 0)
+      continue;
+
+    int diff = calcDiffBetweenInstDistAndPipeDepDist(latestInstID, dist,
+                                                     (SB_INST_PIPE)i);
+    if (diff < instDistDiff) {
+      instDistDiff = diff;
+      curType = (SB_INST_PIPE)i;
+    }
+  }
+  return std::make_pair(curType, instDistDiff);
+}
+
+// This is to reduce the sync instructions.
+// When A@1 is used to replace I@1, make sure it will not cause the stall for
+// float or long pipelines
+bool SBNode::isClosestALUType(std::vector<unsigned> **latestInstID,
+                              unsigned distance, SB_INST_PIPE type) {
+  auto distAllDepRes = calcClosestALUAndDistDiff(latestInstID, distance);
+  return type == distAllDepRes.first;
+}
+
+void SBNode::finalizeDistanceType1(IR_Builder &builder,
+                           std::vector<unsigned> **latestInstID) {
+  if (instVec.front()->getDistanceTypeXe() !=
+      G4_INST::DistanceType::DIST_NONE) { // Forced to a type already
+    return;
+  }
+
+  if (builder.loadThreadPayload() && nodeID <= 8 &&
+      GetInstruction()->isSend() && distDep.size()) {
+    instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+    return;
+  }
+
+  if (builder.hasA0WARHWissue() && builder.hasFourALUPipes()) {
+    G4_INST *inst = GetInstruction();
+
+    if (inst->getDst() && inst->getDst()->isA0()) {
+      instVec.front()->setDistance(1);
+      instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+
+      return;
+    }
+  }
+
+  unsigned curDistance = (unsigned)instVec.front()->getDistance();
+  if (distDep.size()) {
+    SB_INST_PIPE depPipe = PIPE_NONE;
+    SB_INST_PIPE sameOpndTypeDepPipe = PIPE_NONE;
+    bool sameOperandType = true;
+    int diffPipes = 0;
+    bool depLongPipe = false;
+
+    // Check if there is type conversion
+    for (int i = 0; i < (int)(distDep.size()); i++) {
+      SBDISTDEP_ITEM &it = distDep[i];
+
+      if (it.operandType != it.liveNodePipe || it.dstDep) {
+        sameOperandType = false;
+      }
+    }
+
+    // If the dependent instructions belong to different pipelines
+    for (int i = 0; i < (int)(distDep.size()); i++) {
+      SBDISTDEP_ITEM &it = distDep[i];
+
+      if (it.liveNodePipe != it.nodePipe) {
+        diffPipes++;
+        depPipe = it.liveNodePipe;
+      }
+
+      depLongPipe = it.liveNodePipe == PIPE_LONG;
+    }
+
+    // In some platforms, A@ need be used for following case when the regDist
+    // cannot be used (due to HW issue), and inst depends on different pipes
+    // mov(8 | M0)               r63.0 < 2 > :ud   r15.0 < 1; 1, 0 > : ud{ I@7
+    // }
+    //...
+    // add(8 | M0)               r95.0 < 1 > : q    r87.0 < 1; 1, 0 > : q
+    // r10.0 < 0; 1, 0 > : q{ I@7 }
+    //...
+    // add(8 | M0)               r55.0 < 2 > : d    r95.0 < 1; 1, 0 > : q
+    // r63.0 < 2; 1, 0 > : ud{ A@4 } In some platforms I@ accurate dependence
+    // can used for following case when the regDist cannot be used (due to HW
+    // issue), because inst depends on same pipe The example code piece :
+    // mov(16 | M0) r88.0 < 2 > : d r84.0 < 1; 1, 0 > : d{ F@2 } // $79&103
+    // mov(16 | M16) r90.0 < 2 > : d r85.0 < 1; 1, 0 > : d // $80&104
+    // mov(16 | M0) r88.1 < 2 > : d r86.0 < 1; 1, 0 > : d{ F@1 } // $81&105
+    // mov(16 | M16) r90.1 < 2 > : d r87.0 < 1; 1, 0 > : d // $82&106
+    // mov(16 | M0) r32.0 < 1 > : df r88.0 < 1; 1, 0 > : q{ @2/I@2 } //
+    // $83&107 Since:q and : d all go to integer pipeline in, @2 should
+    // work.However, due to HW bug, I@2 is good
+    bool mulitpleSamePipe = false;
+    if (distDep.size() > 1 && sameOperandType) {
+      sameOpndTypeDepPipe = distDep[0].liveNodePipe;
+      for (int i = 1; i < (int)(distDep.size()); i++) {
+        SBDISTDEP_ITEM &it = distDep[i];
+
+        if (it.liveNodePipe != sameOpndTypeDepPipe) {
+          mulitpleSamePipe = true;
+        }
+      }
+    }
+
+    if (builder.hasLongOperandTypeDepIssue() && depLongPipe) {
+      sameOperandType = false;
+    }
+
+    if (!builder.getOptions()->getOption(vISA_disableRegDistDep) &&
+        !builder.hasRegDistDepIssue()) {
+      instVec.front()->setOperandTypeIndicated(sameOperandType);
+    }
+
+    // Multiple dependences
+    if (distDep.size() > 1) {
+      // Dependence instructions belong to different ALU pipelines.
+      if (diffPipes) {
+        // But the operand type is from same instruction pipeline.
+        if (sameOperandType) {
+          assert(
+              !GetInstruction()->isSend()); // Send operand has no type,
+                                            // sameOperandType is always false
+          if (mulitpleSamePipe) {
+            instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+          } else {
+            setAccurateDistType(depPipe);
+          }
+          instVec.front()->setOperandTypeIndicated(
+              false); // DPAS distance will be in sync inst
+        } else // For send, we will set it to DISTALL if there are multiple
+               // dependences. For non-send, DIST
+        {
+          instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+          instVec.front()->setOperandTypeIndicated(false);
+        }
+      } else // From same pipeline
+      {
+        setAccurateDistType(ALUPipe);
+        instVec.front()->setIsClosestALUType(
+            isClosestALUType(latestInstID, curDistance, ALUPipe));
+      }
+    } else // Only one dependency
+    {
+      if (depPipe != PIPE_NONE) // From different pipeline
+      {
+        setAccurateDistType(depPipe);
+        if (sameOperandType || GetInstruction()->isSend()) {
+          instVec.front()->setIsClosestALUType(
+              isClosestALUType(latestInstID, curDistance, depPipe));
+        }
+      } else // From same pipeline
+      {
+        setAccurateDistType(ALUPipe);
+        if (sameOperandType) {
+          instVec.front()->setIsClosestALUType(
+              isClosestALUType(latestInstID, curDistance, ALUPipe));
+        }
+      }
+    }
+  }
+}
+
+void SBNode::finalizeDistanceType2(IR_Builder &builder,
+                                   std::vector<unsigned> **latestInstID) {
+  if (instVec.front()->getDistanceTypeXe() !=
+      G4_INST::DistanceType::DIST_NONE) { // Forced to a type already
+    return;
+  }
+
+  if (builder.loadThreadPayload() && nodeID <= 8 &&
+      GetInstruction()->isSend() && distDep.size()) {
+    instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+    return;
+  }
+
+  if (builder.hasA0WARHWissue() && builder.hasFourALUPipes()) {
+    G4_INST *inst = GetInstruction();
+
+    if (inst->getDst() && inst->getDst()->isA0()) {
+      instVec.front()->setDistance(1);
+      instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+
+      return;
+    }
+  }
+
+  unsigned curDistance = (unsigned)instVec.front()->getDistance();
+  if (distDep.size()) {
+    SB_INST_PIPE depPipe = PIPE_NONE;
+    SB_INST_PIPE sameOpndTypeDepPipe = PIPE_NONE;
+    bool sameOperandType = true;
+    bool depSamePipe = true;
+    bool depLongPipe = false;
+
+    // Check the potential to use regDist
+    for (int i = 0; i < (int)(distDep.size()); i++) {
+      SBDISTDEP_ITEM &it = distDep[i];
+
+      // For regDist, the operand type is same as pipeline type of dependent
+      // instruction
+      if (it.operandType != it.liveNodePipe || it.dstDep) {
+        sameOperandType = false;
+      }
+    }
+
+    // If the dependent instructions belong to different pipelines
+    for (int i = 0; i < (int)(distDep.size()); i++) {
+      SBDISTDEP_ITEM &it = distDep[i];
+
+      if (it.liveNodePipe != it.nodePipe) {
+        depSamePipe = false; // Current instruction and dependence instruction
+                             // belong to different pipeline
+      }
+
+      if (depPipe == PIPE_NONE) {
+        depPipe = it.liveNodePipe;
+      }
+
+      depLongPipe = it.liveNodePipe == PIPE_LONG;
+    }
+
+    // In some platforms, A@ need be used for following case when the regDist
+    // cannot be used (due to HW issue), and inst depends on different pipes
+    // mov(8 | M0)               r63.0 < 2 > :ud   r15.0 < 1; 1, 0 > : ud{ I@7
+    // }
+    //...
+    // add(8 | M0)               r95.0 < 1 > : q    r87.0 < 1; 1, 0 > : q
+    // r10.0 < 0; 1, 0 > : q{ I@7 }
+    //...
+    // add(8 | M0)               r55.0 < 2 > : d    r95.0 < 1; 1, 0 > : q
+    // r63.0 < 2; 1, 0 > : ud{ A@4 } In some platforms I@ accurate dependence
+    // can used for following case when the regDist cannot be used (due to HW
+    // issue), because inst depends on same pipe The example code piece :
+    // mov(16 | M0) r88.0 < 2 > : d r84.0 < 1; 1, 0 > : d{ F@2 } // $79&103
+    // mov(16 | M16) r90.0 < 2 > : d r85.0 < 1; 1, 0 > : d // $80&104
+    // mov(16 | M0) r88.1 < 2 > : d r86.0 < 1; 1, 0 > : d{ F@1 } // $81&105
+    // mov(16 | M16) r90.1 < 2 > : d r87.0 < 1; 1, 0 > : d // $82&106
+    // mov(16 | M0) r32.0 < 1 > : df r88.0 < 1; 1, 0 > : q{ @2/I@2 } //
+    // $83&107 Since:q and : d all go to integer pipeline in, @2 should
+    // work.However, due to HW bug, we can only set to I@2 Depends on multiple
+    // pipelines but same pipeline
+    bool mulitpleSamePipe = true;
+    if (distDep.size() > 1) {
+      sameOpndTypeDepPipe = distDep[0].liveNodePipe;
+      for (int i = 1; i < (int)(distDep.size()); i++) {
+        SBDISTDEP_ITEM &it = distDep[i];
+
+        if (it.liveNodePipe != sameOpndTypeDepPipe) {
+          mulitpleSamePipe = false;
+        }
+      }
+    }
+
+    if (builder.hasLongOperandTypeDepIssue() && depLongPipe) {
+      sameOperandType = false;
+    }
+
+    if (!builder.getOptions()->getOption(vISA_disableRegDistDep) &&
+        !builder.hasRegDistDepIssue()) {
+      instVec.front()->setOperandTypeIndicated(sameOperandType);
+    }
+
+    // Multiple dependences
+    if (distDep.size() > 1) {
+      if (!depSamePipe) // Dependent instruction and current instruction
+                        // belong to different ALU pipelines.
+      {
+        if (sameOperandType) // But the operand type and dependence
+                             // instruction are from same instruction
+                             // pipeline.
+        {
+          assert(
+              !GetInstruction()->isSend()); // Send operand has no type,
+                                            // sameOperandType is always false
+          if (mulitpleSamePipe) {
+            setAccurateDistType(depPipe);
+          } else {
+            instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+          }
+          instVec.front()->setOperandTypeIndicated(
+              false); // DPAS distance will be in sync inst
+        } else if (mulitpleSamePipe) {
+          setAccurateDistType(depPipe);
+          instVec.front()->setOperandTypeIndicated(false);
+        } else // set to DISTALL
+        {
+          instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+          instVec.front()->setOperandTypeIndicated(false);
+        }
+      } else // From same pipeline
+      {
+        setAccurateDistType(depPipe);
+        instVec.front()->setIsClosestALUType(
+            isClosestALUType(latestInstID, curDistance, depPipe));
+      }
+    } else // Only one dependency
+    {
+      if (depPipe != PIPE_NONE) // From different pipeline
+      {
+        setAccurateDistType(depPipe);
+        if (sameOperandType || GetInstruction()->isSend()) {
+          instVec.front()->setIsClosestALUType(
+              isClosestALUType(latestInstID, curDistance, depPipe));
+        }
+      } else // From same pipeline
+      {
+        setAccurateDistType(ALUPipe);
+        if (sameOperandType) {
+          instVec.front()->setIsClosestALUType(
+              isClosestALUType(latestInstID, curDistance, ALUPipe));
+        }
+      }
+    }
+  }
+}
+
+void SBNode::finalizeDistanceType3(IR_Builder &builder,
+                           std::vector<unsigned> **latestInstID) {
+  if (instVec.front()->getDistanceTypeXe() !=
+      G4_INST::DistanceType::DIST_NONE) { // Forced to a type already
+    clearAllDistInfo();
+    return;
+  }
+
+  if (builder.loadThreadPayload() && nodeID <= 8 &&
+      GetInstruction()->isSend() && hasDistInfo()) {
+    instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+    clearAllDistInfo();
+    return;
+  }
+
+  if (builder.hasA0WARHWissue() && builder.hasFourALUPipes()) {
+    G4_INST *inst = GetInstruction();
+
+    if (inst->getDst() && inst->getDst()->isA0()) {
+      instVec.front()->setDistance(1);
+      instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+      clearAllDistInfo();
+      return;
+    }
+  }
+
+  if (instVec.front()->getDistance() == 1 &&
+      (instVec.front()->getDistanceTypeXe() ==
+       G4_INST::DistanceType::DISTALL)) {
+    clearAllDistInfo();
+    return;
+  }
+
+  if (!hasDistInfo()) {
+    return;
+  }
+
+  // Check if there are multiple dependences and calculate the min
+  // distance used to compute the cost of DISTALL.
+  unsigned minDist = SWSB_MAX_ALU_DEPENDENCE_DISTANCE_VALUE;
+  unsigned numOfDep = 0;
+  for (int i = PIPE_INT; i < PIPE_DPAS; i++) {
+    unsigned dist = getDistInfo((SB_INST_PIPE)i);
+    if (dist) {
+      minDist = std::min(minDist, dist);
+      ++numOfDep;
+    }
+  }
+
+  if (numOfDep > 1) {
+    // When the cost of using DISTALL dependence is same as the
+    // cost of calculating true dependence for each pipe, using
+    // DISTALL could save us from emitting sync.nop instructions.
+    auto distAllDepRes = calcClosestALUAndDistDiff(latestInstID, minDist);
+    auto trueDepRes = calcClosestALUAndDistDiff(latestInstID);
+    if (distAllDepRes.second == trueDepRes.second) {
+      instVec.front()->setDistance(minDist);
+      instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
+      clearAllDistInfo();
+      return;
+    }
+  }
+
+  for (int i = PIPE_INT; i < PIPE_DPAS; i++) {
+    unsigned dist = getDistInfo((SB_INST_PIPE)i);
+    if (dist) {
+      setAccurateDistType((SB_INST_PIPE)i);
+      clearDistInfo((SB_INST_PIPE)i);
+      instVec.front()->setDistance((unsigned char)dist);
+      break;
+    }
+  }
+}
+
+// Add a node into bucket
+void LiveGRFBuckets::add(SBBucketNode *bucketNode, int bucket) {
+  assert(nodeBucketsArray[bucket] != nullptr);
+  SBBUCKET_VECTOR &nodeVec = *(nodeBucketsArray[bucket]);
+  if (std::find(nodeVec.begin(), nodeVec.end(), bucketNode) == nodeVec.end()) {
+    nodeVec.push_back(bucketNode);
+  }
+}
+
+// Scan the node vector of the bucket, and kill the bucket node with the
+// specified node and operand
+void LiveGRFBuckets::bucketKill(int bucket, SBNode *node,
+                                Gen4_Operand_Number opnd) {
+  SBBUCKET_VECTOR &vec = *nodeBucketsArray[bucket];
+  for (unsigned int i = 0; i < vec.size(); i++) {
+    SBBucketNode *bNode = vec[i];
+
+    // Same node and same operand
+    if (bNode->node == node && bNode->opndNum == opnd) {
+      vec.erase(vec.begin() + i);
+      break;
+    }
+  }
+}
+// Kill the bucket node specified by bn_it
+void LiveGRFBuckets::killSingleOperand(BN_iterator &bn_it) {
+  SBBUCKET_VECTOR &vec = *nodeBucketsArray[bn_it.bucket];
+  SBBUCKET_VECTOR_ITER &node_it = bn_it.node_it;
+
+  // Kill current node
+  if (*node_it == vec.back()) {
+    vec.pop_back();
+    node_it = vec.end();
+  } else {
+    // Current node is assigned with the last one
+    // For caller, same iterator position need be handled again,
+    // Because a new node is copied here
+    *node_it = vec.back();
+    vec.pop_back();
+  }
+}
+
+// Kill the bucket node specified by bn_it, also kill the same node in other
+// buckets
+void LiveGRFBuckets::killOperand(BN_iterator &bn_it) {
+  SBBUCKET_VECTOR &vec = *nodeBucketsArray[bn_it.bucket];
+  SBBUCKET_VECTOR_ITER &node_it = bn_it.node_it;
+  SBBucketNode *bucketNode = *node_it; // Get the node before it is destroyed
+
+  // Kill current node
+  if (*node_it == vec.back()) {
+    vec.pop_back();
+    node_it = vec.end();
+  } else {
+    // Current node is assigned with the last one
+    // For caller, same iterator position need be handled again,
+    // Because a new node is copied here
+    *node_it = vec.back();
+    vec.pop_back();
+  }
+
+  // Kill the same node in other bucket.
+  for (const SBFootprint *footprint =
+           bucketNode->node->getFirstFootprint(bucketNode->opndNum);
+       footprint; footprint = footprint->next) {
+    assert(footprint->inst != nullptr);
+    const IR_Builder &irb = footprint->inst->getBuilder();
+    unsigned int startBucket = footprint->LeftB / irb.numEltPerGRF<Type_UB>();
+    unsigned int endBucket = footprint->RightB / irb.numEltPerGRF<Type_UB>();
+
+    if (footprint->inst == bucketNode->footprint->inst) {
+      for (unsigned int i = startBucket;
+           (i < endBucket + 1) && (i < nodeBucketsArray.size()); i++) {
+        if (i == bn_it.bucket) {
+          continue;
+        }
+        bucketKill(i, bucketNode->node, bucketNode->opndNum);
+      }
+    }
+  }
+}
+
+void LiveGRFBuckets::dumpLives() const {
+  for (int curBucket = 0; curBucket < numOfBuckets; curBucket++) {
+    if (nodeBucketsArray[curBucket]->size()) {
+      std::cerr << " GRF" << curBucket << ":";
+      for (SBBucketNode *liveBN : *nodeBucketsArray[curBucket]) {
+        std::cerr << " " << liveBN->node->getNodeID() << "(" << liveBN->opndNum
+                  << ")";
+      }
+      std::cerr << "\t";
+      if ((curBucket + 1) % 8 == 0) {
+        std::cerr << "\n";
+      }
+    }
+  }
+  std::cerr << "\n";
+}
+
 // Compute the range of registers touched by OPND.
 SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
                                           Gen4_Operand_Number opnd_num,
