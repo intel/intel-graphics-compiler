@@ -1410,30 +1410,34 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_RegVar *regVar) {
     return builder_->getBuiltinR0();
   } else if (useLSCMsg) {
     return nullptr;
+  } else if (builder_->usesStack()) {
+    return gra.kernel.fg.scratchRegDcl;
   }
 
   G4_RegVar *repRegVar =
       (regVar->isRegVarTransient()) ? regVar->getBaseRegVar() : regVar;
   const char *name =
       createImplicitRangeName("SP_MSG", repRegVar, getMsgSpillIndex(repRegVar));
-  unsigned regVarByteSize = getByteSize(regVar);
-  unsigned writePayloadHeight =
-      cdiv(regVarByteSize, builder_->numEltPerGRF<Type_UB>());
 
-  if (writePayloadHeight > SPILL_PAYLOAD_HEIGHT_LIMIT) {
-    writePayloadHeight = SPILL_PAYLOAD_HEIGHT_LIMIT;
+  unsigned short height = 1;
+  if (!useSplitSend()) {
+    unsigned regVarByteSize = getByteSize(regVar);
+    unsigned writePayloadHeight =
+        cdiv(regVarByteSize, builder_->numEltPerGRF<Type_UB>());
+
+    if (writePayloadHeight > SPILL_PAYLOAD_HEIGHT_LIMIT) {
+      writePayloadHeight = SPILL_PAYLOAD_HEIGHT_LIMIT;
+    }
+    unsigned payloadHeaderHeight = (regVarByteSize != DWORD_BYTE_SIZE)
+                                       ? OWORD_PAYLOAD_HEADER_MAX_HEIGHT
+                                       : DWORD_PAYLOAD_HEADER_MAX_HEIGHT;
+    height = payloadHeaderHeight + writePayloadHeight;
+    // We should not find ourselves using dword scattered write
+    if (useScratchMsg_) {
+      assert(payloadHeaderHeight != DWORD_PAYLOAD_HEADER_MAX_HEIGHT);
+    }
   }
-
-  unsigned payloadHeaderHeight = (regVarByteSize != DWORD_BYTE_SIZE)
-                                     ? OWORD_PAYLOAD_HEADER_MAX_HEIGHT
-                                     : DWORD_PAYLOAD_HEADER_MAX_HEIGHT;
-  unsigned short height = payloadHeaderHeight + writePayloadHeight;
   unsigned short width = builder_->numEltPerGRF<Type_UD>();
-
-  // We should not find ourselves using dword scattered write
-  if (useScratchMsg_) {
-    assert(payloadHeaderHeight != DWORD_PAYLOAD_HEADER_MAX_HEIGHT);
-  }
 
   G4_Declare *msgRangeDeclare = createRangeDeclare(
       name, G4_GRF, width, height, Type_UD, DeclareType::Tmp,
@@ -1461,28 +1465,31 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_DstRegRegion *region,
     return builder_->getBuiltinR0();
   } else if (useLSCMsg) {
     return nullptr;
+  } else if (builder_->usesStack()) {
+    return gra.kernel.fg.scratchRegDcl;
   }
 
   const char *name = createImplicitRangeName(
       "SP_MSG", getRegVar(region), getMsgSpillIndex(getRegVar(region)));
-  unsigned regionByteSize = getSegmentByteSize(region, execSize);
-  unsigned writePayloadHeight =
-      cdiv(regionByteSize, builder_->numEltPerGRF<Type_UB>());
-  unsigned msgType = getMsgType(region, execSize);
-  unsigned payloadHeaderHeight =
-      (msgType == owordMask() || msgType == hwordMask())
-          ? OWORD_PAYLOAD_HEADER_MAX_HEIGHT
-          : DWORD_PAYLOAD_HEADER_MAX_HEIGHT;
-
-  // We should not find ourselves using dword scattered write
-  if (useScratchMsg_) {
-    assert(payloadHeaderHeight != DWORD_PAYLOAD_HEADER_MAX_HEIGHT);
+  unsigned short height = 1;
+  if (!useSplitSend()) {
+    unsigned regionByteSize = getSegmentByteSize(region, execSize);
+    unsigned writePayloadHeight =
+        cdiv(regionByteSize, builder_->numEltPerGRF<Type_UB>());
+    unsigned msgType = getMsgType(region, execSize);
+    unsigned payloadHeaderHeight =
+        (msgType == owordMask() || msgType == hwordMask())
+            ? OWORD_PAYLOAD_HEADER_MAX_HEIGHT
+            : DWORD_PAYLOAD_HEADER_MAX_HEIGHT;
+    // We should not find ourselves using dword scattered write
+    if (useScratchMsg_) {
+      assert(payloadHeaderHeight != DWORD_PAYLOAD_HEADER_MAX_HEIGHT);
+    }
+    height = payloadHeaderHeight + writePayloadHeight;
   }
-
-  unsigned height = payloadHeaderHeight + writePayloadHeight;
   unsigned short width = builder_->numEltPerGRF<Type_UD>();
   G4_Declare *msgRangeDeclare = createRangeDeclare(
-      name, G4_GRF, width, (unsigned short)height, Type_UD, DeclareType::Tmp,
+      name, G4_GRF, width, height, Type_UD, DeclareType::Tmp,
       region->getBase()->asRegVar(), NULL, G4_ExecSize(0));
 
   if (failSafeSpill_) {
