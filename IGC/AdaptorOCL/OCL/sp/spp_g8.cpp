@@ -378,7 +378,7 @@ bool createElfFileName(std::string &name, unsigned int maxNameLen, SIMDMode simd
 
     // Location of temporary input and output files required by the linker of ELF files
     // is a system temporary directory
-    llvm::sys::path::system_temp_directory(false, tempDir);
+    llvm::sys::path::system_temp_directory(true, tempDir);
 #if defined(_WIN64) || defined(_WIN32)
     tempDir.append("\\");
 #else
@@ -451,7 +451,7 @@ void CGen8OpenCLProgram::GetZEBinary(
 
     SmallString<64> tempDir;  // Do not worry its size, because system_temp_directory() appends if needed.
     // Location of temporary input and output files required by the linker is a system temporary directory
-    llvm::sys::path::system_temp_directory(false, tempDir);
+    llvm::sys::path::system_temp_directory(true, tempDir);
 #if defined(_WIN64) || defined(_WIN32)
     tempDir.append("\\");
 #else
