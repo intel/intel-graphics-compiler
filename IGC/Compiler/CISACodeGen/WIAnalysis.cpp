@@ -385,9 +385,6 @@ bool WIAnalysis::runOnFunction(Function& F)
     auto* ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     auto* pTT = &getAnalysis<TranslationTable>();
 
-    isComputeProgram = CGCtx->type == ShaderType::COMPUTE_SHADER ||
-        CGCtx->type == ShaderType::OPENCL_SHADER;
-
     Runner.init(&F, DT, PDT, MDUtils, CGCtx, ModMD, pTT);
     return Runner.run();
 }

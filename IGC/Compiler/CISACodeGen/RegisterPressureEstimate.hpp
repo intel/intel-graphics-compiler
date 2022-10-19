@@ -33,6 +33,7 @@ See LICENSE.TXT for details.
 namespace IGC
 {
     constexpr unsigned int SIMD_PRESSURE_MULTIPLIER = 8;
+    constexpr unsigned int OVERALL_PRESSURE_UPBOUND = 512;
 
     class RegisterPressureEstimate : public llvm::FunctionPass
     {
@@ -40,8 +41,7 @@ namespace IGC
         static char ID;
         RegisterPressureEstimate()
             : FunctionPass(ID), m_DL(nullptr), m_pFunc(nullptr), LI(nullptr),
-            WI(nullptr), m_available(false), MaxAssignedNumber(0),
-            OVERALL_PRESSURE_UPBOUND(512)
+            WI(nullptr), m_available(false), MaxAssignedNumber(0)
         {
             initializeRegisterPressureEstimatePass(*llvm::PassRegistry::getPassRegistry());
         }
@@ -217,8 +217,6 @@ namespace IGC
         void buildRPMapPerInstruction();
 
     private:
-        unsigned int OVERALL_PRESSURE_UPBOUND;
-
         /// \brief Return the register pressure at location specified by Inst.
         unsigned getRegisterPressure(llvm::Instruction* Inst) const;
 
