@@ -981,6 +981,8 @@ void BIImport::InitializeBIFlags(Module& M)
         initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
 
         useHighAccuracyMathFuncs = OCLContext->m_InternalOptions.UseHighAccuracyMathFuncs;
+
+        initializeVarWithValue("__UseLSC", pCtx->platform.hasLSC());
     }
 
     initializeVarWithValue("__EnableSWSrgbWrites", IGC_GET_FLAG_VALUE(cl_khr_srgb_image_writes));

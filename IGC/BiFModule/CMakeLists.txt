@@ -483,6 +483,7 @@ set(KHR_DEFINES "cl_khr_f16" "cl_khr_fp64" "cl_khr_gl_msaa_sharing" "cl_khr_mipm
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_matrix_multiply_accumulate" "cl_intel_subgroup_split_matrix_multiply_accumulate" "cl_intel_pvc_rt_validation")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_matrix_multiply_accumulate_tf32")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_read")
+set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_pvc_lsc_validation")
 
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
