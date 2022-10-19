@@ -265,7 +265,7 @@ namespace IGC
         llvm::Value* FormChunkAddress(BufChunk* chunk, const ExtensionKind &Extension);
         void   CombineTwoLoads(BufChunk* cov_chunk, llvm::Instruction* load, uint eltid, uint numelt, const ExtensionKind &Extension);
         llvm::Instruction* CreateChunkLoad(
-            llvm::Instruction* load, BufChunk* chunk, uint eltid, uint alignment, const ExtensionKind &Extension);
+            llvm::Instruction* load, BufChunk* chunk, uint eltid, alignment_t alignment, const ExtensionKind &Extension);
         llvm::Instruction* AddChunkExtract(llvm::Instruction* load, uint offset);
         llvm::Instruction* FindOrAddChunkExtract(BufChunk* cov_chunk, uint eltid);
         llvm::Instruction* EnlargeChunkAddExtract(BufChunk* cov_chunk, uint size_adj, uint eltid);
@@ -300,7 +300,7 @@ namespace IGC
         bool   IsSamplerAlignedAddress(Value* addr) const;
         Value* GetSamplerAlignedAddress(Value* inst);
 
-        uint GetAlignment(Instruction* load) const;
+        alignment_t GetAlignment(Instruction* load) const;
         void SetAlignment(Instruction* load, uint alignment);
     };
 

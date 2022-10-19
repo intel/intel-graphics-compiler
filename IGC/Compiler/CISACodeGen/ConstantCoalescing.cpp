@@ -671,7 +671,7 @@ void ConstantCoalescing::FindAllDirectCB(
             continue;
         }
 
-        const uint alignment = GetAlignment(inst);
+        const alignment_t alignment = GetAlignment(inst);
         Type* loadType = inst->getType();
         Type* elemType = loadType->getScalarType();
         // right now, only work on load with dword element-type
@@ -823,7 +823,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
     std::vector<BufChunk*>& chunk_vec)
 {
     const uint scalarSizeInBytes = load->getType()->getScalarSizeInBits() / 8;
-    const uint alignment = GetAlignment(load);
+    const alignment_t alignment = GetAlignment(load);
 
     IGC_ASSERT((offsetInBytes % scalarSizeInBytes) == 0);
     const uint eltid = offsetInBytes / scalarSizeInBytes;
@@ -883,7 +883,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction* load,
             cov_chunk->elementSize = scalarSizeInBytes;
             cov_chunk->chunkStart = eltid;
             cov_chunk->chunkSize = maxEltPlus;
-            const uint chunkAlignment = std::max<uint>(alignment, 4);
+            const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
             cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
 
             // Update load alignment if needed, set it to DWORD aligned
@@ -1158,14 +1158,14 @@ void ConstantCoalescing::CombineTwoLoads(
     }
 }
 
-uint ConstantCoalescing::GetAlignment(Instruction* load) const
+alignment_t ConstantCoalescing::GetAlignment(Instruction* load) const
 {
     IGC_ASSERT(isa<LdRawIntrinsic>(load) || isa<LoadInst>(load));
-    uint alignment = 1;
+    alignment_t alignment = 1;
 
     if (isa<LoadInst>(load))
     {
-        alignment = (uint)cast<LoadInst>(load)->getAlignment();
+        alignment = cast<LoadInst>(load)->getAlignment();
     }
     else
     {
@@ -1200,7 +1200,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     const ExtensionKind &Extension,
     std::vector<BufChunk*>& chunk_vec)
 {
-    const uint alignment = GetAlignment(load);
+    const alignment_t alignment = GetAlignment(load);
 
     if (alignment == 0)
     {
@@ -1223,7 +1223,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
     }
     const uint scalarSizeInBytes = (const uint)(LoadEltTy->getPrimitiveSizeInBits() / 8);
 
-    IGC_ASSERT(isPowerOf2_32(alignment));
+    IGC_ASSERT(isPowerOf2_64(alignment));
     IGC_ASSERT(0 != scalarSizeInBytes);
     IGC_ASSERT((offsetInBytes % scalarSizeInBytes) == 0);
 
@@ -1271,7 +1271,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction* load,
             cov_chunk->elementSize = scalarSizeInBytes;
             cov_chunk->chunkStart = eltid;
             cov_chunk->chunkSize = iSTD::RoundPower2((DWORD)maxEltPlus);
-            const uint chunkAlignment = std::max<uint>(alignment, 4);
+            const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
             cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
             chunk_vec.push_back(cov_chunk);
         }
@@ -1698,7 +1698,7 @@ uint ConstantCoalescing::CheckVectorElementUses(const Instruction* load)
 }
 
 Instruction* ConstantCoalescing::CreateChunkLoad(
-    Instruction* seedi, BufChunk* chunk, uint eltid, uint alignment, const ExtensionKind &Extension)
+    Instruction* seedi, BufChunk* chunk, uint eltid, alignment_t alignment, const ExtensionKind &Extension)
 {
     irBuilder->SetInsertPoint(seedi);
     if (LoadInst * load = dyn_cast<LoadInst>(seedi))
@@ -1777,7 +1777,7 @@ Instruction* ConstantCoalescing::CreateChunkLoad(
         {
             ldRaw->getResourceValue(),
             eac,
-            irBuilder->getInt32(alignment),
+            irBuilder->getInt32((uint32_t)alignment),
             irBuilder->getFalse()
         };
         Function* ldRawFn = GenISAIntrinsic::getDeclaration(

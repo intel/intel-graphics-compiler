@@ -44,6 +44,7 @@ See LICENSE.TXT for details.
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/Alignment.h"
 
 namespace llvm {
 /// IntrinsicInst - A useful wrapper class for inspecting calls to intrinsic
@@ -608,7 +609,7 @@ public:
     }
 
 
-    inline void setAlignment(unsigned int alignment)
+    inline void setAlignment(alignment_t alignment)
     {
         Value* newAlignment = ConstantInt::get(getOperand(2)->getType(), alignment);
         setOperand(2, newAlignment);

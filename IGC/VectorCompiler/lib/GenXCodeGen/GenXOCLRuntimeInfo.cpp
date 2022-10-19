@@ -564,8 +564,8 @@ static void loadBinary(RawSectionInfo &TextSection, VISABuilder &VB,
   appendFuncBinary(TextSection.Data, F, *BuiltKernel);
 }
 
-static unsigned getAlignment(const GlobalVariable &GV) {
-  unsigned Align = GV.getAlignment();
+static alignment_t getAlignment(const GlobalVariable &GV) {
+  auto Align = GV.getAlignment();
   if (Align)
     return Align;
   return GV.getParent()->getDataLayout().getABITypeAlignment(GV.getValueType());

@@ -113,11 +113,11 @@ namespace
         {
             return m_inst;
         }
-        unsigned int getAlignment() const
+        alignment_t getAlignment() const
         {
-            return (unsigned)(isa<LoadInst>(m_inst) ? getLoad()->getAlignment() : getLdRaw()->getAlignment());
+            return isa<LoadInst>(m_inst) ? getLoad()->getAlignment() : getLdRaw()->getAlignment();
         }
-        void setAlignment(unsigned int alignment)
+        void setAlignment(alignment_t alignment)
         {
             if (isa<LoadInst>(m_inst))
             {
@@ -140,7 +140,7 @@ namespace
         {
             return Create(returnType, getPointerOperand(), getAlignment(), getIsVolatile());
         }
-        Instruction* Create(Type* returnType, Value* ptr, unsigned int alignment, bool isVolatile)
+        Instruction* Create(Type* returnType, Value* ptr, alignment_t alignment, bool isVolatile)
         {
             IGCLLVM::IRBuilder<> builder(m_inst);
             if (isa<LoadInst>(m_inst))
@@ -156,7 +156,7 @@ namespace
                 Value* offsetVal = hasComputedOffset ? ptr : ldraw->getOffsetValue();
                 ptr = ldraw->getResourceValue();
                 Type* types[2] = { returnType , ptr->getType() };
-                Value* args[4] = { ptr, offsetVal, builder.getInt32(alignment), builder.getInt1(isVolatile) };
+                Value* args[4] = { ptr, offsetVal, builder.getInt32((uint32_t)alignment), builder.getInt1(isVolatile) };
                 Function* newLdRawFunction =
                     GenISAIntrinsic::getDeclaration(ldraw->getModule(), ldraw->getIntrinsicID(), types);
                 return builder.CreateCall(newLdRawFunction, args);
@@ -218,11 +218,11 @@ namespace
         {
             return m_inst;
         }
-        unsigned int getAlignment() const
+        alignment_t getAlignment() const
         {
-            return (unsigned)(isa<StoreInst>(m_inst) ? getStore()->getAlignment() : getStoreRaw()->getAlignment());
+            return isa<StoreInst>(m_inst) ? getStore()->getAlignment() : getStoreRaw()->getAlignment();
         }
-        void setAlignment(unsigned int alignment)
+        void setAlignment(alignment_t alignment)
         {
             if (isa<StoreInst>(m_inst))
             {
@@ -241,7 +241,7 @@ namespace
         {
             return isa<StoreInst>(m_inst) ? getStore()->isVolatile() : false;
         }
-        Instruction* Create(Value* storedValue, Value* ptr, unsigned int alignment, bool isVolatile)
+        Instruction* Create(Value* storedValue, Value* ptr, alignment_t alignment, bool isVolatile)
         {
             IRBuilder<> builder(m_inst);
             Type* newType = storedValue->getType();
@@ -259,7 +259,7 @@ namespace
                 Value* offset = hasComputedOffset ? ptr : getStoreRaw()->getArgOperand(1);
                 ptr = getPointerOperand();
                 Type* types[2] = { ptr->getType(), newType };
-                Value* args[5] = { ptr, offset, storedValue, builder.getInt32(alignment), builder.getInt1(isVolatile) };
+                Value* args[5] = { ptr, offset, storedValue, builder.getInt32((uint32_t)alignment), builder.getInt1(isVolatile) };
                 Function* newStoreRawFunction =
                     GenISAIntrinsic::getDeclaration(getStoreRaw()->getModule(), getStoreRaw()->getIntrinsicID(), types);
                 return builder.CreateCall(newStoreRawFunction, args);
@@ -683,10 +683,10 @@ bool VectorPreProcess::splitStore(
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned stores can only store a dword at a time.
-        unsigned int alignment = ASI.getAlignment();
+        auto alignment = ASI.getAlignment();
         if (isStoreInst && alignment < 4)
         {
-            uint32_t newAlign = (uint32_t)IGCLLVM::getAlignmentValue(getKnownAlignment(ASI.getPointerOperand(), *m_DL));
+            alignment_t newAlign = (alignment_t)IGCLLVM::getAlignmentValue(getKnownAlignment(ASI.getPointerOperand(), *m_DL));
             if (newAlign > alignment)
             {
                 // For the same reason as Load, use DW-aligned for OCL stateful.
@@ -786,7 +786,7 @@ bool VectorPreProcess::splitStore(
     }
 
     Value* Addr = ASI.getPointerOperand();
-    uint32_t Align = ASI.getAlignment();
+    auto Align = ASI.getAlignment();
     bool IsVolatile = ASI.getIsVolatile();
     uint32_t eOffset = 0;
     uint32_t EBytes = int_cast<unsigned int>(m_DL->getTypeAllocSize(ETy));
@@ -798,7 +798,7 @@ bool VectorPreProcess::splitStore(
         IGCLLVM::FixedVectorType* VTy1 = dyn_cast<IGCLLVM::FixedVectorType>(Ty1);
         for (uint32_t j = 0; j < len1; ++j)
         {
-            uint32_t vAlign = (uint32_t)MinAlign(Align, (uint32_t)eOffset * EBytes);
+            alignment_t vAlign = (alignment_t)MinAlign(Align, (alignment_t)(eOffset * EBytes));
             Value* offsetAddr = ASI.CreateConstScalarGEP(svals[subIdx]->getType(), Addr, eOffset);
             Instruction* newST = ASI.Create(svals[subIdx], offsetAddr, vAlign, IsVolatile);
             eOffset += (VTy1 ? int_cast<uint32_t>(VTy1->getNumElements()) : 1);
@@ -853,10 +853,10 @@ bool VectorPreProcess::splitLoad(
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned loads can only load a dword at a time.
-        unsigned int alignment = ALI.getAlignment();
+        auto alignment = ALI.getAlignment();
         if (!isLdRaw && alignment < 4)
         {
-            uint32_t newAlign = (uint32_t)IGCLLVM::getAlignmentValue(getKnownAlignment(ALI.getPointerOperand(), *m_DL));
+            alignment_t newAlign = (alignment_t)IGCLLVM::getAlignmentValue(getKnownAlignment(ALI.getPointerOperand(), *m_DL));
             if (newAlign > alignment)
             {
                 //  For OCL stateful, the base can be as little as DW-aligned. To be safe,
@@ -888,7 +888,7 @@ bool VectorPreProcess::splitLoad(
     }
 
     Value* Addr = ALI.getPointerOperand();
-    uint32_t Align = ALI.getAlignment();
+    auto Align = ALI.getAlignment();
     bool IsVolatile = ALI.getIsVolatile();
 
     uint32_t eOffset = 0;
@@ -904,7 +904,7 @@ bool VectorPreProcess::splitLoad(
         IGCLLVM::FixedVectorType* VTy1 = dyn_cast<IGCLLVM::FixedVectorType>(Ty1);
         for (uint32_t j = 0; j < len1; ++j)
         {
-            uint32_t vAlign = (uint32_t)MinAlign(Align, eOffset * EBytes);
+            alignment_t vAlign = (alignment_t)MinAlign(Align, (alignment_t)(eOffset * EBytes));
             Value* offsetAddr = ALI.CreateConstScalarGEP(Ty1, Addr, eOffset);
             Instruction* I = ALI.Create(Ty1, offsetAddr, vAlign, IsVolatile);
             eOffset += (VTy1 ? int_cast<uint32_t>(VTy1->getNumElements()) : 1);

@@ -281,14 +281,14 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         CodeGenContext* cgCtx = nullptr;
         cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         bool useA64 = IGC::isA64Ptr(PtrTy, cgCtx);
-        uint32_t align;
+        alignment_t align;
         if (LI)
         {
-            align = (uint32_t)LI->getAlignment();
+            align = LI->getAlignment();
         }
         else if (SI)
         {
-            align = (uint32_t)SI->getAlignment();
+            align = SI->getAlignment();
         }
         else
         {

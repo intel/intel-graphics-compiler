@@ -140,9 +140,9 @@ bool LdShrink::runOnFunction(Function& F) {
             if (Offset)
                 ScalarPtr = Builder.CreateInBoundsGEP(ScalarPtr, Builder.getInt32(Offset));
 
-            unsigned alignment
-                = int_cast<unsigned int>(MinAlign(LI->getAlignment(),
-                    DL->getTypeStoreSize(ScalarTy) * Offset));
+            alignment_t alignment
+                = (alignment_t)MinAlign(LI->getAlignment(),
+                    DL->getTypeStoreSize(ScalarTy) * Offset);
 
             LoadInst* NewLoad = Builder.CreateAlignedLoad(ScalarPtr, IGCLLVM::getAlign(alignment));
             NewLoad->setDebugLoc(LI->getDebugLoc());

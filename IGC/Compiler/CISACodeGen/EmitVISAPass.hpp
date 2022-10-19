@@ -398,7 +398,7 @@ public:
         llvm::Type* Ty, LSC_CACHE_OPTS cacheOpts, uint64_t align);
     void emitLSCVectorStore(
         llvm::Value* Ptr, llvm::Value* offset, llvm::ConstantInt* immOffset,
-        llvm::Value* storedVal, LSC_CACHE_OPTS cacheOpts, uint32_t align, bool dontForceDMask);
+        llvm::Value* storedVal, LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDMask);
     void emitGenISACopy(llvm::GenIntrinsicInst* GenCopyInst);
     void emitVectorCopy(CVariable* Dst, CVariable* Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
@@ -895,11 +895,11 @@ private:
     void emitLSCVectorStore_subDW(
         LSC_CACHE_OPTS cacheOpts, bool UseA32,
         ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,
-        uint32_t NumElts, uint32_t EltBytes, int Align);
+        uint32_t NumElts, uint32_t EltBytes, alignment_t Align);
     void emitLSCVectorStore_uniform(
         LSC_CACHE_OPTS cacheOpts, bool UseA32,
         ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,
-        uint32_t NumElts, uint32_t EltBytes, int Align);
+        uint32_t NumElts, uint32_t EltBytes, alignment_t Align);
     LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1) const;
     bool m_isDuplicate;
     CVariable* m_tmpDest = nullptr;

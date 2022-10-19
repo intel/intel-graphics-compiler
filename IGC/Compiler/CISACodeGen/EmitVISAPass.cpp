@@ -10317,7 +10317,7 @@ void EmitPass::emitStore(StoreInst* inst, Value* varOffset, ConstantInt* immOffs
             immOffset,
             inst->getValueOperand(),
             cacheOpts,
-            (uint32_t)inst->getAlignment(),
+            inst->getAlignment(),
             inst->getMetadata("enable.vmask"));
         return;
     }
@@ -16636,7 +16636,7 @@ void EmitPass::emitLSCVectorLoad(
 void EmitPass::emitLSCVectorStore_subDW(
     LSC_CACHE_OPTS cacheOpts, bool UseA32,
     ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,
-    uint32_t NumElts, uint32_t EltBytes, int Alignment)
+    uint32_t NumElts, uint32_t EltBytes, alignment_t Alignment)
 {
     // NumElts must be 1!
     IGC_ASSERT_MESSAGE(NumElts == 1 && (EltBytes == 1 || EltBytes == 2),
@@ -16714,7 +16714,7 @@ void EmitPass::emitLSCVectorStore_subDW(
 void EmitPass::emitLSCVectorStore_uniform(
     LSC_CACHE_OPTS cacheOpts, bool UseA32,
     ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,
-    uint32_t NumElts, uint32_t EltBytes, int Align)
+    uint32_t NumElts, uint32_t EltBytes, alignment_t Align)
 {
     // If needed, can handle non-uniform StoreVar.
     IGC_ASSERT(StoreVar->IsUniform() && Offset->IsUniform() && (EltBytes == 4 || EltBytes == 8));
@@ -16809,7 +16809,7 @@ void EmitPass::emitLSCVectorStore_uniform(
 
 void EmitPass::emitLSCVectorStore(
     Value* Ptr, Value* varOffset, ConstantInt* immOffset,
-    Value* storedVal, LSC_CACHE_OPTS cacheOpts, uint32_t align, bool dontForceDmask)
+    Value* storedVal, LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDmask)
 {
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
     Type* Ty = storedVal->getType();

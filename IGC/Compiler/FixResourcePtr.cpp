@@ -246,14 +246,14 @@ Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst* inst, Instruction* bufPtr, 
         inst->getType()->isVectorTy() ? llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed : llvm::GenISAIntrinsic::GenISA_ldraw_indexed,
         tys);
 
-    unsigned alignment = std::max(inst->getType()->getScalarSizeInBits() / 8,
-                                  (unsigned)inst->getAlignment());
+    alignment_t alignment = std::max((alignment_t)(inst->getType()->getScalarSizeInBits() / 8),
+                                  inst->getAlignment());
 
     Value* attr[] =
     {
         bufPtr,
         offsetVal,
-        builder->getInt32(alignment),
+        builder->getInt32((uint32_t)alignment),
         builder->getInt1(inst->isVolatile())
     };
     Value* ld = builder->CreateCall(l, attr);
@@ -304,15 +304,15 @@ Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst* inst, Instruction* bufPtr
             types);
 
     }
-    unsigned alignment = std::max(storeVal->getType()->getScalarSizeInBits() / 8,
-                                  (unsigned)inst->getAlignment());
+    alignment_t alignment = std::max((alignment_t)(storeVal->getType()->getScalarSizeInBits() / 8),
+                                  inst->getAlignment());
 
     Value* attr[] =
     {
         bufPtr,
         offsetVal,
         storeVal,
-        builder->getInt32(alignment),
+        builder->getInt32((uint32_t)alignment),
         builder->getInt1(inst->isVolatile())
     };
     Value* st = builder->CreateCall(l, attr);
