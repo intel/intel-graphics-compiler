@@ -4295,8 +4295,7 @@ bool IGCConstProp::runOnFunction(Function& F)
     m_TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
     while (!WorkList.empty())
     {
-        Instruction* I = *WorkList.rbegin();
-        WorkList.remove(I);    // Get an element from the worklist...
+        Instruction* I = WorkList.pop_back_val(); // Get an element from the worklist...
         if (I->use_empty())                  // Don't muck with dead instructions...
         {
             continue;
