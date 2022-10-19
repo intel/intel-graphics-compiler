@@ -1211,7 +1211,9 @@ namespace IGC
         }
     }
 
-    bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition)
+    bool COpenCLKernel::CreateZEPayloadArguments(
+        IGC::KernelArg* kernelArg, uint payloadPosition,
+        PtrArgsAttrMapType& ptrArgsAttrMap)
     {
 #ifndef DX_ONLY_IGC
 #ifndef VK_ONLY_IGC
@@ -1273,33 +1275,37 @@ namespace IGC
             uint32_t arg_idx = kernelArg->getAssociatedArgNo();
 
             FunctionMetaData& funcMD = GetContext()->getModuleMetaData()->FuncMD[entry];
+            auto addr_space =
+                kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL
+                    ? zebin::PreDefinedAttrGetter::ArgAddrSpace::global
+                    : zebin::PreDefinedAttrGetter::ArgAddrSpace::constant;
             auto access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readwrite;
             if (kernelArg->getArgType() == KernelArg::ArgType::PTR_CONSTANT ||
                 funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "const")
                 access_type = zebin::PreDefinedAttrGetter::ArgAccessType::readonly;
 
-            // Add BTI argument if being promoted
             // FIXME: do not set bti if the number is 0xffffffff (?)
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(arg_idx);
             uint32_t bti_idx = getBTI(resInfo);
-            if (bti_idx != 0xffffffff) {
-                // add BTI argument with addr_mode set to stateful
+            // There are 3 stateful modes, we need to create different payload_arguments for
+            // each mode: BTI mode, Bindless legacy mode and Bindless advance
+            bool is_stateful_mode = bti_idx != 0xffffffff;
+
+            if (is_stateful_mode && (!m_Context->m_InternalOptions.UseBindlessMode)) {
+                // Add BTI argument if being promoted to stateful BTI mode
                 // promoted arg has 0 offset and 0 size
                 zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
                     0, 0, arg_idx,
                     zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
-                    (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
-                      zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
-                      zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
-                    access_type
-                );
+                    addr_space, access_type);
                 // add the corresponding BTI table index
                 zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs,
                     bti_idx, arg_idx);
             }
 
             // check if all reference are promoted, if it is, we can skip creating stateless payload arg
-            bool is_bti_only =
+            bool is_stateful_only =
+                is_stateful_mode &&
                 IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
                 IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
                 m_DriverInfo->SupportStatefulToken() &&
@@ -1310,16 +1316,34 @@ namespace IGC
                     (kernelArg->getArgType() == KernelArg::ArgType::PTR_CONSTANT &&
                     (kernelArg->getArg()->use_empty() || !GetHasConstantStatelessAccess())));
 
-            if (is_bti_only) {
+            bool is_bindless_legacy_mode =
+                m_Context->m_InternalOptions.UseBindlessMode &&
+                m_Context->m_InternalOptions.UseBindlessLegacyMode;
+            bool is_bindless_advance_mode =
+                m_Context->m_InternalOptions.UseBindlessMode &&
+                !m_Context->m_InternalOptions.UseBindlessLegacyMode;
+
+            // When on bindless advance mode, there's an IMPLICIT_BINDLESS_OFFSET argument generated
+            // associated to this argument. Keep track of addrspace and access_type for setting the
+            // IMPLICIT_BINDLESS_OFFSET's attributes
+            if (is_bindless_advance_mode)
+                ptrArgsAttrMap[arg_idx] = std::make_pair(addr_space, access_type);
+
+            // For BindlessLegacyMode, this argument represents the bindless offset of the argument. Skip buffer_address
+            // creation and fall through to below bindless payload_argument creation
+            // For BindlessAdvanceMode and BTI modes, this argument represents either the original stateless address
+            // or the "buffer_address" when all accesses are promoted to stateful
+            if (is_stateful_only && !is_bindless_legacy_mode) {
                 // create buffer_address for statefull only arg in case of address check is needed
                 // for example: something like "if(buffer != nullptr)" in the kernel.
                 // this address will be accessed as a value and cannot be de-referenced
                 zebin::zeInfoPayloadArgument& arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
                     zebin::PreDefinedAttrGetter::ArgType::buffer_address,
                     payloadPosition, kernelArg->getAllocateSize());
-                arg.arg_index = kernelArg->getAssociatedArgNo();
+                arg.arg_index = arg_idx;
                 break;
             }
+
             ResourceAllocMD& resAllocMD = GetContext()->getModuleMetaData()->FuncMD[entry].resAllocMD;
             IGC_ASSERT_MESSAGE(resAllocMD.argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
 
@@ -1332,11 +1356,7 @@ namespace IGC
 
             zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
                 payloadPosition, kernelArg->getAllocateSize(), arg_idx, addr_mode,
-                (kernelArg->getArgType() == KernelArg::ArgType::PTR_GLOBAL)?
-                  zebin::PreDefinedAttrGetter::ArgAddrSpace::global :
-                  zebin::PreDefinedAttrGetter::ArgAddrSpace::constant,
-                access_type
-                );
+                addr_space, access_type);
             break;
         }
         case KernelArg::ArgType::PTR_LOCAL:
@@ -1359,6 +1379,21 @@ namespace IGC
         case KernelArg::ArgType::IMPLICIT_LOCAL_IDS:
             break;
 
+        // Bindless offset for pointer argument. This ArgType presents when bindless-advanced-mode
+        // is enabled
+        case KernelArg::ArgType::IMPLICIT_BINDLESS_OFFSET: {
+            auto argidx = kernelArg->getAssociatedArgNo();
+            IGC_ASSERT_MESSAGE(
+                ptrArgsAttrMap.find(argidx) != ptrArgsAttrMap.end(),
+                "Cannot find ptrArgsAttr for IMPLICIT_BINDLESS_OFFSET");
+            PtrArgAttrType &attrs = ptrArgsAttrMap[argidx];
+            zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
+                m_kernelInfo.m_zePayloadArgs, payloadPosition,
+                kernelArg->getAllocateSize(), argidx,
+                zebin::PreDefinedAttrGetter::ArgAddrMode::bindless,
+                attrs.first, attrs.second);
+            break;
+        }
         // Images
         case KernelArg::ArgType::IMAGE_1D:
         case KernelArg::ArgType::BINDLESS_IMAGE_1D:
@@ -2562,6 +2597,9 @@ namespace IGC
         bool inlineDataProcessed = false;
         uint offsetCorrection = 0;
 
+        // keep track of the pointer arguments' addrspace and access_type for setting the correct
+        // attributes to their corresponding bindless offset arguments
+        PtrArgsAttrMapType ptrArgsAttrMap;
         for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i)
         {
             KernelArg arg = *i;
@@ -2719,7 +2757,7 @@ namespace IGC
                 if (m_Context->enableZEBinary()) {
                     // FIXME: once we transit to zebin completely, we don't need to do
                     // CreateAnnotations above. Only CreateZEPayloadArguments is required
-                    bool Res = CreateZEPayloadArguments(&arg, offsetInPayload);
+                    bool Res = CreateZEPayloadArguments(&arg, offsetInPayload, ptrArgsAttrMap);
                     IGC_ASSERT_MESSAGE(Res, "ZEBin: unsupported KernelArg Type");
                     (void) Res;
                 }

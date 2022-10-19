@@ -354,13 +354,21 @@ namespace IGC
         bool loadThreadPayload() override;
 
     protected:
+        // keep track of the pointer arguments' addrspace and access_type for
+        // setting the correct attributes to their corresponding bindless offset arguments
+        typedef std::pair<zebin::PreDefinedAttrGetter::ArgAddrSpace,
+                          zebin::PreDefinedAttrGetter::ArgAccessType> PtrArgAttrType;
+        typedef std::map<uint32_t, PtrArgAttrType> PtrArgsAttrMapType;
+
+    protected:
         // Creates appropriate annotation based on the kernel arg
         void CreateAnnotations(IGC::KernelArg* kernelArg, uint payloadPosition);
 
         // Fill SOpenCLKernelInfo::m_zePayloadArgs
         // Return true: if the argument is supported in ZEBinary and it's created successfully
         // Return false: if the argument cannot be supported by ZEBinary
-        bool CreateZEPayloadArguments(IGC::KernelArg* kernelArg, uint payloadPosition);
+        bool CreateZEPayloadArguments(
+            IGC::KernelArg* kernelArg, uint payloadPosition, PtrArgsAttrMapType& ptrArgsAttrMap);
 
         // Fill SOpenCLKernelInfo::m_zeUserAttribute for ZEBinary
         // (PT pass: CreateKernelAttributeInfo)
