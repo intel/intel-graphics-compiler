@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1058,6 +1058,13 @@ void PeepholeTypeLegalizer::cleanupTruncInst(Instruction& I) {
             //%q = and i8 %in, 31
             //%out = zext i8 %q to i32
 
+            //Example 3:
+            //%a = trunc i32 %in to i4
+            //%out = uitofp i4 %a to float
+            //=>
+            //%q = and i32 %in, 15
+            //%out = uitofp i32 %q to float
+
             if (isa<SExtInst>(castInst))
             {
                 auto shiftAmt = castInst_bitsize - Trunc_bitsize;
@@ -1069,6 +1076,11 @@ void PeepholeTypeLegalizer::cleanupTruncInst(Instruction& I) {
             {
                 auto inst1 = m_builder->CreateAnd(Src, (1 << Trunc_bitsize) - 1);
                 new_inst = m_builder->CreateZExt(inst1, castInst->getType());
+            }
+            else if (isa<UIToFPInst>(castInst))
+            {
+                auto inst1 = m_builder->CreateAnd(Src, (1 << Trunc_bitsize) - 1);
+                new_inst = m_builder->CreateUIToFP(inst1, castInst->getType());
             }
         }
         else if (Src_bitsize > castInst_bitsize)

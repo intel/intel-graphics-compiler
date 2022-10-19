@@ -2187,25 +2187,31 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst& I)
                 ElVal = Builder.CreateExtractElement(src0,
                     ConstantInt::get(Type::getInt32Ty(I.getContext()), i));
             }
-            if (BitWidth == 64)
+            if (BitWidth > 32 && BitWidth <= 64)
             {
+                if (BitWidth < 64)
+                    ElVal = Builder.CreateZExt(ElVal, Builder.getInt64Ty());
                 auto* Lo = Builder.CreateTrunc(ElVal, Builder.getInt32Ty());
                 auto* Hi64 = Builder.CreateLShr(ElVal, 32);
                 auto* Hi = Builder.CreateTrunc(Hi64, Builder.getInt32Ty());
                 auto* RevLo = Builder.CreateCall(bfrevFunc, Lo);
                 auto* RevHi = Builder.CreateCall(bfrevFunc, Hi);
-                auto* NewVal = Builder.CreateZExt(RevLo, intType);
-                auto* ShlVal = Builder.CreateShl(NewVal, 32);
-                auto* RevHiExt = Builder.CreateZExt(RevHi, intType);
+                auto* NewVal = Builder.CreateZExt(RevLo, Builder.getInt64Ty());
+                auto* ShlVal = Builder.CreateShl(NewVal, BitWidth - 32);
+                auto* RevHiExt = Builder.CreateZExt(RevHi, Builder.getInt64Ty());
+                if (BitWidth < 64)
+                    RevHiExt = Builder.CreateLShr(RevHiExt, 64 - BitWidth);
                 ElRes = Builder.CreateOr(ShlVal, RevHiExt);
+                if (BitWidth < 64)
+                    ElRes = Builder.CreateTrunc(ElRes, intType);
             }
             else
             {
-                IGC_ASSERT_MESSAGE(BitWidth == 32 || BitWidth == 16 || BitWidth == 8, "Unexpected type");
-                if (BitWidth == 16 || BitWidth == 8)
+                IGC_ASSERT_MESSAGE(BitWidth <= 32, "Unexpected type");
+                if (BitWidth < 32)
                     ElVal = Builder.CreateZExt(ElVal, Builder.getInt32Ty());
                 auto* Call = Builder.CreateCall(bfrevFunc, ElVal);
-                if (BitWidth == 16 || BitWidth == 8)
+                if (BitWidth < 32)
                 {
                     auto* LShr = Builder.CreateLShr(Call, 32 - BitWidth);
                     ElRes = Builder.CreateTrunc(LShr, intType);
