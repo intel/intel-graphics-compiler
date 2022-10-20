@@ -573,10 +573,6 @@ void EstimateFunctionSize::checkSubroutine() {
         if (expandedMaxSize <= subroutineThreshold && !HasRecursion)
         {
             EnableSubroutine = false;
-            if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & 0x1) != 0) {
-                std::cout << "Expanded max kernel size " << expandedMaxSize << " <= the threshold "
-                << subroutineThreshold << " to trigger inlining control or partition " << std::endl;
-            }
         }
         else if (AL == AL_Module &&
             expandedMaxSize > subroutineThreshold &&
