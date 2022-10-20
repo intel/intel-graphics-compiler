@@ -97,7 +97,7 @@ inline void BinaryEncoding::EncodeFlagRegPredicate(G4_INST *inst) {
                                           : PREDICATE_ALIGN1_SEQUENTIAL;
 
     if (inst->isAligned16Inst()) {
-      flagSwizzle = pred->getAlign16PredicateControl();
+      flagSwizzle = getAlign16PredCtrl(pred);
     } else {
       auto predCtrl = pred->getControl();
       if (predCtrl != PRED_DEFAULT)
@@ -587,8 +587,8 @@ inline void EncodeDstHorzStride(G4_INST *inst, BinInst *mybin,
   }
 }
 
-inline void EncodeDstChanEn(G4_INST *inst, BinInst *mybin,
-                            G4_DstRegRegion *dst, BinaryEncoding &encoder) {
+inline void EncodeDstChanEn(G4_INST *inst, BinInst *mybin, G4_DstRegRegion *dst,
+                            BinaryEncoding &encoder) {
 
   if (dst->isAccRegValid()) {
     SetDstChanEn(mybin, dst->getAccRegSel());

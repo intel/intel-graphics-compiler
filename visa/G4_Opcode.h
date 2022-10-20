@@ -163,7 +163,7 @@ enum G4_SrcModifier : unsigned char {
   Mod_src_undef  // undefined
 };
 
-enum G4_CondModifier {
+enum G4_CondModifier : unsigned char {
   Mod_z = 0,     // zero
   Mod_e,         // equal
   Mod_nz,        // not zero
@@ -178,7 +178,7 @@ enum G4_CondModifier {
   Mod_cond_undef // undefined
 };
 
-enum G4_PredState {
+enum G4_PredState : unsigned char {
   PredState_Plus = 0, // +
   PredState_Minus,    // -
   PredState_undef     // undefined

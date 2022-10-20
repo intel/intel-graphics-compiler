@@ -181,7 +181,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
     inst->setExecSize(isDoubleInst ? g4::SIMD2 : g4::SIMD4);
     G4_Predicate *pred = inst->getPredicate();
     if (pred) {
-      pred->setAlign16PredicateControl(PRED_ALIGN16_X);
+      setAlign16PredCtrl(pred, PRED_ALIGN16_X);
     }
   } else if (inst->getExecSize() == g4::SIMD2 && !isDoubleInst) {
     int subRegOffset = dst->getLinearizedStart() % 16;

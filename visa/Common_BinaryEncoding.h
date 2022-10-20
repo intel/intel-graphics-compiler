@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include "G4_Kernel.hpp"
 #include "Timer.h"
 
+#include <unordered_map>
+
 extern "C" void *allocCodeBlock(size_t sz);
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1200,6 +1202,11 @@ protected:
   std::map<G4_SrcRegRegion *, SrcSwizzle> align16SrcSwizzle;
   std::map<G4_DstRegRegion *, ChannelEnable> align16DstWriteMask;
 
+  // Map for Align16 predicate control. If a predicate is not in the map it has
+  // default control.
+  std::unordered_map<G4_Predicate *, G4_Align16_Predicate_Control>
+      align16PredCtrl;
+
 public:
   // all platform specific bit locations are initialized here
   static void InitPlatform() {
@@ -1250,6 +1257,15 @@ public:
   ChannelEnable getWriteMask(G4_DstRegRegion *dst) {
     auto iter = align16DstWriteMask.find(dst);
     return iter == align16DstWriteMask.end() ? NoChannelEnable : iter->second;
+  }
+
+  void setAlign16PredCtrl(G4_Predicate *pred,
+                          G4_Align16_Predicate_Control ctrl) {
+    align16PredCtrl[pred] = ctrl;
+  }
+  G4_Align16_Predicate_Control getAlign16PredCtrl(G4_Predicate *pred) {
+    auto iter = align16PredCtrl.find(pred);
+    return iter == align16PredCtrl.end() ? PRED_ALIGN16_DEFAULT : iter->second;
   }
 
   // Should use G9HDL::EU_OPCODE as return type. But Forward declaration of enum

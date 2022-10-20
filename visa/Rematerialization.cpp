@@ -369,25 +369,7 @@ bool Rematerialization::checkLocalWAR(G4_INST *defInst, G4_BB *bb,
 }
 
 bool Rematerialization::usesNoMaskWA(const Reference *uniqueDef) {
-  auto defInst = uniqueDef->first;
-
-  // look for pattern like:
-  // (W&fx.y.anyh) inst
-  //
-  // where fx.y is:
-  // cmp.eq.fx.y (..)   null   rega   rega
-  if (!defInst->isWriteEnableInst())
-    return false;
-
-  if (!defInst->getPredicate())
-    return false;
-
-  auto predCtrl = defInst->getPredicate()->getControl();
-  if (predCtrl != PRED_ANY8H && predCtrl != PRED_ANY16H &&
-      predCtrl != PRED_ANY32H)
-    return false;
-
-  return defInst->getPredicate()->isSameAsNoMask();
+  return false;
 }
 
 bool Rematerialization::isPartGRFBusyInput(G4_Declare *inputDcl,
@@ -976,11 +958,6 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
 
     cacheInst = newInst.back();
   }
-
-  // Fix for NoMaskWA
-  for (auto inst : newInst)
-    if (inst->getPredicate() && inst->getPredicate()->isSameAsNoMask())
-      inst->setPredicate(nullptr);
 
   return rematSrc;
 }

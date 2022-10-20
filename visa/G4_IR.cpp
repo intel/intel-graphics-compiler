@@ -28,6 +28,8 @@ static_assert(sizeof(G4_DstRegRegion) <= 80 &&
               "There should not be new fields to G4_DstRegRegion");
 static_assert(sizeof(G4_SrcRegRegion) <= 80 &&
               "There should not be new fields to G4_SrcRegRegion");
+static_assert(sizeof(G4_Predicate) <= 72 &&
+              "There should not be new fields to G4_Predicate");
 
 static const char *const SrcModifierStr[Mod_src_undef] = {
     "-",      // Mod_Minus
@@ -2862,12 +2864,7 @@ bool G4_INST::isComprInvariantSrcRegion(G4_SrcRegRegion *src, int srcPos) {
 
 bool G4_INST::isPartialWrite() const {
   G4_Predicate *aPred = predicate;
-  if (aPred && aPred->isSameAsNoMask()) {
-    // equivalent to NoMask (W) without predicate
-    aPred = nullptr;
-  }
-
-  return (aPred != NULL && op != G4_sel) || op == G4_smov;
+  return (aPred && op != G4_sel) || op == G4_smov;
 }
 
 bool G4_INST::isPartialWriteForSpill(bool inSIMDCF) const {
@@ -3087,8 +3084,6 @@ void G4_INST::emit_inst(std::ostream &output, bool symbol_dst,
   if (isLabel()) {
     srcs[0]->emit(output);
     output << ":";
-    if (((G4_Label *)srcs[0])->isStartLoopLabel())
-      output << " // do";
   } else {
     // predication, opcode, execsize, condition, ...
     emitInstructionStartColumn(output, *this);
@@ -5183,52 +5178,48 @@ void G4_Predicate::emit_body(std::ostream &output, bool symbolreg) {
     }
   }
 
-  if (align16Control != PRED_ALIGN16_DEFAULT) {
-    output << "." << align16ControlNames[align16Control];
-  } else {
-    if (control != PRED_DEFAULT) {
-      output << '.';
-      switch (control) {
-      case PRED_ANY2H:
-        output << "any2h";
-        break;
-      case PRED_ANY4H:
-        output << "any4h";
-        break;
-      case PRED_ANY8H:
-        output << "any8h";
-        break;
-      case PRED_ANY16H:
-        output << "any16h";
-        break;
-      case PRED_ANY32H:
-        output << "any32h";
-        break;
-      case PRED_ALL2H:
-        output << "all2h";
-        break;
-      case PRED_ALL4H:
-        output << "all4h";
-        break;
-      case PRED_ALL8H:
-        output << "all8h";
-        break;
-      case PRED_ALL16H:
-        output << "all16h";
-        break;
-      case PRED_ALL32H:
-        output << "all32h";
-        break;
-      case PRED_ANYV:
-        output << "anyv";
-        break;
-      case PRED_ALLV:
-        output << "allv";
-        break;
-      default:
-        // do nothing
-        break;
-      }
+  if (control != PRED_DEFAULT) {
+    output << '.';
+    switch (control) {
+    case PRED_ANY2H:
+      output << "any2h";
+      break;
+    case PRED_ANY4H:
+      output << "any4h";
+      break;
+    case PRED_ANY8H:
+      output << "any8h";
+      break;
+    case PRED_ANY16H:
+      output << "any16h";
+      break;
+    case PRED_ANY32H:
+      output << "any32h";
+      break;
+    case PRED_ALL2H:
+      output << "all2h";
+      break;
+    case PRED_ALL4H:
+      output << "all4h";
+      break;
+    case PRED_ALL8H:
+      output << "all8h";
+      break;
+    case PRED_ALL16H:
+      output << "all16h";
+      break;
+    case PRED_ALL32H:
+      output << "all32h";
+      break;
+    case PRED_ANYV:
+      output << "anyv";
+      break;
+    case PRED_ALLV:
+      output << "allv";
+      break;
+    default:
+      // do nothing
+      break;
     }
   }
 }
@@ -5238,7 +5229,6 @@ G4_Predicate::G4_Predicate(G4_Predicate &prd)
   state = prd.state;
   subRegOff = prd.subRegOff;
   control = prd.control;
-  align16Control = prd.align16Control;
 
   top_dcl = prd.top_dcl;
   left_bound = prd.left_bound;
@@ -5247,7 +5237,6 @@ G4_Predicate::G4_Predicate(G4_Predicate &prd)
   bitVec[1] = prd.bitVec[1];
   byteOffset = prd.byteOffset;
   rightBoundSet = prd.rightBoundSet;
-  isPredicateSameAsNoMask = prd.isPredicateSameAsNoMask;
 }
 
 unsigned G4_Predicate::computeRightBound(uint8_t exec_size) {

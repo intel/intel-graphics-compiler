@@ -3325,7 +3325,7 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
 
     // The variable V is spilled
     if (dcl == spilledAddrTakenDcl) {
-      G4_AddrExp *currentAddrExp = addrExp->getAddrTakenSpillFill();
+      G4_AddrExp *currentAddrExp = getAddrTakenSpillFill(addrExp);
 
       // Either all are created, or none.
       if (created) {
@@ -3358,7 +3358,7 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
         temp->setAddrSpillFill();
         G4_AddrExp *newAddExp = builder_->createAddrExp(
             temp->getRegVar(), addrExp->getOffset(), addrExp->getType());
-        addrExp->setAddrTakenSpillFill(newAddExp);
+        setAddrTakenSpillFill(addrExp, newAddExp);
         gra.pointsToAnalysis.patchPointsToSet(addrDcl, newAddExp,
                                               newAddExp->getOffset());
         created = true;
@@ -3367,7 +3367,7 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
             temp->getRegVar(), addrExp->getOffset(), addrExp->getType());
         gra.pointsToAnalysis.patchPointsToSet(addrDcl, newAddExp,
                                               newAddExp->getOffset());
-        addrExp->setAddrTakenSpillFill(newAddExp);
+        setAddrTakenSpillFill(addrExp, newAddExp);
       }
     }
   }
@@ -3935,8 +3935,7 @@ void SpillManagerGRF::prunePointsTo(G4_Kernel *kernel,
 
         // Replace the variable in the address expression with fill variable
         if (src && src->isAddrExp()) {
-          G4_AddrExp *addExp = src->asAddrExp()->getAddrTakenSpillFill();
-
+          G4_AddrExp *addExp = getAddrTakenSpillFill(src->asAddrExp());
           if (addExp != nullptr) {
             curInst->setSrc(addExp, i);
           }
@@ -3997,8 +3996,7 @@ void SpillManagerGRF::prunePointsToLS(G4_Kernel *kernel,
 
         // Replace the variable in the address expression with fill variable
         if (src && src->isAddrExp()) {
-          G4_AddrExp *addExp = src->asAddrExp()->getAddrTakenSpillFill();
-
+          G4_AddrExp *addExp = getAddrTakenSpillFill(src->asAddrExp());
           if (addExp != nullptr) {
             curInst->setSrc(addExp, i);
           }

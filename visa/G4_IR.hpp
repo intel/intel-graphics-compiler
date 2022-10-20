@@ -2395,12 +2395,10 @@ class G4_Label : public G4_Operand {
 
   const char *label;
   bool funcLabel;
-  bool start_loop_label;
   bool isFC;
 
   G4_Label(const char *l) : G4_Operand(G4_Operand::label), label(l) {
     funcLabel = false;
-    start_loop_label = false;
     isFC = false;
   }
 
@@ -2410,8 +2408,6 @@ public:
   void emit(std::ostream &output, bool symbolreg = false) override;
   void setFuncLabel(bool val) { funcLabel = val; }
   bool isFuncLabel() const { return funcLabel; }
-  void setStartLoopLabel() { start_loop_label = true; }
-  bool isStartLoopLabel() const { return start_loop_label; }
   bool isFCLabel() const { return isFC; }
   void setFCLabel(bool fcLabel) { isFC = fcLabel; }
 };
@@ -2945,7 +2941,7 @@ public:
 };
 } // namespace vISA
 
-typedef enum {
+typedef enum : unsigned char {
   PRED_DEFAULT,
   PRED_ANY2H,
   PRED_ANY4H,
@@ -2981,23 +2977,13 @@ class G4_Predicate final : public G4_Operand {
   friend class IR_Builder;
 
   G4_PredState state; // + or -
-  unsigned short subRegOff;
   G4_Predicate_Control control;
-
-  // this is only used at the very end by binary and asm emission, and
-  // internally the align1 control above is always used instead even for align16
-  // instructions. currently this is always PRED_ALIGN16_DEFAULT except for
-  // simd1 inst, for which it's PRED_ALIGN16_X
-  G4_Align16_Predicate_Control align16Control;
-
-  // Special predicate : it's equivalent to noMask and used for WA
-  bool isPredicateSameAsNoMask;
+  unsigned short subRegOff;
 
   G4_Predicate(G4_PredState s, G4_VarBase *flag, unsigned short srOff,
                G4_Predicate_Control ctrl)
       : G4_Operand(G4_Operand::predicate, flag), state(s), subRegOff(srOff),
-        control(ctrl), align16Control(PRED_ALIGN16_DEFAULT),
-        isPredicateSameAsNoMask(false) {
+        control(ctrl) {
     top_dcl = getBase()->asRegVar()->getDeclare();
     MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
     if (getBase()->asRegVar()->getPhyReg()) {
@@ -3032,19 +3018,10 @@ public:
   void emit(std::ostream &output, bool symbolreg = false) override;
   void emit_body(std::ostream &output, bool symbolreg);
 
-  void setAlign16PredicateControl(G4_Align16_Predicate_Control control) {
-    align16Control = control;
-  }
-  G4_Align16_Predicate_Control getAlign16PredicateControl() const {
-    return align16Control;
-  }
-
   unsigned computeRightBound(uint8_t exec_size) override;
   G4_CmpRelation compareOperand(G4_Operand *opnd,
                                 const IR_Builder &builder) override;
   void splitPred();
-  void setSameAsNoMask(bool v) { isPredicateSameAsNoMask = v; };
-  bool isSameAsNoMask() const { return isPredicateSameAsNoMask; }
   unsigned getPredCtrlGroupSize() const {
     switch (control) {
     case PRED_ANY2H:
@@ -3163,13 +3140,11 @@ public:
 class G4_AddrExp final : public G4_Operand {
   G4_RegVar *m_addressedReg;
   int m_offset; // current implementation: byte offset
-  G4_AddrExp
-      *addrTakenSpillFill; // dcl to use for address taken spill/fill temp
 
 public:
   G4_AddrExp(G4_RegVar *reg, int offset, G4_Type ty)
       : G4_Operand(G4_Operand::addrExp, ty), m_addressedReg(reg),
-        addrTakenSpillFill(nullptr), m_offset(offset) {}
+        m_offset(offset) {}
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
@@ -3178,10 +3153,6 @@ public:
   void setRegVar(G4_RegVar *var) { m_addressedReg = var; }
   int getOffset() const { return m_offset; }
   void setOffset(int tOffset) { m_offset = tOffset; }
-  G4_AddrExp *getAddrTakenSpillFill() { return addrTakenSpillFill; }
-  void setAddrTakenSpillFill(G4_AddrExp *addrExp) {
-    addrTakenSpillFill = addrExp;
-  }
 
   int eval(const IR_Builder &builder);
   bool isRegAllocPartaker() const {

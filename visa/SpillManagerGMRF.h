@@ -717,6 +717,20 @@ private:
   // Used for new fail safe RA mechanism.
   BoundedRA context;
 
+  // Used if an address-taken variable is spilled.
+  // Maps the old AddrExp operand on the spilled variable to the new AddrExp on
+  // the temp variable. The old AddrExp will be replaced by the new one when
+  // this round of spilling is done.
+  std::unordered_map<G4_AddrExp *, G4_AddrExp *> addrTakenSpillFill;
+
+  void setAddrTakenSpillFill(G4_AddrExp *origOp, G4_AddrExp *newOp) {
+    addrTakenSpillFill[origOp] = newOp;
+  }
+  G4_AddrExp *getAddrTakenSpillFill(G4_AddrExp *addrOp) {
+    auto iter = addrTakenSpillFill.find(addrOp);
+    return iter == addrTakenSpillFill.end() ? nullptr : iter->second;
+  }
+
   bool headerNeeded() const {
     bool needed = true;
 

@@ -497,26 +497,10 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
         if (instr->isSend()) {
           G4_InstSend *SendInst = instr->asSendInst();
           auto sendDesc = SendInst->getMsgDescRaw();
-
-          auto isSendUniform = [](bool isStore, auto instr, auto m_kernelInfo) {
-            // Assuming that if we have W-Mask (aka NoMask)
-            // then it's means that we are executing send as uniform instruction
-            // cross all threads
-            if (instr->getPredicate() &&
-                instr->getPredicate()->isSameAsNoMask()) {
-              if (isStore) {
-                m_kernelInfo->countUniformStores++;
-              } else {
-                m_kernelInfo->countUniformLoads++;
-              }
-            }
-          };
-
           if (!sendDesc->isLSC()) {
 #define COUNT_HDC_SEND(SEND, isWRITE)                                          \
   case SEND:                                                                   \
     m_kernelInfo->hdcSends.count##SEND++;                                      \
-    isSendUniform(isWRITE, instr, m_kernelInfo);                               \
     m_kernelInfo->hdcSends.hasAnyHDCSend = true;                               \
     break;
 
@@ -597,7 +581,6 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
 #define COUNT_LSC_SEND(SEND, isWRITE)                                          \
   case LSC_OP::SEND:                                                           \
     m_kernelInfo->lscSends.count##SEND++;                                      \
-    isSendUniform(isWRITE, instr, m_kernelInfo);                               \
     m_kernelInfo->lscSends.hasAnyLSCSend = true;                               \
     break;
 

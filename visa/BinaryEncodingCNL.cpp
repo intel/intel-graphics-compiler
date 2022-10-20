@@ -548,7 +548,7 @@ void BinaryEncodingCNL::EncodeFlagRegPredicate(
     G9HDL::PREDCTRL predCtrl = G9HDL::PREDCTRL_SEQUENTIAL_FLAG_CHANNEL_MAPPING;
 
     if (inst->isAligned16Inst()) {
-      switch (pred->getAlign16PredicateControl()) {
+      switch (getAlign16PredCtrl(pred)) {
       case PRED_ALIGN16_DEFAULT:
         predCtrl = G9HDL::PREDCTRL_SEQUENTIAL_FLAG_CHANNEL_MAPPING;
         break;
