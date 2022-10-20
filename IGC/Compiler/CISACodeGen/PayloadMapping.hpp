@@ -87,8 +87,7 @@ namespace IGC
 
         bool DoesAllowSplit(const llvm::Instruction* inst)
         {
-            const llvm::GenIntrinsicInst* intrinsicInst = llvm::dyn_cast<llvm::GenIntrinsicInst>(inst);
-            IGC_ASSERT(intrinsicInst);
+            IGC_ASSERT(llvm::isa<llvm::GenIntrinsicInst>(inst));
             if (llvm::dyn_cast<llvm::SampleIntrinsic>(inst))
             {
                 return true;
