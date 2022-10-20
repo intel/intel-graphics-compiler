@@ -118,14 +118,47 @@ bool Options::parseOptions(int argc, const char *argv[]) {
       return true;
     };
 
+    // If the current argv has a value, ie, the next argv isn't a flag
+    //   (flag starts with '-') treat it as a unsigned 32bit integer
+    //   and return true if the value is of U32;
+    // otherwise, return false.
+    //
+    // Note that this is to make sure a boolean flag can be set true or
+    // false explicitly. If no value, it will be inversed.
+    auto parseOptionalU32 = [&]() -> std::optional<uint32_t> {
+      const int next_i = i + 1;
+      if (next_i >= argc)
+        return std::nullopt;
+
+      const char* arg = argv[next_i];
+      if (arg[0] == '-')
+        return std::nullopt;
+
+      // advance i to the next argv : the value for this flag
+      ++i;
+      uint32_t val;
+      if (!parseU32(val)) {
+        // Assume this flag does not have a value
+        --i;
+        return std::nullopt;
+      }
+      return val;
+    };
+
     // Arg corrsponds to vISAOpt.
-    // If bool, set it with the inverse of the default value
+    // If bool, set it with the inverse of the default value if no explicit
+    //          value is given; set it to the given value otherwise.
     // Else if int32,int64, or cstr, set parse argv[i+1] and set the value.
     vISAOptions vISAOpt = it->second;
     EntryType type = m_vISAOptions.getType(vISAOpt);
     switch (type) {
     case ET_BOOL: {
-      bool val = !m_vISAOptions.getDefaultBool(vISAOpt);
+      bool val;
+      std::optional<uint32_t> o = parseOptionalU32();
+      if (o.has_value())
+        val = (o.value() != 0 ? true : false);
+      else
+        val = !m_vISAOptions.getDefaultBool(vISAOpt);
       m_vISAOptions.setBool(vISAOpt, val);
       m_vISAOptions.setArgSetByUser(vISAOpt);
       break;
