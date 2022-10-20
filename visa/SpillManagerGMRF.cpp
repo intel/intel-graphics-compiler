@@ -5812,19 +5812,27 @@ void vISA::BoundedRA::markBusyGRFs() {
 }
 
 void BoundedRA::markForbidden(LiveRange *lr) {
-  auto numForbidden = gra.kernel.getNumRegTotal();
+  auto totalRegs = gra.kernel.getNumRegTotal();
   auto forbidden = lr->getForbidden();
-  for (unsigned int i = 0; i != numForbidden; ++i)
+  for (unsigned int i = 0; i != totalRegs; ++i)
     if (forbidden[i])
       markGRF(i);
 
   // r0 is special and shouldnt be used for allocation to temps
   markGRF(0);
   auto dcl = kernel.fg.builder->getBuiltinR0();
-  if (dcl && dcl->getRegVar() && dcl->getRegVar()->getPhyReg()) {
-    // BuiltInR0 is also a forbidden register
-    auto r0 = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-    markGRF(r0);
+  if (dcl) {
+    if (dcl->getRegVar() && dcl->getRegVar()->getPhyReg()) {
+      // BuiltInR0 is also a forbidden register
+      auto r0 = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+      markGRF(r0);
+    }
+    else if (dcl->getRegVar()->isRegAllocPartaker())
+    {
+      auto r0 = lrs[dcl->getRegVar()->getId()]->getPhyReg();
+      if (r0)
+        markGRF(r0->asGreg()->getRegNum());
+    }
   }
 }
 
