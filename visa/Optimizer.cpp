@@ -1494,7 +1494,7 @@ void Optimizer::runPass(PassIndex Index) {
   // executed.
   if (StopAfterPass == Name) {
     EarlyExited = true;
-    kernel.dumpToFile("stopafter." + Name, true);
+    kernel.dumpStopafter();
   }
 #endif // DLL_MODE
 
@@ -1989,7 +1989,7 @@ int Optimizer::optimization() {
 #ifndef DLL_MODE
   if (StopAfterPass == "CFG") {
     EarlyExited = true;
-    kernel.dumpToFile("stopafter.CFG", true);
+    kernel.dumpStopafter();
   }
 #endif // DLL_MODE
 

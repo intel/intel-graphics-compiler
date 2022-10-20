@@ -1184,6 +1184,19 @@ void G4_Kernel::dumpToFile(const std::string &suffixIn, bool forceG4Dump) {
     dumpG4Internal(baseName);
 }
 
+void G4_Kernel::dumpStopafter() {
+  auto stopafteroutput = getOptions()->getOptionCstr(vISA_StopAfterOutput);
+  if (stopafteroutput && stopafteroutput[0] != 0) {
+    std::string of(stopafteroutput);
+    std::fstream ofile(of, std::ios::out);
+    assert(ofile);
+    dumpG4InternalTo(ofile);
+  }
+  else {
+    dumpG4InternalTo(std::cout);
+  }
+}
+
 void G4_Kernel::emitDeviceAsm(std::ostream &os, const void *binary,
                               uint32_t binarySize) {
   //
