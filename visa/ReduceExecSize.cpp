@@ -1238,8 +1238,10 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb,
     G4_INST *newInst;
     if ((i + currExSize) < instExSize) {
       newInst = builder.makeSplittingInst(inst, currExSize);
-      newInst->setImplAccDst(builder.duplicateOperand(accDstRegion));
-      newInst->setImplAccSrc(builder.duplicateOperand(accSrcRegion));
+      if (accDstRegion)
+        newInst->setImplAccDst(builder.duplicateOperand(accDstRegion));
+      if (accSrcRegion)
+        newInst->setImplAccSrc(builder.duplicateOperand(accSrcRegion));
       newInst->setDest(newDst);
       newInst->setPredicate(builder.duplicateOperand(newPred));
       newInst->setCondMod(builder.duplicateOperand(newCond));

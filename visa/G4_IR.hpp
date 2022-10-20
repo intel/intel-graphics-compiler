@@ -135,8 +135,6 @@ protected:
   G4_Predicate *predicate;
   G4_CondMod *mod;
   unsigned int option; // inst option
-  G4_Operand *implAccSrc;
-  G4_DstRegRegion *implAccDst;
 
   // def-use chain: list of <inst, opndPos> such that this[dst/condMod] defines
   // inst[opndPos] opndNum must be one of src0, src1, src2, pred, implAccSrc
@@ -573,11 +571,11 @@ public:
   }
   // true if inst reads/writes acc either implicitly or explicitly
   bool useAcc() const {
-    return isAccDstInst() || isAccSrcInst() || implAccDst != NULL ||
-           implAccSrc != NULL;
+    return isAccDstInst() || isAccSrcInst() || getImplAccDst() ||
+           getImplAccSrc();
   }
 
-  bool defAcc() const { return isAccDstInst() || implAccDst != NULL; }
+  bool defAcc() const { return isAccDstInst() || getImplAccDst(); }
 
   void setCompacted() { option = option | InstOpt_Compacted; }
   void setNoCompacted() { option = option | InstOpt_NoCompact; }
@@ -715,16 +713,14 @@ public:
   }
 
   void fixMACSrc2DefUse();
-  void setImplAccSrc(G4_Operand *opnd);
+  void setImplAccSrc(G4_SrcRegRegion *opnd);
   void setImplAccDst(G4_DstRegRegion *opnd);
 
   bool isWAWdep(G4_INST *inst); /* not const: may compute bound */
   bool isWARdep(G4_INST *inst); /* not const: may compute bound */
   bool isRAWdep(G4_INST *inst); /* not const: may compute bound */
-  const G4_Operand *getImplAccSrc() const { return implAccSrc; }
-  G4_Operand *getImplAccSrc() { return implAccSrc; }
-  const G4_DstRegRegion *getImplAccDst() const { return implAccDst; }
-  G4_DstRegRegion *getImplAccDst() { return implAccDst; }
+  G4_SrcRegRegion *getImplAccSrc() const;
+  G4_DstRegRegion *getImplAccDst() const;
   uint16_t getMaskOffset() const;
   static G4_InstOption offsetToMask(int execSize, int offset, bool nibOk);
   bool isRawMov() const;

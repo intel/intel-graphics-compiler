@@ -213,8 +213,6 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
 
   dead = false;
   doPostRA = false;
-  implAccSrc = nullptr;
-  implAccDst = nullptr;
 
   resetRightBound(dst);
   resetRightBound(s0);
@@ -285,14 +283,16 @@ void G4_INST::setOpcode(G4_opcode opcd) {
   op = opcd;
 
   if (resetBounds) {
+    // FIXME: This is likely not correct given that we have src3 and even src4
+    // now.
     resetRightBound(dst);
     resetRightBound(srcs[0]);
     resetRightBound(srcs[1]);
     resetRightBound(srcs[2]);
     resetRightBound(predicate);
     resetRightBound(mod);
-    resetRightBound(implAccDst);
-    resetRightBound(implAccSrc);
+    resetRightBound(getImplAccDst());
+    resetRightBound(getImplAccSrc());
   }
 }
 
@@ -306,14 +306,16 @@ void G4_INST::setExecSize(G4_ExecSize s) {
   execSize = s;
 
   if (resetBounds) {
+    // FIXME: This is likely not correct given that we have src3 and even src4
+    // now.
     resetRightBound(dst);
     resetRightBound(srcs[0]);
     resetRightBound(srcs[1]);
     resetRightBound(srcs[2]);
     resetRightBound(predicate);
     resetRightBound(mod);
-    resetRightBound(implAccDst);
-    resetRightBound(implAccSrc);
+    resetRightBound(getImplAccDst());
+    resetRightBound(getImplAccSrc());
   }
 }
 
@@ -567,9 +569,9 @@ const G4_Operand *G4_INST::getOperand(Gen4_Operand_Number opnd_num) const {
   case Opnd_condMod:
     return (G4_Operand *)mod;
   case Opnd_implAccSrc:
-    return implAccSrc;
+    return getImplAccSrc();
   case Opnd_implAccDst:
-    return (G4_Operand *)implAccDst;
+    return getImplAccDst();
   default:
     MUST_BE_TRUE(0, "Operand number is out of range.");
     break;
@@ -1219,16 +1221,15 @@ bool G4_INST::isRawMov() const {
 }
 
 bool G4_INST::hasACCSrc() const {
-  if (implAccSrc || (srcs[0] && srcs[0]->isSrcRegRegion() &&
-                     srcs[0]->asSrcRegRegion()->isAccReg())) {
+  if (getImplAccSrc() || (srcs[0] && srcs[0]->isSrcRegRegion() &&
+                          srcs[0]->asSrcRegRegion()->isAccReg()))
     return true;
-  }
   return false;
 }
 
 // check if acc is possibly used by this instruction
 bool G4_INST::hasACCOpnd() const {
-  return (isAccWrCtrlInst() || implAccSrc || implAccDst ||
+  return (isAccWrCtrlInst() || getImplAccDst() || getImplAccSrc() ||
           (op == G4_mulh && IS_DTYPE(srcs[0]->getType()) &&
            IS_DTYPE(srcs[1]->getType())) ||
           (dst && dst->isAccReg()) || (srcs[0] && srcs[0]->isAccReg()) ||
@@ -2624,6 +2625,7 @@ bool G4_INST::isWARdep(G4_INST *inst) {
     }
   }
 
+  auto implAccDst = getImplAccDst();
   if (implAccDst) {
     if ((implicitSrc0 && implicitSrc0->compareOperand(
                              implAccDst, getBuilder()) != Rel_disjoint) ||
@@ -2645,7 +2647,7 @@ bool G4_INST::isWAWdep(G4_INST *inst) {
   G4_CondMod *cMod0 = inst->getCondMod();
   G4_CondMod *cMod1 = mod;
   G4_Operand *implicitDst0 = inst->getImplAccDst();
-  G4_Operand *implicitDst1 = implAccDst;
+  G4_Operand *implicitDst1 = getImplAccDst();
 
   bool NULLDst1 = !dst1 || hasNULLDst();
   if (dst0 && !inst->hasNULLDst()) {
@@ -2689,7 +2691,7 @@ bool G4_INST::isRAWdep(G4_INST *inst) {
   G4_Operand *src1_1 = getSrc(1);
   G4_Operand *src1_2 = getSrc(2);
   G4_Operand *src1_3 = getSrc(3);
-  G4_Operand *implicitSrc1 = implAccSrc;
+  G4_Operand *implicitSrc1 = getImplAccSrc();
 
   bool NULLSrc1 = (opcode() == G4_math && src1_1->isNullReg());
   if (dst0 && !inst->hasNULLDst()) {
@@ -6346,8 +6348,8 @@ void G4_InstSend::computeRightBound(G4_Operand *opnd) {
 void G4_INST::computeARFRightBound() {
   computeRightBound(predicate);
   computeRightBound(mod);
-  computeRightBound(implAccSrc);
-  computeRightBound(implAccDst);
+  computeRightBound(getImplAccSrc());
+  computeRightBound(getImplAccDst());
 }
 
 // This function should only be invoked after computePReg() function
@@ -6463,26 +6465,20 @@ void G4_INST::setCondMod(G4_CondMod *m) {
   computeRightBound(m);
 }
 
-void G4_INST::setImplAccSrc(G4_Operand *opnd) {
-  if (implAccSrc != NULL && implAccSrc->getInst() == this) {
-    implAccSrc->setInst(NULL);
-  }
+G4_SrcRegRegion *G4_INST::getImplAccSrc() const {
+  return builder.kernel.getImplicitAccSrc(const_cast<G4_INST*>(this));
+}
 
-  implAccSrc = opnd;
+G4_DstRegRegion* G4_INST::getImplAccDst() const {
+  return builder.kernel.getImplicitAccDef(const_cast<G4_INST*>(this));
+}
 
-  associateOpndWithInst(opnd, this);
-  computeRightBound(opnd);
+void G4_INST::setImplAccSrc(G4_SrcRegRegion *opnd) {
+  builder.kernel.setImplicitAccSrc(this, opnd);
 }
 
 void G4_INST::setImplAccDst(G4_DstRegRegion *opnd) {
-  if (implAccDst != NULL && implAccDst->getInst() == this) {
-    implAccDst->setInst(NULL);
-  }
-
-  implAccDst = opnd;
-
-  associateOpndWithInst(opnd, this);
-  computeRightBound(opnd);
+  builder.kernel.setImplicitAccDef(this, opnd);
 }
 
 // get simd lane mask for this instruction. For example,

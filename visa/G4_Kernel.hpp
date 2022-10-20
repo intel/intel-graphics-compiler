@@ -255,6 +255,13 @@ private:
   // For debug purpose: kernel is local-scheduled or not according to options.
   bool isLocalSchedulable = true;
 
+  // Maps for optional G4_INST/G4_OPERAND fields that we don't want to store
+  // directly in the class.
+  // TODO: If the number of such maps gets large, we should move them to a
+  // separate class (G4_IRInfo?).
+  std::unordered_map<G4_INST *, G4_SrcRegRegion *> instImplicitAccSrc;
+  std::unordered_map<G4_INST *, G4_DstRegRegion *> instImplicitAccDef;
+
 public:
   FlowGraph fg;
   DECLARE_LIST Declares;
@@ -496,6 +503,40 @@ public:
   void setLocalSheduleable(bool value) { isLocalSchedulable = value; }
   unsigned getRegisterNumWithThreads(unsigned overrideNumThreads);
   unsigned getLargestInputRegister();
+
+  // Use the wrapper in G4_INST* instead of calling these directly.
+  G4_SrcRegRegion *getImplicitAccSrc(G4_INST *inst) const {
+    auto iter = instImplicitAccSrc.find(inst);
+    return iter == instImplicitAccSrc.end() ? nullptr : iter->second;
+  }
+  G4_DstRegRegion *getImplicitAccDef(G4_INST *inst) const {
+    auto iter = instImplicitAccDef.find(inst);
+    return iter == instImplicitAccDef.end() ? nullptr : iter->second;
+  }
+  void setImplicitAccSrc(G4_INST* inst, G4_SrcRegRegion* accSrc) {
+    // Do not allow null implicit acc operand.
+    assert(accSrc);
+    // TODO: Is such check actually necessary? We should not have references to
+    // the old operand once it's unlinked.
+    auto oldOpnd = getImplicitAccSrc(inst);
+    if (oldOpnd && oldOpnd->getInst() == inst)
+      oldOpnd->setInst(nullptr);
+    instImplicitAccSrc[inst] = accSrc;
+    // This also sets accSrc's parent to inst.
+    inst->computeRightBound(accSrc);
+  }
+  void setImplicitAccDef(G4_INST *inst, G4_DstRegRegion *accDef) {
+    // Do not allow null implicit acc operand.
+    assert(accDef);
+    // TODO: Is such check actually necessary? We should not have references to
+    // the old operand once it's unlinked.
+    auto oldOpnd = getImplicitAccDef(inst);
+    if (oldOpnd && oldOpnd->getInst() == inst)
+      oldOpnd->setInst(nullptr);
+    instImplicitAccDef[inst] = accDef;
+    // This also sets accDef's parent to inst.
+    inst->computeRightBound(accDef);
+  }
 
 private:
   G4_BB *getNextBB(G4_BB *bb) const;
