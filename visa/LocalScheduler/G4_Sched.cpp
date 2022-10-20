@@ -567,8 +567,11 @@ bool preRA_Scheduler::run() {
   LatencyTable LT(kernel.fg.builder);
   SchedConfig config(SchedCtrl);
   RegisterPressure rp(kernel, mem, rpe);
-  bool Changed = false;
+  // skip extreme test cases that scheduling does not good
+  if (kernel.fg.getNumBB() >= 10000 && rp.rpe->getMaxRP() >= 800)
+    return false;
 
+  bool Changed = false;
   for (auto bb : kernel.fg) {
     if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE) {
       SCHED_DUMP(std::cerr << "Skip block with instructions " << bb->size()
@@ -662,6 +665,9 @@ bool preRA_RegSharing::run() {
 
   GRFMode GrfMode(kernel.getPlatform());
   RegisterPressure rp(kernel, mem, rpe);
+  // skip extreme test cases that scheduling does not good
+  if (kernel.fg.getNumBB() >= 10000 && rp.rpe->getMaxRP() >= 800)
+    return false;
 
   std::unordered_map<G4_BB *, unsigned int> rpBB;
   unsigned KernelPressure = 0;
