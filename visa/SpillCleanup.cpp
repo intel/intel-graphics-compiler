@@ -968,7 +968,6 @@ void CoalesceSpillFills::fills() {
     std::list<INST_LIST_ITER> spills;
     INST_LIST_ITER startIter = bb->begin();
     unsigned int w = 0;
-    unsigned int numRowsFillsToCoalesce = 0;
     const auto &splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
     for (auto instIter = startIter; instIter != endIter;) {
       auto inst = (*instIter);
@@ -1018,23 +1017,13 @@ void CoalesceSpillFills::fills() {
             // dont coalesce fills that have physical GRF assigned
             !isGRFAssigned(inst->getDst())) {
           fillsToCoalesce.push_back(instIter);
-          numRowsFillsToCoalesce += inst->asFillIntrinsic()->getNumRows();
         }
       }
 
-      // Determine window size based on register pressure
-      unsigned int instRP = rpe.getRegisterPressure(inst);
-
-      if (fillsToCoalesce.size() > 0 && instRP > fillWindowSizeThreshold) {
+      if (fillsToCoalesce.size() > 0 &&
+          rpe.getRegisterPressure(inst) > fillWindowSizeThreshold) {
         // High register pressure region so reduce window size to 3
         w = (cWindowSize - w > 3) ? cWindowSize - 3 : w;
-      }
-
-      if (w == cWindowSize &&
-          (instRP + numRowsFillsToCoalesce) < highRegPressureForWindow) {
-        // If register pressure is below the threshold even when considering
-        // potential increase, continue coalescing fills in current BB
-        --w;
       }
 
       if (w == cWindowSize || inst == bb->back()) {
@@ -1049,7 +1038,6 @@ void CoalesceSpillFills::fills() {
 
         w = 0;
         fillsToCoalesce.clear();
-        numRowsFillsToCoalesce = 0;
         spills.clear();
 
         continue;
@@ -1120,7 +1108,6 @@ void CoalesceSpillFills::spills() {
     std::list<INST_LIST_ITER> spillsToCoalesce;
     INST_LIST_ITER startIter = bb->begin();
     unsigned int w = 0;
-    unsigned int numRowsSpillsToCoalesce = 0;
     const auto &splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
     for (auto instIter = startIter; instIter != endIter;) {
       auto inst = (*instIter);
@@ -1172,7 +1159,6 @@ void CoalesceSpillFills::spills() {
             coalIt++;
           }
           spillsToCoalesce.push_back(instIter);
-          numRowsSpillsToCoalesce += inst->asSpillIntrinsic()->getNumRows();
         }
       } else if (inst->isFillIntrinsic()) {
         for (auto coalIt = spillsToCoalesce.begin();
@@ -1194,10 +1180,8 @@ void CoalesceSpillFills::spills() {
         }
       }
 
-      // Determine window size based on register pressure
-      unsigned int instRP = rpe.getRegisterPressure(inst);
-
-      if (spillsToCoalesce.size() > 0 && instRP > spillWindowSizeThreshold) {
+      if (spillsToCoalesce.size() > 0 &&
+          rpe.getRegisterPressure(inst) > spillWindowSizeThreshold) {
         if (!allSpillsSameVar(spillsToCoalesce)) {
           // High register pressure region so reduce window size to 3
           w = (cWindowSize - w > 3) ? cWindowSize - 3 : w;
@@ -1207,13 +1191,6 @@ void CoalesceSpillFills::spills() {
                         rpe.getRegisterPressure(inst), inst->getCISAOff());
 #endif
         }
-      }
-
-      if (w == cWindowSize &&
-          (instRP + numRowsSpillsToCoalesce) < highRegPressureForWindow) {
-        // If register pressure is below the threshold even when considering
-        // potential increase, continue coalescing spills in current BB
-        --w;
       }
 
       if (w == cWindowSize || inst == bb->back() || earlyCoalesce) {
@@ -1228,7 +1205,6 @@ void CoalesceSpillFills::spills() {
 
         w = 0;
         spillsToCoalesce.clear();
-        numRowsSpillsToCoalesce = 0;
         continue;
       }
 
@@ -1685,13 +1661,6 @@ void CoalesceSpillFills::spillFillCleanup() {
 
           w--;
           pInstIt--;
-
-          if (w == 0 && (rpe.getRegisterPressure(pInst) + numRows) <
-                            highRegPressureForWindow) {
-            // Continue cleanup conservatively considering potential increase in
-            // register pressure
-            ++w;
-          }
         }
 
         // Check whether writes for all rows were found
@@ -1765,7 +1734,6 @@ void CoalesceSpillFills::spillFillCleanup() {
     }
   }
 }
-
 
 void CoalesceSpillFills::removeRedundantWrites() {
   typedef std::list<std::pair<G4_BB *, INST_LIST_ITER>> SPILLS;
