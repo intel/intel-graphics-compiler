@@ -4932,7 +4932,11 @@ namespace IGC
                 SaveOption(vISA_LVN, false);
                 SaveOption(vISA_QuickTokenAllocation, true);
                 if (context->getModuleMetaData()->compOpt.EnableFastestLinearScan ||
-                    IGC_IS_FLAG_ENABLED(EnableFastestLinearScan))
+                       (IGC_IS_FLAG_ENABLED(EnableFastestLinearScan) &&
+                           !(context->type == ShaderType::COMPUTE_SHADER &&
+                             IGC_IS_FLAG_ENABLED(DisableFastestCSLinearScan) &&
+                                (m_program->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG1 ||
+                                 m_program->m_Platform->getPlatformInfo().eProductFamily == IGFX_TIGERLAKE_LP))))
                 {
                     SaveOption(vISA_LinearScan, true);
                 }
