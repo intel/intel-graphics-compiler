@@ -164,6 +164,18 @@ namespace IGC
             {
                 IGC::aligned_free(m_funcAttributeTable);
             }
+            if (m_funcSymbolTable)
+            {
+                free(m_funcSymbolTable);
+            }
+            if (m_funcRelocationTable)
+            {
+                free(m_funcRelocationTable);
+            }
+            if (m_globalHostAccessTable)
+            {
+                free(m_globalHostAccessTable);
+            }
         }
 
         void init(bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT, bool useScratchSpacePrivateMemory, bool SepSpillPvtSS)

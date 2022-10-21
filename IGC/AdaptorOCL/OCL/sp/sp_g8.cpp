@@ -302,7 +302,6 @@ static bool CreateSymbolTable(void* buffer, uint32_t size, uint32_t entries, Uti
         return false;
     if (!membuf.Write((const char*)buffer, size))
         return false;
-    free(buffer);
 
 #if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)  || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX)
     DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, debugOut);
@@ -328,7 +327,6 @@ static bool CreateGlobalHostAccessTable(void* buffer, uint32_t size, uint32_t en
         return false;
     if (!membuf.Write((const char*)buffer, size))
         return false;
-    free(buffer);
 
 #if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)  || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX)
     DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, debugOut);
@@ -2270,7 +2268,6 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 retValue.Success = false;
                 return retValue;
             }
-            freeBlock(buffer);
 
 #if defined(_DEBUG) || defined(_INTERNAL) || defined(_RELEASE_INTERNAL)   || defined(ICBE_LINUX) || defined(_LINUX) || defined(LINUX)
             DebugPatchList(membuf.GetLinearPointer() + tokenStart, patch.Size, m_oclStateDebugMessagePrintOut);

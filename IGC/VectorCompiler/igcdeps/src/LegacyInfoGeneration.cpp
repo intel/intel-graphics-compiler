@@ -90,7 +90,6 @@ vc::emitLegacyFunctionSymbolTable(const GenXOCLRuntimeInfo::SymbolSeq &Funcs) {
     return {nullptr, 0, 0};
   }
   auto Size = Entries * sizeof(vISA::GenSymEntry);
-  // this will be eventually freed in AdaptorOCL
   auto *Buffer = reinterpret_cast<vISA::GenSymEntry *>(
       std::malloc(Entries * sizeof(vISA::GenSymEntry)));
   appendLegacySymbolTable(Start, Funcs.end(), Buffer);
