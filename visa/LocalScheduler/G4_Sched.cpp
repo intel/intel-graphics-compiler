@@ -1932,7 +1932,8 @@ bool BB_Scheduler::commitIfBeneficial(unsigned &MaxRPE, bool IsTopDown,
     }
   } else {
     // For reducing rpe.
-    if ((MaxRPE - NewRPE) * 100 >= PRESSURE_REDUCTION_MIN_BENEFIT * MaxRPE) {
+    if (NewRPE < MaxRPE &&
+        (MaxRPE - NewRPE) * 100 >= PRESSURE_REDUCTION_MIN_BENEFIT * MaxRPE) {
       bool AbortOnSpill = kernel.getOptions()->getOption(vISA_AbortOnSpill);
       if (isSlicedSIMD32(kernel) && AbortOnSpill) {
         // It turns out that simd32 kernels may be scheduled like slicing, which
