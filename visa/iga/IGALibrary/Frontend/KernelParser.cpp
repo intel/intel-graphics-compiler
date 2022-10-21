@@ -3051,6 +3051,11 @@ public:
             if (!parsedType)
                 sty = ParseSendOperandTypeWithDefault(1);
 
+            Region dfltRgn = Region::SRC010;
+            if (m_opSpec->hasImplicitSrcRegion(1, m_execSize, false)) {
+                dfltRgn = m_opSpec->implicitSrcRegion(1, m_execSize, false);
+            }
+
             // construct the op directly
             m_builder.InstSrcOpRegDirect(
                 1,
@@ -3058,7 +3063,7 @@ public:
                 SrcModifier::NONE,
                 regInfo->regName,
                 RegRef(regNum, 0),
-                Region::SRC010, // set the default region
+                dfltRgn,
                 sty);
         } else {
             FailT("syntax error in send src1");

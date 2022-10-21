@@ -43,7 +43,6 @@ Region OpSpec::implicitDstRegion(bool isMacro) const {
 
 bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const
 {
-    // TODO: pull from BXML tables
     if (isAnySendFormat()) {
         rgn = Region::DST1;
         return true;
@@ -66,7 +65,7 @@ bool OpSpec::implicitDstRegion(Region &rgn, bool isMacro) const
 
 
 bool OpSpec::implicitDstTypeVal(Type &type) const {
-  if (isSendFormat() && platform >= Platform::GEN8) {
+    if (isSendFormat() && platform >= Platform::GEN8) {
         type = Type::UD;
         if (platform >= Platform::XE) {
             type = Type::UB;
