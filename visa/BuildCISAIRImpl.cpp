@@ -292,13 +292,6 @@ int CISA_IR_Builder::CreateBuilder(CISA_IR_Builder *&builder,
   builder->m_options.setOptionInternally(vISA_isParseMode,
                                          mode == vISA_ASM_READER);
 
-#ifndef DLL_MODE
-  if (mode == vISA_ASM_READER) {
-    // For vISA text input we always want to dump out vISA
-    builder->m_options.setOptionInternally(vISA_DumpvISA, true);
-  }
-#endif
-
   // emit location info always for these cases
   if (mode == vISABuilderMode::vISA_DEFAULT &&
       builder->m_options.getOption(vISA_outputToFile)) {
