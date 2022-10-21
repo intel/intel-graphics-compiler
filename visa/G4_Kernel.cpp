@@ -1187,8 +1187,7 @@ void G4_Kernel::dumpToFile(const std::string &suffixIn, bool forceG4Dump) {
 void G4_Kernel::dumpStopafter() {
   auto stopafteroutput = getOptions()->getOptionCstr(vISA_StopAfterOutput);
   if (stopafteroutput && stopafteroutput[0] != 0) {
-    std::string of(stopafteroutput);
-    std::fstream ofile(of, std::ios::out);
+    std::fstream ofile(stopafteroutput, std::ios::out);
     assert(ofile);
     dumpG4InternalTo(ofile);
   }

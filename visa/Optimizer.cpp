@@ -6484,6 +6484,19 @@ void Optimizer::forceNoMaskOnM0() {
         I->hasImplicitAccSrc())
         continue;
 
+      // skip if I is logical on flag registers.
+      // For example:
+      //   (W) pseudo_and (16|M16)  P2:uw  P2:uw  P1:uw
+      // where P2 is the high 16 bits of a 32-bit flag
+      // and M16 cannot be changed to M0.
+      if (I->isLogic() || I->isPseudoLogic()) {
+        // Only checking dst is enough.
+        G4_DstRegRegion* dst = I->getDst();
+        if (dst && !dst->isNullReg() && dst->isFlag()) {
+          continue;
+        }
+      }
+
       I->setMaskOption(InstOpt_M0);
     }
   }
