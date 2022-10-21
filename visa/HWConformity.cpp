@@ -8490,10 +8490,12 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB *bb) {
   }
 
   // Format conversion allowed between fp16 and fp8 operands in the following
-  // cases: 1, Execution size must not be 1. 2, fp8 operand is packed. 3, Source
-  // and destination register offset is restricted to 0 (GRF aligned).
-  // 4. no scalar fp8 broadcast (as there is no simd1, fp8 operand should not be
-  // a scalar).
+  // cases:
+  //  1, Execution size must not be 1.
+  //  2, fp8 operand is packed.
+  //  3, Src and dst register offset is restricted to 0 (GRF aligned).
+  //  4. no scalar fp8 broadcast (as there is no simd1, fp8 operand should
+  //     not be a scalar).
   if (IS_BTYPE(inst->getDst()->getType()) ||
       IS_BTYPE(inst->getSrc(0)->getType())) {
     assert(((IS_BTYPE(inst->getDst()->getType()) &&
@@ -9126,9 +9128,10 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   // case 4. For HF->BF8, no simd1
   G4_DstRegRegion *dst = inst->getDst();
   uint32_t execsize = inst->getExecSize();
+  const uint16_t GRFByteSize = builder.numEltPerGRF<Type_UB>();
   bool isHF2BF8 = (dst->getType() == Type_UB);
-  if (!dst->checkGRFAlign(builder) ||          // case 2
-      (isHF2BF8 && dst->getHorzStride() != 1)) // case 3
+  if (!builder.isOpndAligned(dst, GRFByteSize) || // case 2
+      (isHF2BF8 && dst->getHorzStride() != 1))    // case 3
   {
     G4_Declare *dcl =
         builder.createTempVar(execsize, dst->getType(), builder.getGRFAlign());
@@ -9146,10 +9149,11 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   }
 
   G4_Operand *opnd0 = inst->getSrc(0);
-  if (opnd0->isImm() ||                                   // case 1
-      !opnd0->asSrcRegRegion()->checkGRFAlign(builder) || // case 2
-      (isHF2BF8 &&
-       !opnd0->asSrcRegRegion()->getRegion()->isContiguous(execsize))) // case 3
+  G4_SrcRegRegion* src0R =
+    opnd0->isSrcRegRegion() ? opnd0->asSrcRegRegion() : nullptr;
+  if (!src0R ||                                                 // case 1
+      !builder.isOpndAligned(opnd0, GRFByteSize) ||             // case 2
+      (isHF2BF8 && src0R->getRegion()->isContiguous(execsize))) // case 3
   {
     G4_Operand *newSrc0 =
         insertMovBefore(it, 0, opnd0->getType(), bb, builder.getGRFAlign());
@@ -9160,10 +9164,11 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   }
 
   G4_Operand *opnd1 = inst->getSrc(1);
-  if (opnd1->isSrcRegRegion() &&
-      (!opnd1->asSrcRegRegion()->checkGRFAlign(builder) || // case 2
-       (isHF2BF8 && !opnd1->asSrcRegRegion()->getRegion()->isContiguous(
-                        execsize)))) // case 3
+  G4_SrcRegRegion* src1R =
+    opnd1->isSrcRegRegion() ? opnd1->asSrcRegRegion() : nullptr;
+  if (src1R &&
+      (!builder.isOpndAligned(opnd1, GRFByteSize) ||               // case 2
+       (isHF2BF8 && !src1R->getRegion()->isContiguous(execsize)))) // case 3
   {
     G4_Operand *newSrc1 =
         insertMovBefore(it, 1, opnd1->getType(), bb, builder.getGRFAlign());
@@ -9174,8 +9179,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   }
 
   dst = inst->getDst();
-  if (isHF2BF8 && inst->getExecSize() == g4::SIMD1) // case 4
-  {
+  if (isHF2BF8 && inst->getExecSize() == g4::SIMD1) { // case 4
     G4_Declare *rootDcl = dst->getBaseRegVarRootDeclare();
     if (rootDcl->getElemSize() == TypeSize(Type_UB) &&
         rootDcl->getNumElems() == 1) {
@@ -9204,9 +9208,9 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
 
       G4_SrcRegRegion *nSrc =
           builder.createSrc(nDcl->getRegVar(), 0, 0, ScalarReg, dst->getType());
-      G4_INST *newInst =
-          builder.createMov(g4::SIMD1, dst, nSrc, InstOpt_WriteEnable, false);
-      bb->insertAfter(it, newInst);
+      uint32_t newOpt = (InstOpt_WriteEnable | inst->getMaskOption());
+      G4_INST *nI = builder.createMov(g4::SIMD1, dst, nSrc, newOpt, false);
+      bb->insertAfter(it, nI);
     }
     changed = true;
   }
