@@ -665,6 +665,9 @@ bool preRA_RegSharing::run() {
 
   GRFMode GrfMode(kernel.getPlatform());
   RegisterPressure rp(kernel, mem, rpe);
+  // skip extreme test cases that scheduling does not good
+  if (kernel.fg.getNumBB() >= 10000 && rp.rpe->getMaxRP() >= 800)
+    return false;
 
   std::unordered_map<G4_BB *, unsigned int> rpBB;
   unsigned KernelPressure = 0;
@@ -695,10 +698,6 @@ bool preRA_RegSharing::run() {
     // Update number of threads, GRF, Acc and SWSB
     kernel.updateKernelByNumThreads(GrfMode.getMinNumThreads());
   }
-
-  // skip extreme test cases that scheduling does not good
-  if (kernel.fg.getNumBB() >= 10000 && KernelPressure >= 800)
-    return false;
 
   unsigned Threshold = getRPReductionThreshold(kernel);
   LatencyTable LT(kernel.fg.builder);
