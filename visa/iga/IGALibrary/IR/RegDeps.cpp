@@ -511,7 +511,7 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
             break;
 
         bool skipSetLastBits = false;
-        if (hasProducerConsumerDep(dst_range, src_range, allDstBits, allSrcBits)) {
+        if (hasProducerConsumerDep(dst_range, src_range, allDstBits)) {
                 break;
         }
 
@@ -577,8 +577,8 @@ DepSetBuilder::DpasMacroBuilder::getSuppressionBlockCandidate(
             return nullptr;
 
         bool skipSetLastBits = false;
-        if (hasProducerConsumerDep(dst_range, src_range, allDstBits, allSrcBits)) {
-                break;
+        if (hasProducerConsumerDep(dst_range, src_range, allDstBits)) {
+                return nullptr;
         }
         uint16_t reg = (*it)->getSource(srcIdx).getDirRegRef().regNum;
         if (sb->partialOverlapped(reg))
@@ -618,7 +618,7 @@ bool DepSetBuilder::DpasMacroBuilder::srcIsSuppressCandidate(const Instruction& 
 
 bool DepSetBuilder::DpasMacroBuilder::hasProducerConsumerDep(
     const DstRegRangeType& dst_range, const SrcRegRangeType& src_range,
-    const BitSet<>& target_dst_bits, const BitSet<>& target_src_bits) const {
+    const BitSet<>& target_dst_bits) const {
 
     BitSet<> new_srcbits(m_dsBuilder.getGRF_LEN());
     BitSet<> new_dstbits(m_dsBuilder.getGRF_LEN());

@@ -484,12 +484,11 @@ private:
                             const SrcRegRangeType &src_range,
                             bool isDepth8) const;
 
-        // check if the givem src/dst RegRange has producer-consumer dependency
-        // (WAW/WAR/RWA) to the given src/dst BitSet
+        // check if the dst_range/src_range have producer-consumer (RAW)
+        // dependency to target_dst_bits/target_src_bits
         bool hasProducerConsumerDep(const DstRegRangeType& dst_range,
                                     const SrcRegRangeType& src_range,
-                                    const BitSet<>& target_dst_bits,
-                                    const BitSet<>& target_src_bits) const;
+                                    const BitSet<>& target_dst_bits) const;
 
 
         void updateRegFootprintsToDepSets(
