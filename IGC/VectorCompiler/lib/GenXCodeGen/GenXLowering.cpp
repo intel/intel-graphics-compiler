@@ -4930,8 +4930,23 @@ bool GenXLowering::lowerGenXMul(CallInst *CI, unsigned IID) {
     return false;
   Value *LH = CI->getOperand(0);
   Value *RH = CI->getOperand(1);
-  if (!ScalarType(LH)->isIntegerTy(32) || !ScalarType(RH)->isIntegerTy(32))
+  IGC_ASSERT(LH->getType() == RH->getType());
+  if (ScalarType(LH)->isIntegerTy(64))
     return false;
+
+  IRBuilder<> B(CI);
+
+  if (ScalarType(LH)->isIntegerTy(8) || ScalarType(LH)->isIntegerTy(16)) {
+    // The result can't exceed 32 bit. Get rid of 64-bit multiplication
+    Value *Mul = B.CreateMul(LH, RH, CI->getName());
+    Value *Ext =
+        (IID == GenXIntrinsic::genx_uumul)
+            ? B.CreateZExt(Mul, CI->getType(), CI->getName() + ".zext")
+            : B.CreateSExt(Mul, CI->getType(), CI->getName() + ".sext");
+    CI->replaceAllUsesWith(Ext);
+    ToErase.push_back(CI);
+    return true;
+  }
 
   auto *M = CI->getModule();
   Type *tys[2] = {LH->getType(), RH->getType()};
@@ -4942,7 +4957,6 @@ bool GenXLowering::lowerGenXMul(CallInst *CI, unsigned IID) {
           : GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_smulh,
                                               tys);
 
-  IRBuilder<> B(CI);
   Value *MulLo = B.CreateMul(LH, RH, CI->getName() + ".lo.");
   Value *MulHi = B.CreateCall(MulHFunc, {LH, RH}, CI->getName() + ".hi.");
 
