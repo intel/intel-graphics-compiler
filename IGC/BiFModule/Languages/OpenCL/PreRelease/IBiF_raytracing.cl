@@ -8,8 +8,6 @@ SPDX-License-Identifier: MIT
 
 #ifdef cl_intel_pvc_rt_validation
 
-#include "raytracing/constants.h"
-
 void* intel_get_rt_stack( rtglobals_t rt_dispatch_globals ) {
   return __builtin_IB_intel_get_rt_stack(rt_dispatch_globals);
 }
@@ -32,9 +30,7 @@ void intel_rt_sync(rtfence_t fence) {
 }
 
 global void* intel_get_implicit_dispatch_globals() {
-    global char* globalBuffer = __builtin_IB_intel_get_rt_global_buffer();
-    int subDeviceID = SPIRV_BUILTIN_NO_OP(BuiltInSubDeviceIDINTEL, , )();
-    return globalBuffer + subDeviceID * DISPATCH_GLOBALS_STRIDE;
+    return __builtin_IB_intel_get_implicit_dispatch_globals();
 }
 
 #endif

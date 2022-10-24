@@ -868,7 +868,7 @@ void* __builtin_IB_intel_get_global_btd_stack(rtglobals_t rt_dispatch_globals);
 rtfence_t __builtin_IB_intel_dispatch_trace_ray_query(
   rtglobals_t rt_dispatch_globals, uint bvh_level, uint traceTayCtrl);
 void __builtin_IB_intel_rt_sync(rtfence_t fence);
-global void* __builtin_IB_intel_get_rt_global_buffer();
+global void* __builtin_IB_intel_get_implicit_dispatch_globals();
 #endif // cl_intel_pvc_rt_validation
 
 void    __builtin_IB_hdc_uncompressed_write_uchar(__global uchar *buf, uchar val);
