@@ -103,6 +103,10 @@ namespace IGC
             InitXeHPSDVHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             InitXeHPSDVSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             break;
+        case IGFX_ALDERLAKE_N:
+            InitAdlnHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            InitAdlnSwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+            break;
         case IGFX_DG2:
             /* 128 */
             if (TRUE == GFX_IS_DG2_G11_CONFIG(platform->getPlatformInfo().usDeviceID))

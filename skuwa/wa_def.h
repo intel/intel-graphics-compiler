@@ -310,6 +310,14 @@ void InitAdlpSwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
+void InitAdlnHwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitAdlnSwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
 void InitXeHPSDVHwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
@@ -463,6 +471,11 @@ void InitAdlsHASWaTable(
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
 void InitAdlpHASWaTable(
+        PHW_DEVICE_EXTENSION            pKchContext,
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitAdlnHASWaTable(
         PHW_DEVICE_EXTENSION            pKchContext,
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,

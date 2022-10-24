@@ -100,6 +100,8 @@ set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iadls_sw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iadlp_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iadlp_sw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iadln_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iadln_sw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iehl_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iehl_sw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ijsl_hw_wa.c"

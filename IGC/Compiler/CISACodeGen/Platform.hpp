@@ -1122,9 +1122,18 @@ bool supportMixMode() const {
         (IGC_IS_FLAG_DISABLED(DisableMixMode) &&
         (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW ||
             m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE ||
+            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
+            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
+            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
             m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
 }
-bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
+bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const {
+    return (IGC_IS_FLAG_ENABLED(EnablePostCullPatchFIFOLP) &&
+        m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE &&
+        (m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
+            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
+            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N));
+}
 
 bool NeedsHDCFenceBeforeEOTInPixelShader() const
 {
