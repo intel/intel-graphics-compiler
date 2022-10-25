@@ -27,6 +27,8 @@ SPDX-License-Identifier: MIT
 #define LSC_CACHE_CTRL_OPTION(Name, Val, Description) #Name " [" Description "]=" #Val ","
 #define EARLY_OUT_CS_PATTERN(Name, Val) #Name "=" #Val ","
 #define EARLY_OUT_PS_PATTERN(Name, Val) #Name "=" #Val ","
+#define FP_BINOP_INSTRUCTION(Name, Val) #Name "=" #Val ","
+
 #include "igc_regkeys_enums_defs.h"
 
 
@@ -39,6 +41,9 @@ SPDX-License-Identifier: MIT
 #undef EARLY_OUT_CS_PATTERNS
 #undef EARLY_OUT_PS_PATTERN
 #undef EARLY_OUT_PS_PATTERNS
+
+#undef FP_BINOP_INSTRUCTION
+#undef FP_BINOP_INSTRUCTIONS
 
 #undef DECLARE_IGC_GROUP
 #undef DECLARE_IGC_REGKEY_ENUM

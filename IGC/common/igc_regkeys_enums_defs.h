@@ -62,3 +62,12 @@ SPDX-License-Identifier: MIT
         EARLY_OUT_PS_PATTERN(DirectOutputPatternEnable, 0x10) \
         EARLY_OUT_PS_PATTERN(MulMaxMatchEnable,         0x20)
 #endif // EARLY_OUT_PS_PATTERN
+
+#ifdef FP_BINOP_INSTRUCTION
+    #define FP_BINOP_INSTRUCTIONS                  \
+            FP_BINOP_INSTRUCTION(FAdd,       0x1)  \
+            FP_BINOP_INSTRUCTION(FSub,       0x2)  \
+            FP_BINOP_INSTRUCTION(FMul,       0x4)  \
+            FP_BINOP_INSTRUCTION(FDiv,       0x8)  \
+            FP_BINOP_INSTRUCTION(FRem,       0x10)
+#endif // FP_BINOP_INSTRUCTION

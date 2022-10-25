@@ -1651,13 +1651,13 @@ public:
         return cast<ConstantInt>(getOperand(3))->isOne();
     }
 
-    enum class FPBinaryOperators : uint32_t
+    enum class FPBinaryOperators
     {
-        FAdd,
-        FSub,
-        FMul,
-        FDiv,
-        FRem
+#define FP_BINOP_INSTRUCTION(Name, Val) Name = Val,
+#include "../../IGC/common/igc_regkeys_enums_defs.h"
+        FP_BINOP_INSTRUCTIONS
+#undef FP_BINOP_INSTRUCTION
+#undef FP_BINOP_INSTRUCTIONS
     };
 
 };
