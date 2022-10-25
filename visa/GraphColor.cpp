@@ -38,14 +38,16 @@ const char GlobalRA::StackCallStr[] = "StackCall";
 
 static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 
-#define BANK_CONFLICT_HEURISTIC_INST 0.04
-#define BANK_CONFLICT_HEURISTIC_REF_COUNT 0.25
-#define BANK_CONFLICT_HEURISTIC_LOOP_ITERATION 5
-#define BANK_CONFLICT_SEND_INST_CYCLE                                          \
-  60 // Some send 200, some 400 we choose the small one
-#define BANK_CONFLICT_SIMD8_OVERHEAD_CYCLE 1
-#define BANK_CONFLICT_SIMD16_OVERHEAD_CYCLE 2
-#define INTERNAL_CONFLICT_RATIO_HEURISTIC 0.25
+// The 4 percentage 3 source instructions, weighted with loop nest levels
+static const float BANK_CONFLICT_HEURISTIC_INST = (float)0.04;
+// 15 percentage 3 source instructions, weighted with loop nest levels.
+static const float BANK_CONFLICT_HEURISTIC_INST_HIGH = (float)0.15;
+static const unsigned BANK_CONFLICT_HEURISTIC_LOOP_ITERATION = 5;
+// Some send 200, some 400 we choose the small one
+static const unsigned BANK_CONFLICT_SEND_INST_CYCLE = 60;
+static const unsigned BANK_CONFLICT_SIMD8_OVERHEAD_CYCLE = 1;
+static const unsigned BANK_CONFLICT_SIMD16_OVERHEAD_CYCLE = 2;
+static const float INTERNAL_CONFLICT_RATIO_HEURISTIC = (float)0.25;
 
 #define NOMASK_BYTE 0x80
 
@@ -1118,9 +1120,21 @@ bool BankConflictPass::setupBankConflictsForKernel(bool doLocalRR,
     }
   }
 
+  VISA_DEBUG({
+    std::cout << "\tsendInstNumInKernel: " << sendInstNumInKernel << "\n";
+    std::cout << "\tthreeSourceInstNumInKernel: " << threeSourceInstNumInKernel
+              << "\n";
+    std::cout << "\tinstNumInKernel: " << instNumInKernel << "\n";
+  });
+
+  // limited bank conflict reduction, do BCR only the three source
+  // instructions percentage is high enough
+  bool limitedBCR = gra.kernel.fg.builder->doLimitedBCR();
   if (!threeSourceInstNumInKernel ||
-      (float)threeSourceInstNumInKernel / instNumInKernel <
-          BANK_CONFLICT_HEURISTIC_INST) {
+      (!limitedBCR && ((float)threeSourceInstNumInKernel / instNumInKernel <
+                       BANK_CONFLICT_HEURISTIC_INST)) ||
+      (limitedBCR && ((float)threeSourceInstNumInKernel / instNumInKernel <
+                      BANK_CONFLICT_HEURISTIC_INST_HIGH))) {
     return false;
   }
 

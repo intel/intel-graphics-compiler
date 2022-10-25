@@ -448,7 +448,7 @@ bool LocalRA::localRA() {
   }
 
   if (!doRoundRobin) {
-    if (kernel.getOption(vISA_forceBCR) && doBCR) {
+    if ((kernel.getOption(vISA_forceBCR) || builder.doLimitedBCR()) && doBCR) {
       if (builder.getOption(vISA_RATrace)) {
         std::cout << "\t--first-fit "
                   << "BCR "
