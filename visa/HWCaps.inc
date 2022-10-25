@@ -352,14 +352,9 @@ bool hasBankCollision() const {
   if (getPlatform() == GENX_TGLLP) {
     return true;
   }
-  return (getPlatformGeneration() <= PlatformGen::GEN11) || doLimitedBCR() ||
+  return (getPlatformGeneration() <= PlatformGen::GEN11) ||
          getOption(vISA_forceBCR) ||
          (getOption(vISA_enableBCR) && !hasEarlyGRFRead());
-  }
-
-bool doLimitedBCR() const {
-  return (getPlatform() == Xe_DG2) &&
-         (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D);
 }
 
 bool oneGRFBankDivision() const {
