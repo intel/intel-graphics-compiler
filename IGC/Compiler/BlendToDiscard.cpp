@@ -338,7 +338,6 @@ bool BlendToDiscard::blendToDiscardMRT(
             cond = irb.CreateFCmpOEQ(alpha, f1);
             break;
 
-        case USC::BLEND_OPTIMIZATION_SRC_COLOR_ZERO_ALPHA_IGNORE:
         case USC::BLEND_OPTIMIZATION_SRC_COLOR_ZERO:
             // discard: src.rgb == 0
             cond = irb.CreateAllValuesAreZeroF(colors, nColors);
@@ -372,6 +371,17 @@ bool BlendToDiscard::blendToDiscardMRT(
                 irb.CreateFCmpOEQ(alpha, f1),
                 irb.CreateAllValuesAreZeroF(colors, nColors));
             break;
+
+        case USC::BLEND_OPTIMIZATION_SRC_COLOR_ZERO_ALPHA_IGNORE:
+        {
+            // Discard: src.rgb == 0 and don't compute src.a
+            cond = irb.CreateAllValuesAreZeroF(colors, nColors);
+            Value* nAlpha = m_cgCtx->getModuleMetaData()->compOpt.EnableUndefAlphaOutputAsRed ?
+                outInst[i]->getOperand(0) : f0;
+
+            outInst[i]->setOperand(3, nAlpha);
+            break;
+        }
 
         default:
             IGC_ASSERT_MESSAGE(0, "Need to handle more cases");
