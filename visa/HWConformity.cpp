@@ -594,7 +594,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
         return true;
       } else if (!srcRegion->isScalar()) {
         if (!hasSameOffset &&
-            !builder.isOpndAligned(srcRegion, kernel.numEltPerGRF<Type_UB>())) {
+            !builder.tryToAlignOperand(srcRegion, kernel.numEltPerGRF<Type_UB>())) {
           return true;
         } else if (!rd->isContiguous(inst->getExecSize())) {
           return true;
@@ -739,7 +739,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
                 !(dst->getType() == Type_UD && extype == Type_D));
   if (dst->getRegAccess() != Direct || dst->getHorzStride() != 1 || cond1 ||
       (!hasSameOffset && inst->getExecSize() != g4::SIMD1 &&
-       !builder.isOpndAligned(dst, kernel.numEltPerGRF<Type_UB>()))) {
+       !builder.tryToAlignOperand(dst, kernel.numEltPerGRF<Type_UB>()))) {
     mov_dst = true;
     replaceDst(it, extype);
   }
@@ -751,12 +751,12 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
 
     if (dst && !dst->isNullReg() && dst->getType() == Type_HF &&
         dst->getHorzStride() == 1) {
-      if (!builder.isOpndAligned(dst, kernel.numEltPerGRF<Type_UB>())) {
+      if (!builder.tryToAlignOperand(dst, kernel.numEltPerGRF<Type_UB>())) {
         mov_dst = true;
         replaceDst(it, dst->getType(), builder.getGRFAlign());
       }
       if (src0 && !src0->isNullReg() && src0->getType() == Type_HF) {
-        if (!builder.isOpndAligned(src0, kernel.numEltPerGRF<Type_UB>())) {
+        if (!builder.tryToAlignOperand(src0, kernel.numEltPerGRF<Type_UB>())) {
           G4_Operand *newSrc0 = insertMovBefore(it, 0, src0->getType(), bb,
                                                 builder.getGRFAlign());
           inst->setSrc(newSrc0, 0);
@@ -764,7 +764,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
       }
 
       if (src1 && !src1->isNullReg() && src1->getType() == Type_HF) {
-        if (!builder.isOpndAligned(src0, kernel.numEltPerGRF<Type_UB>())) {
+        if (!builder.tryToAlignOperand(src0, kernel.numEltPerGRF<Type_UB>())) {
           G4_Operand *newSrc0 = insertMovBefore(it, 1, src0->getType(), bb,
                                                 builder.getGRFAlign());
           inst->setSrc(newSrc0, 1);
@@ -1035,7 +1035,7 @@ bool HWConformity::fixLine(INST_LIST_ITER it, G4_BB *bb) {
           (rd->vertStride != 0 || rd->width != 4 || rd->horzStride != 1);
     }
     if (!IS_FTYPE(src0->getType()) || src0->isImm() || badRegion ||
-        !builder.isOpndAligned(src0, kernel.numEltPerGRF<Type_UB>() / 2)) {
+        !builder.tryToAlignOperand(src0, kernel.numEltPerGRF<Type_UB>() / 2)) {
       // insertMovBefore()  is not used here
       // due to the special region <0;4,1> of src0 of line
       G4_Declare *src0_dcl;
@@ -1318,7 +1318,7 @@ void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB *bb) {
     uint8_t execSize = inst->getExecSize();
     G4_DstRegRegion *dst = inst->getDst();
     if (dst->getRegAccess() != Direct || dst->getHorzStride() != 1 ||
-        !builder.isOpndAligned(dst, (execSize >= 8) ? 32 : execSize * 4)) {
+        !builder.tryToAlignOperand(dst, (execSize >= 8) ? 32 : execSize * 4)) {
       replaceDst(iter, dst->getType());
     }
     for (int i = 0; i < 3; i++) {
@@ -1333,7 +1333,7 @@ void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB *bb) {
   // for source and destination operands.
   if ((inst->getExecSize() == g4::SIMD1)) {
     if (inst->getDst() && inst->getDst()->getBase()->isRegVar()) {
-      if (!builder.isOpndAligned(inst->getDst(), 16)) {
+      if (!builder.tryToAlignOperand(inst->getDst(), 16)) {
         replaceDst(iter, inst->getDst()->getType(), Eight_Word);
       }
     }
@@ -1642,7 +1642,7 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype,
       !inst->getPredicate() && dst->getRegAccess() == Direct &&
       dst->getHorzStride() == 1 && inst->getSaturate() == false &&
       IS_BTYPE(dst->getType()) && !IS_TYPE_F32_F64(src0->getType()) &&
-      builder.isOpndAligned(dst, src0->getTypeSize())) {
+      builder.tryToAlignOperand(dst, src0->getTypeSize())) {
     // inst is a mov with packed byte dst and int imm source
     int64_t value = src0->asImm()->getInt();
     uint64_t new_value = (value & 0xFF) | (value << 0x8);
@@ -1717,7 +1717,7 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype,
                                  (dst_elsize * h_stride) < extypesize &&
                                  !(builder.hasMixMode() && dstHFMixModeInst);
   unsigned short dst_byte_offset;
-  builder.isOpndAligned(dst, dst_byte_offset, extypesize);
+  builder.tryToAlignOperand(dst, dst_byte_offset, extypesize);
   if (!((dst_byte_offset % extypesize == 0) ||
         (byteDst && (dst_byte_offset % extypesize == 1))) ||
       /*
@@ -1984,7 +1984,7 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB *bb) {
   }
 
   if (useAcc && dst && dst->getBase() && dst->getBase()->isRegVar()) {
-    if (!builder.isOpndAligned(dst, kernel.numEltPerGRF<Type_UB>())) {
+    if (!builder.tryToAlignOperand(dst, kernel.numEltPerGRF<Type_UB>())) {
       inst->setDest(
           insertMovAfter(iter, dst, dst->getType(), bb, builder.getGRFAlign()));
       changed = true;
@@ -2125,7 +2125,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB *bb) {
 
     // need extra move for dst
     if (!IS_DTYPE(origDst->getType()) || origDst->getHorzStride() != 1 ||
-        !builder.isOpndAligned(origDst, builder.getGRFSize())) {
+        !builder.tryToAlignOperand(origDst, builder.getGRFSize())) {
       // macl dst must be grf-aligned, packed D/UD as it is also used for the
       // implicit acc source's region
       G4_DstRegRegion *tmpDst =
@@ -2173,7 +2173,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB *bb) {
     machIter = bb->insertBefore(++machIter, maclInst);
 
     if (!IS_DTYPE(origDst->getType()) || origDst->getHorzStride() != 1 ||
-        !builder.isOpndAligned(origDst, builder.getGRFSize())) {
+        !builder.tryToAlignOperand(origDst, builder.getGRFSize())) {
       // macl dst must be grf-aligned, packed D/UD as it is also used for the
       // implicit acc source's region
       G4_DstRegRegion *tmpDst =
@@ -2284,7 +2284,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
           }
           // check that source is GRF-aligned to ensure that every element is
           // qword-aligned
-          return builder.isOpndAligned(src, 32);
+          return builder.tryToAlignOperand(src, 32);
         }
         return true;
       };
@@ -2649,7 +2649,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER &i, G4_BB *bb) {
     G4_DstRegRegion *dst = inst->getDst();
     if (inst->getSaturate() || dst->getExecTypeSize() > TypeSize(Type_D) ||
         isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
-        !builder.isOpndAligned(dst, builder.getGRFSize())) {
+        !builder.tryToAlignOperand(dst, builder.getGRFSize())) {
       // add a tmp mov
       inst->setDest(
           insertMovAfter(i, dst, dst->getType(), bb, builder.getGRFAlign()));
@@ -3436,7 +3436,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB *bb) {
         } else if (region->isScalar()) {
 #if 0
                     // scalar region still must be aligned to qword, though it can be any qword
-                    if (byteSize < 8 && !builder.isOpndAligned(srcAsRegion, 8))
+                    if (byteSize < 8 && !builder.tryToAlignOperand(srcAsRegion, 8))
                     {
                         G4_Operand* tmpSrc = insertCopyBefore(iter, i, Four_Word, bb);
                         inst->setSrc(tmpSrc, i);
@@ -3766,7 +3766,7 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST *inst) const {
     }
   }
 
-  if (!builder.isOpndAligned(dst, alignInBytes)) {
+  if (!builder.tryToAlignOperand(dst, alignInBytes)) {
     // dst may have special alignment due to encoding issues
     return false;
   }
@@ -3865,7 +3865,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST *inst, int srcPos,
           // <1;1,0> is not a legal region for align1 ternary source (vs 1 not
           // supported) mad doesn't support <1;1,0>, the width is at least 2
           int minAlignment = src->getTypeSize() * 2;
-          return builder.isOpndAligned(src, minAlignment);
+          return builder.tryToAlignOperand(src, minAlignment);
         }
       }
       return true;
@@ -3911,7 +3911,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST *inst, int srcPos,
         }
       } else {
         // not a scalar, src2 must be GRF aligned.
-        if (!builder.isOpndAligned(src, kernel.numEltPerGRF<Type_UB>())
+        if (!builder.tryToAlignOperand(src, kernel.numEltPerGRF<Type_UB>())
         ) {
           return false;
         }
@@ -3968,7 +3968,7 @@ bool HWConformity::isGoodAlign16Src(G4_INST *inst, int srcPos) {
     if (region->isContiguous(execSize)) {
       if (builder.getPlatform() == GENX_BDW && TypeSize(opnd_type) < 4) {
         // BDW HF has to be 32-byte aligned
-        if (!builder.isOpndAligned(src, 32)) {
+        if (!builder.tryToAlignOperand(src, 32)) {
           return false;
         }
       } else {
@@ -3976,12 +3976,12 @@ bool HWConformity::isGoodAlign16Src(G4_INST *inst, int srcPos) {
           // operand must be GRF aligned, or oword aligned for HF/W
           uint32_t align =
               std::min<uint32_t>(execSize * src->getTypeSize(), 32);
-          if (!builder.isOpndAligned(src, align)) {
+          if (!builder.tryToAlignOperand(src, align)) {
             return false;
           }
         } else if (execSize == 4 || execSize == 2) {
           // operand must be oword-aligned
-          if (!builder.isOpndAligned(src, 16)) {
+          if (!builder.tryToAlignOperand(src, 16)) {
             return false;
           }
         }
@@ -4272,7 +4272,7 @@ bool HWConformity::generateFPMad(G4_BB *bb, INST_LIST_ITER iter) {
   alignMent = (alignMent < 16) ? 16 : alignMent;
 
   if (dst->getRegAccess() != Direct || dst->getHorzStride() != 1 ||
-      !builder.isOpndAligned(dst, alignMent)) {
+      !builder.tryToAlignOperand(dst, alignMent)) {
     if (preferFpMad) {
       G4_DstRegRegion *tmpDst = insertMovAfter(iter, dst, dst->getType(), bb);
       inst->setDest(tmpDst);
@@ -5002,7 +5002,7 @@ void HWConformity::fixSendInst(G4_BB *bb) {
     }
 
     uint16_t offset = 0;
-    if (!builder.isOpndAligned(inst->getDst(), offset,
+    if (!builder.tryToAlignOperand(inst->getDst(), offset,
                                kernel.numEltPerGRF<Type_UB>())) {
       replaceDst(i, inst->getDst()->getType(), builder.getGRFAlign());
     }
@@ -5069,7 +5069,7 @@ void HWConformity::fixSendInst(G4_BB *bb) {
 
     if (inst->isSplitSend() && !inst->getSrc(1)->isNullReg()) {
       // src1 may be null because some messages (e.g., CPS) require split send
-      if (!builder.isOpndAligned(inst->getSrc(1),
+      if (!builder.tryToAlignOperand(inst->getSrc(1),
                                  kernel.numEltPerGRF<Type_UB>())) {
         inst->setSrc(insertMovBefore(i, 1, inst->getSrc(1)->getType(), bb,
                                      builder.getGRFAlign()),
@@ -5396,7 +5396,7 @@ void HWConformity::fixCalla(INST_LIST_ITER it, G4_BB *bb) {
   if (!src0->isSrcRegRegion())
     return;
 
-  if (builder.isOpndAligned(src0, builder.getGRFSize()))
+  if (builder.tryToAlignOperand(src0, builder.getGRFSize()))
     return;
 
   // insert a mov before fcall(calla) to mov src to a grf aligned reg
@@ -5933,12 +5933,12 @@ bool HWConformity::fixAddcSubb(G4_BB *bb) {
         // so that the acc will have the correct offset
         // note that insertMovAfter will align the tmp since addc/subb has
         // implicit acc use
-        if (!builder.isOpndAligned(inst->getDst(), 32)) {
+        if (!builder.tryToAlignOperand(inst->getDst(), 32)) {
           inst->setDest(insertMovAfter(iter, inst->getDst(),
                                        inst->getDst()->getType(), bb));
           changed = true;
         }
-        if (!builder.isOpndAligned(carryUse->getDst(), 32)) {
+        if (!builder.tryToAlignOperand(carryUse->getDst(), 32)) {
           carryUse->setDest(insertMovAfter(srchIter, carryUse->getDst(),
                                            carryUse->getDst()->getType(), bb));
           changed = true;
@@ -7220,7 +7220,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB *bb) {
     // Source modifiers are not supported for pln instruction
     if (src0 && ((src0->isSrcRegRegion() &&
                   src0->asSrcRegRegion()->getModifier() != Mod_src_undef) ||
-                 !builder.isOpndAligned(src0, 16))) {
+                 !builder.tryToAlignOperand(src0, 16))) {
       // src0 needs a temp
       G4_Declare *tmpDcl =
           builder.createTempVar(4, Type_F, builder.getGRFAlign());
@@ -7563,11 +7563,11 @@ void HWConformity::fixMixedHFInst(G4_BB *bb) {
               inst->getSrc(2)->isSrcRegRegion() &&
               !inst->getSrc(2)->asSrcRegRegion()->getRegion()->isScalar();
           if (nonScalarSrc2) {
-            if (!builder.isOpndAligned(inst->getDst(),
+            if (!builder.tryToAlignOperand(inst->getDst(),
                                        kernel.numEltPerGRF<Type_UB>())) {
               replaceDst(instIter, Type_F, builder.getGRFAlign());
             }
-            if (!builder.isOpndAligned(inst->getSrc(2),
+            if (!builder.tryToAlignOperand(inst->getSrc(2),
                                        kernel.numEltPerGRF<Type_UB>())) {
               inst->setSrc(insertMovBefore(instIter, 2,
                                            inst->getSrc(2)->getType(), bb,
@@ -8055,8 +8055,8 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
       int dstStride = TypeSize(dstTy) * inst->getDst()->getHorzStride();
       int srcStride = getSrcStride(src0RR);
       if (dstStride != srcStride ||
-          !builder.isOpndAligned(inst->getSrc(0), builder.getGRFSize()) ||
-          !builder.isOpndAligned(inst->getDst(), builder.getGRFSize())) {
+          !builder.tryToAlignOperand(inst->getSrc(0), builder.getGRFSize()) ||
+          !builder.tryToAlignOperand(inst->getDst(), builder.getGRFSize())) {
         bool isNoMaskInst =
             !inst->getPredicate() &&
             (inst->isWriteEnableInst() || bb->isAllLaneActive());
@@ -8332,7 +8332,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
   if (builder.getMixModeType() == dstTy && IS_FTYPE(execTy)) {
     uint16_t offset = 0;
     bool isAligned =
-        builder.isOpndAligned(dst, offset, builder.getGRFSize() / 2);
+        builder.tryToAlignOperand(dst, offset, builder.getGRFSize() / 2);
     if (dst->getHorzStride() == 1) {
       isSpecialMixModeDst = isAligned;
     } else if (dst->getHorzStride() == 2) {
@@ -8344,7 +8344,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
   uint16_t dstAlign =
       inst->getSrc(0)->getType() == Type_VF ? 16 : builder.getGRFSize();
   if (dst->getRegAccess() == Direct && !isSpecialMixModeDst &&
-      (!builder.isOpndAligned(dst, dstAlign) || dstStride != execTyWidth)) {
+      (!builder.tryToAlignOperand(dst, dstAlign) || dstStride != execTyWidth)) {
     inst->setDest(
         insertMovAfter(it, dst, dst->getType(), bb, builder.getGRFAlign()));
     if (IS_TYPE_FLOAT_ALL(dst->getType()) || dst->getTypeSize() == 8) {
@@ -8470,7 +8470,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
                                                 : builder.getGRFSize();
         // for mix mode the source must be packed, otherwise srcStride shoudl be
         // == sizeof(exec type)
-        if (!builder.isOpndAligned(src, alignment) ||
+        if (!builder.tryToAlignOperand(src, alignment) ||
             (isMixModeSrc ? !isMixModePackedSrc : srcStride != execTyWidth)) {
           {
             int stride =
@@ -8513,7 +8513,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB *bb) {
            inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef &&
            "FP8<->HF move does not support source modifier");
 
-    if (!builder.isOpndAligned(
+    if (!builder.tryToAlignOperand(
             inst->getSrc(0),
             builder.numEltPerGRF<Type_UB>()) || // case 3 for src
         (IS_BTYPE(inst->getSrc(0)->getType()) &&
@@ -8538,7 +8538,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB *bb) {
 
     if ((IS_BTYPE(inst->getDst()->getType()) &&
          inst->getDst()->getHorzStride() != 1) || // case 2 for dst
-        !builder.isOpndAligned(
+        !builder.tryToAlignOperand(
             inst->getDst(), builder.numEltPerGRF<Type_UB>())) // case 3 for dst
     {
       replaceDst(i, inst->getDst()->getType(), builder.getGRFAlign());
@@ -8757,7 +8757,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
   bool needFix = false;
   auto dst = inst->getDst();
   auto dstTy = dst->getType();
-  // FIXME: should call isOpndAligned() here, but seems later code processes
+  // FIXME: should call tryToAlignOperand() here, but seems later code processes
   // subRegOff separately..
   bool dstAligned =
       (dst->getRegAccess() == Direct) && isDclGRFAligned(dst->getTopDcl());
@@ -9130,8 +9130,8 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   uint32_t execsize = inst->getExecSize();
   const uint16_t GRFByteSize = builder.numEltPerGRF<Type_UB>();
   bool isHF2BF8 = (dst->getType() == Type_UB);
-  if (!builder.isOpndAligned(dst, GRFByteSize) || // case 2
-      (isHF2BF8 && dst->getHorzStride() != 1))    // case 3
+  if (!builder.tryToAlignOperand(dst, GRFByteSize) || // case 2
+      (isHF2BF8 && dst->getHorzStride() != 1))        // case 3
   {
     G4_Declare *dcl =
         builder.createTempVar(execsize, dst->getType(), builder.getGRFAlign());
@@ -9152,7 +9152,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   G4_SrcRegRegion* src0R =
     opnd0->isSrcRegRegion() ? opnd0->asSrcRegRegion() : nullptr;
   if (!src0R ||                                                 // case 1
-      !builder.isOpndAligned(opnd0, GRFByteSize) ||             // case 2
+      !builder.tryToAlignOperand(opnd0, GRFByteSize) ||         // case 2
       (isHF2BF8 && src0R->getRegion()->isContiguous(execsize))) // case 3
   {
     G4_Operand *newSrc0 =
@@ -9167,7 +9167,7 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
   G4_SrcRegRegion* src1R =
     opnd1->isSrcRegRegion() ? opnd1->asSrcRegRegion() : nullptr;
   if (src1R &&
-      (!builder.isOpndAligned(opnd1, GRFByteSize) ||               // case 2
+      (!builder.tryToAlignOperand(opnd1, GRFByteSize) ||           // case 2
        (isHF2BF8 && !src1R->getRegion()->isContiguous(execsize)))) // case 3
   {
     G4_Operand *newSrc1 =
@@ -9309,7 +9309,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
   // make the dst GRF-aligned before expanding to macro
   if (madwInst->getSaturate() || dst->getHorzStride() != 1 ||
       isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
-      !builder.isOpndAligned(dst, builder.getGRFSize())) {
+      !builder.tryToAlignOperand(dst, builder.getGRFSize())) {
     // add tmp mov instructions
     int dstLowGRFNum = (int)std::ceil(
         (float)(execSize * dst->getExecTypeSize()) / builder.getGRFSize());

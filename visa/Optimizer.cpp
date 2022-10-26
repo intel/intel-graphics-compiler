@@ -3971,9 +3971,9 @@ void Optimizer::cselPeepHoleOpt() {
             selSrc1->isImm() || selSrc0->getType() != Type_F ||
             selSrc1->getType() != Type_F || dstUse->getType() != Type_F ||
             // 3-src restriction
-            !builder.isOpndAligned(dstUse, 16) ||
-            !builder.isOpndAligned(selSrc0, 16) ||
-            !builder.isOpndAligned(selSrc1, 16)) {
+            !builder.tryToAlignOperand(dstUse, 16) ||
+            !builder.tryToAlignOperand(selSrc0, 16) ||
+            !builder.tryToAlignOperand(selSrc1, 16)) {
           canOpt = false;
           break;
         }

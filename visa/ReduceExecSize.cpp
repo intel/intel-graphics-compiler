@@ -70,7 +70,7 @@ bool HWConformity::fixDstAlignmentWithVectorImm(INST_LIST_ITER iter,
   G4_DstRegRegion *reg = inst->getDst();
   uint8_t execSize = inst->getExecSize();
 
-  bool dstAligned = builder.isOpndAligned(reg, 16);
+  bool dstAligned = builder.tryToAlignOperand(reg, 16);
 
   unsigned hsInBytes = reg->getHorzStride() * reg->getTypeSize();
   for (int k = 0, e = inst->getNumSrc(); k < e; ++k) {
@@ -415,7 +415,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
                 bool dstOwordAligned = false;
                 int dstAlign = Round_Up_Pow2(dstRegionSize);
                 dstOwordAligned =
-                    builder.isOpndAligned(dst, dstOffset, dstAlign);
+                    builder.tryToAlignOperand(dst, dstOffset, dstAlign);
                 if (!dstOwordAligned) {
                   // If we can align dst to its size, it must fit in one OWord
                   // if we can't, it may still be in OWord (e.g., for size < 16)
@@ -429,7 +429,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
                     G4_DstRegRegion *newDst =
                         insertMovAfter(iter, dst, dst->getType(), bb);
                     bool alignTmpDst =
-                        builder.isOpndAligned(newDst, dstOffset, 16);
+                        builder.tryToAlignOperand(newDst, dstOffset, 16);
                     MUST_BE_TRUE(alignTmpDst,
                                  "must be able to oword align tmp dst");
                     inst->setDest(newDst);
@@ -563,7 +563,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
             int dstAlign = Round_Up_Pow2(dstRegionSize);
 
             bool dstOwordAligned = false;
-            dstOwordAligned = builder.isOpndAligned(dst, dstAlign);
+            dstOwordAligned = builder.tryToAlignOperand(dst, dstAlign);
             if (dstOwordAligned) {
               // If we can align dst to its size, it must fit in one OWord
               goodOneGRFDst = true;

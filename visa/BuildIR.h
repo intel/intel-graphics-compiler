@@ -575,9 +575,9 @@ public:
   // These functions will change the underlying variable's alignment
   // (e.g., make a scalar variable GRF-aligned) when possible to satisfy
   // the alignment
-  bool isOpndAligned(G4_Operand *opnd, int alignByte) const;
-  bool isOpndAligned(G4_Operand *opnd, unsigned short &offset,
-                     int align_byte) const;
+  bool tryToAlignOperand(G4_Operand *opnd, int alignByte) const;
+  bool tryToAlignOperand(G4_Operand *opnd, unsigned short &offset,
+                     int alignByte) const;
 
   void setType(enum VISA_BUILD_TYPE _type) { type = _type; }
   bool getIsKernel() const { return type == VISA_BUILD_TYPE::KERNEL; }

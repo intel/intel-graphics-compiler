@@ -306,7 +306,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       // check alignment
       // if destination alignment is less than the datatype of packed value, we
       // cannot do the coalescing
-      if (!builder.isOpndAligned(newInst->getDst(), packedSize)) {
+      if (!builder.tryToAlignOperand(newInst->getDst(), packedSize)) {
         return false;
       }
       // set the source of packed instruction with immediate value equal

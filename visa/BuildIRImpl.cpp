@@ -161,9 +161,9 @@ void IR_Builder::bindInputDecl(
   }
 }
 
-// check if an operand is aligned to <align_byte>
-bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset,
-                               int align_byte) const {
+// check if an operand is aligned to <alignByte>
+bool IR_Builder::tryToAlignOperand(G4_Operand *opnd, unsigned short &offset,
+                               int alignByte) const {
   offset = 0;
   bool isAligned = true;
 
@@ -184,10 +184,10 @@ bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset,
       dcl = opnd->getBase()->asRegVar()->getDeclare();
       while (dcl && dcl->getAliasDeclare()) {
         if (dcl->getSubRegAlign() != Any &&
-            (((dcl->getSubRegAlign() * 2) >= align_byte &&
-              (dcl->getSubRegAlign() * 2) % align_byte != 0) ||
-             ((dcl->getSubRegAlign() * 2) < align_byte &&
-              align_byte % (dcl->getSubRegAlign() * 2) != 0))) {
+            (((dcl->getSubRegAlign() * 2) >= alignByte &&
+              (dcl->getSubRegAlign() * 2) % alignByte != 0) ||
+             ((dcl->getSubRegAlign() * 2) < alignByte &&
+              alignByte % (dcl->getSubRegAlign() * 2) != 0))) {
           isAligned = false;
           break;
         }
@@ -217,23 +217,23 @@ bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset,
       offset += opnd->asSrcRegRegion()->getRegOff() * numEltPerGRF<Type_UB>() +
                 opnd->asSrcRegRegion()->getSubRegOff() * type_size;
     }
-    if (offset % align_byte != 0) {
+    if (offset % alignByte != 0) {
       return false;
     }
     // Only alignment of the top dcl can be changed.
     if (dcl && dcl->getRegFile() == G4_GRF) {
       if (dcl->getSubRegAlign() == Any ||
-          ((dcl->getSubRegAlign() * 2) < align_byte &&
-           align_byte % (dcl->getSubRegAlign() * 2) == 0)) {
-        dcl->setSubRegAlign(G4_SubReg_Align(align_byte / 2));
-      } else if ((dcl->getSubRegAlign() * 2) < align_byte ||
-                 (dcl->getSubRegAlign() * 2) % align_byte != 0) {
+          ((dcl->getSubRegAlign() * 2) < alignByte &&
+           alignByte % (dcl->getSubRegAlign() * 2) == 0)) {
+        dcl->setSubRegAlign(G4_SubReg_Align(alignByte / 2));
+      } else if ((dcl->getSubRegAlign() * 2) < alignByte ||
+                 (dcl->getSubRegAlign() * 2) % alignByte != 0) {
         isAligned = false;
       }
     } else if (opnd->getKind() == G4_Operand::dstRegRegion &&
                // Only care about GRF or half-GRF alignment.
-               (align_byte == numEltPerGRF<Type_UB>() ||
-                align_byte == numEltPerGRF<Type_UB>() / 2) &&
+               (alignByte == numEltPerGRF<Type_UB>() ||
+                alignByte == numEltPerGRF<Type_UB>() / 2) &&
                dcl && (dcl->getRegFile() == G4_ADDRESS)) {
 
       // Get the single definition of the specified operand from the use
@@ -282,14 +282,14 @@ bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset,
               // TODO: We only perform alignment checking on
               // component wise and may need to consider checking
               // the accumulated result.
-              if (Factor % align_byte != 0)
+              if (Factor % alignByte != 0)
                 isAligned = false;
             } else if (Def && Def->opcode() == G4_and &&
                        Def->getSrc(1)->isImm()) {
               G4_Imm *Imm = Def->getSrc(1)->asImm();
               uint64_t Mask = uint64_t(Imm->getInt());
-              // align_byte could be 32 or 16 guarded previsouly.
-              uint64_t AlignMask = align_byte - 1;
+              // alignByte could be 32 or 16 guarded previsouly.
+              uint64_t AlignMask = alignByte - 1;
               if ((Mask & AlignMask) != 0)
                 isAligned = false;
             } else
@@ -306,11 +306,11 @@ bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset,
             // TODO: We only perform alignment checking on
             // component wise and may need to consider checking
             // the accumulated result.
-            if ((AliasOffset % align_byte) != 0 ||
+            if ((AliasOffset % alignByte) != 0 ||
                 (Dcl && Dcl->getSubRegAlign() != getGRFAlign() &&
                  Dcl->getSubRegAlign() != Sixteen_Word &&
                  Dcl->getSubRegAlign() != Eight_Word) ||
-                AE->getOffset() % align_byte != 0) {
+                AE->getOffset() % alignByte != 0) {
               isAligned = false;
             }
           } else
@@ -319,7 +319,7 @@ bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset,
             // TODO: We only perform alignment checking on
             // component wise and may need to consider checking
             // the accumulated result.
-            if (opnd->asDstRegRegion()->getAddrImm() % align_byte != 0)
+            if (opnd->asDstRegRegion()->getAddrImm() % alignByte != 0)
               isAligned = false;
           }
         }
@@ -327,7 +327,7 @@ bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset,
     } else if (dcl && dcl->getRegFile() == G4_FLAG) {
       // need to make flag even-word aligned if it's used in a setp with dword
       // source ToDo: should we fix input to use 16-bit value instead
-      if (align_byte == 4) {
+      if (alignByte == 4) {
         dcl->setSubRegAlign(Even_Word);
       }
     }
@@ -339,9 +339,9 @@ bool IR_Builder::isOpndAligned(G4_Operand *opnd, unsigned short &offset,
   return isAligned;
 }
 
-bool IR_Builder::isOpndAligned(G4_Operand *opnd, int alignByte) const {
+bool IR_Builder::tryToAlignOperand(G4_Operand *opnd, int alignByte) const {
   uint16_t offset = 0; // ignored
-  return isOpndAligned(opnd, offset, alignByte);
+  return tryToAlignOperand(opnd, offset, alignByte);
 }
 
 void IR_Builder::predefinedVarRegAssignment(uint8_t inputSize) {

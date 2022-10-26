@@ -235,7 +235,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList &uses,
 
     if (useInst->isSend()) {
       // send operand doesn't take subreg, so the operand has to be GRF-aligned
-      if (!builder.isOpndAligned(lvnDst, builder.numEltPerGRF<Type_UB>())) {
+      if (!builder.tryToAlignOperand(lvnDst, builder.numEltPerGRF<Type_UB>())) {
         canReplace = false;
         break;
       }

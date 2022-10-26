@@ -359,7 +359,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
   }
 
   bool noDstMove = exsize == 8 && !saturate && !predOpnd &&
-                   isOpndAligned(dstOpnd, getGRFSize()) &&
+                   tryToAlignOperand(dstOpnd, getGRFSize()) &&
                    dstOpnd->getRegAccess() == Direct &&
                    dstOpnd->getHorzStride() == 1 && instExecSize == exsize;
   if (noDstMove && (dstOpnd->getTopDcl() == src0Opnd->getTopDcl() ||
@@ -378,7 +378,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
   bool needsSrc0Move = src0RR->isScalar() ||
                        src0RR->getModifier() != Mod_src_undef ||
-                       !isOpndAligned(src0Opnd, getGRFSize());
+                       !tryToAlignOperand(src0Opnd, getGRFSize());
   if (needsSrc0Move) {
     if (opcode == ISA_DIV || opcode == ISA_DIVM) {
       G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(tdst_src0);
@@ -389,7 +389,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
   }
   bool needsSrc1Move = src1RR->isScalar() ||
                        src1RR->getModifier() != Mod_src_undef ||
-                       !isOpndAligned(src1Opnd, getGRFSize());
+                       !tryToAlignOperand(src1Opnd, getGRFSize());
   if (needsSrc1Move) {
     G4_DstRegRegion *t7_dst_src1_opnd = createDstRegRegion(tdst_src1);
     inst =
@@ -1585,7 +1585,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
   }
 
   bool noDstMove = exsize == 8 && !saturate && !predOpnd &&
-                   isOpndAligned(dstOpnd, getGRFSize()) &&
+                   tryToAlignOperand(dstOpnd, getGRFSize()) &&
                    dstOpnd->getRegAccess() == Direct &&
                    dstOpnd->getHorzStride() == 1 && instExecSize == exsize;
   if (noDstMove && dstOpnd->getTopDcl() == src0Opnd->getTopDcl()) {

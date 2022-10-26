@@ -7203,7 +7203,7 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const {
       } else {
         // If the destination offset is not GRF aligned, such as has sub
         // register offset, the src cannot be replaced with ACC
-        if (!builder.isOpndAligned(dst, getBuilder().numEltPerGRF<Type_UB>())) {
+        if (!builder.tryToAlignOperand(dst, getBuilder().numEltPerGRF<Type_UB>())) {
           return false;
         }
       }
