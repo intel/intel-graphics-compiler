@@ -278,6 +278,7 @@ void CheckInstrTypes::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_WaveClustered:
         case GenISAIntrinsic::GenISA_QuadPrefix:
         case GenISAIntrinsic::GenISA_simdShuffleDown:
+        case GenISAIntrinsic::GenISA_simdShuffleXor:
             g_InstrTypes->numWaveIntrinsics++;
             break;
         case GenISAIntrinsic::GenISA_DCL_inputVec:
