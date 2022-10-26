@@ -5170,6 +5170,162 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
     }
 }
 
+void EmitPass::emitSimdShuffleXor(llvm::Instruction* inst)
+{
+    CVariable* pData = m_currShader->GetSymbol(inst->getOperand(0));
+    CVariable* pXorValue = m_currShader->GetSymbol(inst->getOperand(1));
+
+    IGC_ASSERT_MESSAGE(pXorValue->IsImmediate(), "simdShuffleXor must have \
+        constant xorValue parameter");
+
+    // emit move sequence for 1 bit
+    // case 0:  1 2 3 4 5 6 7 8     => 2 1 4 3 6 5 8 7
+    // case 1:  1 2 3 4 5 6 7 8     => 3 4 1 2 7 8 5 6
+    // case 1:  1 2 3 4 5 6 7 8     => 3 4 1 2 7 8 5 6
+    // case 2:  1 2 3 4 5 6 7 8     => 5 6 7 8 1 2 3 4
+    // case 3:  1 2 .. 8 9 .. 15 16 => 9 10 .. 15 16 1 2 .. 7 8
+    auto emitShuffleXor1Bit = [&](CVariable* pData, uint xorBit) -> CVariable*
+    {
+        VISA_Type type = pData->GetType();
+        bool is64bitType = type == ISA_TYPE_Q || type == ISA_TYPE_UQ || type == ISA_TYPE_DF;
+
+        CVariable* pResult = m_currShader->GetNewVariable(
+            pData->GetNumberElement(),
+            pData->GetType(),
+            pData->GetAlign(),
+            false,
+            1,
+            "simdShuffleXorTmp");
+
+        if (xorBit == 0 || (xorBit == 1 && !is64bitType)) {
+            // Use strided access of max possible length
+            // For simd16 and xorBit == 0
+            //     mov (M1_NM, 8) simdShuffleXorTmp(0,0)<2> V0040(0,1)<2;1,0>                   /// $11
+            //     mov (M1_NM, 8) simdShuffleXorTmp(0,1)<2> V0040(0,0)<2;1,0>                   /// $12
+            // For 32-bit it will be just 2 movs, for 64-bit double type let the finalizer to split the vars:
+            // r10 is the source
+            // (W)     mov (16|M0)              r19.0<1>:ud   r10.2<4;2,1>:ud                  {$4.dst}             // $13
+            // (W)     mov (8|M0)               r18.0<1>:df   r19.0<1;1,0>:df                  {I@1}                // $13
+            // (W)     mov (8|M0)               r12.0<4>:ud   r18.0<2;1,0>:ud                  {Compacted,L@1}      // $13
+            // (W)     mov (8|M0)               r12.1<4>:ud   r18.1<2;1,0>:ud                                       // $13
+            // (W)     mov (16|M0)              r21.0<1>:ud   r10.0<4;2,1>:ud                                       // $14
+            // (W)     mov (8|M0)               r20.0<1>:df   r21.0<1;1,0>:df                  {I@1}                // $14
+            // (W)     mov (8|M0)               r12.2<4>:ud   r20.0<2;1,0>:ud                  {Compacted,L@1}      // $14
+            // (W)     mov (8|M0)               r12.3<4>:ud   r20.1<2;1,0>:ud                                       // $14
+
+            // For int32 and xorBit == 1
+            //     mov (M1_NM, 4) simdShuffleXorTmp(0,0)<4> V0040(0,2)<4;1,0>                   /// $11
+            //     mov (M1_NM, 4) simdShuffleXorTmp(0,2)<4> V0040(0,0)<4;1,0>                   /// $12
+            //     mov (M1_NM, 4) simdShuffleXorTmp(0,1)<4> V0040(0,3)<4;1,0>                   /// $13
+            //     mov (M1_NM, 4) simdShuffleXorTmp(0,3)<4> V0040(0,1)<4;1,0>                   /// $14
+            // for xorBit == 1 strided moves are beneficial only if the type is less that 64-bit
+            // (fewer moves will be generated)
+
+            // for xorBit > 1 is it always more beneficial to copy with subsequent chunks
+
+            auto stride = (2 * (xorBit + 1));
+            auto width = pData->GetNumberElement() / stride;
+            auto currentSimdMode = lanesToSIMDMode(width);
+
+            for (uint i = 0; i < xorBit + 1; i++) {
+                m_encoder->SetSimdSize(currentSimdMode);
+                m_encoder->SetSrcRegion(0, stride, 1, 0);
+                m_encoder->SetSrcSubReg(0, i + xorBit + 1);
+                m_encoder->SetDstRegion(stride);
+                m_encoder->SetDstSubReg(i);
+                m_encoder->SetNoMask();
+                m_encoder->Copy(pResult, pData);
+                m_encoder->Push();
+
+                m_encoder->SetSimdSize(currentSimdMode);
+                m_encoder->SetSrcRegion(0, stride, 1, 0);
+                m_encoder->SetSrcSubReg(0, i);
+                m_encoder->SetDstRegion(stride);
+                m_encoder->SetDstSubReg(i + xorBit + 1);
+                m_encoder->SetNoMask();
+                m_encoder->Copy(pResult, pData);
+                m_encoder->Push();
+            }
+        }
+        else if ((xorBit >= 1) && (xorBit <= 3)) {
+            // Use subsequent accesses to copy all subsequent chunks
+            // for xorBit == 2
+            //     mov (M1_NM, 4) simdShuffleXorTmp(0,0)<1> V0043(0,4)<1;1,0>                   /// $13
+            //     mov (M1_NM, 4) simdShuffleXorTmp(0,4)<1> V0043(0,0)<1;1,0>                   /// $14
+            //     mov (M1_NM, 4) simdShuffleXorTmp(1,0)<1> V0043(1,4)<1;1,0>                   /// $15
+            //     mov (M1_NM, 4) simdShuffleXorTmp(1,4)<1> V0043(1,0)<1;1,0>                   /// $16
+            // for 64-bit types the accesses will be 2x widened in finalizer
+            // (W)     mov (8|M0)               r12.0<1>:ud   r10.8<1;1,0>:ud                  {Compacted,$4.dst}   // $13
+            // (W)     mov (8|M0)               r12.8<1>:ud   r10.0<1;1,0>:ud                  {Compacted}          // $14
+            // (W)     mov (8|M0)               r13.0<1>:ud   r11.8<1;1,0>:ud                  {Compacted}          // $15
+            // (W)     mov (8|M0)               r13.8<1>:ud   r11.0<1;1,0>:ud                  {Compacted}          // $16
+            // The number of chunks is larger on the larger SIMD
+
+            auto width = static_cast<int>(std::pow(2, xorBit));
+            auto currentSimdMode = lanesToSIMDMode(width);
+
+            for (uint i = 0; i < pData->GetNumberElement(); i += width * 2) {
+                m_encoder->SetSimdSize(currentSimdMode);
+                m_encoder->SetSrcRegion(0, 1, 1, 0);
+                m_encoder->SetSrcSubReg(0, i + width);
+                m_encoder->SetDstRegion(1);
+                m_encoder->SetDstSubReg(i);
+                m_encoder->SetNoMask();
+                m_encoder->Copy(pResult, pData);
+                m_encoder->Push();
+
+                m_encoder->SetSimdSize(currentSimdMode);
+                m_encoder->SetSrcRegion(0, 1, 1, 0);
+                m_encoder->SetSrcSubReg(0, i);
+                m_encoder->SetDstRegion(1);
+                m_encoder->SetDstSubReg(i + width);
+                m_encoder->SetNoMask();
+                m_encoder->Copy(pResult, pData);
+                m_encoder->Push();
+            }
+        }
+        else {
+            IGC_ASSERT_MESSAGE(false, "simdShuffleXor is only implemented for 0 <= xor_value <= 15");
+        };
+
+        return pResult;
+    };
+
+    // just broadcast the value if the value is uniform
+    if (pData->IsUniform()) {
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, 0);
+        m_encoder->SetDstRegion(1);
+        m_encoder->SetDstSubReg(0);
+        m_encoder->Copy(m_destination, pData);
+        m_encoder->Push();
+        return;
+    }
+
+    // emit moves for every non-zero bit subsequently
+    const auto xorValue = pXorValue->GetImmediateValue();
+    CVariable* tempValue = pData;
+    for (uint i = 0; i < 5; i++)
+    {
+        if (((xorValue >> i) & 0x1) == 0x1)
+        {
+            tempValue = emitShuffleXor1Bit(tempValue, i);
+        }
+    }
+
+    // final copy, respecting the execution mask if in divergent CF
+    if (!m_currShader->InsideDivergentCF(inst))
+    {
+        m_encoder->SetNoMask();
+    }
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->SetSrcSubReg(0, 0);
+    m_encoder->SetDstRegion(1);
+    m_encoder->SetDstSubReg(0);
+    m_encoder->Copy(m_destination, tempValue);
+    m_encoder->Push();
+}
+
 static uint32_t getBlockMsgSize(uint32_t bytesRemaining, uint32_t maxSize)
 {
     uint32_t size = 0;
@@ -7229,6 +7385,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_simdShuffleDown:
         emitSimdShuffleDown(inst);
+        break;
+    case GenISAIntrinsic::GenISA_simdShuffleXor:
+        emitSimdShuffleXor(inst);
         break;
     case GenISAIntrinsic::GenISA_simdBlockRead:
         emitSimdBlockRead(inst);

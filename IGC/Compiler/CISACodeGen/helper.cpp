@@ -1411,6 +1411,7 @@ namespace IGC
         {
         case GenISAIntrinsic::GenISA_WaveShuffleIndex:
         case GenISAIntrinsic::GenISA_simdShuffleDown:
+        case GenISAIntrinsic::GenISA_simdShuffleXor:
         case GenISAIntrinsic::GenISA_simdBlockRead:
         case GenISAIntrinsic::GenISA_simdBlockWrite:
         case GenISAIntrinsic::GenISA_simdMediaBlockRead:
