@@ -781,11 +781,13 @@ public:
             ++RI;
           }
           // Advance LHS to match RHS.
-          for (; LI != LE && LI->first < RI->first; ++LI)
-            ;
+          if (RI != RE)
+              for (; LI != LE && LI->first < RI->first; ++LI)
+                  ;
           // Advance RHS to match LHS.
-          for (; RI != RE && RI->first < LI->first; ++RI)
-            ;
+          if (LI != LE)
+              for (; RI != RE && RI->first < LI->first; ++RI)
+                ;
         }
       }
     }
