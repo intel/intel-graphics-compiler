@@ -178,7 +178,6 @@ DECLARE_OPCODE(GenISA_RTDualBlendSource, GenISAIntrinsic, llvm_dualRTWrite, fals
 DECLARE_OPCODE(GenISA_simdLaneId, GenISAIntrinsic, llvm_simdLaneId, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_simdSize, GenISAIntrinsic, llvm_simdSize, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_simdShuffleDown, GenISAIntrinsic, llvm_simdShuffleDown, false, false, false, false, false, false, false)
-DECLARE_OPCODE(GenISA_simdShuffleXor, GenISAIntrinsic, llvm_simdShuffleXor, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_simdBlockRead, GenISAIntrinsic, llvm_simdBlockRead, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_simdBlockReadBindless, GenISAIntrinsic, llvm_simdBlockReadBindless, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_simdBlockWrite, GenISAIntrinsic, llvm_simdBlockWrite, false, false, false, false, false, false, false)
