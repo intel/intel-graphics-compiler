@@ -74,6 +74,7 @@ namespace IGC
         bool isIdentityMatrix(llvm::ExtractElementInst& I);
         void visitAnd(llvm::BinaryOperator& I);
         void visitXor(llvm::Instruction& XorInstr);
+        void visitShuffleIndex(llvm::CallInst* I);
         //
         // IEEE Floating point arithmetic is not associative.  Any pattern
         // match that changes the order or paramters is unsafe.
