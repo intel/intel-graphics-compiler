@@ -801,8 +801,6 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
         return false;
     };
 
-    auto *CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
     EquivalenceClasses<Instruction *> ECs;
     for (Instruction &I : *BB) {
         for (Value *O : I.operands()) {
@@ -823,9 +821,8 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
         for (auto MI = ECs.member_begin(I), ME = ECs.member_end(); MI != ME;
              ++MI) {
             // Skip the slicing if there is non-MAD instructions.
-            if (!isa<PHINode>(*MI) && !IsDMAD(*MI) &&
-                !(CGC->platform.isProductChildOf(IGFX_PVC) && IsIMAD(*MI)))
-              return false;
+            if (!isa<PHINode>(*MI) && !IsDMAD(*MI) && !IsIMAD(*MI))
+                return false;
         }
         Leaders.insert(std::make_pair(Leader, nullptr));
     }
