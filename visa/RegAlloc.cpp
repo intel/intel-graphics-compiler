@@ -3513,6 +3513,18 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
     sp->replaceIntrinsics();
   }
   if (builder.getOption(vISA_VerifyRA)) {
+    // Mark local variables to improve the liveness analysis on partially
+    // written local variables.
+    // For example, for some payload decls, the region is not completely
+    // written in the setup. That may cause gen is not blocked by the setup
+    // inst, and the verifier might wrongly report a conflict assignment.
+    //
+    //   .declare M9 (2547)  rf=r size=32 type=ud align=16 words
+    //
+    //   (W) mov (1)              M9(0,2)<1>:ud  0xe0:uw // $211:
+    //   (W) send (8)             V0173(0,0)<1>:d M9(0,0) 0x2184200:ud
+    //       //$213:; unaligned oword block read, dstLen=1, src0Len=1
+    gra.markGraphBlockLocalVars();
     LivenessAnalysis liveAnalysis(gra, G4_GRF | G4_INPUT, true);
     liveAnalysis.computeLiveness();
     // Mark scope so that verifier can leverage the scope information to
