@@ -99,7 +99,7 @@ public:
         iterNo(iterationNo), rpe(r) {
     unsigned int numGRFs = k.getNumRegTotal();
     auto scale = [=](unsigned threshold) -> unsigned {
-      float ratio = 1.0f - (128 - threshold) / 128.0f;
+      float ratio = 1.0f - (128.0f - threshold) / 128.0f;
       return static_cast<unsigned>(numGRFs * ratio);
     };
     fillWindowSizeThreshold = scale(cFillWindowThreshold128GRF);
