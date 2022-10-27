@@ -78,7 +78,8 @@ public:
   }
   VISA_BUILDER_API void SetOption(vISAOptions option,
                                   const char *val) override {
-    m_options.setOption(option, val);
+    const char* strval = ((val && val[0] != 0) ? val : nullptr);
+    m_options.setOption(option, strval);
   }
 
   // Used for inline asm code generation

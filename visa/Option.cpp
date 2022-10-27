@@ -565,14 +565,16 @@ std::string Options::getFullArgString() const {
         break;
       case ET_INT32: {
         const char *argName = m_vISAOptions.getArgStr(o);
-        if (argName && argName[0] != 0) {
+        if (argName && argName[0] != 0 &&
+          m_vISAOptions.getUint32(o) != m_vISAOptions.getDefaultUint32(o)) {
           args << argName << " " << m_vISAOptions.getUint32(o) << " ";
         }
         break;
       }
       case ET_INT64: {
         const char *argName = m_vISAOptions.getArgStr(o);
-        if (argName && argName[0] != 0) {
+        if (argName && argName[0] != 0 &&
+          m_vISAOptions.getUint64(o) != m_vISAOptions.getDefaultUint64(o)) {
           args << argName << " " << m_vISAOptions.getUint64(o) << " ";
         }
         break;
@@ -584,13 +586,15 @@ std::string Options::getFullArgString() const {
         hi32 = (uint32_t)(val >> 32);
 
         const char *argName = m_vISAOptions.getArgStr(o);
-        if (argName && argName[0] != 0) {
+        if (argName && argName[0] != 0 &&
+          val != m_vISAOptions.getDefaultUint64(o)) {
           args << argName << " " << hi32 << " " << lo32 << " ";
         }
       } break;
       case ET_CSTR: {
         const char *argName = m_vISAOptions.getArgStr(o);
-        if (!argName || argName[0] == 0) {
+        if (!argName || argName[0] == 0 ||
+          m_vISAOptions.getCstr(o) == m_vISAOptions.getDefaultCstr(o)) {
           break;
         }
         args << argName << " ";
