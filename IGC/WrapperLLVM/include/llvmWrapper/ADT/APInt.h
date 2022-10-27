@@ -18,10 +18,16 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR >= 14
 using SignedDivisionByConstantInfo = llvm::SignedDivisionByConstantInfo;
-using UnsignedDivisonByConstantInfo = llvm::UnsignedDivisonByConstantInfo;
+using UnsignedDivisionByConstantInfo =
+#if LLVM_VERSION_MAJOR == 14
+    // Account for a typo
+    llvm::UnsignedDivisonByConstantInfo;
+#else // LLVM_VERSION_MAJOR == 14
+    llvm::UnsignedDivisionByConstantInfo;
+#endif
 #else
 using SignedDivisionByConstantInfo = llvm::APInt::ms;
-using UnsignedDivisonByConstantInfo = llvm::APInt::mu;
+using UnsignedDivisionByConstantInfo = llvm::APInt::mu;
 #endif
 
 inline SignedDivisionByConstantInfo getAPIntMagic(const llvm::APInt &value) {
@@ -32,15 +38,15 @@ inline SignedDivisionByConstantInfo getAPIntMagic(const llvm::APInt &value) {
 #endif
 }
 
-inline UnsignedDivisonByConstantInfo getAPIntMagicUnsigned(const llvm::APInt &value, const unsigned LeadingZeros = 0) {
+inline UnsignedDivisionByConstantInfo getAPIntMagicUnsigned(const llvm::APInt &value, const unsigned LeadingZeros = 0) {
 #if LLVM_VERSION_MAJOR >= 14
-    return llvm::UnsignedDivisonByConstantInfo::get(value, LeadingZeros);
+    return UnsignedDivisionByConstantInfo::get(value, LeadingZeros);
 #else
     return value.magicu(LeadingZeros);
 #endif
 }
 
-inline bool IsAddition(const UnsignedDivisonByConstantInfo &mu) {
+inline bool IsAddition(const UnsignedDivisionByConstantInfo &mu) {
 #if LLVM_VERSION_MAJOR >= 14
     return mu.IsAdd;
 #else
@@ -48,7 +54,7 @@ inline bool IsAddition(const UnsignedDivisonByConstantInfo &mu) {
 #endif
 }
 
-inline unsigned ShiftAmount(const UnsignedDivisonByConstantInfo &mu) {
+inline unsigned ShiftAmount(const UnsignedDivisionByConstantInfo &mu) {
 #if LLVM_VERSION_MAJOR >= 14
     return mu.ShiftAmount;
 #else
@@ -64,7 +70,7 @@ inline unsigned ShiftAmount(const SignedDivisionByConstantInfo &ms) {
 #endif
 }
 
-inline llvm::APInt MagicNumber(const UnsignedDivisonByConstantInfo &mu) {
+inline llvm::APInt MagicNumber(const UnsignedDivisionByConstantInfo &mu) {
 #if LLVM_VERSION_MAJOR >= 14
     return mu.Magic;
 #else

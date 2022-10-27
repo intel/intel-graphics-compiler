@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/Analysis/CFG.h"
-#include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/Constants.h"
@@ -38,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/Local.h"
 
+#include "llvmWrapper/Analysis/InstructionSimplify.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 
@@ -1504,7 +1504,7 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
     Value *Simplified = nullptr;
     if (BI.Type != BaleInfo::ABSMOD) {
       const DataLayout &DL = Inst->getModule()->getDataLayout();
-      Simplified = SimplifyInstruction(Inst, SimplifyQuery(DL));
+      Simplified = IGCLLVM::simplifyInstruction(Inst, SimplifyQuery(DL));
     } else {
       // SimplifyInstruction does not work on abs, so we roll our own for now.
       if (auto C = dyn_cast<Constant>(Inst->getOperand(0))) {

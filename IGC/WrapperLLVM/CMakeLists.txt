@@ -19,6 +19,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/AliasAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/CallGraph.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/InlineCost.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/InstructionSimplify.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/MemoryLocation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/TargetLibraryInfo.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Bitcode/BitcodeWriter.h"

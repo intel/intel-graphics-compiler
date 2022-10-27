@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 
 #include "llvmWrapper/Analysis/CallGraph.h"
+#include "llvmWrapper/Analysis/InstructionSimplify.h"
 #include "llvmWrapper/IR/CallSite.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -24,7 +25,6 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 
-#include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/Function.h>
@@ -464,7 +464,7 @@ bool GenXSimplify::runOnFunction(Function &F) {
       }
 
       // Do general LLVM simplification
-      if (Value *V = SimplifyInstruction(Inst, DL)) {
+      if (Value *V = IGCLLVM::simplifyInstruction(Inst, DL)) {
         Changed |= replaceWithNewValue(*Inst, *V);
         continue;
       }

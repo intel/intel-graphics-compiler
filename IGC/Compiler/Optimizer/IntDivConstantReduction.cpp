@@ -522,7 +522,7 @@ struct IntDivConstantReduction : public FunctionPass
     {
         //////////////////////////////////////////////////
         // C.f. Hacker's Delight 10-8
-        IGCLLVM::UnsignedDivisonByConstantInfo appxRecip = IGCLLVM::getAPIntMagicUnsigned(divisor);
+        IGCLLVM::UnsignedDivisionByConstantInfo appxRecip = IGCLLVM::getAPIntMagicUnsigned(divisor);
         //
         const int bitSize = dividend->getType()->getIntegerBitWidth();
         //

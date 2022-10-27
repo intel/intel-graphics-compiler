@@ -9,10 +9,10 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include <llvm/ADT/STLExtras.h>
+#include <llvmWrapper/Analysis/InstructionSimplify.h>
 #include <llvmWrapper/Analysis/MemoryLocation.h>
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/AliasAnalysis.h>
-#include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Analysis/ValueTracking.h>
@@ -2000,12 +2000,12 @@ SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
 
         const GEPOperator* GEPOp = dyn_cast<GEPOperator>(Op);
         if (!GEPOp) {
-            // If it's not a GEP, hand it off to SimplifyInstruction to see if it
+            // If it's not a GEP, hand it off to simplifyInstruction to see if it
             // can come up with something. This matches what GetUnderlyingObject does.
             if (const Instruction * I = dyn_cast<Instruction>(Ptr))
                 // TODO: Get a DominatorTree and use it here.
                 if (const Value * Simplified =
-                    SimplifyInstruction(const_cast<Instruction*>(I), *DL)) {
+                    IGCLLVM::simplifyInstruction(const_cast<Instruction*>(I), *DL)) {
                     Ptr = Simplified;
                     continue;
                 }

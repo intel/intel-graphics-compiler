@@ -3014,7 +3014,7 @@ static void decomposeUDivNotPow2(BinaryOperator &UDivOp) {
                 : cast<ConstantInt>(Divisor))
           ->getValue();
 
-  IGCLLVM::UnsignedDivisonByConstantInfo MagicStruct = IGCLLVM::getAPIntMagicUnsigned(DivisorVal);
+  IGCLLVM::UnsignedDivisionByConstantInfo MagicStruct = IGCLLVM::getAPIntMagicUnsigned(DivisorVal);
   const int ElementBitWidth =
       Divisor->getType()->getScalarType()->getIntegerBitWidth();
   // Even divisors, can pre-shift the dividend to avoid
