@@ -129,8 +129,9 @@ class HWConformity {
   bool fixAcc(INST_LIST_ITER i, G4_BB *bb);
   void fixDstHstride(INST_LIST_ITER i, int extypesize);
   void fixMADInst(G4_BB *bb);
-  void fixSrcRegion(INST_LIST_ITER i, G4_BB *bb);
-  void conformBB(G4_BB *bb);
+  void fixSrcRegion(G4_INST *inst);
+  void fixOddAlignSrc1Region(INST_LIST_ITER i, G4_BB *bb);
+    void conformBB(G4_BB * bb);
   void fixSADA2Inst(G4_BB *bb);
   void fixMixedHFInst(G4_BB *bb);
   void fixSendInst(G4_BB *bb);
