@@ -46,5 +46,8 @@ def intel_disable_zebin : ClFlag<"intel-disable-zebin">,
   Alias<disable_zebin_ze>,
   HelpText<"Alias for -cl-disable-zebin">;
 
+defm kernel_debug_enable : CommonFlag<"kernel-debug-enable">,
+  HelpText<"Enable breakpoint bit on instruction at start of kernel">;
+
 }
 // }} Common API options

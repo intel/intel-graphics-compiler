@@ -19,9 +19,6 @@ def fp_contract : PlainJoined<"ffp-contract=">,
   HelpText<"Form fused FP ops: fast (everywhere) | on (nowhere except insertion fma) | off (never fuse)">,
   Values<"fast,on,off">;
 
-def : ZeFlag<"kernel-debug-enable">,
-  Alias<emit_debug>, HelpText<"Alias for -g">;
-
 def vc_optimize : PlainSeparate<"optimize">,
   HelpText<"Set optimization level to either 'none' or 'full'">,
   MetaVarName<"<level>">;
