@@ -125,14 +125,14 @@ namespace {
         bool valueNotStored(Value* V);
 
         alignment_t getAlignment(LoadInst* LD) const {
-            auto Align = LD->getAlignment();
+            auto Align = IGCLLVM::getAlignmentValue(LD);
             if (Align == 0)
                 Align = DL->getABITypeAlignment(LD->getType());
             return Align;
         }
 
         alignment_t getAlignment(StoreInst* ST) const {
-            auto Align = ST->getAlignment();
+            auto Align = IGCLLVM::getAlignmentValue(ST);
             if (Align == 0)
                 Align = DL->getABITypeAlignment(ST->getType());
             return Align;

@@ -307,7 +307,7 @@ namespace IGC
             cast<PointerType>(Ptr->getType())->getPointerElementType(),
             Ptr, "", false, Orig);
         LI->setVolatile(Orig->isVolatile());
-        LI->setAlignment(IGCLLVM::getCorrectAlign(Orig->getAlignment()));
+        LI->setAlignment(IGCLLVM::getAlign(*Orig));
         if (LI->isAtomic())
         {
             LI->setAtomic(Orig->getOrdering(), Orig->getSyncScopeID());
@@ -327,7 +327,7 @@ namespace IGC
     {
         llvm::StoreInst* SI = new llvm::StoreInst(Val, Ptr, Orig);
         SI->setVolatile(Orig->isVolatile());
-        SI->setAlignment(IGCLLVM::getCorrectAlign(Orig->getAlignment()));
+        SI->setAlignment(IGCLLVM::getAlign(*Orig));
         if (SI->isAtomic())
         {
             SI->setAtomic(Orig->getOrdering(), Orig->getSyncScopeID());
@@ -360,7 +360,7 @@ namespace IGC
                 GenISAIntrinsic::GenISA_ldraw_indexed,
             tys);
 
-        auto alignment = inst->getAlignment();
+        auto alignment = IGCLLVM::getAlignmentValue(inst);
         if (alignment == 0)
             alignment = DL.getABITypeAlignment(inst->getType());
 
@@ -407,7 +407,7 @@ namespace IGC
             func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storeraw_indexed, types);
         }
         IRBuilder<> builder(inst);
-        auto alignment = inst->getAlignment();
+        auto alignment = IGCLLVM::getAlignmentValue(inst);
         if (alignment == 0)
             alignment = DL.getABITypeAlignment(storeVal->getType());
         Value* attr[] =

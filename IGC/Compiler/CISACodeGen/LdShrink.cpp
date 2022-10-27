@@ -141,7 +141,7 @@ bool LdShrink::runOnFunction(Function& F) {
                 ScalarPtr = Builder.CreateInBoundsGEP(ScalarPtr, Builder.getInt32(Offset));
 
             alignment_t alignment
-                = (alignment_t)MinAlign(LI->getAlignment(),
+                = (alignment_t)MinAlign(IGCLLVM::getAlignmentValue(LI),
                     DL->getTypeStoreSize(ScalarTy) * Offset);
 
             LoadInst* NewLoad = Builder.CreateAlignedLoad(ScalarPtr, IGCLLVM::getAlign(alignment));

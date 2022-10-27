@@ -253,7 +253,7 @@ namespace {
             SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> & AccessIntrs,
             unsigned& NumElts)
         {
-            if (inst->getAlignment() < 4 && !WI->isUniform(inst))
+            if (IGCLLVM::getAlignmentValue(inst) < 4 && !WI->isUniform(inst))
             {
                 llvm::Type* dataType = isa<LoadInst>(inst) ? inst->getType() : inst->getOperand(0)->getType();
                 unsigned scalarTypeSizeInBytes = unsigned(DL->getTypeSizeInBits(dataType->getScalarType()) / 8);
@@ -285,7 +285,7 @@ namespace {
                 for (auto rit = AccessIntrs.rbegin(),
                     rie = AccessIntrs.rend(); rit != rie; ++rit)
                 {
-                    if (std::get<0>(*rit)->getAlignment() >= 4)
+                    if (IGCLLVM::getAlign(*std::get<0>(*rit)) >= 4)
                         return false;
                 }
 
@@ -1231,7 +1231,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
         PointerType::get(NewLoadType, LeadingLoad->getPointerAddressSpace());
     Value* NewPointer = Builder.CreateBitCast(Ptr, NewPointerType);
     LoadInst* NewLoad =
-        Builder.CreateAlignedLoad(NewPointer, IGCLLVM::getAlign(FirstLoad->getAlignment()));
+        Builder.CreateAlignedLoad(NewPointer, IGCLLVM::getAlign(*FirstLoad));
     NewLoad->setDebugLoc(LeadingLoad->getDebugLoc());
 
     // Unpack the load value to their uses. For original vector loads, extracting
@@ -1591,7 +1591,7 @@ bool MemOpt::mergeStore(StoreInst* LeadingStore,
         Builder.CreateBitCast(FirstStore->getPointerOperand(), NewPointerType);
     StoreInst* NewStore =
         Builder.CreateAlignedStore(NewStoreVal, NewPointer,
-            IGCLLVM::getAlign(FirstStore->getAlignment()));
+            IGCLLVM::getAlign(*FirstStore));
     NewStore->setDebugLoc(TailingStore->getDebugLoc());
 
     // Replace the list to be optimized with the new store.

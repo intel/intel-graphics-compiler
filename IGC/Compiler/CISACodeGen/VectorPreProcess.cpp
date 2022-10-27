@@ -115,7 +115,7 @@ namespace
         }
         alignment_t getAlignment() const
         {
-            return isa<LoadInst>(m_inst) ? getLoad()->getAlignment() : getLdRaw()->getAlignment();
+            return isa<LoadInst>(m_inst) ? IGCLLVM::getAlignmentValue(getLoad()) : getLdRaw()->getAlignment();
         }
         void setAlignment(alignment_t alignment)
         {
@@ -220,7 +220,7 @@ namespace
         }
         alignment_t getAlignment() const
         {
-            return isa<StoreInst>(m_inst) ? getStore()->getAlignment() : getStoreRaw()->getAlignment();
+            return (isa<StoreInst>(m_inst) ? IGCLLVM::getAlignmentValue(getStore()) : getStoreRaw()->getAlignment());
         }
         void setAlignment(alignment_t alignment)
         {
@@ -596,9 +596,9 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
         if (WI.isUniform(LI->getPointerOperand()) &&
             (m_CGCtx->platform.LSCEnabled() || IGC_GET_FLAG_VALUE(UniformMemOpt4OW)))
         {
-            if (LI->getAlignment() >= 8)
+            if (IGCLLVM::getAlignmentValue(LI) >= 8)
                 bytes = (uint32_t)VPConst::LSC_D64_UNIFORM_SPLIT_SIZE;
-            else if (LI->getAlignment() >= 4)
+            else if (IGCLLVM::getAlignmentValue(LI) >= 4)
                 bytes = (uint32_t)VPConst::LSC_D32_UNIFORM_SPLIT_SIZE;
         }
     }
@@ -609,9 +609,9 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
         Value* Data = SI->getValueOperand();
         if (m_CGCtx->platform.LSCEnabled() && WI.isUniform(Addr) && WI.isUniform(Data))
         {
-            if (SI->getAlignment() >= 8)
+            if (IGCLLVM::getAlignmentValue(SI) >= 8)
                 bytes = (uint32_t)VPConst::LSC_D64_UNIFORM_SPLIT_SIZE;
-            else if (SI->getAlignment() >= 4)
+            else if (IGCLLVM::getAlignmentValue(SI) >= 4)
                 bytes = (uint32_t)VPConst::LSC_D32_UNIFORM_SPLIT_SIZE;
         }
     }
@@ -644,8 +644,8 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
     }
     if ((isa<LoadInst>(I) || isa<StoreInst>(I)) && WI.isUniform(I))
     {
-        auto Alignment = isa<LoadInst>(I) ? cast<LoadInst>(I)->getAlignment()
-                                          : cast<StoreInst>(I)->getAlignment();
+        auto Alignment = isa<LoadInst>(I) ? IGCLLVM::getAlignmentValue(cast<LoadInst>(I))
+                                          : IGCLLVM::getAlignmentValue(cast<StoreInst>(I));
         if (Alignment >= 16) {
             Type* ETy = (isa<LoadInst>(I)) ?
                 cast<VectorType>(I->getType())->getElementType() :
@@ -1706,7 +1706,7 @@ bool VectorPreProcess::processScalarLoadStore(Function& F)
             Value* ptr = inst->getOperand(1);
             Type* newPtrType = PointerType::get(newVecTy, ptr->getType()->getPointerAddressSpace());
             Value* newPtr = Builder.CreateBitCast(ptr, newPtrType);
-            Builder.CreateAlignedStore(val, newPtr, IGCLLVM::getAlign(cast<StoreInst>(inst)->getAlignment()),
+            Builder.CreateAlignedStore(val, newPtr, IGCLLVM::getAlign(cast<StoreInst>(*inst)),
                 cast<StoreInst>(inst)->isVolatile());
             list_delete.push_back(inst);
         }
@@ -1724,7 +1724,7 @@ bool VectorPreProcess::processScalarLoadStore(Function& F)
             Value* ptr = inst->getOperand(0);
             Type* newPtrType = PointerType::get(newVecTy, ptr->getType()->getPointerAddressSpace());
             Value* newPtr = Builder.CreateBitCast(ptr, newPtrType);
-            Value* newVecVal=  Builder.CreateAlignedLoad(newVecTy, newPtr, IGCLLVM::getAlign(cast<LoadInst>(inst)->getAlignment()),
+            Value* newVecVal=  Builder.CreateAlignedLoad(newVecTy, newPtr, IGCLLVM::getAlign(cast<LoadInst>(*inst)),
                 cast<LoadInst>(inst)->isVolatile());
             Value* newVal = Builder.CreateBitCast(newVecVal, Ty);
             inst->replaceAllUsesWith(newVal);

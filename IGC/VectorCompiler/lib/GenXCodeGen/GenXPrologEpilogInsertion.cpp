@@ -643,11 +643,12 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
   // Sort to have allocas alignment in decreasing order.
   std::sort(Allocas.begin(), Allocas.end(),
             [](AllocaInst *LHS, AllocaInst *RHS) {
-              return LHS->getAlignment() > RHS->getAlignment();
+              return IGCLLVM::getAlignmentValue(LHS) >
+                  IGCLLVM::getAlignmentValue(RHS);
             });
 
   // SP is oword bytes aligned at this point.
-  unsigned long long LargestAlignment = Allocas.front()->getAlignment();
+  unsigned long long LargestAlignment = IGCLLVM::getAlignmentValue(Allocas.front());
   if (LargestAlignment > OWordBytes) {
     createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
                          Instruction::Add, LargestAlignment - 1, false);
@@ -660,7 +661,9 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
                  std::back_inserter(NextAlignment), [](AllocaInst *AI) {
                    // visa::BytesPerSVMPtr is a minimal possible alignment that
                    // suits all data types.
-                   return std::max(AI->getAlignment(), visa::BytesPerSVMPtr);
+                   return std::max(
+                       IGCLLVM::getAlignmentValue(AI),
+                       visa::BytesPerSVMPtr);
                  });
   // After all private memory allocations SP must be oword aligned so as to keep
   // SP alignment statically known.

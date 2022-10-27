@@ -220,7 +220,7 @@ alignment_t AlignmentAnalysis::visitInstruction(Instruction& I)
 alignment_t AlignmentAnalysis::visitAllocaInst(AllocaInst& I)
 {
     // Return the alignment of the alloca, which ought to be correct
-    auto newAlign = (alignment_t)I.getAlignment();
+    auto newAlign = (alignment_t)IGCLLVM::getAlignmentValue(&I);
 
     // If the alloca uses the default alignment, pull it from the datalayout
     if (!newAlign)
@@ -286,14 +286,14 @@ void AlignmentAnalysis::SetInstAlignment(LoadInst& I)
 {
     // Set the align attribute of the load according to the detected
     // alignment of its operand.
-    I.setAlignment(IGCLLVM::getCorrectAlign(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand()))));
+    I.setAlignment(IGCLLVM::getCorrectAlign(iSTD::Max(IGCLLVM::getAlignmentValue(&I), getAlignValue(I.getPointerOperand()))));
 }
 
 void AlignmentAnalysis::SetInstAlignment(StoreInst& I)
 {
     // Set the align attribute of the store according to the detected
     // alignment of its operand.
-    I.setAlignment(IGCLLVM::getCorrectAlign(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand()))));
+    I.setAlignment(IGCLLVM::getCorrectAlign(iSTD::Max(IGCLLVM::getAlignmentValue(&I), getAlignValue(I.getPointerOperand()))));
 }
 
 alignment_t AlignmentAnalysis::visitAdd(BinaryOperator& I)

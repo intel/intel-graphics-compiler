@@ -11,7 +11,8 @@ SPDX-License-Identifier: MIT
 
 #include <cstdint>
 #include <type_traits>
-#include "llvm/IR/Value.h"
+#include "llvm/IR/GlobalObject.h"
+#include "llvm/IR/Instruction.h"
 #include "llvm/Config/llvm-config.h"
 #if LLVM_VERSION_MAJOR >= 10
 #include "llvm/Support/Alignment.h"
@@ -27,10 +28,12 @@ typedef unsigned alignment_t;
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR < 10
     inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
+    inline unsigned getAlignmentValue(unsigned Val) { return Val; }
     inline unsigned getAlign(uint64_t Val) { return (unsigned)Val; }
 #else
-    inline uint64_t getAlignmentValue(llvm::Align A) { return A.value(); }
-    inline uint64_t getAlignmentValue(uint64_t Val) { return Val; }
+    inline alignment_t getAlignmentValue(llvm::Align A) { return A.value(); }
+    inline alignment_t getAlignmentValue(llvm::MaybeAlign A) { return A ? A->value() : 0; }
+    inline alignment_t getAlignmentValue(uint64_t Val) { return Val; }
     inline llvm::Align getAlign(uint64_t Val) { return llvm::Align{Val}; }
 #endif
 
@@ -75,7 +78,7 @@ namespace IGCLLVM {
     // it can be overcome by using auto or direct usage in another LLVM
     // interface.
     template <typename TValue,
-              std::enable_if_t<std::is_base_of_v<llvm::Value, TValue>, int> = 0>
+              std::enable_if_t<std::is_base_of_v<llvm::GlobalObject, TValue>, int> = 0>
     Align getAlign(const TValue &Val)
     {
 #if LLVM_VERSION_MAJOR <= 9
@@ -85,6 +88,29 @@ namespace IGCLLVM {
 #else
         return llvm::Align(Val.getAlignment());
 #endif
+    }
+
+    template <typename TValue,
+        std::enable_if_t<std::is_base_of_v<llvm::Instruction, TValue>, int> = 0>
+    Align getAlign(const TValue& Val)
+    {
+#if LLVM_VERSION_MAJOR <= 10
+        // In LLVM 10, there's still no relying on getAlign method, as some
+        // instruction classes like AllocaInst haven't had that implemented
+        // as of then.
+        return Align{ Val.getAlignment() };
+#else
+        return Val.getAlign();
+#endif
+    }
+
+    // With multiple LLVM versions, we need a general helper for extracting the
+    // integer value.
+    template <typename TValue,
+        std::enable_if_t<std::is_base_of_v<llvm::Instruction, TValue>, int> = 0>
+    inline alignment_t getAlignmentValue(const TValue* Val)
+    {
+        return getAlignmentValue(getAlign(*Val));
     }
 
     template <typename TValue,

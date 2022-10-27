@@ -124,7 +124,7 @@ namespace {
         void setExpandedValues(Value* V, Value* Lo, Value* Hi);
 
         alignment_t getAlignment(LoadInst* LD) const {
-            auto Align = LD->getAlignment();
+            auto Align = IGCLLVM::getAlignmentValue(LD);
             if (Align == 0)
                 Align = DL->getABITypeAlignment(LD->getType());
             return Align;
@@ -156,7 +156,7 @@ namespace {
         }
 
         void dupMemoryAttribute(StoreInst* NewST, StoreInst* RefST, unsigned Off) const {
-            auto alignment = RefST->getAlignment();
+            auto alignment = IGCLLVM::getAlignmentValue(RefST);
 
             NewST->setVolatile(RefST->isVolatile());
             NewST->setAlignment(IGCLLVM::getAlign(MinAlign(alignment, Off)));

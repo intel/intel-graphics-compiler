@@ -707,7 +707,7 @@ void StatelessToStateful::visitLoadInst(LoadInst& I)
         Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", &I);
         pPtrToInt->setDebugLoc(DL);
 
-        Instruction* pLoad = new LoadInst(pPtrToInt->getType()->getPointerElementType(), pPtrToInt, "", I.isVolatile(), IGCLLVM::getCorrectAlign(I.getAlignment()), I.getOrdering(), I.getSyncScopeID(), &I);
+        Instruction* pLoad = new LoadInst(pPtrToInt->getType()->getPointerElementType(), pPtrToInt, "", I.isVolatile(), IGCLLVM::getAlign(I), I.getOrdering(), I.getSyncScopeID(), &I);
         pLoad->setDebugLoc(DL);
 
         PointerType* ptrType = dyn_cast<PointerType>(ptr->getType());
@@ -767,7 +767,7 @@ void StatelessToStateful::visitStoreInst(StoreInst& I)
             Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", &I);
             pPtrToInt->setDebugLoc(DL);
 
-            Instruction* pStore = new StoreInst(dataVal, pPtrToInt, I.isVolatile(), IGCLLVM::getCorrectAlign(I.getAlignment()), I.getOrdering(), I.getSyncScopeID(), &I);
+            Instruction* pStore = new StoreInst(dataVal, pPtrToInt, I.isVolatile(), IGCLLVM::getAlign(I), I.getOrdering(), I.getSyncScopeID(), &I);
             pStore->setDebugLoc(DL);
 
             I.eraseFromParent();

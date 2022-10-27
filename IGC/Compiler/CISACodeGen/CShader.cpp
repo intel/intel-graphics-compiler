@@ -1405,7 +1405,7 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
             uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
             uint32_t totalBytes = eltBytes * elts;
 
-            auto align = LD->getAlignment();
+            auto align = IGCLLVM::getAlignmentValue(LD);
 
             uint bufferIndex = 0;
             bool directIndexing = false;

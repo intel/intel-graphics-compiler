@@ -125,7 +125,7 @@ namespace IGC {
         auto* NewPtr = IRB.CreateBitCast(LI->getPointerOperand(), PtrTy);
 
         LoadInst* NewLI =
-            IRB.CreateAlignedLoad(NewTy, NewPtr, IGCLLVM::getCorrectAlign(LI->getAlignment()));
+            IRB.CreateAlignedLoad(NewTy, NewPtr, IGCLLVM::getAlign(*LI));
         NewLI->copyMetadata(*LI);
         Value* NewVal = NewLI;
 
@@ -180,7 +180,7 @@ namespace IGC {
             NewVal->getType()->getPointerTo(
                 OldPtrTy->getPointerAddressSpace()));
         auto* NewST =
-            IRB.CreateAlignedStore(NewVal, NewPtr, IGCLLVM::getCorrectAlign(SI->getAlignment()));
+            IRB.CreateAlignedStore(NewVal, NewPtr, IGCLLVM::getAlign(*SI));
         NewST->copyMetadata(*SI);
 
         return NewST;

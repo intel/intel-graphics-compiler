@@ -134,7 +134,7 @@ void StackAnalysis::visitAllocaInst(AllocaInst &AI) {
   IGC_ASSERT_MESSAGE(AI.isStaticAlloca(), "Non-static alloca not supported");
   auto AllocaSize = llvm::divideCeil(*AI.getAllocationSizeInBits(m_DL),
                                      genx::ByteBits);
-  auto AllocaAlign = std::max(AI.getAlignment(), visa::BytesPerSVMPtr);
+  auto AllocaAlign = std::max(IGCLLVM::getAlignmentValue(&AI), visa::BytesPerSVMPtr);
 
   auto &CurFuncState = m_ProcessedFs[AI.getFunction()];
   CurFuncState.m_UsedSz = llvm::alignTo(CurFuncState.m_UsedSz, AllocaAlign);

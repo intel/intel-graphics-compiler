@@ -264,7 +264,7 @@ bool TransformPrivMem::replaceSingleAggrStore(StoreInst *StI) {
 
   StoreInst *NewStI = Builder.CreateAlignedStore(ValToStore,
     Builder.CreateBitCast(Ptr, ValToStore->getType()->getPointerTo(AS)),
-    IGCLLVM::getAlign(StI->getAlignment()), StI->isVolatile());
+    IGCLLVM::getAlign(*StI), StI->isVolatile());
   m_StoresToHandle.push(NewStI);
   StI->eraseFromParent();
 

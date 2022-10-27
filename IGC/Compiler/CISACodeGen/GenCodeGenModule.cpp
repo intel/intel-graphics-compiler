@@ -950,7 +950,7 @@ void SubroutineInliner::visitGetElementPtrInst(GetElementPtrInst& GEPI)
                 newGEPI->setDebugLoc(GEPI.getDebugLoc());
 
                 auto* newLoad = new LoadInst(loadInst->getType(), newGEPI, "", loadInst);
-                newLoad->setAlignment(IGCLLVM::getAlign(loadInst->getAlignment()));
+                newLoad->setAlignment(IGCLLVM::getAlign(*loadInst));
                 loadInst->replaceAllUsesWith(newLoad);
                 newLoad->setDebugLoc(loadInst->getDebugLoc());
             }

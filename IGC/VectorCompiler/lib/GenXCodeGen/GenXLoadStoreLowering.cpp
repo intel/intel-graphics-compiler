@@ -507,7 +507,7 @@ GenXLoadStoreLowering::createSVMBlockLoadImpl(LoadInst &LdI,
   Value *PointerOp = LdI.getPointerOperand();
   Value *Offset = Builder.CreatePtrToInt(PointerOp, I64Ty, "");
 
-  auto IID = LdI.getAlignment() >= OWordBytes
+  auto IID = IGCLLVM::getAlignmentValue(&LdI) >= OWordBytes
                  ? llvm::GenXIntrinsic::genx_svm_block_ld
                  : llvm::GenXIntrinsic::genx_svm_block_ld_unaligned;
   auto *F =
@@ -571,7 +571,7 @@ Instruction *GenXLoadStoreLowering::createSVMLoad(LoadInst &LdI) const {
   unsigned ValueEltSize = LdEltTy->getPrimitiveSizeInBits() / genx::ByteBits;
   unsigned NumEltsToLoad = LdTy->getNumElements();
   unsigned NumBytesToLoad = NumEltsToLoad * ValueEltSize;
-  auto Alignment = LdI.getAlignment();
+  auto Alignment = IGCLLVM::getAlignmentValue(&LdI);
   auto IsBlock = ((Alignment == 0 && ValueEltSize >= 4) || Alignment >= 4) &&
                  isPowerOf2_64(NumBytesToLoad) &&
                  NumBytesToLoad >= OWordBytes &&
@@ -1186,7 +1186,7 @@ Instruction *GenXLoadStoreLowering::createSVMStore(StoreInst &StI) const {
   unsigned NumEltsToStore = ValueOpTy->getNumElements();
   unsigned NumBytesToStore =
       NumEltsToStore * EltTy->getScalarSizeInBits() / genx::ByteBits;
-  auto Alignment = StI.getAlignment();
+  auto Alignment = IGCLLVM::getAlignmentValue(&StI);
   auto IsBlock = Alignment >= OWordBytes && isPowerOf2_32(NumBytesToStore) &&
                  NumBytesToStore >= OWordBytes &&
                  NumBytesToStore <= 8 * OWordBytes;

@@ -203,7 +203,7 @@ bool InstPromoter::visitAllocaInst(AllocaInst& I) {
     Type* PromotedTy = TySeq->front();
 
     AllocaInst* PromotedVal = IRB->CreateAlloca(PromotedTy);
-    PromotedVal->setAlignment(IGCLLVM::getAlign(I.getAlignment()));
+    PromotedVal->setAlignment(IGCLLVM::getAlign(I));
     PromotedVal->setName(Twine(I.getName(), ".promotedAlloca"));
 
     Promoted = PromotedVal;
@@ -217,7 +217,7 @@ bool InstPromoter::visitLoadInst(LoadInst& I) {
     if (Value* LegalizedNewPtr = getSinglePromotedValueIfExist(OldPtr))
     {
         LoadInst* NewLoad = IRB->CreateLoad(LegalizedNewPtr, Twine(I.getName(), ".promotedLoad"));
-        NewLoad->setAlignment(IGCLLVM::getAlign(I.getAlignment()));
+        NewLoad->setAlignment(IGCLLVM::getAlign(I));
         Promoted = NewLoad;
         return true;
     }
@@ -303,7 +303,7 @@ bool InstPromoter::visitStoreInst(StoreInst& I) {
         {
             StoreInst* NewStore = nullptr;
             NewStore = IRB->CreateStore(NewStoredValue, LegalizedNewPtr);
-            NewStore->setAlignment(IGCLLVM::getAlign(I.getAlignment()));
+            NewStore->setAlignment(IGCLLVM::getAlign(I));
             Promoted = NewStore;
             return true;
         }

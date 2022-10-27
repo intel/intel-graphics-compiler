@@ -79,7 +79,7 @@ void PrivateMemoryBufferAnalysis::visitAllocaInst(AllocaInst& AI)
 
     m_privateInfoMap[pFunc].m_allocaInsts.push_back(&AI);
 
-    alignment_t alignment = AI.getAlignment();
+    alignment_t alignment = IGCLLVM::getAlignmentValue(&AI);
     if (alignment == 0) {
         alignment = m_DL->getABITypeAlignment(AI.getAllocatedType());
     }

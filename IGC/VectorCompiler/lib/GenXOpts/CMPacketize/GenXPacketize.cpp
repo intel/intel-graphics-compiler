@@ -974,7 +974,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
       IGC_ASSERT(cast<VectorType>(pVecSrc->getType())
                      ->getElementType()
                      ->isPointerTy());
-      auto Align = LI->getAlignment();
+      auto Align = IGCLLVM::getAlignmentValue(LI);
       pReplacedInst = B->MASKED_GATHER(pVecSrc, Align);
     } else
       pReplacedInst = B->ALIGNED_LOAD(pVecSrc, IGCLLVM::getAlign(*LI));
@@ -989,7 +989,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
       IGC_ASSERT(cast<VectorType>(pVecDstPtrs->getType())
                      ->getElementType()
                      ->isPointerTy());
-      auto Align = cast<StoreInst>(pInst)->getAlignment();
+      auto Align = IGCLLVM::getAlignmentValue(cast<StoreInst>(pInst));
       pReplacedInst = B->MASKED_SCATTER(pVecSrc, pVecDstPtrs, Align);
     } else {
       pReplacedInst = B->STORE(pVecSrc, pVecDstPtrs);

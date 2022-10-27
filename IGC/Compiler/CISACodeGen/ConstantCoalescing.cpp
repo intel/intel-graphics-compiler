@@ -537,7 +537,7 @@ void ConstantCoalescing::ProcessBlock(
         if (LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
         {
             // another limit: load has to be dword-aligned
-            if (LI->getAlignment() % 4)
+            if (IGCLLVM::getAlignmentValue(LI) % 4)
                 continue;
             uint maxEltPlus = 1;
             if (!isProfitableLoad(LI, maxEltPlus))
@@ -1165,7 +1165,7 @@ alignment_t ConstantCoalescing::GetAlignment(Instruction* load) const
 
     if (isa<LoadInst>(load))
     {
-        alignment = cast<LoadInst>(load)->getAlignment();
+        alignment = IGCLLVM::getAlignmentValue(cast<LoadInst>(load));
     }
     else
     {

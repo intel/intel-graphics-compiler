@@ -9182,7 +9182,7 @@ void EmitPass::emitLoad(LoadInst* inst, Value* offset, ConstantInt* immOffset)
             immOffset,
             inst->getType(),
             cacheOpts,
-            inst->getAlignment());
+            IGCLLVM::getAlignmentValue(inst));
         return;
     }
     emitVectorLoad(inst, offset, immOffset);
@@ -10319,7 +10319,7 @@ void EmitPass::emitStore(StoreInst* inst, Value* varOffset, ConstantInt* immOffs
             immOffset,
             inst->getValueOperand(),
             cacheOpts,
-            inst->getAlignment(),
+            IGCLLVM::getAlignmentValue(inst),
             inst->getMetadata("enable.vmask"));
         return;
     }
@@ -15311,7 +15311,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
     IGC_ASSERT_MESSAGE(!(destUniform && !srcUniform),
         "If ld's dest is uniform, ld's src must be uniform");
 
-    auto align = inst->getAlignment();
+    auto align = IGCLLVM::getAlignmentValue(inst);
     VISA_Type destType = m_destination->GetType();
     uint32_t width = numLanes(m_currShader->m_SIMDSize);
     uint bufferIndex = 0;
@@ -15833,7 +15833,7 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
 
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
     uint32_t totalBytes = elts * eltBytes;
-    auto align = inst->getAlignment();
+    auto align = IGCLLVM::getAlignmentValue(inst);
     CVariable* storedVar = GetSymbol(storedVal);
     unsigned int width = numLanes(m_currShader->m_SIMDSize);
 

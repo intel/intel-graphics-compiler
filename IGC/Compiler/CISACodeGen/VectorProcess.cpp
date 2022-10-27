@@ -284,11 +284,11 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         alignment_t align;
         if (LI)
         {
-            align = LI->getAlignment();
+            align = IGCLLVM::getAlignmentValue(LI);
         }
         else if (SI)
         {
-            align = SI->getAlignment();
+            align = IGCLLVM::getAlignmentValue(SI);
         }
         else
         {
@@ -340,7 +340,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     if (LI)
     {
         LoadInst* load = Builder.CreateAlignedLoad(newPtr,
-            IGCLLVM::getCorrectAlign(LI->getAlignment()),
+            IGCLLVM::getCorrectAlign(IGCLLVM::getAlignmentValue(LI)),
             LI->isVolatile(),
             "vCastload");
         load->copyMetadata(*LI);
@@ -441,13 +441,13 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
                 V = Builder.CreateBitCast(StoreVal, newVTy);
             }
             StoreInst* store = nullptr;
-            if (SI->getAlignment() == 0)
+            if (IGCLLVM::getAlignmentValue(SI) == 0)
             {
                 store = Builder.CreateStore(V, newPtr, SI->isVolatile());
             }
             else
             {
-                store = Builder.CreateAlignedStore(V, newPtr, IGCLLVM::getAlign(SI->getAlignment()), SI->isVolatile());
+                store = Builder.CreateAlignedStore(V, newPtr, IGCLLVM::getAlign(*SI), SI->isVolatile());
             }
             store->copyMetadata(*SI);
             SI->eraseFromParent();

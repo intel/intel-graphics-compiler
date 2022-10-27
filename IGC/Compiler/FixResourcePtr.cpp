@@ -247,7 +247,7 @@ Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst* inst, Instruction* bufPtr, 
         tys);
 
     alignment_t alignment = std::max((alignment_t)(inst->getType()->getScalarSizeInBits() / 8),
-                                  inst->getAlignment());
+                                  IGCLLVM::getAlignmentValue(inst));
 
     Value* attr[] =
     {
@@ -305,7 +305,7 @@ Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst* inst, Instruction* bufPtr
 
     }
     alignment_t alignment = std::max((alignment_t)(storeVal->getType()->getScalarSizeInBits() / 8),
-                                  inst->getAlignment());
+                                  IGCLLVM::getAlignmentValue(inst));
 
     Value* attr[] =
     {
