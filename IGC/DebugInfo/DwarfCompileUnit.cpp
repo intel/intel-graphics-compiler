@@ -37,11 +37,11 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
-#include "DIE.hpp"
 #include "DwarfCompileUnit.hpp"
+#include "DIE.hpp"
 #include "DwarfDebug.hpp"
-#include "VISADebugInfo.hpp"
 #include "StreamEmitter.hpp"
+#include "VISADebugInfo.hpp"
 #include "VISAModule.hpp"
 
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
@@ -3187,6 +3187,11 @@ void CompileUnit::emitHeader(const MCSection *ASection,
                              const MCSymbol *ASectionSym) {
   // Emit ("DWARF version number");
   Asm->EmitInt16(DD->getDwarfVersion());
+  // DWARF5
+  if (DD->getDwarfVersion() > 4) {
+    Asm->EmitInt8(dwarf::DW_UT_compile);
+    Asm->EmitInt8(Asm->GetPointerSize());
+  }
   // Emit ("Offset Into Abbrev. Section");
   if (EmitSettings.EnableRelocation)
     // Emit 4-byte offset since we're using DWARF4 32-bit format
@@ -3199,6 +3204,8 @@ void CompileUnit::emitHeader(const MCSection *ASection,
         Asm->GetTempSymbol(
             /*ASection->getLabelBeginName()*/ ".debug_abbrev_begin"),
         ASectionSym);
-  // Emit ("Address Size (in bytes)");
-  Asm->EmitInt8(Asm->GetPointerSize());
+  // DWARF4
+  if (DD->getDwarfVersion() <= 4) {
+    Asm->EmitInt8(Asm->GetPointerSize());
+  }
 }

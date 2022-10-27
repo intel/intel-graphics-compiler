@@ -397,9 +397,16 @@ public:
   /// Compute the size of a header for this unit, not including the initial
   /// length field.
   unsigned getHeaderSize() const {
-    return sizeof(int16_t) + // DWARF version number
-           sizeof(int32_t) + // Offset Into Abbrev. Section
-           sizeof(int8_t);   // Pointer Size (in bytes)
+    if (DD->getDwarfVersion() > 4) {
+      return sizeof(int16_t) + // DWARF version number
+             sizeof(int8_t) +  // Unit Type (in bytes)
+             sizeof(int8_t) +  // Pointer Size (in bytes)
+             sizeof(int32_t);  // Offset Into Abbrev. Section
+    } else {
+      return sizeof(int16_t) + // DWARF version number
+             sizeof(int32_t) + // Offset Into Abbrev. Section
+             sizeof(int8_t);   // Pointer Size (in bytes)
+    }
   }
 
   /// Emit the header for this unit, not including the initial length field.
