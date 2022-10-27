@@ -38,12 +38,11 @@ KernelArg::KernelArg(KernelArg::ArgType argType, KernelArg::AccessQual accessQua
     m_locationCount(-1),
     m_needsAllocation(typeAlwaysNeedsAllocation()),
     m_isEmulationArgument(false),
-    m_imageInfo({ false, false }),
-    m_isScalarAsPointer(false)
+    m_imageInfo({ false, false })
 {
 }
 
-KernelArg::KernelArg(const Argument* arg, const DataLayout* DL, const StringRef typeStr, const StringRef qualStr, int location_index, int location_count, bool needBindlessHandle, bool isEmulationArgument, bool isScalarAsPointer) :
+KernelArg::KernelArg(const Argument* arg, const DataLayout* DL, const StringRef typeStr, const StringRef qualStr, int location_index, int location_count, bool needBindlessHandle, bool isEmulationArgument) :
     m_implicitArgument(false),
     m_argType(calcArgType(arg, typeStr)),
     m_accessQual(calcAccessQual(arg, qualStr)),
@@ -56,15 +55,14 @@ KernelArg::KernelArg(const Argument* arg, const DataLayout* DL, const StringRef 
     m_locationCount(location_count),
     m_needsAllocation(needBindlessHandle || typeAlwaysNeedsAllocation()),
     m_isEmulationArgument(isEmulationArgument),
-    m_imageInfo({ false, false }),
-    m_isScalarAsPointer(isScalarAsPointer)
+    m_imageInfo({ false, false })
 {
     m_allocateSize = calcAllocateSize(arg, DL);
     m_elemAllocateSize = calcElemAllocateSize(arg, DL);
     m_align = (size_t)calcAlignment(arg, DL);
 }
 
-KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const Argument* arg, unsigned int ExplicitArgNo, unsigned int structArgOffset, bool isScalarAsPointer, unsigned int GRFSize) :
+KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const Argument* arg, unsigned int ExplicitArgNo, unsigned int structArgOffset, unsigned int GRFSize) :
     m_implicitArgument(true),
     m_argType(calcArgType(implicitArg)),
     m_accessQual(AccessQual::NONE),
@@ -78,8 +76,7 @@ KernelArg::KernelArg(const ImplicitArg& implicitArg, const DataLayout* DL, const
     m_locationCount(-1),
     m_needsAllocation(typeAlwaysNeedsAllocation()),
     m_isEmulationArgument(false),
-    m_imageInfo({ false, false }),
-    m_isScalarAsPointer(isScalarAsPointer)
+    m_imageInfo({ false, false })
 {
     IGC_ASSERT(implicitArg.getNumberElements());
 
@@ -1086,9 +1083,6 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
     const unsigned int numExplicitArgs = F.arg_size() - numImplicitArgs - numRuntimeValue;
     llvm::Function::const_arg_iterator funcArg = F.arg_begin();
 
-    auto it = moduleMD->FuncMD.find(const_cast<Function*>(&F));
-    FunctionMetaData* funcMD = it != moduleMD->FuncMD.end() ? &it->second : nullptr;
-
     FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(&F));
     // Explicit function args
     for (unsigned int i = 0, e = numExplicitArgs; i < e; ++i, ++funcArg)
@@ -1114,30 +1108,27 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
         int location_count = -1;
         bool is_emulation_argument = false;
 
-        if (funcMD)
+        auto it = moduleMD->FuncMD.find(const_cast<Function*>(&F));
+        if (it != moduleMD->FuncMD.end())
         {
-            if (funcMD->funcArgs.size() > (unsigned)i)
+            if (it->second.funcArgs.size() > (unsigned)i)
             {
-                location_index = funcMD->funcArgs[i].bufferLocationIndex;
-                location_count = funcMD->funcArgs[i].bufferLocationCount;
-                is_emulation_argument = funcMD->funcArgs[i].isEmulationArg;
+                location_index = it->second.funcArgs[i].bufferLocationIndex;
+                location_count = it->second.funcArgs[i].bufferLocationCount;
+                is_emulation_argument = it->second.funcArgs[i].isEmulationArg;
             }
         }
 
         std::string argBaseType = "";
         std::string argAccessQualItem = "";
 
-        if (funcMD)
+        if (it != moduleMD->FuncMD.end())
         {
-            if (funcMD->m_OpenCLArgBaseTypes.size() > (unsigned)i)
-                argBaseType = funcMD->m_OpenCLArgBaseTypes[i];
-            if (funcMD->m_OpenCLArgAccessQualifiers.size() > (unsigned)i)
-                argAccessQualItem = funcMD->m_OpenCLArgAccessQualifiers[i];
+            if (it->second.m_OpenCLArgBaseTypes.size() > (unsigned)i)
+                argBaseType = it->second.m_OpenCLArgBaseTypes[i];
+            if (it->second.m_OpenCLArgAccessQualifiers.size() > (unsigned)i)
+                argAccessQualItem = it->second.m_OpenCLArgAccessQualifiers[i];
         }
-
-        bool isScalarAsPointer = false;
-        if (funcMD && funcMD->m_OpenCLArgScalarAsPointers.size() > funcArg->getArgNo())
-            isScalarAsPointer = funcMD->m_OpenCLArgScalarAsPointers[funcArg->getArgNo()];
 
         KernelArg kernelArg = KernelArg(
             &(*funcArg),
@@ -1147,8 +1138,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
             location_index,
             location_count,
             needAllocation,
-            is_emulation_argument,
-            isScalarAsPointer);
+            is_emulation_argument);
 
         if ((kernelArg.getArgType() == KernelArg::ArgType::IMAGE_3D ||
             kernelArg.getArgType() == KernelArg::ArgType::BINDLESS_IMAGE_3D) &&
@@ -1171,11 +1161,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
     // Implicit function args
     for (unsigned int i = 0; i < numImplicitArgs; ++i, ++funcArg)
     {
-        bool isScalarAsPointer = false;
-        if (funcMD && funcMD->m_OpenCLArgScalarAsPointers.size() > funcArg->getArgNo())
-            isScalarAsPointer = funcMD->m_OpenCLArgScalarAsPointers[funcArg->getArgNo()];
-
-        KernelArg kernelArg = KernelArg(implicitArgs[i], DL, &(*funcArg), implicitArgs.getExplicitArgNum(i), implicitArgs.getStructArgOffset(i), isScalarAsPointer, GRFSize);
+        KernelArg kernelArg = KernelArg(implicitArgs[i], DL, &(*funcArg), implicitArgs.getExplicitArgNum(i), implicitArgs.getStructArgOffset(i), GRFSize);
         addAllocationArg(kernelArg);
     }
 

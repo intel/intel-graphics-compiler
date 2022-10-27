@@ -16,7 +16,7 @@ Abstract:   Contains common patch structure definitions
 
 namespace iOpenCL
 {
-const uint32_t CURRENT_ICBE_VERSION = 1082;
+const uint32_t CURRENT_ICBE_VERSION = 1081;
 const uint32_t MAGIC_CL = 0x494E5443;      // 'I', 'N', 'T', 'C'
 const uint32_t INVALID_INDEX = 0xFFFFFFFF;
 
@@ -423,11 +423,10 @@ struct SPatchDataParameterBuffer :
     uint32_t   LocationIndex;
     uint32_t   LocationIndex2;
     uint32_t   IsEmulationArgument;
-    uint32_t   IsScalarCastedToPointer;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchDataParameterBuffer ) == ( 36 + sizeof( SPatchItemHeader ) ) , "The size of SPatchDataParameterBuffer is not what is expected" );
+static_assert( sizeof( SPatchDataParameterBuffer ) == ( 32 + sizeof( SPatchItemHeader ) ) , "The size of SPatchDataParameterBuffer is not what is expected" );
 
 const uint32_t DATA_PARAMETER_DATA_SIZE = 4;
 

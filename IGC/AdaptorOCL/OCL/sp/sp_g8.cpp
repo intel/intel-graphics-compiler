@@ -1860,7 +1860,6 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.LocationIndex = constInput->LocationIndex;
             patch.LocationIndex2 = constInput->LocationCount;
             patch.IsEmulationArgument = constInput->IsEmulationArgument;
-            patch.IsScalarCastedToPointer = constInput->IsScalarCastedToPointer;
 
             dataParameterStreamSize = std::max(
                 dataParameterStreamSize,

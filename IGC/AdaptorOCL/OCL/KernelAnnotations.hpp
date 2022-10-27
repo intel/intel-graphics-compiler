@@ -117,7 +117,6 @@ struct ConstantArgumentAnnotation : KernelArgumentAnnotation
     DWORD  LocationIndex;
     DWORD  LocationCount;
     bool   IsEmulationArgument;
-    bool   IsScalarCastedToPointer = false;
 };
 
 

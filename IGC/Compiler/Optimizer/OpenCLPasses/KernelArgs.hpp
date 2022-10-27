@@ -189,8 +189,7 @@ namespace IGC
         /// @param  location_count The location_count for buffer
         /// @param  needBindlessHandle   The presence of bindless resources in the shader
         /// @param  isEmulationArgument  The information, whether this is an emulation argument (IAB)
-        /// @param  isScalarAsPointer The information if scalar argument is used as pointer
-        KernelArg(const llvm::Argument* arg, const llvm::DataLayout* DL, const llvm::StringRef typeStr, const llvm::StringRef qualstr, int location_index, int location_count, bool needBindlessHandle, bool isEmulationArgument, bool isScalarAsPointer);
+        KernelArg(const llvm::Argument* arg, const llvm::DataLayout* DL, const llvm::StringRef typeStr, const llvm::StringRef qualstr, int location_index, int location_count, bool needBindlessHandle, bool isEmulationArgument);
 
         /// @brief  Constructor.
         ///         Constructs a kernel argument information for implicit arguments
@@ -202,9 +201,7 @@ namespace IGC
         /// @param  structArgOffset  The argument offset in the associated struct argument
         ///                     This param has meaning only for implicit arguments associated
         ///                     with aggregation explicit argument
-        /// @param  isScalarAsPointer The information if pointer is implicit argument associated with
-        ///                     aggregation explicit argument provided by value.
-        KernelArg(const ImplicitArg& implicitArg, const llvm::DataLayout* DL, const llvm::Argument* arg, unsigned int ExplicitArgNo, unsigned int structArgOffset, bool isScalarAsPointer, unsigned int GRFSize);
+        KernelArg(const ImplicitArg& implicitArg, const llvm::DataLayout* DL, const llvm::Argument* arg, unsigned int ExplicitArgNo, unsigned int structArgOffset, unsigned int GRFSize);
 
         /// @brief  Getter functions
         ArgType                         getArgType()            const;
@@ -226,7 +223,6 @@ namespace IGC
         bool                            getImgAccessedIntCoords()   const { return m_imageInfo.accessedByIntCoord; }
         bool                            isImplicitArg() const { return m_implicitArgument; }
         bool                            isEmulationArgument() const { return m_isEmulationArgument; }
-        bool                            isScalarAsPointer() const { return m_isScalarAsPointer; }
 
         /// @brief  Setter functions
         void     setImgAccessedFloatCoords(bool val) { m_imageInfo.accessedByFloatCoord = val; }
@@ -345,9 +341,6 @@ namespace IGC
 
         /// @brief Indicates if resource is an emulation argument (IAB)
         bool                            m_isEmulationArgument;
-
-        /// @brief Indicates if scalar argument is used as pointer
-        bool                            m_isScalarAsPointer;
 
         /// @brief
         struct {

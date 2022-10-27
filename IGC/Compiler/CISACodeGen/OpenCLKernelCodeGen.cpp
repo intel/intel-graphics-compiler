@@ -1868,7 +1868,6 @@ namespace IGC
             constInput->LocationIndex = kernelArg->getLocationIndex();
             constInput->LocationCount = kernelArg->getLocationCount();
             constInput->IsEmulationArgument = kernelArg->isEmulationArgument();
-            constInput->IsScalarCastedToPointer = kernelArg->isScalarAsPointer();
             m_kernelInfo.m_constantArgumentAnnotation.push_back(std::move(constInput));
 
             payloadPosition += sizeInBytes;

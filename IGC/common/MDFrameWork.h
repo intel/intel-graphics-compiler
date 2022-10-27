@@ -333,7 +333,6 @@ namespace IGC
         std::vector<std::string> m_OpenCLArgBaseTypes;
         std::vector<std::string> m_OpenCLArgTypeQualifiers;
         std::vector<std::string> m_OpenCLArgNames;
-        std::vector<bool> m_OpenCLArgScalarAsPointers;
     };
 
     // isCloned member is added to mark whether a function is clone

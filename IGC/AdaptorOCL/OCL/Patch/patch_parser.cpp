@@ -556,9 +556,6 @@ void DebugPatchList(
                     ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                         "\tIsEmulationArgument = %s\n",
                         pPatchItem->IsEmulationArgument ? "true" : "false");
-                    ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                        "\tIsScalarCastedToPointer = %s\n",
-                        pPatchItem->IsScalarCastedToPointer ? "true" : "false");
             }
             break;
 
