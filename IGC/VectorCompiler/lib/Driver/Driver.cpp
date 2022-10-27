@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
+#include <llvm/MC/SubtargetFeature.h>
 #include "llvm/Option/ArgList.h"
 #include "llvm/Support/Allocator.h"
 #include "llvm/Support/CommandLine.h"

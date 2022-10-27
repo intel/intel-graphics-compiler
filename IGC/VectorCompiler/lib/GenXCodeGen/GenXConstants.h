@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "GenXSubtarget.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/Constant.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Instructions.h"
 

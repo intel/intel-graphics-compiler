@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include <llvmWrapper/Transforms/Utils/Cloning.h>
 #include <llvm/Support/Error.h>
+#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <unordered_set>

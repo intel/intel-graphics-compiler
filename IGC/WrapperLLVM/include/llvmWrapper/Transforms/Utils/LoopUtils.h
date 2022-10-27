@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_TRANSFORMS_UTILS_LOOPUTILS_H
 
 #include "llvm/Config/llvm-config.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
 
 namespace IGCLLVM

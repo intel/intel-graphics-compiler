@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/GlobalAlias.h>
 #include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/Pass.h>

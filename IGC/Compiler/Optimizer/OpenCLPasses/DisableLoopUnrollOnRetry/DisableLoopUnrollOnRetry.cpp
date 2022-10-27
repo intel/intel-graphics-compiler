@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Transforms/Utils/UnrollLoop.h>
 #include "common/LLVMWarningsPop.hpp"
 

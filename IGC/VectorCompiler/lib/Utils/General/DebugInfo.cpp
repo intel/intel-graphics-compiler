@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/DebugInfo.h"
 #include "vc/Utils/GenX/TypeSize.h"
 
+#include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/IRBuilder.h>

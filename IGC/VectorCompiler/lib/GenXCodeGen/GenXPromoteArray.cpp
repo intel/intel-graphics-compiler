@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Intrinsics.h"
