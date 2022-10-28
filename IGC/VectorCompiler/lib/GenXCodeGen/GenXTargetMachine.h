@@ -75,7 +75,11 @@ public:
   const TargetSubtargetInfo *getSubtargetImpl(const Function &) const override {
     return &Subtarget;
   }
-  TargetTransformInfo getTargetTransformInfo(const Function &F) override;
+#if LLVM_VERSION_MAJOR >= 15
+  TargetTransformInfo getTargetTransformInfo(const Function &F) const override;
+#else
+  TargetTransformInfo getTargetTransformInfo(const Function& F) override;
+#endif
 
   const GenXSubtarget &getGenXSubtarget() const { return Subtarget; }
 };

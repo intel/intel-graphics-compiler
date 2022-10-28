@@ -157,7 +157,12 @@ void initializeGenXPasses(PassRegistry &registry) {
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
-TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F) {
+#if LLVM_VERSION_MAJOR >= 15
+TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F) const
+#else
+TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function& F)
+#endif
+{
   GenXTTIImpl GTTI(F.getParent()->getDataLayout(), *BC);
   return TargetTransformInfo(GTTI);
 }
