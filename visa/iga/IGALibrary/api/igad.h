@@ -224,12 +224,12 @@ typedef size_t(CDECLATTRIBUTE *pIGAKVGetInstSyntax)(
 #define IGA_KV_GET_OPGROUP_STR "kv_get_opgroup"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetOpgroup)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_SEND_DESCS_STR "kv_get_send_descs"
-#define IGA_KV_GET_SEND_INDIRECT_DESCS_STR "kv_get_send_indirect_descs"
 typedef uint32_t(CDECLATTRIBUTE * pIGAKVGetSendDescs)(
     const kv_t *kv,
     int32_t pc,
     uint32_t *ex_desc,
     uint32_t *desc);
+#define IGA_KV_GET_SEND_INDIRECT_DESCS_STR "kv_get_send_indirect_descs"
 typedef uint32_t(CDECLATTRIBUTE * pIGAKVGetSendIndirectDescs)(
     const kv_t *kv,
     int32_t pc,

@@ -365,18 +365,19 @@ uint32_t kv_get_send_descs(
 }
 
 
-void kv_get_send_indirect_descs(
+kv_status_t kv_get_send_indirect_descs(
     const kv_t *kv, int32_t pc,
     uint8_t *ex_desc_reg, uint8_t *ex_desc_subreg,
     uint8_t *desc_reg, uint8_t *desc_subreg)
 {
     if (!kv || !ex_desc_reg || !ex_desc_subreg || !desc_reg || !desc_subreg)
-        return;
+        return KV_INVALID_ARGUMENT;
 
-    const Instruction *inst = ((KernelViewImpl *)kv)->getInstruction(pc);
-    if (!inst || !inst->getOpSpec().isAnySendFormat()) {
-        *ex_desc_reg = *ex_desc_subreg = *desc_reg = *desc_subreg = KV_INVALID_REG;
-        return;
+    const Instruction *inst = ((const KernelViewImpl *)kv)->getInstruction(pc);
+    if (!inst) {
+        return KV_INVALID_PC;
+    } else if (!inst->getOpSpec().isAnySendFormat()) {
+        return KV_NON_SEND_INSTRUCTION;
     }
     if (inst->getExtMsgDescriptor().isReg()) {
         *ex_desc_reg = (uint8_t)inst->getExtMsgDescriptor().reg.regNum;
@@ -391,6 +392,7 @@ void kv_get_send_indirect_descs(
     } else {
         *desc_reg = *desc_subreg = KV_INVALID_REG;
     }
+    return KV_SUCCESS;
 }
 
 

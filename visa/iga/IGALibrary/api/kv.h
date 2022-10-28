@@ -16,6 +16,8 @@ SPDX-License-Identifier: MIT
  *                                                                       *
  *                  The KernelView C interface                           *
  *                                                                       *
+ * Consider the kv.hpp wrapper which provides a slightly friendlier      *
+ * interface to all these functions with simplified resource management. *
  *************************************************************************/
 
 #ifdef __cplusplus
@@ -40,7 +42,9 @@ extern "C"  {
 */
 #define KV_INVALID_PC_VALUE ((int32_t)0xFFFFFFFF)
 
-/* incomplete type for a kernel view handle */
+/*
+ * Incomplete type for a kernel view handle.
+ */
 struct kv_t;
 
 /* Kernel Viewer API Statuses */
@@ -64,7 +68,11 @@ typedef enum {
 } kv_status_t;
 
 /*
- * Creates a kernel view.
+ * Creates a kernel view instance.  This decodes a kernel binary and allocates
+ * internal state to represent with an intermediate representation.
+ * Various functions (see below) can be called on this object to inspect the
+ * kernel and its instructions.  The user is responsible for calling kv_delete
+ * to delete the object after they are done with it.
  *   'plat' - the platform
  *   'bytes' - the kernel binary
  *   'bytes_len' - the length of 'bytes'
@@ -72,9 +80,10 @@ typedef enum {
  *   'errbuf' - an optional buffer to emit errors or warnings (can pass nullptr)
  *   'errbuf_cap' - the capacity of errbuf.
  * RETURNS: a kernel view object for use in other kv_* functions.
- *  Deallocate it with kv_delete.  If there is a decode error (or other errors), this
- *  function returns an instance of Kernel Views and ERROR status. If user proceeds
- * to use the returned Kernel View we do not guarantee that all bits are correct
+ *  Deallocate it with kv_delete.  If there is a decode error (or other errors),
+ *  this function returns an instance of Kernel Views and error status.
+ *  If user proceeds to use the returned Kernel View under error the behavior
+ *  of various APIs may be undefined.
  */
 IGA_API kv_t *kv_create(
     iga_gen_t plat,
@@ -86,10 +95,12 @@ IGA_API kv_t *kv_create(
     // if not specified, the swsb encoding mode will be derived from platfrom
     // by SWSB::getEncodeMode
     iga::SWSB_ENCODE_MODE swsb_enc_mode
-        = iga::SWSB_ENCODE_MODE::SWSBInvalidMode
-    );
+        = iga::SWSB_ENCODE_MODE::SWSBInvalidMode);
 
-/* destroys a kernel view */
+/*
+ * Destroys a kernel view deallocating all resources sequestered by the kv_t
+ * object.
+ */
 IGA_API void kv_delete(kv_t *);
 
 
@@ -216,11 +227,31 @@ IGA_API uint32_t kv_get_send_descs(
 
 /*
  * Returns the indirect descriptor registers for a send message.
- * The function fails silently if the PC is invalid or a nullptr is passed.
- * Registers are assigned KV_INVALID_REG on other failures otherwise they
- * hold the index register and subregister (e.g. a0.2) would have 0 and 2.
+ * Given a valid send instruction with some (or both) a0.# registers
+ * the register and subregister are returned for each descriptor.
+ * If a given register is not indirect (i.e. immediate) then the value returned
+ * will be KV_INVALID_REG.  It is possible for one descriptor or both
+ * to be registers on many platforms.
+ * Examples:
+ *    send... ... 0x0  a0.0
+ *  => ex_desc_reg = ex_desc_subreg = KV_INVALID_REG, // imm
+ *       desc_reg = 0, desc_subreg = 0 // a0.0
+ *    send... ... a0.2  0x1234
+ *  => ex_desc_reg = 0, ex_desc_subreg = 2, // a0.2
+ *        desc_reg = 0 = desc_subreg = KV_INVALID_REG // imm
+ *    send... ... a0.2  a0.0
+ *  => ex_desc_reg = 0, ex_desc_subreg = 2, // a0.2
+ *        desc_reg = 0, desc_subreg = 0 // a0.0
+ *
+ * RETURNS:
+ *   KV_SUCCESS if the arguments are valid (non-null and valid kv)
+ *    and in range (pc)
+ *   KV_INVALID_ARGUMENT given a nullptr or invalid kv
+ *   KV_INVALID_PC if the pc is out of range
+ *   KV_NON_SEND_INSTRUCTION if given a non-send instruction or a send
+ *    instruction on a platform that does not use a0.# registers.
  */
-IGA_API void kv_get_send_indirect_descs(
+IGA_API kv_status_t kv_get_send_indirect_descs(
     const kv_t *kv,
     int32_t pc,
     uint8_t *ex_desc_reg,
@@ -465,7 +496,7 @@ IGA_API int32_t kv_get_source_immediate(
 
 /*
  * This function exposes indirect source's immediate offset.
-   Return -1 if given source is not indirect srouce
+ * Return -1 if given source is not indirect srouce
  */
 IGA_API int32_t kv_get_source_indirect_imm_off(
     const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *immoff);
@@ -479,20 +510,20 @@ IGA_API int32_t kv_get_destination_indirect_imm_off(
 
 /*
  * This function exposes source's MathMacroExt number for
-   math macro instructions.
-   mme is the mme numbar, set to 8 if it's nomme.
-   Return 0 if the given instruction is math macro instruction.
-   Return -1 if given instruction is not math macro instruction.
+ * math macro instructions.
+ * mme is the mme numbar, set to 8 if it's nomme.
+ * Return 0 if the given instruction is math macro instruction.
+ * Return -1 if given instruction is not math macro instruction.
  */
 IGA_API int32_t kv_get_source_mme_number(
     const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *mme);
 
 /*
  * This function exposes destination's MathMacroExt number for
-   math macro instructions.
-   mme is the mme numbar, set to 8 if it's nomme.
-   Return 0 if the given instruction is math macro instruction.
-   Return -1 if given instruction is not math macro instruction.
+ * math macro instructions.
+ * mme is the mme numbar, set to 8 if it's nomme.
+ * Return 0 if the given instruction is math macro instruction.
+ * Return -1 if given instruction is not math macro instruction.
  */
 IGA_API int32_t kv_get_destination_mme_number(
     const kv_t *kv, int32_t pc, int16_t *immoff);
