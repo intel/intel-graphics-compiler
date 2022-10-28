@@ -5936,11 +5936,6 @@ void GraphColor::determineColorOrdering() {
     if (lr->getDegree() + lr->getNumRegNeeded() <= availColor) {
       unconstrainedWorklist.push_back(lr);
       lr->setActive(false);
-      if (lr->getRegKind() == G4_GRF) {
-        // Mark current lr as unconstrained, which means RR algorithm can always
-        // be applied to the variable.
-        lr->setUnconstrained(true);
-      }
     } else {
       constrainedWorklist.push_back(lr);
       lr->setActive(true);
@@ -6236,15 +6231,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
         // we sure as hell won't get an assignment
         failed_alloc = true;
       }
-      if (lr->getRegKind() != G4_GRF) {
-        // None GRF assignment, keep single FF or RR algorithm
-        if (heuristic == FIRST_FIT)
-            startGRFReg = 0;
-      } else if (heuristic == FIRST_FIT && !lr->getIsUnconstrained()) {
-        // GRF assignment, start GRF is always 0 if first fit algorithm is used
-        // and the variable is constrainted
-        startGRFReg = 0;
-      }
+
       if (!failed_alloc) {
         // When evenAlignNeeded is true, it is binding for correctness
         bool evenAlignNeeded = gra.isEvenAligned(lrVar->getDeclare());
