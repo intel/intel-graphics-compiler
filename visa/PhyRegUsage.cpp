@@ -260,10 +260,11 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[], const bool forbidden[],
 
   if (found) {
     MUST_BE_TRUE(idx < maxRegs && idx + numRegNeeded <= maxRegs, ERROR_UNKNOWN);
-
-    if (colorHeuristic == ROUND_ROBIN) {
-      startPos = (idx + numRegNeeded) % maxRegs;
-    }
+    // Set start postion of next variable according to round robin algrithm in
+    // case the next variable needs use round robin algorithm. If the next
+    // variable uses first fit algorithm, assignColors will re-assign 0 to the
+    // variable before this function is executed.
+    startPos = (idx + numRegNeeded) % maxRegs;
   }
 
   return found;
