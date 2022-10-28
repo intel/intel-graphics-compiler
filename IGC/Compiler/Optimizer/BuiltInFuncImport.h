@@ -80,6 +80,9 @@ namespace IGC
         /// @brief  Read elf Header file that is constructed by Build Packager and write to a DenseMap.
         static void WriteElfHeaderToMap(llvm::DenseMap<llvm::StringRef, int>& Map, char* pData, size_t dataSize);
 
+        /// @brief Fix SPIR builtins return type
+        void fixSPIRFunctionsReturnType(llvm::Module& M);
+
     protected:
         /// Builtin module - contains the source function definition to import
         std::unique_ptr<llvm::Module> m_GenericModule;

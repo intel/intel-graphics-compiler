@@ -39,14 +39,23 @@ namespace {
     {"__builtin_IB_intel_dispatch_trace_ray_query",      &ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery },
     {"__builtin_IB_intel_rt_sync",                       &ResolveOCLRaytracingBuiltins::handleRTSync                },
     {"__builtin_IB_intel_get_implicit_dispatch_globals", &ResolveOCLRaytracingBuiltins::handleGetImplicitDG         },
+
+    // Handling for builtins operating on intel_ray_query_t from intel_rt_production extension
+      {"__builtin_IB_intel_init_ray_query",                &ResolveOCLRaytracingBuiltins::handleInitRayQuery          },
+      {"__builtin_IB_intel_update_ray_query",              &ResolveOCLRaytracingBuiltins::handleUpdateRayQuery        },
+      {"__builtin_IB_intel_query_rt_fence",                &ResolveOCLRaytracingBuiltins::handleQuery                 },
+      {"__builtin_IB_intel_query_rt_globals",              &ResolveOCLRaytracingBuiltins::handleQuery                 },
+      {"__builtin_IB_intel_query_rt_stack",                &ResolveOCLRaytracingBuiltins::handleQuery                 },
+      {"__builtin_IB_intel_query_ctrl",                    &ResolveOCLRaytracingBuiltins::handleQuery                 },
+      {"__builtin_IB_intel_query_bvh_level",               &ResolveOCLRaytracingBuiltins::handleQuery                 },
   };
 }
 
 char ResolveOCLRaytracingBuiltins::ID = 0;
 
 ResolveOCLRaytracingBuiltins::ResolveOCLRaytracingBuiltins() :
-  ModulePass(ID), m_pCtx(nullptr), m_builder(nullptr) {
-  initializeResolveOCLRaytracingBuiltinsPass(*PassRegistry::getPassRegistry());
+    ModulePass(ID), m_pCtx(nullptr), m_builder(nullptr) {
+    initializeResolveOCLRaytracingBuiltinsPass(*PassRegistry::getPassRegistry());
 }
 
 bool ResolveOCLRaytracingBuiltins::runOnModule(Module& M) {
@@ -55,6 +64,9 @@ bool ResolveOCLRaytracingBuiltins::runOnModule(Module& M) {
 
     IGCIRBuilder<> builder(M.getContext());
     m_builder = &builder;
+
+    // intel_rt_production extension uses intel_ray_query_opaque_t which cannot be defined in BiF Library
+    defineOpaqueTypes();
 
     // Fills up the m_CallsToReplace with all instances of calls to kernels in the functionHandlersMap.
     visit(M);
@@ -117,6 +129,30 @@ bool ResolveOCLRaytracingBuiltins::runOnModule(Module& M) {
     }
 
     return m_callsToReplace.size() > 0;
+}
+
+void ResolveOCLRaytracingBuiltins::defineOpaqueTypes(){
+    Module* M = m_pCtx->getModule();
+    LLVMContext& C = M->getContext();
+
+    StructType* rayQueryTy = IGCLLVM::getTypeByName(*M, "struct.intel_ray_query_opaque_t");
+
+    if (!rayQueryTy) return;
+
+    StructType* rtFenceTy = IGCLLVM::getTypeByName(*M, "struct.rtfence_t");
+    StructType* rtGlobalsTy = IGCLLVM::getTypeByName(*M, "struct.rtglobals_t");
+
+    IGC_ASSERT(rtFenceTy && rtGlobalsTy);
+
+    SmallVector<Type*, 4> Tys{
+        PointerType::get(rtFenceTy, ADDRESS_SPACE_PRIVATE),
+        PointerType::get(rtGlobalsTy, ADDRESS_SPACE_GLOBAL),
+        PointerType::get(Type::getInt8Ty(C), ADDRESS_SPACE_GLOBAL),
+        Type::getInt32Ty(C),
+        Type::getInt32Ty(C)
+    };
+
+    rayQueryTy->setBody(Tys);
 }
 
 void ResolveOCLRaytracingBuiltins::visitCallInst(CallInst& callInst) {
@@ -343,6 +379,112 @@ void ResolveOCLRaytracingBuiltins::handleGetImplicitDG(llvm::CallInst& callInst)
     auto v = rtbuilder.getGlobalBufferPtr();
     auto c = rtbuilder.CreateBitCast(v, callInst.getType());
     callInst.replaceAllUsesWith(c);
+    callInst.eraseFromParent();
+}
+
+/*
+Handler for
+void __builtin_IB_intel_init_ray_query(
+    rtfence_t, rtglobals_t,global RTStack*, TraceRayCtrl, uint);
+
+Description:
+Allocates private memory for rayquery object and stores all it's initializer
+values passed as argument to __builtin_IB_intel_init_ray_query.
+*/
+void ResolveOCLRaytracingBuiltins::handleInitRayQuery(llvm::CallInst& callInst) {
+    RTBuilder rtbuilder(m_builder->getContext(), *m_pCtx);
+    Function* F = callInst.getFunction();
+    rtbuilder.SetInsertPoint(&*F->getEntryBlock().getFirstInsertionPt());
+
+    unsigned numArgs = IGCLLVM::getNumArgOperands(&callInst);
+    IGC_ASSERT(numArgs == 5);
+
+    auto* allocaType = callInst.getType()->getPointerElementType();
+    auto* alloca = rtbuilder.CreateAlloca(allocaType);
+
+    rtbuilder.SetInsertPoint(&callInst);
+
+    auto storeToAlloca = [&](unsigned argIndex)
+    {
+        auto ptr = rtbuilder.CreateGEP(alloca, { rtbuilder.getInt32(0), rtbuilder.getInt32(argIndex) });
+        auto arg = callInst.getOperand(argIndex);
+        rtbuilder.CreateStore(arg, ptr);
+    };
+
+    for (unsigned argIndex = 0; argIndex < numArgs; argIndex++)
+        storeToAlloca(argIndex);
+
+    callInst.replaceAllUsesWith(alloca);
+    callInst.eraseFromParent();
+}
+
+/*
+Handler for
+void __builtin_IB_intel_update_ray_query(
+    intel_ray_query_t, rtfence_t, rtglobals_t, global RTStack*, TraceRayCtrl, uint);
+
+Description:
+Stores new values to rayquery alloca
+*/
+void ResolveOCLRaytracingBuiltins::handleUpdateRayQuery(llvm::CallInst& callInst) {
+    RTBuilder rtbuilder(m_builder->getContext(), *m_pCtx);
+    rtbuilder.SetInsertPoint(&callInst);
+
+    unsigned numArgs = IGCLLVM::getNumArgOperands(&callInst);
+    IGC_ASSERT(numArgs == 6);
+
+    Value* rayQuery = callInst.getOperand(0);
+
+    for (unsigned argIndex = 1; argIndex < numArgs; argIndex++)
+    {
+        auto* ptr = rtbuilder.CreateGEP(rayQuery, { rtbuilder.getInt32(0), rtbuilder.getInt32(argIndex - 1) });
+        Value* arg = callInst.getOperand(argIndex);
+        rtbuilder.CreateStore(arg, ptr);
+    }
+
+    callInst.eraseFromParent();
+}
+
+/*
+Handler for the following builtins:
+rtfence_t        __builtin_IB_intel_query_rt_fence(intel_ray_query_t);
+rtglobals_t      __builtin_IB_intel_query_rt_globals(intel_ray_query_t);
+global RTStack*  __builtin_IB_intel_query_rt_stack(intel_ray_query_t);
+TraceRayCtrl     __builtin_IB_intel_query_ctrl(intel_ray_query_t);
+uint             __builtin_IB_intel_query_bvh_level(intel_ray_query_t);
+
+Description:
+Loads queried value from rayquery alloca
+*/
+void ResolveOCLRaytracingBuiltins::handleQuery(llvm::CallInst& callInst) {
+    RTBuilder rtbuilder(m_builder->getContext(), *m_pCtx);
+    rtbuilder.SetInsertPoint(&callInst);
+
+    enum RayQueryArgsOrder
+    {
+        RT_FENCE,
+        RT_GLOBALS,
+        RT_STACK,
+        CTRL,
+        BVH_LEVEL
+    };
+
+    static const std::map<std::string, RayQueryArgsOrder> builtinToArgIndex = {
+        { "__builtin_IB_intel_query_rt_fence",   RT_FENCE },
+        { "__builtin_IB_intel_query_rt_globals", RT_GLOBALS },
+        { "__builtin_IB_intel_query_rt_stack",   RT_STACK },
+        { "__builtin_IB_intel_query_ctrl",       CTRL },
+        { "__builtin_IB_intel_query_bvh_level",  BVH_LEVEL}
+    };
+
+    IGC_ASSERT(IGCLLVM::getNumArgOperands(&callInst) == 1);
+    Value* rayQuery = callInst.getArgOperand(0);
+
+    unsigned argIndex = builtinToArgIndex.at(callInst.getCalledFunction()->getName().str());
+    auto* ptr = rtbuilder.CreateGEP(rayQuery, { rtbuilder.getInt32(0), rtbuilder.getInt32(argIndex) });
+    auto* queriedValue = rtbuilder.CreateLoad(ptr);
+
+    callInst.replaceAllUsesWith(queriedValue);
     callInst.eraseFromParent();
 }
 
