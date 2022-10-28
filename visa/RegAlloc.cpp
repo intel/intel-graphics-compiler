@@ -2014,7 +2014,6 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
           INST_LIST_ITER fwdIter = rit.base();
           fwdIter--;
           (*fwdIter)->emit_inst(std::cout, false, NULL);
-          DEBUG_VERBOSE(" // $" << (*fwdIter)->getCISAOff());
           DEBUG_VERBOSE("\n");
 #endif
         }
@@ -2054,7 +2053,6 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
           INST_LIST_ITER fwdIter = rit.base();
           fwdIter--;
           (*fwdIter)->emit_inst(std::cout, false, NULL);
-          DEBUG_VERBOSE(" // $" << (*fwdIter)->getCISAOff());
           DEBUG_VERBOSE("\n");
 #endif
         }

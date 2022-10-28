@@ -610,11 +610,11 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
 
           m_kernelInfo->spillFills.AddVirtualVar(dcl->getName());
           m_kernelInfo->spillFills.spillInstrOrder.push_back(
-              instr->getCISAOff());
+              instr->getVISAId());
 
         } else if (instr->isFillIntrinsic()) {
           m_kernelInfo->spillFills.spillInstrOrder.push_back(
-              instr->getCISAOff());
+              instr->getVISAId());
         }
       }
     }

@@ -470,9 +470,9 @@ void KernelDebugInfo::computeMissingVISAIds() {
 
   for (auto bb : getKernel().fg) {
     for (auto inst : *bb) {
-      if (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX &&
-          (unsigned int)inst->getCISAOff() > maxCISAId) {
-        maxCISAId = inst->getCISAOff();
+      if (inst->getVISAId() != UNMAPPABLE_VISA_INDEX &&
+          (unsigned int)inst->getVISAId() > maxCISAId) {
+        maxCISAId = inst->getVISAId();
       }
     }
   }
@@ -481,8 +481,8 @@ void KernelDebugInfo::computeMissingVISAIds() {
 
   for (auto bb : getKernel().fg) {
     for (auto inst : *bb) {
-      if (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX) {
-        seenVISAIds[inst->getCISAOff()] = true;
+      if (inst->getVISAId() != UNMAPPABLE_VISA_INDEX) {
+        seenVISAIds[inst->getVISAId()] = true;
       }
     }
   }
@@ -516,7 +516,7 @@ void KernelDebugInfo::generateGenISAToVISAIndex() {
         continue;
       genISAOffsetToVISAIndex.push_back(
           IDX_VDbgGen2CisaIndex{(unsigned int)inst->getGenOffset(),
-                                (unsigned int)inst->getCISAOff()});
+                                (unsigned int)inst->getVISAId()});
     }
   }
 }
@@ -582,7 +582,7 @@ void KernelDebugInfo::generateByteOffsetMapping(
       G4_INST *inst = (*inst_it);
 
       if (inst->getGenOffset() != UNDEFINED_GEN_OFFSET) {
-        int cisaByteIndex = inst->getCISAOff();
+        int cisaByteIndex = inst->getVISAId();
         maxGenIsaOffset =
             (uint64_t)inst->getGenOffset() + (inst->isCompactedInst() ? 8 : 16);
         if (cisaByteIndex == -1) {
@@ -1010,7 +1010,7 @@ template <class T> void emitDataSubroutines(VISAKernelImpl *visaKernel, T &t) {
         while (firstInst == NULL && calleeBB != NULL) {
           if (calleeBB->size() > 0) {
             firstInst = calleeBB->front();
-            start = firstInst->getCISAOff();
+            start = firstInst->getVISAId();
             subLabel = firstInst->getSrc(0)->asLabel();
           }
         }
@@ -1024,7 +1024,7 @@ template <class T> void emitDataSubroutines(VISAKernelImpl *visaKernel, T &t) {
               continue;
 
             lastInst = calleeBB->back();
-            end = lastInst->getCISAOff();
+            end = lastInst->getVISAId();
             MUST_BE_TRUE(
                 lastInst->isReturn(),
                 "Expecting to see G4_return as last inst in sub-routine");
@@ -1642,7 +1642,7 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
         unsigned char prevEltJ = (prevElt >> j) & 0x1;
 
         if (eltJ == 1 && prevEltJ == 0) {
-          if (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX) {
+          if (inst->getVISAId() != UNMAPPABLE_VISA_INDEX) {
             // This check guarantees that for an open
             // interval, at least the same CISA offset
             // can be used to close it. If there is no
@@ -1653,7 +1653,7 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
             G4_Declare *dcl = lrs[idx]->getVar()->getDeclare();
             auto lr = krnlDbgInfo->getLiveIntervalInfo(dcl);
 
-            lr->setStateOpen(inst->getCISAOff());
+            lr->setStateOpen(inst->getVISAId());
           }
         } else if (eltJ == 0 && prevEltJ == 1) {
           auto idx = (i + j);
@@ -1663,7 +1663,7 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
 
           if (lr->getState() ==
               LiveIntervalInfo::DebugLiveIntervalState::Open) {
-            auto closeAt = state->getPrevInst()->getCISAOff();
+            auto closeAt = state->getPrevInst()->getVISAId();
             while (closeAt >= 1 && krnlDbgInfo->isMissingVISAId(closeAt - 1)) {
               closeAt--;
             }
@@ -1684,9 +1684,9 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
 
           if (lr->getState() ==
               LiveIntervalInfo::DebugLiveIntervalState::Open) {
-            uint32_t lastCISAOff = (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX)
-                                       ? inst->getCISAOff()
-                                       : state->getPrevInst()->getCISAOff();
+            uint32_t lastCISAOff = (inst->getVISAId() != UNMAPPABLE_VISA_INDEX)
+                                       ? inst->getVISAId()
+                                       : state->getPrevInst()->getVISAId();
 
             while (lastCISAOff >= 1 &&
                    krnlDbgInfo->isMissingVISAId(lastCISAOff - 1)) {
@@ -1700,7 +1700,7 @@ void updateDebugInfo(G4_Kernel &kernel, G4_INST *inst,
     }
   }
 
-  if (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX && !inst->isPseudoKill()) {
+  if (inst->getVISAId() != UNMAPPABLE_VISA_INDEX && !inst->isPseudoKill()) {
     state->setPrevBitset(live);
     state->setPrevInst(inst);
   }
@@ -1716,8 +1716,8 @@ void updateDebugInfo(vISA::G4_Kernel &kernel,
     if (!start || !end || !lr->isValid())
       continue;
 
-    start = startInst->getCISAOff();
-    end = endInst->getCISAOff();
+    start = startInst->getVISAId();
+    end = endInst->getVISAId();
 
     auto lrInfo =
         kernel.getKernelDebugInfo()->getLiveIntervalInfo(lr->getTopDcl());
@@ -1734,8 +1734,8 @@ void updateDebugInfo(G4_Kernel &kernel,
       uint32_t start, end;
       G4_INST *startInst = lr->getFirstRef(start);
       G4_INST *endInst = lr->getLastRef(end);
-      start = startInst->getCISAOff();
-      end = endInst->getCISAOff();
+      start = startInst->getVISAId();
+      end = endInst->getVISAId();
 
       auto lrInfo =
           kernel.getKernelDebugInfo()->getLiveIntervalInfo(lr->getTopDcl());
@@ -1754,8 +1754,8 @@ void updateDebugInfo(G4_Kernel &kernel,
     uint32_t start, end;
     G4_INST *startInst = std::get<1>(lr);
     G4_INST *endInst = std::get<2>(lr);
-    start = startInst->getCISAOff();
-    end = endInst->getCISAOff();
+    start = startInst->getVISAId();
+    end = endInst->getVISAId();
 
     G4_Declare *topdcl = std::get<0>(lr);
     while (std::get<0>(lr)->getAliasDeclare() != NULL) {
@@ -2253,7 +2253,7 @@ void emitSubRoutineInfo(VISAKernelImpl *visaKernel) {
       while (firstInst == NULL && calleeBB != NULL) {
         if (calleeBB->size() > 0) {
           firstInst = calleeBB->front();
-          start = firstInst->getCISAOff();
+          start = firstInst->getVISAId();
           subLabel = firstInst->getSrc(0)->asLabel();
         }
       }
@@ -2262,7 +2262,7 @@ void emitSubRoutineInfo(VISAKernelImpl *visaKernel) {
       while (lastInst == NULL && calleeBB != NULL) {
         if (calleeBB->size() > 0) {
           lastInst = calleeBB->back();
-          end = lastInst->getCISAOff();
+          end = lastInst->getVISAId();
           MUST_BE_TRUE(
               lastInst->isReturn(),
               "Expecting to see G4_return as last inst in sub-routine");

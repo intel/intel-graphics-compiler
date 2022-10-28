@@ -204,9 +204,8 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_Operand *s4, G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
-      localId(0), srcCISAoff(UndefinedCisaOffset), sat(s ? 1 : 0),
-      evenlySplitInst(false), canBeAcc(false), execSize(size), bin(nullptr),
-      builder(irb) {
+      localId(0), sat(s ? 1 : 0), evenlySplitInst(false), canBeAcc(false),
+      execSize(size), bin(nullptr), builder(irb) {
   srcs[0] = s0;
   srcs[1] = s1;
   srcs[2] = s2;
@@ -484,8 +483,8 @@ void G4_INST::setMetadata(const std::string &key, MDNode *value) {
 }
 
 void G4_INST::setComments(const std::string &str) {
-  // we create a new MDNode the assumption is that comment should be unique and
-  // there is no opportunity for sharing
+  // We create a new MDNode each time; the assumption is that comment should be
+  // unique and there is no opportunity for sharing
   auto node = const_cast<IR_Builder &>(builder).allocateMDString(str);
   setMetadata(Metadata::InstComment, node);
 }
@@ -3130,7 +3129,7 @@ void G4_INST::emit_inst(std::ostream &output, bool symbol_dst,
     }
 
     emit_options(output);
-    if (getCISAOff() != -1) {
+    if (getVISAId() != -1) {
       output << " // ";
       emitInstIds(output);
     }
@@ -3143,7 +3142,7 @@ void G4_INST::emitInstIds(std::ostream &output) const {
     output << "#" << srcLine << ":";
   }
 
-  int vISAId = getCISAOff();
+  int vISAId = getVISAId();
   if (vISAId != -1) {
     output << "$" << vISAId << ":";
   }
@@ -3535,7 +3534,7 @@ void G4_InstSend::emit_send_desc(std::ostream &output) {
   // Emit a text description of the descriptor if it is available
   G4_SendDesc *msgDesc = sendInst->getMsgDesc();
   output << " // ";
-  if (getCISAOff() != -1) {
+  if (getVISAId() != -1) {
     emitInstIds(output);
     output << "; ";
   }
@@ -7735,8 +7734,8 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
 void G4_INST::inheritDIFrom(const G4_INST *inst) {
   // Copy over debug info from inst
   setLocation(inst->getLocation());
-  setCISAOff(getCISAOff() == UndefinedCisaOffset ? inst->getCISAOff()
-                                                 : getCISAOff());
+  setVISAId(getVISAId() == UndefinedCisaOffset ? inst->getVISAId()
+                                                 : getVISAId());
 }
 
 void G4_INST::inheritSWSBFrom(const G4_INST *inst) {

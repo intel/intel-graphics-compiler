@@ -313,8 +313,7 @@ G4_BB *FlowGraph::beginBB(Label_BB_Map &map, G4_INST *first) {
   return bb;
 }
 
-G4_INST *FlowGraph::createNewLabelInst(G4_Label *label, int lineNo,
-                                       int CISAOff) {
+G4_INST *FlowGraph::createNewLabelInst(G4_Label *label) {
   // srcFileName is NULL
   //  TODO: remove this (use createLabelInst)
   return builder->createInternalInst(NULL, G4_label, NULL, g4::NOSAT, g4::SIMD1,
@@ -354,13 +353,12 @@ G4_BB *FlowGraph::createNewBB(bool insertInFG) {
   return bb;
 }
 
-G4_BB *FlowGraph::createNewBBWithLabel(const char *LabelSuffix, int Lineno,
-                                       int CISAoff) {
+G4_BB *FlowGraph::createNewBBWithLabel(const char *LabelSuffix) {
   G4_BB *newBB = createNewBB(true);
   G4_Label *lbl = LabelSuffix != nullptr
                       ? builder->createLocalBlockLabel(LabelSuffix)
                       : builder->createLocalBlockLabel();
-  G4_INST *inst = createNewLabelInst(lbl, Lineno, CISAoff);
+  G4_INST *inst = createNewLabelInst(lbl);
   newBB->push_back(inst);
   return newBB;
 }
@@ -454,8 +452,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST &instlist, INST_LIST_ITER &it) {
         inst->asCFInst()->setJip(else_label);
 
         // insert if-else label
-        G4_INST *label =
-            createNewLabelInst(if_label, inst->getLineNo(), inst->getCISAOff());
+        G4_INST *label = createNewLabelInst(if_label);
         instlist.insert(it1, label);
 
         // Uip must be the same as Jip for else instructions.
@@ -464,15 +461,13 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST &instlist, INST_LIST_ITER &it) {
         if (elseCount == 0) // if-endif case
         {
           // insert endif label
-          G4_INST *label = createNewLabelInst(if_label, inst->getLineNo(),
-                                              inst->getCISAOff());
+          G4_INST *label = createNewLabelInst(if_label);
           instlist.insert(it, label);
           endif_label = if_label;
         } else // if-else-endif case
         {
           // insert endif label
-          G4_INST *label = createNewLabelInst(else_label, inst->getLineNo(),
-                                              inst->getCISAOff());
+          G4_INST *label = createNewLabelInst(else_label);
           instlist.insert(it, label);
           endif_label = else_label;
         }
@@ -598,7 +593,6 @@ void FlowGraph::normalizeFlowGraph() {
     G4_BB *bb = *it;
     if (bb->isEndWithFCall()) {
       G4_BB *retBB = bb->Succs.front();
-      G4_INST *lInst = retBB->front();
       if (retBB->Preds.size() > 1) {
 
         // To insert restore code we need to guarantee that save code has
@@ -615,8 +609,7 @@ void FlowGraph::normalizeFlowGraph() {
 
         // Create and insert label inst
         G4_Label *lbl = builder->createLocalBlockLabel();
-        G4_INST *inst =
-            createNewLabelInst(lbl, lInst->getLineNo(), lInst->getCISAOff());
+        G4_INST *inst = createNewLabelInst(lbl);
         newNode->push_back(inst);
         insert(++it, newNode);
         it--;
@@ -1215,8 +1208,7 @@ void FlowGraph::handleReturn(Label_BB_Map &labelMap,
       if (last->getSrc(0)->isLabel()) {
         // make sure bb has only two successors, one subroutine and one return
         // addr
-        MUST_BE_TRUE1(bb->Succs.size() == 2, last->getLineNo(),
-                      ERROR_FLOWGRAPH);
+        assert(bb->Succs.size() == 2);
 
         // find the subroutine BB and return Addr BB
         G4_BB *subBB = labelMap[last->getSrc(0)->asLabel()];
@@ -1231,8 +1223,7 @@ void FlowGraph::handleReturn(Label_BB_Map &labelMap,
           G4_INST *I0 = retAddr->getFirstInst();
           if (I0 == nullptr)
             I0 = last;
-          G4_BB *newRetBB = createNewBBWithLabel("Return_BB", I0->getLineNo(),
-                                                 I0->getCISAOff());
+          G4_BB *newRetBB = createNewBBWithLabel("Return_BB");
           bb->removeSuccEdge(retAddr);
           retAddr->removePredEdge(bb);
           addPredSuccEdges(bb, newRetBB, true);
@@ -4395,15 +4386,13 @@ bool FlowGraph::convertPredCall(
     const bool hasFallThru =
         (NextBB && BB->Succs.size() >= 1 && BB->Succs.front() == NextBB);
 
-    G4_BB *newCallBB = createNewBBWithLabel("predCallWA", Inst->getLineNo(),
-                                            Inst->getCISAOff());
+    G4_BB *newCallBB = createNewBBWithLabel("predCallWA");
     insert(NextBI, newCallBB);
     G4_Label *callBB_lbl = newCallBB->getLabel();
     assert(callBB_lbl);
     aLabelMap.insert(std::make_pair(callBB_lbl, newCallBB));
 
-    G4_BB *targetBB = createNewBBWithLabel("predCallWA", Inst->getLineNo(),
-                                           Inst->getCISAOff());
+    G4_BB *targetBB = createNewBBWithLabel("predCallWA");
     insert(NextBI, targetBB);
     G4_Label *target_lbl = targetBB->getLabel();
     aLabelMap.insert(std::make_pair(target_lbl, targetBB));

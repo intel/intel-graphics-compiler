@@ -211,8 +211,8 @@ public:
 
   Mem_Manager &mem; // mem mananger for creating BBs & starting IP table
   INST_LIST_NODE_ALLOCATOR
-      &instListAlloc; // a reference to dedicated mem allocator for holding
-                      // instruction list nodes
+  &instListAlloc; // a reference to dedicated mem allocator for holding
+                  // instruction list nodes
 
   std::list<Edge> backEdges; // list of all backedges (tail->head)
   Loop naturalLoops;
@@ -473,12 +473,10 @@ public:
 
   void removePredSuccEdges(G4_BB *pred, G4_BB *succ);
 
-  G4_INST *createNewLabelInst(G4_Label *label, int lineNo = 0,
-                              int CISAOff = -1);
+  G4_INST *createNewLabelInst(G4_Label *label);
 
   G4_BB *createNewBB(bool insertInFG = true);
-  G4_BB *createNewBBWithLabel(const char *LabelSuffix, int Lineno = 0,
-                              int CISAoff = -1);
+  G4_BB *createNewBBWithLabel(const char *LabelSuffix);
   int64_t insertDummyUUIDMov();
   //
   // Increase by one so that all BBs' traversal are less than traversalNum

@@ -1273,7 +1273,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
     return nullptr;
   }
 
-  int visaOff = g4inst->getCISAOff();
+  int visaOff = g4inst->getVISAId();
   igaInst->setLoc(visaOff); // make IGA src off track CISA id
 
   if (opSpec->supportsDestination()) {

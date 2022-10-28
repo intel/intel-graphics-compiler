@@ -88,8 +88,10 @@ void splice(G4_BB *bb, INST_LIST_ITER iter, INST_LIST &instList,
             unsigned int CISAOff) {
   // Update CISA offset of all instructions in instList before splicing
   // operation.
+  // FIXME: shouldn't we just take the vISA offset of iter? Under what condition
+  // do we want to override it?
   for (auto inst : instList) {
-    inst->setCISAOff(CISAOff);
+    inst->setVISAId(CISAOff);
   }
 
   bb->splice(iter, instList);
@@ -2964,7 +2966,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
                                   spilledRegion->getRegOff());
 
       INST_LIST::iterator insertPos = sendOutIter;
-      splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
+      splice(bb, insertPos, builder_->instList, curInst->getVISAId());
     }
 
     sendOutSpilledRegVarPortions(spillRangeDcl, mRangeDcl, 0,
@@ -3152,7 +3154,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
   replaceSpilledRange(replacementRangeDcl, spilledRegion, *spilledInstIter,
                       newSubregOff);
 
-  splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
+  splice(bb, insertPos, builder_->instList, curInst->getVISAId());
 
   if (optimizeSplitLLR && spillSendInst && spillSendInst->isSplitSend()) {
     // delete the move and spill the source instead. Note that we can't do this
@@ -3161,7 +3163,7 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
     unsigned int pos = 1;
     spillSendInst->setSrc(inst->getSrc(0), pos);
   } else {
-    splice(bb, spilledInstIter, builder_->instList, curInst->getCISAOff());
+    splice(bb, spilledInstIter, builder_->instList, curInst->getVISAId());
   }
 }
 
@@ -3259,7 +3261,7 @@ void SpillManagerGRF::insertFillGRFRangeCode(G4_SrcRegRegion *filledRegion,
   replaceFilledRange(fillRangeDcl, filledRegion, *filledInstIter);
   INST_LIST::iterator insertPos = filledInstIter;
 
-  splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
+  splice(bb, insertPos, builder_->instList, curInst->getVISAId());
   if (optimizeSplitLLR) {
     INST_LIST::iterator nextIter = filledInstIter;
     INST_LIST::iterator prevIter = filledInstIter;
@@ -3306,7 +3308,7 @@ SpillManagerGRF::insertSendFillRangeCode(G4_SrcRegRegion *filledRegion,
   replaceFilledRange(fillGRFRangeDcl, filledRegion, *filledInstIter);
   INST_LIST::iterator insertPos = filledInstIter;
 
-  splice(bb, insertPos, builder_->instList, curInst->getCISAOff());
+  splice(bb, insertPos, builder_->instList, curInst->getVISAId());
 
   // Return the next instruction
 
@@ -3486,13 +3488,13 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
           sendInSpilledRegVarPortions(fillGRFRangeDcl, mRangeDcl, 0,
                                       temp->getNumRows(), 0);
 
-          splice(bb, inst_it, builder_->instList, curInst->getCISAOff());
+          splice(bb, inst_it, builder_->instList, curInst->getVISAId());
 
           if (spill) {
             sendOutSpilledRegVarPortions(temp, mRangeDcl, 0, temp->getNumRows(),
                                          0);
 
-            splice(bb, next_inst_it, builder_->instList, curInst->getCISAOff());
+            splice(bb, next_inst_it, builder_->instList, curInst->getVISAId());
           }
         } else {
 
@@ -3686,13 +3688,13 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
           sendInSpilledRegVarPortions(fillGRFRangeDcl, mRangeDcl, 0,
                                       temp->getNumRows(), 0);
 
-          splice(bb, inst_it, builder_->instList, curInst->getCISAOff());
+          splice(bb, inst_it, builder_->instList, curInst->getVISAId());
 
           if (spill) {
             sendOutSpilledRegVarPortions(temp, mRangeDcl, 0, temp->getNumRows(),
                                          0);
 
-            splice(bb, next_inst_it, builder_->instList, curInst->getCISAOff());
+            splice(bb, next_inst_it, builder_->instList, curInst->getVISAId());
           }
         } else {
 
@@ -4824,7 +4826,7 @@ void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
     }
   }
 
-  splice(bb, instIt, builder->instList, inst->getCISAOff());
+  splice(bb, instIt, builder->instList, inst->getVISAId());
 }
 
 void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
@@ -4920,7 +4922,7 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
     }
   }
 
-  splice(bb, instIt, builder->instList, inst->getCISAOff());
+  splice(bb, instIt, builder->instList, inst->getVISAId());
 }
 
 void GlobalRA::expandSpillNonStackcall(uint32_t numRows, uint32_t offset,

@@ -119,7 +119,7 @@ public:
 
   INST_LIST_ITER insertBefore(INST_LIST::iterator iter, G4_INST *inst,
                               bool inheritDI = true) {
-    if (inheritDI && iter != instList.end() && !inst->isCISAOffValid())
+    if (inheritDI && iter != instList.end() && !inst->isVISAIdValid())
       inst->inheritDIFrom(*iter);
     return instList.insert(iter, inst);
   }
@@ -128,7 +128,7 @@ public:
                              bool inheritDI = true) {
     auto next = iter;
     ++next;
-    if (inheritDI && !inst->isCISAOffValid()) {
+    if (inheritDI && !inst->isVISAIdValid()) {
       // Inheriting from iter seems more reasonable
       // since invoking invokeAfter on iter means
       // we're processing iter and not ++iter

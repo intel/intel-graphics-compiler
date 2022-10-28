@@ -205,7 +205,7 @@ static G4_Type getDPASDataType(GenPrecision p) {
 }
 
 bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
-                unsigned short &internalOffset) const {
+                             unsigned short &internalOffset) const {
   for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
        curFootprintPtr = curFootprintPtr->next) {
     FOOTPRINT_TYPE curFType = curFootprintPtr->fType;
@@ -225,8 +225,9 @@ bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
   return false;
 }
 
-bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint, bool &isRMWOverlap,
-                unsigned short &internalOffset) const {
+bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
+                             bool &isRMWOverlap,
+                             unsigned short &internalOffset) const {
   // Overlap with other ranges.
   for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
        curFootprintPtr = curFootprintPtr->next) {
@@ -483,7 +484,7 @@ int SBNode::calcDiffBetweenInstDistAndPipeDepDist(
 // given a same dependent inst distance for each pipe.
 std::pair<SB_INST_PIPE, int>
 SBNode::calcClosestALUAndDistDiff(std::vector<unsigned> **latestInstID,
-                          unsigned distance) {
+                                  unsigned distance) {
   SB_INST_PIPE curType = PIPE_NONE;
   int instDistDiff = SWSB_MAX_MATH_DEPENDENCE_DISTANCE;
 
@@ -533,7 +534,7 @@ bool SBNode::isClosestALUType(std::vector<unsigned> **latestInstID,
 }
 
 void SBNode::finalizeDistanceType1(IR_Builder &builder,
-                           std::vector<unsigned> **latestInstID) {
+                                   std::vector<unsigned> **latestInstID) {
   if (instVec.front()->getDistanceTypeXe() !=
       G4_INST::DistanceType::DIST_NONE) { // Forced to a type already
     return;
@@ -829,7 +830,7 @@ void SBNode::finalizeDistanceType2(IR_Builder &builder,
 }
 
 void SBNode::finalizeDistanceType3(IR_Builder &builder,
-                           std::vector<unsigned> **latestInstID) {
+                                   std::vector<unsigned> **latestInstID) {
   if (instVec.front()->getDistanceTypeXe() !=
       G4_INST::DistanceType::DIST_NONE) { // Forced to a type already
     clearAllDistInfo();
@@ -1312,10 +1313,8 @@ void SWSB::setDefaultDistanceAtFirstInstruction() {
         }
         if (fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
             fg.builder->hasFourALUPipes()) {
-          insertSyncAllWRInstruction(bb, 0, it, (*it)->getCISAOff(),
-                                     (*it)->getLineNo());
-          insertSyncAllRDInstruction(bb, 0, it, (*it)->getCISAOff(),
-                                     (*it)->getLineNo());
+          insertSyncAllWRInstruction(bb, 0, it);
+          insertSyncAllRDInstruction(bb, 0, it);
         }
 
         return;
@@ -3645,8 +3644,7 @@ void SWSB::tokenAllocationGlobal() {
   assignDepTokens();
 }
 
-G4_INST *SWSB::insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter,
-                                     int CISAOff, int lineNo) {
+G4_INST *SWSB::insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter) {
   G4_SrcRegRegion *src0 = fg.builder->createNullSrc(Type_UD);
   G4_INST *syncInst = fg.builder->createSync(G4_sync_nop, src0);
   bb->insertBefore(nextIter, syncInst);
@@ -3655,8 +3653,7 @@ G4_INST *SWSB::insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter,
   return syncInst;
 }
 
-G4_INST *SWSB::insertSyncInstructionAfter(G4_BB *bb, INST_LIST_ITER iter,
-                                          int CISAOff, int lineNo) {
+G4_INST *SWSB::insertSyncInstructionAfter(G4_BB *bb, INST_LIST_ITER iter) {
   INST_LIST_ITER nextIter = iter;
   nextIter++;
   G4_SrcRegRegion *src0 = fg.builder->createNullSrc(Type_UD);
@@ -3667,20 +3664,8 @@ G4_INST *SWSB::insertSyncInstructionAfter(G4_BB *bb, INST_LIST_ITER iter,
   return syncInst;
 }
 
-G4_INST *SWSB::insertTestInstruction(G4_BB *bb, INST_LIST_ITER nextIter,
-                                     int CISAOff, int lineNo, bool countSync) {
-  G4_INST *nopInst = fg.builder->createNop(InstOpt_NoOpt);
-  bb->insertBefore(nextIter, nopInst);
-  if (countSync) {
-    syncInstCount++;
-  }
-
-  return nopInst;
-}
-
 G4_INST *SWSB::insertSyncAllRDInstruction(G4_BB *bb, unsigned int SBIDs,
-                                          INST_LIST_ITER nextIter, int CISAOff,
-                                          int lineNo) {
+                                          INST_LIST_ITER nextIter) {
   G4_INST *syncInst;
   if (SBIDs) {
     G4_Imm *src0 = fg.builder->createImm(SBIDs, Type_UD);
@@ -3697,8 +3682,7 @@ G4_INST *SWSB::insertSyncAllRDInstruction(G4_BB *bb, unsigned int SBIDs,
 }
 
 G4_INST *SWSB::insertSyncAllWRInstruction(G4_BB *bb, unsigned int SBIDs,
-                                          INST_LIST_ITER nextIter, int CISAOff,
-                                          int lineNo) {
+                                          INST_LIST_ITER nextIter) {
   G4_INST *syncInst;
   if (SBIDs) {
     G4_Imm *src0 = fg.builder->createImm(SBIDs, Type_UD);
@@ -3809,8 +3793,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
     case SWSBTokenType::READ_ALL: {
       assert(token == (unsigned short)UNKNOWN_TOKEN);
       node->eraseDepToken(i);
-      synAllInst = insertSyncAllRDInstruction(
-          bb, 0, inst_it, inst->getCISAOff(), inst->getLineNo());
+      synAllInst = insertSyncAllRDInstruction(bb, 0, inst_it);
       synAllInst->setLexicalId(newInstID);
       i++;
       continue;
@@ -3818,8 +3801,7 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
     case SWSBTokenType::WRITE_ALL: {
       assert(token == (unsigned short)UNKNOWN_TOKEN);
       node->eraseDepToken(i);
-      synAllInst = insertSyncAllWRInstruction(
-          bb, 0, inst_it, inst->getCISAOff(), inst->getLineNo());
+      synAllInst = insertSyncAllWRInstruction(bb, 0, inst_it);
       synAllInst->setLexicalId(newInstID);
       i++;
       continue;
@@ -3834,14 +3816,11 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
   G4_INST *synInst;
   if (dst) {
     if (dst == 0xFFFF) {
-      synInst = insertSyncAllWRInstruction(bb, 0, inst_it, inst->getCISAOff(),
-                                           inst->getLineNo());
+      synInst = insertSyncAllWRInstruction(bb, 0, inst_it);
     } else if (multipleDst) {
-      synInst = insertSyncAllWRInstruction(bb, dst, inst_it, inst->getCISAOff(),
-                                           inst->getLineNo());
+      synInst = insertSyncAllWRInstruction(bb, dst, inst_it);
     } else {
-      synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(),
-                                      inst->getLineNo());
+      synInst = insertSyncInstruction(bb, inst_it);
       synInst->setToken(dstToken);
       synInst->setTokenType(SWSBTokenType::AFTER_WRITE);
     }
@@ -3854,14 +3833,11 @@ bool SWSB::insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
 
   if (src) {
     if (src == 0xFFFF) {
-      synInst = insertSyncAllRDInstruction(bb, 0, inst_it, inst->getCISAOff(),
-                                           inst->getLineNo());
+      synInst = insertSyncAllRDInstruction(bb, 0, inst_it);
     } else if (multipleSrc) {
-      synInst = insertSyncAllRDInstruction(bb, src, inst_it, inst->getCISAOff(),
-                                           inst->getLineNo());
+      synInst = insertSyncAllRDInstruction(bb, src, inst_it);
     } else {
-      synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(),
-                                      inst->getLineNo());
+      synInst = insertSyncInstruction(bb, inst_it);
       synInst->setToken(srcToken);
       synInst->setTokenType(SWSBTokenType::AFTER_READ);
     }
@@ -3941,8 +3917,7 @@ bool SWSB::insertSyncXe(G4_BB *bb, SBNode *node, G4_INST *inst,
     if (inst->isDpas()) {
       if (distType != G4_INST::DistanceType::DIST_NONE &&
           distType != G4_INST::DistanceType::DIST) {
-        G4_INST *synInst = insertSyncInstruction(
-            bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+        G4_INST *synInst = insertSyncInstruction(bb, inst_it);
         synInst->setDistance(inst->getDistance());
         synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
         inst->setDistance(0);
@@ -3958,8 +3933,7 @@ bool SWSB::insertSyncXe(G4_BB *bb, SBNode *node, G4_INST *inst,
       }
       if (distType != G4_INST::DistanceType::DIST_NONE &&
           distType != G4_INST::DistanceType::DIST) {
-        G4_INST *synInst = insertSyncInstruction(
-            bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+        G4_INST *synInst = insertSyncInstruction(bb, inst_it);
         synInst->setDistance(inst->getDistance());
         synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
         inst->setDistance(0);
@@ -3979,8 +3953,7 @@ bool SWSB::insertSyncXe(G4_BB *bb, SBNode *node, G4_INST *inst,
       if ((distType != G4_INST::DistanceType::DIST_NONE &&
            distType != G4_INST::DistanceType::DISTALL) ||
           ((*inst_it) != inst)) {
-        G4_INST *synInst = insertSyncInstruction(
-            bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+        G4_INST *synInst = insertSyncInstruction(bb, inst_it);
         synInst->setDistance(inst->getDistance());
         synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
         inst->setDistance(0);
@@ -4142,14 +4115,11 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
 
   if (dst) {
     if (dst == 0xFFFFFFFF) {
-      synInst = insertSyncAllWRInstruction(bb, 0, inst_it, inst->getCISAOff(),
-                                           inst->getLineNo());
+      synInst = insertSyncAllWRInstruction(bb, 0, inst_it);
     } else if (multipleDst) {
-      synInst = insertSyncAllWRInstruction(bb, dst, inst_it, inst->getCISAOff(),
-                                           inst->getLineNo());
+      synInst = insertSyncAllWRInstruction(bb, dst, inst_it);
     } else {
-      synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(),
-                                      inst->getLineNo());
+      synInst = insertSyncInstruction(bb, inst_it);
       synInst->setToken(dstToken);
       synInst->setTokenType(SWSBTokenType::AFTER_WRITE);
     }
@@ -4162,14 +4132,11 @@ bool SWSB::insertSyncTokenPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
 
   if (src) {
     if (src == 0xFFFFFFFF) {
-      synInst = insertSyncAllRDInstruction(bb, 0, inst_it, inst->getCISAOff(),
-                                           inst->getLineNo());
+      synInst = insertSyncAllRDInstruction(bb, 0, inst_it);
     } else if (multipleSrc) {
-      synInst = insertSyncAllRDInstruction(bb, src, inst_it, inst->getCISAOff(),
-                                           inst->getLineNo());
+      synInst = insertSyncAllRDInstruction(bb, src, inst_it);
     } else {
-      synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(),
-                                      inst->getLineNo());
+      synInst = insertSyncInstruction(bb, inst_it);
       synInst->setToken(srcToken);
       synInst->setTokenType(SWSBTokenType::AFTER_READ);
     }
@@ -4190,8 +4157,7 @@ bool SWSB::insertDistSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
     SB_INST_PIPE pipe = static_cast<SB_INST_PIPE>(i);
     unsigned dist = node->getDistInfo(pipe);
     if (dist) {
-      G4_INST *synInst = insertSyncInstruction(bb, inst_it, inst->getCISAOff(),
-                                               inst->getLineNo());
+      G4_INST *synInst = insertSyncInstruction(bb, inst_it);
       synInst->setDistance(dist);
       SWSB_global::setAccurateDistType(synInst, pipe);
       inserted = true;
@@ -4250,8 +4216,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
         if (inst->getSetToken() != (unsigned short)UNKNOWN_TOKEN ||
             node->getDepTokenNum()) {
           if (!operandTypeIndicated) {
-            G4_INST *synInst = insertSyncInstruction(
-                bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+            G4_INST *synInst = insertSyncInstruction(bb, inst_it);
             synInst->setDistance(inst->getDistance());
             synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
             inst->setDistance(0);
@@ -4277,8 +4242,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
                 distType == G4_INST::DistanceType::DISTINT ||
                 distType == G4_INST::DistanceType::DISTFLOAT) ||
               (inst != (*inst_it))) {
-            G4_INST *synInst = insertSyncInstruction(
-                bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+            G4_INST *synInst = insertSyncInstruction(bb, inst_it);
             synInst->setDistance(inst->getDistance());
             synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
             inst->setDistance(0);
@@ -4288,8 +4252,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
         } else if (node->getDepTokenNum()) // Keep only the SBID deps in the
                                            // instruction
         {
-          G4_INST *synInst = insertSyncInstruction(
-              bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+          G4_INST *synInst = insertSyncInstruction(bb, inst_it);
           synInst->setDistance(inst->getDistance());
           synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
           inst->setDistance(0);
@@ -4305,8 +4268,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
     //     RegDistAll     SBID.dst
     if (inst->getDistance()) {
       if (inst->opcode() == G4_mad && inst->hasNoACCSBSet()) {
-        G4_INST *synInst = insertSyncInstruction(
-            bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+        G4_INST *synInst = insertSyncInstruction(bb, inst_it);
         synInst->setDistance(inst->getDistance());
         synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
         inst->setDistance(0);
@@ -4317,8 +4279,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
       {
         if (!operandTypeIndicated &&
             distType != G4_INST::DistanceType::DISTALL) {
-          G4_INST *synInst = insertSyncInstruction(
-              bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+          G4_INST *synInst = insertSyncInstruction(bb, inst_it);
           synInst->setDistance(inst->getDistance());
           synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
           inst->setDistance(0);
@@ -4342,8 +4303,7 @@ bool SWSB::insertSyncPVC(G4_BB *bb, SBNode *node, G4_INST *inst,
             }
           }
           if (!hasAfterWrite) {
-            G4_INST *synInst = insertSyncInstruction(
-                bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+            G4_INST *synInst = insertSyncInstruction(bb, inst_it);
             synInst->setDistance(inst->getDistance());
             synInst->setDistanceTypeXe(inst->getDistanceTypeXe());
             inst->setDistance(0);
@@ -4411,8 +4371,7 @@ void SWSB::insertSync(G4_BB *bb, SBNode *node, G4_INST *inst,
   }
 
   if (node->followDistOneAreg() && insertedSync) {
-    G4_INST *syncInst = insertSyncInstructionAfter(
-        bb, prevIt, inst->getCISAOff(), inst->getLineNo());
+    G4_INST *syncInst = insertSyncInstructionAfter(bb, prevIt);
     syncInst->setDistance(1);
     if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
       syncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
@@ -4420,8 +4379,7 @@ void SWSB::insertSync(G4_BB *bb, SBNode *node, G4_INST *inst,
   }
 
   if (node->hasDistOneAreg() && !hasValidNextInst) {
-    G4_INST *syncInst = insertSyncInstructionAfter(
-        bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+    G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
     syncInst->setDistance(1);
     if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
       syncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
@@ -4503,8 +4461,7 @@ void SWSB::insertTest() {
             if (nextInst->isEOT()) {
               // If the second is EOT, sync all can be inserted directly,
               // because EOT has no token info
-              synInst = insertSyncAllWRInstruction(
-                  bb, 0, inst_it, inst->getCISAOff(), nextInst->getLineNo());
+              synInst = insertSyncAllWRInstruction(bb, 0, inst_it);
               synInst->setLexicalId(newInstID);
             } else {
               fusedSync = true;
@@ -4545,8 +4502,7 @@ void SWSB::insertTest() {
         if (std::find(kernel.callerRestoreDecls.begin(),
                       kernel.callerRestoreDecls.end(),
                       dstDcl) != kernel.callerRestoreDecls.end()) {
-          G4_INST *syncInst = insertSyncInstructionAfter(
-              bb, inst_it, inst->getCISAOff(), inst->getLineNo());
+          G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
           unsigned short dstToken = (unsigned short)-1;
           dstToken = node->getLastInstruction()->getSetToken();
           syncInst->setToken(dstToken);
@@ -4572,8 +4528,7 @@ void SWSB::insertTest() {
         insertSync(bb, node, inst, tmp_it, newInstID, &dstTokens, &srcTokens);
         unsigned short token = inst->getSetToken();
         if (token != (unsigned short)UNKNOWN_TOKEN) {
-          G4_INST *synInst = insertSyncInstruction(
-              bb, tmp_it, inst->getCISAOff(), inst->getLineNo());
+          G4_INST *synInst = insertSyncInstruction(bb, tmp_it);
           synInst->setToken(token);
           synInst->setTokenType(SWSBTokenType::AFTER_WRITE);
           synInst->setLexicalId(newInstID);
@@ -6573,8 +6528,8 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
                           liveNode->getDPASID() <=
                       TOKEN_AFTER_READ_DPAS_CYCLE) {
                     createAddGRFEdge(liveNode, node, dep, DEP_EXPLICT);
-                  } // else do nothing, previous whole region check kill the
-                    // bucket node already.
+                  }    // else do nothing, previous whole region check kill the
+                       // bucket node already.
                 } else // src0, src2
                 {
                   if (node->getDPASID() + curFootprint->offset -

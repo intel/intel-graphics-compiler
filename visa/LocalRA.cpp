@@ -701,7 +701,7 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
             G4_BB *bb = (*rit);
 
             if (bb->size() > 0) {
-              end = bb->back()->getCISAOff();
+              end = bb->back()->getVISAId();
               break;
             }
           }
@@ -841,8 +841,8 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
 
           if (bb->size() > 0) {
             for (auto inst : *bb) {
-              if (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX) {
-                end = bb->back()->getCISAOff();
+              if (inst->getVISAId() != UNMAPPABLE_VISA_INDEX) {
+                end = bb->back()->getVISAId();
                 break;
               }
             }
@@ -1260,7 +1260,7 @@ void LocalRA::calculateInputIntervals() {
                   inputIntervals.push_front(new (mem)
                                                 InputLiveRange(idx, curInstId));
                   if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo)) {
-                    updateDebugInfo(kernel, topdcl, 0, curInst->getCISAOff());
+                    updateDebugInfo(kernel, topdcl, 0, curInst->getVISAId());
                   }
                 }
               }
@@ -1320,7 +1320,7 @@ void LocalRA::calculateInputIntervals() {
                     }
                     if (kernel.getOptions()->getOption(
                             vISA_GenerateDebugInfo)) {
-                      updateDebugInfo(kernel, topdcl, 0, curInst->getCISAOff());
+                      updateDebugInfo(kernel, topdcl, 0, curInst->getVISAId());
                     }
                   }
                 }

@@ -225,7 +225,7 @@ void CoalesceSpillFills::coalesceSpills(
 
 void CoalesceSpillFills::coalesceFills(
     std::list<INST_LIST_ITER> &coalesceableFills, unsigned int min,
-    unsigned int max, G4_BB *bb, int srcCISAOff) {
+    unsigned int max, G4_BB *bb) {
   // Generate fill with minimum size = max-min. This should be compatible with
   // payload sizes supported by hardware.
   unsigned int payloadSize = (max - min) + 1;
@@ -292,8 +292,6 @@ void CoalesceSpillFills::coalesceFills(
 
   coalesceableFills.clear();
   bb->insertBefore(f, newFill);
-
-  //    copyToOldFills(coalescedFillDst, indFills, f, bb, srcCISAOff);
 }
 
 // Return true if heuristic agrees to coalescing.
@@ -699,9 +697,6 @@ CoalesceSpillFills::analyzeSpillCoalescing(std::list<INST_LIST_ITER> &instList,
   // have a write.
   INST_LIST_ITER last = end;
   last++;
-#if 0
-    unsigned int startCISAOff = (*instList.front())->getCISAOff();
-#endif
   if (instList.size() < 2) {
     return last;
   }
@@ -713,32 +708,6 @@ CoalesceSpillFills::analyzeSpillCoalescing(std::list<INST_LIST_ITER> &instList,
   bool useNoMask;
   keepConsecutiveSpills(instList, coalesceableSpills, cMaxSpillPayloadSize, min,
                         max, useNoMask, mask);
-
-#if 0
-    printf("Start -- \n");
-    if (coalesceableSpills.size() > 0)
-    {
-        printf("Will coalesce following spill (offset, size) pairs:\n");
-        for (auto k : coalesceableSpills)
-        {
-            printf("(%d, %d) @ $%d,\t", (*k)->getMsgDesc()->getScratchRWOffset(), (*k)->getMsgDesc()->getScratchRWSize(), (*k)->getCISAOff());
-        }
-        printf("\n\n");
-    }
-
-    if (instList.size() > 0)
-    {
-        printf("Will NOT coalesce following spill (offset, size) pairs:\n");
-        for (auto k : instList)
-        {
-            printf("(%d, %d) @ $%d,\t", (*k)->getMsgDesc()->getScratchRWOffset(), (*k)->getMsgDesc()->getScratchRWSize(), (*k)->getCISAOff());
-        }
-        printf("\n\n");
-    }
-
-    printf("End --\n");
-#endif
-
   if (coalesceableSpills.size() > 1) {
     coalesceSpills(coalesceableSpills, min, max, useNoMask, mask, bb);
   } else {
@@ -784,39 +753,11 @@ CoalesceSpillFills::analyzeFillCoalescing(std::list<INST_LIST_ITER> &instList,
     coalesceableFills.clear();
     instList = origInstList;
     instList.pop_front();
-#if 0
-        printf("Fill heuristic didnt agree to coalescing\n");
-#endif
   }
 
-#if 0
-    printf("Start -- \n");
-    if (coalesceableFills.size() > 0)
-    {
-        printf("Will coalesce following fill (offset, size) pairs:\n");
-        for (auto k : coalesceableFills)
-        {
-            printf("(%d, %d) @ $%d,\t", (*k)->getMsgDesc()->getScratchRWOffset(), (*k)->getMsgDesc()->getScratchRWSize(), (*k)->getCISAOff());
-        }
-        printf("\n\n");
-    }
-
-    if (instList.size() > 0)
-    {
-        printf("Will NOT coalesce following fill (offset, size) pairs:\n");
-        for (auto k : instList)
-        {
-            printf("(%d, %d) @ $%d,\t", (*k)->getMsgDesc()->getScratchRWOffset(), (*k)->getMsgDesc()->getScratchRWSize(), (*k)->getCISAOff());
-        }
-        printf("\n\n");
-    }
-
-    printf("End --\n");
-#endif
 
   if (coalesceableFills.size() > 1) {
-    coalesceFills(coalesceableFills, min, max, bb,
-                  (*coalesceableFills.front())->getCISAOff());
+    coalesceFills(coalesceableFills, min, max, bb);
   }
 
   if (instList.size() == 0) {
@@ -1145,9 +1086,6 @@ void CoalesceSpillFills::spills() {
             bool fullOverlap = false;
             if (overlap(*instIter, *(*coalIt), fullOverlap)) {
               if (fullOverlap) {
-#if 0
-                                printf("Deleting spill at $%d due to %d\n", (*(*coalIt))->getCISAOff(), (*instIter)->getCISAOff());
-#endif
                 // Delete earlier spill since its made redundant
                 // by current spill.
                 bb->erase(*coalIt);
@@ -1185,11 +1123,6 @@ void CoalesceSpillFills::spills() {
         if (!allSpillsSameVar(spillsToCoalesce)) {
           // High register pressure region so reduce window size to 3
           w = (cWindowSize - w > 3) ? cWindowSize - 3 : w;
-        } else {
-#if 0
-                    printf("Found register pressure = %d at %d. Still coalescing spills because all spills are from same var.\n",
-                        rpe.getRegisterPressure(inst), inst->getCISAOff());
-#endif
         }
       }
 
@@ -1539,15 +1472,9 @@ void CoalesceSpillFills::removeRedundantSplitMovs() {
     auto &allMovs = mov.second.second;
 
     if (numRefs == 0 && !dcl->getAddressed()) {
-#if 0
-            printf("Removing movs/pseudoKill for dcl %s\n", dcl->getName());
-#endif
       for (auto m : allMovs) {
         auto bb = m.first;
         auto iter = m.second;
-#if 0
-                printf("\tFound %s occurence at $%d\n", (*iter)->opcode() == G4_mov ? "mov" : "pseudokill", (*iter)->getCISAOff());
-#endif
         bb->erase(iter);
       }
     }
@@ -1780,9 +1707,6 @@ void CoalesceSpillFills::removeRedundantWrites() {
           }
 
           if (allRowsFound) {
-#if 0
-                        printf("Removing redundant successive write at $%d\n", inst->getCISAOff());
-#endif
             if (!isGRFAssigned(inst->getDst()))
               instIt = bb->erase(instIt);
           } else {
@@ -1892,9 +1816,6 @@ void CoalesceSpillFills::removeRedundantWrites() {
          !isGRFAssigned(inst->asSpillIntrinsic()->getPayload())) ||
         (inst->isFillIntrinsic() &&
          !isGRFAssigned(inst->asFillIntrinsic()->getDst()))) {
-#if 0
-            printf("Removing redundant scratch access at CISA $%d\n", removeSp.first->getCISAOff());
-#endif
       bb->erase(removeSp.second.first);
     }
   }
@@ -1920,7 +1841,7 @@ void CoalesceSpillFills::dumpKernel() {
   for (auto bb : kernel.fg) {
     for (auto inst : *bb) {
       inst->emit(std::cerr);
-      std::cerr << "\t$" << inst->getCISAOff() << ", #"
+      std::cerr << "\t$" << inst->getVISAId() << ", #"
                 << rpe.getRegisterPressure(inst) << "\n";
     }
   }
@@ -1933,23 +1854,23 @@ void CoalesceSpillFills::dumpKernel(unsigned int v1, unsigned int v2) {
       break;
 
     for (auto inst : *bb) {
-      if (canEnd && inst->getCISAOff() > (int)v2) {
+      if (canEnd && inst->getVISAId() > (int)v2) {
         end = true;
         break;
       }
 
-      if (inst->getCISAOff() == v2) {
+      if (inst->getVISAId() == v2) {
         // This ensures invalid offsets
         // are dumped till v2 is hit.
         canEnd = true;
       }
 
-      if (inst->getCISAOff() == v1)
+      if (inst->getVISAId() == v1)
         start = true;
 
       if (start && !end) {
         inst->dump();
-        printf(" // $%d, #%d\n", inst->getCISAOff(),
+        printf(" // $%d, #%d\n", inst->getVISAId(),
                rpe.getRegisterPressure(inst));
       }
     }

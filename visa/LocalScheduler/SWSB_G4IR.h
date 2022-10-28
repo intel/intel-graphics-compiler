@@ -1040,20 +1040,12 @@ class SWSB {
   void insertTest();
 
   // Insert sync instructions
-  G4_INST *insertTestInstruction(
-      G4_BB *bb, INST_LIST_ITER nextIter, int CISAOff, int lineNo,
-      bool
-          countSyns); // FIXME: Please remove it when meta is not needed anymore
-  G4_INST *insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter,
-                                 int CISAOff, int lineNo);
-  G4_INST *insertSyncInstructionAfter(G4_BB *bb, INST_LIST_ITER nextIter,
-                                      int CISAOff, int lineNo);
+  G4_INST *insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter);
+  G4_INST *insertSyncInstructionAfter(G4_BB *bb, INST_LIST_ITER nextIter);
   G4_INST *insertSyncAllRDInstruction(G4_BB *bb, unsigned int SBIDs,
-                                      INST_LIST_ITER nextIter, int CISAOff,
-                                      int lineNo);
+                                      INST_LIST_ITER nextIter);
   G4_INST *insertSyncAllWRInstruction(G4_BB *bb, unsigned int SBIDs,
-                                      INST_LIST_ITER nextIter, int CISAOff,
-                                      int lineNo);
+                                      INST_LIST_ITER nextIter);
 
   bool insertSyncToken(G4_BB *bb, SBNode *node, G4_INST *inst,
                        INST_LIST_ITER inst_it, int newInstID, BitSet *dstTokens,

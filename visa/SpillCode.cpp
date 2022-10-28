@@ -670,7 +670,7 @@ void SpillManager::insertSpillCode() {
     for (INST_LIST_ITER inst_it = bb->begin(); inst_it != bb->end();) {
       G4_INST *inst = *inst_it;
 
-      currCISAOffset = inst->getCISAOff();
+      currCISAOffset = inst->getVISAId();
 
       G4_Operand *operands_analyzed[G4_MAX_SRCS] = {NULL, NULL, NULL};
       G4_Declare *declares_created[G4_MAX_SRCS] = {NULL, NULL, NULL};

@@ -65,7 +65,7 @@ private:
                                         G4_BB *);
   void removeWARFills(std::list<INST_LIST_ITER> &, std::list<INST_LIST_ITER> &);
   void coalesceFills(std::list<INST_LIST_ITER> &, unsigned int, unsigned int,
-                     G4_BB *, int);
+                     G4_BB *);
   G4_INST *generateCoalescedFill(G4_SrcRegRegion *, unsigned int, unsigned int,
                                  unsigned int, bool);
   G4_SrcRegRegion *generateCoalescedSpill(G4_SrcRegRegion *, unsigned int,

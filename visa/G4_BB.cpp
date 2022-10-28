@@ -213,7 +213,7 @@ void G4_BB::emitBasicInstructionComment(std::ostream &output,
     if (!comments.empty()) {
       output << " " << comments << "; ";
     }
-    int vISAId = inst->getCISAOff();
+    int vISAId = inst->getVISAId();
     if (vISAId != -1) {
       output << "$" << vISAId;
     }

@@ -869,7 +869,7 @@ void IR_Builder::initScratchSurfaceOffset() {
         auto andInst = createBinOp(G4_and, g4::SIMD1, andDst, R0_5,
                                    createImm(0xFFFFFC00, Type_UD),
                                    InstOpt_WriteEnable, true);
-        andInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
+        andInst->setVISAId(UNMAPPABLE_VISA_INDEX);
         instList.pop_back();
         auto iter =
             std::find_if(instList.begin(), instList.end(),
@@ -1408,7 +1408,7 @@ G4_INST *IR_Builder::createInst(G4_Predicate *prd, G4_opcode op,
   }
 
   if (addToInstList) {
-    i->setCISAOff(curCISAOffset);
+    i->setVISAId(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation)) {
       i->setLocation(allocateMDLocation(curLine, curFile));
@@ -1587,7 +1587,7 @@ G4_INST *IR_Builder::createCFInst(G4_Predicate *prd, G4_opcode op,
       new (mem) G4_InstCF(*this, prd, op, execSize, jip, uip, options);
 
   if (addToInstList) {
-    ii->setCISAOff(curCISAOffset);
+    ii->setVISAId(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation)) {
       ii->setLocation(allocateMDLocation(curLine, curFile));
@@ -1610,7 +1610,7 @@ G4_INST *IR_Builder::createDpasInst(G4_opcode opc, G4_ExecSize execSize,
                                      src2, src3, options, A, W, D, C);
 
   if (addToInstList) {
-    i->setCISAOff(curCISAOffset);
+    i->setVISAId(curCISAOffset);
     if (m_options->getOption(vISA_EmitLocation)) {
       i->setLocation(allocateMDLocation(curLine, curFile));
     }
@@ -1642,7 +1642,7 @@ G4_INST *IR_Builder::createBfnInst(uint8_t booleanFuncCtrl, G4_Predicate *prd,
                                     src1, src2, options, booleanFuncCtrl);
 
   if (addToInstList) {
-    i->setCISAOff(curCISAOffset);
+    i->setVISAId(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation)) {
       i->setLocation(allocateMDLocation(curLine, curFile));
@@ -1709,7 +1709,7 @@ G4_INST *IR_Builder::createInst(G4_Predicate *prd, G4_opcode op,
                         src2, options);
 
   if (addToInstList) {
-    i->setCISAOff(curCISAOffset);
+    i->setVISAId(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation)) {
       i->setLocation(allocateMDLocation(curLine, curFile));
@@ -1746,7 +1746,7 @@ G4_InstSend *IR_Builder::createSendInst(
                                          currSrc, msg, options, msgDesc);
 
   if (addToInstList) {
-    m->setCISAOff(curCISAOffset);
+    m->setVISAId(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation)) {
       m->setLocation(allocateMDLocation(curLine, curFile));
@@ -1800,7 +1800,7 @@ G4_InstSend *IR_Builder::createSplitSendInst(
                                          src1, msg, src3, options, msgDesc);
 
   if (addToInstList) {
-    m->setCISAOff(curCISAOffset);
+    m->setVISAId(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation)) {
       m->setLocation(allocateMDLocation(curLine, curFile));
@@ -1843,7 +1843,7 @@ G4_INST *IR_Builder::createMathInst(G4_Predicate *prd, G4_Sat sat,
                                      dst, src0, src1, options, mathOp);
 
   if (addToInstList) {
-    i->setCISAOff(curCISAOffset);
+    i->setVISAId(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation)) {
       i->setLocation(allocateMDLocation(curLine, curFile));
@@ -1882,7 +1882,7 @@ G4_INST *IR_Builder::createIntrinsicInst(G4_Predicate *prd, Intrinsic intrinId,
                                    src2, options);
 
   if (addToInstList) {
-    i->setCISAOff(curCISAOffset);
+    i->setVISAId(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation)) {
       i->setLocation(allocateMDLocation(curLine, curFile));
@@ -1917,7 +1917,7 @@ G4_INST *IR_Builder::createIntrinsicAddrMovInst(
                                           src2, src3, src4, src5, src6, src7);
 
   if (addToInstList) {
-    i->setCISAOff(curCISAOffset);
+    i->setVISAId(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation)) {
       i->setLocation(allocateMDLocation(curLine, curFile));

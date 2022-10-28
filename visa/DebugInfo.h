@@ -452,7 +452,7 @@ class DebugInfoState {
 public:
   void setPrevBitset(const SparseBitSet &b) { prevBitset = b; }
   void setPrevInst(G4_INST *i) {
-    if (i->getCISAOff() != UNMAPPABLE_VISA_INDEX) {
+    if (i->getVISAId() != UNMAPPABLE_VISA_INDEX) {
       prevInst = i;
     }
   }

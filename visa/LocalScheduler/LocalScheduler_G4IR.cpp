@@ -1948,8 +1948,8 @@ struct criticalCmp {
 struct criticalCmpForMad {
   criticalCmpForMad() = default;
   bool operator()(const Node *n1, const Node *n2) {
-    return (n1->getInstructions()->front()->getCISAOff() >
-            n2->getInstructions()->front()->getCISAOff());
+    return (n1->getInstructions()->front()->getVISAId() >
+            n2->getInstructions()->front()->getVISAId());
   }
 };
 

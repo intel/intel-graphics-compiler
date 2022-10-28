@@ -148,8 +148,10 @@ protected:
   int32_t localId;
 
   static const int UndefinedCisaOffset = -1;
-  int srcCISAoff = UndefinedCisaOffset; // record CISA inst offset that resulted
-                                        // in this instruction
+  // Id of the vISA instruction this inst is generated from.
+  // This is used by DebugInfo to map a Xe ISA instruction back to its vISA/llvm
+  // IR instructions.
+  int vISAInstId = UndefinedCisaOffset;
 
   Metadata *MD = nullptr;
 
@@ -592,9 +594,9 @@ public:
   void setEvenlySplitInst(bool val) { evenlySplitInst = val; }
   bool getEvenlySplitInst() { return evenlySplitInst; }
 
-  void setCISAOff(int offset) { srcCISAoff = offset; }
-  int getCISAOff() const { return srcCISAoff; }
-  bool isCISAOffValid() const { return getCISAOff() != UndefinedCisaOffset; }
+  void setVISAId(int offset) { vISAInstId = offset; }
+  int getVISAId() const { return vISAInstId; }
+  bool isVISAIdValid() const { return getVISAId() != UndefinedCisaOffset; }
 
   bool isOptBarrier() const;
   bool hasImplicitAccSrc() const {

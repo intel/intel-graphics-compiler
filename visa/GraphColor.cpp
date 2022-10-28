@@ -941,7 +941,7 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
   }
 
 #ifdef DEBUG_VERBOSE_ON
-  printf("$%d:\n", inst->getCISAOff());
+  printf("$%d:\n", inst->getVISAId());
   for (int i = 0; i < 3; i++) {
     if (dcls[i]) {
       printf("%s, ", dcls[i]->getName());
@@ -4912,7 +4912,6 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
 
 #ifdef DEBUG_VERBOSE_ON
     inst->emit(COUT_ERROR);
-    DEBUG_VERBOSE("    //" << inst->getLineNo() << ":$" << inst->getCISAOff());
     DEBUG_VERBOSE("\n");
 #endif
 
@@ -7680,7 +7679,7 @@ void GraphColor::getCallerSaveRegisters() {
         optreport << "Caller save size: "
                   << callerSaveRegCount * builder.getGRFSize()
                   << " bytes for fcall at cisa id "
-                  << (*it)->back()->getCISAOff() << "\n";
+                  << (*it)->back()->getVISAId() << "\n";
         closeOptReportStream(optreport);
       }
     }
@@ -8448,7 +8447,7 @@ void GlobalRA::reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,
         defs.find(referencedDcl) == defs.end()) {
       // Def not found for use so report it
       optreport << "Def not found for use " << referencedDcl->getName() << " ("
-                << opndName << ") at CISA offset " << inst->getCISAOff()
+                << opndName << ") at CISA offset " << inst->getVISAId()
                 << ", src line " << inst->getLineNo() << ":"
                 << "\n";
       inst->emit(optreport);
@@ -12100,7 +12099,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
     if (rd.size() > 0) {
       printf("Current use str = %s for inst:\t", useStr.data());
       inst->emit(std::cerr);
-      printf("\t$%d\n", inst->getCISAOff());
+      printf("\t$%d\n", inst->getVISAId());
     }
     // process all reaching defs
     for (auto rid = rd.begin(); rid != rd.end();) {
@@ -12111,11 +12110,6 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
       // skip rd if it is from complementary branch
       if (isComplementary(str, useStr) &&
           isSameEM(inst, std::get<0>(reachingDef))) {
-#if 0
-                printf("\tFollowing in complementary branch %s, removed:\t", str.data());
-                std::get<0>(reachingDef)->emit(std::cerr);
-                printf("\t$%d\n", std::get<0>(reachingDef)->getCISAOff());
-#endif
         rid = rd.erase(rid);
         continue;
       }
@@ -12156,7 +12150,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
             lr->getDcl()->getRootDeclare())
           continue;
 
-        if (inst->getCISAOff() == std::get<0>(reachingDef)->getCISAOff())
+        if (inst->getVISAId() == std::get<0>(reachingDef)->getVISAId())
           continue;
 
         if (!printed) {
@@ -12165,7 +12159,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
         }
         printf("\t");
         std::get<0>(reachingDef)->emit(std::cerr);
-        printf("\t$%d\n", std::get<0>(reachingDef)->getCISAOff());
+        printf("\t$%d\n", std::get<0>(reachingDef)->getVISAId());
       }
     }
   }
@@ -12575,7 +12569,7 @@ void GlobalRA::insertSaveAddr(G4_BB *bb) {
                ERROR_FLOWGRAPH); // must have a assigned loc
 
   G4_INST *last = bb->back();
-  MUST_BE_TRUE1(last->isCall(), last->getLineNo(), ERROR_FLOWGRAPH);
+  assert(last->isCall());
   if (last->getDst() == NULL) {
     unsigned loc = getSubRetLoc(bb);
     G4_Declare *dcl = getRetDecl(loc);
@@ -12591,7 +12585,7 @@ void GlobalRA::insertRestoreAddr(G4_BB *bb) {
   MUST_BE_TRUE(bb != NULL, ERROR_INTERNAL_ARGUMENT);
 
   G4_INST *last = bb->back();
-  MUST_BE_TRUE1(last->isReturn(), last->getLineNo(), ERROR_FLOWGRAPH);
+  assert(last->isReturn());
   if (last->getSrc(0) == NULL) {
     unsigned loc = getSubRetLoc(bb);
     G4_Declare *dcl = getRetDecl(loc);

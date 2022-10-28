@@ -868,7 +868,6 @@ void Optimizer::countBankConflicts() {
               << " globals) in kernel: " << kernel.getName() << "\n";
     for (G4_INST *i : conflicts) {
       i->emit(optreport);
-      optreport << " // $" << i->getCISAOff() << ":#" << i->getLineNo() << "\n";
     }
 
     optreport << "\n"
@@ -1111,11 +1110,8 @@ void Optimizer::insertDummyMovForHWRSWAonaAllpipelines() {
               hasJmpIPred = true;
             }
           }
-          G4_BB *wa_bb =
-              hasJmpIPred
-                  ? kernel.fg.createNewBBWithLabel("RSWA", preInst->getLineNo(),
-                                                   preInst->getCISAOff())
-                  : kernel.fg.createNewBB();
+          G4_BB *wa_bb = hasJmpIPred ? kernel.fg.createNewBBWithLabel("RSWA")
+                                     : kernel.fg.createNewBB();
           kernel.fg.insert(bb_it, wa_bb);
           G4_Label *newLabel = hasJmpIPred ? wa_bb->getLabel() : NULL;
 
@@ -2163,7 +2159,7 @@ int Optimizer::optimization() {
 
   //-----------------------------------------------------------------------------------------------------------------
   //------NOTE!!!! No instruction change(add/remove, or operand associated
-  //change) is allowed after SWSB-------------
+  // change) is allowed after SWSB-------------
   //-----------------------------------------------------------------------------------------------------------------
   runPass(PI_addSWSBInfo);
 
@@ -2226,8 +2222,7 @@ void Optimizer::fixEndIfWhileLabels() {
       G4_INST *inst = *currIter;
       G4_Label *endifLabel = fg.getLabelForEndif(inst);
       if (endifLabel) {
-        G4_INST *labelInst = fg.createNewLabelInst(
-            endifLabel, inst->getLineNo(), inst->getCISAOff());
+        G4_INST *labelInst = fg.createNewLabelInst(endifLabel);
         bb->insertBefore(currIter, labelInst);
       }
     }
@@ -2280,8 +2275,7 @@ void Optimizer::fixEndIfWhileLabels() {
       G4_Label *label = builder.createLabel(NewUipName, LABEL_BLOCK);
       instCF->setUip(label);
 
-      G4_INST *newInst =
-          fg.createNewLabelInst(label, inst->getLineNo(), inst->getCISAOff());
+      G4_INST *newInst = fg.createNewLabelInst(label);
 
       whileBB->insertBefore(whileIter, newInst);
     }
@@ -6473,15 +6467,11 @@ void closeOptReportStream(std::ofstream &reportStream) { reportStream.close(); }
 // For any NoMask inst with non-zero mask offset, if it does not access any
 // ARF and it is not a CF instruction, set its mask offset to zero.
 void Optimizer::forceNoMaskOnM0() {
-  for (G4_BB* currBB : fg) {
-    for (auto& I : *currBB) {
-      if (!I->isWriteEnableInst() ||
-        I->isCFInst() ||
-        I->getPredicate() ||
-        I->getCondMod() ||
-        I->getMaskOffset() == 0 ||
-        I->hasImplicitAccDst() ||
-        I->hasImplicitAccSrc())
+  for (G4_BB *currBB : fg) {
+    for (auto &I : *currBB) {
+      if (!I->isWriteEnableInst() || I->isCFInst() || I->getPredicate() ||
+          I->getCondMod() || I->getMaskOffset() == 0 ||
+          I->hasImplicitAccDst() || I->hasImplicitAccSrc())
         continue;
 
       // skip if I is logical on flag registers.
@@ -8513,8 +8503,8 @@ void Optimizer::mapOrphans() {
 
   for (auto bb : kernel.fg) {
     for (auto inst : *bb) {
-      if (inst->getCISAOff() == UNMAPPABLE_VISA_INDEX) {
-        inst->setCISAOff(catchAllCISAOff);
+      if (inst->getVISAId() == UNMAPPABLE_VISA_INDEX) {
+        inst->setVISAId(catchAllCISAOff);
       }
     }
   }
@@ -12743,8 +12733,7 @@ void Optimizer::applyFusedCallWA() {
       if (leadInst->opcode() == G4_while || leadInst->opcode() == G4_endif) {
         // Cannot insert join, otherwise, label for while/endif would be wrong
         // Here, create a new empty BB so that we can add join into it.
-        newNextBB = fg.createNewBBWithLabel("CallWA_EndBB", callI->getLineNo(),
-                                            callI->getCISAOff());
+        newNextBB = fg.createNewBBWithLabel("CallWA_EndBB");
         nextBI = fg.insert(nextBI, newNextBB);
 
         // Adjust control-flow
@@ -12764,14 +12753,10 @@ void Optimizer::applyFusedCallWA() {
     G4_SrcRegRegion *Target = callI->getSrc(0)->asSrcRegRegion();
 
     // Create BBs, two for each then (BigEU) and else (SmallEU) branches.
-    G4_BB *bigB0 = fg.createNewBBWithLabel("CallWA_BigB0", callI->getLineNo(),
-                                           callI->getCISAOff());
-    G4_BB *bigB1 = fg.createNewBBWithLabel("CallWA_BigB1", callI->getLineNo(),
-                                           callI->getCISAOff());
-    G4_BB *smallB0 = fg.createNewBBWithLabel(
-        "CallWA_SmallB0", callI->getLineNo(), callI->getCISAOff());
-    G4_BB *smallB1 = fg.createNewBBWithLabel(
-        "CallWA_SmallB1", callI->getLineNo(), callI->getCISAOff());
+    G4_BB *bigB0 = fg.createNewBBWithLabel("CallWA_BigB0");
+    G4_BB *bigB1 = fg.createNewBBWithLabel("CallWA_BigB1");
+    G4_BB *smallB0 = fg.createNewBBWithLabel("CallWA_SmallB0");
+    G4_BB *smallB1 = fg.createNewBBWithLabel("CallWA_SmallB1");
     // Note that nextBI points to the nextBB!
     fg.insert(nextBI, bigB0);
     fg.insert(nextBI, bigB1);

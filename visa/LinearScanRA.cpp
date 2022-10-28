@@ -1313,7 +1313,7 @@ void LinearScanRA::generateInputIntervals(
       }
 
       if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo)) {
-        updateDebugInfo(kernel, topdcl, 0, inst->getCISAOff());
+        updateDebugInfo(kernel, topdcl, 0, inst->getVISAId());
       }
     }
   }

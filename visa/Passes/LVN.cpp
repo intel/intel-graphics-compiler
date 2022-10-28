@@ -153,12 +153,10 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList &uses,
   std::cerr << "Inst with same value in LVN Table:"
             << "\n";
   lvnInst->emit(std::cerr);
-  std::cerr << " #" << lvnInst->getLineNo() << ":$" << lvnInst->getCISAOff();
   std::cerr << "\n";
   std::cerr << "Current inst:"
             << "\n";
   defInst->emit(std::cerr);
-  std::cerr << " #" << defInst->getLineNo() << ":$" << defInst->getCISAOff();
   std::cerr << "\n"
             << "Uses:"
             << "\n";
@@ -440,12 +438,10 @@ void LVN::replaceAllUses(G4_INST *defInst, bool negate, UseList &uses,
     std::cerr << "Inst with same value in LVN Table:"
               << "\n";
     lvnInst->emit(std::cerr);
-    std::cerr << " #" << lvnInst->getLineNo() << ":$" << lvnInst->getCISAOff();
     std::cerr << "\n";
     std::cerr << "Current inst:"
               << "\n";
     defInst->emit(std::cerr);
-    std::cerr << " #" << defInst->getLineNo() << ":$" << defInst->getCISAOff();
     std::cerr << "\n"
               << "Uses:"
               << "\n";
@@ -696,14 +692,10 @@ void LVN::removeAliases(G4_INST *inst) {
       VISA_DEBUG({
         std::cout << "Removing inst from LVN table for indirect dst conflict:";
         d->inst->emit(std::cerr);
-        std::cout << " #" << d->inst->getLineNo() << ":$"
-                  << d->inst->getCISAOff() << "\n";
         std::cout << "Due to indirect dst in:"
                   << "\n";
         inst->emit(std::cerr);
-        std::cout << " #" << inst->getLineNo() << ":$" << inst->getCISAOff()
-                  << "\n"
-                  << "\n";
+        std::cout << "\n";
       });
     }
   }

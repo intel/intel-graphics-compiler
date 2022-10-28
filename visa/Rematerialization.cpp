@@ -308,9 +308,6 @@ void Rematerialization::cleanRedundantSamplerHeaders() {
                 lastMovSrc0->asImm()->getImm() == instSrc0->asImm()->getImm() &&
                 lastMovSrc0->getType() == instSrc0->getType()) {
               // Remove current instruction
-#if 0
-                                printf("Removing sampler header mov at $%d\n", inst->getCISAOff());
-#endif
               instIt = bb->erase(instIt);
               toErase = bb->end();
               continue;
@@ -949,7 +946,7 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
             dstInst->asSendInst()->getMsgDescOperand()),
         dstInst->getOption(), newMsgDesc,
         kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), true);
-    dupOp->setCISAOff(dstInst->getCISAOff());
+    dupOp->setVISAId(dstInst->getVISAId());
     dupOp->inheritDIFrom(dstInst);
 
     newInst.push_back(dupOp);
@@ -1109,21 +1106,11 @@ void Rematerialization::run() {
                 }
 
                 reduceNumUses(src->getTopDcl());
-
-#if 0
-                                    printf("Reusing rematerialized value %s in src%d of $%d from %s\n",
-                                        src->getTopDcl()->getName(), opnd, inst->getCISAOff(),
-                                        (*prevRematIt).second.first->getDst()->getTopDcl()->getName());
-#endif
               }
               (*prevRematIt).second.second = inst->getLexicalId();
             }
 
             if (!reUseRemat) {
-#if 0
-                                printf("Will rematerialize %s in src%d of $%d. Source computation at $%d\n",
-                                    src->getTopDcl()->getName(), opnd, inst->getCISAOff(), uniqueDef->first->getCISAOff());
-#endif
               std::list<G4_INST *> newInsts;
               G4_INST *cacheInst = nullptr;
               rematSrc = rematerialize(src->asSrcRegRegion(), bb, uniqueDef,
