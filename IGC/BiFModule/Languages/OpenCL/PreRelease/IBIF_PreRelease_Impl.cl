@@ -46,4 +46,3 @@ SPDX-License-Identifier: MIT
 //*****************************************************************************/
 #include "IBiF_Dot_Product.cl"
 
-

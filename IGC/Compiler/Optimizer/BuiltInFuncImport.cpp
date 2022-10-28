@@ -472,6 +472,69 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module& M, CLElfLib::CElfReade
     return BIM;
 }
 
+// OpenCL C builtins that do not have a corresponding SPIRV specification are represented
+// as a regular user functions (OpFunction). Since IGC SPIRV-LLVM Translator promotes i1
+// type to i8 type for all user-defined functions, such builtins are also promoted. It leads
+// to functions signatures mismatch when trying to link builtins definitions.
+// Below function changes i8 types back to i1 to allow for proper linking.
+void BIImport::fixSPIRFunctionsReturnType(Module& M)
+{
+    SmallPtrSet<Function*, 8> funcsToRemove;
+
+    for (auto& F : M)
+    {
+        if (F.isDeclaration())
+        {
+            auto FuncName = F.getName();
+
+            if (FuncName.equals("intel_is_traversal_done") ||
+                FuncName.equals("intel_get_hit_front_face") ||
+                FuncName.equals("intel_has_committed_hit"))
+            {
+                if (!F.getReturnType()->isIntegerTy(8))
+                    continue;
+
+                FunctionType* FT = F.getFunctionType();
+
+                FunctionType* NewFT = FunctionType::get(Type::getInt1Ty(M.getContext()), FT->params(), false);
+                auto* NewF = Function::Create(NewFT, F.getLinkage(), FuncName + ".cloned", M);
+
+                SmallPtrSet<CallInst*, 16> Calls;
+
+                for (auto user : F.users())
+                    if (CallInst* CI = dyn_cast<CallInst>(user))
+                        Calls.insert(CI);
+
+                for (auto CI : Calls)
+                {
+                    IRBuilder<> builder(CI);
+
+                    SmallVector<Value*, 4> Args;
+                    for (auto& Arg : CI->args())
+                        Args.push_back(Arg);
+
+                    auto* newCall = builder.CreateCall(NewF, Args);
+                    newCall->setCallingConv(CI->getCallingConv());
+                    newCall->setAttributes(CI->getAttributes());
+                    auto* zext = builder.CreateZExt(newCall, builder.getInt8Ty());
+
+                    CI->replaceAllUsesWith(zext);
+                    CI->eraseFromParent();
+                }
+
+                std::string originalName = FuncName.str();
+                F.setName(FuncName + "_old");
+                NewF->setName(originalName);
+
+                funcsToRemove.insert(&F);
+            }
+        }
+    }
+
+    for (auto* F : funcsToRemove)
+        F->eraseFromParent();
+}
+
 bool BIImport::runOnModule(Module& M)
 {
     if (m_GenericModule == nullptr)
@@ -479,6 +542,7 @@ bool BIImport::runOnModule(Module& M)
         return false;
     }
 
+    fixSPIRFunctionsReturnType(M);
 
     for (auto& F : M)
     {

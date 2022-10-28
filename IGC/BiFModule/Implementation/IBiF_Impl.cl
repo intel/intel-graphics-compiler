@@ -110,4 +110,3 @@ SPDX-License-Identifier: MIT
 // Tile ID Extension Opcodes
 //*****************************************************************************/
 #include "tileid.cl"
-

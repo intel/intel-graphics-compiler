@@ -427,8 +427,8 @@ endif()
 file(GLOB_RECURSE _PRE_RELEASE_CL "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/*.cl")
 
 
-  set(IGC_BUILD__BIF_OCL_SHARED_INC                "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/opencl_cth_released.h")
-  set(IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE    "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/opencl_cth_pre_release.h")
+set(IGC_BUILD__BIF_OCL_SHARED_INC                "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/opencl_cth_released.h")
+set(IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE    "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/opencl_cth_pre_release.h")
 
 set(_concatScript   "${IGC_SOURCE_DIR}/BiFModule/concat.py")
 set(IGC_BUILD__BIF_OCL_FORCE_INC "${IGC_BUILD__BIF_DIR}/opencl_cth.h")
@@ -448,6 +448,7 @@ add_custom_command(
 set(IGC_BUILD__BIF_OCL_COMMON_INC_DIRS
     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL"
     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PointerSize"
+    "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/Raytracing"
     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Headers"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_shared/device_enqueue"
   )

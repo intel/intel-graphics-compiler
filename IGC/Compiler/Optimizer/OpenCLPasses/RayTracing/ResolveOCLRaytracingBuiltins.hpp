@@ -50,6 +50,9 @@ namespace IGC {
     void handleDispatchTraceRayQuery(llvm::CallInst& callInst);
     void handleRTSync(llvm::CallInst& callInst);
     void handleGetImplicitDG(llvm::CallInst& callInst);
+    void handleInitRayQuery(llvm::CallInst& callInst);
+    void handleUpdateRayQuery(llvm::CallInst& callInst);
+    void handleQuery(llvm::CallInst& callInst);
 
   private:
     CodeGenContext* m_pCtx;
@@ -58,6 +61,8 @@ namespace IGC {
 
     llvm::Instruction* loadFromOffset(llvm::Value* basePtr, const size_t offset, const size_t typeSizeInBytes, llvm::StringRef valName);
     void handleGetBTDStack(llvm::CallInst& callInst, const bool isGlobal);
+
+    void defineOpaqueTypes();
 
     llvm::CallInst* CreateLSCFence(
         llvm::IRBuilder<>* IRB,
