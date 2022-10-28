@@ -412,7 +412,9 @@ if (UNIX OR WIN32)
   source_group("G4 Passes" FILES ${GenX_Common_Sources_G4_Passes} )
   source_group("Visa to G4 IR Translation" FILES ${GenX_Common_Sources_VisaToG4} )
   source_group("Lex Yacc Files" FILES ${GenX_IR_EXE_lex_yacc} )
-  target_link_libraries(GenX_IR_Exe IGA_SLIB IGA_ENC_LIB)
+
+  igc_get_llvm_targets(LLVM_LIBS Support)
+  target_link_libraries(GenX_IR_Exe IGA_SLIB IGA_ENC_LIB ${LLVM_LIBS})
 
   if (UNIX)
     target_link_libraries(GenX_IR_Exe dl)
