@@ -689,7 +689,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
 
   if (ApiOptions.hasArg(OPT_no_vector_decomposition))
     Opts.NoVecDecomp = true;
-  if (ApiOptions.hasArg(OPT_kernel_debug_enable_ze))
+  if (ApiOptions.hasArg(OPT_emit_debug))
     Opts.ExtendedDebuggingSupport = true;
   if (ApiOptions.hasArg(OPT_vc_fno_struct_splitting))
     Opts.DisableStructSplitting = true;
