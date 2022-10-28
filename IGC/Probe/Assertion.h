@@ -12,6 +12,12 @@ SPDX-License-Identifier: MIT
 #include "../common/EmUtils.h"
 
 
+template<typename T>
+bool CheckIsZero(const T& value)
+{
+    return value == 0;
+}
+
 
 #include <cassert>
 #include <cstdlib>
@@ -23,7 +29,7 @@ SPDX-License-Identifier: MIT
 #define IGC_ASSERT_EXIT(x) \
     do \
     { \
-        if(0 == (x)) \
+        if (CheckIsZero(x)) \
         { \
             assert(0); \
             std::exit(EXIT_FAILURE); \
@@ -31,6 +37,13 @@ SPDX-License-Identifier: MIT
     } while(0)
 
 #define IGC_ASSERT_EXIT_MESSAGE(x, m, ...) IGC_ASSERT_EXIT(x)
+
+#define IGC_ASSERT_UNREACHABLE() \
+    do \
+    { \
+        assert(0); \
+        std::exit(EXIT_FAILURE); \
+    } while (0)
 
 
 #endif // IGC_PROBE_ASSERTION_H

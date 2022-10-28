@@ -49,7 +49,7 @@ namespace IGC
                 return thresholdMap[F] * ctx->platform.getGRFSize() / (ctx->platform.getMinPushConstantBufferAlignment() * sizeof(DWORD));
             }
 
-            const DWORD pushConstantGRFThreshold = IGC_GET_FLAG_VALUE(BlockPushConstantGRFThreshold);
+            DWORD pushConstantGRFThreshold = IGC_GET_FLAG_VALUE(BlockPushConstantGRFThreshold);
             if (pushConstantGRFThreshold != 0xFFFFFFFF)
             {
                 return pushConstantGRFThreshold * ctx->platform.getGRFSize() / (ctx->platform.getMinPushConstantBufferAlignment() * sizeof(DWORD));

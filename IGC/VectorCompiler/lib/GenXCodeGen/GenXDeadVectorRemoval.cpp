@@ -118,7 +118,7 @@ class LiveBits {
   uintptr_t *P;
   unsigned NumElements;
 public:
-  static const unsigned BitsPerWord = sizeof(uintptr_t) * 8;
+  static constexpr unsigned BitsPerWord = sizeof(uintptr_t) * 8;
   LiveBits() : P(nullptr), NumElements(0) {}
   LiveBits(LiveBitsStorage *LBS, unsigned NumElements)
     : P(LBS->get()), NumElements(NumElements) {}

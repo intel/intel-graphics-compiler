@@ -1398,7 +1398,7 @@ Function* PreCompiledFuncImport::getOrCreateFunction(FunctionIDs FID)
         break;
 
     default:
-        IGC_ASSERT_EXIT_MESSAGE(0, "Undefined FunctionIDs");
+        IGC_ASSERT_UNREACHABLE(); // Undefined FunctionIDs
     }
 
     FunctionType* funcType = FunctionType::get(retTy, argTypes, false);

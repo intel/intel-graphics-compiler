@@ -548,7 +548,7 @@ ValuePair PartialEmuI64Ops::getExpandedValues(Value* V) {
         VMI->second = std::make_pair(Lo, Hi);
         return VMI->second;
     }
-    IGC_ASSERT_EXIT_MESSAGE(0, "TODO: NOT IMPLEMENTED!");
+    IGC_ASSERT_UNREACHABLE(); // TODO: NOT IMPLEMENTED!
 }
 
 void PartialEmuI64Ops::setExpandedValues(Value* V, Value* Lo, Value* Hi) {

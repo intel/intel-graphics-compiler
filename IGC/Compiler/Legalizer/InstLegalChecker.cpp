@@ -28,7 +28,7 @@ LegalizeAction InstLegalChecker::visitInstruction(Instruction& I) {
 #endif // LLVM_VERSION_MAJOR >= 10
 
     LLVM_DEBUG(dbgs() << "LEGAL-CHECK: " << I << '\n');
-    IGC_ASSERT_EXIT_MESSAGE(0, "UNKNOWN INSTRUCTION IS BEING LEGAL-CHECKED!");
+    IGC_ASSERT_UNREACHABLE(); // UNKNOWN INSTRUCTION IS BEING LEGAL-CHECKED!
 }
 
 /// Terminator instructions

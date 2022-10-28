@@ -281,7 +281,7 @@ unsigned DIEInteger::SizeOf(StreamEmitter *AP, dwarf::Form Form) const {
   case dwarf::DW_FORM_addr:
     return AP->GetPointerSize();
   default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "DIE Value form not supported yet");
+    IGC_ASSERT_UNREACHABLE(); // DIE Value form not supported yet
   }
 }
 
@@ -560,7 +560,7 @@ unsigned DIEBlock::SizeOf(StreamEmitter * /*AP*/, dwarf::Form Form) const {
   case dwarf::DW_FORM_block:
     return Size + getULEB128Size(Size);
   default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "Improper form for block");
+    IGC_ASSERT_UNREACHABLE(); // Improper form for block
   }
 }
 

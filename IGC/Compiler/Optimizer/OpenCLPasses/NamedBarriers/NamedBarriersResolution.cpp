@@ -288,7 +288,7 @@ int NamedBarriersResolution::AlignNBCnt2BarrierNumber(uint NBCnt)
         6   B24
         7   B32
     */
-    if      (NBCnt > 32) { IGC_ASSERT_EXIT_MESSAGE(0, "NamedBarriersResolution : Incorrect named barrier count"); }
+    if      (NBCnt > 32) { IGC_ASSERT_UNREACHABLE(); } // NamedBarriersResolution : Incorrect named barrier count
     else if (NBCnt > 24) { return 32; }
     else if (NBCnt > 16) { return 24; }
     else if (NBCnt > 8)  { return 16; }

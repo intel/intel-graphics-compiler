@@ -359,7 +359,7 @@ createObjectWriter(llvm::raw_pwrite_stream &os) const {
 std::unique_ptr<MCObjectTargetWriter>
 createObjectTargetWriter() const override {
   // TODO: implement this
-  IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
+  IGC_ASSERT_UNREACHABLE(); // Unimplemented
 }
 }; // namespace IGC
 

@@ -52,7 +52,7 @@ std::string vc_error_category::message(int condition) const {
   case errc::output_not_created:
     return std::string(ErrorTraits<errc::output_not_created>::getMessage());
   }
-  IGC_ASSERT_EXIT_MESSAGE(0, "Unknown error code");
+  IGC_ASSERT_UNREACHABLE(); // Unknown error code
 }
 
 static const vc_error_category vc_err_category;

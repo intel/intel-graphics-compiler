@@ -205,7 +205,7 @@ VISAChannelMask convertChannelMaskToVisaType(unsigned Mask) {
   case 15:
     return CHANNEL_MASK_RGBA;
   default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "Wrong mask");
+      IGC_ASSERT_UNREACHABLE(); // Wrong mask
   }
 }
 
@@ -1245,7 +1245,7 @@ static unsigned getInputSizeInBytes(const DataLayout &DL,
   default:
     break;
   }
-  IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected register category for input");
+  IGC_ASSERT_UNREACHABLE(); // Unexpected register category for input
 }
 
 void GenXKernelBuilder::buildInputs(Function *F, bool NeedRetIP) {
@@ -3039,7 +3039,7 @@ static VISA_EMask_Ctrl getVisaEMOffset(unsigned PredOffset) {
   case 28:
     return vISA_EMASK_M8;
   }
-  IGC_ASSERT_EXIT_MESSAGE(0, "Unexpected EM offset");
+  IGC_ASSERT_UNREACHABLE(); // Unexpected EM offset
 }
 
 /***********************************************************************
@@ -5826,7 +5826,7 @@ StringRef GenXKernelBuilder::getStringByIndex(unsigned Val) {
     if (it.second == Val)
       return it.first;
   }
-  IGC_ASSERT_EXIT_MESSAGE(0, "Can't find string by index.");
+  IGC_ASSERT_UNREACHABLE(); // Can't find string by index.
 }
 
 /***********************************************************************

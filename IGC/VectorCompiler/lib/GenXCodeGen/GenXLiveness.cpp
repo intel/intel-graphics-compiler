@@ -1519,7 +1519,7 @@ Value *GenXLiveness::getAddressBase(Value *Addr)
     if (!V->getType()->isAggregateType())
       return V;
   }
-  IGC_ASSERT_EXIT_MESSAGE(0, "non-aggregate value not found");
+  IGC_ASSERT_UNREACHABLE(); // non-aggregate value not found
 }
 
 /***********************************************************************

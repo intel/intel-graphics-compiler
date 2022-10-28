@@ -2140,7 +2140,7 @@ Value *GenXLegalization::joinAnyWrRegion(Value *PrevSliceRes, BaleInst BInst,
                                 InsertBefore);
     break;
   default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "unexpected/unsupported instruction");
+      IGC_ASSERT_UNREACHABLE(); // unexpected/unsupported instruction
   }
 }
 

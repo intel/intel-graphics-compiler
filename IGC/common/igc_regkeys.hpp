@@ -226,9 +226,15 @@ namespace IGC
 };
 #undef DECLARE_IGC_REGKEY
 
-#define IGC_IS_FLAG_ENABLED(name)     (IGC::DebugVariable::name##default != 0)
-#define IGC_IS_FLAG_DISABLED(name)    (IGC::DebugVariable::name##default == 0)
+template<typename T>
+bool IsEnabled(const T& value)
+{
+    return value != 0;
+}
+
 #define IGC_GET_FLAG_VALUE(name)      (IGC::DebugVariable::name##default)
+#define IGC_IS_FLAG_ENABLED(name)     (::IsEnabled(IGC_GET_FLAG_VALUE(name)))
+#define IGC_IS_FLAG_DISABLED(name)    (!IGC_IS_FLAG_ENABLED(name))
 #define IGC_IS_FLAG_SET(name)         (false)
 #define IGC_GET_FLAG_DEFAULT_VALUE(name) IGC_GET_FLAG_VALUE(name)
 #define IGC_GET_REGKEYSTRING(name)    ("")

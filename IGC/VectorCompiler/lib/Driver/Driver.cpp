@@ -89,7 +89,7 @@ getModuleFromLLVMBinary(ArrayRef<char> Input, LLVMContext& C) {
     return llvm::handleExpected(
         std::move(ExpModule),
         []() -> llvm::Error {
-          IGC_ASSERT_EXIT_MESSAGE(0, "Should create new error");
+            IGC_ASSERT_UNREACHABLE(); // Should create new error
         },
         [](const llvm::ErrorInfoBase& E) {
           return make_error<vc::BadBitcodeError>(E.message());
@@ -123,7 +123,7 @@ getModule(ArrayRef<char> Input, vc::FileType FType,
   case vc::FileType::LLVM_BINARY:
     return getModuleFromLLVMBinary(Input, Ctx);
   }
-  IGC_ASSERT_EXIT_MESSAGE(0, "Unknown input kind");
+  IGC_ASSERT_UNREACHABLE(); // Unknown input kind
 }
 
 static Triple overrideTripleWithVC(StringRef TripleStr) {
@@ -442,7 +442,7 @@ static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
   case vc::BinaryKind::ZE:
     return runOclCodeGen(Opts, ExtData, TM, M);
   default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "Unknown binary format");
+      IGC_ASSERT_UNREACHABLE(); // Unknown binary format
   }
 }
 
