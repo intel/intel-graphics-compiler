@@ -7954,7 +7954,7 @@ namespace IGC
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableDG2LSCSIMD8WA) &&
-            m_program->m_Platform->getPlatformInfo().eProductFamily == IGFX_DG2 &&
+            m_program->m_Platform->getWATable().Wa_18015444900 &&
             resource && resource->m_surfaceType == ESURFACE_SCRATCH && mode == SIMDMode::SIMD8 &&
             ((elemSize == LSC_DATA_SIZE_32b && numElems == LSC_DATA_ELEMS_8) ||
              (elemSize == LSC_DATA_SIZE_64b && (numElems == LSC_DATA_ELEMS_3 || numElems == LSC_DATA_ELEMS_4))))
