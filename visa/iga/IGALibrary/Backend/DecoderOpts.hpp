@@ -8,16 +8,12 @@ SPDX-License-Identifier: MIT
 
 #ifndef IGA_BACKEND_DECODER_OPTS
 #define IGA_BACKEND_DECODER_OPTS
-namespace iga
-{
-struct DecoderOpts
-{
-    bool useNumericLabels;
+namespace iga {
+struct DecoderOpts {
+  bool useNumericLabels;
 
-    DecoderOpts(bool _useNumericLabels = false)
-        : useNumericLabels(_useNumericLabels)
-    {
-    }
+  DecoderOpts(bool _useNumericLabels = false)
+      : useNumericLabels(_useNumericLabels) {}
 };
-} // namespace iga::
+} // namespace iga
 #endif

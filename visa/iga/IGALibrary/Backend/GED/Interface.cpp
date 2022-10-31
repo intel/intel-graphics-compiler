@@ -13,53 +13,34 @@ SPDX-License-Identifier: MIT
 
 using namespace iga;
 
-bool iga::ged::IsEncodeSupported(const Model &, const EncoderOpts &)
-{
-    return true;
+bool iga::ged::IsEncodeSupported(const Model &, const EncoderOpts &) {
+  return true;
 }
-void iga::ged::Encode(
-    const Model &m,
-    const EncoderOpts &eopts,
-    ErrorHandler &eh,
-    Kernel &k,
-    void *&bits,
-    size_t &bitsLen)
-{
-    Encoder enc(m, eh, eopts);
-    uint32_t bitsLen32 = 0;
-    try {
-        enc.encodeKernel(
-            k,
-            k.getMemManager(),
-            bits,
-            bitsLen32);
-    } catch (FatalError) {
-        // error already reported
-    }
-    bitsLen = bitsLen32;
+void iga::ged::Encode(const Model &m, const EncoderOpts &eopts,
+                      ErrorHandler &eh, Kernel &k, void *&bits,
+                      size_t &bitsLen) {
+  Encoder enc(m, eh, eopts);
+  uint32_t bitsLen32 = 0;
+  try {
+    enc.encodeKernel(k, k.getMemManager(), bits, bitsLen32);
+  } catch (FatalError) {
+    // error already reported
+  }
+  bitsLen = bitsLen32;
 }
 
-bool iga::ged::IsDecodeSupported(
-    const Model &,
-    const DecoderOpts &)
-{
-    return true;
+bool iga::ged::IsDecodeSupported(const Model &, const DecoderOpts &) {
+  return true;
 }
-Kernel *iga::ged::Decode(
-    const Model &m,
-    const DecoderOpts &dopts,
-    ErrorHandler &eh,
-    const void *bits,
-    size_t bitsLen)
-{
-    Kernel *k = nullptr;
-    try {
-        iga::Decoder decoder(m, eh);
-        k = dopts.useNumericLabels ?
-            decoder.decodeKernelNumeric(bits, bitsLen) :
-            decoder.decodeKernelBlocks(bits, bitsLen);
-    } catch (FatalError) {
-        // error already reported
-    }
-    return k;
+Kernel *iga::ged::Decode(const Model &m, const DecoderOpts &dopts,
+                         ErrorHandler &eh, const void *bits, size_t bitsLen) {
+  Kernel *k = nullptr;
+  try {
+    iga::Decoder decoder(m, eh);
+    k = dopts.useNumericLabels ? decoder.decodeKernelNumeric(bits, bitsLen)
+                               : decoder.decodeKernelBlocks(bits, bitsLen);
+  } catch (FatalError) {
+    // error already reported
+  }
+  return k;
 }

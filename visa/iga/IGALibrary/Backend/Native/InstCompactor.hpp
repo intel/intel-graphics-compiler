@@ -10,120 +10,103 @@ SPDX-License-Identifier: MIT
 #define IGA_BACKEND_NATIVE_INSTCOMPACTOR_HPP
 
 #include "Field.hpp"
-#include "MInst.hpp"
 #include "InstEncoder.hpp"
-
+#include "MInst.hpp"
 
 namespace iga {
-    class InstCompactor : public BitProcessor {
-        const Model &model;
+class InstCompactor : public BitProcessor {
+  const Model &model;
 
-        const OpSpec *os = nullptr;
-        Subfunction sfs;
+  const OpSpec *os = nullptr;
+  Subfunction sfs;
 
-        MInst compactedBits;
-        MInst uncompactedBits;
-        CompactionDebugInfo *compactionDebugInfo = nullptr;
-        bool compactionMissed = false;
+  MInst compactedBits;
+  MInst uncompactedBits;
+  CompactionDebugInfo *compactionDebugInfo = nullptr;
+  bool compactionMissed = false;
 
-        // the compaction result (if compaction enabled)
-        CompactionResult compactionResult = CompactionResult::CR_NO_COMPACT;
+  // the compaction result (if compaction enabled)
+  CompactionResult compactionResult = CompactionResult::CR_NO_COMPACT;
 
-        CompactionResult tryToCompactImpl();
-        CompactionResult tryToCompactImplFamilyXE();
-    public:
-        InstCompactor(BitProcessor &_parent, const Model &_model)
-            : BitProcessor(_parent)
-            , model(_model)
-        {
-        }
+  CompactionResult tryToCompactImpl();
+  CompactionResult tryToCompactImplFamilyXE();
 
-        CompactionResult tryToCompact(
-            const OpSpec *_os,
-            Subfunction _sfs,
-            MInst _uncompactedBits, // copy-in
-            MInst *compactedBitsOutput, // output
-            CompactionDebugInfo *cdbi)
-        {
-            os = _os;
-            sfs = _sfs;
-            uncompactedBits = _uncompactedBits;
-            compactedBits.qw0 = compactedBits.qw1 = 0;
-            compactionDebugInfo = cdbi;
+public:
+  InstCompactor(BitProcessor &_parent, const Model &_model)
+      : BitProcessor(_parent), model(_model) {}
 
-            auto cr = tryToCompactImpl();
-            if (cr == CompactionResult::CR_SUCCESS) {
-                // only clobber their memory if we succeed
-                *compactedBitsOutput = compactedBits;
-            }
-            return cr;
-        }
-        CompactionResult tryToCompact(
-            const OpSpec *_os,
-            MInst _uncompactedBits, // copy-in
-            MInst *compactedBitsOutput, // output
-            CompactionDebugInfo *cdbi)
-        {
-            return tryToCompact(
-                _os,
-                MathFC::INVALID,
-                _uncompactedBits,
-                compactedBitsOutput,
-                cdbi);
-        }
+  CompactionResult tryToCompact(const OpSpec *_os, Subfunction _sfs,
+                                MInst _uncompactedBits,     // copy-in
+                                MInst *compactedBitsOutput, // output
+                                CompactionDebugInfo *cdbi) {
+    os = _os;
+    sfs = _sfs;
+    uncompactedBits = _uncompactedBits;
+    compactedBits.qw0 = compactedBits.qw1 = 0;
+    compactionDebugInfo = cdbi;
 
-        ///////////////////////////////////////////////////////////////////////
-        // used by child implementations
-        const OpSpec &getOpSpec() const {return *os;}
+    auto cr = tryToCompactImpl();
+    if (cr == CompactionResult::CR_SUCCESS) {
+      // only clobber their memory if we succeed
+      *compactedBitsOutput = compactedBits;
+    }
+    return cr;
+  }
+  CompactionResult tryToCompact(const OpSpec *_os,
+                                MInst _uncompactedBits,     // copy-in
+                                MInst *compactedBitsOutput, // output
+                                CompactionDebugInfo *cdbi) {
+    return tryToCompact(_os, MathFC::INVALID, _uncompactedBits,
+                        compactedBitsOutput, cdbi);
+  }
 
-        unsigned getSourceCount() const {
-            return os->getSourceCount(sfs);
-        }
+  ///////////////////////////////////////////////////////////////////////
+  // used by child implementations
+  const OpSpec &getOpSpec() const { return *os; }
 
-        uint64_t getUncompactedField(const Field &f) const {
-            return uncompactedBits.getField(f);
-        }
+  unsigned getSourceCount() const { return os->getSourceCount(sfs); }
 
-        void setCompactedField(const Field &f, uint64_t val) {
-            compactedBits.setField(f, val);
-        }
+  uint64_t getUncompactedField(const Field &f) const {
+    return uncompactedBits.getField(f);
+  }
 
-        bool getCompactionMissed() const {return compactionMissed;}
+  void setCompactedField(const Field &f, uint64_t val) {
+    compactedBits.setField(f, val);
+  }
 
-        void setCompactionResult(CompactionResult cr) {compactionResult = cr;}
+  bool getCompactionMissed() const { return compactionMissed; }
 
-        void transferField(
-            const Field &compactedField, const Field &nativeField)
-        {
-            IGA_ASSERT(compactedField.length() == nativeField.length(),
-                "native and compaction field length mismatch");
-            compactedBits.setField(
-                compactedField,
-                uncompactedBits.getField(nativeField));
-        }
+  void setCompactionResult(CompactionResult cr) { compactionResult = cr; }
 
-        // returns false upon failure (so we can exit compaction early)
-        //
-        // the immLo and immHi values tells us the range of bits that hold
-        // immediate value bits; the bounds are [lo,hi): inclusive/exclusive
-        bool compactIndex(const CompactionMapping &cm, int immLo, int immHi);
+  void transferField(const Field &compactedField, const Field &nativeField) {
+    IGA_ASSERT(compactedField.length() == nativeField.length(),
+               "native and compaction field length mismatch");
+    compactedBits.setField(compactedField,
+                           uncompactedBits.getField(nativeField));
+  }
 
-        bool compactIndex(const CompactionMapping &cm) {
-            return compactIndex(cm, 0, 0);
-        }
+  // returns false upon failure (so we can exit compaction early)
+  //
+  // the immLo and immHi values tells us the range of bits that hold
+  // immediate value bits; the bounds are [lo,hi): inclusive/exclusive
+  bool compactIndex(const CompactionMapping &cm, int immLo, int immHi);
 
-        void fail(const CompactionMapping &cm, uint64_t mappedValue) {
-            if (compactionDebugInfo) {
-                compactionDebugInfo->fieldOps.push_back(os->op);
-                compactionDebugInfo->fieldMisses.push_back(&cm);
-                compactionDebugInfo->fieldMapping.push_back(mappedValue);
-            }
-            compactionMissed = true;
-        }
-    }; // InstCompactor
+  bool compactIndex(const CompactionMapping &cm) {
+    return compactIndex(cm, 0, 0);
+  }
 
-    //
-    void CompactGenXE(Platform p, InstCompactor &ic);
-};
+  void fail(const CompactionMapping &cm, uint64_t mappedValue) {
+    if (compactionDebugInfo) {
+      compactionDebugInfo->fieldOps.push_back(os->op);
+      compactionDebugInfo->fieldMisses.push_back(&cm);
+      compactionDebugInfo->fieldMapping.push_back(mappedValue);
+    }
+    compactionMissed = true;
+  }
+}; // InstCompactor
+
+//
+void CompactGenXE(Platform p, InstCompactor &ic);
+}; // namespace iga
 
 #endif // IGA_BACKEND_NATIVE_INSTCOMPACTOR_HPP

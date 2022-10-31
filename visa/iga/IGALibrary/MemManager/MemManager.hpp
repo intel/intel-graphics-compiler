@@ -16,23 +16,19 @@ SPDX-License-Identifier: MIT
 #include "Arena.hpp"
 #include <cstring>
 
-namespace iga
-{
+namespace iga {
 class MemManager {
 public:
-    MemManager(size_t defaultArenaSize);
-    ~MemManager();
+  MemManager(size_t defaultArenaSize);
+  ~MemManager();
 
-    void *alloc(size_t size)
-    {
-        return _arenaManager.AllocDataSpace(size);
-    }
+  void *alloc(size_t size) { return _arenaManager.AllocDataSpace(size); }
 
 private:
-    ArenaManager   _arenaManager;
+  ArenaManager _arenaManager;
 
-    MemManager(const MemManager &) = delete;
-    MemManager& operator=(const MemManager&) = delete;
+  MemManager(const MemManager &) = delete;
+  MemManager &operator=(const MemManager &) = delete;
 };
-}
+} // namespace iga
 #endif

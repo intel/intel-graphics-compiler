@@ -14,20 +14,13 @@ SPDX-License-Identifier: MIT
 
 #include <sstream>
 
-namespace iga
-{
-    void EmitSendDescriptorInfo(
-        Platform p,
-        SFID sfid,
-        ExecSize execSize,
-        bool dstNonNull,
-        int dstLen,
-        int src0Len,
-        int src1Len,
-        const SendDesc &exDesc,
-        const SendDesc &desc,
-        std::stringstream &ss);
+namespace iga {
+void EmitSendDescriptorInfo(Platform p, SFID sfid, ExecSize execSize,
+                            bool dstNonNull, int dstLen, int src0Len,
+                            int src1Len,
+                            const SendDesc &exDesc, const SendDesc &desc,
+                            std::stringstream &ss);
 
-} // iga::
+} // namespace iga
 
 #endif

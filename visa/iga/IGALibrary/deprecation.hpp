@@ -15,8 +15,7 @@ SPDX-License-Identifier: MIT
 #ifdef _MSC_VER
 #define IGA_DEPRECATED(FUNC) __declspec(deprecated) FUNC
 #else
-#define IGA_DEPRECATED(FUNC) FUNC __attribute__ ((deprecated))
+#define IGA_DEPRECATED(FUNC) FUNC __attribute__((deprecated))
 #endif
-
 
 #endif // DEPRECATION_HPP

@@ -16,14 +16,12 @@ SPDX-License-Identifier: MIT
 
 namespace iga {
 // logs errors to error log
-void CheckSemantics(
-    const Kernel &k,
-    ErrorHandler &err,
-    uint32_t enbabled_warnings);
+void CheckSemantics(const Kernel &k, ErrorHandler &err,
+                    uint32_t enbabled_warnings);
 
 // asserts on bad IR
 void SanityCheckIR(const Kernel &k);
 void SanityCheckIR(const Instruction &i);
-} // namespace
+} // namespace iga
 
 #endif // _IR_CHECKER_HPP_

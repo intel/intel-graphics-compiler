@@ -11,20 +11,12 @@ SPDX-License-Identifier: MIT
 
 #include "Formatter.hpp"
 
-namespace iga
-{
-    void FormatJSON(
-        std::ostream &o,
-        const FormatOpts &opts,
-        const Kernel &k,
-        const void *bits);
+namespace iga {
+void FormatJSON(std::ostream &o, const FormatOpts &opts, const Kernel &k,
+                const void *bits);
 
-    void FormatInstructionJSON(
-        std::ostream &o,
-        const FormatOpts &opts,
-        const Instruction &i,
-        const void *bits);
-}
-
+void FormatInstructionJSON(std::ostream &o, const FormatOpts &opts,
+                           const Instruction &i, const void *bits);
+} // namespace iga
 
 #endif // _IGA_FORMATTER_JSON

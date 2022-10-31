@@ -12,33 +12,34 @@ SPDX-License-Identifier: MIT
 #include <ostream>
 #include <string>
 
-namespace iga
-{
-    bool IsStdoutTty();
-    bool IsStderrTty();
-    bool IsTty(const std::ostream &os);
+namespace iga {
+bool IsStdoutTty();
+bool IsStderrTty();
+bool IsTty(const std::ostream &os);
 
-    void SetStdinBinary();
+void SetStdinBinary();
 
-    // bool LookupEnvironmentVariable(const char *key, std::string &value);
-    // bool IsDirectory(const char *path);
-    bool DoesFileExist(const std::string &path);
+// bool LookupEnvironmentVariable(const char *key, std::string &value);
+// bool IsDirectory(const char *path);
+bool DoesFileExist(const std::string &path);
 
-    // For older Windows console compatibility
-    void EmitRedText(std::ostream &os, const std::string &s);
-    void EmitGreenText(std::ostream &os, const std::string &s);
-    void EmitYellowText(std::ostream &os, const std::string &s);
+// For older Windows console compatibility
+void EmitRedText(std::ostream &os, const std::string &s);
+void EmitGreenText(std::ostream &os, const std::string &s);
+void EmitYellowText(std::ostream &os, const std::string &s);
 
-    bool DebuggerAttached();
+bool DebuggerAttached();
 
-    // maps to GetLastError() or errno
-    unsigned LastError();
-    std::string FormatLastError(unsigned);
-    static inline std::string LastErrorString() {return FormatLastError(LastError());}
-
-    // deals with large Windows paths on Windows platforms
-    // identity function on other platforms
-    std::string FixupPath(const std::string &path);
+// maps to GetLastError() or errno
+unsigned LastError();
+std::string FormatLastError(unsigned);
+static inline std::string LastErrorString() {
+  return FormatLastError(LastError());
 }
+
+// deals with large Windows paths on Windows platforms
+// identity function on other platforms
+std::string FixupPath(const std::string &path);
+} // namespace iga
 
 #endif // SYSTEM_HPP

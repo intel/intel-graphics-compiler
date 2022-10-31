@@ -11,10 +11,6 @@ SPDX-License-Identifier: MIT
 #include "MemManager.hpp"
 using namespace iga;
 MemManager::MemManager(size_t defaultArenaSize)
-    : _arenaManager (defaultArenaSize)
-{
-}
+    : _arenaManager(defaultArenaSize) {}
 
-MemManager::~MemManager()
-{
-}
+MemManager::~MemManager() {}

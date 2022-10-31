@@ -10,9 +10,9 @@ SPDX-License-Identifier: MIT
 #define IGA_STRINGS_HPP
 
 #include <cstdarg>
-#include <cstring>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <ostream>
@@ -26,261 +26,231 @@ SPDX-License-Identifier: MIT
 
 #ifdef _MSC_VER
 // MSVC has different semantics with vsnprintf given NULL.
-#define VSCPRINTF(PAT,VA) \
-    _vscprintf(PAT,VA)
+#define VSCPRINTF(PAT, VA) _vscprintf(PAT, VA)
 #else
 // The rest of the world can use this form of vsnprintf
-#define VSCPRINTF(PAT,VA) \
-    vsnprintf(NULL, 0, PAT, VA)
+#define VSCPRINTF(PAT, VA) vsnprintf(NULL, 0, PAT, VA)
 #endif
 #ifdef _MSC_VER
-#define VSPRINTF(B,BLEN,...) \
-       vsprintf_s(B, BLEN, __VA_ARGS__)
+#define VSPRINTF(B, BLEN, ...) vsprintf_s(B, BLEN, __VA_ARGS__)
 #else
 // Linux, MinGW, and the rest of the world choose this.
 // Warning, although MinGW also has vsprintf_s, it's signature is
 // inconsistent with the MSVC version (has extra param).
 // Thankfully, they don't whine about bogus security issues and we
 // can use the old version.
-#define VSPRINTF(B,BLEN,...) \
-       vsnprintf(B, BLEN, __VA_ARGS__)
+#define VSPRINTF(B, BLEN, ...) vsnprintf(B, BLEN, __VA_ARGS__)
 #endif
-
 
 #define IGA_MODEL_STRING(X) X
 
 
-
-
-
-
-
 namespace iga {
-    ///////////////////////////////////////////////////////////////////////////
-    struct ModelString {
-        const char* text;
-        inline constexpr ModelString(const char *s) : text(s == nullptr ? "" : s) { }
-        inline constexpr ModelString() : ModelString(nullptr) { }
-        inline std::string str() const {return text;}
-        inline operator std::string() const {return str();}
-    };
+///////////////////////////////////////////////////////////////////////////
+struct ModelString {
+  const char *text;
+  inline constexpr ModelString(const char *s) : text(s == nullptr ? "" : s) {}
+  inline constexpr ModelString() : ModelString(nullptr) {}
+  inline std::string str() const { return text; }
+  inline operator std::string() const { return str(); }
+};
 
+///////////////////////////////////////////////////////////////////////////
+// template-based string formatting
+// format("foo: ", n, " ...");
+template <typename... Ts>
+static inline void iga_format_to_helper(std::ostream &) {}
+template <typename T, typename... Ts>
+static inline void iga_format_to_helper(std::ostream &os, T t, Ts... ts) {
+  os << t;
+  iga_format_to_helper(os, ts...);
+}
+template <typename... Ts> static inline std::string format(Ts... ts) {
+  std::stringstream ss;
+  iga_format_to_helper(ss, ts...);
+  return ss.str();
+}
+template <typename... Ts>
+static inline void formatTo(std::ostream &os, Ts... ts) {
+  iga_format_to_helper(os, ts...);
+}
 
-    ///////////////////////////////////////////////////////////////////////////
-    // template-based string formatting
-    // format("foo: ", n, " ...");
-    template <typename...Ts>
-    static inline void iga_format_to_helper(std::ostream &) { }
-    template <typename T, typename...Ts>
-    static inline void iga_format_to_helper(std::ostream &os, T t, Ts...ts) {
-        os << t;
-        iga_format_to_helper(os, ts...);
+// enables one to write:
+//
+// iga::format("the hex value is 0x", hex(value, 4), " ...");
+//                                    ^^^
+// omits the leading "0x"
+struct hex {
+  uint64_t value;
+  short cols;
+  hex(uint64_t _value, int _cols = 0) : value(_value), cols((short)_cols) {}
+};
+
+///////////////////////////////////////////////////////////////////////////
+// takes a printf-style pattern and converts it to a string
+std::string formatF(const char *pat, ...);
+std::string vformatF(const char *pat, va_list &va);
+// emits a printf-style string to the given output stream
+// returns the nubmer of characters written
+size_t formatToF(std::ostream &os, const char *patt, ...);
+size_t vformatToF(std::ostream &os, const char *patt, va_list &va);
+// emits to a buffer of a given size
+// returns the result of vsnprintf (or the equivalent) ... num chars needed
+size_t formatToF(char *buf, size_t bufLen, const char *patt, ...);
+size_t vformatToF(char *buf, size_t bufLen, const char *patt, va_list &va);
+
+// trim trailing whitespace
+std::string trimTrailingWs(const std::string &s);
+
+// converts a string to lines
+std::vector<std::string> toLines(const std::string &s);
+
+// copies the contents of 'os' into buf (safely)
+// returns the required string size
+size_t copyOut(char *buf, size_t bufCap, std::iostream &ios);
+
+// formats a value into binary padding with 0's for a given width w
+// (the value of 0 auto computes the minimal width)
+// without affecting os's stream state
+//   e.g. fmtBinaryDigits(os,0xB,5) => emits 01011
+//   e.g. fmtBinaryDigits(os,0xB,0) => emits  1011
+void fmtBinaryDigits(std::ostream &os, uint64_t val, int w = 0);
+// same as fmtBinaryDigits, but prefixes an additional "0b"
+// is careful to not muck up os's state
+// w doesn't count the 0b prefix as part of the width
+// e.g. fmtBinary(os,0xB,0) -> 0b1101
+void fmtBinary(std::ostream &os, uint64_t val, int w = 0);
+//
+// formats to uppercase hex for a given width
+// without affecting os's stream state
+void fmtHexDigits(std::ostream &os, uint64_t val, int w = 0);
+std::string fmtHexDigits(uint64_t val, int w = 0);
+
+// same as fmtHexDigits, but prefixes an 0x
+// does not change os's stream state
+void fmtHex(std::ostream &os, uint64_t val, int w = 0);
+// a helper that returns a string version
+std::string fmtHex(uint64_t val, int w = 0);
+//
+// e.g. -0x4 rather than 0xFFF....FC
+std::string fmtHexSigned(int64_t val, int w = 0);
+void fmtHexSigned(std::ostream &os, int64_t val, int w = 0);
+
+// This class simplifies formatting loops by dropping the first comma.
+// One calls insert *before* each element being formatted.
+//
+// EXAMPLE:
+//   Intercalator comma(os, ",");
+//   for (...) {
+//     comma.insert();
+//     os << element;
+//   }
+class Intercalator {
+  std::ostream &os;
+  bool first = true;
+  const char *sep;
+
+public:
+  Intercalator(std::ostream &_os, const char *_sep) : os(_os), sep(_sep) {}
+  void insert() {
+    if (first) {
+      first = false;
+    } else {
+      os << sep;
     }
-    template <typename...Ts>
-    static inline std::string format(Ts...ts) {
-        std::stringstream ss; iga_format_to_helper(ss, ts...); return ss.str();
+  }
+};
+
+// Same as below, but permits a filter predicate which only allows a
+// subset of elements (identified by that predicate).
+template <typename Container, typename Predicate, typename Formatter>
+static void intercalate(std::ostream &os, const char *sep, const Container &ts,
+                        const Predicate &filterT, const Formatter &formatT) {
+  Intercalator separator(os, sep ? sep : "");
+  for (const auto &t : ts) {
+    if (filterT(t)) {
+      separator.insert();
+      formatT(t);
     }
-    template <typename...Ts>
-    static inline void formatTo(std::ostream &os, Ts...ts) {
-        iga_format_to_helper(os, ts...);
+  }
+}
+// This emits a container of elements to an output stream by calling
+// a given formatter function, while automatically adding separators
+// between elements.
+//
+// EXAMPLE: let foos be a std::vector<Foo> and os be a std::ostream
+// Then we might have:
+//   intercalate(os, ",", foos,
+//      [&] (const Foo &f) {
+//         os << ... format f ...
+//      });
+//
+template <typename Container, typename Formatter>
+static void intercalate(std::ostream &os, const char *sep, const Container &ts,
+                        const Formatter &formatT) {
+  Intercalator separator(os, sep ? sep : "");
+  for (const auto &t : ts) {
+    separator.insert();
+    formatT(t);
+  }
+}
+
+// Emits something like:
+//   "foo"
+//   "foo and bar"
+//   "foo, bar, and baz"
+template <typename T, typename FormatT>
+static void commafyList(
+    const char *conjunction, // e.g. "and" or "or"
+    std::ostream &os, const std::vector<T> &elems,
+    const FormatT &formatElem) // [](std::ostream &os, const T &elem) {...}
+{
+  switch (elems.size()) {
+  case 1:
+    formatElem(os, elems[0]);
+    break;
+  case 2:
+    formatElem(os, elems[0]);
+    os << " " << conjunction << " ";
+    formatElem(os, elems[1]);
+    break;
+  default:
+    for (size_t i = 0; i < elems.size(); i++) {
+      if (i > 0)
+        os << ", ";
+      if (i == elems.size() - 1)
+        os << conjunction << " ";
+      formatElem(os, elems[i]);
     }
+  }
+}
+template <typename T, typename FormatT>
+static void commafyList(std::ostream &os, const std::vector<T> &elems,
+                        const FormatT &formatElem) {
+  commafyList("and", os, elems, formatElem);
+}
+template <typename T> std::string PadR(size_t k, const T &t) {
+  std::stringstream ssCol;
+  ssCol << t;
+  for (size_t i = (size_t)ssCol.tellp(); i < k; i++)
+    ssCol << ' ';
+  return ssCol.str();
+}
+template <typename T> std::string PadL(size_t k, const T &t) {
+  std::stringstream ssc;
+  ssc << t;
+  std::string col = ssc.str();
 
-    // enables one to write:
-    //
-    // iga::format("the hex value is 0x", hex(value, 4), " ...");
-    //                                    ^^^
-    // omits the leading "0x"
-    struct hex {
-        uint64_t value;
-        short cols;
-        hex(uint64_t _value, int _cols = 0)
-            : value(_value), cols((short)_cols) { }
-    };
-
-    ///////////////////////////////////////////////////////////////////////////
-    // takes a printf-style pattern and converts it to a string
-    std::string formatF(const char *pat, ...);
-    std::string vformatF(const char *pat, va_list &va);
-    // emits a printf-style string to the given output stream
-    // returns the nubmer of characters written
-    size_t formatToF(std::ostream &os, const char *patt, ...);
-    size_t vformatToF(std::ostream &os, const char *patt, va_list &va);
-    // emits to a buffer of a given size
-    // returns the result of vsnprintf (or the equivalent) ... num chars needed
-    size_t formatToF(char *buf, size_t bufLen, const char *patt, ...);
-    size_t vformatToF(char *buf, size_t bufLen, const char *patt, va_list &va);
-
-    // trim trailing whitespace
-    std::string trimTrailingWs(const std::string &s);
-
-    // converts a string to lines
-    std::vector<std::string> toLines(const std::string &s);
-
-
-    // copies the contents of 'os' into buf (safely)
-    // returns the required string size
-    size_t copyOut(char *buf, size_t bufCap, std::iostream &ios);
-
-    // formats a value into binary padding with 0's for a given width w
-    // (the value of 0 auto computes the minimal width)
-    // without affecting os's stream state
-    //   e.g. fmtBinaryDigits(os,0xB,5) => emits 01011
-    //   e.g. fmtBinaryDigits(os,0xB,0) => emits  1011
-    void fmtBinaryDigits(std::ostream &os, uint64_t val, int w = 0);
-    // same as fmtBinaryDigits, but prefixes an additional "0b"
-    // is careful to not muck up os's state
-    // w doesn't count the 0b prefix as part of the width
-    // e.g. fmtBinary(os,0xB,0) -> 0b1101
-    void fmtBinary(std::ostream &os, uint64_t val, int w = 0);
-    //
-    // formats to uppercase hex for a given width
-    // without affecting os's stream state
-    void fmtHexDigits(std::ostream &os, uint64_t val, int w = 0);
-    std::string fmtHexDigits(uint64_t val, int w = 0);
-
-    // same as fmtHexDigits, but prefixes an 0x
-    // does not change os's stream state
-    void fmtHex(std::ostream &os, uint64_t val, int w = 0);
-    // a helper that returns a string version
-    std::string fmtHex(uint64_t val, int w = 0);
-    //
-    // e.g. -0x4 rather than 0xFFF....FC
-    std::string fmtHexSigned(int64_t val, int w = 0);
-    void fmtHexSigned(std::ostream &os, int64_t val, int w = 0);
-
-    // This class simplifies formatting loops by dropping the first comma.
-    // One calls insert *before* each element being formatted.
-    //
-    // EXAMPLE:
-    //   Intercalator comma(os, ",");
-    //   for (...) {
-    //     comma.insert();
-    //     os << element;
-    //   }
-    class Intercalator {
-        std::ostream &os;
-        bool first = true;
-        const char *sep;
-    public:
-        Intercalator(std::ostream &_os, const char *_sep)
-            : os(_os), sep(_sep) { }
-        void insert() {
-            if (first) {
-                first = false;
-            } else {
-                os << sep;
-            }
-        }
-    };
-
-    // Same as below, but permits a filter predicate which only allows a
-    // subset of elements (identified by that predicate).
-    template <typename Container, typename Predicate, typename Formatter>
-    static void intercalate(
-        std::ostream &os,
-        const char *sep,
-        const Container &ts,
-        const Predicate &filterT,
-        const Formatter &formatT)
-    {
-        Intercalator separator(os, sep ? sep : "");
-        for (const auto &t : ts) {
-            if (filterT(t)) {
-                separator.insert();
-                formatT(t);
-            }
-        }
-    }
-    // This emits a container of elements to an output stream by calling
-    // a given formatter function, while automatically adding separators
-    // between elements.
-    //
-    // EXAMPLE: let foos be a std::vector<Foo> and os be a std::ostream
-    // Then we might have:
-    //   intercalate(os, ",", foos,
-    //      [&] (const Foo &f) {
-    //         os << ... format f ...
-    //      });
-    //
-    template <typename Container, typename Formatter>
-    static void intercalate(
-        std::ostream &os,
-        const char *sep,
-        const Container &ts,
-        const Formatter &formatT)
-    {
-        Intercalator separator(os, sep ? sep : "");
-        for (const auto &t : ts) {
-            separator.insert();
-            formatT(t);
-        }
-    }
-
-
-    // Emits something like:
-    //   "foo"
-    //   "foo and bar"
-    //   "foo, bar, and baz"
-    template <typename T, typename FormatT>
-    static void commafyList(
-        const char *conjunction, // e.g. "and" or "or"
-        std::ostream &os,
-        const std::vector<T> &elems,
-        const FormatT &formatElem) // [](std::ostream &os, const T &elem) {...}
-    {
-        switch (elems.size()) {
-        case 1:
-            formatElem(os, elems[0]);
-            break;
-        case 2:
-            formatElem(os, elems[0]);
-            os << " " << conjunction << " ";
-            formatElem(os, elems[1]);
-            break;
-        default:
-            for (size_t i = 0; i < elems.size(); i++) {
-                if (i > 0)
-                    os << ", ";
-                if (i == elems.size() - 1)
-                    os << conjunction << " ";
-                formatElem(os, elems[i]);
-            }
-        }
-    }
-    template <typename T, typename FormatT>
-    static void commafyList(
-        std::ostream &os,
-        const std::vector<T> &elems,
-        const FormatT &formatElem)
-    {
-        commafyList("and", os, elems, formatElem);
-    }
-    template <typename T>
-    std::string PadR(size_t k, const T& t)
-    {
-        std::stringstream ssCol;
-        ssCol << t;
-        for (size_t i = (size_t)ssCol.tellp(); i < k; i++)
-            ssCol << ' ';
-        return ssCol.str();
-    }
-    template <typename T>
-    std::string PadL(size_t k, const T& t)
-    {
-        std::stringstream ssc;
-        ssc << t;
-        std::string col = ssc.str();
-
-        std::stringstream ss;
-        int n = (int)k - (int)col.size();
-        for (int i = 0; i < n; i++) {
-            ss << ' ';
-        }
-        ss << col;
-        return ss.str();
-    }
+  std::stringstream ss;
+  int n = (int)k - (int)col.size();
+  for (int i = 0; i < n; i++) {
+    ss << ' ';
+  }
+  ss << col;
+  return ss.str();
+}
 } // namespace iga
 
-std::ostream &operator <<(std::ostream &os, iga::hex);
+std::ostream &operator<<(std::ostream &os, iga::hex);
 
 #endif // IGA_STRINGS_HPP

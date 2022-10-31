@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "Arena.hpp"
 
-
 #ifdef COLLECT_ALLOCATION_STATS
 int numAllocations = 0;
 int numMallocCalls = 0;
@@ -18,36 +17,31 @@ int numMemManagers = 0;
 int maxArenaLength = 0;
 #endif
 using namespace iga;
-void *ArenaHeader::AllocSpace(size_t size)
-{
-    assert(WordAlign (size_t(_nextByte)) == size_t(_nextByte));
-    void *allocSpace = _nextByte;
+void *ArenaHeader::AllocSpace(size_t size) {
+  assert(WordAlign(size_t(_nextByte)) == size_t(_nextByte));
+  void *allocSpace = _nextByte;
 
-    if (size)
-    {
-        size = WordAlign(size);
+  if (size) {
+    size = WordAlign(size);
 
-        if (_nextByte + size <= _lastByte) {
-            _nextByte += size;
-        } else {
-            allocSpace = 0;
-        }
+    if (_nextByte + size <= _lastByte) {
+      _nextByte += size;
+    } else {
+      allocSpace = 0;
     }
-    else
-    {
-        allocSpace = 0;
-    }
+  } else {
+    allocSpace = 0;
+  }
 
-    return allocSpace;
+  return allocSpace;
 }
 
-void ArenaManager::FreeArenas()
-{
-    while (_arenas) {
-        unsigned char* killed = (unsigned char*)_arenas;
-        _arenas = _arenas->_nextArena;
-        delete [] killed;
-    }
+void ArenaManager::FreeArenas() {
+  while (_arenas) {
+    unsigned char *killed = (unsigned char *)_arenas;
+    _arenas = _arenas->_nextArena;
+    delete[] killed;
+  }
 
-    _arenas = 0;
+  _arenas = 0;
 }

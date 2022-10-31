@@ -21,7 +21,7 @@ SPDX-License-Identifier: MIT
  *************************************************************************/
 
 #ifdef __cplusplus
-extern "C"  {
+extern "C" {
 #endif
 
 /*
@@ -37,9 +37,9 @@ extern "C"  {
  */
 #define KV_MAX_TARGETS_PER_INSTRUCTION 3
 /*
-* This symbol represents an invalid PC.  0 is a valid PC (the beginnning
-* of the kernel).
-*/
+ * This symbol represents an invalid PC.  0 is a valid PC (the beginnning
+ * of the kernel).
+ */
 #define KV_INVALID_PC_VALUE ((int32_t)0xFFFFFFFF)
 
 /*
@@ -49,22 +49,22 @@ struct kv_t;
 
 /* Kernel Viewer API Statuses */
 typedef enum {
-    KV_SUCCESS                = 0,
-    KV_ERROR                  = 1, /* general error (unlisted below) */
-    KV_DECODE_ERROR           = 2, /*
-                                    * error during initial decode of the kernel
-                                    * always check KernelView::decodeSucceeded.
-                                    */
-    KV_INVALID_PC             = 3,  /* invalid instruction PC */
+  KV_SUCCESS = 0,
+  KV_ERROR = 1,        /* general error (unlisted below) */
+  KV_DECODE_ERROR = 2, /*
+                        * error during initial decode of the kernel
+                        * always check KernelView::decodeSucceeded.
+                        */
+  KV_INVALID_PC = 3,   /* invalid instruction PC */
 
-    KV_INVALID_ARGUMENT       = 10, /* an invalid argument passed in (e.g. nullptr) */
+  KV_INVALID_ARGUMENT = 10, /* an invalid argument passed in (e.g. nullptr) */
 
-    KV_NON_SEND_INSTRUCTION   = 20, /* underlying inst isn't a send */
-    KV_DESCRIPTOR_INDIRECT    = 21, /* a send message with a reg desc */
-    KV_DESCRIPTOR_INVALID     = 22, /* an unrecognized send descriptor */
-    KV_NO_SUBFUNCTION         = 23, /* underlying inst has no sub-function */
+  KV_NON_SEND_INSTRUCTION = 20, /* underlying inst isn't a send */
+  KV_DESCRIPTOR_INDIRECT = 21,  /* a send message with a reg desc */
+  KV_DESCRIPTOR_INVALID = 22,   /* an unrecognized send descriptor */
+  KV_NO_SUBFUNCTION = 23,       /* underlying inst has no sub-function */
 
-    KV_INCAPABLE_PLATFORM     = 30  /* invalid API for the given platform */
+  KV_INCAPABLE_PLATFORM = 30 /* invalid API for the given platform */
 } kv_status_t;
 
 /*
@@ -85,17 +85,12 @@ typedef enum {
  *  If user proceeds to use the returned Kernel View under error the behavior
  *  of various APIs may be undefined.
  */
-IGA_API kv_t *kv_create(
-    iga_gen_t plat,
-    const void *bytes,
-    size_t bytes_len,
-    iga_status_t *status,
-    char *errbuf,
-    size_t errbuf_cap,
-    // if not specified, the swsb encoding mode will be derived from platfrom
-    // by SWSB::getEncodeMode
-    iga::SWSB_ENCODE_MODE swsb_enc_mode
-        = iga::SWSB_ENCODE_MODE::SWSBInvalidMode);
+IGA_API kv_t *kv_create(iga_gen_t plat, const void *bytes, size_t bytes_len,
+                        iga_status_t *status, char *errbuf, size_t errbuf_cap,
+                        // if not specified, the swsb encoding mode will be
+                        // derived from platfrom by SWSB::getEncodeMode
+                        iga::SWSB_ENCODE_MODE swsb_enc_mode =
+                            iga::SWSB_ENCODE_MODE::SWSBInvalidMode);
 
 /*
  * Destroys a kernel view deallocating all resources sequestered by the kv_t
@@ -103,43 +98,38 @@ IGA_API kv_t *kv_create(
  */
 IGA_API void kv_delete(kv_t *);
 
-
 /*
-* Returns the size of the instruction at 'pc'; returns 0 if the program
-* address is out of bounds.  This allows one to iterate a kernel using this
-* API.  For example:
-*
-*   uint32_t iLen;
-*   for (uint32_t pc = 0;
-*        (iLen = kv_get_inst_size(kv, pc)) != 0;
-*        pc += iLen)
-*   {
-*     ... process instruction
-*   }
-*/
+ * Returns the size of the instruction at 'pc'; returns 0 if the program
+ * address is out of bounds.  This allows one to iterate a kernel using this
+ * API.  For example:
+ *
+ *   uint32_t iLen;
+ *   for (uint32_t pc = 0;
+ *        (iLen = kv_get_inst_size(kv, pc)) != 0;
+ *        pc += iLen)
+ *   {
+ *     ... process instruction
+ *   }
+ */
 IGA_API int32_t kv_get_inst_size(const kv_t *kv, int32_t pc);
 
 /*
-* Returns true if the instruction has the opt
-*/
+ * Returns true if the instruction has the opt
+ */
 IGA_API bool kv_has_inst_opt(const kv_t *kv, int32_t pc, uint32_t opt);
 
 /*
-* This function returns the absolute PC targets of this instruction.
-* For branching instructions, it populates 'pcs' with the jump targets
-* of this instruction.  The number of PC's will always be less than or
-* equal to MAX_KV_TARGETS_COUNT.  The function returns the number of
-* target PCs populated in the 'pcs' argument.
-*
-* For non-branching instructions this returns 0 and does not touch 'pcs'.
-*
-* If 'pcs' is NULL, it is ignored.  The number of targets is still returned.
-*/
-IGA_API uint32_t kv_get_inst_targets(
-    const kv_t *kv,
-    int32_t pc,
-    int32_t *pcs);
-
+ * This function returns the absolute PC targets of this instruction.
+ * For branching instructions, it populates 'pcs' with the jump targets
+ * of this instruction.  The number of PC's will always be less than or
+ * equal to MAX_KV_TARGETS_COUNT.  The function returns the number of
+ * target PCs populated in the 'pcs' argument.
+ *
+ * For non-branching instructions this returns 0 and does not touch 'pcs'.
+ *
+ * If 'pcs' is NULL, it is ignored.  The number of targets is still returned.
+ */
+IGA_API uint32_t kv_get_inst_targets(const kv_t *kv, int32_t pc, int32_t *pcs);
 
 /*
  * This function returns the syntax for a given instruction.
@@ -160,21 +150,14 @@ IGA_API uint32_t kv_get_inst_targets(
  * something else is wrong, then 0 is returned.
  */
 IGA_API size_t kv_get_inst_syntax(
-    const kv_t *kv,
-    int32_t pc,
-    char *sbuf,
-    size_t sbuf_cap,
-    uint32_t fmt_opts,
-    const char *(*get_label_name)(int32_t, void *),
-    void *env);
+    const kv_t *kv, int32_t pc, char *sbuf, size_t sbuf_cap, uint32_t fmt_opts,
+    const char *(*get_label_name)(int32_t, void *), void *env);
 
 /*
  * This function returns the default label name if custom labeler is not used.
  */
-IGA_API size_t kv_get_default_label_name(
-    int32_t pc,
-    char *sbuf,
-    size_t sbuf_cap);
+IGA_API size_t kv_get_default_label_name(int32_t pc, char *sbuf,
+                                         size_t sbuf_cap);
 
 /*
  * Returns non-zero iff this instruction is a branch target.
@@ -183,22 +166,21 @@ IGA_API size_t kv_get_default_label_name(
  */
 IGA_API uint32_t kv_is_inst_target(const kv_t *kv, int32_t pc);
 
-
 /*
  * This enumeration allows one to determine if a given PC is for structured
  * control flow.  This is for tools that want to render an indentation for
  * readability.
  */
 typedef enum {
-    KV_OPGROUP_INVALID,   /* not a valid op (e.g. out of bounds, middle of instruction) */
-    KV_OPGROUP_OTHER,     /* some other instruction */
-    KV_OPGROUP_IF,        /* an 'if' op */
-    KV_OPGROUP_ELSE,      /* an 'else' op */
-    KV_OPGROUP_ENDIF,     /* an 'endif' op */
-    KV_OPGROUP_WHILE,     /* a 'while' op */
-    KV_OPGROUP_SEND_EOT,  /* a send message with the EOT bit set */
+  KV_OPGROUP_INVALID,  /* not a valid op (e.g. out of bounds, middle of
+                          instruction) */
+  KV_OPGROUP_OTHER,    /* some other instruction */
+  KV_OPGROUP_IF,       /* an 'if' op */
+  KV_OPGROUP_ELSE,     /* an 'else' op */
+  KV_OPGROUP_ENDIF,    /* an 'endif' op */
+  KV_OPGROUP_WHILE,    /* a 'while' op */
+  KV_OPGROUP_SEND_EOT, /* a send message with the EOT bit set */
 } kv_opgroup_t;
-
 
 /*
  * This function returns the opcode group.  The result may be compared
@@ -206,7 +188,6 @@ typedef enum {
  * (See enum kv_get_opgroup_t.)
  */
 IGA_API int32_t kv_get_opgroup(const kv_t *kv, int32_t pc);
-
 
 /*
  * Returns the send function descriptors.  The count of descriptors is
@@ -217,12 +198,8 @@ IGA_API int32_t kv_get_opgroup(const kv_t *kv, int32_t pc);
  *
  * Also returns 0 if any parameter is NULL (and parameters are untouched).
  */
-IGA_API uint32_t kv_get_send_descs(
-    const kv_t *kv,
-    int32_t pc,
-    uint32_t *ex_desc,
-    uint32_t *desc);
-
+IGA_API uint32_t kv_get_send_descs(const kv_t *kv, int32_t pc,
+                                   uint32_t *ex_desc, uint32_t *desc);
 
 
 /*
@@ -251,13 +228,11 @@ IGA_API uint32_t kv_get_send_descs(
  *   KV_NON_SEND_INSTRUCTION if given a non-send instruction or a send
  *    instruction on a platform that does not use a0.# registers.
  */
-IGA_API kv_status_t kv_get_send_indirect_descs(
-    const kv_t *kv,
-    int32_t pc,
-    uint8_t *ex_desc_reg,
-    uint8_t *ex_desc_subreg,
-    uint8_t *desc_reg,
-    uint8_t *desc_subreg);
+IGA_API kv_status_t kv_get_send_indirect_descs(const kv_t *kv, int32_t pc,
+                                               uint8_t *ex_desc_reg,
+                                               uint8_t *ex_desc_subreg,
+                                               uint8_t *desc_reg,
+                                               uint8_t *desc_subreg);
 
 /*
  * Determines if the given send instruction is on ExBSO mode.
@@ -272,11 +247,8 @@ IGA_API kv_status_t kv_get_send_indirect_descs(
  *  KV_INVALID_ARGUMENT      if given a null parameter
  *  KV_INCAPABLE_PLATFORM    if it's not XeHP+ platform
  */
-IGA_API kv_status_t kv_get_send_exbso(
-    const kv_t *kv,
-    int32_t pc,
-    int32_t *exbso);
-
+IGA_API kv_status_t kv_get_send_exbso(const kv_t *kv, int32_t pc,
+                                      int32_t *exbso);
 
 
 /*
@@ -308,8 +280,8 @@ IGA_API kv_status_t kv_get_send_exbso(
  *  KV_INVALID_PC            if passed an invalid PC
  *  KV_INVALID_ARGUMENT      if given a null parameter
  */
-IGA_API kv_status_t kv_get_message_type(
-    const kv_t *kv, int32_t pc, int32_t *message_type_enum);
+IGA_API kv_status_t kv_get_message_type(const kv_t *kv, int32_t pc,
+                                        int32_t *message_type_enum);
 
 /*
  * Determines the message type for the given send instruction.
@@ -327,8 +299,9 @@ IGA_API kv_status_t kv_get_message_type(
  *  KV_INVALID_PC            if passed an invalid PC
  *  KV_INVALID_ARGUMENT      if given a null parameter
  */
-IGA_API kv_status_t kv_get_message_type_ext(
-    const kv_t *kv, int32_t pc, uint32_t desc, int32_t sfid, int32_t *message_type_enum);
+IGA_API kv_status_t kv_get_message_type_ext(const kv_t *kv, int32_t pc,
+                                            uint32_t desc, int32_t sfid,
+                                            int32_t *message_type_enum);
 
 /*
  * Determines the message sfid for the given send instruction.
@@ -342,8 +315,8 @@ IGA_API kv_status_t kv_get_message_type_ext(
  *  KV_INVALID_PC            if passed an invalid PC
  *  KV_INVALID_ARGUMENT      if given a null parameter
  */
-IGA_API kv_status_t kv_get_message_sfid(
-    const kv_t *kv, int32_t pc, int32_t *sfid_enum);
+IGA_API kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc,
+                                        int32_t *sfid_enum);
 
 /*
  * Gets message length, extended message length, and response length in
@@ -351,17 +324,18 @@ IGA_API kv_status_t kv_get_message_sfid(
  * If any of the parameters is NULL, it returns 0.  Invalid lengths are set
  * to KV_INVALID_LEN.
  */
-IGA_API uint32_t kv_get_message_len(
-    const kv_t *kv, int32_t pc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
+IGA_API uint32_t kv_get_message_len(const kv_t *kv, int32_t pc, uint32_t *mLen,
+                                    uint32_t *emLen, uint32_t *rLen);
 
 /*
  * Alternative version of kv_get_message_len when desc or exDesc are
  * indirect.  If any of the parameters is NULL, it returns 0.  Invalid lengths
  * are set to KV_INVALID_LEN.
  */
-IGA_API uint32_t kv_get_message_len_ext(
-    const kv_t *kv, int32_t pc, uint32_t desc, uint32_t exDesc,
-    uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
+IGA_API uint32_t kv_get_message_len_ext(const kv_t *kv, int32_t pc,
+                                        uint32_t desc, uint32_t exDesc,
+                                        uint32_t *mLen, uint32_t *emLen,
+                                        uint32_t *rLen);
 
 /*
  * Returns the ExecSize of the instruction (SIMD width)
@@ -378,9 +352,9 @@ IGA_API uint32_t kv_get_execution_size(const kv_t *kv, int32_t pc);
 /*
  * Returns Software scoreboarding information.
  */
-IGA_API bool kv_get_swsb_info(
-    const kv_t *kv, int32_t pc, iga::SWSB_ENCODE_MODE encdoe_mode,
-    iga::SWSB& swsb);
+IGA_API bool kv_get_swsb_info(const kv_t *kv, int32_t pc,
+                              iga::SWSB_ENCODE_MODE encdoe_mode,
+                              iga::SWSB &swsb);
 
 /*
  * Returns number of sources this instruction has.
@@ -397,7 +371,8 @@ IGA_API uint32_t kv_get_opcode(const kv_t *kv, int32_t pc);
  * This function returns OPcode integer.  The value corresponds to
  * binary encoding value of the opcode.
  */
-IGA_API kv_status_t kv_get_subfunction(const kv_t *kv, int32_t pc, uint32_t* subfunc);
+IGA_API kv_status_t kv_get_subfunction(const kv_t *kv, int32_t pc,
+                                       uint32_t *subfunc);
 
 /*
  * This function returns if instruction has destination.
@@ -435,35 +410,41 @@ IGA_API uint32_t kv_get_destination_register_kind(const kv_t *kv, int32_t pc);
 /*
  * This function returns source register line number for a given source.
  */
-IGA_API int32_t kv_get_source_register(const kv_t *kv, int32_t pc, uint32_t sourceNumber);
+IGA_API int32_t kv_get_source_register(const kv_t *kv, int32_t pc,
+                                       uint32_t sourceNumber);
 
 /*
  * This function returns source subRegister for a given source.
  */
-IGA_API int32_t kv_get_source_sub_register(const kv_t *kv, int32_t pc, uint32_t sourceNumber);
+IGA_API int32_t kv_get_source_sub_register(const kv_t *kv, int32_t pc,
+                                           uint32_t sourceNumber);
 
 /*
  * This function returns source data type for a given source
  * i.e. F, HF, INT, etc
  */
-IGA_API uint32_t kv_get_source_data_type(const kv_t *kv, int32_t pc, uint32_t sourceNumber);
+IGA_API uint32_t kv_get_source_data_type(const kv_t *kv, int32_t pc,
+                                         uint32_t sourceNumber);
 
 /*
  * This function returns source register type for a given source.
  * i.e. GRF, various ARF registers
  */
-IGA_API uint32_t kv_get_source_register_type(const kv_t *kv, int32_t pc, uint32_t sourceNumber);
+IGA_API uint32_t kv_get_source_register_type(const kv_t *kv, int32_t pc,
+                                             uint32_t sourceNumber);
 
 /*
  * This function returns source register KIND for a given source
  * DIRECT, INDIRECT, IMM, INDIR etc
  */
-IGA_API uint32_t kv_get_source_register_kind(const kv_t *kv, int32_t pc, uint32_t sourceNumber);
+IGA_API uint32_t kv_get_source_register_kind(const kv_t *kv, int32_t pc,
+                                             uint32_t sourceNumber);
 
 /*
  * This function returns whether source is a vector.
  */
-IGA_API int32_t kv_is_source_vector(const kv_t *kv, int32_t pc, uint32_t sourceNumber);
+IGA_API int32_t kv_is_source_vector(const kv_t *kv, int32_t pc,
+                                    uint32_t sourceNumber);
 
 /*
  * This function returns mask offset
@@ -478,35 +459,36 @@ IGA_API uint32_t kv_get_mask_control(const kv_t *kv, int32_t pc);
 /*
  * This function exposes destination region.
  */
-IGA_API int32_t kv_get_destination_region(
-    const kv_t *kv, int32_t pc, uint32_t *hz);
+IGA_API int32_t kv_get_destination_region(const kv_t *kv, int32_t pc,
+                                          uint32_t *hz);
 
 /*
  * This function exposes source operand region.
  */
-IGA_API int32_t kv_get_source_region(
-    const kv_t *kv, int32_t pc, uint32_t src_op,
-    uint32_t *vt, uint32_t *wi, uint32_t *hz);
+IGA_API int32_t kv_get_source_region(const kv_t *kv, int32_t pc,
+                                     uint32_t src_op, uint32_t *vt,
+                                     uint32_t *wi, uint32_t *hz);
 
 /*
  * This function exposes source operand immediate value.
  */
-IGA_API int32_t kv_get_source_immediate(
-    const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm);
+IGA_API int32_t kv_get_source_immediate(const kv_t *kv, int32_t pc,
+                                        uint32_t src_op, uint64_t *imm);
 
 /*
  * This function exposes indirect source's immediate offset.
  * Return -1 if given source is not indirect srouce
  */
-IGA_API int32_t kv_get_source_indirect_imm_off(
-    const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *immoff);
+IGA_API int32_t kv_get_source_indirect_imm_off(const kv_t *kv, int32_t pc,
+                                               uint32_t src_op,
+                                               int16_t *immoff);
 
 /*
  * This function exposes indirect destination's immediate offset.
    Return -1 if given destination is not indirect srouce
  */
-IGA_API int32_t kv_get_destination_indirect_imm_off(
-    const kv_t *kv, int32_t pc, int16_t *mme);
+IGA_API int32_t kv_get_destination_indirect_imm_off(const kv_t *kv, int32_t pc,
+                                                    int16_t *mme);
 
 /*
  * This function exposes source's MathMacroExt number for
@@ -515,8 +497,8 @@ IGA_API int32_t kv_get_destination_indirect_imm_off(
  * Return 0 if the given instruction is math macro instruction.
  * Return -1 if given instruction is not math macro instruction.
  */
-IGA_API int32_t kv_get_source_mme_number(
-    const kv_t *kv, int32_t pc, uint32_t src_op, int16_t *mme);
+IGA_API int32_t kv_get_source_mme_number(const kv_t *kv, int32_t pc,
+                                         uint32_t src_op, int16_t *mme);
 
 /*
  * This function exposes destination's MathMacroExt number for
@@ -525,8 +507,8 @@ IGA_API int32_t kv_get_source_mme_number(
  * Return 0 if the given instruction is math macro instruction.
  * Return -1 if given instruction is not math macro instruction.
  */
-IGA_API int32_t kv_get_destination_mme_number(
-    const kv_t *kv, int32_t pc, int16_t *immoff);
+IGA_API int32_t kv_get_destination_mme_number(const kv_t *kv, int32_t pc,
+                                              int16_t *immoff);
 
 /*
  * This function return flag modifier (FlagModifier)
@@ -537,8 +519,8 @@ IGA_API uint32_t kv_get_flag_modifier(const kv_t *kv, int32_t pc);
  * This function return source modifier
  * This returns a SrcModifier
  */
-IGA_API uint32_t kv_get_source_modifier(
-    const kv_t *kv, int32_t pc, uint32_t src_op);
+IGA_API uint32_t kv_get_source_modifier(const kv_t *kv, int32_t pc,
+                                        uint32_t src_op);
 
 /*
  * This function return destination modifier
@@ -580,7 +562,9 @@ IGA_API uint32_t kv_get_is_inverse_predicate(const kv_t *kv, int32_t pc);
  *  KV_INVALID_PC            if called on a non-instruction address
  * Return value is a CachOpt enum value
  */
-IGA_API kv_status_t kv_get_cache_opt(const kv_t *kv, int32_t pc, int32_t cache_level, int32_t* cacheopt_enum);
+IGA_API kv_status_t kv_get_cache_opt(const kv_t *kv, int32_t pc,
+                                     int32_t cache_level,
+                                     int32_t *cacheopt_enum);
 
 /*
  * This function returns the sync function of a sync instruction

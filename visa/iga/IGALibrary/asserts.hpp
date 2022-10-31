@@ -36,24 +36,22 @@ SPDX-License-Identifier: MIT
 //   asserts.hpp.  Sends tracing statements to the output console and stderr
 //
 #if defined(_DEBUG) || defined(_INTERNAL_ASSERTS)
-#define IGA_ASSERT(C, M) \
-    do { \
-        if (!(C)) { \
-            ::iga::AssertFail(__FILE__, __LINE__, #C, M); \
-            assert(false && (M)); \
-        } \
-    } while(0)
+#define IGA_ASSERT(C, M)                                                       \
+  do {                                                                         \
+    if (!(C)) {                                                                \
+      ::iga::AssertFail(__FILE__, __LINE__, #C, M);                            \
+      assert(false && (M));                                                    \
+    }                                                                          \
+  } while (0)
 // A short hand for IGA_ASSERT(false, M)
-#define IGA_ASSERT_FALSE(M) \
-    do { \
-        ::iga::AssertFail(__FILE__, __LINE__, nullptr, M); \
-        assert(false && (M)); \
-    } while(0)
+#define IGA_ASSERT_FALSE(M)                                                    \
+  do {                                                                         \
+    ::iga::AssertFail(__FILE__, __LINE__, nullptr, M);                         \
+    assert(false && (M));                                                      \
+  } while (0)
 // outputs a formatted message to the Windows debugger log
 // (see OutputDebugString(MSDN)).
-#define OUTPUT_DEBUG_CONSOLE(M) \
-    ::iga::OutputDebugConsoleImpl(M)
-
+#define OUTPUT_DEBUG_CONSOLE(M) ::iga::OutputDebugConsoleImpl(M)
 
 #else
 // (void)'ing away the expression suppresses unused variable warnings
@@ -61,16 +59,11 @@ SPDX-License-Identifier: MIT
 //      IGA_ASSERT(var > 0, "...");
 // Typically we use var elsewhere, but if we don't MSVC warning W4189
 // pops in IGC and MDF.
-#define IGA_ASSERT(C, M) \
-    (void)(C)
+#define IGA_ASSERT(C, M) (void)(C)
 // A short hand for IGA_ASSERT(false, M)
-#define IGA_ASSERT_FALSE(M) \
-    IGA_ASSERT(false, M)
+#define IGA_ASSERT_FALSE(M) IGA_ASSERT(false, M)
 #define OUTPUT_DEBUG_CONSOLE(M)
 #endif
-
-
-
 
 #ifdef _WIN32
 #ifndef NORETURN_DECLSPEC
@@ -90,29 +83,26 @@ SPDX-License-Identifier: MIT
 
 // Similar to IGA_ASSERT_FALSE, but terminates the program in both debug
 // and release mode
-#define IGA_FATAL(M) \
-    do { \
-       iga::FatalMessage(M); \
-       iga::FatalExitProgram(); \
-    } while (0)
+#define IGA_FATAL(M)                                                           \
+  do {                                                                         \
+    iga::FatalMessage(M);                                                      \
+    iga::FatalExitProgram();                                                   \
+  } while (0)
 
 namespace iga {
-    NORETURN_DECLSPEC void NORETURN_ATTRIBUTE FatalExitProgram(); // IGA_FATAL
-    void FatalMessage(const char *msg); // IGA_FATAL, IGA_ASSERT
-    void DebugTrace(const char *msg); // for DEBUG_TRACE
-    void OutputDebugConsoleImpl(const char *msg); // IGA_FATAL, DEBUG_TRACE
-    void AssertFail(
-        const char *file, int line, const char *expr, const char *msg);
-}
+NORETURN_DECLSPEC void NORETURN_ATTRIBUTE FatalExitProgram(); // IGA_FATAL
+void FatalMessage(const char *msg);           // IGA_FATAL, IGA_ASSERT
+void DebugTrace(const char *msg);             // for DEBUG_TRACE
+void OutputDebugConsoleImpl(const char *msg); // IGA_FATAL, DEBUG_TRACE
+void AssertFail(const char *file, int line, const char *expr, const char *msg);
+} // namespace iga
 
 // A trace routine used for debugging to stderr and the debug console.
 // before including asserts.hpp, define DEBUG_TRACE_ENABLED
 #ifdef DEBUG_TRACE_ENABLED
-#define DEBUG_TRACE(M) \
-    DebugTrace(M)
+#define DEBUG_TRACE(M) DebugTrace(M)
 #else
 #define DEBUG_TRACE(M)
 #endif
-
 
 #endif // ASSERTS_HPP

@@ -11,33 +11,21 @@ SPDX-License-Identifier: MIT
 
 ////////////////////////////////////////////
 // GED ENCODER USERS USE THIS INTERFACE
-#include "../DecoderOpts.hpp"
-#include "../EncoderOpts.hpp"
 #include "../../ErrorHandler.hpp"
 #include "../../IR/Kernel.hpp"
+#include "../DecoderOpts.hpp"
+#include "../EncoderOpts.hpp"
 
-namespace iga {namespace ged
-{
-    bool IsEncodeSupported(
-        const Model &m,
-        const EncoderOpts &opts);
-    void Encode(
-        const Model &m,
-        const EncoderOpts &opts,
-        ErrorHandler &eh,
-        Kernel &k,
-        void *&bits,
-        size_t &bitsLen);
+namespace iga {
+namespace ged {
+bool IsEncodeSupported(const Model &m, const EncoderOpts &opts);
+void Encode(const Model &m, const EncoderOpts &opts, ErrorHandler &eh,
+            Kernel &k, void *&bits, size_t &bitsLen);
 
-    bool IsDecodeSupported(
-        const Model &m,
-        const DecoderOpts &opts);
-    Kernel *Decode(
-        const Model &m,
-        const DecoderOpts &dopts,
-        ErrorHandler &eh,
-        const void *bits,
-        size_t bitsLen);
-}} // namespace
+bool IsDecodeSupported(const Model &m, const DecoderOpts &opts);
+Kernel *Decode(const Model &m, const DecoderOpts &dopts, ErrorHandler &eh,
+               const void *bits, size_t bitsLen);
+} // namespace ged
+} // namespace iga
 
 #endif // _IGA_BACKEND_GED_INTERFACE_HPP_

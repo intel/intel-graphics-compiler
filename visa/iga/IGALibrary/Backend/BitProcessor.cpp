@@ -9,20 +9,17 @@ SPDX-License-Identifier: MIT
 #include "BitProcessor.hpp"
 #include "../strings.hpp"
 
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 using namespace iga;
 
-void BitProcessor::warningAtS(const Loc &loc, std::string msg)
-{
-    m_errorHandler.reportWarning(loc, msg);
+void BitProcessor::warningAtS(const Loc &loc, std::string msg) {
+  m_errorHandler.reportWarning(loc, msg);
 }
-void BitProcessor::errorAtS(const Loc &loc, std::string msg)
-{
-    m_errorHandler.reportError(loc, msg);
+void BitProcessor::errorAtS(const Loc &loc, std::string msg) {
+  m_errorHandler.reportError(loc, msg);
 }
-void BitProcessor::fatalAtS(const Loc &loc, std::string msg)
-{
-    m_errorHandler.throwFatal(loc, msg);
+void BitProcessor::fatalAtS(const Loc &loc, std::string msg) {
+  m_errorHandler.throwFatal(loc, msg);
 }
