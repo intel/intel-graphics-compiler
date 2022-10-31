@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
-#include <string_view>
 
 #ifdef _MSC_VER
 // To disable warning for duplicate macros definitions
@@ -48,7 +47,7 @@ static int64_t                 hexToInt(const char *hex_str, int str_len);
 static MEDIA_LD_mod            mediaMode(const char* str);
 static OutputFormatControl     avs_control(const char* str);
 static AVSExecMode             avsExecMode(const char* str);
-static unsigned char           FENCEOptions(std::string_view str);
+static unsigned char           FENCEOptions(const char* str);
 static COMMON_ISA_VME_OP_MODE  VMEType(const char *str);
 static CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
 static void                    appendStringLiteralChar(char c, char *buf, size_t *len);
@@ -1498,9 +1497,9 @@ static AVSExecMode avsExecMode(const char* str)
     return AVS_16x4;
 }
 
-static unsigned char FENCEOptions(std::string_view str)
+static unsigned char FENCEOptions(const char* str)
 {
-    int count = str.size();
+    int count = strlen(str);
     unsigned char result=0;
     /*
         Bit 0: commit enable
