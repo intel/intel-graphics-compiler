@@ -36,14 +36,15 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
     const float cmpAveragingFactor = (float)1.0 / (float(totalSimilarSamples));
     for (auto sampleInst : similarSampleInsts)
     {
-        BasicBlock::iterator instItr = sampleInst->getIterator();
+        Instruction* inst = sampleInst->getNextNonDebugInstruction();
         std::set<Value*> texels; //for storing texel_x, texel_y, texel_z of this sampleInst
+
         for (int i = 0; i < 3; i++)
         {
-            instItr++;
-            if (instItr->getOpcode() == Instruction::ExtractElement)
+            if (inst->getOpcode() == Instruction::ExtractElement)
             {
-                texels.insert(&*instItr);
+                texels.insert(inst);
+                inst = inst->getNextNonDebugInstruction();
             }
             else
             {
@@ -51,23 +52,21 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
             }
         }
 
-        instItr++;
         for (int i = 0; i < 3; i++)
         {
-            if (instItr->getOpcode() == Instruction::FMul)
+            if (inst->getOpcode() == Instruction::FMul)
             {//% 29 = fmul fast float %texel_x, 2.500000e-01
-                if (texels.find(instItr->getOperand(0)) == texels.end() &&
-                    texels.find(instItr->getOperand(1)) == texels.end())
+                if (!texels.erase(inst->getOperand(0)) &&
+                    !texels.erase(inst->getOperand(1)))
                 {
                     return false;
                 }
-                texels.erase(instItr->getOperand(0));
-                if (ConstantFP * CF = dyn_cast<ConstantFP>(instItr->getOperand(1)))
+                if (ConstantFP * CF = dyn_cast<ConstantFP>(inst->getOperand(1)))
                 {
                     if (!CF->getType()->isFloatTy() || CF->getValueAPF().convertToFloat() != cmpAveragingFactor)
                         return false;
                 }
-                else if (ConstantFP * CF = dyn_cast<ConstantFP>(instItr->getOperand(0)))
+                else if (ConstantFP * CF = dyn_cast<ConstantFP>(inst->getOperand(0)))
                 {
                     if (!CF->getType()->isFloatTy() || CF->getValueAPF().convertToFloat() != cmpAveragingFactor)
                         return false;
@@ -81,7 +80,7 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
             {
                 return false; //3 EE -> followed by 3 FMuls == this  pattern is not matching
             }
-            instItr++;
+            inst = inst->getNextNonDebugInstruction();
         }
         IGC_ASSERT_MESSAGE(texels.size() == 0, " All texels.x/y/z were not multiplied by same float");
         texels.clear();
@@ -121,12 +120,10 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
 
     for (unsigned i = 0; i < nSampleInsts; i++)
     {
-        Instruction* sampleInst = sampleInsts[i];
-        BasicBlock::iterator II = sampleInst->getIterator();
+        Instruction* inst = sampleInsts[i]->getNextNonDebugInstruction();
         for (unsigned j = 0; j < 3; j++)
         {
-            II++;
-            ExtractElementInst* ei = dyn_cast<ExtractElementInst>(II);
+            ExtractElementInst* ei = dyn_cast<ExtractElementInst>(inst);
             if (!ei)
             {
                 return false;
@@ -165,9 +162,9 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
                 }
                 rgb[idx] = fadd;
             }
+            inst = inst->getNextNonDebugInstruction();
         }
-        II++;
-        if (isa<ExtractElementInst>(II))
+        if (isa<ExtractElementInst>(inst))
         {
             return false;
         }
@@ -430,16 +427,12 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function& F)
         return false;
 
     //extract original texel.xyz and averaged color.xyz values for creating 3 PHI nodes
-    BasicBlock::iterator temp = texelSample->getIterator();
-    temp++;
-    Value* texel_x = &*temp;
-    if (temp->getOpcode() != Instruction::ExtractElement) return false;
-    temp++;
-    Value* texel_y = &*temp;
-    if (temp->getOpcode() != Instruction::ExtractElement) return false;
-    temp++;
-    Value* texel_z = &*temp;
-    if (temp->getOpcode() != Instruction::ExtractElement) return false;
+    Instruction* texel_x = texelSample->getNextNonDebugInstruction();
+    if (!dyn_cast<ExtractElementInst>(texel_x)) return false;
+    Instruction* texel_y = texel_x->getNextNonDebugInstruction();
+    if (!dyn_cast<ExtractElementInst>(texel_y)) return false;
+    Instruction* texel_z = texel_y->getNextNonDebugInstruction();
+    if (!dyn_cast<ExtractElementInst>(texel_z)) return false;
 
 
 
