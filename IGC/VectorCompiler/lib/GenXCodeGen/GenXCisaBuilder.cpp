@@ -6737,7 +6737,8 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   if (Info.DisableFinalizerOpts)
     addArgument("-debug");
 
-  if (BC.emitBreakpointAtKernelEntry()) {
+  bool usingL0DbgApi = ST.getVisaPlatform() >= TARGET_PLATFORM::Xe_DG2;
+  if (BC.emitBreakpointAtKernelEntry() && !usingL0DbgApi) {
     addArgument("-addKernelID");
     addArgument("-setstartbp");
   }
