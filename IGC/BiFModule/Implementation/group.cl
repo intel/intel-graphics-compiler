@@ -2257,12 +2257,13 @@ type __builtin_IB_WorkGroupReduce_##func##_##type_abbr(type X)                  
     }                                                                                                      \
     SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
                                                                                                            \
+    uint global_id = sg_id * sg_max_size + sg_lid;                                                         \
     uint values_num = num_sg;                                                                              \
     while(values_num > sg_max_size) {                                                                      \
         uint max_id = ((values_num + sg_max_size - 1) / sg_max_size) * sg_max_size;                        \
-        uint global_id = sg_id * sg_max_size + sg_lid;                                                     \
+        type value = global_id < values_num ? scratch[global_id] : identity;                               \
+        SPIRV_BUILTIN(ControlBarrier, _i32_i32_i32, )(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
         if (global_id < max_id) {                                                                          \
-            type value = global_id < values_num ? scratch[sg_id * sg_max_size + sg_lid] : identity;        \
             sg_x = SPIRV_BUILTIN(Group##func, _i32_i32_##type_abbr, )(Subgroup, GroupOperationReduce, value);\
             if (sg_lid == 0) {                                                                             \
                 scratch[sg_id] = sg_x;                                                                     \
