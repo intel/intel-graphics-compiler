@@ -1758,7 +1758,7 @@ void storeGRFAssignments(DECLARE_LIST &declares,
       assignedPhyReg.subRegOff = regVar->getPhyRegOff();
       a.dcl = dcl;
       a.reg = assignedPhyReg;
-      a.GRFBaseOffset = dcl->getGRFBaseOffset();
+      a.GRFBaseOffset = dcl->getGRFOffsetFromR0();
       assignments.push_back(a);
     }
   }
@@ -1768,7 +1768,7 @@ void restoreGRFAssignments(std::vector<Assignment> &assignments) {
   for (auto &a : assignments) {
     auto regVar = a.dcl->getRegVar();
     regVar->setPhyReg(a.reg.phyReg, a.reg.subRegOff);
-    a.dcl->setGRFBaseOffset(a.GRFBaseOffset);
+    a.dcl->setGRFOffsetFromR0(a.GRFBaseOffset);
   }
 }
 
@@ -11191,7 +11191,7 @@ static G4_INST *emitRetiringMov(IR_Builder &builder, G4_BB *BB, G4_INST *SI,
   unsigned RegNum =
       Src0->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
   G4_Declare *Dcl = builder.createTempVar(16, Type_F, Any);
-  Dcl->setGRFBaseOffset(RegNum * builder.numEltPerGRF<Type_UB>());
+  Dcl->setGRFOffsetFromR0(RegNum * builder.numEltPerGRF<Type_UB>());
   Dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(RegNum), 0);
 
   G4_DstRegRegion *MovDst =
@@ -11876,7 +11876,7 @@ void Optimizer::applyNoMaskWA() {
     uint32_t dclEltBytes = aDcl->getElemSize();
     uint32_t linearizedStart =
         (regNum * builder.numEltPerGRF<Type_UB>()) + (subRegNum * dclEltBytes);
-    assert(aDcl->getGRFBaseOffset() == linearizedStart);
+    assert(aDcl->getGRFOffsetFromR0() == linearizedStart);
   };
 
   checkDclPReg(SaveDcl);

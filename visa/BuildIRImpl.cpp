@@ -929,7 +929,7 @@ G4_Declare *IR_Builder::createHardwiredDeclare(uint32_t numElements,
       (regNum * numEltPerGRF<Type_UB>()) + (regOff * TypeSize(type));
   // since it's called post RA (specifically post computePReg) we have to
   // manually set the GRF's byte offset
-  dcl->setGRFBaseOffset(linearizedStart);
+  dcl->setGRFOffsetFromR0(linearizedStart);
   dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), regOff);
   return dcl;
 }

@@ -270,7 +270,7 @@ enum G4_InstType {
   InstTypeReserved     // reserved (unused)
 };
 
-enum G4_RegFileKind {
+enum G4_RegFileKind : unsigned char {
   G4_UndefinedRF = 0x0,
   G4_GRF = 0x1,     // general register file
   G4_ADDRESS = 0x2, // architectural register file

@@ -187,7 +187,7 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
       return indirs;
 
     for (auto target : (*it).second) {
-      auto start = target->getGRFBaseOffset();
+      auto start = target->getGRFOffsetFromR0();
       auto size = target->getByteSize();
       indirs.push_back(std::make_pair(start, size));
     }

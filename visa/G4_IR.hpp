@@ -1516,8 +1516,8 @@ class G4_Declare {
     unsigned short numElemsPerRow; // number of elements per row
   public:
     ElemInfo() = delete;
-    ElemInfo(G4_Type t, unsigned n, const IR_Builder &irb) : type(t) {
-      reset(n, irb);
+    ElemInfo(G4_Type t, unsigned n, uint8_t GRFByteSize) : type(t) {
+      reset(n, GRFByteSize);
     }
     G4_Type getType() const { return type; }
     unsigned short getElemSize() const { return TypeSize(type); }
@@ -1525,21 +1525,34 @@ class G4_Declare {
     unsigned short getNumRows() const { return numRows; }
     unsigned short getNumElemsPerRow() const { return numElemsPerRow; }
     unsigned getByteSize() const { return numElements * getElemSize(); }
-    void reset(unsigned numElems, const IR_Builder &irb);
+    void reset(unsigned numElems, uint8_t GRFByteSize);
   };
 
-  const IR_Builder &irb;
-  const char *name;       // Var_Name
-  G4_RegFileKind regFile; // from which reg file
+  const char *name;
   ElemInfo elemInfo;
 
-  G4_RegVar *regVar; // corresponding reg var
+  // Each declare has a unique register variable (and vice versa), primarily
+  // used by register allocation.
+  G4_RegVar *regVar;
 
-  G4_Declare *AliasDCL; // Alias Declare
-  unsigned AliasOffset; // Alias Offset
+  // The declare this variable is aliased to. Multiple levels of aliasing is
+  // supported but expected to be rare.
+  G4_Declare *AliasDCL;
+  // Byte offset into the alised variable.
+  uint16_t AliasOffset;
 
+  G4_RegFileKind regFile;
+  // This is fixed for each platform, but we need this in G4_Declare class to
+  // compute the number of GRFs for this declare.
+  // TODO: It seems to make more sense for declare to only store the number of
+  // elements and have the caller convert it to number of GRFs. This would
+  // require large refactor though.
+  const uint8_t GRFByteSize;
+
+  // TODO: This is only used by VarSplit pass in RA and should be moved there.
   unsigned startID;
 
+  // TODO: Many of the flags are RA/spill only and do not belong here.
   uint16_t spillFlag : 1; // Indicate this declare gets spill reg
   uint16_t addressed : 1; // whether this declare is address-taken
 
@@ -1568,70 +1581,35 @@ class G4_Declare {
 
   unsigned declId; // global decl id for this builder
 
-  unsigned numFlagElements;
+  // Flag declares are repreented with Type_UW. So we need an additional field
+  // to distinguish 8- v. 16-bit flags.
+  uint8_t numFlagElements;
 
-  // byte offset of this declare from the base declare.  For top-level declares
-  // this value is 0
-  int offsetFromBase;
-
-  // if set to nonzero, indicates the declare is only used by subroutine
-  // "scopeID". it is used to prevent a subroutine-local declare from escaping
-  // its subroutine when doing liveness
+  // If set to nonzero, indicates the declare is only used by subroutine
+  // "scopeID". It is used to prevent a subroutine-local declare from escaping
+  // its subroutine when doing liveness analysis.
   unsigned scopeID;
 
-  // For GRFs, store byte offset of allocated GRF
-  unsigned GRFBaseOffset;
+  // For a GRF declare, store the linearized byte offset of its allocated GRF
+  // (r0.0 = 0). This is only valid after RA.
+  // TODO: This just caches the result of regVar.regNum * GRF_size +
+  // regVar.subregNum * sizeof(dcl_type). We should remove this assuming it
+  // doesn't affect compile time.
+  uint16_t GRFOffsetFromR0;
 
-  // fields that are only ever referenced by RA and spill code
-  // ToDo: they should be moved out of G4_Declare and stored as maps in RA/spill
+  // TODO: they should be moved out of G4_Declare and stored as maps in RA/spill
   G4_Declare *spillDCL; // if an addr/flag var is spilled, SpillDCL is the
                         // location (GRF) holding spilled value
 
 public:
   G4_Declare(const IR_Builder &builder, const char *n, G4_RegFileKind k,
-             uint32_t numElems, G4_Type ty, std::vector<G4_Declare *> &dcllist)
-      : irb(builder), name(n), regFile(k), elemInfo(ty, numElems, builder),
-        addressed(false), builtin(false), liveIn(false), liveOut(false),
-        payloadLiveOut(false), noWidening(false), isSplittedDcl(false),
-        isPartialDcl(false), refInSend(false), PreDefinedVar(false),
-        offsetFromBase(-1) {
-    //
-    // set the rest values to default uninitialized values
-    //
-
-    regVar = NULL;
-    AliasDCL = NULL;
-    AliasOffset = 0;
-
-    if (k == G4_FLAG) {
-      // need original number of elements for any*
-      numFlagElements = numElems * 16;
-    } else {
-      numFlagElements = 0;
-    }
-
-    spillFlag = false;
-    spillDCL = NULL;
-
-    startID = 0;
-
-    doNotSpill = false;
-    capableOfReuse = false;
-    addrSpillFill = false;
-
-    scopeID = 0;
-
-    GRFBaseOffset = 0;
-    declId = (unsigned)dcllist.size();
-    dcllist.push_back(this);
-  }
-
-  const IR_Builder &getBuilder() const { return irb; }
+             uint32_t numElems, G4_Type ty, std::vector<G4_Declare *> &dcllist);
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
+  uint8_t getGRFByteSize() const { return GRFByteSize; }
 
-  void setGRFBaseOffset(unsigned int offset) { GRFBaseOffset = offset; }
-  unsigned int getGRFBaseOffset() const { return GRFBaseOffset; }
+  void setGRFOffsetFromR0(uint16_t offset) { GRFOffsetFromR0 = offset; }
+  unsigned int getGRFOffsetFromR0() const { return GRFOffsetFromR0; }
 
   void setBuiltin() { builtin = true; }
   bool isBuiltin() const { return builtin; }
@@ -1672,7 +1650,6 @@ public:
   void setAliasDeclare(G4_Declare *dcl, unsigned int offset) {
     AliasDCL = dcl;
     AliasOffset = offset;
-    offsetFromBase = -1;
   }
 
   void resetSpillFlag() {
@@ -1758,7 +1735,9 @@ public:
   unsigned short getNumRows() const { return elemInfo.getNumRows(); }
   unsigned short getTotalElems() const { return elemInfo.getNumElems(); }
 
-  void setTotalElems(uint32_t numElems) { elemInfo.reset(numElems, irb); }
+  void setTotalElems(uint32_t numElems) {
+    elemInfo.reset(numElems, GRFByteSize);
+  }
   unsigned short getNumberFlagElements() const {
     assert(regFile == G4_FLAG && "should only be called for flag vars");
     return numFlagElements;
@@ -1774,11 +1753,10 @@ public:
   G4_RegVar *getRegVar() { return regVar; }
 
   int getOffsetFromBase() {
-    offsetFromBase = 0;
-    for (const G4_Declare *dcl = this; dcl->getAliasDeclare() != NULL;
-         dcl = dcl->getAliasDeclare()) {
+    int offsetFromBase = 0;
+    for (const G4_Declare *dcl = this; dcl->getAliasDeclare();
+         dcl = dcl->getAliasDeclare())
       offsetFromBase += dcl->getAliasOffset();
-    }
     return offsetFromBase;
   }
 
@@ -2822,7 +2800,7 @@ class G4_DstRegRegion final : public G4_Operand {
   short subRegOff;  // sub reg offset related to the regVar in "base"
   // FIXME: regOff (direct) and immAddrOff (indriect) should be mutually
   // exclusive. We should place them in a union.
-  short immAddrOff; // imm addr offset for indirect dst
+  short immAddrOff;          // imm addr offset for indirect dst
   unsigned short horzStride; // <DstRegion> has only horzStride
 
   G4_DstRegRegion(const IR_Builder &builder, G4_RegAccess a, G4_VarBase *b,

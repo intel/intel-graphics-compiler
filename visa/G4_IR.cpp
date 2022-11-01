@@ -3947,7 +3947,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
 //
 // output (Var+refOff).subRegOff
 //
-void printRegVarOff(std::ostream &output, G4_Operand *opnd,
+static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
                     short regOff,     // base+regOff is the starting register
                     short subRegOff,  // sub reg offset
                     short immAddrOff, // imm addr offset
@@ -3990,18 +3990,17 @@ void printRegVarOff(std::ostream &output, G4_Operand *opnd,
         if (baseVar->getPhyReg()->isGreg()) {
           int regNum = 0, subRegNum = 0;
           uint32_t byteAddress = opnd->getLinearizedStart();
-          const IR_Builder &builder = baseVar->getDeclare()->getBuilder();
-
-          if (baseVar->getDeclare()->getGRFBaseOffset() == 0) {
+          uint8_t GRFSize = baseVar->getDeclare()->getGRFByteSize();
+          if (baseVar->getDeclare()->getGRFOffsetFromR0() == 0) {
             // This is before RA and getLineariedStart() only contains the left
-            // bound we have to add the declare's phyreg
-            byteAddress += baseVar->getPhyReg()->asGreg()->getRegNum() *
-                               builder.getGRFSize() +
-                           baseVar->getPhyRegOff() * TypeSize(type);
+            // bound. We have to add the declare's phyreg.
+            byteAddress +=
+                baseVar->getPhyReg()->asGreg()->getRegNum() * GRFSize +
+                baseVar->getPhyRegOff() * TypeSize(type);
           }
 
-          regNum = byteAddress / builder.getGRFSize();
-          subRegNum = (byteAddress % builder.getGRFSize()) / TypeSize(type);
+          regNum = byteAddress / GRFSize;
+          subRegNum = (byteAddress % GRFSize) / TypeSize(type);
 
           output << "r" << regNum;
           if (printSubReg) {
@@ -5049,6 +5048,42 @@ void PhyRegPool::rebuildRegPool(Mem_Manager &m, unsigned int numRegisters) {
     GRF_Table[i] = new (m) G4_Greg(i);
 }
 
+G4_Declare::G4_Declare(const IR_Builder &builder, const char *n,
+                       G4_RegFileKind k, uint32_t numElems, G4_Type ty,
+                       std::vector<G4_Declare *> &dcllist)
+    : name(n), regFile(k), elemInfo(ty, numElems, builder.getGRFSize()),
+      GRFByteSize(builder.getGRFSize()), addressed(false), builtin(false),
+      liveIn(false), liveOut(false), payloadLiveOut(false), noWidening(false),
+      isSplittedDcl(false), isPartialDcl(false), refInSend(false),
+      PreDefinedVar(false) {
+
+  regVar = nullptr;
+  AliasDCL = nullptr;
+  AliasOffset = 0;
+
+  if (k == G4_FLAG) {
+    // need original number of elements for any*
+    numFlagElements = numElems * 16;
+  } else {
+    numFlagElements = 0;
+  }
+
+  spillFlag = false;
+  spillDCL = nullptr;
+
+  startID = 0;
+
+  doNotSpill = false;
+  capableOfReuse = false;
+  addrSpillFill = false;
+
+  scopeID = 0;
+
+  GRFOffsetFromR0 = 0;
+  declId = (unsigned)dcllist.size();
+  dcllist.push_back(this);
+}
+
 void G4_Declare::setEvenAlign() { regVar->setEvenAlign(); }
 
 void G4_Declare::setSubRegAlign(G4_SubReg_Align subAl) {
@@ -5068,16 +5103,14 @@ void G4_Declare::copyAlign(G4_Declare *dcl) {
   regVar->setSubRegAlignment(dcl->getSubRegAlign());
 }
 
-void G4_Declare::ElemInfo::reset(unsigned numElems, const IR_Builder &irb) {
+void G4_Declare::ElemInfo::reset(unsigned numElems, uint8_t GRFByteSize) {
   numElements = numElems;
-  numRows = (getByteSize() + (irb.numEltPerGRF<Type_UB>() - 1)) /
-            irb.numEltPerGRF<Type_UB>();
-  numElemsPerRow =
-      numRows > 1 ? irb.numEltPerGRF<Type_UB>() / getElemSize() : numElements;
+  numRows = (getByteSize() + (GRFByteSize - 1)) / GRFByteSize;
+  numElemsPerRow = numRows > 1 ? GRFByteSize / getElemSize() : numElements;
 }
 
 void G4_Declare::resizeNumRows(unsigned int numrows) {
-  unsigned byteSize = numrows * irb.numEltPerGRF<Type_UB>();
+  unsigned byteSize = numrows * GRFByteSize;
   setTotalElems(byteSize / getElemSize());
 }
 
@@ -5124,10 +5157,10 @@ void G4_Declare::emit(std::ostream &output) const {
       output << " (spilled -> " << spillDCL->getName() << ")";
     } else {
       // GRF spill
-      auto GRFOffset = getRegVar()->getDisp() / irb.getGRFSize();
+      auto GRFOffset = getRegVar()->getDisp() / GRFByteSize;
       if (!AliasDCL) {
         output << " (spilled -> Scratch[" << GRFOffset << "x"
-               << (int)irb.getGRFSize() << "])";
+               << (int)GRFByteSize << "])";
       } else {
         output << " (spilled)";
       }
@@ -6355,7 +6388,7 @@ unsigned int G4_Operand::getLinearizedStart() {
     // LB is computed based on the root variable, so we have to go all the way
     // up
     G4_Declare *dcl = base->asRegVar()->getDeclare();
-    linearizedStart += dcl->getGRFBaseOffset();
+    linearizedStart += dcl->getGRFOffsetFromR0();
     linearizedStart -= dcl->getOffsetFromBase();
   }
 
@@ -6773,7 +6806,7 @@ void G4_Declare::prepareForRealloc(G4_Kernel *kernel) {
   // or a pre-defined variable.
   auto &builder = kernel->fg.builder;
 
-  setGRFBaseOffset(0);
+  setGRFOffsetFromR0(0);
 
   if (getRegFile() != G4_RegFileKind::G4_INPUT &&
       getRegVar()->isPhyRegAssigned() && !getRegVar()->isAreg() &&

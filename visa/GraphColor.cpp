@@ -11535,7 +11535,7 @@ void GlobalRA::computePhyReg() {
             currDstRegion->getBase()
                     ->asRegVar()
                     ->getDeclare()
-                    ->getGRFBaseOffset() == 0) {
+                    ->getGRFOffsetFromR0() == 0) {
           // Need to compute linearized offset only once per dcl
           currDstRegion->computePReg(builder);
         }
@@ -11556,7 +11556,7 @@ void GlobalRA::computePhyReg() {
                     ->getBase()
                     ->asRegVar()
                     ->getDeclare()
-                    ->getGRFBaseOffset() == 0) {
+                    ->getGRFOffsetFromR0() == 0) {
           curr_src->asSrcRegRegion()->computePReg(builder);
         }
       }
