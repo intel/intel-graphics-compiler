@@ -4228,6 +4228,10 @@ namespace IGC
                 SaveOption(vISA_preRA_ScheduleRPThreshold, VISAPreSchedVal);
             }
 
+            if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedExtraGRF)) {
+                SaveOption(vISA_preRA_ScheduleExtraGRF, Val);
+            }
+
             if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAScheduleStartBBID))
             {
                 SaveOption(vISA_ScheduleStartBBID, Val);

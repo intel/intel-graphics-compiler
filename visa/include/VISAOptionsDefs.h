@@ -288,6 +288,8 @@ DEF_VISA_OPTION(vISA_preRA_ScheduleCtrl, ET_INT32, "-presched-ctrl",
                 "USAGE: -presched-ctrl <ctrl>\n", 4)
 DEF_VISA_OPTION(vISA_preRA_ScheduleRPThreshold, ET_INT32, "-presched-rp",
                 "USAGE: -presched-rp <threshold>\n", 0)
+DEF_VISA_OPTION(vISA_preRA_ScheduleExtraGRF, ET_INT32, "-presched-extra-grf",
+                "USAGE: -presched-extra-grf <num>\n", 0)
 DEF_VISA_OPTION(vISA_ScheduleStartBBID, ET_INT32, "-sched-start",
                 "USAGE: -sched-start <BB ID>\n", 0)
 DEF_VISA_OPTION(vISA_ScheduleEndBBID, ET_INT32, "-sched-end",
@@ -533,7 +535,7 @@ DEF_VISA_OPTION(vISA_disableRegDistAllDep, ET_BOOL, "-disableRegDistAllDep",
                 UNUSED, false)
 DEF_VISA_OPTION(vISA_forceSrc0ToQwForQwShlWA, ET_BOOL,
                 "-forceSrc0ToQwForQwShlWA", UNUSED, false)
-DEF_VISA_OPTION(vISA_forceNoMaskOnM0, ET_BOOL,  "-forceNoMaskOnM0",
+DEF_VISA_OPTION(vISA_forceNoMaskOnM0, ET_BOOL, "-forceNoMaskOnM0",
                 "Convert any NoMask instruction with non-M0 mask offset "
                 "to M0 if possible",
                 true)

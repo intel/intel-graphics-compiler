@@ -1378,7 +1378,10 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
     return NumOfHighLatencyInsts >= 2;
   };
 
-  unsigned NumGrfs = kernel.getNumRegTotal();
+  unsigned NumGrfs =
+      kernel.getNumRegTotal() +
+      kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleExtraGRF);
+
   if (!tryLatencyHiding(NumGrfs))
     return false;
 
