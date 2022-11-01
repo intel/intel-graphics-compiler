@@ -361,6 +361,7 @@ public:
   void setNumRegTotal(unsigned num) { numRegTotal = num; }
   unsigned getNumRegTotal() const { return numRegTotal; }
 
+
   void setName(const char *n) { name = n; }
   const char *getName() const { return name; }
 
@@ -514,7 +515,7 @@ public:
     auto iter = instImplicitAccDef.find(inst);
     return iter == instImplicitAccDef.end() ? nullptr : iter->second;
   }
-  void setImplicitAccSrc(G4_INST* inst, G4_SrcRegRegion* accSrc) {
+  void setImplicitAccSrc(G4_INST *inst, G4_SrcRegRegion *accSrc) {
     // Do not allow null implicit acc operand.
     assert(accSrc);
     // TODO: Is such check actually necessary? We should not have references to
