@@ -6256,7 +6256,12 @@ void HWConformity::conformBB(G4_BB* bb)
         for (; i != iEnd; i = next_iter)
         {
             ++next_iter;
-            fixOddAlignSrc1Region(i, bb);
+            if (fixOddAlignSrc1Region(i, bb))
+            {
+                INST_LIST_ITER pre_iter = i;
+                pre_iter--;
+                fixByteXBarRestriction(pre_iter, bb);
+            }
 #ifdef _DEBUG
             verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
@@ -7432,7 +7437,7 @@ void HWConformity::fixSrcRegion(G4_INST *inst) {
     }
 }
 
-void HWConformity::fixOddAlignSrc1Region(INST_LIST_ITER i, G4_BB *bb)
+bool HWConformity::fixOddAlignSrc1Region(INST_LIST_ITER i, G4_BB *bb)
 {
     G4_INST *inst = *i;
 
@@ -7451,9 +7456,11 @@ void HWConformity::fixOddAlignSrc1Region(INST_LIST_ITER i, G4_BB *bb)
                 G4_Operand *new_src1 =
                     insertMovBefore(i, 1, src1->getType(), bb, Even_Word);
                 inst->setSrc(new_src1, 1);
+                return true;
             }
         }
     }
+    return false;
 }
 
 //
