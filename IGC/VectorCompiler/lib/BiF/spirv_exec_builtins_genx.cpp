@@ -48,18 +48,20 @@ CM_NODEBUG CM_INLINE ulong __spirv_BuiltInGlobalOffset(int dim) {
   return 0;
 }
 
-CM_NODEBUG CM_INLINE ulong __spirv_BuiltInGlobalLinearId() {
-  return __spirv_BuiltInGlobalSize(0) * __spirv_BuiltInGlobalSize(1) *
-             __spirv_BuiltInGlobalInvocationId(2) +
-         __spirv_BuiltInGlobalSize(0) * __spirv_BuiltInGlobalInvocationId(1) +
-         __spirv_BuiltInGlobalInvocationId(0);
+CM_NODEBUG CM_INLINE ulong __spirv_BuiltInLocalInvocationIndex() {
+  using namespace cm::exec;
+  return get_local_size(0) * get_local_size(1) * get_local_id(2) +
+         get_local_size(0) * get_local_id(1) + get_local_id(0);
 }
 
-CM_NODEBUG CM_INLINE ulong __spirv_BuiltInLocalInvocationIndex() {
-  return cm::exec::get_local_size(0) * cm::exec::get_local_size(1) *
-             cm::exec::get_local_id(2) +
-         cm::exec::get_local_size(0) * cm::exec::get_local_id(1) +
-         cm::exec::get_local_id(0);
+CM_NODEBUG CM_INLINE ulong __spirv_BuiltInGlobalLinearId() {
+  using namespace cm::exec;
+  uint group_id = get_group_count(0) * get_group_count(1) * get_group_id(2) +
+                  get_group_count(0) * get_group_id(1) + get_group_id(0);
+  uint local_size = get_local_size(0) * get_local_size(1) * get_local_size(2);
+  uint local_id = __spirv_BuiltInLocalInvocationIndex();
+
+  return group_id * local_size + local_id;
 }
 
 CM_NODEBUG CM_INLINE uint __spirv_BuiltInSubgroupSize() {
