@@ -1866,29 +1866,11 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
     }
   }
 
-  // allow copy propagation with send instruction under following conditions
-  // 1. src operand is not an immediate value
-  // 2. src and dst have same type and # of elements
-  // 3. src is grf aligned
-  if ((opndNum == Opnd_src0 && useInst->isSend()) ||
-          (opndNum == Opnd_src1 && useInst->isSplitSend())) {
-
-    // check platform gen; apply this optimization only for Gen11 and beyond
-    // due to HW restriction where src0 and src1 operands must not overlap
-    if (getBuilder().getPlatformGeneration() < PlatformGen::GEN11) {
-      return false;
-    }
-    if (src->isImm()) return false;
-    if (src->getTopDcl()->getNumElems() != dst->getTopDcl()->getNumElems())
-        return false;
-    if (MT != G4_INST::Copy) return false;
-    // EOT messages have specific constraints on register range for src0, src1
-    // for now, do not do copy propaation on src0, src1 for eot sends
-    if (useInst->isEOT()) return false;
-    // Check alignment last as isOpndAligned will change the alignment
-    if (!getBuilder().tryToAlignOperand(src, getBuilder().numEltPerGRF<Type_UB>())) {
-        return false;
-    }
+  // The following are copied from local dataflow analysis.
+  // TODO: re-examine..
+  if (((opndNum == Opnd_src0 && useInst->isSend()) && !statelessAddr) ||
+      (opndNum == Opnd_src1 && useInst->isSplitSend())) {
+    return false;
   }
 
   auto isFloatPseudoMAD = [](G4_INST *inst) {
