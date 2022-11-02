@@ -41,7 +41,6 @@ namespace IGC
 
         void RecordCodeGenCompilerStats(IGC::CodeGenContext *context,
                                         SIMDMode dispatchSize,
-                                        CompilerStats &vISACompilerStats,
                                         FINALIZER_INFO *jitInfo)
         {
 #if COMPILER_STATS_ENABLE
@@ -61,8 +60,6 @@ namespace IGC
                 {
                     simdsize = 32;
                 }
-                // Copy from vISACompilerStats to compilerStats
-                compilerStats.MergeStats(vISACompilerStats, simdsize);
 
                 compilerStats.SetF64("TimeVISACompile",
                                      context->m_compilerTimeStats->getCompileTimeMS(TIME_CG_vISACompile), simdsize);
@@ -84,6 +81,18 @@ namespace IGC
                 compilerStats.SetI64("numGRFSpillFill", jitInfo->numGRFSpillFill, simdsize);
                 compilerStats.SetI64("numFlagSpillFill", jitInfo->numFlagSpillStore + jitInfo->numFlagSpillLoad, simdsize);
                 compilerStats.SetI64("numInst", jitInfo->numAsmCount, simdsize);
+                if (jitInfo->preRASchedulerForPressure)
+                    compilerStats.SetFlag("PreRASchedulerForPressure", simdsize);
+                if (jitInfo->preRASchedulerForLatency)
+                    compilerStats.SetFlag("PreRASchedulerForLatency", simdsize);
+                compilerStats.SetI64(compilerStats.numSendStr(), jitInfo->numSendInst, simdsize);
+                compilerStats.SetI64(compilerStats.numGRFSpillStr(), jitInfo->numSendInst, simdsize);
+                compilerStats.SetI64(compilerStats.numGRFFillStr(), jitInfo->numSendInst, simdsize);
+                compilerStats.SetI64(compilerStats.numCyclesStr(), jitInfo->numSendInst, simdsize);
+                if (!jitInfo->raStatus.empty()) {
+                    compilerStats.SetFlag("IsRAsuccessful", simdsize);
+                    compilerStats.SetFlag(jitInfo->raStatus, simdsize);
+                }
             }
 #endif // COMPILER_STATS_ENABLE
         }

@@ -662,9 +662,6 @@ int VISAKernelImpl::InitializeFastPath() {
     m_kernel->getKernelDebugInfo()->setVISAKernel(this);
   }
 
-  if (getOptions()->getOption(vISA_EnableCompilerStats)) {
-    m_compilerStats.Enable(false);
-  }
   m_jitInfo = (FINALIZER_INFO *)m_mem.alloc(sizeof(FINALIZER_INFO));
 
   void *addr = m_kernelMem->alloc(sizeof(class IR_Builder));
@@ -673,9 +670,6 @@ int VISAKernelImpl::InitializeFastPath() {
                  getCISABuilder(), m_jitInfo, getCISABuilder()->getWATable());
 
   m_builder->setType(m_type);
-  m_builder->getcompilerStats().Link(m_compilerStats);
-  initCompilerStats();
-
   return VISA_SUCCESS;
 }
 
@@ -699,29 +693,6 @@ int VISAKernelImpl::InitializeKernel(const char *kernel_name) {
       new vISAVerifier(m_CISABuilder->m_header, fmt, m_options, m_builder);
 
   return status;
-}
-
-// This is done for all vISA Compiler Statistics.  This is done so that a
-// statistic is initialized to false/0 even if the corresponding optimization
-// did not execute.  This enables the the statistic to be printed out even if
-// the optimization did not happen.
-void VISAKernelImpl::initCompilerStats() {
-  m_compilerStats.Init(CompilerStats::numGRFSpillStr(),
-                       CompilerStats::type_int64);
-  m_compilerStats.Init(CompilerStats::numGRFFillStr(),
-                       CompilerStats::type_int64);
-  m_compilerStats.Init(CompilerStats::numSendStr(), CompilerStats::type_int64);
-  m_compilerStats.Init(CompilerStats::numCyclesStr(),
-                       CompilerStats::type_int64);
-#if COMPILER_STATS_ENABLE
-  m_compilerStats.Init("PreRASchedulerForPressure", CompilerStats::type_bool);
-  m_compilerStats.Init("PreRASchedulerForLatency", CompilerStats::type_bool);
-  m_compilerStats.Init("IsRAsuccessful", CompilerStats::type_bool);
-  m_compilerStats.Init("IsTrivialRA", CompilerStats::type_bool);
-  m_compilerStats.Init("IsLocalRA", CompilerStats::type_bool);
-  m_compilerStats.Init("IsHybridRA", CompilerStats::type_bool);
-  m_compilerStats.Init("IsGlobalRA", CompilerStats::type_bool);
-#endif // COMPILER_STATS_ENABLE
 }
 
 int VISAKernelImpl::CISABuildPreDefinedDecls() {
@@ -8532,11 +8503,6 @@ int VISAKernelImpl::GetJitInfo(FINALIZER_INFO *&jitInfo) const {
 
 int VISAKernelImpl::GetKernelInfo(KERNEL_INFO *&kernelInfo) const {
   kernelInfo = m_kernelInfo;
-  return VISA_SUCCESS;
-}
-
-int VISAKernelImpl::GetCompilerStats(CompilerStats &compilerStats) {
-  compilerStats.Link(m_compilerStats);
   return VISA_SUCCESS;
 }
 

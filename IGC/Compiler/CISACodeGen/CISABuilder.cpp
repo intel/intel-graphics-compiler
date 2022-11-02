@@ -6130,9 +6130,7 @@ namespace IGC
 
         if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
         {
-            CompilerStats CompilerStats;
-            pMainKernel->GetCompilerStats(CompilerStats);
-            CompilerStatsUtils::RecordCodeGenCompilerStats(context, m_program->m_dispatchSize, CompilerStats, jitInfo);
+            CompilerStatsUtils::RecordCodeGenCompilerStats(context, m_program->m_dispatchSize, jitInfo);
         }
 
         if (vIsaCompile == -1)
@@ -8597,10 +8595,8 @@ namespace IGC
 
     void CEncoder::ReportCompilerStatistics(VISAKernel* pMainKernel, SProgramOutput* pOutput)
     {
-        CompilerStats compilerStats;
-        pMainKernel->GetCompilerStats(compilerStats);
+        CompilerStats& compilerStats = m_program->GetContext()->Stats();
         int simdsize = GetThreadCount(m_program->m_dispatchSize);
-
 
         // set optional statistics
         if (compilerStats.Find(CompilerStats::numCyclesStr()))

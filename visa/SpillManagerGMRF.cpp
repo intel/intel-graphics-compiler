@@ -5481,10 +5481,11 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
     expandSpillIntrinsic(bb);
     expandFillIntrinsic(bb);
   }
-  kernel.fg.builder->getcompilerStats().SetI64(
-      CompilerStats::numGRFSpillStr(), numGRFSpill, kernel.getSimdSize());
-  kernel.fg.builder->getcompilerStats().SetI64(
-      CompilerStats::numGRFFillStr(), numGRFFill, kernel.getSimdSize());
+
+  if (kernel.fg.builder->getOption(vISA_EnableCompilerStats)) {
+    kernel.fg.builder->getJitInfo()->numGRFSpill = numGRFSpill;
+    kernel.fg.builder->getJitInfo()->numGRFFill = numGRFFill;
+  }
 }
 
 SpillAnalysis::~SpillAnalysis() {

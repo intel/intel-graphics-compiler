@@ -74,6 +74,18 @@ typedef struct _FINALIZER_INFO {
 
   uint32_t numGRFTotal = 0;
   uint32_t numThreads = 0;
+
+  // vISA stats used by IGC::CompilerStats
+  // FIXME: the relationship between other fields in this struct
+  // (e.g. numGRFSpillFill) is yet to be figured out.
+  bool preRASchedulerForPressure = false;
+  bool preRASchedulerForLatency = false;
+  int64_t numCycles = 0;
+  int64_t numSendInst = 0;
+  int64_t numGRFSpill = 0;
+  int64_t numGRFFill = 0;
+  std::string raStatus;
+
 } FINALIZER_INFO;
 
 #endif // JITTERDATASTRUCT_

@@ -7475,8 +7475,7 @@ void Optimizer::collectStats() {
       }
     }
   }
-  builder.getcompilerStats().SetI64(CompilerStats::numSendStr(), numSends,
-                                    builder.kernel.getSimdSize());
+  builder.getJitInfo()->numSendInst = numSends;
 }
 
 // Create a copy of R0 at top of kernel,

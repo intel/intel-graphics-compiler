@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 #include "BitSet.h"
 #include "Common_ISA.h"
 #include "Common_ISA_util.h"
-#include "CompilerStats.h"
 #include "G4_IR.hpp"
 #include "G4_Kernel.hpp"
 #include "InstSplit.h"
@@ -298,7 +297,6 @@ private:
   USE_DEF_ALLOCATOR useDefAllocator;
 
   FINALIZER_INFO *metaData = nullptr;
-  CompilerStats compilerStats;
   // Use a BitSet to track the barrier IDs used
   BitSet usedBarriers;
 
@@ -658,7 +656,6 @@ public:
     return kernel.getGenxSamplerIOSize();
   }
   FINALIZER_INFO *getJitInfo() { return metaData; }
-  CompilerStats &getcompilerStats() { return compilerStats; }
   BitSet &usedBarries() { return usedBarriers; }
   // Return the max id set + 1 as the number of barriers used. Ideally the
   // number of bits set can be used to represent the number of barriers.

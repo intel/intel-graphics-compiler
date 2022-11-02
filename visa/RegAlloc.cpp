@@ -3324,25 +3324,21 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
 
 static void recordRAStats(IR_Builder &builder, G4_Kernel &kernel,
                           int RAStatus) {
-#if COMPILER_STATS_ENABLE
-  CompilerStats &Stats = builder.getcompilerStats();
-  int SimdSize = kernel.getSimdSize();
   if (RAStatus == VISA_SUCCESS) {
-    Stats.SetFlag("IsRAsuccessful", SimdSize);
     switch (kernel.getRAType()) {
     case RA_Type::TRIVIAL_BC_RA:
     case RA_Type::TRIVIAL_RA:
-      Stats.SetFlag("IsTrivialRA", SimdSize);
+      builder.getJitInfo()->raStatus = "IsTrivialRA";
       break;
     case RA_Type::LOCAL_ROUND_ROBIN_BC_RA:
     case RA_Type::LOCAL_ROUND_ROBIN_RA:
     case RA_Type::LOCAL_FIRST_FIT_BC_RA:
     case RA_Type::LOCAL_FIRST_FIT_RA:
-      Stats.SetFlag("IsLocalRA", SimdSize);
+      builder.getJitInfo()->raStatus = "IsLocalRA";
       break;
     case RA_Type::HYBRID_BC_RA:
     case RA_Type::HYBRID_RA:
-      Stats.SetFlag("IsHybridRA", SimdSize);
+      builder.getJitInfo()->raStatus = "IsHybridRA";
       break;
     case RA_Type::GRAPH_COLORING_RR_RA:
     case RA_Type::GRAPH_COLORING_FF_RA:
@@ -3354,7 +3350,7 @@ static void recordRAStats(IR_Builder &builder, G4_Kernel &kernel,
     case RA_Type::GRAPH_COLORING_SPILL_FF_BC_RA:
     case RA_Type::GLOBAL_LINEAR_SCAN_RA:
     case RA_Type::GLOBAL_LINEAR_SCAN_BC_RA:
-      Stats.SetFlag("IsGlobalRA", SimdSize);
+      builder.getJitInfo()->raStatus = "IsGlobalRA";
       break;
     case RA_Type::UNKNOWN_RA:
       break;
@@ -3362,7 +3358,6 @@ static void recordRAStats(IR_Builder &builder, G4_Kernel &kernel,
       assert(0 && "Incorrect RA type");
     }
   }
-#endif // COMPILER_STATS_ENABLE
 }
 
 static void replaceSSO(G4_Kernel &kernel) {
@@ -3502,7 +3497,8 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
     }
   }
 
-  recordRAStats(builder, kernel, status);
+  if (builder.getOption(vISA_EnableCompilerStats))
+    recordRAStats(builder, kernel, status);
   if (status != VISA_SUCCESS) {
     return status;
   }

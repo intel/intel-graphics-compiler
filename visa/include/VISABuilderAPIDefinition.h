@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #ifndef VISA_BUILDER_DEFINITION_H
 #define VISA_BUILDER_DEFINITION_H
 
-#include "CompilerStats.h"
 #include "JitterDataStruct.h"
 #include "KernelInfo.h"
 #include "VISADefines.h"
@@ -1084,8 +1083,6 @@ public:
   /// it will be freed when vISA builder is destroyed.
   VISA_BUILDER_API virtual int
   GetKernelInfo(KERNEL_INFO *&kernelInfo) const = 0;
-  VISA_BUILDER_API virtual int
-  GetCompilerStats(CompilerStats &compilerStats) = 0;
 
   /// GetErrorMessage -- returns the error message during finalization
   VISA_BUILDER_API virtual int GetErrorMessage(const char *&errorMsg) const = 0;
