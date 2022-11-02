@@ -1786,7 +1786,8 @@ namespace IGC
             {
                 int argNo = kernelArg->getAssociatedArgNo();
                 SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-                m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+                unsigned bti = getBTI(resInfo);
+                m_kernelInfo.m_argIndexMap[argNo] = bti;
                 CodeGenContext* pCtx = GetContext();
                 ModuleMetaData* modMD = pCtx->getModuleMetaData();
                 FunctionMetaData* funcMD = &modMD->FuncMD[entry];
@@ -1809,9 +1810,10 @@ namespace IGC
 
                 m_kernelInfo.m_argOffsetMap[argNo] = ptrAnnotation;
 
+                ptrAnnotation->HasStatefulAccess = hasStatefulAccess(bti);
                 ptrAnnotation->AddressSpace = addressSpace;
                 ptrAnnotation->ArgumentNumber = argNo;
-                ptrAnnotation->BindingTableIndex = getBTI(resInfo);
+                ptrAnnotation->BindingTableIndex = bti;
                 ptrAnnotation->PayloadPosition = payloadPosition;
                 ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
                 ptrAnnotation->LocationIndex = kernelArg->getLocationIndex();
@@ -1840,13 +1842,15 @@ namespace IGC
             m_kernelInfo.m_executionEnvironment.HasDeviceEnqueue = true;
             unsigned int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+            unsigned bti = getBTI(resInfo);
+            m_kernelInfo.m_argIndexMap[argNo] = bti;
 
             auto ptrAnnotation = std::make_shared<iOpenCL::PointerArgumentAnnotation>();
 
+            ptrAnnotation->HasStatefulAccess = hasStatefulAccess(bti);
             ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_DEVICE_QUEUE;
             ptrAnnotation->ArgumentNumber = argNo;
-            ptrAnnotation->BindingTableIndex = getBTI(resInfo);
+            ptrAnnotation->BindingTableIndex = bti;
             ptrAnnotation->IsStateless = true;
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
@@ -1884,9 +1888,11 @@ namespace IGC
         {
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+            unsigned bti = getBTI(resInfo);;
+            m_kernelInfo.m_argIndexMap[argNo] = bti;
 
             auto ptrAnnotation = std::make_unique<iOpenCL::PointerInputAnnotation>();
+            ptrAnnotation->HasStatefulAccess = hasStatefulAccess(bti);
             ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_CONSTANT;
             ptrAnnotation->BindingTableIndex = 0xffffffff;
             ptrAnnotation->IsStateless = true;
@@ -1901,9 +1907,11 @@ namespace IGC
         {
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+            unsigned bti = getBTI(resInfo);
+            m_kernelInfo.m_argIndexMap[argNo] = bti;
 
             auto ptrAnnotation = std::make_unique<iOpenCL::PointerInputAnnotation>();
+            ptrAnnotation->HasStatefulAccess = hasStatefulAccess(bti);
             ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
             ptrAnnotation->BindingTableIndex = 0xffffffff;
             ptrAnnotation->IsStateless = true;
@@ -1918,15 +1926,17 @@ namespace IGC
         {
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+            unsigned bti = getBTI(resInfo);
+            m_kernelInfo.m_argIndexMap[argNo] = bti;
 
             auto ptrAnnotation = std::make_unique<iOpenCL::PrivateInputAnnotation>();
 
+            ptrAnnotation->HasStatefulAccess = hasStatefulAccess(bti);
             ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE;
             ptrAnnotation->ArgumentNumber = argNo;
             // PerThreadPrivateMemorySize is defined as "Total private memory requirements for each OpenCL work-item."
             ptrAnnotation->PerThreadPrivateMemorySize = m_perWIStatelessPrivateMemSize;
-            ptrAnnotation->BindingTableIndex = getBTI(resInfo);
+            ptrAnnotation->BindingTableIndex = bti;
             ptrAnnotation->IsStateless = true;
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
@@ -2145,10 +2155,12 @@ namespace IGC
         {
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+            unsigned bti = getBTI(resInfo);
+            m_kernelInfo.m_argIndexMap[argNo] = bti;
 
             auto syncBuffer = std::make_unique<iOpenCL::SyncBufferAnnotation>();
 
+            syncBuffer->HasStatefulAccess = hasStatefulAccess(bti);
             syncBuffer->ArgumentNumber = argNo;
             syncBuffer->PayloadPosition = payloadPosition;
             syncBuffer->DataSize = kernelArg->getAllocateSize();
@@ -2161,10 +2173,12 @@ namespace IGC
         {
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+            unsigned bti = getBTI(resInfo);
+            m_kernelInfo.m_argIndexMap[argNo] = bti;
 
             auto rtGlobalBuffer = std::make_unique<iOpenCL::RTGlobalBufferAnnotation>();
 
+            rtGlobalBuffer->HasStatefulAccess = hasStatefulAccess(bti);
             rtGlobalBuffer->ArgumentNumber = argNo;
             rtGlobalBuffer->PayloadPosition = payloadPosition;
             rtGlobalBuffer->DataSize = kernelArg->getAllocateSize();
@@ -2191,12 +2205,14 @@ namespace IGC
             m_kernelInfo.m_executionEnvironment.HasDeviceEnqueue = true;
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+            unsigned bti = getBTI(resInfo);
+            m_kernelInfo.m_argIndexMap[argNo] = bti;
 
             auto ptrAnnotation = std::make_unique<iOpenCL::PointerInputAnnotation>();
 
+            ptrAnnotation->HasStatefulAccess = hasStatefulAccess(bti);
             ptrAnnotation->AddressSpace = iOpenCL::ADDRESS_SPACE_INTERNAL_DEFAULT_DEVICE_QUEUE;
-            ptrAnnotation->BindingTableIndex = getBTI(resInfo);
+            ptrAnnotation->BindingTableIndex = bti;
             ptrAnnotation->IsStateless = true;
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
@@ -2210,11 +2226,13 @@ namespace IGC
             m_kernelInfo.m_executionEnvironment.HasDeviceEnqueue = true;
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
-            m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+            unsigned bti = getBTI(resInfo);
+            m_kernelInfo.m_argIndexMap[argNo] = bti;
 
             auto ptrAnnotation = std::make_unique<iOpenCL::PointerInputAnnotation>();
+            ptrAnnotation->HasStatefulAccess = hasStatefulAccess(bti);
             ptrAnnotation->AddressSpace = iOpenCL::ADDRESS_SPACE_INTERNAL_EVENT_POOL;
-            ptrAnnotation->BindingTableIndex = getBTI(resInfo);
+            ptrAnnotation->BindingTableIndex = bti;
             ptrAnnotation->IsStateless = true;
             ptrAnnotation->PayloadPosition = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes = kernelArg->getAllocateSize();
@@ -3176,6 +3194,12 @@ namespace IGC
         default:
             return 0xffffffff;
         }
+    }
+
+    bool COpenCLKernel::hasStatefulAccess(unsigned bti)
+    {
+        bool btiAssigned = (bti != 0xffffffff);
+        return btiAssigned;
     }
 
     void CollectProgramInfo(OpenCLProgramContext* ctx)

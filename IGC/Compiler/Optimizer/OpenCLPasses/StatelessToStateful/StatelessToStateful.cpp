@@ -155,6 +155,9 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
         return false;
     }
 
+    m_Module = F.getParent();
+    m_F = &F;
+
     if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
     {
         // Use assumption cache
@@ -179,12 +182,14 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD, ctx->platform.getGRFSize());
 
-    visit(F);
+    findPromotableInstructions();
+    promote();
 
     finalizeArgInitialValue(&F);
+
     delete m_pImplicitArgs;
     delete m_pKernelArgs;
-    m_promotedKernelArgs.clear();
+    m_promotionMap.clear();
     return m_changed;
 }
 
@@ -355,7 +360,7 @@ bool StatelessToStateful::pointerIsFromKernelArgument(Value& ptr)
 }
 
 bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
-    Function* F, Value* V, Value*& offset, unsigned int& argNumber, const KernelArg*& kernelArg)
+    Function* F, Value* V, Value*& offset, unsigned int& argNumber)
 {
     auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> alignment_t {
         if (PointerType* PTy = dyn_cast<PointerType>(ptrVal->getType()))
@@ -464,7 +469,6 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
              (gepProducesPositivePointer && isAlignedPointee)) &&
             getOffsetFromGEP(F, GEPs, argNumber, arg->isImplicitArg(), offset))
         {
-            kernelArg = arg;
             return true;
         }
     }
@@ -472,317 +476,357 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
     return false;
 }
 
-void StatelessToStateful::visitCallInst(CallInst& I)
+bool StatelessToStateful::doPromoteUntypedAtomics(const GenISAIntrinsic::ID intrinID, const GenIntrinsicInst* Inst)
 {
-    auto doPromoteUntypedAtomics = [](const GenISAIntrinsic::ID intrinID, const GenIntrinsicInst* Inst)-> bool
+    // Only promote if oprand0 and oprand1 are the same for 64bit-pointer atomics
+    if (intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
+        intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
+        intrinID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
+        intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
     {
-        // Only promote if oprand0 and oprand1 are the same for 64bit-pointer atomics
+        if (Inst->getOperand(0) != Inst->getOperand(1))
+        {
+            return false;
+        }
+    }
+
+    // Qword untyped atomic int only support A64, so can't promote to stateful
+    if (Inst->getType()->isIntegerTy() && Inst->getType()->getScalarSizeInBits() == 64)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool StatelessToStateful::isUntypedAtomic(const GenISAIntrinsic::ID intrinID)
+{
+    return (intrinID == GenISAIntrinsic::GenISA_intatomicraw ||
+        intrinID == GenISAIntrinsic::GenISA_floatatomicraw ||
+        intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
+        intrinID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
+        intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicraw ||
+        intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
+        intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
+        intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64);
+}
+
+unsigned StatelessToStateful::encodeStatefulAddrspace(unsigned uavIndex)
+{
+    auto int32Ty = Type::getInt32Ty(m_Module->getContext());
+    auto resourceNumber = ConstantInt::get(int32Ty, uavIndex);
+
+    unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV);
+    setPointerSizeTo32bit(addrSpace, m_Module);
+
+    return addrSpace;
+}
+
+void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
+{
+    GenIntrinsicInst* I = cast<GenIntrinsicInst>(II.statelessInst);
+    Module* M = m_F->getParent();
+    const DebugLoc& DL = I->getDebugLoc();
+    GenISAIntrinsic::ID const intrinID = I->getIntrinsicID();
+
+    PointerType* pTy = PointerType::get(II.ptr->getType()->getPointerElementType(), II.getStatefulAddrSpace());
+    Instruction* statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
+    Instruction* statefulInst = nullptr;
+
+    if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead)
+    {
+        Function* simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
+            M,
+            intrinID,
+            { I->getType(),pTy });
+        statefulInst = CallInst::Create(simdMediaBlockReadFunc, { statefulPtr }, "", I);
+    }
+    else if (intrinID == GenISAIntrinsic::GenISA_simdBlockWrite ||
+             intrinID == GenISAIntrinsic::GenISA_HDCuncompressedwrite)
+    {
+        SmallVector<Value*, 2> args;
+        args.push_back(statefulPtr);
+        args.push_back(I->getOperand(1));
+        Function* pFunc = GenISAIntrinsic::getDeclaration(
+            M,
+            intrinID,
+            { pTy,I->getOperand(1)->getType() });
+        statefulInst = CallInst::Create(pFunc, args, "", I);
+    }
+    else if (isUntypedAtomic(intrinID))
+    {
         if (intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
             intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
             intrinID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
             intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
         {
-            if (Inst->getOperand(0) != Inst->getOperand(1))
-            {
-                return false;
-            }
+            statefulInst = CallInst::Create(
+                GenISAIntrinsic::getDeclaration(M, intrinID, { I->getType(), pTy, pTy }),
+                { statefulPtr, statefulPtr, I->getOperand(2), I->getOperand(3) },
+                "",
+                I);
         }
-
-        // Qword untyped atomic int only support A64, so can't promote to stateful
-        if (Inst->getType()->isIntegerTy() && Inst->getType()->getScalarSizeInBits() == 64)
+        else
         {
-            return false;
+            statefulInst = CallInst::Create(
+                GenISAIntrinsic::getDeclaration(M, intrinID, { I->getType(), pTy }),
+                { statefulPtr, II.offset, I->getOperand(2), I->getOperand(3) },
+                "",
+                I);
         }
+    }
 
-        return true;
-    };
+    statefulInst->setDebugLoc(DL);
+    I->replaceAllUsesWith(statefulInst);
+    I->eraseFromParent();
+}
 
-    auto isUntypedAtomics = [](const GenISAIntrinsic::ID intrinID)-> bool
+void StatelessToStateful::promoteLoad(InstructionInfo& II)
+{
+    LoadInst* I = cast<LoadInst>(II.statelessInst);
+    PointerType* pTy = PointerType::get(I->getType(), II.getStatefulAddrSpace());
+
+    Instruction* statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
+    Instruction* pLoad = new LoadInst(
+        statefulPtr->getType()->getPointerElementType(),
+        statefulPtr,
+        "",
+        I->isVolatile(),
+        IGCLLVM::getAlign(*I), I->getOrdering(), I->getSyncScopeID(),
+        I);
+
+    const DebugLoc& DL = I->getDebugLoc();
+    statefulPtr->setDebugLoc(DL);
+    pLoad->setDebugLoc(DL);
+
+    Value* ptr = I->getPointerOperand();
+    PointerType* ptrType = dyn_cast<PointerType>(ptr->getType());
+    if (ptrType && ptrType->getAddressSpace() == ADDRESS_SPACE_CONSTANT)
     {
-        return (intrinID == GenISAIntrinsic::GenISA_intatomicraw ||
-            intrinID == GenISAIntrinsic::GenISA_floatatomicraw ||
-            intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
-            intrinID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
-            intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicraw ||
-            intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
-            intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
-            intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64);
-    };
+        LLVMContext& context = I->getContext();
+        MDString* const metadataName = MDString::get(context, "invariant.load");
+        MDNode* node = MDNode::get(context, metadataName);
+        pLoad->setMetadata(LLVMContext::MD_invariant_load, node);
+    }
 
-    if (auto Inst = dyn_cast<GenIntrinsicInst>(&I))
+    I->replaceAllUsesWith(pLoad);
+    I->eraseFromParent();
+}
+
+void StatelessToStateful::promoteStore(InstructionInfo& II)
+{
+    StoreInst* I = cast<StoreInst>(II.statelessInst);
+
+    Value* dataVal = I->getValueOperand();
+    PointerType* pTy = PointerType::get(dataVal->getType(), II.getStatefulAddrSpace());
+
+    Instruction* statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
+    Instruction* pStore = new StoreInst(
+        dataVal,
+        statefulPtr,
+        I->isVolatile(),
+        IGCLLVM::getAlign(*I), I->getOrdering(), I->getSyncScopeID(),
+        I);
+
+    const DebugLoc& DL = I->getDebugLoc();
+    statefulPtr->setDebugLoc(DL);
+    pStore->setDebugLoc(DL);
+
+    I->eraseFromParent();
+}
+
+void StatelessToStateful::promoteInstruction(StatelessToStateful::InstructionInfo& InstInfo)
+{
+    switch (InstInfo.statelessInst->getOpcode())
     {
-        GenISAIntrinsic::ID const intrinID = Inst->getIntrinsicID();
-        Instruction* finalInst = Inst;
+    case Instruction::Load:
+        promoteLoad(InstInfo);
+        break;
+    case Instruction::Store:
+        promoteStore(InstInfo);
+        break;
+    case Instruction::Call:
+        promoteIntrinsic(InstInfo);
+        break;
+    default:
+        IGC_ASSERT("Unsupported instruction!");
+    }
+}
 
-        if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead ||
-            intrinID == GenISAIntrinsic::GenISA_HDCuncompressedwrite ||
-            intrinID == GenISAIntrinsic::GenISA_simdBlockWrite ||
-            (IGC_IS_FLAG_ENABLED(EnableStatefulAtomic) && isUntypedAtomics(intrinID) && doPromoteUntypedAtomics(intrinID, Inst)))
+void StatelessToStateful::promote()
+{
+    if (m_promotionMap.empty()) return;
+
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    FunctionMetaData* funcMD = &modMD->FuncMD[m_F];
+    ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
+    IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
+
+    unsigned bufferPos = 0;
+    for (auto& [baseArgIndex, instsToPromote] : m_promotionMap)
+    {
+        IGC_ASSERT(bufferPos < maxPromotionCount);
+
+        ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgIndex];
+
+        // If the support for dynamic BTIs allocation is disabled, then BTIs are pre-assigned
+        // in ResourceAllocator pass for all resources independently whether they are
+        // accessed through stateful addressing model or not.
+        if (ctx->platform.supportDynamicBTIsAllocation())
         {
-            Module* M = Inst->getParent()->getParent()->getParent();
-            Function* F = Inst->getParent()->getParent();
-            const DebugLoc& DL = Inst->getDebugLoc();
-            Type* int32Ty = Type::getInt32Ty(M->getContext());
-            Value* ptr = Inst->getOperand(0);
-            PointerType* ptrTy = dyn_cast<PointerType>(ptr->getType());
-            // If not global/constant, skip.
-            if (ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL &&
-                ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT) {
-                return;
-            }
-
-            Value* offset = nullptr;
-            unsigned int baseArgNumber  = 0;
-            const KernelArg* kernelArg = nullptr;
-            if (m_promotedKernelArgs.size() < maxPromotionCount && pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber, kernelArg))
-            {
-                ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                FunctionMetaData* funcMD = &modMD->FuncMD[F];
-                ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-                IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
-                ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
-
-                Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
-                unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV);
-                setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
-
-                if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead)
-                {
-                    PointerType* pTy = PointerType::get(Inst->getType(), addrSpace);
-                    Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
-                    Function* simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
-                        M,
-                        intrinID,
-                        { Inst->getType(),pTy });
-                    Instruction* simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, { pPtrToInt }, "", Inst);
-                    simdMediaBlockRead->setDebugLoc(DL);
-                    Inst->replaceAllUsesWith(simdMediaBlockRead);
-                    Inst->eraseFromParent();
-                    finalInst = simdMediaBlockRead;
-                }
-                else if (isUntypedAtomics(intrinID))
-                {
-                    PointerType* pTy = PointerType::get(dyn_cast<PointerType>(ptr->getType())->getPointerElementType(), addrSpace);
-                    Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
-                    Instruction* pIntrinInst = nullptr;
-                    if (intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
-                        intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
-                        intrinID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
-                        intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
-                    {
-                        pIntrinInst = CallInst::Create(
-                            GenISAIntrinsic::getDeclaration(M, intrinID, { Inst->getType(), pTy, pTy }),
-                            { pPtrToInt, pPtrToInt, Inst->getOperand(2), Inst->getOperand(3) },
-                            "",
-                            Inst);
-                    }
-                    else
-                    {
-                        pIntrinInst = CallInst::Create(
-                            GenISAIntrinsic::getDeclaration(M, intrinID, { Inst->getType(), pTy }),
-                            { pPtrToInt, offset, Inst->getOperand(2), Inst->getOperand(3) },
-                            "",
-                            Inst);
-                    }
-                    pIntrinInst->setDebugLoc(DL);
-                    Inst->replaceAllUsesWith(pIntrinInst);
-                    Inst->eraseFromParent();
-                    finalInst = pIntrinInst;
-                }
-                else if (intrinID == GenISAIntrinsic::GenISA_simdBlockWrite ||
-                        intrinID == GenISAIntrinsic::GenISA_HDCuncompressedwrite)
-                {
-                    PointerType* pTy = PointerType::get(Inst->getOperand(1)->getType(), addrSpace);
-                    Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
-                    SmallVector<Value*, 2> args;
-                    args.push_back(pPtrToInt);
-                    args.push_back(Inst->getOperand(1));
-                    Function* pFunc = GenISAIntrinsic::getDeclaration(
-                        M,
-                        intrinID,
-                        { pTy,Inst->getOperand(1)->getType() });
-                    Instruction* pIntrinInst = CallInst::Create(pFunc, args, "", Inst);
-                    pIntrinInst->setDebugLoc(DL);
-                    Inst->replaceAllUsesWith(pIntrinInst);
-                    Inst->eraseFromParent();
-                    finalInst = pIntrinInst;
-                }
-
-                m_changed = true;
-                m_promotedKernelArgs.insert(kernelArg);
-            }
+            argAlloc->type = ResourceTypeEnum::UAVResourceType;
+            argAlloc->indexType = resAllocMD->uavsNumType + bufferPos;
         }
 
-        // check if there's non-kernel-arg load/store
-        if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
-            // FIXME: should use the helper functions defined in Compiler/CISACodeGen/helper.h
-            auto isLoadIntrinsic = [](const GenISAIntrinsic::ID id)
+        unsigned statefullAddrspace = encodeStatefulAddrspace(argAlloc->indexType);
+        for (auto &instInfo : instsToPromote)
+        {
+            instInfo.setStatefulAddrspace(statefullAddrspace);
+            promoteInstruction(instInfo);
+        }
+        bufferPos++;
+        m_changed = true;
+    }
+
+    resAllocMD->uavsNumType += m_promotionMap.size();
+}
+
+void StatelessToStateful::addToPromotionMap(Instruction& I, Value* Ptr)
+{
+    Value* offset = nullptr;
+    unsigned baseArgNumber = 0;
+
+    bool isPromotable =
+        m_promotionMap.size() < maxPromotionCount &&
+        pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber);
+
+    if (isPromotable)
+    {
+        InstructionInfo II(&I, Ptr, offset);
+        m_promotionMap[baseArgNumber].push_back(II);
+    }
+}
+
+void StatelessToStateful::visitCallInst(CallInst& I)
+{
+    auto Inst = dyn_cast<GenIntrinsicInst>(&I);
+    if (!Inst) return;
+
+    GenISAIntrinsic::ID const intrinID = Inst->getIntrinsicID();
+
+    if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead ||
+        intrinID == GenISAIntrinsic::GenISA_simdBlockWrite ||
+        intrinID == GenISAIntrinsic::GenISA_HDCuncompressedwrite ||
+        (IGC_IS_FLAG_ENABLED(EnableStatefulAtomic) && isUntypedAtomic(intrinID) && doPromoteUntypedAtomics(intrinID, Inst)))
+    {
+        Value* ptr = Inst->getOperand(0);
+        PointerType* ptrTy = dyn_cast<PointerType>(ptr->getType());
+        // If not global/constant, skip.
+        if (ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL &&
+            ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT) {
+            return;
+        }
+
+        addToPromotionMap(I, ptr);
+    }
+
+    // check if there's non-kernel-arg load/store
+    if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt)) {
+        // FIXME: should use the helper functions defined in Compiler/CISACodeGen/helper.h
+        auto isLoadIntrinsic = [](const GenISAIntrinsic::ID id)
+        {
+            switch (id)
             {
-                switch (id)
-                {
-                case GenISAIntrinsic::GenISA_simdBlockRead:
+            case GenISAIntrinsic::GenISA_simdBlockRead:
                 // FIXME: GenISA_LSC2DBlockRead is not considered, not sure if its Operand 0
                 // is the address
-                case GenISAIntrinsic::GenISA_LSCLoad:
-                case GenISAIntrinsic::GenISA_LSCLoadBlock:
-                case GenISAIntrinsic::GenISA_LSCPrefetch:
-                    return true;
-                default:
-                    break;
-                }
-                return false;
-            };
-            auto isStoreIntrinsic = [](const GenISAIntrinsic::ID id)
+            case GenISAIntrinsic::GenISA_LSCLoad:
+            case GenISAIntrinsic::GenISA_LSCLoadBlock:
+            case GenISAIntrinsic::GenISA_LSCPrefetch:
+                return true;
+            default:
+                break;
+            }
+            return false;
+        };
+        auto isStoreIntrinsic = [](const GenISAIntrinsic::ID id)
+        {
+            switch (id) {
+            case GenISAIntrinsic::GenISA_HDCuncompressedwrite:
+            case GenISAIntrinsic::GenISA_LSCStore:
+            case GenISAIntrinsic::GenISA_LSCStoreBlock:
+            case GenISAIntrinsic::GenISA_simdBlockWrite:
+                return true;
+            default:
+                break;
+            }
+            return false;
+        };
+        auto isAtomicsIntrinsic = [&](const GenISAIntrinsic::ID id)
+        {
+            switch (id)
             {
-                switch (id) {
-                case GenISAIntrinsic::GenISA_HDCuncompressedwrite:
-                case GenISAIntrinsic::GenISA_LSCStore:
-                case GenISAIntrinsic::GenISA_LSCStoreBlock:
-                case GenISAIntrinsic::GenISA_simdBlockWrite:
-                    return true;
-                default:
-                    break;
-                }
-                return false;
-            };
-            auto isAtomicsIntrinsic = [&isUntypedAtomics](const GenISAIntrinsic::ID id)
-            {
-                switch (id)
-                {
-                case GenISAIntrinsic::GenISA_LSCAtomicFP32:
-                case GenISAIntrinsic::GenISA_LSCAtomicFP64:
-                case GenISAIntrinsic::GenISA_LSCAtomicInts:
-                    return true;
-                default:
-                    break;
-                }
-                return isUntypedAtomics(id);
-            };
-            if (isLoadIntrinsic(intrinID) ||
-                isStoreIntrinsic(intrinID)  ||
-                isAtomicsIntrinsic(intrinID))
-            {
-                Value* ptr = finalInst->getOperand(0);
-                if (!pointerIsFromKernelArgument(*ptr)) {
-                    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                    FunctionMetaData* funcMD = &modMD->FuncMD[finalInst->getParent()->getParent()];
-                    if (isStoreIntrinsic(intrinID))
-                        funcMD->hasNonKernelArgStore = true;
-                    else if (isLoadIntrinsic(intrinID))
-                        funcMD->hasNonKernelArgLoad = true;
-                    else
-                        funcMD->hasNonKernelArgAtomic = true;
-                }
+            case GenISAIntrinsic::GenISA_LSCAtomicFP32:
+            case GenISAIntrinsic::GenISA_LSCAtomicFP64:
+            case GenISAIntrinsic::GenISA_LSCAtomicInts:
+                return true;
+            default:
+                break;
+            }
+            return isUntypedAtomic(id);
+        };
+        if (isLoadIntrinsic(intrinID) ||
+            isStoreIntrinsic(intrinID) ||
+            isAtomicsIntrinsic(intrinID))
+        {
+            Value* ptr = Inst->getOperand(0);
+            if (!pointerIsFromKernelArgument(*ptr)) {
+                ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                FunctionMetaData* funcMD = &modMD->FuncMD[Inst->getParent()->getParent()];
+                if (isStoreIntrinsic(intrinID))
+                    funcMD->hasNonKernelArgStore = true;
+                else if (isLoadIntrinsic(intrinID))
+                    funcMD->hasNonKernelArgLoad = true;
+                else
+                    funcMD->hasNonKernelArgAtomic = true;
             }
         }
     }
 }
 
+
 void StatelessToStateful::visitLoadInst(LoadInst& I)
 {
-    Module* M = I.getParent()->getParent()->getParent();
-    Function* F = I.getParent()->getParent();
-    const DebugLoc& DL = I.getDebugLoc();
-    Type* int32Ty = Type::getInt32Ty(M->getContext());
     Value* ptr = I.getPointerOperand();
-
-    Value* offset = nullptr;
-    unsigned int baseArgNumber = 0;
-    const KernelArg* kernelArg = nullptr;
-    if (m_promotedKernelArgs.size() < maxPromotionCount && pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber, kernelArg))
-    {
-        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        FunctionMetaData* funcMD = &modMD->FuncMD[F];
-        ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-        IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
-        ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
-
-        Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
-
-        unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV);
-        setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
-
-        PointerType* pTy = PointerType::get(I.getType(), addrSpace);
-
-        Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", &I);
-        pPtrToInt->setDebugLoc(DL);
-
-        Instruction* pLoad = new LoadInst(pPtrToInt->getType()->getPointerElementType(), pPtrToInt, "", I.isVolatile(), IGCLLVM::getAlign(I), I.getOrdering(), I.getSyncScopeID(), &I);
-        pLoad->setDebugLoc(DL);
-
-        PointerType* ptrType = dyn_cast<PointerType>(ptr->getType());
-        if (ptrType && ptrType->getAddressSpace() == ADDRESS_SPACE_CONSTANT)
-        {
-            LLVMContext& context = I.getContext();
-            MDString* const metadataName = MDString::get(context, "invariant.load");
-            MDNode* node = MDNode::get(context, metadataName);
-            pLoad->setMetadata(LLVMContext::MD_invariant_load, node);
-        }
-
-        I.replaceAllUsesWith(pLoad);
-        I.eraseFromParent();
-
-        m_changed = true;
-        m_promotedKernelArgs.insert(kernelArg);
-    }
+    addToPromotionMap(I, ptr);
 
     // check if there's non-kernel-arg load/store
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) &&
         ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
         ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        FunctionMetaData* funcMD = &modMD->FuncMD[F];
+        FunctionMetaData* funcMD = &modMD->FuncMD[m_F];
         funcMD->hasNonKernelArgLoad = true;
     }
 }
 
 void StatelessToStateful::visitStoreInst(StoreInst& I)
 {
-    Module* M = I.getParent()->getParent()->getParent();
-    Function* F = I.getParent()->getParent();
-    const DebugLoc& DL = I.getDebugLoc();
-    Type* int32Ty = Type::getInt32Ty(M->getContext());
     Value* ptr = I.getPointerOperand();
-
-    Value* offset = nullptr;
-    unsigned int baseArgNumber = 0;
-    const KernelArg* kernelArg = nullptr;
-    if (m_promotedKernelArgs.size() < maxPromotionCount && pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber, kernelArg))
-    {
-        Value* dataVal = I.getOperand(0);
-
-        if (dataVal != nullptr)
-        {
-            ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-            FunctionMetaData* funcMD = &modMD->FuncMD[F];
-            ResourceAllocMD* resAllocMD = &funcMD->resAllocMD;
-            IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
-            ArgAllocMD* argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
-            Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
-
-            unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV);
-            setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
-
-            PointerType* pTy = PointerType::get(dataVal->getType(), addrSpace);
-
-            Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", &I);
-            pPtrToInt->setDebugLoc(DL);
-
-            Instruction* pStore = new StoreInst(dataVal, pPtrToInt, I.isVolatile(), IGCLLVM::getAlign(I), I.getOrdering(), I.getSyncScopeID(), &I);
-            pStore->setDebugLoc(DL);
-
-            I.eraseFromParent();
-
-            m_changed = true;
-            m_promotedKernelArgs.insert(kernelArg);
-        }
-    }
+    addToPromotionMap(I, ptr);
 
     if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) &&
         ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
         ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        FunctionMetaData* funcMD = &modMD->FuncMD[F];
+        FunctionMetaData* funcMD = &modMD->FuncMD[m_F];
         funcMD->hasNonKernelArgStore = true;
     }
+}
+
+void StatelessToStateful::findPromotableInstructions()
+{
+    // fill m_promotionMap
+    visit(m_F);
 }
 
 CallInst* StatelessToStateful::createBufferPtr(unsigned addrSpace, Constant* argNumber, Instruction* InsertBefore)
