@@ -371,9 +371,9 @@ void DDD::getBucketsForIndirectOperand(G4_INST *inst,
 }
 
 void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
-                               G4_Operand *opnd,
                                std::vector<BucketDescr> &BDvec) {
-  if (opnd->isLabel() || opnd->isImm()) {
+  G4_Operand *opnd = inst->getOperand(opnd_num);
+  if (!opnd || opnd->isLabel() || opnd->isImm()) {
     return;
   }
 #define UNINIT_BUCKET -1
@@ -487,12 +487,7 @@ void DDD::getBucketDescrs(Node *node, std::vector<BucketDescr> &BDvec) {
       if (!opnd || !opnd->getBase()) {
         continue;
       }
-      // FIXME: This is to emulate the original code. Not sure if it is OK
-      if (opndNum == Opnd_src3 && inst->isSplitSend()) {
-        getBucketsForOperand(inst, Opnd_src2, opnd, BDvec);
-      } else {
-        getBucketsForOperand(inst, opndNum, opnd, BDvec);
-      }
+      getBucketsForOperand(inst, opndNum, BDvec);
       // Check if this operand is an indirect access
       if (hasIndirection(opnd, opndNum)) {
         getBucketsForIndirectOperand(inst, opndNum, BDvec);

@@ -293,7 +293,6 @@ public:
   void DumpDotFile(G4_BB *bb);
 
   void getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
-                            G4_Operand *opnd,
                             std::vector<BucketDescr> &buckets);
   void getBucketsForIndirectOperand(G4_INST *inst,
                                     Gen4_Operand_Number opnd_num,
