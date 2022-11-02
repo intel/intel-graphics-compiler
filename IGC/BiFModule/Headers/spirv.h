@@ -321,6 +321,20 @@ float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_array_msaa_ro_v4
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _f32_img2d_msaa_depth_ro_v2i32_i32_i32, _Rfloat)(global Img2d_msaa_depth_ro* Image, int2 Coordinate, int ImageOperands, int Sample);
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _f32_img2d_array_msaa_depth_ro_v4i32_i32_i32, _Rfloat)(global Img2d_array_msaa_depth_ro* Image, int4 Coordinate, int ImageOperands, int Sample);
 
+// Image Read with unused ImageOperands
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_ro_v2i32_i32, _Rint4)(global Img2d_ro* Image, int2 Coordinate, int ImageOperands);
+float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_ro_v2i32_i32, _Rfloat4)(global Img2d_ro* Image, int2 Coordinate, int ImageOperands);
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img3d_ro_v4i32_i32, _Rint4)(global Img3d_ro* Image, int4 Coordinate, int ImageOperands);
+float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img3d_ro_v4i32_i32, _Rfloat4)(global Img3d_ro* Image, int4 Coordinate, int ImageOperands);
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_ro_i32_i32, _Rint4)(global Img1d_ro* Image, int Coordinate, int ImageOperands);
+float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_ro_i32_i32, _Rfloat4)(global Img1d_ro* Image, int Coordinate, int ImageOperands);
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img2d_rw_v2i32_i32, _Rint4)(global Img2d_rw* Image, int2 Coordinate, int ImageOperands);
+float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img2d_rw_v2i32_i32, _Rfloat4)(global Img2d_rw* Image, int2 Coordinate, int ImageOperands);
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img3d_rw_v4i32_i32, _Rint4)(global Img3d_rw* Image, int4 Coordinate, int ImageOperands);
+float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img3d_rw_v4i32_i32, _Rfloat4)(global Img3d_rw* Image, int4 Coordinate, int ImageOperands);
+int4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4i32_img1d_rw_i32_i32, _Rint4)(global Img1d_rw* Image, int Coordinate, int ImageOperands);
+float4 SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageRead, _v4f32_img1d_rw_i32_i32, _Rfloat4)(global Img1d_rw* Image, int Coordinate, int ImageOperands);
+
 // Image Write
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4i32, )(global Img2d_wo* Image, int2 Coordinate, int4 Texel);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4f32, )(global Img2d_wo* Image, int2 Coordinate, float4 Texel);
@@ -350,6 +364,20 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4i32, )(globa
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4f32, )(global Img3d_wo* Image, int4 Coordinate, float4 Texel);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_rw_v4i32_v4i32, )(global Img3d_rw* Image, int4 Coordinate, int4 Texel);
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_rw_v4i32_v4f32, )(global Img3d_rw* Image, int4 Coordinate, float4 Texel);
+
+// Image Write with unused ImageOperands
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4i32_i32, )(global Img2d_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4f32_i32, )(global Img2d_wo* Image, int2 Coordinate, float4 Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_depth_wo_v2i32_f32_i32, )(global Img2d_depth_wo* Image, int2 Coordinate, float Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4i32_i32, )(global Img1d_wo* Image, int Coordinate, int4 Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_wo_i32_v4f32_i32, )(global Img1d_wo* Image, int Coordinate, float4 Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_wo_v2i32_v4i32_i32, )(global Img1d_array_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img1d_array_wo_v2i32_v4f32_i32, )(global Img1d_array_wo* Image, int2 Coordinate, float4 Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_wo_v4i32_v4i32_i32, )(global Img2d_array_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_wo_v4i32_v4f32_i32, )(global Img2d_array_wo* Image, int4 Coordinate, float4 Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_array_depth_wo_v4i32_f32_i32, )(global Img2d_array_depth_wo* Image, int4 Coordinate, float Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4i32_i32, )(global Img3d_wo* Image, int4 Coordinate, int4 Texel, int ImageOperands);
+void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img3d_wo_v4i32_v4f32_i32, )(global Img3d_wo* Image, int4 Coordinate, float4 Texel, int ImageOperands);
 
 // Image Write LoD
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(ImageWrite, _img2d_wo_v2i32_v4i32_i32_i32, )(global Img2d_wo* Image, int2 Coordinate, int4 Texel, int ImageOperands, int Lod);
