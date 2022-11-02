@@ -1682,11 +1682,6 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype,
     return true;
   }
 
-  if (byteDst && builder.getNativeExecSize() >= g4::SIMD16) {
-    // For pvc+, leave byte dst to be fixed in fixByteXBarRestriction() later
-    return false;
-  }
-
   if (builder.hasBFMixMode() && extype == Type_F &&
       inst->getDst()->getType() == Type_BF && !inst->isDpas()) {
     // For now, BF mixed mode should not need this check.
@@ -6521,30 +6516,15 @@ bool HWConformity::splitInstListForByteDst(INST_LIST_ITER it, G4_BB *bb,
   G4_INST *inst = *it;
   G4_opcode inst_op = inst->opcode();
   G4_DstRegRegion *dst = inst->getDst();
-
-  bool hasDstSrcOverlap = false;
-  if (dst && !inst->hasNULLDst()) {
-    auto srcNum = inst->getNumSrc();
-    for (int i = 0; i < srcNum; i++) {
-      G4_CmpRelation rel = dst->compareOperand(inst->getSrc(i), builder);
-      if (rel != Rel_disjoint) {
-        hasDstSrcOverlap = true;
-        break;
-      }
-    }
+  // check if we can split the inst
+  if (!canSplitByteDst(inst_op) || inst->getExecSize() == g4::SIMD1 ||
+      (!bb->isAllLaneActive() && !inst->isWriteEnableInst()) ||
+      dst->getByteOffset() % extypesize != 0 || dst->getHorzStride() != 1 ||
+      extypesize != TypeSize(Type_W)) {
+    return false;
   }
 
-  // check if we can split the inst
-  if (!canSplitByteDst(inst_op) ||
-      inst->getExecSize() == g4::SIMD1 ||
-      (!bb->isAllLaneActive() && !inst->isWriteEnableInst()) ||
-      dst->getByteOffset() % extypesize != 0 ||
-      dst->getHorzStride() != 1 ||
-      extypesize != TypeSize(Type_W) ||
-      inst->getPredicate() ||
-      inst->getCondMod() ||
-      // Do not split the instruction if dst has overlap with sources
-      hasDstSrcOverlap) {
+  if (inst->getPredicate() || inst->getCondMod()) {
     return false;
   }
 
@@ -9096,6 +9076,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
       }
       unsigned int new_option = inst->getMaskOption();
       auto pos = it;
+      pos++;
       auto dstride = dst->getHorzStride();
       const RegionDesc *shiftRegion = builder.createRegionDesc(dstride, 1, 0);
       G4_Declare *shiftDcl = builder.createTempVar(
@@ -9107,12 +9088,12 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
       G4_INST *packInst = builder.createMov(inst->getExecSize(), packTmp,
                                             unpackSrc, new_option, false);
       packInst->setPredicate(pred);
-      pos = bb->insertAfter(pos, packInst);
+      bb->insertBefore(pos, packInst);
       // then shift the bytes and words location
       G4_INST *shiftInst = builder.createMov(inst->getExecSize(), dst, shiftSrc,
                                              new_option, false);
       shiftInst->setPredicate(pred);
-      pos = bb->insertAfter(pos, shiftInst);
+      bb->insertBefore(pos, shiftInst);
       // update propagation info
       maintainDU4TempMov(inst, shiftInst);
       // change the destination of the original instruction
