@@ -491,7 +491,8 @@ const MCSection *StreamEmitter::GetDwarfFrameSection() const {
 
 void StreamEmitter::SwitchSection(const MCSection *pSection,
                                   const MCExpr *pSubsection) const {
-  m_pMCStreamer->SwitchSection(const_cast<MCSection *>(pSection), pSubsection);
+  IGCLLVM::switchSection(m_pMCStreamer, const_cast<MCSection *>(pSection),
+                         pSubsection);
 }
 
 MCSymbol *StreamEmitter::GetSymbol(const GlobalValue *pGV) const {
@@ -781,7 +782,7 @@ void StreamEmitter::SetMCLineTableSymbol(MCSymbol *pSym, unsigned id) const {
 }
 
 void StreamEmitter::Finalize() const {
-  m_pMCStreamer->Finish();
+  IGCLLVM::finish(m_pMCStreamer);
   m_pMCStreamer->reset();
 }
 
