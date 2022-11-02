@@ -1377,5 +1377,12 @@ bool supportLargeGRF() const
     return supportLargeGRF;
 }
 
+bool limitedBCR() const
+{
+    return m_platformInfo.eProductFamily == IGFX_DG2 &&
+         (GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
+          GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID));
+}
+
 };
 }//namespace IGC

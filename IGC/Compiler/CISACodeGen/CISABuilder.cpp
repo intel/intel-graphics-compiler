@@ -4654,6 +4654,11 @@ namespace IGC
         {
             SaveOption(vISA_enableBCR, true);
         }
+        if (context->type == ShaderType::OPENCL_SHADER &&
+            m_program->m_Platform->limitedBCR())
+        {
+            SaveOption(vISA_enableBCR, true);
+        }
         if (IGC_IS_FLAG_ENABLED(ForceBCR))
         {
             SaveOption(vISA_forceBCR, true);
