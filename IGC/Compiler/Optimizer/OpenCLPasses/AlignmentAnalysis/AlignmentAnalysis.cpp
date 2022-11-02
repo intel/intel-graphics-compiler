@@ -514,44 +514,37 @@ alignment_t AlignmentAnalysis::visitCallInst(CallInst& I)
 #endif
 }
 
+// Add Max utilities here instead of the WrapperLLVM module so as to avoid scope pollution.
+namespace IGCLLVM {
+    // Covers alignment_t and llvm::Align
+    using iSTD::Max;
+#if LLVM_VERSION_MAJOR >= 10
+    inline llvm::MaybeAlign Max(llvm::MaybeAlign LHS, llvm::MaybeAlign RHS) {
+        return LHS && RHS && *LHS > *RHS ? *LHS : *RHS;
+    }
+#endif
+}
+
 void AlignmentAnalysis::SetInstAlignment(MemSetInst& I)
 {
     // Set the align attribute of the memset according to the detected
     // alignment of its operand.
-#if LLVM_VERSION_MAJOR >= 14
-    uint64_t alignment_value = getAlignValue(I.getRawDest());
-    llvm::Align alignment = llvm::max(I.getDestAlign(), llvm::Align(alignment_value));
+    auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), IGCLLVM::Align(getAlignValue(I.getRawDest())));
     I.setDestAlignment(alignment);
-#else
-    unsigned alignment = iSTD::Max(I.getDestAlignment(), getAlignValue(I.getRawDest()));
-    I.setDestAlignment(alignment);
-#endif
 }
 
 void AlignmentAnalysis::SetInstAlignment(MemCpyInst& I)
 {
     // Set the align attribute of the memcpy based on the minimum alignment of its source and dest fields
-#if LLVM_VERSION_MAJOR >= 14
-    uint64_t alignment_value = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
-    llvm::Align alignment = llvm::Align(alignment_value);
+    auto minRawAlignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
+    auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), IGCLLVM::Align(minRawAlignment));
     I.setDestAlignment(alignment);
-#else
-    unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
-    alignment = iSTD::Max(I.getDestAlignment(), alignment);
-    I.setDestAlignment(alignment);
-#endif
 }
 
 void AlignmentAnalysis::SetInstAlignment(MemMoveInst& I)
 {
     // Set the align attribute of the memmove based on the minimum alignment of its source and dest fields
-#if LLVM_VERSION_MAJOR >= 14
-    uint64_t alignment_value = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
-    llvm::Align alignment = llvm::max(I.getDestAlign(), llvm::Align(alignment_value));
+    auto minRawAlignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
+    auto alignment = IGCLLVM::Max(IGCLLVM::getDestAlign(I), IGCLLVM::Align(minRawAlignment));
     I.setDestAlignment(alignment);
-#else
-    unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
-    alignment = iSTD::Max(I.getDestAlignment(), alignment);
-    I.setDestAlignment(alignment);
-#endif
 }
