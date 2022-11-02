@@ -306,12 +306,6 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
         return promotedValuesCache[value];
     }
 
-    // Skip some instruction types
-    if (isa<ZExtInst>(value))
-    {
-        return value;
-    }
-
     Value* newValue = value;
     if (auto function = dyn_cast<Function>(value))
     {
