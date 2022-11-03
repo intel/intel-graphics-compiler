@@ -34,13 +34,18 @@ void G4_SrcRegRegion::computePReg(const IR_Builder &builder) {
 
       dcl->setGRFBaseOffset(linearizedStart);
     }
+#if 0
+        if (baseVar->getPhyReg()->isA0())
+        {
+            G4_Declare* dcl = baseVar->getDeclare();
 
-    if (baseVar->getPhyReg()->isA0()) {
-      G4_Declare *dcl = baseVar->getDeclare();
-      subRegNum = baseVar->getPhyRegOff();
-      unsigned int linearizedStart = subRegNum * TypeSize(ADDR_REG_TYPE);
-      dcl->setGRFBaseOffset(linearizedStart);
-    }
+            subRegNum = baseVar->getPhyRegOff();
+
+            unsigned int linearizedStart = subRegNum * TypeSize(ADDR_REG_TYPE);
+
+            dcl->setGRFBaseOffset(linearizedStart);
+        }
+#endif
   }
 }
 
@@ -68,14 +73,17 @@ void G4_DstRegRegion::computePReg(const IR_Builder &builder) {
       dcl->setGRFBaseOffset(linearizedStart);
     }
 
-    if (baseVar->getPhyReg()->isA0()) {
-      G4_Declare *dcl = baseVar->getDeclare();
+#if 0
+        if (baseVar->getPhyReg()->isA0())
+        {
+            G4_Declare* dcl = baseVar->getDeclare();
 
-      subRegNum = baseVar->getPhyRegOff();
+            subRegNum = baseVar->getPhyRegOff();
 
-      unsigned int linearizedStart = subRegNum * TypeSize(ADDR_REG_TYPE);
+            unsigned int linearizedStart = subRegNum * TypeSize(ADDR_REG_TYPE);
 
-      dcl->setGRFBaseOffset(linearizedStart);
-    }
+            dcl->setGRFBaseOffset(linearizedStart);
+        }
+#endif
   }
 }
