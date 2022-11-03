@@ -1060,22 +1060,6 @@ bool HasKernelArguments() const
     return false;
 }
 
-
-
-bool has64BMediaBlockRW() const
-{
-    return IGC_IS_FLAG_ENABLED(Enable64BMediaBlockRW) && isProductChildOf(IGFX_XE_HP_SDV);
-}
-
-bool supportsStaticRegSharing() const
-{
-    return isProductChildOf(IGFX_XE_HP_SDV);
-}
-bool emulateByteScraterMsgForSS() const
-{
-    return isProductChildOf(IGFX_XE_HP_SDV) && (m_platformInfo.usRevId == 0 || IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS));
-}
-
 //all the platforms which DONOT support 64 bit int operations
 bool hasNoInt64Inst() const {
     return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
@@ -1109,7 +1093,7 @@ bool hasNoFP64Inst() const {
 
 //all the platforms which have correctly rounded macros (INVM, RSQRTM, MADM)
 bool hasCorrectlyRoundedMacros() const {
-    return m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
+    return (m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
         m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
         m_platformInfo.eProductFamily != IGFX_JASPERLAKE &&
         m_platformInfo.eProductFamily != IGFX_TIGERLAKE_LP &&
@@ -1119,7 +1103,7 @@ bool hasCorrectlyRoundedMacros() const {
         m_platformInfo.eProductFamily != IGFX_ALDERLAKE_P &&
         m_platformInfo.eProductFamily != IGFX_ALDERLAKE_N &&
         m_platformInfo.eProductFamily != IGFX_DG2 &&
-        m_platformInfo.eProductFamily != IGFX_METEORLAKE;
+        m_platformInfo.eProductFamily != IGFX_METEORLAKE);
 }
 
 // Has 64bit support but use 32bit for perf reasons
@@ -1130,19 +1114,46 @@ bool preferFP32Emu() const {
 bool supportMixMode() const {
     return IGC_IS_FLAG_ENABLED(ForceMixMode) ||
         (IGC_IS_FLAG_DISABLED(DisableMixMode) &&
-        (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW ||
-            m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE ||
-            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
-            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
-            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
-            m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
+            (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW ||
+                m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
+                m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
+                m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
+                m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE ||
+                m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
 }
-bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const {
-    return (IGC_IS_FLAG_ENABLED(EnablePostCullPatchFIFOLP) &&
+
+bool supportsStaticRegSharing() const
+{
+    bool isSupporting = isProductChildOf(IGFX_XE_HP_SDV);
+    return isSupporting;
+}
+
+bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const
+{
+    bool isFromFamilyWhereSkippable = m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N;
+    bool canBeSkipped = (IGC_IS_FLAG_ENABLED(EnablePostCullPatchFIFOLP) &&
         m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE &&
-        (m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
-            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
-            m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N));
+        isFromFamilyWhereSkippable);
+    return canBeSkipped;
+}
+
+bool emulateByteScraterMsgForSS() const
+{
+    return isProductChildOf(IGFX_XE_HP_SDV) && (m_platformInfo.usRevId == 0 || IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS));
+}
+
+bool has64BMediaBlockRW() const
+{
+    bool hasBlockRW = (IGC_IS_FLAG_ENABLED(Enable64BMediaBlockRW) && isProductChildOf(IGFX_XE_HP_SDV));
+    return hasBlockRW;
+}
+
+int getBSOLocInExtDescriptor() const
+{
+    int descriptor = 12;
+    return descriptor;
 }
 
 bool NeedsHDCFenceBeforeEOTInPixelShader() const
@@ -1152,8 +1163,8 @@ bool NeedsHDCFenceBeforeEOTInPixelShader() const
 
 bool canFuseTypedWrite() const
 {
-    return (IGC_IS_FLAG_ENABLED(FuseTypedWrite) &&
-            m_platformInfo.eProductFamily == IGFX_METEORLAKE);
+    bool canFuse = (m_platformInfo.eProductFamily == IGFX_METEORLAKE);
+    return (IGC_IS_FLAG_ENABLED(FuseTypedWrite) && canFuse);
 }
 
 bool enableSetDefaultTileYWalk() const
@@ -1165,11 +1176,6 @@ bool enableSetDefaultTileYWalk() const
 uint32_t getMaxBlockMsgSize(bool isSLM) const
 {
     return 128;
-}
-
-int getBSOLocInExtDescriptor() const
-{
-    return 12;
 }
 
 // ***** Below go accessor methods for testing WA data from WA_TABLE *****
