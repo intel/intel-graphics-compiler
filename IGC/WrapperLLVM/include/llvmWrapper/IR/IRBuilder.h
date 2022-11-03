@@ -333,8 +333,8 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::Create(
                 Func, Args, Bundles, NameStr, InsertBefore);
 #else
-            return llvm::IRBuilder<T, InserterTyDef()>::Create(llvm::cast<llvm::FunctionType>(
-                llvm::cast<llvm::PointerType>(Func->getType())->getElementType()),
+            return llvm::IRBuilder<T, InserterTyDef()>::Create(
+                llvm::cast<llvm::Function>(Func)->getFunctionType(),
                 Func, Args, Bundles, NameStr, InsertBefore);
 #endif
         }
