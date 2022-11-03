@@ -23,6 +23,14 @@ namespace IGCLLVM {
 #endif
     }
 
+    inline llvm::Attribute getWithStructRetType(llvm::LLVMContext &Context, llvm::Type *Ty) {
+#if LLVM_VERSION_MAJOR <= 11
+        return llvm::Attribute::get(Context, llvm::Attribute::StructRet);
+#else
+        return llvm::Attribute::getWithStructRetType(Context, Ty);
+#endif
+    }
+
     /// Return the attribute object that exists at the given index.
     inline llvm::Attribute getAttribute(llvm::AttributeList Attrs, unsigned Index, llvm::StringRef Kind) {
 #if LLVM_VERSION_MAJOR >= 14
@@ -79,6 +87,12 @@ namespace IGCLLVM {
         : llvm::AttrBuilder(Ctx, AS) {}
         #else
         : llvm::AttrBuilder(AS) {}
+        #endif
+        #if LLVM_VERSION_MAJOR <= 11
+        AttrBuilder &addStructRetAttr(llvm::Type* Ty) {
+            addAttribute(llvm::Attribute::StructRet);
+            return *this;
+        };
         #endif
     };
 }

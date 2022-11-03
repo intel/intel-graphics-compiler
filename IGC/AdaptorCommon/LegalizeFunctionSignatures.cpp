@@ -433,7 +433,8 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             // Loop through new args and add 'byval' attributes
             for (auto arg : ArgByVal)
             {
-                arg->addAttr(llvm::Attribute::ByVal);
+                arg->addAttr(llvm::Attribute::getWithByValType(M.getContext(),
+                                                               arg->getType()->getPointerElementType()));
             }
 
             // Now fix the return values
@@ -442,7 +443,8 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 // Add the 'noalias' and 'sret' attribute to arg0
                 auto retArg = pNewFunc->arg_begin();
                 retArg->addAttr(llvm::Attribute::NoAlias);
-                retArg->addAttr(llvm::Attribute::StructRet);
+                retArg->addAttr(IGCLLVM::getWithStructRetType(M.getContext(),
+                                                              retArg->getType()->getPointerElementType()));
 
                 // Loop through all return instructions and store the old return value into the arg0 pointer
                 const auto ptrSize = DL.getPointerSize();
@@ -561,10 +563,10 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
         returnPtr = builder.CreateAlloca(callInst->getType());
         callArgs.push_back(returnPtr);
         // Add "noalias" and "sret" to return value operand at callsite
-        AttributeSet retAttrib;
-        retAttrib = retAttrib.addAttribute(M.getContext(), llvm::Attribute::NoAlias);
-        retAttrib = retAttrib.addAttribute(M.getContext(), llvm::Attribute::StructRet);
-        ArgAttrVec.push_back(retAttrib);
+        IGCLLVM::AttrBuilder ArgAttrs(M.getContext());
+        ArgAttrs.addAttribute(llvm::Attribute::NoAlias);
+        ArgAttrs.addStructRetAttr(callInst->getType());
+        ArgAttrVec.push_back(AttributeSet::get(M.getContext(), ArgAttrs));
         legalizeReturnType = true;
     }
 
@@ -598,9 +600,9 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module& M, CallInst* callIns
             Value* allocaV = builder.CreateAlloca(arg->getType());
             builder.CreateStore(arg, allocaV);
             callArgs.push_back(allocaV);
-            AttributeSet argAttrib;
-            argAttrib = argAttrib.addAttribute(M.getContext(), llvm::Attribute::ByVal);
-            ArgAttrVec.push_back(argAttrib);
+            IGCLLVM::AttrBuilder ArgAttrs(M.getContext());
+            ArgAttrs.addByValAttr(arg->getType());
+            ArgAttrVec.push_back(AttributeSet::get(M.getContext(), ArgAttrs));
             fixArgType = true;
         }
         else
