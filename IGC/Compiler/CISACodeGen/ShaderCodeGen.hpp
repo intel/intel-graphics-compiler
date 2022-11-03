@@ -113,9 +113,10 @@ public:
         IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
         return nullptr;
     }
-    virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex)
+    virtual CVariable* GetURBInputHandle(CVariable* pVertexIndex, BasicBlock* block)
     {
         IGC_UNUSED(pVertexIndex);
+        IGC_UNUSED(block);
         IGC_ASSERT_MESSAGE(0, "Should be overridden in a derived class!");
         return nullptr;
     }
