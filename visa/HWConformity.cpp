@@ -5220,10 +5220,6 @@ void HWConformity::fixOverlapInst(G4_BB *bb) {
       G4_Operand *dst = inst->getDst();
       if (dst != NULL && dst->isDstRegRegion() && dst->getTopDcl() &&
           dst->getTopDcl()->getRegFile() == G4_GRF) {
-        int dstSize =
-            (dst->getLinearizedEnd() - dst->getLinearizedStart() + 1) /
-            kernel.numEltPerGRF<Type_UB>();
-        int srcSize = 1;
 
         bool srcOverlap = false;
         for (int i = 0; i < inst->getNumSrc(); i++) {
@@ -5232,16 +5228,12 @@ void HWConformity::fixOverlapInst(G4_BB *bb) {
               src->getTopDcl()->getRegFile() == G4_GRF) {
             srcOverlap |= inst->getDst()->compareOperand(
                               inst->getSrc(i), builder) == Rel_interfere;
-            if (srcOverlap) {
-              srcSize =
-                  (src->getLinearizedEnd() - src->getLinearizedStart() + 1) /
-                  kernel.numEltPerGRF<Type_UB>();
+            if (srcOverlap)
               break;
-            }
           }
         }
 
-        if (srcOverlap && (dstSize > 1 || srcSize > 1)) {
+        if (srcOverlap) {
           G4_AccRegSel accSel = inst->getDst()->getAccRegSel();
           G4_DstRegRegion *newDst =
               insertMovAfter(i, inst->getDst(), inst->getDst()->getType(), bb);
