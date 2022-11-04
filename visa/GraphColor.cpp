@@ -7317,11 +7317,11 @@ void GlobalRA::saveRegs(unsigned startReg, unsigned owordSize,
                         unsigned frameOwordOffset, G4_BB *bb,
                         INST_LIST_ITER insertIt,
                         std::unordered_set<G4_INST *> &group) {
-
   assert(builder.getPlatform() >= GENX_SKL &&
          "stack call only supported on SKL+");
 
-  if (owordSize == 8 || owordSize == 4 || owordSize == 2) {
+  if ((useLscForSpillFill && owordSize == 16) || owordSize == 8 ||
+      owordSize == 4 || owordSize == 2) {
     // add (1) r126.2<1>:ud    r125.3<0;1,0>:ud    0x2:ud
     // sends (8) null<1>:ud    r126.0    r1.0 ...
     G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
@@ -7347,6 +7347,12 @@ void GlobalRA::saveRegs(unsigned startReg, unsigned owordSize,
     spillIntrinsic->inheritDIFrom(*insertIt);
     bb->insertBefore(insertIt, spillIntrinsic);
     group.insert(spillIntrinsic);
+  } else if ((useLscForSpillFill && owordSize > 16)) {
+    saveRegs(startReg, 16, scratchRegDcl, framePtr, frameOwordOffset, bb,
+             insertIt, group);
+    saveRegs(startReg + GlobalRA::owordToGRFSize(16, builder), owordSize - 16,
+             scratchRegDcl, framePtr, frameOwordOffset + 16, bb, insertIt,
+             group);
   } else if (owordSize > 8) {
     saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb,
              insertIt, group);
@@ -7429,7 +7435,8 @@ void GlobalRA::restoreRegs(unsigned startReg, unsigned owordSize,
   //
   // Process chunks of size 8, 4, 2 and 1.
   //
-  if (owordSize == 8 || owordSize == 4 || owordSize == 2) {
+  if ((useLscForSpillFill && owordSize == 16) || owordSize == 8 ||
+      owordSize == 4 || owordSize == 2) {
     G4_ExecSize execSize = (owordSize > 2) ? g4::SIMD16 : g4::SIMD8;
     unsigned responseLength = GlobalRA::owordToGRFSize(owordSize, builder);
     G4_Declare *dstDcl =
@@ -7458,7 +7465,13 @@ void GlobalRA::restoreRegs(unsigned startReg, unsigned owordSize,
   //
   // Split into chunks of sizes 8 and remaining owords.
   //
-  else if (owordSize > 8) {
+  else if ((useLscForSpillFill && owordSize > 16)) {
+    restoreRegs(startReg, 16, scratchRegDcl, framePtr, frameOwordOffset, bb,
+                insertIt, group, caller);
+    restoreRegs(startReg + GlobalRA::owordToGRFSize(16, builder),
+                owordSize - 16, scratchRegDcl, framePtr, frameOwordOffset + 16,
+                bb, insertIt, group, caller);
+  } else if (owordSize > 8) {
     restoreRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb,
                 insertIt, group, caller);
     restoreRegs(startReg + GlobalRA::owordToGRFSize(8, builder), owordSize - 8,
@@ -7488,6 +7501,7 @@ void GlobalRA::restoreRegs(unsigned startReg, unsigned owordSize,
     MUST_BE_TRUE(false, ERROR_REGALLOC);
   }
 }
+
 
 //
 // Generate the restore code for the i/p restoreRegs.
