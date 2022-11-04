@@ -698,8 +698,8 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
 
   int currInstRegs[2][G4_MAX_SRCS];
   int nextInstRegs[2][G4_MAX_SRCS];
-  bool isCurrScalar[G4_MAX_SRCS] = {false, false, false, false};
-  bool isNextScalar[G4_MAX_SRCS] = {false, false, false, false};
+  bool isCurrScalar[G4_MAX_SRCS] = {false};
+  bool isNextScalar[G4_MAX_SRCS] = {false};
   int opndSize = 0;
 
   // Get the sources of previous instruction
@@ -910,8 +910,8 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
 
   int currInstRegs[2][G4_MAX_SRCS];
   int nextInstRegs[2][G4_MAX_SRCS];
-  bool isCurrScalar[G4_MAX_SRCS] = {false, false, false, false};
-  bool isNextScalar[G4_MAX_SRCS] = {false, false, false, false};
+  bool isCurrScalar[G4_MAX_SRCS] = {false};
+  bool isNextScalar[G4_MAX_SRCS] = {false};
   int opndSize = 0;
 
   // Get the sources of previous instruction

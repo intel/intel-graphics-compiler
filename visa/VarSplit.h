@@ -207,17 +207,11 @@ private:
     G4_DstRegRegion *dst = nullptr;
     unsigned int dstLb = 0;
     unsigned int dstRb = 0;
-    G4_Operand *src[G4_MAX_SRCS];
-    unsigned int srcLb[G4_MAX_SRCS];
-    unsigned int srcRb[G4_MAX_SRCS];
+    G4_Operand *src[G4_MAX_SRCS] = {};
+    unsigned int srcLb[G4_MAX_SRCS] = {};
+    unsigned int srcRb[G4_MAX_SRCS] = {};
 
-    InstData() {
-      for (unsigned int i = 0; i != G4_MAX_SRCS; i++) {
-        src[i] = nullptr;
-        srcLb[i] = 0;
-        srcRb[i] = 0;
-      }
-    }
+    InstData() {}
   };
   std::unordered_map<G4_INST *, InstData> splitVerify;
 };

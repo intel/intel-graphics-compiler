@@ -490,7 +490,8 @@ void BankConflictPass::getBanks(G4_INST *inst, BankConflict *srcBC,
 void BankConflictPass::getPrevBanks(G4_INST *inst, BankConflict *srcBC,
                                     G4_Declare **dcls, G4_Declare **opndDcls,
                                     unsigned *offset) {
-  int execSize[G4_MAX_SRCS];
+  // We only care about ALU instructions which have a max number of 3 sources.
+  int execSize[3];
 
   for (int i = 1; i < 3; i++) {
     dcls[i] = nullptr;
@@ -1431,7 +1432,7 @@ void LiveRange::checkForInfiniteSpillCost(
     }
 
     // Check whether this liverange is used in nextInst
-    for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+    for (unsigned i = 0, numSrc = nextInst->getNumSrc(); i < numSrc; i++) {
       G4_Operand *src = nextInst->getSrc(i);
 
       if (src && src->isSrcRegRegion() &&
@@ -1825,9 +1826,9 @@ void Interference::markInterferenceForSend(G4_BB *bb, G4_INST *inst,
     }
 
     if (isDstRegAllocPartaker || isDstLocallyAssigned) {
-      for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+      for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
         G4_Operand *src = inst->getSrc(j);
-        if (src != NULL && src->isSrcRegRegion() &&
+        if (src && src->isSrcRegRegion() &&
             src->asSrcRegRegion()->getBase()->isRegVar()) {
           if (src->asSrcRegRegion()->getBase()->isRegAllocPartaker()) {
             unsigned srcId =
@@ -1921,7 +1922,7 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
     }
 
     if (isDstRegAllocPartaker || isDstLocallyAssigned) {
-      for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+      for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
         if (inst->isDpas() && j != 1)
           continue;
         G4_Operand *src = inst->getSrc(j);
@@ -2248,11 +2249,10 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live) {
     //
     // process each source operand
     //
-    for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+    for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
       G4_Operand *src = inst->getSrc(j);
-      if (src == NULL) {
+      if (!src)
         continue;
-      }
       if (src->isSrcRegRegion()) {
         G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
         if (srcRegion->getBase()->isRegAllocPartaker()) {
@@ -3731,7 +3731,7 @@ void Augmentation::buildLiveIntervals() {
         }
       }
 
-      for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *src = inst->getSrc(i);
         if (!src || !src->isSrcRegRegion()) {
           continue;
@@ -5009,7 +5009,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
 
     // Any physical registers used by src opnds will be busy before the current
     // inst
-    for (int i = 0; i < G4_MAX_SRCS; i++) {
+    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
       G4_Operand *src = inst->getSrc(i);
 
       if (src && src->isSrcRegRegion() &&
@@ -8497,7 +8497,7 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis &liveAnalysis,
                             optreport, Opnd_pred);
       }
 
-      for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *opnd = inst->getSrc(i);
 
         if (opnd && opnd->isAddrExp() == false && opnd->getBase() &&
@@ -8585,7 +8585,7 @@ void GlobalRA::detectNeverDefinedUses() {
         }
       }
 
-      for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *opnd = inst->getSrc(i);
 
         if (opnd && opnd->getBase() && opnd->getBase()->isRegVar()) {
@@ -8990,7 +8990,7 @@ void VarSplit::globalSplit(IR_Builder &builder, G4_Kernel &kernel) {
       //
       // process each source operand
       //
-      for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+      for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
         G4_Operand *src = inst->getSrc(j);
 
         if (src == NULL) {
@@ -9134,11 +9134,9 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
     //
     // process destination operand
     //
-    if (dst != NULL) {
-      G4_DstRegRegion *dstrgn = dst;
-
+    if (dst) {
       // It's RA candidate
-      G4_Declare *topdcl = GetTopDclFromRegRegion(dstrgn);
+      G4_Declare *topdcl = GetTopDclFromRegRegion(dst);
 
       LocalLiveRange *topdclLR = nullptr;
       // Local only
@@ -9155,7 +9153,7 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
           toDelete.push(new_range);
           varRanges[topdcl->getRegVar()].list.push_back(new_range);
         } else {
-          rangeListSpliting(&(varRanges[topdcl->getRegVar()].list), dstrgn,
+          rangeListSpliting(&(varRanges[topdcl->getRegVar()].list), dst,
                             &toDelete);
         }
 
@@ -9167,7 +9165,7 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
     //
     // process each source operand
     //
-    for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+    for (unsigned j = 0, numSrc = i->getNumSrc(); j < numSrc; j++) {
       G4_Operand *src = i->getSrc(j);
 
       if (src == NULL) {
@@ -11134,7 +11132,7 @@ void FlagSpillCleanup::scratchUse(SCRATCH_PTR_LIST &scratchTraceList,
     }
   }
 
-  for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+  for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
     G4_Operand *src = inst->getSrc(i);
 
     if (src && src->isSrcRegRegion()) {
@@ -11155,7 +11153,7 @@ void FlagSpillCleanup::scratchUse(SCRATCH_PTR_LIST &scratchTraceList,
 
 void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST &scratchTraceList,
                                G4_INST *inst) {
-  for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+  for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
     G4_Operand *src = inst->getSrc(i);
 
     if (src && src->isSrcRegRegion()) {
@@ -12004,7 +12002,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
             defs.push_back(std::make_tuple(instIt, bb));
         }
 
-        for (unsigned i = 0; i != G4_MAX_SRCS; i++) {
+        for (unsigned i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
           auto src = inst->getSrc(i);
           if (src && src->isSrcRegRegion()) {
             auto topdcl = src->asSrcRegRegion()->getTopDcl();
@@ -12022,7 +12020,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
     MUST_BE_TRUE(useStr.size() > 0, "empty string found");
     std::list<std::tuple<G4_INST *, G4_BB *>> rd;
 
-    for (unsigned i = 0; i != G4_MAX_SRCS; i++) {
+    for (unsigned i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
       auto src = inst->getSrc(i);
       if (src && src->isSrcRegRegion() &&
           src->asSrcRegRegion()->getTopDcl() == lr->getDcl()) {

@@ -851,7 +851,7 @@ bool CoalesceSpillFills::replaceCoalescedOperands(G4_INST *inst) {
     }
   }
 
-  for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+  for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
     auto opnd = inst->getSrc(i);
 
     if (opnd && opnd->getTopDcl()) {
@@ -1454,7 +1454,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs() {
         }
       }
 
-      for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *opnd = inst->getSrc(i);
 
         if (opnd && opnd->getTopDcl()) {

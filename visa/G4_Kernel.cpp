@@ -692,12 +692,10 @@ void G4_Kernel::evalAddrExp() {
       //
       // process each source operand
       //
-      for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+      for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
         G4_Operand *opnd = inst->getSrc(j);
-
-        if (opnd == NULL)
+        if (!opnd)
           continue;
-
         if (opnd->isAddrExp()) {
           int val = opnd->asAddrExp()->eval(*fg.builder);
           G4_Type ty = opnd->asAddrExp()->getType();

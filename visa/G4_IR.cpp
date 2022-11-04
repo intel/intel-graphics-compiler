@@ -349,9 +349,9 @@ G4_Type G4_INST::getExecType() const {
     // srnd: src0 is either hf or f
     return srcs[0]->getType();
   }
-  for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+  for (unsigned i = 0, numSrc = getNumSrc(); i < numSrc; i++) {
     G4_Operand *src = getSrc(i);
-    if (src != NULL) {
+    if (src) {
       G4_Type srcType = src->getType();
       if (TypeSize(srcType) >= TypeSize(execType)) {
         if (IS_DTYPE(srcType)) {
@@ -392,11 +392,10 @@ G4_Type G4_INST::getExecType2() const {
     return Type_D;
   }
 
-  for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+  for (unsigned i = 0, numSrc = getNumSrc(); i < numSrc; i++) {
     G4_Operand *src = getSrc(i);
-    if (src == NULL) {
+    if (!src)
       continue;
-    }
     G4_Type srcType = srcs[i]->getType();
     if (builder.hasBFMixMode() && srcType == Type_BF) {
       execType = Type_F;
@@ -913,7 +912,7 @@ bool G4_INST::isLongPipeInstructionXe() const {
   }
 
   if (!builder.hasPartialInt64Support()) {
-    for (int i = 0; i < G4_MAX_SRCS; i++) {
+    for (int i = 0, numSrc = getNumSrc(); i < numSrc; i++) {
       const G4_Operand *src = getSrc(i);
       if (src && isLongPipeType(src->getType())) {
         return true;
@@ -2937,7 +2936,7 @@ bool G4_INST::isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const {
   } else
     dst_valid = false; // does not change obeyRule for non-register-variable
 
-  for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+  for (unsigned i = 0, numSrc = getNumSrc(); i < numSrc; i++) {
     G4_Operand *src = getSrc(i);
     if (src && src->isSrcRegRegion() &&
         src->asSrcRegRegion()->getBase()->isRegVar()) {
@@ -3190,8 +3189,7 @@ void G4_INST::emit(std::ostream &output, bool symbolreg, bool dotStyle) {
       if (!dotStyle) {
         output << "//";
         bool srcs_valid1[G4_MAX_SRCS];
-        for (unsigned i = 0; i < G4_MAX_SRCS; i++)
-          srcs_valid1[i] = true;
+        std::fill(std::begin(srcs_valid1), std::end(srcs_valid1), true);
         emit_inst(output, true, srcs_valid1); // emit comments
         output << "\n";
       }

@@ -148,13 +148,12 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
   for (G4_BB *bb : fg) {
     for (const G4_INST *inst : *bb) {
       G4_DstRegRegion *dst = inst->getDst();
-      if (dst != NULL && dst->getRegAccess() == Direct &&
-          dst->getType() != Type_UD) {
+      if (dst && dst->getRegAccess() == Direct && dst->getType() != Type_UD) {
         G4_VarBase *ptr = dst->getBase();
 
-        for (int i = 0; i < G4_MAX_SRCS; i++) {
+        for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
           G4_Operand *src = inst->getSrc(i);
-          if (src != NULL && src->isAddrExp()) {
+          if (src && src->isAddrExp()) {
             int offset = 0;
             if (dst && !dst->isNullReg() &&
                 dst->getBase()->asRegVar()->getDeclare()->getRegFile() ==
@@ -327,7 +326,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
         }
         else if (ptr->isRegVar() && !ptr->asRegVar()->getDeclare()->isMsgDesc())
         {
-          for (int i = 0; i < G4_MAX_SRCS; i++) {
+          for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
             G4_Operand *src = inst->getSrc(i);
             G4_VarBase *srcPtr = (src && src->isSrcRegRegion())
                                      ? src->asSrcRegRegion()->getBase()
@@ -387,11 +386,9 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
         addPointsToSetToBB(bb->getId(), dstptr->asRegVar());
       }
 
-      for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
-        //
+      for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
         // look for indirect reg access r[ptr] which refers addrTaken reg var
-        //
-        if (inst->getSrc(j) == NULL || !inst->getSrc(j)->isSrcRegRegion()) {
+        if (!inst->getSrc(j) || !inst->getSrc(j)->isSrcRegRegion()) {
           continue;
         }
 
@@ -761,9 +758,8 @@ void LivenessAnalysis::performScoping(SparseBitSet *curBBGen,
                           entryBBKill, entryBB, scopeID);
     }
 
-    for (int i = 0; i < G4_MAX_SRCS; i++) {
+    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
       G4_Operand *src = inst->getSrc(i);
-
       if (src) {
         if (src->isSrcRegRegion() &&
             src->asSrcRegRegion()->getBase()->isRegAllocPartaker()) {
@@ -1783,12 +1779,11 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
     //
     // process each source operand
     //
-    for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+    for (unsigned j = 0, numSrc = i->getNumSrc(); j < numSrc; j++) {
       G4_Operand *src = i->getSrc(j);
-
-      if (!src) {
+      if (!src)
         continue;
-      }
+
       if (src->isSrcRegRegion()) {
         G4_Declare *topdcl = GetTopDclFromRegRegion(src);
         const G4_VarBase *base =
@@ -2481,7 +2476,7 @@ void GlobalRA::markBlockLocalVars() {
       }
 
       // Track direct src references.
-      for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+      for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
         G4_Operand *src = inst->getSrc(j);
 
         if (src == NULL) {
@@ -2670,9 +2665,9 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                          << GetTopDclFromRegRegion(dst)->getName() << "!");
       }
 
-      for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+      for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
         G4_Operand *src = inst->getSrc(j);
-        if (src != nullptr && src->isSrcRegRegion() &&
+        if (src && src->isSrcRegRegion() &&
             src->asSrcRegRegion()->getBase()->isRegAllocPartaker()) {
           MUST_BE_TRUE(
               src->asSrcRegRegion()->getBase()->asRegVar()->getPhyReg(),
@@ -2693,9 +2688,9 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
           }
         }
 
-        for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+        for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
           G4_Operand *src = inst->getSrc(j);
-          if (src != nullptr && src->isSrcRegRegion()) {
+          if (src && src->isSrcRegRegion()) {
             auto preg = src->getTopDcl()->getRegVar()->getPhyReg();
             if (preg && preg->isGreg()) {
               unsigned int srcLen = 0;
@@ -3119,11 +3114,10 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
       }
 
       // verify each source operand
-      for (unsigned j = 0; j < G4_MAX_SRCS; j++) {
+      for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
         G4_Operand *src = inst->getSrc(j);
-        if (src == nullptr) {
+        if (!src)
           continue;
-        }
 
         uint32_t varID = UINT_MAX;
         G4_Declare *dcl = nullptr;

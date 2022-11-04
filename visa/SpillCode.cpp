@@ -672,8 +672,8 @@ void SpillManager::insertSpillCode() {
 
       currCISAOffset = inst->getVISAId();
 
-      G4_Operand *operands_analyzed[G4_MAX_SRCS] = {NULL, NULL, NULL};
-      G4_Declare *declares_created[G4_MAX_SRCS] = {NULL, NULL, NULL};
+      G4_Operand *operands_analyzed[G4_MAX_SRCS] = {};
+      G4_Declare *declares_created[G4_MAX_SRCS] = {};
       // insert spill inst for spilled srcs
       for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
         replaceSpilledSrc(bb, inst_it, inst, i, operands_analyzed,

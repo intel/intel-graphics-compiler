@@ -536,7 +536,8 @@ void LVN::removeVirtualVarRedefs(G4_DstRegRegion *dst) {
           use->active = false;
         }
       } else {
-        for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+        for (unsigned int i = 0, numSrc = potentialRedef->inst->getNumSrc();
+             i < numSrc; i++) {
           if (potentialRedef->inst && potentialRedef->inst->getSrc(i) &&
               potentialRedef->inst->getSrc(i)->getTopDcl() == dstTopDcl &&
               IS_VAR_REDEFINED(dst, potentialRedef->inst->getSrc(i))) {
@@ -566,7 +567,8 @@ void LVN::removeVirtualVarRedefs(G4_DstRegRegion *dst) {
         auto lvnItems = (*second);
         auto lvnItemsInst = lvnItems->inst;
 
-        for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+        for (unsigned int i = 0, numSrc = lvnItemsInst->getNumSrc(); i < numSrc;
+             i++) {
           if (lvnItemsInst && lvnItemsInst->getSrc(i) &&
               lvnItemsInst->getSrc(i)->isSrcRegRegion() &&
               lvnItemsInst->getSrc(i)->asSrcRegRegion()->isIndirect()) {
@@ -1183,7 +1185,8 @@ bool LVN::valuesMatch(Value &val1, Value &val2, bool checkNegImm) {
 
   bool match = false;
 
-  for (unsigned int i = 0; i != G4_MAX_SRCS; i++) {
+  uint32_t numSrc = std::max(inst1->getNumSrc(), inst2->getNumSrc());
+  for (unsigned int i = 0; i != numSrc; i++) {
     G4_Operand *opnd1 = inst1->getSrc(i);
     G4_Operand *opnd2 = inst2->getSrc(i);
 
@@ -1406,11 +1409,10 @@ void LVN::populateDuTable(INST_LIST_ITER inst_it) {
     G4_INST *curInst = (*inst_it);
     // First scan src operands and check if their def has been
     // added to activeDefs table already. If so, link them.
-    for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+    for (unsigned int i = 0, numSrc = curInst->getNumSrc(); i < numSrc; i++) {
       G4_Operand *opnd = curInst->getSrc(i);
-      if (opnd == NULL) {
+      if (!opnd)
         continue;
-      }
 
       if (opnd->isAddrExp()) {
         // Since this operand is address taken,

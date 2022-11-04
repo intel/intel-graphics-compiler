@@ -1617,7 +1617,8 @@ void replaceAllSpilledRegions(G4_Kernel &kernel, G4_Declare *oldDcl,
         }
       }
 
-      for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc;
+           i++) {
         auto src = inst->getSrc(i);
 
         if (src && src->isSrcRegRegion()) {
@@ -1710,7 +1711,8 @@ void computeGlobalFreeGRFs(G4_Kernel &kernel) {
         }
       }
 
-      for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc;
+           i++) {
         auto src = inst->getSrc(i);
 
         if (!src)
@@ -2648,7 +2650,8 @@ static bool checkLifetime(G4_INST *defInst, G4_INST *inst) {
     if (opndVar == Var)
       return false;
   }
-  for (unsigned int srcOpnd = 0; srcOpnd < G4_MAX_SRCS; srcOpnd++) {
+  for (unsigned int srcOpnd = 0, numSrc = defInst->getNumSrc();
+       srcOpnd < numSrc; srcOpnd++) {
     G4_Operand *src = defInst->getSrc(srcOpnd);
     if (src && src->isSrcRegRegion()) {
       G4_RegVar *opndVar = GetTopDclFromRegRegion(src)->getRegVar();
@@ -5419,11 +5422,9 @@ bool Optimizer::isHeaderOptReuse(G4_INST *dst, G4_INST *src) {
     return false;
   }
 
-  for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+  for (unsigned int i = 0, numSrc = dst->getNumSrc(); i < numSrc; i++) {
     G4_Operand *opnd = dst->getSrc(i);
-
-    if (opnd != NULL &&
-        opnd->compareOperand(src->getSrc(i), builder) != Rel_eq) {
+    if (opnd && opnd->compareOperand(src->getSrc(i), builder) != Rel_eq) {
       return false;
     }
   }
@@ -13411,7 +13412,8 @@ void Optimizer::fixReadSuppressioninFPU0() {
       // same source register and data type.
       if (prev && isPrevOnSPPath ^ isCurOnSPPath) {
         G4_SrcRegRegion *srcToFix = nullptr;
-        for (int i = 0; i < G4_MAX_SRCS; ++i) {
+        int maxNumSrc = std::max(prev->getNumSrc(), cur->getNumSrc());
+        for (int i = 0; i < maxNumSrc; ++i) {
           if (!prev || !prev->getSrc(i) || !prev->getSrc(i)->isSrcRegRegion())
             continue;
           if (!cur->getSrc(i) || !cur->getSrc(i)->isSrcRegRegion())

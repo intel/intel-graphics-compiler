@@ -2670,7 +2670,7 @@ void SpillManagerGRF::replaceFilledRange(G4_Declare *fillRangeDcl,
                              ? G4_ExecSize(filledInst->getExecSize() / 2)
                              : filledInst->getExecSize();
 
-  for (int i = 0; i < G4_MAX_SRCS; i++) {
+  for (int i = 0, numSrc = filledInst->getNumSrc(); i < numSrc; i++) {
     G4_Operand *src = filledInst->getSrc(i);
 
     if (src && src->isSrcRegRegion()) {
@@ -3859,7 +3859,7 @@ void SpillManagerGRF::insertAddrTakenSpillFill(
                                         pointsToAnalysis, true, bb->getId());
       }
 
-      for (int i = 0; i < G4_MAX_SRCS; i++) {
+      for (int i = 0, numSrc = curInst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *src = curInst->getSrc(i);
 
         if (src && src->isSrcRegRegion() &&
@@ -3896,7 +3896,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillFill(
                                           pointsToAnalysis, true, bb->getId());
       }
 
-      for (int i = 0; i < G4_MAX_SRCS; i++) {
+      for (int i = 0, numSrc = curInst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *src = curInst->getSrc(i);
 
         if (src && src->isSrcRegRegion() &&
@@ -3936,7 +3936,7 @@ void SpillManagerGRF::prunePointsTo(G4_Kernel *kernel,
         st.push(dst);
       }
 
-      for (int i = 0; i < G4_MAX_SRCS; i++) {
+      for (int i = 0, numSrc = curInst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *src = curInst->getSrc(i);
 
         if (src && src->isSrcRegRegion() &&
@@ -3997,7 +3997,7 @@ void SpillManagerGRF::prunePointsToLS(G4_Kernel *kernel,
         st.push(dst);
       }
 
-      for (int i = 0; i < G4_MAX_SRCS; i++) {
+      for (int i = 0, numSrc = curInst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *src = curInst->getSrc(i);
 
         if (src && src->isSrcRegRegion() &&
@@ -4201,7 +4201,7 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
 
       // Insert fill code, when the source is a spilled register.
 
-      for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion()) {
           auto srcRR = inst->getSrc(i)->asSrcRegRegion();
           G4_RegVar *regVar = nullptr;
@@ -4430,7 +4430,7 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel *kernel) {
       }
 
       // Insert fill code, when the source is a spilled register.
-      for (unsigned i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion()) {
           auto srcRR = inst->getSrc(i)->asSrcRegRegion();
           G4_RegVar *regVar = nullptr;
@@ -6011,7 +6011,7 @@ void BoundedRA::markIndirIntfs() {
         busyIndir[topdcl].push_back(curInst);
       }
 
-      for (int i = 0; i < G4_MAX_SRCS; i++) {
+      for (int i = 0, numSrc = curInst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *src = curInst->getSrc(i);
 
         if (src && src->isSrcRegRegion() &&

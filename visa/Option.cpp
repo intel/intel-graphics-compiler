@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "Option.h"
 #include "DebugInfo.h"
-#include "G4_Opcode.h" // temporarily add to support G4_MAX_SRCS == 3
 #include "IGC/common/StringMacros.hpp"
 #include "PlatformInfo.h"
 #include "Timer.h"

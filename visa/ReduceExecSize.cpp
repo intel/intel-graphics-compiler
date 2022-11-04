@@ -195,7 +195,7 @@ bool HWConformity::fixInstOpndTypeAlign(INST_LIST_ITER i, G4_BB *bb) {
 // instruction to satisfy this rule
 bool HWConformity::checkSrcCrossGRF(INST_LIST_ITER &iter, G4_BB *bb) {
   G4_INST *inst = *iter;
-  for (int i = 0; i < G4_MAX_SRCS; i++) {
+  for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
     if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion()) {
       G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
       bool widthCrossingGRF = false;

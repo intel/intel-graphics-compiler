@@ -23,7 +23,7 @@ void VarSplitPass::buildPreVerify() {
         splitVerify[inst].dstLb = inst->getDst()->getLeftBound();
         splitVerify[inst].dstRb = inst->getDst()->getRightBound();
       }
-      for (unsigned int i = 0; i != G4_MAX_SRCS; i++) {
+      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
         if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion()) {
           splitVerify[inst].src[i] = inst->getSrc(i);
           splitVerify[inst].srcLb[i] = inst->getSrc(i)->getLeftBound();
@@ -108,7 +108,7 @@ void VarSplitPass::verify() {
                      "Found second def of parent of split variable");
       }
 
-      for (unsigned int i = 0; i != G4_MAX_SRCS; i++) {
+      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
         auto src = inst->getSrc(i);
         if (!src || !src->asSrcRegRegion())
           continue;
@@ -275,7 +275,7 @@ void VarSplitPass::findSplitCandidates() {
         }
       }
 
-      for (unsigned int s = 0; s != G4_MAX_SRCS; s++) {
+      for (unsigned int s = 0, numSrc = inst->getNumSrc(); s != numSrc; s++) {
         auto src = inst->getSrc(s);
         if (!src || !src->isSrcRegRegion() ||
             !src->asSrcRegRegion()->getTopDcl())
@@ -492,7 +492,7 @@ void VarSplitPass::split() {
 
     auto getOpndNum = [](G4_SrcRegRegion *src) {
       auto inst = src->getInst();
-      for (unsigned int i = 0; i != G4_MAX_SRCS; i++) {
+      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
         if (inst->getSrc(i) == src)
           return i;
       }

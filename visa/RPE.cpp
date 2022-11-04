@@ -75,7 +75,7 @@ void RPE::runBB(G4_BB *bb) {
       }
     }
 
-    for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+    for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
       auto src = inst->getSrc(i);
       G4_RegVar *regVar = nullptr;
 

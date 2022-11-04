@@ -4104,7 +4104,7 @@ void FlowGraph::markVarScope(std::vector<G4_BB *> &BBList, FuncInfo *func) {
         dcl->updateScopeID(scopeID);
       }
 
-      for (int i = 0; i < G4_MAX_SRCS; i++) {
+      for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         G4_Operand *src = inst->getSrc(i);
 
         if (src && !src->isAreg()) {

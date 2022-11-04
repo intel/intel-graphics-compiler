@@ -32,7 +32,7 @@ void Rematerialization::populateRefs() {
         }
       }
 
-      for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         auto srcOpnd = inst->getSrc(i);
         if (srcOpnd && srcOpnd->isSrcRegRegion()) {
           auto topdcl = srcOpnd->asSrcRegRegion()->getTopDcl();
@@ -343,7 +343,7 @@ bool Rematerialization::checkLocalWAR(G4_INST *defInst, G4_BB *bb,
       unsigned int curLb = currDst->getLeftBound();
       unsigned int curRb = currDst->getRightBound();
 
-      for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+      for (unsigned int i = 0, numSrc = defInst->getNumSrc(); i < numSrc; i++) {
         auto srcOpnd = defInst->getSrc(i);
         if (srcOpnd && !(srcOpnd->isNullReg()) && srcOpnd->isSrcRegRegion()) {
           G4_SrcRegRegion *srcRegion = srcOpnd->asSrcRegRegion();
@@ -705,7 +705,8 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
             return false;
 
           for (auto &def : (*topDclOpsIt).second.def) {
-            for (unsigned int i = 0; i != G4_MAX_SRCS; i++) {
+            for (unsigned int i = 0, numSrc = def.first->getNumSrc();
+                 i != numSrc; i++) {
               auto src = def.first->getSrc(i);
               if (!src)
                 continue;
@@ -825,7 +826,7 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
   auto dst = dstInst->getDst();
   bool isSampler = dstInst->isSplitSend() && dstInst->getMsgDesc()->isSampler();
 
-  for (unsigned int i = 0; i < G4_MAX_SRCS; i++) {
+  for (unsigned int i = 0, numSrc = dstInst->getNumSrc(); i < numSrc; i++) {
     G4_Operand *src = dstInst->getSrc(i);
     if (src && src->isSrcRegRegion()) {
       incNumRemat(src->asSrcRegRegion()->getTopDcl());
@@ -1056,7 +1057,8 @@ void Rematerialization::run() {
       cr0DefBB |= dst && dst->isCrReg() && (inst != firstProgInst);
 
       // Run remat if any src opnd is spilled
-      for (unsigned int opnd = 0; opnd < G4_MAX_SRCS; opnd++) {
+      for (unsigned int opnd = 0, numSrc = inst->getNumSrc(); opnd < numSrc;
+           opnd++) {
         auto src = inst->getSrc(opnd);
 
         if (src && src->isSrcRegRegion()) {
@@ -1081,7 +1083,8 @@ void Rematerialization::run() {
       }
 
       // High register pressure found at current instruction so try to remat
-      for (unsigned int opnd = 0; opnd < G4_MAX_SRCS; opnd++) {
+      for (unsigned int opnd = 0, numSrc = inst->getNumSrc(); opnd < numSrc;
+           opnd++) {
         auto src = inst->getSrc(opnd);
 
         if (src && src->isSrcRegRegion()) {

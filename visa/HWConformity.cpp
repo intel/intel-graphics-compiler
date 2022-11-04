@@ -6747,7 +6747,7 @@ G4_INST *HWConformity::splitInstWithByteDst(G4_INST *expand_op) {
 //      elements within a 'Width' cannot cross GRF boundaries.
 void HWConformity::fixSrcRegion(G4_INST *inst) {
   bool comprInst = isCompressedInst(inst);
-  for (int i = 0; i < G4_MAX_SRCS; i++) {
+  for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
     if (inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion() &&
         !inst->getSrc(i)->isNullReg()) {
       G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
