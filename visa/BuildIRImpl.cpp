@@ -507,9 +507,10 @@ FCPatchingInfo *IR_Builder::getFCPatchInfo() {
   return fcPatchInfo;
 }
 
+// We only keep variable/label names in debug mode or offline vISA executable.
 const char *IR_Builder::getNameString(Mem_Manager &mem, size_t size,
                                       const char *format, ...) {
-#ifdef _DEBUG
+#if defined(_DEBUG) || !defined(DLL_MODE)
   char *name = (char *)mem.alloc(size);
   va_list args;
   va_start(args, format);

@@ -797,7 +797,7 @@ unsigned G4_Kernel::getNumCalleeSaveRegs() const {
 // it easier to read IR dump
 //
 void G4_Kernel::renameAliasDeclares() {
-#if _DEBUG
+#if defined(_DEBUG) || !defined(DLL_MODE)
   for (auto dcl : Declares) {
     if (dcl->getAliasDeclare()) {
       uint32_t offset = 0;

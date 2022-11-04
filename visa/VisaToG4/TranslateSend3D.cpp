@@ -1222,22 +1222,6 @@ parameters. Since there is a limit on msg length.
 */
 static unsigned TmpSmplDstID = 0;
 
-// TODO: use IR_Builder::getNameString....
-const char *getNameString(Mem_Manager &mem, size_t size, const char *format,
-                          ...) {
-#ifdef _DEBUG
-  char *name = (char *)mem.alloc(size);
-  va_list args;
-  va_start(args, format);
-  std::vsnprintf(name, size, format, args);
-  va_end(args);
-  return name;
-#else
-  const char *name = "";
-  return const_cast<char *>(name);
-#endif
-}
-
 // split simd32/16 sampler messages into simd16/8 messages due to HW limitation.
 int IR_Builder::splitSampleInst(
     VISASampler3DSubOpCode actualop, bool pixelNullMask, bool cpsEnable,
