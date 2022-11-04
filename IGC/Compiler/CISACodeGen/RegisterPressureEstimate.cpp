@@ -57,6 +57,16 @@ namespace IGC
         m_pFunc = &F;
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
         WI = &getAnalysis<WIAnalysis>();
+
+        if (WI->isCompute())
+        {
+            OVERALL_PRESSURE_UPBOUND = 4 * 1024;
+        }
+        else
+        {
+            OVERALL_PRESSURE_UPBOUND = 512;
+        }
+
         m_available = buildLiveIntervals(true);
         return false;
     }

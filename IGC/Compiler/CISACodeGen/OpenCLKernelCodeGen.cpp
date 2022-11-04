@@ -3336,7 +3336,8 @@ namespace IGC
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
         int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
         bool noRetry = ((subGrpSize > 0 || pOutput->m_scratchSpaceUsedBySpills < 1000) &&
-            ctx->m_instrTypes.mayHaveIndirectOperands);
+            ctx->m_instrTypes.mayHaveIndirectOperands) &&
+            !ctx->m_FuncHasExpensiveLoops[pKernel->getLLVMFunction()];
         float threshold = 0.0f;
         if (ctx->platform.getGRFSize() >= 64)
         {
