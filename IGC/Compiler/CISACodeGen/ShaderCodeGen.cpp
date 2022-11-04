@@ -211,8 +211,10 @@ void AddAnalysisPasses(CodeGenContext& ctx, IGCPassManager& mpm)
 
 
 
+    // To simplify compiler going forward, skip memopt2 for 3D compute on DG2+
     if (IGC_IS_FLAG_DISABLED(DisableMemOpt2) &&
-        (ctx.type == ShaderType::COMPUTE_SHADER || (ctx.m_DriverInfo.WAEnableMemOpt2ForOCL())) &&
+        ((ctx.type == ShaderType::COMPUTE_SHADER && !ctx.platform.isCoreChildOf(IGFX_XE_HPG_CORE)) ||
+         (ctx.m_DriverInfo.WAEnableMemOpt2ForOCL())) &&
         !isOptDisabled)
     {
         mpm.add(createMemOpt2Pass(16));
