@@ -24,28 +24,40 @@ SPDX-License-Identifier: MIT
 #define strdup _strdup
 #endif
 
-#ifdef _MSC_VER
-// MSVC has different semantics with vsnprintf given NULL.
-#define VSCPRINTF(PAT, VA) _vscprintf(PAT, VA)
-#else
-// The rest of the world can use this form of vsnprintf
-#define VSCPRINTF(PAT, VA) vsnprintf(NULL, 0, PAT, VA)
-#endif
-#ifdef _MSC_VER
-#define VSPRINTF(B, BLEN, ...) vsprintf_s(B, BLEN, __VA_ARGS__)
-#else
-// Linux, MinGW, and the rest of the world choose this.
-// Warning, although MinGW also has vsprintf_s, it's signature is
-// inconsistent with the MSVC version (has extra param).
-// Thankfully, they don't whine about bogus security issues and we
-// can use the old version.
-#define VSPRINTF(B, BLEN, ...) vsnprintf(B, BLEN, __VA_ARGS__)
-#endif
 
 #define IGA_MODEL_STRING(X) X
 
 
 namespace iga {
+// enables one to write:
+//
+// iga::format("the hex value is 0x", hex(value, 4), " ...");
+//                                    ^^^
+// omits the leading "0x"
+struct hex {
+  uint64_t value;
+  short cols;
+  hex(uint64_t _value, int _cols = 0) : value(_value), cols((short)_cols) {}
+};
+} // iga::
+
+std::ostream &operator<<(std::ostream &os, iga::hex);
+
+namespace iga {
+///////////////////////////////////////////////////////////////////////////
+//
+size_t stringLength(const char *);
+
+template <size_t N> size_t stringLength(const char str[N]) {
+#if _WIN32
+  return ::strlen_s(str, N);
+#else
+  return ::strlen(str);
+#endif
+}
+
+
+
 ///////////////////////////////////////////////////////////////////////////
 struct ModelString {
   const char *text;
@@ -75,29 +87,7 @@ static inline void formatTo(std::ostream &os, Ts... ts) {
   iga_format_to_helper(os, ts...);
 }
 
-// enables one to write:
-//
-// iga::format("the hex value is 0x", hex(value, 4), " ...");
-//                                    ^^^
-// omits the leading "0x"
-struct hex {
-  uint64_t value;
-  short cols;
-  hex(uint64_t _value, int _cols = 0) : value(_value), cols((short)_cols) {}
-};
-
 ///////////////////////////////////////////////////////////////////////////
-// takes a printf-style pattern and converts it to a string
-std::string formatF(const char *pat, ...);
-std::string vformatF(const char *pat, va_list &va);
-// emits a printf-style string to the given output stream
-// returns the nubmer of characters written
-size_t formatToF(std::ostream &os, const char *patt, ...);
-size_t vformatToF(std::ostream &os, const char *patt, va_list &va);
-// emits to a buffer of a given size
-// returns the result of vsnprintf (or the equivalent) ... num chars needed
-size_t formatToF(char *buf, size_t bufLen, const char *patt, ...);
-size_t vformatToF(char *buf, size_t bufLen, const char *patt, va_list &va);
 
 // trim trailing whitespace
 std::string trimTrailingWs(const std::string &s);
@@ -108,6 +98,12 @@ std::vector<std::string> toLines(const std::string &s);
 // copies the contents of 'os' into buf (safely)
 // returns the required string size
 size_t copyOut(char *buf, size_t bufCap, std::iostream &ios);
+//
+// Similar to 'copyOut' but for C-strings.
+// Copies up to (strlen(src) + 1) characters out (i.e. includes the NUL).
+// This will truncate the string and always include an NUL character.
+void copyOutString(
+  char *dst, size_t dstLen, size_t *nWritten, const char *src);
 
 // formats a value into binary padding with 0's for a given width w
 // (the value of 0 auto computes the minimal width)
@@ -250,7 +246,5 @@ template <typename T> std::string PadL(size_t k, const T &t) {
   return ss.str();
 }
 } // namespace iga
-
-std::ostream &operator<<(std::ostream &os, iga::hex);
 
 #endif // IGA_STRINGS_HPP

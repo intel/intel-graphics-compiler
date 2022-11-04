@@ -11,9 +11,6 @@ SPDX-License-Identifier: MIT
 #define NOMINMAX // omit min()/max() macros (favor std::min/std::max)
 #endif
 #include <Windows.h>
-#define SNPRINTF(dst, size, ...) sprintf_s((dst), (size), __VA_ARGS__)
-#else
-#define SNPRINTF(dst, size, ...) snprintf((dst), (size), __VA_ARGS__)
 #endif
 
 #if !defined(_WIN32)
@@ -26,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 
 #include "Timer.hpp"
+#include "../strings.hpp"
 
 // actually do real timing
 #ifdef _MSC_VER
@@ -101,7 +99,7 @@ void initIGATimer() {
 }
 
 void setIGAKernelName(const char *name) {
-  SNPRINTF(kernelAsmName, 256, "%s", name);
+  iga::copyOutString(kernelAsmName, sizeof(kernelAsmName), nullptr, name);
 }
 
 int createIGANewTimer(const char *name) {

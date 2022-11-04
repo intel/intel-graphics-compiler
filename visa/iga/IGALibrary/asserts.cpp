@@ -54,7 +54,7 @@ void iga::AssertFail(const char *file, int line, const char *expr,
   // prune ....\IGALibrary\Models\Models.cpp
   // down to
   //   IGALibrary\Models\Models.cpp
-  const char *filesfx = file + strlen(file) - 1;
+  const char *filesfx = file + iga::stringLength(file) - 1;
   while (filesfx > file) {
     if (strncmp(filesfx, "IGA/", 4) == 0 || strncmp(filesfx, "IGA\\", 4) == 0) {
       break;

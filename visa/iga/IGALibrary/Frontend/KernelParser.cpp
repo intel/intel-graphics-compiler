@@ -3722,7 +3722,7 @@ void KernelParser::ParseLdStOpControls(Loc mneLoc,
     auto lookingAt = [&](const char *str) { return dt.find(str, ix) == ix; };
     auto consumeIf = [&](const char *str) {
       if (lookingAt(str)) {
-        skip(strlen(str));
+        skip(iga::stringLength(str));
         return true;
       }
       return false;

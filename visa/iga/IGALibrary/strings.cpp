@@ -6,86 +6,54 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "strings.hpp"
 #include "bits.hpp"
+#include "strings.hpp"
+#include "common/secure_mem.h"
+#include "common/secure_string.h"
 
 #include <algorithm>
 #include <cstring>
 #include <iomanip>
 #include <sstream>
+#if _WIN32
+#include <string_view>
+#endif
 
 using namespace iga;
 
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX // omit min()/max() macros (favor std::min/std::max)
-#endif
-#include <Windows.h>
-#include <malloc.h> /* for alloca */
+#endif // NOMINMAX
+#endif // _WIN32
+
+
+void iga::copyOutString(
+  char *dst, size_t dstLen, size_t *nWritten, const char *src)
+{
+    size_t srcLen = iga::stringLength(src) + 1;
+    size_t cpLen = dstLen < srcLen ? dstLen : srcLen;
+    if (dst != nullptr) {
+      memcpy_s(dst, cpLen, src, cpLen);
+      dst[cpLen - 1] = 0;
+    }
+    if (nWritten)
+      *nWritten = cpLen;
+}
+
+
+size_t iga::stringLength(const char *s)
+{
+#if _WIN32
+  return std::string_view(s).size();
 #else
-#include <alloca.h> /* for alloca */
+  return ::strlen(s);
 #endif
+}
 
 std::ostream &operator<<(std::ostream &os, hex h) {
   os << fmtHexDigits(h.value, h.cols);
   return os;
-}
-
-std::string iga::formatF(const char *pat, ...) {
-  va_list va;
-  va_start(va, pat);
-  std::string s = vformatF(pat, va);
-  va_end(va);
-  return s;
-}
-
-std::string iga::vformatF(const char *pat, va_list &va) {
-  va_list copy;
-  va_copy(copy, va);
-  size_t ebuflen = VSCPRINTF(pat, copy) + 1;
-  va_end(copy);
-
-  char *buf = (char *)alloca(ebuflen);
-  VSPRINTF(buf, ebuflen, pat, va);
-  buf[ebuflen - 1] = 0;
-
-  return buf;
-}
-
-size_t iga::formatToF(std::ostream &out, const char *pat, ...) {
-  va_list va;
-  va_start(va, pat);
-  size_t s = vformatToF(out, pat, va);
-  va_end(va);
-  return s;
-}
-
-size_t iga::vformatToF(std::ostream &out, const char *pat, va_list &va) {
-  va_list copy;
-  va_copy(copy, va);
-  size_t ebuflen = VSCPRINTF(pat, copy) + 1;
-  va_end(copy);
-
-  char *buf = (char *)alloca(ebuflen);
-  VSPRINTF(buf, ebuflen, pat, va);
-  buf[ebuflen - 1] = 0;
-
-  size_t initOff = (size_t)out.tellp();
-  out << buf;
-  return (size_t)out.tellp() - initOff;
-}
-
-size_t iga::formatToF(char *buf, size_t bufLen, const char *pat, ...) {
-  std::stringstream ss;
-  va_list va;
-  va_start(va, pat);
-  vformatToF(ss, pat, va);
-  va_end(va);
-  return copyOut(buf, bufLen, ss);
-}
-
-size_t iga::vformatToF(char *buf, size_t bufLen, const char *pat, va_list &va) {
-  return VSPRINTF(buf, bufLen, pat, va);
 }
 
 std::string iga::trimTrailingWs(const std::string &s) {

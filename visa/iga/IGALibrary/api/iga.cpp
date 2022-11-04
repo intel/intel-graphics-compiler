@@ -881,7 +881,7 @@ iga_status_t iga_diagnostic_get_text_extent(const iga_diagnostic_t *d,
 // same as above, but for a string
 #define IGA_COPY_OUT_STR(DST, DST_LEN_PTR, SRC)                                \
   do {                                                                         \
-    size_t SRC_LEN = strlen(SRC) + 1;                                          \
+    size_t SRC_LEN = iga::stringLength(SRC) + 1;                               \
     if ((DST) != nullptr) {                                                    \
       size_t _CPLEN = *(DST_LEN_PTR) < (SRC_LEN) ? *(DST_LEN_PTR) : (SRC_LEN); \
       memcpy_s((DST), _CPLEN * sizeof(*(DST)), (SRC),                          \
@@ -893,15 +893,8 @@ iga_status_t iga_diagnostic_get_text_extent(const iga_diagnostic_t *d,
 
 // In the opaque pointer returned, we flip some top bits.
 // Should the user clobber their stack or accidentially send this pointer
-// of to be written, this will hopefully trap (assuming we are in user space)
-// immediately rather than corrupting our internal data structures.
-// x86 takes either 0x80000000 or 0xC000000 up to 0xFFFFFFFF as system space
-//
-// TODO: another method would be to store this as a relative address...
-// relative to something near the instspec....
-// (or store as Platform x Op)
-// That would translate to fairly small integer that should be in the
-// no access range (near 0)
+// off to be written, this will hopefully trap immediately rather than
+// internal data structures.
 static iga_opspec_t opspec_to_handle(const OpSpec *os) {
   const uintptr_t TOP_BIT =
       (sizeof(void *) == 4) ? 0xC0000000 : 0x8000000000000000;

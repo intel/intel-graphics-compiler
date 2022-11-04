@@ -121,7 +121,7 @@ void Parser::ConsumeOrFailAfterPrev(Lexeme lxm, const char *msg) {
 //////////////////////////////////////////////////////////////////////
 // IDENTIFIER and RAW STRING MANIPULATION
 bool Parser::PrefixAtEq(size_t off, const char *pfx) const {
-  size_t slen = strlen(pfx);
+  size_t slen = stringLength(pfx);
   if (off + slen > m_lexer.GetSource().size())
     return false;
   return strncmp(pfx, &m_lexer.GetSource()[off], slen) == 0;
