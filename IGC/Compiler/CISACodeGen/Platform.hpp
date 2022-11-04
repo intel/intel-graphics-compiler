@@ -1107,7 +1107,7 @@ bool hasCorrectlyRoundedMacros() const {
 }
 
 // Has 64bit support but use 32bit for perf reasons
-bool preferFP32Emu() const {
+bool preferFP32IntDivRemEmu() const {
     return m_platformInfo.eProductFamily == IGFX_METEORLAKE;
 }
 
