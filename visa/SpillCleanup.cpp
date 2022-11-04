@@ -904,6 +904,8 @@ void CoalesceSpillFills::fills() {
   // Iterate over all BBs, find fills that are closeby and coalesce
   // a bunch of them. Insert movs as required.
   for (auto bb : kernel.fg) {
+    if (!gra.hasSpillCodeInBB(bb))
+      continue;
     auto endIter = bb->end();
     std::list<INST_LIST_ITER> fillsToCoalesce;
     std::list<INST_LIST_ITER> spills;
@@ -1045,6 +1047,8 @@ void CoalesceSpillFills::spills() {
   // Iterate over all BBs, find fills that are closeby and coalesce
   // a bunch of them. Insert movs as required.
   for (auto bb : kernel.fg) {
+    if (!gra.hasSpillCodeInBB(bb))
+      continue;
     auto endIter = bb->end();
     std::list<INST_LIST_ITER> spillsToCoalesce;
     INST_LIST_ITER startIter = bb->begin();
@@ -1498,6 +1502,8 @@ void CoalesceSpillFills::spillFillCleanup() {
   std::map<unsigned int, G4_INST *> writesPerOffset;
   std::set<G4_Declare *> defs;
   for (auto bb : kernel.fg) {
+    if (!gra.hasSpillCodeInBB(bb))
+      continue;
     auto startIt = bb->begin();
     auto endIt = bb->end();
     const auto &splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);

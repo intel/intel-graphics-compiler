@@ -3437,6 +3437,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
   curInst = (*inst_it);
   INST_LIST::iterator next_inst_it = ++inst_it;
   inst_it--;
+  bool BBhasSpillCode = false;
 
   // Check whether spill operand points to any spilled range
   for (const LiveRange *lr : *spilledLRs_) {
@@ -3452,6 +3453,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
                  "Fill operand is neither a source nor dst region");
 
     if (var && pointsToAnalysis.isPresentInPointsTo(var, lr->getVar())) {
+      BBhasSpillCode = true;
       unsigned int numrows = lr->getDcl()->getNumRows();
       G4_Declare *temp = getOrCreateAddrSpillFillDcl(var, lr->getDcl(), kernel);
 
@@ -3635,6 +3637,9 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
       }
     }
   }
+
+  if (BBhasSpillCode)
+    gra.addSpillCodeInBB(bb);
 }
 
 // Insert spill and fill code for indirect GRF accesses
@@ -4154,6 +4159,7 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
   for (BB_LIST_ITER it = fg.begin(); it != fg.end(); it++) {
     bbId_ = (*it)->getId();
     INST_LIST::iterator jt = (*it)->begin();
+    bool BBhasSpillCode = false;
 
     while (jt != (*it)->end()) {
       INST_LIST::iterator kt = jt;
@@ -4193,6 +4199,7 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
               continue;
             }
             insertSpillRangeCode(jt, (*it));
+            BBhasSpillCode = true;
           } else {
             assert(0);
           }
@@ -4255,8 +4262,11 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
               // however, since it spills in later RA iteration and its
               // coalesced size > 2, we should handle it like send.
               insertSendFillRangeCode(srcRR, jt, *it);
-            } else if (getRFType(regVar) == G4_GRF)
+              BBhasSpillCode = true;
+            } else if (getRFType(regVar) == G4_GRF) {
               insertFillGRFRangeCode(srcRR, jt, *it);
+              BBhasSpillCode = true;
+            }
             else
               assert(0);
           }
@@ -4269,6 +4279,9 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
 
       jt = kt;
     }
+
+    if (BBhasSpillCode)
+      gra.addSpillCodeInBB(*it);
   }
 
   bbId_ = UINT_MAX;

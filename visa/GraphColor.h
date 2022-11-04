@@ -832,6 +832,9 @@ private:
   // new temps for each reference of spilled address/flag decls
   std::unordered_set<G4_Declare *> addrFlagSpillDcls;
 
+  // track spill/fill code in basic blocks
+  std::unordered_set<G4_BB *> BBsWithSpillCode;
+
   // store iteration number for GRA loop
   unsigned iterNo = 0;
 
@@ -951,6 +954,12 @@ public:
   }
 
   void addAddrFlagSpillDcl(G4_Declare *dcl) { addrFlagSpillDcls.insert(dcl); }
+
+  bool hasSpillCodeInBB(G4_BB *bb) const {
+    return BBsWithSpillCode.find(bb) != BBsWithSpillCode.end();
+  }
+
+  void addSpillCodeInBB(G4_BB *bb) { BBsWithSpillCode.insert(bb); }
 
   void addUndefinedDcl(G4_Declare *dcl) { UndeclaredVars.push_back(dcl); }
 
