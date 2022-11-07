@@ -139,8 +139,15 @@ void ResolveOCLRaytracingBuiltins::defineOpaqueTypes(){
 
     if (!rayQueryTy) return;
 
-    StructType* rtFenceTy = IGCLLVM::getTypeByName(*M, "struct.rtfence_t");
-    StructType* rtGlobalsTy = IGCLLVM::getTypeByName(*M, "struct.rtglobals_t");
+    auto getOrCreateOpaqueType = [](Module* M, const std::string& Name) {
+        StructType* opaqueType = IGCLLVM::getTypeByName(*M, Name);
+        if (!opaqueType)
+            opaqueType = StructType::create(M->getContext(), Name);
+        return opaqueType;
+    };
+
+    StructType* rtFenceTy = getOrCreateOpaqueType(M, "struct.rtfence_t");
+    StructType* rtGlobalsTy = getOrCreateOpaqueType(M, "struct.rtglobals_t");
 
     IGC_ASSERT(rtFenceTy && rtGlobalsTy);
 
