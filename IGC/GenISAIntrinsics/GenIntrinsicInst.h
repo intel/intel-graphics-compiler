@@ -294,16 +294,24 @@ public:
         }
     }
     inline unsigned int getTextureIndex() const { return getNumOperands() - 5; }
-    inline unsigned int getOffsetIndex(unsigned int i) const
+    inline unsigned int getImmediateOffsetsIndex() const
     {
-        return 5 + i;
+        return 5;
     }
-
     inline Value* getTextureValue() const { return getOperand(getTextureIndex()); }
     inline Value* getCoordinateValue(unsigned int i) const { return getOperand(getCoordinateIndex(i)); }
     inline void   setCoordinateValue(unsigned int i, Value* val) { setOperand(getCoordinateIndex(i), val); }
-    inline Value* getOffsetValue(unsigned int i) const { return getOperand(getOffsetIndex(i)); }
-    inline void   setOffsetValue(unsigned int i, Value* val) { setOperand(getOffsetIndex(i), val); }
+
+    inline Value* getImmediateOffsetsValue(unsigned int coordIndex) const
+    {
+        unsigned int operandCoordIndex = getImmediateOffsetsIndex() + coordIndex;
+        return getOperand(operandCoordIndex);
+    }
+    inline void setImmediateOffsetsValue(unsigned int coordIndex, Value* val)
+    {
+        unsigned int operandCoordIndex = getImmediateOffsetsIndex() + coordIndex;
+        setOperand(operandCoordIndex, val);
+    }
 
     static inline bool classof(const GenIntrinsicInst *I) {
         switch(I->getIntrinsicID()) {
