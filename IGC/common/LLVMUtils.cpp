@@ -403,27 +403,44 @@ static bool tryParsePassNames(PassDisableConfig& pdc, const std::string& Token)
 
 static void parseShaderPassDisableFlag(PassDisableConfig& pdc)
 {
-    std::string passesToSkip = std::string(IGC_GET_REGKEYSTRING(ShaderPassDisable));
-    std::cerr << "Your input to ShaderPassDisable: " << passesToSkip << std::endl;
+    unsigned int passToSkip = IGC_GET_FLAG_VALUE(ShaderPassDisable);
 
-    std::string Token;
-    std::istringstream passesToSkipAsStringStream(passesToSkip);
-    // Split to Tokens
-    while (std::getline(passesToSkipAsStringStream, Token, ';'))
+    // When disabling a single pass (eg. IGC_ShaderPassDisable=94) the number
+    // will be parsed as ASCII char by IGC_GET_REGKEYSTRING.
+    // In this case IGC_GET_FLAG_VALUE will return the char value.
+    // If ShaderPassDisable was set to a string, IGC_GET_FLAG_VALUE will return an address.
+    // We compare to 0xFFFF to naively check for number/string.
+    if (passToSkip < 0xFFFF)
     {
-        // Parse case for Token: Pass number
-        if (tryParsePassNumber(pdc, Token))
-            continue;
+        std::cerr << "Your input to ShaderPassDisable: " << passToSkip << std::endl;
+        std::cerr << "You want to skip pass ID " << passToSkip << std::endl;
+        pdc.skipCommands.push_back(SkipCommand(passToSkip));
+    }
+    // Treat it as a string otherwise
+    else
+    {
+        std::string passesToSkip = std::string(IGC_GET_REGKEYSTRING(ShaderPassDisable));
+        std::cerr << "Your input to ShaderPassDisable: " << passesToSkip << std::endl;
 
-        // Parse cases for Token: Range AND Open range
-        if (tryParsePassRange(pdc, Token))
-            continue;
+        std::string Token;
+        std::istringstream passesToSkipAsStringStream(passesToSkip);
+        // Split to Tokens
+        while (std::getline(passesToSkipAsStringStream, Token, ';'))
+        {
+            // Parse case for Token: Pass number
+            if (tryParsePassNumber(pdc, Token))
+                continue;
 
-        // Parse cases for Token: Pass name AND Specific pass occurrence AND
-        // Specific pass occurrences range AND
-        // Specific pass occurrences open range
-        if (tryParsePassNames(pdc, Token))
-            continue;
+            // Parse cases for Token: Range AND Open range
+            if (tryParsePassRange(pdc, Token))
+                continue;
+
+            // Parse cases for Token: Pass name AND Specific pass occurrence AND
+            // Specific pass occurrences range AND
+            // Specific pass occurrences open range
+            if (tryParsePassNames(pdc, Token))
+                continue;
+        }
     }
 }
 
