@@ -13002,8 +13002,8 @@ void DynPerfModel::run() {
     }
 
     sprintf_s(LocalBuffer, sizeof(LocalBuffer),
-              "Loop %d @ level %d: %d total, %d fill, %d spill\n", CurLoop->id,
-              LoopLevel, TotalCount, FillCount, SpillCount);
+              "Loop %d @ level %d: %d total, %d fill, %d spill, %d subroutine calls\n", CurLoop->id,
+              LoopLevel, TotalCount, FillCount, SpillCount, CurLoop->subCalls);
     Buffer += std::string(LocalBuffer);
 
     for (auto Child : CurLoop->immNested)

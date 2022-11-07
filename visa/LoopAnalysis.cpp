@@ -469,9 +469,8 @@ G4_BB *LoopDetection::getPreheader(Loop *loop) {
 
   // for a BB to be valid pre-header, it needs to fulfill following criteria:
   // 1. BB should be a predecessor of loop header,
-  // 2. BB should dominate header
-  // 3. BB's only successor should be loop header
-  // 4. Loop header should've no other predecessor outside the loop
+  // 2. BB's only successor should be loop header
+  // 3. Loop header should've no other predecessor outside the loop
 
   G4_BB *enteringNode = nullptr;
   bool found = false;
@@ -483,11 +482,6 @@ G4_BB *LoopDetection::getPreheader(Loop *loop) {
       enteringNode = pred;
       found = true;
     } else {
-      found = false;
-      break;
-    }
-
-    if (!enteringNode->dominates(header)) {
       found = false;
       break;
     }
@@ -713,40 +707,46 @@ void LoopDetection::populateLoop(BackEdge &backEdge) {
   auto src = const_cast<G4_BB *>(backEdge.first);
   auto dst = const_cast<G4_BB *>(backEdge.second);
 
-  if (fg.getImmDominator().dominates(dst, src)) {
-    // this is a natural loop back edge. populate all bbs in loop.
-    Loop newLoop(backEdge);
-    newLoop.id = allLoops.size() + 1;
+  // this is a natural loop back edge. populate all bbs in loop.
+  Loop newLoop(backEdge);
+  newLoop.id = allLoops.size() + 1;
+  newLoop.addBBToLoop(src);
 
-    newLoop.addBBToLoop(src);
-    newLoop.addBBToLoop(dst);
+  std::stack<G4_BB *> traversal;
+  traversal.push(src);
+  while (!traversal.empty()) {
+    auto bb = traversal.top();
+    traversal.pop();
 
-    std::stack<G4_BB *> traversal;
-    traversal.push(src);
-    while (!traversal.empty()) {
-      auto bb = traversal.top();
-      traversal.pop();
+    if ((bb == dst) || (bb->getBBType() & G4_BB_INIT_TYPE)) {
+    } else if (bb->getBBType() & G4_BB_RETURN_TYPE) {
+      auto callBB = bb->BBBeforeCall();
+      if (!newLoop.contains(callBB)) {
+        newLoop.addBBToLoop(callBB);
+        traversal.push(callBB);
+        newLoop.subCalls++;
+      }
+    } else {
+      // add bb's preds to loop.
 
-      // check whether bb's preds are dominated by loop header.
-      // if yes, add them to traversal.
       for (auto predIt = bb->Preds.begin(); predIt != bb->Preds.end();
            ++predIt) {
         auto pred = (*predIt);
-        // pred is loop header, which is already added to list of loop BBs
-        if (pred == dst)
-          continue;
+        if (pred == kernel.fg.getEntryBB()) {
+          // irreducible graph, return without adding it to loop struct
+          return;
+        }
 
-        if (dst->dominates(pred) && !newLoop.contains(pred)) {
+        if (!newLoop.contains(pred)) {
           // pred is part of loop
           newLoop.addBBToLoop(pred);
           traversal.push(pred);
         }
       }
     }
-
-    (void)newLoop.getLoopExits();
-    allLoops.emplace_back(newLoop);
   }
+  (void)newLoop.getLoopExits();
+  allLoops.emplace_back(newLoop);
 }
 
 void LoopDetection::computeLoopTree() {
@@ -933,7 +933,8 @@ void Loop::dump(std::ostream &os) {
   os << " BE: {BB" << be.first->getId() << " -> BB" << be.second->getId()
      << "}, "
      << "PreHeader: " << labelStr << ", "
-     << "Loop exits: " << exitBBs << "\n";
+     << "Loop exits: " << exitBBs << ", "
+     << "#Subroutine calls: " << subCalls << "\n ";
 
   for (auto &nested : immNested) {
     nested->dump(os);

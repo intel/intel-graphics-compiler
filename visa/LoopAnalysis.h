@@ -129,6 +129,7 @@ public:
   Loop *parent = nullptr;
   G4_BB *preHeader = nullptr;
   std::vector<Loop *> immNested;
+  unsigned int subCalls = 0;
 
   void addBBToLoopHierarchy(G4_BB *bb);
   void addBBToLoop(G4_BB *bb);
@@ -149,6 +150,7 @@ public:
   unsigned int getBBSize() { return BBs.size(); }
 
   G4_BB *getHeader() { return be.second; }
+  G4_BB *backEdgeSrc() { return be.first; }
 
   bool fullSubset(Loop *other);
   bool fullSuperset(Loop *other);

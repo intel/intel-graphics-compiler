@@ -1463,6 +1463,10 @@ std::vector<Loop *> LoopVarSplit::getLoopsToSplitAround(G4_Declare *dcl) {
     if (!loop->preHeader)
       continue;
 
+    // unsafe to split if loop has subroutine calls
+    if (loop->subCalls)
+      continue;
+
     bool dontSplit = false;
     for (auto splitLoop : loopsToSplitAround) {
       if (loop->fullSubset(splitLoop) || loop->fullSuperset(splitLoop)) {

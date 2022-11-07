@@ -46,6 +46,7 @@ private:
   unsigned callCount; // the number of call sites
 
   std::vector<G4_BB *> BBList;   // the list of BBs
+  std::unordered_set<G4_BB *> BBSet; // for fast lookup
   std::list<FuncInfo *> callees; // the list of callees
   unsigned scopeID;              // the function scope ID
 
@@ -80,6 +81,23 @@ public:
 
   void addCallee(FuncInfo *fn) { callees.push_back(fn); }
   std::list<FuncInfo *> &getCallees() { return callees; }
+
+  bool contains(G4_BB *bb) {
+    if (BBSet.size() != BBList.size()) {
+      BBSet.clear();
+      std::for_each(BBList.begin(), BBList.end(),
+                    [&](G4_BB *curBB) { BBSet.insert(curBB); });
+    }
+#ifdef _DEBUG
+    // verify both containers are in sync
+    for (auto subBB : BBList) {
+      MUST_BE_TRUE(BBSet.count(subBB) == 1, "out of sync containers");
+    }
+#endif
+
+    MUST_BE_TRUE(BBSet.size() == BBList.size(), "size mismatch");
+    return BBSet.count(bb) > 0;
+  }
 
   void addBB(G4_BB *bb) { BBList.push_back(bb); }
   std::vector<G4_BB *> &getBBList() { return BBList; }
