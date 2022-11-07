@@ -221,7 +221,7 @@ DEF_VISA_OPTION(vISA_VerifyRA, ET_BOOL, "-verifyra", UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalBankConflictReduction, ET_BOOL, "-nolocalBCR", UNUSED,
                 true)
 DEF_VISA_OPTION(vISA_FailSafeRA, ET_BOOL, "-nofailsafera", UNUSED, true)
-DEF_VISA_OPTION(vISA_NewFailSafeRA, ET_BOOL, "-newfailsafera", UNUSED, false)
+DEF_VISA_OPTION(vISA_NewFailSafeRA, ET_BOOL, "-oldfailsafera", UNUSED, true)
 DEF_VISA_OPTION(vISA_FlagSpillCodeCleanup, ET_BOOL, "-disableFlagSpillClean",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_GRFSpillCodeCleanup, ET_BOOL, "-spillCleanup", UNUSED,
