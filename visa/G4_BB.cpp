@@ -226,9 +226,8 @@ void G4_BB::emitBasicInstructionComment(std::ostream &output,
     }
 
     if (getParent().getKernel()->getOption(vISA_DumpGenOffset) &&
-        inst->getBinInst()) {
+        inst->getGenOffset() != UNDEFINED_GEN_OFFSET)
       output << ":%" << inst->getGenOffset();
-    }
 
     if (inst->getBuilder().getPlatformGeneration() < PlatformGen::XE) {
       emitBankConflict(output, inst);

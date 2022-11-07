@@ -734,7 +734,7 @@ public:
 
   inline bool compactOneInstruction(G4_INST *inst) {
     G4_opcode op = inst->opcode();
-    BinInst *mybin = inst->getBinInst();
+    BinInst *mybin = getBinInst(inst);
     if (op == G4_if || op == G4_else || op == G4_endif || op == G4_while ||
         op == G4_halt || op == G4_break || op == G4_cont ||
         /* GetComprCtrl(mybin) == COMPR_CTRL_COMPRESSED  || */

@@ -1207,6 +1207,9 @@ protected:
   std::unordered_map<G4_Predicate *, G4_Align16_Predicate_Control>
       align16PredCtrl;
 
+  // Map an instruction to its binary encoding.
+  std::unordered_map<G4_INST *, BinInst *> instToBinInstMap;
+
 public:
   // all platform specific bit locations are initialized here
   static void InitPlatform() {
@@ -1268,6 +1271,14 @@ public:
     return iter == align16PredCtrl.end() ? PRED_ALIGN16_DEFAULT : iter->second;
   }
 
+  void setBinInst(G4_INST *inst, BinInst *binInst) {
+    instToBinInstMap[inst] = binInst;
+  }
+  BinInst *getBinInst(G4_INST *inst) const {
+    auto iter = instToBinInstMap.find(inst);
+    return iter == instToBinInstMap.end() ? nullptr : iter->second;
+  }
+
   // Should use G9HDL::EU_OPCODE as return type. But Forward declaration of enum
   // fails for linux, so use uint32_t as WA for now.
   uint32_t getEUOpcode(G4_opcode g4opc); // defined in BinaryEncodingCNL.cpp
@@ -1284,7 +1295,7 @@ public:
   static inline unsigned short GetElementSizeValue(G4_Operand *opnd);
   static inline AddrMode GetDstAddrMode(G4_DstRegRegion *dst);
   static inline AddrMode GetSrcAddrMode(G4_Operand *src);
-  static inline void mark3Src(G4_INST *inst);
+  static inline void mark3Src(G4_INST *inst, BinaryEncodingBase &encoder);
   static void dumpOptReport(int totalInst, int numCompactedInst,
                             int numCompacted3SrcInst, G4_Kernel &kernel);
   static inline bool hasLabelString(G4_INST *inst);
@@ -1382,7 +1393,7 @@ inline void BinaryEncodingBase::BuildLabelMap(G4_INST *inst,
   if (inst->isLabel()) {
     this->LabelMap[inst->getLabel()] = globalHalfInstNum;
   } else {
-    BinInst *bin = inst->getBinInst();
+    BinInst *bin = getBinInst(inst);
 
     localInstNum++;
     globalInstNum++;
@@ -1414,8 +1425,9 @@ inline bool EncodingHelper::hasLabelString(G4_INST *inst) {
 }
 
 //////////////////////////////////////////////////////////////////////////
-inline void EncodingHelper::mark3Src(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+inline void EncodingHelper::mark3Src(G4_INST *inst,
+                                     BinaryEncodingBase &encoder) {
+  BinInst *mybin = encoder.getBinInst(inst);
 
   if (inst->getNumSrc() == 3 && !inst->isSend()) {
     mybin->SetIs3Src(true);
@@ -1993,7 +2005,7 @@ static struct _CompactControlTable_ {
 namespace vISA {
 inline bool BinaryEncodingBase::compactOneInstruction(G4_INST *inst) {
   G4_opcode op = inst->opcode();
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   if (op == G4_if || op == G4_else || op == G4_endif || op == G4_while ||
       op == G4_halt || op == G4_break || op == G4_cont ||
       /* GetComprCtrl(mybin) == COMPR_CTRL_COMPRESSED  || */
@@ -2019,7 +2031,7 @@ inline bool BinaryEncodingBase::compactOneInstruction(G4_INST *inst) {
 }
 
 inline bool BinaryEncodingBase::BDWcompactOneInstruction3Src(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
 
   // Check control table...
   uint32_t controlIndex;
@@ -2077,7 +2089,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction3Src(G4_INST *inst) {
 }
 
 inline bool BinaryEncodingBase::CHVcompactOneInstruction3Src(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
 
   // Check control table...
   uint32_t controlIndex;
@@ -2133,7 +2145,7 @@ inline bool BinaryEncodingBase::CHVcompactOneInstruction3Src(G4_INST *inst) {
 }
 
 inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
 
   if (mybin->GetIs3Src()) {
     if (inst->getPlatform() == GENX_BDW) {
@@ -2309,7 +2321,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
 }
 
 inline bool BinaryEncodingBase::uncompactOneInstruction(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   // Validate control index...
   unsigned long controlIndex = GetCmpControlIndex(mybin);
   if (COMPACT_TABLE_SIZE <= controlIndex) {

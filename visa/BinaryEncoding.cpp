@@ -55,19 +55,19 @@ inline void SetOpCode(BinInst *mybin, uint32_t value) {
 }
 
 inline void BinaryEncoding::EncodeOpCode(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_opcode opcode = inst->opcode();
   uint32_t euopc = getEUOpcode(opcode);
   SetOpCode(mybin, euopc);
 }
 
 inline void BinaryEncoding::EncodeExecSize(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   mybin->SetBits(bitsExecSize_0, bitsExecSize_1, GetEncodeExecSize(inst));
 }
 
 inline void BinaryEncoding::EncodeAccessMode(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
 
   if (inst->isAligned1Inst()) {
     mybin->SetBits(bitsAccessMode_0, bitsAccessMode_1, ACCESS_MODE_ALIGN1);
@@ -84,7 +84,7 @@ static const unsigned PREDICATE_STATE[3] = {
 };
 
 inline void BinaryEncoding::EncodeFlagRegPredicate(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_Predicate *pred = inst->getPredicate();
   uint32_t flagState = 0, flagSwizzle;
   if (pred) {
@@ -119,7 +119,7 @@ inline void BinaryEncoding::EncodeFlagReg(G4_INST *inst) {
   bool flagRegNumValid = false;
   unsigned FlagRegNumValue = 0;
   unsigned FlagRegSubNumValue = 0;
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
 
   G4_Predicate *pred = inst->getPredicate();
   if (pred) {
@@ -173,7 +173,7 @@ static const unsigned CONDITION_MODIFIER[11] = {
     (unsigned)COND_CODE_O,  (unsigned)COND_CODE_ALL};
 
 inline void BinaryEncoding::EncodeCondModifier(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_CondMod *cModifier = inst->getCondMod();
   uint32_t value;
   if (cModifier) {
@@ -186,7 +186,7 @@ inline void BinaryEncoding::EncodeCondModifier(G4_INST *inst) {
 }
 
 inline void BinaryEncoding::EncodeQtrControl(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
 
   unsigned int emaskOffset = inst->getMaskOffset();
   mybin->SetBits(bitsQtrCtrl_0, bitsQtrCtrl_1, emaskOffset / 8);
@@ -195,7 +195,7 @@ inline void BinaryEncoding::EncodeQtrControl(G4_INST *inst) {
 }
 
 inline void BinaryEncoding::EncodeInstModifier(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   if (inst->getSaturate()) {
     mybin->SetBits(bitsInstModifier_0, bitsInstModifier_1, INST_MOD_SAT);
   } else {
@@ -207,7 +207,7 @@ inline void BinaryEncoding::EncodeMathControl(G4_INST *inst) {
   MUST_BE_TRUE(
       inst->isMath(),
       "BinaryEncoding::EncodeMathControl called on non-math instruction.");
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
 
   unsigned int MathControlValue = inst->asMathInst()->getMathCtrl();
   unsigned MathFunction = MathControlValue & 0xf;
@@ -219,8 +219,8 @@ inline void BinaryEncoding::EncodeMathControl(G4_INST *inst) {
   }
 }
 
-inline void EncodeAccWrCtrlInst(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+inline void EncodeAccWrCtrlInst(G4_INST *inst, BinaryEncoding &encoder) {
+  BinInst *mybin = encoder.getBinInst(inst);
   // Jmpi does not support BranchControl
   if (inst->isAccWrCtrlInst() ||
       (inst->isFlowControl() && inst->asCFInst()->isBackward() &&
@@ -235,7 +235,7 @@ inline void EncodeAccWrCtrlInst(G4_INST *inst) {
 inline void BinaryEncoding::EncodeSendMsgDesc29_30(G4_INST *inst) {
   MUST_BE_TRUE(inst->isSend(), "must be a send inst");
 
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_SendDescRaw *msgDesc = inst->getMsgDescRaw();
   MUST_BE_TRUE(msgDesc, "expected raw descriptor");
   G4_Operand *descOpnd =
@@ -248,11 +248,11 @@ inline void BinaryEncoding::EncodeSendMsgDesc29_30(G4_INST *inst) {
 }
 
 inline void BinaryEncoding::EncodeInstOptionsString(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
 
   EncodeAccessMode(inst);
   EncodeQtrControl(inst);
-  EncodeAccWrCtrlInst(inst);
+  EncodeAccWrCtrlInst(inst, *this);
 
   mybin->SetBits(bitsCompactCtrl_0, bitsCompactCtrl_1, inst->isCompactedInst());
 
@@ -1295,7 +1295,7 @@ inline void Set3SrcDstType(BinInst *mybin, G4_Type type) {
 
 BinaryEncoding::Status BinaryEncoding::EncodeOperandDst(G4_INST *inst) {
   Status myStatus = SUCCESS;
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_DstRegRegion *dst = inst->getDst();
 
   if (inst->isSplitSend()) {
@@ -1365,7 +1365,7 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST *inst) {
     return EncodeSplitSendSrc0(inst);
   }
 
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_Operand *src0 = inst->getSrc(0);
 
   if (src0 == NULL || src0->isLabel())
@@ -1904,7 +1904,7 @@ inline void EncodeSrc1IndirectRegNum(G4_INST *inst, BinInst *mybin,
 }
 
 BinaryEncoding::Status BinaryEncoding::EncodeSplitSendDst(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   if (inst->getDst() == NULL) {
     return FAILURE;
   }
@@ -1947,7 +1947,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendDst(G4_INST *inst) {
 
 // src2 is the message descriptor (either a0.0 or imm)
 BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc2(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   if (inst->getSrc(2) == NULL) {
     return FAILURE;
   }
@@ -1965,7 +1965,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc2(G4_INST *inst) {
 }
 
 BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc1(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   if (inst->getSrc(1) == NULL || !inst->getSrc(1)->isSrcRegRegion()) {
     return FAILURE;
   }
@@ -2001,7 +2001,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc1(G4_INST *inst) {
 }
 
 BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc0(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   if (inst->getSrc(0) == NULL || !inst->getSrc(0)->isSrcRegRegion()) {
     return FAILURE;
   }
@@ -2035,7 +2035,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc0(G4_INST *inst) {
 
 // Gen encodes target for call as src1, though internally we store it in src0
 BinaryEncoding::Status BinaryEncoding::EncodeIndirectCallTarget(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_Operand *funcAddr = inst->getSrc(0);
   EncodeSrc1RegFile(mybin, funcAddr);
   EncodeSrc1Type(mybin, funcAddr);
@@ -2061,7 +2061,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeIndirectCallTarget(G4_INST *inst) {
 }
 
 BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_Operand *src1 = NULL;
 
   if (inst->isSplitSend()) {
@@ -2270,7 +2270,7 @@ inline void BinaryEncoding::EncodeSrc2RegNum(G4_INST *inst, BinInst *mybin,
 }
 
 inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc2(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_Operand *src2 = inst->getSrc(2);
 
   if (src2 == NULL || src2->isLabel()) {
@@ -2336,7 +2336,7 @@ void SetExtMsgDescr(G4_INST *inst, BinInst *mybin, uint32_t value) {
 }
 
 inline BinaryEncoding::Status BinaryEncoding::EncodeExtMsgDescr(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   MUST_BE_TRUE(inst->getMsgDescRaw(), "expected raw descriptor");
   uint32_t msgDesc = inst->getMsgDescRaw()->getExtendedDesc();
   SetExtMsgDescr(inst, mybin, msgDesc);
@@ -2374,7 +2374,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperands(G4_INST *inst) {
 }
 
 void BinaryEncoding::insertWaitDst(G4_INST *inst) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   if (inst->opcode() ==
       G4_wait) { // The wait instruction needs src0 inserted as dst operand
     G4_Operand *src0 = inst->getSrc(0);
@@ -2434,7 +2434,7 @@ BinaryEncoding::Status BinaryEncoding::DoAllEncoding(G4_INST *inst) {
   if (inst->opcode() == G4_illegal)
     return FAILURE;
 
-  EncodingHelper::mark3Src(inst);
+  EncodingHelper::mark3Src(inst, *this);
 
   insertWaitDst(inst);
 
@@ -2470,7 +2470,7 @@ BinaryEncoding::Status BinaryEncoding::DoAllEncoding(G4_INST *inst) {
   }
 
   if (isFCCall == true) {
-    BinInst *mybin = inst->getBinInst();
+    BinInst *mybin = getBinInst(inst);
     SetSrc1RegFile(mybin, REG_FILE_I);
     SetSrc1Type(mybin, SRC_IMM_TYPE_D);
     inst->setOpcode(G4_pseudo_fc_call);
@@ -2522,16 +2522,15 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions() {
       /* do detailed encoding here */
       G4_INST *inst = *ii;
 
-      if (inst->opcode() == G4_label) {
-        inst->setBinInst(NULL);
-      } else {
+      if (inst->opcode() != G4_label) {
+        // Labels do not have BinInst as they are not present in binary.
         BinInst *bin = new (mem) BinInst();
-        inst->setBinInst(bin);
+        setBinInst(inst, bin);
 
         myStatus = DoAllEncoding(inst);
 
         if (inst->opcode() == G4_nop) {
-          binInstList.push_back(inst->getBinInst());
+          binInstList.push_back(getBinInst(inst));
           BuildLabelMap(inst, localHalfInstNum, localInstNum, globalHalfInstNum,
                         globalInstNum);
           continue;
@@ -2545,13 +2544,13 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions() {
 
         if (inst->opcode() == G4_pseudo_fc_call ||
             inst->opcode() == G4_pseudo_fc_ret) {
-          inst->getBinInst()->SetDontCompactFlag(true);
+          getBinInst(inst)->SetDontCompactFlag(true);
         }
 
         if (doCompaction()) {
           // do not compact the instruction that mark as NoCompact
-          inst->getBinInst()->SetMustCompactFlag(false);
-          inst->getBinInst()->SetDontCompactFlag(inst->isNoCompactedInst());
+          getBinInst(inst)->SetMustCompactFlag(false);
+          getBinInst(inst)->SetDontCompactFlag(inst->isNoCompactedInst());
 
           /**
            * handling switch/case for gen6: jump table should not be compacted
@@ -2564,20 +2563,20 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions() {
           if (compacted) {
             if (kernel.getOption(vISA_OptReport)) {
               numCompactedInst++;
-              if (inst->getBinInst()->GetIs3Src())
+              if (getBinInst(inst)->GetIs3Src())
                 numCompacted3SrcInst++;
             }
             inst->setCompacted();
           }
         }
-        binInstList.push_back(inst->getBinInst());
+        binInstList.push_back(getBinInst(inst));
 
         if (inst->opcode() >= G4_jmpi && inst->opcode() <= G4_join) {
           if (!EncodeConditionalBranches(inst, globalHalfInstNum)) {
             offsetVector.push_back(ForwardJmpOffset(inst, globalHalfInstNum));
           }
         }
-      } // else if
+      }
 
       BuildLabelMap(inst, localHalfInstNum, localInstNum, globalHalfInstNum,
                     globalInstNum);
@@ -2626,7 +2625,7 @@ inline void SetBranchJIPUIP(BinInst *mybin, uint32_t JIP, uint32_t UIP) {
 
 void BinaryEncoding::SetBranchOffsets(G4_INST *inst, uint32_t JIP,
                                       uint32_t UIP) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_opcode opc = inst->opcode();
 
   {
@@ -2694,7 +2693,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
     }
     // Setting RegFile and Type in case JIP is 0.
     else if (op == G4_while || op == G4_endif || op == G4_join) {
-      BinInst *mybin = inst->getBinInst();
+      BinInst *mybin = getBinInst(inst);
       SetSrc1RegFile(mybin, REG_FILE_I);
       SetSrc1Type(mybin, SRC_IMM_TYPE_D);
     }
@@ -2729,7 +2728,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
   if (op == G4_jmpi && inst->getSrc(0) && inst->getSrc(0)->isLabel()) {
     // find the label's IP count
     G4_Label *opnd = inst->getSrc(0)->asLabel();
-    BinInst *mybin = inst->getBinInst();
+    BinInst *mybin = getBinInst(inst);
     // Calculate the address offset
     // Label has the same IP count as the following instruction,
     // "break 1" is to the fall through instruction
@@ -2782,7 +2781,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
 
       jmpOffset *= (int32_t)JUMP_INST_COUNT_SIZE;
 
-      BinInst *mybin = inst->getBinInst();
+      BinInst *mybin = getBinInst(inst);
 
       SetSrc0VertStride(mybin, 2);
       SetSrc0Width(mybin, 2);
@@ -2794,7 +2793,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
       SetCmpSrc1Imm32(mybin, jmpOffset, opnd);
     } else {
       // indirect call
-      BinInst *mybin = inst->getBinInst();
+      BinInst *mybin = getBinInst(inst);
 
       SetSrc0VertStride(mybin, 2);
       SetSrc0Width(mybin, 2);

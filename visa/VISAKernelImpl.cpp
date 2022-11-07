@@ -381,10 +381,9 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
 
     for (auto bb : m_kernel->fg) {
       for (auto inst : *bb) {
-        if (inst->getBinInst())
-          inst->setGenOffset(inst->getBinInst()->GetGenOffset());
-        else
-          inst->setGenOffset(UNDEFINED_GEN_OFFSET);
+        auto binInst = pBinaryEncoding->getBinInst(inst);
+        inst->setGenOffset(binInst ? binInst->GetGenOffset()
+                                   : UNDEFINED_GEN_OFFSET);
       }
     }
 
@@ -8746,11 +8745,12 @@ void VISAKernelImpl::computeFCInfo(BinaryEncodingBase *binEncodingInstance) {
       G4_INST *inst = (*inst_it);
       G4_opcode opc = inst->opcode();
 
-      if (opc == G4_pseudo_fc_call) {
-        FCInstMap.emplace(inst->getBinInst(), std::make_pair(inst, true));
-      } else if (opc == G4_pseudo_fc_ret) {
-        FCInstMap.emplace(inst->getBinInst(), std::make_pair(inst, false));
-      }
+      if (opc == G4_pseudo_fc_call)
+        FCInstMap.emplace(binEncodingInstance->getBinInst(inst),
+                          std::make_pair(inst, true));
+      else if (opc == G4_pseudo_fc_ret)
+        FCInstMap.emplace(binEncodingInstance->getBinInst(inst),
+                          std::make_pair(inst, false));
     }
   }
 
@@ -8810,8 +8810,6 @@ void VISAKernelImpl::computeFCInfo() {
 
       if (opc == G4_pseudo_fc_call) {
         // TODO: Need to create FCCalls and push into calls-to-patch.
-        // FCInstMap.insert(make_pair(inst->getBinInst(), make_pair(inst,
-        // true)));
         ASSERT_USER(inst->getGenOffset() % 16 == 0,
                     "Non-128-bit instruction is found!");
         unsigned Slot = unsigned(inst->getGenOffset()) / 16;

@@ -69,7 +69,7 @@ bool BinaryEncodingBase::isBBBinInstEmpty(G4_BB *bb) {
   INST_LIST_ITER ii, iend(bb->end());
   for (ii = bb->begin(); ii != iend; ++ii) {
     G4_INST *inst = *ii;
-    if (inst->getBinInst() != NULL)
+    if (getBinInst(inst))
       return false;
   }
   return true;

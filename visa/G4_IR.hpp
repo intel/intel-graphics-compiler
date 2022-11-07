@@ -171,8 +171,6 @@ protected:
                                // and the use operands in the DU chain.
   G4_ExecSize execSize;
 
-  BinInst *bin;
-
   // make it private so only the IR_Builder can create new instructions
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   uint32_t global_id = (uint32_t)-1;
@@ -765,9 +763,6 @@ public:
 
   bool hasNULLDst() const;
   bool goodTwoGRFDst(bool &evenSplitDst);
-  const BinInst *getBinInst() const { return bin; };
-  BinInst *getBinInst() { return bin; };
-  void setBinInst(BinInst *_bin) { bin = _bin; };
   void setGenOffset(int64_t off) { genOffset = off; }
   int64_t getGenOffset() const { return genOffset; }
 

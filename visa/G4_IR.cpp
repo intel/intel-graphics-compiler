@@ -205,7 +205,7 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
       localId(0), sat(s ? 1 : 0), evenlySplitInst(false), canBeAcc(false),
-      execSize(size), bin(nullptr), builder(irb) {
+      execSize(size), builder(irb) {
   srcs[0] = s0;
   srcs[1] = s1;
   srcs[2] = s2;

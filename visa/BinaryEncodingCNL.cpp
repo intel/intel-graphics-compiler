@@ -1711,7 +1711,7 @@ void BinaryEncodingCNL::SetCompactCtrl(BinInst *mybin, uint32_t value) {
 /// TODO: move as a class method
 void BinaryEncodingCNL::SetBranchOffsets(G4_INST *inst, uint32_t JIP,
                                          uint32_t UIP) {
-  BinInst *mybin = inst->getBinInst();
+  BinInst *mybin = getBinInst(inst);
   G4_opcode opc = inst->opcode();
 
   {
@@ -1770,7 +1770,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
       jipOffset *= (int32_t)JUMP_INST_COUNT_SIZE;
     } else if (op == G4_while || op == G4_endif || op == G4_join) {
       {
-        BinInst *mybin = inst->getBinInst();
+        BinInst *mybin = getBinInst(inst);
         G9HDL::EU_INSTRUCTION_BRANCH_ONE_SRC *oneSrc =
             (G9HDL::EU_INSTRUCTION_BRANCH_ONE_SRC *)mybin->DWords;
 
@@ -1806,7 +1806,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
   if (op == G4_jmpi && inst->getSrc(0) && inst->getSrc(0)->isLabel()) {
     // find the label's IP count
     G4_Operand *opnd = inst->getSrc(0);
-    BinInst *mybin = inst->getBinInst();
+    BinInst *mybin = getBinInst(inst);
     // Calculate the address offset
     // Label has the same IP count as the following instruction,
     // "break 1" is to the fall through instruction
@@ -1830,7 +1830,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
     // }
     // else
     {
-      BinInst *mybin = inst->getBinInst();
+      BinInst *mybin = getBinInst(inst);
       G9HDL::EU_INSTRUCTION_BRANCH_ONE_SRC *oneSrc =
           (G9HDL::EU_INSTRUCTION_BRANCH_ONE_SRC *)mybin->DWords;
 
@@ -1851,7 +1851,7 @@ bool BinaryEncodingCNL::EncodeConditionalBranches(G4_INST *inst,
 
     { jmpOffset *= (int32_t)JUMP_INST_COUNT_SIZE; }
 
-    BinInst *mybin = inst->getBinInst();
+    BinInst *mybin = getBinInst(inst);
     G9HDL::EU_INSTRUCTION_BRANCH_ONE_SRC *oneSrc =
         (G9HDL::EU_INSTRUCTION_BRANCH_ONE_SRC *)mybin->DWords;
 
@@ -2126,7 +2126,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingWAIT(G4_INST *inst) {
   oneSrc.Common.OperandControls.SetDestinationAddressingMode(
       TranslateVisaToHDLAddrMode(EncodingHelper::GetSrcAddrMode(src0)));
 
-  BinInst *bin = inst->getBinInst();
+  BinInst *bin = getBinInst(inst);
   bin->DWords[0] = oneSrc.GetDWord(0);
   bin->DWords[1] = oneSrc.GetDWord(1);
   bin->DWords[2] = oneSrc.GetDWord(2);
@@ -2232,7 +2232,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingJMPI(G4_INST *inst) {
   // BEGIN: src1
   //  The rest is encoded in EncodeConditionalBranches
   // END: src1
-  BinInst *bin = inst->getBinInst();
+  BinInst *bin = getBinInst(inst);
   bin->DWords[0] = brOneSrc.GetDWORD(0);
   bin->DWords[1] = brOneSrc.GetDWORD(1);
   bin->DWords[2] = brOneSrc.GetDWORD(2);
@@ -2244,7 +2244,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingJMPI(G4_INST *inst) {
 BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingCALL(G4_INST *inst) {
   Status myStatus = SUCCESS;
 
-  BinInst *bin = inst->getBinInst();
+  BinInst *bin = getBinInst(inst);
   G9HDL::EU_INSTRUCTION_BRANCH_ONE_SRC oneSrc;
   oneSrc.Init();
 
@@ -2286,7 +2286,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingCALL(G4_INST *inst) {
 ///
 BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingCF(G4_INST *inst) {
   Status myStatus = SUCCESS;
-  BinInst *bin = inst->getBinInst();
+  BinInst *bin = getBinInst(inst);
 
   G9HDL::EU_INSTRUCTION_BRANCH_TWO_SRC brTwoSrc;
   brTwoSrc.Init();
@@ -2313,7 +2313,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingCF(G4_INST *inst) {
 BinaryEncodingCNL::Status
 BinaryEncodingCNL::DoAllEncodingSplitSEND(G4_INST *inst) {
   Status myStatus = SUCCESS;
-  BinInst *bin = inst->getBinInst();
+  BinInst *bin = getBinInst(inst);
 
   G9HDL::EU_INSTRUCTION_SENDS sends;
   sends.Init();
@@ -2348,7 +2348,7 @@ BinaryEncodingCNL::DoAllEncodingRegular(G4_INST *inst) {
   MUST_BE_TRUE(!inst->isSplitSend(), "Improper instruction type called with "
                                      "DoAllEncodingRegular: sends or sendsc");
 
-  BinInst *bin = inst->getBinInst();
+  BinInst *bin = getBinInst(inst);
   int i = inst->getNumSrc();
   switch (i) {
   case 0: {
@@ -2426,7 +2426,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncoding(G4_INST *inst) {
   if (inst->opcode() == G4_illegal)
     return FAILURE;
 
-  EncodingHelper::mark3Src(inst);
+  EncodingHelper::mark3Src(inst, *this);
 
   {
 
@@ -2513,12 +2513,10 @@ void BinaryEncodingCNL::DoAll() {
       G4_INST *inst = *ii;
       G4_opcode opcode = inst->opcode();
 
-      if (opcode == G4_label) {
-        inst->setBinInst(NULL);
-      } else {
+      if (opcode != G4_label) {
         // reuse "BinInst" from BinaryEncoding.h which can be simplified
         BinInst *bin = new (mem) BinInst();
-        inst->setBinInst(bin);
+        setBinInst(inst, bin);
 
         bin->DWords[0] = 0;
         bin->DWords[1] = 0;
@@ -2529,12 +2527,12 @@ void BinaryEncodingCNL::DoAll() {
 
         if (inst->opcode() == G4_pseudo_fc_call ||
             inst->opcode() == G4_pseudo_fc_ret) {
-          inst->getBinInst()->SetDontCompactFlag(true);
+          getBinInst(inst)->SetDontCompactFlag(true);
         }
 
         if (doCompaction()) {
-          inst->getBinInst()->SetMustCompactFlag(false);
-          inst->getBinInst()->SetDontCompactFlag(inst->isNoCompactedInst());
+          getBinInst(inst)->SetMustCompactFlag(false);
+          getBinInst(inst)->SetDontCompactFlag(inst->isNoCompactedInst());
 
           /**
            * handling switch/case for gen6: jump table should not be compacted
@@ -2548,20 +2546,20 @@ void BinaryEncodingCNL::DoAll() {
           if (compacted) {
             if (kernel.getOption(vISA_OptReport)) {
               numCompactedInst++;
-              if (inst->getBinInst()->GetIs3Src())
+              if (getBinInst(inst)->GetIs3Src())
                 numCompacted3SrcInst++;
             }
             inst->setCompacted();
           }
         }
-        binInstList.push_back(inst->getBinInst());
+        binInstList.push_back(getBinInst(inst));
 
         if (inst->opcode() >= G4_jmpi && inst->opcode() <= G4_join) {
           if (!EncodeConditionalBranches(inst, globalHalfInstNum)) {
             offsetVector.push_back(ForwardJmpOffset(inst, globalHalfInstNum));
           }
         }
-      } // else
+      }
 
       BuildLabelMap(inst, localHalfInstNum, localInstNum, globalHalfInstNum,
                     globalInstNum);
