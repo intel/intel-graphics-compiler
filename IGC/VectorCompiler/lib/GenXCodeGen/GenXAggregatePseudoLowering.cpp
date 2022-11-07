@@ -69,6 +69,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/Type.h"
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
@@ -346,12 +347,11 @@ public:
                        "should take the operand from the original load");
     IRBuilder<> IRB{&OrigLoad};
     Value *PointerOp = OrigLoad.getPointerOperand();
-    Type *Ty = cast<PointerType>(PointerOp->getType()->getScalarType())
-                   ->getPointerElementType();
+    Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(PointerOp->getType()->getScalarType());
     auto *GEP = IRB.CreateInBoundsGEP(Ty, PointerOp, CreateIdxListForGEP(IRB),
                                       OrigLoad.getName() + "aggr.gep");
     // FIXME: replace a structure alignment with an element alignment
-    Type *GEPPtrTy = GEP->getType()->getPointerElementType();
+    Type *GEPPtrTy = IGCLLVM::getNonOpaquePtrEltTy(GEP->getType());
     return IRB.CreateAlignedLoad(GEPPtrTy, GEP, IGCLLVM::getAlign(OrigLoad),
                                  OrigLoad.isVolatile(),
                                  OrigLoad.getName() + ".split.aggr");
@@ -360,8 +360,7 @@ public:
   Instruction *visitStoreInst(StoreInst &OrigStore) const {
     IRBuilder<> IRB{&OrigStore};
     Value *PointerOp = OrigStore.getPointerOperand();
-    Type *Ty = cast<PointerType>(PointerOp->getType()->getScalarType())
-                   ->getPointerElementType();
+    Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(PointerOp->getType()->getScalarType());
     auto *GEP = IRB.CreateInBoundsGEP(Ty, PointerOp, CreateIdxListForGEP(IRB),
                                       OrigStore.getName() + "aggr.gep");
     // FIXME: replace a structure alignment with an element alignment

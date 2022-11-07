@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Utils/GenX/TypeSize.h"
+#include "llvmWrapper/IR/Type.h"
 
 vc::TypeSizeWrapper vc::getTypeSize(llvm::Type *Ty,
                                     const llvm::DataLayout *DL) {
@@ -15,7 +16,7 @@ vc::TypeSizeWrapper vc::getTypeSize(llvm::Type *Ty,
   // we should remove it when such pointers will be in separate address space.
   // Size of function pointers is always 32 bit.
   if (auto *PT = llvm::dyn_cast<llvm::PointerType>(Ty->getScalarType());
-      PT && PT->getPointerElementType()->isFunctionTy()) {
+      PT && IGCLLVM::getNonOpaquePtrEltTy(PT)->isFunctionTy()) {
     // FIXME: wrong condition.
     auto NumElements =
         llvm::isa<IGCLLVM::FixedVectorType>(Ty)

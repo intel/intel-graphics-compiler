@@ -487,7 +487,7 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
     EOPCODE opCode = GetOpCode(inst);
     llvm::Type* cubeTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_TYPE);
     llvm::Type* cubeArrayTextureType = GetResourceDimensionType(*inst->getModule(), RESOURCE_DIMENSION_TYPE::DIM_CUBE_ARRAY_TYPE);
-    llvm::Type* textureType = inst->getTextureValue()->getType()->getPointerElementType();
+    llvm::Type* textureType = IGCLLVM::getNonOpaquePtrEltTy(inst->getTextureValue()->getType());
     bool isCube = (textureType == cubeTextureType || textureType == cubeArrayTextureType);
     ValidateNumberofSources(opCode, isCube, numSources);
 

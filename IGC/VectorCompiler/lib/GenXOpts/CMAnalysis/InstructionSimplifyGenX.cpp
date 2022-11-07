@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/CallSite.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include <llvmWrapper/IR/Type.h>
 
 #include "vc/GenXOpts/GenXAnalysis.h"
 #include "vc/GenXOpts/GenXOpts.h"
@@ -393,7 +394,7 @@ Value *llvm::SimplifyGenX(CallInst *I, const DataLayout &DL) {
   Value *V = IGCLLVM::getCalledValue(I);
   Type *Ty = V->getType();
   if (auto *PTy = dyn_cast<PointerType>(Ty))
-    Ty = PTy->getPointerElementType();
+    Ty = IGCLLVM::getNonOpaquePtrEltTy(PTy);
   auto *FTy = cast<FunctionType>(Ty);
   auto *F = dyn_cast<Function>(V);
   if (!F)

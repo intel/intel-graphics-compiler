@@ -128,7 +128,7 @@ static void getContainedStructType(Type *T, SmallPtrSetImpl<StructType *> &Tys)
     }
     else if (auto PT = dyn_cast<PointerType>(T))
     {
-        return getContainedStructType(PT->getPointerElementType(), Tys);
+        return getContainedStructType(IGCLLVM::getNonOpaquePtrEltTy(PT), Tys);
     }
     else if (auto AT = dyn_cast<ArrayType>(T))
     {

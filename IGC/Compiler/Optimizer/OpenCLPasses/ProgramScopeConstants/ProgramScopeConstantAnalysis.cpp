@@ -230,7 +230,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         offset = iSTD::Align(offset, (unsigned)m_DL->getPreferredAlign(globalVar).value());
 #endif
         inlineProgramScopeOffsets[globalVar] = offset;
-        offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getType()->getPointerElementType()));
+        offset += (unsigned)(m_DL->getTypeAllocSize(IGCLLVM::getNonOpaquePtrEltTy(globalVar->getType())));
     }
 
     if (inlineProgramScopeOffsets.size())
@@ -475,7 +475,7 @@ void ProgramScopeConstantAnalysis::addData(Constant* initializer,
         {
             inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
         }
-        else if (isa<FunctionType>(ptrType->getPointerElementType()))
+        else if (isa<FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(ptrType)))
         {
             // Save patch info for function pointer to be patched later by runtime
             // The initializer value must be a function pointer and has the "referenced-indirectly" attribute

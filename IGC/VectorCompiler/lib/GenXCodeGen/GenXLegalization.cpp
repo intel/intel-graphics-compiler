@@ -2053,7 +2053,7 @@ Value *GenXLegalization::joinWrRegion(Value *PrevSliceRes, BaleInst BInst,
     IGC_ASSERT(isa<StoreInst>(ST));
     Value *GV = ST->getOperand(1);
     auto *Load =
-        new LoadInst(GV->getType()->getPointerElementType(), GV, ".gload",
+        new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(GV->getType()), GV, ".gload",
                      /*volatile*/ true, InsertBefore);
     Load->setDebugLoc(BInst.Inst->getDebugLoc());
     In = Load;

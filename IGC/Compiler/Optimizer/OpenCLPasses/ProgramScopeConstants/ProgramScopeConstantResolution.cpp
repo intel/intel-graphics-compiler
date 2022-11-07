@@ -198,7 +198,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
                 Instruction* pEntryPoint = &(*userFunc->getEntryBlock().getFirstInsertionPt());
 
                 // Create a GEP to get to the right offset in the constant buffer
-                Type *BaseTy = cast<PointerType>((&*bufArg)->getType())->getPointerElementType();
+                Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy((&*bufArg)->getType());
                 GetElementPtrInst* gep = GetElementPtrInst::Create(BaseTy, &*bufArg, pOffset, "off" + pGlobalVar->getName(), pEntryPoint);
                 // Cast it back to the correct type.
                 CastInst* pNewVal = CastInst::CreatePointerCast(gep, pGlobalVar->getType(), "cast" + pGlobalVar->getName(), pEntryPoint);

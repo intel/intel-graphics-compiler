@@ -262,7 +262,7 @@ GenXThreadPrivateMemory::NormalizeVector(Value *From, Type *To,
     NumElts = cast<IGCLLVM::FixedVectorType>(To)->getNumElements();
   }
   if (To->getScalarType()->isPointerTy() &&
-      To->getScalarType()->getPointerElementType()->isFunctionTy()) {
+      IGCLLVM::getNonOpaquePtrEltTy(To->getScalarType())->isFunctionTy()) {
     To = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
     Res = CastInst::Create(Instruction::PtrToInt, From, To, "", Inst);
     NumElts *= 2;
@@ -309,7 +309,7 @@ GenXThreadPrivateMemory::RestoreVectorAfterNormalization(Instruction *From,
   unsigned EltSz = m_DL->getTypeSizeInBits(To->getScalarType());
   IGC_ASSERT(EltSz > 0);
   if (To->getScalarType()->isPointerTy() &&
-      To->getScalarType()->getPointerElementType()->isFunctionTy()) {
+      IGCLLVM::getNonOpaquePtrEltTy(To->getScalarType())->isFunctionTy()) {
     auto *NewFrom = From;
     if (From->getType()->isVectorTy() &&
         From->getType()->getScalarType()->isIntegerTy(genx::DWordBits)) {

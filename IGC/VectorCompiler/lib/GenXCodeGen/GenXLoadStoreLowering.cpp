@@ -297,7 +297,7 @@ GenXLoadStoreLowering::normalizeDataVecForSVMIntrinsic(
     NumElts = cast<IGCLLVM::FixedVectorType>(To)->getNumElements();
   }
   if (To->getScalarType()->isPointerTy() &&
-      To->getScalarType()->getPointerElementType()->isFunctionTy()) {
+      IGCLLVM::getNonOpaquePtrEltTy(To->getScalarType())->isFunctionTy()) {
     To = IGCLLVM::FixedVectorType::get(I64Ty, NumElts);
     Res = Builder.CreatePtrToInt(From, To, "");
     NumElts *= 2;
@@ -342,7 +342,7 @@ GenXLoadStoreLowering::RestoreVectorAfterNormalization(Instruction *From,
   unsigned EltSz = DL_->getTypeSizeInBits(To->getScalarType());
   IGC_ASSERT(EltSz > 0);
   if (To->getScalarType()->isPointerTy() &&
-      To->getScalarType()->getPointerElementType()->isFunctionTy()) {
+      IGCLLVM::getNonOpaquePtrEltTy(To->getScalarType())->isFunctionTy()) {
     auto *NewFrom = From;
     if (From->getType()->isVectorTy() &&
         From->getType()->getScalarType()->isIntegerTy(genx::DWordBits)) {

@@ -46,7 +46,7 @@ bool isSupportedAggregateArgument(Argument* arg)
 {
     if (arg->getType()->isPointerTy() && arg->hasByValAttr())
     {
-        Type* type = arg->getType()->getPointerElementType();
+        Type* type = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
 
         if (StructType * structType = dyn_cast<StructType>(type))
         {
@@ -99,7 +99,7 @@ bool AggregateArgumentsAnalysis::runOnModule(Module& M)
             // Handling case where array is passed as a pointer with byVal attribute
             else if (arg->getType()->isPointerTy() && arg->hasByValAttr())
             {
-                Type* type = arg->getType()->getPointerElementType();
+                Type* type = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
 
                 if (ArrayType* arrayType = dyn_cast<ArrayType>(type))
                 {
@@ -113,7 +113,7 @@ bool AggregateArgumentsAnalysis::runOnModule(Module& M)
             }
             m_argList.clear();
 
-            Type* type = arg->getType()->getPointerElementType();
+            Type* type = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
             IGC_ASSERT(m_pDL->getStructLayout(cast<StructType>(type))->getSizeInBytes() < UINT_MAX);
             addImplictArgs(type, 0);
             ImplicitArgs::addStructArgs(F, arg, m_argList, m_pMdUtils);
@@ -247,7 +247,7 @@ bool ResolveAggregateArguments::runOnFunction(Function& F)
             continue;
         }
 
-        StructType* structType = cast<StructType>(arg->getType()->getPointerElementType());
+        StructType* structType = cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(arg->getType()));
 
         // LLVM assumes the caller has create an alloca and pushed the contents
         // of the struct on the stack.  Since we dont have a caller, create

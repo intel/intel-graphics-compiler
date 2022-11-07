@@ -59,7 +59,7 @@ IGC_INITIALIZE_PASS_END(FixSampleDInputsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_
             for (Instruction& inst : BB)
             {
                 SampleIntrinsic* sampleInst = dyn_cast<SampleIntrinsic>(&inst);
-                Type* textureType = sampleInst ? sampleInst->getTextureValue()->getType()->getPointerElementType() : nullptr;
+                Type* textureType = sampleInst ? IGCLLVM::getNonOpaquePtrEltTy(sampleInst->getTextureValue()->getType()) : nullptr;
                 // 3D/Cube/CubeArray access is emulated in CodeGen, see EmitPass::emulateSampleD()
                 if (sampleInst &&
                     (textureType != volumeTextureType && textureType != cubeTextureType && textureType != cubeArrayTextureType))

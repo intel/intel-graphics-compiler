@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
@@ -392,7 +393,7 @@ static Type *GetBaseType(Type *pType, Type *pBaseType) {
       IGC_ASSERT(0);
     }
   }
-  if (pType->isPointerTy() && pType->getPointerElementType()->isFunctionTy())
+  if (pType->isPointerTy() && IGCLLVM::getNonOpaquePtrEltTy(pType)->isFunctionTy())
     pType = IntegerType::getInt64Ty(pType->getContext());
   return pType;
 }
@@ -439,7 +440,7 @@ static bool CheckPtrToIntCandidate(PtrToIntInst *PTI) {
     // OR
     // svm_scatter %v0, %offset, <8 x float> %value
     if (Input->getType()->getScalarType() !=
-        GetBaseType(PTI->getOperand(0)->getType()->getPointerElementType(),
+        GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(PTI->getOperand(0)->getType()),
                     nullptr))
       return false;
 
@@ -486,12 +487,11 @@ static bool CheckAllocaUsesInternal(Instruction *I) {
       if (pBitCast->use_empty())
         continue;
       Type *baseT = GetBaseType(
-          pBitCast->getType()->getScalarType()->getPointerElementType(),
+          IGCLLVM::getNonOpaquePtrEltTy(pBitCast->getType()->getScalarType()),
           nullptr);
-      Type *sourceType = GetBaseType(pBitCast->getOperand(0)
-                                         ->getType()
-                                         ->getScalarType()
-                                         ->getPointerElementType(),
+      Type *sourceType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(
+                                         pBitCast->getOperand(0)->getType()
+                                             ->getScalarType()),
                                      nullptr);
       IGC_ASSERT(sourceType);
       // either the point-to-element-type is the same or
@@ -500,7 +500,7 @@ static bool CheckAllocaUsesInternal(Instruction *I) {
           (baseT->getScalarSizeInBits() == 8 ||
            baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits() ||
            (baseT->isPointerTy() &&
-            baseT->getPointerElementType()->isFunctionTy()))) {
+            IGCLLVM::getNonOpaquePtrEltTy(baseT)->isFunctionTy()))) {
         if (CheckAllocaUsesInternal(pBitCast))
           continue;
       }
@@ -575,7 +575,7 @@ bool TransformPrivMem::CheckIfAllocaPromotable(AllocaInst &Alloca) {
   auto Ty = baseType->getScalarType();
   // only handle case with a simple base type
   if (!(Ty->isFloatingPointTy() || Ty->isIntegerTy()) &&
-      !(Ty->isPointerTy() && Ty->getPointerElementType()->isFunctionTy()))
+      !(Ty->isPointerTy() && IGCLLVM::getNonOpaquePtrEltTy(Ty)->isFunctionTy()))
     return false;
 
   // After promotion the variable will be illegal.
@@ -626,7 +626,7 @@ void TransformPrivMem::selectAllocasToHandle() {
 
 void TransformPrivMem::handleAllocaInst(llvm::AllocaInst *pAlloca) {
   // Extract the Alloca size and the base Type
-  Type *pType = pAlloca->getType()->getPointerElementType();
+  Type *pType = IGCLLVM::getNonOpaquePtrEltTy(pAlloca->getType());
   Type *pBaseType = GetBaseType(pType, nullptr);
   if (!pBaseType)
     return;
@@ -656,9 +656,9 @@ void TransposeHelper::EraseDeadCode() {
 void TransposeHelper::handleBCInst(BitCastInst &BC, GenericVectorIndex Idx) {
   m_toBeRemoved.push_back(&BC);
   Type *DstDerefTy = GetBaseType(
-      BC.getType()->getScalarType()->getPointerElementType(), nullptr);
+      IGCLLVM::getNonOpaquePtrEltTy(BC.getType()->getScalarType()), nullptr);
   Type *SrcDerefTy = GetBaseType(
-      BC.getOperand(0)->getType()->getScalarType()->getPointerElementType(),
+      IGCLLVM::getNonOpaquePtrEltTy(BC.getOperand(0)->getType()->getScalarType()),
       nullptr);
   IGC_ASSERT(DstDerefTy);
   IGC_ASSERT(SrcDerefTy);
@@ -666,7 +666,7 @@ void TransposeHelper::handleBCInst(BitCastInst &BC, GenericVectorIndex Idx) {
   // the point-to-element-type is the byte
   if (DstDerefTy->getScalarSizeInBits() == SrcDerefTy->getScalarSizeInBits() ||
       (DstDerefTy->isPointerTy() &&
-       DstDerefTy->getPointerElementType()->isFunctionTy())) {
+       IGCLLVM::getNonOpaquePtrEltTy(DstDerefTy)->isFunctionTy())) {
     handleAllocaSources(BC, Idx);
     return;
   }
@@ -873,10 +873,10 @@ template <typename FolderT = ConstantFolder>
 Instruction *loadAndCastVector(AllocaInst &VecAlloca, Type &CastTo,
                                IRBuilder<FolderT> &IRB) {
   auto *LoadVecAlloca =
-      IRB.CreateLoad(VecAlloca.getType()->getPointerElementType(), &VecAlloca);
+      IRB.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(VecAlloca.getType()), &VecAlloca);
   auto *AllocatedElemTy = LoadVecAlloca->getType()->getScalarType();
   bool IsFuncPointer =
-      CastTo.isPointerTy() && CastTo.getPointerElementType()->isFunctionTy();
+      CastTo.isPointerTy() && IGCLLVM::getNonOpaquePtrEltTy(&CastTo)->isFunctionTy();
   if (AllocatedElemTy == &CastTo || IsFuncPointer)
     return LoadVecAlloca;
   auto AllocatedWidth = cast<IGCLLVM::FixedVectorType>(LoadVecAlloca->getType())
@@ -912,17 +912,17 @@ void TransposeHelperPromote::handleLoadInst(LoadInst *pLoad,
   auto LdTy = pLoad->getType()->getScalarType();
   auto *ReadIn = loadAndCastVector(*pVecAlloca, *LdTy, IRB);
   bool IsFuncPointer = pLoad->getPointerOperandType()->isPointerTy() &&
-    pLoad->getPointerOperandType()->getPointerElementType()->isPointerTy() &&
-    pLoad->getPointerOperandType()->getPointerElementType()->getPointerElementType()->isFunctionTy();
+    IGCLLVM::getNonOpaquePtrEltTy(pLoad->getPointerOperandType())->isPointerTy() &&
+    IGCLLVM::getNonOpaquePtrEltTy(IGCLLVM::getNonOpaquePtrEltTy(pLoad->getPointerOperandType()))->isFunctionTy();
   if (IsFuncPointer) {
     Region R(
         IGCLLVM::FixedVectorType::get(
-            cast<VectorType>(pVecAlloca->getType()->getPointerElementType())
+            cast<VectorType>(IGCLLVM::getNonOpaquePtrEltTy(pVecAlloca->getType()))
                 ->getElementType(),
             m_pDL->getTypeSizeInBits(LdTy) /
                 m_pDL->getTypeSizeInBits(
                     cast<VectorType>(
-                        pVecAlloca->getType()->getPointerElementType())
+                        IGCLLVM::getNonOpaquePtrEltTy(pVecAlloca->getType()))
                         ->getElementType())),
         m_pDL);
     if (!pScalarizedIdx->getType()->isIntegerTy(16)) {
@@ -976,12 +976,12 @@ void TransposeHelperPromote::handleStoreInst(StoreInst *pStore,
   bool IsFuncPointerStore =
       (isFuncPointerVec(pStoreVal) ||
        (pStoreVal->getType()->isPointerTy() &&
-        pStoreVal->getType()->getPointerElementType()->isFunctionTy()));
+        IGCLLVM::getNonOpaquePtrEltTy(pStoreVal->getType())->isFunctionTy()));
   if (IsFuncPointerStore) {
     auto *NewStoreVal = pStoreVal;
-    IGC_ASSERT(cast<VectorType>(pVecAlloca->getType()->getPointerElementType())->getElementType()->isIntegerTy(64));
+    IGC_ASSERT(cast<VectorType>(IGCLLVM::getNonOpaquePtrEltTy(pVecAlloca->getType()))->getElementType()->isIntegerTy(64));
     if (NewStoreVal->getType()->isPointerTy() &&
-        NewStoreVal->getType()->getPointerElementType()->isFunctionTy()) {
+        IGCLLVM::getNonOpaquePtrEltTy(NewStoreVal->getType())->isFunctionTy()) {
       NewStoreVal = IRB.CreatePtrToInt(
           NewStoreVal, IntegerType::getInt64Ty(pStore->getContext()));
     }
@@ -1037,7 +1037,7 @@ void TransposeHelperPromote::handlePrivateGather(IntrinsicInst *pInst,
   IRBuilder<> IRB(pInst);
   IGC_ASSERT(pInst->getType()->isVectorTy());
   Value *pLoadVecAlloca = IRB.CreateLoad(
-      pVecAlloca->getType()->getPointerElementType(), pVecAlloca);
+      IGCLLVM::getNonOpaquePtrEltTy(pVecAlloca->getType()), pVecAlloca);
   auto *InstTy = cast<IGCLLVM::FixedVectorType>(pInst->getType());
   auto N = InstTy->getNumElements();
   auto ElemType = InstTy->getElementType();
@@ -1059,7 +1059,7 @@ void TransposeHelperPromote::handlePrivateGather(IntrinsicInst *pInst,
   // count byte offset depending on the type of pointer in gather
   IGC_ASSERT(GatherPtrTy);
   unsigned GatherPtrNumBytes =
-      GatherPtrTy->getPointerElementType()->getPrimitiveSizeInBits() / 8;
+      IGCLLVM::getNonOpaquePtrEltTy(GatherPtrTy)->getPrimitiveSizeInBits() / 8;
   if (CI != nullptr &&
       IsLinearVectorConstantInts(pInst->getArgOperand(2), v0, diff)) {
     R.Indirect = nullptr;
@@ -1116,7 +1116,7 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
   IRBuilder<> IRB(pInst);
   llvm::Value *pStoreVal = pInst->getArgOperand(3);
   llvm::Value *pLoadVecAlloca = IRB.CreateLoad(
-      pVecAlloca->getType()->getPointerElementType(), pVecAlloca);
+      IGCLLVM::getNonOpaquePtrEltTy(pVecAlloca->getType()), pVecAlloca);
   IGC_ASSERT(pStoreVal->getType()->isVectorTy());
   auto *StoreValTy = cast<IGCLLVM::FixedVectorType>(pStoreVal->getType());
   auto N = StoreValTy->getNumElements();
@@ -1139,7 +1139,7 @@ void TransposeHelperPromote::handlePrivateScatter(llvm::IntrinsicInst *pInst,
   // count byte offset depending on the type of pointer in scatter
   IGC_ASSERT(ScatterPtrTy);
   unsigned ScatterPtrNumBytes =
-      ScatterPtrTy->getPointerElementType()->getPrimitiveSizeInBits() / 8;
+      IGCLLVM::getNonOpaquePtrEltTy(ScatterPtrTy)->getPrimitiveSizeInBits() / 8;
   if (CI != nullptr && IsLinearVectorConstantInts(pInst->getArgOperand(2), v0, diff)) {
     R.Indirect = nullptr;
     R.Width = N;
@@ -1312,7 +1312,7 @@ void TransposeHelperPromote::handleSVMGather(IntrinsicInst *pInst,
   // part of this is taken from handleLLVMGather above
   IRBuilder<> IRB(pInst);
   llvm::Value *pLoadVecAlloca = IRB.CreateLoad(
-      pVecAlloca->getType()->getPointerElementType(), pVecAlloca);
+      IGCLLVM::getNonOpaquePtrEltTy(pVecAlloca->getType()), pVecAlloca);
   Region R(pInst);
   R.Mask = pInst->getArgOperand(0);
   R.Indirect = IRB.CreateTrunc(
@@ -1349,7 +1349,7 @@ void TransposeHelperPromote::handleSVMScatter(IntrinsicInst *pInst,
   IRBuilder<> IRB(pInst);
   Value *pStoreVal = pInst->getArgOperand(3);
   Value *pLoadVecAlloca = IRB.CreateLoad(
-      pVecAlloca->getType()->getPointerElementType(), pVecAlloca);
+      IGCLLVM::getNonOpaquePtrEltTy(pVecAlloca->getType()), pVecAlloca);
   Region R(pStoreVal);
   R.Mask = pInst->getArgOperand(0);
   R.Indirect = IRB.CreateTrunc(

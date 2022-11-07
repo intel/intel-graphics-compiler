@@ -208,7 +208,7 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
     IGCLLVM::IRBuilder<> builder( ld );
     Value* gep = CreateGEP( builder,ld->getOperand( 0 ),indices );
     auto alignment = IGCLLVM::getAlignmentValue(ld);
-    unsigned pointerTypeSize = gep->getType()->getPointerElementType()->getScalarSizeInBits() / 8;
+    unsigned pointerTypeSize = IGCLLVM::getNonOpaquePtrEltTy(gep->getType())->getScalarSizeInBits() / 8;
     if ( alignment && (alignment_t)pointerTypeSize == alignment )
       return builder.CreateAlignedLoad( gep, IGCLLVM::getAlign(alignment) );
     return builder.CreateLoad( gep );

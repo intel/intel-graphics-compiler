@@ -2085,7 +2085,7 @@ SymbolicPointer::decomposePointer(const Value* Ptr, SymbolicPointer& SymPtr,
         }
 
         // Don't attempt to analyze GEPs over unsized objects.
-        if (!GEPOp->getOperand(0)->getType()->getPointerElementType()->isSized()) {
+        if (!IGCLLVM::getNonOpaquePtrEltTy(GEPOp->getOperand(0)->getType())->isSized()) {
             SymPtr.BasePtr = Ptr;
             return false;
         }

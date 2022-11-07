@@ -248,9 +248,9 @@ bool GASResolving::canonicalizeAddrSpaceCasts(Function& F) const {
     {
         Value* Src = ASCI->getPointerOperand();
         Type* SrcType = Src->getType();
-        Type* DstElementType = ASCI->getType()->getPointerElementType();
+        Type* DstElementType = IGCLLVM::getNonOpaquePtrEltTy(ASCI->getType());
 
-        if (SrcType->getPointerElementType() == DstElementType)
+        if (IGCLLVM::getNonOpaquePtrEltTy(SrcType) == DstElementType)
             continue;
 
         PointerType* TransPtrTy = PointerType::get(DstElementType, SrcType->getPointerAddressSpace());
@@ -386,7 +386,7 @@ bool GASPropagator::visitAddrSpaceCastInst(AddrSpaceCastInst& I) {
         return false;
 
     Value* Src = TheVal;
-    if (SrcPtrTy->getPointerElementType() != DstPtrTy->getPointerElementType()) {
+    if (IGCLLVM::getNonOpaquePtrEltTy(SrcPtrTy) != IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy)) {
         BuilderType::InsertPointGuard Guard(IRB);
         IRB.SetInsertPoint(&I);
         Src = IRB.CreateBitCast(Src, DstPtrTy);
@@ -405,11 +405,11 @@ bool GASPropagator::visitBitCastInst(BitCastInst& I) {
     IRB.SetInsertPoint(I.getNextNode());
     // Push `addrspacecast` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
-    Type* DstTy = DstPtrTy->getPointerElementType();
+    Type* DstTy = IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy);
     PointerType* TransPtrTy =
         PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     Value* Src = TheVal;
-    if (SrcPtrTy->getPointerElementType() != DstTy)
+    if (IGCLLVM::getNonOpaquePtrEltTy(SrcPtrTy) != DstTy)
         Src = IRB.CreateBitCast(Src, TransPtrTy);
     Value* NewPtr = IRB.CreateAddrSpaceCast(Src, DstPtrTy);
     I.replaceAllUsesWith(NewPtr);
@@ -432,7 +432,7 @@ bool GASPropagator::visitGetElementPtrInst(GetElementPtrInst& I) {
     IRB.SetInsertPoint(I.getNextNode());
     // Push `getelementptr` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
-    Type* DstTy = DstPtrTy->getPointerElementType();
+    Type* DstTy = IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy);
     PointerType* TransPtrTy =
         PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     TheUse->set(TheVal);
@@ -557,7 +557,7 @@ bool GASPropagator::visitSelect(SelectInst& I) {
 
     // Push 'addrspacecast' forward by changing the select return type to non-GAS pointer
     // followed by a new 'addrspacecast' to GAS
-    PointerType* TransPtrTy = PointerType::get(DstPtrTy->getPointerElementType(), NonGASPtrTy->getAddressSpace());
+    PointerType* TransPtrTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy), NonGASPtrTy->getAddressSpace());
     I.mutateType(TransPtrTy);
     Value* NewPtr = IRB.CreateAddrSpaceCast(&I, DstPtrTy);
 
@@ -883,7 +883,7 @@ void GASResolving::convertLoadToGlobal(LoadInst* LI) const {
 
     PointerType* PtrTy = cast<PointerType>(LI->getType());
     IRB->SetInsertPoint(LI->getNextNode());
-    PointerType* GlobalPtrTy = PointerType::get(PtrTy->getPointerElementType(), ADDRESS_SPACE_GLOBAL);
+    PointerType* GlobalPtrTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(PtrTy), ADDRESS_SPACE_GLOBAL);
     Value* GlobalAddr = IRB->CreateAddrSpaceCast(LI, GlobalPtrTy);
     Value* GenericCopyAddr = IRB->CreateAddrSpaceCast(GlobalAddr, PtrTy);
 
@@ -904,7 +904,7 @@ bool GASResolving::checkGenericArguments(Function& F) const {
         if (auto Ty = dyn_cast<PointerType>(FT->getParamType(p))) {
             if (Ty->getAddressSpace() != ADDRESS_SPACE_GLOBAL)
                 continue;
-            auto PteeTy = Ty->getPointerElementType();
+            auto PteeTy = IGCLLVM::getNonOpaquePtrEltTy(Ty);
             if (auto PTy = dyn_cast<PointerType>(PteeTy)) {
                 if (PTy->getAddressSpace() == ADDRESS_SPACE_GENERIC)
                     return true;
@@ -1061,7 +1061,7 @@ PointerType* GASRetValuePropagator::getRetValueNonGASType(Function* F)
     }
 
     return originAddrSpace ?
-        PointerType::get(F->getReturnType()->getPointerElementType(), originAddrSpace.value()) :
+        PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(F->getReturnType()), originAddrSpace.value()) :
         nullptr;
 }
 
@@ -1336,7 +1336,7 @@ bool StaticGASResolution::runOnFunction(llvm::Function& F)
             if (!toSkip(Ptr))
             {
                 PointerType* PtrTy = cast<PointerType>(Ptr->getType());
-                Type* eltTy = PtrTy->getPointerElementType();
+                Type* eltTy = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
                 PointerType* glbPtrTy = PointerType::get(eltTy, ADDRESS_SPACE_GLOBAL);
 
                 IRB.SetInsertPoint(I);
@@ -1539,7 +1539,7 @@ Function* LowerGPCallArg::createFuncWithLoweredArgs(Function* F, GenericPointerA
     std::vector<Type*> newParamTypes(pFuncType->param_begin(), pFuncType->param_end());
     for (auto& argInfo : argsInfo)
     {
-        PointerType* ptrType = PointerType::get(newParamTypes[argInfo.argNo]->getPointerElementType(),
+        PointerType* ptrType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(newParamTypes[argInfo.argNo]),
             argInfo.addrSpace);
         newParamTypes[argInfo.argNo] = ptrType;
     }

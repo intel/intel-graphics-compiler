@@ -177,9 +177,9 @@ inline bool isPromotableStructType(const Module& M, const Type* ty, bool isStack
         return false;
 
     const unsigned int maxSize = isStackCall ? MAX_STRUCT_SIZE_IN_BITS : MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS;
-    if (ty->isPointerTy() && ty->getPointerElementType()->isStructTy())
+    if (ty->isPointerTy() && IGCLLVM::getNonOpaquePtrEltTy(ty)->isStructTy())
     {
-        return isLegalStructType(M, ty->getPointerElementType(), maxSize);
+        return isLegalStructType(M, IGCLLVM::getNonOpaquePtrEltTy(ty), maxSize);
     }
     return false;
 }
@@ -200,8 +200,8 @@ inline bool FunctionHasPromotableSRetArg(const Module& M, const Function* F)
 // Promotes struct pointer to struct type
 inline Type* PromotedStructValueType(const Module& M, const Type* ty)
 {
-    IGC_ASSERT(ty->isPointerTy() && ty->getPointerElementType()->isStructTy());
-    return cast<StructType>(ty->getPointerElementType());
+    IGC_ASSERT(ty->isPointerTy() && IGCLLVM::getNonOpaquePtrEltTy(ty)->isStructTy());
+    return cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(ty));
 }
 
 // BE does not handle struct load/store, so instead store each element of the struct value to the GEP of the struct pointer
@@ -209,7 +209,7 @@ inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* s
 {
     IGC_ASSERT(strPtr->getType()->isPointerTy());
     IGC_ASSERT(strVal->getType()->isStructTy());
-    IGC_ASSERT(strPtr->getType()->getPointerElementType() == strVal->getType());
+    IGC_ASSERT(IGCLLVM::getNonOpaquePtrEltTy(strPtr->getType()) == strVal->getType());
 
     StructType* sTy = cast<StructType>(strVal->getType());
     for (unsigned i = 0; i < sTy->getNumElements(); i++)
@@ -225,9 +225,9 @@ inline void StoreToStruct(IGCLLVM::IRBuilder<>& builder, Value* strVal, Value* s
 inline Value* LoadFromStruct(IGCLLVM::IRBuilder<>& builder, Value* strPtr)
 {
     IGC_ASSERT(strPtr->getType()->isPointerTy());
-    IGC_ASSERT(strPtr->getType()->getPointerElementType()->isStructTy());
+    IGC_ASSERT(IGCLLVM::getNonOpaquePtrEltTy(strPtr->getType())->isStructTy());
 
-    Value* strVal = UndefValue::get(strPtr->getType()->getPointerElementType());
+    Value* strVal = UndefValue::get(IGCLLVM::getNonOpaquePtrEltTy(strPtr->getType()));
     StructType* sTy = cast<StructType>(strVal->getType());
     for (unsigned i = 0; i < sTy->getNumElements(); i++)
     {
@@ -434,7 +434,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
             for (auto arg : ArgByVal)
             {
                 arg->addAttr(llvm::Attribute::getWithByValType(M.getContext(),
-                                                               arg->getType()->getPointerElementType()));
+                                                               IGCLLVM::getNonOpaquePtrEltTy(arg->getType())));
             }
 
             // Now fix the return values
@@ -444,7 +444,7 @@ void LegalizeFunctionSignatures::FixFunctionBody(Module& M)
                 auto retArg = pNewFunc->arg_begin();
                 retArg->addAttr(llvm::Attribute::NoAlias);
                 retArg->addAttr(IGCLLVM::getWithStructRetType(M.getContext(),
-                                                              retArg->getType()->getPointerElementType()));
+                                                              IGCLLVM::getNonOpaquePtrEltTy(retArg->getType())));
 
                 // Loop through all return instructions and store the old return value into the arg0 pointer
                 const auto ptrSize = DL.getPointerSize();

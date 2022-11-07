@@ -1334,8 +1334,8 @@ void Legalization::visitStoreInst(StoreInst& I)
 
         IGC_ASSERT(nullptr != storePtr);
         IGC_ASSERT(nullptr != storePtr->getType());
-        IGC_ASSERT(nullptr != storePtr->getType()->getPointerElementType());
-        IGC_ASSERT(storePtr->getType()->getPointerElementType()->isIntegerTy(srcWidth));
+        IGC_ASSERT(nullptr != IGCLLVM::getNonOpaquePtrEltTy(storePtr->getType()));
+        IGC_ASSERT(IGCLLVM::getNonOpaquePtrEltTy(storePtr->getType())->isIntegerTy(srcWidth));
 
         PointerType* ptrTy = PointerType::get(legalTy, storePtr->getType()->getPointerAddressSpace());
         IntToPtrInst* intToPtr = dyn_cast<IntToPtrInst>(storePtr);
@@ -1697,7 +1697,7 @@ void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, Instruction
         if (GetElementPtrInst * gep = dyn_cast<GetElementPtrInst>(*II))
         {
             SmallVector<Value*, 8> Idx(gep->idx_begin(), gep->idx_end());
-            Type *BaseTy = cast<PointerType>(newPtr->getType())->getPointerElementType();
+            Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(newPtr->getType());
             GetElementPtrInst* newGep = GetElementPtrInst::Create(BaseTy, newPtr, Idx, "", gep);
             newGep->setDebugLoc(gep->getDebugLoc());
             RecursivelyChangePointerType(gep, newGep);
@@ -1714,7 +1714,7 @@ void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, Instruction
         else if (StoreInst * store = dyn_cast<StoreInst>(*II))
         {
             Value* StoredValue = store->getValueOperand();
-            Value* newData = Cast(StoredValue, newPtr->getType()->getPointerElementType(), store);
+            Value* newData = Cast(StoredValue, IGCLLVM::getNonOpaquePtrEltTy(newPtr->getType()), store);
             IGC::cloneStore(store, newData, newPtr);
         }
         else if (CastInst * cast = dyn_cast<CastInst>(*II))

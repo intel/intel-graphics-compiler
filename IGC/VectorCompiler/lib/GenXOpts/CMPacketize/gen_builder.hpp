@@ -223,8 +223,8 @@ IndirectBrInst* INDIRECT_BR(Value *Addr, unsigned NumDests = 10)
 InvokeInst* INVOKE(Value *Callee, BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Value *> Args = None, const Twine &Name = "")
 {
 #if LLVM_VERSION_MAJOR >= 11
-    auto *PTy = cast<PointerType>(Callee->getType());
-    auto *FTy = cast<FunctionType>(PTy->getPointerElementType());
+    auto *PTy = Callee->getType();
+    auto *FTy = cast<FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(PTy));
 #endif
     return IRB()->CreateInvoke(
 #if LLVM_VERSION_MAJOR >= 11
@@ -236,8 +236,8 @@ InvokeInst* INVOKE(Value *Callee, BasicBlock *NormalDest, BasicBlock *UnwindDest
 InvokeInst* INVOKE(Value *Callee, BasicBlock *NormalDest, BasicBlock *UnwindDest, ArrayRef<Value *> Args, ArrayRef<OperandBundleDef> OpBundles, const Twine &Name = "")
 {
 #if LLVM_VERSION_MAJOR >= 11
-    auto *PTy = cast<PointerType>(Callee->getType());
-    auto *FTy = cast<FunctionType>(PTy->getPointerElementType());
+    auto *PTy = Callee->getType();
+    auto *FTy = cast<FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(PTy));
 #endif
     return IRB()->CreateInvoke(
 #if LLVM_VERSION_MAJOR >= 11

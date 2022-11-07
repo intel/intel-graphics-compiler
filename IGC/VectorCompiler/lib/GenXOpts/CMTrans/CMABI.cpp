@@ -404,7 +404,7 @@ void CMABI::LocalizeGlobals(LocalizationInfo &LI) {
     LLVM_DEBUG(dbgs() << "Localizing global: " << *GV << "\n  ");
 
     Instruction &FirstI = *Fn->getEntryBlock().begin();
-    Type *ElemTy = GV->getType()->getPointerElementType();
+    Type *ElemTy = IGCLLVM::getNonOpaquePtrEltTy(GV->getType());
     IGCLLVM::Align GVAlign = IGCLLVM::getCorrectAlign(GV->getAlignment());
     AllocaInst *Alloca = new AllocaInst(ElemTy, vc::AddrSpace::Private,
                                         /*ArraySize=*/nullptr, GVAlign,
@@ -1056,7 +1056,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           Builder.CreateStore(Inst.getOperand(0), Inst.getOperand(1));
         else {
           Value *Op0 = Inst.getOperand(0);
-          auto LI = Builder.CreateLoad(Op0->getType()->getPointerElementType(),
+          auto LI = Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(Op0->getType()),
                                        Op0, Inst.getName());
           LI->setDebugLoc(Inst.getDebugLoc());
           Inst.replaceAllUsesWith(LI);
@@ -1071,7 +1071,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           IRBuilder<> Builder(&Inst);
           if (GenXIntrinsic::isVStore(&Inst)) {
             auto PtrTy = cast<PointerType>(Inst.getOperand(1)->getType());
-            PtrTy = PointerType::get(PtrTy->getPointerElementType(), AS1);
+            PtrTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(PtrTy), AS1);
             auto PtrCast = Builder.CreateAddrSpaceCast(Inst.getOperand(1), PtrTy);
             Type* Tys[] = { Inst.getOperand(0)->getType(),
                            PtrCast->getType() };
@@ -1082,7 +1082,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           }
           else {
             auto PtrTy = cast<PointerType>(Inst.getOperand(0)->getType());
-            PtrTy = PointerType::get(PtrTy->getPointerElementType(), AS1);
+            PtrTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(PtrTy), AS1);
             auto PtrCast = Builder.CreateAddrSpaceCast(Inst.getOperand(0), PtrTy);
             Type* Tys[] = { Inst.getType(), PtrCast->getType() };
             Function* Fn = GenXIntrinsic::getGenXDeclaration(
@@ -1272,7 +1272,7 @@ void ArgRefPattern::process(DominatorTree &DT) {
   if (CopyOutRegion) {
     Builder.SetInsertPoint(CopyOutRegion);
     CopyOutRegion->setArgOperand(
-        0, Builder.CreateLoad(BaseAlloca->getType()->getPointerElementType(),
+        0, Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(BaseAlloca->getType()),
                               BaseAlloca));
   }
 
@@ -1280,7 +1280,7 @@ void ArgRefPattern::process(DominatorTree &DT) {
   for (auto ST : VStores) {
     Builder.SetInsertPoint(ST);
     Value *OldVal = Builder.CreateLoad(
-        BaseAlloca->getType()->getPointerElementType(), BaseAlloca);
+        IGCLLVM::getNonOpaquePtrEltTy(BaseAlloca->getType()), BaseAlloca);
     // Always use copy-in region arguments as copy-out region
     // arguments do not dominate this store.
     auto M = ST->getParent()->getParent()->getParent();
@@ -1309,7 +1309,7 @@ void ArgRefPattern::process(DominatorTree &DT) {
 
     Builder.SetInsertPoint(LI);
     Value *SrcVal = Builder.CreateLoad(
-        BaseAlloca->getType()->getPointerElementType(), BaseAlloca);
+        IGCLLVM::getNonOpaquePtrEltTy(BaseAlloca->getType()), BaseAlloca);
     SmallVector<Value *, 8> Args(IGCLLVM::args(CopyInRegion));
     Args[0] = SrcVal;
     Value *Val = Builder.CreateCall(RdFn, Args);

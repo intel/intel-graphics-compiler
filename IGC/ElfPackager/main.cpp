@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Module.h"
+#include <llvmWrapper/IR/Type.h>
 #include "llvmWrapper/ADT/STLExtras.h"
 
 #include "common/LLVMWarningsPop.hpp"
@@ -106,7 +107,7 @@ std::unique_ptr<IGCLLVM::Module> LocalCloneModule(
         if (VMap.find(&*I) == VMap.end())
         {
             GlobalVariable *GV = new GlobalVariable(*New,
-                I->getType()->getPointerElementType(),
+                IGCLLVM::getNonOpaquePtrEltTy(I->getType()),
                 I->isConstant(), I->getLinkage(),
                 (Constant*) nullptr, I->getName(),
                 (GlobalVariable*) nullptr,

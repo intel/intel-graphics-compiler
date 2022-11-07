@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 
 #include <tuple>
@@ -160,7 +161,7 @@ static void setMemorySliceWithVecStore(SliceInfo Slice, Value &SetVal,
   IGC_ASSERT_MESSAGE(Slice.Offset >= 0 && isPowerOf2_32(Slice.Width),
                      "illegal slice is provided");
   IGC_ASSERT_MESSAGE(SetVal.getType() ==
-                         BaseAddr.getType()->getPointerElementType(),
+                         IGCLLVM::getNonOpaquePtrEltTy(BaseAddr.getType()),
                      "value and pointer types must correspond");
 
   auto *VecTy = IGCLLVM::FixedVectorType::get(SetVal.getType(), Slice.Width);
@@ -168,7 +169,7 @@ static void setMemorySliceWithVecStore(SliceInfo Slice, Value &SetVal,
   Value *WriteOut = IRB.CreateVectorSplat(Slice.Width, &SetVal);
   auto *DstAddr = &BaseAddr;
   if (Slice.Offset != 0)
-    DstAddr = IRB.CreateGEP(BaseAddr.getType()->getPointerElementType(),
+    DstAddr = IRB.CreateGEP(IGCLLVM::getNonOpaquePtrEltTy(BaseAddr.getType()),
                             &BaseAddr, IRB.getInt32(Slice.Offset),
                             BaseAddr.getName() + ".addr.offset");
   auto DstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
@@ -253,7 +254,7 @@ void GenXLowerAggrCopies::expandMemMov2VecLoadStore(T *MemCall) {
 
   auto *DstAddr = MemCall->getRawDest();
 
-  auto *I8Ty = cast<PointerType>(DstAddr->getType())->getPointerElementType();
+  auto *I8Ty = IGCLLVM::getNonOpaquePtrEltTy(DstAddr->getType());
   IGC_ASSERT(I8Ty->isIntegerTy(8));
   auto *VecTy = IGCLLVM::FixedVectorType::get(I8Ty, Len);
 
@@ -262,7 +263,7 @@ void GenXLowerAggrCopies::expandMemMov2VecLoadStore(T *MemCall) {
       cast<PointerType>(SrcAddr->getType())->getAddressSpace();
 
   auto *LoadPtrV = IRB.CreateBitCast(SrcAddr, VecTy->getPointerTo(SrcAddrSpace));
-  Type *Ty = LoadPtrV->getType()->getPointerElementType();
+  Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(LoadPtrV->getType());
   auto *Load = IRB.CreateLoad(Ty, LoadPtrV);
   Load->setAlignment(IGCLLVM::getSourceAlign(*MemCall));
   Load->setDebugLoc(DL);

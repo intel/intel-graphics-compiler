@@ -289,7 +289,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
       // FIXME: check the pointer defined by an argument or an alloca
       // [N x float]* should packetize to [N x <8 x float>]*
       auto VTy = PointerType::get(
-          B->GetVectorType(I.getType()->getPointerElementType()),
+          B->GetVectorType(IGCLLVM::getNonOpaquePtrEltTy(I.getType())),
           I.getType()->getPointerAddressSpace());
       ArgTypes.push_back(VTy);
     }
@@ -880,7 +880,7 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
     Type *pReturnTy;
     if (pInst->getType()->isPointerTy()) {
       // two types of pointers, <N x Ty>* or <N x Ty*>
-      Type *pDstScalarTy = pInst->getType()->getPointerElementType();
+      Type *pDstScalarTy = IGCLLVM::getNonOpaquePtrEltTy(pInst->getType());
 
       if (pPacketizedSrc->getType()->isVectorTy()) {
         // <N x Ty*>
@@ -1138,9 +1138,9 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *pInst) {
       // vector struct input, need to loop over components and build up new
       // struct allocation
       Value *pAlloca = B->ALLOCA(
-          B->GetVectorType(pInst->getType()->getPointerElementType()));
+          B->GetVectorType(IGCLLVM::getNonOpaquePtrEltTy(pInst->getType())));
       uint32_t numElems =
-          pInst->getType()->getPointerElementType()->getArrayNumElements();
+          IGCLLVM::getNonOpaquePtrEltTy(pInst->getType())->getArrayNumElements();
 
       for (uint32_t i = 0; i < numElems; ++i) {
         Value *pTrueSrcElem = B->LOAD(pTrueSrc, {0, i});
@@ -1833,7 +1833,7 @@ void GenXPacketize::fixupLLVMIntrinsics(Function &F) {
 GlobalVariable *GenXPacketize::findGlobalExecMask() {
   // look for the global EMask variable if exists
   for (auto &Global : M->getGlobalList()) {
-    auto Ty = Global.getType()->getPointerElementType();
+    auto Ty = IGCLLVM::getNonOpaquePtrEltTy(Global.getType());
     if (Ty->isVectorTy() &&
         cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() ==
             CMSimdCFLower::MAX_SIMD_CF_WIDTH) {

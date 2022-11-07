@@ -397,7 +397,7 @@ void DivergentBarrierPass::generateBody(
         IRB.CreateCall(BarrierFn);
 
         auto* ThreadDoneCnt = IRB.CreateLoad(
-            ThreadDoneCntPtr->getType()->getPointerElementType(),
+            IGCLLVM::getNonOpaquePtrEltTy(ThreadDoneCntPtr->getType()),
             ThreadDoneCntPtr, VALUE_NAME("thread.done.cnt"));
 
         Value* GroupSize = getGroupSize(*Wrapper);
@@ -475,7 +475,7 @@ void DivergentBarrierPass::handleSpillFill(Function* F) const
             }
             IRB.SetInsertPoint(FI);
             auto *LI = IRB.CreateLoad(
-                Ptr->getType()->getPointerElementType(), Ptr);
+                IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr);
             LI->takeName(FI);
             FI->replaceAllUsesWith(LI);
             FI->eraseFromParent();

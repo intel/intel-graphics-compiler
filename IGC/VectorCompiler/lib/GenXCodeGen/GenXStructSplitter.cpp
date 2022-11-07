@@ -1630,7 +1630,7 @@ bool Substituter::processPTI(PtrToIntInst &PTI, const TypeToInstrMap &NewInstr,
                              InstsToSubstitute /*OUT*/ &InstToInst) {
 
   StructType &STy = *cast<StructType>(
-      PTI.getPointerOperand()->getType()->getPointerElementType());
+      IGCLLVM::getNonOpaquePtrEltTy(PTI.getPointerOperand()->getType()));
 
   uint64_t MaxPtrOffset{0};
   if (!processPTIsUses(PTI, MaxPtrOffset))

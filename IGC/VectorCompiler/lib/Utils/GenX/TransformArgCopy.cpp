@@ -115,7 +115,7 @@ static bool isPtrArgModified(const Value &Arg) {
 // Check if it is safe to pass structure by value.
 static bool structSafeToPassByVal(const Argument &Arg) {
   StructType *StrTy =
-      cast<StructType>(cast<PointerType>(Arg.getType())->getPointerElementType());
+      cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(Arg.getType()));
 
   if (!containsOnlySuitableTypes(*StrTy))
     return false;
@@ -156,7 +156,7 @@ static bool argToTransform(const Argument &Arg,
   auto *PtrTy = dyn_cast<PointerType>(Arg.getType());
   if (!PtrTy)
     return false;
-  Type *ElemTy = PtrTy->getPointerElementType();
+  Type *ElemTy = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
   if ((ElemTy->isVectorTy() || onlyUsedBySimpleValueLoadStore(Arg)) &&
       (ElemTy->isIntOrIntVectorTy() || ElemTy->isFPOrFPVectorTy()))
     return true;
@@ -293,7 +293,7 @@ vc::TransformedFuncInfo::TransformedFuncInfo(
 
 // Whether provided \p GV should be passed by pointer.
 static bool passLocalizedGlobalByPointer(const GlobalValue &GV) {
-  auto *Type = GV.getType()->getPointerElementType();
+  auto *Type = IGCLLVM::getNonOpaquePtrEltTy(GV.getType());
   return Type->isAggregateType();
 }
 
@@ -309,7 +309,7 @@ void vc::TransformedFuncInfo::appendGlobals(
       GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByPointer});
     } else {
       int ArgIdx = NewFuncType.Args.size();
-      Type *PointeeTy = GV->getType()->getPointerElementType();
+      Type *PointeeTy = IGCLLVM::getNonOpaquePtrEltTy(GV->getType());
       NewFuncType.Args.push_back(PointeeTy);
       if (GV->isConstant())
         GlobalArgs.Globals.push_back({GV, GlobalArgKind::ByValueIn});
@@ -346,7 +346,7 @@ void vc::TransformedFuncInfo::fillOrigArgInfo(
 
     // Update type for transformed arguments.
     if (Kind != ArgKind::General) {
-      Ty = Ty->getPointerElementType();
+      Ty = IGCLLVM::getNonOpaquePtrEltTy(Ty);
     }
 
     if (Kind == ArgKind::CopyOut) {
@@ -482,7 +482,7 @@ getTransformedFuncCallArgs(CallInst &OrigCall,
       IGC_ASSERT_MESSAGE(Kind == ArgKind::CopyIn || Kind == ArgKind::CopyInOut,
                          "unexpected arg kind");
       LoadInst *Load =
-          new LoadInst(OrigArg.get()->getType()->getPointerElementType(),
+          new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(OrigArg.get()->getType()),
                        OrigArg.get(), OrigArg.get()->getName() + ".val",
                        /* isVolatile */ false, &OrigCall);
       NewCallOps.push_back(Load);
@@ -652,7 +652,7 @@ static Value *appendTransformedFuncRetPortion(
         isa<AllocaInst>(LocalizedGlobal),
         "an alloca is expected when pass localized global by value");
     Value *LocalizedGlobalVal = Builder.CreateLoad(
-        LocalizedGlobal->getType()->getPointerElementType(), LocalizedGlobal);
+        IGCLLVM::getNonOpaquePtrEltTy(LocalizedGlobal->getType()), LocalizedGlobal);
     return insertValueToRet(*LocalizedGlobalVal, NewRetVal, RetIdx, Builder,
                             NewFuncInfo);
   }
@@ -669,7 +669,7 @@ static Value *appendTransformedFuncRetPortion(
   IGC_ASSERT_MESSAGE(isa<AllocaInst>(CurRetByPtr),
                      "corresponding alloca is expected");
   Value *CurRetByVal = Builder.CreateLoad(
-      CurRetByPtr->getType()->getPointerElementType(), CurRetByPtr);
+      IGCLLVM::getNonOpaquePtrEltTy(CurRetByPtr->getType()), CurRetByPtr);
   return insertValueToRet(*CurRetByVal, NewRetVal, RetIdx, Builder,
                           NewFuncInfo);
 }
@@ -681,7 +681,7 @@ static Value *passGlobalAsCallArg(GlobalArgInfo GAI, CallInst &OrigCall) {
   // We should should load the global first to pass it by value.
   if (GAI.Kind == GlobalArgKind::ByValueIn ||
       GAI.Kind == GlobalArgKind::ByValueInOut)
-    return new LoadInst(GAI.GV->getType()->getPointerElementType(), GAI.GV,
+    return new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(GAI.GV->getType()), GAI.GV,
                         GAI.GV->getName() + ".val",
                         /* isVolatile */ false, &OrigCall);
   IGC_ASSERT_MESSAGE(
@@ -826,8 +826,8 @@ std::vector<Value *> vc::FuncBodyTransfer::handleTransformedFuncArgs() {
                 OrigArg.getType()->getPointerAddressSpace(),
             "pointers should have different addr spaces when they mismatch");
         IGC_ASSERT_MESSAGE(
-            Replacement->getType()->getPointerElementType() ==
-                OrigArg.getType()->getPointerElementType(),
+            IGCLLVM::getNonOpaquePtrEltTy(Replacement->getType()) ==
+                IGCLLVM::getNonOpaquePtrEltTy(OrigArg.getType()),
             "pointers must have same element type when they mismatch");
         return new AddrSpaceCastInst(Replacement, OrigArg.getType(), "",
                                      InsertPt);

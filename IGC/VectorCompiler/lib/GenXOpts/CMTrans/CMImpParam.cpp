@@ -777,7 +777,7 @@ void CMImpParam::replaceWithGlobal(CallInst *CI) {
   auto IID = GenXIntrinsic::getGenXIntrinsicID(CI->getCalledFunction());
   GlobalVariable *GV =
       getOrCreateGlobalForIID(CI->getParent()->getParent(), IID);
-  LoadInst *Load = new LoadInst(GV->getType()->getPointerElementType(), GV, "",
+  LoadInst *Load = new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(GV->getType()), GV, "",
                                 /* isVolatile */ false,
                                 IGCLLVM::getCorrectAlign(GV->getAlignment()), CI);
   Load->takeName(CI);
@@ -792,7 +792,7 @@ static bool isSupportedAggregateArgument(Argument &Arg) {
   if (!Arg.hasByValAttr())
     return false;
 
-  Type *Ty = Arg.getType()->getPointerElementType();
+  Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(Arg.getType());
   auto *STy = cast<StructType>(Ty);
   IGC_ASSERT(!STy->isOpaque());
   return true;
@@ -888,7 +888,7 @@ ArgLinearization CMImpParam::GenerateArgsLinearizationInfo(Function &F) {
 
     Type *ArgTy = Arg.getType();
     IGC_ASSERT(isa<PointerType>(ArgTy));
-    auto *STy = cast<StructType>(ArgTy->getPointerElementType());
+    auto *STy = cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(ArgTy));
     Lin[&Arg] = LinearizeAggregateType(STy);
   }
   return Lin;

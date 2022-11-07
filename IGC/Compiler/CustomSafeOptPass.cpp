@@ -491,7 +491,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
     // %44 = getelementptr[356 x float] * %outarray_x1, i32 0, i32 %43      %51 = getelementptr[2 x float] * %31, i32 0, i32 %selRes_s
     // %45 = load float* %44, align 4                                       %52 = load float* %51, align 4
 
-    llvm::Type* pType = I.getType()->getPointerElementType();
+    llvm::Type* pType = IGCLLVM::getNonOpaquePtrEltTy(I.getType());
     if (!pType->isArrayTy() ||
         static_cast<ADDRESS_SPACE>(I.getType()->getAddressSpace()) != ADDRESS_SPACE_PRIVATE)
     {
@@ -607,7 +607,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst& I)
                 gepArg1 = BinaryOperator::CreateSub(pGEP->getOperand(2), IRB.getInt32(index_lb), "reducedIndex", pGEP);
             }
             llvm::Value* gepArg[] = { pGEP->getOperand(1), gepArg1 };
-            Type *BaseTy = cast<PointerType>(newAlloca->getType())->getPointerElementType();
+            Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(newAlloca->getType());
             llvm::Value* pGEPnew = GetElementPtrInst::Create(BaseTy, newAlloca, gepArg, "", pGEP);
 
             pGEP->replaceAllUsesWith(pGEPnew);
@@ -676,7 +676,7 @@ void CustomSafeOptPass::visitLoadInst(LoadInst& load)
             SmallVector<Value*, 8> indices;
             indices.append(gep->idx_begin(), gep->idx_end());
             indices[selIdx] = sel->getOperand(1);
-            Type *BaseTy = cast<PointerType>(gep->getPointerOperand()->getType())->getPointerElementType();
+            Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperand()->getType());
             GetElementPtrInst* gep1 = GetElementPtrInst::Create(BaseTy, gep->getPointerOperand(), indices, gep->getName(), gep);
             gep1->setDebugLoc(gep->getDebugLoc());
             indices[selIdx] = sel->getOperand(2);
@@ -4555,7 +4555,7 @@ bool ClampICBOOBAccess::runOnFunction(Function& F)
                             continue;
                         }
 
-                        Type* eleType = gep->getPointerOperandType()->getPointerElementType();
+                        Type* eleType = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperandType());
                         if (!eleType->isArrayTy() ||
                             !(eleType->getArrayElementType()->isFloatTy() || eleType->getArrayElementType()->isIntegerTy(32)))
                         {
@@ -4565,7 +4565,7 @@ bool ClampICBOOBAccess::runOnFunction(Function& F)
                         // Want to compare index into ICB to ensure index doesn't go past the size of the ICB
                         // If it does clamp to some index where a zero is stored
                         m_builder.SetInsertPoint(gep);
-                        uint64_t arrSize = gep->getPointerOperandType()->getPointerElementType()->getArrayNumElements();
+                        uint64_t arrSize = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperandType())->getArrayNumElements();
                         Value* eltIdx = gep->getOperand(2);
                         Value* isOOB = m_builder.CreateICmp(ICmpInst::ICMP_UGE, eltIdx, llvm::ConstantInt::get(eltIdx->getType(), arrSize));
                         unsigned zeroIndex = modMD->immConstant.zeroIdxs[offsetIntoMergedBuffer];
@@ -4650,7 +4650,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function& F)
                                 continue;
                             }
 
-                            Type* eleType = gep->getPointerOperandType()->getPointerElementType();
+                            Type* eleType = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperandType());
                             if (!eleType->isArrayTy() ||
                                 !(eleType->getArrayElementType()->isFloatTy() || eleType->getArrayElementType()->isIntegerTy(32)))
                             {

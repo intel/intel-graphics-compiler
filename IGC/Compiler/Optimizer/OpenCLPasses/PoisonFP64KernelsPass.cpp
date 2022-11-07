@@ -156,7 +156,7 @@ static void poisonKernel(Function *Kernel) {
     Function *Printf = getOrDeclareFunction(M, "printf", FunctionType::get(Int32Ty, { Type::getInt8PtrTy(Ctx, 2) }, true));
 
     Constant *PoisonMessage = createPoisonMessage(M, Kernel);
-    Type *MessageType = static_cast<PointerType *>(PoisonMessage->getType())->getPointerElementType();
+    Type *MessageType = IGCLLVM::getNonOpaquePtrEltTy(PoisonMessage->getType());
 
     std::vector<Value *> Indices = {
         ConstantInt::getSigned(Type::getInt32Ty(Ctx), 0),

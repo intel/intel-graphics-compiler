@@ -404,8 +404,8 @@ static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
         }
         else if (llvm::BitCastInst * pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
         {
-            Type* baseT = GetBaseType(pBitCast->getType()->getPointerElementType());
-            Type* sourceType = GetBaseType(pBitCast->getOperand(0)->getType()->getPointerElementType());
+            Type* baseT = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(pBitCast->getType()));
+            Type* sourceType = GetBaseType(IGCLLVM::getNonOpaquePtrEltTy(pBitCast->getOperand(0)->getType()));
             if (pBitCast->use_empty())
             {
                 continue;
@@ -455,7 +455,7 @@ bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base)
 
     // Don't even look at non-array allocas.
     // (extractAllocaDim can not handle them anyway, causing a crash)
-    llvm::Type* pType = I->getType()->getPointerElementType();
+    llvm::Type* pType = IGCLLVM::getNonOpaquePtrEltTy(I->getType());
     if (pType->isStructTy() && pType->getStructNumElements() == 1)
     {
         pType = pType->getStructElementType(0);
@@ -551,7 +551,7 @@ public:
 void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
 {
     // Extract the Alloca size and the base Type
-    Type* pType = pAlloca->getType()->getPointerElementType();
+    Type* pType = IGCLLVM::getNonOpaquePtrEltTy(pAlloca->getType());
     Type* pBaseType = GetBaseType(pType)->getScalarType();
     IGC_ASSERT(pBaseType);
     llvm::AllocaInst* pVecAlloca = createVectorForAlloca(pAlloca, pBaseType);
@@ -611,7 +611,7 @@ void TransposeHelper::handleGEPInst(
     //
     IRBuilder<> IRB(pGEP);
     Value* pScalarizedIdx = IRB.getInt32(0);
-    Type* T = pGEP->getPointerOperandType()->getPointerElementType();
+    Type* T = IGCLLVM::getNonOpaquePtrEltTy(pGEP->getPointerOperandType());
     for (unsigned i = 0, e = pGEP->getNumIndices(); i < e; ++i)
     {
         auto GepOpnd = IRB.CreateZExtOrTrunc(pGEP->getOperand(i + 1), IRB.getInt32Ty());

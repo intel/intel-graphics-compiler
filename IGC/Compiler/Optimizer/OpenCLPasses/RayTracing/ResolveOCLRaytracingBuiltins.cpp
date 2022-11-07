@@ -406,7 +406,7 @@ void ResolveOCLRaytracingBuiltins::handleInitRayQuery(llvm::CallInst& callInst) 
     unsigned numArgs = IGCLLVM::getNumArgOperands(&callInst);
     IGC_ASSERT(numArgs == 5);
 
-    auto* allocaType = callInst.getType()->getPointerElementType();
+    auto* allocaType = IGCLLVM::getNonOpaquePtrEltTy(callInst.getType());
     auto* alloca = rtbuilder.CreateAlloca(allocaType);
 
     rtbuilder.SetInsertPoint(&callInst);

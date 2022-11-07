@@ -152,7 +152,7 @@ std::string recursive_mangle(const Type* pType)
         case Type::PointerTyID:
         {
             unsigned int AS = pType->getPointerAddressSpace();
-            Type* pPointeeType = pType->getPointerElementType();
+            Type* pPointeeType = IGCLLVM::getNonOpaquePtrEltTy(pType);
 
             StructType* ST = dyn_cast<StructType>(pPointeeType);
             if (ST && ST->isOpaque())
@@ -431,7 +431,7 @@ std::string getSPIRVImageSampledTypeName(SPIRVType* Ty) {
 
 bool isSPIRVSamplerType(llvm::Type* Ty) {
   if (auto PT = dyn_cast<PointerType>(Ty))
-    if (auto ST = dyn_cast<StructType>(PT->getPointerElementType()))
+    if (auto ST = dyn_cast<StructType>(IGCLLVM::getNonOpaquePtrEltTy(PT)))
       if (ST->isOpaque()) {
         auto Name = ST->getName();
         if (Name.startswith(std::string(kSPIRVTypeName::PrefixAndDelim) + kSPIRVTypeName::Sampler)) {

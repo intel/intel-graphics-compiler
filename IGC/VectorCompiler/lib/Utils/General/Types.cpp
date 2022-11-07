@@ -19,7 +19,7 @@ using namespace llvm;
 IGCLLVM::FixedVectorType *vc::changeAddrSpace(IGCLLVM::FixedVectorType *OrigTy,
                                               int AddrSpace) {
   IGC_ASSERT_MESSAGE(OrigTy, "wrong argument");
-  auto *PointeeTy = OrigTy->getElementType()->getPointerElementType();
+  auto *PointeeTy = IGCLLVM::getNonOpaquePtrEltTy(OrigTy->getElementType());
   auto EC = OrigTy->getNumElements();
   return IGCLLVM::FixedVectorType::get(
       llvm::PointerType::get(PointeeTy, AddrSpace), EC);
@@ -110,8 +110,8 @@ Type *vc::getNewTypeForCast(Type *OldOutType, Type *OldInType,
   if (NewInIsPtrOrVecPtr) {
     // <4 x char*> -> <2 x half*> : < 2 x int*> - ? forbidden
     // char* -> half* : int* -> ? forbidden
-    IGC_ASSERT_MESSAGE(OldInType->getScalarType()->getPointerElementType() ==
-                           NewInType->getScalarType()->getPointerElementType(),
+    IGC_ASSERT_MESSAGE(IGCLLVM::getNonOpaquePtrEltTy(OldInType->getScalarType()) ==
+                           IGCLLVM::getNonOpaquePtrEltTy(NewInType->getScalarType()),
                        "Error: unexpected type change");
     // address space from new
     // element count calculated as for vector

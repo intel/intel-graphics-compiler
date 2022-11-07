@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/IRBuilder.h"
 
+#include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 
 namespace IGCLLVM
@@ -182,7 +183,7 @@ namespace IGCLLVM
       inline llvm::CallInst* CreateCall(llvm::Value* Callee, llvm::ArrayRef<llvm::Value*> Args = llvm::None,
                                            const llvm::Twine& Name = "", llvm::MDNode* FPMathTag = nullptr) {
             return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(
-                                                           llvm::cast<llvm::FunctionType>(Callee->getType()->getPointerElementType()), Callee,
+                                                           llvm::cast<llvm::FunctionType>(IGCLLVM::getNonOpaquePtrEltTy(Callee->getType())), Callee,
             Args, Name, FPMathTag);
         }
 
@@ -193,7 +194,7 @@ namespace IGCLLVM
                    llvm::MDNode *FPMathTag = nullptr) {
           return llvm::IRBuilder<T, InserterTyDef()>::CreateCall(
               llvm::cast<llvm::FunctionType>(
-                  Callee->getType()->getPointerElementType()),
+                  IGCLLVM::getNonOpaquePtrEltTy(Callee->getType())),
               Callee, Args, OpBundles, Name, FPMathTag);
         }
 
@@ -210,19 +211,19 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR >= 13
         inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, const char *Name)
         {
-            llvm::Type* ptrType = Ptr->getType()->getPointerElementType();
+            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateLoad(ptrType, Ptr, Name);
         }
 
         inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, const Twine &Name = "")
         {
-            llvm::Type* ptrType = Ptr->getType()->getPointerElementType();
+            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateLoad(ptrType, Ptr, Name);
         }
 
         inline llvm::LoadInst* CreateLoad(llvm::Value* Ptr, bool isVolatile, const Twine &Name = "")
         {
-            llvm::Type* ptrType = Ptr->getType()->getPointerElementType();
+            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateLoad(ptrType, Ptr, isVolatile, Name);
         }
 
@@ -230,13 +231,13 @@ namespace IGCLLVM
 
         inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, const llvm::Twine& Name = "")
         {
-            llvm::Type* ptrType = Ptr->getType()->getPointerElementType();
+            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, Name);
         }
 
         inline llvm::LoadInst* CreateAlignedLoad(llvm::Value* Ptr, IGCLLVM::Align Align, bool isVolatile, const llvm::Twine& Name = "")
         {
-            llvm::Type* ptrType = Ptr->getType()->getPointerElementType();
+            llvm::Type* ptrType = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateAlignedLoad(ptrType, Ptr, Align, isVolatile, Name);
         }
 
@@ -245,14 +246,14 @@ namespace IGCLLVM
             unsigned Idx0,
             const llvm::Twine& Name = "")
         {
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateConstGEP1_32(Ptr->getType()->getPointerElementType(), Ptr, Idx0, Name);
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateConstGEP1_32(IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr, Idx0, Name);
         }
 
         using llvm::IRBuilder<T, InserterTyDef()>::CreateConstGEP1_32;
 
         inline llvm::Value* CreateInBoundsGEP(llvm::Value *Ptr, llvm::ArrayRef<llvm::Value*> IdxList,
                            const llvm::Twine &Name = "") {
-            llvm::Type *Ty = cast<PointerType>(Ptr->getType()->getScalarType())->getPointerElementType();
+            llvm::Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()->getScalarType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateInBoundsGEP(Ty, Ptr, IdxList, Name);
         }
 
@@ -260,7 +261,7 @@ namespace IGCLLVM
 
         inline llvm::Value* CreateGEP(llvm::Value* Ptr, llvm::ArrayRef<llvm::Value*> IdxList,
             const llvm::Twine& Name = "") {
-            llvm::Type* Ty = cast<PointerType>(Ptr->getType()->getScalarType())->getPointerElementType();
+            llvm::Type* Ty = IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()->getScalarType());
             return llvm::IRBuilder<T, InserterTyDef()>::CreateGEP(Ty, Ptr, IdxList, Name);
         }
 
@@ -271,7 +272,7 @@ namespace IGCLLVM
           auto *PtrsTy = cast<FixedVectorType>(Ptrs->getType());
           auto *PtrTy = cast<PointerType>(PtrsTy->getElementType());
           unsigned NumElts = PtrsTy->getNumElements();
-          auto *Ty = FixedVectorType::get(PtrTy->getPointerElementType(), NumElts);
+          auto *Ty = FixedVectorType::get(IGCLLVM::getNonOpaquePtrEltTy(PtrTy), NumElts);
           return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedGather(
               Ty, Ptrs, Alignment, Mask, PassThru, Name);
         }
@@ -294,7 +295,7 @@ namespace IGCLLVM
         CallInst *CreateMaskedLoad(Value *Ptr, Align Alignment, Value *Mask,
                                    Value *PassThru, const Twine &Name) {
           auto *PtrTy = cast<PointerType>(Ptr->getType());
-          Type *Ty = PtrTy->getPointerElementType();
+          Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
           return llvm::IRBuilder<T, InserterTyDef()>::CreateMaskedLoad(
               Ty, Ptr, Alignment, Mask, PassThru, Name);
         }
@@ -304,7 +305,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR >= 14
         Value* CreatePtrDiff(Value *LHS, Value *RHS, const Twine &Name = "") {
           auto *PtrTy = cast<PointerType>(LHS->getType());
-          Type *Ty = PtrTy->getPointerElementType();
+          Type *Ty = PtrTy->getNonOpaquePointerElementType();
           return llvm::IRBuilder<T, InserterTyDef()>::CreatePtrDiff(Ty, LHS, RHS, Name);
         }
 #endif
@@ -318,7 +319,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR <= 10
             return llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64(Ptr, Idx0, Idx1, Name);
 #else
-            return llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64(Ptr->getType()->getPointerElementType(), Ptr, Idx0, Idx1, Name);
+            return llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64(IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr, Idx0, Idx1, Name);
 #endif
         }
 

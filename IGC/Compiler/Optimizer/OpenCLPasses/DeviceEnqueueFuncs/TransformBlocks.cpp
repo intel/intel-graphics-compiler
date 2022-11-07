@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include <llvmWrapper/IR/Type.h>
 #include "llvm/IR/ValueHandle.h"
 #include "llvmWrapper/Transforms/Utils.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -272,7 +273,7 @@ namespace //Anonymous
 
             auto ptrType = dyn_cast_or_null<llvm::PointerType>(type);
             return ptrType != nullptr
-                ? dyn_cast<llvm::StructType>(ptrType->getPointerElementType())
+                ? dyn_cast<llvm::StructType>(IGCLLVM::getNonOpaquePtrEltTy(ptrType))
                 : nullptr;
         }
 
@@ -402,7 +403,7 @@ namespace //Anonymous
             llvm::Type* valType = value->getType();
             while (valType->isPointerTy())
             {
-                valType = valType->getPointerElementType();
+                valType = IGCLLVM::getNonOpaquePtrEltTy(valType);
             }
             _structType = dyn_cast<llvm::StructType>(valType);
         }
@@ -558,7 +559,7 @@ namespace //Anonymous
         {
             IGC_ASSERT(source->getType()->isPointerTy());
 
-            auto size = _DL->getTypeAllocSize(source->getType()->getPointerElementType());
+            auto size = _DL->getTypeAllocSize(IGCLLVM::getNonOpaquePtrEltTy(source->getType()));
             _builder.CreateMemCpy(dest, source, size, align);
             return size;
         }
@@ -1673,8 +1674,7 @@ namespace //Anonymous
             {
                 if (auto gv = M.getGlobalVariable(name))
                 {
-                    auto gvType = cast<llvm::PointerType>(gv->getType());
-                    auto initType = cast<llvm::PointerType>(gvType->getPointerElementType());
+                    auto initType = cast<llvm::PointerType>(IGCLLVM::getNonOpaquePtrEltTy(gv->getType()));
                     auto nullConst = llvm::ConstantPointerNull::get(initType);
                     gv->setExternallyInitialized(false);
                     gv->setConstant(true);
@@ -1826,13 +1826,13 @@ namespace //Anonymous
             static llvm::raw_ostream& Print(llvm::Type* type, llvm::raw_ostream& os) {
                 if (type->isPointerTy())
                 {
-                    if (type->getPointerElementType()->isStructTy())
+                    if (IGCLLVM::getNonOpaquePtrEltTy(type)->isStructTy())
                     {
-                        auto val = type->getPointerElementType()->getStructName();
+                        auto val = IGCLLVM::getNonOpaquePtrEltTy(type)->getStructName();
                         size_t offset = val.find('.');
                         return os << val.substr(offset + 1);
                     }
-                    return BaseTypeName(type->getPointerElementType(), os) << "*";
+                    return BaseTypeName(IGCLLVM::getNonOpaquePtrEltTy(type), os) << "*";
                 }
 
                 return BaseTypeName(type, os);
@@ -2261,7 +2261,7 @@ namespace //Anonymous
         {
             if (KindQuery::isStructType(ptrType))
             {
-                destPtr = _builder.CreateStructGEP(ptrType->getPointerElementType(), dest, static_cast<unsigned>(destIndex));
+                destPtr = _builder.CreateStructGEP(IGCLLVM::getNonOpaquePtrEltTy(ptrType), dest, static_cast<unsigned>(destIndex));
                 // If store to struct then use struct element type
                 // to select proper store instruction
                 typeToSelect = destPtr->getType();
@@ -2269,12 +2269,12 @@ namespace //Anonymous
             else
             {
                 destPtr = (_DL->getPointerTypeSize(ptrType) > 4)
-                    ? _builder.CreateConstInBoundsGEP2_64(ptrType->getPointerElementType(), dest, 0, destIndex)
-                    : _builder.CreateConstInBoundsGEP2_32(ptrType->getPointerElementType(), dest, 0, (unsigned)destIndex);
+                    ? _builder.CreateConstInBoundsGEP2_64(IGCLLVM::getNonOpaquePtrEltTy(ptrType), dest, 0, destIndex)
+                    : _builder.CreateConstInBoundsGEP2_32(IGCLLVM::getNonOpaquePtrEltTy(ptrType), dest, 0, (unsigned)destIndex);
             }
         }
 
-        auto align = _DL->getPrefTypeAlignment(destPtr->getType()->getPointerElementType());
+        auto align = _DL->getPrefTypeAlignment(IGCLLVM::getNonOpaquePtrEltTy(destPtr->getType()));
 
         return (byVal && KindQuery::isStructType(typeToSelect))
             ? CreateMemCpy(destPtr, source, align)
@@ -2305,7 +2305,7 @@ namespace //Anonymous
                     _localPointerTypes.push_back(argType);
                 }
                 //catch block_descriptor pointer
-                else if (argType->getPointerElementType()->isIntegerTy(8))
+                else if (IGCLLVM::getNonOpaquePtrEltTy(argType)->isIntegerTy(8))
                 {
                     for (auto arg_user : arg.users())
                     {
@@ -2316,7 +2316,7 @@ namespace //Anonymous
                             auto dest_type = casted_block_descr->getDestTy();
                             while (dest_type->isPointerTy())
                             {
-                                dest_type = dest_type->getPointerElementType();
+                                dest_type = IGCLLVM::getNonOpaquePtrEltTy(dest_type);
                             }
 
                             _captureStructType = cast<llvm::StructType>(dest_type);
@@ -2642,7 +2642,7 @@ namespace //Anonymous
             case CaptureKind::SCALAR:
                 if (KindQuery::isStructType(valueType))
                 {
-                    valueType = valueType->getPointerElementType();
+                    valueType = IGCLLVM::getNonOpaquePtrEltTy(valueType);
                 }
                 scalarsBufSize += sizeInBlocks(_DL->getTypeAllocSize(valueType), int32ty);
                 break;
@@ -2789,7 +2789,7 @@ namespace //Anonymous
         {
             auto CastValue = [&](Value* pEvt)
             {
-                auto* pNewType = PointerType::get(pEvt->getType()->getPointerElementType(), ADDRESS_SPACE_PRIVATE);
+                auto* pNewType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(pEvt->getType()), ADDRESS_SPACE_PRIVATE);
                 auto* pCasted = builder.CreatePointerBitCastOrAddrSpaceCast(pEvt, pNewType);
                 return pCasted;
             };

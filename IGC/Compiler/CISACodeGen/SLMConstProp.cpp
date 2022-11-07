@@ -401,7 +401,7 @@ void SymbolicEvaluation::getSymExprOrConstant(const Value* V, SymExpr*& S, int64
                     return;
                 }
             }
-            else  if (V0->getType()->getPointerElementType()->isSized() &&
+            else  if (IGCLLVM::getNonOpaquePtrEltTy(V0->getType())->isSized() &&
                 !V0->getType()->isVectorTy() &&
                 m_DL != nullptr)
             {

@@ -133,7 +133,7 @@ auto AlignmentAnalysis::getAlignValue(Value* V) const
             if (!align)
             {
                 Type* gvType = GV->getType();
-                return m_DL->getABITypeAlignment(gvType->getPointerElementType());
+                return m_DL->getABITypeAlignment(IGCLLVM::getNonOpaquePtrEltTy(gvType));
             }
             else
             {
@@ -149,7 +149,7 @@ auto AlignmentAnalysis::getAlignValue(Value* V) const
         if (arg->getType()->isPointerTy())
         {
             // Pointer arguments are guaranteed to be aligned on the ABI alignment
-            Type* pointedTo = arg->getType()->getPointerElementType();
+            Type* pointedTo = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
             if (pointedTo->isSized())
             {
                 return m_DL->getABITypeAlignment(pointedTo);
@@ -226,7 +226,7 @@ alignment_t AlignmentAnalysis::visitAllocaInst(AllocaInst& I)
     if (!newAlign)
     {
         Type* allocaType = I.getType();
-        newAlign = m_DL->getABITypeAlignment(allocaType->getPointerElementType());
+        newAlign = m_DL->getABITypeAlignment(IGCLLVM::getNonOpaquePtrEltTy(allocaType));
     }
 
     return newAlign;

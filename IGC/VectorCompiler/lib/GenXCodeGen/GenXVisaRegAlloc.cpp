@@ -611,7 +611,7 @@ void GenXVisaRegAlloc::allocReg(LiveRange *LR) {
       return;
 
     if (GV->hasAttribute(genx::FunctionMD::GenXVolatile))
-      Ty = Ty->getPointerElementType();
+      Ty = IGCLLVM::getNonOpaquePtrEltTy(Ty);
   }
   IGC_ASSERT(!Ty->isVoidTy());
   if (LR->Category == vc::RegCategory::Predicate) {
@@ -648,7 +648,7 @@ static Type *calcOverrideType(Type *OverrideType, const SimpleValue &V,
   if (OverrideType->isPointerTy()) {
     auto GV = dyn_cast<GlobalVariable>(V.getValue());
     if (GV && GV->hasAttribute(genx::FunctionMD::GenXVolatile))
-      OverrideType = OverrideType->getPointerElementType();
+      OverrideType = IGCLLVM::getNonOpaquePtrEltTy(OverrideType);
   }
   OverrideType = &vc::fixDegenerateVectorType(*OverrideType);
   if (R->Num < VISA_NUM_RESERVED_REGS)
@@ -844,7 +844,7 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed,
     BytesPerElement = 4;
   } else if (auto PT = dyn_cast<PointerType>(ElementTy)) {
     BytesPerElement = DL.getPointerTypeSize(PT);
-    if (BytesPerElement == 4 || PT->getPointerElementType()->isFunctionTy())
+    if (BytesPerElement == 4 || IGCLLVM::getNonOpaquePtrEltTy(PT)->isFunctionTy())
       VisaType = ISA_TYPE_UD;
     else if (BytesPerElement == 8)
       VisaType = ISA_TYPE_UQ;

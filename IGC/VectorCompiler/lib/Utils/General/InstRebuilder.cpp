@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/Type.h"
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/IR/InstVisitor.h>
@@ -95,7 +96,7 @@ public:
   Instruction *visitLoadInst(LoadInst &OrigLoad) {
     Value &Ptr = getSingleNewOperand();
     auto *NewLoad =
-        new LoadInst{cast<PointerType>(Ptr.getType())->getPointerElementType(),
+        new LoadInst{IGCLLVM::getNonOpaquePtrEltTy(Ptr.getType()),
                      &Ptr,
                      "",
                      OrigLoad.isVolatile(),

@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DerivedTypes.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Type.h"
 
 namespace vc {
 
@@ -36,7 +37,7 @@ enum Enum {
 // and the original pointee type.
 inline llvm::PointerType *changeAddrSpace(llvm::PointerType *OrigTy,
                                           int AddrSpace) {
-  return llvm::PointerType::get(OrigTy->getPointerElementType(), AddrSpace);
+  return llvm::PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(OrigTy), AddrSpace);
 }
 
 // Changes addrspace inside a vector of pointers type.

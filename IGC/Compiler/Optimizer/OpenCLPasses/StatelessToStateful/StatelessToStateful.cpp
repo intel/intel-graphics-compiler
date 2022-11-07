@@ -365,7 +365,7 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
     auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> alignment_t {
         if (PointerType* PTy = dyn_cast<PointerType>(ptrVal->getType()))
         {
-            Type* pointeeTy = PTy->getPointerElementType();
+            Type* pointeeTy = IGCLLVM::getNonOpaquePtrEltTy(PTy);
             if (!pointeeTy->isSized()) {
                 return 0;
             }
@@ -529,7 +529,7 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo& II)
     const DebugLoc& DL = I->getDebugLoc();
     GenISAIntrinsic::ID const intrinID = I->getIntrinsicID();
 
-    PointerType* pTy = PointerType::get(II.ptr->getType()->getPointerElementType(), II.getStatefulAddrSpace());
+    PointerType* pTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(II.ptr->getType()), II.getStatefulAddrSpace());
     Instruction* statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
     Instruction* statefulInst = nullptr;
 
@@ -588,7 +588,7 @@ void StatelessToStateful::promoteLoad(InstructionInfo& II)
 
     Instruction* statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
     Instruction* pLoad = new LoadInst(
-        statefulPtr->getType()->getPointerElementType(),
+        IGCLLVM::getNonOpaquePtrEltTy(statefulPtr->getType()),
         statefulPtr,
         "",
         I->isVolatile(),

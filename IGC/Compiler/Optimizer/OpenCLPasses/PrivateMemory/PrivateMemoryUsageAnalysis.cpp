@@ -108,7 +108,7 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
 
             if (arg->getType()->isPointerTy())
             {
-                Type* type = arg->getType()->getPointerElementType();
+                Type* type = IGCLLVM::getNonOpaquePtrEltTy(arg->getType());
 
                 if (StructType * structType = dyn_cast<StructType>(type))
                 {

@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Type.h"
 
 #include <algorithm>
 #include <array>
@@ -188,7 +189,7 @@ Type &getTypeFromBuiltinOperand(CallInst &BiCall, int OpIdx) {
   Value &BiOp = *BiCall.getArgOperand(OpIdx);
   switch (BuiltinOperandKind[BiID][OpIdx]) {
   case OperandKind::Output:
-    return *BiOp.getType()->getPointerElementType();
+    return *IGCLLVM::getNonOpaquePtrEltTy(BiOp.getType());
   case OperandKind::Input:
   case OperandKind::Constant:
     return *BiOp.getType();

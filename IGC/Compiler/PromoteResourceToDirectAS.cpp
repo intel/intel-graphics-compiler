@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
+#include <llvmWrapper/IR/Type.h>
 #include <llvmWrapper/Support/Alignment.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/IGCIRBuilder.h"
@@ -145,7 +146,7 @@ Value* FindArrayIndex(const std::vector<Value*>& instList, IGCIRBuilder<>& build
                 arrayIndex = nullptr;
                 break;
             }
-            auto pointerElementTy = gep->getPointerOperandType()->getPointerElementType();
+            auto pointerElementTy = IGCLLVM::getNonOpaquePtrEltTy(gep->getPointerOperandType());
             if (pointerElementTy->isStructTy())
             {
                 // Example: %1 = getelementptr inbounds %"struct.texture", %"struct.texture"* %aot, i64 %arrayIndex, i32 0
@@ -156,7 +157,7 @@ Value* FindArrayIndex(const std::vector<Value*>& instList, IGCIRBuilder<>& build
                 // Example: %2 = getelementptr inbounds [8 x %"struct.texture"], [8 x %"struct.texture"]* %aot, i64 0, i64 %arrayIndex, i32 0
                 arrayIndex = gep->getOperand(2);
             }
-            else if (pointerElementTy->isPointerTy() && pointerElementTy->getPointerElementType()->isStructTy() && gep->getOperand(1) == builder.getInt64(0))
+            else if (pointerElementTy->isPointerTy() && IGCLLVM::getNonOpaquePtrEltTy(pointerElementTy)->isStructTy() && gep->getOperand(1) == builder.getInt64(0))
             {
                 // Example: %3 = getelementptr inbounds %"struct.texture", %"struct.texture"** %aot, i64 0, i64 %arrayIndex, i32 0
                 arrayIndex = gep->getOperand(2);
@@ -276,7 +277,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
         }
 
         addrSpace = IGC::EncodeAS4GFXResource(*bufferId, bufTy);
-        PointerType* newptrType = PointerType::get(resourcePtr->getType()->getPointerElementType(), addrSpace);
+        PointerType* newptrType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(resourcePtr->getType()), addrSpace);
 
         Value* mutePtr = nullptr;
         if (llvm::isa<llvm::ConstantInt>(bufferId))
@@ -330,7 +331,7 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
         if (patchInstructions.size() > 0)
         {
             // Get the original pointer type before any GEPs or bitcasts modifies it
-            patchTy = cast<Instruction>(patchInstructions[0])->getOperand(0)->getType()->getPointerElementType();
+            patchTy = IGCLLVM::getNonOpaquePtrEltTy(cast<Instruction>(patchInstructions[0])->getOperand(0)->getType());
         }
         else
         {
@@ -360,7 +361,7 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
         }
         else if (BitCastInst * cast = dyn_cast<BitCastInst>(inst))
         {
-            PointerType* newptrType = PointerType::get(cast->getType()->getPointerElementType(), directAS);
+            PointerType* newptrType = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(cast->getType()), directAS);
             patchedInst = BitCastInst::Create(Instruction::BitCast, patchedInst, newptrType, "", cast);
             if (BitCastInst* castPathedInst = dyn_cast<BitCastInst>(patchedInst))
             {
@@ -377,7 +378,7 @@ bool PatchGetElementPtr(const std::vector<Value*>& instList, Type* dstTy, unsign
     dstPtr = patchedInst;
 
     // Final types must match
-    return (dstPtr->getType()->getPointerElementType() == dstTy);
+    return (IGCLLVM::getNonOpaquePtrEltTy(dstPtr->getType()) == dstTy);
 }
 
 bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dstTy, unsigned directAS, Value*& dstPtr)
@@ -425,8 +426,8 @@ bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dst
             IGC::TracePointerSource(selectInst->getOperand(2), true, false, true, tempList1))
         {
             IGC_ASSERT(selectInst->getOperand(1)->getType()->isPointerTy() && selectInst->getOperand(2)->getType()->isPointerTy());
-            Type* srcType0 = selectInst->getOperand(1)->getType()->getPointerElementType();
-            Type* srcType1 = selectInst->getOperand(1)->getType()->getPointerElementType();
+            Type* srcType0 = IGCLLVM::getNonOpaquePtrEltTy(selectInst->getOperand(1)->getType());
+            Type* srcType1 = IGCLLVM::getNonOpaquePtrEltTy(selectInst->getOperand(1)->getType());
 
             // Patch both branches, then patch the select instruction
             if (PatchGetElementPtr(tempList0, srcType0, directAS, nullptr, bufferPtr0) &&
@@ -443,7 +444,7 @@ bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dst
     }
     else if (phiNode)
     {
-        PointerType* newPhiTy = PointerType::get(phiNode->getType()->getPointerElementType(), directAS);
+        PointerType* newPhiTy = PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(phiNode->getType()), directAS);
         PHINode* pNewPhi = PHINode::Create(newPhiTy, phiNode->getNumIncomingValues(), "", phiNode);
         for (unsigned int i = 0; i < phiNode->getNumIncomingValues(); ++i)
         {
@@ -459,7 +460,7 @@ bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dst
 
             // Patch the GEPs for each phi node path
             Value* bufferPtr = nullptr;
-            Type* incomingTy = incomingVal->getType()->getPointerElementType();
+            Type* incomingTy = IGCLLVM::getNonOpaquePtrEltTy(incomingVal->getType());
             if (!PatchGetElementPtr(tempList, incomingTy, directAS, nullptr, bufferPtr))
             {
                 // Patching must succeed for all paths
@@ -480,7 +481,7 @@ bool PatchInstructionAddressSpace(const std::vector<Value*>& instList, Type* dst
 
     if (!dstPtr || !dstPtr->getType()->isPointerTy())
         return false;
-    if (dstPtr->getType()->getPointerElementType() != dstTy)
+    if (IGCLLVM::getNonOpaquePtrEltTy(dstPtr->getType()) != dstTy)
         return false;
 
     return success;

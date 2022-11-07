@@ -321,7 +321,7 @@ void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst& NBarrierInitCal
     // Check if we already have setup global variabels
     if (!IsNamedBarriersAdded())
     {
-        initGlobalVariables(module, NBarrierInitCall.getType()->getPointerElementType());
+        initGlobalVariables(module, IGCLLVM::getNonOpaquePtrEltTy(NBarrierInitCall.getType()));
     }
 
     auto newName = "__builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarrier_p3i32";
@@ -331,7 +331,7 @@ void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst& NBarrierInitCal
         m_NamedBarrierType->getPointerTo(SPIRAS_Local),
         Type::getInt32PtrTy(context, SPIRAS_Local)
     };
-    Type *BaseTy = cast<PointerType>(m_NamedBarrierArray->getType())->getPointerElementType();
+    Type *BaseTy = IGCLLVM::getNonOpaquePtrEltTy(m_NamedBarrierArray->getType());
     auto pointerNBarrier = GetElementPtrInst::Create(BaseTy, m_NamedBarrierArray, { getInt64(module, 0), getInt32(module, 0) }, "", &(NBarrierInitCall));
     auto bitcastPointerNBarrier = BitCastInst::CreatePointerBitCastOrAddrSpaceCast(pointerNBarrier, m_NamedBarrierType->getPointerTo(SPIRAS_Local), "", &(NBarrierInitCall));
     SmallVector<Value*, 3> ArgsVal

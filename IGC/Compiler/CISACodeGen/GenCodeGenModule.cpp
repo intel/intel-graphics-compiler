@@ -970,14 +970,14 @@ void SubroutineInliner::visitMemCpyInst(MemCpyInst& I)
         if (origSrc->getType()->getPointerAddressSpace() != Src->getType()->getPointerAddressSpace())
         {
             Value* SrcCast = BitCastInst::Create(Instruction::BitCast, origSrc,
-                PointerType::get(Src->getType()->getPointerElementType(), origSrc->getType()->getPointerAddressSpace()),
+                PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(Src->getType()), origSrc->getType()->getPointerAddressSpace()),
                 "", &I);
             I.replaceUsesOfWith(Src, SrcCast);
         }
         if (origDst->getType()->getPointerAddressSpace() != Dst->getType()->getPointerAddressSpace())
         {
             Value* DstCast = BitCastInst::Create(Instruction::BitCast, origDst,
-                PointerType::get(Dst->getType()->getPointerElementType(), origDst->getType()->getPointerAddressSpace()),
+                PointerType::get(IGCLLVM::getNonOpaquePtrEltTy(Dst->getType()), origDst->getType()->getPointerAddressSpace()),
                 "", &I);
             I.replaceUsesOfWith(Dst, DstCast);
         }

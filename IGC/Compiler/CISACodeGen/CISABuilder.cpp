@@ -5656,7 +5656,7 @@ namespace IGC
                         type = vISA::GenSymType::S_UNDEF;
 
                     sEntry.s_type = type;
-                    sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(pGlobal->getType()->getPointerElementType()));
+                    sEntry.s_size = int_cast<uint32_t>(pModule->getDataLayout().getTypeAllocSize(IGCLLVM::getNonOpaquePtrEltTy(pGlobal->getType())));
                     sEntry.s_offset = static_cast<uint32_t>(global.second);
                 }
                 symbolTableList.push_back(std::make_pair(pGlobal, sEntry));

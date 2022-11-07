@@ -84,7 +84,7 @@ static const Value &ignoreCastToGenericAS(const Value &Op) {
 const GlobalVariable *vc::getConstStringGVFromOperandOptional(const Value &Op) {
   IGC_ASSERT_MESSAGE(Op.getType()->isPointerTy(),
                      "wrong argument: pointer was expected");
-  IGC_ASSERT_MESSAGE(Op.getType()->getPointerElementType()->isIntegerTy(8),
+  IGC_ASSERT_MESSAGE(IGCLLVM::getNonOpaquePtrEltTy(Op.getType())->isIntegerTy(8),
                      "wrong argument: i8* value was expected");
   auto &MaybeGEP = ignoreCastToGenericAS(Op);
   if (!isa<GEPOperator>(MaybeGEP))

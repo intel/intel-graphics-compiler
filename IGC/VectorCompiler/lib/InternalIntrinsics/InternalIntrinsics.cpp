@@ -32,6 +32,7 @@ See LICENSE.TXT for details.
 #include <llvm/Support/CommandLine.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
 using namespace llvm;
@@ -443,7 +444,7 @@ static std::string getMangledTypeStr(Type *Ty) {
   std::string Result;
   if (PointerType *PTyp = dyn_cast<PointerType>(Ty)) {
     Result += "p" + utostr(PTyp->getAddressSpace()) +
-              getMangledTypeStr(PTyp->getPointerElementType());
+              getMangledTypeStr(IGCLLVM::getNonOpaquePtrEltTy(PTyp));
   } else if (ArrayType *ATyp = dyn_cast<ArrayType>(Ty)) {
     Result += "a" + utostr(ATyp->getNumElements()) +
               getMangledTypeStr(ATyp->getElementType());

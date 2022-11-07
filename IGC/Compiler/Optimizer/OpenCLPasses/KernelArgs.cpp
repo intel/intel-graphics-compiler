@@ -104,7 +104,7 @@ alignment_t KernelArg::calcAlignment(const Argument* arg, const DataLayout* DL) 
     // For local pointers, we need the alignment of the *contained* type.
     if (m_argType == ArgType::PTR_LOCAL)
     {
-        typeToAlign = cast<PointerType>(typeToAlign)->getPointerElementType();
+        typeToAlign = IGCLLVM::getNonOpaquePtrEltTy(typeToAlign);
     }
 
     return DL->getABITypeAlignment(typeToAlign);
@@ -169,7 +169,7 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument* arg, const StringRef t
             }
             else if (arg->hasByValAttr() &&
                 type->isPointerTy() &&
-                type->getPointerElementType()->isStructTy())
+                IGCLLVM::getNonOpaquePtrEltTy(type)->isStructTy())
             {
                 // Pass by value structs will show up as private pointer
                 // arguments in the function signiture.

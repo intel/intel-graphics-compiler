@@ -131,9 +131,9 @@ Value &vc::ImplicitArgs::Buffer::loadField(Value &BufferPtr,
                                      vc::ThreadPayloadKind::OnRegister),
       "wrong argument: a wrong type for buffer pointer value");
   auto *FieldPtr = IRB.CreateInBoundsGEP(
-      BufferPtr.getType()->getPointerElementType(), &BufferPtr,
+      IGCLLVM::getNonOpaquePtrEltTy(BufferPtr.getType()), &BufferPtr,
       {IRB.getInt32(0), IRB.getInt32(FieldIdx)}, Name + ".ptr");
-  auto *FieldVal = IRB.CreateLoad(FieldPtr->getType()->getPointerElementType(),
+  auto *FieldVal = IRB.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(FieldPtr->getType()),
                                   FieldPtr, Name);
   return *FieldVal;
 }
@@ -170,7 +170,7 @@ Value &vc::ImplicitArgs::LocalID::getPointer<vc::ThreadPayloadKind::InMemory>(
   auto &BasePtr =
       vc::ImplicitArgs::LocalID::getBasePtr(BufferPtr, IRB, Name + ".base");
   Value *Index = vc::getGroupThreadIDForPIM(IRB);
-  return *IRB.CreateGEP(BasePtr.getType()->getPointerElementType(), &BasePtr,
+  return *IRB.CreateGEP(IGCLLVM::getNonOpaquePtrEltTy(BasePtr.getType()), &BasePtr,
                         Index, Name);
 }
 
@@ -205,7 +205,7 @@ Value &vc::ImplicitArgs::LocalID::loadField(
     Value &LIDStructPtr, vc::ImplicitArgs::LocalID::Indices::Enum FieldIdx,
     IRBuilder<> &IRB, const Twine &Name) {
   auto *Ptr = IRB.CreateInBoundsGEP(
-      LIDStructPtr.getType()->getPointerElementType(), &LIDStructPtr,
+      IGCLLVM::getNonOpaquePtrEltTy(LIDStructPtr.getType()), &LIDStructPtr,
       {IRB.getInt32(0), IRB.getInt32(FieldIdx)}, Name + ".ptr");
-  return *IRB.CreateLoad(Ptr->getType()->getPointerElementType(), Ptr, Name);
+  return *IRB.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()), Ptr, Name);
 }

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include <llvm/IR/Module.h>
@@ -190,7 +191,7 @@ bool PromoteBools::typeNeedsPromotion(Type* type, DenseSet<Type*> visitedTypes)
     }
     else if (auto pointerType = dyn_cast<PointerType>(type))
     {
-        return typeNeedsPromotion(type->getPointerElementType(), visitedTypes);
+        return typeNeedsPromotion(IGCLLVM::getNonOpaquePtrEltTy(type), visitedTypes);
     }
     else if (auto arrayType = dyn_cast<ArrayType>(type))
     {
@@ -242,7 +243,7 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
     else if (auto pointerType = dyn_cast<PointerType>(type))
     {
         newType = PointerType::get(
-            getOrCreatePromotedType(type->getPointerElementType()),
+            getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(type)),
             pointerType->getAddressSpace());
     }
     else if (auto arrayType = dyn_cast<ArrayType>(type))
@@ -501,7 +502,7 @@ GlobalVariable* PromoteBools::promoteGlobalVariable(GlobalVariable* globalVariab
 
     return new GlobalVariable(
         *globalVariable->getParent(),
-        getOrCreatePromotedType(globalVariable->getType()->getPointerElementType()),
+        getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(globalVariable->getType())),
         globalVariable->isConstant(),
         globalVariable->getLinkage(),
         promoteConstant(globalVariable->getInitializer()),
@@ -537,12 +538,12 @@ Constant* PromoteBools::promoteConstant(Constant* constant)
     }
     else if (auto constantPointerNull = dyn_cast<ConstantPointerNull>(constant))
     {
-        if (!typeNeedsPromotion(constantPointerNull->getType()->getPointerElementType()))
+        if (!typeNeedsPromotion(IGCLLVM::getNonOpaquePtrEltTy(constantPointerNull->getType())))
         {
             return constant;
         }
 
-        auto newPointerElementType = getOrCreatePromotedType(constantPointerNull->getType()->getPointerElementType());
+        auto newPointerElementType = getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(constantPointerNull->getType()));
         return ConstantPointerNull::get(PointerType::get(newPointerElementType, constantPointerNull->getType()->getAddressSpace()));
     }
     else if (auto constantVector = dyn_cast<ConstantVector>(constant))
@@ -713,7 +714,7 @@ GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElem
     auto indices = SmallVector<Value*, 8>(getElementPtr->idx_begin(), getElementPtr->idx_end());
 
     return GetElementPtrInst::Create(
-        promotedOperand->getType()->getPointerElementType(),
+        IGCLLVM::getNonOpaquePtrEltTy(promotedOperand->getType()),
         promotedOperand,
         indices,
         "",
@@ -763,7 +764,7 @@ LoadInst* PromoteBools::promoteLoad(LoadInst* load)
 
     auto newSrc = getOrCreatePromotedValue(src);
     auto newLoad = new LoadInst(
-        newSrc->getType()->getPointerElementType(),
+        IGCLLVM::getNonOpaquePtrEltTy(newSrc->getType()),
         newSrc,
         "",
         load

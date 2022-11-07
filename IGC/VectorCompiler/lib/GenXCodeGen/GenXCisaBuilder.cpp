@@ -2729,7 +2729,7 @@ static unsigned getResultedTypeSize(Type *Ty, const DataLayout& DL) {
       TySz += getResultedTypeSize(Ty, DL);
   } else if (Ty->isPointerTy())
     // FIXME: fix data layout description.
-    TySz = Ty->getPointerElementType()->isFunctionTy() ? genx::DWordBytes
+    TySz = IGCLLVM::getNonOpaquePtrEltTy(Ty)->isFunctionTy() ? genx::DWordBytes
                                                        : DL.getPointerSize();
   else {
     TySz = Ty->getPrimitiveSizeInBits() / CHAR_BIT;
@@ -4834,7 +4834,7 @@ void GenXKernelBuilder::buildConvertAddr(CallInst *CI, genx::BaleInfo BI,
   Type *OverrideTy = nullptr;
   Type *BaseTy = Base->getType();
   if (BaseTy->isPointerTy())
-    BaseTy = BaseTy->getPointerElementType();
+    BaseTy = IGCLLVM::getNonOpaquePtrEltTy(BaseTy);
   unsigned ElementBytes =
       BaseTy->getScalarType()->getPrimitiveSizeInBits() >> 3;
   int Offset = cast<ConstantInt>(CI->getArgOperand(1))->getSExtValue();

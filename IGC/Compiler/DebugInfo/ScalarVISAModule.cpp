@@ -509,7 +509,7 @@ ScalarVisaModule::GetVariableLocation(const llvm::Instruction* pInst) const
             //IGC_ASSERT_MESSAGE(0, "DBG declare intrinsic must point to an address");
             return VISAVariableLocation(this);
         }
-        pType = pType->getPointerElementType();
+        pType = IGCLLVM::getNonOpaquePtrEltTy(pType);
     }
 
     bool isInSurface = false;

@@ -304,7 +304,7 @@ namespace IGC
     llvm::LoadInst* cloneLoad(llvm::LoadInst* Orig, llvm::Value* Ptr)
     {
         llvm::LoadInst* LI = new llvm::LoadInst(
-            cast<PointerType>(Ptr->getType())->getPointerElementType(),
+            IGCLLVM::getNonOpaquePtrEltTy(Ptr->getType()),
             Ptr, "", false, Orig);
         LI->setVolatile(Orig->isVolatile());
         LI->setAlignment(IGCLLVM::getAlign(*Orig));
@@ -2662,7 +2662,7 @@ namespace IGC
 
             if (instType && instType->getAddressSpace() == oldAS)
             {
-                Type* eltType = instType->getPointerElementType();
+                Type* eltType = IGCLLVM::getNonOpaquePtrEltTy(instType);
                 PointerType* ptrType = PointerType::get(eltType, newAS);
                 inst->mutateType(ptrType);
                 FixAddressSpaceInAllUses(inst, newAS, oldAS);

@@ -86,6 +86,7 @@ SPDX-License-Identifier: MIT
 
 #define DEBUG_TYPE "cmkernelargoffset"
 
+#include <llvmWrapper/IR/Type.h>
 #include "llvmWrapper/Support/Alignment.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
@@ -450,14 +451,13 @@ void CMKernelArgOffset::resolveByValArgs(Function *F) const {
       continue;
 
     auto *Base =
-        Builder.CreateAlloca(Arg.getType()->getPointerElementType(), nullptr,
+        Builder.CreateAlloca(IGCLLVM::getNonOpaquePtrEltTy(Arg.getType()), nullptr,
                              Arg.getName() + ".linearization");
 
     Value *BaseAsI8Ptr = Builder.CreateBitCast(Base, Builder.getInt8PtrTy(),
                                                Base->getName() + ".i8");
     for (const auto &Info : KM->arg_lin(&Arg)) {
-      Type *Ty = cast<PointerType>(BaseAsI8Ptr->getType()->getScalarType())
-                     ->getPointerElementType();
+      Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(BaseAsI8Ptr->getType()->getScalarType());
       Value *StoreAddrUntyped = Builder.CreateGEP(Ty, BaseAsI8Ptr, Info.Offset);
       Value *StoreAddrTyped = Builder.CreateBitCast(
           StoreAddrUntyped, Info.Arg->getType()->getPointerTo());

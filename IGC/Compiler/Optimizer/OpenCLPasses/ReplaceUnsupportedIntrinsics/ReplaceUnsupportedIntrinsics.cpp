@@ -489,7 +489,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst* I)
     // BaseSize is flag if we want to handle algorithm in general way
     // or want to keep size of base type to further optimizations
     uint32_t BaseSize = 0;
-    Type* RawDstType = Dst->stripPointerCasts()->getType()->getPointerElementType();
+    Type* RawDstType = IGCLLVM::getNonOpaquePtrEltTy(Dst->stripPointerCasts()->getType());
     if (Type* BaseType = GetBaseType(RawDstType))
         BaseSize = BaseType->getScalarSizeInBits();
 

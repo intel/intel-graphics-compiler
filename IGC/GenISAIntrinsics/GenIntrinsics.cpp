@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "GenIntrinsics.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Type.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
@@ -401,7 +402,7 @@ static std::string getMangledTypeStr(Type* Ty) {
   std::string Result;
   if (PointerType* PTyp = dyn_cast<PointerType>(Ty)) {
     Result += "p" + llvm::utostr(PTyp->getAddressSpace()) +
-      getMangledTypeStr(PTyp->getPointerElementType());
+      getMangledTypeStr(IGCLLVM::getNonOpaquePtrEltTy(PTyp));
   } else if (ArrayType* ATyp = dyn_cast<ArrayType>(Ty)) {
     Result += "a" + llvm::utostr(ATyp->getNumElements()) +
       getMangledTypeStr(ATyp->getElementType());
