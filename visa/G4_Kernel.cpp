@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo.h"
 #include "G4_BB.hpp"
 #include "VarSplit.h"
-// #include "iga/IGALibrary/api/igaEncoderWrapper.hpp"
 #include "BinaryEncodingIGA.h"
 #include "Common_ISA_framework.h"
 #include "VISAKernel.h"
@@ -1783,6 +1782,13 @@ static BlockOffsets precomputeBlockOffsets(std::ostream &os, G4_Kernel &g4k,
 
           while (opcode == iga::Op::SYNC && !sw.hasDist() && !sw.hasSWSB() &&
                  !sw.hasSpecialToken() && !sw.hasToken()) {
+            // For HW WA.
+            // In which, the sync instruction is used to make instruction
+            // aligned.  However, due to compaction, we don't know the location
+            // of the instruction, the sync instruction insertion has to happen
+            // during encoding, which is unknow for the instruction size of
+            // kernel in the decoding. That's the issue we have to make
+            // these changes.
             currPc += lastInstSize;
             opcode = kv.getOpcode(currPc);
             sw = kv.getSWSBInfo(currPc, iga::SWSB_ENCODE_MODE::ThreeDistPipe);

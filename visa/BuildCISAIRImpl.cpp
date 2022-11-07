@@ -1497,8 +1497,8 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
                                     (uint32_t)1);
     }
     m_cisaBinary->initCisaBinary(m_kernel_count, m_function_count);
-    m_cisaBinary->setMajorVersion((unsigned char)this->m_header.major_version);
-    m_cisaBinary->setMinorVersion((unsigned char)this->m_header.minor_version);
+    m_cisaBinary->setMajorVersion((unsigned char)m_header.major_version);
+    m_cisaBinary->setMinorVersion((unsigned char)m_header.minor_version);
     m_cisaBinary->setMagicNumber(COMMON_ISA_MAGIC_NUM);
 
     CBinaryCISAEmitter cisaBinaryEmitter;
@@ -1936,8 +1936,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
 #ifndef DLL_MODE
   if (criticalMsg.str().length() > 0) {
     std::cerr << "[vISA Finalizer Messages]\n" << criticalMsg.str();
-    status = VISA_FAILURE; // TODO: move this out of #ifdef so IGC/VC can see
-                           // the error code
+    status = VISA_FAILURE;
   }
 #endif // DLL_MODE
 

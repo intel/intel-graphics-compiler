@@ -432,8 +432,7 @@ int parseText(std::string fileName, int argc, const char *argv[],
 
   opt.getOption(vISA_IsaasmNamesFileUsed, isaasmNamesFileUsed);
   if (isaasmNamesFileUsed) {
-    std::ifstream os;
-    os.open(fileName, std::ios::in);
+    std::ifstream os(fileName, std::ios::in);
     if (!os.is_open()) {
       std::cerr << fileName << ": could not open an isaasm names input file.\n";
       return EXIT_FAILURE;
