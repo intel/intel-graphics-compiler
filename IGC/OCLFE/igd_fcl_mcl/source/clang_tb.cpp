@@ -1970,7 +1970,7 @@ namespace TC
         if (pCreateArgs->pCreateData != nullptr) {
         }
         else {
-            // assume m_OCL_Ver, etc. will be set-up later
+            // assume m_OCL_Ver, etc. will be set-up later.
             SGlobalData globDataTmp = { 0 };
             m_GlobalData = globDataTmp;
             m_HWPlatform = IGFX_UNKNOWN;
