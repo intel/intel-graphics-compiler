@@ -2387,7 +2387,8 @@ public:
 //
 // Since the sub regs of address reg a0 can be allocated individually,
 // we use subRegOff to indicate the sub registers
-//
+// Address operands with the same base variable(i.e. A0(0), A0(1), A0(2)...)
+// have the same subRegOff as base variable "A0".
 struct AssignedReg {
   vISA::G4_VarBase *phyReg = nullptr;
   unsigned subRegOff = 0;
@@ -2512,6 +2513,7 @@ public:
   unsigned short ExRegNum(bool &valid) override {
     return reg.phyReg->ExRegNum(valid);
   }
+
   unsigned short ExSubRegNum(bool &valid) override {
     valid = true;
     return (unsigned short)reg.subRegOff;
