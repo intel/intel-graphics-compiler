@@ -370,13 +370,14 @@ enum class SamplerSIMD {
   SIMD16,
   SIMD32,
   SIMD32_64,
-  SIMD8H,
-  SIMD16H,
-  SIMD32H,
+  SIMD8H, // half precision parameters
+  SIMD16H, // half precision parameters
+  SIMD32H, // half precision parameters
   SIMD8_INTRET,  // with integer return XeHPG+
   SIMD16_INTRET, // with integer return XeHPG+
 };
 
+///////////////////////////////////////////////
 // TGL ...
 // 000 Reserved
 // 001 SIMD8
@@ -387,15 +388,17 @@ enum class SamplerSIMD {
 // 110 SIMD16H
 // 111 Reserved
 //
+///////////////////////////////////////////////
 // XeHPG+
 // 000 SIMD8 + Integer Return
 // 001 SIMD8
 // 010 SIMD16
-// 011 RESERVED
+// 011 Reserved
 // 100 SIMD16 + Integer Return
 // 101 SIMD8H
 // 110 SIMD16H
 // 111 Reserved
+//
 
 static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
                                   std::stringstream &syms,
@@ -403,13 +406,7 @@ static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
   SamplerSIMD simdMode = SamplerSIMD::INVALID;
   switch (simdBits) {
   case 0:
-    if (p >= Platform::XE_HPC) {
-      simdMode = SamplerSIMD::SIMD16_INTRET;
-      syms << "simd16_iret";
-      descs << "simd16 with integer return";
-      simdSize = 16;
-      break;
-    } else if (p >= Platform::XE_HPG) {
+    if (p >= Platform::XE_HPG) {
       simdMode = SamplerSIMD::SIMD8_INTRET;
       syms << "simd8_iret";
       descs << "simd8 with integer return";
@@ -422,33 +419,19 @@ static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
     simdSize = 1;
     return simdMode;
   case 1:
-    if (p >= Platform::XE_HPC) {
-      simdMode = SamplerSIMD::SIMD16;
-      simdSize = 16;
-      descs << "simd16";
-      syms << "simd16";
-      break;
-    }
     simdMode = SamplerSIMD::SIMD8;
     simdSize = 8;
     descs << "simd8";
     syms << "simd8";
     break;
   case 2:
-    if (p >= Platform::XE_HPC) {
-      simdMode = SamplerSIMD::SIMD32;
-      simdSize = 32;
-      descs << "simd32";
-      syms << "simd32";
-      break;
-    }
     simdMode = SamplerSIMD::SIMD16;
     simdSize = 16;
     descs << "simd16";
     syms << "simd16";
     break;
   case 3:
-    if (p >= Platform::XE_HPC) {
+    if (p >= Platform::XE_HPG) {
       simdMode = SamplerSIMD::INVALID;
       syms << "???";
       descs << "unknown simd mode";
@@ -461,13 +444,7 @@ static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
     simdSize = 32;
     break;
   case 4:
-    if (p >= Platform::XE_HPC) {
-      simdMode = SamplerSIMD::SIMD16_INTRET;
-      syms << "simd32_iret";
-      descs << "simd32 with integer return";
-      simdSize = 32;
-      break;
-    } else if (p >= Platform::XE_HPG) {
+    if (p >= Platform::XE_HPG) {
       syms << "simd16_iret";
       descs << "simd16 with integer return";
       simdMode = SamplerSIMD::SIMD16_INTRET;
@@ -480,29 +457,15 @@ static SamplerSIMD decodeSimdSize(Platform p, uint32_t simdBits, int &simdSize,
     simdSize = 1;
     break;
   case 5:
-    if (p >= Platform::XE_HPC) {
-      simdMode = SamplerSIMD::SIMD16H;
-      simdSize = 16;
-      syms << "simd16h";
-      descs << "simd16 high";
-      break;
-    }
     simdMode = SamplerSIMD::SIMD8H;
     simdSize = 8;
     syms << "simd8h";
-    descs << "simd8 high";
+    descs << "simd8 half with precision parameters";
     break;
   case 6:
-    if (p >= Platform::XE_HPC) {
-      simdMode = SamplerSIMD::SIMD32H;
-      simdSize = 32;
-      syms << "simd32h";
-      descs << "simd32 high";
-      break;
-    }
     simdMode = SamplerSIMD::SIMD16H;
     syms << "simd16h";
-    descs << "simd16 high";
+    descs << "simd16 with half precision parameters";
     simdSize = 16;
     break;
   default:
