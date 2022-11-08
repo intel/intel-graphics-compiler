@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "../FlowGraph.h"
 #include "../G4_IR.hpp"
 #include "../Mem_Manager.h"
-#include "../RegAlloc.h"
 #include "../Timer.h"
 #include "Dependencies_G4IR.h"
 #include "LatencyTable.h"
@@ -245,7 +244,6 @@ class DDD {
   int TOTAL_BUCKETS;
   int totalGRFNum;
   G4_Kernel *kernel;
-  PointsToAnalysis &pointsToAnalysis;
 
   // Gather all initial ready nodes.
   void collectRoots();
@@ -269,8 +267,7 @@ private:
                                const G4_INST &nextInst) const;
 
 public:
-  DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k,
-      PointsToAnalysis &p);
+  DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k);
   ~DDD() {
     if (Nodes.size()) {
       for (NODE_LIST_ITER nIter = Nodes.begin(); nIter != Nodes.end();
@@ -294,10 +291,8 @@ public:
 
   void getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
                             std::vector<BucketDescr> &buckets);
-  void getBucketsForIndirectOperand(G4_INST *inst,
-                                    Gen4_Operand_Number opnd_num,
-                                    std::vector<BucketDescr> &BDvec);
-  void getBucketDescrs(Node *inst, std::vector<BucketDescr> &bucketDescrs);
+  // Returns true if instruction has any indirect operands (dst or src)
+  bool getBucketDescrs(Node *inst, std::vector<BucketDescr> &bucketDescrs);
 
   uint32_t getEdgeLatency_old(Node *node, DepType depT);
   uint32_t getEdgeLatency(Node *node, DepType depT);
@@ -313,7 +308,6 @@ class G4_BB_Schedule {
   G4_BB *bb;
   DDD *ddd;
   G4_Kernel *kernel;
-  PointsToAnalysis &pointsToAnalysis;
 
 public:
   std::vector<Node *> scheduledNodes;
@@ -323,7 +317,7 @@ public:
 
   // Constructor
   G4_BB_Schedule(G4_Kernel *kernel, Mem_Manager &m, G4_BB *bb,
-                 const LatencyTable &LT, PointsToAnalysis &p);
+                 const LatencyTable &LT);
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   // Dumps the schedule
   void emit(std::ostream &);
