@@ -911,6 +911,9 @@ void CoalesceSpillFills::fills() {
     std::list<INST_LIST_ITER> spills;
     INST_LIST_ITER startIter = bb->begin();
     unsigned int w = 0;
+    unsigned int maxW = 0;
+    unsigned int instRP = 0;
+    unsigned int numRowsFillsToCoalesce = 0;
     const auto &splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
     for (auto instIter = startIter; instIter != endIter;) {
       auto inst = (*instIter);
@@ -946,30 +949,44 @@ void CoalesceSpillFills::fills() {
         continue;
       }
 
+      // Determine window size based on register pressure
+      unsigned int RP = rpe.getRegisterPressure(inst);
+      if (RP > 0)
+        instRP = RP;
+
       if (inst->isSpillIntrinsic()) {
         spills.push_back(instIter);
       } else if (inst->isFillIntrinsic()) {
         // Check if coalescing is possible
         if (fillsToCoalesce.size() == 0) {
           w = 0;
+          maxW = 0;
           startIter = instIter;
           spills.clear();
+          numRowsFillsToCoalesce = 0;
         }
 
         if (!overlap(*instIter, spills) &&
             // dont coalesce fills that have physical GRF assigned
             !isGRFAssigned(inst->getDst())) {
           fillsToCoalesce.push_back(instIter);
+          numRowsFillsToCoalesce += inst->asFillIntrinsic()->getNumRows();
         }
       }
 
-      if (fillsToCoalesce.size() > 0 &&
-          rpe.getRegisterPressure(inst) > fillWindowSizeThreshold) {
+      if (fillsToCoalesce.size() > 0 && instRP > fillWindowSizeThreshold) {
         // High register pressure region so reduce window size to 3
         w = (cWindowSize - w > 3) ? cWindowSize - 3 : w;
       }
 
-      if (w == cWindowSize || inst == bb->back()) {
+      if (w == cWindowSize &&
+          (instRP + numRowsFillsToCoalesce) < highRegPressureForWindow) {
+        // If register pressure is below the threshold even when considering
+        // potential increase, continue coalescing fills in current BB
+        --w;
+      }
+
+      if (w == cWindowSize || maxW == cMaxWindowSize || inst == bb->back()) {
         if (fillsToCoalesce.size() > 1) {
           instIter =
               analyzeFillCoalescing(fillsToCoalesce, startIter, instIter, bb);
@@ -980,6 +997,8 @@ void CoalesceSpillFills::fills() {
         }
 
         w = 0;
+        maxW = 0;
+        numRowsFillsToCoalesce = 0;
         fillsToCoalesce.clear();
         spills.clear();
 
@@ -988,6 +1007,7 @@ void CoalesceSpillFills::fills() {
 
       if (fillsToCoalesce.size() > 0) {
         w++;
+        maxW++;
       }
 
       instIter++;
@@ -1053,6 +1073,9 @@ void CoalesceSpillFills::spills() {
     std::list<INST_LIST_ITER> spillsToCoalesce;
     INST_LIST_ITER startIter = bb->begin();
     unsigned int w = 0;
+    unsigned int maxW = 0;
+    unsigned int instRP = 0;
+    unsigned int numRowsSpillsToCoalesce = 0;
     const auto &splitInsts = LoopVarSplit::getSplitInsts(&gra, bb);
     for (auto instIter = startIter; instIter != endIter;) {
       auto inst = (*instIter);
@@ -1067,11 +1090,18 @@ void CoalesceSpillFills::spills() {
         continue;
       }
 
+      // Determine window size based on register pressure
+      unsigned int RP = rpe.getRegisterPressure(inst);
+      if (RP > 0)
+        instRP = RP;
+
       bool earlyCoalesce = false;
       if (inst->isSpillIntrinsic()) {
         // Check if coalescing is possible
         if (spillsToCoalesce.size() == 0) {
           w = 0;
+          maxW = 0;
+          numRowsSpillsToCoalesce = 0;
           startIter = instIter;
           spillsToCoalesce.clear();
         }
@@ -1101,6 +1131,7 @@ void CoalesceSpillFills::spills() {
             coalIt++;
           }
           spillsToCoalesce.push_back(instIter);
+          numRowsSpillsToCoalesce += inst->asSpillIntrinsic()->getNumRows();
         }
       } else if (inst->isFillIntrinsic()) {
         for (auto coalIt = spillsToCoalesce.begin();
@@ -1122,15 +1153,22 @@ void CoalesceSpillFills::spills() {
         }
       }
 
-      if (spillsToCoalesce.size() > 0 &&
-          rpe.getRegisterPressure(inst) > spillWindowSizeThreshold) {
+      if (spillsToCoalesce.size() > 0 && instRP > spillWindowSizeThreshold) {
         if (!allSpillsSameVar(spillsToCoalesce)) {
           // High register pressure region so reduce window size to 3
           w = (cWindowSize - w > 3) ? cWindowSize - 3 : w;
         }
       }
 
-      if (w == cWindowSize || inst == bb->back() || earlyCoalesce) {
+      if (w == cWindowSize &&
+          (instRP + numRowsSpillsToCoalesce) < highRegPressureForWindow) {
+        // If register pressure is below the threshold even when considering
+        // potential increase, continue coalescing spills in current BB
+        --w;
+      }
+
+      if (w == cWindowSize || maxW == cMaxWindowSize || inst == bb->back() ||
+          earlyCoalesce) {
         if (spillsToCoalesce.size() > 1) {
           instIter =
               analyzeSpillCoalescing(spillsToCoalesce, startIter, instIter, bb);
@@ -1141,12 +1179,15 @@ void CoalesceSpillFills::spills() {
         }
 
         w = 0;
+        maxW = 0;
+        numRowsSpillsToCoalesce = 0;
         spillsToCoalesce.clear();
         continue;
       }
 
       if (spillsToCoalesce.size() > 0) {
         w++;
+        maxW++;
       }
 
       instIter++;
@@ -1538,6 +1579,7 @@ void CoalesceSpillFills::spillFillCleanup() {
         auto pInstIt = instIt;
         pInstIt--;
         unsigned int w = cSpillFillCleanupWindowSize;
+        unsigned int maxW = 0;
 
         if (inst->asFillIntrinsic()->getDst()->getTopDcl()->getNumRows() >= 8) {
           // avoid attempting cleanup for high reg pressure
@@ -1551,7 +1593,7 @@ void CoalesceSpillFills::spillFillCleanup() {
           continue;
         }
 
-        while (pInstIt != startIt && w > 0) {
+        while (pInstIt != startIt && w > 0 && maxW < cMaxWindowSize) {
           auto pInst = (*pInstIt);
 
           if (pInst->isSpillIntrinsic()) {
@@ -1593,7 +1635,18 @@ void CoalesceSpillFills::spillFillCleanup() {
           }
 
           w--;
+          maxW++;
           pInstIt--;
+
+          RP = rpe.getRegisterPressure(pInst);
+          if (RP > 0)
+            regPressure = RP;
+
+          if (w == 0 && (regPressure + numRows) < highRegPressureForWindow) {
+            // Continue cleanup conservatively considering potential increase in
+            // register pressure
+            ++w;
+          }
         }
 
         // Check whether writes for all rows were found

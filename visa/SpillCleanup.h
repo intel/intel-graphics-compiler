@@ -28,16 +28,19 @@ private:
 
   // Set window size to coalesce
   const unsigned int cWindowSize = 10;
+  const unsigned int cMaxWindowSize = 20;
   const unsigned int cMaxFillPayloadSize = 4;
   const unsigned int cMaxSpillPayloadSize = 4;
   const unsigned int cSpillFillCleanupWindowSize = 10;
   const unsigned int cFillWindowThreshold128GRF = 180;
   const unsigned int cSpillWindowThreshold128GRF = 120;
   const unsigned int cHighRegPressureForCleanup = 100;
+  const unsigned int cHighRegPressureForWindow = 70;
 
   unsigned int fillWindowSizeThreshold = 0;
   unsigned int spillWindowSizeThreshold = 0;
   unsigned int highRegPressureForCleanup = 0;
+  unsigned int highRegPressureForWindow = 0;
 
   // <Old fill declare*, std::pair<Coalesced Decl*, Row Off>>
   // This data structure is used to replaced old spill/fill operands
@@ -105,6 +108,7 @@ public:
     fillWindowSizeThreshold = scale(cFillWindowThreshold128GRF);
     spillWindowSizeThreshold = scale(cSpillWindowThreshold128GRF);
     highRegPressureForCleanup = scale(cHighRegPressureForCleanup);
+    highRegPressureForWindow = scale(cHighRegPressureForWindow);
   }
 
   void run();
