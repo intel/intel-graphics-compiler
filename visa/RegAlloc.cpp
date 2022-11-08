@@ -2008,7 +2008,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
           DEBUG_VERBOSE("Found kill at inst ");
           INST_LIST_ITER fwdIter = rit.base();
           fwdIter--;
-          (*fwdIter)->emit_inst(std::cout, false, NULL);
+          (*fwdIter)->emit_inst(std::cout);
           DEBUG_VERBOSE("\n");
 #endif
         }
@@ -2047,7 +2047,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
           DEBUG_VERBOSE("Found kill at inst ");
           INST_LIST_ITER fwdIter = rit.base();
           fwdIter--;
-          (*fwdIter)->emit_inst(std::cout, false, NULL);
+          (*fwdIter)->emit_inst(std::cout);
           DEBUG_VERBOSE("\n");
 #endif
         }

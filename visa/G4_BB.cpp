@@ -191,7 +191,7 @@ void G4_BB::emitBasicInstruction(std::ostream &output, INST_LIST_ITER &it) {
     // emit label and instruction
     //
     G4_INST *inst = *it;
-    inst->emit(output, parent->builder->getOption(vISA_SymbolReg));
+    inst->emit(output);
     if ((*it)->isLabel() == false) {
       emitBankConflict(output, inst);
     }

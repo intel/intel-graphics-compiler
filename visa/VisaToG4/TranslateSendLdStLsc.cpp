@@ -403,7 +403,6 @@ int IR_Builder::translateLscUntypedInst(
   // Some sanity checking of vISA region sizes with the computed sizes
   G4_Declare *addrDcl =
       src0Addr->getBase()->asRegVar()->getDeclare()->getRootDeclare();
-  // addrDcl->emit(std::cout,true,false);
   check(addrDcl, "cannot find declaration for address register");
 
   // disable size checks if execSize is < min payload width,
@@ -681,7 +680,6 @@ int IR_Builder::translateLscTypedInst(
     srcDataRegs = 0;
     if (!srcData->isNullReg()) {
       const G4_Declare *srcDcl = getDeclare(srcData);
-      // srcDcl->emit(std::cerr, false, false);
       srcDataRegs =
           srcDcl->getTotalElems() * srcDcl->getElemSize() / BYTES_PER_GRF;
     }

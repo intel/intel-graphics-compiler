@@ -142,7 +142,7 @@ void IR_Builder::dump(std::ostream &os) {
   os << "\n";
   os << "INSTS:\n";
   for (G4_INST *i : instList) {
-    i->emit(os, false, false);
+    i->emit(os);
     os << "\n";
   }
 }

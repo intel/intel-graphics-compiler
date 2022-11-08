@@ -1324,27 +1324,7 @@ void G4_Kernel::dumpDotFileInternal(const std::string &baseName) {
   ofile << "\tsize = \"80.0, " << graphHeight << "\";\n";
   ofile << "\tpage= \"80.5, 110\";\n";
   ofile << "\tpagedir=\"TL\";\n";
-  //
-  // dump out declare information
-  //     Declare [label="
-  //
-  // if (name == NULL)
-  //  ofile << "\tDeclares [shape=record, label=\"{kernel:UnknownKernel" << " |
-  //  ";
-  // else
-  //  ofile << "\tDeclares [shape=record, label=\"{kernel:" << name << " | ";
-  // for (std::list<G4_Declare*>::iterator it = Declares.begin(); it !=
-  // Declares.end(); ++it)
-  //{
-  //  (*it)->emit(ofile, true, Options::symbolReg);   // Solve the DumpDot error
-  //  on representing <>
-  //
-  //  ofile << "\\l";  // left adjusted
-  //}
-  // ofile << "}\"];" << "\n";
-  //
   // dump out flow graph
-  //
   for (std::list<G4_BB *>::iterator it = fg.begin(); it != fg.end(); ++it) {
     G4_BB *bb = (*it);
     //
@@ -1399,7 +1379,7 @@ void G4_Kernel::dumpDotFileInternal(const std::string &baseName) {
         ofile << "\t\t\t\t\t\t<TR><TD ALIGN=\"LEFT\"><FONT color=\""
               << fontColor << "\">";
         std::ostringstream os;
-        (*i)->emit(os, m_options->getOption(vISA_SymbolReg), true);
+        (*i)->emit(os);
         std::string dotStr(os.str());
         // TODO: dot doesn't like '<', '>', '{', or '}' (and '&') this code
         // below is a hack. need to replace with delimiters.
@@ -1567,11 +1547,6 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
   os << "\n\n";
 
   // Step2: emit declares (as needed)
-  //
-  //  firstly, emit RA declare as comments or code depends on Options::symbolReg
-  //  we check if the register allocation is successful here
-  //
-
   for (auto dcl : Declares) {
     dcl->emit(os);
   }

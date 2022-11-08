@@ -1856,7 +1856,7 @@ void DDD::dumpNodes(G4_BB *bb) {
     Node *node = *it;
     for (G4_INST *inst : *node->getInstructions()) {
       std::stringstream ss;
-      inst->emit(ss, false, false);
+      inst->emit(ss);
       // 1. NODE
       ofile << node->nodeID << " "
             << " Occu:" << node->getOccupancy()

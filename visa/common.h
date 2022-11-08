@@ -154,7 +154,7 @@ extern std::stringstream errorMsgs;
   do {                                                                         \
     if (!(x)) {                                                                \
       std::cerr << errormsg << "\n";                                           \
-      inst->emit(errorMsgs, true);                                             \
+      inst->emit(errorMsgs);                                                   \
       std::cerr << "\n";                                                       \
       assert(false);                                                           \
     }                                                                          \

@@ -522,15 +522,12 @@ public:
     return (option & InstOpt_NoPreempt) ? true : false;
   }
 
-  void emit_inst(std::ostream &output, bool symbol_dst, bool *symbol_srcs);
-  void emit(std::ostream &output, bool symbolreg = false,
-            bool dotStyle = false);
+  void emit(std::ostream &output);
   void emitDefUse(std::ostream &output) const;
   void emitInstIds(std::ostream &output) const;
   void print(std::ostream &OS) const;
   void dump(std::ostream &OS) const;
   void dump() const;
-  bool isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const;
   const char *getLabelStr() const;
 
   // get simd lane mask for this instruction. For example,
@@ -1229,8 +1226,7 @@ public:
 
   void computeRightBound(G4_Operand *opnd) override;
 
-  void emit_send(std::ostream &output, bool symbol_dst, bool *symbol_srcs);
-  void emit_send(std::ostream &output, bool dotStyle = false);
+  void emit_send(std::ostream &output);
   void emit_send_desc(std::ostream &output);
 
   void setSerialize() { option = option | InstOpt_Serialize; }
@@ -1915,7 +1911,7 @@ public:
   G4_Declare *getBaseRegVarRootDeclare();
 
   virtual bool isRelocImm() const { return false; }
-  virtual void emit(std::ostream &output, bool symbolreg = false) = 0;
+  virtual void emit(std::ostream &output) = 0;
   void dump() const;
   std::string print() const;
 
@@ -2171,7 +2167,7 @@ public:
     return UNDEFINED_SHORT;
   }
 
-  virtual void emit(std::ostream &output, bool symbolreg = false) = 0;
+  virtual void emit(std::ostream &output) = 0;
 };
 
 //
@@ -2192,7 +2188,7 @@ public:
     return (unsigned short)getRegNum();
   }
 
-  void emit(std::ostream &output, bool symbolreg = false) override;
+  void emit(std::ostream &output) override;
 };
 
 //
@@ -2207,7 +2203,7 @@ public:
 
   G4_ArchRegKind getArchRegType() const { return ArchRegType; }
 
-  void emit(std::ostream &output, bool symbolreg = false) override;
+  void emit(std::ostream &output) override;
 
   bool isNullReg() const { return getArchRegType() == AREG_NULL; }
   bool isFlag() const {
@@ -2337,7 +2333,7 @@ public:
   bool isZero() const;
   // True if this is a signed integer and its sign bit(s) are 0.
   bool isSignBitZero() const;
-  void emit(std::ostream &output, bool symbolreg = false) override;
+  void emit(std::ostream &output) override;
   void emitAutoFmt(std::ostream &output);
 
   bool isEqualTo(G4_Imm &imm1) const;
@@ -2380,7 +2376,7 @@ class G4_Label : public G4_Operand {
 public:
   const char *getLabel() const { return label; }
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-  void emit(std::ostream &output, bool symbolreg = false) override;
+  void emit(std::ostream &output) override;
   void setFuncLabel(bool val) { funcLabel = val; }
   bool isFuncLabel() const { return funcLabel; }
   bool isFCLabel() const { return isFC; }
@@ -2510,7 +2506,7 @@ public:
 
   G4_RegVar *getNonTransientBaseRegVar();
 
-  void emit(std::ostream &output, bool symbolreg = false) override;
+  void emit(std::ostream &output) override;
 
   unsigned short ExRegNum(bool &valid) override {
     return reg.phyReg->ExRegNum(valid);
@@ -2676,9 +2672,8 @@ public:
   void setModifier(G4_SrcModifier m) { mod = m; }
 
   bool sameSrcRegRegion(G4_SrcRegRegion &rgn);
-  bool obeySymbolRegRule() const;
-  void emit(std::ostream &output, bool symbolreg = false) override;
-  void emitRegVarOff(std::ostream &output, bool symbolreg = false);
+  void emit(std::ostream &output) override;
+  void emitRegVarOff(std::ostream &output);
 
   bool isAreg() const { return base->isAreg(); }
   bool isNullReg() const { return base->isNullReg(); }
@@ -2834,9 +2829,8 @@ public:
   unsigned short getExecTypeSize() const { return horzStride * getElemSize(); }
 
   void setImmAddrOff(short off) { immAddrOff = off; }
-  bool obeySymbolRegRule() const;
-  void emit(std::ostream &output, bool symbolreg = false) override;
-  void emitRegVarOff(std::ostream &output, bool symbolreg = false);
+  void emit(std::ostream &output) override;
+  void emitRegVarOff(std::ostream &output);
 
   bool isAreg() const { return base->isAreg(); }
   bool isNullReg() const { return base->isNullReg(); }
@@ -2990,8 +2984,8 @@ public:
   G4_Predicate_Control getControl() const { return control; }
   void setControl(G4_Predicate_Control PredCtrl) { control = PredCtrl; }
   bool samePredicate(const G4_Predicate &prd) const;
-  void emit(std::ostream &output, bool symbolreg = false) override;
-  void emit_body(std::ostream &output, bool symbolreg);
+  void emit(std::ostream &output) override;
+  void emit_body(std::ostream &output);
 
   unsigned computeRightBound(uint8_t exec_size) override;
   G4_CmpRelation compareOperand(G4_Operand *opnd,
@@ -3086,7 +3080,7 @@ public:
   }
   unsigned short getSubRegOff() const { return subRegOff; }
   bool sameCondMod(const G4_CondMod &prd) const;
-  void emit(std::ostream &output, bool symbolreg = false) override;
+  void emit(std::ostream &output) override;
 
   // Get condition modifier when operands are reversed.
   static G4_CondModifier getReverseCondMod(G4_CondModifier mod) {
@@ -3134,7 +3128,7 @@ public:
     return m_addressedReg->isRegAllocPartaker();
   }
 
-  void emit(std::ostream &output, bool symbolreg = false);
+  void emit(std::ostream &output);
 };
 
 inline G4_RegAccess G4_Operand::getRegAccess() const {

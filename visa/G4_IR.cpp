@@ -607,8 +607,8 @@ void G4_INST::transferDef(G4_INST *inst2, Gen4_Operand_Number opndNum1,
       // Remove the redundant d/u node.
       // Due to the instruction optimization, such as merge scalars, redundant
       // d/u info may be generated. Such as the case: (W) shl (1)
-      //V3429(0,0)<1>:d V3380(0,0)<0;1,0>:d 0x17:w (W) shl (1) V3430(0,0)<1>:d
-      //V3381(0,0)<0;1,0>:d 0x17:w (W) add (1) V3432(0,0)<1>:d 0x43800000:d
+      // V3429(0,0)<1>:d V3380(0,0)<0;1,0>:d 0x17:w (W) shl (1) V3430(0,0)<1>:d
+      // V3381(0,0)<0;1,0>:d 0x17:w (W) add (1) V3432(0,0)<1>:d 0x43800000:d
       //-V3429(0,0)<0;1,0>:d (W) add (1) V3433(0,0)<1>:d 0x43800000:d
       //-V3430(0,0)<0;1,0>:d
       //==>
@@ -2921,36 +2921,6 @@ bool G4_INST::isMovAddr() const {
   return false;
 }
 
-//
-// Check if the operands of send instruction obey the symbolic register rule
-// ToDo: this is obsolete and should be removed
-//
-bool G4_INST::isValidSymbolOperand(bool &dst_valid, bool *srcs_valid) const {
-  MUST_BE_TRUE(srcs_valid, ERROR_INTERNAL_ARGUMENT);
-
-  bool obeyRule = true;
-  if (dst && dst->getBase()->isRegVar()) {
-    dst_valid = dst->obeySymbolRegRule();
-    if (!dst_valid)
-      obeyRule = false;
-  } else
-    dst_valid = false; // does not change obeyRule for non-register-variable
-
-  for (unsigned i = 0, numSrc = getNumSrc(); i < numSrc; i++) {
-    G4_Operand *src = getSrc(i);
-    if (src && src->isSrcRegRegion() &&
-        src->asSrcRegRegion()->getBase()->isRegVar()) {
-      srcs_valid[i] = src->asSrcRegRegion()->obeySymbolRegRule();
-      if (!srcs_valid[i])
-        obeyRule = false;
-    } else
-      srcs_valid[i] =
-          false; // does not change obeyRule for non-register-variable
-  }
-
-  return obeyRule;
-}
-
 const G4_VarBase *G4_INST::getCondModBase() const {
   if (!getCondMod())
     return nullptr;
@@ -3001,7 +2971,7 @@ static void emitPredWrEn(std::ostream &output, G4_INST &inst) {
     output << "(";
     if (isNoMask)
       output << "W&";
-    pred->emit_body(output, false);
+    pred->emit_body(output);
     output << ") ";
   } else if (isNoMask) {
     output << "(W) ";
@@ -3077,8 +3047,7 @@ static void emitInstructionStartColumn(std::ostream &output, G4_INST &inst) {
     output << ' ';
 }
 
-void G4_INST::emit_inst(std::ostream &output, bool symbol_dst,
-                        bool *symbol_srcs) {
+void G4_INST::emit(std::ostream &output) {
   if (isLabel()) {
     srcs[0]->emit(output);
     output << ":";
@@ -3094,20 +3063,14 @@ void G4_INST::emit_inst(std::ostream &output, bool symbol_dst,
       output << ' ';
       if (sat)
         output << "(sat)";
-      dst->emit(output, symbol_dst);
+      dst->emit(output);
     } // else: may not have dst (e.g. branch)
 
     auto numSrcOpnds = getNumSrc();
     for (int i = 0; i < numSrcOpnds; i++) {
       if (getSrc(i)) {
         output << "  ";
-        if (symbol_srcs != NULL) {
-          getSrc(i)->emit(output,
-                          symbol_srcs[i]); // emit symbolic/physical register
-                                           // depends on the flag
-        } else {
-          getSrc(i)->emit(output, false); // emit physical register
-        }
+        getSrc(i)->emit(output);
       }
     }
 
@@ -3166,41 +3129,8 @@ void G4_INST::emitInstIds(std::ostream &output) const {
   }
 }
 
-//
-// Here we add a parameter symbolreg instead of use global option
-// Options::symbolReg, because we should ouput non-symbolic register when
-// dumping dot files
-//
-void G4_INST::emit(std::ostream &output, bool symbolreg, bool dotStyle) {
-  bool dst_valid = true;
-  bool srcs_valid[G4_MAX_SRCS];
-
-  if (symbolreg) {
-    if (op == G4_nop || isLabel()) {
-      emit_inst(output, false, NULL);
-      return;
-    }
-
-    //
-    // Emit as comment if there is invalid operand, then emit instruction
-    // based on the situation of operand
-    //
-    if (!isValidSymbolOperand(dst_valid, srcs_valid)) {
-      if (!dotStyle) {
-        output << "//";
-        bool srcs_valid1[G4_MAX_SRCS];
-        std::fill(std::begin(srcs_valid1), std::end(srcs_valid1), true);
-        emit_inst(output, true, srcs_valid1); // emit comments
-        output << "\n";
-      }
-    }
-    emit_inst(output, dst_valid, srcs_valid); // emit instruction
-  } else
-    emit_inst(output, false, NULL); // emit instruction with physical register
-}
-
 std::ostream &operator<<(std::ostream &os, G4_INST &inst) {
-  inst.emit(os, false, false);
+  inst.emit(os);
   return os;
 }
 
@@ -3426,8 +3356,8 @@ bool G4_InstSend::isDirectSplittableSend() {
     case DC1_A64_UNTYPED_SURFACE_READ: // SVM gather 4: emask can be reused if
                                        // the per-channel data is larger than 1
                                        // GRF
-    case DC1_UNTYPED_SURFACE_READ: // VISA gather 4
-    case DC1_TYPED_SURFACE_READ:   // Gather 4 typed
+    case DC1_UNTYPED_SURFACE_READ:     // VISA gather 4
+    case DC1_TYPED_SURFACE_READ:       // Gather 4 typed
       if (elemSize * execSize > (int)getBuilder().numEltPerGRF<Type_UB>() &&
           elemSize * execSize % getBuilder().numEltPerGRF<Type_UB>() == 0) {
         return true;
@@ -3461,7 +3391,7 @@ bool G4_InstSend::isDirectSplittableSend() {
     switch (desc->getHdcMessageType()) {
     case DC_DWORD_SCATTERED_READ: // dword scattered read: emask need be
                                   // vertically cut according to splitting
-    case DC_BYTE_SCATTERED_READ: // byte scattered read
+    case DC_BYTE_SCATTERED_READ:  // byte scattered read
       return false;
     case DC_ALIGNED_OWORD_BLOCK_READ: // Nomask
     case DC_OWORD_BLOCK_READ:
@@ -3482,48 +3412,43 @@ bool G4_InstSend::isDirectSplittableSend() {
 // emit send instruction with symbolic/physical register operand depending on
 // the operand check
 //
-void G4_InstSend::emit_send(std::ostream &output, bool symbol_dst,
-                            bool *symbol_srcs) {
+void G4_InstSend::emit_send(std::ostream &output) {
   emitInstructionStartColumn(output, *this);
 
   output << ' ';
-  dst->emit(output, symbol_dst);
+  dst->emit(output);
 
   output << ' ';
   G4_Operand *currSrc = srcs[0];
   if (currSrc->isSrcRegRegion()) {
     // only output reg var & reg off; don't output region desc and type
-    currSrc->asSrcRegRegion()->emitRegVarOff(output, false);
+    currSrc->asSrcRegRegion()->emitRegVarOff(output);
   } else {
-    currSrc->emit(output, false); // emit CurrDst
+    currSrc->emit(output);
   }
   output << ' ';
 
   if (isSplitSend()) {
     // emit src1
-    srcs[1]->asSrcRegRegion()->emitRegVarOff(output, false);
+    srcs[1]->asSrcRegRegion()->emitRegVarOff(output);
     output << ' ';
   }
 
   // emit exDesc if srcs[3] is not null.
   // It should always be a0.2 unless it was constant folded
   if (isSplitSend() && srcs[3]) {
-    srcs[3]->emit(output, false);
+    srcs[3]->emit(output);
     output << ' ';
   } else if (!isSplitSend() && srcs[2]) {
-    srcs[2]->emit(output, false); // for old unary send
+    srcs[2]->emit(output); // for old unary send
     output << ' ';
   }
 
   // emit msgDesc (2 for sends and 1 for send). Last operand shown in asm.
   int msgDescId = isSplitSend() ? 2 : 1;
-  srcs[msgDescId]->emit(output, false);
+  srcs[msgDescId]->emit(output);
 
   emit_options(output);
-}
-
-void G4_InstSend::emit_send(std::ostream &output, bool dotStyle) {
-  emit_send(output, false, NULL);
 }
 
 void G4_InstSend::emit_send_desc(std::ostream &output) {
@@ -3568,11 +3493,9 @@ void G4_InstSend::emit_send_desc(std::ostream &output) {
 }
 
 // print r#
-void G4_Greg::emit(std::ostream &output, bool symbolreg) {
-  output << "r" << getRegNum();
-}
+void G4_Greg::emit(std::ostream &output) { output << "r" << getRegNum(); }
 
-void G4_Areg::emit(std::ostream &output, bool symbolreg) {
+void G4_Areg::emit(std::ostream &output) {
   switch (getArchRegType()) {
   case AREG_NULL:
     output << "null";
@@ -3948,20 +3871,10 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
 // output (Var+refOff).subRegOff
 //
 static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
-                    short regOff,     // base+regOff is the starting register
-                    short subRegOff,  // sub reg offset
-                    short immAddrOff, // imm addr offset
-                    G4_Type type, bool symbolreg, bool printSubReg)
-//
-// symbolreg == false,  output physcial register operand
-// symbolreg == true,   output symbolic register operand
-// Here we use symbolreg instead of Options::symbolReg, because sometimes we
-// need to emit an instruction with invalid symbolic register as comment and
-// then emit a workable instruction with physical register. In this case, we do
-// not want to re-set the global option variable Options::symbolReg to switch
-// between these two states, that may have potential side effects.
-//
-{
+                           short regOff, // base+regOff is the starting register
+                           short subRegOff,  // sub reg offset
+                           short immAddrOff, // imm addr offset
+                           G4_Type type, bool printSubReg) {
   short subRegOffset = (subRegOff != (short)UNDEFINED_SHORT) ? subRegOff : 0;
 
   G4_RegAccess acc = opnd->getRegAccess();
@@ -3975,18 +3888,6 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
       uint16_t thisOpSize = TypeSize(type);
 
       if (baseVar->isPhyRegAssigned()) {
-
-        if (symbolreg && !base->isFlag()) {
-          //
-          // No matter the type of register and if the allocation successed, we
-          // output format <symbol>(RegOff, SubRegOff) Note: we have check if
-          // the register allocation  successed when emit the declare!
-          //
-          output << base->asRegVar()->getName() << "(" << regOff << ","
-                 << subRegOff << ")";
-          return;
-        }
-
         if (baseVar->getPhyReg()->isGreg()) {
           int regNum = 0, subRegNum = 0;
           uint32_t byteAddress = opnd->getLinearizedStart();
@@ -4059,20 +3960,13 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
       G4_RegVar *baseVar = static_cast<G4_RegVar *>(base);
       if (baseVar->isPhyRegAssigned()) {
         MUST_BE_TRUE(baseVar->getPhyReg()->isAreg(), ERROR_UNKNOWN);
-
-        if (symbolreg) {
-          output << baseVar->getName();
-          output << '(' << regOff << ',' << subRegOffset << ")," << immAddrOff
-                 << ']';
-        } else {
-          (static_cast<G4_Areg *>(baseVar->getPhyReg()))->emit(output);
-          output << '.' << (baseVar->getPhyRegOff() + subRegOffset);
-          {
-            output << ", " << immAddrOff << ']';
-          }
+        (static_cast<G4_Areg *>(baseVar->getPhyReg()))->emit(output);
+        output << '.' << (baseVar->getPhyRegOff() + subRegOffset);
+        {
+          output << ", " << immAddrOff << ']';
         }
-      } else // No register assigned yet
-      {
+      } else {
+        // No register assigned yet
         baseVar->emit(output);
         output << '(' << regOff << ',' << subRegOff << ')';
         output << ", " << immAddrOff << ']';
@@ -4089,19 +3983,7 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
   }
 }
 
-//
-// output <modifier>(Var+refOff).subRegOff<16;16,1>.xxyy
-//
-// symbolreg == false,  output <modifier>(Var+refOff).subRegOff<16;16,1>.xxyy
-// symbolreg == true,   output <modifier><symbol>(RegOff, SubRegOff)<16;16,1> in
-// symbolic register emit Here we use symbolreg instead of Options::symbolReg,
-// because sometimes we need to emit an instruction with invalid symbolic
-// register as comment and then emit a workable instruction with physical
-// register. In this case, we do not want to re-set the global option variable
-// Options::symbolReg to switch between these two states, that may have
-// potential side effects.
-//
-void G4_SrcRegRegion::emit(std::ostream &output, bool symbolreg) {
+void G4_SrcRegRegion::emit(std::ostream &output) {
   if (mod != Mod_src_undef) {
     output << SrcModifierStr[mod];
   }
@@ -4109,7 +3991,7 @@ void G4_SrcRegRegion::emit(std::ostream &output, bool symbolreg) {
   //
   // output Var(refOff,subRegOff)
   //
-  emitRegVarOff(output, symbolreg);
+  emitRegVarOff(output);
   //
   // output <vertStride;width,horzStride>
   //
@@ -4157,58 +4039,20 @@ void G4_SrcRegRegion::emit(std::ostream &output, bool symbolreg) {
     }
   }
 
-  if (Type_UNDEF != type) {
-    if (!symbolreg || acc != Direct) // can output register data type for
-                                     // indirect addressing in any time
-      output << ':' << TypeSymbol(type);
-  }
+  if (Type_UNDEF != type)
+    output << ':' << TypeSymbol(type);
 }
 
 bool G4_SrcRegRegion::isScalar() const {
   return getRegion()->isScalar(); // check <0;1,0>
 }
 
-//
-// This function is used to check if the src operand obey the rule of symbolic
-// register. We need this function to check the operand before we emit an
-// instruction
-//
-bool G4_SrcRegRegion::obeySymbolRegRule() const {
-  if (!base->isRegVar()) // only for reg var
-    return false;
-
-  if (base->asRegVar()->getDeclare()->isSpilled()) {
-    return false;
-  }
-
-  //
-  // Rule-4: do not support date type redefinition in direct addressing
-  //
-  if (Type_UNDEF != type) {
-    if (base->isRegVar() && acc == Direct &&
-        base->asRegVar()->getDeclare()->getElemType() !=
-            type) // check if the data type is the same as in declare
-    {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-//
-// Here we use symbolreg instead of Options::symbolReg, because sometimes we
-// need to emit an instruction with invalid symbolic register as comment and
-// then emit a workable instruction with physical register. In this case, we do
-// not want to re-set the global option variable Options::symbolReg to switch
-// between these two states, that may have potential side effects.
-//
-void G4_SrcRegRegion::emitRegVarOff(std::ostream &output, bool symbolreg) {
+void G4_SrcRegRegion::emitRegVarOff(std::ostream &output) {
   bool printSubReg = true;
   if (inst && inst->isSend()) {
     printSubReg = false;
   }
-  printRegVarOff(output, this, regOff, subRegOff, immAddrOff, type, symbolreg,
+  printRegVarOff(output, this, regOff, subRegOff, immAddrOff, type,
                  printSubReg);
 }
 
@@ -4888,23 +4732,12 @@ uint8_t G4_DstRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
 
   return maxSize;
 }
-//
-// output (Var+refOff).subRegOff<1><WriteMask>
-//
-// symbolreg == false,  output <modifier>(Var+refOff).subRegOff<16;16,1>.xxyy
-// symbolreg == true,   output <modifier><symbol>(RegOff, SubRegOff)<16;16,1> in
-// symbolic register emit Here we use symbolreg instead of Options::symbolReg,
-// because sometimes we need to emit an instruction with invalid symbolic
-// register as comment and then emit a workable instruction with physical
-// register. In this case, we do not want to re-set the global option variable
-// Options::symbolReg to switch between these two states, that may have
-// potential side effects.
-//
-void G4_DstRegRegion::emit(std::ostream &output, bool symbolreg) {
+
+void G4_DstRegRegion::emit(std::ostream &output) {
   //
   // output Var(refOff,subRegOff)
   //
-  emitRegVarOff(output, symbolreg);
+  emitRegVarOff(output);
 
   //
   // output <horzStride>
@@ -4934,57 +4767,16 @@ void G4_DstRegRegion::emit(std::ostream &output, bool symbolreg) {
     }
   }
 
-  if (Type_UNDEF != type) {
-    if (!symbolreg || acc != Direct) // can output register data type for
-                                     // indirect addressing in any time
-      output << ':' << TypeSymbol(type);
-  }
+  if (Type_UNDEF != type)
+    output << ':' << TypeSymbol(type);
 }
 
-//
-// This function is used to check if the src operand obey the rule of symbolic
-// register. We need this function to check the operand before we emit an
-// instruction
-//
-bool G4_DstRegRegion::obeySymbolRegRule() const {
-  if (!base->isRegVar()) // only for reg var
-    return false;
-  if (base->asRegVar()->getDeclare()->isSpilled()) {
-    return false;
-  }
-  //
-  // For dst operand, we do not have Rule-2
-  // Rule-2: must have register region or default register region
-  //
-
-  //
-  // Rule-4: do not support date type redefinition in direct addressing
-  //
-  if (Type_UNDEF != type) {
-    if (base->isRegVar() && acc == Direct &&
-        base->asRegVar()->getDeclare()->getElemType() !=
-            type) // check if the data type is the same as in declare
-    {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-//
-// Here we use symbolreg instead of Options::symbolReg, because sometimes we
-// need to emit an instruction with invalid symbolic register as comment and
-// then emit a workable instruction with physical register. In this case, we do
-// not want to re-set the global option variable Options::symbolReg to switch
-// between these two states, that may have potential side effects.
-//
-void G4_DstRegRegion::emitRegVarOff(std::ostream &output, bool symbolreg) {
+void G4_DstRegRegion::emitRegVarOff(std::ostream &output) {
   bool printSubReg = true;
-  if (inst != NULL && inst->isSplitSend()) {
+  if (inst && inst->isSplitSend()) {
     printSubReg = false;
   }
-  printRegVarOff(output, this, regOff, subRegOff, immAddrOff, type, symbolreg,
+  printRegVarOff(output, this, regOff, subRegOff, immAddrOff, type,
                  printSubReg);
 }
 
@@ -5178,13 +4970,13 @@ void G4_Declare::emit(std::ostream &output) const {
   output << "\n";
 }
 
-void G4_Predicate::emit(std::ostream &output, bool symbolreg) {
+void G4_Predicate::emit(std::ostream &output) {
   output << "(";
-  emit_body(output, symbolreg);
+  emit_body(output);
   output << ") ";
 }
 
-void G4_Predicate::emit_body(std::ostream &output, bool symbolreg) {
+void G4_Predicate::emit_body(std::ostream &output) {
   static const char *align16ControlNames[] = {"",
                                               "xyzw",
                                               "x",
@@ -5350,7 +5142,7 @@ void G4_Predicate::splitPred() {
   bitVec[0] = ((uint32_t)getBitVecL()) >> shiftLen;
 }
 
-void G4_CondMod::emit(std::ostream &output, bool symbolreg) {
+void G4_CondMod::emit(std::ostream &output) {
   static const char *const CondModStr[Mod_cond_undef] = {
       "ze", // zero
       "eq", // equal
@@ -5487,7 +5279,7 @@ G4_CmpRelation G4_Imm::compareOperand(G4_Operand *opnd,
   return rel;
 }
 
-void G4_Imm::emit(std::ostream &output, bool symbolreg) {
+void G4_Imm::emit(std::ostream &output) {
   //
   // we only emit hex in this function
   //
@@ -5600,7 +5392,7 @@ G4_RegVar *G4_RegVarTmp::getAbsBaseRegVar() {
   return base;
 }
 
-void G4_RegVar::emit(std::ostream &output, bool symbolreg) {
+void G4_RegVar::emit(std::ostream &output) {
 
   output << decl->getName();
   if (reg.phyReg != NULL) {
@@ -5622,7 +5414,7 @@ int G4_AddrExp::eval(const IR_Builder &builder) {
 
   return byteAddr;
 }
-void G4_AddrExp::emit(std::ostream &output, bool symbolreg) {
+void G4_AddrExp::emit(std::ostream &output) {
   output << '&';
   m_addressedReg->emit(output);
   output << '+' << m_offset;
@@ -6057,7 +5849,7 @@ void RegionDesc::emit(std::ostream &output) const {
   }
 }
 
-void G4_Label::emit(std::ostream &output, bool symbolreg) { output << label; }
+void G4_Label::emit(std::ostream &output) { output << label; }
 
 unsigned G4_RegVar::getByteAddr(const IR_Builder &builder) const {
   MUST_BE_TRUE(reg.phyReg != NULL, ERROR_UNKNOWN);
@@ -6415,12 +6207,12 @@ std::string G4_Operand::print() const {
 
 void G4_Operand::dump() const {
 #if _DEBUG
-  const_cast<G4_Operand *>(this)->emit(std::cerr, false);
+  const_cast<G4_Operand *>(this)->emit(std::cerr);
 #endif
 }
 
 std::ostream &operator<<(std::ostream &os, G4_Operand &opnd) {
-  opnd.emit(os, false);
+  opnd.emit(os);
   return os;
 }
 
@@ -6485,11 +6277,11 @@ void G4_INST::setCondMod(G4_CondMod *m) {
 }
 
 G4_SrcRegRegion *G4_INST::getImplAccSrc() const {
-  return builder.kernel.getImplicitAccSrc(const_cast<G4_INST*>(this));
+  return builder.kernel.getImplicitAccSrc(const_cast<G4_INST *>(this));
 }
 
-G4_DstRegRegion* G4_INST::getImplAccDst() const {
-  return builder.kernel.getImplicitAccDef(const_cast<G4_INST*>(this));
+G4_DstRegRegion *G4_INST::getImplAccDst() const {
+  return builder.kernel.getImplicitAccDef(const_cast<G4_INST *>(this));
 }
 
 void G4_INST::setImplAccSrc(G4_SrcRegRegion *opnd) {
@@ -6513,7 +6305,7 @@ void G4_INST::print(std::ostream &OS) const {
   G4_INST &inst = const_cast<G4_INST &>(*this);
   if (!inst.isLabel())
     OS << "\t";
-  inst.emit(OS, false, false);
+  inst.emit(OS);
   OS << "\n";
 }
 
@@ -7233,7 +7025,8 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const {
       } else {
         // If the destination offset is not GRF aligned, such as has sub
         // register offset, the src cannot be replaced with ACC
-        if (!builder.tryToAlignOperand(dst, getBuilder().numEltPerGRF<Type_UB>())) {
+        if (!builder.tryToAlignOperand(dst,
+                                       getBuilder().numEltPerGRF<Type_UB>())) {
           return false;
         }
       }
@@ -7766,7 +7559,7 @@ void G4_INST::inheritDIFrom(const G4_INST *inst) {
   // Copy over debug info from inst
   setLocation(inst->getLocation());
   setVISAId(getVISAId() == UndefinedCisaOffset ? inst->getVISAId()
-                                                 : getVISAId());
+                                               : getVISAId());
 }
 
 void G4_INST::inheritSWSBFrom(const G4_INST *inst) {

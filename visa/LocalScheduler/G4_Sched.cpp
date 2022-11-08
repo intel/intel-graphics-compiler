@@ -1997,7 +1997,7 @@ DepType preNode::checkBarrier(G4_INST *Inst) {
 
 void preNode::print(std::ostream &os) const {
   os << "ID: " << this->ID << "";
-  Inst->emit(os, false, false);
+  Inst->emit(os);
 
   os << "Preds: ";
   for (auto &E : this->Preds)

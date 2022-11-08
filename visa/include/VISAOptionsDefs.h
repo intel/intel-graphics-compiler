@@ -406,7 +406,7 @@ DEF_VISA_OPTION(vISA_IGAEncoder, ET_BOOL, "-IGAEncoder", UNUSED, false)
 
 //=== asm/isaasm/isa emission options ===
 DEF_VISA_OPTION(vISA_outputToFile, ET_BOOL, "-output", UNUSED, false)
-DEF_VISA_OPTION(vISA_SymbolReg, ET_BOOL, "-symbolreg", UNUSED, false)
+DEF_VISA_OPTION(vISA_SymbolReg, ET_BOOL, "-symbolreg", "DEPRECATED, is a nop", false)
 DEF_VISA_OPTION(vISA_PrintASMCount, ET_BOOL, "-printasmcount", UNUSED, false)
 DEF_VISA_OPTION(vISA_GenerateBinary, ET_BOOL, "-binary", UNUSED, false)
 DEF_VISA_OPTION(vISA_GenerateISAASM, ET_BOOL, "-dumpcommonisa", UNUSED, false)

@@ -146,7 +146,7 @@ public:
   void setActive(bool v) { active = v; }
   bool getActive() const { return active; }
 
-  void emit(std::ostream &output, bool symbolreg = false) const {
+  void emit(std::ostream &output) const {
     output << getVar()->getDeclare()->getName();
     if (reg.phyReg != NULL) {
       output << "(";
