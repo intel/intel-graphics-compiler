@@ -6508,15 +6508,30 @@ bool HWConformity::splitInstListForByteDst(INST_LIST_ITER it, G4_BB *bb,
   G4_INST *inst = *it;
   G4_opcode inst_op = inst->opcode();
   G4_DstRegRegion *dst = inst->getDst();
-  // check if we can split the inst
-  if (!canSplitByteDst(inst_op) || inst->getExecSize() == g4::SIMD1 ||
-      (!bb->isAllLaneActive() && !inst->isWriteEnableInst()) ||
-      dst->getByteOffset() % extypesize != 0 || dst->getHorzStride() != 1 ||
-      extypesize != TypeSize(Type_W)) {
-    return false;
+
+  bool hasDstSrcOverlap = false;
+  if (dst && !inst->hasNULLDst()) {
+    auto srcNum = inst->getNumSrc();
+    for (int i = 0; i < srcNum; i++) {
+      G4_CmpRelation rel = dst->compareOperand(inst->getSrc(i), builder);
+      if (rel != Rel_disjoint) {
+        hasDstSrcOverlap = true;
+        break;
+      }
+    }
   }
 
-  if (inst->getPredicate() || inst->getCondMod()) {
+  // check if we can split the inst
+  if (!canSplitByteDst(inst_op) ||
+      inst->getExecSize() == g4::SIMD1 ||
+      (!bb->isAllLaneActive() && !inst->isWriteEnableInst()) ||
+      dst->getByteOffset() % extypesize != 0 ||
+      dst->getHorzStride() != 1 ||
+      extypesize != TypeSize(Type_W) ||
+      inst->getPredicate() ||
+      inst->getCondMod() ||
+      // Do not split the instruction if dst has overlap with sources
+      hasDstSrcOverlap) {
     return false;
   }
 
@@ -9068,7 +9083,6 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
       }
       unsigned int new_option = inst->getMaskOption();
       auto pos = it;
-      pos++;
       auto dstride = dst->getHorzStride();
       const RegionDesc *shiftRegion = builder.createRegionDesc(dstride, 1, 0);
       G4_Declare *shiftDcl = builder.createTempVar(
@@ -9080,12 +9094,12 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
       G4_INST *packInst = builder.createMov(inst->getExecSize(), packTmp,
                                             unpackSrc, new_option, false);
       packInst->setPredicate(pred);
-      bb->insertBefore(pos, packInst);
+      pos = bb->insertAfter(pos, packInst);
       // then shift the bytes and words location
       G4_INST *shiftInst = builder.createMov(inst->getExecSize(), dst, shiftSrc,
                                              new_option, false);
       shiftInst->setPredicate(pred);
-      bb->insertBefore(pos, shiftInst);
+      pos = bb->insertAfter(pos, shiftInst);
       // update propagation info
       maintainDU4TempMov(inst, shiftInst);
       // change the destination of the original instruction
