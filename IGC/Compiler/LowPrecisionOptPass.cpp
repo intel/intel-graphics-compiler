@@ -91,9 +91,16 @@ void LowPrecisionOpt::visitFPExtInst(llvm::FPExtInst& I)
     }
     if (I.getOperand(0)->getType()->isHalfTy())
     {
+        Instruction* I0 = dyn_cast<Instruction>(I.getOperand(0));
         llvm::GenIntrinsicInst* callInst = llvm::dyn_cast<llvm::GenIntrinsicInst>(I.getOperand(0));
 
-        if (callInst && callInst->hasOneUse())
+        if (I0 && I0->getOpcode() == Instruction::FPTrunc && I.getDestTy() == I0->getOperand(0)->getType())
+        {
+            I.replaceAllUsesWith(I0->getOperand(0));
+            I.eraseFromParent();
+            m_changed = true;
+        }
+        else if (callInst && callInst->hasOneUse())
         {
             GenISAIntrinsic::ID ID = callInst->getIntrinsicID();
             if (ID == GenISAIntrinsic::GenISA_DCL_ShaderInputVec || ID == GenISAIntrinsic::GenISA_DCL_inputVec)
