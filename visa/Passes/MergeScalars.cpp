@@ -242,16 +242,18 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       // lambda to compute the data type based on how many values we
       // packed into a single value
       auto dataTypeSize = [&](G4_Operand *dst) {
+        // size is a power of 2; size is round down to the lowest power of 2
+        // before performing the merge; for example, a size of 3 is round down
+        // to size of 2.
+        // size is capped to sizeLimit, which is 4
         uint32_t totalBytes = size * dst->getTypeSize();
         if (totalBytes < 4)
-          return std::make_tuple(Type_UW, 2);
+          return Type_UW;
         if (totalBytes == 4)
-          return std::make_tuple(Type_UD, 4);
-        if (totalBytes > 4 && totalBytes <= 8)
-          return std::make_tuple(Type_UQ, 8);
-        else
-          MUST_BE_TRUE(false, "invalid data type size");
-        return std::make_tuple(Type_UNDEF, 0);
+          return Type_UD;
+        // todo: revisit this to explore opportunities for coalescing into
+        // qword; note that not all platforms support such movs
+        return Type_UNDEF;
       };
 
       // In canMergeSource, we check only on whether the instructions
@@ -263,15 +265,19 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       // 3. check if mov execution mask is no mask SIMD1
       // 4. check if srcs in bundle are immediate values (handled in
       //    canMergeSrc)
-
-      if (!inst[0]->isMov())
-        return false;
-      for (int j = 1; j < size; j++) {
-        if (!inst[j]->isMov() || inst[j - 1]->getDst()->getTopDcl() !=
+      // 5. check if destination type is not float (soft constraint, todo: must address)
+      // 6. check is the total size of packed data type is less than equal to
+      //    largest datatype size (qword).
+      for (int j = 0; j < size; j++) {
+        if (!inst[j]->isMov()) return false;
+        if (j > 0 && inst[j - 1]->getDst()->getTopDcl() !=
                                      inst[j]->getDst()->getTopDcl()) {
           return false;
         }
       }
+
+      auto packedType = dataTypeSize(newInst->getDst());
+      if (packedType == Type_UNDEF) return false;
 
       // create the packed value
       // since we also create packed values with non-motonic subregs, the
@@ -300,9 +306,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
         packedVal += ((uint64_t)val << shiftVal);
       }
 
-      auto packedTypeSize = dataTypeSize(newInst->getDst());
-      G4_Type packedType = std::get<0>(packedTypeSize);
-      unsigned packedSize = std::get<1>(packedTypeSize);
+      unsigned packedSize = G4_Type_Table[packedType].byteSize;
       // check alignment
       // if destination alignment is less than the datatype of packed value, we
       // cannot do the coalescing
@@ -315,9 +319,13 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
 
       // create a packed type dcl
       G4_Declare *newDcl = builder.createTempVar(0, packedType, Any, "Packed");
+      // newDcl->copyAlign(newInst->getDst()->getTopDcl());
       // set the newDcl dcl alias to the instruction destination dcl
-      newDcl->setAliasDeclare(newInst->getDst()->getTopDcl(),
-                              newInst->getDst()->getSubRegOff());
+      unsigned int byteOffset =
+        newInst->getDst()->getRegOff() * builder.numEltPerGRF<Type_UB>() +
+        newInst->getDst()->getSubRegOff() * TypeSize(newInst->getDst()->getType());
+
+      newDcl->setAliasDeclare(newInst->getDst()->getTopDcl(), byteOffset);
 
       // set the destination of new packed instruction
       G4_DstRegRegion *newDst =
@@ -614,15 +622,44 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
       // no coalescing of immediate values possible
       return false;
     } else {
-      if (builder.getOption(vISA_CoalesceScalarMoves)) {
-        if (dstPattern == OPND_PATTERN::CONTIGUOUS) {
-          // writing immediate values to different subregs of same
-          // GRF
-          srcPattern[srcPos] = OPND_PATTERN::PACKED;
-        } else {
-          // destination pattern is something other than contiguous
-          // we cannot do packing in this case
-          return false;
+      // The PACKED pattern bundle attempts to combine mov immediate instructions
+      // into a single mov instruction with the immediate value obtained from
+      // packing multiple immediate values into a single value.
+      // As a result, the packed immediate value has a wider data type.
+      // Since, select platforms support wide datatype moves, the packing optimization
+      // is only enabled for immediate value data types below qword.
+      // For data types above dword, if the values are identical, then the
+      // identical pattern logic will be exercised resulting in wider SIMD moves;
+      // otherwise no optimization is performed
+      if (builder.getOption(vISA_CoalesceScalarMoves) &&
+          IS_TYPE_INT(src->getType()) && !IS_QTYPE(src->getType())) {
+        // first check whether we have already detected an IDENTICAL or PACKED
+        // pattern with prior instructions
+        if (srcPattern[srcPos] == OPND_PATTERN::PACKED) {
+          // already detected a packed pattern
+          if (dstPattern != OPND_PATTERN::CONTIGUOUS) {
+            // if dst pattern is not contiguous, cannot coalesce this mov
+            // instruction with instructions in the bundle
+            return false;
+          }
+        } else if (srcPattern[srcPos] == OPND_PATTERN::IDENTICAL) {
+          // already detected an identical pattern with prior instructions
+          // continue using identical pattern
+          if (prevSrc->asImm()->getImm() != src->asImm()->getImm()) {
+            // if values are not same, cannot merge with instructions in the
+            // bundle
+            return false;
+          }
+        } else if (srcPattern[srcPos] == OPND_PATTERN::UNKNOWN) {
+          // no pattern detected yet
+          // choose based on the immediate value checks
+          if (prevSrc->asImm()->getImm() == src->asImm()->getImm()) {
+            srcPattern[srcPos] = OPND_PATTERN::IDENTICAL;
+          } else if (dstPattern == OPND_PATTERN::CONTIGUOUS) {
+            srcPattern[srcPos] = OPND_PATTERN::PACKED;
+          } else {
+            return false;
+          }
         }
       } else if (prevSrc->asImm()->getImm() == src->asImm()->getImm()) {
         srcPattern[srcPos] = OPND_PATTERN::IDENTICAL;

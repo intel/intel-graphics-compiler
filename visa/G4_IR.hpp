@@ -1638,6 +1638,7 @@ public:
 
   // declare this to be aliased to dcl+offset
   // This is an error if dcl+offset is not aligned to the type of this dcl
+  // note that offset is in terms of bytes
   void setAliasDeclare(G4_Declare *dcl, unsigned int offset) {
     AliasDCL = dcl;
     AliasOffset = offset;
