@@ -194,6 +194,12 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
   };
 
   for (auto bb : kernel.fg.getBBList()) {
+    // Kernel's CFG may be stitched together
+    // with that of its callees. We want to
+    // iterate over only those BBs that belong
+    // to current CFG.
+    if (&bb->getParent() != &kernel.fg)
+      break;
     for (auto inst : bb->getInstList()) {
       auto dst = inst->getDst();
       if (dst && dst->isIndirect()) {
