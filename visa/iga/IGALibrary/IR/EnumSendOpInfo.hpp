@@ -146,8 +146,6 @@ DEFINE_OTHER_OP(SPAWN, "spawn", "spawn thread", ATTRS_NONE)
 //
 DEFINE_SAMPLE_OP(SAMPLE, "sample", "sampler fetch", ATTRS_NONE)
 //
-// TODO: a domain expert should break this into better ops
-// TODO: all loads should be moved up to IS_LOAD and reads IS_STORE
 DEFINE_OTHER_OP(RENDER_READ, "render_read", "render read", ATTRS_NONE)
 DEFINE_OTHER_OP(RENDER_WRITE, "render_write", "render write", ATTRS_NONE)
 

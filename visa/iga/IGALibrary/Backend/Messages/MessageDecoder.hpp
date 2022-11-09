@@ -350,7 +350,7 @@ enum class SamplerParam {
   SI,      // sampler index?
   U,       // u-coordinate
   V,       // v-coordinate
-};             // SamplerParam
+}; // SamplerParam
 
 struct SamplerMessageDescription {
   SendOp op;

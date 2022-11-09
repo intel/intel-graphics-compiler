@@ -42,7 +42,7 @@ enum class RegName {
   ARF_TDR, // tdr       1011b
   ARF_TM,  // tm#       1100b
   ARF_FC,  // fc#       1101b
-  //                       ... reserved
+  //                    ... reserved
   ARF_DBG, // dbg0      1111b
   GRF_R,   // GRF       N/A
 };
