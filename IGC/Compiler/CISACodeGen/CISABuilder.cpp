@@ -5796,7 +5796,7 @@ namespace IGC
                 IGC_ASSERT_MESSAGE(Iter != stackFuncMap.end(), "vISA function not found");
                 visaFunc = Iter->second;
             }
-            FINALIZER_INFO* jitInfo;
+            vISA::FINALIZER_INFO* jitInfo;
             visaFunc->GetJitInfo(jitInfo);
             entry.f_spillMemPerThread = jitInfo->spillMemUsed;
 
@@ -6106,7 +6106,7 @@ namespace IGC
         // Collect metrics from vISA
         context->metrics.CollectRegStats(vISAstats, m_program->entry);
 
-        FINALIZER_INFO* jitInfo = nullptr;
+        vISA::FINALIZER_INFO* jitInfo = nullptr;
         pMainKernel->GetJitInfo(jitInfo);
 
         // Depend on vISA information about barriers presence to make sure that it's
@@ -8626,7 +8626,7 @@ namespace IGC
         {
             pOutput->m_NumSends.emplace(compilerStats.GetI64(CompilerStats::numSendStr(), simdsize));
         }
-        FINALIZER_INFO* jitInfo = nullptr;
+        vISA::FINALIZER_INFO* jitInfo = nullptr;
         if (0 == pMainKernel->GetJitInfo(jitInfo))
         {
             uint sendStallCycle = 0;

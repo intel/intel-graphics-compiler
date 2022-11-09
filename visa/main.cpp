@@ -137,7 +137,7 @@ int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
                          unsigned int &genBinarySize, const char *platformStr,
                          int majorVersion, int minorVersion, int numArgs,
                          const char *args[], char *errorMsg,
-                         FINALIZER_INFO *jitInfo, void *gtpin_init) {
+                         vISA::FINALIZER_INFO *jitInfo, void *gtpin_init) {
   // This function becomes the new entry point even for JITCompile clients.
   if (kernelName == NULL || kernelIsa == NULL ||
       std::string_view(kernelName).size() > COMMON_ISA_MAX_KERNEL_NAME_LEN) {
@@ -182,7 +182,7 @@ int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
   cisa_builder->Compile("");
 
   VISAKernel *kernel = kernels[0];
-  FINALIZER_INFO *tempJitInfo = NULL;
+  vISA::FINALIZER_INFO *tempJitInfo = NULL;
   void *genxBinary = NULL;
   int size = 0;
   kernel->GetJitInfo(tempJitInfo);
@@ -196,8 +196,8 @@ int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
   }
 
   if (jitInfo != NULL && tempJitInfo != NULL)
-    memcpy_s(jitInfo, sizeof(FINALIZER_INFO), tempJitInfo,
-             sizeof(FINALIZER_INFO));
+    memcpy_s(jitInfo, sizeof(vISA::FINALIZER_INFO), tempJitInfo,
+             sizeof(vISA::FINALIZER_INFO));
 
   if (!(0 == kernel->GetGenxBinary(genxBinary, size) && genxBinary != NULL)) {
     return JIT_INVALID_INPUT;
@@ -217,7 +217,7 @@ DLL_EXPORT int JITCompile(const char *kernelName, const void *kernelIsa,
                           unsigned int &genBinarySize, const char *platform,
                           int majorVersion, int minorVersion, int numArgs,
                           const char *args[], char *errorMsg,
-                          FINALIZER_INFO *jitInfo) {
+                          vISA::FINALIZER_INFO *jitInfo) {
   // JITCompile will invoke the other JITCompile API that supports relocation.
   // Via this path, relocs will be NULL. This way we can share a single
   // implementation of JITCompile.
@@ -232,7 +232,7 @@ DLL_EXPORT int JITCompile_v2(const char *kernelName, const void *kernelIsa,
                              unsigned int &genBinarySize, const char *platform,
                              int majorVersion, int minorVersion, int numArgs,
                              const char *args[], char *errorMsg,
-                             FINALIZER_INFO *jitInfo, void *gtpin_init) {
+                             vISA::FINALIZER_INFO *jitInfo, void *gtpin_init) {
   // JITCompile will invoke the other JITCompile API that supports relocation.
   // Via this path, relocs will be NULL. This way we can share a single
   // implementation of JITCompile.

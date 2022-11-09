@@ -6690,7 +6690,7 @@ public:
     for (auto *FG: FGA) {
       VISAKernel *Kernel = CisaBuilder->GetVISAKernel(FG->getName().str());
       IGC_ASSERT(Kernel);
-      FINALIZER_INFO *jitInfo = nullptr;
+      vISA::FINALIZER_INFO *jitInfo = nullptr;
       CISA_CALL(Kernel->GetJitInfo(jitInfo));
       IGC_ASSERT(jitInfo);
       NumAsmInsts += jitInfo->numAsmCount;

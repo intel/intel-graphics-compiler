@@ -13,35 +13,30 @@ SPDX-License-Identifier: MIT
 #include <optional>
 #include <stdint.h>
 
-typedef struct _VISA_BB_INFO {
+#include "llvm/Support/JSON.h"
+
+namespace vISA {
+
+struct VISA_BB_INFO {
   int id;
   unsigned staticCycle;
   unsigned sendStallCycle;
   unsigned char loopNestLevel;
-} VISA_BB_INFO;
+};
 
-typedef struct _FINALIZER_INFO {
-  // Common part
-  bool isSpill;
-  int numGRFUsed;
-  int numAsmCount;
-  // dump the max register pressure to compare with numGRFUsed
-  uint32_t maxGRFPressure = 0;
+struct FINALIZER_INFO {
+  // ----- Required by IGC/VC/Runtime ----- //
+  // Used by IGC for spill cost calculation
+  bool isSpill = false;
 
   // spillMemUsed is the scratch size in byte of entire vISA stack for this
-  // function/kernel It contains spill size and caller/callee save size.
+  // function/kernel. It contains spill size and caller/callee save size.
   unsigned int spillMemUsed = 0;
 
-  // Debug info is callee allocated
-  // and populated only if
-  // switch is passed to JIT to emit
-  // debug info.
-  void *genDebugInfo;
-  unsigned int genDebugInfoSize;
-
-  // Number of flag spill and fill.
-  unsigned numFlagSpillStore;
-  unsigned numFlagSpillLoad;
+  // Debug info is callee allocated and populated only if switch is passed
+  // to JIT to emit debug info.
+  void *genDebugInfo = nullptr;
+  unsigned int genDebugInfoSize = 0;
 
   // Propagate information about barriers presence back to IGC. It's safer to
   // depend on vISA statistics as IGC is not able to detect barriers if they
@@ -49,18 +44,23 @@ typedef struct _FINALIZER_INFO {
   // This information is used by legacy CMRT as well as OpenCL/L0 runtime.
   unsigned numBarriers = 0;
 
-  unsigned BBNum;
-  VISA_BB_INFO *BBInfo;
+  // Unweighted BB cycles counts. Used by IGC for SIMD width selection.
+  unsigned BBNum = 0;
+  VISA_BB_INFO *BBInfo = nullptr;
 
-  // number of spill/fill, weighted by loop
-  unsigned int numGRFSpillFill;
-  // whether kernel recompilation should be avoided
+  // Whether kernel recompilation should be avoided. vISA hint for IGC.
   bool avoidRetry = false;
 
-  void *freeGRFInfo;
-  unsigned int freeGRFInfoSize;
-  unsigned char numBytesScratchGtpin;
+  // GTPin information
+  void *freeGRFInfo = nullptr;
+  unsigned int freeGRFInfoSize = 0;
+  unsigned char numBytesScratchGtpin = 0;
 
+  // Used by VC for setting execution environment in output
+  bool hasStackcalls = false;
+
+  // load-thread-payload prologs offset required by runtime
+  // for skipping the prologs
   uint32_t offsetToSkipPerThreadDataLoad = 0;
   uint32_t offsetToSkipCrossThreadDataLoad = 0;
 
@@ -70,14 +70,31 @@ typedef struct _FINALIZER_INFO {
   uint32_t offsetToSkipSetFFIDGP = 0;
   uint32_t offsetToSkipSetFFIDGP1 = 0;
 
-  bool hasStackcalls = false;
+  // ----- vISA Stats ----- //
+  // Number of GRF acutally being used. Stats collection only.
+  int numGRFUsed = 0;
 
+  // Number of configured threads and GRF number. Used by IGC for
+  // setting execution environment in output.
   uint32_t numGRFTotal = 0;
   uint32_t numThreads = 0;
 
-  // vISA stats used by IGC::CompilerStats
-  // FIXME: the relationship between other fields in this struct
-  // (e.g. numGRFSpillFill) is yet to be figured out.
+  // Un-weighted asm instructions count. Used by IGC for spill
+  // cost calculation
+  int numAsmCount = 0;
+
+  // Number of flag spill and fill. Used by VC Stats
+  unsigned numFlagSpillStore = 0;
+  unsigned numFlagSpillLoad = 0;
+
+  // Number of spill/fill, weighted by loop. Used by IGC for
+  // spill cost calculation.
+  unsigned int numGRFSpillFill = 0;
+
+  // ----- To be deprecated ----- //
+  // These are vISA stats used only by IGC::CompilerStats
+  // Subjet to deprecate
+  uint32_t maxGRFPressure = 0;
   bool preRASchedulerForPressure = false;
   bool preRASchedulerForLatency = false;
   int64_t numCycles = 0;
@@ -85,7 +102,7 @@ typedef struct _FINALIZER_INFO {
   int64_t numGRFSpill = 0;
   int64_t numGRFFill = 0;
   std::string raStatus;
+};
 
-} FINALIZER_INFO;
-
+} // namespace vISA
 #endif // JITTERDATASTRUCT_

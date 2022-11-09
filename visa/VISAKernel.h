@@ -953,7 +953,7 @@ public:
 
   /********** MISC APIs START *************************/
   VISA_BUILDER_API int GetGenxBinary(void *&buffer, int &size) const override;
-  VISA_BUILDER_API int GetJitInfo(FINALIZER_INFO *&jitInfo) const override;
+  VISA_BUILDER_API int GetJitInfo(vISA::FINALIZER_INFO *&jitInfo) const override;
   VISA_BUILDER_API int GetKernelInfo(KERNEL_INFO *&kernelInfo) const override;
   VISA_BUILDER_API int GetErrorMessage(const char *&errorMsg) const override;
   VISA_BUILDER_API virtual int
@@ -1085,7 +1085,7 @@ public:
     m_genx_binary_size = size;
   }
 
-  void setJitInfo(FINALIZER_INFO *jitInfo) { m_jitInfo = jitInfo; }
+  void setJitInfo(vISA::FINALIZER_INFO *jitInfo) { m_jitInfo = jitInfo; }
 
   std::string getOutputAsmPath() const { return m_asmName; }
   void setOutputAsmPath(std::string val) { m_asmName = val; }
@@ -1246,7 +1246,7 @@ private:
   char *m_genx_binary_buffer;
   unsigned long m_genx_debug_info_size;
   char *m_genx_debug_info_buffer;
-  FINALIZER_INFO *m_jitInfo;
+  vISA::FINALIZER_INFO *m_jitInfo;
   KERNEL_INFO *m_kernelInfo;
 
   unsigned long m_cisa_binary_size;

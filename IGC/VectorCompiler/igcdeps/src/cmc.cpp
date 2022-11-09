@@ -686,7 +686,7 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
 }
 
 static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
-                             const FINALIZER_INFO &JitterInfo,
+                             const vISA::FINALIZER_INFO &JitterInfo,
                              CMKernel &Kernel) {
   Kernel.m_SupportsDebugging = BackendInfo.supportsDebugging();
   Kernel.m_GRFSizeInBytes = BackendInfo.getGRFSizeInBytes();
@@ -751,7 +751,7 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   Kernel.RecomputeBTLayout(NumUAVs, NumResources);
 }
 
-static void setGenBinary(const FINALIZER_INFO &JitterInfo,
+static void setGenBinary(const vISA::FINALIZER_INFO &JitterInfo,
                          const std::vector<uint8_t> &GenBinary,
                          CMKernel &Kernel) {
   // Kernel binary, padding is hard-coded.
@@ -787,7 +787,7 @@ static void setDebugInfo(const std::vector<char> &DebugInfo, CMKernel &Kernel) {
   Kernel.getProgramOutput().m_debugDataSize = DebugInfoSize;
 }
 
-static void setGtpinInfo(const FINALIZER_INFO &JitterInfo,
+static void setGtpinInfo(const vISA::FINALIZER_INFO &JitterInfo,
                          const GenXOCLRuntimeInfo::GTPinInfo &GtpinInfo,
                          CMKernel &Kernel) {
   Kernel.getProgramOutput().m_scratchSpaceUsedByGtpin =

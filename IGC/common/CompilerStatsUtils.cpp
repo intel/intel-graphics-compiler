@@ -41,7 +41,7 @@ namespace IGC
 
         void RecordCodeGenCompilerStats(IGC::CodeGenContext *context,
                                         SIMDMode dispatchSize,
-                                        FINALIZER_INFO *jitInfo)
+                                        vISA::FINALIZER_INFO *jitInfo)
         {
 #if COMPILER_STATS_ENABLE
             if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))

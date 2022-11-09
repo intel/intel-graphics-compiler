@@ -261,16 +261,16 @@ public:
 
   class CompiledKernel {
     KernelInfo CompilerInfo;
-    FINALIZER_INFO JitterInfo;
+    vISA::FINALIZER_INFO JitterInfo;
     GTPinInfo GtpinInfo;
     std::vector<char> DebugInfo;
 
   public:
-    CompiledKernel(KernelInfo &&KI, const FINALIZER_INFO &JI,
+    CompiledKernel(KernelInfo &&KI, const vISA::FINALIZER_INFO &JI,
                    const GTPinInfo &GI, std::vector<char> DebugInfo);
 
     const KernelInfo &getKernelInfo() const { return CompilerInfo; }
-    const FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }
+    const vISA::FINALIZER_INFO &getJitterInfo() const { return JitterInfo; }
     const GTPinInfo &getGTPinInfo() const { return GtpinInfo; }
     const std::vector<uint8_t> &getGenBinary() const {
       return CompilerInfo.Func.Data.Buffer;

@@ -636,7 +636,7 @@ ModuleToVisaTransformInfo::ModuleToVisaTransformInfo(
 namespace {
 
 class GenObjectWrapper {
-  FINALIZER_INFO *JitInfo = nullptr;
+  vISA::FINALIZER_INFO *JitInfo = nullptr;
   std::unique_ptr<IGC::VISADebugInfo> VISADebugInfo;
   // TODO: remove this once DbgDecoder is refactored
   unsigned GenDbgInfoDataSize = 0;
@@ -676,7 +676,7 @@ public:
     return *VISADebugInfo;
   }
 
-  const FINALIZER_INFO &getJitInfo() const {
+  const vISA::FINALIZER_INFO &getJitInfo() const {
     IGC_ASSERT(!hasErrors() && JitInfo);
     return *JitInfo;
   };
@@ -749,7 +749,7 @@ class CompiledVisaWrapper {
   }
 
 public:
-  const FINALIZER_INFO &getJitInfo() const { return GOW.getJitInfo(); };
+  const vISA::FINALIZER_INFO &getJitInfo() const { return GOW.getJitInfo(); };
 
   const FinalizedDI &getFinalizerDI() const {
     IGC_ASSERT(ErrMsg.empty() && VisaKernelDI);

@@ -1076,7 +1076,7 @@ public:
   /// This function may only be called after Compile() is called
   /// vISA Builder is responsible for managing this memory.
   /// it will be freed when vISA builder is destroyed.
-  VISA_BUILDER_API virtual int GetJitInfo(FINALIZER_INFO *&jitInfo) const = 0;
+  VISA_BUILDER_API virtual int GetJitInfo(vISA::FINALIZER_INFO *&jitInfo) const = 0;
   /// GetKernelInfo -- returns metrics information about kernel
   /// This function may only be called after Compile() is called
   /// vISA Builder is responsible for managing this memory.

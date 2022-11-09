@@ -377,7 +377,7 @@ GenXOCLRuntimeInfo::KernelInfo::KernelInfo(const FunctionGroup &FG,
 //
 //===----------------------------------------------------------------------===//
 GenXOCLRuntimeInfo::CompiledKernel::CompiledKernel(KernelInfo &&KI,
-                                                   const FINALIZER_INFO &JI,
+                                                   const vISA::FINALIZER_INFO &JI,
                                                    const GTPinInfo &GI,
                                                    std::vector<char> DbgInfoIn)
     : CompilerInfo(std::move(KI)), JitterInfo(JI),
@@ -754,7 +754,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   const std::string KernelName = KernelFunction->getName().str();
   VISAKernel *VK = VB.GetVISAKernel(KernelName);
   IGC_ASSERT_MESSAGE(VK, "Kernel is null");
-  FINALIZER_INFO *JitInfo = nullptr;
+  vISA::FINALIZER_INFO *JitInfo = nullptr;
   CISA_CALL(VK->GetJitInfo(JitInfo));
   IGC_ASSERT_MESSAGE(JitInfo, "Jit info is not set by finalizer");
   // TODO: this a temporary solution for spill mem size
@@ -766,7 +766,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
     const std::string FuncName = F->getName().str();
     VISAKernel *VF = VB.GetVISAKernel(FuncName);
     IGC_ASSERT_MESSAGE(VF, "Function is null");
-    FINALIZER_INFO *FuncJitInfo = nullptr;
+    vISA::FINALIZER_INFO *FuncJitInfo = nullptr;
     CISA_CALL(VF->GetJitInfo(FuncJitInfo));
     IGC_ASSERT_MESSAGE(FuncJitInfo, "Func jit info is not set by finalizer");
     JitInfo->isSpill |= FuncJitInfo->isSpill;
@@ -849,7 +849,7 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
                                    Decl.getName().str());
   Info.Func.Data.Buffer = TextSection.Data.emitConsolidatedData();
 
-  return CompiledKernel{std::move(Info), FINALIZER_INFO{}, /*GtpinInfo*/ {},
+  return CompiledKernel{std::move(Info), vISA::FINALIZER_INFO{}, /*GtpinInfo*/ {},
                         DebugInfo};
 }
 

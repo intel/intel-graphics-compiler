@@ -46,7 +46,7 @@ DLL_EXPORT int JITCompile(const char *kernelName, const void *kernelIsa,
                           unsigned int &genBinarySize, const char *platform,
                           int majorVersion, int minorVersion, int numArgs,
                           const char *args[], char *errorMsg,
-                          FINALIZER_INFO *jitInfo);
+                          vISA::FINALIZER_INFO *jitInfo);
 
 /**
  *

@@ -19,7 +19,7 @@ namespace IGC
         void RecordCompileTimeStats(IGC::CodeGenContext *context);
         void RecordCodeGenCompilerStats(IGC::CodeGenContext *context,
                                         SIMDMode dispatchSize,
-                                        FINALIZER_INFO *jitInfo);
+                                        vISA::FINALIZER_INFO *jitInfo);
         void OutputCompilerStats(IGC::CodeGenContext *context);
     }
 }
