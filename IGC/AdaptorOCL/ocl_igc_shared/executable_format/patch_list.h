@@ -423,10 +423,11 @@ struct SPatchDataParameterBuffer :
     uint32_t   LocationIndex;
     uint32_t   LocationIndex2;
     uint32_t   IsEmulationArgument;
+    uint32_t   IsScalarCastedToPointer;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchDataParameterBuffer ) == ( 32 + sizeof( SPatchItemHeader ) ) , "The size of SPatchDataParameterBuffer is not what is expected" );
+static_assert( sizeof( SPatchDataParameterBuffer ) == ( 36 + sizeof( SPatchItemHeader ) ) , "The size of SPatchDataParameterBuffer is not what is expected" );
 
 const uint32_t DATA_PARAMETER_DATA_SIZE = 4;
 
