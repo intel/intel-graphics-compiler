@@ -344,6 +344,10 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteGetElementPtr(getElementPtr);
     }
+    else if (auto icmp = dyn_cast<ICmpInst>(value))
+    {
+        newValue = promoteICmp(icmp);
+    }
     else if (auto insertValue = dyn_cast<InsertValueInst>(value))
     {
         newValue = promoteInsertValue(insertValue);
@@ -370,6 +374,11 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                 }
                 else
                 {
+                    auto insertPoint = instruction->getNextNode();
+                    if (!insertPoint) {
+                        insertPoint = instruction->getParent()->getTerminator();
+                    }
+                    builder.SetInsertPoint(insertPoint);
                     auto trunc = builder.CreateTrunc(
                         promoted,
                         operand->getType(),
@@ -719,6 +728,30 @@ GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElem
         indices,
         "",
         getElementPtr
+    );
+}
+
+ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
+{
+    if (!icmp)
+    {
+        return icmp;
+    }
+
+    auto op0 = icmp->getOperand(0);
+    auto op1 = icmp->getOperand(1);
+
+    if (!typeNeedsPromotion(op0->getType()))
+    {
+        return icmp;
+    }
+
+    return new ICmpInst(
+        icmp,
+        icmp->getPredicate(),
+        getOrCreatePromotedValue(op0),
+        getOrCreatePromotedValue(op1),
+        ""
     );
 }
 
