@@ -16,19 +16,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(cbrt, _f32, )( float x )
 {
-    float result;
-
-    if(__FastRelaxedMath && (!__APIRS))
-    {
-        // Implemented as rootn(x, 3).
-        result = SPIRV_OCL_BUILTIN(rootn, _f32_i32, )( x, 3 );
-    }
-    else
-    {
-        result = __ocl_svml_cbrtf(x);
-    }
-
-    return result;
+    return __ocl_svml_cbrtf(x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( cbrt, float, float, f32 )
