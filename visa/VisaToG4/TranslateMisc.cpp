@@ -464,11 +464,9 @@ int IR_Builder::generateDebugInfoPlaceholder() {
   return VISA_SUCCESS;
 }
 
-int IR_Builder::translateVISALifetimeInst(uint8_t properties, G4_Operand *var) {
+int IR_Builder::translateVISALifetimeInst(bool isStart, G4_Operand *var) {
   // Lifetime.start/end are two variants of this instruction
-  createImm(properties & 0x1, Type_UB);
-
-  if ((properties & 0x1) == LIFETIME_START) {
+  if (isStart) {
     G4_DstRegRegion *varDstRgn = createDst(var->getBase(), 0, 0, 1, Type_UD);
     createIntrinsicInst(nullptr, Intrinsic::PseudoKill, g4::SIMD1, varDstRgn,
                         createImm((unsigned int)PseudoKillType::Src), nullptr,

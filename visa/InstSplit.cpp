@@ -332,7 +332,8 @@ G4_CmpRelation InstSplitPass::compareSrcDstRegRegion(G4_DstRegRegion *dstRegion,
               indirect->getRegAccess() == IndirGRF) &&
              "first opereand should be direct and second indirect");
       return (direct->getTopDcl() && direct->getTopDcl()->getAddressed()) ||
-             (direct->isAddress() &&
+             (direct->isSrcRegRegion() &&
+              direct->asSrcRegRegion()->isDirectAddress() &&
               direct->getTopDcl() == indirect->getTopDcl());
     };
 

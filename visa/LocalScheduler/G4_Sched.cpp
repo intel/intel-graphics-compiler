@@ -1690,7 +1690,7 @@ unsigned LatencyQueue::calculatePriority(preNode *N) {
   auto isHeaderOnAddr = [](preNode *N, preEdge &E) {
     // Check if N is writing to address.
     G4_INST *Inst = N->getInst();
-    if (!Inst || !Inst->getDst() || !Inst->getDst()->isAddress())
+    if (!Inst || !Inst->getDst() || !Inst->getDst()->isDirectAddress())
       return false;
 
     // Check if this use is on send.
