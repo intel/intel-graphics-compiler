@@ -225,6 +225,7 @@ void DebugEmitter::processCurrentFunction(bool finalize,
     IGC_ASSERT((pc < genxISA.size() && pc < unpaddedSize) ||
                pc == unpaddedSize);
 
+    EmitIpLabel(pc);
     for (unsigned int i = pc; i != unpaddedSize; i++) {
       m_pStreamEmitter->EmitInt8(genxISA[i]);
       lastGenOff++;
