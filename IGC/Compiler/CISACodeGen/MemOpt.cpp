@@ -990,7 +990,7 @@ bool MemOpt::mergeLoad(LoadInst* LeadingLoad,
                 return depth;
             if (auto op_inst = dyn_cast<Instruction>(operand))
             {
-                if (depth == 300) //I have hit 300 chained Phi/Select instructions time to bail
+                if (depth >= 300) //I have hit 300 chained Phi/Select instructions time to bail
                 {
                     chainTooLarge = true;
                     return depth;
