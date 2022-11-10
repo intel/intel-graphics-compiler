@@ -3387,7 +3387,7 @@ GenXKernelBuilder::getExecMaskFromWrRegion(const DstOpndDesc &DstDesc,
         getPredicateOperand(DstDesc.WrRegion, 7 /*mask operand in wrregion*/,
                             DstDesc.WrRegionBI, Control, State, &MaskCtrl);
     if ((isa<Constant>(Mask) || getRegForValueOrNullAndSaveAlias(Mask)) &&
-        (NoMask || IsNoMask))
+        NoMask)
       MaskCtrl |= vISA_EMASK_M1_NM;
   }
   return MaskCtrl;
