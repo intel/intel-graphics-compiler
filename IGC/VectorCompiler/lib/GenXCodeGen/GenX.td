@@ -160,6 +160,10 @@ def WarnCallable : SubtargetFeature<"warn_callable", "WarnCallable",
 def OCLRuntime : SubtargetFeature<"ocl_runtime", "OCLRuntime", "true",
                                   "Prepare structures for OCL runtime">;
 
+def FeatureMultiIndirectByteRegioning : SubtargetFeature<"multi_indirect_byte_regioning",
+                                        "HasMultiIndirectByteRegioning",
+                                        "true",
+                                        "Vx1 and VxH indirect addressing for Byte datatypes">;
 
 //===----------------------------------------------------------------------===//
 // GenX processors supported.
@@ -175,6 +179,7 @@ def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureFP64,
                                FeatureIEEEDivSqrt,
                                FeatureHasPackedFloat,
+                               FeatureMultiIndirectByteRegioning,
                                FeatureHWTIDFromPredef]>;
 def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
@@ -184,6 +189,7 @@ def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIEEEDivSqrt,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption]>;
 def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
@@ -192,6 +198,7 @@ def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureFP64,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption]>;
 def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
@@ -201,6 +208,7 @@ def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIEEEDivSqrt,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption]>;
 def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureIntDivRem32,
@@ -209,27 +217,32 @@ def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
                                FeatureFP64,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption]>;
 def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
                                FeatureIntDivRem32, FeatureInstrBitRotate,
                                FeatureIEEEDivSqrt,
                                FeatureHWTIDFromPredef,
                                FeatureHasPackedFloat,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption]>;
 def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
                                FeatureHasPackedFloat,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"RKL",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
                                FeatureHasPackedFloat,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHWTIDFromPredef,
                                FeatureHasPackedFloat,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"XEHP",            [FeatureLongLong,
                                FeatureInstrAdd64,
@@ -237,26 +250,31 @@ def : Proc<"XEHP",            [FeatureLongLong,
                                FeatureIEEEDivSqrt,
                                FeatureThreadPayloadInMemory,
                                FeatureHasPackedFloat,
+                               FeatureMultiIndirectByteRegioning,
                                FeatureInstrBitRotate, FeatureFusedEU]>;
 def : Proc<"ADLS",            [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"ADLP",            [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"ADLN",            [FeatureLongLongEmulation, FeatureIntDivRem32,
                                FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
                                FeatureHasPackedFloat,
                                FeatureHWTIDFromPredef,
+                               FeatureMultiIndirectByteRegioning,
                                FeaturePreemption, FeatureFusedEU]>;
 def : Proc<"DG2",             [FeatureLongLongEmulation,
                                FeatureThreadPayloadInMemory,
                                FeatureHasPackedFloat,
                                FeatureInstrBitRotate,
+                               FeatureMultiIndirectByteRegioning,
                                FeatureHasLSC, FeatureFusedEU]>;
 def : Proc<"PVC",             [FeatureLongLong, FeatureGRFByteSize64,
                                FeatureLSCMaxWidth32,
@@ -298,6 +316,7 @@ def : Proc<"MTL",             [FeatureLongLongEmulation,
                                FeatureThreadPayloadInMemory,
                                FeatureInstrBitRotate,
                                FeatureBfMixedModeWidth16,
+                               FeatureMultiIndirectByteRegioning,
                                FeatureHasLSC, FeatureFusedEU]>;
 
 def GenX : Target {

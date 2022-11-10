@@ -179,6 +179,9 @@ private:
   // Has L3 flush on GPU-scope invalidate.
   bool HasL3FlushOnGPUScopeInvalidate = false;
 
+  // True if Vx1 and VxH indirect addressing are allowed for Byte datatypes
+  bool HasMultiIndirectByteRegioning = false;
+
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
 
@@ -375,9 +378,11 @@ public:
     return hasIndirectGRFCrossing() && !isPVC();
   }
 
-  /// * hasMultiIndirectByteRegioning - true if target supports an mutli
+  /// * hasMultiIndirectByteRegioning - true if target supports an multi
   /// indirect regions with byte type
-  bool hasMultiIndirectByteRegioning() const { return !isPVC(); }
+  bool hasMultiIndirectByteRegioning() const {
+    return HasMultiIndirectByteRegioning;
+  };
 
   bool hasNBarrier() const { return GenXVariant >= XE_PVC; }
 
