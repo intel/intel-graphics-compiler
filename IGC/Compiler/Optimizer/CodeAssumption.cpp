@@ -153,8 +153,10 @@ void CodeAssumption::addAssumption(Module* M)
                             BasicBlock::iterator pos(userInst);
                             ++pos;
                             IRBuilder<> builder(userInst->getParent(), pos);
-                            Value* tmp = builder.CreateICmpSGE(userInst, Zero, "assumeCond");
-                            (void)IRB.CreateAssumption(tmp);
+                            Value* tmp = builder.CreateICmpSGE(userInst,
+                                                               ConstantInt::get(userInst->getType(), 0),
+                                                               "assumeCond");
+                            (void)builder.CreateAssumption(tmp);
                         }
                     }
                 }

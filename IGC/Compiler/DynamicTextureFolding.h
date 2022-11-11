@@ -59,6 +59,7 @@ namespace IGC
         void copyResInfoData(ContextT* pShaderCtx);
         void FoldResInfoValue(llvm::GenIntrinsicInst* pCall);
         llvm::Value* ShiftByLOD(llvm::Instruction* pCall, unsigned int dimension, llvm::Value* val);
+        SmallVector<Instruction*,4> InstsToRemove;
     };
 }
 

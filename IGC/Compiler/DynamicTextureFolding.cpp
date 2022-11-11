@@ -106,6 +106,7 @@ void DynamicTextureFolding::FoldResInfoValue(llvm::GenIntrinsicInst* pCall)
     if (!directIdx || (bufType != RESOURCE && bufType != UAV))
         return;
     auto I32Ty = Type::getInt32Ty(pCall->getContext());
+    llvm::Value* Zero = ConstantInt::get(I32Ty, 0);
     for(unsigned int i = 0; i < modMD->inlineResInfoData.size();i++)
     {
         if (textureIndex == modMD->inlineResInfoData[i].textureID)
@@ -117,7 +118,7 @@ void DynamicTextureFolding::FoldResInfoValue(llvm::GenIntrinsicInst* pCall)
             case GFXSURFACESTATE_SURFACETYPE_1D:
             {
                 g = ConstantInt::get(I32Ty, (modMD->inlineResInfoData[i].SurfaceArray > 0) ? modMD->inlineResInfoData[i].Depth + 1 : 0);
-                b = ConstantInt::get(I32Ty, 0);
+                b = Zero;
                 if (isLODConstant)
                 {
                     uint64_t lod = isLODConstant->getZExtValue();
@@ -185,18 +186,18 @@ void DynamicTextureFolding::FoldResInfoValue(llvm::GenIntrinsicInst* pCall)
             case GFXSURFACESTATE_SURFACETYPE_SCRATCH:
 
             {
-                r = (modMD->inlineResInfoData[i].WidthOrBufferSize != UINT_MAX) ? ConstantInt::get(I32Ty, modMD->inlineResInfoData[i].WidthOrBufferSize) : 0;
-                g = 0;
-                b = 0;
-                a = 0;
+                r = (modMD->inlineResInfoData[i].WidthOrBufferSize != UINT_MAX) ? ConstantInt::get(I32Ty, modMD->inlineResInfoData[i].WidthOrBufferSize) : Zero;
+                g = Zero;
+                b = Zero;
+                a = Zero;
                 break;
             }
             default:
             {
-                r = 0;
-                g = 0;
-                b = 0;
-                a = 0;
+                r = Zero;
+                g = Zero;
+                b = Zero;
+                a = Zero;
                 break;
             }
             }
@@ -209,22 +210,22 @@ void DynamicTextureFolding::FoldResInfoValue(llvm::GenIntrinsicInst* pCall)
                         if (pIdx->getZExtValue() == 0)
                         {
                             pExtract->replaceAllUsesWith(r);
-                            pExtract->eraseFromParent();
+                            InstsToRemove.push_back(pExtract);
                         }
                         else if (pIdx->getZExtValue() == 1)
                         {
                             pExtract->replaceAllUsesWith(g);
-                            pExtract->eraseFromParent();
+                            InstsToRemove.push_back(pExtract);
                         }
                         else if (pIdx->getZExtValue() == 2)
                         {
                             pExtract->replaceAllUsesWith(b);
-                            pExtract->eraseFromParent();
+                            InstsToRemove.push_back(pExtract);
                         }
                         else if (pIdx->getZExtValue() == 3)
                         {
                             pExtract->replaceAllUsesWith(a);
-                            pExtract->eraseFromParent();
+                            InstsToRemove.push_back(pExtract);
                         }
                     }
                 }
@@ -232,6 +233,7 @@ void DynamicTextureFolding::FoldResInfoValue(llvm::GenIntrinsicInst* pCall)
         }
     }
 }
+
 void DynamicTextureFolding::visitCallInst(CallInst& I)
 {
     ModuleMetaData* modMD = m_context->getModuleMetaData();
@@ -278,7 +280,6 @@ void DynamicTextureFolding::visitCallInst(CallInst& I)
                 }
             }
         }
-        return;
     }
 }
 
@@ -301,5 +302,8 @@ bool DynamicTextureFolding::runOnFunction(Function& F)
 {
     m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     visit(F);
+    for (auto *insn : InstsToRemove)
+        insn->eraseFromParent();
+
     return false;
 }
