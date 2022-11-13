@@ -1095,7 +1095,7 @@ PreBIImportAnalysis::PreBIImportAnalysis() : ModulePass(ID)
 bool PreBIImportAnalysis::runOnModule(Module& M)
 {
     // Run on all functions defined in this module
-    SmallVector<std::tuple<Instruction*, double, unsigned>, 8> InstToModify;
+    SmallVector<std::pair<Instruction*, double>, 8> InstToModify;
     SmallVector<std::pair<Function*, std::string>, 8> FuncToRename;
     SmallVector<std::pair<Instruction*, Instruction*>, 8> CallToReplace;
 
@@ -1296,14 +1296,8 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
               }
 
               if (isCandidate) {
-                unsigned srcPos = 0;
                 ConstantFP *fmulConstant =
                     dyn_cast<ConstantFP>(fmulInst->getOperand(0));
-
-                if (!fmulConstant) {
-                  fmulConstant = dyn_cast<ConstantFP>(fmulInst->getOperand(1));
-                  srcPos = 1;
-                }
 
                 double intValue = 0.0;
                 double fractValue = 1.0;
@@ -1321,7 +1315,7 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
 
                 if (fabs(fractValue) <= 0.0001) {
                   InstToModify.push_back(
-                      std::make_tuple(fmulInst, intValue, srcPos));
+                      std::pair<Instruction *, double>(fmulInst, intValue));
 
                   std::string newName;
                   if (funcName.startswith(cosBuiltinName)) {
@@ -1351,14 +1345,12 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
         }
     }
 
-    for (auto InstTuple : InstToModify)
+    for (auto InstPair : InstToModify)
     {
-      auto inst = std::get<0>(InstTuple);
-      auto value = std::get<1>(InstTuple);
-      auto srcPos = std::get<2>(InstTuple);
+      auto inst = InstPair.first;
+      auto value = InstPair.second;
       inst->setOperand(
-          srcPos,
-          ConstantFP::get(
+        0, ConstantFP::get(
           Type::getFloatTy(inst->getContext()),
           (float) value));
     }
