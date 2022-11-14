@@ -1109,6 +1109,10 @@ bool supportMixMode() const {
     return IGC_IS_FLAG_ENABLED(ForceMixMode) ||
         (IGC_IS_FLAG_DISABLED(DisableMixMode) &&
             (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW ||
+                m_platformInfo.eProductFamily == IGFX_DG1 ||
+                m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
+                m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
+                m_platformInfo.eRenderCoreFamily == IGFX_GEN12LP_CORE ||
                 m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
                 m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
                 m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
@@ -1118,24 +1122,33 @@ bool supportMixMode() const {
 
 bool supportsStaticRegSharing() const
 {
-    bool isSupporting = isProductChildOf(IGFX_XE_HP_SDV);
-    return isSupporting;
+    // Static register sharing with multiple number of threads per EU supported on:
+    return ((isProductChildOf(IGFX_XE_HP_SDV) && !WaDisableStaticRegSharing())
+        || IGC_IS_FLAG_ENABLED(ForceSupportsStaticRegSharing));
 }
 
 bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const
 {
     bool isFromFamilyWhereSkippable = m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
         m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
-        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N;
-    bool canBeSkipped = (IGC_IS_FLAG_ENABLED(EnablePostCullPatchFIFOLP) &&
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
+        m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
+        m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
+        m_platformInfo.eProductFamily == IGFX_DG1;
+    return (IGC_IS_FLAG_ENABLED(EnablePostCullPatchFIFOLP) &&
         m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE &&
-        isFromFamilyWhereSkippable);
-    return canBeSkipped;
+        isFromFamilyWhereSkippable) ||
+        (IGC_IS_FLAG_ENABLED(EnablePostCullPatchFIFOHP) && isProductChildOf(IGFX_XE_HP_SDV));
 }
 
 bool emulateByteScraterMsgForSS() const
 {
-    return isProductChildOf(IGFX_XE_HP_SDV) && (m_platformInfo.usRevId == 0 || IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS));
+    return (isProductChildOf(IGFX_XE_HP_SDV) &&
+        ((m_platformInfo.usRevId == 0 && m_platformInfo.eProductFamily != IGFX_DG2) ||
+            IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS) ||
+            (m_platformInfo.eProductFamily == IGFX_DG2 && SI_WA_BEFORE(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0) &&
+                !GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) &&
+                !GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID))));
 }
 
 bool has64BMediaBlockRW() const
@@ -1146,8 +1159,7 @@ bool has64BMediaBlockRW() const
 
 int getBSOLocInExtDescriptor() const
 {
-    int descriptor = 12;
-    return descriptor;
+    return support26BitBSOFormat() ? 6 : 12;
 }
 
 bool NeedsHDCFenceBeforeEOTInPixelShader() const
@@ -1157,18 +1169,43 @@ bool NeedsHDCFenceBeforeEOTInPixelShader() const
 
 bool canFuseTypedWrite() const
 {
-    bool canFuse = (m_platformInfo.eProductFamily == IGFX_METEORLAKE);
+    bool isChildOfDG2B0 = SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_B0);
+    bool isChildOfDG2C0 = SI_WA_FROM(m_platformInfo.usRevId, ACM_G10_GT_REV_ID_C0);
+    bool isDG2G11Config = GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID);
+    bool isDG2G12Config = GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID);
+    bool canFuse = (m_platformInfo.eProductFamily == IGFX_METEORLAKE) ||
+        (m_platformInfo.eProductFamily == IGFX_DG2 && isChildOfDG2C0) ||
+        (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G11Config && isChildOfDG2B0) ||
+        (m_platformInfo.eProductFamily == IGFX_DG2 && isDG2G12Config);
     return (IGC_IS_FLAG_ENABLED(FuseTypedWrite) && canFuse);
 }
 
 bool enableSetDefaultTileYWalk() const
 {
-    return false;
+    if (IGC_IS_FLAG_ENABLED(EnableTileYForExperiments))
+        return true;
+
+    // enable it on DG2 G10 & G12
+    bool isDG2G10G12Config =
+        GFX_IS_DG2_G10_CONFIG(m_platformInfo.usDeviceID) ||
+        GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID);
+    return (supportHWGenerateTID() && isDG2G10G12Config);
 }
 
 // max block size for legacy OWord block messages
 uint32_t getMaxBlockMsgSize(bool isSLM) const
 {
+    if (isSLM)
+    {
+        if (m_WaTable.Wa_14010875903)
+        {
+            return 64;
+        }
+        if (has16OWSLMBlockRW())
+        {
+            return 256;
+        }
+    }
     return 128;
 }
 

@@ -709,6 +709,8 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_56A9                             0x56A9
 #define DEV_ID_56B0                             0x56B0
 #define DEV_ID_56B1                             0x56B1
+#define DEV_ID_56B2                             0x56B2
+#define DEV_ID_56B3                             0x56B3
 #define DEV_ID_56C0                             0x56C0
 #define DEV_ID_56C1                             0x56C1
 #define DEV_ID_56CF                             0x56CF
@@ -717,15 +719,33 @@ typedef enum __NATIVEGTTYPE
                                  ( d == DEV_ID_56A6 )             ||   \
                                  ( d == DEV_ID_5693 )             ||   \
                                  ( d == DEV_ID_5694 )             ||   \
+                                 ( d == DEV_ID_5695 )             ||   \
                                  ( d == DEV_ID_56B0 )             ||   \
                                  ( d == DEV_ID_56B1 )             ||   \
                                  ( d == DEV_ID_56C1 )             ||   \
                                  ( d == DEV_ID_4F87 )             ||   \
                                  ( d == DEV_ID_4F88 ))
 
+#define GFX_IS_DG2_G10_CONFIG(d) ( ( d == DEV_ID_56A0 )                              ||   \
+                                      ( d == DEV_ID_56A1 )                              ||   \
+                                      ( d == DEV_ID_56A2 )                              ||   \
+                                      ( d == DEV_ID_5690 )                              ||   \
+                                      ( d == DEV_ID_5691 )                              ||   \
+                                      ( d == DEV_ID_5692 )                              ||   \
+                                      ( d == DEV_ID_56C0 )                              ||   \
+                                      ( d == DEV_ID_4F80 )                              ||   \
+                                      ( d == DEV_ID_4F81 )                              ||   \
+                                      ( d == DEV_ID_4F82 )                              ||   \
+                                      ( d == DEV_ID_4F83 )                              ||   \
+                                      ( d == DEV_ID_4F84 ))
+
 #define GFX_IS_DG2_G12_CONFIG(d)   ( ( d == DEV_ID_4F85 )                              ||   \
                                       ( d == DEV_ID_4F86 )                              ||   \
                                       ( d == DEV_ID_56A3 )                              ||   \
-                                      ( d == DEV_ID_56A4 ))
+                                      ( d == DEV_ID_56A4 )                              ||   \
+                                      ( d == DEV_ID_5696 )                              ||   \
+                                      ( d == DEV_ID_5697 )                              ||   \
+                                      ( d == DEV_ID_56B2 )                              ||   \
+                                      ( d == DEV_ID_56B3 ))
 
 #endif
