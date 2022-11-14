@@ -2674,8 +2674,8 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
       }
 
       if (inst->isSend()) {
-        if (dst && !dst->isNullReg() && dst->getTopDcl()) {
-          auto preg = dst->getTopDcl()->getRegVar()->getPhyReg();
+        if (dst && dst->getBase()->isRegAllocPartaker()) {
+          auto preg = dst->getBase()->asRegVar()->getPhyReg();
           if (preg && preg->isGreg()) {
             MUST_BE_TRUE(
                 numGRF >= (preg->asGreg()->getRegNum() +
@@ -2686,8 +2686,9 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
 
         for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
           G4_Operand *src = inst->getSrc(j);
-          if (src && src->isSrcRegRegion()) {
-            auto preg = src->getTopDcl()->getRegVar()->getPhyReg();
+          if (src && src->isSrcRegRegion() &&
+              src->getBase()->isRegAllocPartaker()) {
+            auto preg = src->getBase()->asRegVar()->getPhyReg();
             if (preg && preg->isGreg()) {
               unsigned int srcLen = 0;
               if (j == 0)
