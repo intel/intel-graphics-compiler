@@ -13847,6 +13847,8 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         LSC_SCOPE scope = Global_Mem_Fence ? LSC_SCOPE_GPU : LSC_SCOPE_GROUP;
         // When post-atomic fence is added with L1 invalidate, we may want to limit the scope to thread.
         if (Force_Thread_LSC_Scope) scope = LSC_SCOPE_GROUP;
+        // Fence for global memory should invalidate L1.
+        if (Global_Mem_Fence && !L3_Flush_RW_Data) L1_Invalidate = true;
         // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL
         if (scope == LSC_SCOPE_GPU &&
             !m_currShader->m_Platform->hasMultiTile() &&

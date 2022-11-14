@@ -105,7 +105,7 @@ static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
         {
            bool flushL3 = Memory == Device || Memory == CrossDevice;
            bool forceThreadLSCScope = Semantics & Acquire;
-           __intel_memfence_handler(flushL3, true, true, forceThreadLSCScope);
+           __intel_memfence_handler(flushL3, true, invalidateL1, forceThreadLSCScope);
         }
     }
 }

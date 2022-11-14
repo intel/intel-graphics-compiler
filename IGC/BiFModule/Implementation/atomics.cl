@@ -59,7 +59,7 @@ extern __constant int __HasThreadPauseSupport;
   if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                         \
   {                                                                                   \
       bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
-      __intel_memfence_handler(flushL3, isGlobal, isGlobal, false);                   \
+      __intel_memfence_handler(flushL3, isGlobal, false, false);                      \
   }
 
 #define FENCE_POST_OP(Scope, Semantics, isGlobal)                                     \
