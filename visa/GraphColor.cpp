@@ -10101,12 +10101,16 @@ int GlobalRA::coloringRegAlloc() {
           if (builder.usesStack() ||
               // If LSC has to be used for spill/fill then we need to ensure
               // spillHeader is created
-              (!useLscForNonStackCallSpillFill ||
+              (useLscForNonStackCallSpillFill &&
                builder.hasValidSpillFillHeader()) ||
        // If scratch is to be used then max spill offset must be within
-       // addressable range
-              ((nextSpillOffset + BoundedRA::getNumPhyVarSlots(kernel)) <
-               SCRATCH_MSG_LIMIT)) {
+       // addressable range and r0 must be available as reserved. If r0
+       // is not reserved, we cannot conver current iteration to fail
+       // safe because r0 may get assigned to other virtual variables.
+              ((kernel.getOption(vISA_PreserveR0InR0) ||
+                builder.getBuiltinR0()->isOutput()) &&
+               (nextSpillOffset + BoundedRA::getNumPhyVarSlots(kernel)) <
+                   SCRATCH_MSG_LIMIT)) {
             // Few ranges are spilled but this was not executed as fail
             // safe iteration. However, we've the capability of doing
             // push/pop with new fail safe RA implementation. So for very
