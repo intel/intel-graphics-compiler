@@ -305,6 +305,15 @@ public:
     unsigned accSubCandidateDef = 0;
     unsigned accSubCandidateUse = 0;
 
+    unsigned syncInstCount = 0;   // The number of sync instructions.
+    unsigned tokenReuseCount = 0; // The token reuse times
+    unsigned singlePipeAtOneDistNum =
+        0; // The number of @1 distance in single ALU pipeline, it can be L@1,
+           // I@1, F@1 or @1 of TGL.
+    unsigned allAtOneDistNum = 0; // A@1 number
+    unsigned AWTokenDepCount = 0; // The number of $x.dst
+    unsigned ARTokenDepCount = 0; // The number of $x.src
+
     void clear() {
       simd8 = 0;
       BCNum = 0;
@@ -322,6 +331,13 @@ public:
     void setAccSubUse(unsigned num) { accSubUse = num; }
     void setAccSubCandidateDef(unsigned num) { accSubCandidateDef = num; }
     void setAccSubCandidateUse(unsigned num) { accSubCandidateUse = num; }
+
+    void addSinglePipeAtOneDistNum(unsigned num) { singlePipeAtOneDistNum += num; }
+    void addAllAtOneDistNum(unsigned num) { allAtOneDistNum += num; }
+    void addSyncInstCount(unsigned num) { syncInstCount += num; }
+    void addTokenReuseCount(unsigned num) { tokenReuseCount += num; }
+    void addAWTokenDepCount(unsigned num) { AWTokenDepCount += num; }
+    void addARTokenDepCount(unsigned num) { ARTokenDepCount += num; }
 
   } XeBCStats;
   unsigned numRMWs = 0; // counting the number of read-modify-write

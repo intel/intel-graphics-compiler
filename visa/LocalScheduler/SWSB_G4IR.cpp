@@ -2471,6 +2471,11 @@ void SWSB::assignDepToken(SBNode *node) {
     SWSBTokenType tokenType =
         type == WAR ? SWSBTokenType::AFTER_READ : SWSBTokenType::AFTER_WRITE;
     succ->setDepToken(token, tokenType, node);
+    if (tokenType == SWSBTokenType::AFTER_WRITE) {
+      kernel.fg.XeBCStats.addAWTokenDepCount(1);
+    } else {
+      kernel.fg.XeBCStats.addARTokenDepCount(1);
+    }
 #ifdef DEBUG_VERBOSE_ON
     dumpSync(node, succ, token, tokenType);
 #endif
@@ -2520,7 +2525,8 @@ void SWSB::assignToken(SBNode *node, unsigned short assignedToken,
           token, node->getSendID(), node->getNodeID(), oldNode->getSendID(),
           oldNode->getNodeID(), linearScanLiveNodes.size());
 #endif
-      tokenReuseCount++;
+      kernel.fg.XeBCStats.addTokenReuseCount(1);
+
       if (oldNode->hasAWDep()) {
         AWtokenReuseCount++;
       } else if (oldNode->hasARDep()) {
@@ -3030,7 +3036,7 @@ unsigned short SWSB::reuseTokenSelectionGlobal(SBNode *node, G4_BB *bb,
   unsigned short reuseToken = (unsigned short)UNKNOWN_TOKEN;
   unsigned nodeReuseOverhead = -1;
 
-  tokenReuseCount++;
+  kernel.fg.XeBCStats.addTokenReuseCount(1);
   for (unsigned int i = 0; i < totalTokenNum; i++) {
     unsigned nodeDist = -1;
     unsigned tokenReuseOverhead = 0;
@@ -3648,7 +3654,7 @@ G4_INST *SWSB::insertSyncInstruction(G4_BB *bb, INST_LIST_ITER nextIter) {
   G4_SrcRegRegion *src0 = fg.builder->createNullSrc(Type_UD);
   G4_INST *syncInst = fg.builder->createSync(G4_sync_nop, src0);
   bb->insertBefore(nextIter, syncInst);
-  syncInstCount++;
+  kernel.fg.XeBCStats.addSyncInstCount(1);
 
   return syncInst;
 }
@@ -3659,7 +3665,7 @@ G4_INST *SWSB::insertSyncInstructionAfter(G4_BB *bb, INST_LIST_ITER iter) {
   G4_SrcRegRegion *src0 = fg.builder->createNullSrc(Type_UD);
   G4_INST *syncInst = fg.builder->createSync(G4_sync_nop, src0);
   bb->insertBefore(nextIter, syncInst);
-  syncInstCount++;
+  kernel.fg.XeBCStats.addSyncInstCount(1);
 
   return syncInst;
 }
@@ -4441,6 +4447,19 @@ void SWSB::insertTest() {
         continue;
       }
 
+      if (inst->getDistance() == 1) {
+        if (kernel.fg.builder->hasThreeALUPipes() ||
+            kernel.fg.builder->hasFourALUPipes()) {
+          if (inst->getDistanceTypeXe() == G4_INST::DistanceType::DISTALL) {
+            kernel.fg.XeBCStats.addAllAtOneDistNum(1);
+          } else {
+            kernel.fg.XeBCStats.addSinglePipeAtOneDistNum(1);
+          }
+        } else {
+            kernel.fg.XeBCStats.addSinglePipeAtOneDistNum(1);
+        }
+      }
+
       SBNode *node = *node_it;
       assert(node->GetInstruction() == inst);
 
@@ -4560,13 +4579,11 @@ void SWSB::insertTest() {
     }
   }
 
-  tokenProfile.setSyncInstCount(syncInstCount);
   tokenProfile.setMathReuseCount(mathReuseCount);
   tokenProfile.setAWSyncInstCount(AWSyncInstCount);
   tokenProfile.setARSyncInstCount(ARSyncInstCount);
   tokenProfile.setAWSyncAllCount(AWSyncAllCount);
   tokenProfile.setARSyncAllCount(ARSyncAllCount);
-  tokenProfile.setTokenReuseCount(tokenReuseCount);
 }
 
 void SWSB::dumpDepInfo() const {

@@ -1246,6 +1246,14 @@ void G4_Kernel::emitDeviceAsm(std::ostream &os, const void *binary,
   os << "//.accSubUse: " << fg.XeBCStats.accSubUse << "\n";
   os << "//.accSubCandidateDef: " << fg.XeBCStats.accSubCandidateDef << "\n";
   os << "//.accSubCandidateUse: " << fg.XeBCStats.accSubCandidateUse << "\n";
+  os << "//\n//\n";
+  os << "//.singlePipeAtOneDistNum: " << fg.XeBCStats.singlePipeAtOneDistNum << "\n";
+  os << "//.allAtOneDistNum: " << fg.XeBCStats.allAtOneDistNum << "\n";
+  os << "//.syncInstCount: " << fg.XeBCStats.syncInstCount << "\n";
+  os << "//.tokenReuseCount: " << fg.XeBCStats.tokenReuseCount << "\n";
+  os << "//.AWTokenDepCount: " << fg.XeBCStats.AWTokenDepCount << "\n";
+  os << "//.ARTokenDepCount: " << fg.XeBCStats.ARTokenDepCount << "\n";
+
 }
 
 void G4_Kernel::emitRegInfo() {
