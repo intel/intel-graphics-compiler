@@ -143,6 +143,11 @@ Imported_Intrinsics = \
      ("bool",                          "is_dpas_wide_instruction")],
     "Convergent","NoMem"]],
 ####################################################################################################
+"GenISA_EmitHitAttributes": ["",
+    [("anyptr",                        "hit attributes ptr"),
+    [],
+    "NoMem"]],
+####################################################################################################
 "GenISA_EndPrimitive": ["",
     [("void",                          ""),
     [("int",                           "emitCount")],
