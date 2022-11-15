@@ -8800,8 +8800,6 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
   bool needFix = false;
   auto dst = inst->getDst();
   auto dstTy = dst->getType();
-  // FIXME: should call tryToAlignOperand() here, but seems later code processes
-  // subRegOff separately..
   bool dstAligned =
       (dst->getRegAccess() == Direct) && isDclGRFAligned(dst->getTopDcl());
   auto dstSubRegOff = dst->getSubRegOff();
@@ -8815,8 +8813,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
   // - src0 reg region exist and isn't contiguous
   // - dst is B/UB, src0 is B/UB or W/UW, src1 is B/UB or W/UW
   if (VISA_WA_CHECK(builder.getPWaTable(), Wa_22010487853) &&
-      inst->getNumSrc() > 1 && inst->getDst() != NULL &&
-      inst->getDst()->getSubRegOff() % 2 &&
+      inst->getNumSrc() > 1 && inst->getDst() != NULL && dstSubRegOff % 2 &&
       inst->getDst()->getHorzStride() > 1 &&
       inst->getSrc(0)->isSrcRegRegion() &&
       inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(
@@ -8877,13 +8874,12 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
       assert((inst->getExecSize() % region->width) == 0);
     }
     for (int row = 0; row < numRows; ++row) {
-      srcSubRegOff = (srcSubRegOff + row * region->vertStride) %
+      auto srcSubRegOffForRow = (srcSubRegOff + row * region->vertStride) %
                      (builder.getGRFSize() / TypeSize(srcTy));
-      dstSubRegOff =
+      auto dstSubRegOffForRow =
           (dstSubRegOff + row * region->width * dst->getHorzStride()) %
           (builder.getGRFSize() / TypeSize(dstTy));
-      bool dstSubRegOffDwordAlign =
-          ((dstSubRegOff % (4 / TypeSize(dstTy))) == 0);
+      bool dstSubRegOffDwordAlign = builder.tryToAlignOperand(dst, 4);
       if (TypeSize(srcTy) == 2) {
         // w2w and w2b rules
         // cannot have the case of w2b packing case, i.e. dest-stride == 1
@@ -8897,8 +8893,8 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
                 srcAligned && dstAligned && (numRows == 1) &&
                 !(i == 1 && TypeSize(dstTy) == 1 &&
                   VISA_WA_CHECK(builder.getPWaTable(), Wa_16012383669)) &&
-                ((dstSubRegOff % (32 / TypeSize(dstTy))) ==
-                 (srcSubRegOff / TypeSize(dstTy)));
+                ((dstSubRegOffForRow % (32 / TypeSize(dstTy))) ==
+                 (srcSubRegOffForRow / TypeSize(dstTy)));
             needFix |= !Aligned;
           } else if (ss > 2) {
             needFix = true;
@@ -8911,11 +8907,11 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
             needFix = true;
           } else if (ss == 4) {
             bool Aligned = srcAligned && dstAligned && (numRows == 1) &&
-                           ((2 * (dstSubRegOff % 16)) == (srcSubRegOff / 2));
+                ((2 * (dstSubRegOffForRow % 16)) == (srcSubRegOffForRow / 2));
             needFix |= !Aligned;
           } else if (ss == 8) {
             bool Aligned = srcAligned && dstAligned && (numRows == 1) &&
-                           ((2 * (dstSubRegOff % 8)) == (srcSubRegOff / 4));
+                ((2 * (dstSubRegOffForRow % 8)) == (srcSubRegOffForRow / 4));
             needFix |= !Aligned;
           } else if (ss > 8) {
             needFix = true;
@@ -8927,17 +8923,17 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
             needFix = true;
           } else if (ss == 4) {
             bool Aligned = srcAligned && dstAligned && (numRows == 1) &&
-                           ((dstSubRegOff % 32) == (srcSubRegOff / 2));
+                ((dstSubRegOffForRow % 32) == (srcSubRegOffForRow / 2));
        // change dstAligned to false, so we need a pack-shift
        // in the end of the fix
             if (VISA_WA_CHECK(builder.getPWaTable(), Wa_1507979211)) {
-              dstAligned &= (dstSubRegOff < 32);
-              Aligned &= (dstSubRegOff < 32);
+              dstAligned &= (dstSubRegOffForRow < 32);
+              Aligned &= (dstSubRegOffForRow < 32);
             }
             needFix |= !Aligned;
           } else if (ss == 8) {
             bool Aligned = srcAligned && dstAligned && (numRows == 1) &&
-                           ((dst->getSubRegOff() % 16) == (srcSubRegOff / 4));
+                ((dstSubRegOffForRow % 16) == (srcSubRegOffForRow / 4));
             needFix |= !Aligned;
           } else if (ss > 8) {
             needFix = true;
@@ -8950,16 +8946,16 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
             needFix = true;
           } else if (ss == 2) {
             bool Aligned = srcAligned && dstAligned && (numRows == 1) &&
-                           ((dstSubRegOff % 32) == (srcSubRegOff / 2));
+                ((dstSubRegOffForRow % 32) == (srcSubRegOffForRow / 2));
             needFix |= !Aligned;
           } else if (ss == 4) {
             bool Aligned = srcAligned && dstAligned && (numRows == 1) &&
-                           ((dstSubRegOff % 16) == (srcSubRegOff / 4));
+                ((dstSubRegOffForRow % 16) == (srcSubRegOffForRow / 4));
        // change dstAligned to false, so we need a pack-shift
        // in the end of the fix
             if (VISA_WA_CHECK(builder.getPWaTable(), Wa_1507979211)) {
-              dstAligned &= (dstSubRegOff < 32);
-              Aligned &= (dstSubRegOff < 32);
+              dstAligned &= (dstSubRegOffForRow < 32);
+              Aligned &= (dstSubRegOffForRow < 32);
             }
             needFix |= !Aligned;
           } else if (ss > 4) {
@@ -8974,22 +8970,22 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
           } else if (region->horzStride + region->vertStride >= 4) {
             if (region->horzStride == 2 && region->vertStride == 4) {
               bool Aligned = srcAligned && dstAligned &&
-                             ((dstSubRegOff % 32) == (srcSubRegOff / 2));
+                  ((dstSubRegOffForRow % 32) == (srcSubRegOffForRow / 2));
        // change dstAligned to false, so we need a pack-shift
        // in the end of the fix
               if (VISA_WA_CHECK(builder.getPWaTable(), Wa_1507979211)) {
-                dstAligned &= (dstSubRegOff < 32);
-                Aligned &= (dstSubRegOff < 32);
+                dstAligned &= (dstSubRegOffForRow < 32);
+                Aligned &= (dstSubRegOffForRow < 32);
               }
               needFix |= !Aligned;
             } else if (region->horzStride == 4 && region->vertStride == 8) {
               bool Aligned = srcAligned && dstAligned &&
-                             ((dstSubRegOff % 16) == (srcSubRegOff / 4));
+                  ((dstSubRegOffForRow % 16) == (srcSubRegOffForRow / 4));
        // change dstAligned to false, so we need a pack-shift
        // in the end of the fix
               if (VISA_WA_CHECK(builder.getPWaTable(), Wa_1507979211)) {
-                dstAligned &= (dstSubRegOff < 32);
-                Aligned &= (dstSubRegOff < 32);
+                dstAligned &= (dstSubRegOffForRow < 32);
+                Aligned &= (dstSubRegOffForRow < 32);
               }
               needFix |= !Aligned;
 
@@ -9015,20 +9011,20 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
 
     auto scale = 4 / TypeSize(dstTy);
     const RegionDesc *unpackRegion = builder.createRegionDesc(scale, 1, 0);
-    dstSubRegOff =
-        dst->getSubRegOff() % (builder.getGRFSize() / TypeSize(dstTy));
+    auto dstSubRegOffTmp =
+        dstSubRegOff % (builder.getGRFSize() / TypeSize(dstTy));
 
     // compute the sub-reg-offset we need to use
     short tmpSSR = 0;
     if (TypeSize(dstTy) == 2) {
-      tmpSSR = 2 * (dstSubRegOff % 16);
+      tmpSSR = 2 * (dstSubRegOffTmp % 16);
     } else {
       assert(TypeSize(dstTy) == 1);
       if (dst->getHorzStride() == 2) {
-        tmpSSR = 2 * (dstSubRegOff % 32);
+        tmpSSR = 2 * (dstSubRegOffTmp % 32);
       } else {
         assert(dst->getHorzStride() == 1);
-        tmpSSR = 4 * (dstSubRegOff % 16);
+        tmpSSR = 4 * (dstSubRegOffTmp % 16);
       }
     }
     auto tempSize = std::max(inst->getExecSize() * scale + tmpSSR,
