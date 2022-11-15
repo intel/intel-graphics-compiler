@@ -374,11 +374,14 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                 }
                 else
                 {
-                    auto insertPoint = instruction->getNextNode();
-                    if (!insertPoint) {
-                        insertPoint = instruction->getParent()->getTerminator();
+                    if (auto operandInst = dyn_cast<Instruction>(operand))
+                    {
+                        auto insertPoint = operandInst->getNextNode();
+                        if (!insertPoint) {
+                            insertPoint = operandInst->getParent()->getTerminator();
+                        }
+                        builder.SetInsertPoint(insertPoint);
                     }
-                    builder.SetInsertPoint(insertPoint);
                     auto trunc = builder.CreateTrunc(
                         promoted,
                         operand->getType(),
