@@ -98,8 +98,11 @@ void ZEBinaryBuilder::createKernel(
     addMemoryBuffer(annotations, zeKernel);
 
     // zeinfo kernels_misc_info
-    zeInfoKernelMiscInfo& kernelMisc = mZEInfoBuilder.createKernelMiscInfo(annotations.m_kernelName);
-    addKernelArgInfo(annotations, kernelMisc);
+    if (hasKernelMiscInfo(annotations)) {
+        zeInfoKernelMiscInfo& kernelMisc =
+            mZEInfoBuilder.createKernelMiscInfo(annotations.m_kernelName);
+        addKernelArgInfo(annotations, kernelMisc);
+    }
 
     addGTPinInfo(annotations);
     addFunctionAttrs(annotations);
@@ -600,6 +603,13 @@ void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize,
     mZEInfoBuilder.addPerThreadPayloadArgument(
         zeinfoKernel.per_thread_payload_arguments,
         PreDefinedAttrGetter::ArgType::local_id, 0, total_size);
+}
+
+bool ZEBinaryBuilder::hasKernelMiscInfo(
+    const IGC::SOpenCLKernelInfo &annotations)
+{
+    // the only kernel misc info we have now is kernel arg info
+    return !annotations.m_zeKernelArgsInfo.empty();
 }
 
 void ZEBinaryBuilder::addKernelArgInfo(

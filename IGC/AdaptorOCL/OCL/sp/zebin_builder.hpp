@@ -191,6 +191,11 @@ private:
     /// Add function attributes for external functions.
     void addFunctionAttrs(const IGC::SOpenCLKernelInfo& annotations);
 
+    /// check if the kernel has misc info. The entry of this function in
+    /// kernels_misc_info should only be created when this function return
+    /// true
+    bool hasKernelMiscInfo(const IGC::SOpenCLKernelInfo &annotations);
+
     /// Add kernel arg info
     void addKernelArgInfo(
         const IGC::SOpenCLKernelInfo& annotations,
