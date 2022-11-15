@@ -99,6 +99,7 @@ public:
       ARGCOUNTMASK =        GENX_ITR_FLAGMASK(0, 3), // Space for minumum argument count
       ARGCOUNTMIN1 =        GENX_ITR_FLAGENUM(0, 1), // Must have at least one argument
     BITWIDTH =              GENX_ITR_CATVAL(0x1a), // bit width of svm atomic instructions
+    EXECSIZE_NOMASK =       GENX_ITR_CATVAL(0x1b), // execution size with NoMask
 
     // A field that contains an operand number, other than general, and it
     // is the "real" use of the operand, rather than an auxiliary use
@@ -131,14 +132,13 @@ public:
       RAW_NULLALLOWED =     GENX_ITR_FLAGVAL(2),   // raw operand or result can be null (V0)
     URAW =                  RAW | RAW_UNSIGNED,
     SRAW =                  RAW | RAW_SIGNED,
-    EXECSIZE_NOMASK =       GENX_ITR_CATVAL(0x2d), // execution size with NoMask
 
     // A general operand
-    GENERAL =               GENX_ITR_CATVAL(0x2e),
+    GENERAL =               GENX_ITR_CATVAL(0x2d),
     // A general operand with compile-time signedness choosing
     GENERAL_CTSIGN =        GENERAL,
     // A predefined surface operand
-    PREDEF_SURFACE =        GENX_ITR_CATVAL(0x2f),
+    PREDEF_SURFACE =        GENX_ITR_CATVAL(0x2e),
     // Modifiers for destination or source, 7 bits used
     UNSIGNED =              GENX_ITR_FLAGVAL(0), // int type forced to unsigned
     SIGNED =                GENX_ITR_FLAGVAL(1), // int type forced to signed

@@ -2539,7 +2539,7 @@ void GenXKernelBuilder::buildNoopCast(CastInst *CI, genx::BaleInfo BI,
     if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(CI->getType()))
       ExecSize = VT->getNumElements();
 
-    VISA_EMask_Ctrl ctrlMask = getExecMaskFromWrRegion(DstDesc, true);
+    VISA_EMask_Ctrl ctrlMask = getExecMaskFromWrRegion(DstDesc);
     VISA_Exec_Size execSize = getExecSizeFromValue(ExecSize);
     CISA_CALL(Kernel->AppendVISADataMovementInst(
         ISA_MOV, createPredFromWrRegion(DstDesc), Mod & MODIFIER_SAT, ctrlMask,
@@ -2618,7 +2618,7 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
   if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Input->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
 
-  VISA_EMask_Ctrl ExecMask = getExecMaskFromWrRegion(DstDesc, true);
+  VISA_EMask_Ctrl ExecMask = getExecMaskFromWrRegion(DstDesc);
 
   // TODO: fix signedness of the source
   auto *Src = createSource(Input, DONTCARESIGNED, false, 0);
@@ -3387,7 +3387,7 @@ GenXKernelBuilder::getExecMaskFromWrRegion(const DstOpndDesc &DstDesc,
         getPredicateOperand(DstDesc.WrRegion, 7 /*mask operand in wrregion*/,
                             DstDesc.WrRegionBI, Control, State, &MaskCtrl);
     if ((isa<Constant>(Mask) || getRegForValueOrNullAndSaveAlias(Mask)) &&
-        NoMask)
+        (NoMask || IsNoMask))
       MaskCtrl |= vISA_EMASK_M1_NM;
   }
   return MaskCtrl;
