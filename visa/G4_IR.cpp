@@ -6859,14 +6859,15 @@ bool G4_INST::canDstBeAcc() const {
   }
 }
 
-// returns true if src0 may be replaced by an explicit acc
+// returns true if src0/1/2 may be replaced by an explicit acc
 // in addition to opcode-specific checks, we require
 // -- contiguous regions
 // -- simd8 for D/UD, simd8/16 for F, simd16 for HF/W, other types not allowed
 bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   int srcId = getSrcNum(opndNum);
-  assert((srcId == 0 || srcId == 1 || srcId == 2) &&
-         "must be either src0, src1 or src2");
+  // Only src0/src1/src2 could be a candidate
+  if (!(srcId == 0 || srcId == 1 || srcId == 2))
+      return false;
 
   if (!builder.relaxedACCRestrictions3() && srcId == 2) {
     return false;

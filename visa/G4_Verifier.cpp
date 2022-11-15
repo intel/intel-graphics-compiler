@@ -934,10 +934,10 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
   G4_InstDpas *dpasInst = inst->asDpasInst();
 
   if (dpasInst->getPredicate() || dpasInst->getCondMod()) {
-    DEBUG_VERBOSE("dpas: should not have predicate nor condMod");
+    DEBUG_VERBOSE("should not have predicate nor condMod");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "dpas: may not have predicate/condMod");
+    MUST_BE_TRUE(false, "may not have predicate/condMod");
   }
 
   G4_DstRegRegion *dst = dpasInst->getDst();
@@ -955,37 +955,37 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
   // No source modifier
   if (src0->hasModifier() || src1->hasModifier() || src2->hasModifier() ||
       (src3 && src3->hasModifier())) {
-    DEBUG_VERBOSE("dpas: should not have source modifier");
+    DEBUG_VERBOSE("should not have source modifier");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "dpas: may not have source modifier");
+    MUST_BE_TRUE(false, "may not have source modifier");
   }
 
   // No indirect register access
   if (src0->isIndirect() || src1->isIndirect() || src2->isIndirect() ||
       dst->isIndirect() || (src3 && src3->isIndirect())) {
-    DEBUG_VERBOSE("dpas: no indirect register access supported!");
+    DEBUG_VERBOSE("no indirect register access supported!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "dpas: no indirect register access supported!");
+    MUST_BE_TRUE(false, "no indirect register access supported!");
   }
 
   if (!(s1Ty == Type_UD || s1Ty == Type_D) ||
       !(s2Ty == Type_UD || s2Ty == Type_D))
   {
-    DEBUG_VERBOSE("dpas: incorrect type for src1 or src2!");
+    DEBUG_VERBOSE("incorrect type for src1 or src2!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "dpas: wrong type for src1 or src2");
+    MUST_BE_TRUE(false, "wrong type for src1 or src2");
   }
 
   if (dpasInst->isInt()) {
     if (!(s0Ty == Type_UD || s0Ty == Type_D) ||
         !(dTy == Type_UD || dTy == Type_D)) {
-      DEBUG_VERBOSE("dpas: incorrect int type for src0 or dst!");
+      DEBUG_VERBOSE("incorrect int type for src0 or dst!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "dpas: wrong int type for src0 or dst");
+      MUST_BE_TRUE(false, "wrong int type for src0 or dst");
     }
   } else if (dpasInst->isFP16() || dpasInst->isBF16()) {
     G4_Type prec = Type_UNDEF;
@@ -993,24 +993,24 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       prec = dpasInst->isBF16() ? Type_BF : Type_HF;
     }
     if (!(dTy == Type_F || dTy == prec) || !(s0Ty == Type_F || s0Ty == prec)) {
-      DEBUG_VERBOSE("dpas: incorrect float type for dst or src0!");
+      DEBUG_VERBOSE("incorrect float type for dst or src0!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "dpas: wrong float type for dst or src0");
+      MUST_BE_TRUE(false, "wrong float type for dst or src0");
     }
   } else if (dpasInst->isTF32()) {
     if (dTy != Type_F || s0Ty != Type_F) {
-      DEBUG_VERBOSE("dpas: incorrect TF32 type for dst or src0 (expecting F)!");
+      DEBUG_VERBOSE("incorrect TF32 type for dst or src0 (expecting F)!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "dpas: should be float type for dst or src0");
+      MUST_BE_TRUE(false, "should be float type for dst or src0");
     }
   }
   else {
-    DEBUG_VERBOSE("dpas: invalid!");
+    DEBUG_VERBOSE("invalid!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "dpas: invalid");
+    MUST_BE_TRUE(false, "invalid");
   }
 
   // region check, enforce <1;1,0> for source region, <1> for dst
@@ -1023,11 +1023,10 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       !isSrcRegion110(src1->getRegion()) ||
       !isSrcRegion110(src2->getRegion()) ||
       (src3 && !isSrcRegion110(src3->getRegion()))) {
-    DEBUG_VERBOSE("dpas: src region should be <1;1,0> and dst region <1>!");
+    DEBUG_VERBOSE("src region should be <1;1,0> and dst region <1>!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false,
-                 "dpas: src region should be <1;1,0> and dst region <1>!");
+    MUST_BE_TRUE(false, "src region should be <1;1,0> and dst region <1>!");
   }
 
   // register alignment & size
@@ -1040,17 +1039,24 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     uint32_t RC = dpasInst->getRepeatCount();
     uint32_t Src1_D = D;
 
+    if (RC > 8) {
+      DEBUG_VERBOSE("repeat count must be 1 to 8!");
+      inst->emit(std::cerr);
+      DEBUG_VERBOSE("\n");
+      MUST_BE_TRUE(false, "repeat count must be 1 to 8!");
+    }
+
+
     uint32_t dAlignBytes = TypeSize(dTy) * ES;
     uint32_t s0AlignBytes = TypeSize(s0Ty) * ES;
     if ((dst->getLinearizedStart() % dAlignBytes) != 0 ||
         (src0->getLinearizedStart() % s0AlignBytes) != 0) {
       DEBUG_VERBOSE(
-          "dpas: dst/src0's subreg offset should be multiple of execsize!");
+        "dst/src0's subreg offset should be multiple of execsize!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(
-          false,
-          "dpas: dst/src0's subreg offset should be multiple of execsize!");
+      MUST_BE_TRUE(false,
+        "dst/src0's subreg offset should be multiple of execsize!");
     }
 
     uint32_t dBytes = dst->getLinearizedEnd() - dst->getLinearizedStart() + 1;
@@ -1058,37 +1064,37 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
         src0->getLinearizedEnd() - src0->getLinearizedStart() + 1;
     if (dBytes != (dAlignBytes * RC) ||
         (!src0->isNullReg() && s0Bytes != s0AlignBytes * RC)) {
-      DEBUG_VERBOSE("dpas: dst/src0's size is wrong!");
+      DEBUG_VERBOSE("dst/src0's size is wrong!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "dpas: dst/src0's size is wrong!");
+      MUST_BE_TRUE(false, "dst/src0's size is wrong!");
     }
 
     if ((src1->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()) != 0) {
-      DEBUG_VERBOSE("dpas: src1's subreg offset should be 0!");
+      DEBUG_VERBOSE("src1's subreg offset should be 0!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "dpas: src1's subreg offset should be 0!");
+      MUST_BE_TRUE(false, "src1's subreg offset should be 0!");
     }
-
 
     // bytes per lane per depth
     uint32_t bytes1PerLD = dpasInst->getSrc1SizePerLaneInByte();
+    uint32_t s1ExpectedBytes = bytes1PerLD * Src1_D * ES;
     uint32_t s1Bytes =
-        src1->getLinearizedEnd() - src1->getLinearizedStart() + 1;
-    if (s1Bytes != (bytes1PerLD * Src1_D * ES)) {
-      DEBUG_VERBOSE("dpas: src1's size is wrong!");
+      src1->getLinearizedEnd() - src1->getLinearizedStart() + 1;
+    if (s1Bytes != s1ExpectedBytes) {
+      DEBUG_VERBOSE("src1's size is wrong!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "dpas: src1's size is wrong!");
+      MUST_BE_TRUE(false, "src1's size is wrong!");
     }
 
     uint32_t s2AlignBytes = dpasInst->getSrc2SizePerLaneInByte() * D;
     if ((src2->getLinearizedStart() % s2AlignBytes) != 0) {
-      DEBUG_VERBOSE("dpas: src2's subreg offset is incorrec!");
+      DEBUG_VERBOSE("src2's subreg offset is incorrec!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "dpas: src2's subreg offset is incorrect!");
+      MUST_BE_TRUE(false, "src2's subreg offset is incorrect!");
     }
 
     uint32_t s2Bytes =
@@ -1098,12 +1104,11 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       correctBytes = s2AlignBytes * ((RC + 1) / 2);
     }
     if (s2Bytes != correctBytes) {
-      DEBUG_VERBOSE("dpas: src2's size is wrong!");
+      DEBUG_VERBOSE("src2's size is wrong!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "dpas: src2's size is wrong!");
+      MUST_BE_TRUE(false, "src2's size is wrong!");
     }
-
   }
 }
 

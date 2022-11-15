@@ -199,7 +199,6 @@ const StringRef DpasFuncsResolution::WI_PREFIX_HFDPAS =  "__builtin_IB_hfdpas";
 const StringRef DpasFuncsResolution::WI_PREFIX_BFDPAS =  "__builtin_IB_bfdpas";
 const StringRef DpasFuncsResolution::SG_PREFIX_HFDPAS =  "__builtin_IB_sub_group_hfdpas";
 const StringRef DpasFuncsResolution::SG_PREFIX_BFDPAS =  "__builtin_IB_sub_group_bfdpas";
-const StringRef DpasFuncsResolution::SG_PREFIX_SDPAS16 = "__builtin_IB_sub_group16_sdpas";
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-arith-funcs-translation" // This string was changed from "igc-dpas-funcs-translation" due to IP leaks concers.

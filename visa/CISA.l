@@ -1272,12 +1272,10 @@ static VISA_Type str2type(const char *str, int str_len)
 
 static GenPrecision str2Precision(const char *str, int str_len)
 {
-    if (str_len == 2)
-    {
+    if (str_len == 2) {
         char c0 = tolower(str[0]);
         char c1 = str[1];
-        if (c0 == 's')
-        {
+        if (c0 == 's') {
             switch (c1) {
             default: break; // fall-thru
             case '1' : return GenPrecision::S1;

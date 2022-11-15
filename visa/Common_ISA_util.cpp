@@ -484,7 +484,8 @@ bool hasExecSize(ISA_Opcode op, uint8_t subOp) {
         op == ISA_3D_LOAD || op == ISA_3D_GATHER4 || op == ISA_3D_URB_WRITE ||
         op == ISA_3D_INFO) {
       return true;
-    } else if (op == ISA_DPAS || op == ISA_DPASW) {
+    }
+    else if (op == ISA_DPAS || op == ISA_DPASW) {
       return true;
     } else
       return false;
