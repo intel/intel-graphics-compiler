@@ -338,7 +338,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
             //     pseudo_mad (16)      add64_i_i_i_i(0,0)<1>:d  0x6:w simdShuffle(0,0)<0;0>:d  rem_i_i_i_i(0,0)<1;0>:d
             //     shl (16)             add64_i_i_i_i(0,0)<1>:d add64_i_i_i_i(0,0)<1;1,0>:d  0x2:w
             if (srcPtr != nullptr && srcPtr->isRegVar() && ptr != srcPtr &&
-                src->getRegAccess() != IndirGRF) {
+                !src->isIndirect()) {
               std::vector<G4_RegVar *>::iterator addrDst =
                   std::find(addrTakenDsts.begin(), addrTakenDsts.end(),
                             srcPtr->asRegVar());
@@ -1820,7 +1820,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
           use_gen.set(static_cast<const G4_RegVar *>(base)->getId(), true);
         }
 
-        if ((selectedRF & G4_GRF) && src->getRegAccess() == IndirGRF) {
+        if ((selectedRF & G4_GRF) && src->isIndirect()) {
           int idx = 0;
           G4_RegVar *grf;
           G4_Declare *topdcl = GetTopDclFromRegRegion(src);
@@ -3250,7 +3250,7 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                                             << " is assigned to r." << regNum
                                             << "\n");
           }
-        } else if (src->isSrcRegRegion() && src->getRegAccess() == IndirGRF) {
+        } else if (src->isSrcRegRegion() && src->isIndirect()) {
           G4_SrcRegRegion *srcrgn = src->asSrcRegRegion();
           G4_Declare *addrdcl = GetTopDclFromRegRegion(srcrgn);
           G4_RegVar *ptvar = nullptr;

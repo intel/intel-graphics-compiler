@@ -1852,7 +1852,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
   bool spill_src0 = false;
   bool spill_dst = false;
   G4_Declare *addr_dcl0 = NULL, *addr_dcl1 = NULL, *addr_dcl2 = NULL;
-  if (!null_src0 && src0->isSrcRegRegion() && src0->getRegAccess() != Direct &&
+  if (!null_src0 && src0->isSrcRegRegion() && src0->isIndirect() &&
       src0->asSrcRegRegion()->getBase()->isRegVar()) {
     addr_dcl0 = src0->asSrcRegRegion()
                     ->getBase()
@@ -1866,7 +1866,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
     src_uniq_count += src0_count;
   }
 
-  if (!null_src1 && src1->isSrcRegRegion() && src1->getRegAccess() != Direct &&
+  if (!null_src1 && src1->isSrcRegRegion() && src1->isIndirect() &&
       src1->asSrcRegRegion()->getBase()->isRegVar()) {
     addr_dcl1 = src1->asSrcRegRegion()
                     ->getBase()
@@ -2961,7 +2961,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
           }
 
           G4_SrcRegRegion *newSrc = nullptr;
-          if (src0->getRegAccess() == Direct) {
+          if (!src0->isIndirect()) {
             newSrc = builder.createSrcRegRegion(
                 src0RR->getModifier(), Direct, src0RR->getBase(),
                 src0RR->getRegOff(), src0RR->getSubRegOff() * 2,

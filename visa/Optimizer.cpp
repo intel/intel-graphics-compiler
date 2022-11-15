@@ -4910,7 +4910,7 @@ void Optimizer::optimizeLogicOperation() {
             G4_CmpRelation Res = A->compareOperand(B, IRB);
             if (Res != Rel_interfere)
               return Res;
-            if (A->getRegAccess() != IndirGRF || B->getRegAccess() != IndirGRF)
+            if (!A->isIndirect() || !B->isIndirect())
               return Res;
             if (A->getHorzStride() != 1)
               return Res;
@@ -10404,7 +10404,7 @@ void Optimizer::split4GRFVars() {
             auto NewSrcDcl =
                 DclMap[srcRootDcl]->getDcl(builder, src->getType(), isLow);
             auto NewSrc = builder.createSrcRegRegion(
-                srcRegion->getModifier(), src->getRegAccess(),
+                srcRegion->getModifier(), srcRegion->getRegAccess(),
                 NewSrcDcl->getRegVar(),
                 srcRegion->getRegOff() - (isLow ? 0 : 2),
                 srcRegion->getSubRegOff(), srcRegion->getRegion(),

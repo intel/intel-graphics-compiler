@@ -2206,7 +2206,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const {
   // check attributes of src and number of defs
   bool archRegSrc = (src->isFlag() || src->isAreg() || src->isAddress());
   bool indirectSrc = (src->getTopDcl() && src->getTopDcl()->getAddressed()) ||
-                     src->getRegAccess() != Direct;
+                     src->isIndirect();
   bool noMultiDefOpt =
       ((defInstList.size() > 1) &&
        (predicate || (dst->getRegAccess() != Direct) || simdBB));
@@ -3877,9 +3877,8 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
                            G4_Type type, bool printSubReg) {
   short subRegOffset = (subRegOff != (short)UNDEFINED_SHORT) ? subRegOff : 0;
 
-  G4_RegAccess acc = opnd->getRegAccess();
   G4_VarBase *base = opnd->getBase();
-  if (acc == Direct) {
+  if (!opnd->isIndirect()) {
     MUST_BE_TRUE(regOff != (short)UNDEFINED_SHORT, ERROR_INTERNAL_ARGUMENT);
 
     if (base->isRegVar()) {
@@ -3946,15 +3945,9 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
         output << '.' << subRegOff;
       }
     }
-  } else // This is an indirect access
-  {
-    if (acc == IndirGRF) {
-      output << "r[";
-    } else // Unknown access type
-    {
-      MUST_BE_TRUE(false, ERROR_UNKNOWN);
-    }
-
+  } else {
+    // This is an indirect access
+    output << "r[";
     if (base->isRegVar()) {
       MUST_BE_TRUE(regOff == 0, ERROR_INTERNAL_ARGUMENT);
       G4_RegVar *baseVar = static_cast<G4_RegVar *>(base);
@@ -4288,8 +4281,8 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
                     opnd->isAddrExp();
   G4_VarBase *myBase = regRegion->getBase();
   G4_VarBase *opndBase = opnd->getBase();
-  G4_RegAccess myAcc = regRegion->getRegAccess();
-  G4_RegAccess opndAcc = opnd->getRegAccess();
+  bool myIndirect = regRegion->isIndirect();
+  bool opndIndirect = opnd->isIndirect();
   G4_Declare *myDcl = regRegion->getTopDcl();
   G4_Declare *opndDcl = opnd->getTopDcl();
   if (opnd->isAddrExp()) {
@@ -4330,10 +4323,10 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
     return Rel_interfere;
   }
 
-  if (opndAcc == myAcc && myAcc != Direct) {
+  if (opndIndirect && myIndirect)
     // two indirect are assumed to interfere in the absence of pointer analysis
     return Rel_interfere;
-  } else if (opndAcc != myAcc) {
+  if (opndIndirect != myIndirect) {
     // direct v. indirect
     // the two may inteferce if the direct operand is either an address-taken
     // GRF or an address operand we could make the check tighter by considering
@@ -4341,16 +4334,15 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
     // practice
     auto mayInterfereWithIndirect = [](G4_Operand *direct,
                                        G4_Operand *indirect) {
-      assert((direct->getRegAccess() == Direct &&
-              indirect->getRegAccess() == IndirGRF) &&
+      assert((!direct->isIndirect() && indirect->isIndirect()) &&
              "first opereand should be direct and second indirect");
       return (direct->getTopDcl() && direct->getTopDcl()->getAddressed()) ||
              (direct->isAddress() &&
               direct->getTopDcl() == indirect->getTopDcl());
     };
 
-    if ((opndAcc != Direct && mayInterfereWithIndirect(regRegion, opnd)) ||
-        (myAcc != Direct && mayInterfereWithIndirect(opnd, regRegion))) {
+    if ((opndIndirect && mayInterfereWithIndirect(regRegion, opnd)) ||
+        (myIndirect && mayInterfereWithIndirect(opnd, regRegion))) {
       return Rel_interfere;
     }
     return Rel_disjoint;
@@ -5904,6 +5896,14 @@ void G4_INST::computeLeftBoundForImplAcc(G4_Operand *opnd) {
       }
     }
   }
+}
+
+bool G4_Operand::isIndirect() const {
+  if (isDstRegRegion())
+    return asDstRegRegion()->isIndirect();
+  if (isSrcRegRegion())
+    return asSrcRegRegion()->isIndirect();
+  return false;
 }
 
 bool G4_Operand::crossGRF(const IR_Builder &builder) {

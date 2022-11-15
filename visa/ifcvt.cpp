@@ -629,7 +629,7 @@ void runIfCvt(FlowGraph &fg) {
         }
         if (Res != Rel_interfere)
           return Res;
-        if (A->getRegAccess() != IndirGRF || B->getRegAccess() != IndirGRF)
+        if (!A->isIndirect() || !B->isIndirect())
           return Res;
         if (A->getHorzStride() != 1)
           return Res;

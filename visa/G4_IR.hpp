@@ -1906,7 +1906,7 @@ public:
   const G4_VarBase *getBase() const { return base; }
   G4_VarBase *getBase() { return base; }
   void setBase(G4_VarBase *b) { base = b; }
-  G4_RegAccess getRegAccess() const;
+  bool isIndirect() const;
 
   const G4_Declare *getBaseRegVarRootDeclare() const;
   G4_Declare *getBaseRegVarRootDeclare();
@@ -3131,14 +3131,6 @@ public:
 
   void emit(std::ostream &output);
 };
-
-inline G4_RegAccess G4_Operand::getRegAccess() const {
-  if (isSrcRegRegion())
-    return asSrcRegRegion()->getRegAccess();
-  else if (isDstRegRegion())
-    return asDstRegRegion()->getRegAccess();
-  return Direct;
-}
 
 inline bool G4_Operand::isGreg() const {
   return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isGreg();

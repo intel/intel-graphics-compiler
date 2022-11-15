@@ -298,8 +298,8 @@ G4_CmpRelation InstSplitPass::compareSrcDstRegRegion(G4_DstRegRegion *dstRegion,
 
   G4_VarBase *dstBase = dstRegion->getBase();
   G4_VarBase *srcBase = opnd->getBase();
-  G4_RegAccess dstAcc = dstRegion->getRegAccess();
-  G4_RegAccess srcAcc = opnd->getRegAccess();
+  bool dstIndirect = dstRegion->isIndirect();
+  bool srcIndirect = opnd->isIndirect();
   G4_Declare *dstDcl = dstRegion->getTopDcl();
   G4_Declare *srcDcl = opnd->getTopDcl();
 
@@ -321,23 +321,22 @@ G4_CmpRelation InstSplitPass::compareSrcDstRegRegion(G4_DstRegRegion *dstRegion,
     }
   }
 
-  if (srcAcc == dstAcc && dstAcc != Direct) {
+  if (srcIndirect && dstIndirect)
     // two indirect are assumed to interfere in the absence of pointer analysis
     return Rel_interfere;
-  } else if (srcAcc != dstAcc) {
+  if (srcIndirect != dstIndirect) {
     // direct v. indirect
     auto mayInterfereWithIndirect = [](G4_Operand *direct,
                                        G4_Operand *indirect) {
-      assert((direct->getRegAccess() == Direct &&
-              indirect->getRegAccess() == IndirGRF) &&
+      assert((!direct->isIndirect() && indirect->isIndirect()) &&
              "first opereand should be direct and second indirect");
       return (direct->getTopDcl() && direct->getTopDcl()->getAddressed()) ||
              (direct->isAddress() &&
               direct->getTopDcl() == indirect->getTopDcl());
     };
 
-    if ((srcAcc != Direct && mayInterfereWithIndirect(dstRegion, opnd)) ||
-        (dstAcc != Direct && mayInterfereWithIndirect(opnd, dstRegion))) {
+    if ((srcIndirect && mayInterfereWithIndirect(dstRegion, opnd)) ||
+        (dstIndirect && mayInterfereWithIndirect(opnd, dstRegion))) {
       return Rel_interfere;
     }
     return Rel_disjoint;
@@ -558,7 +557,7 @@ void InstSplitPass::generateBitMask(G4_Operand *opnd, BitSet &footprint) {
   unsigned short typeSize = opnd->getTypeSize();
 
   if (opnd->isDstRegRegion()) {
-    if (opnd->getRegAccess() == Direct) {
+    if (!opnd->isIndirect()) {
       G4_DstRegRegion *dst = opnd->asDstRegRegion();
       unsigned short horzStride = dst->getHorzStride();
       unsigned short s_size = horzStride * typeSize;
@@ -575,7 +574,7 @@ void InstSplitPass::generateBitMask(G4_Operand *opnd, BitSet &footprint) {
   } else if (opnd->isSrcRegRegion()) {
     G4_SrcRegRegion *src = opnd->asSrcRegRegion();
     const RegionDesc *srcReg = src->getRegion();
-    if (opnd->getRegAccess() == Direct) {
+    if (!opnd->isIndirect()) {
       if (srcReg->isScalar()) {
         uint64_t mask = bitSeq;
         for (unsigned i = 0; i < typeSize; ++i) {
