@@ -61,6 +61,7 @@ set(CODEGEN_SOURCES
   GenXPrinter.cpp
   GenXPressureTracker.cpp
   GenXPredRegionLowering.cpp
+  GenXSimdCFRegion.cpp
   GenXPrologEpilogInsertion.cpp
   GenXPromoteArray.cpp
   GenXPromoteStatefulToBindless.cpp
