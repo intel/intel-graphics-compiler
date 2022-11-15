@@ -744,6 +744,22 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
     replaceDst(it, extype);
   }
 
+  if (builder.hasHFMathSrcBroadCast() && (inst->getExecSize() != g4::SIMD1)) {
+    auto src0 = inst->getSrc(0);
+    auto src1 = inst->getSrc(1);
+
+    if (src0 && !src0->isNullReg() && (src0->getType() == Type_HF) &&
+        ((src0->isSrcRegRegion() && src0->asSrcRegRegion()->isScalar()) ||
+         src0->isImm())) {
+      broadcast(bb, it, 0, builder.getGRFAlign());
+    }
+    if (src1 && !src1->isNullReg() && (src1->getType() == Type_HF) &&
+        ((src1->isSrcRegRegion() &&
+        src1->asSrcRegRegion()->isScalar()) || src1->isImm())) {
+      broadcast(bb, it, 1, builder.getGRFAlign());
+    }
+  }
+
   if (builder.hasHFMathGRFAlign()) {
     auto src0 = inst->getSrc(0);
     auto src1 = inst->getSrc(1);
@@ -762,12 +778,11 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
           inst->setSrc(newSrc0, 0);
         }
       }
-
       if (src1 && !src1->isNullReg() && src1->getType() == Type_HF) {
-        if (!builder.tryToAlignOperand(src0, kernel.numEltPerGRF<Type_UB>())) {
-          G4_Operand *newSrc0 = insertMovBefore(it, 1, src0->getType(), bb,
+        if (!builder.tryToAlignOperand(src1, kernel.numEltPerGRF<Type_UB>())) {
+          G4_Operand *newSrc1 = insertMovBefore(it, 1, src1->getType(), bb,
                                                 builder.getGRFAlign());
-          inst->setSrc(newSrc0, 1);
+          inst->setSrc(newSrc1, 1);
         }
       }
     }

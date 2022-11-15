@@ -517,6 +517,10 @@ bool hasHFMathGRFAlign() const {
   return getPlatform() == Xe_PVCXT;
 }
 
+bool hasHFMathSrcBroadCast() const {
+  return getPlatform() == Xe_PVCXT || getPlatform() == Xe_PVC;
+}
+
 bool hasFixedCycleMathPipeline() const { return getPlatform() >= Xe_PVC; }
 
 bool hasByteALU() const {
