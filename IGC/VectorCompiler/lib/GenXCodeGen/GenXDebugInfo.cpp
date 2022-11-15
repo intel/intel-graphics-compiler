@@ -892,7 +892,7 @@ public:
     return ST.getGRFByteSize();
   }
   unsigned getNumGRFs() const override {
-    return CompiledVisa.getJitInfo().numGRFTotal;
+    return CompiledVisa.getJitInfo().stats.numGRFTotal;
   }
   unsigned getPointerSize() const override {
     return F.getParent()->getDataLayout().getPointerSize();

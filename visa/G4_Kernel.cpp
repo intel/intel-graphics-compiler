@@ -1530,21 +1530,21 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
   os << "\n//.RA type\t" << RATypeString[RAType];
 
   if (auto jitInfo = fg.builder->getJitInfo()) {
-    if (jitInfo->numGRFUsed != 0) {
+    if (jitInfo->stats.numGRFUsed != 0) {
       os << "\n"
-         << "//.GRF count " << jitInfo->numGRFUsed;
+         << "//.GRF count " << jitInfo->stats.numGRFUsed;
     }
     if (jitInfo->spillMemUsed > 0) {
       os << "\n"
          << "//.spill size " << jitInfo->spillMemUsed;
     }
-    if (jitInfo->numGRFSpillFill > 0) {
+    if (jitInfo->stats.numGRFSpillFillWeighted > 0) {
       os << "\n"
-         << "//.spill GRF est. ref count " << jitInfo->numGRFSpillFill;
+         << "//.spill GRF est. ref count " << jitInfo->stats.numGRFSpillFillWeighted;
     }
-    if (jitInfo->numFlagSpillStore > 0) {
-      os << "\n//.spill flag store " << jitInfo->numFlagSpillStore;
-      os << "\n//.spill flag load " << jitInfo->numFlagSpillLoad;
+    if (jitInfo->stats.numFlagSpillStore > 0) {
+      os << "\n//.spill flag store " << jitInfo->stats.numFlagSpillStore;
+      os << "\n//.spill flag load " << jitInfo->stats.numFlagSpillLoad;
     }
   }
 

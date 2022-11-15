@@ -1203,6 +1203,9 @@ private:
   int calculateTotalInputSize();
   int compileTillOptimize();
   void recordFinalizerInfo();
+  // dump PERF_STATS into the .stats.json file
+  // filename is the full path of output file name without the extension
+  void dumpPerfStatsInJson(const std::string &filename);
 
   // Re-adjust indirect call target after swsb
   void adjustIndirectCallOffset();

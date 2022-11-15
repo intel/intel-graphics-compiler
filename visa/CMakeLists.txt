@@ -225,6 +225,7 @@ set(GenX_Common_Sources_External_Other
   GraphColor.cpp
   HWConformity.cpp
   InstSplit.cpp
+  JitterDataStruct.cpp
   LinearScanRA.cpp
   LocalDataflow.cpp
   LocalRA.cpp

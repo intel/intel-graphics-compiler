@@ -6693,10 +6693,10 @@ public:
       vISA::FINALIZER_INFO *jitInfo = nullptr;
       CISA_CALL(Kernel->GetJitInfo(jitInfo));
       IGC_ASSERT(jitInfo);
-      NumAsmInsts += jitInfo->numAsmCount;
+      NumAsmInsts += jitInfo->stats.numAsmCountUnweighted;
       SpillMemUsed += jitInfo->spillMemUsed;
-      NumFlagSpillStore += jitInfo->numFlagSpillStore;
-      NumFlagSpillLoad += jitInfo->numFlagSpillLoad;
+      NumFlagSpillStore += jitInfo->stats.numFlagSpillStore;
+      NumFlagSpillLoad += jitInfo->stats.numFlagSpillLoad;
     }
     return false;
   }

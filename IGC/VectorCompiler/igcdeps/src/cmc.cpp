@@ -707,7 +707,7 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   ExecEnv.numThreads = BackendInfo.getNumThreads();
   ExecEnv.HasReadWriteImages = BackendInfo.usesReadWriteImages();
   ExecEnv.SubgroupIndependentForwardProgressRequired = true;
-  ExecEnv.NumGRFRequired = JitterInfo.numGRFTotal;
+  ExecEnv.NumGRFRequired = JitterInfo.stats.numGRFTotal;
   ExecEnv.RequireDisableEUFusion = BackendInfo.requireDisableEUFusion();
 
   // Allocate spill-fill buffer
@@ -769,7 +769,7 @@ static void setGenBinary(const vISA::FINALIZER_INFO &JitterInfo,
   PO.m_programBin = KernelBin;
   PO.m_programSize = Size + Padding;
   PO.m_unpaddedProgramSize = Size;
-  PO.m_InstructionCount = JitterInfo.numAsmCount;
+  PO.m_InstructionCount = JitterInfo.stats.numAsmCountUnweighted;
 }
 
 static void setVISAAsm(

@@ -6125,12 +6125,12 @@ namespace IGC
 
         if (jitInfo->isSpill)
         {
-            context->m_retryManager.SetSpillSize(jitInfo->numGRFSpillFill);
-            m_program->m_spillSize = jitInfo->numGRFSpillFill;
+            context->m_retryManager.SetSpillSize(jitInfo->stats.numGRFSpillFillWeighted);
+            m_program->m_spillSize = jitInfo->stats.numGRFSpillFillWeighted;
             m_program->m_spillCost =
-                float(jitInfo->numGRFSpillFill) / jitInfo->numAsmCount;
+                float(jitInfo->stats.numGRFSpillFillWeighted) / jitInfo->stats.numAsmCountUnweighted;
 
-            context->m_retryManager.numInstructions = jitInfo->numAsmCount;
+            context->m_retryManager.numInstructions = jitInfo->stats.numAsmCountUnweighted;
         }
 
         if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
@@ -6233,7 +6233,7 @@ namespace IGC
             ss << " compiled SIMD" <<
               (m_program->m_dispatchSize == SIMDMode::SIMD32 ? 32 :
                 m_program->m_dispatchSize == SIMDMode::SIMD16 ? 16 : 8);
-            ss << " allocated " << jitInfo->numGRFTotal << " regs";
+            ss << " allocated " << jitInfo->stats.numGRFTotal << " regs";
             if (jitInfo->isSpill) {
                 auto spilledRegs = std::max<unsigned>(1,
                     (jitInfo->spillMemUsed + getGRFSize() - 1) / getGRFSize());
@@ -6246,29 +6246,29 @@ namespace IGC
 #if (GET_SHADER_STATS && !PRINT_DETAIL_SHADER_STATS)
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
         {
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT, jitInfo->numAsmCount);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT, jitInfo->stats.numAsmCountUnweighted);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL8, (int)jitInfo->isSpill);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE8, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE8, (int)m_program->m_loopNestedStallCycle);
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD8, jitInfo->numGRFTotal);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD8, jitInfo->stats.numGRFTotal);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD8, jitInfo->maxGRFPressure);
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
         {
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT_SIMD16, jitInfo->numAsmCount);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT_SIMD16, jitInfo->stats.numAsmCountUnweighted);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL16, (int)jitInfo->isSpill);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE16, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE16, (int)m_program->m_loopNestedStallCycle);
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD16, jitInfo->numGRFTotal);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD16, jitInfo->stats.numGRFTotal);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD16, jitInfo->maxGRFPressure);
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
         {
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT_SIMD32, jitInfo->numAsmCount);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_INST_COUNT_SIMD32, jitInfo->stats.numAsmCountUnweighted);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_SPILL32, (int)jitInfo->isSpill);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE32, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE32, (int)m_program->m_loopNestedStallCycle);
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD32, jitInfo->numGRFTotal);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD32, jitInfo->stats.numGRFTotal);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD32, jitInfo->maxGRFPressure);
         }
 #endif
@@ -6367,7 +6367,7 @@ namespace IGC
         pOutput->m_scratchSpaceUsedBySpills = 0; // initializing
         pOutput->m_debugDataGenISA = dbgInfo;
         pOutput->m_debugDataGenISASize = dbgSize;
-        pOutput->m_InstructionCount = jitInfo->numAsmCount;
+        pOutput->m_InstructionCount = jitInfo->stats.numAsmCountUnweighted;
         pOutput->m_BasicBlockCount = jitInfo->BBNum;
         if (context->getModuleMetaData()->compOpt.CaptureCompilerStats)
         {
@@ -6488,7 +6488,7 @@ namespace IGC
         if (jitInfo->isSpill == true)
         {
             pOutput->m_scratchSpaceUsedBySpills = jitInfo->spillMemUsed;
-            pOutput->m_numGRFSpillFill = jitInfo->numGRFSpillFill;
+            pOutput->m_numGRFSpillFill = jitInfo->stats.numGRFSpillFillWeighted;
         }
 
         pOutput->setScratchSpaceUsedByShader(m_program->m_ScratchSpaceSize);
@@ -6499,8 +6499,8 @@ namespace IGC
 
         pOutput->m_offsetToSkipSetFFIDGP = jitInfo->offsetToSkipSetFFIDGP;
 
-        pOutput->m_numGRFTotal = jitInfo->numGRFTotal;
-        pOutput->m_numThreads = jitInfo->numThreads;
+        pOutput->m_numGRFTotal = jitInfo->stats.numGRFTotal;
+        pOutput->m_numThreads = jitInfo->stats.numThreads;
     }
 
     void CEncoder::DestroyVISABuilder()

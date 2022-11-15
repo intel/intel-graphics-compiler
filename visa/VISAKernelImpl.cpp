@@ -635,14 +635,45 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
 
   recordFinalizerInfo();
 
+  if (m_options->getOption(vISA_DumpPerfStats) ||
+      m_options->getOption(vISA_DumpPerfStatsVerbose)) {
+    // set BinaryHash
+    m_jitInfo->stats.binaryHash =
+        std::hash<std::string>{}(std::string((char*)binary, binarySize));
+    dumpPerfStatsInJson(m_asmName);
+  }
+
   return binary;
+}
+
+// dump PERF_STATS into the .stats.json file
+// filename is the full path of output file name without the extension
+void VISAKernelImpl::dumpPerfStatsInJson(const std::string &filename) {
+  std::string outputName = filename + ".stats.json";
+  if (allowDump(*m_options, outputName)) {
+    std::ofstream statsOutput(outputName, std::ofstream::out);
+    if (!statsOutput) {
+      std::cerr << outputName << ": failed to open file\n";
+    } else {
+      if (!m_options->getOption(vISA_DumpPerfStatsVerbose)) {
+        llvm::json::Value jv =
+            llvm::json::Object{{m_name, m_jitInfo->stats.toJSON()}};
+        statsOutput << llvm::formatv("{0:2}", jv).str();
+      } else {
+        llvm::json::Value jv = llvm::json::Object{
+            {m_name,
+             {m_jitInfo->stats.toJSON(), m_jitInfo->statsVerbose.toJSON()}}};
+        statsOutput << llvm::formatv("{0:2}", jv).str();
+      }
+    }
+  }
 }
 
 void VISAKernelImpl::recordFinalizerInfo() {
   if (m_builder->getJitInfo()) {
-    m_builder->getJitInfo()->numAsmCount = m_kernel->getAsmCount();
-    m_builder->getJitInfo()->numGRFTotal = m_kernel->getNumRegTotal();
-    m_builder->getJitInfo()->numThreads = m_kernel->getNumThreads();
+    m_builder->getJitInfo()->stats.numAsmCountUnweighted = m_kernel->getAsmCount();
+    m_builder->getJitInfo()->stats.numGRFTotal = m_kernel->getNumRegTotal();
+    m_builder->getJitInfo()->stats.numThreads = m_kernel->getNumThreads();
   }
 }
 

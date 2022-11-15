@@ -9467,9 +9467,9 @@ void GlobalRA::flagRegAlloc() {
           }
           break;
         }
-        builder.getJitInfo()->numFlagSpillStore =
+        builder.getJitInfo()->stats.numFlagSpillStore =
             spillFlag.getNumFlagSpillStore();
-        builder.getJitInfo()->numFlagSpillLoad =
+        builder.getJitInfo()->stats.numFlagSpillLoad =
             spillFlag.getNumFlagSpillLoad();
       } else // successfully allocate register without spilling
       {
@@ -10159,8 +10159,8 @@ int GlobalRA::coloringRegAlloc() {
           if (auto jitInfo = builder.getJitInfo()) {
             jitInfo->isSpill = true;
             jitInfo->spillMemUsed = 0;
-            jitInfo->numAsmCount = instNum;
-            jitInfo->numGRFSpillFill = GRFSpillFillCount;
+            jitInfo->stats.numAsmCountUnweighted = instNum;
+            jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
           }
 
           // Early exit when -abortonspill is passed, instead of
@@ -10415,7 +10415,7 @@ int GlobalRA::coloringRegAlloc() {
                                                   globalScratchOffset);
       }
     }
-    jitInfo->numGRFSpillFill = GRFSpillFillCount;
+    jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
   }
 
   if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA)) {

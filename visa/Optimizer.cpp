@@ -7389,7 +7389,7 @@ void Optimizer::countGRFUsage() {
       count++;
     }
   }
-  fg.builder->getJitInfo()->numGRFUsed = count;
+  fg.builder->getJitInfo()->stats.numGRFUsed = count;
   fg.builder->criticalMsgStream()
       << "\tKernel " << kernel.getName() << " : " << count << " registers\n";
 }
@@ -11828,7 +11828,7 @@ void Optimizer::applyNoMaskWA() {
 
   // If no spill AND no inst that needs WA, just return.
   //   ' HasWAInsts = true' means that before RA, there are insts that need WA
-  const bool HasFlagSpill = (builder.getJitInfo()->numFlagSpillStore > 0);
+  const bool HasFlagSpill = (builder.getJitInfo()->stats.numFlagSpillStore > 0);
   const bool HasGRFSpill = (builder.getJitInfo()->spillMemUsed > 0);
   if (!WAInfo || // No BB needs WA
       (!(HasFlagSpill || HasGRFSpill) &&

@@ -34,6 +34,10 @@ DEF_VISA_OPTION(vISA_DumpDot, ET_BOOL, "-dot", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpDotAll, ET_BOOL, "-dotAll", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpUseInternalName, ET_BOOL, "-dumpUseInternalName",
                 "Apply to .g4/.dot dump file names only", false)
+DEF_VISA_OPTION(vISA_DumpPerfStats, ET_BOOL, "-dumpVISAJsonStats",
+                "dump the core stats to default json file name", false)
+DEF_VISA_OPTION(vISA_DumpPerfStatsVerbose, ET_BOOL, "-dumpVISAJsonStatsVerbose",
+                "dump the verbose stats to default json file name", false)
 DEF_VISA_OPTION(VISA_FullIRVerify, ET_BOOL, "-fullIRVerify", UNUSED, false)
 // dump each option while it is being set by setOption()
 DEF_VISA_OPTION(vISA_dumpVISAOptions, ET_BOOL, "-dumpVisaOptions", UNUSED,

@@ -901,8 +901,8 @@ int LinearScanRA::linearScanRA() {
       if (auto jitInfo = builder.getJitInfo()) {
         jitInfo->isSpill = true;
         jitInfo->spillMemUsed = 0;
-        jitInfo->numAsmCount = instNum;
-        jitInfo->numGRFSpillFill = GRFSpillFillCount;
+        jitInfo->stats.numAsmCountUnweighted = instNum;
+        jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
       }
 
       // Early exit when -abortonspill is passed, instead of
@@ -991,7 +991,7 @@ int LinearScanRA::linearScanRA() {
           jitInfo->spillMemUsed = nextSpillOffset;
           kernel.getGTPinData()->setScratchNextFree(nextSpillOffset);
         }
-        jitInfo->numGRFSpillFill = GRFSpillFillCount;
+        jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
       }
       undoLinearScanRAAssignments();
     }

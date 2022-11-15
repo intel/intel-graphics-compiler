@@ -78,9 +78,9 @@ namespace IGC
                                   - compilerStats.GetF64("TimeVISACompile", 16)
                                   - compilerStats.GetF64("TimeVISACompile", 8), simdsize);
                 }
-                compilerStats.SetI64("numGRFSpillFill", jitInfo->numGRFSpillFill, simdsize);
-                compilerStats.SetI64("numFlagSpillFill", jitInfo->numFlagSpillStore + jitInfo->numFlagSpillLoad, simdsize);
-                compilerStats.SetI64("numInst", jitInfo->numAsmCount, simdsize);
+                compilerStats.SetI64("numGRFSpillFill", jitInfo->stats.numGRFSpillFillWeighted, simdsize);
+                compilerStats.SetI64("numFlagSpillFill", jitInfo->stats.numFlagSpillStore + jitInfo->stats.numFlagSpillLoad, simdsize);
+                compilerStats.SetI64("numInst", jitInfo->stats.numAsmCountUnweighted, simdsize);
                 if (jitInfo->preRASchedulerForPressure)
                     compilerStats.SetFlag("PreRASchedulerForPressure", simdsize);
                 if (jitInfo->preRASchedulerForLatency)

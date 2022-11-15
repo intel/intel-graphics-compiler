@@ -118,7 +118,7 @@ void LocalScheduler::localScheduling() {
   FINALIZER_INFO *jitInfo = fg.builder->getJitInfo();
   jitInfo->BBInfo = bbInfo;
   jitInfo->BBNum = i;
-  jitInfo->numCycles = totalCycles;
+  jitInfo->stats.numCycles = totalCycles;
 }
 
 void G4_BB_Schedule::dumpSchedule(G4_BB *bb) {
