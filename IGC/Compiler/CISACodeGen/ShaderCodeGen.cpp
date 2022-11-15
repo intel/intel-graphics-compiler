@@ -766,7 +766,6 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         // Removing code assumptions can enable some InstructionCombining optimizations.
         // Last instruction combining pass needs to be before Legalization pass, as it can produce illegal instructions.
         mpm.add(new RemoveCodeAssumptions());
-        mpm.add(llvm::createEarlyCSEPass());
         mpm.add(createIGCInstructionCombiningPass());
     }
 
@@ -775,6 +774,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         // Optimize lower-level IR
         if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel)
         {
+            mpm.add(createIGCInstructionCombiningPass());
             if (ctx.type == ShaderType::OPENCL_SHADER &&
                 static_cast<OpenCLProgramContext&>(ctx).m_InternalOptions.KernelDebugEnable)
             {
