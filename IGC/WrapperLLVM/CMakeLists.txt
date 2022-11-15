@@ -13,6 +13,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/Utils.h"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/APInt.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/Optional.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/STLExtras.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/StringExtras.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/StringRef.h"

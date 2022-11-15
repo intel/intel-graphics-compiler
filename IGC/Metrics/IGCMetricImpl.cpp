@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Path.h>
 #include <llvm/IR/DebugInfo.h>
+#include <llvmWrapper/ADT/Optional.h>
 #include <llvmWrapper/Support/TypeSize.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -1044,14 +1045,15 @@ namespace IGCMetrics
                         spill->setMetadata(spillInstrKindID, N);
                     }
 
-                    auto allocated = pAllocaInst->getAllocationSizeInBits(pModule->getDataLayout());
+                    auto allocated = IGCLLVM::wrapOptional(
+                        pAllocaInst->getAllocationSizeInBits(pModule->getDataLayout()));
 
                     auto func_m = GetFuncMetric(pAllocaInst);
                     auto spillFill_m = func_m->mutable_spillfill_stats();
                     // Add amount of bytes spilled
                     spillFill_m->set_countbytesspilled(
                         spillFill_m->countbytesspilled() +
-                        (int32_t)(allocated.getValueOr(IGCLLVM::getTypeSize(0)) / 8));
+                        (int32_t)(allocated.value_or(IGCLLVM::getTypeSize(0)) / 8));
                 }
             }
 
