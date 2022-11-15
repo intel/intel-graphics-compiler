@@ -909,8 +909,7 @@ uint64_t ELFWriter::write()
 
 ELFWriter::SectionHdrEntry& ELFWriter::createNullSectionHdrEntry()
 {
-    m_SectionHdrEntries.emplace_back(SectionHdrEntry());
-    SectionHdrEntry& entry = m_SectionHdrEntries.back();
+    SectionHdrEntry& entry = m_SectionHdrEntries.emplace_back(SectionHdrEntry());
     entry.type = ELF::SHT_NULL;
     entry.name = 0;
     return entry;
@@ -919,8 +918,7 @@ ELFWriter::SectionHdrEntry& ELFWriter::createNullSectionHdrEntry()
 ELFWriter::SectionHdrEntry& ELFWriter::createSectionHdrEntry(
     const std::string& name, unsigned type, unsigned flags, const Section* sect)
 {
-    m_SectionHdrEntries.emplace_back(SectionHdrEntry());
-    SectionHdrEntry& entry = m_SectionHdrEntries.back();
+    SectionHdrEntry& entry = m_SectionHdrEntries.emplace_back(SectionHdrEntry());
     entry.type = type;
     entry.flags = flags;
     entry.section = sect;
@@ -1014,8 +1012,7 @@ void ELFWriter::createSectionHdrEntries()
 // createKernel - create a zeInfoKernel and add it into zeInfoContainer
 zeInfoKernel& ZEInfoBuilder::createKernel(const std::string& name)
 {
-    mContainer.kernels.emplace_back();
-    zeInfoKernel& k = mContainer.kernels.back();
+    zeInfoKernel& k = mContainer.kernels.emplace_back();
     k.name = name;
     return k;
 }
@@ -1023,16 +1020,14 @@ zeInfoKernel& ZEInfoBuilder::createKernel(const std::string& name)
 // createFunction - create a zeInfoFunction and add it into zeInfoContainer
 zeInfoFunction& ZEInfoBuilder::createFunction(const std::string& name)
 {
-    mContainer.functions.emplace_back();
-    zeInfoFunction& f = mContainer.functions.back();
+    zeInfoFunction& f = mContainer.functions.emplace_back();
     f.name = name;
     return f;
 }
 
 zeInfoKernelMiscInfo& ZEInfoBuilder::createKernelMiscInfo(const std::string& name)
 {
-    mContainer.kernels_misc_info.emplace_back();
-    zeInfoKernelMiscInfo& m = mContainer.kernels_misc_info.back();
+    zeInfoKernelMiscInfo& m = mContainer.kernels_misc_info.emplace_back();
     m.name = name;
     return m;
 }
@@ -1054,8 +1049,7 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByPointer(
     PreDefinedAttrGetter::ArgAccessType access_type,
     int32_t alignment)
 {
-    arg_list.emplace_back();
-    zeInfoPayloadArgument& arg = arg_list.back();
+    zeInfoPayloadArgument& arg = arg_list.emplace_back();
     arg.arg_type = PreDefinedAttrGetter::get(PreDefinedAttrGetter::ArgType::arg_bypointer);
     arg.offset = offset;
     arg.size = size;
@@ -1178,8 +1172,7 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentImplicit(
     int32_t offset,
     int32_t size)
 {
-    arg_list.emplace_back();
-    zeInfoPayloadArgument& arg = arg_list.back();
+    zeInfoPayloadArgument& arg = arg_list.emplace_back();
     arg.arg_type = PreDefinedAttrGetter::get(type);
     arg.offset = offset;
     arg.size = size;
@@ -1195,8 +1188,7 @@ zeInfoPerThreadPayloadArgument& ZEInfoBuilder::addPerThreadPayloadArgument(
     int32_t offset,
     int32_t size)
 {
-    arg_list.emplace_back();
-    zeInfoPerThreadPayloadArgument& arg = arg_list.back();
+    zeInfoPerThreadPayloadArgument& arg = arg_list.emplace_back();
     arg.arg_type = PreDefinedAttrGetter::get(type);
     arg.offset = offset;
     arg.size = size;
@@ -1210,8 +1202,7 @@ zeInfoBindingTableIndex& ZEInfoBuilder::addBindingTableIndex(
     int32_t bti_value,
     int32_t arg_index)
 {
-    bti_list.emplace_back();
-    zeInfoBindingTableIndex& bti = bti_list.back();
+    zeInfoBindingTableIndex& bti = bti_list.emplace_back();
     bti.bti_value = bti_value;
     bti.arg_index = arg_index;
     return bti;
@@ -1225,8 +1216,7 @@ zeInfoPerThreadMemoryBuffer& ZEInfoBuilder::addPerThreadMemoryBuffer(
 {
     // use addScratchPerThreadMemoryBuffer API to add scratch buffer
     IGC_ASSERT(type != PreDefinedAttrGetter::MemBufferType::scratch);
-    mem_buff_list.emplace_back();
-    zeInfoPerThreadMemoryBuffer& info = mem_buff_list.back();
+    zeInfoPerThreadMemoryBuffer& info = mem_buff_list.emplace_back();
     info.type = PreDefinedAttrGetter::get(type);
     info.usage = PreDefinedAttrGetter::get(usage);
     info.size = size;
@@ -1239,8 +1229,7 @@ zeInfoPerThreadMemoryBuffer& ZEInfoBuilder::addScratchPerThreadMemoryBuffer(
     int32_t slot_id,
     int32_t size)
 {
-    mem_buff_list.emplace_back();
-    zeInfoPerThreadMemoryBuffer& info = mem_buff_list.back();
+    zeInfoPerThreadMemoryBuffer& info = mem_buff_list.emplace_back();
     info.type = PreDefinedAttrGetter::get(PreDefinedAttrGetter::MemBufferType::scratch);
     info.usage = PreDefinedAttrGetter::get(usage);
     info.size = size;
@@ -1253,8 +1242,7 @@ zeInfoPerThreadMemoryBuffer& ZEInfoBuilder::addPerSIMTThreadGlobalMemoryBuffer(
     PreDefinedAttrGetter::MemBufferUsage usage,
     int32_t size)
 {
-    mem_buff_list.emplace_back();
-    zeInfoPerThreadMemoryBuffer& info = mem_buff_list.back();
+    zeInfoPerThreadMemoryBuffer& info = mem_buff_list.emplace_back();
     info.type = PreDefinedAttrGetter::get(PreDefinedAttrGetter::MemBufferType::global);
     info.usage = PreDefinedAttrGetter::get(usage);
     info.size = size;

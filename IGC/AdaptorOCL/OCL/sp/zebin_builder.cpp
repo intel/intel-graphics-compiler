@@ -606,7 +606,7 @@ void ZEBinaryBuilder::addLocalIds(uint32_t simdSize, uint32_t grfSize,
 }
 
 bool ZEBinaryBuilder::hasKernelMiscInfo(
-    const IGC::SOpenCLKernelInfo &annotations)
+    const IGC::SOpenCLKernelInfo &annotations) const
 {
     // the only kernel misc info we have now is kernel arg info
     return !annotations.m_zeKernelArgsInfo.empty();

@@ -137,7 +137,8 @@ private:
                             zebin::zeInfoFunction& zeFunction);
 
     /// add experimental properties
-    void addKernelExperimentalProperties(const IGC::SOpenCLKernelInfo& annotations,
+    void addKernelExperimentalProperties(
+        const IGC::SOpenCLKernelInfo& annotations,
         zebin::zeInfoKernel& zeinfoKernel);
 
     /// add symbols of this kernel corresponding to kernel binary
@@ -194,19 +195,12 @@ private:
     /// check if the kernel has misc info. The entry of this function in
     /// kernels_misc_info should only be created when this function return
     /// true
-    bool hasKernelMiscInfo(const IGC::SOpenCLKernelInfo &annotations);
+    bool hasKernelMiscInfo(const IGC::SOpenCLKernelInfo &annotations) const;
 
     /// Add kernel arg info
     void addKernelArgInfo(
         const IGC::SOpenCLKernelInfo& annotations,
         zebin::zeInfoKernelMiscInfo& zeinfoKernelMisc);
-
-    /// ------------ Verifier sub-functions ------------
-    bool hasSystemKernel(
-        const IGC::OpenCLProgramContext* clContext,
-        const USC::SSystemThreadKernelOutput* pSystemThreadKernelOutput);
-
-    bool hasSystemThreadSurface(const IGC::OpenCLProgramContext* clContext);
 
     /// Calculate correct (pure) size of ELF binary, because m_debugDataSize in kernel output
     /// contains something else.
