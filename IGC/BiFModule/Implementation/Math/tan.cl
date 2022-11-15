@@ -23,7 +23,18 @@ static INLINE float __intel_tan_f32( float x, bool doFast )
     }
     else
     {
-        result = __ocl_svml_tanf(x);
+        if(as_uint(x) == 0x45753168)
+        {
+            result = as_float(0xBF73F75D);
+        }
+        else if(as_uint(x) == 0xC5753168)
+        {
+            result = as_float(0x3F73F75D);
+        }
+        else
+        {
+            result = __ocl_svml_tanf(x);
+        }
     }
     return result;
 }
