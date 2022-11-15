@@ -8496,8 +8496,26 @@ void EmitPass::emitGEP(llvm::Instruction* I)
 void EmitPass::emitIntToPtr(llvm::IntToPtrInst* I2P)
 {
     CVariable* src = GetSymbol(I2P->getOperand(0));
-    CVariable* IntVar = m_currShader->BitCast(src, GetUnsignedType(src->GetType()));
-    m_encoder->Cast(m_destination, IntVar);
+    CVariable* dst = m_destination;
+    if (src->GetType() == ISA_TYPE_BOOL)
+    {
+        // Prior peephole folds can potentially generate:
+        // inttoptr i1 %x to i32*
+        dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
+        const bool doEmitCastSelect =
+            (m_currShader->m_Platform->hasPartialEmuI64Enabled() && dst->isQType());
+        CVariable* one = m_currShader->ImmToVariable(1, dst->GetType());
+        CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
+        if (doEmitCastSelect)
+            emitCastSelect(src, dst, one, zero);
+        else
+            m_encoder->Select(src, dst, one, zero);
+    }
+    else
+    {
+        CVariable* IntVar = m_currShader->BitCast(src, GetUnsignedType(src->GetType()));
+        m_encoder->Cast(dst, IntVar);
+    }
     m_encoder->Push();
 }
 
