@@ -678,9 +678,7 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
     // check if we're using calla for indirect call
     if (builder.supportCallaRegSrc()) {
       // check if we're doing indiret call
-      auto callTarget = inst->getSrc(0);
-      if (callTarget->isGreg() || (callTarget->isSrcRegRegion() &&
-                                   callTarget->asSrcRegRegion()->isIndirect()))
+      if (inst->getSrc(0)->isGreg() || inst->getSrc(0)->isA0())
         igaOp = Op::CALLA;
     }
     break;

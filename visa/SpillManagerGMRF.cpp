@@ -4529,16 +4529,15 @@ void GlobalRA::saveRestoreA0(G4_BB *bb) {
     if (inst->isSpillIntrinsic() || inst->isFillIntrinsic()) {
       return false;
     }
-    if (inst->getDst() &&
-        (inst->getDst()->isIndirect() || inst->getDst()->isDirectAddress())) {
+    if (inst->getDst() && inst->getDst()->isAddress()) {
       return true;
     }
     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
-      if (!inst->getSrc(i)->isSrcRegRegion())
-        continue;
-      auto src = inst->getSrc(i)->asSrcRegRegion();
-      if (src->isDirectAddress() || src->isIndirect())
+      if (inst->getSrc(i)->isAddress() ||
+          (inst->getSrc(i)->isSrcRegRegion() &&
+           inst->getSrc(i)->asSrcRegRegion()->isIndirect())) {
         return true;
+      }
     }
     return false;
   };

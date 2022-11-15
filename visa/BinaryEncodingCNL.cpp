@@ -2008,7 +2008,7 @@ BinaryEncodingCNL::EncodeSplitSend(G4_INST *inst,
     if (src2->isImm()) {
       sends.SetSelreg32desc(0);
       sends.GetMessage().GetDWORD(0) = (uint32_t)src2->asImm()->getInt();
-    } else if (src2->isSrcRegRegion() && src2->asSrcRegRegion()->isDirectA0()) {
+    } else if (src2->isSrcRegRegion() && src2->asSrcRegRegion()->isA0()) {
       sends.SetSelreg32desc(1);
     }
   }
@@ -2329,7 +2329,7 @@ BinaryEncodingCNL::DoAllEncodingSplitSEND(G4_INST *inst) {
   G4_Operand *src3 = inst->getSrc(3);
   // additional extended msg desc to be encoded
   // FIXME: does it apply to regular SKL+ sends too?
-  if (src3 && src3->isSrcRegRegion() && src3->asSrcRegRegion()->isDirectA0()) {
+  if (src3 && src3->isSrcRegRegion() && src3->asSrcRegRegion()->isA0()) {
     bin->SetBits(bitsSendsSelReg32ExDesc_0, bitsSendsSelReg32ExDesc_1, 1);
     bin->SetBits(bitsSendsExDescRegNum_0, bitsSendsExDescRegNum_1,
                  src3->asSrcRegRegion()->getBase()->asRegVar()->getPhyRegOff());

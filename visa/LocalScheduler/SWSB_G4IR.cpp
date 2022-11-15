@@ -549,7 +549,7 @@ void SBNode::finalizeDistanceType1(IR_Builder &builder,
   if (builder.hasA0WARHWissue() && builder.hasFourALUPipes()) {
     G4_INST *inst = GetInstruction();
 
-    if (inst->getDst() && inst->getDst()->isDirectA0()) {
+    if (inst->getDst() && inst->getDst()->isA0()) {
       instVec.front()->setDistance(1);
       instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
 
@@ -691,7 +691,7 @@ void SBNode::finalizeDistanceType2(IR_Builder &builder,
   if (builder.hasA0WARHWissue() && builder.hasFourALUPipes()) {
     G4_INST *inst = GetInstruction();
 
-    if (inst->getDst() && inst->getDst()->isDirectA0()) {
+    if (inst->getDst() && inst->getDst()->isA0()) {
       instVec.front()->setDistance(1);
       instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
 
@@ -847,7 +847,7 @@ void SBNode::finalizeDistanceType3(IR_Builder &builder,
   if (builder.hasA0WARHWissue() && builder.hasFourALUPipes()) {
     G4_INST *inst = GetInstruction();
 
-    if (inst->getDst() && inst->getDst()->isDirectA0()) {
+    if (inst->getDst() && inst->getDst()->isA0()) {
       instVec.front()->setDistance(1);
       instVec.front()->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
       clearAllDistInfo();
@@ -5619,7 +5619,12 @@ void G4_BB_SB::setSpecialDistance(SBNode *node) {
     return;
   }
 
-  if (inst->getDst()->isDirectA0()) {
+  bool isIndirect = false;
+  if (inst->getDst()->isDstRegRegion()) {
+    isIndirect = inst->getDst()->asDstRegRegion()->isIndirect();
+  }
+
+  if (inst->getDst()->isA0() && !isIndirect) {
     SBDISTDEP_ITEM depItem;
     depItem.liveNodePipe = PIPE_FLOAT;
     depItem.nodePipe = node->ALUPipe;

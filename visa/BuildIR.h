@@ -1699,7 +1699,7 @@ public:
   int generateDebugInfoPlaceholder(); // TODO: move to BuildIRImpl.cpp?
 
   // legitimiately belongs in Misc
-  int translateVISALifetimeInst(bool isStart, G4_Operand *var);
+  int translateVISALifetimeInst(unsigned char properties, G4_Operand *var);
 
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////

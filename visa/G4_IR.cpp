@@ -1854,9 +1854,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
   if (useInst->isSend()) {
     auto msgDescOpnd = useInst->isSplitSend() ? Opnd_src2 : Opnd_src1;
     if (opndNum == msgDescOpnd) {
-      // TODO: This should be an assert.
-      if (!src->isImm() && !(src->isSrcRegRegion() &&
-                             src->asSrcRegRegion()->isDirectAddress())) {
+      if (!src->isImm() && !src->isAddress()) {
         return false;
       }
     }
@@ -2206,9 +2204,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const {
 
   G4_Operand *src = srcs[0];
   // check attributes of src and number of defs
-  bool archRegSrc =
-      src->isFlag() || src->isAreg() ||
-      (src->isSrcRegRegion() && src->asSrcRegRegion()->isDirectAddress());
+  bool archRegSrc = (src->isFlag() || src->isAreg() || src->isAddress());
   bool indirectSrc = (src->getTopDcl() && src->getTopDcl()->getAddressed()) ||
                      src->getRegAccess() != Direct;
   bool noMultiDefOpt =
@@ -2323,7 +2319,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
     }
   }
 
-  if (dst->isDirectAddress() && defInst->getNumSrc() == 3) {
+  if (dst->isAddress() && defInst->getNumSrc() == 3) {
     // no A0 dst for ternary instructions
     return false;
   }
@@ -4349,8 +4345,7 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
               indirect->getRegAccess() == IndirGRF) &&
              "first opereand should be direct and second indirect");
       return (direct->getTopDcl() && direct->getTopDcl()->getAddressed()) ||
-             (direct->isSrcRegRegion() &&
-              direct->asSrcRegRegion()->isDirectAddress() &&
+             (direct->isAddress() &&
               direct->getTopDcl() == indirect->getTopDcl());
     };
 

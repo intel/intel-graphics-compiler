@@ -240,10 +240,7 @@ void VISAKernelImpl::adjustIndirectCallOffset() {
     // At this point G4_pseudo_fcall may be converted to G4_call
     if (bb->back()->isCall() || bb->back()->isFCall()) {
       G4_INST *fcall = bb->back();
-      auto callTarget = fcall->getSrc(0);
-      if (callTarget->isGreg() ||
-          (callTarget->isSrcRegRegion() &&
-           callTarget->asSrcRegRegion()->isIndirect())) {
+      if (fcall->getSrc(0)->isGreg() || fcall->getSrc(0)->isA0()) {
         // for every indirect call, count # of instructions inserted
         // between call and the first add
         uint64_t sync_offset = 0;
@@ -7091,8 +7088,15 @@ int VISAKernelImpl::AppendVISALifetime(VISAVarLifetime startOrEnd,
   unsigned char properties = (unsigned char)startOrEnd;
 
   if (IS_GEN_BOTH_PATH) {
-    status = m_builder->translateVISALifetimeInst(startOrEnd == LIFETIME_START,
-                                                  var->g4opnd);
+    if (var->g4opnd->isGreg()) {
+      properties |= (OPERAND_GENERAL << 4);
+    } else if (var->g4opnd->isAddress()) {
+      properties |= (OPERAND_ADDRESS << 4);
+    } else if (var->g4opnd->isFlag()) {
+      properties |= (OPERAND_PREDICATE << 4);
+    }
+
+    status = m_builder->translateVISALifetimeInst(properties, var->g4opnd);
   }
 
   if (IS_VISA_BOTH_PATH) {
