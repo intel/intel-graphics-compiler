@@ -1054,12 +1054,6 @@ bool supportByteALUOperation() const
     return !isCoreChildOf(IGFX_XE_HPC_CORE);
 }
 
-// Platform requires kernel arguments pulling.
-bool HasKernelArguments() const
-{
-    return false;
-}
-
 //all the platforms which DONOT support 64 bit int operations
 bool hasNoInt64Inst() const {
     return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
