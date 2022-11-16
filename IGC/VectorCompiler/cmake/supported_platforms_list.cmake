@@ -1,21 +1,19 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2020-2022 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
 
 set(SUPPORTED_VC_PLATFORMS
-    "BDW"
-    "SKL"
-    "BXT"
-    "KBL"
-    "GLK"
-    "ICLLP"
-    "TGLLP"
-    "RKL"
-    "DG1"
-    "XEHP"
-    "ADLP"
-    "ADLS"
-    "ADLN"
-    "DG2"
-    "PVC"
-    "PVCXT_A0"
-    "PVCXT"
-    "MTL"
+    "Gen8"
+    "Gen9"
+    "Gen9LP"
+    "Gen11"
+    "XeLP"
+    "XeHP"
+    "XeHPG"
+    "XeLPG"
+    "XeHPC"
     )

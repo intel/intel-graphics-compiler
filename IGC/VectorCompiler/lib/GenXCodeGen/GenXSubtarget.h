@@ -45,36 +45,25 @@ class StringRef;
 class TargetMachine;
 
 class GenXSubtarget final : public GenXGenSubtargetInfo {
+public:
+  enum GenXTargetId {
+    Gen8,
+    Gen9,
+    Gen9LP,
+    Gen11,
+    XeLP,
+    XeHP,
+    XeHPG,
+    XeLPG,
+    XeHPC,
+    Invalid,
+  };
 
 protected:
   // TargetTriple - What processor and OS we're targeting.
   Triple TargetTriple;
 
-  enum GenXTag {
-    UNDEFINED_ARCH,
-    GENERIC_ARCH,
-    GENX_BDW,
-    GENX_SKL,
-    GENX_BXT,
-    GENX_KBL,
-    GENX_GLK,
-    GENX_ICLLP,
-    GENX_TGLLP,
-    GENX_RKL,
-    GENX_DG1,
-    GENX_ADLS,
-    GENX_ADLP,
-    GENX_ADLN,
-    XE_HP_SDV,
-    XE_MTL,
-    XE_DG2,
-    XE_PVC,
-    XE_PVCXT_A0,
-    XE_PVCXT,
-  };
-
-  // GenXVariant - GenX Tag identifying the variant to compile for
-  GenXTag GenXVariant;
+  GenXTargetId TargetId;
 
 private:
   // HasLongLong - True if subtarget supports long long type
@@ -170,17 +159,50 @@ private:
   /// True if subtarget supports half SIMD LSC messages
   bool HasHalfSIMDLSC = false;
 
-  // Has multi-tile.
+  /// Has multi-tile.
   bool HasMultiTile = false;
 
-  // Has L3 cache-coherent cross tiles.
+  /// Has L3 cache-coherent cross tiles.
   bool HasL3CacheCoherentCrossTiles = false;
 
-  // Has L3 flush on GPU-scope invalidate.
+  /// Has L3 flush on GPU-scope invalidate.
   bool HasL3FlushOnGPUScopeInvalidate = false;
 
-  // True if Vx1 and VxH indirect addressing are allowed for Byte datatypes
+  /// True if Vx1 and VxH indirect addressing are allowed for Byte datatypes
   bool HasMultiIndirectByteRegioning = false;
+
+  /// True if subtarget supports ADD3 instruction
+  bool HasAdd3 = false;
+
+  /// True if subtarget supports BFN instruction
+  bool HasBfn = false;
+
+  /// True if subtarget supports SAD and SADA2 instructions
+  bool HasSad2 = false;
+
+  /// True if subtarget supports OWord SLM read/write messages
+  bool HasSLMOWord = false;
+
+  /// True if subtarget supports SIMD32 MAD instruction
+  bool HasMadSimd32 = false;
+
+  /// True if subtarget requires A32 byte scatter emulation
+  bool HasWaNoA32ByteScatter = false;
+
+  /// True if subtarget supports indirect cross-grf access
+  bool HasIndirectGRFCrossing = false;
+
+  /// True if subtarget supports indirect cross-grf byte access
+  bool HasIndirectByteGRFCrossing = false;
+
+  /// True if subtarget supports named barriers
+  bool HasNamedBarriers = false;
+
+  /// True if subtarget supports media walker
+  bool HasMediaWalker = false;
+
+  /// Max supported SLM size (in kbytes)
+  int MaxSLMSize = 64;
 
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
@@ -191,6 +213,8 @@ public:
   //
   GenXSubtarget(const Triple &TT, const std::string &CPU,
                 const std::string &FS);
+
+  GenXTargetId getTargetId() const { return TargetId; }
 
   // GRF size in bytes.
   unsigned getGRFByteSize() const { return GRFByteSize; }
@@ -224,85 +248,22 @@ public:
   void initSubtargetFeatures(StringRef CPU, StringRef FS);
 
 public:
-
-  /// * isBDW - true if target is BDW
-  bool isBDW() const { return GenXVariant == GENX_BDW; }
-
-  /// * isBDWplus - true if target is BDW or later
-  bool isBDWplus() const { return GenXVariant >= GENX_BDW; }
-
-  /// * isSKL - true if target is SKL
-  bool isSKL() const { return GenXVariant == GENX_SKL; }
-
-  /// * isSKLplus - true if target is SKL or later
-  bool isSKLplus() const { return GenXVariant >= GENX_SKL; }
-
-  /// * isBXT - true if target is BXT
-  bool isBXT() const { return GenXVariant == GENX_BXT; }
-
-  /// * isKBL - true if target is KBL
-  bool isKBL() const { return GenXVariant == GENX_KBL; }
-
-  /// * isGLK - true if target is GLK
-  bool isGLK() const { return GenXVariant == GENX_GLK; }
-
-  /// * isICLLPplus - true if target is ICLLP or later
-  bool isICLLPplus() const { return GenXVariant >= GENX_ICLLP; }
-
-  /// * isICLLP - true if target is ICL LP
-  bool isICLLP() const { return GenXVariant == GENX_ICLLP; }
-  /// * isTGLLP - true if target is TGL LP
-  bool isTGLLP() const { return GenXVariant == GENX_TGLLP; }
-  /// * isRKL - true if target is RKL
-  bool isRKL() const { return GenXVariant == GENX_RKL; }
-  /// * isDG1 - true if target is DG1
-  bool isDG1() const { return GenXVariant == GENX_DG1; }
-  /// * isXEHP - true if target is XEHP
-  bool isXEHP() const {
-    return GenXVariant == XE_HP_SDV;
-  }
-  /// * isADLS - true if target is ADLS
-  bool isADLS() const { return GenXVariant == GENX_ADLS; }
-  /// * isADLP - true if target is ADLP
-  bool isADLP() const { return GenXVariant == GENX_ADLP; }
-  /// * isADLN - true if target is ADLN
-  bool isADLN() const { return GenXVariant == GENX_ADLN; }
-   /// * isMTL - true if target is MTL
-  bool isMTL() const { return GenXVariant == XE_MTL; }
   /// * translateMediaWalker - true if translate media walker APIs
-  bool translateMediaWalker() const { return GenXVariant >= XE_HP_SDV; }
+  bool translateMediaWalker() const { return !HasMediaWalker; }
+
   // TODO: consider implementing 2 different getters
   /// * has add3 and bfn instructions
-  bool hasAdd3Bfn() const { return GenXVariant >= XE_HP_SDV; }
-  int dpasWidth() const {
-    if (isPVC())
-      return 16;
-    return 8;
-  }
+  bool hasAdd3Bfn() const { return HasAdd3 && HasBfn; }
+
+  int dpasWidth() const { return GRFByteSize / 4; }
+
   unsigned bfMixedModeWidth() const {
     if (HasBfMixedModeWidth16)
       return 16;
     return 8;
   }
-  /// * isDG2 - true if target is DG2
-  bool isDG2() const { return GenXVariant == XE_DG2; }
-  /// * isPVC - true if target is PVC
-  bool isPVC() const { return isPVCXL() || isPVCXT_A0() || isPVCXT(); }
 
-  /// * isPVCXT - true if target is PVCXT
-  bool isPVCXT() const { return GenXVariant == XE_PVCXT; }
-
-  /// * isPVCXT_A0 - true if target is PVCXT_A0
-  bool isPVCXT_A0() const { return GenXVariant == XE_PVCXT_A0; }
-
-  /// * isPVCXL - true if target is PVCXL
-  bool isPVCXL() const { return GenXVariant == XE_PVC; }
-
-  int getNumElementsInAddrReg() const {
-    if (isPVC())
-      return 16;
-    return 8;
-  }
+  int getNumElementsInAddrReg() const { return GRFByteSize / 4; }
 
   bool translateLegacyMessages() const {
     return (HasLSCMessages && TranslateLegacyMessages);
@@ -341,7 +302,9 @@ public:
 
   /// * WaNoA32ByteScatteredStatelessMessages - true if there is no A32 byte
   ///   scatter stateless message.
-  bool WaNoA32ByteScatteredStatelessMessages() const { return !isICLLPplus(); }
+  bool WaNoA32ByteScatteredStatelessMessages() const {
+    return HasWaNoA32ByteScatter;
+  }
 
   /// * disableVectorDecomposition - true if vector decomposition is disabled.
   bool disableVectorDecomposition() const { return DisableVectorDecomposition; }
@@ -370,13 +333,11 @@ public:
 
   /// * hasIndirectGRFCrossing - true if target supports an indirect region
   ///   crossing one GRF boundary
-  bool hasIndirectGRFCrossing() const { return isSKLplus(); }
+  bool hasIndirectGRFCrossing() const { return HasIndirectGRFCrossing; }
 
   /// * hasIndirectByteGRFCrossing - true if target supports an indirect region
   ///   crossing one GRF boundary with byte type
-  bool hasIndirectByteGRFCrossing() const {
-    return hasIndirectGRFCrossing() && !isPVC();
-  }
+  bool hasIndirectByteGRFCrossing() const { return HasIndirectByteGRFCrossing; }
 
   /// * hasMultiIndirectByteRegioning - true if target supports an multi
   /// indirect regions with byte type
@@ -384,29 +345,17 @@ public:
     return HasMultiIndirectByteRegioning;
   };
 
-  bool hasNBarrier() const { return GenXVariant >= XE_PVC; }
+  bool hasNBarrier() const { return HasNamedBarriers; }
 
   /// * getMaxSlmSize - returns maximum allowed SLM size (in KB)
   unsigned getMaxSlmSize() const {
-    if (isXEHP() || isDG2() || isMTL() || isPVC())
-      return 128;
-    return 64;
+    return MaxSLMSize;
   }
 
   bool hasThreadPayloadInMemory() const { return HasThreadPayloadInMemory; }
 
   /// * hasSad2Support - returns true if sad2/sada2 are supported by target
-  bool hasSad2Support() const {
-    if (isICLLP() || isTGLLP())
-      return false;
-    if (isDG1())
-      return false;
-    if (isXEHP())
-      return false;
-    if (isDG2() || isPVC())
-      return false;
-    return true;
-  }
+  bool hasSad2Support() const { return HasSad2; }
 
   bool hasBitRotate() const { return HasBitRotate; }
   bool has64BitRotate() const { return Has64BitRotate; }
@@ -421,6 +370,10 @@ public:
     return HasL3FlushOnGPUScopeInvalidate;
   }
 
+  bool hasSLMOWord() const { return HasSLMOWord; }
+
+  bool hasMadSimd32() const { return HasMadSimd32; }
+
   /// * getsHWTIDFromPredef - some subtargets get HWTID from
   // predefined variable instead of sr0, returns *true* for such ones.
   bool getsHWTIDFromPredef() const { return GetsHWTIDFromPredef; }
@@ -429,42 +382,27 @@ public:
   const Triple &getTargetTriple() const { return TargetTriple; }
 
   TARGET_PLATFORM getVisaPlatform() const {
-    switch (GenXVariant) {
-    case GENX_BDW:
+    switch (TargetId) {
+    case Gen8:
       return TARGET_PLATFORM::GENX_BDW;
-    case GENX_SKL:
+    case Gen9:
       return TARGET_PLATFORM::GENX_SKL;
-    case GENX_BXT:
+    case Gen9LP:
       return TARGET_PLATFORM::GENX_BXT;
-    case GENX_ICLLP:
+    case Gen11:
       return TARGET_PLATFORM::GENX_ICLLP;
-    case GENX_TGLLP:
+    case XeLP:
       return TARGET_PLATFORM::GENX_TGLLP;
-    case GENX_RKL:
-      return TARGET_PLATFORM::GENX_TGLLP;
-    case GENX_DG1:
-      return TARGET_PLATFORM::GENX_TGLLP;
-    case XE_HP_SDV:
+    case XeHP:
       return TARGET_PLATFORM::Xe_XeHPSDV;
-    case GENX_ADLS:
-      return TARGET_PLATFORM::GENX_TGLLP;
-    case GENX_ADLP:
-      return TARGET_PLATFORM::GENX_TGLLP;
-    case GENX_ADLN:
-      return TARGET_PLATFORM::GENX_TGLLP;
-    case XE_MTL:
-      return TARGET_PLATFORM::Xe_MTL;
-    case XE_DG2:
+    case XeHPG:
       return TARGET_PLATFORM::Xe_DG2;
-    case XE_PVC:
-      return TARGET_PLATFORM::Xe_PVC;
-    case XE_PVCXT_A0:
-    case XE_PVCXT:
+    case XeLPG:
+      return TARGET_PLATFORM::Xe_MTL;
+    case XeHPC:
+      if (!partialI64Emulation())
+        return TARGET_PLATFORM::Xe_PVC;
       return TARGET_PLATFORM::Xe_PVCXT;
-    case GENX_KBL:
-      return TARGET_PLATFORM::GENX_SKL;
-    case GENX_GLK:
-      return TARGET_PLATFORM::GENX_BXT;
     default:
       return TARGET_PLATFORM::GENX_NONE;
     }

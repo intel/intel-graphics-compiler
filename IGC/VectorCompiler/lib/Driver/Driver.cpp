@@ -175,6 +175,13 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
   if (Opts.HasHalfSIMDLSC)
     Features.AddFeature("feature_has_half_simd_lsc");
 
+  if (Opts.CPUStr == "XeHPC") {
+    if (Opts.RevId < 3)
+      Features.AddFeature("lightweight_i64_emulation", false);
+    else if (Opts.RevId < 5)
+      Features.AddFeature("add64", false);
+  }
+
   return Features.getString();
 }
 

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -389,7 +389,8 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         // boundary.
         unsigned NumGRF = 2;
         // For PVC it's legal to read only from one GFR in byte source
-        if (ST.isPVC() && R.ElementBytes == genx::ByteBytes)
+        if (!ST.hasMultiIndirectByteRegioning() &&
+            R.ElementBytes == genx::ByteBytes)
           NumGRF = 1;
         ElementsToBoundary = (NumGRF * ElementsPerGRF) -
                              ((RealIdx + OffsetElements) % ElementsPerGRF);
@@ -527,11 +528,11 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
 
     }
   }
-  if (AdjustValidWidthForTarget)
-    if (ST.isPVC() && R.is2D()) {
-      while ((ValidWidth * R.ElementBytes) >= 64)
-        ValidWidth /= 2;
-    }
+  if (AdjustValidWidthForTarget && !ST.hasMultiIndirectByteRegioning() &&
+      R.is2D()) {
+    while ((ValidWidth * R.ElementBytes) >= ST.getGRFByteSize())
+      ValidWidth /= 2;
+  }
 
   // Some targets do not have multi indirect byte regioning and in general case
   // transformation from multi indirect region to indirect is possible for

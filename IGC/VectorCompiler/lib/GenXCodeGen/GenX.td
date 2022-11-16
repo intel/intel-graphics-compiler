@@ -149,6 +149,14 @@ def FeatureHasLSC : SubtargetFeature<"feature_has_lsc",
                                      "true",
                                      "Target supports LSC messages">;
 
+def FeatureHasAdd3 : SubtargetFeature<"feature_has_add3",
+                                      "HasAdd3", "true",
+                                      "Target supports 3-way addition">;
+
+def FeatureHasBfn : SubtargetFeature<"feature_has_bfn",
+                                     "HasBfn", "true",
+                                     "Target supports 3-way boolean function">;
+
 def FeatureHasHalfSIMDLSC : SubtargetFeature<"feature_has_half_simd_lsc",
                                      "HasHalfSIMDLSC",
                                      "true",
@@ -165,6 +173,47 @@ def FeatureMultiIndirectByteRegioning : SubtargetFeature<"multi_indirect_byte_re
                                         "true",
                                         "Vx1 and VxH indirect addressing for Byte datatypes">;
 
+def FeatureWaNoA32ByteScatter : SubtargetFeature<"wa_no_a32_byte_scatter_stateless",
+                                                 "HasWaNoA32ByteScatter", "true",
+                                                 "Target doesn't support A32 byte scatter stateless message">;
+
+def FeatureIndirectGRFCrossing : SubtargetFeature<"indirect_grf_crossing",
+                                                  "HasIndirectGRFCrossing", "true",
+                                                  "Target supports an indirect region crossing one GRF boundary">;
+
+def FeatureIndirectByteGRFCrossing : SubtargetFeature<"indirect_byte_grf_crossing",
+                                                      "HasIndirectGRFCrossing", "true",
+                                                      "Target supports an indirect region crossing one GRF boundary">;
+
+def FeatureSLM64K : SubtargetFeature<"slm_64k",
+                                     "MaxSLMSize", "64",
+                                     "Target supports up to 64k of SLM">;
+
+def FeatureSLM128K : SubtargetFeature<"slm_128k",
+                                      "MaxSLMSize", "128",
+                                      "Target supports up to 128k of SLM">;
+
+
+def FeatureHasSad2 : SubtargetFeature<"feature_has_sad2",
+                                      "HasSad2", "true",
+                                      "Target supports sad2/sad2a instructions">;
+
+def FeatureHasOWordSLM : SubtargetFeature<"feature_has_slm_oword",
+                                          "HasSLMOWord", "true",
+                                          "Target supports OWord block SLM messages">;
+
+def FeatureHasMadSimd32 : SubtargetFeature<"feature_has_mad_simd32",
+                                           "HasMadSimd32", "true",
+                                           "Target supports SIMD32 mad instruction">;
+
+def FeatureHasNamedBarriers : SubtargetFeature<"feature_has_named_barriers",
+                                               "HasNamedBarriers", "true",
+                                               "Target supports named barriers">;
+
+def FeatureHasMediaWalker : SubtargetFeature<"feature_has_media_walker",
+                                             "HasMediaWalker", "true",
+                                             "Target supports media walker interface">;
+
 //===----------------------------------------------------------------------===//
 // GenX processors supported.
 //===----------------------------------------------------------------------===//
@@ -172,152 +221,172 @@ def FeatureMultiIndirectByteRegioning : SubtargetFeature<"multi_indirect_byte_re
 class Proc<string Name, list<SubtargetFeature> Features>
  : Processor<Name, NoItineraries, Features>;
 
-def : Proc<"generic",         []>;
-def : Proc<"BDW",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntDivRem32,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureIEEEDivSqrt,
-                               FeatureHasPackedFloat,
-                               FeatureMultiIndirectByteRegioning,
-                               FeatureHWTIDFromPredef]>;
-def : Proc<"SKL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntDivRem32,
-                               FeatureUseMulDDQ,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureIEEEDivSqrt,
-                               FeatureHasPackedFloat,
-                               FeatureHWTIDFromPredef,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption]>;
-def : Proc<"BXT",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntDivRem32,
-                               FeatureUseMulDDQ,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureHasPackedFloat,
-                               FeatureHWTIDFromPredef,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption]>;
-def : Proc<"KBL",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntDivRem32,
-                               FeatureUseMulDDQ,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureIEEEDivSqrt,
-                               FeatureHasPackedFloat,
-                               FeatureHWTIDFromPredef,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption]>;
-def : Proc<"GLK",             [FeatureLongLong, FeatureSwitchjmp,
-                               FeatureIntDivRem32,
-                               FeatureUseMulDDQ,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureHasPackedFloat,
-                               FeatureHWTIDFromPredef,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption]>;
-def : Proc<"ICLLP",           [FeatureLongLongEmulation, FeatureSwitchjmp,
-                               FeatureIntDivRem32, FeatureInstrBitRotate,
-                               FeatureIEEEDivSqrt,
-                               FeatureHWTIDFromPredef,
-                               FeatureHasPackedFloat,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption]>;
-def : Proc<"TGLLP",           [FeatureLongLongEmulation, FeatureIntDivRem32,
-                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
-                               FeatureHWTIDFromPredef,
-                               FeatureHasPackedFloat,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption, FeatureFusedEU]>;
-def : Proc<"RKL",             [FeatureLongLongEmulation, FeatureIntDivRem32,
-                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
-                               FeatureHWTIDFromPredef,
-                               FeatureHasPackedFloat,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption, FeatureFusedEU]>;
-def : Proc<"DG1",             [FeatureLongLongEmulation, FeatureIntDivRem32,
-                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
-                               FeatureHWTIDFromPredef,
-                               FeatureHasPackedFloat,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption, FeatureFusedEU]>;
-def : Proc<"XEHP",            [FeatureLongLong,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureIEEEDivSqrt,
-                               FeatureThreadPayloadInMemory,
-                               FeatureHasPackedFloat,
-                               FeatureMultiIndirectByteRegioning,
-                               FeatureInstrBitRotate, FeatureFusedEU]>;
-def : Proc<"ADLS",            [FeatureLongLongEmulation, FeatureIntDivRem32,
-                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
-                               FeatureHasPackedFloat,
-                               FeatureHWTIDFromPredef,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption, FeatureFusedEU]>;
-def : Proc<"ADLP",            [FeatureLongLongEmulation, FeatureIntDivRem32,
-                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
-                               FeatureHasPackedFloat,
-                               FeatureHWTIDFromPredef,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption, FeatureFusedEU]>;
-def : Proc<"ADLN",            [FeatureLongLongEmulation, FeatureIntDivRem32,
-                               FeatureInstrBitRotate, FeatureWAFusedEUNoMask,
-                               FeatureHasPackedFloat,
-                               FeatureHWTIDFromPredef,
-                               FeatureMultiIndirectByteRegioning,
-                               FeaturePreemption, FeatureFusedEU]>;
-def : Proc<"DG2",             [FeatureLongLongEmulation,
-                               FeatureThreadPayloadInMemory,
-                               FeatureHasPackedFloat,
-                               FeatureInstrBitRotate,
-                               FeatureMultiIndirectByteRegioning,
-                               FeatureHasLSC, FeatureFusedEU]>;
-def : Proc<"PVC",             [FeatureLongLong, FeatureGRFByteSize64,
-                               FeatureLSCMaxWidth32,
-                               FeatureSwitchjmp,
-                               FeatureFP64,
-                               FeatureIEEEDivSqrt,
-                               FeatureThreadPayloadInMemory,
-                               FeatureHasPackedFloat,
-                               FeatureInstr64BitRotate,
-                               FeatureBfMixedModeWidth16,
-                               FeatureHasLSC]>;
-def : Proc<"PVCXT_A0",        [FeatureLongLong, FeatureGRFByteSize64,
-                               FeatureLSCMaxWidth32,
-                               FeaturePartialI64Emulation,
-                               FeatureSwitchjmp,
-                               FeatureFP64,
-                               FeatureIEEEDivSqrt,
-                               FeatureHasPackedFloat,
-                               FeatureThreadPayloadInMemory,
-                               FeatureInstr64BitRotate,
-                               FeatureBfMixedModeWidth16,
-                               FeatureHasLSC]>;
-def : Proc<"PVCXT",           [FeatureLongLong, FeatureGRFByteSize64,
-                               FeatureLSCMaxWidth32,
-                               FeaturePartialI64Emulation,
-                               FeatureSwitchjmp,
-                               FeatureInstrAdd64,
-                               FeatureFP64,
-                               FeatureIEEEDivSqrt,
-                               FeatureHasPackedFloat,
-                               FeatureThreadPayloadInMemory,
-                               FeatureInstr64BitRotate,
-                               FeatureBfMixedModeWidth16,
-                               FeatureHasLSC]>;
-def : Proc<"MTL",             [FeatureLongLongEmulation,
-                               FeatureFP64,
-                               FeatureFDivFSqrt64Emulation,
-                               FeatureHasPackedFloat,
-                               FeatureThreadPayloadInMemory,
-                               FeatureInstrBitRotate,
-                               FeatureBfMixedModeWidth16,
-                               FeatureMultiIndirectByteRegioning,
-                               FeatureHasLSC, FeatureFusedEU]>;
+def : Proc<"generic", []>;
+
+def : Proc<"Gen8", [
+  FeatureFP64,
+  FeatureHWTIDFromPredef,
+  FeatureHasMediaWalker,
+  FeatureHasPackedFloat,
+  FeatureHasSad2,
+  FeatureIEEEDivSqrt,
+  FeatureInstrAdd64,
+  FeatureIntDivRem32,
+  FeatureLongLong,
+  FeatureMultiIndirectByteRegioning,
+  FeatureSLM64K,
+  FeatureSwitchjmp,
+  FeatureWaNoA32ByteScatter,
+]>;
+
+def : Proc<"Gen9", [
+  FeatureFP64,
+  FeatureHWTIDFromPredef,
+  FeatureHasMediaWalker,
+  FeatureHasPackedFloat,
+  FeatureHasSad2,
+  FeatureIEEEDivSqrt,
+  FeatureIndirectByteGRFCrossing,
+  FeatureIndirectGRFCrossing,
+  FeatureInstrAdd64,
+  FeatureIntDivRem32,
+  FeatureLongLong,
+  FeatureMultiIndirectByteRegioning,
+  FeaturePreemption,
+  FeatureSLM64K,
+  FeatureSwitchjmp,
+  FeatureUseMulDDQ,
+  FeatureWaNoA32ByteScatter,
+]>;
+
+def : Proc<"Gen9LP", [
+  FeatureFP64,
+  FeatureHWTIDFromPredef,
+  FeatureHasMediaWalker,
+  FeatureHasPackedFloat,
+  FeatureHasSad2,
+  FeatureIndirectByteGRFCrossing,
+  FeatureIndirectGRFCrossing,
+  FeatureInstrAdd64,
+  FeatureIntDivRem32,
+  FeatureLongLong,
+  FeatureMultiIndirectByteRegioning,
+  FeaturePreemption,
+  FeatureSLM64K,
+  FeatureSwitchjmp,
+  FeatureUseMulDDQ,
+  FeatureWaNoA32ByteScatter,
+]>;
+
+
+def : Proc<"Gen11", [
+  FeatureHWTIDFromPredef,
+  FeatureHasMediaWalker,
+  FeatureHasOWordSLM,
+  FeatureHasPackedFloat,
+  FeatureIEEEDivSqrt,
+  FeatureIndirectByteGRFCrossing,
+  FeatureIndirectGRFCrossing,
+  FeatureInstrBitRotate,
+  FeatureIntDivRem32,
+  FeatureLongLongEmulation,
+  FeatureMultiIndirectByteRegioning,
+  FeaturePreemption,
+  FeatureSLM64K,
+  FeatureSwitchjmp,
+]>;
+
+def : Proc<"XeLP", [
+  FeatureFusedEU,
+  FeatureHWTIDFromPredef,
+  FeatureHasMediaWalker,
+  FeatureHasOWordSLM,
+  FeatureHasPackedFloat,
+  FeatureIndirectByteGRFCrossing,
+  FeatureIndirectGRFCrossing,
+  FeatureInstrBitRotate,
+  FeatureIntDivRem32,
+  FeatureLongLongEmulation,
+  FeatureMultiIndirectByteRegioning,
+  FeaturePreemption,
+  FeatureSLM64K,
+  FeatureWAFusedEUNoMask,
+]>;
+
+def : Proc<"XeHP", [
+  FeatureFP64,
+  FeatureFusedEU,
+  FeatureHasAdd3,
+  FeatureHasBfn,
+  FeatureHasOWordSLM,
+  FeatureHasPackedFloat,
+  FeatureIEEEDivSqrt,
+  FeatureIndirectByteGRFCrossing,
+  FeatureIndirectGRFCrossing,
+  FeatureInstrAdd64,
+  FeatureInstrBitRotate,
+  FeatureLongLong,
+  FeatureMultiIndirectByteRegioning,
+  FeatureSLM128K,
+  FeatureThreadPayloadInMemory,
+]>;
+
+def : Proc<"XeHPG", [
+  FeatureFusedEU,
+  FeatureHasAdd3,
+  FeatureHasBfn,
+  FeatureHasLSC,
+  FeatureHasOWordSLM,
+  FeatureHasPackedFloat,
+  FeatureIndirectByteGRFCrossing,
+  FeatureIndirectGRFCrossing,
+  FeatureInstrBitRotate,
+  FeatureLongLongEmulation,
+  FeatureMultiIndirectByteRegioning,
+  FeatureSLM128K,
+  FeatureThreadPayloadInMemory,
+]>;
+
+def : Proc<"XeLPG", [
+  FeatureBfMixedModeWidth16,
+  FeatureFDivFSqrt64Emulation,
+  FeatureFP64,
+  FeatureFusedEU,
+  FeatureHasAdd3,
+  FeatureHasBfn,
+  FeatureHasLSC,
+  FeatureHasOWordSLM,
+  FeatureHasPackedFloat,
+  FeatureIndirectByteGRFCrossing,
+  FeatureIndirectGRFCrossing,
+  FeatureInstrBitRotate,
+  FeatureLongLongEmulation,
+  FeatureMultiIndirectByteRegioning,
+  FeatureSLM128K,
+  FeatureThreadPayloadInMemory,
+]>;
+
+def : Proc<"XeHPC", [
+  FeatureBfMixedModeWidth16,
+  FeatureFP64,
+  FeatureGRFByteSize64,
+  FeatureHasAdd3,
+  FeatureHasBfn,
+  FeatureHasLSC,
+  FeatureHasNamedBarriers,
+  FeatureHasOWordSLM,
+  FeatureHasPackedFloat,
+  FeatureIEEEDivSqrt,
+  FeatureIndirectGRFCrossing,
+  FeatureInstr64BitRotate,
+  FeatureInstrAdd64,
+  FeatureLSCMaxWidth32,
+  FeatureLongLong,
+  FeaturePartialI64Emulation,
+  FeatureSLM128K,
+  FeatureSwitchjmp,
+  FeatureThreadPayloadInMemory,
+]>;
 
 def GenX : Target {
   // Nothing here (yet?)
