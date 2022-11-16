@@ -72,7 +72,6 @@ ModulePass *createGenXModuleAnalysisDumperPass(ModulePass *Analysis,
 
 FunctionPass *createGenXCFSimplificationPass();
 ModulePass *createGenXEarlySimdCFConformancePass();
-FunctionPass *createGenXPredToSimdCFPass();
 FunctionPass *createGenXReduceIntSizePass();
 FunctionPass *createGenXInlineAsmLoweringPass();
 FunctionPass *createGenXLoweringPass();

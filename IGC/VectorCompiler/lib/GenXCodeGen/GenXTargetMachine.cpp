@@ -149,7 +149,6 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXCloneIndirectFunctionsPass(registry);
   initializeGenXTrampolineInsertionPass(registry);
   initializeGenXPredRegionLoweringPass(registry);
-  initializeGenXPredToSimdCFPass(registry);
   initializeGenXLinkageCorruptorPass(registry);
   initializeGenXInlineAsmLoweringPass(registry);
   initializeGenXDebugLegalizationPass(registry);
@@ -417,15 +416,6 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   // Run integer reduction again to revert some trunc/ext patterns transformed
   // by instcombine.
   vc::addPass(PM, createGenXReduceIntSizePass());
-
-  /// GenXPredToSimdCF
-  /// ----------------
-  /// This pass is needed to support uinified Simd CF interface.
-  /// Requires CFG simplification because simplified structured CFG is expected.
-  vc::addPass(PM, createCFGSimplificationPass());
-  /// .. include:: GenXPredToSimdCF.cpp
-  vc::addPass(PM, createGenXPredToSimdCFPass());
-
   /// BreakCriticalEdges
   /// ------------------
   /// In the control flow graph, a critical edge is one from a basic block with

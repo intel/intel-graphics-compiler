@@ -255,7 +255,6 @@ void initializeGenXStackUsagePass(PassRegistry &);
 void initializeCMLowerVLoadVStorePass(PassRegistry &);
 void initializeGenXStructSplitterPass(PassRegistry &);
 void initializeGenXPredRegionLoweringPass(PassRegistry &);
-void initializeGenXPredToSimdCFPass(PassRegistry &);
 void initializeGenXInlineAsmLoweringPass(PassRegistry &);
 void initializeGenXDebugLegalizationPass(PassRegistry &);
 void initializeGenXFixInvalidFuncNamePass(PassRegistry &);
