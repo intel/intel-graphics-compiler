@@ -605,12 +605,12 @@ bool ProcessElfInput(
                         spvType = *spvTypeOrErr;
                     }
                     if (spvType != VLD::SPIRVTypeEnum::SPIRV_SPMD &&
-                        spvType != VLD::SPIRVTypeEnum::SPIRV_ESIMD)
+                        spvType != VLD::SPIRVTypeEnum::SPIRV_ESIMD &&
+                        spvType != VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD)
                     {
                         SetErrorMessage("Unsupported SPIR-V in ELF file!",
                             OutputArgs);
-                        success = false;
-                        break;
+                        return false;
                     }
 
                   // Copy args, as they hold optional spec constants.
@@ -654,7 +654,7 @@ bool ProcessElfInput(
         }
 
         bool hasESIMD = std::any_of(SPIRVToLink.begin(), SPIRVToLink.end(), [](auto& el) {
-            return el.first == VLD::SPIRVTypeEnum::SPIRV_ESIMD;
+            return el.first == VLD::SPIRVTypeEnum::SPIRV_ESIMD || el.first == VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD;
         });
         bool hasLLVMBinaries = !LLVMBinariesToLink.empty();
         if (hasESIMD && hasLLVMBinaries)

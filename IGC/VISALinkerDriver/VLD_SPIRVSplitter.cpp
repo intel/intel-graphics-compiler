@@ -61,20 +61,14 @@ llvm::Expected<spv_result_t> SpvSplitter::ParseSPIRV(const char* spv_buffer, uin
   return result;
 }
 
-SPIRVTypeEnum SpvSplitter::GetCurrentSPIRVType() {
-  // If all entry points are marked as ESIMD, treat this as fully ESIMD module,
-  // even if there are functions that are not marked with ESIMD (known bug in
-  // VC).
-  if (!entry_points_.empty() && std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
-    return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
-    })) {
-    IGC_ASSERT(has_esimd_functions_);
-    return SPIRVTypeEnum::SPIRV_ESIMD;
-  } else if (!has_esimd_functions_) {
-    // This is SPMD module as entry points are included in the flag.
+SPIRVTypeEnum SpvSplitter::GetCurrentSPIRVType() const {
+  if (has_spmd_functions_ && has_esimd_functions_) {
+    return SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD;
+  } else if (has_spmd_functions_) {
     return SPIRVTypeEnum::SPIRV_SPMD;
   }
-  return SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD;
+
+  return SPIRVTypeEnum::SPIRV_ESIMD;
 }
 
 llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
@@ -136,6 +130,45 @@ const std::string &SpvSplitter::GetErrorMessage() const {
 
 bool SpvSplitter::HasError() const { return !error_message_.empty(); }
 
+llvm::Expected<bool> SpvSplitter::HasEntryPoints() const {
+  auto CurSPIRVType = GetCurrentSPIRVType();
+  if (entry_points_.size() == 0) return false;
+
+  bool AllEntryPointsAreSPMD =
+      std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
+        return esimd_decorated_ids_.find(el) == esimd_decorated_ids_.end();
+      });
+
+  bool AllEntryPointsAreESIMD =
+    std::all_of(entry_points_.begin(), entry_points_.end(), [&](auto el) {
+    return esimd_decorated_ids_.find(el) != esimd_decorated_ids_.end();
+      });
+
+  if (CurSPIRVType == SPIRVTypeEnum::SPIRV_ESIMD && AllEntryPointsAreSPMD) {
+    return false;
+  }
+
+  if (CurSPIRVType == SPIRVTypeEnum::SPIRV_SPMD && AllEntryPointsAreESIMD) {
+    return false;
+  }
+
+  // We currently do not support entry points in both parts.
+  IGC_ASSERT(AllEntryPointsAreESIMD || AllEntryPointsAreSPMD);
+
+  return true;
+
+}
+
+const uint32_t SpvSplitter::GetForcedSubgroupSize() const {
+  if (entry_point_to_subgroup_size_map_.size() == 0) return 0;
+  IGC_ASSERT(std::all_of(entry_point_to_subgroup_size_map_.begin(), entry_point_to_subgroup_size_map_.end(), [&](auto& el) {
+    return el.second == entry_point_to_subgroup_size_map_.begin()->second;
+    }));
+
+  return entry_point_to_subgroup_size_map_.begin()->second;
+}
+
+
 void SpvSplitter::Reset() {
   spmd_program_.clear();
   esimd_program_.clear();
@@ -143,6 +176,7 @@ void SpvSplitter::Reset() {
   entry_points_.clear();
   esimd_function_declarations_.clear();
   esimd_functions_to_declare_.clear();
+  entry_point_to_subgroup_size_map_.clear();
 
   is_inside_spmd_function_ = false;
   is_inside_esimd_function_ = false;
@@ -205,6 +239,9 @@ spv_result_t SpvSplitter::HandleInstruction(
     break;
   case spv::OpEntryPoint:
     ret = HandleEntryPoint(parsed_instruction);
+    break;
+  case spv::OpExecutionMode:
+    ret = HandleExecutionMode(parsed_instruction);
     break;
   default:
     if (!is_inside_spmd_function_) {
@@ -339,6 +376,30 @@ spv_result_t SpvSplitter::HandleEntryPoint(
   uint32_t id =
       parsed_instruction->words[parsed_instruction->operands[1].offset];
   entry_points_.insert(id);
+  AddInstToProgram(parsed_instruction, spmd_program_);
+  AddInstToProgram(parsed_instruction, esimd_program_);
+
+  return SPV_SUCCESS;
+}
+
+spv_result_t SpvSplitter::HandleExecutionMode(
+  const spv_parsed_instruction_t *parsed_instruction) {
+  IGC_ASSERT(parsed_instruction &&
+    parsed_instruction->opcode == spv::OpExecutionMode);
+  IGC_ASSERT(parsed_instruction->num_operands > 0);
+
+  uint32_t id =
+    parsed_instruction->words[parsed_instruction->operands[0].offset];
+
+  uint32_t execMode =
+    parsed_instruction->words[parsed_instruction->operands[1].offset];
+  if (execMode == spv::ExecutionModeSubgroupSize)
+  {
+    uint32_t sgSize =
+      parsed_instruction->words[parsed_instruction->operands[2].offset];
+    entry_point_to_subgroup_size_map_.insert({ id,sgSize });
+  }
+
   AddInstToProgram(parsed_instruction, spmd_program_);
   AddInstToProgram(parsed_instruction, esimd_program_);
 

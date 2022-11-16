@@ -46,7 +46,11 @@ public:
 
   const std::string &GetErrorMessage() const;
 
+  const uint32_t GetForcedSubgroupSize() const;
+
   bool HasError() const;
+
+  llvm::Expected<bool> HasEntryPoints() const;
 
   void Reset();
 
@@ -90,13 +94,16 @@ private:
   spv_result_t
   HandleEntryPoint(const spv_parsed_instruction_t *parsed_instruction);
 
+  spv_result_t
+  HandleExecutionMode(const spv_parsed_instruction_t *parsed_instruction);
+
   void AddInstToProgram(const spv_parsed_instruction_t *parsed_instruction,
                         ProgramStreamType &program);
 
   llvm::Expected<spv_result_t> ParseSPIRV(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes);
 
   // Returns current SPIR-V Module type. Must be called after ParseSPIRV
-  SPIRVTypeEnum GetCurrentSPIRVType();
+  SPIRVTypeEnum GetCurrentSPIRVType() const;
 
   // When this flag is set to true, instructions will not be added to
   // spmd_program_ and esimd_program_ buffers.
@@ -108,6 +115,7 @@ private:
   std::unordered_set<uint32_t> entry_points_;
   std::unordered_map<uint32_t, ProgramStreamType> esimd_function_declarations_;
   std::unordered_set<uint32_t> esimd_functions_to_declare_;
+  std::unordered_map<uint32_t, uint32_t> entry_point_to_subgroup_size_map_;
 
   bool is_inside_spmd_function_ = false;
   bool is_inside_esimd_function_ = false;

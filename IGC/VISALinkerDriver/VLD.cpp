@@ -38,11 +38,8 @@ namespace TC {
 namespace {
   static const std::string ERROR_VLD = "VLD: Failed to compile SPIR-V with following error: \n";
 
-  llvm::Expected<std::vector<llvm::StringRef>> getZeBinSectionsData(llvm::StringRef ZeBinary, zebin::SHT_ZEBIN SectionType) {
-    using namespace llvm;
+  llvm::Expected<object::ELF64LEFile> getElfFile(llvm::StringRef ZeBinary) {
     MemoryBufferRef inputRef(ZeBinary, "zebin");
-    std::vector<StringRef> OutVec;
-
     auto ElfOrErr = object::ObjectFile::createELFObjectFile(inputRef);
     if (!ElfOrErr)
       return ElfOrErr.takeError();
@@ -53,6 +50,18 @@ namespace {
 #else
     auto ElfFile = cast<object::ELF64LEObjectFile>(*ElfOrErr.get()).getELFFile();
 #endif
+
+    return ElfFile;
+  }
+
+  llvm::Expected<std::vector<llvm::StringRef>> getZeBinSectionsData(llvm::StringRef ZeBinary, zebin::SHT_ZEBIN SectionType) {
+    using namespace llvm;
+    std::vector<StringRef> OutVec;
+
+    auto ElfFileOrErr = getElfFile(ZeBinary);
+    if (!ElfFileOrErr) return ElfFileOrErr.takeError();
+    auto ElfFile = ElfFileOrErr.get();
+
     auto ElfSections = ElfFile.sections();
     if (!ElfSections)
       return ElfSections.takeError();
@@ -87,21 +96,39 @@ llvm::Expected<zebin::zeInfoContainer> GetZeInfoFromZeBinary(llvm::StringRef ZeB
   if (!ZeInfoYAMLOrErr) {
     return ZeInfoYAMLOrErr.takeError();
   }
+
+  zebin::zeInfoContainer ZeInfo;
+
   if (ZeInfoYAMLOrErr->size() != 1) {
-    return llvm::createStringError(llvm::inconvertibleErrorCode(), "ZEBinary expected to contain exactly one .ze_info section!");
+    return llvm::createStringError(llvm::inconvertibleErrorCode(), "ZEBinary expected to contain one .ze_info section!");
   }
 
   // ZeBinary strings are not null-terminated, so copy it to std::string.
   std::string ZeInfoYAML = (*(ZeInfoYAMLOrErr->begin())).str();
-
   llvm::yaml::Input yin(ZeInfoYAML.c_str());
-  zebin::zeInfoContainer ZeInfo;
   yin >> ZeInfo;
   if (yin.error()) {
     return llvm::createStringError(llvm::inconvertibleErrorCode(), "Failed to parse .ze_info section!");
   }
 
   return ZeInfo;
+}
+
+llvm::Expected<bool> ZeBinaryContainsSection(llvm::StringRef ZeBinary,
+                                             zebin::SHT_ZEBIN SectionType) {
+  auto ElfFileOrErr = getElfFile(ZeBinary);
+  if (!ElfFileOrErr)
+    return ElfFileOrErr.takeError();
+  auto ElfSections = (*ElfFileOrErr).sections();
+  if (!ElfSections)
+    return ElfSections.takeError();
+
+  for (auto &Sect : *ElfSections) {
+    if (Sect.sh_type == SectionType) {
+      return true;
+    }
+  }
+  return false;
 }
 
 llvm::Expected<int> GetSIMDSizeFromZeInfo(const zebin::zeInfoContainer& ZeInfo) {
@@ -135,6 +162,53 @@ void DumpSPIRVFile(const char *programData, size_t programSizeInBytes,
                        inputShHash.getAsmHash(), ext + "asm");
   }
   spvTextDestroy(spirvAsm);
+}
+
+// Given a vector of SPVTranslationPairs, the function moves the pair with
+// entry module to the last.
+// If entry module has subgroup size forced, it is returned in SimdSize param.
+llvm::Expected<std::vector<IGC::VLD::SPVTranslationPair>>
+MoveEntryPointModuleToTheEnd(
+    llvm::ArrayRef<IGC::VLD::SPVTranslationPair> InputModules,
+    uint32_t &SimdSize) {
+  using namespace IGC::VLD;
+  SpvSplitter splitter;
+  SPVTranslationPair EntryPointPair;
+  bool HasEntryPointModule = false;
+  std::vector<SPVTranslationPair> RetPairs;
+  for (auto &InputArgsPair : InputModules) {
+    splitter.Reset();
+    splitter.Detect(InputArgsPair.second.pInput,
+                    InputArgsPair.second.InputSize);
+
+    auto HasEntryPointsOrErr = splitter.HasEntryPoints();
+    if (!HasEntryPointsOrErr) {
+      return HasEntryPointsOrErr.takeError();
+    }
+    if (*HasEntryPointsOrErr) {
+      EntryPointPair = InputArgsPair;
+      SimdSize = splitter.GetForcedSubgroupSize();
+      if (HasEntryPointModule) {
+        return llvm::createStringError(
+            llvm::inconvertibleErrorCode(),
+            "The list of SPIR-V modules contains more than one module with an "
+            "entry point!");
+      }
+      HasEntryPointModule = true;
+    } else {
+      RetPairs.push_back(InputArgsPair);
+    }
+  }
+
+  if (!HasEntryPointModule) {
+    return llvm::createStringError(llvm::inconvertibleErrorCode(),
+                                   "The list of SPIR-V modules did not contain "
+                                   "any module with an entry point!");
+  }
+
+  RetPairs.push_back(EntryPointPair);
+
+  return RetPairs;
 }
 
 } // namespace
@@ -256,12 +330,21 @@ bool TranslateBuildSPMDAndESIMD(
     std::string &errorMessage) {
 #if defined(IGC_VC_ENABLED)
 
-  std::vector<std::string> ownerStrings;
-  std::vector<const char*> visaCStrings;
+  std::vector<std::string> OwnerStrings;
+  std::vector<const char*> VisaCStrings;
   std::vector<const char*> DirectCallFunctions;
-  int SimdSize = 0;
+  uint32_t SimdSize = 0;
 
-  for (auto& InputArgsPair : InputModules) {
+  // Module with entry points should be compiled as the last one.
+  // We currently support the use-case, where only one of the SPIR-V modules contain entry points.
+  auto NewInputModulesOrErr = MoveEntryPointModuleToTheEnd(InputModules, SimdSize);
+  if (!NewInputModulesOrErr)
+  {
+    errorMessage = ERROR_VLD + llvm::toString(NewInputModulesOrErr.takeError());
+    return false;
+  }
+
+  for (auto& InputArgsPair : NewInputModulesOrErr.get()) {
     auto& InputArgs = InputArgsPair.second;
 
     TC::STB_TranslateOutputArgs NewOutputArgs;
@@ -287,13 +370,21 @@ bool TranslateBuildSPMDAndESIMD(
         NewInternalOptions += std::to_string(SimdSize);
       }
       break;
+    case VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD:
+      break;
     default:
       errorMessage = "Unsupported SPIR-V flavour detected!";
       return false;
     }
 
-    NewInputArgs.pVISAAsmToLinkArray = (!visaCStrings.empty()) ? visaCStrings.data() : nullptr;
-    NewInputArgs.NumVISAAsmsToLink = visaCStrings.size();
+    if (InputArgsPair.second.pVISAAsmToLinkArray) {
+      for (uint32_t i = 0; i < InputArgsPair.second.NumVISAAsmsToLink; ++i) {
+        VisaCStrings.push_back(InputArgsPair.second.pVISAAsmToLinkArray[i]);
+      }
+    }
+
+    NewInputArgs.pVISAAsmToLinkArray = (!VisaCStrings.empty()) ? VisaCStrings.data() : nullptr;
+    NewInputArgs.NumVISAAsmsToLink = VisaCStrings.size();
     NewInputArgs.pDirectCallFunctions = DirectCallFunctions.data();
     NewInputArgs.NumDirectCallFunctions = DirectCallFunctions.size();
     NewInputArgs.pInternalOptions = NewInternalOptions.data();
@@ -303,29 +394,49 @@ bool TranslateBuildSPMDAndESIMD(
       success = TranslateBuildSPMD(&NewInputArgs, &NewOutputArgs,
                                    inputDataFormatTemp, IGCPlatform,
                                    profilingTimerResolution, inputShHash);
-    } else {
-      IGC_ASSERT(InputArgsPair.first == VLD::SPIRVTypeEnum::SPIRV_ESIMD);
+    } else if (InputArgsPair.first == VLD::SPIRVTypeEnum::SPIRV_ESIMD) {
       success =
           TranslateBuildVC(&NewInputArgs, &NewOutputArgs, inputDataFormatTemp,
                            IGCPlatform, profilingTimerResolution, inputShHash);
+    } else {
+      IGC_ASSERT(InputArgsPair.first == VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD);
+      success =
+        TranslateBuildSPMDAndESIMD(&NewInputArgs, &NewOutputArgs, inputDataFormatTemp,
+          IGCPlatform, profilingTimerResolution, inputShHash, errorMessage);
     }
 
     if (!success) {
-      errorMessage = "VLD: Failed to compile SPIR-V with following error: \n";
-      errorMessage += NewOutputArgs.pErrorString;
+      if (errorMessage.empty() && NewOutputArgs.pErrorString) {
+        errorMessage = "VLD: Failed to compile SPIR-V with following error: \n";
+        errorMessage += NewOutputArgs.pErrorString;
+      }
       return false;
     }
 
     // If this is the last SPIR-V to compile, stop here. The rest of the code handles
     // extracting information for further compilations.
-    if(&InputArgsPair == &InputModules.back()) {
+    if(&InputArgsPair == &NewInputModulesOrErr.get().back()) {
       *pOutputArgs = NewOutputArgs;
       break;
     }
 
     llvm::StringRef ZeBinary(NewOutputArgs.pOutput, NewOutputArgs.OutputSize);
+
+    // Check if the output has ZEINFO section. If not, it can mean that the
+    // module didn't contain any exported functions.
+    auto HasZeInfoSectionOrErr =
+        ZeBinaryContainsSection(ZeBinary, zebin::SHT_ZEBIN_ZEINFO);
+    if (!HasZeInfoSectionOrErr) {
+      errorMessage =
+          ERROR_VLD + llvm::toString(HasZeInfoSectionOrErr.takeError());
+      return false;
+    }
+    if (!*HasZeInfoSectionOrErr) {
+      continue;
+    }
+
     auto ZeInfoOrErr = GetZeInfoFromZeBinary(ZeBinary);
-    if(!ZeInfoOrErr) {
+    if (!ZeInfoOrErr) {
       errorMessage = ERROR_VLD + llvm::toString(ZeInfoOrErr.takeError());
       return false;
     }
@@ -348,33 +459,31 @@ bool TranslateBuildSPMDAndESIMD(
         SimdSize = *SimdSizeOrErr;
     }
 
-    auto VISAAsm =
-      GetVISAAsmFromZEBinary(ZeBinary);
+    for (auto& F : ZeInfoOrErr->functions)
+    {
+      OwnerStrings.push_back(std::move(F.name));
+      DirectCallFunctions.push_back(OwnerStrings.back().c_str());
+    }
+
+    auto VISAAsm = GetVISAAsmFromZEBinary(ZeBinary);
 
     if (!VISAAsm) {
-      errorMessage =
-        "VLD: Failed to compile SPIR-V with following error: \n" +
-        llvm::toString(VISAAsm.takeError());
+      errorMessage = ERROR_VLD + llvm::toString(VISAAsm.takeError());
       return false;
     }
 
     if (VISAAsm->empty()) {
-      errorMessage = "VLD: ZeBinary did not contain any .visaasm sections!";
+      errorMessage =
+        ERROR_VLD + "ZeBinary did not contain any .visaasm sections!";
       return false;
     }
 
-    // ZeBinary contains non-null terminated strings, add the null via std::string ownership.
-    for (auto& s : *VISAAsm) {
-      ownerStrings.push_back(s.str());
-      visaCStrings.push_back(ownerStrings.back().c_str());
+    // ZeBinary contains non-null terminated strings, add the null via
+    // std::string ownership.
+    for (auto &s : *VISAAsm) {
+      OwnerStrings.push_back(s.str());
+      VisaCStrings.push_back(OwnerStrings.back().c_str());
     }
-
-    for (auto& F : ZeInfoOrErr->functions)
-    {
-      ownerStrings.push_back(std::move(F.name));
-      DirectCallFunctions.push_back(ownerStrings.back().c_str());
-    }
-
   }
 
   return true;
