@@ -1096,7 +1096,6 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
 {
     // Run on all functions defined in this module
     SmallVector<std::tuple<Instruction*, double, unsigned>, 8> InstToModify;
-    SmallVector<std::pair<Function*, std::string>, 8> FuncToRename;
     SmallVector<std::pair<Instruction*, Instruction*>, 8> CallToReplace;
 
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
@@ -1282,7 +1281,9 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                     dyn_cast<CallInst>(fmulUse->getUser())) {
                     StringRef funcName = useInst->getCalledFunction()->getName();
                     if (!funcName.startswith(cosBuiltinName) &&
-                      !funcName.startswith(sinBuiltinName)) {
+                        !funcName.startswith(sinBuiltinName) &&
+                        !funcName.startswith(sinPiBuiltinName) &&
+                        !funcName.startswith(cosPiBuiltinName)) {
                       isCandidate = false;
                       break;
                     }
@@ -1330,20 +1331,21 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                     newName = sinPiBuiltinName;
                   }
 
-                  if (Function *newFunc = M.getFunction(newName)) {
-                    SmallVector<Value *, 8> Args;
-                    for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(CI); I != E;
-                         ++I) {
-                      Args.push_back(CI->getArgOperand(I));
-                    }
-                    auto newCI = CallInst::Create(newFunc, Args);
-                    newCI->setCallingConv(CI->getCallingConv());
-                    CallToReplace.push_back(
-                        std::pair<Instruction *, Instruction *>(CI, newCI));
-                  } else {
-                    FuncToRename.push_back(
-                        std::pair<Function*, std::string>(pFunc, newName));
+                  Function *newFunc = M.getFunction(newName);
+                  if (newFunc == nullptr) {
+                    FunctionType *FT = pFunc->getFunctionType();
+                    newFunc = Function::Create(FT, pFunc->getLinkage(),
+                                                  newName, M);
                   }
+                  SmallVector<Value *, 8> Args;
+                  for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(CI);
+                       I != E; ++I) {
+                    Args.push_back(CI->getArgOperand(I));
+                  }
+                  auto newCI = CallInst::Create(newFunc, Args);
+                  newCI->setCallingConv(CI->getCallingConv());
+                  CallToReplace.push_back(
+                      std::pair<Instruction *, Instruction *>(CI, newCI));
                 }
               }
             }
@@ -1361,13 +1363,6 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
           ConstantFP::get(
           Type::getFloatTy(inst->getContext()),
           (float) value));
-    }
-
-    for (auto FuncPair : FuncToRename)
-    {
-      auto func = FuncPair.first;
-      auto name = FuncPair.second;
-      func->setName(name);
     }
 
     for (auto CIPair : CallToReplace)
