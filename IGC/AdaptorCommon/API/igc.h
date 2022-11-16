@@ -32,6 +32,11 @@ enum {
 };
 
 enum {
+    // VISAPreSchedRPThreshold
+    FLAG_VISA_PRE_SCHED_RP_THRESHOLD = 0,                 // 0 means use the default
+};
+
+enum {
     BIT_CG_SIMD8     = 0b0000000000000001,
     BIT_CG_SIMD16    = 0b0000000000000010,
     BIT_CG_SIMD32    = 0b0000000000000100,
