@@ -591,6 +591,8 @@ DECLARE_IGC_REGKEY(bool, disableRemat,                  false, "disable re-mater
 DECLARE_IGC_REGKEY(bool, EnableDisableMidThreadPreemptionOpt, true, "Disable mid thread preemption", false)
 DECLARE_IGC_REGKEY(DWORD, MidThreadPreemptionDisableThreshold, 600, "Threshold to disable mid thread preemption", false)
 DECLARE_IGC_REGKEY(DWORD, DispatchGPGPUWalkerAlongYFirst, 1, "0 = No SW Y-walk, 1 = Dispatch GPGPU walker along Y first", false)
+DECLARE_IGC_REGKEY(DWORD, DispatchAlongY_XY_ratio,      0, "min threshold for thread group size x / y for dispatchAlongY", false)
+DECLARE_IGC_REGKEY(DWORD, DispatchAlongY_X_threshold,   0, "min threshold for thread group size x for dispatchAlongY", false)
 DECLARE_IGC_REGKEY(bool, SetMaxPreRASchedulerRegPressureThreshold, false,  "set Max PreRA Scheduler Threshold", false)
 DECLARE_IGC_REGKEY(bool, LimitConstantBuffersPushed,    true, "Limit max number of CBs pushed when SupportIndirectConstantBuffer is true", false)
 DECLARE_IGC_REGKEY(DWORD, MaxPreRASchedulerRegPressureThreshold, 60,  "Max PreRA Scheduler Threshold", false)
