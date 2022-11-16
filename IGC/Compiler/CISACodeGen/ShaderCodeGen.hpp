@@ -588,6 +588,18 @@ public:
         SIMDMode Mode = SIMDMode::UNKNOWN);
     bool shouldGenerateLSC(llvm::Instruction* vectorLdStInst = nullptr);
     bool forceCacheCtrl(llvm::Instruction* vectorLdStInst = nullptr);
+    // Shader has LSC store messages with cache controls specified in `ops`
+    void HasLscStoreCacheControls(const LSC_CACHE_OPTS& opts)
+    {
+        if (opts.l1 != LSC_CACHING_DEFAULT)
+        {
+            m_HasLscStoresWithNonDefaultL1CacheControls = true;
+        }
+    };
+    bool GetHasLscStoresWithNonDefaultL1CacheControls() const
+    {
+        return m_HasLscStoresWithNonDefaultL1CacheControls;
+    };
     uint32_t totalBytesToStoreOrLoad(llvm::Instruction* vectorLdStInst);
 
     void setShaderProgramID(int aID) { m_shaderProgramID = aID; }
@@ -725,6 +737,8 @@ protected:
 
     bool m_HasStackCalls = false;
     bool m_isIntelSymbolTableVoidProgram = false;
+    // Shader has LSC store messages with non-default L1 cache control
+    bool m_HasLscStoresWithNonDefaultL1CacheControls = false;
 };
 
 /// This class contains the information for the different SIMD version
