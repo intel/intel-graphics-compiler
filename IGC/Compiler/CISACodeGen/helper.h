@@ -552,5 +552,5 @@ namespace IGC
     private:
         bool Do = true;
         Fn F;
-};
+    };
 } // namespace IGC

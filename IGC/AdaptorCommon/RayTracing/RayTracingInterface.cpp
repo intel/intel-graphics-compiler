@@ -22,11 +22,13 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "AdaptorCommon/ProcessFuncAttributes.h"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BreakConstantExpr/BreakConstantExpr.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Atomics/ResolveOCLAtomics.hpp"
+#include "Compiler/CustomSafeOptPass.hpp"
 #include "IGC/common/LLVMUtils.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/CodeGen/Passes.h>
@@ -34,6 +36,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Transforms/IPO/AlwaysInliner.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Utils.h>
 #include <llvm/Analysis/AliasAnalysis.h>
 #include "common/LLVMWarningsPop.hpp"
 
