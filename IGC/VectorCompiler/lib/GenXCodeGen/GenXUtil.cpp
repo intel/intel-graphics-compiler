@@ -1963,7 +1963,7 @@ unsigned genx::getExecSizeAllowedBits(const Instruction *Inst,
   case GenXIntrinsic::genx_uumad_sat:
   case Intrinsic::fma:
     // Do not emit simd32 mad for pre-ICLLP.
-    return ST->isICLLPplus() ? 0x3f : 0x1f;
+    return ST->hasMadSimd32() ? 0x3f : 0x1f;
   default:
     return GenXIntrinsic::isGenXIntrinsic(ID)
                ? GenXIntrinsicInfo(ID).getExecSizeAllowedBits()

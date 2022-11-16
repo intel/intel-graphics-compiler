@@ -5669,7 +5669,27 @@ void GenXKernelBuilder::buildGetHWID(CallInst *CI, const DstOpndDesc &DstDesc) {
         ISA_MOV, nullptr, false, vISA_EMASK_M1_NM, EXEC_SIZE_1, dst, src));
   };
 
-  if (Subtarget->isPVC()) {
+  switch (Subtarget->getTargetId()) {
+  case GenXSubtarget::XeHP:
+  case GenXSubtarget::XeHPG:
+  case GenXSubtarget::XeLPG:
+    // [13:11] Slice ID.
+    // [10:9] Dual - SubSlice ID
+    // [8] SubSlice ID.
+    // [7] : EUID[2]
+    // [6] : Reserved
+    // [5:4] EUID[1:0]
+    // [3] : Reserved MBZ
+    // [2:0] : TID
+    //
+    // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
+
+    // Load sr0 with [13:0] mask
+    loadMaskedSR0(14);
+    // Remove reserved bits
+    removeBitRange(6, 1);
+    break;
+  case GenXSubtarget::XeHPC:
     // [14:12] Slice ID.
     // [11:9] SubSlice ID
     // [8] : EUID[2]
@@ -5682,33 +5702,14 @@ void GenXKernelBuilder::buildGetHWID(CallInst *CI, const DstOpndDesc &DstDesc) {
 
     // Load sr0 with [14:0] mask
     loadMaskedSR0(15);
-
     // Remove reserved bits
     removeBitRange(6, 2);
-    removeBitRange(3, 1);
-
-    // Store final value
-    writeHwtidToDst();
-
-    return;
+    break;
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "The platform does not support HWTID");
   }
-  // XeHP_SDV
-  // [13:11] Slice ID.
-  // [10:9] Dual - SubSlice ID
-  // [8] SubSlice ID.
-  // [7] : EUID[2]
-  // [6] : Reserved
-  // [5:4] EUID[1:0]
-  // [3] : Reserved MBZ
-  // [2:0] : TID
-  //
-  // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
-
-  // Load sr0 with [13:0] mask
-  loadMaskedSR0(14);
 
   // Remove reserved bits
-  removeBitRange(6, 1);
   removeBitRange(3, 1);
 
   // Store final value

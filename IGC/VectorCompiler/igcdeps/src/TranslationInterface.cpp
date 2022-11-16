@@ -142,14 +142,52 @@ std::unique_ptr<llvm::MemoryBuffer> getVCModuleBuffer() {
                                           false /* RequiresNullTerminator */);
 }
 
+static std::pair<std::string, unsigned>
+getPlatformName(const PLATFORM &Platform) {
+  constexpr unsigned ComputeTileMaskPVC = 7;
+  auto Core = Platform.eRenderCoreFamily;
+  auto Product = Platform.eProductFamily;
+  unsigned DevId = Platform.usDeviceID;
+  unsigned RevId = Platform.usRevId;
+
+  switch (Core) {
+  case IGFX_GEN8_CORE:
+    return {"Gen8", RevId};
+  case IGFX_GEN9_CORE:
+    if (Product == IGFX_BROXTON || Product == IGFX_GEMINILAKE)
+      return {"Gen9LP", RevId};
+    return {"Gen9", RevId};
+  case IGFX_GEN11_CORE:
+  case IGFX_GEN11LP_CORE:
+    return {"Gen11", RevId};
+  case IGFX_GEN12_CORE:
+  case IGFX_GEN12LP_CORE:
+    return {"XeLP", RevId};
+  case IGFX_XE_HP_CORE:
+    return {"XeHP", RevId};
+  case IGFX_XE_HPG_CORE:
+    if (Product == IGFX_DG2)
+      return {"XeHPG", RevId};
+    if (Product == IGFX_METEORLAKE)
+      return {"XeLPG", RevId};
+    break;
+  case IGFX_XE_HPC_CORE:
+    if (Product == IGFX_PVC)
+      return {"XeHPC", RevId & ComputeTileMaskPVC};
+    break;
+  default:
+    break;
+  }
+  IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported platform");
+  return {"Invalid", -1};
+}
+
 static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
                            vc::CompileOptions &Opts) {
   auto &PlatformInfo = IGCPlatform.getPlatformInfo();
-  unsigned RevId = PlatformInfo.usRevId;
-  const char *PlatformStr =
-      cmc::getPlatformStr(PlatformInfo, /* inout */ RevId);
-  Opts.CPUStr = PlatformStr ? PlatformStr : "";
-  Opts.RevId = RevId;
+
+  std::tie(Opts.CPUStr, Opts.RevId) = getPlatformName(PlatformInfo);
+
   Opts.HasL1ReadOnlyCache = IGCPlatform.hasL1ReadOnlyCache();
   Opts.HasLocalMemFenceSupress = IGCPlatform.localMemFenceSupress();
   Opts.HasMultiTile = IGCPlatform.hasMultiTile();

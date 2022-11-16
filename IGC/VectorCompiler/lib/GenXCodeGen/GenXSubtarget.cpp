@@ -52,30 +52,20 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
   else
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_STACK;
 
-  GenXVariant = llvm::StringSwitch<GenXTag>(CPU)
-                    .Case("generic", GENERIC_ARCH)
-                    .Case("BDW", GENX_BDW)
-                    .Case("SKL", GENX_SKL)
-                    .Case("BXT", GENX_BXT)
-                    .Case("KBL", GENX_KBL)
-                    .Case("GLK", GENX_GLK)
-                    .Case("ICLLP", GENX_ICLLP)
-                    .Case("TGLLP", GENX_TGLLP)
-                    .Case("RKL", GENX_RKL)
-                    .Case("DG1", GENX_DG1)
-                    .Case("ADLS", GENX_ADLS)
-                    .Case("ADLP", GENX_ADLP)
-                    .Case("ADLN", GENX_ADLN)
-                    .Cases("XEHP", "XEHP_SDV", XE_HP_SDV)
-                    .Case("DG2", XE_DG2)
-                    .Case("MTL", XE_MTL)
-                    .Case("PVC", XE_PVC)
-                    .Case("PVCXT_A0", XE_PVCXT_A0)
-                    .Case("PVCXT", XE_PVCXT)
-                    .Default(UNDEFINED_ARCH);
+  TargetId = llvm::StringSwitch<GenXTargetId>(CPU)
+                 .Case("Gen8", Gen8)
+                 .Case("Gen9", Gen9)
+                 .Case("Gen9LP", Gen9LP)
+                 .Case("Gen11", Gen11)
+                 .Case("XeLP", XeLP)
+                 .Case("XeHP", XeHP)
+                 .Case("XeHPG", XeHPG)
+                 .Case("XeLPG", XeLPG)
+                 .Case("XeHPC", XeHPC)
+                 .Default(Invalid);
 
   std::string CPUName(CPU);
-  if (CPUName.empty() || GenXVariant == UNDEFINED_ARCH)
+  if (CPUName.empty() || TargetId == Invalid)
     report_fatal_error("Undefined or blank arch passed");
 
   ParseSubtargetFeatures(CPUName,
@@ -97,6 +87,5 @@ GenXSubtarget::GenXSubtarget(const Triple &TT, const std::string &CPU,
 #endif
                            FS),
       TargetTriple(TT) {
-
   initSubtargetFeatures(CPU, FS);
 }
