@@ -2886,6 +2886,9 @@ bool G4_INST::isPartialWriteForSpill(bool inSIMDCF) const {
       // also we can't use the scratch message when under stack call
       return true;
     }
+    if (getMaskOption() != InstOpt_M0) {
+      return true;
+    }
   }
 
   return false;
