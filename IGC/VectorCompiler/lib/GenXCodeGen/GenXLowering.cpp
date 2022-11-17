@@ -4215,6 +4215,7 @@ bool GenXLowering::lowerBoolSplat(ShuffleVectorInst *SI, Value *In,
     R.Width = R.NumElements;
     R.Stride = 0;
     R.VStride = 0;
+    R.Offset = Idx * R.ElementBytes;
     for (unsigned i = 0; i != 2; ++i) {
       auto Opnd = Cmp->getOperand(i);
       if (auto C = dyn_cast<Constant>(Opnd)) {
