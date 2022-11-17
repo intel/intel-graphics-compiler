@@ -47,7 +47,6 @@ set(IGC_BUILD__SRC__Compiler
     "${CMAKE_CURRENT_SOURCE_DIR}/FixInvalidFuncNamePass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/FixResourcePtr.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/HandleLoadStoreInstructions.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/igc_workaround.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LegalizationPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowPrecisionOptPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MetaDataUtilsWrapper.cpp"
@@ -116,6 +115,12 @@ set(IGC_BUILD__SRC__Compiler
     ${IGC_BUILD__SRC__Compiler_MetaDataApi}
     ${IGC_BUILD__SRC__Compiler_Optimizer}
   )
+
+set(IGC_BUILD__SRC__Compiler
+    "${IGC_BUILD__SRC__Compiler}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/igc_workaround_linux.cpp"
+  )
+
 
 
 if(NOT ANDROID)

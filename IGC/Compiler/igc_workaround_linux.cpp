@@ -152,6 +152,8 @@ namespace IGC
 
             break;
         case IGFX_METEORLAKE:
+        /* This is just a place holder the WA application has moved below and changed
+        its no longer based on platform */
             break;
         default:
             IGC_ASSERT(0);
@@ -177,7 +179,6 @@ namespace IGC
                 {
                     InitGt_12_71HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
                 }
-
                 InitGt_12_70SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
             }
             break;
