@@ -471,7 +471,7 @@ unsigned SpillManagerGRF::calculateSpillDisp(G4_RegVar *regVar) const {
   }
 
   std::vector<G4_Declare *> overlappingDcls;
-  getOverlappingIntervals(regVar->getDeclare()->getRootDeclare(),
+  getOverlappingIntervals(lrInfo_[lrId]->getDcl()->getRootDeclare(),
                           overlappingDcls);
   for (auto overlap : overlappingDcls) {
     auto lrEdge = overlap->getRegVar();
