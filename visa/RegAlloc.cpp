@@ -268,7 +268,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
             if (src0->isAddrExp()) {
               src0addr = true;
             } else if (src0->isSrcRegRegion() &&
-                       src0->getRegAccess() == Direct) {
+                       src0->asSrcRegRegion()->getRegAccess() == Direct) {
               if (src0->isAddress()) {
                 src0addr = true;
               }
@@ -278,7 +278,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
             if (src1->isAddrExp()) {
               src1addr = true;
             } else if (src1->isSrcRegRegion() &&
-                       src1->getRegAccess() == Direct) {
+                       src1->asSrcRegRegion()->getRegAccess() == Direct) {
               if (src1->isAddress()) {
                 src1addr = true;
               }
