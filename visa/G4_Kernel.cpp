@@ -1153,25 +1153,48 @@ void G4_Kernel::dumpToFile(const std::string &suffixIn, bool forceG4Dump) {
   if (!dumpDot && !dumpG4)
     return;
 
-  // calls to this will produce a sequence of dumps
-  // [kernel-name].000.[suffix].{dot,g4}
-  // [kernel-name].001.[suffix].{dot,g4}
-  // ...
-  // If vISA_DumpPassesSubset == 1 then we omit any files that don't change
-  // the string representation of the kernel (i.e. skip passes that don't do
-  // anything).
+  // todo: remove else branch as it is not reached at all.
   std::stringstream ss;
-  if (m_options->getOption(vISA_DumpUseInternalName) || name == nullptr) {
+  const char* prefix = nullptr;
+  getOptions()->getOption(VISA_AsmFileName, prefix);
+  if (prefix != nullptr) {
+    // Use AsmFileName as prefix for g4/dot dumps
     if (fg.builder->getIsKernel()) {
-      ss << "k" << getKernelID();
-    } else {
-      ss << "f" << getFunctionId();
+      // entry
+      ss << prefix
+        << "." << std::setfill('0') << std::setw(3)
+        << nextDumpIndex++ << "." << suffixIn;
     }
-  } else {
-    ss << name;
+    else {
+      // callee
+      ss << prefix
+        << "_f" << getFunctionId()
+        << "." << std::setfill('0') << std::setw(3)
+        << nextDumpIndex++ << "." << suffixIn;
+    }
   }
-  ss << "." << std::setfill('0') << std::setw(3) << nextDumpIndex++ << "."
-     << suffixIn;
+  else {
+    // calls to this will produce a sequence of dumps
+    // [kernel-name].000.[suffix].{dot,g4}
+    // [kernel-name].001.[suffix].{dot,g4}
+    // ...
+    // If vISA_DumpPassesSubset == 1 then we omit any files that don't change
+    // the string representation of the kernel (i.e. skip passes that don't do
+    // anything).
+    if (m_options->getOption(vISA_DumpUseInternalName) || name == nullptr) {
+      if (fg.builder->getIsKernel()) {
+        ss << "k" << getKernelID();
+      }
+      else {
+        ss << "f" << getFunctionId();
+      }
+    }
+    else {
+      ss << name;
+    }
+    ss << "." << std::setfill('0') << std::setw(3) << nextDumpIndex++ << "."
+      << suffixIn;
+  }
   std::string baseName = sanitizePathString(ss.str());
 
   if (dumpDot)
@@ -1463,8 +1486,6 @@ void G4_Kernel::dumpG4Internal(const std::string &file) {
 }
 
 void G4_Kernel::dumpG4InternalTo(std::ostream &os) {
-  const char *asmFileName = nullptr;
-  m_options->getOption(VISA_AsmFileName, asmFileName);
   os << ".kernel " << name << "\n";
 
   for (const G4_Declare *d : Declares) {
