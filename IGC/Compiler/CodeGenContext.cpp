@@ -231,6 +231,9 @@ namespace IGC
         {
             CreateResourceDimensionTypes(*this);
         }
+#ifdef __IGC_OPAQUE_POINTERS_FORCE_DISABLED__
+        this->setOpaquePointers(false);
+#endif
     }
 
     void LLVMContextWrapper::AddRef()

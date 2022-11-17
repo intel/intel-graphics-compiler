@@ -275,6 +275,10 @@ endif()
 # Remove this condition after transition period is over
 option(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC "[Experimental] Enable usage of Khronos SPIRV-LLVM-Translator in Scalar Compiler" OFF)
 
+# TODO: Change this flag to opt-out or remove completely once
+# opaque pointers are fully supported within the IGC stack.
+option(IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED "[Experimental] Allow usage of opaque pointers within LLVM transformations" OFF)
+
 option(IGC_OPTION__ENABLE_LIT_TESTS "Enable lit testing for IGC compiler. May require additional tools like llvm lit and opt" OFF)
 
 set(IGC_OPTION__BIF_SRC_OCL_DIR "${IGC_SOURCE_DIR}/BiFModule"

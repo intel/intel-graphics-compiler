@@ -1494,6 +1494,10 @@ namespace TC
             optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
         }
 
+#ifdef __IGC_OPAQUE_POINTERS_FORCE_DISABLED__
+        optionsEx += " -no-opaque-pointers";
+#endif
+
         std::string extensionsFromInternalOptions = GetSubstring(pInternalOptions, "-cl-ext=");
 
         std::string extensions;

@@ -69,6 +69,30 @@ list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLA
 # Add major version definition for llvm wrapper.
 add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
 
+set(IGC_LLVM_DEPENDENT_CLANG_FLAGS "")
+set(IGC_LLVM_DEPENDENT_OPT_FLAGS "")
+
+# Disable the opaque pointers' usage explicitly, unless the block below deems that unnecessary
+set(IGC_OPAQUE_POINTERS_FORCE_DISABLED ON)
+if(IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED)
+  if(LLVM_VERSION_MAJOR LESS 14)
+    message(WARNING "IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED ignored: opaque pointers are not available prior to LLVM 14")
+  endif()
+  set(IGC_OPAQUE_POINTERS_FORCE_DISABLED OFF)
+elseif(LLVM_VERSION_MAJOR LESS 15)
+  # Opaque pointers are either absent (LLVM <14) or disabled by default. No need to force-disable
+  set(IGC_OPAQUE_POINTERS_FORCE_DISABLED OFF)
+endif(IGC_OPTION__LLVM_OPAQUE_POINTERS_ENABLED)
+
+if(IGC_OPAQUE_POINTERS_FORCE_DISABLED)
+  # Once we've figured out that explicit disabling is needed, propagate
+  # corresponding options to all the in-tree calls of clang/opt tools.
+  list(APPEND IGC_LLVM_DEPENDENT_CLANG_FLAGS "-no-opaque-pointers")
+  list(APPEND IGC_LLVM_DEPENDENT_OPT_FLAGS "-opaque-pointers=0")
+  # Also inform the preprocessor.
+  add_compile_definitions(__IGC_OPAQUE_POINTERS_FORCE_DISABLED__)
+endif()
+
 # Include LLVM headers as system ones.
 # This will disable warnings on linux.
 include_directories(SYSTEM ${LLVM_INCLUDE_DIRS})
