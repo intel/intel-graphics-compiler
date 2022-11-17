@@ -513,9 +513,6 @@ namespace IGC
         uint32_t GlobalPtrOffset = 0; // pointer to RTGlobals
         uint32_t LocalPtrOffset  = 0; // pointer to local root sig (except for raygen!)
         uint32_t StackIDsOffset  = 0; // stack ID vector base
-
-        // Shader has LSC store messages with non-default L1 cache control
-        bool HasLscStoresWithNonDefaultL1CacheControls = false;
     };
 
     struct SRayTracingShadersGroup

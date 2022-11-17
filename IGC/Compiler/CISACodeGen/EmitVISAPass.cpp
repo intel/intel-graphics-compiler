@@ -13580,7 +13580,6 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
 
     ResourceDescriptor resource = GetResourceVariable(pllDstBuffer);
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(pInsn, false, true);
-    m_currShader->HasLscStoreCacheControls(cacheOpts);
 
     if (m_currShader->GetIsUniform(pInsn))
     {
@@ -19750,7 +19749,6 @@ void EmitPass::emitLscIntrinsicStore(llvm::GenIntrinsicInst* inst)
 
     LSC_CACHE_OPTS cacheOpts =
         translateLSCCacheControlsFromValue(inst->getOperand(5), false);
-    m_currShader->HasLscStoreCacheControls(cacheOpts);
     emitLscIntrinsicFragments(storedVar, dataSize, dataElems, immOffset,
         [&] (CVariable* fragData, int fragIx, LSC_DATA_ELEMS fragElems, int fragImmOffset) {
             if (isBlockStore) {
@@ -19844,7 +19842,6 @@ void EmitPass::emitLSCStore(
 {
     LSC_DATA_SIZE elemSizeEnum = m_encoder->LSC_GetElementSize(elemSize);
     LSC_DATA_ELEMS numElemsEnum = m_encoder->LSC_GetElementNum(numElems);
-    m_currShader->HasLscStoreCacheControls(cacheOpts);
     m_encoder->LSC_StoreScatter(
         LSC_STORE, src, offset, elemSizeEnum, numElemsEnum, blockOffset,
         resource, addr_size, data_order, immOffset, cacheOpts);
