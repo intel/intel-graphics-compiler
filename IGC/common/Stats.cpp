@@ -548,17 +548,20 @@ void TimeStats::printSumTime() const
 
     if ( dumpCoarse )
     {
-        pp.printSumTimeCSV("c:\\Intel\\TimeStatCoarseSum.csv");
+        pp.printSumTimeCSV(IGC::Debug::GetShaderOutputFolder() +
+                           std::string("TimeStatCoarseSum.csv"));
     }
     else
     {
-        pp.printSumTimeCSV("c:\\Intel\\TimeStatSum.csv");
+        pp.printSumTimeCSV(IGC::Debug::GetShaderOutputFolder() +
+                           std::string("TimeStatSum.csv"));
     }
 
     if (IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStatsPerPass, TIME_STATS_PER_PASS))
     {
         pp.printPerPassSumTime(llvm::dbgs());
-        pp.printPerPassSumTimeCSV("c:\\Intel\\TimeStatPerPassSum.csv");
+        pp.printPerPassSumTimeCSV(IGC::Debug::GetShaderOutputFolder() +
+                                  std::string("TimeStatPerPassSum.csv"));
     }
 
     pp.printSumTimeTable(llvm::dbgs());
@@ -577,20 +580,20 @@ bool TimeStats::skipTimer( int i ) const
     }
     return false;
 }
-void TimeStats::printSumTimeCSV(const char* outputFile) const
+void TimeStats::printSumTimeCSV(std::string const& outputFile) const
 {
     IGC_ASSERT_MESSAGE(m_isPostProcessed, "Print functions should only be called on a Post-Processed TimeStats object");
 
     bool fileExist = false;
 
-    FILE* fp = fopen(outputFile, "r");
+    FILE *fp = fopen(outputFile.c_str(), "r");
     if( fp )
     {
         fileExist = true;
         fclose(fp);
     }
 
-    FILE* fileName = fopen(outputFile, "a");
+    FILE* fileName = fopen(outputFile.c_str(), "a");
 
     if( !fileExist && fileName )
     {
@@ -651,7 +654,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
     }
 }
 
-void TimeStats::printPerPassSumTimeCSV(const char* outputFile) const
+void TimeStats::printPerPassSumTimeCSV(std::string const& outputFile) const
 {
     IGC_ASSERT_MESSAGE(m_isPostProcessed, "Print functions should only be called on a Post-Processed TimeStats object");
 
@@ -662,14 +665,14 @@ void TimeStats::printPerPassSumTimeCSV(const char* outputFile) const
 
     bool fileExist = false;
 
-    FILE* fp = fopen(outputFile, "r");
+    FILE* fp = fopen(outputFile.c_str(), "r");
     if (fp)
     {
         fileExist = true;
         fclose(fp);
     }
 
-    FILE* fileName = fopen(outputFile, "a");
+    FILE* fileName = fopen(outputFile.c_str(), "a");
     std::map<std::string, PerPassTimeStat>::const_iterator iter;
 
     if (!fileExist && fileName)
@@ -916,11 +919,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName, UINT64 psoDDIHash )
     else
         subFile += IGC::Debug::GetShaderCorpusName();
     const std::string outputFilePath =
-#if defined(__linux__)
-    subFile + ".csv";
-#else
-    std::string("c:\\Intel\\") + subFile + ".csv";
-#endif
+    IGC::Debug::GetShaderOutputFolder() + subFile + ".csv";
     const char *outputFile = outputFilePath.c_str();
 
     bool fileExist = false;
@@ -987,7 +986,8 @@ void TimeStats::printPerPassTimeCSV(std::string const& corpusName) const
         subFile += "Shaders";
     else
         subFile += IGC::Debug::GetShaderCorpusName();
-    const std::string outputFilePath = std::string("c:\\Intel\\") + subFile + ".csv";
+    const std::string outputFilePath =
+        IGC::Debug::GetShaderOutputFolder() + subFile + ".csv";
     const char* outputFile = outputFilePath.c_str();
     bool fileExist = false;
 

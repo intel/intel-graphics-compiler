@@ -242,7 +242,7 @@ public:
 
 private:
     /// \deprecated Print aggregate times for multiple shaders in csv format
-    void printSumTimeCSV( const char* fileName ) const;
+    void printSumTimeCSV( std::string const& fileName ) const;
     /// Print aggregate times for multiple shaders in human readable format
     void printSumTimeTable( llvm::raw_ostream & OS ) const;
 
@@ -251,7 +251,7 @@ private:
     /// \deprecated Print the currently accumulated times in csv format
     void printTimeCSV( std::string const& corpusName, UINT64 psoDDIHash ) const;
     void printPerPassTimeCSV( std::string const& corpusName ) const;
-    void printPerPassSumTimeCSV(const char* fileName) const;
+    void printPerPassSumTimeCSV(std::string const& fileName) const;
 
     // Return a copy of *this, with Unaccounted timer values filled in
     TimeStats postProcess() const;
