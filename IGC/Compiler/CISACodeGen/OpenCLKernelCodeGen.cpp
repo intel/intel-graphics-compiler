@@ -1354,9 +1354,11 @@ namespace IGC
             if (argAlloc.type == ResourceTypeEnum::BindlessUAVResourceType)
                 addr_mode = zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
 
-            zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
-                payloadPosition, kernelArg->getAllocateSize(), arg_idx, addr_mode,
-                addr_space, access_type);
+            zebin::zeInfoPayloadArgument& arg =
+                zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+                    payloadPosition, kernelArg->getAllocateSize(), arg_idx, addr_mode,
+                    addr_space, access_type);
+            arg.is_pipe = funcMD.m_OpenCLArgTypeQualifiers[arg_idx] == "pipe";
             break;
         }
         case KernelArg::ArgType::PTR_LOCAL:
