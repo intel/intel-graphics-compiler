@@ -1957,7 +1957,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc2(G4_INST *inst) {
     mybin->SetBits(bitsSendsSelReg32Desc_0, bitsSendsSelReg32Desc_0, 0);
     mybin->SetBits(bitsSrcImm32_2, bitsSrcImm32_3,
                    (uint32_t)src2->asImm()->getInt());
-  } else if (src2->isSrcRegRegion() && src2->asSrcRegRegion()->isA0()) {
+  } else if (src2->isSrcRegRegion() && src2->asSrcRegRegion()->isDirectA0()) {
     mybin->SetBits(bitsSendsSelReg32Desc_0, bitsSendsSelReg32Desc_0, 1);
   }
 
@@ -2300,7 +2300,7 @@ void SetExtMsgDescr(G4_INST *inst, BinInst *mybin, uint32_t value) {
   if (inst->isSplitSend()) {
     G4_Operand *src3 = inst->getSrc(3);
     // additional extended msg desc to be encoded
-    if (src3 && src3->isSrcRegRegion() && src3->asSrcRegRegion()->isA0()) {
+    if (src3 && src3->isSrcRegRegion() && src3->asSrcRegRegion()->isDirectA0()) {
       mybin->SetBits(bitsSendsSelReg32ExDesc_0, bitsSendsSelReg32ExDesc_1, 1);
       mybin->SetBits(
           bitsSendsExDescRegNum_0, bitsSendsExDescRegNum_1,

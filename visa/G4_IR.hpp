@@ -1930,9 +1930,6 @@ public:
   bool isDbgReg() const;
   bool isTmReg() const;
   bool isTDRReg() const;
-  bool isA0() const;
-  bool isAddress() const;
-  bool isScalarAddr() const;
 
   const G4_AddrExp *asAddrExp() const {
 #ifdef _DEBUG
@@ -2155,7 +2152,6 @@ public:
   bool isRegAllocPartaker() const;
 
   bool noScoreBoard() const;
-  bool isScalarAddr() const;
   G4_Areg *getAreg() const;
 
   virtual unsigned short ExRegNum(bool &valid) {
@@ -2474,7 +2470,6 @@ public:
   bool isRegAllocPartaker() const { return id != UNDEFINED_VAL; }
   unsigned getRegAllocPartaker() const { return id; }
   bool isAddress() const { return decl->getRegFile() == G4_ADDRESS; }
-  bool isScalarAddr() const { return decl->getRegFile() == G4_SCALAR; }
   const G4_VarBase *getPhyReg() const { return reg.phyReg; }
   G4_VarBase *getPhyReg() { return reg.phyReg; }
   unsigned getByteAddr(const IR_Builder &builder) const;
@@ -2691,11 +2686,17 @@ public:
   bool isDbgReg() const { return base->isDbgReg(); }
   bool isTmReg() const { return base->isTmReg(); }
   bool isTDRReg() const { return base->isTDRReg(); }
-  bool isA0() const { return base->isA0(); }
   bool isGreg() const { return base->isGreg(); }
+  // Returns true if this operand is a direct address operand (e.g.,
+  // a0.n<0;1,0>:uw)
+  // The difference between the two versions happens when base is an address
+  // variable; isDirectA0() returns false before RA when the declare is not
+  // assigned a physical AddrReg, while isDirectAddress() always returns true.
+  // Having two versions is unfortunate but we keep the behavior to avoid
+  // potential regressions in legacy code.
+  bool isDirectA0() const { return acc == Direct && base->isA0(); }
+  bool isDirectAddress() const { return acc == Direct && base->isAddress(); }
   bool isScalar() const;
-  bool isAddress() const { return base->isAddress(); }
-  bool isScalarAddr() const { return base->isScalarAddr(); }
 
   unsigned short ExRegNum(bool &) const;
   unsigned short ExSubRegNum(bool &);
@@ -2848,10 +2849,16 @@ public:
   bool isDbgReg() const { return base->isDbgReg(); }
   bool isTmReg() const { return base->isTmReg(); }
   bool isTDRReg() const { return base->isTDRReg(); }
-  bool isA0() const { return base->isA0(); }
   bool isGreg() const { return base->isGreg(); }
-  bool isAddress() const { return base->isAddress(); }
-  bool isScalarAddr() const { return base->isScalarAddr(); }
+  // Returns true if this operand is a direct address operand (e.g.,
+  // a0.n<1>:uw)
+  // The difference between the two versions happens when base is an address
+  // variable; isDirectA0() returns false before RA when the declare is not
+  // assigned a physical AddrReg, while isDirectAddress() always returns true.
+  // Having two versions is unfortunate but we keep the behavior to avoid
+  // potential regressions in legacy code.
+  bool isDirectA0() const { return acc == Direct && base->isA0(); }
+  bool isDirectAddress() const { return acc == Direct && base->isAddress(); }
 
   unsigned short ExRegNum(bool &);
   unsigned short ExSubRegNum(bool &);
@@ -3178,16 +3185,6 @@ inline bool G4_Operand::isTmReg() const {
 inline bool G4_Operand::isTDRReg() const {
   return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isTDRReg();
 }
-inline bool G4_Operand::isA0() const {
-  return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isA0();
-}
-inline bool G4_Operand::isAddress() const {
-  return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isAddress();
-}
-inline bool G4_Operand::isScalarAddr() const {
-  return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isScalarAddr();
-}
-
 // Inlined members of G4_VarBase
 inline bool G4_VarBase::isAreg() const {
   if (isRegVar())
@@ -3269,11 +3266,7 @@ inline bool G4_VarBase::isAddress() const {
     return asRegVar()->isAddress();
   return isPhyAreg() && asAreg()->isA0();
 }
-inline bool G4_VarBase::isScalarAddr() const {
-  if (isRegVar())
-    return asRegVar()->isScalarAddr();
-  return false;
-}
+
 inline bool G4_VarBase::isSpReg() const {
   if (isRegVar()) {
     return asRegVar()->isSpReg();
