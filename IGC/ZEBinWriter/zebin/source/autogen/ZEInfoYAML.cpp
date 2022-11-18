@@ -95,6 +95,7 @@ void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument
     io.mapOptional("image_type", info.image_type, std::string());
     io.mapOptional("image_transformable", info.image_transformable, false);
     io.mapOptional("sampler_type", info.sampler_type, std::string());
+    io.mapOptional("is_pipe", info.is_pipe, false);
 }
 void MappingTraits<zeInfoPerThreadPayloadArgument>::mapping(IO& io, zeInfoPerThreadPayloadArgument& info)
 {
