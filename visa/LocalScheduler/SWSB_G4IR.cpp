@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "SWSB_G4IR.h"
 #include "../G4_Opcode.h"
-#include "../RegAlloc.h"
+#include "../PointsToAnalysis.h"
 #include "../Timer.h"
 #include "Dependencies_G4IR.h"
 #include "visa_wa.h"

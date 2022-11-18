@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "PointsToAnalysis.h"
 #include "Rematerialization.h"
 
 namespace vISA {

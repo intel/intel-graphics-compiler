@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "BitSet.h"
 #include "G4_IR.hpp"
 #include "RPE.h"
-#include "RegAlloc.h"
 #include "SpillManagerGMRF.h"
 #include "VarSplit.h"
 
@@ -730,6 +729,7 @@ public:
   bool isClobbered(LiveRange *lr, std::string &msg);
 };
 
+class PointsToAnalysis;
 class GlobalRA {
 private:
   std::unordered_set<G4_INST *> EUFusionCallWAInsts;

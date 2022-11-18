@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "LVN.hpp"
+#include "PointsToAnalysis.h"
 #include "../Timer.h"
 
 #include <fstream>

@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "G4_IR.hpp"
 #include "GraphColor.h"
 #include "Mem_Manager.h"
+#include "PointsToAnalysis.h"
 
 #include <fstream>
 #include <math.h>

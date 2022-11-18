@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "HWConformity.h"
 #include "LocalScheduler/LocalScheduler_G4IR.h"
 #include "LocalScheduler/SWSB_G4IR.h"
-#include "RegAlloc.h"
 #include <optional>
 #include <unordered_set>
 

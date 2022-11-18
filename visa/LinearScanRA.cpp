@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #include "LinearScanRA.h"
 #include "DebugInfo.h"
 #include "LocalRA.h"
-#include "RegAlloc.h"
+#include "PointsToAnalysis.h"
 #include "SCCAnalysis.h"
 #include "SpillManagerGMRF.h"
 #include "common.h"

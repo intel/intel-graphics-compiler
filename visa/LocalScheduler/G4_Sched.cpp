@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../GraphColor.h"
 #include "LocalScheduler_G4IR.h"
 #include "Passes/AccSubstitution.hpp"
+#include "../PointsToAnalysis.h"
 
 #include <fstream>
 #include <functional>

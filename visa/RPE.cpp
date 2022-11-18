@@ -8,8 +8,9 @@ SPDX-License-Identifier: MIT
 
 // This file contains implementation of Register Pressure Estimator.
 
-#include "RPE.h"
 #include "GraphColor.h"
+#include "PointsToAnalysis.h"
+#include "RPE.h"
 #include "Timer.h"
 
 namespace vISA {

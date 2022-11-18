@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "Common_BinaryEncoding.h"
 #include "FlowGraph.h"
 #include "GraphColor.h"
-#include "RegAlloc.h"
 #include "VISADefines.h"
 #include <string>
 #include <unordered_map>

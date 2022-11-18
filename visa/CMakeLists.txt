@@ -234,6 +234,7 @@ set(GenX_Common_Sources_External_Other
   Optimizer.cpp
   PhyRegCompute.cpp
   PhyRegUsage.cpp
+  PointsToAnalysis.cpp
   PreDefinedVars.cpp
   RPE.cpp
   ReduceExecSize.cpp
@@ -325,6 +326,7 @@ set(GenX_Common_Headers
   Metadata.h
   Optimizer.h
   PhyRegUsage.h
+  PointsToAnalysis.h
   PreDefinedVars.h
   RPE.h
   RegAlloc.h

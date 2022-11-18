@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "../FlowGraph.h"
 #include "../G4_IR.hpp"
 #include "../Mem_Manager.h"
-#include "../RegAlloc.h"
 #include "../Timer.h"
 #include "LocalScheduler_G4IR.h"
 #include <bitset>
@@ -27,6 +26,7 @@ struct SBBucketNode;
 class SBDDD;
 class G4_BB_SB;
 class SWSB;
+class PointsToAnalysis;
 } // namespace vISA
 
 // FIXME, build a table for different platforms

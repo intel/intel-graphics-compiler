@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "SpillCode.h"
 #include "BuildIR.h"
 #include "FlowGraph.h"
 #include "Mem_Manager.h"
+#include "PointsToAnalysis.h"
+#include "SpillCode.h"
 #include <vector>
 
 #ifdef _DEBUG

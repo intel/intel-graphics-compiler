@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "G4_Verifier.hpp"
 #include "HWConformity.h"
 #include "Optimizer.h"
+#include "PointsToAnalysis.h"
 #include "visa_wa.h"
 
 using namespace vISA;

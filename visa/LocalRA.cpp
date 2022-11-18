@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "LocalRA.h"
 #include "DebugInfo.h"
-#include "RegAlloc.h"
 #include "common.h"
 
 #include <fstream>

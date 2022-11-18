@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "Common_BinaryEncoding.h"
 #include "DebugInfo.h"
 #include "FlowGraph.h"
+#include "PointsToAnalysis.h"
 #include "Passes/AccSubstitution.hpp"
 #include "Passes/InstCombine.hpp"
 #include "Passes/LVN.hpp"

@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA_util.h"
 #include "FlowGraph.h"
 #include "G4_IR.hpp"
-#include "RegAlloc.h"
 
 #include <map>
 
@@ -32,6 +31,7 @@ public:
   ~DPASSrc2RSCache() {}
 };
 
+class PointsToAnalysis;
 class HWConformity {
   IR_Builder &builder;
   G4_Kernel &kernel;

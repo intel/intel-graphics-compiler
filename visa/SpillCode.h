@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 namespace vISA {
+class PointsToAnalysis;
 class SpillManager {
   GlobalRA &gra;
   G4_Kernel &kernel;

@@ -86,6 +86,7 @@ typedef struct ActiveDef {
 typedef std::multimap<unsigned int, ActiveDef> ActiveDefMMap;
 
 namespace vISA {
+class PointsToAnalysis;
 class LVN {
 private:
   std::map<G4_INST *, UseList> defUse;

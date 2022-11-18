@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "LinearScanRA.h"
 #include "LocalRA.h"
 #include "Optimizer.h"
+#include "PointsToAnalysis.h"
 #include "RPE.h"
 #include "Rematerialization.h"
 #include "SCCAnalysis.h"
