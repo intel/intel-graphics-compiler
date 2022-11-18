@@ -682,7 +682,12 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
     SmallVector<Value*, 8> newCallArguments;
     for (auto& arg : call->args())
     {
-        newCallArguments.push_back(getOrCreatePromotedValue(arg));
+        auto promotedArg = getOrCreatePromotedValue(arg);
+        if (promotedArg->getType()->isIntegerTy(1))
+        {
+            promotedArg = createZextIfNeeded(promotedArg, call);
+        }
+        newCallArguments.push_back(promotedArg);
     }
 
     return CallInst::Create(
@@ -749,11 +754,23 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
         return icmp;
     }
 
+    auto promotedOp0 = getOrCreatePromotedValue(op0);
+    auto promotedOp1 = getOrCreatePromotedValue(op1);
+
+    if (promotedOp0->getType()->isIntegerTy(1))
+    {
+        promotedOp0 = createZextIfNeeded(promotedOp0, icmp);
+    }
+    if (promotedOp1->getType()->isIntegerTy(1))
+    {
+        promotedOp1 = createZextIfNeeded(promotedOp1, icmp);
+    }
+
     return new ICmpInst(
         icmp,
         icmp->getPredicate(),
-        getOrCreatePromotedValue(op0),
-        getOrCreatePromotedValue(op1),
+        promotedOp0,
+        promotedOp1,
         ""
     );
 }
