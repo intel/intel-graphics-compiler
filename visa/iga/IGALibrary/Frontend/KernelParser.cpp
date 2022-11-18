@@ -770,16 +770,6 @@ class KernelParser : GenParser {
                            // ensure the inst opt is given
 
 private:
-  void addNullSendSrc1() {
-    // For instructions those have implicit types, match the type to
-    // the expected one. Otherwise, ARF_NULL operand should have Type::INVALID
-    Type type = Type::INVALID;
-    m_opSpec->implicitSrcTypeVal(1, false, type);
-    m_builder.InstSrcOpRegDirect(1,
-                                 m_srcLocs[0], // use src0 loc
-                                 SrcModifier::NONE, RegName::ARF_NULL,
-                                 REGREF_ZERO_ZERO, Region::INVALID, type);
-  }
 
 
 public:
