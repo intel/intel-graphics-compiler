@@ -748,12 +748,12 @@ void GenXPredToSimdCF::insertIfGoto(SimdCFIfRegion &R) {
                                     Mask->getName() + ".not");
   Value *EM = getEM(M);
   Instruction *OldGotoEM =
-      Builder.CreateLoad(EM->getType()->getPointerElementType(), EM,
+      Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EM->getType()), EM,
                          false /*isVolatile*/, EM->getName());
   OldGotoEM->setDebugLoc(DL);
   Value *GotoRMAddr = getRMAddr(Br->getSuccessor(0), SimdWidth);
   Instruction *OldGotoRM = Builder.CreateLoad(
-      GotoRMAddr->getType()->getPointerElementType(), GotoRMAddr,
+      IGCLLVM::getNonOpaquePtrEltTy(GotoRMAddr->getType()), GotoRMAddr,
       false /*isVolatile*/, GotoRMAddr->getName());
   OldGotoRM->setDebugLoc(DL);
   Type *GotoTys[] = {OldGotoEM->getType(), OldGotoRM->getType()};
@@ -798,12 +798,12 @@ void GenXPredToSimdCF::insertIfGoto(SimdCFIfRegion &R) {
   AfterThens[&R] = AfterThen;
 
   Builder.SetInsertPoint(AfterThen, AfterThen->begin());
-  auto *OldEM = Builder.CreateLoad(EM->getType()->getPointerElementType(), EM,
+  auto *OldEM = Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EM->getType()), EM,
                                    false /*isVolatile*/, EM->getName());
   OldEM->setDebugLoc(DL);
   auto *RMAddr = getRMAddr(Br->getSuccessor(0), SimdWidth);
   auto *RM =
-      Builder.CreateLoad(RMAddr->getType()->getPointerElementType(), RMAddr,
+      Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(RMAddr->getType()), RMAddr,
                          false /*isVolatile*/, RMAddr->getName());
   RM->setDebugLoc(DL);
   Type *Tys[] = {OldEM->getType(), RM->getType()};
