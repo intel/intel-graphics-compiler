@@ -6,11 +6,12 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "LocalScheduler_G4IR.h"
-#include "../G4_Opcode.h"
-#include "../Timer.h"
 #include "Dependencies_G4IR.h"
+#include "LocalScheduler_G4IR.h"
 #include "visa_wa.h"
+#include "../G4_Opcode.h"
+#include "../PointsToAnalysis.h"
+#include "../Timer.h"
 
 #include <fstream>
 #include <functional>
@@ -37,6 +38,9 @@ void LocalScheduler::localScheduling() {
 
   const Options *m_options = fg.builder->getOptions();
   LatencyTable LT(fg.builder);
+
+  PointsToAnalysis p(fg.getKernel()->Declares, fg.size());
+  p.doPointsToAnalysis(fg);
 
   uint32_t totalCycles = 0;
   uint32_t scheduleStartBBId =
@@ -83,7 +87,7 @@ void LocalScheduler::localScheduling() {
           G4_BB *tempBB = fg.createNewBB(false);
           sections.push_back(tempBB);
           tempBB->splice(tempBB->begin(), (*ib), (*ib)->begin(), inst_it);
-          G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, LT);
+          G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, LT, p);
           sequentialCycles += schedule.sequentialCycle;
           sendStallCycles += schedule.sendStallCycle;
           count = 0;
@@ -105,7 +109,7 @@ void LocalScheduler::localScheduling() {
       bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
       totalCycles += sequentialCycles;
     } else {
-      G4_BB_Schedule schedule(fg.getKernel(), bbMem, *ib, LT);
+      G4_BB_Schedule schedule(fg.getKernel(), bbMem, *ib, LT, p);
       bbInfo[i].id = (*ib)->getId();
       bbInfo[i].staticCycle = schedule.sequentialCycle;
       bbInfo[i].sendStallCycle = schedule.sendStallCycle;
@@ -195,15 +199,14 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb) {
 //      - creates a new instruction listing within a BBB
 //
 G4_BB_Schedule::G4_BB_Schedule(G4_Kernel *k, Mem_Manager &m, G4_BB *block,
-                               const LatencyTable &LT)
-    : mem(m), bb(block), kernel(k)
-
+                               const LatencyTable &LT, PointsToAnalysis &p)
+    : mem(m), bb(block), kernel(k), pointsToAnalysis(p)
 {
   // we use local id in the scheduler for determining two instructions' original
   // ordering
   bb->resetLocalIds();
 
-  DDD ddd(mem, bb, LT, k);
+  DDD ddd(mem, bb, LT, k, p);
   // Generate pairs of TypedWrites
   bool doMessageFuse =
       (k->fg.builder->fuseTypedWrites() && k->getSimdSize() >= g4::SIMD16) ||
@@ -293,6 +296,31 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
         (unsigned short)(opnd->getRightBound() + subRegOff * BITS_PER_FLAG_REG);
   };
 
+  auto getAddressBounds = [&](G4_Operand *opnd) {
+    bool valid = true;
+    unsigned subRegNum = 0;
+    if (opnd->isSrcRegRegion()) {
+      G4_SrcRegRegion *srcRegRegion = opnd->asSrcRegRegion();
+      if (srcRegRegion->getRegAccess() == Direct) {
+        subRegNum = srcRegRegion->ExSubRegNum(valid);
+      } else {
+        subRegNum = srcRegRegion->ExIndSubRegNum(valid);
+      }
+    } else if (opnd->isDstRegRegion()) {
+      G4_DstRegRegion *dstRegRegion = opnd->asDstRegRegion();
+      if (dstRegRegion->getRegAccess() == Direct) {
+        subRegNum = dstRegRegion->ExSubRegNum(valid);
+      } else {
+        subRegNum = dstRegRegion->ExIndSubRegNum(valid);
+      }
+    } else {
+      assert(0 && "invalid A0 operand");
+    }
+    G4_Type addrType = opnd->isIndirect() ? ADDR_REG_TYPE : opnd->getType();
+    LB = subRegNum * TypeSize(addrType);
+    RB = opnd->getRightBound() - opnd->getLeftBound() + LB;
+  };
+
   switch (opnd_num) {
   case Opnd_src0:
   case Opnd_src1:
@@ -302,6 +330,8 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
   case Opnd_implAccSrc: {
     if (opnd->isFlag()) {
       getFlagBounds(opnd);
+    } else if (opnd->isA0()) {
+      getAddressBounds(opnd);
     } else {
       LB = (unsigned short)opnd->getLinearizedStart();
       RB = (unsigned short)opnd->getLinearizedEnd();
@@ -316,6 +346,8 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
   case Opnd_implAccDst: {
     if (opnd->isFlag()) {
       getFlagBounds(opnd);
+    } else if (opnd->isA0()) {
+      getAddressBounds(opnd);
     } else {
       LB = (unsigned short)opnd->getLinearizedStart();
       RB = (unsigned short)opnd->getLinearizedEnd();
@@ -328,6 +360,44 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
     assert(0 && "Bad opnd");
   }
   return Mask(LB, RB, nonContiguousStride, opnd->getAccRegSel());
+}
+
+void DDD::getBucketsForIndirectOperand(G4_INST *inst,
+                                       Gen4_Operand_Number opnd_num,
+                                       std::vector<BucketDescr> &BDvec) {
+  G4_Declare *addrdcl = nullptr;
+  G4_Operand *opnd = inst->getOperand(opnd_num);
+  if (opnd) {
+    addrdcl = GetTopDclFromRegRegion(opnd);
+  }
+  assert(addrdcl != nullptr && "address declare can not be nullptr");
+
+  auto pointsToSet = pointsToAnalysis.getAllInPointsTo(addrdcl->getRegVar());
+  for (auto &pt : *pointsToSet) {
+    uint32_t varID = pt.var->getId();
+    G4_Declare *dcl = pt.var->getDeclare()->getRootDeclare();
+    G4_RegVar *var = dcl->getRegVar();
+
+    assert(var->getId() == varID &&
+           "RA verification error: Invalid regVar ID!");
+    assert(var->getPhyReg()->isGreg() &&
+           "RA verification error: Invalid dst reg!");
+
+    uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
+    uint32_t regOff = var->getPhyRegOff();
+    int linearizedStart = regNum * kernel->numEltPerGRF<Type_UB>() +
+                          regOff * TypeSize(dcl->getElemType());
+    int linearizedEnd = linearizedStart + dcl->getByteSize() - 1;
+
+    int startingBucket = linearizedStart / kernel->numEltPerGRF<Type_UB>();
+    int endingBucket = linearizedEnd / kernel->numEltPerGRF<Type_UB>();
+    Mask mask(linearizedStart, linearizedEnd, false, opnd->getAccRegSel());
+    int numBuckets = endingBucket - startingBucket + 1;
+    for (int j = startingBucket; j < (startingBucket + numBuckets); j++) {
+      BDvec.push_back(BucketDescr(j, mask, opnd_num));
+    }
+  }
+  return;
 }
 
 void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
@@ -436,8 +506,7 @@ static inline bool hasIndirection(G4_Operand *opnd,
 // return all bucket descriptors that the physical register can map
 // to. This requires taking in to account exec size, data
 // type, and whether inst is a send
-bool DDD::getBucketDescrs(Node *node, std::vector<BucketDescr> &BDvec) {
-  bool hasIndir = false;
+void DDD::getBucketDescrs(Node *node, std::vector<BucketDescr> &BDvec) {
   for (G4_INST *inst : node->instVec) {
     // Iterate over all operands and create buckets.
     for (Gen4_Operand_Number opndNum :
@@ -450,7 +519,9 @@ bool DDD::getBucketDescrs(Node *node, std::vector<BucketDescr> &BDvec) {
       }
       getBucketsForOperand(inst, opndNum, BDvec);
       // Check if this operand is an indirect access
-      hasIndir |= hasIndirection(opnd, opndNum);
+      if (hasIndirection(opnd, opndNum)) {
+        getBucketsForIndirectOperand(inst, opndNum, BDvec);
+      }
     }
 
     // Sends need an additional bucket
@@ -462,8 +533,6 @@ bool DDD::getBucketDescrs(Node *node, std::vector<BucketDescr> &BDvec) {
       }
     }
   }
-
-  return hasIndir;
 }
 
 // This class hides the internals of dependence tracking using buckets
@@ -1194,8 +1263,9 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
 // dependencies with all insts in live set. After analyzing
 // dependencies and creating necessary edges, current inst
 // is inserted in all buckets it touches.
-DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k)
-    : mem(m), LT(lt), kernel(k) {
+DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k,
+         PointsToAnalysis &p)
+    : mem(m), LT(lt), kernel(k), pointsToAnalysis(p) {
   Node *lastBarrier = nullptr;
   HWthreadsPerEU = k->getNumThreads();
   useMTLatencies = getBuilder()->useMultiThreadLatency();
@@ -1233,7 +1303,6 @@ DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k)
     node = new (mem) Node(nodeId, *iInst, depEdgeAllocator, LT);
     allNodes.push_back(node);
     G4_INST *curInst = node->getInstructions()->front();
-    bool hasIndir = false;
     BDvec.clear();
 
     if (curInst->getNumSrc() == 3) {
@@ -1311,9 +1380,8 @@ DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k)
       }
     }
     // Get buckets for all physical registers assigned in curInst
-    hasIndir = getBucketDescrs(node, BDvec);
-    if (hasIndir || (curInst->isSend() && curInst->asSendInst()->isFence())) {
-      // If inst has indirect src/dst then treat it as a barrier.
+    getBucketDescrs(node, BDvec);
+    if (curInst->isSend() && curInst->asSendInst()->isFence()) {
       node->MarkAsUnresolvedIndirAddressBarrier();
     }
 
