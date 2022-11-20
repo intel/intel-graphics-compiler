@@ -1218,7 +1218,9 @@ bool LVN::valuesMatch(Value &val1, Value &val2, bool checkNegImm) {
         G4_INST *val2Inst = val2.inst;
 
         if (val1Inst->isWriteEnableInst() != val2Inst->isWriteEnableInst() ||
-            val1Inst->getMaskOption() != val2Inst->getMaskOption()) {
+            // use maskOffset rather than maskOption as some masks are
+            // considered default and not explicitly set in mask option
+            val1Inst->getMaskOffset() != val2Inst->getMaskOffset()) {
           return false;
         }
       }
