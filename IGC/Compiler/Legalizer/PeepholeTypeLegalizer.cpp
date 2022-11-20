@@ -199,11 +199,11 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction& I)
     if (!I.getType()->isIntOrIntVectorTy() || isLegalInteger(srcWidth) || srcWidth == 1) // nothing to legalize
         return;
 
-    unsigned quotient, promoteToInt;
+    unsigned quotient = 0, promoteToInt = 0;
     promoteInt(srcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
     PHINode* oldPhi = dyn_cast<PHINode>(&I);
-    Value* result;
+    Value* result = nullptr;
 
     if (quotient > 1)
     {
@@ -272,7 +272,7 @@ void PeepholeTypeLegalizer::legalizeExtractElement(Instruction& I)
     if (!isLegalInteger(elementWidth) && extract->getType()->isIntOrIntVectorTy())
     {
         unsigned numElements = (unsigned)cast<IGCLLVM::FixedVectorType>(extract->getOperand(0)->getType())->getNumElements();
-        unsigned quotient, promoteToInt;
+        unsigned quotient = 0, promoteToInt = 0;
         promoteInt(elementWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
         m_builder->SetInsertPoint(&I);
@@ -360,7 +360,7 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction& I) {
         Src2 = I.getOperand(1);
     }
 
-    unsigned quotient, promoteToInt, Src1width;
+    unsigned quotient = 0, promoteToInt = 0, Src1width = 0;
 
     if (!Src1->getType()->isIntOrIntVectorTy())
         return; // Legalization for int types only
@@ -613,7 +613,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
             if (isLegalInteger(DL->getPointerTypeSizeInBits(I.getType())) || DL->getPointerTypeSizeInBits(I.getType()) == 1)
                 return;
 
-            unsigned quotient, promoteToInt, Src1width = DL->getPointerTypeSizeInBits(I.getType());
+            unsigned quotient = 0, promoteToInt = 0, Src1width = DL->getPointerTypeSizeInBits(I.getType());
             promoteInt(Src1width, quotient, promoteToInt, 8);// byte level addressing
 
             if (quotient > 1)
@@ -674,7 +674,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
         if (isLegalInteger(I.getType()->getScalarSizeInBits()) || I.getType()->getScalarSizeInBits() == 1)
             return; // Nothing to legalize
 
-        unsigned loadQuotient, loadPromoteToInt, loadSrcWidth = DL->getPointerTypeSizeInBits(I.getOperand(0)->getType());
+        unsigned loadQuotient = 0, loadPromoteToInt = 0, loadSrcWidth = DL->getPointerTypeSizeInBits(I.getOperand(0)->getType());
         promoteInt(loadSrcWidth, loadQuotient, loadPromoteToInt, 8); // hard coded to 8 since our hardware is bte addressable.
 
         if (loadQuotient > 1) {
@@ -691,7 +691,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
             Value* newBitCastBackToScalar = m_builder->CreateBitCast(newMaskedLoad, Type::getIntNTy(I.getContext(), loadPromoteToInt * loadQuotient));
 
             //extend new large scalar to a scalar length of legal vector of MAX_LEGAL_INT
-            unsigned quotient, promoteToInt, SrcWidth = DL->getPointerTypeSizeInBits(I.getOperand(0)->getType());
+            unsigned quotient = 0, promoteToInt = 0, SrcWidth = DL->getPointerTypeSizeInBits(I.getOperand(0)->getType());
             promoteInt(SrcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
             Value* newZextInst = m_builder->CreateZExt(newBitCastBackToScalar, Type::getIntNTy(I.getContext(), promoteToInt * quotient));
@@ -725,7 +725,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction& I) {
 
         if (I.getOperand(0)->getType()->getIntegerBitWidth() == 1)
         {
-            unsigned quotient, promoteToInt, Src1width = I.getOperand(0)->getType()->getIntegerBitWidth();
+            unsigned quotient = 0, promoteToInt = 0, Src1width = I.getOperand(0)->getType()->getIntegerBitWidth();
             promoteInt(Src1width, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
             Value* Src1 = I.getOperand(0);
@@ -821,7 +821,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
     case Instruction::Trunc:
     {
         //then we only need to mask out the truncated bits
-        unsigned quotient, promoteToInt, Src1width = prevInst->getOperand(0)->getType()->getIntegerBitWidth();
+        unsigned quotient = 0, promoteToInt = 0, Src1width = prevInst->getOperand(0)->getType()->getIntegerBitWidth();
         promoteInt(Src1width, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
         int activeBits = prevInst->getType()->getIntegerBitWidth(); // or I.getoperand(0)->getType()->getIntegerBitWidth();
@@ -863,8 +863,8 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
                     Value* truncSrcAsVec = m_builder->CreateBitCast(prevInst->getOperand(0),
                         IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
                     Value* vecRes = UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
-                    Value* Elmt;
-                    Value* maskedElmt;
+                    Value* Elmt = nullptr;
+                    Value* maskedElmt = nullptr;
 
                     for (unsigned Idx = 0; Idx < quotient; ++Idx)
                     {
@@ -938,7 +938,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         ALU (%7)
         */
 
-        unsigned quotient, promoteToInt, srcWidth = I.getOperand(0)->getType()->getScalarSizeInBits();
+        unsigned quotient = 0, promoteToInt = 0, srcWidth = I.getOperand(0)->getType()->getScalarSizeInBits();
         promoteInt(srcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
         if (quotient * promoteToInt != I.getType()->getScalarSizeInBits()) {
@@ -955,7 +955,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction& I) {
         unsigned Idx = 0;
 
         for (unsigned o = 0; o < quotient; ++o) {
-            Value* NewVal, * Hi;
+            Value* NewVal = nullptr, * Hi = nullptr;
             unsigned i = 0;
 
             NewVal = m_builder->CreateZExt(

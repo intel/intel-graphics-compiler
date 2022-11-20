@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -371,6 +371,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* 
     liverange.lowId = lowestAssignedNumber;
     liverange.highId = highestAssignedNumber;
     liverange.varSize = allocaSize;
+    liverange.LR = nullptr;
     m_promotedLiveranges.push_back(liverange);
     return StatusPrivArr2Reg::OK;
 }

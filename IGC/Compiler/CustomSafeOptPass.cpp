@@ -153,7 +153,7 @@ void CustomSafeOptPass::visitInstruction(Instruction& I)
 void CustomSafeOptPass::visitXor(Instruction& XorInstr) {
     using namespace llvm::PatternMatch;
 
-    CmpInst::Predicate Pred;
+    CmpInst::Predicate Pred = CmpInst::Predicate::FCMP_FALSE;
     auto XorPattern = m_c_Xor(m_ICmp(Pred, m_Value(), m_Value()), m_SpecificInt(1));
     if (!match(&XorInstr, XorPattern)) {
         return;
