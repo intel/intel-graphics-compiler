@@ -165,7 +165,6 @@ namespace IGC
         void Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* src1);
         void Select(CVariable* flag, CVariable* dst, CVariable* src0, CVariable* src1);
         void GenericAlu(e_opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2 = nullptr);
-        void URBWrite(CVariable* src, const int payloadElementOffset, CVariable* offset, CVariable* urbHandle, CVariable* dynamicMask);
         void Send(CVariable* dst, CVariable* src, uint exDesc, CVariable* messDescriptor, bool isSendc = false);
         void Send(CVariable* dst, CVariable* src, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc = false);
         void Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc = false, bool hasEOT = false);
