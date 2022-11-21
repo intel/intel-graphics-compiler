@@ -89,7 +89,7 @@ namespace IGC
                 compilerStats.SetI64(compilerStats.numGRFSpillStr(), jitInfo->numSendInst, simdsize);
                 compilerStats.SetI64(compilerStats.numGRFFillStr(), jitInfo->numSendInst, simdsize);
                 compilerStats.SetI64(compilerStats.numCyclesStr(), jitInfo->numSendInst, simdsize);
-                if (!jitInfo->raStatus.empty()) {
+                if (jitInfo->raStatus) {
                     compilerStats.SetFlag("IsRAsuccessful", simdsize);
                     compilerStats.SetFlag(jitInfo->raStatus, simdsize);
                 }

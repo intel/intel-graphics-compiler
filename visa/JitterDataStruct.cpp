@@ -10,6 +10,11 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
+constexpr char FINALIZER_INFO::kIsTrivialRA[];
+constexpr char FINALIZER_INFO::kIsLocallRA[];
+constexpr char FINALIZER_INFO::kIsHybridRA[];
+constexpr char FINALIZER_INFO::kIsGlobalRA[];
+
 llvm::json::Value PERF_STATS::toJSON() {
   // llvm Json cannot support u64 type, force to print string for binaryHash
   return llvm::json::Object{{"binaryHash", std::to_string(binaryHash)},

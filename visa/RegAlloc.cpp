@@ -2916,17 +2916,17 @@ static void recordRAStats(IR_Builder &builder, G4_Kernel &kernel,
     switch (kernel.getRAType()) {
     case RA_Type::TRIVIAL_BC_RA:
     case RA_Type::TRIVIAL_RA:
-      builder.getJitInfo()->raStatus = "IsTrivialRA";
+      builder.getJitInfo()->raStatus = FINALIZER_INFO::kIsTrivialRA;
       break;
     case RA_Type::LOCAL_ROUND_ROBIN_BC_RA:
     case RA_Type::LOCAL_ROUND_ROBIN_RA:
     case RA_Type::LOCAL_FIRST_FIT_BC_RA:
     case RA_Type::LOCAL_FIRST_FIT_RA:
-      builder.getJitInfo()->raStatus = "IsLocalRA";
+      builder.getJitInfo()->raStatus = FINALIZER_INFO::kIsLocallRA;
       break;
     case RA_Type::HYBRID_BC_RA:
     case RA_Type::HYBRID_RA:
-      builder.getJitInfo()->raStatus = "IsHybridRA";
+      builder.getJitInfo()->raStatus = FINALIZER_INFO::kIsHybridRA;
       break;
     case RA_Type::GRAPH_COLORING_RR_RA:
     case RA_Type::GRAPH_COLORING_FF_RA:
@@ -2938,7 +2938,7 @@ static void recordRAStats(IR_Builder &builder, G4_Kernel &kernel,
     case RA_Type::GRAPH_COLORING_SPILL_FF_BC_RA:
     case RA_Type::GLOBAL_LINEAR_SCAN_RA:
     case RA_Type::GLOBAL_LINEAR_SCAN_BC_RA:
-      builder.getJitInfo()->raStatus = "IsGlobalRA";
+      builder.getJitInfo()->raStatus = FINALIZER_INFO::kIsGlobalRA;
       break;
     case RA_Type::UNKNOWN_RA:
       break;
