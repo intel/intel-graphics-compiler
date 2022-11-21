@@ -127,7 +127,11 @@ struct FINALIZER_INFO {
   int64_t numSendInst = 0;
   int64_t numGRFSpill = 0;
   int64_t numGRFFill = 0;
-  std::string raStatus;
+  static constexpr char kIsTrivialRA[] = "IsTrivialRA";
+  static constexpr char kIsLocallRA[] = "IsLocalRA";
+  static constexpr char kIsHybridRA[] = "IsHybridRA";
+  static constexpr char kIsGlobalRA[] = "IsGlobalRA";
+  const char *raStatus = nullptr;
 };
 
 } // namespace vISA
