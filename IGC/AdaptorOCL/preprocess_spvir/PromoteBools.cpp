@@ -356,6 +356,10 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     {
         newValue = promoteLoad(load);
     }
+    else if (auto phi = dyn_cast<PHINode>(value))
+    {
+        newValue = promotePHI(phi);
+    }
     else if (auto store = dyn_cast<StoreInst>(value))
     {
         newValue = promoteStore(store);
@@ -825,6 +829,54 @@ LoadInst* PromoteBools::promoteLoad(LoadInst* load)
     newLoad->setAlignment(IGCLLVM::getAlign(*load));
 
     return newLoad;
+}
+
+llvm::PHINode* PromoteBools::promotePHI(llvm::PHINode* phi)
+{
+    if (!phi || visitedPHINodes.count(phi) || !typeNeedsPromotion(phi->getType()))
+    {
+        return phi;
+    }
+
+    visitedPHINodes.insert(phi);
+
+    auto newPhi = PHINode::Create(
+        getOrCreatePromotedType(phi->getType()),
+        phi->getNumOperands(),
+        "",
+        phi
+    );
+
+    for (unsigned i = 0; i < phi->getNumOperands(); ++i)
+    {
+        if (!typeNeedsPromotion(phi->getOperand(i)->getType()))
+        {
+            newPhi->addIncoming(
+                phi->getOperand(i),
+                phi->getIncomingBlock(i)
+            );
+        }
+        else
+        {
+            auto promotedOp = getOrCreatePromotedValue(phi->getOperand(i));
+            if (promotedOp->getType()->isIntegerTy(1))
+            {
+                promotedOp = new ZExtInst(
+                    promotedOp,
+                    Type::getInt8Ty(promotedOp->getContext()),
+                    "",
+                    phi->getIncomingBlock(i)->getTerminator()
+                );
+            }
+
+            newPhi->addIncoming(
+                promotedOp,
+                phi->getIncomingBlock(i)
+            );
+        }
+    }
+
+    return newPhi;
 }
 
 StoreInst* PromoteBools::promoteStore(StoreInst* store)

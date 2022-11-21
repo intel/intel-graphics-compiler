@@ -81,6 +81,10 @@ namespace IGC
         llvm::ICmpInst* promoteICmp(llvm::ICmpInst* icmp);
         llvm::InsertValueInst* promoteInsertValue(llvm::InsertValueInst* insertValue);
         llvm::LoadInst* promoteLoad(llvm::LoadInst* load);
+        llvm::PHINode* promotePHI(llvm::PHINode* phi);
         llvm::StoreInst* promoteStore(llvm::StoreInst* store);
+
+        // Promoting values - helping vars
+        llvm::DenseSet<llvm::PHINode*> visitedPHINodes;
     };
 }
