@@ -330,7 +330,7 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
   case Opnd_implAccSrc: {
     if (opnd->isFlag()) {
       getFlagBounds(opnd);
-    } else if (opnd->isA0()) {
+    } else if (opnd->getBase() && opnd->getBase()->isA0()) {
       getAddressBounds(opnd);
     } else {
       LB = (unsigned short)opnd->getLinearizedStart();
@@ -346,7 +346,7 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
   case Opnd_implAccDst: {
     if (opnd->isFlag()) {
       getFlagBounds(opnd);
-    } else if (opnd->isA0()) {
+    } else if (opnd->getBase() && opnd->getBase()->isA0()) {
       getAddressBounds(opnd);
     } else {
       LB = (unsigned short)opnd->getLinearizedStart();
