@@ -32,9 +32,9 @@ SPDX-License-Identifier: MIT
 #include "visa/include/RelocationInfo.h"
 #include "ZEBinWriter/zebin/source/autogen/ZEInfo.hpp"
 
-#include "../AdaptorOCL/OCL/sp/spp_g8.h"
-#include "../GenISAIntrinsics/GenIntrinsics.h"
-#include "../GenISAIntrinsics/GenIntrinsicInst.h"
+#include "AdaptorOCL/OCL/sp/spp_g8.h"
+#include "GenISAIntrinsics/GenIntrinsics.h"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/ADT/DenseMap.h>

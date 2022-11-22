@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "zebin_builder.hpp"
 
-#include "../../../Compiler/CodeGenPublic.h"
+#include "Compiler/CodeGenPublic.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SmallVector.h"

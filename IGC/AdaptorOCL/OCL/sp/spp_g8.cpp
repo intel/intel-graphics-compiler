@@ -8,12 +8,12 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "spp_g8.h"
-#include "../../../Compiler/CodeGenPublic.h"
+#include "Compiler/CodeGenPublic.h"
 #include "program_debug_data.h"
-#include "../../../common/SystemThread.h"
-#include "../../../common/Types.hpp"
-#include "../../../common/shaderOverride.hpp"
-#include "../../../Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+#include "IGC/common/SystemThread.h"
+#include "IGC/common/Types.hpp"
+#include "IGC/common/shaderOverride.hpp"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 
 #include <iomanip>
 #include <fstream>

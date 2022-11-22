@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 #include "Compiler/CodeGenPublic.h"
 #include "visaBuilder_interface.h"
-#include "../../inc/common/UFO/portable_compiler.h"
+#include "common/UFO/portable_compiler.h"
 
 namespace USC
 {

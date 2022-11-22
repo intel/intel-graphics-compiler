@@ -10,11 +10,11 @@ SPDX-License-Identifier: MIT
 
 #include "inc/common/Compiler/API/ShaderTypesEnum.h"
 #include "inc/common/Compiler/API/SurfaceFormats.h"
-#include "../Platform/cmd_media_enum_g8.h"
-#include "../Platform/cmd_shared_enum_g8.h"
+#include "OCL/Platform/cmd_media_enum_g8.h"
+#include "OCL/Platform/cmd_shared_enum_g8.h"
 #include "patch_list.h"
-#include "../CommandStream/SamplerTypes.h"
-#include "../CommandStream/SurfaceTypes.h"
+#include "OCL/CommandStream/SamplerTypes.h"
+#include "OCL/CommandStream/SurfaceTypes.h"
 
 namespace iOpenCL
 {

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 //#include "ContextTypes.h"
-#include "../inc/common/igfxfmid.h"
+#include "common/igfxfmid.h"
 
 namespace G6HWC
 {

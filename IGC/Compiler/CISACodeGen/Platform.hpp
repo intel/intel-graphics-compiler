@@ -15,9 +15,9 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"
 
-#include "../../../skuwa/iacm_g10_rev_id.h"
-#include "../../../skuwa/iacm_g11_rev_id.h"
-#include "../../../skuwa/iacm_g12_rev_id.h"
+#include "skuwa/iacm_g10_rev_id.h"
+#include "skuwa/iacm_g11_rev_id.h"
+#include "skuwa/iacm_g12_rev_id.h"
 
 namespace IGC
 {

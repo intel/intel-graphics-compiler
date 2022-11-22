@@ -35,14 +35,14 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/ADT/STLExtras.h"
 
 #include "common/LLVMWarningsPop.hpp"
-#include "../GenISAIntrinsics/GenIntrinsics.h"
+#include "GenISAIntrinsics/GenIntrinsics.h"
 
 #include "ElfReader.h"
 #include "ElfWriter.h"
 
 #include "CLElfTypes.h"
 
-#include "../AdaptorOCL/OCL/LoadBuffer.h"
+#include "AdaptorOCL/OCL/LoadBuffer.h"
 
 #include <string>
 #include <list>

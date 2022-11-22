@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../../../visa/iga/IGALibrary/api/igad.h"
+#include "visa/iga/IGALibrary/api/igad.h"
 #include <iostream>
 #include <fstream>
 #include <iostream>

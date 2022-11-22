@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-#include "../IGCPassSupport.h"
+#include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Pass.h"

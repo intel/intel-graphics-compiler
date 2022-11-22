@@ -8,9 +8,9 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
 #include "FoldKnownWorkGroupSizes.h"
-#include "../IGCPassSupport.h"
-#include "../CodeGenPublic.h"
-#include "../MetaDataApi/MetaDataApi.h"
+#include "Compiler/IGCPassSupport.h"
+#include "Compiler/CodeGenPublic.h"
+#include "Compiler/MetaDataApi/MetaDataApi.h"
 
 #include "LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"

@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "../Compiler/IGCPassSupport.h"
+#include "Compiler/IGCPassSupport.h"
 
 
 class TypesLegalizationPass: public llvm::FunctionPass,public llvm::InstVisitor<TypesLegalizationPass>

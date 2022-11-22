@@ -14,11 +14,11 @@ SPDX-License-Identifier: MIT
 #include "sp_convert_g8.h"
 #include "sp_debug.h"
 
-#include "../util/BinaryStream.h"
+#include "OCL/util/BinaryStream.h"
 
-#include "../Platform/cmd_shared_init_g8.h"
-#include "../Platform/cmd_media_init_g8.h"
-#include "../Platform/cmd_parser_g8.h"
+#include "OCL/Platform/cmd_shared_init_g8.h"
+#include "OCL/Platform/cmd_media_init_g8.h"
+#include "OCL/Platform/cmd_parser_g8.h"
 
 #include "common/allocator.h"
 #include "common/igc_regkeys.hpp"
@@ -36,9 +36,9 @@ SPDX-License-Identifier: MIT
 #include "patch_g7.h"
 #include "patch_g8.h"
 
-#include "../../../Compiler/CodeGenPublic.h"
+#include <Compiler/CodeGenPublic.h>
 
-#include "../../../visa/include/visaBuilder_interface.h"
+#include <visa/include/visaBuilder_interface.h>
 
 #include <algorithm>
 #include <cstdint>

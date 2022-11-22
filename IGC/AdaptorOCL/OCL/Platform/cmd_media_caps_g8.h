@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-#include "../sp/sp_types.h"
+#include "OCL/sp/sp_types.h"
 
 namespace G6HWC
 {

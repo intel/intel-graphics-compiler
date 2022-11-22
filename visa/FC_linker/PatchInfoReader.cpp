@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 #include <cstddef>
 #include <map>
 
-#include "../PatchInfo.h"
+#include "visa/PatchInfo.h"
 #include "PatchInfoReader.h"
 #include "PatchInfoRecord.h"
 

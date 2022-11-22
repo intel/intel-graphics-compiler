@@ -11,16 +11,16 @@ SPDX-License-Identifier: MIT
 #include <vector>
 #include <memory>
 
-#include "../Platform/cmd_media_caps_g8.h"
-#include "../../inc/common/igfxfmid.h"
+#include "OCL/Platform/cmd_media_caps_g8.h"
+#include "common/igfxfmid.h"
 
-#include "../CommandStream/SamplerTypes.h"
-#include "../CommandStream/SurfaceTypes.h"
+#include "OCL/CommandStream/SamplerTypes.h"
+#include "OCL/CommandStream/SurfaceTypes.h"
 
-#include "../KernelAnnotations.hpp"
-#include "../util/BinaryStream.h"
+#include "OCL/KernelAnnotations.hpp"
+#include "OCL/util/BinaryStream.h"
 
-#include "../Patch/patch_parser.h"
+#include "OCL/Patch/patch_parser.h"
 #include "inc/common/Compiler/API/SurfaceFormats.h"
 #include "common/shaderHash.hpp"
 #include "usc.h"

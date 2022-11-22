@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "inc/common/sku_wa.h"
 #include "inc/common/igfxfmid.h"
-#include "../../skuwa/wa_def.h"
+#include "skuwa/wa_def.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
 
 namespace IGC

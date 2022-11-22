@@ -8,14 +8,14 @@ SPDX-License-Identifier: MIT
 
 #include <exception>
 #include <cinttypes>
-#include "../../3d/common/iStdLib/iStdLib.h"
+#include <3d/common/iStdLib/iStdLib.h>
 #include "IGC/common/igc_debug.h"
 #include "IGC/common/igc_regkeys.hpp"
 #include "patch_g7.h"
 #include "patch_g8.h"
 #include "patch_g9.h"
 #include "visa/include/RelocationInfo.h"
-#include "../sp/sp_debug.h"
+#include "OCL/sp/sp_debug.h"
 #include "Probe/Assertion.h"
 
 namespace iOpenCL

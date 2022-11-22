@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "TypesLegalizationPass.hpp"
-#include "../Compiler/IGCPassSupport.h"
+#include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 
 #include "common/LLVMWarningsPush.hpp"

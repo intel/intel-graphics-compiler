@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 #include "../../common/EmUtils.h"
-#include "../IGC/Compiler/CodeGenPublicEnums.h"
+#include "../../Compiler/CodeGenPublicEnums.h"
 // TODO: add all external declarations so that external projects only need
 // to include this file only.
 

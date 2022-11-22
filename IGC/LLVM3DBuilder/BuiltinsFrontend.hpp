@@ -22,10 +22,10 @@ SPDX-License-Identifier: MIT
 #include "inc/common/Compiler/API/SurfaceFormats.h"
 #include "inc/common/igfxfmid.h"
 #include "common/IGCIRBuilder.h"
-#include "../common/EmUtils.h"
-#include "../../../skuwa/iacm_g10_rev_id.h"
-#include "../../../skuwa/iacm_g11_rev_id.h"
-#include "../../../skuwa/iacm_g12_rev_id.h"
+#include "common/EmUtils.h"
+#include "skuwa/iacm_g10_rev_id.h"
+#include "skuwa/iacm_g11_rev_id.h"
+#include "skuwa/iacm_g12_rev_id.h"
 
 namespace llvm {
     class GenIntrinsicInst;

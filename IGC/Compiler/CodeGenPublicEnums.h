@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef CODE_GEN_PUBLIC_ENUMS_H_
 #define CODE_GEN_PUBLIC_ENUMS_H_
 
-#include "../IGC/common/EmUtils.h"
+#include "../common/EmUtils.h"
 
 namespace IGC
 {

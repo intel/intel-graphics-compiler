@@ -19,7 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/StringMap.h>
 #include <llvm/CodeGen/ValueTypes.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "../../inc/common/UFO/portable_compiler.h"
+#include "inc/common/UFO/portable_compiler.h"
 #include <cstring>
 #include "Probe/Assertion.h"
 

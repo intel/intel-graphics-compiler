@@ -29,7 +29,7 @@ SPDX-License-Identifier: MIT
 
 #include "usc.h"
 
-#include "../AdaptorOCL/OCL/LoadBuffer.h"
+#include "AdaptorOCL/OCL/LoadBuffer.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/debug/Debug.hpp"
 #include "Probe/Assertion.h"

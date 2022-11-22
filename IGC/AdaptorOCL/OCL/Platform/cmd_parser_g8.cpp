@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "IGC/common/igc_debug.h"
-#include "../sp/sp_types.h"
+#include "OCL/sp/sp_types.h"
 
-#include "../sp/sp_debug.h"
-#include "../inc/common/igfxfmid.h"
+#include "OCL/sp/sp_debug.h"
+#include "common/igfxfmid.h"
 
 #include "cmd_shared_def_g8.h"
 #include "cmd_media_def_g8.h"

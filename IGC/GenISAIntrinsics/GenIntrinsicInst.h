@@ -1663,7 +1663,7 @@ public:
     enum class FPBinaryOperators
     {
 #define FP_BINOP_INSTRUCTION(Name, Val) Name = Val,
-#include "../../IGC/common/igc_regkeys_enums_defs.h"
+#include "IGC/common/igc_regkeys_enums_defs.h"
         FP_BINOP_INSTRUCTIONS
 #undef FP_BINOP_INSTRUCTION
 #undef FP_BINOP_INSTRUCTIONS

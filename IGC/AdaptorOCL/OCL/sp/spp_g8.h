@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include <memory>
-#include "../util/BinaryStream.h"
+#include "OCL/util/BinaryStream.h"
 #include "usc.h"
 #include "sp_g8.h"
 #include "zebin_builder.hpp"

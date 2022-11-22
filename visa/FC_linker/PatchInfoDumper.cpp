@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 #include <tuple>
 #include <vector>
 
-#include "../PatchInfo.h"
+#include "visa/PatchInfo.h"
 
 namespace {
 
