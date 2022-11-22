@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantAnalysis.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/OpenCLPrintf/OpenCLPrintfAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
@@ -160,11 +161,13 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             }
 
             // When ZeBin is enabled, constant variables that are string literals
-            // will be stored in the second const buffer
+            // used only by printf will be stored in the second const buffer.
             ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
-            bool isStringConst = cds && (cds->isCString() || cds->isString());
-            if (Ctx->enableZEBinary() && isStringConst)
+            bool isPrintfOnlyStringConst = cds && (cds->isCString() || cds->isString()) &&
+                OpenCLPrintfAnalysis::isTopLevelUserPrintf(globalVar);
+            if (Ctx->enableZEBinary() && isPrintfOnlyStringConst)
             {
+                m_pModuleMd->stringConstants.insert(globalVar);
                 inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[1].Buffer;
             }
             else

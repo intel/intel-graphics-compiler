@@ -43,6 +43,8 @@ template<typename Key, typename Value>
 MDNode* CreateNode(const std::map<Key, Value> &FuncMD, Module* module, StringRef name);
 template<typename Key, typename Value>
 MDNode* CreateNode(const MapVector<Key, Value> &FuncMD, Module* module, StringRef name);
+template<typename Key>
+MDNode* CreateNode(const std::set<Key> &FuncMD, Module* module, StringRef name);
 MDNode* CreateNode(const std::string &s, Module* module, StringRef name);
 MDNode* CreateNode(char* i, Module* module, StringRef name);
 
@@ -69,6 +71,8 @@ template<typename Key, typename Value>
 void readNode(std::map<Key, Value> &funcMD, MDNode* node);
 template<typename Key, typename Value>
 void readNode(MapVector<Key, Value> &funcMD, MDNode* node);
+template<typename Key>
+void readNode(std::set<Key> &funcMD, MDNode* node);
 
 template<typename T>
 void readNode(T &t, MDNode* node, StringRef name);
@@ -283,6 +287,20 @@ MDNode* CreateNode(const MapVector<Key, Value> &FuncMD, Module* module, StringRe
     return node;
 }
 
+template<typename Key>
+MDNode* CreateNode(const std::set<Key> &FuncMD, Module* module, StringRef name)
+{
+    std::vector<Metadata*> nodes;
+    nodes.push_back(MDString::get(module->getContext(), name));
+    int i = 0;
+    for ( auto it = FuncMD.begin(); it != FuncMD.end(); ++it)
+    {
+        nodes.push_back(CreateNode(*it, module, name.str() + "Set[" + std::to_string(i) + "]"));
+    }
+    MDNode* node = MDNode::get(module->getContext(), nodes);
+    return node;
+}
+
 void readNode(unsigned char &b, MDNode* node)
 {
     ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
@@ -428,6 +446,18 @@ void readNode(MapVector<Key, Value> &keyMD, MDNode* node)
         readNode(p.first, cast<MDNode>(node->getOperand(k++)));
         readNode(p.second, cast<MDNode>(node->getOperand(k)));
         keyMD.insert(p);
+    }
+    return;
+}
+
+template<typename Key>
+void readNode(std::set<Key> &keyMD, MDNode* node)
+{
+    for (unsigned k = 1; k < node->getNumOperands(); k++)
+    {
+        Key key;
+        readNode(key, cast<MDNode>(node->getOperand(k)));
+        keyMD.insert(key);
     }
     return;
 }

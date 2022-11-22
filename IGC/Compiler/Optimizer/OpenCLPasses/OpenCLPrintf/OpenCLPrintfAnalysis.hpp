@@ -51,6 +51,10 @@ namespace IGC
 
         static const llvm::StringRef OPENCL_PRINTF_FUNCTION_NAME;
 
+        // Return true if every top level user is a printf call. Note that the
+        // function is expected to work only before printf is expanded.
+        static bool isTopLevelUserPrintf(llvm::Value* V);
+
     private:
 
         /// @brief  Adds an implicit argument for address of printf output buffer
