@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/JSON.h"
 
 #if !defined(_MSC_VER) && !defined(__MINGW32__)
 #include <unistd.h>
@@ -365,13 +366,28 @@ void dumpOCLCos(const IGC::COpenCLKernel *Kernel, const std::string &stateDebugM
     IGC::Debug::DumpUnlock();
 }
 
+static std::string getKernelDumpName(const IGC::COpenCLKernel* kernel)
+{
+    std::string kernelName(kernel->m_kernelInfo.m_kernelName);
+    kernel->getShaderFileName(kernelName);
+
+    auto* context = kernel->GetContext();
+    auto name = IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+        .Hash(context->hash)
+        .Type(ShaderType::OPENCL_SHADER)
+        .PostFix(kernelName)
+        .SIMDSize(kernel->m_SIMDSize)
+        .Extension("elf");
+    return name.RelativePath();
+}
+
 // Build a name for an ELF temporary file. If uniqueLockFileName contains any % characters then
 // these characters are replaced with random characters 0-9 or a-f, and such a uniquely named
 // file, where this name is returned in resultUniqueLockFileName, is created in a system temporary
 // directory to reserve this name.
-bool createElfFileName(std::string &name, unsigned int maxNameLen, SIMDMode simdMode, int id,
+bool createElfFileName(const IGC::COpenCLKernel* kernel, unsigned int maxNameLen, SIMDMode simdMode, int id,
     SmallVectorImpl<char> &uniqueLockFileName, SmallVectorImpl<char> &resultUniqueLockFileName,
-    std::string& resultFullElfFileNameStr)
+    std::string& resultTempDir, std::string& resultElfFileNameStr)
 {
     SmallString<64> tempDir;    // Do not worry about its size, because system_temp_directory() appends if needed.
     bool retValue = true;
@@ -384,6 +400,7 @@ bool createElfFileName(std::string &name, unsigned int maxNameLen, SIMDMode simd
 #else
     tempDir.append("/");
 #endif // defined(_WIN64) || defined(_WIN32)
+    resultTempDir = tempDir.c_str();
 
     std::string pidStr =
 #if LLVM_ON_UNIX
@@ -394,39 +411,70 @@ bool createElfFileName(std::string &name, unsigned int maxNameLen, SIMDMode simd
         "";
 #endif
 
-    resultFullElfFileNameStr.append(tempDir.c_str());
-    resultFullElfFileNameStr.append(name.substr(0, maxNameLen - 1).c_str());
-    resultFullElfFileNameStr.append("_simd");
-    resultFullElfFileNameStr.append(to_string(simdMode == SIMDMode::SIMD8 ? 8 : simdMode == SIMDMode::SIMD16 ? 16 : 32));
-    resultFullElfFileNameStr.append("_");
-    resultFullElfFileNameStr.append(to_string(id));
-    if (!pidStr.empty())
-    {
-        resultFullElfFileNameStr.append("_");
-        resultFullElfFileNameStr.append(pidStr);
-    }
-
-    std::string uniqueLockFileNameStr = uniqueLockFileName.data();
-    if (uniqueLockFileNameStr.find('%') < uniqueLockFileNameStr.size())
-    {
-        int uniqueLockFileID = 0;
-        // Every '%' will be replaced with a random character (0-9 or a-f), taking care of multithreaded compilations
-        if (std::error_code EC = sys::fs::createUniqueFile(
-            uniqueLockFileName, uniqueLockFileID, resultUniqueLockFileName))
-        {
-            IGC_ASSERT_MESSAGE(false, "A uniquely named file not created");
-            retValue = false;
-        }
-    }
+    if (IGC_IS_FLAG_ENABLED(DumpUseShorterName))
+        resultElfFileNameStr = getKernelDumpName(kernel);
     else
     {
-        resultUniqueLockFileName = uniqueLockFileName;
+        resultElfFileNameStr.append(kernel->m_kernelInfo.m_kernelName.substr(0, maxNameLen - 1).c_str());
+        resultElfFileNameStr.append("_simd");
+        resultElfFileNameStr.append(to_string(simdMode == SIMDMode::SIMD8 ? 8 : simdMode == SIMDMode::SIMD16 ? 16 : 32));
+        resultElfFileNameStr.append("_");
+        resultElfFileNameStr.append(to_string(id));
+        if (!pidStr.empty())
+        {
+            resultElfFileNameStr.append("_");
+            resultElfFileNameStr.append(pidStr);
+        }
+
+        std::string uniqueLockFileNameStr = uniqueLockFileName.data();
+        if (uniqueLockFileNameStr.find('%') < uniqueLockFileNameStr.size())
+        {
+            int uniqueLockFileID = 0;
+            // Every '%' will be replaced with a random character (0-9 or a-f), taking care of multithreaded compilations
+            if (std::error_code EC = sys::fs::createUniqueFile(
+                uniqueLockFileName, uniqueLockFileID, resultUniqueLockFileName))
+            {
+                IGC_ASSERT_MESSAGE(false, "A uniquely named file not created");
+                retValue = false;
+            }
+        }
+        else
+        {
+            resultUniqueLockFileName = uniqueLockFileName;
+        }
+
+        resultElfFileNameStr.append(resultUniqueLockFileName.data());
+        resultElfFileNameStr.append(".elf");
     }
 
-    resultFullElfFileNameStr.append(resultUniqueLockFileName.data());
-    resultFullElfFileNameStr.append(".elf");
-
     return retValue;
+}
+
+static void addElfKernelMapping(llvm::json::Array& mappingsArray, const std::string& elfFilename, const std::string& kernelName)
+{
+    llvm::json::Value elfKernelMapping = llvm::json::Object
+    {
+        {"filename", elfFilename},
+        {"kernel",   kernelName}
+    };
+    mappingsArray.push_back(elfKernelMapping);
+}
+
+static bool createElfKernelMapFile(llvm::json::Array&& jsonElfMap, const llvm::Twine& filepath)
+{
+    int writeFD = 0;
+    sys::fs::CreationDisposition disp = sys::fs::CreationDisposition::CD_CreateAlways;
+    sys::fs::OpenFlags flags = sys::fs::OpenFlags::OF_None;
+    unsigned int mode = sys::fs::all_read | sys::fs::all_write;
+    auto EC = sys::fs::openFileForReadWrite(filepath, writeFD, disp, flags, mode);
+    if (!EC)
+    {
+        raw_fd_ostream OS(writeFD, true, true); // shouldClose=true, unbuffered=true
+        OS << llvm::formatv("{0:2}", llvm::json::Value(std::move(jsonElfMap)));
+        // close(writeFD) is not required due to shouldClose parameter in ostream
+        return true;
+    }
+    return false;
 }
 
 void CGen8OpenCLProgram::GetZEBinary(
@@ -472,6 +520,7 @@ void CGen8OpenCLProgram::GetZEBinary(
     bool isDebugInfo = true;  // If a kernel does not contain debug info then this flag will be changed to false.
     IGC::CodeGenContext* ctx = nullptr;
 
+    llvm::json::Array elfMapEntries;
     for (auto pKernel : m_ShaderProgramList)
     {
         IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
@@ -558,42 +607,49 @@ void CGen8OpenCLProgram::GetZEBinary(
 
                         // Build a temporary output file name (with a path) for the linker
 
+                        std::string tempDir, elfFileNameStr;
                         if (!createElfFileName(
-                            kernel->m_kernelInfo.m_kernelName,
+                            kernel,
                             spaceAvailableForKernelName,  // maxNameLen
                             simdMode,
                             0,                      // kernel ID
                             uniqueLockFilePartStr,
                             uniqueLockFilePartStr,  // unique part only result, i.e. _%%%%%%%% replaced with unique sequence of characters
-                            linkedElfFileNameStr))  // full name with a path result
+                            tempDir,                // path to the system temp directory
+                            elfFileNameStr))        // generated .elf file name
                         {
                             IGC_ASSERT_MESSAGE(false, "A unique name for a linked ELF file not created");
                         }
+                        linkedElfFileNameStr = tempDir + elfFileNameStr;
                         elfVecNames.push_back(elfLinkerLogName);  // 1st element in this vector of names; required by the linker
                         elfVecPtrs.push_back(elfVecNames.back().c_str());
 
                         ctx = kernel->GetContext();  // Remember context for future usage regarding warning emission (if needed).
                     }
 
-                    std::string elfFileNameStr = "";
+                    std::string tempDir, elfFileNameStr;
                     // Build a temporary input file name (with a path) for the linker
                     if (!createElfFileName(
-                        kernel->m_kernelInfo.m_kernelName,
+                        kernel,
                         spaceAvailableForKernelName,  // maxNameLen
                         simdMode,
                         kernelID,
                         uniqueLockFilePartStr,  // unique part is the same unique sequence of characters got earlier for a linked file
                         uniqueLockFilePartStr,  // unique part only result should remain the same as the previous parameter
-                        elfFileNameStr))        // full name with a path result
+                        tempDir,                // path to the system temp directory
+                        elfFileNameStr))        // generated .elf file name
                     {
                         IGC_ASSERT_MESSAGE(false, "A unique name for an input ELF file not created");
                     }
+                    linkedElfFileNameStr = tempDir + elfFileNameStr;
+
+                    addElfKernelMapping(elfMapEntries, elfFileNameStr, kernel->m_kernelInfo.m_kernelName);
 
                     int writeFD = 0;
                     sys::fs::CreationDisposition disp = sys::fs::CreationDisposition::CD_CreateAlways;
                     sys::fs::OpenFlags flags = sys::fs::OpenFlags::OF_None;
                     unsigned int mode = sys::fs::all_read | sys::fs::all_write;
-                    auto EC = sys::fs::openFileForReadWrite(Twine(elfFileNameStr), writeFD, disp, flags, mode);
+                    auto EC = sys::fs::openFileForReadWrite(Twine(linkedElfFileNameStr), writeFD, disp, flags, mode);
                     if (!EC)
                     {
                         raw_fd_ostream OS(writeFD, true, true); // shouldClose=true, unbuffered=true
@@ -756,6 +812,13 @@ void CGen8OpenCLProgram::GetZEBinary(
 
             // ...and finally a unique locked file.
             sys::fs::remove(Twine(uniqueLockFilePartStr), true); // true=ignore non-existing
+        }
+        else
+        {
+            SmallString<64> elfMapPath;
+            llvm::sys::path::system_temp_directory(true, elfMapPath);
+            llvm::sys::path::append(elfMapPath, "elffile_to_kernelname_map.json");
+            createElfKernelMapFile(std::move(elfMapEntries), elfMapPath);
         }
     }
 
