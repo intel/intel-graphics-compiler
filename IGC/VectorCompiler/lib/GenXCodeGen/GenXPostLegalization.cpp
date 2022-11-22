@@ -138,7 +138,10 @@ bool GenXPostLegalization::runOnFunction(Function &F)
   // Cleanup redundant global loads.
   Modified |= cleanupLoads(&F);
   // Cleanup constant loads.
-  Modified |= cleanupConstantLoads(&F);
+  std::vector<CallInst *> ConstList;
+  Modified |= cleanupConstantLoads(&F, ConstList);
+  // Replace shifted constants to add-instruction.
+  Modified |= checkAddPattern(&F, ConstList);
   // Legalize constants in return.
   for (auto FI = F.begin(), FE = F.end(); FI != FE; ++FI) {
     BasicBlock *BB = &*FI;
