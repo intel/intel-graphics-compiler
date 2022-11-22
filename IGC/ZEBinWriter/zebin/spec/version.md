@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.23
+Version 1.24
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.24**: Add eu_thread_count to execution_env.
 - **Version 1.23**: Add is_pipe attribute to payload arguments.
 - **Version 1.22**: Add sync_buffer to payload arguments.
 - **Version 1.21**: Add indirect_stateless_count to execution_env.

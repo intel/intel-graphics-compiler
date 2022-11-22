@@ -562,6 +562,7 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo& annotations,
         env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnvironment.WorkgroupWalkOrder[1]);
         env.work_group_walk_order_dimensions.push_back(annotations.m_executionEnvironment.WorkgroupWalkOrder[2]);
     }
+    env.eu_thread_count = annotations.m_executionEnvironment.numThreads;
 }
 
 void ZEBinaryBuilder::addFunctionExecEnv(const SOpenCLKernelInfo& annotations,
