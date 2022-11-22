@@ -164,15 +164,15 @@ static void setDefaultRoundDenorm(IR_Builder &builder,
                                   bool hasDefaultRoundDenorm,
                                   G4_Declare *regCR0) {
   if (!hasDefaultRoundDenorm) {
-    // save cr0.0: mov (1) r116.2<1>:ud cr0.0<0;1,0>:ud {NoMask}
+    // save cr0.0: mov (1) r116.2<1>:ud cr0.0<0;1,0>:ud
     G4_SrcRegRegion *cr0SrcRegOpndForSaveInst =
         builder.createSrc(builder.phyregpool.getCr0Reg(), 0, 0,
                           builder.getRegionScalar(), Type_UD);
     builder.createMov(g4::SIMD1, builder.createDstRegRegion(regCR0, 1),
                       cr0SrcRegOpndForSaveInst, InstOpt_WriteEnable, true);
 
-    // set rounding mod in CR0 to RNE: and (1) cr0.0<1>:ud cr0.0<0;1,0>:ud
-    // 0xffffffcf:ud {NoMask}
+    // set rounding mode in CR0[5:4] to RNE:
+    //   and (1) cr0.0<1>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud
     G4_DstRegRegion *cr0DstRegOpndForAndInst =
         builder.createDst(builder.phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
     G4_SrcRegRegion *cr0SrcRegOpndForAndInst =
@@ -182,6 +182,19 @@ static void setDefaultRoundDenorm(IR_Builder &builder,
                         cr0SrcRegOpndForAndInst,
                         builder.createImm(0xffffffcf, Type_UD),
                         InstOpt_WriteEnable, true);
+    // set to retain SP/DP denorm mode in CR0[7:6] for Xe+ platforms:
+    //  or (1) cr0.0<1>:ud cr0.0<0;1,0>:ud 0xc0:ud
+    if (builder.getPlatform() >= GENX_TGLLP) {
+      G4_DstRegRegion *cr0DstRegOpndForOrInst =
+          builder.createDst(builder.phyregpool.getCr0Reg(), 0, 0, 1, Type_UD);
+      G4_SrcRegRegion *cr0SrcRegOpndForOrInst =
+          builder.createSrc(builder.phyregpool.getCr0Reg(), 0, 0,
+                            builder.getRegionScalar(), Type_UD);
+      builder.createBinOp(nullptr, G4_or, g4::SIMD1, cr0DstRegOpndForOrInst,
+                          cr0SrcRegOpndForOrInst,
+                          builder.createImm(0xc0, Type_UD), InstOpt_WriteEnable,
+                          true);
+    }
   }
 }
 
