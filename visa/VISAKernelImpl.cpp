@@ -622,7 +622,9 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
     }
   }
 
-  if (m_options->getOption(vISA_outputToFile)) {
+  if (m_options->getOption(vISA_asmToConsole)) {
+    m_kernel->emitDeviceAsm(std::cout, binary, binarySize);
+  } else if (m_options->getOption(vISA_outputToFile)) {
     std::stringstream ss;
     ss << m_asmName << ".asm";
     std::string filePath = ss.str();

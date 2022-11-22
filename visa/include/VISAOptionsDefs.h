@@ -70,8 +70,12 @@ DEF_VISA_OPTION(vISA_DumpRAIntfGraph, ET_BOOL, "-dumpintf", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpGenOffset, ET_BOOL, "-dumpgenoffset", UNUSED, false)
 DEF_VISA_OPTION(vISA_ForceAssignRhysicalReg, ET_CSTR, "-forceAssignRhysicalReg",
                 UNUSED, NULL)
-DEF_VISA_OPTION(vISA_StopAfterPass, ET_CSTR, "-stopafter", UNUSED, NULL)
-DEF_VISA_OPTION(vISA_StopAfterOutput, ET_CSTR, "-stopafteroutput", UNUSED, NULL)
+DEF_VISA_OPTION(vISA_StopAfterPass, ET_CSTR, "-stopafter",
+                "For visa lit test. It dumps g4 to stdout after the given pass"
+                "and also stop all the remaining passes.", NULL)
+DEF_VISA_OPTION(vISA_asmToConsole, ET_BOOL, "-asmToConsole",
+                "For visa lit test. It is used to dump .asm to stdout. It"
+                "will override -output, if -output is present.", false)
 DEF_VISA_OPTION(vISA_DebugOnly, ET_CSTR, "-debug-only", UNUSED, NULL)
 
 //=== Optimization options ===
