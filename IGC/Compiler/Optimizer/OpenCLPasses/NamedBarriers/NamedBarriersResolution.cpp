@@ -59,17 +59,17 @@ const int NamedBarriersResolution::GetMaxNamedBarriers()
 NamedBarriersResolution::NamedBarriersResolution() : ModulePass(ID)
 {
     m_CountNamedBarriers = 0;
-    m_GFX_GEN = IGFX_BROADWELL;
+    m_GFX_CORE = IGFX_GEN8_CORE;
     m_NamedBarrierType = nullptr;
     m_NamedBarrierID = nullptr;
     m_NamedBarrierArray = nullptr;
     initializeNamedBarriersResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-NamedBarriersResolution::NamedBarriersResolution(PRODUCT_FAMILY GFX_GEN) : ModulePass(ID)
+NamedBarriersResolution::NamedBarriersResolution(GFXCORE_FAMILY GFX_CORE) : ModulePass(ID)
 {
     m_CountNamedBarriers = 0;
-    m_GFX_GEN = GFX_GEN;
+    m_GFX_CORE = GFX_CORE;
     m_NamedBarrierType = nullptr;
     m_NamedBarrierID = nullptr;
     m_NamedBarrierArray = nullptr;
@@ -418,6 +418,6 @@ void NamedBarriersResolution::visitCallInst(CallInst& CI)
 
 bool NamedBarriersResolution::NamedBarrierHWSupport()
 {
-    bool hwSupport = m_GFX_GEN == IGFX_PVC;
+    bool hwSupport = m_GFX_CORE == IGFX_XE_HPC_CORE;
     return hwSupport;
 }

@@ -28,7 +28,7 @@ namespace IGC
 
         /// @brief  Constructor
         NamedBarriersResolution();
-        NamedBarriersResolution(PRODUCT_FAMILY GFX_GEN);
+        NamedBarriersResolution(GFXCORE_FAMILY GFX_CORE);
 
         /// @brief  Destructor
         ~NamedBarriersResolution();
@@ -57,7 +57,7 @@ namespace IGC
 
         static int AlignNBCnt2BarrierNumber(uint NBCnt);
     private:
-        PRODUCT_FAMILY m_GFX_GEN;
+        GFXCORE_FAMILY m_GFX_CORE;
         llvm::Type* m_NamedBarrierType;
         llvm::GlobalVariable* m_NamedBarrierID;
         llvm::GlobalVariable* m_NamedBarrierArray;

@@ -1974,6 +1974,7 @@ namespace TC
             SGlobalData globDataTmp = { 0 };
             m_GlobalData = globDataTmp;
             m_HWPlatform = IGFX_UNKNOWN;
+            m_CoreFamily = IGFX_UNKNOWN_CORE;
             m_OCL_Ver = "120";
         }
         m_InputFormat = pCreateArgs->TranslationCode.Type.Input;

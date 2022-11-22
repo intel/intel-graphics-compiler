@@ -114,6 +114,7 @@ namespace TC
     std::vector<std::string> m_Extensions;
 
     PRODUCT_FAMILY m_HWPlatform;   // The HW platform that the device is running on
+    GFXCORE_FAMILY m_CoreFamily;
     SGlobalData m_GlobalData;
 
     // Using auto pointer to get CTH MemoryBuffer from LoadBuffer

@@ -371,7 +371,7 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new JointMatrixFuncsResolutionPass());
 
-    mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eProductFamily));
+    mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eRenderCoreFamily));
     mpm.add(new PreBIImportAnalysis());
     mpm.add(createTimeStatsCounterPass(pContext, TIME_Unify_BuiltinImport, STATS_COUNTER_START));
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
