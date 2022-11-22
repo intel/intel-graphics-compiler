@@ -187,7 +187,9 @@ MoveEntryPointModuleToTheEnd(
     }
     if (*HasEntryPointsOrErr) {
       EntryPointPair = InputArgsPair;
-      SimdSize = splitter.GetForcedSubgroupSize();
+      if (EntryPointPair.first == SPIRVTypeEnum::SPIRV_SPMD) {
+        SimdSize = splitter.GetForcedSubgroupSize();
+      }
       if (HasEntryPointModule) {
         return llvm::createStringError(
             llvm::inconvertibleErrorCode(),
