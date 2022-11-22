@@ -87,3 +87,30 @@ void OpenCLPrintfAnalysis::addPrintfBufferArgs(Function& F)
     implicitArgs.push_back(ImplicitArg::PRINTF_BUFFER);
     ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
 }
+
+bool OpenCLPrintfAnalysis::isTopLevelUserPrintf(llvm::Value* V)
+{
+    // Recursively check the users of the value until reaching the top level
+    // user. Note that printf has no users.
+
+    // Base case: return true when the current value has no user and is a call
+    // to printf. Otherwise return false.
+    if (V->user_empty())
+    {
+        if (llvm::CallInst *call = llvm::dyn_cast<llvm::CallInst>(V))
+        {
+            return call->getCalledFunction()->getName() ==
+                OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME;
+        }
+        return false;
+    }
+
+    // Check users recursively.
+    for (auto user : V->users()) {
+        if (!isTopLevelUserPrintf(user))
+            return false;
+    }
+
+    // Return true as every top level user is a printf call.
+    return true;
+}

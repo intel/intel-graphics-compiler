@@ -5616,6 +5616,7 @@ namespace IGC
     {
         ValueToSymbolList symbolTableList;
         CreateSymbolTable(symbolTableList);
+        ModuleMetaData* modMD = m_program->GetContext()->getModuleMetaData();
 
         // Get the data for zebin
         for (auto I : symbolTableList)
@@ -5639,10 +5640,13 @@ namespace IGC
                 }
                 // global constants and string literals
                 else {
-                    Constant* initializer = G->getInitializer();
-                    ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
-                    if (cds && (cds->isCString() || cds->isString()))
+                    if (modMD->stringConstants.count(G))
+                    {
+                        ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(G->getInitializer());
+                        IGC_ASSERT(cds && (cds->isCString() || cds->isString()));
+                        (void) cds;
                         programSyms.globalStringConst.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
+                    }
                     else
                         programSyms.globalConst.emplace_back((vISA::GenSymType)symbolEntry.s_type, symbolEntry.s_offset, symbolEntry.s_size, G->getName().str());
                 }

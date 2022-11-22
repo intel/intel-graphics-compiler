@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include <string>
 #include <map>
+#include <set>
 #include <vector>
 #include <array>
 #include <optional>
@@ -639,6 +640,7 @@ namespace IGC
         std::map<uint32_t, std::array<uint32_t, 4>> inlineDynTextures;
         std::vector<InlineResInfo> inlineResInfoData;
         ImmConstantInfo immConstant;
+        std::set<llvm::GlobalVariable*> stringConstants;
         std::vector<InlineProgramScopeBuffer> inlineConstantBuffers;
         std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;
         std::vector<PointerProgramBinaryInfo> GlobalPointerProgramBinaryInfos;
