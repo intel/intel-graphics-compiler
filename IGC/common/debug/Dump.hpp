@@ -77,7 +77,7 @@ public:
     std::string overridePath() const;
     std::string RelativePath() const;
     std::string AbsolutePath(OutputFolderName folder) const;
-    std::string GetKernelDumpName() const;
+    std::string GetKernelName() const;
     bool allow() const;
 
 private:

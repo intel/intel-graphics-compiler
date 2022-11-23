@@ -426,14 +426,14 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
     return ss.str();
 }
 
-std::string DumpName::GetKernelDumpName() const
+std::string DumpName::GetKernelName() const
 {
-    std::string kernelDumpName = "";
+    std::string kernelName = "";
     if (m_postfixStr.hasValue() && !m_postfixStr.getValue().empty())
     {
-        kernelDumpName = m_postfixStr.getValue();
+        kernelName = m_postfixStr.getValue();
     }
-    return kernelDumpName;
+    return kernelName;
 }
 
 std::string DumpName::str() const
