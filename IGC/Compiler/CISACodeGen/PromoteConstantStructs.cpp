@@ -130,6 +130,9 @@ private:
     }
 
     void visitStoreInst(StoreInst &SI) {
+        if (SI.getValueOperand() == U->get())
+            PI.setEscaped(&SI);
+
         StoreBBs.insert(SI.getParent());
     }
 
