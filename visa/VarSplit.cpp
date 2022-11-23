@@ -1271,6 +1271,8 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
     }
 
     const RegionDesc *rd = kernel.fg.builder->getRegionStride1();
+    if (execSize == g4::SIMD1)
+      rd = kernel.fg.builder->getRegionScalar();
 
     unsigned int row =
         (dst->getByteSize() - bytesRemaining) / kernel.numEltPerGRF<Type_UB>();
