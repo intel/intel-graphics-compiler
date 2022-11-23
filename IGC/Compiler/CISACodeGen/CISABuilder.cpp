@@ -5813,7 +5813,7 @@ namespace IGC
         // ShaderOverride for .visaasm files
         std::vector<std::string> visaOverrideFiles;
         bool visaAsmOverride = false;
-        std::string kernelName(m_program->entry->getName());
+        std::string kernelName;
         if (IGC_IS_FLAG_ENABLED(ShaderOverride))
         {
             // Kernel count is one per visaBuilder
@@ -5823,6 +5823,7 @@ namespace IGC
             int count = kernelCount + functionCount;
             IGC::Debug::OutputFolderName folder = IGC::Debug::GetShaderOverridePath();
             Debug::DumpName name = IGC::Debug::GetDumpNameObj(m_program, "visaasm");
+            kernelName = name.GetKernelName();
 
             visaOverrideFiles.push_back(name.AbsolutePath(folder));
 
@@ -5909,6 +5910,8 @@ namespace IGC
                         break;
                     }
                 }
+
+
             }
             else
             {
@@ -5989,6 +5992,7 @@ namespace IGC
                     // After call to ParseVISAText, we have new VISAKernel, which don't have asm path set.
                     // So we need to set the OutputAsmPath attribute of overridden kernel,
                     // otherwise, we will not get .visaasm dump and .asm file dump
+                    auto kernelName = IGC::Debug::GetDumpNameObj(m_program, "").GetKernelName();
                     std::string asmName = GetDumpFileName("asm");
                     auto vKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
                     vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str());
