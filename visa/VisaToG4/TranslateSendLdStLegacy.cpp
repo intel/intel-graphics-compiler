@@ -11,9 +11,6 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-#define FIX_OWORD_SEND_EXEC_SIZE(BLOCK_SIZE)                                   \
-  (((BLOCK_SIZE) > 2) ? 16 : (BLOCK_SIZE * 4))
-
 static uint32_t buildDescForScatter(uint32_t msgType,
                                     VISA_SVM_Block_Num numBlocks,
                                     MDC_SM2 simdMode) {
@@ -22,6 +19,17 @@ static uint32_t buildDescForScatter(uint32_t msgType,
   MD |= 1 << 9;
   MD |= simdMode << 8;
   return MD;
+}
+
+unsigned IR_Builder::fixOwordSendExecSize(unsigned blockSize) {
+  unsigned execSize = ((blockSize) > 2) ? 16 : (blockSize * 4);
+  unsigned simdSize = kernel.getInt32KernelAttr(Attributes::ATTR_SimdSize);
+
+  if (hasFusedEU() && simdSize != 0) {
+    return (execSize > simdSize) ? simdSize : execSize;
+  } else {
+    return execSize;
+  }
 }
 
 bool IR_Builder::isMessageHeaderOptional(G4_Operand *surface,
@@ -299,7 +307,7 @@ int IR_Builder::translateVISAOwordLoadInst(ISA_Opcode opcode, bool modified,
 
   SFID tf_id = SFID::DP_DC0;
 
-  G4_ExecSize send_exec_size = G4_ExecSize(FIX_OWORD_SEND_EXEC_SIZE(num_oword));
+  G4_ExecSize send_exec_size = G4_ExecSize(fixOwordSendExecSize(num_oword));
   bool forceSplitSend = shouldForceSplitSend(surface);
 
   if (!forceSplitSend) {
@@ -392,7 +400,7 @@ int IR_Builder::translateVISAOwordStoreInst(G4_Operand *surface,
         createSendMsgDesc(msgDesc, 0, 1, SFID::DP_DC0, extMsgLength,
                           extFuncCtrl, SendAccess::WRITE_ONLY, surface);
 
-    G4_ExecSize sendSize = G4_ExecSize(FIX_OWORD_SEND_EXEC_SIZE(num_oword));
+    G4_ExecSize sendSize = G4_ExecSize(fixOwordSendExecSize(num_oword));
 
     G4_SrcRegRegion *src0 = createSrcRegRegion(headerDcl, getRegionStride1());
     G4_DstRegRegion *dst = createNullDst(sendSize > 8 ? Type_UW : Type_UD);
@@ -424,7 +432,7 @@ int IR_Builder::translateVISAOwordStoreInst(G4_Operand *surface,
     /* Size of whole operand in UINT elements */
     G4_SrcRegRegion *payload = createSrcRegRegion(dcl, getRegionStride1());
 
-    unsigned send_size = FIX_OWORD_SEND_EXEC_SIZE(num_oword);
+    unsigned send_size = fixOwordSendExecSize(num_oword);
     G4_DstRegRegion *post_dst_opnd =
         createNullDst(send_size > 8 ? Type_UW : Type_UD);
 
@@ -2224,7 +2232,7 @@ int IR_Builder::translateVISASVMBlockReadInst(VISA_Oword_Num size,
 
   desc = setOwordForDesc(desc, numOword);
 
-  G4_ExecSize sendExecSize{FIX_OWORD_SEND_EXEC_SIZE(numOword)};
+  G4_ExecSize sendExecSize{fixOwordSendExecSize(numOword)};
   dst->setType(*this, Type_UD);
 
   createSendInst(NULL, dst, src, 1, rspLength, sendExecSize, desc, SFID::DP_DC1,
@@ -2241,9 +2249,9 @@ int IR_Builder::translateVISASVMBlockWriteInst(VISA_Oword_Num size,
 
   unsigned numOword = Get_VISA_Oword_Num(size);
   unsigned srcNumGRF = (numOword * 16 + getGRFSize() - 1) / getGRFSize();
-  G4_ExecSize sendExecSize{FIX_OWORD_SEND_EXEC_SIZE(numOword)};
+  G4_ExecSize sendExecSize{fixOwordSendExecSize(numOword)};
 
-  // FIXME: may want to apply this to FIX_OWORD_SEND_EXEC_SIZE instead
+  // FIXME: may want to apply this to fixOwordSendExecSize instead
   if (sendExecSize < g4::SIMD8) {
     sendExecSize = g4::SIMD8;
   }
