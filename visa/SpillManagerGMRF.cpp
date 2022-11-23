@@ -5836,6 +5836,26 @@ void vISA::BoundedRA::markBusyGRFs() {
   }
 }
 
+void BoundedRA::markUniversalForbidden() {
+  auto markPhyReg = [&](G4_Declare *dcl) {
+    if (dcl->getRegVar() && dcl->getRegVar()->getPhyReg())
+      markGRF(dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum());
+    else if (dcl->getRegVar()->isRegAllocPartaker())
+      if (auto reg = lrs[dcl->getRegVar()->getId()]->getPhyReg())
+        markGRF(reg->asGreg()->getRegNum());
+  };
+  // r0 is special and shouldn't be allocated to temps
+  markGRF(0);
+
+  // BuiltInR0 may be needed by spill/fill instruction
+  markPhyReg(kernel.fg.builder->getBuiltinR0());
+
+  // spill/fill header may be clobbered by spill/fill instruction
+  if (gra.builder.hasValidSpillFillHeader()) {
+    markPhyReg(kernel.fg.builder->getSpillFillHeader());
+  }
+}
+
 void BoundedRA::markForbidden(LiveRange *lr) {
   auto totalRegs = gra.kernel.getNumRegTotal();
   auto forbidden = lr->getForbidden();
@@ -5843,22 +5863,7 @@ void BoundedRA::markForbidden(LiveRange *lr) {
     if (forbidden[i])
       markGRF(i);
 
-  // r0 is special and shouldnt be used for allocation to temps
-  markGRF(0);
-  auto dcl = kernel.fg.builder->getBuiltinR0();
-  if (dcl) {
-    if (dcl->getRegVar() && dcl->getRegVar()->getPhyReg()) {
-      // BuiltInR0 is also a forbidden register
-      auto r0 = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-      markGRF(r0);
-    }
-    else if (dcl->getRegVar()->isRegAllocPartaker())
-    {
-      auto r0 = lrs[dcl->getRegVar()->getId()]->getPhyReg();
-      if (r0)
-        markGRF(r0->asGreg()->getRegNum());
-    }
-  }
+  markUniversalForbidden();
 }
 
 void BoundedRA::markGRFs(unsigned int reg, unsigned int num) {
@@ -5941,10 +5946,12 @@ void BoundedRA::insertPushPop(bool useLSCMsg) {
                                                builder->getRegionStride1());
       headerOpnd1 = builder->createSrcRegRegion(builder->getBuiltinR0(),
                                                 builder->getRegionStride1());
+      off = off >> SCRATCH_SPACE_ADDRESS_UNIT;
     } else if (useLSCMsg) {
       // LSC needs its own spill/fill header
       headerOpnd = getSpillFillHeader(*builder, nullptr);
       headerOpnd1 = getSpillFillHeader(*builder, nullptr);
+      off = off >> SCRATCH_SPACE_ADDRESS_UNIT;
     } else {
       // off is beyond HWord addressable range
       // LSC is not available on platform
@@ -5960,6 +5967,11 @@ void BoundedRA::insertPushPop(bool useLSCMsg) {
       movInst = builder->createMov(G4_ExecSize(1), dstMov, immOpnd,
                                    InstOpt_WriteEnable, false);
       movInst->inheritDIFrom(curInst);
+      headerOpnd =
+          builder->createSrcRegRegion(tmp, builder->getRegionStride1());
+      headerOpnd1 =
+          builder->createSrcRegRegion(tmp, builder->getRegionStride1());
+      off = G4_SpillIntrinsic::InvalidOffset;
     }
 
     G4_ExecSize execSize(16);
@@ -5968,9 +5980,6 @@ void BoundedRA::insertPushPop(bool useLSCMsg) {
     G4_Declare *tmp = builder->createDeclareNoLookup(
         dclName, G4_GRF, kernel.numEltPerGRF<Type_D>(), segment.second, Type_D);
     tmp->getRegVar()->setPhyReg(builder->phyregpool.getGreg(segment.first), 0);
-
-    MUST_BE_TRUE(off <= 128 * 1024, "offset out of hword msg bounds");
-    off = off >> SCRATCH_SPACE_ADDRESS_UNIT;
 
     // Push
     G4_DstRegRegion *postDst = builder->createNullDst(Type_UD);
@@ -5990,6 +5999,7 @@ void BoundedRA::insertPushPop(bool useLSCMsg) {
       // Pop
       if (movInst)
         curBB->insertBefore(next, movInst->cloneInst(), false);
+
       auto dst = builder->createDst(tmp->getRegVar(), 0, 0, 1, Type_D);
       auto fill =
           builder->createFill(headerOpnd1, dst, execSize, segment.second, off,

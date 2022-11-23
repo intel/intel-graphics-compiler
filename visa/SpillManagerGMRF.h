@@ -200,6 +200,9 @@ private:
       return;
     markBusyGRFs();
   }
+
+  // Mark forbidden registers that are universal (eg, r0)
+  void markUniversalForbidden();
   // Forbidden is marked per LR in GRA. In this case, we
   // club forbidden for all operands in a instruction and
   // apply it to the instruction for simplicity.
