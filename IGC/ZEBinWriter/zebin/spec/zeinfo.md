@@ -174,6 +174,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | image_transformable | bool | Optional | false | Present when addrspace is "image" and image is transformable |
 | sampler_type | <sampler_type> | Optional | | Present when addrspace is "sampler" |
 | is_pipe | bool | Optional | false | Present when arg_type is "arg_bypointer" and type qualifier is pipe |
+| is_ptr | bool | Optional | false | Present when arg_type is "arg_byvalue" and arg is used as pointer |
 <!--- PayloadArgument PayloadArguments -->
 
 ### Supported argument types:

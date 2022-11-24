@@ -218,7 +218,7 @@ void CMKernel::createConstArgumentAnnotation(unsigned argNo,
 
     // EnableZEBinary: ZEBinary related code
     zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
-        payloadPosition, sizeInBytes, argNo, offsetInArg);
+        payloadPosition, sizeInBytes, argNo, offsetInArg, false);
 }
 
 // TODO: this is incomplete. Media sampler types are not supported now.

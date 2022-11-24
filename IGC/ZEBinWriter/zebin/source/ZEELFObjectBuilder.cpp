@@ -1131,7 +1131,8 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(
     int32_t offset,
     int32_t size,
     int32_t arg_index,
-    int32_t source_offset)
+    int32_t source_offset,
+    bool is_ptr)
 {
     // Here we merge the specified payload argument from the flattened byval
     // aggregate elements into the previous contiguous zeinfo payload argument
@@ -1141,12 +1142,14 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(
     bool mergeable = false;
     if (!arg_list.empty()) {
         zeInfoPayloadArgument& prev = arg_list.back();
-        // merge-able elements must be contiguous in payload and in the host data layout
+        // Merge-able elements must be contiguous in payload and in the host data layout.
+        // Pointer arguments can't be merged with any other argument (pointer or non-pointer).
         // FIXME: It's possible that an element is contiguous in host data but is not in
         // the payload. Cases seen in by-val nested struct argument.
         mergeable = prev.arg_index == arg_index &&
                     (prev.source_offset + prev.size == source_offset) &&
-                    (prev.offset + prev.size == offset);
+                    (prev.offset + prev.size == offset) &&
+                    !prev.is_ptr && !is_ptr;
     }
 
     if (!mergeable)
@@ -1162,6 +1165,7 @@ zeInfoPayloadArgument& ZEInfoBuilder::addPayloadArgumentByValue(
         arg.size = size;
         arg.arg_index = arg_index;
         arg.source_offset = source_offset;
+        arg.is_ptr = is_ptr;
     }
     return arg;
 }
