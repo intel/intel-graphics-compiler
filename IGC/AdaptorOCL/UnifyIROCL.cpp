@@ -340,10 +340,11 @@ static void CommonOCLBasedPasses(
     mpm.add(new MoveStaticAllocas());
 
     // Skip this pass if OCL version < 2.0
-    if (!(OCLMajor < 2))
-    {
-        mpm.add(createTransformBlocksPass());
-    }
+    // Pass disabled, feature dropped with OpenCL 3.0 transition
+    // if (!(OCLMajor < 2))
+    // {
+    //     mpm.add(createTransformBlocksPass());
+    // }
 
     // Clone kernel function being used as user function.
     mpm.add(createKernelFunctionCloningPass());
