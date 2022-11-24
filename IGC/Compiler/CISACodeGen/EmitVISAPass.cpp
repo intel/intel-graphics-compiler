@@ -533,6 +533,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext* ctx, MetaDataUtils* pMdUtil
 bool EmitPass::runOnFunction(llvm::Function& F)
 {
     m_currFuncHasSubroutine = false;
+    m_visitedScalarArgInst.clear();
 
     m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -10566,6 +10567,95 @@ bool EmitPass::IsIndirectAccess(llvm::Value* pointer)
     return isIndirect;
 }
 
+void EmitPass::CheckAccessFromScalar(llvm::Value* pointer)
+{
+    if (m_currShader->GetShaderType() != ShaderType::OPENCL_SHADER)
+        return;
+
+    IGC_ASSERT_MESSAGE(isa<PointerType>(pointer->getType()), "Value should be a pointer");
+
+    if (GetResourceVariable(pointer).m_surfaceType != ESURFACE_STATELESS)
+        return;
+
+    Instruction* inst = dyn_cast<Instruction>(pointer);
+    if (!inst)
+        return;
+
+    llvm::Function* func = inst->getFunction();
+
+    // Skip non-kernel functions
+    if (!isEntryFunc(m_pCtx->getMetaDataUtils(), func))
+        return;
+
+    if (auto args = GetAccessFromScalar(inst))
+    {
+        FunctionMetaData& funcMD = m_moduleMD->FuncMD[func];
+
+        // Fill with default values on first use
+        if (funcMD.m_OpenCLArgScalarAsPointers.empty())
+            funcMD.m_OpenCLArgScalarAsPointers.resize(func->arg_size(), false);
+
+        for (auto it = args->begin(); it != args->end(); ++it)
+            funcMD.m_OpenCLArgScalarAsPointers[(*it)->getArgNo()] = true;
+    }
+}
+
+// Returns a list of kernel arguments passed by value (instead of pointer) that are
+// used as pointer in load/store instruction. Returns null if load/store:
+//  (1) is indirect, or
+//  (2) uses pointer kernel argument
+// Results are cached for repeated use.
+const EmitPass::ScalarArgSet* EmitPass::GetAccessFromScalar(llvm::Instruction* inst)
+{
+    // Skip already visited instruction
+    if (m_visitedScalarArgInst.count(inst))
+        return &(*m_visitedScalarArgInst[inst]);
+
+    // Mark as visited
+    m_visitedScalarArgInst.try_emplace(inst, nullptr);
+
+    // Assume intrinsic call is simple arithmetic
+    if (isa<LoadInst>(inst) || (isa<CallInst>(inst) && !isa<GenIntrinsicInst>(inst)))
+    {
+        // (1) Found indirect access, fail search
+        return nullptr;
+    }
+
+    auto result = std::make_unique<EmitPass::ScalarArgSet>();
+
+    for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
+    {
+        Value* op = inst->getOperand(i);
+
+        if (Argument* arg = dyn_cast<Argument>(op))
+        {
+            // Consider only integer arguments
+            if (arg->getType()->isIntegerTy())
+            {
+                result->insert(arg);
+            }
+            else
+            {
+                // (2) Found non-compatible argument, fail
+                return nullptr;
+            }
+        }
+        else if (Instruction* opInst = dyn_cast<Instruction>(op))
+        {
+            auto* args = GetAccessFromScalar(opInst);
+
+            if (!args)
+                return nullptr; // propagate fail
+
+            for (auto it = args->begin(); it != args->end(); ++it)
+                result->insert(*it);
+        }
+    }
+
+    m_visitedScalarArgInst[inst] = std::move(result);
+    return &(*m_visitedScalarArgInst[inst]);
+}
+
 void EmitPass::emitInsert(llvm::Instruction* inst)
 {
     auto IEI = llvm::cast<llvm::InsertElementInst>(inst);
@@ -15471,6 +15561,8 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset, ConstantInt* immOff
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
+    CheckAccessFromScalar(Ptr);
+
     // eOffset is in bytes
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(immOffset ? offset : Ptr);
@@ -15989,6 +16081,8 @@ void EmitPass::emitVectorStore(StoreInst* inst, Value* offset, ConstantInt* immO
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
+    CheckAccessFromScalar(Ptr);
+
     if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
     {
         ForceDMask(false);
@@ -16702,6 +16796,8 @@ void EmitPass::emitLSCVectorLoad(
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
+    CheckAccessFromScalar(Ptr);
+
     // eOffset is in bytes
     // offset corresponds to Int2Ptr operand obtained during pattern matching
     CVariable* eOffset = GetSymbol(varOffset);
@@ -17008,6 +17104,8 @@ void EmitPass::emitLSCVectorStore(
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
     CountStatelessIndirectAccess(Ptr, resource);
+    CheckAccessFromScalar(Ptr);
+
     if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE &&
         !dontForceDmask)
     {

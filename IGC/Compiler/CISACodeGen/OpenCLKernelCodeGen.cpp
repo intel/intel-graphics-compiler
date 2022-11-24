@@ -1374,7 +1374,8 @@ namespace IGC
         case KernelArg::ArgType::CONSTANT_REG:
             zebin::ZEInfoBuilder::addPayloadArgumentByValue(m_kernelInfo.m_zePayloadArgs,
                 payloadPosition, kernelArg->getAllocateSize(),
-                kernelArg->getAssociatedArgNo(), kernelArg->getStructArgOffset());
+                kernelArg->getAssociatedArgNo(), kernelArg->getStructArgOffset(),
+                kernelArg->isScalarAsPointer());
             break;
 
         // Local ids are supported in per-thread payload arguments

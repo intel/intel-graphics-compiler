@@ -76,7 +76,7 @@ struct zeInfoPayloadArgument
 {
     bool operator==(const zeInfoPayloadArgument& other) const
     {
-        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index && source_offset == other.source_offset && slm_alignment == other.slm_alignment && image_type == other.image_type && image_transformable == other.image_transformable && sampler_type == other.sampler_type && is_pipe == other.is_pipe;
+        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index && source_offset == other.source_offset && slm_alignment == other.slm_alignment && image_type == other.image_type && image_transformable == other.image_transformable && sampler_type == other.sampler_type && is_pipe == other.is_pipe && is_ptr == other.is_ptr;
     }
     zeinfo_str_t arg_type;
     zeinfo_int32_t offset = 0;
@@ -92,6 +92,7 @@ struct zeInfoPayloadArgument
     zeinfo_bool_t image_transformable = false;
     zeinfo_str_t sampler_type;
     zeinfo_bool_t is_pipe = false;
+    zeinfo_bool_t is_ptr = false;
 };
 struct zeInfoPerThreadPayloadArgument
 {
@@ -234,7 +235,7 @@ struct zeInfoContainer
     KernelsMiscInfoTy kernels_misc_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.24"; }
+    static zeinfo_str_t getVersionNumber() { return "1.25"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,

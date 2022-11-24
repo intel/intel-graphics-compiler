@@ -436,7 +436,8 @@ public:
         int32_t offset,
         int32_t size,
         int32_t arg_index,
-        int32_t source_offset);
+        int32_t source_offset,
+        bool is_ptr);
 
     // addPayloadArgumentImage - add explicit kernel argument for image
     // into given arg_list
