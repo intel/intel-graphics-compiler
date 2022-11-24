@@ -1795,8 +1795,6 @@ public:
                                 surface->asImm()->getImm() == PREDEF_SURF_253);
   }
 
-  unsigned fixOwordSendExecSize(unsigned blockSize);
-
   std::tuple<G4_SrcRegRegion *, uint32_t, uint32_t>
   constructSrcPayloadRenderTarget(vISA_RT_CONTROLS cntrls,
                                   G4_SrcRegRegion **msgOpnds,
