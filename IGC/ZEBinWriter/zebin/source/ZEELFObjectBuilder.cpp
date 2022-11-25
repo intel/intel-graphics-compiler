@@ -93,6 +93,8 @@ private:
     void writeSectionHdrOffset(uint64_t offset);
     // write number of zero bytes
     void writePadding(uint32_t size);
+    // write paddings until the required alignment requirement is met
+    void padToRequiredAlign(uint32_t align);
 
     // The name writeWord seems confusing. Both ELF32 and ELF64 words are
     // uint32_t.
@@ -430,6 +432,13 @@ void ELFWriter::writePadding(uint32_t size)
         m_W.write<uint8_t>(0x0);
 }
 
+void ELFWriter::padToRequiredAlign(uint32_t align)
+{
+    uint64_t cur = m_W.OS.tell();
+    uint64_t next = llvm::alignTo(cur, align);
+    writePadding(next - cur);
+}
+
 uint32_t ELFWriter::getSymTabEntSize()
 {
     if (is64Bit())
@@ -569,14 +578,9 @@ uint64_t ELFWriter::writeZEInfo()
 }
 
 std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
-    auto padToRequiredAlign = [&]() {
-        // The alignment of the Elf word, name and descriptor is 4.
-        // Implementations differ from the specification here: in practice all
-        // variants align both the name and descriptor to 4-bytes.
-        uint64_t cur = m_W.OS.tell();
-        uint64_t next = llvm::alignTo(cur, 4);
-        writePadding(next - cur);
-    };
+    // The alignment of the Elf word, name and descriptor is 4.
+    // Implementations differ from the specification here: in practice all
+    // variants align both the name and descriptor to 4-bytes.
 
     auto writeOneNote = [&](StringRef owner, auto desc, uint32_t type) {
         // It's easier to use uint32_t directly now because both Elf32_Word and
@@ -586,9 +590,9 @@ std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
         m_W.write<uint32_t>(sizeof(desc));
         m_W.write<uint32_t>(type);
         m_W.OS << owner << '\0';
-        padToRequiredAlign();
+        padToRequiredAlign(4);
         m_W.write(desc);
-        padToRequiredAlign();
+        padToRequiredAlign(4);
     };
 
     auto writeOneStrNote = [&](StringRef owner, StringRef desc, uint32_t type) {
@@ -596,14 +600,14 @@ std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
         m_W.write<uint32_t>(desc.size() + 1);
         m_W.write<uint32_t>(type);
         m_W.OS << owner << '\0';
-        padToRequiredAlign();
+        padToRequiredAlign(4);
         m_W.OS << desc << '\0';
-        padToRequiredAlign();
+        padToRequiredAlign(4);
     };
 
     // Align the section offset to the required alignment first.
     // TODO: Handle the section alignment in a more generic place..
-    padToRequiredAlign();
+    padToRequiredAlign(4);
     uint64_t start_off = m_W.OS.tell();
     // write NT_INTELGT_PRODUCT_FAMILY
     writeOneNote("IntelGT",
@@ -628,18 +632,12 @@ std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
 }
 
 std::pair<uint64_t, uint64_t> ELFWriter::writeMetricsNote(uint64_t sizeRsrv, uint64_t* offset) {
-    auto padToRequiredAlign = [&]() {
-        // The alignment of the Elf word, name and descriptor is 4.
-        // Implementations differ from the specification here: in practice all
-        // variants align both the name and descriptor to 4-bytes.
-        uint64_t cur = m_W.OS.tell();
-        uint64_t next = llvm::alignTo(cur, 4);
-        writePadding(next - cur);
-    };
+    // Note that currently the alignment requirement of the metrics note used
+    // is same as the alignment of a standard ELF note.
 
     // Align the section offset to the required alignment first.
     // TODO: Handle the section alignment in a more generic place.
-    padToRequiredAlign();
+    padToRequiredAlign(4);
     uint64_t start_off = m_W.OS.tell();
     *offset = start_off;
     // Reserve space for metrics data
@@ -901,6 +899,10 @@ uint64_t ELFWriter::write()
     createSectionHdrEntries();
     writeHeader();
     writeSections();
+
+    // TODO: Use template implementation to handle ELF32 and ELF64 cases.
+    // Now use a hard-coded alignment value for ELF section header entries.
+    padToRequiredAlign(is64Bit() ? 8 : 4);
     uint64_t sectHdrOff = m_W.OS.tell();
     writeSectionHeader();
     writeSectionHdrOffset(sectHdrOff);
