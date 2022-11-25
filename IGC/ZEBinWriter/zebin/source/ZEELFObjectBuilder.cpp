@@ -691,6 +691,7 @@ void ELFWriter::writeSectionHeader()
 void ELFWriter::writeSections()
 {
     for (SectionHdrEntry& entry : m_SectionHdrEntries) {
+        padToRequiredAlign(is64Bit() ? 8 : 4);
         entry.offset = m_W.OS.tell();
 
         switch(entry.type) {
