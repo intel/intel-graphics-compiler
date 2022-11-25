@@ -166,7 +166,7 @@ void LocalRA::preLocalRAAnalysis() {
       numRegLRA = numGRF - numRowsReserved;
     } else {
       numRegLRA = numGRF - numRowsReserved - reserveSpillSize -
-                  3; // spill Header, scratch offset, a0.2
+                  4; // spill Header, scratch offset, a0.2, WA
     }
   } else {
     numRegLRA = numGRF - numRowsReserved;

@@ -10196,6 +10196,14 @@ int GlobalRA::coloringRegAlloc() {
           spillAnalysis->Do(&liveAnalysis, &coloring, &spillGRF);
         }
 
+        MUST_BE_TRUE(std::all_of(coloring.getSpilledLiveRanges().begin(),
+                                   coloring.getSpilledLiveRanges().end(),
+                                   [](const LiveRange *spilledLR) {
+                                     return spilledLR->getSpillCost() !=
+                                            MAXSPILLCOST;
+                                   }),
+                     "Spilled inf spill cost range");
+
         bool success = spillGRF.insertSpillFillCode(&kernel, pointsToAnalysis);
         nextSpillOffset = spillGRF.getNextOffset();
 
