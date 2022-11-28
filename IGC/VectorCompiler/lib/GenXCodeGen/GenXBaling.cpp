@@ -889,8 +889,7 @@ bool GenXBaling::processPredicate(Instruction *Inst, unsigned OperandNum) {
 /***********************************************************************
  * processSat : set up baling info fp saturate
  */
-void GenXBaling::processSat(Instruction *Inst)
-{
+void GenXBaling::processSat(Instruction *Inst) {
   BaleInfo BI(BaleInfo::SATURATE);
   // Get the instruction (if any) that creates value to saturate.
   unsigned OperandNum = 0;
@@ -916,9 +915,12 @@ void GenXBaling::processSat(Instruction *Inst)
       // V is an intrinsic other than rdregion/wrregion. Check that its return
       // value is suitable for baling.
       GenXIntrinsicInfo II(ValIntrinID);
+      auto SatInfo = II.getRetInfo().getSaturation();
+      auto SatIID = vc::getAnyIntrinsicID(Inst);
       if (!II.getRetInfo().isRaw() &&
-          II.getRetInfo().getSaturation() ==
-              GenXIntrinsicInfo::SATURATION_DEFAULT) {
+          (SatInfo == GenXIntrinsicInfo::SATURATION_DEFAULT ||
+           (SatInfo == GenXIntrinsicInfo::SATURATION_INTALLOWED &&
+            GenXIntrinsic::isIntegerSat(SatIID)))) {
         LLVM_DEBUG(llvm::dbgs()
                    << __FUNCTION__ << " setting operand #" << OperandNum
                    << " to bale in instruction " << *Inst << "\n");
