@@ -32,7 +32,7 @@ define spir_kernel void @test_fpflags(float %s1, float %s2) !dbg !6 {
 ; CHECK-SAME: !dbg [[FADD_LOC:![0-9]*]]
 ; CHECK: dbg.value
 ; CHECK-SAME: float [[FADD_V]], metadata [[FADD_MD:![0-9]*]]
-; CHECK_SAME: !dbg [[FADD_LOC]]
+; CHECK-SAME: !dbg [[FADD_LOC]]
   %1 = fadd reassoc nsz float %s1, %s2, !dbg !15
   call void @llvm.dbg.value(metadata float %1, metadata !9, metadata !DIExpression()), !dbg !15
 ; Flags not modified
@@ -40,7 +40,7 @@ define spir_kernel void @test_fpflags(float %s1, float %s2) !dbg !6 {
 ; CHECK-SAME: !dbg [[FDIV_LOC:![0-9]*]]
 ; CHECK: dbg.value
 ; CHECK-SAME: float [[FDIV_V]], metadata [[FDIV_MD:![0-9]*]]
-; CHECK_SAME: !dbg [[FDIV_LOC]]
+; CHECK-SAME: !dbg [[FDIV_LOC]]
   %2 = fdiv arcp float %s1, %s2, !dbg !16
   call void @llvm.dbg.value(metadata float %2, metadata !11, metadata !DIExpression()), !dbg !16
 ; Flags discarded
@@ -48,7 +48,7 @@ define spir_kernel void @test_fpflags(float %s1, float %s2) !dbg !6 {
 ; CHECK-SAME: !dbg [[FCMPO_LOC:![0-9]*]]
 ; CHECK: dbg.value
 ; CHECK-SAME: i1 [[FCMPO_V]], metadata [[FCMPO_MD:![0-9]*]]
-; CHECK_SAME: !dbg [[FCMPO_LOC]]
+; CHECK-SAME: !dbg [[FCMPO_LOC]]
   %3 = fcmp ninf uno float %1, 0.000000e+00, !dbg !17
   call void @llvm.dbg.value(metadata i1 %3, metadata !12, metadata !DIExpression()), !dbg !17
 ; Flags discarded
@@ -56,7 +56,7 @@ define spir_kernel void @test_fpflags(float %s1, float %s2) !dbg !6 {
 ; CHECK-SAME: !dbg [[FCMPNE_LOC:![0-9]*]]
 ; CHECK: dbg.value
 ; CHECK-SAME: i1 [[FCMPNE_V]], metadata [[FCMPNE_MD:![0-9]*]]
-; CHECK_SAME: !dbg [[FCMPO_LOC]]
+; CHECK-SAME: !dbg [[FCMPNE_LOC]]
   %4 = fcmp fast une float %2, %2, !dbg !18
   call void @llvm.dbg.value(metadata i1 %4, metadata !14, metadata !DIExpression()), !dbg !18
   ret void, !dbg !19

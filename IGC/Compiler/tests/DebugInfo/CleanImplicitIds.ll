@@ -125,16 +125,16 @@ entry:
 ; CHECK-DAG: [[GRID1_MD]] = !DILocalVariable(name: "__ocl_dbg_grid1", scope: [[SCOPE_BLOCK]], line: 1
 ; CHECK-DAG: [[GRID2_MD]] = !DILocalVariable(name: "__ocl_dbg_grid2", scope: [[SCOPE_BLOCK]], line: 1
 ; CHECK-DAG: [[GIDI_LOC]] =  !DILocation(line: 1, scope: [[SCOPE_B]], inlinedAt: [[INLINE2_LOC]])
-; CHECK_DAG: [[GIDI0_MD]] = !DILocalVariable(name: "__ocl_dbg_gid0", scope: [[SCOPE_B]], line: 1
-; CHECK_DAG: [[GIDI1_MD]] = !DILocalVariable(name: "__ocl_dbg_gid1", scope: [[SCOPE_B]], line: 1
-; CHECK_DAG: [[GIDI2_MD]] = !DILocalVariable(name: "__ocl_dbg_gid2", scope: [[SCOPE_B]], line: 1
-; CHECK_DAG: [[LIDI0_MD]] = !DILocalVariable(name: "__ocl_dbg_lid0", scope: [[SCOPE_B]], line: 1
-; CHECK_DAG: [[LIDI1_MD]] = !DILocalVariable(name: "__ocl_dbg_lid1", scope: [[SCOPE_B]], line: 1
-; CHECK_DAG: [[LIDI2_MD]] = !DILocalVariable(name: "__ocl_dbg_lid2", scope: [[SCOPE_B]], line: 1
-; CHECK_DAG: [[GRIDI0_MD]] = !DILocalVariable(name: "__ocl_dbg_grid0", scope: [[SCOPE_B]], line: 1
-; CHECK_DAG: [[GRIDI1_MD]] = !DILocalVariable(name: "__ocl_dbg_grid1", scope: [[SCOPE_B]], line: 1
-; CHECK_DAG: [[GRIDI2_MD]] = !DILocalVariable(name: "__ocl_dbg_grid2", scope: [[SCOPE_B]], line: 1
-; CHECK_DAG: [[STORE_LOC]] = !DILocation(line: 3, column: 23, scope: [[SCOPE_B]], inlinedAt: [[INLINE2_LOC]])
+; CHECK-DAG: [[GIDI0_MD]] = !DILocalVariable(name: "__ocl_dbg_gid0", scope: [[SCOPE_B]], line: 1
+; CHECK-DAG: [[GIDI1_MD]] = !DILocalVariable(name: "__ocl_dbg_gid1", scope: [[SCOPE_B]], line: 1
+; CHECK-DAG: [[GIDI2_MD]] = !DILocalVariable(name: "__ocl_dbg_gid2", scope: [[SCOPE_B]], line: 1
+; CHECK-DAG: [[LIDI0_MD]] = !DILocalVariable(name: "__ocl_dbg_lid0", scope: [[SCOPE_B]], line: 1
+; CHECK-DAG: [[LIDI1_MD]] = !DILocalVariable(name: "__ocl_dbg_lid1", scope: [[SCOPE_B]], line: 1
+; CHECK-DAG: [[LIDI2_MD]] = !DILocalVariable(name: "__ocl_dbg_lid2", scope: [[SCOPE_B]], line: 1
+; CHECK-DAG: [[GRIDI0_MD]] = !DILocalVariable(name: "__ocl_dbg_grid0", scope: [[SCOPE_B]], line: 1
+; CHECK-DAG: [[GRIDI1_MD]] = !DILocalVariable(name: "__ocl_dbg_grid1", scope: [[SCOPE_B]], line: 1
+; CHECK-DAG: [[GRIDI2_MD]] = !DILocalVariable(name: "__ocl_dbg_grid2", scope: [[SCOPE_B]], line: 1
+; CHECK-DAG: [[STORE_LOC]] = !DILocation(line: 3, column: 23, scope: [[SCOPE_B]], inlinedAt: [[INLINE2_LOC]])
 
 
 ; Function Attrs: nounwind

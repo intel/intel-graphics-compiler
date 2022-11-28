@@ -34,9 +34,9 @@ entry:
 
 ; CHECK-DAG: [[FILE:![0-9]*]] = !DIFile(filename: "DiscardLowering.ll", directory: "/")
 ; CHECK-DAG: [[SCOPE]] = distinct !DISubprogram(name: "test_discardlow", linkageName: "test_discardlow", scope: null, file: [[FILE]], line: 1
-; CHECK_DAG: [[HELP_MD]] = !DILocalVariable(name: "1", scope: [[SCOPE]], file: [[FILE]], line: 1, type: !14)
-; CHECK_DAG: [[HELP_LOC]] = !DILocation(line: 1, column: 1, scope: [[SCOPE]])
-; CHECK_DAG: [[DISCARD_LOC]] = !DILocation(line: 2, column: 1, scope: [[SCOPE]])
+; CHECK-DAG: [[HELP_MD]] = !DILocalVariable(name: "1", scope: [[SCOPE]], file: [[FILE]], line: 1, type: !14)
+; CHECK-DAG: [[HELP_LOC]] = !DILocation(line: 1, column: 1, scope: [[SCOPE]])
+; CHECK-DAG: [[DISCARD_LOC]] = !DILocation(line: 2, column: 1, scope: [[SCOPE]])
 
 
 declare void @llvm.genx.GenISA.discard(i1)
