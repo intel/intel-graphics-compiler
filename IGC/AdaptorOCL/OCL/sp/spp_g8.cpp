@@ -641,14 +641,15 @@ void CGen8OpenCLProgram::GetZEBinary(
                     {
                         IGC_ASSERT_MESSAGE(false, "A unique name for an input ELF file not created");
                     }
-                    std::string fullElfFilePath = tempDir + elfFileNameStr;
+                    linkedElfFileNameStr = tempDir + elfFileNameStr;
+
                     addElfKernelMapping(elfMapEntries, elfFileNameStr, kernel->m_kernelInfo.m_kernelName);
 
                     int writeFD = 0;
                     sys::fs::CreationDisposition disp = sys::fs::CreationDisposition::CD_CreateAlways;
                     sys::fs::OpenFlags flags = sys::fs::OpenFlags::OF_None;
                     unsigned int mode = sys::fs::all_read | sys::fs::all_write;
-                    auto EC = sys::fs::openFileForReadWrite(Twine(fullElfFilePath), writeFD, disp, flags, mode);
+                    auto EC = sys::fs::openFileForReadWrite(Twine(linkedElfFileNameStr), writeFD, disp, flags, mode);
                     if (!EC)
                     {
                         raw_fd_ostream OS(writeFD, true, true); // shouldClose=true, unbuffered=true
@@ -656,7 +657,7 @@ void CGen8OpenCLProgram::GetZEBinary(
                         // close(writeFD) is not required due to shouldClose parameter in ostream
 
                         // A temporary input ELF file filled, so its name can be added to a vector of parameters for the linker
-                        elfVecNames.push_back(fullElfFilePath);
+                        elfVecNames.push_back(elfFileNameStr);
                         elfVecPtrs.push_back(elfVecNames.back().c_str());
                     }
                     else
