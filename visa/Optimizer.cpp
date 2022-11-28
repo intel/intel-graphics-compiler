@@ -3883,9 +3883,6 @@ void Optimizer::localCopyPropagation() {
 void Optimizer::localInstCombine() { InstCombine(builder, fg); }
 
 void Optimizer::cselPeepHoleOpt() {
-  if (!builder.hasCondModForTernary()) {
-    return;
-  }
   G4_SrcRegRegion *cmpSrc0 = NULL;
   G4_Operand *cmpSrc1 = NULL;
   for (G4_BB *bb : fg) {
@@ -3982,13 +3979,14 @@ void Optimizer::cselPeepHoleOpt() {
         G4_Operand *selSrc0 = useInst->getSrc(0);
         G4_Operand *selSrc1 = useInst->getSrc(1);
 
-        if (useInst->opcode() != G4_sel || selSrc0->isImm() ||
-            selSrc1->isImm() || selSrc0->getType() != Type_F ||
-            selSrc1->getType() != Type_F || dstUse->getType() != Type_F ||
-            // 3-src restriction
-            !builder.tryToAlignOperand(dstUse, 16) ||
-            !builder.tryToAlignOperand(selSrc0, 16) ||
-            !builder.tryToAlignOperand(selSrc1, 16)) {
+        if (useInst->opcode() != G4_sel || selSrc1->isImm() ||
+            selSrc0->getType() != Type_F || selSrc1->getType() != Type_F ||
+            dstUse->getType() != Type_F ||
+            // 3-src restriction (for legacy plarforms)
+            (builder.getPlatformGeneration() < PlatformGen::XE &&
+             (!builder.tryToAlignOperand(dstUse, 16) ||
+              !builder.tryToAlignOperand(selSrc0, 16) ||
+              !builder.tryToAlignOperand(selSrc1, 16)))) {
           canOpt = false;
           break;
         }
