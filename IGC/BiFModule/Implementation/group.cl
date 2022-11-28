@@ -1897,13 +1897,13 @@ void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockWriteINTEL, _img2d_wo_v2
     global Img2d_wo* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
     int id = (int)__builtin_astype(image, __global void*);                         \
-    INTERNAL_FUNC(image, coord, data);                                             \
+    INTERNAL_FUNC((int)image, coord, data);                                        \
 }                                                                                  \
 void SPIRV_OVERLOADABLE SPIRV_BUILTIN(SubgroupImageBlockWriteINTEL, _img2d_rw_v2i32_##TYPE_ABBR, )(    \
     global Img2d_rw* image, int2 coord, TYPE data)                                 \
 {                                                                                  \
     int id = (int)__builtin_astype(image, __global void*);                         \
-    INTERNAL_FUNC(image, coord, data);                                             \
+    INTERNAL_FUNC((int)image, coord, data);                                        \
 }
 
 #ifdef cl_intel_subgroups_char
