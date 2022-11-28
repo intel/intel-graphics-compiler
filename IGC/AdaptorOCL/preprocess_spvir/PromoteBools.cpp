@@ -98,16 +98,19 @@ bool PromoteBools::runOnModule(Module& module)
 
 Value* PromoteBools::createZextIfNeeded(Value* argument, Instruction* insertBefore)
 {
+    if (!argument->getType()->isIntegerTy(1))
+    {
+        return argument;
+    }
+
     auto trunc = dyn_cast<TruncInst>(argument);
     if (trunc && trunc->getSrcTy()->isIntegerTy(8))
     {
         return trunc->getOperand(0);
     }
-    else
-    {
-        IRBuilder<> builder(insertBefore);
-        return builder.CreateZExt(argument, Type::getInt8Ty(argument->getContext()));
-    }
+
+    IRBuilder<> builder(insertBefore);
+    return builder.CreateZExt(argument, Type::getInt8Ty(argument->getContext()));
 }
 
 void PromoteBools::cleanUp(Module& module)
@@ -686,11 +689,7 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
     SmallVector<Value*, 8> newCallArguments;
     for (auto& arg : call->args())
     {
-        auto promotedArg = getOrCreatePromotedValue(arg);
-        if (promotedArg->getType()->isIntegerTy(1))
-        {
-            promotedArg = createZextIfNeeded(promotedArg, call);
-        }
+        auto promotedArg = createZextIfNeeded(getOrCreatePromotedValue(arg), call);
         newCallArguments.push_back(promotedArg);
     }
 
@@ -758,17 +757,8 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
         return icmp;
     }
 
-    auto promotedOp0 = getOrCreatePromotedValue(op0);
-    auto promotedOp1 = getOrCreatePromotedValue(op1);
-
-    if (promotedOp0->getType()->isIntegerTy(1))
-    {
-        promotedOp0 = createZextIfNeeded(promotedOp0, icmp);
-    }
-    if (promotedOp1->getType()->isIntegerTy(1))
-    {
-        promotedOp1 = createZextIfNeeded(promotedOp1, icmp);
-    }
+    auto promotedOp0 = createZextIfNeeded(getOrCreatePromotedValue(op0), icmp);
+    auto promotedOp1 = createZextIfNeeded(getOrCreatePromotedValue(op1), icmp);
 
     return new ICmpInst(
         icmp,
