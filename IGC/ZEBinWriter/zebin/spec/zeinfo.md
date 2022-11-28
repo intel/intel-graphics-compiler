@@ -196,6 +196,7 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | printf_buffer | | The address of printf_buffer which holds the printf strings information. |
 | implicit_arg_buffer | int64 | The base address of implicit arg buffer |
 | sync_buffer | int64 | The base address of sync buffer that is the return value of OCL "__builtin_IB_get_sync_buffer" |
+| rt_global_buffer | int64 | The base address of rt global buffer that is the return value of OCL "__builtin_IB_intel_get_implicit_dispatch_globals" |
 | arg_byvalue | | Explicit kernel argument |
 | arg_bypointer | | Explicit kernel argument |
 | image_height | | Image height |

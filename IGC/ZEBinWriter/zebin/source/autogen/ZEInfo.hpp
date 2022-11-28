@@ -235,7 +235,7 @@ struct zeInfoContainer
     KernelsMiscInfoTy kernels_misc_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.25"; }
+    static zeinfo_str_t getVersionNumber() { return "1.26"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
@@ -257,6 +257,7 @@ struct PreDefinedAttrGetter{
         printf_buffer,
         implicit_arg_buffer,
         sync_buffer,
+        rt_global_buffer,
         arg_byvalue,
         arg_bypointer,
         image_height,
@@ -388,6 +389,8 @@ struct PreDefinedAttrGetter{
             return "implicit_arg_buffer";
         case ArgType::sync_buffer:
             return "sync_buffer";
+        case ArgType::rt_global_buffer:
+            return "rt_global_buffer";
         case ArgType::arg_byvalue:
             return "arg_byvalue";
         case ArgType::arg_bypointer:

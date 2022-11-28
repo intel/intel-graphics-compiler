@@ -1654,6 +1654,12 @@ namespace IGC
                 payloadPosition, kernelArg->getAllocateSize());
             break;
 
+        case KernelArg::ArgType::IMPLICIT_RT_GLOBAL_BUFFER:
+            zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+                zebin::PreDefinedAttrGetter::ArgType::rt_global_buffer,
+                payloadPosition, kernelArg->getAllocateSize());
+            break;
+
         // We don't need these in ZEBinary, can safely skip them
         case KernelArg::ArgType::IMPLICIT_R0:
         case KernelArg::ArgType::R1:
