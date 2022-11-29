@@ -1925,6 +1925,7 @@ bool checkAndProcessInstructionPattern(Instruction* instruction, Callback callba
 // 1. Load(GlobalVariable)
 // 2. Load(AddrSpaceCastInst(GlobalVariable))
 // 3. Load(GetElementPtr(AddrSpaceCastInst(GlobalVariable)))
+// 4. Load(GetElementPtr(GlobalVariable))
 bool SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
                                               SPIRVBuiltinVariableKind Kind) {
   std::string FuncName;
@@ -1959,6 +1960,8 @@ bool SPIRVToLLVM::transOCLBuiltinFromVariable(GlobalVariable *GV,
     if (checkAndProcessInstructionPattern<AddrSpaceCastInst, LoadInst>(inst, addToDeletesOrUsers))
       continue;
     if (checkAndProcessInstructionPattern<AddrSpaceCastInst, GetElementPtrInst, LoadInst>(inst, addToDeletesOrUsers))
+      continue;
+    if (checkAndProcessInstructionPattern<GetElementPtrInst, LoadInst>(inst, addToDeletesOrUsers))
       continue;
 
     IGC_ASSERT_MESSAGE(false, "Unknown pattern");
