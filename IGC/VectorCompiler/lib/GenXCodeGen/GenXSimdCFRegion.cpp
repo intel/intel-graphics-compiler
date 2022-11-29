@@ -130,24 +130,14 @@ SPDX-License-Identifier: MIT
 // NOTE: transformation is much harded in details than it is decribed above.
 // Main problem is to make this pass and SimdCFConformace be compatible.
 
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/Support/Casting.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "vc/Utils/General/Types.h"
 
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/RegionInfo.h>
-#include <llvm/IR/BasicBlock.h>
-#include <llvm/IR/Dominators.h>
-#include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Instructions.h>
 #include <llvm/InitializePasses.h>
-#include <llvm/Pass.h>
 #include <llvm/Support/CommandLine.h>
-
-#include <utility>
 
 #define DEBUG_TYPE "simdcf-region"
 
@@ -171,7 +161,7 @@ protected:
 public:
   SimdCFRegion(BasicBlock *Entry, BasicBlock *Exit, RegionInfo *RI,
                DominatorTree *DT, SimdCFRegion *Parent = nullptr)
-      : Region(Entry, Exit, RI, DT, Parent) {}
+      : Region(Entry, Exit, RI, DT, Parent), Mask(nullptr) {}
   virtual ~SimdCFRegion() {}
 
   virtual bool isIfRegion() const = 0;
@@ -233,7 +223,7 @@ public:
                  SimdCFRegion *Parent = nullptr)
       : SimdCFRegion(Entry, Exit, RI, DT, Parent), IfThenRegion(IfThen),
         IfElseRegion(IfElse) {
-    assert(IfThenRegion);
+    IGC_ASSERT(IfThenRegion);
     Mask = getIfSimdCondition()->getArgOperand(0);
   }
 };
@@ -311,7 +301,7 @@ public:
   bool transform(SimdCFLoopRegion &R);
 
   Value *getEM(Module *M) {
-    assert(M);
+    IGC_ASSERT(M);
     auto EM = EMs.find(M);
     if (EM == EMs.end()) {
       auto *EMTy = IGCLLVM::FixedVectorType::get(Type::getInt1Ty(M->getContext()),
@@ -736,7 +726,7 @@ void GenXPredToSimdCF::insertIfGoto(SimdCFIfRegion &R) {
   BasicBlock *OldCondBB = OldCond->getParent();
   Value *Mask = R.getMask();
   auto *SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
-  assert(SimdTy);
+  IGC_ASSERT(SimdTy);
   unsigned SimdWidth = SimdTy->getNumElements();
 
   if (!DT->getNode(OldCondBB)->getIDom()) {
@@ -785,7 +775,7 @@ void GenXPredToSimdCF::insertIfGoto(SimdCFIfRegion &R) {
                                        IfThenExit->getNextNode());
   Br->setSuccessor(1, AfterThen);
   auto *IfThenExitBr = IfThenExit->getTerminator();
-  assert(isa<BranchInst>(IfThenExitBr));
+  IGC_ASSERT(isa<BranchInst>(IfThenExitBr));
   IfThenExitBr->setSuccessor(0, AfterThen);
   if (R.hasElse()) {
     auto *IfEndBB = IfThenExitBr->getSuccessor(1);
