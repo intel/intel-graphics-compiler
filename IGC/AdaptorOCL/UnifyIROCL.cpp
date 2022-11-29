@@ -88,7 +88,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelFunctionCloning.h"
 #include "Compiler/Legalizer/TypeLegalizerPass.h"
-#include "Compiler/Optimizer/OpenCLPasses/ClampLoopUnroll/ClampLoopUnroll.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Image3dToImage2darray/Image3dToImage2darray.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/RewriteLocalSize/RewriteLocalSize.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
@@ -334,8 +333,6 @@ static void CommonOCLBasedPasses(
     {
         mpm.add(new TransformUnmaskedFunctionsPass());
     }
-
-    mpm.add(new ClampLoopUnroll(256));
 
     mpm.add(new MoveStaticAllocas());
 
