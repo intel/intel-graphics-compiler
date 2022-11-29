@@ -580,6 +580,11 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     bool isFuncGroupHead = !m_FGA || m_FGA->isGroupHead(&F);
     bool hasStackCall = m_FGA && m_FGA->getGroup(&F) && m_FGA->getGroup(&F)->hasStackCall();
 
+    if (IGC_IS_FLAG_ENABLED(ForceAddingStackcallKernelPrerequisites))
+    {
+        hasStackCall = true;
+    }
+
     // Dummy program is only used for symbol table info, so skip compilation if no symbol table is needed
     if (isDummyKernel && !isSymbolTableRequired(&F) && m_pCtx->type == ShaderType::OPENCL_SHADER)
     {
