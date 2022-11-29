@@ -5872,11 +5872,7 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
 
   // No producer to consumer relationships (RAW, WAW) within the macro
   if (hasDependenceBetweenDPASNodes(curNode, nextNode)) {
-    return !builder.getOption(vISA_forceDPASMacro);
-  }
-
-  if (builder.getOption(vISA_forceDPASMacro)) {
-    return false;
+    return true;
   }
 
 
