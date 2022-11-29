@@ -77,8 +77,8 @@ bool LowPrecisionOpt::runOnFunction(Function& F)
     auto bundleEnd = bundles.end();
     for (auto bundle = bundles.begin(); bundle != bundleEnd; ++bundle)
     {
-        (*bundle).cInst->moveBefore(&(*(m_currFunction->getEntryBlock().begin())));
         (*bundle).fpTrunc->moveBefore(&(*(m_currFunction->getEntryBlock().begin())));
+        (*bundle).cInst->moveBefore(&(*(m_currFunction->getEntryBlock().begin())));
     }
     return m_changed;
 }
