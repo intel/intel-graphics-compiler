@@ -741,7 +741,7 @@ unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argT
     case IGC::SHADER_PRINTF_STRING_LITERAL: {
         if (m_CGContext->enableZEBinary()) {
             // The size of the format string address
-            return 8;
+            return m_module->getDataLayout().getPointerSize();
         } else {
             // The size of the format string index
             return 4;
