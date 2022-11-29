@@ -1226,6 +1226,30 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
         std::string sinPiBuiltinName = "__builtin_spirv_OpenCL_sinpi_f32";
         std::string cosPiBuiltinName = "__builtin_spirv_OpenCL_cospi_f32";
 #endif
+        auto violatesPromotionConds = [&](Instruction* inst) -> bool{
+            IGC_ASSERT(inst->getOpcode() == Instruction::FMul || inst->getOpcode() == Instruction::Load);
+            if (inst && inst->hasNUsesOrMore(2)) {
+                Value::use_iterator instUse = inst->use_begin();
+                Value::use_iterator instEnd = inst->use_end();
+
+                for (; instUse != instEnd; ++instUse) {
+                    if (CallInst* useInst =
+                        dyn_cast<CallInst>(instUse->getUser())) {
+                        StringRef funcName = useInst->getCalledFunction()->getName();
+                        if (!funcName.startswith(cosBuiltinName) &&
+                            !funcName.startswith(sinBuiltinName) &&
+                            !funcName.startswith(sinPiBuiltinName) &&
+                            !funcName.startswith(cosPiBuiltinName)) {
+                            return true;
+                        }
+                    }
+                    else
+                        return true;
+                }
+            }
+            return false;
+        };
+
         auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         if ((modMD->compOpt.MatchSinCosPi) &&
             !(modMD->compOpt.FastRelaxedMath) &&
@@ -1265,35 +1289,9 @@ bool PreBIImportAnalysis::runOnModule(Module& M)
                     fmulInst = dyn_cast<BinaryOperator>(storeV);
                   }
                 }
-              }
 
-              if (fmulInst && fmulInst->getOpcode() == Instruction::FMul) {
-                isCandidate = true;
-              }
-
-              // used to be: fmulInst->getNumUses() > 1
-              if (isCandidate && fmulInst->hasNUsesOrMore(2)) {
-                Value::use_iterator fmulUse = fmulInst->use_begin();
-                Value::use_iterator fmulUseEnd = fmulInst->use_end();
-
-                for (; fmulUse != fmulUseEnd; ++fmulUse) {
-                  if (CallInst* useInst =
-                    dyn_cast<CallInst>(fmulUse->getUser())) {
-                    StringRef funcName = useInst->getCalledFunction()->getName();
-                    if (!funcName.startswith(cosBuiltinName) &&
-                        !funcName.startswith(sinBuiltinName) &&
-                        !funcName.startswith(sinPiBuiltinName) &&
-                        !funcName.startswith(cosPiBuiltinName)) {
-                      isCandidate = false;
-                      break;
-                    }
-                  }
-                  else
-                  {
-                    isCandidate = false;
-                    break;
-                  }
-                }
+                if (fmulInst && fmulInst->getOpcode() == Instruction::FMul)
+                    isCandidate = !violatesPromotionConds(load) && !violatesPromotionConds(fmulInst);
               }
 
               if (isCandidate) {
