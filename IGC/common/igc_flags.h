@@ -225,6 +225,7 @@ DECLARE_IGC_REGKEY(bool, EnableStatefulToken,           true,  "Enable generatin
 DECLARE_IGC_REGKEY(bool, EnableGenUpdateCB,             false, "Enable derived constant optimization.", false)
 DECLARE_IGC_REGKEY(bool, EnableGenUpdateCBResInfo,      false, "Enable derived constant optimization with resinfo.", false)
 DECLARE_IGC_REGKEY(bool, EnableHighestSIMDForNoSpill,   false,   "When there is no spill choose highest SIMD (compute shader only).", false)
+DECLARE_IGC_REGKEY(bool, ForceAddressArithSinking,      false,   "Force sinking address arithmetic closer to the usage", false)
 
 DECLARE_IGC_REGKEY(bool, DisableDynamicTextureFolding,  false,  "Disable Dynamic Texture Folding", false)
 DECLARE_IGC_REGKEY(bool, DisableDynamicResInfoFolding,  true,  "Disable Dynamic ResInfo Instruction Folding", false)
