@@ -224,7 +224,7 @@ void ZEBinaryBuilder::addGlobalConstants(const IGC::SOpenCLProgramInfo& annotati
         uint32_t paddingSize = caString->AllocSize - dataSize;
         uint32_t alignment = caString->Alignment;
         mConstStringSectID = mBuilder.addSectionData("const.string", (const uint8_t*)caString->InlineData.data(),
-            dataSize, paddingSize, alignment, /*rodata*/true);
+            dataSize, paddingSize, alignment, /*rodata*/true, /*alloc*/false);
     }
 }
 

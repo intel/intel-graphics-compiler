@@ -194,7 +194,7 @@ ZEELFObjectBuilder::addSectionText(
 
 ZEELFObjectBuilder::SectionID
 ZEELFObjectBuilder::addSectionData(
-    std::string name, const uint8_t* data, uint64_t size, uint32_t padding, uint32_t align, bool rodata)
+    std::string name, const uint8_t* data, uint64_t size, uint32_t padding, uint32_t align, bool rodata, bool alloc)
 {
     // adjust the section name to be .data.givenSectName
     std::string sectName;
@@ -203,7 +203,10 @@ ZEELFObjectBuilder::addSectionData(
     else
         sectName = m_DataName;
 
-    unsigned flags = ELF::SHF_ALLOC;
+    unsigned flags = 0;
+
+    if (alloc)
+        flags |= ELF::SHF_ALLOC;
     if (!rodata)
         flags |= ELF::SHF_WRITE;
 

@@ -89,9 +89,11 @@ public:
     // - size: input buffer size in byte
     // - padding: required padding at the end
     // - align: alignment requirement in byte
+    // - rodata: mark section as read-only
+    // - alloc: mark section as allocatable
     // - return a unique id for referencing in addSymbol
     SectionID addSectionData(
-        std::string name, const uint8_t* data, uint64_t size, uint32_t padding = 0, uint32_t align = 0, bool rodata = false);
+        std::string name, const uint8_t* data, uint64_t size, uint32_t padding = 0, uint32_t align = 0, bool rodata = false, bool alloc = true);
 
     // add a bss section which occupies no space in the ELF, but with size and other section information
     // The bss sections could be used for zero-initialized variables.
