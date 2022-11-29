@@ -598,6 +598,9 @@ namespace IGC
             {
                 UseHighAccuracyMathFuncs = true;
             }
+            else if (suffix.equals("-emit-visa-only")) {
+                EmitVisaOnly = true;
+            }
 
             // advance to the next flag
             Pos = opts.find_first_of(' ', Pos);

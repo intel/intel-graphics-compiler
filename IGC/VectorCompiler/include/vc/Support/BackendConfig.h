@@ -164,6 +164,9 @@ struct GenXBackendOptions {
   // Subgroup size used for cross-module calls/returns
   unsigned InteropSubgroupSize = 16;
 
+  // Compile until vISA stage only.
+  bool EmitVisaOnly = false;
+
   // Calling enforceLLVMOptions queries the state of LLVM options and
   // updates BackendOptions accordingly.
   // Note: current implementation allows backend options to be configured by
@@ -345,6 +348,8 @@ public:
   bool directCallsOnly(llvm::StringRef FunctionName = "") const {
       return Options.DirectCallsOnly || Data.DirectCallFunctions.count(FunctionName);
   }
+
+  bool emitVisaOnly() const { return Options.EmitVisaOnly; }
 
   unsigned getLoopUnrollThreshold() const {
     return Options.LoopUnrollThreshold;

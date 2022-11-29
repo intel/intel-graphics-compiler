@@ -136,6 +136,9 @@ namespace IGC
             bool EnableDivergentBarrierHandling = false;
             std::optional<bool> EnableZEBinary;
 
+            // Compile only up to vISA stage.
+            bool EmitVisaOnly = false;
+
         private:
             void parseOptions(const char* IntOptStr);
         };

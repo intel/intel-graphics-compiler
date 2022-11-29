@@ -775,7 +775,9 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
   }
 
   RawSectionInfo TextSection;
-  loadBinary(TextSection, VB, FG, BC);
+  if (!BC.emitVisaOnly()) {
+    loadBinary(TextSection, VB, FG, BC);
+  }
 
   auto DebugData = getDebugInformation(DBG, KernelFunction);
 

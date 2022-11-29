@@ -88,9 +88,6 @@ static cl::list<std::string>
     FinalizerOpts("finalizer-opts", cl::Hidden, cl::ZeroOrMore,
                   cl::desc("Additional options for finalizer."));
 
-static cl::opt<bool> EmitVisa("emit-visa", cl::init(false), cl::Hidden,
-                              cl::desc("Generate Visa instead of fat binary."));
-
 static cl::opt<std::string> AsmNameOpt("asm-name", cl::init(""), cl::Hidden,
     cl::desc("Output assembly code to this file during compilation."));
 
@@ -6680,7 +6677,7 @@ public:
     VISABuilder *CisaBuilder = GM.GetCisaBuilder();
     if (GM.HasInlineAsm() || !BC->getVISALTOStrings().empty())
       CisaBuilder = GM.GetVISAAsmReader();
-    CISA_CALL(CisaBuilder->Compile("genxir", &ss, EmitVisa));
+    CISA_CALL(CisaBuilder->Compile("genxir", &ss, BC->emitVisaOnly()));
 
     if (!BC->isDisableFinalizerMsg())
       dbgs() << CisaBuilder->GetCriticalMsg();
@@ -6805,7 +6802,7 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
   // off. This code is to diagnose such cases simpler.
   VISABuilder *VB = nullptr;
   int Result = CreateVISABuilder(
-      VB, Mode, EmitVisa ? VISA_BUILDER_VISA : VISA_BUILDER_BOTH, Platform,
+      VB, Mode, VISA_BUILDER_BOTH, Platform,
       Argv.size(), Argv.data(), BC.getWATable());
   if (Result != 0 || VB == nullptr) {
     std::string Str;
@@ -6815,7 +6812,7 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
     Os << "Args:\n";
     for (const char *Arg : Argv)
       Os << Arg << " ";
-    Os << "Visa only: " << (EmitVisa ? "yes" : "no") << "\n";
+    Os << "Visa only: " << (BC.emitVisaOnly() ? "yes" : "no") << "\n";
     Os << "Platform: " << ST.getVisaPlatform() << "\n";
     vc::diagnose(Ctx, "GenXCisaBuilder", Os.str().c_str());
   }

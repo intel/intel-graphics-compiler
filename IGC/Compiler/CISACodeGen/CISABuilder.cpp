@@ -5791,11 +5791,15 @@ namespace IGC
         CodeGenContext* const context = m_program->GetContext();
         SProgramOutput* const pOutput = m_program->ProgramOutput();
         const std::vector<const char*>* additionalVISAAsmToLink = nullptr;
+        bool emitVisaOnly = false;
+        std::stringstream visaStream; // used in case we want to emit only vISA.
+
         if(context->type == ShaderType::OPENCL_SHADER) {
             auto cl_context = static_cast<OpenCLProgramContext*>(context);
             if(!cl_context->m_VISAAsmToLink.empty()) {
                 additionalVISAAsmToLink = &cl_context->m_VISAAsmToLink;
             }
+            emitVisaOnly = cl_context->m_InternalOptions.EmitVisaOnly;
         }
 
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
@@ -6004,7 +6008,7 @@ namespace IGC
 
                 pMainKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
                 vIsaCompile = vAsmTextBuilder->Compile(
-                    m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
+                    m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", &visaStream, emitVisaOnly);
             }
         }
         //Compile to generate the V-ISA binary
@@ -6012,7 +6016,7 @@ namespace IGC
         {
             pMainKernel = vMainKernel;
             vIsaCompile = vbuilder->Compile(
-                m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
+                m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", &visaStream, emitVisaOnly);
         }
 
         COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
@@ -6205,6 +6209,16 @@ namespace IGC
             for (auto& fun : stackFuncMap) {
                 pOutput->m_VISAAsm.push_back({ fun.first->getName().str(), fun.second->getVISAAsm()});
             }
+        }
+
+        if (emitVisaOnly)
+        {
+            std::string emittedVisa = visaStream.str();
+            auto buf = IGC::aligned_malloc(emittedVisa.size(), 16);
+            memcpy_s(buf, emittedVisa.size(), emittedVisa.data(), emittedVisa.size());
+            pOutput->m_programBin = buf;
+            pOutput->m_programSize = emittedVisa.size();
+            return;
         }
 
         V(pMainKernel->GetGenxBinary(genxbin, binSize));
