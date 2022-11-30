@@ -797,7 +797,6 @@ public:
                                  int longID, int mathID);
 
   bool hasInternalDependenceWithinDPAS(SBNode *node) const;
-  bool hasDependenceBetweenDPASNodes(SBNode *node, SBNode *nextNode);
   bool hasRAWDependenceBetweenDPASNodes(SBNode *node, SBNode *nextNode) const;
   // check if the given src can be cached (by src suppression buffer)
   bool dpasSrcFootPrintCache(Gen4_Operand_Number opNum, SBNode *curNode,

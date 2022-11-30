@@ -5675,28 +5675,6 @@ bool G4_BB_SB::hasInternalDependenceWithinDPAS(SBNode *node) const {
   return false;
 }
 
-// No RAW/WAW dependence within a DPAS macro
-bool G4_BB_SB::hasDependenceBetweenDPASNodes(SBNode *node, SBNode *nextNode) {
-  const SBFootprint *fpDst = node->getFirstFootprint(Opnd_dst);
-  if (fpDst) {
-    for (Gen4_Operand_Number opndNum :
-         {Opnd_src0, Opnd_src1, Opnd_src2, Opnd_dst}) {
-      const SBFootprint *nextfp = nextNode->getFirstFootprint(opndNum);
-      unsigned short internalOffset = 0;
-      if (nextfp && nextfp->hasOverlap(fpDst, internalOffset)) {
-        // Exception: if the dependence distance is far enough, it's ok
-        if (node->getDPASSize() - internalOffset > tokenAfterDPASCycle) {
-          return false;
-        }
-
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 bool G4_BB_SB::hasRAWDependenceBetweenDPASNodes(SBNode *node,
                                                 SBNode *nextNode) const {
   const SBFootprint *fp = node->getFirstFootprint(Opnd_dst);
@@ -5793,7 +5771,7 @@ bool G4_BB_SB::src2SameFootPrintDiffType(SBNode *curNode,
 //   5, has no internal dependency within each instruction with an exception
 //   that src0 and dst dependency is allowed if they
 //      are completely the same register/subregister
-//   6, no producer to consumer relationships (RAW, WAW) within the macro
+//   6, no producer to consumer relationships (RAW) within the macro
 //       6.1, Unless compiler knows that the distance between the two
 //       instructions causing the RAW hazard is enough to handle it
 //  7, for a DPAS 8xN sequence, where N !=8
@@ -5870,8 +5848,8 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode)
     return true;
   }
 
-  // No producer to consumer relationships (RAW, WAW) within the macro
-  if (hasDependenceBetweenDPASNodes(curNode, nextNode)) {
+  // No producer to consumer relationships (RAW) within the macro
+  if (hasRAWDependenceBetweenDPASNodes(curNode, nextNode)) {
     return true;
   }
 
