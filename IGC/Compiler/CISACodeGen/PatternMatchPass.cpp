@@ -1020,7 +1020,8 @@ namespace IGC
         }
         if (!isa<Constant>(v) && !m_WI->isUniform(v))
         {
-            if (isa<PHINode>(v) || HasUseOutsideLoop(v) || isa<SampleIntrinsic>(v))
+            if (isa<PHINode>(v) || HasUseOutsideLoop(v) || (isa<SampleIntrinsic>(v)
+                ))
             {
                 // If a phi is used in a subspan we cannot propagate the subspan use and need to use VMask
                 // Also, we want to apply vector mask instead of no mask to sample instructions,
