@@ -887,6 +887,32 @@ static void LoadDebugFlagsFromFile()
     setImpliedIGCKeys();
 }
 
+static void LoadDebugFlagsFromString(const char* input)
+{
+    if (!input || input[0] == '\0') {
+        return;
+    }
+    std::istringstream istream(input);
+    std::string line;
+    std::vector<HashRange> hashes;
+
+    std::cout << std::endl << "** DebugFlags " << input << " is applied" << std::endl;
+
+    while (std::getline(istream, line, ';')) {
+        if (line.empty())
+            continue;
+        ParseHashRange(line, hashes);
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)         \
+{                                                                                   \
+    declareIGCKey(line, #dataType, #regkeyName, hashes, &(g_RegKeyList.regkeyName));\
+}
+#include "igc_regkeys.h"
+#undef DECLARE_IGC_REGKEY
+
+    }
+    setImpliedIGCKeys();
+}
+
 void appendToOptionsLogFile(std::string const &message)
 {
     std::string logPath = GetOptionFilePath();
@@ -1056,6 +1082,7 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
 #endif
         //DumpIGCRegistryKeyDefinitions();
         LoadDebugFlagsFromFile();
+        LoadDebugFlagsFromString(IGC_GET_REGKEYSTRING(SelectiveHashOptions));
         LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError);
 
         if(IGC_IS_FLAG_ENABLED(LLVMCommandLine))

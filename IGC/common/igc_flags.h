@@ -178,6 +178,7 @@ DECLARE_IGC_REGKEY(DWORD,SetLoopUnrollThresholdForHighRegPressure,        0,    
 DECLARE_IGC_REGKEY(DWORD,SetRegisterPressureThresholdForLoopUnroll,       64,     "Set the register pressure threshold for limiting the loop unroll to smaller loops", false)
 DECLARE_IGC_REGKEY(DWORD,SetBranchSwapThreshold,        400,   "Set the branch swaping threshold.", false)
 DECLARE_IGC_REGKEY(debugString, LLVMCommandLine,        0,     "applies LLVM command line", false)
+DECLARE_IGC_REGKEY(debugString, SelectiveHashOptions,   0,     "applies options to hash ragne via string", false)
 DECLARE_IGC_REGKEY(bool, DisableDX9LowPrecision,        true,  "Disables HF in DX9.", false)
 DECLARE_IGC_REGKEY(bool, EnablePingPongTextureOpt,      true,  "Enables the Ping Pong texture optimization which is used only for Compute Shaders for back to back dispatches", false)
 DECLARE_IGC_REGKEY(bool, EnableAtomicBranch,            false, "Enable Atomic branch optimization which break atomic into if/else with atomic and read based on the operation", false)
