@@ -697,7 +697,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
 #if LLVM_VERSION_MAJOR >= 12
         mpm.add(createIPSCCPPass());
 #else
-        if (!ctx.m_hasStackCalls)
+        if (!ctx.m_hasStackCalls && IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation))
         {
             // Don't run IPConstantProp when stackcalls are present.
             // Let global constants be relocated inside stack funcs.
@@ -1166,7 +1166,7 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createConstantPropagationPass());
 
             // Don't run IPConstantProp if there are stackcalls
-            if (!pContext->m_hasStackCalls)
+            if (!pContext->m_hasStackCalls && IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation))
                 mpm.add(createIPConstantPropagationPass());
 #endif
         }

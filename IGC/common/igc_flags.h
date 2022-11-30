@@ -189,6 +189,7 @@ DECLARE_IGC_REGKEY(bool, EnableSimplifyGEP,             true,  "Enable IGC to si
 DECLARE_IGC_REGKEY(bool, DisableCustomUnsafeOpt,        false, "Disable IGC to run custom unsafe optimizations", false)
 DECLARE_IGC_REGKEY(bool, EnableFastMath,                false, "Enable fast math optimizations in IGC", false)
 DECLARE_IGC_REGKEY(bool, DisableFlattenSmallSwitch,     false, "Disable the flatten small switch pass", false)
+DECLARE_IGC_REGKEY(bool, DisableIPConstantPropagation,  false, "Disable Inter-procedrual constant propgation", false)
 DECLARE_IGC_REGKEY(bool, EnableSplitIndirectEEtoSel,    true,  "Enable the split indirect extractelement to icmp+sel pass", false)
 DECLARE_IGC_REGKEY(DWORD, SplitIndirectEEtoSelThreshold, 8,    "Split indirect extractelement cost threshold", false)
 DECLARE_IGC_REGKEY(bool, DisableImmConstantOpt,         false, "Disable IGC IndirectICBPropagaion optimization", false)
