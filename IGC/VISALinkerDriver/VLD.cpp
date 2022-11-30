@@ -177,17 +177,9 @@ MoveEntryPointModuleToTheEnd(
   bool HasEntryPointModule = false;
   std::vector<SPVTranslationPair> RetPairs;
   for (auto &InputArgsPair : InputModules) {
-    splitter.Reset();
-    splitter.Detect(InputArgsPair.second.pInput,
-                    InputArgsPair.second.InputSize);
-
-    auto HasEntryPointsOrErr = splitter.HasEntryPoints();
-    if (!HasEntryPointsOrErr) {
-      return HasEntryPointsOrErr.takeError();
-    }
-    if (*HasEntryPointsOrErr) {
+    if (InputArgsPair.first.HasEntryPoints) {
       EntryPointPair = InputArgsPair;
-      if (EntryPointPair.first == SPIRVTypeEnum::SPIRV_SPMD) {
+      if (EntryPointPair.first.SpirvType == SPIRVTypeEnum::SPIRV_SPMD) {
         SimdSize = splitter.GetForcedSubgroupSize();
       }
       if (HasEntryPointModule) {
@@ -211,6 +203,58 @@ MoveEntryPointModuleToTheEnd(
   RetPairs.push_back(EntryPointPair);
 
   return RetPairs;
+}
+
+// Returns a list of functions that must be called directly:
+// functions that are exported in VC modules and imported in SPMD and
+// vice-versa.
+std::vector<const char *> GetDirectCallFunctions(
+    llvm::ArrayRef<IGC::VLD::SPVTranslationPair> InputModules) {
+  set<StringRef> exportedFunctionsSPMD;
+  set<StringRef> exportedFunctionsESIMD;
+  set<StringRef> importedFunctionsSPMD;
+  set<StringRef> importedFunctionsESIMD;
+
+  auto insertToVec = [](const auto &InputVec, auto &OutSPMD, auto &OutESIMD,
+                        auto SpirvType) {
+    for (auto &FuncName : InputVec) {
+      if (SpirvType == IGC::VLD::SPIRVTypeEnum::SPIRV_SPMD) {
+        OutSPMD.insert(FuncName);
+      } else {
+        OutESIMD.insert(FuncName);
+      }
+    }
+  };
+
+  for (auto &InputArgsPair : InputModules) {
+    IGC_ASSERT(InputArgsPair.first.SpirvType ==
+                   IGC::VLD::SPIRVTypeEnum::SPIRV_SPMD ||
+               InputArgsPair.first.SpirvType == IGC::VLD::SPIRVTypeEnum::SPIRV_ESIMD);
+    insertToVec(InputArgsPair.first.ExportedFunctions, exportedFunctionsSPMD,
+                exportedFunctionsESIMD, InputArgsPair.first.SpirvType);
+    insertToVec(InputArgsPair.first.ImportedFunctions, importedFunctionsSPMD,
+                importedFunctionsESIMD, InputArgsPair.first.SpirvType);
+  }
+
+  std::vector<StringRef> DirectCallFunctions;
+  set_intersection(exportedFunctionsESIMD.begin(), exportedFunctionsESIMD.end(),
+                   importedFunctionsSPMD.begin(), importedFunctionsSPMD.end(),
+                   back_inserter(DirectCallFunctions));
+  set_intersection(exportedFunctionsSPMD.begin(), exportedFunctionsSPMD.end(),
+                   importedFunctionsESIMD.begin(), importedFunctionsESIMD.end(),
+                   back_inserter(DirectCallFunctions));
+  // Special case: when SPMD+ESIMD module is provided, the invoke_simd callee will not
+  // be in the imported SPMD function list, as it is just Exported in the single module.
+  // It will be present in both SPMD and ESIMD exports.
+  set_intersection(exportedFunctionsSPMD.begin(), exportedFunctionsSPMD.end(),
+                   exportedFunctionsESIMD.begin(), exportedFunctionsESIMD.end(),
+                   back_inserter(DirectCallFunctions));
+
+
+  std::vector<const char *> OutVec;
+  std::transform(DirectCallFunctions.begin(), DirectCallFunctions.end(),
+                 back_inserter(OutVec), [](auto &el) { return el.data(); });
+  return OutVec;
 }
 
 } // namespace
@@ -314,9 +358,19 @@ bool TranslateBuildSPMDAndESIMD(const TC::STB_TranslateInputArgs *pInputArgs,
   newArgsESIMD.pOptions = esimdOptions.data();
   newArgsESIMD.OptionsSize = esimdOptions.size();
 
+
+  auto ESIMDMetadata = GetVLDMetadata(newArgsESIMD.pInput, newArgsESIMD.InputSize);
+  if (!ESIMDMetadata) {
+    errorMessage = ERROR_VLD + llvm::toString(ESIMDMetadata.takeError());
+  }
+  auto SPMDMetadata = GetVLDMetadata(newArgsSPMD.pInput, newArgsSPMD.InputSize);
+  if (!SPMDMetadata) {
+    errorMessage = ERROR_VLD + llvm::toString(SPMDMetadata.takeError());
+  }
+
   std::array<SPVTranslationPair, 2> SpvArr{
-      std::make_pair(SPIRVTypeEnum::SPIRV_ESIMD, newArgsESIMD),
-      std::make_pair(SPIRVTypeEnum::SPIRV_SPMD, newArgsSPMD)
+    std::make_pair(ESIMDMetadata.get(), newArgsESIMD),
+    std::make_pair(SPMDMetadata.get(), newArgsSPMD)
   };
 
   return TranslateBuildSPMDAndESIMD(
@@ -334,8 +388,9 @@ bool TranslateBuildSPMDAndESIMD(
 
   std::vector<std::string> OwnerStrings;
   std::vector<const char*> VisaCStrings;
-  std::vector<const char*> DirectCallFunctions;
   uint32_t SimdSize = 0;
+
+  auto DirectCallFunctions = GetDirectCallFunctions(InputModules);
 
   // Module with entry points should be compiled as the last one.
   // We currently support the use-case, where only one of the SPIR-V modules contain entry points.
@@ -346,8 +401,12 @@ bool TranslateBuildSPMDAndESIMD(
     return false;
   }
 
-  for (auto& InputArgsPair : NewInputModulesOrErr.get()) {
-    auto& InputArgs = InputArgsPair.second;
+  auto& NewInputModules = NewInputModulesOrErr.get();
+
+  for (auto &InputArgsPair : NewInputModules) {
+    bool IsLast = &InputArgsPair == &NewInputModules.back();
+
+    auto &InputArgs = InputArgsPair.second;
 
     TC::STB_TranslateOutputArgs NewOutputArgs;
     CIF::SafeZeroOut(NewOutputArgs);
@@ -356,16 +415,17 @@ bool TranslateBuildSPMDAndESIMD(
     auto debugData = std::unique_ptr<char[]>(NewOutputArgs.pDebugData);
 
     STB_TranslateInputArgs NewInputArgs = InputArgs;
-    std::string NewInternalOptions{InputArgs.pInternalOptions
-      ? InputArgs.pInternalOptions
-      : ""};
+    std::string NewInternalOptions{
+        InputArgs.pInternalOptions ? InputArgs.pInternalOptions : ""};
 
-    switch (InputArgsPair.first) {
+    switch (InputArgsPair.first.SpirvType) {
     case VLD::SPIRVTypeEnum::SPIRV_SPMD:
-      NewInternalOptions += " -ze-emit-zebin-visa-sections";
+      if (!IsLast)
+        NewInternalOptions += " -ze-emit-visa-only -ze-emit-zebin-visa-sections";
       break;
     case VLD::SPIRVTypeEnum::SPIRV_ESIMD:
-      NewInternalOptions += " -emit-zebin-visa-sections";
+      if (!IsLast)
+        NewInternalOptions += " -emit-visa-only -emit-zebin-visa-sections";
       NewInternalOptions += " -binary-format=ze";
       if (SimdSize != 0) {
         NewInternalOptions += " -vc-interop-subgroup-size ";
@@ -385,26 +445,28 @@ bool TranslateBuildSPMDAndESIMD(
       }
     }
 
-    NewInputArgs.pVISAAsmToLinkArray = (!VisaCStrings.empty()) ? VisaCStrings.data() : nullptr;
+    NewInputArgs.pVISAAsmToLinkArray =
+        (!VisaCStrings.empty()) ? VisaCStrings.data() : nullptr;
     NewInputArgs.NumVISAAsmsToLink = VisaCStrings.size();
     NewInputArgs.pDirectCallFunctions = DirectCallFunctions.data();
     NewInputArgs.NumDirectCallFunctions = DirectCallFunctions.size();
     NewInputArgs.pInternalOptions = NewInternalOptions.data();
     NewInputArgs.InternalOptionsSize = NewInternalOptions.size();
     bool success = false;
-    if (InputArgsPair.first == VLD::SPIRVTypeEnum::SPIRV_SPMD) {
+    if (InputArgsPair.first.SpirvType == VLD::SPIRVTypeEnum::SPIRV_SPMD) {
       success = TranslateBuildSPMD(&NewInputArgs, &NewOutputArgs,
                                    inputDataFormatTemp, IGCPlatform,
                                    profilingTimerResolution, inputShHash);
-    } else if (InputArgsPair.first == VLD::SPIRVTypeEnum::SPIRV_ESIMD) {
+    } else if (InputArgsPair.first.SpirvType == VLD::SPIRVTypeEnum::SPIRV_ESIMD) {
       success =
           TranslateBuildVC(&NewInputArgs, &NewOutputArgs, inputDataFormatTemp,
                            IGCPlatform, profilingTimerResolution, inputShHash);
     } else {
-      IGC_ASSERT(InputArgsPair.first == VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD);
-      success =
-        TranslateBuildSPMDAndESIMD(&NewInputArgs, &NewOutputArgs, inputDataFormatTemp,
-          IGCPlatform, profilingTimerResolution, inputShHash, errorMessage);
+      IGC_ASSERT(InputArgsPair.first.SpirvType ==
+                 VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD);
+      success = TranslateBuildSPMDAndESIMD(
+          &NewInputArgs, &NewOutputArgs, inputDataFormatTemp, IGCPlatform,
+          profilingTimerResolution, inputShHash, errorMessage);
     }
 
     if (!success) {
@@ -415,9 +477,9 @@ bool TranslateBuildSPMDAndESIMD(
       return false;
     }
 
-    // If this is the last SPIR-V to compile, stop here. The rest of the code handles
-    // extracting information for further compilations.
-    if(&InputArgsPair == &NewInputModulesOrErr.get().back()) {
+    // If this is the last SPIR-V to compile, stop here. The rest of the code
+    // handles extracting information for further compilations.
+    if (IsLast) {
       *pOutputArgs = NewOutputArgs;
       break;
     }
@@ -444,7 +506,7 @@ bool TranslateBuildSPMDAndESIMD(
     }
 
     // Set SimdSize based on first SPMD module, as ESIMD always returns 1.
-    if (InputArgsPair.first == SPIRVTypeEnum::SPIRV_SPMD) {
+    if (InputArgsPair.first.SpirvType == SPIRVTypeEnum::SPIRV_SPMD) {
 
       auto SimdSizeOrErr = GetSIMDSizeFromZeInfo(*ZeInfoOrErr);
       if (!SimdSizeOrErr) {
@@ -461,8 +523,7 @@ bool TranslateBuildSPMDAndESIMD(
         SimdSize = *SimdSizeOrErr;
     }
 
-    for (auto& F : ZeInfoOrErr->functions)
-    {
+    for (auto &F : ZeInfoOrErr->functions) {
       OwnerStrings.push_back(std::move(F.name));
       DirectCallFunctions.push_back(OwnerStrings.back().c_str());
     }
@@ -476,7 +537,7 @@ bool TranslateBuildSPMDAndESIMD(
 
     if (VISAAsm->empty()) {
       errorMessage =
-        ERROR_VLD + "ZeBinary did not contain any .visaasm sections!";
+          ERROR_VLD + "ZeBinary did not contain any .visaasm sections!";
       return false;
     }
 
