@@ -234,6 +234,7 @@ private:
   void clearSendDependencies();
   void loadThreadPayload();
   void addFFIDProlog();
+  void addEmaskSetupProlog();
   void insertFenceBeforeEOT();
   void insertScratchReadBeforeEOT();
   void resetA0();
@@ -378,6 +379,7 @@ public:
     PI_split4GRFVars,
     PI_loadThreadPayload,
     PI_addFFIDProlog,
+    PI_addEmaskSetupProlog,
     PI_insertFenceBeforeEOT,
     PI_insertScratchReadBeforeEOT,
     PI_mapOrphans,

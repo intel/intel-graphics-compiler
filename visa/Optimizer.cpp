@@ -1571,8 +1571,10 @@ void Optimizer::initOptimizations() {
   INITIALIZE_PASS(dce, vISA_EnableDCE, TimerID::OPTIMIZER);
   INITIALIZE_PASS(reassociateConst, vISA_reassociate, TimerID::OPTIMIZER);
   INITIALIZE_PASS(split4GRFVars, vISA_split4GRFVar, TimerID::OPTIMIZER);
-  INITIALIZE_PASS(addFFIDProlog, vISA_addFFIDProlog, TimerID::MISC_OPTS);
   INITIALIZE_PASS(loadThreadPayload, vISA_loadThreadPayload,
+                  TimerID::MISC_OPTS);
+  INITIALIZE_PASS(addFFIDProlog, vISA_addFFIDProlog, TimerID::MISC_OPTS);
+  INITIALIZE_PASS(addEmaskSetupProlog, vISA_addEmaskSetupProlog,
                   TimerID::MISC_OPTS);
   INITIALIZE_PASS(insertFenceBeforeEOT, vISA_EnableAlways, TimerID::MISC_OPTS);
   INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT,
@@ -2148,6 +2150,8 @@ int Optimizer::optimization() {
   runPass(PI_loadThreadPayload);
 
   runPass(PI_addFFIDProlog);
+
+  runPass(PI_addEmaskSetupProlog);
 
   // Insert a dummy compact instruction if requested for SKL+
   runPass(PI_insertDummyCompactInst);
@@ -8295,6 +8299,33 @@ void Optimizer::loadThreadPayload() {
 
   if (perThreadBB) {
     kernel.fg.addPrologBB(perThreadBB);
+  }
+}
+
+// Some platforms require that the first instruction of any kernel should have
+// non-zero emask, i.e. emask != 0 by setting MaskCtrl bit to 1: WriteEnable
+// (NoMask)
+//
+// This can be done by introducing a dummy instruction for example:
+//   (W) mov(1) null:ud 0x0:ud
+void Optimizer::addEmaskSetupProlog() {
+  if (!builder.getOption(vISA_addEmaskSetupProlog))
+    return;
+
+  // When the kernel has no prolog and the first inst has zero emask, insert
+  // a dummy WA inst with WriteEnable.
+  G4_BB *entry = kernel.fg.getEntryBB();
+  if (!entry)
+    return;
+
+  G4_INST *first = entry->getFirstInst();
+  if (first && !first->isWriteEnableInst()) {
+    G4_BB *bb = kernel.fg.createNewBB();
+    G4_INST *mov = builder.createMov(g4::SIMD1, builder.createNullDst(Type_UD),
+                                     builder.createImm(0, Type_UD),
+                                     InstOpt_WriteEnable, false);
+    bb->push_back(mov);
+    kernel.fg.addPrologBB(bb);
   }
 }
 

@@ -547,6 +547,8 @@ DEF_VISA_OPTION(vISA_forceNoMaskOnM0, ET_BOOL, "-forceNoMaskOnM0",
                 "Convert any NoMask instruction with non-M0 mask offset "
                 "to M0 if possible",
                 true)
+DEF_VISA_OPTION(vISA_addEmaskSetupProlog, ET_BOOL, "-addEmaskSetupProlog",
+                "Add a prolog code to set up emask", false)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo, ET_BOOL, "-generateDebugInfo", UNUSED,
