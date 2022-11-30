@@ -3621,6 +3621,31 @@ void Optimizer::localCopyPropagation() {
             }
           }
 
+          //
+          // Following instructions may use acc0 register in HWComformity,
+          // if any of them appear in the propagation range, it may have
+          // correctness issue.
+          //  Such as in following case:
+          // addc
+          // mov  V1, acc0
+          // mulh
+          // add   V2, V1, V3
+          // Since HW conformity will replace mulh with mul + acc0 dst,
+          // the propagation acc0 through V1 will introduce correctness
+          // issue.
+          //
+          if (inst->getSrc(0)->isAccReg() &&
+              ((*cpIter)->opcode() == G4_mul ||
+               (*cpIter)->opcode() == G4_mulh ||
+               (*cpIter)->opcode() == G4_pln ||
+               (*cpIter)->opcode() == G4_pseudo_sada2 ||
+               (*cpIter)->opcode() == G4_madw ||
+               (*cpIter)->opcode() == G4_subb ||
+               (*cpIter)->opcode() == G4_addc)) {
+            canRemove = false;
+            break;
+          }
+
           cpIter++;
         }
       } // for uses

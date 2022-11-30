@@ -1403,16 +1403,13 @@ G4_INST::MovType G4_INST::canPropagate() const {
     }
   }
 
-  // Do not propagate through copy of `acc0`
-  // Even single use, the propagation may introduce issue.
-  // Such as in following case:
-  // addc
-  // mov  V1, acc0
-  // mulh
-  // add   V2, V1, V3
-  // Since HW conformity will replace mulh with mul + acc0 dst,
-  // the propagation acc0 through V1 will introduce correctness issue.
-  if (src->isAccReg()) {
+  //
+  // Propagate thecopy of `acc0`. Restore the original condition to do
+  // propagation for the native execution size only. Also limit propagation for
+  // the mov instruction which has single use.
+  //
+  if (src->isAccReg() &&
+      (getExecSize() != builder.getNativeExecSize() || this->use_size() > 1)) {
     return SuperMov;
   }
 
