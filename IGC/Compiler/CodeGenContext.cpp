@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include <sstream>
+#include <iomanip>
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/Demangle/Demangle.h>
@@ -699,9 +700,11 @@ namespace IGC
         }
     }
 
+    // [used by shader dump] create unqiue id, starting from 1, for each
+    // entry function.
+    // Each entry function has 1-1 map b/w its name and its dump name.
     void CodeGenContext::createFunctionIDs()
     {
-        // Assign a unique ID for each entry function.
         if (IGC_IS_FLAG_ENABLED(DumpUseShorterName) &&
             m_functionIDs.empty() &&  module != nullptr && m_pMdUtils != nullptr)
         {
@@ -725,6 +728,16 @@ namespace IGC
             }
             m_enableDumpUseShorterName = true;
         }
+    }
+
+    // getFunctionDumpName() is invoked if DumpUseShorterName is set.
+    // Expect to be used for any shader (aka entry function).
+    std::string CodeGenContext::getFunctionDumpName(int functionId)
+    {
+        IGC_ASSERT(IGC_IS_FLAG_ENABLED(DumpUseShorterName));
+        std::stringstream ss;
+        ss << "entry_" << std::setfill('0') << std::setw(4) << functionId;
+        return ss.str();
     }
 
     int CodeGenContext::getFunctionID(Function* F)

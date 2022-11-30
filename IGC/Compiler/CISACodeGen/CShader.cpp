@@ -4174,9 +4174,7 @@ void CShader::getShaderFileName(std::string& ShaderName) const
         !IsIntelSymbolTableVoidProgram() &&
         ShaderName != "entry")
     {
-        std::stringstream ss;
-        ss << "entry_" << std::setfill('0') << std::setw(4) << getShaderProgramID();
-        ShaderName = ss.str();
+        ShaderName = GetContext()->getFunctionDumpName(getShaderProgramID());
         return;
     }
 

@@ -1122,6 +1122,7 @@ namespace IGC
         // For creating internal names with function IDs.
         void createFunctionIDs();
         int getFunctionID(llvm::Function* F);
+        std::string getFunctionDumpName(int functionId);
         bool dumpUseShorterName() const { return m_enableDumpUseShorterName; }
     };
 
