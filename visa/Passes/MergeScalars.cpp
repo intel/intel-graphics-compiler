@@ -317,8 +317,8 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       // to the new packed value
       newInst->setSrc(builder.createImm(packedVal, packedType), i);
 
-      // create a packed type dcl
-      G4_Declare *newDcl = builder.createTempVar(0, packedType, Any, "Packed");
+      // create a packed type dcl and set number of elements to 1
+      G4_Declare *newDcl = builder.createTempVar(1, packedType, Any, "Packed");
       // newDcl->copyAlign(newInst->getDst()->getTopDcl());
       // set the newDcl dcl alias to the instruction destination dcl
       unsigned int byteOffset =
