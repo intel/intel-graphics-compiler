@@ -544,6 +544,8 @@ private:
                           G4_SrcRegRegion *payload, G4_Imm *desc, SFID funcID,
                           bool isWrite, G4_InstOpts option);
 
+  bool usesOWOrLSC(G4_DstRegRegion *spilledRegion);
+
   bool shouldPreloadSpillRange(G4_INST *instContext, G4_BB *parentBB);
 
   void preloadSpillRange(G4_Declare *spillRangeDcl, G4_Declare *mRangeDcl,

@@ -2866,7 +2866,7 @@ bool G4_INST::isPartialWrite() const {
   return (aPred && op != G4_sel) || op == G4_smov;
 }
 
-bool G4_INST::isPartialWriteForSpill(bool inSIMDCF) const {
+bool G4_INST::isPartialWriteForSpill(bool inSIMDCF, bool useNonScratchForSpill) const {
   if (!getDst() || hasNULLDst()) {
     // inst does not write to GRF
     return false;
@@ -2877,7 +2877,12 @@ bool G4_INST::isPartialWriteForSpill(bool inSIMDCF) const {
   }
 
   if (inSIMDCF && !isWriteEnableInst()) {
-    if (builder.usesStack() ||
+    if (// When using stack ABI, we use either OW or LSC msg
+        // both of which don't honor EM
+        builder.usesStack() ||
+        // OW, LSC don't honor EM
+        useNonScratchForSpill ||
+        // EM is honored when using scratch HW msg with elem size == 4
         !(builder.hasMaskForScratchMsg() && getDst()->getElemSize() == 4)) {
       // scratch message only supports DWord mask
       // also we can't use the scratch message when under stack call

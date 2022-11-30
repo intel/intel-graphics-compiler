@@ -386,7 +386,7 @@ public:
   }
 
   bool isPartialWrite() const;
-  bool isPartialWriteForSpill(bool inSIMDCF) const;
+  bool isPartialWriteForSpill(bool inSIMDCF, bool useLSCForSpill) const;
   bool isArithAddr() const;
   bool isMovAddr() const;
   bool isAccSrcInst() const;

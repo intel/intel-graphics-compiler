@@ -2079,7 +2079,8 @@ bool SpillManagerGRF::shouldPreloadSpillRange(G4_INST *instContext,
 
   if (isPartialRegion(spilledRangeRegion, execSize) ||
       isUnalignedRegion(spilledRangeRegion, execSize) ||
-      instContext->isPartialWriteForSpill(!parentBB->isAllLaneActive())) {
+      instContext->isPartialWriteForSpill(!parentBB->isAllLaneActive(),
+                                          usesOWOrLSC(spilledRangeRegion))) {
     // special check for scalar variables: no need for pre-fill if instruction
     // writes to whole variable and is not predicated
     auto spilledDcl = spilledRangeRegion->getTopDcl()->getRootDeclare();
@@ -2922,6 +2923,23 @@ void SpillManagerGRF::updateRMWNeeded() {
   }
 }
 
+// Return true if spill code for spilledRegion requires OW or LSC.
+bool SpillManagerGRF::usesOWOrLSC(G4_DstRegRegion *spilledRegion) {
+  auto inst = spilledRegion->getInst();
+
+  // Use LSC always
+  if(useLscNonstackCall)
+    return useLscNonstackCall;
+
+  // * platform supports LSC and/or OW
+  // * but we favor HW scratch, offset permitting
+  //
+  // If offset exceeds encoding limit, we emit OW/LSC instead.
+  int spillOffset = (int)getSegmentDisp(spilledRegion, inst->getExecSize());
+  getSpillOffset(spillOffset);
+  return spillOffset >= SCRATCH_MSG_LIMIT;
+}
+
 // Create the code to create the spill range and save it to spill memory.
 void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
                                            G4_BB *bb) {
@@ -2959,7 +2977,8 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
     G4_Declare *mRangeDcl =
         createAndInitMHeader((G4_RegVarTransient *)spillRangeDcl->getRegVar());
 
-    bool needRMW = inst->isPartialWriteForSpill(!bb->isAllLaneActive()) &&
+    bool needRMW = inst->isPartialWriteForSpill(!bb->isAllLaneActive(),
+                                                usesOWOrLSC(spilledRegion)) &&
                    checkRMWNeeded();
     if (needRMW) {
       sendInSpilledRegVarPortions(spillRangeDcl, mRangeDcl, 0,
@@ -5459,7 +5478,7 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
     if (builder.hasScratchSurface() &&
         (hasStackCall || kernel.fg.builder->hasValidOldA0Dot2() ||
          (useLscForSpillFill &&
-          (spillSizeInBytes + globalScratchOffset) > SCRATCH_MSG_LIMIT &&
+          (spillSizeInBytes + globalScratchOffset) >= SCRATCH_MSG_LIMIT &&
           spillSizeInBytes > 0) ||
          (useLscForNonStackCallSpillFill && spillSizeInBytes > 0)
     // Following cases exist:
