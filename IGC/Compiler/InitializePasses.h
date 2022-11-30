@@ -128,6 +128,7 @@ void initializeRewriteLocalSizePass(llvm::PassRegistry&);
 void initializeRuntimeValueLegalizationPassPass(llvm::PassRegistry&);
 void initializeSampleCmpToDiscardPass(llvm::PassRegistry&);
 void initializeSamplerPerfOptPassPass(llvm::PassRegistry&);
+void initializeScalarArgAsPointerAnalysisPass(llvm::PassRegistry&);
 void initializeScalarizeFunctionPass(llvm::PassRegistry&);
 void initializeSimd32ProfitabilityAnalysisPass(llvm::PassRegistry&);
 void initializeSetFastMathFlagsPass(llvm::PassRegistry&);

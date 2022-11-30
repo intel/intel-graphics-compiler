@@ -80,6 +80,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
@@ -1462,6 +1463,10 @@ void OptimizeIR(CodeGenContext* const pContext)
                 static_cast<OpenCLProgramContext*>(pContext)->m_InternalOptions.KernelDebugEnable)
             {
                 mpm.add(new ImplicitGIDRestoring());
+            }
+            if (pContext->type == ShaderType::OPENCL_SHADER)
+            {
+                mpm.add(new ScalarArgAsPointerAnalysis());
             }
 
             mpm.add(llvm::createDeadCodeEliminationPass());

@@ -1135,9 +1135,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
                 argAccessQualItem = funcMD->m_OpenCLArgAccessQualifiers[i];
         }
 
-        bool isScalarAsPointer = false;
-        if (funcMD && funcMD->m_OpenCLArgScalarAsPointers.size() > funcArg->getArgNo())
-            isScalarAsPointer = funcMD->m_OpenCLArgScalarAsPointers[funcArg->getArgNo()];
+        bool isScalarAsPointer = funcMD && funcMD->m_OpenCLArgScalarAsPointers.count(funcArg->getArgNo()) > 0;
 
         KernelArg kernelArg = KernelArg(
             &(*funcArg),
@@ -1171,9 +1169,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
     // Implicit function args
     for (unsigned int i = 0; i < numImplicitArgs; ++i, ++funcArg)
     {
-        bool isScalarAsPointer = false;
-        if (funcMD && funcMD->m_OpenCLArgScalarAsPointers.size() > funcArg->getArgNo())
-            isScalarAsPointer = funcMD->m_OpenCLArgScalarAsPointers[funcArg->getArgNo()];
+        bool isScalarAsPointer = funcMD && funcMD->m_OpenCLArgScalarAsPointers.count(funcArg->getArgNo()) > 0;
 
         KernelArg kernelArg = KernelArg(implicitArgs[i], DL, &(*funcArg), implicitArgs.getExplicitArgNum(i), implicitArgs.getStructArgOffset(i), isScalarAsPointer, GRFSize);
         addAllocationArg(kernelArg);

@@ -100,6 +100,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/JointMatrixFuncsResolutionPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/RayTracing/ResolveOCLRaytracingBuiltins.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/ScalarArgAsPointer/ScalarArgAsPointer.hpp"
 #include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
@@ -577,6 +578,8 @@ static void CommonOCLBasedPasses(
     // For example, in InsertDummyKernelForSymbolTablePass addresses of indirectly called functions
     // should be processed and without BreakConstantExpr the addresses are not found.
     mpm.add(new BreakConstantExpr());
+
+    mpm.add(new ScalarArgAsPointerAnalysis());
 
     // true means selective scalarization
     mpm.add(createScalarizerPass(IGC_IS_FLAG_ENABLED(EnableSelectiveScalarizer)));

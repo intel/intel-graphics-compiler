@@ -30,6 +30,7 @@ add_subdirectory(RayTracing)
 add_subdirectory(RegPressureLoopControl)
 add_subdirectory(ReplaceUnsupportedIntrinsics)
 add_subdirectory(ResourceAllocator)
+add_subdirectory(ScalarArgAsPointer)
 add_subdirectory(SetFastMathFlags)
 add_subdirectory(SubGroupFuncs)
 add_subdirectory(StatelessToStateful)
@@ -79,6 +80,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_RegPressureLoopControl}
     ${IGC_BUILD__SRC__OpenCLPasses_ReplaceUnsupportedIntrinsics}
     ${IGC_BUILD__SRC__OpenCLPasses_ResourceAllocator}
+    ${IGC_BUILD__SRC__OpenCLPasses_ScalarArgAsPointer}
     ${IGC_BUILD__SRC__OpenCLPasses_SetFastMathFlags}
     ${IGC_BUILD__SRC__OpenCLPasses_SubGroupFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_StatelessToStateful}
@@ -131,6 +133,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_RegPressureLoopControl}
     ${IGC_BUILD__HDR__OpenCLPasses_ReplaceUnsupportedIntrinsics}
     ${IGC_BUILD__HDR__OpenCLPasses_ResourceAllocator}
+    ${IGC_BUILD__HDR__OpenCLPasses_ScalarArgAsPointer}
     ${IGC_BUILD__HDR__OpenCLPasses_SetFastMathFlags}
     ${IGC_BUILD__HDR__OpenCLPasses_SubGroupFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_StatelessToStatefull}
@@ -175,6 +178,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_Raytracing
     Compiler__OpenCLPasses_RegPressureLoopControl
     Compiler__OpenCLPasses_ReplaceUnsupportedIntrinsics
+    Compiler__OpenCLPasses_ScalarArgAsPointer
     Compiler__OpenCLPasses_SetFastMathFlags
     Compiler__OpenCLPasses_SubGroupFuncs
     Compiler__OpenCLPasses_StatelessToStateful
