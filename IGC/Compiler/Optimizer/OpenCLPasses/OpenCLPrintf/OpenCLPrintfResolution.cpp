@@ -536,7 +536,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst& printfCall, Function& F)
         {
             printfArg = CastInst::Create(Instruction::CastOps::PtrToInt,
                 argDesc->value,
-                m_ptrSizeIntType,
+                Type::getInt64Ty(*m_context),
                 "",
                 bblockTrue);
         }
@@ -741,7 +741,7 @@ unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argT
     case IGC::SHADER_PRINTF_STRING_LITERAL: {
         if (m_CGContext->enableZEBinary()) {
             // The size of the format string address
-            return m_module->getDataLayout().getPointerSize();
+            return 8;
         } else {
             // The size of the format string index
             return 4;
@@ -872,7 +872,7 @@ Instruction* OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor* arg
 
     case IGC::SHADER_PRINTF_STRING_LITERAL: {
         if (m_CGContext->enableZEBinary())
-            castedType = m_ptrSizeIntType->getPointerTo(ADDRESS_SPACE_GLOBAL);
+            castedType = Type::getInt64PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
         else
             castedType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
         break;
