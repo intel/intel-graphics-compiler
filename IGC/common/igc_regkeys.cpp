@@ -1082,8 +1082,8 @@ void LoadRegistryKeys(const std::string& options, bool *RegFlagNameError)
 #endif
         //DumpIGCRegistryKeyDefinitions();
         LoadDebugFlagsFromFile();
-        LoadDebugFlagsFromString(IGC_GET_REGKEYSTRING(SelectiveHashOptions));
         LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError);
+        LoadDebugFlagsFromString(IGC_GET_REGKEYSTRING(SelectiveHashOptions));
 
         if(IGC_IS_FLAG_ENABLED(LLVMCommandLine))
         {
