@@ -1612,6 +1612,12 @@ void OptimizeIR(CodeGenContext* const pContext)
 
         mpm.add(createMergeMemFromBranchOptPass());
 
+        if (IGC_IS_FLAG_DISABLED(DisableLoadSinking) &&
+            pContext->m_retryManager.AllowLoadSinking())
+        {
+            mpm.add(createSinkLoadOptPass());
+        }
+
         mpm.add(createConstantMergePass());
 
         mpm.add(CreateMCSOptimization());

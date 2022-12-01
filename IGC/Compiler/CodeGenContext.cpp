@@ -32,13 +32,14 @@ namespace IGC
         bool allowLargeURBWrite;
         bool allowConstantCoalescing;
         bool allowLargeGRF;
+        bool allowLoadSinking;
         unsigned nextState;
     };
 
     static const RetryState RetryTable[] = {
-        // licm  codSk AdrSk  Slice  PrivM  PreRA  VISAP  URBWr  Coals  GRF
-        { true,  true, false, false, true,  true,  true,  true,  true,  false, 1 },
-        { false, true, true,  true,  false, false, false, false, false, true, 500 }
+        // licm  codSk AdrSk  Slice  PrivM  PreRA  VISAP  URBWr  Coals  GRF    loadSk
+        { true,  true, false, false, true,  true,  true,  true,  true,  false, false, 1 },
+        { false, true, true,  true,  false, false, false, false, false, true,  true, 500 }
     };
 
     static constexpr size_t RetryTableSize = sizeof(RetryTable) / sizeof(RetryState);
@@ -124,6 +125,12 @@ namespace IGC
     void RetryManager::SetFirstStateId(int id)
     {
         firstStateId = id;
+    }
+
+    bool RetryManager::AllowLoadSinking() const
+    {
+        IGC_ASSERT(stateId < RetryTableSize);
+        return RetryTable[stateId].allowLoadSinking;
     }
 
     bool RetryManager::IsFirstTry() const

@@ -720,6 +720,7 @@ namespace IGC
         bool AllowLargeURBWrite() const;
         bool AllowConstantCoalescing() const;
         bool AllowLargeGRF() const;
+        bool AllowLoadSinking() const;
         void SetFirstStateId(int id);
         bool IsFirstTry() const;
         bool IsLastTry() const;

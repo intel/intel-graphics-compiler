@@ -6477,6 +6477,136 @@ bool MergeMemFromBranchOpt::runOnFunction(Function& F)
     return changed;
 }
 
+
+namespace {
+    class SinkLoadOpt : public FunctionPass, public llvm::InstVisitor<SinkLoadOpt>
+    {
+    public:
+        static char ID;
+        SinkLoadOpt();
+
+        StringRef getPassName() const override { return "SinkLoadOpt"; }
+
+        bool runOnFunction(Function& F) override;
+        virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override
+        {
+            AU.setPreservesCFG();
+        }
+
+        bool sinkLoadInstruction(Function& F);
+    private:
+        bool changed = false;
+    };
+}
+
+#undef PASS_FLAG
+#undef PASS_DESCRIPTION
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+#define PASS_FLAG "igc-SinkLoadOpt"
+#define PASS_DESCRIPTION "load sinking Opt"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(SinkLoadOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(SinkLoadOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+char SinkLoadOpt::ID = 0;
+FunctionPass* IGC::createSinkLoadOptPass()
+{
+    return new SinkLoadOpt();
+}
+
+SinkLoadOpt::SinkLoadOpt() : FunctionPass(ID), changed(false)
+{
+    initializeSinkLoadOptPass(*PassRegistry::getPassRegistry());
+}
+
+bool SinkLoadOpt::sinkLoadInstruction(Function& F)
+{
+    std::vector<std::pair<Instruction*, Instruction*>> moveInst;
+    for (auto& BB : F)
+    {
+        for (auto BI = BB.begin(), BE = BB.end(); BI != BE; ++BI)
+        {
+            GenIntrinsicInst* CI = dyn_cast<GenIntrinsicInst>(BI);
+            if (CI &&
+                (CI->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed ||
+                    CI->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed))
+            {
+                uint32_t Addrspace = CI->getArgOperand(0)->getType()->getPointerAddressSpace();
+                BufferType BufTy = GetBufferType(Addrspace);
+                BufferAccessType Access = getDefaultAccessType(BufTy);
+                if (Access == BufferAccessType::ACCESS_READ)
+                {
+                    if (CI->hasOneUse())
+                    {
+                        // if the load only has one use, move it to right before the use.
+                        Instruction* useInst = dyn_cast<Instruction>(*(CI->user_begin()));
+                        if (useInst && !isa<PHINode>(useInst) && CI->getNextNode() != useInst)
+                        {
+                            moveInst.push_back(std::pair(cast<Instruction>(CI), useInst));
+                        }
+                    }
+                    else
+                    {
+                        // if all the use are extractelement, and they are all in the same BB.
+                        // move the load and extractelement into the beginning of this BB.
+                        std::vector<ExtractElementInst*> ee;
+                        bool stop = 0;
+                        BasicBlock* useBlock = nullptr;
+                        for (auto* iter : CI->users())
+                        {
+                            ExtractElementInst* eeTemp = dyn_cast<ExtractElementInst>(iter);
+                            if (eeTemp && eeTemp->hasOneUse())
+                            {
+                                Instruction* useInst = dyn_cast<Instruction>(*(eeTemp->user_begin()));
+                                if (useInst && useInst->getParent() != CI->getParent()
+                                    && (!useBlock || useInst->getParent() == useBlock)
+                                    && !isa<PHINode>(useInst))
+                                {
+                                    ee.push_back(eeTemp);
+                                    useBlock = useInst->getParent();
+                                }
+                            }
+                            else
+                            {
+                                // do not do the optimization
+                                stop = 1;
+                                break;
+                            }
+                        }
+                        if (stop || ee.size() == 0)
+                            continue;
+
+                        for (unsigned int i = 0; i < ee.size(); i++)
+                        {
+                            moveInst.push_back(std::pair(cast<Instruction>(ee[i]), &*useBlock->getFirstInsertionPt()));
+                        }
+                        moveInst.push_back(std::pair(cast<Instruction>(CI), &*useBlock->getFirstInsertionPt()));
+                    }
+                }
+            }
+        }
+    }
+
+    if (moveInst.size())
+    {
+        for (auto mi : reverse(moveInst))
+        {
+            mi.first->moveBefore(mi.second);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool SinkLoadOpt::runOnFunction(Function& F)
+{
+    bool changed = sinkLoadInstruction(F);
+
+    return changed;
+}
+
 #undef PASS_FLAG
 #undef PASS_DESCRIPTION
 #undef PASS_CFG_ONLY
