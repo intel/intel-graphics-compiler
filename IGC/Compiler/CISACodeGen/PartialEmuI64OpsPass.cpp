@@ -1056,6 +1056,10 @@ bool InstExpander::visitVAArg(VAArgInst& VAAI) {
 bool InstExpander::visitExtractValue(ExtractValueInst& EVI) {
     // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
+
+    if (Emu->CGC->platform.hasPartialInt64Support() && IGC_IS_FLAG_DISABLED(ForcePartialInt64))
+        return false;
+
     IGC_ASSERT_MESSAGE(false == Emu->isInt64(&EVI), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
@@ -1064,6 +1068,10 @@ bool InstExpander::visitInsertValue(InsertValueInst& IVI) {
     // TODO: Add i64 emulation support.
     IGC_ASSERT(nullptr != Emu);
     IGC_ASSERT(1 < IVI.getNumOperands());
+
+    if (Emu->CGC->platform.hasPartialInt64Support() && IGC_IS_FLAG_DISABLED(ForcePartialInt64))
+        return false;
+
     IGC_ASSERT_MESSAGE(false == Emu->isInt64(IVI.getOperand(1)), "TODO: NOT IMPLEMENTED YET!");
     return false;
 }
