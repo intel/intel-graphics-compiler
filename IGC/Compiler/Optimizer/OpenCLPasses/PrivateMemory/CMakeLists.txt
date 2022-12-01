@@ -10,7 +10,6 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 
 set(IGC_BUILD__SRC__PrivateMemory
-    "${CMAKE_CURRENT_SOURCE_DIR}/PrivateMemoryBufferAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PrivateMemoryResolution.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PrivateMemoryUsageAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PrivateMemoryToSLM.cpp"
@@ -18,7 +17,6 @@ set(IGC_BUILD__SRC__PrivateMemory
 set(IGC_BUILD__SRC__OpenCLPasses_PrivateMemory ${IGC_BUILD__SRC__PrivateMemory} PARENT_SCOPE)
 
 set(IGC_BUILD__HDR__PrivateMemory
-    "${CMAKE_CURRENT_SOURCE_DIR}/PrivateMemoryBufferAnalysis.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PrivateMemoryResolution.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PrivateMemoryUsageAnalysis.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PrivateMemoryToSLM.hpp"
