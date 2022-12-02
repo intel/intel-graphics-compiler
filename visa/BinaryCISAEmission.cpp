@@ -169,11 +169,20 @@ int CBinaryCISAEmitter::emitCisaInst(VISAKernelImpl *cisa_kernel,
   cisa_kernel->writeInToCisaBinaryBuffer(&desc->opcode, sizeof(desc->opcode));
 
   unsigned opndCount = desc->opnd_num;
-  for (unsigned i = 0; i < std::min(inst->opnd_count, opndCount); i++) {
-    unsigned currendOpndIndex = i - reverseOffset;
 
+  for (unsigned i = 0; i < opndCount; i++) {
+    unsigned currentOpndIndex = i - reverseOffset;
+
+    // note that inst->opnd_count does not include predicate and execution mask
+    // whereas desc->opnd_num includes predicate and execution mask. If the
+    // currentOpndIndex is equal to inst->opnd_count, then break out the loop.
+    // This works because currentOpndIndex computation skips
+    // execsize and pred operands using reverseOffset.
+    if (currentOpndIndex == inst->opnd_count) {
+        break;
+    }
     if (inst->opnd_array != NULL &&
-        inst->opnd_array[currendOpndIndex] == NULL) {
+        inst->opnd_array[currentOpndIndex] == NULL) {
       assert(0);
       return VISA_FAILURE;
     }
@@ -203,20 +212,20 @@ int CBinaryCISAEmitter::emitCisaInst(VISAKernelImpl *cisa_kernel,
                                              inst->pred.getPredInBinarySize());
       reverseOffset++;
     } else if (inst->opnd_array != NULL &&
-               inst->opnd_array[currendOpndIndex]->opnd_type ==
+               inst->opnd_array[currentOpndIndex]->opnd_type ==
                    CISA_OPND_OTHER) {
       cisa_kernel->writeInToCisaBinaryBuffer(
-          &inst->opnd_array[currendOpndIndex]->_opnd.other_opnd,
-          inst->opnd_array[currendOpndIndex]->size);
+          &inst->opnd_array[currentOpndIndex]->_opnd.other_opnd,
+          inst->opnd_array[currentOpndIndex]->size);
     } else if (inst->opnd_array != NULL &&
-               inst->opnd_array[currendOpndIndex]->opnd_type ==
+               inst->opnd_array[currentOpndIndex]->opnd_type ==
                    CISA_OPND_VECTOR) {
       emitVectorOpnd(cisa_kernel,
-                     &inst->opnd_array[currendOpndIndex]->_opnd.v_opnd);
+                     &inst->opnd_array[currentOpndIndex]->_opnd.v_opnd);
     } else if (inst->opnd_array != NULL &&
-               inst->opnd_array[currendOpndIndex]->opnd_type == CISA_OPND_RAW) {
+               inst->opnd_array[currentOpndIndex]->opnd_type == CISA_OPND_RAW) {
       emitRawOpnd(cisa_kernel,
-                  &inst->opnd_array[currendOpndIndex]->_opnd.r_opnd);
+                  &inst->opnd_array[currentOpndIndex]->_opnd.r_opnd);
     }
   }
 
