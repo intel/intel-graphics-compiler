@@ -682,9 +682,7 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         IGC_IS_FLAG_ENABLED(EnableStatelessToStateful) &&
         !ctx.m_instrTypes.hasInlineAsmPointerAccess)
     {
-        bool hasBufOff = (IGC_IS_FLAG_ENABLED(EnableSupportBufferOffset) ||
-                            ctx.getModuleMetaData()->compOpt.HasBufferOffsetArg);
-        mpm.add(new StatelessToStateful(hasBufOff));
+        mpm.add(new StatelessToStateful());
     }
 
     // Light cleanup for subroutines after cloning. Note that the constant

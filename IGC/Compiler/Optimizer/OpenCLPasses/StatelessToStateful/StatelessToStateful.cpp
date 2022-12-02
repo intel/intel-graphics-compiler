@@ -128,9 +128,9 @@ IGC_INITIALIZE_PASS_END(StatelessToStateful, PASS_FLAG, PASS_DESCRIPTION, PASS_C
 
 char StatelessToStateful::ID = 0;
 
-StatelessToStateful::StatelessToStateful(bool hasBufOff)
+StatelessToStateful::StatelessToStateful()
     : FunctionPass(ID),
-    m_hasBufferOffsetArg(hasBufOff),
+    m_hasBufferOffsetArg(false),
     m_hasOptionalBufferOffsetArg(false),
     m_hasSubDWAlignedPtrArg(false),
     m_hasPositivePointerOffset(false),
@@ -171,6 +171,9 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
     }
 
     // Caching arguments during the transformation
+    m_hasBufferOffsetArg = (IGC_IS_FLAG_ENABLED(EnableSupportBufferOffset) ||
+                            modMD->compOpt.HasBufferOffsetArg);
+
     m_hasOptionalBufferOffsetArg = (m_hasBufferOffsetArg &&
         (IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) || modMD->compOpt.BufferOffsetArgOptional));
 
@@ -827,30 +830,6 @@ void StatelessToStateful::findPromotableInstructions()
 {
     // fill m_promotionMap
     visit(m_F);
-}
-
-CallInst* StatelessToStateful::createBufferPtr(unsigned addrSpace, Constant* argNumber, Instruction* InsertBefore)
-{
-    Module* M = InsertBefore->getParent()->getParent()->getParent();
-
-    Type* int32Ty = Type::getInt32Ty(M->getContext());
-
-    Constant* bufTypeVal = ConstantInt::get(int32Ty, (int)BufferType::UAV);
-
-    PointerType* ptrTy = PointerType::get(int32Ty, addrSpace);
-    Function* pFuncGetBufferPtr = GenISAIntrinsic::getDeclaration(
-        M,
-        GenISAIntrinsic::GenISA_GetBufferPtr, ptrTy);
-
-    Value* getBufferPtrArgs[] =
-    {
-        argNumber,
-        bufTypeVal
-    };
-
-    CallInst* pBufferPtrInst = CallInst::Create(pFuncGetBufferPtr, getBufferPtrArgs, InsertBefore->getName(), InsertBefore);
-
-    return pBufferPtrInst;
 }
 
 // This is used to set the size for a pointer to a given addrspace, which is created
