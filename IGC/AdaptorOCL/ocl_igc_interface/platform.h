@@ -50,11 +50,21 @@ CIF_DEFINE_INTERFACE_VER(Platform, 1){
   virtual void SetGTType(TypeErasedEnum v);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(Platform, 2, 1) {
+  CIF_INHERIT_CONSTRUCTOR();
+
+  virtual void SetRenderBlockID(unsigned int v);
+  virtual unsigned int GetRenderBlockID() const;
+  virtual void SetDisplayBlockID(unsigned int v);
+  virtual unsigned int GetDisplayBlockID() const;
+  virtual void SetMediaBlockID(unsigned int v);
+  virtual unsigned int GetMediaBlockID() const;
+};
+
 CIF_GENERATE_VERSIONS_LIST(Platform);
 CIF_MARK_LATEST_VERSION(PlatformLatest, Platform);
-using PlatformTagOCL = PlatformLatest; // Note : can tag with different version for
-                                       //        transition periods
-
+using PlatformTagOCL = Platform<1>; // Note : can tag with different version for
+                                    //        transition periods
 }
 
 #include "cif/macros/disable.h"
