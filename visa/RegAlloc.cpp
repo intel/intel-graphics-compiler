@@ -2910,6 +2910,79 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
   }
 }
 
+void GlobalRA::verifySpillFill() {
+  // Verify that whenever LSC or OW is used for spill in divergent CF, it is
+  // preceeded by corresponding fill.
+  for (auto *BB : kernel.fg.getBBList()) {
+    auto InstIter = BB->begin();
+    while (InstIter != BB->end()) {
+      auto *Inst = (*InstIter);
+      if (!Inst->isSpillIntrinsic()) {
+        ++InstIter;
+        continue;
+      }
+
+      bool UsesLSC =
+          useLscForNonStackCallSpillFill || spillFillIntrinUsesLSC(Inst);
+      bool UsesOW = (Inst->asSpillIntrinsic()->getOffset() ==
+                     G4_SpillIntrinsic::InvalidOffset);
+      bool UsesHW = !UsesLSC && !UsesOW;
+
+      auto Offset = Inst->asSpillIntrinsic()->getOffset();
+      auto Rows = Inst->asSpillIntrinsic()->getNumRows();
+
+      auto CheckRMWFill = [&]() {
+        // InstIter points to spill. Check for preceeding fill.
+        bool FillFound = false;
+        auto PrevInstIter = InstIter;
+        --PrevInstIter;
+        while (PrevInstIter != BB->begin()) {
+          auto PrevInst = (*PrevInstIter);
+
+          if (PrevInst->isFillIntrinsic()) {
+            // If we see same Offset/Rows combination, we're safe
+            auto OffsetPrev = PrevInst->asFillIntrinsic()->getOffset();
+            auto RowsPrev = PrevInst->asFillIntrinsic()->getNumRows();
+
+            if (OffsetPrev == Offset && RowsPrev == Rows) {
+              FillFound = true;
+              break;
+            }
+          }
+          --PrevInstIter;
+        }
+
+        if (!FillFound) {
+          std::cerr << "Didn't find RMW fill corresponding to spill at $"
+                    << Inst->getVISAId() << std::endl;
+          Inst->dump();
+          std::cerr << std::endl;
+        }
+      };
+
+      auto CheckWriteEnable = [&]() {
+        if (!Inst->isWriteEnableInst()) {
+          Inst->dump();
+          std::cerr << "Expecting WriteEnable to be set on spill at $"
+                    << Inst->getVISAId() << std::endl;
+          std::cerr << std::endl;
+        }
+      };
+
+      if (!UsesHW) {
+        // For OW and LSC, RMW fill should exist, unless RMW opt in
+        // spill insertion (correctly) decided otherwise. We cannot
+        // lookup decision of RMW opt here, so we may see some false
+        // positives.
+        CheckRMWFill();
+        // OW and LSC must use WriteEnable
+        CheckWriteEnable();
+      }
+      ++InstIter;
+    }
+  }
+}
+
 static void recordRAStats(IR_Builder &builder, G4_Kernel &kernel,
                           int RAStatus) {
   if (RAStatus == VISA_SUCCESS) {

@@ -10208,6 +10208,11 @@ int GlobalRA::coloringRegAlloc() {
         bool success = spillGRF.insertSpillFillCode(&kernel, pointsToAnalysis);
         nextSpillOffset = spillGRF.getNextOffset();
 
+        if (kernel.getOption(vISA_VerifyRA)) {
+          // For least false positives, turn off RMW opt and spill cleanup
+          verifySpillFill();
+        }
+
         if (builder.hasScratchSurface() && !hasStackCall &&
             (nextSpillOffset + globalScratchOffset) > SCRATCH_MSG_LIMIT) {
           // create temp variable to store old a0.2 - this is marked as live-in

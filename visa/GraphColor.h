@@ -1274,6 +1274,7 @@ public:
   void addStoreRestoreToReturn();
   void markGraphBlockLocalVars();
   void verifyRA(LivenessAnalysis &liveAnalysis);
+  void verifySpillFill();
   void resetGlobalRAStates();
 
   void insertPhyRegDecls();
