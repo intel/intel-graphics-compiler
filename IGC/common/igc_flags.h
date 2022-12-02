@@ -163,7 +163,7 @@ DECLARE_IGC_REGKEY(bool, DisableEmptyBlockRemoval,      false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, DisableSIMD32Slicing,          false, "Setting this to 1/true adds a compiler switch to disable emitting SIMD32 VISA code in slices", false)
 DECLARE_IGC_REGKEY(bool, DisableMatchMad,               false, "Setting this to 1/true adds a compiler switch to disable mul+add = mad optimization", false)
 DECLARE_IGC_REGKEY(bool, WaAllowMatchMadOptimizationforVS, false, "Setting this to 1/true adds a compiler switch to enable mul+add = mad optimization for VS", false)
-DECLARE_IGC_REGKEY(bool, DisableLoadSinking,            true,  "Setting this to 1/true adds a compiler switch to disable load sinking during retry", false)
+DECLARE_IGC_REGKEY(bool, DisableLoadSinking,            false, "Setting this to 1/true adds a compiler switch to disable load sinking during retry", false)
 DECLARE_IGC_REGKEY(bool, EnableIntegerMad,              true,  "Setting this to 1/true adds a compiler switch to enable integer mul+add = mad optimization", false)
 DECLARE_IGC_REGKEY(bool, DisableMatchPredAdd,           false, "Setting this to 1/true adds a compiler switch to disable pred+add = predAdd optimization", false)
 DECLARE_IGC_REGKEY(bool, DisableMatchSimpleAdd,         false, "Setting this to 1/true adds a compiler switch to disable simple cmp+and+add optimization", false)
