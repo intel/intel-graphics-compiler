@@ -135,6 +135,20 @@ CompileUnit::CompileUnit(unsigned UID, DIE *D, DICompileUnit *Node,
       DebugInfoOffset(0) {
   DIEIntegerOne = new (DIEValueAllocator) DIEInteger(1);
   insertDIE(Node, D);
+
+  // Collect metadata of externally visible functions
+  if (DW && DW->GetVISAModule()) {
+    auto *M = DW->GetVISAModule()->GetModule();
+    for (auto &F : *M) {
+      if (F.getSubprogram() &&
+          (F.hasFnAttribute("visaStackCall") ||
+           F.getCallingConv() == llvm::CallingConv::SPIR_KERNEL)) {
+        ExtFunc.insert(F.getSubprogram());
+        if (F.getSubprogram()->getDeclaration())
+          ExtFunc.insert(F.getSubprogram()->getDeclaration());
+      }
+    }
+  }
 }
 
 /// ~CompileUnit - Destructor for compile unit.
@@ -2173,7 +2187,7 @@ IGC::DIE *CompileUnit::getOrCreateSubprogramDIE(DISubprogram *SP) {
     addFlag(SPDie, dwarf::DW_AT_artificial);
   }
 
-  if (!SP->isLocalToUnit()) {
+  if (!SP->isLocalToUnit() && ExtFunc.count(SP) > 0) {
     addFlag(SPDie, dwarf::DW_AT_external);
   }
 

@@ -516,6 +516,10 @@ private:
   bool isSLM = false;
   DIEValue *skipOff = nullptr;
   unsigned int offsetTaken = 0;
+
+  // Hold DISubprogram nodes that correspond to functions with out-of-line
+  // definition.
+  llvm::SmallPtrSet<llvm::DISubprogram *, 10> ExtFunc;
 };
 
 } // namespace IGC
