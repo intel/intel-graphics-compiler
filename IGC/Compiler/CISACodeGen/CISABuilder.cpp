@@ -3822,7 +3822,8 @@ namespace IGC
                 // params has been read, but since this is only for
                 // debugging, do not bother freeing memory.
                 params.push_back(param_uptr(_strdup(opt.c_str()), dup_deleter));
-                if (opt == "-output" || opt == "-binary" || opt == "-dumpvisa" || opt == "-dumpcommonisa")
+                if (opt == "-output" || opt == "-binary" || opt == "-dumpvisa" || opt == "-dumpcommonisa" ||
+                    opt == "-dumpVISAJsonStats" || opt == "-dumpVISAJsonStatsVerbose")
                 {
                     m_enableVISAdump = true;
                 }
