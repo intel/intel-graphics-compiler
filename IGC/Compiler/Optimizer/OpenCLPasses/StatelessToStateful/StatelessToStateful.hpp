@@ -33,7 +33,7 @@ namespace IGC
 
         static char ID;
 
-        StatelessToStateful(bool NoNegOffset = false);
+        StatelessToStateful();
 
         ~StatelessToStateful() {}
 
@@ -86,8 +86,6 @@ namespace IGC
         bool doPromoteUntypedAtomics(const llvm::GenISAIntrinsic::ID intrinID, const llvm::GenIntrinsicInst* Inst);
         bool isUntypedAtomic(const llvm::GenISAIntrinsic::ID intrinID);
 
-        llvm::CallInst* createBufferPtr(
-            unsigned addrSpace, llvm::Constant* argNumber, llvm::Instruction* InsertBefore);
         bool pointerIsPositiveOffsetFromKernelArgument(
             llvm::Function* F, llvm::Value* V, llvm::Value*& offset, unsigned int& argNumber);
 
@@ -140,7 +138,7 @@ namespace IGC
         }
 
         // When true, runtime can generate surface with buffer's original base (creation base)
-        const bool m_hasBufferOffsetArg;
+        bool m_hasBufferOffsetArg;
 
         // When m_hasBufferOffsetArg is true, optional buffer offset
         // can be on or off, which is indicated by this boolean flag.
