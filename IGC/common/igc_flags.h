@@ -116,7 +116,7 @@ DECLARE_IGC_REGKEY(bool, AvoidSrc1Src2Overlap,               false,  "avoid src1
 DECLARE_IGC_REGKEY(bool, UseLinearScanRA,               false,  "use Linear Scan as default register allocation algorithm ", false)
 DECLARE_IGC_REGKEY(bool, DisableWriteCombine, false, "Disable write combine. PVC+ only", false)
 DECLARE_IGC_REGKEY(bool, Force32bitConstantGEPLowering, false, "Go back to old version of GEP lowering for constant address space. PVC only", false)
-DECLARE_IGC_REGKEY(bool, NewSpillCostFunction,          false, "Use new spill cost function in VISA RA", false)
+DECLARE_IGC_REGKEY(bool, NewSpillCostFunction,          false, "Use new spill cost function in VISA RA", true)
 DECLARE_IGC_REGKEY(bool, EnableCoalesceScalarMoves, false, "Enable scalar moves to be coalesced into fewer moves", false)
 
 DECLARE_IGC_GROUP("IGC Optimization")
