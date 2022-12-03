@@ -1988,7 +1988,7 @@ bool Optimizer::R0CopyNeeded() {
 
 int Optimizer::optimization() {
 #ifndef DLL_MODE
-  if (StopAfterPass == "CFG") {
+  if (StopAfterPass == "CFGConstruction") {
     EarlyExited = true;
     kernel.dumpStopafter();
   }
