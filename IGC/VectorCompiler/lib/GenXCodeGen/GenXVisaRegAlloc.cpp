@@ -511,6 +511,11 @@ void GenXVisaRegAlloc::extraCoalescing()
             case GenXIntrinsic::genx_rdregionf:
             case GenXIntrinsic::genx_wrregioni:
             case GenXIntrinsic::genx_wrregionf:
+            case GenXIntrinsic::genx_dpas2:
+            case GenXIntrinsic::genx_dpas:
+            case GenXIntrinsic::genx_dpas_nosrc0:
+            case GenXIntrinsic::genx_dpasw:
+            case GenXIntrinsic::genx_dpasw_nosrc0:
               break;
             default: {
                 // It is an intrinsic. A non-alu intrinsic does not have a
