@@ -610,6 +610,8 @@ namespace IGC
         bool hfCandidate = false;
         unsigned int runtimeValue;
         unsigned int ptrAddressSpace;
+        unsigned int rootSigBufOffsetInBytes;
+        unsigned int resourceOffset;
     };
     struct URBLayoutInfo
     {
