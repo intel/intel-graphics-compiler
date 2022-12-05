@@ -280,6 +280,76 @@ void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
     I.eraseFromParent();
 }
 
+// Replace sub_group shuffle with index = sub_group_id ^ xor_value,
+// where xor_value is a compile-time constant to intrinsic,
+// which will produce sequence of movs instead of using indirect access
+// This pattern comes from permute_group_by_xor, but can
+// also be written manually as
+//   uint32_t other_id = sg.get_local_id() ^ XOR_VALUE;
+//   r = select_from_group(sg, x, other_id);
+void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst* I)
+{
+    using namespace llvm::PatternMatch;
+
+    bool patternFound = false;
+    Value* simdLaneId = nullptr;
+    ConstantInt* xorValueConstant = nullptr;
+
+    /*
+    Pattern match
+    %simdLaneId = call i16 @llvm.genx.GenISA.simdLaneId()
+    %xor = xor i16 %simdLaneId, 1
+    %xor.i = zext i16 %xor to i32
+    %simdShuffle = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %x, i32 %xor.i, i32 0)
+    */
+
+    ConstantInt* enableHelperLanes = dyn_cast<ConstantInt>(I->getOperand(2));
+    if (!enableHelperLanes || enableHelperLanes->getZExtValue() != 0) {
+        return;
+    }
+
+    if (match(I->getOperand(1),
+              m_ZExt(m_c_Xor(m_Value(simdLaneId), m_ConstantInt(xorValueConstant)))))
+    {
+        if (CallInst* CI = dyn_cast<CallInst>(simdLaneId))
+        {
+            Function* simdIdF = CI->getCalledFunction();
+            if (!simdIdF) return;
+            patternFound =
+                GenISAIntrinsic::getIntrinsicID(simdIdF) == GenISAIntrinsic::GenISA_simdLaneId;
+        }
+    }
+
+    auto insertShuffleXor = [](IRBuilder<>& builder,
+                                    Value* value,
+                                    uint32_t xorValue)->Value*
+    {
+        Function* simdShuffleXorFunc = GenISAIntrinsic::getDeclaration(
+            builder.GetInsertBlock()->getParent()->getParent(),
+            GenISAIntrinsic::GenISA_simdShuffleXor,
+            value->getType());
+
+        return builder.CreateCall(simdShuffleXorFunc,
+            { value, builder.getInt32(xorValue) }, "simdShuffleXor");
+    };
+
+    if (patternFound)
+    {
+        uint64_t xorValue = xorValueConstant->getValue().getZExtValue();
+
+        if (xorValue >= 16) {
+            // currently not supported in the emitter
+            return;
+        }
+
+        Value* value = I->getOperand(0);
+        IRBuilder<> builder(I);
+        Value* result = insertShuffleXor(builder, value, static_cast<uint32_t>(xorValue));
+        I->replaceAllUsesWith(result);
+        I->eraseFromParent();
+    }
+}
+
 // Check if Lower 64b to 32b transformation is applicable for binary operator
 // i.e. trunc(a op b) == trunc(a) op trunc(b)
 static bool isTruncInvariant(unsigned Opcode) {
@@ -690,6 +760,11 @@ void CustomSafeOptPass::visitCallInst(CallInst& C)
         case GenISAIntrinsic::GenISA_ldrawvector_indexed:
         {
             visitLdRawVec(inst);
+            break;
+        }
+        case GenISAIntrinsic::GenISA_WaveShuffleIndex:
+        {
+            visitShuffleIndex(inst);
             break;
         }
         default:
