@@ -281,9 +281,24 @@ void Node::dump() {
   std::cerr << "\n";
 }
 
+ static bool needBothAcc(IR_Builder *builder, G4_INST *inst, G4_Operand *opnd) {
+  switch (opnd->getType()) {
+  case Type_F:
+    return inst->getExecSize() == G4_ExecSize(builder->getNativeExecSize() * 2);
+  case Type_HF:
+  case Type_BF:
+    return false;
+  case Type_DF:
+    return inst->getExecSize() > G4_ExecSize(builder->getNativeExecSize() / 2);
+  default:
+    return true;
+  }
+}
+
 // Compute the range of registers touched by OPND.
-static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
-                         unsigned execSize) {
+static Mask getMaskForOp(IR_Builder* builder, G4_INST *inst,
+                         Gen4_Operand_Number opnd_num, unsigned GRFSize) {
+  G4_Operand *opnd = inst->getOperand(opnd_num);
   unsigned short LB, RB;
   bool nonContiguousStride = false;
 
@@ -294,6 +309,27 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
     LB = (unsigned short)(opnd->getLeftBound() + subRegOff * BITS_PER_FLAG_REG);
     RB =
         (unsigned short)(opnd->getRightBound() + subRegOff * BITS_PER_FLAG_REG);
+  };
+
+  auto getACCBounds = [&](G4_Operand *opnd, unsigned GRFSize) {
+    bool valid = true;
+    unsigned regNum = 0;
+    unsigned subRegNum = 0;
+
+    if (opnd->isDstRegRegion()) {
+      regNum = opnd->asDstRegRegion()->ExRegNum(valid);
+      subRegNum = opnd->asDstRegRegion()->ExSubRegNum(valid);
+    } else {
+      regNum = opnd->asSrcRegRegion()->ExRegNum(valid);
+      subRegNum = opnd->asSrcRegRegion()->ExSubRegNum(valid);
+    }
+
+    LB = regNum * GRFSize + subRegNum * TypeSize(opnd->getType());
+    if (needBothAcc(builder, opnd->getInst(), opnd)) {
+      RB = 2 * GRFSize - 1 + LB;
+    } else {
+      RB = opnd->getRightBound() - opnd->getLeftBound() + LB;
+    }
   };
 
   auto getAddressBounds = [&](G4_Operand *opnd) {
@@ -330,6 +366,8 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
   case Opnd_implAccSrc: {
     if (opnd->isFlag()) {
       getFlagBounds(opnd);
+    } else if (opnd->isAccReg()) {
+      getACCBounds(opnd, GRFSize);
     } else if (opnd->getBase() && opnd->getBase()->isA0()) {
       getAddressBounds(opnd);
     } else {
@@ -337,7 +375,7 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
       RB = (unsigned short)opnd->getLinearizedEnd();
       G4_SrcRegRegion *srcOpnd = opnd->asSrcRegRegion();
       const RegionDesc *rd = srcOpnd->getRegion();
-      nonContiguousStride = !rd->isContiguous(execSize);
+      nonContiguousStride = !rd->isContiguous(inst->getExecSize());
     }
     break;
   }
@@ -346,13 +384,16 @@ static Mask getMaskForOp(G4_Operand *opnd, Gen4_Operand_Number opnd_num,
   case Opnd_implAccDst: {
     if (opnd->isFlag()) {
       getFlagBounds(opnd);
+    } else if (opnd->isAccReg()) {
+      getACCBounds(opnd, GRFSize);
     } else if (opnd->getBase() && opnd->getBase()->isA0()) {
       getAddressBounds(opnd);
     } else {
       LB = (unsigned short)opnd->getLinearizedStart();
       RB = (unsigned short)opnd->getLinearizedEnd();
       G4_DstRegRegion *dstOpnd = opnd->asDstRegRegion();
-      nonContiguousStride = (execSize != 1 && dstOpnd->getHorzStride() != 1);
+      nonContiguousStride =
+          (inst->getExecSize() != 1 && dstOpnd->getHorzStride() != 1);
     }
     break;
   }
@@ -463,7 +504,7 @@ void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
       int endingBucket = baseBucket + opnd->getLinearizedEnd() / divisor;
       MUST_BE_TRUE(endingBucket >= startingBucket,
                    "Ending bucket less than starting bucket");
-      Mask mask = getMaskForOp(opnd, opnd_num, inst->getExecSize());
+      Mask mask = getMaskForOp(kernel->fg.builder, inst, opnd_num, divisor);
       int numBuckets = endingBucket - startingBucket + 1;
       for (int j = startingBucket; j < (startingBucket + numBuckets); j++) {
         BDvec.push_back(BucketDescr(j, mask, opnd_num));
@@ -474,7 +515,8 @@ void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
       if (Acc != G4_AccRegSel::ACC_UNDEFINED && Acc != G4_AccRegSel::NOACC)
         BDvec.push_back(BucketDescr(OTHER_ARF_BUCKET, mask, opnd_num));
     } else {
-      Mask mask = getMaskForOp(opnd, opnd_num, inst->getExecSize());
+      Mask mask = getMaskForOp(kernel->fg.builder, inst, opnd_num,
+                               kernel->numEltPerGRF<Type_UB>());
       BDvec.push_back(BucketDescr(startingBucket, mask, opnd_num));
     }
   }
@@ -1270,6 +1312,7 @@ DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k,
   HWthreadsPerEU = k->getNumThreads();
   useMTLatencies = getBuilder()->useMultiThreadLatency();
   totalGRFNum = kernel->getNumRegTotal();
+  totalACCNum = kernel->getNumAcc();
   isThreeSouceBlock = false;
   is_2XFP_Block = false;
   bool BTIIsRestrict =
@@ -1277,7 +1320,7 @@ DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k,
 
   GRF_BUCKET = 0;
   ACC_BUCKET = GRF_BUCKET + totalGRFNum;
-  FLAG0_BUCKET = ACC_BUCKET + 1;
+  FLAG0_BUCKET = ACC_BUCKET + totalACCNum;
   FLAG1_BUCKET = FLAG0_BUCKET + 1;
   A0_BUCKET = FLAG1_BUCKET + 1;
   SEND_BUCKET = A0_BUCKET + 1;
@@ -1436,10 +1479,6 @@ DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k,
           bool curKillsLive = curMask.kills(liveMask);
           bool hasOverlap = curMask.hasOverlap(liveMask);
 
-          // Acc1 and Acc3 may crash acc0 data
-          if (curBucket == ACC_BUCKET) {
-            hasOverlap = true;
-          }
           // 1. Find DEP type
           DepType dep = DEPTYPE_MAX;
           if (curBucket < ACC_BUCKET) {
