@@ -941,7 +941,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             G4_Declare *rootDcl = getRootDeclare(inst->getSrc(i));
             if (!rootDcl)
               continue;
-            G4_Operand *dst = inst->getDst();
+            auto dst = inst->getDst();
             if (rootDcl == calleeBuilder->getFE_SP()) {
               stackPointers[dst->getTopDcl()] =
                   getPointerOffset(inst, stackPointers[rootDcl]);
@@ -1027,7 +1027,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 inst->setOpcode(G4_mov);
                 auto newSrc = storeInst->getSrc(1);
                 loadInst->setSrc(newSrc, 0);
-                dst->setType(newSrc->getType());
+                dst->setType(*calleeBuilder, newSrc->getType());
                 avoidCloning.insert(newSrc->getTopDcl());
                 // recompute right bound of region
                 newSrc->computeRightBound(inst->getExecSize());
