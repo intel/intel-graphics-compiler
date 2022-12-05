@@ -557,7 +557,7 @@ bool ProcessElfInput(
 #endif // defined(IGC_SPIRV_ENABLED)
 
         std::vector<std::unique_ptr<llvm::Module>> LLVMBinariesToLink;
-        std::vector<VLD::SPVTranslationPair> SPIRVToLink;
+        std::vector<std::pair<VLD::SPIRVTypeEnum, STB_TranslateInputArgs>> SPIRVToLink;
 
         // Iterate over all the input modules.
         for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
@@ -592,22 +592,21 @@ bool ProcessElfInput(
 
                 if (pSectionHeader->Type == CLElfLib::SH_TYPE_SPIRV)
                 {
-                    auto spvMetadataOrErr = VLD::GetVLDMetadata(buf.data(), buf.size());
-                    VLD::SPVMetadata spvMetadata;
-                    if (!spvMetadataOrErr)
+                    auto spvTypeOrErr = VLD::DetectSPIRVType(buf.data(), buf.size());
+                    VLD::SPIRVTypeEnum spvType;
+                    if (!spvTypeOrErr)
                     {
                         // Temporary workaround until VLD uses SPIR-V Tools.
-                        llvm::consumeError(spvMetadataOrErr.takeError());
-                        VLD::SPVMetadata metadata;
-                        metadata.SpirvType = VLD::SPIRVTypeEnum::SPIRV_SPMD;
+                        llvm::consumeError(spvTypeOrErr.takeError());
+                        spvType = VLD::SPIRVTypeEnum::SPIRV_SPMD;
                     }
                     else
                     {
-                        spvMetadata = *spvMetadataOrErr;
+                        spvType = *spvTypeOrErr;
                     }
-                    if (spvMetadata.SpirvType != VLD::SPIRVTypeEnum::SPIRV_SPMD &&
-                        spvMetadata.SpirvType != VLD::SPIRVTypeEnum::SPIRV_ESIMD &&
-                        spvMetadata.SpirvType != VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD)
+                    if (spvType != VLD::SPIRVTypeEnum::SPIRV_SPMD &&
+                        spvType != VLD::SPIRVTypeEnum::SPIRV_ESIMD &&
+                        spvType != VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD)
                     {
                         SetErrorMessage("Unsupported SPIR-V in ELF file!",
                             OutputArgs);
@@ -618,7 +617,7 @@ bool ProcessElfInput(
                   STB_TranslateInputArgs SpvArgs = InputArgs;
                   SpvArgs.pInput = pData;
                   SpvArgs.InputSize = dataSize;
-                  SPIRVToLink.push_back({spvMetadata, SpvArgs});
+                  SPIRVToLink.push_back({spvType, SpvArgs});
 
                   // unset specialization constants, to avoid using them by
                   // subsequent SPIR-V modules
@@ -655,7 +654,7 @@ bool ProcessElfInput(
         }
 
         bool hasESIMD = std::any_of(SPIRVToLink.begin(), SPIRVToLink.end(), [](auto& el) {
-            return el.first.SpirvType == VLD::SPIRVTypeEnum::SPIRV_ESIMD || el.first.SpirvType == VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD;
+            return el.first == VLD::SPIRVTypeEnum::SPIRV_ESIMD || el.first == VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD;
         });
         bool hasLLVMBinaries = !LLVMBinariesToLink.empty();
         if (hasESIMD && hasLLVMBinaries)

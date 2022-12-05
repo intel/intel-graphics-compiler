@@ -24,7 +24,6 @@ add_library("${IGC_BUILD__PROJ__VISALinkerDriver}" STATIC ${VLD_SOURCE_FILE} ${V
 
 # This is needed for llvm/IR/Attributes.inc: No such file or directory error
 add_dependencies("${IGC_BUILD__PROJ__VISALinkerDriver}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-add_dependencies("${IGC_BUILD__PROJ__VISALinkerDriver}" "${IGC_BUILD__PROJ__SPIRV-Tools}")
 
 get_target_property(SPIRV_TOOLS_INCLUDE_DIRECTORIES ${IGC_BUILD__PROJ__SPIRV-Tools} INCLUDE_DIRECTORIES)
 

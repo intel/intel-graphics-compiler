@@ -829,12 +829,10 @@ RuntimeInfoCollector::collectFunctionSubgroupsInfo(
              BC.emitZebinVisaSections());
 
   RawSectionInfo TextSection;
-  if (!BC.emitVisaOnly()) {
-    for (auto *FG : Subgroups) {
-      auto *Func = FG->getHead();
-      IGC_ASSERT(genx::fg::isSubGroupHead(*Func));
-      loadBinary(TextSection, VB, *FG, BC);
-    }
+  for (auto *FG : Subgroups) {
+    auto *Func = FG->getHead();
+    IGC_ASSERT(genx::fg::isSubGroupHead(*Func));
+    loadBinary(TextSection, VB, *FG, BC);
   }
 
   auto DebugInfo = getDebugInfoForIndirectFunctions(DBG, Subgroups);
