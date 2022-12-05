@@ -3328,6 +3328,7 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
   // different AddrExp. IGC is trying to use different address registers.
   // Scenarios   (A1, 1:&V1), (A1, 2:&V1) may happen, by should be rare. In this
   // case, only one declare will be created.
+  std::vector<G4_AddrExp *> newAddExpList;
   for (auto pt : *pointsToSet) {
     G4_AddrExp *addrExp = pt.exp;
     G4_Declare *dcl = addrExp->getRegVar()->getDeclare();
@@ -3371,17 +3372,19 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
         G4_AddrExp *newAddExp = builder_->createAddrExp(
             temp->getRegVar(), addrExp->getOffset(), addrExp->getType());
         setAddrTakenSpillFill(addrExp, newAddExp);
-        gra.pointsToAnalysis.patchPointsToSet(addrDcl, newAddExp,
-                                              newAddExp->getOffset());
+        newAddExpList.push_back(newAddExp);
         created = true;
       } else {
         G4_AddrExp *newAddExp = builder_->createAddrExp(
             temp->getRegVar(), addrExp->getOffset(), addrExp->getType());
-        gra.pointsToAnalysis.patchPointsToSet(addrDcl, newAddExp,
-                                              newAddExp->getOffset());
         setAddrTakenSpillFill(addrExp, newAddExp);
+        newAddExpList.push_back(newAddExp);
       }
     }
+  }
+  for (auto newAddExp : newAddExpList) {
+    gra.pointsToAnalysis.patchPointsToSet(addrDcl, newAddExp,
+                                          newAddExp->getOffset());
   }
 
   return temp;
