@@ -150,10 +150,29 @@ void GenXCodeGenModule::processFunction(Function& F)
 
     IGC_ASSERT(CallerFGs.size() >= 1);
 
+    // Don't add referenced-indirectly attr for function with threadgroupbarrier intrinsic
+    // when m_FunctionCloningThreshold is set
+    auto hasUnsupportedCallsInFuncWithStackCalls = [](llvm::Function* F)->bool {
+        for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
+        {
+            if (auto* GII = dyn_cast<GenIntrinsicInst>(&*I))
+            {
+                if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
     // Make the function indirect if cloning exceeds the threshold
+    // We shouldn't add "referenced-indirectly" attr for builtins
     if (F.hasFnAttribute("visaStackCall") &&
+        !F.hasFnAttribute(llvm::Attribute::Builtin) &&
         m_FunctionCloningThreshold > 0 &&
-        CallerFGs.size() > m_FunctionCloningThreshold)
+        CallerFGs.size() > m_FunctionCloningThreshold &&
+        !hasUnsupportedCallsInFuncWithStackCalls(&F))
     {
         auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
         auto IFG = FGA->getOrCreateIndirectCallGroup(F.getParent());
