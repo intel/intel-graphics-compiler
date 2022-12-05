@@ -173,18 +173,15 @@ int CBinaryCISAEmitter::emitCisaInst(VISAKernelImpl *cisa_kernel,
   for (unsigned i = 0; i < opndCount; i++) {
     unsigned currentOpndIndex = i - reverseOffset;
 
-    // note that inst->opnd_count does not include predicate and execution mask
-    // whereas desc->opnd_num includes predicate and execution mask. If the
-    // currentOpndIndex is equal to inst->opnd_count, then break out the loop.
-    // This works because currentOpndIndex computation skips
-    // execsize and pred operands using reverseOffset.
-    if (currentOpndIndex == inst->opnd_count) {
+    if (inst->opnd_array && !inst->opnd_array[currentOpndIndex]) {
+      if (currentOpndIndex == inst->opnd_count) {
         break;
-    }
-    if (inst->opnd_array != NULL &&
-        inst->opnd_array[currentOpndIndex] == NULL) {
-      assert(0);
-      return VISA_FAILURE;
+      }
+      else {
+        // not yet iterated over all operands, but we encountered a null operand
+        assert(0);
+        return VISA_FAILURE;
+      }
     }
 
     if (!useSubDesc && desc->opnd_desc[i].opnd_type == OPND_SUBOPCODE) {
@@ -211,21 +208,32 @@ int CBinaryCISAEmitter::emitCisaInst(VISAKernelImpl *cisa_kernel,
       cisa_kernel->writeInToCisaBinaryBuffer(&predInBinary,
                                              inst->pred.getPredInBinarySize());
       reverseOffset++;
-    } else if (inst->opnd_array != NULL &&
+    }
+    else {
+      // note that inst->opnd_count does not include predicate and execution mask
+      // whereas desc->opnd_num includes predicate and execution mask. If the
+      // currentOpndIndex = inst->opnd_count, then break out the loop.
+      // This works because currentOpndIndex computation skips
+      // execsize and pred operands using reverseOffset.
+      if (currentOpndIndex == inst->opnd_count) {
+        break;
+      }
+      if (inst->opnd_array &&
                inst->opnd_array[currentOpndIndex]->opnd_type ==
                    CISA_OPND_OTHER) {
-      cisa_kernel->writeInToCisaBinaryBuffer(
+        cisa_kernel->writeInToCisaBinaryBuffer(
           &inst->opnd_array[currentOpndIndex]->_opnd.other_opnd,
           inst->opnd_array[currentOpndIndex]->size);
-    } else if (inst->opnd_array != NULL &&
+      } else if (inst->opnd_array &&
                inst->opnd_array[currentOpndIndex]->opnd_type ==
                    CISA_OPND_VECTOR) {
-      emitVectorOpnd(cisa_kernel,
+        emitVectorOpnd(cisa_kernel,
                      &inst->opnd_array[currentOpndIndex]->_opnd.v_opnd);
-    } else if (inst->opnd_array != NULL &&
+      } else if (inst->opnd_array &&
                inst->opnd_array[currentOpndIndex]->opnd_type == CISA_OPND_RAW) {
-      emitRawOpnd(cisa_kernel,
+        emitRawOpnd(cisa_kernel,
                   &inst->opnd_array[currentOpndIndex]->_opnd.r_opnd);
+      }
     }
   }
 
