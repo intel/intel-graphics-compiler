@@ -86,8 +86,15 @@ namespace IGC
         bool doPromoteUntypedAtomics(const llvm::GenISAIntrinsic::ID intrinID, const llvm::GenIntrinsicInst* Inst);
         bool isUntypedAtomic(const llvm::GenISAIntrinsic::ID intrinID);
 
-        bool pointerIsPositiveOffsetFromKernelArgument(
-            llvm::Function* F, llvm::Value* V, llvm::Value*& offset, unsigned int& argNumber);
+        // pointerIsPositiveOffsetFromKernelArgument - check if V can trace back to a kernel argument and
+        // has positive offset from that argument.
+        // ignoreSyncBuffer - when set to true, return false directly if V is from the implicit kernel
+        // argument "sync buffer". sync buffer must be stateless access in ZEBinary path so cannot be promoted.
+        bool pointerIsPositiveOffsetFromKernelArgument(llvm::Function *F,
+                                                       llvm::Value *V,
+                                                       llvm::Value *&offset,
+                                                       unsigned int &argNumber,
+                                                       bool ignoreSyncBuffer);
 
         // Check if the given pointer value can be traced back to any kernel argument.
         // return the kernel argument if found, otherwise return nullptr.

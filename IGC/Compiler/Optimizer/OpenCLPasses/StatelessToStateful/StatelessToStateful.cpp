@@ -363,7 +363,7 @@ bool StatelessToStateful::pointerIsFromKernelArgument(Value& ptr)
 }
 
 bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
-    Function* F, Value* V, Value*& offset, unsigned int& argNumber)
+    Function* F, Value* V, Value*& offset, unsigned int& argNumber, bool ignoreSyncBuffer)
 {
     auto getPointeeAlign = [](const DataLayout* DL, Value* ptrVal)-> alignment_t {
         if (PointerType* PTy = dyn_cast<PointerType>(ptrVal->getType()))
@@ -408,6 +408,10 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
     if (const KernelArg * arg = getKernelArgFromPtr(*ptrType, base))
     {
         // base is the argument!
+        if (ignoreSyncBuffer &&
+            arg->getArgType() == KernelArg::ArgType::IMPLICIT_SYNC_BUFFER)
+            return false;
+
         argNumber = arg->getAssociatedArgNo();
         bool gepProducesPositivePointer = true;
 
@@ -700,9 +704,11 @@ void StatelessToStateful::addToPromotionMap(Instruction& I, Value* Ptr)
     Value* offset = nullptr;
     unsigned baseArgNumber = 0;
 
+    // Do not prmote implicit kernel arg "sync_buffer" access when zebin is enabled
     bool isPromotable =
         m_promotionMap.size() < maxPromotionCount &&
-        pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber);
+        pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber,
+            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->enableZEBinary());
 
     if (isPromotable)
     {
