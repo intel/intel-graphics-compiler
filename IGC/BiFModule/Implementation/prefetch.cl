@@ -9,37 +9,40 @@ SPDX-License-Identifier: MIT
 #include "IGCBiF_Intrinsics_Lsc.cl"
 
 extern __constant int __UseLSC;
+extern __constant int __ForceL1Prefetch;
 
 // Mapping from OpenCL prefetch to LSC prefetch. Uniform immediate offset can
 // be used to save on base pointer arithmetics, but offset can't be variable.
-#define LSC_PREFETCH(type, p, num_elements)                                      \
-    if (num_elements == 1)                                                       \
-    {                                                                            \
-        __builtin_IB_lsc_prefetch_global_##type(p, 0, LSC_LDCC_L1C_L3C);         \
-    }                                                                            \
-    else if (num_elements == 2)                                                  \
-    {                                                                            \
-        __builtin_IB_lsc_prefetch_global_##type(p, 0, LSC_LDCC_L1C_L3C);         \
-        __builtin_IB_lsc_prefetch_global_##type(p, 1, LSC_LDCC_L1C_L3C);         \
-    }                                                                            \
-    else if (num_elements == 3)                                                  \
-    {                                                                            \
-        __builtin_IB_lsc_prefetch_global_##type(p, 0, LSC_LDCC_L1C_L3C);         \
-        __builtin_IB_lsc_prefetch_global_##type(p, 1, LSC_LDCC_L1C_L3C);         \
-        __builtin_IB_lsc_prefetch_global_##type(p, 2, LSC_LDCC_L1C_L3C);         \
-    }                                                                            \
-    else if (num_elements == 4)                                                  \
-    {                                                                            \
-        __builtin_IB_lsc_prefetch_global_##type(p, 0, LSC_LDCC_L1C_L3C);         \
-        __builtin_IB_lsc_prefetch_global_##type(p, 1, LSC_LDCC_L1C_L3C);         \
-        __builtin_IB_lsc_prefetch_global_##type(p, 2, LSC_LDCC_L1C_L3C);         \
-        __builtin_IB_lsc_prefetch_global_##type(p, 3, LSC_LDCC_L1C_L3C);         \
-    }                                                                            \
-    else                                                                         \
-    {                                                                            \
-        for (int i = 0; i < num_elements; ++i)                                   \
-            __builtin_IB_lsc_prefetch_global_##type(p + i, 0, LSC_LDCC_L1C_L3C); \
-    }                                                                            \
+#define LSC_PREFETCH(type, p, num_elements)                                            \
+    /* Warning: out of bound L1 prefetch will generate page fault */                   \
+    enum LSC_LDCC cacheOpt = __ForceL1Prefetch ? LSC_LDCC_L1C_L3C : LSC_LDCC_L1UC_L3C; \
+    if (num_elements == 1)                                                             \
+    {                                                                                  \
+        __builtin_IB_lsc_prefetch_global_##type(p, 0, cacheOpt);                       \
+    }                                                                                  \
+    else if (num_elements == 2)                                                        \
+    {                                                                                  \
+        __builtin_IB_lsc_prefetch_global_##type(p, 0, cacheOpt);                       \
+        __builtin_IB_lsc_prefetch_global_##type(p, 1, cacheOpt);                       \
+    }                                                                                  \
+    else if (num_elements == 3)                                                        \
+    {                                                                                  \
+        __builtin_IB_lsc_prefetch_global_##type(p, 0, cacheOpt);                       \
+        __builtin_IB_lsc_prefetch_global_##type(p, 1, cacheOpt);                       \
+        __builtin_IB_lsc_prefetch_global_##type(p, 2, cacheOpt);                       \
+    }                                                                                  \
+    else if (num_elements == 4)                                                        \
+    {                                                                                  \
+        __builtin_IB_lsc_prefetch_global_##type(p, 0, cacheOpt);                       \
+        __builtin_IB_lsc_prefetch_global_##type(p, 1, cacheOpt);                       \
+        __builtin_IB_lsc_prefetch_global_##type(p, 2, cacheOpt);                       \
+        __builtin_IB_lsc_prefetch_global_##type(p, 3, cacheOpt);                       \
+    }                                                                                  \
+    else                                                                               \
+    {                                                                                  \
+        for (int i = 0; i < num_elements; ++i)                                         \
+            __builtin_IB_lsc_prefetch_global_##type(p + i, 0, cacheOpt);               \
+    }                                                                                  \
 
 //Prefetch function
 

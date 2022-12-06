@@ -526,6 +526,7 @@ DECLARE_IGC_REGKEY(bool, LateInlineUnmaskedFunc,        false, "Postpone inlinin
 DECLARE_IGC_REGKEY(bool, ForceFormatConversionDG2Plus,  false,
     "Forces SW image format conversion for R10G10B10A2_UNORM, R11G11B10_FLOAT, R10G10B10A2_UINT image formats on DG2+ platforms", true)
 DECLARE_IGC_REGKEY(bool, EnableDivergentBarrierWA, false, "Generate continuation code to handle shaders that places barriers in divergent control flow", false)
+DECLARE_IGC_REGKEY(bool, ForcePrefetchToL1Cache, false, "Forces standard builtin prefetch to use L1 cache", false)
 
 DECLARE_IGC_GROUP("Performance experiments")
 DECLARE_IGC_REGKEY(bool, ForceNonCoherentStatelessBTI,  false, "Enable gneeration of non cache coherent stateless messages", false)

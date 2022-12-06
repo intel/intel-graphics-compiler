@@ -1047,6 +1047,7 @@ void BIImport::InitializeBIFlags(Module& M)
         useHighAccuracyMathFuncs = OCLContext->m_InternalOptions.UseHighAccuracyMathFuncs;
 
         initializeVarWithValue("__UseLSC", pCtx->platform.hasLSC());
+        initializeVarWithValue("__ForceL1Prefetch", IGC_IS_FLAG_ENABLED(ForcePrefetchToL1Cache) ? 1 : 0);
     }
 
     initializeVarWithValue("__EnableSWSrgbWrites", IGC_GET_FLAG_VALUE(cl_khr_srgb_image_writes));
