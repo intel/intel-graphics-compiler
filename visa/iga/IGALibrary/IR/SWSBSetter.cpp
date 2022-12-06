@@ -754,6 +754,8 @@ uint32_t SWSBAnalyzer::getNumOfDistPipe(SWSB_ENCODE_MODE mode) {
     return 1;
   case SWSB_ENCODE_MODE::ThreeDistPipe:
     return 3;
+  case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
+    return 3;
   case SWSB_ENCODE_MODE::FourDistPipe:
   case SWSB_ENCODE_MODE::FourDistPipeReduction:
     return 4;

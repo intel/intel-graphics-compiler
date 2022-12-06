@@ -57,7 +57,6 @@ const static uint32_t DIST4_FOOTPRINT_SBID = 0x1F;
 const static uint32_t DIST4_NOACEESBSET = 0xF0;
 
 
-
 namespace iga {
 
 template <>
@@ -430,7 +429,6 @@ SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::FourDistPipe>(uint32_t swsbBits,
   return stat;
 }
 
-
 template <>
 uint32_t SWSB::encode<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
   uint32_t swsb = 0; // all 0's means no dependency
@@ -519,7 +517,6 @@ uint32_t SWSB::encode<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
   return swsb;
 }
 
-
 template <>
 bool SWSB::verify<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
   if (distType != DistType::NO_DIST && tokenType != TokenType::NOTOKEN) {
@@ -572,7 +569,6 @@ bool SWSB::verify<SWSB_ENCODE_MODE::FourDistPipe>(InstType instTy) const {
 }
 
 
-
 template <>
 SWSB_STATUS SWSB::decode<SWSB_ENCODE_MODE::SWSBInvalidMode>(uint32_t,
                                                             InstType) {
@@ -601,6 +597,8 @@ SWSB_STATUS SWSB::decode(uint32_t swsbBits, SWSB_ENCODE_MODE enMode,
   case SWSB_ENCODE_MODE::FourDistPipe:
   case SWSB_ENCODE_MODE::FourDistPipeReduction:
     return decode<SWSB_ENCODE_MODE::FourDistPipe>(swsbBits, instTy);
+  case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
+    return decode<SWSB_ENCODE_MODE::ThreeDistPipe>(swsbBits, instTy);
   case SWSB_ENCODE_MODE::SWSBInvalidMode:
     return decode<SWSB_ENCODE_MODE::SWSBInvalidMode>(swsbBits, instTy);
 
@@ -620,6 +618,8 @@ uint32_t SWSB::encode(SWSB_ENCODE_MODE enMode, InstType instTy) const {
   case SWSB_ENCODE_MODE::FourDistPipe:
   case SWSB_ENCODE_MODE::FourDistPipeReduction:
     return encode<SWSB_ENCODE_MODE::FourDistPipe>(instTy);
+  case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
+    return encode<SWSB_ENCODE_MODE::ThreeDistPipe>(instTy);
   default:
     break;
   }
@@ -659,6 +659,8 @@ bool SWSB::verify(SWSB_ENCODE_MODE enMode, InstType instTy) const {
   case SWSB_ENCODE_MODE::FourDistPipe:
   case SWSB_ENCODE_MODE::FourDistPipeReduction:
     return verify<SWSB_ENCODE_MODE::FourDistPipe>(instTy);
+  case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
+    return verify<SWSB_ENCODE_MODE::ThreeDistPipe>(instTy);
   default:
     break;
   }

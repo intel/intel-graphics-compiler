@@ -361,7 +361,6 @@ struct Model {
     switch (getSWSBEncodeMode()) {
     case SWSB_ENCODE_MODE::SingleDistPipe:
     case SWSB_ENCODE_MODE::ThreeDistPipe:
-      return 16;
     case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
       return 16;
     case SWSB_ENCODE_MODE::FourDistPipe:

@@ -27,7 +27,7 @@ enum class SWSB_STATUS {
 enum class SWSB_ENCODE_MODE : uint32_t {
   SWSBInvalidMode = 0,
   SingleDistPipe = 1, // Xe: 1 distance pipe
-  ThreeDistPipe = 2,  // XeHP/XeHPG: 3 distance pipe
+  ThreeDistPipe = 2,  // XeHP/XeHPG: 3 distance pipes
   FourDistPipe = 3,   // XeHPC (early variant): 4 distance pipes
   FourDistPipeReduction =
       6, // XeHPC variation: 4 distance pipes with Long pipe reduction

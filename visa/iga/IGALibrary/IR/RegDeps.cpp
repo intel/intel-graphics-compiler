@@ -106,6 +106,70 @@ static void setSendPipeType(DEP_PIPE &pipe_type, const Instruction &inst,
   }
 }
 
+// MTL
+static void setDEPPipeClass_ThreeDistPipeDPMath(DepSet &dep,
+                                                const Instruction &inst,
+                                                const Model &model) {
+  // The same as ThreeDistPipe, only that instructions with DP (fp64) types
+  // will be in Math pipe
+  auto opsec = inst.getOpSpec();
+
+  DEP_PIPE pipe_type = DEP_PIPE::NONE;
+  if (opsec.is(Op::MATH)) {
+    pipe_type = DEP_PIPE::MATH;
+  } else if (opsec.isAnySendFormat()) {
+    setSendPipeType(pipe_type, inst, model);
+  } else if (opsec.isDpasFormat()) {
+    pipe_type = DEP_PIPE::DPAS;
+  } else if (opsec.isBranching()) {
+    pipe_type = DEP_PIPE::INTEGER;
+  } else {
+    // In order instruction:
+    // if destination type is FP32/FP16/BF16 then it goes to float pipe,
+    // if destination type is int32 / 16 / 8 it goes to integer pipe and
+    // if destination or source type is int64 then it goes to long pipe
+    // if destination or source type is FP64 then it goes to out-of-order Math
+    // pipe for conversion instructions float2int goes to integer pipe and
+    // int2float goes to float pipe, If destination type is null then source0
+    // data type will determine the pipe
+    Type inst_type = Type::INVALID;
+    if (opsec.supportsDestination())
+      inst_type = inst.getDestination().getType();
+    else if (inst.getSourceCount())
+      inst_type = inst.getSource(0).getType();
+
+    if (inst_type != Type::INVALID) {
+      if (TypeIs64b(inst_type)) {
+        if (TypeIsFloating(inst_type))
+          pipe_type = DEP_PIPE::MATH;
+        else
+          pipe_type = DEP_PIPE::LONG64;
+      } else if (TypeIsFloating(inst_type))
+        pipe_type = DEP_PIPE::FLOAT;
+      else
+        pipe_type = DEP_PIPE::INTEGER;
+    }
+
+    // any of src has 64-bit type --> math or long pipe
+    for (uint32_t i = 0; i < inst.getSourceCount(); ++i) {
+      const auto &src = inst.getSource(i);
+      if (TypeIs64b(src.getType())) {
+        if (TypeIsFloating(src.getType()))
+          pipe_type = DEP_PIPE::MATH;
+        else
+          pipe_type = DEP_PIPE::LONG64;
+        break;
+      }
+    }
+  }
+
+  // default set to Integer pipe (e.g. NOP)
+  if (pipe_type == DEP_PIPE::NONE)
+    pipe_type = DEP_PIPE::INTEGER;
+
+  dep.setDepClass(getClassFromPipeType(pipe_type, opsec));
+  dep.setDepPipe(pipe_type);
+}
 
 // XeHP
 static void setDEPPipeClass_ThreeDistPipe(DepSet &dep, const Instruction &inst,
@@ -236,6 +300,9 @@ static void setDEPPipeClass(SWSB_ENCODE_MODE enc_mode, DepSet &dep,
   switch (enc_mode) {
   case SWSB_ENCODE_MODE::SingleDistPipe:
     setDEPPipeClass_SingleDistPipe(dep, inst);
+    break;
+  case SWSB_ENCODE_MODE::ThreeDistPipeDPMath:
+    setDEPPipeClass_ThreeDistPipeDPMath(dep, inst, model);
     break;
   case SWSB_ENCODE_MODE::ThreeDistPipe:
     setDEPPipeClass_ThreeDistPipe(dep, inst, model);
