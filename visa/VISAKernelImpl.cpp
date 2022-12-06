@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include <regex>
 #include <sstream>
 
+#include "Assertions.h"
 #include "Attributes.hpp"
 #include "BinaryEncoding.h"
 #include "BinaryEncodingCNL.h"
@@ -195,12 +196,13 @@ static void setDeclAlignment(G4_Declare *dcl, const IR_Builder &builder,
     }
     break;
   case ALIGN_64WORD: // 64bytes GRF aligned
-    assert(builder.getGRFSize() == 64);
+    vISA_ASSERT(builder.getGRFSize() == 64, "incorrect GRF size");
     dcl->setSubRegAlign(ThirtyTwo_Word);
     dcl->setEvenAlign();
     break;
   default:
-    assert(false && "Incorrect vISA alignment");
+    // align is obtained from parsed vISA
+    vISA_ASSERT_INPUT(false, "Incorrect vISA alignment");
     break;
   }
 }

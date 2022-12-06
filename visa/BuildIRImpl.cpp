@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <sstream>
 #include <string>
 
+#include "Assertions.h"
 #include "BuildIR.h"
 #include "Common_ISA_framework.h"
 #include "Common_ISA_util.h"
@@ -880,6 +881,7 @@ void IR_Builder::initScratchSurfaceOffset() {
 G4_Declare *IR_Builder::createTempVar(unsigned int numElements, G4_Type type,
                                       G4_SubReg_Align subAlign,
                                       const char *prefix, bool appendIdToName) {
+  vISA_ASSERT(numElements > 0, "incorrect num elements passed");
   const char *name =
       appendIdToName ? getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++)
                      : getNameString(mem, 20, "%s", prefix);

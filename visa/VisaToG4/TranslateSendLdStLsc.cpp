@@ -7,8 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "../Timer.h"
+#include "Assertions.h"
 #include "BuildIR.h"
-
 #include <cmath>
 
 using namespace vISA;
@@ -41,7 +41,7 @@ static G4_Operand *lscTryPromoteSurfaceImmToExDesc(G4_Operand *surface,
         surface = nullptr;
       }
     } else if (addrModel == LSC_ADDR_TYPE_ARG) {
-      MUST_BE_TRUE(false, "caller should have fixed this");
+      vISA_ASSERT_INPUT(false, "incorrect address model, caller should have fixed this");
       exDesc |= 0xFF << 24;
       surface = nullptr;
     } else {
@@ -162,7 +162,7 @@ int IR_Builder::translateLscUntypedInst(
     sfid = SFID::SLM;
     break;
   default:
-    check(false, "invalid SFID for untyped LSC message");
+    vISA_ASSERT_UNREACHABLE("invalid SFID for untyped LSC message");
   }
 
   const auto opInfo = LscOpInfoGet(op);
