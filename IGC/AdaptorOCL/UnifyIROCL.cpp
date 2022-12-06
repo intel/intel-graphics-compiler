@@ -107,6 +107,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/InitializePasses.h"
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
 #include "Compiler/Optimizer/FixFastMathFlags.hpp"
+#include "Compiler/Optimizer/ReduceOptPass.hpp"
 #include "Compiler/CustomUnsafeOptPass.hpp"
 #include "MoveStaticAllocas.h"
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
@@ -361,6 +362,8 @@ static void CommonOCLBasedPasses(
     }
 
     mpm.add(new JointMatrixFuncsResolutionPass());
+
+    mpm.add(new ReduceOptPass());
 
     mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eRenderCoreFamily));
     mpm.add(new PreBIImportAnalysis());
