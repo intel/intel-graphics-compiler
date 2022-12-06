@@ -131,42 +131,9 @@ int ScalarVisaModule::getFPReg() const {
 
 llvm::StringRef ScalarVisaModule::GetVISAFuncName() const
 {
-    // when igc.device.enqueue metadata is used, function name
-    // doesnt match between llvm::Function and VISA. this
-    // lambda checks whether device enqueue is used and if so,
-    // it returns function name that VISA uses. this is required
-    // to lookup symbol table of the function.
-    //
-    // when device enqueue is not used, llvm's function name
+    // since device enqueue no longer used, llvm's function name
     // matches that used by VISA.
-    auto OldName = getFunction()->getName();
-    auto& Module = *getFunction()->getParent();
-
-    // check if llvm function name is different than VISA function name
-    // due to igc.device.enqueue named MD
-    auto EnqueueNamedMD = Module.getNamedMetadata("igc.device.enqueue");
-    if (EnqueueNamedMD)
-    {
-        // !igc.device.enqueue = !{!307}
-        // !307 = !{!"__ParentKernel_block_invoke_kernel", !"ParentKernel_dispatch_0"}
-        auto NumOpnds = EnqueueNamedMD->getNumOperands();
-        for (unsigned int I = 0; I != NumOpnds; ++I)
-        {
-            auto Pair = EnqueueNamedMD->getOperand(I);
-            auto& First = Pair->getOperand(0);
-            auto& Second = Pair->getOperand(1);
-            if (isa<MDString>(First) && isa<MDString>(Second))
-            {
-                auto Str = cast<MDString>(Second)->getString();
-                if (Str.equals(OldName))
-                {
-                    return cast<MDString>(First)->getString();
-                }
-            }
-        }
-    }
-
-    return OldName;
+    return getFunction()->getName();
 }
 uint64_t ScalarVisaModule::getFPOffset() const {
     return EmitPass::getFPOffset();

@@ -147,10 +147,8 @@ bool StatelessToStateful::runOnFunction(llvm::Function& F)
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
-    // skip device enqueue tests for now to avoid tracking binding tables acorss
-    // enqueued blocks.
-    if ((F.getParent()->getNamedMetadata("igc.device.enqueue") != nullptr) ||
-        !isEntryFunc(pMdUtils, &F))
+    // skip non-entry functions
+    if (!isEntryFunc(pMdUtils, &F))
     {
         return false;
     }

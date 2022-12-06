@@ -199,7 +199,6 @@ void initializeRegisterPressureEstimatePass(llvm::PassRegistry&);
 void initializeLivenessAnalysisPass(llvm::PassRegistry&);
 void initializeRegisterEstimatorPass(llvm::PassRegistry&);
 void initializeVariableReuseAnalysisPass(llvm::PassRegistry&);
-void initializeTransformBlocksPass(llvm::PassRegistry&);
 void initializeTranslationTablePass(llvm::PassRegistry&);
 #if LLVM_VERSION_MAJOR >= 7
 void initializeTrivialLocalMemoryOpsEliminationPass(llvm::PassRegistry&);

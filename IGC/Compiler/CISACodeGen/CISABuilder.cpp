@@ -5100,41 +5100,6 @@ namespace IGC
         vKernel = nullptr;
 
         std::string kernelName = std::string(m_program->entry->getName());
-        if (context->m_instrTypes.hasDebugInfo)
-        {
-            // This metadata node is added by TransformBlocks pass for device side
-            // enqueue feature of OCL2.0+.
-            // The problem is that for device side enqueue, kernel name used in
-            // IGC differs the one used to create JIT kernel. This leads to different
-            // kernel names in .elf file and .dbg file. So dbgmerge tool cannot
-            // merge the two together. With this metadata node we create a mapping
-            // between the two names and when debug info is enabled, make JIT use
-            // same name as IGC.
-            // Names earlier -
-            // ParentKernel_dispatch_0 in dbg and
-            // __ParentKernel_block_invoke in elf
-            // when kernel name is ParentKernel
-            //
-            auto md = m_program->entry->getParent()->getNamedMetadata("igc.device.enqueue");
-            if (md)
-            {
-                for (unsigned int i = 0; i < md->getNumOperands(); i++)
-                {
-                    auto mdOpnd = md->getOperand(i);
-                    auto first = dyn_cast_or_null<MDString>(mdOpnd->getOperand(1));
-                    if (first &&
-                        first->getString().equals(kernelName))
-                    {
-                        auto second = dyn_cast_or_null<MDString>(mdOpnd->getOperand(0));
-                        if (second)
-                        {
-                            kernelName = second->getString().str();
-                        }
-                    }
-                }
-            }
-        }
-
         std::string asmName;
         if (m_enableVISAdump || context->m_instrTypes.hasDebugInfo)
         {

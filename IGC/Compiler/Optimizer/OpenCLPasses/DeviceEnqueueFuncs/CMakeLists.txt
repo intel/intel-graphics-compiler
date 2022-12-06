@@ -11,13 +11,11 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(IGC_BUILD__SRC__DeviceEnqueueFuncs
     "${CMAKE_CURRENT_SOURCE_DIR}/DeviceEnqueue.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/TransformBlocks.cpp"
   )
 set(IGC_BUILD__SRC__OpenCLPasses_DeviceEnqueueFuncs ${IGC_BUILD__SRC__DeviceEnqueueFuncs} PARENT_SCOPE)
 
 set(IGC_BUILD__HDR__DeviceEnqueueFuncs
     "${CMAKE_CURRENT_SOURCE_DIR}/DeviceEnqueue.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/TransformBlocks.hpp"
   )
 set(IGC_BUILD__HDR__OpenCLPasses_DeviceEnqueueFuncs ${IGC_BUILD__HDR__DeviceEnqueueFuncs} PARENT_SCOPE)
 

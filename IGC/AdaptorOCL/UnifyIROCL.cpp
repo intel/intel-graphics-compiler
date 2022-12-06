@@ -79,7 +79,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
 #include "Compiler/Optimizer/OpenCLPasses/DeviceEnqueueFuncs/DeviceEnqueue.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/DeviceEnqueueFuncs/TransformBlocks.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/UndefinedReferences/UndefinedReferencesPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SubGroupFuncs/SubGroupFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BIFTransforms/BIFTransforms.hpp"
@@ -336,13 +335,6 @@ static void CommonOCLBasedPasses(
     }
 
     mpm.add(new MoveStaticAllocas());
-
-    // Skip this pass if OCL version < 2.0
-    // Pass disabled, feature dropped with OpenCL 3.0 transition
-    // if (!(OCLMajor < 2))
-    // {
-    //     mpm.add(createTransformBlocksPass());
-    // }
 
     // Clone kernel function being used as user function.
     mpm.add(createKernelFunctionCloningPass());
