@@ -244,6 +244,8 @@ namespace IGC
     public:
         // Additional text visaasm to link.
         std::vector<const char*> m_VISAAsmToLink;
+        // Functions that are forced to be direct calls.
+        std::unordered_set<std::string> m_DirectCallFunctions;
 
         OpenCLProgramContext(
             const COCLBTILayout& btiLayout,
@@ -264,6 +266,11 @@ namespace IGC
                 for (uint32_t i = 0; i < pInputArgs->NumVISAAsmsToLink; ++i) {
                     m_VISAAsmToLink.push_back(pInputArgs->pVISAAsmToLinkArray[i]);
                 }
+            }
+            if (pInputArgs && pInputArgs->pDirectCallFunctions) {
+              for (uint32_t i = 0; i < pInputArgs->NumDirectCallFunctions; ++i) {
+                m_DirectCallFunctions.insert(pInputArgs->pDirectCallFunctions[i]);
+              }
             }
 
             // regkey overrides options. Options have been parsed in Options and InternalOptions

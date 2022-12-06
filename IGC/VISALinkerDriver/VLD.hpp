@@ -27,10 +27,19 @@ namespace VLD {
   enum class SPIRVTypeEnum {
     SPIRV_SPMD,
     SPIRV_ESIMD,
-    SPIRV_SPMD_AND_ESIMD
+    SPIRV_SPMD_AND_ESIMD,
+    SPIRV_TYPE_UNKNOWN
   };
 
-  using SPVTranslationPair = std::pair<SPIRVTypeEnum, TC::STB_TranslateInputArgs>;
+  struct SPVMetadata {
+    SPIRVTypeEnum SpirvType = SPIRVTypeEnum::SPIRV_TYPE_UNKNOWN;
+    std::vector<std::string> ExportedFunctions;
+    std::vector<std::string> ImportedFunctions;
+    bool HasEntryPoints = false;
+    int ForcedSubgroupSize = 0;
+  };
+
+  using SPVTranslationPair = std::pair<SPVMetadata, TC::STB_TranslateInputArgs>;
 
 // This function detects if binary passed in pInputArgs is SPMD, ESIMD or
 // SPMD+ESIMD

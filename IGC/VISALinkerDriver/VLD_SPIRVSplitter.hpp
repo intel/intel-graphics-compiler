@@ -28,7 +28,7 @@ llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
 SplitSPMDAndESIMD(const char *spvBuffer, uint32_t spvBufferSizeInBytes);
 
 // Detects the type of the SPIR-V module, e.g. SPMD, ESIMD, SPMD+ESIMD
-llvm::Expected<SPIRVTypeEnum> DetectSPIRVType(const char* spv_buffer,
+llvm::Expected<SPVMetadata> GetVLDMetadata(const char* spv_buffer,
   uint32_t spv_buffer_size_in_bytes);
 
 // Class used to split SPMD and ESIMD parts of input SPIR-V module.
@@ -40,17 +40,23 @@ public:
   llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
   Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
 
-  // Detects the type of the SPIR-V module, e.g. SPMD, ESIMD, SPMD+ESIMD
-  llvm::Expected<SPIRVTypeEnum>
-  Detect(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
+  // Parses the SPIR-V module and returns metadata necessary for visa linking.
+  llvm::Expected<SPVMetadata>
+  Parse(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes);
 
-  const std::string &GetErrorMessage() const;
+  const std::string& GetErrorMessage() const;
 
   const uint32_t GetForcedSubgroupSize() const;
 
   bool HasError() const;
 
-  llvm::Expected<bool> HasEntryPoints() const;
+  bool HasEntryPoints() const;
+
+  const std::vector<std::string>& GetExportedFunctions() const;
+
+  const std::vector<std::string>& GetImportedFunctions() const;
+
+  SPVMetadata GetVLDMetadata() const;
 
   void Reset();
 
@@ -116,6 +122,8 @@ private:
   std::unordered_map<uint32_t, ProgramStreamType> esimd_function_declarations_;
   std::unordered_set<uint32_t> esimd_functions_to_declare_;
   std::unordered_map<uint32_t, uint32_t> entry_point_to_subgroup_size_map_;
+  std::vector<std::string> exported_functions_;
+  std::vector<std::string> imported_functions_;
 
   bool is_inside_spmd_function_ = false;
   bool is_inside_esimd_function_ = false;

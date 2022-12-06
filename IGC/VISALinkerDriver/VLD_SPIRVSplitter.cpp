@@ -12,13 +12,18 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "spirv/unified1/spirv.hpp"
+#include "spirv-tools/libspirv.h"
+
+// helper function from SPIR-V Tools.
+std::string spvDecodeLiteralStringOperand(const spv_parsed_instruction_t& inst,
+  const uint16_t operand_index);
 
 namespace IGC {
 namespace VLD {
 
-llvm::Expected<SPIRVTypeEnum> DetectSPIRVType(const char *spv_buffer,
+llvm::Expected<SPVMetadata> GetVLDMetadata(const char *spv_buffer,
                                    uint32_t spv_buffer_size_in_bytes) {
-    return SpvSplitter().Detect(spv_buffer, spv_buffer_size_in_bytes);
+    return SpvSplitter().Parse(spv_buffer, spv_buffer_size_in_bytes);
 }
 
 llvm::Expected<std::pair<ProgramStreamType, ProgramStreamType>>
@@ -111,8 +116,8 @@ SpvSplitter::Split(const char *spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   return std::make_pair(spmd_program_, esimd_program_);
 }
 
-llvm::Expected<SPIRVTypeEnum>
-SpvSplitter::Detect(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes) {
+llvm::Expected<SPVMetadata>
+SpvSplitter::Parse(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes) {
   this->Reset();
   this->only_detect_ = true;
   auto result = ParseSPIRV(spv_buffer, spv_buffer_size_in_bytes);
@@ -121,7 +126,7 @@ SpvSplitter::Detect(const char* spv_buffer, uint32_t spv_buffer_size_in_bytes) {
     return result.takeError();
   }
 
-  return GetCurrentSPIRVType();
+  return GetVLDMetadata();
 }
 
 const std::string &SpvSplitter::GetErrorMessage() const {
@@ -130,7 +135,7 @@ const std::string &SpvSplitter::GetErrorMessage() const {
 
 bool SpvSplitter::HasError() const { return !error_message_.empty(); }
 
-llvm::Expected<bool> SpvSplitter::HasEntryPoints() const {
+bool SpvSplitter::HasEntryPoints() const {
   auto CurSPIRVType = GetCurrentSPIRVType();
   if (entry_points_.size() == 0) return false;
 
@@ -159,6 +164,16 @@ llvm::Expected<bool> SpvSplitter::HasEntryPoints() const {
 
 }
 
+SPVMetadata SpvSplitter::GetVLDMetadata() const {
+  SPVMetadata Metadata;
+  Metadata.SpirvType = GetCurrentSPIRVType();
+  Metadata.HasEntryPoints = HasEntryPoints();
+  Metadata.ForcedSubgroupSize = GetForcedSubgroupSize();
+  Metadata.ExportedFunctions = GetExportedFunctions();
+  Metadata.ImportedFunctions = GetImportedFunctions();
+  return Metadata;
+}
+
 const uint32_t SpvSplitter::GetForcedSubgroupSize() const {
   if (entry_point_to_subgroup_size_map_.size() == 0) return 0;
   IGC_ASSERT(std::all_of(entry_point_to_subgroup_size_map_.begin(), entry_point_to_subgroup_size_map_.end(), [&](auto& el) {
@@ -168,6 +183,13 @@ const uint32_t SpvSplitter::GetForcedSubgroupSize() const {
   return entry_point_to_subgroup_size_map_.begin()->second;
 }
 
+const std::vector<std::string>& SpvSplitter::GetExportedFunctions() const {
+  return exported_functions_;
+}
+
+const std::vector<std::string>& SpvSplitter::GetImportedFunctions() const {
+  return imported_functions_;
+}
 
 void SpvSplitter::Reset() {
   spmd_program_.clear();
@@ -177,6 +199,8 @@ void SpvSplitter::Reset() {
   esimd_function_declarations_.clear();
   esimd_functions_to_declare_.clear();
   entry_point_to_subgroup_size_map_.clear();
+  exported_functions_.clear();
+  imported_functions_.clear();
 
   is_inside_spmd_function_ = false;
   is_inside_esimd_function_ = false;
@@ -255,22 +279,26 @@ spv_result_t SpvSplitter::HandleInstruction(
   return ret;
 }
 
+
 // Looks for decorations that mark functions specific to ESIMD module.
 spv_result_t SpvSplitter::HandleDecorate(
     const spv_parsed_instruction_t *parsed_instruction) {
   IGC_ASSERT(parsed_instruction &&
              parsed_instruction->opcode == spv::OpDecorate);
 
-  auto isSpecificFunctionDecoration = [&parsed_instruction](auto decoration_type) {
-      if (parsed_instruction->num_operands == 2 &&
-          parsed_instruction->operands[1].type == SPV_OPERAND_TYPE_DECORATION &&
-          parsed_instruction->words[parsed_instruction->operands[1].offset] ==
-          decoration_type) {
-          uint32_t function_id =
-              parsed_instruction->words[parsed_instruction->operands[0].offset];
-          return function_id;
-      }
-      return (uint32_t)0;
+  auto getOperand = [&parsed_instruction](int operandNumber) {
+    return parsed_instruction->words[parsed_instruction->operands[operandNumber].offset];
+  };
+
+  auto isSpecificFunctionDecoration = [&parsed_instruction, &getOperand](
+                                          auto decoration_type) {
+    if (parsed_instruction->num_operands == 2 &&
+        parsed_instruction->operands[1].type == SPV_OPERAND_TYPE_DECORATION &&
+        getOperand(1) == decoration_type) {
+      uint32_t function_id = getOperand(0);
+      return function_id;
+    }
+    return (uint32_t)0;
   };
 
   // Look for VectorComputeFunctionINTEL decoration.
@@ -279,6 +307,20 @@ spv_result_t SpvSplitter::HandleDecorate(
   } else if (auto function_id = isSpecificFunctionDecoration(spv::DecorationStackCallINTEL)) {
     // StackCallINTEL is a decoration specific to ESIMD, so do not add it to SPMD program.
     esimd_functions_to_declare_.insert(function_id);
+  } else if (getOperand(1) == spv::DecorationLinkageAttributes) {
+    if (parsed_instruction->num_operands == 4 &&
+        parsed_instruction->operands[2].type ==
+            SPV_OPERAND_TYPE_LITERAL_STRING) {
+      auto funcName = spvDecodeLiteralStringOperand(*parsed_instruction, 2);
+      if (getOperand(3) == spv::LinkageTypeExport) {
+        exported_functions_.push_back(funcName);
+      } else if (getOperand(3) == spv::LinkageTypeImport) {
+        imported_functions_.push_back(funcName);
+      }
+    }
+
+    AddInstToProgram(parsed_instruction, spmd_program_);
+    AddInstToProgram(parsed_instruction, esimd_program_);
   } else {
     AddInstToProgram(parsed_instruction, spmd_program_);
   }
