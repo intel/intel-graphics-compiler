@@ -175,9 +175,17 @@ SpillManagerGRF::SpillManagerGRF(
           BoundedRA::getNumPhyVarSlots(gra.kernel);
       int off = (int)spillAreaOffset;
       getSpillOffset(off);
-      context.setSpillOff(off);
+      unsigned int aligned_off = ROUND(off, builder_->numEltPerGRF<Type_UB>());
+      context.setSpillOff(aligned_off);
+      MUST_BE_TRUE(spillAreaOffset_ == nextSpillOffset_, "expecting equality");
+      spillAreaOffset_ =
+          ROUND(spillAreaOffset_, builder_->numEltPerGRF<Type_UB>());
       spillAreaOffset_ += spaceForPhyGRFSpill;
-      nextSpillOffset_ += spaceForPhyGRFSpill;
+      MUST_BE_TRUE(spillAreaOffset_ >=
+                       (ROUND(off, builder_->numEltPerGRF<Type_UB>()) +
+                        spaceForPhyGRFSpill),
+                   "unexpected overlap");
+      nextSpillOffset_ = spillAreaOffset_;
       if (gra.getNumReservedGRFs() > 0)
         context.setReservedStart(spillRegStart_);
     }
