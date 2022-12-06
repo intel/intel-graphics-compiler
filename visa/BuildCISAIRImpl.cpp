@@ -1536,8 +1536,9 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
       In case there is an assert in compilation phase, at least vISA binary will
      be generated.
   */
+  // Ignore dumpvISA if 'emit_visa_only' is true
   if (IS_VISA_BOTH_PATH && m_options.getOption(vISA_DumpvISA) && nameInput &&
-      !os) {
+      !emit_visa_only) {
     if (CisaFramework::allowDump(m_options, name))
       status = m_cisaBinary->dumpToFile(name);
   }
