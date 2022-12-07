@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/JSON.h"
 
 #if !defined(_MSC_VER) && !defined(__MINGW32__)
 #include <unistd.h>
@@ -36,8 +37,6 @@ namespace iOpenCL
 {
 
 extern RETVAL g_cInitRetValue;
-
-const char* uniqueElfFileNamePart = "_%%%%%%%%";
 
 ShaderHash CGen8OpenCLProgram::CLProgramCtxProvider::getProgramHash() const {
     return m_Context.hash;
@@ -365,71 +364,89 @@ void dumpOCLCos(const IGC::COpenCLKernel *Kernel, const std::string &stateDebugM
     IGC::Debug::DumpUnlock();
 }
 
-// Build a name for an ELF temporary file. If uniqueLockFileName contains any % characters then
-// these characters are replaced with random characters 0-9 or a-f, and such a uniquely named
-// file, where this name is returned in resultUniqueLockFileName, is created in a system temporary
-// directory to reserve this name.
-bool createElfFileName(std::string &name, unsigned int maxNameLen, SIMDMode simdMode, int id,
-    SmallVectorImpl<char> &uniqueLockFileName, SmallVectorImpl<char> &resultUniqueLockFileName,
-    std::string& resultFullElfFileNameStr)
+static std::string getKernelDumpName(const IGC::COpenCLKernel* kernel)
 {
-    SmallString<64> tempDir;    // Do not worry about its size, because system_temp_directory() appends if needed.
-    bool retValue = true;
+    std::string kernelName(kernel->m_kernelInfo.m_kernelName);
+    kernel->getShaderFileName(kernelName);
 
-    // Location of temporary input and output files required by the linker of ELF files
-    // is a system temporary directory
-    llvm::sys::path::system_temp_directory(true, tempDir);
-#if defined(_WIN64) || defined(_WIN32)
-    tempDir.append("\\");
-#else
-    tempDir.append("/");
-#endif // defined(_WIN64) || defined(_WIN32)
-
-    std::string pidStr =
-#if LLVM_ON_UNIX
-        std::to_string(getpid());
-#elif defined(_WIN32)
-        std::to_string(::GetCurrentProcessId());
-#else
-        "";
-#endif
-
-    resultFullElfFileNameStr.append(tempDir.c_str());
-    resultFullElfFileNameStr.append(name.substr(0, maxNameLen - 1).c_str());
-    resultFullElfFileNameStr.append("_simd");
-    resultFullElfFileNameStr.append(to_string(simdMode == SIMDMode::SIMD8 ? 8 : simdMode == SIMDMode::SIMD16 ? 16 : 32));
-    resultFullElfFileNameStr.append("_");
-    resultFullElfFileNameStr.append(to_string(id));
-    if (!pidStr.empty())
-    {
-        resultFullElfFileNameStr.append("_");
-        resultFullElfFileNameStr.append(pidStr);
-    }
-
-    std::string uniqueLockFileNameStr = uniqueLockFileName.data();
-    if (uniqueLockFileNameStr.find('%') < uniqueLockFileNameStr.size())
-    {
-        int uniqueLockFileID = 0;
-        // Every '%' will be replaced with a random character (0-9 or a-f), taking care of multithreaded compilations
-        if (std::error_code EC = sys::fs::createUniqueFile(
-            uniqueLockFileName, uniqueLockFileID, resultUniqueLockFileName))
-        {
-            IGC_ASSERT_MESSAGE(false, "A uniquely named file not created");
-            retValue = false;
-        }
-    }
-    else
-    {
-        resultUniqueLockFileName = uniqueLockFileName;
-    }
-
-    resultFullElfFileNameStr.append(resultUniqueLockFileName.data());
-    resultFullElfFileNameStr.append(".elf");
-
-    return retValue;
+    auto* context = kernel->GetContext();
+    auto name = IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+        .Hash(context->hash)
+        .Type(ShaderType::OPENCL_SHADER)
+        .PostFix(kernelName)
+        .SIMDSize(kernel->m_SIMDSize)
+        .Extension("elf");
+    return name.RelativePath();
 }
 
-void CGen8OpenCLProgram::GetZEBinary(
+static std::string getTempFileName(const IGC::COpenCLKernel* kernel)
+{
+    SmallString<128> FileName;
+    std::error_code EC;
+
+    EC = sys::fs::getPotentiallyUniqueTempFileName("ze", "elf", FileName);
+    if (EC) {
+        IGC::CodeGenContext* ctx = kernel->GetContext();
+        ctx->EmitError((std::string("unable to create temporary file for kernel: ") + kernel->m_kernelInfo.m_kernelName).c_str(), nullptr);
+        return "";
+    }
+    return FileName.c_str();
+}
+
+void CGen8OpenCLProgramBase::addElfKernelMapping(const std::string& elfFileName, const std::string& kernelName)
+{
+    if (!elfMapEntries)
+    {
+        elfMapEntries = std::make_unique<llvm::json::Array>();
+    }
+    llvm::json::Value elfKernelMapping = llvm::json::Object
+    {
+        {"filename", elfFileName},
+        {"kernel",   kernelName}
+    };
+    elfMapEntries->push_back(elfKernelMapping);
+}
+
+bool CGen8OpenCLProgramBase::createElfKernelMapFile(const llvm::Twine& FilePath)
+{
+    int writeFD = 0;
+    sys::fs::CreationDisposition disp = sys::fs::CreationDisposition::CD_CreateAlways;
+    sys::fs::OpenFlags flags = sys::fs::OpenFlags::OF_None;
+    unsigned int mode = sys::fs::all_read | sys::fs::all_write;
+    auto EC = sys::fs::openFileForReadWrite(FilePath, writeFD, disp, flags, mode);
+    if (!EC)
+    {
+        raw_fd_ostream OS(writeFD, true, true); // shouldClose=true, unbuffered=true
+        OS << llvm::formatv("{0:2}", llvm::json::Value(std::move(*elfMapEntries.release())));
+        // close(writeFD) is not required due to shouldClose parameter in ostream
+        return true;
+    }
+    return false;
+}
+
+bool CGen8OpenCLProgramBase::dumpElfKernelMapFile(IGC::CodeGenContext* Ctx)
+{
+    if (IGC_IS_FLAG_DISABLED(ElfTempDumpEnable))
+    {
+        // Silently skip JSON generation
+        return true;
+    }
+
+    SmallString<64> elfMapPath;
+    std::error_code EC;
+    EC = sys::fs::getPotentiallyUniqueTempFileName("ze_map", "json", elfMapPath);
+    if (EC)
+    {
+        if (Ctx)
+        {
+            Ctx->EmitError("unable to create temporary file for kernel mapping", nullptr);
+        }
+        return false;
+    }
+    return createElfKernelMapFile(elfMapPath);
+}
+
+bool CGen8OpenCLProgram::GetZEBinary(
     llvm::raw_pwrite_stream& programBinary,
     unsigned pointerSizeInBytes,
     const char* spv, uint32_t spvSize,
@@ -437,6 +454,8 @@ void CGen8OpenCLProgram::GetZEBinary(
     const char* buildOptions, uint32_t buildOptionsSize)
 {
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> elfStorage;
+    bool elfTmpFilesError = false;   // error creating temp files
+    bool retValue = true;
 
     ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
         m_Context.m_programInfo,
@@ -446,25 +465,23 @@ void CGen8OpenCLProgram::GetZEBinary(
     zebuilder.setProductFamily(m_Platform.eProductFamily);
     zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
 
+    //
+    // Creating ZE binary requires linking individual ELF files,
+    // containing kernel code and debug data (DWARF). Due to usual
+    // naming convention of the kernels, we may exceed the size of
+    // the file name (usually ~250 chars). So, each ELF file is
+    // created using LLVM's TempFile functionality and a JSON file,
+    // containing mapping between temp name and 'usual' kernel name.
+    //
+    // JSON file is created if IGC_ElfTempDumpEnable is enabled.
     std::list<string> elfVecNames;      // List of parameters for the linker, contains in/out ELF file names and params
     std::vector<const char*> elfVecPtrs;        // Vector of pointers to the elfVecNames vector elements
     SIMDMode simdMode = SIMDMode::SIMD8;  // Currently processed kernel's SIMD
 
-    SmallString<64> tempDir;  // Do not worry its size, because system_temp_directory() appends if needed.
-    // Location of temporary input and output files required by the linker is a system temporary directory
-    llvm::sys::path::system_temp_directory(true, tempDir);
-#if defined(_WIN64) || defined(_WIN32)
-    tempDir.append("\\");
-#else
-    tempDir.append("/");
-#endif // defined(_WIN64) || defined(_WIN32)
-
     const unsigned int maxElfFileNameLength = 512;
     std::string elfLinkerLogName = "lldLinkLogName"; // First parameter for the linker, just a log name or a program name if this linker would be external.
-    SmallString<16> uniqueLockFilePartStr(uniqueElfFileNamePart);
     std::string linkedElfFileNameStr = "";           // Output file name created and filled by the linker
     int kernelID = 0;                                // Index of kernels; inserted into temporary ELF files names
-    bool elfTmpFilesError = false;                   // Set if something goes wrong with temporary files or the linker.
 
     // If a single kernel in a program then neither temporary files are created nor the linker is in use,
     // hence ELF data is taken directly from the first found kernel's output (i.e. from m_debugData).
@@ -540,9 +557,6 @@ void CGen8OpenCLProgram::GetZEBinary(
                 isDebugInfo = false;
             if (IGC_IS_FLAG_ENABLED(ZeBinCompatibleDebugging) && isDebugInfo)
             {
-                const unsigned int rsrvdForAllButFullName = 64;  // characters will be used for temporary ELF file names.
-                unsigned int spaceAvailableForKernelName = maxElfFileNameLength - rsrvdForAllButFullName - tempDir.size();
-
                 if (m_ShaderProgramList.size() == 1 && kernelVec.size() == 1)
                 {
                     // The first and only kernel found.
@@ -556,38 +570,28 @@ void CGen8OpenCLProgram::GetZEBinary(
                         // - build for the linker a name of an output file, and
                         // - add a log name, as a first element, to a vector of the linker parameters.
 
-                        // Build a temporary output file name (with a path) for the linker
+                        ctx = kernel->GetContext();  // Remember context for future usage regarding warning emission (if needed).
 
-                        if (!createElfFileName(
-                            kernel->m_kernelInfo.m_kernelName,
-                            spaceAvailableForKernelName,  // maxNameLen
-                            simdMode,
-                            0,                      // kernel ID
-                            uniqueLockFilePartStr,
-                            uniqueLockFilePartStr,  // unique part only result, i.e. _%%%%%%%% replaced with unique sequence of characters
-                            linkedElfFileNameStr))  // full name with a path result
+                        // Build a temporary output file name (with a path) for the linker
+                        std::string elfFileNameStr = getTempFileName(kernel);
+                        if (elfFileNameStr.empty())
                         {
-                            IGC_ASSERT_MESSAGE(false, "A unique name for a linked ELF file not created");
+                            elfTmpFilesError = true; // Handle this error at the end of this function
+                            break;
                         }
+                        linkedElfFileNameStr = elfFileNameStr;
                         elfVecNames.push_back(elfLinkerLogName);  // 1st element in this vector of names; required by the linker
                         elfVecPtrs.push_back(elfVecNames.back().c_str());
-
-                        ctx = kernel->GetContext();  // Remember context for future usage regarding warning emission (if needed).
                     }
 
-                    std::string elfFileNameStr = "";
                     // Build a temporary input file name (with a path) for the linker
-                    if (!createElfFileName(
-                        kernel->m_kernelInfo.m_kernelName,
-                        spaceAvailableForKernelName,  // maxNameLen
-                        simdMode,
-                        kernelID,
-                        uniqueLockFilePartStr,  // unique part is the same unique sequence of characters got earlier for a linked file
-                        uniqueLockFilePartStr,  // unique part only result should remain the same as the previous parameter
-                        elfFileNameStr))        // full name with a path result
+                    std::string elfFileNameStr = getTempFileName(kernel);
+                    if (elfFileNameStr.empty())
                     {
-                        IGC_ASSERT_MESSAGE(false, "A unique name for an input ELF file not created");
+                        elfTmpFilesError = true; // Handle this error at the end of this function
+                        break;
                     }
+                    addElfKernelMapping(elfFileNameStr, getKernelDumpName(kernel));
 
                     int writeFD = 0;
                     sys::fs::CreationDisposition disp = sys::fs::CreationDisposition::CD_CreateAlways;
@@ -606,7 +610,7 @@ void CGen8OpenCLProgram::GetZEBinary(
                     }
                     else
                     {
-                        ctx->EmitError("ELF file opening error", nullptr);
+                        ctx->EmitError((std::string("failed to open ELF file: ") + elfFileNameStr).c_str(), nullptr);
                         elfTmpFilesError = true; // Handle this error at the end of this function
                         break;
                     }
@@ -735,6 +739,7 @@ void CGen8OpenCLProgram::GetZEBinary(
         {
             // Nothing to do with the linker when any error with temporary files occured.
             ctx->EmitError("ZeBinary will not contain correct debug info due to an ELF temporary files error", nullptr);
+            retValue = false;
         }
 
         if (IGC_IS_FLAG_DISABLED(ElfTempDumpEnable))
@@ -753,13 +758,15 @@ void CGen8OpenCLProgram::GetZEBinary(
 
             // Also remove a temporary linked output ELF file...
             sys::fs::remove(Twine(linkedElfFileNameStr), true); // true=ignore non-existing
-
-            // ...and finally a unique locked file.
-            sys::fs::remove(Twine(uniqueLockFilePartStr), true); // true=ignore non-existing
+        }
+        else
+        {
+            retValue &= dumpElfKernelMapFile(ctx);
         }
     }
 
     zebuilder.getBinaryObject(programBinary);
+    return retValue;
 }
 
 void CGen8OpenCLProgram::CreateKernelBinaries()

@@ -18,9 +18,19 @@ SPDX-License-Identifier: MIT
 #include "zebin_builder.hpp"
 #include "CommonMacros.h"
 
+namespace llvm
+{
+class Twine;
+namespace json
+{
+    class Array;
+}
+}
+
 namespace IGC
 {
     class OpenCLProgramContext;
+    class CodeGenContext;
     class CShaderProgram;
     class COCLBTILayout;
     struct SOpenCLProgramInfo;
@@ -76,6 +86,11 @@ protected:
     CGen8OpenCLStateProcessor m_StateProcessor;
     // For serialized patch token information
     Util::BinaryStream* m_ProgramScopePatchStream = nullptr;
+    std::unique_ptr<llvm::json::Array> elfMapEntries;
+
+    void addElfKernelMapping(const std::string& elfFileName, const std::string& kernelName);
+    bool createElfKernelMapFile(const llvm::Twine& FilePath);
+    bool dumpElfKernelMapFile(IGC::CodeGenContext* Ctx = nullptr);
 };
 
 class CGen8OpenCLProgram : public CGen8OpenCLProgramBase
@@ -92,7 +107,7 @@ public:
 
     /// getZEBinary - create and get ZE Binary
     /// if spv and spvSize are given, a .spv section will be created in the output ZEBinary
-    void GetZEBinary(
+    bool GetZEBinary(
         llvm::raw_pwrite_stream& programBinary,
         unsigned pointerSizeInBytes,
         const char* spv,          uint32_t spvSize,
