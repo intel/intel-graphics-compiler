@@ -77,6 +77,8 @@ DEF_VISA_OPTION(vISA_asmToConsole, ET_BOOL, "-asmToConsole",
                 "For visa lit test. It is used to dump .asm to stdout. It"
                 "will override -output, if -output is present.", false)
 DEF_VISA_OPTION(vISA_DebugOnly, ET_CSTR, "-debug-only", UNUSED, NULL)
+DEF_VISA_OPTION(vISA_DisablePrefetchToL1Cache, ET_BOOL, "-disablePrefetchL1",
+                "Disables L1 cached for prefetch messages", false)
 
 //=== Optimization options ===
 DEF_VISA_OPTION(vISA_EnableAlways, ET_BOOL, NULLSTR, UNUSED, true)

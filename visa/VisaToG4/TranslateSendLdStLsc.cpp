@@ -221,6 +221,16 @@ int IR_Builder::translateLscUntypedInst(
       vecSize++;
     }
   }
+
+  if (m_options->getOption(vISA_DisablePrefetchToL1Cache)) {
+    // Disable L1 cached for prefetch messages only
+    bool isPrefetchMsg = opInfo.isLoad() && isNullOperand(dstRead);
+    if (isPrefetchMsg && (cacheOpts.l1 == LSC_CACHING_CACHED ||
+                          cacheOpts.l1 == LSC_CACHING_STREAMING)) {
+      cacheOpts.l1 = LSC_CACHING_UNCACHED;
+    }
+  }
+
   lscEncodeCachingOpts(opInfo, cacheOpts, desc, status);
   lscEncodeAddrType(addrInfo.type, desc, status);
 
