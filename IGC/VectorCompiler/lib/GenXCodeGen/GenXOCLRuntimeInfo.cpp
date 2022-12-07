@@ -268,14 +268,6 @@ void GenXOCLRuntimeInfo::KernelInfo::setInstructionUsageProperties(
         case GenXIntrinsic::genx_sbarrier:
           NumBarriers = 1;
           break;
-        case GenXIntrinsic::genx_ssdp4a:
-        case GenXIntrinsic::genx_sudp4a:
-        case GenXIntrinsic::genx_usdp4a:
-        case GenXIntrinsic::genx_uudp4a:
-        case GenXIntrinsic::genx_ssdp4a_sat:
-        case GenXIntrinsic::genx_sudp4a_sat:
-        case GenXIntrinsic::genx_usdp4a_sat:
-        case GenXIntrinsic::genx_uudp4a_sat:
         case GenXIntrinsic::genx_dpas:
         case GenXIntrinsic::genx_dpas2:
         case GenXIntrinsic::genx_dpasw:
