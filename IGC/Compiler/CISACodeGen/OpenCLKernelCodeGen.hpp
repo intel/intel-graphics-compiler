@@ -263,7 +263,36 @@ namespace IGC
                 }
             }
 
-            // regkey overrides options. Options have been parsed in Options and InternalOptions
+
+            // Handle forcing ZEBin
+            if (IGC_IS_FLAG_SET(ForceZEBinary))
+            {
+                m_enableZEBinary = IGC_IS_FLAG_ENABLED(ForceZEBinary);
+                return;
+            }
+
+            // Logic for native ZEBin support
+            auto supportsZEBin = [&](CPlatform platformInfo)
+            {
+                switch (platformInfo.GetProductFamily())
+                {
+                default:
+                    return true;
+                case IGFX_BROADWELL:
+                case IGFX_BROXTON:
+                case IGFX_GEMINILAKE:
+                case IGFX_LAKEFIELD:
+                case IGFX_ELKHARTLAKE:
+                    return false;
+                }
+            };
+
+            if (!supportsZEBin(platform))
+            {
+                m_enableZEBinary = false;
+                return;
+            }
+
             if (IGC_IS_FLAG_SET(EnableZEBinary))
                 m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
             else if (m_Options.EnableZEBinary)
@@ -271,6 +300,7 @@ namespace IGC
             else if (m_InternalOptions.EnableZEBinary)
                 m_enableZEBinary = *m_InternalOptions.EnableZEBinary;
             else
+                // Set the default value from the flag table.
                 m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
         }
 
