@@ -385,7 +385,7 @@ public:
         return GenXIntrinsic::getGenXIntrinsicID(V) ==
                    GenXIntrinsic::genx_all ||
                CI->getIntrinsicID() ==
-#if LLVM_VERSION_MAJOR <= 12
+#if LLVM_VERSION_MAJOR < 12
                   Intrinsic::experimental_vector_reduce_and;
 #else
                   Intrinsic::vector_reduce_and;
@@ -398,7 +398,7 @@ public:
       if (const CallInst *CI = dyn_cast<CallInst>(V))
         return GenXIntrinsic::getGenXIntrinsicID(V) ==
                    GenXIntrinsic::genx_any || CI->getIntrinsicID() ==
-#if LLVM_VERSION_MAJOR <= 12
+#if LLVM_VERSION_MAJOR < 12
                    Intrinsic::experimental_vector_reduce_or;
 #else
                    Intrinsic::vector_reduce_or;
