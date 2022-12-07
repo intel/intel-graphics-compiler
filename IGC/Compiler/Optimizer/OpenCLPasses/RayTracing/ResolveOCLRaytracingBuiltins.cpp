@@ -38,7 +38,7 @@ namespace {
     {"__builtin_IB_intel_get_global_btd_stack",          &ResolveOCLRaytracingBuiltins::handleGetGlobalBTDStack     },
     {"__builtin_IB_intel_dispatch_trace_ray_query",      &ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery },
     {"__builtin_IB_intel_rt_sync",                       &ResolveOCLRaytracingBuiltins::handleRTSync                },
-    {"__builtin_IB_intel_get_rt_global_buffer",          &ResolveOCLRaytracingBuiltins::handleGetRTGlobalBuffer     },
+    {"__builtin_IB_intel_get_implicit_dispatch_globals", &ResolveOCLRaytracingBuiltins::handleGetImplicitDG         },
 
     // Handling for builtins operating on intel_ray_query_t from intel_rt_production extension
       {"__builtin_IB_intel_init_ray_query",                &ResolveOCLRaytracingBuiltins::handleInitRayQuery          },
@@ -375,12 +375,12 @@ void ResolveOCLRaytracingBuiltins::handleRTSync(CallInst& callInst) {
 
 /*
 Handler for
-void __builtin_IB_intel_get_rt_global_buffer();
+void __builtin_IB_intel_get_implicit_dispatch_globals();
 
 Description:
 Returns IMPLICIT_RT_GLOBAL_BUFFER implicit argument.
 */
-void ResolveOCLRaytracingBuiltins::handleGetRTGlobalBuffer(llvm::CallInst& callInst) {
+void ResolveOCLRaytracingBuiltins::handleGetImplicitDG(llvm::CallInst& callInst) {
     RTBuilder rtbuilder(m_builder->getContext(), *m_pCtx);
     rtbuilder.SetInsertPoint(&callInst);
     auto v = rtbuilder.getGlobalBufferPtr();
