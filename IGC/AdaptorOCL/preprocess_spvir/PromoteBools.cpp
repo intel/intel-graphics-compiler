@@ -303,6 +303,18 @@ Type* PromoteBools::getOrCreatePromotedType(Type* type)
 // Promoting values
 //
 //------------------------------------------------------------------------------
+bool PromoteBools::wasPromoted(llvm::Value* value)
+{
+    return promotedValuesCache.count(value);
+}
+
+bool PromoteBools::anyOperandWasPromoted(llvm::User* user)
+{
+    return std::any_of(user->op_begin(), user->op_end(), [this](const auto& op) {
+        return wasPromoted(op);
+    });
+}
+
 Value* PromoteBools::getOrCreatePromotedValue(Value* value)
 {
     if (wasPromoted(value))
@@ -374,7 +386,7 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
         {
             if (wasPromoted(operand))
             {
-                auto promoted = promotedValuesCache[operand];
+                auto promoted = getOrCreatePromotedValue(operand);
                 if (auto zext = dyn_cast<ZExtInst>(promoted))
                 {
                     instruction->replaceUsesOfWith(operand, zext->getOperand(0));
@@ -423,11 +435,6 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
         }
     }
     return newValue;
-}
-
-bool PromoteBools::wasPromoted(llvm::Value* value)
-{
-    return promotedValuesCache.count(value);
 }
 
 Function* PromoteBools::promoteFunction(Function* function)
@@ -617,7 +624,7 @@ Constant* PromoteBools::promoteConstant(Constant* constant)
 
 AddrSpaceCastInst* PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst* addrSpaceCast)
 {
-    if (!addrSpaceCast || !typeNeedsPromotion(addrSpaceCast->getDestTy()))
+    if (!addrSpaceCast || (!anyOperandWasPromoted(addrSpaceCast) && !typeNeedsPromotion(addrSpaceCast->getDestTy())))
     {
         return addrSpaceCast;
     }
@@ -629,7 +636,6 @@ AddrSpaceCastInst* PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst* addrSpa
         addrSpaceCast
     );
 }
-
 
 AllocaInst* PromoteBools::promoteAlloca(AllocaInst* alloca)
 {
@@ -643,15 +649,15 @@ AllocaInst* PromoteBools::promoteAlloca(AllocaInst* alloca)
         alloca->getType()->getAddressSpace(),
         alloca->isArrayAllocation() ? alloca->getArraySize() : nullptr,
         "",
-        alloca);
+        alloca
+    );
     newAlloca->setAlignment(IGCLLVM::getAlign(*alloca));
-
     return newAlloca;
 }
 
 Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
 {
-    if (!bitcast || !typeNeedsPromotion(bitcast->getDestTy()))
+    if (!bitcast || (!anyOperandWasPromoted(bitcast) && !typeNeedsPromotion(bitcast->getDestTy())))
     {
         return bitcast;
     }
@@ -672,6 +678,11 @@ Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
 
 CallInst* PromoteBools::promoteCall(CallInst* call)
 {
+    if (!call)
+    {
+        return nullptr;
+    }
+
     auto function = call->getCalledFunction();
     auto functionType = call->getFunctionType();
 
@@ -706,11 +717,11 @@ ExtractValueInst* PromoteBools::promoteExtractValue(ExtractValueInst* extractVal
 {
     if (!extractValue)
     {
-        return extractValue;
+        return nullptr;
     }
 
     auto aggregateOp = extractValue->getAggregateOperand();
-    if (!typeNeedsPromotion(aggregateOp->getType()))
+    if (!anyOperandWasPromoted(extractValue) && !typeNeedsPromotion(aggregateOp->getType()))
     {
         return extractValue;
     }
@@ -725,7 +736,7 @@ ExtractValueInst* PromoteBools::promoteExtractValue(ExtractValueInst* extractVal
 
 GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElementPtr)
 {
-    if (!getElementPtr || !typeNeedsPromotion(getElementPtr->getResultElementType()))
+    if (!getElementPtr || (!anyOperandWasPromoted(getElementPtr) && !typeNeedsPromotion(getElementPtr->getResultElementType())))
     {
         return getElementPtr;
     }
@@ -746,13 +757,13 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
 {
     if (!icmp)
     {
-        return icmp;
+        return nullptr;
     }
 
     auto op0 = icmp->getOperand(0);
     auto op1 = icmp->getOperand(1);
 
-    if (!typeNeedsPromotion(op0->getType()))
+    if (!anyOperandWasPromoted(icmp) && !typeNeedsPromotion(op0->getType()))
     {
         return icmp;
     }
@@ -773,12 +784,12 @@ InsertValueInst* PromoteBools::promoteInsertValue(InsertValueInst* insertValue)
 {
     if (!insertValue)
     {
-        return insertValue;
+        return nullptr;
     }
 
     auto aggregateOp = insertValue->getAggregateOperand();
     auto insertedValueOp = insertValue->getInsertedValueOperand();
-    if (!typeNeedsPromotion(aggregateOp->getType()) && !typeNeedsPromotion(insertedValueOp->getType()))
+    if (!anyOperandWasPromoted(insertValue) && !typeNeedsPromotion(aggregateOp->getType()) && !typeNeedsPromotion(insertedValueOp->getType()))
     {
         return insertValue;
     }
@@ -799,12 +810,12 @@ LoadInst* PromoteBools::promoteLoad(LoadInst* load)
 {
     if (!load)
     {
-        return load;
+        return nullptr;
     }
 
     auto src = load->getOperand(0);
 
-    if (!wasPromoted(src) && !typeNeedsPromotion(src->getType()))
+    if (!anyOperandWasPromoted(load) && !typeNeedsPromotion(src->getType()))
     {
         return load;
     }
@@ -823,7 +834,7 @@ LoadInst* PromoteBools::promoteLoad(LoadInst* load)
 
 llvm::PHINode* PromoteBools::promotePHI(llvm::PHINode* phi)
 {
-    if (!phi || visitedPHINodes.count(phi) || !typeNeedsPromotion(phi->getType()))
+    if (!phi || visitedPHINodes.count(phi) || (!anyOperandWasPromoted(phi) && !typeNeedsPromotion(phi->getType())))
     {
         return phi;
     }
@@ -832,38 +843,32 @@ llvm::PHINode* PromoteBools::promotePHI(llvm::PHINode* phi)
 
     auto newPhi = PHINode::Create(
         getOrCreatePromotedType(phi->getType()),
-        phi->getNumOperands(),
+        phi->getNumIncomingValues(),
         "",
         phi
     );
 
-    for (unsigned i = 0; i < phi->getNumOperands(); ++i)
+    for (unsigned i = 0; i < phi->getNumIncomingValues(); ++i)
     {
-        if (!typeNeedsPromotion(phi->getOperand(i)->getType()))
+        auto newIncomingValue = phi->getIncomingValue(i);
+        if (wasPromoted(newIncomingValue) || typeNeedsPromotion(newIncomingValue->getType()))
         {
-            newPhi->addIncoming(
-                phi->getOperand(i),
-                phi->getIncomingBlock(i)
-            );
-        }
-        else
-        {
-            auto promotedOp = getOrCreatePromotedValue(phi->getOperand(i));
-            if (promotedOp->getType()->isIntegerTy(1))
+            newIncomingValue = getOrCreatePromotedValue(newIncomingValue);
+            if (newIncomingValue->getType()->isIntegerTy(1))
             {
-                promotedOp = new ZExtInst(
-                    promotedOp,
-                    Type::getInt8Ty(promotedOp->getContext()),
+                newIncomingValue = new ZExtInst(
+                    newIncomingValue,
+                    Type::getInt8Ty(newIncomingValue->getContext()),
                     "",
                     phi->getIncomingBlock(i)->getTerminator()
                 );
             }
-
-            newPhi->addIncoming(
-                promotedOp,
-                phi->getIncomingBlock(i)
-            );
         }
+
+        newPhi->addIncoming(
+            newIncomingValue,
+            phi->getIncomingBlock(i)
+        );
     }
 
     return newPhi;
@@ -873,13 +878,13 @@ StoreInst* PromoteBools::promoteStore(StoreInst* store)
 {
     if (!store)
     {
-        return store;
+        return nullptr;
     }
 
     auto src = store->getOperand(0);
     auto dst = store->getOperand(1);
 
-    if (!wasPromoted(src) && !wasPromoted(dst) && !typeNeedsPromotion(src->getType()))
+    if (!anyOperandWasPromoted(store) && !typeNeedsPromotion(src->getType()) && !typeNeedsPromotion(dst->getType()))
     {
         return store;
     }

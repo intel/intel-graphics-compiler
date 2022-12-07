@@ -67,8 +67,9 @@ namespace IGC
         llvm::DenseMap<llvm::Value*, llvm::Value*> promotedValuesCache;
         llvm::DenseSet<llvm::Value*> doNotRemove;
         std::queue<llvm::Value*> promotionQueue;
-        llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
         bool wasPromoted(llvm::Value* value);
+        bool anyOperandWasPromoted(llvm::User* user);
+        llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
         llvm::Function* promoteFunction(llvm::Function* function);
         llvm::GlobalVariable* promoteGlobalVariable(llvm::GlobalVariable* globalVariable);
         llvm::Constant* promoteConstant(llvm::Constant* constant);
