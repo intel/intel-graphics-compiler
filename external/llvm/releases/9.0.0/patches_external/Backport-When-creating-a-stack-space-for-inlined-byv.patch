@@ -1,0 +1,31 @@
+From 880c024c9d1c183b70bd0fe87076b015e04b31c9 Mon Sep 17 00:00:00 2001
+From: Victor Mustya <victor.mustya@intel.com>
+Date: Mon, 31 Oct 2022 13:27:02 -0700
+Subject: [PATCH] [Backport] When creating a stack space for inlined byval
+ args,  use the same addrspace as the original argument.
+
+From: Chang-Sun Lin Jr <chang-sun.lin.jr@intel.com>
+---
+ llvm/lib/Transforms/Utils/InlineFunction.cpp | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/llvm/lib/Transforms/Utils/InlineFunction.cpp b/llvm/lib/Transforms/Utils/InlineFunction.cpp
+index a7f0f7ac5d61..ea4a545582b8 100644
+--- a/llvm/lib/Transforms/Utils/InlineFunction.cpp
++++ b/llvm/lib/Transforms/Utils/InlineFunction.cpp
+@@ -1305,6 +1305,12 @@ static Value *HandleByValArgument(Value *Arg, Instruction *TheCall,
+                                     &*Caller->begin()->begin());
+   IFI.StaticAllocas.push_back(cast<AllocaInst>(NewAlloca));
+ 
++  // If the byval was in a different address space, add a cast.
++  if (DL.getAllocaAddrSpace() != ArgTy->getAddressSpace()) {
++    NewAlloca = new AddrSpaceCastInst(
++        NewAlloca, ArgTy, "",
++        cast<Instruction>(NewAlloca)->getNextNonDebugInstruction());
++  }
+   // Uses of the argument in the function should use our new alloca
+   // instead.
+   return NewAlloca;
+-- 
+2.34.1
+
