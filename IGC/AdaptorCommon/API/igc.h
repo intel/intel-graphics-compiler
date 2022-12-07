@@ -120,7 +120,7 @@ typedef enum {
 
 // We don't need compile continuation if no staged compilation enabled denoted by RegKeys.
 #define HasCompileContinuation(flag, prev_ctx_ptr, stats) ( \
-    (IGC_IS_FLAG_ENABLED(StagedCompilation)) && \
+    (IGC_IS_FLAG_ENABLED(RequestStage2)) && \
     (ContinueFastCompileStage1(flag, prev_ctx_ptr, stats) || \
      ContinueBestPerfStage1(flag, prev_ctx_ptr, stats)))
 

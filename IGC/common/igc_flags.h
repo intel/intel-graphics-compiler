@@ -612,7 +612,7 @@ DECLARE_IGC_REGKEY(bool, EnableMixIntOperands,          true,  "Enable generatin
 DECLARE_IGC_REGKEY(bool, PixelShaderDoNotAbortOnSpill,  false, "Do not abort on a spill", false)
 DECLARE_IGC_REGKEY(DWORD, ForcePixelShaderSIMDMode,     0,     "Setting it to values def in igc.h will force SIMD mode compilation for pixel shaders. Note that only SIMD8 is compiled unless other ForcePixelShaderSIMD* are also selected", false)
 DECLARE_IGC_REGKEY(DWORD, StagedCompilationExperiments, 0,     "Experiment with staged compilation when != 0", false)
-DECLARE_IGC_REGKEY(bool, StagedCompilation,             true, "Enable staged compilation", false)
+DECLARE_IGC_REGKEY(bool, RequestStage2,                 true, "Enable staged compilation via requesting stage 2", false)
 DECLARE_IGC_REGKEY(bool, LTOForStage1Compilation,       true, "LTO for stage 1 compilation", false)
 DECLARE_IGC_REGKEY(bool, EnableTrackPtr,                false, "Track Staging Context alloc/dealloc", false)
 DECLARE_IGC_REGKEY(bool, ExtraRetrySIMD16,              false,  "Enable extra simd16 with retry for STAGE1_BEST_PREF", false)
