@@ -682,7 +682,8 @@ DECLARE_IGC_REGKEY(bool, EnableLocalIdCalculationInShader, false,
     "shaders on XeHP+. IDs are calculated only if HW generated IDs cannot be"\
     "used.", true)
 DECLARE_IGC_REGKEY(bool, EnableVector8LoadStore, false, "Enable Vectorizer to generate 8x32i and 4x64i loads and stores", true)
-DECLARE_IGC_REGKEY(bool, EnableZEBinary, true,  "Enable output in ZE binary format", true)
+DECLARE_IGC_REGKEY(bool, EnableZEBinary, true,  "Enable output in ZE binary format for supported platforms", true)
+DECLARE_IGC_REGKEY(bool, ForceZEBinary,  false, "Force enable/force disable output in ZE binary format. Overrides EnableZEBinary", true)
 DECLARE_IGC_REGKEY(bool, ExcludeIRFromZEBinary, false, "Exclude IR sections from ZE binary", true)
 DECLARE_IGC_REGKEY(bool, AllocateZeroInitializedVarsInBss, false,  "Allocate zero initialized global variables in .bss section in ZEBinary", true)
 DECLARE_IGC_REGKEY(DWORD, OverrideOCLMaxParamSize, 0,  "Override the value imposed on the kernel by CL_DEVICE_MAX_PARAMETER_SIZE. Value in bytes, if value==0 no override happens.", true)
