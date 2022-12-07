@@ -25,6 +25,8 @@ SPDX-License-Identifier: MIT
 
 namespace llvm {
 class Error;
+class ToolOutputFile;
+class raw_ostream;
 } // namespace llvm
 
 namespace vc {
@@ -101,6 +103,9 @@ public:
   void RecomputeBTLayout(int numUAVs, int numResources);
 };
 
+using ToolOutputHolder = std::unique_ptr<llvm::ToolOutputFile>;
+using TmpFilesStorage = std::map<std::string, ToolOutputHolder>;
+
 class CGen8CMProgram : public iOpenCL::CGen8OpenCLProgramBase {
 public:
   class CMProgramCtxProvider
@@ -141,6 +146,10 @@ public:
 
   CMProgramCtxProvider m_ContextProvider;
   std::string m_ErrorLog;
+
+private:
+  TmpFilesStorage extractRawDebugInfo(llvm::raw_ostream &ErrStream);
+  std::unique_ptr<llvm::MemoryBuffer> buildZeDebugInfo();
 };
 
 void createBinary(
