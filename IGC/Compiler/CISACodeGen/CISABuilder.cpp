@@ -4939,6 +4939,11 @@ namespace IGC
             // Safely assume no NaN/Inf for float operands
             SaveOption(vISA_finiteMathOnly, true);
         }
+
+        if (m_program->m_Platform->getWATable().Wa_14012437816)
+        {
+            SaveOption(vISA_LSCFenceWA, true);
+        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.

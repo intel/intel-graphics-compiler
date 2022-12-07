@@ -549,6 +549,7 @@ DEF_VISA_OPTION(vISA_forceNoMaskOnM0, ET_BOOL, "-forceNoMaskOnM0",
                 true)
 DEF_VISA_OPTION(vISA_addEmaskSetupProlog, ET_BOOL, "-addEmaskSetupProlog",
                 "Add a prolog code to set up emask", false)
+DEF_VISA_OPTION(vISA_LSCFenceWA, ET_BOOL, "-LSCFenceWA", UNUSED, false)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo, ET_BOOL, "-generateDebugInfo", UNUSED,

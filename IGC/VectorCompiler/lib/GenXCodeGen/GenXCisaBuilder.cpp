@@ -6761,6 +6761,8 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-abiver");
     addArgument("2");
   }
+  if (WATable && WATable->Wa_14012437816)
+    addArgument("-LSCFenceWA");
   return Argv;
 }
 

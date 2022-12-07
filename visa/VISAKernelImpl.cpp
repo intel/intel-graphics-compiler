@@ -7925,9 +7925,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscFence(LSC_SFID lscSfid,
 
   int status = VISA_SUCCESS;
 
-  if (VISA_WA_CHECK(m_builder->getPWaTable(), Wa_14012437816) &&
-      lscSfid == LSC_UGM && scope > LSC_SCOPE_LOCAL &&
-      fenceOp == LSC_FENCE_OP_NONE)
+  if (getOptions()->getOption(vISA_LSCFenceWA) && lscSfid == LSC_UGM &&
+      scope > LSC_SCOPE_LOCAL && fenceOp == LSC_FENCE_OP_NONE)
     fenceOp = LSC_FENCE_OP_TYPE6;
 
   if (IS_GEN_BOTH_PATH) {

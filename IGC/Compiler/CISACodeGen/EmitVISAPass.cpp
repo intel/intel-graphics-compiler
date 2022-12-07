@@ -13790,7 +13790,7 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
 LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1) const
 {
     LSC_FENCE_OP op = LSC_FENCE_OP_NONE;
-    if (InvalidateL1 || (IsGlobalMemFence && m_currShader->m_Platform->getWATable().Wa_14012437816))
+    if (InvalidateL1)
     {
         op = LSC_FENCE_OP_INVALIDATE;
     }
@@ -19963,12 +19963,6 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst* inst)
         IGC_ASSERT_EXIT_MESSAGE(0, "LSC system scope is available for UGM data-port only.");
     }
 
-    if (m_currShader->m_Platform->getWATable().Wa_14012437816 &&
-        flushType == LSC_FENCE_OP_NONE &&
-        scope > LSC_SCOPE_LOCAL)
-    {
-        flushType = LSC_FENCE_OP_INVALIDATE;
-    }
     // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL
     if (scope == LSC_SCOPE_GPU &&
         !m_currShader->m_Platform->hasMultiTile() &&
