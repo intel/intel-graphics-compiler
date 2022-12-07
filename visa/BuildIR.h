@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <cstdarg>
 #include <list>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -378,7 +379,7 @@ private:
   const WA_TABLE *m_pWaTable;
   Options *m_options = nullptr;
 
-  std::map<const G4_INST *, G4_FCALL *> m_fcallInfo;
+  std::map<const G4_INST *, G4_FCALL> m_fcallInfo;
 
   // Basic region descriptors.
   RegionDesc CanonicalRegionStride0, // <0; 1, 0>
@@ -601,10 +602,10 @@ public:
   vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control,
                              G4_ExecSize execSize);
 
-  G4_FCALL *getFcallInfo(const G4_INST *inst) const;
+  std::optional<G4_FCALL> getFcallInfo(const G4_INST *inst) const;
   void addFcallInfo(const G4_INST *FcallInst, uint16_t ArgSize,
                     uint16_t RetSize) {
-    m_fcallInfo[FcallInst] = new (mem) G4_FCALL(ArgSize, RetSize);
+    m_fcallInfo.emplace(FcallInst, G4_FCALL(ArgSize, RetSize));
   }
 
   // If this is true (detected in TranslateInterface.cpp), we need a sampler

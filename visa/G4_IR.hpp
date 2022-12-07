@@ -106,10 +106,9 @@ class G4_FCALL {
   uint16_t retSize;
 
 public:
+  G4_FCALL() = delete;
   G4_FCALL(uint16_t argVarSz, uint16_t retVarSz)
       : argSize(argVarSz), retSize(retVarSz) {}
-
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
   uint16_t getArgSize() const { return argSize; }
   uint16_t getRetSize() const { return retSize; }

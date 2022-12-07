@@ -2169,10 +2169,10 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live) {
 
     if (inst->opcode() == G4_pseudo_fcall) {
       if (liveAnalysis->livenessClass(G4_GRF)) {
-        G4_FCALL *fcall = kernel.fg.builder->getFcallInfo(bb->back());
+        auto fcall = kernel.fg.builder->getFcallInfo(bb->back());
         G4_Declare *arg = kernel.fg.builder->getStackCallArg();
         G4_Declare *ret = kernel.fg.builder->getStackCallRet();
-        MUST_BE_TRUE(fcall != NULL, "fcall info not found");
+        MUST_BE_TRUE(fcall, "fcall info not found");
         uint16_t retSize = fcall->getRetSize();
         uint16_t argSize = fcall->getArgSize();
         if (ret && retSize > 0 && ret->getRegVar()) {
@@ -8253,8 +8253,8 @@ void GlobalRA::addCallerSavePseudoCode() {
       INST_LIST_ITER callBBIt = bb->end();
       bb->insertBefore(--callBBIt, saveInst);
 
-      G4_FCALL *fcall = builder.getFcallInfo(bb->back());
-      MUST_BE_TRUE(fcall != NULL, "fcall info not found");
+      auto fcall = builder.getFcallInfo(bb->back());
+      MUST_BE_TRUE(fcall, "fcall info not found");
       uint16_t retSize = fcall->getRetSize();
       if (retSize > 0) {
         const char *name =

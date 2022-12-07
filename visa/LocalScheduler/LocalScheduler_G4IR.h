@@ -282,7 +282,6 @@ public:
       Nodes.clear();
     }
   }
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   void InsertNode(Node *node) { Nodes.push_back(node); }
   void dumpNodes(G4_BB *bb);
   void dumpDagDot(G4_BB *bb);
@@ -322,10 +321,8 @@ public:
   unsigned sendStallCycle = 0;
   unsigned sequentialCycle = 0;
 
-  // Constructor
   G4_BB_Schedule(G4_Kernel *kernel, Mem_Manager &m, G4_BB *bb,
                  const LatencyTable &LT, PointsToAnalysis &p);
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   // Dumps the schedule
   void emit(std::ostream &);
   void dumpSchedule(G4_BB *bb);

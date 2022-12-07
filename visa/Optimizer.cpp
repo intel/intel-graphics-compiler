@@ -12913,7 +12913,8 @@ void Optimizer::applyFusedCallWA() {
       (void)smallB0->push_back(nCallI);
 
       // Need to create fcall info
-      if (G4_FCALL *orig_fcallinfo = builder.getFcallInfo(callI)) {
+      auto orig_fcallinfo = builder.getFcallInfo(callI);
+      if (orig_fcallinfo) {
         builder.addFcallInfo(nCallI, orig_fcallinfo->getArgSize(),
                              orig_fcallinfo->getRetSize());
       }
@@ -13131,7 +13132,8 @@ void Optimizer::applyFusedCallWA() {
     I1->addDefUse(gotoSmallB0, Opnd_pred);
 
     // Need to create fcall info
-    if (G4_FCALL *orig_fcallinfo = builder.getFcallInfo(callI)) {
+    auto orig_fcallinfo = builder.getFcallInfo(callI);
+    if (orig_fcallinfo) {
       builder.addFcallInfo(nCallI, orig_fcallinfo->getArgSize(),
                            orig_fcallinfo->getRetSize());
     }

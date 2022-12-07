@@ -1254,8 +1254,8 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
     const G4_Declare *arg = fg.builder->getStackCallArg();
     const G4_Declare *ret = fg.builder->getStackCallRet();
 
-    const G4_FCALL *fcall = fg.builder->getFcallInfo(bb->back());
-    MUST_BE_TRUE(fcall != NULL, "fcall info not found");
+    auto fcall = fg.builder->getFcallInfo(bb->back());
+    MUST_BE_TRUE(fcall, "fcall info not found");
 
     if (arg->getByteSize() != 0) {
       // arg var is a use and a kill at each fcall

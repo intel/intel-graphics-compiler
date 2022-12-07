@@ -430,7 +430,7 @@ void LinearScanRA::linearScanMarkReferencesInOpnd(G4_Operand *opnd, bool isEOT,
         lr->setIsCall(true);
       }
       if (topdcl->getRegFile() == G4_INPUT) {
-        BBVector[curBB_->getId()]->setRefInput(true);
+        BBVector[curBB_->getId()].setRefInput(true);
       }
     }
   } else if (opnd->isAddrExp()) {
@@ -451,7 +451,7 @@ void LinearScanRA::linearScanMarkReferencesInOpnd(G4_Operand *opnd, bool isEOT,
       lr->setPreAssigned(true);
     }
     if (topdcl->getRegFile() == G4_INPUT) {
-      BBVector[curBB_->getId()]->setRefInput(true);
+      BBVector[curBB_->getId()].setRefInput(true);
     }
   }
 }
@@ -503,7 +503,7 @@ void LinearScanRA::linearScanMarkReferences(unsigned int &numRowsEOT) {
       linearScanMarkReferencesInInst(inst_it);
     }
 
-    if (BBVector[curBB->getId()]->hasBackEdgeIn() || curBB->getId() == 0) {
+    if (BBVector[curBB->getId()].hasBackEdgeIn() || curBB->getId() == 0) {
       for (unsigned i = 0; i < kernel.Declares.size(); i++) {
         G4_Declare *dcl = kernel.Declares[i];
         if (dcl->getAliasDeclare() != NULL) {
@@ -557,14 +557,10 @@ void LinearScanRA::markBackEdges() {
   BBVector.resize(numBBId);
 
   for (auto curBB : kernel.fg) {
-    BBVector[curBB->getId()] = new (mem) G4_BB_LS(curBB);
-  }
-
-  for (auto curBB : kernel.fg) {
     for (auto succBB : curBB->Succs) {
       if (curBB->getId() >= succBB->getId()) {
-        BBVector[succBB->getId()]->setBackEdgeIn(true);
-        BBVector[curBB->getId()]->setBackEdgeOut(true);
+        BBVector[succBB->getId()].setBackEdgeIn(true);
+        BBVector[curBB->getId()].setBackEdgeOut(true);
       }
     }
   }
@@ -1337,7 +1333,7 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs) {
     G4_BB *bb = (*bb_it);
 
     //@ the end of BB
-    if (BBVector[bb->getId()]->hasBackEdgeOut()) {
+    if (BBVector[bb->getId()].hasBackEdgeOut()) {
       for (auto dcl : globalDeclares) {
         if (dcl->getAliasDeclare() != NULL || dcl->isSpilled())
           continue;
@@ -1544,10 +1540,10 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(
     }
 
     if (curInst->isFCall()) {
-      G4_FCALL *fcall = kernel.fg.builder->getFcallInfo(curInst);
+      auto fcall = kernel.fg.builder->getFcallInfo(curInst);
       G4_Declare *arg = kernel.fg.builder->getStackCallArg();
       G4_Declare *ret = kernel.fg.builder->getStackCallRet();
-      MUST_BE_TRUE(fcall != NULL, "fcall info not found");
+      MUST_BE_TRUE(fcall, "fcall info not found");
 
       uint16_t retSize = fcall->getRetSize();
       uint16_t argSize = fcall->getArgSize();
@@ -1684,7 +1680,7 @@ void LinearScanRA::calculateLiveIntervalsGlobal(
     G4_BB *bb, std::vector<LSLiveRange *> &liveIntervals,
     std::vector<LSLiveRange *> &eotLiveIntervals) {
   //@ the entry of BB
-  if (bb->getId() == 0 || BBVector[bb->getId()]->hasBackEdgeIn()) {
+  if (bb->getId() == 0 || BBVector[bb->getId()].hasBackEdgeIn()) {
     calculateLiveInIntervals(bb, liveIntervals);
   }
 
@@ -1692,7 +1688,7 @@ void LinearScanRA::calculateLiveIntervalsGlobal(
   calculateCurrentBBLiveIntervals(bb, liveIntervals, eotLiveIntervals);
 
   //@ the exit of BB
-  if (BBVector[bb->getId()]->hasBackEdgeOut()) {
+  if (BBVector[bb->getId()].hasBackEdgeOut()) {
     calculateLiveOutIntervals(bb, liveIntervals);
   }
 

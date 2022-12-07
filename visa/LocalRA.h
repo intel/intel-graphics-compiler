@@ -53,8 +53,7 @@ private:
   unsigned int globalLRSize = 0;
   bool doSplitLLR = false;
   Mem_Manager &mem;
-  std::list<InputLiveRange *, std_arena_based_allocator<InputLiveRange *>>
-      inputIntervals;
+  std::list<InputLiveRange> inputIntervals;
   BankConflictPass &bc;
   GlobalRA &gra;
   bool doBCR = false;
@@ -242,8 +241,6 @@ public:
   InputLiveRange(unsigned int regId, unsigned int endId)
       : regWordIdx(regId), lrEndIdx(endId) {}
 
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-
   unsigned int getRegWordIdx() { return regWordIdx; }
   unsigned int getLrEndIdx() { return lrEndIdx; }
 };
@@ -307,8 +304,6 @@ public:
     LraFFWindowSize =
         (int)builder.getOptions()->getuInt32Option(vISA_LraFFWindowSize);
   }
-
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
   void findRegisterCandiateWithAlignForward(int &i, BankAlign align,
                                             bool evenAlign);
@@ -489,8 +484,7 @@ private:
   PhyRegsManager &pregManager;
   PhyRegsLocalRA &initPregs;
   std::vector<LocalLiveRange *> &liveIntervals;
-  std::list<InputLiveRange *, std_arena_based_allocator<InputLiveRange *>>
-      &inputIntervals;
+  std::list<InputLiveRange> &inputIntervals;
   std::list<LocalLiveRange *> active;
   PhyRegSummary *summary;
 
@@ -524,14 +518,12 @@ private:
   bool doSplitLLR;
 
 public:
-  LinearScan(
-      GlobalRA &g, std::vector<LocalLiveRange *> &localLiveIntervals,
-      std::list<InputLiveRange *, std_arena_based_allocator<InputLiveRange *>>
-          &inputLivelIntervals,
-      PhyRegsManager &pregMgr, PhyRegsLocalRA &pregs, Mem_Manager &memmgr,
-      PhyRegSummary *s, unsigned int numReg, unsigned int glrs, bool roundRobin,
-      bool bankConflict, bool internalConflict, bool splitLLR,
-      unsigned int simdS);
+  LinearScan(GlobalRA &g, std::vector<LocalLiveRange *> &localLiveIntervals,
+             std::list<InputLiveRange> &inputLivelIntervals,
+             PhyRegsManager &pregMgr, PhyRegsLocalRA &pregs,
+             Mem_Manager &memmgr, PhyRegSummary *s, unsigned int numReg,
+             unsigned int glrs, bool roundRobin, bool bankConflict,
+             bool internalConflict, bool splitLLR, unsigned int simdS);
 
   void run(G4_BB *bb, IR_Builder &builder, LLR_USE_MAP &LLRUseMap);
 };

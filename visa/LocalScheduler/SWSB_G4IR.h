@@ -227,8 +227,6 @@ struct SBBitSets {
   bool operator!=(const SBBitSets &other) const {
     return (dst != other.dst) || (src != other.src);
   }
-
-  void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
 };
 
 class SBNode {
@@ -446,7 +444,6 @@ public:
 
   unsigned short getDepTokenNodeID(unsigned int i) const {
     return depTokens[i].depNode->getNodeID();
-    ;
   }
 
   void setTokenReuseNode(SBNode *node) { tokenReusedNode = node; }
@@ -596,7 +593,6 @@ public:
     return BN_iterator(this, nodeBucketsArray[bucket]->end(), bucket);
   }
 
-  void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
   void add(SBBucketNode * bucketNode, int bucket);
   void bucketKill(int bucket, SBNode *node, Gen4_Operand_Number opnd);
   void killSingleOperand(BN_iterator &bn_it);
@@ -839,10 +835,9 @@ class SWSB_TOKEN_PROFILE {
   uint32_t prunedDiffBBSameTokenEdgeNum = 0;
 
 public:
-  SWSB_TOKEN_PROFILE() { ; }
+  SWSB_TOKEN_PROFILE() {}
 
   ~SWSB_TOKEN_PROFILE() {}
-  void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
 
   void setTokenInstructionCount(int count) { tokenInstructionCount = count; }
   uint32_t getTokenInstructionCount() const { return tokenInstructionCount; }

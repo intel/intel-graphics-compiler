@@ -522,13 +522,9 @@ const char *IR_Builder::getNameString(Mem_Manager &mem, size_t size,
 #endif
 }
 
-G4_FCALL *IR_Builder::getFcallInfo(const G4_INST *inst) const {
+std::optional<G4_FCALL> IR_Builder::getFcallInfo(const G4_INST *inst) const {
   auto it = m_fcallInfo.find(inst);
-  if (m_fcallInfo.end() == it) {
-    return nullptr;
-  } else {
-    return it->second;
-  }
+  return m_fcallInfo.end() == it ? std::nullopt : std::optional(it->second);
 }
 
 void IR_Builder::createPreDefinedVars() {

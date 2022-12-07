@@ -1256,8 +1256,7 @@ void LocalRA::calculateInputIntervals() {
                     pregs->isGRFAvailable(idx /
                                           kernel.numEltPerGRF<Type_UW>())) {
                   inputRegLastRef[idx] = curInstId;
-                  inputIntervals.push_front(new (mem)
-                                                InputLiveRange(idx, curInstId));
+                  inputIntervals.push_front(InputLiveRange(idx, curInstId));
                   if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo)) {
                     updateDebugInfo(kernel, topdcl, 0, curInst->getVISAId());
                   }
@@ -1311,11 +1310,9 @@ void LocalRA::calculateInputIntervals() {
                         curInst->getDst() != NULL &&
                         hasDstSrcOverlapPotential(curInst->getDst(),
                                                   src->asSrcRegRegion())) {
-                      inputIntervals.push_front(
-                          new (mem) InputLiveRange(idx, curInstId + 1));
+                      inputIntervals.push_front(InputLiveRange(idx, curInstId + 1));
                     } else {
-                      inputIntervals.push_front(
-                          new (mem) InputLiveRange(idx, curInstId));
+                      inputIntervals.push_front(InputLiveRange(idx, curInstId));
                     }
                     if (kernel.getOptions()->getOption(
                             vISA_GenerateDebugInfo)) {
@@ -1581,16 +1578,15 @@ void LocalRA::printInputLiveIntervals() {
                 << "Input Live intervals "
                 << "\n");
 
-  for (std::list<InputLiveRange *>::iterator it = inputIntervals.begin();
-       it != inputIntervals.end(); it++) {
+  for (auto it = inputIntervals.begin(); it != inputIntervals.end(); it++) {
     unsigned int regWordIdx, lrEndIdx, regNum, subRegInWord;
 
-    InputLiveRange *lr = (*it);
+    InputLiveRange lr = *it;
 
-    regWordIdx = lr->getRegWordIdx();
+    regWordIdx = lr.getRegWordIdx();
     regNum = regWordIdx / kernel.numEltPerGRF<Type_UW>();
     subRegInWord = regWordIdx % kernel.numEltPerGRF<Type_UW>();
-    lrEndIdx = lr->getLrEndIdx();
+    lrEndIdx = lr.getLrEndIdx();
 
     DEBUG_VERBOSE("r" << regNum << "." << subRegInWord << " " << lrEndIdx);
     DEBUG_VERBOSE("\n");
@@ -2220,13 +2216,14 @@ void PhyRegsManager::freeRegs(int regnum, int subregnum, int numwords,
 
 // ********* LinearScan class implementation *********
 
-LinearScan::LinearScan(
-    GlobalRA &g, std::vector<LocalLiveRange *> &localLiveIntervals,
-    std::list<InputLiveRange *, std_arena_based_allocator<InputLiveRange *>>
-        &inputLivelIntervals,
-    PhyRegsManager &pregMgr, PhyRegsLocalRA &pregs, Mem_Manager &memmgr,
-    PhyRegSummary *s, unsigned int numReg, unsigned int glrs, bool roundRobin,
-    bool bankConflict, bool internalConflict, bool splitLLR, unsigned int simdS)
+LinearScan::LinearScan(GlobalRA &g,
+                       std::vector<LocalLiveRange *> &localLiveIntervals,
+                       std::list<InputLiveRange> &inputLivelIntervals,
+                       PhyRegsManager &pregMgr, PhyRegsLocalRA &pregs,
+                       Mem_Manager &memmgr, PhyRegSummary *s,
+                       unsigned int numReg, unsigned int glrs, bool roundRobin,
+                       bool bankConflict, bool internalConflict, bool splitLLR,
+                       unsigned int simdS)
     : gra(g), builder(g.builder), mem(memmgr), pregManager(pregMgr),
       initPregs(pregs), liveIntervals(localLiveIntervals),
       inputIntervals(inputLivelIntervals), summary(s),
@@ -2440,14 +2437,14 @@ void LinearScan::expireInputRanges(unsigned int global_idx,
                                    unsigned int local_idx,
                                    unsigned int first_idx) {
   while (inputIntervals.size() > 0) {
-    InputLiveRange *lr = inputIntervals.front();
-    unsigned int endIdx = lr->getLrEndIdx();
+    InputLiveRange lr = inputIntervals.front();
+    unsigned int endIdx = lr.getLrEndIdx();
 
     if (endIdx <= global_idx) {
       unsigned int regnum =
-          lr->getRegWordIdx() / builder.numEltPerGRF<Type_UW>();
+          lr.getRegWordIdx() / builder.numEltPerGRF<Type_UW>();
       unsigned int subRegInWord =
-          lr->getRegWordIdx() % builder.numEltPerGRF<Type_UW>();
+          lr.getRegWordIdx() % builder.numEltPerGRF<Type_UW>();
       int inputIdx =
           (endIdx < first_idx) ? 0 : (local_idx - (global_idx - endIdx) * 2);
 

@@ -470,8 +470,6 @@ public:
     OrigInstList.clear();
   }
 
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-
   Mem_Manager &getMem() const { return ddd.getMem(); }
   G4_Kernel &getKernel() const { return kernel; }
   G4_BB *getBB() const { return ddd.getBB(); }
@@ -2647,8 +2645,6 @@ class BB_ACC_Scheduler {
 
 public:
   BB_ACC_Scheduler(G4_Kernel &kernel, preDDD &ddd) : kernel(kernel), ddd(ddd) {}
-
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
   Mem_Manager &getMem() const { return ddd.getMem(); }
   G4_Kernel &getKernel() const { return kernel; }

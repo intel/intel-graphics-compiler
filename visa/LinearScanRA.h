@@ -39,22 +39,22 @@ namespace vISA {
 class PhyRegsLocalRA;
 class LSInputLiveRange;
 
+// Metadata for each basic block used during Linear scan RA. It is stored as a
+// vector indexed by the basic block id.
 class G4_BB_LS {
 private:
-  G4_BB *bb;
   bool refInput;
   bool backEdgeIn;
   bool backEdgeOut;
 
 public:
-  G4_BB_LS(G4_BB *block) : bb(block) {
+  G4_BB_LS() {
     refInput = false;
     backEdgeIn = false;
     backEdgeOut = false;
   }
 
   ~G4_BB_LS() {}
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   void setBackEdgeIn(bool val) { backEdgeIn = val; }
   bool hasBackEdgeIn() { return backEdgeIn; }
   void setBackEdgeOut(bool val) { backEdgeOut = val; }
@@ -63,7 +63,7 @@ public:
   bool hasRefInput() { return refInput; }
 };
 
-typedef std::vector<G4_BB_LS *> BB_LS_VECTOR;
+typedef std::vector<G4_BB_LS> BB_LS_VECTOR;
 
 class LinearScanRA {
 private:
