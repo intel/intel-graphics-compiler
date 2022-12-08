@@ -378,7 +378,7 @@ void CShader::CreateImplicitArgs()
         return;
 
     m_numBlocks = entry->size();
-    m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, 1, "R0");
+    m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, true, 1, "R0");
     encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
 
     // create variables for implicit args
@@ -438,6 +438,7 @@ void CShader::CreateImplicitArgs()
     for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg) {
         ImplicitArg implictArg = implicitArgs[i];
         IGC_ASSERT_MESSAGE((implictArg.getNumberElements() < (UINT16_MAX)), "getNumberElements > higher than 64k");
+        IGC_ASSERT_MESSAGE(implictArg.getArgType() != ImplicitArg::R0, "R0 Arg is deprecated and should not be used");
 
         bool isUniform = WIAnalysis::isDepUniform(implictArg.getDependency());
         uint16_t nbElements = (uint16_t)implictArg.getNumberElements();
@@ -454,10 +455,6 @@ void CShader::CreateImplicitArgs()
             isUniform,
             isUniform ? 1 : m_numberInstance,
             CName(implictArg.getName()));
-
-        if (implictArg.getArgType() == ImplicitArg::R0) {
-            encoder.GetVISAPredefinedVar(var, PREDEFINED_R0);
-        }
 
         // This is a per function symbol mapping, that is, only available for a
         // llvm function which will be cleared for each run of EmitVISAPass.
@@ -2522,7 +2519,7 @@ void CShader::BeginFunction(llvm::Function* F)
         globalSymbolMapping.clear();
         encoder.BeginStackFunction(F);
         // create pre-defined r0
-        m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, 1, "R0");
+        m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, true, 1, "R0");
         encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
     }
     else
@@ -2632,17 +2629,16 @@ CVariable* CShader::getOrCreateArgumentSymbol(
                 // Just reuse the kernel arguments for the following.
                 // Note that for read only general arguments, we may do similar
                 // optimization, with some advanced analysis.
-                if (ArgType == ImplicitArg::ArgType::R0 ||
-                    ArgType == ImplicitArg::ArgType::PAYLOAD_HEADER ||
-                    ArgType == ImplicitArg::ArgType::WORK_DIM ||
-                    ArgType == ImplicitArg::ArgType::NUM_GROUPS ||
-                    ArgType == ImplicitArg::ArgType::GLOBAL_SIZE ||
-                    ArgType == ImplicitArg::ArgType::LOCAL_SIZE ||
-                    ArgType == ImplicitArg::ArgType::ENQUEUED_LOCAL_WORK_SIZE ||
-                    ArgType == ImplicitArg::ArgType::CONSTANT_BASE ||
-                    ArgType == ImplicitArg::ArgType::GLOBAL_BASE ||
-                    ArgType == ImplicitArg::ArgType::PRIVATE_BASE ||
-                    ArgType == ImplicitArg::ArgType::PRINTF_BUFFER)
+                if (ArgType == ImplicitArg::PAYLOAD_HEADER ||
+                    ArgType == ImplicitArg::WORK_DIM ||
+                    ArgType == ImplicitArg::NUM_GROUPS ||
+                    ArgType == ImplicitArg::GLOBAL_SIZE ||
+                    ArgType == ImplicitArg::LOCAL_SIZE ||
+                    ArgType == ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE ||
+                    ArgType == ImplicitArg::CONSTANT_BASE ||
+                    ArgType == ImplicitArg::GLOBAL_BASE ||
+                    ArgType == ImplicitArg::PRIVATE_BASE ||
+                    ArgType == ImplicitArg::PRINTF_BUFFER)
                 {
                     Function& K = *m_FGA->getSubGroupMap(F);
                     ImplicitArgs IAs(K, m_pMdUtils);

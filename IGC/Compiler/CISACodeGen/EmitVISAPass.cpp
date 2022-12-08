@@ -18719,16 +18719,16 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
         CVariable* Src = m_currShader->getOrCreateArgumentSymbol(arg, false);
         CVariable* Dst = GetSymbol(I);
 
-        if (IAtype == ImplicitArg::ArgType::PAYLOAD_HEADER ||
-            IAtype == ImplicitArg::ArgType::WORK_DIM ||
-            IAtype == ImplicitArg::ArgType::NUM_GROUPS ||
-            IAtype == ImplicitArg::ArgType::GLOBAL_SIZE ||
-            IAtype == ImplicitArg::ArgType::LOCAL_SIZE ||
-            IAtype == ImplicitArg::ArgType::ENQUEUED_LOCAL_WORK_SIZE ||
-            IAtype == ImplicitArg::ArgType::CONSTANT_BASE ||
-            IAtype == ImplicitArg::ArgType::GLOBAL_BASE ||
-            IAtype == ImplicitArg::ArgType::PRIVATE_BASE ||
-            IAtype == ImplicitArg::ArgType::PRINTF_BUFFER)
+        if (IAtype == ImplicitArg::PAYLOAD_HEADER ||
+            IAtype == ImplicitArg::WORK_DIM ||
+            IAtype == ImplicitArg::NUM_GROUPS ||
+            IAtype == ImplicitArg::GLOBAL_SIZE ||
+            IAtype == ImplicitArg::LOCAL_SIZE ||
+            IAtype == ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE ||
+            IAtype == ImplicitArg::CONSTANT_BASE ||
+            IAtype == ImplicitArg::GLOBAL_BASE ||
+            IAtype == ImplicitArg::PRIVATE_BASE ||
+            IAtype == ImplicitArg::PRINTF_BUFFER)
         {
             // Map directly to the kernel's arguments
             m_currShader->UpdateSymbolMap(I, Src);
