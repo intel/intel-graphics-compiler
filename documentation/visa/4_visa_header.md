@@ -492,7 +492,7 @@ The items have identical meaning as their counterparts in the
 16\]. In text format, an address variable may be declared with the
 following syntax:
 
-**.decl** var_name v_type=A type=&lt;data_type&gt; num_elts=&lt;num_elements&gt;
+**.decl** var_name v_type=A num_elts=&lt;num_elements&gt;
 
 
 ## Predicate Variables
