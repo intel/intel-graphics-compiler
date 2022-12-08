@@ -33,7 +33,7 @@ LegalizeAction InstLegalChecker::visitInstruction(Instruction& I) {
 
 /// Terminator instructions
 ///
-
+/*
 LegalizeAction InstLegalChecker::visitReturnInst(ReturnInst& I) {
     // It's legal iff the return value (if any) is legal.
     if (Value * V = I.getReturnValue())
@@ -47,7 +47,7 @@ LegalizeAction InstLegalChecker::visitTerminatorInst(IGCLLVM::TerminatorInst&) {
     // support 'indirectbr' or 'resume'.
     return Legal;
 }
-
+*/
 /// Standard binary operators
 ///
 

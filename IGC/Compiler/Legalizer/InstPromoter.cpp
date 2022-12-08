@@ -613,7 +613,7 @@ bool InstPromoter::visitInsertElementInst(InsertElementInst& I) {
         Val = ValSeq->front();
 
     Value* VecVal = I.getOperand(0);
-    if (!isa<UndefValue>(VecVal)) {
+    if (!isa<UndefValue>(VecVal) && !isa<Constant>(VecVal)) {
         ValueSeq* VecValSeq; LegalizeAction VecValAct;
         std::tie(VecValSeq, VecValAct) = TL->getLegalizedValues(VecVal);
 
@@ -637,7 +637,7 @@ bool InstPromoter::visitInsertElementInst(InsertElementInst& I) {
             const uint32_t ShiftFactor = IndexImm * IllegalElemTyWidth;
             Promoted = (IndexImm > 0) ? IRB->CreateShl(ZExt, ShiftFactor) : ZExt;
 
-            if (!isa<UndefValue>(VecVal)) {
+            if (!isa<UndefValue>(VecVal) && !(isa<Constant>(VecVal) && dyn_cast<Constant>(VecVal)->isZeroValue())) {
                 // Generate 'and' instruction to merge value returned by another insert element instruction
                 // with value to be inserted.
                 IGC_ASSERT(VecVal->getType()->isIntegerTy());

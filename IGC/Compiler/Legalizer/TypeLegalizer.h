@@ -45,10 +45,12 @@ namespace IGC {
         enum LegalizeAction {
             Legal,
             Promote,
+            /*
             Expand,
-            SoftenFloat,
             Scalarize,
-            Elementize
+            Elementize,
+            */
+            SoftenFloat
         };
 
         typedef IGCLLVM::IRBuilder<TargetFolder> BuilderType;
@@ -58,18 +60,22 @@ namespace IGC {
 
         class InstLegalChecker;
         class InstPromoter;
+        /*
         class InstExpander;
         class InstSoftener;
         class InstScalarizer;
         class InstElementizer;
+        */
 
         class TypeLegalizer : public FunctionPass {
             friend class InstLegalChecker;
             friend class InstPromoter;
+            /*
             friend class InstExpander;
             friend class InstSoftener;
             friend class InstScalarizer;
             friend class InstElementizer;
+            */
 
             const DataLayout* DL = nullptr;
             DominatorTree* DT = nullptr;;
@@ -77,10 +83,12 @@ namespace IGC {
 
             InstLegalChecker* ILC = nullptr;;
             InstPromoter* IPromoter = nullptr;;
+            /*
             InstExpander* IExpander = nullptr;;
             InstSoftener* ISoftener = nullptr;;
             InstScalarizer* IScalarizer = nullptr;;
             InstElementizer* IElementizer = nullptr;;
+            */
 
             Module* TheModule = nullptr;;
             Function* TheFunction = nullptr;;
@@ -110,11 +118,13 @@ namespace IGC {
             Module* getModule() const { return TheModule; }
             Function* getFunction() const { return TheFunction; }
 
+            /*
             bool legalizeArguments(Function& F);
+            bool legalizeTerminators(Function& F);
+            */
             bool preparePHIs(Function& F);
             bool legalizeInsts(Function& F);
             bool populatePHIs(Function& F);
-            bool legalizeTerminators(Function& F);
 
             void eraseIllegalInsts();
 
@@ -126,10 +136,12 @@ namespace IGC {
             std::pair<TypeSeq*, LegalizeAction> getLegalizedTypes(Type* Ty, bool legalizeToScalar = false);
 
             TypeSeq* getPromotedTypeSeq(Type* Ty, bool legalizeToScalar = false);
-            TypeSeq* getExpandedTypeSeq(Type* Ty);
             TypeSeq* getSoftenedTypeSeq(Type* Ty);
+            /*
+            TypeSeq* getExpandedTypeSeq(Type* Ty);
             TypeSeq* getScalarizedTypeSeq(Type* Ty);
             TypeSeq* getElementizedTypeSeq(Type* Ty);
+            */
 
             std::pair<ValueSeq*, LegalizeAction> getLegalizedValues(Value* V, bool isSigned = false);
             void setLegalizedValues(Value* OVal, ArrayRef<Value*> LegalizedVals);
@@ -137,35 +149,43 @@ namespace IGC {
 
             // TODO: Refactor them into a separate legalizer.
             void promoteConstant(ValueSeq*, TypeSeq*, Constant* C, bool isSigned);
-            void expandConstant(ValueSeq*, TypeSeq*, Constant* C);
             void softenConstant(ValueSeq*, TypeSeq*, Constant* C);
+            /*
+            void expandConstant(ValueSeq*, TypeSeq*, Constant* C);
             void scalarizeConstant(ValueSeq*, TypeSeq*, Constant* C);
             void elementizeConstant(ValueSeq*, TypeSeq*, Constant* C);
+            */
 
             // TODO: Refactor them into a separate legalizer.
+            /*
             Value* promoteArgument(Argument* Arg, Type* PromotedTy);
-            Value* expandArgument(Argument* Arg, Type* ExpandedTy, unsigned Part);
             Value* softenArgument(Argument* Arg, Type* SoftenedTy);
+            Value* expandArgument(Argument* Arg, Type* ExpandedTy, unsigned Part);
             Value* scalarizeArgument(Argument* Arg, Type* ScalarizedTy, unsigned Part);
             Value* elementizeArgument(Argument* Arg, Type* ElementizedTy,
                 unsigned Part);
+            */
 
             Value* getDemotedValue(Value* V);
             Value* getCompactedValue(Value* V);
 
             // TODO: Refactor them into a separate legalizer.
+            /*
             bool promoteRet(ReturnInst* RI);
             bool expandRet(ReturnInst* RI);
             bool softenRet(ReturnInst* RI);
             bool scalarizeRet(ReturnInst* RI);
             bool elementizeRet(ReturnInst* RI);
+            */
 
             // TODO: Refactor them into a separate legalizer.
             bool populatePromotedPHI(PHINode* PN);
+            /*
             bool populateExpandedPHI(PHINode* PN);
             bool populateSoftenedPHI(PHINode* PN);
             bool populateScalarizedPHI(PHINode* PN);
             bool populateElementizedPHI(PHINode* PN);
+            */
 
             /// getSizeTypeInBits() - Similar to the same method in DL but assertion test on overflows.
             unsigned getTypeSizeInBits(Type* Ty) const {
@@ -175,7 +195,7 @@ namespace IGC {
 
                 return Width;
             }
-
+            /*
             /// getTypeStoreSize() - Similar to the same method in DL but assertion on overflows.
             unsigned getTypeStoreSize(Type* Ty) const {
                 uint64_t FullWidth = DL->getTypeStoreSize(Ty);
@@ -184,6 +204,7 @@ namespace IGC {
 
                 return Width;
             }
+            */
 
             /// getTypeStoreSizeInBits() - Similar to the same method in DL but assertion on overflows.
             unsigned getTypeStoreSizeInBits(Type* Ty) const {
@@ -348,11 +369,13 @@ namespace IGC {
                 return DL->getIntPtrType(getContext(), AddrSpace);
             }
 
+            /*
             /// getIntBitsTy() - Return an integer type with the same bits of the given
             /// type.
             IntegerType* getIntBitsTy(Type* Ty) const {
                 return getIntNTy((unsigned int)Ty->getPrimitiveSizeInBits());
             }
+            */
 
             /// getAlignment() - Return the alignment of the memory access being
             /// performed.
@@ -390,13 +413,14 @@ namespace IGC {
                 }
                 return Res;
             }
-
+            /*
             /// castToInt() - Cast the specified value into integer type with the same
             /// size.
             Value* castToInt(Value* V) const {
                 IntegerType* ITy = getIntBitsTy(V->getType());
                 return IRB->CreateBitCast(V, ITy, Twine(V->getName(), ".icast"));
             }
+            */
 
             /// shl() - Left-shift integer values with constant shift amount.
             Value* shl(Value* V, uint64_t ShAmt) const {
@@ -468,7 +492,8 @@ namespace IGC {
                                 Twine(RHS->getName(), ".lsext")), ShAmt,
                             Twine(RHS->getName(), ".rsext")));
             }
-
+            /*
+            /// Expander helper
             /// umin() - Return the minimal of (unsigned) integers and cast it into new
             /// integer type if specified.
             Value* umin(Value* LHS, Value* RHS, Type* NewTy = nullptr) const {
@@ -483,6 +508,7 @@ namespace IGC {
                     return Min;
                 return IRB->CreateZExtOrTrunc(Min, NewTy, Twine(Name, ".umin.trunc"));
             }
+            */
 
             /// getPointerToElt() - Calculate the pointer to the element specified by
             /// the index, i.e. &Base[Idx], and cast it to the given type if necessary.
@@ -506,7 +532,8 @@ namespace IGC {
 
                 return NewPtr;
             }
-
+            /*
+            /// Expander and Scalarizer helper
             /// repack() - Re-pack source values into the new types. It assumes that
             /// they have the equal total bits, e.g. re-pack ((float 123.0), (i8 45))
             /// to (i20, i20), or vice versa.
@@ -558,16 +585,19 @@ namespace IGC {
                 IGC_ASSERT(VI + 1 == VE);
                 IGC_ASSERT(SrcOff == SrcWidth);
             }
+            */
 
             /// getSuffix() - return suffix for legalization rewriting.
             static const char* getSuffix(LegalizeAction Act) {
                 static const char* Suffixes[] = {
                   ".legal",
                   ".promote",
+                  /*
                   ".ex",
-                  ".soften",
                   ".sclr",
-                  ".elt"
+                  ".elt",
+                  */
+                  ".soften"
                 };
                 return Suffixes[Act];
             }

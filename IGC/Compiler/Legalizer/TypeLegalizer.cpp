@@ -11,10 +11,12 @@ SPDX-License-Identifier: MIT
 #include "TypeLegalizer.h"
 #include "InstLegalChecker.h"
 #include "InstPromoter.h"
+/*
 #include "InstExpander.h"
 #include "InstSoftener.h"
 #include "InstScalarizer.h"
 #include "InstElementizer.h"
+*/
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -32,9 +34,17 @@ using namespace IGC::Legalizer;
 char TypeLegalizer::ID = 0;
 
 TypeLegalizer::TypeLegalizer() : FunctionPass(ID),
-DL(nullptr), ILC(nullptr), IPromoter(nullptr), IExpander(nullptr),
-ISoftener(nullptr), IScalarizer(nullptr), IElementizer(nullptr),
-TheModule(nullptr), TheFunction(nullptr) {
+                                 DL(nullptr),
+                                 ILC(nullptr),
+                                 IPromoter(nullptr),
+                                 /*
+                                 IExpander(nullptr),
+                                 ISoftener(nullptr),
+                                 IScalarizer(nullptr),
+                                 IElementizer(nullptr),
+                                 */
+                                 TheModule(nullptr),
+                                 TheFunction(nullptr) {
     initializeTypeLegalizerPass(*PassRegistry::getPassRegistry());
 }
 
@@ -54,7 +64,6 @@ IGC_INITIALIZE_PASS_BEGIN(TypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PA
 //IGC_INITIALIZE_PASS_DEPENDENCY(DataLayout);
 IGC_INITIALIZE_PASS_END(TypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-#define LEGALIZE_ALL 0
 // IGC supports type i64 natively or by emulation
 const unsigned int MAX_LEGAL_INT_SIZE_IN_BITS = 64;
 
@@ -69,17 +78,21 @@ bool TypeLegalizer::runOnFunction(Function & F) {
 
     InstLegalChecker TheLegalChecker(this);
     InstPromoter ThePromoter(this, &TheBuilder);
+    /*
     InstExpander TheExpander(this, &TheBuilder);
     InstSoftener TheSoftener(this, &TheBuilder);
     InstScalarizer TheScalarizer(this, &TheBuilder);
     InstElementizer TheElementizer(this, &TheBuilder);
+    */
 
     ILC = &TheLegalChecker;
     IPromoter = &ThePromoter;
+    /*
     IExpander = &TheExpander;
     ISoftener = &TheSoftener;
     IScalarizer = &TheScalarizer;
     IElementizer = &TheElementizer;
+    */
 
     TheModule = F.getParent();
     TheFunction = &F;
@@ -89,15 +102,11 @@ bool TypeLegalizer::runOnFunction(Function & F) {
 
     bool Changed = false;
 
-#if LEGALIZE_ALL
-    Changed |= legalizeArguments(F);
-#endif
+    // Changed |= legalizeArguments(F);
     Changed |= preparePHIs(F);
     Changed |= legalizeInsts(F);
     Changed |= populatePHIs(F);
-#if LEGALIZE_ALL
-    Changed |= legalizeTerminators(F);
-#endif
+    // Changed |= legalizeTerminators(F);
 
     eraseIllegalInsts();
 
@@ -108,11 +117,12 @@ bool TypeLegalizer::runOnFunction(Function & F) {
 
     ILC = nullptr;
     IPromoter = nullptr;
+    /*
     IExpander = nullptr;
     ISoftener = nullptr;
     IScalarizer = nullptr;
     IElementizer = nullptr;
-
+    */
     TheModule = nullptr;
     TheFunction = nullptr;
 
@@ -125,9 +135,9 @@ TypeLegalizer::getTypeLegalizeAction(Type* Ty) const {
     if (Ty->isPointerTy())
         return Legal;
 
-    // Array and Struct are always illegal.
+    // Array and Struct are currently skipped, but expected to be treated in Elementize
     if (Ty->isArrayTy() || Ty->isStructTy())
-        return Elementize;
+        return Legal;
 
     // Vector type!
     if (Ty->isVectorTy())
@@ -158,7 +168,8 @@ TypeLegalizer::getTypeLegalizeAction(Type* Ty) const {
     if (DL->fitsInLegalInteger(Width) || Width <= MAX_LEGAL_INT_SIZE_IN_BITS)
         return Promote;
 
-    return Expand;
+    // Expand action is not supported
+    return Legal;
 }
 
 LegalizeAction
@@ -184,11 +195,12 @@ TypeLegalizer::getLegalizedTypes(Type* Ty, bool legalizeToScalar) {
     case Promote:
         TySeq = getPromotedTypeSeq(Ty, legalizeToScalar);
         break;
-    case Expand:
-        TySeq = getExpandedTypeSeq(Ty);
-        break;
     case SoftenFloat:
         TySeq = getSoftenedTypeSeq(Ty);
+        break;
+    /*
+    case Expand:
+        TySeq = getExpandedTypeSeq(Ty);
         break;
     case Scalarize:
         TySeq = getScalarizedTypeSeq(Ty);
@@ -196,6 +208,7 @@ TypeLegalizer::getLegalizedTypes(Type* Ty, bool legalizeToScalar) {
     case Elementize:
         TySeq = getElementizedTypeSeq(Ty);
         break;
+    */
     }
 
     return std::make_pair(TySeq, Act);
@@ -232,28 +245,6 @@ TypeSeq* TypeLegalizer::getPromotedTypeSeq(Type* Ty, bool legalizeToScalar) {
     return &TMI->second;
 }
 
-TypeSeq* TypeLegalizer::getExpandedTypeSeq(Type* Ty) {
-    IGC_ASSERT(Ty->isIntegerTy());
-    IGC_ASSERT(getTypeLegalizeAction(Ty) == Expand);
-
-    TypeMapTy::iterator TMI; bool New = false;
-    std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
-    if (!New)
-        return &TMI->second;
-
-    // FIXME: Need backport of DL->getLargestLegalIntTypeSize() instead of hard
-    // coding.
-    unsigned MaxLegalWidth = 64;
-    unsigned Width = getTypeSizeInBits(Ty);
-    IGC_ASSERT(MaxLegalWidth < Width);
-
-    for (; MaxLegalWidth < Width; Width -= MaxLegalWidth)
-        TMI->second.push_back(Type::getIntNTy(Ty->getContext(), MaxLegalWidth));
-    TMI->second.push_back(Type::getIntNTy(Ty->getContext(), Width));
-
-    return &TMI->second;
-}
-
 TypeSeq* TypeLegalizer::getSoftenedTypeSeq(Type* Ty) {
     IGC_ASSERT(Ty->isFloatingPointTy());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == SoftenFloat);
@@ -282,6 +273,31 @@ TypeSeq* TypeLegalizer::getSoftenedTypeSeq(Type* Ty) {
     return &TMI->second;
 }
 
+/*
+TypeSeq* TypeLegalizer::getExpandedTypeSeq(Type* Ty) {
+    IGC_ASSERT(Ty->isIntegerTy());
+    IGC_ASSERT(getTypeLegalizeAction(Ty) == Expand);
+
+    TypeMapTy::iterator TMI; bool New = false;
+    std::tie(TMI, New) = TypeMap.insert(std::make_pair(Ty, TypeSeq()));
+    if (!New)
+        return &TMI->second;
+
+    // FIXME: Need backport of DL->getLargestLegalIntTypeSize() instead of hard
+    // coding.
+    unsigned MaxLegalWidth = 64;
+    unsigned Width = getTypeSizeInBits(Ty);
+    IGC_ASSERT(MaxLegalWidth < Width);
+
+    for (; MaxLegalWidth < Width; Width -= MaxLegalWidth)
+        TMI->second.push_back(Type::getIntNTy(Ty->getContext(), MaxLegalWidth));
+    TMI->second.push_back(Type::getIntNTy(Ty->getContext(), Width));
+
+    return &TMI->second;
+}
+*/
+
+/*
 TypeSeq* TypeLegalizer::getScalarizedTypeSeq(Type* Ty) {
     IGC_ASSERT(Ty->isVectorTy());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == Scalarize);
@@ -300,7 +316,9 @@ TypeSeq* TypeLegalizer::getScalarizedTypeSeq(Type* Ty) {
 
     return &TMI->second;
 }
+*/
 
+/*
 TypeSeq* TypeLegalizer::getElementizedTypeSeq(Type* Ty) {
     IGC_ASSERT(Ty->isAggregateType());
     IGC_ASSERT(getTypeLegalizeAction(Ty) == Elementize);
@@ -326,6 +344,7 @@ TypeSeq* TypeLegalizer::getElementizedTypeSeq(Type* Ty) {
 
     return &TMI->second;
 }
+*/
 
 std::pair<ValueSeq*, LegalizeAction>
 TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
@@ -359,11 +378,12 @@ TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
     case Promote:
         promoteConstant(&VMI->second, TySeq, C, isSigned);
         break;
-    case Expand:
-        expandConstant(&VMI->second, TySeq, C);
-        break;
     case SoftenFloat:
         softenConstant(&VMI->second, TySeq, C);
+        break;
+    /*
+    case Expand:
+        expandConstant(&VMI->second, TySeq, C);
         break;
     case Scalarize:
         scalarizeConstant(&VMI->second, TySeq, C);
@@ -371,6 +391,7 @@ TypeLegalizer::getLegalizedValues(Value* V, bool isSigned) {
     case Elementize:
         elementizeConstant(&VMI->second, TySeq, C);
         break;
+    */
     default:
         IGC_ASSERT(0);
         break;
@@ -415,6 +436,13 @@ void TypeLegalizer::promoteConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
     ValSeq->push_back(ExtValue);
 }
 
+void TypeLegalizer::softenConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
+    Constant* C) {
+    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
+
+}
+
+/*
 void TypeLegalizer::expandConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
     Constant* C) {
     Type* Ty = C->getType();
@@ -426,19 +454,15 @@ void TypeLegalizer::expandConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
     ValSeq->push_back(ConstantExpr::getTrunc(C, LoTy));
     for (++TI; TI != TE; ++TI) {
         Constant* ShAmt =
-            ConstantInt::get(Ty, DL->getTypeSizeInBits(LoTy), /*isSigned*/false);
+            ConstantInt::get(Ty, DL->getTypeSizeInBits(LoTy), false);
         C = ConstantExpr::getLShr(C, ShAmt);
         LoTy = *TI;
         ValSeq->push_back(ConstantExpr::getTrunc(C, LoTy));
     }
 }
+*/
 
-void TypeLegalizer::softenConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
-    Constant* C) {
-    IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
-
-}
-
+/*
 void TypeLegalizer::scalarizeConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
     Constant* C) {
     for (unsigned i = 0, e = TySeq->size(); i != e; ++i) {
@@ -446,12 +470,10 @@ void TypeLegalizer::scalarizeConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
         ValSeq->push_back(ConstantExpr::getExtractElement(C, Idx));
     }
 }
-
 void TypeLegalizer::elementizeConstant(ValueSeq* ValSeq, TypeSeq* TySeq,
     Constant* C) {
     IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
 }
-
 Value* TypeLegalizer::promoteArgument(Argument* Arg, Type* PromotedTy) {
     IGC_ASSERT_EXIT_MESSAGE(0, "ILLEGAL ARGUMENT IS FOUND TO BE PROMOTED!");
     return nullptr;
@@ -549,6 +571,7 @@ bool TypeLegalizer::legalizeArguments(Function& F) {
 
     return Changed;
 }
+*/
 
 bool TypeLegalizer::preparePHIs(Function& F) {
     bool Changed = false;
@@ -579,7 +602,7 @@ bool TypeLegalizer::preparePHIs(Function& F) {
                 BI = BasicBlock::iterator(Promoted);
                 break;
             }
-#if LEGALIZE_ALL
+/*
             case Expand:
             case Scalarize:
             case Elementize: {
@@ -597,9 +620,8 @@ bool TypeLegalizer::preparePHIs(Function& F) {
                 BI = BasicBlock::iterator(cast<Instruction>(Expanded.front()));
                 break;
             }
-#else
+*/
             default: continue;
-#endif
             }
             Changed = true;
         }
@@ -627,7 +649,7 @@ bool TypeLegalizer::populatePromotedPHI(PHINode* PN) {
 
     return true;
 }
-
+/*
 bool TypeLegalizer::populateExpandedPHI(PHINode* PN) {
     ValueSeq* Expanded = nullptr;
     std::tie(Expanded, std::ignore) = getLegalizedValues(PN);
@@ -653,7 +675,9 @@ bool TypeLegalizer::populateExpandedPHI(PHINode* PN) {
 
     return true;
 }
+*/
 
+/*
 bool TypeLegalizer::populateSoftenedPHI(PHINode* PN) {
     return populatePromotedPHI(PN);
 }
@@ -665,6 +689,7 @@ bool TypeLegalizer::populateScalarizedPHI(PHINode* PN) {
 bool TypeLegalizer::populateElementizedPHI(PHINode* PN) {
     return populateExpandedPHI(PN);
 }
+*/
 
 bool TypeLegalizer::populatePHIs(Function& F) {
     bool Changed = false;
@@ -682,7 +707,7 @@ bool TypeLegalizer::populatePHIs(Function& F) {
             case Promote:
                 Changed |= populatePromotedPHI(PN);
                 break;
-#if LEGALIZE_ALL
+            /*
             case Expand:
                 Changed |= populateExpandedPHI(PN);
                 break;
@@ -695,9 +720,8 @@ bool TypeLegalizer::populatePHIs(Function& F) {
             case Elementize:
                 Changed |= populateElementizedPHI(PN);
                 break;
-#else
+            */
             default: continue;
-#endif
             }
             IllegalInsts.insert(PN);
         }
@@ -731,7 +755,7 @@ bool TypeLegalizer::legalizeInsts(Function& F) {
             case Promote:
                 Changed |= IPromoter->promote(I);
                 break;
-#if LEGALIZE_ALL
+            /*
             case Expand:
                 Changed |= IExpander->expand(I);
                 break;
@@ -744,9 +768,8 @@ bool TypeLegalizer::legalizeInsts(Function& F) {
             case Elementize:
                 Changed |= IElementizer->elementize(I);
                 break;
-#else
+            */
             default: continue;
-#endif
             }
 
             if ((!hasLegalRetType(I) && !isReservedLegal(I)) || I->use_empty())
@@ -757,6 +780,7 @@ bool TypeLegalizer::legalizeInsts(Function& F) {
     return Changed;
 }
 
+/*
 bool TypeLegalizer::legalizeTerminators(Function& F) {
     bool Changed = false;
 
@@ -793,7 +817,8 @@ bool TypeLegalizer::legalizeTerminators(Function& F) {
 
     return Changed;
 }
-
+*/
+/*
 bool TypeLegalizer::promoteRet(ReturnInst* RI) {
     IGC_ASSERT_EXIT_MESSAGE(0, "ILLEGAL RETURN VALUE IS FOUND TO BE PROMOTED!");
     return false;
@@ -818,6 +843,7 @@ bool TypeLegalizer::elementizeRet(ReturnInst* RI) {
     IGC_ASSERT_EXIT_MESSAGE(0, "NOT IMPLEMENTED YET!");
     return false;
 }
+*/
 
 void TypeLegalizer::eraseIllegalInsts() {
     for (auto* I : IllegalInsts) {

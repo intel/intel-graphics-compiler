@@ -39,10 +39,10 @@ namespace IGC {
 
             /// Terminator instructions
             ///
-
+            /*
             LegalizeAction visitReturnInst(ReturnInst& I);
             LegalizeAction visitTerminatorInst(IGCLLVM::TerminatorInst&);
-
+            */
             /// Standard binary operators
             ///
 
