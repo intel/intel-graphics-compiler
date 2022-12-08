@@ -234,28 +234,21 @@ namespace {
     void FatalErrorHandler(void *user_data, const std::string& reason, bool gen_crash_diag)
 #endif
     {
+        const std::string reasonStrWrapper(reason);
         (void)user_data;
-        (void)reason;
+        (void)reasonStrWrapper;
 #if defined( _DEBUG )
 #if defined( _WIN32 )
         OutputDebugStringA("LLVM Error: ");
-    #if LLVM_VERSION_MAJOR >= 14
-        OutputDebugStringA(reason);
-    #else
-        OutputDebugStringA(reason.c_str());
-    #endif
+        OutputDebugStringA(reasonStrWrapper.c_str());
         OutputDebugStringA("\n");
 #endif
         fprintf( stderr, "%s", "LLVM Error: " );
-    #if LLVM_VERSION_MAJOR >= 14
-        fprintf( stderr, "%s", reason);
-    #else
-        fprintf( stderr, "%s", reason.c_str());
-    #endif
+        fprintf( stderr, "%s", reasonStrWrapper.c_str());
         fprintf( stderr, "%s", "\n");
         fflush( stderr );
 
-        if ( reason != "IO failure on output stream." )
+        if ( reasonStrWrapper != "IO failure on output stream." )
         {
             exit(1);
         }
