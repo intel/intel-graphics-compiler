@@ -175,6 +175,26 @@ namespace IGC
         }
     }
 
+    float OpenCLProgramContext::GetSpillThreshold(SIMDMode dispatchSize)
+    {
+        float threshold = 0.0f;
+        if (this->platform.getGRFSize() >= 64)
+        {
+            if (dispatchSize == SIMDMode::SIMD32)
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold)) / 100.0f;
+            else if (dispatchSize == SIMDMode::SIMD16)
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2) / 100.0f;
+        }
+        else
+        {
+            if (dispatchSize == SIMDMode::SIMD16)
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold)) / 100.0f;
+            else if (dispatchSize == SIMDMode::SIMD8)
+                threshold = float(IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold)) / 100.0f;
+        }
+        return threshold;
+    }
+
     void OpenCLProgramContext::InternalOptions::parseOptions(const char* IntOptStr)
     {
         // Assume flags is in the form: <f0>[=<v0>] <f1>[=<v1>] ...
@@ -3348,24 +3368,7 @@ namespace IGC
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
         int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
         bool noRetry = ((subGrpSize > 0 || pOutput->m_scratchSpaceUsedBySpills < 1000) &&
-            ctx->m_instrTypes.mayHaveIndirectOperands) &&
-            !ctx->m_FuncHasExpensiveLoops[pKernel->getLLVMFunction()];
-        float threshold = 0.0f;
-        if (ctx->platform.getGRFSize() >= 64)
-        {
-            if (pShader->m_dispatchSize == SIMDMode::SIMD32)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD32_SpillThreshold)) / 100.0f;
-            else if (pShader->m_dispatchSize == SIMDMode::SIMD16)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold) * 2) / 100.0f;
-        }
-        else
-        {
-            if (pShader->m_dispatchSize == SIMDMode::SIMD16)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD16_SpillThreshold)) / 100.0f;
-            else if (pShader->m_dispatchSize == SIMDMode::SIMD8)
-                threshold = float(IGC_GET_FLAG_VALUE(SIMD8_SpillThreshold)) / 100.0f;
-        }
-        noRetry = noRetry || (pShader->m_spillCost < threshold);
+            ctx->m_instrTypes.mayHaveIndirectOperands);
 
         bool optDisable = false;
         if (ctx->getModuleMetaData()->compOpt.OptDisable)
@@ -3382,10 +3385,10 @@ namespace IGC
 
         if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
             noRetry ||
+            optDisable ||
             ctx->m_retryManager.IsLastTry() ||
             (!ctx->m_retryManager.kernelSkip.empty() &&
-             ctx->m_retryManager.kernelSkip.count(pFunc->getName().str())) ||
-            optDisable)
+             ctx->m_retryManager.kernelSkip.count(pFunc->getName().str())))
         {
             // Save the shader program to the state processor to be handled later
             if (ctx->m_programOutput.m_ShaderProgramList.size() == 0 ||

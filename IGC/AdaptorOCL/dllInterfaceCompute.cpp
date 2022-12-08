@@ -1466,6 +1466,17 @@ bool TranslateBuildSPMD(
                     return false;
                 }
                 oclContext.setModule(pKernelModule);
+
+                for (auto it = pKernelModule->getFunctionList().begin(), ie = pKernelModule->getFunctionList().end(); it != ie;)
+                {
+                    Function* pFunc = &*(it++);
+                    // Only retry compilation on kernels that need it
+                    if (pFunc->getCallingConv() == llvm::CallingConv::SPIR_KERNEL &&
+                        oclContext.m_retryManager.kernelSet.find(pFunc->getName().str()) == oclContext.m_retryManager.kernelSet.end())
+                    {
+                        pFunc->eraseFromParent();
+                    }
+                }
             }
         } while (!kernelFunctions.empty());
     } while (retry);

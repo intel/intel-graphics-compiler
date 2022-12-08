@@ -6095,16 +6095,46 @@ namespace IGC
         m_program->m_loopNestedStallCycle = loopNestedStallCycle;
         m_program->m_loopNestedCycle = loopNestedCycle;
 
-        bool isStackCallProgram =
-          m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
+        bool isStackCallProgram = m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
         bool noRetry = jitInfo->avoidRetry;
 
-        if ((jitInfo->isSpill && noRetry) ||
-            (isStackCallProgram &&
-                !context->HasFuncExpensiveLoop(m_program->entry)))
+        if (jitInfo->isSpill && noRetry)
         {
             context->m_retryManager.Disable();
             context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
+        }
+        else if (isStackCallProgram && !context->HasFuncExpensiveLoop(m_program->entry))
+        {
+            // Get the spill threshold
+            float threshold = 0.0f;
+            if (context->type == ShaderType::OPENCL_SHADER)
+            {
+                auto oclCtx = static_cast<OpenCLProgramContext*>(context);
+                threshold = oclCtx->GetSpillThreshold(m_program->m_dispatchSize);
+            }
+            // Check all functions for spills, if there are any large spills, retry for entire program
+            bool noRetryForStack = true;
+            if (m_program->m_spillCost > threshold)
+            {
+                // First check the kernel
+                noRetryForStack = false;
+            }
+            for (auto& func : stackFuncMap)
+            {
+                vISA::FINALIZER_INFO* f_jitInfo = nullptr;
+                func.second->GetJitInfo(f_jitInfo);
+                float spillCost = float(f_jitInfo->stats.numGRFSpillFillWeighted) / f_jitInfo->stats.numAsmCountUnweighted;
+                if (spillCost > threshold || context->HasFuncExpensiveLoop(func.first))
+                {
+                    // Check each stackcall function
+                    noRetryForStack = false;
+                }
+            }
+            if (noRetryForStack)
+            {
+                context->m_retryManager.Disable();
+                context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
+            }
         }
 
         if (jitInfo->isSpill &&

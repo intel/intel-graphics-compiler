@@ -330,6 +330,7 @@ namespace IGC
         void failOnSpills();
         bool needsDivergentBarrierHandling() const;
         unsigned GetSlmSizePerSubslice();
+        float GetSpillThreshold(SIMDMode dispatchSize);
 
         void clearBeforeRetry() {
             m_programOutput.clearBeforeRetry();
