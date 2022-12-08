@@ -428,8 +428,7 @@ uint64_t ELFWriter::writeSectionData(const uint8_t* data, uint64_t size, uint32_
 
 void ELFWriter::writePadding(uint32_t size)
 {
-    for (uint32_t i = 0; i < size; ++i)
-        m_W.write<uint8_t>(0x0);
+    m_W.OS.write_zeros(size);
 }
 
 void ELFWriter::padToRequiredAlign(uint32_t align)
