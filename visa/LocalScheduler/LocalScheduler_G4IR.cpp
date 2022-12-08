@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Dependencies_G4IR.h"
 #include "LocalScheduler_G4IR.h"
-#include "visa_wa.h"
 #include "../G4_Opcode.h"
 #include "../PointsToAnalysis.h"
 #include "../Timer.h"
+#include "Dependencies_G4IR.h"
+#include "visa_wa.h"
 
 #include <fstream>
 #include <functional>
@@ -200,8 +200,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb) {
 //
 G4_BB_Schedule::G4_BB_Schedule(G4_Kernel *k, Mem_Manager &m, G4_BB *block,
                                const LatencyTable &LT, PointsToAnalysis &p)
-    : mem(m), bb(block), kernel(k), pointsToAnalysis(p)
-{
+    : mem(m), bb(block), kernel(k), pointsToAnalysis(p) {
   // we use local id in the scheduler for determining two instructions' original
   // ordering
   bb->resetLocalIds();
@@ -244,10 +243,14 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel *k, Mem_Manager &m, G4_BB *block,
       if (prevNode && !prevNode->isLabel()) {
         int32_t stallCycle =
             (int32_t)currNode->schedTime - (int32_t)prevNode->schedTime;
-        if (stallCycle > 0 &&
-            stallCycle > int32_t(prevNode->getOccupancy() * HWThreadsPerEU)) {
-          sendStallCycle += (stallCycle + HWThreadsPerEU - 1) / HWThreadsPerEU;
-          sequentialCycle += (stallCycle + HWThreadsPerEU - 1) / HWThreadsPerEU;
+        if (stallCycle > 0 && stallCycle > int32_t(prevNode->getOccupancy())) {
+          auto perThreadStall = stallCycle;
+          // per-thread-stall needs to be adjusted when latency is for
+          // single-thread
+          if (!getBuilder()->useMultiThreadLatency())
+            perThreadStall = (stallCycle + HWThreadsPerEU - 1) / HWThreadsPerEU;
+          sendStallCycle += perThreadStall;
+          sequentialCycle += perThreadStall;
         }
       }
       sequentialCycle += currNode->getOccupancy();
@@ -281,7 +284,7 @@ void Node::dump() {
   std::cerr << "\n";
 }
 
- static bool needBothAcc(IR_Builder *builder, G4_INST *inst, G4_Operand *opnd) {
+static bool needBothAcc(IR_Builder *builder, G4_INST *inst, G4_Operand *opnd) {
   switch (opnd->getType()) {
   case Type_F:
     return inst->getExecSize() == G4_ExecSize(builder->getNativeExecSize() * 2);
@@ -296,7 +299,7 @@ void Node::dump() {
 }
 
 // Compute the range of registers touched by OPND.
-static Mask getMaskForOp(IR_Builder* builder, G4_INST *inst,
+static Mask getMaskForOp(IR_Builder *builder, G4_INST *inst,
                          Gen4_Operand_Number opnd_num, unsigned GRFSize) {
   G4_Operand *opnd = inst->getOperand(opnd_num);
   unsigned short LB, RB;
