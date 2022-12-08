@@ -96,21 +96,38 @@ bool PromoteBools::runOnModule(Module& module)
     return changed;
 }
 
-Value* PromoteBools::createZextIfNeeded(Value* argument, Instruction* insertBefore)
+Value* PromoteBools::convertI1ToI8(Value* value, Instruction* insertBefore)
 {
-    if (!argument->getType()->isIntegerTy(1))
+    if (!value->getType()->isIntegerTy(1))
     {
-        return argument;
+        return value;
     }
 
-    auto trunc = dyn_cast<TruncInst>(argument);
+    auto trunc = dyn_cast<TruncInst>(value);
     if (trunc && trunc->getSrcTy()->isIntegerTy(8))
     {
         return trunc->getOperand(0);
     }
 
     IRBuilder<> builder(insertBefore);
-    return builder.CreateZExt(argument, Type::getInt8Ty(argument->getContext()));
+    return builder.CreateZExt(value, Type::getInt8Ty(value->getContext()));
+}
+
+Value* PromoteBools::convertI8ToI1(Value* value, Instruction* insertBefore)
+{
+    if (!value->getType()->isIntegerTy(8))
+    {
+        return value;
+    }
+
+    auto zext = dyn_cast<ZExtInst>(value);
+    if (zext && zext->getSrcTy()->isIntegerTy(1))
+    {
+        return zext->getOperand(0);
+    }
+
+    IRBuilder<> builder(insertBefore);
+    return builder.CreateTrunc(value, Type::getInt1Ty(value->getContext()));
 }
 
 void PromoteBools::cleanUp(Module& module)
@@ -484,7 +501,7 @@ Function* PromoteBools::promoteFunction(Function* function)
                 }
             }
 
-            auto trunc = new TruncInst(newArg, Type::getInt1Ty(function->getContext()), "", newFunction->getEntryBlock().getFirstNonPHI());
+            auto trunc = convertI8ToI1(newArg, newFunction->getEntryBlock().getFirstNonPHI());
             for (auto& instruction : userInstructions)
             {
                 instruction->replaceUsesOfWith(newArg, trunc);
@@ -499,7 +516,7 @@ Function* PromoteBools::promoteFunction(Function* function)
                 auto terminator = basicBlock.getTerminator();
                 if (auto ret = dyn_cast<ReturnInst>(terminator))
                 {
-                    auto zext = createZextIfNeeded(ret->getReturnValue(), ret);
+                    auto zext = convertI1ToI8(ret->getReturnValue(), ret);
                     IRBuilder<> builder(ret);
                     auto newRet = builder.CreateRet(zext);
                     ret->replaceAllUsesWith(newRet);
@@ -693,7 +710,7 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
     SmallVector<Value*, 8> newCallArguments;
     for (auto& arg : call->args())
     {
-        auto promotedArg = createZextIfNeeded(getOrCreatePromotedValue(arg), call);
+        auto promotedArg = convertI1ToI8(getOrCreatePromotedValue(arg), call);
         newCallArguments.push_back(promotedArg);
     }
 
@@ -761,8 +778,8 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
         return icmp;
     }
 
-    auto promotedOp0 = createZextIfNeeded(getOrCreatePromotedValue(op0), icmp);
-    auto promotedOp1 = createZextIfNeeded(getOrCreatePromotedValue(op1), icmp);
+    auto promotedOp0 = convertI1ToI8(getOrCreatePromotedValue(op0), icmp);
+    auto promotedOp1 = convertI1ToI8(getOrCreatePromotedValue(op1), icmp);
 
     return new ICmpInst(
         icmp,
@@ -849,12 +866,7 @@ llvm::PHINode* PromoteBools::promotePHI(llvm::PHINode* phi)
             newIncomingValue = getOrCreatePromotedValue(newIncomingValue);
             if (newIncomingValue->getType()->isIntegerTy(1))
             {
-                newIncomingValue = new ZExtInst(
-                    newIncomingValue,
-                    Type::getInt8Ty(newIncomingValue->getContext()),
-                    "",
-                    phi->getIncomingBlock(i)->getTerminator()
-                );
+                newIncomingValue = convertI1ToI8(newIncomingValue, phi->getIncomingBlock(i)->getTerminator());
             }
         }
 
