@@ -740,10 +740,18 @@ namespace IGC
         // types want to follow OCL this has to be set, see CodeGenContext
         // constructor.
         bool perKernel;
+        /// the set of OCL kernels that was compiled
+        std::map<std::string, CShaderProgram::UPtr> previousKernels;
         /// the set of OCL kernels that need to recompile
         std::set<std::string> kernelSet;
         /// the set of OCL kernels that need to skip recompilation
         std::set<std::string> kernelSkip;
+        // Check if current shader is better then previous one
+        bool IsBetterThanPrevious(CShaderProgram* pCurrent);
+        // Get the previous compilation of the current kernel
+        CShaderProgram* GetPrevious(CShaderProgram* pCurrent, bool ReleaseUPtr = false);
+        // Collect compilation of the current kernel
+        void Collect(CShaderProgram::UPtr pCurrent);
 
         void ClearSpillParams();
         // save entry for given SIMD mode, to avoid recompile for next retry.

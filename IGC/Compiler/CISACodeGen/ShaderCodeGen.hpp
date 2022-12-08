@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <vector>
 #include "Probe/Assertion.h"
+#include "CShaderProgram.hpp"
 
 namespace llvm
 {
@@ -365,6 +366,7 @@ public:
     uint m_loopNestedCycle= 0;
     unsigned m_spillSize = 0;
     float m_spillCost = 0;          // num weighted spill inst / total inst
+    uint m_asmInstrCount = 0;
 
     std::vector<llvm::Value*> m_argListCache;
 
@@ -739,57 +741,6 @@ protected:
     bool m_isIntelSymbolTableVoidProgram = false;
     // Shader has LSC store messages with non-default L1 cache control
     bool m_HasLscStoresWithNonDefaultL1CacheControls = false;
-};
-
-/// This class contains the information for the different SIMD version
-/// of a kernel. Each kernel in the module is associated to one CShaderProgram
-class CShaderProgram
-{
-public:
-    typedef llvm::MapVector<llvm::Function*, CShaderProgram*> KernelShaderMap;
-    CShaderProgram(CodeGenContext* ctx, llvm::Function* kernel);
-    ~CShaderProgram();
-    CShader* GetOrCreateShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
-    CShader* GetShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
-    void DeleteShader(SIMDMode simd, ShaderDispatchMode mode = ShaderDispatchMode::NOT_APPLICABLE);
-    CodeGenContext* GetContext() { return m_context; }
-
-    llvm::Function* getLLVMFunction() const { return m_kernel; }
-    ShaderStats* m_shaderStats;
-
-    // invoked to clear Func ptr when the current module is deleted (so is func within it).
-    void clearBeforeRetry() {
-        m_kernel = nullptr;
-        for (auto S : m_SIMDshaders) {
-            if (S != nullptr) {
-                S->entry = nullptr;
-            }
-        }
-    }
-
-    inline bool hasShaderOutput(CShader* shader)
-    {
-        return (shader && shader->ProgramOutput()->m_programSize > 0);
-    }
-
-    void ClearShaderPtr(SIMDMode simd);
-
-protected:
-    CShader*& GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode);
-    CShader* CreateNewShader(SIMDMode simd);
-
-    inline void freeShaderOutput(CShader* shader)
-    {
-        if (hasShaderOutput(shader))
-        {
-            IGC::aligned_free(shader->ProgramOutput()->m_programBin);
-            shader->ProgramOutput()->m_programSize = 0;
-        }
-    }
-
-    CodeGenContext* m_context;
-    llvm::Function* m_kernel;
-    std::array<CShader*, 8> m_SIMDshaders;
 };
 
 struct SInstContext

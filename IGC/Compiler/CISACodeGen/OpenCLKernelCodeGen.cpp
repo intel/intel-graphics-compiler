@@ -3352,10 +3352,17 @@ namespace IGC
         return pShader && (pShader->ProgramOutput()->m_programSize > 0);
     }
 
-    void GatherDataForDriver(
+    enum class RetryType
+    {
+        NO_Retry,
+        NO_Retry_Pick_Prv,
+        YES_Retry
+    };
+
+    RetryType NeedsRetry(
         OpenCLProgramContext* ctx,
         COpenCLKernel* pShader,
-        CShaderProgram* pKernel,
+        CShaderProgram::UPtr& pKernel,
         Function* pFunc,
         MetaDataUtils* pMdUtils,
         SIMDMode simdMode)
@@ -3368,7 +3375,8 @@ namespace IGC
         FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
         int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMD_size();
         bool noRetry = ((subGrpSize > 0 || pOutput->m_scratchSpaceUsedBySpills < 1000) &&
-            ctx->m_instrTypes.mayHaveIndirectOperands);
+            ctx->m_instrTypes.mayHaveIndirectOperands) &&
+            !ctx->m_FuncHasExpensiveLoops[pFunc];
 
         bool optDisable = false;
         if (ctx->getModuleMetaData()->compOpt.OptDisable)
@@ -3383,26 +3391,83 @@ namespace IGC
             noRetry = false;
         }
 
-        if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
+        bool isWorstThanPrv = false;
+        // Look for previous generated shaders
+        // ignoring case for multi-simd compilation
+        if (!((ctx->m_DriverInfo.sendMultipleSIMDModes() || ctx->m_enableSimdVariantCompilation)
+            && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) &&
+            pKernel.get() != nullptr)
+        {
+            isWorstThanPrv =
+                !ctx->m_retryManager.IsBetterThanPrevious(pKernel.get());
+        }
+
+        if (isWorstThanPrv)
+        {
+            return RetryType::NO_Retry_Pick_Prv;
+        }
+        else if (
+            pOutput->m_scratchSpaceUsedBySpills == 0 ||
             noRetry ||
             optDisable ||
             ctx->m_retryManager.IsLastTry() ||
             (!ctx->m_retryManager.kernelSkip.empty() &&
              ctx->m_retryManager.kernelSkip.count(pFunc->getName().str())))
         {
-            // Save the shader program to the state processor to be handled later
-            if (ctx->m_programOutput.m_ShaderProgramList.size() == 0 ||
-                ctx->m_programOutput.m_ShaderProgramList.back() != pKernel)
-            {
-                ctx->m_programOutput.m_ShaderProgramList.push_back(pKernel);
-            }
-            COMPILER_SHADER_STATS_PRINT(pKernel->m_shaderStats, ShaderType::OPENCL_SHADER, ctx->hash, pFunc->getName().str());
-            COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, pKernel->m_shaderStats, ShaderType::OPENCL_SHADER);
-            COMPILER_SHADER_STATS_DEL(pKernel->m_shaderStats);
+            return RetryType::NO_Retry;
         }
         else
         {
+            return RetryType::YES_Retry;
+        }
+    }
+
+    void GatherDataForDriver(
+        OpenCLProgramContext* ctx,
+        COpenCLKernel* pShader,
+        CShaderProgram::UPtr pKernel,
+        Function* pFunc,
+        MetaDataUtils* pMdUtils,
+        SIMDMode simdMode)
+    {
+        CShaderProgram::UPtr pSelectedKernel;
+        switch (NeedsRetry(ctx, pShader, pKernel, pFunc, pMdUtils, simdMode))
+        {
+        case RetryType::NO_Retry_Pick_Prv:
+        {
+            // In case retry compilation give worst generated kernel
+            // consider using the previous one do not retry on this
+            // kernel again
+            pSelectedKernel =
+                CShaderProgram::UPtr(ctx->m_retryManager.GetPrevious(pKernel.get(), true));
+        }
+        case RetryType::NO_Retry:
+        {
+            // Save the shader program to the state processor to be handled later
+            if (pKernel)
+            {
+                pSelectedKernel = std::move(pKernel);
+            }
+        }
+        // Common part for NO_Retry:
+        {
+            if (pSelectedKernel)
+            {
+                COMPILER_SHADER_STATS_PRINT(pSelectedKernel->m_shaderStats, ShaderType::OPENCL_SHADER, ctx->hash, pFunc->getName().str());
+                COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, pSelectedKernel->m_shaderStats, ShaderType::OPENCL_SHADER);
+                COMPILER_SHADER_STATS_DEL(pSelectedKernel->m_shaderStats);
+                ctx->m_programOutput.m_ShaderProgramList.push_back(std::move(pSelectedKernel));
+            }
+            break;
+        }
+        case RetryType::YES_Retry:
+        {
+            // Collect the current compilation for the next compare
+            ctx->m_retryManager.Collect(std::move(pKernel));
             ctx->m_retryManager.kernelSet.insert(pShader->m_kernelInfo.m_kernelName);
+
+            break;
+        }
         }
     }
 
@@ -3585,7 +3650,7 @@ namespace IGC
         for (const auto& k : shaders)
         {
             Function* pFunc = k.first;
-            CShaderProgram* pKernel = static_cast<CShaderProgram*>(k.second);
+            CShaderProgram::UPtr pKernel = CShaderProgram::UPtr(static_cast<CShaderProgram*>(k.second));
             COpenCLKernel* simd8Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
             COpenCLKernel* simd16Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
             COpenCLKernel* simd32Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
@@ -3595,36 +3660,22 @@ namespace IGC
             {
                 //Gather the kernel binary for each compiled kernel
                 if (COpenCLKernel::IsValidShader(simd32Shader))
-                    GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD32);
+                    GatherDataForDriver(ctx, simd32Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD32);
                 if (COpenCLKernel::IsValidShader(simd16Shader))
-                    GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD16);
+                    GatherDataForDriver(ctx, simd16Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD16);
                 if (COpenCLKernel::IsValidShader(simd8Shader))
-                    GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD8);
+                    GatherDataForDriver(ctx, simd8Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD8);
             }
             else
             {
                 //Gather the kernel binary only for 1 SIMD mode of the kernel
                 if (COpenCLKernel::IsValidShader(simd32Shader))
-                    GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD32);
+                    GatherDataForDriver(ctx, simd32Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD32);
                 else if (COpenCLKernel::IsValidShader(simd16Shader))
-                    GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD16);
+                    GatherDataForDriver(ctx, simd16Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD16);
                 else if (COpenCLKernel::IsValidShader(simd8Shader))
-                    GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils, SIMDMode::SIMD8);
+                    GatherDataForDriver(ctx, simd8Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD8);
             }
-
-            if (ctx->m_programOutput.m_ShaderProgramList.empty() ||
-                (ctx->m_programOutput.m_ShaderProgramList.back() != pKernel))
-            {
-                // This CShaderProgram needs rebuilding in retry run.
-                toBeDeleted.push_back(pKernel);
-            }
-        }
-
-        for (int i=0, sz = (int)toBeDeleted.size(); i < sz; ++i)
-        {
-            CShaderProgram* SP = toBeDeleted[i];
-            shaders.erase(SP->getLLVMFunction());
-            delete SP;
         }
 
         // The skip set to avoid retry is not needed. Clear it and collect a new set

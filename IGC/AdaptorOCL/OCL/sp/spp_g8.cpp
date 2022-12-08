@@ -129,16 +129,12 @@ CGen8OpenCLProgram::CGen8OpenCLProgram(PLATFORM platform, const IGC::OpenCLProgr
 
 CGen8OpenCLProgram::~CGen8OpenCLProgram()
 {
-    for (auto p : m_ShaderProgramList)
-    {
-        delete p;
-    }
     m_ShaderProgramList.clear();
 }
 
 void CGen8OpenCLProgram::clearBeforeRetry()
 {
-    for (auto P : m_ShaderProgramList) {
+    for (auto& P : m_ShaderProgramList) {
         P->clearBeforeRetry();
     }
 }
@@ -489,7 +485,7 @@ bool CGen8OpenCLProgram::GetZEBinary(
     bool isDebugInfo = true;  // If a kernel does not contain debug info then this flag will be changed to false.
     IGC::CodeGenContext* ctx = nullptr;
 
-    for (auto pKernel : m_ShaderProgramList)
+    for (auto& pKernel : m_ShaderProgramList)
     {
         IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
         IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
@@ -771,7 +767,7 @@ bool CGen8OpenCLProgram::GetZEBinary(
 
 void CGen8OpenCLProgram::CreateKernelBinaries()
 {
-    for (auto pKernel : m_ShaderProgramList)
+    for (auto& pKernel : m_ShaderProgramList)
     {
         IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
         IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));

@@ -180,6 +180,81 @@ namespace IGC
         numInstructions = 0;
     }
 
+    void RetryManager::Collect(CShaderProgram::UPtr pCurrent)
+    {
+        // Get previous kernel name
+        std::string funcName = pCurrent->getLLVMFunction()->getName().str();
+        // Delete/unattach from memory previous version of this kernel
+        // and attach new version
+        previousKernels[funcName] = std::move(pCurrent);
+    }
+
+    CShaderProgram* RetryManager::GetPrevious(
+        CShaderProgram* pCurrent,
+        bool ReleaseUPtr)
+    {
+        std::string funcName = pCurrent->getLLVMFunction()->getName().str();
+        if (previousKernels.find(funcName) !=
+            previousKernels.end())
+        {
+            if (ReleaseUPtr)
+            {
+                auto ptr = previousKernels[funcName].release();
+                previousKernels.erase(funcName);
+                return ptr;
+            }
+            else
+            {
+                return previousKernels[funcName].get();
+            }
+        }
+        return nullptr;
+    }
+
+    bool RetryManager::IsBetterThanPrevious(CShaderProgram* pCurrent)
+    {
+        bool isBetter = false;
+        auto pPrevious = GetPrevious(pCurrent);
+        if (pPrevious)
+        {
+            auto simdToAnalysis = { SIMDMode::SIMD32, SIMDMode::SIMD16, SIMDMode::SIMD8 };
+
+            CShader* previousShader = nullptr;
+            CShader* currentShader = nullptr;
+
+            // Get shaders
+            for (auto simd : simdToAnalysis)
+            {
+                if (!previousShader &&
+                    (pPrevious->GetShader(simd)->ProgramOutput()->m_programSize > 0))
+                {
+                    previousShader = pPrevious->GetShader(simd);
+                }
+                if (!currentShader &&
+                    (pCurrent->GetShader(simd)->ProgramOutput()->m_programSize > 0))
+                {
+                    currentShader = pCurrent->GetShader(simd);
+                }
+            }
+
+            // Check if current shader has more than 200% of previous spill size
+            bool spillSizeBigger =
+                currentShader->m_spillSize > previousShader->m_spillSize << 1;
+
+            if (spillSizeBigger)
+            {
+                // The previous shader was better, ignore any future retry compilation
+                isBetter = false;
+            }
+        }
+        else
+        {
+            // There wasn't any previous compilation of this kernel, so it's better
+            isBetter = true;
+        }
+        return isBetter;
+    }
+
     // save entry for given SIMD mode, to avoid recompile for next retry.
     void RetryManager::SaveSIMDEntry(SIMDMode simdMode, CShader* shader)
     {

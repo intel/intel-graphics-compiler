@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "sp_g8.h"
 #include "zebin_builder.hpp"
 #include "CommonMacros.h"
+#include "Compiler/CISACodeGen/CShaderProgram.hpp"
 
 namespace llvm
 {
@@ -115,7 +116,7 @@ public:
         const char* buildOptions, uint32_t buildOptionsSize);
 
     // Used to track the kernel info from CodeGen
-    std::vector<IGC::CShaderProgram*> m_ShaderProgramList;
+    std::vector<IGC::CShaderProgram::UPtr> m_ShaderProgramList;
 
     // invoked when the current module is deleted to avoid dangling Function ptr.
     void clearBeforeRetry();
