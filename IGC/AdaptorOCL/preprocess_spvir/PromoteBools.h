@@ -68,7 +68,15 @@ namespace IGC
         llvm::DenseSet<llvm::Value*> doNotRemove;
         std::queue<llvm::Value*> promotionQueue;
         bool wasPromoted(llvm::Value* value);
-        bool anyOperandWasPromoted(llvm::User* user);
+
+        template <typename Range>
+        bool wasPromotedAnyOf(const Range& range)
+        {
+            return std::any_of(std::begin(range), std::end(range), [this](const auto& item) {
+                return wasPromoted(item);
+            });
+        }
+
         llvm::Value* getOrCreatePromotedValue(llvm::Value* value);
         llvm::Function* promoteFunction(llvm::Function* function);
         llvm::GlobalVariable* promoteGlobalVariable(llvm::GlobalVariable* globalVariable);

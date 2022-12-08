@@ -308,13 +308,6 @@ bool PromoteBools::wasPromoted(llvm::Value* value)
     return promotedValuesCache.count(value);
 }
 
-bool PromoteBools::anyOperandWasPromoted(llvm::User* user)
-{
-    return std::any_of(user->op_begin(), user->op_end(), [this](const auto& op) {
-        return wasPromoted(op);
-    });
-}
-
 Value* PromoteBools::getOrCreatePromotedValue(Value* value)
 {
     if (wasPromoted(value))
@@ -624,7 +617,7 @@ Constant* PromoteBools::promoteConstant(Constant* constant)
 
 AddrSpaceCastInst* PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst* addrSpaceCast)
 {
-    if (!addrSpaceCast || (!anyOperandWasPromoted(addrSpaceCast) && !typeNeedsPromotion(addrSpaceCast->getDestTy())))
+    if (!addrSpaceCast || (!wasPromotedAnyOf(addrSpaceCast->operands()) && !typeNeedsPromotion(addrSpaceCast->getDestTy())))
     {
         return addrSpaceCast;
     }
@@ -657,7 +650,7 @@ AllocaInst* PromoteBools::promoteAlloca(AllocaInst* alloca)
 
 Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
 {
-    if (!bitcast || (!anyOperandWasPromoted(bitcast) && !typeNeedsPromotion(bitcast->getDestTy())))
+    if (!bitcast || (!wasPromotedAnyOf(bitcast->operands()) && !typeNeedsPromotion(bitcast->getDestTy())))
     {
         return bitcast;
     }
@@ -721,7 +714,7 @@ ExtractValueInst* PromoteBools::promoteExtractValue(ExtractValueInst* extractVal
     }
 
     auto aggregateOp = extractValue->getAggregateOperand();
-    if (!anyOperandWasPromoted(extractValue) && !typeNeedsPromotion(aggregateOp->getType()))
+    if (!wasPromotedAnyOf(extractValue->operands()) && !typeNeedsPromotion(aggregateOp->getType()))
     {
         return extractValue;
     }
@@ -736,7 +729,7 @@ ExtractValueInst* PromoteBools::promoteExtractValue(ExtractValueInst* extractVal
 
 GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElementPtr)
 {
-    if (!getElementPtr || (!anyOperandWasPromoted(getElementPtr) && !typeNeedsPromotion(getElementPtr->getResultElementType())))
+    if (!getElementPtr || (!wasPromotedAnyOf(getElementPtr->operands()) && !typeNeedsPromotion(getElementPtr->getResultElementType())))
     {
         return getElementPtr;
     }
@@ -763,7 +756,7 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
     auto op0 = icmp->getOperand(0);
     auto op1 = icmp->getOperand(1);
 
-    if (!anyOperandWasPromoted(icmp) && !typeNeedsPromotion(op0->getType()))
+    if (!wasPromotedAnyOf(icmp->operands()) && !typeNeedsPromotion(op0->getType()))
     {
         return icmp;
     }
@@ -789,7 +782,7 @@ InsertValueInst* PromoteBools::promoteInsertValue(InsertValueInst* insertValue)
 
     auto aggregateOp = insertValue->getAggregateOperand();
     auto insertedValueOp = insertValue->getInsertedValueOperand();
-    if (!anyOperandWasPromoted(insertValue) && !typeNeedsPromotion(aggregateOp->getType()) && !typeNeedsPromotion(insertedValueOp->getType()))
+    if (!wasPromotedAnyOf(insertValue->operands()) && !typeNeedsPromotion(aggregateOp->getType()) && !typeNeedsPromotion(insertedValueOp->getType()))
     {
         return insertValue;
     }
@@ -815,7 +808,7 @@ LoadInst* PromoteBools::promoteLoad(LoadInst* load)
 
     auto src = load->getOperand(0);
 
-    if (!anyOperandWasPromoted(load) && !typeNeedsPromotion(src->getType()))
+    if (!wasPromotedAnyOf(load->operands()) && !typeNeedsPromotion(src->getType()))
     {
         return load;
     }
@@ -834,7 +827,7 @@ LoadInst* PromoteBools::promoteLoad(LoadInst* load)
 
 llvm::PHINode* PromoteBools::promotePHI(llvm::PHINode* phi)
 {
-    if (!phi || visitedPHINodes.count(phi) || (!anyOperandWasPromoted(phi) && !typeNeedsPromotion(phi->getType())))
+    if (!phi || visitedPHINodes.count(phi) || (!wasPromotedAnyOf(phi->operands()) && !typeNeedsPromotion(phi->getType())))
     {
         return phi;
     }
@@ -884,7 +877,7 @@ StoreInst* PromoteBools::promoteStore(StoreInst* store)
     auto src = store->getOperand(0);
     auto dst = store->getOperand(1);
 
-    if (!anyOperandWasPromoted(store) && !typeNeedsPromotion(src->getType()) && !typeNeedsPromotion(dst->getType()))
+    if (!wasPromotedAnyOf(store->operands()) && !typeNeedsPromotion(src->getType()) && !typeNeedsPromotion(dst->getType()))
     {
         return store;
     }
