@@ -661,8 +661,12 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
 
   // vldst.
   if (EmitVLoadStore) {
-    auto AddLowerLoadStore = [](const PassManagerBuilder &Builder,
+    auto AddLowerLoadStore = [this](const PassManagerBuilder &Builder,
                                 PassManagerBase &PM) {
+      GenXPassConfig *PassConfig = createGenXPassConfig(*this, PM);
+      vc::addPass(PM, PassConfig);
+      const GenXBackendConfig &BackendConfig = PassConfig->getBackendConfig();
+
       if (Builder.OptLevel > 0) {
         // Inline
         PM.add(createSROAPass());
@@ -681,7 +685,9 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
         PM.add(createLoopRotatePass());
         PM.add(createLICMPass());
         PM.add(createInstructionCombiningPass());
-        PM.add(createIndVarSimplifyPass());
+        if (!(BackendConfig.disableIndvarsOpt())) {
+          PM.add(createIndVarSimplifyPass());
+        }
         PM.add(createLoopIdiomPass());
         PM.add(createLoopDeletionPass());
         PM.add(createSimpleLoopUnrollPass());

@@ -108,6 +108,7 @@ struct CompileOptions {
   bool ForceLiveRangesLocalizationForAccUsage = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
   bool IsLargeGRFMode = false;
+  bool ForceDisableIndvarsOpt = false;
 
   DisableLRCoalescingControl DisableLRCoalescingMode =
       DisableLRCoalescingControl::Default;

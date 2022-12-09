@@ -109,6 +109,9 @@ struct GenXBackendOptions {
   // value in two-address operand)
   bool DisableNonOverlappingRegionOpt = false;
 
+  // Disable induction variable simplification
+  bool DisableIndvarsOpt = false;
+
   // use new Prolog/Epilog Insertion pass vs old CisaBuilder machinery
   bool UseNewStackBuilder = true;
 
@@ -308,6 +311,8 @@ public:
   bool disableNonOverlappingRegionOpt() const {
     return Options.DisableNonOverlappingRegionOpt;
   }
+
+  bool disableIndvarsOpt() const { return Options.DisableIndvarsOpt; }
 
   bool useNewStackBuilder() const { return Options.UseNewStackBuilder; }
 
