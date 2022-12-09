@@ -12707,20 +12707,6 @@ void Optimizer::applyNoMaskWA() {
 // running the inst always.)
 //
 void Optimizer::applyFusedCallWA() {
-  auto getNextJoinLabel = [&](BB_LIST_ITER ITER) -> G4_Label * {
-    for (auto II = ITER, IE = fg.end(); II != IE; ++II) {
-      G4_BB *B = (*II);
-      if (G4_INST *Inst = B->getFirstInst()) {
-        if (Inst->opcode() == G4_join || Inst->opcode() == G4_endif ||
-            Inst->opcode() == G4_while) {
-          G4_INST *labelInst = B->front();
-          return labelInst->getLabel();
-        }
-      }
-    }
-    return nullptr;
-  };
-
   auto updateSubroutineTableIfNeeded = [&](G4_BB *aLeadBB, G4_BB *aB0,
                                            G4_BB *aB1, G4_BB *aS0, G4_BB *aS1,
                                            G4_BB *aEndB_or_null) {
@@ -12827,10 +12813,11 @@ void Optimizer::applyFusedCallWA() {
     bigB1->push_back(gotoEnd);
 
     // Need to insert a join in nextBB
+    // This join will never jump, thus set its JIP to nullptr.
     G4_INST *tjoin = nextBB->getFirstInst();
     if (tjoin == nullptr || tjoin->opcode() != G4_join) {
       G4_INST *finalJoin = builder.createCFInst(nullptr, G4_join, simdsz,
-                                                getNextJoinLabel(nextBI),
+                                                nullptr,
                                                 nullptr, InstOpt_NoOpt, false);
       if (tjoin == nullptr) {
         nextBB->insertBefore(nextBB->end(), finalJoin);
@@ -12996,6 +12983,12 @@ void Optimizer::applyFusedCallWA() {
       kernel.m_indirectCallWAInfo.emplace(
           BB, IndirectCallWAInfo(bigB0, smallB0, nullptr, nullptr, nullptr,
                                  nullptr, nullptr, callI, nCallI));
+      // BB, bigB0, smallB0 should not be deleted and its instructions shall
+      // stay inside. Set BB type to G4_BB_KEEP_TYPE so the other optim passes
+      // will not delete them.
+      BB->setBBType(G4_BB_KEEP_TYPE);
+      bigB0->setBBType(G4_BB_KEEP_TYPE);
+      smallB0->setBBType(G4_BB_KEEP_TYPE);
     } else {
       // relative target:  need to patch offset after SWSB in
       // finishFusedCallWA()

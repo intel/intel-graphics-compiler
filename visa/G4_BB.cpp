@@ -1296,6 +1296,8 @@ std::string G4_BB::getBBTypeStr() const {
     addTyString("FCALL");
   if ((bbTy & G4_BB_NM_WA_TYPE) != 0)
     addTyString("NoMaskWA");
+  if ((bbTy & G4_BB_KEEP_TYPE) != 0)
+    addTyString("KEEP");
   return ss.str();
 }
 
