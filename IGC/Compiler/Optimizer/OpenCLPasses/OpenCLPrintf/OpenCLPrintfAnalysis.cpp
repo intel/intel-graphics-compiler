@@ -14,7 +14,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/StringRef.h>
+#include <llvm/Demangle/Demangle.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <set>
 
 using namespace llvm;
 using namespace IGC;
@@ -38,6 +40,19 @@ OpenCLPrintfAnalysis::OpenCLPrintfAnalysis() : ModulePass(ID)
 
 //TODO: move to a common place
 const StringRef OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME = "printf";
+const StringRef OpenCLPrintfAnalysis::ONEAPI_PRINTF_FUNCTION_NAME =
+    "int cl::sycl::ext::oneapi::experimental::printf";
+
+bool OpenCLPrintfAnalysis::isOpenCLPrintf(const llvm::Function *F)
+{
+    return F->getName() == OPENCL_PRINTF_FUNCTION_NAME;
+}
+
+bool OpenCLPrintfAnalysis::isOneAPIPrintf(const llvm::Function *F)
+{
+    std::string demangledName = llvm::demangle(F->getName().str());
+    return demangledName.find(ONEAPI_PRINTF_FUNCTION_NAME.data()) == 0;
+}
 
 bool OpenCLPrintfAnalysis::runOnModule(Module& M)
 {
@@ -88,29 +103,67 @@ void OpenCLPrintfAnalysis::addPrintfBufferArgs(Function& F)
     ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
 }
 
-bool OpenCLPrintfAnalysis::isTopLevelUserPrintf(llvm::Value* V)
+bool isPrintfOnlyStringConstantImpl(const llvm::Value *v, std::set<const llvm::User *>& visited)
 {
     // Recursively check the users of the value until reaching the top level
-    // user. Note that printf has no users.
+    // user or a call.
 
-    // Base case: return true when the current value has no user and is a call
-    // to printf. Otherwise return false.
-    if (V->user_empty())
+    // Base case: Return false when use list is empty.
+    if (v->use_empty())
     {
-        if (llvm::CallInst *call = llvm::dyn_cast<llvm::CallInst>(V))
-        {
-            return call->getCalledFunction()->getName() ==
-                OpenCLPrintfAnalysis::OPENCL_PRINTF_FUNCTION_NAME;
-        }
         return false;
     }
 
-    // Check users recursively.
-    for (auto user : V->users()) {
-        if (!isTopLevelUserPrintf(user))
+    // Check users recursively with a list of permitted in-between uses. Here we
+    // follow OpenCLPrintfResolution::argIsString() to check if they are one of
+    // CastInst, GEP with all-zero indices, SelectInst, and PHINode.
+    for (auto user : v->users())
+    {
+        // Skip if the user is visited.
+        if (visited.count(user))
+            continue;
+        visited.insert(user);
+
+        bool res = false;
+        if (const llvm::CallInst *call = llvm::dyn_cast<llvm::CallInst>(user))
+        {
+            // Stop when reaching a call and check if it is an opencl/oneapi
+            // printf call.
+            const Function *target = call->getCalledFunction();
+            res = OpenCLPrintfAnalysis::isOpenCLPrintf(target) ||
+                  OpenCLPrintfAnalysis::isOneAPIPrintf(target);
+        }
+        else if (llvm::dyn_cast<llvm::CastInst>(user) ||
+                 llvm::dyn_cast<llvm::SelectInst>(user) ||
+                 llvm::dyn_cast<llvm::PHINode>(user))
+        {
+            res = isPrintfOnlyStringConstantImpl(user, visited);
+        }
+        else if (const llvm::GetElementPtrInst *gep = llvm::dyn_cast<llvm::GetElementPtrInst>(user))
+        {
+            if (gep->hasAllZeroIndices())
+                res = isPrintfOnlyStringConstantImpl(user, visited);
+        }
+
+        if (!res)
             return false;
     }
 
     // Return true as every top level user is a printf call.
     return true;
+}
+
+// Check paths from a string literal to printf calls and return true if every
+// path lead to a printf call.
+bool OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(const llvm::GlobalVariable *GV)
+{
+    const llvm::Constant *initializer = GV->getInitializer();
+    if (!initializer)
+        return false;
+    const llvm::ConstantDataSequential* cds = llvm::dyn_cast<llvm::ConstantDataSequential>(initializer);
+    if (!cds || !cds->isCString() || !cds->isString())
+        return false;
+
+    std::set<const llvm::User *> visited;
+    return isPrintfOnlyStringConstantImpl(GV, visited);
 }

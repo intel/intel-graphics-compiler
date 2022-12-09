@@ -50,10 +50,14 @@ namespace IGC
         void visitCallInst(llvm::CallInst& callInst);
 
         static const llvm::StringRef OPENCL_PRINTF_FUNCTION_NAME;
+        static const llvm::StringRef ONEAPI_PRINTF_FUNCTION_NAME;
+        static bool isOpenCLPrintf(const llvm::Function *F);
+        static bool isOneAPIPrintf(const llvm::Function *F);
 
-        // Return true if every top level user is a printf call. Note that the
-        // function is expected to work only before printf is expanded.
-        static bool isTopLevelUserPrintf(llvm::Value* V);
+        // Return true if every top level user of a string literal is a printf
+        // call. Note that the function is expected to work only before printf
+        // expansion.
+        static bool isPrintfOnlyStringConstant(const llvm::GlobalVariable* GV);
 
     private:
 

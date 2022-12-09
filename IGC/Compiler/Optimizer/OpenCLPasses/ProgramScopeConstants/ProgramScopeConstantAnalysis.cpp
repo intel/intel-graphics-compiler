@@ -163,9 +163,9 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
             // When ZeBin is enabled, constant variables that are string literals
             // used only by printf will be stored in the second const buffer.
             ConstantDataSequential* cds = dyn_cast<ConstantDataSequential>(initializer);
-            bool isPrintfOnlyStringConst = cds && (cds->isCString() || cds->isString()) &&
-                OpenCLPrintfAnalysis::isTopLevelUserPrintf(globalVar);
-            if (Ctx->enableZEBinary() && isPrintfOnlyStringConst)
+            bool isPrintfStringConst = cds && (cds->isCString() || cds->isString()) &&
+                OpenCLPrintfAnalysis::isPrintfOnlyStringConstant(globalVar);
+            if (Ctx->enableZEBinary() && isPrintfStringConst)
             {
                 m_pModuleMd->stringConstants.insert(globalVar);
                 inlineProgramScopeBuffer = &m_pModuleMd->inlineConstantBuffers[1].Buffer;
