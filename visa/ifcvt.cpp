@@ -451,6 +451,13 @@ void IfConverter::analyze(std::vector<IfConvertible> &list) {
       continue;
     }
 
+    // Conservatively skip if BB is set with G4_BB_KEEP_TYPE
+    if ((t && (t->getBBType() & G4_BB_KEEP_TYPE)) ||
+      (s0 && (s0->getBBType() & G4_BB_KEEP_TYPE)) ||
+      (s1 && (s1->getBBType() & G4_BB_KEEP_TYPE))) {
+      continue;
+    }
+
     G4_Predicate *pred = ifInst->getPredicate();
 
     unsigned n0 = getPredictableInsts(s0, ifInst);

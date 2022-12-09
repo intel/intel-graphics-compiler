@@ -32,7 +32,11 @@ enum G4_BB_TYPE {
   G4_BB_INIT_TYPE = 0x04,
   G4_BB_EXIT_TYPE = 0x08,
   G4_BB_NM_WA_TYPE = 0x10, // For NoMaskWA
-  G4_BB_FCALL_TYPE = 0x20  // For NoMaskWA
+  G4_BB_FCALL_TYPE = 0x20, // For NoMaskWA
+
+  // Keep BB without deleting. Its instructions stay and are not moved out.
+  // Moving instructions into BB are okay.
+  G4_BB_KEEP_TYPE = 0x40
 };
 
 class FuncInfo;
