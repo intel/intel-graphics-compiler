@@ -241,16 +241,6 @@ static void setDefaultRoundDenorm(IR_Builder &builder,
   }
 }
 
-static void setFlagWithImm(IR_Builder &builder, G4_Declare *flag,
-                           bool isSetFlag, uint32_t imm) {
-  if (isSetFlag) {
-    G4_Type flagTy = (flag->getNumElems() > 1 ? Type_UD : Type_UW);
-    G4_DstRegRegion *flagDst = builder.createDstRegRegion(flag, 1);
-    builder.createMov(g4::SIMD1, flagDst, builder.createImm(imm, flagTy),
-                      InstOpt_WriteEnable, true);
-  }
-}
-
 static void initEOFlagIfNeeded(IR_Builder &builder, G4_Declare *EOFlag,
                                bool isSetFlag) {
   if (isSetFlag) {
@@ -479,24 +469,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
   // Temp variable of CR0 register for rounding restore only
   G4_Declare *tmpCR0ForRoundRestore = createTempVarWithNoSpill(1, Type_UD, Any);
 
-  // Use the following to restore cr0 when generating goto/join
-  //         flagRestoreCR0 = 1
-  //         (EO) goto (8|M0) gotoUIP   // use !EO for SKL and prior platforms.
-  //             madm ...
-  //             madm ...
-  //             ...
-  //            (W) mov (1|M0) cr0 tmpCR0ForRoundRestore
-  //            madm ...
-  //            (W) mov (1|M0) cr0 tmpCR0ForRoundDenormRestore
-  //            flagRestoreCR0 = 0;
-  //  gotoUIP:
-  //          (W&flagRestoreCR0) mov  (1|M0)  cr0 tmpCR0ForRoundDenormRestore
-  //
-  // (if-endif can uses the same predicated restore, but choose not for now)
-  //
-  G4_Declare *flagRestoreCR0 = createTempFlag(1);
-  const bool mayUseFlagRestoreCR0 = (!useSCF(*this) && generateIf);
-
   // each madm only handles 4 channel double data
   VISA_EMask_Ctrl currEMask = emask;
   uint16_t splitInstGRFSize =
@@ -617,8 +589,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
 
     setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, doFastDiv,
                           tmpCR0ForRoundDenormRestore, tmpCR0ForRoundRestore);
-    setFlagWithImm(*this, flagRestoreCR0,
-                   (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 1);
 
     if (needsSrc0Move) {
       if (opcode == ISA_INV) {
@@ -757,13 +727,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
       t8SrcOpnd0x2->setAccRegSel(ACC2);
       inst = createMadm(predicateFlagReg_m5, exsize, t8DstOpnd2, t12SrcOpnd0x0,
                         t6SrcOpnd2, t8SrcOpnd0x2, madmInstOpt);
-
-      // Restore SP/DP denorm in CR0.0 for Xe+
-      if (getPlatform() >= GENX_TGLLP) {
-        restoreCR0_0(*this, !hasDefaultRoundDenorm, tmpCR0ForRoundDenormRestore);
-        setFlagWithImm(*this, flagRestoreCR0,
-                       (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
-      }
     } else {
       G4_Predicate *predicateFlagReg_m1 = NULL;
       G4_Predicate *predicateFlagReg_m2 = NULL;
@@ -886,49 +849,22 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
       t12SrcOpnd1->setAccRegSel(ACC2);
       inst = createMadm(predicateFlagReg_m10, exsize, t8DstOpnd2, t9SrcOpnd1x1,
                         t11SrcOpnd1, t12SrcOpnd1, madmInstOpt);
-
-      // Restore denorm in CR0.0 for Xe+
-      if (getPlatform() >= GENX_TGLLP) {
-        restoreCR0_0(*this, !hasDefaultRoundDenorm, tmpCR0ForRoundDenormRestore);
-        setFlagWithImm(*this, flagRestoreCR0,
-                       (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
-      } else {
-        setFlagWithImm(*this, flagRestoreCR0,
-            (!hasDefaultRoundDenorm && !doFastDiv && mayUseFlagRestoreCR0), 0);
-      }
-
     }
 
     if (generateIf) {
       if (!use_goto) {
-        if (!hasDefaultRoundDenorm) {
-          // else (8) {Q1/Q2}
-          createElse(exsize, instOpt);
-
-          // Restore denorm and rounding in CR0.0:
-          //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-          restoreCR0_0(*this, hasDefaultRoundDenorm, doFastDiv,
-                       tmpCR0ForRoundRestore,
-                       tmpCR0ForRoundDenormRestore);
-        }
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
       } else {
         assert(gotoUIP);
         inst = createLabelInst(gotoUIP, true);
-
-        if (!hasDefaultRoundDenorm) {
-          // Restore denorm and rounding in CR0.0:
-          //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-          G4_INST *cr0Inst =
-              restoreCR0_0(*this, hasDefaultRoundDenorm, doFastDiv,
-                           tmpCR0ForRoundRestore, tmpCR0ForRoundDenormRestore);
-          G4_Predicate *predCR0 = createPredicate(
-              PredState_Plus, flagRestoreCR0->getRegVar(), 0, predCtrlValue);
-          cr0Inst->setPredicate(predCR0);
-        }
       }
     }
+
+    // Restore denorm and rounding in CR0.0 after whole sequence:
+    //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
+    restoreCR0_0(*this, hasDefaultRoundDenorm, doFastDiv,
+                 tmpCR0ForRoundRestore, tmpCR0ForRoundDenormRestore);
   }; // for loop
 
   if (!noDstMove) {
@@ -1054,10 +990,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
   // Temp variable of CR0 register for rounding restore only
   G4_Declare *tmpCR0ForRoundRestore = createTempVarWithNoSpill(1, Type_UD, Any);
 
-  // For restoring cr0.0. See translateVISAArithmeticDoubleInst() for detail.
-  G4_Declare *flagRestoreCR0 = createTempFlag(1);
-  const bool mayUseFlagRestoreCR0 = (!useSCF(*this) && generateIf);
-
   VISA_EMask_Ctrl currEMask = emask;
   uint16_t splitInstGRFSize =
       (uint16_t)((TypeSize(Type_F) * exsize + getGRFSize() - 1) / getGRFSize());
@@ -1164,8 +1096,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
 
     setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, false,
                           tmpCR0ForRoundDenormRestore, tmpCR0ForRoundRestore);
-    setFlagWithImm(*this, flagRestoreCR0,
-                   (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 1);
 
     t6SrcOpnd0 = createSrcRegRegion(fsrc0);
     t6SrcOpnd1 = createSrcRegRegion(fsrc0);
@@ -1266,8 +1196,6 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
 
     // Restore rounding mode in CR0.0:
     //   mov (1)  cr0.0<1>:ud  TEMP_R_RESTORE<1;1,0>:ud
-    // Fast div would be 1ULP under default rounding mode and 2ULP otherwise.
-    // Avoid setting rounding mode as 1-2ULP is acceptable for fast div.
     restoreCR0_0(*this, !hasDefaultRoundDenorm, tmpCR0ForRoundRestore);
 
     // madm (8) r8.noacc r9.acc7 r6.acc8 r1.acc5 {Align16, Q1/Q2}
@@ -1278,44 +1206,20 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
     inst = createMadm(predicateFlagReg_m7, exsize, t8DstOpnd1, t9SrcOpnd1x1,
                       t6SrcOpnd4, t1SrcOpnd1, madmInstOpt);
 
-    // Restore denorm in CR0.0 for Xe+
-    //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-    if (getPlatform() >= GENX_TGLLP) {
-      restoreCR0_0(*this, !hasDefaultRoundDenorm, tmpCR0ForRoundDenormRestore);
-    }
-    setFlagWithImm(*this, flagRestoreCR0,
-                   (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
-
     if (generateIf) {
       if (!use_goto) {
-        if (!hasDefaultRoundDenorm) {
-          // else (8) {Q1/Q2}
-          createElse(exsize, instOpt);
-
-          // Restore denorm and rounding in CR0.0:
-          //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-          restoreCR0_0(*this, hasDefaultRoundDenorm, false, tmpCR0ForRoundRestore,
-                       tmpCR0ForRoundDenormRestore);
-        }
-
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
       } else {
         assert(gotoUIP);
         inst = createLabelInst(gotoUIP, true);
-
-        if (!hasDefaultRoundDenorm) {
-          // Restore denorm and rounding in CR0.0:
-          //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-          G4_INST *cr0Inst =
-              restoreCR0_0(*this, hasDefaultRoundDenorm, false, tmpCR0ForRoundRestore,
-                           tmpCR0ForRoundDenormRestore);
-          G4_Predicate *predCR0 = createPredicate(
-              PredState_Plus, flagRestoreCR0->getRegVar(), 0, predCtrlValue);
-          cr0Inst->setPredicate(predCR0);
-        }
       }
     }
+
+    // Restore denorm and rounding in CR0.0 after whole sequence:
+    //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
+    restoreCR0_0(*this, hasDefaultRoundDenorm, false,
+                 tmpCR0ForRoundRestore, tmpCR0ForRoundDenormRestore);
   };
 
   // make final copy to dst
@@ -1412,10 +1316,6 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
   // Temp variable of CR0 register for rounding restore only
   G4_Declare *tmpCR0ForRoundRestore = createTempVarWithNoSpill(1, Type_UD, Any);
 
-  // For restoring cr0.0. See translateVISAArithmeticDoubleInst() for detail.
-  G4_Declare *flagRestoreCR0 = createTempFlag(1);
-  const bool mayUseFlagRestoreCR0 = (!useSCF(*this) && generateIf);
-
   VISA_EMask_Ctrl currEMask = emask;
   uint16_t splitInstGRFSize =
       (uint16_t)((TypeSize(Type_F) * exsize + getGRFSize() - 1) / getGRFSize());
@@ -1508,8 +1408,6 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
 
     setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, false,
                           tmpCR0ForRoundDenormRestore, tmpCR0ForRoundRestore);
-    setFlagWithImm(*this, flagRestoreCR0,
-                   (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 1);
 
     t6SrcOpnd0 = createSrcRegRegion(fsrc0);
     t6SrcOpnd1 = createSrcRegRegion(fsrc0);
@@ -1613,8 +1511,6 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
 
     // Restore rounding mode in CR0.0:
     //   mov (1)  cr0.0<1>:ud  TEMP_R_RESTORE<1;1,0>:ud
-    // Fast sqrt would be 1ULP under default rounding mode and 2ULP otherwise.
-    // Avoid setting rounding mode as 1-2ULP is acceptable for fast sqrt.
     restoreCR0_0(*this, !hasDefaultRoundDenorm, tmpCR0ForRoundRestore);
 
     // madm (8) r7.noacc r7.acc7 r9.acc6 r10.acc8 {Aligned16, Q1/Q2}
@@ -1625,44 +1521,20 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
     inst = createMadm(predicateFlagReg_m7, exsize, t7DstOpnd2, t7SrcOpnd3,
                       t9SrcOpnd2, t10SrcOpnd2, madmInstOpt);
 
-    // Restore denorm in CR0.0 for Xe+:
-    //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-    if (getPlatform() >= GENX_TGLLP) {
-      restoreCR0_0(*this, !hasDefaultRoundDenorm, tmpCR0ForRoundDenormRestore);
-    }
-    setFlagWithImm(*this, flagRestoreCR0,
-                   (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
-
     if (generateIf) {
       if (!use_goto) {
-        if (!hasDefaultRoundDenorm) {
-          // else (8) {Q1/Q2}
-          createElse(exsize, instOpt);
-
-          // Restore denorm and rounding in CR0.0:
-          //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-          restoreCR0_0(*this, hasDefaultRoundDenorm, false, tmpCR0ForRoundRestore,
-                       tmpCR0ForRoundDenormRestore);
-        }
-
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
       } else {
         assert(gotoUIP);
         inst = createLabelInst(gotoUIP, true);
-
-        if (!hasDefaultRoundDenorm) {
-          // Restore denorm and rounding in CR0.0:
-          //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-          G4_INST *cr0Inst =
-              restoreCR0_0(*this, hasDefaultRoundDenorm, false, tmpCR0ForRoundRestore,
-                           tmpCR0ForRoundDenormRestore);
-          G4_Predicate *predCR0 = createPredicate(
-              PredState_Plus, flagRestoreCR0->getRegVar(), 0, predCtrlValue);
-          cr0Inst->setPredicate(predCR0);
-        }
       }
     }
+
+    // Restore denorm and rounding in CR0.0 after whole sequence:
+    //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
+    restoreCR0_0(*this, hasDefaultRoundDenorm, false,
+                 tmpCR0ForRoundRestore, tmpCR0ForRoundDenormRestore);
   };
 
   // make final copy to dst
@@ -1746,10 +1618,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
   }
   G4_Declare *flagReg = createTempFlag(flagSize > 16 ? 2 : 1);
   G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
-
-  // For restoring cr0.0. See translateVISAArithmeticDoubleInst() for detail.
-  G4_Declare *flagRestoreCR0 = createTempFlag(1);
-  const bool mayUseFlagRestoreCR0 = (!useSCF(*this) && generateIf);
 
   // temp registers
   G4_Declare *t0 = getImmDcl(createDFImm(0.0), exsize);
@@ -1856,8 +1724,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
 
     setDefaultRoundDenorm(*this, hasDefaultRoundDenorm, doFastSqrt,
                           tmpCR0ForRoundDenormRestore, tmpCR0ForRoundRestore);
-    setFlagWithImm(*this, flagRestoreCR0,
-                   (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 1);
 
     // see comments regarding goto/join in translateVISAArithmeticDoubleInst().
     initEOFlagIfNeeded(*this, flagReg, generateIf && use_goto);
@@ -2026,14 +1892,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
       src2->setAccRegSel(ACC7);
       inst = createMadm(predicateFlagReg_m6, exsize, dst0, src0, src1, src2,
                         madmInstOpt);
-
-      // Restore denorm in CR0.0 for Xe+:
-      //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-      if (getPlatform() >= GENX_TGLLP) {
-        restoreCR0_0(*this, !hasDefaultRoundDenorm, tmpCR0ForRoundDenormRestore);
-        setFlagWithImm(*this, flagRestoreCR0,
-                       (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
-      }
     } else {
       G4_Predicate *predicateFlagReg_m1 = NULL;
       G4_Predicate *predicateFlagReg_m2 = NULL;
@@ -2213,49 +2071,22 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
       src2->setAccRegSel(ACC7);
       inst = createMadm(predicateFlagReg_m10, exsize, dst0, src0, src1, src2,
                         madmInstOpt);
-
-      // Restore denorm in CR0.0:
-      //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-      if (getPlatform() >= GENX_TGLLP) {
-        restoreCR0_0(*this, !hasDefaultRoundDenorm, tmpCR0ForRoundDenormRestore);
-        setFlagWithImm(*this, flagRestoreCR0,
-                       (!hasDefaultRoundDenorm && mayUseFlagRestoreCR0), 0);
-      } else {
-        setFlagWithImm(*this, flagRestoreCR0,
-            (!hasDefaultRoundDenorm && !doFastSqrt && mayUseFlagRestoreCR0), 0);
-      }
     }
 
     if (generateIf) {
       if (!use_goto) {
-        if (!hasDefaultRoundDenorm) {
-          // else (8) {Q1/Q2}
-          createElse(exsize, instOpt);
-
-          // Restore denorm and rounding in CR0.0:
-          //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-          restoreCR0_0(*this, hasDefaultRoundDenorm, doFastSqrt, tmpCR0ForRoundRestore,
-                       tmpCR0ForRoundDenormRestore);
-        }
-
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
       } else {
         assert(gotoUIP);
         inst = createLabelInst(gotoUIP, true);
-
-        if (!hasDefaultRoundDenorm) {
-          // Restore denorm and rounding in CR0.0:
-          //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
-          G4_INST *cr0Inst =
-              restoreCR0_0(*this, hasDefaultRoundDenorm, doFastSqrt, tmpCR0ForRoundRestore,
-                           tmpCR0ForRoundDenormRestore);
-          G4_Predicate *predCR0 = createPredicate(
-              PredState_Plus, flagRestoreCR0->getRegVar(), 0, predCtrlValue);
-          cr0Inst->setPredicate(predCR0);
-        }
       }
     }
+
+    // Restore denorm and rounding in CR0.0 after whole sequence:
+    //   mov (1)  cr0.0<1>:ud  TEMP_R_D_RESTORE<1;1,0>:ud
+    restoreCR0_0(*this, hasDefaultRoundDenorm, doFastSqrt,
+                 tmpCR0ForRoundRestore, tmpCR0ForRoundDenormRestore);
   };
 
   if (!noDstMove) {
