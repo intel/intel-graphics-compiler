@@ -83,6 +83,10 @@ def vc_disable_non_overlapping_region_opt :
   PlainFlag<"vc-disable-non-overlapping-region-opt">,
   HelpText<"Disable non-overlapping region optimization">;
 
+def vc_disable_indvars_opt :
+  PlainFlag<"vc-disable-indvars-opt">,
+  HelpText<"Disable induction variable optimization">;
+
 // Compatibility alias.
 def : PlainFlag<"doubleGRF">, Alias<large_GRF>,
   HelpText<"Alias for -ze-opt-large-register-file"> {

@@ -239,6 +239,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.LocalizeLRsForAccUsage = true;
   if (Opts.ForceDisableNonOverlappingRegionOpt)
     BackendOpts.DisableNonOverlappingRegionOpt = true;
+  if (Opts.ForceDisableIndvarsOpt)
+    BackendOpts.DisableIndvarsOpt = true;
   BackendOpts.FCtrl = Opts.FCtrl;
   BackendOpts.WATable = Opts.WATable;
   BackendOpts.IsLargeGRFMode = Opts.IsLargeGRFMode;
@@ -719,6 +721,8 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.SaveStackCallLinkage = true;
   if (ApiOptions.hasArg(OPT_vc_disable_non_overlapping_region_opt))
     Opts.ForceDisableNonOverlappingRegionOpt = true;
+  if (ApiOptions.hasArg(OPT_vc_disable_indvars_opt))
+    Opts.ForceDisableIndvarsOpt = true;
 
   if (opt::Arg *A =
           ApiOptions.getLastArg(OPT_enable_zebin_ze, OPT_disable_zebin_ze))
