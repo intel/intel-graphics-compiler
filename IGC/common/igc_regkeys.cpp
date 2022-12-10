@@ -794,6 +794,8 @@ static void setImpliedIGCKeys()
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, RematThreshold, 0);
     IGC_SET_IMPLIED_REGKEY(DisableRayTracingOptimizations, 1, DisableDPSE, true);
 
+    IGC_SET_IMPLIED_REGKEY(ForceRTRetry, 1, RetryManagerFirstStateId, 1);
+
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, ShaderDumpEnable, true);
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, EnableVISASlowpath, true);
     IGC_SET_IMPLIED_REGKEY(ShaderDumpEnableAll, 1, EnableVISADumpCommonISA, true);
