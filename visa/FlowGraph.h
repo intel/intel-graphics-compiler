@@ -287,60 +287,6 @@ public:
     }
   } BCStats;
 
-  struct XeBankConflictStatistics {
-    unsigned simd8 = 0; // The number of simd8 instructions, one simd16 is
-                        // treated as two simd8 if it's not HF
-    unsigned BCNum = 0; // The number of band conflict.
-    int sameBankConflicts = 0;
-    int simd16ReadSuppression = 0;
-    int twoSrcBC = 0;
-
-    // For the static profiling of acc regsiter substituion ratio
-    // The operand numbers which are be replaced with acc.
-    // Def:dst operand, Use:src operand
-    unsigned accSubDef = 0;
-    unsigned accSubUse = 0;
-
-    // Candidates, which may be substituted with acc, or not because of spill
-    unsigned accSubCandidateDef = 0;
-    unsigned accSubCandidateUse = 0;
-
-    unsigned syncInstCount = 0;   // The number of sync instructions.
-    unsigned tokenReuseCount = 0; // The token reuse times
-    unsigned singlePipeAtOneDistNum =
-        0; // The number of @1 distance in single ALU pipeline, it can be L@1,
-           // I@1, F@1 or @1 of TGL.
-    unsigned allAtOneDistNum = 0; // A@1 number
-    unsigned AWTokenDepCount = 0; // The number of $x.dst
-    unsigned ARTokenDepCount = 0; // The number of $x.src
-
-    void clear() {
-      simd8 = 0;
-      BCNum = 0;
-      sameBankConflicts = 0;
-      simd16ReadSuppression = 0;
-      twoSrcBC = 0;
-    }
-    void addBC(unsigned num) { BCNum += num; }
-    void addSameBankBC(unsigned num) { sameBankConflicts += num; }
-    void addSimd16RSBC(unsigned num) { simd16ReadSuppression += num; }
-    void add2SrcBC(unsigned num) { twoSrcBC += num; }
-    void addSIMD8() { ++simd8; }
-
-    void setAccSubDef(unsigned num) { accSubDef = num; }
-    void setAccSubUse(unsigned num) { accSubUse = num; }
-    void setAccSubCandidateDef(unsigned num) { accSubCandidateDef = num; }
-    void setAccSubCandidateUse(unsigned num) { accSubCandidateUse = num; }
-
-    void addSinglePipeAtOneDistNum(unsigned num) { singlePipeAtOneDistNum += num; }
-    void addAllAtOneDistNum(unsigned num) { allAtOneDistNum += num; }
-    void addSyncInstCount(unsigned num) { syncInstCount += num; }
-    void addTokenReuseCount(unsigned num) { tokenReuseCount += num; }
-    void addAWTokenDepCount(unsigned num) { AWTokenDepCount += num; }
-    void addARTokenDepCount(unsigned num) { ARTokenDepCount += num; }
-
-  } XeBCStats;
-  unsigned numRMWs = 0; // counting the number of read-modify-write
 public:
   // forwarding functions to the BBs list
   BB_LIST_ITER begin() { return BBs.begin(); }

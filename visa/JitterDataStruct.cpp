@@ -30,5 +30,9 @@ llvm::json::Value PERF_STATS::toJSON() {
 }
 
 llvm::json::Value PERF_STATS_VERBOSE::toJSON() {
-  return llvm::json::Object();
+  return llvm::json::Object{{"numALUInst", numALUInst},
+                            {"numALUOnlyDst", numALUOnlyDst},
+                            {"numALUOnlySrc", numALUOnlySrc},
+                            {"accSubDef", accSubDef},
+                            {"accSubUse", accSubUse}};
 }

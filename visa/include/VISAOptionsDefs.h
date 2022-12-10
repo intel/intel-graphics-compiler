@@ -596,3 +596,4 @@ DEF_VISA_OPTION(vISA_Stepping, ET_CSTR, "-stepping",
 DEF_VISA_OPTION(vISA_Platform, ET_CSTR, "-platform",
                 "USAGE: missing platform string. ", NULL)
 DEF_VISA_OPTION(vISA_HasEarlyGRFRead, ET_BOOL, "-earlyGRFRead", UNUSED, false)
+DEF_VISA_OPTION(vISA_staticProfiling, ET_BOOL, "-staticProfiling", UNUSED, true)

@@ -1274,6 +1274,29 @@ static void retrieveBarrierInfoFromCallee(VISAKernelImpl *entry,
       entry->getIRBuilder()->numBarriers();
 }
 
+static void Merge_Profile_Info(G4_Kernel* mainFunc, G4_Kernel* callee) {
+  FINALIZER_INFO *mainJitInfo = mainFunc->fg.builder->getJitInfo();
+  FINALIZER_INFO *calleeJitInfo = mainFunc->fg.builder->getJitInfo();
+
+  mainJitInfo->statsVerbose.numALUInst += calleeJitInfo->statsVerbose.numALUInst;
+  mainJitInfo->statsVerbose.numALUOnlyDst += calleeJitInfo->statsVerbose.numALUOnlyDst;
+  mainJitInfo->statsVerbose.numALUOnlySrc += calleeJitInfo->statsVerbose.numALUOnlySrc;
+  mainJitInfo->statsVerbose.accSubDef += calleeJitInfo->statsVerbose.accSubDef;
+  mainJitInfo->statsVerbose.accSubUse += calleeJitInfo->statsVerbose.accSubUse;
+  mainJitInfo->statsVerbose.accSubCandidateDef +=
+      calleeJitInfo->statsVerbose.accSubCandidateDef;
+  mainJitInfo->statsVerbose.accSubCandidateUse +=
+      calleeJitInfo->statsVerbose.accSubCandidateUse;
+
+  mainJitInfo->statsVerbose.syncInstCount += calleeJitInfo->statsVerbose.syncInstCount;
+  mainJitInfo->statsVerbose.tokenReuseCount += calleeJitInfo->statsVerbose.tokenReuseCount;
+  mainJitInfo->statsVerbose.singlePipeAtOneDistNum +=
+      calleeJitInfo->statsVerbose.singlePipeAtOneDistNum;
+  mainJitInfo->statsVerbose.allAtOneDistNum += calleeJitInfo->statsVerbose.allAtOneDistNum;
+  mainJitInfo->statsVerbose.AWTokenDepCount += calleeJitInfo->statsVerbose.AWTokenDepCount;
+  mainJitInfo->statsVerbose.ARTokenDepCount += calleeJitInfo->statsVerbose.ARTokenDepCount;
+}
+
 // Stitch the FG of subFunctions to mainFunc
 // mainFunc could be a kernel or a non-kernel function.
 // It also modifies pseudo_fcall/fret in to call/ret opcodes.
@@ -1381,6 +1404,9 @@ static void Stitch_Compiled_Units(G4_Kernel *mainFunc,
     G4_Kernel *callee = iter.second;
     for (auto curDcl : callee->Declares) {
       mainFunc->Declares.push_back(curDcl);
+    }
+    if (mainFunc->fg.builder->getJitInfo()) {
+      Merge_Profile_Info(mainFunc, callee);
     }
   }
 

@@ -1027,7 +1027,6 @@ struct AccAssignment {
 
 void AccSubPass::doAccSub(G4_BB *bb) {
   bb->resetLocalIds();
-
   int numGeneralAcc = kernel.getNumAcc();
   std::vector<AccInterval *> intervals;
   std::vector<AccInterval *> failIntervals;
@@ -1038,6 +1037,7 @@ void AccSubPass::doAccSub(G4_BB *bb) {
   for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd;
        ++instIter) {
     G4_INST *inst = *instIter;
+
     if (inst->defAcc()) {
       // we should only have single def/use acc at this point, so any use would
       // kill the def
@@ -1156,14 +1156,15 @@ void AccSubPass::doAccSub(G4_BB *bb) {
   for (auto interval : intervals) {
     G4_INST *inst = interval->inst;
 
-    if (!interval->isPreAssigned) {
-      numAccSubCandidateDef++;
-      numAccSubCandidateUse += (int)inst->use_size();
+    auto jitInfo = kernel.fg.builder->getJitInfo();
+    if (jitInfo && !interval->isPreAssigned) {
+      jitInfo->statsVerbose.accSubCandidateDef++;
+      jitInfo->statsVerbose.accSubCandidateUse += (unsigned)inst->use_size();
     }
     if (!interval->isPreAssigned && interval->assignedAcc != -1) {
-      if (replaceDstWithAcc(inst, interval->assignedAcc)) {
-        numAccSubDef++;
-        numAccSubUse += (int)inst->use_size();
+      if (replaceDstWithAcc(inst, interval->assignedAcc) && jitInfo) {
+        jitInfo->statsVerbose.accSubDef++;
+        jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
       }
 #if 0
             std::cout << "Acc sub def inst: \n";
@@ -1179,11 +1180,9 @@ void AccSubPass::doAccSub(G4_BB *bb) {
             }
 #endif
     }
-#if 1
     if (!interval->isPreAssigned && interval->assignedAcc == -1) {
       inst->addComment("ACC_Candidate");
     }
-#endif
   }
 
   for (int i = 0, end = (int)intervals.size(); i < end; ++i) {
@@ -1229,6 +1228,7 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
   for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd;
        ++instIter) {
     G4_INST *inst = *instIter;
+
     if (inst->defAcc()) {
       // we should only have single def/use acc at this point, so any use would
       // kill the def
@@ -1502,15 +1502,16 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
 
     G4_INST *inst = interval->inst;
 
-    if (!interval->isPreAssigned) {
-      numAccSubCandidateDef++;
-      numAccSubCandidateUse += (int)inst->use_size();
+    auto jitInfo = kernel.fg.builder->getJitInfo();
+    if (jitInfo && !interval->isPreAssigned) {
+      jitInfo->statsVerbose.accSubCandidateDef++;
+      jitInfo->statsVerbose.accSubCandidateUse += (unsigned)inst->use_size();
     }
 
     if (!interval->isPreAssigned && interval->assignedAcc != -1) {
-      if (replaceDstWithAcc(inst, interval->assignedAcc)) {
-        numAccSubDef++;
-        numAccSubUse += (int)inst->use_size();
+      if (replaceDstWithAcc(inst, interval->assignedAcc) && jitInfo) {
+        jitInfo->statsVerbose.accSubDef++;
+        jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
       }
 
 #if 0
@@ -1604,8 +1605,10 @@ void AccSubPass::accSub(G4_BB *bb) {
       instIter = subIter;
       --instIter;
 
-      numAccSubDef++;
-      numAccSubUse += (int)inst->use_size();
+    if (auto jitInfo = kernel.fg.builder->getJitInfo()) {
+        jitInfo->statsVerbose.accSubDef++;
+        jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
+      }
 
 #if 0
             std::cout << "Acc sub def inst: \n";

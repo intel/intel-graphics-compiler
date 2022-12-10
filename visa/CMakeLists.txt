@@ -202,6 +202,8 @@ set(GenX_Common_Sources_G4_Passes
   Passes/MergeScalars.hpp
   Passes/SendFusion.cpp
   Passes/SendFusion.hpp
+  Passes/StaticProfiling.cpp
+  Passes/StaticProfiling.hpp
   )
 
 

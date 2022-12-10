@@ -2750,11 +2750,6 @@ bool preRA_ACC_Scheduler::run() {
     accSub.doAccSub(bb);
   }
 
-  kernel.fg.XeBCStats.setAccSubDef(accSub.getNumAccSubDef());
-  kernel.fg.XeBCStats.setAccSubUse(accSub.getNumAccSubUse());
-  kernel.fg.XeBCStats.setAccSubCandidateDef(accSub.getNumAccSubCandidateDef());
-  kernel.fg.XeBCStats.setAccSubCandidateUse(accSub.getNumAccSubCandidateUse());
-
   return true;
 }
 

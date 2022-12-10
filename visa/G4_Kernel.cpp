@@ -1244,37 +1244,38 @@ void G4_Kernel::emitDeviceAsm(std::ostream &os, const void *binary,
 
   if (getPlatformGeneration() >= PlatformGen::XE) {
     os << "\n\n";
-    os << "//.BankConflicts: " << fg.XeBCStats.BCNum << "\n";
-    os << "//.BankConflicts.SameBank: " << fg.XeBCStats.sameBankConflicts
-       << "\n";
-    os << "//.BankConflicts.TwoSrc: " << fg.XeBCStats.twoSrcBC << "\n";
-    int nativeSimdSize = 8;
-    if (getPlatform() >= Xe_PVC)
-      nativeSimdSize = 16;
-    os << "//.SIMD" << 2 * nativeSimdSize
-       << "ReadSuppressions: " << fg.XeBCStats.simd16ReadSuppression << "\n";
-    os << "//.SIMD" << nativeSimdSize << "s: " << fg.XeBCStats.simd8
-       << "\n//\n";
-    os << "//.RMWs: " << fg.numRMWs << "\n//\n";
+    if (auto jitInfo = fg.builder->getJitInfo()) {
+      os << "//.BankConflicts: " << jitInfo->statsVerbose.BCNum << "\n";
+      os << "//.RMWs: " << jitInfo->statsVerbose.numRMWs << "\n//\n";
+    }
   } else {
     os << "// Bank Conflict Statistics: \n";
     os << "// -- GOOD: " << fg.BCStats.NumOfGoodInsts << "\n";
     os << "// --  BAD: " << fg.BCStats.NumOfBadInsts << "\n";
     os << "// --   OK: " << fg.BCStats.NumOfOKInsts << "\n";
   }
-
-  os << "//.accSubDef: " << fg.XeBCStats.accSubDef << "\n";
-  os << "//.accSubUse: " << fg.XeBCStats.accSubUse << "\n";
-  os << "//.accSubCandidateDef: " << fg.XeBCStats.accSubCandidateDef << "\n";
-  os << "//.accSubCandidateUse: " << fg.XeBCStats.accSubCandidateUse << "\n";
-  os << "//\n//\n";
-  os << "//.singlePipeAtOneDistNum: " << fg.XeBCStats.singlePipeAtOneDistNum << "\n";
-  os << "//.allAtOneDistNum: " << fg.XeBCStats.allAtOneDistNum << "\n";
-  os << "//.syncInstCount: " << fg.XeBCStats.syncInstCount << "\n";
-  os << "//.tokenReuseCount: " << fg.XeBCStats.tokenReuseCount << "\n";
-  os << "//.AWTokenDepCount: " << fg.XeBCStats.AWTokenDepCount << "\n";
-  os << "//.ARTokenDepCount: " << fg.XeBCStats.ARTokenDepCount << "\n";
-
+  if (auto jitInfo = fg.builder->getJitInfo()) {
+    os << "//.numALUInst: " << jitInfo->statsVerbose.numALUInst << "\n";
+    os << "//.numALUOnlyDst: " << jitInfo->statsVerbose.numALUOnlyDst << "\n";
+    os << "//.numALUOnlySrc: " << jitInfo->statsVerbose.numALUOnlySrc << "\n";
+    os << "//.accSubDef: " << jitInfo->statsVerbose.accSubDef << "\n";
+    os << "//.accSubUse: " << jitInfo->statsVerbose.accSubUse << "\n";
+    os << "//.accSubDef: " << jitInfo->statsVerbose.accSubCandidateDef << "\n";
+    os << "//.accSubUse: " << jitInfo->statsVerbose.accSubCandidateUse << "\n";
+    os << "//\n//\n";
+    os << "//.singlePipeAtOneDistNum: "
+       << jitInfo->statsVerbose.singlePipeAtOneDistNum
+       << "\n";
+    os << "//.allAtOneDistNum: " << jitInfo->statsVerbose.allAtOneDistNum
+       << "\n";
+    os << "//.syncInstCount: " << jitInfo->statsVerbose.syncInstCount << "\n";
+    os << "//.tokenReuseCount: " << jitInfo->statsVerbose.tokenReuseCount
+       << "\n";
+    os << "//.AWTokenDepCount: " << jitInfo->statsVerbose.AWTokenDepCount
+       << "\n";
+    os << "//.ARTokenDepCount: " << jitInfo->statsVerbose.ARTokenDepCount
+       << "\n";
+  }
 }
 
 void G4_Kernel::emitRegInfo() {
@@ -1743,10 +1744,7 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
 
   if (getPlatformGeneration() < PlatformGen::XE) {
     fg.BCStats.clear();
-  } else {
-    fg.XeBCStats.clear();
   }
-  fg.numRMWs = 0;
 }
 
 using BlockOffsets = std::map<int32_t, std::vector<std::string>>;
@@ -2025,7 +2023,7 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
       }
       formatToInstToStream(pc, os);
 
-      (*itBB)->emitBasicInstructionComment(os, itInst, suppressRegs, lastRegs);
+      (*itBB)->emitBasicInstructionComment(os, this, itInst, suppressRegs, lastRegs);
       os << "\n";
 
       pc += kv.getInstSize(pc);

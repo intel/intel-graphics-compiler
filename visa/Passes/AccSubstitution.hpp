@@ -30,11 +30,6 @@ class AccSubPass {
   IR_Builder &builder;
   G4_Kernel &kernel;
 
-  int numAccSubDef = 0;
-  int numAccSubUse = 0;
-  int numAccSubCandidateDef = 0;
-  int numAccSubCandidateUse = 0;
-
   bool replaceDstWithAcc(G4_INST *inst, int accNum);
 
 
@@ -61,10 +56,6 @@ public:
                       int &bankBC, std::map<G4_INST *, unsigned int> *BCInfo,
                       std::vector<USE_DEF_NODE> *SwappableUses);
 
-  int getNumAccSubDef() const { return numAccSubDef; }
-  int getNumAccSubUse() const { return numAccSubUse; }
-  int getNumAccSubCandidateDef() const { return numAccSubCandidateDef; }
-  int getNumAccSubCandidateUse() const { return numAccSubCandidateUse; }
 };
 
 } // namespace vISA

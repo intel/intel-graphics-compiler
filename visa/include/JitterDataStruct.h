@@ -68,6 +68,45 @@ public:
 // queried (vISA_DumpPerfStatsVerbose)
 // TODO: This set will be disable completely in the Release build.
 struct PERF_STATS_VERBOSE {
+ // The number of bank conflict.
+  unsigned BCNum = 0;
+
+ // counting the number of read-modify-write
+  unsigned numRMWs = 0;
+
+  // For the static profiling of acc regsiter substituion ratio
+  // ALU instruction number
+  unsigned numALUInst = 0;
+  // ALU instruction destination operand number, which is not used in non-ALU
+  // instruction
+  unsigned numALUOnlyDst = 0;
+  // ALU instruction source operand number, which is not defined in non-ALU
+  // instruction
+  unsigned numALUOnlySrc = 0;
+
+  // The number of the operand which uses acc register
+  // Def:dst operand, Use:src operand
+  unsigned accSubDef = 0;
+  unsigned accSubUse = 0;
+
+  // Candidates, which may be substituted with acc, or not because of spill
+  unsigned accSubCandidateDef = 0;
+  unsigned accSubCandidateUse = 0;
+
+  // The number of sync instructions.
+  unsigned syncInstCount = 0;
+  // The token reuse times
+  unsigned tokenReuseCount = 0;
+  // The number of @1 distance in single ALU pipeline, it can be L@1,
+  // I@1, F@1 or @1 of TGL.
+  unsigned singlePipeAtOneDistNum = 0;
+  // A@1 number
+  unsigned allAtOneDistNum = 0;
+  // The number of $x.dst
+  unsigned AWTokenDepCount = 0;
+  // The number of $x.src
+  unsigned ARTokenDepCount = 0;
+
 public:
   llvm::json::Value toJSON();
 };
