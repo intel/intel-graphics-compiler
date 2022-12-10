@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "FlowGraph.h"
 #include "BitSet.h"
 #include "BuildIR.h"
@@ -937,7 +938,17 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
 
   // patch the last BB for the kernel
   if (funcInfoTable.size() > 0) {
-    kernelInfo->updateExitBB(subroutineStartBB[1]->getPhysicalPred());
+    // handleExit() and normalizeSubRoutineBB() may split subroutine's entry
+    // BB. If this happens, the original entry is no longer the entry, but its
+    // physical predecesor must be the new entry!
+    G4_BB* oldEntry = subroutineStartBB[1];
+    G4_BB* kernelExitBB = oldEntry->getPhysicalPred();
+    if ((oldEntry->getBBType() & G4_BB_INIT_TYPE) == 0) {
+      vISA_ASSERT((kernelExitBB->getBBType() & G4_BB_INIT_TYPE),
+        "INIT BB must be the phy-pred of the original INIT BB!");
+      kernelExitBB = kernelExitBB->getPhysicalPred();
+    }
+    kernelInfo->updateExitBB(kernelExitBB);
     topologicalSortCallGraph();
   } else {
     kernelInfo->updateExitBB(BBs.back());
@@ -1457,9 +1468,13 @@ void FlowGraph::decoupleInitBlock(G4_BB *bb,
   newInitBB->setBBType(G4_BB_INIT_TYPE);
   addPredSuccEdges(newInitBB, oldInitBB);
 
-  G4_Label *label = builder->createLocalBlockLabel("LABEL__EMPTYBB");
+  // newInitBB has the original label; oldInitBB has the new one.
+  G4_Label *label = builder->createLocalBlockLabel("origEntry");
   G4_INST *labelInst = createNewLabelInst(label);
-  newInitBB->push_back(labelInst);
+  G4_INST* origLabelInst = oldInitBB->front();
+  oldInitBB->pop_front();
+  oldInitBB->push_front(labelInst);
+  newInitBB->push_back(origLabelInst);
 }
 
 void FlowGraph::decoupleReturnBlock(G4_BB *bb) {
