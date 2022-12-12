@@ -1549,7 +1549,7 @@ namespace IGC
             bool Is64BitDst = (dstT == ISA_TYPE_Q || dstT == ISA_TYPE_UQ);
             bool Is64BitSrc = (srcT == ISA_TYPE_Q || srcT == ISA_TYPE_UQ);
             bool Need64BitEmu =
-                m_program->GetContext()->platform.hasNoInt64Inst() &&
+                m_program->GetContext()->platform.hasNoFullI64Support() &&
                 (Is64BitDst || Is64BitSrc);
 
             // If DP is not supported, need to split mov as well.
