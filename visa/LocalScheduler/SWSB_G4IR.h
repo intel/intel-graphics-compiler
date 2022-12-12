@@ -14,6 +14,8 @@ SPDX-License-Identifier: MIT
 #include "../Mem_Manager.h"
 #include "../Timer.h"
 #include "LocalScheduler_G4IR.h"
+#include "llvm/Support/Allocator.h"
+
 #include <bitset>
 #include <set>
 #include <string>
@@ -138,10 +140,13 @@ struct SBFootprint {
   const unsigned short RightB;
   unsigned short offset = 0;
   G4_INST *inst;
-  struct SBFootprint *next =
-      nullptr; // The ranges linked together to represent the possible register
-               // ranges may be occupied by an operand. For indirect access,
-               // non-contiguous ranges exist.
+
+  // FIXME: The choice of C-style linked list seems suspect given that there are
+  // many higher-level data structures we could use instead.
+  // The ranges linked together to represent the possible register
+  // ranges may be occupied by an operand. For indirect access,
+  // non-contiguous ranges exist.
+  struct SBFootprint *next = nullptr;
 
   SBFootprint()
       : fType(GRF_T), type(Type_UNDEF), LeftB(0), RightB(0), inst(nullptr) {
@@ -229,6 +234,8 @@ struct SBBitSets {
   }
 };
 
+using SBNodeAlloc = llvm::SpecificBumpPtrAllocator<SBNode>;
+
 class SBNode {
 private:
   std::vector<SBFootprint *>
@@ -287,7 +294,8 @@ public:
   SBBitSets reachedUses;
   unsigned reuseOverhead = 0;
 
-  /* Constructor */
+  // FIXME: This needs to be removed, default ctor doesn't make sense at all for
+  // this class.
   SBNode() {}
 
   SBNode(uint32_t id, int ALUId, uint32_t BBId, G4_INST *i)
@@ -307,6 +315,9 @@ public:
   }
 
   ~SBNode() {
+    // FIXME: I'd like to replace this with type-specific allocator as well, but
+    // the ownership is unclear to me, is it safe to put the allocator in
+    // SBNode?
     for (SBFootprint *sm : footprints) {
       sm->~SBFootprint();
     }
@@ -448,7 +459,9 @@ public:
 
   void setTokenReuseNode(SBNode *node) { tokenReusedNode = node; }
 
-  void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
+  void *operator new(size_t sz, SBNodeAlloc &Allocator) {
+    return Allocator.Allocate(sz / sizeof(SBNode));
+  }
 
   void dumpInterval() const {
     std::cerr << "#" << nodeID << ": " << liveStartID << "-" << liveEndID
@@ -467,8 +480,7 @@ public:
   unsigned getDistInfo(SB_INST_PIPE depPipe);
   void setDistInfo(SB_INST_PIPE depPipe, unsigned distance);
   int getMaxDepDistance() const;
-  void setDepToken(unsigned short token, SWSBTokenType type,
-                           SBNode *node);
+  void setDepToken(unsigned short token, SWSBTokenType type, SBNode *node);
   void clearDistInfo(SB_INST_PIPE depPipe);
   int calcDiffBetweenInstDistAndPipeDepDist(
       std::vector<unsigned> **latestInstID, unsigned distance,
@@ -534,28 +546,15 @@ typedef SBBUCKET_VECTOR::iterator SBBUCKET_VECTOR_ITER;
 
 // This class hides the internals of dependence tracking using buckets
 class LiveGRFBuckets {
-  std::vector<SBBUCKET_VECTOR *> nodeBucketsArray;
+  std::vector<SBBUCKET_VECTOR> nodeBucketsArray;
   vISA::Mem_Manager &mem;
   const int numOfBuckets;
 
 public:
   LiveGRFBuckets(vISA::Mem_Manager &m, int TOTAL_BUCKETS)
-      : nodeBucketsArray(TOTAL_BUCKETS), mem(m), numOfBuckets(TOTAL_BUCKETS) {
-    // Initialize a vector for each bucket
-    for (auto &bucket : nodeBucketsArray) {
-      void *allocedMem = mem.alloc(sizeof(SBBUCKET_VECTOR));
-      bucket = new (allocedMem) SBBUCKET_VECTOR();
-    }
-  }
+      : nodeBucketsArray(TOTAL_BUCKETS), mem(m), numOfBuckets(TOTAL_BUCKETS) {}
 
-  ~LiveGRFBuckets() {
-    for (int i = 0; i < numOfBuckets; i++) {
-      SBBUCKET_VECTOR *bucketVec = nodeBucketsArray[i];
-      if (bucketVec) {
-        bucketVec->~SBBUCKET_VECTOR();
-      }
-    }
-  }
+  ~LiveGRFBuckets() {}
 
   int getNumOfBuckets() const { return numOfBuckets; }
 
@@ -580,20 +579,20 @@ public:
     }
 
     SBBucketNode *operator*() {
-      assert(node_it != LB->nodeBucketsArray[bucket]->end());
+      assert(node_it != LB->nodeBucketsArray[bucket].end());
       return *node_it;
     }
   };
 
-  BN_iterator begin(int bucket) const {
-    return BN_iterator(this, nodeBucketsArray[bucket]->begin(), bucket);
+  BN_iterator begin(int bucket) {
+    return BN_iterator(this, nodeBucketsArray[bucket].begin(), bucket);
   }
 
-  BN_iterator end(int bucket) const {
-    return BN_iterator(this, nodeBucketsArray[bucket]->end(), bucket);
+  BN_iterator end(int bucket) {
+    return BN_iterator(this, nodeBucketsArray[bucket].end(), bucket);
   }
 
-  void add(SBBucketNode * bucketNode, int bucket);
+  void add(SBBucketNode *bucketNode, int bucket);
   void bucketKill(int bucket, SBNode *node, Gen4_Operand_Number opnd);
   void killSingleOperand(BN_iterator &bn_it);
   void killOperand(BN_iterator &bn_it);
@@ -624,6 +623,8 @@ class G4_BB_SB {
 private:
   const SWSB &swsb;
   IR_Builder &builder;
+  // Used for POD objects that don't need a dtor.
+  // TODO: May want to change these to use llvm allocator as well.
   vISA::Mem_Manager &mem;
   G4_BB *bb;
   G4_Label *BBLabel;
@@ -777,16 +778,12 @@ public:
                                     bool &sameDstSrc);
 
   // Global SBID dependence analysis
-  void setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB, SBNODE_VECT *SBNodes,
+  void setSendOpndMayKilled(LiveGRFBuckets *globalSendsLB, SBNODE_VECT &SBNodes,
                             PointsToAnalysis &p);
   void dumpTokenLiveInfo(SBNODE_VECT *SBSendNodes);
   void getLiveBucketsFromFootprint(const SBFootprint *firstFootprint,
                                    SBBucketNode *sBucketNode,
                                    LiveGRFBuckets *send_use_kills) const;
-  void addGlobalDependence(unsigned globalSendNum,
-                           SBBUCKET_VECTOR *globalSendOpndList,
-                           SBNODE_VECT *SBNodes, PointsToAnalysis &p,
-                           bool afterWrite);
   void clearKilledBucketNodeXeLP(LiveGRFBuckets *LB, int ALUID);
 
   void clearKilledBucketNodeXeHP(LiveGRFBuckets *LB, int integerID, int floatID,
@@ -800,7 +797,7 @@ public:
   bool src2SameFootPrintDiffType(SBNode *curNode, SBNode *nextNode) const;
   bool isLastDpas(SBNode *curNode, SBNode *nextNode);
 
-  void getLiveOutToken(unsigned allSendNum, const SBNODE_VECT *SBNodes);
+  void getLiveOutToken(unsigned allSendNum, const SBNODE_VECT &SBNodes);
 
   unsigned getLoopStartBBID() const { return loopStartBBID; }
   unsigned getLoopEndBBID() const { return loopEndBBID; }
@@ -808,7 +805,10 @@ public:
   void setLoopStartBBID(unsigned id) { loopStartBBID = id; }
   void setLoopEndBBID(unsigned id) { loopEndBBID = id; }
 
-  void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
+  void *operator new(size_t sz,
+                     llvm::SpecificBumpPtrAllocator<G4_BB_SB> &Allocator) {
+    return Allocator.Allocate(sz / sizeof(G4_BB_SB));
+  }
 
   void dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList,
                     unsigned globalSendNum, const SBBitSets *send_kill) const;
@@ -896,6 +896,10 @@ class SWSB {
   G4_Kernel &kernel;
   FlowGraph &fg;
   vISA::Mem_Manager &mem;
+  // Type-specific bump pointer allocators so we don't have to explicitly call
+  // their dtor.
+  llvm::SpecificBumpPtrAllocator<G4_BB_SB> BB_SWSBAllocator;
+  SBNodeAlloc SBNodeAllocator;
 
   BB_SWSB_VECTOR BBVector; // The basic block vector, ordered with ID of the BB
   SBNODE_VECT SBNodes;     // All instruction nodes
@@ -932,8 +936,8 @@ class SWSB {
 
   std::vector<SBNode *> freeTokenList;
 
-  std::vector<SBNODE_VECT *> reachTokenArray;
-  std::vector<SBNODE_VECT *> reachUseArray;
+  std::vector<SBNODE_VECT> reachTokenArray;
+  std::vector<SBNODE_VECT> reachUseArray;
   SBNODE_VECT localTokenUsage;
 
   int topIndex = -1;
@@ -960,7 +964,7 @@ class SWSB {
   bool globalDependenceUseReachAnalysis(G4_BB *bb);
   void addGlobalDependence(unsigned globalSendNum,
                            SBBUCKET_VECTOR *globalSendOpndList,
-                           SBNODE_VECT *SBNodes, PointsToAnalysis &p,
+                           SBNODE_VECT &SBNodes, PointsToAnalysis &p,
                            bool afterWrite);
   void tokenEdgePrune(unsigned &prunedEdgeNum, unsigned &prunedGlobalEdgeNum,
                       unsigned &prunedDiffBBEdgeNum,
@@ -995,7 +999,7 @@ class SWSB {
   void addReachingUseSet(SBNode *node, SBNode *use);
   void addGlobalDependenceWithReachingDef(unsigned globalSendNum,
                                           SBBUCKET_VECTOR *globalSendOpndList,
-                                          SBNODE_VECT *SBNodes,
+                                          SBNODE_VECT &SBNodes,
                                           PointsToAnalysis &p, bool afterWrite);
   void expireLocalIntervals(unsigned startID, unsigned BBID);
   void assignTokenToPred(SBNode *node, SBNode *pred, G4_BB *bb);
@@ -1110,22 +1114,12 @@ public:
     LatencyTable LT(k.fg.builder);
     tokenAfterDPASCycle = LT.getDPAS8x8Latency();
   }
-  ~SWSB() {
-    for (SBNode *node : SBNodes) {
-      node->~SBNode();
-    }
-
-    for (G4_BB_SB *bb : BBVector) {
-      bb->~G4_BB_SB();
-    }
-
-    for (int i = 0; i != (int)reachTokenArray.size(); ++i) {
-      reachTokenArray[i]->~SBNODE_VECT();
-      reachUseArray[i]->~SBNODE_VECT();
-    }
-  }
+  ~SWSB() {}
   void SWSBGenerator();
   unsigned calcDepDelayForNode(const SBNode *node) const;
+  // SBNodes need to be live for the entire SWSB pass but they are
+  // allocated by each BB, so G4_BB_SB needs access to the allocator.
+  SBNodeAlloc &getSBNodeAlloc() { return SBNodeAllocator; }
 };
 } // namespace vISA
 #endif // _SWSB_H_
