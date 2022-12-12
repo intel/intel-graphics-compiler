@@ -3445,9 +3445,11 @@ void FlowGraph::findNestedDivergentBBs(
     BB_LIST_ITER StartI;
     BB_LIST_ITER EndI;
 
-    // When a subroutine is entered, the fusedMask must not be 00, but it
-    // could be 01. This field shows it could be 01 if set to true.
+    // When a subroutine is entered, the entry could be in either divergent
+    // branch (correct fused mask) or nested divergent branch (possible wrong
+    // fused mask).
     bool isInDivergentBranch;
+    bool isInNestedDivergentBranch;
   };
   int numFuncs = (int)sortedFuncTable.size();
   std::vector<StartEndIter> allFuncs;
@@ -3458,6 +3460,7 @@ void FlowGraph::findNestedDivergentBBs(
     allFuncs[0].StartI = BBs.begin();
     allFuncs[0].EndI = BBs.end();
     allFuncs[0].isInDivergentBranch = false;
+    allFuncs[0].isInNestedDivergentBranch = false;
   } else {
     allFuncs.resize(numFuncs);
     for (int i = numFuncs; i > 0; --i) {
@@ -3471,6 +3474,7 @@ void FlowGraph::findNestedDivergentBBs(
       assert(nextI != BBs.end() && "ICE: subroutine's end BB not found!");
       allFuncs[ui].EndI = (++nextI);
       allFuncs[ui].isInDivergentBranch = false;
+      allFuncs[ui].isInNestedDivergentBranch = false;
 
       funcInfoIndex[pFInfo] = ui;
     }
@@ -3482,6 +3486,33 @@ void FlowGraph::findNestedDivergentBBs(
     BB_LIST_ITER &IE = allFuncs[i].EndI;
     if (IB == IE) {
       // Sanity check
+      continue;
+    }
+
+    // The main code for each subroutine, including kernel, assumes that
+    // the fused Mask is correct always on entry to subroutine/kernel.
+    //
+    // This is true for kernel entry function, but the fused mask could be
+    // incorrect on entry to subroutine. Here, handle this case specially.
+    // This case happens if subroutine's isInNestedDivergentBranch is true.
+    if (i > 0 && allFuncs[i].isInNestedDivergentBranch) {
+      for (BB_LIST_ITER IT = IB; IT != IE; ++IT) {
+        G4_BB* BB = *IT;
+        nestedDivergentBBs[BB] = 2;
+
+        if (BB->size() > 0) {
+          G4_INST* lastInst = BB->back();
+          if (lastInst->opcode() == G4_call) {
+            FuncInfo* calleeFunc = BB->getCalleeInfo();
+            if (funcInfoIndex.count(calleeFunc)) {
+              int ix = funcInfoIndex[calleeFunc];
+              allFuncs[ix].isInDivergentBranch = true;
+              allFuncs[ix].isInNestedDivergentBranch = true;
+            }
+          }
+        }
+      }
+      // go to next subroutine
       continue;
     }
 
@@ -3576,12 +3607,16 @@ void FlowGraph::findNestedDivergentBBs(
       } else if (lastInst->opcode() == G4_call) {
         // If this function is already in divergent branch, the callee
         // must be in a divergent branch!.
-        if (allFuncs[i].isInDivergentBranch || cfs.isInDivergentBranch() ||
-            lastInst->getPredicate() != nullptr) {
+        bool divergent = (allFuncs[i].isInDivergentBranch ||
+          cfs.isInDivergentBranch());
+        bool nestedDivergent = (cfs.isInNestedDivergentBranch() ||
+          (divergent && lastInst->getPredicate() != nullptr));
+        if (divergent || nestedDivergent) {
           FuncInfo *calleeFunc = BB->getCalleeInfo();
           if (funcInfoIndex.count(calleeFunc)) {
             int ix = funcInfoIndex[calleeFunc];
             allFuncs[ix].isInDivergentBranch = true;
+            allFuncs[ix].isInNestedDivergentBranch = nestedDivergent;
           }
         }
       }
