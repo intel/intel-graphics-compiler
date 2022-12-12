@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <tuple>
 
 #include "../EnumBitset.hpp"
+#include "../api/iga.h"
 #include "../api/iga_bxml_enums.hpp"
 #include "../api/iga_types_ext.hpp"
 
@@ -317,6 +318,12 @@ struct SendDesc {
   bool isReg() const { return type == Kind::REG32A; }
   bool isImm() const { return type == Kind::IMM; }
 };
+
+// Conversion from iga_gen_t to an internal platform Platform
+// we could just re-interpret the bits but this checks for garbage
+// (validates the enum)
+// This is not static so that it can be used by other compilation units.
+Platform ToPlatform(iga_gen_t gen);
 
 } // namespace iga
 #endif

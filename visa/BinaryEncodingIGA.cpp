@@ -1118,7 +1118,7 @@ void BinaryEncodingIGA::Encode() {
           instTy = SWSB::InstType::OTHERS;
 
         // Verify if swsb is in encode-able dist and token combination
-        if (!sw.verify(GetIGASWSBEncodeMode(*kernel.fg.builder), instTy))
+        if (!sw.verify(IGAKernel->getModel().getSWSBEncodeMode(), instTy))
           IGA_ASSERT_FALSE("Invalid swsb dist and token combination");
         igaInst->setSWSB(sw);
       }
@@ -1157,7 +1157,7 @@ void BinaryEncodingIGA::Encode() {
       autoCompact = false; // PVC-A0 compaction is off (IGA only does B0+)
 
     KernelEncoder encoder(IGAKernel, autoCompact);
-    encoder.setSWSBEncodingMode(GetIGASWSBEncodeMode(*kernel.fg.builder));
+    encoder.setSWSBEncodingMode(IGAKernel->getModel().getSWSBEncodeMode());
 
     if (kernel.getOption(vISA_EnableIGASWSB)) {
       encoder.enableIGAAutoDeps();
@@ -2052,23 +2052,6 @@ EncodeResult vISA::EncodeKernelIGA(vISA::Mem_Manager &m, vISA::G4_Kernel &k,
   encoder.Encode();
   r.binary = encoder.EmitBinary(r.binaryLen);
   return r;
-}
-
-SWSB_ENCODE_MODE vISA::GetIGASWSBEncodeMode(const IR_Builder &builder) {
-  if (builder.getPlatformGeneration() < PlatformGen::XE)
-    return SWSB_ENCODE_MODE::SWSBInvalidMode;
-
-  if (builder.hasThreeALUPipes()) {
-    if (builder.getPlatform() == Xe_MTL)
-      return SWSB_ENCODE_MODE::ThreeDistPipeDPMath;
-    return SWSB_ENCODE_MODE::ThreeDistPipe;
-  } else if (builder.hasFourALUPipes()) {
-    if (builder.getPlatform() == Xe_PVC)
-      return SWSB_ENCODE_MODE::FourDistPipe;
-    return SWSB_ENCODE_MODE::FourDistPipeReduction;
-  }
-
-  return SWSB_ENCODE_MODE::SingleDistPipe;
 }
 
 static const Model *GetModel(TARGET_PLATFORM p) {

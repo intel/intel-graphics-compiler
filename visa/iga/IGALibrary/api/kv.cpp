@@ -86,11 +86,6 @@ public:
   }
 };
 
-// iga.cpp
-namespace iga {
-Platform ToPlatform(iga_gen_t gen);
-}
-
 kv_t *kv_create(iga_gen_t gen_platf, const void *bytes, size_t bytes_len,
                 iga_status_t *status, char *errbuf, size_t errbuf_cap,
                 SWSB_ENCODE_MODE swsbMode) {

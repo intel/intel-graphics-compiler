@@ -450,11 +450,6 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
 }
 
 
-// iga.cpp
-namespace iga {
-iga::Platform ToPlatform(iga_gen_t gen);
-}
-
 bool decodeSendDescriptor(const Opts &opts) {
   std::ofstream ofs(opts.outputFile);
   std::ostream &os = opts.outputFile.empty() ? std::cout : ofs;

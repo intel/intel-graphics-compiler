@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA_framework.h"
 #include "VISAKernel.h"
 #include "iga/IGALibrary/api/kv.hpp"
+#include "iga/IGALibrary/Models/Models.hpp"
 
 #include <fstream>
 #include <functional>
@@ -1820,11 +1821,13 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
   assert(errBuf);
   if (!errBuf)
     return;
-  TARGET_PLATFORM p = getPlatform();
 
-  KernelView kv(getIGAPlatform(p), binary, binarySize,
-                GetIGASWSBEncodeMode(*fg.builder), errBuf,
-                ERROR_STRING_MAX_LENGTH);
+  iga_gen_t igaPlatform = getIGAPlatform(getPlatform());
+  const iga::Model *igaModel =
+      iga::Model::LookupModel(iga::ToPlatform(igaPlatform));
+  KernelView kv(igaPlatform, binary, binarySize, igaModel->getSWSBEncodeMode(),
+                errBuf, ERROR_STRING_MAX_LENGTH);
+
   if (!kv.decodeSucceeded()) {
     const char *MSG =
         "vISA asm emission: failed to re-decode binary for asm output\n";

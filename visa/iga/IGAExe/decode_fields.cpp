@@ -239,11 +239,6 @@ static igax::Bits parseBits(const std::string &inp, Opts &opts) {
   return bits;
 }
 
-// iga.cpp
-namespace iga {
-iga::Platform ToPlatform(iga_gen_t gen);
-}
-
 static bool decodeFieldsSingle(Opts opts) {
   inferPlatformAndMode(opts.inputFiles[0], opts);
   ensurePlatformIsSet(opts);

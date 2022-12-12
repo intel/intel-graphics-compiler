@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "../Models/Models.hpp"
 #include "Types.hpp"
 #include "Loc.hpp"
 
@@ -43,3 +44,18 @@ const Region Region::SRC8X1 = REGION_VWH(VT_8, WI_INVALID, HZ_1);
 const Region Region::SRCXX0 = REGION_VWH(VT_INVALID, WI_INVALID, HZ_0);
 const Region Region::SRCXX1 = REGION_VWH(VT_INVALID, WI_INVALID, HZ_1);
 const Region Region::SRCXX2 = REGION_VWH(VT_INVALID, WI_INVALID, HZ_2);
+
+Platform iga::ToPlatform(iga_gen_t gen) {
+  // for binary compatibilty we accept the enum values from pre Xe-renaming
+  // platforms (e.g IGA_GEN12p1 is GEN_VER(12,1), but we now name XE_VER(1,0)
+  switch (gen) {
+  case iga_gen_t::IGA_GEN12p1:
+    gen = iga_gen_t::IGA_XE;
+    break;
+  default:
+    break;
+  }
+
+  const auto *m = Model::LookupModel(Platform(gen));
+  return m ? m->platform : iga::Platform::INVALID;
+}

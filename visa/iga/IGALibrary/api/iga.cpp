@@ -99,30 +99,6 @@ const char *iga_status_to_string(iga_status_t st) {
   }
 }
 
-// suppress -Wmissing-declarations
-namespace iga {
-iga::Platform ToPlatform(iga_gen_t gen);
-}
-
-// Conversion to an internal platform
-// we could just re-interpret the bits but this checks for garbage
-// (validates the enum)
-// This is not static so that it can be used by other compilation units.
-iga::Platform iga::ToPlatform(iga_gen_t gen) {
-  // for binary compatibilty we accept the enum values from pre Xe-renaming
-  // platforms (e.g IGA_GEN12p1 is GEN_VER(12,1), but we now name XE_VER(1,0)
-  switch (gen) {
-  case iga_gen_t::IGA_GEN12p1:
-    gen = iga_gen_t::IGA_XE;
-    break;
-  default:
-    break;
-  }
-
-  const auto *m = iga::Model::LookupModel(iga::Platform(gen));
-  return m ? m->platform : iga::Platform::INVALID;
-}
-
 iga_status_t iga_platforms_list(size_t gens_length_bytes, iga_gen_t *gens,
                                 size_t *gens_length_bytes_required) {
   if (gens_length_bytes != 0 && gens == nullptr)
