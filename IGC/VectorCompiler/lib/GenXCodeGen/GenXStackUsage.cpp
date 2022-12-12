@@ -105,6 +105,7 @@ class StackAnalysis : public InstVisitor<StackAnalysis> {
     uint64_t m_UsedSz{0};
     alignment_t m_RequiredAlign{0};
     bool m_HasIndirect{false};
+    bool m_HasVLA{false};
     Function *m_pHeavyFunction{nullptr};
     ProcessingState m_ProcessingFlag{ProcessingState::NotStarted};
   };
@@ -131,12 +132,21 @@ public:
 
 // Collect all allocas and updates stack usage of each function
 void StackAnalysis::visitAllocaInst(AllocaInst &AI) {
-  IGC_ASSERT_MESSAGE(AI.isStaticAlloca(), "Non-static alloca not supported");
+  IGC_ASSERT(!AI.isUsedWithInAlloca());
+  const BasicBlock *Parent = AI.getParent();
+  IGC_ASSERT_MESSAGE(Parent == &Parent->getParent()->front(), "Allocas outside of entry block are not supported");
+
+  auto &CurFuncState = m_ProcessedFs[AI.getFunction()];
+
+  if (!isa<ConstantInt>(AI.getArraySize())) {
+    CurFuncState.m_HasVLA = true;
+    return;
+  }
+
   auto AllocaSize = llvm::divideCeil(*AI.getAllocationSizeInBits(m_DL),
                                      genx::ByteBits);
   auto AllocaAlign = std::max(IGCLLVM::getAlignmentValue(&AI), visa::BytesPerSVMPtr);
 
-  auto &CurFuncState = m_ProcessedFs[AI.getFunction()];
   CurFuncState.m_UsedSz = llvm::alignTo(CurFuncState.m_UsedSz, AllocaAlign);
   CurFuncState.m_UsedSz += AllocaSize;
   CurFuncState.m_RequiredAlign = std::max(CurFuncState.m_RequiredAlign,
@@ -165,7 +175,8 @@ StackAnalysis::checkFunction(Function &F) {
   auto &StateOfF = pOnF->second;
 
   // Can't predict stack usage if there are indirect calls
-  if (StateOfF.m_HasIndirect)
+  // or variable length arrays
+  if (StateOfF.m_HasIndirect || StateOfF.m_HasVLA)
     return None;
 
   // if function is stack call, we do not know stack usage

@@ -155,6 +155,9 @@ class GenXPrologEpilogInsertion
   // is ret reg used for return value passing.
   bool RetRegUsed = false;
 
+  // Variable length arrays
+  bool HasVLA = false;
+
   std::vector<AllocaInst *> Allocas;
 
   void clear();
@@ -230,6 +233,11 @@ class GenXPrologEpilogInsertion
   Instruction *buildWritePredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
                                    Value *Input, Value *Dep,
                                    unsigned Offset = 0) const;
+
+  std::pair<Value *, Value *>
+  createBinOpPredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
+                       Instruction::BinaryOps Opc, Value* Val,
+                       bool Copy = false, bool UpdateReg = true) const;
 
   std::pair<Value *, Value *>
   createBinOpPredefReg(PreDefined_Vars RegID, IRBuilder<> &IRB,
@@ -431,9 +439,8 @@ bool GenXPrologEpilogInsertion::runOnFunction(Function &F) {
   // visit alloca
   // visit call inst
   visit(F);
-  // All static allocations were collected. Now we can efficiently generate
-  // private memory allocations. Non-static alloca instructions are not
-  // supported.
+  // All allocations were collected. Now we can efficiently generate
+  // private memory allocations.
   emitPrivateMemoryAllocations();
 
   if (vc::isKernel(&F))
@@ -621,12 +628,14 @@ GenXPrologEpilogInsertion::generateStackCallProlog(Function &F,
   return TmpFP;
 }
 
-void GenXPrologEpilogInsertion::visitAllocaInst(AllocaInst &I) {
-  // Check that this alloca is in the entry block (!) and has known size.
-  // Condition on entry block is important because this allows minimizing of
-  // run-time SP alignments.
-  IGC_ASSERT_MESSAGE(I.isStaticAlloca(), "Non-static alloca is not supported");
-  Allocas.push_back(&I);
+void GenXPrologEpilogInsertion::visitAllocaInst(AllocaInst &AI) {
+  IGC_ASSERT(!AI.isUsedWithInAlloca());
+  const BasicBlock *Parent = AI.getParent();
+  IGC_ASSERT_MESSAGE(Parent == &Parent->getParent()->front(), "Allocas outside of entry block are not supported");
+  Allocas.push_back(&AI);
+  if (!isa<ConstantInt>(AI.getArraySize())) {
+    HasVLA = true;
+  }
 }
 
 void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
@@ -638,7 +647,7 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
 
   StackUsed |= true;
 
-  IRBuilder IRB(Allocas.front());
+  IRBuilder<> IRB(Allocas.front());
 
   // Sort to have allocas alignment in decreasing order.
   std::sort(Allocas.begin(), Allocas.end(),
@@ -671,20 +680,42 @@ void GenXPrologEpilogInsertion::emitPrivateMemoryAllocations() {
 
   unsigned TotalSize = 0;
   for (auto &&[AI, Alignment] : zip(Allocas, NextAlignment)) {
-    unsigned AllocaSize =
-        llvm::divideCeil(*AI->getAllocationSizeInBits(*DL), genx::ByteBits);
-    TotalSize += AllocaSize;
-    unsigned AllocaPadding = calcPadding(TotalSize, Alignment);
-    TotalSize += AllocaPadding;
-
     Value *OrigSP = nullptr;
-    std::tie(OrigSP, std::ignore) = createBinOpPredefReg(
-        PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Add,
-        AllocaSize + AllocaPadding, true);
-
-    Value *AllocaAddr = IRB.CreateIntToPtr(OrigSP, AI->getType());
+    if (HasVLA) {
+      if (isa<ConstantInt>(AI->getArraySize())) {
+        unsigned AllocaSize =
+            llvm::divideCeil(*AI->getAllocationSizeInBits(*DL), genx::ByteBits);
+        std::tie(OrigSP, std::ignore) = createBinOpPredefReg(
+            PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Add,
+            AllocaSize + Alignment - 1, true);
+      } else {
+        unsigned ElementSize = llvm::divideCeil(
+            DL->getTypeAllocSizeInBits(AI->getAllocatedType()), genx::ByteBits);
+        Value *AllocaSize =
+            IRB.CreateMul(IRB.getInt64(ElementSize),
+                          IRB.CreateZExt(AI->getOperand(0), IRB.getInt64Ty()));
+        std::tie(OrigSP, std::ignore) = createBinOpPredefReg(
+            PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Add,
+            IRB.CreateAdd(AllocaSize, IRB.getInt64(Alignment - 1)), true);
+      }
+      createBinOpPredefReg(PreDefined_Vars::PREDEFINED_FE_SP, IRB,
+                           Instruction::And, ~(Alignment - 1), false);
+    } else {
+      unsigned AllocaSize =
+          llvm::divideCeil(*AI->getAllocationSizeInBits(*DL), genx::ByteBits);
+      TotalSize += AllocaSize;
+      unsigned AllocaPadding = calcPadding(TotalSize, Alignment);
+      TotalSize += AllocaPadding;
+      std::tie(OrigSP, std::ignore) = createBinOpPredefReg(
+          PreDefined_Vars::PREDEFINED_FE_SP, IRB, Instruction::Add,
+          AllocaSize + AllocaPadding, true);
+    }
+    CastInst *AllocaAddr = CastInst::Create(Instruction::IntToPtr, OrigSP,
+                                            AI->getType(), AI->getName(), AI);
+    AllocaAddr->setDebugLoc(AI->getDebugLoc());
     AI->replaceAllUsesWith(AllocaAddr);
   }
+
   // erase allocas in a separate loop so as not to invalidate IRBuilder
   // insertion point.
   std::for_each(Allocas.begin(), Allocas.end(),
@@ -806,8 +837,14 @@ void GenXPrologEpilogInsertion::generateStackCall(CallInst &CI) {
 std::pair<Value *, Value *> GenXPrologEpilogInsertion::createBinOpPredefReg(
     PreDefined_Vars RegID, IRBuilder<> &IRB, Instruction::BinaryOps Opc,
     unsigned long long Val, bool Copy, bool UpdateReg) const {
+  return createBinOpPredefReg(RegID, IRB, Opc, IRB.getInt64(Val), Copy, UpdateReg);
+}
+
+std::pair<Value *, Value *> GenXPrologEpilogInsertion::createBinOpPredefReg(
+    PreDefined_Vars RegID, IRBuilder<> &IRB, Instruction::BinaryOps Opc,
+    Value* Val, bool Copy, bool UpdateReg) const {
   Value *RegRead = buildReadPredefReg(RegID, IRB, IRB.getInt64Ty(), Copy, true);
-  Value *NewValue = IRB.CreateBinOp(Opc, RegRead, IRB.getInt64(Val));
+  Value *NewValue = IRB.CreateBinOp(Opc, RegRead, Val);
   if (UpdateReg)
     buildWritePredefReg(RegID, IRB, NewValue);
   if (!Copy)
