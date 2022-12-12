@@ -25,6 +25,7 @@ llvm::json::Value PERF_STATS::toJSON() {
                             {"numFlagSpillStore", numFlagSpillStore},
                             {"numFlagSpillLoad", numFlagSpillLoad},
                             {"numGRFSpillFill", numGRFSpillFillWeighted},
+                            {"GRFSpillSize", spillMemUsed},
                             {"numCycles", numCycles}};
 }
 

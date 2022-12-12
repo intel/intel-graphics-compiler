@@ -8576,7 +8576,7 @@ void Optimizer::insertScratchReadBeforeEOT() {
   int globalScratchOffset =
       kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
   if (builder.needFenceBeforeEOT() ||
-      (globalScratchOffset == 0 && builder.getJitInfo()->spillMemUsed == 0)) {
+      (globalScratchOffset == 0 && builder.getJitInfo()->stats.spillMemUsed == 0)) {
     return;
   }
 
@@ -11881,7 +11881,7 @@ void Optimizer::applyNoMaskWA() {
   // If no spill AND no inst that needs WA, just return.
   //   ' HasWAInsts = true' means that before RA, there are insts that need WA
   const bool HasFlagSpill = (builder.getJitInfo()->stats.numFlagSpillStore > 0);
-  const bool HasGRFSpill = (builder.getJitInfo()->spillMemUsed > 0);
+  const bool HasGRFSpill = (builder.getJitInfo()->stats.spillMemUsed > 0);
   if (!WAInfo || // No BB needs WA
       (!(HasFlagSpill || HasGRFSpill) &&
        !WAInfo->HasWAInsts)) // No Spill, no WA Insts

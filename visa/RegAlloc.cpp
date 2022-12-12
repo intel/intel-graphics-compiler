@@ -3147,7 +3147,7 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
     jitInfo->numBytesScratchGtpin =
         kernel.getGTPinData()->getNumBytesScratchUse();
     // verify that spill memory used is within platform's acceptable limit
-    if (jitInfo->spillMemUsed > builder.getMaxPTSS()) {
+    if (jitInfo->stats.spillMemUsed > builder.getMaxPTSS()) {
       MUST_BE_TRUE(false, "spill size exceeds platform capability");
       return VISA_SPILL;
     }

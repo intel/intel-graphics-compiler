@@ -896,7 +896,7 @@ int LinearScanRA::linearScanRA() {
       // update jit metadata information
       if (auto jitInfo = builder.getJitInfo()) {
         jitInfo->isSpill = true;
-        jitInfo->spillMemUsed = 0;
+        jitInfo->stats.spillMemUsed = 0;
         jitInfo->stats.numAsmCountUnweighted = instNum;
         jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
       }
@@ -978,13 +978,13 @@ int LinearScanRA::linearScanRA() {
           //  callerSaveAreaOffset    -> ---------------------
           //                             |  caller save      |
           //  paramOverflowAreaOffset -> ---------------------
-          jitInfo->spillMemUsed = builder.kernel.fg.frameSizeInOWord * 16;
+          jitInfo->stats.spillMemUsed = builder.kernel.fg.frameSizeInOWord * 16;
 
           // reserve spillMemUsed #bytes before 8kb boundary
           kernel.getGTPinData()->setScratchNextFree(
               8 * 1024 - kernel.getGTPinData()->getNumBytesScratchUse());
         } else {
-          jitInfo->spillMemUsed = nextSpillOffset;
+          jitInfo->stats.spillMemUsed = nextSpillOffset;
           kernel.getGTPinData()->setScratchNextFree(nextSpillOffset);
         }
         jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;

@@ -10160,7 +10160,7 @@ int GlobalRA::coloringRegAlloc() {
           // update jit metadata information
           if (auto jitInfo = builder.getJitInfo()) {
             jitInfo->isSpill = true;
-            jitInfo->spillMemUsed = 0;
+            jitInfo->stats.spillMemUsed = 0;
             jitInfo->stats.numAsmCountUnweighted = instNum;
             jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
           }
@@ -10414,7 +10414,7 @@ int GlobalRA::coloringRegAlloc() {
       }
 
       unsigned int scratchAllocation = 1024 * scratchAllocForStackInKB;
-      jitInfo->spillMemUsed = scratchAllocation;
+      jitInfo->stats.spillMemUsed = scratchAllocation;
       jitInfo->isSpill = true;
 
       // reserve spillMemUsed #bytes at upper end
@@ -10425,7 +10425,7 @@ int GlobalRA::coloringRegAlloc() {
       // kernel's responsibility to account for stack usage of entire call
       // tree.
       if (!kernel.fg.getIsStackCallFunc()) {
-        jitInfo->spillMemUsed = spillMemUsed;
+        jitInfo->stats.spillMemUsed = spillMemUsed;
         kernel.getGTPinData()->setScratchNextFree(spillMemUsed +
                                                   globalScratchOffset);
       }
@@ -13041,7 +13041,7 @@ void DynPerfModel::dump() {
     }
   }
   auto AsmName = Kernel.getOptions()->getOptionCstr(VISA_AsmFileName);
-  auto SpillSize = Kernel.fg.builder->getJitInfo()->spillMemUsed;
+  auto SpillSize = Kernel.fg.builder->getJitInfo()->stats.spillMemUsed;
   sprintf_s(LocalBuffer, sizeof(LocalBuffer),
             "Kernel name: %s\n # BBs : %d\n # Asm Insts: %d\n # RA Iters = "
             "%d\n Spill Size = %d\n # Spills: %d\n # Fills : %d\n",

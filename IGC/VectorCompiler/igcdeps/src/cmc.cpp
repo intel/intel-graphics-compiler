@@ -710,7 +710,7 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
 
   // Allocate spill-fill buffer
   if (JitterInfo.isSpill || JitterInfo.hasStackcalls)
-    ExecEnv.PerThreadScratchSpace += JitterInfo.spillMemUsed;
+    ExecEnv.PerThreadScratchSpace += JitterInfo.stats.spillMemUsed;
   if (!JitterInfo.hasStackcalls && BackendInfo.getTPMSize() != 0)
     // CM stack calls and thread-private memory use the same value to control
     // scratch space. Consequently, if we have stack calls, there is no need

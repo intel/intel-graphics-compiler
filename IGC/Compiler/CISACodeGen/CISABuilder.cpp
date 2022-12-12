@@ -5692,7 +5692,7 @@ namespace IGC
             }
             vISA::FINALIZER_INFO* jitInfo;
             visaFunc->GetJitInfo(jitInfo);
-            entry.f_spillMemPerThread = jitInfo->spillMemUsed;
+            entry.f_spillMemPerThread = jitInfo->stats.spillMemUsed;
 
             uint8_t isExternal = F->hasFnAttribute("referenced-indirectly") ? 1 : 0;
             // Set per-function barrier count from vISA information.
@@ -6162,7 +6162,7 @@ namespace IGC
             ss << " allocated " << jitInfo->stats.numGRFTotal << " regs";
             if (jitInfo->isSpill) {
                 auto spilledRegs = std::max<unsigned>(1,
-                    (jitInfo->spillMemUsed + getGRFSize() - 1) / getGRFSize());
+                    (jitInfo->stats.spillMemUsed + getGRFSize() - 1) / getGRFSize());
                 ss << " and spilled around " << spilledRegs;
             }
 
@@ -6423,7 +6423,7 @@ namespace IGC
 
         if (jitInfo->isSpill == true)
         {
-            pOutput->m_scratchSpaceUsedBySpills = jitInfo->spillMemUsed;
+            pOutput->m_scratchSpaceUsedBySpills = jitInfo->stats.spillMemUsed;
             pOutput->m_numGRFSpillFill = jitInfo->stats.numGRFSpillFillWeighted;
         }
 

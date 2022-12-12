@@ -1553,9 +1553,9 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
       os << "\n"
          << "//.GRF count " << jitInfo->stats.numGRFUsed;
     }
-    if (jitInfo->spillMemUsed > 0) {
+    if (jitInfo->stats.spillMemUsed > 0) {
       os << "\n"
-         << "//.spill size " << jitInfo->spillMemUsed;
+         << "//.spill size " << jitInfo->stats.spillMemUsed;
     }
     if (jitInfo->stats.numGRFSpillFillWeighted > 0) {
       os << "\n"

@@ -52,6 +52,10 @@ public:
   // spill cost calculation.
   uint32_t numGRFSpillFillWeighted = 0;
 
+  // spillMemUsed is the scratch size in byte of entire vISA stack for this
+  // function/kernel. It contains spill size and caller/callee save size.
+  uint32_t spillMemUsed = 0;
+
   // Unweighted cycles count estimated by the scheduler.
   uint32_t numCycles = 0;
 
@@ -72,10 +76,6 @@ struct FINALIZER_INFO {
   // ----- Required by IGC/VC/Runtime ----- //
   // Used by IGC for spill cost calculation
   bool isSpill = false;
-
-  // spillMemUsed is the scratch size in byte of entire vISA stack for this
-  // function/kernel. It contains spill size and caller/callee save size.
-  uint32_t spillMemUsed = 0;
 
   // Debug info is callee allocated and populated only if switch is passed
   // to JIT to emit debug info.

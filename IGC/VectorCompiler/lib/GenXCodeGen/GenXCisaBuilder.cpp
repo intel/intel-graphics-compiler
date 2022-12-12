@@ -6692,7 +6692,7 @@ public:
       CISA_CALL(Kernel->GetJitInfo(jitInfo));
       IGC_ASSERT(jitInfo);
       NumAsmInsts += jitInfo->stats.numAsmCountUnweighted;
-      SpillMemUsed += jitInfo->spillMemUsed;
+      SpillMemUsed += jitInfo->stats.spillMemUsed;
       NumFlagSpillStore += jitInfo->stats.numFlagSpillStore;
       NumFlagSpillLoad += jitInfo->stats.numFlagSpillLoad;
     }

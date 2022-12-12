@@ -763,7 +763,7 @@ RuntimeInfoCollector::collectFunctionGroupInfo(const FunctionGroup &FG) const {
     IGC_ASSERT_MESSAGE(FuncJitInfo, "Func jit info is not set by finalizer");
     JitInfo->isSpill |= FuncJitInfo->isSpill;
     JitInfo->hasStackcalls |= FuncJitInfo->hasStackcalls;
-    JitInfo->spillMemUsed += FuncJitInfo->spillMemUsed;
+    JitInfo->stats.spillMemUsed += FuncJitInfo->stats.spillMemUsed;
   }
 
   RawSectionInfo TextSection;
