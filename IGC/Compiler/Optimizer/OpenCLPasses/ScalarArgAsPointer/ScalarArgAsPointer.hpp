@@ -68,7 +68,7 @@ namespace IGC
 
     private:
 
-        typedef llvm::SmallPtrSet<llvm::Argument*, 2> ArgSet;
+        using ArgSet = llvm::SmallPtrSet<llvm::Argument*, 2>;
 
         /// @brief    Analyzes kernel function and saves result in function metadata.
         /// @param    F function to analyze.
@@ -85,13 +85,40 @@ namespace IGC
         ///             (2) uses pointer kernel argument
         /// @param    I instruction to trace back.
         /// @returns  Set of matching kernel arguments.
-        const ArgSet* searchForArgs(llvm::Instruction* I);
+        const ArgSet* findArgs(llvm::Instruction* I);
+
+        /// @brief  Checks if instruction stores kernel argument, and if true, traces back to
+        ///         alloca instruction (with offset). This is required for decomposed structs
+        ///         that are copied into private memory.
+        /// @param  SI visited store instruction.
+        void analyzeStoredArg(llvm::StoreInst& I);
+
+        /// @brief    Searches for kernel argument stored in allocated memory. Required for
+        ///           decomposed structs that are copied into private memory. Can return more
+        ///           than one argument if load instruction uses variable offset.
+        /// @param    LI load instruction to check.
+        /// @param    args output list of kernel arguments.
+        /// @returns  true if kernel argument found or false if instruction doesn't trace back to alloca.
+        bool findStoredArgs(llvm::LoadInst& LI, ArgSet& args);
+
+        /// @brief    Traces pointer of load/store instruction back to alloca instruction.
+        /// @param    V input load/store pointer.
+        /// @param    AI output alloca instruction.
+        /// @param    GEPI output GEP instruction (offset from alloca to value V).
+        /// @returns  true if traced back to alloca.
+        bool findAllocaWithOffset(llvm::Value* V, llvm::AllocaInst*& AI, llvm::GetElementPtrInst*& GEPI);
 
         /// @brief Combined set of all matching arguments found in currently analyzed function.
         ArgSet m_matchingArgs;
 
         /// @brief Cached results for visited instructions.
         llvm::DenseMap<llvm::Instruction*, std::unique_ptr<ArgSet>> m_visitedInst;
+
+        /// @brief Mapping of basePtr + offset to kernel argument.
+        llvm::DenseMap<std::pair<llvm::AllocaInst*, uint64_t>, llvm::Argument*> m_allocas;
+
+        /// @brief Data layout of currently analyzed module.
+        const llvm::DataLayout* DL;
     };
 
 } // namespace IGC

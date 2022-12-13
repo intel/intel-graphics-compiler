@@ -1462,10 +1462,6 @@ void OptimizeIR(CodeGenContext* const pContext)
             {
                 mpm.add(new ImplicitGIDRestoring());
             }
-            if (pContext->type == ShaderType::OPENCL_SHADER)
-            {
-                mpm.add(new ScalarArgAsPointerAnalysis());
-            }
 
             mpm.add(llvm::createDeadCodeEliminationPass());
             mpm.add(llvm::createEarlyCSEPass());

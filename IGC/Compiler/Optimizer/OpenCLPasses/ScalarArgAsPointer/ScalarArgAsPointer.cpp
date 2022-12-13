@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
@@ -40,6 +41,8 @@ ScalarArgAsPointerAnalysis::ScalarArgAsPointerAnalysis() : ModulePass(ID)
 
 bool ScalarArgAsPointerAnalysis::runOnModule(Module& M)
 {
+    DL = &M.getDataLayout();
+
     MetaDataUtils* MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
     bool changed = false;
@@ -66,6 +69,7 @@ bool ScalarArgAsPointerAnalysis::analyzeFunction(llvm::Function& F)
 {
     m_matchingArgs.clear();
     m_visitedInst.clear();
+    m_allocas.clear();
 
     visit(F);
 
@@ -82,6 +86,7 @@ bool ScalarArgAsPointerAnalysis::analyzeFunction(llvm::Function& F)
 
 void ScalarArgAsPointerAnalysis::visitStoreInst(llvm::StoreInst& I)
 {
+    analyzeStoredArg(I);
     analyzePointer(I.getPointerOperand());
 }
 
@@ -104,11 +109,11 @@ void ScalarArgAsPointerAnalysis::analyzePointer(llvm::Value* V)
     if (!inst)
         return;
 
-    if (const ArgSet* args = searchForArgs(inst))
+    if (const ArgSet* args = findArgs(inst))
         m_matchingArgs.insert(args->begin(), args->end());
 }
 
-const ScalarArgAsPointerAnalysis::ArgSet* ScalarArgAsPointerAnalysis::searchForArgs(llvm::Instruction* inst)
+const ScalarArgAsPointerAnalysis::ArgSet* ScalarArgAsPointerAnalysis::findArgs(llvm::Instruction* inst)
 {
     // Skip already visited instruction
     if (m_visitedInst.count(inst))
@@ -117,43 +122,175 @@ const ScalarArgAsPointerAnalysis::ArgSet* ScalarArgAsPointerAnalysis::searchForA
     // Mark as visited
     m_visitedInst.try_emplace(inst, nullptr);
 
-    // Check for indirect access. Assume intrinsic are safe simple arithmetics.
-    if (isa<LoadInst>(inst) || (isa<CallInst>(inst) && !isa<GenIntrinsicInst>(inst)))
-    {
-        // (1) Found indirect access, fail search
+    // Assume intrinsic are safe simple arithmetics.
+    if (isa<CallInst>(inst) && !isa<GenIntrinsicInst>(inst))
         return nullptr;
-    }
 
     auto result = std::make_unique<ScalarArgAsPointerAnalysis::ArgSet>();
 
-    for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
+    if (LoadInst* LI = dyn_cast<LoadInst>(inst))
     {
-        Value* op = inst->getOperand(i);
-
-        if (Argument* arg = dyn_cast<Argument>(op))
+        if (!findStoredArgs(*LI, *result))
+            return nullptr; // (1) Found indirect access, fail search
+    }
+    else
+    {
+        // For any other type of instruction trace back operands.
+        for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
         {
-            // Consider only integer arguments
-            if (arg->getType()->isIntegerTy())
-            {
-                result->insert(arg);
-            }
-            else
-            {
-                // (2) Found non-compatible argument, fail
-                return nullptr;
-            }
-        }
-        else if (Instruction* opInst = dyn_cast<Instruction>(op))
-        {
-            auto* args = searchForArgs(opInst);
+            Value* op = inst->getOperand(i);
 
-            if (!args)
-                return nullptr; // propagate fail
+            if (Argument* arg = dyn_cast<Argument>(op))
+            {
+                // Consider only integer arguments
+                if (arg->getType()->isIntegerTy())
+                {
+                    result->insert(arg);
+                }
+                else
+                {
+                    // (2) Found non-compatible argument, fail
+                    return nullptr;
+                }
+            }
+            else if (Instruction* opInst = dyn_cast<Instruction>(op))
+            {
+                auto* args = findArgs(opInst);
 
-            result->insert(args->begin(), args->end());
+                if (!args)
+                    return nullptr; // propagate fail
+
+                result->insert(args->begin(), args->end());
+            }
         }
     }
 
     m_visitedInst[inst] = std::move(result);
     return &(*m_visitedInst[inst]);
+}
+
+void ScalarArgAsPointerAnalysis::analyzeStoredArg(llvm::StoreInst& SI)
+{
+    // Only track stores of kernel arguments.
+    Argument* A = dyn_cast<Argument>(SI.getValueOperand());
+    if (!A)
+        return;
+
+    AllocaInst* AI = nullptr;
+    GetElementPtrInst* GEPI = nullptr;
+    if (!findAllocaWithOffset(SI.getPointerOperand(), AI, GEPI))
+        return;
+
+    uint64_t totalOffset = 0;
+
+    if (GEPI)
+    {
+        // For store instruction offset must be constant.
+        APInt offset(DL->getIndexTypeSizeInBits(GEPI->getType()), 0);
+        if (!GEPI->accumulateConstantOffset(*DL, offset) || offset.isNegative())
+            return;
+        totalOffset += offset.getZExtValue();
+    }
+
+    m_allocas[std::pair<llvm::AllocaInst*, uint64_t>(AI, totalOffset)] = A;
+}
+
+bool ScalarArgAsPointerAnalysis::findStoredArgs(llvm::LoadInst& LI, ArgSet& args)
+{
+    AllocaInst* AI = nullptr;
+    GetElementPtrInst* GEPI = nullptr;
+    if (!findAllocaWithOffset(LI.getPointerOperand(), AI, GEPI))
+        return false;
+
+    // It is possible one or more GEP operand is a variable index to array type.
+    // In this case search for all possible offsets to alloca.
+    using Offsets = SmallVector<uint64_t, 4>;
+    Offsets offsets;
+    offsets.push_back(0);
+
+    if (GEPI)
+    {
+        for (gep_type_iterator GTI = gep_type_begin(GEPI), prevGTI = gep_type_end(GEPI); GTI != gep_type_end(GEPI); prevGTI = GTI++)
+        {
+            if (ConstantInt* C = dyn_cast<ConstantInt>(GTI.getOperand()))
+            {
+                if (C->isZero())
+                    continue;
+
+                uint64_t offset = 0;
+
+                if (StructType* STy = GTI.getStructTypeOrNull())
+                    offset = DL->getStructLayout(STy)->getElementOffset(int_cast<unsigned>(C->getZExtValue()));
+                else
+                    offset = C->getZExtValue() * DL->getTypeAllocSize(GTI.getIndexedType()); // array or vector
+
+                for (auto it = offsets.begin(); it != offsets.end(); ++it)
+                    *it += offset;
+            }
+            else
+            {
+                if (prevGTI == gep_type_end(GEPI))
+                    return false; // variable index at first operand, should not happen
+
+                // gep_type_iterator is used to query indexed type. For arrays this is type
+                // of single element. To get array size, we need to do query for it at
+                // previous iterator step (before stepping into type indexed by array).
+                ArrayType* ATy = dyn_cast<ArrayType>(prevGTI.getIndexedType());
+                if (!ATy)
+                    return false;
+
+                uint64_t arrayElements = ATy->getNumElements();
+
+                uint64_t byteSize = DL->getTypeAllocSize(GTI.getIndexedType());
+
+                Offsets tmp;
+                for (auto i = 0; i < arrayElements; ++i)
+                    for (auto it = offsets.begin(); it != offsets.end(); ++it)
+                        tmp.push_back(*it + i * byteSize);
+
+                offsets = tmp;
+            }
+        }
+    }
+
+    for (auto it = offsets.begin(); it != offsets.end(); ++it)
+    {
+        std::pair<llvm::AllocaInst*, uint64_t> key(AI, *it);
+        if (m_allocas.count(key))
+            args.insert(m_allocas[key]);
+    }
+
+    return !args.empty();
+}
+
+bool ScalarArgAsPointerAnalysis::findAllocaWithOffset(llvm::Value* V, llvm::AllocaInst*& outAI, llvm::GetElementPtrInst*& outGEPI)
+{
+    IGC_ASSERT_MESSAGE(dyn_cast<PointerType>(V->getType()), "Value should be a pointer");
+
+    outGEPI = nullptr;
+    Value* tmp = V;
+
+    while (true)
+    {
+        if (BitCastInst* BCI = dyn_cast<BitCastInst>(tmp))
+        {
+            tmp = BCI->getOperand(0);
+        }
+        else if (GetElementPtrInst* GEPI = dyn_cast<GetElementPtrInst>(tmp))
+        {
+            if (outGEPI)
+                return false; // only one GEP instruction is supported
+            outGEPI = GEPI;
+            tmp = GEPI->getPointerOperand();
+        }
+        else if (AllocaInst* AI = dyn_cast<AllocaInst>(tmp))
+        {
+            outAI = AI;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }
