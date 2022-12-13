@@ -714,13 +714,16 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
         newCallArguments.push_back(promotedArg);
     }
 
-    return CallInst::Create(
+    auto newCall = CallInst::Create(
         newFunction->getFunctionType(),
         newFunction,
         newCallArguments,
         "",
         call
     );
+    newCall->setCallingConv(call->getCallingConv());
+    newCall->setAttributes(call->getAttributes());
+    return newCall;
 }
 
 ExtractValueInst* PromoteBools::promoteExtractValue(ExtractValueInst* extractValue)
