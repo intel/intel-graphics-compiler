@@ -94,7 +94,7 @@ void vISAVerifier::writeReport(const char *filename) {
 static int getDstIndex(const CISA_INST *inst) {
   ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
   int dstIndex = -1;
-  if (inst->opnd_count > 0) {
+  if (inst->opnd_num > 0) {
     switch (ISA_Inst_Table[opcode].type) {
     case ISA_Inst_Mov:
     case ISA_Inst_Arith:
@@ -121,7 +121,7 @@ diagDumpInstructionOperandDecls(const common_isa_header &isaHeader,
 
   unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
-  for (unsigned i = 0; i < inst->opnd_count; i++) {
+  for (unsigned i = 0; i < inst->opnd_num; i++) {
     if (inst->opnd_array[i]->opnd_type == CISA_OPND_VECTOR) {
       const vector_opnd &opnd = getVectorOperand(inst, i);
       uint32_t index = opnd.getOperandIndex();
@@ -165,7 +165,7 @@ diagDumpInstructionOperandDecls(const common_isa_header &isaHeader,
     }
 
     sstr << "\n";
-    if (i != inst->opnd_count - 1)
+    if (i != inst->opnd_num - 1)
       sstr << std::setw(33) << "                               ";
   }
 
@@ -836,7 +836,7 @@ void vISAVerifier::verifyVectorOperand(const CISA_INST *inst, unsigned i) {
 
   unsigned dstIndex = getDstIndex(inst);
 
-  if (inst->opnd_count <= 0) {
+  if (inst->opnd_num <= 0) {
     REPORT_INSTRUCTION(options, false, "Incorrect number of operands loaded.");
     return;
   }
@@ -924,7 +924,7 @@ void vISAVerifier::verifyOperand(const CISA_INST *inst, unsigned i) {
   }
   MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
   MUST_BE_TRUE(inst, "Argument Exception: argument inst   is NULL.");
-  MUST_BE_TRUE(inst->opnd_count > i,
+  MUST_BE_TRUE(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   switch (getOperandType(inst, i)) {
   case CISA_OPND_OTHER: /* unable to verify some random primitive operand. */
@@ -1901,7 +1901,7 @@ void vISAVerifier::verifyInstructionLogic(const CISA_INST *inst) {
   ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
   bool pred_logic = false;
-  unsigned opend_count = inst->opnd_count;
+  unsigned opend_count = inst->opnd_num;
   if (opcode == ISA_BFN) {
     // check opnd type of the last opend, which is BooleanFuncCtrl
     REPORT_INSTRUCTION(options,
@@ -1991,7 +1991,7 @@ void vISAVerifier::verifyInstructionCompare(const CISA_INST *inst) {
   ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
   ASSERT_USER(ISA_CMP == opcode, "illegal opcode for compare instruction");
 
-  for (unsigned i = 0; i < inst->opnd_count; i++) {
+  for (unsigned i = 0; i < inst->opnd_num; i++) {
     if (i > 0) {
       Common_ISA_Operand_Class operand_class =
           getVectorOperand(inst, i).getOperandClass();
@@ -2022,7 +2022,7 @@ void vISAVerifier::verifyInstructionAddress(const CISA_INST *inst) {
   ASSERT_USER(ISA_ADDR_ADD == opcode,
               "Illegal opcode for address instruction.");
 
-  for (unsigned i = 0; i < inst->opnd_count; i++) {
+  for (unsigned i = 0; i < inst->opnd_num; i++) {
     Common_ISA_Operand_Class operand_class =
         getVectorOperand(inst, i).getOperandClass();
 
@@ -4419,7 +4419,7 @@ int vISAVerifier::verifyInstruction(const CISA_INST *inst) {
                        "vISA instruction not supported on this platform");
   }
 
-  for (unsigned i = 0; i < inst->opnd_count; i++)
+  for (unsigned i = 0; i < inst->opnd_num; i++)
     verifyOperand(inst, i);
 
   if (hasExecSize(opcode)) {

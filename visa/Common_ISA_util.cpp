@@ -1382,21 +1382,21 @@ VISA_Type getVectorOperandType(const print_format_provider_t *header,
 
 const raw_opnd &getRawOperand(const CISA_INST *inst, unsigned i) {
   MUST_BE_TRUE(inst, "Argument Exception: argument inst is NULL.");
-  MUST_BE_TRUE(inst->opnd_count > i,
+  MUST_BE_TRUE(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->_opnd.r_opnd;
 }
 
 const vector_opnd &getVectorOperand(const CISA_INST *inst, unsigned i) {
   MUST_BE_TRUE(inst, "Argument Exception: argument inst is NULL.");
-  MUST_BE_TRUE(inst->opnd_count > i,
+  MUST_BE_TRUE(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->_opnd.v_opnd;
 }
 
 CISA_opnd_type getOperandType(const CISA_INST *inst, unsigned i) {
   MUST_BE_TRUE(inst, "Argument Exception: argument inst is NULL.");
-  MUST_BE_TRUE(inst->opnd_count > i,
+  MUST_BE_TRUE(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->opnd_type;
 }

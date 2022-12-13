@@ -310,7 +310,7 @@ static std::string printOperand(const print_format_provider_t *header,
                                 const Options *opt) {
   MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
   MUST_BE_TRUE(inst, "Argument Exception: argument inst   is NULL.");
-  MUST_BE_TRUE(inst->opnd_count > i,
+  MUST_BE_TRUE(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   std::stringstream sstr;
   switch (getOperandType(inst, i)) {
@@ -728,7 +728,7 @@ static std::string printInstructionSVM(const print_format_provider_t *header,
     ASSERT_USER(false, "Unimplemented or Illegal SVM Sub Opcode.");
   }
 
-  for (; i < inst->opnd_count; i++)
+  for (; i < inst->opnd_num; i++)
     sstr << printOperand(header, inst, i, opt);
 
   return sstr.str();
@@ -762,7 +762,7 @@ static std::string printInstructionCommon(const print_format_provider_t *header,
   }
 
   if (ISA_Inst_Sync != ISA_Inst_Table[opcode].type) {
-    unsigned int Count = inst->opnd_count;
+    unsigned int Count = inst->opnd_num;
 
     if (ISA_Inst_Compare == ISA_Inst_Table[opcode].type) {
       uint8_t relOp = getPrimitiveOperand<uint8_t>(inst, i++);
@@ -1018,7 +1018,7 @@ printInstructionControlFlow(const print_format_provider_t *header,
       /// index
       sstr << printOperand(header, inst, i++, opt);
       sstr << " (";
-      for (bool first = true; i < inst->opnd_count; i++) {
+      for (bool first = true; i < inst->opnd_num; i++) {
         if (!first) {
           sstr << ", ";
         }
@@ -1271,7 +1271,7 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
   case ISA_DPAS:
   case ISA_DPASW:
   {
-    const VISA_opnd *dpasOpnd = inst->opnd_array[inst->opnd_count - 1];
+    const VISA_opnd *dpasOpnd = inst->opnd_array[inst->opnd_num - 1];
     GenPrecision A, W;
     uint8_t D, C;
     UI32ToDpasInfo(dpasOpnd->_opnd.other_opnd, A, W, D, C);
@@ -1458,7 +1458,7 @@ printInstructionSampler(const common_isa_header &isaHeader,
        // skip the param count
     i++;
 
-    while (i < inst->opnd_count) {
+    while (i < inst->opnd_num) {
       sstr << printOperand(header, inst, i++, opt);
     }
 
@@ -1501,7 +1501,7 @@ printInstructionSampler(const common_isa_header &isaHeader,
        // skip the param count
     i++;
 
-    while (i < inst->opnd_count) {
+    while (i < inst->opnd_num) {
       sstr << printOperand(header, inst, i++, opt);
     }
 
@@ -1549,7 +1549,7 @@ printInstructionSampler(const common_isa_header &isaHeader,
        // skip the param count
     i++;
 
-    while (i < inst->opnd_count) {
+    while (i < inst->opnd_num) {
       sstr << printOperand(header, inst, i++, opt);
     }
 
@@ -2291,7 +2291,7 @@ printInstructionDataport(const print_format_provider_t *header,
     surface = getPrimitiveOperand<uint8_t>(inst, i++);
     sstr << " " << printSurfaceName(surface);
 
-    while (i < inst->opnd_count) {
+    while (i < inst->opnd_num) {
       sstr << printOperand(header, inst, i++, opt);
     }
 

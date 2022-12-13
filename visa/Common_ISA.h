@@ -673,7 +673,8 @@ typedef struct _CISA_INST {
   ISA_Inst_Type isa_type;
   PredicateOpnd pred;
   VISA_opnd **opnd_array;
-  unsigned opnd_count;
+  // note that opnd_num does not include predicate and execution mask operands
+  unsigned opnd_num;
   unsigned id;
 
   VISA_Exec_Size getExecSize() const {

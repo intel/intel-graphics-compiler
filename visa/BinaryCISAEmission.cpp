@@ -174,7 +174,7 @@ int CBinaryCISAEmitter::emitCisaInst(VISAKernelImpl *cisa_kernel,
     unsigned currentOpndIndex = i - reverseOffset;
 
     if (inst->opnd_array && !inst->opnd_array[currentOpndIndex]) {
-      if (currentOpndIndex == inst->opnd_count) {
+      if (currentOpndIndex == inst->opnd_num) {
         break;
       }
       else {
@@ -210,12 +210,12 @@ int CBinaryCISAEmitter::emitCisaInst(VISAKernelImpl *cisa_kernel,
       reverseOffset++;
     }
     else {
-      // note that inst->opnd_count does not include predicate and execution mask
+      // note that inst->opnd_num does not include predicate and execution mask
       // whereas desc->opnd_num includes predicate and execution mask. If the
-      // currentOpndIndex = inst->opnd_count, then break out the loop.
+      // currentOpndIndex = inst->opnd_num, then break out the loop.
       // This works because currentOpndIndex computation skips
       // execsize and pred operands using reverseOffset.
-      if (currentOpndIndex == inst->opnd_count) {
+      if (currentOpndIndex == inst->opnd_num) {
         break;
       }
       if (inst->opnd_array &&

@@ -74,7 +74,7 @@ int CisaInst::createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size,
   }
 
   m_inst_desc = inst_desc;
-  m_cisa_instruction.opnd_count = numOpnds;
+  m_cisa_instruction.opnd_num = numOpnds;
   m_cisa_instruction.opcode = opcode;
   m_cisa_instruction.execsize = exec_size;
   m_cisa_instruction.modifier = modifier;

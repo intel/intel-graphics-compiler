@@ -98,7 +98,7 @@ public:
 
   unsigned char getOpcode() const { return m_cisa_instruction.opcode; }
   unsigned char getModifier() const { return m_cisa_instruction.modifier; }
-  unsigned getOperandCount() const { return m_cisa_instruction.opnd_count; }
+  unsigned getOperandCount() const { return m_cisa_instruction.opnd_num; }
   VISA_Exec_Size getExecSize() const {
     return (VISA_Exec_Size)(m_cisa_instruction.execsize & 0xF);
   }
