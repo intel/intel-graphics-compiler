@@ -100,7 +100,7 @@ private:
   // sync to the sbid on the instruction is required. If the instruction is
   // possiblely being shoot down, we have to add a sync to the id is synced with
   // because we will clear the dependency
-  void calculateDependence(DepSet &dep, SWSB &distanceDependency,
+  void calculateDependence(DepSet &dep, SWSB &swsb,
                            const Instruction &currInst,
                            std::vector<SBID> &activeSBID,
                            bool &needSyncForShootDownInst);
@@ -121,6 +121,11 @@ private:
   void setSbidDependency(DepSet &dep, const Instruction &currInst,
                          bool &needSyncForShootDownInst,
                          std::vector<SBID> &activeSBID);
+
+  // helper fuction to set swsb for dependency to in-order instructions.
+  void setDistanceDependency(DepSet *dep, SWSB &swsb, bool isWAW,
+                             DEP_PIPE prevDepPipe, DEP_PIPE currDepPipe,
+                             const Instruction &currInst);
 
   // clear dependency of the given dep
   void clearDepBuckets(DepSet &dep);
@@ -149,6 +154,15 @@ private:
   // add swsb into instruction, insert sync if the added swsb is not compatible
   // with the existed swsb in the inst
   void addSWSBToInst(InstListIterator instIt, const SWSB &swsb, Block &block);
+
+  // a helper function to check if the RAW depedency to acc/flag can be
+  // handled by HW, and hence swsb is not required. isRAW will be set to false for the
+  // case. This function is used by calculateDependence.
+  // The function must be called when there is RAW dependency detected.
+  void checkAccFlagRAW(bool& isRAW, const DepSet &currDep, const DepSet &targetDep);
+
+  // insert sync and A@1 for the last instruction in a BB
+  void forceSyncLastInst(const Instruction &lastInst, Block &lastBB);
 
   /// ------------ HW Workaround Information ------------ ///
   // MathWAInfo: For a math instruction, when the following instruction has
