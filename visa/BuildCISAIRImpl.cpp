@@ -1757,8 +1757,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
 
       payloadSection->m_inputVect = shaderBody->m_inputVect;
       if (shaderBody->kernel.hasKernelDebugInfo()) {
-        payloadSection->kernel.setKernelDebugInfo(
-            shaderBody->kernel.getKernelDebugInfo());
+        payloadSection->kernel.updateKernelDebugInfo(shaderBody->kernel);
       }
 
       if (shaderBody->kernel.hasGTPinInit()) {
@@ -1781,7 +1780,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
             j++;
           }
         }
-        payloadSection->kernel.setGTPinData(shaderBody->kernel.getGTPinData());
+        payloadSection->kernel.updateGTPinData(shaderBody->kernel);
         // If the number of free regs in payload section is 0,
         // it means the compilation is skipped and we don't have to do anything
         if (payloadSectionGTPin->getNumFreeGlobalRegs()) {

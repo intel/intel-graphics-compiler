@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "PlatformInfo.h"
 #include "RelocationEntry.hpp"
 #include "include/gtpin_IGC_interface.h"
+#include "Assertions.h"
 
 #include <cstdint>
 #include <iostream>
@@ -214,8 +215,8 @@ private:
   const uint32_t m_function_id;
 
   RA_Type RAType;
-  KernelDebugInfo *kernelDbgInfo = nullptr;
-  gtPinData *gtPinInfo = nullptr;
+  std::shared_ptr<KernelDebugInfo> kernelDbgInfo = nullptr;
+  std::shared_ptr<gtPinData> gtPinInfo = nullptr;
 
   uint32_t asmInstCount;
   uint64_t kernelID;
@@ -243,9 +244,6 @@ private:
   std::string lastG4Asm;
   int nextDumpIndex = 0;
 
-  bool sharedDebugInfo = false;
-  bool sharedGTPinInfo = false;
-
   G4_BB *perThreadPayloadBB = nullptr;
   G4_BB *crossThreadPayloadBB = nullptr;
   // There's two entires prolog for setting FFID for compute shaders.
@@ -261,6 +259,30 @@ private:
   // separate class (G4_IRInfo?).
   std::unordered_map<G4_INST *, G4_SrcRegRegion *> instImplicitAccSrc;
   std::unordered_map<G4_INST *, G4_DstRegRegion *> instImplicitAccDef;
+
+  // Internal use of updating shared_ptr KernelDebugInfo
+  // To access the pointer, use getKernelDebugInfo() instead
+  void setKernelDebugInfoSharedPtr(std::shared_ptr<KernelDebugInfo>& k) {
+    vISA_ASSERT(k.get(), "incorrect nullptr");
+    kernelDbgInfo = k;
+  }
+  std::shared_ptr<KernelDebugInfo>& getKernelDebugInfoSharedPtr() {
+    return kernelDbgInfo;
+  }
+
+  // Internal use of updating shared_ptr gtPinData
+  // To access the pointer, use getGTPinData() instead
+  void setGTPinDataSharedPtr(std::shared_ptr<gtPinData>& p) {
+    vISA_ASSERT(p.get(), "incorrect nullptr");
+    gtPinInfo = p;
+  }
+  std::shared_ptr<gtPinData>& getGTPinDataSharedPtr() {
+    if (!gtPinInfo)
+      allocGTPinData();
+
+    return gtPinInfo;
+  }
+
 
 public:
   FlowGraph fg;
@@ -372,19 +394,24 @@ public:
   void setRAType(RA_Type type) { RAType = type; }
   RA_Type getRAType() const { return RAType; }
 
-  bool hasKernelDebugInfo() const { return kernelDbgInfo; }
-  void setKernelDebugInfo(KernelDebugInfo *k);
-  KernelDebugInfo *getKernelDebugInfo();
+  bool hasKernelDebugInfo() const { return kernelDbgInfo != nullptr; }
+  void updateKernelDebugInfo(G4_Kernel& kernel) {
+    setKernelDebugInfoSharedPtr(kernel.getKernelDebugInfoSharedPtr());
+  }
+  KernelDebugInfo* getKernelDebugInfo();
 
-  void setGTPinData(gtPinData *p);
   bool hasGTPinInit() const { return gtPinInfo && gtPinInfo->getGTPinInit(); }
-  gtPinData *getGTPinData() {
+  gtPinData* getGTPinData() {
     if (!gtPinInfo)
       allocGTPinData();
 
-    return gtPinInfo;
+    return gtPinInfo.get();
   }
-  void allocGTPinData() { gtPinInfo = new (fg.mem) gtPinData(*this); }
+
+  void updateGTPinData(G4_Kernel& kernel) {
+    setGTPinDataSharedPtr(kernel.getGTPinDataSharedPtr());
+  }
+  void allocGTPinData() { gtPinInfo = std::make_shared<gtPinData>(*this); }
 
   unsigned getCallerSaveLastGRF() const { return callerSaveLastGRF; }
 
