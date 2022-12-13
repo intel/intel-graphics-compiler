@@ -50,8 +50,6 @@ struct BUNDLE_INFO {
     size = 1;
   }
 
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-
   void appendInst(G4_INST *lastInst) {
     MUST_BE_TRUE(size < maxBundleSize, "max bundle size exceeded");
     inst[size++] = lastInst;

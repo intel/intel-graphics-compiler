@@ -1076,10 +1076,9 @@ void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
     G4_INST *lastInst = bb->back();
     if (lastInst->opcode() == G4_pseudo_exit) {
       if (lastInst->getExecSize() == g4::SIMD1 &&
-          !(builder->getFCPatchInfo() &&
-            builder->getFCPatchInfo()->getFCComposableKernel())) {
+          !builder->getFCPatchInfo()->getFCComposableKernel()) {
         // uniform return
-        if (lastInst->getPredicate() != NULL) {
+        if (lastInst->getPredicate()) {
           exitBlocks.push_back(bb);
         } else {
           // generate EOT send
@@ -1130,8 +1129,7 @@ void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
   if (exitBlocks.size() > 0) {
     G4_BB *exitBB = createNewBB();
 
-    if (builder->getFCPatchInfo() &&
-        builder->getFCPatchInfo()->getFCComposableKernel()) {
+    if (builder->getFCPatchInfo()->getFCComposableKernel()) {
       // For FC composable kernels insert exitBB as
       // last BB in BBs list. This automatically does
       // jump threading.
@@ -1144,8 +1142,7 @@ void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
     G4_INST *label = createNewLabelInst(exitLabel);
     exitBB->push_back(label);
 
-    if (!(builder->getFCPatchInfo() &&
-          builder->getFCPatchInfo()->getFCComposableKernel())) {
+    if (!builder->getFCPatchInfo()->getFCComposableKernel()) {
       // Don't insert EOT send for FC composable kernels
       exitBB->addEOTSend();
     }

@@ -71,7 +71,7 @@ int IR_Builder::translateVISACFCallInst(VISA_Exec_Size execsize,
   G4_ExecSize execSize = toExecSize(execsize);
   G4_Label *srcLabel = lab;
 
-  if (lab->isFCLabel() == true) {
+  if (lab->isFCLabel()) {
     callOpToUse = G4_pseudo_fc_call;
     getFCPatchInfo()->setHasFCCalls(true);
 
@@ -243,7 +243,7 @@ int IR_Builder::translateVISACFRetInst(VISA_Exec_Size executionSize,
   G4_ExecSize exsize = toExecSize(executionSize);
   G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize);
 
-  if (getFCPatchInfo()->getIsCallableKernel() == true) {
+  if (getFCPatchInfo()->getIsCallableKernel()) {
     if (tmpFCRet == nullptr) {
       input_info_t *RetIP = getRetIPArg();
       tmpFCRet = createTempVar(2, Type_UD, Four_Word);

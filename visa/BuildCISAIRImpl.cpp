@@ -2266,10 +2266,6 @@ bool CISA_IR_Builder::CISA_surface_variable_decl(
     return false;
   }
 
-  // int reg_id = attr_val.value;
-  // char * value = (char *)m_mem.alloc(1);
-  //*value = (char)reg_id;
-
   VISA_SurfaceVar *decl = NULL;
   m_kernel->CreateVISASurfaceVar(decl, var_name, num_elts);
   if (!addAllVarAttributes((CISA_GEN_VAR *)decl, attrs, lineNum)) {

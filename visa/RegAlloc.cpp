@@ -28,8 +28,7 @@ using namespace vISA;
 
 bool LivenessAnalysis::isLocalVar(G4_Declare *decl) const {
   if ((decl->isInput() == true &&
-       !(fg.builder->getFCPatchInfo() &&
-         fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
+       !(fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
          !decl->isLiveIn())) &&
       !(fg.builder->isPreDefArg(decl) &&
         (fg.builder->getIsKernel() ||
@@ -484,8 +483,7 @@ void LivenessAnalysis::computeLiveness() {
     G4_Declare *decl = vars[i]->getDeclare();
 
     if ((decl->isInput() == true &&
-         !(fg.builder->getFCPatchInfo() &&
-           fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
+         !(fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
            !decl->isLiveIn())) &&
         !(fg.builder->isPreDefArg(decl) &&
           (fg.builder->getIsKernel() ||

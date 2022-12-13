@@ -591,7 +591,6 @@ public:
   unsigned short getRetVarSize() const { return return_var_size; }
 
   FCPatchingInfo *getFCPatchInfo();
-  void setFCPatchInfo(FCPatchingInfo *instance) { fcPatchInfo = instance; }
 
   const WA_TABLE *getPWaTable() const { return m_pWaTable; }
 

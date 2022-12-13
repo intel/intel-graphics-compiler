@@ -9377,7 +9377,6 @@ void Optimizer::mergeScalarInst() {
     bundleSizeLimit = 4;
   }
 
-  Mem_Manager mergeManager(1024);
   // set of declares that have been changed to alias to another declare
   std::unordered_set<G4_Declare *> modifiedDcl;
   std::vector<G4_Declare *> newInputs;
@@ -9387,7 +9386,7 @@ void Optimizer::mergeScalarInst() {
   int numDeletedInst = 0;
 
   for (G4_BB *bb : fg) {
-    std::vector<BUNDLE_INFO *> bundles;
+    std::vector<BUNDLE_INFO> bundles;
     INST_LIST_ITER ii = bb->begin(), iiEnd = bb->end();
     while (ii != iiEnd) {
       G4_INST *inst = *ii;
@@ -9395,27 +9394,22 @@ void Optimizer::mergeScalarInst() {
       ++nextIter;
       if (nextIter != iiEnd && BUNDLE_INFO::isMergeCandidate(
                                    inst, builder, !bb->isAllLaneActive())) {
-        BUNDLE_INFO *bundle =
-            new (mergeManager) BUNDLE_INFO(bb, ii, bundleSizeLimit);
-        bundle->findInstructionToMerge(nextIter, builder);
-        if (bundle->size > 1) {
-          bundles.push_back(bundle);
-        } else {
-          bundle->~BUNDLE_INFO();
-        }
+        BUNDLE_INFO bundle(bb, ii, bundleSizeLimit);
+        bundle.findInstructionToMerge(nextIter, builder);
+        if (bundle.size > 1)
+          bundles.emplace_back(bundle);
         ii = nextIter;
       } else {
         ++ii;
       }
     }
 
-    for (auto bundle : bundles) {
-      bool success = bundle->doMerge(builder, modifiedDcl, newInputs);
+    for (auto &bundle : bundles) {
+      bool success = bundle.doMerge(builder, modifiedDcl, newInputs);
       if (success) {
         numBundles++;
-        numDeletedInst += bundle->size - 1;
+        numDeletedInst += bundle.size - 1;
       }
-      bundle->~BUNDLE_INFO();
     }
   }
 

@@ -111,6 +111,15 @@ static void setNewDclAlignment(GlobalRA &gra, G4_Declare *newDcl,
   gra.setEvenAligned(newDcl, evenAlign);
 }
 
+void SpillManagerGRF::initializeRangeCount(unsigned size) {
+  spillRangeCount_.resize(size, 0);
+  fillRangeCount_.resize(size, 0);
+  tmpRangeCount_.resize(size, 0);
+  msgSpillRangeCount_.resize(size, 0);
+  msgFillRangeCount_.resize(size, 0);
+  addrSpillFillRangeCount_.resize(size, 0);
+}
+
 SpillManagerGRF::SpillManagerGRF(
     GlobalRA &g, unsigned spillAreaOffset, unsigned varIdCount,
     const LivenessAnalysis *lvInfo, LiveRange **lrInfo,
@@ -127,18 +136,7 @@ SpillManagerGRF::SpillManagerGRF(
       useScratchMsg_(useScratchMsg), avoidDstSrcOverlap_(avoidDstSrcOverlap),
       refs(g.kernel), context(g, lrInfo) {
   const unsigned size = sizeof(unsigned) * varIdCount;
-  spillRangeCount_ = (unsigned *)allocMem(size);
-  memset(spillRangeCount_, 0, size);
-  fillRangeCount_ = (unsigned *)allocMem(size);
-  memset(fillRangeCount_, 0, size);
-  tmpRangeCount_ = (unsigned *)allocMem(size);
-  memset(tmpRangeCount_, 0, size);
-  msgSpillRangeCount_ = (unsigned *)allocMem(size);
-  memset(msgSpillRangeCount_, 0, size);
-  msgFillRangeCount_ = (unsigned *)allocMem(size);
-  memset(msgFillRangeCount_, 0, size);
-  addrSpillFillRangeCount_ = (unsigned *)allocMem(size);
-  memset(addrSpillFillRangeCount_, 0, size);
+  initializeRangeCount(size);
   spillAreaOffset_ = spillAreaOffset;
   builder_->instList.clear();
   spillRegStart_ = g.kernel.getNumRegTotal();
@@ -206,21 +204,10 @@ SpillManagerGRF::SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
       avoidDstSrcOverlap_(avoidDstSrcOverlap), refs(g.kernel),
       context(g, nullptr) {
   const unsigned size = sizeof(unsigned) * varIdCount;
-  spillRangeCount_ = (unsigned *)allocMem(size);
-  memset(spillRangeCount_, 0, size);
-  fillRangeCount_ = (unsigned *)allocMem(size);
-  memset(fillRangeCount_, 0, size);
-  tmpRangeCount_ = (unsigned *)allocMem(size);
-  memset(tmpRangeCount_, 0, size);
-  msgSpillRangeCount_ = (unsigned *)allocMem(size);
-  memset(msgSpillRangeCount_, 0, size);
-  msgFillRangeCount_ = (unsigned *)allocMem(size);
-  memset(msgFillRangeCount_, 0, size);
-  addrSpillFillRangeCount_ = (unsigned *)allocMem(size);
-  memset(addrSpillFillRangeCount_, 0, size);
+  initializeRangeCount(size);
   spillAreaOffset_ = spillAreaOffset;
   builder_->instList.clear();
-  curInst = NULL;
+  curInst = nullptr;
   globalScratchOffset =
       gra.kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
 

@@ -497,14 +497,9 @@ void IR_Builder::expandPredefinedVars() {
 }
 
 FCPatchingInfo *IR_Builder::getFCPatchInfo() {
-  // Create new instance of FC patching class if one is not
-  // yet created.
-  if (fcPatchInfo == NULL) {
-    FCPatchingInfo *instance;
-    instance = (FCPatchingInfo *)mem.alloc(sizeof(FCPatchingInfo));
-    fcPatchInfo = new (instance) FCPatchingInfo();
-  }
-
+  // Create new instance of FC patching class if one is not yet created.
+  if (!fcPatchInfo)
+    fcPatchInfo = new FCPatchingInfo();
   return fcPatchInfo;
 }
 
@@ -750,7 +745,6 @@ IR_Builder::IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
   }
 
   usedBarriers = BitSet(kernel.getMaxNumOfBarriers(), false);
-  fcPatchInfo = NULL;
 
   if (!getIsPayload())
     createPreDefinedVars();
@@ -774,10 +768,7 @@ IR_Builder::~IR_Builder() {
   for (auto node : allMDNodes) {
     node->~MDNode();
   }
-
-  if (fcPatchInfo) {
-    fcPatchInfo->~FCPatchingInfo();
-  }
+  delete fcPatchInfo;
 }
 
 G4_Declare *

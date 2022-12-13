@@ -658,12 +658,12 @@ private:
   LiveRange **lrInfo_;
   const LR_LIST *spilledLRs_;
   LSLR_LIST *spilledLSLRs_;
-  unsigned *spillRangeCount_;
-  unsigned *fillRangeCount_;
-  unsigned *tmpRangeCount_;
-  unsigned *msgSpillRangeCount_;
-  unsigned *msgFillRangeCount_;
-  unsigned *addrSpillFillRangeCount_;
+  std::vector<unsigned> spillRangeCount_;
+  std::vector<unsigned> fillRangeCount_;
+  std::vector<unsigned> tmpRangeCount_;
+  std::vector<unsigned> msgSpillRangeCount_;
+  std::vector<unsigned> msgFillRangeCount_;
+  std::vector<unsigned> addrSpillFillRangeCount_;
   unsigned nextSpillOffset_;
   unsigned iterationNo_;
   unsigned bbId_ = UINT_MAX;
@@ -751,6 +751,8 @@ private:
 
     return needed;
   }
+
+  void initializeRangeCount(unsigned size);
 
   // return true if offset for spill/fill message needs to be GRF-aligned
   bool needGRFAlignedOffset() const { return useScratchMsg_ || useSplitSend(); }

@@ -121,7 +121,7 @@ public:
   }
 
   Attributes();
-  ~Attributes(){};
+  ~Attributes() {}
 
   // Set attribute's value
   void setKernelAttr(ID kID, bool v);

@@ -1353,20 +1353,11 @@ private:
   // memory managed by the entity that creates vISA Kernel object
   Options *const m_options;
 
-  void createKernelAttributes() {
-    void *pmem = m_mem.alloc(sizeof(vISA::Attributes));
-    m_kernelAttrs = new (pmem) vISA::Attributes();
-  }
-  void destroyKernelAttributes() {
-    // Even though attributes is allocated from m_mem, need to invoke dtor.
-    if (m_kernelAttrs) {
-      m_kernelAttrs->~Attributes();
-      m_kernelAttrs = nullptr;
-    }
-  }
+  void createKernelAttributes() { m_kernelAttrs = new vISA::Attributes(); }
+  void destroyKernelAttributes() { delete m_kernelAttrs; }
   attribute_info_t *allocAttributeImpl(CISA_GEN_VAR *Dcl, uint32_t AllocNum);
 
-  // Shared with G4_kernel
+  // Shared with G4_Kernel
   vISA::Attributes *m_kernelAttrs;
 
   // Instruction verifier that checks CISA instruction creation
