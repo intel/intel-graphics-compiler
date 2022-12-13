@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.26
+Version 1.27
 
 ## Versioning
 Format: \<_Major number_\>.\<_Minor number_\>
@@ -15,6 +15,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.27**: Add has_sample to execution_env.
 - **Version 1.26**: Add rt_global_buffer to payload arguments.
 - **Version 1.25**: Add is_ptr attribute to payload arguments.
 - **Version 1.24**: Add eu_thread_count to execution_env.

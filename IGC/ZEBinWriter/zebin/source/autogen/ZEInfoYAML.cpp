@@ -80,6 +80,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("thread_scheduling_mode", info.thread_scheduling_mode, std::string());
     io.mapOptional("work_group_walk_order_dimensions", info.work_group_walk_order_dimensions);
     io.mapRequired("eu_thread_count", info.eu_thread_count);
+    io.mapOptional("has_sample", info.has_sample, false);
 }
 void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument& info)
 {

@@ -137,6 +137,7 @@ If an attribute is **Required**, it must be present in exection_env. If it's **O
 | thread_scheduling_mode | <thread_scheduling_mode> | Optional | | Suggested thread arbitration policy. |
 | work_group_walk_order_dimensions | int32x3 | Optional | [0, 1, 2] | The value of this key is a sequence of three int32. Valid values are x: [0, 0, 0] , xy: [0, 1, 0], xyz: [0, 1, 2], yx: [1, 0, 0], zyx: [2, 1, 0] |
 | eu_thread_count | int32 | Required | | |
+| has_sample | bool | Optional | false | |
 <!--- ExecutionEnv -->
 
 ### Supported thread scheduling mode:
