@@ -1983,6 +1983,9 @@ void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function* F)
         return;
 
     // Add private base
+    ArgInfoMetaDataHandle arg_R0 = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+    arg_R0->setArgId(ImplicitArg::R0);
+    FH->addImplicitArgInfoListItem(arg_R0);
     ArgInfoMetaDataHandle arg_PBase = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
     arg_PBase->setArgId(ImplicitArg::PRIVATE_BASE);
     FH->addImplicitArgInfoListItem(arg_PBase);

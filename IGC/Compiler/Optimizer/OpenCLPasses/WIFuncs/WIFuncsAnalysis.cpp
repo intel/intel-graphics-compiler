@@ -99,6 +99,7 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     // All OpenCL kernels receive R0 and Payload Header implicitly
     if (isEntryFunc(m_pMDUtils, &F))
     {
+        implicitArgs.push_back(ImplicitArg::R0);
         if (RequirePayloadHeader)
             implicitArgs.push_back(ImplicitArg::PAYLOAD_HEADER);
 
@@ -129,11 +130,11 @@ bool WIFuncsAnalysis::runOnFunction(Function& F)
     {
         if (m_hasGroupID)
         {
-            // do nothing
+            implicitArgs.push_back(ImplicitArg::R0);
         }
         else if (m_hasLocalThreadID)
         {
-            // do nothing
+            implicitArgs.push_back(ImplicitArg::R0);
         }
         if (m_hasGlobalOffset && RequirePayloadHeader)
         {

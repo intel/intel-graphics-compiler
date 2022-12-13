@@ -419,7 +419,6 @@ void ImplicitArgs::addImplicitArgs(llvm::Function& F, const SmallVectorImpl<Impl
     FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
     for (auto arg : implicitArgs)
     {
-        IGC_ASSERT_MESSAGE(arg != ImplicitArg::R0, "R0 deprecated, should not be added to implicit arg list. Use GenISA_getR0 instead.");
         if (!isImplicitArgExist(F, arg, pMdUtils))
         {
             ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
@@ -659,47 +658,45 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
     return F.arg_begin() + implicitArgIndexInFunc;
 }
 
-Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const CodeGenContext* ctx)
+Value* ImplicitArgs::getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGCMD::MetaDataUtils* pMdUtils)
 {
     Value* funcArg = getImplicitArg(F, argType);
+
     if (funcArg)
     {
-        // If the function argument already exists, return it
+        // If the function argument already exists, just return it
         return funcArg;
     }
 
-    // Get or create the corresponding intrinsic
-    ImplicitArg iArg = IMPLICIT_ARGS[argType];
-    GenISAIntrinsic::ID genID = iArg.getGenIntrinsicID();
-    if (genID != GenISAIntrinsic::ID::no_intrinsic)
+    if (!isEntryFunc(pMdUtils, &F))
     {
-        // Look for already existing intrinsic
-        for (auto II = inst_begin(F), IE = inst_end(F); II != IE; II++)
+        ImplicitArg iArg = IMPLICIT_ARGS[argType];
+        GenISAIntrinsic::ID genID = iArg.getGenIntrinsicID();
+        if (genID != GenISAIntrinsic::ID::no_intrinsic)
         {
-            if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(&*II))
+            // Look for already existing intrinsic
+            for (auto II = inst_begin(F), IE = inst_end(F); II != IE; II++)
             {
-                if (inst->getIntrinsicID() == genID)
+                if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(&*II))
                 {
-                    // Make sure that intrinsic that we use is called before we use it's result
-                    auto parentFunction = inst->getParent()->getParent();
-                    auto firstFunc = parentFunction->getEntryBlock().getFirstNonPHI();
-                    inst->moveBefore(firstFunc);
-                    return inst;
+                    if (inst->getIntrinsicID() == genID)
+                    {
+                        // Make sure that intrinsic that we use is called before we use it's result
+                        auto parentFunction = inst->getParent()->getParent();
+                        auto firstFunc = parentFunction->getEntryBlock().getFirstNonPHI();
+                        inst->moveBefore(firstFunc);
+                        return inst;
+                    }
                 }
             }
-        }
 
-        // Does not exist, create the intrinsic at function entry
-        llvm::IRBuilder<> Builder(&*F.getEntryBlock().begin());
-        Type* argTy = iArg.getLLVMType(F.getParent()->getContext());
-        if (argType == ImplicitArg::R0)
-        {
-            // R0 size is platform dependent
-            argTy = IGCLLVM::FixedVectorType::get(Type::getInt32Ty(F.getContext()), ctx->platform.getGRFSize() / SIZE_DWORD);
+            // Does not exist, create the intrinsic at function entry
+            llvm::IRBuilder<> Builder(&*F.getEntryBlock().begin());
+            Type* argTy = iArg.getLLVMType(F.getParent()->getContext());
+            Function* intrinsicDecl = GenISAIntrinsic::getDeclaration(F.getParent(), genID, argTy);
+            CallInst* inst = Builder.CreateCall(intrinsicDecl);
+            return inst;
         }
-        Function* intrinsicDecl = GenISAIntrinsic::getDeclaration(F.getParent(), genID, argTy);
-        CallInst* inst = Builder.CreateCall(intrinsicDecl);
-        return inst;
     }
     return nullptr;
 }

@@ -826,7 +826,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
             }
             else
             {   // the old mechanism
-                Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, &Ctx);
+                Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, m_pMdUtils);
                 Value* r0_5 = entryBuilder.CreateExtractElement(r0Val, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"));
                 privateBase = entryBuilder.CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"));
             }
@@ -957,8 +957,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     IGC_ASSERT_EXIT(ShaderType::OPENCL_SHADER == Ctx.type);
 
     // Find the implicit argument representing r0 and the private memory base.
-    Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, &Ctx);
-    Value* privateMemPtr = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::PRIVATE_BASE, &Ctx);
+    Value* r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, m_pMdUtils);
+    Value* privateMemPtr = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::PRIVATE_BASE, m_pMdUtils);
     // Note: for debugging purposes privateMemPtr will be marked as Output to keep its liveness all time
 
     // Resolve the call

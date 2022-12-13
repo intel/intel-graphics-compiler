@@ -326,10 +326,6 @@ namespace IGC
         ///         In case the argument doesn't exist, return nullptr
         llvm::Argument* getImplicitArg(llvm::Function &F, ImplicitArg::ArgType argType) const;
 
-        /// Returns the implicit function argument associated with the given implicit argument type, if it exists.
-        /// Otherwise, returns a GenISA intrinsic that represents the same implicit argument type.
-        llvm::Value* getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const CodeGenContext* ctx);
-
         /// @brief  Returns the (implicit) function argument associated with the given implicit argument type
         ///         and argument number
         /// @param  F        The Function for which the implict argument should be returned
@@ -346,6 +342,8 @@ namespace IGC
         /// @brief  Returns true if the given argument type is a struct
         /// @param  argType The argument type to check.
         static bool isImplicitStruct(ImplicitArg::ArgType argType);
+
+        llvm::Value* getImplicitArgValue(llvm::Function& F, ImplicitArg::ArgType argType, const IGCMD::MetaDataUtils* pMdUtils);
 
     private:
         /// @brief The function's metadata information.

@@ -145,7 +145,6 @@ namespace IGC
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed = false;
         IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
-        IGC::CodeGenContext* m_ctx = nullptr;
     };
 
 } // namespace IGC

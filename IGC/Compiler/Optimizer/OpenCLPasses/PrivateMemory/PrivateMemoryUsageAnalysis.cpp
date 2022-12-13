@@ -135,6 +135,7 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
 
     //Add private memory implicit arg
     SmallVector<ImplicitArg::ArgType, ImplicitArg::NUM_IMPLICIT_ARGS> implicitArgs;
+    implicitArgs.push_back(ImplicitArg::R0);
 
     if (m_hasPrivateMem)
     {
