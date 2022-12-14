@@ -800,6 +800,7 @@ DECLARE_IGC_GROUP("Raytracing Options")
     DECLARE_IGC_REGKEY(bool, EnableSpillWidening, false, "Expand SWStack spills into padding of stack frame", true)
     DECLARE_IGC_REGKEY(bool, EnableSyncDispatchRays, false, "Enable sync DispatchRays implementation", false)
     DECLARE_IGC_REGKEY(bool, ForceRTRetry, false, "Raytracing is compiled in the second retry state", false)
+    DECLARE_IGC_REGKEY(bool, EnableFillScheduling, false, "Schedule fills for reduced register pressure", false)
 
 DECLARE_IGC_GROUP("VectorCompiler Options")
     DECLARE_IGC_REGKEY(bool, DisableEuFusion, false, "Require disable of EU fusion", true)
