@@ -154,7 +154,7 @@ $ sudo make install
 
 | Version          | Product quality |
 |:----------------:|-----------------|
-| LLVM 12-14       | Experimental    |
+| LLVM 12-15       | Experimental    |
 | LLVM 11          | **Production**  |
 | LLVM 10 and older | Experimental    |
 
@@ -209,7 +209,7 @@ No additional steps are needed.
 
 No additional steps are needed.
 
-#### LLVM12/Clang12 to LLVM14/Clang14
+#### LLVM12/Clang12 to LLVM15/Clang15
 
 **Experimental**
 Currently there are none LLVM12+/Clang12+ conformance/performance guarantees.
