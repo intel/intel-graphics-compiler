@@ -8895,7 +8895,8 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
             bool Aligned =
                 srcAligned && dstAligned && (numRows == 1) &&
                 !(i == 1 && TypeSize(dstTy) == 1 &&
-                  VISA_WA_CHECK(builder.getPWaTable(), Wa_16012383669)) &&
+                  (VISA_WA_CHECK(builder.getPWaTable(), Wa_16012383669) ||
+                   builder.getOption(vISA_RestrictSrc1ByteSwizzle))) &&
                 ((dstSubRegOffForRow % (32 / TypeSize(dstTy))) ==
                  (srcSubRegOffForRow / TypeSize(dstTy)));
             needFix |= !Aligned;

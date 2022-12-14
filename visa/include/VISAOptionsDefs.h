@@ -552,6 +552,9 @@ DEF_VISA_OPTION(vISA_forceNoMaskOnM0, ET_BOOL, "-forceNoMaskOnM0",
 DEF_VISA_OPTION(vISA_addEmaskSetupProlog, ET_BOOL, "-addEmaskSetupProlog",
                 "Add a prolog code to set up emask", false)
 DEF_VISA_OPTION(vISA_LSCFenceWA, ET_BOOL, "-LSCFenceWA", UNUSED, false)
+DEF_VISA_OPTION(vISA_RestrictSrc1ByteSwizzle, ET_BOOL,
+                "-restrictSrc1ByteSwizzle",
+                "Enable the WA to restrict src1 byte swizzle case", false)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo, ET_BOOL, "-generateDebugInfo", UNUSED,
