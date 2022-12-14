@@ -745,7 +745,9 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
     replaceDst(it, extype);
   }
 
-  if (builder.hasHFMathSrcBroadCast() && (inst->getExecSize() != g4::SIMD1)) {
+  if ((builder.hasHFMathSrcBroadCast() ||
+       VISA_WA_CHECK(builder.getPWaTable(), Wa_22016140776)) &&
+      (inst->getExecSize() != g4::SIMD1)) {
     auto src0 = inst->getSrc(0);
     auto src1 = inst->getSrc(1);
 
