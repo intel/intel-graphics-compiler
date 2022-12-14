@@ -9639,9 +9639,7 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
         pSize = m_currShader->ImmToVariable(MaxPrivateSize * numLanes(m_currShader->m_dispatchSize), ISA_TYPE_UD);
     }
 
-    bool isA64Private = pCtx->getRegisterPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64;
-    CVariable* pThreadOffset = m_currShader->GetNewVariable(1, isA64Private ? ISA_TYPE_UQ : ISA_TYPE_UD,
-        isA64Private ? EALIGN_QWORD : EALIGN_DWORD, true, 1, CName::NONE);
+    CVariable* pThreadOffset = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, CName::NONE);
     m_encoder->Mul(pThreadOffset, pHWTID, pSize);
     m_encoder->Push();
 

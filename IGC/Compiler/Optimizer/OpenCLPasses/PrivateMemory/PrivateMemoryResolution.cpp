@@ -650,10 +650,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // is alloca in the callee. Save the total private memory to the metadata.
     unsigned int totalPrivateMemPerWI = m_ModAllocaInfo->getTotalPrivateMemPerWI(m_currFunction);
 
-    // 32 is max simd width, 4096 is max addressed threads, TODO Use helper functions
-    bool safe32bitOffset = m_currFunction->getParent()->getDataLayout().getPointerSize() < 8
-        || (totalPrivateMemPerWI * 32ll * 4096ll) <= (uint64_t)UINT32_MAX;
-
     // This change is only till the FuncMD is ported to new MD framework
     ModuleMetaData* const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     IGC_ASSERT(nullptr != modMD);
@@ -712,7 +708,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     LLVMContext& C = m_currFunction->getContext();
 
     IntegerType* typeInt32 = Type::getInt32Ty(C);
-    IntegerType* typeInt64 = Type::getInt64Ty(C);
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd lane id
     Function* simdLaneIdFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_simdLaneId);
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd size
@@ -866,14 +861,10 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
             ConstantInt* totalPrivateMemPerWIValue = ConstantInt::get(typeInt32, totalPrivateMemPerWI);
             Value* totalPrivateMemPerThread = entryBuilder.CreateMul(simdSize, totalPrivateMemPerWIValue, VALUE_NAME("totalPrivateMemPerThread"));
-            if (!safe32bitOffset)
-                totalPrivateMemPerThread = entryBuilder.CreateZExt(totalPrivateMemPerThread, typeInt64);
 
             Function* pHWTIDFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_hw_thread_id_alloca, Type::getInt32Ty(C));
-            Value* threadId = entryBuilder.CreateCall(pHWTIDFunc);
-            if (!safe32bitOffset)
-                threadId = entryBuilder.CreateZExt(threadId, typeInt64);
-            Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
+            llvm::Value* threadId = entryBuilder.CreateCall(pHWTIDFunc);
+            llvm::Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
             perThreadOffset = entryBuilder.CreateZExt(perThreadOffset, privateBase->getType());
             privateBase = entryBuilder.CreateAdd(privateBase, perThreadOffset);
         }
@@ -972,12 +963,10 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     // %simdLaneId                  = zext i16 simdLaneId16 to i32
     // %simdSize                    = call i32 @llvm.gen.simdSize()
     // %totalPrivateMemPerThread    = mul i32 %simdSize, <totalPrivateMemPerWI>
-    // %totalPrivateMemPerThread    = zext i32 %totalPrivateMemPerThread to i64
 
     // %r0.5                        = extractelement <8 x i32> %r0, i32 5
     // %threadId                    = and i32 %r0.5, 0x1FF|0x3FF   (Thread ID is in the lower 9 bits or 10 bit(KBL & CNL+) of r0.5)
-    // %threadId                    = zext i32 %threadId to i64
-    // %perThreadOffset             = mul i64 %threadId, %totalPrivateMemPerThread
+    // %perThreadOffset             = mul i32 %threadId, %totalPrivateMemPerThread
 
     ConstantInt* totalPrivateMemPerWIValue = ConstantInt::get(typeInt32, totalPrivateMemPerWI);
 
@@ -985,8 +974,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     Value* simdLaneId = entryBuilder.CreateIntCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"));
     Instruction* simdSize = entryBuilder.CreateCall(simdSizeFunc, llvm::None, VALUE_NAME("simdSize"));
     Value* totalPrivateMemPerThread = entryBuilder.CreateMul(simdSize, totalPrivateMemPerWIValue, VALUE_NAME("totalPrivateMemPerThread"));
-    if (!safe32bitOffset)
-        totalPrivateMemPerThread = entryBuilder.CreateZExt(totalPrivateMemPerThread, typeInt64);
 
     Function* pHWTIDFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_hw_thread_id_alloca, Type::getInt32Ty(C));
     Value* threadId = entryBuilder.CreateCall(pHWTIDFunc);
@@ -1003,8 +990,6 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
 
         threadId = entryBuilder.CreateOr(FFSID, shlThreadID, VALUE_NAME("threadId"));
     }
-    if (!safe32bitOffset)
-        threadId = entryBuilder.CreateZExt(threadId, typeInt64);
 
     Value* perThreadOffset = entryBuilder.CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"));
     auto perThreadOffsetInst = dyn_cast_or_null<Instruction>(perThreadOffset);
@@ -1026,12 +1011,10 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
     for (auto pAI : allocaInsts)
     {
         // %bufferOffset                = mul i32 %simdSize, <scalarBufferOffset>
-        // %bufferOffset                = zext i32 %bufferOffset to i64
-        // %bufferOffsetForThread       = add i64 %perThreadOffset, %bufferOffset
+        // %bufferOffsetForThread       = add i32 %perThreadOffset, %bufferOffset
         // %perLaneOffset               = mul i32 %simdLaneId, <bufferSize>
-        // %perLaneOffset               = zext i32 %perLaneOffset to i64
-        // %totalOffset                 = add i64 %bufferOffsetForThread, %perLaneOffset
-        // %privateBufferGEP            = getelementptr i8* %privateBase, i64 %totalOffset
+        // %totalOffset                 = add i32 %bufferOffsetForThread, %perLaneOffset
+        // %privateBufferGEP            = getelementptr i8* %privateBase, i32 %totalOffset
         // %privateBuffer               = bitcast i8* %offsettmp1 to <buffer type>
 
         IGCLLVM::IRBuilder<> builder(pAI);
@@ -1042,13 +1025,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack)
         unsigned int bufferSize = m_ModAllocaInfo->getConstBufferSize(pAI);
 
         Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
-        if (!safe32bitOffset)
-            bufferOffset = builder.CreateZExt(bufferOffset, typeInt64);
         Value* bufferOffsetForThread = builder.CreateAdd(perThreadOffset, bufferOffset, VALUE_NAME(pAI->getName() + ".bufferOffsetForThread"));
         Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
         perLaneOffset = builder.CreateMul(perLaneOffset, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
-        if (!safe32bitOffset)
-            perLaneOffset = builder.CreateZExt(perLaneOffset, typeInt64);
         Value* totalOffset = builder.CreateAdd(bufferOffsetForThread, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
         Value* privateBufferGEP = builder.CreateGEP(privateMemPtr, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
