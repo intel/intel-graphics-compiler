@@ -1704,8 +1704,17 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep_terminator(
         return WIAnalysis::RANDOM;
         // TODO: Define the dependency requirements of indirectBr
     case Instruction::Switch:
+    {
+        // Same as conditional br
+        const SwitchInst* swInst = cast<SwitchInst>(inst);
+        Value* op = swInst->getCondition();
+        WIAnalysis::WIDependancy dep = getDependency(op);
+        if (WIAnalysis::isDepUniform(dep))
+        {
+            return dep;
+        }
         return WIAnalysis::RANDOM;
-        // TODO: Should this depend only on the condition, like branch?
+    }
     default:
         return WIAnalysis::RANDOM;
     }
