@@ -1394,5 +1394,10 @@ bool limitedBCR() const
           GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID));
 }
 
+uint32_t getMaxAddressedHWThreads() const
+{
+    return 4096;
+}
+
 };
 }//namespace IGC
