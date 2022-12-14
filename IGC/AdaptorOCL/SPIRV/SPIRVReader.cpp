@@ -4231,7 +4231,7 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
     });
   }
   BF->foreachReturnValueAttr([&](SPIRVFuncParamAttrKind Kind){
-    if (Kind == FunctionParameterAttributeCount)
+    if (Kind == FunctionParameterAttributeCount || Kind == FunctionParameterAttributeNoWrite)
       return;
     IGCLLVM::addRetAttr(F, SPIRSPIRVFuncParamAttrMap::rmap(Kind));
   });
