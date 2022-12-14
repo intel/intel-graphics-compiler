@@ -400,6 +400,11 @@ namespace IGC
                 Pos = valEnd;
                 continue;
             }
+            // -cl-disable-recompilation
+            else if (suffix.equals("-disable-recompilation"))
+            {
+                IGC_SET_FLAG_VALUE(DisableRecompilation, true);
+            }
             // -cl-intel-force-emu-int32divrem
             else if (suffix.equals("-force-emu-int32divrem"))
             {
