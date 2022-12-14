@@ -80,7 +80,8 @@ __impl_fsqrt_ieee_steps__rte_(cl_vector<double, N> vx) {
 }
 
 template <bool IEEE, bool NNaN, bool NInf, bool NSZ, int N>
-CM_NODEBUG CM_INLINE vector<double, N> __impl_fsqrt(vector<double, N> x) {
+CM_NODEBUG CM_INLINE vector<double, N> __impl_fsqrt(vector<double, N> a) {
+  vector<double, N> x = a;
   auto xi = x.template format<uint32_t>();
   vector<uint32_t, N> x_hi = xi.template select<N, 2>(1);
 
@@ -123,10 +124,10 @@ CM_NODEBUG CM_INLINE vector<double, N> __impl_fsqrt(vector<double, N> x) {
   // final scaling
   s *= sc1;
 
-  mask<N> special = (x == 0.0) | (x_hi >= inf_hi);
+  mask<N> special = (a == 0.0) | (x_hi >= inf_hi);
 
   if (special.any())
-    s.merge(__impl_fsqrt_special<NNaN, NInf, NSZ>(x), special);
+    s.merge(__impl_fsqrt_special<NNaN, NInf, NSZ>(a), special);
 
   return s;
 }
