@@ -220,6 +220,7 @@ void initializeSynchronizationObjectCoalescingPass(llvm::PassRegistry&);
 void initializeMoveStaticAllocasPass(llvm::PassRegistry&);
 void initializeNamedBarriersResolutionPass(llvm::PassRegistry&);
 void initializeUndefinedReferencesPassPass(llvm::PassRegistry&);
+void initializeUnreachableHandlingPass(llvm::PassRegistry&);
 void initializeBreakdownIntrinsicPassPass(llvm::PassRegistry&);
 void initializeCatchAllLineNumberPass(llvm::PassRegistry&);
 void initializePromoteConstantStructsPass(llvm::PassRegistry&);
