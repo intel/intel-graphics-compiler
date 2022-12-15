@@ -112,10 +112,7 @@ inline bool opMustBeConstant(Instruction *I, unsigned OpNum) {
 bool areConstantsEqual(const Constant *C1, const Constant *C2);
 
 // Remove all genx.constant* intrinsics that have non-constant source
-bool cleanupConstantLoads(Function *F, std::vector<CallInst *> &ConstList);
-
-// Replace one of paired constants to add-instruction
-bool checkAddPattern(Function *F, std::vector<CallInst *> &ConstList);
+bool cleanupConstantLoads(Function *F);
 
 // Load a constant using the llvm.genx.constant intrinsic.
 inline Instruction *
