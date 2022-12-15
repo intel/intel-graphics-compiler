@@ -5311,7 +5311,7 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
   auto dstSize =
       inst->getExecSize() * dst->getTypeSize() * dst->getHorzStride();
   // Handle VxH
-  if (dstSize > builder.getGRFSize()) {
+   if (dstSize > builder.getGRFSize()) {
     // special check for 2-GRF instruction with VxH operands
     // strictly speaking dst and VxH src may overlap only if src's address may
     // point to dst variable, but we skip such check as VxH access is rare and
@@ -7793,14 +7793,57 @@ void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB *bb) {
         inst->setSrc(newSrc, 0);
       }
     } else if (TypeSize(type) == 8) {
-      int numDwords = inst->getExecSize() * 2;
-      G4_Declare *tmpSrc =
-          builder.createTempVar(numDwords / 2, src0->getType(), Any);
+      // VxH:
+      // mov (16|M0)   r7.0<1>:df   r[a0.0]<1,0>:df
+      // =>
+      // mov (16|M0)   r9.0<2>:ud   r[a0.0]<1,0>:ud
+      // mov (16|M0)   r9.1<2>:ud   r[a0.0, 4]<1,0>:ud
+      // mov (16|M0)   r7.0<1>:df   r9.0<1;1,0>:df
+
+      // Vx1:
+      // mov (16|M0)   r7.0<1>:df   r[a0.0]<2,1>:df
+      // =>
+      // mov (16|M0)   r9.0<2>:ud   r[a0.0]<2,2>:ud
+      // mov (16|M0)   r9.1<2>:ud   r[a0.0, 4]<2,2>:ud
+      // mov (16|M0)   r7.0<1>:df   r9.0<1;1,0>:df
+
+      int numElement = inst->getExecSize();
+      auto tmpSrcDcl = builder.createTempVar(numElement, type, Any);
+      auto originWidth = src0->getRegion()->width;
+      auto originHS = src0->getRegion()->horzStride;
+
+      // mov instruction for lower half
+      auto tmpDcl = builder.createTempVar(numElement * 2, Type_UD, Any);
+      tmpDcl->setAliasDeclare(tmpSrcDcl, 0);
+      auto lowerDst = builder.createDst(tmpDcl->getRegVar(), 0, 0, 2, Type_UD);
+      auto newSrcRegion = (originWidth == 1) ?
+                           src0->getRegion() : // VxH
+                           builder.createRegionDesc(UNDEFINED_SHORT,
+                                                    originWidth,
+                                                    originHS * 2); //Vx1
+      auto lowerSrc = builder.createIndirectSrc(
+          Mod_src_undef, src0->getBase(), src0->getRegOff(),
+          src0->getSubRegOff(), newSrcRegion, Type_UD, src0->getAddrImm());
+      auto lowerMovInst = builder.createMov(inst->getExecSize(), lowerDst,
+                                            lowerSrc, inst->getOption(), false);
+      lowerMovInst->setPredicate(inst->getPredicate());
+      bb->insertBefore(it, lowerMovInst);
+
+      // mov instruction for higher half
+      auto higherDst = builder.createDst(tmpDcl->getRegVar(), 0, 1, 2, Type_UD);
+      auto higherSrc = builder.createIndirectSrc(
+          Mod_src_undef, src0->getBase(), src0->getRegOff(),
+          src0->getSubRegOff(), newSrcRegion, Type_UD, src0->getAddrImm() + 4);
+      auto higherMovInst = builder.createMov(
+          inst->getExecSize(), higherDst, higherSrc, inst->getOption(), false);
+      higherMovInst->setPredicate(inst->getPredicate());
+      bb->insertBefore(it, higherMovInst);
+
+      // change the src0 of the instruction
       const RegionDesc *newRegion = builder.getRegionStride1();
-      copyDwordsIndirect(tmpSrc, src0, numDwords, bb, it);
       G4_SrcRegRegion *tmpSrcOpnd = builder.createSrcRegRegion(
-          src0->getModifier(), Direct, tmpSrc->getRegVar(), 0, 0, newRegion,
-          tmpSrc->getElemType());
+          src0->getModifier(), Direct, tmpSrcDcl->getRegVar(), 0, 0, newRegion,
+          tmpSrcDcl->getElemType());
       inst->setSrc(tmpSrcOpnd, 0);
     }
   }
