@@ -136,23 +136,6 @@ static void getContainedStructType(Type *T, SmallPtrSetImpl<StructType *> &Tys)
     }
 }
 
-// Check the existence of an opaque type.
-static bool containsOpaque(llvm::Type *T)
-{
-    // All (nested) struct types in T.
-    SmallPtrSet<StructType *, 8> StructTys;
-    getContainedStructType(T, StructTys);
-    for (auto I = StructTys.begin(), E = StructTys.end(); I != E; ++I)
-    {
-        StructType *ST = *I;
-        if (ST->isOpaque())
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 // Check the existence of an image type.
 static bool containsImageType(llvm::Type *T)
 {
@@ -557,7 +540,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
             // to be inlined. We add always inline for such cases.
             for (auto& arg : F->args())
             {
-                if (containsOpaque(arg.getType()))
+                if (containsImageType(arg.getType()))
                 {
                     mustAlwaysInline = true;
                     break;
