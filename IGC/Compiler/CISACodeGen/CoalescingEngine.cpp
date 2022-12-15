@@ -133,7 +133,7 @@ namespace IGC
         WIA = &getAnalysis<WIAnalysis>();
         CG = &getAnalysis<CodeGenPatternMatch>();
         LV = &getAnalysis<LiveVarsAnalysis>().getLiveVars();
-        if (IGC_IS_FLAG_DISABLED(DisableDeSSA)) {
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSA)) {
             m_DeSSA = &getAnalysis<DeSSA>();
         }
         else {

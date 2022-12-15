@@ -70,7 +70,7 @@ bool VariableReuseAnalysis::runOnFunction(Function& F)
     m_F = &F;
 
     m_WIA = &(getAnalysis<WIAnalysis>());
-    if (IGC_IS_FLAG_DISABLED(DisableDeSSA))
+    if (IGC_IS_FLAG_ENABLED(EnableDeSSA))
     {
         m_DeSSA = &getAnalysis<DeSSA>();
     }

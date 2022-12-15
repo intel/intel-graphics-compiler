@@ -46,7 +46,7 @@ namespace IGC
         }
 
         // If De-SSA is disabled we cannot remove empty blocks as they might contain move instructions
-        if (IGC_IS_FLAG_ENABLED(DisableEmptyBlockRemoval) || IGC_IS_FLAG_ENABLED(DisableDeSSA))
+        if (IGC_IS_FLAG_ENABLED(DisableEmptyBlockRemoval) || IGC_IS_FLAG_DISABLED(EnableDeSSA))
         {
             return false;
         }

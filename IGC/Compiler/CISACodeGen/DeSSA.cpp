@@ -1203,7 +1203,7 @@ void DeSSA::getAllValuesInCongruentClass(
 
 void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
 {
-    if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) < 2) {
+    if (IGC_IS_FLAG_DISABLED(EnableDeSSAAlias)) {
         return;
     }
     for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
@@ -1256,10 +1256,6 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
         }
         else if (CastInst * CastI = dyn_cast<CastInst>(I))
         {
-            if (IGC_GET_FLAG_VALUE(EnableDeSSAAlias) < 3) {
-                continue;
-            }
-
             Value* D = CastI;
             Value* S = CastI->getOperand(0);
             if (isArgOrNeededInst(S) &&

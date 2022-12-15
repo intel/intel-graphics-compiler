@@ -990,7 +990,7 @@ namespace IGC
                 }
             }
 
-            // Per context flag adjustment
+            // Per context flag/key adjustment
             setFlagsPerCtx();
 
             // Set retry behavor for Disable()

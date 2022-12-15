@@ -774,12 +774,6 @@ namespace IGC
 
     void CodeGenContext::setFlagsPerCtx()
     {
-        if (m_DriverInfo.DessaAliasLevel() != -1) {
-            if ((int)IGC_GET_FLAG_VALUE(EnableDeSSAAlias) > m_DriverInfo.DessaAliasLevel())
-            {
-                IGC_SET_FLAG_VALUE(EnableDeSSAAlias, m_DriverInfo.DessaAliasLevel());
-            }
-        }
     }
 
     // [used by shader dump] create unqiue id, starting from 1, for each

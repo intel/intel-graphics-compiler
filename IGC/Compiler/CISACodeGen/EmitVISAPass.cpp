@@ -614,7 +614,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_currShader->SetFunctionGroupAnalysis(m_FGA);
     m_currShader->SetPushInfoHelper(&(m_moduleMD->pushInfo));
     m_currShader->SetVariableReuseAnalysis(m_VRA);
-    if (IGC_IS_FLAG_DISABLED(DisableDeSSA))
+    if (IGC_IS_FLAG_ENABLED(EnableDeSSA))
     {
         m_currShader->SetDeSSAHelper(m_deSSA);
     }
@@ -9381,7 +9381,8 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
         return;
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias) &&
+    if (IGC_IS_FLAG_ENABLED(EnableDeSSA) &&
+        IGC_IS_FLAG_ENABLED(EnableDeSSAAlias) &&
         m_deSSA && m_deSSA->isNoopAliaser(inst))
     {
         return;
