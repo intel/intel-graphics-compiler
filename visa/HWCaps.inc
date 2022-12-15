@@ -248,7 +248,8 @@ bool hasRSForSpecificPlatform() const {
 }
 
 bool hasDPASFuseRSWA() const {
-  return getOption(vISA_DPASFuseRSWA);
+  return VISA_WA_CHECK(getPWaTable(), Wa_18023229625) ||
+         getOption(vISA_DPASFuseRSWA);
 }
 
 bool hasSrc1ReadSuppressionIssue() const {
