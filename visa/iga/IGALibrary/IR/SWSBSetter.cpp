@@ -189,7 +189,7 @@ void SWSBAnalyzer::checkAccFlagRAW(bool &isRAW, const DepSet &currDep,
                                    const DepSet &targetDep)
 {
   // The function must be called when there is RAW dependency detected
-  assert(!isRAW);
+  assert(isRAW);
 
   auto check_dep_reg = [&](const DepSet &in_dep, uint32_t reg_start,
                            uint32_t reg_len) {
