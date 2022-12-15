@@ -231,6 +231,21 @@ define void @test_sext(i16 %a) {
   ret void
 }
 
+define void @test_zext(i16 %src1) {
+; CHECK-LABEL: @test_zext(
+; CHECK:    [[TMP1:%.*]] = zext i16 [[SRC1:%.*]] to i32
+; CHECK:    [[TMP2:%.*]] = insertelement <2 x i32> undef, i32 [[TMP1]], i32 0
+; CHECK:    [[TMP3:%.*]] = insertelement <2 x i32> [[TMP2]], i32 0, i32 1
+; CHECK:    [[TMP4:%.*]] = bitcast <2 x i32> [[TMP3]] to i64
+; CHECK:    call void @use.i64(i64 [[TMP4]])
+; CHECK:    ret void
+;
+  %1 = zext i16 %src1 to i64
+  call void @use.i64(i64 %1)
+  ret void
+}
+
+
 define void @test_load(i64* %a) {
 ; CHECK-LABEL: @test_load(
 ; CHECK:    [[TMP1:%.*]] = bitcast i64* [[A:%.*]] to <2 x i32>*
@@ -268,7 +283,7 @@ declare void @use.i16(i16)
 declare void @use.i64(i64)
 declare void @use.4i16(<4 x i16>)
 
-!igc.functions = !{!0, !3, !4, !5, !6, !7, !8, !9, !10, !11, !12, !13, !14}
+!igc.functions = !{!0, !3, !4, !5, !6, !7, !8, !9, !10, !11, !12, !13, !14, !15}
 
 !0 = !{void (i64, i64)* @test_add, !1}
 !1 = !{!2}
@@ -283,5 +298,6 @@ declare void @use.4i16(<4 x i16>)
 !10 = !{void (i64)* @test_bitcast, !1}
 !11 = !{void (i64)* @test_trunc, !1}
 !12 = !{void (i16)* @test_sext, !1}
-!13 = !{void (i64*)* @test_load, !1}
-!14 = !{void (i64*, i64)* @test_store, !1}
+!13 = !{void (i16)* @test_zext, !1}
+!14 = !{void (i64*)* @test_load, !1}
+!15 = !{void (i64*, i64)* @test_store, !1}
