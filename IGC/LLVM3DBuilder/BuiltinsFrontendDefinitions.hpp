@@ -2966,7 +2966,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDFloor(llvm::Value
 
     // from OCL builtin: double @__builtin_spirv_floor_f64(double %x)
     static const char* const code =
-        "define double @__builtin_floor_f64(double %x)                              \n"
+        "define linkonce double @__builtin_floor_f64(double %x)                              \n"
         "    alwaysinline nounwind readnone {                                       \n"
         "  %1 = bitcast double %x to i64                                            \n"
         "  %2 = lshr i64 %1, 32                                                     \n"
@@ -3057,7 +3057,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDCeil(llvm::Value 
 
     // from OCL builtin: double @__builtin_spirv_ceil_f64(double %x)
     static const char* const code =
-        "define double @__builtin_ceil_f64(double %x)                               \n"
+        "define linkonce double @__builtin_ceil_f64(double %x)                               \n"
         "    alwaysinline nounwind readnone {                                       \n"
         "  %1 = bitcast double %x to i64                                            \n"
         "  %2 = lshr i64 %1, 32                                                     \n"
@@ -3150,7 +3150,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDTrunc(llvm::Value
 
     // from OCL builtin: double @__builtin_spirv_trunc_f64(double %x)
     static const char* const code =
-        "define double @__builtin_trunc_f64(double %x)                        \n"
+        "define linkonce double @__builtin_trunc_f64(double %x)                        \n"
         "    alwaysinline nounwind readnone {                                       \n"
         "  %1 = bitcast double %x to i64                                            \n"
         "  %2 = lshr i64 %1, 32                                                     \n"
@@ -3232,7 +3232,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDRoundNE(llvm::Val
 
     // From OCL builtin: double @__builtin_spirv_rint_f64(double %x)
     static const char* const code =
-        "define double @__builtin_roundne_f64(double %x)                            \n"
+        "define linkonce double @__builtin_roundne_f64(double %x)                            \n"
         "    alwaysinline nounwind readnone {                                       \n"
         "  %1 = bitcast double %x to i64                                            \n"
         "  %2 = and i64 %1, 9223372036854775807                                     \n"
