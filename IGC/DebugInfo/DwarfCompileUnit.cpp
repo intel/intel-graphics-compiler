@@ -1234,9 +1234,18 @@ void CompileUnit::addScratchLocation(IGC::DIEBlock *Block,
 
   if (EmitSettings.EnableGTLocationDebugging) {
     // For spills to the scratch area at offset available as literal
-    // 1 DW_OP_breg6 <offset>    , breg6 stands for Scratch Space Base Address
-    uint32_t scratchBaseAddrEncoded =
-        GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
+    uint32_t scratchBaseAddrEncoded = 0;
+    if (DD->GetVISAModule()->usesSlot1ScratchSpill()) {
+      // 1 DW_OP_breg11 <offset>    , breg11 stands for Scratch Space Base
+      //                              Address + 1 (Slot#1)
+      scratchBaseAddrEncoded =
+          GetEncodedRegNum<RegisterNumbering::ScratchBaseSlot1>(
+              dwarf::DW_OP_breg0);
+    } else {
+      // 1 DW_OP_breg6 <offset>    , breg6 stands for Scratch Space Base Address
+      scratchBaseAddrEncoded =
+          GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
+    }
 
     addUInt(Block, dwarf::DW_FORM_data1,
             scratchBaseAddrEncoded);              // Scratch Base Address

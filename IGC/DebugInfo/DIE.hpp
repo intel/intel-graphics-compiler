@@ -75,6 +75,7 @@ public:
   constexpr static unsigned int SurfStateBase = 8;
   constexpr static unsigned int BindlessSurfStateBase = 9;
   constexpr static unsigned int BindlessSamplerStateBase = 10;
+  constexpr static unsigned int ScratchBaseSlot1 = 11;
   constexpr static unsigned int GRFBase = 16;
   constexpr static unsigned int A0Base = 272;
   constexpr static unsigned int F0Base = 288;

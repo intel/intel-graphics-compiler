@@ -1057,6 +1057,8 @@ public:
   int getFPReg() const override { return -1; }
   uint64_t getFPOffset() const override { return 16; }
 
+  bool usesSlot1ScratchSpill() const override { return false; }
+
   const GenXVisaRegAlloc::Reg *getRegisterForValue(const Value *V) const {
     return RA.getRegForValueOrNull(const_cast<Value *>(V));
   }

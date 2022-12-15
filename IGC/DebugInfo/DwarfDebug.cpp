@@ -2895,8 +2895,15 @@ void DwarfDebug::encodeScratchAddrSpace(std::vector<uint8_t> &data) {
 
     write(data, (uint8_t)llvm::dwarf::DW_OP_or);
   } else {
-    uint32_t scratchBaseAddrEncoded =
-        GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
+    uint32_t scratchBaseAddrEncoded = 0;
+    if (m_pModule->usesSlot1ScratchSpill()) {
+      scratchBaseAddrEncoded =
+          GetEncodedRegNum<RegisterNumbering::ScratchBaseSlot1>(
+              dwarf::DW_OP_breg0);
+    } else {
+      scratchBaseAddrEncoded =
+          GetEncodedRegNum<RegisterNumbering::ScratchBase>(dwarf::DW_OP_breg0);
+    }
 
     write(data, (uint8_t)scratchBaseAddrEncoded);
     writeULEB128(data, 0);

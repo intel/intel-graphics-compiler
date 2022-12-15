@@ -115,6 +115,8 @@ public:
 
     void* getPrivateBase() const override { return privateBase; }
 
+    bool usesSlot1ScratchSpill() const override;
+
 private:
     /// @brief Constructor.
     /// @param m_pShader holds the Shader object that provides information
