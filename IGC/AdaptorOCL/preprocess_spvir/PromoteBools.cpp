@@ -132,12 +132,7 @@ Value* PromoteBools::convertI8ToI1(Value* value, Instruction* insertBefore)
 
 void PromoteBools::cleanUp(Module& module)
 {
-    auto erase = [&doNotRemove = this->doNotRemove](auto v) {
-        if (doNotRemove.find(v) != doNotRemove.end())
-        {
-            return;
-        }
-
+    auto erase = [](auto v) {
         // Replace all v uses by undef. It allows us not to worry about
         // the order in which we delete unpromoted values.
         v->replaceAllUsesWith(UndefValue::get(v->getType()));
@@ -183,7 +178,7 @@ void PromoteBools::cleanUp(Module& module)
 
     for (auto& instruction : deadInstructions)
     {
-        instruction->eraseFromParent();
+        erase(instruction);
     }
 }
 
@@ -423,13 +418,10 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
 
         if (value->getType()->isIntegerTy(1))
         {
-            newValue = new ZExtInst(
-                instruction,
-                Type::getInt8Ty(instruction->getContext()),
-                "",
-                instruction->getNextNode()
-            );
-            doNotRemove.insert(instruction);
+            auto clone = instruction->clone();
+            clone->insertBefore(instruction);
+            instruction->replaceAllUsesWith(clone);
+            newValue = convertI1ToI8(clone, instruction);
         }
     }
 
