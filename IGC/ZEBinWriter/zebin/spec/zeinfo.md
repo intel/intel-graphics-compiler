@@ -176,6 +176,7 @@ If an attribute is **Required**, it must be present in payload arguments. If it'
 | sampler_type | <sampler_type> | Optional | | Present when addrspace is "sampler" |
 | is_pipe | bool | Optional | false | Present when arg_type is "arg_bypointer" and type qualifier is pipe |
 | is_ptr | bool | Optional | false | Present when arg_type is "arg_byvalue" and arg is used as pointer |
+| bti_value | int32 | Optional | -1 | Present when arg_type is "const_base", "global_base" and when the buffer is promoted to BTI |
 <!--- PayloadArgument PayloadArguments -->
 
 ### Supported argument types:
@@ -216,6 +217,8 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | sampler_address | | Sampler descriptor specifying the image addressing mode |
 | sampler_normalized | | Sampler descriptor specifying whether the coordinates are passed in as normalized or unnormalized values |
 | sampler_snap_wa | | Sampler descriptor specifying whether snap coordinate workaround is required |
+| const_base | | The base address of constant buffer |
+| global_base | | The base address of global buffer |
 <!--- <argument_type> ArgType -->
 
 arg_byvalue and arg_bypointer are user arguments that are explicitly passed in from the applications. Other kinds of arguments are implicit arguments that are passed in by runtime.
