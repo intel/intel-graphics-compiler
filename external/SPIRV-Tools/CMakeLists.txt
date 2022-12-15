@@ -13,14 +13,14 @@ message(STATUS "============================ SPIRV-Tools project ===============
 if(IGC_OPTION__SPIRV_TOOLS_MODE STREQUAL PREBUILDS_MODE_NAME)
 
  message(STATUS "[SPIRV-Tools] : IGC_OPTION__SPIRV_TOOLS_MODE set to Prebuilds")
- OPTION(IGC__OPTION_USE_PREINSTALLED_SPRIV_HEADERS OFF)
+ OPTION(IGC_OPTION__USE_PREINSTALLED_SPIRV_HEADERS OFF)
 
- if(IGC_OPTION__USE_PREINSTALLED_SPRIV_HEADERS)
-  message(STATUS "[SPIRV-Tools] : IGC__OPTION_USE_PREINSTALLED_SPRIV_HEADERS set to ON, using preinstalled SPIRV-Headers")
+ if(IGC_OPTION__USE_PREINSTALLED_SPIRV_HEADERS)
+  message(STATUS "[SPIRV-Tools] : IGC_OPTION__USE_PREINSTALLED_SPIRV_HEADERS set to ON, using preinstalled SPIRV-Headers")
   message(STATUS "[SPIRV-Tools] : Using preinstalled SPIRV-Headers")
   set(SPIRV-Headers_INCLUDE_DIR "/usr/include")
  else()
-  message(STATUS "[SPIRV-Tools] : IGC__OPTION_USE_PREINSTALLED_SPRIV_HEADERS set to OFF")
+  message(STATUS "[SPIRV-Tools] : IGC_OPTION__USE_PREINSTALLED_SPIRV_HEADERS set to OFF")
   message(STATUS "[SPIRV-Tools] : Using default path ${CMAKE_CURRENT_SOURCE_DIR}/../../SPIRV-Headers")
   set(SPIRV-Headers_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../SPIRV-Headers/include")
  endif()
@@ -29,10 +29,11 @@ if(IGC_OPTION__SPIRV_TOOLS_MODE STREQUAL PREBUILDS_MODE_NAME)
  find_package(SPIRV-Tools REQUIRED COMPONENTS SPIRV-Tools)
  message(STATUS "[SPIRV-Tools] : Found prebuilt SPIRV-Tools package in: ${SPIRV-Tools_CONFIG}")
 
- set(SPIRV-Tools_ROOT_DIR "${SPIRV-Tools_DIR}../../..")
+ set(SPIRV-Tools_ROOT_DIR "${SPIRV-Tools_DIR}/../../..")
  set(IGC_BUILD__SPIRV-Tools_DIR "${SPIRV-Tools_ROOT_DIR}")
 
  set(INCLUDE_DIRS_LIST "${SPIRV-Tools_ROOT_DIR}/include" "${SPIRV-Headers_INCLUDE_DIR}")
+ add_custom_target(SPIRV-Tools)
  set_target_properties(SPIRV-Tools PROPERTIES INCLUDE_DIRECTORIES "${INCLUDE_DIRS_LIST}")
  set(IGC_BUILD__PROJ__SPIRV-Tools SPIRV-Tools)
 
