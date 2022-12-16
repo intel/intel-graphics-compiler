@@ -1786,11 +1786,6 @@ list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
       pthread
     )
   endif()
-  if(UNIX)
-    list(APPEND _targetLinkLineCommon
-      -Wl,--exclude-libs,liblldELF.a
-    )
-  endif()
 
   if(_targetIsStatic)
     # Link line for projects that use IGC as static library (allows to resolve multi-circular dependencies between libraries).
