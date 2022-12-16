@@ -272,7 +272,7 @@ public:
   void emit(std::ostream &output);
   void emitInstruction(std::ostream &output, INST_LIST_ITER &it);
   void emitBasicInstruction(std::ostream &output, INST_LIST_ITER &it);
-  void emitBasicInstructionComment(std::ostream &output, G4_Kernel *k, INST_LIST_ITER &it,
+  void emitBasicInstructionComment(std::ostream &output, INST_LIST_ITER &it,
                                    int *suppressRegs, int *lastRegs);
   void emitInstructionSourceLineMapping(std::ostream &output,
                                         INST_LIST_ITER &it);
