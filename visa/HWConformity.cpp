@@ -2902,8 +2902,6 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
 
   if (src0->isSrcRegRegion()) {
     auto src0RR = src0->asSrcRegRegion();
-    MUST_BE_TRUE(IS_INT(src0RR->getType()) && IS_INT(dst->getType()),
-                 "expecting int types on src, dst");
     MUST_BE_TRUE(src0RR->getModifier() == Mod_src_undef,
                  "cannot handle saturation");
 
@@ -8037,46 +8035,6 @@ uint16_t HWConformity::getSrcStride(G4_SrcRegRegion *src) {
   return srcStride;
 };
 
-void HWConformity::change64bStride2CopyToUD(INST_LIST_ITER it, G4_BB *bb) {
-  G4_INST *inst = *it;
-  G4_Operand *src = inst->getSrc(0);
-  MUST_BE_TRUE(src != nullptr && src->isSrcRegRegion(),
-               "source must be a SrcRegRegion");
-  G4_SrcRegRegion *origSrc = src->asSrcRegRegion();
-  G4_Type execType = inst->getDst()->getType();
-  uint16_t stride = inst->getDst()->getHorzStride();
-  short dstRegOff = inst->getDst()->getRegOff();
-  short dstSubRegOff = inst->getDst()->getSubRegOff();
-
-  assert((execType == Type_Q || execType == Type_DF) &&
-         "Only 64b data type support");
-  execType = Type_UD;
-  dstSubRegOff *= 2;
-
-  G4_DstRegRegion *newDst =
-      builder.createDst(inst->getDst()->getBase(), dstRegOff, dstSubRegOff + 1,
-                        stride * 2, execType);
-  G4_SrcRegRegion *newSrc = builder.createSrcRegRegion(
-      origSrc->getModifier(), Direct, origSrc->getBase(), origSrc->getRegOff(),
-      origSrc->getSubRegOff() * 2 + 1, builder.createRegionDesc(2, 1, 0),
-      Type_UD);
-  inst->setSrc(newSrc, 0);
-  inst->setDest(newDst);
-
-  G4_DstRegRegion *newDst1 = builder.createDst(
-      inst->getDst()->getBase(), dstRegOff, dstSubRegOff, stride * 2, execType);
-  G4_SrcRegRegion *newSrc1 = builder.createSrcRegRegion(
-      origSrc->getModifier(), Direct, origSrc->getBase(), origSrc->getRegOff(),
-      origSrc->getSubRegOff() * 2, builder.createRegionDesc(2, 1, 0), Type_UD);
-
-  G4_INST *movInst = builder.createMov(inst->getExecSize(), newDst1, newSrc1,
-                                       inst->getOption(), false);
-
-  INST_LIST_ITER iter = it;
-  iter++;
-  bb->insertBefore(it, movInst);
-}
-
 // on XeHP_SDV we have to make sure each source element is alignd to each dst
 // element for all float/64b inst (packed HF is ok in mixed mode inst) For all
 // violating instructions, we align each operand to the execution type for float
@@ -8168,15 +8126,8 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
           // for packed 64b copy moves that are not under divergent CF, we can
           // change its type to UD
           change64bCopyToUD(inst, srcStride / inst->getSrc(0)->getTypeSize());
-        } else if (isNoMaskInst && inst->getDst()->getHorzStride() == 2 &&
-                   execTyWidth == 8 &&
-                   src0RR->getRegion()->isContiguous(inst->getExecSize())) {
-          change64bStride2CopyToUD(it, bb);
-        } else if (execTyWidth == 8 && IS_TYPE_INT(dstTy) &&
-                   IS_TYPE_INT(src0RR->getType()) && srcStride != 0 &&
-                   !src0RR->isIndirect()) {
+        } else if (srcStride != 0) {
           // we can split 64b moves with single source stride into 2UD moves
-          // ToDo: check if this subsumes the previous else if
           emulate64bMov(it, bb);
         } else {
           // a move we don't know how to handle without inserting more moves
