@@ -668,6 +668,8 @@ bool hasMathDpasConflict() const {
 
 bool waDisableIntMac() const { return getPlatform() == Xe_PVC; }
 
+bool hasGRFAlignedSrc2DPAS() const { return getPlatform() >= Xe_PVC; }
+
 bool hasWriteCombine() const {
   return false;
 }

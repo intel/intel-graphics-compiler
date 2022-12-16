@@ -5523,6 +5523,16 @@ void HWConformity::fixDPAS(INST_LIST_ITER it, G4_BB *bb) {
       replaceHFBFwithFloat(it, bb);
     }
   }
+  G4_InstDpas *dpasInst = inst->asDpasInst();
+  uint8_t depth = dpasInst->getSystolicDepth();
+  uint8_t repeatC = dpasInst->getRepeatCount();
+  if (builder.hasGRFAlignedSrc2DPAS() && depth == 8 && repeatC == 8 &&
+      !builder.tryToAlignOperand(inst->getSrc(2), builder.getGRFSize())) {
+    G4_INST *newInst = evenlySplitDPAS8x8Inst(it, bb);
+    INST_LIST_ITER nextIter = it;
+    nextIter++;
+    it = bb->insertBefore(nextIter, newInst);
+  }
 }
 
 void HWConformity::conformBB(G4_BB *bb) {
