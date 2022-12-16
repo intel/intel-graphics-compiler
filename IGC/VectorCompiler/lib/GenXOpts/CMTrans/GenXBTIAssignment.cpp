@@ -118,7 +118,6 @@ bool GenXBTIAssignment::runOnModule(Module &M) {
 
 // Surfaces starting from 240 are reserved.
 static constexpr int MaxAvailableSurfaceIndex = 239;
-static constexpr int StatelessBti = 255;
 static constexpr int MaxAvailableSamplerIndex = 14;
 
 static bool isDescImageType(StringRef TypeDesc) {
@@ -171,7 +170,7 @@ int BTIAssignment::assignUAV(int SurfaceID, ZipTy &&Zippy) {
       continue;
     }
     if (Kind == vc::KernelMetadata::AK_NORMAL && isDescSvmPtr(Desc)) {
-      Idx = StatelessBti;
+      Idx = SurfaceID++;
       continue;
     }
     // These 'ands' are definitely super buggy. Kinds should be
@@ -181,11 +180,11 @@ int BTIAssignment::assignUAV(int SurfaceID, ZipTy &&Zippy) {
     // on L0 runtime.
     // FIXME(aus): investigate the reason and rewrite with KAI.
     if (Kind & vc::KernelMetadata::IMP_OCL_PRINTF_BUFFER) {
-      Idx = StatelessBti;
+      Idx = SurfaceID++;
       continue;
     }
     if (Kind & vc::KernelMetadata::IMP_OCL_PRIVATE_BASE) {
-      Idx = StatelessBti;
+      Idx = SurfaceID++;
       continue;
     }
   }

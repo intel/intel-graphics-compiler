@@ -76,13 +76,11 @@ public:
   // add a pointer patch token.
   void createPointerGlobalAnnotation(unsigned index, unsigned offset,
                                      unsigned sizeInBytes, unsigned BTI,
-                                     ArgAccessKind access, bool isBindless,
-                                     bool isStateful);
+                                     ArgAccessKind access, bool isBindless);
 
   void createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
                                    unsigned payloadPosition, int BTI,
-                                   unsigned statelessPrivateMemSize,
-                                   bool isStateful);
+                                   unsigned statelessPrivateMemSize);
 
   // add a stateful buffer patch token.
   void createBufferStatefulAnnotation(unsigned argNo, ArgAccessKind accessKind);

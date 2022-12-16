@@ -275,13 +275,6 @@ getOCLImageType(llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind)
     }
 }
 
-static inline bool checkStateful(unsigned int BTI) {
-  static constexpr unsigned int STATELESS_NONCOHERENT_BTI = 253;
-  static constexpr unsigned int STATELESS_BTI = 255;
-  // BTI > 255 - will be mapped to entry 0, it is still stateful access
-  return (BTI < STATELESS_NONCOHERENT_BTI || BTI > STATELESS_BTI);
-}
-
 void CMKernel::createImageAnnotation(
     unsigned argNo, unsigned BTI,
     llvm::GenXOCLRuntimeInfo::KernelArgInfo::KindType Kind,
@@ -323,83 +316,86 @@ void CMKernel::createImplicitArgumentsAnnotation(unsigned payloadPosition)
 
 void CMKernel::createPointerGlobalAnnotation(unsigned index, unsigned offset,
                                              unsigned sizeInBytes, unsigned BTI,
-                                             ArgAccessKind access,
-                                             bool isBindless, bool isStateful) {
-  auto ptrAnnotation = std::make_unique<iOpenCL::PointerArgumentAnnotation>();
-  ptrAnnotation->IsStateless = !isBindless && !isStateful;
-  ptrAnnotation->IsBindlessAccess = isBindless;
-  ptrAnnotation->HasStatefulAccess = isStateful;
-  ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
-  ptrAnnotation->ArgumentNumber = index;
-  ptrAnnotation->BindingTableIndex = BTI;
-  ptrAnnotation->PayloadPosition = offset;
-  ptrAnnotation->PayloadSizeInBytes = sizeInBytes;
-  ptrAnnotation->LocationIndex = 0;
-  ptrAnnotation->LocationCount = 0;
-  ptrAnnotation->IsEmulationArgument = false;
-  m_kernelInfo.m_pointerArgument.push_back(std::move(ptrAnnotation));
+                                             ArgAccessKind access, bool isBindless)
+{
+    auto ptrAnnotation = std::make_unique<iOpenCL::PointerArgumentAnnotation>();
+    ptrAnnotation->IsStateless = !isBindless;
+    ptrAnnotation->IsBindlessAccess = isBindless;
+    // TODO: Make an analysis whether a particular argument has any stateful access,
+    // and set the below variable appropriately. For now, make a safe bet and always
+    // assume that stateful access is present.
+    ptrAnnotation->HasStatefulAccess = true;
+    ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL;
+    ptrAnnotation->ArgumentNumber = index;
+    ptrAnnotation->BindingTableIndex = BTI;
+    ptrAnnotation->PayloadPosition = offset;
+    ptrAnnotation->PayloadSizeInBytes = sizeInBytes;
+    ptrAnnotation->LocationIndex = 0;
+    ptrAnnotation->LocationCount = 0;
+    ptrAnnotation->IsEmulationArgument = false;
+    m_kernelInfo.m_pointerArgument.push_back(std::move(ptrAnnotation));
 
-  zebin::PreDefinedAttrGetter::ArgAddrMode zeAddrMode;
-  if (isBindless) {
-    zeAddrMode = zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
-  } else if (isStateful) {
-    zeAddrMode = zebin::PreDefinedAttrGetter::ArgAddrMode::stateful;
-  } else {
-    zeAddrMode = zebin::PreDefinedAttrGetter::ArgAddrMode::stateless;
-  }
+    const auto zeAddrMode = isBindless ?
+      zebin::PreDefinedAttrGetter::ArgAddrMode::bindless :
+      zebin::PreDefinedAttrGetter::ArgAddrMode::stateless;
 
-  // EnableZEBinary: ZEBinary related code
-  zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
-      m_kernelInfo.m_zePayloadArgs, offset, sizeInBytes, index, zeAddrMode,
-      zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
-      getZEArgAccessType(access));
-  if (isStateful)
+    // EnableZEBinary: ZEBinary related code
+    zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
+        m_kernelInfo.m_zePayloadArgs, offset, sizeInBytes, index,
+        zeAddrMode, zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
+        getZEArgAccessType(access));
     zebin::ZEInfoBuilder::addBindingTableIndex(m_kernelInfo.m_zeBTIArgs, BTI,
                                                index);
 }
 
-void CMKernel::createPrivateBaseAnnotation(unsigned argNo, unsigned byteSize,
-                                           unsigned payloadPosition, int BTI,
-                                           unsigned statelessPrivateMemSize,
-                                           bool isStateful) {
+void CMKernel::createPrivateBaseAnnotation(
+    unsigned argNo, unsigned byteSize, unsigned payloadPosition, int BTI,
+    unsigned statelessPrivateMemSize) {
   auto ptrAnnotation = std::make_unique<iOpenCL::PrivateInputAnnotation>();
+
   ptrAnnotation->AddressSpace = iOpenCL::KERNEL_ARGUMENT_ADDRESS_SPACE_PRIVATE;
   ptrAnnotation->ArgumentNumber = argNo;
   // PerThreadPrivateMemorySize is defined as "Total private memory requirements for each OpenCL work-item."
   ptrAnnotation->PerThreadPrivateMemorySize = statelessPrivateMemSize;
   ptrAnnotation->BindingTableIndex = BTI;
-  ptrAnnotation->IsStateless = !isStateful;
+  ptrAnnotation->IsStateless = true;
   ptrAnnotation->PayloadPosition = payloadPosition;
   ptrAnnotation->PayloadSizeInBytes = byteSize;
-  ptrAnnotation->HasStatefulAccess = isStateful;
+  // TODO: Make an analysis whether a particular argument has any stateful access,
+  // and set the below variable appropriately. For now, make a safe bet and always
+  // assume that stateful access is present.
+  ptrAnnotation->HasStatefulAccess = true;
   m_kernelInfo.m_pointerInput.push_back(std::move(ptrAnnotation));
 
-  // EnableZEBinary: ZEBinary related code
-  zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-      m_kernelInfo.m_zePayloadArgs,
-      zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
-      payloadPosition, byteSize);
+    // EnableZEBinary: ZEBinary related code
+    zebin::ZEInfoBuilder::addPayloadArgumentImplicit(m_kernelInfo.m_zePayloadArgs,
+        zebin::PreDefinedAttrGetter::ArgType::private_base_stateless,
+        payloadPosition, byteSize);
 }
 
 void CMKernel::createBufferStatefulAnnotation(unsigned argNo,
-                                              ArgAccessKind accessKind) {
-  auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
+                                              ArgAccessKind accessKind)
+{
+    // TODO: early return if there is no stateful access to this argument
+    // if(no_stateful_access) return;
 
-  constInput->ConstantType = iOpenCL::DATA_PARAMETER_BUFFER_STATEFUL;
-  constInput->Offset = 0;
-  constInput->PayloadPosition = 0;
-  constInput->PayloadSizeInBytes = 0;
-  constInput->ArgumentNumber = argNo;
-  constInput->LocationIndex = 0;
-  constInput->LocationCount = 0;
-  m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
+    auto constInput = std::make_unique<iOpenCL::ConstantInputAnnotation>();
 
-  // EnableZEBinary: ZEBinary related code
-  zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
-      m_kernelInfo.m_zePayloadArgs, 0, 0, argNo,
-      zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
-      zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
-      getZEArgAccessType(accessKind));
+    constInput->ConstantType = iOpenCL::DATA_PARAMETER_BUFFER_STATEFUL;
+    constInput->Offset = 0;
+    constInput->PayloadPosition = 0;
+    constInput->PayloadSizeInBytes = 0;
+    constInput->ArgumentNumber = argNo;
+    constInput->LocationIndex = 0;
+    constInput->LocationCount = 0;
+    m_kernelInfo.m_constantInputAnnotation.push_back(std::move(constInput));
+
+    // EnableZEBinary: ZEBinary related code
+    zebin::ZEInfoBuilder::addPayloadArgumentByPointer(m_kernelInfo.m_zePayloadArgs,
+        0, 0, argNo,
+        zebin::PreDefinedAttrGetter::ArgAddrMode::stateful,
+        zebin::PreDefinedAttrGetter::ArgAddrSpace::global,
+        getZEArgAccessType(accessKind));
 }
 
 void CMKernel::createSizeAnnotation(unsigned initPayloadPosition,
@@ -618,29 +614,24 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
                                   iOpenCL::DATA_PARAMETER_NUM_WORK_GROUPS);
       break;
     case ArgKind::Buffer:
-      Kernel.createPointerGlobalAnnotation(
-          Arg.getIndex(), ArgOffset, Arg.getSizeInBytes(), Arg.getBTI(),
-          Arg.getAccessKind(), /*isBindless=*/false,
-          checkStateful(Arg.getBTI()));
-      if (checkStateful(Arg.getBTI()))
-        Kernel.createBufferStatefulAnnotation(Arg.getIndex(),
-                                              Arg.getAccessKind());
+      Kernel.createPointerGlobalAnnotation(Arg.getIndex(), ArgOffset,
+                                           Arg.getSizeInBytes(), Arg.getBTI(),
+                                           Arg.getAccessKind(), /*isBindless=*/false);
+      Kernel.createBufferStatefulAnnotation(Arg.getIndex(),
+                                            Arg.getAccessKind());
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::BindlessBuffer:
-      Kernel.createPointerGlobalAnnotation(
-          Arg.getIndex(), ArgOffset, Arg.getSizeInBytes(), Arg.getBTI(),
-          Arg.getAccessKind(), /*isBindless=*/true,
-          /*isStateful=*/false);
+      Kernel.createPointerGlobalAnnotation(Arg.getIndex(), ArgOffset,
+                                           Arg.getSizeInBytes(), Arg.getBTI(),
+                                           Arg.getAccessKind(), /*isBindless=*/true);
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
       break;
     case ArgKind::SVM:
-      Kernel.createPointerGlobalAnnotation(
-          Arg.getIndex(), ArgOffset, Arg.getSizeInBytes(), Arg.getBTI(),
-          Arg.getAccessKind(), /*isBindless=*/false,
-          /*isStateful=*/false);
+      Kernel.createPointerGlobalAnnotation(Arg.getIndex(), ArgOffset,
+                                           Arg.getSizeInBytes(), Arg.getBTI(),
+                                           Arg.getAccessKind(), /*isBindless=*/false);
       Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
-
       break;
     case ArgKind::Sampler:
       Kernel.createSamplerAnnotation(Arg.getIndex(), Arg.getBTI());
@@ -664,8 +655,8 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
       if (Info.getStatelessPrivMemSize() != 0) {
         auto PrivMemSize = Info.getStatelessPrivMemSize();
         Kernel.createPrivateBaseAnnotation(Arg.getIndex(), Arg.getSizeInBytes(),
-                                           ArgOffset, Arg.getBTI(), PrivMemSize,
-                                           checkStateful(Arg.getBTI()));
+                                           ArgOffset, Arg.getBTI(),
+                                           PrivMemSize);
         Kernel.m_kernelInfo.m_executionEnvironment
             .PerThreadPrivateOnStatelessSize = PrivMemSize;
         Kernel.m_kernelInfo.m_argIndexMap[Arg.getIndex()] = Arg.getBTI();
