@@ -1726,6 +1726,7 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short,  i16,   ushort, i16, __builtin_IB_s
 DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short2, v2i16, ushort, i16, __builtin_IB_simd_block_read_2_global_h)
 DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short4, v4i16, ushort, i16, __builtin_IB_simd_block_read_4_global_h)
 DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short8, v8i16, ushort, i16, __builtin_IB_simd_block_read_8_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(short16, v16i16, ushort, i16, __builtin_IB_simd_block_read_16_global_h)
 
 DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int,  i32,   uint, i32, __builtin_IB_simd_block_read_1_global)
 DEF_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(int2, v2i32, uint, i32, __builtin_IB_simd_block_read_2_global)
@@ -1759,6 +1760,7 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short,  i16,   ushort, i16, __builtin_IB_si
 DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short2, v2i16, ushort, i16, __builtin_IB_simd_block_read_2_local_h)
 DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short4, v4i16, ushort, i16, __builtin_IB_simd_block_read_4_local_h)
 DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short8, v8i16, ushort, i16, __builtin_IB_simd_block_read_8_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(short16, v16i16, ushort, i16, __builtin_IB_simd_block_read_16_local_h)
 
 DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int,  i32,   uint, i32, __builtin_IB_simd_block_read_1_local)
 DEF_INTEL_SUB_GROUP_BLOCK_READ_LOCAL(int2, v2i32, uint, i32, __builtin_IB_simd_block_read_2_local)
@@ -1797,6 +1799,7 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ushort,   i16,    ushort, i16, __builtin_
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ushort2,  v2i16,  ushort, i16, __builtin_IB_simd_block_write_2_global_h)
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ushort4,  v4i16,  ushort, i16, __builtin_IB_simd_block_write_4_global_h)
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ushort8,  v8i16,  ushort, i16, __builtin_IB_simd_block_write_8_global_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(ushort16,  v16i16,  ushort, i16, __builtin_IB_simd_block_write_16_global_h)
 
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uint,   i32,    uint, i32, __builtin_IB_simd_block_write_1_global)
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(uint2,  v2i32,  uint, i32, __builtin_IB_simd_block_write_2_global)
@@ -1830,6 +1833,7 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ushort,  i16,   ushort, i16, __builtin_IB_
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ushort2, v2i16, ushort, i16, __builtin_IB_simd_block_write_2_local_h)
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ushort4, v4i16, ushort, i16, __builtin_IB_simd_block_write_4_local_h)
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ushort8, v8i16, ushort, i16, __builtin_IB_simd_block_write_8_local_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(ushort16, v16i16, ushort, i16, __builtin_IB_simd_block_write_16_local_h)
 
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uint,  i32,   uint, i32, __builtin_IB_simd_block_write_1_local)
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_LOCAL(uint2, v2i32, uint, i32, __builtin_IB_simd_block_write_2_local)
@@ -1874,6 +1878,7 @@ DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short,  i16,   __builtin_IB_simd_media_bloc
 DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short2, v2i16, __builtin_IB_simd_media_block_read_2_h)
 DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short4, v4i16, __builtin_IB_simd_media_block_read_4_h)
 DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short8, v8i16, __builtin_IB_simd_media_block_read_8_h)
+DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(short16, v16i16, __builtin_IB_simd_media_block_read_16_h)
 
 DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int,  i32,   __builtin_IB_simd_media_block_read_1)
 DEF_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(int2, v2i32, __builtin_IB_simd_media_block_read_2)
@@ -1918,6 +1923,7 @@ DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ushort,  i16,   __builtin_IB_simd_media_bl
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ushort2, v2i16, __builtin_IB_simd_media_block_write_2_h)
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ushort4, v4i16, __builtin_IB_simd_media_block_write_4_h)
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ushort8, v8i16, __builtin_IB_simd_media_block_write_8_h)
+DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(ushort16, v16i16, __builtin_IB_simd_media_block_write_16_h)
 
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uint,  i32,   __builtin_IB_simd_media_block_write_1)
 DEF_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE(uint2, v2i32, __builtin_IB_simd_media_block_write_2)

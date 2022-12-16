@@ -6254,17 +6254,20 @@ ushort   __attribute__((overloadable)) intel_sub_group_block_read_us( read_only 
 ushort2  __attribute__((overloadable)) intel_sub_group_block_read_us2( read_only image2d_t image, int2 coord );
 ushort4  __attribute__((overloadable)) intel_sub_group_block_read_us4( read_only image2d_t image, int2 coord );
 ushort8  __attribute__((overloadable)) intel_sub_group_block_read_us8( read_only image2d_t image, int2 coord );
+ushort16 __attribute__((overloadable)) intel_sub_group_block_read_us16( read_only image2d_t image, int2 coord );
 
 #ifdef __opencl_c_read_write_images
 ushort   __attribute__((overloadable)) intel_sub_group_block_read_us(read_write image2d_t image, int2 coord);
 ushort2  __attribute__((overloadable)) intel_sub_group_block_read_us2(read_write image2d_t image, int2 coord);
 ushort4  __attribute__((overloadable)) intel_sub_group_block_read_us4(read_write image2d_t image, int2 coord);
 ushort8  __attribute__((overloadable)) intel_sub_group_block_read_us8(read_write image2d_t image, int2 coord);
+ushort16 __attribute__((overloadable)) intel_sub_group_block_read_us16(read_write image2d_t image, int2 coord);
 
 void    __attribute__((overloadable)) intel_sub_group_block_write_us(read_write image2d_t image, int2 coord, ushort  data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_us2(read_write image2d_t image, int2 coord, ushort2 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_us4(read_write image2d_t image, int2 coord, ushort4 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_us8(read_write image2d_t image, int2 coord, ushort8 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_us16(read_write image2d_t image, int2 coord, ushort16 data);
 #endif // __opencl_c_read_write_images
 #endif //__opencl_c_images
 
@@ -6272,18 +6275,21 @@ ushort    __attribute__((overloadable)) intel_sub_group_block_read_us(  const __
 ushort2   __attribute__((overloadable)) intel_sub_group_block_read_us2( const __global ushort* p );
 ushort4   __attribute__((overloadable)) intel_sub_group_block_read_us4( const __global ushort* p );
 ushort8   __attribute__((overloadable)) intel_sub_group_block_read_us8( const __global ushort* p );
+ushort16  __attribute__((overloadable)) intel_sub_group_block_read_us16( const __global ushort* p );
 
 #ifdef __opencl_c_images
 void    __attribute__((overloadable)) intel_sub_group_block_write_us(write_only image2d_t image, int2 coord, ushort  data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_us2(write_only image2d_t image, int2 coord, ushort2 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_us4(write_only image2d_t image, int2 coord, ushort4 data);
 void    __attribute__((overloadable)) intel_sub_group_block_write_us8(write_only image2d_t image, int2 coord, ushort8 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_us16(write_only image2d_t image, int2 coord, ushort16 data);
 #endif //__opencl_c_images
 
 void    __attribute__((overloadable)) intel_sub_group_block_write_us(  __global ushort* p, ushort  data );
 void    __attribute__((overloadable)) intel_sub_group_block_write_us2( __global ushort* p, ushort2 data );
 void    __attribute__((overloadable)) intel_sub_group_block_write_us4( __global ushort* p, ushort4 data );
 void    __attribute__((overloadable)) intel_sub_group_block_write_us8( __global ushort* p, ushort8 data );
+void    __attribute__((overloadable)) intel_sub_group_block_write_us16( __global ushort* p, ushort16 data );
 
 #endif // cl_intel_subgroups_short
 #ifdef cl_intel_subgroups_char
