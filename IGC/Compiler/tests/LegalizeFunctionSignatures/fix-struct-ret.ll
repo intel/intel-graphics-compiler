@@ -39,7 +39,7 @@ define spir_kernel void @test_k(i32 %src) {
 
 define spir_func %str @foo(i32 %src1, i64 %src2) #0 {
 ; CHECK-LLVM-14-PLUS: define spir_func void @foo(%str* noalias sret(%str) %0, i32 %src1, i64 %src2)
-; CHECK-PRE-LLVM-14: define spir_func void @foo(%str* noalias sret, i32 %src1, i64 %src2)
+; CHECK-PRE-LLVM-14: define spir_func void @foo(%str* noalias sret{{( %0)?,}} i32 %src1, i64 %src2)
 ; CHECK:    [[TMP2:%.*]] = insertvalue [[STR:%.*]] { i32 42, i64 0 }, i32 [[SRC1:%.*]], 0
 ; CHECK:    [[TMP3:%.*]] = insertvalue [[STR]] [[TMP2]], i64 [[SRC2:%.*]], 1
 ; CHECK:    [[TMP4:%.*]] = alloca [[STR]]

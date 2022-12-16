@@ -14,8 +14,8 @@
 
 ; Debug-info check fails
 ;
-; check-not: WARNING
-; check: CheckModuleDebugify: PASS
+; COM: check-not WARNING
+; COM: check CheckModuleDebugify: PASS
 
 @x = addrspace(2) constant i32 3, align 4
 @y = addrspace(1) constant i32 13, align 4

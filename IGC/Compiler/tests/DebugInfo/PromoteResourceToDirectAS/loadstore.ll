@@ -33,9 +33,10 @@
 ; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[LOAD_V]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
 ; CHECK-DAG: store i32 [[LOAD_V]], {{.*}} [[BCAST_V:%[A-z0-9]*]],{{.*}} !dbg [[STORE_LOC:![0-9]*]]
 ; CHECK-DAG: [[BCAST_V]] = {{.*}} [[GEP_V:%[A-z0-9]*]] {{.*}} !dbg [[BCAST_LOC:![0-9]*]]
-; cHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[BCAST_V]], metadata [[BCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCAST_LOC]]
+
+; COM: This check fails - @llvm.dbg.value(metadata {{.*}} [[BCAST_V]], metadata [[BCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCAST_LOC]]
 ; CHECK-DAG: [[GEP_V]] = {{.*}} !dbg [[GEP_LOC:![0-9]*]]
-; cHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[GEP_V]], metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
+; COM: This check fails - @llvm.dbg.value(metadata {{.*}} [[GEP_V]], metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
 
 define spir_kernel void @test_promote(i32 %src) !dbg !6 {
   %1 = call i32 addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608i32(i32 0, i32 2), !dbg !18
@@ -62,7 +63,7 @@ define spir_kernel void @test_promote(i32 %src) !dbg !6 {
 ; CHECK-DAG: [[ACAST1_LOC]] = !DILocation(line: 3, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[ACAST2_MD]] = !DILocalVariable(name: "4", scope: [[SCOPE]], file: [[FILE]], line: 4
 ; CHECK-DAG: [[ACAST2_LOC]] = !DILocation(line: 4, column: 1, scope: [[SCOPE]])
-; cHECK-DAG: [[GEP_MD]] = !DILocalVariable(name: "5", scope: [[SCOPE]], file: [[FILE]], line: 5
+; COM: This check fails - [[GEP_MD]] = !DILocalVariable(name: "5", scope: [[SCOPE]], file: [[FILE]], line: 5
 ; CHECK-DAG: [[GEP_LOC]] = !DILocation(line: 5, column: 1, scope: [[SCOPE]])
 ; cHECK-DAG: [[BCAST_MD]] = !DILocalVariable(name: "6", scope: [[SCOPE]], file: [[FILE]], line: 6
 ; CHECK-DAG: [[BCAST_LOC]] = !DILocation(line: 6, column: 1, scope: [[SCOPE]])

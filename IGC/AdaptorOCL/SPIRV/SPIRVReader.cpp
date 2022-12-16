@@ -583,7 +583,7 @@ public:
 #if LLVM_VERSION_MAJOR <= 8
           auto baseType = CTy->getBaseType().resolve();
 #else
-          auto baseType = DITy->getBaseType();
+          auto baseType = CTy->getBaseType();
 #endif
           return getSizeInBits(baseType);
       }

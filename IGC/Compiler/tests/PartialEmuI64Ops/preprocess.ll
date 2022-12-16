@@ -15,8 +15,8 @@
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 
 ; Fails on debug
-; check-not: WARNING
-; check: CheckModuleDebugify: PASS
+; COM: check-not WARNING
+; COM: check CheckModuleDebugify: PASS
 
 define void @test_uadd(i64 %src1, i64 %src2) {
 ; CHECK-LABEL: @test_uadd(
@@ -137,7 +137,21 @@ define void @test_inttoptr(i64 %src) {
 ; Function Attrs: nounwind readnone speculatable
 declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i64) #0
 
-!igc.functions = !{!0, !3, !4, !5, !6, !7}
+
+define void @test_store(i64 addrspace(1)* %src1, i64 addrspace(1)** %src2) {
+; CHECK-LABEL: @test_store(
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i64 addrspace(1)** [[SRC2:%.*]] to i64*
+; CHECK-NEXT:    [[TMP2:%.*]] = ptrtoint i64 addrspace(1)* [[SRC1:%.*]] to i64
+; CHECK-NEXT:    store i64 [[TMP2]], i64* [[TMP1]], align 8
+; CHECK-NEXT:    ret void
+;
+  store i64 addrspace(1)* %src1, i64 addrspace(1)** %src2, align 8
+  ret void
+}
+
+
+
+!igc.functions = !{!0, !3, !4, !5, !6, !7, !8}
 
 !0 = !{void (i64, i64)* @test_uadd, !1}
 !1 = !{!2}
@@ -147,3 +161,4 @@ declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i64) #0
 !5 = !{void (i64 addrspace(1)*, i64 addrspace(1)*, i1)* @test_select, !1}
 !6 = !{void (i64 addrspace(1)*)* @test_ptrtoint, !1}
 !7 = !{void (i64)* @test_inttoptr, !1}
+!8 = !{void (i64 addrspace(1)*, i64 addrspace(1)**)*  @test_store, !1}

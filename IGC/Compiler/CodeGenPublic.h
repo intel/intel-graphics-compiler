@@ -846,8 +846,8 @@ namespace IGC
 
         PushConstantMode m_pushConstantMode = PushConstantMode::DEFAULT;
 
-        SInstrTypes m_instrTypes;
-        SInstrTypes m_instrTypesAfterOpts;
+        SInstrTypes m_instrTypes = {};
+        SInstrTypes m_instrTypesAfterOpts = {};
         // The module contains global variables with private address space.
         // When this is true, the flag "ForceGlobalMemoryAllocation" is enabled as a WA
         bool m_hasGlobalInPrivateAddressSpace = false;

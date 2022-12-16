@@ -24,8 +24,8 @@
 ; ------------------------------------------------
 
 ; Fails on debug check
-; check-not: WARNING
-; check: CheckModuleDebugify: PASS
+; COM: check-not WARNING
+; COM: check CheckModuleDebugify: PASS
 
 
 %struct.__namedBarrier = type { i32, i32, i32 }
