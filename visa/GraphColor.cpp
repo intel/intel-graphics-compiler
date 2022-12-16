@@ -6035,9 +6035,6 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
               << (doBankConflict ? " BCR" : "") << " graph coloring\n";
   }
 
-  unsigned startARFReg = 0;
-  unsigned startFLAGReg = 0;
-  unsigned startGRFReg = 0;
   unsigned bank1_end = 0;
   unsigned bank2_end = totalGRFRegCount - 1;
   unsigned bank1_start = 0;
@@ -6059,32 +6056,27 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
     if (bank1_end < evenMaxRegNum ||
         totalGRFRegCount - bank1_end < oddMaxRegNum ||
         bank1_end == totalGRFRegCount - 1 || bank1_end == 0) {
+      // FIXME: How can we early return without assigning???
       return false;
     }
 
     bank2_end = bank1_end + 1;
   }
 
-  bool *availableGregs = (bool *)mem.alloc(sizeof(bool) * totalGRFNum);
-  uint32_t *availableSubRegs =
-      (uint32_t *)mem.alloc(sizeof(uint32_t) * totalGRFNum);
-  bool *availableAddrs =
-      (bool *)mem.alloc(sizeof(bool) * getNumAddrRegisters());
-  bool *availableFlags =
-      (bool *)mem.alloc(sizeof(bool) * builder.getNumFlagRegisters());
-  uint8_t *weakEdgeUsage = (uint8_t *)mem.alloc(sizeof(uint8_t) * totalGRFNum);
   G4_RegFileKind rFile = G4_GRF;
   if (liveAnalysis.livenessClass(G4_FLAG))
     rFile = G4_FLAG;
   else if (liveAnalysis.livenessClass(G4_ADDRESS))
     rFile = G4_ADDRESS;
 
+  FreePhyRegs FPR(kernel);
+
   unsigned maxGRFCanBeUsed = totalGRFRegCount;
-  PhyRegUsageParms parms(gra, lrs, rFile, maxGRFCanBeUsed, startARFReg,
-                         startFLAGReg, startGRFReg, bank1_start, bank1_end,
-                         bank2_start, bank2_end, doBankConflict, availableGregs,
-                         availableSubRegs, availableAddrs, availableFlags,
-                         weakEdgeUsage);
+  // FIXME: the bank configs should be computed in PhyRegAllocationState instead
+  // of pased in, but the strange early return from above prevents this..
+  PhyRegAllocationState parms(gra, lrs, rFile, maxGRFCanBeUsed, bank1_start,
+                              bank1_end, bank2_start, bank2_end,
+                              doBankConflict);
   bool noIndirForceSpills = builder.getOption(vISA_NoIndirectForceSpills);
 
   auto &varSplitPass = *gra.getVarSplitPass();
@@ -6115,8 +6107,8 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
       G4_Declare *parentDcl = nullptr;
       bool skipParentIntf = false;
       if (lr->hasAllocHint()) {
-        parms.startGRFReg =
-            (lr->getAllocHint() >= maxGRFCanBeUsed ? 0 : lr->getAllocHint());
+        parms.setStartGRF(
+            (lr->getAllocHint() >= maxGRFCanBeUsed ? 0 : lr->getAllocHint()));
         if (varSplitPass.isPartialDcl(lr->getDcl())) {
           parentDcl = varSplitPass.getParentDcl(lr->getDcl());
           if (parentDcl) {
@@ -6149,7 +6141,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
       //
       // compute what registers are already assigned
       //
-      PhyRegUsage regUsage(parms);
+      PhyRegUsage regUsage(parms, FPR);
 
       const std::vector<unsigned> &intfs = intf.getSparseIntfForVar(lr_id);
       auto weakEdgeSet =

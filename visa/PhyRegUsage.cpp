@@ -12,38 +12,16 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-PhyRegUsage::PhyRegUsage(PhyRegUsageParms &p)
-    : gra(p.gra), lrs(p.lrs), availableGregs(p.availableGregs),
-      availableSubRegs(p.availableSubRegs), availableAddrs(p.availableAddrs),
-      availableFlags(p.availableFlags),
-      colorHeuristic(FIRST_FIT), startARFReg(p.startARFReg),
-      startFLAGReg(p.startFlagReg), startGRFReg(p.startGRFReg),
-      bank1_start(p.bank1_start), bank2_start(p.bank2_start),
-      bank1_end(p.bank1_end), bank2_end(p.bank2_end), totalGRFNum(p.totalGRF),
-      honorBankBias(p.doBankConflict), builder(*p.gra.kernel.fg.builder),
-      regPool(p.gra.regPool) {
+PhyRegUsage::PhyRegUsage(PhyRegAllocationState &p, FreePhyRegs &pFPR)
+    : gra(p.gra), AS(p), FPR(pFPR), lrs(p.lrs), colorHeuristic(FIRST_FIT),
+      totalGRFNum(p.totalGRF), honorBankBias(p.doBankConflict),
+      builder(*p.gra.kernel.fg.builder), regPool(p.gra.regPool) {
   maxGRFCanBeUsed = p.maxGRFCanBeUsed;
   regFile = p.rFile;
-
-  weakEdgeUsage = p.weakEdgeUsage;
   overlapTest = false;
 
-  if (regFile == G4_GRF) {
-    memset(availableGregs, true, sizeof(bool) * totalGRFNum);
-    memset(availableSubRegs, 0xffffffff, sizeof(uint32_t) * totalGRFNum);
-    if (weakEdgeUsage) {
-      memset(weakEdgeUsage, 0, sizeof(uint8_t) * totalGRFNum);
-    }
-  } else if (regFile == G4_ADDRESS) {
-    auto numAddrRegs = getNumAddrRegisters();
-    for (unsigned i = 0; i < numAddrRegs; i++)
-      availableAddrs[i] = true;
-  }
-  else if (regFile == G4_FLAG) {
-    auto numFlags = builder.getNumFlagRegisters();
-    for (unsigned i = 0; i < numFlags; i++)
-      availableFlags[i] = true;
-  }
+  // Make all physical registers free at the beginning.
+  FPR.reset();
 }
 
 void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind, unsigned regNum,
@@ -62,21 +40,20 @@ void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind, unsigned regNum,
       (regNum * uwordsPerGRF + regOff + nunits) % uwordsPerGRF;
 
   for (unsigned i = start_GRF; i < end_GRF; i++) {
-    availableGregs[i] = false;
-    if (builder.getGRFSize() == 64)
-      availableSubRegs[i] = 0;
-    else
-      availableSubRegs[i] = 0xffff0000;
+    FPR.availableGregs[i] = false;
+    // FIXME: I think it should be 0 regardless, the upper half does not exist
+    // for 32 byte GRF platforms anyway.
+    FPR.availableSubRegs[i] = builder.getGRFSize() == 64 ? 0 : 0xFFFF0000;
   }
 
   if (end_sub_GRF) {
-    availableGregs[end_GRF] = false;
+    FPR.availableGregs[end_GRF] = false;
     if (start_GRF == end_GRF) {
       auto subregMask = getSubregBitMask(start_sub_GRF, nunits);
-      availableSubRegs[end_GRF] &= ~subregMask;
+      FPR.availableSubRegs[end_GRF] &= ~subregMask;
     } else {
       auto subregMask = getSubregBitMask(0, end_sub_GRF);
-      availableSubRegs[end_GRF] &= ~subregMask;
+      FPR.availableSubRegs[end_GRF] &= ~subregMask;
     }
   }
 }
@@ -91,17 +68,6 @@ void PhyRegUsage::freeContiguous(bool availRegs[], unsigned start, unsigned num,
   }
 }
 //
-// return true if all entries are true
-//
-bool PhyRegUsage::allFree(bool availRegs[], unsigned maxRegs) {
-  for (unsigned i = 0; i < maxRegs; i++) {
-    if (availRegs[i] == false)
-      return false;
-  }
-  return true;
-}
-
-//
 // mark sub reg [regOff .. regOff + nbytes -1] of the reg regNum free
 //
 void PhyRegUsage::freeGRFSubReg(unsigned regNum, unsigned regOff,
@@ -112,14 +78,14 @@ void PhyRegUsage::freeGRFSubReg(unsigned regNum, unsigned regOff,
 
   int startWord = regOff * TypeSize(ty) / G4_WSIZE;
   auto subregMask = getSubregBitMask(startWord, nwords);
-  availableSubRegs[regNum] |= subregMask;
+  FPR.availableSubRegs[regNum] |= subregMask;
 
   //
   // if all sub regs of regNum are free, then unlink the reg
   //
-  if (availableSubRegs[regNum] == 0xFFFFFFFF) {
-    MUST_BE_TRUE(!availableGregs[regNum], ERROR_UNKNOWN);
-    availableGregs[regNum] = true;
+  if (FPR.availableSubRegs[regNum] == 0xFFFFFFFF) {
+    MUST_BE_TRUE(!FPR.availableGregs[regNum], ERROR_UNKNOWN);
+    FPR.availableGregs[regNum] = true;
   }
 }
 
@@ -138,18 +104,18 @@ void PhyRegUsage::freeRegs(LiveRange *varBasis) {
                     numAllocUnit(decl->getNumElems(), decl->getElemType()),
                     decl->getElemType());
     } else {
-      freeContiguous(availableGregs,
+      freeContiguous(FPR.availableGregs,
                      ((G4_Greg *)varBasis->getPhyReg())->getRegNum(),
                      decl->getNumRows(), totalGRFNum);
     }
   } else if (kind == G4_ADDRESS) {
     MUST_BE_TRUE(varBasis->getPhyReg()->isAreg(), ERROR_UNKNOWN);
-    freeContiguous(availableAddrs, varBasis->getPhyRegOff(),
+    freeContiguous(FPR.availableAddrs, varBasis->getPhyRegOff(),
                    numAllocUnit(decl->getNumElems(), decl->getElemType()),
                    getNumAddrRegisters());
   } else if (kind == G4_FLAG) {
     MUST_BE_TRUE(varBasis->getPhyReg()->isFlag(), ERROR_UNKNOWN);
-    freeContiguous(availableFlags, varBasis->getPhyRegOff(),
+    freeContiguous(FPR.availableFlags, varBasis->getPhyRegOff(),
                    numAllocUnit(decl->getNumElems(), decl->getElemType()),
                    builder.getNumFlagRegisters());
   } else // not yet handled
@@ -326,30 +292,30 @@ bool PhyRegUsage::findContiguousGRFFromBanks(
     align = gra.getBankAlign(dcl);
   }
 
-  ASSERT_USER(bank1_end < totalGRFNum && bank1_start < totalGRFNum &&
-                  bank2_start < totalGRFNum && bank2_end < totalGRFNum,
+  ASSERT_USER(AS.bank1_end < totalGRFNum && AS.bank1_start < totalGRFNum &&
+                  AS.bank2_start < totalGRFNum && AS.bank2_end < totalGRFNum,
               "Wrong bank boundaries value");
 
   if (colorHeuristic == ROUND_ROBIN) {
-    // For round robin, bank1_end and bank2_end are fixed.
+    // For round robin, AS.bank1_end and AS.bank2_end are fixed.
     if (gotoSecondBank) // For odd aligned varaibe, we put them to a specific
                         // sections.
     {
-      // From maxGRFCanBeUsed - 1 to bank2_end
-      ASSERT_USER(bank2_start >= bank2_end,
+      // From maxGRFCanBeUsed - 1 to AS.bank2_end
+      ASSERT_USER(AS.bank2_start >= AS.bank2_end,
                   "Second bank's start can not less than end\n");
 
-      if ((bank2_start - bank2_end + 1) >= numRegNeeded) // 3 - 2 + 1 >= 2
+      if ((AS.bank2_start - AS.bank2_end + 1) >= numRegNeeded) // 3 - 2 + 1 >= 2
       {
-        found =
-            findFreeRegs(availRegs, forbidden, align, numRegNeeded, bank2_start,
-                         bank2_end, idx, gotoSecondBank, oneGRFBankDivision);
+        found = findFreeRegs(availRegs, forbidden, align, numRegNeeded,
+                             AS.bank2_start, AS.bank2_end, idx, gotoSecondBank,
+                             oneGRFBankDivision);
       }
 
       if (!found) {
-        if (maxGRFCanBeUsed - 1 >= bank2_start + numRegNeeded) {
+        if (maxGRFCanBeUsed - 1 >= AS.bank2_start + numRegNeeded) {
           found = findFreeRegs(availRegs, forbidden, align, numRegNeeded,
-                               maxGRFCanBeUsed - 1, bank2_start + 1, idx,
+                               maxGRFCanBeUsed - 1, AS.bank2_start + 1, idx,
                                gotoSecondBank, oneGRFBankDivision);
         } else {
           return false;
@@ -357,37 +323,38 @@ bool PhyRegUsage::findContiguousGRFFromBanks(
       }
 
       if (found) {
-        bank2_start = idx - 1;
-        if (bank2_start < bank2_end) {
-          bank2_start = maxGRFCanBeUsed - 1;
+        AS.bank2_start = idx - 1;
+        if (AS.bank2_start < AS.bank2_end) {
+          AS.bank2_start = maxGRFCanBeUsed - 1;
         }
       }
-    } else { // From 0 to bank1_end
-      if (bank1_end - bank1_start + 1 >= numRegNeeded) {
+    } else { // From 0 to AS.bank1_end
+      if (AS.bank1_end - AS.bank1_start + 1 >= numRegNeeded) {
         found = findFreeRegs(availRegs, forbidden, BankAlign::Even,
-                             numRegNeeded, bank1_start, bank1_end, idx,
+                             numRegNeeded, AS.bank1_start, AS.bank1_end, idx,
                              gotoSecondBank, oneGRFBankDivision);
       }
 
       if (!found) {
-        if (bank1_start >= numRegNeeded) {
-          found = findFreeRegs(availRegs, forbidden, BankAlign::Even,
-                               numRegNeeded, 0, bank1_start - 2 + numRegNeeded,
-                               idx, gotoSecondBank, oneGRFBankDivision);
+        if (AS.bank1_start >= numRegNeeded) {
+          found =
+              findFreeRegs(availRegs, forbidden, BankAlign::Even, numRegNeeded,
+                           0, AS.bank1_start - 2 + numRegNeeded, idx,
+                           gotoSecondBank, oneGRFBankDivision);
         }
       }
 
       if (found) {
-        bank1_start = idx + numRegNeeded;
-        if (bank1_start > bank1_end) {
-          bank1_start = 0;
+        AS.bank1_start = idx + numRegNeeded;
+        if (AS.bank1_start > AS.bank1_end) {
+          AS.bank1_start = 0;
         }
       }
     }
   } else {
-    // For first fit, the bank1_start and bank2_start are fixed. bank2_end and
-    // bank1_end are dynamically decided, but can not change in one direction
-    // (MIN or MAX).
+    // For first fit, the AS.bank1_start and AS.bank2_start are fixed.
+    // AS.bank2_end and AS.bank1_end are dynamically decided, but can not change
+    // in one direction (MIN or MAX).
     if (gotoSecondBank) // For odd aligned varaibe, we put them to a specific
                         // sections.
     {
@@ -396,18 +363,18 @@ bool PhyRegUsage::findContiguousGRFFromBanks(
                            oneGRFBankDivision);
 
       if (found) {
-        bank2_end = std::min(idx, bank2_end);
+        AS.bank2_end = std::min(idx, AS.bank2_end);
       }
     } else {
       found = findFreeRegs(availRegs, forbidden, align, numRegNeeded, 0,
                            maxGRFCanBeUsed - 1, idx, gotoSecondBank,
                            oneGRFBankDivision);
       if (found) {
-        bank1_end = std::max(idx + numRegNeeded - 1, bank1_end);
+        AS.bank1_end = std::max(idx + numRegNeeded - 1, AS.bank1_end);
       }
     }
 
-    if (bank2_end <= bank1_end) {
+    if (AS.bank2_end <= AS.bank1_end) {
       found = false;
     }
   }
@@ -644,13 +611,14 @@ void PhyRegUsage::findGRFSubRegFromRegs(int startReg, int endReg, int step,
       continue;
     }
 
-    if (fromPartialOccupiedReg && availableSubRegs[idx] == 0xFFFFFFFF) {
+    if (fromPartialOccupiedReg && FPR.availableSubRegs[idx] == 0xFFFFFFFF) {
       // favor partially allocated GRF first
       idx += step;
       continue;
     }
 
-    int subreg = findContiguousWords(availableSubRegs[idx], subAlign, nwords);
+    int subreg =
+        findContiguousWords(FPR.availableSubRegs[idx], subAlign, nwords);
     if (subreg != -1) {
       phyReg->reg = idx;
       phyReg->subreg = subreg;
@@ -678,7 +646,7 @@ PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl, const bool forbidden[],
     startReg = (maxGRFCanBeUsed - 1);
     startReg = startReg % 2 ? startReg : startReg - 1;
     if (colorHeuristic == ROUND_ROBIN) {
-      endReg = bank2_end;
+      endReg = AS.bank2_end;
     } else {
       endReg = 0;
     }
@@ -690,7 +658,7 @@ PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl, const bool forbidden[],
     startReg = (maxGRFCanBeUsed - 1);
     startReg = startReg % 2 ? startReg - 1 : startReg;
     if (colorHeuristic == ROUND_ROBIN) {
-      endReg = bank2_end;
+      endReg = AS.bank2_end;
     } else {
       endReg = 0;
     }
@@ -698,7 +666,7 @@ PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl, const bool forbidden[],
   } else {
     if (colorHeuristic == ROUND_ROBIN) {
       startReg = 0;
-      endReg = bank1_end;
+      endReg = AS.bank1_end;
     } else {
       startReg = 0;
       endReg = maxGRFCanBeUsed - 1;
@@ -720,19 +688,19 @@ PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl, const bool forbidden[],
   // If failed or across the boundary of specified bank, try again and find from
   // the registers which are totally free
   if (phyReg.reg == -1 ||
-      (gotoSecondBank && ((unsigned)phyReg.reg <= bank1_end)) ||
-      (!gotoSecondBank && ((unsigned)phyReg.reg >= bank2_end))) {
+      (gotoSecondBank && ((unsigned)phyReg.reg <= AS.bank1_end)) ||
+      (!gotoSecondBank && ((unsigned)phyReg.reg >= AS.bank2_end))) {
     findGRFSubRegFromRegs(startReg, endReg, step, &phyReg, subAlign, nwords,
                           forbidden, false);
   }
 
   if (phyReg.reg != -1 && colorHeuristic == FIRST_FIT) {
     if (gotoSecondBank) {
-      bank2_end = std::min((unsigned)phyReg.reg, bank2_end);
+      AS.bank2_end = std::min((unsigned)phyReg.reg, AS.bank2_end);
     } else {
-      bank1_end = std::max((unsigned)phyReg.reg, bank1_end);
+      AS.bank1_end = std::max((unsigned)phyReg.reg, AS.bank1_end);
     }
-    if (bank1_end >= bank2_end) {
+    if (AS.bank1_end >= AS.bank2_end) {
       phyReg.reg = -1;
     }
   }
@@ -768,7 +736,7 @@ PhyRegUsage::findGRFSubReg(const bool forbidden[], bool calleeSaveBias,
       }
 
       // check if entire GRF is available
-      if (availableSubRegs[idx] == 0xFFFFFFFF) {
+      if (FPR.availableSubRegs[idx] == 0xFFFFFFFF) {
         if (phyReg.reg == -1) {
           // favor partially allocated GRF first so dont
           // return this assignment yet
@@ -778,7 +746,8 @@ PhyRegUsage::findGRFSubReg(const bool forbidden[], bool calleeSaveBias,
         continue;
       }
 
-      int subreg = findContiguousWords(availableSubRegs[idx], subAlign, nwords);
+      int subreg =
+          findContiguousWords(FPR.availableSubRegs[idx], subAlign, nwords);
       if (subreg != -1) {
         phyReg.reg = idx;
         phyReg.subreg = subreg;
@@ -838,12 +807,12 @@ bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange *varBasis, BankAlign align,
     bool success = false;
     if (varBasis->getEOTSrc() && builder.hasEOTGRFBinding()) {
       bool forceCalleeSaveAlloc = builder.kernel.fg.isPseudoVCEDcl(decl);
-      startGRFReg = totalGRFNum - 16;
-      success = findContiguousGRF(availableGregs, forbidden, 0, align,
-                                  decl->getNumRows(), maxGRFCanBeUsed,
-                                  startGRFReg, i, forceCalleeSaveAlloc, true);
+      AS.startGRFReg = totalGRFNum - 16;
+      success = findContiguousGRF(
+          FPR.availableGregs, forbidden, 0, align, decl->getNumRows(),
+          maxGRFCanBeUsed, AS.startGRFReg, i, forceCalleeSaveAlloc, true);
     } else {
-      success = findContiguousGRFFromBanks(decl, availableGregs, forbidden,
+      success = findContiguousGRFFromBanks(decl, FPR.availableGregs, forbidden,
                                            align, i, oneGRFBankDivision);
     }
 
@@ -891,7 +860,7 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
     //
     if (canGRFSubRegAlloc(decl)) {
       bool retVal = false;
-      int oldStartGRFReg = startGRFReg;
+      int oldStartGRFReg = AS.startGRFReg;
       BankConflict varBasisBC =
           gra.getBankConflict(varBasis->getVar()->asRegVar()->getDeclare());
 
@@ -901,11 +870,11 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
           switch (varBasisBC) {
           case BANK_CONFLICT_FIRST_HALF_EVEN:
           case BANK_CONFLICT_FIRST_HALF_ODD:
-            startGRFReg = 0;
+            AS.startGRFReg = 0;
             break;
           case BANK_CONFLICT_SECOND_HALF_EVEN:
           case BANK_CONFLICT_SECOND_HALF_ODD:
-            startGRFReg = 64;
+            AS.startGRFReg = 64;
             break;
           default:
             break;
@@ -920,7 +889,7 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
       // around. NOTE: We are assuming a first-fit strategy when a callee-bias
       // is present.
       if (varBasis->getCalleeSaveBias()) {
-        startGRFReg = 60;
+        AS.startGRFReg = 60;
       }
 
       PhyRegUsage::PhyReg phyReg = findGRFSubReg(
@@ -937,12 +906,12 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
       }
 
       if (varBasis->getCalleeSaveBias()) {
-        startGRFReg = oldStartGRFReg;
+        AS.startGRFReg = oldStartGRFReg;
       }
 
       return retVal;
     } else {
-      int oldStartGRFReg = startGRFReg;
+      int oldStartGRFReg = AS.startGRFReg;
       unsigned endGRFReg = maxGRFCanBeUsed; // round-robin reg  start bias
       BankConflict varBasisBC =
           gra.getBankConflict(varBasis->getVar()->asRegVar()->getDeclare());
@@ -953,11 +922,11 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
           switch (varBasisBC) {
           case BANK_CONFLICT_FIRST_HALF_EVEN:
           case BANK_CONFLICT_FIRST_HALF_ODD:
-            startGRFReg = 0;
+            AS.startGRFReg = 0;
             break;
           case BANK_CONFLICT_SECOND_HALF_EVEN:
           case BANK_CONFLICT_SECOND_HALF_ODD:
-            startGRFReg = 64;
+            AS.startGRFReg = 64;
             break;
           default:
             break;
@@ -972,29 +941,29 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
       // around. NOTE: We are assuming a first-fit strategy when a callee-bias
       // is present.
       if (varBasis->getCalleeSaveBias()) {
-        startGRFReg = builder.kernel.calleeSaveStart();
+        AS.startGRFReg = builder.kernel.calleeSaveStart();
       }
 
       if (varBasis->getEOTSrc() && builder.hasEOTGRFBinding()) {
-        startGRFReg = totalGRFNum - 16;
+        AS.startGRFReg = totalGRFNum - 16;
       }
 
       bool forceCalleeSaveAlloc = builder.kernel.fg.isPseudoVCEDcl(decl);
       unsigned short occupiedBundles = getOccupiedBundle(decl);
       bool success = findContiguousGRF(
-          availableGregs, forbidden, occupiedBundles,
+          FPR.availableGregs, forbidden, occupiedBundles,
           getAlignToUse(align, bankAlign), decl->getNumRows(), endGRFReg,
-          startGRFReg, i, forceCalleeSaveAlloc, varBasis->getEOTSrc());
+          AS.startGRFReg, i, forceCalleeSaveAlloc, varBasis->getEOTSrc());
       if (success) {
         varBasis->setPhyReg(regPool.getGreg(i), 0);
       }
 
       if (varBasis->getEOTSrc()) {
-        startGRFReg = oldStartGRFReg;
+        AS.startGRFReg = oldStartGRFReg;
       }
 
       if (varBasis->getCalleeSaveBias()) {
-        startGRFReg = oldStartGRFReg;
+        AS.startGRFReg = oldStartGRFReg;
       }
 
       return success;
@@ -1007,8 +976,9 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
     // if the number of reg needed is more than 1, then we go ahead
     //
     unsigned regNeeded = numAllocUnit(decl->getNumElems(), decl->getElemType());
-    if (findContiguousAddrFlag(availableAddrs, forbidden, subAlign, regNeeded,
-                               getNumAddrRegisters(), startARFReg, i)) {
+    if (findContiguousAddrFlag(FPR.availableAddrs, forbidden, subAlign,
+                               regNeeded, getNumAddrRegisters(), AS.startARFReg,
+                               i)) {
       // subregoffset should consider the declare data type
       varBasis->setPhyReg(regPool.getAddrReg(),
                           i * G4_WSIZE / decl->getElemSize());
@@ -1023,9 +993,9 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
     // if the number of reg needed is more than 1, then we go ahead
     //
     unsigned regNeeded = numAllocUnit(decl->getNumElems(), decl->getElemType());
-    if (findContiguousAddrFlag(availableFlags, forbidden, subAlign, regNeeded,
-                               builder.getNumFlagRegisters(), startFLAGReg,
-                               i)) {
+    if (findContiguousAddrFlag(FPR.availableFlags, forbidden, subAlign,
+                               regNeeded, builder.getNumFlagRegisters(),
+                               AS.startFlagReg, i)) {
       // subregoffset should consider the declare data type
       varBasis->setPhyReg(regPool.getFlagAreg(i / 2), i & 1);
       return true;
@@ -1216,25 +1186,14 @@ void LiveRange::dump() const {
   }
 }
 
-PhyRegUsageParms::PhyRegUsageParms(
-    GlobalRA &g, LiveRange *l[], G4_RegFileKind r, unsigned int m,
-    unsigned int &startARF, unsigned int &startFlag, unsigned int &startGRF,
-    unsigned int &bank1_s, unsigned int &bank1_e, unsigned int &bank2_s,
-    unsigned int &bank2_e, bool doBC, bool *avaGReg, uint32_t *avaSubReg,
-    bool *avaAddrs, bool *avaFlags,
-    uint8_t *weakEdges)
-    : gra(g), startARFReg(startARF), startFlagReg(startFlag),
-      startGRFReg(startGRF), bank1_start(bank1_s), bank1_end(bank1_e),
-      bank2_start(bank2_s), bank2_end(bank2_e)
-{
-  doBankConflict = doBC;
-  availableGregs = avaGReg;
-  availableSubRegs = avaSubReg;
-  availableAddrs = avaAddrs;
-  availableFlags = avaFlags;
-  weakEdgeUsage = weakEdges;
-  maxGRFCanBeUsed = m;
-  rFile = r;
+PhyRegAllocationState::PhyRegAllocationState(GlobalRA &g, LiveRange *l[],
+                                             G4_RegFileKind r, unsigned int m,
+                                             unsigned int bank1_s,
+                                             unsigned int bank1_e,
+                                             unsigned int bank2_s,
+                                             unsigned int bank2_e, bool doBC)
+    : gra(g), lrs(l), rFile(r), maxGRFCanBeUsed(m), startGRFReg(0),
+      startARFReg(0), startFlagReg(0), bank1_start(bank1_s), bank1_end(bank1_e),
+      bank2_start(bank2_s), bank2_end(bank2_e), doBankConflict(doBC) {
   totalGRF = gra.kernel.getNumRegTotal();
-  lrs = l;
 }
