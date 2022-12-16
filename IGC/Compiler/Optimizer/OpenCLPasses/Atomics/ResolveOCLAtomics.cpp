@@ -120,9 +120,6 @@ void ResolveOCLAtomics::processOCLAtomic(CallInst& callInst, AtomicOp op, Buffer
     PointerType* PtrTy = dyn_cast<PointerType>(dstBuffer->getType());
     const bool is64bit = PtrTy && isA64Ptr(PtrTy, m_CGCtx) && bufType != SLM;
 
-    //The atomic emulation pattern is used later in AtomicOptPass.
-    //If you change the pattern, you need to make the appropriate changes to AtomicOptPass.
-
     // Cmpxchg intrinsic has 2 sources.
     if (op == EATOMIC_CMPXCHG ||
         op == EATOMIC_CMPXCHG64 ||
