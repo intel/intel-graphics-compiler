@@ -10,10 +10,8 @@
 ; ------------------------------------------------
 ; PurgeMetaDataUtils
 ; ------------------------------------------------
-; This test checks that PurgeMetaDataUtils pass follows
-; 'How to Update Debug Info' llvm guideline.
 ;
-; And was produced from this ocl kernel
+; Test was produced from this ocl kernel
 ;
 ; __kernel void bar(__global int *dst, int src)
 ; {
