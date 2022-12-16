@@ -288,7 +288,7 @@ public:
   // The method is declared virtual so subclasses of G4_INST
   // should also implement this method to populate members
   // unique to them.
-  virtual G4_INST *cloneInst();
+  virtual G4_INST *cloneInst(const IR_Builder *b = nullptr);
   virtual bool isBaseInst() const { return true; }
   virtual bool isCFInst() const { return false; }
 
@@ -913,7 +913,7 @@ public:
       : G4_INST(builder, prd, G4_bfn, m, sat, size, d, s0, s1, s2, opt),
         funcCtrl(mBooleanFuncCtrl) {}
 
-  G4_INST *cloneInst() override;
+  G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
   uint8_t getBooleanFuncCtrl() const { return funcCtrl; }
 };
@@ -946,7 +946,7 @@ public:
         Src2Precision(a), Src1Precision(w), SystolicDepth(sd), RepeatCount(rc) {
   }
 
-  G4_INST *cloneInst() override;
+  G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
   // Check if this is int dpas or half-float dpas
   bool isBF16() const { return Src1Precision == GenPrecision::BF16; }
@@ -1011,7 +1011,7 @@ public:
       : G4_INST(builder, prd, o, m, sat, execSize, d, s0, s1, opt),
         mathOp(mOp) {}
 
-  G4_INST *cloneInst() override;
+  G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
   bool isIEEEMath() const {
     return mathOp == MATH_INVM || mathOp == MATH_RSQRTM;
@@ -1171,7 +1171,7 @@ public:
               G4_Operand *extDesc, G4_InstOpts opt, G4_SendDesc *md);
 
 
-  G4_INST *cloneInst() override;
+  G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
   bool isSendc() const { return op == G4_sendc || op == G4_sendsc; }
   void setSendc() {
@@ -1386,7 +1386,7 @@ public:
 
   void setIntrinsicSrc(G4_Operand *opnd, unsigned i);
 
-  G4_INST *cloneInst() override;
+  G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
   int getNumDst() const { return G4_Intrinsics[(int)intrinsicId].numDst; }
   int getNumSrc() const { return G4_Intrinsics[(int)intrinsicId].numSrc; }

@@ -1150,7 +1150,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             inst = caller->fg.createNewLabelInst(
                 labelMap[fret->getSrc(0)->asLabel()]);
           } else {
-            inst = fret->cloneInst();
+            inst = fret->cloneInst(builder);
           }
           if (inst->opcode() == G4_mov) {
             inst->getSrc(0)->computeRightBound(inst->getExecSize());
@@ -1192,7 +1192,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
         }
         visited.insert(callee);
         for (G4_INST *fret : calleeInsts) {
-          G4_INST *inst = fret->cloneInst();
+          G4_INST *inst = fret->cloneInst(caller->fg.builder);
           for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
             cloneDcl(inst->getSrc(i));
           }
@@ -1217,6 +1217,9 @@ void CISA_IR_Builder::LinkTimeOptimization(
         }
       }
     }
+
+    callee->fg.builder->~IR_Builder();
+    callee->fg.builder = nullptr;
   }
 
   if (call2jump) {

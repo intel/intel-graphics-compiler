@@ -7147,7 +7147,9 @@ bool G4_INST::canInstBeAcc(GlobalOpndHashTable *ght) {
 
 TARGET_PLATFORM G4_INST::getPlatform() const { return builder.getPlatform(); }
 
-G4_INST *G4_INST::cloneInst() {
+G4_INST *G4_INST::cloneInst(const IR_Builder *b) {
+  if (!b)
+    b = &builder;
   // return nullptr if new derived class hasnt implemented
   // its own cloneInst()
   if (!isBaseInst() && !isCFInst())
@@ -7157,7 +7159,7 @@ G4_INST *G4_INST::cloneInst() {
   // This functionality is expected to be used by optimizations
   // such as rematerialization that require creating a copy
   // of instructions.
-  auto nonConstBuilder = const_cast<IR_Builder *>(&builder);
+  auto nonConstBuilder = const_cast<IR_Builder *>(b);
   G4_INST *newInst = nullptr;
   auto prd = nonConstBuilder->duplicateOperand(getPredicate());
   auto condMod = nonConstBuilder->duplicateOperand(getCondMod());
@@ -7188,8 +7190,10 @@ G4_INST *G4_INST::cloneInst() {
   return newInst;
 }
 
-G4_INST *G4_InstSend::cloneInst() {
-  auto nonConstBuilder = const_cast<IR_Builder *>(&builder);
+G4_INST *G4_InstSend::cloneInst(const IR_Builder *b) {
+  if (!b)
+    b = &builder;
+  auto nonConstBuilder = const_cast<IR_Builder *>(b);
   G4_INST *newInst = nullptr;
   auto prd = nonConstBuilder->duplicateOperand(getPredicate());
   auto dst = nonConstBuilder->duplicateOperand(getDst());
@@ -7299,8 +7303,10 @@ void G4_InstIntrinsic::setIntrinsicSrc(G4_Operand *opnd, unsigned i) {
   resetRightBound(opnd);
 }
 
-G4_INST *G4_InstIntrinsic::cloneInst() {
-  auto nonConstBuilder = const_cast<IR_Builder *>(&builder);
+G4_INST *G4_InstIntrinsic::cloneInst(const IR_Builder *b) {
+  if (!b)
+    b = &builder;
+  auto nonConstBuilder = const_cast<IR_Builder *>(b);
   auto prd = nonConstBuilder->duplicateOperand(getPredicate());
   auto dst = nonConstBuilder->duplicateOperand(getDst());
   auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
@@ -7443,8 +7449,10 @@ bool RegionDesc::isSingleStride(uint32_t execSize, uint16_t &stride) const {
   return isSingleNonUnitStride(execSize, stride);
 }
 
-G4_INST *G4_InstMath::cloneInst() {
-  auto nonConstBuilder = const_cast<IR_Builder *>(&builder);
+G4_INST *G4_InstMath::cloneInst(const IR_Builder *b) {
+  if (!b)
+    b = &builder;
+  auto nonConstBuilder = const_cast<IR_Builder *>(b);
   auto prd = nonConstBuilder->duplicateOperand(getPredicate());
   auto dst = nonConstBuilder->duplicateOperand(getDst());
   auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
@@ -7455,8 +7463,10 @@ G4_INST *G4_InstMath::cloneInst() {
                                                  getMathCtrl(), option);
 }
 
-G4_INST *G4_InstBfn::cloneInst() {
-  auto nonConstBuilder = const_cast<IR_Builder *>(&builder);
+G4_INST *G4_InstBfn::cloneInst(const IR_Builder *b) {
+  if (!b)
+    b = &builder;
+  auto nonConstBuilder = const_cast<IR_Builder *>(b);
   auto prd = nonConstBuilder->duplicateOperand(getPredicate());
   auto condMod = nonConstBuilder->duplicateOperand(getCondMod());
   auto dst = nonConstBuilder->duplicateOperand(getDst());
@@ -7468,8 +7478,10 @@ G4_INST *G4_InstBfn::cloneInst() {
       src0, src1, src2, option);
 }
 
-G4_INST *G4_InstDpas::cloneInst() {
-  auto nonConstBuilder = const_cast<IR_Builder *>(&builder);
+G4_INST *G4_InstDpas::cloneInst(const IR_Builder *b) {
+  if (!b)
+    b = &builder;
+  auto nonConstBuilder = const_cast<IR_Builder *>(b);
   auto dst = nonConstBuilder->duplicateOperand(getDst());
   auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
   auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
