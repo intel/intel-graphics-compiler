@@ -5306,26 +5306,6 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
     return;
   }
 
-  auto dstSize =
-      inst->getExecSize() * dst->getTypeSize() * dst->getHorzStride();
-  // Handle VxH
-   if (dstSize > builder.getGRFSize()) {
-    // special check for 2-GRF instruction with VxH operands
-    // strictly speaking dst and VxH src may overlap only if src's address may
-    // point to dst variable, but we skip such check as VxH access is rare and
-    // already expensive, so adding an extra move won't cause much extra
-    // overhead
-    bool hasVxH =
-        std::any_of(inst->src_begin(), inst->src_end(), [](G4_Operand *src) {
-          return src && src->isSrcRegRegion() &&
-                 src->asSrcRegRegion()->getRegion()->isRegionWH();
-        });
-    if (hasVxH) {
-      replaceDst(it, dst->getType());
-      return;
-    }
-  }
-
   G4_Declare *dstDcl = dst->getTopDcl();
   if (dstDcl) {
     G4_DstRegRegion *dstRgn = dst;
