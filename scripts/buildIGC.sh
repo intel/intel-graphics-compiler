@@ -52,6 +52,13 @@ apt-get update
 apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip file
 echo "[Build Status] flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip file INSTALLED"
 
+if [ "$UBUNTU_VERSION" = "22.04" ] && [ "$LLVM_VERSION" = "15" ]; then
+    echo "[Build Status] Retrieve the LLVM archive signature for LLVM 15 on Ubuntu 22.04";
+    wget -q https://apt.llvm.org/llvm-snapshot.gpg.key
+    apt-key add llvm-snapshot.gpg.key
+    add-apt-repository 'deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-15 main'
+fi
+
 apt-get install -y llvm-"$LLVM_VERSION" llvm-"$LLVM_VERSION"-dev clang-"$LLVM_VERSION" liblld-"$LLVM_VERSION" liblld-"$LLVM_VERSION"-dev
 echo "[Build Status] LLVM INSTALLED"
 
