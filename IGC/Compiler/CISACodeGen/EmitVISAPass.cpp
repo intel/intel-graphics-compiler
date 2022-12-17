@@ -4777,6 +4777,33 @@ void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
         if (m_currShader->m_numberInstance == 1 && m_currShader->m_SIMDSize == SIMDMode::SIMD32)
         {
 
+            if (!channelUniform)
+            {
+                CVariable* contiguousData = nullptr;
+
+                const uint16_t numElements = data->GetNumberElement();
+                const VISA_Type dataType = data->GetType();
+
+                IGC_ASSERT(numElements == 16 || numElements == 32);
+                IGC_ASSERT_MESSAGE(!m_encoder->IsSecondHalf(), "This emitter must be called only once for simd32!");
+
+                // Create a 32 element variable and copy both instances of data into it.
+                contiguousData = m_currShader->GetNewVariable(
+                    numElements,
+                    dataType,
+                    data->GetAlign(),
+                    false, // isUniform
+                    1,
+                    "ShuffleTmp"); // numberInstance
+
+                m_encoder->Copy(contiguousData, data);
+                m_encoder->Push();
+
+                m_encoder->SetSecondHalf(false);
+
+                src = contiguousData;
+            }
+
             uint16_t addrSize = channelUniform ? 1 : numLanes(SIMDMode::SIMD16);
 
             // VectorUniform for shuffle is true as all simd lanes will
