@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -234,7 +234,7 @@ namespace IGC
         const InternalOptions m_InternalOptions;
         const Options m_Options;
         bool isSpirV;
-        float m_ProfilingTimerResolution;
+        float m_ProfilingTimerResolution = 0.0f;
         bool m_ShouldUseNonCoherentStatelessBTI;
         uint32_t m_numUAVs = 0;
 

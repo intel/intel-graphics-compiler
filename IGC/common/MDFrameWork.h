@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -160,8 +160,8 @@ namespace IGC
 
     struct LocalOffsetMD
     {
-        int m_Offset;
-        llvm::GlobalVariable* m_Var;
+        int m_Offset = 0;
+        llvm::GlobalVariable* m_Var = nullptr;
     };
 
     struct WorkGroupWalkOrderMD
@@ -571,8 +571,8 @@ namespace IGC
 
     struct InlineProgramScopeBuffer
     {
-        int alignment;
-        unsigned allocSize;
+        int alignment = 0;
+        unsigned allocSize = 0;
         std::vector<unsigned char> Buffer;
     };
 
@@ -585,16 +585,16 @@ namespace IGC
 
     struct PointerProgramBinaryInfo
     {
-        int PointerBufferIndex;
-        int PointerOffset;
-        int PointeeAddressSpace;
-        int PointeeBufferIndex;
+        int PointerBufferIndex = 0;
+        int PointerOffset = 0;
+        int PointeeAddressSpace = 0;
+        int PointeeBufferIndex = 0;
     };
 
     struct PointerAddressRelocInfo
     {
-        unsigned BufferOffset;
-        unsigned PointerSize;
+        unsigned BufferOffset = 0;
+        unsigned PointerSize = 0;
         std::string Symbol;
     };
 
@@ -605,13 +605,13 @@ namespace IGC
 
     struct SrvMapData
     {
-        unsigned int resourceRangeID;
-        unsigned int indexIntoRange;
+        unsigned int resourceRangeID = 0;
+        unsigned int indexIntoRange = 0;
         bool hfCandidate = false;
-        unsigned int runtimeValue;
-        unsigned int ptrAddressSpace;
-        unsigned int rootSigBufOffsetInBytes;
-        unsigned int resourceOffset;
+        unsigned int runtimeValue = 0;
+        unsigned int ptrAddressSpace = 0;
+        unsigned int rootSigBufOffsetInBytes = 0;
+        unsigned int resourceOffset = 0;
     };
     struct URBLayoutInfo
     {
