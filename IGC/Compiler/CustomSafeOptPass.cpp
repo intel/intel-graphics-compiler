@@ -84,7 +84,6 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include <llvm/Analysis/ValueTracking.h>
-#include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <set>
 #include "common/secure_mem.h"
@@ -3726,10 +3725,6 @@ void GenSpecificPattern::visitFNeg(llvm::UnaryOperator& I)
 }
 #endif
 
-static cl::opt<bool> overrideEnableSimplifyGEP(
-    "override-enable-simplify-gep", cl::init(false), cl::Hidden,
-    cl::desc("Override enableSimplifyGEP passed on init"));
-
 // Register pass to igc-opt
 #define PASS_FLAG3 "igc-const-prop"
 #define PASS_DESCRIPTION3 "Custom Const-prop Pass"
@@ -4403,6 +4398,48 @@ bool IGCConstProp::runOnFunction(Function& F)
             // Replace all of the uses of a variable with uses of the constant.
             I->replaceAllUsesWith(C);
 
+            if (0 /* isa<ConstantPointerNull>(C)*/) // disable optimization generating invalid IR until it gets re-written
+            {
+                // if we are changing function calls/ genisa intrinsics, then we need
+                // to fix the function declarations to account for the change in pointer address type
+                for (Value::user_iterator UI = C->user_begin(), UE = C->user_end();
+                    UI != UE; ++UI)
+                {
+                    if (GenIntrinsicInst * genIntr = dyn_cast<GenIntrinsicInst>(*UI))
+                    {
+                        GenISAIntrinsic::ID ID = genIntr->getIntrinsicID();
+                        if (ID == GenISAIntrinsic::GenISA_storerawvector_indexed)
+                        {
+                            llvm::Type* tys[2];
+                            tys[0] = genIntr->getOperand(0)->getType();
+                            tys[1] = genIntr->getOperand(2)->getType();
+                            GenISAIntrinsic::getDeclaration(F.getParent(),
+                                llvm::GenISAIntrinsic::GenISA_storerawvector_indexed,
+                                tys);
+                        }
+                        else if (ID == GenISAIntrinsic::GenISA_storeraw_indexed)
+                        {
+                            llvm::Type* types[2] = {
+                                genIntr->getOperand(0)->getType(),
+                                genIntr->getOperand(1)->getType() };
+
+                            GenISAIntrinsic::getDeclaration(F.getParent(),
+                                llvm::GenISAIntrinsic::GenISA_storeraw_indexed,
+                                types);
+                        }
+                        else if (ID == GenISAIntrinsic::GenISA_ldrawvector_indexed || ID == GenISAIntrinsic::GenISA_ldraw_indexed)
+                        {
+                            llvm::Type* tys[2];
+                            tys[0] = genIntr->getType();
+                            tys[1] = genIntr->getOperand(0)->getType();
+                            GenISAIntrinsic::getDeclaration(F.getParent(),
+                                ID,
+                                tys);
+                        }
+                    }
+                }
+            }
+
             // Remove the dead instruction.
             I->eraseFromParent();
 
@@ -4415,7 +4452,7 @@ bool IGCConstProp::runOnFunction(Function& F)
 
         if (GetElementPtrInst * GEP = dyn_cast<GetElementPtrInst>(I))
         {
-            if ((m_enableSimplifyGEP || overrideEnableSimplifyGEP) && simplifyGEP(GEP))
+            if (m_enableSimplifyGEP && simplifyGEP(GEP))
             {
                 Changed = true;
             }
