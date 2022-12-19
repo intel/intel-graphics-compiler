@@ -478,7 +478,7 @@ inline int __ocl_svml_internal_dlog1p_noLUT_cout (double *a0, double *r)
     return nRet;
 }
 
-static double __ocl_svml_log1p_noLUT (double a)
+double __ocl_svml_log1p_noLUT (double a)
 {
     unsigned int vm;
     double va1;

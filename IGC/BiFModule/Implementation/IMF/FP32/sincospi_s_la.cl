@@ -35,7 +35,7 @@ static __constant __internal_ssincospi_data_t __internal_ssincospi_data = {
 
 };
 
-static void __ocl_svml_sincospif (float a, __private float *b, __private float *c)
+void __ocl_svml_sincospif (float a, __private float *b, __private float *c)
 {
 
     float va1;

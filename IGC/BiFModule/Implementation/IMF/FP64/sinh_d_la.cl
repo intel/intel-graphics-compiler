@@ -673,7 +673,7 @@ inline int __internal_dsinh_la_cout (double *a, double *r)
 
 }
 
-static double __ocl_svml_sinh (double a)
+double __ocl_svml_sinh (double a)
 {
 
     double va1;

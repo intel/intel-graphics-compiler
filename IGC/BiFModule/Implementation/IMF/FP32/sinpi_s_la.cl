@@ -111,7 +111,7 @@ inline int __internal_ssinpi_la_cout (float *a, float *pres)
 
 }
 
-static float __ocl_svml_sinpif (float a)
+float __ocl_svml_sinpif (float a)
 {
 
     float va1;

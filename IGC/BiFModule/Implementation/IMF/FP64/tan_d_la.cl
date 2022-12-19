@@ -4541,7 +4541,7 @@ inline int __internal_dtan_la_cout (double *pxin, double *pres)
 
 }
 
-static double __ocl_svml_tan (double a)
+double __ocl_svml_tan (double a)
 {
 
     double va1;

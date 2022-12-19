@@ -435,7 +435,7 @@ inline int __internal_dacosh_la_cout (double *a, double *r)
     }
 }
 
-static double __ocl_svml_acosh (double a)
+double __ocl_svml_acosh (double a)
 {
 
     double va1;

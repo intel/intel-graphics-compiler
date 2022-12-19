@@ -171,7 +171,7 @@ inline int __internal_dsinpi_la_cout (double *a, double *r)
 }
 
 #pragma float_control(pop)
-static double __ocl_svml_sinpi (double a)
+double __ocl_svml_sinpi (double a)
 {
 
     double va1;

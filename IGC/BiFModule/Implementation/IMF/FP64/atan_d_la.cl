@@ -590,7 +590,7 @@ inline int __internal_datan_la_cout (double *a, double *r)
     return nRet;
 }
 
-static double __ocl_svml_atan (double a)
+double __ocl_svml_atan (double a)
 {
 
     double va1;

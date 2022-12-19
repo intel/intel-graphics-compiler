@@ -158,7 +158,7 @@ inline int __internal_satan_la_cout (float *pxin, float *pres)
 
 }
 
-static float __ocl_svml_atanf (float a)
+float __ocl_svml_atanf (float a)
 {
 
     float va1;

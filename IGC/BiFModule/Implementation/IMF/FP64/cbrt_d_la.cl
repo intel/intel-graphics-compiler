@@ -529,7 +529,7 @@ inline int __internal_dcbrt_la_cout (double *a, double *r)
 
 }
 
-static double __ocl_svml_cbrt (double a)
+double __ocl_svml_cbrt (double a)
 {
 
     double va1;

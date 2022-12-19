@@ -151,7 +151,7 @@ inline int __ocl_svml_internal_scbrt_noLUT (float *a, float *pres)
     return nRet;
 }
 
-static float __ocl_svml_cbrtf_noLUT (float a)
+float __ocl_svml_cbrtf_noLUT (float a)
 {
     float r;
     __ocl_svml_internal_scbrt_noLUT (&a, &r);

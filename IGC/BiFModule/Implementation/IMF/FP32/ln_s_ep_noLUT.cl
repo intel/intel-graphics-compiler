@@ -377,7 +377,7 @@ inline int __internal_sln_ep_nolut_cout (float *a, float *r)
     return nRet;
 }
 
-static float __ocl_svml_logf_ep_noLUT (float a)
+float __ocl_svml_logf_ep_noLUT (float a)
 {
     float va1;
     float vr1;

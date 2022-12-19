@@ -186,7 +186,7 @@ static inline int __ocl_svml_internal_dtanh(double *px, double *pres)
   return nRet;
 }
 
-static double __ocl_svml_tanh_noLUT(double x)
+double __ocl_svml_tanh_noLUT(double x)
 {
   double r;
   __ocl_svml_internal_dtanh(&x, &r);

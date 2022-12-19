@@ -1086,7 +1086,7 @@ static __constant __internal_serf_la_data_t __internal_serf_la_data = {
 
 };
 
-static float __ocl_svml_erff (float a)
+float __ocl_svml_erff (float a)
 {
 
     float va1;

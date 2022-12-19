@@ -1300,7 +1300,7 @@ inline int __internal_dtanh_la_cout (double *a, double *r)
     return nRet;
 }
 
-static double __ocl_svml_tanh (double a)
+double __ocl_svml_tanh (double a)
 {
 
     double va1;

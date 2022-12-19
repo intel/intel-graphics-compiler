@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// SVML code
+
 #ifndef __SVML_DATA_STRUCTURES_CL__
 #define __SVML_DATA_STRUCTURES_CL__
 
@@ -2043,7 +2045,7 @@ float __ocl_svml_spown_cout_rare (const float a, const int b)
     return r;
 }
 
-static float __ocl_svml_px_pownf1 (float a, int b)
+float __ocl_svml_px_pownf1 (float a, int b)
 {
     float va1;
     VUINT32 va2;

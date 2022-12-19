@@ -1176,7 +1176,7 @@ inline int __internal_srootn_la_cout (float *a, int *b, float *r)
     return nRet;
 }
 
-static float __ocl_svml_rootnf (float a, int b)
+float __ocl_svml_rootnf (float a, int b)
 {
 
     float va1;

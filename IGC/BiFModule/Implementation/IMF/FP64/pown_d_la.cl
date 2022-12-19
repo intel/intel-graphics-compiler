@@ -3165,7 +3165,7 @@ inline int __internal_dpown_la_cout (double *a, int *b, double *r)
     return nRet;
 }
 
-static double __ocl_svml_pown (double a, int b)
+double __ocl_svml_pown (double a, int b)
 {
 
     double va1;

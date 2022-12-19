@@ -2156,7 +2156,7 @@ inline int __ocl_svml_internal_dpown_noLUT (double *pxin, int *pyin, double *pre
     return nRet;
 }
 
-static double __ocl_svml_pown_noLUT (double a, int b)
+double __ocl_svml_pown_noLUT (double a, int b)
 {
     double r;
     __ocl_svml_internal_dpown_noLUT (&a, &b, &r);

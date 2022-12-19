@@ -111,7 +111,7 @@ inline int __internal_scospi_la_cout (float *a, float *pres)
 
 }
 
-static float __ocl_svml_cospif (float a)
+float __ocl_svml_cospif (float a)
 {
 
     float va1;

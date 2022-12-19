@@ -1951,7 +1951,7 @@ inline int __internal_dpowr_nolut_cout (double *pxin, double *pyin, double *pres
     return nRet;
 }
 
-static double __ocl_svml_powr_noLUT (double a, double b)
+double __ocl_svml_powr_noLUT (double a, double b)
 {
     double va1;
     double va2;

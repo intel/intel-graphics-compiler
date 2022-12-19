@@ -4164,7 +4164,7 @@ inline int __internal_dpowr_la_cout (double *a, double *b, double *r)
     return nRet;
 }
 
-static double __ocl_svml_powr (double a, double b)
+double __ocl_svml_powr (double a, double b)
 {
 
     double va1;

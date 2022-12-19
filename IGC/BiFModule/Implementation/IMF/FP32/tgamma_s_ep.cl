@@ -583,7 +583,7 @@ inline int __internal_stgamma_ep_cout (float *a, float *r)
     }   // else if (ixexp != IML_EXPINF_32)
 }   // inline int __internal_stgamma_ep_cout (float *a, float *r)
 
-static float __ocl_svml_tgammaf (float a)
+float __ocl_svml_tgammaf (float a)
 {
     float va1;
     float vr1;

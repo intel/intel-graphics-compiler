@@ -233,7 +233,7 @@ inline int __internal_scosh_la_cout (float *a, float *r)
     return nRet;
 }
 
-static float __ocl_svml_coshf (float a)
+float __ocl_svml_coshf (float a)
 {
 
     float va1;

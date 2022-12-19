@@ -609,7 +609,7 @@ inline int __ocl_svml_internal_spown_noLUT (float *pxin, int *pyin, float *pres)
     return nRet;
 }
 
-static float __ocl_svml_pownf_noLUT (float a, int b)
+float __ocl_svml_pownf_noLUT (float a, int b)
 {
     float r;
     __ocl_svml_internal_spown_noLUT (&a, &b, &r);

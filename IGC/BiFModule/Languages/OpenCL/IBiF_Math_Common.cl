@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// SVML code
+
 extern __constant int __FlushDenormals;
 extern __constant int __FastRelaxedMath;
 extern __constant int __APIRS;

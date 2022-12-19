@@ -1041,7 +1041,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
     return nRet;
 }   // inline int __internal_slgamma_ep_cout (float *a, float *r)
 
-static float __ocl_svml_lgammaf_noLUT (float a)
+float __ocl_svml_lgammaf_noLUT (float a)
 {
     float va1;
     float vr1;

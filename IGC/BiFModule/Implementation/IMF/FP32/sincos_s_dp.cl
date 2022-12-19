@@ -178,7 +178,7 @@ inline int __internal_ssincos_cout_dp (float *a, float *psin, float *pcos)
     return nRet;
 }
 
-static void __ocl_svml_sincosf_dp (float a,  __private float *b, __private float *c)
+void __ocl_svml_sincosf_dp (float a,  __private float *b, __private float *c)
 {
 
     float va1;

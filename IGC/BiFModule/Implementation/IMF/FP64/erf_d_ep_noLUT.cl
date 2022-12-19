@@ -317,7 +317,7 @@ inline int __internal_derf_ep_nolut_cout (double *a, double *pres)
     return nRet;
 }
 
-static double __ocl_svml_erf_ep_noLUT (double a)
+double __ocl_svml_erf_ep_noLUT (double a)
 {
     double va1;
     double vr1;

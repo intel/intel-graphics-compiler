@@ -283,7 +283,7 @@ inline int __internal_ssincos_ep_nolut_cout (float *a, float *psin, float *pcos)
     return nRet;
 }
 
-static void __ocl_svml_sincosf_ep_noLUT (float a,  float *b, __global float *c)
+void __ocl_svml_sincosf_ep_noLUT (float a,  float *b, __global float *c)
 {
     float va1;
     float vr1;

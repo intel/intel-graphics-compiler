@@ -184,7 +184,7 @@ inline int __internal_satanh_la_cout (float *a, float *r)
 }
 
 #pragma float_control (pop)
-static float __ocl_svml_atanhf (float a)
+float __ocl_svml_atanhf (float a)
 {
 
     float va1;

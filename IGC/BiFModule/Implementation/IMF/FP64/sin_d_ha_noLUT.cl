@@ -447,7 +447,7 @@ inline int __ocl_svml_internal_dsin_ha_noLUT (double *a, double *pres)
     return nRet;
 }
 
-static double __ocl_svml_sin_ha_noLUT (double a)
+double __ocl_svml_sin_ha_noLUT (double a)
 {
     double r;
     __ocl_svml_internal_dsin_ha_noLUT (&a, &r);

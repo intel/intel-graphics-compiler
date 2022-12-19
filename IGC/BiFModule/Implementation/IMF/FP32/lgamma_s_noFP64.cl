@@ -668,7 +668,7 @@ inline int __internal_slgamma_ep_cout (float *a, float *r)
     return nRet;
 }   // _VAPI_COUT_SCOPE int _VAPI_COUT_NAME( __constant float* a, float* r)
 
-static float __ocl_svml_lgammaf (float a)
+float __ocl_svml_lgammaf (float a)
 {
     float va1;
     float vr1;

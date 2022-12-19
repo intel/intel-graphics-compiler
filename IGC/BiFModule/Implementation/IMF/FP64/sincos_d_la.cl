@@ -110,7 +110,7 @@ inline int __internal_dsincos_la_cout (double *a, double *r1, double *r2)
     return nRet;
 }
 
-static void __ocl_svml_sincos (double a, double *b, double *c)
+void __ocl_svml_sincos (double a, double *b, double *c)
 {
 
     double va1;

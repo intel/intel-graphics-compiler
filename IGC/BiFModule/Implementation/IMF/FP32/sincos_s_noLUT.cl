@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// SVML code
+
 static float __ocl_svml_sincosf_noLUT(float a, __private float* c)
 {
     float result = 0.0f;

@@ -95,7 +95,7 @@ inline int __internal_dsin_la_cout (double *a, double *r)
     return nRet;
 }
 
-static double __ocl_svml_sin (double a)
+double __ocl_svml_sin (double a)
 {
 
     double va1;

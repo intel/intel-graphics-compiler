@@ -95,7 +95,7 @@ inline int __internal_stanh_ep_nolut_cout (float *a, float *r)
     return nRet;
 }
 
-static float __ocl_svml_tanhf_ep_noLUT (float a)
+float __ocl_svml_tanhf_ep_noLUT (float a)
 {
     float va1;
     float vr1;

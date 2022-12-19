@@ -172,7 +172,7 @@ inline int __internal_sacosh_la_cout (float *a, float *r)
 }
 
 #pragma float_control(pop)
-static float __ocl_svml_acoshf (float a)
+float __ocl_svml_acoshf (float a)
 {
 
     float va1;

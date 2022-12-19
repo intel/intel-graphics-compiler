@@ -1698,7 +1698,7 @@ inline int __internal_stanpi_la_cout (float *a, float *r)
 }
 
 #pragma float_control (pop)
-static float __ocl_svml_tanpif (float a)
+float __ocl_svml_tanpif (float a)
 {
 
     float va1;

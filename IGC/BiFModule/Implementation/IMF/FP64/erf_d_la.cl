@@ -885,7 +885,7 @@ static __constant __internal_derf_la_data_t __internal_derf_la_data = {
 
 };
 
-static double __ocl_svml_erf (double a)
+double __ocl_svml_erf (double a)
 {
 
     double va1;

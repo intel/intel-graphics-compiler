@@ -145,7 +145,7 @@ inline int __internal_dacos_la_cout (double *pxin, double *pres)
     return nRet;
 }
 
-static double __ocl_svml_acos (double a)
+double __ocl_svml_acos (double a)
 {
 
     double va1;

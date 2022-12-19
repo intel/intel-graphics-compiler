@@ -4681,7 +4681,7 @@ inline int __internal_derfc_la_cout (double *a, double *r)
     return nRet;
 }
 
-static double __ocl_svml_erfc (double a)
+double __ocl_svml_erfc (double a)
 {
 
     double va1;

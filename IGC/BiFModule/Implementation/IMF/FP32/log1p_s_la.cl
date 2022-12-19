@@ -453,7 +453,7 @@ inline int __internal_slog1p_la_cout (float *a, float *r)
     return nRet;
 }
 
-static float __ocl_svml_log1pf (float a)
+float __ocl_svml_log1pf (float a)
 {
 
     float va1;

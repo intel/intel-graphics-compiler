@@ -257,7 +257,7 @@ inline int __internal_sexp10_la_cout (float *a, float *r)
     return nRet;
 }
 
-static float __ocl_svml_exp10f (float a)
+float __ocl_svml_exp10f (float a)
 {
 
     float va1;

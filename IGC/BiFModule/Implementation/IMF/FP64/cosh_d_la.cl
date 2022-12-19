@@ -461,7 +461,7 @@ inline int __internal_dcosh_la_cout (double *a, double *r)
 
 }
 
-static double __ocl_svml_cosh (double a)
+double __ocl_svml_cosh (double a)
 {
 
     double va1;

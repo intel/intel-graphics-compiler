@@ -613,7 +613,7 @@ inline int __internal_dlog10_la_cout (double *a, double *r)
     return nRet;
 }
 
-static double __ocl_svml_log10_v2 (double a)
+double __ocl_svml_log10_v2 (double a)
 {
 
     double va1;

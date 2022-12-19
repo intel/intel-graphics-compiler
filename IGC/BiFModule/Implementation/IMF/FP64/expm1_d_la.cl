@@ -256,7 +256,7 @@ inline int __internal_dexpm1_la_cout (double *pxin, double *pres)
     return nRet;
 }
 
-static double __ocl_svml_expm1 (double a)
+double __ocl_svml_expm1 (double a)
 {
 
     double va1;
