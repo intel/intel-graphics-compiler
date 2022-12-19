@@ -1106,7 +1106,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
         RdR.Width = RdR.NumElements = CurWidth * NumBlks;
         Region WrR(NewResult);
         WrR.Width = WrR.NumElements = CurWidth * NumBlks;
-        WrR.Mask = Args[PredIdx];
+        WrR.Mask = nullptr;
         for (unsigned Channel = 0; Channel != NumChannels; ++Channel) {
           RdR.Offset = ElmSz * CurWidth * NumBlks * Channel;
           auto Rd = RdR.createRdRegion(Gather, "joint", CI, DL);
@@ -1118,7 +1118,7 @@ bool GenXLowering::splitGatherScatter(CallInst *CI, unsigned IID) {
         Region WrR(NewResult);
         WrR.Width = WrR.NumElements = CurWidth * NumBlks;
         WrR.Offset = ElmSz * AccumulatedOffset * NumBlks;
-        WrR.Mask = Args[PredIdx];
+        WrR.Mask = nullptr;
         NewResult = WrR.createWrRegion(NewResult, Gather, "join", CI, DL);
       }
     } else {
