@@ -39,9 +39,11 @@ template <typename SrcStructT>
 inline void PopulateInterfaceWith(IGC::Platform<2>& dst,
                                   const SrcStructT& src) {
   PopulateInterfaceWith<1>(dst, src);
-  COPY_VAL(RenderBlockID, sRenderBlockID.Value);
-  COPY_VAL(MediaBlockID, sMediaBlockID.Value);
-  COPY_VAL(DisplayBlockID, sDisplayBlockID.Value);
+  // Below COPY_VALs are not valid. NEO will populate *BlockID values
+  // by calling the setters directly
+  // COPY_VAL(RenderBlockID, sRenderBlockID.Value);
+  // COPY_VAL(MediaBlockID, sMediaBlockID.Value);
+  // COPY_VAL(DisplayBlockID, sDisplayBlockID.Value);
 }
 }
 

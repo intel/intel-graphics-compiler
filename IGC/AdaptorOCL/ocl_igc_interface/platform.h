@@ -63,7 +63,7 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(Platform, 2, 1) {
 
 CIF_GENERATE_VERSIONS_LIST(Platform);
 CIF_MARK_LATEST_VERSION(PlatformLatest, Platform);
-using PlatformTagOCL = Platform<1>; // Note : can tag with different version for
+using PlatformTagOCL = Platform<2>; // Note : can tag with different version for
                                     //        transition periods
 }
 
