@@ -90,7 +90,7 @@ inline int __internal_satan_ep_nolut_cout (float *pxin, float *pres)
     return nRet;
 }
 
-float __ocl_svml_atanf_ep_noLUT (float a)
+static float __ocl_svml_atanf_ep_noLUT (float a)
 {
     float va1;
     float vr1;

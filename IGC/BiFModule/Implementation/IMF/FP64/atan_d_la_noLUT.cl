@@ -549,7 +549,7 @@ inline int __ocl_svml_internal_datan_noLUT (double *a, double *r)
     return nRet;
 }
 
-double __ocl_svml_atan_noLUT (double a)
+static double __ocl_svml_atan_noLUT (double a)
 {
     unsigned int vm;
     double va1;

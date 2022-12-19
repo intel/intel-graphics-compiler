@@ -629,7 +629,7 @@ inline int __internal_ssin_la_cout (float *a, float *r)
 }
 
 #pragma float_control (pop)
-float __ocl_svml_sinf (float a)
+static float __ocl_svml_sinf (float a)
 {
 
     float va1;

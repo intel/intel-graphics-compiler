@@ -269,7 +269,7 @@ static inline int __ocl_svml_internal_serfc(float *px, float *pres)
   return nRet;
 }
 
-float __ocl_svml_erfcf_noLUT(float x)
+static float __ocl_svml_erfcf_noLUT(float x)
 {
   float r;
   __ocl_svml_internal_serfc(&x, &r);

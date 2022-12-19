@@ -150,7 +150,7 @@ inline int __internal_stanh_nolut_cout (float *a, float *r)
     return nRet;
 }
 
-float __ocl_svml_tanhf_noLUT (float a)
+static float __ocl_svml_tanhf_noLUT (float a)
 {
     float va1;
     float vr1;

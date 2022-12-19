@@ -498,7 +498,7 @@ static inline float __spowr_la_internal_frexpf (float arg, int *exp_res)
     return fR;
 }
 
-inline int __ocl_svml_internal_spowr_noLUT (float *pxin, float *pyin, float *pres)
+static inline int __ocl_svml_internal_spowr_noLUT (float *pxin, float *pyin, float *pres)
 {
     int nRet = 0;
     union

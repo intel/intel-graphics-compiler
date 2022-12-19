@@ -136,7 +136,7 @@ LOG2F_SPECIAL:
   goto LOG2F_MAIN;
 }
 
-float __ocl_svml_log2f_ha_noLUT(float x)
+static float __ocl_svml_log2f_ha_noLUT(float x)
 {
   float r;
   __ocl_svml_internal_slog2_ha(&x, &r);

@@ -117,7 +117,7 @@ inline int __internal_dcospi_la_cout (double *a, double *r)
 }
 
 #pragma float_control(pop)
-double __ocl_svml_cospi (double a)
+static double __ocl_svml_cospi (double a)
 {
 
     double va1;

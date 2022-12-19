@@ -233,7 +233,7 @@ inline int __internal_sasinh_la_cout (float *a, float *r)
 
 }
 
-float __ocl_svml_asinhf (float a)
+static float __ocl_svml_asinhf (float a)
 {
 
     float va1;

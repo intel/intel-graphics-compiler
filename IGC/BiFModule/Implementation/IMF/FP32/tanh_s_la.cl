@@ -154,7 +154,7 @@ inline int __internal_stanh_la_cout (float *a, float *r)
     return nRet;
 }
 
-float __ocl_svml_tanhf (float a)
+static float __ocl_svml_tanhf (float a)
 {
 
     float va1;

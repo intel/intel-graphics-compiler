@@ -646,7 +646,7 @@ inline int __internal_ssincos_la_cout (float *a, float *r1, float *r2)
 }
 
 #pragma float_control (pop)
-void __ocl_svml_sincosf (float a, float *b, float *c)
+static void __ocl_svml_sincosf (float a, float *b, float *c)
 {
 
     float va1;

@@ -1343,7 +1343,7 @@ inline int __internal_dexp_la_cout (double *a, double *r)
 
 }
 
-double __ocl_svml_exp (double a)
+static double __ocl_svml_exp (double a)
 {
 
     double va1;

@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
+#include "../IMF/FP32/asin_s_la.cl"
 
 #if defined(cl_khr_fp64)
     #include "../IMF/FP64/asin_d_la.cl"
@@ -16,6 +17,10 @@ SPDX-License-Identifier: MIT
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( asin, float, float, f32 )
 
 #if defined(cl_khr_fp64)
+
+INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(asin, _f32, )(float value ){
+    return __ocl_svml_asinf(value);
+}
 
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(asin, _f64, )( double x )
 {

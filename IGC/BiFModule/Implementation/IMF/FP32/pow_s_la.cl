@@ -1207,7 +1207,7 @@ inline int __internal_spow_la_cout (float *a, float *b, float *r)
     return nRet;
 }
 
-float __ocl_svml_powf (float a, float b)
+static float __ocl_svml_powf (float a, float b)
 {
 
     float va1;

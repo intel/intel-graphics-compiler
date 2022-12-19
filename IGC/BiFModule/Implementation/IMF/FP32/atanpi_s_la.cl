@@ -108,7 +108,7 @@ inline int __internal_satanpi_la_cout (float *pxin, float *pres)
     return nRet;
 }
 
-float __ocl_svml_atanpif (float a)
+static float __ocl_svml_atanpif (float a)
 {
 
     float va1;

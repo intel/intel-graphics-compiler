@@ -898,7 +898,7 @@ inline int __internal_scbrt_la_cout (float *a, float *r)
     return nRet;
 }
 
-float __ocl_svml_cbrtf (float a)
+static float __ocl_svml_cbrtf (float a)
 {
 
     float va1;

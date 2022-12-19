@@ -607,7 +607,7 @@ inline int __internal_datanpi_la_cout (double *a, double *r)
     return nRet;
 }
 
-double __ocl_svml_atanpi (double a)
+static double __ocl_svml_atanpi (double a)
 {
 
     double va1;

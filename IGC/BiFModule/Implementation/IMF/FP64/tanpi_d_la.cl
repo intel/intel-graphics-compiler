@@ -4330,7 +4330,7 @@ inline int __internal_dtanpi_la_cout (double *a, double *r)
     return nRet;
 }
 
-double __ocl_svml_tanpi (double a)
+static double __ocl_svml_tanpi (double a)
 {
 
     double va1;

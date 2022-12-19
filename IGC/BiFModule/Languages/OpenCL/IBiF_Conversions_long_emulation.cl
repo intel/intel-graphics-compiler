@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// SVML code
-
 // This file defines target independent versions of OpenCL explicit
 // long<->float and long<->double conversion functions.
 

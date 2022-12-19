@@ -101,7 +101,7 @@ inline int __internal_sasin_la_cout (float *pxin, float *pres)
     return nRet;
 }
 
-float __ocl_svml_asinf (float a)
+static float __ocl_svml_asinf (float a)
 {
 
     float va1;

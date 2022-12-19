@@ -343,7 +343,7 @@ inline int __ocl_svml_internal_stan_ha_noLUT (float *a, float *pres)
     return nRet;
 }
 
-float __ocl_svml_tanf_ha_noLUT (float a)
+static float __ocl_svml_tanf_ha_noLUT (float a)
 {
     float r;
     __ocl_svml_internal_stan_ha_noLUT (&a, &r);

@@ -529,7 +529,7 @@ inline int __internal_spow_nolut_cout (float *pxin, float *pyin, float *pres)
     return nRet;
 }
 
-float __ocl_svml_powf_noLUT (float a, float b)
+static float __ocl_svml_powf_noLUT (float a, float b)
 {
     float va1;
     float va2;

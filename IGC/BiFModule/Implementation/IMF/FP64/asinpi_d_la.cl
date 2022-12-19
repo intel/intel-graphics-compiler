@@ -142,7 +142,7 @@ inline int __internal_dasinpi_la_cout (double *pxin, double *pres)
     return nRet;
 }
 
-double __ocl_svml_asinpi (double a)
+static double __ocl_svml_asinpi (double a)
 {
 
     double va1;

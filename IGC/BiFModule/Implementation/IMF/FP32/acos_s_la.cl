@@ -107,7 +107,7 @@ inline int __internal_sacos_la_cout (float *pxin, float *pres)
     return nRet;
 }
 
-float __ocl_svml_acosf (float a)
+static float __ocl_svml_acosf (float a)
 {
 
     float va1;

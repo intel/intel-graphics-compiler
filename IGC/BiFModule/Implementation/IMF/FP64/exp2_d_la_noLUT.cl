@@ -213,7 +213,7 @@ inline int __ocl_svml_internal_dexp2_noLUT (double *a, double *r)
     return nRet;
 }
 
-double __ocl_svml_exp2_noLUT (double a)
+static double __ocl_svml_exp2_noLUT (double a)
 {
     double r;
     __ocl_svml_internal_dexp2_noLUT (&a, &r);

@@ -44,7 +44,7 @@ static __constant __internal_dsincospi_ep_data_t __internal_dsincospi_ep_data = 
     0x3ff0000000000000uL,
 };
 
-void __ocl_svml_sincospi_ep (double a,  __private double *b, __private double *c)
+static void __ocl_svml_sincospi_ep (double a,  __private double *b, __private double *c)
 {
 
     double va1;

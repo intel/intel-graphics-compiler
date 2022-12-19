@@ -418,7 +418,7 @@ inline int __internal_dasinh_la_cout (double *a, double *r)
     }
 }
 
-double __ocl_svml_asinh (double a)
+static double __ocl_svml_asinh (double a)
 {
 
     double va1;

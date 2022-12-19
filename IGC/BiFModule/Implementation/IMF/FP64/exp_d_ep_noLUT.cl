@@ -204,7 +204,7 @@ inline int __internal_dexp_ep_nolut_cout (double *a, double *r)
     return nRet;
 }
 
-double __ocl_svml_exp_ep_noLUT (double a)
+static double __ocl_svml_exp_ep_noLUT (double a)
 {
     double va1;
     double vr1;

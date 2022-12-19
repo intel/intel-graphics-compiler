@@ -210,7 +210,7 @@ inline int __internal_serf_nolut_cout (float *a, float *pres)
     return nRet;
 }
 
-float __ocl_svml_erff_noLUT (float a)
+static float __ocl_svml_erff_noLUT (float a)
 {
     float va1;
     float vr1;

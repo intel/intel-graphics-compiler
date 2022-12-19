@@ -142,7 +142,7 @@ LOG10F_SPECIAL:
   goto LOG10F_MAIN;
 }
 
-float __ocl_svml_log10f_ha_noLUT(float x)
+static float __ocl_svml_log10f_ha_noLUT(float x)
 {
   float r;
   __ocl_svml_internal_slog10_ha(&x, &r);

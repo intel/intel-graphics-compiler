@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "spirv.h"
-#include "IMF/FP32/asin_s_la.cl"
+//#include "IMF/FP32/asin_s_la.cl"
 
 INLINE float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(fclamp, _f32_f32_f32, )(float x, float minval, float maxval ){
     return SPIRV_OCL_BUILTIN(fmin, _f32_f32, )(SPIRV_OCL_BUILTIN(fmax, _f32_f32, )(x, minval), maxval);
@@ -379,11 +379,6 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(acos, _f32, )(float x ){
     }
 
     return destTemp;
-}
-
-INLINE
-float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(asin, _f32, )(float value ){
-    return __ocl_svml_asinf(value);
 }
 
 INLINE

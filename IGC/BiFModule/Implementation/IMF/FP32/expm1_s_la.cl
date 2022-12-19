@@ -184,7 +184,7 @@ inline int __internal_sexpm1_la_cout (float *a, float *pres)
 
 }
 
-float __ocl_svml_expm1f (float a)
+static float __ocl_svml_expm1f (float a)
 {
 
     float va1;

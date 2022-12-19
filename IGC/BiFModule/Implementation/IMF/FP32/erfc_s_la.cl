@@ -699,7 +699,7 @@ static __constant __internal_serfc_la_data_t __internal_serfc_la_data = {
 
 };
 
-float __ocl_svml_erfcf (float a)
+static float __ocl_svml_erfcf (float a)
 {
 
     float va1;

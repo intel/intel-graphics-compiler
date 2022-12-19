@@ -673,7 +673,7 @@ inline int __internal_dlog2_la_cout (double *a, double *res)
     }
 }
 
-double __ocl_svml_log2_v2 (double a)
+static double __ocl_svml_log2_v2 (double a)
 {
 
     double va1;

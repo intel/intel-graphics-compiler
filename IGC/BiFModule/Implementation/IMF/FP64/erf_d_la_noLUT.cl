@@ -702,7 +702,7 @@ inline int __internal_derf_nolut_cout (double *a, double *pres)
     return nRet;
 }
 
-double __ocl_svml_erf_noLUT (double a)
+static double __ocl_svml_erf_noLUT (double a)
 {
     double va1;
     double vr1;

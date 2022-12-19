@@ -572,7 +572,7 @@ static inline int __ocl_svml_internal_derfc(double *px, double *pres)
   return nRet;
 }
 
-double __ocl_svml_erfc_noLUT(double x)
+static double __ocl_svml_erfc_noLUT(double x)
 {
   double r;
   __ocl_svml_internal_derfc(&x, &r);

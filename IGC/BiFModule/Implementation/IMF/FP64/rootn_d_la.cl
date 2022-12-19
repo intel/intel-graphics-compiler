@@ -3259,7 +3259,7 @@ inline int __internal_drootn_la_cout (double *a, int *b, double *r)
     return nRet;
 }
 
-double __ocl_svml_rootn_v2 (double a, int b)
+static double __ocl_svml_rootn_v2 (double a, int b)
 {
 
     double va1;

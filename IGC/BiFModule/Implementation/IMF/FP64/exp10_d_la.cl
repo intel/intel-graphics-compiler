@@ -522,7 +522,7 @@ inline int __internal_dexp10_la_cout (double *a, double *r)
     return nRet;
 }
 
-double __ocl_svml_exp10 (double a)
+static double __ocl_svml_exp10 (double a)
 {
 
     double va1;

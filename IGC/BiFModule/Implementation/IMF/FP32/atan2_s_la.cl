@@ -193,7 +193,7 @@ inline int __internal_satan2_la_cout (float *pyin, float *pxin, float *pres)
 
 }
 
-float __ocl_svml_atan2f (float a, float b)
+static float __ocl_svml_atan2f (float a, float b)
 {
 
     float va1;

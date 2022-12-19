@@ -282,7 +282,7 @@ inline int __internal_dln_nolut_cout (double *a, double *r)
     return nRet;
 }
 
-double __ocl_svml_log_noLUT (double a)
+static double __ocl_svml_log_noLUT (double a)
 {
     double va1;
     double vr1;

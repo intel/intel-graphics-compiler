@@ -636,7 +636,7 @@ inline int __internal_scos_la_cout (float *a, float *r)
 }
 
 #pragma float_control (pop)
-float __ocl_svml_cosf (float a)
+static float __ocl_svml_cosf (float a)
 {
 
     float va1;

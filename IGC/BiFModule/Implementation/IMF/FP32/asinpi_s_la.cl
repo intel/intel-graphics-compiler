@@ -83,7 +83,7 @@ inline int __internal_sasinpi_la_cout (float *a, float *r)
     return nRet;
 }
 
-float __ocl_svml_asinpif (float a)
+static float __ocl_svml_asinpif (float a)
 {
 
     float va1;
