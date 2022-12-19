@@ -139,6 +139,16 @@ std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
         IGC_ASSERT_MESSAGE(false, "Unexpected matrix layout.");
     }
 
+    /* New version of the JointMatrix specification uses single value to
+     * represent PackedA and PackedB layouts, named simply; 'Packed'. The value
+     * of 'Paccked' is equal to the value of legacy 'PackedA'. If we meet
+     * load/store that tries to load/store packedA data into B matrix, we can
+     * assume that the intended layout was PackedB (load of A into B would be illegal).
+     * This should be removed when we stop to support the legacy version of the spec. */
+    if (matrixLayout == LayoutPackedB && operationLayout == LayoutPackedA) {
+        operationLayout = LayoutPackedB;
+    }
+
     switch (operationLayout) {
       case LayoutRowMajor:
         name += "RowMajor_";
