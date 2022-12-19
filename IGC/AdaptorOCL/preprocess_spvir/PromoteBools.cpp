@@ -110,7 +110,12 @@ Value* PromoteBools::convertI1ToI8(Value* value, Instruction* insertBefore)
     }
 
     IRBuilder<> builder(insertBefore);
-    return builder.CreateZExt(value, Type::getInt8Ty(value->getContext()));
+    auto zext = dyn_cast<ZExtInst>(builder.CreateZExt(value, Type::getInt8Ty(value->getContext())));
+    if (auto inst = dyn_cast<Instruction>(value))
+    {
+        zext->setDebugLoc(inst->getDebugLoc());
+    }
+    return zext;
 }
 
 Value* PromoteBools::convertI8ToI1(Value* value, Instruction* insertBefore)
@@ -127,7 +132,12 @@ Value* PromoteBools::convertI8ToI1(Value* value, Instruction* insertBefore)
     }
 
     IRBuilder<> builder(insertBefore);
-    return builder.CreateTrunc(value, Type::getInt1Ty(value->getContext()));
+    auto trunc = dyn_cast<TruncInst>(builder.CreateTrunc(value, Type::getInt1Ty(value->getContext())));
+    if (auto inst = dyn_cast<Instruction>(value))
+    {
+        trunc->setDebugLoc(inst->getDebugLoc());
+    }
+    return trunc;
 }
 
 void PromoteBools::cleanUp(Module& module)
@@ -411,11 +421,15 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                         }
                         builder.SetInsertPoint(insertPoint);
                     }
-                    auto trunc = builder.CreateTrunc(
+                    auto trunc = dyn_cast<TruncInst>(builder.CreateTrunc(
                         promoted,
                         operand->getType(),
                         ""
-                    );
+                    ));
+                    if (auto inst = dyn_cast<Instruction>(promoted))
+                    {
+                        trunc->setDebugLoc(inst->getDebugLoc());
+                    }
                     instruction->replaceUsesOfWith(operand, trunc);
                 }
             }
@@ -519,6 +533,10 @@ Function* PromoteBools::promoteFunction(Function* function)
                     auto zext = convertI1ToI8(ret->getReturnValue(), ret);
                     IRBuilder<> builder(ret);
                     auto newRet = builder.CreateRet(zext);
+                    if (auto inst = dyn_cast<Instruction>(zext))
+                    {
+                        newRet->setDebugLoc(inst->getDebugLoc());
+                    }
                     ret->replaceAllUsesWith(newRet);
                     ret->eraseFromParent();
                 }
@@ -639,12 +657,14 @@ AddrSpaceCastInst* PromoteBools::promoteAddrSpaceCast(AddrSpaceCastInst* addrSpa
         return addrSpaceCast;
     }
 
-    return new AddrSpaceCastInst(
+    auto newAddrSpaceCast = new AddrSpaceCastInst(
         getOrCreatePromotedValue(addrSpaceCast->getOperand(0)),
         getOrCreatePromotedType(addrSpaceCast->getDestTy()),
         "",
         addrSpaceCast
     );
+    newAddrSpaceCast->setDebugLoc(addrSpaceCast->getDebugLoc());
+    return newAddrSpaceCast;
 }
 
 AllocaInst* PromoteBools::promoteAlloca(AllocaInst* alloca)
@@ -662,6 +682,7 @@ AllocaInst* PromoteBools::promoteAlloca(AllocaInst* alloca)
         alloca
     );
     newAlloca->setAlignment(IGCLLVM::getAlign(*alloca));
+    newAlloca->setDebugLoc(alloca->getDebugLoc());
     return newAlloca;
 }
 
@@ -678,12 +699,14 @@ Value* PromoteBools::promoteBitCast(BitCastInst* bitcast)
         return bitcast->getOperand(0);
     }
 
-    return new BitCastInst(
+    auto newBitcast = new BitCastInst(
         getOrCreatePromotedValue(bitcast->getOperand(0)),
         getOrCreatePromotedType(bitcast->getDestTy()),
         "",
         bitcast
     );
+    newBitcast->setDebugLoc(bitcast->getDebugLoc());
+    return newBitcast;
 }
 
 CallInst* PromoteBools::promoteCall(CallInst* call)
@@ -723,6 +746,7 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
     );
     newCall->setCallingConv(call->getCallingConv());
     newCall->setAttributes(call->getAttributes());
+    newCall->setDebugLoc(call->getDebugLoc());
     return newCall;
 }
 
@@ -739,12 +763,14 @@ ExtractValueInst* PromoteBools::promoteExtractValue(ExtractValueInst* extractVal
         return extractValue;
     }
 
-    return ExtractValueInst::Create(
+    auto newExtractValue = ExtractValueInst::Create(
         getOrCreatePromotedValue(aggregateOp),
         extractValue->getIndices(),
         "",
         extractValue
     );
+    newExtractValue->setDebugLoc(extractValue->getDebugLoc());
+    return newExtractValue;
 }
 
 GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElementPtr)
@@ -757,13 +783,15 @@ GetElementPtrInst* PromoteBools::promoteGetElementPtr(GetElementPtrInst* getElem
     auto promotedOperand = getOrCreatePromotedValue(getElementPtr->getPointerOperand());
     auto indices = SmallVector<Value*, 8>(getElementPtr->idx_begin(), getElementPtr->idx_end());
 
-    return GetElementPtrInst::Create(
+    auto newGetElementPtr = GetElementPtrInst::Create(
         IGCLLVM::getNonOpaquePtrEltTy(promotedOperand->getType()),
         promotedOperand,
         indices,
         "",
         getElementPtr
     );
+    newGetElementPtr->setDebugLoc(getElementPtr->getDebugLoc());
+    return newGetElementPtr;
 }
 
 ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
@@ -784,13 +812,15 @@ ICmpInst* PromoteBools::promoteICmp(ICmpInst* icmp)
     auto promotedOp0 = convertI1ToI8(getOrCreatePromotedValue(op0), icmp);
     auto promotedOp1 = convertI1ToI8(getOrCreatePromotedValue(op1), icmp);
 
-    return new ICmpInst(
+    auto newICmp = new ICmpInst(
         icmp,
         icmp->getPredicate(),
         promotedOp0,
         promotedOp1,
         ""
     );
+    newICmp->setDebugLoc(icmp->getDebugLoc());
+    return newICmp;
 }
 
 InsertValueInst* PromoteBools::promoteInsertValue(InsertValueInst* insertValue)
@@ -810,13 +840,15 @@ InsertValueInst* PromoteBools::promoteInsertValue(InsertValueInst* insertValue)
     auto newAggregateOp = typeNeedsPromotion(aggregateOp->getType()) ? getOrCreatePromotedValue(aggregateOp) : aggregateOp;
     auto newInsertedValueOp = typeNeedsPromotion(insertedValueOp->getType()) ? getOrCreatePromotedValue(insertedValueOp) : insertedValueOp;
 
-    return InsertValueInst::Create(
+    auto newInsertValue = InsertValueInst::Create(
         newAggregateOp,
         newInsertedValueOp,
         insertValue->getIndices(),
         "",
         insertValue
     );
+    newInsertValue->setDebugLoc(insertValue->getDebugLoc());
+    return newInsertValue;
 }
 
 LoadInst* PromoteBools::promoteLoad(LoadInst* load)
@@ -841,7 +873,7 @@ LoadInst* PromoteBools::promoteLoad(LoadInst* load)
         load
     );
     newLoad->setAlignment(IGCLLVM::getAlign(*load));
-
+    newLoad->setDebugLoc(load->getDebugLoc());
     return newLoad;
 }
 
@@ -878,7 +910,7 @@ llvm::PHINode* PromoteBools::promotePHI(llvm::PHINode* phi)
             phi->getIncomingBlock(i)
         );
     }
-
+    newPhi->setDebugLoc(phi->getDebugLoc());
     return newPhi;
 }
 
@@ -904,6 +936,6 @@ StoreInst* PromoteBools::promoteStore(StoreInst* store)
         store
     );
     newStore->setAlignment(IGCLLVM::getAlign(*store));
-
+    newStore->setDebugLoc(store->getDebugLoc());
     return newStore;
 }
