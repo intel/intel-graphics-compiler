@@ -12495,6 +12495,8 @@ void EmitPass::emitScalarAtomics(
     case EATOMIC_SUB:
     case EATOMIC_INC:
     case EATOMIC_DEC:
+    case EATOMIC_FADD:
+    case EATOMIC_FSUB:
         identityValue = 0;
         op = EOPCODE_ADD;
         break;
@@ -12531,10 +12533,18 @@ void EmitPass::emitScalarAtomics(
         break;
     }
 
-    VISA_Type type =
-        bitWidth == 16 ? ISA_TYPE_W :
-        bitWidth == 32 ? ISA_TYPE_D :
-                         ISA_TYPE_Q;
+    VISA_Type type;
+    if (atomic_op == EATOMIC_FADD || atomic_op == EATOMIC_FSUB)
+    {
+        type = ISA_TYPE_F;
+    }
+    else
+    {
+        type =
+            bitWidth == 16 ? ISA_TYPE_W :
+            bitWidth == 32 ? ISA_TYPE_D :
+                        ISA_TYPE_Q;
+    }
     IGC_ASSERT_MESSAGE((bitWidth == 16) || (bitWidth == 32) || (bitWidth == 64), "invalid bitsize");
     if (atomic_op == EATOMIC_INC || atomic_op == EATOMIC_DEC)
     {
@@ -12580,8 +12590,8 @@ void EmitPass::emitScalarAtomics(
         CVariable* numActiveLanes = GetNumActiveLanes();
 
         // pFinalAtomicSrcVal is used in msg's payload and thus needs to be GRF-aligned
-        pFinalAtomicSrcVal = m_currShader->GetNewVariable(1, ISA_TYPE_D, EALIGN_GRF, true, CName::NONE);
-        if (pSrc->IsImmediate() && pSrc->GetImmediateValue() == 1)
+        pFinalAtomicSrcVal = m_currShader->GetNewVariable(1, type, EALIGN_GRF, true, CName::NONE);
+        if ((type != ISA_TYPE_F) && pSrc->IsImmediate() && pSrc->GetImmediateValue() == 1)
         {
             if (negateSrc)
             {
@@ -12592,9 +12602,18 @@ void EmitPass::emitScalarAtomics(
         }
         else
         {
-            // Use UW for numActiveLanes as it results in less insts.
-            CVariable* uw_numActiveLanes = m_currShader->GetNewAlias(numActiveLanes, ISA_TYPE_UW, 0, 1);
-            m_encoder->Mul(pFinalAtomicSrcVal, pSrc, uw_numActiveLanes);
+            CVariable* castNumActiveLanes = nullptr;
+            if (type == ISA_TYPE_F)
+            {
+                castNumActiveLanes = m_currShader->GetNewVariable(1, ISA_TYPE_F, EALIGN_GRF, true, CName::NONE);
+                m_encoder->Cast(castNumActiveLanes, numActiveLanes);
+            }
+            else
+            {
+                // Use UW for numActiveLanes as it results in less insts.
+                castNumActiveLanes = m_currShader->GetNewAlias(numActiveLanes, ISA_TYPE_UW, 0, 1);
+            }
+            m_encoder->Mul(pFinalAtomicSrcVal, pSrc, castNumActiveLanes);
             m_encoder->Push();
 
             // using neg srcmod with mul will end up with more insts, thus using srcmod on mov
@@ -12844,9 +12863,19 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
 
         // Dst address in bytes.
         if (id == GenISAIntrinsic::GenISA_intatomicraw ||
-            id == GenISAIntrinsic::GenISA_intatomicrawA64)
+            id == GenISAIntrinsic::GenISA_intatomicrawA64 ||
+            id == GenISAIntrinsic::GenISA_floatatomicrawA64)
         {
             Function* F = pInst->getParent()->getParent();
+            //We cannot optimize float atomics if the flag "unsafe-fp-math" was not passed.
+            if (id == GenISAIntrinsic::GenISA_floatatomicrawA64) {
+                if (pInst->getType()->getScalarSizeInBits() != 32) {
+                    return false;
+                }
+                if (!F->hasFnAttribute("unsafe-fp-math") || !(F->getFnAttribute("unsafe-fp-math").getValueAsString() == "true")) {
+                    return false;
+                }
+            }
             if (IGC_IS_FLAG_ENABLED(DisableScalarAtomics) ||
                 F->hasFnAttribute("KMPLOCK") ||
                 m_currShader->m_DriverInfo->WASLMPointersDwordUnit())
@@ -12861,7 +12890,9 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
                     atomic_op == EATOMIC_IADD ||
                     atomic_op == EATOMIC_INC ||
                     atomic_op == EATOMIC_SUB ||
-                    atomic_op == EATOMIC_DEC;
+                    atomic_op == EATOMIC_DEC ||
+                    atomic_op == EATOMIC_FADD ||
+                    atomic_op == EATOMIC_FSUB;
                 bool isAtomicMinMax =
                     atomic_op == EATOMIC_UMAX ||
                     atomic_op == EATOMIC_UMIN ||
