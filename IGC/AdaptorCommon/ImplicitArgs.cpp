@@ -428,6 +428,33 @@ void ImplicitArgs::addImplicitArgs(llvm::Function& F, const SmallVectorImpl<Impl
     }
 }
 
+void ImplicitArgs::addImplicitArgsTotally(llvm::Function& F, const SmallVectorImpl<ImplicitArg::ArgType>& implicitArgs, const MetaDataUtils* pMdUtils) {
+    // Add implicit args metadata for the given function
+    FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
+    bool argAdded = false;
+    for (auto arg : implicitArgs)
+    {
+        if (!isImplicitArgExist(F, arg, pMdUtils))
+        {
+            ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+            argMD->setArgId(arg);
+            funcInfo->addImplicitArgInfoListItem(argMD);
+            argAdded = true;
+        }
+    }
+    if (!argAdded) return;
+
+    // Add implicit args metadata for callers
+    std::vector<Value*> functionUserList(F.user_begin(), F.user_end());
+    for (auto U : functionUserList)
+    {
+        CallInst* cInst = dyn_cast<CallInst>(U);
+        IGC_ASSERT_MESSAGE(cInst, "Caller must not be nullptr");
+        Function* parent_func = cInst->getParent()->getParent();
+        addImplicitArgsTotally(*parent_func, implicitArgs, pMdUtils);
+    }
+}
+
 void ImplicitArgs::addImageArgs(llvm::Function& F, const ImplicitArg::ArgMap& argMap, const MetaDataUtils* pMdUtils)
 {
     FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);

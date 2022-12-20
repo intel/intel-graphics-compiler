@@ -284,6 +284,13 @@ namespace IGC
         static void addImplicitArgs(llvm::Function& F, const llvm::SmallVectorImpl<ImplicitArg::ArgType>& implicitArgs, const IGCMD::MetaDataUtils* pMdUtils);
         //TODO doc
 
+        /// @brief  Creates implict arguments metadata for the given function amd all callers
+        ///         based on the given implicit arguments it should receive. If implicit metadata exists, it adds to it.
+        /// @param  F               The function for which to create the implicit argument's metadata
+        /// @param  implicitArgs    The implicit argument that are required by the given function
+        /// @param  pMdUtils The Metadata API object
+        static void addImplicitArgsTotally(llvm::Function& F, const llvm::SmallVectorImpl<ImplicitArg::ArgType>& implicitArgs, const IGCMD::MetaDataUtils* pMdUtils);
+
         /// @brief  Creates implict image arguments metadata for the given function based on the given implicit image
         ///         arguments it should receive. If implicit image metadata exists, it adds to it.
         /// @param  F The function for which to create the implicit argument's metadata
