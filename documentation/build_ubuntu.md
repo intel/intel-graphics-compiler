@@ -50,10 +50,11 @@ Installing LLVM, Clang, and OpenCL Clang components means you no longer have to 
       |- SPIRV-Tools                  https://github.com/KhronosGroup/SPIRV-Tools
       |- SPIRV-Headers                https://github.com/KhronosGroup/SPIRV-Headers
 ```
-Additionaly, you can use **SPIRV-Tools** prebuild pacakge. In order to do that be sure to pass to cmake command `IGC_OPTION__SPIRV_TOOLS_MODE=Prebuilds`. Until the issue
-https://github.com/KhronosGroup/SPIRV-Tools/issues/3909 will not be resolved, we support only SPIRV_Tools as a shared lib, and we encourage to build SPIRV-Tools prebuild with SPIRV_TOOLS_BUILD_STATIC=OFF flag.
+Additionaly, you can use **SPIRV-Tools** prebuild package. In order to do that be sure to pass to cmake command `IGC_OPTION__SPIRV_TOOLS_MODE=Prebuilds`.
+When **SPIRV-Tools** are set to Prebuilds you may also use **SPIRV-Headers** prebuild package with the cmake option `IGC_OPTION__USE_PREINSTALLED_SPIRV_HEADERS=ON`.
+Mind that until the issue https://github.com/KhronosGroup/SPIRV-Tools/issues/3909 will not be resolved, we support SPIRV_Tools only as a shared lib, and we encourage to build SPIRV-Tools prebuild with SPIRV_TOOLS_BUILD_STATIC=OFF flag.
 
-Additionaly, OpenCL Clang and Vector Compiler share the library Spirv Translator. Cannot build llvm-spirv translator if OpenCL-Clang is taken as prebuilt from system. This can lead to problems with linking.
+Moreover, OpenCL Clang and Vector Compiler share the SPIRV-LLVM Translator library. SPIRV-LLVM Translator cannot be built if OpenCL-Clang is taken as prebuilt from system. This can lead to problems with linking.
 
 #### Build from sources
 
@@ -172,6 +173,8 @@ When checking out the components refer to the following table, replace **XX** wi
 |-----------------------|:----------------:|----------------------|------------------|
 | llvm-project          | -                | release/**XX**.x     | release/11.x     |
 | vc-intrinsics         | no               | master               | master           |
+| SPIRV-Tools           | no               | master               | master           |
+| SPIRV-Headers         | no               | master               | master           |
 | SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_110 |
 | opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-110     |
 
