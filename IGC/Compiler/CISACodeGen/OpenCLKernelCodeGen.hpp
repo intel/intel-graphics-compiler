@@ -240,7 +240,6 @@ namespace IGC
 
     private:
         bool m_enableZEBinary;
-        bool m_forceTagForPrivatePointers = false;
 
     public:
         // Additional text visaasm to link.
@@ -323,8 +322,6 @@ namespace IGC
         uint32_t getNumThreadsPerEU() const override;
         bool forceGlobalMemoryAllocation() const override;
         bool allocatePrivateAsGlobalBuffer() const override;
-        bool forceTagForPrivatePointers() const override;
-        void setForceTagForPrivatePointers(bool);
         bool noLocalToGenericOptionEnabled() const override;
         bool enableTakeGlobalAddress() const override;
         int16_t getVectorCoalescingControl() const override;

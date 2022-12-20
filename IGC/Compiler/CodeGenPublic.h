@@ -1035,7 +1035,6 @@ namespace IGC
         virtual void setNumGRFPerThread(uint32_t value) { m_NumGRFPerThread = value; }
         virtual bool forceGlobalMemoryAllocation() const;
         virtual bool allocatePrivateAsGlobalBuffer() const;
-        virtual bool forceTagForPrivatePointers() const;
         virtual bool noLocalToGenericOptionEnabled() const;
         virtual bool enableTakeGlobalAddress() const;
         virtual int16_t getVectorCoalescingControl() const;

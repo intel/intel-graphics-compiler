@@ -8634,18 +8634,10 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 
     CVariable* srcV = GetSymbol(addrSpaceCast->getOperand(0));
 
-    // There is no need to tag generic pointers if the following conditions are met:
-    // - there are no local to generic addrspace casts in a module
-    // - private memory is allocated in a global buffer
-    // - there are no calls to `__builtin_IB_to_private` or `__builtin_IB_to_global`
-    //   builtins in a module
-    bool skipTagging =
-        !m_canGenericPointToLocal &&
-        !m_canGenericPointToPrivate &&
-        !m_pCtx->forceTagForPrivatePointers();
-
-    if (skipTagging)
+    if (!m_canGenericPointToPrivate && !m_canGenericPointToLocal)
     {
+        // If forcing global memory allocation and there are no generic pointers to local AS,
+        // there is no need to tag generic pointers.
         m_encoder->Cast(m_destination, srcV);
         m_encoder->Push();
         return;
@@ -8675,8 +8667,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
             return;
         }
 
-        if (sourceAddrSpace == ADDRESS_SPACE_PRIVATE &&
-            (!m_pCtx->allocatePrivateAsGlobalBuffer() || m_pCtx->forceTagForPrivatePointers()))
+        if (sourceAddrSpace == ADDRESS_SPACE_PRIVATE && !m_pCtx->allocatePrivateAsGlobalBuffer())
         {
             emitAddrSpaceToGenericCast(addrSpaceCast, srcV, 1);
         }
