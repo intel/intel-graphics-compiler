@@ -74,30 +74,6 @@ const G4_Inst_Info G4_Inst_Table[] = {
 #include "G4Instruction.h"
 };
 
-static const char *getChannelEnableStr(ChannelEnable channel) {
-  switch (channel) {
-  case NoChannelEnable:
-    return "";
-  case ChannelEnable_X:
-    return "x";
-  case ChannelEnable_Y:
-    return "y";
-  case ChannelEnable_XY:
-    return "xy";
-  case ChannelEnable_Z:
-    return "z";
-  case ChannelEnable_W:
-    return "w";
-  case ChannelEnable_ZW:
-    return "zw";
-  case ChannelEnable_XYZW:
-    return "xyzw";
-  default:
-    MUST_BE_TRUE(false, "unsupported channel enable");
-    return "";
-  }
-}
-
 // global functions
 uint8_t roundDownPow2(uint8_t n) {
   uint8_t i = 1;
@@ -6600,29 +6576,6 @@ bool G4_INST::isFastHFInstruction(void) const {
     isHF = true;
   }
   return isHF;
-}
-
-void G4_Declare::prepareForRealloc(G4_Kernel *kernel) {
-  // Reset allocated register if this dcl is not an input
-  // or a pre-defined variable.
-  auto &builder = kernel->fg.builder;
-
-  setGRFOffsetFromR0(0);
-
-  if (getRegFile() != G4_RegFileKind::G4_INPUT &&
-      getRegVar()->isPhyRegAssigned() && !getRegVar()->isAreg() &&
-      this != builder->getBuiltinA0() && this != builder->getBuiltinR0() &&
-      this != builder->getBuiltinA0Dot2() &&
-      this != builder->getBuiltinBindlessSampler() &&
-      this != builder->getBuiltinHWTID() &&
-      this != builder->getBuiltinT252() && this != builder->getStackCallRet() &&
-      this != builder->getStackCallArg() && this != builder->getBEFP() &&
-      this != builder->getBESP() && this != kernel->fg.getScratchRegDcl() &&
-      this != kernel->fg.getStackPtrDcl() &&
-      this != kernel->fg.getFramePtrDcl()) {
-    getRegVar()->resetPhyReg();
-    getRegVar()->setDisp(UINT_MAX);
-  }
 }
 
 bool G4_INST::mayExpandToAccMacro() const {

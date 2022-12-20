@@ -1125,6 +1125,28 @@ public:
 } // namespace vISA
 
 namespace vISA {
+
+typedef enum {
+  PRED_ALIGN16_DEFAULT = 1,
+  PRED_ALIGN16_X = 2,
+  PRED_ALIGN16_Y = 3,
+  PRED_ALIGN16_Z = 4,
+  PRED_ALIGN16_W = 5,
+  PRED_ALIGN16_ANY4H = 6,
+  PRED_ALIGN16_ALL4H = 7
+} G4_Align16_Predicate_Control;
+
+enum ChannelEnable {
+  NoChannelEnable = 0,
+  ChannelEnable_X = 1,
+  ChannelEnable_Y = 2,
+  ChannelEnable_XY = 3,
+  ChannelEnable_Z = 4,
+  ChannelEnable_W = 8,
+  ChannelEnable_ZW = 0xC,
+  ChannelEnable_XYZW = 0xF
+};
+
 class BinaryEncodingBase {
 public:
   _BDWCompactControlTable_ BDWCompactControlTable;

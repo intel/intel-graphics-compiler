@@ -1831,6 +1831,28 @@ bool Optimizer::isCopyPropProfitable(G4_INST *movInst) const {
   return true;
 }
 
+static void prepareForRealloc(G4_Kernel &K, G4_Declare *dcl) {
+  // Reset allocated register if this dcl is not an input
+  // or a pre-defined variable.
+  auto &builder = K.fg.builder;
+
+  dcl->setGRFOffsetFromR0(0);
+
+  if (dcl->getRegFile() != G4_RegFileKind::G4_INPUT &&
+      dcl->getRegVar()->isPhyRegAssigned() && !dcl->getRegVar()->isAreg() &&
+      dcl != builder->getBuiltinA0() && dcl != builder->getBuiltinR0() &&
+      dcl != builder->getBuiltinA0Dot2() &&
+      dcl != builder->getBuiltinBindlessSampler() &&
+      dcl != builder->getBuiltinHWTID() &&
+      dcl != builder->getBuiltinT252() && dcl != builder->getStackCallRet() &&
+      dcl != builder->getStackCallArg() && dcl != builder->getBEFP() &&
+      dcl != builder->getBESP() && dcl != K.fg.getScratchRegDcl() &&
+      dcl != K.fg.getStackPtrDcl() && dcl != K.fg.getFramePtrDcl()) {
+    dcl->getRegVar()->resetPhyReg();
+    dcl->getRegVar()->setDisp(UINT_MAX);
+  }
+}
+
 void Optimizer::reRAPostSchedule() {
   // No rera for stackcall functions
   if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
@@ -1887,7 +1909,7 @@ void Optimizer::reRAPostSchedule() {
 
   for (auto dcl : kernel.Declares) {
     if (threeSrcDcl.find(dcl->getRootDeclare()) == threeSrcDcl.end()) {
-      dcl->prepareForRealloc(&kernel);
+      prepareForRealloc(kernel, dcl);
     }
   }
 

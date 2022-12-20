@@ -607,18 +607,16 @@ unsigned SpillManagerGRF::getDisp(G4_RegVar *regVar) {
 
     if (regVar->isRegVarSpill()) {
       G4_RegVarTransient *tRegVar = static_cast<G4_RegVarTransient *>(regVar);
-      assert(getSegmentByteSize(tRegVar->getDstRepRegion(),
-                                tRegVar->getExecSize()) <=
+      auto dstRR = tRegVar->getRepRegion()->asDstRegRegion();
+      assert(getSegmentByteSize(dstRR, tRegVar->getExecSize()) <=
              getByteSize(tRegVar));
-      itsDisp =
-          getSegmentDisp(tRegVar->getDstRepRegion(), tRegVar->getExecSize());
+      itsDisp = getSegmentDisp(dstRR, tRegVar->getExecSize());
     } else if (regVar->isRegVarFill()) {
       G4_RegVarTransient *tRegVar = static_cast<G4_RegVarTransient *>(regVar);
-      assert(getSegmentByteSize(tRegVar->getSrcRepRegion(),
-                                tRegVar->getExecSize()) <=
+      auto srcRR = tRegVar->getRepRegion()->asSrcRegRegion();
+      assert(getSegmentByteSize(srcRR, tRegVar->getExecSize()) <=
              getByteSize(tRegVar));
-      itsDisp =
-          getSegmentDisp(tRegVar->getSrcRepRegion(), tRegVar->getExecSize());
+      itsDisp = getSegmentDisp(srcRR, tRegVar->getExecSize());
     } else {
       MUST_BE_TRUE(false, "Incorrect spill/fill ranges.");
       itsDisp = 0;

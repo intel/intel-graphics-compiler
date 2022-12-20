@@ -311,9 +311,12 @@ set(GenX_Common_Headers
   DebugInfo.h
   FlowGraph.h
   G4_BB.hpp
+  G4_Declare.h
   G4_IR.hpp
   G4_Kernel.hpp
   G4_Opcode.h
+  G4_Operand.h
+  G4_Register.h
   G4_SendDescs.hpp
   G4_Verifier.hpp
   G4Instruction.h

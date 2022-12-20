@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#ifndef COMMON_GEN_H
+#define COMMON_GEN_H
+
 // enums for various fields in message-specific descriptors
 typedef enum {
   DC_OWORD_BLOCK_READ = 0,
@@ -113,3 +116,5 @@ typedef enum {
 enum SamplerSIMDMode { SIMD8 = 1, SIMD16 = 2, SIMD32 = 3 };
 
 #define A64_BLOCK_MSG_SUBTYPE_OFFSET 11
+
+#endif // COMMON_GEN_H
