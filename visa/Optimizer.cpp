@@ -5765,22 +5765,26 @@ void Optimizer::cleanupBindless() {
         G4_Operand *header = inst->getSrc(0);
         G4_Operand *exDesc = inst->getSrc(3);
 
+        // When header has multiple uses other than send, be conservative and
+        // do not reuse the cached value. It could be introduced by
+        // optimizations like LVN.
         if (header->getTopDcl() && header->getTopDcl()->getCapableOfReuse() &&
-            exDesc->isSrcRegRegion()) {
+            exDesc->isSrcRegRegion() && !instVector.empty() &&
+            std::all_of(instVector.begin(), instVector.end(),
+                [&](G4_INST *i) { return i->hasOneUse() &&
+                                         i->use_front().first == inst; })) {
 
-          if (instVector.size() != 0) {
-            // check if we can reuse cached values
-            G4_Operand *value =
-                updateSendsHeaderReuse(instLookUpTable, instVector, iter);
-            if (value == nullptr) {
-              // no found, cache the header
-              instLookUpTable.push_back(instVector);
-            } else {
-              // update sends header src
-              G4_SrcRegRegion *newHeaderRgn = builder.createSrc(
-                  value->getBase(), 0, 0, builder.getRegionStride1(), Type_UD);
-              inst->setSrc(newHeaderRgn, 0);
-            }
+          // check if we can reuse cached values.
+          G4_Operand *value =
+              updateSendsHeaderReuse(instLookUpTable, instVector, iter);
+          if (!value) {
+            // no found, cache the header
+            instLookUpTable.push_back(instVector);
+          } else {
+            // update sends header src
+            G4_SrcRegRegion *newHeaderRgn = builder.createSrc(
+                value->getBase(), 0, 0, builder.getRegionStride1(), Type_UD);
+            inst->setSrc(newHeaderRgn, 0);
           }
         }
         // clear header def
