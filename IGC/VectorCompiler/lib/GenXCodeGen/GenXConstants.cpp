@@ -161,7 +161,7 @@ bool genx::loadNonSimpleConstants(
     return Modified;
   // Omit call target operand of a call.
   unsigned NumArgs = Inst->getNumOperands();
-  auto CI = dyn_cast<CallInst>(Inst);
+  auto *CI = dyn_cast<CallInst>(Inst);
   if (CI)
     NumArgs = IGCLLVM::getNumArgOperands(CI);
   unsigned IID = vc::getAnyIntrinsicID(Inst);
@@ -585,9 +585,10 @@ bool genx::areConstantsEqual(const Constant *C1, const Constant *C2) {
 
 /***********************************************************************
  * cleanupConstantLoads : remove all genx.constant* intrinsics that have
- * non-constant source operand
+ * non-constant source operand, fill const-list for Add-pattern
  */
-bool genx::cleanupConstantLoads(Function *F) {
+bool genx::cleanupConstantLoads(Function *F,
+                                std::vector<CallInst *> &ConstList) {
   bool Modified = false;
   for (auto I = inst_begin(F), E = inst_end(F); I != E;) {
     auto *CI = dyn_cast<CallInst>(&*I++);
@@ -598,11 +599,140 @@ bool genx::cleanupConstantLoads(Function *F) {
         IID != GenXIntrinsic::genx_constantf &&
         IID != GenXIntrinsic::genx_constantpred)
       continue;
-    if (isa<Constant>(CI->getOperand(0)))
+    if (isa<Constant>(CI->getOperand(0))) {
+      if (CI->getOperand(0)->getType()->isVectorTy())
+        ConstList.push_back(CI);
       continue;
+    }
     CI->replaceAllUsesWith(CI->getOperand(0));
     CI->eraseFromParent();
     Modified = true;
+  }
+
+  return Modified;
+}
+
+using CallVecIterator = std::vector<CallInst *>::iterator;
+static bool checkApplyAddPattern(CallVecIterator &I, CallVecIterator &J,
+                                 std::vector<CallInst *> &ToRemove,
+                                 std::vector<CallInst *> &ConstList,
+                                 bool supportAdd64) {
+  // Do not apply for instructions in different basick blocks
+  if ((*I)->getParent() != (*J)->getParent()) {
+    I = J;
+    ++J;
+    return false;
+  }
+  Constant *IFirst = dyn_cast<Constant>((*I)->getOperand(0));
+  Constant *ISecond = dyn_cast<Constant>((*J)->getOperand(0));
+  if (!ISecond) {
+    J = ConstList.erase(J);
+    return false;
+  }
+  if (!IFirst || IFirst->getType() != ISecond->getType()) {
+    ++J;
+    return false;
+  }
+  auto TyX = cast<IGCLLVM::FixedVectorType>(IFirst->getType());
+  auto N = TyX->getNumElements();
+  auto Ty = TyX->getElementType();
+  if (N <= 1 || !Ty->isIntegerTy() || (!supportAdd64 && Ty->isIntegerTy(64))) {
+    // Do not apply for scalar const
+    J = ConstList.erase(J);
+    return false;
+  }
+  // index of elements
+  unsigned K = 0;
+  auto El1 = dyn_cast<ConstantInt>(IFirst->getAggregateElement(K));
+  auto El2 = dyn_cast<ConstantInt>(ISecond->getAggregateElement(K));
+  if (!El1 || !El2) {
+    ++J;
+    return false;
+  }
+  int I_K = El1->getSExtValue();
+  int J_K = El2->getSExtValue();
+  auto Delta = J_K - I_K;
+  ++K;
+  auto MaxElement = std::max(J_K, -J_K);
+  for (; K < N; ++K) {
+    El1 = dyn_cast<ConstantInt>(IFirst->getAggregateElement(K));
+    El2 = dyn_cast<ConstantInt>(ISecond->getAggregateElement(K));
+    // For all-equal elements not-apply
+    // Finalizer generates more optimal code
+    if (El1->getSExtValue() == I_K) {
+      ++J;
+      return false;
+    }
+    I_K = El1->getSExtValue();
+    J_K = El2->getSExtValue();
+    // If delta is different for element - not apply
+    if (J_K - I_K != Delta) {
+      ++J;
+      return false;
+    }
+    MaxElement = std::max(std::max(J_K, -J_K), MaxElement);
+  }
+  // Need to be sure, that has positive effect
+  if (std::abs(Delta) > MaxElement) {
+    ++J;
+    return false;
+  }
+
+  if (Delta == 0) {
+    I = J;
+    ++J;
+    return false; // equal consts
+  }
+
+  // Apply:
+  LLVM_DEBUG(dbgs() << "Add-pattern apply. Current pair:\n");
+  LLVM_DEBUG((*I)->dump());
+  LLVM_DEBUG((*J)->dump());
+  LLVM_DEBUG(dbgs() << "delta = " << Delta << "\n");
+
+  auto *SplatVal = ConstantInt::get(Ty, Delta, /*isSigned=*/true);
+  // Create constant <delta x N>
+  auto *NewConst =
+      ConstantVector::getSplat(IGCLLVM::getElementCount(N), SplatVal);
+
+  Type *OverloadedTypes[] = {IFirst->getType()};
+  Module *M = (*I)->getParent()->getParent()->getParent();
+  Function *Decl = GenXIntrinsic::getGenXDeclaration(
+      M, GenXIntrinsic::genx_constanti, OverloadedTypes);
+  Instruction *NewInst = CallInst::Create(Decl, NewConst, "pre_consts_add", *J);
+  // Create add i, <delta x n>
+  auto *NewAdd =
+      BinaryOperator::Create(Instruction::Add, (*I), NewInst, "consts_add", *J);
+  (*J)->replaceAllUsesWith(NewAdd);
+  ToRemove.push_back(*J);
+  J = ConstList.erase(J);
+  return true;
+}
+
+/***********************************************************************
+ * checkAddPattern : check pairs of const to add-instruction with
+ * vector of equal const
+ */
+bool genx::checkAddPattern(Function *F, std::vector<CallInst *> &ConstList,
+                           const GenXSubtarget *ST) {
+  // Can't apply
+  if (ConstList.size() <= 1)
+    return false;
+
+  bool Modified = false;
+  std::vector<CallInst *> ToRemove;
+  for (auto I = ConstList.begin();
+       I != ConstList.end() && I + 1 != ConstList.end(); ++I) {
+    for (auto J = I + 1; J != ConstList.end();) {
+      Modified |= checkApplyAddPattern(I, J, ToRemove, ConstList, ST->hasAdd64());
+    }
+  }
+  auto JCurr = ToRemove.end();
+  for (auto J = ToRemove.begin(); J != ToRemove.end(); ++J) {
+    if (JCurr != J) {
+      (*J)->eraseFromParent();
+      JCurr = J;
+    }
   }
   return Modified;
 }
@@ -1036,12 +1166,14 @@ Instruction *ConstantLoader::loadNonSimple(Instruction *Inst) {
         Value *SubV = SubC;
         Result = R.createWrConstRegion(
             Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()),
-            SubV, "constant.split" + Twine(Idx), Inst, Inst->getDebugLoc());
+            SubV, "constant.split.simple" + Twine(Idx), Inst,
+            Inst->getDebugLoc());
       } else {
         Value* SubV = SubLoader.loadNonSimple(Inst);
         Result = R.createWrRegion(
             Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()),
-            SubV, "constant.split" + Twine(Idx), Inst, Inst->getDebugLoc());
+            SubV, "constant.split.complex" + Twine(Idx), Inst,
+            Inst->getDebugLoc());
       }
       if (AddedInstructions)
         AddedInstructions->push_back(Result);
@@ -1341,7 +1473,7 @@ Instruction *ConstantLoader::loadNonPackedIntConst(Instruction *InsertBefore) {
     R.getSubregion(Idx, Size);
     Result = R.createWrRegion(
         Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()), SubV,
-        "constant.split" + Twine(Idx), InsertBefore, DebugLoc());
+        "constant.split.int" + Twine(Idx), InsertBefore, DebugLoc());
     Idx += Size;
   }
   return Result;
@@ -1391,7 +1523,7 @@ Instruction *ConstantLoader::loadBig(Instruction *InsertBefore) {
     R.getSubregion(Idx, Size);
     Result = R.createWrRegion(
         Result ? (Value *)Result : (Value *)UndefValue::get(C->getType()), SubV,
-        "constant.split" + Twine(Idx), InsertBefore, DebugLoc());
+        "constant.split.ill" + Twine(Idx), InsertBefore, DebugLoc());
     if (AddedInstructions)
       AddedInstructions->push_back(Result);
     Idx += Size;
