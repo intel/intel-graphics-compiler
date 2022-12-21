@@ -21,6 +21,8 @@ SPDX-License-Identifier: MIT
 #include "Passes/MergeScalars.hpp"
 #include "Passes/SendFusion.hpp"
 
+#include "llvm/Support/Allocator.h"
+
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -43,15 +45,12 @@ void Optimizer::LVN() {
   // redundancies that got introduced mainly by HW
   // conformity or due to VISA lowering.
   int numInstsRemoved = 0;
-  Mem_Manager mem(1024);
   PointsToAnalysis p(kernel.Declares, kernel.fg.getNumBB());
   p.doPointsToAnalysis(kernel.fg);
   for (auto bb : kernel.fg) {
-    ::LVN lvn(fg, bb, mem, *fg.builder, p);
+    ::LVN lvn(fg, bb, *fg.builder, p);
     lvn.doLVN();
-
     numInstsRemoved += lvn.getNumInstsRemoved();
-
     numInstsRemoved += ::LVN::removeRedundantSamplerMovs(kernel, bb);
   }
 
@@ -1946,7 +1945,7 @@ void Optimizer::accSubPostSchedule() {
   kernel.fg.localDataFlowAnalysis();
 
   if (builder.getOption(vISA_localizationForAccSub)) {
-    HWConformity hwConf(builder, kernel, mem);
+    HWConformity hwConf(builder, kernel);
     for (auto bb : kernel.fg) {
       hwConf.localizeForAcc(bb);
     }
@@ -1973,7 +1972,7 @@ void Optimizer::accSubBeforeRA() {
   kernel.fg.localDataFlowAnalysis();
 
   if (builder.getOption(vISA_localizationForAccSub)) {
-    HWConformity hwConf(builder, kernel, mem);
+    HWConformity hwConf(builder, kernel);
     for (auto bb : kernel.fg) {
       hwConf.localizeForAcc(bb);
     }
@@ -6426,16 +6425,15 @@ void Optimizer::cleanMessageHeader() {
   size_t ic_before = 0;
   size_t ic_after = 0;
 
-  std::stack<MSGTable *> toDelete;
-
+  llvm::SpecificBumpPtrAllocator<MSGTable> MSGTableAlloc;
   bool isRedundantBarrier = false;
-  G4_SrcRegRegion *barrierSendSrc0 = NULL;
+  G4_SrcRegRegion *barrierSendSrc0 = nullptr;
 
   for (G4_BB *bb : fg) {
-
     msgList.clear();
-    MSGTable *newItem = (MSGTable *)mem.alloc(sizeof(MSGTable));
-    toDelete.push(newItem);
+    auto MSGTableMem = MSGTableAlloc.Allocate();
+    MSGTable *newItem = new (MSGTableMem) MSGTable();
+    // FIXME: memset is suspicious here given MSGTable is not POD.
     memset(newItem, 0, sizeof(MSGTable));
     newItem->first = HEADER_UNDEF;
 
@@ -6445,8 +6443,8 @@ void Optimizer::cleanMessageHeader() {
     ic_before += bb->size();
 
     DEFA0 myA0;
-    myA0.curr = NULL;
-    myA0.pred = NULL;
+    myA0.curr = nullptr;
+    myA0.pred = nullptr;
     myA0.isA0Redef = false;
 
     for (; ii != iend; ii++) {
@@ -6463,8 +6461,8 @@ void Optimizer::cleanMessageHeader() {
 
         addEntryToMessageTable(inst, msgList, bb, ii, myA0);
         if (inst->isSend()) {
-          MSGTable *item = (MSGTable *)mem.alloc(sizeof(MSGTable));
-          toDelete.push(item);
+          auto MSGTableMem = MSGTableAlloc.Allocate();
+          MSGTable *item = new (MSGTableMem) MSGTable();
           memset(item, 0, sizeof(MSGTable));
           item->first = HEADER_UNDEF;
           msgList.push_front(item);
@@ -6491,14 +6489,6 @@ void Optimizer::cleanMessageHeader() {
 
   if (isRedundantBarrier) {
     hoistBarrierHeaderToTop(barrierSendSrc0);
-  }
-
-  //
-  // Destroy STL iterators allocated using mem manager
-  //
-  while (toDelete.size() > 0) {
-    toDelete.top()->~MSGTable();
-    toDelete.pop();
   }
   msgList.clear();
 }
@@ -7419,10 +7409,7 @@ void Optimizer::normalizeRegion() {
 void Optimizer::countGRFUsage() {
   unsigned int maxGRFNum = kernel.getNumRegTotal();
   int count = 0;
-  bool *GRFUse = (bool *)builder.mem.alloc(sizeof(bool) * maxGRFNum);
-  for (unsigned int i = 0; i < maxGRFNum; ++i) {
-    GRFUse[i] = false;
-  }
+  std::vector<bool> GRFUse(maxGRFNum, false);
   for (auto dcl : kernel.Declares) {
     if (dcl->getRegVar()->isGreg()) {
       int GRFStart = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
@@ -7434,12 +7421,9 @@ void Optimizer::countGRFUsage() {
       }
     }
   }
-
-  for (unsigned int i = 0; i < maxGRFNum; ++i) {
-    if (GRFUse[i]) {
+  for (unsigned int i = 0; i < maxGRFNum; ++i)
+    if (GRFUse[i])
       count++;
-    }
-  }
   fg.builder->getJitInfo()->stats.numGRFUsed = count;
   fg.builder->criticalMsgStream()
       << "\tKernel " << kernel.getName() << " : " << count << " registers\n";
@@ -9332,8 +9316,6 @@ void Optimizer::renameRegister() {
         if (dst->getRegAccess() != Direct) {
           newSrcOpnd->asSrcRegRegion()->setImmAddrOff(dst->getAddrImm());
         }
-
-        useInst->getSrc(0)->~G4_Operand();
         useInst->setSrc(newSrcOpnd, 0);
 
         // Maintain def-use for this change:
@@ -13232,7 +13214,7 @@ void Optimizer::expandMulPostSchedule() {
       bb->insertBefore(it, newMul);
       inst->copyDefsTo(newMul, false);
       // change the src1 of MUL from :d to :w
-      HWConformity hwConf(builder, kernel, mem);
+      HWConformity hwConf(builder, kernel);
       hwConf.fixMulSrc1(std::prev(it), bb);
 
       // 2, create a mach/macl inst
@@ -13328,7 +13310,7 @@ void Optimizer::expandMadwPostSchedule() {
       auto startIter = bb->insertBefore(it, newMul);
       inst->copyDefsTo(newMul, false);
       // change the src1 of MUL from :d to :w
-      HWConformity hwConf(builder, kernel, mem);
+      HWConformity hwConf(builder, kernel);
       hwConf.fixMulSrc1(startIter, bb);
 
       // 2, create a mach/macl inst

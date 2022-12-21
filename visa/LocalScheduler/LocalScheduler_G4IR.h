@@ -18,6 +18,8 @@ SPDX-License-Identifier: MIT
 #include "Dependencies_G4IR.h"
 #include "LatencyTable.h"
 
+#include "llvm/Support/Allocator.h"
+
 #include <list>
 #include <set>
 #include <string>
@@ -60,6 +62,7 @@ public:
 
 typedef std_arena_based_allocator<Edge> Edge_Allocator;
 typedef std::vector<Edge> EdgeVector;
+using NodeAlloc = llvm::SpecificBumpPtrAllocator<Node>;
 
 class Node {
   // Unique ID of the node.
@@ -114,7 +117,9 @@ public:
   Node(unsigned, G4_INST *, Edge_Allocator &depEdgeAllocator,
        const LatencyTable &LT);
   ~Node() {}
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
+  void *operator new(size_t sz, NodeAlloc &Allocator) {
+    return Allocator.Allocate(sz / sizeof(Node));
+  }
   const std::list<G4_INST *> *getInstructions() const { return &instVec; }
   DepType isBarrier() const { return barrier; }
   void MarkAsUnresolvedIndirAddressBarrier() {
@@ -204,7 +209,7 @@ typedef BUCKET_VECTOR::iterator BUCKET_VECTOR_ITER;
 // There is a single head node per bucket.
 struct BucketHeadNode {
   // The list of live nodes hanging from this head node.
-  BUCKET_VECTOR *bucketVec;
+  BUCKET_VECTOR bucketVec;
   // This is for future use. We can use it as an aggregate mask to avoid
   // searching through the list.
   Mask mask;
@@ -226,7 +231,9 @@ struct BucketDescr {
 
 class DDD {
   std::vector<Node *> allNodes;
-  Mem_Manager &mem;
+  // Used to allocate BucketNode, which is POD.
+  // TODO: investigate whether dynamic allocation is actually necessary.
+  Mem_Manager mem;
   Edge_Allocator depEdgeAllocator;
   int HWthreadsPerEU;
   bool useMTLatencies;
@@ -254,7 +261,8 @@ class DDD {
 public:
   typedef std::pair<Node *, Node *> instrPair_t;
   typedef std::vector<instrPair_t> instrPairVec_t;
-  NODE_LIST Nodes, Roots;
+  NODE_LIST Roots;
+  NodeAlloc NodeAllocator;
   void moveDeps(Node *fromNode, Node *toNode);
   void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
 
@@ -270,19 +278,8 @@ private:
                                const G4_INST &nextInst) const;
 
 public:
-  DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k,
-      PointsToAnalysis &p);
-  ~DDD() {
-    if (Nodes.size()) {
-      for (NODE_LIST_ITER nIter = Nodes.begin(); nIter != Nodes.end();
-           nIter++) {
-        Node *n = (*nIter);
-        n->~Node();
-      }
-      Nodes.clear();
-    }
-  }
-  void InsertNode(Node *node) { Nodes.push_back(node); }
+  DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p);
+  ~DDD() = default;
   void dumpNodes(G4_BB *bb);
   void dumpDagDot(G4_BB *bb);
   uint32_t listScheduleForSuppression(G4_BB_Schedule *schedule);
@@ -309,7 +306,6 @@ public:
 };
 
 class G4_BB_Schedule {
-  Mem_Manager &mem;
   G4_BB *bb;
   DDD *ddd;
   G4_Kernel *kernel;
@@ -321,8 +317,8 @@ public:
   unsigned sendStallCycle = 0;
   unsigned sequentialCycle = 0;
 
-  G4_BB_Schedule(G4_Kernel *kernel, Mem_Manager &m, G4_BB *bb,
-                 const LatencyTable &LT, PointsToAnalysis &p);
+  G4_BB_Schedule(G4_Kernel *kernel, G4_BB *bb, const LatencyTable &LT,
+                 PointsToAnalysis &p);
   // Dumps the schedule
   void emit(std::ostream &);
   void dumpSchedule(G4_BB *bb);
@@ -347,26 +343,24 @@ public:
 
 class preRA_Scheduler {
 public:
-  preRA_Scheduler(G4_Kernel &k, Mem_Manager &m, RPE *rpe);
+  preRA_Scheduler(G4_Kernel &k, RPE *rpe);
   ~preRA_Scheduler();
   bool run();
 
 private:
   G4_Kernel &kernel;
-  Mem_Manager &mem;
   RPE *rpe;
   Options *m_options;
 };
 
 class preRA_ACC_Scheduler {
 public:
-  preRA_ACC_Scheduler(G4_Kernel &k, Mem_Manager &m);
+  preRA_ACC_Scheduler(G4_Kernel &k);
   ~preRA_ACC_Scheduler();
   bool run();
 
 private:
   G4_Kernel &kernel;
-  Mem_Manager &mem;
   RPE *rpe;
   Options *m_options;
 };
@@ -398,13 +392,12 @@ private:
 
 class preRA_RegSharing {
 public:
-  preRA_RegSharing(G4_Kernel &k, Mem_Manager &m, RPE *rpe);
+  preRA_RegSharing(G4_Kernel &k, RPE *rpe);
   ~preRA_RegSharing();
   bool run();
 
 private:
   G4_Kernel &kernel;
-  Mem_Manager &mem;
   RPE *rpe;
 };
 // Restrictions of candidate for 2xDP:

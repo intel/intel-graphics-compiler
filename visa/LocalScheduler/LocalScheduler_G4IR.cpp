@@ -69,7 +69,6 @@ void LocalScheduler::localScheduling() {
       continue;
     }
 
-    Mem_Manager bbMem(4096);
     unsigned schedulerWindowSize =
         m_options->getuInt32Option(vISA_SchedulerWindowSize);
     if (schedulerWindowSize > 0 && instCountBefore > schedulerWindowSize) {
@@ -87,7 +86,7 @@ void LocalScheduler::localScheduling() {
           G4_BB *tempBB = fg.createNewBB(false);
           sections.push_back(tempBB);
           tempBB->splice(tempBB->begin(), (*ib), (*ib)->begin(), inst_it);
-          G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, LT, p);
+          G4_BB_Schedule schedule(fg.getKernel(), tempBB, LT, p);
           sequentialCycles += schedule.sequentialCycle;
           sendStallCycles += schedule.sendStallCycle;
           count = 0;
@@ -109,7 +108,7 @@ void LocalScheduler::localScheduling() {
       bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
       totalCycles += sequentialCycles;
     } else {
-      G4_BB_Schedule schedule(fg.getKernel(), bbMem, *ib, LT, p);
+      G4_BB_Schedule schedule(fg.getKernel(), *ib, LT, p);
       bbInfo[i].id = (*ib)->getId();
       bbInfo[i].staticCycle = schedule.sequentialCycle;
       bbInfo[i].sendStallCycle = schedule.sendStallCycle;
@@ -198,14 +197,14 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb) {
 //      - dumps the DAG (optional)
 //      - creates a new instruction listing within a BBB
 //
-G4_BB_Schedule::G4_BB_Schedule(G4_Kernel *k, Mem_Manager &m, G4_BB *block,
+G4_BB_Schedule::G4_BB_Schedule(G4_Kernel *k, G4_BB *block,
                                const LatencyTable &LT, PointsToAnalysis &p)
-    : mem(m), bb(block), kernel(k), pointsToAnalysis(p) {
+    : bb(block), kernel(k), pointsToAnalysis(p) {
   // we use local id in the scheduler for determining two instructions' original
   // ordering
   bb->resetLocalIds();
 
-  DDD ddd(mem, bb, LT, k, p);
+  DDD ddd(bb, LT, k, p);
   // Generate pairs of TypedWrites
   bool doMessageFuse =
       (k->fg.builder->fuseTypedWrites() && k->getSimdSize() >= g4::SIMD16) ||
@@ -592,25 +591,22 @@ class LiveBuckets {
 public:
   class BN_iterator {
   public:
-    const LiveBuckets *LB;
+    LiveBuckets *LB;
     BUCKET_VECTOR_ITER node_it;
     int bucket;
     bool iterateAll;
 
-    BN_iterator(const LiveBuckets *LB1, BUCKET_VECTOR_ITER It, int Bucket,
-                bool All)
-        : LB(LB1), node_it(It), bucket(Bucket), iterateAll(All) {
-      ;
-    }
+    BN_iterator(LiveBuckets *LB1, BUCKET_VECTOR_ITER It, int Bucket, bool All)
+        : LB(LB1), node_it(It), bucket(Bucket), iterateAll(All) {}
 
     void skipEmptyBuckets() {
       // If at the end of the node vector, move to next bucket
       // Keep going until a non-empty vector is found
       while (bucket < LB->numOfBuckets &&
-             node_it == LB->nodeBucketsArray[bucket].bucketVec->end()) {
+             node_it == LB->nodeBucketsArray[bucket].bucketVec.end()) {
         bucket++;
         if (bucket < LB->numOfBuckets) {
-          node_it = LB->nodeBucketsArray[bucket].bucketVec->begin();
+          node_it = LB->nodeBucketsArray[bucket].bucketVec.begin();
         }
       }
     }
@@ -621,7 +617,7 @@ public:
     BN_iterator &operator++() {
       // Mode 1
       if (iterateAll == LiveBuckets::ALL_BUCKETS) {
-        auto node_ite = LB->nodeBucketsArray[bucket].bucketVec->end();
+        auto node_ite = LB->nodeBucketsArray[bucket].bucketVec.end();
         // Increment node vector iterator
         if (node_it != node_ite) {
           ++node_it;
@@ -633,7 +629,7 @@ public:
         ++node_it;
       }
       assert(!iterateAll || bucket == LB->numOfBuckets ||
-             node_it != LB->nodeBucketsArray[bucket].bucketVec->end());
+             node_it != LB->nodeBucketsArray[bucket].bucketVec.end());
       return *this;
     }
     bool operator==(const BN_iterator &it2) {
@@ -647,7 +643,7 @@ public:
       return (!(*this == it2));
     }
     BucketNode *operator*() {
-      assert(node_it != LB->nodeBucketsArray[bucket].bucketVec->end());
+      assert(node_it != LB->nodeBucketsArray[bucket].bucketVec.end());
       return *node_it;
     }
   };
@@ -657,54 +653,39 @@ public:
     numOfBuckets = TOTAL_BUCKETS;
     ddd = Ddd;
     nodeBucketsArray.resize(numOfBuckets);
-
-    // Initialize a vector for each bucket
-    for (int bucket_i = 0; bucket_i != (int)numOfBuckets; ++bucket_i) {
-      void *allocedMem = ddd->get_mem()->alloc(sizeof(BUCKET_VECTOR));
-      nodeBucketsArray[bucket_i].bucketVec = new (allocedMem) BUCKET_VECTOR();
-    }
   }
 
-  ~LiveBuckets() {
-    for (int i = 0; i < numOfBuckets; i++) {
-      BucketHeadNode &BHN = nodeBucketsArray[i];
-      if (BHN.bucketVec) {
-        BHN.bucketVec->~BUCKET_VECTOR();
-      }
-    }
-  }
+  ~LiveBuckets() = default;
 
   // Mode 1: Iterate across nodes in BUCKET
-  BN_iterator begin(int bucket) const {
-    return BN_iterator(this, nodeBucketsArray[bucket].bucketVec->begin(),
-                       bucket, !ALL_BUCKETS);
+  BN_iterator begin(int bucket) {
+    return BN_iterator(this, nodeBucketsArray[bucket].bucketVec.begin(), bucket,
+                       !ALL_BUCKETS);
   }
 
   // Mode 1:
-  BN_iterator end(int bucket) const {
-    return BN_iterator(this, nodeBucketsArray[bucket].bucketVec->end(), bucket,
+  BN_iterator end(int bucket) {
+    return BN_iterator(this, nodeBucketsArray[bucket].bucketVec.end(), bucket,
                        !ALL_BUCKETS);
   }
 
   // Mode 2: Iterate across all nodes and all buckets
-  BN_iterator begin() const {
-    auto it =
-        BN_iterator(this, nodeBucketsArray[firstBucket].bucketVec->begin(),
-                    firstBucket, ALL_BUCKETS);
+  BN_iterator begin() {
+    auto it = BN_iterator(this, nodeBucketsArray[firstBucket].bucketVec.begin(),
+                          firstBucket, ALL_BUCKETS);
     it.skipEmptyBuckets();
     return it;
   }
 
   // Mode 2:
-  BN_iterator end() const {
-    return BN_iterator(this,
-                       nodeBucketsArray[numOfBuckets - 1].bucketVec->end(),
+  BN_iterator end() {
+    return BN_iterator(this, nodeBucketsArray[numOfBuckets - 1].bucketVec.end(),
                        numOfBuckets, ALL_BUCKETS);
   }
 
   void clearLive(int bucket) {
     BucketHeadNode &BHNode = nodeBucketsArray[bucket];
-    BHNode.bucketVec->clear();
+    BHNode.bucketVec.clear();
   }
 
   void clearAllLive() {
@@ -715,14 +696,13 @@ public:
 
   bool hasLive(const Mask &mask, int bucket) {
     BucketHeadNode &BHNode = nodeBucketsArray[bucket];
-    auto BV = BHNode.bucketVec;
-    assert(BV != nullptr && "vectors not initialized?");
-    return (!BV->empty());
+    auto &BV = BHNode.bucketVec;
+    return !BV.empty();
   }
 
   void kill(Mask mask, BN_iterator &bn_it) {
     BucketHeadNode &BHNode = nodeBucketsArray[bn_it.bucket];
-    BUCKET_VECTOR &vec = *BHNode.bucketVec;
+    BUCKET_VECTOR &vec = BHNode.bucketVec;
     BUCKET_VECTOR_ITER &node_it = bn_it.node_it;
     if (*node_it == vec.back()) {
       vec.pop_back();
@@ -738,8 +718,7 @@ public:
   void add(Node *node, const BucketDescr &BD) {
     BucketHeadNode &BHNode = nodeBucketsArray[BD.bucket];
     // Append the bucket node to the vector hanging from the header
-    assert(BHNode.bucketVec != nullptr);
-    BUCKET_VECTOR &nodeVec = *(BHNode.bucketVec);
+    BUCKET_VECTOR &nodeVec = BHNode.bucketVec;
     void *allocedMem = ddd->get_mem()->alloc(sizeof(BucketNode));
     BucketNode *newNode =
         new (allocedMem) BucketNode(node, BD.mask, BD.operand);
@@ -1308,9 +1287,8 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
 // dependencies with all insts in live set. After analyzing
 // dependencies and creating necessary edges, current inst
 // is inserted in all buckets it touches.
-DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k,
-         PointsToAnalysis &p)
-    : mem(m), LT(lt), kernel(k), pointsToAnalysis(p) {
+DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
+    : mem(4096), LT(lt), kernel(k), pointsToAnalysis(p) {
   Node *lastBarrier = nullptr;
   HWthreadsPerEU = k->getNumThreads();
   useMTLatencies = getBuilder()->useMultiThreadLatency();
@@ -1346,7 +1324,7 @@ DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k,
        ++iInst, nodeId--) {
     Node *node = nullptr;
     // If we have a pair of instructions to be mapped on a single DAG node:
-    node = new (mem) Node(nodeId, *iInst, depEdgeAllocator, LT);
+    node = new (NodeAllocator) Node(nodeId, *iInst, depEdgeAllocator, LT);
     allNodes.push_back(node);
     G4_INST *curInst = node->getInstructions()->front();
     BDvec.clear();
@@ -1541,17 +1519,14 @@ DDD::DDD(Mem_Manager &m, G4_BB *bb, const LatencyTable &lt, G4_Kernel *k,
     for (const BucketDescr &BD : BDvec) {
       LB.add(node, BD);
     }
-
-    // Insert this node into the graph.
-    InsertNode(node);
   }
 
-  if (Nodes.size()) {
+  if (!bb->empty()) {
     isThreeSouceBlock =
-        ((float)threeSrcInstNUm / Nodes.size()) > THREE_SOURCE_BLOCK_HERISTIC;
+        ((float)threeSrcInstNUm / bb->size()) > THREE_SOURCE_BLOCK_HERISTIC;
     is_2XFP_Block =
         (FP_InstNum >= FP_MIN_INST_NUM) &&
-        (((float)FP_InstNum / Nodes.size()) > THREE_SOURCE_BLOCK_HERISTIC) &&
+        (((float)FP_InstNum / bb->size()) > THREE_SOURCE_BLOCK_HERISTIC) &&
         (((float)sendInstNum / FP_InstNum) < FP_BLOCK_SEND_HERISTIC);
   }
 }
@@ -2831,7 +2806,7 @@ void DDD::DumpDotFile(G4_BB *bb) {
   ofile << "\tsize = \"80, 100\";\n";
   ofile << "\n"
         << "\t// Nodes\n";
-  std::list<Node *>::iterator iNode(Nodes.begin()), endNodes(Nodes.end());
+  auto iNode(allNodes.begin()), endNodes(allNodes.end());
   for (; iNode != endNodes; ++iNode) {
     for (G4_INST *inst : *(*iNode)->getInstructions()) {
 
@@ -2872,7 +2847,7 @@ void DDD::DumpDotFile(G4_BB *bb) {
   ofile << "\n"
         << "\t// Edges\n";
 
-  for (iNode = Nodes.begin(); iNode != endNodes; ++iNode) {
+  for (iNode = allNodes.begin(); iNode != endNodes; ++iNode) {
     Node *node = *iNode;
     EdgeVector::iterator iEdge(node->succs.begin()),
         endEdges(node->succs.end());

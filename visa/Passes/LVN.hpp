@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include "G4_Verifier.hpp"
 #include "Optimizer.h"
 
+#include "llvm/Support/Allocator.h"
+
 typedef uint64_t Value_Hash;
 namespace vISA {
 class LVNItemInfo;
@@ -33,6 +35,8 @@ public:
     return false;
   }
 }; // Value
+
+using LVNAlloc = llvm::SpecificBumpPtrAllocator<LVNItemInfo>;
 
 class LVNItemInfo {
 public:
@@ -57,6 +61,11 @@ public:
   // of this class in 2 buckets - dst dcl id, src0 dcl id. Doing so
   // helps to easily invalidate values due to redefs.
   bool active = false;
+
+  void *operator new(size_t sz, LVNAlloc &Allocator) {
+    return Allocator.Allocate(sz / sizeof(LVNItemInfo));
+  }
+
 }; // LVNItemInfo
 } // namespace vISA
 
@@ -96,12 +105,11 @@ private:
   FlowGraph &fg;
   LvnTable lvnTable;
   ActiveDefMMap activeDefs;
-  vISA::Mem_Manager &mem;
+  LVNAlloc LVNAllocator;
   IR_Builder &builder;
   unsigned int numInstsRemoved;
   bool duTablePopulated;
   PointsToAnalysis &p2a;
-  std::vector<LVNItemInfo *> toDtor;
   std::vector<std::pair<G4_Declare *, LVNItemInfo *>> perInstValueCache;
 
   static const int MaxLVNDistance = 250;
@@ -140,22 +148,21 @@ private:
   LVNItemInfo *getOpndValue(G4_Operand *opnd, bool create = true);
   void invalidateOldDstValue(G4_INST *);
   LVNItemInfo *createLVNItemInfo() {
-    auto instance = new (mem.alloc(sizeof(LVNItemInfo))) LVNItemInfo;
-    toDtor.push_back(instance);
+    auto instance = new (LVNAllocator) LVNItemInfo;
     return instance;
   }
   void invalidate();
 
 public:
-  LVN(FlowGraph &flowGraph, G4_BB *curBB, vISA::Mem_Manager &mmgr,
-      IR_Builder &irBuilder, PointsToAnalysis &p)
-      : fg(flowGraph), mem(mmgr), builder(irBuilder), p2a(p) {
+  LVN(FlowGraph &flowGraph, G4_BB *curBB, IR_Builder &irBuilder,
+      PointsToAnalysis &p)
+      : fg(flowGraph), builder(irBuilder), p2a(p) {
     bb = curBB;
     numInstsRemoved = 0;
     duTablePopulated = false;
   }
 
-  ~LVN();
+  ~LVN() = default;
 
   void doLVN();
   unsigned int getNumInstsRemoved() { return numInstsRemoved; }

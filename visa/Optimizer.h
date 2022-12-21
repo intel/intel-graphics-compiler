@@ -67,7 +67,7 @@ public:
   void insertHeaderMovInst(G4_INST *, IR_Builder &, G4_BB *);
   void reusePreviousHeader(G4_INST *, G4_INST *, G4_INST *, IR_Builder &);
 
-  ~MSGTable(){};
+  ~MSGTable() = default;
 
 }; // to remove redundant message headers
 } // namespace vISA
@@ -133,7 +133,7 @@ class Optimizer {
 
   void fixEndIfWhileLabels();
   void mergeScalarInst();
-  void HWConformityChk() { ::HWConformityChk(builder, kernel, mem); }
+  void HWConformityChk() { ::HWConformityChk(builder, kernel); }
   void removeRedundMov() { fg.removeRedundMov(); }
   void removeEmptyBlocks() { fg.removeEmptyBlocks(); }
   void reassignBlockIDs() { fg.reassignBlockIDs(); }
@@ -143,16 +143,16 @@ class Optimizer {
     kernel.fg.resetLocalDataFlowData();
     kernel.fg.localDataFlowAnalysis();
 
-    preRA_ACC_Scheduler Sched(kernel, mem);
+    preRA_ACC_Scheduler Sched(kernel);
     Sched.run();
   }
 
   void preRA_Schedule() {
     if (kernel.useRegSharingHeuristics()) {
-      preRA_RegSharing Sched(kernel, mem, /*rpe*/ nullptr);
+      preRA_RegSharing Sched(kernel, /*rpe*/ nullptr);
       Sched.run();
     } else {
-      preRA_Scheduler Sched(kernel, mem, /*rpe*/ nullptr);
+      preRA_Scheduler Sched(kernel, /*rpe*/ nullptr);
       Sched.run();
     }
   }

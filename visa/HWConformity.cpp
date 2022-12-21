@@ -6893,8 +6893,8 @@ bool HWConformity::fixOddAlignSrc1Region(INST_LIST_ITER i, G4_BB *bb) {
 //
 // single entry point for HW conformity checks
 //
-void HWConformityChk(IR_Builder &builder, G4_Kernel &kernel, Mem_Manager &mem) {
-  HWConformity conformity(builder, kernel, mem);
+void HWConformityChk(IR_Builder &builder, G4_Kernel &kernel) {
+  HWConformity conformity(builder, kernel);
   conformity.chkHWConformity();
 }
 

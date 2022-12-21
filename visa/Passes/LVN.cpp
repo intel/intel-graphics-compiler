@@ -1731,9 +1731,3 @@ unsigned int LVN::removeRedundantSamplerMovs(G4_Kernel &kernel, G4_BB *bb) {
 
   return numInstsRemoved;
 }
-
-LVN::~LVN() {
-  for (auto d : toDtor) {
-    d->~LVNItemInfo();
-  }
-}

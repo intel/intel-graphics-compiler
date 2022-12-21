@@ -11,6 +11,8 @@ SPDX-License-Identifier: MIT
 #include "LocalScheduler_G4IR.h"
 #include "Passes/AccSubstitution.hpp"
 
+#include "llvm/Support/Allocator.h"
+
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -31,6 +33,8 @@ namespace {
 // Forward declaration.
 class preNode;
 struct RegisterPressure;
+
+using preNodeAlloc = llvm::SpecificBumpPtrAllocator<preNode>;
 
 class preEdge {
 public:
@@ -79,9 +83,11 @@ public:
   // A special node without attaching to an instruction.
   preNode() { Barrier = checkBarrier(Inst); }
 
-  ~preNode();
+  ~preNode() = default;
 
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
+  void *operator new(size_t sz, preNodeAlloc &Allocator) {
+    return Allocator.Allocate(sz / sizeof(preNode));
+  }
 
   DepType getBarrier() const { return Barrier; }
   void setBarrier(DepType d) { Barrier = d; }
@@ -188,7 +194,6 @@ private:
 
 // The dependency graph for a basic block.
 class preDDD {
-  Mem_Manager &mem;
   G4_Kernel &kernel;
 
   // The basic block to be scheduled.
@@ -198,6 +203,7 @@ class preDDD {
   bool IsDagBuilt = false;
 
   // All nodes to be built and scheduled.
+  preNodeAlloc preNodeAllocator;
   std::vector<preNode *> SNodes;
 
   // Special node for the schedule region.
@@ -211,13 +217,11 @@ class preDDD {
   bool BTIIsRestrict;
 
 public:
-  preDDD(Mem_Manager &m, G4_Kernel &kernel, G4_BB *BB)
-      : mem(m), kernel(kernel), m_BB(BB) {
+  preDDD(G4_Kernel &kernel, G4_BB *BB) : kernel(kernel), m_BB(BB) {
     BTIIsRestrict = getOptions()->getOption(vISA_ReorderDPSendToDifferentBti);
   }
-  ~preDDD();
+  ~preDDD() = default;
 
-  Mem_Manager &getMem() const { return mem; }
   G4_Kernel &getKernel() const { return kernel; }
   G4_BB *getBB() const { return m_BB; }
   Options *getOptions() const { return kernel.getOptions(); }
@@ -306,10 +310,8 @@ struct RegisterPressure {
   LivenessAnalysis *liveness = nullptr;
   RPE *rpe = nullptr;
   G4_Kernel &kernel;
-  Mem_Manager &mem;
 
-  RegisterPressure(G4_Kernel &kernel, Mem_Manager &mem, RPE *rpe)
-      : rpe(rpe), kernel(kernel), mem(mem) {
+  RegisterPressure(G4_Kernel &kernel, RPE *rpe) : rpe(rpe), kernel(kernel) {
     // Initialize rpe if not available.
     if (rpe == nullptr) {
       init();
@@ -470,7 +472,6 @@ public:
     OrigInstList.clear();
   }
 
-  Mem_Manager &getMem() const { return ddd.getMem(); }
   G4_Kernel &getKernel() const { return kernel; }
   G4_BB *getBB() const { return ddd.getBB(); }
 
@@ -548,8 +549,8 @@ static unsigned getLatencyHidingThreshold(G4_Kernel &kernel, unsigned NumGrfs) {
   return unsigned(RPThreshold * (std::max(NumGrfs, 128u) - 48u) / 80u);
 }
 
-preRA_Scheduler::preRA_Scheduler(G4_Kernel &k, Mem_Manager &m, RPE *rpe)
-    : kernel(k), mem(m), rpe(rpe), m_options(kernel.getOptions()) {}
+preRA_Scheduler::preRA_Scheduler(G4_Kernel &k, RPE *rpe)
+    : kernel(k), rpe(rpe), m_options(kernel.getOptions()) {}
 
 preRA_Scheduler::~preRA_Scheduler() {}
 
@@ -565,7 +566,7 @@ bool preRA_Scheduler::run() {
 
   LatencyTable LT(kernel.fg.builder);
   SchedConfig config(SchedCtrl);
-  RegisterPressure rp(kernel, mem, rpe);
+  RegisterPressure rp(kernel, rpe);
   // skip extreme test cases that scheduling does not good
   // if (kernel.fg.getNumBB() >= 10000 && rp.rpe->getMaxRP() >= 800)
   //   return false;
@@ -599,7 +600,7 @@ bool preRA_Scheduler::run() {
     }
 
     SCHED_DUMP(rp.dump(bb, "Before scheduling, "));
-    preDDD ddd(mem, kernel, bb);
+    preDDD ddd(kernel, bb);
     BB_Scheduler S(kernel, ddd, rp, config, LT);
 
     Changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
@@ -633,8 +634,8 @@ GRFMode::GRFMode(TARGET_PLATFORM platform) {
   currentMode = 0;
 }
 
-preRA_RegSharing::preRA_RegSharing(G4_Kernel &k, Mem_Manager &m, RPE *rpe)
-    : kernel(k), mem(m), rpe(rpe) {}
+preRA_RegSharing::preRA_RegSharing(G4_Kernel &k, RPE *rpe)
+    : kernel(k), rpe(rpe) {}
 
 preRA_RegSharing::~preRA_RegSharing() {}
 
@@ -663,7 +664,7 @@ bool preRA_RegSharing::run() {
   SchedConfig config(SchedCtrl);
 
   GRFMode GrfMode(kernel.getPlatform());
-  RegisterPressure rp(kernel, mem, rpe);
+  RegisterPressure rp(kernel, rpe);
 
   std::unordered_map<G4_BB *, unsigned int> rpBB;
   unsigned KernelPressure = 0;
@@ -730,7 +731,7 @@ bool preRA_RegSharing::run() {
     }
 
     SCHED_DUMP(rp.dump(bb, "Before scheduling, "));
-    preDDD ddd(mem, kernel, bb);
+    preDDD ddd(kernel, bb);
     BB_Scheduler S(kernel, ddd, rp, config, LT);
 
     changed |= S.scheduleBlockForPressure(MaxPressure, Threshold);
@@ -1961,8 +1962,6 @@ bool BB_Scheduler::commitIfBeneficial(unsigned &MaxRPE, bool IsTopDown,
 }
 
 // Implementation of preNode.
-preNode::~preNode() {}
-
 DepType preNode::checkBarrier(G4_INST *Inst) {
   // Check if there is an indirect operand in this instruction.
   auto hasIndirectOpnd = [=]() {
@@ -2012,11 +2011,6 @@ void preNode::print(std::ostream &os) const {
 void preNode::dump() const { print(std::cerr); }
 
 // Implementation of preDDD.
-preDDD::~preDDD() {
-  for (auto X : SNodes) {
-    X->~preNode();
-  }
-}
 
 // Build the data dependency bottom up with two simple
 // special nodes.
@@ -2031,7 +2025,7 @@ void preDDD::buildGraph() {
 
   auto I = m_BB->rbegin(), E = m_BB->rend();
   for (unsigned i = 0; I != E; ++I) {
-    preNode *N = new (mem) preNode(*I, i++);
+    preNode *N = new (preNodeAllocator) preNode(*I, i++);
     SNodes.push_back(N);
     addNodeToGraph(N);
   }
@@ -2646,7 +2640,6 @@ class BB_ACC_Scheduler {
 public:
   BB_ACC_Scheduler(G4_Kernel &kernel, preDDD &ddd) : kernel(kernel), ddd(ddd) {}
 
-  Mem_Manager &getMem() const { return ddd.getMem(); }
   G4_Kernel &getKernel() const { return kernel; }
   G4_BB *getBB() const { return ddd.getBB(); }
 
@@ -2726,8 +2719,8 @@ bool BB_ACC_Scheduler::verifyScheduling() {
   return true;
 }
 
-preRA_ACC_Scheduler::preRA_ACC_Scheduler(G4_Kernel &k, Mem_Manager &m)
-    : kernel(k), mem(m), m_options(kernel.getOptions()) {}
+preRA_ACC_Scheduler::preRA_ACC_Scheduler(G4_Kernel &k)
+    : kernel(k), m_options(kernel.getOptions()) {}
 
 preRA_ACC_Scheduler::~preRA_ACC_Scheduler() {}
 
@@ -2740,7 +2733,7 @@ bool preRA_ACC_Scheduler::run() {
       continue;
     }
 
-    preDDD ddd(mem, kernel, bb);
+    preDDD ddd(kernel, bb);
     SchedConfig config(0);
     BB_ACC_Scheduler S(kernel, ddd);
 
@@ -2888,7 +2881,7 @@ void preDDD::buildGraphForACC() {
 
   auto I = m_BB->rbegin(), E = m_BB->rend();
   for (unsigned i = 0; I != E; ++I) {
-    preNode *N = new (mem) preNode(*I, i++);
+    preNode *N = new (preNodeAllocator) preNode(*I, i++);
     SNodes.push_back(N);
     if (m_BB->isLatencySched() && (*I)->isSend()) {
       N->setBarrier(DepType::SEND_BARRIER);

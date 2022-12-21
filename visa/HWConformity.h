@@ -35,7 +35,6 @@ class PointsToAnalysis;
 class HWConformity {
   IR_Builder &builder;
   G4_Kernel &kernel;
-  vISA::Mem_Manager &mem;
 
   // this must be set before calling the individual fix functions
   G4_BB *curBB = nullptr;
@@ -131,7 +130,7 @@ class HWConformity {
   void fixMADInst(G4_BB *bb);
   void fixSrcRegion(G4_INST *inst);
   bool fixOddAlignSrc1Region(INST_LIST_ITER i, G4_BB *bb);
-    void conformBB(G4_BB * bb);
+  void conformBB(G4_BB *bb);
   void fixSADA2Inst(G4_BB *bb);
   void fixMixedHFInst(G4_BB *bb);
   void fixSendInst(G4_BB *bb);
@@ -247,8 +246,7 @@ class HWConformity {
   void fixFloatARFDst(INST_LIST_ITER it, G4_BB *bb);
 
 public:
-  HWConformity(IR_Builder &b, G4_Kernel &k, vISA::Mem_Manager &m)
-      : builder(b), kernel(k), mem(m) {}
+  HWConformity(IR_Builder &b, G4_Kernel &k) : builder(b), kernel(k) {}
   void chkHWConformity();
   static void tryEliminateMadSrcModifier(IR_Builder &builder, G4_INST *inst);
   bool checkDPASSrcDstOverlap(INST_LIST_ITER iter, G4_BB *bb);
@@ -260,7 +258,6 @@ public:
 };
 } // namespace vISA
 // single entry point for HW conformity checks
-extern void HWConformityChk(vISA::IR_Builder &builder, vISA::G4_Kernel &kernel,
-                            vISA::Mem_Manager &mem);
+extern void HWConformityChk(vISA::IR_Builder &builder, vISA::G4_Kernel &kernel);
 
 #endif /* _HWCONFORMITY_H_ */
