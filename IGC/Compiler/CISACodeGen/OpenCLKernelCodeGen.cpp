@@ -3461,7 +3461,7 @@ namespace IGC
         case RetryType::NO_Retry:
         {
             // Save the shader program to the state processor to be handled later
-            if (!pSelectedKernel && pKernel)
+            if (pKernel)
             {
                 pSelectedKernel = std::move(pKernel);
             }
