@@ -40,7 +40,9 @@ define spir_func void @caller(i1 %input, %struct %input_struct) {
 }
 
 ; CHECK:        define spir_func void @caller(i8 %input, %struct %input_struct)
-; CHECK-NEXT:   %1 = call i8 @callee(i8 0)
-; CHECK-NEXT:   %2 = call i8 @callee(i8 1)
-; CHECK-NEXT:   %3 = call i8 @callee(i8 %input)
+; CHECK-NEXT:   %1 = trunc i8 %input to i1
+; CHECK-NEXT:   %2 = zext i1 %1 to i8
+; CHECK-NEXT:   %3 = call i8 @callee(i8 0)
+; CHECK-NEXT:   %4 = call i8 @callee(i8 1)
+; CHECK-NEXT:   %5 = call i8 @callee(i8 %2)
 ; CHECK-NEXT:   ret void
