@@ -217,11 +217,11 @@ bool Options::parseOptions(int argc, const char *argv[]) {
         break;
       }
       default:
-        assert(0 && "Bad option type");
+        vISA_ASSERT_UNREACHABLE("Bad option type");
       }
       break;
     default:
-      assert(0 && "Bad option type");
+      vISA_ASSERT_UNREACHABLE("Bad option type");
     } // switch
     if (parseError)
       return false;
@@ -438,7 +438,7 @@ void Options::initialize_m_vISAOptions(void) {
     Opts->setCstr(ENUM, (const char *)(DEFAULT_VAL));                          \
     break;                                                                     \
   default:                                                                     \
-    assert(0 && "Bad TYPE");                                                   \
+    vISA_ASSERT_UNREACHABLE("Bad TYPE");                                       \
   }
 #include "include/VISAOptionsDefs.h"
 }
@@ -622,7 +622,7 @@ std::string Options::getFullArgString() const {
         break;
       }
       default:
-        assert(false && "Invalid vISA option type!");
+        vISA_ASSERT_UNREACHABLE("Invalid vISA option type!");
         args << "UNDEFINED ";
         break;
       }

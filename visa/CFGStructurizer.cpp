@@ -181,13 +181,13 @@ public:
   virtual G4_BB *getEndBB() const { return bb; }
 
   virtual void setExitBB(G4_BB *b) {
-    MUST_BE_TRUE(false, "setExitBB() not allowed for ANodeBB");
+    vISA_ASSERT_UNREACHABLE("setExitBB() not allowed for ANodeBB");
   }
   virtual void setBeginBB(G4_BB *b) {
-    MUST_BE_TRUE(false, "setBeginBB() not allowed for ANodeBB");
+    vISA_ASSERT_UNREACHABLE("setBeginBB() not allowed for ANodeBB");
   }
   virtual void setEndBB(G4_BB *b) {
-    MUST_BE_TRUE(false, "setEndBB() not allowed for ANodeBB");
+    vISA_ASSERT_UNREACHABLE("setEndBB() not allowed for ANodeBB");
   }
 };
 
@@ -1264,7 +1264,7 @@ void CFGStructurizer::BBListReplace(BB_LIST &bblist, G4_BB *from, G4_BB *to) {
       return;
     }
   }
-  MUST_BE_TRUE(false, "BBList should have to-be-replaced element");
+  vISA_ASSERT_UNREACHABLE("BBList should have to-be-replaced element");
 }
 
 void CFGStructurizer::ANListErase(ANList &anlist, ANode *toBeErased) {
@@ -1732,7 +1732,7 @@ ANodeBB *CFGStructurizer::addLandingBB(ANodeHG *node,
             }
           }
         } else if (bb != insertAfterBB) {
-          MUST_BE_TRUE(false, "BB has unknown non-goto/jmpi branch");
+          vISA_ASSERT_UNREACHABLE("BB has unknown non-goto/jmpi branch");
         }
       }
 
@@ -2582,7 +2582,7 @@ void CFGStructurizer::setJoinJIP(G4_BB *joinBB, G4_BB *jipBB) {
     firstInst->asCFInst()->setJip(jipLabel);
     return;
   }
-  MUST_BE_TRUE(false, "Missing Join/endif instruction in join BB!");
+  vISA_ASSERT_UNREACHABLE("Missing Join/endif instruction in join BB!");
 }
 
 void CFGStructurizer::convertChildren(ANodeHG *nodehg, G4_BB *nextJoinBB) {
@@ -2997,7 +2997,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB) {
     break;
   }
   default:
-    MUST_BE_TRUE(false, "Unreachable, must be a wrong node type");
+    vISA_ASSERT_UNREACHABLE("Unreachable, must be a wrong node type");
     break;
   }
   return;
@@ -3229,7 +3229,7 @@ bool CFGStructurizer::convertPST(ANode *node, G4_BB *nextJoinBB) {
     convertGoto((ANodeBB *)node, nextJoinBB);
     change = true;
   } else {
-    MUST_BE_TRUE(false, "Wrong ANode type");
+    vISA_ASSERT_UNREACHABLE("Wrong ANode type");
   }
 
   return change;

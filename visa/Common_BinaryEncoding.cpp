@@ -82,7 +82,7 @@ G4_INST *BinaryEncodingBase::getFirstNonLabelInst(G4_BB *bb) {
     if (inst->opcode() != G4_label)
       return inst;
   }
-  MUST_BE_TRUE(false, "can't get the inst number for this empty BB");
+  vISA_ASSERT_UNREACHABLE("can't get the inst number for this empty BB");
   return NULL;
 }
 
@@ -141,7 +141,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
                        kernel.fg.builder->createRegionDesc(4, 4, 1));
         break;
       default:
-        MUST_BE_TRUE(false, "Not implemented");
+        vISA_ASSERT_UNREACHABLE("Not implemented");
       }
     }
   }
@@ -173,7 +173,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
       writeMask = ChannelEnable_W;
       break;
     default:
-      MUST_BE_TRUE(false, "unexpected subreg value");
+      vISA_ASSERT_UNREACHABLE("unexpected subreg value");
     }
     setWriteMask(dst, writeMask);
     dst->setLeftBound(dst->getLeftBound() - subRegOffset);
@@ -194,7 +194,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
       writeMask = ChannelEnable_ZW;
       break;
     default:
-      assert(false && "dst must be 8 byte aligned");
+      vISA_ASSERT_UNREACHABLE("dst must be 8 byte aligned");
     }
     setWriteMask(dst, writeMask);
     dst->setLeftBound(dst->getLeftBound() - subRegOffset);

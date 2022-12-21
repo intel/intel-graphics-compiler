@@ -189,7 +189,7 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(const G4_SendDescRaw *Desc) {
   }
 
   if (unsupported) {
-    assert(false && "Unsupported message!");
+    vISA_ASSERT_UNREACHABLE("Unsupported message!");
   }
   return FC;
 }

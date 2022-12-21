@@ -1022,7 +1022,7 @@ unsigned LiveRange::getForbiddenVectorSize() const {
   case G4_FLAG:
     return gra.builder.getNumFlagRegisters();
   default:
-    assert(false && "illegal reg file");
+    vISA_ASSERT_UNREACHABLE("illegal reg file");
     return 0;
   }
 }

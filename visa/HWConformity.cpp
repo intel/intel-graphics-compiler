@@ -36,7 +36,7 @@ static G4_CondModifier getReverseCondMod(G4_CondModifier mod) {
   case Mod_le:
     return Mod_ge;
   default:
-    MUST_BE_TRUE(0, "Invalid conditional modifier input for reversed "
+    vISA_ASSERT_UNREACHABLE("Invalid conditional modifier input for reversed "
                     "conditional modifier.");
   }
   return Mod_cond_undef;
@@ -602,7 +602,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
         }
       }
     } else {
-      ASSERT_USER(false, "Unexpected math source!");
+      vISA_ASSERT_UNREACHABLE("Unexpected math source!");
     }
     return false;
   };
@@ -7155,7 +7155,7 @@ static void expandPlaneMacro(IR_Builder &builder, INST_LIST_ITER it, G4_BB *bb,
       options |= InstOpt_M24;
       break;
     default:
-      MUST_BE_TRUE(false, "unexpected offset value");
+      vISA_ASSERT_UNREACHABLE("unexpected offset value");
     }
   }
 
@@ -8402,7 +8402,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
     case 8:
       return Type_UQ;
     default:
-      assert(false && "illegal type width");
+      vISA_ASSERT_UNREACHABLE("illegal type width");
       return Type_UD;
     }
   };
@@ -9571,7 +9571,7 @@ void HWConformity::fixFloatARFDst(INST_LIST_ITER it, G4_BB *bb) {
     case 8:
       return Type_UQ;
     default:
-      assert(false && "unexpected float type size.");
+      vISA_ASSERT_UNREACHABLE("unexpected float type size.");
       return Type_UNDEF;
     }
   };

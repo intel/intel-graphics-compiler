@@ -149,7 +149,7 @@ inline void BinaryEncoding::EncodeFlagReg(G4_INST *inst) {
         SetFlagRegNum(mybin, FlagRegNumValue);
         break;
       default:
-        MUST_BE_TRUE(false, "Invalid flag register number");
+        vISA_ASSERT_UNREACHABLE("invalid flag register number");
         break;
       }
     }
@@ -160,7 +160,7 @@ inline void BinaryEncoding::EncodeFlagReg(G4_INST *inst) {
         SetFlagSubRegNum(mybin, FlagRegSubNumValue);
         break;
       default:
-        MUST_BE_TRUE(false, "invalid flag register sub-number");
+        vISA_ASSERT_UNREACHABLE("invalid flag register sub-number");
       }
     }
   }
@@ -341,7 +341,7 @@ inline uint32_t GetOperandSrcType(G4_Operand *src) {
     break;
   default:
     type = SRC_TYPE_UNDEF;
-    MUST_BE_TRUE(false, "Binary code emission error: unknown type");
+    vISA_ASSERT_UNREACHABLE("Binary code emission error: unknown type");
   }
   return type;
 }
@@ -539,7 +539,7 @@ inline void SetOperandDstType(BinInst *mybin, G4_DstRegRegion *dst) {
     SetDstType(mybin, DST_TYPE_HF);
     break;
   default:
-    MUST_BE_TRUE(false, "Encoding error: destination type unknown");
+    vISA_ASSERT_UNREACHABLE("Encoding error: destination type unknown");
     break;
   }
 }
@@ -582,7 +582,7 @@ inline void EncodeDstHorzStride(G4_INST *inst, BinInst *mybin,
     SetDstHorzStride(mybin, HORZ_STRIDE_1);
     break;
   default:
-    MUST_BE_TRUE(false, "wrong dst horizontal stride " << dst->getHorzStride());
+    vISA_ASSERT_UNREACHABLE("wrong dst horizontal stride %d", dst->getHorzStride());
     break;
   }
 }
@@ -1011,7 +1011,7 @@ inline bool EncodeSrc0Width(G4_INST *inst, BinInst *mybin, const RegionDesc *rd,
     case UNDEFINED_SHORT:
       break;
     default:
-      MUST_BE_TRUE(false, "wrong width for src0!");
+      vISA_ASSERT_UNREACHABLE("wrong width for src0!");
       break;
     }
   }
@@ -1064,7 +1064,7 @@ inline bool EncodeSrc0HorzStride(G4_INST *inst, BinInst *mybin,
     case UNDEFINED_SHORT:
       break;
     default:
-      MUST_BE_TRUE(false, "wrong horizontal stride for src0!");
+      vISA_ASSERT_UNREACHABLE("wrong horizontal stride for src0!");
       break;
     }
   }
@@ -1122,7 +1122,7 @@ inline void EncodeSrc0VertStride(G4_INST *inst, BinInst *mybin,
     case UNDEFINED_SHORT:
       break;
     default:
-      MUST_BE_TRUE(false, "wrong vertical stride for src0!");
+      vISA_ASSERT_UNREACHABLE("wrong vertical stride for src0!");
       break;
     }
   }
@@ -1688,7 +1688,7 @@ inline bool EncodeSrc1Width(G4_INST *inst, BinInst *mybin, const RegionDesc *rd,
     case UNDEFINED_SHORT:
       break;
     default:
-      MUST_BE_TRUE(false, "wrong width for src1!");
+      vISA_ASSERT_UNREACHABLE("wrong width for src1!");
       break;
     }
   }
@@ -1736,7 +1736,7 @@ inline bool EncodeSrc1HorzStride(G4_INST *inst, BinInst *mybin,
     case UNDEFINED_SHORT:
       break;
     default:
-      MUST_BE_TRUE(false, "wrong horizontal stride for src1!");
+      vISA_ASSERT_UNREACHABLE("wrong horizontal stride for src1!");
       break;
     }
   }
@@ -1793,7 +1793,7 @@ inline void EncodeSrc1VertStride(G4_INST *inst, BinInst *mybin,
     case UNDEFINED_SHORT:
       break;
     default:
-      MUST_BE_TRUE(false, "wrong verical stride for src1!");
+      vISA_ASSERT_UNREACHABLE("wrong verical stride for src1!");
       break;
     }
   }

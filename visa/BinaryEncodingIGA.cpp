@@ -118,7 +118,7 @@ private:
     case NOACC:
       return MathMacroExt::NOMME;
     default:
-      assert(false && "illegal acc (mme) channel select");
+      vISA_ASSERT_UNREACHABLE("illegal acc (mme) channel select");
       return MathMacroExt::INVALID;
     }
   }
@@ -147,7 +147,7 @@ private:
     case Type_VF:
       return ImmVal::Kind::U32;
     default:
-      assert(false && "invalid immediate type");
+      vISA_ASSERT_UNREACHABLE("invalid immediate type");
       return ImmVal::Kind::UNDEF;
     }
   }
@@ -277,7 +277,7 @@ private:
     case GenPrecision::TF32:
       return Type::TF32;
     default:
-      assert(false && "illegal Operand Precision");
+      vISA_ASSERT_UNREACHABLE("illegal Operand Precision");
       return Type::INVALID;
     }
   }
@@ -286,7 +286,7 @@ private:
     Type ty;
     switch (SrcOprdIx) {
     default:
-      MUST_BE_TRUE(false, "Invalid SrcOprdIx!");
+      vISA_ASSERT_UNREACHABLE("Invalid SrcOprdIx!");
       break;
     case 0:
     {
@@ -1720,7 +1720,7 @@ ExecSize BinaryEncodingIGA::getIGAExecSize(int execSize) {
   case 32:
     return ExecSize::SIMD32;
   default:
-    assert(false && "illegal simd size");
+    vISA_ASSERT_UNREACHABLE("illegal simd size");
     return ExecSize::INVALID;
   }
 }
@@ -1744,7 +1744,7 @@ ChannelOffset BinaryEncodingIGA::getIGAChannelOffset(int offset) {
   case 28:
     return ChannelOffset::M28;
   default:
-    assert(false && "illegal mask offset");
+    vISA_ASSERT_UNREACHABLE("illegal mask offset");
     return ChannelOffset::M0;
   }
 }
@@ -1789,7 +1789,7 @@ RegName BinaryEncodingIGA::getIGAARFName(G4_ArchRegKind areg) {
   case AREG_SP:
     return RegName::ARF_SP;
   default:
-    assert(false && "illegal ARF");
+    vISA_ASSERT_UNREACHABLE("illegal ARF");
     return RegName::INVALID;
   }
 }
@@ -1852,7 +1852,7 @@ Type BinaryEncodingIGA::getIGAType(G4_Type type, TARGET_PLATFORM genxPlatform) {
   case Type_BF:
     return Type::BF;
   default:
-    assert(false && "illegal type");
+    vISA_ASSERT_UNREACHABLE("illegal type");
     return Type::INVALID;
   }
 }
@@ -1890,7 +1890,7 @@ PredCtrl BinaryEncodingIGA::getIGAPredCtrl(G4_Predicate_Control g4PrCtl) {
   case PRED_ALL_WHOLE:
     return PredCtrl::ALL;
   default:
-    assert(false && "illegal predicate control");
+    vISA_ASSERT_UNREACHABLE("illegal predicate control");
     return PredCtrl::NONE;
   }
 }
@@ -1960,7 +1960,7 @@ SrcModifier BinaryEncodingIGA::getIGASrcModifier(G4_SrcModifier srcMod) {
   case Mod_src_undef:
     return SrcModifier::NONE;
   default:
-    assert(false && "illegal source modifier");
+    vISA_ASSERT_UNREACHABLE("illegal source modifier");
     return SrcModifier::NONE;
   }
 }
@@ -1984,7 +1984,7 @@ Region::Vert BinaryEncodingIGA::getIGAVert(int vstride) {
   case UNDEFINED_SHORT:
     return Region::Vert::VT_VxH;
   default:
-    assert(false && "illegal vstride");
+    vISA_ASSERT_UNREACHABLE("illegal vstride");
     return Region::Vert::VT_INVALID;
   }
 }
@@ -2002,7 +2002,7 @@ Region::Width BinaryEncodingIGA::getIGAWidth(int width) {
   case 16:
     return Region::Width::WI_16;
   default:
-    assert(false && "illegal width");
+    vISA_ASSERT_UNREACHABLE("illegal width");
     return Region::Width::WI_INVALID;
   }
 }
@@ -2018,7 +2018,7 @@ Region::Horz BinaryEncodingIGA::getIGAHorz(int hstride) {
   case 4:
     return Region::Horz::HZ_4;
   default:
-    assert(false && "illegal hstride");
+    vISA_ASSERT_UNREACHABLE("illegal hstride");
     return Region::Horz::HZ_INVALID;
   }
 }

@@ -324,7 +324,7 @@ static std::string printOperand(const print_format_provider_t *header,
     sstr << printRawOperand(header, getRawOperand(inst, i), opt);
     break;
   default:
-    MUST_BE_TRUE(false, "Invalid operand type.");
+    vISA_ASSERT_UNREACHABLE("Invalid operand type.");
   }
   return sstr.str();
 }
@@ -608,7 +608,7 @@ static std::string printExecutionSizeForScatterGather(uint8_t sizeAndMask) {
     execSize = 1;
     break;
   default:
-    ASSERT_USER(false, "illegal execution size for scatter/gather message");
+    vISA_ASSERT_UNREACHABLE("illegal execution size for scatter/gather message");
   }
   sstr << execSize;
   sstr << ")";
@@ -725,7 +725,7 @@ static std::string printInstructionSVM(const print_format_provider_t *header,
     break;
   }
   default:
-    ASSERT_USER(false, "Unimplemented or Illegal SVM Sub Opcode.");
+    vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal SVM Sub Opcode.");
   }
 
   for (; i < inst->opnd_num; i++)
@@ -1326,7 +1326,7 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
     break;
   }
   default: {
-    ASSERT_USER(0, "Unimplemented or Illegal Misc Opcode.");
+    vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal Misc Opcode.");
   }
   }
 
@@ -1772,7 +1772,7 @@ printInstructionSampler(const common_isa_header &isaHeader,
       break;
     }
     default:
-      ASSERT_USER(false, "Invalid VA sub-opcode");
+      vISA_ASSERT_UNREACHABLE("Invalid VA sub-opcode");
     }
 
     break;
@@ -2002,13 +2002,13 @@ printInstructionSampler(const common_isa_header &isaHeader,
       break;
     }
     default:
-      ASSERT_USER(false, "Invalid VA sub-opcode");
+      vISA_ASSERT_UNREACHABLE("Invalid VA sub-opcode");
     }
 
     break;
   }
   default:
-    ASSERT_USER(false, "illegal opcode for sampler instruction");
+    vISA_ASSERT_UNREACHABLE("illegal opcode for sampler instruction");
   }
 
   return sstr.str();
@@ -2130,7 +2130,7 @@ printInstructionDataport(const print_format_provider_t *header,
       elt_size = 4;
       break;
     default:
-      ASSERT_USER(0, "Incorrect element size for Gather/Scatter CISA inst.");
+      vISA_ASSERT_UNREACHABLE("Incorrect element size for Gather/Scatter CISA inst.");
       break;
     }
     if (ISA_GATHER == opcode) {
@@ -2372,7 +2372,7 @@ printInstructionDataport(const print_format_provider_t *header,
   }
 
   default: {
-    ASSERT_USER(false, "Unimplemented or Illegal DataPort Opcode.");
+    vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal DataPort Opcode.");
   }
   }
 
@@ -2878,7 +2878,7 @@ private:
         ss << "  ";
         formatRawOperand(src1AbsIx + 1); // src2
       } else {
-        MUST_BE_TRUE(false, "must be load or store or atomic");
+        vISA_ASSERT_UNREACHABLE("must be load or store or atomic");
       }
     }
   } // formatUntypedSimple
@@ -3024,7 +3024,7 @@ private:
       formatRawOperand(src2Ix); // for {i,f}cas
     } else {
       error = true;
-      MUST_BE_TRUE(false, "printInstructionLscTyped unexpected category");
+      vISA_ASSERT_UNREACHABLE("printInstructionLscTyped unexpected category");
     }
   } // formatTyped
 
@@ -3064,7 +3064,7 @@ public:
         formatTyped();
       }
     } else {
-      MUST_BE_TRUE(false, "invalid LSC op");
+      vISA_ASSERT_UNREACHABLE("invalid LSC op");
     }
     return ss.str();
   }
@@ -3175,7 +3175,7 @@ std::string VISAKernel_format_provider::printKernelHeader(
       sstr << "\"3d\"";
       break;
     default:
-      MUST_BE_TRUE(false, "Invalid kernel target attribute.");
+      vISA_ASSERT_UNREACHABLE("Invalid kernel target attribute.");
       break;
     }
   }
@@ -3243,7 +3243,7 @@ std::string printInstruction(const common_isa_header &isaHeader,
     default: {
       sstr << "Illegal or unimplemented CISA instruction (opcode, type): ("
            << opcode << ", " << ISA_Inst_Table[opcode].type << ").";
-      MUST_BE_TRUE(false, sstr.str());
+      vISA_ASSERT_UNREACHABLE(sstr.str());
     }
     }
     switch (opcode) {

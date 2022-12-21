@@ -301,7 +301,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
           val = (uint8_t)immValue->getImm();
           break;
         default:
-          MUST_BE_TRUE(false, "unsupported data type");
+          vISA_ASSERT_UNREACHABLE("unsupported data type");
         }
         packedVal += ((uint64_t)val << shiftVal);
       }

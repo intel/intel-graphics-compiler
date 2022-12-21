@@ -26,7 +26,7 @@ G4_ExecSize IR_Builder::toExecSize(VISA_Exec_Size execSize) {
   case EXEC_SIZE_32:
     return g4::SIMD32;
   default:
-    MUST_BE_TRUE(false, "illegal common ISA execsize (should be 0..5).");
+    vISA_ASSERT_UNREACHABLE("illegal common ISA execsize (should be 0..5).");
     return G4_ExecSize(0);
   }
 }

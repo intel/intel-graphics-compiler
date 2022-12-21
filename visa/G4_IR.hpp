@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <vector>
 
+#include "Assertions.h"
 #include "Attributes.hpp"
 #include "BitSet.h"
 #include "Common_GEN.h"
@@ -602,7 +603,7 @@ public:
     case 3:
       return Opnd_src3;
     default:
-      MUST_BE_TRUE(false, "bad source id");
+      vISA_ASSERT_UNREACHABLE("bad source id");
       return Opnd_src0;
     }
   }
@@ -1394,8 +1395,6 @@ public:
   int getTmpFlagStart() const { return tmpFlagStart; }
   void setTmpFlagStart(int startFlag) { tmpFlagStart = startFlag; }
 };
-
-//
 // place for holding all physical register operands
 //
 class PhyRegPool {
@@ -1445,7 +1444,7 @@ public:
     case 3:
       return getF3Reg();
     default:
-      assert(false && "unexpected flag register value");
+      vISA_ASSERT_UNREACHABLE("unexpected flag register value");
       return nullptr;
     }
   }

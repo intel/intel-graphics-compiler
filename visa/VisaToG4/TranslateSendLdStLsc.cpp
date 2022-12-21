@@ -489,7 +489,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
     sfid = SFID::SLM;
     break;
   default:
-    check(false, "invalid SFID for untyped block2d LSC message");
+    vISA_ASSERT_UNREACHABLE("invalid SFID for untyped block2d LSC message");
   }
 
 
@@ -767,7 +767,7 @@ int IR_Builder::lscEncodeAddrSize(LSC_ADDR_SIZE addrSize, uint32_t &desc,
     addrSizeBits = 64;
     break;
   default:
-    MUST_BE_TRUE(false, "invalid address size");
+    vISA_ASSERT_UNREACHABLE("invalid address size");
     status = VISA_FAILURE;
   }
   desc |= addrSizeEnc << 7; // Desc[8:7]
@@ -788,7 +788,7 @@ uint32_t IR_Builder::lscComputeAddrSize(LSC_ADDR_SIZE addrSize,
     addrSizeBits = 64;
     break;
   default:
-    MUST_BE_TRUE(false, "invalid address size");
+    vISA_ASSERT_UNREACHABLE("invalid address size");
     status = VISA_FAILURE;
   }
   return addrSizeBits;
@@ -820,7 +820,7 @@ uint32_t IR_Builder::lscComputeDataSize(LSC_DATA_SIZE dataSize,
     dataSizeBits = 32;
     break;
   default:
-    MUST_BE_TRUE(false, "invalid data size");
+    vISA_ASSERT_UNREACHABLE("invalid data size");
     status = VISA_FAILURE;
   }
   return dataSizeBits;
@@ -860,7 +860,7 @@ int IR_Builder::lscEncodeDataSize(LSC_DATA_SIZE dataSize, uint32_t &desc,
     dataSizeBits = 32;
     break;
   default:
-    MUST_BE_TRUE(false, "invalid data size");
+    vISA_ASSERT_UNREACHABLE("invalid data size");
     status = VISA_FAILURE;
   }
   desc |= dataSizeEnc << 9; // Desc[11:9]
@@ -905,7 +905,7 @@ int IR_Builder::lscEncodeDataElems(LSC_DATA_ELEMS dataElems, uint32_t &desc,
     vecSize = 64;
     break;
   default:
-    MUST_BE_TRUE(false, "number of data elements");
+    vISA_ASSERT_UNREACHABLE("number of data elements");
     status = VISA_FAILURE;
   }
   desc |= vecSizeEnc << 12; // desc[14:12] is the vector size
@@ -952,7 +952,7 @@ void IR_Builder::lscEncodeAddrType(LSC_ADDR_TYPE addrModel, uint32_t &desc,
     addrTypeEnc = 3;
     break;
   default:
-    MUST_BE_TRUE(false, "invalid address model");
+    vISA_ASSERT_UNREACHABLE("invalid address model");
     status = VISA_FAILURE;
   }
   desc |= addrTypeEnc << 29; // [30:29] addr size
@@ -1150,7 +1150,7 @@ G4_SrcRegRegion *IR_Builder::lscMulAdd(G4_Predicate *pred, G4_ExecSize execSize,
     // reduces to a multiply
     return lscMul(pred, execSize, execCtrl, src, mulImm16);
   } else {
-    MUST_BE_TRUE(false, "multiply not supported yet");
+    vISA_ASSERT_UNREACHABLE("multiply not supported yet");
     return nullptr;
     /*
     // hard cases...
@@ -1230,7 +1230,7 @@ G4_SrcRegRegion *IR_Builder::lscMul(G4_Predicate *pred, G4_ExecSize execSize,
       execSize, dst, src0, mulImmOp, execCtrl);
       return result;
       */
-      MUST_BE_TRUE(false, "lscMul unsupported");
+      vISA_ASSERT_UNREACHABLE("lscMul unsupported");
     return nullptr;
   }
 }
@@ -1411,6 +1411,6 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
                                          int16_t mulImm) {
   if (mulImm == 1)
     return src0;
-    MUST_BE_TRUE(false, "mul64-aos not supported yet");
+    vISA_ASSERT_UNREACHABLE("mul64-aos not supported yet");
   return nullptr;
 }

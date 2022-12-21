@@ -3267,7 +3267,7 @@ getImmValue(T imm, G4_SrcModifier modifier) {
   case Mod_Minus_Abs:
     return -(std::abs(imm));
   case Mod_Not:
-    MUST_BE_TRUE(false, "unexpected not modifier for floating types");
+    vISA_ASSERT_UNREACHABLE("unexpected not modifier for floating types");
     return imm;
   default:
     return imm;
@@ -4238,7 +4238,7 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
       newOpcode = G4_not;
       break;
     default:
-      MUST_BE_TRUE(false, "unexpected opcode for pseudo-logic instructions");
+      vISA_ASSERT_UNREACHABLE("unexpected opcode for pseudo-logic instructions");
     }
 
     inst->setOpcode(newOpcode);
@@ -4305,7 +4305,7 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
       newOpcode = G4_xor;
       break;
     default:
-      MUST_BE_TRUE(false, "unexpected opcode for pseudo-logic instructions");
+      vISA_ASSERT_UNREACHABLE("unexpected opcode for pseudo-logic instructions");
     }
 
     G4_INST *newLogicOp = builder.createInternalInst(
@@ -5371,7 +5371,7 @@ void MSGTable::insertHeaderMovInst(G4_INST *source_send, IR_Builder &builder,
     pos = mDot2_it;
     break;
   default:
-    MUST_BE_TRUE(false, "did not catch the first def instruction correctly");
+    vISA_ASSERT_UNREACHABLE("did not catch the first def instruction correctly");
     return;
   }
 
@@ -7928,7 +7928,7 @@ void Optimizer::loadThreadPayload() {
     case 8:
       return 0x3;
     default:
-      assert(false && "unexpected number of HW");
+      vISA_ASSERT_UNREACHABLE("unexpected number of HW");
       return 0x0;
     }
   };
@@ -8008,7 +8008,7 @@ void Optimizer::loadThreadPayload() {
         return (uint32_t)16;
       else if (numDW > 8)
         return (uint32_t)8;
-      assert(0 && "unreachable");
+      vISA_ASSERT_UNREACHABLE("unreachable");
     }
     // when the numDW is less than 1 grf, we want to load all within one send
     // The additional bytes being loaded won't be used so should be fine
@@ -8020,7 +8020,7 @@ void Optimizer::loadThreadPayload() {
       return (uint32_t)8;
     else if (numDW < 16)
       return (uint32_t)16;
-    assert(0 && "unreachable");
+    vISA_ASSERT_UNREACHABLE("unreachable");
     return (uint32_t)0;
   };
 
@@ -11739,7 +11739,7 @@ void Optimizer::applyNoMaskWA() {
         uint16_t bits = (t == Type_UD ? 0x3 : 0x1);
         return (bits << (r * 2 + sr));
       }
-      assert(false && "Flag: not allocated to physical register!");
+      vISA_ASSERT_UNREACHABLE("Flag: not allocated to physical register!");
       return 0;
     };
 

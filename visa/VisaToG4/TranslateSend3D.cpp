@@ -1203,7 +1203,7 @@ static uint8_t getUPosition(VISASampler3DSubOpCode opcode) {
     position = 2;
     break;
   default:
-    MUST_BE_TRUE(false, "unexpected sampler operation");
+    vISA_ASSERT_UNREACHABLE("unexpected sampler operation");
     return 0;
   }
   return position;

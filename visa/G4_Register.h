@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef G4_REGISTER_H
 #define G4_REGISTER_H
 
+#include "Assertions.h"
 #include "Common_ISA.h"
 #include "G4_Declare.h"
 #include "G4_Opcode.h"
@@ -206,7 +207,7 @@ public:
     case AREG_F3:
       return 3;
     default:
-      assert(false && "should only be called on flag ARF");
+      vISA_ASSERT_UNREACHABLE("should only be called on flag ARF");
       return -1;
     }
   }

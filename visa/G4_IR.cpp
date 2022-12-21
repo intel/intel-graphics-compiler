@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "G4_IR.hpp"
+#include "Assertions.h"
 #include "BinaryEncodingIGA.h"
 #include "BuildIR.h"
 #include "Common_ISA.h"
@@ -445,7 +446,7 @@ uint16_t G4_INST::getMaskOffset() const {
   case InstOpt_M28:
     return 28;
   default:
-    MUST_BE_TRUE(0, "Incorrect instruction execution mask");
+    vISA_ASSERT_UNREACHABLE("Incorrect instruction execution mask");
     return 0;
   }
 }
@@ -549,7 +550,7 @@ const G4_Operand *G4_INST::getOperand(Gen4_Operand_Number opnd_num) const {
   case Opnd_implAccDst:
     return getImplAccDst();
   default:
-    MUST_BE_TRUE(0, "Operand number is out of range.");
+    vISA_ASSERT_UNREACHABLE("Operand number is out of range.");
     break;
   }
   return NULL;
@@ -3541,7 +3542,7 @@ void G4_Areg::emit(std::ostream &output) {
     break;
   default:
     output << "unknown architecture reg";
-    MUST_BE_TRUE(false, ERROR_UNKNOWN);
+    vISA_ASSERT_UNREACHABLE(ERROR_UNKNOWN);
   }
 }
 
@@ -3910,7 +3911,7 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
             output << '.' << subreg;
           }
         } else
-          MUST_BE_TRUE(false, ERROR_UNKNOWN);
+          vISA_ASSERT_UNREACHABLE(ERROR_UNKNOWN);
       } else // physical register not allocated
       {
         baseVar->emit(output);
@@ -3956,7 +3957,7 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
         output << ", " << immAddrOff << ']';
       }
     } else {
-      MUST_BE_TRUE(false, "Unknown base variable type for indirect access");
+      vISA_ASSERT_UNREACHABLE("Unknown base variable type for indirect access");
     }
   }
 }
@@ -4732,7 +4733,7 @@ void G4_DstRegRegion::emit(std::ostream &output) {
   } else if (base->isFlag()) {
     output << "<1>";
   } else {
-    MUST_BE_TRUE(false, "No default region specified");
+    vISA_ASSERT_UNREACHABLE("No default region specified");
   }
 
   if (isAccRegValid()) {
@@ -4897,7 +4898,7 @@ void G4_Declare::emit(std::ostream &output) const {
     output << 'f';
     output << getNumberFlagElements() << " ";
   } else {
-    MUST_BE_TRUE(false, ERROR_UNKNOWN); // unhandled case
+    vISA_ASSERT_UNREACHABLE(ERROR_UNKNOWN); // unhandled case
   }
 
   output << " size=" << getByteSize();
@@ -5838,7 +5839,7 @@ unsigned G4_RegVar::getByteAddr(const IR_Builder &builder) const {
     return reg.subRegOff * TypeSize(Type_UW);
   }
 
-  MUST_BE_TRUE(false, ERROR_UNKNOWN);
+  vISA_ASSERT_UNREACHABLE(ERROR_UNKNOWN);
   return 0;
 }
 
@@ -7236,7 +7237,7 @@ G4_Operand *G4_InstIntrinsic::getOperand(Gen4_Operand_Number opnd_num) const {
   case Opnd_src7:
     return srcs[7];
   default:
-    MUST_BE_TRUE(0, "Operand number is out of range.");
+    vISA_ASSERT_UNREACHABLE("Operand number is out of range.");
     break;
   }
   return NULL;

@@ -1262,7 +1262,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
     DEBUG_VERBOSE("Instruction does not support BF type!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "Instruction does not support BF type!");
+    vISA_ASSERT_UNREACHABLE("Instruction does not support BF type!");
     break;
   }
 

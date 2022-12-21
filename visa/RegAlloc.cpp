@@ -109,7 +109,7 @@ bool LivenessAnalysis::setLocalVarIDs(bool verifyRA,
             }
             numSplitVar++;
           } else {
-            assert(0 && "Found child declare without parent");
+            vISA_ASSERT_UNREACHABLE("Found child declare without parent");
           }
         }
 
@@ -3014,7 +3014,7 @@ static void recordRAStats(IR_Builder &builder, G4_Kernel &kernel,
     case RA_Type::UNKNOWN_RA:
       break;
     default:
-      assert(0 && "Incorrect RA type");
+      vISA_ASSERT_UNREACHABLE("Incorrect RA type");
     }
   }
 }

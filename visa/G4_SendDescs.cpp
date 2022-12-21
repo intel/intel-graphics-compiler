@@ -197,7 +197,7 @@ uint32_t vISA::GetRenderTargetMsgOpEncoding(MsgOp m) {
   case MsgOp::RTDSWRITE:
     return 5;
   default:
-    MUST_BE_TRUE(false, "Invalid msg op");
+    vISA_ASSERT_UNREACHABLE("Invalid msg op");
   }
   return 0;
 }
@@ -235,7 +235,7 @@ uint32_t vISA::GetSamplerMsgOpEncoding(MsgOp m) {
   case MsgOp::LD_MCS:
     return 29;
   default:
-    MUST_BE_TRUE(false, "Invalid msg op");
+    vISA_ASSERT_UNREACHABLE("Invalid msg op");
   }
   return 0;
 }
@@ -307,7 +307,7 @@ uint32_t vISA::GetMsgOpEncoding(MsgOp m) {
     return 0x5;
   // TODO: other ops
   default:
-    MUST_BE_TRUE(false, "Invalid msg op");
+    vISA_ASSERT_UNREACHABLE("Invalid msg op");
   }
   return 0;
 }
@@ -349,7 +349,7 @@ DataSize vISA::ConvertLSCDataSize(LSC_DATA_SIZE ds) {
   case LSC_DATA_SIZE_16c32b:
     return DataSize::D16U32;
   default:
-    MUST_BE_TRUE(false, "invalid data size");
+    vISA_ASSERT_UNREACHABLE("invalid data size");
   }
   return DataSize::INVALID;
 }
@@ -369,7 +369,7 @@ uint32_t vISA::GetDataSizeEncoding(DataSize ds) {
   case DataSize::D16U32:
     return 5;
   default:
-    MUST_BE_TRUE(false, "invalid data size");
+    vISA_ASSERT_UNREACHABLE("invalid data size");
   }
   return 0;
 }
@@ -395,7 +395,7 @@ DataOrder vISA::ConvertLSCDataOrder(LSC_DATA_ORDER dord) {
   case LSC_DATA_ORDER_TRANSPOSE:
     return DataOrder::TRANSPOSE;
   default:
-    MUST_BE_TRUE(false, "invalid data order");
+    vISA_ASSERT_UNREACHABLE("invalid data order");
   }
   return DataOrder::INVALID;
 }
@@ -407,7 +407,7 @@ uint32_t vISA::GetDataOrderEncoding(DataOrder dord) {
   case DataOrder::TRANSPOSE:
     return 1;
   default:
-    MUST_BE_TRUE(false, "invalid data order");
+    vISA_ASSERT_UNREACHABLE("invalid data order");
   }
   return 0;
 }
@@ -455,7 +455,7 @@ VecElems vISA::ConvertLSCDataElems(LSC_DATA_ELEMS de) {
   case LSC_DATA_ELEMS_64:
     return VecElems::V64;
   default:
-    MUST_BE_TRUE(false, "number of data elements");
+    vISA_ASSERT_UNREACHABLE("number of data elements");
   }
   return VecElems::INVALID;
 }
@@ -479,7 +479,7 @@ uint32_t vISA::GetVecElemsEncoding(VecElems ve) {
   case VecElems::V64:
     return 7;
   default:
-    MUST_BE_TRUE(false, "invalid vector elements");
+    vISA_ASSERT_UNREACHABLE("invalid vector elements");
   }
   return 0;
 }
@@ -512,7 +512,7 @@ AddrSizeType vISA::ConvertLSCAddrSizeType(LSC_ADDR_SIZE size,
       return AddrSizeType::FLAT_A64_A32;
     else if (size == LSC_ADDR_SIZE_64b)
       return AddrSizeType::FLAT_A64_A64;
-    MUST_BE_TRUE(false, "incorrect address size for flat/stateless");
+    vISA_ASSERT_UNREACHABLE("incorrect address size for flat/stateless");
     break;
   case LSC_ADDR_TYPE_BSS:
   case LSC_ADDR_TYPE_SS:
@@ -535,7 +535,7 @@ uint32_t vISA::GetAddrSizeTypeEncoding(AddrSizeType a) {
   case AddrSizeType::STATEFUL_A32:
     return 2;
   default:
-    MUST_BE_TRUE(false, "invalid address size type");
+    vISA_ASSERT_UNREACHABLE("invalid address size type");
   }
   return 0;
 }
@@ -586,7 +586,7 @@ Caching vISA::ConvertLSCCacheOpt(LSC_CACHE_OPT co) {
   case LSC_CACHING_READINVALIDATE:
     return Caching::RI;
   default:
-    MUST_BE_TRUE(false, "invalid caching");
+    vISA_ASSERT_UNREACHABLE("invalid caching");
   }
   return Caching::INVALID;
 }
@@ -1251,7 +1251,7 @@ static int getNumEnabledChannels(uint32_t chDisableBits) {
   case 0xF:
     return 0;
   default:
-    MUST_BE_TRUE(false, "Illegal Channel Mask Number");
+    vISA_ASSERT_UNREACHABLE("Illegal Channel Mask Number");
   }
   return 0;
 }
@@ -1350,7 +1350,7 @@ unsigned G4_SendDescRaw::getElemSize() const {
     case SVM_BLOCK_TYPE_QWORD:
       return 8;
     default:
-      MUST_BE_TRUE(false, "Illegal SVM block size (should be 1, 4, or 8).");
+      vISA_ASSERT_UNREACHABLE("Illegal SVM block size (should be 1, 4, or 8).");
     }
     return 0;
   } else if (isLSC()) {
@@ -1805,7 +1805,7 @@ static LSC_CACHE_OPT toVisaCachingOpt(Caching c) {
   case Caching::RI:
     return LSC_CACHING_READINVALIDATE;
   default:
-    MUST_BE_TRUE(false, "invalid cache option");
+    vISA_ASSERT_UNREACHABLE("invalid cache option");
     return (LSC_CACHE_OPT)-1;
   }
 }

@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
  *
  */
 
+#include "Assertions.h"
 #include "Attributes.hpp"
 #include "Common_ISA.h"
 #include "Common_ISA_framework.h"
@@ -506,7 +507,7 @@ static VISA_VectorOpnd *readVectorOperandNG(unsigned &bytePos, const char *buf,
       break;
     }
     default: {
-      MUST_BE_TRUE(false, "Invalid state operand class: only surface and "
+      vISA_ASSERT_UNREACHABLE("Invalid state operand class: only surface and "
                           "sampler are supported.");
       break;
     }
@@ -515,7 +516,7 @@ static VISA_VectorOpnd *readVectorOperandNG(unsigned &bytePos, const char *buf,
     return opnd;
   }
   default:
-    MUST_BE_TRUE(false, "Operand class not recognized");
+    vISA_ASSERT_UNREACHABLE("Operand class not recognized");
     return NULL;
   }
 }
@@ -852,7 +853,7 @@ static void readInstructionDataportNG(unsigned &bytePos, const char *buf,
       esize = EXEC_SIZE_1;
       break;
     default:
-      MUST_BE_TRUE(false, "Invalid Number of Elements for Gather/Scatter.");
+      vISA_ASSERT_UNREACHABLE("Invalid Number of Elements for Gather/Scatter.");
     }
 
     emask = transformMask(container, num_elts >> 4);
@@ -1120,7 +1121,7 @@ static void readInstructionDataportNG(unsigned &bytePos, const char *buf,
     break;
   }
   default: {
-    MUST_BE_TRUE(false, "Unimplemented or Illegal DataPort Opcode.");
+    vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal DataPort Opcode.");
   }
   }
 }
@@ -1182,7 +1183,7 @@ static void readInstructionControlFlow(unsigned &bytePos, const char *buf,
       return;
 
     default:
-      MUST_BE_TRUE(false, "Unimplemented or Illegal Control Flow Opcode.");
+      vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal Control Flow Opcode.");
       return;
     }
 
@@ -1231,7 +1232,7 @@ static void readInstructionControlFlow(unsigned &bytePos, const char *buf,
     break;
   }
   default:
-    MUST_BE_TRUE(false, "Unimplemented or Illegal Control Flow Opcode.");
+    vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal Control Flow Opcode.");
   }
 }
 
@@ -1486,7 +1487,7 @@ static void readInstructionMisc(unsigned &bytePos, const char *buf,
     break;
   }
   default: {
-    MUST_BE_TRUE(false, "Unimplemented or Illegal Misc Opcode.");
+    vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal Misc Opcode.");
   }
   }
 }
@@ -1590,7 +1591,7 @@ static void readInstructionSVM(unsigned &bytePos, const char *buf,
     break;
   }
   default:
-    MUST_BE_TRUE(false, "Unimplemented or Illegal SVM Sub Opcode.");
+    vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal SVM Sub Opcode.");
   }
 }
 
@@ -2174,7 +2175,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     break;
   }
   default: {
-    MUST_BE_TRUE(false, "Unimplemented or Illegal Sampler Opcode.");
+    vISA_ASSERT_UNREACHABLE("Unimplemented or Illegal Sampler Opcode.");
   }
   }
 }
@@ -2412,7 +2413,7 @@ void readInstructionNG(unsigned &bytePos, const char *buf,
          << " at byte position " << bytePos - 1 << "(0x" << std::hex
          << bytePos - 1 << ")"
          << ".";
-    MUST_BE_TRUE(false, sstr.str());
+    vISA_ASSERT_UNREACHABLE(sstr.str());
   }
   }
 }
@@ -2454,7 +2455,7 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned &bytePos,
         attributes[i].value.intVal = *((int *)valueBuffer);
         break;
       default:
-        MUST_BE_TRUE(false, "Unsupported attribute size.");
+        vISA_ASSERT_UNREACHABLE("Unsupported attribute size.");
         break;
       }
     } else if (vISA::Attributes::isCStr(attrID)) {

@@ -184,7 +184,7 @@ void IR_Builder::generateNamedBarrier(G4_Predicate *prd, int numProducer,
     case NamedBarrierType::CONSUMER:
       return 2;
     default:
-      assert(false && "unrecognized NM barreir type");
+      vISA_ASSERT_UNREACHABLE("unrecognized NM barreir type");
       return -1;
     }
   };

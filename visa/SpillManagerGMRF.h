@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef __SPILLMANAGERGMRF_H__
 #define __SPILLMANAGERGMRF_H__
 
+#include "Assertions.h"
 #include "BuildIR.h"
 #include "G4_Opcode.h"
 #include "Mem_Manager.h"
@@ -626,7 +627,7 @@ private:
     case 8:
       return 3;
     default:
-      MUST_BE_TRUE(false, "only 1/2/4/8 HWords are supported");
+      vISA_ASSERT_UNREACHABLE("only 1/2/4/8 HWords are supported");
       return 0;
     }
   }
@@ -641,7 +642,7 @@ private:
     case 8:
       return ChannelMask::createFromAPI(CHANNEL_MASK_RGBA);
     default:
-      assert(false && "illegal spill size");
+      vISA_ASSERT_UNREACHABLE("illegal spill size");
       return ChannelMask::createFromAPI(CHANNEL_MASK_R);
     }
   }

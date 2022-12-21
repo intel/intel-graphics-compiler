@@ -1618,7 +1618,7 @@ void LocalRA::countLocalLiveIntervals(
       else if (dcl->getNumElems() == 1)
         numScalars++;
       else
-        ASSERT_USER(false, "Unknown size");
+        vISA_ASSERT_UNREACHABLE("Unknown size");
     }
   }
 
@@ -2114,7 +2114,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign,
       step = 1;
       break;
     default:
-      assert("unexpected alignment");
+      vISA_ASSERT_UNREACHABLE("unexpected alignment");
     }
     for (int j = 0; j < upBound; j += step) {
       if (!isWordBusy(regIdx, j, size)) {

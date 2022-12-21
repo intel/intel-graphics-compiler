@@ -478,7 +478,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST &instlist, INST_LIST_ITER &it) {
         return true;
       } // if opcode
       if (it == instlist.end()) {
-        MUST_BE_TRUE(false, "ERROR: Can not find endif for if!");
+        vISA_ASSERT_UNREACHABLE("ERROR: Can not find endif for if!");
         return false;
       }
       it++;
@@ -488,7 +488,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST &instlist, INST_LIST_ITER &it) {
   // process iff-endif
   //
   else
-    MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
+    vISA_ASSERT_UNREACHABLE(ERROR_FLOWGRAPH);
 
   return false;
 }
@@ -836,7 +836,7 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
             addUniquePredSuccEdges(curr_BB, next_BB);
           }
         } else {
-          assert(false && "should not reach here");
+          vISA_ASSERT_UNREACHABLE("should not reach here");
         }
       } // need edge
       curr_BB = next_BB;
@@ -1192,7 +1192,7 @@ void FlowGraph::handleExit(G4_BB *firstSubroutineBB) {
     }
     const G4_INST *lastInst = bb->back();
     if (lastInst->opcode() == G4_pseudo_exit) {
-      MUST_BE_TRUE(false, "All pseudo exits should be removed at this point");
+      vISA_ASSERT_UNREACHABLE("All pseudo exits should be removed at this point");
     }
   }
 
@@ -4227,7 +4227,7 @@ static uint32_t getFlagMask(G4_Predicate_Control pCtrl) {
   case G4_Predicate_Control::PRED_ANY32H:
     return 0xFFFFFFFF;
   default:
-    MUST_BE_TRUE(false, "only for AllH or AnyH predicate control");
+    vISA_ASSERT_UNREACHABLE("only for AllH or AnyH predicate control");
     break;
   }
   return 0;
@@ -4598,7 +4598,7 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
   }
 
   // currently we only support relocation on mov or add instruction
-  assert(false && "Unreachable");
+  vISA_ASSERT_UNREACHABLE("Unreachable");
   return 0;
 }
 
@@ -4615,7 +4615,7 @@ const char *RelocationEntry::getTypeString() const {
   case RelocationType::R_GLOBAL_IMM_32:
     return "R_GLOBAL_IMM_32";
   default:
-    assert(false && "unhandled relocation type");
+    vISA_ASSERT_UNREACHABLE("unhandled relocation type");
     return "";
   }
 }

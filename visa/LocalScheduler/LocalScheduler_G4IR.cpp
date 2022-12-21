@@ -352,7 +352,7 @@ static Mask getMaskForOp(IR_Builder *builder, G4_INST *inst,
         subRegNum = dstRegRegion->ExIndSubRegNum(valid);
       }
     } else {
-      assert(0 && "invalid A0 operand");
+      vISA_ASSERT_UNREACHABLE("invalid A0 operand");
     }
     G4_Type addrType = opnd->isIndirect() ? ADDR_REG_TYPE : opnd->getType();
     LB = subRegNum * TypeSize(addrType);
@@ -400,7 +400,7 @@ static Mask getMaskForOp(IR_Builder *builder, G4_INST *inst,
     break;
   }
   default:
-    assert(0 && "Bad opnd");
+    vISA_ASSERT_UNREACHABLE("Bad opnd");
   }
   return Mask(LB, RB, nonContiguousStride, opnd->getAccRegSel());
 }
@@ -490,10 +490,10 @@ void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
     break;
   }
   case G4_VarBase::VK_regVar:
-    assert(0 && "Should not be a regvar. PhyReg is extracted from regvar.");
+    vISA_ASSERT_UNREACHABLE("Should not be a regvar. PhyReg is extracted from regvar.");
     break;
   default:
-    assert(0 && "Bad kind");
+    vISA_ASSERT_UNREACHABLE("Bad kind");
     break;
   }
 
@@ -541,7 +541,7 @@ static inline bool hasIndirection(G4_Operand *opnd,
   case Opnd_implAccDst:
     return false;
   default:
-    assert(0 && "Bad opndNum");
+    vISA_ASSERT_UNREACHABLE("Bad opndNum");
     return false; // Unreachable
   }
 }
@@ -1487,7 +1487,7 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
             hasOverlap = (dep != NODEP); // Let's be conservative
             curKillsBucket = false;
           } else {
-            assert(0 && "Bad bucket");
+            vISA_ASSERT_UNREACHABLE("Bad bucket");
           }
 
           // 2. Create Edge if there is overlap and RAW/WAW/WAR
@@ -1543,7 +1543,7 @@ void Node::deletePred(Node *pred) {
       return;
     }
   }
-  assert(false && "trying to delete a non-predecessor node");
+  vISA_ASSERT_UNREACHABLE("trying to delete a non-predecessor node");
 }
 
 // Move all input and output dependences:

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "BinaryEncodingCNL.h"
 #include "BuildIR.h"
 using namespace vISA;
@@ -235,9 +236,8 @@ uint32_t BinaryEncodingBase::getEUOpcode(G4_opcode g4opc) {
   case G4_smov:
     euopcode = G9HDL::EU_OPCODE_SMOV;
     break;
-
   default:
-    assert(false && "Invalid G4 opcode!");
+    vISA_ASSERT_UNREACHABLE("Invalid G4 opcode!");
     break;
   }
   return (uint32_t)euopcode;
@@ -286,7 +286,7 @@ static inline int GetOperandSrcHDLImmType(G4_Type srcType) {
     type = G11HDL::SRCIMMTYPE_HF;
     break;
   default:
-    MUST_BE_TRUE(false, "invalid type");
+    vISA_ASSERT_UNREACHABLE("invalid type");
     break;
   }
   return type;
@@ -332,7 +332,7 @@ static inline int GetOperandSrcHDLType(G4_Type regType) {
     type = G11HDL::SRCTYPE_HF;
     break;
   default:
-    MUST_BE_TRUE(false, "invalid type");
+    vISA_ASSERT_UNREACHABLE("invalid type");
     break;
   }
 
@@ -571,7 +571,7 @@ void BinaryEncodingCNL::EncodeFlagRegPredicate(
         predCtrl = G9HDL::PREDCTRL_ALL4H;
         break;
       default:
-        MUST_BE_TRUE(false, "invalid align16 predicate control");
+        vISA_ASSERT_UNREACHABLE("invalid align16 predicate control");
       }
       instructionControlsA.SetPredctrl(predCtrl);
       // instructionHeader.SetControl_Predctrl(predCtrl);
@@ -681,7 +681,7 @@ inline void BinaryEncodingCNL::EncodeDstHorzStride(
         G9HDL::HORZSTRIDE_1_ELEMENTS);
     break;
   default:
-    MUST_BE_TRUE(false, "wrong dst horizontal stride");
+    vISA_ASSERT_UNREACHABLE("wrong dst horizontal stride");
     break;
   }
 }
@@ -1454,7 +1454,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
             DESTINATION_HORIZONTAL_STRIDE_1_ELEMENT);
     break;
   default:
-    MUST_BE_TRUE(false, "Wrong dst horizontal stride for align1 ternary "
+    vISA_ASSERT_UNREACHABLE("Wrong dst horizontal stride for align1 ternary "
                         "instruction (is neither 1 nor 2).");
     break;
   }
@@ -1674,7 +1674,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
           SetSourceHorizontalStride(&threeSrc, G9HDL::HORZSTRIDE_4_ELEMENTS);
       break;
     default:
-      MUST_BE_TRUE(false, "Align1 ternary: src2 has non-encodable horizontal "
+      vISA_ASSERT_UNREACHABLE("Align1 ternary: src2 has non-encodable horizontal "
                           "stride (accepted: 0,1,2,4).");
       break;
     }

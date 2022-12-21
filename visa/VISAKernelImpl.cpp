@@ -1204,7 +1204,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl,
     decl->index = m_surface_count++;
     break;
   default:
-    assert(0);
+    vISA_ASSERT_UNREACHABLE("invalid type");
     return VISA_FAILURE;
   }
 
@@ -1372,7 +1372,7 @@ int VISAKernelImpl::AddKernelAttribute(const char *attrName, int size,
       attr->value.intVal = *((int32_t *)valueBuffer);
       break;
     default:
-      ASSERT_USER(false, "Unsupported attribute size");
+      vISA_ASSERT_UNREACHABLE("Unsupported attribute size");
       break;
     }
     m_kernelAttrs->setKernelAttr(attrID, attr->value.intVal, *getIRBuilder());
@@ -1489,7 +1489,7 @@ attribute_info_t *VISAKernelImpl::allocAttributeImpl(CISA_GEN_VAR *Dcl,
     pAttributes = &(Dcl->labelVar.attributes);
     break;
   default:
-    assert(0);
+    vISA_ASSERT_UNREACHABLE("invalid dcl type");
     return nullptr;
   }
 
@@ -1595,7 +1595,7 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl,
     break;
   }
   default:
-    assert(0);
+    vISA_ASSERT_UNREACHABLE("invalid dcl type");
     return VISA_FAILURE;
   }
 
@@ -1830,7 +1830,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(
       break;
     }
     default:
-      assert(0);
+      vISA_ASSERT_UNREACHABLE("invalid dcl type");
       return VISA_FAILURE;
     }
 
@@ -1885,7 +1885,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(
       break;
     }
     default:
-      MUST_BE_TRUE(false, "ERROR: unexpected variable class");
+      vISA_ASSERT_UNREACHABLE("unexpected variable class");
       break;
     }
 
@@ -2460,7 +2460,7 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
     break;
   }
   default: {
-    assert(0);
+    vISA_ASSERT_UNREACHABLE("invalid dcl type");
     status = VISA_FAILURE;
     break;
   }
@@ -3644,7 +3644,7 @@ int VISAKernelImpl::AppendVISASurfAccessGatherScatterInst(
       numberOfElements = 2;
       break;
     default:
-      MUST_BE_TRUE(false, "Invalid Number of Elements for Gather/Scatter.");
+      vISA_ASSERT_UNREACHABLE("Invalid Number of Elements for Gather/Scatter.");
       return false;
     }
 
@@ -7639,7 +7639,7 @@ static int lscStridedOpBlockStride(LSC_DATA_SHAPE dataShape) {
       stride *= 64;
       break;
     default:
-      MUST_BE_TRUE(false, "invalid vector size");
+      vISA_ASSERT_UNREACHABLE("invalid vector size");
       break;
     }
   }
@@ -8695,7 +8695,7 @@ G4_Operand *VISAKernelImpl::CommonISABuildPreDefinedSrc(
     break;
   }
   default:
-    ASSERT_USER(false, "unsupported pre-defined variable");
+    vISA_ASSERT_UNREACHABLE("unsupported pre-defined variable");
   }
 
   m_builder->preDefVars.setHasPredefined(internalIndex, true);

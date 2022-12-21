@@ -13,6 +13,7 @@ class G4_Operand;
 class G4_Declare;
 } // namespace vISA
 
+#include "Assertions.h"
 #include "IsaDescription.h"
 #include "common.h"
 #include "visa_igc_common_header.h"
@@ -849,7 +850,7 @@ inline SFID LSC_SFID_To_SFID(LSC_SFID lscId) {
   case LSC_SLM:
     return SFID::SLM;
   default:
-    assert(false && "invalid SFID for untyped LSC message");
+    vISA_ASSERT_UNREACHABLE("invalid SFID for untyped LSC message");
     return SFID::NULL_SFID;
   }
 };
@@ -998,7 +999,7 @@ public:
     case A:
       return VISA_3D_GATHER4_CHANNEL_A;
     default:
-      assert(false && "can't be converted to single channel");
+      vISA_ASSERT_UNREACHABLE("can't be converted to single channel");
       return VISA_3D_GATHER4_CHANNEL_R;
     }
   }

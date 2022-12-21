@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 /*  Utility functions for common ISA binary emission
  *
  */
+#include "Assertions.h"
 #include "Common_ISA.h"
 #include "G4_IR.hpp"
 #include "visa_igc_common_header.h"
@@ -146,7 +147,7 @@ inline uint32_t getvISAMaskOffset(VISA_EMask_Ctrl emask) {
   case vISA_EMASK_M8_NM:
     return 28;
   default:
-    assert(false && "illegal vISA execution mask control");
+    vISA_ASSERT_UNREACHABLE("illegal vISA execution mask control");
     return 0;
   }
 }

@@ -48,7 +48,7 @@ bool isSpecialRegion(const RegionDesc *desc, uint16_t &hstride) {
       hstride = DUMMY_HSTRIDE_16_16_0;
       break;
     default:
-      MUST_BE_TRUE(false, "Unexpected special hstride seen");
+      vISA_ASSERT_UNREACHABLE("Unexpected special hstride seen");
     }
   }
 
@@ -461,7 +461,7 @@ void LVN::replaceAllUses(G4_INST *defInst, bool negate, UseList &uses,
       } else if (srcMod == Mod_Minus) {
         srcMod = Mod_src_undef;
       } else {
-        MUST_BE_TRUE(false, "Unexpected src modifier found in LVN");
+        vISA_ASSERT_UNREACHABLE("Unexpected src modifier found in LVN");
       }
     }
 

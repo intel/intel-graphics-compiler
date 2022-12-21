@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef G4_OPERAND_H
 #define G4_OPERAND_H
 
+#include "Assertions.h"
 #include "Common_ISA.h"
 #include "G4_Declare.h"
 #include "G4_Opcode.h"

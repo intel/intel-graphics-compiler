@@ -936,7 +936,7 @@ void vISAVerifier::verifyOperand(const CISA_INST *inst, unsigned i) {
     verifyRawOperand(inst, i);
     break;
   default:
-    MUST_BE_TRUE(false, "Invalid operand type.");
+    vISA_ASSERT_UNREACHABLE("Invalid operand type.");
   }
 }
 

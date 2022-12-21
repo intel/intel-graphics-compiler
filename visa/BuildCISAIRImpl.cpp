@@ -811,7 +811,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             return offset + inst->getSrc(1)->asImm()->getImm();
           }
           default: {
-            assert(0);
+            vISA_ASSERT_UNREACHABLE("invalid inst opcode");
             return 0LL;
           }
           }
@@ -2507,7 +2507,7 @@ bool CISA_IR_Builder::CISA_create_branch_instruction(
     return true;
   }
   default: {
-    MUST_BE_TRUE(0, "UNKNOWN Branch OP not supported.");
+    vISA_ASSERT_UNREACHABLE("UNKNOWN Branch OP not supported.");
     return false;
   }
   }

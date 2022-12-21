@@ -825,7 +825,7 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
                   use.second = Opnd_src1;
                   break;
                 default:
-                  assert(false && "unexpectd src pos");
+                  vISA_ASSERT_UNREACHABLE("unexpectd src pos");
                 }
               }
             }

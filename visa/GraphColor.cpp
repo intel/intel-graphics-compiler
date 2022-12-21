@@ -2632,7 +2632,7 @@ bool Augmentation::updateDstMaskForGather(G4_INST *inst,
     return updateDstMaskForGatherRaw(
         inst, mask, reinterpret_cast<const G4_SendDescRaw *>(msgDesc));
   }
-  ASSERT_USER(false, "unexpected descriptor");
+  vISA_ASSERT_UNREACHABLE("unexpected descriptor");
   return false;
 }
 
@@ -2971,7 +2971,7 @@ unsigned Augmentation::getByteSizeFromMask(AugmentationMasks type) {
     return 8;
   }
 
-  MUST_BE_TRUE(false, "Unexpected type of mask");
+  vISA_ASSERT_UNREACHABLE("Unexpected type of mask");
 
   return 0;
 }
@@ -7208,7 +7208,7 @@ unsigned GlobalRA::sendBlockSizeCode(unsigned owordSize) {
     code = 5;
     break;
   default:
-    MUST_BE_TRUE(false, ERROR_REGALLOC);
+    vISA_ASSERT_UNREACHABLE(ERROR_REGALLOC);
     code = 0;
   }
 
@@ -10319,7 +10319,7 @@ int GlobalRA::coloringRegAlloc() {
             kernel.setRAType(RA_Type::GRAPH_COLORING_SPILL_FF_RA);
             break;
           default:
-            assert(0);
+            vISA_ASSERT_UNREACHABLE("invalid ra type");
             break;
           }
         }
@@ -12728,7 +12728,7 @@ unsigned GraphColor::edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2) {
       return 0;
     }
   }
-  MUST_BE_TRUE(false, "Found unsupported ARF reg type in register allocation!");
+  vISA_ASSERT_UNREACHABLE("Found unsupported ARF reg type in register allocation!");
   return 0;
 }
 

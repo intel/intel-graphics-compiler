@@ -111,7 +111,7 @@ const char *Common_ISA_Get_Modifier_Name(VISA_Modifier modifier) {
   case MODIFIER_NOT:
     return "(~)";
   default:
-    MUST_BE_TRUE(false, "Invalid modifier.");
+    vISA_ASSERT_UNREACHABLE("Invalid modifier.");
     return "invalid_modifier";
   }
 }
@@ -135,7 +135,9 @@ short Common_ISA_Get_Region_Value(Common_ISA_Region_Val val) {
   case REGION_32:
     return 32;
   default:
-    MUST_BE_TRUE(false, " illegal region value: " << (int)val);
+    std::stringstream ss;
+    ss << " illegal region value: " << (int)val;
+    vISA_ASSERT_UNREACHABLE(ss.str());
     return -1;
   }
 }
@@ -293,7 +295,7 @@ G4_opcode GetGenOpcodeFromVISAOpcode(ISA_Opcode opcode) {
     return G4_madw;
     break;
   default:
-    MUST_BE_TRUE(0, "Invalid opcode in common ISA.");
+    vISA_ASSERT_UNREACHABLE("Invalid opcode in common ISA.");
     break;
   }
   return G4_illegal;
@@ -390,7 +392,7 @@ G4_SrcModifier GetGenSrcModFromVISAMod(VISA_Modifier mod) {
   case MODIFIER_NOT:
     return Mod_Not;
   default:
-    MUST_BE_TRUE(0, "Wrong src modifier");
+    vISA_ASSERT_UNREACHABLE("Wrong src modifier");
     return Mod_src_undef;
   }
 }
@@ -413,7 +415,7 @@ Get_G4_CondModifier_From_Common_ISA_CondModifier(VISA_Cond_Mod cmod) {
   case ISA_CMP_UNDEF:
     return Mod_cond_undef;
   default:
-    MUST_BE_TRUE(0, "Invalid CISA Conditional Modifier.");
+    vISA_ASSERT_UNREACHABLE("Invalid CISA Conditional Modifier.");
     return Mod_cond_undef;
   }
 }
@@ -525,7 +527,7 @@ unsigned Get_Common_ISA_SVM_Block_Num(VISA_SVM_Block_Num num) {
   case SVM_BLOCK_NUM_8:
     return 8;
   default:
-    MUST_BE_TRUE(false, "Illegal SVM block number (should be 1, 2, 4, or 8).");
+    vISA_ASSERT_UNREACHABLE("Illegal SVM block number (should be 1, 2, 4, or 8).");
   }
   return 0;
 }
@@ -541,7 +543,7 @@ VISA_SVM_Block_Num valueToVISASVMBlockNum(unsigned int value) {
   case 8:
     return SVM_BLOCK_NUM_8;
   default:
-    MUST_BE_TRUE(false, "invalid SVM block number");
+    vISA_ASSERT_UNREACHABLE("invalid SVM block number");
     return SVM_BLOCK_NUM_1;
   }
 }
@@ -556,7 +558,7 @@ VISA_SVM_Block_Type valueToVISASVMBlockType(unsigned int value) {
     return SVM_BLOCK_TYPE_QWORD;
 
   default:
-    MUST_BE_TRUE(false, "invalid SVM block number");
+    vISA_ASSERT_UNREACHABLE("invalid SVM block number");
     return SVM_BLOCK_TYPE_BYTE;
   }
 }
@@ -570,7 +572,7 @@ unsigned Get_Common_ISA_SVM_Block_Size(VISA_SVM_Block_Type size) {
   case SVM_BLOCK_TYPE_QWORD:
     return 8;
   default:
-    MUST_BE_TRUE(false, "Illegal SVM block size (should be 1, 4, or 8).");
+    vISA_ASSERT_UNREACHABLE("Illegal SVM block size (should be 1, 4, or 8).");
   }
   return 0;
 }
@@ -588,7 +590,7 @@ unsigned Get_VISA_Oword_Num(VISA_Oword_Num num) {
   case OWORD_NUM_16:
     return 16;
   default:
-    MUST_BE_TRUE(false, "illegal Oword number (should be 0..3).");
+    vISA_ASSERT_UNREACHABLE("illegal Oword number (should be 0..3).");
     return 0;
   }
 }
@@ -608,7 +610,7 @@ unsigned Get_VISA_Exec_Size(VISA_Exec_Size size) {
   case EXEC_SIZE_32:
     return 32;
   default:
-    MUST_BE_TRUE(false, "illegal common ISA execsize (should be 0..5).");
+    vISA_ASSERT_UNREACHABLE("illegal common ISA execsize (should be 0..5).");
     return 0;
   }
 }
@@ -718,7 +720,7 @@ Common_ISA_Region_Val Get_CISA_Region_Val(short val) {
     case -1:
       return REGION_NULL;
     default:
-      MUST_BE_TRUE(0, "Invalid Region value.");
+      vISA_ASSERT_UNREACHABLE("Invalid Region value.");
       return REGION_NULL;
     }
   }
@@ -850,7 +852,7 @@ G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size) {
     case vISA_EMASK_M5_NM:
       return InstOpt_M16 | InstOpt_WriteEnable;
     default:
-      ASSERT_USER(false, "Invalid emask for SIMD32 inst");
+      vISA_ASSERT_UNREACHABLE("Invalid emask for SIMD32 inst");
       return InstOpt_NoOpt;
     }
     break;
@@ -865,7 +867,7 @@ G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size) {
     case vISA_EMASK_M5_NM:
       return InstOpt_M16 | InstOpt_WriteEnable;
     default:
-      MUST_BE_TRUE(false, "Invalid emask for SIMD16 inst");
+      vISA_ASSERT_UNREACHABLE("Invalid emask for SIMD16 inst");
       return InstOpt_NoOpt;
     }
   } break;
@@ -888,7 +890,7 @@ G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size) {
     case vISA_EMASK_M7_NM:
       return InstOpt_M24 | InstOpt_WriteEnable;
     default:
-      MUST_BE_TRUE(false, "Invalid emask for SIMD8 inst");
+      vISA_ASSERT_UNREACHABLE("Invalid emask for SIMD8 inst");
       return InstOpt_NoOpt;
     }
   }
@@ -929,7 +931,7 @@ G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size) {
       case vISA_EMASK_M8_NM:
         return InstOpt_M28 | InstOpt_WriteEnable;
       default:
-        MUST_BE_TRUE(false, "Invalid emask for SIMD4 inst.");
+        vISA_ASSERT_UNREACHABLE("Invalid emask for SIMD4 inst.");
         return InstOpt_NoOpt;
       }
     }
@@ -940,8 +942,7 @@ unsigned Get_Atomic_Op(VISAAtomicOps op) {
 
   switch (op) {
   default:
-    ASSERT_USER(false,
-                "CISA error: Invalid vISA atomic op for DWord atomic write.");
+    vISA_ASSERT_UNREACHABLE("CISA error: Invalid vISA atomic op for DWord atomic write.");
     break;
   case ATOMIC_ADD:
     return GEN_ATOMIC_ADD;
@@ -1007,7 +1008,7 @@ uint16_t Get_VISA_Type_Size(VISA_Type type) {
   case ISA_TYPE_UQ:
     return 8;
   default:
-    MUST_BE_TRUE(0, "Invalid data type: size unknown.");
+    vISA_ASSERT_UNREACHABLE("Invalid data type: size unknown.");
     return 0;
   }
 }
@@ -1142,7 +1143,7 @@ int vector_opnd::getSizeInBinary() const {
     break;
   }
   default: {
-    MUST_BE_TRUE(0, "Invalid Vector Operand Class. Size cannot be determined.");
+    vISA_ASSERT_UNREACHABLE("Invalid Vector Operand Class. Size cannot be determined.");
     break;
   }
   }
@@ -1264,7 +1265,7 @@ Get_Common_ISA_CondModifier_From_G4_CondModifier(G4_CondModifier cmod) {
   case Mod_cond_undef:
     return ISA_CMP_UNDEF;
   default:
-    MUST_BE_TRUE(0, "Invalid G4 Conditional Modifier.");
+    vISA_ASSERT_UNREACHABLE("Invalid G4 Conditional Modifier.");
     return ISA_CMP_UNDEF;
   }
 }
@@ -1313,7 +1314,7 @@ VISA_Oword_Num Get_VISA_Oword_Num_From_Number(unsigned num) {
   case 16:
     return OWORD_NUM_16;
   default:
-    MUST_BE_TRUE(false, "illegal Oword number.");
+    vISA_ASSERT_UNREACHABLE("illegal Oword number.");
     return OWORD_NUM_ILLEGAL;
   }
 }
@@ -1331,7 +1332,7 @@ VISA_Modifier Get_Common_ISA_SrcMod_From_G4_Mod(G4_SrcModifier mod) {
   case Mod_Not:
     return MODIFIER_NOT;
   default:
-    MUST_BE_TRUE(0, "Wrong src modifier");
+    vISA_ASSERT_UNREACHABLE("Wrong src modifier");
     return MODIFIER_NONE;
   }
 }
@@ -1438,7 +1439,7 @@ int64_t typecastVals(const void *value, VISA_Type isaType) {
   }
 
   default: {
-    assert(0);
+    vISA_ASSERT_UNREACHABLE("invalid isa type");
     return -1;
   }
   }
@@ -1596,7 +1597,7 @@ LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc,
       cacheOpts = {LSC_CACHING_WRITEBACK, LSC_CACHING_WRITEBACK};
     break;
   default:
-    assert(false && "unsupported caching option");
+    vISA_ASSERT_UNREACHABLE("unsupported caching option");
     break;
   }
   return cacheOpts;

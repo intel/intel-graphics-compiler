@@ -821,7 +821,7 @@ uint32_t IR_Builder::getSplitEMask(unsigned execSize, uint32_t eMask,
     break;
   }
 
-  ASSERT_USER(false, "Unhandled cases for EMask splitting!");
+  vISA_ASSERT_UNREACHABLE("Unhandled cases for EMask splitting!");
   return ~0U;
 }
 
@@ -1944,7 +1944,7 @@ G4_MathOp IR_Builder::Get_MathFuncCtrl(ISA_Opcode op, G4_Type type) {
   case ISA_EXP:
     return MATH_EXP;
   default:
-    ASSERT_USER(0, "Illegal math opcode.");
+    vISA_ASSERT_UNREACHABLE("Illegal math opcode.");
     return MATH_RESERVED;
   }
 }
@@ -2830,7 +2830,7 @@ IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control,
     case 32:
       return PRED_ANY32H;
     default:
-      MUST_BE_TRUE(0, "Invalid predicate control group size.");
+      vISA_ASSERT_UNREACHABLE("Invalid predicate control group size.");
       return PRED_DEFAULT;
     }
   }
@@ -2852,12 +2852,12 @@ IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control,
     case 32:
       return PRED_ALL32H;
     default:
-      MUST_BE_TRUE(0, "Invalid predicate control group size.");
+      vISA_ASSERT_UNREACHABLE("Invalid predicate control group size.");
       return PRED_DEFAULT;
     }
   }
   default:
-    MUST_BE_TRUE(0, "Invalid predicate control.");
+    vISA_ASSERT_UNREACHABLE("Invalid predicate control.");
     return PRED_DEFAULT;
   }
 }

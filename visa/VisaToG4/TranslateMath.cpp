@@ -146,7 +146,7 @@ void IR_Builder::expandPow(G4_ExecSize exsize, G4_Predicate *predOpnd,
       // ToDo: what if VF contains negative values?
       break;
     default:
-      assert(false && "unexpected src0 type for pow");
+      vISA_ASSERT_UNREACHABLE("unexpected src0 type for pow");
     }
   }
   createMathInst(predOpnd, g4::NOSAT, exsize, logDst, logSrc,

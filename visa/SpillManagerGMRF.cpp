@@ -1774,7 +1774,7 @@ unsigned SpillManagerGRF::scatterSendBlockSizeCode(unsigned size) const {
     code = 0x03;
     break;
   default:
-    assert(0);
+    vISA_ASSERT_UNREACHABLE("invalid size");
     code = 0;
   }
 

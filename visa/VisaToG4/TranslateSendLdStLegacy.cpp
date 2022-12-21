@@ -1944,7 +1944,7 @@ static unsigned GetNumBatch(VISA_SVM_Block_Type blockSize,
   case SVM_BLOCK_TYPE_QWORD:
     return Get_Common_ISA_SVM_Block_Num(numBlocks);
   }
-  ASSERT_USER(false, "Unhandled sizes/numbers of block/element!");
+  vISA_ASSERT_UNREACHABLE("Unhandled sizes/numbers of block/element!");
   return 0;
 }
 
@@ -2382,7 +2382,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
     numDWperLane = Get_Common_ISA_SVM_Block_Num(numBlocks) * 2;
     break;
   default:
-    MUST_BE_TRUE(false, "Illegal SVM block type");
+    vISA_ASSERT_UNREACHABLE("Illegal SVM block type");
   }
   uint32_t responseLength = (numDWperLane * 4 * exSize) / getGRFSize();
 

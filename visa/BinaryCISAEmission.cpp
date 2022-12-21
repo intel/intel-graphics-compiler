@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "BinaryCISAEmission.h"
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
@@ -352,7 +353,7 @@ void CBinaryCISAEmitter::emitAttributeInfo(VISAKernelImpl *cisa_kernel,
                                              attr->size);
       break;
     default:
-      assert(0);
+      vISA_ASSERT_UNREACHABLE("invalid attribute size");
       break;
     }
   } else
@@ -446,7 +447,7 @@ void CBinaryCISAEmitter::emitVectorOpnd(VISAKernelImpl *cisa_kernel,
     break;
   }
   default: {
-    MUST_BE_TRUE(0, "Invalid Vector Operand Class. Size cannot be determined.");
+    vISA_ASSERT_UNREACHABLE("invalid operand tag");
     break;
   }
   }

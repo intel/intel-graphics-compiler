@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef _COMMON_BINARYENCODING_H_
 #define _COMMON_BINARYENCODING_H_
 
+#include "Assertions.h"
 #include "FlowGraph.h"
 #include "G4_Kernel.hpp"
 #include "Timer.h"
@@ -1484,7 +1485,7 @@ inline RegFile EncodingHelper::GetSrcRegFile(G4_Operand *src) {
       return REG_FILE_R;
   }
 
-  MUST_BE_TRUE(false, "invalid src regfile");
+  vISA_ASSERT_UNREACHABLE("invalid src regfile");
   return REG_FILE_R;
 }
 
@@ -1630,7 +1631,7 @@ inline RegFile EncodingHelper::GetDstRegFile(G4_DstRegRegion *dst) {
     else if (base->isGreg())
       return REG_FILE_R;
   }
-  MUST_BE_TRUE(false, "invalid dst regfile");
+  vISA_ASSERT_UNREACHABLE("invalid dst regfile");
   return REG_FILE_R;
 }
 
@@ -1665,8 +1666,8 @@ inline uint32_t GetEncodeExecSize(G4_INST *inst) {
     exSz = ES_32_CHANNELS;
     break;
   default:
-    MUST_BE_TRUE(0, "[Verifying]:[ERR]: Invalid execution size ("
-                        << (short)execSize << "):\t");
+    std::stringstream ss;
+    vISA_ASSERT_UNREACHABLE("Invalid execution size: %d", (short)execSize);
   }
   return exSz;
 }

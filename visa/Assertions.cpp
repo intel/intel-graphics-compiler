@@ -9,10 +9,27 @@ SPDX-License-Identifier: MIT
 #include "Assertions.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <cstdarg>
+
 void assert_and_exit(bool check, std::string errorMsg,
-    std::string customMsg) {
+    std::string customMsg, ...) {
+
+  char causeMsg[1024];
+  std::va_list vargs;
+  va_start(vargs, customMsg);
+  int writtenB = std::vsnprintf(causeMsg, 1024, customMsg.c_str(), vargs);
+  va_end(vargs);
+
   if (!check) {
-    llvm::errs() << errorMsg << ": " << check << ", " << customMsg << "\n";
+    if (writtenB > 0) {
+      // writtenB is not negative; succesfully written the cause msg with
+      // variadic arguments
+      llvm::errs() << errorMsg << ": " << check << ", " << std::string(causeMsg) << "\n";
+    }
+    else {
+      // writtenB is negative, just print the custom msg as is
+      llvm::errs() << errorMsg << ": " << check << ", " << customMsg << "\n";
+    }
     std::abort();
   }
 }

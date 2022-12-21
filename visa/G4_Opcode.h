@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #ifndef _G4_OPCODE_H_
 #define _G4_OPCODE_H_
+#include "Assertions.h"
 #include "common.h"
 #include "visa_igc_common_header.h"
 
@@ -465,7 +466,7 @@ inline G4_Type floatToSameWidthIntType(G4_Type floatTy) {
   case 8:
     return Type_UQ;
   default:
-    assert(false && "illegal type size");
+    vISA_ASSERT_UNREACHABLE("illegal type size");
     return Type_UD;
   }
 }
