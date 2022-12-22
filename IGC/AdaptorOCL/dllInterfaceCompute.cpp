@@ -559,6 +559,10 @@ bool ProcessElfInput(
         std::vector<std::unique_ptr<llvm::Module>> LLVMBinariesToLink;
         std::vector<VLD::SPVTranslationPair> SPIRVToLink;
 
+        bool hasSPMD = false;
+        bool hasESIMD = false;
+        bool hasSPMD_ESIMD = false;
+
         // Iterate over all the input modules.
         for (unsigned i = 1; i < pHeader->NumSectionHeaderEntries; i++)
         {
@@ -604,26 +608,34 @@ bool ProcessElfInput(
                     {
                         spvMetadata = *spvMetadataOrErr;
                     }
-                    if (spvMetadata.SpirvType != VLD::SPIRVTypeEnum::SPIRV_SPMD &&
-                        spvMetadata.SpirvType != VLD::SPIRVTypeEnum::SPIRV_ESIMD &&
-                        spvMetadata.SpirvType != VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD)
-                    {
+
+                    switch (spvMetadata.SpirvType) {
+                    case VLD::SPIRVTypeEnum::SPIRV_SPMD:
+                        hasSPMD = true;
+                        break;
+                    case VLD::SPIRVTypeEnum::SPIRV_ESIMD:
+                        hasESIMD = true;
+                        break;
+                    case VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD:
+                        hasSPMD_ESIMD = true;
+                        break;
+                    default:
                         SetErrorMessage("Unsupported SPIR-V in ELF file!",
-                            OutputArgs);
+                                        OutputArgs);
                         return false;
                     }
 
-                  // Copy args, as they hold optional spec constants.
-                  STB_TranslateInputArgs SpvArgs = InputArgs;
-                  SpvArgs.pInput = pData;
-                  SpvArgs.InputSize = dataSize;
-                  SPIRVToLink.push_back({spvMetadata, SpvArgs});
+                    // Copy args, as they hold optional spec constants.
+                    STB_TranslateInputArgs SpvArgs = InputArgs;
+                    SpvArgs.pInput = pData;
+                    SpvArgs.InputSize = dataSize;
+                    SPIRVToLink.push_back({spvMetadata, SpvArgs});
 
-                  // unset specialization constants, to avoid using them by
-                  // subsequent SPIR-V modules
-                  InputArgs.pSpecConstantsIds = nullptr;
-                  InputArgs.pSpecConstantsValues = nullptr;
-                  InputArgs.SpecConstantsSize = 0;
+                    // unset specialization constants, to avoid using them by
+                    // subsequent SPIR-V modules
+                    InputArgs.pSpecConstantsIds = nullptr;
+                    InputArgs.pSpecConstantsValues = nullptr;
+                    InputArgs.SpecConstantsSize = 0;
                 }
                 else
                 {
@@ -653,11 +665,9 @@ bool ProcessElfInput(
             }
         }
 
-        bool hasESIMD = std::any_of(SPIRVToLink.begin(), SPIRVToLink.end(), [](auto& el) {
-            return el.first.SpirvType == VLD::SPIRVTypeEnum::SPIRV_ESIMD || el.first.SpirvType == VLD::SPIRVTypeEnum::SPIRV_SPMD_AND_ESIMD;
-        });
+        bool hasVISALinking = hasSPMD_ESIMD || (hasESIMD && hasSPMD);
         bool hasLLVMBinaries = !LLVMBinariesToLink.empty();
-        if (hasESIMD && hasLLVMBinaries)
+        if ((hasESIMD || hasSPMD_ESIMD) && hasLLVMBinaries)
         {
             SetErrorMessage("ELF file contained ESIMD SPIR-V and LLVM binaries "
                 "to be linked. This use-case is not supported.",
@@ -665,7 +675,7 @@ bool ProcessElfInput(
             return false;
         }
 
-        if (!hasESIMD)
+        if (!hasVISALinking)
         {
             for (auto& SpvPair : SPIRVToLink)
             {
@@ -719,8 +729,8 @@ bool ProcessElfInput(
             }
             else
             {
-                // OutputModule can be null only if we have ESIMD module to link.
-                IGC_ASSERT(hasESIMD);
+                // OutputModule can be null only if we use visa linking.
+                IGC_ASSERT(hasVISALinking);
             }
 
             // Create a copy of the string to return to the caller. The output type
@@ -815,7 +825,7 @@ bool ProcessElfInput(
                 }
                 else if (IsDeviceBinaryFormat(outType))
                 {
-                    if (hasESIMD)
+                    if (hasVISALinking)
                     {
                         ShaderHash hash = ShaderHashOCL(
                             reinterpret_cast<const UINT*>(InputArgs.pInput),
