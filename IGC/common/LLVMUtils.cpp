@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvmWrapper/ADT/StringRef.h>
@@ -766,8 +767,37 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
 
     if (IGC_IS_FLAG_ENABLED(DumpLLVMIR))
     {
+        auto module = pContext->getModule();
+
+        if (IGC_IS_FLAG_ENABLED(ShaderDumpInstNamer))
+        {
+            //We first clear out any old entries of x if exists
+            //from the ValueSymTab by overriding the x variable to _x
+            for (auto& F : module->getFunctionList())
+                for (BasicBlock& BB : F)
+                    for (Instruction& I : BB)
+                        if (I.getName().startswith("x"))
+                            I.setName("_x");
+            //Now we rewrite the variables using a counter
+            unsigned int counter = 1;
+            for (auto& F : module->getFunctionList())
+                for (BasicBlock& BB : F)
+                {
+                    for (Instruction& I : BB)
+                    {
+                        if ((!I.hasName() && !I.getType()->isVoidTy()) ||
+                            I.getName().startswith("_x"))
+                        {
+                            I.setName("x" + std::to_string(counter));
+                            counter++;
+                        }
+                    }
+                    counter++;
+                }
+        }
+
         pContext->getMetaDataUtils()->save(*pContext->getLLVMContext());
-        serialize(*(pContext->getModuleMetaData()), pContext->getModule());
+        serialize(*(pContext->getModuleMetaData()), module);
         using namespace IGC::Debug;
         auto name =
             DumpName(IGC::Debug::GetShaderOutputName())
@@ -776,10 +806,11 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
             .Pass(dumpName)
             .Retry(pContext->m_retryManager.GetRetryId())
             .Extension("ll");
+
         auto new_annotator = IntrinsicAnnotator();
         auto annotator = (pContext->annotater != nullptr) ? pContext->annotater : &new_annotator;
         DumpLLVMIRText(
-            pContext->getModule(),
+            module,
             name,
             annotator);
     }
