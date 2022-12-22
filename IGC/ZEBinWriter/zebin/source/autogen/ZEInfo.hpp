@@ -77,7 +77,7 @@ struct zeInfoPayloadArgument
 {
     bool operator==(const zeInfoPayloadArgument& other) const
     {
-        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index && source_offset == other.source_offset && slm_alignment == other.slm_alignment && image_type == other.image_type && image_transformable == other.image_transformable && sampler_type == other.sampler_type && is_pipe == other.is_pipe && is_ptr == other.is_ptr && bti_value == other.bti_value;
+        return arg_type == other.arg_type && offset == other.offset && size == other.size && arg_index == other.arg_index && addrmode == other.addrmode && addrspace == other.addrspace && access_type == other.access_type && sampler_index == other.sampler_index && source_offset == other.source_offset && slm_alignment == other.slm_alignment && image_type == other.image_type && image_transformable == other.image_transformable && sampler_type == other.sampler_type && is_pipe == other.is_pipe && is_ptr == other.is_ptr;
     }
     zeinfo_str_t arg_type;
     zeinfo_int32_t offset = 0;
@@ -94,7 +94,6 @@ struct zeInfoPayloadArgument
     zeinfo_str_t sampler_type;
     zeinfo_bool_t is_pipe = false;
     zeinfo_bool_t is_ptr = false;
-    zeinfo_int32_t bti_value = -1;
 };
 struct zeInfoPerThreadPayloadArgument
 {
@@ -237,7 +236,7 @@ struct zeInfoContainer
     KernelsMiscInfoTy kernels_misc_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.28"; }
+    static zeinfo_str_t getVersionNumber() { return "1.27"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
@@ -277,9 +276,7 @@ struct PreDefinedAttrGetter{
         flat_image_pitch,
         sampler_address,
         sampler_normalized,
-        sampler_snap_wa,
-        const_base,
-        global_base
+        sampler_snap_wa
     };
     enum class ArgAddrMode {
         stateless,
@@ -431,10 +428,6 @@ struct PreDefinedAttrGetter{
             return "sampler_normalized";
         case ArgType::sampler_snap_wa:
             return "sampler_snap_wa";
-        case ArgType::const_base:
-            return "const_base";
-        case ArgType::global_base:
-            return "global_base";
         default:
             break;
         }

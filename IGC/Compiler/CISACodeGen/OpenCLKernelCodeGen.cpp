@@ -1700,31 +1700,18 @@ namespace IGC
                 payloadPosition, kernelArg->getAllocateSize());
             break;
 
-        case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
-        case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE: {
-          auto zeArgType =
-              kernelArg->getArgType() ==
-                      KernelArg::ArgType::IMPLICIT_CONSTANT_BASE
-                  ? zebin::PreDefinedAttrGetter::ArgType::const_base
-                  : zebin::PreDefinedAttrGetter::ArgType::global_base;
-          zebin::zeInfoPayloadArgument &arg =
-              zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-                  m_kernelInfo.m_zePayloadArgs, zeArgType, payloadPosition,
-                  kernelArg->getAllocateSize());
-          SOpenCLKernelInfo::SResourceInfo resInfo =
-              getResourceInfo(kernelArg->getAssociatedArgNo());
-          unsigned btiValue = getBTI(resInfo);
-          if (btiValue != 0xffffffff)
-            arg.bti_value = btiValue;
-          break;
-        }
-
         // We don't need these in ZEBinary, can safely skip them
         case KernelArg::ArgType::IMPLICIT_R0:
         case KernelArg::ArgType::R1:
         case KernelArg::ArgType::STRUCT:
             break;
 
+        // FIXME: should these be supported?
+        // CONSTANT_BASE and GLOBAL_BASE are not required that we should export
+        // all globals and constants and let the runtime relocate them when enabling
+        // ZEBinary
+        case KernelArg::ArgType::IMPLICIT_CONSTANT_BASE:
+        case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE:
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_ORIGIN:
         case KernelArg::ArgType::IMPLICIT_STAGE_IN_GRID_SIZE:
         default:
