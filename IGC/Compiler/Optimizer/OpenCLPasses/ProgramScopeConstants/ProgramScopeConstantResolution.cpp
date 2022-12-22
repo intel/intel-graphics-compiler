@@ -79,13 +79,6 @@ bool ProgramScopeConstantResolution::runOnModule(Module& M)
         return false;
     }
 
-    if (pCtx->enableZEBinary())
-    {
-        // ZEBinary always relies on relocation, so we can ignore this pass
-        return false;
-    }
-
-
     if (RunCautiously) {
         if (!needRunConservatively(M))
             return false;

@@ -248,26 +248,26 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         IGC::appendToUsed(M, globalArray);
     }
 
-    // Check if zebin is enabled
-    bool zebinEnable = Ctx->enableZEBinary();
+    // Kernels and Subroutines:
+    //  Add the implicit arg to the function argument list if a constant buffer is created and there
+    //  is no stack calls
+    //
+    // Stackcalls:
+    //  Stackcall ABI does not allow implicit args, so rely on relocation for global variable access
 
-    // patch-token-path:
-    //     Just add the implicit argument to each function if a constant
-    //     buffer has been created.  This will technically burn a patch
-    //     token on kernels that don't actually use the buffer but it saves
-    //     us having to walk the def-use chain (we can't just check if a
-    //     constant is used in the kernel; for example, a global buffer
-    //     may contain pointers that in turn point into the constant
-    //     address space).
-    // zebinary path:
-    //     Don't add the implicit arguments and rely solely on relocations
-    //     for global variable reference since the implicit arguments were
-    //     removed from zebinary.
-    if (!zebinEnable && hasInlineConstantBuffer)
+    // Workaround: When there is stringConstants in the module, do not insert
+    // implicit arguments to prevent const vars getting promoted
+    // at statelessToStateful pass. In zebin path, stateful promotion
+    // of const vars can't work well with printf strings.
+    bool skipConstBuffer =
+        Ctx->enableZEBinary() && !m_pModuleMd->stringConstants.empty();
+
+    if (!skipConstBuffer && hasInlineConstantBuffer)
     {
         for (auto& pFunc : M)
         {
             if (pFunc.isDeclaration()) continue;
+
             // Skip functions called from function marked with stackcall attribute
             if (AddImplicitArgs::hasStackCallInCG(&pFunc, *Ctx)) continue;
 
@@ -278,7 +278,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module& M)
         }
     }
 
-    if (!zebinEnable && hasInlineGlobalBuffer)
+    if (hasInlineGlobalBuffer)
     {
         for (auto& pFunc : M)
         {
