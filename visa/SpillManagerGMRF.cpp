@@ -4937,6 +4937,63 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
   splice(bb, instIt, builder->instList, inst->getVISAId());
 }
 
+void GlobalRA::insertSlot1HwordR0Set(G4_BB *bb, INST_LIST_ITER &instIt) {
+  auto &builder = kernel.fg.builder;
+  G4_INST *inst = (*instIt);
+
+  if (slot1SetR0.count(inst)) {
+    // Insert
+    //   (W)    add (1|M0)    r0.5:ud    r0.5:ud    0x400:ud
+    // to make r0.5 point at slot#1 scratch surface.
+    G4_DstRegRegion* r0_5Dst = builder->createDst(
+        builder->getBuiltinR0()->getRegVar(), 0, 5, 1, Type_UD);
+    G4_Imm* addImm = builder->createImm(0x400, Type_UD);
+    G4_SrcRegRegion *r0_5Src = builder->createSrc(
+        builder->getBuiltinR0()->getRegVar(), 0, 5,
+        builder->getRegionScalar(), Type_UD);
+    G4_InstOption options =
+        bb->isAllLaneActive() ? InstOpt_NoOpt : InstOpt_WriteEnable;
+    G4_INST *addInst = builder->createBinOp(
+        G4_opcode::G4_add, g4::SIMD1, r0_5Dst, r0_5Src, addImm,
+        options, false);
+
+    bb->insertBefore(instIt, addInst);
+
+    if (EUFusionNoMaskWANeeded() && options & InstOpt_WriteEnable) {
+      addEUFusionNoMaskWAInst(bb, addInst);
+    }
+  }
+}
+
+void GlobalRA::insertSlot1HwordR0Reset(G4_BB *bb, INST_LIST_ITER &instIt) {
+  auto &builder = kernel.fg.builder;
+  G4_INST *inst = (*instIt);
+
+  if (slot1ResetR0.count(inst)) {
+    // Insert
+    //   (W)    add (1|M0)    r0.5:ud    r0.5:ud    -1024:d
+    // to reset modification done by `insertSlot1HwordR0Set` and make r0.5
+    // point to slot#1 scratch surface for private memory access.
+    G4_DstRegRegion* r0_5Dst = builder->createDst(
+        builder->getBuiltinR0()->getRegVar(), 0, 5, 1, Type_UD);
+    G4_Imm *addImm = builder->createImm(-0x400, Type_D);
+    G4_SrcRegRegion *r0_5Src = builder->createSrc(
+        builder->getBuiltinR0()->getRegVar(), 0, 5,
+        builder->getRegionScalar(), Type_UD);
+    G4_InstOption options =
+        bb->isAllLaneActive() ? InstOpt_NoOpt : InstOpt_WriteEnable;
+    G4_INST *addInst = builder->createBinOp(
+        G4_opcode::G4_add, g4::SIMD1, r0_5Dst, r0_5Src, addImm,
+        options, false);
+
+    bb->insertBefore(instIt, addInst);
+
+    if (EUFusionNoMaskWANeeded() && options & InstOpt_WriteEnable) {
+      addEUFusionNoMaskWAInst(bb, addInst);
+    }
+  }
+}
+
 void GlobalRA::expandSpillNonStackcall(uint32_t numRows, uint32_t offset,
                                        short rowOffset, G4_SrcRegRegion *header,
                                        G4_SrcRegRegion *payload, G4_BB *bb,
@@ -4984,6 +5041,9 @@ void GlobalRA::expandSpillNonStackcall(uint32_t numRows, uint32_t offset,
       addEUFusionNoMaskWAInst(bb, sendInst);
     }
   } else {
+    INST_LIST_ITER origInstIt = instIt;
+    insertSlot1HwordR0Set(bb, instIt);
+
     while (numRows >= 1) {
       auto payloadToUse = builder->createSrcWithNewRegOff(payload, rowOffset);
 
@@ -5020,6 +5080,8 @@ void GlobalRA::expandSpillNonStackcall(uint32_t numRows, uint32_t offset,
       offset += getPayloadSizeGRF(numRows);
       rowOffset += getPayloadSizeGRF(numRows);
     }
+
+    insertSlot1HwordR0Reset(bb, origInstIt);
   }
 }
 
@@ -5233,6 +5295,9 @@ void GlobalRA::expandFillNonStackcall(uint32_t numRows, uint32_t offset,
       addEUFusionNoMaskWAInst(bb, sendInst);
     }
   } else {
+    INST_LIST_ITER origInstIt = instIt;
+    insertSlot1HwordR0Set(bb, instIt);
+
     while (numRows >= 1) {
       auto fillDst =
           builder->createDst(resultRgn->getBase(), rowOffset, 0,
@@ -5271,6 +5336,8 @@ void GlobalRA::expandFillNonStackcall(uint32_t numRows, uint32_t offset,
       offset += getPayloadSizeGRF(numRows);
       rowOffset += getPayloadSizeGRF(numRows);
     }
+
+    insertSlot1HwordR0Reset(bb, origInstIt);
   }
 }
 
@@ -5409,6 +5476,74 @@ bool GlobalRA::spillFillIntrinUsesLSC(G4_INST *spillFillIntrin) {
   return false;
 }
 
+void GlobalRA::markSlot1HwordSpillFill(G4_BB *bb) {
+  if (useLscForNonStackCallSpillFill ||
+      !kernel.getBoolKernelAttr(Attributes::ATTR_SepSpillPvtSS))
+    return;
+
+  bool isSet = false;
+  G4_INST *prevSetInst = nullptr;
+  G4_Declare* builtinR0 = builder.getBuiltinR0()->getRootDeclare();
+
+  for (auto instIt = bb->begin(); instIt != bb->end(); ++instIt) {
+    G4_INST *inst = (*instIt);
+    if (inst->isFillIntrinsic()) {
+      G4_FillIntrinsic *fillInst = inst->asFillIntrinsic();
+
+      if (!spillFillIntrinUsesLSC(inst) && !fillInst->isOffBP() &&
+          fillInst->isOffsetValid()) {
+        if (!isSet) {
+          slot1SetR0.insert(inst);
+          isSet = true;
+        }
+        prevSetInst = inst;
+      }
+    } else if (inst->isSpillIntrinsic()) {
+      G4_SpillIntrinsic *spillInst = inst->asSpillIntrinsic();
+
+      if (!spillFillIntrinUsesLSC(inst) && !spillInst->isOffBP() &&
+          spillInst->isOffsetValid()) {
+        if (!isSet) {
+          slot1SetR0.insert(inst);
+          isSet = true;
+        }
+        prevSetInst = inst;
+      }
+    } else if (isSet) {
+      // Check instruction for r0 usage.
+      // If r0 is used, add previous spill/fill instruction to reset list.
+      if (G4_Operand *dstOpnd = inst->getDst()) {
+        G4_Declare *dstDecl = dstOpnd->getTopDcl();
+        if (dstDecl && dstDecl->getRootDeclare() == builtinR0) {
+          isSet = false;
+          break;
+        }
+      }
+
+      unsigned srcNum = static_cast<unsigned>(inst->getNumSrc());
+      for (unsigned srcIdx = 0; srcIdx < srcNum; ++srcIdx) {
+        G4_Operand *srcOpnd = inst->getSrc(srcIdx);
+        G4_Declare *srcDecl = srcOpnd->getTopDcl();
+        if (srcDecl && srcDecl->getRootDeclare() == builtinR0) {
+          isSet = false;
+          break;
+        }
+      }
+
+      if (!isSet) {
+        slot1ResetR0.insert(prevSetInst);
+      }
+    }
+  }
+
+  // End of the block with r0.5 pointing to slot1,
+  // mark last spill/fill to reset it.
+  if (isSet) {
+    slot1ResetR0.insert(prevSetInst);
+  }
+}
+
+
 void GlobalRA::expandFillIntrinsic(G4_BB *bb) {
   // fill (1) fill_var:ud     bitmask:ud     offset:ud
   for (auto instIt = bb->begin(); instIt != bb->end();) {
@@ -5490,6 +5625,7 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
              )) {
       saveRestoreA0(bb);
     }
+    markSlot1HwordSpillFill(bb);
     expandSpillIntrinsic(bb);
     expandFillIntrinsic(bb);
   }
