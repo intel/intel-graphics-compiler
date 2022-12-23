@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublicEnums.h"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -459,6 +460,17 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
         Value* newPtr = nullptr;
         Value* newPtrNull = nullptr;
         Value* cmpTag = nullptr;
+
+        // If a kernel calls `__builtin_IB_to_private` or `__builtin_IB_to_global`, then it
+        // is necessary to set a tag for private pointers casted to generic addrspace. Without
+        // tag, it is not possible to differentiate global pointer from private pointer, when
+        // allocatePrivateAsGlobalBuffer is enabled.
+        if (targetAS == ADDRESS_SPACE_GLOBAL || targetAS == ADDRESS_SPACE_PRIVATE)
+        {
+            auto ClContext = static_cast<OpenCLProgramContext*>(m_ctx);
+            ClContext->setForceTagForPrivatePointers(true);
+            m_needPrivateBranches = true;
+        }
 
         // Tag was already obtained from GAS pointer, now we check its address space (AS)
         // and the target AS for this intrinsic call
