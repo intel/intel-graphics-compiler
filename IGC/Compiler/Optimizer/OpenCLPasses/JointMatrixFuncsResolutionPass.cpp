@@ -446,16 +446,23 @@ static Type *getResolvedVectorElementType(Type *matrixType) {
     return ty->getElementType();
 }
 
-static int getSliceSize(const JointMatrixTypeDescription *desc) {
+static int getSliceSize(const JointMatrixTypeDescription *desc, Type *matTy) {
+    IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
+    IGC_ASSERT_MESSAGE(ty, "Expecting vector type in calculating slice size");
+
+    IntegerType *vecElemType = dyn_cast<IntegerType>(ty->getElementType());
+    IGC_ASSERT_MESSAGE(vecElemType, "Expecting integer type for vector element.");
+
+    unsigned contribTypeWidth = vecElemType->getBitWidth();
     if (desc->layout == LayoutRowMajor) {
         return desc->rows;
     }
     if (desc->bitWidth != 0) {
         if (desc->layout == LayoutPackedA) {
-            return desc->rows * (32 / desc->bitWidth);
+            return desc->rows * (contribTypeWidth / desc->bitWidth);
         }
         if (desc->layout == LayoutPackedB) {
-            return 8 * (32 / desc->bitWidth);
+            return 8 * (contribTypeWidth / desc->bitWidth);
         }
     }
     IGC_ASSERT_MESSAGE(true, "Unexpected matrix layout.");
@@ -511,7 +518,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
     Type *matTy = ResolveType(CI->getType(), &desc);
 
     IRBuilder builder(CI);
-    const int sliceSize = getSliceSize(&desc);
+    const int sliceSize = getSliceSize(&desc, matTy);
     const int vectorSize = getResolvedVectorSize(matTy);
     /* Case with packing: */
     if (sliceSize > vectorSize) {
@@ -521,6 +528,14 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
     /* Case without packing: */
     } else if (sliceSize != vectorSize) {
         IGC_ASSERT_MESSAGE(false, "Malformed matrix slice.");
+    }
+
+    if (fillValue->getType()->isPointerTy())
+    {
+        IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(matTy));
+        PointerType *PT = dyn_cast<PointerType>(fillValue->getType());
+        fillValue = builder.CreateBitCast(fillValue, PointerType::get(vectorElementType, PT->getAddressSpace()));
+        fillValue = builder.CreateLoad(vectorElementType, fillValue);
     }
 
     Value *slice = UndefValue::get(matTy);
@@ -534,9 +549,9 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
 
 Value *JointMatrixFuncsResolutionPass::ResolveWILength(CallInst *CI) {
     JointMatrixTypeDescription desc;
-    ResolveType(CI->getArgOperand(0)->getType(), &desc);
+    Type *matTy = ResolveType(CI->getArgOperand(0)->getType(), &desc);
 
-    const int sliceSize = getSliceSize(&desc);
+    const int sliceSize = getSliceSize(&desc, matTy);
     Value *lenght = ConstantInt::get(CI->getType(), sliceSize, "matrix.slice.size");
 
     CI->replaceAllUsesWith(lenght);
@@ -546,8 +561,8 @@ Value *JointMatrixFuncsResolutionPass::ResolveWILength(CallInst *CI) {
 
 template <class BuilderT>
 static Value *createSliceExtract
-      (BuilderT *builder, Value *matrix, Value *index, const JointMatrixTypeDescription *desc) {
-    const int sliceSize = getSliceSize(desc);
+      (BuilderT *builder, Value *matrix, Value *index, const JointMatrixTypeDescription *desc, Type *matTy) {
+    const int sliceSize = getSliceSize(desc, matTy);
     const int vectorSize = getResolvedVectorSize(matrix->getType());
     /* Unpacking: */
     if (sliceSize > vectorSize) {
@@ -568,12 +583,12 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
     IGCLLVM::FixedVectorType *matTy = dyn_cast<IGCLLVM::FixedVectorType>(rawMatTy);
 
     IRBuilder builder(CI);
-    const int sliceSize = getSliceSize(&desc);
+    const int sliceSize = getSliceSize(&desc, rawMatTy);
     const int vectorSize = getResolvedVectorSize(matTy);
 
     Value *slice = nullptr;
     if (sliceSize > vectorSize) {
-        Value *element = createSliceExtract(&builder, matrix, index, &desc);
+        Value *element = createSliceExtract(&builder, matrix, index, &desc, rawMatTy);
         if (!isa<IntegerType>(element->getType())) {
             unsigned vecElemSize = matTy->getElementType()->getScalarSizeInBits();
             element = builder.CreateBitCast(element, Type::getIntNTy(builder.getContext(), vecElemSize));
@@ -603,6 +618,10 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceInsert(CallInst *CI) {
         component = builder.CreateShl(component, offset);
         component = builder.CreateOr(element, component);
     }
+
+    IntegerType *vectorElementType = dyn_cast<IntegerType>(getResolvedVectorElementType(rawMatTy));
+    component = builder.CreateBitCast(component, vectorElementType);
+
     slice = builder.CreateInsertElement(matrix, component, index);
 
     InstsToErase.insert(CI);
@@ -617,9 +636,9 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
     Type *matTy = ResolveType(CI->getArgOperand(0)->getType(), &desc);
 
     IRBuilder builder(CI);
-    Value *element = createSliceExtract(&builder, matrix, index, &desc);
+    Value *element = createSliceExtract(&builder, matrix, index, &desc, matTy);
     /* Unpacking: */
-    const int sliceSize = getSliceSize(&desc);
+    const int sliceSize = getSliceSize(&desc, matTy);
     const int vectorSize = getResolvedVectorSize(matTy);
     if (sliceSize > vectorSize) {
         index = builder.CreateTruncOrBitCast(index, element->getType());
@@ -633,6 +652,10 @@ Value *JointMatrixFuncsResolutionPass::ResolveSliceExtract(CallInst *CI) {
         element = builder.CreateTruncOrBitCast(element, Type::getIntNTy(builder.getContext(), desc.bitWidth));
         element = builder.CreateBitCast(element, CI->getType());
     }
+
+    // We need the bitcast, especially for half, as the function call that is
+    // being replaces has a half return type and the vectorElementType is i16
+    element = builder.CreateBitCast(element, CI->getType());
 
     CI->replaceAllUsesWith(element);
     InstsToErase.insert(CI);
