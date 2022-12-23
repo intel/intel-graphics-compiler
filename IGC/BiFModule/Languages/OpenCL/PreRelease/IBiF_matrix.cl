@@ -258,3 +258,19 @@ INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_RowMajor_8x16_i3
 INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_Accumulator_ColumnMajor_8x8_i32_pi64_v8i8(char *mem, int8 row, int stride) {
     STORE_ACC_COL_MAJOR(mem, stride, 8)
 }
+
+#define STORE_PACKED_A_ROW_MAJOR(mem, stride, element_type, contrib_type, M) \
+    contrib_type *ptr = (contrib_type *)mem; \
+    int slid = get_sub_group_local_id(); \
+    int pack_factor = sizeof (contrib_type) / sizeof (element_type); \
+    stride = stride / pack_factor; \
+    for (int i = 0; i < M; i++) \
+         ptr[slid + i * stride] = row[i]; \
+
+INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_8x16_i16_pi64_v8i8(char *mem, short8 row, int stride) {
+    STORE_PACKED_A_ROW_MAJOR(mem, stride, short, short, 8)
+}
+
+INLINE void __builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_8x32_i8_pi64_v8i8(char *mem, short8 row, int stride) {
+    STORE_PACKED_A_ROW_MAJOR(mem, stride, char, short, 8)
+}
