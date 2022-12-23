@@ -741,11 +741,6 @@ namespace IGC
         return false;
     }
 
-    bool CodeGenContext::forceTagForPrivatePointers() const
-    {
-        return false;
-    }
-
     bool CodeGenContext::noLocalToGenericOptionEnabled() const
     {
         return false;

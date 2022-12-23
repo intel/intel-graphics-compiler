@@ -106,18 +106,6 @@ namespace IGC
                 platform.canForcePrivateToGlobal());
     }
 
-    bool OpenCLProgramContext::forceTagForPrivatePointers() const
-    {
-        // TODO: we should also force tagging if there are indirect calls in a module
-        // return m_instrTypes.hasIndirectCall || m_forceTagForPrivatePointers;
-        return m_forceTagForPrivatePointers;
-    }
-
-    void OpenCLProgramContext::setForceTagForPrivatePointers(bool forceTag)
-    {
-        m_forceTagForPrivatePointers = forceTag;
-    }
-
     bool OpenCLProgramContext::noLocalToGenericOptionEnabled() const
     {
         return m_InternalOptions.NoLocalToGeneric;
