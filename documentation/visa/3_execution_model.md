@@ -1,6 +1,6 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -33,7 +33,7 @@ Virtual ISA instructions typically have one destination operand and
 one-to-three source operands. The operands must reside in register
 space; special instructions exist to transfer data between register
 storage and surface memory. Virtual ISA instructions support
-region-based register addressing as well as both direct and 
+region-based register addressing as well as both direct and
 indirect variable accesses.
 
 Concepts
@@ -73,7 +73,7 @@ called the General Register File (GRF). Each GRF register consists of 32
 bytes of data; the actual register size for each platform may also be
 queried from the vISA finalizer.
 
-
+For PVC platform, GRF register is 64 bytes.
 
 As such, all virtual ISA variables, including the file-scope variables,
 are thread private, and threads communicate through special memory
@@ -82,8 +82,8 @@ access instructions to the surfaces, which are shared among all threads.
 In the **media** execution mode, a 2-dimensional index space is defined
 when a kernel is launched, and each thread is assigned a unique pair (x,
 y) as its global ID. Kernel code can read the values of this unique
-thread identifier through special variables. The index space can 
-optionally be associated with a dependency pattern that defines 
+thread identifier through special variables. The index space can
+optionally be associated with a dependency pattern that defines
 the execution order of the threads \[5\].
 
 An alternative **GPGPU** thread-group based execution model is also
@@ -195,7 +195,7 @@ implementing if-else-endif and do-while loop.
     (P1) goto (16) LOOP_START
     LOOP_END:
 ```
-  
+
 In the common special case where the branch is guaranteed to be
 non-divergent, a **jump** instruction may be used instead.
 
@@ -205,11 +205,11 @@ Subroutine and Function Calls
 A subroutine is defined as a sequence of instructions that can only be
 entered with a "call" instruction outside the sequence and exited
 through a "ret" instruction in the sequence. A subroutine must start
-with a "subroutine instruction and must be terminated with a "ret"
+with a "subroutine" instruction and must be terminated with a "ret"
 instruction, though early return is permitted. A kernel or function may
-include any number of subroutines, all of which sharing the same symbol
+include any number of subroutines, all of which share the same symbol
 table as the enclosing kernel or function. A subroutine may invoke other
-subroutines, though recursion is not permitted.
+subroutines, although recursion is not permitted.
 
 A kernel or function may invoke another function through the "fcall"
 instruction. Argument passing is achieved through a single special "arg"
@@ -220,7 +220,7 @@ of the arg variable in the caller during the process. If the size of the
 function arguments exceeds that of the arg variable, overflow arguments
 may be passed via memory, e.g., through the call stack. The vISA
 specification does not contain any provisions about a program's call
-stack; ; it is the vISA program's responsbility to allocate stack
+stack; it is the vISA program's responsibility to allocate stack
 memory, partition it among the concurrent threads, and detect stack
 overflow. It is also up to the vISA program to initialize the built-in
 stack pointer and frame pointer to the appropriate offset for each
@@ -313,7 +313,7 @@ a thread group to share data. Data in the SLM have the same lifetime as
 a thread group; its contents are uninitialized at creation, and its
 contents disappear when the thread group finishes execution. All threads
 in a thread group may read and write to any address in the SLM. Only a
-subset of memory operations are supported for SLM, and a SLM access is
+subset of memory operations is supported for SLM, and an SLM access is
 indicated by the use of the special surface variable T0 in those
 instructions. Threads in the same thread
 group can synchronize their SLM accesses through the barrier

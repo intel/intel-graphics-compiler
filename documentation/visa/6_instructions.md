@@ -1,6 +1,6 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -29,40 +29,38 @@ Descriptions for each instruction are organized in the following format:
     specification. They provide implementation hints and insights to
     the design rationale for the instruction.
 
-3D Extensions 
+3D Extensions
 -------------
 
-## 
+- [3D_LOAD - 3D sampler load {-PVC}](instructions/3D_LOAD.md)
 
-- [3D_LOAD - 3D sampler load](instructions/3D_LOAD.md)
+- [3D_SAMPLE - 3D sampler {-PVC}](instructions/3D_SAMPLE.md)
 
-- [3D_SAMPLE - 3D sampler](instructions/3D_SAMPLE.md)
+- [3D_SAMPLE4 - 3D sampler gather4 {-PVC}](instructions/3D_SAMPLE4.md)
 
-- [3D_SAMPLE4 - 3D sampler gather4](instructions/3D_SAMPLE4.md)
+- [INFO - surface info {-PVC}](instructions/INFO.md)
 
-- [INFO - surface info](instructions/INFO.md)
+- [RT_WRITE - render target write {-PVC}](instructions/RT_WRITE.md)
 
-- [RT_WRITE - render target write](instructions/RT_WRITE.md)
+- [TYPED_ATOMIC - atomic operations for typed surfaces {-PVC}](instructions/TYPED_ATOMIC.md)
 
-- [TYPED_ATOMIC - atomic operations for typed surfaces](instructions/TYPED_ATOMIC.md)
-
-- [URB_WRITE - URB write](instructions/URB_WRITE.md)
+- [URB_WRITE - URB write {-PVC}](instructions/URB_WRITE.md)
 
 
-Address Instructions 
+Address Instructions
 --------------------
-
-## 
 
 - [ADDR_ADD - address arithmetic](instructions/ADDR_ADD.md)
 
 
-Arithmetic Instructions 
+Arithmetic Instructions
 -----------------------
 
-## 
-
 - [ADD - addition](instructions/ADD.md)
+
+- [ADD3 - addition of three operands {XEHP+}](instructions/ADD3.md)
+
+- [ADD3O - ternary addition with overflow condition modifier {XEHP+}](instructions/ADD3O.md)
 
 - [ADDC - addition with carry](instructions/ADDC.md)
 
@@ -72,7 +70,13 @@ Arithmetic Instructions
 
 - [DIV - division](instructions/DIV.md)
 
-- [DIVM - IEEE floating point divide {-ICLLP}](instructions/DIVM.md)
+- [DIVM - IEEE floating point divide {SKL,XEHP+}](instructions/DIVM.md)
+
+- [DP4A - dot product 4 accumulate {TGLLP+}](instructions/DP4A.md)
+
+- [DPAS - Dot Product Accumulate Systolic {XEHP+}](instructions/DPAS.md)
+
+- [DPASW - Dot Product Accumulate Systolic Wide {XEHP,DG2}](instructions/DPASW.md)
 
 - [EXP - exponent](instructions/EXP.md)
 
@@ -88,7 +92,9 @@ Arithmetic Instructions
 
 - [MAD - multiply and add](instructions/MAD.md)
 
-- [MOD - remainder of division](instructions/MOD.md)
+- [MADW - Multiply add and return both high and low](instructions/MADW.md)
+
+- [MOD - remainder of division {-XEHP}](instructions/MOD.md)
 
 - [MUL - multiply](instructions/MUL.md)
 
@@ -108,31 +114,29 @@ Arithmetic Instructions
 
 - [RSQRT - inverse square root](instructions/RSQRT.md)
 
-- [SAD2 - two-wide sum of absolute {-TGLLP}](instructions/SAD2.md)
+- [SAD2 - two-wide sum of absolute {-ICLLP}](instructions/SAD2.md)
 
-- [SAD2ADD - two-wide sum of absolute differences and addition {-TGLLP}](instructions/SAD2ADD.md)
+- [SAD2ADD - two-wide sum of absolute differences and addition {-ICLLP}](instructions/SAD2ADD.md)
 
 - [SIN - sine](instructions/SIN.md)
 
-- [SQRT - Rinverse square root](instructions/SQRT.md)
+- [SQRT - square root](instructions/SQRT.md)
 
-- [SQRTM - ieee square root {-ICLLP}](instructions/SQRTM.md)
+- [SQRTM - ieee square root {SKL,XEHP+}](instructions/SQRTM.md)
+
+- [SRND - Stochastic round {PVC_XT+}](instructions/SRND.md)
 
 - [SUBB - subtraction with borrow](instructions/SUBB.md)
 
 
-Comparison Instructions 
+Comparison Instructions
 -----------------------
-
-## 
 
 - [CMP - comparison](instructions/CMP.md)
 
 
-Control Flow Instructions 
+Control Flow Instructions
 -------------------------
-
-## 
 
 - [CALL - subroutine call](instructions/CALL.md)
 
@@ -154,13 +158,13 @@ Control Flow Instructions
 
 - [SUBROUTINE - subroutine](instructions/SUBROUTINE.md)
 
-- [SWITCHJMP - switch jump table](instructions/SWITCHJMP.md)
+- [SWITCHJMP - switch jump table {PVC+,-TGLLP}](instructions/SWITCHJMP.md)
 
 
-Data Movement Instructions 
+Data Movement Instructions
 --------------------------
 
-## 
+- [FCVT - Conversion between special types FP8-TF32 and standard float or half types {PVC+}](instructions/FCVT.md)
 
 - [MIN_MAX - minimum or maximum](instructions/MIN_MAX.md)
 
@@ -173,10 +177,8 @@ Data Movement Instructions
 - [SETP - set predicate value](instructions/SETP.md)
 
 
-Logic and Shift Instructions 
+Logic and Shift Instructions
 ----------------------------
-
-## 
 
 - [AND - bitwise and](instructions/AND.md)
 
@@ -185,6 +187,8 @@ Logic and Shift Instructions
 - [BFE - bit field extract](instructions/BFE.md)
 
 - [BFI - bit field insert](instructions/BFI.md)
+
+- [BFN - boolean logical operation with 3 sources {XEHP+}](instructions/BFN.md)
 
 - [BFREV - bit field reverse](instructions/BFREV.md)
 
@@ -209,26 +213,32 @@ Logic and Shift Instructions
 - [XOR - bitwise xor](instructions/XOR.md)
 
 
-Media Extensions 
+LSC Load/Store/Atomic Operations
+--------------------------------
+
+- [LSC_FENCE - generic LSC fence operation {DG2+}](instructions/LSC_FENCE.md)
+
+- [LSC_TYPED - generic LSC typed load/store/atomic {DG2+}](instructions/LSC_TYPED.md)
+
+- [LSC_UNTYPED - generic LSC untyped load/store/atomic {DG2+}](instructions/LSC_UNTYPED.md)
+
+
+Media Extensions
 ----------------
 
-## 
+- [AVS - adaptive video scaling {-TGLLP}](instructions/AVS.md)
 
-- [AVS - adaptive video scaling](instructions/AVS.md)
+- [VME_FBR - VME fractional and bidirectional refinement {-TGLLP}](instructions/VME_FBR.md)
 
-- [VME_FBR - VME fractional and bidirectional refinement](instructions/VME_FBR.md)
+- [VME_IDM - VME distortion mesh {-TGLLP}](instructions/VME_IDM.md)
 
-- [VME_IDM - VME distortion mesh](instructions/VME_IDM.md)
+- [VME_IME - VME integer motion estimation {-TGLLP}](instructions/VME_IME.md)
 
-- [VME_IME - VME integer motion estimation](instructions/VME_IME.md)
-
-- [VME_SIC - VME skip and intra check](instructions/VME_SIC.md)
+- [VME_SIC - VME skip and intra check {-TGLLP}](instructions/VME_SIC.md)
 
 
-Miscellaneous Instructions 
+Miscellaneous Instructions
 --------------------------
-
-## 
 
 - [FILE - file name](instructions/FILE.md)
 
@@ -241,22 +251,16 @@ Miscellaneous Instructions
 - [RAW_SENDS - raw message split send](instructions/RAW_SENDS.md)
 
 
-Sample Instructions 
+Sample Instructions
 -------------------
-
-## 
 
 - [SAMPLE_UNORM - sampler UNORM](instructions/SAMPLE_UNORM.md)
 
 
-Surface-based Memory Access Instructions 
+Surface-based Memory Access Instructions
 ----------------------------------------
 
-## 
-
 - [DWORD_ATOMIC - dword untyped atomic messages](instructions/DWORD_ATOMIC.md)
-
-- [GATHER - byte scattered read {DEPRECATED}](instructions/GATHER.md)
 
 - [GATHER4_SCALED - scaled untyped surface read](instructions/GATHER4_SCALED.md)
 
@@ -274,7 +278,9 @@ Surface-based Memory Access Instructions
 
 - [OWORD_ST - oword store](instructions/OWORD_ST.md)
 
-- [SCATTER - byte scatter write {DEPRECATED}](instructions/SCATTER.md)
+- [QW_GATHER - qword gather {PVC_XT,PVC}](instructions/QW_GATHER.md)
+
+- [QW_SCATTER - qword scatter {PVC_XT,PVC}](instructions/QW_SCATTER.md)
 
 - [SCATTER4_SCALED - scaled untyped surface write](instructions/SCATTER4_SCALED.md)
 
@@ -283,38 +289,34 @@ Surface-based Memory Access Instructions
 - [SCATTER_SCALED - byte scaled write](instructions/SCATTER_SCALED.md)
 
 
-SVM - Shared Virtual Memory Access 
+SVM - Shared Virtual Memory Access
 ----------------------------------
 
-## 
+- [SVM_BLOCK_ST - SMV Block Store](instructions/SVM_BLOCK_ST.md)
+
+- [SVM_ATOMIC - SVM atomic operations](instructions/SVM_ATOMIC.md)
 
 - [SVM_BLOCK_LD - SMV Block Load](instructions/SVM_BLOCK_LD.md)
 
 - [SVM_GATHER4_SCALED - SVM gather4 with scaling pitch](instructions/SVM_GATHER4_SCALED.md)
 
-- [SVM - Shared Virtual Memory Access - Generic](instructions/SVM.md)
-
-- [SVM_ATOMIC - SVM atomic operations](instructions/SVM_ATOMIC.md)
-
-- [SVM_BLOCK_ST - SMV Block Store](instructions/SVM_BLOCK_ST.md)
-
-- [SVM_SCATTER - SMV scatter](instructions/SVM_SCATTER.md)
-
 - [SVM_GATHER - SMV gather](instructions/SVM_GATHER.md)
 
 - [SVM_SCATTER4_SCALED - SVM scatter4 with scaling pitch](instructions/SVM_SCATTER4_SCALED.md)
 
+- [SVM_SCATTER - SMV scatter](instructions/SVM_SCATTER.md)
 
-Synchronization Instructions 
+
+Synchronization Instructions
 ----------------------------
-
-## 
 
 - [BARRIER - thread group barrier](instructions/BARRIER.md)
 
 - [CACHE_FLUSH - textural cache flush](instructions/CACHE_FLUSH.md)
 
 - [FENCE - memory fence](instructions/FENCE.md)
+
+- [NBARRIER - named barrier {PVC+}](instructions/NBARRIER.md)
 
 - [SBARRIER - split-phase barrier](instructions/SBARRIER.md)
 

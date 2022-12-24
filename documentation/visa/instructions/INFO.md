@@ -1,12 +1,10 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ==========================-->
-
- 
 
 ## Opcode
 
@@ -14,22 +12,26 @@ SPDX-License-Identifier: MIT
 
 ## Format
 
-| | | | | |
-| --- | --- | --- | --- | --- |
+| | | | | | |
+| --- | --- | --- | --- | --- | --- |
 | 0x70(INFO) | Op | Exec_size | Surface | LOD | Dst |
 
 
 ## Semantics
 
 
-
+```
 
     Returns information about the surface
+```
 
 ## Description
 
 
 
+
+
+```
     <exec_size>*4 elements are returned in RGBA order with the format described below. Only the enabled pixels are written to in <dst>.
 
     **Return format for resinfo:**
@@ -57,49 +59,60 @@ SPDX-License-Identifier: MIT
         +----------------+---------------------+-------+-------+---------------------------------+
         | 2D             | Number of samples   | N/A   | N/A   | Sample position palette index   |
         +----------------+---------------------+-------+-------+---------------------------------+
+```
 
-- **Op(ub):** 
- 
-  - Bit[4..0]: encodes the sampler operation
- 
-    - 0b01010:  resinfo 
-    - 0b01011:  sampleinfo
+
+- **Op(uw):**
+
+  - Bit[7..0]: encodes the sampler operation
+
+    - 0b00001010:  resinfo
+    - 0b00001011:  sampleinfo
+
 - **Exec_size(ub):** Execution size
- 
+
   - Bit[2..0]: size of the region for source and destination operands
- 
-    - 0b011:  8 elements 
-    - 0b100:  16 elements 
+
+    - 0b011:  8 elements
+    - 0b100:  16 elements
+    - 0b101:  32 elements
   - Bit[7..4]: execution mask (explicit control over the enabled channels)
- 
-    - 0b0000:  M1 
-    - 0b0001:  M2 
-    - 0b0010:  M3 
-    - 0b0011:  M4 
-    - 0b0100:  M5 
-    - 0b0101:  M6 
-    - 0b0110:  M7 
-    - 0b0111:  M8 
-    - 0b1000:  M1_NM 
-    - 0b1001:  M2_NM 
-    - 0b1010:  M3_NM 
-    - 0b1011:  M4_NM 
-    - 0b1100:  M5_NM 
-    - 0b1101:  M6_NM 
-    - 0b1110:  M7_NM 
+
+    - 0b0000:  M1
+    - 0b0001:  M2
+    - 0b0010:  M3
+    - 0b0011:  M4
+    - 0b0100:  M5
+    - 0b0101:  M6
+    - 0b0110:  M7
+    - 0b0111:  M8
+    - 0b1000:  M1_NM
+    - 0b1001:  M2_NM
+    - 0b1010:  M3_NM
+    - 0b1011:  M4_NM
+    - 0b1100:  M5_NM
+    - 0b1101:  M6_NM
+    - 0b1110:  M7_NM
     - 0b1111:  M8_NM
+
 - **Surface(ub):** Index of the surface variable
+
 
 - **LOD(raw_operand):** The LOD parameter. The field is present only for resinfo. Must have type UD
 
+
 - **Dst(raw_operand):** results of the sampler operation. Must have type UD
+
 
 #### Properties
 
 
+
+
 ## Text
 ```
-    
+
+
 
 
 
@@ -107,9 +120,9 @@ RESINFO (exec_size) <surface> <lod> <dst>
 
 SAMPLEINFO (exec_size) <surface> <dst>
 ```
-
-
-
 ## Notes
+
+
+
 
 

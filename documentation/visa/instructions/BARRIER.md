@@ -1,12 +1,10 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ==========================-->
-
- 
 
 ## Opcode
 
@@ -14,18 +12,18 @@ SPDX-License-Identifier: MIT
 
 ## Format
 
-|
-|
-
-
 ## Semantics
 
 
-
+```
 
                     Barrier synchronization within a thread group.
+```
 
 ## Description
+
+
+
 
 
 
@@ -35,20 +33,22 @@ SPDX-License-Identifier: MIT
     ordering is also guaranteed by this instruction. The behavior is undefined
     if this instruction is executed in divergent control flow.
 
+
 #### Properties
+
+
 
 
 ## Text
 ```
-    
-
-        BARRIER
+BARRIER
 ```
-
-
 
 ## Notes
 
 
 
+
+
     This instruction may only be used with the thread-group execution model.
+

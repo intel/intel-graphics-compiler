@@ -1,6 +1,6 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -20,23 +20,24 @@ data types together with their binary and text format in a virtual ISA
 object file:
 
 
-| Data Type                      | Size(bits)| Range                                                                                                          | Binary Format| Text Format|
+| Data Type                      | Size(bits)| Range                                                                                                                          | Binary Format| Text Format|
 | --- | --- | --- | --- | --- |
-| unsigned double word            | 32         | [0, 2\ :sup:`32` - 1]                                                                                           | 0b0000        | UD          |
-| signed double word              | 32         | [-2\ :sup:`31`, 2\ :sup:`31` - 1]                                                                               | 0b0001        | D           |
-| unsigned word                   | 16         | [0, 65535]                                                                                                      | 0b0010        | UW          |
-| signed word                     | 16         | [-32768, 32767]                                                                                                 | 0b0011        | W           |
-| unsigned byte                   | 8          | [0, 255]                                                                                                        | 0b0100        | UB          |
-| signed byte                     | 8          | [-128, 127]                                                                                                     | 0b0101        | B           |
-| double precision floating point | 64         | [-(2-2\ :sup:`-52`)\ :sup:`1023` ... -2\ :sup:`-1074`, 0.0, 2\ :sup:`-1074` ... (2-2\ :sup:`-52`)\ :sup:`1023`] | 0b0110        | DF          |
-| single precision floating point | 32         | [-(2-2:\ :sup:`-23`)\ :sup:`127` ... -2\ :sup:`-149`, 0.0, 2\ :sup:`-149` ... (2-2\ :sup:`-23`)\ :sup:`127`]    | 0b0111        | F           |
-| packed integer vector           | 32         | [-8,7]                                                                                                          | 0b1000        | V           |
-| packed floating vector          | 32         | [-31...-0.125, 0, 0.125...31]                                                                                   | 0b1001        | VF          |
-| boolean                         | 1          | [0, 1]                                                                                                          | 0b1010        | BOOL        |
-| unsigned quad word              | 64         | [0, 2\ :sup:`64` - 1]                                                                                           | 0b1011        | UQ          |
-| packed unsigned integer vector  | 32         | [0, 15]                                                                                                         | 0b1100        | UV          |
-| signed quad word                | 64         | [-2\ :sup:`63`, 2\ :sup:`63` - 1]                                                                               | 0b1101        | Q           |
-| half precision floating point   | 16         | [-(2-2\ :sup:`-10`)\ :sup:`31` ... -2\ :sup:`-40`, 0.0, 2\ :sup:`-40` ...  (2-2\ :sup:`-10`)\ :sup:`31`]        | 0b1110        | HF          |
+| unsigned double word            | 32         | [0, 2<sup>32</sup>-1]                                                                                                           | 0b0000        | UD          |
+| signed double word              | 32         | [-2<sup>31</sup>, 2<sup>31</sup>-1]                                                                                             | 0b0001        | D           |
+| unsigned word                   | 16         | [0, 65535]                                                                                                                      | 0b0010        | UW          |
+| signed word                     | 16         | [-32768, 32767]                                                                                                                 | 0b0011        | W           |
+| unsigned byte                   | 8          | [0, 255]                                                                                                                        | 0b0100        | UB          |
+| signed byte                     | 8          | [-128, 127]                                                                                                                     | 0b0101        | B           |
+| double precision floating point | 64         | [-(2-2<sup>-52</sup>)x2<sup>1023</sup> ... -2<sup>-1074</sup>, 0.0, 2<sup>-1074</sup> ... (2-2<sup>-52</sup>)x2<sup>1023</sup>] | 0b0110        | DF          |
+| single precision floating point | 32         | [-(2-2<sup>-23</sup>)x2<sup>127</sup> ... -2<sup>-149</sup>, 0.0, 2<sup>-149</sup> ... (2-2<sup>-23</sup>)x2<sup>127</sup>]     | 0b0111        | F           |
+| packed integer vector           | 32         | [-8,7]                                                                                                                          | 0b1000        | V           |
+| packed floating vector          | 32         | [-31...-0.125, 0, 0.125...31]                                                                                                   | 0b1001        | VF          |
+| boolean                         | 1          | [0, 1]                                                                                                                          | 0b1010        | BOOL        |
+| unsigned quad word              | 64         | [0, 2<sup>64</sup>-1]                                                                                                           | 0b1011        | UQ          |
+| packed unsigned integer vector  | 32         | [0, 15]                                                                                                                         | 0b1100        | UV          |
+| signed quad word                | 64         | [-2<sup>63</sup>, 2<sup>63</sup>-1]                                                                                             | 0b1101        | Q           |
+| half precision floating point   | 16         | [-(2-2<sup>-10</sup>)x2<sup>15</sup> ... -2<sup>-25</sup>, 0.0, 2<sup>-25</sup> ...  (2-2<sup>-10</sup>)x2<sup>15</sup>]        | 0b1110        | HF          |
+| bfloat16                        | 16         | [-(2-2<sup>-7</sup>)x2<sup>127</sup> ... -2<sup>-134</sup>, 0.0, 2<sup>-134</sup> ...  (2-2<sup>-7</sup>)x2<sup>127</sup>]      | 0b1111        | BF          |
 
 
 The F and DF data type follow the single precision and double precision
@@ -50,6 +51,15 @@ rules on how to convert the restricted floats into single precision
 floats may be found in \[1\]. The packed unsigned half-byte integer
 vector type (UV) consists of eight unsigned half-byte integers in one
 dword, with each element having a range of \[0, 15\].
+
+The binary data formats for floating point numbers are in the form
+**numOfSign - numOfExponent - numOfMantissa** (mantisa aka fraction), as shown below:
+
+-   DF: 1-11-52 (sign [63:63], exponent [62:52], mantissa [51:0]).
+-    F: 1-8-23 (sign [31:31], exponent [30:23], Mantissa [22:0]).
+-   HF: 1-5-10 (sign [15:15], exponent [14:10], Mantissa [9:0]).
+-   BF: 1-8-7 (sign [15:15], exponent [14:7], Mantissa [6:0]).
+    Also known as bfloat16 and not an IEEE standard yet.
 
 Floating Point Mode
 ===================
@@ -90,7 +100,7 @@ IEEE-754 floating point mode.
 
 -   Any +/- INF result must be flushed to +/- fmax, instead of being
     output as +/- INF.
--   Certain mathematical instructions (log, rsq, and sqrt) 
+-   Certain mathematical instructions (log, rsq, and sqrt)
     take the absolute value of the sources before
     computation to avoid generating INF and NaN results.
 
@@ -101,8 +111,8 @@ All virtual ISA operands have a known type. The type of all operands,
 except for indirect operands, can be
 obtained from their associated variable declarations. Indirect operands
 have an explicitly associated type. For arithmetic and logic
-instructions, all source operand must have the same data type, which
-serves as the execution type for the instruction. For the purpose of
+instructions, sources can have mixed integer types but cannot have mixed
+integer and float types. For the purpose of
 establishing the execution type, the V type is compatible with all
 signed integer types, the UV type is compatible with all unsigned
 integer types, and the VF type is compatible with the F type.
@@ -173,7 +183,7 @@ signed-ness of the source and destination type.
 Integer to Float
 ----------------
 
-Converting an integer type to a floating point type is to round to the
+Converting an integer type to a floating point type rounds to the
 closest representable floating-point value. By default "round to nearest
 even" is performed.
 

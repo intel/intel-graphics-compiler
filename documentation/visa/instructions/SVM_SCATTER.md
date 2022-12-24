@@ -1,30 +1,27 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ==========================-->
 
- 
-
 ## Opcode
 
   SVM = 0x4e
-
   SCATTER = 0x04
 
 ## Format
 
-| | | | | | |
-| --- | --- | --- | --- | --- | --- |
+| | | | | | | |
+| --- | --- | --- | --- | --- | --- | --- |
 | 0x4e(SVM) | 0x04(SCATTER) | Exec_size | Pred | Block_size | Num_blocks | Addresses | Src |
 
 
 ## Semantics
 
 
-
+```
 
                     for (i = 0; i < exec_size; ++i) {
                         if (ChEn[i]) {
@@ -41,78 +38,93 @@ SPDX-License-Identifier: MIT
                             }
                         }
                     }
+```
 
 ## Description
 
 
+
+
+
+```
     Performs 8 element scattered write to virtual addresses, taking the
     values from <src>. Each element may have multiple blocks.
+```
+
 
 - **Exec_size(ub):** Execution size
- 
+
   - Bit[2..0]: size of the region for source and destination operands
- 
-    - 0b000:  1 element (scalar) 
-    - 0b001:  2 elements 
-    - 0b010:  4 elements 
-    - 0b011:  8 elements 
-    - 0b100:  16 elements 
+
+    - 0b000:  1 element (scalar)
+    - 0b001:  2 elements
+    - 0b010:  4 elements
+    - 0b011:  8 elements
+    - 0b100:  16 elements
   - Bit[7..4]: execution mask (explicit control over the enabled channels)
- 
-    - 0b0000:  M1 
-    - 0b0001:  M2 
-    - 0b0010:  M3 
-    - 0b0011:  M4 
-    - 0b0100:  M5 
-    - 0b0101:  M6 
-    - 0b0110:  M7 
-    - 0b0111:  M8 
-    - 0b1000:  M1_NM 
-    - 0b1001:  M2_NM 
-    - 0b1010:  M3_NM 
-    - 0b1011:  M4_NM 
-    - 0b1100:  M5_NM 
-    - 0b1101:  M6_NM 
-    - 0b1110:  M7_NM 
+
+    - 0b0000:  M1
+    - 0b0001:  M2
+    - 0b0010:  M3
+    - 0b0011:  M4
+    - 0b0100:  M5
+    - 0b0101:  M6
+    - 0b0110:  M7
+    - 0b0111:  M8
+    - 0b1000:  M1_NM
+    - 0b1001:  M2_NM
+    - 0b1010:  M3_NM
+    - 0b1011:  M4_NM
+    - 0b1100:  M5_NM
+    - 0b1101:  M6_NM
+    - 0b1110:  M7_NM
     - 0b1111:  M8_NM
+
 - **Pred(uw):** Predication control
 
-- **Block_size(ub):** 
- 
+
+- **Block_size(ub):**
+
   - Bit[1..0]: encodes the byte size of each block
- 
-    - 0b00:  1 byte 
-    - 0b01:  4 byte 
+
+    - 0b00:  1 byte
+    - 0b01:  4 byte
     - 0b10:  8 byte
-- **Num_blocks(ub):** 
- 
+
+- **Num_blocks(ub):**
+
   - Bit[1..0]: encodes the number of blocks to read for each address
- 
-    - 0b00:  1 block 
-    - 0b01:  2 blocks 
-    - 0b10:  4 blocks 
+
+    - 0b00:  1 block
+    - 0b01:  2 blocks
+    - 0b10:  4 blocks
     - 0b11:  8 blocks. It is only valid for 4 byte blocks and execution size 8
+
 - **Addresses(raw_operand):** The general variable storing the addresses to write. The first 8 elements of the operand will be used as the virtual addresses to write to, and they are in the unit of bytes. Each address must be aligned to the Block. Must have type UQ
 
+
 - **Src(raw_operand):** The general variable providing the values to be written to each address. Its format depends on <block_size>  and <num_blocks>
+
 
 #### Properties
 
 
+
+
 ## Text
 ```
-    
 
-		[(<P>)] SVM_SCATTER.<block_size>.<num_blocks> (<exec_size>) <addresses> <src>
+
+
+    [(<P>)] SVM_SCATTER.<block_size>.<num_blocks> (<exec_size>) <addresses> <src>
 ```
-
-
-
 ## Notes
 
 
 
 
+
+```
     4 byte scatter:
 
         +-----------------+-----------------+----+----+-----+----+----+-----------------+
@@ -154,3 +166,5 @@ SPDX-License-Identifier: MIT
     Each table row represents one GRF, and A0[0] corresponds to the
     first element in <src> in all of the above tables. The operand's
     type must be the same size as <block_size>.
+```
+

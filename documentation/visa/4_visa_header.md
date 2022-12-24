@@ -1,6 +1,6 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -38,14 +38,14 @@ the kernel.
 
 **Pre-defined Directives**
 
-| Directive   | Meaning                            |
+| Directive    | Meaning                            |
 | --- | --- |
-| .attr       | Attributes (variables or global)   |
-| .decl       | Variable declaration               |
-| .input      | Input declaration                  |
-| .version    | Version number                     |
-| .kernel     | Name of the kernel                 |
-| .function   | Name of the function               |
+| .kernel_attr | Attributes (global)                |
+| .decl        | Variable declaration               |
+| .input       | Input declaration                  |
+| .version     | Version number                     |
+| .kernel      | Name of the kernel                 |
+| .function    | Name of the function               |
 
 ## Virtual ISA Header
 
@@ -53,17 +53,17 @@ The virtual ISA file header has the following format:
 
 
 ### common_isa_header
-	common_isa_header {
-		UD magic_number;
-		UB major_version;
-		UB minor_version;
-		UW num_kernels;
-		kernel_info kernel_info[num_kernels];
-		UW num_variables;
-		file_scope_var_info file_scope_var_info[num_variables];
-		UW num_functions;
-		function_info function_info[num_functions];
-	}
+  common_isa_header {
+    UD magic_number;
+    UB major_version;
+    UB minor_version;
+    UW num_kernels;
+    kernel_info kernel_info[num_kernels];
+    UW num_variables;
+    file_scope_var_info file_scope_var_info[num_variables];
+    UW num_functions;
+    function_info function_info[num_functions];
+  }
 
 - **magic_number:** A magic number used to identify a virtual ISA binary file.  This number is equal to 0x41534943 ('CISA' in hex).
 - **major_version:** Version number for the virtual ISA binary file.  For backward-compatibility, the vISA finalizer should accept any virtual ISA file whose version is less than its declared version.
@@ -79,21 +79,21 @@ Each kernel in the table has the format:
 
 
 ### kernel_info
-	kernel_info {
-		UB name_len;
-		UB name[name_len];
-		UD offset;
-		UD size;
-		UD input_offset;
-		UW num_syms_variable;
-		variable_reloc_symtab variable_reloc_symtab[num_syms_variable];
-		UW num_syms_function;
-		function_reloc_symtab function_reloc_symtab[num_syms_function];
-		UB num_gen_binaries;
-		gen_binary_info gen_binary_info[num_gen_binaries];
-	}
+  kernel_info {
+    UW name_len;
+    UB name[name_len];
+    UD offset;
+    UD size;
+    UD input_offset;
+    UW num_syms_variable;
+    variable_reloc_symtab variable_reloc_symtab[num_syms_variable];
+    UW num_syms_function;
+    function_reloc_symtab function_reloc_symtab[num_syms_function];
+    UB num_gen_binaries;
+    gen_binary_info gen_binary_info[num_gen_binaries];
+  }
 
-- **name_len:** The length of the name of the kernel, must be between 1 to 1023 characters.
+- **name_len:** The length of the name of the kernel, must be between 1 to 65535 characters.
 - **name:** The name of the kernel.  It is not null-terminated.
 - **offset:** The byte offset of the kernel, from the beginning of the file.  The format of the kernel object is described in Section 4.5.8.
 - **size:** The size of the kernel object in bytes.  This does not include the optional GEN binary of the kernel.
@@ -109,10 +109,10 @@ The format of the relocation information for a symbol is described by:
 
 
 ### variable_reloc_symtab
-	variable_reloc_symtab {
-		UW symbolic_index;
-		UW resolved_index;
-	}
+  variable_reloc_symtab {
+    UW symbolic_index;
+    UW resolved_index;
+  }
 
 - **symbolic_index:** The original index used by a kernel to refer to another function or file-scope variable.
 - **resolved_index:** The resolved index into either the variables or the functions table.
@@ -122,19 +122,19 @@ The format of the Gen Binary described by:
 
 
 ### gen_binary_info
-	gen_binary_info {
-		UB gen_platform;
-		UD binary_offset;
-		UD binary_size;
-	}
+  gen_binary_info {
+    UB gen_platform;
+    UD binary_offset;
+    UD binary_size;
+  }
 
 - **gen_platform:** GEN platform for this binary. Valid values are:
 
-  - 3:  BDW 
-  - 5:  SKL 
-  - 6:  BXT 
-  - 10:  ICLLP 
-  - 12:  TGLLP 
+  - 3:  BDW
+  - 5:  SKL
+  - 6:  BXT
+  - 10:  ICLLP
+  - 12:  TGLLP
 
 - **binary_offset:** The byte offset of the GEN binary for this kernel, from the beginning of the file.
 - **binary_size:** The size of the GEN binary for this kernel in bytes.
@@ -143,29 +143,29 @@ The file_scope_var_info structure describes the characteristics of a general var
 
 
 ### file_scope_var_info
-	file_scope_var_info {
-		UB linkage;
-		UW name_len;
-		UB name[name_len];
-		UB bit_properties;
-		UW num_elements;
-		UB attribute_count;
-		attribute_info attribute_info[attribute_count];
-	}
+  file_scope_var_info {
+    UB linkage;
+    UW name_len;
+    UB name[name_len];
+    UB bit_properties;
+    UW num_elements;
+    UB attribute_count;
+    attribute_info attribute_info[attribute_count];
+  }
 
 - **linkage:** Valid values are
 
 
-  - 0:  extern 
-  - 1:  static 
-  - 2:  global 
+  - 0:  extern
+  - 1:  static
+  - 2:  global
 
 - **name_len:** The length of the name of the file scope variable; it must be between 1 to 255 characters.
 - **name:** The name of the file scope variable. It is not null-terminated.
 - **bit_properties:** This byte contains two items: type and alignment.
 
   - type (bit 0-3): the data type of the variable. A variable may have type UD, D, UW, W, UB, B, UQ, Q, DF, and F.
-  - The minimum byte alignment requirement for this variable. Valid values are:
+  - alignment (bit 4-7): the minimum byte alignment requirement for this variable. Valid values are:
 
 
 | Binary Value| Alignment| Bytes           |
@@ -177,9 +177,12 @@ The file_scope_var_info structure describes the characteristics of a general var
 | 4            | OWORD     | 16               |
 | 5            | GRF       | 32               |
 | 6            | 2_GRF     | 64               |
+| 7            | HWORD     | 32               |
+| 8            | 32WORD    | 64               |
+| 9            | 64WORD    | 128              |
 
 
-- **num_elements:** Describes the number of elements in this variable.  Valid range is [1, 1024].
+- **num_elements:** Describes the number of elements in this variable. Valid range is [1, 1024].
 - **attribute_count:** Attributes for this variable.
 - **attribute_info:** Description of Attributes for this variable. The format is described by attribute_info.
 
@@ -187,26 +190,26 @@ Metadata information of a vISA function object.  Its format is described by
 
 
 ### function_info
-	function_info {
-		UB linkage;
-		UB name_len;
-		UB name[name_len];
-		UD offset;
-		UD size;
-		UW num_syms_variable;
-		variable_reloc_symtab variable_reloc_symtab[num_syms_variable];
-		UW num_syms_function;
-		function_reloc_symtab function_reloc_symtab[num_syms_function];
-	}
+  function_info {
+    UB linkage;
+    UW name_len;
+    UB name[name_len];
+    UD offset;
+    UD size;
+    UW num_syms_variable;
+    variable_reloc_symtab variable_reloc_symtab[num_syms_variable];
+    UW num_syms_function;
+    function_reloc_symtab function_reloc_symtab[num_syms_function];
+  }
 
 - **linkage:** For functions with extern linkage, the offset and size field must be 0. Valid values are
 
 
-  - 0:  extern 
-  - 1:  static 
-  - 2:  global 
+  - 0:  extern
+  - 1:  static
+  - 2:  global
 
-- **name_len:** The length of the name of the function, must be between 1 to 255 characters.
+- **name_len:** The length of the name of the function, must be between 1 to 65535 characters.
 - **name:** The name of the function. It is not null-terminated.
 - **offset:** The byte offset of the kernel, from the beginning of the file. The format of the kernel object is described in Section 4.5.8.
 - **size:** The size of the kernel object in bytes. This does not include the optional GEN binary of the kernel.
@@ -235,8 +238,8 @@ Metadata information of a vISA function object.  Its format is described by
 
 **Functions**
 
-| **FN0 Name** | Linkage | Name length | Name string | vISA offset | vISA size | 
-| --- | --- | --- | --- | --- | --- | 
+| **FN0 Name** | Linkage | Name length | Name string | vISA offset | vISA size |
+| --- | --- | --- | --- | --- | --- |
 
 
 
@@ -262,27 +265,47 @@ life range is limited to one subroutine) that may assist the finalizer
 in its code generation. It is the front end compiler's responsibility to
 ensure that the appropriate attribute values are applied as the
 finalizer will not verify their correctness. The finalizer will silently
-ignore attributes that it does not recognize. The **attribute_info**
-structure has the following format:
+ignore attributes that it does not recognize.
+
+Two types of attributes are supported: one is an attribute with integer
+constant value, and the other with string constant value. An integer
+attribute's size can be of 0 to 4 bytes. An integer attribute without
+value (or 0 byte as its value) is considered as a boolean attribute, which
+is equivalent to an integer attribute with 0 or 1 as its value. vISA APIs
+allow clients to choose what size to use for an integer attribute.
+
+The **attribute_info** structure has the following format:
 
 
 
 ### attribute_info
-	attribute_info {
-		UD name;
-		UB size;
-		value;
-	}
+  attribute_info {
+    UD name;
+    UB size;
+    value;
+  }
 
 - **name:** Index of the string storing the name of the attribute. It may have a maximum length of 64 bytes, and each byte must be one of the ASCII printable characters.
 - **size:** The size in bytes of the attribute value.
 - **value:** The attribute values in raw bytes, to be interpreted by the JIT-compiler.
 
 
-In text format, an attribute may be specified through the .attr
-directive:
+In text format, global attributes may be specified through a sequence of .kernel_attr
+directive as follows, with one attribute for each directive:
 
-**.attr** &lt;name1&gt;=&lt;value1&gt;
+**.kernel_attr** &lt;name&gt;[=&lt;value&gt;]
+
+Attributes of a variable declaration are in the following format:
+
+&nbsp;&nbsp;&nbsp;&nbsp;  **attrs={<a0>,<a1>,...,<an>}**
+
+where '{' and '}' are used to group all attributes, and each attribute **<ai>** is in this form:
+
+&nbsp;&nbsp;&nbsp;&nbsp;  **<attrName>[=<attrValue>]**
+
+If a variable does have attributes, this form should appear after the basic information of
+variable declaration, which will be shown in the following sections.
+
 
 In the subsequent sections we will list the pre-defined attributes
 associated with each kind of variables.
@@ -341,22 +364,22 @@ the following format:
 
 
 ### var_info
-	var_info {
-		UD name_index;
-		UB bit_properties;
-		UW num_elements;
-		UD alias_index;
-		UW alias_offset;
-		UB alias_scope_specifier;
-		UB attribute_count;
-		attribute_info attribute_info[attribute_count];
-	}
+  var_info {
+    UD name_index;
+    UB bit_properties;
+    UW num_elements;
+    UD alias_index;
+    UW alias_offset;
+    UB alias_scope_specifier;
+    UB attribute_count;
+    attribute_info attribute_info[attribute_count];
+  }
 
 - **name_index:** Index of the string storing the original, possibly mangled name of the variable. The maximum length of the name string is 64 characters. This is mainly used for debugging purposes.
 - **bit_properties:** This byte contains two items: type and alignment.
 
   - type (bit 0-3): the data type of the variable. A variable may have type UD, D, UW, W, UB, B, UQ, Q, DF, HF, and F.
-  - alignment (bit 4-6): the minimum byte alignment requirement for this variable. 
+  - alignment (bit 4-6): the minimum byte alignment requirement for this variable.
 
 - **num_elements:** Describes the number of elements in this variable. Valid range is [1, 4096], and the variable size (num_elements * sizeof(type)) must be less than 4K bytes.
 - **alias_index:** Indicates that the current variable is an alias of the variable indexed at alias_index, starting at byte alias_offset. An aliased variable does not have its own storage but is instead a reference to a subset of the elements in the base variable. A value of zero (the NULL variable) indicates that the variable is not aliased.
@@ -365,11 +388,10 @@ the following format:
 
 
 
-  - 0:  local 
-  - 1:  global 
+  - 0:  local
+  - 1:  global
 
 - **attribute_count:** Attributes for this variable.
-- **attribute_info:**  
 
 
 Thirty-two variables (V0-V31) are reserved for pre-defined variables,
@@ -419,21 +441,31 @@ which have special meanings in the program.
 | V15(%ce0)             | 1      | UD     | R                               | No               | The channel enable register. It contains the 32 bit execution mask for the current instruction.                                                                                                                                        |
 | V16(%dbg0)            | 2      | UD     | R/W                             | No               | Debug register                                                                                                                                                                                                                         |
 | V17(%color)           | 1      | UW     | R                               | No               | Color bit for media dispatch                                                                                                                                                                                                           |
+| V18(%implicit_arg_ptr)| 1      | UQ     | R/W                             | Yes              | This pre-defined variable holds A64 pointer to implicit argument buffer. Buffer format is decided between IGC and NEO. Pointer value is initialized in kernel prolog. Stack call functions can access implicit arguments from this buffer. This pointer is valid only when implicit argument buffer is enabled on pre-XEHP. This pointer is not valid for XEHP+. On XEHP+ implicit arg buffer is available as a cross thread argument. So a stack call function only needs valid r0 to read the buffer. We dont need to preserve this pointer separately anywhere.           |
+| V19(%implicit_local_id_buf_ptr)| 1      | UQ     | R/W                             | Yes              | This pre-defined variable holds A64 pointer to local_id buffer. Buffer format is decided between IGC and NEO. Pointer value is initialized in kernel prolog. Stack call functions can access local_id for each work-item from this buffer. This pointer is valid only when implicit argument buffer is enabled on pre-XEHP. This pointer is not valid for XEHP+. On XEHP+ local_id buffer is available as part of implicit_arg_ptr cross thread argument. So a stack call function only needs valid r0 to read the buffer. We dont need to preserve this pointer separately anywhere.            |
 
 %thread_x, %thread_y, and %color are only valid with the media mode,
 while %group_id_x, %group_id_y, and %group_id_z are only valid
 with the GPGPU mode. %arg, %retval, %sp, and %fp have undefined values
 at kernel start and must be explicitly initialized by the vISA program.
-V18-V31 are currently reserved and may not be used.
+V20-V31 are currently reserved and may not be used.
 
 In text format, a general variable may be declared with te following
 syntax:
 
-**.decl** var_name v_type=G type=<data_type> num_elts=<num_elements> [align=<align>] [alias=(<alias_variable_name>,<alias_offset>)]
+**.decl** var_name v_type=G type=<data_type> num_elts=<num_elements> [align=<align>] [alias=(<alias_variable_name>,<alias_offset>)] [attrs={<a0>,<a1>,...}]
 
 The number of declared variables must be less than the maximum count
 specified in this :ref:`table<table_VariableCategories>`. Variables are referred by their
 name in the virtual ISA assembly.
+
+In text format, variables can also be declared inside the scope tokens "{" and "}".
+
+Variable names cannot be redefined in the same scope. (This includes pre-defined
+variables in the kernel scope)
+
+Variables defined in the kernel scope are visible in all scopes, and variables
+defined in any outer scope is visible to all inner scopes.
 
 Pre-defined Attributes:
 
@@ -455,6 +487,8 @@ Pre-defined Attributes:
    this variable. A variable with kernel scope is visible anywhere in a
    kernel, including all of its subroutines. A variable with subroutine
    scope is visible only within the subroutine.
+-  Note that this is an attribute used by the finalizer. It is not related
+   to the scope tokens used in the text format.
 
 **Output** - variable is output
 
@@ -480,19 +514,20 @@ variable and has the following format:
 
 
 ### address_info
-	address_info {
-		UD name_index;
-		UW num_elements;
-		UB attribute_count;
-		attribute_info attribute_info[attribute_count];
-	}
+  address_info {
+    UD name_index;
+    UW num_elements;
+    UB attribute_count;
+    attribute_info attribute_info[attribute_count];
+  }
 
 The items have identical meaning as their counterparts in the
 **var_info** structure. The legal range for **num_elements** is \[1,
 16\]. In text format, an address variable may be declared with the
 following syntax:
 
-**.decl** var_name v_type=A type=&lt;data_type&gt; num_elts=&lt;num_elements&gt;
+**.decl** var_name v_type=A num_elts=&lt;num_elements&gt; [attrs={<a0>,<a1>,...}]
+
 
 
 ## Predicate Variables
@@ -509,12 +544,12 @@ characteristics of a predicate variable and has the following format:
 
 
 ### predicate_info
-	predicate_info {
-		UD name_index;
-		UW num_elements;
-		UB attribute_count;
-		attribute_info attribute_info[attribute_count];
-	}
+  predicate_info {
+    UD name_index;
+    UW num_elements;
+    UB attribute_count;
+    attribute_info attribute_info[attribute_count];
+  }
 
 The items again have the same meaning as their counterparts in the
 **var_info** structure. The legal values for **num_elements** are {1,
@@ -522,7 +557,7 @@ The items again have the same meaning as their counterparts in the
 represent the case where there is no predication. In text format, a
 predicate variable may be declared with the following syntax:
 
-**.decl** var_name v_type=P num_elts=&lt;num_elements&gt; \[attr: FlagRegNum =&lt;reg_num&gt;\]
+**.decl** var_name v_type=P num_elts=&lt;num_elements&gt; [attrs={<a0>,<a1>,...,<an>}]
 
 "P0" is pre-defined and may not be declared in assembly.
 
@@ -542,7 +577,7 @@ S31 is reserved and represents bindless samplers.
 In text format, a sampler variable may be declared with the following
 syntax:
 
-**.decl** &lt;var_name&gt; v_type = S num_elts=&lt;num_elements&gt;
+**.decl** &lt;var_name&gt; v_type = S num_elts=&lt;num_elements&gt; [attrs={<a0>,<a1>,...,<an>}]
 
 
 ## Surface Variables
@@ -550,7 +585,7 @@ syntax:
 A surface variable represents a handle to the underlying surface when
 performing memory accesses. Surface variables may not be created in the
 kernel and instead should be passed in as kernel input arguments. Their
-primary usage is as a parameter in memory access, sampler, and VME 
+primary usage is as a parameter in memory access, sampler, and VME
 instructions.
 
 T0-T5 are pre-defined surfaces that have special meanings in the
@@ -559,7 +594,7 @@ program.
 In text format, a surface variable may be declared with the following
 syntax:
 
-**.decl** &lt;var_name&gt; v_type=T num_elts=&lt;num_elements&gt;
+**.decl** &lt;var_name&gt; v_type=T num_elts=&lt;num_elements&gt; [attrs={<a0>,<a1>,...,<an>}]
 
 The pre-defined surfaces may not be declared in assembly.
 
@@ -568,12 +603,12 @@ Sampler and surface variables share the same format in the vISA file:
 
 
 ### surface_info
-	surface_info {
-		UD name_index;
-		UW num_elements;
-		UB attribute_count;
-		attribute_info attribute_info[attribute_count];
-	}
+  surface_info {
+    UD name_index;
+    UW num_elements;
+    UB attribute_count;
+    attribute_info attribute_info[attribute_count];
+  }
 
 Surface and sampler variables are permitted to have more than one
 element. An element has a size of 4 byte.
@@ -589,21 +624,20 @@ instruction, and once declared its location is fixed. The
 
 
 ### label_info
-	label_info {
-		UD name_index;
-		UB kind;
-		UB attribute_count;
-		attribute_info attribute_info[attribute_count];
-	}
+  label_info {
+    UD name_index;
+    UB kind;
+    UB attribute_count;
+    attribute_info attribute_info[attribute_count];
+  }
 
-- **name_index:** Index of the string storing the original, possibly mangled name of the label. The maximum length of the name string is 64 characters. This is mainly used for debugging purposes.
+- **name_index:** Index of the string storing the original, possibly mangled name of the label. The maximum length of the name string is 1024 characters. This is mainly used for debugging purposes.
 - **kind:** There are two kinds of labels, and bit 0 is used to encode this value:
 
   - Block ('0'): marks the start of a basic block.  Only block labels may be the target of a jump instruction.
   - Subroutine ('1'): marks the start of a subroutine.  Only subroutine labels may be the target of a subroutine call.
 
 - **attribute_count:** Number of attributes for this label.
-- **attribute_info:**  
 
 
 In text format, a label variable may be declared with the following
@@ -623,14 +657,14 @@ of an input variable and has the following format:
 
 
 ### input_info
-	input_info {
-		B kind;
-		UD id;
-		W offset;
-		UW size;
-	}
+  input_info {
+    B kind;
+    UD id;
+    W offset;
+    UW size;
+  }
 
-- **kind:** 
+- **kind:**
 
   - bits 0-1 are used to represent the category of the variable.  Valid values are
 
@@ -693,32 +727,32 @@ Each kernel in a virtual ISA object has the following format:
 
 
 ### kernel_data
-	kernel_data {
-		UD string_count;
-		string_pool string_pool[string_count];
-		UD name_index;
-		UD variable_count;
-		var_info var_info[variable_count];
-		UW address_count;
-		address_info address_info[address_count];
-		UW predicate_count;
-		predicate_info predicate_info[predicate_count];
-		UW label_count;
-		label_info label_info[label_count];
-		UB sampler_count;
-		sampler_info sampler_info[sampler_count];
-		UB surface_count;
-		surface_info surface_info[surface_count];
-		UB vme_count;
-		vme_info vme_info[vme_count];
-		UD num_inputs;
-		input_info input_info[num_inputs];
-		UD size;
-		UD entry;
-		UW attribute_count;
-		attribute_info attribute_info[attribute_count];
-		instructions;
-	}
+  kernel_data {
+    UD string_count;
+    string_pool string_pool[string_count];
+    UD name_index;
+    UD variable_count;
+    var_info var_info[variable_count];
+    UW address_count;
+    address_info address_info[address_count];
+    UW predicate_count;
+    predicate_info predicate_info[predicate_count];
+    UW label_count;
+    label_info label_info[label_count];
+    UB sampler_count;
+    sampler_info sampler_info[sampler_count];
+    UB surface_count;
+    surface_info surface_info[surface_count];
+    UB vme_count;
+    vme_info vme_info[vme_count];
+    UD num_inputs;
+    input_info input_info[num_inputs];
+    UD size;
+    UD entry;
+    UW attribute_count;
+    attribute_info attribute_info[attribute_count];
+    instructions;
+  }
 
 - **string_count:** Number of strings used in the kernel.  Valid range is [1 , 131072].
 - **string_pool:** The string pool table, which stores all names used in the kernel.  String literals are represented by their index in this table (n#).  n0 is reserved to represent the null-string.
@@ -743,7 +777,6 @@ Each kernel in a virtual ISA object has the following format:
 - **entry:** The byte offset of the first instruction in the kernel, from the start of this kernel object.
 - **attribute_count:** Number of attributes for this kernel.
 - **attribute_info:** Information about an attribute. See description of the attribute_info structure for more details.
-- **instructions:**  
 
 
 In text format, a virtual ISA kernel has the following form:
@@ -752,7 +785,7 @@ In text format, a virtual ISA kernel has the following form:
 
 One or more **.decl** directives for variable declarations
 
-Zero or more **.attr** directives for attribute lists
+Zero or more **.kernel_attr** directives for attribute lists
 
 Virtual ISA instructions
 
@@ -762,8 +795,10 @@ as they may be derived from the number of declarations for that variable
 class.
 
 Pre-defined Attributes:
+Note that an integer attribute can have its size to be of 0 to 4 bytes, the
+size shown here is just a recommended value.
 
-**AsmName** - Name of the GEN assembly file for this kernel
+**OutputAsmPath** - Name of the GEN assembly file for this kernel
 
 -   Name: AsmName
 -   Size: 1-256
@@ -772,16 +807,29 @@ Pre-defined Attributes:
     the front end compiler for this kernel. It is intended for
     simulation mode only.
 
+**Target** - which platform target is the kernel for.
+
+-   Name: Target
+-   Size: 1
+-   Value: 0 (CM), 1(IGC).
+-   Description: The target indicates which platform (CM, IGC, etc) generates this kernel.
+    Currently, only 0 and 1 are used.
+
+**SimdSize** - kernel dispatch simd size.
+
+-   Name: SimdSize
+-   Size: 1
+-   Value: 8|16|32.
+-   Description: It indicates the dispatch simd size for this kernel.
+
+
 **SLMSize** - size of the SLM used by each thread group
 
 -   Name: SLMSize
 -   Size: 1
--   
-
-    Value: 0-64 representing the SLM size in unit of 1KB memory blocks. {0, 1, 2, 4, 8, 16, 32, 64} are supported, all other
-
-    :   values will be rounded up to the next power of two.
-
+-   Value: 0-64 representing the SLM size in unit of 1KB memory blocks.
+    {0, 1, 2, 4, 8, 16, 32, 64} are supported, all other values will be
+    rounded up to the next power of two.
 -   Description: gives the size of the shared local memory used by each
     thread group of the kernel. The runtime uses this value to perform
     memory management for SLM among the thread groups. A value of zero
@@ -794,7 +842,9 @@ Pre-defined Attributes:
 -   Size: 4
 -   Value: representing the starting offset for vISA scratch-space.
 -   Description: this is used by the front-end compiler to reserve
-    scratch-space.
+    scratch-space. If the kernel spills, its spill space will start
+    at this offset.  SpillMemOffset is in bytes and must be multiple
+    of the GRF size.
 
 **ArgSize** - maximum size of the argument variable (%arg) for this
 kernel in GRFs
@@ -802,6 +852,7 @@ kernel in GRFs
 -   Name: ArgSize
 -   Size: 1
 -   Value: 0-32.
+-   Description: this is used for functions and must be present.
 
 **RetValSize** - maximum size of the return value variable (%retval) for
 this kernel in GRFs
@@ -809,6 +860,7 @@ this kernel in GRFs
 -   Name: RetValSize
 -   Size: 1
 -   Value: 0-12.
+-   Description: this is used for functions and must be present.
 
 Function
 ------------
@@ -816,32 +868,32 @@ Each ISA function object has the following format:
 
 
 ### function_data
-	function_data {
-		UD string_count;
-		string_pool string_pool[string_count];
-		UD name_index;
-		UD variable_count;
-		var_info var_info[variable_count];
-		UW address_count;
-		address_info address_info[address_count];
-		UW predicate_count;
-		predicate_info predicate_info[predicate_count];
-		UW label_count;
-		label_info label_info[label_count];
-		UB sampler_count;
-		sampler_info sampler_info[sampler_count];
-		UB surface_count;
-		surface_info surface_info[surface_count];
-		UB vme_count;
-		vme_info vme_info[vme_count];
-		UD size;
-		UD entry;
-		UB input_size;
-		UB return_value_size;
-		UW attribute_count;
-		attribute_info attribute_info[attribute_count];
-		instructions;
-	}
+  function_data {
+    UD string_count;
+    string_pool string_pool[string_count];
+    UD name_index;
+    UD variable_count;
+    var_info var_info[variable_count];
+    UW address_count;
+    address_info address_info[address_count];
+    UW predicate_count;
+    predicate_info predicate_info[predicate_count];
+    UW label_count;
+    label_info label_info[label_count];
+    UB sampler_count;
+    sampler_info sampler_info[sampler_count];
+    UB surface_count;
+    surface_info surface_info[surface_count];
+    UB vme_count;
+    vme_info vme_info[vme_count];
+    UD size;
+    UD entry;
+    UB input_size;
+    UB return_value_size;
+    UW attribute_count;
+    attribute_info attribute_info[attribute_count];
+    instructions;
+  }
 
 It is identical to a kernel object except that a function does not have
 inputs; function arguments are instead passed through explicit read and
@@ -868,7 +920,7 @@ In text format, a virtual ISA assembly file has the following form:
 
 One or more **.decl** directives for variable declarations
 
-zero or more **.attr** directives for attribute lists
+zero or more **.kernel_attr** directives for attribute lists
 
 Virtual ISA instructions
 

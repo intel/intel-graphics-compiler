@@ -1,6 +1,6 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -31,14 +31,14 @@ Debug information header format is as follows:
     to debug information format will change this.
 -   **numCompiledObjects**: Number of objects, ie kernels and stack call
     functions, having debug information in debug information stream.
--   **debugInfo:** Actual debug information for each compiled object. 
-    Compiled object refers to either a kernel or a stack call function. 
+-   **debugInfo:** Actual debug information for each compiled object.
+    Compiled object refers to either a kernel or a stack call function.
     Debug information format per object is as follows:
 
 ```
     DebugInfoFormat
     {
-      ub objectNameLen;
+      uw objectNameLen;
       ub objectName[objectNameLen];
       ud reloc_offset;
       MappingTable offsetMap;
@@ -50,7 +50,7 @@ Debug information header format is as follows:
     }
 ```
 
--   **nameLen:** Length of name of object. Must be from 0 to 255.
+-   **nameLen:** Length of name of object.
 -   **objectName:** Name of the object. Not null terminated.
 -   **relocOffset:** Represents offset of first instruction in binary
     buffer. Value is 0 for kernels, non-zero for stack call functions.
@@ -117,7 +117,7 @@ Debug information header format is as follows:
 ```
     VarInfo
     {
-      ub nameLen;
+      uw nameLen;
       ub varName[nameLen];
       VarLiveIntervalsVISA lr;
     }
@@ -203,7 +203,7 @@ Debug information header format is as follows:
 ```
     SubroutineInfo
     {
-      ub nameLen;
+      uw nameLen;
       ub name[nameLen];
       ud start;
       ud end;

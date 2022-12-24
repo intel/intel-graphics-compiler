@@ -1,6 +1,6 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -109,8 +109,8 @@ Definitions, Acronyms, and Abbreviation
 | SKL | Intel Skylake processor microarchitecture |
 | ICLLP | Intel IceLake processor microarchitecture (low power) |
 | TGLLP | Intel TigerLake processor microarchitecture (low power) |
-
-
+ | XEHP | Intel Arctic Sound processor microarchitecture |
+  | PVC  | Intel PonteVecchio processor microarchitecture |
 
 References and Related Information
 ==================================

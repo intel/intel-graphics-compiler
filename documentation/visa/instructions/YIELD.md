@@ -1,12 +1,10 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ==========================-->
-
- 
 
 ## Opcode
 
@@ -14,35 +12,37 @@ SPDX-License-Identifier: MIT
 
 ## Format
 
-|
-|
-
-
 ## Semantics
 
 
-
+```
 
     Causes the EU to switch to another thread. The hardware selects the thread to yield to.
+```
 
 ## Description
+
+
+
+
 
 
 #### Properties
 
 
+
+
 ## Text
 ```
-    
-
-		YIELD
+YIELD
 ```
-
-
 
 ## Notes
 
 
 
+
+
     This instruction is strictly for performance tuning and does not affect
     program correctness.
+

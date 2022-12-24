@@ -1,12 +1,10 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ==========================-->
-
- 
 
 ## Opcode
 
@@ -14,15 +12,15 @@ SPDX-License-Identifier: MIT
 
 ## Format
 
-| |
-| --- |
+| | |
+| --- | --- |
 | 0x5b(WAIT) | Mask |
 
 
 ## Semantics
 
 
-
+```
 
     //Each TDR is a struct with two fields: a bool valid bit and a thread id.
     //It is initialized during thread dispatch
@@ -34,8 +32,12 @@ SPDX-License-Identifier: MIT
             wait for TDR[i].thread to finish;
         }
     }
+```
 
 ## Description
+
+
+
 
 
     If a thread dependency pattern is specified during the creation of the
@@ -46,22 +48,27 @@ SPDX-License-Identifier: MIT
     may depend on; if set, dependency is cleared, and this thread will not
     wait for the corresponding thread's termination.
 
+
 - **Mask(scalar):** The thread dependency clear mask. Must have type UB
+
 
 #### Properties
 
 
+
+
 ## Text
 ```
-    
 
-		WAIT <Mask>
+
+
+    WAIT <Mask>
 ```
-
-
-
 ## Notes
 
 
 
+
+
     This instruction may only be used with the global thread space execution model.
+
