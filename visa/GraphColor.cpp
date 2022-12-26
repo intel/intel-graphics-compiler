@@ -182,8 +182,8 @@ bool BankConflictPass::hasInternalConflict3Srcs(BankConflict *srcBC) {
 void BankConflictPass::setupEvenOddBankConflictsForDecls(
     G4_Declare *dcl_1, G4_Declare *dcl_2, unsigned offset1, unsigned offset2,
     BankConflict &srcBC1, BankConflict &srcBC2) {
-  ASSERT_USER(srcBC1 == BANK_CONFLICT_NONE, "Wrong Bank initial value");
-  ASSERT_USER(srcBC2 == BANK_CONFLICT_NONE, "Wrong Bank initial value");
+  vISA_ASSERT(srcBC1 == BANK_CONFLICT_NONE, "Wrong Bank initial value");
+  vISA_ASSERT(srcBC2 == BANK_CONFLICT_NONE, "Wrong Bank initial value");
 
   unsigned refNum1 = gra.getNumRefs(dcl_1);
   unsigned refNum2 = gra.getNumRefs(dcl_2);
@@ -2078,7 +2078,7 @@ uint32_t GlobalRA::getRefCount(int loopNestLevel) {
 void Interference::buildInterferenceForFcall(
     G4_BB *bb, SparseBitSet &live, G4_INST *inst,
     std::list<G4_INST *>::reverse_iterator i, const G4_VarBase *regVar) {
-  assert(inst->opcode() == G4_pseudo_fcall && "expect fcall inst");
+  vISA_ASSERT(inst->opcode() == G4_pseudo_fcall, "expect fcall inst");
   unsigned refCount = GlobalRA::getRefCount(
       kernel.getOption(vISA_ConsiderLoopInfoInRA) ? bb->getNestLevel() : 0);
 
@@ -2649,7 +2649,7 @@ static void updateMaskSIMT(unsigned char curEMBit, unsigned char execSize,
     }
     if (curEMBit != NOMASK_BYTE) {
       curEMBit++;
-      ASSERT_USER(curEMBit <= 32, "Illegal mask channel");
+      vISA_ASSERT(curEMBit <= 32, "Illegal mask channel");
     }
   }
 }
@@ -2684,7 +2684,7 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
         }
         if (curEMBit != NOMASK_BYTE) {
           curEMBit++;
-          ASSERT_USER(curEMBit <= 32, "Illegal mask channel");
+          vISA_ASSERT(curEMBit <= 32, "Illegal mask channel");
         }
       }
       return true;
@@ -2709,7 +2709,7 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
           }
           if (curEMBit != NOMASK_BYTE) {
             curEMBit++;
-            ASSERT_USER(curEMBit <= 32, "Illegal mask channel");
+            vISA_ASSERT(curEMBit <= 32, "Illegal mask channel");
           }
         }
         curEMBit = (unsigned char)inst->getMaskOffset();
@@ -2741,7 +2741,7 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
           }
           if (curEMBit != NOMASK_BYTE) {
             curEMBit++;
-            ASSERT_USER(curEMBit <= 32, "Illegal mask channel");
+            vISA_ASSERT(curEMBit <= 32, "Illegal mask channel");
           }
         }
         curEMBit = (unsigned char)inst->getMaskOffset();
@@ -2792,7 +2792,7 @@ bool Augmentation::updateDstMaskForGatherRaw(G4_INST *inst,
         }
         if (curEMBit != NOMASK_BYTE) {
           curEMBit++;
-          ASSERT_USER(curEMBit <= 32, "Illegal mask channel");
+          vISA_ASSERT(curEMBit <= 32, "Illegal mask channel");
         }
       }
       curEMBit = (unsigned char)inst->getMaskOffset();
@@ -3057,7 +3057,7 @@ bool Augmentation::isDefaultMaskSubDeclare(unsigned char *mask, unsigned lb,
     unsigned leftBound = gra.getSubOffset(dcl);
     unsigned rightBound = leftBound + size - 1;
 
-    ASSERT_USER(rightBound <= rb, "Wrong sub declare right bound!");
+    vISA_ASSERT(rightBound <= rb, "Wrong sub declare right bound!");
 
     for (unsigned i = lb; i < rightBound + 1; i += 1) {
       if ((i - lb) % 4 == 0) {
@@ -5301,7 +5301,7 @@ void GraphColor::getExtraInterferenceInfo() {
 
       // Must have a KeyDeclare
       if (!keyDeclare) {
-        assert(0);
+        vASSERT(0);
         return;
       }
 
@@ -5335,7 +5335,7 @@ void GraphColor::getExtraInterferenceInfo() {
       *buf_ptr = '\0';
       keyDeclare = findDeclare(stringBuf);
       if (!keyDeclare) {
-        assert(0);
+        vASSERT(0);
         return;
       }
       buf_ptr = stringBuf;
@@ -5726,7 +5726,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
         if (useSplitLLRHeuristic) {
           spillCost = 1.0f * lrs[i]->getRefCount() / (lrs[i]->getDegree() + 1);
         } else {
-          assert(lrs[i]->getDcl()->getTotalElems() > 0);
+          vASSERT(lrs[i]->getDcl()->getTotalElems() > 0);
           if (!liveAnalysis.livenessClass(G4_GRF) || !useNewSpillCost) {
             // address or flag variables
             unsigned short numRows = lrs[i]->getDcl()->getNumRows();
@@ -7322,7 +7322,7 @@ void GlobalRA::saveRegs(unsigned startReg, unsigned owordSize,
                         unsigned frameOwordOffset, G4_BB *bb,
                         INST_LIST_ITER insertIt,
                         std::unordered_set<G4_INST *> &group) {
-  assert(builder.getPlatform() >= GENX_SKL &&
+  vISA_ASSERT(builder.getPlatform() >= GENX_SKL,
          "stack call only supported on SKL+");
 
   if ((useLscForSpillFill && owordSize == 16) || owordSize == 8 ||
@@ -7638,7 +7638,7 @@ void GraphColor::getCallerSaveRegisters() {
           builder.kernel.fg.fcallToPseudoDclMap[callInst->asCFInst()]
               .VCA->getRegVar()
               ->getId();
-      ASSERT_USER((*it)->Succs.size() == 1,
+      vISA_ASSERT((*it)->Succs.size() == 1,
                   "fcall basic block cannot have more than 1 successor");
 
       for (unsigned i = 0; i < numVar; i++) {
@@ -8269,7 +8269,7 @@ void GlobalRA::addCallerSavePseudoCode() {
         fcallRetMap.emplace(pseudoVCADcl, retDcl);
       }
 
-      ASSERT_USER(bb->Succs.size() == 1,
+      vISA_ASSERT(bb->Succs.size() == 1,
                   "fcall basic block cannot have more than 1 successor node");
 
       G4_BB *retBB = bb->Succs.front();
@@ -8365,7 +8365,7 @@ void GlobalRA::addStoreRestoreToReturn() {
 
   auto fretBB = builder.kernel.fg.getUniqueReturnBlock();
   auto iter = std::prev(fretBB->end());
-  assert((*iter)->isFReturn() && "fret BB must end with fret");
+  vISA_ASSERT((*iter)->isFReturn(), "fret BB must end with fret");
 
   if (!EUFusionCallWANeeded()) {
     restoreBE_FPInst = builder.createMov(g4::SIMD4, FPdst, oldFPSrc,
@@ -8666,7 +8666,7 @@ VarRange *VarSplit::splitVarRange(VarRange *src1, VarRange *src2,
                                   std::stack<VarRange *> *toDelete) {
   VarRange *new_var_range = nullptr;
 
-  ASSERT_USER(!(src1->leftBound == src2->leftBound &&
+  vISA_ASSERT(!(src1->leftBound == src2->leftBound &&
                 src1->rightBound == src2->rightBound),
               "Same ranges can not be spiltted");
 
@@ -8737,7 +8737,7 @@ void VarSplit::rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd,
       // The range item in the list is on the right of current range, insert it
       // before the postion. Since the whole range is inserted first, all the
       // ranges should be continuous.
-      ASSERT_USER((*it)->leftBound - range->rightBound == 1,
+      vISA_ASSERT((*it)->leftBound - range->rightBound == 1,
                   "none continuous spliting happened\n");
       rangeList->insert(it, range);
       return;
@@ -9303,13 +9303,13 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
       unsigned short elemsNum = (rightBound - leftBound + 1) / elementSize;
 
       if (!elemsNum) {
-        assert(0);
+        vASSERT(0);
         pre_rightBound = rightBound;
         continue;
       }
 
       if (leftBound && pre_rightBound + 1 != leftBound) {
-        assert(0);
+        vASSERT(0);
       }
       pre_rightBound = rightBound;
 
@@ -12589,7 +12589,7 @@ void GlobalRA::insertSaveAddr(G4_BB *bb) {
                ERROR_FLOWGRAPH); // must have a assigned loc
 
   G4_INST *last = bb->back();
-  assert(last->isCall());
+  vASSERT(last->isCall());
   if (last->getDst() == NULL) {
     unsigned loc = getSubRetLoc(bb);
     G4_Declare *dcl = getRetDecl(loc);
@@ -12605,7 +12605,7 @@ void GlobalRA::insertRestoreAddr(G4_BB *bb) {
   MUST_BE_TRUE(bb != NULL, ERROR_INTERNAL_ARGUMENT);
 
   G4_INST *last = bb->back();
-  assert(last->isReturn());
+  vASSERT(last->isReturn());
   if (last->getSrc(0) == NULL) {
     unsigned loc = getSubRetLoc(bb);
     G4_Declare *dcl = getRetDecl(loc);
@@ -12670,7 +12670,7 @@ unsigned GraphColor::edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2) {
   } else if (lr2EvenAlign) {
     return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
   } else {
-    assert(false && "should be unreachable");
+    vISA_ASSERT_UNREACHABLE("should be unreachable");
     return 0;
   }
 }

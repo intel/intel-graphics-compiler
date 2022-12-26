@@ -68,7 +68,7 @@ void G4_BB::removePredEdge(G4_BB *pred) {
     getParent().markStale();
     return;
   }
-  MUST_BE_TRUE(false, ERROR_FLOWGRAPH); // edge is not found
+  vISA_ASSERT(false, ERROR_FLOWGRAPH); // edge is not found
 }
 
 void G4_BB::removeSuccEdge(G4_BB *succ) {
@@ -81,7 +81,7 @@ void G4_BB::removeSuccEdge(G4_BB *succ) {
     getParent().markStale();
     return;
   }
-  MUST_BE_TRUE(false, ERROR_FLOWGRAPH); // edge is not found
+  vISA_ASSERT(false, ERROR_FLOWGRAPH); // edge is not found
 }
 
 //
@@ -137,13 +137,13 @@ G4_BB *G4_BB::fallThroughBB() {
 }
 
 G4_BB *G4_BB::BBBeforeCall() const {
-  assert((getBBType() & G4_BB_RETURN_TYPE) &&
+  vISA_ASSERT((getBBType() & G4_BB_RETURN_TYPE),
          "this must be a subroutine return BB");
   return physicalPred;
 }
 
 G4_BB *G4_BB::BBAfterCall() const {
-  assert((getBBType() & G4_BB_CALL_TYPE) &&
+  vISA_ASSERT((getBBType() & G4_BB_CALL_TYPE),
          "this must be a subroutine call BB");
   return physicalSucc;
 }
@@ -402,7 +402,7 @@ void G4_BB::emitBankConflict(std::ostream &output, const G4_INST *inst) {
     output << "BC=";
     if (!parent->builder->twoSourcesCollision()) {
       if (!parent->builder->oneGRFBankDivision()) { // EVEN EVEN/ODD ODD
-        ASSERT_USER(maxGRFNum < 3, "Not supporting register size > 2");
+        vISA_ASSERT(maxGRFNum < 3, "Not supporting register size > 2");
         if (maxGRFNum == 2) {
           for (int i = 0; i < maxGRFNum; i++) {
             if ((regNum[i][1] & 0x02) == (regNum[i][2] & 0x02)) {
@@ -1382,7 +1382,7 @@ void G4_BB::removeIntrinsics(Intrinsic intrinId) {
 // sampler cache flush 2 must have valid return
 // bb must end with an EOT send
 void G4_BB::addSamplerFlushBeforeEOT() {
-  assert(isLastInstEOT() && "last instruction must be EOT");
+  vISA_ASSERT(isLastInstEOT(), "last instruction must be EOT");
   auto builder = parent->builder;
   int samplerFlushOpcode = 0x1F;
   int samplerFlushFC =

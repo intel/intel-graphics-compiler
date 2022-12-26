@@ -264,12 +264,12 @@ enum class PlatformGen {
 #define ERROR_GRAPHCOLOR "ERROR: Unknown error in Graph Coloring"
 #define ERROR_REGALLOC "ERROR: Unknown error in Register Allocation"
 
-#define ERROR_FILE_READ(x) "ERROR: Invalid or non-existent file " << (x)
+#define ERROR_FILE_READ(x) "ERROR: Invalid or non-existent file #x"
 #define ERROR_OPTION "ERROR: Invalid input option or option combination"
-#define ERROR_INVALID_VISA_NAME(x) "ERROR: Invalid name " << (x)
-#define ERROR_SYNTAX(x) "ERROR: Syntax error -- " << (x)
+#define ERROR_INVALID_VISA_NAME(x) "ERROR: Invalid name #x"
+#define ERROR_SYNTAX(x) "ERROR: Syntax error -- #x"
 #define ERROR_DATA_RANGE(x)                                                    \
-  "ERROR: Out of boundary or invalid data value in " << (x)
+  "ERROR: Out of boundary or invalid data value in #x"
 // end of Error Message
 
 

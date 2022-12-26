@@ -41,7 +41,7 @@ public:
       : mBuildOption(buildOption), m_builderMode(mode), m_mem(4096),
         m_pWaTable(pWaTable) {
     m_platformInfo = vISA::PlatformInfo::LookupPlatformInfo(platform);
-    assert(m_platformInfo != nullptr);
+    vISA_ASSERT(m_platformInfo != nullptr, "null m_platformInfo");
     m_header.major_version = majorVersion;
     m_header.minor_version = minorVersion;
     m_header.magic_number = COMMON_ISA_MAGIC_NUM;

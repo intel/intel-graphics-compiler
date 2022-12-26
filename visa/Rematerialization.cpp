@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "PointsToAnalysis.h"
 #include "Rematerialization.h"
 
@@ -105,7 +106,7 @@ void Rematerialization::populateSamplerHeaderMap() {
       if (samplerHeaderMov && inst->isSplitSend() &&
           inst->getMsgDesc()->isSampler() &&
           inst->getMsgDesc()->isHeaderPresent()) {
-        MUST_BE_TRUE(samplerHeaderMov->getExecSize() == 1,
+        vISA_ASSERT(samplerHeaderMov->getExecSize() == 1,
                      "Unexpected sampler header");
         samplerHeaderMap.insert(std::make_pair(inst, samplerHeaderMov));
       }
@@ -360,7 +361,7 @@ bool Rematerialization::checkLocalWAR(G4_INST *defInst, G4_BB *bb,
     }
   }
 
-  MUST_BE_TRUE(*currIter == defInst,
+  vISA_ASSERT(*currIter == defInst,
                "Cannot find defInst for Remat candidate!");
 
   return true;
@@ -664,7 +665,7 @@ bool Rematerialization::canRematerialize(G4_SrcRegRegion *src, G4_BB *bb,
 
         // For Sanity, just verify V53 has defs before sampler send only.
         auto extMsgOpnd = uniqueDefInst->getSrc(1);
-        MUST_BE_TRUE(extMsgOpnd->isSrcRegRegion() == true,
+        vISA_ASSERT(extMsgOpnd->isSrcRegRegion() == true,
                      "Unexpected src opnd for sampler");
 
         // Don't remat if sampler def is outside loop and use inside loop
@@ -887,8 +888,8 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
       auto src0Rgn = uniqueDef->first->getSrc(0)->asSrcRegRegion();
       auto src0TopDcl = src0Rgn->getTopDcl();
       auto ops = operations.find(src0TopDcl);
-      MUST_BE_TRUE(ops != operations.end(), "Didn't find record in map");
-      MUST_BE_TRUE((*ops).second.numUses == 1,
+      vISA_ASSERT(ops != operations.end(), "Didn't find record in map");
+      vISA_ASSERT((*ops).second.numUses == 1,
                    "Expecting src0 to be used only in sampler");
 
       G4_Declare *newSrc0Dcl = nullptr;
@@ -905,7 +906,7 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
 
           auto dupOp = headerDefInst->cloneInst();
           auto headerDefDst = headerDefInst->getDst();
-          assert(!headerDefDst->isIndirect()); // we don't allow send header to
+          vASSERT(!headerDefDst->isIndirect()); // we don't allow send header to
                                                // be defined indirectly
           dupOp->setDest(kernel.fg.builder->createDst(
               newSrc0Dcl->getRegVar(), headerDefDst->getRegOff(),
@@ -931,7 +932,7 @@ G4_SrcRegRegion *Rematerialization::rematerialize(G4_SrcRegRegion *src,
         samplerDst->getRegVar(), 0, 0, 1, samplerDst->getElemType());
 
     auto dstMsgDesc = dstInst->getMsgDescRaw();
-    MUST_BE_TRUE(dstMsgDesc, "expected raw descriptor");
+    vISA_ASSERT(dstMsgDesc, "expected raw descriptor");
 
     auto newMsgDesc = kernel.fg.builder->createGeneralMsgDesc(
         dstMsgDesc->getDesc(), dstMsgDesc->getExtendedDesc(),

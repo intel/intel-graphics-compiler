@@ -96,10 +96,10 @@ VISA_Type getVectorOperandType(const print_format_provider_t *header,
                                const vector_opnd &opnd);
 
 template <typename T> T getPrimitiveOperand(const CISA_INST *inst, unsigned i) {
-  MUST_BE_TRUE(inst, "Argument Exception: argument inst is NULL.");
-  MUST_BE_TRUE(inst->opnd_num > i,
+  vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
+  vISA_ASSERT(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
-  MUST_BE_TRUE((T)inst->opnd_array[i]->_opnd.other_opnd ==
+  vISA_ASSERT((T)inst->opnd_array[i]->_opnd.other_opnd ==
                    inst->opnd_array[i]->_opnd.other_opnd,
                "Mismatched value.");
   return (T)inst->opnd_array[i]->_opnd.other_opnd;

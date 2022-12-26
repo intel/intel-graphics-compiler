@@ -189,7 +189,7 @@ struct SBBitSets {
   void setSrc(int ID, bool value) { src.set(ID, value); }
 
   unsigned getSize() const {
-    assert(dst.getSize() == src.getSize());
+    vASSERT(dst.getSize() == src.getSize());
     return dst.getSize();
   }
 
@@ -574,12 +574,12 @@ public:
     }
 
     bool operator!=(const BN_iterator &it2) const {
-      assert(LB == it2.LB);
+      vASSERT(LB == it2.LB);
       return (!(bucket == it2.bucket && node_it == it2.node_it));
     }
 
     SBBucketNode *operator*() {
-      assert(node_it != LB->nodeBucketsArray[bucket].end());
+      vASSERT(node_it != LB->nodeBucketsArray[bucket].end());
       return *node_it;
     }
   };

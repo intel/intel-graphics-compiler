@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "InstSplit.h"
 
 using namespace vISA;
@@ -143,7 +144,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
         }
 
         auto tmpSrc = useTmpForSrc(src);
-        assert(tmpSrc->getRegion()->isSingleStride(execSize));
+        vASSERT(tmpSrc->getRegion()->isSingleStride(execSize));
         inst->setSrc(tmpSrc, i);
       }
     }
@@ -192,7 +193,7 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
       }
 
       if (useTmp) {
-        MUST_BE_TRUE(src != nullptr && src->isSrcRegRegion(),
+        vISA_ASSERT(src != nullptr && src->isSrcRegRegion(),
                      "source must be a SrcRegRegion");
         auto tmpSrc = useTmpForSrc(src->asSrcRegRegion());
         inst->setSrc(tmpSrc, i);
@@ -328,7 +329,7 @@ G4_CmpRelation InstSplitPass::compareSrcDstRegRegion(G4_DstRegRegion *dstRegion,
     // direct v. indirect
     auto mayInterfereWithIndirect = [](G4_Operand *direct,
                                        G4_Operand *indirect) {
-      assert((!direct->isIndirect() && indirect->isIndirect()) &&
+      vISA_ASSERT((!direct->isIndirect() && indirect->isIndirect()),
              "first opereand should be direct and second indirect");
       return (direct->getTopDcl() && direct->getTopDcl()->getAddressed()) ||
              (direct->getBase()->isAddress() &&
@@ -348,7 +349,7 @@ G4_CmpRelation InstSplitPass::compareSrcDstRegRegion(G4_DstRegRegion *dstRegion,
   G4_VarBase *srcPhyReg =
       srcBase->isRegVar() ? srcBase->asRegVar()->getPhyReg() : srcBase;
   if (dstPhyReg && srcPhyReg) {
-    assert(dstPhyReg->isPhyReg() && srcPhyReg->isPhyReg());
+    vASSERT(dstPhyReg->isPhyReg() && srcPhyReg->isPhyReg());
     if (dstPhyReg->getKind() != srcPhyReg->getKind())
       return Rel_disjoint;
 

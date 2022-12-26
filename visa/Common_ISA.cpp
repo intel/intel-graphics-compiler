@@ -14,10 +14,6 @@ SPDX-License-Identifier: MIT
 
 #include "IGC/common/StringMacros.hpp"
 
-#define ALLOC_ASSERT(X)                                                        \
-  if (X == NULL)                                                               \
-    return 1;
-
 const char *implictKindStrings[IMPLICIT_INPUT_COUNT] = {
     "EXPLICIT", "LOCAL_SIZE", "GROUP_COUNT", "LOCAL_ID", "PSEUDO_INPUT"};
 
@@ -124,7 +120,7 @@ static const char *getSampleOp3DNameOrNull(VISASampler3DSubOpCode opcode,
 const char *getSampleOp3DName(VISASampler3DSubOpCode opcode,
                               TARGET_PLATFORM platform) {
   const char *name = getSampleOp3DNameOrNull(opcode, platform);
-  assert(name && "invalid sampler opcode");
+  vISA_ASSERT(name, "invalid sampler opcode");
   if (!name)
     return "sampler_unknown";
   return name;
@@ -281,13 +277,13 @@ int processCommonISAHeader(common_isa_header &cisaHdr, unsigned &byte_pos,
   READ_FIELD_FROM_BUF(cisaHdr.minor_version, uint8_t);
   READ_FIELD_FROM_BUF(cisaHdr.num_kernels, uint16_t);
 
-  MUST_BE_TRUE(cisaHdr.major_version >= 3,
+  vISA_ASSERT(cisaHdr.major_version >= 3,
                "only vISA version 3.0 and above are supported");
 
   if (cisaHdr.num_kernels) {
     cisaHdr.kernels = (kernel_info_t *)mem->alloc(sizeof(kernel_info_t) *
                                                   cisaHdr.num_kernels);
-    ALLOC_ASSERT(cisaHdr.kernels);
+    vASSERT(cisaHdr.kernels != nullptr);
   } else {
     cisaHdr.kernels = NULL;
   }
@@ -311,14 +307,14 @@ int processCommonISAHeader(common_isa_header &cisaHdr, unsigned &byte_pos,
 
     READ_FIELD_FROM_BUF(cisaHdr.kernels[i].variable_reloc_symtab.num_syms,
                         uint16_t);
-    assert(cisaHdr.kernels[i].variable_reloc_symtab.num_syms == 0 &&
+    vISA_ASSERT(cisaHdr.kernels[i].variable_reloc_symtab.num_syms == 0,
            "relocation symbols not allowed");
     cisaHdr.kernels[i].variable_reloc_symtab.reloc_syms = nullptr;
 
     READ_FIELD_FROM_BUF(cisaHdr.kernels[i].function_reloc_symtab.num_syms,
                         uint16_t);
 
-    assert(cisaHdr.kernels[i].function_reloc_symtab.num_syms == 0 &&
+    vISA_ASSERT(cisaHdr.kernels[i].function_reloc_symtab.num_syms == 0,
            "relocation symbols not allowed");
     cisaHdr.kernels[i].function_reloc_symtab.reloc_syms = nullptr;
     READ_FIELD_FROM_BUF(cisaHdr.kernels[i].num_gen_binaries, uint8_t);
@@ -337,7 +333,7 @@ int processCommonISAHeader(common_isa_header &cisaHdr, unsigned &byte_pos,
   }
 
   READ_FIELD_FROM_BUF(cisaHdr.num_filescope_variables, uint16_t);
-  assert(cisaHdr.num_filescope_variables == 0 &&
+  vISA_ASSERT(cisaHdr.num_filescope_variables == 0,
          "file scope variables are no longer supported");
 
   READ_FIELD_FROM_BUF(cisaHdr.num_functions, uint16_t);
@@ -345,7 +341,7 @@ int processCommonISAHeader(common_isa_header &cisaHdr, unsigned &byte_pos,
   if (cisaHdr.num_functions) {
     cisaHdr.functions = (function_info_t *)mem->alloc(sizeof(function_info_t) *
                                                       cisaHdr.num_functions);
-    ALLOC_ASSERT(cisaHdr.functions);
+    vASSERT(cisaHdr.functions != nullptr);
   } else {
     cisaHdr.functions = NULL;
   }
@@ -371,13 +367,13 @@ int processCommonISAHeader(common_isa_header &cisaHdr, unsigned &byte_pos,
 
     READ_FIELD_FROM_BUF(cisaHdr.functions[i].variable_reloc_symtab.num_syms,
                         uint16_t);
-    assert(cisaHdr.functions[i].variable_reloc_symtab.num_syms == 0 &&
+    vISA_ASSERT(cisaHdr.functions[i].variable_reloc_symtab.num_syms == 0,
            "variable relocation not supported");
     cisaHdr.functions[i].variable_reloc_symtab.reloc_syms = nullptr;
 
     READ_FIELD_FROM_BUF(cisaHdr.functions[i].function_reloc_symtab.num_syms,
                         uint16_t);
-    assert(cisaHdr.functions[i].function_reloc_symtab.num_syms == 0 &&
+    vISA_ASSERT(cisaHdr.functions[i].function_reloc_symtab.num_syms == 0,
            "function relocation not supported");
     cisaHdr.functions[i].function_reloc_symtab.reloc_syms = nullptr;
 

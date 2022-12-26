@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include <cmath>
 
+#include "Assertions.h"
 #include "DebugInfo.h"
 #include "G4_Verifier.hpp"
 #include "HWConformity.h"
@@ -210,7 +211,7 @@ void HWConformity::broadcast(G4_BB *bb, INST_LIST_ITER it, int srcPos,
                              G4_SubReg_Align align) {
   G4_INST *inst = *it;
   G4_Operand *src = inst->getSrc(srcPos);
-  MUST_BE_TRUE(src->isImm() ||
+  vISA_ASSERT(src->isImm() ||
                    (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar()),
                "source must be an immediate or scalar");
   G4_Type type = src->getType();
@@ -219,7 +220,7 @@ void HWConformity::broadcast(G4_BB *bb, INST_LIST_ITER it, int srcPos,
   uint32_t instMask = inst->getMaskOption();
 
   // avoid simd16 Qword moves
-  MUST_BE_TRUE((unsigned)execSize * TypeSize(type) <=
+  vISA_ASSERT((unsigned)execSize * TypeSize(type) <=
                    2u * kernel.numEltPerGRF<Type_UB>(),
                "move can't exceed 2 GRFs");
 
@@ -255,7 +256,7 @@ G4_SrcRegRegion *HWConformity::insertCopyBefore(INST_LIST_ITER it,
                                                 G4_BB *bb) {
   G4_INST *inst = *it;
   G4_Operand *src = inst->getSrc(srcNum);
-  MUST_BE_TRUE(src != nullptr && src->isSrcRegRegion(),
+  vISA_ASSERT(src != nullptr && src->isSrcRegRegion(),
                "source must be a SrcRegRegion");
   G4_SrcRegRegion *origSrc = src->asSrcRegRegion();
 
@@ -282,7 +283,7 @@ G4_SrcRegRegion *HWConformity::insertCopyBefore(INST_LIST_ITER it,
 G4_SrcRegRegion *HWConformity::insertCopyAtBBEntry(G4_BB *bb,
                                                    G4_ExecSize execSize,
                                                    G4_Operand *src) {
-  MUST_BE_TRUE(src != nullptr && src->isSrcRegRegion(),
+  vISA_ASSERT(src != nullptr && src->isSrcRegRegion(),
                "source must be a SrcRegRegion");
   G4_SrcRegRegion *origSrc = src->asSrcRegRegion();
   auto lb = src->getLinearizedStart();
@@ -485,7 +486,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
   G4_Operand *src0 = inst->getSrc(0), *src1 = inst->getSrc(1);
   bool mov_dst = false;
 
-  MUST_BE_TRUE(inst->isMath(), "Expect math instruction");
+  vISA_ASSERT(inst->isMath(), "Expect math instruction");
   G4_InstMath *mathInst = inst->asMathInst();
 
   if (mathInst->getMathCtrl() == MATH_INVM ||
@@ -533,7 +534,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
   // check if the source needs a move and if so the new move type
   auto needsMove = [this, inst, isIntDivide, hasSameOffset,
                     hasModMinus](int srcID, G4_Type &newType) {
-    assert((srcID == 0 || srcID == 1) && "math can have at most two sources");
+    vISA_ASSERT((srcID == 0 || srcID == 1), "math can have at most two sources");
     G4_Operand *src = inst->getSrc(srcID);
     newType = src->getType();
     if (isIntDivide) {
@@ -567,7 +568,7 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
         divType = IS_SIGNED_INT(src0Type) && IS_SIGNED_INT(src1Type) ? Type_D
                                                                      : Type_UD;
       }
-      assert(divType == Type_D || divType == Type_UD);
+      vASSERT(divType == Type_D || divType == Type_UD);
       if (newType != divType) {
         newType = divType;
         return true;
@@ -905,7 +906,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb) {
         }
       } else {
         G4_Predicate *pred = inst->getPredicate();
-        MUST_BE_TRUE(pred != NULL, "predicate must not be null");
+        vISA_ASSERT(pred != NULL, "predicate must not be null");
         G4_PredState reverse = pred->getState() == PredState_Minus
                                    ? PredState_Plus
                                    : PredState_Minus;
@@ -1286,7 +1287,7 @@ void HWConformity::fixOpnds(INST_LIST_ITER it, G4_BB *bb, G4_Type &exType) {
 void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB *bb) {
   // again mad should already conform by construction
   G4_INST *inst = *iter;
-  MUST_BE_TRUE(inst->getNumSrc() == 3 && !inst->isSend(), "expect 3src inst");
+  vISA_ASSERT(inst->getNumSrc() == 3 && !inst->isSend(), "expect 3src inst");
 
   if (inst->opcode() != G4_mad && inst->opcode() != G4_madw) {
     G4_DstRegRegion *dst = inst->getDst();
@@ -1573,10 +1574,10 @@ bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB *bb) {
   G4_DstRegRegion *dst = inst->getDst();
   G4_SrcRegRegion *src = inst->getSrc(0)->asSrcRegRegion();
 
-  MUST_BE_TRUE(IS_WTYPE(dst->getType()) || IS_DTYPE(dst->getType()) ||
+  vISA_ASSERT(IS_WTYPE(dst->getType()) || IS_DTYPE(dst->getType()) ||
                    IS_QTYPE(dst->getType()),
                "dst type must be *W or *D or *Q");
-  MUST_BE_TRUE(IS_WTYPE(src->getType()) || IS_DTYPE(src->getType()) ||
+  vISA_ASSERT(IS_WTYPE(src->getType()) || IS_DTYPE(src->getType()) ||
                    IS_QTYPE(src->getType()),
                "src type must be *W or *D or *Q");
 
@@ -1588,7 +1589,7 @@ bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB *bb) {
       // use dst type as rotation type
       G4_Operand *newSrc = insertMovBefore(i, 0, dst->getType(), bb);
       inst->setSrc(newSrc, 0);
-      assert(newSrc->isSrcRegRegion());
+      vASSERT(newSrc->isSrcRegRegion());
       src = newSrc->asSrcRegRegion();
     } else {
       // use src type as rotation type. (note: can this happen ?)
@@ -1636,7 +1637,7 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype,
     if (dst_elsize * h_stride < extypesize) {
       uint16_t newHStride = extypesize / dst_elsize;
       if (newHStride == 8) {
-        MUST_BE_TRUE(dst_elsize == 1, "expect B/UB dst");
+        vISA_ASSERT(dst_elsize == 1, "expect B/UB dst");
         if (inst->opcode() == G4_mov && exec_size == 1 &&
             src0->isSrcRegRegion() && !src0->asSrcRegRegion()->hasModifier()) {
           // Just set src to be the same type as dst
@@ -1646,7 +1647,7 @@ bool HWConformity::fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype,
           return true;
         }
       } else {
-        MUST_BE_TRUE(newHStride <= 4, "horizontal stride must be <=4");
+        vISA_ASSERT(newHStride <= 4, "horizontal stride must be <=4");
         dst->setHorzStride(newHStride);
       }
     }
@@ -1864,7 +1865,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
                     ->getRootDeclare();
     // is the following precise?
     src0_count = addr_dcl0->getTotalElems();
-    MUST_BE_TRUE(src0_count <= addr_reg_max_count,
+    vISA_ASSERT(src0_count <= addr_reg_max_count,
                  "More than 8 address subregisters required for one operand.");
     src_uniq_count += src0_count;
   }
@@ -1877,7 +1878,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
                     ->getDeclare()
                     ->getRootDeclare();
     src1_count = addr_dcl1->getTotalElems();
-    MUST_BE_TRUE(src1_count <= addr_reg_max_count,
+    vISA_ASSERT(src1_count <= addr_reg_max_count,
                  "More than 8 address subregisters required for one operand.");
     if (addr_dcl1 != addr_dcl0) {
       // should we use top level dcl here?
@@ -1892,7 +1893,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
       dst->getBase()->isRegVar()) {
     addr_dcl2 = dst->getBase()->asRegVar()->getDeclare()->getRootDeclare();
     dst_count = addr_dcl2->getTotalElems();
-    MUST_BE_TRUE(dst_count <= addr_reg_max_count,
+    vISA_ASSERT(dst_count <= addr_reg_max_count,
                  "More than 8 address subregisters required for one operand.");
     if (addr_dcl2 != addr_dcl0 && addr_dcl2 != addr_dcl1) {
       dst_uniq_count += dst_count;
@@ -1907,12 +1908,12 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
 
   if (src_uniq_count > addr_reg_max_count) {
     if (src0_count > src1_count || nospill_src1) {
-      MUST_BE_TRUE(nospill_src0 == false,
+      vISA_ASSERT(nospill_src0 == false,
                    "Address of source0 should be spilled.");
       spill_src0 = true;
       src_uniq_count -= src0_count;
     } else {
-      MUST_BE_TRUE(nospill_src1 == false,
+      vISA_ASSERT(nospill_src1 == false,
                    "Address of source1 should be spilled.");
       spill_src1 = true;
       src_uniq_count -= src1_count;
@@ -1920,7 +1921,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
   }
 
   if (src_uniq_count + dst_uniq_count > addr_reg_max_count) {
-    MUST_BE_TRUE(nospill_dst == false, "Address of dst should be spilled.");
+    vISA_ASSERT(nospill_dst == false, "Address of dst should be spilled.");
 
     if (nospill_src1 && nospill_src0) {
       spill_dst = true;
@@ -1943,7 +1944,7 @@ bool HWConformity::fixIndirectOpnd(INST_LIST_ITER i, G4_BB *bb) {
     }
   }
 
-  MUST_BE_TRUE(src_uniq_count + dst_uniq_count <= addr_reg_max_count,
+  vISA_ASSERT(src_uniq_count + dst_uniq_count <= addr_reg_max_count,
                "Remianed number of address registers should be no more than 8 "
                "after spill.");
 
@@ -2059,7 +2060,7 @@ template <class T> bool isPreAssignedRegOffsetNonZero(T *region) {
 
 void HWConformity::generateMacl(INST_LIST_ITER it, G4_BB *bb) {
   G4_INST *mulInst = *it;
-  MUST_BE_TRUE(mulInst->opcode() == G4_mul, "expect mul instruction");
+  vISA_ASSERT(mulInst->opcode() == G4_mul, "expect mul instruction");
   if (mulInst->getExecSize() > builder.getNativeExecSize()) {
     auto startIter = it;
     bool isFirstInst = startIter == bb->begin();
@@ -2094,13 +2095,13 @@ void HWConformity::generateMacl(INST_LIST_ITER it, G4_BB *bb) {
 //
 void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB *bb) {
   G4_INST *mulInst = *it;
-  MUST_BE_TRUE(mulInst->opcode() == G4_mul, "expect mul instruction");
-  assert(mulInst->getExecSize() <= builder.getNativeExecSize() &&
+  vISA_ASSERT(mulInst->opcode() == G4_mul, "expect mul instruction");
+  vISA_ASSERT(mulInst->getExecSize() <= builder.getNativeExecSize(),
          "expect single register inst");
 
   G4_Operand *src0 = mulInst->getSrc(0);
   G4_Operand *src1 = mulInst->getSrc(1);
-  MUST_BE_TRUE(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()),
+  vISA_ASSERT(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()),
                "both sources must have dword type");
 
   // src1 does not support modifier
@@ -2174,7 +2175,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB *bb) {
     if (mulInst->getCondMod() != nullptr) {
       // conditional modifier cannot be used
       // when the MUL source operand is of dword type.
-      MUST_BE_TRUE(false, "Dw multiply does not support conditional modifiers");
+      vISA_ASSERT(false, "Dw multiply does not support conditional modifiers");
       mulInst->setCondMod(nullptr);
     }
 
@@ -2205,7 +2206,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB *bb) {
 bool HWConformity::checkSrcMod(INST_LIST_ITER it, G4_BB *bb, int srcPos) {
   bool changed = false;
   G4_INST *inst = *it;
-  assert(srcPos < inst->getNumSrc() && "invalid srcPos");
+  vISA_ASSERT(srcPos < inst->getNumSrc(), "invalid srcPos");
   auto src = inst->getSrc(srcPos);
   if (src->isSrcRegRegion()) {
     G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
@@ -2449,7 +2450,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
 
     bb->insertBefore(iter, lowMove);
 
-    MUST_BE_TRUE(high32BitDcl != NULL, "mach dst must not be null");
+    vISA_ASSERT(high32BitDcl != NULL, "mach dst must not be null");
     G4_INST *highMove = builder.createMov(
         execSize,
         builder.createDst(dstAlias->getRegVar(), 0, 1, 2,
@@ -2633,7 +2634,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER &i, G4_BB *bb) {
           ? Type_UD
           : Type_D;
 
-  assert(IS_DTYPE(src0->getType()) && "src0 must be DW type");
+  vISA_ASSERT(IS_DTYPE(src0->getType()), "src0 must be DW type");
 
   if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013677893) &&
       builder.getOption(vISA_expandMulPostSchedule)) {
@@ -2768,7 +2769,7 @@ void HWConformity::copyDwords(G4_Declare *dst, int dstOffset, G4_Declare *src,
                               int srcOffset, int numDwords, G4_BB *bb,
                               INST_LIST_ITER iter) {
 
-  MUST_BE_TRUE(numDwords == 1 || numDwords == 2 || numDwords == 4 ||
+  vISA_ASSERT(numDwords == 1 || numDwords == 2 || numDwords == 4 ||
                    numDwords == 8 || numDwords == 16 || numDwords == 32,
                "invalid number of dwords to copy");
 
@@ -2821,10 +2822,10 @@ void HWConformity::copyDwords(G4_Declare *dst, int dstOffset, G4_Declare *src,
 void HWConformity::copyDwordsIndirect(G4_Declare *dst, G4_SrcRegRegion *src,
                                       int numDwords, G4_BB *bb,
                                       INST_LIST_ITER iter) {
-  MUST_BE_TRUE(TypeSize(dst->getElemType()) >= 4 && src->getTypeSize() >= 4,
+  vISA_ASSERT(TypeSize(dst->getElemType()) >= 4 && src->getTypeSize() >= 4,
                "dst and src must have dword or qword type");
 
-  MUST_BE_TRUE(src->getRegAccess() == IndirGRF, "source must be indirect GRF");
+  vISA_ASSERT(src->getRegAccess() == IndirGRF, "source must be indirect GRF");
 
   G4_Declare *newDst = dst;
 
@@ -2835,12 +2836,12 @@ void HWConformity::copyDwordsIndirect(G4_Declare *dst, G4_SrcRegRegion *src,
   }
 
   G4_SrcRegRegion *newSrc = builder.duplicateOperand(src);
-  MUST_BE_TRUE(newSrc->getTypeSize() == 8,
+  vISA_ASSERT(newSrc->getTypeSize() == 8,
                "only support 64-bit type source so far");
   newSrc->setType(builder, Type_UD);
   newSrc->setModifier(Mod_src_undef);
   if (newSrc->getRegion()->isRegionWH()) {
-    MUST_BE_TRUE(newSrc->getRegion()->width == 1,
+    vISA_ASSERT(newSrc->getRegion()->width == 1,
                  "only handle <1,0> region for now");
     newSrc->setRegion(builder, builder.createRegionDesc(UNDEFINED_SHORT, 2, 1));
   } else {
@@ -2882,7 +2883,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
   auto dst = inst->getDst();
   auto src0 = inst->getSrc(0);
 
-  MUST_BE_TRUE(!inst->getCondMod(), "cant handle cond mod");
+  vISA_ASSERT(!inst->getCondMod(), "cant handle cond mod");
   auto dstHS = dst->getHorzStride();
 
   auto incrementVar = [&](G4_Operand *var, unsigned int width,
@@ -2902,7 +2903,7 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
 
   if (src0->isSrcRegRegion()) {
     auto src0RR = src0->asSrcRegRegion();
-    MUST_BE_TRUE(src0RR->getModifier() == Mod_src_undef,
+    vISA_ASSERT(src0RR->getModifier() == Mod_src_undef,
                  "cannot handle saturation");
 
     const RegionDesc *rgnToUse = nullptr;
@@ -2913,13 +2914,13 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
       uint16_t stride = 0;
       bool legal =
           src0RR->getRegion()->isSingleStride(inst->getExecSize(), stride);
-      MUST_BE_TRUE(legal, "unsupported region");
+      vISA_ASSERT(legal, "unsupported region");
       if (stride == 1)
         rgnToUse = builder.getRegionStride2();
       else if (stride == 2)
         rgnToUse = builder.getRegionStride4();
       else
-        MUST_BE_TRUE(false, "unsupported stride");
+        vISA_ASSERT(false, "unsupported stride");
     } else {
       if (src0RR->getTypeSize() < 8)
         rgnToUse = src0RR->getRegion();
@@ -3432,7 +3433,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB *bb) {
             tmpType = (tmpType == Type_B) ? Type_W : Type_UW;
             multFactor = 4;
           }
-          MUST_BE_TRUE(multFactor != 8,
+          vISA_ASSERT(multFactor != 8,
                        "does not support 64b operation with byte source");
           G4_Declare *tmp = builder.createTempVar(exSize * multFactor, tmpType,
                                                   builder.getGRFAlign());
@@ -3505,7 +3506,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB *bb) {
                                          region->width, region->horzStride));
           } else if (region->width == 1) {
             // hs is a don't care, change it to <esize*vs, esize, vs>
-            MUST_BE_TRUE(region->vertStride <= 4, "illegal vertical stride");
+            vISA_ASSERT(region->vertStride <= 4, "illegal vertical stride");
 
             uint16_t wd = inst->getExecSize();
             uint16_t hs = region->vertStride;
@@ -3517,14 +3518,14 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB *bb) {
               uint32_t eltBytes = srcAsRegion->getTypeSize();
               uint32_t neltsIn1stGRF = nbytesIn1stGRF / eltBytes;
 
-              MUST_BE_TRUE((nbytesIn1stGRF % eltBytes) == 0,
+              vISA_ASSERT((nbytesIn1stGRF % eltBytes) == 0,
                            "Bad region with element crossing GRF");
-              MUST_BE_TRUE((neltsIn1stGRF % hs) == 0, "hs cannot cross GRF");
+              vISA_ASSERT((neltsIn1stGRF % hs) == 0, "hs cannot cross GRF");
 
               wd = neltsIn1stGRF / hs;
               // Get the largest powOfTwo that can divide wd
               wd = wd & (-wd);
-              // MUST_BE_TRUE(wd > 1, "Cannot select non-1 width w/o crossing
+              // vISA_ASSERT(wd > 1, "Cannot select non-1 width w/o crossing
               // GRF");
             }
             srcAsRegion->setRegion(builder,
@@ -3536,7 +3537,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB *bb) {
             // either split inst or insert multiple moves to pack the source
             // both are painful, so we assert for now and fix later if we
             // encounter such a case
-            MUST_BE_TRUE(false, "Unhandled bad 64b region on CHV/BXT");
+            vISA_ASSERT(false, "Unhandled bad 64b region on CHV/BXT");
           }
         }
       }
@@ -3590,11 +3591,11 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB *bb) {
             // mov (e*2) r[a0.0]<1>:ud src<1;1,0>:ud {NoMask}
             ++iter;
             G4_INST *movInst = *iter;
-            MUST_BE_TRUE(movInst->opcode() == G4_mov &&
+            vISA_ASSERT(movInst->opcode() == G4_mov &&
                              movInst->getDst() == dst &&
                              movInst->getSrc(0)->isSrcRegRegion(),
                          "unexpected instruction created by insertMovAfter");
-            MUST_BE_TRUE(dst->getHorzStride() == 1,
+            vISA_ASSERT(dst->getHorzStride() == 1,
                          "only stride 1 is supported for now");
             dst->setType(builder, Type_UD);
             G4_SrcRegRegion *src = movInst->getSrc(0)->asSrcRegRegion();
@@ -3625,7 +3626,7 @@ bool HWConformity::fix64bInst(INST_LIST_ITER iter, G4_BB *bb) {
             }
             G4_Predicate *pred = movInst->getPredicate();
             if (pred) {
-              MUST_BE_TRUE(inst->getPredicate() == nullptr,
+              vISA_ASSERT(inst->getPredicate() == nullptr,
                            "both inst and movInst have predicates");
               movInst->setPredicate(nullptr);
               inst->setPredicate(pred);
@@ -3664,7 +3665,7 @@ void HWConformity::fixMulSrc1(INST_LIST_ITER i, G4_BB *bb) {
     G4_Imm *new_src1 = builder.createImm(truncVal, Type_UW);
     inst->setSrc(new_src1, 1);
   } else {
-    assert(src1->isSrcRegRegion() && "region expected");
+    vISA_ASSERT(src1->isSrcRegRegion(), "region expected");
     G4_SrcRegRegion *srcRegion = src1->asSrcRegRegion();
     const RegionDesc *rd = srcRegion->getRegion();
 
@@ -3759,7 +3760,7 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST *inst) const {
   G4_DstRegRegion *dst = inst->getDst();
 
   {
-    MUST_BE_TRUE(!IS_QTYPE(dst->getType()) && !IS_BTYPE(dst->getType()),
+    vISA_ASSERT(!IS_QTYPE(dst->getType()) && !IS_BTYPE(dst->getType()),
                  "3Src inst don't support Q and B dst types");
   }
 
@@ -3806,7 +3807,7 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST *inst) const {
 //
 bool HWConformity::isGoodAlign1TernarySrc(G4_INST *inst, int srcPos,
                                           bool canBeImm) {
-  MUST_BE_TRUE(srcPos >= 0 && srcPos < 3, "illegal source pos");
+  vISA_ASSERT(srcPos >= 0 && srcPos < 3, "illegal source pos");
 
   uint8_t execSize = inst->getExecSize();
   G4_Operand *src = inst->getSrc(srcPos);
@@ -3966,7 +3967,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST *inst, int srcPos,
 //    or oword aligned (for exec size == 4)
 // -- or it has scalar region and is not non-simd1 double
 bool HWConformity::isGoodAlign16Src(G4_INST *inst, int srcPos) {
-  MUST_BE_TRUE(srcPos >= 0 && srcPos < 3, "illegal source pos");
+  vISA_ASSERT(srcPos >= 0 && srcPos < 3, "illegal source pos");
 
   uint8_t execSize = inst->getExecSize();
   G4_Operand *src = inst->getSrc(srcPos);
@@ -4083,7 +4084,7 @@ static void tryTransferSrcModifier(IR_Builder &builder, G4_INST *def,
 // pseudo_mad ops to be translated into mac ops.
 void HWConformity::tryEliminateMadSrcModifier(IR_Builder &builder,
                                               G4_INST *inst) {
-  ASSERT_USER(inst->opcode() == G4_pseudo_mad, "not a speudo-mad");
+  vISA_ASSERT(inst->opcode() == G4_pseudo_mad, "not a speudo-mad");
 
   // For pseudo_mad, src2 is the major source operand to be examined later.
   // If there is no modifier on src2, then nothing to do.
@@ -4111,7 +4112,7 @@ void HWConformity::tryEliminateMadSrcModifier(IR_Builder &builder,
 bool HWConformity::isFpMadPreferred(G4_BB *bb, INST_LIST_ITER iter) {
   G4_INST *inst = *iter;
   G4_Operand *dst = inst->getDst();
-  MUST_BE_TRUE(inst->opcode() == G4_pseudo_mad, "expect pseudo mad");
+  vISA_ASSERT(inst->opcode() == G4_pseudo_mad, "expect pseudo mad");
 
   // Check whether test_inst is sharing the same dst.
   auto equal_mad_dst = [this](G4_INST *test_inst, G4_Operand *dst) {
@@ -4156,7 +4157,7 @@ bool HWConformity::isFpMadPreferred(G4_BB *bb, INST_LIST_ITER iter) {
 bool HWConformity::generateAlign1Mad(G4_BB *bb, INST_LIST_ITER iter) {
 
   G4_INST *inst = *iter;
-  MUST_BE_TRUE(inst->opcode() == G4_pseudo_mad, "expect pseudo mad");
+  vISA_ASSERT(inst->opcode() == G4_pseudo_mad, "expect pseudo mad");
   bool mustDoMad = IS_TYPE_FLOAT_ALL(inst->getDst()->getType());
 
   // try swapping src0 (really src2) and src1 to see if we can save a move
@@ -4265,7 +4266,7 @@ bool HWConformity::generateAlign1Mad(G4_BB *bb, INST_LIST_ITER iter) {
 // note that this must return true for IGC due to precision requirements
 bool HWConformity::generateFPMad(G4_BB *bb, INST_LIST_ITER iter) {
   G4_INST *inst = *iter;
-  MUST_BE_TRUE(inst->opcode() == G4_pseudo_mad, "expect pseudo mad");
+  vISA_ASSERT(inst->opcode() == G4_pseudo_mad, "expect pseudo mad");
   uint8_t execSize = inst->getExecSize();
   G4_DstRegRegion *dst = inst->getDst();
 
@@ -4549,7 +4550,7 @@ G4_INST *HWConformity::evenlySplitDPAS8x8Inst(INST_LIST_ITER iter, G4_BB *bb) {
       unsigned int src_l = src[i]->getLinearizedStart();
       unsigned int src_r = src[i]->getLinearizedEnd();
       unsigned int GRFSize = (src_r - src_l + 1) / kernel.getGRFSize();
-      assert(((src_r - src_l + 1) % kernel.getGRFSize() == 0) &&
+      vISA_ASSERT(((src_r - src_l + 1) % kernel.getGRFSize() == 0),
              "DPAS GRF size not aligned");
 
       if (GRFSize >= 2) {
@@ -4704,7 +4705,7 @@ void HWConformity::localizeForAcc(G4_BB *bb) {
 // return the iterator pointing to add
 void HWConformity::convertMAD2MulAdd(INST_LIST_ITER iter, G4_BB *bb) {
   G4_INST *inst = *iter;
-  assert(inst->opcode() == G4_pseudo_mad && "expect pseudo-mad");
+  vISA_ASSERT(inst->opcode() == G4_pseudo_mad, "expect pseudo-mad");
 
   G4_DstRegRegion *addOpDst = inst->getDst();
   G4_Operand *addOpnd2 = inst->getSrc(2);
@@ -5052,7 +5053,7 @@ void HWConformity::fixSendInst(G4_BB *bb) {
 
       if (TypeSize(type) != 4) {
         unsigned int byteSize = sendSrcDcl->getByteSize();
-        MUST_BE_TRUE(byteSize % 4 == 0, "Unexpected src opnd type for send.");
+        vISA_ASSERT(byteSize % 4 == 0, "Unexpected src opnd type for send.");
         G4_Declare *tmpDcl = builder.createTempVar(
             byteSize / 4, Type_UD, sendSrcDcl->getSubRegAlign());
         tmpDcl->setAliasDeclare(sendSrcDcl, 0);
@@ -5105,7 +5106,7 @@ void HWConformity::fixSendInst(G4_BB *bb) {
         G4_Declare *dstTopDcl = dst->getTopDcl();
         if (dstTopDcl != NULL && dstTopDcl->getRegVar() &&
             dstTopDcl->getRegVar()->getPhyReg()) {
-          MUST_BE_TRUE(
+          vISA_ASSERT(
               (dstTopDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum() > 2),
               "Unexpected preg used for send destination.");
         }
@@ -5165,7 +5166,7 @@ void HWConformity::fixSendInst(G4_BB *bb) {
           // GRF-aligned)
           if (dstDcl->getByteSize() < builder.getGRFSize()) {
             auto numDWords = dstDcl->getByteSize() / TypeSize(Type_UD);
-            assert(numDWords > 0);
+            vASSERT(numDWords > 0);
             copyDwords(dstDcl, 0, copySrc, 0, numDWords, bb, copyIter);
           } else {
             copyRegs(dstDcl, dst->getRegOff() * builder.getGRFSize(), copySrc,
@@ -5395,7 +5396,7 @@ void HWConformity::replaceHFBFwithFloat(INST_LIST_ITER it, G4_BB *bb) {
   auto *inst = *it;
   auto *dst = inst->getDst();
   auto *src0 = inst->getSrc(0);
-  assert(src0->getType() == Type_BF || src0->getType() == Type_HF);
+  vASSERT(src0->getType() == Type_BF || src0->getType() == Type_HF);
 
   G4_InstDpas *dpasInst = inst->asDpasInst();
   uint8_t C = dpasInst->getRepeatCount();
@@ -5924,7 +5925,7 @@ bool HWConformity::fixAddcSubb(G4_BB *bb) {
 
       if (carryUse == NULL) {
         // can't find the move using acc, skip this addc/subb
-        assert(false && "unable to find addc/subc consumer");
+        vISA_ASSERT(false, "unable to find addc/subc consumer");
         continue;
       }
 
@@ -6113,7 +6114,7 @@ void HWConformity::fixBFMixedMode() {
               changed = true;
             }
           } else if (S->getType() == Type_BF && S->isImm()) {
-            assert(false && "BF immediate not supported!");
+            vISA_ASSERT(false, "BF immediate not supported!");
           }
         }
       }
@@ -6200,7 +6201,7 @@ void HWConformity::fixBFMixedMode() {
 
       // Because of the first iteration above, this inst must support bf mixed
       // mode.
-      assert(allowBFForInst(Inst));
+      vASSERT(allowBFForInst(Inst));
 
       const G4_ExecSize currES = Inst->getExecSize();
       bool changed = false;
@@ -6212,7 +6213,7 @@ void HWConformity::fixBFMixedMode() {
       for (int i = 0, nsrc = (int)Inst->getNumSrc(); i < nsrc; ++i) {
         G4_Operand *S = Inst->getSrc(i);
         if (S->getType() == Type_BF) {
-          assert(S->isSrcRegRegion());
+          vASSERT(S->isSrcRegRegion());
           G4_SrcRegRegion *srcReg = S->asSrcRegRegion();
           if ((srcReg->getRegion()->isScalar() &&
                currES > g4::SIMD1) // broadcast BF scalar
@@ -6274,7 +6275,7 @@ void HWConformity::fixBFMixedMode() {
           continue;
         }
 
-        assert(S->isSrcRegRegion());
+        vASSERT(S->isSrcRegRegion());
         G4_SrcRegRegion *sReg = S->asSrcRegRegion();
 
         // case 6: Packed bfloat16 source and destination when register offset
@@ -6597,11 +6598,11 @@ bool HWConformity::splitInstListForByteDst(INST_LIST_ITER it, G4_BB *bb,
         }
       } while (new_iter != bb->begin());
 
-      MUST_BE_TRUE(new_iter != bb->end(),
+      vISA_ASSERT(new_iter != bb->end(),
                    "Cannot find predicate definition function in BB.");
       new_iter++;
       G4_INST *secondHalfOp = splitInstWithByteDst(expand_op);
-      MUST_BE_TRUE(secondHalfOp, "Error in splitting instruction.");
+      vISA_ASSERT(secondHalfOp, "Error in splitting instruction.");
       bb->insertBefore(new_iter, secondHalfOp);
     }
   }
@@ -6623,7 +6624,7 @@ G4_INST *HWConformity::splitInstWithByteDst(G4_INST *expand_op) {
       builder.duplicateOperand(expand_op->getCondMod()),
       expand_op->getSaturate(), newExecSize, NULL, NULL, NULL, NULL,
       expand_op->getOption());
-  MUST_BE_TRUE(expand_sec_half_op != NULL, ERROR_MEM_ALLOC);
+  vISA_ASSERT(expand_sec_half_op != NULL, ERROR_MEM_ALLOC);
 
   expand_op->setExecSize(newExecSize);
 
@@ -6782,7 +6783,7 @@ void HWConformity::fixSrcRegion(G4_INST *inst) {
       uint16_t vs = srcRegion->vertStride, wd = srcRegion->width,
                hs = srcRegion->horzStride;
       uint8_t exSize = inst->getExecSize();
-      MUST_BE_TRUE(inst->isSend() || exSize >= wd,
+      vISA_ASSERT(inst->isSend() || exSize >= wd,
                    " Bad source region: Width is greater than execution size.");
       if (comprInst) {
         if (inst->getSrc(i)->getTypeSize() > G4_WSIZE && wd == exSize &&
@@ -6863,7 +6864,7 @@ void HWConformity::fixSrcRegion(G4_INST *inst) {
     }
   }
   if (inst->getDst() && !inst->hasNULLDst()) {
-    MUST_BE_TRUE(inst->getDst()->getHorzStride() != 0,
+    vISA_ASSERT(inst->getDst()->getHorzStride() != 0,
                  "Bad source region: Width is greater than execution size.");
   }
 }
@@ -7204,8 +7205,8 @@ static void expandPlaneMacro(IR_Builder &builder, INST_LIST_ITER it, G4_BB *bb,
 
 void HWConformity::expandPlaneInst(INST_LIST_ITER it, G4_BB *bb) {
   G4_INST *inst = *it;
-  MUST_BE_TRUE(inst->opcode() == G4_pln, "expect a plane inst");
-  MUST_BE_TRUE(inst->getSrc(0)->isSrcRegRegion(),
+  vISA_ASSERT(inst->opcode() == G4_pln, "expect a plane inst");
+  vISA_ASSERT(inst->getSrc(0)->isSrcRegRegion(),
                "src0 must be source reg region");
 
   G4_DstRegRegion *dst = inst->getDst();
@@ -7413,7 +7414,7 @@ G4_INST *HWConformity::checkSrcDefInst(G4_INST *inst, G4_INST *def_inst,
   G4_INST *valid_inst = def_inst;
 
   if (def_inst != NULL) {
-    MUST_BE_TRUE(def_inst->opcode() == G4_mov,
+    vISA_ASSERT(def_inst->opcode() == G4_mov,
                  "def inst must be a mov instruction");
 
     G4_INST *def_inst1 = NULL;
@@ -7710,7 +7711,7 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB *bb, bool swapSrc0and2) {
   G4_INST *inst = *it;
   int srcPos = swapSrc0and2 ? 0 : 2; // unfortunate side effect of vISA mad and
                                      // Gen mad having difference src order
-  assert(inst->getNumSrc() == 3 && "expect 3-src inst");
+  vISA_ASSERT(inst->getNumSrc() == 3, "expect 3-src inst");
   if (builder.noSrc2Regioning()) {
     auto src = inst->getSrc(srcPos);
     // we have to make sure src2 and dst are aligned
@@ -7880,9 +7881,9 @@ void HWConformity::fixPredCtrl(INST_LIST_ITER it, G4_BB *bb) {
       //
       // if f0 happens to be < 16 elements we have to clear upper bits as well
       // in case it has garbage values
-      assert(!inst->getCondMod() &&
+      vISA_ASSERT(!inst->getCondMod(),
              "currently don't handle an instruction with conditional modifier");
-      assert((inst->isWriteEnableInst() || bb->isAllLaneActive()) &&
+      vISA_ASSERT((inst->isWriteEnableInst() || bb->isAllLaneActive()),
              "don't handle instruction in SIMD CF for now");
       G4_Declare *tmpFlag = builder.createTempFlag(1);
       G4_Type flagType =
@@ -7933,13 +7934,13 @@ bool HWConformity::fixBFMove(INST_LIST_ITER i, G4_BB *bb) {
   if (inst->getDst()->getType() == Type_BF) {
     // allow BF->BF moves as they may be introduced during HW conformity
     // we will change their type to HF later
-    assert((src0->getType() == Type_F || src0->getType() == Type_BF) &&
+    vISA_ASSERT((src0->getType() == Type_F || src0->getType() == Type_BF),
            "Only F->BF conversion is supported");
-    assert(!inst->getPredicate() && !inst->getCondMod() &&
-           !inst->getSaturate() &&
+    vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod() &&
+           !inst->getSaturate(),
            "F->BF move does not support pred/cond mod/sat");
     if (src0->isSrcRegRegion()) {
-      assert(src0->asSrcRegRegion()->getModifier() == Mod_src_undef &&
+      vISA_ASSERT(src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
              "F->BF move does not support source modifier");
     }
     if (src0->getType() == Type_BF) {
@@ -7951,14 +7952,14 @@ bool HWConformity::fixBFMove(INST_LIST_ITER i, G4_BB *bb) {
   }
 
   if (src0->getType() == Type_BF) {
-    assert(inst->getDst()->getType() == Type_F &&
+    vISA_ASSERT(inst->getDst()->getType() == Type_F,
            "Only BF->F conversion is supported");
-    assert(!inst->getPredicate() && !inst->getCondMod() &&
-           !inst->getSaturate() &&
+    vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod() &&
+           !inst->getSaturate(),
            "BF->F move does not support pred/cond mod/sat");
     // don't support BF imm for now
-    assert(src0->isSrcRegRegion() &&
-           src0->asSrcRegRegion()->getModifier() == Mod_src_undef &&
+    vISA_ASSERT(src0->isSrcRegRegion() &&
+           src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
            "F->BF move does not support source modifier");
 
     auto src0RR = src0->asSrcRegRegion();
@@ -8214,7 +8215,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
       }
       if (reg0 && reg0->isIndirect()) {
         src0 = insertMovBefore(it, 0, src0Ty, bb, builder.getGRFAlign());
-        assert(src0->isSrcRegRegion());
+        vASSERT(src0->isSrcRegRegion());
         reg0 = src0->asSrcRegRegion(); // update reg0
 
         inst->setSrc(src0, 0);
@@ -8249,9 +8250,9 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
       }
 
       // sanity check
-      assert(d_isvalid && s_isvalid && "ICE: Register region not valid!");
-      assert(dst->getBase()->isRegVar() &&
-             (!reg0 || reg0->getBase()->isRegVar()) &&
+      vISA_ASSERT(d_isvalid && s_isvalid, "ICE: Register region not valid!");
+      vISA_ASSERT(dst->getBase()->isRegVar() &&
+             (!reg0 || reg0->getBase()->isRegVar()),
              "ICE: incorrect mov operands for packed HF mov");
 
       const uint32_t halfGRFBytes = kernel.numEltPerGRF<Type_UB>() / 2;
@@ -8451,7 +8452,7 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
                                      builder.createDstRegRegion(tmp, stride),
                                      movSrc, inst->getOption(), false);
     if (movSrc->getTypeSize() == 8) {
-      assert(stride == 1 && "expect dst stride to be 1 here");
+      vISA_ASSERT(stride == 1, "expect dst stride to be 1 here");
       // the move instruction is itself illegal due to the source region being
       // non-contiguous/not GRF-aligned if the region is singly-strided, we can
       // change it into a UD move, e.g., mov (8) V1<1>:q V2<2;1,0>:q becomes (W)
@@ -8528,19 +8529,19 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB *bb) {
   //     not be a scalar).
   if (IS_BTYPE(inst->getDst()->getType()) ||
       IS_BTYPE(inst->getSrc(0)->getType())) {
-    assert(((IS_BTYPE(inst->getDst()->getType()) &&
+    vISA_ASSERT(((IS_BTYPE(inst->getDst()->getType()) &&
              inst->getSrc(0)->getType() == Type_HF) ||
             (IS_BTYPE(inst->getSrc(0)->getType()) &&
-             inst->getDst()->getType() == Type_HF)) &&
+             inst->getDst()->getType() == Type_HF)),
            "Only FP8<->HF conversion is supported");
-    assert(!inst->getPredicate() && !inst->getCondMod() &&
-           !inst->getSaturate() &&
+    vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod() &&
+           !inst->getSaturate(),
            "FP8<->HF move does not support pred/cond mod/sat");
-    assert(inst->getSrc(0)->isSrcRegRegion() &&
+    vISA_ASSERT(inst->getSrc(0)->isSrcRegRegion(),
            "HF<->FP8 currently supports non-imm source only");
-    assert(inst->getSrc(0)->isSrcRegRegion() &&
+    vISA_ASSERT(inst->getSrc(0)->isSrcRegRegion() &&
            inst->getSrc(0)->asSrcRegRegion()->getRegAccess() == Direct &&
-           inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef &&
+           inst->getSrc(0)->asSrcRegRegion()->getModifier() == Mod_src_undef,
            "FP8<->HF move does not support source modifier");
 
     if (!builder.tryToAlignOperand(
@@ -8638,7 +8639,7 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB *bb) {
       // case 4: if src is fp8, may insert mov as scalar broadcast is not
       // allowed.
       G4_SrcRegRegion *src0 = inst->getSrc(0)->asSrcRegRegion();
-      assert(src0->getRegion()->isScalar());
+      vASSERT(src0->getRegion()->isScalar());
       if (IS_BTYPE(src0->getType())) {
         G4_Declare *src0RootDcl = src0->getBaseRegVarRootDeclare();
         if (src0RootDcl->getByteSize() == src0->getTypeSize()) {
@@ -8825,7 +8826,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
   if (VISA_WA_CHECK(builder.getPWaTable(), Wa_22010487853) &&
       (dstTy == Type_B || dstTy == Type_UB) && (dstSubRegOff % 2) &&
       dst->getHorzStride() >= 4 && inst->getExecSize() == g4::SIMD32) {
-    assert(canSplitInst(inst, NULL));
+    vASSERT(canSplitInst(inst, NULL));
     evenlySplitInst(it, bb);
     return;
   }
@@ -8858,7 +8859,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
     if (region->width > 1 &&
         region->width * region->horzStride != region->vertStride) {
       numRows = inst->getExecSize() / region->width;
-      assert((inst->getExecSize() % region->width) == 0);
+      vASSERT((inst->getExecSize() % region->width) == 0);
     }
     for (int row = 0; row < numRows; ++row) {
       auto srcSubRegOffForRow = (srcSubRegOff + row * region->vertStride) %
@@ -8870,7 +8871,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
       if (TypeSize(srcTy) == 2) {
         // w2w and w2b rules
         // cannot have the case of w2b packing case, i.e. dest-stride == 1
-        assert(!(TypeSize(dstTy) == 1 && dst->getHorzStride() == 1));
+        vASSERT(!(TypeSize(dstTy) == 1 && dst->getHorzStride() == 1));
         if ((TypeSize(dstTy) == 2 && dst->getHorzStride() == 1) ||
             (TypeSize(dstTy) == 1 && dst->getHorzStride() == 2)) {
           if (numRows > 1 && !dstSubRegOffDwordAlign) {
@@ -9007,11 +9008,11 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
     if (TypeSize(dstTy) == 2) {
       tmpSSR = 2 * (dstSubRegOffTmp % 16);
     } else {
-      assert(TypeSize(dstTy) == 1);
+      vASSERT(TypeSize(dstTy) == 1);
       if (dst->getHorzStride() == 2) {
         tmpSSR = 2 * (dstSubRegOffTmp % 32);
       } else {
-        assert(dst->getHorzStride() == 1);
+        vASSERT(dst->getHorzStride() == 1);
         tmpSSR = 4 * (dstSubRegOffTmp % 16);
       }
     }
@@ -9302,18 +9303,18 @@ void HWConformity::fixSrc1Region(INST_LIST_ITER it, G4_BB *bb) {
 INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
   G4_INST *madwInst = *it;
   auto execSize = madwInst->getExecSize();
-  MUST_BE_TRUE(madwInst->opcode() == G4_madw, "expect madw instruction");
+  vISA_ASSERT(madwInst->opcode() == G4_madw, "expect madw instruction");
 
-  MUST_BE_TRUE(builder.getPlatform() >= Xe_PVC || execSize != g4::SIMD32,
+  vISA_ASSERT(builder.getPlatform() >= Xe_PVC || execSize != g4::SIMD32,
                "SIMD32 is not supported on this platform for madw");
 
   auto dst = madwInst->getDst();
-  MUST_BE_TRUE(IS_DTYPE(dst->getType()), "dst only supports DW type");
+  vISA_ASSERT(IS_DTYPE(dst->getType()), "dst only supports DW type");
 
   auto src0 = madwInst->getSrc(0);
   auto src1 = madwInst->getSrc(1);
   auto src2 = madwInst->getSrc(2);
-  MUST_BE_TRUE(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) &&
+  vISA_ASSERT(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) &&
                    IS_DTYPE(src2->getType()),
                "only DW-type sources are supported");
 
@@ -9562,7 +9563,7 @@ void HWConformity::fixFloatARFDst(INST_LIST_ITER it, G4_BB *bb) {
   };
 
   auto getFlippedIntType = [](G4_Type floatTy) -> G4_Type {
-    assert(IS_TYPE_FLOAT_ALL(floatTy));
+    vASSERT(IS_TYPE_FLOAT_ALL(floatTy));
     switch (TypeSize(floatTy)) {
     case 2:
       return Type_UW;

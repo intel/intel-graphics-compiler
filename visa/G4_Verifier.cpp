@@ -59,7 +59,7 @@ void G4Verifier::verify() {
 }
 
 bool G4Verifier::verifyInst(G4_INST *inst) {
-  ASSERT_USER(inst != NULL, "null instruction unexpected");
+  vISA_ASSERT(inst != NULL, "null instruction unexpected");
   if (inst) {
     verifyOpcode(inst);
     verifyOpnd(inst->getDst(), inst);
@@ -187,7 +187,7 @@ void G4Verifier::printDefUse(G4_INST *def, G4_INST *use,
 }
 
 void G4Verifier::assertIfEnable() const {
-  MUST_BE_TRUE(false, "G4Verification failure");
+  vISA_ASSERT(false, "G4Verification failure");
 }
 
 bool G4Verifier::dataHazardCheck(G4_Operand *dst, G4_Operand *src) {
@@ -262,7 +262,7 @@ void G4Verifier::verifyDstSrcOverlap(G4_INST *inst) {
         if (dstEnd != dstStart ||
             srcStart != srcEnd) // Any operand is more than 2 GRF
         {
-          MUST_BE_TRUE(!overlap, "dst and src0 overlap");
+          vISA_ASSERT(!overlap, "dst and src0 overlap");
         }
       }
     }
@@ -270,7 +270,7 @@ void G4Verifier::verifyDstSrcOverlap(G4_INST *inst) {
 }
 
 void G4Verifier::verifySend(G4_INST *inst) {
-  MUST_BE_TRUE(inst->isSend(), "expect send inst");
+  vISA_ASSERT(inst->isSend(), "expect send inst");
   if (passIndex == Optimizer::PI_regAlloc) {
     G4_DstRegRegion *dst = inst->getDst();
     G4_SrcRegRegion *src0 = inst->getSrc(0)->asSrcRegRegion();
@@ -287,10 +287,10 @@ void G4Verifier::verifySend(G4_INST *inst) {
       };
 
       if (kernel.getNumRegTotal() >= 128) {
-        MUST_BE_TRUE(checkEOTSrc(src0),
+        vISA_ASSERT(checkEOTSrc(src0),
                      "src0 for EOT send is not in r112-r127");
         if (src1 != nullptr) {
-          MUST_BE_TRUE(checkEOTSrc(src1),
+          vISA_ASSERT(checkEOTSrc(src1),
                        "src1 for EOT sends is not in r112-r127");
         }
       }
@@ -309,7 +309,7 @@ void G4Verifier::verifySend(G4_INST *inst) {
             src1->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
         int src1End = src1Start + inst->getMsgDesc()->getSrc1LenRegs() - 1;
         bool noOverlap = src0End < src1Start || src1End < src0Start;
-        MUST_BE_TRUE(noOverlap, "split send src0 and src1 overlap");
+        vISA_ASSERT(noOverlap, "split send src0 and src1 overlap");
       }
     }
 
@@ -319,13 +319,13 @@ void G4Verifier::verifySend(G4_INST *inst) {
           bool noOverlap =
               dst->getLinearizedEnd() < src0->getLinearizedStart() ||
               src0->getLinearizedEnd() < dst->getLinearizedStart();
-          MUST_BE_TRUE(noOverlap, "send dst and src0 overlap");
+          vISA_ASSERT(noOverlap, "send dst and src0 overlap");
         }
         if (src1 && !src1->isNullReg()) {
           bool noOverlap =
               dst->getLinearizedEnd() < src1->getLinearizedStart() ||
               src1->getLinearizedEnd() < dst->getLinearizedStart();
-          MUST_BE_TRUE(noOverlap, "split send dst and src1 overlap");
+          vISA_ASSERT(noOverlap, "split send dst and src1 overlap");
         }
       }
     }
@@ -373,10 +373,10 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
     if (opnd->getInst() == NULL) {
       DEBUG_VERBOSE("operand has no owner instruction (orphaned)");
-      MUST_BE_TRUE(false, "operand has no owner instruction (orphaned)");
+      vISA_ASSERT(false, "operand has no owner instruction (orphaned)");
     } else {
       DEBUG_VERBOSE("operand pointer is shared by another instruction");
-      MUST_BE_TRUE(false, "operand pointer is shared by another instruction");
+      vISA_ASSERT(false, "operand pointer is shared by another instruction");
     }
     DEBUG_VERBOSE("\n");
   }
@@ -418,7 +418,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
           inst->emit(std::cerr);
           DEBUG_VERBOSE("\n");
-          MUST_BE_TRUE(false, "Right bound mismatch!");
+          vISA_ASSERT(false, "Right bound mismatch!");
         }
       }
     } else if (opnd == inst->getSrc(0) || opnd == inst->getSrc(1)) {
@@ -453,7 +453,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
           inst->emit(std::cerr);
           DEBUG_VERBOSE("\n");
-          MUST_BE_TRUE(false, "Right bound mismatch!");
+          vISA_ASSERT(false, "Right bound mismatch!");
         }
       }
     }
@@ -487,7 +487,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
               << "\n");
           inst->emit(std::cerr);
           DEBUG_VERBOSE("\n");
-          MUST_BE_TRUE(false, "Left/right bound span incorrect!");
+          vISA_ASSERT(false, "Left/right bound span incorrect!");
         }
       }
 
@@ -538,7 +538,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
             << ", recomputed lb = " << newRgn.getLeftBound() << "\n");
         inst->emit(std::cerr);
         DEBUG_VERBOSE("\n");
-        MUST_BE_TRUE(false, "Left bound mismatch!");
+        vISA_ASSERT(false, "Left bound mismatch!");
       }
 
       if (opnd->getRightBound() != newRgn.getRightBound()) {
@@ -549,7 +549,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
         inst->emit(std::cerr);
         DEBUG_VERBOSE("\n");
-        MUST_BE_TRUE(false, "Right bound mismatch!");
+        vISA_ASSERT(false, "Right bound mismatch!");
       }
     } else if (opnd->isDstRegRegion() && opnd->isRightBoundSet() &&
                !opnd->isNullReg()) {
@@ -579,7 +579,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
             << "\n");
         inst->emit(std::cerr);
         DEBUG_VERBOSE("\n");
-        MUST_BE_TRUE(false, "Left/right bound span incorrect!");
+        vISA_ASSERT(false, "Left/right bound span incorrect!");
       }
 
       if (inst->getMaskOffset() > 0 && opnd == inst->getImplAccDst()) {
@@ -618,7 +618,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
         inst->emit(std::cerr);
         DEBUG_VERBOSE("\n");
-        MUST_BE_TRUE(false, "Left bound mismatch");
+        vISA_ASSERT(false, "Left bound mismatch");
       }
 
       if (opnd->getRightBound() != newRgn.getRightBound()) {
@@ -629,7 +629,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
         inst->emit(std::cerr);
         DEBUG_VERBOSE("\n");
-        MUST_BE_TRUE(false, "Right bound mismatch!");
+        vISA_ASSERT(false, "Right bound mismatch!");
       }
     } else if (opnd->isPredicate() && opnd->isRightBoundSet()) {
       G4_Predicate newRgn(*(opnd->asPredicate()));
@@ -652,7 +652,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
         inst->emit(std::cerr);
         DEBUG_VERBOSE("\n");
-        MUST_BE_TRUE(false, "Left bound mismatch");
+        vISA_ASSERT(false, "Left bound mismatch");
       }
 
       if (opnd->getRightBound() != newRgn.getRightBound()) {
@@ -663,7 +663,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
         inst->emit(std::cerr);
         DEBUG_VERBOSE("\n");
-        MUST_BE_TRUE(false, "Right bound mismatch!");
+        vISA_ASSERT(false, "Right bound mismatch!");
       }
     } else if (opnd->isCondMod() && opnd->isRightBoundSet()) {
       G4_CondMod newRgn(*(opnd->asCondMod()));
@@ -686,7 +686,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
         inst->emit(std::cerr);
         DEBUG_VERBOSE("\n");
-        MUST_BE_TRUE(false, "Left bound mismatch");
+        vISA_ASSERT(false, "Left bound mismatch");
       }
 
       if (opnd->getRightBound() != newRgn.getRightBound()) {
@@ -697,7 +697,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
         inst->emit(std::cerr);
         DEBUG_VERBOSE("\n");
-        MUST_BE_TRUE(false, "Right bound mismatch!");
+        vISA_ASSERT(false, "Right bound mismatch!");
       }
     } else {
       // Not implemented
@@ -720,7 +720,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
           (opnd->asSrcRegRegion()->getRegion()->vertStride == 2);
       if (threeSrcAlign16 && nonScalar && isAssigned &&
           opnd->getLinearizedStart() % 16 != 0 && !isReplicated) {
-        MUST_BE_TRUE(false,
+        vISA_ASSERT(false,
                      "dp2/dp3/dp4/dph and non-scalar 3src op must be align16!");
       }
 
@@ -733,10 +733,10 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
         if (inst->getDst()) {
           uint32_t dstOffset = inst->getDst()->getLinearizedStart() % 32;
           if (opnd == inst->getImplAccSrc()) {
-            assert(offset == dstOffset &&
+            vISA_ASSERT(offset == dstOffset,
                    "implicit acc source must have identical offset as dst");
           } else if (opnd->isSrcRegRegion()) {
-            assert((offset % 16 == 0 && dstOffset % 16 == 0) &&
+            vISA_ASSERT((offset % 16 == 0 && dstOffset % 16 == 0),
                    "explicit acc source and its dst must be oword-aligned");
           }
         }
@@ -750,7 +750,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
           bool dstIsAssigned = dst->getBase()->isRegVar() &&
                                dst->getBase()->asRegVar()->isPhyRegAssigned();
           if (dstIsAssigned && dst->getLinearizedStart() % 16 != 0) {
-            assert(false && "destination of move instruction with V/VF imm is "
+            vISA_ASSERT(false, "destination of move instruction with V/VF imm is "
                             "not 16-byte aligned");
           }
         }
@@ -758,8 +758,8 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
       // check if the oprands with mme are GRF-aligned.
       if (opnd->isGreg() && opnd->getAccRegSel() != ACC_UNDEFINED) {
-        assert(opnd->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>() ==
-                   0 &&
+        vISA_ASSERT(opnd->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>() ==
+                   0,
                "operand with mme must be GRF-aligned");
       }
     }
@@ -904,13 +904,13 @@ void G4Verifier::verifyOpcode(G4_INST *inst) {
   case G4_dp2:
   case G4_dp3:
   case G4_dp4:
-    assert(kernel.fg.builder->hasDotProductInst() && "unsupported opcode");
+    vISA_ASSERT(kernel.fg.builder->hasDotProductInst(), "unsupported opcode");
     break;
   case G4_lrp:
-    assert(kernel.fg.builder->hasLRP() && "unsupported opcode");
+    vISA_ASSERT(kernel.fg.builder->hasLRP(), "unsupported opcode");
     break;
   case G4_madm:
-    assert(kernel.fg.builder->hasMadm() && "unsupported opcode");
+    vISA_ASSERT(kernel.fg.builder->hasMadm(), "unsupported opcode");
     break;
   default:
     break;
@@ -918,13 +918,13 @@ void G4Verifier::verifyOpcode(G4_INST *inst) {
 
   if (passIndex == Optimizer::PI_regAlloc) {
     // ToDo: add more checks for psuedo inst after RA
-    assert(!inst->isPseudoLogic() &&
+    vISA_ASSERT(!inst->isPseudoLogic(),
            "pseudo logic inst should be lowered before RA");
   }
 
   if (inst->getSaturate()) {
-    assert(
-        inst->canSupportSaturate() &&
+    vISA_ASSERT(
+        inst->canSupportSaturate(),
         "saturate is set to true but instruction does not support saturation");
   }
 }
@@ -937,7 +937,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     DEBUG_VERBOSE("should not have predicate nor condMod");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "may not have predicate/condMod");
+    vISA_ASSERT(false, "may not have predicate/condMod");
   }
 
   G4_DstRegRegion *dst = dpasInst->getDst();
@@ -958,7 +958,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     DEBUG_VERBOSE("should not have source modifier");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "may not have source modifier");
+    vISA_ASSERT(false, "may not have source modifier");
   }
 
   // No indirect register access
@@ -967,7 +967,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     DEBUG_VERBOSE("no indirect register access supported!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "no indirect register access supported!");
+    vISA_ASSERT(false, "no indirect register access supported!");
   }
 
   if (!(s1Ty == Type_UD || s1Ty == Type_D) ||
@@ -976,7 +976,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     DEBUG_VERBOSE("incorrect type for src1 or src2!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "wrong type for src1 or src2");
+    vISA_ASSERT(false, "wrong type for src1 or src2");
   }
 
   if (dpasInst->isInt()) {
@@ -985,7 +985,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       DEBUG_VERBOSE("incorrect int type for src0 or dst!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "wrong int type for src0 or dst");
+      vISA_ASSERT(false, "wrong int type for src0 or dst");
     }
   } else if (dpasInst->isFP16() || dpasInst->isBF16()) {
     G4_Type prec = Type_UNDEF;
@@ -996,21 +996,21 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       DEBUG_VERBOSE("incorrect float type for dst or src0!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "wrong float type for dst or src0");
+      vISA_ASSERT(false, "wrong float type for dst or src0");
     }
   } else if (dpasInst->isTF32()) {
     if (dTy != Type_F || s0Ty != Type_F) {
       DEBUG_VERBOSE("incorrect TF32 type for dst or src0 (expecting F)!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "should be float type for dst or src0");
+      vISA_ASSERT(false, "should be float type for dst or src0");
     }
   }
   else {
     DEBUG_VERBOSE("invalid!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "invalid");
+    vISA_ASSERT(false, "invalid");
   }
 
   // region check, enforce <1;1,0> for source region, <1> for dst
@@ -1026,7 +1026,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     DEBUG_VERBOSE("src region should be <1;1,0> and dst region <1>!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "src region should be <1;1,0> and dst region <1>!");
+    vISA_ASSERT(false, "src region should be <1;1,0> and dst region <1>!");
   }
 
   // register alignment & size
@@ -1043,7 +1043,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       DEBUG_VERBOSE("repeat count must be 1 to 8!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "repeat count must be 1 to 8!");
+      vISA_ASSERT(false, "repeat count must be 1 to 8!");
     }
 
 
@@ -1055,7 +1055,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
         "dst/src0's subreg offset should be multiple of execsize!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false,
+      vISA_ASSERT(false,
         "dst/src0's subreg offset should be multiple of execsize!");
     }
 
@@ -1067,14 +1067,14 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       DEBUG_VERBOSE("dst/src0's size is wrong!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "dst/src0's size is wrong!");
+      vISA_ASSERT(false, "dst/src0's size is wrong!");
     }
 
     if ((src1->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()) != 0) {
       DEBUG_VERBOSE("src1's subreg offset should be 0!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "src1's subreg offset should be 0!");
+      vISA_ASSERT(false, "src1's subreg offset should be 0!");
     }
 
     // bytes per lane per depth
@@ -1086,7 +1086,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       DEBUG_VERBOSE("src1's size is wrong!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "src1's size is wrong!");
+      vISA_ASSERT(false, "src1's size is wrong!");
     }
 
     uint32_t s2AlignBytes = dpasInst->getSrc2SizePerLaneInByte() * D;
@@ -1094,7 +1094,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       DEBUG_VERBOSE("src2's subreg offset is incorrec!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "src2's subreg offset is incorrect!");
+      vISA_ASSERT(false, "src2's subreg offset is incorrect!");
     }
 
     uint32_t s2Bytes =
@@ -1107,7 +1107,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
       DEBUG_VERBOSE("src2's size is wrong!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "src2's size is wrong!");
+      vISA_ASSERT(false, "src2's size is wrong!");
     }
   }
 }
@@ -1132,7 +1132,7 @@ void G4Verifier::verifyAccMov(G4_INST *inst) {
                     "when accumulator is used as src or dst!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "Invalid type combination during mov format "
+      vISA_ASSERT(false, "Invalid type combination during mov format "
                           "conversion when accumulator is used as src or dst!");
     }
   }
@@ -1206,7 +1206,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
     DEBUG_VERBOSE("BF type: BF mixed mode not supported!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "BF type: BF mixed mode not supported!!");
+    vISA_ASSERT(false, "BF type: BF mixed mode not supported!!");
   }
 
   // case 8, pure bf not supported
@@ -1214,7 +1214,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
     DEBUG_VERBOSE("Pure BF operands are not supported!");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, "Pure BF operands are not supported!!");
+    vISA_ASSERT(false, "Pure BF operands are not supported!!");
   }
 
   switch (inst->opcode()) {
@@ -1226,7 +1226,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
       DEBUG_VERBOSE("Src1 in BF mixed mode must be F!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "Src1 in BF mixed mode must be F!");
+      vISA_ASSERT(false, "Src1 in BF mixed mode must be F!");
     }
     break;
   }
@@ -1241,7 +1241,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
       DEBUG_VERBOSE("Src2 in BF mixed mode must be F!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "Src2 in BF mixed mode must be F!");
+      vISA_ASSERT(false, "Src2 in BF mixed mode must be F!");
     }
     break;
   }
@@ -1283,7 +1283,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
       DEBUG_VERBOSE("BF/F Dst has illegal region and type combination!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "BF/F Dst has illegal region and type combination!");
+      vISA_ASSERT(false, "BF/F Dst has illegal region and type combination!");
     }
   }
 
@@ -1302,7 +1302,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
       DEBUG_VERBOSE(" Src: Imm BF/broadcast scalar BF are not supported!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "Src: Imm BF/broadcast scalar BF are not supported!");
+      vISA_ASSERT(false, "Src: Imm BF/broadcast scalar BF are not supported!");
     }
 
     G4_SrcRegRegion *sreg = src->asSrcRegRegion();
@@ -1323,7 +1323,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
       DEBUG_VERBOSE("Src has illegal region and type combination!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
-      MUST_BE_TRUE(false, "Src has illegal region and type combination!");
+      vISA_ASSERT(false, "Src has illegal region and type combination!");
     }
   }
 
@@ -1334,7 +1334,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
     DEBUG_VERBOSE(ss.str().c_str());
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    MUST_BE_TRUE(false, ss.str().c_str());
+    vISA_ASSERT(false, ss.str().c_str());
   }
   return;
 }

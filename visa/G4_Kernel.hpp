@@ -344,7 +344,7 @@ public:
   uint32_t getNumAcc() const { return numAcc; }
 
   void setAsmCount(int count) {
-    assert(count > 0);
+    vASSERT(count > 0);
     asmInstCount = count;
   }
   uint32_t getAsmCount() const { return asmInstCount; }
@@ -544,7 +544,7 @@ public:
   }
   void setImplicitAccSrc(G4_INST *inst, G4_SrcRegRegion *accSrc) {
     // Do not allow null implicit acc operand.
-    assert(accSrc);
+    vASSERT(accSrc);
     // TODO: Is such check actually necessary? We should not have references to
     // the old operand once it's unlinked.
     auto oldOpnd = getImplicitAccSrc(inst);
@@ -556,7 +556,7 @@ public:
   }
   void setImplicitAccDef(G4_INST *inst, G4_DstRegRegion *accDef) {
     // Do not allow null implicit acc operand.
-    assert(accDef);
+    vASSERT(accDef);
     // TODO: Is such check actually necessary? We should not have references to
     // the old operand once it's unlinked.
     auto oldOpnd = getImplicitAccDef(inst);
@@ -615,8 +615,8 @@ public:
   std::unordered_map<G4_BB *, IndirectCallWAInfo> m_indirectCallWAInfo;
   void setMaskOffset(G4_INST *I, G4_InstOption MO) {
     // For call WA
-    assert((I->getMaskOffset() + I->getExecSize()) <= 16);
-    assert(I->getPredicate() == nullptr && I->getCondMod() == nullptr);
+    vASSERT((I->getMaskOffset() + I->getExecSize()) <= 16);
+    vASSERT(I->getPredicate() == nullptr && I->getCondMod() == nullptr);
     I->setMaskOption(MO);
   }
   // end of WA related

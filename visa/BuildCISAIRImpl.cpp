@@ -226,7 +226,7 @@ int CISA_IR_Builder::CreateBuilder(CISA_IR_Builder *&builder,
   initTimer();
 
   if (builder) {
-    assert(0);
+    vASSERT(builder == nullptr);
     return VISA_FAILURE;
   }
 
@@ -244,7 +244,7 @@ int CISA_IR_Builder::CreateBuilder(CISA_IR_Builder *&builder,
 
   if (!builder->m_options.parseOptions(numArgs, flags)) {
     delete builder;
-    assert(0);
+    vISA_ASSERT(false, "parsing error");
     return VISA_FAILURE;
   }
 
@@ -253,12 +253,14 @@ int CISA_IR_Builder::CreateBuilder(CISA_IR_Builder *&builder,
   // through options probably would be slower as it requires a hash table
   // lookup, so it should be used with caution.
   // Check if the given platform from function argument is valid.
-  assert(platform != GENX_NONE && platform < TARGET_PLATFORM::ALL);
+  vISA_ASSERT((platform != GENX_NONE && platform < TARGET_PLATFORM::ALL),
+        "invalid platform");
   TARGET_PLATFORM platformSet = static_cast<TARGET_PLATFORM>(
       builder->m_options.getuInt32Option(vISA_PlatformSet));
   // If the platform is specified in both the function argument and the
   // cmdline argument, the 2 values probably should be same.
-  assert(platformSet == GENX_NONE || platformSet == platform);
+  vISA_ASSERT(platformSet == GENX_NONE || platformSet == platform,
+    "invalid platformSet");
   if (platformSet == GENX_NONE)
     builder->m_options.setOptionInternally(vISA_PlatformSet,
                                            static_cast<uint32_t>(platform));
@@ -324,7 +326,7 @@ int CISA_IR_Builder::CreateBuilder(CISA_IR_Builder *&builder,
 int CISA_IR_Builder::DestroyBuilder(CISA_IR_Builder *builder) {
 
   if (builder == NULL) {
-    assert(0);
+    vASSERT(builder != nullptr);
     return VISA_FAILURE;
   }
 
@@ -338,7 +340,7 @@ CISA_IR_Builder::GetVISAKernel(const std::string &kernelName) const {
   if (kernelName.empty()) {
     if (m_builderMode == vISA_ASM_READER) {
       auto kernel = m_kernelsAndFunctions.front();
-      assert(kernel->getIsKernel());
+      vASSERT(kernel->getIsKernel());
       return static_cast<VISAKernel *>(kernel);
     }
     return static_cast<VISAKernel *>(m_kernel);
@@ -353,7 +355,7 @@ int CISA_IR_Builder::ClearAsmTextStreams() {
     return VISA_SUCCESS;
   }
 
-  assert(0 && "Should clear streams only in asm text writer mode!");
+  vISA_ASSERT_UNREACHABLE("Should clear streams only in asm text writer mode!");
   return VISA_FAILURE;
 }
 
@@ -364,7 +366,7 @@ void CISA_IR_Builder::SetDirectCallFunctionSet(
 
 int CISA_IR_Builder::AddKernel(VISAKernel *&kernel, const char *kernelName) {
   if (kernel) {
-    assert(0);
+    vASSERT(kernel == nullptr);
     return VISA_FAILURE;
   }
 
@@ -395,7 +397,7 @@ int CISA_IR_Builder::SetPrevKernel(VISAKernel *&prevKernel) {
 int CISA_IR_Builder::AddFunction(VISAFunction *&function,
                                  const char *functionName) {
   if (function) {
-    assert(0);
+    vASSERT(function == nullptr);
     return VISA_FAILURE;
   }
 
@@ -418,8 +420,8 @@ int CISA_IR_Builder::AddFunction(VISAFunction *&function,
 
 int CISA_IR_Builder::AddPayloadSection(VISAFunction *&function,
                                        const char *functionName) {
-  if (function != NULL) {
-    assert(0);
+  if (function) {
+    vASSERT(function == nullptr);
     return VISA_FAILURE;
   }
 
@@ -448,7 +450,7 @@ void restoreFCallState(G4_Kernel *kernel,
     auto genOffset = curBB->back()->getGenOffset();
     curBB->pop_back();
     auto origInst = iter.second;
-    assert(origInst->isFCall() || origInst->isFReturn());
+    vASSERT(origInst->isFCall() || origInst->isFReturn());
     curBB->push_back(origInst);
     // set the genOffset in case of GenOffset being used when creating symbol
     // table
@@ -483,10 +485,10 @@ G4_Kernel *CISA_IR_Builder::GetCallerKernel(G4_INST *inst) {
 }
 
 G4_Kernel *CISA_IR_Builder::GetCalleeKernel(G4_INST *fcall) {
-  assert(fcall->opcode() == G4_pseudo_fcall);
+  vASSERT(fcall->opcode() == G4_pseudo_fcall);
   std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
   auto iter = functionsNameMap.find(funcName);
-  assert(iter != functionsNameMap.end() &&
+  vISA_ASSERT(iter != functionsNameMap.end(),
          "can't find function with given name");
   return iter->second;
 }
@@ -499,7 +501,7 @@ void CISA_IR_Builder::ResetHasStackCall(
     bool hasStackCall = false;
     for (auto &it : callsites) {
       G4_INST *fcall = *it;
-      assert(fcall->opcode() == G4_pseudo_fcall);
+      vASSERT(fcall->opcode() == G4_pseudo_fcall);
       bool isInSgInvokeList =
           std::find(sgInvokeList.begin(), sgInvokeList.end(), it) !=
           sgInvokeList.end();
@@ -524,11 +526,11 @@ void CISA_IR_Builder::CheckHazardFeatures(
                  std::set<G4_Kernel *> &visited) {
     for (auto &it : callSites[func]) {
       G4_INST *fcall = *it;
-      assert(fcall->opcode() == G4_pseudo_fcall);
-      assert(func == GetCallerKernel(fcall));
+      vASSERT(fcall->opcode() == G4_pseudo_fcall);
+      vASSERT(func == GetCallerKernel(fcall));
       G4_Kernel *callee = GetCalleeKernel(fcall);
 
-      assert(root != callee && "Detected a recursion that is not allowed");
+      vISA_ASSERT(root != callee, "Detected a recursion that is not allowed");
 
       if (visited.count(callee))
         continue;
@@ -541,7 +543,7 @@ void CISA_IR_Builder::CheckHazardFeatures(
   for (auto &it : sgInvokeList) {
     G4_INST *fcall = *it;
     // Check if there is a indirect call
-    assert(!fcall->asCFInst()->isIndirectCall() &&
+    vISA_ASSERT(!fcall->asCFInst()->isIndirectCall(),
            "Not supported for indirect calls");
 
     // Check recursion
@@ -579,7 +581,7 @@ void CISA_IR_Builder::CollectCallSites(
   for (auto &[func, callsites] : callSites) {
     for (auto &it : callsites) {
       G4_INST *fcall = *it;
-      assert(fcall->opcode() == G4_pseudo_fcall);
+      vASSERT(fcall->opcode() == G4_pseudo_fcall);
       // When callee is a invoke_simd target
       if (GetCalleeKernel(fcall)->getBoolKernelAttr(
               Attributes::ATTR_LTOInvokeOptTarget)) {
@@ -655,12 +657,12 @@ void CISA_IR_Builder::LinkTimeOptimization(
       bool removeStackArg = (options & (1U << Linker_RemoveStackArg));
       bool removeStackFrame = (options & (1U << Linker_RemoveStackFrame));
       G4_INST *fcall = *it;
-      assert(fcall->opcode() == G4_pseudo_fcall);
+      vASSERT(fcall->opcode() == G4_pseudo_fcall);
 
       G4_Kernel *caller = GetCallerKernel(fcall);
       G4_Kernel *callee = GetCalleeKernel(fcall);
       G4_INST *calleeLabel = *callee->fg.builder->instList.begin();
-      ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not a label");
+      vISA_ASSERT(calleeLabel->isLabel() == true, "Entry inst is not a label");
 
       // Change fcall to call
       fcall->setOpcode(G4_call);
@@ -806,11 +808,11 @@ void CISA_IR_Builder::LinkTimeOptimization(
           }
           case G4_add:
           case G4_addc: {
-            assert(execSize == 1);
+            vASSERT(execSize == 1);
             if (typeSize == 32 && inst->opcode() == G4_add) {
               return offset;
             }
-            assert(inst->getSrc(1)->isImm());
+            vASSERT(inst->getSrc(1)->isImm());
             return offset + inst->getSrc(1)->asImm()->getImm();
           }
           default: {
@@ -918,13 +920,13 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 DEBUG_UTIL(inst->dump());
               } else if (inst->opcode() == G4_sends ||
                          inst->opcode() == G4_send) {
-                assert(i == 0);
+                vASSERT(i == 0);
                 // Start adding argument stores to the list
                 storeList.push_back(callerIt);
                 DEBUG_PRINT("[ ]");
                 DEBUG_UTIL(inst->dump());
               } else {
-                assert(0 && "not implemented");
+                vISA_ASSERT(false, "not implemented");
               }
             }
           }
@@ -956,7 +958,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
               auto execSize = static_cast<int>(inst->getExecSize());
               if (inst->opcode() == G4_add &&
                   dst->getTopDcl()->getElemSize() == 4) {
-                assert(execSize == 1);
+                vASSERT(execSize == 1);
                 defInst[dst->getTopDcl()] = thisIt;
                 DEBUG_PRINT("(" << stackPointers[dst->getTopDcl()]
                                 << ") 64-bit emulated Hi32 ");
@@ -1007,7 +1009,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     DEBUG_PRINT("skip for now (private variable on the "
                                 "callee's frame):\n");
                     DEBUG_UTIL(inst->dump());
-                    assert(0);
+                    vASSERT(0);
                   }
                 }
                 auto storeIt = storeList.front();
@@ -1019,8 +1021,8 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 DEBUG_UTIL(storeInst->dump());
                 DEBUG_PRINT("\tload :\t");
                 DEBUG_UTIL(loadInst->dump());
-                assert(stackPointers[getRootDeclare(storeInst->getSrc(0))] ==
-                           stackPointers[getRootDeclare(loadInst->getSrc(0))] &&
+                vISA_ASSERT(stackPointers[getRootDeclare(storeInst->getSrc(0))] ==
+                           stackPointers[getRootDeclare(loadInst->getSrc(0))],
                        "Store and load have different SP offset");
                 removeDeadCode(storeInst->getSrc(0), callerInsts,
                                callerBuilder->getFE_SP());
@@ -1039,7 +1041,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                 // erase the store
                 callerInsts.erase(storeIt);
               } else {
-                assert(0 && "not implemented");
+                vISA_ASSERT(false, "not implemented");
               }
             }
           }
@@ -1116,7 +1118,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
             G4_Declare *newDcl =
                 caller->fg.builder->cloneDeclare(newDclMap, dcl);
             if (opd->isAddrExp()) {
-              assert(topDcl == nullptr);
+              vASSERT(topDcl == nullptr);
               opd->asAddrExp()->setRegVar(newDcl->getRegVar());
             } else {
               opd->setTopDcl(newDcl->getAliasDeclare()
@@ -1301,7 +1303,7 @@ static void Stitch_Compiled_Units(G4_Kernel *mainFunc,
           callee->getRelocationTable().begin(),
           callee->getRelocationTable().end());
 
-    ASSERT_USER(mainFunc->getNumRegTotal() == callee->getNumRegTotal(),
+    vISA_ASSERT(mainFunc->getNumRegTotal() == callee->getNumRegTotal(),
                 "caller and callee cannot have different GRF modes");
   }
 
@@ -1323,12 +1325,12 @@ static void Stitch_Compiled_Units(G4_Kernel *mainFunc,
         std::string funcName = fcall->getSrc(0)->asLabel()->getLabel();
 
         auto iter = subFuncs.find(funcName);
-        assert(iter != subFuncs.end() && "can't find function with given name");
+        vISA_ASSERT(iter != subFuncs.end(), "can't find function with given name");
         G4_Kernel *callee = iter->second;
         G4_BB *retBlock = cur->Succs.front();
-        ASSERT_USER(cur->Succs.size() == 1,
+        vISA_ASSERT(cur->Succs.size() == 1,
                     "fcall basic block cannot have more than 1 successor");
-        ASSERT_USER(retBlock->Preds.size() == 1,
+        vISA_ASSERT(retBlock->Preds.size() == 1,
                     "block after fcall cannot have more than 1 predecessor");
 
         // Remove old edge
@@ -1341,7 +1343,7 @@ static void Stitch_Compiled_Units(G4_Kernel *mainFunc,
                                       retBlock);
 
         G4_INST *calleeLabel = callee->fg.getEntryBB()->front();
-        ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
+        vISA_ASSERT(calleeLabel->isLabel() == true, "Entry inst is not label");
 
         auto callInst = builder->createInternalInst(
             fcall->getPredicate(), G4_call, nullptr, g4::NOSAT,
@@ -1448,7 +1450,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaText,
 
   return status;
 #else
-  assert(0 && "vISA asm parsing not supported on this platform");
+  vISA_ASSERT(false, "vISA asm parsing not supported on this platform");
   return VISA_FAILURE;
 #endif
 }
@@ -1464,12 +1466,12 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
 #endif
   CISAin = fopen(visaFile.c_str(), "r");
   if (!CISAin) {
-    assert(0 && "Failed to open file");
+    vISA_ASSERT(false, "Failed to open file");
     return VISA_FAILURE;
   }
 
   if (CISAparse(this) != 0) {
-    assert(0 && "Parsing visa text failed");
+    vISA_ASSERT(false, "Parsing visa text failed");
     return VISA_FAILURE;
   }
   fclose(CISAin);
@@ -1479,7 +1481,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
   }
   return VISA_SUCCESS;
 #else
-  assert(0 && "Asm parsing not supported on this platform");
+  vISA_ASSERT(false, "Asm parsing not supported on this platform");
   return VISA_FAILURE;
 #endif
 }
@@ -1495,7 +1497,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
 
   if (IS_VISA_BOTH_PATH) {
     if (m_builderMode == vISA_ASM_WRITER) {
-      assert(0 && "Should not be calling Compile() in asm text writer mode!");
+      vISA_ASSERT(false, "Should not be calling Compile() in asm text writer mode!");
       return VISA_FAILURE;
     }
     if (IS_BOTH_PATH) {
@@ -1556,15 +1558,15 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
   if (m_options.getuInt32Option(vISA_Linker) & (1U << Linker_Subroutine)) {
     std::map<std::string, G4_Kernel *> functionsNameMap;
     G4_Kernel *mainFunc = m_kernelsAndFunctions.front()->getKernel();
-    assert(m_kernelsAndFunctions.front()->getIsKernel() &&
-           "mainFunc must be the kernel entry");
+    vISA_ASSERT(m_kernelsAndFunctions.front()->getIsKernel(),
+        "mainFunc must be the kernel entry");
     std::unordered_map<G4_Kernel *, std::list<std::list<G4_INST *>::iterator>>
         callSites;
     std::list<std::list<G4_INST *>::iterator> sgInvokeList;
     CollectCallSites(m_kernelsAndFunctions, callSites, sgInvokeList);
 
     if (sgInvokeList.size()) {
-      assert(callSites.begin()->first == mainFunc);
+      vASSERT(callSites.begin()->first == mainFunc);
       CheckHazardFeatures(sgInvokeList, callSites);
 
       ResetHasStackCall(sgInvokeList, callSites);
@@ -1737,7 +1739,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
     // makes it intact so we can stitch it again to another SIMD size of payload
     // section
     if (m_options.getuInt32Option(vISA_CodePatch)) {
-      assert(m_kernelsAndFunctions.front()->getIsKernel());
+      vASSERT(m_kernelsAndFunctions.front()->getIsKernel());
       for (auto func : m_kernelsAndFunctions) {
         if (func->getIsKernel()) {
           oldMainKernel = func;

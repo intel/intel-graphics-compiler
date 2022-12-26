@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef G4_PASSES_INST_COMBINE_HPP
 #define G4_PASSES_INST_COMBINE_HPP
 
+#include "Assertions.h"
 #include "BuildIR.h"
 #include "FlowGraph.h"
 

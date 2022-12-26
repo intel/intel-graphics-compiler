@@ -29,18 +29,18 @@ unsigned short G4_SrcRegRegion::ExRegNum(bool &valid) const {
       int thisOpSize = TypeSize(type);
 
       if (thisOpSize != declOpSize) {
-        MUST_BE_TRUE((SubRegNum * declOpSize) % thisOpSize == 0,
+        vISA_ASSERT((SubRegNum * declOpSize) % thisOpSize == 0,
                      ERROR_DATA_RANGE("sub-register number"));
         SubRegNum = (SubRegNum * declOpSize) / thisOpSize;
       }
       short regnum = (SubRegNum + subRegisterOffset) / (32 / thisOpSize);
       normRegNum = RegNum + registerOffset + regnum;
-      MUST_BE_TRUE(normRegNum >= 0, ERROR_DATA_RANGE("register number"));
+      vISA_ASSERT(normRegNum >= 0, ERROR_DATA_RANGE("register number"));
       return ((unsigned short)normRegNum);
     }
   }
   normRegNum = base->ExRegNum(valid) + registerOffset;
-  MUST_BE_TRUE(normRegNum >= 0, ERROR_DATA_RANGE("register number"));
+  vISA_ASSERT(normRegNum >= 0, ERROR_DATA_RANGE("register number"));
   return ((unsigned short)normRegNum);
 }
 
@@ -54,20 +54,20 @@ unsigned short G4_SrcRegRegion::ExSubRegNum(bool &valid) {
     G4_RegVar *baseVar = static_cast<G4_RegVar *>(base);
     if (baseVar->isPhyRegAssigned() && baseVar->getPhyReg()->isAreg()) {
       normSubRegNum = baseVar->getPhyRegOff() + subRegisterOffset;
-      MUST_BE_TRUE(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
+      vISA_ASSERT(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
       subRegNum = (unsigned short)normSubRegNum;
       if (acc == Direct) {
-        MUST_BE_TRUE(regOff == 0, ERROR_DATA_RANGE("register offset"));
+        vISA_ASSERT(regOff == 0, ERROR_DATA_RANGE("register offset"));
         int thisOpSize = getTypeSize();
         int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
         if (thisOpSize > declOpSize) {
-          MUST_BE_TRUE((thisOpSize / declOpSize) == 2 ||
+          vISA_ASSERT((thisOpSize / declOpSize) == 2 ||
                            (thisOpSize / declOpSize) == 4,
                        ERROR_DATA_RANGE("operand size"));
           unsigned shiftVal = ((thisOpSize / declOpSize) == 2) ? 1 : 2;
           subRegNum >>= shiftVal;
         } else if (thisOpSize < declOpSize) {
-          MUST_BE_TRUE((declOpSize / thisOpSize) == 2 ||
+          vISA_ASSERT((declOpSize / thisOpSize) == 2 ||
                            (declOpSize / thisOpSize) == 4,
                        ERROR_DATA_RANGE("operand size"));
           unsigned shiftVal = ((declOpSize / thisOpSize) == 2) ? 1 : 2;
@@ -83,18 +83,18 @@ unsigned short G4_SrcRegRegion::ExSubRegNum(bool &valid) {
       int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
 
       if (thisOpSize != declOpSize) {
-        MUST_BE_TRUE((normSubRegNum * declOpSize) % thisOpSize == 0,
+        vISA_ASSERT((normSubRegNum * declOpSize) % thisOpSize == 0,
                      ERROR_DATA_RANGE("sub-register number"));
         normSubRegNum = (normSubRegNum * declOpSize) / thisOpSize;
       }
       normSubRegNum = (normSubRegNum + subRegisterOffset) % (32 / thisOpSize);
-      MUST_BE_TRUE(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
+      vISA_ASSERT(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
       subRegNum = (unsigned short)normSubRegNum;
       return subRegNum;
     }
   }
   normSubRegNum = subRegisterOffset;
-  MUST_BE_TRUE(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
+  vISA_ASSERT(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
   subRegNum = (unsigned short)normSubRegNum;
   if (subRegOff == (short)UNDEFINED_SHORT)
     valid = false;
@@ -107,7 +107,7 @@ unsigned short G4_SrcRegRegion::ExIndSubRegNum(bool &valid) {
         (subRegOff == (short)UNDEFINED_SHORT) ? 0 : subRegOff;
     short normSubRegNum =
         (static_cast<G4_RegVar *>(base)->getPhyRegOff() + subRegisterOffset);
-    MUST_BE_TRUE(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
+    vISA_ASSERT(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
     return ((unsigned short)normSubRegNum);
   }
   return ExSubRegNum(valid);
@@ -134,18 +134,18 @@ unsigned short G4_DstRegRegion::ExRegNum(bool &valid) {
       int thisOpSize = TypeSize(type);
 
       if (thisOpSize != declOpSize) {
-        MUST_BE_TRUE((SubRegNum * declOpSize) % thisOpSize == 0,
+        vISA_ASSERT((SubRegNum * declOpSize) % thisOpSize == 0,
                      ERROR_DATA_RANGE("operand size"));
         SubRegNum = (SubRegNum * declOpSize) / thisOpSize;
       }
       short regnum = (SubRegNum + subRegisterOffset) / (32 / thisOpSize);
       normRegNum = RegNum + registerOffset + regnum;
-      MUST_BE_TRUE(normRegNum >= 0, ERROR_DATA_RANGE("register number"));
+      vISA_ASSERT(normRegNum >= 0, ERROR_DATA_RANGE("register number"));
       return ((unsigned short)normRegNum);
     }
   }
   normRegNum = base->ExRegNum(valid) + registerOffset;
-  MUST_BE_TRUE(normRegNum >= 0, ERROR_DATA_RANGE("register number"));
+  vISA_ASSERT(normRegNum >= 0, ERROR_DATA_RANGE("register number"));
   return ((unsigned short)normRegNum);
 }
 
@@ -159,21 +159,21 @@ unsigned short G4_DstRegRegion::ExSubRegNum(bool &valid) {
     G4_RegVar *baseVar = static_cast<G4_RegVar *>(base);
     if (baseVar->isPhyRegAssigned() && baseVar->getPhyReg()->isAreg()) {
       normSubRegNum = baseVar->getPhyRegOff() + subRegisterOffset;
-      MUST_BE_TRUE(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
+      vISA_ASSERT(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
       subRegNum = (unsigned short)normSubRegNum;
       if (acc == Direct) {
-        MUST_BE_TRUE(regOff == 0, ERROR_DATA_RANGE("register offset"));
+        vISA_ASSERT(regOff == 0, ERROR_DATA_RANGE("register offset"));
         int thisOpSize = getTypeSize();
         int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
         if (thisOpSize > declOpSize) {
-          MUST_BE_TRUE((thisOpSize / declOpSize) == 2 ||
+          vISA_ASSERT((thisOpSize / declOpSize) == 2 ||
                            (thisOpSize / declOpSize) == 4 ||
                            (thisOpSize / declOpSize) == 8,
                        ERROR_DATA_RANGE("operand size"));
           unsigned shiftVal = ((thisOpSize / declOpSize) == 2) ? 1 : 2;
           subRegNum >>= shiftVal;
         } else if (thisOpSize < declOpSize) {
-          MUST_BE_TRUE((declOpSize / thisOpSize) == 2 ||
+          vISA_ASSERT((declOpSize / thisOpSize) == 2 ||
                            (declOpSize / thisOpSize) == 4,
                        ERROR_DATA_RANGE("operand size"));
           unsigned shiftVal = ((declOpSize / thisOpSize) == 2) ? 1 : 2;
@@ -189,18 +189,18 @@ unsigned short G4_DstRegRegion::ExSubRegNum(bool &valid) {
       int declOpSize = TypeSize(baseVar->getDeclare()->getElemType());
 
       if (thisOpSize != declOpSize) {
-        MUST_BE_TRUE((normSubRegNum * declOpSize) % thisOpSize == 0,
+        vISA_ASSERT((normSubRegNum * declOpSize) % thisOpSize == 0,
                      ERROR_DATA_RANGE("operand size"));
         normSubRegNum = (normSubRegNum * declOpSize) / thisOpSize;
       }
       normSubRegNum = (normSubRegNum + subRegisterOffset) % (32 / thisOpSize);
-      MUST_BE_TRUE(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
+      vISA_ASSERT(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
       subRegNum = (unsigned short)normSubRegNum;
       return subRegNum;
     }
   }
   normSubRegNum = subRegisterOffset;
-  MUST_BE_TRUE(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
+  vISA_ASSERT(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
   subRegNum = (unsigned short)normSubRegNum;
   if (subRegOff == (short)UNDEFINED_SHORT)
     valid = false;
@@ -213,7 +213,7 @@ unsigned short G4_DstRegRegion::ExIndSubRegNum(bool &valid) {
         (subRegOff == (short)UNDEFINED_SHORT) ? 0 : subRegOff;
     short normSubRegNum =
         (static_cast<G4_RegVar *>(base)->getPhyRegOff() + subRegisterOffset);
-    MUST_BE_TRUE(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
+    vISA_ASSERT(normSubRegNum >= 0, ERROR_DATA_RANGE("sub-register number"));
     return ((unsigned short)normSubRegNum);
   }
   return ExSubRegNum(valid);

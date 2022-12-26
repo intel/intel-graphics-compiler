@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include <tuple>
 
+#include "Assertions.h"
 #include "BuildIR.h"
 #include "common.h"
 #include "ifcvt.h"
@@ -164,9 +165,9 @@ class IfConverter {
         return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
     }
 
-    ASSERT_USER(BB->Succs.size() == 2,
+    vISA_ASSERT(BB->Succs.size() == 2,
                 "'if' should have exactly two successors!");
-    ASSERT_USER(last->getPredicate(), "'if' or 'goto' should be conditional!");
+    vISA_ASSERT(last->getPredicate(), "'if' or 'goto' should be conditional!");
 
     G4_BB *s0 = BB->Succs.front(); // if-block
     G4_BB *s1 = BB->Succs.back();  // else-block
@@ -276,7 +277,7 @@ class IfConverter {
       return false;
 
     unsigned ifMaskOpt = ifInst->getMaskOption();
-    ASSERT_USER((ifMaskOpt & InstOpt_WriteEnable) == 0,
+    vISA_ASSERT((ifMaskOpt & InstOpt_WriteEnable) == 0,
                 "Unexpected 'NoMask' in 'if' emask.");
 
     unsigned maskBits = getEMaskBits(I->getMaskOffset(), I->getExecSize());
@@ -332,7 +333,7 @@ class IfConverter {
   /// all instruction in the given BB is predictable. Otherwise, return
   /// 0.
   unsigned getPredictableInsts(G4_BB *BB, G4_INST *ifInst) const {
-    ASSERT_USER(ifInst->opcode() == G4_if || ifInst->opcode() == G4_goto,
+    vISA_ASSERT(ifInst->opcode() == G4_if || ifInst->opcode() == G4_goto,
                 "Either 'if' or 'goto' is expected!");
 
     bool isGoto = (ifInst->opcode() == G4_goto);
@@ -342,31 +343,31 @@ class IfConverter {
       G4_opcode op = I->opcode();
       // Ignore G4_label
       if (op == G4_label) {
-        ASSERT_USER(I == BB->front(),
+        vISA_ASSERT(I == BB->front(),
                     "'label' should be the first instruction!");
         continue;
       }
       // Ignore G4_else
       if (isGoto) {
         if (op == G4_join) {
-          ASSERT_USER(BB->size() > 1 && I == (*++BB->begin()),
+          vISA_ASSERT(BB->size() > 1 && I == (*++BB->begin()),
                       "'join' should be the second instruction!");
           continue;
         }
         if (op == G4_goto) {
-          ASSERT_USER(I == BB->back(),
+          vISA_ASSERT(I == BB->back(),
                       "'goto' should be the last instruction!");
           continue;
         }
         if (isFlagClearingFollowedByGoto(I, BB)) {
-          ASSERT_USER(BB->size() > 1 && I == (*++BB->rbegin()),
+          vISA_ASSERT(BB->size() > 1 && I == (*++BB->rbegin()),
                       "flag clearing should be the second to last"
                       " instruction!");
           continue;
         }
       } else {
         if (op == G4_else) {
-          ASSERT_USER(I == BB->back(),
+          vISA_ASSERT(I == BB->back(),
                       "'else' should be the last instruction!");
           continue;
         }
@@ -407,7 +408,7 @@ class IfConverter {
 
   /// markEmptyBB - Mark the given BB as empty.
   void markEmptyBB(IR_Builder *IRB, G4_BB *BB) const {
-    ASSERT_USER(BB->empty(), "BB to be marked empty is not empty!");
+    vISA_ASSERT(BB->empty(), "BB to be marked empty is not empty!");
 
     G4_Label *label = IRB->createLocalBlockLabel("LABEL__EMPTYBB");
     G4_INST *inst = IRB->createLabelInst(label, false);
@@ -502,7 +503,7 @@ void IfConverter::fullConvert(IfConvertible &IC) {
 
   INST_LIST_ITER pos = std::prev(head->end());
   G4_opcode op = (*pos)->opcode();
-  ASSERT_USER(op == G4_if || op == G4_goto,
+  vISA_ASSERT(op == G4_if || op == G4_goto,
               "Convertible if is not started with 'if' or 'goto'!");
   bool isGoto = (op == G4_goto);
 
@@ -588,10 +589,10 @@ void IfConverter::fullConvert(IfConvertible &IC) {
     return;
 
   // Remove 'label' and 'endif'/'join' instructions in tail.
-  ASSERT_USER(tail->front()->opcode() == G4_label,
+  vISA_ASSERT(tail->front()->opcode() == G4_label,
               "BB is not started with 'label'!");
   tail->pop_front();
-  ASSERT_USER(tail->front()->opcode() == G4_endif ||
+  vISA_ASSERT(tail->front()->opcode() == G4_endif ||
                   tail->front()->opcode() == G4_join,
               "Convertible if is not ended with 'endif'!");
   tail->pop_front();

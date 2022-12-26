@@ -128,7 +128,7 @@ public:
   DepType isLabel() const {
     for (G4_INST *inst : instVec) {
       if (inst->isLabel()) {
-        assert(instVec.size() == 1 &&
+        vISA_ASSERT(instVec.size() == 1,
                "Should not have label + other instr in one node");
         return DEP_LABEL;
       }
@@ -453,7 +453,7 @@ public:
   }
 
   void setPreBlock(window2xSP *block) {
-    assert(block && block->instList.size() != 0 &&
+    vISA_ASSERT(block && block->instList.size() != 0,
            "previous block has no instructions");
     preBlock = block;
   }
@@ -519,9 +519,9 @@ public:
       //     M0) r40.0<1>:f  66.0<1,0>:f   r14.0<1,0>:f   r79.3<0>:f   { Align1,
       //     Q1 } mad (16 | M0) r41.0<1>:f  67.0<1,0>:f   r15.0<1,0>:f
       //     r79.3<0>:f   { Align1, Q1 }
-      assert((std::max(instGRFSize, preBlock->instGRFSize) %
+      vISA_ASSERT((std::max(instGRFSize, preBlock->instGRFSize) %
                   std::min(instGRFSize, preBlock->instGRFSize) ==
-              0) &&
+              0),
              "instructions in ajacent blocks can't be aligned");
       auto indexInterval = std::max(instGRFSize, preBlock->instGRFSize) /
                            std::min(instGRFSize, preBlock->instGRFSize);
@@ -547,7 +547,7 @@ public:
       }
       auto it = std::search(preBlock->dstGRF.begin(), preBlock->dstGRF.end(),
                             src0Regs.begin(), src0Regs.end());
-      assert(it != preBlock->dstGRF.end() &&
+      vISA_ASSERT(it != preBlock->dstGRF.end(),
              "the src0 is not the same as the dst of previous block");
       auto dstGRFIndexPreBlock = it - preBlock->dstGRF.begin();
       auto instIndexPreBlock = dstGRFIndexPreBlock / preBlock->instGRFSize;

@@ -180,7 +180,7 @@ int CBinaryCISAEmitter::emitCisaInst(VISAKernelImpl *cisa_kernel,
       }
       else {
         // not yet iterated over all operands, but we encountered a null operand
-        assert(0);
+        vISA_ASSERT(false, "encountered null operand");
         return VISA_FAILURE;
       }
     }

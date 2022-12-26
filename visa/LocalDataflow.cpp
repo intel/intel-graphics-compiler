@@ -6,10 +6,11 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "LocalDataflow.h"
+#include "Assertions.h"
 #include "BitSet.h"
 #include "BuildIR.h"
 #include "FlowGraph.h"
+#include "LocalDataflow.h"
 #include <algorithm>
 #include <unordered_map>
 #include <vector>
@@ -70,7 +71,7 @@ struct LiveNode {
 
   static unsigned getMaskSize(G4_INST *Inst, Gen4_Operand_Number OpNum) {
     G4_Operand *Opnd = Inst->getOperand(OpNum);
-    assert(Opnd && "null opnd");
+    vISA_ASSERT(Opnd, "null opnd");
 
     if (Opnd) {
       G4_Declare *Dcl = Opnd->getTopDcl();
@@ -125,7 +126,7 @@ struct LocalLivenessInfo {
     for (auto &Nodes : LiveNodes) {
       for (auto &LN : Nodes.second) {
         G4_Operand *Opnd = LN.Inst->getOperand(LN.OpNum);
-        assert(Opnd && "null operand");
+        vISA_ASSERT(Opnd, "null operand");
 
         // This is a temporal solution to allow optimizations
         // on partially defined local variables.
@@ -183,7 +184,7 @@ bool LiveNode::addDefinition(G4_INST *DefInst, Gen4_Operand_Number DefOpNum,
       continue;
     G4_Operand *PrevDef = PrevDefInst->getOperand(Node.second);
     G4_Operand *CurrDef = DefInst->getOperand(DefOpNum);
-    assert((PrevDef != nullptr) && (CurrDef != nullptr));
+    vASSERT((PrevDef != nullptr) && (CurrDef != nullptr));
     G4_CmpRelation DefRel = compOpnd(PrevDef, CurrDef, builder);
     if (DefRel == G4_CmpRelation::Rel_eq || DefRel == G4_CmpRelation::Rel_gt)
       return false;
@@ -380,8 +381,8 @@ template <typename T, typename AllocatorTy>
 typename std::vector<T, AllocatorTy>::iterator
 kill(std::vector<T, AllocatorTy> &Elts,
      typename std::vector<T, AllocatorTy>::iterator Iter) {
-  assert(Iter != Elts.end());
-  assert(!Elts.empty());
+  vASSERT(Iter != Elts.end());
+  vASSERT(!Elts.empty());
   if (&*Iter == &Elts.back()) {
     // This is the last element so the next one is none.
     Elts.pop_back();
@@ -409,7 +410,7 @@ static void processReadOpnds(G4_BB *BB, G4_INST *Inst, LocalLivenessInfo &LLI) {
   G4_DstRegRegion *Dst = Inst->getDst();
   if (Dst && Dst->isIndirect()) {
     G4_Declare *Dcl = Dst->getTopDcl();
-    assert(Dcl && "out of sync");
+    vISA_ASSERT(Dcl, "out of sync");
     LLI.LiveNodes[Dcl].emplace_back(Inst, Gen4_Operand_Number::Opnd_dst);
   }
 

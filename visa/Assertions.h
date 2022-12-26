@@ -21,10 +21,11 @@ void assert_and_exit_generic(bool check);
 // main assert flavor
 // other subflavors like visa_assert, visa_assert_unreachable etc call this
 // assert macro with different error and cause messages
-// DO NOT USE vASSERT MACRO DIRECTLY IN vISA CODEBASE
-#define vASSERT(x, errormsg, causemsg, ...) \
+// DO NOT USE visa_assert_top MACRO DIRECTLY IN vISA CODEBASE
+#define visa_assert_top(x, errormsg, causemsg, ...) \
   assert_and_exit(x, errormsg, causemsg, ##__VA_ARGS__)
 
+// vASSERT -- shorthand version that takes only assertion condition
 // vISA_ASSERT -- use this assert to catch incorrect logic within vISA
 // vISA_ASSERT_UNREACHABLE -- use this assert to catch unreachable state within
 // vISA logic
@@ -32,14 +33,17 @@ void assert_and_exit_generic(bool check);
 // incorrect data to vISA
 // TODO: have different exit codes based on the visa assert flavor?
 #if defined (_DEBUG) || !defined(DLL_MODE) || !defined(NDEBUG)
+#define vASSERT(x) \
+  visa_assert_top(x, "error, assertion failed", "")
 #define vISA_ASSERT(x, causemsg, ...) \
-  vASSERT(x, "error, assertion failed", causemsg, ##__VA_ARGS__)
+  visa_assert_top(x, "internal error, assertion failed", causemsg, ##__VA_ARGS__)
 #define vISA_ASSERT_UNREACHABLE(causemsg, ...) \
-  vASSERT(false, "unreachable state, assertion failed", causemsg, ##__VA_ARGS__)
+  visa_assert_top(false, "unreachable state, assertion failed", causemsg, ##__VA_ARGS__)
 #define vISA_ASSERT_INPUT(x, causemsg, ...) \
-  vASSERT(x, "input error, assertion failed", causemsg, ##__VA_ARGS__)
+  visa_assert_top(x, "input error, assertion failed", causemsg, ##__VA_ARGS__)
 
 #else // (_DEBUG) || !(DLL_MODE) || !(NDEBUG)
+#define vASSERT(x) ((void)(0))
 #define vISA_ASSERT(x, causemsg, ...) ((void)(0))
 #define vISA_ASSERT_UNREACHABLE(causemsg, ...) ((void)(0))
 #define vISA_ASSERT_INPUT(x, causemsg, ...) \

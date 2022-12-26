@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #ifndef IS_RELEASE_DLL
 
+#include "Assertions.h"
 #include "Common_ISA.h"
 #include "Common_ISA_util.h"
 
@@ -37,7 +38,7 @@ using namespace vISA;
     if (!(cond)) {                                                             \
       int sz = _scprintf(__VA_ARGS__) + 1;                                     \
       char *buf = (char *)malloc(sz);                                          \
-      assert(buf != NULL);                                                     \
+      vASSERT(buf != NULL);                                                     \
       memset(buf, 0, sz);                                                      \
       SNPRINTF(buf, sz, __VA_ARGS__);                                          \
       error_list.push_back(                                                    \
@@ -51,7 +52,7 @@ using namespace vISA;
     if (!(cond)) {                                                             \
       int sz = _scprintf(__VA_ARGS__) + 1;                                     \
       char *buf = (char *)malloc(sz);                                          \
-      assert(buf != NULL);                                                     \
+      vASSERT(buf != NULL);                                                     \
       memset(buf, 0, sz);                                                      \
       SNPRINTF(buf, sz, __VA_ARGS__);                                          \
       error_list.push_back(                                                    \
@@ -480,7 +481,7 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
   if (ISA_Inst_Data_Port == ISA_Inst_Table[opcode].type)
     return;
 
-  ASSERT_USER(inst->opnd_array[i]->opnd_type == CISA_OPND_VECTOR,
+  vISA_ASSERT(inst->opnd_array[i]->opnd_type == CISA_OPND_VECTOR,
               "Should only be verifying region on a vector operand");
   const vector_opnd &vect = getVectorOperand(inst, i);
 
@@ -922,9 +923,9 @@ void vISAVerifier::verifyOperand(const CISA_INST *inst, unsigned i) {
     // skip, as dpas is verified in verifyInstructionMisc().
     return;
   }
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
-  MUST_BE_TRUE(inst, "Argument Exception: argument inst   is NULL.");
-  MUST_BE_TRUE(inst->opnd_num > i,
+  vISA_ASSERT(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT(inst, "Argument Exception: argument inst   is NULL.");
+  vISA_ASSERT(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   switch (getOperandType(inst, i)) {
   case CISA_OPND_OTHER: /* unable to verify some random primitive operand. */
@@ -1526,7 +1527,7 @@ void vISAVerifier::verifyInstructionMisc(const CISA_INST *inst) {
 ///
 bool vISAVerifier::checkImmediateIntegerOpnd(const vector_opnd &opnd,
                                              VISA_Type expected_type) {
-  MUST_BE_TRUE(IsIntType(expected_type), "integer type expected");
+  vISA_ASSERT(IsIntType(expected_type), "integer type expected");
 
   // Not an immediate.
   if (!opnd.isImmediate())
@@ -1557,7 +1558,7 @@ bool vISAVerifier::checkImmediateIntegerOpnd(const vector_opnd &opnd,
   // All elements in this packed integer vector should be non-negative,
   // otherwise it does not fit.
   if (is_vector) {
-    MUST_BE_TRUE(IsUnsignedIntType(expected_type), "unexpected signed type");
+    vISA_ASSERT(IsUnsignedIntType(expected_type), "unexpected signed type");
 
     // Truncate to 32 bit, each 4 bits consist of a vector component.
     // Sign bits are 3, 7, 11, 15, 19, 23, 27 and 31.
@@ -1989,7 +1990,7 @@ void vISAVerifier::verifyInstructionCompare(const CISA_INST *inst) {
   /// cmp.rel_op (exec_size) dst    src1  src2
 
   ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
-  ASSERT_USER(ISA_CMP == opcode, "illegal opcode for compare instruction");
+  vISA_ASSERT(ISA_CMP == opcode, "illegal opcode for compare instruction");
 
   for (unsigned i = 0; i < inst->opnd_num; i++) {
     if (i > 0) {
@@ -2019,7 +2020,7 @@ void vISAVerifier::verifyInstructionCompare(const CISA_INST *inst) {
 
 void vISAVerifier::verifyInstructionAddress(const CISA_INST *inst) {
   ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
-  ASSERT_USER(ISA_ADDR_ADD == opcode,
+  vISA_ASSERT(ISA_ADDR_ADD == opcode,
               "Illegal opcode for address instruction.");
 
   for (unsigned i = 0; i < inst->opnd_num; i++) {
@@ -2392,7 +2393,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
       const vector_opnd &mmf = getVectorOperand(inst, i++);
       if (mmf.getOperandClass() == OPERAND_IMMEDIATE) {
         unsigned val = mmf.opnd_val.const_opnd._val.ival;
-        ASSERT_USER(val <= VA_MIN_ENABLE,
+        vISA_ASSERT(val <= VA_MIN_ENABLE,
                     "MINMAX MMF Mode operand out of range.");
       }
 
@@ -2441,7 +2442,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
       const vector_opnd &mmf = getVectorOperand(inst, i++);
       if (mmf.getOperandClass() == OPERAND_IMMEDIATE) {
         unsigned val = mmf.opnd_val.const_opnd._val.ival;
-        ASSERT_USER(val <= VA_MIN_ENABLE,
+        vISA_ASSERT(val <= VA_MIN_ENABLE,
                     "MINMAXFILTER MMF Mode operand out of range.");
       }
 

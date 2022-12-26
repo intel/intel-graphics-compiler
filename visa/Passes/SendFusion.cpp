@@ -569,7 +569,7 @@ bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1) {
   G4_INST *I0 = *IT0;
   G4_INST *I1 = *IT1;
   G4_opcode opc = I0->opcode();
-  assert((opc == G4_send || opc == G4_sends) && opc == I1->opcode() &&
+  vISA_ASSERT((opc == G4_send || opc == G4_sends) && opc == I1->opcode(),
          "Arguments to canFusion must be the same kind of Send Messages!");
 
   // Current implementation uses split send to replace two sends. For
@@ -654,7 +654,7 @@ bool SendFusion::canMoveOver(INST_LIST_ITER StartIT, INST_LIST_ITER EndIT,
 
   int lid_first = Inst_first->getLocalId();
   int lid_last = Inst_last->getLocalId();
-  assert(lid_first <= lid_last && "Wrong inst position to sink to!");
+  vISA_ASSERT(lid_first <= lid_last, "Wrong inst position to sink to!");
   int span = lid_last - lid_first;
   if (span >= SEND_FUSION_MAX_SPAN) {
     return false;
@@ -735,7 +735,7 @@ void SendFusion::doSink(INST_LIST_ITER StartIT, INST_LIST_ITER EndIT,
         ++IT;
       }
     }
-    assert(j == numToBeSinked &&
+    vISA_ASSERT(j == numToBeSinked,
            "Internal Error(SendFusion) : Instructions not in the list!");
 
     for (int i = 1; i < numToBeSinked; ++i) {
@@ -772,7 +772,7 @@ void SendFusion::doHoist(INST_LIST_ITER StartIT, INST_LIST_ITER EndIT,
         ++IT;
       }
     }
-    assert(j == 0 &&
+    vISA_ASSERT(j == 0,
            "Internal Error(SendFusion) : Instructions not in the list!");
 
     for (int i = numToBeHoisted - 1; i > 0; --i) {
@@ -806,7 +806,7 @@ void SendFusion::packPayload(G4_INST *FusedSend, G4_INST *Send0, G4_INST *Send1,
   // Both Send0 and Send1 have the same MsgDesc.
   G4_ExecSize execSize = Send0->getExecSize();
   const G4_SendDescRaw *origDesc = Send0->getMsgDescRaw();
-  assert(origDesc && "expected raw descriptor");
+  vISA_ASSERT(origDesc, "expected raw descriptor");
   if (!origDesc) {
     return;
   }
@@ -841,10 +841,10 @@ void SendFusion::packPayload(G4_INST *FusedSend, G4_INST *Send0, G4_INST *Send1,
 
   // Special case for exec_size = 1|2|4
   if (execSize < g4::SIMD8) {
-    assert((origDesc->isDataPortWrite() ||
-            (msgLen == 1 && origDesc->ResponseLength() == 1)) &&
+    vISA_ASSERT((origDesc->isDataPortWrite() ||
+            (msgLen == 1 && origDesc->ResponseLength() == 1)),
            "Internal Error (SendFusion): unexpected read message!");
-    assert((origDesc->isDataPortRead() || (msgLen + extMsgLen == 2)) &&
+    vISA_ASSERT((origDesc->isDataPortRead() || (msgLen + extMsgLen == 2)),
            "Internal Error (SendFusion): unexpected write message!");
 
     /// Address payload size (in unit of GRF)
@@ -922,7 +922,7 @@ void SendFusion::packPayload(G4_INST *FusedSend, G4_INST *Send0, G4_INST *Send1,
   //     Using a loop of count 2 for handing both Msg & extMsg payload.
 
   Ty = Type_UD; // source payload
-  assert(msgLen >= addrLen);
+  vASSERT(msgLen >= addrLen);
   int16_t remMsgLen = (int16_t)(msgLen - addrLen);
   int16_t numMov[2] = {remMsgLen, extMsgLen};
 
@@ -984,10 +984,10 @@ void SendFusion::unpackPayload(G4_INST *FusedSend, G4_INST *Send0,
                                G4_INST *Send1, G4_BB *bb,
                                INST_LIST_ITER InsertBeforePos) {
   G4_Type Ty = FusedSend->getDst()->getType();
-  assert(TypeSize(Ty) == 4 && "Unexpected Type!");
+  vISA_ASSERT(TypeSize(Ty) == 4, "Unexpected Type!");
 
   const G4_SendDescRaw *desc = Send0->getMsgDescRaw();
-  assert(desc && "expected raw descriptor");
+  vISA_ASSERT(desc, "expected raw descriptor");
   if (!desc) {
     return;
   }
@@ -1002,7 +1002,7 @@ void SendFusion::unpackPayload(G4_INST *FusedSend, G4_INST *Send0,
   // Note that the code is designed for exec_size=8. It also
   // works for exec_size=1|2|4 with minor change (keep in mind
   // that nMov = 1 for exec_size=1|2|4)
-  assert((execSize == g4::SIMD8 || nMov == 1) &&
+  vISA_ASSERT((execSize == g4::SIMD8 || nMov == 1),
          "Internal Error(SendFusion) : unexpected message response length!");
 
   G4_VarBase *Payload = FusedSend->getDst()->getBase();
@@ -1238,7 +1238,7 @@ void SendFusion::doFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1, bool IsSink) {
 
   // Use I0 as both I0 and I1 have the same properties
   const G4_SendDescRaw *desc = I0->getMsgDescRaw();
-  assert(desc && "expected raw descriptor");
+  vISA_ASSERT(desc, "expected raw descriptor");
   if (!desc)
     return;
 

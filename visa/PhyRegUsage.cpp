@@ -28,8 +28,8 @@ void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind, unsigned regNum,
                                       unsigned regOff,
                                       unsigned nunits, // word units
                                       unsigned numRows) {
-  MUST_BE_TRUE(numRows > 0 && nunits > 0, ERROR_INTERNAL_ARGUMENT);
-  MUST_BE_TRUE(regNum + numRows <= maxGRFCanBeUsed, ERROR_UNKNOWN);
+  vISA_ASSERT(numRows > 0 && nunits > 0, ERROR_INTERNAL_ARGUMENT);
+  vISA_ASSERT(regNum + numRows <= maxGRFCanBeUsed, ERROR_UNKNOWN);
 
   unsigned uwordsPerGRF = builder.numEltPerGRF<Type_UW>();
   unsigned start_GRF = (regNum * uwordsPerGRF + regOff) / uwordsPerGRF;
@@ -63,7 +63,7 @@ void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind, unsigned regNum,
 void PhyRegUsage::freeContiguous(bool availRegs[], unsigned start, unsigned num,
                                  unsigned maxRegs) {
   for (unsigned i = start; i < start + num; i++) {
-    MUST_BE_TRUE(i < maxRegs && availRegs[i] == false, ERROR_UNKNOWN);
+    vISA_ASSERT(i < maxRegs && availRegs[i] == false, ERROR_UNKNOWN);
     availRegs[i] = true;
   }
 }
@@ -84,7 +84,7 @@ void PhyRegUsage::freeGRFSubReg(unsigned regNum, unsigned regOff,
   // if all sub regs of regNum are free, then unlink the reg
   //
   if (FPR.availableSubRegs[regNum] == 0xFFFFFFFF) {
-    MUST_BE_TRUE(!FPR.availableGregs[regNum], ERROR_UNKNOWN);
+    vISA_ASSERT(!FPR.availableGregs[regNum], ERROR_UNKNOWN);
     FPR.availableGregs[regNum] = true;
   }
 }
@@ -95,9 +95,9 @@ void PhyRegUsage::freeGRFSubReg(unsigned regNum, unsigned regOff,
 void PhyRegUsage::freeRegs(LiveRange *varBasis) {
   G4_Declare *decl = varBasis->getDcl();
   G4_RegFileKind kind = decl->getRegFile();
-  MUST_BE_TRUE(varBasis->getPhyReg(), ERROR_UNKNOWN);
+  vISA_ASSERT(varBasis->getPhyReg(), ERROR_UNKNOWN);
   if (decl->useGRF()) {
-    MUST_BE_TRUE(varBasis->getPhyReg()->isGreg(), ERROR_UNKNOWN);
+    vISA_ASSERT(varBasis->getPhyReg()->isGreg(), ERROR_UNKNOWN);
     if (canGRFSubRegAlloc(decl)) {
       freeGRFSubReg(((G4_Greg *)varBasis->getPhyReg())->getRegNum(),
                     varBasis->getPhyRegOff(),
@@ -109,17 +109,17 @@ void PhyRegUsage::freeRegs(LiveRange *varBasis) {
                      decl->getNumRows(), totalGRFNum);
     }
   } else if (kind == G4_ADDRESS) {
-    MUST_BE_TRUE(varBasis->getPhyReg()->isAreg(), ERROR_UNKNOWN);
+    vISA_ASSERT(varBasis->getPhyReg()->isAreg(), ERROR_UNKNOWN);
     freeContiguous(FPR.availableAddrs, varBasis->getPhyRegOff(),
                    numAllocUnit(decl->getNumElems(), decl->getElemType()),
                    getNumAddrRegisters());
   } else if (kind == G4_FLAG) {
-    MUST_BE_TRUE(varBasis->getPhyReg()->isFlag(), ERROR_UNKNOWN);
+    vISA_ASSERT(varBasis->getPhyReg()->isFlag(), ERROR_UNKNOWN);
     freeContiguous(FPR.availableFlags, varBasis->getPhyRegOff(),
                    numAllocUnit(decl->getNumElems(), decl->getElemType()),
                    builder.getNumFlagRegisters());
   } else // not yet handled
-    MUST_BE_TRUE(false, ERROR_UNKNOWN);
+    vISA_ASSERT(false, ERROR_UNKNOWN);
 }
 
 static int getSubAlignInWords(G4_SubReg_Align subAlign) {
@@ -207,7 +207,7 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[], const bool forbidden[],
   if (isEOTSrc && (startPosRunOne >= maxRegs)) {
     return false;
   } else {
-    MUST_BE_TRUE(startPosRunOne < maxRegs, ERROR_UNKNOWN);
+    vISA_ASSERT(startPosRunOne < maxRegs, ERROR_UNKNOWN);
   }
   bool found =
       findContiguousNoWrapGRF(availRegs, forbidden, occupiedBundles, align,
@@ -218,14 +218,14 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[], const bool forbidden[],
     unsigned startPosRunTwo = 0;
     unsigned endPosRunTwo = startPos + numRegNeeded;
     endPosRunTwo = std::min(endPosRunTwo, maxRegs);
-    MUST_BE_TRUE(endPosRunTwo > 0 && endPosRunTwo <= maxRegs, ERROR_UNKNOWN);
+    vISA_ASSERT(endPosRunTwo > 0 && endPosRunTwo <= maxRegs, ERROR_UNKNOWN);
     found = findContiguousNoWrapGRF(availRegs, forbidden, occupiedBundles,
                                     align, numRegNeeded, startPosRunTwo,
                                     endPosRunTwo, idx);
   }
 
   if (found) {
-    MUST_BE_TRUE(idx < maxRegs && idx + numRegNeeded <= maxRegs, ERROR_UNKNOWN);
+    vISA_ASSERT(idx < maxRegs && idx + numRegNeeded <= maxRegs, ERROR_UNKNOWN);
 
     if (colorHeuristic == ROUND_ROBIN) {
       startPos = (idx + numRegNeeded) % maxRegs;
@@ -248,7 +248,7 @@ bool PhyRegUsage::findContiguousAddrFlag(
   if (isEOTSrc && (startPosRunOne >= maxRegs)) {
     return false;
   } else {
-    MUST_BE_TRUE(startPosRunOne < maxRegs, ERROR_UNKNOWN);
+    vISA_ASSERT(startPosRunOne < maxRegs, ERROR_UNKNOWN);
   }
   bool found =
       findContiguousNoWrapAddrFlag(availRegs, forbidden, subAlign, numRegNeeded,
@@ -258,14 +258,14 @@ bool PhyRegUsage::findContiguousAddrFlag(
     unsigned startPosRunTwo = 0;
     unsigned endPosRunTwo = startPos + numRegNeeded;
     endPosRunTwo = std::min(endPosRunTwo, maxRegs);
-    MUST_BE_TRUE(endPosRunTwo > 0 && endPosRunTwo <= maxRegs, ERROR_UNKNOWN);
+    vISA_ASSERT(endPosRunTwo > 0 && endPosRunTwo <= maxRegs, ERROR_UNKNOWN);
     found = findContiguousNoWrapAddrFlag(availRegs, forbidden, subAlign,
                                          numRegNeeded, startPosRunTwo,
                                          endPosRunTwo, idx);
   }
 
   if (found) {
-    MUST_BE_TRUE(idx < maxRegs && idx + numRegNeeded <= maxRegs, ERROR_UNKNOWN);
+    vISA_ASSERT(idx < maxRegs && idx + numRegNeeded <= maxRegs, ERROR_UNKNOWN);
 
     if (colorHeuristic == ROUND_ROBIN) {
       startPos = (idx + numRegNeeded) % maxRegs;
@@ -292,7 +292,7 @@ bool PhyRegUsage::findContiguousGRFFromBanks(
     align = gra.getBankAlign(dcl);
   }
 
-  ASSERT_USER(AS.bank1_end < totalGRFNum && AS.bank1_start < totalGRFNum &&
+  vISA_ASSERT(AS.bank1_end < totalGRFNum && AS.bank1_start < totalGRFNum &&
                   AS.bank2_start < totalGRFNum && AS.bank2_end < totalGRFNum,
               "Wrong bank boundaries value");
 
@@ -302,7 +302,7 @@ bool PhyRegUsage::findContiguousGRFFromBanks(
                         // sections.
     {
       // From maxGRFCanBeUsed - 1 to AS.bank2_end
-      ASSERT_USER(AS.bank2_start >= AS.bank2_end,
+      vISA_ASSERT(AS.bank2_start >= AS.bank2_end,
                   "Second bank's start can not less than end\n");
 
       if ((AS.bank2_start - AS.bank2_end + 1) >= numRegNeeded) // 3 - 2 + 1 >= 2
@@ -970,7 +970,7 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
     }
   } else if (kind == G4_ADDRESS) // address register
   {
-    MUST_BE_TRUE(decl->getNumRows() == 1, ERROR_UNKNOWN);
+    vISA_ASSERT(decl->getNumRows() == 1, ERROR_UNKNOWN);
     //
     // determine alignment
     // if the number of reg needed is more than 1, then we go ahead
@@ -987,7 +987,7 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
     return false;
   } else if (kind == G4_FLAG) // Flag register
   {
-    MUST_BE_TRUE(decl->getNumRows() == 1, ERROR_UNKNOWN);
+    vISA_ASSERT(decl->getNumRows() == 1, ERROR_UNKNOWN);
     //
     // determine alignment
     // if the number of reg needed is more than 1, then we go ahead
@@ -1004,7 +1004,7 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
   }
   else // not handled yet
   {
-    MUST_BE_TRUE(false, ERROR_UNKNOWN);
+    vISA_ASSERT(false, ERROR_UNKNOWN);
     return false;
   }
 }
@@ -1071,7 +1071,7 @@ void getForbiddenGRFs(std::vector<unsigned int> &regNum, G4_Kernel &kernel,
   }
 
   if (totalGRFNum - reservedRegSize < rerservedRegNum) {
-    MUST_BE_TRUE(false, "After reservation, there is not enough regiser!");
+    vISA_ASSERT(false, "After reservation, there is not enough regiser!");
   }
 
   for (unsigned int i = 0; i < rerservedRegNum; i++) {
@@ -1128,7 +1128,7 @@ void LiveRange::allocForbiddenCallerSave(Mem_Manager &mem, G4_Kernel *kernel) {
     allocForbiddenVector(mem);
   }
 
-  MUST_BE_TRUE(regKind == G4_GRF, ERROR_UNKNOWN);
+  vISA_ASSERT(regKind == G4_GRF, ERROR_UNKNOWN);
 
   std::vector<unsigned int> callerSaveRegs;
   getCallerSaveGRF(callerSaveRegs, kernel);
@@ -1146,7 +1146,7 @@ void LiveRange::allocForbiddenCalleeSave(Mem_Manager &mem, G4_Kernel *kernel) {
     allocForbiddenVector(mem);
   }
 
-  MUST_BE_TRUE(regKind == G4_GRF, ERROR_UNKNOWN);
+  vISA_ASSERT(regKind == G4_GRF, ERROR_UNKNOWN);
 
   std::vector<unsigned int> calleeSaveRegs;
   getCalleeSaveGRF(calleeSaveRegs, kernel);

@@ -440,7 +440,7 @@ private:
 public:
   DbgDecoder(const char *f, TARGET_PLATFORM platform) : filename(f) {
     platInfo = PlatformInfo::LookupPlatformInfo(platform);
-    ASSERT_USER(platInfo != nullptr, "failed to look up platform");
+    vISA_ASSERT(platInfo != nullptr, "failed to look up platform");
   }
 
   int ddDbg();

@@ -145,7 +145,7 @@ public:
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
   inline uint32_t GetBits(const int HighBit, const int LowBit) {
-    MUST_BE_TRUE(HighBit >= LowBit, "high bit must be >= low bit");
+    vISA_ASSERT(HighBit >= LowBit, "high bit must be >= low bit");
 
     int retValue;
     int HighDword = HighBit / BITS_PER_DWORD;
@@ -159,7 +159,7 @@ public:
       retValue &= mask;
     } else {
       // only allow reading from at most 2 dwords
-      MUST_BE_TRUE(HighDword == LowDword + 1, "can't return > 32 bits");
+      vISA_ASSERT(HighDword == LowDword + 1, "can't return > 32 bits");
       uint32_t shift = LowBit - (LowDword * BITS_PER_DWORD);
       retValue = DWords[LowDword] >> shift;
       retValue |= GetBits(HighBit, (LowDword + 1) * BITS_PER_DWORD)
@@ -171,8 +171,8 @@ public:
 
   inline void SetBits(const uint32_t HighBit, const uint32_t LowBit,
                       const uint32_t value) {
-    MUST_BE_TRUE(HighBit >= LowBit, "high bit must be >= low bit");
-    MUST_BE_TRUE(HighBit / BITS_PER_DWORD == LowBit / BITS_PER_DWORD,
+    vISA_ASSERT(HighBit >= LowBit, "high bit must be >= low bit");
+    vISA_ASSERT(HighBit / BITS_PER_DWORD == LowBit / BITS_PER_DWORD,
                  "function doesn't handle bits crossing dword");
 
     uint32_t maxvalue =
@@ -518,7 +518,7 @@ static struct _CompactDataTypeTable_ {
   };
 
   uint32_t GetBits_063_061(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Datatype Table range.");
     Data data;
     data.ulData = Values[index];
@@ -526,7 +526,7 @@ static struct _CompactDataTypeTable_ {
   }
 
   uint32_t GetBits_046_032(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Datatype Table range.");
     Data data;
     data.ulData = Values[index];
@@ -561,7 +561,7 @@ static struct _CompactSubRegTable_ {
   };
 
   uint32_t GetBits_100_096(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Subreg Table range.");
     Data data;
     data.ulData = Values[index];
@@ -569,7 +569,7 @@ static struct _CompactSubRegTable_ {
   }
 
   uint32_t GetBits_068_064(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Subreg Table range.");
     Data data;
     data.ulData = Values[index];
@@ -577,7 +577,7 @@ static struct _CompactSubRegTable_ {
   }
 
   uint32_t GetBits_052_048(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Subreg Table range.");
     Data data;
     data.ulData = Values[index];
@@ -639,13 +639,13 @@ static struct _CompactSubRegTable_ {
 
 static struct _CompactSourceTable_ {
   uint32_t GetBits_120_109(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Source Table range.");
     return Values[index];
   }
 
   uint32_t GetBits_088_077(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Source Table range.");
     return Values[index];
   }
@@ -955,7 +955,7 @@ class _CompactControl3Src_ {
   };
 
   uint32_t GetBit_028_008(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE_3SRC,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE_3SRC,
                  "Out of Control Bit Compact Table range.");
     Data data;
     data.ulData = Values[index];
@@ -963,7 +963,7 @@ class _CompactControl3Src_ {
   }
 
   uint32_t GetBits_034_032(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE_3SRC,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE_3SRC,
                  "Out of Control Bit Compact Table range.");
     Data data;
     data.ulData = Values[index];
@@ -971,7 +971,7 @@ class _CompactControl3Src_ {
   }
 
   uint32_t GetBits_036_035(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE_3SRC,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE_3SRC,
                  "Out of Control Bit Compact Table range.");
     Data data;
     data.ulData = Values[index];
@@ -1999,7 +1999,7 @@ static struct _CompactControlTable_ {
   };
 
   uint32_t GetBit_031(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Compact Table range.");
     Data data;
     data.ulData = Values[index];
@@ -2007,7 +2007,7 @@ static struct _CompactControlTable_ {
   }
 
   uint32_t GetBits_023_008(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Compact Table range.");
     Data data;
     data.ulData = Values[index];
@@ -2015,7 +2015,7 @@ static struct _CompactControlTable_ {
   }
 
   uint32_t GetBits_090_089(uint32_t index) {
-    MUST_BE_TRUE(index < COMPACT_TABLE_SIZE,
+    vISA_ASSERT(index < COMPACT_TABLE_SIZE,
                  "Out of Control Bit Compact Table range.");
     Data data;
     data.ulData = Values[index];
@@ -2063,7 +2063,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction3Src(G4_INST *inst) {
   bool mustCompact = !(mybin->GetMustCompactFlag());
   if (!CompactControlTable3Src.FindBDWIndex(controlIndex, bits_034_032,
                                             bits_028_008)) {
-    MUST_BE_TRUE(mustCompact, "Compaction failure for control table");
+    vISA_ASSERT(mustCompact, "Compaction failure for control table");
     // Can't compact...
     return false;
   }
@@ -2081,7 +2081,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction3Src(G4_INST *inst) {
   if (!CompactSourceTable3Src.FindIndex(
           srcIndex, bits_125_125, bits_104_104, bits_083_083, bits_114_107,
           bits_093_086, bits_072_065, bits_055_037)) {
-    MUST_BE_TRUE(mustCompact, "Compaction failure for source table");
+    vISA_ASSERT(mustCompact, "Compaction failure for source table");
     // Can't compact...
     return false;
   }
@@ -2122,7 +2122,7 @@ inline bool BinaryEncodingBase::CHVcompactOneInstruction3Src(G4_INST *inst) {
   bool mustCompact = !(mybin->GetMustCompactFlag());
   if (!CompactControlTable3Src.FindCHVIndex(controlIndex, bits_036_035,
                                             bits_034_032, bits_028_008)) {
-    MUST_BE_TRUE(mustCompact, "Compaction failure for control table");
+    vISA_ASSERT(mustCompact, "Compaction failure for control table");
     // Can't compact...
     return false;
   }
@@ -2140,7 +2140,7 @@ inline bool BinaryEncodingBase::CHVcompactOneInstruction3Src(G4_INST *inst) {
   if (!CompactSourceTable3SrcCHV.FindIndex(
           srcIndex, bits_126_125, bits_105_104, bits_084_083, bits_114_107,
           bits_093_086, bits_072_065, bits_055_037)) {
-    MUST_BE_TRUE(mustCompact, "Compaction failure for source table");
+    vISA_ASSERT(mustCompact, "Compaction failure for source table");
     // Can't compact...
     return false;
   }
@@ -2202,7 +2202,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
   if (!BDWCompactControlTable.FindIndex(
           controlIndex, bits_033_032, bits_031_031, bits_023_012, bits_010_009,
           bits_034_034, bits_008_008)) {
-    MUST_BE_TRUE(mustCompact, "Compaction failure for control table");
+    vISA_ASSERT(mustCompact, "Compaction failure for control table");
     // Can't compact...
     return false;
   }
@@ -2214,7 +2214,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
   uint32_t bits_046_035 = mybin->GetBits(46, 35);
   if (!BDWCompactDataTypeTableStr.FindIndex(dataTypeIndex, bits_063_061,
                                             bits_094_089, bits_046_035)) {
-    MUST_BE_TRUE(mustCompact, "Compaction failure for data type table");
+    vISA_ASSERT(mustCompact, "Compaction failure for data type table");
     // Can't compact...
     return false;
   }
@@ -2229,7 +2229,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
   // sub-register info for compaction restrictions.
   if (source_immediate[0]) {
     if (!BDWCompactSubRegTable.FindIndex1(subRegIndex, bits_052_048)) {
-      MUST_BE_TRUE(mustCompact, "Compaction failure for sub reg table");
+      vISA_ASSERT(mustCompact, "Compaction failure for sub reg table");
       // Can't compact...
       return false;
     }
@@ -2239,7 +2239,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
   else if (source_immediate[1]) {
     if (!BDWCompactSubRegTable.FindIndex2(subRegIndex, bits_068_064,
                                           bits_052_048)) {
-      MUST_BE_TRUE(mustCompact, "Compaction failure for sub reg table");
+      vISA_ASSERT(mustCompact, "Compaction failure for sub reg table");
       // Can't compact...
       return false;
     }
@@ -2247,7 +2247,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
   // Otherwise we check everything
   else if (!BDWCompactSubRegTable.FindIndex(subRegIndex, bits_100_096,
                                             bits_068_064, bits_052_048)) {
-    MUST_BE_TRUE(mustCompact, "Compaction failure for sub reg table");
+    vISA_ASSERT(mustCompact, "Compaction failure for sub reg table");
     // Can't compact...
     return false;
   }
@@ -2259,7 +2259,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
   // If source 0 is not immediate data, we need to check source 0 info
   if (!source_immediate[0]) {
     if (!BDWCompactSourceTable.FindIndex(src0Index, bits_088_077)) {
-      MUST_BE_TRUE(mustCompact, "Compaction failure for source table");
+      vISA_ASSERT(mustCompact, "Compaction failure for source table");
       // Can't compact...
       return false;
     }
@@ -2276,7 +2276,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
   // we need to cehck source 1 information
   if (!source_immediate[0] && !source_immediate[1]) {
     if (!BDWCompactSourceTable.FindIndex(src1Index, bits_120_109)) {
-      MUST_BE_TRUE(mustCompact, "Compact should be set to false");
+      vISA_ASSERT(mustCompact, "Compact should be set to false");
       // Can't compact...
       return false;
     }
@@ -2294,7 +2294,7 @@ inline bool BinaryEncodingBase::BDWcompactOneInstruction(G4_INST *inst) {
     }
 
     if (!CompactableImmediate(immediateData)) {
-      MUST_BE_TRUE(mustCompact, "Compact should be set to false");
+      vISA_ASSERT(mustCompact, "Compact should be set to false");
       // Can't compact...
       return false;
     }

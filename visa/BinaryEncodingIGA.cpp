@@ -162,7 +162,7 @@ private:
 
   RegName getIGARegName(G4_Operand *opnd) const {
     G4_VarBase *base = opnd->getBase();
-    assert(base != nullptr && "base should not be null");
+    vISA_ASSERT(base != nullptr, "base should not be null");
     if (base->isRegVar()) {
       G4_VarBase *phyReg = base->asRegVar()->getPhyReg();
       return phyReg->isAreg()
@@ -176,7 +176,7 @@ private:
   RegRef getIGARegRef(G4_Operand *opnd) const {
     RegRef regRef;
     G4_VarBase *base = opnd->getBase();
-    assert(base != nullptr && "base should not be null");
+    vISA_ASSERT(base != nullptr, "base should not be null");
     if (base->isGreg()) {
       uint32_t byteAddress = opnd->getLinearizedStart();
       regRef.regNum = byteAddress / kernel.numEltPerGRF<Type_UB>();
@@ -187,7 +187,7 @@ private:
       regRef.regNum = (uint8_t)opnd->asSrcRegRegion()->ExRegNum(valid);
       regRef.subRegNum = (uint8_t)opnd->asSrcRegRegion()->ExSubRegNum(subvalid);
     } else {
-      assert(opnd->isDstRegRegion() && "expect DstRegRegion");
+      vISA_ASSERT(opnd->isDstRegRegion(), "expect DstRegRegion");
       bool valid, subvalid;
       regRef.regNum = (uint8_t)opnd->asDstRegRegion()->ExRegNum(valid);
       regRef.subRegNum = (uint8_t)opnd->asDstRegRegion()->ExSubRegNum(subvalid);
@@ -215,7 +215,7 @@ private:
     RegRef reg = REGREF_INVALID;
     bool flagRegNumValid = true;
     reg.regNum = (uint8_t)g4Base->ExRegNum(flagRegNumValid);
-    ASSERT_USER(flagRegNumValid, "Unable to retrieve flag Reg Num for "
+    vISA_ASSERT(flagRegNumValid, "Unable to retrieve flag Reg Num for "
                                  "predicate or conditional modifier.");
     reg.subRegNum = (uint8_t)g4Base->asRegVar()->getPhyRegOff();
     return reg;
@@ -248,7 +248,7 @@ private:
     case Mod_u:
       return FlagModifier::UN;
     default:
-      ASSERT_USER(false, "Invalid FlagModifier.");
+      vISA_ASSERT_UNREACHABLE("Invalid FlagModifier.");
       return FlagModifier::NONE;
     }
   }
@@ -315,7 +315,7 @@ private:
       // By default, subRegNum is in terms of operand's type (D/UD for
       // dpas's src1/2). IGA needs it to be in terms of precision type.
       // Note that no need to do it for src1 as it must be grf-aligned!
-      assert((regref.subRegNum % 2) == 0 &&
+      vISA_ASSERT((regref.subRegNum % 2) == 0,
              "Minimum alignemnt of dpas's src2 must be QW");
       uint32_t bitOffsets = regref.subRegNum * src->getTypeSize() * 8;
       uint32_t PBits =
@@ -443,7 +443,7 @@ void BinaryEncodingIGA::FixInst() {
       if (inst->isIntrinsic()) {
         // WA for simulation:  remove any intrinsics that should be lowered
         // before binary encoding
-        MUST_BE_TRUE(inst->asIntrinsicInst()->getLoweredByPhase() ==
+        vISA_ASSERT(inst->asIntrinsicInst()->getLoweredByPhase() ==
                          Phase::BinaryEncoding,
                      "Unexpected intrinsics in binary encoding");
         iter = bb->erase(iter);
@@ -455,7 +455,7 @@ void BinaryEncodingIGA::FixInst() {
 }
 
 iga::SFID BinaryEncodingIGA::getSFID(const G4_INST *inst) {
-  ASSERT_USER(inst->isSend(), "Only send has SFID");
+  vISA_ASSERT(inst->isSend(), "Only send has SFID");
 
   G4_SendDesc *msgDesc = inst->getMsgDesc();
   auto funcID = msgDesc->getSFID();
@@ -520,7 +520,7 @@ iga::SFID BinaryEncodingIGA::getSFID(const G4_INST *inst) {
     sfid = iga::SFID::UGML;
     break;
   default:
-    ASSERT_USER(false, "Unknown SFID generated from vISA");
+    vISA_ASSERT_UNREACHABLE("Unknown SFID generated from vISA");
     break;
   }
 
@@ -559,7 +559,7 @@ MathFC BinaryEncodingIGA::getMathFC(const G4_INST *inst) {
   case MATH_RSQRTM:
     return MathFC::RSQTM;
   default:
-    ASSERT_USER(false, "invalid math subfunction");
+    vISA_ASSERT_UNREACHABLE("invalid math subfunction");
     return MathFC::INVALID;
   }
 }
@@ -844,7 +844,7 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
     igaOp = Op::MAD;
     break;
   case G4_do:
-    ASSERT_USER(!allowUnknownOp, "G4_do is not GEN ISA OPCODE.");
+    vISA_ASSERT(!allowUnknownOp, "G4_do is not GEN ISA OPCODE.");
     break;
   case G4_pseudo_and:
     igaOp = Op::AND;
@@ -868,7 +868,7 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
     igaOp = Op::SADA2;
     break;
   case G4_pseudo_exit:
-    ASSERT_USER(!allowUnknownOp, "G4_pseudo_exit not GEN ISA OPCODE.");
+    vISA_ASSERT(!allowUnknownOp, "G4_pseudo_exit not GEN ISA OPCODE.");
     break;
   case G4_pseudo_fc_call:
     igaOp = Op::CALL;
@@ -877,7 +877,7 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
     igaOp = Op::RET;
     break;
   case G4_intrinsic:
-    ASSERT_USER(!allowUnknownOp, "G4_intrinsic not GEN ISA OPCODE.");
+    vISA_ASSERT(!allowUnknownOp, "G4_intrinsic not GEN ISA OPCODE.");
     break;
   case G4_sync_nop:
     igaOp = Op::SYNC;
@@ -902,16 +902,16 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
     igaOp = Op::SRND;
     break;
   case G4_NUM_OPCODE:
-    assert(false);
+    vISA_ASSERT_UNREACHABLE("G4_NUM_OPCODE unreachable");
     break;
   case G4_mulh:
-    ASSERT_USER(!allowUnknownOp, "G4_mulh is not GEN ISA OPCODE.");
+    vISA_ASSERT(!allowUnknownOp, "G4_mulh is not GEN ISA OPCODE.");
     break;
   case G4_madw:
-    ASSERT_USER(!allowUnknownOp, "G4_madw not GEN ISA OPCODE.");
+    vISA_ASSERT(!allowUnknownOp, "G4_madw not GEN ISA OPCODE.");
     break;
   default:
-    ASSERT_USER(!allowUnknownOp, "INVALID opcode.");
+    vISA_ASSERT(!allowUnknownOp, "INVALID opcode.");
     break;
   }
   const OpSpec *os = &m->lookupOpSpec(igaOp);
@@ -1005,7 +1005,8 @@ void BinaryEncodingIGA::getIGAFlagInfo(G4_INST *inst, const OpSpec *opSpec,
     if (condModG4->getBase() != nullptr) {
       flagReg = getIGAFlagReg(condModG4->getBase());
       // pred and condMod Flags must be the same
-      assert(!hasPredFlag || predFlag == flagReg);
+      vISA_ASSERT(!hasPredFlag || predFlag == flagReg,
+          "pred and condMod flags must be the same");
     }
   }
 }
@@ -1056,7 +1057,7 @@ void BinaryEncodingIGA::Encode() {
   if (kernel.hasPerThreadPayloadBB() || kernel.hasComputeFFIDProlog()) {
     G4_BB *first_bb = *kernel.fg.begin();
     size_t num_inst = first_bb->size();
-    assert(num_inst != 0 && "the first BB must not be empty");
+    vISA_ASSERT(num_inst != 0, "the first BB must not be empty");
     // label instructions don't count. Only the first instruction could be a
     // label
     if (first_bb->front()->isLabel())
@@ -1186,8 +1187,9 @@ void BinaryEncodingIGA::Encode() {
   if (kernel.hasComputeFFIDProlog()) {
     // something weird will happen if kernel has both PerThreadProlog and
     // ComputeFFIDProlog
-    assert(!kernel.hasPerThreadPayloadBB() &&
-           !kernel.hasCrossThreadPayloadBB());
+    vISA_ASSERT(!kernel.hasPerThreadPayloadBB() &&
+           !kernel.hasCrossThreadPayloadBB(),
+           "per thread prolog and compute prolog exist");
     kernel.fg.builder->getJitInfo()->offsetToSkipSetFFIDGP =
         kernel.getComputeFFIDGPNextOff();
     kernel.fg.builder->getJitInfo()->offsetToSkipSetFFIDGP1 =
@@ -1223,7 +1225,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
   if (opSpec == nullptr || !opSpec->isValid()) {
     std::cerr << "INVALID opcode " << G4_Inst_Table[g4inst->opcode()].str
               << "\n";
-    ASSERT_USER(false, "INVALID OPCODE.");
+    vISA_ASSERT(false, "INVALID OPCODE.");
     return nullptr;
   }
   Op igaOp = opSpec->op;
@@ -1251,7 +1253,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
           *opSpec, sf.send, pred, flagReg, execSize, chOff, maskCtrl,
           sdos.exDesc, desc);
 
-      ASSERT_USER(igaInst, "Instruction is NULL");
+      vISA_ASSERT(igaInst, "Instruction is NULL");
       if (!igaInst) {
         return nullptr;
       }
@@ -1268,7 +1270,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
         *opSpec, pred, flagReg, execSize, chOff, maskCtrl, condModifier, sf);
   }
 
-  ASSERT_USER(igaInst, "Instruction is NULL");
+  vISA_ASSERT(igaInst, "Instruction is NULL");
   if (!igaInst) {
     // only on asserts; this should only happen if memory allocation
     // fails for some reason
@@ -1295,7 +1297,7 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
 
 void BinaryEncodingIGA::translateInstructionDst(G4_INST *g4inst,
                                                 Instruction *igaInst) {
-  assert(g4inst->getDst() && "dst must not be null");
+  vISA_ASSERT(g4inst->getDst(), "dst must not be null");
   G4_DstRegRegion *dst = g4inst->getDst();
   DstModifier dstModifier = getIGADstModifier(g4inst->getSaturate());
   Region::Horz hstride = getIGAHorz(dst->getHorzStride());
@@ -1305,7 +1307,7 @@ void BinaryEncodingIGA::translateInstructionDst(G4_INST *g4inst,
   // not all bits are copied from immediate descriptor
   if (g4inst->isSend() && platform >= GENX_SKL && platform < GENX_ICLLP) {
     const G4_SendDescRaw *msgDesc = g4inst->getMsgDescRaw();
-    assert(msgDesc && "expected raw descriptor");
+    vISA_ASSERT(msgDesc, "expected raw descriptor");
     G4_Operand *descOpnd =
         g4inst->isSplitSend() ? g4inst->getSrc(2) : g4inst->getSrc(1);
     if (!descOpnd->isImm() && msgDesc->is16BitReturn()) {
@@ -1401,7 +1403,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
       opIx = SourceIndex::SRC2;
       break;
     default:
-      assert(0 && "invalid source index number");
+      vISA_ASSERT_UNREACHABLE("invalid source index number");
       break;
     }
 
@@ -1420,7 +1422,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
         // work around for SKL bug
         // not all bits are copied from immediate descriptor
         G4_SendDescRaw *msgDesc = inst->getMsgDescRaw();
-        assert(msgDesc && "expected raw descriptor");
+        vISA_ASSERT(msgDesc, "expected raw descriptor");
         G4_Operand *descOpnd =
             inst->isSplitSend() ? inst->getSrc(2) : inst->getSrc(1);
         if (!descOpnd->isImm() && msgDesc->is16BitInput()) {
@@ -1435,7 +1437,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
         igaInst->setMacroSource(opIx, srcMod, getIGARegName(srcRegion), regRef,
                                 getIGAImplAcc(accRegSel), region, type);
       } else if (inst->isDpas()) {
-        assert(srcRegion->getRegAccess() == Direct &&
+        vISA_ASSERT(srcRegion->getRegAccess() == Direct,
                "dpas does not support indirect GRF operands");
         G4_InstDpas *dpasInst = inst->asDpasInst();
         RegRef regRef = getIGADpasRegRef(dpasInst, i);
@@ -1473,7 +1475,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
 
 SendDesc BinaryEncodingIGA::getIGASendDesc(G4_INST *sendInst) const {
   SendDesc desc;
-  assert(sendInst->isSend() && "expect send inst");
+  vISA_ASSERT(sendInst->isSend(), "expect send inst");
   G4_Operand *msgDesc =
       sendInst->isSplitSend() ? sendInst->getSrc(2) : sendInst->getSrc(1);
   if (msgDesc->isImm()) {
@@ -1502,7 +1504,7 @@ SendDesc BinaryEncodingIGA::getIGASendDesc(G4_INST *sendInst) const {
     desc.reg.regNum = 0; // must be a0
     bool valid = false;
     desc.reg.subRegNum = (uint8_t)msgDesc->asSrcRegRegion()->ExSubRegNum(valid);
-    assert(valid && "invalid subreg");
+    vISA_ASSERT(valid, "invalid subreg");
   }
 
   return desc;
@@ -1517,7 +1519,7 @@ static SendDesc encodeExDescSendUnary(G4_INST *sendInst, int &xlen,
   // old unary packed send
   // exDesc is stored in SendMsgDesc and must be IMM
   const G4_SendDescRaw *descG4 = sendInst->getMsgDescRaw();
-  assert(descG4 != nullptr && "expected raw send");
+  vISA_ASSERT(descG4 != nullptr, "expected raw send");
 
   exDescIga.type = SendDesc::Kind::IMM;
   uint32_t tVal = descG4->getExtendedDesc();
@@ -1567,7 +1569,7 @@ SendDesc BinaryEncodingIGA::encodeExDescImm(G4_INST *sendInst,
 
   const G4_Operand *exDescG4 = sendInst->getSrc(3);
   const G4_SendDescRaw *descG4 = (G4_SendDescRaw *)sendInst->getMsgDesc();
-  assert(descG4 != nullptr && "expected raw descriptor");
+  vISA_ASSERT(descG4 != nullptr, "expected raw descriptor");
   if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats)) {
     printSendDataToFile(descG4,
                         sendInst->getBuilder().getOptions()->getOptionCstr(
@@ -1626,7 +1628,7 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(G4_INST *sendInst,
                                               SendExDescOpts &sdos) const {
   G4_Operand *exDescG4 = sendInst->getSrc(3);
   const G4_SendDescRaw *descG4 = sendInst->getMsgDescRaw();
-  assert(descG4 != nullptr && "expected raw descriptor");
+  vISA_ASSERT(descG4 != nullptr, "expected raw descriptor");
   if (sendInst->getBuilder().getOption(vISA_ShaderDataBaseStats)) {
     printSendDataToFile(descG4,
                         sendInst->getBuilder().getOptions()->getOptionCstr(
@@ -1638,7 +1640,7 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(G4_INST *sendInst,
   bool valid = false;
   exDescIga.reg.subRegNum =
       (uint16_t)exDescG4->asSrcRegRegion()->ExSubRegNum(valid);
-  assert(valid && "invalid subreg");
+  vISA_ASSERT(valid, "invalid subreg");
 
   if (kernel.fg.builder->useNewExtDescFormat() && descG4->isCPSEnabled()) {
     // CPS is an instruction option if using RegDesc+ExBSO
@@ -1668,7 +1670,7 @@ SendDesc BinaryEncodingIGA::encodeExDescRegA0(G4_INST *sendInst,
 SendExDescOpts BinaryEncodingIGA::getIGASendExDesc(G4_INST *sendInst) const {
   SendExDescOpts sdos;
 
-  assert(sendInst->isSend() && "expect send inst");
+  vISA_ASSERT(sendInst->isSend(), "expect send inst");
 
   if (sendInst->isEOT())
     sdos.extraOpts.add(InstOpt::EOT);
@@ -1695,7 +1697,7 @@ void *BinaryEncodingIGA::EmitBinary(size_t &binarySize) {
         std::string errStr;
         errStr = "BinaryEncodingIGA: unable to open output path for write: " +
                  binFileName + "\n";
-        MUST_BE_TRUE(0, errStr);
+        vISA_ASSERT(false, errStr);
         return nullptr;
       }
       os.write((const char *)m_kernelBuffer, binarySize);
@@ -1939,7 +1941,7 @@ Predication BinaryEncodingIGA::getIGAPredication(const G4_Predicate *predG4,
   Predication pred;
   if (predG4) {
     G4_Predicate_Control g4PrCtl = predG4->getControl();
-    ASSERT_USER(translatePredCtrl(g4PrCtl), "illegal predicate control");
+    vISA_ASSERT(translatePredCtrl(g4PrCtl), "illegal predicate control");
 
     pred.function = getIGAPredCtrl(g4PrCtl);
     pred.inverse = predG4->getState() != PredState_Plus;

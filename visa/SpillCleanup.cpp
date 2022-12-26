@@ -7,8 +7,10 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "SpillCleanup.h"
+#include "Assertions.h"
 #include "FlowGraph.h"
 #include "GraphColor.h"
+
 #include <list>
 
 uint32_t computeFillMsgDesc(unsigned int payloadSize, unsigned int offset);
@@ -17,7 +19,7 @@ uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offset);
 namespace vISA {
 
 static bool isGRFAssigned(G4_Operand *opnd) {
-  MUST_BE_TRUE(opnd->isSrcRegRegion() || opnd->isDstRegRegion(),
+  vISA_ASSERT(opnd->isSrcRegRegion() || opnd->isDstRegRegion(),
                "expecting src/dst reg region");
   auto *topDcl = opnd->getTopDcl();
   if (!topDcl)
@@ -171,7 +173,7 @@ void CoalesceSpillFills::coalesceSpills(
 
   auto leadInst = *coalesceableSpills.front();
 
-  MUST_BE_TRUE(payloadSize == 1 || payloadSize == 2 || payloadSize == 4 ||
+  vISA_ASSERT(payloadSize == 1 || payloadSize == 2 || payloadSize == 4 ||
                    payloadSize == 8,
                "Unsupported payload size");
 
@@ -182,7 +184,7 @@ void CoalesceSpillFills::coalesceSpills(
     auto curRow = src1Opnd->getLeftBound() / kernel.numEltPerGRF<Type_UB>();
     declares.insert(src1Opnd->getTopDcl());
     minRow = minRow > curRow ? curRow : minRow;
-    MUST_BE_TRUE((*d)->isSpillIntrinsic() &&
+    vISA_ASSERT((*d)->isSpillIntrinsic() &&
                      !isGRFAssigned((*d)->asSpillIntrinsic()->getPayload()),
                  "shouldnt coalesce spill with assigned GRF");
   }
@@ -236,7 +238,7 @@ void CoalesceSpillFills::coalesceFills(
   else if (payloadSize == 0)
     payloadSize = 1;
 
-  MUST_BE_TRUE(payloadSize == 1 || payloadSize == 2 || payloadSize == 4 ||
+  vISA_ASSERT(payloadSize == 1 || payloadSize == 2 || payloadSize == 4 ||
                    payloadSize == 8,
                "Unsupported payload size");
 
@@ -256,7 +258,7 @@ void CoalesceSpillFills::coalesceFills(
     if (maxRow > dclSize)
       dclSize = maxRow;
 
-    MUST_BE_TRUE((*c)->isFillIntrinsic() &&
+    vISA_ASSERT((*c)->isFillIntrinsic() &&
                      !isGRFAssigned((*c)->asFillIntrinsic()->getDst()),
                  "cannot coalesce fill with pre-assigned GRF");
   }
@@ -302,10 +304,10 @@ bool CoalesceSpillFills::fillHeuristic(
     unsigned int &max) {
 #if 0
     std::bitset<8> bits(0);
-    MUST_BE_TRUE(cMaxFillPayloadSize == 8, "Handle other max fill payload size");
+    vISA_ASSERT(cMaxFillPayloadSize == 8, "Handle other max fill payload size");
 #else
   std::bitset<4> bits(0);
-  MUST_BE_TRUE(cMaxFillPayloadSize == 4, "Handle other max fill payload size");
+  vISA_ASSERT(cMaxFillPayloadSize == 4, "Handle other max fill payload size");
 #endif
 
   if (coalesceableFills.size() <= 1) {
@@ -496,7 +498,7 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER> &instList,
         if (max < lastScratchOffset)
           max = lastScratchOffset;
 
-        // MUST_BE_TRUE(max - min <= (cMaxFillPayloadSize - 1), "Unexpected
+        // vISA_ASSERT(max - min <= (cMaxFillPayloadSize - 1), "Unexpected
         // fills coalesced. (max - min) is out of bounds - 1");
 
         coalescable.push_back(*iter);
@@ -507,7 +509,7 @@ void CoalesceSpillFills::sendsInRange(std::list<INST_LIST_ITER> &instList,
                  notOOB(min, scratchOffset)) {
         max = lastScratchOffset;
 
-        // MUST_BE_TRUE(max - min <= cMaxFillPayloadSize, "Unexpected spills
+        // vISA_ASSERT(max - min <= cMaxFillPayloadSize, "Unexpected spills
         // coalesced. (max - min) is out of bounds - 2");
 
         coalescable.push_back(*iter);
@@ -661,7 +663,7 @@ void CoalesceSpillFills::keepConsecutiveSpills(
         }
       }
 
-      MUST_BE_TRUE(coalescable.size() == allowed.size(),
+      vISA_ASSERT(coalescable.size() == allowed.size(),
                    "Coalesced spills list missing entries");
       break;
     } else {

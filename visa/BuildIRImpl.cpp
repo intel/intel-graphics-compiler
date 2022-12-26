@@ -52,7 +52,7 @@ DeclarePool::cloneDeclare(G4_Kernel &kernel,
     cloneDcl->setNumberFlagElements((uint8_t)dcl->getNumberFlagElements());
   }
   if (topDcl) {
-    assert(dcl != topDcl);
+    vASSERT(dcl != topDcl);
     cloneTopDcl = (dclMap.find(topDcl) == dclMap.end())
                       ? cloneDeclare(kernel, dclMap, dcl->getName(), topDcl)
                       : dclMap[topDcl];
@@ -91,7 +91,7 @@ G4_Declare *DeclarePool::createDeclare(const char *name, G4_RegFileKind regFile,
     regVar =
         new (mem) G4_RegVarCoalesced(dcl, kind == DeclareType::CoalescedFill);
   else {
-    MUST_BE_TRUE(false, ERROR_INTERNAL_ARGUMENT);
+    vISA_ASSERT(false, ERROR_INTERNAL_ARGUMENT);
     regVar = NULL;
   }
   dcl->setRegVar(regVar);
@@ -158,7 +158,7 @@ void IR_Builder::bindInputDecl(
   dcl->setRegFile(G4_INPUT);
   unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
   if (regNum + dcl->getNumRows() > kernel.getNumRegTotal() - reservedGRFNum) {
-    MUST_BE_TRUE(false, "INPUT payload execeeds the register number");
+    vISA_ASSERT(false, "INPUT payload execeeds the register number");
   }
 }
 
@@ -786,7 +786,7 @@ IR_Builder::createDeclareNoLookup(const char *name, G4_RegFileKind regFile,
                                   G4_Type ty, DeclareType kind, G4_RegVar *base,
                                   G4_Operand *repRegion, G4_ExecSize execSize) {
   if (regFile == G4_FLAG) {
-    MUST_BE_TRUE(ty == Type_UW, "flag decl must have type UW");
+    vISA_ASSERT(ty == Type_UW, "flag decl must have type UW");
   }
 
   G4_Declare *dcl = dclpool.createDeclare(name, regFile, n_elems, n_rows, ty,
@@ -1061,7 +1061,7 @@ G4_Declare *IR_Builder::createScalar(uint16_t numFlagElements,
 
 G4_Declare *IR_Builder::createPreVar(PreDefinedVarsInternal preDefVar_index,
                                      unsigned short numElements, G4_Type type) {
-  MUST_BE_TRUE(preDefVar_index < PreDefinedVarsInternal::VAR_LAST,
+  vISA_ASSERT(preDefVar_index < PreDefinedVarsInternal::VAR_LAST,
                "illegal predefined var index");
   unsigned short dcl_width = 0, dcl_height = 1;
   auto typeSize = TypeSize(type);
@@ -1382,7 +1382,7 @@ G4_INST *IR_Builder::createInst(G4_Predicate *prd, G4_opcode op,
                                 G4_ExecSize execSize, G4_DstRegRegion *dst,
                                 G4_Operand *src0, G4_Operand *src1,
                                 G4_InstOpts options, bool addToInstList) {
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       op != G4_math,
       "IR_Builder::createInst should not be used to create math instructions");
   G4_INST *i = NULL;
@@ -1390,7 +1390,7 @@ G4_INST *IR_Builder::createInst(G4_Predicate *prd, G4_opcode op,
   // ToDo: have separate functions to create call/jmp/ret
   if (G4_Inst_Table[op].instType == InstTypeFlow) {
     // TODO: remove this path
-    MUST_BE_TRUE(!sat, "saturation not defined on branching ops");
+    vISA_ASSERT(!sat, "saturation not defined on branching ops");
     i = new (mem) G4_InstCF(*this, prd, op, mod, execSize, dst, src0, options);
   } else {
     i = new (mem)
@@ -1418,7 +1418,7 @@ G4_INST *IR_Builder::createInternalInst(G4_Predicate *prd, G4_opcode op,
                                         G4_ExecSize execSize,
                                         G4_DstRegRegion *dst, G4_Operand *src0,
                                         G4_Operand *src1, G4_InstOpts options) {
-  MUST_BE_TRUE(op != G4_math, "IR_Builder::createInternalInst should not be "
+  vISA_ASSERT(op != G4_math, "IR_Builder::createInternalInst should not be "
                               "used to create math instructions");
 
   auto ii =
@@ -1435,7 +1435,7 @@ G4_INST *IR_Builder::createNop(G4_InstOpts instOpt) {
 // sync inst are always internal, so no option to append it to instList.
 // Also currently don't take any InstOpt
 G4_INST *IR_Builder::createSync(G4_opcode syncOp, G4_Operand *src) {
-  assert(G4_INST::isSyncOpcode(syncOp) && "expect a sync op");
+  vISA_ASSERT(G4_INST::isSyncOpcode(syncOp), "expect a sync op");
   return createInternalInst(nullptr, syncOp, nullptr, g4::NOSAT, g4::SIMD1,
                             nullptr, src, nullptr, InstOpt_NoOpt);
 }
@@ -1557,7 +1557,7 @@ G4_INST *IR_Builder::createJmp(G4_Predicate *pred, G4_Operand *jmpTarget,
 G4_INST *IR_Builder::createInternalCFInst(G4_Predicate *prd, G4_opcode op,
                                           G4_ExecSize execSize, G4_Label *jip,
                                           G4_Label *uip, G4_InstOpts options) {
-  MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
+  vISA_ASSERT(G4_Inst_Table[op].instType == InstTypeFlow,
                "IR_Builder::createInternalCFInst must be used with "
                "InstTypeFlow instruction class");
 
@@ -1569,7 +1569,7 @@ G4_INST *IR_Builder::createCFInst(G4_Predicate *prd, G4_opcode op,
                                   G4_ExecSize execSize, G4_Label *jip,
                                   G4_Label *uip, G4_InstOpts options,
                                   bool addToInstList) {
-  MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
+  vISA_ASSERT(G4_Inst_Table[op].instType == InstTypeFlow,
                "IR_Builder::createCFInst must be used with InstTypeFlow "
                "instruction class");
 
@@ -1684,12 +1684,12 @@ G4_INST *IR_Builder::createInst(G4_Predicate *prd, G4_opcode op,
                                 G4_Operand *src0, G4_Operand *src1,
                                 G4_Operand *src2, G4_InstOpts options,
                                 bool addToInstList) {
-  MUST_BE_TRUE(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow,
+  vISA_ASSERT(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow,
                "IR_Builder::createInst should not be used to create math/CF "
                "instructions");
 
   if (op == G4_madw) {
-    MUST_BE_TRUE(getPlatform() >= Xe_PVC || execSize != g4::SIMD32,
+    vISA_ASSERT(getPlatform() >= Xe_PVC || execSize != g4::SIMD32,
                  "SIMD32 is not supported on this platform for madw");
   }
 
@@ -1731,7 +1731,7 @@ G4_InstSend *IR_Builder::createSendInst(
     G4_DstRegRegion *postDst, G4_SrcRegRegion *currSrc, G4_Operand *msg,
     G4_InstOpts options, G4_SendDesc *msgDesc, bool addToInstList) {
 
-  assert(msgDesc && "msgDesc must not be null");
+  vISA_ASSERT(msgDesc != nullptr, "msgDesc must not be null");
   G4_InstSend *m = new (mem) G4_InstSend(*this, prd, op, execSize, postDst,
                                          currSrc, msg, options, msgDesc);
 
@@ -1778,7 +1778,7 @@ G4_InstSend *IR_Builder::createSplitSendInst(
   if (!src1) {
     // src1 may be null if we need to force generate split send (e.g., for
     // bindless surfaces)
-    MUST_BE_TRUE(msgDesc->getSrc1LenRegs() == 0,
+    vISA_ASSERT(msgDesc->getSrc1LenRegs() == 0,
                  "src1 length must be 0 if it is null");
     src1 = createNullSrc(Type_UD);
   }
@@ -1901,7 +1901,7 @@ G4_INST *IR_Builder::createIntrinsicAddrMovInst(
     G4_Operand *src1, G4_Operand *src2, G4_Operand *src3, G4_Operand *src4,
     G4_Operand *src5, G4_Operand *src6, G4_Operand *src7, bool addToInstList) {
   G4_INST *i = nullptr;
-  assert(intrinId == Intrinsic::PseudoAddrMov && "expect pseudo_mov op");
+  vISA_ASSERT(intrinId == Intrinsic::PseudoAddrMov, "expect pseudo_mov op");
 
   i = new (mem) G4_PseudoAddrMovIntrinsic(*this, intrinId, dst, src0, src1,
                                           src2, src3, src4, src5, src6, src7);
@@ -2024,10 +2024,10 @@ G4_SrcRegRegion *IR_Builder::createBindlessExDesc(uint32_t exdesc) {
  */
 static void fixSendDstType(G4_DstRegRegion *dst, G4_ExecSize execSize,
                            const IR_Builder &builder) {
-  MUST_BE_TRUE(dst->getRegAccess() == Direct,
+  vISA_ASSERT(dst->getRegAccess() == Direct,
                "Send dst must be a direct operand");
 
-  MUST_BE_TRUE(dst->getSubRegOff() == 0,
+  vISA_ASSERT(dst->getSubRegOff() == 0,
                "dst may not have a non-zero subreg offset");
 
   // normally we should create a new alias for dst's declare, but since it's a
@@ -2246,7 +2246,7 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
   uint32_t desc = 0;
   uint32_t exDesc = 0;
   const auto opInfo = LscOpInfoGet(op);
-  MUST_BE_TRUE(!opInfo.isBlock2D(), "block2d has a different layout");
+  vISA_ASSERT(!opInfo.isBlock2D(), "block2d has a different layout");
   desc |= opInfo.encoding; // Desc[5:0]
 
   lscEncodeAddrSize(addr.size, desc, status); // Desc[8:7]
@@ -2259,7 +2259,7 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
     vecSize = lscEncodeDataElems(shape.elems, desc, status);
     lscEncodeDataOrder(shape.order, desc, status);
   } else {
-    MUST_BE_TRUE(shape.chmask, "channel mask must not be empty");
+    vISA_ASSERT(shape.chmask != 0, "channel mask must not be empty");
     vecSize = 0;
     if (shape.chmask & LSC_DATA_CHMASK_X) {
       desc |= 1 << 12;
@@ -2294,7 +2294,7 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
       exDesc |= surfaceImm << 24;
       surface = nullptr;
     } else if (addr.type == LSC_ADDR_TYPE_ARG) {
-      MUST_BE_TRUE(false,
+      vISA_ASSERT(false,
                    "caller should have converted LSC_ADDR_TYPE_ARG to ...BTI");
     } else if (addr.type == LSC_ADDR_TYPE_BSS ||
                addr.type == LSC_ADDR_TYPE_SS) {
@@ -2304,7 +2304,7 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
       }
     } else {
       // flat address type
-      MUST_BE_TRUE(
+      vISA_ASSERT(
           surface->isNullReg() || surfaceImm == PREDEFINED_SURFACE_SLM ||
               surfaceImm == PREDEFINED_SURFACE_T255, // not sure what's up here
           "flat address type must have null reg (or 0)");
@@ -2312,7 +2312,7 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
     }
   }
 
-  MUST_BE_TRUE(addr.immOffset == 0, "invalid address immediate offset");
+  vISA_ASSERT(addr.immOffset == 0, "invalid address immediate offset");
 
   SFID sfid = LSC_SFID_To_SFID(lscSfid);
 
@@ -2321,7 +2321,7 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
   uint32_t dataRegs = 1;
   bool isBlock2D =
       op == LSC_OP::LSC_LOAD_BLOCK2D || op == LSC_OP::LSC_STORE_BLOCK2D;
-  MUST_BE_TRUE(!isBlock2D, "block2d not implemented yet");
+  vISA_ASSERT(!isBlock2D, "block2d not implemented yet");
 
   if (shape.order == LSC_DATA_ORDER_NONTRANSPOSE) {
     // Non-transpose case is the typical case.
@@ -2416,7 +2416,7 @@ G4_InstSend *IR_Builder::createLscSendInst(
           //   mov    a0.2  surface
           createMov(g4::SIMD1, addrDstOpnd, surface, InstOpt_WriteEnable, true);
         } else {
-          assert(false && "FLAT have surface == nullptr here");
+          vISA_ASSERT(false, "FLAT have surface == nullptr here");
         }
       }
     }
@@ -2438,7 +2438,7 @@ G4_InstSend *IR_Builder::createLscSendInst(
     if (addrType == LSC_ADDR_TYPE_BSS || addrType == LSC_ADDR_TYPE_SS) {
       //   mov    a0.2   SurfaceAddrImm
       auto imm = surface->asImm()->getImm();
-      assert((imm & 0x1F) == 0 && (imm & 0xFFFFFFFF00000000LL) == 0 &&
+      vISA_ASSERT((imm & 0x1F) == 0 && (imm & 0xFFFFFFFF00000000LL) == 0,
              "ExDesc can only access [31:5]");
       createMov(g4::SIMD1, addrDstOpnd, createImm(imm, Type_UD),
                 InstOpt_WriteEnable, true);
@@ -2447,12 +2447,10 @@ G4_InstSend *IR_Builder::createLscSendInst(
       msgDesc->setSurface(exDescOpnd); // link a0.2 to the send descriptor
     } else {
       // BTI is in ExDesc[31:24] and that is always available.
-      assert(false &&
-             "BTI/FLAT should not reach this. "
-             "FLAT should have surface == nullptr and"
-             "BTI should either use a register for a variable BTI or have "
-             "folded the immediate vlaue into ExDesc"
-             " (and thus surface==nullptr here)");
+      vISA_ASSERT(false, "BTI/FLAT should not reach this. Flat should have surface\
+              == nullptr and BTI should either use a register for a variable BTI \
+              or have folded the immediate vlaue into ExDesc (and thus \
+                surface==nullptr here)");
     }
   } else {
     exDescOpnd = createImm(exDesc, Type_UD);
@@ -3094,7 +3092,7 @@ void IR_Builder::doSimplification(G4_INST *inst) {
           inst->getSrc(0)->asSrcRegRegion()->setRegion(*this, rd);
           // Set subreg alignment for the address variable.
           Dcl = LEA->getDst()->getBase()->asRegVar()->getDeclare();
-          assert(Dcl->getRegFile() == G4_ADDRESS &&
+          vISA_ASSERT(Dcl->getRegFile() == G4_ADDRESS,
                  "Address variable is required.");
           Dcl->setSubRegAlign(Eight_Word);
         }

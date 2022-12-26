@@ -469,8 +469,8 @@ void LVN::replaceAllUses(G4_INST *defInst, bool negate, UseList &uses,
     if (keepRegion) {
       // new offset should include the offset between the use and its original
       // def
-      assert(srcToReplace->getLeftBound() >=
-                 defInst->getDst()->getLeftBound() &&
+      vISA_ASSERT(srcToReplace->getLeftBound() >=
+                 defInst->getDst()->getLeftBound(),
              "orig dst does not fully define use");
       int offsetFromOrigDst =
           srcToReplace->getLeftBound() - defInst->getDst()->getLeftBound();
@@ -676,7 +676,7 @@ bool LVN::checkIfInPointsTo(const G4_RegVar *addr, const G4_RegVar *var) const {
 
 void LVN::removeAliases(G4_INST *inst) {
   // inst uses indirect dst operand
-  MUST_BE_TRUE(inst->getDst()->isIndirect(),
+  vISA_ASSERT(inst->getDst()->isIndirect(),
                "Expecting to see indirect operand in dst");
 
   auto dstPointsToPtr =
@@ -1287,14 +1287,14 @@ LVNItemInfo *LVN::isValueInTable(Value &value, bool negate) {
 void LVN::addValueToTable(G4_INST *inst, Value &oldValue) {
   auto findLVNItemInfo = [this](G4_INST *inst, G4_Operand *opnd) {
     auto it = dclValueTable.find(opnd->getTopDcl());
-    MUST_BE_TRUE(it != dclValueTable.end(), "Value not added");
+    vISA_ASSERT(it != dclValueTable.end(), "Value not added");
     LVNItemInfo *lvnItem = nullptr;
     for (auto item : (*it).second) {
       if (item->inst == inst && opnd->getInst() == item->inst) {
         return item;
       }
     }
-    MUST_BE_TRUE(lvnItem != nullptr, "Not expecting nullptr");
+    vISA_ASSERT(lvnItem != nullptr, "Not expecting nullptr");
 
     return lvnItem;
   };
@@ -1352,7 +1352,7 @@ void LVN::addValueToTable(G4_INST *inst, Value &oldValue) {
   insertInLvnTable(oldValue.hash, lvnItem);
   attachUses(inst, lvnItem);
 
-  MUST_BE_TRUE(lvnItem->inst == lvnItem->value.inst,
+  vISA_ASSERT(lvnItem->inst == lvnItem->value.inst,
                "Missing inst ptr in value");
 }
 

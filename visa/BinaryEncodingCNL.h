@@ -199,7 +199,7 @@ public:
       // do nothing
       break;
     default:
-      MUST_BE_TRUE(false, "unexpected source modifier");
+      vISA_ASSERT_UNREACHABLE("unexpected source modifier");
       break;
     }
     return srcMod;
@@ -310,7 +310,7 @@ public:
       opnds.SetDestinationDataType(G11HDL::DSTTYPE_HF);
       break;
     default:
-      MUST_BE_TRUE(false, "Encoding error: destination type unknown");
+      vISA_ASSERT_UNREACHABLE("Encoding error: destination type unknown");
       break;
     }
   }
@@ -362,7 +362,7 @@ public:
       opnds.SetDestinationAddressingMode(G9HDL::ADDRMODE_INDIRECT);
       break;
     default:
-      MUST_BE_TRUE(false, "Encoding error: addressing mode type unknown");
+      vISA_ASSERT_UNREACHABLE("Encoding error: addressing mode type unknown");
       break;
     }
   }
@@ -385,89 +385,89 @@ public:
 template <typename T, int SrcNum> class SrcOperandEncoder {
 public:
   static void SetSrcChanSel(T *EuInstructionSources, uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSrcChanSel template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSrcChanSel template "
                         "specialization not implemented.");
   }
 
   static void SetSrcChanSel_10(T *EuInstructionSources, uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSrcChanSel_10 template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSrcChanSel_10 template "
                         "specialization not implemented.");
   }
   static void SetSrcChanSel_32(T *EuInstructionSources, uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSrcChanSel_32 template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSrcChanSel_32 template "
                         "specialization not implemented.");
   }
 
   static void SetSourceWidth(T *EuInstructionSources, G9HDL::WIDTH width) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceWidth template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceWidth template "
                         "specialization not implemented.");
   }
 
   static void SetSourceHorizontalStride(T *EuInstructionSources,
                                         G9HDL::HORZSTRIDE stride) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceHorizontalStride template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceHorizontalStride template "
                         "specialization not implemented.");
   }
 
   static void SetSourceVerticalStride(T *EuInstructionSources,
                                       G9HDL::VERTSTRIDE vertStride) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceVerticalStride template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceVerticalStride template "
                         "specialization not implemented.");
   }
 
   static void SetSourceRegisterNumber(T *EuInstructionSources, uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceRegisterNumber template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceRegisterNumber template "
                         "specialization not implemented.");
   }
 
   static void SetSourceSpecialAcc(T *EuInstructionSources, uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceSpecialAcc template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceSpecialAcc template "
                         "specialization not implemented.");
   }
 
   static void SetSourceSubRegisterNumber(T *EuInstructionSources,
                                          uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceSubRegisterNumber "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceSubRegisterNumber "
                         "template specialization not implemented.");
   }
 
   static void SetSourceSubregisterNumber44(T *EuInstructionSources,
                                            uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceSubregisterNumber44 "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceSubregisterNumber44 "
                         "template specialization not implemented.");
   }
 
   static void SetAddressSubregisterNumber(T *EuInstructionSources,
                                           uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetAddressSubregisterNumber "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetAddressSubregisterNumber "
                         "template specialization not implemented.");
   }
 
   static void SetSourceAddressImmediate84(T *EuInstructionSources,
                                           uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceAddressImmediate84 "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceAddressImmediate84 "
                         "template specialization not implemented.");
   }
 
   static void SetSourceAddressImmediate90(T *EuInstructionSources,
                                           int32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceAddressImmediate80 "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceAddressImmediate80 "
                         "template specialization not implemented.");
   }
 
   static void SetSourceImmediateData(T *EuInstructionSources, uint32_t value) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceImmediateData template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceImmediateData template "
                         "specialization not implemented.");
   }
 
   static void SetSourceAddressingMode(T *EuInstructionSources,
                                       G9HDL::ADDRMODE addrMode) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceAddressingMode template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceAddressingMode template "
                         "specialization not implemented.");
   }
 
   static void SetSourceModifier(T *EuInstructionSources, G9HDL::SRCMOD srcMod) {
-    MUST_BE_TRUE(false, "SrcOperandEncoder::SetSourceModifier template "
+    vISA_ASSERT_UNREACHABLE("SrcOperandEncoder::SetSourceModifier template "
                         "specialization not implemented.");
   }
 };
@@ -837,7 +837,7 @@ public:
       //  in 3src, bits 83 - 73 encode (73-75):3 subreg, and (76-83):8 bits
       //  regnum, dword aligned
       if (inst->isAligned1Inst()) {
-        MUST_BE_TRUE(false, "align1 not allowed for 3src instructions");
+        vISA_ASSERT_UNREACHABLE("align1 not allowed for 3src instructions");
       } else { // align 16
         // register number: 256 bit (32 byte) aligned part of an address
         // sub-register number: first/second 16 byte part of 32 byte address.
@@ -986,7 +986,7 @@ public:
       case UNDEFINED_SHORT:
         break;
       default:
-        MUST_BE_TRUE(false, "wrong width for src0!");
+        vISA_ASSERT_UNREACHABLE("wrong width for src0!");
         break;
       }
     }
@@ -1061,7 +1061,7 @@ public:
       case UNDEFINED_SHORT:
         break;
       default:
-        MUST_BE_TRUE(false, "wrong horizontal stride for src0!");
+        vISA_ASSERT_UNREACHABLE("wrong horizontal stride for src0!");
         break;
       }
     }
@@ -1138,7 +1138,7 @@ public:
       case UNDEFINED_SHORT:
         break;
       default:
-        MUST_BE_TRUE(false, "wrong vertical stride for src0!");
+        vISA_ASSERT_UNREACHABLE("wrong vertical stride for src0!");
         break;
       }
     }
@@ -1224,7 +1224,7 @@ public:
         SrcOperandEncoder<T, SrcNum>::SetSourceRegisterNumber(&sourcesReg,
                                                               byteAddress >> 5);
         if (inst->getPlatform() >= GENX_ICLLP && src0->isAccRegValid()) {
-          MUST_BE_TRUE((byteAddress & 0x1F) == 0,
+          vISA_ASSERT((byteAddress & 0x1F) == 0,
                        "subreg must be 0 for source with special accumulator");
           SrcOperandEncoder<T, SrcNum>::SetSourceSpecialAcc(
               &sourcesReg, src0->getAccRegSel());

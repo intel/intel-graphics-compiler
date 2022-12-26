@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "DebugInfo.h"
 #include "BitSet.h"
 #include "BuildIR.h"
@@ -231,7 +232,7 @@ int DbgDecoder::ddDbg() {
 
   if (!dbgFile) {
     std::cerr << "Error opening and creating debug file: " << filename << "\n";
-    ASSERT_USER(false, "Unable to wrie debug file to disk.");
+    vISA_ASSERT(false, "Unable to wrie debug file to disk.");
     return -1;
   }
 

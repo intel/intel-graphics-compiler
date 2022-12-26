@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef FLOWGRAPH_H
 #define FLOWGRAPH_H
 
+#include "Assertions.h"
 #include "G4_BB.hpp"
 #include "G4_IR.hpp"
 #include "LoopAnalysis.h"

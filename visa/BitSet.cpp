@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "BitSet.h"
 
 void BitSet::create(unsigned size) {

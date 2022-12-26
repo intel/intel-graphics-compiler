@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Optimizer.h"
+#include "Assertions.h"
 #include "G4_Opcode.h"
 #include "G4_Verifier.hpp"
 #include "Timer.h"
@@ -80,7 +81,7 @@ static int getDstSubReg(G4_DstRegRegion *dst) {
 }
 
 static int getSrcSubReg(G4_Operand *src) {
-  MUST_BE_TRUE(src->isSrcRegRegion(), "expect Src Reg Region");
+  vISA_ASSERT(src->isSrcRegRegion(), "expect Src Reg Region");
   int srcSubReg;
   if (src->asSrcRegRegion()->getBase()->isPhyReg()) {
     srcSubReg = src->asSrcRegRegion()->getSubRegOff();
@@ -170,7 +171,7 @@ void Optimizer::finishFusedCallWA_preSWSB() {
     if (true /*kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_CM */)
         {
       // Use M16 always.
-      assert(kernel.getSimdSize() <= 16);
+      vASSERT(kernel.getSimdSize() <= 16);
       uint32_t orImm = kernel.getSimdSize() == 16 ? 0xFFFF0000 : 0xFFFFFF00;
 
       G4_VarBase *V_sr0 = builder.phyregpool.getSr0Reg();
@@ -190,7 +191,7 @@ void Optimizer::finishFusedCallWA_preSWSB() {
         while (entryBB != nullptr) {
           if (entryBB == perThreadBB || entryBB == crossThreadBB) {
             // perthread/crossThread BB has a single succ.
-            assert(entryBB->Succs.size() == 1);
+            vASSERT(entryBB->Succs.size() == 1);
             entryBB = entryBB->Succs.front();
             continue;
           }
@@ -220,7 +221,7 @@ void Optimizer::finishFusedCallWA_preSWSB() {
             kernel.fg.end() ||
         std::find(kernel.fg.begin(), kernel.fg.end(), SmallBB) ==
             kernel.fg.end()) {
-      assert(false && "ICE: BB not found in indirect call WA info!");
+      vISA_ASSERT(false, "ICE: BB not found in indirect call WA info!");
       break;
     }
 
@@ -244,7 +245,7 @@ void Optimizer::finishFusedCallWA_preSWSB() {
          std::find(BigBB->begin(), BigBB->end(), bigCall) == BigBB->end()) ||
         (smallCall && std::find(SmallBB->begin(), SmallBB->end(), smallCall) ==
                           SmallBB->end())) {
-      assert(false && "ICE: inst not found in its original BB!");
+      vISA_ASSERT(false, "ICE: inst not found in its original BB!");
       break;
     }
   }
@@ -255,11 +256,11 @@ void Optimizer::finishFusedCallWA_preSWSB() {
 
     // make sure BB and inst are still valid
     if (std::find(kernel.fg.begin(), kernel.fg.end(), tBB) == kernel.fg.end()) {
-      assert(false && "ICE: BB not in m_maskOffWAInsts!");
+      vISA_ASSERT(false, "ICE: BB not in m_maskOffWAInsts!");
       continue;
     }
     if (std::find(tBB->begin(), tBB->end(), tInst) == tBB->end()) {
-      assert(false && "ICE: inst not in m_maskOffWAInsts!");
+      vISA_ASSERT(false, "ICE: inst not in m_maskOffWAInsts!");
       continue;
     }
   }
@@ -350,7 +351,7 @@ void Optimizer::finishFusedCallWA_preSWSB() {
             break;
           }
         }
-        assert(adjust_ip_add);
+        vASSERT(adjust_ip_add);
         kernel.setMaskOffset(adjust_ip_add, InstOpt_M16);
 
         auto ip_inst_ii = std::find(BB->begin(), BB->end(), ip_inst);
@@ -466,7 +467,7 @@ void Optimizer::finishFusedCallWA() {
         }
         next_b = b->getPhysicalSucc();
       } while (b != end_bb && next_b != nullptr);
-      assert(b == end_bb);
+      vASSERT(b == end_bb);
 
       G4_Imm *distOprd = builder.createImm(-dist, Type_D);
       patch_add->setSrc(distOprd, 1);
@@ -490,7 +491,7 @@ void Optimizer::finishFusedCallWA() {
 
     G4_INST *iCallInst = callWAInfo.Small_call;
     G4_BB *B = callWAInfo.Small_BB;
-    assert(iCallInst->isFCall() && iCallInst->getSrc(0)->isGreg());
+    vASSERT(iCallInst->isFCall() && iCallInst->getSrc(0)->isGreg());
 
     bool isValid;
     G4_SrcRegRegion *T = iCallInst->getSrc(0)->asSrcRegRegion();
@@ -502,7 +503,7 @@ void Optimizer::finishFusedCallWA() {
     // which only insts related to call sequence are present in the BB.
     // If not found, do nothing.
     INST_LIST_ITER it_end = std::find(B->begin(), B->end(), iCallInst);
-    assert(it_end != B->end());
+    vASSERT(it_end != B->end());
     for (auto II = it_end, IB = B->begin(); II != IB; --II) {
       auto prevII = std::prev(II);
       G4_INST *tInst = *prevII;
@@ -590,9 +591,9 @@ void Optimizer::adjustIndirectCallOffsetAfterSWSBSet() {
           }
           // instructions between pattern sequence could only be
           // sync.nop, sync.allrd or sync.allwr
-          assert(0);
+          vASSERT(0);
         }
-        assert(first_add->getSrc(1)->isImm());
+        vASSERT(first_add->getSrc(1)->isImm());
         int64_t adjust_off =
             first_add->getSrc(1)->asImm()->getInt() - sync_off_1;
         first_add->setSrc(builder.createImm(adjust_off, Type_D), 1);
@@ -610,15 +611,15 @@ void Optimizer::adjustIndirectCallOffsetAfterSWSBSet() {
             else if (inst.opcode() == G4_return)
               continue;
             else if (inst.opcode() == G4_add) {
-              assert(third_add == nullptr);
+              vASSERT(third_add == nullptr);
               third_add = &inst;
               break;
             }
             // instructions between pattern sequence could only be
             // sync.nop, sync.allrd or sync.allwr
-            assert(0);
+            vASSERT(0);
           }
-          assert(third_add->getSrc(1)->isImm());
+          vASSERT(third_add->getSrc(1)->isImm());
           int64_t adjust_off_2 =
               third_add->getSrc(1)->asImm()->getInt() + sync_off_2;
           third_add->setSrc(
@@ -643,10 +644,10 @@ void Optimizer::zeroSomeARF() {
       //   crossThreadBB:
       //   main:
       if (G4_BB *crossThreadBB = kernel.getCrossThreadPayloadBB()) {
-        assert(crossThreadBB->Succs.size() == 1);
+        vASSERT(crossThreadBB->Succs.size() == 1);
         mainBB = crossThreadBB->Succs.front();
       } else if (G4_BB *perThreadBB = kernel.getPerThreadPayloadBB()) {
-        assert(perThreadBB->Succs.size() == 1);
+        vASSERT(perThreadBB->Succs.size() == 1);
         mainBB = perThreadBB->Succs.front();
       }
     }
@@ -1122,7 +1123,7 @@ void Optimizer::insertDummyMovForHWRSWAonaAllpipelines() {
               predBBLastInst = predBB->getInstList().back();
             }
             if (predBBLastInst && predBBLastInst->opcode() == G4_jmpi) {
-              assert(newLabel);
+              vASSERT(newLabel);
               predBBLastInst->setSrc(newLabel, 0);
             }
 
@@ -1333,7 +1334,7 @@ void Optimizer::cloneSampleInst() {
         bool isEval = sendInst->getMsgDesc()->getDstLenRegs() == 0;
         uint32_t messageType =
             sendInst->getMsgDescRaw()->getSamplerMessageType();
-        assert(!inst->getPredicate() &&
+        vISA_ASSERT(!inst->getPredicate(),
                "do not handle predicated sampler inst for now");
         if (!isEval && cloneSample && messageType == 0 && numParams == 3) {
           if (!hasSample) {
@@ -1365,7 +1366,7 @@ void Optimizer::cloneSampleInst() {
           // - 9 GRFs for simd16 message with 32-bit return format
           // It is enough to check send's response length to determine
           // if Pixel Null Mask feedback is enabled.
-          assert(inst->getExecSize() == g4::SIMD8 ||
+          vASSERT(inst->getExecSize() == g4::SIMD8 ||
                  inst->getExecSize() == g4::SIMD16);
           uint16_t pixelNullMaskRspLen =
               (inst->getExecSize() == g4::SIMD16 &&
@@ -1595,7 +1596,7 @@ void Optimizer::initOptimizations() {
   // Verify all passes are initialized.
 #ifdef _DEBUG
   for (unsigned i = 0; i < PI_NUM_PASSES; ++i) {
-    ASSERT_USER(Passes[i].Pass, "uninitialized pass");
+    vISA_ASSERT(Passes[i].Pass, "uninitialized pass");
   }
 #endif
 }
@@ -1611,7 +1612,7 @@ void replaceAllSpilledRegions(G4_Kernel &kernel, G4_Declare *oldDcl,
       if (dst && !dst->isNullReg()) {
         if (dst->getTopDcl() == oldDcl) {
           // code does not appear to handle indirect
-          assert(!dst->isIndirect());
+          vASSERT(!dst->isIndirect());
           G4_DstRegRegion *newDstRgn = kernel.fg.builder->createDst(
               newDcl->getRegVar(), dst->getRegOff(), dst->getSubRegOff(),
               dst->getHorzStride(), dst->getType());
@@ -1777,7 +1778,7 @@ void restoreGRFAssignments(std::vector<Assignment> &assignments) {
 // simple heuristics to decide if it's profitable to do copy propagation for the
 // move add more as necessary
 bool Optimizer::isCopyPropProfitable(G4_INST *movInst) const {
-  assert(movInst->opcode() == G4_mov && "expected a move instruction");
+  vISA_ASSERT(movInst->opcode() == G4_mov, "expected a move instruction");
 
   // if inst is a simd16 W/HF packing, we don't want to optimize it if
   // there are >=2 simd16 mad uses, since it will slow down the mad.
@@ -2286,7 +2287,7 @@ void Optimizer::fixEndIfWhileLabels() {
 
     if (whileBB == nullptr || whileBB->empty() ||
         whileBB->back()->opcode() != G4_while) {
-      ASSERT_USER(false, "can not find while BB");
+      vISA_ASSERT(false, "can not find while BB");
       continue;
     }
 
@@ -2714,7 +2715,7 @@ static bool canSink(G4_BB *bb, INST_LIST_RITER revIter, INST_LIST_RITER other) {
   // Find its def instruction.
   G4_INST *defInst = inst->def_back().first;
 
-  ASSERT_USER(*other != defInst, "iterator points to def already");
+  vISA_ASSERT(*other != defInst, "iterator points to def already");
 
   // Walk up to check if sinking is safe.
   INST_LIST_RITER it = other;
@@ -2735,7 +2736,7 @@ static bool canSink(G4_BB *bb, INST_LIST_RITER revIter, INST_LIST_RITER other) {
   //
   // We do sinking right here.
   //
-  ASSERT_USER(*it == defInst, "iterator out of sync");
+  vISA_ASSERT(*it == defInst, "iterator out of sync");
 
   // Both 'other' and 'it' are reverse iterators, and sinking is through
   // forward iterators. The fisrt base should not be decremented by 1,
@@ -2783,7 +2784,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter) {
 
   // Now check each definition of src(0)
   for (auto I = inst->def_begin(), E = inst->def_end(); I != E; ++I) {
-    ASSERT_USER(I->second == Opnd_src0, "invalid use-def chain");
+    vISA_ASSERT(I->second == Opnd_src0, "invalid use-def chain");
     if (!inst->canHoistTo(I->first, !bb->isAllLaneActive()))
       return false;
 
@@ -2917,7 +2918,7 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst,
         // there may have multiple rows in useInst's src region.
         //
         // (1) convert difference in number of elements.
-        MUST_BE_TRUE(dist % srcElSize == 0, "unexpected difference");
+        vISA_ASSERT(dist % srcElSize == 0, "unexpected difference");
         dist = dist / srcElSize;
 
         // (2) compute row and column index, by default a single row.
@@ -2928,7 +2929,7 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst,
         }
 
         // (3) compute the final linear index.
-        MUST_BE_TRUE(srcRegionDesc->horzStride == 0 ||
+        vISA_ASSERT(srcRegionDesc->horzStride == 0 ||
                          colIndex % srcRegionDesc->horzStride == 0,
                      "invalid region");
         unsigned FirstEltIndex = rowIndex * srcRegionDesc->width +
@@ -3049,7 +3050,7 @@ static void doHoisting(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter) {
     }
 
     if (inst->getPredicate()) {
-      ASSERT_USER(inst->def_size() == 1, "multiple defs not implemented");
+      vISA_ASSERT(inst->def_size() == 1, "multiple defs not implemented");
       // Remove existing definitions on defInst[opnd_pred].
       defInst->removeDefUse(Opnd_pred);
 
@@ -3151,7 +3152,7 @@ void Optimizer::reassociateConst() {
 
       auto isGoodSrc0Def = [isSrc1Const](G4_INST *def, G4_INST *use,
                                          const IR_Builder &builder) {
-        assert(use->getSrc(0)->isSrcRegRegion() &&
+        vISA_ASSERT(use->getSrc(0)->isSrcRegRegion(),
                "expect src0 to be src region");
         if (def->opcode() != use->opcode()) {
           return false;
@@ -3341,7 +3342,7 @@ static bool propagateType(IR_Builder &Builder, G4_BB *BB, G4_INST *Mov,
 
 static unsigned getMaskSize(G4_INST *Inst, Gen4_Operand_Number OpNum) {
   G4_Operand *Opnd = Inst->getOperand(OpNum);
-  assert(Opnd && "null opnd");
+  vISA_ASSERT(Opnd, "null opnd");
 
   if (Opnd) {
     G4_Declare *Dcl = Opnd->getTopDcl();
@@ -4146,7 +4147,7 @@ void Optimizer::cselPeepHoleOpt() {
           // inst's src0 becomes useInst's src2.
           inst->copyDef(useInst, Opnd_src0, Opnd_src2);
         }
-        ASSERT_USER(inst->useEmpty(), "all predicate uses are removed.");
+        vISA_ASSERT(inst->useEmpty(), "all predicate uses are removed.");
         inst->removeAllDefs();
         bb->erase(ii);
       }
@@ -4170,7 +4171,7 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
 
 {
   G4_INST *inst = *iter;
-  MUST_BE_TRUE(inst->isPseudoLogic(),
+  vISA_ASSERT(inst->isPseudoLogic(),
                "inst must be either pseudo_and/or/xor/not");
   INST_LIST_ITER newIter = iter;
 
@@ -4203,17 +4204,17 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
   if (canFoldOnSIMD1()) {
     G4_opcode newOpcode = G4_illegal;
     if (inst->getMaskOffset() == 16) {
-      MUST_BE_TRUE(inst->getExecSize() == g4::SIMD16,
+      vISA_ASSERT(inst->getExecSize() == g4::SIMD16,
                    "Only support simd16 pseudo-logic instructions");
       // we have to use the upper flag bits (.1) instead
-      MUST_BE_TRUE(inst->getSrc(0)->isSrcRegRegion() &&
+      vISA_ASSERT(inst->getSrc(0)->isSrcRegRegion() &&
                        inst->getSrc(0)->isFlag(),
                    "expect src0 to be flag");
       auto newSrc0 = builder.createSrcWithNewSubRegOff(
           inst->getSrc(0)->asSrcRegRegion(), 1);
       inst->setSrc(newSrc0, 0);
       if (inst->getSrc(1) != nullptr) {
-        MUST_BE_TRUE(inst->getSrc(1)->isSrcRegRegion() &&
+        vISA_ASSERT(inst->getSrc(1)->isSrcRegRegion() &&
                          inst->getSrc(1)->isFlag(),
                      "expect src1 to be flag");
         auto newSrc1 = builder.createSrcWithNewSubRegOff(
@@ -4276,7 +4277,7 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
     G4_Operand *logicSrc1 = LowerOpnd(Gen4_Operand_Number::Opnd_src1, Sel1);
 
     if (logicSrc1 == nullptr) {
-      MUST_BE_TRUE(inst->opcode() == G4_pseudo_not,
+      vISA_ASSERT(inst->opcode() == G4_pseudo_not,
                    "Must be a pseudo-not instruction");
       // for not P1 P0
       // we generate
@@ -4596,7 +4597,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB *bb, INST_LIST_ITER &iter) {
 //        false : no folding is performed.
 bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst,
                            INST_LIST_ITER &selInst_II) {
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       (selInst->opcode() == G4_sel && selInst->getPredicate() &&
        selInst->getCondMod() == NULL),
       "foldCmpSel: Inst should be a sel with predicate and without cmod.");
@@ -4767,7 +4768,7 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst,
 // return true if successful
 bool Optimizer::foldPseudoNot(G4_BB *bb, INST_LIST_ITER &iter) {
   G4_INST *notInst = *iter;
-  assert(notInst->opcode() == G4_pseudo_not && "expect not instruction");
+  vISA_ASSERT(notInst->opcode() == G4_pseudo_not, "expect not instruction");
   if (notInst->getPredicate() || notInst->getCondMod()) {
     return false;
   }
@@ -4795,7 +4796,7 @@ bool Optimizer::foldPseudoNot(G4_BB *bb, INST_LIST_ITER &iter) {
     }
 
     // sanity check
-    assert(useInst->getSingleDef(opndPos) == notInst);
+    vASSERT(useInst->getSingleDef(opndPos) == notInst);
 
     // check the case where flag is partially used
     G4_SrcRegRegion *opnd =
@@ -4810,7 +4811,7 @@ bool Optimizer::foldPseudoNot(G4_BB *bb, INST_LIST_ITER &iter) {
     G4_SrcRegRegion *origUse = notInst->getSrc(0)->asSrcRegRegion();
     if (notInst->getMaskOffset() == 16) {
       // Fold upper bits
-      assert(notInst->getExecSize() == g4::SIMD16);
+      vASSERT(notInst->getExecSize() == g4::SIMD16);
       origUse = builder.createSrcWithNewSubRegOff(origUse, 1);
       notInst->setSrc(origUse, 0);
     }
@@ -5832,7 +5833,7 @@ void Optimizer::cleanupBindless() {
             // each use is in the form of A0(0,0)<0;1,0>:ud in a send
             G4_INST *useInst = I->first;
             Gen4_Operand_Number num = I->second;
-            assert(useInst->isSend() && "use inst must be a send");
+            vISA_ASSERT(useInst->isSend(), "use inst must be a send");
             G4_SrcRegRegion *newExDesc =
                 builder.createSrc(valInst->getDst()->getBase(), 0, 0,
                                   builder.getRegionScalar(), Type_UD);
@@ -6499,7 +6500,7 @@ void getOptReportStream(std::ofstream &reportStream, const Options *opt) {
   opt->getOption(VISA_AsmFileName, asmFileName);
   std::string optReportFileName = std::string(asmFileName) + "_optreport.txt";
   reportStream.open(optReportFileName, std::ios::out | std::ios::app);
-  MUST_BE_TRUE(reportStream, "Fail to open " << optReportFileName);
+  vISA_ASSERT(!reportStream.fail(), "Fail to open %s", optReportFileName.c_str());
 }
 
 void closeOptReportStream(std::ofstream &reportStream) { reportStream.close(); }
@@ -6614,11 +6615,11 @@ void Optimizer::linePlaneWA(G4_INST *inst) {
     G4_Operand *src = inst->getSrc(0);
     const RegionDesc *rd =
         src->isSrcRegRegion() ? src->asSrcRegRegion()->getRegion() : NULL;
-    MUST_BE_TRUE(rd != NULL, " Src0 of line inst is not regregion. ");
+    vISA_ASSERT(rd != NULL, " Src0 of line inst is not regregion. ");
     if (rd->isScalar()) {
       return;
     }
-    MUST_BE_TRUE((rd->vertStride == 0 || rd->vertStride == 4) && rd->width == 4,
+    vISA_ASSERT((rd->vertStride == 0 || rd->vertStride == 4) && rd->width == 4,
                  "Unexpected region for the first line operand.");
 
     // create a new rd for src0
@@ -6638,7 +6639,7 @@ void Optimizer::linePlaneWA(G4_INST *inst) {
 //
 void Optimizer::clearARFDependencies() {
   auto flagToInt = [](G4_Areg *areg) {
-    MUST_BE_TRUE(areg->isFlag(), "expect F0 or F1");
+    vISA_ASSERT(areg->isFlag(), "expect F0 or F1");
     return areg->getArchRegType() == AREG_F0 ? 0 : 1;
   };
   // see if F0 and F1 are ever defined but not used in the same BB
@@ -6783,7 +6784,7 @@ G4_SrcRegRegion *IR_Builder::createSubSrcOperand(G4_SrcRegRegion *src,
       // just handle <1,0>
       if (start > 0) {
         // Change a0.N to a0.(N+start)
-        assert((start % wd == 0) &&
+        vISA_ASSERT((start % wd == 0),
                "illegal starting offset and width combination");
         uint16_t subRegOff = src->getSubRegOff() + start / wd;
         return createIndirectSrc(src->getModifier(), src->getBase(),
@@ -6814,7 +6815,7 @@ G4_SrcRegRegion *IR_Builder::createSubSrcOperand(G4_SrcRegRegion *src,
     switch (srcType) {
     case Type_F:
       // must be acc1.0 as result of simd16 -> 8 split
-      assert(size == 8 && "only support simd16->simd8 for now");
+      vISA_ASSERT(size == 8, "only support simd16->simd8 for now");
       return createSrcRegRegion(src->getModifier(), Direct,
                                 phyregpool.getAcc1Reg(), 0, 0, src->getRegion(),
                                 srcType);
@@ -6884,7 +6885,7 @@ G4_DstRegRegion *IR_Builder::createSubDstOperand(G4_DstRegRegion *dst,
       switch (dstType) {
       case Type_F:
         // must be acc1.0 as result of simd16 -> 8 split
-        assert(size == 8 && "only support simd16->simd8 for now");
+        vISA_ASSERT(size == 8, "only support simd16->simd8 for now");
         return createDst(phyregpool.getAcc1Reg(), 0, 0, hs, dstType);
       case Type_HF: {
         // can be one of acc0.8, acc1.0, acc1.8
@@ -7008,7 +7009,7 @@ static bool hasOverlappingGRF(G4_Operand *opnd, G4_Operand *other) {
 std::optional<INST_LIST_ITER>
 Optimizer::findFenceCommitPos(INST_LIST_ITER fence, G4_BB *bb) const {
   auto fenceInst = *fence;
-  assert(fenceInst->isSend() && fenceInst->asSendInst()->isFence());
+  vASSERT(fenceInst->isSend() && fenceInst->asSendInst()->isFence());
   auto dst = fenceInst->getDst();
   auto I = std::next(fence);
   for (auto E = bb->end(); I != E; ++I) {
@@ -7034,7 +7035,7 @@ bool Optimizer::addFenceCommit(INST_LIST_ITER ii, G4_BB *bb,
                                bool scheduleFenceCommit) {
   G4_INST *inst = *ii;
   G4_InstSend *sendInst = inst->asSendInst();
-  assert(sendInst);
+  vASSERT(sendInst);
   if (sendInst && sendInst->getMsgDesc()->getDstLenRegs() > 0) {
     // commit is enabled for the fence, need to generate a move after to make
     // sure the fence is complete mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}
@@ -7332,7 +7333,7 @@ void Optimizer::HWWorkaround() {
       kernel.getBoolKernelAttr(Attributes::ATTR_Extern)) {
     // jmpi WA can't properly work on platforms with SWSB. We didn't re-caculate
     // the jump offset after swsb insertion.
-    assert(!builder.hasSWSB());
+    vASSERT(!builder.hasSWSB());
     // replace ret in the external functions with jmpi. That we will
     // also replace the call with jmpi in
     // Optimizer::expandIndirectCallWithRegTarget
@@ -7392,7 +7393,7 @@ void Optimizer::normalizeRegion() {
               uint16_t stride = 0;
               if (srcRegion->getRegion()->isSingleNonUnitStride(
                       inst->getExecSize(), stride)) {
-                MUST_BE_TRUE(stride <= 4,
+                vISA_ASSERT(stride <= 4,
                              "illegal stride for align1 ternary region");
                 srcRegion->setRegion(
                     builder,
@@ -7414,7 +7415,7 @@ void Optimizer::countGRFUsage() {
     if (dcl->getRegVar()->isGreg()) {
       int GRFStart = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
       int numRows = dcl->getNumRows();
-      MUST_BE_TRUE(GRFStart >= 0 && (GRFStart + numRows) <= (int)maxGRFNum,
+      vISA_ASSERT(GRFStart >= 0 && (GRFStart + numRows) <= (int)maxGRFNum,
                    "illegal GRF assignment");
       for (int i = GRFStart; i < GRFStart + numRows; ++i) {
         GRFUse[i] = true;
@@ -7602,7 +7603,7 @@ void Optimizer::initializePayload() {
   }
   // Initialize the last register if bulk of GRFs was odd
   if (regNum != maxGRFNum) {
-    assert(regNum == maxGRFNum - 1);
+    vASSERT(regNum == maxGRFNum - 1);
     numElt = grfSize / TypeSize(Type_UD);
     G4_Declare *tempDcl =
         builder.createHardwiredDeclare(numElt, Type_UD, regNum, 0);
@@ -7729,7 +7730,7 @@ void Optimizer::addFFIDProlog() {
     // get jmp target label. If the next bb has no label, create one and insert
     // it at the beginning
     G4_Label *jmp_label = nullptr;
-    assert(kernel.fg.begin() != kernel.fg.end());
+    vASSERT(kernel.fg.begin() != kernel.fg.end());
     G4_BB *next_bb = *kernel.fg.begin();
     if (next_bb->front()->isLabel()) {
       jmp_label = next_bb->front()->getSrc(0)->asLabel();
@@ -8697,10 +8698,10 @@ G4_Declare *Optimizer::createInstsForCallTargetOffset(InstListType &insts,
 
   // call's dst must be r125.0, which is reserved at
   // GlobalRA::setABIForStackCallFunctionCalls.
-  assert(fcall->getDst()->isGreg());
+  vASSERT(fcall->getDst()->isGreg());
   // call dst must not be overlapped with r2 which is hardcoded as the new jump
   // target
-  assert((fcall->getDst()->getLinearizedStart() /
+  vASSERT((fcall->getDst()->getLinearizedStart() /
           kernel.numEltPerGRF<Type_UB>()) != 2);
 
   // hardcoded add's dst to r2
@@ -8758,7 +8759,7 @@ void Optimizer::replaceIPWithCall(InstListType &insts, G4_INST *inst_with_ip) {
                      kernel.numEltPerGRF<Type_UB>() /
                      inst_with_ip->getDst()->getTypeSize();
   // call's dst must have sub-reg num 0 (HW restriction)
-  assert(reg_off == 0);
+  vASSERT(reg_off == 0);
   G4_Declare *dst_decl = builder.createHardwiredDeclare(
       1, inst_with_ip->getDst()->getType(), reg_num, reg_off);
 
@@ -8803,11 +8804,11 @@ void Optimizer::createInstForJmpiSequence(InstListType &insts, G4_INST *fcall) {
   // well, we do not need to consider the return mask here.
 
   // Do not allow predicate call on jmpi WA
-  assert(fcall->getPredicate() == nullptr);
+  vASSERT(fcall->getPredicate() == nullptr);
 
   // calculate the reserved register's num and offset from fcall's dst register
   // (shoud be r125.0)
-  assert(fcall->getDst()->isGreg());
+  vASSERT(fcall->getDst()->isGreg());
   uint32_t reg_num =
       fcall->getDst()->getLinearizedStart() / kernel.numEltPerGRF<Type_UB>();
   uint32_t reg_off = fcall->getDst()->getLinearizedStart() %
@@ -8838,7 +8839,7 @@ void Optimizer::createInstForJmpiSequence(InstListType &insts, G4_INST *fcall) {
 
 void Optimizer::expandIndirectCallWithRegTarget() {
   if (builder.hasFusedEU() && builder.getuint32Option(vISA_fusedCallWA) == 1) {
-    assert(!builder.needReplaceIndirectCallWithJmpi());
+    vASSERT(!builder.needReplaceIndirectCallWithJmpi());
     // Relative IP has been applied in fusedCallWA()
     return;
   }
@@ -8953,7 +8954,7 @@ void Optimizer::replaceRetWithJmpi() {
   // there should be exactly one ret in a external function. We did not try
   // to restore the CallMask. We rely on single return of a function to make
   // sure the CallMask before and after calling this function is the same.
-  assert(num_ret == 1);
+  vASSERT(num_ret == 1);
 }
 
 // Set a0 to tdr0 before snedc/sendsc
@@ -9544,7 +9545,7 @@ private:
     else
       T = getLastUser()->getDst()->getType();
 
-    assert((IS_FTYPE(T) || IS_HFTYPE(T) || IS_INT(T)) &&
+    vISA_ASSERT((IS_FTYPE(T) || IS_HFTYPE(T) || IS_INT(T)),
            "Only F/HF/W/B types are expected here");
     return (IS_FTYPE(T) || IS_HFTYPE(T))
                ? T
@@ -9723,7 +9724,7 @@ bool MadSequenceInfo::checkMadSequence() {
 
   // First check each individual mad.
   for (auto inst : madSequence) {
-    ASSERT_USER(isMad(inst), "not a mad");
+    vISA_ASSERT(isMad(inst), "not a mad");
 
     // Only for simd 16. TODO: support simd8.
     if (inst->getExecSize() != g4::SIMD16)
@@ -9802,8 +9803,8 @@ bool MadSequenceInfo::checkMadSequence() {
     G4_INST *useInst = *I;
     G4_Operand *dst = defInst->getDst();
     G4_Operand *src2 = useInst->getSrc(2);
-    ASSERT_USER(dst && dst->isDstRegRegion(), "invalid dst");
-    ASSERT_USER(src2 && src2->isSrcRegRegion(), "invalid src2");
+    vISA_ASSERT(dst && dst->isDstRegRegion(), "invalid dst");
+    vISA_ASSERT(src2 && src2->isSrcRegRegion(), "invalid src2");
     if (dst->compareOperand(src2, builder) != Rel_eq)
       return false;
 
@@ -9816,7 +9817,7 @@ bool MadSequenceInfo::checkMadSequence() {
 
 bool MadSequenceInfo::checkACCDependency(G4_INST *defInst, G4_INST *useInst) {
   auto iter = std::find(bb->begin(), bb->end(), defInst);
-  ASSERT_USER(iter != bb->end(), "no instruction found?");
+  vISA_ASSERT(iter != bb->end(), "no instruction found?");
 
   for (++iter; (*iter) != useInst; ++iter) {
     if ((*iter)->defAcc() || (*iter)->useAcc() ||
@@ -9905,7 +9906,7 @@ bool MadSequenceInfo::checkUserChain() {
 
 void MadSequenceInfo::populateSrc2Def() {
   G4_INST *firstMad = getFirstMad();
-  ASSERT_USER(firstMad && isMad(firstMad), "invalid mad");
+  vISA_ASSERT(firstMad && isMad(firstMad), "invalid mad");
 
   src2Def = firstMad->getSingleDef(Opnd_src2, true);
   if (src2Def == nullptr)
@@ -10038,7 +10039,7 @@ INST_LIST_ITER MadSequenceInfo::populateCandidates(INST_LIST_ITER iter) {
   // Find the first non-mad instruction following this sequence.
   auto end = std::find_if_not(iter, bb->end(), isMad);
 
-  ASSERT_USER(iter != end, "out of sync");
+  vISA_ASSERT(iter != end, "out of sync");
   appendMad(iter, end);
 
   // Checking the first mad's src2.
@@ -10078,9 +10079,9 @@ INST_LIST_ITER MadSequenceInfo::populateCandidates(INST_LIST_ITER iter) {
 
 // Makes changes to the mad sequence and its users.
 void MadSequenceInfo::processCandidates() {
-  ASSERT_USER(isSafe(), "not safe for ACC");
-  ASSERT_USER(getSrc2Def(), "null src");
-  ASSERT_USER(!madSequence.empty(), "no mad");
+  vISA_ASSERT(isSafe(), "not safe for ACC");
+  vISA_ASSERT(getSrc2Def(), "null src");
+  vISA_ASSERT(!madSequence.empty(), "no mad");
 
   // In this function we replace all src2 to implicit ACC registers and
   // update operands in its use chain.
@@ -10105,7 +10106,7 @@ void MadSequenceInfo::processCandidates() {
     G4_INST *defInst = getLastMad();
     G4_INST *useInst = defInst->use_back().first;
     Gen4_Operand_Number opndNum = defInst->use_back().second;
-    ASSERT_USER(defInst->hasOneUse(), "bad candidate");
+    vISA_ASSERT(defInst->hasOneUse(), "bad candidate");
 
     while (true) {
       const RegionDesc *rd = builder.getRegionStride1();
@@ -10127,14 +10128,14 @@ void MadSequenceInfo::processCandidates() {
       defInst = useInst;
       useInst = defInst->use_back().first;
       opndNum = defInst->use_back().second;
-      ASSERT_USER(defInst->hasOneUse(), "bad candidate");
+      vISA_ASSERT(defInst->hasOneUse(), "bad candidate");
     }
   }
 
   // update mad sequence
   for (auto I = mad_begin(), E = mad_end(); I != E; ++I) {
     G4_INST *inst = *I;
-    ASSERT_USER(isMad(inst), "not a mad");
+    vISA_ASSERT(isMad(inst), "not a mad");
 
     const RegionDesc *rd = builder.getRegionStride1();
     G4_SrcRegRegion *accSrcOpnd = builder.createSrc(
@@ -10517,12 +10518,12 @@ void Optimizer::legalizeType() {
           bool hasFP64 = false, hasInt64 = false;
           std::tie(hasFP64, hasInt64) = uses64bType(inst);
           if (hasFP64 && hasInt64) {
-            assert(false &&
+            vISA_ASSERT(false,
                    "can't handle inst with both FP64 and INT64 at this point");
             return;
           }
           if (hasFP64 && builder.noFP64()) {
-            assert(!builder.noInt64() && "can't change DF to UQ");
+            vISA_ASSERT(!builder.noInt64(), "can't change DF to UQ");
             inst->getDst()->setType(builder, Type_UQ);
             inst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UQ);
           }
@@ -11205,9 +11206,9 @@ void Optimizer::dce() {
 }
 
 static bool retires(G4_Operand *Opnd, G4_INST *SI) {
-  assert(SI);
+  vASSERT(SI);
   const IR_Builder &builder = SI->getBuilder();
-  assert(Opnd && Opnd->isGreg());
+  vASSERT(Opnd && Opnd->isGreg());
   unsigned LB = Opnd->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
   unsigned RB = Opnd->getLinearizedEnd() / builder.numEltPerGRF<Type_UB>();
 
@@ -11239,7 +11240,7 @@ static bool retires(G4_Operand *Opnd, G4_INST *SI) {
 // Emit a self-move to retire this send.
 static G4_INST *emitRetiringMov(IR_Builder &builder, G4_BB *BB, G4_INST *SI,
                                 INST_LIST_ITER InsertBefore) {
-  assert(SI && SI->isSend());
+  vASSERT(SI && SI->isSend());
   G4_Operand *Src0 = SI->getSrc(0);
 
   unsigned RegNum =
@@ -11323,7 +11324,7 @@ void Optimizer::clearSendDependencies() {
         G4_INST *SI = LiveSends.front();
         G4_INST *MovInst = emitRetiringMov(builder, BB, SI, CurI);
         retireSends(LiveSends, MovInst);
-        assert(LiveSends.size() < MAX_SENDS);
+        vASSERT(LiveSends.size() < MAX_SENDS);
       }
 
       // If this is EOT and send queue is not full, then nothing to do.
@@ -11336,7 +11337,7 @@ void Optimizer::clearSendDependencies() {
 
     // Retire remainig live sends in this block, if any.
     for (auto SI : LiveSends) {
-      assert(SI && SI->isSend());
+      vASSERT(SI && SI->isSend());
       auto InsertBefore = BB->end();
       G4_INST *LastInst = BB->back();
       if (LastInst->isFlowControl())
@@ -11589,7 +11590,7 @@ void Optimizer::prepareNoMaskWA() {
   }
 
   G4_BB *entryBB = fg.getEntryBB();
-  assert(entryBB);
+  vASSERT(entryBB);
   G4_Declare *WATemp = nullptr;
   if (numTempInUD > 0) {
     // For temps other than WA flags. Its size will be the largest of all temps
@@ -11725,7 +11726,7 @@ void Optimizer::applyNoMaskWA() {
         //   (f1.0) mov (16|M16) ....
         if ((O->isPredicate() || O->isCondMod()) && t == Type_UW) {
           // sanity check: subreg could be 1 only if rightBound < 16
-          assert(sr == 0 || O->getRightBound() < 16);
+          vASSERT(sr == 0 || O->getRightBound() < 16);
 
           if (O->getLeftBound() >= 16) {
             // typical cases like ones in comments above
@@ -11754,7 +11755,7 @@ void Optimizer::applyNoMaskWA() {
       for (int i = 0, sz = (int)aI->getNumSrc(); i < sz; ++i) {
         G4_Operand *S = aI->getOperand(aI->getSrcOperandNum(i));
         if (S && S->isFlag()) {
-          assert(S->asSrcRegRegion()->getBase()->getAreg());
+          vASSERT(S->asSrcRegRegion()->getBase()->getAreg());
           flagUse |= getFlagBits(S);
         }
       }
@@ -11765,7 +11766,7 @@ void Optimizer::applyNoMaskWA() {
       // defs
       G4_Operand *D = aI->getDst();
       if (D && !D->isNullReg() && D->isFlag()) {
-        assert(D->asDstRegRegion()->getBase()->getAreg());
+        vASSERT(D->asDstRegRegion()->getBase()->getAreg());
         flagDef |= getFlagBits(D);
       }
       if (aI->opcode() != G4_sel &&
@@ -11923,14 +11924,14 @@ void Optimizer::applyNoMaskWA() {
   auto checkDclPReg = [&](G4_Declare *aDcl) {
     // Set lineartStar for aDcl
     G4_RegVar *RegVar = aDcl->getRegVar();
-    assert(RegVar->isPhyRegAssigned() && RegVar->getPhyReg()->isGreg());
+    vASSERT(RegVar->isPhyRegAssigned() && RegVar->getPhyReg()->isGreg());
     uint32_t regNum =
         (static_cast<G4_Greg *>(RegVar->getPhyReg()))->getRegNum();
     uint32_t subRegNum = RegVar->getPhyRegOff();
     uint32_t dclEltBytes = aDcl->getElemSize();
     uint32_t linearizedStart =
         (regNum * builder.numEltPerGRF<Type_UB>()) + (subRegNum * dclEltBytes);
-    assert(aDcl->getGRFOffsetFromR0() == linearizedStart);
+    vASSERT(aDcl->getGRFOffsetFromR0() == linearizedStart);
   };
 
   checkDclPReg(SaveDcl);
@@ -11944,7 +11945,7 @@ void Optimizer::applyNoMaskWA() {
     uint32_t var_sz =
         (aRegVar != nullptr ? aRegVar->getDeclare()->getByteSize() : 0);
     if (var_sz < aBytes) {
-      assert(false && "WATemp does not reserve enough space!");
+      vISA_ASSERT(false, "WATemp does not reserve enough space!");
     }
 #endif
   };
@@ -12028,7 +12029,7 @@ void Optimizer::applyNoMaskWA() {
                         bool &aFlagSaved, const bool aSaveFlag) {
     if (aFlagCreated) {
       // Reload the already-saved WAFlag
-      assert(aFlagSaved && "WAFlag should have been saved!");
+      vISA_ASSERT(aFlagSaved, "WAFlag should have been saved!");
       (void)createSIMD1Mov(aBB, aInsertBeforePos, aFlag, 0, SaveVar,
                            WAFlagSaveOff(aTy), aTy);
     } else {
@@ -12063,13 +12064,13 @@ void Optimizer::applyNoMaskWA() {
                                G4_RegVar *aFlagVar) {
     G4_INST *I = *aII;
     G4_Predicate *P = I->getPredicate();
-    assert((P && !I->getCondMod()) &&
+    vISA_ASSERT((P && !I->getCondMod()),
            "ICE: expect predicate and no flagModifier!");
 
     uint32_t flagBits =
         (P->getRightBound() - P->getLeftBound() + 1) + I->getMaskOffset();
-    assert((16 * aFlagVar->getDeclare()->getRootDeclare()->getWordSize()) >=
-               flagBits &&
+    vISA_ASSERT((16 * aFlagVar->getDeclare()->getRootDeclare()->getWordSize()) >=
+               flagBits,
            "ICE[vISA]: WA's flagVar should not be smaller!");
 
     G4_Type Ty = (flagBits > 16) ? Type_UD : Type_UW;
@@ -12118,11 +12119,11 @@ void Optimizer::applyNoMaskWA() {
                                      G4_RegVar *aFlagVar) {
     G4_INST *I = *aII;
     G4_CondMod *P = I->getCondMod();
-    assert((P && !I->getPredicate()) &&
+    vISA_ASSERT((P && !I->getPredicate()),
            "ICE [sel]: expect flagModifier and no predicate!");
 
     G4_DstRegRegion *dst = I->getDst();
-    assert(!isNull(dst) && "ICE: expect dst to be non-null!");
+    vISA_ASSERT(!isNull(dst), "ICE: expect dst to be non-null!");
 
     // Make sure that a temp, created in preRA, is big enough to hold data and
     // possible gap b/w data due to alignment/hw restriction.
@@ -12184,11 +12185,11 @@ void Optimizer::applyNoMaskWA() {
                                   G4_RegVar *aFlagVar) {
     G4_INST *I = *aII;
     G4_CondMod *P = I->getCondMod();
-    assert((P && !I->getPredicate()) &&
+    vISA_ASSERT((P && !I->getPredicate()),
            "ICE: expect flagModifier and no predicate!");
 
     // sel is specially handled in a different function.
-    assert(!(I->opcode() == G4_sel || I->opcode() == G4_csel));
+    vASSERT(!(I->opcode() == G4_sel || I->opcode() == G4_csel));
 
     G4_Declare *modDcl = P->getTopDcl();
     G4_RegVar *modVar = modDcl->getRegVar();
@@ -12214,7 +12215,7 @@ void Optimizer::applyNoMaskWA() {
     }
 
     const uint32_t execMask = I->getExecLaneMask();
-    assert((Ty == Type_UD || (execMask & 0xFFFF0000) == 0) &&
+    vISA_ASSERT((Ty == Type_UD || (execMask & 0xFFFF0000) == 0),
            "ICE: a flag used in an inst should not be smaller than the inst's "
            "execMask!");
     if (flagVarTy == Ty && ((execMask == 0xFFFF && Ty == Type_UW) ||
@@ -12313,8 +12314,8 @@ void Optimizer::applyNoMaskWA() {
     G4_INST *I = *aII;
     G4_Predicate *P = I->getPredicate();
     G4_CondMod *M = I->getCondMod();
-    assert((P && M) && "ICE: expect both predicate and flagModifier!");
-    assert(P->getTopDcl() == M->getTopDcl() &&
+    vISA_ASSERT((P && M), "ICE: expect both predicate and flagModifier!");
+    vISA_ASSERT(P->getTopDcl() == M->getTopDcl(),
            "ICE: both predicate and flagMod must be the same flag!");
 
     G4_Declare *modDcl = M->getTopDcl();
@@ -12376,7 +12377,7 @@ void Optimizer::applyNoMaskWA() {
     G4_INST *I = *aII;
     G4_Predicate *P = I->getPredicate();
     G4_CondMod *M = I->getCondMod();
-    assert((P == nullptr && M == nullptr) &&
+    vISA_ASSERT((P == nullptr && M == nullptr),
            "ICE: expect neither pred nor condmod!");
 
     G4_Predicate *newPred = builder.createPredicate(PredState_Plus, aFlagVar, 0,
@@ -12456,7 +12457,7 @@ void Optimizer::applyNoMaskWA() {
       bool hasFreeFlag = FlagDUInfo.getBestFlagIfAvailable(
           waInsts, ix, nextIx, WATy, WAFreg, WAFsreg);
       if (hasFreeFlag) { // found available flag in [ix, nextIx).
-        assert(nextIx > ix);
+        vASSERT(nextIx > ix);
         // Given
         //     (W) add (16|M0)  r10  r20  r30
         // Changed to
@@ -12508,7 +12509,7 @@ void Optimizer::applyNoMaskWA() {
         if (O_f != nullptr) {
           bool isValid =
               FlagDefUse::getFlagRegAndSubreg(O_f, WAFreg, WAFsreg, ty);
-          assert(isValid &&
+          vISA_ASSERT(isValid,
                  "Flag should've been assigned physical reg already!");
 
           // WAFlag must use the other flag
@@ -12519,12 +12520,12 @@ void Optimizer::applyNoMaskWA() {
                   ? (G4_Operand *)sreg
                   : (G4_Operand *)((!isNull(dreg) && dreg->isFlag()) ? dreg
                                                                      : nullptr);
-          assert(O != nullptr &&
+          vISA_ASSERT(O != nullptr,
                  "ICE: inst must have flag operands if it uses all flags!");
 
           bool isValid =
               FlagDefUse::getFlagRegAndSubreg(O, WAFreg, WAFsreg, ty);
-          assert(isValid &&
+          vISA_ASSERT(isValid,
                  "Flag should've been assigned physical reg already!");
         }
 
@@ -12561,12 +12562,12 @@ void Optimizer::applyNoMaskWA() {
           G4_Operand *O = (i == 0 ? (G4_Operand *)dreg : (G4_Operand *)sreg);
           if (!isNull(O) && O->isFlag()) {
             bool isValid = FlagDefUse::getFlagRegAndSubreg(O, fr, fsr, ty);
-            assert(isValid &&
+            vISA_ASSERT(isValid,
                    "Flag should've been assigned physical reg already!");
 
             if (fr == WAFreg) {
               // flag : either 2bytes at roff 0 or 1; or 4 bytes at roff 0
-              assert(fsr == 0 || O->getTypeSize() == 2);
+              vASSERT(fsr == 0 || O->getTypeSize() == 2);
               if (i == 0) {
                 // dst
                 G4_DstRegRegion *newDreg = builder.createDst(
@@ -12715,7 +12716,7 @@ void Optimizer::applyFusedCallWA() {
     if (int numFuncs = (int)fg.sortedFuncTable.size()) {
       for (int i = 0; i < numFuncs; ++i) {
         FuncInfo *pFInfo = fg.sortedFuncTable[i];
-        assert(pFInfo);
+        vASSERT(pFInfo);
         auto &tBBs = pFInfo->getBBList();
         auto tBI = std::find(tBBs.begin(), tBBs.end(), aLeadBB);
         if (tBI != tBBs.end()) {
@@ -12874,7 +12875,7 @@ void Optimizer::applyFusedCallWA() {
         builder.createNullDst(Type_UW), I1_Src0, Bit7, InstOpt_WriteEnable);
 
     if (builder.getuint32Option(vISA_fusedCallWA) != 1) {
-      assert(!builder.getOption(vISA_fusedCallUniform));
+      vASSERT(!builder.getOption(vISA_fusedCallUniform));
       // Just need to duplicate the call so that one is called under BigEU,
       // and the other is under SmallEU.
 
@@ -13186,14 +13187,14 @@ void Optimizer::expandMulPostSchedule() {
         continue;
       }
 
-      MUST_BE_TRUE(inst->getSaturate() == g4::NOSAT,
+      vISA_ASSERT(inst->getSaturate() == g4::NOSAT,
                    "NOSAT is expected in mul/mulh expanding");
-      MUST_BE_TRUE(inst->getCondMod() == nullptr,
+      vISA_ASSERT(inst->getCondMod() == nullptr,
                    "DW multiply does not support conditional modifiers");
-      MUST_BE_TRUE(!src0->isSrcRegRegion() ||
+      vISA_ASSERT(!src0->isSrcRegRegion() ||
                        src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
                    "no src0 modifier is expected in mul/mulh expanding");
-      MUST_BE_TRUE(!src1->isSrcRegRegion() ||
+      vISA_ASSERT(!src1->isSrcRegRegion() ||
                        src1->asSrcRegRegion()->getModifier() == Mod_src_undef,
                    "no src1 modifier is expected in mul/mulh expanding");
 
@@ -13278,17 +13279,17 @@ void Optimizer::expandMadwPostSchedule() {
       G4_Operand *src2 = inst->getSrc(2);
       G4_DstRegRegion *dst = inst->getDst();
 
-      MUST_BE_TRUE(inst->getSaturate() == g4::NOSAT,
+      vISA_ASSERT(inst->getSaturate() == g4::NOSAT,
                    "NOSAT is expected in mul/mulh/madw expanding");
-      MUST_BE_TRUE(inst->getCondMod() == nullptr,
+      vISA_ASSERT(inst->getCondMod() == nullptr,
                    "DW multiply does not support conditional modifiers");
-      MUST_BE_TRUE(!src0->isSrcRegRegion() ||
+      vISA_ASSERT(!src0->isSrcRegRegion() ||
                        src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
                    "no src0 modifier is expected in mul/mulh/madw expanding");
-      MUST_BE_TRUE(!src1->isSrcRegRegion() ||
+      vISA_ASSERT(!src1->isSrcRegRegion() ||
                        src1->asSrcRegRegion()->getModifier() == Mod_src_undef,
                    "no src1 modifier is expected in mul/mulh/madw expanding");
-      MUST_BE_TRUE(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) &&
+      vISA_ASSERT(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) &&
                        IS_DTYPE(src2->getType()),
                    "only DW-type sources are supported");
 
@@ -13494,7 +13495,7 @@ void Optimizer::fixReadSuppressioninFPU0() {
 }
 
 void Optimizer::prepareDPASFuseRSWA() {
-  MUST_BE_TRUE(builder.hasDPAS() && builder.hasDPASFuseRSWA(),
+  vISA_ASSERT(builder.hasDPAS() && builder.hasDPASFuseRSWA(),
                "Expected the function is called only when WA is specified in "
                "WATable or options");
 
@@ -13539,7 +13540,7 @@ void Optimizer::prepareDPASFuseRSWA() {
       builder.src1FirstGRFOfLastDpas.set(LB, true);
     }
   }
-  MUST_BE_TRUE(!builder.src1FirstGRFOfLastDpas.isAllset(),
+  vISA_ASSERT(!builder.src1FirstGRFOfLastDpas.isAllset(),
                "Do not expect the first GRF of src1 in last dpas inst of every "
                "BB touches all GRFs");
 

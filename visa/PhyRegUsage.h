@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef __PHYREGUSAGE_H__
 #define __PHYREGUSAGE_H__
 
+#include "Assertions.h"
 #include "BuildIR.h"
 #include "G4_IR.hpp"
 #include "G4_Opcode.h"
@@ -214,9 +215,9 @@ public:
 
   void markBusyGRF(unsigned regNum, unsigned regOff, unsigned nunits,
                    unsigned numRows, bool isPreDefinedVar) {
-    MUST_BE_TRUE(numRows > 0 && nunits > 0, ERROR_INTERNAL_ARGUMENT);
+    vISA_ASSERT(numRows > 0 && nunits > 0, ERROR_INTERNAL_ARGUMENT);
 
-    MUST_BE_TRUE((regNum + numRows <= maxGRFCanBeUsed) || isPreDefinedVar,
+    vISA_ASSERT((regNum + numRows <= maxGRFCanBeUsed) || isPreDefinedVar,
                  ERROR_UNKNOWN);
 
     //
@@ -240,7 +241,7 @@ public:
 
   void markBusyAddress(unsigned regNum, unsigned regOff, unsigned nunits,
                        unsigned numRows) {
-    MUST_BE_TRUE(regNum == 0 && regOff + nunits <= getNumAddrRegisters(),
+    vISA_ASSERT(regNum == 0 && regOff + nunits <= getNumAddrRegisters(),
                  ERROR_UNKNOWN);
     for (unsigned i = regOff; i < regOff + nunits; i++)
       FPR.availableAddrs[i] = false;
@@ -272,7 +273,7 @@ public:
   void updateRegUsage(LiveRange *lr);
 
   uint32_t getSubregBitMask(uint32_t start, uint32_t num) const {
-    MUST_BE_TRUE(num > 0 && start + num <= builder.numEltPerGRF<Type_UW>(),
+    vISA_ASSERT(num > 0 && start + num <= builder.numEltPerGRF<Type_UW>(),
                  "illegal number of words");
     uint32_t mask = ((1 << num) - 1) << start;
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "LoopAnalysis.h"
+#include "Assertions.h"
 #include "BitSet.h"
 #include "G4_BB.hpp"
 #include "G4_Kernel.hpp"
@@ -21,7 +22,7 @@ G4_BB *ImmDominator::InterSect(G4_BB *bb, int i, int k) {
 
   while ((finger1 != finger2) && (finger1 != nullptr) && (finger2 != nullptr)) {
     if (finger1->getPreId() == finger2->getPreId()) {
-      assert(finger1 == kernel.fg.getEntryBB() ||
+      vASSERT(finger1 == kernel.fg.getEntryBB() ||
              finger2 == kernel.fg.getEntryBB());
       return kernel.fg.getEntryBB();
     }
@@ -119,7 +120,7 @@ void ImmDominator::runIDOM() {
           iDoms[bb->getId()] = (*bb->Preds.begin());
           change = true;
         } else {
-          assert(iDoms[bb->getId()] == (*bb->Preds.begin()));
+          vASSERT(iDoms[bb->getId()] == (*bb->Preds.begin()));
         }
       } else {
         G4_BB *tmpIdom = nullptr;
@@ -259,7 +260,7 @@ void PostDom::run() {
     }
   }
 
-  MUST_BE_TRUE(exitBB != nullptr, "Exit BB not found!");
+  vISA_ASSERT(exitBB != nullptr, "Exit BB not found!");
 
   postDoms[exitBB->getId()] = {exitBB};
   std::unordered_set<G4_BB *> allBBs(kernel.fg.cbegin(), kernel.fg.cend());
@@ -668,7 +669,7 @@ void LoopDetection::DFSTraverse(const G4_BB *startBB, unsigned &preId,
       if (getPreId(returnBB) == UINT_MAX) {
         traversalStack.push(returnBB);
       } else {
-        MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
+        vISA_ASSERT(false, ERROR_FLOWGRAPH);
       }
     } else if (bb->getBBType() & G4_BB_EXIT_TYPE) {
       // Skip
@@ -799,7 +800,7 @@ void LoopDetection::addLoop(Loop *newLoop, Loop *aParent) {
       }
       return;
     } else if (newLoop->fullSuperset(sibling)) {
-      MUST_BE_TRUE(false, "Not expecting to see parent loop here");
+      vISA_ASSERT(false, "Not expecting to see parent loop here");
       return;
     }
   }
@@ -828,7 +829,7 @@ void LoopDetection::run() {
 }
 
 void LoopDetection::computeInnermostLoops() {
-  MUST_BE_TRUE(innerMostLoop.size() == 0, "expecting empty map");
+  vISA_ASSERT(innerMostLoop.size() == 0, "expecting empty map");
 
   for (auto &loop : allLoops) {
     for (const auto *bb : loop.getBBs()) {

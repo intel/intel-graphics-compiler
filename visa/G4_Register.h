@@ -50,15 +50,15 @@ public:
   bool isPhyAreg() const { return getKind() == VK_phyAReg; }
 
   G4_RegVar *asRegVar() const {
-    MUST_BE_TRUE(isRegVar(), ERROR_UNKNOWN);
+    vISA_ASSERT(isRegVar(), ERROR_UNKNOWN);
     return (G4_RegVar *)this;
   }
   G4_Greg *asGreg() const {
-    MUST_BE_TRUE(isPhyGreg(), ERROR_UNKNOWN);
+    vISA_ASSERT(isPhyGreg(), ERROR_UNKNOWN);
     return (G4_Greg *)this;
   }
   G4_Areg *asAreg() const {
-    MUST_BE_TRUE(isPhyAreg(), ERROR_UNKNOWN);
+    vISA_ASSERT(isPhyAreg(), ERROR_UNKNOWN);
     return (G4_Areg *)this;
   }
 
@@ -306,7 +306,7 @@ public:
   unsigned getByteAddr(const IR_Builder &builder) const;
   unsigned getPhyRegOff() const { return reg.subRegOff; }
   void setPhyReg(G4_VarBase *pr, unsigned off) {
-    MUST_BE_TRUE(pr == NULL || pr->isPhyReg(), ERROR_UNKNOWN);
+    vISA_ASSERT(pr == NULL || pr->isPhyReg(), ERROR_UNKNOWN);
     reg.phyReg = pr;
     reg.subRegOff = off;
   }
@@ -391,8 +391,8 @@ class G4_RegVarTmp : public G4_RegVar {
 public:
   G4_RegVarTmp(G4_Declare *d, G4_RegVar *base)
       : G4_RegVar(d, RegVarType::GRFSpillTmp), baseRegVar(base) {
-    assert(base->isRegVarTransient() == false);
-    assert(base == base->getBaseRegVar());
+    vASSERT(base->isRegVarTransient() == false);
+    vASSERT(base == base->getBaseRegVar());
   }
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
@@ -558,7 +558,7 @@ inline bool G4_VarBase::isRegAllocPartaker() const {
 
 // Inlined G4_RegVar methods.
 inline unsigned G4_RegVar::getLocId() const {
-  MUST_BE_TRUE(type == RegVarType::AddrSpillLoc,
+  vISA_ASSERT(type == RegVarType::AddrSpillLoc,
                "Unexpected type in getLocId()");
 
   G4_RegVarAddrSpillLoc *addrSpillLoc =

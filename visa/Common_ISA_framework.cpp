@@ -69,7 +69,7 @@ int CisaInst::createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size,
       std::string msg = "Number of operands mismatch between CISA instruction "
                         "description and value passed in.";
       std::cerr << msg << ": " << descOpndCount << " " << numOpnds << "\n";
-      MUST_BE_TRUE(false, msg);
+      vISA_ASSERT(false, msg);
     }
   }
 
@@ -108,7 +108,7 @@ int CisaInst::createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size,
 
   for (int i = 0; i < numOpnds; i++) {
     if (opnd[i] == NULL) {
-      assert(0);
+      vASSERT(false);
       std::cerr << "ONE OF THE OPERANDS IS NULL!\n";
       return VISA_FAILURE;
     }
@@ -120,7 +120,7 @@ int CisaInst::createCisaInstruction(ISA_Opcode opcode, unsigned char exec_size,
     int status = verifier->verifyInstruction(&m_cisa_instruction);
     if (status == VISA_FAILURE) {
       std::cerr << verifier->getLastErrorFound().value_or("");
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
   }
@@ -138,7 +138,7 @@ CisaBinary::CisaBinary(CISA_IR_Builder *builder)
 
 void CisaBinary::initKernel(int kernelIndex, VISAKernelImpl *kernel) {
   unsigned functionIndex = 0; // separating function and kernel index
-  MUST_BE_TRUE(kernelIndex <
+  vISA_ASSERT(kernelIndex <
                        (m_upper_bound_kernels + m_upper_bound_functions) &&
                    kernelIndex >= 0,
                "Invalid kernelIndex in CisaBinary initialization.\n");
@@ -206,7 +206,7 @@ void CisaBinary::initKernel(int kernelIndex, VISAKernelImpl *kernel) {
 
 unsigned long CisaBinary::writeInToCisaHeaderBuffer(const void *value,
                                                     int size) {
-  MUST_BE_TRUE(m_bytes_written_cisa_buffer + size <= m_header_size,
+  vISA_ASSERT(m_bytes_written_cisa_buffer + size <= m_header_size,
                "Size of CISA instructions header buffer is exceeded.");
 
   memcpy_s(&m_header_buffer[m_bytes_written_cisa_buffer], size, value, size);
@@ -271,13 +271,13 @@ int CisaBinary::finalizeCisaBinary() {
     m_total_size += m_header.kernels[i].size;
     m_total_size += m_header.kernels[i].binary_size;
 
-    assert(m_header.kernels[i].variable_reloc_symtab.num_syms == 0 &&
+    vISA_ASSERT(m_header.kernels[i].variable_reloc_symtab.num_syms == 0,
            "variable relocation not supported");
     writeInToCisaHeaderBuffer(
         &m_header.kernels[i].variable_reloc_symtab.num_syms,
         sizeof(m_header.kernels[i].variable_reloc_symtab.num_syms));
 
-    assert(m_header.kernels[i].function_reloc_symtab.num_syms == 0 &&
+    vISA_ASSERT(m_header.kernels[i].function_reloc_symtab.num_syms == 0,
            "function relocation not supported");
     writeInToCisaHeaderBuffer(
         &m_header.kernels[i].function_reloc_symtab.num_syms,
@@ -331,13 +331,13 @@ int CisaBinary::finalizeCisaBinary() {
     writeInToCisaHeaderBuffer(&m_header.functions[i].size,
                               sizeof(m_header.functions[i].size));
 
-    assert(m_header.functions[i].variable_reloc_symtab.num_syms == 0 &&
+    vISA_ASSERT(m_header.functions[i].variable_reloc_symtab.num_syms == 0,
            "variable relocation not supported");
     writeInToCisaHeaderBuffer(
         &m_header.functions[i].variable_reloc_symtab.num_syms,
         sizeof(m_header.functions[i].variable_reloc_symtab.num_syms));
 
-    assert(m_header.functions[i].function_reloc_symtab.num_syms == 0 &&
+    vISA_ASSERT(m_header.functions[i].function_reloc_symtab.num_syms == 0,
            "function relocation not supported");
     writeInToCisaHeaderBuffer(
         &m_header.functions[i].function_reloc_symtab.num_syms,
@@ -385,7 +385,7 @@ void CisaBinary::writeIsaAsmFile(std::string filename,
   isaasm.open(filename.c_str());
 
   if (isaasm.fail()) {
-    MUST_BE_TRUE(false, "Failed to write CISA ASM to file");
+    vISA_ASSERT(false, "Failed to write CISA ASM to file");
   }
 
   isaasm << isaasmStr;
@@ -468,7 +468,7 @@ const VISAKernelImpl *CisaBinary::getFmtKernelForISADump(
   if (!kernel->getIsPayload())
     return kernel;
 
-  assert(!kernels.empty());
+  vASSERT(!kernels.empty());
   VISAKernelImpl *fmtKernel = kernels.front();
   for (VISAKernelImpl *k : kernels) {
     if (k == kernel)
@@ -561,7 +561,7 @@ int CisaBinary::isaDump(const std::list<VISAKernelImpl *> &kernels,
         asmName << "_f";
         asmName << funcId;
       } else {
-        assert(kTemp->getIsPayload());
+        vASSERT(kTemp->getIsPayload());
         asmName << mainKernel->getOutputAsmPath();
         asmName << "_payload";
       }

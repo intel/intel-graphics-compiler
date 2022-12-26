@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "LocalRA.h"
+#include "Assertions.h"
 #include "DebugInfo.h"
 #include "common.h"
+#include "LocalRA.h"
 
 #include <fstream>
 #include <tuple>
@@ -52,13 +53,13 @@ BankAlign LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl) {
 bool LocalRA::hasBackEdge() {
   for (auto curBB : kernel.fg) {
 
-    MUST_BE_TRUE(curBB->size() > 0 || curBB->Succs.size() > 1,
+    vISA_ASSERT(curBB->size() > 0 || curBB->Succs.size() > 1,
                  "Error in detecting back-edge: Basic block found with no inst "
                  "list and multiple successors.");
 
     if (curBB->size() > 0) {
       for (auto succ : curBB->Succs) {
-        MUST_BE_TRUE(succ->size() > 0,
+        vISA_ASSERT(succ->size() > 0,
                      "Error in detecting back-edge: Destination basic block of "
                      "a jmp has no instructions.");
         if (curBB->getId() >= succ->getId()) {
@@ -971,7 +972,7 @@ void LocalRA::localRAOptReport() {
 G4_Declare *GetTopDclFromRegRegion(G4_Operand *opnd) {
   G4_Declare *dcl = nullptr;
 
-  MUST_BE_TRUE(opnd->isRegRegion(),
+  vISA_ASSERT(opnd->isRegRegion(),
                "Operand is not a register region so cannot have a top dcl");
   G4_VarBase *base = opnd->getBase();
 
@@ -1051,7 +1052,7 @@ LocalLiveRange *GlobalRA::GetOrCreateLocalLiveRange(G4_Declare *topdcl) {
     setLocalLR(topdcl, lr);
   }
 
-  MUST_BE_TRUE(lr != NULL, "Local LR could not be created");
+  vISA_ASSERT(lr != NULL, "Local LR could not be created");
   return lr;
 }
 
@@ -1065,7 +1066,7 @@ void LocalRA::markReferencesInOpnd(G4_Operand *opnd, bool isEOT,
     if (topdcl &&
         (topdcl->getRegFile() == G4_GRF || topdcl->getRegFile() == G4_INPUT)) {
       // Handle GRF here
-      MUST_BE_TRUE(topdcl->getAliasDeclare() == NULL, "Not topdcl");
+      vISA_ASSERT(topdcl->getAliasDeclare() == NULL, "Not topdcl");
       LocalLiveRange *lr = gra.GetOrCreateLocalLiveRange(topdcl);
       lr->recordRef(curBB);
 
@@ -1109,7 +1110,7 @@ void LocalRA::markReferencesInOpnd(G4_Operand *opnd, bool isEOT,
     while (topdcl->getAliasDeclare() != NULL)
       topdcl = topdcl->getAliasDeclare();
 
-    MUST_BE_TRUE(topdcl != NULL, "Top dcl was null for addr exp opnd");
+    vISA_ASSERT(topdcl != NULL, "Top dcl was null for addr exp opnd");
 
     LocalLiveRange *lr = gra.GetOrCreateLocalLiveRange(topdcl);
     lr->recordRef(curBB);
@@ -1233,7 +1234,7 @@ void LocalRA::calculateInputIntervals() {
               !builder.isPreDefArg(topdcl)) {
             unsigned int lastRef = 0;
 
-            MUST_BE_TRUE(
+            vISA_ASSERT(
                 lr->isGRFRegAssigned(),
                 "Input variable has no pre-assigned physical register");
 
@@ -1282,7 +1283,7 @@ void LocalRA::calculateInputIntervals() {
                 !builder.isPreDefArg(topdcl)) {
               unsigned int lastRef = 0;
 
-              MUST_BE_TRUE(
+              vISA_ASSERT(
                   lr->isGRFRegAssigned(),
                   "Input variable has no pre-assigned physical register");
 
@@ -1344,7 +1345,7 @@ void LocalRA::calculateInputIntervals() {
       unsigned int numWords = curDcl->getWordSize();
       for (unsigned int i = 0; i < numWords; ++i, ++idx) {
         if (inputRegLastRef[idx] != UINT_MAX) {
-          MUST_BE_TRUE(
+          vISA_ASSERT(
               false,
               "Invalid output variable with overlapping input variable!");
         }
@@ -1453,7 +1454,7 @@ void LocalRA::calculateLiveIntervals(
               continue;
             }
 
-            MUST_BE_TRUE(idx > 0,
+            vISA_ASSERT(idx > 0,
                          "Candidate use found in first inst of basic block");
 
             if ((builder.WaDisableSendSrcDstOverlap() &&
@@ -1517,7 +1518,7 @@ void LocalRA::printAddressTakenDecls() {
     G4_Declare *curDcl = (*dcl_it);
 
     if (curDcl->getAliasDeclare() != NULL) {
-      MUST_BE_TRUE(gra.getLocalLR(curDcl) == NULL,
+      vISA_ASSERT(gra.getLocalLR(curDcl) == NULL,
                    "Local LR found for alias declare");
       continue;
     }
@@ -1540,7 +1541,7 @@ void LocalRA::printLocalRACandidates() {
     G4_Declare *curDcl = (*dcl_it);
 
     if (curDcl->getAliasDeclare() != NULL) {
-      MUST_BE_TRUE(gra.getLocalLR(curDcl) == NULL,
+      vISA_ASSERT(gra.getLocalLR(curDcl) == NULL,
                    "Local LR found for alias declare");
       continue;
     }
@@ -1700,7 +1701,7 @@ bool LocalLiveRange::isLiveRangeGlobal() {
 }
 
 bool LocalLiveRange::isGRFRegAssigned() {
-  MUST_BE_TRUE(topdcl != NULL, "Top dcl not set");
+  vISA_ASSERT(topdcl != NULL, "Top dcl not set");
   G4_RegVar *rvar = topdcl->getRegVar();
   bool isPhyRegAssigned = false;
 
@@ -1736,7 +1737,7 @@ unsigned int LocalLiveRange::getSizeInWords() {
 
 // ********* PhyRegsLocalRA class implementation *********
 void PhyRegsLocalRA::setGRFBusy(int which) {
-  MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
+  vISA_ASSERT(isGRFAvailable(which), "Invalid register");
 
   // all 1 word mask based on register size
   uint64_t wordMask = (1ULL << (builder.getGRFSize() / 2)) - 1;
@@ -1759,8 +1760,8 @@ void PhyRegsLocalRA::setGRFBusy(int which, int howmany) {
 }
 
 void PhyRegsLocalRA::setWordBusy(int whichgrf, int word) {
-  MUST_BE_TRUE(isGRFAvailable(whichgrf), "Invalid register");
-  MUST_BE_TRUE(word <= (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
+  vISA_ASSERT(isGRFAvailable(whichgrf), "Invalid register");
+  vISA_ASSERT(word <= (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
 
   if (twoBanksRA) {
     if (regBusyVector[whichgrf] == 0) {
@@ -1782,7 +1783,7 @@ void PhyRegsLocalRA::setWordBusy(int whichgrf, int word, int howmany) {
 }
 
 void PhyRegsLocalRA::setGRFNotBusy(int which, int instID) {
-  MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
+  vISA_ASSERT(isGRFAvailable(which), "Invalid register");
 
   regBusyVector[which] = 0;
 
@@ -1803,8 +1804,8 @@ void PhyRegsLocalRA::setGRFNotBusy(int which, int instID) {
 }
 
 void PhyRegsLocalRA::setWordNotBusy(int whichgrf, int word, int instID) {
-  MUST_BE_TRUE(isGRFAvailable(whichgrf), "Invalid register");
-  MUST_BE_TRUE(word <= (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
+  vISA_ASSERT(isGRFAvailable(whichgrf), "Invalid register");
+  vISA_ASSERT(word <= (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
 
   if (twoBanksRA) {
     if (whichgrf < SECOND_HALF_BANK_START_GRF) {
@@ -1829,9 +1830,9 @@ void PhyRegsLocalRA::setWordNotBusy(int whichgrf, int word, int instID) {
 }
 
 inline bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word) {
-  MUST_BE_TRUE(isGRFAvailable(whichgrf), "Invalid register");
+  vISA_ASSERT(isGRFAvailable(whichgrf), "Invalid register");
 
-  MUST_BE_TRUE(word <= (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
+  vISA_ASSERT(word <= (int)builder.numEltPerGRF<Type_UW>(), "Invalid word");
   bool isBusy = ((regBusyVector[whichgrf] & (WORD_BUSY << word)) != 0);
   return isBusy;
 }
@@ -2169,7 +2170,7 @@ int PhyRegsManager::findFreeRegs(int size, BankAlign align,
       if (size % builder.numEltPerGRF<Type_UW>() == 0) {
         availableRegs.setGRFBusy(regnum, nrows);
       } else {
-        MUST_BE_TRUE(
+        vISA_ASSERT(
             !hintSet,
             "Not expecting split for variable with alignment != n*sizeof(GRF)");
         availableRegs.setGRFBusy(regnum, nrows - 1);
@@ -2177,7 +2178,7 @@ int PhyRegsManager::findFreeRegs(int size, BankAlign align,
       }
     }
   } else {
-    MUST_BE_TRUE(!hintSet, "Not expecting split with sub-GRF granularity");
+    vISA_ASSERT(!hintSet, "Not expecting split with sub-GRF granularity");
     found = availableRegs.findFreeSingleReg(startReg, size, align, subalign,
                                             regnum, subregnum, endReg, instID,
                                             isHybridAlloc, forward, forbidden);
@@ -2320,7 +2321,7 @@ void LinearScan::run(G4_BB *bb, IR_Builder &builder, LLR_USE_MAP &LLRUseMap) {
                     lr->getTopDcl()->getElemSize() / 2) -
                    1;
 
-      MUST_BE_TRUE(((unsigned int)startregnum + lr->getTopDcl()->getNumRows() -
+      vISA_ASSERT(((unsigned int)startregnum + lr->getTopDcl()->getNumRows() -
                     1) < numRegLRA,
                    "Linear scan allocated unavailable physical GRF");
 
@@ -2719,7 +2720,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
                     newSrcDcl->copyAlign(oldSrcDcl);
                     aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
-                    MUST_BE_TRUE(aliasOldSrcDcl != NULL, "Invalid alias decl");
+                    vISA_ASSERT(aliasOldSrcDcl != NULL, "Invalid alias decl");
                     newSrcDcl->setAliasDeclare(aliasOldSrcDcl,
                                                oldSrcDcl->getAliasOffset());
                   }
@@ -2758,7 +2759,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
                     newSrcDcl->copyAlign(oldSrcDcl);
                     aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
-                    MUST_BE_TRUE(aliasOldSrcDcl != NULL, "Invalid alias decl");
+                    vISA_ASSERT(aliasOldSrcDcl != NULL, "Invalid alias decl");
                     newSrcDcl->setAliasDeclare(aliasOldSrcDcl,
                                                oldSrcDcl->getAliasOffset());
                   }
@@ -2797,7 +2798,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
 #ifdef _DEBUG
   if (gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl())) {
     int s;
-    MUST_BE_TRUE(lr->getPhyReg(s)->asGreg()->getRegNum() == lr->getHint() ||
+    vISA_ASSERT(lr->getPhyReg(s)->asGreg()->getRegNum() == lr->getHint() ||
                      !lr->hasHint(),
                  "hint not honored for child dcl");
   }
@@ -2830,7 +2831,7 @@ void LinearScan::coalesceSplit(LocalLiveRange *lr) {
 #ifdef _DEBUG
     int s;
     if (l->getAssigned())
-      MUST_BE_TRUE(!l->getPhyReg(s), "split child already allocated");
+      vISA_ASSERT(!l->getPhyReg(s), "split child already allocated");
 #endif
     for (unsigned int i = regnum + (siblingNum * sizePerChild);
          i != regnum + ((siblingNum + 1) * sizePerChild); i++) {
@@ -3016,7 +3017,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
     coalesceSplit(lr);
   }
 
-  MUST_BE_TRUE(!gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl()) ||
+  vISA_ASSERT(!gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl()) ||
                    !lr->hasHint(),
                "not expecting to use this allocate method for split dcl");
 
@@ -3033,7 +3034,7 @@ void LinearScan::freeAllocedRegs(LocalLiveRange *lr, bool setInstID) {
 
   G4_VarBase *preg = lr->getPhyReg(sregnum);
 
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       preg != NULL,
       "Physical register not assigned to live range. Cannot free regs.");
 
@@ -3054,8 +3055,8 @@ void LinearScan::freeAllocedRegs(LocalLiveRange *lr, bool setInstID) {
 // Mark GRFs as used
 void PhyRegSummary::markPhyRegs(G4_VarBase *pr, unsigned int size) {
   // Assume that pr is aligned to GRF start if it cannot fit in a single GRF
-  MUST_BE_TRUE(pr->isGreg(), "Expecting GRF as operand");
-  MUST_BE_TRUE(builder != nullptr, "ir builder should be set");
+  vISA_ASSERT(pr->isGreg(), "Expecting GRF as operand");
+  vISA_ASSERT(builder != nullptr, "ir builder should be set");
 
   int numGRFs = size / builder->numEltPerGRF<Type_UW>();
   unsigned int regnum = pr->asGreg()->getRegNum();

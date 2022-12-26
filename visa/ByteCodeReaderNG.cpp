@@ -119,7 +119,7 @@ template <typename T>
 inline void readVarBytes(uint8_t major, uint8_t minor, T &dst,
                          uint32_t &bytePos, const char *buf,
                          FIELD_TYPE field = FIELD_TYPE::DECL) {
-  static_assert(std::is_integral<T>::value &&
+  vISA_ASSERT(std::is_integral<T>::value &&
                     (sizeof(T) == 2 || sizeof(T) == 4),
                 "T should be short or int");
   uint32_t version = getVersionAsInt(major, minor);
@@ -212,7 +212,7 @@ static void readExecSizeNG(unsigned &bytePos, const char *buf,
 
 template <typename T>
 T readPrimitiveOperandNG(unsigned &bytePos, const char *buf) {
-  MUST_BE_TRUE(buf, "Argument Exception: argument buf  is NULL.");
+  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
   T data = 0;
   READ_CISA_FIELD(data, T, bytePos, buf);
   return data;
@@ -242,7 +242,7 @@ static VISA_PredOpnd *readPredicateOperandNG(unsigned &bytePos, const char *buf,
 
 static VISA_RawOpnd *readRawOperandNG(unsigned &bytePos, const char *buf,
                                       RoutineContainer &container) {
-  MUST_BE_TRUE(buf, "Argument Exception: argument buf  is NULL.");
+  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
   uint8_t majorVersion = container.majorVersion;
   uint8_t minorVersion = container.minorVersion;
 
@@ -283,7 +283,7 @@ static VISA_RawOpnd *readRawOperandNG(unsigned &bytePos, const char *buf,
 
 static VISA_PredVar *readPreVarNG(unsigned &bytePos, const char *buf,
                                   RoutineContainer &container) {
-  MUST_BE_TRUE(buf, "Argument Exception: argument buf  is NULL.");
+  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
 
   uint8_t tag = 0;
   READ_CISA_FIELD(tag, uint8_t, bytePos, buf);
@@ -309,7 +309,7 @@ static uint32_t readOtherOperandNG(unsigned &bytePos, const char *buf,
   } v;
 
   unsigned bsize = CISATypeTable[visatype].typeSize;
-  assert(bsize <= 4 && " Unsupported other_opnd whose size > 4 bytes!");
+  vISA_ASSERT(bsize <= 4, " Unsupported other_opnd whose size > 4 bytes!");
   v.other_opnd = 0;
   for (int i = 0; i < (int)bsize; ++i) {
     v.b[i] = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
@@ -322,7 +322,7 @@ static VISA_VectorOpnd *readVectorOperandNG(unsigned &bytePos, const char *buf,
                                             RoutineContainer &container,
                                             unsigned int size, bool isDst,
                                             bool isAddressoff = false) {
-  MUST_BE_TRUE(buf, "Argument Exception: argument buf  is NULL.");
+  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
 
   VISAKernelImpl *kernelBuilderImpl =
       ((VISAKernelImpl *)container.kernelBuilder);
@@ -625,7 +625,7 @@ static void readInstructionCommonNG(unsigned &bytePos, const char *buf,
       } else if (i == 4 && opcode == ISA_BFN) {
         // read bfn booleanFuncCtrl from the last opnd
         int opnd_ix = i + opnd_skip;
-        assert(inst_desc->opnd_desc[opnd_ix].opnd_type == OPND_OTHER &&
+        vISA_ASSERT(inst_desc->opnd_desc[opnd_ix].opnd_type == OPND_OTHER,
                "BFN: FuncCtrl opnd_desc's type should be OPND_OTHER!");
         VISA_Type visatype = (VISA_Type)inst_desc->opnd_desc[opnd_ix].data_type;
         bfn_func_ctrl = readOtherOperandNG(bytePos, buf, visatype);
@@ -694,7 +694,7 @@ static void readInstructionCommonNG(unsigned &bytePos, const char *buf,
     break;
   }
   case ISA_Inst_SIMD_Flow: {
-    assert(opcode == ISA_GOTO && "expect goto instruction");
+    vISA_ASSERT(opcode == ISA_GOTO, "expect goto instruction");
     readExecSizeNG(bytePos, buf, esize, emask, container);
     VISA_PredOpnd *pred = hasPredicate(opcode)
                               ? readPredicateOperandNG(bytePos, buf, container)
@@ -743,7 +743,7 @@ static void readInstructionCommonNG(unsigned &bytePos, const char *buf,
     break;
   }
   default: {
-    assert(false && "Invalid common instruction type.");
+    vISA_ASSERT_UNREACHABLE("Invalid common instruction type.");
   }
   }
 }
@@ -894,7 +894,7 @@ static void readInstructionDataportNG(unsigned &bytePos, const char *buf,
       VISA_Exec_Size esize = EXEC_SIZE_ILLEGAL;
       readExecSizeNG(bytePos, buf, esize, emask, container);
 
-      MUST_BE_TRUE(esize == 0, "Unsupported number of elements for "
+      vISA_ASSERT(esize == 0, "Unsupported number of elements for "
                                "ISA_SCATTER4_TYPED/ISA_GATHER4_TYPED.");
       esize = EXEC_SIZE_8;
 
@@ -1216,7 +1216,7 @@ static void readInstructionControlFlow(unsigned &bytePos, const char *buf,
     readExecSizeNG(bytePos, buf, esize, emask, container);
 
     uint8_t numLabels = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-    MUST_BE_TRUE(0 < numLabels && numLabels < 33,
+    vISA_ASSERT(0 < numLabels && numLabels < 33,
                  "Number of labels in SWITCHJMP must be between 1 and 32.");
 
     VISA_VectorOpnd *index =
@@ -1427,7 +1427,7 @@ static void readInstructionMisc(unsigned &bytePos, const char *buf,
     VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
 
     // sanity check
-    assert(inst_desc->opnd_desc[5].opnd_type == OPND_OTHER &&
+    vISA_ASSERT(inst_desc->opnd_desc[5].opnd_type == OPND_OTHER,
            "opnd_desc's type at index = 5 should be OPND_OTHER!");
 
     VISA_Type visatype = (VISA_Type)inst_desc->opnd_desc[5].data_type;
@@ -1754,7 +1754,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
     uint8_t numParams = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-    MUST_BE_TRUE(numParams < 16,
+    vISA_ASSERT(numParams < 16,
                  "number of parameters for 3D_Sample should be < 16");
 
     VISA_RawOpnd *params[16];
@@ -1799,7 +1799,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
     uint8_t numParams = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-    MUST_BE_TRUE(numParams < 16,
+    vISA_ASSERT(numParams < 16,
                  "number of parameters for 3D_Load should be < 16");
 
     VISA_RawOpnd *params[16];
@@ -1839,7 +1839,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
     uint8_t numParams = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-    MUST_BE_TRUE(numParams < 8,
+    vISA_ASSERT(numParams < 8,
                  "number of parameters for 3D_Gather4 should be < 8");
 
     VISA_RawOpnd *params[16];
@@ -2366,14 +2366,14 @@ static void readInstructionLSC(unsigned &bytePos, const char *buf,
       readInstructionLscTyped(subOpcode, bytePos, buf, container);
     }
   } else {
-    MUST_BE_TRUE(false, "invalid LSC op");
+    vISA_ASSERT(false, "invalid LSC op");
   }
 }
 
 void readInstructionNG(unsigned &bytePos, const char *buf,
                        RoutineContainer &container, unsigned instID) {
   ISA_Opcode opcode = (ISA_Opcode)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-  MUST_BE_TRUE(opcode < ISA_NUM_OPCODE,
+  vISA_ASSERT(opcode < ISA_NUM_OPCODE,
                "Illegal or unimplemented CISA opcode.");
 
   // cout << "Opcode: " << ISA_Inst_Table[opcode].str << endl;
@@ -2422,7 +2422,7 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned &bytePos,
                              const char *buf, kernel_format_t &header,
                              attribute_info_t *attributes, int numAttributes,
                              vISA::Mem_Manager &mem) {
-  MUST_BE_TRUE(buf, "Argument Exception: argument buf    is NULL.");
+  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf    is NULL.");
 
   for (int i = 0; i < numAttributes; i++) {
     ASSERT_USER(attributes,
@@ -2466,7 +2466,7 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned &bytePos,
     } else {
       std::string errMsg(attrName);
       errMsg += " : unsupported attribute!";
-      MUST_BE_TRUE(false, errMsg);
+      vISA_ASSERT(false, errMsg);
     }
   }
 }
@@ -2575,7 +2575,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
         header.variables[declID].alias_scope_specifier;
     int status = VISA_SUCCESS;
 
-    assert(aliasScopeSpecifier == 0 &&
+    vISA_ASSERT(aliasScopeSpecifier == 0,
            "file scope variables are no longer supported");
 
     {
@@ -2725,7 +2725,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
   // read sampler variables
   READ_CISA_FIELD(header.sampler_count, uint8_t, bytePos, buf);
   // up to 31 pre-defined samplers are allowed
-  MUST_BE_TRUE(header.sampler_count < COMMON_ISA_MAX_NUM_SAMPLERS,
+  vISA_ASSERT(header.sampler_count < COMMON_ISA_MAX_NUM_SAMPLERS,
                "number of vISA samplers exceeds the max");
   header.samplers = (state_info_t *)mem.alloc(sizeof(state_info_t) *
                                               COMMON_ISA_MAX_NUM_SAMPLERS);
@@ -2817,7 +2817,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
 
   int vmeCount = 0;
   READ_CISA_FIELD(vmeCount, uint8_t, bytePos, buf);
-  assert(vmeCount == 0 && "VME variable is no longer supported");
+  vISA_ASSERT(vmeCount == 0, "VME variable is no longer supported");
   header.vme_count = 0;
 
   // read input variables
@@ -2922,7 +2922,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
 bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
                      std::vector<VISAKernel *> &kernels, const char *kernelName,
                      unsigned int majorVersion, unsigned int minorVersion) {
-  MUST_BE_TRUE(buf, "Argument Exception: argument buf  is NULL.");
+  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
 
   unsigned bytePos = 0;
   vISA::Mem_Manager mem(4096);

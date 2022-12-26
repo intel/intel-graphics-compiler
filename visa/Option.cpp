@@ -42,7 +42,7 @@ static std::string makePlatformsString() {
       ss << ", ";
     }
     const char *name = vISA::PlatformInfo::getGenxPlatformString(platforms[i]);
-    assert(name);
+    vASSERT(name);
     ss << name;
   }
   return ss.str();
@@ -64,10 +64,10 @@ static std::string makePlatformsString() {
 */
 bool Options::parseOptions(int argc, const char *argv[]) {
   int startPos = 0;
-  assert(!argToOption.empty() && "Must be initialized first!");
+  vISA_ASSERT(!argToOption.empty(), "Must be initialized first!");
 
 #define MAX_ARGC 128
-  MUST_BE_TRUE(argc < MAX_ARGC, "too many options for vISA builder");
+  vISA_ASSERT(argc < MAX_ARGC, "too many options for vISA builder");
 
   for (int i = 0; i < argc; ++i) {
     argString << argv[i] << " ";
@@ -332,7 +332,7 @@ bool Options::parseOptions(int argc, const char *argv[]) {
   }
 
   if (m_vISAOptions.isArgSetByUser(vISA_LabelStr)) {
-    ASSERT_USER(std::string_view(m_vISAOptions.getCstr(vISA_LabelStr)).size() <
+    vISA_ASSERT(std::string_view(m_vISAOptions.getCstr(vISA_LabelStr)).size() <
                     MAX_LABEL_STR_LENGTH,
                 "String length for unique labels is too long. Should be no "
                 "larger than 8.");
@@ -447,27 +447,27 @@ void Options::initialize_m_vISAOptions(void) {
 // It is useful for Cstr or Int arguments because getOption() will give us
 // the value, not whether they are set or not.
 bool Options::isOptionSetByUser(vISAOptions option) const {
-  ASSERT_USER(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
+  vISA_ASSERT(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
   return m_vISAOptions.isArgSetByUser(option);
 }
 
 void Options::getOption(vISAOptions option, bool &value) const {
-  ASSERT_USER(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
+  vISA_ASSERT(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
   value = m_vISAOptions.getBool(option);
 }
 
 bool Options::getOption(vISAOptions option) const {
-  ASSERT_USER(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
+  vISA_ASSERT(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
   return m_vISAOptions.getBool(option);
 }
 
 void Options::getOption(vISAOptions option, const char *&buf) const {
-  ASSERT_USER(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
+  vISA_ASSERT(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
   buf = m_vISAOptions.getCstr(option);
 }
 
 const char *Options::getOptionCstr(vISAOptions option) const {
-  ASSERT_USER(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
+  vISA_ASSERT(option < vISA_NUM_OPTIONS, "Option value is outside of range.");
   return m_vISAOptions.getCstr(option);
 }
 

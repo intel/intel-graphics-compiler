@@ -34,7 +34,7 @@ public:
         grfSize(grf_size), symbols{str0, str1, str2, str3, str4, nullptr} {}
 
   template <G4_Type T> unsigned numEltPerGRF() const {
-    assert(grfSize == 32 || grfSize == 64);
+    vASSERT(grfSize == 32 || grfSize == 64);
     if (grfSize == 64)
       return 64 / TypeSize(T);
     return 32 / TypeSize(T);
@@ -44,17 +44,17 @@ public:
   unsigned getMaxVariableSize() const { return 256 * grfSize; }
 
   G4_SubReg_Align getGRFAlign() const {
-    assert(grfSize == 32 || grfSize == 64);
+    vASSERT(grfSize == 32 || grfSize == 64);
     return grfSize == 64 ? ThirtyTwo_Word : Sixteen_Word;
   }
 
   G4_SubReg_Align getHalfGRFAlign() const {
-    assert(grfSize == 32 || grfSize == 64);
+    vASSERT(grfSize == 32 || grfSize == 64);
     return grfSize == 64 ? Sixteen_Word : Eight_Word;
   }
 
   unsigned getGenxDataportIOSize() const {
-    assert(grfSize == 32 || grfSize == 64);
+    vASSERT(grfSize == 32 || grfSize == 64);
     return grfSize == 64 ? 16 : 8;
   }
 

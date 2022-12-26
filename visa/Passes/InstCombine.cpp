@@ -98,7 +98,7 @@ static bool hasAntiDependenceBetweenLastUse(INST_LIST_ITER iitr,
     }
     forwardIter++;
   }
-  MUST_BE_TRUE(forwardIter != eitr, "hit end of block without finding use");
+  vISA_ASSERT(forwardIter != eitr, "hit end of block without finding use");
   return false;
 }
 

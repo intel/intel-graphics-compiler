@@ -117,7 +117,7 @@ static bool isCommutativeOnSrc12(G4_INST *inst) {
 }
 
 static bool isSrcSwapLegal(G4_INST *inst, IR_Builder &builder) {
-  MUST_BE_TRUE(inst->opcode() == G4_mad || inst->opcode() == G4_add3,
+  vISA_ASSERT(inst->opcode() == G4_mad || inst->opcode() == G4_add3,
                "Unexpected operation for src swap");
 
   auto prospectiveSrc2 = inst->getSrc(1);
@@ -645,7 +645,7 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
       // def must be the only define for this use
       return false;
     }
-    MUST_BE_TRUE(useInst->getSingleDef(opndNum) == inst,
+    vISA_ASSERT(useInst->getSingleDef(opndNum) == inst,
                  "this user's single def should be this inst.");
 
     int srcId = useInst->getSrcNum(opndNum);
@@ -832,7 +832,7 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
           }
         }
       };
-      assert(accNum == 0 && "mad src0 may only use acc0");
+      vISA_ASSERT(accNum == 0, "mad src0 may only use acc0");
       G4_Operand *macSrc0 = useInst->getSrc(1);
       updateDefSrcPos(useInst, Opnd_src1);
       G4_Operand *macSrc1 = useInst->getSrc(2);
@@ -866,11 +866,11 @@ struct AccAssignment {
          iter != iterEnd;) {
       AccInterval *active = *iter;
       if (active->lastUse <= interval->inst->getLocalId()) {
-        assert(!freeAccs[active->assignedAcc] &&
+        vISA_ASSERT(!freeAccs[active->assignedAcc],
                "active interval's acc should not be free");
         freeAccs[active->assignedAcc] = true;
         if (active->needBothAcc(builder)) {
-          assert(!freeAccs[active->assignedAcc + 1] &&
+          vISA_ASSERT(!freeAccs[active->assignedAcc + 1],
                  "active interval's acc should not be free");
           freeAccs[active->assignedAcc + 1] = true;
         }
@@ -891,15 +891,15 @@ struct AccAssignment {
                                  [accID](AccInterval *interval) {
                                    return interval->assignedAcc == accID;
                                  });
-    assert(acc0Iter != activeIntervals.end() &&
+    vISA_ASSERT(acc0Iter != activeIntervals.end(),
            "expect to find interval with acc0");
     auto spillInterval = *acc0Iter;
-    assert(!spillInterval->isPreAssigned && "overlapping pre-assigned acc0");
+    vISA_ASSERT(!spillInterval->isPreAssigned, "overlapping pre-assigned acc0");
     spillInterval->assignedAcc = -1;
     activeIntervals.erase(acc0Iter);
     freeAccs[accID] = true;
     if (spillInterval->needBothAcc(builder)) {
-      assert(accID % 2 == 0 && "accID must be even-aligned in this case");
+      vISA_ASSERT(accID % 2 == 0, "accID must be even-aligned in this case");
       freeAccs[accID + 1] = true;
     }
   }
@@ -914,7 +914,7 @@ struct AccAssignment {
     freeAccs[interval->assignedAcc] = false;
 
     if (interval->needBothAcc(builder)) {
-      assert(interval->assignedAcc == 0 && "Total 2 acc support right now");
+      vISA_ASSERT(interval->assignedAcc == 0, "Total 2 acc support right now");
       if (!freeAccs[interval->assignedAcc + 1]) // && activeIntervals.size()
       {
         spillInterval(interval->assignedAcc + 1);
@@ -1276,18 +1276,18 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
     std::map<G4_INST *, std::pair<G4_INST *, G4_INST *>> ConflictUseMap;
     for (auto &I : SwapCandidates) {
       for (auto &U : I.second) {
-        MUST_BE_TRUE((U.second == Opnd_src1 || U.second == Opnd_src2),
+        vISA_ASSERT((U.second == Opnd_src1 || U.second == Opnd_src2),
                      "Only src1 and src2 are swappable.");
         auto MI = ConflictUseMap
                       .insert(std::make_pair(U.first,
                                              std::make_pair(nullptr, nullptr)))
                       .first;
         if (U.second == Opnd_src1) {
-          MUST_BE_TRUE(MI->second.first == nullptr,
+          vISA_ASSERT(MI->second.first == nullptr,
                        "src1 is already populated");
           MI->second.first = I.first->inst;
         } else {
-          MUST_BE_TRUE(MI->second.second == nullptr,
+          vISA_ASSERT(MI->second.second == nullptr,
                        "src2 is already populated");
           MI->second.second = I.first->inst;
         }
@@ -1369,7 +1369,7 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
         // Skip as src1 could use acc.
         if (U.second == Opnd_src1)
           continue;
-        MUST_BE_TRUE(U.second = Opnd_src2, "Only src1 or src2 is expected.");
+        vISA_ASSERT(U.second = Opnd_src2, "Only src1 or src2 is expected.");
         U.first->swapSrc(1, 2);
         U.first->swapDefUse(Opnd_src1, Opnd_src2);
         if (builder.getPlatform() == GENX_TGLLP) {

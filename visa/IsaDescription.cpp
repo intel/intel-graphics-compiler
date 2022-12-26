@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
  * external linkage alone with their associated enums.
  */
 
+#include "Assertions.h"
 #include "IsaDescription.h"
 #include "Common_ISA.h"
 #include "IGC/common/StringMacros.hpp"
@@ -3306,7 +3307,7 @@ static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
 LscOpInfo LscOpInfoGet(LSC_OP op) {
   LscOpInfo opInfo{};
   if (!LscOpInfoFind(op, opInfo)) {
-    MUST_BE_TRUE(false, "invalid LSC opcode");
+    vISA_ASSERT(false, "invalid LSC opcode");
   }
   return opInfo;
 }
@@ -3545,7 +3546,7 @@ const ISA_SubInst_Desc &
 VISA_INST_Desc::getSubInstDesc(uint8_t subOpcode) const {
   int len;
   const ISA_SubInst_Desc *table = getSubInstTable(opcode, len);
-  MUST_BE_TRUE((int)subOpcode < len, "subop out of bounds");
+  vISA_ASSERT((int)subOpcode < len, "subop out of bounds");
   return table[subOpcode];
 }
 
@@ -3558,6 +3559,6 @@ VISA_INST_Desc::getSubInstDescByName(const char *symbol) const {
       return table[i];
     }
   }
-  MUST_BE_TRUE(false, "invalid subop");
+  vISA_ASSERT(false, "invalid subop");
   return table[0];
 }

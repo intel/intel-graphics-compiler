@@ -602,7 +602,7 @@ void BinaryEncodingCNL::EncodeCondModifier(
     G9HDL::CONDMODIFIER value;
 
     unsigned mod = (unsigned)cModifier->getMod();
-    MUST_BE_TRUE(mod != (unsigned)Mod_r && mod < (unsigned)Mod_cond_undef,
+    vISA_ASSERT(mod != (unsigned)Mod_r && mod < (unsigned)Mod_cond_undef,
                  // case Mod_r:
                  //     value = G9HDL::CONDMODIFIER_O; //7
                  //     break;
@@ -723,7 +723,7 @@ void BinaryEncodingCNL::EncodeDstRegFile(
     opnds.SetDestinationRegisterFile(G9HDL::REGFILE_GRF);
     break;
   case REG_FILE_M:
-    MUST_BE_TRUE(0, " Memory is invalid register file on CNL");
+    vISA_ASSERT_UNREACHABLE(0, " Memory is invalid register file on CNL");
     // opnds.SetDestinationRegisterFile(G9HDL::REGFILE_IMM); break;
   default:
     break;
@@ -752,7 +752,7 @@ void BinaryEncodingCNL::EncodeDstRegNum(
                                                                   5);
       if (dst->isAccRegValid() &&
           kernel.fg.builder->encodeAccRegSelAsAlign1()) {
-        MUST_BE_TRUE((byteAddress & 0x1F) == 0,
+        vISA_ASSERT((byteAddress & 0x1F) == 0,
                      "subreg must be 0 for dst with special accumulator");
         opnds.GetDestinationRegisterRegion_Align1().SetDestinationSpecialAcc(
             dst->getAccRegSel());
@@ -947,7 +947,7 @@ inline void BinaryEncodingCNL::EncodeOneSrcInst(
 
   if (src0->isImm()) {
     // this should be compiled as dead code in non-debug mode
-    MUST_BE_TRUE(inst->opcode() == G4_mov || src0->getTypeSize() != 8,
+    vISA_ASSERT(inst->opcode() == G4_mov || src0->getTypeSize() != 8,
                  "only Mov is allowed for 64-bit immediate");
     if (src0->getTypeSize() == 8) {
       G9HDL::EU_INSTRUCTION_IMM64_SRC *ptr =
@@ -979,7 +979,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(
       TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(src0)));
 
   bool src0ImmOk = inst->isMath() && inst->asMathInst()->isOneSrcMath();
-  MUST_BE_TRUE(src0ImmOk || !src0->isImm(),
+  vISA_ASSERT(src0ImmOk || !src0->isImm(),
                "src0 is immediate in two src instruction!");
   // EncodeSrc0Type
   if (src0->isImm()) {
@@ -995,7 +995,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(
   }
 
   if (src0->isImm()) {
-    MUST_BE_TRUE(src0->getTypeSize() < 8,
+    vISA_ASSERT(src0->getTypeSize() < 8,
                  "only Mov is allowed for 64bit immediate");
     // FIXME: feels like this should be 0 here, but it gives a type mismatch as
     // the headers assume src0 must be REG
@@ -1029,7 +1029,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(
   }
 
   if (src1->isImm()) {
-    MUST_BE_TRUE(inst->opcode() == G4_mov || src1->getTypeSize() != 8,
+    vISA_ASSERT(inst->opcode() == G4_mov || src1->getTypeSize() != 8,
                  "only Mov is allowed for 64bit immediate");
 
     SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_IMM, 1>::EncodeSrcImmData(
@@ -1038,7 +1038,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(
     if (src0->isImm()) {
       // src1 must be null, and don't encode anything so it won't overwrite
       // src0's imm value
-      MUST_BE_TRUE(src1->isNullReg(),
+      vISA_ASSERT(src1->isNullReg(),
                    "src1 must be null ARF if src0 is immediate");
     } else {
       SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG,
@@ -1052,7 +1052,7 @@ inline void BinaryEncodingCNL::EncodeTwoSrcInst(
 /// \brief Given a two-src mask, apply a patch for send instruction
 ///
 void PatchSend(G4_INST *inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC *twoSrc) {
-  MUST_BE_TRUE(inst->getMsgDescRaw(), "expected raw descriptor");
+  vISA_ASSERT(inst->getMsgDescRaw(), "expected raw descriptor");
   uint32_t msgDesc = inst->getMsgDescRaw()->getExtendedDesc();
   EncExtMsgDescriptor emd;
   emd.ulData = msgDesc;
@@ -1079,7 +1079,7 @@ void PatchSend(G4_INST *inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC *twoSrc) {
 /// \brief EncodeMathControl
 ///
 void PatchMath(G4_INST *inst, G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC *twoSrc) {
-  MUST_BE_TRUE(inst->isMath(), "PatchMath must be called on math instruction.");
+  vISA_ASSERT(inst->isMath(), "PatchMath must be called on math instruction.");
 
   unsigned int MathControlValue = inst->asMathInst()->getMathCtrl();
   unsigned MathFunction = MathControlValue & 0xf;
@@ -1153,7 +1153,7 @@ inline static G9HDL::TERNARYALIGN1DATATYPE Get3SrcAlign1LimitedSrcType(
     case Type_NF:
       return G9HDL::TERNARYALIGN1DATATYPE::TERNARYALIGN1DATATYPE_NF;
     default:
-      MUST_BE_TRUE(0, "wrong type for align1 ternary instruction with float "
+      vISA_ASSERT_UNREACHABLE("wrong type for align1 ternary instruction with float "
                       "execution type.");
       break;
     }
@@ -1175,7 +1175,7 @@ inline static G9HDL::TERNARYALIGN1DATATYPE Get3SrcAlign1LimitedSrcType(
     case Type_B:
       return G9HDL::TERNARYALIGN1DATATYPE::TERNARYALIGN1DATATYPE_B;
     default:
-      MUST_BE_TRUE(0, "wrong type for align1 ternary instruction with integer "
+      vISA_ASSERT_UNREACHABLE("wrong type for align1 ternary instruction with integer "
                       "execution type.");
       break;
     }
@@ -1231,7 +1231,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInst(
       // must be DWORD aligned
       // 3 bits for subregnum
       threeSrc.SetDestinationSubregisterNumber((byteAddress >> 2) & 0x7);
-      MUST_BE_TRUE(inst->isAligned16Inst(), "3src only support align16 mode");
+      vISA_ASSERT(inst->isAligned16Inst(), "3src only support align16 mode");
     }
 
     // src0
@@ -1291,7 +1291,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
   DstBuilder<G9HDL::EU_INSTRUCTION_ALIGN1_THREE_SRC>::EncodeMaskCtrl(inst,
                                                                      threeSrc);
 
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       (IS_TYPE_FLOAT_ALL(src0->getType()) &&
        IS_TYPE_FLOAT_ALL(src1->getType()) &&
        IS_TYPE_FLOAT_ALL(src2->getType()) &&
@@ -1318,7 +1318,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
         G9HDL::EU_INSTRUCTION_ALIGN1_THREE_SRC::DESTINATION_REGISTER_FILE_ARF);
     break;
   default:
-    MUST_BE_TRUE(0, "Invalid dst register file for for align1 ternary "
+    vISA_ASSERT_UNREACHABLE("Invalid dst register file for for align1 ternary "
                     "instruction (expected grf or arf).");
     break;
   }
@@ -1355,7 +1355,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
         G9HDL::EU_INSTRUCTION_ALIGN1_THREE_SRC::SOURCE_0_REGISTER_FILE_IMM);
     break;
   case REG_FILE_A:
-    MUST_BE_TRUE(src0->getType() == Type_NF,
+    vISA_ASSERT(src0->getType() == Type_NF,
                  "Invalid register file for src0 in align1 ternary instruction "
                  "(expected grf or imm).");
     threeSrc.SetSource0RegisterFile(
@@ -1376,7 +1376,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
         G9HDL::EU_INSTRUCTION_ALIGN1_THREE_SRC::SOURCE_1_REGISTER_FILE_ARF);
     break;
   default:
-    MUST_BE_TRUE(0, "Invalid register file for src1 in align1 ternary "
+    vISA_ASSERT_UNREACHABLE("Invalid register file for src1 in align1 ternary "
                     "instruction(expected grf or arf).");
     break;
   }
@@ -1392,7 +1392,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
         G9HDL::EU_INSTRUCTION_ALIGN1_THREE_SRC::SOURCE_2_REGISTER_FILE_IMM);
     break;
   default:
-    MUST_BE_TRUE(0, "Invalid register file for src2 in align1 ternary "
+    vISA_ASSERT_UNREACHABLE("Invalid register file for src2 in align1 ternary "
                     "instruction(expected grf or imm).");
     break;
   }
@@ -1406,7 +1406,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
     uint32_t byteAddress = dst->getLinearizedStart();
     if (kernel.fg.builder->encodeAccRegSelAsAlign1() && dst->isAccRegValid()) {
       // special accumulator region (acc2-acc9) is encoded as part of subreg
-      MUST_BE_TRUE((byteAddress & 0x1F) == 0,
+      vISA_ASSERT((byteAddress & 0x1F) == 0,
                    "subreg must be 0 for dst with special accumulator");
       threeSrc.SetDestinationSpecialAcc(dst->getAccRegSel());
     } else {
@@ -1429,7 +1429,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
     break;
   }
   default:
-    MUST_BE_TRUE(0, "Invalid register file for dst in align1 ternary "
+    vISA_ASSERT_UNREACHABLE("Invalid register file for dst in align1 ternary "
                     "instruction(expected grf or acc).");
     break;
   }
@@ -1446,8 +1446,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
             DESTINATION_HORIZONTAL_STRIDE_2_ELEMENT);
     break;
   case UNDEFINED_SHORT:
-    MUST_BE_TRUE(
-        false,
+    vISA_ASSERT_UNREACHABLE(
         "Dst horizontal stride for align1 ternary instruction is undefined.");
     threeSrc.SetDestinationHorizontalStride(
         G9HDL::EU_INSTRUCTION_ALIGN1_THREE_SRC::
@@ -1467,13 +1466,13 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
 
   if (src0->isSrcRegRegion()) {
     const RegionDesc *regdesc0 = src0->asSrcRegRegion()->getRegion();
-    MUST_BE_TRUE(regdesc0, "Align1 ternary encoder: src0 region desc for "
+    vISA_ASSERT(regdesc0, "Align1 ternary encoder: src0 region desc for "
                            "ternary instruction is null!");
 
     // look for <N;N,1> contiguous region
     if (regdesc0->vertStride > 8) {
       // TODO: should we care about this case?
-      MUST_BE_TRUE(
+      vISA_ASSERT(
           0, "Align1 3 src instruction with vertStride>8 not supported yet.");
     } else {
       // src0: vstride
@@ -1499,8 +1498,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
                                     G9HDL::TERNARYALIGN1VERTSTRIDE_8_ELEMENTS);
         break;
       default:
-        MUST_BE_TRUE(
-            false,
+        vISA_ASSERT_UNREACHABLE(
             "wrong vertical stride for ternary align1 instruction at src0!");
         break;
       }
@@ -1510,7 +1508,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
                  0>::EncodeSrcHorzStride(inst, &threeSrc, regdesc0, src0);
     }
 
-    MUST_BE_TRUE(EncodingHelper::GetSrcRegFile(src0) != REG_FILE_I,
+    vISA_ASSERT(EncodingHelper::GetSrcRegFile(src0) != REG_FILE_I,
                  "Align1 ternary: src0 register file must not be immediate if "
                  "src region is present. ");
     if (EncodingHelper::GetSrcRegFile(src0) != REG_FILE_A) {
@@ -1518,7 +1516,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
       threeSrc.SetSource0RegisterNumber_SourceRegisterNumber(byteAddress >> 5);
       if (kernel.fg.builder->encodeAccRegSelAsAlign1() &&
           src0->isAccRegValid()) {
-        MUST_BE_TRUE((byteAddress & 0x1F) == 0,
+        vISA_ASSERT((byteAddress & 0x1F) == 0,
                      "subreg must be 0 for source with special accumualators");
         threeSrc.SetSource0SpecialAcc(src0->getAccRegSel());
       } else {
@@ -1526,7 +1524,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
             byteAddress & 0x1f);
       }
     } else {
-      MUST_BE_TRUE(src0->getType() == Type_NF,
+      vISA_ASSERT(src0->getType() == Type_NF,
                    "only NF type src0 can be accumulator");
       // encode acc
       bool valid;
@@ -1541,7 +1539,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
       threeSrc.SetSource0RegisterNumber_SourceRegisterNumber(EncodedRegNum);
     }
   } else {
-    MUST_BE_TRUE(EncodingHelper::GetSrcRegFile(src0) == REG_FILE_I,
+    vISA_ASSERT(EncodingHelper::GetSrcRegFile(src0) == REG_FILE_I,
                  "Align1 ternary: src0 reg file must be immediate if operand "
                  "is immediate.");
 
@@ -1555,14 +1553,14 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
   threeSrc.SetSource1Datatype(
       Get3SrcAlign1LimitedSrcType(src1->getType(), execType));
 
-  MUST_BE_TRUE(EncodingHelper::GetSrcRegFile(src1) != REG_FILE_I,
+  vISA_ASSERT(EncodingHelper::GetSrcRegFile(src1) != REG_FILE_I,
                "Align1 ternary:src1 immediate register file not supported by "
                "definition.");
   if (EncodingHelper::GetSrcRegFile(src1) != REG_FILE_A) {
     uint32_t byteAddress = src1->getLinearizedStart();
     threeSrc.SetSource1RegisterNumber_SourceRegisterNumber(byteAddress >> 5);
     if (kernel.fg.builder->encodeAccRegSelAsAlign1() && src1->isAccRegValid()) {
-      MUST_BE_TRUE((byteAddress & 0x1F) == 0,
+      vISA_ASSERT((byteAddress & 0x1F) == 0,
                    "subreg must be 0 for source with special accumualators");
       threeSrc.SetSource1SpecialAcc(src1->getAccRegSel());
     } else {
@@ -1584,13 +1582,13 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
   }
 
   const RegionDesc *regdesc1 = src1->asSrcRegRegion()->getRegion();
-  MUST_BE_TRUE(regdesc1, "Align1 ternary encoder: src1 region desc for ternary "
+  vISA_ASSERT(regdesc1, "Align1 ternary encoder: src1 region desc for ternary "
                          "instruction is null!");
 
   // look for <N;N,1> contiguous region
   if (regdesc1->vertStride > 8) {
     // TODO: should we care about this case?
-    MUST_BE_TRUE(
+    vISA_ASSERT(
         0, "align1 3 src instruction with vertStride>8 not supported yet.");
   } else {
     SrcBuilder<G9HDL::EU_INSTRUCTION_ALIGN1_THREE_SRC, 1>::EncodeSrcHorzStride(
@@ -1619,8 +1617,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
                                   G9HDL::TERNARYALIGN1VERTSTRIDE_8_ELEMENTS);
       break;
     default:
-      MUST_BE_TRUE(
-          false,
+      vISA_ASSERT_UNREACHABLE(
           "wrong vertical stride for ternary align1 instruction at src0!");
       break;
     }
@@ -1634,9 +1631,9 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
 
   if (src2->isSrcRegRegion()) {
     const RegionDesc *regdesc2 = src2->asSrcRegRegion()->getRegion();
-    MUST_BE_TRUE(regdesc2, "Align1 ternary instruction: src2 region desc for "
+    vISA_ASSERT(regdesc2, "Align1 ternary instruction: src2 region desc for "
                            "instruction is null!");
-    MUST_BE_TRUE(EncodingHelper::GetSrcRegFile(src2) != REG_FILE_I,
+    vISA_ASSERT(EncodingHelper::GetSrcRegFile(src2) != REG_FILE_I,
                  "Align1 ternary encoder: src2 reg file is immediate even if "
                  "src region present.");
 
@@ -1647,7 +1644,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
       threeSrc.SetSource2RegisterNumber_SourceRegisterNumber(byteAddress >> 5);
       if (kernel.fg.builder->encodeAccRegSelAsAlign1() &&
           src2->isAccRegValid()) {
-        MUST_BE_TRUE((byteAddress & 0x1F) == 0,
+        vISA_ASSERT((byteAddress & 0x1F) == 0,
                      "subreg must be 0 for source with special accumualators");
         threeSrc.SetSource2SpecialAcc(src2->getAccRegSel());
       } else {
@@ -1679,7 +1676,7 @@ inline void BinaryEncodingCNL::EncodeThreeSrcInstAlign1(
       break;
     }
   } else {
-    MUST_BE_TRUE(EncodingHelper::GetSrcRegFile(src2) == REG_FILE_I,
+    vISA_ASSERT(EncodingHelper::GetSrcRegFile(src2) == REG_FILE_I,
                  "Align1 ternary: src2 reg file must be immediate if operand "
                  "is immediate.");
 
@@ -1902,7 +1899,7 @@ BinaryEncodingCNL::EncodeSplitSend(G4_INST *inst,
         sends.SetDestinationRegisterFile(G9HDL::REGFILE_ARF);
         break;
       default:
-        MUST_BE_TRUE(0, " Invalid register file for split-send.");
+        vISA_ASSERT_UNREACHABLE(" Invalid register file for split-send.");
         break;
       }
     }
@@ -1920,7 +1917,7 @@ BinaryEncodingCNL::EncodeSplitSend(G4_INST *inst,
     } else {
       if (EncodingHelper::GetDstRegFile(dst) != REG_FILE_A) {
         uint32_t byteAddress = dst->getLinearizedStart();
-        MUST_BE_TRUE(byteAddress % 16 == 0,
+        vISA_ASSERT(byteAddress % 16 == 0,
                      "dst for sends/sendsc must be oword-aligned");
 
         sends.SetDestinationRegisterNumber(byteAddress >> 5);
@@ -1942,7 +1939,7 @@ BinaryEncodingCNL::EncodeSplitSend(G4_INST *inst,
       sends.SetSrc1Regfile(G9HDL::REGFILE_ARF);
       break;
     default:
-      MUST_BE_TRUE(0, " Invalid register file for split-send.");
+      vISA_ASSERT_UNREACHABLE(" Invalid register file for split-send.");
       break;
     }
 
@@ -1962,7 +1959,7 @@ BinaryEncodingCNL::EncodeSplitSend(G4_INST *inst,
       sends.SetSource1_SourceAddressSubregisterNumber_0(IndAddrRegSubNumValue);
     } else {
       uint32_t byteAddress = src1->getLinearizedStart();
-      MUST_BE_TRUE(byteAddress % 32 == 0,
+      vISA_ASSERT(byteAddress % 32 == 0,
                    "src1 for sends/sendsc must be GRF-aligned");
       sends.SetSource1_SourceRegisterNumber(byteAddress >> 5);
       // mybin->SetBits(bitsSendsSrc1RegNum_0, bitsSendsSrc1RegNum_1,
@@ -1990,7 +1987,7 @@ BinaryEncodingCNL::EncodeSplitSend(G4_INST *inst,
       sends.SetSource0_SourceAddressSubregisterNumber(IndAddrRegSubNumValue);
     } else {
       uint32_t byteAddress = src0->getLinearizedStart();
-      MUST_BE_TRUE(byteAddress % 32 == 0,
+      vISA_ASSERT(byteAddress % 32 == 0,
                    "src1 for sends/sendsc must be GRF-aligned");
       sends.SetSource0_SourceRegisterNumber(byteAddress >> 5);
       // mybin->SetBits(bitsSendsSrc1RegNum_0, bitsSendsSrc1RegNum_1,
@@ -2015,7 +2012,7 @@ BinaryEncodingCNL::EncodeSplitSend(G4_INST *inst,
 
   // Patch SFID and EOT
   {
-    MUST_BE_TRUE(inst->getMsgDescRaw(), "expected raw descriptor");
+    vISA_ASSERT(inst->getMsgDescRaw(), "expected raw descriptor");
     uint32_t msgDesc = inst->getMsgDescRaw()->getExtendedDesc();
     EncExtMsgDescriptor emd;
     emd.ulData = msgDesc;
@@ -2063,7 +2060,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingWAIT(G4_INST *inst) {
       TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(src0)));
 
   // EncodeSrc0Type
-  MUST_BE_TRUE(!src0->isImm(),
+  vISA_ASSERT(!src0->isImm(),
                "src0 must not be immediate in WAIT instruction!");
   {
     oneSrc.GetOperandControls().SetSrc0Srctype(
@@ -2078,7 +2075,7 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingWAIT(G4_INST *inst) {
   // Dst patching:
 
   RegFile regFile = EncodingHelper::GetSrcRegFile(src0);
-  MUST_BE_TRUE(regFile == REG_FILE_A,
+  vISA_ASSERT(regFile == REG_FILE_A,
                "WAIT instruction source has reg file different than ARF!");
   oneSrc.Common.OperandControls.SetDestinationRegisterFile(
       TranslateVisaToHDLRegFile(regFile));
@@ -2345,7 +2342,7 @@ BinaryEncodingCNL::Status
 BinaryEncodingCNL::DoAllEncodingRegular(G4_INST *inst) {
   Status myStatus = SUCCESS;
 
-  MUST_BE_TRUE(!inst->isSplitSend(), "Improper instruction type called with "
+  vISA_ASSERT(!inst->isSplitSend(), "Improper instruction type called with "
                                      "DoAllEncodingRegular: sends or sendsc");
 
   BinInst *bin = getBinInst(inst);
@@ -2574,7 +2571,7 @@ void BinaryEncodingCNL::DoAll() {
   for (auto x = offsetVector.begin(), vEnd = offsetVector.end(); x != vEnd;
        x++) {
     if (!EncodeConditionalBranches(x->inst, x->offset)) {
-      MUST_BE_TRUE(false, "invalid label!");
+      vISA_ASSERT(false, "invalid label!");
     }
   }
 }

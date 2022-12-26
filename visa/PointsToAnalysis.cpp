@@ -74,7 +74,7 @@ void PointsToAnalysis::resizePointsToSet(unsigned int newsize) {
 }
 
 void PointsToAnalysis::addIndirectUseToBB(unsigned int bbId, pointInfo pt) {
-  MUST_BE_TRUE(bbId < numBBs, "invalid basic block id");
+  vISA_ASSERT(bbId < numBBs, "invalid basic block id");
   REGVAR_VECTOR &vec = indirectUses[bbId];
   auto it =
       std::find_if(vec.begin(), vec.end(), [&pt](const pointInfo &element) {
@@ -88,7 +88,7 @@ void PointsToAnalysis::addIndirectUseToBB(unsigned int bbId, pointInfo pt) {
 
 void PointsToAnalysis::mergePointsToSet(const G4_RegVar *addr1,
                                       const G4_RegVar *addr2) {
-  MUST_BE_TRUE(addr1->getDeclare()->getRegFile() == G4_ADDRESS &&
+  vISA_ASSERT(addr1->getDeclare()->getRegFile() == G4_ADDRESS &&
                    addr2->getDeclare()->getRegFile() == G4_ADDRESS,
                "expect address variable");
   int addr2PTIndex = addrPointsToSetIndex[addr2->getId()];
@@ -104,10 +104,10 @@ void PointsToAnalysis::mergePointsToSet(const G4_RegVar *addr1,
 
 void PointsToAnalysis::addToPointsToSet(const G4_RegVar *addr, G4_AddrExp *opnd,
                       unsigned char offset) {
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
-  MUST_BE_TRUE(addr->getId() < numAddrs, "addr id is not set");
+  vISA_ASSERT(addr->getId() < numAddrs, "addr id is not set");
   int addrPTIndex = addrPointsToSetIndex[addr->getId()];
   REGVAR_VECTOR &vec = pointsToSets[addrPTIndex];
   pointInfo pi = {opnd->getRegVar(), offset};
@@ -144,7 +144,7 @@ unsigned int PointsToAnalysis::getIndexOfRegVar(const G4_RegVar *r) const {
 }
 
 void PointsToAnalysis::addPointsToSetToBB(int bbId, const G4_RegVar *addr) {
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
   const REGVAR_VECTOR &addrTakens =
@@ -456,7 +456,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
 
       if (dst != NULL && dst->getRegAccess() == IndirGRF) {
         G4_VarBase *dstptr = dst->getBase();
-        MUST_BE_TRUE(
+        vISA_ASSERT(
             dstptr->isRegVar() &&
                 (dstptr->asRegVar()->getDeclare()->getRegFile() == G4_ADDRESS ||
                  dstptr->asRegVar()->getDeclare()->getRegFile() == G4_SCALAR),
@@ -474,7 +474,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
 
         if (src->getRegAccess() == IndirGRF) {
           G4_VarBase *srcptr = src->getBase();
-          MUST_BE_TRUE(
+          vISA_ASSERT(
               srcptr->isRegVar() &&
                   (srcptr->asRegVar()->getDeclare()->getRegFile() ==
                        G4_ADDRESS ||
@@ -491,8 +491,8 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
     REGVAR_VECTOR &vec = pointsToSets[addrPointsToSetIndex[i]];
     for (const pointInfo cur : vec) {
       unsigned indirectVarSize = cur.var->getDeclare()->getByteSize();
-      assert((indirectVarSize <=
-              fg.builder->getGRFSize() * fg.getKernel()->getNumRegTotal()) &&
+      vISA_ASSERT((indirectVarSize <=
+              fg.builder->getGRFSize() * fg.getKernel()->getNumRegTotal()),
              "indirected variables' size is larger than GRF file size");
     }
   }
@@ -515,7 +515,7 @@ void PointsToAnalysis::insertAndMergeFilledAddr(const G4_RegVar *addr1,
                                               G4_RegVar *addr2) {
   unsigned int oldid = addr2->getId();
   addr2->setId(numAddrs);
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       regVars.size() == numAddrs,
       "Inconsistency found between size of regvars and number of addr vars");
 
@@ -529,7 +529,7 @@ void PointsToAnalysis::insertAndMergeFilledAddr(const G4_RegVar *addr1,
 
 const REGVAR_VECTOR *
 PointsToAnalysis::getAllInPointsTo(const G4_RegVar *addr) const {
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
   unsigned int id = getIndexOfRegVar(addr);
@@ -543,7 +543,7 @@ PointsToAnalysis::getAllInPointsTo(const G4_RegVar *addr) const {
 }
 
 ADDREXP_VECTOR *PointsToAnalysis::getAllInPointsToAddrExps(G4_RegVar *addr) {
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
   unsigned int id = getIndexOfRegVar(addr);
@@ -570,7 +570,7 @@ PointsToAnalysis::getAllInPointsToOrIndrUse(const G4_Operand *opnd,
 }
 
 G4_RegVar *PointsToAnalysis::getPointsTo(const G4_RegVar *addr, int idx) const {
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
   unsigned int id = getIndexOfRegVar(addr);
@@ -588,7 +588,7 @@ G4_RegVar *PointsToAnalysis::getPointsTo(const G4_RegVar *addr, int idx) const {
 
 G4_RegVar *PointsToAnalysis::getPointsTo(const G4_RegVar *addr, int idx,
                        unsigned char &offset) const {
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
   unsigned int id = getIndexOfRegVar(addr);
@@ -608,7 +608,7 @@ G4_RegVar *PointsToAnalysis::getPointsTo(const G4_RegVar *addr, int idx,
 
 bool PointsToAnalysis::isPresentInPointsTo(const G4_RegVar *addr,
                                          const G4_RegVar *var) const {
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
   unsigned int id = getIndexOfRegVar(addr);
@@ -629,13 +629,13 @@ bool PointsToAnalysis::isPresentInPointsTo(const G4_RegVar *addr,
 void PointsToAnalysis::addFillToPointsTo(unsigned int bbid, G4_RegVar *addr,
                                        G4_RegVar *newvar) {
   // Adds to points to as well as indirect use in basic block
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
   unsigned int id = getIndexOfRegVar(addr);
 
   if (id == UINT_MAX) {
-    MUST_BE_TRUE(false, "Could not find addr in points to set");
+    vISA_ASSERT(false, "Could not find addr in points to set");
   }
 
   REGVAR_VECTOR &vec = pointsToSets[addrPointsToSetIndex[id]];
@@ -647,7 +647,7 @@ void PointsToAnalysis::addFillToPointsTo(unsigned int bbid, G4_RegVar *addr,
 
 void PointsToAnalysis::patchPointsToSet(const G4_RegVar *addr, G4_AddrExp *opnd,
                       unsigned char offset) {
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS,
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS,
                "expect address variable");
   unsigned int id = getIndexOfRegVar(addr);
   int addrPTIndex = addrPointsToSetIndex[id];
@@ -677,13 +677,13 @@ void PointsToAnalysis::patchPointsToSet(const G4_RegVar *addr, G4_AddrExp *opnd,
 
 void PointsToAnalysis::removeFromPointsTo(G4_RegVar *addr,
                                         G4_RegVar *vartoremove) {
-  MUST_BE_TRUE(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
+  vISA_ASSERT(addr->getDeclare()->getRegFile() == G4_ADDRESS ||
                    addr->getDeclare()->getRegFile() == G4_SCALAR,
                "expect address variable");
   unsigned int id = getIndexOfRegVar(addr);
 
   if (id == UINT_MAX) {
-    MUST_BE_TRUE(false, "Could not find addr in points to set");
+    vISA_ASSERT(false, "Could not find addr in points to set");
   }
 
   REGVAR_VECTOR &vec = pointsToSets[addrPointsToSetIndex[id]];
@@ -710,7 +710,7 @@ void PointsToAnalysis::removeFromPointsTo(G4_RegVar *addr,
     }
   }
 
-  MUST_BE_TRUE(removed == true, "Could not find spilled ref from points to");
+  vISA_ASSERT(removed == true, "Could not find spilled ref from points to");
 
   // If an addr taken live-range is spilled then any basic block that has
   // an indirect use of it will no longer have it because we would have

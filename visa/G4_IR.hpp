@@ -210,7 +210,7 @@ protected:
 
 public:
   void setDistance(unsigned char dep_distance) {
-    assert(swsb.depDistance <= 7);
+    vASSERT(swsb.depDistance <= 7);
     swsb.depDistance = dep_distance;
   }
   unsigned char getDistance() const { return swsb.depDistance; }
@@ -249,7 +249,7 @@ public:
 
   bool isDpas() const { return (op == G4_dpas || op == G4_dpasw); }
   G4_InstDpas *asDpasInst() const {
-    MUST_BE_TRUE(isDpas(), ERROR_UNKNOWN);
+    vISA_ASSERT(isDpas(), ERROR_UNKNOWN);
     return (G4_InstDpas *)this;
   }
 
@@ -383,22 +383,22 @@ public:
   bool isAccDstInst() const;
 
   G4_InstMath *asMathInst() const {
-    MUST_BE_TRUE(isMath(), ERROR_UNKNOWN);
+    vISA_ASSERT(isMath(), ERROR_UNKNOWN);
     return ((G4_InstMath *)this);
   }
 
   G4_InstCF *asCFInst() const {
-    MUST_BE_TRUE(isFlowControl(), ERROR_UNKNOWN);
+    vISA_ASSERT(isFlowControl(), ERROR_UNKNOWN);
     return ((G4_InstCF *)this);
   }
 
   G4_InstIntrinsic *asIntrinsicInst() const {
-    MUST_BE_TRUE(isIntrinsic(), ERROR_UNKNOWN);
+    vISA_ASSERT(isIntrinsic(), ERROR_UNKNOWN);
     return (G4_InstIntrinsic *)this;
   }
 
   G4_PseudoAddrMovIntrinsic *asPseudoAddrMovIntrinsic() const {
-    MUST_BE_TRUE(isPseudoAddrMovIntrinsic(), "not a fill intrinsic");
+    vISA_ASSERT(isPseudoAddrMovIntrinsic(), "not a fill intrinsic");
     return const_cast<G4_PseudoAddrMovIntrinsic *>(
         reinterpret_cast<const G4_PseudoAddrMovIntrinsic *>(this));
   }
@@ -417,7 +417,7 @@ public:
   }
 
   G4_InstBfn *asBfnInst() const {
-    MUST_BE_TRUE(isBfn(), ERROR_UNKNOWN);
+    vISA_ASSERT(isBfn(), ERROR_UNKNOWN);
     return (G4_InstBfn *)this;
   }
 
@@ -443,13 +443,13 @@ public:
   // Note that def-use chain is not maintained after this; call swapDefUse
   // if you want to update the du-chain.
   void swapSrc(int src1, int src2) {
-    assert(src1 >= 0 && src1 < getNumSrc() && src2 >= 0 && src2 < getNumSrc() &&
-           "illegal src number");
+    vISA_ASSERT((src1 >= 0 && src1 < getNumSrc() && src2 >= 0 &&
+          src2 < getNumSrc()), "illegal src number");
     std::swap(srcs[src1], srcs[src2]);
   }
 
   G4_Label *getLabel() {
-    MUST_BE_TRUE(op == G4_label, "inst must be a label");
+    vISA_ASSERT(op == G4_label, "inst must be a label");
     return (G4_Label *)getSrc(0);
   }
 
@@ -475,12 +475,12 @@ public:
   }
 
   void setOptionOn(G4_InstOption o) {
-    assert(!isMaskOption(o) && "use setMaskOption() to change emask instead");
+    vISA_ASSERT(!isMaskOption(o),  "use setMaskOption() to change emask instead");
     option |= o;
   }
 
   void setOptionOff(G4_InstOption o) {
-    assert(!isMaskOption(o) && "use setMaskOption() to change emask instead");
+    vISA_ASSERT(!isMaskOption(o),  "use setMaskOption() to change emask instead");
     option &= (~o);
   }
   unsigned int getOption() const { return option; }
@@ -488,7 +488,7 @@ public:
   void setMaskOption(G4_InstOption opt) {
     // mask options are mutually exclusive, so we have to clear any previous
     // setting note that this does not clear NoMask
-    MUST_BE_TRUE(opt & InstOpt_QuarterMasks, "opt is not a valid mask option");
+    vISA_ASSERT(opt & InstOpt_QuarterMasks, "opt is not a valid mask option");
     setOptions((option & ~InstOpt_QuarterMasks) | opt);
   }
 
@@ -608,7 +608,7 @@ public:
     }
   }
   static int getSrcNum(Gen4_Operand_Number opndNum) {
-    MUST_BE_TRUE(isSrcNum(opndNum), "not a source number");
+    vISA_ASSERT(isSrcNum(opndNum), "not a source number");
     return opndNum - 1;
   }
   static bool isSrcNum(Gen4_Operand_Number opndNum) {
@@ -1085,11 +1085,11 @@ public:
   const char *getUipLabelStr() const;
 
   void addIndirectJmpLabel(G4_Label *label) {
-    MUST_BE_TRUE(isIndirectJmp(), "may only be called for indirect jmp");
+    vISA_ASSERT(isIndirectJmp(), "may only be called for indirect jmp");
     indirectJmpTarget.push_back(label);
   }
   const std::list<G4_Label *> &getIndirectJmpLabels() {
-    MUST_BE_TRUE(isIndirectJmp(), "may only be called for indirect jmp");
+    vISA_ASSERT(isIndirectJmp(), "may only be called for indirect jmp");
     return indirectJmpTarget;
   }
 
@@ -1117,24 +1117,24 @@ public:
   }
 
   void pseudoCallToCall() {
-    assert(isFCall() || op == G4_pseudo_fc_call);
+    vASSERT(isFCall() || op == G4_pseudo_fc_call);
     setOpcode(G4_call);
   }
 
   void pseudoRetToRet() {
-    assert(isFReturn() || op == G4_pseudo_fc_ret);
+    vASSERT(isFReturn() || op == G4_pseudo_fc_ret);
     setOpcode(G4_return);
   }
 
   void callToFCall() {
-    assert(isCall());
+    vASSERT(isCall());
     setOpcode(G4_pseudo_fcall);
   }
 
   void retToFRet() {
     if (isFReturn())
       return;
-    assert(isReturn());
+    vASSERT(isReturn());
     setOpcode(G4_pseudo_fret);
   }
 }; // G4_InstCF
@@ -1180,7 +1180,7 @@ public:
   }
 
   G4_Operand *getMsgExtDescOperand() const {
-    assert(isSplitSend() && "must be a split send instruction");
+    vISA_ASSERT(isSplitSend(), "must be a split send instruction");
     return srcs[3];
   }
 
@@ -1408,7 +1408,7 @@ public:
       unsigned int maxRegisterNumber); // create all physical register operands
   void rebuildRegPool(Mem_Manager &m, unsigned int numRegisters);
   G4_Greg *getGreg(unsigned i) {
-    MUST_BE_TRUE(i < maxGRFNum, "invalid GRF");
+    vISA_ASSERT(i < maxGRFNum, "invalid GRF");
     return GRF_Table[i];
   }
 
@@ -1463,7 +1463,7 @@ inline G4_Operand *G4_INST::getSrc(unsigned i) const {
   if (isPseudoAddrMovIntrinsic())
     return asIntrinsicInst()->getIntrinsicSrc(i);
   else {
-    MUST_BE_TRUE(i < G4_MAX_SRCS, ERROR_INTERNAL_ARGUMENT);
+    vISA_ASSERT(i < G4_MAX_SRCS, ERROR_INTERNAL_ARGUMENT);
     return srcs[i];
   }
 }
@@ -1498,7 +1498,7 @@ inline bool G4_INST::isSpillIntrinsic() const {
 }
 
 inline G4_SpillIntrinsic *G4_INST::asSpillIntrinsic() const {
-  MUST_BE_TRUE(isSpillIntrinsic(), "not a spill intrinsic");
+  vISA_ASSERT(isSpillIntrinsic(), "not a spill intrinsic");
   return const_cast<G4_SpillIntrinsic *>(
       reinterpret_cast<const G4_SpillIntrinsic *>(this));
 }
@@ -1509,7 +1509,7 @@ inline bool G4_INST::isFillIntrinsic() const {
 }
 
 inline G4_FillIntrinsic *G4_INST::asFillIntrinsic() const {
-  MUST_BE_TRUE(isFillIntrinsic(), "not a fill intrinsic");
+  vISA_ASSERT(isFillIntrinsic(), "not a fill intrinsic");
   return const_cast<G4_FillIntrinsic *>(
       reinterpret_cast<const G4_FillIntrinsic *>(this));
 }
@@ -1549,12 +1549,12 @@ inline bool G4_INST::isRelocationMov() const {
 }
 
 inline const char *G4_INST::getLabelStr() const {
-  MUST_BE_TRUE(srcs[0] && srcs[0]->isLabel(), ERROR_UNKNOWN);
+  vISA_ASSERT(srcs[0] && srcs[0]->isLabel(), ERROR_UNKNOWN);
   return srcs[0]->asLabel()->getLabel();
 }
 
 inline bool G4_InstCF::isUniformGoto(unsigned KernelSimdSize) const {
-  assert(op == G4_goto);
+  vASSERT(op == G4_goto);
   const G4_Predicate *pred = getPredicate();
   if (getExecSize() == g4::SIMD1 || pred == nullptr)
     return true;
@@ -1568,12 +1568,12 @@ inline bool G4_InstCF::isIndirectJmp() const {
 }
 
 inline const char *G4_InstCF::getJipLabelStr() const {
-  MUST_BE_TRUE(jip != NULL && jip->isLabel(), ERROR_UNKNOWN);
+  vISA_ASSERT(jip != NULL && jip->isLabel(), ERROR_UNKNOWN);
   return jip->asLabel()->getLabel();
 }
 
 inline const char *G4_InstCF::getUipLabelStr() const {
-  MUST_BE_TRUE(uip != NULL && uip->isLabel(), ERROR_UNKNOWN);
+  vISA_ASSERT(uip != NULL && uip->isLabel(), ERROR_UNKNOWN);
   return uip->asLabel()->getLabel();
 }
 

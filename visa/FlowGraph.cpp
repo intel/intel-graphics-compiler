@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Assertions.h"
+
 #include "FlowGraph.h"
 #include "BitSet.h"
 #include "BuildIR.h"
@@ -322,7 +322,7 @@ G4_INST *FlowGraph::createNewLabelInst(G4_Label *label) {
 }
 
 void FlowGraph::removePredSuccEdges(G4_BB *pred, G4_BB *succ) {
-  MUST_BE_TRUE(pred != NULL && succ != NULL, ERROR_INTERNAL_ARGUMENT);
+  vISA_ASSERT(pred != NULL && succ != NULL, ERROR_INTERNAL_ARGUMENT);
 
   BB_LIST_ITER lt = pred->Succs.begin();
   for (; lt != pred->Succs.end(); ++lt) {
@@ -421,7 +421,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST &instlist, INST_LIST_ITER &it) {
     G4_Label *else_label = NULL;
     G4_Label *endif_label = NULL; // the label immediately before the endif
     G4_INST *ifInst = inst;
-    assert(inst->asCFInst()->getJip() == nullptr &&
+    vISA_ASSERT(inst->asCFInst()->getJip() == nullptr,
            "IF should not have a label at this point");
 
     // create if_label
@@ -439,7 +439,7 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST &instlist, INST_LIST_ITER &it) {
           return false;
       } else if (inst->opcode() == G4_else) {
         if (elseCount != 0) {
-          MUST_BE_TRUE(
+          vISA_ASSERT(
               false,
               "ERROR: Mismatched if-else: more than one else following if!");
           return false;
@@ -555,10 +555,10 @@ void FlowGraph::preprocess(INST_LIST &instlist) {
   for (G4_INST *i : instlist) {
     if (i->opcode() == G4_goto) {
       G4_Label *target = i->asCFInst()->getUip()->asLabel();
-      assert(labels.count(target) && "undefined goto label");
+      vISA_ASSERT(labels.count(target), "undefined goto label");
     } else if ((i->opcode() == G4_jmpi || i->isCall()) && i->getSrc(0) &&
                i->getSrc(0)->isLabel()) {
-      assert(labels.count((G4_Label *)i->getSrc(0)) &&
+      vISA_ASSERT(labels.count((G4_Label *)i->getSrc(0)),
              "undefined jmpi/call label");
     }
   }
@@ -575,7 +575,7 @@ void FlowGraph::preprocess(INST_LIST &instlist) {
       G4_INST *inst = *it;
       if (inst->opcode() == G4_if) {
         if (!matchBranch(sn, instlist, it)) {
-          MUST_BE_TRUE2(false, "ERROR: mismatched if-branch", inst);
+          vISA_ASSERT(false, "ERROR: mismatched if-branch %x", inst);
           break;
         }
       } // fi
@@ -633,7 +633,7 @@ void FlowGraph::normalizeFlowGraph() {
 //
 //
 void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
-  MUST_BE_TRUE(!instlist.empty(), ERROR_SYNTAX("empty instruction list"));
+  //vISA_ASSERT(!instlist.empty(), ERROR_SYNTAX("empty instruction list"));
   setCurrentDebugPass("CFG");
   VISA_DEBUG(std::cout << "Entering CFG construction\n");
 
@@ -682,7 +682,7 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
     INST_LIST_ITER iter = instlist.begin();
     G4_INST *i = *iter;
 
-    MUST_BE_TRUE(curr_BB != NULL, "Current BB must not be empty");
+    vISA_ASSERT(curr_BB != NULL, "Current BB must not be empty");
     //
     // inst i belongs to the current BB
     // remove inst i from instlist and relink it to curr_BB's instList
@@ -790,7 +790,7 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
         } else if (i->opcode() == G4_break || i->opcode() == G4_cont ||
                    i->opcode() == G4_halt) {
           // JIP and UIP must have been computed at this point
-          MUST_BE_TRUE(i->asCFInst()->getJip() != NULL &&
+          vISA_ASSERT(i->asCFInst()->getJip() != NULL &&
                            i->asCFInst()->getUip() != NULL,
                        "null JIP or UIP for break/cont instruction");
           addPredSuccEdges(curr_BB,
@@ -1216,7 +1216,7 @@ void FlowGraph::handleReturn(Label_BB_Map &labelMap,
       if (last->getSrc(0)->isLabel()) {
         // make sure bb has only two successors, one subroutine and one return
         // addr
-        assert(bb->Succs.size() == 2);
+        vASSERT(bb->Succs.size() == 2);
 
         // find the subroutine BB and return Addr BB
         G4_BB *subBB = labelMap[last->getSrc(0)->asLabel()];
@@ -1260,7 +1260,7 @@ void FlowGraph::handleReturn(Label_BB_Map &labelMap,
                   std::make_pair(subBB->getId(), funcInfo));
           subBB->setBBType(G4_BB_INIT_TYPE);
           retAddr->Preds.front()->setBBType(G4_BB_EXIT_TYPE);
-          MUST_BE_TRUE(loc.second, ERROR_FLOWGRAPH);
+          vISA_ASSERT(loc.second, ERROR_FLOWGRAPH);
           bb->setCalleeInfo((*(loc.first)).second);
         }
         retAddr->setBBType(G4_BB_RETURN_TYPE);
@@ -1280,7 +1280,7 @@ void FlowGraph::handleReturn(Label_BB_Map &labelMap,
     if (bb->isEndWithCall()) {
       G4_INST *last = bb->back();
       if (last->getPredicate() == NULL) {
-        MUST_BE_TRUE(!bb->Succs.empty(), ERROR_FLOWGRAPH);
+        vISA_ASSERT(!bb->Succs.empty(), ERROR_FLOWGRAPH);
         G4_BB *retAddr = bb->Succs.front(); // return BB must be the front
         bb->removeSuccEdge(retAddr);
         retAddr->removePredEdge(bb);
@@ -1291,10 +1291,10 @@ void FlowGraph::handleReturn(Label_BB_Map &labelMap,
 
 void FlowGraph::linkReturnAddr(G4_BB *entryBB, G4_BB *returnAddr) {
 
-  assert(entryBB->size() > 0 && entryBB->front()->isLabel() &&
+  vISA_ASSERT(entryBB->size() > 0 && entryBB->front()->isLabel(),
          "BB should start with a label");
   auto label = entryBB->front()->getLabel();
-  assert(subroutines.count(label) && "can't find subroutine label");
+  vISA_ASSERT(subroutines.count(label), "can't find subroutine label");
   auto subroutineBBs = subroutines[label];
 
   for (auto bb : subroutineBBs) {
@@ -1303,7 +1303,7 @@ void FlowGraph::linkReturnAddr(G4_BB *entryBB, G4_BB *returnAddr) {
       // check the direct recursive call here!
       //
       if (bb == returnAddr && hasStackCalls == false) {
-        MUST_BE_TRUE(false, "ERROR: Do not support recursive subroutine call!");
+        vISA_ASSERT(false, "ERROR: Do not support recursive subroutine call!");
       }
       addPredSuccEdges(
           bb, returnAddr,
@@ -1420,7 +1420,7 @@ void FlowGraph::decoupleInitBlock(G4_BB *bb,
   G4_BB *oldInitBB = bb;
   G4_BB *newInitBB = createNewBB();
   BB_LIST_ITER insertBefore = std::find(BBs.begin(), BBs.end(), bb);
-  MUST_BE_TRUE(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
+  vISA_ASSERT(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
   insert(insertBefore, newInitBB);
 
   BB_LIST_ITER kt = oldInitBB->Preds.begin();
@@ -1437,7 +1437,7 @@ void FlowGraph::decoupleInitBlock(G4_BB *bb,
         }
         jt++;
       }
-      MUST_BE_TRUE(jt != (*kt)->Succs.end(), ERROR_FLOWGRAPH);
+      vISA_ASSERT(jt != (*kt)->Succs.end(), ERROR_FLOWGRAPH);
       (*kt)->Succs.insert(jt, newInitBB);
       (*kt)->Succs.erase(jt);
 
@@ -1452,7 +1452,7 @@ void FlowGraph::decoupleInitBlock(G4_BB *bb,
 
   FuncInfoHashTable::iterator old_iter =
       funcInfoHashTable.find(oldInitBB->getId());
-  MUST_BE_TRUE(old_iter != funcInfoHashTable.end(),
+  vISA_ASSERT(old_iter != funcInfoHashTable.end(),
                " Function info is not in hashtable.");
   FuncInfo *funcInfo = old_iter->second;
 
@@ -1479,7 +1479,7 @@ void FlowGraph::decoupleReturnBlock(G4_BB *bb) {
   G4_BB *itsExitBB = oldRetBB->BBBeforeCall()->getCalleeInfo()->getExitBB();
   G4_BB *newRetBB = createNewBB();
   BB_LIST_ITER insertBefore = std::find(BBs.begin(), BBs.end(), bb);
-  MUST_BE_TRUE(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
+  vISA_ASSERT(insertBefore != BBs.end(), ERROR_FLOWGRAPH);
   insert(insertBefore, newRetBB);
 
   std::replace(itsExitBB->Succs.begin(), itsExitBB->Succs.end(), oldRetBB,
@@ -1511,7 +1511,7 @@ void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable &funcInfoTable) {
     if ((bb->getBBType() & G4_BB_CALL_TYPE)) {
       if (bb->getBBType() & G4_BB_EXIT_TYPE) {
         // As call BB has RETURN BB as fall-thru, cannot be EXIT
-        MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
+        vISA_ASSERT(false, ERROR_FLOWGRAPH);
       }
 
       // BB could be either INIT or RETURN, but not both.
@@ -1523,7 +1523,7 @@ void FlowGraph::normalizeSubRoutineBB(FuncInfoHashTable &funcInfoTable) {
     } else if ((bb->getBBType() & G4_BB_INIT_TYPE)) {
       if (bb->getBBType() & G4_BB_RETURN_TYPE) {
         // As retrun BB must have a pred, it cannot be init BB
-        MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
+        vISA_ASSERT(false, ERROR_FLOWGRAPH);
       }
 
       // Two possible combinations: INIT & CALL, or INIT & EXIT. INIT & CALL has
@@ -1613,11 +1613,11 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
         // Remove it from funcInfoHT.
         int funcId = bb->getId();
         unsigned numErased = funcInfoHT.erase(funcId);
-        assert(numErased == 1);
+        vASSERT(numErased == 1);
       } else if (bb->getBBType() & G4_BB_CALL_TYPE) {
         // If call bb is removed, its return BB shuld be removed as well.
         G4_BB *retBB = bb->getPhysicalSucc();
-        assert(retBB && "vISA ICE: missing Return BB");
+        vISA_ASSERT(retBB, "vISA ICE: missing Return BB");
         if (retBB->getPreId() != UINT_MAX) {
           retBB->setPreId(UINT_MAX);
         }
@@ -1651,7 +1651,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
       if (bb->getBBType() & G4_BB_CALL_TYPE) {
         // CALL BB isn't dead, don't remove return BB.
         G4_BB *retBB = bb->getPhysicalSucc();
-        assert(retBB && (retBB->getBBType() & G4_BB_RETURN_TYPE) &&
+        vISA_ASSERT(retBB && (retBB->getBBType() & G4_BB_RETURN_TYPE),
                "vISA ICE: missing RETURN BB");
         if (retBB->getPreId() == UINT_MAX) {
           // For example,
@@ -1670,10 +1670,10 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
         // function isn't dead, don't remove exit BB.
         int funcId = bb->getId();
         auto entry = funcInfoHT.find(funcId);
-        assert(entry != funcInfoHT.end());
+        vASSERT(entry != funcInfoHT.end());
         FuncInfo *finfo = entry->second;
         G4_BB *exitBB = finfo->getExitBB();
-        assert(exitBB && "vISA ICE: missing exit BB");
+        vISA_ASSERT(exitBB, "vISA ICE: missing exit BB");
         if (exitBB->getPreId() == UINT_MAX) {
           // See the example above for G4_BB_CALL_TYPE
           exitBB->setPreId(UINT_MAX - 1);
@@ -1753,7 +1753,7 @@ void FlowGraph::removeRedundantLabels() {
       continue;
     }
 
-    assert(bb->size() > 0 && bb->front()->isLabel() &&
+    vISA_ASSERT(bb->size() > 0 && bb->front()->isLabel(),
            "Every BB should at least have a label inst!");
 
     // Possible kernel's entry, don't delete.
@@ -1819,7 +1819,7 @@ void FlowGraph::removeRedundantLabels() {
                 break;
               }
             }
-            MUST_BE_TRUE(foundMatchingJmp,
+            vISA_ASSERT(foundMatchingJmp,
                          "Can't find the matching jmpi to the given label");
           } else if (i->opcode() == G4_jmpi || i->isCall()) {
             if (i->getSrc(0)->isLabel()) {
@@ -1845,7 +1845,7 @@ void FlowGraph::removeRedundantLabels() {
           } else if (i->opcode() == G4_break || i->opcode() == G4_cont ||
                      i->opcode() == G4_halt) {
             // JIP and UIP must have been computed at this point
-            MUST_BE_TRUE(i->asCFInst()->getJip() != NULL &&
+            vISA_ASSERT(i->asCFInst()->getJip() != NULL &&
                              i->asCFInst()->getUip() != NULL,
                          "null JIP or UIP for break/cont instruction");
             if (i->asCFInst()->getJip() == removedBlockInst->getLabel()) {
@@ -1857,7 +1857,7 @@ void FlowGraph::removeRedundantLabels() {
             }
           } else if (i->opcode() == G4_goto) {
             // UIP must have been computed at this point
-            MUST_BE_TRUE(i->asCFInst()->getUip() != NULL,
+            vISA_ASSERT(i->asCFInst()->getUip() != NULL,
                          "null UIP for goto instruction");
             if (i->asCFInst()->getUip() == removedBlockInst->getLabel()) {
               i->asCFInst()->setUip(succ_label);
@@ -1938,7 +1938,7 @@ void FlowGraph::removeRedundantLabels() {
       //
       G4_BB *singlePred = bb->Preds.front();
       G4_INST *labelInst = bb->front();
-      assert(labelInst->isLabel());
+      vASSERT(labelInst->isLabel());
       if (!singlePred->back()->isFlowControl() &&
           singlePred->getPhysicalSucc() == bb /* sanity */ &&
           !labelInst->getLabel()->isFuncLabel() /* skip special bb */ &&
@@ -1964,7 +1964,7 @@ void FlowGraph::removeRedundantLabels() {
 
         if (doMerging) {
           removePredSuccEdges(singlePred, bb);
-          assert(singlePred->Succs.size() == 0);
+          vASSERT(singlePred->Succs.size() == 0);
           std::vector<G4_BB *> allSuccBBs(bb->Succs.begin(), bb->Succs.end());
           for (auto S : allSuccBBs) {
             removePredSuccEdges(bb, S);
@@ -2143,7 +2143,7 @@ void FlowGraph::mergeFReturns() {
   if (exitBBs.size() > 1) {
     if (candidateFretBB == NULL) {
       G4_BB *newExit = createNewBB();
-      assert(!builder->getIsKernel() && "Not expecting fret in kernel");
+      vISA_ASSERT(!builder->getIsKernel(), "Not expecting fret in kernel");
       dumLabel = builder->createLocalBlockLabel("MERGED_FRET_EXIT_BB");
       G4_INST *label = createNewLabelInst(dumLabel);
       newExit->push_back(label);
@@ -2185,12 +2185,12 @@ void FlowGraph::linkDummyBB() {
       exitBBs.push_back(bb); // record exit BBs
       G4_INST *last = bb->back();
       if (last == NULL) {
-        MUST_BE_TRUE(false, "ERROR: Invalid flow graph with empty exit BB!");
+        vISA_ASSERT(false, "ERROR: Invalid flow graph with empty exit BB!");
       }
       if (!bb->isLastInstEOT()) {
         nonEotExitBB++;
         if (nonEotExitBB > 1) {
-          MUST_BE_TRUE(false, "ERROR: Invalid flow graph with more than one "
+          vISA_ASSERT(false, "ERROR: Invalid flow graph with more than one "
                               "exit BB not end with EOT!");
         }
       }
@@ -2202,7 +2202,7 @@ void FlowGraph::linkDummyBB() {
   //
   if (nonEotExitBB == 1 && exitBBs.size() > 1) {
     G4_BB *dumBB = createNewBB();
-    MUST_BE_TRUE(dumBB != NULL, ERROR_FLOWGRAPH);
+    vISA_ASSERT(dumBB != NULL, ERROR_FLOWGRAPH);
     G4_Label *dumLabel = builder->createLocalBlockLabel("DUMMY_LAST_BB");
     G4_INST *label = createNewLabelInst(dumLabel);
     dumBB->push_back(label);
@@ -2230,7 +2230,7 @@ void FlowGraph::reassignBlockIDs() {
   for (G4_BB *bb : BBs) {
     bb->setId(i);
     i++;
-    MUST_BE_TRUE(i <= getNumBB(), ERROR_FLOWGRAPH);
+    vISA_ASSERT(i <= getNumBB(), ERROR_FLOWGRAPH);
   }
 
   numBBId = i;
@@ -2309,9 +2309,9 @@ void FlowGraph::processSCF(FuncInfoHashTable &FuncInfoMap) {
       if (inst->opcode() != G4_label && inst->opcode() != G4_join) {
         if (inst->opcode() == G4_endif) {
 
-          MUST_BE_TRUE(ifAndLoops.size() > 0, "endif without matching if");
+          vISA_ASSERT(ifAndLoops.size() > 0, "endif without matching if");
           StructuredCF *cf = ifAndLoops.top();
-          MUST_BE_TRUE(cf->mType == STRUCTURED_CF_IF, "ill-formed if");
+          vISA_ASSERT(cf->mType == STRUCTURED_CF_IF, "ill-formed if");
           cf->setEnd(bb, inst);
           ifAndLoops.pop();
           if (ifAndLoops.size() > 0) {
@@ -2344,9 +2344,9 @@ void FlowGraph::processSCF(FuncInfoHashTable &FuncInfoMap) {
         structuredSimdCF.push_back(cf);
         ifAndLoops.push(cf);
       } else if (lastInst->opcode() == G4_while) {
-        MUST_BE_TRUE(ifAndLoops.size() > 0, "while without matching do");
+        vISA_ASSERT(ifAndLoops.size() > 0, "while without matching do");
         StructuredCF *cf = ifAndLoops.top();
-        MUST_BE_TRUE(cf->mType == STRUCTURED_CF_LOOP, "ill-formed while loop");
+        vISA_ASSERT(cf->mType == STRUCTURED_CF_LOOP, "ill-formed while loop");
         cf->setEnd(bb, lastInst);
         ifAndLoops.pop();
         if (ifAndLoops.size() > 0) {
@@ -2356,7 +2356,7 @@ void FlowGraph::processSCF(FuncInfoHashTable &FuncInfoMap) {
     }
   }
 
-  MUST_BE_TRUE(ifAndLoops.size() == 0, "not well-structured SIMD CF");
+  vISA_ASSERT(ifAndLoops.size() == 0, "not well-structured SIMD CF");
 
   for (StructuredCF *cf : structuredSimdCF) {
     if (cf->mType == STRUCTURED_CF_IF && cf->enclosingCF != NULL) {
@@ -2513,7 +2513,7 @@ void FlowGraph::markDivergentBBs() {
       uint32_t ui = (uint32_t)(numFuncs - i);
       allFuncs[ui].StartI = std::find(BBs.begin(), BBs.end(), StartBB);
       auto nextI = std::find(BBs.begin(), BBs.end(), EndBB);
-      assert(nextI != BBs.end() && "ICE: subroutine's end BB not found!");
+      vISA_ASSERT(nextI != BBs.end(), "ICE: subroutine's end BB not found!");
       allFuncs[ui].EndI = (++nextI);
       allFuncs[ui].InvokedFromDivergentBB = false;
 
@@ -2525,8 +2525,8 @@ void FlowGraph::markDivergentBBs() {
   auto updateLastJoinForBwdBrInBB = [&](BB_LIST_ITER &IT) {
     G4_BB *predBB = *IT;
     G4_INST *bInst = predBB->back();
-    assert(bInst->isCFInst() &&
-           (bInst->opcode() == G4_while || bInst->asCFInst()->isBackward()) &&
+    vISA_ASSERT(bInst->isCFInst() &&
+           (bInst->opcode() == G4_while || bInst->asCFInst()->isBackward()),
            "ICE: expected backward branch/while!");
 
     // joinBB of a loop is the BB right after tail BB
@@ -2585,7 +2585,7 @@ void FlowGraph::markDivergentBBs() {
                (!lastInst->asCFInst()->isUniform() || isBBDivergent)) {
       G4_Label *labelInst = lastInst->asCFInst()->getUip();
       G4_BB *joinBB = findLabelBB(IT, BBs.end(), labelInst->getLabel());
-      assert(joinBB && "ICE(vISA) : missing endif label!");
+      vISA_ASSERT(joinBB, "ICE(vISA) : missing endif label!");
       pushJoin(joinBB);
     } else if (!IsPreScan && lastInst->opcode() == G4_call) {
       // If this function is already in divergent branch, the callee
@@ -2654,11 +2654,11 @@ void FlowGraph::markDivergentBBs() {
         if (!isBackwardBranch(predBB, BB)) {
           G4_opcode t_opc = predBB->getLastOpcode();
           bool isBr = (t_opc == G4_goto || t_opc == G4_jmpi);
-          assert((!isBr || (BB->getId() > predBB->getId())) &&
+          vISA_ASSERT((!isBr || (BB->getId() > predBB->getId())),
                  "backward Branch did not set correctly!");
           continue;
         }
-        assert(BB->getId() <= predBB->getId() &&
+        vISA_ASSERT(BB->getId() <= predBB->getId(),
                "Branch incorrectly set to be backward!");
 
         BB_LIST_ITER LoopITEnd = std::find(BBs.begin(), BBs.end(), predBB);
@@ -2726,7 +2726,7 @@ void FlowGraph::markDivergentBBs() {
               if (!isBackwardBranch(T, H)) {
                 continue;
               }
-              assert(H->getId() <= T->getId() &&
+              vISA_ASSERT(H->getId() <= T->getId(),
                      "Branch incorrectly set to be backward!");
               BB_LIST_ITER TIter = std::find(BBs.begin(), BBs.end(), T);
               updateLastJoinForBwdBrInBB(TIter);
@@ -2789,7 +2789,7 @@ G4_BB *FlowGraph::getUniqueReturnBlock() {
  */
 void FlowGraph::insertJoinToBB(G4_BB *bb, G4_ExecSize execSize, G4_Label *jip,
                                uint8_t maskOffset) {
-  MUST_BE_TRUE(bb->size() > 0, "empty block");
+  vISA_ASSERT(bb->size() > 0, "empty block");
   INST_LIST_ITER iter = bb->begin();
 
   // Skip label if any.
@@ -2886,7 +2886,7 @@ G4_Label *FlowGraph::insertEndif(G4_BB *bb, G4_ExecSize execSize,
   G4_INST *endifInst = builder->createInternalCFInst(NULL, G4_endif, execSize,
                                                      NULL, NULL, InstOpt_NoOpt);
   INST_LIST_ITER iter = bb->begin();
-  MUST_BE_TRUE(iter != bb->end(), "empty BB");
+  vISA_ASSERT(iter != bb->end(), "empty BB");
   iter++;
   bb->insertBefore(iter, endifInst);
 
@@ -2906,7 +2906,7 @@ G4_Label *FlowGraph::insertEndif(G4_BB *bb, G4_ExecSize execSize,
 // endif or while)
 void FlowGraph::setJIPForEndif(G4_INST *endif, G4_INST *target,
                                G4_BB *targetBB) {
-  MUST_BE_TRUE(endif->opcode() == G4_endif, "must be an endif instruction");
+  vISA_ASSERT(endif->opcode() == G4_endif, "must be an endif instruction");
   G4_Label *label = getLabelForEndif(target);
   if (label) {
     // see if there's another label before the inst that we can reuse
@@ -2924,7 +2924,7 @@ void FlowGraph::setJIPForEndif(G4_INST *endif, G4_INST *target,
         prevInst = inst;
       }
     } else {
-      MUST_BE_TRUE(target->opcode() == G4_while, "must be a while instruction");
+      vISA_ASSERT(target->opcode() == G4_while, "must be a while instruction");
       INST_LIST_RITER it = ++(targetBB->rbegin());
       if (it != targetBB->rend()) {
         G4_INST *inst = *it;
@@ -3050,7 +3050,7 @@ void FlowGraph::processGoto(bool HasSIMDCF) {
         continue;
       }
       G4_BB *targetBB = currBB->Succs.back();
-      assert(lastInst->asCFInst()->getUip() == targetBB->getLabel());
+      vASSERT(lastInst->asCFInst()->getUip() == targetBB->getLabel());
       if (lastInst->asCFInst()->isUniform() &&
           (tmpActiveJoins.empty() ||
            tmpActiveJoins.front()->getId() >= targetBB->getId())) {
@@ -3327,7 +3327,7 @@ void FlowGraph::findNestedDivergentBBs(
       if ((int)currBB->getId() == LastDivergentBBId) {
         LastDivergentBBId = -1;
       }
-      assert(!(LastDivergentBBId == -1 && LastNestedBBId >= 0) &&
+      vISA_ASSERT(!(LastDivergentBBId == -1 && LastNestedBBId >= 0),
              "ICE:  something wrong in setting divergent BB Id!");
     }
   };
@@ -3367,7 +3367,7 @@ void FlowGraph::findNestedDivergentBBs(
         G4_BB *Tail = iter;
         G4_InstCF *cfInst = Tail->back()->asCFInst();
 
-        assert(nestedDivergentBBs.count(Tail) > 0 &&
+        vISA_ASSERT(nestedDivergentBBs.count(Tail) > 0,
                "Only divergent Tail shall invoke this func!");
 
         // Find loop head
@@ -3383,7 +3383,7 @@ void FlowGraph::findNestedDivergentBBs(
             break;
           }
         }
-        assert(Head != nullptr);
+        vASSERT(Head != nullptr);
 
         // If Head's divergence level is already higher than Tail, no
         // propagation needed as Head's divergence has been propagated already.
@@ -3468,7 +3468,7 @@ void FlowGraph::findNestedDivergentBBs(
       uint32_t ui = (uint32_t)(numFuncs - i);
       allFuncs[ui].StartI = std::find(BBs.begin(), BBs.end(), StartBB);
       auto nextI = std::find(BBs.begin(), BBs.end(), EndBB);
-      assert(nextI != BBs.end() && "ICE: subroutine's end BB not found!");
+      vISA_ASSERT(nextI != BBs.end(), "ICE: subroutine's end BB not found!");
       allFuncs[ui].EndI = (++nextI);
       allFuncs[ui].isInDivergentBranch = false;
       allFuncs[ui].isInNestedDivergentBranch = false;
@@ -3599,7 +3599,7 @@ void FlowGraph::findNestedDivergentBBs(
       } else if (lastInst->opcode() == G4_if) {
         G4_Label *labelInst = lastInst->asCFInst()->getUip();
         G4_BB *joinBB = findLabelBB(IT, IE, labelInst->getLabel());
-        assert(joinBB && "ICE(vISA) : missing endif label!");
+        vISA_ASSERT(joinBB, "ICE(vISA) : missing endif label!");
         cfs.pushJoin(joinBB);
       } else if (lastInst->opcode() == G4_call) {
         // If this function is already in divergent branch, the callee
@@ -3620,7 +3620,7 @@ void FlowGraph::findNestedDivergentBBs(
     }
 
     // Once all BBs are precessed, cfs should be clear
-    assert((!cfs.isInDivergentBranch()) &&
+    vISA_ASSERT((!cfs.isInDivergentBranch()),
            "ICE(vISA): there is an error in divergence tracking!");
   }
 
@@ -3747,7 +3747,7 @@ void FlowGraph::addSIMDEdges() {
 //
 void FlowGraph::DFSTraverse(G4_BB *startBB, unsigned &preId, unsigned &postId,
                             FuncInfo *fn) {
-  MUST_BE_TRUE(fn, "Invalid func info");
+  vISA_ASSERT(fn, "Invalid func info");
   std::stack<G4_BB *> traversalStack;
   traversalStack.push(startBB);
 
@@ -3787,10 +3787,10 @@ void FlowGraph::DFSTraverse(G4_BB *startBB, unsigned &preId, unsigned &postId,
       G4_BB *returnBB = bb->BBAfterCall();
       // If call is predicated, first item in Succs is physically consecutive BB
       // and second (or last) item is sub-routine entry BB.
-      MUST_BE_TRUE(bb->Succs.back()->getBBType() & G4_BB_INIT_TYPE,
+      vISA_ASSERT(bb->Succs.back()->getBBType() & G4_BB_INIT_TYPE,
                    ERROR_FLOWGRAPH);
       // bb->Succs size may be 2 if call is predicated.
-      MUST_BE_TRUE(bb->Succs.size() == 1 || bb->Succs.size() == 2,
+      vISA_ASSERT(bb->Succs.size() == 1 || bb->Succs.size() == 2,
                    ERROR_FLOWGRAPH);
 
       {
@@ -3807,7 +3807,7 @@ void FlowGraph::DFSTraverse(G4_BB *startBB, unsigned &preId, unsigned &postId,
       if (returnBB->getPreId() == UINT_MAX) {
         traversalStack.push(returnBB);
       } else {
-        MUST_BE_TRUE(false, ERROR_FLOWGRAPH);
+        vISA_ASSERT(false, ERROR_FLOWGRAPH);
       }
     } else if (bb->getBBType() & G4_BB_EXIT_TYPE) {
       // Skip
@@ -3844,7 +3844,7 @@ void vISA::FlowGraph::markStale() {
 }
 
 void FlowGraph::markRPOTraversal() {
-  MUST_BE_TRUE(numBBId == BBs.size(), ERROR_FLOWGRAPH);
+  vISA_ASSERT(numBBId == BBs.size(), ERROR_FLOWGRAPH);
 
   unsigned postID = 0;
   backEdges.clear();
@@ -3872,7 +3872,7 @@ void FlowGraph::markRPOTraversal() {
 // Find back-edges in the flow graph.
 //
 void FlowGraph::findBackEdges() {
-  MUST_BE_TRUE(numBBId == BBs.size(), ERROR_FLOWGRAPH);
+  vISA_ASSERT(numBBId == BBs.size(), ERROR_FLOWGRAPH);
 
   for (auto bb : BBs) {
     bb->setPreId(UINT_MAX);
@@ -3934,7 +3934,7 @@ void FlowGraph::findNaturalLoops() {
               }
               return;
             }
-            MUST_BE_TRUE(predBB != entryBB || head == entryBB, ERROR_FLOWGRAPH);
+            vISA_ASSERT(predBB != entryBB || head == entryBB, ERROR_FLOWGRAPH);
             loopBlocks.push_front(predBB);
             loopBody.insert(predBB);
           }
@@ -4317,7 +4317,7 @@ bool FlowGraph::convertJmpiToGoto() {
           G4_Type DstTy = (predSize > 16) ? Type_UD : Type_UW;
 
           G4_Predicate_Control pCtrl = pred->getControl();
-          MUST_BE_TRUE(nElts == 1 || G4_Predicate::isAnyH(pCtrl) ||
+          vISA_ASSERT(nElts == 1 || G4_Predicate::isAnyH(pCtrl) ||
                            G4_Predicate::isAllH(pCtrl),
                        "predicate control not handled yet");
 
@@ -4436,7 +4436,7 @@ bool FlowGraph::convertPredCall(
     G4_BB *newCallBB = createNewBBWithLabel("predCallWA");
     insert(NextBI, newCallBB);
     G4_Label *callBB_lbl = newCallBB->getLabel();
-    assert(callBB_lbl);
+    vASSERT(callBB_lbl);
     aLabelMap.insert(std::make_pair(callBB_lbl, newCallBB));
 
     G4_BB *targetBB = createNewBBWithLabel("predCallWA");
@@ -4561,10 +4561,10 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
   // re-adjusted
   // FIXME: This only check if vISA force to compact the instruction, it cannot
   // make sure the Binary encoder won't compact it
-  assert(inst->isCompactedInst() == false);
+  vASSERT(inst->isCompactedInst() == false);
 
   G4_Operand *target_operand = inst->getSrc(opndPos);
-  assert(target_operand->isRelocImm());
+  vASSERT(target_operand->isRelocImm());
 
   switch (inst->opcode()) {
   case G4_mov:
@@ -4577,11 +4577,11 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
     //   Src0.imm[63:32] mapped to Instruction [95:64]
     // When src0 type is 32 bits:
     //   Src0.imm[31:0] mapped to instruction [127:96]
-    assert((target_operand->getType() == Type_UD) ||
+    vASSERT((target_operand->getType() == Type_UD) ||
            (target_operand->getType() == Type_D) ||
            (target_operand->getType() == Type_UQ) ||
            (target_operand->getType() == Type_Q));
-    assert(opndPos == 0);
+    vASSERT(opndPos == 0);
     return (target_operand->getType() == Type_UD ||
             target_operand->getType() == Type_D)
                ? 12
@@ -4589,8 +4589,8 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
 
   case G4_add:
     // add instruction cannot have 64-bit imm
-    assert(relocType != R_SYM_ADDR && relocType != R_SYM_ADDR_32_HI);
-    assert(opndPos == 1);
+    vASSERT(relocType != R_SYM_ADDR && relocType != R_SYM_ADDR_32_HI);
+    vASSERT(opndPos == 1);
     // Src1.imm[31:0] mapped to Instruction [127:96]
     return 12;
   default:

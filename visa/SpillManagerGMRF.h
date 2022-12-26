@@ -103,7 +103,7 @@ public:
     for (unsigned int i = start;; ++i) {
       // No block found in entire GRF file search
       if (scannedOnce && i == forceStart) {
-        MUST_BE_TRUE(false, "no free GRF found in fail safe");
+        vISA_ASSERT(false, "no free GRF found in fail safe");
         return NOT_FOUND;
       }
 
@@ -119,7 +119,7 @@ public:
       if (sizeFound == num) {
         markGRFs(start, num);
         if (isIndirect) {
-          MUST_BE_TRUE(addrDcl, "expecting non-nullptr addrDcl");
+          vISA_ASSERT(addrDcl, "expecting non-nullptr addrDcl");
           markIndirBusy(start, num);
         }
         return start;
@@ -149,7 +149,7 @@ public:
     else {
       auto freeGRFStart =
           getConsecutiveFree(num, kernel.getNumRegTotal() - 16, isIndirect);
-      MUST_BE_TRUE(freeGRFStart >= (kernel.getNumRegTotal() - 16) &&
+      vISA_ASSERT(freeGRFStart >= (kernel.getNumRegTotal() - 16) &&
                        (freeGRFStart + num) < kernel.getNumRegTotal(),
                    "unexpected EOT allocation");
       return freeGRFStart;
@@ -210,7 +210,7 @@ private:
   void markForbidden(LiveRange *lr);
 
   void markIndirBusy(unsigned int start, unsigned int num) {
-    MUST_BE_TRUE(busyIndir.find(addrDcl) != busyIndir.end(),
+    vISA_ASSERT(busyIndir.find(addrDcl) != busyIndir.end(),
                  "no inst found referencing addrDcl");
 
     auto &refs = busyIndir[addrDcl];

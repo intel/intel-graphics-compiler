@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 #include <vector>
 
+#include "Assertions.h"
 //#include "common.h"
 #include "FlowGraph.h"
 //#include "G4_BB.hpp"
@@ -93,7 +94,7 @@ public:
   void doPointsToAnalysis(FlowGraph &fg);
 
   const REGVAR_VECTOR &getIndrUseVectorForBB(unsigned int bbId) const {
-    MUST_BE_TRUE(bbId < numBBs, "invalid basic block id");
+    vISA_ASSERT(bbId < numBBs, "invalid basic block id");
     return indirectUses[bbId];
   }
 
@@ -124,4 +125,4 @@ public:
   void removeFromPointsTo(G4_RegVar *addr, G4_RegVar *vartoremove);
 };
 } // namespace vISA
-#endif 
+#endif

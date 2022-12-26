@@ -21,10 +21,10 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
                                    std::vector<G4_Declare *> &declares,
                                    G4_Declare *input, G4_Type eltType,
                                    int bundleSize, int firstEltOffset) {
-  MUST_BE_TRUE(input->isInput() && input->getAliasDeclare() == nullptr,
+  vISA_ASSERT(input->isInput() && input->getAliasDeclare() == nullptr,
                "Expect root input variable");
   for (auto dcl : declares) {
-    MUST_BE_TRUE(dcl->isInput() && dcl->getAliasDeclare() == nullptr,
+    vISA_ASSERT(dcl->isInput() && dcl->getAliasDeclare() == nullptr,
                  "declare must be root input variable");
     if (dcl->getRegVar()->getByteAddr(builder) ==
             input->getRegVar()->getByteAddr(builder) &&
@@ -41,7 +41,7 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
   uint32_t offset = input->getRegVar()->getPhyRegOff() * input->getElemSize() +
                     firstEltOffset;
   uint32_t eltBytes = TypeSize(eltType);
-  MUST_BE_TRUE((offset % eltBytes) == 0,
+  vISA_ASSERT((offset % eltBytes) == 0,
                "Offset should be multiple of element size");
   offset = offset / eltBytes;
   const char *name = builder.getNameString(
@@ -165,7 +165,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
         builder.createDst(newDcl->getRegVar(), 0, 0, 1, dstType);
     newInst->setDest(newDst);
   } else {
-    MUST_BE_TRUE(dstPattern == OPND_PATTERN::CONTIGUOUS,
+    vISA_ASSERT(dstPattern == OPND_PATTERN::CONTIGUOUS,
                  "unexpected dst pattern");
   }
 
@@ -182,7 +182,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
         newDcl = builder.createTempVar(execSize, srcType, Eight_Word, "Merged");
       }
       for (int j = 0; j < size; ++j) {
-        MUST_BE_TRUE(inst[j]->getSrc(i)->isSrcRegRegion(),
+        vISA_ASSERT(inst[j]->getSrc(i)->isSrcRegRegion(),
                      "Src must be a region");
         G4_SrcRegRegion *src = inst[j]->getSrc(i)->asSrcRegRegion();
         G4_Declare *srcDcl = src->getTopDcl();
@@ -334,7 +334,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
 
       execSize = g4::SIMD1;
     } else {
-      MUST_BE_TRUE(srcPattern[i] == OPND_PATTERN::IDENTICAL,
+      vISA_ASSERT(srcPattern[i] == OPND_PATTERN::IDENTICAL,
                    "unexpected source pattern");
     }
   }
@@ -422,7 +422,7 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST *inst, const IR_Builder &builder,
     return false;
   }
 
-  MUST_BE_TRUE(inst->getDst() != nullptr, "dst must not be nullptr");
+  vISA_ASSERT(inst->getDst() != nullptr, "dst must not be nullptr");
   if (inst->getDst()->isIndirect()) {
     return false;
   }
@@ -599,7 +599,7 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
                                  const IR_Builder &builder) {
   // src must be either Imm or SrcRegRegion
 
-  MUST_BE_TRUE(srcPos < maxNumSrc, "invalid srcPos");
+  vISA_ASSERT(srcPos < maxNumSrc, "invalid srcPos");
 
   if (src->isRelocImm()) {
     return false;

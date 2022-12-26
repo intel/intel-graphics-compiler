@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef _INC_LINEARSCANRA_H_
 #define _INC_LINEARSCANRA_H_
 
+#include "Assertions.h"
 #include "BitSet.h"
 #include "BuildIR.h"
 #include "FlowGraph.h"
@@ -243,7 +244,7 @@ public:
   bool isGRFRegAssigned();
 
   void setTopDcl(G4_Declare *dcl) {
-    MUST_BE_TRUE(topdcl == NULL, "Redefining top dcl");
+    vISA_ASSERT(topdcl == NULL, "Redefining top dcl");
     topdcl = dcl;
   }
 

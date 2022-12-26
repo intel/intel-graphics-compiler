@@ -607,7 +607,7 @@ int ElemsPerAddr::getCount() const {
 }
 
 ElemsPerAddr::Chs ElemsPerAddr::getMask() const {
-  MUST_BE_TRUE(isChannelMask(), "must be a channel mask vector");
+  vISA_ASSERT(isChannelMask(), "must be a channel mask vector");
   return channels;
 }
 
@@ -775,7 +775,7 @@ G4_SendDescRaw::G4_SendDescRaw(uint32_t fCtrl, uint32_t regs2rcv,
   }
 
   uint32_t totalMaxLength = builder.getMaxSendMessageLength();
-  MUST_BE_TRUE(extDesc.layout.extMsgLength + desc.layout.msgLength <
+  vISA_ASSERT(extDesc.layout.extMsgLength + desc.layout.msgLength <
                    totalMaxLength,
                "combined message length may not exceed the maximum");
 }
@@ -830,12 +830,12 @@ G4_SendDescRaw::G4_SendDescRaw(SFID _sfid, uint32_t _desc, uint32_t _extDesc,
 }
 
 uint32_t G4_SendDescRaw::getHdcMessageType() const {
-  MUST_BE_TRUE(isHDC(), "not an HDC message");
+  vISA_ASSERT(isHDC(), "not an HDC message");
   return (desc.value >> 14) & 0x1F;
 }
 
 LSC_ADDR_TYPE G4_SendDescRaw::getLscAddrType() const {
-  MUST_BE_TRUE(isLscOp(), "must be LSC op");
+  vISA_ASSERT(isLscOp(), "must be LSC op");
   const int LSC_ADDR_TYPE_OFFSET = 29;
   const uint32_t LSC_ADDR_TYPE_MASK = 0x3;
   const uint32_t rawDescBits = getDesc();
@@ -845,7 +845,7 @@ LSC_ADDR_TYPE G4_SendDescRaw::getLscAddrType() const {
 }
 
 int G4_SendDescRaw::getLscAddrSizeBytes() const {
-  MUST_BE_TRUE(isLscOp(), "must be LSC op");
+  vISA_ASSERT(isLscOp(), "must be LSC op");
   auto op = getLscOp();
   switch (op) {
   case LSC_LOAD:
@@ -878,7 +878,7 @@ int G4_SendDescRaw::getLscAddrSizeBytes() const {
 }
 
 LSC_DATA_ORDER G4_SendDescRaw::getLscDataOrder() const {
-  MUST_BE_TRUE(isLscOp(), "must be LSC op");
+  vISA_ASSERT(isLscOp(), "must be LSC op");
   auto op = getLscOp();
   if (op == LSC_LOAD_QUAD || op == LSC_STORE_QUAD)
     return LSC_DATA_ORDER_NONTRANSPOSE;
@@ -955,8 +955,8 @@ bool G4_SendDescRaw::isAtomicMessage() const {
 }
 
 uint16_t G4_SendDescRaw::getHdcAtomicOp() const {
-  MUST_BE_TRUE(isHDC(), "must be HDC message");
-  MUST_BE_TRUE(isAtomicMessage(), "getting atomicOp from non-atomic message!");
+  vISA_ASSERT(isHDC(), "must be HDC message");
+  vISA_ASSERT(isAtomicMessage(), "getting atomicOp from non-atomic message!");
   uint32_t funcCtrl = getFuncCtrl();
   if (isHdcIntAtomicMessage(getSFID(), getHdcMessageType(), irb)) {
     // bits: 11:8
@@ -1013,7 +1013,7 @@ bool G4_SendDescRaw::isHeaderPresent() const {
 }
 
 void G4_SendDescRaw::setHeaderPresent(bool val) {
-  MUST_BE_TRUE(!isLscOp(), "LSC ops don't have headers");
+  vISA_ASSERT(!isLscOp(), "LSC ops don't have headers");
   desc.layout.headerPresent = val;
 }
 
@@ -1026,18 +1026,18 @@ void G4_SendDescRaw::setBindingTableIdx(unsigned idx) {
 }
 
 uint32_t G4_SendDescRaw::getSamplerMessageType() const {
-  MUST_BE_TRUE(isSampler(), "wrong descriptor type for method");
+  vISA_ASSERT(isSampler(), "wrong descriptor type for method");
   return (getFuncCtrl() >> 12) & 0x1f;
 }
 
 bool G4_SendDescRaw::is16BitInput() const {
-  MUST_BE_TRUE(!isLscOp(), "wrong descriptor type for method");
+  vISA_ASSERT(!isLscOp(), "wrong descriptor type for method");
   // TODO: could use this for LSC messages too potentially
   return desc.layout.simdMode2 == 1;
 }
 
 bool G4_SendDescRaw::is16BitReturn() const {
-  MUST_BE_TRUE(!isLscOp(), "wrong descriptor type for method");
+  vISA_ASSERT(!isLscOp(), "wrong descriptor type for method");
   return desc.layout.returnFormat == 1;
 }
 
@@ -1259,7 +1259,7 @@ static int getNumEnabledChannels(uint32_t chDisableBits) {
 #define MSG_BLOCK_SIZE_OFFSET 8
 unsigned G4_SendDescRaw::getEnabledChannelNum() const {
   // TODO: should further scope this to typed/untyped
-  MUST_BE_TRUE(isHDC(), "message does not have field ChannelEnable");
+  vISA_ASSERT(isHDC(), "message does not have field ChannelEnable");
   uint32_t funcCtrl = getFuncCtrl();
   return getNumEnabledChannels((funcCtrl >> MSG_BLOCK_SIZE_OFFSET) & 0xF);
 }
@@ -1280,7 +1280,7 @@ unsigned G4_SendDescRaw::getElemsPerAddr() const {
     case SVM_BLOCK_NUM_8:
       return 8;
     default:
-      MUST_BE_TRUE(false,
+      vISA_ASSERT(false,
                    "Illegal SVM block number (should be 1, 2, 4, or 8).");
     }
   } else if (isLSC()) {
@@ -1370,7 +1370,7 @@ unsigned G4_SendDescRaw::getElemSize() const {
       break; // supported
     default:
       if (op < LSC_ATOMIC_IINC && op > LSC_ATOMIC_XOR) {
-        MUST_BE_TRUE(
+        vISA_ASSERT(
             false,
             "unexpected receiver (unsupported descriptor type) ==> fix this");
         return 0;
@@ -1393,7 +1393,7 @@ unsigned G4_SendDescRaw::getElemSize() const {
     // TODO: other unsupported things like barrier and fence should just return
     // 0 without asserting?
   } else {
-    MUST_BE_TRUE(
+    vISA_ASSERT(
         false,
         "unexpected receiver (unsupported descriptor type) ==> fix this");
     return 0;
@@ -1430,7 +1430,7 @@ bool G4_SendDescRaw::isOwordLoad() const {
 }
 
 unsigned G4_SendDescRaw::getOwordsAccessed() const {
-  MUST_BE_TRUE(isOwordLoad(), "must be OWord message");
+  vISA_ASSERT(isOwordLoad(), "must be OWord message");
   // This encoding holds for the DP_DC0, DP_CC, and DP_DC1 (A64 block)
   // element count.
   auto owEnc = (getFuncCtrl() >> 8) & 0x7; // Desc[10:8] is OW count
@@ -1782,7 +1782,7 @@ std::pair<Caching, Caching> G4_SendDescRaw::getCaching() const {
 
   auto ccPair =
       decodeCaching3(opInfo.isLoad(), getDesc());
-  MUST_BE_TRUE(ccPair.first != Caching::INVALID &&
+  vISA_ASSERT(ccPair.first != Caching::INVALID &&
                    ccPair.second != Caching::INVALID,
                "unexpected invalid caching options (corrupt descriptor?)");
   return ccPair;
@@ -1812,12 +1812,12 @@ static LSC_CACHE_OPT toVisaCachingOpt(Caching c) {
 
 void G4_SendDescRaw::setCaching(Caching l1, Caching l3) {
   if (!isLscOp()) {
-    MUST_BE_TRUE((l1 == Caching::INVALID && l3 == Caching::INVALID) ||
+    vISA_ASSERT((l1 == Caching::INVALID && l3 == Caching::INVALID) ||
                      (l1 == Caching::DF && l3 == Caching::DF),
                  "invalid caching options for platform*SFID");
   }
   const auto opInfo = LscOpInfoGet(getLscOp());
-  MUST_BE_TRUE(!opInfo.isOther(), "invalid LSC message kind for caching op");
+  vISA_ASSERT(!opInfo.isOther(), "invalid LSC message kind for caching op");
   LSC_CACHE_OPTS visaCopts{};
   visaCopts.l1 = toVisaCachingOpt(l1);
   visaCopts.l3 = toVisaCachingOpt(l3);
@@ -1827,7 +1827,7 @@ void G4_SendDescRaw::setCaching(Caching l1, Caching l3) {
   bool isBits17_19 = true;
   bool success =
       LscTryEncodeCacheOpts(opInfo, visaCopts, cacheEnc, isBits17_19);
-  MUST_BE_TRUE(success, "failed to set caching options");
+  vISA_ASSERT(success, "failed to set caching options");
   desc.value &= ~fieldMask;
   desc.value |= cacheEnc;
 }

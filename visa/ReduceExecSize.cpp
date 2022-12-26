@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "G4_Verifier.hpp"
 #include "HWConformity.h"
 #include "InstSplit.h"
@@ -430,7 +431,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
                         insertMovAfter(iter, dst, dst->getType(), bb);
                     bool alignTmpDst =
                         builder.tryToAlignOperand(newDst, dstOffset, 16);
-                    MUST_BE_TRUE(alignTmpDst,
+                    vISA_ASSERT(alignTmpDst,
                                  "must be able to oword align tmp dst");
                     inst->setDest(newDst);
                     return true;
@@ -643,7 +644,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
     return insertMOV;
   }
 
-  MUST_BE_TRUE((inst->opcode() != G4_smov),
+  vISA_ASSERT((inst->opcode() != G4_smov),
                "Error in splitting smov instruction");
 
   // split instruction like:
@@ -1051,7 +1052,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB *bb,
       }
     }
 
-    MUST_BE_TRUE(currExSize != 0,
+    vISA_ASSERT(currExSize != 0,
                  "illegal execution size in instruction splitting");
     // create new Oprands. Acc should not be split since we generate it in
     // jitter and can control this.
@@ -1297,7 +1298,7 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb,
       if (newMask == InstOpt_NoOpt) {
         bool useMask = inst->getPredicate() || inst->getCondModBase() ||
                        (!bb->isAllLaneActive() && !inst->isWriteEnableInst());
-        MUST_BE_TRUE(!useMask,
+        vISA_ASSERT(!useMask,
                      "no legal emask found for the split instruction");
       } else {
         newInst->setMaskOption(newMask);

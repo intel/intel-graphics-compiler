@@ -41,7 +41,7 @@ void gtPinData::removeUnmarkedInsts() {
     return;
   }
 
-  MUST_BE_TRUE(whichRAPass == ReRAPass,
+  vISA_ASSERT(whichRAPass == ReRAPass,
                "Unexpectedly removing unmarked instructions in first RA pass");
   // Instructions not seen in "marked" snapshot will be removed by this
   // function.
@@ -132,7 +132,7 @@ void *gtPinData::getFreeGRFInfo(unsigned &size) {
 }
 
 void gtPinData::setGTPinInit(void *buffer) {
-  MUST_BE_TRUE(sizeof(gtpin::igc::igc_init_t) <= 200,
+  vISA_ASSERT(sizeof(gtpin::igc::igc_init_t) <= 200,
                "Check size of igc_init_t");
   gtpin_init = (gtpin::igc::igc_init_t *)buffer;
 
@@ -165,7 +165,7 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
           startIp = (unsigned int)inst->getGenOffset();
 
           // verify truncation is still legal
-          MUST_BE_TRUE(inst->getGenOffset() == (uint32_t)inst->getGenOffset(),
+          vISA_ASSERT(inst->getGenOffset() == (uint32_t)inst->getGenOffset(),
                        "%ip out of bounds");
 
           if (startIp > 0)
@@ -236,17 +236,17 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
   unsigned int offset = 0;
   write<uint32_t>(buffer, numRanges, offset);
   for (auto &item : indirRefMap) {
-    MUST_BE_TRUE(offset < size, "Out of bounds");
+    vISA_ASSERT(offset < size, "Out of bounds");
     write<uint32_t>(buffer, item.first, offset);
     for (const auto &arg : item.second) {
-      MUST_BE_TRUE(offset < size, "Out of bounds");
+      vISA_ASSERT(offset < size, "Out of bounds");
       write<uint16_t>(buffer, arg.first, offset);
-      MUST_BE_TRUE(offset < size, "Out of bounds");
+      vISA_ASSERT(offset < size, "Out of bounds");
       write<uint16_t>(buffer, arg.second, offset);
     }
   }
 
-  MUST_BE_TRUE(offset == size, "Unexpected bounds");
+  vISA_ASSERT(offset == size, "Unexpected bounds");
 
   return buffer;
 }
@@ -489,7 +489,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
       m_function_id(funcId), RAType(RA_Type::UNKNOWN_RA), asmInstCount(0),
       kernelID(0), fg(alloc, this, m), major_version(major),
       minor_version(minor) {
-  ASSERT_USER(major < COMMON_ISA_MAJOR_VER || (major == COMMON_ISA_MAJOR_VER &&
+  vISA_ASSERT(major < COMMON_ISA_MAJOR_VER || (major == COMMON_ISA_MAJOR_VER &&
                                                minor <= COMMON_ISA_MINOR_VER),
               "CISA version not supported by this JIT-compiler");
 
@@ -622,7 +622,7 @@ void G4_Kernel::calculateSimdSize() {
       (unsigned)m_kernelAttrs->getInt32KernelAttr(Attributes::ATTR_SimdSize));
   if (simdSize != g4::SIMD8 && simdSize != g4::SIMD16 &&
       simdSize != g4::SIMD32) {
-    assert(simdSize.value == 0 && "vISA: wrong value for SimdSize attribute");
+    vISA_ASSERT(simdSize.value == 0, "vISA: wrong value for SimdSize attribute");
     simdSize = g4::SIMD8;
 
     for (auto bb : fg) {
@@ -1305,7 +1305,7 @@ void G4_Kernel::emitRegInfoKernel(std::ostream &output) {
 //
 void G4_Kernel::dumpDotFileInternal(const std::string &baseName) {
   std::fstream ofile(baseName + ".dot", std::ios::out);
-  assert(ofile);
+  vASSERT(!ofile.fail());
   //
   // write digraph KernelName {"
   //          size = "8, 10";
@@ -1460,7 +1460,7 @@ void G4_Kernel::dumpG4Internal(const std::string &file) {
   lastG4Asm = std::move(g4asms);
 
   std::fstream ofile(file + ".g4", std::ios::out);
-  assert(ofile);
+  vASSERT(!ofile.fail());
   dumpG4InternalTo(ofile);
 }
 
@@ -1800,7 +1800,7 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
 
   const size_t ERROR_STRING_MAX_LENGTH = 16 * 1024;
   char *errBuf = new char[ERROR_STRING_MAX_LENGTH];
-  assert(errBuf);
+  vASSERT(errBuf);
   if (!errBuf)
     return;
 
@@ -2095,8 +2095,8 @@ unsigned G4_Kernel::getComputeFFIDGPNextOff() const {
     return 0;
   // return the offset of the second entry (GP1)
   // the first instruction in the second BB is the start of the second entry
-  assert(fg.getNumBB() > 1 && "expect at least one prolog BB");
-  assert(!computeFFIDGP1->empty() && !computeFFIDGP1->front()->isLabel());
+  vISA_ASSERT(fg.getNumBB() > 1, "expect at least one prolog BB");
+  vASSERT(!computeFFIDGP1->empty() && !computeFFIDGP1->front()->isLabel());
   return getBinOffsetOfBB(computeFFIDGP1);
 }
 
@@ -2105,7 +2105,7 @@ unsigned G4_Kernel::getComputeFFIDGP1NextOff() const {
     return 0;
   // return the offset of the BB next to GP1
   // the first instruction in the second BB is the start of the second entry
-  assert(fg.getNumBB() > 1 && "expect at least one prolog BB");
+  vISA_ASSERT(fg.getNumBB() > 1, "expect at least one prolog BB");
   G4_BB *next = getNextBB(computeFFIDGP1);
   return getBinOffsetOfBB(next);
 }

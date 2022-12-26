@@ -534,16 +534,16 @@ struct vector_opnd {
   }
 
   Common_ISA_State_Opnd_Class getStateOpClass() const {
-    MUST_BE_TRUE(getOperandClass() == OPERAND_STATE, "state operand expected");
+    vISA_ASSERT(getOperandClass() == OPERAND_STATE, "state operand expected");
     return (Common_ISA_State_Opnd_Class)opnd_val.state_opnd.opnd_class;
   }
 
   bool isImmediate() const { return getOperandClass() == OPERAND_IMMEDIATE; }
 
   VISA_Type getImmediateType() const {
-    MUST_BE_TRUE(isImmediate(), "immediate constant expected");
+    vISA_ASSERT(isImmediate(), "immediate constant expected");
     VISA_Type type = (VISA_Type)(opnd_val.const_opnd.type & 0xF);
-    MUST_BE_TRUE(type < ISA_TYPE_NUM && type != ISA_TYPE_BOOL,
+    vISA_ASSERT(type < ISA_TYPE_NUM && type != ISA_TYPE_BOOL,
                  "invalid immediate constant type");
     return type;
   }
@@ -662,7 +662,7 @@ typedef struct _CISA_opnd {
   VISA_GenVar *decl;
 
   PredicateOpnd convertToPred() const {
-    assert(_opnd.v_opnd.getOperandClass() == OPERAND_PREDICATE);
+    vASSERT(_opnd.v_opnd.getOperandClass() == OPERAND_PREDICATE);
     return PredicateOpnd(index, _opnd.v_opnd.opnd_val.pred_opnd.index);
   }
 } VISA_opnd;

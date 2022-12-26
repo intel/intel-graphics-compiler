@@ -235,7 +235,7 @@ G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
 
 
 void G4_INST::setOpcode(G4_opcode opcd) {
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       opcd < G4_NUM_OPCODE &&
           (G4_Inst_Table[op].instType == G4_Inst_Table[opcd].instType ||
            G4_Inst_Table[opcd].instType == InstTypeMov ||
@@ -421,8 +421,8 @@ uint16_t G4_INST::getMaskOffset() const {
   unsigned maskOption = (getOption() & InstOpt_QuarterMasks);
 
   if (!builder.hasNibCtrl()) {
-    assert(maskOption != InstOpt_M4 && maskOption != InstOpt_M12 &&
-           maskOption != InstOpt_M20 && maskOption != InstOpt_M28 &&
+    vISA_ASSERT(maskOption != InstOpt_M4 && maskOption != InstOpt_M12 &&
+           maskOption != InstOpt_M20 && maskOption != InstOpt_M28,
            "nibCtrl is not supported on this platform");
   }
 
@@ -615,7 +615,7 @@ void G4_INST::copyDef(G4_INST *inst2, Gen4_Operand_Number opndNum1,
       // definition. Skip if this is not an effective use.
       if (checked) {
         G4_Operand *use = inst2->getOperand(opndNum2);
-        ASSERT_USER(use, "null operand unexpected");
+        vISA_ASSERT(use, "null operand unexpected");
         G4_Operand *dst = I->first->getOperand(Opnd_dst);
         G4_Operand *condMod = I->first->getOperand(Opnd_condMod);
         if ((dst && use->compareOperand(dst, getBuilder()) != Rel_disjoint) ||
@@ -673,7 +673,7 @@ void G4_INST::copyUsesTo(G4_INST *inst2, bool checked) {
   for (auto I = use_begin(), E = use_end(); I != E; ++I) {
     if (checked) {
       G4_Operand *use = I->first->getOperand(I->second);
-      ASSERT_USER(use, "null operand unexpected");
+      vISA_ASSERT(use, "null operand unexpected");
 
       G4_Operand *dst = inst2->getOperand(Opnd_dst);
       G4_Operand *condMod = inst2->getOperand(Opnd_condMod);
@@ -1079,7 +1079,7 @@ G4_INST *G4_INST::getSingleDef(Gen4_Operand_Number opndNum, bool MakeUnique) {
 // add def-use between this instruction <--> inst[srcPos]
 // Note that this function does not check for duplicates
 void G4_INST::addDefUse(G4_INST *inst, Gen4_Operand_Number srcPos) {
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       srcPos == Opnd_dst || srcPos == Opnd_src0 || srcPos == Opnd_src1 ||
           srcPos == Opnd_src2 || srcPos == Opnd_src3 || srcPos == Opnd_src4 ||
           srcPos == Opnd_src5 || srcPos == Opnd_src6 || srcPos == Opnd_src7 ||
@@ -1246,21 +1246,21 @@ static G4_INST::MovType getMovType(const G4_INST *Inst, G4_Type dstTy,
     if (dstIsFP)
       return G4_INST::IntToFP;
 
-    ASSERT_USER(srcIsFP, "Unexpected source type!");
+    vISA_ASSERT(srcIsFP, "Unexpected source type!");
     return G4_INST::FPToInt;
   }
 
   // If they are both FPs, that MOV must be either up or down conversion.
   // Note it could not be a COPY as dst & src are different here.
   if (dstIsFP) {
-    ASSERT_USER(srcIsFP, "Unexpected source type!");
+    vISA_ASSERT(srcIsFP, "Unexpected source type!");
 
     // TODO: Do we need to treat 'vf' differently?
 
     if (TypeSize(srcTy) < TypeSize(dstTy))
       return G4_INST::FPUpConv;
 
-    ASSERT_USER(TypeSize(srcTy) > TypeSize(dstTy),
+    vISA_ASSERT(TypeSize(srcTy) > TypeSize(dstTy),
                 "Unexpected FP source and destination type sizes!");
     return G4_INST::FPDownConv;
   }
@@ -1269,7 +1269,7 @@ static G4_INST::MovType getMovType(const G4_INST *Inst, G4_Type dstTy,
   // detect the mov type as it really does not matter without saturation nor
   // condition modifier.
 
-  ASSERT_USER(!IS_VINTTYPE(dstTy),
+  vISA_ASSERT(!IS_VINTTYPE(dstTy),
               "Unexpected immediate types are used as dst type!");
 
   // Always treat 'v' as SExt as they will always be extended even for
@@ -2096,7 +2096,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
   // stride1, stride2 must be positive
   auto isComposable = [=](unsigned dStride, unsigned stride1,
                           unsigned stride2) -> bool {
-    MUST_BE_TRUE(stride1 && stride2, "scalar region not expected");
+    vISA_ASSERT(stride1 && stride2, "scalar region not expected");
 
     // composition is rd1 (or rd2).
     // If two variables are trivial, then the other variable could be
@@ -2173,7 +2173,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
 // check if this inst can be hoisted
 // assume only MOV inst is checked
 bool G4_INST::canHoist(bool simdBB, const Options *opt) const {
-  assert(op == G4_mov && "defHoisting only handles mov");
+  vISA_ASSERT(op == G4_mov, "defHoisting only handles mov");
   if (dst == NULL) {
     return false;
   }
@@ -2231,7 +2231,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const {
 
 // check if this instruction can be hoisted to defInst
 bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
-  assert(op == G4_mov && "defHoisting only handles mov");
+  vISA_ASSERT(op == G4_mov, "defHoisting only handles mov");
   bool indirect_dst = (dst->getRegAccess() != Direct);
 
   auto def_dst = defInst->getDst();
@@ -3314,7 +3314,7 @@ bool G4_INST::isIllegalMixedMode() const {
 }
 
 void G4_InstSend::setMsgDesc(G4_SendDesc *in) {
-  assert(in && "null descriptor not expected");
+  vISA_ASSERT(in, "null descriptor not expected");
 #if defined(_DEBUG)
   if (in && in->getExecSize() == g4::SIMD_UNDEFINED) {
     DEBUG_MSG("Msg Desc has execSize undefined!\n");
@@ -3865,7 +3865,7 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
 
   G4_VarBase *base = opnd->getBase();
   if (!opnd->isIndirect()) {
-    MUST_BE_TRUE(regOff != (short)UNDEFINED_SHORT, ERROR_INTERNAL_ARGUMENT);
+    vISA_ASSERT(regOff != (short)UNDEFINED_SHORT, ERROR_INTERNAL_ARGUMENT);
 
     if (base->isRegVar()) {
       G4_RegVar *baseVar = static_cast<G4_RegVar *>(base);
@@ -3901,8 +3901,8 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
             // transform ArfSubRegNum to unit of thisOpSize
             if (thisOpSize != declOpSize) {
               if (!opnd->getInst()->isPseudoKill()) {
-                MUST_BE_TRUE((ArfSubRegNum * declOpSize) % thisOpSize == 0,
-                             ERROR_DATA_RANGE("ARF sub-register number"));
+                //vISA_ASSERT((ArfSubRegNum * declOpSize) % thisOpSize == 0,
+                //            ERROR_DATA_RANGE("ARF sub-register number"));
               }
               ArfSubRegNum = (ArfSubRegNum * declOpSize) / thisOpSize;
             }
@@ -3935,10 +3935,10 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
     // This is an indirect access
     output << "r[";
     if (base->isRegVar()) {
-      MUST_BE_TRUE(regOff == 0, ERROR_INTERNAL_ARGUMENT);
+      vISA_ASSERT(regOff == 0, ERROR_INTERNAL_ARGUMENT);
       G4_RegVar *baseVar = static_cast<G4_RegVar *>(base);
       if (baseVar->isPhyRegAssigned()) {
-        MUST_BE_TRUE(baseVar->getPhyReg()->isAreg(), ERROR_UNKNOWN);
+        vISA_ASSERT(baseVar->getPhyReg()->isAreg(), ERROR_UNKNOWN);
         (static_cast<G4_Areg *>(baseVar->getPhyReg()))->emit(output);
         output << '.' << (baseVar->getPhyRegOff() + subRegOffset);
         {
@@ -4260,7 +4260,7 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size) {
 static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
                                                 G4_Operand *opnd,
                                                 const IR_Builder &builder) {
-  assert((regRegion->isSrcRegRegion() || regRegion->isDstRegRegion()) &&
+  vISA_ASSERT((regRegion->isSrcRegRegion() || regRegion->isDstRegRegion()),
          "expect either src or dst regRegion");
   bool legal_opnd = opnd->isSrcRegRegion() || opnd->isDstRegRegion() ||
                     opnd->isPredicate() || opnd->isCondMod() ||
@@ -4320,7 +4320,7 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
     // practice
     auto mayInterfereWithIndirect = [](G4_Operand *direct,
                                        G4_Operand *indirect) {
-      assert((!direct->isIndirect() && indirect->isIndirect()) &&
+      vISA_ASSERT((!direct->isIndirect() && indirect->isIndirect()),
              "first opereand should be direct and second indirect");
       return (direct->getTopDcl() && direct->getTopDcl()->getAddressed()) ||
              (direct->getBase()->isAddress() &&
@@ -4340,7 +4340,7 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
   G4_VarBase *opndPhyReg =
       opndBase->isRegVar() ? opndBase->asRegVar()->getPhyReg() : opndBase;
   if (myPhyReg && opndPhyReg) {
-    assert(myPhyReg->isPhyReg() && opndPhyReg->isPhyReg());
+    vASSERT(myPhyReg->isPhyReg() && opndPhyReg->isPhyReg());
     if (myPhyReg->getKind() != opndPhyReg->getKind())
       return Rel_disjoint;
 
@@ -4515,7 +4515,7 @@ bool G4_DstRegRegion::goodtwoGRFDst(const IR_Builder &builder,
 bool G4_DstRegRegion::evenlySplitCrossGRF(const IR_Builder &builder,
                                           uint8_t execSize) {
   // check number of elements in first GRF.
-  MUST_BE_TRUE(acc == Direct, "Indirect operand can not cross GRF boundary.");
+  vISA_ASSERT(acc == Direct, "Indirect operand can not cross GRF boundary.");
 
   if (execSize == 1) {
     return false;
@@ -4585,7 +4585,7 @@ bool G4_DstRegRegion::checkGRFAlign(const IR_Builder &builder) const {
 //
 static bool regionHasFixedSubreg(const IR_Builder &builder, G4_Operand *opnd,
                                  uint32_t &offset) {
-  assert(opnd->isSrcRegRegion() || opnd->isDstRegRegion());
+  vASSERT(opnd->isSrcRegRegion() || opnd->isDstRegRegion());
   short subRegOff = 0;
   if (opnd->isSrcRegRegion()) {
     if (opnd->asSrcRegRegion()->getRegAccess() != Direct) {
@@ -5077,7 +5077,7 @@ static G4_CmpRelation compareBound(uint32_t myLB, uint32_t myRB,
 /// We put this in a separate function since G4_Predicate and G4_CondMod
 /// should have identical code for compareOperand
 static G4_CmpRelation compareFlagToOperand(G4_Operand *flag, G4_Operand *opnd) {
-  assert((flag->isPredicate() || flag->isCondMod()) &&
+  vISA_ASSERT((flag->isPredicate() || flag->isCondMod()),
          "expect either predicate or conditional modifier");
 
   bool legalOpnd = opnd->isSrcRegRegion() || opnd->isDstRegRegion() ||
@@ -5383,7 +5383,7 @@ void G4_RegVar::emit(std::ostream &output) {
 int G4_AddrExp::eval(const IR_Builder &builder) {
   int byteAddr = 0;
 
-  MUST_BE_TRUE(m_addressedReg->getPhyReg() != NULL,
+  vISA_ASSERT(m_addressedReg->getPhyReg() != NULL,
                "No addr takenregister found!");
 
   byteAddr = m_addressedReg->getByteAddr(
@@ -5487,13 +5487,13 @@ void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size, const IR_Builder &irb) {
   uint64_t footPrint0 = 0;
   uint64_t footPrint1 = 0;
 
-  MUST_BE_TRUE(exec_size >= desc->width, "exec size must be >= width");
+  vISA_ASSERT(exec_size >= desc->width, "exec size must be >= width");
   if (desc->isScalar()) {
     footPrint0 = bit_seq;
   } else if (desc->isContiguous(exec_size)) {
     // fast path
     int totalBytes = exec_size * typeSize;
-    MUST_BE_TRUE(totalBytes <= 2 * irb.getGRFSize(),
+    vISA_ASSERT(totalBytes <= 2 * irb.getGRFSize(),
                  "total bytes exceed 2 GRFs");
 
     footPrint0 = totalBytes < 64 ? (1ULL << totalBytes) - 1 : ULLONG_MAX;
@@ -5654,7 +5654,7 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(const IR_Builder &builder,
   }
   vertCrossGRF = true;
   contRegion = desc->isSingleStride(getInst()->getExecSize());
-  MUST_BE_TRUE(acc == Direct, "Indirect operand can not cross GRF boundary.");
+  vISA_ASSERT(acc == Direct, "Indirect operand can not cross GRF boundary.");
   uint8_t firstSubRegOff = getLeftBound() % builder.numEltPerGRF<Type_UB>();
   uint8_t left = firstSubRegOff;
   uint8_t typeSize = (uint8_t)TypeSize(type);
@@ -5710,7 +5710,7 @@ bool G4_SrcRegRegion::evenlySplitCrossGRF(const IR_Builder &builder,
 bool G4_SrcRegRegion::evenlySplitCrossGRF(const IR_Builder &builder,
                                           uint8_t execSize) {
   // check number of elements in first GRF.
-  MUST_BE_TRUE(acc == Direct, "Indirect operand can not cross GRF boundary.");
+  vISA_ASSERT(acc == Direct, "Indirect operand can not cross GRF boundary.");
   uint16_t sizeInFirstGRF = builder.numEltPerGRF<Type_UB>() -
                             getLeftBound() % builder.numEltPerGRF<Type_UB>();
   uint16_t vertSize = desc->vertStride * getElemSize();
@@ -5830,7 +5830,7 @@ void RegionDesc::emit(std::ostream &output) const {
 void G4_Label::emit(std::ostream &output) { output << label; }
 
 unsigned G4_RegVar::getByteAddr(const IR_Builder &builder) const {
-  MUST_BE_TRUE(reg.phyReg != NULL, ERROR_UNKNOWN);
+  vISA_ASSERT(reg.phyReg != NULL, ERROR_UNKNOWN);
   if (reg.phyReg->isGreg()) {
     return reg.phyReg->asGreg()->getRegNum() * builder.numEltPerGRF<Type_UB>() +
            reg.subRegOff * decl->getElemSize();
@@ -5845,13 +5845,13 @@ unsigned G4_RegVar::getByteAddr(const IR_Builder &builder) const {
 
 void G4_RegVar::setSubRegAlignment(G4_SubReg_Align subAlg) {
   // sub reg alignment can only be more restricted than prior setting
-  MUST_BE_TRUE(subAlign == Any || subAlign == subAlg || subAlign % 2 == 0,
+  vISA_ASSERT(subAlign == Any || subAlign == subAlg || subAlign % 2 == 0,
                ERROR_UNKNOWN);
   if (subAlign > subAlg) {
-    MUST_BE_TRUE(subAlign % subAlg == 0, "Sub reg alignment conflict");
+    vISA_ASSERT(subAlign % subAlg == 0, "Sub reg alignment conflict");
     // do nothing; keep the original alignment (more restricted)
   } else {
-    MUST_BE_TRUE(subAlg % subAlign == 0, "Sub reg alignment conflict");
+    vISA_ASSERT(subAlg % subAlign == 0, "Sub reg alignment conflict");
     subAlign = subAlg;
   }
 }
@@ -5903,7 +5903,7 @@ uint64_t G4_Operand::getBitVecH(const IR_Builder &builder) {
     inst->computeRightBound(this);
   }
   if (builder.getGRFSize() == 32) {
-    assert(bitVec[1] == 0 && "upper bits should be 0");
+    vISA_ASSERT(bitVec[1] == 0, "upper bits should be 0");
   }
   return bitVec[1];
 }
@@ -5935,12 +5935,12 @@ void G4_Operand::updateFootPrint(BitSet &footprint, bool isSet,
       return true;
     return lb <= rb && rb < footprint.getSize();
   };
-  MUST_BE_TRUE(!builder.getOption(vISA_boundsChecking) || boundsChecking(),
-               "Out-of-bounds access found in "
-                   << *getInst() << "\n"
-                   << "For operand " << *this << ", the footprint size is "
-                   << footprint.getSize() << " and the accessing range is ["
-                   << lb << ", " << rb << "]\n");
+//  vISA_ASSERT(!builder.getOption(vISA_boundsChecking) || boundsChecking(),
+ //              "Out-of-bounds access found in "
+ //                  << *getInst() << "\n"
+ //                  << "For operand " << *this << ", the footprint size is "
+  //                 << footprint.getSize() << " and the accessing range is ["
+ //                  << lb << ", " << rb << "]\n");
 
   if (doFastPath && lb % N == 0 && (rb + 1) % N == 0) {
     // lb is 32-byte aligned, set one dword at a time
@@ -6219,7 +6219,7 @@ void G4_INST::setSrc(G4_Operand *opnd, unsigned i) {
     return;
   }
 
-  MUST_BE_TRUE(i < G4_MAX_SRCS, ERROR_INTERNAL_ARGUMENT);
+  vISA_ASSERT(i < G4_MAX_SRCS, ERROR_INTERNAL_ARGUMENT);
 
   if (srcs[i] != NULL) {
     if ((srcs[0] == srcs[i] && i != 0) || (srcs[1] == srcs[i] && i != 1) ||
@@ -7125,7 +7125,7 @@ G4_INST *G4_INST::cloneInst(const IR_Builder *b) {
   auto accDst = nonConstBuilder->duplicateOperand(getImplAccDst());
 
   if (isSend()) {
-    MUST_BE_TRUE(false, "cloning send not yet supported");
+    vISA_ASSERT(false, "cloning send not yet supported");
   } else {
     newInst = nonConstBuilder->createInternalInst(prd, op, condMod,
                                                   getSaturate(), getExecSize(),
@@ -7214,7 +7214,7 @@ G4_InstIntrinsic::G4_InstIntrinsic(const IR_Builder &builder, G4_Predicate *prd,
 }
 
 G4_Operand *G4_InstIntrinsic::getIntrinsicSrc(unsigned i) const {
-  MUST_BE_TRUE(i < G4_MAX_INTRINSIC_SRCS, ERROR_INTERNAL_ARGUMENT);
+  vISA_ASSERT(i < G4_MAX_INTRINSIC_SRCS, ERROR_INTERNAL_ARGUMENT);
   return srcs[i];
 }
 
@@ -7244,7 +7244,7 @@ G4_Operand *G4_InstIntrinsic::getOperand(Gen4_Operand_Number opnd_num) const {
 }
 
 void G4_InstIntrinsic::setIntrinsicSrc(G4_Operand *opnd, unsigned i) {
-  MUST_BE_TRUE(i < G4_MAX_INTRINSIC_SRCS, ERROR_INTERNAL_ARGUMENT);
+  vISA_ASSERT(i < G4_MAX_INTRINSIC_SRCS, ERROR_INTERNAL_ARGUMENT);
 
   if (srcs[i] != NULL) {
     if (srcs[i]->getInst() == (G4_INST *)this) {

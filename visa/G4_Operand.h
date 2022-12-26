@@ -31,7 +31,7 @@ struct RegionDesc {
 
   RegionDesc(uint16_t vs, uint16_t w, uint16_t hs)
       : vertStride(vs), width(w), horzStride(hs) {
-    assert(isLegal() && "illegal region desc");
+    vISA_ASSERT(isLegal(), "illegal region desc");
   }
   void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
 
@@ -428,16 +428,16 @@ public:
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   int64_t getImm() const { return imm.num; } // Get bits of imm AS integer.
   int64_t getInt() const {
-    MUST_BE_TRUE(!IS_TYPE_F32_F64(type), ERROR_UNKNOWN);
+    vISA_ASSERT(!IS_TYPE_F32_F64(type), ERROR_UNKNOWN);
     return imm.num;
   }
   float getFloat() const {
     // if fp32 is sNAN, it will return qNAN. Be careful!
-    MUST_BE_TRUE(IS_FTYPE(type), ERROR_UNKNOWN);
+    vISA_ASSERT(IS_FTYPE(type), ERROR_UNKNOWN);
     return imm.fp32;
   }
   double getDouble() const {
-    MUST_BE_TRUE(IS_DFTYPE(type), ERROR_UNKNOWN);
+    vISA_ASSERT(IS_DFTYPE(type), ERROR_UNKNOWN);
     return imm.fp;
   }
   bool isZero() const;
@@ -806,7 +806,7 @@ class G4_Predicate final : public G4_Operand {
       : G4_Operand(G4_Operand::predicate, flag), state(s), subRegOff(srOff),
         control(ctrl) {
     top_dcl = getBase()->asRegVar()->getDeclare();
-    MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
+    vISA_ASSERT(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
     if (getBase()->asRegVar()->getPhyReg()) {
       left_bound = srOff * 16;
 
@@ -827,7 +827,7 @@ public:
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   unsigned short getSubRegOff() const { return subRegOff; }
   unsigned short getRegOff() const {
-    MUST_BE_TRUE(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
+    vISA_ASSERT(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
     return getBase()->asRegVar()->getPhyReg()->asAreg()->getFlagNum();
   }
 
@@ -904,7 +904,7 @@ class G4_CondMod final : public G4_Operand {
       : G4_Operand(G4_Operand::condMod, flag), mod(m), subRegOff(off) {
     if (flag != nullptr) {
       top_dcl = getBase()->asRegVar()->getDeclare();
-      MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
+      vISA_ASSERT(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
       if (getBase()->asRegVar()->getPhyReg()) {
         left_bound = off * 16;
         byteOffset = off * 2;
@@ -925,8 +925,8 @@ public:
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
   G4_CondModifier getMod() const { return mod; }
   unsigned short getRegOff() const {
-    MUST_BE_TRUE(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
-    MUST_BE_TRUE(getBase()->asRegVar()->getPhyReg(),
+    vISA_ASSERT(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
+    vISA_ASSERT(getBase()->asRegVar()->getPhyReg(),
                  "getRegOff is called for non-PhyReg");
     return getBase()->asRegVar()->getPhyReg()->asAreg()->getFlagNum();
   }

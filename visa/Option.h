@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef _OPTION_H_
 #define _OPTION_H_
 
+#include "Assertions.h"
 #include "VISAOptions.h"
 #include "common.h"
 #include "visa_igc_common_header.h"
@@ -300,54 +301,54 @@ private:
 
     // Get the type of KEY
     EntryType getType(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       return optionsMap.at(key).type;
     }
 
     // Get the type of KEY
     const char *getErrorMsg(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       return optionsMap.at(key).errorMsg;
     }
 
     // Get the values
     bool getBool(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       const VISAOptionsEntry *value = optionsMap.at(key).value;
-      assert(value->getType() == ET_BOOL && "Bad Type");
+      vISA_ASSERT(value->getType() == ET_BOOL, "Bad Type");
       const VISAOptionsEntryBool *Bool =
           static_cast<const VISAOptionsEntryBool *>(value);
-      assert(Bool && "Uninitialized?");
+      vISA_ASSERT(Bool, "Uninitialized?");
       return Bool->getVal();
     }
     uint32_t getUint32(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       const VISAOptionsEntry *value = optionsMap.at(key).value;
-      assert(value->getType() == ET_INT32 && "Bad Type");
+      vISA_ASSERT(value->getType() == ET_INT32, "Bad Type");
       const VISAOptionsEntryUint32 *Int32 =
           static_cast<const VISAOptionsEntryUint32 *>(value);
-      assert(Int32 && "Uninitialized?");
+      vISA_ASSERT(Int32, "Uninitialized?");
       return Int32->getVal();
     }
     uint64_t getUint64(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       const VISAOptionsEntry *value = optionsMap.at(key).value;
-      assert(value->getType() == ET_INT64 && "Bad Type");
+      vISA_ASSERT(value->getType() == ET_INT64, "Bad Type");
       const VISAOptionsEntryUint64 *Int64 =
           static_cast<const VISAOptionsEntryUint64 *>(value);
-      assert(Int64 && "Uninitialized?");
+      vISA_ASSERT(Int64, "Uninitialized?");
       return Int64->getVal();
     }
     const char *getCstr(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       const VISAOptionsEntry *value = optionsMap.at(key).value;
       if (!value) {
         return nullptr;
       }
-      assert(value->getType() == ET_CSTR && "Bad Type");
+      vISA_ASSERT(value->getType() == ET_CSTR, "Bad Type");
       const VISAOptionsEntryCstr *Cstr =
           static_cast<const VISAOptionsEntryCstr *>(value);
-      // assert(Cstr && "Bad option type OR uninit");
+      // vISA_ASSERT(Cstr, "Bad option type OR uninit");
       return Cstr->getVal();
     }
 
@@ -357,39 +358,39 @@ private:
     }
     // Get defaults
     bool getDefaultBool(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       const VISAOptionsEntry *defValue = optionsMap.at(key).defaultValue;
-      assert(defValue->getType() == ET_BOOL && "Bad Type");
+      vISA_ASSERT(defValue->getType() == ET_BOOL, "Bad Type");
       const VISAOptionsEntryBool *Bool =
           static_cast<const VISAOptionsEntryBool *>(defValue);
-      assert(Bool && "Uninitialized?");
+      vISA_ASSERT(Bool, "Uninitialized?");
       return Bool->getVal();
     }
     uint32_t getDefaultUint32(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       const VISAOptionsEntry *defValue = optionsMap.at(key).defaultValue;
-      assert(defValue->getType() == ET_INT32 && "Bad Type");
+      vISA_ASSERT(defValue->getType() == ET_INT32, "Bad Type");
       const VISAOptionsEntryUint32 *Int32 =
           static_cast<const VISAOptionsEntryUint32 *>(defValue);
-      assert(Int32 && "Uninitialized?");
+      vISA_ASSERT(Int32, "Uninitialized?");
       return Int32->getVal();
     }
     uint64_t getDefaultUint64(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       const VISAOptionsEntry *defValue = optionsMap.at(key).defaultValue;
-      assert(defValue->getType() == ET_INT64 && "Bad Type");
+      vISA_ASSERT(defValue->getType() == ET_INT64, "Bad Type");
       const VISAOptionsEntryUint64 *Int64 =
           static_cast<const VISAOptionsEntryUint64 *>(defValue);
-      assert(Int64 && "Uninitialized?");
+      vISA_ASSERT(Int64, "Uninitialized?");
       return Int64->getVal();
     }
     const char *getDefaultCstr(vISAOptions key) const {
-      assert(optionsMap.count(key));
+      vASSERT(optionsMap.count(key));
       const VISAOptionsEntry *defValue = optionsMap.at(key).defaultValue;
-      assert(defValue->getType() == ET_CSTR && "Bad Type");
+      vISA_ASSERT(defValue->getType() == ET_CSTR, "Bad Type");
       const VISAOptionsEntryCstr *Cstr =
           static_cast<const VISAOptionsEntryCstr *>(defValue);
-      assert(Cstr && "Uninitialized?");
+      vISA_ASSERT(Cstr, "Uninitialized?");
       return Cstr->getVal();
     }
     VISAOptionsDB() {}

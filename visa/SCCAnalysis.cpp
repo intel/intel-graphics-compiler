@@ -6,8 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "SCCAnalysis.h"
+#include "Assertions.h"
 #include "FlowGraph.h"
+#include "SCCAnalysis.h"
 
 #include <algorithm>
 
@@ -39,7 +40,7 @@ void SCCAnalysis::SCC::dump(std::ostream &os) const {
 }
 
 SCCAnalysis::SCCNode *SCCAnalysis::createSCCNode(G4_BB *bb) {
-  assert(SCCNodes[bb->getId()] == nullptr && "SCCNode already exists");
+  vISA_ASSERT(SCCNodes[bb->getId()] == nullptr, "SCCNode already exists");
   SCCNode *newNode = new SCCNode(bb, curIndex++);
   SCCNodes[bb->getId()] = newNode;
   return newNode;

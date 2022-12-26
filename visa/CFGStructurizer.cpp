@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "BuildIR.h"
 #include "FlowGraph.h"
 
@@ -680,7 +681,7 @@ inline ANode *ANode::getCurrentANode() const {
   while (nd && !nd->isInACFG()) {
     nd = nd->parent;
   }
-  MUST_BE_TRUE(nd && nd->isInACFG(), "ACFG flag must be set incorrectly");
+  vISA_ASSERT(nd && nd->isInACFG(), "ACFG flag must be set incorrectly");
   return const_cast<ANode *>(nd);
 }
 
@@ -923,7 +924,7 @@ void CFGStructurizer::preProcess() {
     // insert it into BBs
     CFG->insert(BI, newBB);
     G4_BB *phyPred = B->getPhysicalPred();
-    assert(phyPred && "B should have physical pred!");
+    vISA_ASSERT(phyPred != nullptr, "B should have physical pred!");
     phyPred->setPhysicalSucc(newBB);
     newBB->setPhysicalPred(phyPred);
     newBB->setPhysicalSucc(B);
@@ -990,7 +991,7 @@ void CFGStructurizer::init() {
     bool isReturnBB = (bb->getLastOpcode() == G4_return || bb->isEndWithFRet());
     if (isCallBB) {
       G4_BB *returnBB = bb->getPhysicalSucc();
-      assert(returnBB && "Call BB must have a return BB.");
+      vISA_ASSERT(returnBB != nullptr, "Call BB must have a return BB.");
       ANode *succNode = &(anodeBBs.IDToANodeBB[returnBB->getId()]);
       node->succs.push_back(succNode);
       succNode->preds.push_back(node);
@@ -1015,7 +1016,7 @@ ANodeBB *CFGStructurizer::getANodeBB(G4_BB *bb) {
   }
 
   BBToANodeBBMap::iterator I = anodeBBs.newBBToANodeBB.find(bb);
-  MUST_BE_TRUE(I != anodeBBs.newBBToANodeBB.end(),
+  vISA_ASSERT(I != anodeBBs.newBBToANodeBB.end(),
                "Corresponding ANodeBB isn't set up yet");
   ANodeBB *ndbb = I->second;
   return ndbb;
@@ -1024,24 +1025,24 @@ ANodeBB *CFGStructurizer::getANodeBB(G4_BB *bb) {
 void CFGStructurizer::setANodeBB(ANodeBB *ndbb, G4_BB *bb) {
   uint32_t id = bb->getId();
   if (id < numOfBBs) {
-    MUST_BE_TRUE(false, "ANodeBB has been set up already");
+    vISA_ASSERT(false, "ANodeBB has been set up already");
     return;
   }
-  MUST_BE_TRUE(anodeBBs.newBBToANodeBB.find(bb) ==
+  vISA_ASSERT(anodeBBs.newBBToANodeBB.find(bb) ==
                    anodeBBs.newBBToANodeBB.end(),
                "ANodeBB has been in map already");
   anodeBBs.newBBToANodeBB[bb] = ndbb;
 }
 
 G4_BB *CFGStructurizer::getInsertAfterBB(G4_BB *bb) {
-  MUST_BE_TRUE(newBBToInsertAfterBB.find(bb) != newBBToInsertAfterBB.end(),
+  vISA_ASSERT(newBBToInsertAfterBB.find(bb) != newBBToInsertAfterBB.end(),
                "The BB isn't a new BB or something else is wrong");
-  MUST_BE_TRUE(bb->getId() >= numOfBBs, "The BB isn't a new BB");
+  vISA_ASSERT(bb->getId() >= numOfBBs, "The BB isn't a new BB");
   return newBBToInsertAfterBB[bb];
 }
 
 void CFGStructurizer::setInsertAfterBB(G4_BB *newbb, G4_BB *insertAfter) {
-  MUST_BE_TRUE(newbb->getId() >= numOfBBs, "The BB isn't a new BB");
+  vISA_ASSERT(newbb->getId() >= numOfBBs, "The BB isn't a new BB");
 
   if (insertAfter->getId() < numOfBBs) {
     newBBToInsertAfterBB[newbb] = insertAfter;
@@ -1212,7 +1213,7 @@ bool CFGStructurizer::getCGBegin(G4_BB *bb, CGList &cgs) {
 }
 
 inline bool CFGStructurizer::isGotoScalarJmp(G4_INST *gotoInst) {
-  MUST_BE_TRUE(gotoInst->opcode() == G4_goto, "It should be a goto inst");
+  vISA_ASSERT(gotoInst->opcode() == G4_goto, "It should be a goto inst");
   return gotoInst->getExecSize() == g4::SIMD1 ||
          gotoInst->getPredicate() == nullptr ||
          gotoInst->asCFInst()->isUniform();
@@ -1355,7 +1356,7 @@ void CFGStructurizer::extendNode(ANode *Node, ControlGraph *CG) {
 // Get the immediate enclosing ANodeHG that contains all the preds of AN
 // and all AN's backward succs (due to backward gotos).
 ANodeHG *CFGStructurizer::getEnclosingANodeHG(ANode *AN) {
-  MUST_BE_TRUE(!ANStack.empty(), "ANStack should not be empty");
+  vISA_ASSERT(!ANStack.empty(), "ANStack should not be empty");
 
   G4_BB *begin = AN->getBeginBB();
   int32_t ix = (int32_t)ANStack.size() - 1;
@@ -1391,7 +1392,7 @@ ANodeHG *CFGStructurizer::getEnclosingANodeHG(ANode *AN) {
         }
 
         if (hg) {
-          MUST_BE_TRUE(hg->ANStackIx >= 0, "ANodeHG's index is wrong");
+          vISA_ASSERT(hg->ANStackIx >= 0, "ANodeHG's index is wrong");
           if (ix > hg->ANStackIx) {
             ix = hg->ANStackIx;
           }
@@ -1410,7 +1411,7 @@ ANodeHG *CFGStructurizer::getEnclosingANodeHG(ANode *AN) {
 
       ANodeHG *hg = (ANodeHG *)pred->parent;
       if (hg) {
-        MUST_BE_TRUE(hg->ANStackIx >= 0, "ANodeHG's index is wrong");
+        vISA_ASSERT(hg->ANStackIx >= 0, "ANodeHG's index is wrong");
         if (ix > hg->ANStackIx) {
           ix = hg->ANStackIx;
         }
@@ -1427,9 +1428,9 @@ ANodeHG *CFGStructurizer::getEnclosingANodeHG(ANode *AN) {
         //     ...
         //  B:
         //
-        MUST_BE_TRUE(predGoto != nullptr,
+        vISA_ASSERT(predGoto != nullptr,
                      "Error: Non-goto (like jmp) and goto crossing !");
-        MUST_BE_TRUE(false, "Error: unknown control flow in the program.");
+        vISA_ASSERT_UNREACHABLE("Error: unknown control flow in the program.");
       }
     }
     // No need to check succs as forward goto will be handled later
@@ -1461,7 +1462,7 @@ ANode *CFGStructurizer::mergeWithPred(ANode *AN) {
   // Get AN's physical previous ANode.
   ANList::iterator E = parent->children.end();
   ANList::iterator I = findANode(parent->children, pred);
-  MUST_BE_TRUE(I != E, "Child Node isn't in Parent's children list");
+  vISA_ASSERT(I != E, "Child Node isn't in Parent's children list");
   ++I;
   ANode *predPhySucc = (I != E) ? *I : nullptr;
 
@@ -2302,10 +2303,10 @@ void CFGStructurizer::constructPST(BB_LIST_ITER IB, BB_LIST_ITER IE) {
         // This must be non-innermost backward goto, don't add ndbb to
         // the new node, ie. passing nullptr(2nd arg) to ANodeHG's ctor.
         cg = cgs.back();
-        MUST_BE_TRUE(cg->isBackward,
+        vISA_ASSERT(cg->isBackward,
                      "Additional CG must be for backward gotos");
         if (!cg->isLoopCandidate) {
-          assert(node && "Node should not be empty here!");
+          vISA_ASSERT(node != nullptr, "Node should not be empty here!");
           extendNode(node, cg);
         } else {
           ANodeHG *parent = node;
@@ -2329,7 +2330,7 @@ void CFGStructurizer::constructPST(BB_LIST_ITER IB, BB_LIST_ITER IE) {
       if (cg->isBackward || cg->gotoInst->getPredicate() != nullptr ||
           node == nullptr) {
         if (cg->isBackward && !cg->isLoopCandidate) {
-          assert(node && "Node should not be empty at this point!");
+          vISA_ASSERT(node != nullptr, "Node should not be empty at this point!");
           extendNode(node, cg);
         } else {
           // New HG node created and pushed on ANStack
@@ -2480,7 +2481,7 @@ void CFGStructurizer::constructPST(BB_LIST_ITER IB, BB_LIST_ITER IE) {
     ++II;
   } // while (!ANStack.empty())
 
-  MUST_BE_TRUE(ANStack.empty(), "ANodeHG stack is incorrectly formed");
+  vISA_ASSERT(ANStack.empty(), "ANodeHG stack is incorrectly formed");
 #ifdef _DEBUG
 #if 0
         dumpcfg();
@@ -2492,7 +2493,7 @@ void CFGStructurizer::constructPST(BB_LIST_ITER IB, BB_LIST_ITER IE) {
 
 // return true if bb0 is before bb1 in the BB list.
 bool CFGStructurizer::isBefore(G4_BB *bb0, G4_BB *bb1) {
-  MUST_BE_TRUE(bb0 && bb1, "BB ptrs should not be null");
+  vISA_ASSERT(bb0 && bb1, "BB ptrs should not be null");
   if (bb0 == bb1) {
     return false;
   }
@@ -2500,7 +2501,7 @@ bool CFGStructurizer::isBefore(G4_BB *bb0, G4_BB *bb1) {
   // common case first
   uint32_t id0 = bb0->getId();
   uint32_t id1 = bb1->getId();
-  MUST_BE_TRUE(id0 != id1, "Two different BBs must have different Ids");
+  vISA_ASSERT(id0 != id1, "Two different BBs must have different Ids");
 
   if (id0 < numOfBBs && id1 < numOfBBs) {
     return id0 < id1;
@@ -2527,7 +2528,7 @@ void CFGStructurizer::PSTAddANode(ANodeHG *parent, ANode *node, ANode *newNode,
   newNode->parent = parent;
   if (parent) {
     ANList::iterator I1 = findANode(parent->children, node);
-    MUST_BE_TRUE(I1 != parent->children.end(),
+    vISA_ASSERT(I1 != parent->children.end(),
                  "Child node should be in parent's children list");
     if (isAfter) {
       ++I1;
@@ -2567,7 +2568,7 @@ G4_BB *CFGStructurizer::createBBWithLabel() {
 // Insert an inst at the begin after a label instruction.
 void CFGStructurizer::insertAtBegin(G4_BB *aBB, G4_INST *anInst) {
   INST_LIST_ITER I = aBB->begin();
-  MUST_BE_TRUE((*I)->opcode() == G4_label,
+  vISA_ASSERT((*I)->opcode() == G4_label,
                "The 1st inst of BB must be a label inst");
   ++I;
   aBB->insertBefore(I, anInst);
@@ -2575,7 +2576,7 @@ void CFGStructurizer::insertAtBegin(G4_BB *aBB, G4_INST *anInst) {
 
 void CFGStructurizer::setJoinJIP(G4_BB *joinBB, G4_BB *jipBB) {
   G4_INST *firstInst = joinBB->getFirstInst();
-  MUST_BE_TRUE(firstInst, "Missing a join inst in join BB!");
+  vISA_ASSERT(firstInst, "Missing a join inst in join BB!");
   if (firstInst &&
       (firstInst->opcode() == G4_join || firstInst->opcode() == G4_endif)) {
     G4_Label *jipLabel = jipBB ? jipBB->getLabel() : nullptr;
@@ -2691,11 +2692,11 @@ void CFGStructurizer::convertChildren(ANodeHG *nodehg, G4_BB *nextJoinBB) {
         if (nd->getType() == AN_BB && begin->size() > 0)
         {
             G4_INST *gotoInst = begin->back();
-            MUST_BE_TRUE(false, "Backward goto should have ben processed");
+            vISA_ASSERT(false, "Backward goto should have ben processed");
             if (gotoInst->opcode() == G4_goto && gotoInst->isBackward())
             {
                 //
-                MUST_BE_TRUE(false, "Backward goto should have ben processed");
+                vISA_ASSERT(false, "Backward goto should have ben processed");
                 joinbb = begin->Succs.front();
             }
         }
@@ -2773,7 +2774,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB) {
   G4_BB *end = node->getEndBB();
   G4_BB *exit = node->getExitBB();
 
-  MUST_BE_TRUE(end->getPhysicalSucc() == exit,
+  vISA_ASSERT(end->getPhysicalSucc() == exit,
                "Landing BB should have been inserted during construction of "
                "hammock graph");
 
@@ -2784,7 +2785,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB) {
   } else if (doStructCF && node->getAllowSCF()) {
     if (node->getHasBreak()) {
       ANodeHG *innermostWhile = getInnerMostWhile(node);
-      MUST_BE_TRUE(innermostWhile, "if-endif with break isn't inside a while");
+      vISA_ASSERT(innermostWhile, "if-endif with break isn't inside a while");
       if (innermostWhile->getKind() == ANKIND_SCF) {
         kind = ANKIND_SCF;
       }
@@ -2850,7 +2851,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB) {
 
     // jip = uip = endif
     G4_Predicate *pred = gotoInst->getPredicate();
-    MUST_BE_TRUE(pred != NULL, "if must have non-null predicate");
+    vISA_ASSERT(pred != NULL, "if must have non-null predicate");
     pred->setState(pred->getState() == PredState_Plus ? PredState_Minus
                                                       : PredState_Plus);
     G4_INST *ifInst = CFG->builder->createInternalCFInst(
@@ -2902,7 +2903,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB) {
     //  else
     //     ...
     //  endif
-    MUST_BE_TRUE(
+    vISA_ASSERT(
         (thenLastInst->opcode() != G4_goto && thenLastBB->Succs.size() == 0) ||
             (thenLastInst->opcode() == G4_goto &&
              thenLastInst->getPredicate() == nullptr),
@@ -2950,7 +2951,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB) {
     G4_BB *elseFirstBB = elseNode->getBeginBB();
     G4_Label *elseLabel = elseFirstBB->getLabel();
     G4_Predicate *pred = gotoInst->getPredicate();
-    MUST_BE_TRUE(pred != NULL, "if must have non-null predicate");
+    vISA_ASSERT(pred != NULL, "if must have non-null predicate");
     pred->setState(pred->getState() == PredState_Plus ? PredState_Minus
                                                       : PredState_Plus);
 
@@ -3083,7 +3084,7 @@ void CFGStructurizer::convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB) {
 void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB,
                                        G4_BB *joinBB) {
   G4_INST *gotoInst = gotoBB->back();
-  MUST_BE_TRUE(gotoInst && gotoInst->opcode() == G4_goto,
+  vISA_ASSERT(gotoInst && gotoInst->opcode() == G4_goto,
                "gotoBB should have goto instruction");
   G4_Label *nextJoinLabel = jibBB ? jibBB->getLabel() : nullptr;
   G4_ExecSize execSize = gotoInst->getExecSize();
@@ -3138,7 +3139,7 @@ void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB) {
   G4_BB *exitbb = node->getExitBB();
   ANodeHG *innermostWhile = getInnerMostWhile(node);
   ANodeKind kind = ANKIND_GOTOJOIN;
-  MUST_BE_TRUE(innermostWhile || (!innermostWhile && !node->getHasBreak()),
+  vISA_ASSERT(innermostWhile || (!innermostWhile && !node->getHasBreak()),
                "Break isn't inside a while");
   if (innermostWhile && node->getHasBreak() &&
       innermostWhile->getKind() == ANKIND_SCF) {

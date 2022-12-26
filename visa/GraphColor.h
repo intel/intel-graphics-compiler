@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef __GRAPHCOLOR_H__
 #define __GRAPHCOLOR_H__
 
+#include "Assertions.h"
 #include "BitSet.h"
 #include "G4_IR.hpp"
 #include "RPE.h"
@@ -138,7 +139,7 @@ public:
   unsigned getNumRegNeeded() const { return numRegNeeded; }
 
   void subtractDegree(unsigned d) {
-    MUST_BE_TRUE(d <= degree, ERROR_INTERNAL_ARGUMENT);
+    vISA_ASSERT(d <= degree, ERROR_INTERNAL_ARGUMENT);
     degree -= d;
   }
 
@@ -173,7 +174,7 @@ public:
   unsigned getPhyRegOff() const { return reg.subRegOff; }
 
   void setPhyReg(G4_VarBase *pr, unsigned off) {
-    MUST_BE_TRUE(pr->isPhyReg(), ERROR_UNKNOWN);
+    vISA_ASSERT(pr->isPhyReg(), ERROR_UNKNOWN);
     reg.phyReg = pr;
     reg.subRegOff = off;
   }
@@ -207,7 +208,7 @@ public:
   void allocForbiddenCalleeSave(vISA::Mem_Manager &mem, G4_Kernel *kernel);
   const bool *getForbidden() const { return forbidden; }
   void markForbidden(int reg, int numReg) {
-    MUST_BE_TRUE(((int)getForbiddenVectorSize()) >= reg + numReg,
+    vISA_ASSERT(((int)getForbiddenVectorSize()) >= reg + numReg,
                  "forbidden register is out of bound");
     for (int i = reg; i < reg + numReg; ++i) {
       forbidden[i] = true;
@@ -427,7 +428,7 @@ class Interference {
                                           unsigned block) {
     if (useDenseMatrix()) {
 #ifdef _DEBUG
-      MUST_BE_TRUE(
+      vISA_ASSERT(
           sparseIntf.size() == 0,
           "Updating intf graph matrix after populating sparse intf graph");
 #endif
@@ -445,7 +446,7 @@ class Interference {
   }
 
   unsigned getInterferenceBlk(unsigned idx) const {
-    assert(useDenseMatrix() && "matrix is not initialized");
+    vISA_ASSERT(useDenseMatrix(), "matrix is not initialized");
     return matrix[idx];
   }
 
@@ -998,7 +999,7 @@ public:
 
   void setLocalLR(G4_Declare *dcl, LocalLiveRange *lr) {
     RAVarInfo &var = allocVar(dcl);
-    MUST_BE_TRUE(var.localLR == NULL,
+    vISA_ASSERT(var.localLR == NULL,
                  "Local live range already allocated for declaration");
     var.localLR = lr;
     lr->setTopDcl(dcl);
@@ -1006,7 +1007,7 @@ public:
 
   LSLiveRange *getSafeLSLR(const G4_Declare *dcl) const {
     auto dclid = dcl->getDeclId();
-    assert(dclid < vars.size());
+    vASSERT(dclid < vars.size());
     return vars[dclid].LSLR;
   }
 
@@ -1014,7 +1015,7 @@ public:
 
   void setLSLR(G4_Declare *dcl, LSLiveRange *lr) {
     RAVarInfo &var = allocVar(dcl);
-    MUST_BE_TRUE(var.LSLR == NULL,
+    vISA_ASSERT(var.LSLR == NULL,
                  "Local live range already allocated for declaration");
     var.LSLR = lr;
     lr->setTopDcl(dcl);
@@ -1165,13 +1166,13 @@ public:
   void setSubRegAlign(const G4_Declare *dcl, G4_SubReg_Align subAlg) {
     auto &subAlign = allocVar(dcl).subAlign;
     // sub reg alignment can only be more restricted than prior setting
-    MUST_BE_TRUE(subAlign == Any || subAlign == subAlg || subAlign % 2 == 0,
+    vISA_ASSERT(subAlign == Any || subAlign == subAlg || subAlign % 2 == 0,
                  ERROR_UNKNOWN);
     if (subAlign > subAlg) {
-      MUST_BE_TRUE(subAlign % subAlg == 0, "Sub reg alignment conflict");
+      vISA_ASSERT(subAlign % subAlg == 0, "Sub reg alignment conflict");
       // do nothing; keep the original alignment (more restricted)
     } else {
-      MUST_BE_TRUE(subAlg % subAlign == 0, "Sub reg alignment conflict");
+      vISA_ASSERT(subAlg % subAlign == 0, "Sub reg alignment conflict");
       subAlign = subAlg;
     }
   }

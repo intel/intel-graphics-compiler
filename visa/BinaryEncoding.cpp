@@ -89,7 +89,7 @@ inline void BinaryEncoding::EncodeFlagRegPredicate(G4_INST *inst) {
   uint32_t flagState = 0, flagSwizzle;
   if (pred) {
     unsigned pState = (unsigned)pred->getState();
-    MUST_BE_TRUE(pState <= (unsigned)PredState_undef,
+    vISA_ASSERT(pState <= (unsigned)PredState_undef,
                  "BinaryEncoding: invalid prediate state");
     flagState = PREDICATE_STATE[pState];
 
@@ -178,7 +178,7 @@ inline void BinaryEncoding::EncodeCondModifier(G4_INST *inst) {
   uint32_t value;
   if (cModifier) {
     value = (unsigned)cModifier->getMod();
-    MUST_BE_TRUE(value < Mod_cond_undef,
+    vISA_ASSERT(value < Mod_cond_undef,
                  "[Verifying]:[ERR]: Invalid conditional modifier:\t");
     mybin->SetBits(bitsCondModifier_0, bitsCondModifier_1,
                    CONDITION_MODIFIER[value]);
@@ -204,7 +204,7 @@ inline void BinaryEncoding::EncodeInstModifier(G4_INST *inst) {
 }
 
 inline void BinaryEncoding::EncodeMathControl(G4_INST *inst) {
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       inst->isMath(),
       "BinaryEncoding::EncodeMathControl called on non-math instruction.");
   BinInst *mybin = getBinInst(inst);
@@ -233,11 +233,11 @@ inline void EncodeAccWrCtrlInst(G4_INST *inst, BinaryEncoding &encoder) {
 // set bit 29/30 (FP16 input/return) if message descriptor is indirect
 // This is to work around a HW bug where only bit[0:28] of a0 is copied
 inline void BinaryEncoding::EncodeSendMsgDesc29_30(G4_INST *inst) {
-  MUST_BE_TRUE(inst->isSend(), "must be a send inst");
+  vISA_ASSERT(inst->isSend(), "must be a send inst");
 
   BinInst *mybin = getBinInst(inst);
   G4_SendDescRaw *msgDesc = inst->getMsgDescRaw();
-  MUST_BE_TRUE(msgDesc, "expected raw descriptor");
+  vISA_ASSERT(msgDesc, "expected raw descriptor");
   G4_Operand *descOpnd =
       inst->isSplitSend() ? inst->getSrc(2) : inst->getSrc(1);
   if (!descOpnd->isImm()) {
@@ -393,7 +393,7 @@ static const unsigned SOURCE_MODIFIER[5] = {
 
 inline uint32_t GetSrcMod(G4_SrcRegRegion *srcRegion) {
   unsigned mod = (unsigned)srcRegion->getModifier();
-  MUST_BE_TRUE(mod <= (unsigned)Mod_src_undef,
+  vISA_ASSERT(mod <= (unsigned)Mod_src_undef,
                "BinaryEncoding: Unexpected source modifier");
   return SOURCE_MODIFIER[mod];
 }
@@ -604,7 +604,7 @@ inline void BinaryEncoding::EncodeDstRegNum(G4_INST *inst, BinInst *mybin,
       EncodingHelper::GetDstAddrMode(dst) == ADDR_MODE_IMMED) {
     uint32_t byteAddress = dst->getLinearizedStart();
 
-    MUST_BE_TRUE(byteAddress <
+    vISA_ASSERT(byteAddress <
                      kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(),
                  "dst exceeds total GRF number");
 
@@ -921,7 +921,7 @@ inline void EncodeSrc0ChanSelect(G4_INST *inst, BinInst *mybin,
       SetSrc0ChanSel_3(mybin, 0);
       return;
     }
-    ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
+    vISA_ASSERT(false, "acc2~acc7 were set on wrong instruction");
   }
 
   auto maybeSwizzle = encoder.getSwizzle(srcRegion);
@@ -1022,7 +1022,7 @@ inline bool EncodeSrc0Width(G4_INST *inst, BinInst *mybin, const RegionDesc *rd,
       SetSrc0Width(mybin, WIDTH_1);
     } else {
       uint32_t execSize = GetEncodeExecSize(inst);
-      MUST_BE_TRUE(execSize <= (uint32_t)ES_32_CHANNELS,
+      vISA_ASSERT(execSize <= (uint32_t)ES_32_CHANNELS,
                    "BinaryEncoding: Invalid exeuction channels");
       SetSrc0Width(mybin, EXEC_CHANNELS[execSize]);
     }
@@ -1135,7 +1135,7 @@ inline void EncodeSrc0VertStride(G4_INST *inst, BinInst *mybin,
     } else {
       if (inst->isAligned1Inst()) {
         uint32_t value = GetEncodeExecSize(inst);
-        MUST_BE_TRUE(value <= (uint32_t)ES_32_CHANNELS,
+        vISA_ASSERT(value <= (uint32_t)ES_32_CHANNELS,
                      "BinaryEncoding: Invalid execution size");
         SetSrc0VertStride(mybin, VERTICAL_STRIDE[value]);
       } else {
@@ -1191,7 +1191,7 @@ inline void BinaryEncoding::EncodeSrc0RegNum(G4_INST *inst, BinInst *mybin,
       EncodingHelper::GetSrcAddrMode(src0) == ADDR_MODE_IMMED) {
     bool repControl = EncodingHelper::GetRepControl(src0, *this);
     uint32_t byteAddress = src0->getLinearizedStart();
-    MUST_BE_TRUE(byteAddress <
+    vISA_ASSERT(byteAddress <
                      kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(),
                  "src0 exceeds total GRF number");
 
@@ -1303,7 +1303,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandDst(G4_INST *inst) {
   }
 
   if (mybin->GetIs3Src()) {
-    MUST_BE_TRUE(EncodingHelper::GetDstRegFile(dst) == REG_FILE_R,
+    vISA_ASSERT(EncodingHelper::GetDstRegFile(dst) == REG_FILE_R,
                  "Dst for 3src instruction must be GRF");
     Set3SrcDstType(mybin, dst->getType());
     Set3SrcSrcType(mybin, inst);
@@ -1379,7 +1379,7 @@ inline BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc0(G4_INST *inst) {
   EncodeSrc0RegFile(mybin, src0);
   if (src0->isImm()) {
     if (inst->opcode() != G4_mov && src0->getTypeSize() == 8) {
-      MUST_BE_TRUE(false, "only Mov is allowed for 64bit immediate");
+      vISA_ASSERT(false, "only Mov is allowed for 64bit immediate");
     }
     EncodeSrcImmData(mybin, src0);
   } else {
@@ -1604,7 +1604,7 @@ inline void EncodeSrc1ChanSelect(G4_INST *inst, BinInst *mybin,
       SetSrc1ChanSel_3(mybin, 0);
       return;
     }
-    ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
+    vISA_ASSERT(false, "acc2~acc7 were set on wrong instruction");
   }
 
   auto maybeSwizzle = encoder.getSwizzle(srcRegion);
@@ -1746,7 +1746,7 @@ inline bool EncodeSrc1HorzStride(G4_INST *inst, BinInst *mybin,
       SetSrc1HorzStride(mybin, HORZ_STRIDE_0);
     else {
       uint32_t exeSize = GetEncodeExecSize(inst);
-      MUST_BE_TRUE(exeSize <= (uint32_t)ES_32_CHANNELS,
+      vISA_ASSERT(exeSize <= (uint32_t)ES_32_CHANNELS,
                    "Binary Encoding: Invalid execution size");
       { SetSrc1HorzStride(mybin, HORIZONTAL_STRIDE[exeSize]); }
     }
@@ -1806,7 +1806,7 @@ inline void EncodeSrc1VertStride(G4_INST *inst, BinInst *mybin,
     } else {
       if (inst->isAligned1Inst()) {
         uint32_t execSize = GetEncodeExecSize(inst);
-        MUST_BE_TRUE(execSize <= (uint32_t)ES_32_CHANNELS,
+        vISA_ASSERT(execSize <= (uint32_t)ES_32_CHANNELS,
                      "BinaryEncoding: Invalid execution size");
         SetSrc1VertStride(mybin, VERTICAL_STRIDE[execSize]);
       } else {
@@ -1833,7 +1833,7 @@ inline void BinaryEncoding::EncodeSrc1RegNum(G4_INST *inst, BinInst *mybin,
       EncodingHelper::GetSrcAddrMode(src1) == ADDR_MODE_IMMED) {
     bool repControl = EncodingHelper::GetRepControl(src1, *this);
     uint32_t byteAddress = src1->getLinearizedStart();
-    MUST_BE_TRUE(byteAddress <
+    vISA_ASSERT(byteAddress <
                      kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(),
                  "src1 exceeds total GRF number");
 
@@ -1933,7 +1933,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendDst(G4_INST *inst) {
     } else {
       // must be GRF
       uint32_t byteAddress = dst->getLinearizedStart();
-      MUST_BE_TRUE(byteAddress % 16 == 0,
+      vISA_ASSERT(byteAddress % 16 == 0,
                    "dst for sends/sendsc must be oword-aligned");
       mybin->SetBits(bitsSendsDstRegNum_0, bitsSendsDstRegNum_1,
                      byteAddress >> 5);
@@ -1990,7 +1990,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc1(G4_INST *inst) {
                      (IndAddrImmedValue >> 9) & 0x1);
     } else {
       uint32_t byteAddress = src1->getLinearizedStart();
-      MUST_BE_TRUE(byteAddress % 32 == 0,
+      vISA_ASSERT(byteAddress % 32 == 0,
                    "src1 for sends/sendsc must be GRF-aligned");
       mybin->SetBits(bitsSendsSrc1RegNum_0, bitsSendsSrc1RegNum_1,
                      byteAddress >> 5);
@@ -2024,7 +2024,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc0(G4_INST *inst) {
     mybin->SetBits(bitsSendsSrc0AddrMode_0, bitsSendsSrc0AddrMode_1,
                    ADDR_MODE_IMMED);
     uint32_t byteAddress = src0->getLinearizedStart();
-    MUST_BE_TRUE(byteAddress % 32 == 0,
+    vISA_ASSERT(byteAddress % 32 == 0,
                  "src1 for sends/sendsc must be GRF-aligned");
     mybin->SetBits(bitsSendsSrc0RegNum_0, bitsSendsSrc0RegNum_1,
                    byteAddress >> 5);
@@ -2093,7 +2093,7 @@ BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST *inst) {
   EncodeSrc1RegFile(mybin, src1);
   EncodeSrc1Type(mybin, src1);
   if (src1->isImm()) {
-    MUST_BE_TRUE(src1->getTypeSize() != 8, "64-bit immediate must be src0");
+    vISA_ASSERT(src1->getTypeSize() != 8, "64-bit immediate must be src0");
     EncodeSrcImmData(mybin, src1);
   } else {
     G4_SrcRegRegion *srcRegion = src1->asSrcRegRegion();
@@ -2199,7 +2199,7 @@ inline void EncodeSrc2ChanSelect(G4_INST *inst, BinInst *mybin,
       SetSrc2ChanSel_3(mybin, 0);
       return;
     }
-    ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
+    vISA_ASSERT(false, "acc2~acc7 were set on wrong instruction");
   }
   auto maybeSwizzle = encoder.getSwizzle(srcRegion);
   {
@@ -2256,7 +2256,7 @@ inline void BinaryEncoding::EncodeSrc2RegNum(G4_INST *inst, BinInst *mybin,
   if (EncodingHelper::GetSrcRegFile(src2) != REG_FILE_A &&
       EncodingHelper::GetSrcAddrMode(src2) == ADDR_MODE_IMMED) {
     uint32_t byteAddress = src2->getLinearizedStart();
-    MUST_BE_TRUE(byteAddress <
+    vISA_ASSERT(byteAddress <
                      kernel.getNumRegTotal() * kernel.numEltPerGRF<Type_UB>(),
                  "src2 exceeds total GRF number");
 
@@ -2337,7 +2337,7 @@ void SetExtMsgDescr(G4_INST *inst, BinInst *mybin, uint32_t value) {
 
 inline BinaryEncoding::Status BinaryEncoding::EncodeExtMsgDescr(G4_INST *inst) {
   BinInst *mybin = getBinInst(inst);
-  MUST_BE_TRUE(inst->getMsgDescRaw(), "expected raw descriptor");
+  vISA_ASSERT(inst->getMsgDescRaw(), "expected raw descriptor");
   uint32_t msgDesc = inst->getMsgDescRaw()->getExtendedDesc();
   SetExtMsgDescr(inst, mybin, msgDesc);
   return SUCCESS;
@@ -2593,7 +2593,7 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions() {
     // calculate offsets again since labels for forward jumps/calls
     // are available now
     if (!EncodeConditionalBranches(x->inst, x->offset)) {
-      MUST_BE_TRUE(false, "invalid label!");
+      vISA_ASSERT(false, "invalid label!");
     }
   }
 
@@ -2686,7 +2686,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
       }
       jipOffset = info - insOffset;
       if (!isValidIPOffset(jipOffset)) {
-        MUST_BE_TRUE(false, "invalid IP offset");
+        vISA_ASSERT(false, "invalid IP offset");
       }
       // BDW+: in unit of bytes
       jipOffset *= (int32_t)JUMP_INST_COUNT_SIZE;
@@ -2711,7 +2711,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
       }
       uipOffset = info - insOffset;
       if (!isValidIPOffset(uipOffset)) {
-        MUST_BE_TRUE(false, "invalid IP offset");
+        vISA_ASSERT(false, "invalid IP offset");
       }
       uipOffset *= (uint32_t)JUMP_INST_COUNT_SIZE;
     }
@@ -2776,7 +2776,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
       }
       int32_t jmpOffset = info - insOffset;
       if (!isValidIPOffset(jmpOffset)) {
-        MUST_BE_TRUE(false, "invalid IP offset for call");
+        vISA_ASSERT(false, "invalid IP offset for call");
       }
 
       jmpOffset *= (int32_t)JUMP_INST_COUNT_SIZE;

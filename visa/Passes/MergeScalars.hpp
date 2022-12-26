@@ -51,12 +51,12 @@ struct BUNDLE_INFO {
   }
 
   void appendInst(G4_INST *lastInst) {
-    MUST_BE_TRUE(size < maxBundleSize, "max bundle size exceeded");
+    vISA_ASSERT(size < maxBundleSize, "max bundle size exceeded");
     inst[size++] = lastInst;
   }
 
   void deleteLastInst() {
-    assert(size > 0 && "empty bundle");
+    vISA_ASSERT(size > 0, "empty bundle");
     inst[--size] = nullptr;
   }
 

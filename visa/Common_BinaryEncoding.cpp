@@ -23,7 +23,7 @@ BinaryEncodingBase::Status BinaryEncodingBase::WriteToDatFile() {
   std::ofstream os(binFileName.c_str(), std::ios::binary);
   if (!os) {
     errStr = "Can't open " + binFileName + ".\n";
-    MUST_BE_TRUE(0, errStr);
+    vISA_ASSERT(false, errStr);
     return FAILURE;
   }
 
@@ -91,7 +91,7 @@ void BinaryEncodingBase::ProduceBinaryBuf(void *&handle) {
   handle = allocCodeBlock(binarySize);
   char *buf = (char *)handle;
   if (handle == NULL) {
-    MUST_BE_TRUE(0, "mem manager alloc failure in bin encoding");
+    vISA_ASSERT(false, "mem manager alloc failure in bin encoding");
   } else {
     for (unsigned i = 0, size = (unsigned)binInstList.size(); i < size; i++) {
       BinInst *bin = binInstList[i];
@@ -153,9 +153,8 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
       G4_CondModifier mod = inst->getCondMod()->getMod();
       if (subRegOffset != 0 &&
           (mod == Mod_g || mod == Mod_ge || mod == Mod_l || mod == Mod_le)) {
-        MUST_BE_TRUE(
-            false, "Invalid alignment for align16 inst of execsize 1 and offset"
-                       << (short)subRegOffset << "):\t");
+          vISA_ASSERT(
+              false, "Invalid alignment for align16 inst of execsize 1 and offset %d", (short)subRegOffset);
       }
     }
     ChannelEnable writeMask = NoChannelEnable;
@@ -200,21 +199,21 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
     dst->setLeftBound(dst->getLeftBound() - subRegOffset);
     dst->setRightBound(dst->getLeftBound() + 16);
     inst->setExecSize(g4::SIMD4);
-    assert(!inst->getPredicate() && "do not support predicated SIMD2 mad");
+    vISA_ASSERT(!inst->getPredicate(), "do not support predicated SIMD2 mad");
   }
 
   // for double/half inst, we have to additionally fix the source as it doesn't
   // support the .r swizzle
   if (isDoubleInst) {
     for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
-      MUST_BE_TRUE(inst->getSrc(i)->isSrcRegRegion(),
+      vISA_ASSERT(inst->getSrc(i)->isSrcRegRegion(),
                    "source must have a region");
       G4_SrcRegRegion *src = inst->getSrc(i)->asSrcRegRegion();
       const RegionDesc *rd = src->getRegion();
       if (src->isScalar() ||
           (rd->width == 2 && rd->horzStride == 0 && rd->vertStride == 2)) {
         int subRegOffset = src->getLinearizedStart() % 16;
-        MUST_BE_TRUE(subRegOffset == 0 || subRegOffset == 8,
+        vISA_ASSERT(subRegOffset == 0 || subRegOffset == 8,
                      "double source must be 8 byte aligned");
         setSwizzle(src,
                    subRegOffset == 0 ? SrcSwizzle::XYXY : SrcSwizzle::ZWZW);
@@ -227,7 +226,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
 }
 
 void BinaryEncodingBase::FixMathInst(G4_INST *inst) {
-  MUST_BE_TRUE(inst->isMath(), "Expect math instruction");
+  vISA_ASSERT(inst->isMath(), "Expect math instruction");
   for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
     G4_Operand *src = inst->getSrc(i);
     if (src && src->isSrcRegRegion()) {
@@ -252,7 +251,7 @@ void BinaryEncodingBase::FixInst() {
       G4_INST *inst = *iter;
       if (inst->isIntrinsic()) {
         // remove any intrinsics that should be lowered before binary encoding
-        MUST_BE_TRUE(inst->asIntrinsicInst()->getLoweredByPhase() ==
+        vISA_ASSERT(inst->asIntrinsicInst()->getLoweredByPhase() ==
                          Phase::BinaryEncoding,
                      "Unexpected intrinsics in binary encoding");
         iter = bb->erase(iter);

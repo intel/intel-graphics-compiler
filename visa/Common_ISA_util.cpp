@@ -1285,7 +1285,7 @@ VISA_Exec_Size Get_VISA_Exec_Size_From_Raw_Size(unsigned int size) {
   case 32:
     return EXEC_SIZE_32;
   default:
-    MUST_BE_TRUE(false,
+    vISA_ASSERT(false,
                  "illegal common ISA execsize (should be 1, 2, 4, 8, 16, 32).");
     return EXEC_SIZE_ILLEGAL;
   }
@@ -1382,22 +1382,22 @@ VISA_Type getVectorOperandType(const print_format_provider_t *header,
 }
 
 const raw_opnd &getRawOperand(const CISA_INST *inst, unsigned i) {
-  MUST_BE_TRUE(inst, "Argument Exception: argument inst is NULL.");
-  MUST_BE_TRUE(inst->opnd_num > i,
+  vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
+  vISA_ASSERT(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->_opnd.r_opnd;
 }
 
 const vector_opnd &getVectorOperand(const CISA_INST *inst, unsigned i) {
-  MUST_BE_TRUE(inst, "Argument Exception: argument inst is NULL.");
-  MUST_BE_TRUE(inst->opnd_num > i,
+  vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
+  vISA_ASSERT(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->_opnd.v_opnd;
 }
 
 CISA_opnd_type getOperandType(const CISA_INST *inst, unsigned i) {
-  MUST_BE_TRUE(inst, "Argument Exception: argument inst is NULL.");
-  MUST_BE_TRUE(inst->opnd_num > i,
+  vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
+  vISA_ASSERT(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->opnd_type;
 }

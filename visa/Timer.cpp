@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Timer.h"
+#include "Assertions.h"
 #include "Option.h"
 
 #include <fstream>
@@ -15,7 +16,6 @@ SPDX-License-Identifier: MIT
 #ifdef _WIN32
 #include "Windows.h"
 #endif
-#include <cassert>
 
 #undef DEF_TIMER
 #define DEF_TIMER(ENUM, DESCR) DESCR,
@@ -134,7 +134,7 @@ void startTimer(TimerID timerId) {
     if (timers[timer].started) {
       std::cerr << "***********************************************\n";
       std::cerr << "Timer already started.\n";
-      assert(false);
+      vASSERT(false);
     }
 #endif
     LARGE_INTEGER start;

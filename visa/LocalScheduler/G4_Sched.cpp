@@ -500,12 +500,12 @@ private:
     OrigInstList.clear();
     OrigInstList.splice(OrigInstList.begin(), CurInsts, CurInsts.begin(),
                         CurInsts.end());
-    assert(CurInsts.empty());
+    vASSERT(CurInsts.empty());
   }
   // restore the original inst list
   void restoreOriginalList() {
     INST_LIST &CurInsts = getBB()->getInstList();
-    assert(CurInsts.size() == OrigInstList.size());
+    vASSERT(CurInsts.size() == OrigInstList.size());
     CurInsts.clear();
     CurInsts.splice(CurInsts.begin(), OrigInstList, OrigInstList.begin(),
                     OrigInstList.end());
@@ -786,14 +786,14 @@ protected:
 public:
   preNode *getCurrTupleLead() const { return TheCurrTupleLead; }
   void setCurrTupleLead(preNode *N) {
-    assert(N->getInst()->getExecSize() == g4::SIMD8 ||
+    vASSERT(N->getInst()->getExecSize() == g4::SIMD8 ||
            N->getInst()->getExecSize() == g4::SIMD16);
     TheCurrTupleLead = N->getTupleLead();
     TheCurrTupleParts = N->getTupleParts();
   }
   void updateCurrTupleLead(preNode *N) {
-    assert(TheCurrTupleLead != nullptr);
-    assert(N->getTupleLead() == TheCurrTupleLead);
+    vASSERT(TheCurrTupleLead != nullptr);
+    vASSERT(N->getTupleLead() == TheCurrTupleLead);
     TheCurrTupleParts--;
     if (TheCurrTupleParts == 0)
       TheCurrTupleLead = nullptr;
@@ -831,7 +831,7 @@ public:
   void push(preNode *N) override {
     // Clustering nodes have been added.
     if (N->isClustered && !N->isClusterLead) {
-      assert(std::find(Clusterings.begin(), Clusterings.end(), N) !=
+      vASSERT(std::find(Clusterings.begin(), Clusterings.end(), N) !=
              Clusterings.end());
     } else {
       Q.push_back(N);
@@ -888,8 +888,8 @@ void SethiUllmanQueue::calculateSethiUllmanNumber(preNode *N) {
     return 0;
   };
 
-  assert(N->getID() < MaxRegs.size());
-  assert(N->getID() < DstSizes.size());
+  vASSERT(N->getID() < MaxRegs.size());
+  vASSERT(N->getID() < DstSizes.size());
   auto CurNum = MaxRegs[N->getID()];
   if (CurNum != 0 || DstSizes[N->getID()] != 0)
     return;
@@ -915,7 +915,7 @@ void SethiUllmanQueue::calculateSethiUllmanNumber(preNode *N) {
     Preds.emplace_back(Edge.getNode(), MaxReg - DstSize);
   }
 
-  assert(CurNum == 0);
+  vASSERT(CurNum == 0);
   if (Preds.size() > 0) {
     std::sort(Preds.begin(), Preds.end(),
               [](std::pair<preNode *, int> lhs, std::pair<preNode *, int> rhs) {
@@ -955,9 +955,9 @@ void SethiUllmanQueue::init() {
 // Return true if N2 has a higher priority than N1, false otherwise.
 bool SethiUllmanQueue::compare(preNode *N1, preNode *N2) {
   // TODO. Introduce heuristics before comparing SU numbers.
-  assert(N1->getID() < MaxRegs.size());
-  assert(N2->getID() < MaxRegs.size());
-  assert(N1->getID() != N2->getID());
+  vASSERT(N1->getID() < MaxRegs.size());
+  vASSERT(N2->getID() < MaxRegs.size());
+  vASSERT(N1->getID() != N2->getID());
 
   // Pseudo kill always has higher priority.
   if (N1->getInst()->isPseudoKill())
@@ -966,7 +966,7 @@ bool SethiUllmanQueue::compare(preNode *N1, preNode *N2) {
   // Prefer to unlock a pending clustering node.
   if (IsInClusteringMode) {
     // Only kick in when top clustering node is not ready.
-    assert(!Clusterings.empty());
+    vASSERT(!Clusterings.empty());
     preNode *Top = Clusterings.back();
     if (Top->NumSuccsLeft > 0) {
       for (auto &SuccN : Top->succs()) {
@@ -1114,7 +1114,7 @@ preNode *SethiUllmanQueue::select() {
   if (auto Top = scheduleClusteringNode())
     return Top;
 
-  assert(!Q.empty());
+  vASSERT(!Q.empty());
   auto TopIter = Q.end();
   for (auto I = Q.begin(), E = Q.end(); I != E; ++I) {
     preNode *N = *I;
@@ -1137,7 +1137,7 @@ preNode *SethiUllmanQueue::select() {
     }
   }
 
-  assert(TopIter != Q.end());
+  vASSERT(TopIter != Q.end());
   preNode *Top = *TopIter;
   std::swap(*TopIter, Q.back());
   Q.pop_back();
@@ -1197,7 +1197,7 @@ void BB_Scheduler::SethiUllmanScheduling() {
 
   while (!Q.empty()) {
     preNode *N = Q.pop();
-    assert(!N->isScheduled && N->NumSuccsLeft == 0);
+    vASSERT(!N->isScheduled && N->NumSuccsLeft == 0);
     if (N->getInst() != nullptr) {
       // std::cerr << "emit: "; N->getInst()->dump();
       if (N->getInst()->isSend() && N->getTupleLead()) {
@@ -1215,14 +1215,14 @@ void BB_Scheduler::SethiUllmanScheduling() {
 
     for (auto I = N->pred_begin(), E = N->pred_end(); I != E; ++I) {
       preNode *Node = I->getNode();
-      assert(!Node->isScheduled && Node->NumSuccsLeft);
+      vASSERT(!Node->isScheduled && Node->NumSuccsLeft);
       --Node->NumSuccsLeft;
       if (Node->NumSuccsLeft == 0)
         Q.push(Node);
     }
   }
 
-  assert(verifyScheduling());
+  vASSERT(verifyScheduling());
 }
 
 namespace {
@@ -1283,7 +1283,7 @@ public:
       pseudoKills.pop_back();
       return N;
     }
-    assert(!ReadyList.empty());
+    vASSERT(!ReadyList.empty());
     preNode *N = ReadyList.top();
     ReadyList.pop();
     return N;
@@ -1295,7 +1295,7 @@ public:
   // also update current-cycle and current-group
   void advance(unsigned &CurCycle, unsigned &CurGroup) {
     if (config.SkipHoldList) {
-      assert(HoldList.empty());
+      vASSERT(HoldList.empty());
       // tracking cycle and group in this mode is only useful
       // for understanding the scheduling result
       if (!ReadyList.empty()) {
@@ -1455,7 +1455,7 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
   if (SavedEstimation > 0 && SavedSchedule.size() > 0) {
     // commit the previous schedule as the best
     INST_LIST &CurInsts = getBB()->getInstList();
-    assert(SavedSchedule.size() == CurInsts.size());
+    vASSERT(SavedSchedule.size() == CurInsts.size());
     CurInsts.clear();
     for (auto Inst : SavedSchedule)
       CurInsts.push_back(Inst);
@@ -1479,7 +1479,7 @@ void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold) {
   Q.advance(CurrentCycle, CurrentGroup);
   while (!Q.empty()) {
     preNode *N = Q.pop();
-    assert(N->NumPredsLeft == 0);
+    vASSERT(N->NumPredsLeft == 0);
     unsigned NextCycle = CurrentCycle;
     if (N->getInst() != nullptr) {
       schedule.push_back(N->getInst());
@@ -1488,9 +1488,9 @@ void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold) {
     N->isScheduled = true;
     for (auto I = N->succ_begin(), E = N->succ_end(); I != E; ++I) {
       preNode *Node = I->getNode();
-      assert(!Node->isScheduled && Node->NumPredsLeft);
+      vASSERT(!Node->isScheduled && Node->NumPredsLeft);
       int L = (*I).getLatency();
-      assert(L >= 0);
+      vASSERT(L >= 0);
       if (Node->getReadyCycle() < CurrentCycle + (unsigned)L)
         Node->setReadyCycle(CurrentCycle + (unsigned)L);
       --Node->NumPredsLeft;
@@ -1503,7 +1503,7 @@ void BB_Scheduler::LatencyScheduling(unsigned GroupingThreshold) {
   }
   CycleEstimation = CurrentCycle;
   relocatePseudoKills();
-  assert(verifyScheduling());
+  vASSERT(verifyScheduling());
 }
 
 static void mergeSegments(const std::vector<unsigned> &RPtrace,
@@ -1511,7 +1511,7 @@ static void mergeSegments(const std::vector<unsigned> &RPtrace,
                           const std::vector<unsigned> &Min,
                           std::vector<unsigned> &Segments, unsigned Threshold) {
   unsigned n = std::min<unsigned>((unsigned)Max.size(), (unsigned)Min.size());
-  assert(n >= 2);
+  vASSERT(n >= 2);
 
   // Starts with a local minimum.
   /*
@@ -1681,7 +1681,7 @@ unsigned LatencyQueue::calculatePriority(preNode *N) {
   if (!Inst)
     return 0;
 
-  assert(N->getID() < Priorities.size());
+  vASSERT(N->getID() < Priorities.size());
   unsigned CurPriority = Priorities[N->getID()];
   if (CurPriority > 0)
     return CurPriority;
@@ -1735,9 +1735,9 @@ unsigned LatencyQueue::calculatePriority(preNode *N) {
 // Compare two ready nodes and decide which one should be scheduled first.
 // Return true if N2 has a higher priority than N1, false otherwise.
 bool LatencyQueue::compareReady(preNode *N1, preNode *N2) {
-  assert(N1->getID() != N2->getID());
-  assert(N1->getInst() && N2->getInst());
-  assert(!N1->getInst()->isPseudoKill() && !N2->getInst()->isPseudoKill());
+  vASSERT(N1->getID() != N2->getID());
+  vASSERT(N1->getInst() && N2->getInst());
+  vASSERT(!N1->getInst()->isPseudoKill() && !N2->getInst()->isPseudoKill());
   auto isSendNoReturn = [](G4_INST *Inst) {
     if (Inst->isSend() &&
         (Inst->getDst() == nullptr || Inst->getDst()->isNullReg()))
@@ -1783,9 +1783,9 @@ bool LatencyQueue::compareReady(preNode *N1, preNode *N2) {
 
 // hold-list is sorted by nodes' ready cycle
 bool LatencyQueue::compareHold(preNode *N1, preNode *N2) {
-  assert(N1->getID() != N2->getID());
-  assert(N1->getInst() && N2->getInst());
-  assert(!N1->getInst()->isPseudoKill() && !N2->getInst()->isPseudoKill());
+  vASSERT(N1->getID() != N2->getID());
+  vASSERT(N1->getInst() && N2->getInst());
+  vASSERT(!N1->getInst()->isPseudoKill() && !N2->getInst()->isPseudoKill());
   G4_INST *Inst1 = N1->getInst();
   G4_INST *Inst2 = N2->getInst();
 
@@ -1812,7 +1812,7 @@ bool LatencyQueue::compareHold(preNode *N1, preNode *N2) {
 
 // Find the edge with smallest ID.
 static preNode *minElt(const std::vector<preEdge> &Elts) {
-  assert(!Elts.empty());
+  vASSERT(!Elts.empty());
   if (Elts.size() == 1)
     return Elts.front().getNode();
   auto Cmp = [](const preEdge &E1, const preEdge &E2) {
@@ -1846,7 +1846,7 @@ void BB_Scheduler::relocatePseudoKills() {
     if (preNode::isBarrier(Inst)) {
       if (LastBarrier && !KillsWithoutUse.empty()) {
         LocMap[LastBarrier].swap(KillsWithoutUse);
-        assert(KillsWithoutUse.empty());
+        vASSERT(KillsWithoutUse.empty());
       }
       LastBarrier = Inst;
     }
@@ -2015,7 +2015,7 @@ void preNode::dump() const { print(std::cerr); }
 // Build the data dependency bottom up with two simple
 // special nodes.
 void preDDD::buildGraph() {
-  assert(!IsDagBuilt);
+  vASSERT(!IsDagBuilt);
 
   // Starts with the exit node.
   addNodeToGraph(&ExitNode);
@@ -2044,7 +2044,7 @@ void preDDD::buildGraph() {
 }
 
 static bool isPhyicallyAllocatedRegVar(G4_Operand *opnd) {
-  assert(opnd);
+  vASSERT(opnd);
   G4_AccRegSel Acc = opnd->getAccRegSel();
   if (Acc != G4_AccRegSel::ACC_UNDEFINED && Acc != G4_AccRegSel::NOACC)
     return true;
@@ -2059,7 +2059,7 @@ void preDDD::addNodeToGraph(preNode *N) {
   if (Dep != DepType::NODEP) {
     processBarrier(N, Dep);
   } else {
-    assert(N->Inst && "not an instruction");
+    vISA_ASSERT(N->Inst, "not an instruction");
     processSend(N);
     processReadWrite(N);
   }
@@ -2071,7 +2071,7 @@ void preDDD::addNodeToGraph(preNode *N) {
     preNode *N = std::get<0>(Item);
     Gen4_Operand_Number OpNum = std::get<1>(Item);
     G4_Operand *Opnd = N->getInst()->getOperand(OpNum);
-    assert(Opnd != nullptr);
+    vASSERT(Opnd != nullptr);
     G4_Declare *Dcl = Opnd->getTopDcl();
     LiveNodes[Dcl].emplace_back(N, OpNum);
 
@@ -2082,13 +2082,13 @@ void preDDD::addNodeToGraph(preNode *N) {
   // Update live nodes on sends.
   G4_INST *Inst = N->getInst();
   if (Inst && Inst->isSend()) {
-    assert(!Inst->getMsgDesc()->isScratch());
+    vASSERT(!Inst->getMsgDesc()->isScratch());
     LiveSends.push_back(N);
   }
 
   // No explicit dependency found, so it depends on previous barrier.
   if (N->succ_empty() && N != prevBarrier) {
-    assert(prevBarrier && "out of sync");
+    vISA_ASSERT(prevBarrier, "out of sync");
     addEdge(N, prevBarrier, prevBarrier->getBarrier());
   }
 }
@@ -2150,8 +2150,8 @@ kill_if(bool pred, std::vector<T, AllocTy> &Elts,
   if (!pred)
     return std::next(Iter);
 
-  assert(Iter != Elts.end());
-  assert(!Elts.empty());
+  vASSERT(Iter != Elts.end());
+  vASSERT(!Elts.empty());
   // This is the last element so the next element is none.
   if (&*Iter == &Elts.back()) {
     Elts.pop_back();
@@ -2179,7 +2179,7 @@ static std::pair<DepType, G4_CmpRelation>
 getDepAndRel(G4_Operand *Opnd, const preDDD::LiveNode &LN, DepType Dep) {
   G4_CmpRelation Rel = G4_CmpRelation::Rel_undef;
   G4_Operand *Other = LN.N->getInst()->getOperand(LN.OpNum);
-  assert(Other != nullptr);
+  vASSERT(Other != nullptr);
 
   if (Other) {
     const IR_Builder &builder = LN.N->getInst()->getBuilder();
@@ -2334,7 +2334,7 @@ void preDDD::processSend(preNode *curNode) {
   if (!Inst->isSend())
     return;
 
-  assert(!Inst->getMsgDesc()->isScratch() && "not expected");
+  vISA_ASSERT(!Inst->getMsgDesc()->isScratch(), "not expected");
   for (auto Iter = LiveSends.begin(); Iter != LiveSends.end(); /*empty*/) {
     preNode *liveN = *Iter;
     DepType Dep = getDepSend(Inst, liveN->getInst(), BTIIsRestrict);
@@ -2357,7 +2357,7 @@ void preDDD::prune() {
     kill_if(true, pred->Succs, Iter);
     Iter = std::find_if(succ->pred_begin(), succ->pred_end(),
                         [=](preEdge &E) { return E.getNode() == pred; });
-    assert(Iter != succ->pred_end());
+    vASSERT(Iter != succ->pred_end());
     kill_if(true, succ->Preds, Iter);
   };
 
@@ -2666,7 +2666,7 @@ void BB_ACC_Scheduler::SethiUllmanACCScheduling() {
 
   while (!Q.empty()) {
     preNode *N = Q.pop();
-    assert(!N->isScheduled && N->NumSuccsLeft == 0);
+    vASSERT(!N->isScheduled && N->NumSuccsLeft == 0);
     if (N->getInst() != nullptr) {
 #ifdef DEBUG_VERBOSE_ON
       std::cerr << "SU[" << Q.getNumber(N->getID()) << "]:";
@@ -2678,14 +2678,14 @@ void BB_ACC_Scheduler::SethiUllmanACCScheduling() {
 
     for (auto I = N->pred_begin(), E = N->pred_end(); I != E; ++I) {
       preNode *Node = I->getNode();
-      assert(!Node->isScheduled && Node->NumSuccsLeft);
+      vASSERT(!Node->isScheduled && Node->NumSuccsLeft);
       --Node->NumSuccsLeft;
       if (Node->NumSuccsLeft == 0)
         Q.push(Node);
     }
   }
 
-  assert(verifyScheduling());
+  vASSERT(verifyScheduling());
 }
 
 void BB_ACC_Scheduler::commit() {
@@ -2761,7 +2761,7 @@ bool preRA_ACC_Scheduler::run() {
 unsigned
 SethiUllmanACCQueue::calculateSethiUllmanNumberForACC(preNode *N,
                                                       G4_Kernel *kernel) {
-  assert(N->getID() < Numbers.size());
+  vASSERT(N->getID() < Numbers.size());
   unsigned CurNum = Numbers[N->getID()];
   if (CurNum != 0)
     return CurNum;
@@ -2830,9 +2830,9 @@ void SethiUllmanACCQueue::init(G4_Kernel *kernel) {
 // Return true if N2 has a higher priority than N1, false otherwise.
 bool SethiUllmanACCQueue::compare(preNode *N1, preNode *N2) {
   // TODO. Introduce heuristics before comparing SU numbers.
-  assert(N1->getID() < Numbers.size());
-  assert(N2->getID() < Numbers.size());
-  assert(N1->getID() != N2->getID());
+  vASSERT(N1->getID() < Numbers.size());
+  vASSERT(N2->getID() < Numbers.size());
+  vASSERT(N1->getID() != N2->getID());
 
   // Pseudo kill always has higher priority.
   if (N1->getInst()->isPseudoKill())
@@ -2853,14 +2853,14 @@ bool SethiUllmanACCQueue::compare(preNode *N1, preNode *N2) {
 }
 
 preNode *SethiUllmanACCQueue::select() {
-  assert(!Q.empty());
+  vASSERT(!Q.empty());
   auto TopIter = Q.end();
   for (auto I = Q.begin(), E = Q.end(); I != E; ++I) {
     if (TopIter == Q.end() || compare(*TopIter, *I))
       TopIter = I;
   }
 
-  assert(TopIter != Q.end());
+  vASSERT(TopIter != Q.end());
   preNode *Top = *TopIter;
   std::swap(*TopIter, Q.back());
   Q.pop_back();
@@ -2871,7 +2871,7 @@ preNode *SethiUllmanACCQueue::select() {
 // Build the data dependency bottom up with two simple
 // special nodes.
 void preDDD::buildGraphForACC() {
-  assert(!IsDagBuilt);
+  vASSERT(!IsDagBuilt);
 
   // Starts with the exit node.
   addNodeToGraph(&ExitNode);

@@ -139,7 +139,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb) {
        cycle != cycle_e; ++cycle) {
     if (cycle == (*nodeIT)->schedTime) {
       int latency = (*nodeIT)->getOccupancy();
-      assert(latency > 0);
+      vASSERT(latency > 0);
       int externCycle = cycle;
       for (int cy_e = cycle + latency; cycle != cy_e; ++cycle) {
         lastBusyCycle = cycle;
@@ -258,7 +258,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel *k, G4_BB *block,
     }
   }
 
-  assert(scheduleInstSize == bb->size() &&
+  vISA_ASSERT(scheduleInstSize == bb->size(),
          "Size of inst list is different before/after scheduling");
 }
 
@@ -413,7 +413,7 @@ void DDD::getBucketsForIndirectOperand(G4_INST *inst,
   if (opnd) {
     addrdcl = GetTopDclFromRegRegion(opnd);
   }
-  assert(addrdcl != nullptr && "address declare can not be nullptr");
+  vISA_ASSERT(addrdcl != nullptr, "address declare can not be nullptr");
 
   auto pointsToSet = pointsToAnalysis.getAllInPointsTo(addrdcl->getRegVar());
   for (auto &pt : *pointsToSet) {
@@ -421,9 +421,9 @@ void DDD::getBucketsForIndirectOperand(G4_INST *inst,
     G4_Declare *dcl = pt.var->getDeclare()->getRootDeclare();
     G4_RegVar *var = dcl->getRegVar();
 
-    assert(var->getId() == varID &&
+    vISA_ASSERT(var->getId() == varID,
            "RA verification error: Invalid regVar ID!");
-    assert(var->getPhyReg()->isGreg() &&
+    vISA_ASSERT(var->getPhyReg()->isGreg(),
            "RA verification error: Invalid dst reg!");
 
     uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
@@ -453,7 +453,7 @@ void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
   int startingBucket = UNINIT_BUCKET;
   G4_VarBase *base = opnd->getBase();
   bool canSpanMultipleBuckets = false;
-  assert(base && "If no base, then the operand is not touched by the instr.");
+  vISA_ASSERT(base, "If no base, then the operand is not touched by the instr.");
 
   // If a register allocated regvar, then get the physical register
   G4_VarBase *phyReg =
@@ -500,7 +500,7 @@ void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
   // Create one or more buckets and push them into the vector
   if (startingBucket != UNINIT_BUCKET) {
     if (canSpanMultipleBuckets) {
-      assert(base->isGreg());
+      vASSERT(base->isGreg());
       unsigned divisor = kernel->numEltPerGRF<Type_UB>();
       int baseBucket = GRF_BUCKET;
       int endingBucket = baseBucket + opnd->getLinearizedEnd() / divisor;
@@ -628,22 +628,22 @@ public:
       else {
         ++node_it;
       }
-      assert(!iterateAll || bucket == LB->numOfBuckets ||
+      vASSERT(!iterateAll || bucket == LB->numOfBuckets ||
              node_it != LB->nodeBucketsArray[bucket].bucketVec.end());
       return *this;
     }
     bool operator==(const BN_iterator &it2) {
-      assert(LB == it2.LB && iterateAll == it2.iterateAll);
+      vASSERT(LB == it2.LB && iterateAll == it2.iterateAll);
       // NOTE: order of comparisons matters: if different buckets
       //       then node_its are of different vectors
       return (bucket == it2.bucket && node_it == it2.node_it);
     }
     bool operator!=(const BN_iterator &it2) {
-      assert(LB == it2.LB && iterateAll == it2.iterateAll);
+      vASSERT(LB == it2.LB && iterateAll == it2.iterateAll);
       return (!(*this == it2));
     }
     BucketNode *operator*() {
-      assert(node_it != LB->nodeBucketsArray[bucket].bucketVec.end());
+      vASSERT(node_it != LB->nodeBucketsArray[bucket].bucketVec.end());
       return *node_it;
     }
   };
@@ -1180,12 +1180,12 @@ bool DDD::hasReadSuppression(G4_INST *prevInst, G4_INST *nextInst,
 
 bool DDD::hsaSameTypesAllOperands(const G4_INST &curInst,
                                   const G4_INST &nextInst) const {
-  assert(curInst.getNumDst() == 1 &&
+  vASSERT(curInst.getNumDst() == 1 &&
          curInst.getNumDst() == nextInst.getNumDst());
   if (curInst.getDst()->getType() != nextInst.getDst()->getType())
     return false;
 
-  assert(curInst.getNumSrc() == nextInst.getNumSrc());
+  vASSERT(curInst.getNumSrc() == nextInst.getNumSrc());
   for (auto i = 0; i < curInst.getNumSrc(); ++i)
     if (curInst.getSrc(i)->getType() != nextInst.getSrc(i)->getType())
       return false;
@@ -1258,7 +1258,7 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
             {
                 if (i == 1)
                 {
-                    assert(0);
+                    vASSERT(0);
                 }
                 return false;
             }
@@ -1503,7 +1503,7 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
             LB.kill(curMask, bn_it);
             continue;
           }
-          assert(dep != DEPTYPE_MAX && "dep unassigned?");
+          vISA_ASSERT(dep != DEPTYPE_MAX, "dep unassigned?");
           ++bn_it;
         }
       }
@@ -1767,16 +1767,16 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
     Node *secondNode = pair.second;
     G4_INST *firstInstr = (*firstNode->getInstructions()).front();
     G4_INST *secondInstr = (*secondNode->getInstructions()).front();
-    assert(firstNode->getInstructions()->size() == 1);
-    assert(secondNode->getInstructions()->size() == 1);
-    assert(*firstNode->getInstructions()->begin() == firstInstr);
-    assert(*secondNode->getInstructions()->begin() == secondInstr);
+    vASSERT(firstNode->getInstructions()->size() == 1);
+    vASSERT(secondNode->getInstructions()->size() == 1);
+    vASSERT(*firstNode->getInstructions()->begin() == firstInstr);
+    vASSERT(*secondNode->getInstructions()->begin() == secondInstr);
     if (canAvoidDepCycles(firstNode, secondNode, true)) {
       // A. move the deps of seconde node to the first.
       moveDeps(secondNode, firstNode);
 
       // B. We add the second instruction to the first node.
-      assert(firstNode->getInstructions()->size() == 1);
+      vASSERT(firstNode->getInstructions()->size() == 1);
       firstNode->addPairInstr(*secondNode->getInstructions()->begin());
       if (!kernel->fg.builder->getOption(vISA_NoAtomicSend) &&
           firstInstr->isSend() &&
@@ -1805,7 +1805,7 @@ void DDD::collectRoots() {
 void DDD::setPriority(Node *pred, const Edge &edge) {
   // Calculate PRED's priority (pred->priority), based on SUCC's priority
   Node *succ = edge.getNode();
-  assert(succ->priority != Node::PRIORITY_UNINIT &&
+  vISA_ASSERT(succ->priority != Node::PRIORITY_UNINIT,
          "succ node has no priority?");
   int newPriority = succ->priority + edge.getLatency();
   pred->priority =
@@ -2082,7 +2082,7 @@ uint32_t DDD::listScheduleForSuppression(G4_BB_Schedule *schedule) {
       // preReadyQueue and readyList would be empty. But this cannot
       // happen because the while() loop will only enter if at least
       // one of them is non-empty.
-      assert(readyCandidate && "Both readyList and preReadyQ empty!");
+      vISA_ASSERT(readyCandidate, "Both readyList and preReadyQ empty!");
       currCycle = readyCandidate->earliest;
       continue;
     }
@@ -2129,7 +2129,7 @@ uint32_t DDD::listScheduleForSuppression(G4_BB_Schedule *schedule) {
       }
     }
 
-    assert(scheduled && "Must have found an instruction to schedule by now");
+    vISA_ASSERT(scheduled, "Must have found an instruction to schedule by now");
 
     // Append the scheduled node to the end of the schedule.
     schedule->scheduledNodes.push_back(scheduled);
@@ -2175,7 +2175,7 @@ uint32_t DDD::listScheduleForSuppression(G4_BB_Schedule *schedule) {
   // Sanity check: Make sure all nodes are scheduled
 #if defined(_DEBUG)
   for (auto node : allNodes) {
-    assert(node->schedTime != UINT_MAX && "Node not scheduled!");
+    vISA_ASSERT(node->schedTime != UINT_MAX, "Node not scheduled!");
   }
 #endif
   return currCycle;
@@ -2294,7 +2294,7 @@ uint32_t DDD::listScheduleFor2xFP(G4_BB_Schedule *schedule) {
       // preReadyQueue and readyList would be empty. But this cannot
       // happen because the while() loop will only enter if at least
       // one of them is non-empty.
-      assert(readyCandidate && "Both readyList and preReadyQ empty!");
+      vISA_ASSERT(readyCandidate, "Both readyList and preReadyQ empty!");
       currCycle = readyCandidate->earliest;
       continue;
     }
@@ -2392,7 +2392,7 @@ uint32_t DDD::listScheduleFor2xFP(G4_BB_Schedule *schedule) {
   // Sanity check: Make sure all nodes are scheduled
 #if defined(_DEBUG)
   for (auto node : allNodes) {
-    assert(node->schedTime != UINT_MAX && "Node not scheduled!");
+    vISA_ASSERT(node->schedTime != UINT_MAX, "Node not scheduled!");
   }
 #endif
   return currCycle;
@@ -2479,7 +2479,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
       // preReadyQueue and readyList would be empty. But this cannot
       // happen because the while() loop will only enter if at least
       // one of them is non-empty.
-      assert(readyCandidate && "Both readyList and preReadyQ empty!");
+      vISA_ASSERT(readyCandidate, "Both readyList and preReadyQ empty!");
       currCycle = readyCandidate->earliest;
       continue;
     }
@@ -2680,7 +2680,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
         }
       }
 
-    assert(scheduled && "Must have found an instruction to schedule by now");
+    vISA_ASSERT(scheduled, "Must have found an instruction to schedule by now");
 
     // Append the scheduled node to the end of the schedule.
     schedule->scheduledNodes.push_back(scheduled);
@@ -2698,7 +2698,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
   // Sanity check: Make sure all nodes are scheduled
 #if defined(_DEBUG)
   for (auto node : allNodes) {
-    assert(node->schedTime != UINT_MAX && "Node not scheduled!");
+    vISA_ASSERT(node->schedTime != UINT_MAX, "Node not scheduled!");
   }
 #endif
   return currCycle;

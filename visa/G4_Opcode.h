@@ -455,7 +455,7 @@ inline bool isLowPrecisionFloatTy(G4_Type ty) {
 }
 
 inline G4_Type floatToSameWidthIntType(G4_Type floatTy) {
-  assert(IS_TYPE_FLOAT_ALL(floatTy));
+  vASSERT(IS_TYPE_FLOAT_ALL(floatTy));
   switch (TypeSize(floatTy)) {
   case 1:
     return Type_UB;
