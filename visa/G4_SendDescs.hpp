@@ -593,27 +593,35 @@ public:
   bool isHdcTypedSurfaceWrite() const;
 
   // return offset in unit of HWords
-  uint16_t getScratchRWOffset() const {
-    MUST_BE_TRUE(isScratchRW(), "Message is not scratch space R/W.");
+  uint16_t getHWordScratchRWOffset() const {
+    MUST_BE_TRUE(isHWordScratchRW(), "Message is not scratch space R/W.");
     return (getFuncCtrl() & 0xFFFu);
   }
 
-  bool isScratchRW() const {
+  bool isLSCScratchRW() const {
     if (isLscDescriptor) {
       return hasAttrs(LdStAttrs::SCRATCH_SURFACE);
     }
+    return false;
+  }
+
+  bool isHWordScratchRW() const {
+    if (isLscDescriptor)
+      return false;
     // legacy DC0 scratch msg: bit[18] = 1
     return getSFID() == SFID::DP_DC0 && ((getFuncCtrl() & 0x40000u) != 0);
   }
-  bool isScratchRead() const {
-    return isScratchRW() && (getFuncCtrl() & 0x20000u) == 0;
+
+  bool isScratchRW() const { return isHWordScratchRW() || isLSCScratchRW(); }
+  bool isHWordScratchRead() const {
+    return isHWordScratchRW() && (getFuncCtrl() & 0x20000u) == 0;
   }
-  bool isScratchWrite() const {
-    return isScratchRW() && (getFuncCtrl() & 0x20000u) != 0;
+  bool isHWordScratchWrite() const {
+    return isHWordScratchRW() && (getFuncCtrl() & 0x20000u) != 0;
   }
   // in terms of HWords (1, 2, 4, or 8)
-  uint16_t getScratchRWSize() const {
-    MUST_BE_TRUE(isScratchRW(), "Message is not scratch space R/W.");
+  uint16_t getHWScratchRWSize() const {
+    MUST_BE_TRUE(isHWordScratchRW(), "Message is not scratch space R/W.");
     uint16_t bitV = ((getFuncCtrl() & 0x3000u) >> 12);
     return 0x1 << bitV;
   }

@@ -1636,8 +1636,8 @@ size_t G4_SendDescRaw::getSrc0LenBytes() const {
 }
 
 size_t G4_SendDescRaw::getDstLenBytes() const {
-  if (isScratchRW()) {
-    return 32 * getScratchRWSize(); // HWords
+  if (isHWordScratchRW()) {
+    return 32 * getHWScratchRWSize(); // HWords
   } else if (isOwordLoad()) {
     return 16 * getOwordsAccessed(); // OWords
 #if 0
@@ -1673,8 +1673,8 @@ size_t G4_SendDescRaw::getSrc1LenBytes() const {
   if (isLscDescriptor) {
     return src1Len * irb.getGRFSize();
   }
-  if (isScratchRW()) {
-    return 32 * getScratchRWSize(); // HWords
+  if (isHWordScratchRW()) {
+    return 32 * getHWScratchRWSize(); // HWords
   }
   // we could support OW store here, but no one seems to need that and
   // we are phasing this class out; so ignore it for now
@@ -1709,9 +1709,9 @@ bool G4_SendDescRaw::isBarrier() const {
 
 std::optional<ImmOff> G4_SendDescRaw::getOffset() const {
   if (isLscOp()) {
-  } else if (isScratchRW()) {
+  } else if (isHWordScratchRW()) {
     // HWord scratch message
-    return ImmOff(getScratchRWOffset() * 32);
+    return ImmOff(getHWordScratchRWOffset() * 32);
   }
   return std::nullopt;
 }
