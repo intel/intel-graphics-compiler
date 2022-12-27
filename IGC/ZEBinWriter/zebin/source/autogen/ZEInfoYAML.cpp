@@ -98,7 +98,6 @@ void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument
     io.mapOptional("sampler_type", info.sampler_type, std::string());
     io.mapOptional("is_pipe", info.is_pipe, false);
     io.mapOptional("is_ptr", info.is_ptr, false);
-    io.mapOptional("bti_value", info.bti_value, -1);
 }
 void MappingTraits<zeInfoPerThreadPayloadArgument>::mapping(IO& io, zeInfoPerThreadPayloadArgument& info)
 {
