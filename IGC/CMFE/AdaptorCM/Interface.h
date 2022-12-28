@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -59,8 +59,8 @@ struct IDriverInvocation {
 
   enum class InputTypeT { SourceCM, LLVM_IR, SPIRV, NONE, OTHER };
   enum class OutputTypeT { S, SPIRV, LLVM_IR, LLVM_BC, PREPROC, OTHER };
-  enum class TargetRuntimeT { CM, OCL, L0 };
-  enum class BinaryFormatT { CM, OCL, ZE };
+  enum class TargetRuntimeT { OCL, L0 };
+  enum class BinaryFormatT { DEFAULT, OCL, ZE };
 
   virtual const SeqStrT& getFEArgs() const = 0;
   virtual const SeqStrT& getBEArgs() const = 0;
