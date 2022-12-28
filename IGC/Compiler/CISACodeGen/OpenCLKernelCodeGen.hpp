@@ -293,9 +293,6 @@ namespace IGC
                 case IGFX_GEMINILAKE:
                 case IGFX_LAKEFIELD:
                 case IGFX_ELKHARTLAKE:
-                case IGFX_ICELAKE:
-                case IGFX_ICELAKE_LP:
-                case IGFX_TIGERLAKE_LP:
                     return false;
                 }
             };
