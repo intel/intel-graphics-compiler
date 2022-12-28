@@ -28,6 +28,8 @@ def intel_allow_zebin : ClFlag<"intel-allow-zebin">,
 
 defm disable_zebin : CommonFlag<"disable-zebin">,
   HelpText<"Emit binary in legacy format">;
+def intel_disable_zebin : ClFlag<"intel-disable-zebin">,
+  Alias<disable_zebin_ze>;
 
 }
 // }} Common internal options
