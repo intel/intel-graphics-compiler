@@ -401,7 +401,6 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
     }
     else if (auto instruction = dyn_cast<Instruction>(value))
     {
-        IRBuilder<> builder(instruction);
         for (auto& operand : instruction->operands())
         {
             if (wasPromoted(operand))
@@ -413,23 +412,15 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                 }
                 else
                 {
+                    auto insertBefore = instruction;
                     if (auto operandInst = dyn_cast<Instruction>(operand))
                     {
-                        auto insertPoint = operandInst->getNextNode();
-                        if (!insertPoint) {
-                            insertPoint = operandInst->getParent()->getTerminator();
+                        insertBefore = operandInst->getNextNode();
+                        if (!insertBefore) {
+                            insertBefore = operandInst->getParent()->getTerminator();
                         }
-                        builder.SetInsertPoint(insertPoint);
                     }
-                    auto trunc = dyn_cast<TruncInst>(builder.CreateTrunc(
-                        promoted,
-                        operand->getType(),
-                        ""
-                    ));
-                    if (auto inst = dyn_cast<Instruction>(promoted))
-                    {
-                        trunc->setDebugLoc(inst->getDebugLoc());
-                    }
+                    auto trunc = convertI8ToI1(promoted, insertBefore);
                     instruction->replaceUsesOfWith(operand, trunc);
                 }
             }
