@@ -152,7 +152,9 @@ void Optimizer::regAlloc() {
   // assign registers
   //
   int status = ::regAlloc(builder, builder.phyregpool, kernel);
-  if (status != VISA_SUCCESS) {
+  if (status == VISA_EARLY_EXIT) {
+    EarlyExited = true;
+  } else if (status != VISA_SUCCESS) {
     RAFail = true;
   }
 }
@@ -1489,14 +1491,14 @@ void Optimizer::runPass(PassIndex Index) {
   // Only check for stop-after in offline build as it's intended for vISA
   // debugging only. Note that stop-after does not work if the pass is not
   // executed.
-  if (StopAfterPass == Name) {
+  if (StopAfterPass == Name || EarlyExited) {
     EarlyExited = true;
     kernel.dumpStopafter();
   }
 #endif // DLL_MODE
 
 #ifdef _DEBUG
-  bool skipVerify = Index == PI_regAlloc && RAFail == true;
+  bool skipVerify = Index == PI_regAlloc && (RAFail || EarlyExited);
   if (!skipVerify) {
     verifyG4Kernel(kernel, Index, true, G4Verifier::VC_ASSERT);
   }

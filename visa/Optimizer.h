@@ -423,9 +423,12 @@ public:
   Optimizer(vISA::Mem_Manager &m, IR_Builder &b, G4_Kernel &k, FlowGraph &f)
       : builder(b), kernel(k), fg(f), mem(m), RAFail(false) {
     numBankConflicts = 0;
+#ifndef DLL_MODE
     auto PassName = k.getOptions()->getOptionCstr(vISA_StopAfterPass);
-    if (PassName)
+    if (PassName) {
       StopAfterPass = std::string(PassName);
+    }
+#endif // DLL_MODE
     initOptimizations();
   }
   ~Optimizer() {

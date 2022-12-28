@@ -871,6 +871,10 @@ private:
   void expandSpillStackcall(uint32_t numRows, uint32_t offset, short rowOffset,
                             G4_SrcRegRegion *payload, G4_BB *bb,
                             INST_LIST_ITER &instIt);
+  bool stopAfter(const char *subpass) const {
+    auto passName = builder.getOptions()->getOptionCstr(vISA_StopAfterPass);
+    return passName && strcmp(passName, subpass) == 0;
+  }
 
 public:
   static unsigned sendBlockSizeCode(unsigned owordSize);

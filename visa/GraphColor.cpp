@@ -10061,6 +10061,12 @@ int GlobalRA::coloringRegAlloc() {
         }
 
         kernel.dumpToFile("after.Spill_GRF." + std::to_string(iterationNo));
+#ifndef DLL_MODE
+        if (stopAfter("Spill_GRF")) {
+          return VISA_EARLY_EXIT;
+        }
+#endif // DLL_MODE
+
         scratchOffset =
             std::max(scratchOffset, spillGRF.getNextScratchOffset());
 
@@ -10079,6 +10085,11 @@ int GlobalRA::coloringRegAlloc() {
           CoalesceSpillFills c(kernel, liveAnalysis, coloring, spillGRF,
                                iterationNo, rpe, *this);
           c.run();
+#ifndef DLL_MODE
+          if (stopAfter("spillCleanup")) {
+            return VISA_EARLY_EXIT;
+          }
+#endif // DLL_MODE
         }
 
         if (iterationNo == builder.getuint32Option(vISA_FailSafeRALimit)) {
