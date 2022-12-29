@@ -6,7 +6,7 @@
 #
 #============================ end_copyright_notice =============================
 
-add_library(IGCOptions "")
+add_library(IGCOptions STATIC "")
 
 add_subdirectory(src)
 add_subdirectory(include/igc/Options)

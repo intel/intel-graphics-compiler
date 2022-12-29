@@ -16,7 +16,7 @@ set(GENERAL_UTILS_SOURCES
   IndexFlattener.cpp
   )
 
-add_library(VCGeneralUtils ${GENERAL_UTILS_SOURCES})
+add_library(VCGeneralUtils OBJECT ${GENERAL_UTILS_SOURCES})
 igc_get_llvm_targets(LLVM_LIBS
   Core
   Support

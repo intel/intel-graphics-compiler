@@ -15,7 +15,7 @@ set(SUPPORT_SOURCES
   PassPrinters.cpp
   )
 
-add_library(VCSupport ${SUPPORT_SOURCES})
+add_library(VCSupport OBJECT ${SUPPORT_SOURCES})
 igc_get_llvm_targets(LLVM_LIBS
   Support
   Core

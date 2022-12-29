@@ -12,7 +12,7 @@ set(CM_CL_SUPPORT_SOURCES
   InitializePasses.cpp
   )
 
-add_library(CMCLSupport ${CM_CL_SUPPORT_SOURCES})
+add_library(CMCLSupport STATIC ${CM_CL_SUPPORT_SOURCES})
 
 # LLVM dependencies
 igc_get_llvm_targets(LLVM_LIBS

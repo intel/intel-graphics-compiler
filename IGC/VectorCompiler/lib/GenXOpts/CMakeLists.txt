@@ -27,7 +27,7 @@ set(OPT_SOURCES
   CMPacketize/PacketBuilder_misc.cpp
 )
 
-add_library(VCTransforms ${OPT_SOURCES})
+add_library(VCTransforms OBJECT ${OPT_SOURCES})
 
 igc_get_llvm_targets(LLVM_LIBS
   Analysis

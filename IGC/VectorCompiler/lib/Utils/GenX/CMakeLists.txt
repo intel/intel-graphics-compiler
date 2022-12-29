@@ -21,7 +21,7 @@ set(GENX_UTILS_SOURCES
   TransformArgCopy.cpp
   )
 
-add_library(VCGenXUtils ${GENX_UTILS_SOURCES})
+add_library(VCGenXUtils OBJECT ${GENX_UTILS_SOURCES})
 igc_get_llvm_targets(LLVM_LIBS
   Core
   Support

@@ -14,7 +14,7 @@ set(LLVM_COMPONENTS
 )
 
 igc_get_llvm_targets(LLVM_LIBS ${LLVM_COMPONENTS})
-add_library(VCInternalIntrinsics
+add_library(VCInternalIntrinsics OBJECT
   InternalIntrinsics.cpp
 )
 

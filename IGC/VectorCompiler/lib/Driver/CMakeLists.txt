@@ -11,7 +11,7 @@ set(DRIVER_SOURCES
   SPIRVWrapper.cpp
   )
 
-add_library(VCDriver ${DRIVER_SOURCES})
+add_library(VCDriver STATIC ${DRIVER_SOURCES})
 igc_get_llvm_targets(LLVM_LIBS
   Analysis
   BitReader

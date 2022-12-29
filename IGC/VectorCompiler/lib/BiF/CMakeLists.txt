@@ -275,7 +275,7 @@ add_custom_target(VCBiFPreparation
           ${SPIRV_EXEC_BUILTINS_SRC_PATH}
           ${SPIRV_ATOMIC_BUILTINS_SRC_PATH})
 
-add_library(VCEmbeddedBiF
+add_library(VCEmbeddedBiF OBJECT
   ${PRINTF_OCL_32_CPP_PATH}
   ${PRINTF_OCL_64_CPP_PATH}
   ${PRINTF_ZE_32_CPP_PATH}

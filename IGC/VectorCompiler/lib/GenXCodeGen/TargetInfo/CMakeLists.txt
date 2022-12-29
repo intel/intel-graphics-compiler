@@ -10,7 +10,7 @@ set(INFO_SOURCES
   GenXTargetInfo.cpp
 )
 
-add_library(VCTargetInfo ${INFO_SOURCES})
+add_library(VCTargetInfo OBJECT ${INFO_SOURCES})
 
 igc_get_llvm_targets(LLVM_LIBS Support)
 

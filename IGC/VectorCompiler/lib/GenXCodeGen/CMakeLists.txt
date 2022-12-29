@@ -88,7 +88,7 @@ set(CODEGEN_SOURCES
   GenXFixInvalidFuncName.cpp
 )
 
-add_library(VCCodeGen ${CODEGEN_SOURCES})
+add_library(VCCodeGen STATIC ${CODEGEN_SOURCES})
 add_dependencies(VCCodeGen
   GenXUtilBuild
   GenXCommonTableGen_target
