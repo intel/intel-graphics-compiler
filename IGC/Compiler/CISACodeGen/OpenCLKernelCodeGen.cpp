@@ -3725,8 +3725,6 @@ namespace IGC
             bool needCallWA = (IGC_IS_FLAG_ENABLED(EnableCallWA) && m_Context->platform.hasFusedEU());
             if (needCallWA && simdMode == SIMDMode::SIMD32  && HasStackCalls())
             {
-                IGC_ASSERT_MESSAGE(0, "Required subgroup size 32 with stackcalls enabled is not supported on this platform");
-                m_Context->EmitError("Required subgroup size 32 with stackcalls enabled is not supported on this platform", nullptr);
                 return false;
             }
         }
