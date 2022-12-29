@@ -110,10 +110,10 @@ Value* PromoteBools::convertI1ToI8(Value* value, Instruction* insertBefore)
     }
 
     IRBuilder<> builder(insertBefore);
-    auto zext = dyn_cast<ZExtInst>(builder.CreateZExt(value, Type::getInt8Ty(value->getContext())));
-    if (auto inst = dyn_cast<Instruction>(value))
+    auto zext = builder.CreateZExt(value, Type::getInt8Ty(value->getContext()));
+    if (isa<Instruction>(zext) && isa<Instruction>(value))
     {
-        zext->setDebugLoc(inst->getDebugLoc());
+        dyn_cast<Instruction>(zext)->setDebugLoc(dyn_cast<Instruction>(value)->getDebugLoc());
     }
     return zext;
 }
@@ -132,10 +132,10 @@ Value* PromoteBools::convertI8ToI1(Value* value, Instruction* insertBefore)
     }
 
     IRBuilder<> builder(insertBefore);
-    auto trunc = dyn_cast<TruncInst>(builder.CreateTrunc(value, Type::getInt1Ty(value->getContext())));
-    if (auto inst = dyn_cast<Instruction>(value))
+    auto trunc = builder.CreateTrunc(value, Type::getInt1Ty(value->getContext()));
+    if (isa<Instruction>(trunc) && isa<Instruction>(value))
     {
-        trunc->setDebugLoc(inst->getDebugLoc());
+        dyn_cast<Instruction>(trunc)->setDebugLoc(dyn_cast<Instruction>(value)->getDebugLoc());
     }
     return trunc;
 }
@@ -421,6 +421,10 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                         }
                     }
                     auto trunc = convertI8ToI1(promoted, insertBefore);
+                    if (isa<Instruction>(trunc) && isa<Instruction>(promoted))
+                    {
+                        dyn_cast<Instruction>(trunc)->setDebugLoc(dyn_cast<Instruction>(promoted)->getDebugLoc());
+                    }
                     instruction->replaceUsesOfWith(operand, trunc);
                 }
             }
