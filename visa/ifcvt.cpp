@@ -13,18 +13,6 @@ SPDX-License-Identifier: MIT
 #include "common.h"
 #include "ifcvt.h"
 
-// #define DEBUG_VERBOSE_ON
-#if defined(DEBUG_VERBOSE_ON)
-#define DEBUG(X)                                                               \
-  do {                                                                         \
-    X;                                                                         \
-  } while (0)
-#else
-#define DEBUG(X)                                                               \
-  do {                                                                         \
-  } while (0)
-#endif
-
 using namespace vISA;
 
 namespace {
@@ -184,7 +172,7 @@ class IfConverter {
 
     if (t0 == s1) {
       // 'if-fi'
-      DEBUG(std::cerr << "Found an innermost if-fi block at"
+      VISA_DEBUG(std::cout << "Found an innermost if-fi block at"
                       << " BB" << BB->getId() << " with branch BB"
                       << s0->getId() << " and tail BB" << t0->getId() << '\n');
       return std::make_tuple(last, s0, nullptr, t0);
@@ -200,10 +188,10 @@ class IfConverter {
     if (!getSinglePredecessor(s1, s0))
       return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
-    DEBUG(std::cerr << "Found an innermost if-else-fi block at"
-                    << " BB" << BB->getId() << " with branches {"
-                    << "BB" << s0->getId() << ", BB" << s1->getId()
-                    << "} and tail BB" << t0->getId() << '\n');
+    VISA_DEBUG(std::cout << "Found an innermost if-else-fi block at"
+                         << " BB" << BB->getId() << " with branches {"
+                         << "BB" << s0->getId() << ", BB" << s1->getId()
+                         << "} and tail BB" << t0->getId() << '\n');
 
     // 'if-else-fi'
     return std::make_tuple(last, s0, s1, t0);

@@ -2667,11 +2667,11 @@ void BB_ACC_Scheduler::SethiUllmanACCScheduling() {
   while (!Q.empty()) {
     preNode *N = Q.pop();
     vASSERT(!N->isScheduled && N->NumSuccsLeft == 0);
-    if (N->getInst() != nullptr) {
-#ifdef DEBUG_VERBOSE_ON
-      std::cerr << "SU[" << Q.getNumber(N->getID()) << "]:";
-      N->dump();
-#endif
+    if (N->getInst()) {
+      VISA_DEBUG_VERBOSE({
+        std::cerr << "SU[" << Q.getNumber(N->getID()) << "]:";
+        N->dump();
+      });
       schedule.push_back(N->getInst());
       N->isScheduled = true;
     }
@@ -2815,15 +2815,15 @@ void SethiUllmanACCQueue::init(G4_Kernel *kernel) {
     Numbers[j] = calculateSethiUllmanNumberForACC(Nodes[j], kernel);
   }
 
-#ifdef DEBUG_VERBOSE_ON
-  std::cerr << "\n\n";
-  for (auto I = Nodes.rbegin(); I != Nodes.rend(); ++I) {
-    std::cerr << "SU[" << Numbers[(*I)->getID()] << "] "
-              << ((*I)->isACCCandidate() ? "ACC " : "GRF ");
-    (*I)->dump();
-  }
-  std::cerr << "\n\n";
-#endif
+ VISA_DEBUG_VERBOSE({
+    std::cerr << "\n\n";
+    for (auto I = Nodes.rbegin(); I != Nodes.rend(); ++I) {
+      std::cerr << "SU[" << Numbers[(*I)->getID()] << "] "
+                << ((*I)->isACCCandidate() ? "ACC " : "GRF ");
+      (*I)->dump();
+    }
+    std::cerr << "\n\n";
+  });
 }
 
 // Compare two ready nodes and decide which one should be scheduled first.

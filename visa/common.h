@@ -115,20 +115,8 @@ extern std::stringstream errorMsgs;
 #else
 #define DEBUG_VERBOSE(msg)
 #endif
-
-#define DEBUG_MSG(msg)                                                         \
-  { COUT_ERROR << msg; }
-
-// call the obj's emit function
-#define DEBUG_EMIT(obj)                                                        \
-  { (obj)->emit(COUT_ERROR); }
-
 #else
-
 #define DEBUG_VERBOSE(msg)
-#define DEBUG_MSG(msg)
-#define DEBUG_EMIT(obj)
-
 #endif // #ifdef _DEBUG
 
 // disable asserts only for release DLL
@@ -231,6 +219,14 @@ bool isCurrentDebugPass();
       X;                                                                       \
     }                                                                          \
   } while (false)
+// VERBOSE version
+// TODO: We should consider getting rid of this; it's not clear if the legacy
+// DEBUG_VERBOSE messages are still useful, and quite a few don't even compile.
+#ifdef DEBUG_VERBOSE_ON
+#define VISA_DEBUG_VERBOSE(X) VISA_DEBUG(X)
+#else
+#define VISA_DEBUG_VERBOSE(X)
+#endif
 #else
 #define addPassToDebug(X)
 #define isCurrentDebugPass() (false)
@@ -238,6 +234,7 @@ bool isCurrentDebugPass();
 #define VISA_DEBUG(X)                                                          \
   do {                                                                         \
   } while (false)
+#define VISA_DEBUG_VERBOSE(X) VISA_DEBUG(X)
 #endif // NDEBUG
 } // namespace vISA
 
@@ -268,8 +265,7 @@ enum class PlatformGen {
 #define ERROR_OPTION "ERROR: Invalid input option or option combination"
 #define ERROR_INVALID_VISA_NAME(x) "ERROR: Invalid name #x"
 #define ERROR_SYNTAX(x) "ERROR: Syntax error -- #x"
-#define ERROR_DATA_RANGE(x)                                                    \
-  "ERROR: Out of boundary or invalid data value in #x"
+#define ERROR_DATA_RANGE(x) "ERROR: Out of boundary or invalid data value in #x"
 // end of Error Message
 
 

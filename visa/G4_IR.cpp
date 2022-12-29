@@ -422,8 +422,8 @@ uint16_t G4_INST::getMaskOffset() const {
 
   if (!builder.hasNibCtrl()) {
     vISA_ASSERT(maskOption != InstOpt_M4 && maskOption != InstOpt_M12 &&
-           maskOption != InstOpt_M20 && maskOption != InstOpt_M28,
-           "nibCtrl is not supported on this platform");
+                    maskOption != InstOpt_M20 && maskOption != InstOpt_M28,
+                "nibCtrl is not supported on this platform");
   }
 
   switch (maskOption) {
@@ -2843,7 +2843,8 @@ bool G4_INST::isPartialWrite() const {
   return (aPred && op != G4_sel) || op == G4_smov;
 }
 
-bool G4_INST::isPartialWriteForSpill(bool inSIMDCF, bool useNonScratchForSpill) const {
+bool G4_INST::isPartialWriteForSpill(bool inSIMDCF,
+                                     bool useNonScratchForSpill) const {
   if (!getDst() || hasNULLDst()) {
     // inst does not write to GRF
     return false;
@@ -2854,8 +2855,8 @@ bool G4_INST::isPartialWriteForSpill(bool inSIMDCF, bool useNonScratchForSpill) 
   }
 
   if (inSIMDCF && !isWriteEnableInst()) {
-    if (// When using stack ABI, we use either OW or LSC msg
-        // both of which don't honor EM
+    if ( // When using stack ABI, we use either OW or LSC msg
+         // both of which don't honor EM
         builder.usesStack() ||
         // OW, LSC don't honor EM
         useNonScratchForSpill ||
@@ -3315,11 +3316,9 @@ bool G4_INST::isIllegalMixedMode() const {
 
 void G4_InstSend::setMsgDesc(G4_SendDesc *in) {
   vISA_ASSERT(in, "null descriptor not expected");
-#if defined(_DEBUG)
   if (in && in->getExecSize() == g4::SIMD_UNDEFINED) {
-    DEBUG_MSG("Msg Desc has execSize undefined!\n");
+    VISA_DEBUG(std::cout << "Msg Desc has execSize undefined!\n");
   }
-#endif
   msgDesc = in;
   resetRightBound((G4_Operand *)dst);
   resetRightBound(srcs[0]);
@@ -3901,8 +3900,8 @@ static void printRegVarOff(std::ostream &output, G4_Operand *opnd,
             // transform ArfSubRegNum to unit of thisOpSize
             if (thisOpSize != declOpSize) {
               if (!opnd->getInst()->isPseudoKill()) {
-                //vISA_ASSERT((ArfSubRegNum * declOpSize) % thisOpSize == 0,
-                //            ERROR_DATA_RANGE("ARF sub-register number"));
+                // vISA_ASSERT((ArfSubRegNum * declOpSize) % thisOpSize == 0,
+                //             ERROR_DATA_RANGE("ARF sub-register number"));
               }
               ArfSubRegNum = (ArfSubRegNum * declOpSize) / thisOpSize;
             }
@@ -4261,7 +4260,7 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
                                                 G4_Operand *opnd,
                                                 const IR_Builder &builder) {
   vISA_ASSERT((regRegion->isSrcRegRegion() || regRegion->isDstRegRegion()),
-         "expect either src or dst regRegion");
+              "expect either src or dst regRegion");
   bool legal_opnd = opnd->isSrcRegRegion() || opnd->isDstRegRegion() ||
                     opnd->isPredicate() || opnd->isCondMod() ||
                     opnd->isAddrExp();
@@ -4321,7 +4320,7 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
     auto mayInterfereWithIndirect = [](G4_Operand *direct,
                                        G4_Operand *indirect) {
       vISA_ASSERT((!direct->isIndirect() && indirect->isIndirect()),
-             "first opereand should be direct and second indirect");
+                  "first opereand should be direct and second indirect");
       return (direct->getTopDcl() && direct->getTopDcl()->getAddressed()) ||
              (direct->getBase()->isAddress() &&
               direct->getTopDcl() == indirect->getTopDcl());
@@ -5078,7 +5077,7 @@ static G4_CmpRelation compareBound(uint32_t myLB, uint32_t myRB,
 /// should have identical code for compareOperand
 static G4_CmpRelation compareFlagToOperand(G4_Operand *flag, G4_Operand *opnd) {
   vISA_ASSERT((flag->isPredicate() || flag->isCondMod()),
-         "expect either predicate or conditional modifier");
+              "expect either predicate or conditional modifier");
 
   bool legalOpnd = opnd->isSrcRegRegion() || opnd->isDstRegRegion() ||
                    opnd->isPredicate() || opnd->isCondMod();
@@ -5384,7 +5383,7 @@ int G4_AddrExp::eval(const IR_Builder &builder) {
   int byteAddr = 0;
 
   vISA_ASSERT(m_addressedReg->getPhyReg() != NULL,
-               "No addr takenregister found!");
+              "No addr takenregister found!");
 
   byteAddr = m_addressedReg->getByteAddr(
       builder); // let's assume the unsigned=>int won't overflow for now.
@@ -5494,7 +5493,7 @@ void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size, const IR_Builder &irb) {
     // fast path
     int totalBytes = exec_size * typeSize;
     vISA_ASSERT(totalBytes <= 2 * irb.getGRFSize(),
-                 "total bytes exceed 2 GRFs");
+                "total bytes exceed 2 GRFs");
 
     footPrint0 = totalBytes < 64 ? (1ULL << totalBytes) - 1 : ULLONG_MAX;
     if (totalBytes > 64) {
@@ -5846,7 +5845,7 @@ unsigned G4_RegVar::getByteAddr(const IR_Builder &builder) const {
 void G4_RegVar::setSubRegAlignment(G4_SubReg_Align subAlg) {
   // sub reg alignment can only be more restricted than prior setting
   vISA_ASSERT(subAlign == Any || subAlign == subAlg || subAlign % 2 == 0,
-               ERROR_UNKNOWN);
+              ERROR_UNKNOWN);
   if (subAlign > subAlg) {
     vISA_ASSERT(subAlign % subAlg == 0, "Sub reg alignment conflict");
     // do nothing; keep the original alignment (more restricted)
@@ -5935,12 +5934,12 @@ void G4_Operand::updateFootPrint(BitSet &footprint, bool isSet,
       return true;
     return lb <= rb && rb < footprint.getSize();
   };
-//  vISA_ASSERT(!builder.getOption(vISA_boundsChecking) || boundsChecking(),
- //              "Out-of-bounds access found in "
- //                  << *getInst() << "\n"
- //                  << "For operand " << *this << ", the footprint size is "
+  //  vISA_ASSERT(!builder.getOption(vISA_boundsChecking) || boundsChecking(),
+  //              "Out-of-bounds access found in "
+  //                  << *getInst() << "\n"
+  //                  << "For operand " << *this << ", the footprint size is "
   //                 << footprint.getSize() << " and the accessing range is ["
- //                  << lb << ", " << rb << "]\n");
+  //                  << lb << ", " << rb << "]\n");
 
   if (doFastPath && lb % N == 0 && (rb + 1) % N == 0) {
     // lb is 32-byte aligned, set one dword at a time
@@ -6823,7 +6822,7 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   int srcId = getSrcNum(opndNum);
   // Only src0/src1/src2 could be a candidate
   if (!(srcId == 0 || srcId == 1 || srcId == 2))
-      return false;
+    return false;
 
   if (!builder.relaxedACCRestrictions3() && srcId == 2) {
     return false;

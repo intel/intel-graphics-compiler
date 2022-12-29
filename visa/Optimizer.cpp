@@ -5842,11 +5842,11 @@ void Optimizer::cleanupBindless() {
           iter = bb->erase(iter);
           continue;
         } else {
-#ifdef DEBUG_VERBOSE_ON
-          std::cout << "add new value:\n";
-          inst->emit(std::cout);
-          std::cout << "\n";
-#endif
+          VISA_DEBUG_VERBOSE({
+            std::cout << "add new value:\n";
+            inst->emit(std::cout);
+            std::cout << "\n";
+          });
           // this is necessary since for msg desc we always the physical a0.0,
           // so a new inst will invalidate the previous one
           values.deleteValue(inst);

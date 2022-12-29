@@ -412,15 +412,6 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
          ++MI) {
       auto Inst = MI->Inst;
       MI->Offset = unsigned(Inst->getGenOffset());
-#if defined(DEBUG_VERBOSE_ON)
-      fprintf(stderr, "r%03u.%s", MI->first,
-              (MI->Type == FCPatchingInfo::RegAccessType::Fully_Def ? "def"
-                                                                    : "use"));
-      if (MI->Token != (unsigned short)(-1))
-        fprintf(stderr, ", $%u", MI->Token);
-      fprintf(stderr, ":");
-      MI->Inst->dump();
-#endif
     }
 #if defined(DEBUG_VERBOSE_ON)
     std::cerr << "LastAccess:\n";
@@ -428,15 +419,6 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
     for (auto MI = LastAccess.begin(), ME = LastAccess.end(); MI != ME; ++MI) {
       auto Inst = MI->Inst;
       MI->Offset = unsigned(Inst->getGenOffset());
-#if defined(DEBUG_VERBOSE_ON)
-      fprintf(stderr, "r%03u.%s", MI->first,
-              (MI->Type == FCPatchingInfo::RegAccessType::Fully_Def ? "def"
-                                                                    : "use"));
-      if (MI->Token != (unsigned short)(-1))
-        fprintf(stderr, ", $%u", MI->Token);
-      fprintf(stderr, ":");
-      MI->Inst->dump();
-#endif
     }
   }
 

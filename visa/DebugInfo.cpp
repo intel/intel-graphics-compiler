@@ -1573,13 +1573,13 @@ void emitDebugInfo(VISAKernelImpl *kernel,
       compilationUnits.push_back((*funcIt));
     }
   }
-#ifdef DEBUG_VERBOSE_ON
-  addCallFrameInfo(kernel);
+  VISA_DEBUG_VERBOSE({
+    addCallFrameInfo(kernel);
 
-  for (auto &funcIt : functions) {
-    addCallFrameInfo(funcIt);
-  }
-#endif
+    for (auto &funcIt : functions) {
+      addCallFrameInfo(funcIt);
+    }
+  });
 
   FILE *dbgFile = fopen(debugFileNameStr.c_str(), "wb+");
 
@@ -2069,25 +2069,26 @@ void SaveRestoreManager::addInst(G4_INST *inst) {
 }
 
 void SaveRestoreManager::emitAll() {
-  for (auto it : srInfo) {
-#ifdef DEBUG_VERBOSE_ON
-    it.getInst()->emit(std::cerr);
-#endif
-    DEBUG_VERBOSE("\n");
+  VISA_DEBUG_VERBOSE({
+    for (auto it : srInfo) {
+      it.getInst()->emit(std::cout);
+      std::cout << "\n";
 
-    for (auto mapIt : it.saveRestoreMap) {
-      DEBUG_VERBOSE("\tr" << mapIt.first << ".0 (8):d saved to ");
-      if (mapIt.second.first == SaveRestoreInfo::RegOrMem::Reg) {
-        DEBUG_VERBOSE("r" << mapIt.second.second.regNum << ".0 (8):d\n");
-      } else if (mapIt.second.first == SaveRestoreInfo::RegOrMem::MemAbs) {
-        DEBUG_VERBOSE("mem at offset " << mapIt.second.second.offset
-                                       << " bytes (abs)\n");
-      } else if (mapIt.second.first == SaveRestoreInfo::RegOrMem::MemOffBEFP) {
-        DEBUG_VERBOSE("mem at offset " << mapIt.second.second.offset
-                                       << " bytes (off befp)\n");
+      for (auto mapIt : it.saveRestoreMap) {
+        std::cout << "\tr" << mapIt.first << ".0 (8):d saved to ";
+        if (mapIt.second.first == SaveRestoreInfo::RegOrMem::Reg) {
+          std::cout << "r" << mapIt.second.second.regNum << ".0 (8):d\n";
+        } else if (mapIt.second.first == SaveRestoreInfo::RegOrMem::MemAbs) {
+          std::cout << "mem at offset " << mapIt.second.second.offset
+                    << " bytes (abs)\n";
+        } else if (mapIt.second.first ==
+                   SaveRestoreInfo::RegOrMem::MemOffBEFP) {
+          std::cout << "mem at offset " << mapIt.second.second.offset
+                    << " bytes (off befp)\n";
+        }
       }
     }
-  }
+  });
 }
 
 void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
@@ -2182,12 +2183,10 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
             std::make_pair(isOffAbs ? RegOrMem::MemAbs : RegOrMem::MemOffBEFP,
                            m)));
 
-#ifdef DEBUG_VERBOSE_ON
         const char *offstr = isOffAbs ? "(abs)" : "(off besp)";
-
+        (void)offstr;
         DEBUG_VERBOSE("Saved r" << payloadReg << ".0 (8):d to mem at offset "
                                 << m.offset << " bytes" << offstr << "\n");
-#endif
       }
     } else if (inst->getMsgDesc()->isRead()) {
       uint32_t srcreg, dstreg;
@@ -2215,12 +2214,11 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
               mapIt.second.second.offset == offsetForReg) {
             saveRestoreMap.erase(mapIt.first);
 
-#ifdef DEBUG_VERBOSE_ON
             const char *offstr = RegOrMem::MemAbs ? "abs" : "off befp";
+            (void)offstr;
             DEBUG_VERBOSE("Restored r" << reg << ".0 (8):d from mem offset "
                                        << offsetForReg << " bytes (" << offstr
                                        << ")\n");
-#endif
             break;
           }
         }

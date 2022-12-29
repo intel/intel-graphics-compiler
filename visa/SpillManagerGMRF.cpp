@@ -180,9 +180,9 @@ SpillManagerGRF::SpillManagerGRF(
           ROUND(spillAreaOffset_, builder_->numEltPerGRF<Type_UB>());
       spillAreaOffset_ += spaceForPhyGRFSpill;
       vISA_ASSERT(spillAreaOffset_ >=
-                       (ROUND(off, builder_->numEltPerGRF<Type_UB>()) +
-                        spaceForPhyGRFSpill),
-                   "unexpected overlap");
+                      (ROUND(off, builder_->numEltPerGRF<Type_UB>()) +
+                       spaceForPhyGRFSpill),
+                  "unexpected overlap");
       nextSpillOffset_ = spillAreaOffset_;
       if (gra.getNumReservedGRFs() > 0)
         context.setReservedStart(spillRegStart_);
@@ -274,8 +274,8 @@ unsigned SpillManagerGRF::grfMask() const {
   unsigned mask = 0;
   mask = (mask - 1);
   vISA_ASSERT(std::log2(builder_->numEltPerGRF<Type_UB>()) ==
-                   (float)((int)(std::log2(builder_->numEltPerGRF<Type_UB>()))),
-               "expected integral value");
+                  (float)((int)(std::log2(builder_->numEltPerGRF<Type_UB>()))),
+              "expected integral value");
   unsigned int bits =
       (unsigned int)std::log2(builder_->numEltPerGRF<Type_UB>());
   mask = mask << bits;
@@ -609,13 +609,13 @@ unsigned SpillManagerGRF::getDisp(G4_RegVar *regVar) {
       G4_RegVarTransient *tRegVar = static_cast<G4_RegVarTransient *>(regVar);
       auto dstRR = tRegVar->getRepRegion()->asDstRegRegion();
       vASSERT(getSegmentByteSize(dstRR, tRegVar->getExecSize()) <=
-             getByteSize(tRegVar));
+              getByteSize(tRegVar));
       itsDisp = getSegmentDisp(dstRR, tRegVar->getExecSize());
     } else if (regVar->isRegVarFill()) {
       G4_RegVarTransient *tRegVar = static_cast<G4_RegVarTransient *>(regVar);
       auto srcRR = tRegVar->getRepRegion()->asSrcRegRegion();
       vASSERT(getSegmentByteSize(srcRR, tRegVar->getExecSize()) <=
-             getByteSize(tRegVar));
+              getByteSize(tRegVar));
       itsDisp = getSegmentDisp(srcRR, tRegVar->getExecSize());
     } else {
       vISA_ASSERT(false, "Incorrect spill/fill ranges.");
@@ -1300,8 +1300,8 @@ G4_DstRegRegion *SpillManagerGRF::createSpillRangeDstRegion(
         (regionDisp - segmentDisp) / spilledRegion->getElemSize();
     vASSERT((regionDisp - segmentDisp) % spilledRegion->getElemSize() == 0);
     vASSERT(subRegOff * spilledRegion->getElemSize() +
-               getRegionByteSize(spilledRegion, execSize) <=
-           2u * builder_->numEltPerGRF<Type_UB>());
+                getRegionByteSize(spilledRegion, execSize) <=
+            2u * builder_->numEltPerGRF<Type_UB>());
 
     if (useScratchMsg_) {
       G4_Declare *parent_dcl =
@@ -1484,9 +1484,9 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_DstRegRegion *region,
     height = payloadHeaderHeight + writePayloadHeight;
   }
   unsigned short width = builder_->numEltPerGRF<Type_UD>();
-  G4_Declare *msgRangeDeclare = createRangeDeclare(
-      name, G4_GRF, width, height, Type_UD, DeclareType::Tmp,
-      region->getBase()->asRegVar(), NULL, G4_ExecSize(0));
+  G4_Declare *msgRangeDeclare =
+      createRangeDeclare(name, G4_GRF, width, height, Type_UD, DeclareType::Tmp,
+                         region->getBase()->asRegVar(), NULL, G4_ExecSize(0));
 
   if (failSafeSpill_) {
     if (!builder_->getOption(vISA_NewFailSafeRA)) {
@@ -2921,7 +2921,7 @@ bool SpillManagerGRF::usesOWOrLSC(G4_DstRegRegion *spilledRegion) {
   auto inst = spilledRegion->getInst();
 
   // Use LSC always
-  if(useLscNonstackCall)
+  if (useLscNonstackCall)
     return useLscNonstackCall;
 
   // * platform supports LSC and/or OW
@@ -3115,8 +3115,8 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
             (regionDisp - segmentDisp) / spilledRegion->getElemSize();
         vASSERT((regionDisp - segmentDisp) % spilledRegion->getElemSize() == 0);
         vASSERT(subRegOff * spilledRegion->getElemSize() +
-                   getRegionByteSize(spilledRegion, execSize) <=
-               2u * builder_->numEltPerGRF<Type_UB>());
+                    getRegionByteSize(spilledRegion, execSize) <=
+                2u * builder_->numEltPerGRF<Type_UB>());
         newSubregOff = subRegOff;
       }
 
@@ -3465,8 +3465,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
     if (opnd->isSrcRegRegion() && opnd->asSrcRegRegion()->getBase()->asRegVar())
       var = opnd->asSrcRegRegion()->getBase()->asRegVar();
 
-    vISA_ASSERT(var != NULL,
-                 "Fill operand is neither a source nor dst region");
+    vISA_ASSERT(var != NULL, "Fill operand is neither a source nor dst region");
 
     if (var && pointsToAnalysis.isPresentInPointsTo(var, lr->getVar())) {
       BBhasSpillCode = true;
@@ -3676,8 +3675,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
     if (opnd->isSrcRegRegion() && opnd->asSrcRegRegion()->getBase()->asRegVar())
       var = opnd->asSrcRegRegion()->getBase()->asRegVar();
 
-    vISA_ASSERT(var != NULL,
-                 "Fill operand is neither a source nor dst region");
+    vISA_ASSERT(var != NULL, "Fill operand is neither a source nor dst region");
 
     if (var && pointsToAnalysis.isPresentInPointsTo(
                    var, lr->getTopDcl()->getRegVar())) {
@@ -3685,7 +3683,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
       G4_Declare *temp =
           getOrCreateAddrSpillFillDcl(var, lr->getTopDcl(), kernel);
       vISA_ASSERT(temp != nullptr,
-                   "Failed to get the fill variable for indirect GRF access");
+                  "Failed to get the fill variable for indirect GRF access");
       if (failSafeSpill_ && temp->getRegVar()->getPhyReg() == NULL) {
 
         temp->getRegVar()->setPhyReg(
@@ -3991,7 +3989,7 @@ void SpillManagerGRF::prunePointsTo(G4_Kernel *kernel,
             var = cur->asSrcRegRegion()->getBase()->asRegVar();
 
           vISA_ASSERT(var != nullptr,
-                       "Operand is neither a source nor dst region");
+                      "Operand is neither a source nor dst region");
 
           if (var && pointsToAnalysis.isPresentInPointsTo(var, lr->getVar())) {
             // Remove this from points to
@@ -4052,7 +4050,7 @@ void SpillManagerGRF::prunePointsToLS(G4_Kernel *kernel,
             var = cur->asSrcRegRegion()->getBase()->asRegVar();
 
           vISA_ASSERT(var != NULL,
-                       "Operand is neither a source nor dst region");
+                      "Operand is neither a source nor dst region");
 
           if (var && pointsToAnalysis.isPresentInPointsTo(
                          var, lr->getTopDcl()->getRegVar())) {
@@ -4149,9 +4147,9 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
   bool success = handleAddrTakenSpills(kernel, pointsToAnalysis);
 
   if (!success) {
-    DEBUG_MSG("Enough physical register not available for handling address "
-              "taken spills"
-              << "\n");
+    // FIXME: this should be an assert?
+    VISA_DEBUG(std::cout << "Enough physical register not available for "
+                            "handling address taken spills\n");
     return false;
   }
 
@@ -4282,8 +4280,7 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
             } else if (getRFType(regVar) == G4_GRF) {
               insertFillGRFRangeCode(srcRR, jt, *it);
               BBhasSpillCode = true;
-            }
-            else
+            } else
               vASSERT(0);
           }
         }
@@ -4343,9 +4340,8 @@ void SpillManagerGRF::expireRanges(unsigned int idx,
     lr->getLastRef(endIdx);
 
     if (endIdx <= idx) {
-#ifdef DEBUG_VERBOSE_ON
-      DEBUG_VERBOSE("Expiring range " << lr->getTopDcl()->getName() << "\n");
-#endif
+      VISA_DEBUG_VERBOSE(std::cout << "Expiring range "
+                                   << lr->getTopDcl()->getName() << "\n");
       // Remove range from active list
       liveList->pop_front();
       lr->setActiveLR(false);
@@ -5972,7 +5968,7 @@ void BoundedRA::insertPushPop(bool useLSCMsg) {
       // LSC is not available on platform
       // Use OWord. Header needs to be initialized separately when using OWord.
       vISA_ASSERT(reservedGRFStart != NOT_FOUND,
-                   "expecting valid reserved GRF");
+                  "expecting valid reserved GRF");
       auto *immOpnd = builder->createImm(off / OWORD_BYTE_SIZE, Type_UD);
       auto *tmp = builder->createDeclareNoLookup(
           "TMP", G4_GRF, kernel.numEltPerGRF<Type_UD>(), 1, Type_UD);

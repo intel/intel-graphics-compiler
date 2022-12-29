@@ -436,16 +436,11 @@ void LVN::replaceAllUses(G4_INST *defInst, bool negate, UseList &uses,
   transferAlign(dstTopDcl, defInst->getDst()->getTopDcl());
 
   VISA_DEBUG({
-    std::cerr << "Inst with same value in LVN Table:"
-              << "\n";
-    lvnInst->emit(std::cerr);
-    std::cerr << "\n";
-    std::cerr << "Current inst:"
-              << "\n";
-    defInst->emit(std::cerr);
-    std::cerr << "\n"
-              << "Uses:"
-              << "\n";
+    std::cout << "Inst with same value in LVN Table:\n";
+    lvnInst->emit(std::cout);
+    std::cout << "\nCurrent inst:\n";
+    defInst->emit(std::cout);
+    std::cout << "\nUses:\n";
   });
 
   for (auto use : uses) {

@@ -2776,11 +2776,11 @@ Node::Node(uint32_t id, G4_INST *inst, Edge_Allocator &depEdgeAllocator,
 void LocalScheduler::EmitNode(Node *node) {
   for (G4_INST *inst : *node->getInstructions()) {
     if (inst->isSend()) {
-      inst->asSendInst()->emit_send(std::cerr);
+      inst->asSendInst()->emit_send(std::cout);
     } else {
-      DEBUG_EMIT(inst);
+      inst->emit(std::cout);
     }
-    DEBUG_MSG("");
+    std::cout << "\n";
   }
 }
 

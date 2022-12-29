@@ -1857,43 +1857,6 @@ void SWSB::genSWSBPatchInfo() {
 #endif
 
   updateTokenSet(FCPI, SBNodes, totalTokenNum);
-
-#if defined(DEBUG_VERBOSE_ON)
-  // First access.
-  std::cerr << "FirstAccess:\n";
-  auto &FirstAccess = FCPI->RegFirstAccessList;
-  for (auto &Access : FirstAccess) {
-    fprintf(stderr, "r%03u.%s", Access.RegNo,
-            (Access.Type == FCPatchingInfo::Fully_Def ? "def" : "use"));
-    fprintf(stderr, ", P%04x", Access.Pipe);
-    if (Access.Token != (unsigned short)(-1))
-      fprintf(stderr, ", $%u", Access.Token);
-    fprintf(stderr, ":");
-    Access.Inst->dump();
-  }
-  // Last access.
-  std::cerr << "LastAccess:\n";
-  auto &LastAccess = FCPI->RegLastAccessList;
-  for (auto &Access : LastAccess) {
-    fprintf(stderr, "r%03u.%s", Access.RegNo,
-            (Access.Type == FCPatchingInfo::Fully_Def ? "def" : "use"));
-    fprintf(stderr, ", P%04x", Access.Pipe);
-    if (Access.Token != (unsigned short)(-1))
-      fprintf(stderr, ", $%u", Access.Token);
-    fprintf(stderr, ":");
-    Access.Inst->dump();
-  }
-  // Allocated token.
-  std::cerr << "AllocatedToken:\n";
-  for (unsigned t = 0; t != NumTokens; ++t) {
-    if (!FCPI->AllocatedToken.count(t))
-      continue;
-    if (t != 0)
-      fprintf(stderr, ", ");
-    fprintf(stderr, "$%u", t);
-  }
-  fprintf(stderr, "\n");
-#endif
 }
 
 void SWSB::getDominators(ImmDominator *dom) {
@@ -3424,7 +3387,7 @@ void SWSB::tokenAllocationWithDistPropogation() {
       BBVector[node->getBBID()]->tokenLiveOutDist[node->globalID] =
           BBVector[node->getBBID()]->last_node - node->getNodeID();
 #ifdef DEBUG_VERBOSE_ON
-      globalSBNodes[node->globalID] = node;
+      globalSBNodes[node->globalID] = const_cast<SBNode *>(node);
 #endif
     }
   }
@@ -6874,8 +6837,6 @@ G4_INST *G4_BB_SB::createADummyDpasRSWAInst(LiveGRFBuckets *LB, SBNode *curNode,
   return dummyInst;
 }
 
-// #ifdef DEBUG_VERBOSE_ON
-
 void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList,
                             unsigned globalSendNum,
                             const SBBitSets *send_kill) const {
@@ -7044,7 +7005,6 @@ void G4_BB_SB::dumpLiveInfo(const SBBUCKET_VECTOR *globalSendOpndList,
   }
   std::cerr << "\n";
 }
-// #endif
 
 void SWSB::dumpTokenLiveInfo() {
   for (size_t i = 0; i < BBVector.size(); i++) {

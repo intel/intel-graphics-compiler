@@ -6,13 +6,13 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "RegAlloc.h"
 #include "Assertions.h"
 #include "DebugInfo.h"
 #include "FlowGraph.h"
 #include "GraphColor.h"
 #include "Mem_Manager.h"
 #include "PointsToAnalysis.h"
-#include "RegAlloc.h"
 #include "Timer.h"
 #include "VarSplit.h"
 
@@ -166,10 +166,10 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned) {
       if (decl->getRegVar()->isPhyRegAssigned() == false) {
         phyRegAssigned = false;
       }
-#ifdef DEBUG_VERBOSE_ON
-      DEBUG_EMIT(decl->getRegVar());
-      DEBUG_VERBOSE(" id = " << decl->getRegVar()->getId() << "\n");
-#endif
+      VISA_DEBUG_VERBOSE({
+        decl->getRegVar()->emit(std::cout);
+        std::cout << " id = " << decl->getRegVar()->getId() << "\n";
+      });
     }
     //
     // those reg vars that are not candidates, set their id to
@@ -213,10 +213,10 @@ LivenessAnalysis::LivenessAnalysis(GlobalRA &g, unsigned char kind,
       // It is an alias declaration. Set its id = base declaration id
       decl->getRegVar()->setId(decl->getAliasDeclare()->getRegVar()->getId());
     }
-#ifdef DEBUG_VERBOSE_ON
-    DEBUG_EMIT(decl->getRegVar());
-    DEBUG_VERBOSE(" id = " << decl->getRegVar()->getId() << "\n");
-#endif
+    VISA_DEBUG_VERBOSE({
+      decl->getRegVar()->emit(std::cout);
+      std::cout << " id = " << decl->getRegVar()->getId() << "\n";
+    });
   }
 
   //
@@ -278,7 +278,7 @@ LivenessAnalysis::~LivenessAnalysis() {
       if (inst->isPseudoKill()) {
         auto src0 = inst->getSrc(0);
         vISA_ASSERT(src0 && src0->isImm(),
-                     "expecting src0 immediate for pseudo kill");
+                    "expecting src0 immediate for pseudo kill");
         if (src0->asImm()->getImm() ==
             static_cast<int64_t>(PseudoKillType::FromLiveness)) {
           instIt = bb->erase(instIt);
@@ -321,11 +321,9 @@ void LivenessAnalysis::updateKillSetForDcl(
   if (scopeID != 0 && scopeID != UINT_MAX && dcl->getScopeID() == scopeID) {
     entryBBKill->set(dcl->getRegVar()->getId(), true);
     entryBBGen->set(dcl->getRegVar()->getId(), false);
-#ifdef DEBUG_VERBOSE_ON
-    DEBUG_VERBOSE("Killed sub-routine scope "
-                  << dcl->getName() << " at bb with id = " << entryBB->getId()
-                  << "\n");
-#endif
+    VISA_DEBUG_VERBOSE(std::cout
+                       << "Killed sub-routine scope " << dcl->getName()
+                       << " at bb with id = " << entryBB->getId() << "\n");
   }
 }
 
@@ -466,9 +464,6 @@ void LivenessAnalysis::computeLiveness() {
 
   startTimer(TimerID::LIVENESS);
 
-#ifdef DEBUG_VERBOSE_ON
-  std::vector<FuncInfo *> &fns = fg.funcInfoTable;
-#endif
   //
   // mark input arguments live at the entry of kernel
   // mark output arguments live at the exit of kernel
@@ -497,9 +492,8 @@ void LivenessAnalysis::computeLiveness() {
 
     if (setLiveIn) {
       inputDefs.set(i, true);
-#ifdef DEBUG_VERBOSE_ON
-      DEBUG_VERBOSE("First def input = " << decl->getName() << "\n");
-#endif
+      VISA_DEBUG_VERBOSE(std::cout << "First def input = " << decl->getName()
+                                   << "\n");
     }
 
     bool setLiveOut = false;
@@ -515,9 +509,8 @@ void LivenessAnalysis::computeLiveness() {
 
     if (setLiveOut) {
       outputUses.set(i, true);
-#ifdef DEBUG_VERBOSE_ON
-      DEBUG_VERBOSE("First def output    = " << decl->getName() << "\n");
-#endif
+      VISA_DEBUG_VERBOSE(
+          std::cout << "First def output    = " << decl->getName() << "\n");
     }
   }
 
@@ -609,15 +602,6 @@ void LivenessAnalysis::computeLiveness() {
       (selectedRF & G4_GRF || selectedRF & G4_FLAG) && (numFnId > 0)) {
     // compute the maydef for each subroutine
     maydefAnalysis();
-
-    //
-    // dump vectors for debugging
-    //
-#ifdef DEBUG_VERBOSE_ON
-    dump_bb_vector("MAYDEF IN", maydef_in);
-    dump_bb_vector("MAYDEF OUT", maydef_out);
-    dump_fn_vector("MAYDEF", fns, maydef);
-#endif
   }
 
   auto getPostOrder = [](G4_BB *S, std::vector<G4_BB *> &PO) {
@@ -945,7 +929,7 @@ void LivenessAnalysis::hierarchicalIPA(const SparseBitSet &kernelInput,
                                        const SparseBitSet &kernelOutput) {
 
   vISA_ASSERT(fg.sortedFuncTable.size() > 0,
-         "topological sort must already be performed");
+              "topological sort must already be performed");
   std::unordered_map<FuncInfo *, SparseBitSet> args;
   std::unordered_map<FuncInfo *, SparseBitSet> retVal;
 
@@ -1001,7 +985,7 @@ void LivenessAnalysis::hierarchicalIPA(const SparseBitSet &kernelInput,
         G4_BB *retBB = bb->getPhysicalSucc();
         G4_BB *exitBB = bb->getCalleeInfo()->getExitBB();
         vISA_ASSERT((exitBB->getBBType() & G4_BB_EXIT_TYPE),
-               "should be a subroutine's exit BB");
+                    "should be a subroutine's exit BB");
         use_out[exitBB->getId()] |= use_in[retBB->getId()];
       }
     }
@@ -1036,7 +1020,7 @@ void LivenessAnalysis::hierarchicalIPA(const SparseBitSet &kernelInput,
         G4_BB *retBB = bb->getPhysicalSucc();
         G4_BB *exitBB = bb->getCalleeInfo()->getExitBB();
         vISA_ASSERT((exitBB->getBBType() & G4_BB_EXIT_TYPE),
-               "should be a subroutine's exit BB");
+                    "should be a subroutine's exit BB");
         use_out[exitBB->getId()] |= use_in[retBB->getId()];
       }
     }
@@ -1461,7 +1445,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
         if (flagReg->asRegVar()->isRegAllocPartaker()) {
           G4_Declare *topdcl = flagReg->asRegVar()->getDeclare();
           vISA_ASSERT(topdcl->getAliasDeclare() == nullptr,
-                       "Invalid alias flag decl.");
+                      "Invalid alias flag decl.");
           unsigned id = topdcl->getRegVar()->getId();
 
           BitSet *dstfootprint = &footprints[id];
@@ -1493,8 +1477,8 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
         }
       } else {
         vISA_ASSERT((i->opcode() == G4_sel || i->opcode() == G4_csel) &&
-                         i->getCondMod() != nullptr,
-                     "Invalid CondMod");
+                        i->getCondMod() != nullptr,
+                    "Invalid CondMod");
       }
     }
 
@@ -1505,8 +1489,8 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
     if (predicate) {
       G4_VarBase *flagReg = predicate->getBase();
       vISA_ASSERT(flagReg->asRegVar()->getDeclare()->getAliasDeclare() ==
-                       nullptr,
-                   "Invalid alias flag decl.");
+                      nullptr,
+                  "Invalid alias flag decl.");
       if (flagReg->asRegVar()->isRegAllocPartaker()) {
         const G4_Declare *topdcl = flagReg->asRegVar()->getDeclare();
         unsigned id = topdcl->getRegVar()->getId();
@@ -1596,13 +1580,13 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
 
           // Set kill
           use_kill.set(dst->getBase()->asRegVar()->getId(), true);
-#ifdef DEBUG_VERBOSE_ON
-          DEBUG_VERBOSE("Found kill at inst ");
-          INST_LIST_ITER fwdIter = rit.base();
-          fwdIter--;
-          (*fwdIter)->emit_inst(std::cout);
-          DEBUG_VERBOSE("\n");
-#endif
+          VISA_DEBUG_VERBOSE({
+            std::cout << "Found kill at inst ";
+            INST_LIST_ITER fwdIter = rit.base();
+            fwdIter--;
+            (*fwdIter)->emit(std::cout);
+            std::cout << "\n";
+          });
         }
       }
     }
@@ -1635,13 +1619,13 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
 
           // Set kill
           use_kill.set(flagReg->asRegVar()->getId(), true);
-#ifdef DEBUG_VERBOSE_ON
-          DEBUG_VERBOSE("Found kill at inst ");
-          INST_LIST_ITER fwdIter = rit.base();
-          fwdIter--;
-          (*fwdIter)->emit_inst(std::cout);
-          DEBUG_VERBOSE("\n");
-#endif
+          VISA_DEBUG_VERBOSE({
+            std::cout << "Found kill at inst ";
+            INST_LIST_ITER fwdIter = rit.base();
+            fwdIter--;
+            (*fwdIter)->emit(std::cout);
+            std::cout << "\n";
+          });
         }
       }
     }
@@ -2177,17 +2161,17 @@ void GlobalRA::markGraphBlockLocalVars() {
   // Create live ranges and record the reference info
   markBlockLocalVars();
 
-#ifdef DEBUG_VERBOSE_ON
-  std::cout << "\t--LOCAL VARIABLES--\n";
-  for (auto dcl : kernel.Declares) {
-    LocalLiveRange *topdclLR = getLocalLR(dcl);
+  VISA_DEBUG_VERBOSE({
+    std::cout << "\t--LOCAL VARIABLES--\n";
+    for (auto dcl : kernel.Declares) {
+      LocalLiveRange *topdclLR = getLocalLR(dcl);
 
-    if (topdclLR != nullptr && topdclLR->isLiveRangeLocal()) {
-      std::cout << dcl->getName() << ",\t";
+      if (topdclLR && topdclLR->isLiveRangeLocal()) {
+        std::cout << dcl->getName() << ",\t";
+      }
     }
-  }
-  std::cout << "\n";
-#endif
+    std::cout << "\n";
+  });
 }
 
 //
@@ -2253,18 +2237,17 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
       G4_DstRegRegion *dst = inst->getDst();
       if (dst != nullptr && dst->getBase()->isRegAllocPartaker()) {
         vISA_ASSERT(dst->getBase()->asRegVar()->getPhyReg(),
-                     "RA verification error: No PREG assigned for variable %s",
-                         GetTopDclFromRegRegion(dst)->getName());
+                    "RA verification error: No PREG assigned for variable %s",
+                    GetTopDclFromRegRegion(dst)->getName());
       }
 
       for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
         G4_Operand *src = inst->getSrc(j);
         if (src && src->isSrcRegRegion() &&
             src->asSrcRegRegion()->getBase()->isRegAllocPartaker()) {
-          vISA_ASSERT(
-              src->asSrcRegRegion()->getBase()->asRegVar()->getPhyReg(),
-              "RA verification error: No PREG assigned for variable %s",
-                  GetTopDclFromRegRegion(src->asSrcRegRegion())->getName());
+          vISA_ASSERT(src->asSrcRegRegion()->getBase()->asRegVar()->getPhyReg(),
+                      "RA verification error: No PREG assigned for variable %s",
+                      GetTopDclFromRegRegion(src->asSrcRegRegion())->getName());
         }
       }
 
@@ -2272,10 +2255,10 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
         if (dst && dst->getBase()->isRegAllocPartaker()) {
           auto preg = dst->getBase()->asRegVar()->getPhyReg();
           if (preg && preg->isGreg()) {
-            vISA_ASSERT(
-                numGRF >= (preg->asGreg()->getRegNum() +
-                           inst->asSendInst()->getMsgDesc()->getDstLenRegs()),
-                "dst response length goes beyond last GRF");
+            vISA_ASSERT(numGRF >=
+                            (preg->asGreg()->getRegNum() +
+                             inst->asSendInst()->getMsgDesc()->getDstLenRegs()),
+                        "dst response length goes beyond last GRF");
           }
         }
 
@@ -2292,7 +2275,7 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                 srcLen = inst->asSendInst()->getMsgDesc()->getSrc1LenRegs();
 
               vISA_ASSERT(numGRF >= (preg->asGreg()->getRegNum() + srcLen),
-                           "src payload length goes beyond last GRF");
+                          "src payload length goes beyond last GRF");
             }
           }
         }
@@ -2322,8 +2305,10 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
           if (!var->isPhyRegAssigned())
             continue;
 
-          vISA_ASSERT(var->getPhyReg()->isGreg(), "RA verification error: \
-              Invalid preg assignment for variable %s", dcl->getName());
+          vISA_ASSERT(
+              var->getPhyReg()->isGreg(),
+              "RA verification error: Invalid preg assignment for variable %s",
+              dcl->getName());
 
           uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
           uint32_t regOff = var->getPhyRegOff();
@@ -2337,9 +2322,11 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                   LiveInRegMapIt != LiveInRegMap.end(),
                   "RA verification error: Invalid entry in LiveInRegMap!");
               if (dcl->isInput()) {
-                vISA_ASSERT(false, "RA verification warning: Found  conflicting \
-                    input variables: %s and %s assigned to r%d.%d", dcl->getName(),
-                    (*LiveInRegMapIt).second->getName(), regNum, regOff);
+                vISA_ASSERT(false,
+                            "RA verification warning: Found  conflicting input "
+                            "variables: %s and %s assigned to r%d.%d",
+                            dcl->getName(), (*LiveInRegMapIt).second->getName(),
+                            regNum, regOff);
                 liveInRegVec[idx] = varID;
                 LiveInRegMapIt->second = dcl;
               } else {
@@ -2363,10 +2350,12 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                 //         ...
                 //     }
                 vISA_ASSERT(bb->getScopeID() != dcl->getScopeID() &&
-                            bb->getScopeID() != LiveInRegMapIt->second->getScopeID(),
-                             "RA verification error: Found conflicting live-in \
-                             variables: %s and %s assigned to r%d.%d", dcl->getName(),
-                             LiveInRegMapIt->second->getName(), regNum, regOff);
+                                bb->getScopeID() !=
+                                    LiveInRegMapIt->second->getScopeID(),
+                            "RA verification error: Found conflicting live-in "
+                            "variables: %s and %s assigned to r%d.%d",
+                            dcl->getName(), LiveInRegMapIt->second->getName(),
+                            regNum, regOff);
               }
 
             } else {
@@ -2399,8 +2388,10 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
           if (!var->isPhyRegAssigned())
             continue;
 
-          vISA_ASSERT(var->getPhyReg()->isGreg(), "RA verification error: \
-              Invalid preg assignment for variable %s", dcl->getName());
+          vISA_ASSERT(
+              var->getPhyReg()->isGreg(),
+              "RA verification error: Invalid preg assignment for variable %s",
+              dcl->getName());
 
           uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
           uint32_t regOff = var->getPhyRegOff();
@@ -2414,9 +2405,11 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                   liveOutRegMapIt != liveOutRegMap.end(),
                   "RA verification error: Invalid entry in liveOutRegMap!");
               if (dcl->isInput()) {
-                vISA_ASSERT(false, "RA verification error: Found conflicting \
-                    input variables %s and %s assigned to r%d.%d", dcl->getName(),
-                    liveOutRegMapIt->second->getName(), regNum, regOff);
+                vISA_ASSERT(false,
+                            "RA verification error: Found conflicting input "
+                            "variables %s and %s assigned to r%d.%d",
+                            dcl->getName(), liveOutRegMapIt->second->getName(),
+                            regNum, regOff);
                 liveOutRegVec[idx] = varID;
                 liveOutRegMapIt->second = dcl;
               } else {
@@ -2424,12 +2417,12 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                 // only if either var has the same scope id as the current BB.
 
                 vISA_ASSERT(bb->getScopeID() != dcl->getScopeID() &&
-                                 bb->getScopeID() !=
-                                     liveOutRegMapIt->second->getScopeID(),
-                             "RA verification error: Found conflicting live \
-                             out variables: %s and %s assigned to r %d.%d",
-                             dcl->getName(), liveOutRegMapIt->second->getName(),
-                             regNum, regOff);
+                                bb->getScopeID() !=
+                                    liveOutRegMapIt->second->getScopeID(),
+                            "RA verification error: Found conflicting live out "
+                            "variables: %s and %s assigned to r %d.%d",
+                            dcl->getName(), liveOutRegMapIt->second->getName(),
+                            regNum, regOff);
               }
 
             } else {
@@ -2497,9 +2490,9 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
         auto verifyDstRA = [&](uint32_t idx, uint32_t regNum, uint32_t regOff,
                                bool &suppressWarning) {
           vISA_ASSERT(dcl && dcl->getRegVar() &&
-                           dcl->getRegVar()->isPhyRegAssigned(),
-                       "RA verification error: Found dst variable without "
-                       "physical register.");
+                          dcl->getRegVar()->isPhyRegAssigned(),
+                      "RA verification error: Found dst variable without "
+                      "physical register.");
           liveOutRegMapIt = liveOutRegMap.find(idx);
           if (liveOutRegVec[idx] == UINT_MAX) {
             vISA_ASSERT(
@@ -2513,28 +2506,28 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
             // instruction since it has been written in mov instruction and has
             // been removed from liveOutRegMap.
             //
-            // (W) send(16)    r13.0<1>:ud r25 0xA 0x22c1019:ud // $236:;
-            // scratch read, resLen=2, msgLen=1
-            //     mov(8)      r13.1 < 2 > :d  r10.1 < 2; 1, 0 > : d //
-            //     $236:&400:
-            // (W) sends(16)   null : ud r25 r13 0x8a : ud 0x20f1019 : ud //
-            // $236:; scratch write, resLen=2, msgLen=1, extMsgLen=2
+            // clang-format off
+            // (W) send(16)    r13.0<1>:ud r25 0xA 0x22c1019:ud // $236:; scratch read, resLen=2, msgLen=1
+            //     mov(8)      r13.1 < 2 > :d  r10.1 < 2; 1, 0 > : d // $236:&400:
+            // (W) sends(16)   null : ud r25 r13 0x8a : ud 0x20f1019 : ud // $236:; scratch write, resLen=2, msgLen=1, extMsgLen=2
+            // clang-format on
             if (!suppressWarning && !inst->isPseudoKill() &&
                 !(dcl == rNDcl && rNInst->isPseudoKill()) &&
                 spillFillVariableOverwriteSet.find(dcl) ==
                     spillFillVariableOverwriteSet.end()) {
               // This warning is possible as some variables are defined without
-              // usage. TV5 is the example: before RA:
-              //     (W) send(8)  TV5(0,0)<1>:ud R0_Copy0(0,0) 0xA 0x219e0fe:ud
-              //     // $130:&217:; memory fence, resLen=1, msgLen=1 (W) and(8)
-              //     M7(0,0)<1>:ud  R0_Copy0(0,2)<0;1,0> : ud  0x7f000000 : ud
-              //     // $131:&218:
+              // usage. TV5 is the example:
+              // clang-format off
+              // before RA:
+              //     (W) send(8)  TV5(0,0)<1>:ud R0_Copy0(0,0) 0xA 0x219e0fe:ud // $130:&217:; memory fence, resLen=1, msgLen=1
+              //     (W) and(8)   M7(0,0)<1>:ud  R0_Copy0(0,2)<0;1,0>:ud  0x7f000000:ud // $131:&218:
               // after RA:
-              //     (W) send(8)  r2.0<1>:ud r10 0xA 0x219e0fe:ud // $130:&217:;
-              //     memory fence, resLen=1, msgLen=1 (W) and(8)   r2.0<1>:ud
-              //     r10.2<0;1,0>:ud  0x7f000000 : ud // $131:&218:
-              DEBUG_MSG("RA verification warning: Found unused variable "
-                        << dcl->getName() << ". Please double check!\n");
+              //     (W) send(8)  r2.0<1>:ud r10 0xA 0x219e0fe:ud // $130:&217:; memory fence, resLen=1, msgLen=1
+              //     (W) and(8)   r2.0<1>:ud r10.2<0;1,0>:ud  0x7f000000 : ud // $131:&218:
+              // clang-format on
+              VISA_DEBUG(std::cout
+                         << "RA verification warning: Found unused variable "
+                         << dcl->getName() << ". Please double check!\n");
               suppressWarning = true;
             }
           } else {
@@ -2545,20 +2538,25 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
               const SparseBitSet &indr_use = liveAnalysis.indr_use[bb->getId()];
 
               if (strstr(dcl->getName(), GlobalRA::StackCallStr) != nullptr) {
-                vISA_ASSERT(false, "RA verification error: Found conflicting \
-                    stackCall variable: %s and %s assigned to r%d.%d",
-                    dcl->getName(), liveOutRegMapIt->second->getName(),
-                    regNum, regOff);
+                vISA_ASSERT(false,
+                            "RA verification error: Found conflicting "
+                            "stackCall variable: %s and %s assigned to r%d.%d",
+                            dcl->getName(), liveOutRegMapIt->second->getName(),
+                            regNum, regOff);
               } else if (indr_use.isSet(liveOutRegVec[idx]) == true) {
-                vISA_ASSERT(false, "RA verification error: Found conflicting \
-                    indirect variables %s and %s assigned to r%d.%d",
-                    dcl->getName(), liveOutRegMapIt->second->getName(),
-                    regNum, regOff);
+                vISA_ASSERT(false,
+                            "RA verification error: Found conflicting indirect "
+                            "variables %s and %s assigned to r%d.%d",
+                            dcl->getName(), liveOutRegMapIt->second->getName(),
+                            regNum, regOff);
               } else {
                 if (!inst->isPseudoKill()) {
-                  vISA_ASSERT(false, "RA verification error: Found conflicting \
-                      variables: %s and %s assigned to r%d.%d", dcl->getName(),
-                      liveOutRegMapIt->second->getName(), regNum, regOff);
+                  vISA_ASSERT(false,
+                              "RA verification error: Found conflicting "
+                              "variables: %s and %s assigned to r%d.%d",
+                              dcl->getName(),
+                              liveOutRegMapIt->second->getName(), regNum,
+                              regOff);
                 }
               }
             } else {
@@ -2577,9 +2575,9 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
           var = dcl->getRegVar();
 
           vISA_ASSERT(var->getId() == varID,
-                       "RA verification error: Invalid regVar ID!");
+                      "RA verification error: Invalid regVar ID!");
           vISA_ASSERT(var->getPhyReg()->isGreg(),
-                       "RA verification error: Invalid dst reg!");
+                      "RA verification error: Invalid dst reg!");
 
           uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
           uint32_t regOff = var->getPhyRegOff();
@@ -2629,9 +2627,9 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
             G4_RegVar *var = dcl->getRegVar();
 
             vISA_ASSERT(var->getId() == varID,
-                         "RA verification error: Invalid regVar ID!");
+                        "RA verification error: Invalid regVar ID!");
             vISA_ASSERT(var->getPhyReg()->isGreg(),
-                         "RA verification error: Invalid dst reg!");
+                        "RA verification error: Invalid dst reg!");
 
             uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
             uint32_t regOff = var->getPhyRegOff();
@@ -2661,9 +2659,9 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
           G4_RegVar *var = ret->getRegVar();
           uint32_t varID = var->getId();
           vISA_ASSERT(var->getId() == varID,
-                       "RA verification error: Invalid regVar ID!");
+                      "RA verification error: Invalid regVar ID!");
           vISA_ASSERT(var->getPhyReg()->isGreg(),
-                       "RA verification error: Invalid dst reg!");
+                      "RA verification error: Invalid dst reg!");
 
           uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
           uint32_t regOff = var->getPhyRegOff();
@@ -2691,9 +2689,9 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
         G4_Declare *dcl = nullptr;
         auto verifySrcRA = [&](uint32_t idx, uint32_t regNum, uint32_t regOff) {
           vISA_ASSERT(dcl && dcl->getRegVar() &&
-                           dcl->getRegVar()->isPhyRegAssigned(),
-                       "RA verification error: Found src variable without "
-                       "physical register.");
+                          dcl->getRegVar()->isPhyRegAssigned(),
+                      "RA verification error: Found src variable without "
+                      "physical register.");
           liveOutRegMapIt = liveOutRegMap.find(idx);
           if (liveOutRegVec[idx] == UINT_MAX) {
             liveOutRegVec[idx] = varID;
@@ -2706,21 +2704,26 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
               const SparseBitSet &indr_use = liveAnalysis.indr_use[bb->getId()];
 
               if (dcl->isInput()) {
-                vISA_ASSERT(false, "RA verification error: Found conflicting \
-                    input variables: %s and %s assigned to r%d.%d", dcl->getName(),
-                    liveOutRegMapIt->second->getName(), regNum, regOff);
+                vISA_ASSERT(false,
+                            "RA verification error: Found conflicting input "
+                            "variables: %s and %s assigned to r%d.%d",
+                            dcl->getName(), liveOutRegMapIt->second->getName(),
+                            regNum, regOff);
                 liveOutRegVec[idx] = varID;
                 liveOutRegMapIt->second = dcl;
               } else if (strstr(dcl->getName(), GlobalRA::StackCallStr) !=
                          nullptr) {
-                vISA_ASSERT(false, "RA verification error: Found conflicting \
-                    stackCall variables: %s and %s assigned to r%d.%d",
-                    dcl->getName(), liveOutRegMapIt->second->getName(),
-                    regNum, regOff);
+                vISA_ASSERT(false,
+                            "RA verification error: Found conflicting "
+                            "stackCall variables: %s and %s assigned to r%d.%d",
+                            dcl->getName(), liveOutRegMapIt->second->getName(),
+                            regNum, regOff);
               } else if (indr_use.isSet(liveOutRegVec[idx]) == true) {
-                vISA_ASSERT(false, "RA verification error: Found conflicting \
-                    indirect variables: %s and %s assigned to r %d.%d", dcl->getName(),
-                    liveOutRegMapIt->second->getName(), regNum, regOff);
+                vISA_ASSERT(false,
+                            "RA verification error: Found conflicting indirect "
+                            "variables: %s and %s assigned to r %d.%d",
+                            dcl->getName(), liveOutRegMapIt->second->getName(),
+                            regNum, regOff);
               } else {
                 INST_LIST::reverse_iterator succ = rit;
                 ++succ;
@@ -2732,9 +2735,11 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                 }
                 if (succ == bb->rbegin() || !(*succ)->isPseudoKill() ||
                     (*succ)->getDst() == nullptr || idMismatch) {
-                  vISA_ASSERT(false, "RA verification error: Found conflicting \
-                      variables: %s and %s assigned to r%d.%d", dcl->getName(),
-                      liveOutRegMapIt->second->getName(), regNum, regOff);
+                  vISA_ASSERT(
+                      false, "RA verification error: Found conflicting \
+                      variables: %s and %s assigned to r%d.%d",
+                      dcl->getName(), liveOutRegMapIt->second->getName(),
+                      regNum, regOff);
                 }
               }
             }
@@ -2749,9 +2754,9 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
           dcl = GetTopDclFromRegRegion(srcrgn);
           var = dcl->getRegVar();
           vISA_ASSERT(var->getId() == varID,
-                       "RA verification error: Invalid regVar ID!");
+                      "RA verification error: Invalid regVar ID!");
           vISA_ASSERT(var->getPhyReg()->isGreg(),
-                       "RA verification error: Invalid dst reg!");
+                      "RA verification error: Invalid dst reg!");
 
           if (!inst->isLifeTimeEnd()) {
             uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
@@ -2787,9 +2792,10 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                 vISA_ASSERT(
                     liveOutRegMapIt != liveOutRegMap.end(),
                     "RA verification error: Invalid entry in liveOutRegMap!");
-                vISA_ASSERT(false, "RA verification error: Found live variable: \
-                    %s after lifetime_end assigned to r %d.%d", dcl->getName(),
-                    regNum, regOff);
+                vISA_ASSERT(false,
+                            "RA verification error: Found live variable: %s "
+                            "after lifetime_end assigned to r %d.%d",
+                            dcl->getName(), regNum, regOff);
               }
             }
           }
@@ -2797,8 +2803,10 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
           // verify EOT source
           if (inst->isEOT() && kernel.fg.builder->hasEOTGRFBinding()) {
             uint32_t regNum = var->getPhyReg()->asGreg()->getRegNum();
-            vISA_ASSERT(regNum >= 112, "RA verification error: EOT source: %s \
-                is assigned to r.%d", dcl->getName(), regNum);
+            vISA_ASSERT(
+                regNum >= 112,
+                "RA verification error: EOT source: %s is assigned to r.%d",
+                dcl->getName(), regNum);
           }
         } else if (src->isSrcRegRegion() && src->isIndirect()) {
           G4_SrcRegRegion *srcrgn = src->asSrcRegRegion();
@@ -2831,23 +2839,30 @@ void GlobalRA::verifyRA(LivenessAnalysis &liveAnalysis) {
                       liveAnalysis.indr_use[bb->getId()];
 
                   if (dcl->isInput()) {
-                    vISA_ASSERT(false, "RA verification error: Found conflicting \
-                        input variables: %s and %s assigned to r%d.%d", dcl->getName(),
-                        liveOutRegMapIt->second->getName(), regNum, regOff);
+                    vISA_ASSERT(false,
+                                "RA verification error: Found conflicting "
+                                "input variables: %s and %s assigned to r%d.%d",
+                                dcl->getName(),
+                                liveOutRegMapIt->second->getName(), regNum,
+                                regOff);
                     liveOutRegVec[idx] = varID;
                     liveOutRegMapIt->second = dcl;
                   } else if (indr_use.isSet(liveOutRegVec[idx]) == true) {
-                    vISA_ASSERT(false, "RA verification error: Found conflicting \
-                        indirect variables: %s and %s assigned to r%d.%d",
+                    vISA_ASSERT(
+                        false,
+                        "RA verification error: Found conflicting indirect "
+                        "variables: %s and %s assigned to r%d.%d",
                         dcl->getName(), liveOutRegMapIt->second->getName(),
                         regNum, regOff);
                   } else {
-                    vISA_ASSERT(false,
-                        "RA verification error: Found conflicting variables: %s \
-                        and %s assigned to r %d.%s and %s assigned to r%d.%d",
+                    vISA_ASSERT(
+                        false,
+                        "RA verification error: Found conflicting variables: "
+                        "%s and %s assigned to r %d.%s and %s assigned to "
+                        "r%d.%d",
                         dcl->getName(), liveOutRegMapIt->second->getName(),
-                        regNum, dcl->getName(), liveOutRegMapIt->second->getName(),
-                        regNum, regOff);
+                        regNum, dcl->getName(),
+                        liveOutRegMapIt->second->getName(), regNum, regOff);
                   }
                 }
               }
@@ -3030,15 +3045,15 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D) {
     kernel.fg.findNaturalLoops();
 
-#ifdef DEBUG_VERBOSE_ON
-    for (auto backedge : kernel.fg.backEdges) {
-      DEBUG_VERBOSE("\n===> Found natural loop: ");
-      for (auto block : kernel.fg.naturalLoops[backedge]) {
-        DEBUG_VERBOSE("\tBB" << block->getId());
+    VISA_DEBUG_VERBOSE({
+      for (auto backedge : kernel.fg.backEdges) {
+        std::cout << "\n===> Found natural loop: ";
+        for (auto block : kernel.fg.naturalLoops[backedge]) {
+          std::cout << "\tBB" << block->getId();
+        }
+        std::cout << "\n";
       }
-      DEBUG_VERBOSE("\n");
-    }
-#endif
+    });
   }
 
   //
@@ -3151,7 +3166,7 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
   for (auto inst : gra.getEUFusionNoMaskWAInsts()) {
     if (inst->getPredicate() != nullptr || inst->getCondMod() != nullptr) {
       vISA_ASSERT(false,
-             "Don't expect either predicate nor condmod for WA insts!");
+                  "Don't expect either predicate nor condmod for WA insts!");
     }
   }
 #endif

@@ -119,7 +119,7 @@ void PointsToAnalysis::addToPointsToSet(const G4_RegVar *addr, G4_AddrExp *opnd,
   if (it == vec.end()) {
     vec.push_back(pi);
     DEBUG_VERBOSE("Addr " << addr->getId() << " <-- "
-                          << var->getDeclare()->getName() << "\n");
+                          << pi.var->getDeclare()->getName() << "\n");
   }
 
   addrExpInfo pi1 = {opnd, offset};
@@ -328,9 +328,12 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
                     if (!(src->isImm() && (src->asImm()->getImm() == 0))) {
                       // case 4:  mov A0 V2
                       // conservatively assume address can point to anything
-                      DEBUG_MSG("unexpected addr move for pointer analysis:\n");
-                      DEBUG_EMIT(inst);
-                      DEBUG_MSG("\n");
+                      VISA_DEBUG({
+                        std::cout
+                            << "unexpected addr move for pointer analysis:\n";
+                        inst->emit(std::cout);
+                        std::cout << "\n";
+                      });
                       for (int i = 0, size = (int)addrTakenVariables.size();
                            i < size; i++) {
                         addToPointsToSet(ptr->asRegVar(),
@@ -382,9 +385,11 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
               // OK, using builtin a0 or a0.2 directly.
             } else {
               // case 7:  add/mul A0 V1 V2
-              DEBUG_MSG("unexpected addr add/mul for pointer analysis:\n");
-              DEBUG_EMIT(inst);
-              DEBUG_MSG("\n");
+              VISA_DEBUG({
+                std::cout << "unexpected addr add/mul for pointer analysis:\n";
+                inst->emit(std::cout);
+                std::cout << "\n";
+              });
               for (int i = 0; i < (int)addrTakenVariables.size(); i++) {
                 addToPointsToSet(ptr->asRegVar(), addrTakenVariables[i].first,
                                  0);
@@ -392,9 +397,11 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
             }
           } else {
             // case 8: A0 = ???
-            DEBUG_MSG("unexpected instruction with address destination:\n");
-            DEBUG_EMIT(inst);
-            DEBUG_MSG("\n");
+            VISA_DEBUG({
+              std::cout << "unexpected instruction with address destination:\n";
+              inst->emit(std::cout);
+              std::cout << "\n";
+            });
             for (int i = 0; i < (int)addrTakenVariables.size(); i++) {
               addToPointsToSet(ptr->asRegVar(), addrTakenVariables[i].first,
                                addrTakenVariables[i].second);
@@ -436,17 +443,17 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
     }
   }
 
-#ifdef DEBUG_VERBOSE_ON
-  DEBUG_VERBOSE("Results of points-to analysis:\n");
-  for (unsigned int i = 0; i < numAddrs; i++) {
-    DEBUG_VERBOSE("Addr " << i);
-    for (G4_RegVar *grf : pointsToSets[addrPointsToSetIndex[i]]) {
-      DEBUG_EMIT(grf);
-      DEBUG_VERBOSE("\t");
+  VISA_DEBUG_VERBOSE({
+    std::cout << "Results of points-to analysis:\n";
+    for (unsigned int i = 0; i < numAddrs; i++) {
+      std::cout << "Addr " << i;
+      for (auto &pointsTo : pointsToSets[addrPointsToSetIndex[i]]) {
+        pointsTo.var->emit(std::cout);
+        std::cout << "\t";
+      }
+      std::cout << "\n";
     }
-    DEBUG_VERBOSE("\n");
-  }
-#endif
+  });
 
   // mark GRF that may be used indirect access as live in the block
   // This includes all GRFs in the address's points-to set
@@ -492,23 +499,23 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
     for (const pointInfo cur : vec) {
       unsigned indirectVarSize = cur.var->getDeclare()->getByteSize();
       vISA_ASSERT((indirectVarSize <=
-              fg.builder->getGRFSize() * fg.getKernel()->getNumRegTotal()),
-             "indirected variables' size is larger than GRF file size");
+                   fg.builder->getGRFSize() * fg.getKernel()->getNumRegTotal()),
+                  "indirected variables' size is larger than GRF file size");
     }
   }
 #endif
 
-#ifdef DEBUG_VERBOSE_ON
-  for (unsigned int i = 0; i < numBBs; i++) {
-    DEBUG_VERBOSE("Indirect uses for BB" << i << "\t");
-    const REGVAR_VECTOR &grfVec = getIndrUseVectorForBB(i);
-    for (G4_RegVar *grf : grfVec) {
-      DEBUG_EMIT(grf);
-      DEBUG_VERBOSE("\t");
+  VISA_DEBUG_VERBOSE({
+    for (unsigned int i = 0; i < numBBs; i++) {
+      std::cout << "Indirect uses for BB" << i << "\t";
+      const REGVAR_VECTOR &grfVec = getIndrUseVectorForBB(i);
+      for (auto &PI : grfVec) {
+        PI.var->emit(std::cout);
+        std::cout << "\t";
+      }
+      std::cout << "\n";
     }
-    DEBUG_VERBOSE("\n");
-  }
-#endif
+  });
 }
 
 void PointsToAnalysis::insertAndMergeFilledAddr(const G4_RegVar *addr1,
@@ -661,7 +668,7 @@ void PointsToAnalysis::patchPointsToSet(const G4_RegVar *addr, G4_AddrExp *opnd,
   if (it == vec.end()) {
     vec.push_back(pi);
     DEBUG_VERBOSE("Addr " << addr->getId() << " <-- "
-                          << var->getDeclare()->getName() << "\n");
+                          << pi.var->getDeclare()->getName() << "\n");
   }
 
   addrExpInfo pi1 = {opnd, offset};

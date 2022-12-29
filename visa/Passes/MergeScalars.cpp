@@ -54,7 +54,6 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
   return newInputDcl;
 }
 
-// #define DEBUG_VERBOSE_ON
 //
 //  merge all instructions in the bundle into a single one, by modifying the
 //  first instruction in the bundle and delete the rest returns true if merge is
@@ -155,10 +154,9 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       if (dstDcl->getAliasDeclare() == nullptr) {
         dstDcl->setAliasDeclare(newDcl, i * TypeSize(dstType));
         modifiedDcl.insert(dstDcl);
-#ifdef DEBUG_VERBOSE_ON
-        cout << "Dcl " << dstDcl->getName() << "--> (" << newDcl->getName()
-             << ", " << i * TypeSize(dstType) << ")\n";
-#endif
+        VISA_DEBUG_VERBOSE(std::cout << "Dcl " << dstDcl->getName() << "--> ("
+                                     << newDcl->getName() << ", "
+                                     << i * TypeSize(dstType) << ")\n");
       }
     }
     G4_DstRegRegion *newDst =
@@ -189,10 +187,9 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
         if (srcDcl->getAliasDeclare() == nullptr) {
           srcDcl->setAliasDeclare(newDcl, j * TypeSize(srcType));
           modifiedDcl.insert(srcDcl);
-#ifdef DEBUG_VERBOSE_ON
-          cout << "Dcl " << srcDcl->getName() << "--> (" << newDcl->getName()
-               << ", " << i * TypeSize(srcType) << ")\n";
-#endif
+          VISA_DEBUG_VERBOSE(std::cout << "Dcl " << srcDcl->getName() << "--> ("
+                                       << newDcl->getName() << ", "
+                                       << i * TypeSize(srcType) << ")\n");
         }
       }
       G4_SrcRegRegion *newSrc = builder.createSrcRegRegion(
@@ -355,13 +352,13 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
     iter = bb->erase(iter);
   }
 
-#ifdef DEBUG_VERBOSE_ON
-  cout << "new inst after merging:\n";
-  newInst->emit(cout);
-  cout << "\n";
-  newInst->emitDefUse(cout);
-  cout << "\n";
-#endif
+  VISA_DEBUG_VERBOSE({
+    std::cout << "new inst after merging:\n";
+    newInst->emit(std::cout);
+    std::cout << "\n";
+    newInst->emitDefUse(std::cout);
+    std::cout << "\n";
+  });
 
   return true;
 }
