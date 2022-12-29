@@ -985,6 +985,8 @@ int IR_Builder::translateVISARTWrite3DInst(
     extFuncCtrl |= 0x1 << NULL_RENDER_TARGET;
   }
 
+  G4_InstSend* sendInst = nullptr;
+
   if (useSplitSend || cpsCounter) {
     G4_SendDescRaw *msgDesc = NULL;
     G4_SrcRegRegion *m0 = NULL;
@@ -1043,7 +1045,7 @@ int IR_Builder::translateVISARTWrite3DInst(
       srcToUse = createNullSrc(Type_UD);
     }
 
-    createSplitSendToRenderTarget(
+    sendInst = createSplitSendToRenderTarget(
         pred, createNullDst(Type_UD), m0, srcToUse,
         indirectExDesc
             ? createSrcRegRegion(getBuiltinA0Dot2(), getRegionScalar())
@@ -1053,9 +1055,15 @@ int IR_Builder::translateVISARTWrite3DInst(
     G4_SrcRegRegion *m = srcToUse;
     if (useHeader)
       m = createSrcRegRegion(msg, getRegionStride1());
-    createSendInst(pred, createNullDst(Type_UD), m, numRows, 0, execSize, fc,
+    sendInst = createSendInst(pred, createNullDst(Type_UD), m, numRows,
+                   0, execSize, fc,
                    SFID::DP_RC, useHeader, SendAccess::WRITE_ONLY, surface,
                    NULL, instOpt, true);
+  }
+  if (getOption(vISA_renderTargetWriteSendReloc)) {
+      std::string symbolName{ "RTW_SEND" };
+      RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
+          GenRelocType::R_SEND);
   }
   return VISA_SUCCESS;
 }

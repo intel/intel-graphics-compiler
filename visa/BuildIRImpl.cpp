@@ -2528,8 +2528,16 @@ G4_InstSend *IR_Builder::createSplitSendToRenderTarget(
     descOpnd = createImm(desc, Type_UD);
   }
 
-  return createSplitSendInst(pred, send_opcode, execSize, dst, src1, src2,
+  G4_InstSend* sendInst = createSplitSendInst(pred, send_opcode, execSize,
+                             dst, src1, src2,
                              descOpnd, option, msgDesc, extDescOpnd, true);
+
+  if (getOption(vISA_renderTargetWriteSendReloc)) {
+      std::string symbolName{ "RTW_SEND" };
+      RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
+          GenRelocType::R_SEND);
+  }
+  return sendInst;
 }
 
 // create a declare for send payload

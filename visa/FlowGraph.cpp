@@ -4563,11 +4563,9 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
   // make sure the Binary encoder won't compact it
   vASSERT(inst->isCompactedInst() == false);
 
-  G4_Operand *target_operand = inst->getSrc(opndPos);
-  vASSERT(target_operand->isRelocImm());
-
   switch (inst->opcode()) {
   case G4_mov:
+  {
     // When src0 type is 64 bits:
     //  On Pre-Xe:
     //   Src0.imm[31:0] mapped to Instruction [95:64]
@@ -4577,6 +4575,8 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
     //   Src0.imm[63:32] mapped to Instruction [95:64]
     // When src0 type is 32 bits:
     //   Src0.imm[31:0] mapped to instruction [127:96]
+    G4_Operand* target_operand = inst->getSrc(opndPos);
+    vASSERT(target_operand->isRelocImm());
     vASSERT((target_operand->getType() == Type_UD) ||
            (target_operand->getType() == Type_D) ||
            (target_operand->getType() == Type_UQ) ||
@@ -4586,13 +4586,23 @@ uint32_t RelocationEntry::getTargetOffset(const IR_Builder &builder) const {
             target_operand->getType() == Type_D)
                ? 12
                : 8;
-
+  }
   case G4_add:
     // add instruction cannot have 64-bit imm
     vASSERT(relocType != R_SYM_ADDR && relocType != R_SYM_ADDR_32_HI);
     vASSERT(opndPos == 1);
     // Src1.imm[31:0] mapped to Instruction [127:96]
     return 12;
+  case G4_send:
+  case G4_sendc:
+  case G4_sends:
+  case G4_sendsc:
+      vISA_ASSERT(relocType == R_SEND,
+          "Invalid relocation entry type for send instruction");
+      // R_SEND relocation symbol is send's instruction starting offset.
+      // This type of symbol is used to patch the imm descriptor contents,
+      // e.g. render target BTI
+      return 0;
   default:
     break;
   }
@@ -4614,6 +4624,8 @@ const char *RelocationEntry::getTypeString() const {
     return "R_PER_THREAD_PAYLOAD_OFFSET_32";
   case RelocationType::R_GLOBAL_IMM_32:
     return "R_GLOBAL_IMM_32";
+  case RelocationType::R_SEND:
+    return "R_SEND";
   default:
     vISA_ASSERT_UNREACHABLE("unhandled relocation type");
     return "";
@@ -4642,6 +4654,9 @@ void RelocationEntry::dump(std::ostream &os) const {
     break;
   case RelocationType::R_GLOBAL_IMM_32:
     os << "R_GLOBAL_IMM_32: symbol name = " << symName;
+    break;
+  case RelocationType::R_SEND:
+    os << "R_SEND: symbol name = " << symName;
     break;
   }
   os << "\n";

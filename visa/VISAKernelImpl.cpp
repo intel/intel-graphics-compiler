@@ -8486,10 +8486,13 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer,
     buffer_p->r_type = reloc.getType();
     buffer_p->r_offset = static_cast<uint32_t>(inst->getGenOffset()) +
                          reloc.getTargetOffset(*m_builder);
-    assert((buffer_p->r_offset > inst->getGenOffset()) &&
-           (buffer_p->r_offset < inst->getGenOffset() + BYTES_PER_INST));
+    vISA_ASSERT((buffer_p->r_offset >= inst->getGenOffset()) &&
+           (buffer_p->r_offset < inst->getGenOffset() + BYTES_PER_INST),
+            "Invalid relocation offset returned, offset must be within"
+            "the ISA instruction");
 
-    assert(reloc.getSymbolName().size() <= MAX_SYMBOL_NAME_LENGTH);
+    vISA_ASSERT(reloc.getSymbolName().size() <= MAX_SYMBOL_NAME_LENGTH,
+        "Relocation symbol name longer than MAX_SYMBOL_NAME_LENGTH");
     // clean the buffer first
     memset(buffer_p->r_symbol, '0', MAX_SYMBOL_NAME_LENGTH);
     strcpy_s(buffer_p->r_symbol, MAX_SYMBOL_NAME_LENGTH,

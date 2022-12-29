@@ -123,10 +123,18 @@ int IR_Builder::translateVISARawSendsInst(
   MUST_BE_TRUE(sendMsgDesc->extMessageLength() <= numSrc1,
                "extended message length mismatch for raw sends");
 
-  createSplitSendInst(predOpnd, (modifiers & 1) ? G4_sendsc : G4_sends, exsize,
+  G4_InstSend* sendInst = createSplitSendInst(predOpnd,
+                      (modifiers & 1) ? G4_sendsc : G4_sends, exsize,
                       dstOpnd, src0->asSrcRegRegion(), src1->asSrcRegRegion(),
                       msgDescOpnd, inst_opt, sendMsgDesc, temp_exdesc_src,
                       true);
+  if (getOption(vISA_renderTargetWriteSendReloc) &&
+      dstOpnd->isNullReg() &&
+      SFID::DP_RC == intToSFID(ffid, getPlatform())) {
+      std::string symbolName{ "RTW_SEND" };
+      RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
+          GenRelocType::R_SEND);
+  }
 
   return VISA_SUCCESS;
 }

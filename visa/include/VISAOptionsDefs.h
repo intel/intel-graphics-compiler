@@ -196,6 +196,9 @@ DEF_VISA_OPTION(vISA_loadThreadPayloadStartReg, ET_INT32, "-setStartReg",
                 UNUSED, 1)
 DEF_VISA_OPTION(vISA_emitCrossThreadOffR0Reloc, ET_BOOL,
                 "-emitCrossThreadOffR0Reloc", UNUSED, false)
+DEF_VISA_OPTION(vISA_renderTargetWriteSendReloc, ET_BOOL,
+        "-renderTargetWriteSendReloc",
+        "Enables adding offsets of all Render Target Write send instructions to the relocation table.", false)
 DEF_VISA_OPTION(vISA_CodePatch, ET_INT32, "-codePatch", UNUSED, 0)
 DEF_VISA_OPTION(vISA_Linker, ET_INT32, "-linker", UNUSED, 0)
 DEF_VISA_OPTION(vISA_lscEnableImmOffsFor, ET_INT32, "-lscEnableImmOffsFor",
