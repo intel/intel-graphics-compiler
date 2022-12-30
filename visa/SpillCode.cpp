@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "BuildIR.h"
 #include "FlowGraph.h"
-#include "Mem_Manager.h"
 #include "PointsToAnalysis.h"
 #include "SpillCode.h"
 #include <vector>

@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "Assertions.h"
 #include "BuildIR.h"
 #include "G4_Opcode.h"
-#include "Mem_Manager.h"
 
 #include <list>
 #include <utility>
@@ -350,9 +349,6 @@ private:
 
   unsigned getAddrSpillFillIndex(G4_RegVar *spilledRegVar);
 
-  const char *createImplicitRangeName(const char *baseName,
-                                      G4_RegVar *spilledRegVar, unsigned index);
-
   G4_RegVar *getReprRegVar(G4_RegVar *regVar) const;
 
   template <class REGION_TYPE> G4_RegVar *getRegVar(REGION_TYPE *region) const;
@@ -440,8 +436,8 @@ private:
                                  G4_ExecSize execSize);
 
   template <class REGION_TYPE>
-  G4_Declare *createTransientGRFRangeDeclare(REGION_TYPE *region,
-                                             const char *name, unsigned index,
+  G4_Declare *createTransientGRFRangeDeclare(REGION_TYPE *region, bool isFill,
+                                             unsigned index,
                                              G4_ExecSize execSize,
                                              G4_INST *inst);
 
@@ -610,10 +606,6 @@ private:
   void insertFillGRFRangeCode(G4_SrcRegRegion *filledRegion,
                               INST_LIST::iterator filledInstIter, G4_BB *bb);
 
-  void *allocMem(unsigned size) const;
-
-  SpillManagerGRF(const SpillManagerGRF &other);
-
   bool useSplitSend() const;
 
   int getHWordEncoding(int numHWord) {
@@ -679,7 +671,6 @@ private:
   std::unordered_set<G4_DstRegRegion *> noRMWNeeded;
 
   const Interference *spillIntf_;
-  vISA::Mem_Manager mem_;
 
   // The number of GRF spill.
   unsigned numGRFSpill = 0;

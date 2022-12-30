@@ -1487,7 +1487,6 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
 }
 
 // default size of the kernel mem manager in bytes
-#define KERNEL_MEM_SIZE (4 * 1024 * 1024)
 int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
                              bool emit_visa_only) {
   stopTimer(
@@ -1622,25 +1621,6 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
 
   VISAKernelImpl *oldMainKernel = nullptr;
   if (IS_GEN_BOTH_PATH) {
-    Mem_Manager mem(4096);
-    common_isa_header pseudoHeader;
-    // m_kernels contains kernels and functions to compile.
-
-    pseudoHeader.num_kernels = 0;
-    pseudoHeader.num_functions = 0;
-    for (const VISAKernelImpl *func : m_kernelsAndFunctions) {
-      if (func->getIsKernel()) {
-        pseudoHeader.num_kernels++;
-      } else {
-        pseudoHeader.num_functions++;
-      }
-    }
-
-    pseudoHeader.functions = (function_info_t *)mem.alloc(
-        sizeof(function_info_t) * pseudoHeader.num_functions);
-
-    int i;
-    unsigned int k = 0;
     bool isInPatchingMode =
         m_options.getuInt32Option(vISA_CodePatch) >= CodePatch_Enable_NoLTO &&
         m_prevKernel;
@@ -1651,7 +1631,7 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
     VISAKernelImpl *mainKernel = nullptr;
     std::list<VISAKernelImpl *>::iterator iter = m_kernelsAndFunctions.begin();
     std::list<VISAKernelImpl *>::iterator end = m_kernelsAndFunctions.end();
-    for (i = 0; iter != end; iter++, i++) {
+    for (int i = 0; iter != end; iter++, i++) {
       VISAKernelImpl *kernel = (*iter);
       if ((uint32_t)i < localScheduleStartKernelId ||
           (uint32_t)i > localScheduleEndKernelId) {
@@ -1672,11 +1652,6 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
           kernel->getIRBuilder()->setRetVarSize(
               kernel->getKernelFormat()->return_value_size);
         }
-        std::string_view kernelName((*iter)->getKernel()->getName());
-        auto nameLen = kernelName.size() + 1;
-        pseudoHeader.functions[k].name = (char *)mem.alloc(nameLen);
-        strcpy_s(pseudoHeader.functions[k].name, nameLen, kernelName.data());
-        k++;
       }
 
       if (kernel->getIsPayload()) {

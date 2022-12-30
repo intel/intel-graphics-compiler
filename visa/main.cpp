@@ -36,12 +36,6 @@ extern bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
 int parseText(std::string fileName, int argc, const char *argv[], Options &opt);
 #endif
 
-// default size of the physical reg pool mem manager in bytes
-#define PHY_REG_MEM_SIZE (16 * 1024)
-
-// default size of the kernel mem manager in bytes
-#define KERNEL_MEM_SIZE (4 * 1024 * 1024)
-
 #define JIT_SUCCESS 0
 #define JIT_INVALID_INPUT 1
 #define JIT_CISA_ERROR 3
@@ -50,34 +44,6 @@ int parseText(std::string fileName, int argc, const char *argv[], Options &opt);
 #ifndef DLL_MODE
 int parseBinary(std::string fileName, int argc, const char *argv[],
                 Options &opt) {
-  // read in common isa binary file
-  int c;
-  char *buf;
-  FILE *commonISAInput = NULL;
-  long file_size;
-  unsigned byte_pos = 0;
-  common_isa_header commonISAHeader;
-  vISA::Mem_Manager globalMem(KERNEL_MEM_SIZE);
-
-  // open common isa file
-  if ((commonISAInput = fopen(fileName.c_str(), "rb")) == NULL) {
-    std::cerr << fileName << ": cannot open file\n";
-    return EXIT_FAILURE;
-  }
-
-  fseek(commonISAInput, 0, SEEK_END);
-  file_size = ftell(commonISAInput);
-  fseek(commonISAInput, 0, SEEK_SET);
-
-  buf = (char *)globalMem.alloc(file_size + 1);
-  char *buf_ptr = buf;
-  while ((c = fgetc(commonISAInput)) != EOF) {
-    *buf_ptr = c;
-    buf_ptr++;
-  }
-
-  processCommonISAHeader(commonISAHeader, byte_pos, buf, &globalMem);
-  fclose(commonISAInput);
   vISA::Mem_Manager mem(4096);
 
   /// Try opening the file.

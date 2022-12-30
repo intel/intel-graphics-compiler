@@ -2578,7 +2578,7 @@ Augmentation::Augmentation(G4_Kernel &k, Interference &i,
                            const LivenessAnalysis &l, LiveRange **const &ranges,
                            GlobalRA &g)
     : kernel(k), intf(i), gra(g), liveAnalysis(l), lrs(ranges),
-      fcallRetMap(g.fcallRetMap), m(kernel.fg.mem) {}
+      fcallRetMap(g.fcallRetMap) {}
 
 // For Scatter read, the channel is not handled as the block read.
 // Update the emask according to the definition of VISA
@@ -5220,10 +5220,9 @@ GraphColor::GraphColor(LivenessAnalysis &live, unsigned totalGRF, bool hybrid,
       intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(),
            live.getNumSplitVar(), gra),
       regPool(gra.regPool), builder(gra.builder), isHybrid(hybrid),
-      forceSpill(forceSpill_), mem(GRAPH_COLOR_MEM_SIZE), kernel(gra.kernel),
+      forceSpill(forceSpill_), GCMem(GRAPH_COLOR_MEM_SIZE), kernel(gra.kernel),
       liveAnalysis(live) {
-  spAddrRegSig =
-      (unsigned *)mem.alloc(getNumAddrRegisters() * sizeof(unsigned));
+  spAddrRegSig.resize(getNumAddrRegisters(), 0);
   m_options = builder.getOptions();
 }
 
@@ -5231,7 +5230,7 @@ GraphColor::GraphColor(LivenessAnalysis &live, unsigned totalGRF, bool hybrid,
 // lrs[i] gives the live range whose id is i
 //
 void GraphColor::createLiveRanges(unsigned reserveSpillSize) {
-  lrs = (LiveRange **)mem.alloc(sizeof(LiveRange *) * numVar);
+  lrs = (LiveRange **)GCMem.alloc(sizeof(LiveRange *) * numVar);
   bool hasStackCall = builder.kernel.fg.getHasStackCalls() ||
                       builder.kernel.fg.getIsStackCallFunc();
   // Modification For Alias Dcl
@@ -5241,7 +5240,7 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize) {
     if (!var->isRegAllocPartaker() || dcl->getAliasDeclare() != NULL) {
       continue;
     }
-    lrs[var->getId()] = new (mem) LiveRange(var, this->gra);
+    lrs[var->getId()] = new (GCMem) LiveRange(var, this->gra);
     unsigned reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
 
     if (builder.kernel.fg.isPseudoDcl(dcl)) {
@@ -5258,16 +5257,16 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize) {
     }
     lrs[var->getId()]->setBC(gra.getBankConflict(dcl));
 
-    lrs[var->getId()]->allocForbidden(mem, hasStackCall, reserveSpillSize,
+    lrs[var->getId()]->allocForbidden(GCMem, hasStackCall, reserveSpillSize,
                                       reservedGRFNum);
     lrs[var->getId()]->setCallerSaveBias(hasStackCall);
     G4_Declare *varDcl = lrs[var->getId()]->getDcl();
     if (builder.kernel.fg.isPseudoVCADcl(varDcl)) {
-      lrs[var->getId()]->allocForbiddenCallerSave(mem, &builder.kernel);
+      lrs[var->getId()]->allocForbiddenCallerSave(GCMem, &builder.kernel);
     } else if (builder.kernel.fg.isPseudoVCEDcl(varDcl)) {
-      lrs[var->getId()]->allocForbiddenCalleeSave(mem, &builder.kernel);
+      lrs[var->getId()]->allocForbiddenCalleeSave(GCMem, &builder.kernel);
     } else if (varDcl == gra.getOldFPDcl()) {
-      lrs[var->getId()]->allocForbiddenCallerSave(mem, &builder.kernel);
+      lrs[var->getId()]->allocForbiddenCallerSave(GCMem, &builder.kernel);
     }
   }
 }
@@ -6696,7 +6695,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
   //
   // compute interference matrix
   //
-  intf.init(mem);
+  intf.init();
   intf.computeInterference();
 
   // If option is true, try to get extra interference info from file
@@ -9580,13 +9579,12 @@ int GlobalRA::coloringRegAlloc() {
           LivenessAnalysis live(*this, G4_GRF | G4_INPUT, false, true);
           live.computeLiveness();
           GraphColor coloring(live, kernel.getNumRegTotal(), false, false);
-          vISA::Mem_Manager mem(GRAPH_COLOR_MEM_SIZE);
           coloring.createLiveRanges(0);
-          LiveRange **lrs = coloring.getLRs();
+          LiveRange **lrs = coloring.getLiveRanges();
           Interference intf(&live, lrs, live.getNumSelectedVar(),
                             live.getNumSplitStartID(), live.getNumSplitVar(),
                             *this);
-          intf.init(mem);
+          intf.init();
           intf.computeInterference();
 
           if (kernel.getOption(vISA_DumpRAIntfGraph))
@@ -12098,7 +12096,8 @@ bool GlobalRA::isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc,
 // traversed so that the two routines can then use the same location to save
 // their return addresses.
 //
-unsigned GlobalRA::determineReturnAddrLoc(unsigned entryId, unsigned *retLoc,
+unsigned GlobalRA::determineReturnAddrLoc(unsigned entryId,
+                                          std::vector<unsigned> &retLoc,
                                           G4_BB *bb) {
   auto &fg = kernel.fg;
   if (bb->isAlreadyTraversed(fg.getTraversalNum()))
@@ -12107,52 +12106,48 @@ unsigned GlobalRA::determineReturnAddrLoc(unsigned entryId, unsigned *retLoc,
 
   if (retLoc[bb->getId()] != UNDEFINED_VAL)
     return retLoc[bb->getId()];
-  else {
-    retLoc[bb->getId()] = entryId;
-    G4_INST *lastInst = bb->size() == 0 ? NULL : bb->back();
 
-    if (lastInst && lastInst->isReturn()) {
-      if (lastInst->getPredicate() == NULL)
-        return entryId;
-      else
-        return determineReturnAddrLoc(entryId, retLoc, bb->fallThroughBB());
-    } else if (lastInst && lastInst->isCall()) // skip nested subroutine calls
-    {
-      return determineReturnAddrLoc(entryId, retLoc, bb->BBAfterCall());
-    }
-    unsigned sharedId = entryId;
-    for (G4_BB *succ : bb->Succs) {
-      unsigned loc = determineReturnAddrLoc(entryId, retLoc, succ);
-      if (loc != entryId) {
-        while (retLoc[loc] != loc) // find the root of subroutine loc
-          loc = retLoc[loc];       // follow the link to reach the root
-        if (sharedId == entryId) {
-          sharedId = loc;
-        } else if (sharedId != loc) {
-          //
-          // The current subroutine share code with two other subroutines, we
-          // force all three of them to use the same location by linking them
-          // togethers.
-          //
-          retLoc[loc] = sharedId;
-        }
+  retLoc[bb->getId()] = entryId;
+  G4_INST *lastInst = bb->size() == 0 ? NULL : bb->back();
+
+  if (lastInst && lastInst->isReturn()) {
+    if (!lastInst->getPredicate())
+      return entryId;
+    return determineReturnAddrLoc(entryId, retLoc, bb->fallThroughBB());
+  } else if (lastInst && lastInst->isCall()) {
+    // skip nested subroutine calls
+    return determineReturnAddrLoc(entryId, retLoc, bb->BBAfterCall());
+  }
+  unsigned sharedId = entryId;
+  for (G4_BB *succ : bb->Succs) {
+    unsigned loc = determineReturnAddrLoc(entryId, retLoc, succ);
+    if (loc != entryId) {
+      while (retLoc[loc] != loc) // find the root of subroutine loc
+        loc = retLoc[loc];       // follow the link to reach the root
+      if (sharedId == entryId) {
+        sharedId = loc;
+      } else if (sharedId != loc) {
+        //
+        // The current subroutine share code with two other subroutines, we
+        // force all three of them to use the same location by linking them
+        // togethers.
+        //
+        retLoc[loc] = sharedId;
       }
     }
-    return sharedId;
   }
+  return sharedId;
 }
 
 void GlobalRA::assignLocForReturnAddr() {
   auto &fg = kernel.fg;
-  unsigned *retLoc =
-      (unsigned *)builder.mem.alloc(fg.getNumBB() * sizeof(unsigned));
-  //
+  std::vector<unsigned> retLoc(fg.getNumBB(), UNDEFINED_VAL);
   // a data structure for doing a quick map[id] ---> block
-  //
-  G4_BB **BBs = (G4_BB **)builder.mem.alloc(fg.getNumBB() * sizeof(G4_BB *));
+  // FIXME: I have no idea why we need this vector, do we have to iterate the
+  // blocks by their id for some reason?
+  std::vector<G4_BB *> BBs(fg.getNumBB());
   for (G4_BB *bb : fg) {
     unsigned i = bb->getId();
-    retLoc[i] = UNDEFINED_VAL;
     BBs[i] = bb; // BBs are sorted by ID
   }
 
@@ -12340,17 +12335,17 @@ void GlobalRA::assignLocForReturnAddr() {
     setSubRetLoc(bb, retLoc[subBB->getId()]);
   }
 
-#ifdef _DEBUG
-  for (unsigned i = 0; i < fg.getNumBB(); i++) {
-    G4_BB *bb = BBs[i];
-    if (getSubRetLoc(bb) != UNDEFINED_VAL) {
-      if (!bb->empty() && bb->front()->isLabel()) {
-        DEBUG_VERBOSE(((G4_Label *)bb->front()->getSrc(0))->getLabel()
-                      << " assigned location " << getSubRetLoc(bb) << "\n");
+ VISA_DEBUG_VERBOSE({
+    for (unsigned i = 0; i < fg.getNumBB(); i++) {
+      G4_BB *bb = BBs[i];
+      if (getSubRetLoc(bb) != UNDEFINED_VAL) {
+        if (!bb->empty() && bb->front()->isLabel()) {
+          std::cout << ((G4_Label *)bb->front()->getSrc(0))->getLabel()
+                    << " assigned location " << getSubRetLoc(bb) << "\n";
+        }
       }
     }
-  }
-#endif
+  });
 
   //
   // detect the conflict (circle) at last

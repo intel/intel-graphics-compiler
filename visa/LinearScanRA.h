@@ -81,7 +81,8 @@ private:
   unsigned int numRowsEOT = 0;
   unsigned int globalLRSize = 0;
   bool doSplitLLR = false;
-  Mem_Manager &mem;
+  // Bump allocator for linear scan live ranges and their forbidden GRF vector.
+  Mem_Manager LSMem;
   std::list<LSInputLiveRange *, std_arena_based_allocator<LSInputLiveRange *>>
       inputIntervals;
   BankConflictPass &bc;
@@ -363,7 +364,7 @@ class globalLinearScan {
 private:
   GlobalRA &gra;
   IR_Builder &builder;
-  Mem_Manager &mem;
+  Mem_Manager GLSMem;
   PhyRegsManager &pregManager;
   std::vector<LSLiveRange *> &liveIntervals;
   std::vector<LSLiveRange *> *preAssignedIntervals;
@@ -406,11 +407,9 @@ public:
                    std::list<LSInputLiveRange *,
                              std_arena_based_allocator<LSInputLiveRange *>>
                        &inputLivelIntervals,
-                   PhyRegsManager &pregMgr,
-                   Mem_Manager &memmgr, // CALL_DECL_MAP & callMap,
-                   unsigned int numReg, unsigned int numEOT,
-                   unsigned int lastLexID, bool bankConflict,
-                   bool internalConflict);
+                   PhyRegsManager &pregMgr, unsigned int numReg,
+                   unsigned int numEOT, unsigned int lastLexID,
+                   bool bankConflict, bool internalConflict);
 
   void getCalleeSaveGRF(std::vector<unsigned int> &regNum, G4_Kernel *kernel);
 

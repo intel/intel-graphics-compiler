@@ -296,7 +296,6 @@ private:
   std::list<G4_Declare *> nonDefaultMask;
   std::unordered_map<FuncInfo *, MaskDeclares> callsiteDeclares;
   std::unordered_map<G4_Declare *, MaskDeclares> retDeclares;
-  Mem_Manager &m;
 
   bool updateDstMaskForGather(G4_INST *inst, std::vector<unsigned char> &mask);
   bool updateDstMaskForGatherRaw(G4_INST *inst,
@@ -503,7 +502,7 @@ public:
     return nullptr;
   }
 
-  void init(vISA::Mem_Manager &m) {
+  void init() {
     if (useDenseMatrix()) {
       auto N = (size_t)rowSize * (size_t)maxId;
       matrix = new uint32_t[N](); // zero-initialize
@@ -563,7 +562,7 @@ class GraphColor {
   const unsigned numVar;
   const unsigned numSplitStartID;
   const unsigned numSplitVar;
-  unsigned *spAddrRegSig;
+  std::vector<unsigned> spAddrRegSig;
   Interference intf;
   PhyRegPool &regPool;
   IR_Builder &builder;
@@ -571,7 +570,7 @@ class GraphColor {
   bool isHybrid;
   LIVERANGE_LIST spilledLRs;
   bool forceSpill;
-  vISA::Mem_Manager mem;
+  vISA::Mem_Manager GCMem;
   const Options *m_options;
 
   unsigned evenTotalDegree = 1;
@@ -605,7 +604,7 @@ class GraphColor {
                     bool highInternalConflict, bool honorHints = true);
 
   void clearSpillAddrLocSignature() {
-    memset(spAddrRegSig, 0, getNumAddrRegisters() * sizeof(unsigned));
+    std::fill(spAddrRegSig.begin(), spAddrRegSig.end(), 0);
   }
   void pruneActiveSpillAddrLocs(G4_DstRegRegion *, unsigned, G4_Type);
   void updateActiveSpillAddrLocs(G4_DstRegRegion *, G4_SrcRegRegion *,
@@ -642,7 +641,6 @@ public:
   void dumpRegisterPressure();
   GlobalRA &getGRA() { return gra; }
   G4_SrcRegRegion *getScratchSurface() const;
-  LiveRange **getLRs() const { return lrs; }
   unsigned int getNumVars() const { return numVar; }
   void markFailSafeIter(bool f) { failSafeIter = f; }
 };
@@ -903,8 +901,8 @@ public:
   bool isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc,
                            unsigned stackTop);
   void assignLocForReturnAddr();
-  unsigned determineReturnAddrLoc(unsigned entryId, unsigned *retLoc,
-                                  G4_BB *bb);
+  unsigned determineReturnAddrLoc(unsigned entryId,
+                                  std::vector<unsigned> &retLoc, G4_BB *bb);
   void insertCallReturnVar();
   void insertSaveAddr(G4_BB *);
   void insertRestoreAddr(G4_BB *);

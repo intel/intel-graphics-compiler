@@ -42,7 +42,6 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA_util.h"
 #include "IsaDisassembly.h"
 #include "JitterDataStruct.h"
-#include "Mem_Manager.h"
 #include "Option.h"
 #include "PlatformInfo.h"
 #include "PreDefinedVars.h"

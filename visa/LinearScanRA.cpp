@@ -26,15 +26,15 @@ extern void getForbiddenGRFs(std::vector<unsigned int> &regNum,
 
 LinearScanRA::LinearScanRA(BankConflictPass &b, GlobalRA &g,
                            LivenessAnalysis &liveAnalysis)
-    : kernel(g.kernel), builder(g.builder), l(liveAnalysis), mem(g.builder.mem),
-      bc(b), gra(g) {
+    : kernel(g.kernel), builder(g.builder), l(liveAnalysis), LSMem(4096), bc(b),
+      gra(g) {
   stackCallArgLR = nullptr;
   stackCallRetLR = nullptr;
 }
 
 void LinearScanRA::allocForbiddenVector(LSLiveRange *lr) {
   unsigned size = kernel.getNumRegTotal();
-  bool *forbidden = (bool *)mem.alloc(sizeof(bool) * size);
+  bool *forbidden = (bool *)LSMem.alloc(sizeof(bool) * size);
   memset(forbidden, false, size);
   lr->setForbidden(forbidden);
 
@@ -46,7 +46,7 @@ void LinearScanRA::allocForbiddenVector(LSLiveRange *lr) {
 
 void globalLinearScan::allocRetRegsVector(LSLiveRange *lr) {
   unsigned size = builder.kernel.getNumRegTotal();
-  bool *forbidden = (bool *)mem.alloc(sizeof(bool) * size);
+  bool *forbidden = (bool *)GLSMem.alloc(sizeof(bool) * size);
   memset(forbidden, false, size);
   lr->setRegGRFs(forbidden);
 }
@@ -56,21 +56,19 @@ LSLiveRange *LinearScanRA::GetOrCreateLocalLiveRange(G4_Declare *topdcl) {
 
   // Check topdcl of operand and setup a new live range if required
   if (!lr) {
-    lr = new (mem) LSLiveRange();
+    lr = new (LSMem) LSLiveRange();
     gra.setLSLR(topdcl, lr);
+    // Should we lazy-create forbidden vector instead? It seems they should be
+    // rare and we don't want to waste space on every live range.
     allocForbiddenVector(lr);
   }
-
-  vISA_ASSERT(lr != NULL, "Local LR could not be created");
   return lr;
 }
 
 LSLiveRange *LinearScanRA::CreateLocalLiveRange(G4_Declare *topdcl) {
-  LSLiveRange *lr = new (mem) LSLiveRange();
+  LSLiveRange *lr = new (LSMem) LSLiveRange();
   gra.setLSLR(topdcl, lr);
   allocForbiddenVector(lr);
-
-  vISA_ASSERT(lr != NULL, "Local LR could not be created");
   return lr;
 }
 
@@ -626,7 +624,7 @@ void LinearScanRA::createLiveIntervals() {
     if (dcl->getAliasDeclare() != NULL) {
       continue;
     }
-    LSLiveRange *lr = new (mem) LSLiveRange();
+    LSLiveRange *lr = new (LSMem) LSLiveRange();
     gra.setLSLR(dcl, lr);
     allocForbiddenVector(lr);
   }
@@ -870,7 +868,7 @@ int LinearScanRA::linearScanRA() {
 
     PhyRegsManager pregManager(builder, initPregs, doBCR);
     globalLinearScan ra(gra, &l, globalLiveIntervals, &preAssignedLiveIntervals,
-                        inputIntervals, pregManager, mem, numRegLRA, numRowsEOT,
+                        inputIntervals, pregManager, numRegLRA, numRowsEOT,
                         latestLexID, doBCR, highInternalConflict);
 
     // Run linear scan RA
@@ -1153,7 +1151,7 @@ void LinearScanRA::setDstReferences(
 
   if (dcl == kernel.fg.builder->getStackCallArg()) {
     if (stackCallArgLR == nullptr) {
-      lr = new (mem) LSLiveRange();
+      lr = new (LSMem) LSLiveRange();
       stackCallArgLR = lr;
       lr->setTopDcl(dcl);
       allocForbiddenVector(lr);
@@ -1162,7 +1160,7 @@ void LinearScanRA::setDstReferences(
     }
   } else if (dcl == kernel.fg.builder->getStackCallRet()) {
     if (stackCallRetLR == nullptr) {
-      lr = new (mem) LSLiveRange();
+      lr = new (LSMem) LSLiveRange();
       stackCallRetLR = lr;
       lr->setTopDcl(dcl);
       allocForbiddenVector(lr);
@@ -1302,10 +1300,11 @@ void LinearScanRA::generateInputIntervals(
         initPregs.isGRFAvailable(idx / builder.numEltPerGRF<Type_UW>())) {
       inputRegLastRef[idx] = instID;
       if (avoidSameInstOverlap) {
-        inputIntervals.push_front(new (mem)
+        inputIntervals.push_front(new (LSMem)
                                       LSInputLiveRange(idx, instID * 2 + 1));
       } else {
-        inputIntervals.push_front(new (mem) LSInputLiveRange(idx, instID * 2));
+        inputIntervals.push_front(new (LSMem)
+                                      LSInputLiveRange(idx, instID * 2));
       }
 
       if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo)) {
@@ -1548,7 +1547,7 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(
       uint16_t retSize = fcall->getRetSize();
       uint16_t argSize = fcall->getArgSize();
       if (ret && retSize > 0 && ret->getRegVar()) {
-        LSLiveRange *stackCallRetLR = new (mem) LSLiveRange();
+        LSLiveRange *stackCallRetLR = new (LSMem) LSLiveRange();
         stackCallRetLR->setTopDcl(ret);
         allocForbiddenVector(stackCallRetLR);
         stackCallRetLR->setFirstRef(curInst, curInst->getLexicalId() * 2);
@@ -1790,10 +1789,9 @@ globalLinearScan::globalLinearScan(
     std::vector<LSLiveRange *> *assignedLiveIntervals,
     std::list<LSInputLiveRange *, std_arena_based_allocator<LSInputLiveRange *>>
         &inputLivelIntervals,
-    PhyRegsManager &pregMgr, Mem_Manager &memmgr, unsigned int numReg,
-    unsigned int numEOT, unsigned int lastLexID, bool bankConflict,
-    bool internalConflict)
-    : gra(g), builder(g.builder), mem(memmgr), pregManager(pregMgr),
+    PhyRegsManager &pregMgr, unsigned int numReg, unsigned int numEOT,
+    unsigned int lastLexID, bool bankConflict, bool internalConflict)
+    : gra(g), builder(g.builder), GLSMem(4096), pregManager(pregMgr),
       liveIntervals(lv), preAssignedIntervals(assignedLiveIntervals),
       inputIntervals(inputLivelIntervals), numRowsEOT(numEOT),
       lastLexicalID(lastLexID), numRegLRA(numReg), doBankConflict(bankConflict),

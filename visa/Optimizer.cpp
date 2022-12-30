@@ -714,7 +714,7 @@ void Optimizer::addSWSBInfo() {
   }
 
   if (!builder.getOption(vISA_forceDebugSWSB)) {
-    SWSB swsb(kernel, mem);
+    SWSB swsb(kernel);
     swsb.SWSBGenerator();
   } else {
     forceDebugSWSB(&kernel);

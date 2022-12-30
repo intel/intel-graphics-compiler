@@ -16,9 +16,7 @@ using namespace vISA;
 
 class InstCombiner {
   IR_Builder &builder;
-  // G4_Kernel&  kernel;
   FlowGraph &fg;
-  // Mem_Manager& mem;
 
   // In occasions where we need to force GRF alignment of a scalar register
   // (e.g. for targeting send payloads) we don't want to blow up register

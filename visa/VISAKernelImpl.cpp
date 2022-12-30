@@ -339,7 +339,7 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
   startTimer(TimerID::ENCODE_AND_EMIT);
   setCurrentDebugPass("encode");
   if (m_builder->useIGAEncoder()) {
-    auto r = EncodeKernelIGA(*m_kernelMem, *m_kernel, m_asmName);
+    auto r = EncodeKernelIGA(*m_kernel, m_asmName);
     binary = r.binary;
     binarySize = (unsigned)r.binaryLen;
 

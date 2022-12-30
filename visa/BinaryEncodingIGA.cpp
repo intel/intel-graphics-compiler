@@ -29,7 +29,6 @@ struct SendExDescOpts {
 };
 
 class BinaryEncodingIGA {
-  Mem_Manager &mem;
   G4_Kernel &kernel;
   std::string fileName; // .dat filename
   Kernel *IGAKernel = nullptr;
@@ -37,8 +36,7 @@ class BinaryEncodingIGA {
   const TARGET_PLATFORM platform;
 
 public:
-  BinaryEncodingIGA(vISA::Mem_Manager &m, vISA::G4_Kernel &k,
-                    std::string fname);
+  BinaryEncodingIGA(vISA::G4_Kernel &k, std::string fname);
   ~BinaryEncodingIGA() { delete IGAKernel; }
 
   void SetSWSB(G4_INST *inst, SWSB &sw);
@@ -374,9 +372,8 @@ BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform) {
   return platform;
 }
 
-BinaryEncodingIGA::BinaryEncodingIGA(vISA::Mem_Manager &m, vISA::G4_Kernel &k,
-                                     std::string fname)
-    : mem(m), kernel(k), fileName(fname), m_kernelBuffer(nullptr),
+BinaryEncodingIGA::BinaryEncodingIGA(vISA::G4_Kernel &k, std::string fname)
+    : kernel(k), fileName(fname), m_kernelBuffer(nullptr),
       m_kernelBufferSize(0), platform(k.fg.builder->getPlatform()) {
   platformModel = Model::LookupModel(getIGAInternalPlatform(platform));
   IGAKernel = new Kernel(*platformModel);
@@ -2047,10 +2044,10 @@ Region BinaryEncodingIGA::getIGARegion(G4_SrcRegRegion *srcRegion, int srcPos) {
   return igaRegion;
 }
 
-EncodeResult vISA::EncodeKernelIGA(vISA::Mem_Manager &m, vISA::G4_Kernel &k,
+EncodeResult vISA::EncodeKernelIGA(vISA::G4_Kernel &k,
                                    const std::string &fname) {
   EncodeResult r;
-  BinaryEncodingIGA encoder(m, k, fname);
+  BinaryEncodingIGA encoder(k, fname);
   encoder.Encode();
   r.binary = encoder.EmitBinary(r.binaryLen);
   return r;

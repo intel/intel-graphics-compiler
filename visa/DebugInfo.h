@@ -11,7 +11,11 @@ SPDX-License-Identifier: MIT
 #include "Common_BinaryEncoding.h"
 #include "FlowGraph.h"
 #include "GraphColor.h"
+#include "Mem_Manager.h"
 #include "VISADefines.h"
+
+#include "llvm/Support/Allocator.h"
+
 #include <string>
 #include <unordered_map>
 
@@ -33,18 +37,12 @@ class DebugInfoState;
 
 DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY int
 decodeAndDumpDebugInfo(char *filename, TARGET_PLATFORM platform);
-void emitDebugInfo(CISA_IR_Builder *builder, std::string filename);
-void emitDebugInfo(VISAKernelImpl *curKernel, std::string filename);
 void emitDebugInfo(VISAKernelImpl *kernel,
                    std::list<VISAKernelImpl *> &functions,
                    std::string filename);
-void emitDebugInfoToMem(VISAKernelImpl *curKernel, void *&info, unsigned &size);
 void emitDebugInfoToMem(VISAKernelImpl *kernel,
                         std::list<VISAKernelImpl *> &functions, void *&info,
                         unsigned &size);
-
-void emitRegisterMapping(vISA::G4_Kernel &kernel,
-                         std::vector<VarnameMap *> &varsMap);
 
 struct IDX_VDbgCisaByte2Gen {
   unsigned CisaByteOffset;
@@ -139,6 +137,9 @@ struct VarnameMap {
 // instance, but this means no space/perf penalty is imposed
 // on G4_Kernel.
 namespace vISA {
+class LiveIntervalInfo;
+using LIIAlloc = llvm::SpecificBumpPtrAllocator<LiveIntervalInfo>;
+
 class LiveIntervalInfo {
 public:
   enum DebugLiveIntervalState { Open = 0, Closed = 1 };
@@ -150,7 +151,9 @@ private:
   uint32_t openIntervalVISAIndex;
 
 public:
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
+  void *operator new(size_t sz, LIIAlloc &Allocator) {
+    return Allocator.Allocate(sz / sizeof(LiveIntervalInfo));
+  }
 
   void addLiveInterval(uint32_t start, uint32_t end);
   void liveAt(uint32_t cisaOff);
@@ -238,16 +241,18 @@ private:
   // Store all dcls that are from stack call function
   std::unordered_set<G4_Declare *> stackCallDcls;
 
+  LIIAlloc LIIAllocator;
+  Mem_Manager varNameMapAlloc;
+
 public:
   LiveIntervalInfo *getLiveIntervalInfo(G4_Declare *dcl,
                                         bool createIfNULL = true);
-  void *operator new(size_t sz, Mem_Manager &m);
   G4_Kernel &getKernel() { return *kernel; }
   VISAKernelImpl *getVISAKernel() const { return visaKernel; }
   void setVISAKernel(VISAKernelImpl *k);
 
   KernelDebugInfo();
-  ~KernelDebugInfo();
+  ~KernelDebugInfo() = default;
 
   void reset() {
     mapCISAOffsetGenOffset.clear();

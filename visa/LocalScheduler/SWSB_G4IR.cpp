@@ -1452,8 +1452,9 @@ void SWSB::SWSBDepDistanceGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
 
   // Local dependence analysis
   for (; ib != bend; ++ib) {
+    // TODO: Can each G4_BB_SB have its own allocator instead of sharing SWSB's?
     BBVector[(*ib)->getId()] = new (BB_SWSBAllocator)
-        G4_BB_SB(*this, *(fg.builder), mem, *ib, &SBNodes, &SBSendNodes,
+        G4_BB_SB(*this, *(fg.builder), SWSBMem, *ib, &SBNodes, &SBSendNodes,
                  &globalSendOpndList, &indexes, globalSendNum, &LB,
                  &globalSendsLB, p, &labelToBlockMap, tokenAfterDPASCycle);
   }
@@ -1471,7 +1472,7 @@ void SWSB::handleFuncCall() {
          node->GetInstruction()->isFCall()) ||
         (node->GetInstruction()->isReturn() ||
          node->GetInstruction()->isFReturn())) {
-      LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal());
+      LiveGRFBuckets send_use_out(kernel.getNumRegTotal());
       for (const SBBucketNode *sBucketNode : globalSendOpndList) {
         SBNode *sNode = sBucketNode->node;
         if (bb->send_live_out.isSrcSet(sNode->globalID) &&
@@ -1524,9 +1525,9 @@ void SWSB::SWSBGlobalTokenGenerator(PointsToAnalysis &p, LiveGRFBuckets &LB,
 
     if (enableGlobalTokenAllocation || enableDistPropTokenAllocation) {
       bb->tokenLiveInDist =
-          (unsigned *)mem.alloc(sizeof(unsigned) * globalSendNum);
+          (unsigned *)SWSBMem.alloc(sizeof(unsigned) * globalSendNum);
       bb->tokenLiveOutDist =
-          (unsigned *)mem.alloc(sizeof(unsigned) * globalSendNum);
+          (unsigned *)SWSBMem.alloc(sizeof(unsigned) * globalSendNum);
       for (unsigned k = 0; k < globalSendNum; k++) {
         bb->tokenLiveInDist[k] = -1;
         bb->tokenLiveOutDist[k] = -1;
@@ -1813,7 +1814,7 @@ void SWSB::genSWSBPatchInfo() {
   // kernel.
   for (G4_BB *bb : fg) {
     if (bb->Succs.empty() && BBVector[bb->getId()]->Succs.empty()) {
-      LiveGRFBuckets send_use_out(mem, kernel.getNumRegTotal());
+      LiveGRFBuckets send_use_out(kernel.getNumRegTotal());
       for (size_t i = 0; i < globalSendOpndList.size(); i++) {
         SBBucketNode *sBucketNode = globalSendOpndList[i];
         SBNode *sNode = sBucketNode->node;
@@ -1892,13 +1893,11 @@ void SWSB::SWSBGenerator() {
   kernel.fg.findNaturalLoops();
 
   // Note that getNumFlagRegisters() treat each 16 bits as a flag register
-  LiveGRFBuckets LB(
-      mem, kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters() +
-               kernel.getNumAcc() + fg.builder->getNumFlagRegisters());
-  LiveGRFBuckets globalSendsLB(
-      mem, kernel.getNumRegTotal() + fg.builder->getNumScalarRegisters() +
-               kernel.getNumAcc() + fg.builder->getNumFlagRegisters());
-
+  int numBuckets = kernel.getNumRegTotal() +
+                   fg.builder->getNumScalarRegisters() + kernel.getNumAcc() +
+                   fg.builder->getNumFlagRegisters();
+  LiveGRFBuckets LB(numBuckets);
+  LiveGRFBuckets globalSendsLB(numBuckets);
   SWSBDepDistanceGenerator(p, LB, globalSendsLB);
 
 #ifdef DEBUG_VERBOSE_ON
@@ -7137,7 +7136,7 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
     //    For token dependence, there is only implicit RAR and WAR dependencies.
     //    the order of the operands are scanned is not an issue anymore.
     //    i.e explicit RAW and WAW can cover all other dependences.
-    LiveGRFBuckets send_use_kills(mem, kernel.getNumRegTotal());
+    LiveGRFBuckets send_use_kills(kernel.getNumRegTotal());
     for (SBBucketNode *sBucketNode : *globalSendOpndList) {
       SBNode *sNode = sBucketNode->node;
       if (send_kill.isSrcSet(sNode->globalID) &&
@@ -7424,7 +7423,7 @@ void SWSB::addGlobalDependenceWithReachingDef(
     //    For token dependence, there is only implicit RAR and WAR dependencies.
     //    the order of the operands are scanned is not an issue anymore.
     //    i.e explicit RAW and WAW can cover all other dependences.
-    LiveGRFBuckets send_use_kills(mem, kernel.getNumRegTotal());
+    LiveGRFBuckets send_use_kills(kernel.getNumRegTotal());
     for (size_t j = 0; j < globalSendOpndList->size(); j++) {
       SBBucketNode *sBucketNode = (*globalSendOpndList)[j];
       SBNode *sNode = sBucketNode->node;

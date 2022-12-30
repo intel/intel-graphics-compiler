@@ -1288,7 +1288,7 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
 // dependencies and creating necessary edges, current inst
 // is inserted in all buckets it touches.
 DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
-    : mem(4096), LT(lt), kernel(k), pointsToAnalysis(p) {
+    : DDDMem(4096), LT(lt), kernel(k), pointsToAnalysis(p) {
   Node *lastBarrier = nullptr;
   HWthreadsPerEU = k->getNumThreads();
   useMTLatencies = getBuilder()->useMultiThreadLatency();

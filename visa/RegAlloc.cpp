@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo.h"
 #include "FlowGraph.h"
 #include "GraphColor.h"
-#include "Mem_Manager.h"
 #include "PointsToAnalysis.h"
 #include "Timer.h"
 #include "VarSplit.h"
@@ -187,7 +186,7 @@ bool LivenessAnalysis::setVarIDs(bool verifyRA, bool areAllPhyRegAssigned) {
 
 LivenessAnalysis::LivenessAnalysis(GlobalRA &g, unsigned char kind,
                                    bool verifyRA, bool forceRun)
-    : selectedRF(kind), pointsToAnalysis(g.pointsToAnalysis), m(4096), gra(g),
+    : selectedRF(kind), pointsToAnalysis(g.pointsToAnalysis), gra(g),
       fg(g.kernel.fg) {
   //
   // NOTE:

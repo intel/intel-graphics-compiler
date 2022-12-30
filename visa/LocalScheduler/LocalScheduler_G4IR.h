@@ -233,7 +233,7 @@ class DDD {
   std::vector<Node *> allNodes;
   // Used to allocate BucketNode, which is POD.
   // TODO: investigate whether dynamic allocation is actually necessary.
-  Mem_Manager mem;
+  Mem_Manager DDDMem;
   Edge_Allocator depEdgeAllocator;
   int HWthreadsPerEU;
   bool useMTLatencies;
@@ -298,7 +298,7 @@ public:
 
   uint32_t getEdgeLatency_old(Node *node, DepType depT);
   uint32_t getEdgeLatency(Node *node, DepType depT);
-  Mem_Manager *get_mem() { return &mem; }
+  Mem_Manager *get_mem() { return &DDDMem; }
   IR_Builder *getBuilder() const { return kernel->fg.builder; }
   const Options *getOptions() const { return kernel->getOptions(); }
   bool getIsThreeSourceBlock() { return isThreeSouceBlock; }

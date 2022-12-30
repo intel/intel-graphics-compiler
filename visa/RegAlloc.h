@@ -45,8 +45,6 @@ class LivenessAnalysis {
   const PointsToAnalysis &pointsToAnalysis;
   std::unordered_map<G4_Declare *, BitSet> neverDefinedRows;
 
-  vISA::Mem_Manager m;
-
   void computeGenKillandPseudoKill(G4_BB *bb, SparseBitSet &def_out,
                                    SparseBitSet &use_in, SparseBitSet &use_gen,
                                    SparseBitSet &use_kill) const;

@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "FlowGraph.h"
 #include "G4_IR.hpp"
 #include "GraphColor.h"
-#include "Mem_Manager.h"
 #include "PointsToAnalysis.h"
 
 #include <fstream>
@@ -132,7 +131,7 @@ SpillManagerGRF::SpillManagerGRF(
       spilledLRs_(spilledLRs), nextSpillOffset_(spillAreaOffset),
       iterationNo_(iterationNo),
       doSpillSpaceCompression(enableSpillSpaceCompression),
-      failSafeSpill_(failSafeSpill), spillIntf_(intf), mem_(1024),
+      failSafeSpill_(failSafeSpill), spillIntf_(intf),
       useScratchMsg_(useScratchMsg), avoidDstSrcOverlap_(avoidDstSrcOverlap),
       refs(g.kernel), context(g, lrInfo) {
   const unsigned size = sizeof(unsigned) * varIdCount;
@@ -200,7 +199,7 @@ SpillManagerGRF::SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
       latestImplicitVarIdCount_(0), lvInfo_(lvInfo),
       spilledLSLRs_(spilledLSLRs), nextSpillOffset_(spillAreaOffset),
       doSpillSpaceCompression(enableSpillSpaceCompression),
-      failSafeSpill_(false), mem_(1024), useScratchMsg_(useScratchMsg),
+      failSafeSpill_(false), useScratchMsg_(useScratchMsg),
       avoidDstSrcOverlap_(avoidDstSrcOverlap), refs(g.kernel),
       context(g, nullptr) {
   const unsigned size = sizeof(unsigned) * varIdCount;
@@ -925,11 +924,6 @@ unsigned SpillManagerGRF::getSendExDesc(bool isWrite, bool isScatter) const {
   return isWrite ? SEND_IVB_DP_WR_EX_DESC_IMM : SEND_IVB_DP_RD_EX_DESC_IMM;
 }
 
-// Allocate from custom memory allocator
-void *SpillManagerGRF::allocMem(unsigned size) const {
-  return builder_->mem.alloc(size);
-}
-
 bool SpillManagerGRF::useSplitSend() const { return builder_->useSends(); }
 
 // Get a unique spill range index for regvar.
@@ -960,19 +954,6 @@ unsigned SpillManagerGRF::getMsgFillIndex(G4_RegVar *spilledRegVar) {
 // Get a unique msg index for addr spill fill regvar.
 unsigned SpillManagerGRF::getAddrSpillFillIndex(G4_RegVar *spilledRegVar) {
   return addrSpillFillRangeCount_[spilledRegVar->getId()]++;
-}
-
-// Create a unique name for a regvar representing a spill/fill/msg live range.
-const char *SpillManagerGRF::createImplicitRangeName(const char *baseName,
-                                                     G4_RegVar *spilledRegVar,
-                                                     unsigned index) {
-  std::stringstream nameStrm;
-  nameStrm << baseName << "_" << spilledRegVar->getName() << "_" << index
-           << std::ends;
-  int nameLen = unsigned(nameStrm.str().length()) + 1;
-  char *name = (char *)allocMem(nameLen);
-  strcpy_s(name, nameLen, nameStrm.str().c_str());
-  return name;
 }
 
 // Check if the region is a scalar replication region.
@@ -1014,10 +995,11 @@ G4_Declare *SpillManagerGRF::createRangeDeclare(
 // except for source region's with scalar replication.
 template <class REGION_TYPE>
 G4_Declare *SpillManagerGRF::createTransientGRFRangeDeclare(
-    REGION_TYPE *region, const char *baseName, unsigned index,
+    REGION_TYPE *region, bool isFill, unsigned index,
     G4_ExecSize execSize, G4_INST *inst) {
-  const char *name =
-      createImplicitRangeName(baseName, getRegVar(region), index);
+  const char *nameStr = isFill ? "FL_%s_%d" : "SP_%s_%d";
+  const char *name = gra.builder.getNameString(
+      gra.builder.mem, 64, nameStr, getRegVar(region)->getName(), index);
   G4_Type type = region->getType();
   unsigned segmentByteSize = getSegmentByteSize(region, execSize);
   DeclareType regVarKind =
@@ -1097,8 +1079,9 @@ static unsigned short getSpillRowSizeForSendDst(G4_INST *inst) {
 G4_Declare *SpillManagerGRF::createPostDstSpillRangeDeclare(G4_INST *sendOut) {
   auto dst = sendOut->getDst();
   G4_RegVar *spilledRegVar = getRegVar(dst);
-  const char *name = createImplicitRangeName("SP_GRF", spilledRegVar,
-                                             getSpillIndex(spilledRegVar));
+  const char *name = gra.builder.getNameString(
+      gra.builder.mem, 64, "SP_GRF_%s_%d", spilledRegVar->getName(),
+      getSpillIndex(spilledRegVar));
   unsigned short nRows = getSpillRowSizeForSendDst(sendOut);
 
   G4_DstRegRegion *normalizedPostDst =
@@ -1139,7 +1122,7 @@ G4_Declare *SpillManagerGRF::createPostDstSpillRangeDeclare(G4_INST *sendOut) {
 G4_Declare *
 SpillManagerGRF::createSpillRangeDeclare(G4_DstRegRegion *spilledRegion,
                                          G4_ExecSize execSize, G4_INST *inst) {
-  return createTransientGRFRangeDeclare(spilledRegion, "SP_GRF",
+  return createTransientGRFRangeDeclare(spilledRegion, false /*isFill*/,
                                         getSpillIndex(getRegVar(spilledRegion)),
                                         execSize, inst);
 }
@@ -1150,8 +1133,8 @@ G4_Declare *SpillManagerGRF::createGRFFillRangeDeclare(
     G4_SrcRegRegion *fillRegion, G4_ExecSize execSize, G4_INST *inst) {
   vASSERT(getRFType(fillRegion) == G4_GRF);
   G4_Declare *fillRangeDecl = createTransientGRFRangeDeclare(
-      fillRegion, "FL_GRF", getFillIndex(getRegVar(fillRegion)), execSize,
-      inst);
+      fillRegion, true /*isFill*/, getFillIndex(getRegVar(fillRegion)),
+      execSize, inst);
   return fillRangeDecl;
 }
 
@@ -1185,8 +1168,9 @@ G4_Declare *
 SpillManagerGRF::createSendFillRangeDeclare(G4_SrcRegRegion *filledRegion,
                                             G4_INST *sendInst) {
   G4_RegVar *filledRegVar = getRegVar(filledRegion);
-  const char *name = createImplicitRangeName("FL_Send", filledRegVar,
-                                             getFillIndex(filledRegVar));
+  const char *name =
+      gra.builder.getNameString(gra.builder.mem, 64, "FL_Send_%s_%d",
+                                filledRegVar->getName(), getFillIndex(filledRegVar));
   unsigned short nRows = getSpillRowSizeForSendSrc(sendInst, filledRegion);
 
   G4_SrcRegRegion *normalizedSendSrc = builder_->createSrcRegRegion(
@@ -1238,9 +1222,9 @@ G4_Declare *
 SpillManagerGRF::createTemporaryRangeDeclare(G4_DstRegRegion *spilledRegion,
                                              G4_ExecSize execSize,
                                              bool forceSegmentAlignment) {
-  const char *name =
-      createImplicitRangeName("TM_GRF", getRegVar(spilledRegion),
-                              getTmpIndex(getRegVar(spilledRegion)));
+  const char *name = gra.builder.getNameString(
+      gra.builder.mem, 64, "TM_GRF_%s_%d", getRegVar(spilledRegion)->getName(),
+      getTmpIndex(getRegVar(spilledRegion)));
   unsigned byteSize = (forceSegmentAlignment)
                           ? getSegmentByteSize(spilledRegion, execSize)
                           : getRegionByteSize(spilledRegion, execSize);
@@ -1412,8 +1396,9 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_RegVar *regVar) {
 
   G4_RegVar *repRegVar =
       (regVar->isRegVarTransient()) ? regVar->getBaseRegVar() : regVar;
-  const char *name =
-      createImplicitRangeName("SP_MSG", repRegVar, getMsgSpillIndex(repRegVar));
+  const char *name = gra.builder.getNameString(
+      gra.builder.mem, 64, "SP_MSG_%s_%d", repRegVar->getName(),
+                                getMsgSpillIndex(repRegVar));
 
   unsigned short height = 1;
   if (!useSplitSend()) {
@@ -1465,8 +1450,9 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_DstRegRegion *region,
     return gra.kernel.fg.scratchRegDcl;
   }
 
-  const char *name = createImplicitRangeName(
-      "SP_MSG", getRegVar(region), getMsgSpillIndex(getRegVar(region)));
+  const char *name = gra.builder.getNameString(
+      gra.builder.mem, 64, "SP_MSG_%s_%d", getRegVar(region)->getName(),
+      getMsgSpillIndex(getRegVar(region)));
   unsigned short height = 1;
   if (!useSplitSend()) {
     unsigned regionByteSize = getSegmentByteSize(region, execSize);
@@ -1516,8 +1502,9 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_SrcRegRegion *region,
     return gra.kernel.fg.scratchRegDcl;
   }
 
-  const char *name = createImplicitRangeName(
-      "FL_MSG", getRegVar(region), getMsgFillIndex(getRegVar(region)));
+  const char *name = gra.builder.getNameString(
+      gra.builder.mem, 64, "FL_MSG_%s_%d", getRegVar(region)->getName(),
+      getMsgFillIndex(getRegVar(region)));
   getSegmentByteSize(region, execSize);
   unsigned payloadHeaderHeight = (getMsgType(region, execSize) == owordMask())
                                      ? OWORD_PAYLOAD_HEADER_MIN_HEIGHT
@@ -3367,9 +3354,8 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
       if (!created) {
         // If spilledAddrTakenDcl already has a spill/fill range created, return
         // it. Else create new one and return it.
-#define ADDR_SPILL_FILL_NAME_SIZE 32
         const char *dclName = kernel->fg.builder->getNameString(
-            kernel->fg.mem, ADDR_SPILL_FILL_NAME_SIZE, "ADDR_SP_FL_V%d_%d",
+            kernel->fg.mem, 32, "ADDR_SP_FL_V%d_%d",
             spilledAddrTakenDcl->getDeclId(),
             getAddrSpillFillIndex(spilledAddrTakenDcl->getRegVar()));
 

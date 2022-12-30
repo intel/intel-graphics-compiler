@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #ifndef __RPE_H__
 #define __RPE_H__
 
-#include "Mem_Manager.h"
 #include "RegAlloc.h"
 #include <unordered_map>
 
@@ -39,7 +38,6 @@ public:
   void dump() const;
 
 private:
-  Mem_Manager m;
   const GlobalRA &gra;
   const FlowGraph &fg;
   const LivenessAnalysis *const liveAnalysis;

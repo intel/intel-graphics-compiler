@@ -25,8 +25,7 @@ struct EncodeResult {
   std::string error; // in case of error
 };
 
-EncodeResult EncodeKernelIGA(vISA::Mem_Manager &m, vISA::G4_Kernel &k,
-                             const std::string &fname);
+EncodeResult EncodeKernelIGA(G4_Kernel &k, const std::string &fname);
 
 bool InstSupportsSaturationIGA(TARGET_PLATFORM p, const G4_INST &i,
                                const IR_Builder &builder);

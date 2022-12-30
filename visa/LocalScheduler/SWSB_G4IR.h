@@ -547,12 +547,12 @@ typedef SBBUCKET_VECTOR::iterator SBBUCKET_VECTOR_ITER;
 // This class hides the internals of dependence tracking using buckets
 class LiveGRFBuckets {
   std::vector<SBBUCKET_VECTOR> nodeBucketsArray;
-  vISA::Mem_Manager &mem;
+  // FIXME: Why do we need this? Do we ever change the size of nodeBucketsArray?
   const int numOfBuckets;
 
 public:
-  LiveGRFBuckets(vISA::Mem_Manager &m, int TOTAL_BUCKETS)
-      : nodeBucketsArray(TOTAL_BUCKETS), mem(m), numOfBuckets(TOTAL_BUCKETS) {}
+  LiveGRFBuckets(int TOTAL_BUCKETS)
+      : nodeBucketsArray(TOTAL_BUCKETS), numOfBuckets(TOTAL_BUCKETS) {}
 
   ~LiveGRFBuckets() {}
 
@@ -895,7 +895,7 @@ public:
 class SWSB {
   G4_Kernel &kernel;
   FlowGraph &fg;
-  vISA::Mem_Manager &mem;
+  vISA::Mem_Manager SWSBMem;
   // Type-specific bump pointer allocators so we don't have to explicitly call
   // their dtor.
   llvm::SpecificBumpPtrAllocator<G4_BB_SB> BB_SWSBAllocator;
@@ -1083,8 +1083,8 @@ class SWSB {
   void getDominators(ImmDominator *dom);
 
 public:
-  SWSB(G4_Kernel &k, vISA::Mem_Manager &m)
-      : kernel(k), fg(k.fg), mem(m),
+  SWSB(G4_Kernel &k)
+      : kernel(k), fg(k.fg), SWSBMem(4096),
         totalTokenNum(k.fg.builder->kernel.getNumSWSBTokens()),
         tokenAfterWriteMathCycle(k.fg.builder->isXeLP() ? 20u : 17u),
         tokenAfterWriteSendSlmCycle(

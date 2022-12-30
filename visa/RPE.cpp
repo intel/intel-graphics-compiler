@@ -15,8 +15,8 @@ SPDX-License-Identifier: MIT
 
 namespace vISA {
 RPE::RPE(const GlobalRA &g, const LivenessAnalysis *l, DECLARE_LIST *spills)
-    : m(1024), gra(g), liveAnalysis(l), live(l->getNumSelectedVar()),
-      vars(l->vars), fg(g.kernel.fg) {
+    : gra(g), liveAnalysis(l), live(l->getNumSelectedVar()), vars(l->vars),
+      fg(g.kernel.fg) {
   options = g.kernel.getOptions();
   if (spills) {
     std::for_each(spills->begin(), spills->end(),

@@ -2925,11 +2925,11 @@ bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
   vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
 
   unsigned bytePos = 0;
-  vISA::Mem_Manager mem(4096);
+  vISA::Mem_Manager binaryReaderMem(4096);
   common_isa_header isaHeader;
   isaHeader.num_functions = 0;
 
-  processCommonISAHeader(isaHeader, bytePos, buf, &mem);
+  processCommonISAHeader(isaHeader, bytePos, buf, &binaryReaderMem);
 
   // we have to set the CISA builder version to the binary version,
   // or some instructions that behave differently based on vISA version (e.g.,
@@ -2961,7 +2961,7 @@ bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
                        isaHeader.kernels[kernelIndex].name);
     kernels.push_back(container.kernelBuilder);
 
-    readRoutineNG(bytePos, buf, mem, container);
+    readRoutineNG(bytePos, buf, binaryReaderMem, container);
 
     for (unsigned int i = 0; i < isaHeader.num_functions; i++) {
       bytePos = isaHeader.functions[i].offset;
@@ -2972,7 +2972,7 @@ bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
       container.kernelBuilder = (VISAKernel *)funcPtr;
       kernels.push_back(container.kernelBuilder);
 
-      readRoutineNG(bytePos, buf, mem, container);
+      readRoutineNG(bytePos, buf, binaryReaderMem, container);
     }
   } else {
     for (unsigned int k = 0; k < isaHeader.num_kernels; k++) {
@@ -2987,7 +2987,7 @@ bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
       builder->AddKernel(container.kernelBuilder, isaHeader.kernels[k].name);
       kernels.push_back(container.kernelBuilder);
 
-      readRoutineNG(bytePos, buf, mem, container);
+      readRoutineNG(bytePos, buf, binaryReaderMem, container);
     }
 
     for (unsigned int i = 0; i < isaHeader.num_functions; i++) {
@@ -3005,7 +3005,7 @@ bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
       container.kernelBuilder = (VISAKernel *)funcPtr;
       kernels.push_back(container.kernelBuilder);
 
-      readRoutineNG(bytePos, buf, mem, container);
+      readRoutineNG(bytePos, buf, binaryReaderMem, container);
     }
   }
 

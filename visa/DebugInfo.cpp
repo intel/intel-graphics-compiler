@@ -642,8 +642,8 @@ void KernelDebugInfo::emitRegisterMapping() {
         continue;
     }
 
-    VarnameMap *varMap = (VarnameMap *)getKernel().fg.builder->mem.alloc(
-        sizeof(struct VarnameMap));
+    VarnameMap *varMap = static_cast<VarnameMap *>(
+        varNameMapAlloc.alloc(sizeof(struct VarnameMap)));
     varMap->dcl = dcl;
 
     if ((dcl->getRegFile() == G4_GRF || dcl->getRegFile() == G4_INPUT) &&
@@ -1479,11 +1479,6 @@ void emitData(std::list<VISAKernelImpl *> &compilationUnits, T t) {
   }
 }
 
-void emitDebugInfo(VISAKernelImpl *curKernel, std::string filename) {
-  std::list<VISAKernelImpl *> functions;
-  emitDebugInfo(curKernel, functions, filename);
-}
-
 extern "C" void *allocCodeBlock(size_t sz);
 
 void emitDebugInfoToMem(VISAKernelImpl *kernel,
@@ -1506,18 +1501,7 @@ void emitDebugInfoToMem(VISAKernelImpl *kernel,
   size = (uint32_t)vec.size();
 }
 
-void emitDebugInfoToMem(VISAKernelImpl *curKernel, void *&info,
-                        unsigned &size) {
-  std::list<VISAKernelImpl *> compilationUnits;
-
-  emitDebugInfoToMem(curKernel, compilationUnits, info, size);
-}
-
-void *KernelDebugInfo::operator new(size_t sz, Mem_Manager &m) {
-  return m.alloc(sz);
-}
-
-KernelDebugInfo::KernelDebugInfo() {
+KernelDebugInfo::KernelDebugInfo() : varNameMapAlloc(4096) {
   visaKernel = nullptr;
   saveCallerFP = nullptr;
   restoreCallerFP = nullptr;
@@ -1527,12 +1511,6 @@ KernelDebugInfo::KernelDebugInfo() {
   fretVar = nullptr;
   reloc_offset = 0;
   missingVISAIdsComputed = false;
-}
-
-KernelDebugInfo::~KernelDebugInfo() {
-  for (auto &item : debugInfoLiveIntervalMap) {
-    item.second->~LiveIntervalInfo();
-  }
 }
 
 void KernelDebugInfo::updateRelocOffset() {
@@ -2438,11 +2416,11 @@ LiveIntervalInfo *KernelDebugInfo::getLiveIntervalInfo(G4_Declare *dcl,
                                                        bool createIfNULL) {
   dcl = dcl->getRootDeclare();
 
-  LiveIntervalInfo *lr = NULL;
+  LiveIntervalInfo *lr = nullptr;
   auto it = debugInfoLiveIntervalMap.find(dcl);
   if (it == debugInfoLiveIntervalMap.end()) {
     if (createIfNULL) {
-      lr = new (kernel->fg.mem) LiveIntervalInfo();
+      lr = new (LIIAllocator) LiveIntervalInfo();
       debugInfoLiveIntervalMap.insert(std::make_pair(dcl, lr));
     }
   } else {
