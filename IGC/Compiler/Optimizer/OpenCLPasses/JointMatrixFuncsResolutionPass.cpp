@@ -450,10 +450,7 @@ static int getSliceSize(const JointMatrixTypeDescription *desc, Type *matTy) {
     IGCLLVM::FixedVectorType *ty = dyn_cast<IGCLLVM::FixedVectorType>(matTy);
     IGC_ASSERT_MESSAGE(ty, "Expecting vector type in calculating slice size");
 
-    IntegerType *vecElemType = dyn_cast<IntegerType>(ty->getElementType());
-    IGC_ASSERT_MESSAGE(vecElemType, "Expecting integer type for vector element.");
-
-    unsigned contribTypeWidth = vecElemType->getBitWidth();
+    unsigned contribTypeWidth = ty->getElementType()->getScalarSizeInBits();
     if (desc->layout == LayoutRowMajor) {
         return desc->rows;
     }
