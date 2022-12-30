@@ -178,7 +178,7 @@ SpillManagerGRF::SpillManagerGRF(
       spillAreaOffset_ =
           ROUND(spillAreaOffset_, builder_->numEltPerGRF<Type_UB>());
       spillAreaOffset_ += spaceForPhyGRFSpill;
-      vISA_ASSERT(spillAreaOffset_ >=
+      vISA_ASSERT(globalScratchOffset + spillAreaOffset_ >=
                       (ROUND(off, builder_->numEltPerGRF<Type_UB>()) +
                        spaceForPhyGRFSpill),
                   "unexpected overlap");
@@ -5738,14 +5738,15 @@ BoundedRA::BoundedRA(GlobalRA &ra, LiveRange **l)
 
 void vISA::BoundedRA::markBusyGRFs() {
   auto dst = curInst->getDst();
-  if (dst && dst->isDstRegRegion()) {
-    if (!dst->isIndirect() && dst->getTopDcl() &&
-        dst->getTopDcl()->getRegVar()->isRegAllocPartaker()) {
+  if (dst && dst->isDstRegRegion() && dst->getTopDcl() &&
+      dst->getTopDcl()->useGRF()) {
+    if (!dst->isIndirect()) {
       auto id = dst->getTopDcl()->getRegVar()->getId();
+      bool isPartaker = dst->getTopDcl()->getRegVar()->isRegAllocPartaker();
       auto phyReg = dst->getTopDcl()->getRegVar()->getPhyReg();
-      if (!phyReg)
+      if (!phyReg && isPartaker)
         phyReg = lrs[id]->getPhyReg();
-      if (phyReg) {
+      if (phyReg && phyReg->isGreg()) {
         auto regLB =
             phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
         regLB += dst->getTopDcl()->getRegVar()->getPhyRegOff() *
@@ -5756,7 +5757,7 @@ void vISA::BoundedRA::markBusyGRFs() {
         auto endGRF = regRB / kernel.numEltPerGRF<Type_UB>();
         for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
           markGRF(reg);
-      } else
+      } else if (isPartaker)
         markForbidden(lrs[id]);
     } else if (dst->isIndirect()) {
       auto &p2a = gra.pointsToAnalysis;
@@ -5787,13 +5788,15 @@ void vISA::BoundedRA::markBusyGRFs() {
   for (unsigned int i = 0; i != curInst->getNumSrc(); ++i) {
     auto src = curInst->getSrc(i);
     if (src && src->isSrcRegRegion()) {
-      if (!src->asSrcRegRegion()->isIndirect() && src->getTopDcl() &&
-          src->getTopDcl()->getRegVar()->isRegAllocPartaker()) {
+      if (!src->asSrcRegRegion()->isIndirect() &&
+          src->asSrcRegRegion()->getTopDcl() &&
+          src->asSrcRegRegion()->getTopDcl()->useGRF()) {
         auto id = src->getTopDcl()->getRegVar()->getId();
+        bool isPartaker = src->getTopDcl()->getRegVar()->isRegAllocPartaker();
         auto phyReg = src->getTopDcl()->getRegVar()->getPhyReg();
-        if (!phyReg)
+        if (!phyReg && isPartaker)
           phyReg = lrs[id]->getPhyReg();
-        if (phyReg) {
+        if (phyReg && phyReg->isGreg()) {
           auto regLB =
               phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
           regLB += src->getTopDcl()->getRegVar()->getPhyRegOff() *
@@ -5804,7 +5807,7 @@ void vISA::BoundedRA::markBusyGRFs() {
           auto endGRF = regRB / kernel.numEltPerGRF<Type_UB>();
           for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
             markGRF(reg);
-        } else
+        } else if (isPartaker)
           markForbidden(lrs[id]);
       } else if (src->asSrcRegRegion()->isIndirect()) {
         auto &p2a = gra.pointsToAnalysis;
@@ -5852,14 +5855,31 @@ void BoundedRA::markUniversalForbidden() {
   if (gra.builder.hasValidSpillFillHeader()) {
     markPhyReg(kernel.fg.builder->getSpillFillHeader());
   }
+
+  // a0.2 may be copied to special GRF to preserve it across
+  // the spill/fill instruction. So forbid allocation to temp
+  // GRF that holds old a0.2 value.
+  if (gra.builder.hasValidOldA0Dot2()) {
+    markPhyReg(kernel.fg.builder->getOldA0Dot2Temp());
+  }
 }
 
 void BoundedRA::markForbidden(LiveRange *lr) {
   auto totalRegs = gra.kernel.getNumRegTotal();
   auto forbidden = lr->getForbidden();
-  for (unsigned int i = 0; i != totalRegs; ++i)
-    if (forbidden[i])
+  // We've 0 reserved GRFs if an RA iteration was converted
+  // to fail safe. But we may have non-zero reserved GRFs
+  // if fail safe was set before running RA iteration.
+  auto numReserved =
+      (reservedGRFStart == NOT_FOUND) ? 0 : gra.getNumReservedGRFs();
+  auto isReservedGRF = [&](unsigned int reg) {
+    return (numReserved > 0 && reg >= reservedGRFStart &&
+            reg < (reservedGRFStart + numReserved));
+  };
+  for (unsigned int i = 0; i != totalRegs; ++i) {
+    if (!isReservedGRF(i) && forbidden[i])
       markGRF(i);
+  }
 
   markUniversalForbidden();
 }
@@ -5886,6 +5906,22 @@ void BoundedRA::insertPushPop(bool useLSCMsg) {
   auto &clobbered = clobberedGRFs[curInst];
   // list of <leading GRF, # GRFs>
   std::list<std::pair<unsigned int, unsigned int>> segments;
+  unsigned int maxGRFSpillFill = 4;
+  // HWord message supports max size of 8 HWords.
+  // For platforms with 32-byte GRF, 8GRF r/w is supported.
+  // 8GRFs are supported for HWord and OWord messages.
+  if (kernel.getGRFSize() == 32)
+    maxGRFSpillFill = 8;
+  // Stack call functions never use HWord message. So r/w of
+  // 8 GRFs is supported when using stack call with LSC when
+  // GRF size > 32 bytes.
+  else if ((kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc()) &&
+      useLSCMsg)
+    maxGRFSpillFill = 8;
+  // Non-stack call kernel may use either HWord scratch message or LSC.
+  // If kernel uses LSC then max supported r/w size is 8 GRFs.
+  else if (gra.useLscForNonStackCallSpillFill)
+    maxGRFSpillFill = 8;
 
   auto segmentClobbered = [&]() {
     for (auto grf : clobbered) {
@@ -5900,13 +5936,13 @@ void BoundedRA::insertPushPop(bool useLSCMsg) {
     // Ensure each segment size is power of 2
     for (auto it = segments.begin(); it != segments.end();) {
       auto &sz = (*it).second;
-      if (sz == 1 || sz == 2 || sz == 4 || sz == 8) {
+      if (sz == 1 || sz == 2 || sz == 4 || (sz == 8 && maxGRFSpillFill >= 8)) {
         ++it;
         continue;
       }
       // non-power of 2 found
       auto grf = (*it).first;
-      if (sz > 8) {
+      if (sz > 8 && maxGRFSpillFill >= 8) {
         it = segments.insert(it, std::make_pair(grf + 8, sz - 8));
         sz = 8;
         continue;
