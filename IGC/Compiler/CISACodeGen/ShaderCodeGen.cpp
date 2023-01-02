@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ScalarizerCodeGen.hpp"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
+#include "Compiler/CISACodeGen/AtomicOptPass.hpp"
 #include "Compiler/CISACodeGen/SinkCommonOffsetFromGEP.h"
 #include "Compiler/CISACodeGen/ConstantCoalescing.hpp"
 #include "Compiler/CISACodeGen/CheckInstrTypes.hpp"
@@ -890,6 +891,10 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
     // Replace Unsupported Intrinsics Pass may generate new 64 bit operations.
     // Therefore last 64bit emulation pass must be after the last Replace Unsupported Intrinsics Pass.
     mpm.add(createReplaceUnsupportedIntrinsicsPass());
+
+    if (!ctx.platform.hasFP32GlobalAtomicAdd()) {
+        mpm.add(new AtomicOptPass());
+    }
 
     // When needDPEmu is true, enable Emu64Ops as well for now until
     // DPEmu is able to get rid of all 64bit integer ops fully.

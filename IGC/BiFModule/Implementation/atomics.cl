@@ -1874,6 +1874,8 @@ float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p3f32_i32_i32_f32, )( __l
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+//The atomic emulation pattern is used later in AtomicOptPass.
+//If you change the pattern, you need to make the appropriate changes to AtomicOptPass.
 float SPIRV_OVERLOADABLE SPIRV_BUILTIN(AtomicFAddEXT, _p4f32_i32_i32_f32, )( __generic float *Pointer, int Scope, int Semantics, float Value)
 {
     __builtin_assume((__local float*)Pointer != 0);

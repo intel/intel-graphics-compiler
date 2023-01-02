@@ -18,6 +18,7 @@ namespace llvm {
 void initializeAddImplicitArgsPass(llvm::PassRegistry&);
 void initializeAddressSpaceAliasAnalysisPass(llvm::PassRegistry&);
 void initializeAnnotateUniformAllocasPass(llvm::PassRegistry&);
+void initializeAtomicOptPassPass(llvm::PassRegistry&);
 void initializeAggregateArgumentsAnalysisPass(llvm::PassRegistry&);
 void initializeAlignmentAnalysisPass(llvm::PassRegistry&);
 void initializePreBIImportAnalysisPass(llvm::PassRegistry&);
