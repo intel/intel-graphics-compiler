@@ -714,22 +714,49 @@ CallInst* PromoteBools::promoteCall(CallInst* call)
     auto function = call->getCalledFunction();
     auto functionType = call->getFunctionType();
 
-    if (!function || !typeNeedsPromotion(functionType))
-    {
-        return call;
-    }
-
-    auto newFunction = dyn_cast<Function>(getOrCreatePromotedValue(function));
-    if (newFunction == function)
+    if (!function || (!wasPromotedAnyOf(call->args()) && !typeNeedsPromotion(functionType)))
     {
         return call;
     }
 
     SmallVector<Value*, 8> newCallArguments;
-    for (auto& arg : call->args())
+    auto newFunction = function;
+
+    // If the function wasn't promoted and therefore the signature is not changed
+    // then we must convert promoted operands to the original types.
+    if (!wasPromoted(function))
     {
-        auto promotedArg = convertI1ToI8(getOrCreatePromotedValue(arg), call);
-        newCallArguments.push_back(promotedArg);
+        if (!wasPromotedAnyOf(call->args()))
+        {
+            return call;
+        }
+
+        for (auto& arg : call->args())
+        {
+            Value* newArg = arg;
+            if (wasPromoted(newArg))
+            {
+                newArg = getOrCreatePromotedValue(newArg);
+                if (arg->getType()->isIntegerTy(1) && !newArg->getType()->isIntegerTy(1))
+                {
+                    newArg = convertI8ToI1(newArg, call);
+                }
+            }
+
+            newCallArguments.push_back(newArg);
+        }
+    }
+    else
+    {
+        if (wasPromoted(newFunction) || typeNeedsPromotion(functionType))
+        {
+            newFunction = dyn_cast<Function>(getOrCreatePromotedValue(function));
+        }
+
+        for (auto& arg : call->args())
+        {
+            newCallArguments.push_back(convertI1ToI8(getOrCreatePromotedValue(arg), call));
+        }
     }
 
     auto newCall = CallInst::Create(
