@@ -86,6 +86,8 @@ set(CODEGEN_SOURCES
   GenXStructSplitter.cpp
   GenXDebugLegalization.cpp
   GenXFixInvalidFuncName.cpp
+  GenXGASCastAnalyzer.cpp
+  GenXGASDynamicResolution.cpp
 )
 
 add_library(VCCodeGen STATIC ${CODEGEN_SOURCES})

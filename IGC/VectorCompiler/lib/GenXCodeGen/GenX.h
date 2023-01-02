@@ -125,6 +125,8 @@ ModulePass *createGenXStructSplitterPass();
 FunctionPass *createGenXPredRegionLoweringPass();
 FunctionPass *createGenXDebugLegalizationPass();
 FunctionPass *createGenXFixInvalidFuncNamePass();
+ModulePass *createGenXGASCastWrapperPass();
+FunctionPass *createGenXGASDynamicResolutionPass();
 
 namespace genx {
 

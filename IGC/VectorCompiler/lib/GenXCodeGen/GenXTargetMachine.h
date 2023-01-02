@@ -259,6 +259,8 @@ void initializeGenXPredToSimdCFPass(PassRegistry &);
 void initializeGenXInlineAsmLoweringPass(PassRegistry &);
 void initializeGenXDebugLegalizationPass(PassRegistry &);
 void initializeGenXFixInvalidFuncNamePass(PassRegistry &);
+void initializeGenXGASCastWrapperPass(PassRegistry &);
+void initializeGenXGASDynamicResolutionPass(PassRegistry &);
 } // End llvm namespace
 
 #endif

@@ -154,7 +154,8 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXInlineAsmLoweringPass(registry);
   initializeGenXDebugLegalizationPass(registry);
   initializeGenXFixInvalidFuncNamePass(registry);
-
+  initializeGenXGASCastWrapperPass(registry);
+  initializeGenXGASDynamicResolutionPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -401,6 +402,10 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   /// before GenXLowering. It seems that after GenXThreadPrivateMemory removal
   /// we can remove this run of GenXGEPLowering.
   vc::addPass(PM, createGenXGEPLoweringPass());
+  //  .. include:: GenXGASCastAnalyzer.cpp
+  vc::addPass(PM, createGenXGASCastWrapperPass());
+  //  .. include:: GenXGASDynamicResolution.cpp
+  vc::addPass(PM, createGenXGASDynamicResolutionPass());
   /// .. include:: GenXLoadStoreLowering.cpp
   vc::addPass(PM, createGenXLoadStoreLoweringPass());
   vc::addPass(PM, createGenXThreadPrivateMemoryPass());
