@@ -45,7 +45,7 @@ INLINE int2 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_2x16_i16_v8i
 }
 
 INLINE int __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_1x16_i16_v8i8_pi32_i32(char *mem, int stride) {
-    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, short, int, 2)
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, short, int, 1)
     return ARR_TO_VEC1(int, wi_contrib);
 }
 
@@ -61,12 +61,12 @@ INLINE int4 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_4x32_i8_v8i8
 }
 
 INLINE int2 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_2x32_i8_v8i8_pi32_i32(char *mem, int stride) {
-    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, int, 4)
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, int, 2)
     return ARR_TO_VEC2(int, wi_contrib);
 }
 
 INLINE int __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_1x32_i8_v8i8_pi32_i32(char *mem, int stride) {
-    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, int, 4)
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, int, 1)
     return ARR_TO_VEC1(int, wi_contrib);
 }
 
@@ -87,7 +87,7 @@ INLINE short2 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_2x16_
 }
 
 INLINE short __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_1x16_i16_v8i8_pi32_i32(char *mem, int stride) {
-    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, short, short, 2)
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, short, short, 1)
     return ARR_TO_VEC1(short, wi_contrib);
 }
 
@@ -108,7 +108,7 @@ INLINE short2 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_2x32_
 }
 
 INLINE short __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_1x32_i8_v8i8_pi32_i32(char *mem, int stride) {
-    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 2)
+    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 1)
     return ARR_TO_VEC1(short, wi_contrib);
 }
 

@@ -62,6 +62,8 @@ namespace IGC
 
         std::string GetLoadStoreMatrixFuncName
             (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc);
+        bool ValidateLoadStore
+            (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx);
 
         llvm::ValueMap<llvm::Value *, llvm::Instruction *> PlaceholderInstructions;
         llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;

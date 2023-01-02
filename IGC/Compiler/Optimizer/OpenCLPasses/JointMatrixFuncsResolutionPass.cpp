@@ -112,6 +112,109 @@ static bool isOperandUnsigned(unsigned OperationType, unsigned OperandId) {
     }
 }
 
+struct SupportedParams {
+    int maxRows = -1; /* -1 means: don't check */
+    int rows = -1;
+    int columns = -1;
+    unsigned bitWidth = 0; /* All supported sizes are powers of two, this field is
+                              used as a bitfield with union of suported sizes */
+    unsigned layouts = 0; /* Each bit of this field corresponds to a single layout. */
+};
+
+static SupportedParams getSupportedParams(const JointMatrixTypeDescription *desc, bool useSG16) {
+    /* slices are represented as vectors from <1 x i32> to <8 x i32>, resulting in the maximum slice size: */
+    const unsigned maxSliceBitWidth = 256;
+    SupportedParams params;
+    if (desc->layout == LayoutPackedA) {
+        params.maxRows = 8;
+        params.columns = maxSliceBitWidth / desc->bitWidth;
+        params.bitWidth = 8 | 16;
+        params.layouts = 1 << LayoutRowMajor;
+    } else if (desc->layout == LayoutPackedB) {
+        params.rows = maxSliceBitWidth / desc->bitWidth;
+        params.columns = useSG16 ? 16 : 8;
+        params.bitWidth = 8 | 16;
+        params.layouts |= 1 << LayoutColumnMajor;
+        params.layouts |= 1 << LayoutPackedB;
+        params.layouts |= 1 << LayoutPackedA; /* PackedA means just packed in the new version of spec. */
+    } else { /* accumulator */
+        params.maxRows = maxSliceBitWidth / desc->bitWidth;
+        params.columns = useSG16 ? 16 : 8;
+        params.bitWidth = 8 | 32;
+        params.layouts = 1 << LayoutRowMajor;
+    }
+    return params;
+}
+
+enum ParamsCheckResult : unsigned {
+    ALL_VALID      = 0,
+    INVALID_ROWS   = 1 << 0,
+    INVALID_COLS   = 1 << 1,
+    INVALID_ELEM   = 1 << 2,
+    INVALID_LAYOUT = 1 << 3,
+};
+
+static ParamsCheckResult checkSupportedParams
+        (const JointMatrixTypeDescription *desc, unsigned operationLayout, const SupportedParams &params) {
+    unsigned result = ALL_VALID;
+    if (params.maxRows != -1 && (int)desc->rows > params.maxRows) {
+        result |= INVALID_ROWS;
+    }
+    if (params.rows != -1 && (int)desc->rows != params.rows) {
+        result |= INVALID_ROWS;
+    }
+    if (params.columns != -1 && (int)desc->columns != params.columns) {
+        result |= INVALID_COLS;
+    }
+    if ((params.bitWidth & desc->bitWidth) != desc->bitWidth) {
+        result |= INVALID_ELEM;
+    }
+    if (((1 << operationLayout) & params.layouts) == 0) {
+        result |= INVALID_LAYOUT;
+    }
+    return static_cast<ParamsCheckResult>(result);
+}
+
+static const char *nameLayout(unsigned layout) {
+    switch (layout) {
+        case LayoutPackedA:
+        case LayoutPackedB: return "packed layout";
+        case LayoutRowMajor: return "row major layout";
+        case LayoutColumnMajor: return "column major layout";
+        default: return "unknown";
+    }
+}
+
+bool JointMatrixFuncsResolutionPass::ValidateLoadStore
+        (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc, llvm::Value *ctx) {
+    SupportedParams params = getSupportedParams(desc, m_Ctx->platform.hasExecSize16DPAS());
+    ParamsCheckResult result = checkSupportedParams(desc, operationLayout, params);
+    if (result != ALL_VALID) {
+        std::string msg = "Unsupported JointMatrix operation: ";
+        msg += isLoad ? "load " : "store ";
+        msg += "matrix ";
+        msg += (desc->layout == LayoutPackedA ? "A" : (desc->layout == LayoutPackedB ? "B" : "C"));
+        msg +=  " <" + std::to_string(desc->rows)
+            + " x " + std::to_string(desc->columns)
+            + " x i" + std::to_string(desc->bitWidth)
+            + "> with " + nameLayout(operationLayout);
+        if (result & INVALID_ROWS) {
+            msg += "\n -> unsupported number of rows: " + std::to_string(desc->rows);
+        }
+        if (result & INVALID_COLS) {
+            msg += "\n -> unsupported number of columns: " + std::to_string(desc->columns);
+        }
+        if (result & INVALID_ELEM) {
+            msg += "\n -> unsupported matrix element size: " + std::to_string(desc->bitWidth) + " bits";
+        }
+        if (result & INVALID_LAYOUT) {
+            msg += "\n -> unsupported operation layout";
+        }
+        m_Ctx->EmitError(msg.c_str(), ctx);
+    }
+    return result == ALL_VALID;
+}
+
 std::string JointMatrixFuncsResolutionPass::GetLoadStoreMatrixFuncName
         (bool isLoad, unsigned operationLayout, const JointMatrixTypeDescription *desc)
 {
@@ -314,6 +417,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveLoad(CallInst *CI)
 
     Module *M = CI->getParent()->getModule();
 
+    ValidateLoadStore(true, loadLayout, &desc, CI);
     std::string funcName = GetLoadStoreMatrixFuncName(true, loadLayout, &desc);
     FunctionType *funcType = FunctionType::get(retTy, { ptrVal->getType(), strideVal->getType() }, false);
     std::vector<Value *> Args = { ptrVal, strideVal };
@@ -349,6 +453,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveStore(CallInst *CI)
         matVal = BitCastInst::Create(Instruction::BitCast, matVal, matTy, "matrix.store.cast", CI);
     }
 
+    ValidateLoadStore(false, storeLayout, &desc, CI);
     std::string funcName = GetLoadStoreMatrixFuncName(false, storeLayout, &desc);
     FunctionType *funcType =
         FunctionType::get(Type::getVoidTy(M->getContext()),
