@@ -405,9 +405,8 @@ static std::vector<const char*>
         inputFile = OptSrc.getValue();
     }
 
-    std::vector<const char*> result = {
+    std::vector<const char *> result = {
         "-emit-spirv",
-        "-fcmocl",
     };
 
     // Pass the runtime-specified architecture.
