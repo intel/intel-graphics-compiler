@@ -378,7 +378,7 @@ void CShader::CreateImplicitArgs()
         return;
 
     m_numBlocks = entry->size();
-    m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, 1, "R0");
+    m_R0 = GetNewVariable(8, ISA_TYPE_D, EALIGN_GRF, true, 1, "R0");
     encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
 
     // create variables for implicit args
@@ -2524,7 +2524,7 @@ void CShader::BeginFunction(llvm::Function* F)
         globalSymbolMapping.clear();
         encoder.BeginStackFunction(F);
         // create pre-defined r0
-        m_R0 = GetNewVariable(getGRFSize() / SIZE_DWORD, ISA_TYPE_D, EALIGN_GRF, false, 1, "R0");
+        m_R0 = GetNewVariable(8, ISA_TYPE_D, EALIGN_GRF, true, 1, "R0");
         encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
     }
     else
