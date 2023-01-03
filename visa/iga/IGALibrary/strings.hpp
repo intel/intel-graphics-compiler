@@ -50,7 +50,7 @@ size_t stringLength(const char *);
 
 template <size_t N> size_t stringLength(const char str[N]) {
 #if _WIN32
-  return ::strlen_s(str, N);
+  return ::strnlen_s(str, N);
 #else
   return ::strlen(str);
 #endif
