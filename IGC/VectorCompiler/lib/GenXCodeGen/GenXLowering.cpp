@@ -271,6 +271,9 @@ private:
   bool lowerStackSave(CallInst *CI);
   bool lowerStackRestore(CallInst *CI);
 
+  Value *swapLowHighHalves(IRBuilder<> &Builder, Value *Arg) const;
+  bool lowerByteSwap(CallInst *CI);
+
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
 
@@ -3388,6 +3391,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerFMulAdd(CI);
     case Intrinsic::bitreverse:
       return lowerBitreverse(CI);
+    case Intrinsic::bswap:
+      return lowerByteSwap(CI);
     case Intrinsic::fshl:
     case Intrinsic::fshr:
       return lowerFunnelShift(CI, IntrinsicID);
@@ -5613,6 +5618,110 @@ bool GenXLowering::lowerBitreverse(CallInst *CI) {
   return true;
 }
 
+Value *GenXLowering::swapLowHighHalves(IRBuilder<> &Builder, Value *Arg) const {
+  IGC_ASSERT(isa<IGCLLVM::FixedVectorType>(Arg->getType()));
+
+  Module *M = Builder.GetInsertPoint()->getModule();
+
+  auto *VTy = cast<IGCLLVM::FixedVectorType>(Arg->getType());
+  auto *ETy = VTy->getElementType();
+
+  auto ElementBits = ETy->getIntegerBitWidth();
+  auto NumElements = VTy->getNumElements();
+
+  // If target platform supports bit rotate operations, it's more efficient to
+  // rotate a vector element by a half of it's bit width as follows
+  //   %res = @rol(<K x iN> %arg, N / 2)
+  if ((ElementBits < QWordBits && ST->hasBitRotate()) || ST->has64BitRotate()) {
+    auto *Func = GenXIntrinsic::getAnyDeclaration(M, GenXIntrinsic::genx_rol,
+                                                  {VTy, VTy});
+    auto *AmountV = ConstantVector::getSplat(IGCLLVM::getElementCount(NumElements),
+                                             ConstantInt::get(ETy, ElementBits / 2));
+    return Builder.CreateCall(Func, {Arg, AmountV});
+  }
+
+  // Swap low and high halves for each vector element as follows:
+  //   %cast = bitcast <K x iN> %arg to <2*K x iN/2>
+  //   %stride = 2
+  //   %lo = @rdregion(%cast, %stride, 0)
+  //   %hi = @rdregion(%cast, %stride, (N/2) / ByteBits)
+  //   %tmp = @wrregion(undef, %lo, %stride, (N/2) / ByteBits)
+  //   %res = @wrregion(%tmp, %hi, %stride, 0)
+  auto *SliceETy = Builder.getIntNTy(ElementBits / 2);
+  auto *SliceVTy = IGCLLVM::FixedVectorType::get(SliceETy, NumElements * 2);
+  auto *SliceHalfVTy = IGCLLVM::FixedVectorType::get(SliceETy, NumElements);
+
+  auto *Cast = Builder.CreateBitCast(Arg, SliceVTy);
+
+  auto *RdRgnFunc = GenXIntrinsic::getAnyDeclaration(
+      M, GenXIntrinsic::genx_rdregioni,
+      {SliceHalfVTy, SliceVTy, Builder.getInt16Ty()});
+  auto *WrRgnFunc = GenXIntrinsic::getAnyDeclaration(
+      M, GenXIntrinsic::genx_wrregioni,
+      {SliceVTy, SliceHalfVTy, Builder.getInt16Ty(), Builder.getInt1Ty()});
+
+  auto *VStride = Builder.getInt32(2);
+  auto *Width = Builder.getInt32(1);
+  auto *Stride = Builder.getInt32(0);
+  auto *ParentWidth = UndefValue::get(Builder.getInt32Ty());
+
+  auto *LoOffset = Builder.getInt16(0);
+  auto *HiOffset = Builder.getInt16(SliceETy->getIntegerBitWidth() / ByteBits);
+
+  auto *Lo = Builder.CreateCall(
+      RdRgnFunc, {Cast, VStride, Width, Stride, LoOffset, ParentWidth});
+  auto *Hi = Builder.CreateCall(
+      RdRgnFunc, {Cast, VStride, Width, Stride, HiOffset, ParentWidth});
+
+  auto *LoToHi = Builder.CreateCall(
+      WrRgnFunc, {UndefValue::get(SliceVTy), Lo, VStride, Width, Stride,
+                  HiOffset, ParentWidth, Builder.getTrue()});
+  auto *HiToLo =
+      Builder.CreateCall(WrRgnFunc, {LoToHi, Hi, VStride, Width, Stride,
+                                     LoOffset, ParentWidth, Builder.getTrue()});
+
+  return HiToLo;
+}
+
+//
+// Implement byte reversal logic.
+// Undo some of LLVM's InstCombine transformations by expanding
+//   %res = call iN @llvm.bswap.iN(iN %arg)
+// into a sequence of rdregion/wrregion or rotate-left operations
+//
+bool GenXLowering::lowerByteSwap(CallInst *CI) {
+  IGC_ASSERT(CI);
+  Type *BSwapTy = CI->getType();
+  IGC_ASSERT(BSwapTy->isIntOrIntVectorTy());
+  unsigned ElementBits = BSwapTy->getScalarSizeInBits();
+  IGC_ASSERT_MESSAGE(isPowerOf2_32(ElementBits) && ElementBits >= WordBits &&
+                         ElementBits <= QWordBits,
+                     "Unexpected integer type of llvm.bswap intrinsic");
+  unsigned InputNumElements = 1;
+  if (auto *BSwapVecTy = dyn_cast<IGCLLVM::FixedVectorType>(BSwapTy)) {
+    InputNumElements = BSwapVecTy->getNumElements();
+  }
+  unsigned FullBitWidth = ElementBits * InputNumElements;
+
+  llvm::IRBuilder<> Builder(CI);
+
+  auto *IntSliceV = CI->getArgOperand(0);
+
+  for (auto SliceBits = WordBits; SliceBits <= ElementBits; SliceBits *= 2) {
+    auto SliceNumElements = FullBitWidth / SliceBits;
+
+    auto *SliceETy = Builder.getIntNTy(SliceBits);
+    auto *SliceVTy = IGCLLVM::FixedVectorType::get(SliceETy, SliceNumElements);
+
+    auto *Cast = Builder.CreateBitCast(IntSliceV, SliceVTy);
+    IntSliceV = swapLowHighHalves(Builder, Cast);
+  }
+
+  CI->replaceAllUsesWith(Builder.CreateBitCast(IntSliceV, BSwapTy));
+  ToErase.push_back(CI);
+  return true;
+}
+
 bool GenXLowering::lowerFunnelShift(CallInst *CI, unsigned IntrinsicID) {
   IGC_ASSERT(CI);
   unsigned BitWidth = CI->getType()->getScalarSizeInBits();
@@ -5683,10 +5792,9 @@ bool GenXLowering::lowerAbs(CallInst *CI) {
     // 'is_int_min_poison' argument. Drop that for genx.absi
     Args.assign({CI->getArgOperand(0)});
   } else
-    IGC_ASSERT_MESSAGE(
-        Ty->isFPOrFPVectorTy(), "Unexpected type of abs/fabs intrinsic");
-  auto *Decl = GenXIntrinsic::getGenXDeclaration(
-      CI->getModule(), AbsID, {Ty});
+    IGC_ASSERT_MESSAGE(Ty->isFPOrFPVectorTy(),
+                       "Unexpected type of abs/fabs intrinsic");
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), AbsID, {Ty});
   IRBuilder<> Builder{CI};
   auto *Res = Builder.CreateCall(Decl, Args, CI->getName());
   CI->replaceAllUsesWith(Res);
