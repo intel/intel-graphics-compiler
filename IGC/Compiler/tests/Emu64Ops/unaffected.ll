@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --platformdg2 --igc-emu64ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Emu64Ops : Unaffected instructions check
 ; ------------------------------------------------

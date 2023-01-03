@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -regkey ForcePartialInt64=1 --igc-emu64ops -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --platformdg2 -regkey ForcePartialInt64=1 --igc-emu64ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Emu64Ops
 ; ------------------------------------------------

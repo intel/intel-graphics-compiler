@@ -8,7 +8,7 @@
 ; UNSUPPORTED: system-windows
 ; REQUIRES: regkeys
 ;
-; RUN: not igc_opt --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
+; RUN: not igc_opt -platformdg2 --igc-PartialEmuI64Ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PartialEmuI64Ops : assert check
 ; ------------------------------------------------
