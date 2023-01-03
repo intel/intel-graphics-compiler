@@ -339,12 +339,12 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator&
         return false;
     }
 
-    instBase[1] = GetNextInstruction(instBase[0]);
+    instBase[1] = instBase[0]->getNextNonDebugInstruction();
 
     if (instBase[1] &&
         instBase[1]->getOpcode() != opcode)
     {
-        instBase[1] = GetNextInstruction(instBase[1]);
+        instBase[1] = instBase[1]->getNextNonDebugInstruction();
     }
 
     if (instBase[1] == nullptr ||
@@ -368,12 +368,12 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator&
     }
     for (int i = 2; i < 4; i++)
     {
-        instBase[i] = GetNextInstruction(instBase[i - 1]);
+        instBase[i] = instBase[i - 1]->getNextNonDebugInstruction();
 
         if (instBase[i] &&
             instBase[i - 1]->getOpcode() != instBase[i]->getOpcode())
         {
-            instBase[i] = GetNextInstruction(instBase[i]);
+            instBase[i] = instBase[i]->getNextNonDebugInstruction();
         }
 
         if (!instBase[i] ||

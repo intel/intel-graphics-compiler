@@ -324,21 +324,6 @@ namespace IGC
     // All subsequent calls to this function will get the entry set by the first call.
     llvm::Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils* pM, IGC::ModuleMetaData* pModMD);
 
-    // \brief Get next instruction, returning null if it's the last of the BB.
-    // This is the replacement of Instruction::getNextNode(), since getNextNode()
-    // on last inst of BB will return sentinel node as instruction, which will
-    // cause memory corruption.  A better solution is to switch to iterator and
-    // avoid using getNextNode().
-    inline llvm::Instruction* GetNextInstruction(llvm::Instruction* inst)
-    {
-        llvm::BasicBlock::iterator I = llvm::BasicBlock::iterator(inst);
-        if (++I == inst->getParent()->end())
-        {
-            return nullptr;
-        }
-        return &(*I);
-    }
-
     template <typename T>
     inline bool RTWriteHasSource0Alpha(
         const T* rtWrite,

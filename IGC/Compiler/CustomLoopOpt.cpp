@@ -155,8 +155,8 @@ bool CustomLoopVersioning::detectLoop(Loop* loop,
     BasicBlock* header = loop->getHeader();
     BasicBlock* body = loop->getLoopLatch();
 
-    Instruction* i0 = body->getFirstNonPHI();
-    Instruction* i1 = GetNextInstruction(i0);
+    Instruction* i0 = body->getFirstNonPHIOrDbg();
+    Instruction* i1 = i0->getNextNonDebugInstruction();
 
     CallInst* imax = dyn_cast<CallInst>(i0);
     CallInst* imin = i1 ? dyn_cast<CallInst>(i1) : nullptr;
@@ -289,8 +289,8 @@ void CustomLoopVersioning::rewriteLoopSeg1(Loop* loop,
 
     fcmp->setOperand(1, interval_x);
 
-    Instruction* i0 = body->getFirstNonPHI();
-    Instruction* i1 = GetNextInstruction(i0);
+    Instruction* i0 = body->getFirstNonPHIOrDbg();
+    Instruction* i1 = i0->getNextNonDebugInstruction();
 
     IntrinsicInst* imax = cast<IntrinsicInst>(i0);
     IntrinsicInst* imin = cast<IntrinsicInst>(i1);
@@ -366,7 +366,7 @@ void CustomLoopVersioning::hoistSeg2Invariant(Loop* loop,
         if (intrin &&
             intrin->getIntrinsicID() == Intrinsic::exp2)
         {
-            IRBuilder<> irb(preHdr->getFirstNonPHI());
+            IRBuilder<> irb(preHdr->getFirstNonPHIOrDbg());
             irb.setFastMathFlags(fmul_log2->getFastMathFlags());
 
             Function* flog =
@@ -410,8 +410,8 @@ void CustomLoopVersioning::rewriteLoopSeg2(Loop* loop,
     v->setFast(true);
     fcmp->setOperand(1, v);
 
-    Instruction* i0 = body->getFirstNonPHI();
-    Instruction* i1 = GetNextInstruction(i0);
+    Instruction* i0 = body->getFirstNonPHIOrDbg();
+    Instruction* i1 = i0->getNextNonDebugInstruction();
 
     IntrinsicInst* imax = cast<IntrinsicInst>(i0);
     IntrinsicInst* imin = cast<IntrinsicInst>(i1);
@@ -463,8 +463,8 @@ void CustomLoopVersioning::rewriteLoopSeg2(Loop* loop,
 void CustomLoopVersioning::rewriteLoopSeg3(BasicBlock* bb,
     Value* interval_y)
 {
-    Instruction* i0 = bb->getFirstNonPHI();
-    Instruction* i1 = GetNextInstruction(i0);
+    Instruction* i0 = bb->getFirstNonPHIOrDbg();
+    Instruction* i1 = i0->getNextNonDebugInstruction();
 
     IntrinsicInst* imax = cast<IntrinsicInst>(i0);
     IntrinsicInst* imin = cast<IntrinsicInst>(i1);
@@ -1022,7 +1022,7 @@ bool LoopHoistConstant::runOnLoop(Loop* L, LPPassManager& LPM)
     IntrinsicInst* MinInst = nullptr;
 
     // Match the loop induction variable
-    InductionPostInc = dyn_cast<BinaryOperator>(Header->getFirstNonPHI());
+    InductionPostInc = dyn_cast<BinaryOperator>(Header->getFirstNonPHIOrDbg());
     if (InductionPostInc && InductionPostInc->getOpcode() == BinaryOperator::FMul)
     {
         InductionPreInc = dyn_cast<PHINode>(InductionPostInc->getOperand(0));
@@ -1053,7 +1053,7 @@ bool LoopHoistConstant::runOnLoop(Loop* L, LPPassManager& LPM)
 
     // Match the minnum comparison between the induction var and the loop size
     // Should appear right after the post-incremented induction variable
-    MinInst = dyn_cast<IntrinsicInst>(InductionPostInc->getNextNode());
+    MinInst = dyn_cast<IntrinsicInst>(InductionPostInc->getNextNonDebugInstruction());
     if (MinInst && MinInst->getIntrinsicID() == llvm::Intrinsic::minnum)
     {
         Value* min1 = MinInst->getOperand(0);
