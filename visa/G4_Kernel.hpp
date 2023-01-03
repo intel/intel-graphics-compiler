@@ -61,7 +61,7 @@ public:
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
   void markInst(G4_INST *i) {
-    MUST_BE_TRUE(whichRAPass == FirstRAPass,
+    vISA_ASSERT(whichRAPass == FirstRAPass,
                  "Unexpectedly marking in re-RA pass.");
     markedInsts.insert(i);
   }

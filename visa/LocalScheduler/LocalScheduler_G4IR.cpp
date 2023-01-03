@@ -29,7 +29,7 @@ void LocalScheduler::localScheduling() {
 
   DEBUG_VERBOSE("[Scheduling]: Starting...");
   BB_LIST_ITER ib(fg.begin()), bend(fg.end());
-  MUST_BE_TRUE(ib != bend, ERROR_SCHEDULER);
+  vISA_ASSERT(ib != bend, ERROR_SCHEDULER);
 
   VISA_BB_INFO *bbInfo =
       (VISA_BB_INFO *)mem.alloc(fg.size() * sizeof(VISA_BB_INFO));
@@ -504,7 +504,7 @@ void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
       unsigned divisor = kernel->numEltPerGRF<Type_UB>();
       int baseBucket = GRF_BUCKET;
       int endingBucket = baseBucket + opnd->getLinearizedEnd() / divisor;
-      MUST_BE_TRUE(endingBucket >= startingBucket,
+      vISA_ASSERT(endingBucket >= startingBucket,
                    "Ending bucket less than starting bucket");
       Mask mask = getMaskForOp(kernel->fg.builder, inst, opnd_num, divisor);
       int numBuckets = endingBucket - startingBucket + 1;
@@ -1258,7 +1258,7 @@ bool DDD::hasSameSourceOneDPAS(G4_INST *curInst, G4_INST *nextInst,
             {
                 if (i == 1)
                 {
-                    vASSERT(0);
+                    vASSERT(false);
                 }
                 return false;
             }
@@ -2795,9 +2795,8 @@ void DDD::DumpDotFile(G4_BB *bb) {
   auto fileName = ss.str();
   std::ofstream ofile(fileName, std::ios::out);
   if (!ofile) {
-    MUST_BE_TRUE(false, "[Scheduling]:ERROR: Cannot open file "
-                            << fileName << ", dump failed."
-                            << "\n");
+    vISA_ASSERT_INPUT(false, "[Scheduling] Cannot open file %s, dump failed",
+        fileName.c_str());
   }
   ofile << "digraph "
         << "BB" << bb->getId() << " {\n";

@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include <iostream>
 #include <string>
 
+#include "Assertions.h"
 #include "BinaryCISAEmission.h"
 #include "Common_ISA.h"
 #include "Common_ISA_framework.h"
@@ -74,7 +75,7 @@ int parseBinary(std::string fileName, int argc, const char *argv[],
 
   CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_DEFAULT, builderOption,
                                  platform, argc, argv);
-  MUST_BE_TRUE(cisa_builder, "cisa_builder is NULL.");
+  vISA_ASSERT(cisa_builder, "cisa_builder is NULL.");
 
   std::vector<VISAKernel *> kernels;
   bool success = readIsaBinaryNG(isafilebuf, cisa_builder, kernels, NULL,

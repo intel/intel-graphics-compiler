@@ -70,7 +70,7 @@ static void CopySrcToMsgPayload(IR_Builder *IRB, G4_ExecSize execSize,
     numRegs = 1;
   }
 
-  ASSERT_USER((numRegs & (numRegs - 1)) == 0,
+  vISA_ASSERT_INPUT((numRegs & (numRegs - 1)) == 0,
               "The batch size of a source message copy (i.e., native raw "
               "operand size) MUST be power-of-2 multiple of GRFs!");
 
@@ -111,7 +111,7 @@ static void Copy_Source_To_Payload(IR_Builder *IRB, G4_ExecSize batchExSize,
                                    G4_Declare *msg, unsigned &regOff,
                                    G4_SrcRegRegion *source, uint32_t numElts,
                                    uint32_t eMask) {
-  ASSERT_USER(batchExSize == 1 || batchExSize == 2 || batchExSize == 4 ||
+  vISA_ASSERT_INPUT(batchExSize == 1 || batchExSize == 2 || batchExSize == 4 ||
                   batchExSize == 8 || batchExSize == 16 || batchExSize == 32,
               "Invalid execution size for message payload copy!");
 
@@ -175,7 +175,7 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2], unsigned sizes[2],
     }
 
     const G4_Declare *srcDcl = getDeclare(srcReg);
-    ASSERT_USER(srcDcl, "Declaration is missing!");
+    vISA_ASSERT_INPUT(srcDcl, "Declaration is missing!");
 
     // this is the size of message payload that holds srcReg.
     // (Thus, this size >= srcReg's size!)
@@ -204,7 +204,7 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2], unsigned sizes[2],
         // part in the split message.
         ++current;
 
-        ASSERT_USER(i > 0, "Split position MUST NOT be at index 0!");
+        vISA_ASSERT_INPUT(i > 0, "Split position MUST NOT be at index 0!");
         splitPos = i;
         break;
       }
@@ -231,7 +231,7 @@ void IR_Builder::preparePayload(G4_SrcRegRegion *msgs[2], unsigned sizes[2],
     // Check one more consecutive regions.
     ++current;
 
-    ASSERT_USER(i > 0, "Split position MUST NOT be at index 0!");
+    vISA_ASSERT_INPUT(i > 0, "Split position MUST NOT be at index 0!");
 
     // Record the 2nd consecutive region.
     splitPos = i;
@@ -294,12 +294,12 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
     uint32_t payloadWidth, // number of elements for one payload in the send.
     uint32_t srcSize,      // number of elements provided by src
     std::initializer_list<G4_SrcRegRegion *> srcs, VISA_EMask_Ctrl emask) {
-  MUST_BE_TRUE(sourceAlignment != 0 && payloadAlignment != 0,
+  vISA_ASSERT_INPUT(sourceAlignment != 0 && payloadAlignment != 0,
                "alignment mustn't be 0");
-  MUST_BE_TRUE(payloadAlignment % 4 ==
+  vISA_ASSERT_INPUT(payloadAlignment % 4 ==
                    0, // we could relax this with smarter code below
                "result alignment must be multiple of 4");
-  MUST_BE_TRUE(srcs.size() > 0, "empty initializer list");
+  vISA_ASSERT_INPUT(srcs.size() > 0, "empty initializer list");
 
   // First check for trivial cases.  If all are null, then we can
   // return null.  This is the case for operations like load's src1 and
@@ -321,7 +321,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
     return src0;
   } else if (onlySrc0NonNull) {
     const G4_Declare *src0Dcl = getDeclare(src0);
-    MUST_BE_TRUE(src0Dcl, "declaration missing");
+    vISA_ASSERT_INPUT(src0Dcl, "declaration missing");
     unsigned src0Size = src0Dcl->getTotalElems() * src0Dcl->getElemSize();
     if (src0Size % sourceAlignment == 0 && src0Size % payloadAlignment == 0) {
       return src0;

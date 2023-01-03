@@ -122,7 +122,7 @@ public:
       scratchOffset = inst->asFillIntrinsic()->getOffset();
       size = inst->asFillIntrinsic()->getNumRows();
     } else {
-      MUST_BE_TRUE(false, "unknown inst type");
+      vISA_ASSERT(false, "unknown inst type");
     }
   }
 };

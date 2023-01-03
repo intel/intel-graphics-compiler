@@ -96,9 +96,9 @@ public:
   }
 
   bool isAllSet(unsigned startIndex, unsigned endIndex) const {
-    MUST_BE_TRUE(startIndex <= endIndex, "Invalid bitSet Index");
-    MUST_BE_TRUE(startIndex < m_Size, "Invalid bitSet Index");
-    MUST_BE_TRUE(endIndex < m_Size, "Invalid bitSet Index");
+    vISA_ASSERT(startIndex <= endIndex, "Invalid bitSet Index");
+    vISA_ASSERT(startIndex < m_Size, "Invalid bitSet Index");
+    vISA_ASSERT(endIndex < m_Size, "Invalid bitSet Index");
 
     unsigned start = startIndex / NUM_BITS_PER_ELT;
     unsigned end = endIndex / NUM_BITS_PER_ELT;
@@ -141,9 +141,9 @@ public:
   }
 
   bool isEmpty(unsigned startIndex, unsigned endIndex) const {
-    MUST_BE_TRUE(startIndex <= endIndex, "Invalid bitSet Index");
-    MUST_BE_TRUE(startIndex < m_Size, "Invalid bitSet Index");
-    MUST_BE_TRUE(endIndex < m_Size, "Invalid bitSet Index");
+    vISA_ASSERT(startIndex <= endIndex, "Invalid bitSet Index");
+    vISA_ASSERT(startIndex < m_Size, "Invalid bitSet Index");
+    vISA_ASSERT(endIndex < m_Size, "Invalid bitSet Index");
 
     unsigned start = startIndex / NUM_BITS_PER_ELT;
     unsigned end = endIndex / NUM_BITS_PER_ELT;
@@ -200,7 +200,7 @@ public:
   }
 
   BITSET_ARRAY_TYPE getElt(unsigned eltIndex) const {
-    MUST_BE_TRUE(eltIndex < m_Size, "Invalid bitSet Index");
+    vISA_ASSERT(eltIndex < m_Size, "Invalid bitSet Index");
     return m_BitSetArray[eltIndex];
   }
 
@@ -346,7 +346,7 @@ public:
   }
 
   BITSET_ARRAY_TYPE getElt(unsigned Elt) const {
-    MUST_BE_TRUE(Elt < NumWords, "Invalid FixedBitSet Element Index");
+    vISA_ASSERT(Elt < NumWords, "Invalid FixedBitSet Element Index");
     return Bits[Elt];
   }
 
@@ -484,13 +484,13 @@ public:
           CachedWord = MI->second.getElt(Elt);
           if (CachedWord) {
             int NextBit = advanceToNextBit(-1);
-            MUST_BE_TRUE(0 <= NextBit && NextBit < NUM_BITS_PER_ELT,
+            vISA_ASSERT(0 <= NextBit && NextBit < NUM_BITS_PER_ELT,
                          "Non-zero word has no bit set or out of range bit!");
             Bit = NextBit;
             break;
           }
         }
-        MUST_BE_TRUE(Bit < NUM_BITS_PER_ELT,
+        vISA_ASSERT(Bit < NUM_BITS_PER_ELT,
                      "Bit position is beyond the word!");
       }
     }
@@ -528,7 +528,7 @@ public:
           CachedWord = MI->second.getElt(Elt);
           if (CachedWord) {
             int NextBit = advanceToNextBit(-1);
-            MUST_BE_TRUE(0 <= NextBit && NextBit < NUM_BITS_PER_ELT,
+            vISA_ASSERT(0 <= NextBit && NextBit < NUM_BITS_PER_ELT,
                          "Non-zero word has no bit set or out of range bit!");
             Bit = NextBit;
             return *this;
@@ -767,7 +767,7 @@ public:
               CachedWord = LW & RW;
               if (CachedWord) {
                 int NextBit = advanceToNextBit(-1);
-                MUST_BE_TRUE(
+                vISA_ASSERT(
                     0 <= NextBit && NextBit < NUM_BITS_PER_ELT,
                     "Non-zero word has no bit set or out of range bit!");
                 Bit = NextBit;
@@ -832,7 +832,7 @@ public:
             CachedWord = LW & RW;
             if (CachedWord) {
               int NextBit = advanceToNextBit(-1);
-              MUST_BE_TRUE(0 <= NextBit && NextBit < NUM_BITS_PER_ELT,
+              vISA_ASSERT(0 <= NextBit && NextBit < NUM_BITS_PER_ELT,
                            "Non-zero word has no bit set or out of range bit!");
               Bit = NextBit;
               return *this;

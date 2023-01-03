@@ -93,7 +93,7 @@ BankConflict BankConflictPass::setupBankAccordingToSiblingOperand(
     BankConflict assignedBank, unsigned offset, bool oneGRFBank) {
   BankConflict tgtBank;
 
-  MUST_BE_TRUE(assignedBank != BANK_CONFLICT_NONE,
+  vISA_ASSERT(assignedBank != BANK_CONFLICT_NONE,
                "sibling bank is not assigned");
 
   // Set according to sibling
@@ -1788,7 +1788,7 @@ void Interference::markInterferenceForSend(G4_BB *bb, G4_INST *inst,
         int sreg;
         G4_VarBase *preg = localLR->getPhyReg(sreg);
 
-        MUST_BE_TRUE(preg->isGreg(), "Register in dst was not GRF");
+        vISA_ASSERT(preg->isGreg(), "Register in dst was not GRF");
 
         isDstLocallyAssigned = true;
         dstPreg = preg->asGreg()->getRegNum();
@@ -1831,7 +1831,7 @@ void Interference::markInterferenceForSend(G4_BB *bb, G4_INST *inst,
               G4_VarBase *preg = localLR->getPhyReg(sreg);
               int numrows = localLR->getTopDcl()->getNumRows();
 
-              MUST_BE_TRUE(preg->isGreg(), "Register in src was not GRF");
+              vISA_ASSERT(preg->isGreg(), "Register in src was not GRF");
 
               int reg = preg->asGreg()->getRegNum();
 
@@ -1880,7 +1880,7 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
         int sreg;
         G4_VarBase *preg = localLR->getPhyReg(sreg);
 
-        MUST_BE_TRUE(preg->isGreg(), "Register in dst was not GRF");
+        vISA_ASSERT(preg->isGreg(), "Register in dst was not GRF");
 
         isDstLocallyAssigned = true;
         dstPreg = preg->asGreg()->getRegNum();
@@ -1923,7 +1923,7 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
               if (localLR && localLR->getAssigned()) {
                 G4_VarBase *preg = localLR->getPhyReg(sreg);
 
-                MUST_BE_TRUE(preg->isGreg(), "Register in src was not GRF");
+                vISA_ASSERT(preg->isGreg(), "Register in src was not GRF");
                 srcReg = preg->asGreg()->getRegNum();
                 isSrcEvenAlign = (srcReg % 2 == 0);
               }
@@ -1975,7 +1975,7 @@ void Interference::markInterferenceToAvoidDstSrcOverlap(G4_BB *bb,
                     G4_VarBase *preg = localLR->getPhyReg(sreg);
                     numrows = localLR->getTopDcl()->getNumRows();
 
-                    MUST_BE_TRUE(preg->isGreg(), "Register in src was not GRF");
+                    vISA_ASSERT(preg->isGreg(), "Register in src was not GRF");
 
                     reg = preg->asGreg()->getRegNum();
 #ifdef DEBUG_VERBOSE_ON
@@ -2142,7 +2142,7 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live) {
         auto fcall = kernel.fg.builder->getFcallInfo(bb->back());
         G4_Declare *arg = kernel.fg.builder->getStackCallArg();
         G4_Declare *ret = kernel.fg.builder->getStackCallRet();
-        MUST_BE_TRUE(fcall, "fcall info not found");
+        vISA_ASSERT(fcall != std::nullopt, "fcall info not found");
         uint16_t retSize = fcall->getRetSize();
         uint16_t argSize = fcall->getArgSize();
         if (ret && retSize > 0 && ret->getRegVar()) {
@@ -2298,7 +2298,7 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitSet &live) {
           lrs[id]->checkForInfiniteSpillCost(bb, i);
         }
       } else {
-        MUST_BE_TRUE((inst->opcode() == G4_sel || inst->opcode() == G4_csel) &&
+        vISA_ASSERT((inst->opcode() == G4_sel || inst->opcode() == G4_csel) &&
                          inst->getCondMod() != NULL,
                      "Invalid CondMod");
       }
@@ -2857,8 +2857,8 @@ void Augmentation::updateDstMask(G4_INST *inst, bool checkCmodOnly) {
       mask.resize(size);
     }
 
-    MUST_BE_TRUE(mask.size() > 0,
-                 "Valid mask not found for dcl " << topdcl->getName());
+    vISA_ASSERT(mask.size() > 0,
+        "Valid mask not found for dcl %s", topdcl->getName());
 
     unsigned short hstride, elemSize;
     short row, subReg;
@@ -2909,9 +2909,9 @@ void Augmentation::updateDstMask(G4_INST *inst, bool checkCmodOnly) {
     for (unsigned i = dclOffset + startByte; i <= rb;
          i += (hstride * elemSize)) {
       for (int j = 0; j < elemSize; j++) {
-        MUST_BE_TRUE2(
+        vISA_ASSERT(
             i + j < size,
-            "updateDstMask writing past end of mask array size:" << size, inst);
+            "updateDstMask writing past end of mask array size: %d", size);
         mask[i + j] |= curEMBit;
       }
       if (curEMBit != NOMASK_BYTE) {
@@ -3126,7 +3126,7 @@ void Augmentation::markNonDefaultDstRgn(G4_INST *inst, G4_Operand *opnd) {
   } else if (opnd->isCondMod()) {
     condMod = opnd->asCondMod();
   } else {
-    MUST_BE_TRUE(false, "Don't know how to handle this type of operand");
+    vISA_ASSERT(false, "Don't know how to handle this type of operand");
   }
 
   // Handle condMod
@@ -3829,7 +3829,7 @@ void Augmentation::handleSIMDIntf(G4_Declare *firstDcl, G4_Declare *secondDcl,
                                       Interference &intf) {
     unsigned numRows = lraAssigned->getNumRows();
     const G4_VarBase *preg = lraAssigned->getRegVar()->getPhyReg();
-    MUST_BE_TRUE(preg->isGreg(),
+    vISA_ASSERT(preg->isGreg(),
                  "Expecting a physical register during building interference "
                  "among incompatible masks");
     unsigned start = preg->asGreg()->getRegNum();
@@ -4761,7 +4761,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
         G4_VarBase *preg = localLR->getPhyReg(sreg);
         numrows = localLR->getTopDcl()->getNumRows();
 
-        MUST_BE_TRUE(preg->isGreg(), "Register in dst was not GRF");
+        vISA_ASSERT(preg->isGreg(), "Register in dst was not GRF");
 
         reg = preg->asGreg()->getRegNum();
 
@@ -4864,7 +4864,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
           G4_VarBase *preg = localLR->getPhyReg(sreg);
           int numrows = localLR->getTopDcl()->getNumRows();
 
-          MUST_BE_TRUE(preg->isGreg(), "Register in src was not GRF");
+          vISA_ASSERT(preg->isGreg(), "Register in src was not GRF");
 
           int reg = preg->asGreg()->getRegNum();
 
@@ -5125,7 +5125,7 @@ void GraphColor::getExtraInterferenceInfo() {
 
       // Must have a KeyDeclare
       if (!keyDeclare) {
-        vASSERT(0);
+        vASSERT(false);
         return;
       }
 
@@ -5157,7 +5157,7 @@ void GraphColor::getExtraInterferenceInfo() {
       *buf_ptr = '\0';
       keyDeclare = findDeclare(stringBuf);
       if (!keyDeclare) {
-        vASSERT(0);
+        vASSERT(false);
         return;
       }
       buf_ptr = stringBuf;
@@ -5737,7 +5737,7 @@ void GraphColor::determineColorOrdering() {
       j++;
     }
   }
-  MUST_BE_TRUE(j == numUnassignedVar, ERROR_GRAPHCOLOR);
+  vISA_ASSERT(j == numUnassignedVar, ERROR_GRAPHCOLOR);
 
   //
   // sort the live range array
@@ -5838,7 +5838,7 @@ void PhyRegUsage::updateRegUsage(LiveRange *lr) {
         dcl->getNumRows());
   }
   else {
-    MUST_BE_TRUE(false, ERROR_GRAPHCOLOR); // un-handled reg type
+    vISA_ASSERT(false, ERROR_GRAPHCOLOR); // un-handled reg type
   }
 }
 
@@ -6270,7 +6270,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
     unsigned count = 0;
     for (auto checkItem : spilledLRs) {
       if (checkItem == item) {
-        MUST_BE_TRUE(count == 0, "Duplicate entry found in spilledLRs");
+        vISA_ASSERT(count == 0, "Duplicate entry found in spilledLRs");
         count++;
       }
     }
@@ -6278,20 +6278,20 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
 
   // Verify that none of spilledLRs have an allocation
   for (auto lr : spilledLRs) {
-    MUST_BE_TRUE(lr->getPhyReg() == nullptr,
+    vISA_ASSERT(lr->getPhyReg() == nullptr,
                  "Spilled LR contains valid allocation");
   }
 
   // Verify that all spilled LRs are synced
   for (auto lr : spilledLRs) {
-    MUST_BE_TRUE(lr->isSpilled(),
+    vISA_ASSERT(lr->isSpilled(),
                  "LR not marked as spilled, but inserted in spilledLRs list");
   }
 
   // Verify if all LRs have either an allocation or are spilled
   for (auto lr : colorOrder) {
     if (!kernel.fg.isPseudoDcl(lr->getDcl())) {
-      MUST_BE_TRUE(lr->isSpilled() || lr->getPhyReg() ||
+      vISA_ASSERT(lr->isSpilled() || lr->getPhyReg() ||
                        lr->getDcl()->isSpilled(),
                    "Range without allocation and not spilled");
     }
@@ -6625,7 +6625,7 @@ void GraphColor::gatherScatterForbiddenWA() {
             lrs[dcl->getRegVar()->getId()]->markForbidden(
                 kernel.getNumRegTotal() - 1, 1);
           } else if (lenInSend > opndLen) {
-            MUST_BE_TRUE(false,
+            vISA_ASSERT(false,
                          "mismatch between len in send and that of operand");
           }
         }
@@ -6661,7 +6661,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     }
 
     reserveSpillSize = spillRegSize + indrSpillRegSize;
-    MUST_BE_TRUE(reserveSpillSize < kernel.getNumCalleeSaveRegs(),
+    vISA_ASSERT(reserveSpillSize < kernel.getNumCalleeSaveRegs(),
                  "Invalid reserveSpillSize in fail-safe RA!");
     totalGRFRegCount -= reserveSpillSize;
   }
@@ -6830,7 +6830,7 @@ void GraphColor::confirmRegisterAssignments() {
   for (unsigned i = 0; i < numVar; i++) {
     if (lrs[i]->getPhyReg()) {
       if (lrs[i]->getVar()->getPhyReg()) {
-        MUST_BE_TRUE((lrs[i]->getVar()->getPhyReg() == lrs[i]->getPhyReg()),
+        vISA_ASSERT((lrs[i]->getVar()->getPhyReg() == lrs[i]->getPhyReg()),
                      ERROR_GRAPHCOLOR);
       } else {
         lrs[i]->getVar()->setPhyReg(lrs[i]->getPhyReg(),
@@ -6909,11 +6909,11 @@ void GraphColor::pruneActiveSpillAddrLocs(G4_DstRegRegion *dstRegion,
                                           unsigned exec_size,
                                           G4_Type exec_type) {
   if (dstRegion->getBase()->asRegVar()->isRegVarAddrSpillLoc()) {
-    MUST_BE_TRUE(((exec_type == Type_UW || exec_type == Type_W) &&
+    vISA_ASSERT(((exec_type == Type_UW || exec_type == Type_W) &&
                   exec_size <= getNumAddrRegisters()) ||
                      (exec_size == 1),
                  "Unexpected ADDR spill loc update format!");
-    MUST_BE_TRUE(dstRegion->getRegAccess() == Direct,
+    vISA_ASSERT(dstRegion->getRegAccess() == Direct,
                  "Unexpected ADDR spill loc");
 
     G4_RegVarAddrSpillLoc *spillLocReg =
@@ -6929,36 +6929,36 @@ void GraphColor::pruneActiveSpillAddrLocs(G4_DstRegRegion *dstRegion,
     }
   } else if (dstRegion->getBase()->asRegVar()->isPhyRegAssigned()) {
     G4_RegVar *addrReg = dstRegion->getBase()->asRegVar();
-    MUST_BE_TRUE(addrReg->getPhyReg()->isA0(),
+    vISA_ASSERT(addrReg->getPhyReg()->isA0(),
                  "Unknown error in ADDR reg spill code cleanup!");
     unsigned startId = addrReg->getPhyRegOff();
     unsigned endId = startId + exec_size * dstRegion->getHorzStride();
-    MUST_BE_TRUE(endId <= getNumAddrRegisters(),
+    vISA_ASSERT(endId <= getNumAddrRegisters(),
                  "Unknown error in ADDR reg spill code cleanup!");
 
     for (unsigned i = startId; i < endId; i += dstRegion->getHorzStride()) {
       spAddrRegSig[i] = 0;
     }
   } else {
-    MUST_BE_TRUE(false, "Unknown error in ADDR reg spill code cleanup!");
+    vISA_ASSERT(false, "Unknown error in ADDR reg spill code cleanup!");
   }
 }
 
 void GraphColor::updateActiveSpillAddrLocs(G4_DstRegRegion *tmpDstRegion,
                                            G4_SrcRegRegion *srcRegion,
                                            unsigned exec_size) {
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       gra.isAddrFlagSpillDcl(tmpDstRegion->getBase()->asRegVar()->getDeclare()),
       "Unknown error in ADDR reg spill code cleanup!");
   G4_RegVar *addrReg = tmpDstRegion->getBase()->asRegVar();
-  MUST_BE_TRUE(addrReg->getPhyReg()->isA0(),
+  vISA_ASSERT(addrReg->getPhyReg()->isA0(),
                "Unknown error in ADDR reg spill code cleanup!");
   unsigned startAddrId = addrReg->getPhyRegOff();
   unsigned endAddrId = startAddrId + exec_size * tmpDstRegion->getHorzStride();
-  MUST_BE_TRUE(endAddrId <= getNumAddrRegisters(),
+  vISA_ASSERT(endAddrId <= getNumAddrRegisters(),
                "Unknown error in ADDR reg spill code cleanup!");
 
-  MUST_BE_TRUE(srcRegion->getBase()->asRegVar()->isRegVarAddrSpillLoc(),
+  vISA_ASSERT(srcRegion->getBase()->asRegVar()->isRegVarAddrSpillLoc(),
                "Unknown error in ADDR reg spill code cleanup!");
   G4_RegVarAddrSpillLoc *spillLocReg =
       static_cast<G4_RegVarAddrSpillLoc *>(srcRegion->getBase());
@@ -6976,18 +6976,18 @@ bool GraphColor::redundantAddrFill(G4_DstRegRegion *tmpDstRegion,
                                    unsigned exec_size) {
   bool match = true;
 
-  MUST_BE_TRUE(
+  vISA_ASSERT(
       gra.isAddrFlagSpillDcl(tmpDstRegion->getBase()->asRegVar()->getDeclare()),
       "Unknown error in ADDR reg spill code cleanup!");
   G4_RegVar *addrReg = tmpDstRegion->getBase()->asRegVar();
-  MUST_BE_TRUE(addrReg->getPhyReg()->isA0(),
+  vISA_ASSERT(addrReg->getPhyReg()->isA0(),
                "Unknown error in ADDR reg spill code cleanup!");
   unsigned startAddrId = addrReg->getPhyRegOff();
   unsigned endAddrId = startAddrId + exec_size * tmpDstRegion->getHorzStride();
-  MUST_BE_TRUE(endAddrId <= getNumAddrRegisters(),
+  vISA_ASSERT(endAddrId <= getNumAddrRegisters(),
                "Unknown error in ADDR reg spill code cleanup!");
 
-  MUST_BE_TRUE(srcRegion->getBase()->asRegVar()->isRegVarAddrSpillLoc(),
+  vISA_ASSERT(srcRegion->getBase()->asRegVar()->isRegVarAddrSpillLoc(),
                "Unknown error in ADDR reg spill code cleanup!");
   G4_RegVarAddrSpillLoc *spillLocReg =
       static_cast<G4_RegVarAddrSpillLoc *>(srcRegion->getBase());
@@ -7202,7 +7202,7 @@ void GlobalRA::saveRegs(unsigned startReg, unsigned owordSize,
              scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt,
              group);
   } else {
-    MUST_BE_TRUE(false, ERROR_REGALLOC);
+    vISA_ASSERT(false, ERROR_REGALLOC);
   }
 }
 
@@ -7320,7 +7320,7 @@ void GlobalRA::restoreRegs(unsigned startReg, unsigned owordSize,
                 scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt,
                 group, caller);
   } else {
-    MUST_BE_TRUE(false, ERROR_REGALLOC);
+    vISA_ASSERT(false, ERROR_REGALLOC);
   }
 }
 
@@ -7469,7 +7469,7 @@ void GraphColor::getCallerSaveRegisters() {
                 kernel.getOption(vISA_NewFailSafeRA))
               continue;
             // NOTE: Spilled live ranges should not be caller-save.
-            MUST_BE_TRUE(lrs[i]->getPhyReg()->isGreg(), ERROR_REGALLOC);
+            vISA_ASSERT(lrs[i]->getPhyReg()->isGreg(), ERROR_REGALLOC);
             unsigned startReg = lrs[i]->getPhyReg()->asGreg()->getRegNum();
             unsigned endReg = startReg + lrs[i]->getDcl()->getNumRows();
             startReg =
@@ -7533,7 +7533,7 @@ void GlobalRA::addCallerSaveRestoreCode() {
       while ((*insertSaveIt)->isPseudoKill()) {
         --insertSaveIt;
       }
-      MUST_BE_TRUE((*insertSaveIt)->isCallerSave(), ERROR_REGALLOC);
+      vISA_ASSERT((*insertSaveIt)->isCallerSave(), ERROR_REGALLOC);
       INST_LIST_ITER rmIt = insertSaveIt;
       if (insertSaveIt == bb->begin()) {
         insertSaveIt = bb->end();
@@ -7621,7 +7621,7 @@ void GraphColor::getCalleeSaveRegisters() {
   for (unsigned i = 0; i < numVar; i++) {
     if (pseudoVCEId != i && intf.interfereBetween(pseudoVCEId, i)) {
       if (lrs[i]->getPhyReg()) {
-        MUST_BE_TRUE(lrs[i]->getPhyReg()->isGreg(), ERROR_REGALLOC);
+        vISA_ASSERT(lrs[i]->getPhyReg()->isGreg(), ERROR_REGALLOC);
         unsigned startReg = lrs[i]->getPhyReg()->asGreg()->getRegNum();
         unsigned endReg = startReg + lrs[i]->getDcl()->getNumRows();
         startReg = (startReg >= callerSaveNumGRF) ? startReg : callerSaveNumGRF;
@@ -7662,7 +7662,7 @@ void GlobalRA::addCalleeSaveRestoreCode() {
       builder.kernel.getKernelDebugInfo()->setOldInstList(
           builder.kernel.fg.getEntryBB());
     }
-    MUST_BE_TRUE(calleeSaveInsts.size() == 0,
+    vISA_ASSERT(calleeSaveInsts.size() == 0,
                  "Unexpected size of callee save set");
     saveActiveRegs(calleeSaveRegs, callerSaveNumGRF,
                    builder.kernel.fg.calleeSaveAreaOffset,
@@ -7692,7 +7692,7 @@ void GlobalRA::addCalleeSaveRestoreCode() {
       builder.kernel.getKernelDebugInfo()->setOldInstList(
           builder.kernel.fg.getUniqueReturnBlock());
     }
-    MUST_BE_TRUE(calleeRestoreInsts.size() == 0,
+    vISA_ASSERT(calleeRestoreInsts.size() == 0,
                  "Unexpected size of callee restore set");
     restoreActiveRegs(calleeSaveRegs, callerSaveNumGRF,
                       builder.kernel.fg.calleeSaveAreaOffset,
@@ -7803,7 +7803,7 @@ void GlobalRA::addCalleeStackSetupCode() {
   G4_Declare *framePtr = builder.kernel.fg.framePtrDcl;
   G4_Declare *stackPtr = builder.kernel.fg.stackPtrDcl;
 
-  MUST_BE_TRUE(frameSize > 0, "frame size cannot be 0");
+  vISA_ASSERT(frameSize > 0, "frame size cannot be 0");
 
   //
   // BE_FP = BE_SP
@@ -7829,7 +7829,7 @@ void GlobalRA::addCalleeStackSetupCode() {
     G4_BB *entryBB = builder.kernel.fg.getEntryBB();
     auto insertIt =
         std::find(entryBB->begin(), entryBB->end(), getSaveBE_FPInst());
-    MUST_BE_TRUE(insertIt != entryBB->end(), "Can't find BE_FP store inst");
+    vISA_ASSERT(insertIt != entryBB->end(), "Can't find BE_FP store inst");
 
     setBEFPSetupInst(createBEFP);
 
@@ -8074,7 +8074,7 @@ void GlobalRA::addCallerSavePseudoCode() {
       bb->insertBefore(--callBBIt, saveInst);
 
       auto fcall = builder.getFcallInfo(bb->back());
-      MUST_BE_TRUE(fcall, "fcall info not found");
+      vISA_ASSERT(fcall != std::nullopt, "fcall info not found");
       uint16_t retSize = fcall->getRetSize();
       if (retSize > 0) {
         const char *name =
@@ -8135,7 +8135,7 @@ void GlobalRA::addCalleeSavePseudoCode() {
       nullptr, InstOpt_WriteEnable);
   INST_LIST_ITER exitBBIt = exitBB->end();
   --exitBBIt;
-  MUST_BE_TRUE((*exitBBIt)->isFReturn(), ERROR_REGALLOC);
+  vISA_ASSERT((*exitBBIt)->isFReturn(), ERROR_REGALLOC);
   exitBB->insertBefore(exitBBIt, restoreInst);
   builder.instList.clear();
 }
@@ -9120,13 +9120,13 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
       unsigned short elemsNum = (rightBound - leftBound + 1) / elementSize;
 
       if (!elemsNum) {
-        vASSERT(0);
+        vASSERT(false);
         pre_rightBound = rightBound;
         continue;
       }
 
       if (leftBound && pre_rightBound + 1 != leftBound) {
-        vASSERT(0);
+        vASSERT(false);
       }
       pre_rightBound = rightBound;
 
@@ -9239,7 +9239,7 @@ void GlobalRA::addrRegAlloc() {
     iterationNo++;
   }
 
-  MUST_BE_TRUE(iterationNo < maxRAIterations, "Address RA has failed.");
+  vISA_ASSERT(iterationNo < maxRAIterations, "Address RA has failed.");
 }
 
 void GlobalRA::flagRegAlloc() {
@@ -9333,7 +9333,7 @@ void GlobalRA::flagRegAlloc() {
     iterationNo++;
   }
 
-  MUST_BE_TRUE(iterationNo < maxRAIterations, "Flag RA has failed.");
+  vISA_ASSERT(iterationNo < maxRAIterations, "Flag RA has failed.");
 }
 
 void GlobalRA::assignRegForAliasDcl() {
@@ -9370,20 +9370,20 @@ void GlobalRA::assignRegForAliasDcl() {
                 tempoffset % (kernel.numEltPerGRF<Type_UW>() * 2);
             bool valid = false;
             unsigned orignalrow = AliasRegVar->ExRegNum(valid);
-            MUST_BE_TRUE(valid == true, ERROR_REGALLOC);
+            vISA_ASSERT(valid == true, ERROR_REGALLOC);
             CurrentRegVar->setPhyReg(
                 regPool.getGreg(orignalrow + addtionalrow),
                 actualoffset / CurrentRegVar->getDeclare()->getElemSize());
           }
         } else if (CurrentRegVar->getDeclare()->getRegFile() == G4_ADDRESS) {
-          MUST_BE_TRUE(tempoffset < getNumAddrRegisters() * 2,
+          vISA_ASSERT(tempoffset < getNumAddrRegisters() * 2,
                        ERROR_REGALLOC); // Must hold tempoffset in one A0 reg
           CurrentRegVar->setPhyReg(
               AliasRegVar->getPhyReg(),
               tempoffset / CurrentRegVar->getDeclare()->getElemSize());
         }
         else {
-          MUST_BE_TRUE(false, ERROR_REGALLOC);
+          vISA_ASSERT(false, ERROR_REGALLOC);
         }
       } else {
         if (dcl->isSpilled() == false)
@@ -9677,7 +9677,7 @@ int GlobalRA::coloringRegAlloc() {
     builder.getSpillFillHeader();
     builder.getOldA0Dot2Temp();
     if (builder.hasScratchSurface()) {
-      MUST_BE_TRUE(builder.instList.empty(),
+      vISA_ASSERT(builder.instList.empty(),
                    "Inst list should be empty at this point before creating "
                    "instruction that initializes SSO");
       builder.initScratchSurfaceOffset();
@@ -10016,7 +10016,7 @@ int GlobalRA::coloringRegAlloc() {
           spillAnalysis->Do(&liveAnalysis, &coloring, &spillGRF);
         }
 
-        MUST_BE_TRUE(std::all_of(coloring.getSpilledLiveRanges().begin(),
+        vISA_ASSERT(std::all_of(coloring.getSpilledLiveRanges().begin(),
                                    coloring.getSpilledLiveRanges().end(),
                                    [](const LiveRange *spilledLR) {
                                      return spilledLR->getSpillCost() !=
@@ -10177,24 +10177,16 @@ int GlobalRA::coloringRegAlloc() {
       }
     }
 
-    MUST_BE_TRUE(
-        false,
-        "ERROR: "
-            << kernel.getNumRegTotal() -
-                   builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum)
-            << " GRF registers are NOT enough to compile kernel "
-            << kernel.getName() << "!"
-            << " The maximum register pressure in the kernel is higher"
-            << " than the available physical registers in hardware (even"
-            << " with spill code)."
-            << " Please consider rewriting the kernel."
-            << " Compiling with the symbolic register option and inspecting the"
-            << " spilled registers may help in determining the region of high "
-               "pressure.\n"
-            << "The spilling virtual registers are as follows: "
-            << spilledVars.str());
+    vISA_ASSERT(false, "%d GRF registers are NOT enough to compile kernel %s \
+        The maximum register pressure in the kernel is higher than the available \
+        physical registers in hardware (even with spill code). Please consider \
+        rewriting the kernel. Compiling with the symbolic register option and \
+        inspecting the spilled registers may help in determinig the region of high \
+        pressure. The spilling virtual registers are as follows %s.",
+        (kernel.getNumRegTotal() - builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum)),
+         kernel.getName(), spilledVars.str().c_str());
 
-    return VISA_SPILL;
+        return VISA_SPILL;
   }
 
   // this includes vISA's scratch space use only and does not include whatever
@@ -11878,7 +11870,7 @@ bool VerifyAugmentation::isClobbered(LiveRange *lr, std::string &msg) {
   for (auto &use : uses) {
     auto &useStr = bbLabels[std::get<1>(use)];
     auto inst = *std::get<0>(use);
-    MUST_BE_TRUE(useStr.size() > 0, "empty string found");
+    vISA_ASSERT(useStr.size() > 0, "empty string found");
     std::list<std::tuple<G4_INST *, G4_BB *>> rd;
 
     for (unsigned i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
@@ -12080,7 +12072,7 @@ bool GlobalRA::isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc,
     // 1st successor is physically following BB, 2nd is
     // sub-entry.
     if (lastInst->getPredicate()) {
-      MUST_BE_TRUE(bb->Succs.size() == 2,
+      vISA_ASSERT(bb->Succs.size() == 2,
                    "Expecting 2 successor BBs for predicated call");
       if (isSubRetLocConflict(bb->Succs.back(), usedLoc, stackTop))
         return true;
@@ -12175,7 +12167,7 @@ void GlobalRA::assignLocForReturnAddr() {
 
 #ifdef _DEBUG
     G4_INST *last = bb->empty() ? NULL : bb->back();
-    MUST_BE_TRUE(last, ERROR_FLOWGRAPH);
+    vISA_ASSERT(last, ERROR_FLOWGRAPH);
 #endif
 
     caller.push_back(
@@ -12249,7 +12241,7 @@ void GlobalRA::assignLocForReturnAddr() {
   //
   for (G4_BB *bb : caller) {
     G4_INST *last = bb->empty() ? NULL : bb->back();
-    MUST_BE_TRUE(last, ERROR_FLOWGRAPH);
+    vISA_ASSERT(last, ERROR_FLOWGRAPH);
 
     unsigned fallThroughId = bb->fallThroughBB() == NULL
                                  ? UNDEFINED_VAL
@@ -12332,7 +12324,7 @@ void GlobalRA::assignLocForReturnAddr() {
     //
 #ifdef _DEBUG
     G4_INST *last = bb->empty() ? NULL : bb->back();
-    MUST_BE_TRUE(last, ERROR_FLOWGRAPH);
+    vISA_ASSERT(last, ERROR_FLOWGRAPH);
 #endif
     G4_BB *subBB = bb->getCalleeInfo()->getInitBB();
     //
@@ -12375,7 +12367,7 @@ void GlobalRA::assignLocForReturnAddr() {
     G4_BB *subEntry = bb->Succs.back();
 
     if (isSubRetLocConflict(subEntry, usedLoc, stackTop + 1)) {
-      MUST_BE_TRUE(false, "ERROR: Fail to assign call-return variables due to "
+      vISA_ASSERT(false, "ERROR: Fail to assign call-return variables due to "
                           "cycle in call graph!");
     }
   }
@@ -12401,8 +12393,8 @@ void GlobalRA::insertCallReturnVar() {
 }
 
 void GlobalRA::insertSaveAddr(G4_BB *bb) {
-  MUST_BE_TRUE(bb != NULL, ERROR_INTERNAL_ARGUMENT);
-  MUST_BE_TRUE(getSubRetLoc(bb) != UNDEFINED_VAL,
+  vISA_ASSERT(bb != NULL, ERROR_INTERNAL_ARGUMENT);
+  vISA_ASSERT(getSubRetLoc(bb) != UNDEFINED_VAL,
                ERROR_FLOWGRAPH); // must have a assigned loc
 
   G4_INST *last = bb->back();
@@ -12419,7 +12411,7 @@ void GlobalRA::insertSaveAddr(G4_BB *bb) {
 }
 
 void GlobalRA::insertRestoreAddr(G4_BB *bb) {
-  MUST_BE_TRUE(bb != NULL, ERROR_INTERNAL_ARGUMENT);
+  vISA_ASSERT(bb != NULL, ERROR_INTERNAL_ARGUMENT);
 
   G4_INST *last = bb->back();
   vASSERT(last->isReturn());
@@ -12510,8 +12502,7 @@ unsigned GraphColor::edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2) {
         return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
       }
     } else {
-      MUST_BE_TRUE(
-          false,
+      vISA_ASSERT_UNREACHABLE(
           "Found unsupported subRegAlignment in flag register allocation!");
       return 0;
     }
@@ -12539,8 +12530,7 @@ unsigned GraphColor::edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2) {
       return lr1_nreg + lr2_nreg - 1 + (8 - lr1_nreg % 8) % 8 +
              (8 - lr2_nreg % 8) % 8;
     } else {
-      MUST_BE_TRUE(
-          false,
+      vISA_ASSERT_UNREACHABLE(
           "Found unsupported subRegAlignment in address register allocation!");
       return 0;
     }

@@ -1009,7 +1009,7 @@ void CISA_IR_Builder::LinkTimeOptimization(
                     DEBUG_PRINT("skip for now (private variable on the "
                                 "callee's frame):\n");
                     DEBUG_UTIL(inst->dump());
-                    vASSERT(0);
+                    vASSERT(false);
                   }
                 }
                 auto storeIt = storeList.front();
@@ -2416,8 +2416,8 @@ bool CISA_IR_Builder::CISA_create_mov_instruction(
 bool CISA_IR_Builder::CISA_create_mov_instruction(VISA_opnd *dst,
                                                   CISA_GEN_VAR *src0,
                                                   int lineNum) {
-  MUST_BE_TRUE1(src0 != NULL, lineNum,
-                "The source operand of a move instruction was null");
+  vISA_ASSERT_INPUT(src0 != NULL,
+                "The source operand of a move instruction was null, lineNum %d", lineNum);
   VISA_CALL_TO_BOOL(AppendVISAPredicateMove, (VISA_VectorOpnd *)dst,
                     (VISA_PredVar *)src0);
   return true;
@@ -3520,7 +3520,7 @@ attr_gen_struct *CISA_IR_Builder::CISA_Create_Attr(const char *AttrName,
   attr_gen_struct *newAttr =
       (attr_gen_struct *)m_mem.alloc(sizeof(attr_gen_struct));
   Attributes::ID aID = Attributes::getAttributeID(AttrName);
-  MUST_BE_TRUE(Attributes::isValid(aID), "vISA: unknown attribute!");
+  vISA_ASSERT_INPUT(Attributes::isValid(aID), "vISA: unknown attribute!");
   if (Attributes::isInt32(aID) || Attributes::isBool(aID)) {
     newAttr->isInt = true;
     // No i64 attribute value yet
@@ -3601,7 +3601,7 @@ VISA_opnd *CISA_IR_Builder::CISA_create_indirect_dst(
     CISA_GEN_VAR *cisa_decl, VISA_Modifier mod, unsigned short row_offset,
     unsigned char col_offset, unsigned short immedOffset,
     unsigned short horizontal_stride, VISA_Type type, int lineNum) {
-  MUST_BE_TRUE(cisa_decl->type == ADDRESS_VAR,
+  vISA_ASSERT_INPUT(cisa_decl->type == ADDRESS_VAR,
                "predication variable type is wrong"); // grammar enforced
   VISA_VectorOpnd *cisa_opnd = nullptr;
   VISA_CALL_TO_NULLPTR(CreateVISAIndirectDstOperand, cisa_opnd,
@@ -3646,13 +3646,13 @@ VISA_opnd *CISA_IR_Builder::CISA_create_state_operand(const char *var_name,
 VISA_opnd *CISA_IR_Builder::CISA_create_predicate_operand(
     CISA_GEN_VAR *decl, VISA_PREDICATE_STATE state,
     VISA_PREDICATE_CONTROL control, int lineNum) {
-  MUST_BE_TRUE1(decl->type == PREDICATE_VAR, lineNum,
-                "predication variable type is wrong"); // parser enforces type
+  vISA_ASSERT_INPUT(decl->type == PREDICATE_VAR,
+                "predication variable type is wrong, lineNum %d", lineNum); // parser enforces type
   VISA_PredOpnd *cisa_opnd = nullptr;
   int status = m_kernel->CreateVISAPredicateOperand(
       cisa_opnd, (VISA_PredVar *)decl, state, control);
-  MUST_BE_TRUE1((status == VISA_SUCCESS), lineNum,
-                "Failed to create predicate operand.");
+  vISA_ASSERT_INPUT((status == VISA_SUCCESS),
+                "Failed to create predicate operand lineNum: %d.", lineNum);
   if (status != VISA_SUCCESS) {
     RecordParseError(lineNum, "unknown error creating predicate operand");
   }
@@ -3662,8 +3662,8 @@ VISA_opnd *CISA_IR_Builder::CISA_create_predicate_operand(
 VISA_opnd *CISA_IR_Builder::CISA_create_RAW_NULL_operand(int lineNum) {
   VISA_RawOpnd *cisa_opnd = nullptr;
   int status = m_kernel->CreateVISANullRawOperand(cisa_opnd, true);
-  MUST_BE_TRUE1(status == VISA_SUCCESS, lineNum,
-                "Was not able to create NULL RAW operand.");
+  vISA_ASSERT(status == VISA_SUCCESS,
+                "Was not able to create NULL RAW operand, line number: %d.", lineNum);
   if (status != VISA_SUCCESS) {
     RecordParseError(lineNum, "unknown error creating raw null operand");
   }

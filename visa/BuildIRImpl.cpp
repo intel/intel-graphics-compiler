@@ -2807,8 +2807,8 @@ input_info_t *IR_Builder::getRetIPArg() const {
   // and the code will traverse all argument to find that one.
   input_info_t *RetIP = getInputArg(getInputCount() - 1);
   // More sanity check on the argument.
-  ASSERT_USER(IS_QTYPE(RetIP->dcl->getElemType()), "RetIP needs to be QWORD!");
-  ASSERT_USER(RetIP->dcl->getNumElems() == 1, "RetIP needs to be QWORD!");
+  vISA_ASSERT(IS_QTYPE(RetIP->dcl->getElemType()), "RetIP needs to be QWORD!");
+  vISA_ASSERT(RetIP->dcl->getNumElems() == 1, "Number of RetIP elements should be 1");
   return RetIP;
 }
 

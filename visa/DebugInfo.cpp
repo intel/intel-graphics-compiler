@@ -93,7 +93,7 @@ template <class T> void DbgDecoder::ddLiveInterval() {
     } else if (virtualType == VARMAP_VREG_FILE_GRF) {
       std::cout << "\t";
     } else {
-      MUST_BE_TRUE(false, "Unknown virtual type found");
+      vISA_ASSERT_INPUT(false, "Unknown virtual type found");
     }
 
     uint8_t physicalType;
@@ -110,7 +110,7 @@ template <class T> void DbgDecoder::ddLiveInterval() {
     } else if (physicalType == VARMAP_PREG_FILE_MEMORY) {
       std::cout << "Spilled";
     } else {
-      MUST_BE_TRUE(false, "Unknown physical type found");
+      vISA_ASSERT_INPUT(false, "Unknown physical type found");
     }
 
     if (physicalType == VARMAP_PREG_FILE_MEMORY) {
@@ -186,7 +186,7 @@ void DbgDecoder::ddCalleeCallerSave(uint32_t relocOffset) {
         return;
 
       uint8_t subReg = srcReg % platInfo->numEltPerGRF<Type_UB>();
-      MUST_BE_TRUE(subReg == 0,
+      vISA_ASSERT_INPUT(subReg == 0,
                    "Not expecting non-zero sub-reg in callee/caller save");
       std::cout << "\tr" << (srcReg) / platInfo->numEltPerGRF<Type_UB>() << "."
                 << (uint32_t)subReg << ":ub (" << numBytes << " bytes) -> ";
@@ -572,7 +572,7 @@ void KernelDebugInfo::generateByteOffsetMapping(
     // stop before processing bb.
     if (&bb->getParent() != &kernel->fg) {
       // verify if bb is part of stackCallEntryBBs list
-      MUST_BE_TRUE(std::find(stackCallEntryBBs.begin(), stackCallEntryBBs.end(),
+      vISA_ASSERT(std::find(stackCallEntryBBs.begin(), stackCallEntryBBs.end(),
                              bb) != stackCallEntryBBs.end(),
                    "didnt find matching entry bb from stitched stack call");
       break;
@@ -1026,7 +1026,7 @@ template <class T> void emitDataSubroutines(VISAKernelImpl *visaKernel, T &t) {
 
             lastInst = calleeBB->back();
             end = lastInst->getVISAId();
-            MUST_BE_TRUE(
+            vISA_ASSERT(
                 lastInst->isReturn(),
                 "Expecting to see G4_return as last inst in sub-routine");
             retval = lastInst->getSrc(0)
@@ -1140,7 +1140,7 @@ void SaveRestoreManager::sieveInstructions(CallerOrCallee c) {
   for (auto &sr : srInfo) {
     uint32_t prev = 0;
     for (auto &item : sr.saveRestoreMap) {
-      MUST_BE_TRUE(item.first >= prev, "Unexpected ordering in container");
+      vISA_ASSERT(item.first >= prev, "Unexpected ordering in container");
       prev = item.first;
     }
   }
@@ -1836,11 +1836,11 @@ void KernelDebugInfo::updateCallStackLiveIntervals() {
       end = (uint32_t)getCallerBEFPRestoreInst()->getGenOffset();
     }
 
-    MUST_BE_TRUE(end >= reloc_offset,
+    vISA_ASSERT(end >= reloc_offset,
                  "Failed to update live-interval for retval");
-    MUST_BE_TRUE(start >= reloc_offset, "Failed to update start for retval");
-    MUST_BE_TRUE(end >= start, "end less then start for retval");
-    MUST_BE_TRUE(end != 0xffffffff, "end uninitialized");
+    vISA_ASSERT(start >= reloc_offset, "Failed to update start for retval");
+    vISA_ASSERT(end >= start, "end less then start for retval");
+    vISA_ASSERT(end != 0xffffffff, "end uninitialized");
     for (uint32_t i = start - reloc_offset; i <= end - reloc_offset; i++) {
       updateDebugInfo(*kernel, fretVar, i);
     }
@@ -1863,9 +1863,9 @@ void KernelDebugInfo::updateCallStackLiveIntervals() {
       }
     }
 
-    MUST_BE_TRUE(start != 0xffffffff, "Cannot update stack vars1");
-    MUST_BE_TRUE(end != 0, "Cannot update stack vars2");
-    MUST_BE_TRUE(end != 0xffffffff, "end uninitialized");
+    vISA_ASSERT(start != 0xffffffff, "Cannot update stack vars1");
+    vISA_ASSERT(end != 0, "Cannot update stack vars2");
+    vISA_ASSERT(end != 0xffffffff, "end uninitialized");
   }
 
   auto callerbefp = getCallerBEFP();
@@ -1880,7 +1880,7 @@ void KernelDebugInfo::updateCallStackLiveIntervals() {
     auto callerbeSaveInst = getCallerBEFPSaveInst();
     if (callerbeSaveInst) {
       auto callerbefpRestoreInst = getCallerBEFPRestoreInst();
-      MUST_BE_TRUE(callerbefpRestoreInst != nullptr,
+      vISA_ASSERT(callerbefpRestoreInst != nullptr,
                    "Instruction destroying caller be fp not found in epilog");
       // Guarantee that start of FDE live-range is same as or after BE_FP
       // of current frame is initialized
@@ -2136,8 +2136,8 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
                     builder.numEltPerGRF<Type_UB>();
       }
 
-      MUST_BE_TRUE(memOffset != 0xffff, "Invalid mem offset");
-      MUST_BE_TRUE(regWithMemOffset == srcreg,
+      vISA_ASSERT(memOffset != 0xffff, "Invalid mem offset");
+      vISA_ASSERT(regWithMemOffset == srcreg,
                    "Send src not initialized with offset");
 
       std::vector<uint32_t> payloadRegs;
@@ -2173,8 +2173,8 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
       dstreg = inst->getDst()->getLinearizedStart() /
                builder.numEltPerGRF<Type_UB>();
 
-      MUST_BE_TRUE(memOffset != 0xffff, "Invalid mem offset");
-      MUST_BE_TRUE(regWithMemOffset == srcreg,
+      vISA_ASSERT(memOffset != 0xffff, "Invalid mem offset");
+      vISA_ASSERT(regWithMemOffset == srcreg,
                    "Send src not initialized with offset");
 
       auto responselen = inst->getMsgDesc()->getDstLenRegs();
@@ -2240,7 +2240,7 @@ void emitSubRoutineInfo(VISAKernelImpl *visaKernel) {
         if (calleeBB->size() > 0) {
           lastInst = calleeBB->back();
           end = lastInst->getVISAId();
-          MUST_BE_TRUE(
+          vISA_ASSERT(
               lastInst->isReturn(),
               "Expecting to see G4_return as last inst in sub-routine");
           retval = lastInst->getSrc(0)

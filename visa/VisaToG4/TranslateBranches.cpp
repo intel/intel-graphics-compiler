@@ -189,7 +189,7 @@ int IR_Builder::translateVISACFSymbolInst(const std::string &symbolName,
     auto *funcAddrLow = createRelocImm(Type_UD);
     auto *funcAddrHigh = createRelocImm(Type_UD);
 
-    assert(!dst->isIndirect());
+    vASSERT(!dst->isIndirect());
     // change type from uq to ud, adjust the subRegOff
     auto dstLo = createDst(dst->getBase(), dst->getRegOff(),
                            dst->getSubRegOff() * 2, 1, Type_UD);

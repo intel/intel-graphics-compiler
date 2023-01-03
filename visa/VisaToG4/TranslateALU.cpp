@@ -66,7 +66,7 @@ int IR_Builder::translateVISAArithmeticInst(
     }
   } else if (ISA_Inst_Table[opcode].n_srcs == 3) {
     if (opcode == ISA_ADD3O) {
-      assert(predOpnd != nullptr && "predicate operand couldn't be nullptr");
+      vISA_ASSERT_INPUT(predOpnd != nullptr, "predicate operand couldn't be nullptr");
       condMod = createCondMod(Mod_o, predOpnd->getBase(), 0);
       predOpnd = nullptr;
     }
@@ -342,7 +342,7 @@ int IR_Builder::translateVISADataMovementInst(
     if (src0Opnd->isSrcRegRegion())
       src0Opnd->asSrcRegRegion()->setType(*this, Type_UD);
     dstOpnd->setType(*this, Type_UD);
-    MUST_BE_TRUE(saturate == g4::NOSAT,
+    vISA_ASSERT_INPUT(saturate == g4::NOSAT,
                  "saturation forbidden on this instruction");
     createInst(predOpnd, G4_mov, NULL, g4::NOSAT, exsize, dstOpnd, src0Opnd,
                NULL, inst_opt, true);
@@ -376,7 +376,7 @@ int IR_Builder::translateVISADataMovementInst(
       dstOpnd->setType(*this, exsize == 32 ? Type_UD : Type_UW);
       if (emask == vISA_EMASK_M5_NM) {
         // write to f0.1/f1.1 instead
-        MUST_BE_TRUE(dstOpnd->getTopDcl()->getNumberFlagElements() == 32,
+        vISA_ASSERT_INPUT(dstOpnd->getTopDcl()->getNumberFlagElements() == 32,
                      "Dst must have 32 flag elements");
         dstOpnd = createDstWithNewSubRegOff(dstOpnd, 1);
       }

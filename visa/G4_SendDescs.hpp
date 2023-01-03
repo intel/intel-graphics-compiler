@@ -563,7 +563,7 @@ public:
   //////////////////////////////////////
   // calling these functions on non-HDC may assert
   uint16_t getExtFuncCtrl() const {
-    MUST_BE_TRUE(isHDC(), "getExtFuncCtrl on non-HDC message");
+    vISA_ASSERT(isHDC(), "getExtFuncCtrl on non-HDC message");
     return extDesc.layout.extFuncCtrl;
   }
   uint32_t getHdcMessageType() const;
@@ -594,7 +594,7 @@ public:
 
   // return offset in unit of HWords
   uint16_t getHWordScratchRWOffset() const {
-    MUST_BE_TRUE(isHWordScratchRW(), "Message is not scratch space R/W.");
+    vISA_ASSERT(isHWordScratchRW(), "Message is not scratch space R/W.");
     return (getFuncCtrl() & 0xFFFu);
   }
 
@@ -621,7 +621,7 @@ public:
   }
   // in terms of HWords (1, 2, 4, or 8)
   uint16_t getHWScratchRWSize() const {
-    MUST_BE_TRUE(isHWordScratchRW(), "Message is not scratch space R/W.");
+    vISA_ASSERT(isHWordScratchRW(), "Message is not scratch space R/W.");
     uint16_t bitV = ((getFuncCtrl() & 0x3000u) >> 12);
     return 0x1 << bitV;
   }

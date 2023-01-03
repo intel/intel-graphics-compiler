@@ -46,14 +46,14 @@ static G4_Operand *lscTryPromoteSurfaceImmToExDesc(G4_Operand *surface,
       surface = nullptr;
     } else {
       // flat address type
-      MUST_BE_TRUE(
+      vISA_ASSERT_INPUT(
           surface->isNullReg() || surfaceImm == PREDEFINED_SURFACE_SLM ||
               surfaceImm == PREDEFINED_SURFACE_T255, // not sure what's up here
           "flat address type must have null reg (or 0)");
       surface = nullptr;
     }
   } else {
-    MUST_BE_TRUE(surface || addrModel == LSC_ADDR_TYPE_FLAT,
+    vISA_ASSERT_INPUT(surface || addrModel == LSC_ADDR_TYPE_FLAT,
                  "only flat address model may have null surface");
   }
   return surface;
@@ -111,7 +111,7 @@ int IR_Builder::translateLscUntypedInst(
   int status = VISA_SUCCESS;
   auto check = [&](bool z, const char *what) {
     if (!z) {
-      MUST_BE_TRUE(false, what);
+      vISA_ASSERT_INPUT(false, std::string(what));
       status = VISA_FAILURE;
     }
   };
@@ -123,7 +123,7 @@ int IR_Builder::translateLscUntypedInst(
 
   if (addrInfo.type == LSC_ADDR_TYPE_ARG) {
     // Translate argument loads to platform specific logic
-    MUST_BE_TRUE(addrInfo.size == LSC_ADDR_SIZE_32b,
+    vISA_ASSERT_INPUT(addrInfo.size == LSC_ADDR_SIZE_32b,
                  "lsc_load... arg[...] must be :a32");
     //
     // (W)  and (1) TMP0:ud   r0.0:ud  0xFFFFFFC0:ud
@@ -166,7 +166,7 @@ int IR_Builder::translateLscUntypedInst(
   }
 
   const auto opInfo = LscOpInfoGet(op);
-  MUST_BE_TRUE(!opInfo.isBlock2D(),
+  vISA_ASSERT_INPUT(!opInfo.isBlock2D(),
                "use translateLscUntypedBlock2DInst for lsc_*_block2d");
 
   check(opInfo.kind == LscOpInfo::LOAD || opInfo.kind == LscOpInfo::STORE ||
@@ -202,7 +202,7 @@ int IR_Builder::translateLscUntypedInst(
     vecSize = lscEncodeDataElems(dataShape.elems, desc, status);
     lscEncodeDataOrder(dataShape.order, desc, status);
   } else {
-    MUST_BE_TRUE(dataShape.chmask, "channel mask must not be empty");
+    vISA_ASSERT_INPUT(dataShape.chmask, "channel mask must not be empty");
     vecSize = 0;
     if (dataShape.chmask & LSC_DATA_CHMASK_X) {
       desc |= 1 << 12;
@@ -463,13 +463,13 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   int status = VISA_SUCCESS;
   auto check = [&](bool z, const char *what) {
     if (!z) {
-      MUST_BE_TRUE(false, what);
+      vISA_ASSERT_INPUT(false, std::string(what));
       status = VISA_FAILURE;
     }
   };
 
   const auto opInfo = LscOpInfoGet(op);
-  MUST_BE_TRUE(opInfo.isBlock2D(), "not an LSC block2d op");
+  vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
   const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
@@ -591,8 +591,7 @@ int IR_Builder::translateLscTypedInst(
       ss << " mismatches expected number of registers for "
             "payload ("
          << expectDeclRegs << ")";
-      // std::cerr << ss.str();
-      MUST_BE_TRUE(false, ss.str().c_str());
+      vISA_ASSERT_INPUT(false, ss.str());
     }
   };
 
@@ -632,8 +631,8 @@ int IR_Builder::translateLscTypedInst(
         srcAddrs, srcAddrRegs, execSize,
         false, // not a split send (so all the addrs lands in one reg)
         srcAddrPayloads, numSrcAddrPayloads);
-    MUST_BE_TRUE(srcAddrs[1] == nullptr, "invalid addr split");
-    MUST_BE_TRUE(srcAddrRegs[0] < 32, "too many address registers");
+    vISA_ASSERT_INPUT(srcAddrs[1] == nullptr, "invalid addr split");
+    vISA_ASSERT_INPUT(srcAddrRegs[0] < 32, "too many address registers");
 
     // each channel consumes at least one register (top padding may be 0)
     srcData = coalescePayload(BYTES_PER_GRF, BYTES_PER_GRF,
@@ -660,7 +659,7 @@ int IR_Builder::translateLscTypedInst(
       desc |= 1 << 15;
       numChannels++;
     }
-    MUST_BE_TRUE(numChannels != 0, "empty channel mask");
+    vISA_ASSERT_INPUT(numChannels != 0, "empty channel mask");
   } else {
     // atomics are single channel
     numChannels = 1;
@@ -703,9 +702,9 @@ int IR_Builder::translateLscTypedInst(
   if (op == LSC_OP::LSC_LOAD_STATUS || op == LSC_OP::LSC_READ_STATE_INFO) {
     dstDataRegs = 1; // just a single DW of bits (padded to 1 reg)
   }
-  // MUST_BE_TRUE(dataSrcsRegs == dataRegs, "mismatch in .decls for "
+  // vISA_ASSERT_INPUT(dataSrcsRegs == dataRegs, "mismatch in .decls for "
   //     "number of data registers in actual message");
-  MUST_BE_TRUE(srcDataRegs < 32, "too many data registers");
+  vISA_ASSERT_INPUT(srcDataRegs < 32, "too many data registers");
 
   desc |= (srcAddrRegs[0] & 0xF) << 25; // mlen == Desc[28:25]
   if (opInfo.isLoad() || (opInfo.isAtomic() && !dstData->isNullReg())) {
@@ -917,7 +916,7 @@ void IR_Builder::lscEncodeDataOrder(LSC_DATA_ORDER order, uint32_t &desc,
   if (order == LSC_DATA_ORDER_TRANSPOSE) {
     desc |= 1 << 15; // desc[15] is transpose
   } else if (order != LSC_DATA_ORDER_NONTRANSPOSE) {
-    MUST_BE_TRUE(false, "bad transpose value");
+    vISA_ASSERT_INPUT(false, "bad transpose value");
     status = VISA_FAILURE;
   }
 }
@@ -928,7 +927,7 @@ void IR_Builder::lscEncodeCachingOpts(const LscOpInfo &opInfo,
   uint32_t cacheEnc = 0;
   if (!LscTryEncodeCacheOpts(opInfo, cacheOpts, cacheEnc,
                              isLSCCacheOpt17_19())) {
-    MUST_BE_TRUE(false, "unsupported caching options");
+    vISA_ASSERT_INPUT(false, "unsupported caching options");
     status = VISA_FAILURE;
   }
 
@@ -1106,7 +1105,7 @@ G4_SrcRegRegion *IR_Builder::lscLoadEffectiveAddress(
     VISA_EMask_Ctrl execCtrl, LSC_ADDR addrInfo, int bytesPerDataElem,
     const G4_Operand *surface, G4_SrcRegRegion *addr, uint32_t &exDesc
 ) {
-  MUST_BE_TRUE(addrInfo.immScale == 1, "address scaling not supported yet");
+  vISA_ASSERT_INPUT(addrInfo.immScale == 1, "address scaling not supported yet");
   // The address may need scaling and offset adjustment
   //    NEW_ADDR = SCALE*ADDR + OFF
   //
@@ -1128,10 +1127,10 @@ G4_SrcRegRegion *IR_Builder::lscCheckRegion(G4_Predicate *pred,
   // for now throw a tantrum if they give us
   // ... VAR<2;1,0>
   // we do permit VAR<0;1,0>
-  MUST_BE_TRUE(src->getRegion()->isPackedRegion() ||
+  vISA_ASSERT_INPUT(src->getRegion()->isPackedRegion() ||
                    src->getRegion()->isScalar(),
                "input must be scalar/packed");
-  MUST_BE_TRUE(src->getSubRegOff() == 0 || src->getRegion()->isScalar(),
+  vISA_ASSERT_INPUT(src->getSubRegOff() == 0 || src->getRegion()->isScalar(),
                "vector operands must be register aligned");
   return src;
 }
@@ -1242,7 +1241,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd(G4_Predicate *pred, G4_ExecSize execSize,
     return src0;
 
   const G4_Type srcType = src0->getType();
-  MUST_BE_TRUE(srcType == Type_UQ || srcType == Type_Q || srcType == Type_UD ||
+  vISA_ASSERT_INPUT(srcType == Type_UQ || srcType == Type_Q || srcType == Type_UD ||
                    srcType == Type_D || srcType == Type_UW || srcType == Type_W,
                "function only supports integer types");
 
@@ -1255,10 +1254,10 @@ G4_SrcRegRegion *IR_Builder::lscAdd(G4_Predicate *pred, G4_ExecSize execSize,
       return lscAdd64AosEmu(pred, execSize, execCtrl, src0, addImm64);
     }
   } else if ((int32_t)addImm64 != addImm64) {
-    MUST_BE_TRUE(false, "<64b add must not use >32b imm off");
+    vISA_ASSERT_INPUT(false, "<64b add must not use >32b imm off");
   } else if ((srcType == Type_UW || srcType == Type_W) &&
              (int16_t)addImm64 != addImm64) {
-    MUST_BE_TRUE(false, "16b add must not use >16b imm off");
+    vISA_ASSERT_INPUT(false, "16b add must not use >16b imm off");
   }
 
   // we can do this in one instruction
@@ -1285,11 +1284,11 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosNative(G4_Predicate *pred,
   const auto *srcRgn1 =
       execSize == g4::SIMD1 ? getRegionScalar() : getRegionStride1();
   const G4_Type srcType = srcReg64->getType();
-  MUST_BE_TRUE(srcType == Type_UQ || srcType == Type_Q,
+  vISA_ASSERT_INPUT(srcType == Type_UQ || srcType == Type_Q,
                "this function only supports Q/UQ types");
   G4_Declare *result = createTempVar(execSize, srcType, getGRFAlign());
   G4_DstRegRegion *dst = createDst(result->getRegVar(), 0, 0, 1, Type_Q);
-  MUST_BE_TRUE(addImm64 >= std::numeric_limits<int32_t>::min() &&
+  vISA_ASSERT_INPUT(addImm64 >= std::numeric_limits<int32_t>::min() &&
                    addImm64 <= std::numeric_limits<int32_t>::max(),
                "offset too big");
   G4_Imm *srcImm = createImm((int32_t)addImm64, Type_D);
@@ -1314,7 +1313,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(G4_Predicate *pred,
   int dstRgnHz2 = execSize == g4::SIMD1 ? 1 : 2;
 
   const G4_Type srcType = srcReg64->getType();
-  MUST_BE_TRUE(srcType == Type_UQ || srcType == Type_Q,
+  vISA_ASSERT_INPUT(srcType == Type_UQ || srcType == Type_Q,
                "this function only supports integer types");
 
   // Given REG64.K<1;1,0>:q we need to split this into the low and high
@@ -1351,7 +1350,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(G4_Predicate *pred,
   //
   for (int pass = 0; pass < passes; pass++) {
     // e.g. someone tries to do a SIMD32 starting at M16
-    MUST_BE_TRUE(passExecCtrl != vISA_NUM_EMASK, "invalid exec mask");
+    vISA_ASSERT_INPUT(passExecCtrl != vISA_NUM_EMASK, "invalid exec mask");
     //
     G4_Declare *TMP_LO32 = createTempVar(passExecSize, Type_UD, getGRFAlign());
     G4_DstRegRegion *dstAddcLo =

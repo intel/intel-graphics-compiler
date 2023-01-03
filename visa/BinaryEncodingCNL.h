@@ -890,7 +890,7 @@ public:
         SrcOperandEncoder<T, SrcNum>::SetSrcChanSel(myBin, value);
         return;
       }
-      ASSERT_USER(false, "acc2~acc7 were set on wrong instruction");
+      vISA_ASSERT(false, "acc2~acc7 were set on wrong instruction");
     }
 
     auto maybeSwizzle = encoder.getSwizzle(srcRegion);
@@ -1384,7 +1384,7 @@ public:
       SrcOperandEncoder<T, SrcNum>::SetSourceVerticalStride(
           &sourcesReg, G9HDL::VERTSTRIDE_0_ELEMENTS);
     } else {
-      ASSERT_USER(false, "Invalid NULL register source.");
+      vISA_ASSERT(false, "Invalid NULL register source.");
     }
   }
 

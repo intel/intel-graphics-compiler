@@ -286,7 +286,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
   G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
 
   if (numOut == 0) {
-    MUST_BE_TRUE(vertexData->isNullReg(),
+    vISA_ASSERT_INPUT(vertexData->isNullReg(),
                  "vertex payload must be null ARF when numOut is 0");
   }
 
@@ -323,7 +323,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
   G4_Declare *payloadD = NULL;
   G4_Declare *payloadUD = NULL;
   if (useSplitSend) {
-    ASSERT_USER(useHeader,
+    vISA_ASSERT_INPUT(useHeader,
                 "So far, split-send is only used when header is present!");
     --numRows;
     if (numRows > 0) {
@@ -424,7 +424,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
     if (needsDataMove) {
       m1 = createSrcRegRegion(payloadUD, getRegionStride1());
     } else {
-      ASSERT_USER(payloadUD == vertexDataDcl,
+      vISA_ASSERT(payloadUD == vertexDataDcl,
                   "If there is no need for data move then payloadUD == "
                   "vertexDataDcl must hold!");
 
@@ -505,7 +505,7 @@ int IR_Builder::translateVISARTWrite3DInst(
 
   bool FP16Data = R->getType() == Type_HF;
   if (FP16Data) {
-    MUST_BE_TRUE((G->isNullReg() || G->getType() == Type_HF) &&
+    vISA_ASSERT_INPUT((G->isNullReg() || G->getType() == Type_HF) &&
                      (B->isNullReg() || B->getType() == Type_HF) &&
                      (A->isNullReg() || A->getType() == Type_HF),
                  "R,G,B,A for RT write must have the same type");
@@ -611,7 +611,7 @@ int IR_Builder::translateVISARTWrite3DInst(
   }
 
   if (useHeader) {
-    ASSERT_USER(r1HeaderOpnd,
+    vISA_ASSERT_INPUT(r1HeaderOpnd,
                 "Second GRF for header that was passed in is NULL.");
     G4_DstRegRegion *payloadRegRgn =
         createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
@@ -1026,7 +1026,7 @@ int IR_Builder::translateVISARTWrite3DInst(
     needs to be a register.
     */
     if (cpsCounter) {
-      ASSERT_USER(hasCPS(), "CPS counter is not supported");
+      vISA_ASSERT_INPUT(hasCPS(), "CPS counter is not supported");
       unsigned msgDescValue = msgDesc->getExtendedDesc();
 
       // shifting CPS counter by appropriate number of bits and storing in
@@ -1127,18 +1127,18 @@ static uint32_t createSampleHeader0Dot2(VISASampler3DSubOpCode op,
 static void checkCPSEnable(VISASampler3DSubOpCode op, unsigned reponseLength,
                            unsigned execSize) {
 
-  ASSERT_USER(reponseLength > 0,
+  vISA_ASSERT_INPUT(reponseLength > 0,
               "CPS LOD Compensation Enable must be disabled if the "
               "response length is zero");
 
-  ASSERT_USER(execSize == 8 || execSize == 16,
+  vISA_ASSERT_INPUT(execSize == 8 || execSize == 16,
               "CPS LOD Compensation Enable only valid for SIMD8* or SIMD16*");
 
   bool isCPSAvailable = op == VISA_3D_SAMPLE || op == VISA_3D_SAMPLE_B ||
                         op == VISA_3D_SAMPLE_C || op == VISA_3D_SAMPLE_B_C ||
                         op == VISA_3D_LOD;
 
-  ASSERT_USER(isCPSAvailable, "CPD LOD Compensation Enable only available for "
+  vISA_ASSERT(isCPSAvailable, "CPD LOD Compensation Enable only available for "
                               "sample, sample_b, sample_bc, sample_c and LOD");
 }
 
@@ -1274,7 +1274,7 @@ int IR_Builder::splitSampleInst(
     // write back message.
     pixelNullMaskEnable = hasPixelNullMask() && pixelNullMask;
     if (pixelNullMaskEnable) {
-      ASSERT_USER(useHeader, "pixel null mask requires a header");
+      vISA_ASSERT_INPUT(useHeader, "pixel null mask requires a header");
       ++tmpDstRows;
     }
 
@@ -1770,7 +1770,7 @@ int IR_Builder::translateVISASampler3DInst(
                              : instOpt | dbgOpt;
     ++i;
   }
-  ASSERT_USER(i == len,
+  vISA_ASSERT_INPUT(i == len,
               "There's mismatching during payload source collecting!");
 
   G4_SrcRegRegion *msgs[2] = {0, 0};
@@ -1794,7 +1794,7 @@ int IR_Builder::translateVISASampler3DInst(
   G4_InstSend *sendInst = nullptr;
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT_INPUT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     G4_SendDescRaw *msgDesc =
         createSampleMsgDesc(desc, cpsEnable, 0, surface, samplerIdx);
@@ -1897,7 +1897,7 @@ int IR_Builder::translateVISALoad3DInst(
                              : instOpt;
     ++i;
   }
-  ASSERT_USER(i == len,
+  vISA_ASSERT_INPUT(i == len,
               "There's mismatching during payload source collecting!");
 
   G4_SrcRegRegion *msgs[2] = {0, 0};
@@ -2009,7 +2009,7 @@ int IR_Builder::translateVISAGather3dInst(
                              : instOpt;
     ++i;
   }
-  ASSERT_USER(i == len,
+  vISA_ASSERT_INPUT(i == len,
               "There's mismatching during payload source collecting!");
 
   G4_SrcRegRegion *msgs[2] = {0, 0};

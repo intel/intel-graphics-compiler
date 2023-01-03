@@ -123,7 +123,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST *inst) {
 
   // convert sources to align16
   for (int k = 0, numSrc = inst->getNumSrc(); k < numSrc; k++) {
-    ASSERT_USER(inst->getSrc(k)->isSrcRegRegion(),
+    vISA_ASSERT(inst->getSrc(k)->isSrcRegRegion(),
                 "Unexpected src to be converted to ALIGN16!");
     G4_SrcRegRegion *src = inst->getSrc(k)->asSrcRegRegion();
     setSwizzle(src, src->isScalar() ? SrcSwizzle::R : SrcSwizzle::XYZW);

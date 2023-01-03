@@ -78,7 +78,7 @@ G4_INST *IR_Builder::translateLscFence(G4_Predicate *pred, SFID sfid,
   auto check = [&](bool z, const char *what) {
     if (!z) {
       criticalMsgStream() << what << "\n";
-      MUST_BE_TRUE(false, what);
+      vISA_ASSERT_INPUT(false, std::string(what));
       status = VISA_FAILURE;
     }
   };
@@ -200,7 +200,7 @@ void IR_Builder::generateNamedBarrier(G4_Predicate *prd, int numProducer,
     // barrier id should be a srcRegion with int type
     // and (1) Hdr.2:ud barrierId 0xFF
     // or (1) Hdr.2:ud Hdr.2 payload.data
-    assert(barrierId->isSrcRegRegion() && IS_INT(barrierId->getType()) &&
+    vISA_ASSERT(barrierId->isSrcRegRegion() && IS_INT(barrierId->getType()),
            "expect barrier id to be int");
     auto dst = createDst(header->getRegVar(), 0, 2, 1, Type_UD);
     auto src1 = createImm(0xFF, Type_UD);
@@ -279,14 +279,14 @@ static void checkNamedBarrierSrc(G4_Operand *src, bool isBarrierId,
   if (src->isImm()) {
     if (isBarrierId) {
       uint32_t val = (uint32_t)src->asImm()->getInt();
-      assert(val < kernel.getMaxNumOfBarriers() && "illegal named barrier id");
+      vISA_ASSERT(val < kernel.getMaxNumOfBarriers(), "illegal named barrier id");
     }
   } else if (src->isSrcRegRegion()) {
-    assert(src->asSrcRegRegion()->isScalar() &&
+    vISA_ASSERT(src->asSrcRegRegion()->isScalar(),
            "barrier id should have scalar region");
-    assert(IS_BTYPE(src->getType()) && "illegal barrier operand type");
+    vISA_ASSERT(IS_BTYPE(src->getType()), "illegal barrier operand type");
   } else {
-    assert(false && "illegal barrier id operand");
+    vISA_ASSERT(false, "illegal barrier id operand");
   }
 }
 
@@ -367,7 +367,7 @@ G4_INST *IR_Builder::createFenceInstructionPreLSC(G4_Predicate *prd,
   const uint32_t L1_FLUSH_MASK = 0x40;
 
   int flushBits = (flushParam >> 1) & 0xF;
-  assert(!supportsLSC() && "LSC fence should be handled elsewhere");
+  vISA_ASSERT_INPUT(!supportsLSC(), "LSC fence should be handled elsewhere");
   if (noL3Flush()) {
     // L3 flush is no longer required for image memory
     flushBits = 0;
@@ -540,7 +540,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask) {
   } break;
   case ISA_WAIT: {
     // This should be handled by translateVISAWait() now
-    MUST_BE_TRUE(false, "Should not reach here");
+    vISA_ASSERT_UNREACHABLE("incorrect opcode");
   } break;
   case ISA_YIELD: {
     G4_INST *lastInst = instList.empty() ? nullptr : instList.back();

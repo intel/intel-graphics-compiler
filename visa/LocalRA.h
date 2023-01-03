@@ -174,7 +174,7 @@ public:
   bool isGRFRegAssigned();
 
   void setTopDcl(G4_Declare *dcl) {
-    MUST_BE_TRUE(topdcl == NULL, "Redefining top dcl");
+    vISA_ASSERT(topdcl == NULL, "Redefining top dcl");
     topdcl = dcl;
   }
 
@@ -331,7 +331,7 @@ public:
   void setWordNotBusy(int whichgrf, int word, int instID);
 
   inline bool isGRFBusy(int which) const {
-    MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
+    vISA_ASSERT(isGRFAvailable(which), "Invalid register");
     return (regBusyVector[which] != 0);
   }
 
@@ -378,7 +378,7 @@ public:
         return true;
       }
     } else {
-      MUST_BE_TRUE(which < (int)numRegs, "invalid GRF");
+      vISA_ASSERT(which < (int)numRegs, "invalid GRF");
       return (grfAvialable[which] == true);
     }
   }

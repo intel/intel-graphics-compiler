@@ -1901,7 +1901,7 @@ bool LinearScanRA::assignEOTLiveRanges(
         isUseUnAvailableRegister(nextEOTGRF, dcl->getNumRows()));
     nextEOTGRF += dcl->getNumRows();
     if (nextEOTGRF > numRegLRA) {
-      vASSERT(0);
+      vASSERT(false);
     }
 #ifdef DEBUG_VERBOSE_ON
     printLiveInterval(lr, true, builder);

@@ -110,7 +110,7 @@ int IR_Builder::translateVISAQWScatterInst(
 
   G4_DstRegRegion *dst = createNullDst(Type_UD);
   if (msgs[1] == 0) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], 0, instExSize, desc,
                    SFID::DP_DC0, false, SendAccess::WRITE_ONLY, surface,
@@ -190,11 +190,11 @@ uint32_t IR_Builder::setOwordForDesc(uint32_t desc, int numOword,
   case 8:
     return desc | (0x4 << MESSAGE_SPECIFIC_CONTROL);
   case 16:
-    assert(isSLM && has16OWordSLMBlockRW() &&
+    vISA_ASSERT_INPUT(isSLM && has16OWordSLMBlockRW(),
            "16OWord block r/w not supported");
     return desc | (0x5 << MESSAGE_SPECIFIC_CONTROL);
   default:
-    /// TODO(move to verifier): default: ASSERT_USER(false, "OWord block size
+    /// TODO(move to verifier): default: vISA_ASSERT_INPUT(false, "OWord block size
     /// must be 1/2/4/8.");
     return desc;
   }
@@ -529,7 +529,7 @@ int IR_Builder::translateVISAGatherInst(
   offset->setSubRegAlign(getGRFAlign());
 
   if (useSplitSend) {
-    ASSERT_USER(!headerLess,
+    vISA_ASSERT(!headerLess,
                 "SplitSend should not be used when header is not required!");
     // Without header, it's unnecessary to split the message.
     header = createSendPayloadDcl(getGenxDataportIOSize(), Type_UD);
@@ -542,7 +542,7 @@ int IR_Builder::translateVISAGatherInst(
   G4_SrcRegRegion *msgSrcOpnd = NULL;
 
   if (headerLess) {
-    ASSERT_USER(
+    vISA_ASSERT(
         !header,
         "'header' should not be allocated when header is not required!");
 
@@ -629,7 +629,7 @@ int IR_Builder::translateVISAGatherInst(
   }
 
   if (useSplitSend) {
-    ASSERT_USER(!headerLess,
+    vISA_ASSERT(!headerLess,
                 "SplitSend should only be used when header is required!");
 
     G4_SrcRegRegion *m0 = createSrcRegRegion(header, getRegionStride1());
@@ -921,7 +921,7 @@ int IR_Builder::translateVISAGather4Inst(
   if (header) {
     // With 'header' allocated, we need prepare the header for the
     // (stateless) surface.
-    ASSERT_USER(isStatelessSurface(surface),
+    vISA_ASSERT(isStatelessSurface(surface),
                 "With 'header' allocated, stateless surface is expected!");
     // Build stateless surface message header.
     BuildUntypedStatelessSurfaceMessageHeader(this, header);
@@ -994,7 +994,7 @@ int IR_Builder::translateVISAGather4Inst(
   }
 
   if (useSplitSend) {
-    ASSERT_USER(header,
+    vISA_ASSERT(header,
                 "'header' should be allocated when split-send is to be used.");
 
     G4_SrcRegRegion *m0 = createSrcRegRegion(header, getRegionStride1());
@@ -1103,7 +1103,7 @@ int IR_Builder::translateVISAScatter4Inst(
   if (header) {
     // With 'header' allocated, we need prepare the header for the
     // (stateless) surface.
-    ASSERT_USER(isStatelessSurface(surface),
+    vISA_ASSERT(isStatelessSurface(surface),
                 "With 'header' allocated, stateless surface is expected!");
     // Build stateless surface message header.
     BuildUntypedStatelessSurfaceMessageHeader(this, header);
@@ -1254,10 +1254,10 @@ int IR_Builder::translateVISADwordAtomicInst(
     G4_DstRegRegion *dst) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  ASSERT_USER(!IsFloatAtomicOps(atomicOp) || hasFloatAtomics(),
+  vISA_ASSERT_INPUT(!IsFloatAtomicOps(atomicOp) || hasFloatAtomics(),
               "Float atomic operations are only supported on SKL+ devices");
 
-  ASSERT_USER(getPlatform() >= Xe_XeHPSDV ||
+  vISA_ASSERT_INPUT(getPlatform() >= Xe_XeHPSDV ||
                   ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
               "FADD/FSUB atomic operations are only supported on this devices");
 
@@ -1343,7 +1343,7 @@ int IR_Builder::translateVISADwordAtomicInst(
   unsigned resLen = hasRet ? (exSize / getGenxDataportIOSize()) : 0;
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], resLen, instExSize, MD, sfid,
                    useHeader, SendAccess::READ_WRITE, surface, NULL, instOpt,
@@ -1394,7 +1394,7 @@ void IR_Builder::buildTypedSurfaceAddressPayload(
 
   // Append R if any.
   if (!rOffsetOpnd->isNullReg()) {
-    ASSERT_USER(!vOffsetOpnd->isNullReg(),
+    vISA_ASSERT_INPUT(!vOffsetOpnd->isNullReg(),
                 "r offset must be NULL if v offset is NULL");
     sources[len].opnd = rOffsetOpnd;
     sources[len].numElts = exSize;
@@ -1428,7 +1428,7 @@ int IR_Builder::translateVISAGather4TypedInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exSize = executionSize == EXEC_SIZE_16 ? g4::SIMD16 : g4::SIMD8;
-  assert((exSize == 8 || hasSIMD16TypedRW()) && "only simd8 is supported");
+  vISA_ASSERT_INPUT((exSize == 8 || hasSIMD16TypedRW()), "only simd8 is supported");
   G4_InstOpts instOpt = Get_Gen4_Emask(emask, exSize);
   int numEnabledChannels = chMask.getNumEnabledChannels();
 
@@ -1472,7 +1472,7 @@ int IR_Builder::translateVISAGather4TypedInst(
 
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dstOpnd, msgs[0], sizes[0], numEnabledChannels, exSize,
                    msgDesc, sfId, hasHeader, SendAccess::READ_ONLY, surface,
@@ -1498,7 +1498,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exSize = executionSize == EXEC_SIZE_16 ? g4::SIMD16 : g4::SIMD8;
-  assert((exSize == g4::SIMD8 || hasSIMD16TypedRW()) &&
+  vISA_ASSERT_INPUT((exSize == g4::SIMD8 || hasSIMD16TypedRW()),
          "only simd8 is supported");
   G4_InstOpts instOpt = Get_Gen4_Emask(emask, exSize);
   int numEnabledChannels = chMask.getNumEnabledChannels();
@@ -1554,7 +1554,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
 
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dstOpnd, msgs[0], sizes[0], 0, exSize, msgDesc, sfId,
                    hasHeader, SendAccess::WRITE_ONLY, surface, NULL, instOpt,
@@ -1577,8 +1577,8 @@ int IR_Builder::translateVISATypedAtomicInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   VISA_Exec_Size instExecSize = execSize;
-  assert(execSize <=
-             (getNativeExecSize() == g4::SIMD8 ? EXEC_SIZE_8 : EXEC_SIZE_16) &&
+  vISA_ASSERT_INPUT(execSize <=
+             (getNativeExecSize() == g4::SIMD8 ? EXEC_SIZE_8 : EXEC_SIZE_16),
          "send exec size must not exceed the platform's native execution size");
 
   unsigned op = Get_Atomic_Op(atomicOp);
@@ -1637,7 +1637,7 @@ int IR_Builder::translateVISATypedAtomicInst(
 
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], dstLength, exSize, msgDesc,
                    SFID::DP_DC1, false, SendAccess::READ_WRITE, surface,
@@ -1692,7 +1692,7 @@ void IR_Builder::applySideBandOffset(G4_Operand *sideBand,
     createMov(g4::SIMD1, dst, createImm(sidebandInDesc, Type_UD),
               InstOpt_WriteEnable, true);
   } else {
-    MUST_BE_TRUE(sideBand->isSrcRegRegion(),
+    vISA_ASSERT(sideBand->isSrcRegRegion(),
                  "sideband offset should be a srcRegRegion");
     // shl (1) a0.0 sideband 0xC
     G4_DstRegRegion *dst = createDstRegRegion(builtinA0, 1);
@@ -1754,7 +1754,7 @@ int IR_Builder::translateGather4Inst(
     G4_SrcRegRegion *offsets, G4_DstRegRegion *dst) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+  vISA_ASSERT_INPUT(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
                   execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
                   execSize == EXEC_SIZE_16,
               "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
@@ -1820,7 +1820,7 @@ int IR_Builder::translateGather4Inst(
 
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], resLen, instExSize, MD, sfid,
                    useHeader, SendAccess::READ_ONLY, surface, NULL, instOpt,
@@ -1840,7 +1840,7 @@ int IR_Builder::translateScatter4Inst(
     G4_SrcRegRegion *offsets, G4_SrcRegRegion *src) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+  vISA_ASSERT_INPUT(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
                   execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
                   execSize == EXEC_SIZE_16,
               "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
@@ -1910,7 +1910,7 @@ int IR_Builder::translateScatter4Inst(
   G4_DstRegRegion *dst = createNullDst(Type_UD);
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], 0, instExSize, MD, sfid,
                    useHeader, SendAccess::WRITE_ONLY, surface, NULL, instOpt,
@@ -1989,11 +1989,11 @@ int IR_Builder::translateByteGatherInst(
     G4_SrcRegRegion *offsets, G4_DstRegRegion *dst) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+  vISA_ASSERT_INPUT(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
                   execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
                   execSize == EXEC_SIZE_16,
               "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
-  ASSERT_USER(numBlocks == SVM_BLOCK_NUM_1 || numBlocks == SVM_BLOCK_NUM_2 ||
+  vISA_ASSERT_INPUT(numBlocks == SVM_BLOCK_NUM_1 || numBlocks == SVM_BLOCK_NUM_2 ||
                   numBlocks == SVM_BLOCK_NUM_4,
               "Byte gather ONLY supports 1, 2, and 4 elements per slot!");
 
@@ -2060,7 +2060,7 @@ int IR_Builder::translateByteGatherInst(
   unsigned resLen = (exSize / getGenxDataportIOSize()) * numBatch;
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], resLen, instExSize, MD, sfid,
                    useHeader, SendAccess::READ_ONLY, surface, NULL, instOpt,
@@ -2080,11 +2080,11 @@ int IR_Builder::translateByteScatterInst(
     G4_SrcRegRegion *offsets, G4_SrcRegRegion *src) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+  vISA_ASSERT_INPUT(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
                   execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
                   execSize == EXEC_SIZE_16,
               "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
-  ASSERT_USER(numBlocks == SVM_BLOCK_NUM_1 || numBlocks == SVM_BLOCK_NUM_2 ||
+  vISA_ASSERT_INPUT(numBlocks == SVM_BLOCK_NUM_1 || numBlocks == SVM_BLOCK_NUM_2 ||
                   numBlocks == SVM_BLOCK_NUM_4,
               "Byte scatter ONLY supports 1, 2, and 4 elements per slot!");
 
@@ -2157,7 +2157,7 @@ int IR_Builder::translateByteScatterInst(
   G4_DstRegRegion *dst = createNullDst(Type_UD);
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], 0, instExSize, MD, sfid,
                    useHeader, SendAccess::WRITE_ONLY, surface, NULL, instOpt,
@@ -2337,7 +2337,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
     G4_SrcRegRegion *addresses, G4_DstRegRegion *dst) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+  vISA_ASSERT_INPUT(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
                   execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
                   execSize == EXEC_SIZE_16,
               "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
@@ -2347,7 +2347,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
 
   bool is8ByteMsg =
       blockSize == SVM_BLOCK_TYPE_BYTE && numBlocks == SVM_BLOCK_NUM_8;
-  assert((!is8ByteMsg || has8ByteA64Gather()) &&
+  vISA_ASSERT_INPUT((!is8ByteMsg || has8ByteA64Gather()),
          "A64 8-byte scatter not supported on this platform");
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
@@ -2406,14 +2406,14 @@ int IR_Builder::translateVISASVMScatterWriteInst(
     G4_SrcRegRegion *addresses, G4_SrcRegRegion *src) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+  vISA_ASSERT_INPUT(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
                   execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
                   execSize == EXEC_SIZE_16,
               "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
 
   bool is8ByteMsg =
       blockSize == SVM_BLOCK_TYPE_BYTE && numBlocks == SVM_BLOCK_NUM_8;
-  assert((!is8ByteMsg || has8ByteA64Gather()) &&
+  vISA_ASSERT_INPUT((!is8ByteMsg || has8ByteA64Gather()),
          "A64 8-byte scatter not supported on this platform");
   VISA_Exec_Size instExecSize = execSize;
   execSize = roundUpExecSize(execSize);
@@ -2475,7 +2475,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
 
   G4_DstRegRegion *dst = createNullDst(Type_UD);
   if (msgs[1] == 0) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], 0, instExSize, desc,
                    SFID::DP_DC1, false, SendAccess::WRITE_ONLY, NULL, NULL,
@@ -2516,10 +2516,10 @@ int IR_Builder::translateVISASVMAtomicInst(
     G4_SrcRegRegion *src0, G4_SrcRegRegion *src1, G4_DstRegRegion *dst) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  MUST_BE_TRUE(bitwidth == 16 || bitwidth == 32 || bitwidth == 64,
+  vISA_ASSERT_INPUT(bitwidth == 16 || bitwidth == 32 || bitwidth == 64,
                "bitwidth must be 16/32/64");
 
-  ASSERT_USER(getPlatform() >= Xe_XeHPSDV ||
+  vISA_ASSERT_INPUT(getPlatform() >= Xe_XeHPSDV ||
                   ((atomicOp != ATOMIC_FADD) && (atomicOp != ATOMIC_FSUB)),
               "FADD/FSUB atomic operations are only supported on this devices");
 
@@ -2627,7 +2627,7 @@ int IR_Builder::translateSVMGather4Inst(VISA_Exec_Size execSize,
                                         G4_DstRegRegion *dst) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  ASSERT_USER(execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
+  vISA_ASSERT_INPUT(execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
               "Only support SIMD8 or SIMD16!");
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
@@ -2666,7 +2666,7 @@ int IR_Builder::translateSVMGather4Inst(VISA_Exec_Size execSize,
   unsigned resLen =
       (exSize / getGenxDataportIOSize()) * chMask.getNumEnabledChannels();
   if (msgs[1] == 0) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], resLen, exSize, FC, sfid,
                    false, SendAccess::READ_ONLY, NULL, NULL, instOpt, false);
@@ -2687,7 +2687,7 @@ int IR_Builder::translateSVMScatter4Inst(VISA_Exec_Size execSize,
                                          G4_SrcRegRegion *src) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
-  ASSERT_USER(execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
+  vISA_ASSERT_INPUT(execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
               "Only support SIMD8 or SIMD16!");
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
@@ -2728,7 +2728,7 @@ int IR_Builder::translateSVMScatter4Inst(VISA_Exec_Size execSize,
 
   G4_DstRegRegion *dst = createNullDst(Type_UD);
   if (msgs[1] == 0) {
-    ASSERT_USER(sizes[1] == 0,
+    vISA_ASSERT(sizes[1] == 0,
                 "Expect the 2nd part of the payload has zero size!");
     createSendInst(pred, dst, msgs[0], sizes[0], 0, exSize, FC, sfid, false,
                    SendAccess::WRITE_ONLY, NULL, NULL, instOpt, false);

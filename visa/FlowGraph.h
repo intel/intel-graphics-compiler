@@ -92,11 +92,11 @@ public:
 #ifdef _DEBUG
     // verify both containers are in sync
     for (auto subBB : BBList) {
-      MUST_BE_TRUE(BBSet.count(subBB) == 1, "out of sync containers");
+      vISA_ASSERT(BBSet.count(subBB) == 1, "out of sync containers");
     }
 #endif
 
-    MUST_BE_TRUE(BBSet.size() == BBList.size(), "size mismatch");
+    vISA_ASSERT(BBSet.size() == BBList.size(), "size mismatch");
     return BBSet.count(bb) > 0;
   }
 

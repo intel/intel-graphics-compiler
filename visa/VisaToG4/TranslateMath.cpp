@@ -65,7 +65,7 @@ static G4_SrcRegRegion *operandToDirectSrcRegRegion(IR_Builder &builder,
     return src->asSrcRegRegion();
   } else {
     // src is an immediate
-    MUST_BE_TRUE(src->isImm(), "expected an immediate operand");
+    vISA_ASSERT_INPUT(src->isImm(), "expected an immediate operand");
     G4_Declare *tmpSrc = builder.createTempVarWithNoSpill(
         newSize, G4_Operand::GetNonVectorImmType(src->getType()), Any);
     builder.createMovInst(tmpSrc, 0, 0, newSize, nullptr, nullptr, src, true);
@@ -856,7 +856,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
       } else {
-        assert(gotoUIP);
+       vASSERT(gotoUIP);
         inst = createLabelInst(gotoUIP, true);
       }
     }
@@ -1211,7 +1211,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
       } else {
-        assert(gotoUIP);
+       vASSERT(gotoUIP);
         inst = createLabelInst(gotoUIP, true);
       }
     }
@@ -1526,7 +1526,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
       } else {
-        assert(gotoUIP);
+       vASSERT(gotoUIP);
         inst = createLabelInst(gotoUIP, true);
       }
     }
@@ -2078,7 +2078,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
         // endif (8) {Q1/Q2}
         inst = createEndif(exsize, instOpt);
       } else {
-        assert(gotoUIP);
+       vASSERT(gotoUIP);
         inst = createLabelInst(gotoUIP, true);
       }
     }

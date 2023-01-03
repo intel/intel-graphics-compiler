@@ -27,9 +27,9 @@ void splice(G4_BB *bb, INST_LIST_ITER iter, INST_LIST &instList,
 G4_Declare *SpillManager::createNewSpillLocDeclare(G4_Declare *dcl) {
 
   if (dcl->getRegFile() == G4_FLAG) {
-    MUST_BE_TRUE(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W,
+    vISA_ASSERT(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W,
                  "flag reg's type should be UW");
-    MUST_BE_TRUE(dcl->getNumElems() <= builder.getNumFlagRegisters(),
+    vISA_ASSERT(dcl->getNumElems() <= builder.getNumFlagRegisters(),
                  "Flag reg Spill size exceeds limit");
   } else if (dcl->getRegFile() == G4_ADDRESS) {
     // if we are dealing with type other than UW, e.g., B, then we need to
@@ -37,10 +37,10 @@ G4_Declare *SpillManager::createNewSpillLocDeclare(G4_Declare *dcl) {
     // assume data types of addr reg are UW
     //
     G4_Type type = dcl->getElemType();
-    MUST_BE_TRUE(type == Type_UW || type == Type_W || type == Type_UD ||
+    vISA_ASSERT(type == Type_UW || type == Type_W || type == Type_UD ||
                      type == Type_D,
                  "addr reg's type should be UW or UD");
-    MUST_BE_TRUE(dcl->getNumElems() <= getNumAddrRegisters(),
+    vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
                  "Addr reg Spill size exceeds limit");
   }
   G4_Declare *sp = dcl->getSpilledDeclare();
@@ -60,10 +60,10 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl) {
   const char *name =
       builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
 
-  MUST_BE_TRUE(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W,
+  vISA_ASSERT(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W,
                "addr reg's type should be UW");
-  MUST_BE_TRUE(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
-  MUST_BE_TRUE(dcl->getNumElems() <= getNumAddrRegisters(),
+  vISA_ASSERT(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
+  vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
                "Temp_ADDR exceeds 16 bytes");
   G4_Declare *sp =
       builder.createDeclareNoLookup(name, G4_ADDRESS, dcl->getNumElems(),
@@ -101,11 +101,11 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
       builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
 
   G4_Type type = dcl->getElemType();
-  MUST_BE_TRUE(type == Type_UW || type == Type_W || type == Type_UD ||
+  vISA_ASSERT(type == Type_UW || type == Type_W || type == Type_UD ||
                    type == Type_D,
                "addr reg's type should be UW or UD");
-  MUST_BE_TRUE(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
-  MUST_BE_TRUE(dcl->getNumElems() <= getNumAddrRegisters(),
+  vISA_ASSERT(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
+  vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
                "Temp_ADDR exceeds 16 bytes");
   G4_Declare *sp = builder.createDeclareNoLookup(name, G4_ADDRESS, num_reg,
                                                  1, // 1 row
@@ -149,7 +149,7 @@ void SpillManager::genRegMov(G4_BB *bb, INST_LIST_ITER it, G4_VarBase *src,
           type = Type_UD;
           execSize = g4::SIMD1;
         } else if (i > 2) {
-          ASSERT_USER(false, "unsupported flag width");
+          vISA_ASSERT(false, "unsupported flag width");
         }
 
         srcRgn = builder.getRegionScalar();
@@ -178,7 +178,7 @@ void SpillManager::genRegMov(G4_BB *bb, INST_LIST_ITER it, G4_VarBase *src,
       nRegs -= i;
     }
   }
-  MUST_BE_TRUE(nRegs == 0, ERROR_SPILLCODE);
+  vISA_ASSERT(nRegs == 0, ERROR_SPILLCODE);
 
   if (gra.EUFusionNoMaskWANeeded()) {
     for (auto inst : builder.instList) {
@@ -271,7 +271,7 @@ void SpillManager::replaceSpilledDst(
                                                   tmpDcl->getRegVar());
       }
     } else
-      MUST_BE_TRUE(false, "Unknown reg access");
+      vISA_ASSERT(false, "Unknown reg access");
   }
 }
 //
@@ -383,7 +383,7 @@ void SpillManager::replaceSpilledSrc(
                                                   tmpDcl->getRegVar());
       }
     } else
-      MUST_BE_TRUE(false, "Unknown reg access");
+      vISA_ASSERT(false, "Unknown reg access");
   }
 }
 
@@ -610,9 +610,9 @@ void SpillManager::createSpillLocations(const G4_Kernel &kernel) {
   for (const LiveRange *lr : spilledLRs) {
     G4_Declare *dcl = lr->getVar()->getDeclare();
     dcl->setSpillFlag();
-    MUST_BE_TRUE(lr->getPhyReg() == NULL,
+    vISA_ASSERT(lr->getPhyReg() == NULL,
                  "Spilled Live Range shouldn't have physical reg");
-    MUST_BE_TRUE(lr->getSpillCost() < MAXSPILLCOST,
+    vISA_ASSERT(lr->getSpillCost() < MAXSPILLCOST,
                  "ERROR: spill live range with infinite spill cost");
     // create spill loc for holding spilled addr regs
     createNewSpillLocDeclare(dcl);

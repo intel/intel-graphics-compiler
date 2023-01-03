@@ -593,7 +593,7 @@ void Optimizer::adjustIndirectCallOffsetAfterSWSBSet() {
           }
           // instructions between pattern sequence could only be
           // sync.nop, sync.allrd or sync.allwr
-          vASSERT(0);
+          vASSERT(false);
         }
         vASSERT(first_add->getSrc(1)->isImm());
         int64_t adjust_off =
@@ -619,7 +619,7 @@ void Optimizer::adjustIndirectCallOffsetAfterSWSBSet() {
             }
             // instructions between pattern sequence could only be
             // sync.nop, sync.allrd or sync.allwr
-            vASSERT(0);
+            vASSERT(false);
           }
           vASSERT(third_add->getSrc(1)->isImm());
           int64_t adjust_off_2 =

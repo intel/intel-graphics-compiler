@@ -1063,7 +1063,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     } else if (pixelSize == 1) {
       surface_format = 5; // PLANAR_Y8_UNORM
     } else {
-      ASSERT_USER(false, "Invalid surface format for SKL+ VA HDC");
+      vISA_ASSERT_INPUT(false, "Invalid surface format for SKL+ VA HDC");
     }
     createMovInst(dcl, 0, 5, g4::SIMD1, NULL, NULL,
                   createImm(surface_format, Type_UD));

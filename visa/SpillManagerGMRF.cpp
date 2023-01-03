@@ -4201,7 +4201,7 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
             insertSpillRangeCode(jt, (*it));
             BBhasSpillCode = true;
           } else {
-            vASSERT(0);
+            vASSERT(false);
           }
         }
       }
@@ -4266,8 +4266,9 @@ bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
             } else if (getRFType(regVar) == G4_GRF) {
               insertFillGRFRangeCode(srcRR, jt, *it);
               BBhasSpillCode = true;
-            } else
-              vASSERT(0);
+            }
+            else
+              vASSERT(false);
           }
         }
       }
@@ -4435,7 +4436,7 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel *kernel) {
 
             insertSpillRangeCode(jt, (*it));
           } else {
-            vASSERT(0);
+            vASSERT(false);
           }
         }
       }
@@ -4473,7 +4474,7 @@ bool SpillManagerGRF::spillLiveRanges(G4_Kernel *kernel) {
             } else if (getRFType(regVar) == G4_GRF)
               insertFillGRFRangeCode(srcRR, jt, *it);
             else
-              vASSERT(0);
+              vASSERT(false);
           }
         }
       }

@@ -143,7 +143,7 @@ public:
   }
 
   void setRegVar(G4_RegVar *rv) {
-    MUST_BE_TRUE(regVar == NULL, ERROR_UNKNOWN);
+    vISA_ASSERT(regVar == NULL, ERROR_UNKNOWN);
     regVar = rv;
   }
 
@@ -248,11 +248,11 @@ public:
     elemInfo.reset(numElems, GRFByteSize);
   }
   unsigned short getNumberFlagElements() const {
-    assert(regFile == G4_FLAG && "should only be called for flag vars");
+    vISA_ASSERT(regFile == G4_FLAG, "should only be called for flag vars");
     return numFlagElements;
   }
   void setNumberFlagElements(uint8_t numEl) {
-    assert(regFile == G4_FLAG && "may only be called on a flag");
+    vISA_ASSERT(regFile == G4_FLAG, "may only be called on a flag");
     numFlagElements = numEl;
   }
 

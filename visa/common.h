@@ -119,59 +119,6 @@ extern std::stringstream errorMsgs;
 #define DEBUG_VERBOSE(msg)
 #endif // #ifdef _DEBUG
 
-// disable asserts only for release DLL
-#if defined(_DEBUG) || !defined(DLL_MODE) || !defined(NDEBUG)
-#define ASSERT_USER(x, errormsg)                                               \
-  do {                                                                         \
-    if (!(x)) {                                                                \
-      errorMsgs << "Error in Common ISA file:" << errormsg << "\n";            \
-      assert(false);                                                           \
-    }                                                                          \
-  } while (0)
-
-#define ASSERT_USER_LOC(x, errormsg, line, file)                               \
-  do {                                                                         \
-    if (!(x)) {                                                                \
-      errorMsgs << "Error in Common ISA file(" << file << ":" << line          \
-                << "): " << errormsg << "\n";                                  \
-      assert(false);                                                           \
-    }                                                                          \
-  } while (0)
-
-#define MUST_BE_TRUE2(x, errormsg, inst)                                       \
-  do {                                                                         \
-    if (!(x)) {                                                                \
-      std::cerr << errormsg << "\n";                                           \
-      inst->emit(errorMsgs);                                                   \
-      std::cerr << "\n";                                                       \
-      assert(false);                                                           \
-    }                                                                          \
-  } while (0)
-
-#define MUST_BE_TRUE(x, errormsg)                                              \
-  do {                                                                         \
-    if (!(x)) {                                                                \
-      std::cerr << __FILE__ << ":" << __LINE__ << " " << errormsg << "\n";     \
-      assert(false);                                                           \
-    }                                                                          \
-  } while (0)
-
-#define MUST_BE_TRUE1(x, lineno, errormsg)                                     \
-  do {                                                                         \
-    if (!(x)) {                                                                \
-      std::cerr << "(Source Line " << lineno << ") " << errormsg << "\n";      \
-      assert(false);                                                           \
-    }                                                                          \
-  } while (0)
-
-#else
-#define ASSERT_USER(x, errormsg)
-#define ASSERT_USER_LOC(x, errormsg, line, file)
-#define MUST_BE_TRUE(x, errormsg)
-#define MUST_BE_TRUE1(x, lineno, errormsg)
-#define MUST_BE_TRUE2(x, errormsg, inst)
-#endif
-
 namespace vISA {
 #if !defined(NDEBUG) && !defined(DLL_MODE)
 // Emitting debug information similar to the LLVM_DEBUG() macro.

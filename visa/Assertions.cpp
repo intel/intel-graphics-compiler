@@ -11,8 +11,8 @@ SPDX-License-Identifier: MIT
 
 #include <cstdarg>
 
-void assert_and_exit(bool check, std::string errorMsg,
-    std::string customMsg, ...) {
+void assert_and_exit(bool check, std::string errorMsg, const char* const fileName,
+    const char* const functionName, const unsigned int line, std::string customMsg, ...) {
 
   char causeMsg[1024];
   std::va_list vargs;
@@ -24,11 +24,15 @@ void assert_and_exit(bool check, std::string errorMsg,
     if (writtenB > 0) {
       // writtenB is not negative; succesfully written the cause msg with
       // variadic arguments
-      llvm::errs() << errorMsg << ": " << check << ", " << std::string(causeMsg) << "\n";
+      llvm::errs() << errorMsg << ": " << check << ", " << std::string(causeMsg) \
+        << "\nfile: " << std::string(fileName) << "\nfunction name: " << \
+        std::string(functionName) << "\nline: " << line << "\n";
     }
     else {
       // writtenB is negative, just print the custom msg as is
-      llvm::errs() << errorMsg << ": " << check << ", " << customMsg << "\n";
+      llvm::errs() << errorMsg << ": " << check << ", " << customMsg
+        << "\nfile: " << std::string(fileName) << "\nfunction name: " << \
+        std::string(functionName) << "\nline: " << line << "\n";
     }
     std::abort();
   }

@@ -14,16 +14,17 @@ SPDX-License-Identifier: MIT
 
 // use errorMsg to state where the error is detected (internal, input,
 // unreachable state)
-// use causeMsg for descriptive reason behind assertion failure
-void assert_and_exit(bool check, std::string errorMsg, std::string causeMsg, ...);
+// use customMsg for descriptive reason behind assertion failure
+void assert_and_exit(bool check, std::string errorMsg, const char* const fileName,
+    const char* const functionName, const unsigned line, std::string customMsg, ...);
 void assert_and_exit_generic(bool check);
 
 // main assert flavor
 // other subflavors like visa_assert, visa_assert_unreachable etc call this
 // assert macro with different error and cause messages
 // DO NOT USE visa_assert_top MACRO DIRECTLY IN vISA CODEBASE
-#define visa_assert_top(x, errormsg, causemsg, ...) \
-  assert_and_exit(x, errormsg, causemsg, ##__VA_ARGS__)
+#define visa_assert_top(x, errormsg, custommsg, ...) \
+  assert_and_exit(x, errormsg, __FILE__, __FUNCTION__, __LINE__, custommsg, ##__VA_ARGS__)
 
 // vASSERT -- shorthand version that takes only assertion condition
 // vISA_ASSERT -- use this assert to catch incorrect logic within vISA
@@ -35,18 +36,18 @@ void assert_and_exit_generic(bool check);
 #if defined (_DEBUG) || !defined(DLL_MODE) || !defined(NDEBUG)
 #define vASSERT(x) \
   visa_assert_top(x, "error, assertion failed", "")
-#define vISA_ASSERT(x, causemsg, ...) \
-  visa_assert_top(x, "internal error, assertion failed", causemsg, ##__VA_ARGS__)
-#define vISA_ASSERT_UNREACHABLE(causemsg, ...) \
-  visa_assert_top(false, "unreachable state, assertion failed", causemsg, ##__VA_ARGS__)
-#define vISA_ASSERT_INPUT(x, causemsg, ...) \
-  visa_assert_top(x, "input error, assertion failed", causemsg, ##__VA_ARGS__)
+#define vISA_ASSERT(x, custommsg, ...) \
+  visa_assert_top(x, "internal error, assertion failed", custommsg, ##__VA_ARGS__)
+#define vISA_ASSERT_UNREACHABLE(custommsg, ...) \
+  visa_assert_top(false, "unreachable state, assertion failed", custommsg, ##__VA_ARGS__)
+#define vISA_ASSERT_INPUT(x, custommsg, ...) \
+  visa_assert_top(x, "input error, assertion failed", custommsg, ##__VA_ARGS__)
 
 #else // (_DEBUG) || !(DLL_MODE) || !(NDEBUG)
 #define vASSERT(x) ((void)(0))
-#define vISA_ASSERT(x, causemsg, ...) ((void)(0))
-#define vISA_ASSERT_UNREACHABLE(causemsg, ...) ((void)(0))
-#define vISA_ASSERT_INPUT(x, causemsg, ...) \
+#define vISA_ASSERT(x, custommsg, ...) ((void)(0))
+#define vISA_ASSERT_UNREACHABLE(custommsg, ...) ((void)(0))
+#define vISA_ASSERT_INPUT(x, custommsg, ...) \
   assert_and_exit_generic(x)
 #endif // _DEBUG
 

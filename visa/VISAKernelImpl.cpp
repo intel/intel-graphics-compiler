@@ -63,16 +63,14 @@ static void ADD_OPND(int &num_operands, VISA_opnd **opnd, VISA_opnd *topnd) {
   }
 }
 
-#define ERROR_PRINT(error_msg) std::cerr << error_msg << "\n"
 static int CHECK_NUM_OPNDS(VISA_INST_Desc *instDesc, int numOperands,
                            int predOpnds) {
+
   if ((instDesc->opnd_num - predOpnds) != numOperands) {
-    ERROR_PRINT("Number of parameters does not match");
-    std::cerr << "LINE: " << __LINE__ << "\n";
-    std::cerr << "FUNCTION: " << __FUNCTION__ << "\n";
-    assert(0);
+    vISA_ASSERT_INPUT(false, "number of parameters does not match");
     return VISA_FAILURE;
   }
+
   return VISA_SUCCESS;
 }
 static void GET_NUM_PRED_DESC_OPNDS(int &predOpnd,
@@ -124,10 +122,10 @@ int VISAKernelImpl::calculateTotalInputSize() {
 int VISAKernelImpl::compileFastPath() {
   int status = VISA_SUCCESS;
 
-  assert(
+  vISA_ASSERT_INPUT(
       (getIsKernel() || getIsPayload() ||
        (m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_ArgSize) &&
-        m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_RetValSize))) &&
+        m_kernelAttrs->isKernelAttrSet(Attributes::ATTR_RetValSize))),
       "vISA: input for function must have attributes ArgSize and RetValSize!");
 
   if (getIsKernel()) {
@@ -196,12 +194,11 @@ static void setDeclAlignment(G4_Declare *dcl, const IR_Builder &builder,
     }
     break;
   case ALIGN_64WORD: // 64bytes GRF aligned
-    vISA_ASSERT(builder.getGRFSize() == 64, "incorrect GRF size");
+    vISA_ASSERT_INPUT(builder.getGRFSize() == 64, "incorrect GRF size");
     dcl->setSubRegAlign(ThirtyTwo_Word);
     dcl->setEvenAlign();
     break;
   default:
-    // align is obtained from parsed vISA
     vISA_ASSERT_INPUT(false, "Incorrect vISA alignment");
     break;
   }
@@ -274,9 +271,10 @@ void VISAKernelImpl::adjustIndirectCallOffset() {
           }
           // instructions between call and add could only be
           // sync.nop, sync.allrd or sync.allwr
-          assert(0);
+          vISA_ASSERT_UNREACHABLE("instructions betwen call and add can only be\
+              sync.nop, sync.allrd or sync.allwr");
         }
-        assert(first_add->getSrc(1)->isImm());
+        vASSERT(first_add->getSrc(1)->isImm());
         int64_t adjust_off =
             first_add->getSrc(1)->asImm()->getInt() - sync_offset;
         first_add->setSrc(m_builder->createImm(adjust_off, Type_D), 1);
@@ -976,7 +974,7 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *&decl, const char *varName,
 
   if (m_options->getOption(vISA_isParseMode) &&
       !setNameIndexMap(varName, decl)) {
-    assert(0);
+    vISA_ASSERT_INPUT(false, "incorrect parse option");
     return VISA_FAILURE;
   }
 
@@ -1060,7 +1058,7 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *&decl, const char *varName,
 
   if (m_options->getOption(vISA_isParseMode) &&
       !setNameIndexMap(std::string(varName), decl)) {
-    assert(0);
+    vASSERT(false);
     return VISA_FAILURE;
   }
 
@@ -1108,12 +1106,12 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *&decl, const char *varName,
   decl->type = PREDICATE_VAR;
 
   const int MAX_VISA_PRED_SIZE = 32;
-  MUST_BE_TRUE(numberElements <= MAX_VISA_PRED_SIZE,
+  vISA_ASSERT_INPUT(numberElements <= MAX_VISA_PRED_SIZE,
                "number of flags must be <= 32");
 
   if (m_options->getOption(vISA_isParseMode) &&
       !setNameIndexMap(std::string(varName), decl)) {
-    assert(0);
+    vASSERT(false);
     return VISA_FAILURE;
   }
   generateVariableName(decl->type, varName);
@@ -1159,7 +1157,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl,
 
   if (m_options->getOption(vISA_isParseMode) &&
       !setNameIndexMap(std::string(varName), decl)) {
-    assert(0);
+    vASSERT(false);
     return VISA_FAILURE;
   }
   generateVariableName(decl->type, varName);
@@ -1216,7 +1214,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl,
       break;
     }
     default:
-      assert(0);
+      vISA_ASSERT_UNREACHABLE("incorrect common isa var class type");
       return VISA_FAILURE;
     }
   }
@@ -1304,7 +1302,7 @@ int VISAKernelImpl::AddKernelAttribute(const char *attrName, int size,
       (attribute_info_t *)m_mem.alloc(sizeof(attribute_info_t));
   Attributes::ID attrID = Attributes::getAttributeID(attrName);
 
-  ASSERT_USER(Attributes::isKernelAttr(attrID), "Not a kernel attribute");
+  vISA_ASSERT_INPUT(Attributes::isKernelAttr(attrID), "Not a kernel attribute");
 
   if (attrID == Attributes::ATTR_OutputAsmPath) {
     if (m_options->getOption(vISA_AsmFileNameOverridden)) {
@@ -1373,7 +1371,7 @@ int VISAKernelImpl::AddKernelAttribute(const char *attrName, int size,
     }
     m_kernelAttrs->setKernelAttr(attrID, attr->value.stringVal);
   } else {
-    MUST_BE_TRUE(false, "Unsupported kernel attribute!");
+    vISA_ASSERT_INPUT(false, "Unsupported kernel attribute!");
   }
 
   if (attrID == Attributes::ATTR_Target) {
@@ -1386,7 +1384,7 @@ int VISAKernelImpl::AddKernelAttribute(const char *attrName, int size,
       m_options->setTarget(VISA_3D);
       m_kernel->setKernelType(VISA_3D);
     } else {
-      ASSERT_USER(false, "Invalid kernel target attribute.");
+      vISA_ASSERT_INPUT(false, "Invalid kernel target attribute.");
     }
   }
 
@@ -1512,13 +1510,13 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl,
   attribute_info_t *attr = allocAttribute(decl);
   attr->nameIndex = addStringPool(std::string(attrName));
   Attributes::ID aID = Attributes::getAttributeID(attrName);
-  ASSERT_USER(Attributes::isVarAttr(aID), "ERROR: unknown var attribute");
+  vISA_ASSERT_INPUT(Attributes::isVarAttr(aID), "ERROR: unknown var attribute");
 
   attr->size = (uint8_t)size;
   if (Attributes::isInt32(aID)) {
     attr->isInt = true;
     attr->value.intVal = val ? *((int *)val) : 0;
-    assert(attr->size <= 4 &&
+    vISA_ASSERT(attr->size <= 4,
            "Int32 attribute has a value of 4 bytes at most!");
   } else if (Attributes::isBool(aID)) {
     attr->isInt = true; // treat bool as int in attribute_info_t
@@ -1530,7 +1528,7 @@ int VISAKernelImpl::AddAttributeToVarGeneric(CISA_GEN_VAR *decl,
     temp[size] = 0;
     attr->value.stringVal = (const char *)temp;
   } else {
-    MUST_BE_TRUE(false, "ERROR: unexpected variable attribute");
+    vISA_ASSERT_INPUT(false, "ERROR: unexpected variable attribute");
   }
 
   switch (decl->type) {
@@ -1838,7 +1836,7 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(
           offset / m_builder->numEltPerGRF<Type_UB>();
       VISA_Type type = decl->genVar.getType();
       unsigned int typeSize = TypeSize(GetGenTypeFromVISAType(type));
-      assert((offset % typeSize) == 0);
+     vASSERT((offset % typeSize) == 0);
       cisa_opnd->_opnd.v_opnd.opnd_val.gen_opnd.col_offset =
           (offset % m_builder->numEltPerGRF<Type_UB>()) / typeSize;
 
@@ -1986,7 +1984,7 @@ int VISAKernelImpl::CreateVISAPredicateSrcOperand(VISA_VectorOpnd *&opnd,
 
   int status = VISA_SUCCESS;
 
-  assert(decl->type == PREDICATE_VAR && "expect a predicate variable");
+  vISA_ASSERT_INPUT(decl->type == PREDICATE_VAR, "expect a predicate variable");
 
   opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
 
@@ -2057,7 +2055,7 @@ int VISAKernelImpl::CreateVISAPredicateOperand(VISA_PredOpnd *&cisa_opnd,
     G4_Declare *dcl = decl->predVar.dcl;
 #if START_ASSERT_CHECK
     if (dcl == NULL) {
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
 #endif
@@ -2201,7 +2199,7 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd,
     int size = CISATypeTable[isaType].typeSize;
 
     if (size == 0) {
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
     if (isaType == ISA_TYPE_DF) {
@@ -2664,7 +2662,7 @@ int VISAKernelImpl::AppendVISATwoDstArithmeticInst(
     GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
 
     if (opcode != ISA_ADDC && opcode != ISA_SUBB) {
-      assert(0);
+      vASSERT(false);
       std::cerr << "ONLY ADDC AND SUBB are supported by this API\n";
       return VISA_FAILURE;
     }
@@ -2740,8 +2738,7 @@ int VISAKernelImpl::AppendVISALogicOrShiftInst(
     VISA_opnd *dst = tmpDst;
     if (satMode) {
       if (tmpDst == NULL) {
-        ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
-        assert(0);
+        vISA_ASSERT_INPUT(false, "Destination for arithmetic instruction is null");
         return VISA_FAILURE;
       }
       mod = MODIFIER_SAT;
@@ -2810,10 +2807,7 @@ int VISAKernelImpl::AppendVISAAddrAddInst(VISA_EMask_Ctrl emask,
 
 #if START_ASSERT_CHECK
     if ((inst_desc->opnd_num - num_pred_desc_operands) != num_operands) {
-      ERROR_PRINT("Number of parameters does not match");
-      std::cerr << "LINE: " << __LINE__ << "\n";
-      std::cerr << "FUNCTION: " << __FUNCTION__ << "\n";
-      assert(0);
+      vISA_ASSERT_INPUT(false, "Number of parameters does not match");
       return VISA_FAILURE;
     }
 #endif
@@ -2866,8 +2860,7 @@ int VISAKernelImpl::AppendVISAMinMaxInst(CISA_MIN_MAX_SUB_OPCODE subOpcode,
     VISA_opnd *dst = tmpDst;
     if (satMode) {
       if (tmpDst == NULL) {
-        ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
-        assert(0);
+        vISA_ASSERT_INPUT(false, "Destination for arithmetic instruction is NULL");
         return VISA_FAILURE;
       }
       mod = MODIFIER_SAT;
@@ -2943,7 +2936,7 @@ int VISAKernelImpl::AppendVISADataMovementInst(
     if (opcode == ISA_MOV && g4Dst->isTmReg() && g4Dst->getLeftBound() == 16) {
       if (m_builder->getPlatform() == Xe_PVC ||
           m_builder->getPlatform() == Xe_PVCXT) {
-        ERROR_PRINT("Pause counter is not supported on PVC and PVCXT");
+        std::cerr << "Pause counter is not supported on PVC and PVCXT";
         return VISA_FAILURE;
       }
     }
@@ -2962,8 +2955,7 @@ int VISAKernelImpl::AppendVISADataMovementInst(
     VISA_opnd *dst = tmpDst;
     if (satMode) {
       if (tmpDst == NULL) {
-        ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
-        assert(0);
+        vISA_ASSERT_INPUT(false, "Destination for Arithmetic instruction is null");
         return VISA_FAILURE;
       }
       mod = MODIFIER_SAT;
@@ -3114,7 +3106,7 @@ int VISAKernelImpl::AppendVISACFGotoInst(VISA_PredOpnd *pred,
     VISA_opnd *opnd[1];
 
     if (!label) {
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
 
@@ -3153,7 +3145,7 @@ int VISAKernelImpl::AppendVISACFJmpInst(VISA_PredOpnd *pred,
     opnd[0] = label;
 
     if (label == NULL) {
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
 
@@ -3196,7 +3188,7 @@ int VISAKernelImpl::AppendVISACFCallInst(VISA_PredOpnd *pred,
     opnd[0] = label;
 
     if (label == NULL) {
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
 
@@ -3457,7 +3449,7 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index,
   if (IS_GEN_BOTH_PATH) {
     G4_Label *labelsArray[50];
     if (labelCount >= 50) {
-      assert(0);
+      vASSERT(false);
       status = VISA_FAILURE;
     } else {
       for (int i = 0; i < labelCount; i++) {
@@ -3481,7 +3473,7 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index,
     VISA_opnd *opnd[35];
 
     if (index == NULL || labelCount == 0 || labels == NULL) {
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
 
@@ -3686,8 +3678,9 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4TypedInst(
           rOffset->g4opnd->asSrcRegRegion(), lod->g4opnd->asSrcRegRegion(),
           dst->g4opnd->asDstRegRegion());
     } else {
-      ASSERT_USER(opcode == ISA_SCATTER4_TYPED,
+      vISA_ASSERT_INPUT(opcode == ISA_SCATTER4_TYPED,
                   "Invalid opcode for typed gather4/scatter4!");
+
       CreateGenRawSrcOperand(dst);
       status = m_builder->translateVISAScatter4TypedInst(
           g4Pred, emask, chMask, surface->g4opnd, executionSize,
@@ -3721,7 +3714,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4TypedInst(
     int status = inst->createCisaInstruction(opcode, (uint8_t)size, 0, predOpnd,
                                              opnd, num_operands, inst_desc);
     if (status != VISA_SUCCESS) {
-      assert(0);
+      vASSERT(false);
       return status;
     }
     addInstructionToEnd(inst);
@@ -3743,7 +3736,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4ScaledInst(
   ChannelMask chMask = ChannelMask::createFromAPI(channelMask);
 
   if (IS_GEN_BOTH_PATH) {
-    ASSERT_USER(opcode == ISA_GATHER4_SCALED || opcode == ISA_SCATTER4_SCALED,
+    vISA_ASSERT_INPUT(opcode == ISA_GATHER4_SCALED || opcode == ISA_SCATTER4_SCALED,
                 "Unknown opcode for scaled message!");
 
     CreateGenRawSrcOperand(offsets);
@@ -3807,7 +3800,7 @@ int VISAKernelImpl::AppendVISASurfAccessScatterScaledInst(
   int status = VISA_SUCCESS;
 
   if (IS_GEN_BOTH_PATH) {
-    ASSERT_USER(opcode == ISA_GATHER_SCALED || opcode == ISA_SCATTER_SCALED,
+    vISA_ASSERT_INPUT(opcode == ISA_GATHER_SCALED || opcode == ISA_SCATTER_SCALED,
                 "Unknown opcode for scaled message!");
 
     CreateGenRawSrcOperand(offsets);
@@ -5165,7 +5158,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
     for (unsigned int i = 0; i < numMsgSpecificOpnds; ++i) {
 #if START_ASSERT_CHECK
       if (opndArray[i] == NULL) {
-        assert(0);
+        vASSERT(false);
         return VISA_FAILURE;
       }
 #endif
@@ -5242,7 +5235,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
 
     for (unsigned int i = 0; i < numMsgSpecificOpnds; i++) {
       if (opndArray[i] == NULL) {
-        assert(0);
+        vASSERT(false);
         return VISA_FAILURE;
       }
       ADD_OPND(num_operands, opnd, opndArray[i]);
@@ -5345,7 +5338,7 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode,
   }
   if (IS_VISA_BOTH_PATH) {
     if (subOpcode != VISA_3D_RESINFO && subOpcode != VISA_3D_SAMPLEINFO) {
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
 
@@ -5422,14 +5415,14 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
 
 #if START_ASSERT_CHECK
     if (numMsgSpecificOpnds >= 32) {
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
 #endif
     for (unsigned int i = 0; i < numMsgSpecificOpnds; ++i) {
 #if START_ASSERT_CHECK
       if (opndArray[i] == nullptr) {
-        assert(0);
+        vASSERT(false);
         return VISA_FAILURE;
       }
 #endif
@@ -5439,7 +5432,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
 
 #if START_ASSERT_CHECK
     if (cPSCounter && !cPSCounter->g4opnd) {
-      assert(0);
+      vASSERT(false);
       return VISA_FAILURE;
     }
 #endif
@@ -5506,7 +5499,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(
 
     for (int i = 0; i < numMsgSpecificOpnds; i++, num_operands++) {
       if (opndArray[i] == nullptr) {
-        assert(0);
+        vASSERT(false);
         return VISA_FAILURE;
       }
       opnd[num_operands] = opndArray[i];
@@ -5965,7 +5958,7 @@ int VISAKernelImpl::AppendVISAVAMinMaxFilter(
   ISA_VA_Sub_Opcode subOp = MINMAXFILTER_FOPCODE;
 
   if (cntrl != AVS_16_FULL && cntrl != AVS_8_FULL) {
-    assert(0);
+    vASSERT(false);
     return VISA_FAILURE;
   }
 
@@ -6862,7 +6855,7 @@ int VISAKernelImpl::AppendVISAVAHDCLBPCreation(VISA_StateOpndHandle *surface,
   ISA_VA_Sub_Opcode subOp = ISA_HDC_LBPCREATION;
 
   if (mode == VA_3x3_AND_5x5) {
-    assert(0);
+    vASSERT(false);
     return VISA_FAILURE;
   }
 
@@ -7191,7 +7184,7 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
 
   if (IS_GEN_BOTH_PATH) {
     {
-      MUST_BE_TRUE(
+      vISA_ASSERT_INPUT(
           Get_VISA_Exec_Size(executionSize) == m_builder->getNativeExecSize(),
           "execution size of DPAS must be equal to native execution size!");
     }
@@ -7312,8 +7305,7 @@ int VISAKernelImpl::AppendVISABfnInst(
     if (satMode) {
 #if START_ASSERT_CHECK
       if (tmpDst == NULL) {
-        ERROR_PRINT("Destination for Arithmetic Instruction is NULL");
-        assert(0);
+        vISA_ASSERT_INPUT(false, "Destination for arithmetic instruction is null");
         return VISA_FAILURE;
       }
 #endif
@@ -7500,7 +7492,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
   }
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
-  MUST_BE_TRUE(lscSfid != LSC_TGM, "cannot use TGM on an untyped message");
+  vISA_ASSERT_INPUT(lscSfid != LSC_TGM, "cannot use TGM on an untyped message");
 
   AppendVISAInstCommon();
 
@@ -7636,9 +7628,9 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedStridedInst(
     VISA_RawOpnd *src1Data) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
-  MUST_BE_TRUE(op == LSC_LOAD_STRIDED || op == LSC_STORE_STRIDED,
+  vISA_ASSERT_INPUT(op == LSC_LOAD_STRIDED || op == LSC_STORE_STRIDED,
                "must be a strided op");
-  MUST_BE_TRUE(lscSfid != LSC_TGM, "cannot use TGM on an untyped message");
+  vISA_ASSERT_INPUT(lscSfid != LSC_TGM, "cannot use TGM on an untyped message");
 
   AppendVISAInstCommon();
 
@@ -7715,7 +7707,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
     VISA_RawOpnd *src1Data) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
-  MUST_BE_TRUE(lscSfid != LSC_TGM, "cannot use TGM on an untyped message");
+  vISA_ASSERT_INPUT(lscSfid != LSC_TGM, "cannot use TGM on an untyped message");
 
   AppendVISAInstCommon();
 
@@ -8122,7 +8114,7 @@ void VISAKernelImpl::finalizeKernel() {
 
   std::vector<CISA_GEN_VAR *>::iterator it_addr_info = m_addr_info_list.begin();
   for (unsigned int i = 0; i < m_addr_info_count; i++, it_addr_info++) {
-    MUST_BE_TRUE(
+    vISA_ASSERT_INPUT(
         it_addr_info != m_addr_info_list.end(),
         "Count of addresses does not correspond with number of items.");
     m_cisa_kernel.addresses[i] = (*it_addr_info)->addrVar;
@@ -8140,7 +8132,7 @@ void VISAKernelImpl::finalizeKernel() {
 
   std::vector<CISA_GEN_VAR *>::iterator it_pred_info = m_pred_info_list.begin();
   for (unsigned int i = 0; i < m_pred_info_count; i++, it_pred_info++) {
-    MUST_BE_TRUE(
+    vISA_ASSERT_INPUT(
         it_pred_info != m_pred_info_list.end(),
         "Count of predicates does not correspond with number of items.");
     pred_info_t *temp = &(*it_pred_info)->predVar;
@@ -8161,7 +8153,7 @@ void VISAKernelImpl::finalizeKernel() {
   std::vector<label_info_t *>::const_iterator it_label_info_end =
       m_label_info_list.cend();
   for (unsigned int i = 0; i < m_label_count; i++, it_label_info++) {
-    MUST_BE_TRUE(it_label_info != it_label_info_end,
+    vISA_ASSERT_INPUT(it_label_info != it_label_info_end,
                  "Count of labels does not correspond with number of items.");
     label_info_t *temp = *it_label_info;
     m_cisa_kernel.labels[i] = *temp;
@@ -8179,7 +8171,7 @@ void VISAKernelImpl::finalizeKernel() {
   std::vector<CISA_GEN_VAR *>::iterator it_sampler_info =
       m_sampler_info_list.begin();
   for (unsigned int i = 0; i < m_sampler_count; i++, it_sampler_info++) {
-    MUST_BE_TRUE(it_sampler_info != m_sampler_info_list.end(),
+    vISA_ASSERT_INPUT(it_sampler_info != m_sampler_info_list.end(),
                  "Count of sampler declarations does not correspond with "
                  "number of items.");
     state_info_t *temp = &(*it_sampler_info)->stateVar;
@@ -8229,7 +8221,7 @@ void VISAKernelImpl::finalizeKernel() {
     std::vector<input_info_t *>::iterator it_input_info =
         m_input_info_list.begin();
     for (unsigned int i = 0; i < m_input_count; i++, it_input_info++) {
-      MUST_BE_TRUE(it_input_info != m_input_info_list.end(),
+      vISA_ASSERT_INPUT(it_input_info != m_input_info_list.end(),
                    "Count of inputs does not correspond with number of items.");
       input_info_t *temp = *it_input_info;
       m_cisa_kernel.inputs[i] = *temp;
@@ -8267,7 +8259,7 @@ void VISAKernelImpl::finalizeKernel() {
   std::list<attribute_info_t *>::iterator it_attribute_info =
       m_attribute_info_list.begin();
   for (unsigned int i = 0; i < m_attribute_count; i++, it_attribute_info++) {
-    MUST_BE_TRUE(
+    vISA_ASSERT_INPUT(
         it_attribute_info != m_attribute_info_list.end(),
         "Count of attributes does not correspond with number of items.");
     attribute_info_t *temp = *it_attribute_info;
@@ -8287,7 +8279,7 @@ void VISAKernelImpl::finalizeKernel() {
 
 unsigned long VISAKernelImpl::writeInToCisaBinaryBuffer(const void *value,
                                                         int size) {
-  MUST_BE_TRUE(m_bytes_written_cisa_buffer + size <= m_cisa_binary_size,
+  vISA_ASSERT_INPUT(m_bytes_written_cisa_buffer + size <= m_cisa_binary_size,
                "Size of VISA instructions binary buffer is exceeded.");
 
   memcpy_s(&m_cisa_binary_buffer[m_bytes_written_cisa_buffer], size, value,
@@ -8364,7 +8356,7 @@ bool VISAKernelImpl::declExistsInCurrentScope(const std::string &name) const {
 
 bool VISAKernelImpl::setNameIndexMap(const std::string &name,
                                      CISA_GEN_VAR *genDecl, bool unique) {
-  MUST_BE_TRUE(!m_GenNamedVarMap.empty(), "decl map is empty!");
+  vISA_ASSERT(!m_GenNamedVarMap.empty(), "decl map is empty!");
   if (!unique) {
     // make sure mapping doesn't already exist in the current scope
     if (m_GenNamedVarMap.back().find(name) != m_GenNamedVarMap.back().end())
@@ -8392,7 +8384,7 @@ void VISAKernelImpl::pushIndexMapScopeLevel() {
   m_GenNamedVarMap.push_back(GenDeclNameToVarMap());
 }
 void VISAKernelImpl::popIndexMapScopeLevel() {
-  MUST_BE_TRUE(m_GenNamedVarMap.size() > 1, "Cannot pop base scope level!");
+  vISA_ASSERT(m_GenNamedVarMap.size() > 1, "Cannot pop base scope level!");
   m_GenNamedVarMap.pop_back();
 }
 
@@ -8458,7 +8450,8 @@ int VISAKernelImpl::GetRelocations(RelocListType &relocs) {
     uint32_t offset =
         static_cast<uint32_t>(genOffset + reloc.getTargetOffset(*m_builder));
     relocs.emplace_back(reloc.getType(), offset, reloc.getSymbolName());
-    assert((genOffset != UNDEFINED_GEN_OFFSET) && (offset > genOffset) &&
+
+    vASSERT((genOffset != UNDEFINED_GEN_OFFSET) && (offset > genOffset) &&
            (offset < genOffset + BYTES_PER_INST));
   }
   return VISA_SUCCESS;
@@ -8486,6 +8479,7 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer,
     buffer_p->r_type = reloc.getType();
     buffer_p->r_offset = static_cast<uint32_t>(inst->getGenOffset()) +
                          reloc.getTargetOffset(*m_builder);
+
     vISA_ASSERT((buffer_p->r_offset >= inst->getGenOffset()) &&
            (buffer_p->r_offset < inst->getGenOffset() + BYTES_PER_INST),
             "Invalid relocation offset returned, offset must be within"
@@ -8493,6 +8487,7 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer,
 
     vISA_ASSERT(reloc.getSymbolName().size() <= MAX_SYMBOL_NAME_LENGTH,
         "Relocation symbol name longer than MAX_SYMBOL_NAME_LENGTH");
+
     // clean the buffer first
     memset(buffer_p->r_symbol, '0', MAX_SYMBOL_NAME_LENGTH);
     strcpy_s(buffer_p->r_symbol, MAX_SYMBOL_NAME_LENGTH,
@@ -8570,7 +8565,7 @@ int VISAKernelImpl::GetFreeGRFInfo(void *&buffer, unsigned int &size) {
   size = 0;
 
   if (getOptions()->getOption(vISA_GetFreeGRFInfo)) {
-    assert(m_kernel);
+    vASSERT(m_kernel);
     auto gtpin = m_kernel->getGTPinData();
     if (gtpin) {
       buffer = gtpin->getFreeGRFInfo(size);
@@ -8825,7 +8820,7 @@ void VISAKernelImpl::computeFCInfo() {
 
       if (opc == G4_pseudo_fc_call) {
         // TODO: Need to create FCCalls and push into calls-to-patch.
-        ASSERT_USER(inst->getGenOffset() % 16 == 0,
+        vISA_ASSERT(inst->getGenOffset() % 16 == 0,
                     "Non-128-bit instruction is found!");
         unsigned Slot = unsigned(inst->getGenOffset()) / 16;
         FCCalls *CallToPatch = (FCCalls *)builder->mem.alloc(sizeof(FCCalls));
@@ -8837,7 +8832,7 @@ void VISAKernelImpl::computeFCInfo() {
         CallToPatch->calleeLabelString = S;
         builder->getFCPatchInfo()->getFCCallsToPatch().push_back(CallToPatch);
       } else if (opc == G4_pseudo_fc_ret) {
-        ASSERT_USER(inst->getGenOffset() % 16 == 0,
+        vISA_ASSERT(inst->getGenOffset() % 16 == 0,
                     "Non-128-bit instruction is found!");
         unsigned Slot = unsigned(inst->getGenOffset()) / 16;
         builder->getFCPatchInfo()->getFCReturnsToPatch().push_back(Slot);
@@ -8877,31 +8872,31 @@ int VISAKernelImpl::getDeclarationID(VISA_LabelVar *decl) const {
 }
 
 int64_t VISAKernelImpl::getGenOffset() const {
-  assert(false == m_kernel->fg.empty());
+  vASSERT(false == m_kernel->fg.empty());
   auto &entryBB = *(*m_kernel->fg.begin());
 
   // the offset of the first gen inst in this kernel/function
-  assert(false == entryBB.empty());
+  vASSERT(false == entryBB.empty());
   auto inst = entryBB.begin();
   while ((UNDEFINED_GEN_OFFSET == (*inst)->getGenOffset()) &&
          (entryBB.end() != inst)) {
-    assert((*inst)->isLabel());
+    vASSERT((*inst)->isLabel());
     ++inst;
   }
-  assert(inst != entryBB.end());
+ vASSERT(inst != entryBB.end());
 
   auto entryPointOffset = (*inst)->getGenOffset();
   return entryPointOffset;
 }
 
 int64_t VISAKernelImpl::getGenSize() const {
-  assert(false == m_kernel->fg.empty());
+ vASSERT(false == m_kernel->fg.empty());
   auto &lastBB = *(*m_kernel->fg.rbegin());
 
   // the offset of the last gen inst in this kernel/function
-  assert(false == lastBB.empty());
+ vASSERT(false == lastBB.empty());
   auto inst = lastBB.rbegin();
-  assert(UNDEFINED_GEN_OFFSET !=
+ vASSERT(UNDEFINED_GEN_OFFSET !=
          (*inst)->getGenOffset()); // expecting terminator
 
   auto size = (*inst)->getGenOffset();

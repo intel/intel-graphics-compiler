@@ -77,7 +77,7 @@ const char *getGenVarName(int id, const print_format_provider_t &header) {
   if (id < numPredefined) {
     return getPredefinedVarString(mapExternalToInternalPreDefVar(id));
   } else {
-    MUST_BE_TRUE((id - numPredefined) < (int)header.getVarCount(),
+    vISA_ASSERT_INPUT((id - numPredefined) < (int)header.getVarCount(),
                  "invalid vISA general variable id");
     return header.getString(header.getVar(id - numPredefined)->name_index);
   }
@@ -99,7 +99,7 @@ std::string printVariableDeclName(
     const print_format_provider_t *header, unsigned declID,
     const Options *options,
     Common_ISA_State_Opnd_Class operand_prefix_kind = NOT_A_STATE_OPND) {
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
 
   unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
@@ -202,7 +202,7 @@ std::string printVectorOperand(const print_format_provider_t *header,
   std::stringstream sstr;
 
   auto opnd = parentOpnd->_opnd.v_opnd;
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
 
   VISA_Modifier modifier = (VISA_Modifier)((opnd.tag >> 3) & 0x7);
 
@@ -286,8 +286,7 @@ std::string printVectorOperand(const print_format_provider_t *header,
     break;
   }
   default:
-    ASSERT_USER(
-        false,
+    vISA_ASSERT_UNREACHABLE(
         "Attempted to dump an invalid or unimplemented vector operand type.");
   }
 
@@ -296,7 +295,7 @@ std::string printVectorOperand(const print_format_provider_t *header,
 
 std::string printRawOperand(const print_format_provider_t *header,
                             const raw_opnd &opnd, const Options *opt) {
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
   sstr << " "
        << printVariableDeclName(header, opnd.index, opt, NOT_A_STATE_OPND)
@@ -307,9 +306,9 @@ std::string printRawOperand(const print_format_provider_t *header,
 static std::string printOperand(const print_format_provider_t *header,
                                 const CISA_INST *inst, unsigned i,
                                 const Options *opt) {
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
-  MUST_BE_TRUE(inst, "Argument Exception: argument inst   is NULL.");
-  MUST_BE_TRUE(inst->opnd_num > i,
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(inst, "Argument Exception: argument inst   is NULL.");
+  vISA_ASSERT_INPUT(inst->opnd_num > i,
                "No such operand, i, for instruction inst.");
   std::stringstream sstr;
   switch (getOperandType(inst, i)) {
@@ -425,7 +424,7 @@ std::string printOneAttribute(const print_format_provider_t *kernel,
   std::stringstream sstr;
   const char *attrName = kernel->getString(attr->nameIndex);
   Attributes::ID aID = Attributes::getAttributeID(attrName);
-  MUST_BE_TRUE(aID != Attributes::ATTR_INVALID, "Invalid Attribute names!");
+  vISA_ASSERT_INPUT(aID != Attributes::ATTR_INVALID, "Invalid Attribute names!");
 
   sstr << attrName;
   if (attr->isInt && Attributes::isInt32(aID)) {
@@ -454,7 +453,7 @@ std::string printOneAttribute(const print_format_provider_t *kernel,
 
 std::string printPredicateDecl(const print_format_provider_t *header,
                                unsigned declID) {
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
 
   const pred_info_t *pred = header->getPred(declID);
@@ -469,7 +468,7 @@ std::string printPredicateDecl(const print_format_provider_t *header,
 std::string printAddressDecl(const common_isa_header &isaHeader,
                              const print_format_provider_t *header,
                              unsigned declID) {
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
 
   const addr_info_t *addr = header->getAddr(declID);
@@ -484,7 +483,7 @@ std::string printAddressDecl(const common_isa_header &isaHeader,
 
 std::string printSamplerDecl(const print_format_provider_t *header,
                              unsigned declID) {
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
   const state_info_t *info = header->getSampler(declID);
 
@@ -497,7 +496,7 @@ std::string printSamplerDecl(const print_format_provider_t *header,
 
 std::string printSurfaceDecl(const print_format_provider_t *header,
                              unsigned declID, unsigned numPredefinedSurfaces) {
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
   const state_info_t *info = header->getSurface(declID);
 
@@ -511,7 +510,7 @@ std::string printSurfaceDecl(const print_format_provider_t *header,
 std::string printFuncInput(const print_format_provider_t *header,
                            unsigned declID, bool isKernel,
                            const Options *options) {
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
 
   const input_info_t *input = header->getInput(declID);
@@ -541,7 +540,7 @@ std::string printFuncInput(const print_format_provider_t *header,
 // declID is in the range of [0..#user-var], pre-defnied are not included
 std::string printVariableDecl(const print_format_provider_t *header,
                               unsigned declID, const Options *options) {
-  MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
+  vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
 
   const var_info_t *var = header->getVar(declID);
@@ -744,7 +743,7 @@ static std::string printInstructionCommon(const print_format_provider_t *header,
   TARGET_PLATFORM platform =
       static_cast<TARGET_PLATFORM>(opt->getuInt32Option(vISA_PlatformSet));
   const PlatformInfo *platInfo = PlatformInfo::LookupPlatformInfo(platform);
-  ASSERT_USER(platInfo != nullptr, "Failed to look up platform");
+  vISA_ASSERT_INPUT(platInfo != nullptr, "Failed to look up platform");
 
   std::stringstream sstr;
   sstr << printPredicate(inst->opcode, inst->pred);

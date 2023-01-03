@@ -114,13 +114,13 @@ int IR_Builder::translateVISARawSendsInst(
     sendMsgDesc->setEOT();
   }
 
-  MUST_BE_TRUE(sendMsgDesc->MessageLength() == numSrc0,
+  vISA_ASSERT(sendMsgDesc->MessageLength() == numSrc0,
                "message length mismatch for raw sends");
   if (!dstOpnd->isNullReg()) {
-    MUST_BE_TRUE(sendMsgDesc->ResponseLength() <= numDst,
+    vISA_ASSERT(sendMsgDesc->ResponseLength() <= numDst,
                  "response length mismatch for raw sends");
   }
-  MUST_BE_TRUE(sendMsgDesc->extMessageLength() <= numSrc1,
+  vISA_ASSERT(sendMsgDesc->extMessageLength() <= numSrc1,
                "extended message length mismatch for raw sends");
 
   G4_InstSend* sendInst = createSplitSendInst(predOpnd,

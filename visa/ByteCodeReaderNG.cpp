@@ -242,7 +242,7 @@ static VISA_PredOpnd *readPredicateOperandNG(unsigned &bytePos, const char *buf,
 
 static VISA_RawOpnd *readRawOperandNG(unsigned &bytePos, const char *buf,
                                       RoutineContainer &container) {
-  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
+  vISA_ASSERT_INPUT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
   uint8_t majorVersion = container.majorVersion;
   uint8_t minorVersion = container.minorVersion;
 
@@ -283,7 +283,7 @@ static VISA_RawOpnd *readRawOperandNG(unsigned &bytePos, const char *buf,
 
 static VISA_PredVar *readPreVarNG(unsigned &bytePos, const char *buf,
                                   RoutineContainer &container) {
-  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
+  vISA_ASSERT_INPUT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
 
   uint8_t tag = 0;
   READ_CISA_FIELD(tag, uint8_t, bytePos, buf);
@@ -309,7 +309,7 @@ static uint32_t readOtherOperandNG(unsigned &bytePos, const char *buf,
   } v;
 
   unsigned bsize = CISATypeTable[visatype].typeSize;
-  vISA_ASSERT(bsize <= 4, " Unsupported other_opnd whose size > 4 bytes!");
+  vISA_ASSERT_INPUT(bsize <= 4, " Unsupported other_opnd whose size > 4 bytes!");
   v.other_opnd = 0;
   for (int i = 0; i < (int)bsize; ++i) {
     v.b[i] = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
@@ -322,7 +322,7 @@ static VISA_VectorOpnd *readVectorOperandNG(unsigned &bytePos, const char *buf,
                                             RoutineContainer &container,
                                             unsigned int size, bool isDst,
                                             bool isAddressoff = false) {
-  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
+  vISA_ASSERT_INPUT(buf != nullptr, "Argument Exception: argument buf  is NULL.");
 
   VISAKernelImpl *kernelBuilderImpl =
       ((VISAKernelImpl *)container.kernelBuilder);
@@ -573,7 +573,7 @@ static void readInstructionCommonNG(unsigned &bytePos, const char *buf,
   case ISA_Inst_Address:
   case ISA_Inst_Compare: {
     VISA_VectorOpnd *opnds[COMMON_ISA_MAX_NUM_OPND_ARITH_LOGIC];
-    ASSERT_USER(
+    vISA_ASSERT_INPUT(
         opnd_count <= COMMON_ISA_MAX_NUM_OPND_ARITH_LOGIC,
         "Insturction operand count exceeds maximum supported operands.");
     memset(opnds, 0,
@@ -625,7 +625,7 @@ static void readInstructionCommonNG(unsigned &bytePos, const char *buf,
       } else if (i == 4 && opcode == ISA_BFN) {
         // read bfn booleanFuncCtrl from the last opnd
         int opnd_ix = i + opnd_skip;
-        vISA_ASSERT(inst_desc->opnd_desc[opnd_ix].opnd_type == OPND_OTHER,
+        vISA_ASSERT_INPUT(inst_desc->opnd_desc[opnd_ix].opnd_type == OPND_OTHER,
                "BFN: FuncCtrl opnd_desc's type should be OPND_OTHER!");
         VISA_Type visatype = (VISA_Type)inst_desc->opnd_desc[opnd_ix].data_type;
         bfn_func_ctrl = readOtherOperandNG(bytePos, buf, visatype);
@@ -684,8 +684,6 @@ static void readInstructionCommonNG(unsigned &bytePos, const char *buf,
       else if (cmpHasDst)
         kernelBuilder->AppendVISAComparisonInst((VISA_Cond_Mod)(opSpec & 0x7),
                                                 emask, esize, dst, src0, src1);
-      else
-        ASSERT_USER(true, "DST doesn't have valid GRF or FLAG dst.");
       break;
     default:
       break;
@@ -694,7 +692,7 @@ static void readInstructionCommonNG(unsigned &bytePos, const char *buf,
     break;
   }
   case ISA_Inst_SIMD_Flow: {
-    vISA_ASSERT(opcode == ISA_GOTO, "expect goto instruction");
+    vISA_ASSERT_INPUT(opcode == ISA_GOTO, "expect goto instruction");
     readExecSizeNG(bytePos, buf, esize, emask, container);
     VISA_PredOpnd *pred = hasPredicate(opcode)
                               ? readPredicateOperandNG(bytePos, buf, container)
@@ -894,7 +892,7 @@ static void readInstructionDataportNG(unsigned &bytePos, const char *buf,
       VISA_Exec_Size esize = EXEC_SIZE_ILLEGAL;
       readExecSizeNG(bytePos, buf, esize, emask, container);
 
-      vISA_ASSERT(esize == 0, "Unsupported number of elements for "
+      vISA_ASSERT_INPUT(esize == 0, "Unsupported number of elements for "
                                "ISA_SCATTER4_TYPED/ISA_GATHER4_TYPED.");
       esize = EXEC_SIZE_8;
 
@@ -1216,7 +1214,7 @@ static void readInstructionControlFlow(unsigned &bytePos, const char *buf,
     readExecSizeNG(bytePos, buf, esize, emask, container);
 
     uint8_t numLabels = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-    vISA_ASSERT(0 < numLabels && numLabels < 33,
+    vISA_ASSERT_INPUT(0 < numLabels && numLabels < 33,
                  "Number of labels in SWITCHJMP must be between 1 and 32.");
 
     VISA_VectorOpnd *index =
@@ -1427,7 +1425,7 @@ static void readInstructionMisc(unsigned &bytePos, const char *buf,
     VISA_INST_Desc *inst_desc = &CISA_INST_table[opcode];
 
     // sanity check
-    vISA_ASSERT(inst_desc->opnd_desc[5].opnd_type == OPND_OTHER,
+    vISA_ASSERT_INPUT(inst_desc->opnd_desc[5].opnd_type == OPND_OTHER,
            "opnd_desc's type at index = 5 should be OPND_OTHER!");
 
     VISA_Type visatype = (VISA_Type)inst_desc->opnd_desc[5].data_type;
@@ -1754,7 +1752,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
     uint8_t numParams = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-    vISA_ASSERT(numParams < 16,
+    vISA_ASSERT_INPUT(numParams < 16,
                  "number of parameters for 3D_Sample should be < 16");
 
     VISA_RawOpnd *params[16];
@@ -1799,7 +1797,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
     uint8_t numParams = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-    vISA_ASSERT(numParams < 16,
+    vISA_ASSERT_INPUT(numParams < 16,
                  "number of parameters for 3D_Load should be < 16");
 
     VISA_RawOpnd *params[16];
@@ -1839,7 +1837,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
     uint8_t numParams = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
 
-    vISA_ASSERT(numParams < 8,
+    vISA_ASSERT_INPUT(numParams < 8,
                  "number of parameters for 3D_Gather4 should be < 8");
 
     VISA_RawOpnd *params[16];
@@ -2010,7 +2008,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
 
     if ((subOpcode < VA_OP_CODE_1D_CONVOLVE_VERTICAL) ||
         (subOpcode >= VA_OP_CODE_UNDEFINED)) {
-      ASSERT_USER(false, "Invalid VA sub-opcode");
+      vISA_ASSERT_INPUT(false, "Invalid VA sub-opcode");
       return;
     }
 
@@ -2070,11 +2068,11 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
           miscOpnds[numMiscOpnds++] =
               readPrimitiveOperandNG<unsigned int>(bytePos, buf);
         } else {
-          ASSERT_USER(false, "Invalid misc opnd data type");
+          vISA_ASSERT_INPUT(false, "Invalid misc opnd data type");
           return;
         }
       } else {
-        ASSERT_USER(false, "Invalid opnd type");
+        vISA_ASSERT_INPUT(false, "Invalid opnd type");
         return;
       }
     }
@@ -2169,7 +2167,7 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
           vOpnds[2], vOpnds[3]);
       break;
     default:
-      ASSERT_USER(false, "Invalid VA sub-opcode");
+      vISA_ASSERT_UNREACHABLE("Invalid VA sub-opcode");
     }
 
     break;
@@ -2366,14 +2364,14 @@ static void readInstructionLSC(unsigned &bytePos, const char *buf,
       readInstructionLscTyped(subOpcode, bytePos, buf, container);
     }
   } else {
-    vISA_ASSERT(false, "invalid LSC op");
+    vISA_ASSERT_INPUT(false, "invalid LSC op");
   }
 }
 
 void readInstructionNG(unsigned &bytePos, const char *buf,
                        RoutineContainer &container, unsigned instID) {
   ISA_Opcode opcode = (ISA_Opcode)readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-  vISA_ASSERT(opcode < ISA_NUM_OPCODE,
+  vISA_ASSERT_INPUT(opcode < ISA_NUM_OPCODE,
                "Illegal or unimplemented CISA opcode.");
 
   // cout << "Opcode: " << ISA_Inst_Table[opcode].str << endl;
@@ -2422,10 +2420,10 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned &bytePos,
                              const char *buf, kernel_format_t &header,
                              attribute_info_t *attributes, int numAttributes,
                              vISA::Mem_Manager &mem) {
-  vISA_ASSERT(buf != nullptr, "Argument Exception: argument buf    is NULL.");
+  vISA_ASSERT_INPUT(buf != nullptr, "Argument Exception: argument buf    is NULL.");
 
   for (int i = 0; i < numAttributes; i++) {
-    ASSERT_USER(attributes,
+    vISA_ASSERT_INPUT(attributes,
                 "Argument Exception: argument 'attributes' is NULL");
 
     readVarBytes(major, minor, attributes[i].nameIndex, bytePos, buf);
@@ -2465,8 +2463,7 @@ static void readAttributesNG(uint8_t major, uint8_t minor, unsigned &bytePos,
       attributes[i].value.stringVal = valueBuffer;
     } else {
       std::string errMsg(attrName);
-      errMsg += " : unsupported attribute!";
-      vISA_ASSERT(false, errMsg);
+      vISA_ASSERT_INPUT(false, "%s: unsupported attribute!", errMsg.c_str());
     }
   }
 }
@@ -2522,7 +2519,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     while (buf[bytePos] != '\0' && j < STRING_LEN) {
       str[j++] = buf[bytePos++];
     }
-    ASSERT_USER(j < STRING_LEN, "string exceeds the maximum length allowed");
+    vISA_ASSERT_INPUT(j < STRING_LEN, "string exceeds the maximum length allowed");
     str[j] = '\0';
     bytePos++;
     header.strings[i] = str;
@@ -2586,7 +2583,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
         if (aliasIndex < numPreDefinedVars) {
           status = kernelBuilderImpl->GetPredefinedVar(
               parentDecl, (PreDefined_Vars)aliasIndex);
-          ASSERT_USER(status == VISA_SUCCESS,
+          vISA_ASSERT(status == VISA_SUCCESS,
                       "Invalid index for pre-defined variables");
         } else {
           parentDecl = container.generalVarDecls[aliasIndex];
@@ -2597,7 +2594,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
       status = kernelBuilderImpl->CreateVISAGenVar(
           decl, header.strings[var->name_index], var->num_elements, varType,
           varAlign, parentDecl, aliasOffset);
-      ASSERT_USER(VISA_SUCCESS == status,
+      vISA_ASSERT(VISA_SUCCESS == status,
                   "Failed to add VISA general variable.");
     }
 
@@ -2633,7 +2630,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     VISA_AddrVar *decl = NULL;
     int status = kernelBuilderImpl->CreateVISAAddrVar(
         decl, header.strings[var->name_index], var->num_elements);
-    ASSERT_USER(VISA_SUCCESS == status, "Failed to add VISA address variable.");
+    vISA_ASSERT(VISA_SUCCESS == status, "Failed to add VISA address variable.");
 
     addAllAttributesNG(header, kernelBuilderImpl, decl, var->attribute_count,
                        var->attributes);
@@ -2672,7 +2669,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     VISA_PredVar *decl = NULL;
     int status = kernelBuilderImpl->CreateVISAPredVar(
         decl, header.strings[var->name_index], var->num_elements);
-    ASSERT_USER(VISA_SUCCESS == status,
+    vISA_ASSERT(VISA_SUCCESS == status,
                 "Failed to add VISA predicate vairable.");
 
     addAllAttributesNG(header, kernelBuilderImpl, decl, var->attribute_count,
@@ -2708,14 +2705,14 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
                            VISA_Label_Kind(var->kind))
             .c_str(),
         VISA_Label_Kind(var->kind));
-    ASSERT_USER(VISA_SUCCESS == status, "Failed to add VISA label variable.");
+    vISA_ASSERT(VISA_SUCCESS == status, "Failed to add VISA label variable.");
 
     for (unsigned ai = 0; ai < var->attribute_count; ai++) {
       /// TODO: How to Add label decls and attributes correctly.
       /// kernelBuilderImpl->AddAttributeToVar(decl,
       /// header.strings[attribute->nameIndex], attribute->size,
       /// attribute->value.stringVal);
-      ASSERT_USER(false, "Currently the builder API does not support label "
+      vISA_ASSERT(false, "Currently the builder API does not support label "
                          "attributes. Please file a bug.");
     }
 
@@ -2749,7 +2746,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     VISA_SamplerVar *decl = NULL;
     int status = kernelBuilderImpl->CreateVISASamplerVar(
         decl, header.strings[var->name_index], var->num_elements);
-    ASSERT_USER(VISA_SUCCESS == status, "Failed to add VISA sampler variable.");
+    vISA_ASSERT(VISA_SUCCESS == status, "Failed to add VISA sampler variable.");
 
     addAllAttributesNG(header, kernelBuilderImpl, decl, var->attribute_count,
                        var->attributes);
@@ -2796,7 +2793,7 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     VISA_SurfaceVar *decl = NULL;
     int status = kernelBuilderImpl->CreateVISASurfaceVar(
         decl, header.strings[var->name_index], var->num_elements);
-    ASSERT_USER(VISA_SUCCESS == status, "Failed to add VISA surface variable.");
+    vISA_ASSERT(VISA_SUCCESS == status, "Failed to add VISA surface variable.");
 
     addAllAttributesNG(header, kernelBuilderImpl, decl, var->attribute_count,
                        var->attributes);
@@ -2852,12 +2849,12 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
         decl = container.surfaceVarDecls[var->index];
         break;
       default:
-        ASSERT_USER(false, "Incorrect input variable type.");
+        vISA_ASSERT_UNREACHABLE("Incorrect input variable type.");
       }
 
       int status = kernelBuilderImpl->CreateVISAInputVar(
           decl, var->offset, var->size, var->getImplicitKind());
-      ASSERT_USER(VISA_SUCCESS == status, "Failed to add VISA input variable.");
+      vISA_ASSERT(VISA_SUCCESS == status, "Failed to add VISA input variable.");
 
       container.inputVarDecls[i] = decl;
     }
