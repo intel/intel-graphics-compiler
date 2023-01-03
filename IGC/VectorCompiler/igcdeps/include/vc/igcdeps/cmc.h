@@ -126,7 +126,9 @@ public:
     bool KernelIsDebuggable = false;
   };
 
-  explicit CGen8CMProgram(PLATFORM platform, const WA_TABLE& WATable);
+  explicit CGen8CMProgram(PLATFORM platform, const WA_TABLE &WATable,
+                          llvm::ArrayRef<char> SPIRV = llvm::None,
+                          llvm::Optional<llvm::StringRef> Opts = llvm::None);
 
   // Produce the final ELF binary with the given CM kernels
   // in OpenCL format.
@@ -148,6 +150,9 @@ public:
   std::string m_ErrorLog;
 
 private:
+  llvm::ArrayRef<char> m_spirv;
+  llvm::Optional<llvm::StringRef> m_opts;
+
   TmpFilesStorage extractRawDebugInfo(llvm::raw_ostream &ErrStream);
   std::unique_ptr<llvm::MemoryBuffer> buildZeDebugInfo();
 };

@@ -27,10 +27,12 @@ struct DebugInfo {
 };
 
 // Implementation of CGen8CMProgram.
-CGen8CMProgram::CGen8CMProgram(PLATFORM platform, const WA_TABLE& WATable)
+CGen8CMProgram::CGen8CMProgram(PLATFORM platform, const WA_TABLE &WATable,
+                               llvm::ArrayRef<char> SPIRV,
+                               llvm::Optional<llvm::StringRef> Opts)
     : CGen8OpenCLProgramBase(platform, m_ContextProvider, WATable),
-      m_programInfo(new IGC::SOpenCLProgramInfo) {}
-
+      m_programInfo(new IGC::SOpenCLProgramInfo), m_spirv(SPIRV), m_opts(Opts) {
+}
 
 TmpFilesStorage
 CGen8CMProgram::extractRawDebugInfo(llvm::raw_ostream &ErrStream) {
@@ -180,8 +182,20 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   // Contains buffer to an optional debug info. Should exists till zebuilder
   // is destroyed.
   std::unique_ptr<llvm::MemoryBuffer> DebugInfoHolder;
-  iOpenCL::ZEBinaryBuilder zebuilder{m_Platform, pointerSizeInBytes == 8,
-                                     *m_programInfo, nullptr, 0, nullptr, 0, nullptr, 0};
+
+  const uint8_t *SpirvData = reinterpret_cast<const uint8_t *>(m_spirv.data());
+  size_t SpirvSize = m_spirv.size();
+
+  const uint8_t *OptsData = nullptr;
+  size_t OptsSize = 0;
+  if (m_opts) {
+    OptsData = reinterpret_cast<const uint8_t *>(m_opts->data());
+    OptsSize = m_opts->size();
+  }
+
+  iOpenCL::ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
+                                     *m_programInfo, SpirvData, SpirvSize,
+                                     nullptr, 0, OptsData, OptsSize);
   zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
 
   for (const auto &kernel : m_kernels) {

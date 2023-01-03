@@ -478,6 +478,8 @@ parseOptions(vc::ShaderDumper &Dumper, llvm::StringRef ApiOptions,
     RawInputDumper.release();
     InputDumper.release();
   }
+  if (ExpOptions)
+    ExpOptions->ApiOptions = ApiOptions.str();
   return std::move(ExpOptions);
 }
 
@@ -683,7 +685,8 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
   case vc::BinaryKind::ZE: {
     auto &CompileResult = std::get<vc::ocl::CompileOutput>(Res);
     vc::CGen8CMProgram CMProgram{IGCPlatform.getPlatformInfo(),
-                                 IGCPlatform.getWATable()};
+                                 IGCPlatform.getWATable(), Input,
+                                 llvm::StringRef(Opts.ApiOptions)};
     vc::createBinary(CMProgram, CompileResult);
     llvm::SmallVector<char, 0> ProgramBinary;
     llvm::raw_svector_ostream ProgramBinaryOS{ProgramBinary};

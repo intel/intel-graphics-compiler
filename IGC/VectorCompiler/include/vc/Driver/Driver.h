@@ -68,6 +68,8 @@ struct CompileOptions {
   // Optional Shader Overrider
   std::unique_ptr<vc::ShaderOverrider> ShaderOverrider = nullptr;
 
+  std::string ApiOptions;
+
   // Output binary format
   // API options:
   //   -[cl,ze]-enable-zebin
