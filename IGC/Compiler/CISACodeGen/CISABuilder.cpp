@@ -4716,7 +4716,7 @@ namespace IGC
         {
             SaveOption(vISA_HasPartialInt64, true);
         }
-        if (m_program->m_Platform->hasQWAddSupport())
+        if (m_program->m_Platform->hasInt64Add())
         {
             SaveOption(vISA_HasInt64Add, true);
         }

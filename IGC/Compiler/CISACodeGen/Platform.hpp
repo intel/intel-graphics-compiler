@@ -39,6 +39,14 @@ public:
         m_platformInfo = platform;
     }
 
+private:
+bool hasQWAddSupport() const
+{
+    return (m_platformInfo.eProductFamily == IGFX_PVC &&
+        ((m_platformInfo.usRevId >= REVISION_D && IGC_IS_FLAG_ENABLED(EnableQWAddSupport))  // true from PVC XT B0 RevID==0x5==REVISION_D
+        || IGC_IS_FLAG_ENABLED(ForceQWAddSupport))); // back door way to enable feature along with ForcePartialInt64 - needed to perform the experiments on PVC-A
+}
+
 public:
 void setOclCaps(OCLCaps& caps) { m_OCLCaps = caps; }
 uint32_t getMaxOCLParameteSize() const {
@@ -691,11 +699,17 @@ bool hasNoInt64AddInst() const
     return hasNoFullI64Support() && !hasQWAddSupport();
 }
 
-bool hasQWAddSupport() const
+bool hasInt64Add() const
 {
-    return (m_platformInfo.eProductFamily == IGFX_PVC &&
-        ((m_platformInfo.usRevId >= REVISION_D && IGC_IS_FLAG_ENABLED(EnableQWAddSupport))  // true from PVC XT B0 RevID==0x5==REVISION_D
-        || IGC_IS_FLAG_ENABLED(ForceQWAddSupport))); // back door way to enable feature along with ForcePartialInt64 - needed to perform the experiments on PVC-A
+    if (m_platformInfo.eProductFamily == IGFX_PVC
+        )
+    {
+        return hasQWAddSupport();
+    }
+    else
+    {
+        return !hasNoInt64Inst();
+    }
 }
 
 bool hasExecSize16DPAS() const

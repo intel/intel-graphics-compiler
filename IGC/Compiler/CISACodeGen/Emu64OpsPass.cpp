@@ -659,7 +659,7 @@ bool Emu64Ops::hasOpcodeInt64Support(unsigned int opcode) const
     return ((opcode == llvm::Instruction::Shl) ||
             (opcode == llvm::Instruction::LShr) ||
             (opcode == llvm::Instruction::AShr) ||
-            (CGC->platform.hasQWAddSupport() && (opcode == llvm::Instruction::Add || opcode == llvm::Instruction::Sub)));
+            (CGC->platform.hasInt64Add() && (opcode == llvm::Instruction::Add || opcode == llvm::Instruction::Sub)));
 }
 
 bool InstExpander::expand(Instruction* I) {
@@ -724,7 +724,7 @@ bool InstExpander::visitAdd(BinaryOperator& BinOp) {
     if (!Emu->isInt64(&BinOp))
         return false;
 
-    if (Emu->CGC->platform.hasQWAddSupport()) {
+    if (Emu->CGC->platform.hasInt64Add()) {
         if (hasHWSupport(BinOp))
             return false;
     }
@@ -750,7 +750,7 @@ bool InstExpander::visitSub(BinaryOperator& BinOp) {
     if (!Emu->isInt64(&BinOp))
         return false;
 
-    if (Emu->CGC->platform.hasQWAddSupport()) {
+    if (Emu->CGC->platform.hasInt64Add()) {
         if (hasHWSupport(BinOp))
             return false;
     }
