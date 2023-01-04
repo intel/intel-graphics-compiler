@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2022 Intel Corporation
+Copyright (C) 2019-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -6755,7 +6755,10 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   }
   if (ST.hasFusedEU()) {
     addArgument("-fusedCallWA");
-    addArgument("1");
+    if (WATable && WATable->Wa_14016243945)
+      addArgument("2");
+    else
+      addArgument("1");
   }
   if (BC.getBinaryFormat() == vc::BinaryKind::ZE) {
     addArgument("-abiver");
