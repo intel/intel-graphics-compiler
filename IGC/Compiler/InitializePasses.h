@@ -179,7 +179,6 @@ void initializeVectorBitCastOptPass(llvm::PassRegistry&);
 void initializeVectorPreProcessPass(llvm::PassRegistry&);
 void initializeVectorProcessPass(llvm::PassRegistry&);
 void initializeVerificationPassPass(llvm::PassRegistry&);
-void initializeVolatileWorkaroundPass(llvm::PassRegistry&);
 void initializeWGFuncResolutionPass(llvm::PassRegistry&);
 void initializeWIAnalysisPass(llvm::PassRegistry&);
 void initializeWIFuncResolutionPass(llvm::PassRegistry&);

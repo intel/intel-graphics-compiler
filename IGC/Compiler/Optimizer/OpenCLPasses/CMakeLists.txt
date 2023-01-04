@@ -35,7 +35,6 @@ add_subdirectory(SetFastMathFlags)
 add_subdirectory(SubGroupFuncs)
 add_subdirectory(StatelessToStateful)
 add_subdirectory(UndefinedReferences)
-add_subdirectory(VolatileWorkaround)
 add_subdirectory(WGFuncs)
 add_subdirectory(WIFuncs)
 add_subdirectory(Image3dToImage2darray)
@@ -85,7 +84,6 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_SubGroupFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_StatelessToStateful}
     ${IGC_BUILD__SRC__OpenCLPasses_UndefinedReferences}
-    ${IGC_BUILD__SRC__OpenCLPasses_VolatileWorkaround}
     ${IGC_BUILD__SRC__OpenCLPasses_WGFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_WIFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_Image3dToImage2darray}
@@ -138,7 +136,6 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_SubGroupFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_StatelessToStatefull}
     ${IGC_BUILD__HDR__OpenCLPasses_UndefinedReferences}
-    ${IGC_BUILD__HDR__OpenCLPasses_VolatileWorkaround}
     ${IGC_BUILD__HDR__OpenCLPasses_WGFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_WIFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_Image3dToImage2darray}
@@ -183,7 +180,6 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_SubGroupFuncs
     Compiler__OpenCLPasses_StatelessToStateful
     Compiler__OpenCLPasses_UndefinedReferences
-    Compiler__OpenCLPasses_VolatileWorkaround
     Compiler__OpenCLPasses_WGFuncs
     Compiler__OpenCLPasses_WIFuncs
     Compiler__OpenCLPasses_Image3dToImage2darray
