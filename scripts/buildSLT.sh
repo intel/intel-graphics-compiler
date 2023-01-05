@@ -10,7 +10,7 @@
 
 set -e
 # UBUNTU_VERSION   supported value [ 20, 22 ]                                                default 20
-# LLVM_VERSION     supported value [ 10, 11, 12, 13, 14 ]                                    default 11
+# LLVM_VERSION     supported value [ 10, 11, 12, 13, 14, 15]                                 default 11
 # OWN_CMAKE_FLAGS  not suported but can be use as WA (each flag should be with -D prefix)    default empty
 # example run:     UBUNTU_VERSION=ubuntu2004 LLVM_VERSION=11 sh /home/buildSLT.sh
 
@@ -30,8 +30,17 @@ else
 fi
 
 apt-get update
-apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip
+apt-get install -y flex bison libz-dev cmake curl wget build-essential git software-properties-common unzip lsb-release
 echo "[Build Status] flex bison libz-dev cmake curl wget build-essential git software-properties-common INSTALLED"
+
+if [ "$UBUNTU_VERSION" = "20.04" ]; then
+    echo "[Build Status] Download new cmake version for Ubuntu 20.04";
+    apt-get purge -y --auto-remove cmake
+    wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
+    apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main"
+    apt-get update
+    apt-get install -y cmake
+fi
 
 if [ "$UBUNTU_VERSION" = "22.04" ] && [ "$LLVM_VERSION" = "15" ]; then
     echo "[Build Status] Retrieve the LLVM archive signature for LLVM 15 on Ubuntu 22.04";
