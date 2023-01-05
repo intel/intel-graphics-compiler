@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2022 Intel Corporation
+Copyright (C) 2018-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1112,13 +1112,26 @@ Value *GenXEmulate::Emu64Expander::visitGenxTrunc(CallInst &CI) {
                                                 VOp.VTy->getNumElements());
     switch (IID) {
     case GenXIntrinsic::genx_uutrunc_sat:
-    case GenXIntrinsic::genx_sutrunc_sat: {
       Result = ensureEmulated(Builder.CreateZExt(VOp.V, VTy64));
       break;
+    case GenXIntrinsic::genx_sutrunc_sat: {
+      unsigned SrcSize = VOp.VTy->getScalarType()->getPrimitiveSizeInBits();
+      if (SrcSize == 64) {
+        // When converting unsigned 64-bit to signed 64-bit, we have to check
+        // upper limit
+        Value *SignedMax =
+            ConstantInt::get(VTy64, std::numeric_limits<int64_t>::max());
+        Value *Cond = ensureEmulated(Builder.CreateICmpULT(VOp.V, SignedMax));
+        Result = ensureEmulated(Builder.CreateSelect(Cond, VOp.V, SignedMax));
+      } else {
+        Result = ensureEmulated(Builder.CreateZExt(VOp.V, VTy64));
+      }
+      break;
+    }
     case GenXIntrinsic::genx_sstrunc_sat:
       Result = ensureEmulated(Builder.CreateSExt(VOp.V, VTy64));
       break;
-    case GenXIntrinsic::genx_ustrunc_sat:
+    case GenXIntrinsic::genx_ustrunc_sat: {
       Value *Zero = Constant::getNullValue(VOp.VTy);
       Value *Cond = ensureEmulated(Builder.CreateICmpSLT(VOp.V, Zero));
       Value *Select = ensureEmulated(Builder.CreateSelect(Cond, Zero, VOp.V));
