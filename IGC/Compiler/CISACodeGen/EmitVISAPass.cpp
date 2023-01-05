@@ -18703,15 +18703,6 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
     // It should have been lowered in LowerImplicitArgIntrinsics pass, but did not get cleaned up.
     if (I->use_empty()) return;
 
-    if (I->getIntrinsicID() == GenISAIntrinsic::ID::GenISA_getR0)
-    {
-        // Returns the predefined R0 register
-        m_encoder->SetUniformSIMDSize(lanesToSIMDMode(m_currShader->getGRFSize() / SIZE_DWORD));
-        m_encoder->SetNoMask();
-        m_currShader->CopyVariable(GetSymbol(I), m_currShader->GetR0());
-        return;
-    }
-
     Function* groupHead = nullptr;
     if (!m_FGA || m_FGA->isGroupHead(parentFunc)) {
         groupHead = parentFunc;
@@ -18730,7 +18721,8 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
         CVariable* Src = m_currShader->getOrCreateArgumentSymbol(arg, false);
         CVariable* Dst = GetSymbol(I);
 
-        if (IAtype == ImplicitArg::ArgType::PAYLOAD_HEADER ||
+        if (IAtype == ImplicitArg::ArgType::R0 ||
+            IAtype == ImplicitArg::ArgType::PAYLOAD_HEADER ||
             IAtype == ImplicitArg::ArgType::WORK_DIM ||
             IAtype == ImplicitArg::ArgType::NUM_GROUPS ||
             IAtype == ImplicitArg::ArgType::GLOBAL_SIZE ||
@@ -18750,9 +18742,18 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst* I)
             emitCopyAll(Dst, Src, I->getType());
         }
     }
-    else
+    else if (groupHead->hasFnAttribute("visaStackCall"))
     {
-        IGC_ASSERT_MESSAGE(0, "Intrinsics used in stackcalls has not been lowered!");
+        if (I->getIntrinsicID() == GenISAIntrinsic::ID::GenISA_getR0)
+        {
+            // The R0 intrinsic will not be lowered by LowerImplicitArgIntrinsics.
+            // Map to the predefined R0 register
+            m_currShader->GetEncoder().GetVISAPredefinedVar(GetSymbol(I), PREDEFINED_R0);
+        }
+        else
+        {
+            IGC_ASSERT_MESSAGE(0, "Intrinsics used in stackcalls has not been lowered!");
+        }
     }
 }
 
