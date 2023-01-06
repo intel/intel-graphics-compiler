@@ -1562,10 +1562,11 @@ void LivenessAnalysis::computeGenKillandPseudoKill(
             // cleaning pass. On the other hand, if a kill for the
             // spill is found, the spill is not the candidate for
             // coalescing, and the existing kill will be good.
-            if (topdcl->getRegVar()->isRegVarTransient()) {
+            if (topdcl->getRegVar()->isRegVarTransient() ||
+                topdcl->getRegVar()->isRegVarCoalesced()) {
               // Here we keep tracking the most favorable
               // position, i.e., the topmost, to insert the
-              // pseudo kill.
+              // pseudo kill for spilled and coalesced vars.
               pseudoKillsForSpills.insert_or_assign(topdcl, rit);
             } else {
               // All bytes of dst written at this point, so this is a good place
