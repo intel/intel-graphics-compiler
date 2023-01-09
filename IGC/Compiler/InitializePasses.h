@@ -42,6 +42,7 @@ void initializeCustomUnsafeOptPassPass(llvm::PassRegistry&);
 void initializeHoistFMulInLoopPassPass(llvm::PassRegistry&);
 void initializeHandleFRemInstructionsPass(llvm::PassRegistry&);
 void initializeDeSSAPass(llvm::PassRegistry&);
+void initializeDetectCSWalkOrderPass(llvm::PassRegistry&);
 void initializeDeviceEnqueueFuncsAnalysisPass(llvm::PassRegistry&);
 void initializeDeviceEnqueueFuncsResolutionPass(llvm::PassRegistry&);
 void initializeDisableLoopUnrollOnRetryPass(llvm::PassRegistry&);
