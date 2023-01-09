@@ -274,13 +274,6 @@ namespace IGC
             }
 
 
-            // Handle forcing ZEBin
-            if (IGC_IS_FLAG_SET(ForceZEBinary))
-            {
-                m_enableZEBinary = IGC_IS_FLAG_ENABLED(ForceZEBinary);
-                return;
-            }
-
             // Logic for native ZEBin support
             auto supportsZEBin = [&](CPlatform platformInfo)
             {
@@ -297,14 +290,13 @@ namespace IGC
                 }
             };
 
-            if (!supportsZEBin(platform))
-            {
-                m_enableZEBinary = false;
-                return;
-            }
-
             if (IGC_IS_FLAG_SET(EnableZEBinary))
                 m_enableZEBinary = IGC_IS_FLAG_ENABLED(EnableZEBinary);
+            // TODO: Should options/internal options precede the platform
+            // support status? Consider changing the priority if any
+            // corresponding user scenarios get discovered.
+            else if (!supportsZEBin(platform))
+                m_enableZEBinary = false;
             else if (m_Options.EnableZEBinary)
                 m_enableZEBinary = *m_Options.EnableZEBinary;
             else if (m_InternalOptions.EnableZEBinary)
