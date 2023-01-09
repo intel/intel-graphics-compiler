@@ -43,8 +43,7 @@ private:
 bool hasQWAddSupport() const
 {
     return (m_platformInfo.eProductFamily == IGFX_PVC &&
-        ((m_platformInfo.usRevId >= REVISION_D && IGC_IS_FLAG_ENABLED(EnableQWAddSupport))  // true from PVC XT B0 RevID==0x5==REVISION_D
-        || IGC_IS_FLAG_ENABLED(ForceQWAddSupport))); // back door way to enable feature along with ForcePartialInt64 - needed to perform the experiments on PVC-A
+        m_platformInfo.usRevId >= REVISION_D);  // true from PVC XT B0 RevID==0x5==REVISION_D
 }
 
 //all the platforms which DONOT support 64 bit int operations
@@ -705,8 +704,7 @@ bool NeedsLSCFenceUGMBeforeEOT() const
 bool hasPartialInt64Support() const
 {
     // false for PVC XL A0 RevID==0x0, true from PVC XT A0 RevID==0x3==REVISION_B
-    return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId >= REVISION_B) ||
-        IGC_IS_FLAG_ENABLED(ForcePartialInt64);
+    return (m_platformInfo.eProductFamily == IGFX_PVC && m_platformInfo.usRevId >= REVISION_B);
 }
 
 bool hasNoInt64AddInst() const
