@@ -55,7 +55,9 @@ Interference::Interference(const LivenessAnalysis *l, LiveRange **const &lr,
                            unsigned n, unsigned ns, unsigned nm, GlobalRA &g)
     : gra(g), kernel(g.kernel), lrs(lr), builder(*g.kernel.fg.builder),
       maxId(n), splitStartId(ns), splitNum(nm), liveAnalysis(l),
-      rowSize(maxId / BITS_DWORD + 1), aug(g.kernel, *this, *l, lr, g) {}
+      rowSize(maxId / BITS_DWORD + 1), aug(g.kernel, *this, *l, lr, g) {
+  denseMatrixLimit = builder.getuint32Option(vISA_DenseMatrixLimit);
+}
 
 inline bool Interference::varSplitCheckBeforeIntf(unsigned v1,
                                                   unsigned v2) const {
@@ -5467,16 +5469,19 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
     return refCount == 0 ? 1 : refCount;
   };
 
+  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> addrTakenMap,
+      revAddrTakenMap;
+  bool addrMapsComputed = false;
   auto incSpillCostCandidate = [&](LiveRange *lr) {
     if (kernel.getOption(vISA_IncSpillCostAllAddrTaken))
       return true;
-
-    auto &addrTakenMap =
-        const_cast<PointsToAnalysis &>(liveAnalysis.getPointsToAnalysis())
-            .getPointsToMap();
-    auto &revAddrTakenMap =
-        const_cast<PointsToAnalysis &>(liveAnalysis.getPointsToAnalysis())
-            .getRevPointsToMap();
+    if (!addrMapsComputed) {
+      const_cast<PointsToAnalysis &>(liveAnalysis.getPointsToAnalysis())
+          .getPointsToMap(addrTakenMap);
+      const_cast<PointsToAnalysis &>(liveAnalysis.getPointsToAnalysis())
+          .getRevPointsToMap(revAddrTakenMap);
+      addrMapsComputed = true;
+    }
 
     // this condition is a safety measure and isnt expected to be true.
     auto it = revAddrTakenMap.find(lr->getDcl());

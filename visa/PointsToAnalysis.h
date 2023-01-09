@@ -57,10 +57,6 @@ private:
   std::vector<unsigned> addrPointsToSetIndex;
   // original regvar ptrs
   ORG_REGVAR_VECTOR regVars;
-  // store mapping of each address dcl -> vector of all pointees
-  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> addrTakenMap;
-  // store mapping of each pointee -> addr regs pointing to it
-  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> revAddrTakenMap;
 
   void resizePointsToSet(unsigned int newsize);
 
@@ -84,12 +80,12 @@ public:
   PointsToAnalysis(const DECLARE_LIST &declares, unsigned numBBs);
 
   // addr reg -> pointee regs
-  const std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &
-  getPointsToMap();
+  void
+  getPointsToMap(std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &);
 
   // pointee -> addr reg
-  const std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &
-  getRevPointsToMap();
+  void getRevPointsToMap(
+      std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &);
 
   void doPointsToAnalysis(FlowGraph &fg);
 

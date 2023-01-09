@@ -164,6 +164,9 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
         for (auto inst : bb->getInstList()) {
           startIp = (unsigned int)inst->getGenOffset();
 
+          if (inst->isLabel())
+            continue;
+
           // verify truncation is still legal
           vISA_ASSERT(inst->getGenOffset() == (uint32_t)inst->getGenOffset(),
                        "%ip out of bounds");
@@ -187,6 +190,8 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
       return indirs;
 
     for (auto target : (*it).second) {
+      if (target->isSpilled())
+        continue;
       auto start = target->getGRFOffsetFromR0();
       auto size = target->getByteSize();
       indirs.push_back(std::make_pair(start, size));
@@ -206,7 +211,7 @@ void *gtPinData::getIndirRefs(unsigned int &size) {
       if (dst && dst->isIndirect()) {
         // encode dst indirect reference
         auto indirs = getIndirRefData(dst->getTopDcl());
-        auto &mapEntry = indirRefMap[(uint32_t)-inst->getGenOffset() - startIp];
+        auto &mapEntry = indirRefMap[(uint32_t)inst->getGenOffset() - startIp];
         mapEntry.insert(mapEntry.end(), indirs.begin(), indirs.end());
       }
 

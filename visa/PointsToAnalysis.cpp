@@ -154,17 +154,8 @@ void PointsToAnalysis::addPointsToSetToBB(int bbId, const G4_RegVar *addr) {
   }
 }
 
-// This function is intended to be invoked only in GRF RA. As that ensures
-// points-to data structures are well populated and no new entry would be added
-// to points-to table. If this condition is no longer true, then this function
-// should be modified.
-const std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &
-PointsToAnalysis::getPointsToMap() {
-  // return map computed earlier
-  // assume no updates are made to points-to analysis table since first update
-  if (addrTakenMap.size() > 0)
-    return addrTakenMap;
-
+void PointsToAnalysis::getPointsToMap(
+    std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &addrTakenMap) {
   unsigned idx = 0;
 
   // populate map from each addr reg -> addr taken targets
@@ -175,26 +166,19 @@ PointsToAnalysis::getPointsToMap() {
           item.var->getDeclare()->getRootDeclare());
     ++idx;
   }
-
-  return addrTakenMap;
 }
 
-const std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> &
-PointsToAnalysis::getRevPointsToMap() {
-  if (revAddrTakenMap.size() > 0)
-    return revAddrTakenMap;
-
-  // call the function instead of using direct member to guarantee the map is
-  // populated
-  auto &forwardMap = getPointsToMap();
+void PointsToAnalysis::getRevPointsToMap(
+    std::unordered_map<G4_Declare *, std::vector<G4_Declare *>>
+        &revAddrTakenMap) {
+  std::unordered_map<G4_Declare *, std::vector<G4_Declare *>> forwardMap;
+  getPointsToMap(forwardMap);
 
   for (auto &entry : forwardMap) {
     for (auto &var : entry.second) {
       revAddrTakenMap[var].push_back(entry.first);
     }
   }
-
-  return revAddrTakenMap;
 }
 
 //

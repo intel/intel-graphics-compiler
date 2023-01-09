@@ -395,6 +395,8 @@ class Interference {
   // cache behavior
   std::vector<std::unordered_set<uint32_t>> sparseMatrix;
 
+  unsigned int denseMatrixLimit = 0;
+
   static void updateLiveness(SparseBitSet &live, uint32_t id, bool val) {
     live.set(id, val);
   }
@@ -408,8 +410,7 @@ class Interference {
     unsigned long long size = static_cast<unsigned long long>(rowSize) *
                               static_cast<unsigned long long>(maxId);
     unsigned long long max = std::numeric_limits<unsigned int>::max();
-    return (maxId < builder.getuint32Option(vISA_DenseMatrixLimit)) &&
-           (size < max);
+    return (maxId < denseMatrixLimit) && (size < max);
   }
 
   // Only upper-half matrix is now used in intf graph.
