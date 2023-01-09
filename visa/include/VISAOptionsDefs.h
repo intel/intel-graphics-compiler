@@ -564,6 +564,8 @@ DEF_VISA_OPTION(vISA_RestrictSrc1ByteSwizzle, ET_BOOL,
 DEF_VISA_OPTION(vISA_GenerateDebugInfo, ET_BOOL, "-generateDebugInfo", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_setStartBreakPoint, ET_BOOL, "-setstartbp", UNUSED, false)
+DEF_VISA_OPTION(vISA_GenerateNopAfterCFInst, ET_BOOL,
+                "-generateNopAfterCFInst", UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertHashMovs, ET_BOOL, NULLSTR, UNUSED, false)
 DEF_VISA_OPTION(vISA_InsertDummyMovForHWRSWA, ET_BOOL, "-insertRSDummyMov",
                 UNUSED, false)

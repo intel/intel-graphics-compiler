@@ -1443,5 +1443,18 @@ uint32_t getMaxAddressedHWThreads() const
     return 4096;
 }
 
+bool WaAddNopAfterBranchInst() const
+{
+    if (m_platformInfo.eProductFamily == IGFX_PVC)
+        return true;
+
+    if (m_platformInfo.eProductFamily == IGFX_DG2 &&
+        (GFX_IS_DG2_G11_CONFIG(m_platformInfo.usDeviceID) ||
+         GFX_IS_DG2_G12_CONFIG(m_platformInfo.usDeviceID)))
+        return true;
+
+    return false;
+}
+
 };
 }//namespace IGC

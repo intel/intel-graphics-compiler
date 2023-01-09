@@ -4938,6 +4938,12 @@ namespace IGC
         {
             SaveOption(vISA_LSCFenceWA, true);
         }
+        // WA to support single stepping in debugger. Currently only enabled it
+        // when compiling with -O0.
+        if (isOptDisabled && m_program->m_Platform->WaAddNopAfterBranchInst())
+        {
+            SaveOption(vISA_GenerateNopAfterCFInst, true);
+        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.
