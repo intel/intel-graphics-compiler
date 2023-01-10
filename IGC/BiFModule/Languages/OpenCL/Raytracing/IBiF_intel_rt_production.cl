@@ -74,10 +74,17 @@ intel_ray_query_t intel_ray_query_init(
     MemRay_setRayFlags(&rtStack->ray[bvh_level],    ray.flags);
     MemRay_setRayMask(&rtStack->ray[bvh_level],     ray.mask);
 
-    MemHit_clear(&rtStack->hit[COMMITTED], /*done=*/0, /*valid=*/0);
-    MemHit_clear(&rtStack->hit[POTENTIAL], /*done=*/1, /*valid=*/1);
+    rtStack->hit[COMMITTED].u = rtStack->hit[COMMITTED].v = 0.0f;
     rtStack->hit[COMMITTED].t = INFINITY;
+    rtStack->hit[COMMITTED].data0 = 0;
+    MemHit_setValid(&rtStack->hit[COMMITTED], 0);
+    MemHit_setDone(&rtStack->hit[COMMITTED], 0);
+
+    rtStack->hit[POTENTIAL].u = rtStack->hit[POTENTIAL].v = 0.0f;
     rtStack->hit[POTENTIAL].t = INFINITY;
+    rtStack->hit[POTENTIAL].data0 = 0;
+    MemHit_setValid(&rtStack->hit[POTENTIAL], 1);
+    MemHit_setDone(&rtStack->hit[POTENTIAL], 1);
 
     intel_ray_query_t rayquery = __builtin_IB_intel_init_ray_query(
         NULL,
