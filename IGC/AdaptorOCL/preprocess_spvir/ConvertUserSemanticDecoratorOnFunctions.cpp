@@ -50,6 +50,13 @@ static void convertAnnotationsToAttributes(llvm::Function* function, const std::
         {
             function->addFnAttr("sycl-unmasked");
         }
+        else if (annotation.rfind("num-thread-per-eu", 0) == 0)
+        {
+            if (const char* op = strstr(annotation.c_str(), "num-thread-per-eu"))
+            {
+                function->addFnAttr("num-thread-per-eu", op + strnlen("num-thread-per-eu ", 23));
+            }
+        }
     }
 }
 

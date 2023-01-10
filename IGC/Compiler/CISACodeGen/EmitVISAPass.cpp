@@ -748,9 +748,13 @@ bool EmitPass::runOnFunction(llvm::Function& F)
                 hasAdditionalVisaAsmToLink = true;
             }
         }
-
+        int numThreadsPerEU = 0;
+        if (F.hasFnAttribute("num-thread-per-eu"))
+        {
+            numThreadsPerEU = std::stoi(F.getFnAttribute("num-thread-per-eu").getAsString());
+        }
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
-        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, hasInlineAsmCall, hasAdditionalVisaAsmToLink, prevKernel);
+        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, hasInlineAsmCall, hasAdditionalVisaAsmToLink, numThreadsPerEU, prevKernel);
         initDefaultRoundingMode();
         m_currShader->PreCompile();
 

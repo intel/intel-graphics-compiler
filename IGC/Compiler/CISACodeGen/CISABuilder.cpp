@@ -5046,7 +5046,7 @@ namespace IGC
         }
     }
 
-    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, VISAKernel* prevKernel)
+    void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInlineAsmCall, bool hasAdditionalVisaAsmToLink, uint numThreadsPerEU, VISAKernel* prevKernel)
     {
         m_aliasesMap.clear();
         m_encoderState.m_SubSpanDestination = false;
@@ -5098,6 +5098,12 @@ namespace IGC
             SetHasPrevKernel(prevKernel != nullptr);
         }
         InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall, builderOpt == VISA_BUILDER_BOTH);
+
+        if (numThreadsPerEU > 0)
+        {
+            // Number of threads per EU is set per kernel (by function MD)
+            SaveOption(vISA_HWThreadNumberPerEU, numThreadsPerEU);
+        }
 
         // Pass all build options to builder
         SetBuilderOptions(vbuilder);

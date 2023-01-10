@@ -4694,6 +4694,13 @@ static void convertAnnotaionsToAttributes(llvm::Function *F, const std::vector<s
         {
             F->addFnAttr("sycl-unmasked");
         }
+        else if (annotation.rfind("num-thread-per-eu", 0) == 0)
+        {
+            if (const char* op = strstr(annotation.c_str(), "num-thread-per-eu"))
+            {
+                F->addFnAttr("num-thread-per-eu", op + strnlen("num-thread-per-eu ", 23));
+            }
+        }
     }
 }
 
