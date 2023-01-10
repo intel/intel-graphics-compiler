@@ -25,7 +25,7 @@ namespace IGC
     //  back:
     //     %call1 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* %1, i32 addrspace(1)* %1, i32 0, i32 9)
     //     %bc1 = bitcast i32 %call1 to float
-    //     %operation = fadd float %bc1, -2.000000e+00
+    //     %operation = fadd fast float %bc1, -2.000000e+00
     //     %bc2 = bitcast float %operation to i32
     //     %call2 = call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* %1, i32 addrspace(1)* %1, i32 %call1, i32 %bc2)
     //     %cmp = icmp eq i32 %call1, %call2
@@ -43,7 +43,7 @@ namespace IGC
     //  back:
     //      %call1 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* %1, i32 addrspace(1)* %1, i32 0, i32 9)
     //      %bc1 = bitcast i32 %call1 to float
-    //      %operation = fadd float %bc1, %4
+    //      %operation = fadd fast float %bc1, %4
     //      %bc2 = bitcast float %operation to i32
     //      %call2 = call i32 @llvm.genx.GenISA.icmpxchgatomicrawA64.i32.p1i32.p1i32(i32 addrspace(1)* %1, i32 addrspace(1)* %1, i32 %call1, i32 %bc2)
     //      %cmp = icmp eq i32 %call1, %call2
