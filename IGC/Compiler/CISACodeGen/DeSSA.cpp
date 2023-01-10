@@ -351,15 +351,14 @@ bool DeSSA::runOnFunction(Function& MF)
         //      been visited before the aliaser instruction. For example,
         //            x = bitcast y
         //         The def of y should be visited before visiting this bitcast inst.
-        //      Let alias(v0, v1) denote that v0 is an alias to v1. DF dominance-tree
-        //      traversal may not handle aliasing in the following order:
+        //      Let alias(v0, v1) denote that v0 is an alias to v1. This visiting order
+        //      under DF dominance-tree traversal will not see aliasing in the following
+        //      order:
         //              alias(v0, v1)
         //              alias(v1, v2)
         //      rather, it must be in the order
         //              alias(v1, v2)
         //              alias(v0, v1)
-        //      By doing DF dominance-tree traversal, this kind of aliasing chain will
-        //      be handled directly.
         //
         //   2. Set up InsEltMap, which coalesces vector values used in InsertElement
         //      instructions. It is treated as "alias", meaning the root value's
@@ -367,13 +366,17 @@ bool DeSSA::runOnFunction(Function& MF)
         //      AliasMap and InsEltMap is that AliasMap is pure alias in that all
         //      aliasers have the same values as its aliasee (single-valued, like SSA);
         //      while InsElt has multiple-valued values. This difference does not matter
-        //      in dessa, but it would matter when handling sub-vector aliasing later.
+        //      in dessa, but it would matter when handling sub-vector aliasing after
+        //      dessa (VariableReuseAnaysis uses experimental sub-vector aliasing under
+        //      the key whose default is off).
         //
-        //      We could remove InsEltMap by adding each value into DeSSA node. To do
-        //      so, dessa traversal needs to be modified to have def of those values
-        //      in PhiSrcDefs. This will generally have a larger CC, which means more
-        //      compiling time.
-        //   3. Make sure DeSSA node only use the node value, that is, given value V,
+        //      We could remove InsEltMap/AliasMap by adding each value into DeSSA node.
+        //      To do so, the dessa algo needs to be improved to isolate them together
+        //      if they need to be isolated. It also may involve several subtle changes
+        //      in implementation. Also, adding all values instead of a single one into
+        //      CC increases the size of CC, which could increase compiling time. With
+        //      this, let us stay with insEltMap (as well as aliasMap).
+        //   3. Make sure DeSSA node only use the 'node value', that is, given value V,
         //        its Node value:
         //                V_aliasee = AliasMap[V] if V is in map, or V otherwise
         //                node_value = InsEltMap[V_aliasee] if in InsEltMap; or V_aliasee
@@ -1210,8 +1213,8 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
         BBI != BBE; ++BBI) {
         Instruction* I = &(*BBI);
 
-        // Now, better to think of code as a sequence Codegen Patterns,
-        // not a sequence of llvm instructions.
+        // We are after patternmatch, would it make more sense to
+        // iterate all patterns instead of instructions ?
         if (!CG->NeedInstruction(*I)) {
             continue;
         }
@@ -1236,7 +1239,7 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
                     //     alias(V1, V0)
                     //     alias(V2, V0)
                     //     ......
-                    //     alias(V0, V0)  <-- V0 is the root!
+                    //     alias(Vn, V0)  <-- V0 is the root!
                     //
                     //  Note that elements could be sparse like
                     //     V0 = InsElt Undef, S1, 1
