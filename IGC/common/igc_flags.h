@@ -628,6 +628,7 @@ DECLARE_IGC_REGKEY(bool, EnableFastestForVulkan,        false,   "Enable Fastest
 DECLARE_IGC_REGKEY(bool, EnableFastestLinearScan,       true,   "Enable LinearScanRA in FastestSIMD.", false)
 DECLARE_IGC_REGKEY(bool, DisableFastestGopt,            false,   "Disable global optimizations for stage 1 shaders.", false)
 DECLARE_IGC_REGKEY(bool, ForceFastestSIMD, false,  "Force pixel shader to return SIMD8 as fast as possible.", false)
+DECLARE_IGC_REGKEY(bool, EnableFastestSingleCSSIMD,     false,  "Enable selecting single CS SIMD in staged compilation.", false)
 DECLARE_IGC_REGKEY(bool, ForceBestSIMD, false,  "Force pixel shader to return the best SIMD, either SIMD16 or SIMD8.", false)
 DECLARE_IGC_REGKEY(bool, SkipTREarlyExitCheck, false, "Skip SIMD16 early exit check in ShaderCodeGen", false)
 DECLARE_IGC_REGKEY(bool, EnableTCSHWBarriers, false,  "Enable TCS pass with HW barriers support. Default TCS pass is TCS pass with multiple continuation functions.", false)
