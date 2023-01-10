@@ -213,7 +213,7 @@ namespace IGC
 
     bool RetryManager::IsBetterThanPrevious(CShaderProgram* pCurrent)
     {
-        bool isBetter = false;
+        bool isBetter = true;
         auto pPrevious = GetPrevious(pCurrent);
         if (pPrevious)
         {
@@ -246,11 +246,6 @@ namespace IGC
                 // The previous shader was better, ignore any future retry compilation
                 isBetter = false;
             }
-        }
-        else
-        {
-            // There wasn't any previous compilation of this kernel, so it's better
-            isBetter = true;
         }
         return isBetter;
     }
