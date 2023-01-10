@@ -341,7 +341,6 @@ DECLARE_IGC_REGKEY(bool, DumpToCurrentDir,              false, "dump shaders to 
 DECLARE_IGC_REGKEY(debugString, DumpToCustomDir,        0,     "Dump shaders to custom directory. Parent directory must exist.", true)
 DECLARE_IGC_REGKEY(bool, EnableShaderNumbering,         false, "Number shaders in the order they are dumped based on their hashes", true)
 DECLARE_IGC_REGKEY(bool, PrintToConsole,                false, "dump to console", true)
-DECLARE_IGC_REGKEY(bool, DumpCompilerStats,             false, "dump compiler statistics", true)
 DECLARE_IGC_REGKEY(bool, EnableCapsDump,                false, "Enable hardware caps dump", true)
 DECLARE_IGC_REGKEY(bool, EnableLivenessDump,            false, "Enable dumping out liveness info on stderr.", true)
 DECLARE_IGC_REGKEY(DWORD, ForceRPE,                     0,     "Force RPE (RegisterEstimator) computation if > 0. If 2, force RPE per inst.", true)

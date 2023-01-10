@@ -19,7 +19,6 @@ SPDX-License-Identifier: MIT
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
 #include "common/shaderOverride.hpp"
-#include "common/CompilerStatsUtils.hpp"
 #include "inc/common/sku_wa.h"
 #include <llvm/Support/Path.h>
 #include <llvm/ADT/Statistic.h>
@@ -3980,11 +3979,6 @@ namespace IGC
             SaveOption(vISA_forceNoFP64bRegioning, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(DumpCompilerStats) || context->getModuleMetaData()->compOpt.CaptureCompilerStats)
-        {
-            SaveOption(vISA_EnableCompilerStats, true);
-        }
-
         if (IGC_IS_FLAG_ENABLED(ShaderDataBaseStats))
         {
             SaveOption(vISA_ShaderDataBaseStats, true);
@@ -6033,12 +6027,8 @@ namespace IGC
 
             context->m_retryManager.numInstructions = jitInfo->stats.numAsmCountUnweighted;
         }
-        m_program->m_asmInstrCount = jitInfo->stats.numAsmCountUnweighted;
 
-        if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
-        {
-            CompilerStatsUtils::RecordCodeGenCompilerStats(context, m_program->m_dispatchSize, jitInfo);
-        }
+        m_program->m_asmInstrCount = jitInfo->stats.numAsmCountUnweighted;
 
         if (vIsaCompile == -1)
         {
@@ -6183,7 +6173,7 @@ namespace IGC
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE8, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE8, (int)m_program->m_loopNestedStallCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD8, jitInfo->stats.numGRFTotal);
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD8, jitInfo->maxGRFPressure);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD8, jitInfo->stats.maxGRFPressure);
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD16)
         {
@@ -6192,7 +6182,7 @@ namespace IGC
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE16, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE16, (int)m_program->m_loopNestedStallCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD16, jitInfo->stats.numGRFTotal);
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD16, jitInfo->maxGRFPressure);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD16, jitInfo->stats.maxGRFPressure);
         }
         else if (m_program->m_dispatchSize == SIMDMode::SIMD32)
         {
@@ -6201,7 +6191,7 @@ namespace IGC
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_CYCLE_ESTIMATE32, (int)m_program->m_loopNestedCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_ISA_STALL_ESTIMATE32, (int)m_program->m_loopNestedStallCycle);
             COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_USED_SIMD32, jitInfo->stats.numGRFTotal);
-            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD32, jitInfo->maxGRFPressure);
+            COMPILER_SHADER_STATS_SET(m_program->m_shaderStats, STATS_GRF_PRESSURE_SIMD32, jitInfo->stats.maxGRFPressure);
         }
 #endif
         void* genxbin = nullptr;
@@ -6311,10 +6301,6 @@ namespace IGC
         pOutput->m_debugDataGenISASize = dbgSize;
         pOutput->m_InstructionCount = jitInfo->stats.numAsmCountUnweighted;
         pOutput->m_BasicBlockCount = jitInfo->BBNum;
-        if (context->getModuleMetaData()->compOpt.CaptureCompilerStats)
-        {
-            ReportCompilerStatistics(pMainKernel, pOutput);
-        }
 
         pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
@@ -8541,43 +8527,6 @@ namespace IGC
             pLODOffset,
             pSrc,
             nullptr));
-    }
-
-    void CEncoder::ReportCompilerStatistics(VISAKernel* pMainKernel, SProgramOutput* pOutput)
-    {
-        CompilerStats& compilerStats = m_program->GetContext()->Stats();
-        int simdsize = GetThreadCount(m_program->m_dispatchSize);
-
-        // set optional statistics
-        if (compilerStats.Find(CompilerStats::numCyclesStr()))
-        {
-            pOutput->m_NumCycles.emplace(compilerStats.GetI64(CompilerStats::numCyclesStr(), simdsize));
-        }
-
-        if (compilerStats.Find(CompilerStats::numGRFFillStr()))
-        {
-            pOutput->m_NumGRFFill.emplace(compilerStats.GetI64(CompilerStats::numGRFFillStr(), simdsize));
-        }
-
-        if (compilerStats.Find(CompilerStats::numGRFSpillStr()))
-        {
-            pOutput->m_NumGRFSpill.emplace(compilerStats.GetI64(CompilerStats::numGRFSpillStr(), simdsize));
-        }
-
-        if (compilerStats.Find(CompilerStats::numSendStr()))
-        {
-            pOutput->m_NumSends.emplace(compilerStats.GetI64(CompilerStats::numSendStr(), simdsize));
-        }
-        vISA::FINALIZER_INFO* jitInfo = nullptr;
-        if (0 == pMainKernel->GetJitInfo(jitInfo))
-        {
-            uint sendStallCycle = 0;
-            for (uint i = 0; i < jitInfo->BBNum; i++)
-            {
-                sendStallCycle += jitInfo->BBInfo[i].sendStallCycle;
-            }
-            pOutput->m_NumSendStallCycles.emplace(sendStallCycle);
-        }
     }
 
     int CEncoder::GetThreadCount(SIMDMode simdMode)

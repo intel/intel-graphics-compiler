@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <set>
 #include <string.h>
 #include <sstream>
+#include <unordered_map>
 #include "Compiler/CISACodeGen/ShaderUnits.hpp"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "Compiler/CISACodeGen/DriverInfo.hpp"
@@ -48,7 +49,6 @@ SPDX-License-Identifier: MIT
 #include "CodeGenPublicEnums.h"
 #include "AdaptorOCL/TranslationBlock.h"
 #include "common/MDFrameWork.h"
-#include "CompilerStats.h"
 #include <unordered_set>
 #include "Probe/Assertion.h"
 #include <optional>
@@ -905,7 +905,6 @@ namespace IGC
         bool m_hasEmu64BitInsts = false;
         bool m_hasDPDivSqrtEmu = false;
 
-        CompilerStats m_Stats;
         // Flag for staged compilation
         CG_FLAG_t m_CgFlag = FLAG_CG_ALL_SIMDS;
         // Staging context passing from Stage 1 for compile continuation
@@ -1042,11 +1041,6 @@ namespace IGC
         virtual uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const;
         virtual bool enableZEBinary() const;
         bool isPOSH() const;
-
-        CompilerStats& Stats()
-        {
-            return m_Stats;
-        }
 
         unsigned int GetSIMDInfoOffset(SIMDMode simd, ShaderDispatchMode mode)
         {

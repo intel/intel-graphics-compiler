@@ -18162,8 +18162,6 @@ void EmitPass::ResourceLoopBackEdge(bool needLoop, CVariable* flag, uint label)
         m_encoder->SetInversePredicate(true);
         m_encoder->Jump(flag, label);
         m_encoder->Push();
-
-        m_currShader->GetContext()->Stats().IncreaseI64("ResourceLoopCount", 1, numLanes(m_currShader->m_dispatchSize));
     }
 }
 

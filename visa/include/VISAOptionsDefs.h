@@ -592,8 +592,6 @@ DEF_VISA_OPTION(vISA_ScratchAllocForStackInKB, ET_INT32,
 DEF_VISA_OPTION(vISA_dumpToCurrentDir, ET_BOOL, "-dumpToCurrentDir", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_dumpTimer, ET_BOOL, "-timestats", UNUSED, false)
-DEF_VISA_OPTION(vISA_EnableCompilerStats, ET_BOOL, "-compilerStats", UNUSED,
-                false)
 DEF_VISA_OPTION(vISA_ShaderDataBaseStats, ET_BOOL, "--sdbStats", UNUSED, false)
 DEF_VISA_OPTION(vISA_ShaderDataBaseStatsFilePath, ET_CSTR, "-sdbStatsFile",
                 UNUSED, NULL)

@@ -402,7 +402,6 @@ namespace IGC
         bool IsLibraryCompilation                       = false;
         bool FastVISACompile                            = false;
         bool MatchSinCosPi                              = false;
-        bool CaptureCompilerStats                       = false;
         bool ExcludeIRFromZEBinary                      = false;
         bool EmitZeBinVISASections                      = false;
 

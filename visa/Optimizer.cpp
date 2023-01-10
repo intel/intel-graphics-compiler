@@ -7514,7 +7514,6 @@ void Optimizer::collectStats() {
       }
     }
   }
-  builder.getJitInfo()->numSendInst = numSends;
 }
 
 // Create a copy of R0 at top of kernel,

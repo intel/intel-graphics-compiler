@@ -2946,44 +2946,6 @@ void GlobalRA::verifySpillFill() {
   }
 }
 
-static void recordRAStats(IR_Builder &builder, G4_Kernel &kernel,
-                          int RAStatus) {
-  if (RAStatus == VISA_SUCCESS) {
-    switch (kernel.getRAType()) {
-    case RA_Type::TRIVIAL_BC_RA:
-    case RA_Type::TRIVIAL_RA:
-      builder.getJitInfo()->raStatus = FINALIZER_INFO::kIsTrivialRA;
-      break;
-    case RA_Type::LOCAL_ROUND_ROBIN_BC_RA:
-    case RA_Type::LOCAL_ROUND_ROBIN_RA:
-    case RA_Type::LOCAL_FIRST_FIT_BC_RA:
-    case RA_Type::LOCAL_FIRST_FIT_RA:
-      builder.getJitInfo()->raStatus = FINALIZER_INFO::kIsLocallRA;
-      break;
-    case RA_Type::HYBRID_BC_RA:
-    case RA_Type::HYBRID_RA:
-      builder.getJitInfo()->raStatus = FINALIZER_INFO::kIsHybridRA;
-      break;
-    case RA_Type::GRAPH_COLORING_RR_RA:
-    case RA_Type::GRAPH_COLORING_FF_RA:
-    case RA_Type::GRAPH_COLORING_RR_BC_RA:
-    case RA_Type::GRAPH_COLORING_FF_BC_RA:
-    case RA_Type::GRAPH_COLORING_SPILL_RR_RA:
-    case RA_Type::GRAPH_COLORING_SPILL_FF_RA:
-    case RA_Type::GRAPH_COLORING_SPILL_RR_BC_RA:
-    case RA_Type::GRAPH_COLORING_SPILL_FF_BC_RA:
-    case RA_Type::GLOBAL_LINEAR_SCAN_RA:
-    case RA_Type::GLOBAL_LINEAR_SCAN_BC_RA:
-      builder.getJitInfo()->raStatus = FINALIZER_INFO::kIsGlobalRA;
-      break;
-    case RA_Type::UNKNOWN_RA:
-      break;
-    default:
-      vISA_ASSERT_UNREACHABLE("Incorrect RA type");
-    }
-  }
-}
-
 static void replaceSSO(G4_Kernel &kernel) {
   // Invoke function only for XeHP_SDV and later
   // Replace SSO with r126.7 (scratch reg)
@@ -3126,8 +3088,6 @@ int regAlloc(IR_Builder &builder, PhyRegPool &regPool, G4_Kernel &kernel) {
     }
   }
 
-  if (builder.getOption(vISA_EnableCompilerStats))
-    recordRAStats(builder, kernel, status);
   if (status != VISA_SUCCESS) {
     return status;
   }

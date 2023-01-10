@@ -5494,11 +5494,6 @@ void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
     expandSpillIntrinsic(bb);
     expandFillIntrinsic(bb);
   }
-
-  if (kernel.fg.builder->getOption(vISA_EnableCompilerStats)) {
-    kernel.fg.builder->getJitInfo()->numGRFSpill = numGRFSpill;
-    kernel.fg.builder->getJitInfo()->numGRFFill = numGRFFill;
-  }
 }
 
 SpillAnalysis::~SpillAnalysis() {

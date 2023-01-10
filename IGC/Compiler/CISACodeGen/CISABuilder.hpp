@@ -135,7 +135,6 @@ namespace IGC
         void MarkAsPayloadLiveOut(CVariable* var);
         void Compile(bool hasSymbolTable = false);
         std::string GetShaderName();
-        void ReportCompilerStatistics(VISAKernel* pMainKernel, SProgramOutput* pOutput);
         int GetThreadCount(SIMDMode simdMode);
 
         CEncoder();

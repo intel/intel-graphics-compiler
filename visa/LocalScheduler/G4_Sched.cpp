@@ -608,7 +608,7 @@ bool preRA_Scheduler::run() {
   }
   if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
     rp.rpe->run();
-    kernel.fg.builder->getJitInfo()->maxGRFPressure = rp.rpe->getMaxRP();
+    kernel.fg.builder->getJitInfo()->stats.maxGRFPressure = rp.rpe->getMaxRP();
   }
   return Changed;
 }
@@ -739,7 +739,7 @@ bool preRA_RegSharing::run() {
   }
   if (kernel.getOptions()->getOption(vISA_PreSchedGRFPressure)) {
     rp.rpe->run();
-    kernel.fg.builder->getJitInfo()->maxGRFPressure = rp.rpe->getMaxRP();
+    kernel.fg.builder->getJitInfo()->stats.maxGRFPressure = rp.rpe->getMaxRP();
   }
   return changed;
 }
@@ -1172,7 +1172,6 @@ bool BB_Scheduler::scheduleBlockForPressure(unsigned &MaxPressure,
     if (commitIfBeneficial(MaxPressure)) {
       SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
       Changed = true;
-      kernel.fg.builder->getJitInfo()->preRASchedulerForPressure = true;
     } else if (!config.DoClustering &&
                !isSlicedSIMD32(ddd.getKernel())) { // try clustering
       ddd.reset(false);
@@ -1183,7 +1182,6 @@ bool BB_Scheduler::scheduleBlockForPressure(unsigned &MaxPressure,
       if (commitIfBeneficial(MaxPressure)) {
         SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for presssure, "));
         Changed = true;
-        kernel.fg.builder->getJitInfo()->preRASchedulerForPressure = true;
       }
     }
   }
@@ -1415,7 +1413,6 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
         if (NumGrfs >= UpperBoundGRF && SavedEstimation == 0) {
           SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
           ddd.getBB()->setLatencySched(true);
-          kernel.fg.builder->getJitInfo()->preRASchedulerForLatency = true;
           return true;
         }
         // if this schedule does not provide expected gain from
@@ -1430,14 +1427,12 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
           rp.recompute(getBB());
           SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
           ddd.getBB()->setLatencySched(true);
-          kernel.fg.builder->getJitInfo()->preRASchedulerForLatency = true;
           return true;
         }
         if (NumGrfs >= UpperBoundGRF) {
           // best schedule is found with the max GRF setting
           SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
           ddd.getBB()->setLatencySched(true);
-          kernel.fg.builder->getJitInfo()->preRASchedulerForLatency = true;
           return true;
         }
         // save the current schedule as the potential choice
@@ -1462,7 +1457,6 @@ bool BB_Scheduler::scheduleBlockForLatency(unsigned &MaxPressure,
     rp.recompute(getBB());
     SCHED_DUMP(rp.dump(ddd.getBB(), "After scheduling for latency, "));
     ddd.getBB()->setLatencySched(true);
-    kernel.fg.builder->getJitInfo()->preRASchedulerForLatency = true;
     return true;
   }
   return false;

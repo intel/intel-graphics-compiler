@@ -59,6 +59,8 @@ public:
   // Unweighted cycles count estimated by the scheduler.
   uint32_t numCycles = 0;
 
+  uint32_t maxGRFPressure = 0;
+
 public:
   llvm::json::Value toJSON();
 };
@@ -117,21 +119,6 @@ struct FINALIZER_INFO {
   // ----- vISA Stats ----- //
   PERF_STATS stats;
   PERF_STATS_VERBOSE statsVerbose;
-
-  // ----- To be deprecated ----- //
-  // These are vISA stats used only by IGC::CompilerStats
-  // Subjet to deprecated
-  uint32_t maxGRFPressure = 0;
-  bool preRASchedulerForPressure = false;
-  bool preRASchedulerForLatency = false;
-  int64_t numSendInst = 0;
-  int64_t numGRFSpill = 0;
-  int64_t numGRFFill = 0;
-  static constexpr char kIsTrivialRA[] = "IsTrivialRA";
-  static constexpr char kIsLocallRA[] = "IsLocalRA";
-  static constexpr char kIsHybridRA[] = "IsHybridRA";
-  static constexpr char kIsGlobalRA[] = "IsGlobalRA";
-  const char *raStatus = nullptr;
 };
 
 } // namespace vISA
