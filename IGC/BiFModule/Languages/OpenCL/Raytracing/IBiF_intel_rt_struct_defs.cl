@@ -149,14 +149,6 @@ inline ulong MemHit_getHitGroupRecPtr1(MemHit* memhit) { return getBits64(memhit
 inline global void* MemHit_getPrimLeafPtr(MemHit* memhit)     { return to_global((void*)((ulong)MemHit_getPrimLeafAddr(memhit) * 64)); }
 inline global void* MemHit_getInstanceLeafPtr(MemHit* memhit) { return to_global((void*)((ulong)MemHit_getInstLeafAddr(memhit) * 64)); }
 
-inline void MemHit_clear(MemHit* memhit, bool _done, bool _valid)
-{
-    memhit->t = memhit->u = memhit->v = 0.0f;
-    memhit->data0 = 0;
-    MemHit_setValid(memhit, _valid);
-    MemHit_setDone(memhit, _done);
-}
-
 
 // === --------------------------------------------------------------------===
 // === RTStack
