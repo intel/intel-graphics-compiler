@@ -1036,7 +1036,6 @@ namespace IGC
         virtual bool forceGlobalMemoryAllocation() const;
         virtual bool allocatePrivateAsGlobalBuffer() const;
         virtual bool noLocalToGenericOptionEnabled() const;
-        virtual bool mustDistinguishBetweenPrivateAndGlobalPtr() const;
         virtual bool enableTakeGlobalAddress() const;
         virtual int16_t getVectorCoalescingControl() const;
         virtual uint32_t getPrivateMemoryMinimalSizePerThread() const;

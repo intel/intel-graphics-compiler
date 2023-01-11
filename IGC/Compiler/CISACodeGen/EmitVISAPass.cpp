@@ -8646,13 +8646,10 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 
     CVariable* srcV = GetSymbol(addrSpaceCast->getOperand(0));
 
-    bool skipTagging =
-        !m_canGenericPointToLocal &&
-        !m_canGenericPointToPrivate &&
-        !m_pCtx->mustDistinguishBetweenPrivateAndGlobalPtr();
-
-    if (skipTagging)
+    if (!m_canGenericPointToPrivate && !m_canGenericPointToLocal)
     {
+        // If forcing global memory allocation and there are no generic pointers to local AS,
+        // there is no need to tag generic pointers.
         m_encoder->Cast(m_destination, srcV);
         m_encoder->Push();
         return;
@@ -8682,7 +8679,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
             return;
         }
 
-        if (sourceAddrSpace == ADDRESS_SPACE_PRIVATE && (!m_pCtx->allocatePrivateAsGlobalBuffer() || m_pCtx->mustDistinguishBetweenPrivateAndGlobalPtr()))
+        if (sourceAddrSpace == ADDRESS_SPACE_PRIVATE && !m_pCtx->allocatePrivateAsGlobalBuffer())
         {
             emitAddrSpaceToGenericCast(addrSpaceCast, srcV, 1);
         }
@@ -8697,9 +8694,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
         }
     }
     else if (sourceAddrSpace == ADDRESS_SPACE_GENERIC &&
-            (destAddrSpace == ADDRESS_SPACE_PRIVATE ||
-             destAddrSpace == ADDRESS_SPACE_LOCAL ||
-             (destAddrSpace == ADDRESS_SPACE_GLOBAL && m_pCtx->mustDistinguishBetweenPrivateAndGlobalPtr())))
+        (destAddrSpace == ADDRESS_SPACE_PRIVATE || destAddrSpace == ADDRESS_SPACE_LOCAL))
     {
         // Address space cast is in the form of generic -> {private, local, global}
         // Tag is removed according to the address space of the destination
