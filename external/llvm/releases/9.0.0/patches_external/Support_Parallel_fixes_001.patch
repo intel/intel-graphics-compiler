@@ -1,0 +1,137 @@
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+From d49600320598a2b4e998e99f714c2e19d95197e8 Mon Sep 17 00:00:00 2001
+From: Nico Weber <nicolasweber@gmx.de>
+Date: Thu, 10 Oct 2019 18:57:23 +0000
+Subject: [PATCH] win: Move Parallel.h off concrt to cross-platform code
+
+r179397 added Parallel.h and implemented it terms of concrt in 2013.
+
+In 2015, a cross-platform implementation of the functions has appeared
+and is in use everywhere but on Windows (r232419).  r246219 hints that
+<thread> had issues in MSVC2013, but r296906 suggests they've been fixed
+now that we require 2015+.
+
+So remove the concrt code. It's less code, and it sounds like concrt has
+conceptual and performance issues, see PR41198.
+
+I built blink_core.dll in a debug component build with full symbols and
+in a release component build without any symbols.  I couldn't measure a
+performance difference for linking blink_core.dll before and after this
+patch.
+
+Differential Revision: https://reviews.llvm.org/D68820
+
+llvm-svn: 374421
+---
+ llvm/include/llvm/Support/Parallel.h | 27 ------------------------
+ llvm/lib/Support/Parallel.cpp        | 31 +---------------------------
+ 2 files changed, 1 insertion(+), 57 deletions(-)
+
+diff --git a/llvm/include/llvm/Support/Parallel.h b/llvm/include/llvm/Support/Parallel.h
+index eab9b492c4a5c..3c0ed2c111275 100644
+--- a/llvm/include/llvm/Support/Parallel.h
++++ b/llvm/include/llvm/Support/Parallel.h
+@@ -18,14 +18,6 @@
+ #include <functional>
+ #include <mutex>
+ 
+-#if defined(_MSC_VER) && LLVM_ENABLE_THREADS
+-#pragma warning(push)
+-#pragma warning(disable : 4530)
+-#include <concrt.h>
+-#include <ppl.h>
+-#pragma warning(pop)
+-#endif
+-
+ namespace llvm {
+ 
+ namespace parallel {
+@@ -84,23 +76,6 @@ class TaskGroup {
+   void sync() const { L.sync(); }
+ };
+ 
+-#if defined(_MSC_VER)
+-template <class RandomAccessIterator, class Comparator>
+-void parallel_sort(RandomAccessIterator Start, RandomAccessIterator End,
+-                   const Comparator &Comp) {
+-  concurrency::parallel_sort(Start, End, Comp);
+-}
+-template <class IterTy, class FuncTy>
+-void parallel_for_each(IterTy Begin, IterTy End, FuncTy Fn) {
+-  concurrency::parallel_for_each(Begin, End, Fn);
+-}
+-
+-template <class IndexTy, class FuncTy>
+-void parallel_for_each_n(IndexTy Begin, IndexTy End, FuncTy Fn) {
+-  concurrency::parallel_for(Begin, End, Fn);
+-}
+-
+-#else
+ const ptrdiff_t MinParallelSize = 1024;
+ 
+ /// Inclusive median.
+@@ -188,8 +163,6 @@ void parallel_for_each_n(IndexTy Begin, IndexTy End, FuncTy Fn) {
+ 
+ #endif
+ 
+-#endif
+-
+ template <typename Iter>
+ using DefComparator =
+     std::less<typename std::iterator_traits<Iter>::value_type>;
+diff --git a/llvm/lib/Support/Parallel.cpp b/llvm/lib/Support/Parallel.cpp
+index 621bccbf2a4c9..355c64b7d0793 100644
+--- a/llvm/lib/Support/Parallel.cpp
++++ b/llvm/lib/Support/Parallel.cpp
+@@ -32,34 +32,6 @@ class Executor {
+   static Executor *getDefaultExecutor();
+ };
+ 
+-#if defined(_MSC_VER)
+-/// An Executor that runs tasks via ConcRT.
+-class ConcRTExecutor : public Executor {
+-  struct Taskish {
+-    Taskish(std::function<void()> Task) : Task(Task) {}
+-
+-    std::function<void()> Task;
+-
+-    static void run(void *P) {
+-      Taskish *Self = static_cast<Taskish *>(P);
+-      Self->Task();
+-      concurrency::Free(Self);
+-    }
+-  };
+-
+-public:
+-  virtual void add(std::function<void()> F) {
+-    Concurrency::CurrentScheduler::ScheduleTask(
+-        Taskish::run, new (concurrency::Alloc(sizeof(Taskish))) Taskish(F));
+-  }
+-};
+-
+-Executor *Executor::getDefaultExecutor() {
+-  static ConcRTExecutor exec;
+-  return &exec;
+-}
+-
+-#else
+ /// An implementation of an Executor that runs closures on a thread pool
+ ///   in filo order.
+ class ThreadPoolExecutor : public Executor {
+@@ -117,8 +89,7 @@ Executor *Executor::getDefaultExecutor() {
+   static ThreadPoolExecutor exec;
+   return &exec;
+ }
+-#endif
+-}
++} // namespace
+ 
+ static std::atomic<int> TaskGroupInstances;
+

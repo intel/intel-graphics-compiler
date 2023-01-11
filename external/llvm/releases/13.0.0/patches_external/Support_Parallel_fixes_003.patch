@@ -1,0 +1,59 @@
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+From 7b25fa8c7a151e94be46ed8f0a56bf4e2af1c104 Mon Sep 17 00:00:00 2001
+From: Alexandre Ganea <alexandre.ganea@ubisoft.com>
+Date: Sat, 18 Sep 2021 12:00:17 -0400
+Subject: [PATCH] [Support] Attempt to fix deadlock in ThreadGroup
+
+This is an attempt to fix the situation described by https://reviews.llvm.org/D104207#2826290 and PR41508.
+See sequence of operations leading to the bug in https://reviews.llvm.org/D104207#3004689
+
+We ensure that the Latch is completely "free" before decrementing the number of TaskGroupInstances.
+
+Differential revision: https://reviews.llvm.org/D109914
+---
+ llvm/include/llvm/Support/Parallel.h | 5 ++++-
+ llvm/lib/Support/Parallel.cpp        | 7 ++++++-
+ 2 files changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/llvm/include/llvm/Support/Parallel.h b/llvm/include/llvm/Support/Parallel.h
+index 28d171d452560..5c3b26d5754c2 100644
+--- a/llvm/include/llvm/Support/Parallel.h
++++ b/llvm/include/llvm/Support/Parallel.h
+@@ -40,7 +40,10 @@ class Latch {
+ 
+ public:
+   explicit Latch(uint32_t Count = 0) : Count(Count) {}
+-  ~Latch() { sync(); }
++  ~Latch() {
++    // Ensure at least that sync() was called.
++    assert(Count == 0);
++  }
+ 
+   void inc() {
+     std::lock_guard<std::mutex> lock(Mutex);
+diff --git a/llvm/lib/Support/Parallel.cpp b/llvm/lib/Support/Parallel.cpp
+index 9a2e1003da5a2..71e3a1362f7eb 100644
+--- a/llvm/lib/Support/Parallel.cpp
++++ b/llvm/lib/Support/Parallel.cpp
+@@ -151,7 +151,12 @@ static std::atomic<int> TaskGroupInstances;
+ // lock, only allow the first TaskGroup to run tasks parallelly. In the scenario
+ // of nested parallel_for_each(), only the outermost one runs parallelly.
+ TaskGroup::TaskGroup() : Parallel(TaskGroupInstances++ == 0) {}
+-TaskGroup::~TaskGroup() { --TaskGroupInstances; }
++TaskGroup::~TaskGroup() {
++  // We must ensure that all the workloads have finished before decrementing the
++  // instances count.
++  L.sync();
++  --TaskGroupInstances;
++}
+ 
+ void TaskGroup::spawn(std::function<void()> F) {
+   if (Parallel) {
+
