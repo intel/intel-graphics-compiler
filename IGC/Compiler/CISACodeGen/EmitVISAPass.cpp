@@ -751,7 +751,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         int numThreadsPerEU = 0;
         if (F.hasFnAttribute("num-thread-per-eu"))
         {
-            numThreadsPerEU = std::stoi(F.getFnAttribute("num-thread-per-eu").getAsString());
+            numThreadsPerEU = std::stoi(
+                F.getFnAttribute("num-thread-per-eu").getValueAsString().str());
         }
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
         m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall, hasInlineAsmCall, hasAdditionalVisaAsmToLink, numThreadsPerEU, prevKernel);
