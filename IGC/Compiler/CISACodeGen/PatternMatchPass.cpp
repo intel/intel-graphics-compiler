@@ -1515,7 +1515,7 @@ namespace IGC
 
     void CodeGenPatternMatch::visitDbgInfoIntrinsic(DbgInfoIntrinsic& I)
     {
-        MatchDbgInstruction(I);
+        // Nothing to do
     }
 
     void CodeGenPatternMatch::visitInsertValueInst(InsertValueInst& I)
@@ -4968,38 +4968,6 @@ namespace IGC
     {
         HandleSampleDerivative(I);
         return MatchSingleInstruction(I);
-    }
-
-    bool CodeGenPatternMatch::MatchDbgInstruction(llvm::DbgInfoIntrinsic& I)
-    {
-        struct DbgInstPattern : Pattern
-        {
-            virtual void Emit(EmitPass* pass, const DstModifier& modifier)
-            {
-                // Nothing to emit.
-            }
-        };
-        DbgInstPattern* pattern = new (m_allocator) DbgInstPattern();
-        if (DbgDeclareInst * pDbgDeclInst = dyn_cast<DbgDeclareInst>(&I))
-        {
-            if (pDbgDeclInst->getAddress())
-            {
-                MarkAsSource(pDbgDeclInst->getAddress());
-            }
-        }
-        else if (DbgValueInst * pDbgValInst = dyn_cast<DbgValueInst>(&I))
-        {
-            if (pDbgValInst->getValue())
-            {
-                MarkAsSource(pDbgValInst->getValue());
-            }
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(0, "Unhandled Dbg intrinsic");
-        }
-        AddPattern(pattern);
-        return true;
     }
 
     bool CodeGenPatternMatch::MatchAvg(llvm::Instruction& I)
