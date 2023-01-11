@@ -9374,7 +9374,6 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableDeSSA) &&
-        IGC_IS_FLAG_ENABLED(EnableDeSSAAlias) &&
         m_deSSA && m_deSSA->isNoopAliaser(inst))
     {
         return;

@@ -127,7 +127,6 @@ void DeSSA::print(raw_ostream& OS, const Module*) const
 
     SmallVector<Value*, 64> ValKeyVec;
     DenseMap<Value*, SmallVector<Value*, 8> > output;
-    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
     {
         OS << "---- AliasMap ----\n\n";
         for (auto& I : AliasMap) {
@@ -206,37 +205,34 @@ void DeSSA::print(raw_ostream& OS, const Module*) const
     }
     OS << "\n\n";
 
-    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
-    {
-        OS << "---- Multi-value Alias (value in both AliasMap & InsEltMap) ----\n";
+    OS << "---- Alias for composite/vector values"
+       << " (value in both AliasMap & InsEltMap)----\n";
+    // All InsElt output has been sorted
+    for (auto& I : ValKeyVec) {
+        Value* rootV = I;
+        SmallVector<Value*, 8> & allVals = output[rootV];
 
-        // All InsElt output has been sorted
-        for (auto& I : ValKeyVec) {
-            Value* rootV = I;
-            SmallVector<Value*, 8> & allVals = output[rootV];
-
-            OS << "  Root Value: ";
-            rootV->printAsOperand(OS);
-            if (isAliasee(rootV)) {
-                OS << " [aliasee]";
-            }
-
-            int num = 0;
-            for (int i = 0, sz = (int)allVals.size(); i < sz; ++i)
-            {
-                Value* val = allVals[i];
-                if (!isAliasee(val))
-                    continue;
-                if ((num % 8) == 0) {
-                    OS << "\n       ";
-                }
-
-                allVals[i]->printAsOperand(OS);
-                OS << " [aliasee]  ";
-                ++num;
-            }
-            OS << "\n";
+        OS << "  Root Value: ";
+        rootV->printAsOperand(OS);
+        if (isAliasee(rootV)) {
+            OS << " [aliasee]";
         }
+
+        int num = 0;
+        for (int i = 0, sz = (int)allVals.size(); i < sz; ++i)
+        {
+            Value* val = allVals[i];
+            if (!isAliasee(val))
+                continue;
+            if ((num % 8) == 0) {
+                OS << "\n       ";
+            }
+
+            allVals[i]->printAsOperand(OS);
+            OS << " [aliasee]  ";
+            ++num;
+        }
+        OS << "\n";
     }
     OS << "\n\n";
 
@@ -283,7 +279,8 @@ void DeSSA::print(raw_ostream& OS, const Module*) const
 
         Value* VL;
         if (isIsolated(Leader)) {
-            IGC_ASSERT_MESSAGE(allNodes.size() == 0, "ICE: isolated node still in multi-value CC!");
+            IGC_ASSERT_MESSAGE(allNodes.size() == 0,
+                "ICE: isolated node still have other in its CC!");
             VL = Leader->value;
             OS << "\nVar isolated : ";
             VL->print(OS);
@@ -333,68 +330,65 @@ bool DeSSA::runOnFunction(Function& MF)
     // If we cannot maintain this assertion, then we should do
     //   m_program->SetUniformHelper(WIA);
 
-    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
-    {
-        //
-        // The DeSSA/Coalescing procedure:
-        //   1. Follow Dominance tree to set up alias map. While setting up alias map,
-        //      update liveness for aliasee so that alasee's liveness is the sum of
-        //      all its aliasers.
-        //      By aliaser/aliasee, it means the following:
-        //             aliaser = bitcast aliasee
-        //      (Most aliasing is from bitcast, some can be from other cast instructions
-        //       such as inttoptr/ptrtoint. It could be also from insElt/extElt.)
-        //
-        //      By traversing dominance tree depth-first (DF), it is guaranteed that
-        //      a def will be visited before its use except PHI node. Since PHI inst
-        //      is not a candidate for aliasing, this means that the def of aliasee has
-        //      been visited before the aliaser instruction. For example,
-        //            x = bitcast y
-        //         The def of y should be visited before visiting this bitcast inst.
-        //      Let alias(v0, v1) denote that v0 is an alias to v1. This visiting order
-        //      under DF dominance-tree traversal will not see aliasing in the following
-        //      order:
-        //              alias(v0, v1)
-        //              alias(v1, v2)
-        //      rather, it must be in the order
-        //              alias(v1, v2)
-        //              alias(v0, v1)
-        //
-        //   2. Set up InsEltMap, which coalesces vector values used in InsertElement
-        //      instructions. It is treated as "alias", meaning the root value's
-        //      liveness is the sum of all its non-root values. The difference b/w
-        //      AliasMap and InsEltMap is that AliasMap is pure alias in that all
-        //      aliasers have the same values as its aliasee (single-valued, like SSA);
-        //      while InsElt has multiple-valued values. This difference does not matter
-        //      in dessa, but it would matter when handling sub-vector aliasing after
-        //      dessa (VariableReuseAnaysis uses experimental sub-vector aliasing under
-        //      the key whose default is off).
-        //
-        //      We could remove InsEltMap/AliasMap by adding each value into DeSSA node.
-        //      To do so, the dessa algo needs to be improved to isolate them together
-        //      if they need to be isolated. It also may involve several subtle changes
-        //      in implementation. Also, adding all values instead of a single one into
-        //      CC increases the size of CC, which could increase compiling time. With
-        //      this, let us stay with insEltMap (as well as aliasMap).
-        //   3. Make sure DeSSA node only use the 'node value', that is, given value V,
-        //        its Node value:
-        //                V_aliasee = AliasMap[V] if V is in map, or V otherwise
-        //                node_value = InsEltMap[V_aliasee] if in InsEltMap; or V_aliasee
-        //                             otherwise.
-        //      Note that since the type of aliasess may be different from aliaser,
-        //      the values in the same CC will have different types.  Keep this in mind
-        //      when creating CVariable in GetSymbol().
-        //
-        //  Note that the algorithem forces coalescing of aliasing inst and InsertElement
-        //  inst before PHI-coalescing, which means it favors coaslescing of those aliasing
-        //  inst and InsertElement instructions. Thus, values in AliasMap/InsEltMap are
-        //  guananteed to be coalesced together at the end of DeSSA. PHI coalescing may
-        //  extend those maps by adding other values.
-        //
-        for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
-            DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
-            CoalesceAliasInstForBasicBlock(DI->getBlock());
-        }
+    //
+    // The DeSSA/Coalescing procedure:
+    //   1. Follow Dominance tree to set up alias map. While setting up alias map,
+    //      update liveness for aliasee so that alasee's liveness is the sum of
+    //      all its aliasers.
+    //      By aliaser/aliasee, it means the following:
+    //             aliaser = bitcast aliasee
+    //      (Most aliasing is from bitcast, some can be from other cast instructions
+    //       such as inttoptr/ptrtoint. It could be also from insElt/extElt.)
+    //
+    //      By traversing dominance tree depth-first (DF), it is guaranteed that
+    //      a def will be visited before its use except PHI node. Since PHI inst
+    //      is not a candidate for aliasing, this means that the def of aliasee has
+    //      been visited before the aliaser instruction. For example,
+    //            x = bitcast y
+    //         The def of y should be visited before visiting this bitcast inst.
+    //      Let alias(v0, v1) denote that v0 is an alias to v1. This visiting order
+    //      under DF dominance-tree traversal will not see aliasing in the following
+    //      order:
+    //              alias(v0, v1)
+    //              alias(v1, v2)
+    //      rather, it must be in the order
+    //              alias(v1, v2)
+    //              alias(v0, v1)
+    //
+    //   2. Set up InsEltMap, which coalesces vector values used in InsertElement
+    //      instructions. It is treated as "alias", meaning the root value's
+    //      liveness is the sum of all its non-root values. The difference b/w
+    //      AliasMap and InsEltMap is that AliasMap is pure alias in that all
+    //      aliasers have the same values as its aliasee (ones of primitive types);
+    //      while InsElt has composite/vector values. This difference does not matter
+    //      in dessa, but it would matter when handling sub-vector aliasing after
+    //      dessa (VariableReuseAnaysis uses experimental sub-vector aliasing under
+    //      the key whose default is off).
+    //
+    //      We could remove InsEltMap/AliasMap by adding each value into DeSSA node.
+    //      To do so, the dessa algo needs to be improved to isolate them together
+    //      if they need to be isolated. It also may involve several subtle changes
+    //      in implementation. Also, adding all values instead of a single one into
+    //      CC increases the size of CC, which could increase compiling time. With
+    //      this, let us stay with insEltMap (as well as aliasMap).
+    //   3. Make sure DeSSA node only use the 'node value', that is, given value V,
+    //        its Node value:
+    //                V_aliasee = AliasMap[V] if V is in map, or V otherwise
+    //                node_value = InsEltMap[V_aliasee] if in InsEltMap; or V_aliasee
+    //                             otherwise.
+    //      Note that since the type of aliasess may be different from aliaser,
+    //      the values in the same CC will have different types.  Keep this in mind
+    //      when creating CVariable in GetSymbol().
+    //
+    //  Note that the algorithem forces coalescing of aliasing inst and InsertElement
+    //  inst before PHI-coalescing, which means it favors coaslescing of those aliasing
+    //  inst and InsertElement instructions. Thus, values in AliasMap/InsEltMap are
+    //  guananteed to be coalesced together at the end of DeSSA. PHI coalescing may
+    //  extend those maps by adding other values.
+    //
+    for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
+        DE = df_end(DT->getRootNode()); DI != DE; ++DI) {
+        CoalesceAliasInstForBasicBlock(DI->getBlock());
     }
 
     for (df_iterator<DomTreeNode*> DI = df_begin(DT->getRootNode()),
@@ -1041,114 +1035,43 @@ int getPartialWriteSource(Value *Inst)
 void
 DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock* Blk)
 {
-    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
-    {
-        for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
-            BBI != BBE; ++BBI) {
-            Instruction* Inst = &(*BBI);
-
-            if (!CG->NeedInstruction(*Inst)) {
-                continue;
-            }
-            // Only Aliasee needs to be handled.
-            if (getAliasee(Inst) != Inst) {
-                continue;
-            }
-
-            // For keeping the existing behavior of InsEltMap unchanged
-            auto PWSrcIdx = getPartialWriteSource(Inst);
-            if (PWSrcIdx >= 0)
-            {
-                Value* origSrcV = Inst->getOperand(PWSrcIdx);
-                Value* SrcV = getAliasee(origSrcV);
-                if (SrcV != Inst && isArgOrNeededInst(origSrcV))
-                {
-                    // union them
-                    e_alignment InstAlign = GetPreferredAlignment(Inst, WIA, CTX);
-                    e_alignment SrcVAlign = GetPreferredAlignment(SrcV, WIA, CTX);
-                    if (!LV->isLiveAt(SrcV, Inst) &&
-                        !alignInterfere(InstAlign, SrcVAlign) &&
-                        (WIA->whichDepend(SrcV) == WIA->whichDepend(Inst)))
-                    {
-                        InsEltMapAddValue(SrcV);
-                        InsEltMapAddValue(Inst);
-
-                        Value* SrcVRoot = getInsEltRoot(SrcV);
-                        Value* InstRoot = getInsEltRoot(Inst);
-
-                        // union them and their liveness info
-                        InsEltMapUnionValue(SrcV, Inst);
-                        LV->mergeUseFrom(SrcVRoot, InstRoot);
-                    }
-                }
-            }
-        }
-        return;
-    }
-
     for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
         BBI != BBE; ++BBI) {
         Instruction* Inst = &(*BBI);
-        // skip phi, phi is handled in the 2nd loop
-        if (isa<PHINode>(Inst))
-        {
+
+        if (!CG->NeedInstruction(*Inst)) {
+            continue;
+        }
+        // Only Aliasee needs to be handled.
+        if (getAliasee(Inst) != Inst) {
             continue;
         }
 
-        // extend the liveness of InsertElement due to union
-        for (unsigned i = 0; i < Inst->getNumOperands(); ++i) {
-            Value* SrcV = Inst->getOperand(i);
-            if (getPartialWriteSource(SrcV) >= 0) {
-                Value* RootV = getInsEltRoot(SrcV);
-                if (RootV != SrcV) {
-                    LV->HandleVirtRegUse(RootV, Blk, Inst, true);
-                }
-            }
-        }
-
+        // For keeping the existing behavior of InsEltMap unchanged
         auto PWSrcIdx = getPartialWriteSource(Inst);
-        if (PWSrcIdx < 0) {
-            continue;
-        }
-        // handle InsertElement
-        InsEltMapAddValue(Inst);
-
-        Value* SrcV = Inst->getOperand(PWSrcIdx);
-        if (isa<Instruction>(SrcV) || isa<Argument>(SrcV)) {
-            if (!LV->isLiveAt(SrcV, Inst)) {
-                Instruction* SrcDef = dyn_cast<Instruction>(SrcV);
-                if (SrcDef && WIA->whichDepend(SrcDef) == WIA->whichDepend(Inst)) {
-                    // passed the liveness and alignment test
-                    // may need to create a node for srcv, for example, when srcv is phi/arg
-                    InsEltMapAddValue(SrcV);
-                    InsEltMapUnionValue(SrcV, Inst);
-                }
-            }
-        }
-    }
-    // look at all the phis in the successor blocks
-    // extend live-ranges due to the union of insert-element
-    for (succ_iterator SI = succ_begin(Blk), E = succ_end(Blk); SI != E; ++SI)
-    {
-        for (BasicBlock::iterator BBI = (*SI)->begin(), BBE = (*SI)->end(); BBI != BBE; ++BBI)
+        if (PWSrcIdx >= 0)
         {
-            PHINode* phi = dyn_cast<PHINode>(BBI);
-            if (phi)
+            Value* origSrcV = Inst->getOperand(PWSrcIdx);
+            Value* SrcV = getAliasee(origSrcV);
+            if (SrcV != Inst && isArgOrNeededInst(origSrcV))
             {
-                // extend the liveness of InsertElement due to union
-                Value* SrcV = phi->getIncomingValueForBlock(Blk);
-                if (isa<InsertElementInst>(SrcV)) {
-                    Value* RootV = getInsEltRoot(SrcV);
-                    if (RootV != SrcV) {
-                        BasicBlock* DefBlk = (isa<Instruction>(RootV)) ?
-                            cast<Instruction>(RootV)->getParent() : NULL;
-                        LV->MarkVirtRegAliveInBlock(LV->getLVInfo(RootV), DefBlk, Blk);
-                    }
+                // union them
+                e_alignment InstAlign = GetPreferredAlignment(Inst, WIA, CTX);
+                e_alignment SrcVAlign = GetPreferredAlignment(SrcV, WIA, CTX);
+                if (!LV->isLiveAt(SrcV, Inst) &&
+                    !alignInterfere(InstAlign, SrcVAlign) &&
+                    (WIA->whichDepend(SrcV) == WIA->whichDepend(Inst)))
+                {
+                    InsEltMapAddValue(SrcV);
+                    InsEltMapAddValue(Inst);
+
+                    Value* SrcVRoot = getInsEltRoot(SrcV);
+                    Value* InstRoot = getInsEltRoot(Inst);
+
+                    // union them and their liveness info
+                    InsEltMapUnionValue(SrcV, Inst);
+                    LV->mergeUseFrom(SrcVRoot, InstRoot);
                 }
-            }
-            else
-            {
-                break;
             }
         }
     }
@@ -1156,28 +1079,17 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock* Blk)
 
 Value* DeSSA::getRootValue(Value* Val, e_alignment* pAlign) const
 {
-    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
-    {
-        Value* mapVal = nullptr;
-        auto AI = AliasMap.find(Val);
-        if (AI != AliasMap.end()) {
-            mapVal = AI->second;
-        }
-        auto IEI = InsEltMap.find(mapVal ? mapVal : Val);
-        if (IEI != InsEltMap.end()) {
-            mapVal = IEI->second;
-        }
-        Value* PhiRootVal = getRegRoot(mapVal ? mapVal : Val, pAlign);
-        return (PhiRootVal ? PhiRootVal : mapVal);
+    Value* mapVal = nullptr;
+    auto AI = AliasMap.find(Val);
+    if (AI != AliasMap.end()) {
+        mapVal = AI->second;
     }
-
-    auto RI = InsEltMap.find(Val);
-    if (RI != InsEltMap.end()) {
-        Value* InsEltRoot = RI->second;
-        Value* PhiRootVal = getRegRoot(InsEltRoot, pAlign);
-        return (PhiRootVal ? PhiRootVal : InsEltRoot);
+    auto IEI = InsEltMap.find(mapVal ? mapVal : Val);
+    if (IEI != InsEltMap.end()) {
+        mapVal = IEI->second;
     }
-    return getRegRoot(Val, pAlign);
+    Value* PhiRootVal = getRegRoot(mapVal ? mapVal : Val, pAlign);
+    return (PhiRootVal ? PhiRootVal : mapVal);
 }
 
 void DeSSA::getAllValuesInCongruentClass(
@@ -1206,9 +1118,6 @@ void DeSSA::getAllValuesInCongruentClass(
 
 void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
 {
-    if (IGC_IS_FLAG_DISABLED(EnableDeSSAAlias)) {
-        return;
-    }
     for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
         BBI != BBE; ++BBI) {
         Instruction* I = &(*BBI);

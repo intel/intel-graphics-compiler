@@ -415,8 +415,7 @@ void CShader::CreateImplicitArgs()
                 // 'Node' should not have a symbol entry at this moment.
                 IGC_ASSERT_MESSAGE(symbolMapping.count(Node) == 0, "Root symbol of arg should not be set at this point!");
                 CVariable* aV = CVarArg;
-                if (IGC_IS_FLAG_ENABLED(EnableDeSSA) &&
-                    IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
+                if (IGC_IS_FLAG_ENABLED(EnableDeSSA))
                 {
                     aV = createAliasIfNeeded(Node, CVarArg);
                 }
@@ -2365,8 +2364,7 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value* V, WIAnalysis* WIA,
         return algn;
     }
 
-    if (IGC_IS_FLAG_ENABLED(EnableDeSSA) &&
-        IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
+    if (IGC_IS_FLAG_ENABLED(EnableDeSSA))
     {
         // Check if this V is used as load/store's address via
         // inttoptr that is actually noop (aliased by dessa already).
@@ -2546,8 +2544,7 @@ void CShader::BeginFunction(llvm::Function* F)
                     symbolMapping.count(Node) == 0)
                 {
                     CVariable* aV = Var;
-                    if (IGC_IS_FLAG_ENABLED(EnableDeSSA) &&
-                        IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
+                    if (IGC_IS_FLAG_ENABLED(EnableDeSSA))
                     {
                         aV = createAliasIfNeeded(Node, Var);
                     }
@@ -3037,7 +3034,6 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableDeSSA) &&
-        IGC_IS_FLAG_ENABLED(EnableDeSSAAlias) &&
         m_deSSA && value != m_deSSA->getNodeValue(value))
     {
         // Generate CVariable alias.
@@ -3190,8 +3186,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
         {
             var = it->second;
             CVariable* aV = var;
-            if (IGC_IS_FLAG_ENABLED(EnableDeSSA) &&
-                IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
+            if (IGC_IS_FLAG_ENABLED(EnableDeSSA))
             {
                 aV = createAliasIfNeeded(value, var);
             }
@@ -3240,8 +3235,7 @@ CVariable* CShader::GetSymbol(llvm::Value* value, bool fromConstantPool)
     if (rootValue)
     {
         CVariable* aV = var;
-        if (IGC_IS_FLAG_ENABLED(EnableDeSSA) &&
-            IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSA))
         {
             aV = createAliasIfNeeded(rootValue, var);
         }

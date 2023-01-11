@@ -130,7 +130,6 @@ DECLARE_IGC_REGKEY(bool, EnableLoopHoistConstant,       false, "Enables pass to 
 DECLARE_IGC_REGKEY(bool, DisableCodeHoisting,           false, "Setting this to 1/true adds a compiler switch to disable code-hoisting", false)
 DECLARE_IGC_REGKEY(bool, EnableDeSSA,                   true,  "Setting this to 0/false adds a compiler switch to disable De-SSA", false)
 DECLARE_IGC_REGKEY(bool, EnableDeSSAWA,                 true,  "[tmp]Keep some piece of code to avoid perf regression", false)
-DECLARE_IGC_REGKEY(bool, EnableDeSSAAlias,              true,  "Enable adding alias feature to DeSSA", false)
 DECLARE_IGC_REGKEY(bool, DisablePayloadCoalescing,      false, "Setting this to 1/true adds a compiler switch to disable payload coalescing optimization for all types", false)
 DECLARE_IGC_REGKEY(bool, DisablePayloadCoalescing_RT,   false, "Setting this to 1/true adds a compiler switch to disable payload coalescing optimization for RT only", false)
 DECLARE_IGC_REGKEY(bool, DisablePayloadCoalescing_Sample, false, "Setting this to 1/true adds a compiler switch to disable payload coalescing optimization for Samplers only", false)
