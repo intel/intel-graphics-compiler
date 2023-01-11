@@ -1299,11 +1299,6 @@ bool WaFixInnerCoverageWithSampleMask() const
     return m_WaTable.Wa_220856683 != 0;
 }
 
-bool WaForceDSToWriteURB() const
-{
-    return m_WaTable.Wa_1805992985 != 0;
-}
-
 bool WaOverwriteFFID() const
 {
     return m_WaTable.Wa_1409460247 != 0;
