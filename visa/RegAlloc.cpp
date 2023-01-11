@@ -2188,7 +2188,7 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
   for (auto bb : *this) {
     if (bb->isEndWithFCall()) {
       const char *n =
-          builder->getNameString(mem, 25, "FCALL_RET_LOC_%d", call_id++);
+          builder->getNameString(25, "FCALL_RET_LOC_%d", call_id++);
 
       G4_INST *fcall = bb->back();
       // Set call dst to r125.0
@@ -2204,7 +2204,7 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
 
     if (bb->isEndWithFRet()) {
       const char *n =
-          builder->getNameString(mem, 25, "FRET_RET_LOC_%d", ret_id++);
+          builder->getNameString(25, "FRET_RET_LOC_%d", ret_id++);
       G4_INST *fret = bb->back();
       const RegionDesc *rd = builder->createRegionDesc(2, 2, 1);
       G4_Declare *r1_src = builder->createDeclareNoLookup(

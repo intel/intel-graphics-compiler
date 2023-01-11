@@ -68,13 +68,13 @@ void VarSplitPass::verify() {
       if (inst->isSplitIntrinsic()) {
         // ensure this is split mov instruction
         vISA_ASSERT(inst->isSplitIntrinsic(),
-                     "Didn't expect new non-split intrinsic instruction");
+                    "Didn't expect new non-split intrinsic instruction");
 
         // verify that split instruction's dst, src(0) is correct
         splitDcls.insert(inst->getDst()->getTopDcl());
 
         vISA_ASSERT(!inst->getSrc(0)->getTopDcl()->getAddressed(),
-                     "Shouldn't split indirectly addressed variable");
+                    "Shouldn't split indirectly addressed variable");
 
         auto origSrc0 = inst->getSrc(0)->asSrcRegRegion();
         auto origLb = origSrc0->getLeftBound();
@@ -106,7 +106,7 @@ void VarSplitPass::verify() {
         auto oldDefCount = parentDefCount[dst->getTopDcl()];
         parentDefCount[dst->getTopDcl()] = oldDefCount + 1;
         vISA_ASSERT(oldDefCount == 0,
-                     "Found second def of parent of split variable");
+                    "Found second def of parent of split variable");
       }
 
       for (unsigned int i = 0, numSrc = inst->getNumSrc(); i != numSrc; i++) {
@@ -117,7 +117,7 @@ void VarSplitPass::verify() {
         if (parentSplit.find(src->asSrcRegRegion()->getTopDcl()) !=
             parentSplit.end()) {
           vISA_ASSERT(inst->isSplitIntrinsic(),
-                       "Found src opnd using pre-split parent");
+                      "Found src opnd using pre-split parent");
         }
 
         if (splitDcls.find(src->asSrcRegRegion()->getTopDcl()) ==
@@ -164,11 +164,11 @@ void VarSplitPass::verifyOverlap() {
         auto dstTopDcl = dst->getTopDcl();
         auto srcTopDcl = src->getTopDcl();
         vISA_ASSERT(dstTopDcl->getRegVar()->getPhyReg() &&
-                         dstTopDcl->getRegVar()->getPhyReg()->isGreg(),
-                     "Unexpected assignment condition on split dst");
+                        dstTopDcl->getRegVar()->getPhyReg()->isGreg(),
+                    "Unexpected assignment condition on split dst");
         vISA_ASSERT(srcTopDcl->getRegVar()->getPhyReg() &&
-                         srcTopDcl->getRegVar()->getPhyReg()->isGreg(),
-                     "Unexpected assignment condition on split src");
+                        srcTopDcl->getRegVar()->getPhyReg()->isGreg(),
+                    "Unexpected assignment condition on split src");
 
         auto dstLS = dst->getLinearizedStart();
         auto dstLE = dst->getLinearizedEnd();
@@ -426,7 +426,7 @@ void VarSplitPass::split() {
     // Insert intrinsics
     auto it = getIter(item.second.def.first->getInst(), item.second.def.second);
     vISA_ASSERT(it != item.second.def.second->end(),
-                 "Instruction not found in BB");
+                "Instruction not found in BB");
     it++;
 
     auto dstDcl = item.second.def.first->getTopDcl();
@@ -447,7 +447,7 @@ void VarSplitPass::split() {
       unsigned int rb = lb + (kernel.getGRFSize() * numRows) - 1;
 
       auto name = kernel.fg.builder->getNameString(
-          kernel.fg.mem, 50, "%s_%d_%d_%d", dstDcl->getName(), i, lb, rb);
+          50, "%s_%d_%d_%d", dstDcl->getName(), i, lb, rb);
       auto splitDcl = kernel.fg.builder->createDeclareNoLookup(
           name, G4_RegFileKind::G4_GRF, kernel.numEltPerGRF<Type_UD>(), numRows,
           Type_UD);
@@ -1001,7 +1001,7 @@ void LoopVarSplit::removeAllSplitInsts(GlobalRA *gra, G4_Declare *dcl) {
   // for dcl from pre-header and loop exits.
   // this method is invoked when a split dcl is spilled.
   vISA_ASSERT(gra->splitResults.find(dcl) != gra->splitResults.end(),
-               "didnt find split result");
+              "didnt find split result");
   auto &bbs = gra->splitResults[dcl].insts;
   for (auto &bb : bbs) {
     bb.first->getInstList().remove_if([&](G4_INST *candidate) {
@@ -1192,7 +1192,7 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
           bb->insertAfter(bb->begin(), inst);
       } else {
         vISA_ASSERT(bb->size() == 0 || bb->front()->opcode() != G4_join,
-                     "shouldnt insert copy before join");
+                    "shouldnt insert copy before join");
         bb->push_front(inst);
       }
 
@@ -1297,8 +1297,8 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
     insertCopy(inst);
 
     vISA_ASSERT(bytesRemaining >= (execSize.value *
-                                    (unsigned int)G4_Type_Table[type].byteSize),
-                 "Invalid copy exec size");
+                                   (unsigned int)G4_Type_Table[type].byteSize),
+                "Invalid copy exec size");
     bytesRemaining -= (execSize.value * G4_Type_Table[type].byteSize);
   };
 }

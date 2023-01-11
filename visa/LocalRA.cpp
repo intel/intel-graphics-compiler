@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "LocalRA.h"
 #include "Assertions.h"
 #include "DebugInfo.h"
 #include "common.h"
-#include "LocalRA.h"
 
 #include <fstream>
 #include <tuple>
@@ -54,14 +54,14 @@ bool LocalRA::hasBackEdge() {
   for (auto curBB : kernel.fg) {
 
     vISA_ASSERT(curBB->size() > 0 || curBB->Succs.size() > 1,
-                 "Error in detecting back-edge: Basic block found with no inst "
-                 "list and multiple successors.");
+                "Error in detecting back-edge: Basic block found with no inst "
+                "list and multiple successors.");
 
     if (curBB->size() > 0) {
       for (auto succ : curBB->Succs) {
         vISA_ASSERT(succ->size() > 0,
-                     "Error in detecting back-edge: Destination basic block of "
-                     "a jmp has no instructions.");
+                    "Error in detecting back-edge: Destination basic block of "
+                    "a jmp has no instructions.");
         if (curBB->getId() >= succ->getId()) {
           return true;
         }
@@ -973,7 +973,7 @@ G4_Declare *GetTopDclFromRegRegion(G4_Operand *opnd) {
   G4_Declare *dcl = nullptr;
 
   vISA_ASSERT(opnd->isRegRegion(),
-               "Operand is not a register region so cannot have a top dcl");
+              "Operand is not a register region so cannot have a top dcl");
   G4_VarBase *base = opnd->getBase();
 
   if (base && base->isRegVar()) {
@@ -1234,9 +1234,8 @@ void LocalRA::calculateInputIntervals() {
               !builder.isPreDefArg(topdcl)) {
             unsigned int lastRef = 0;
 
-            vISA_ASSERT(
-                lr->isGRFRegAssigned(),
-                "Input variable has no pre-assigned physical register");
+            vISA_ASSERT(lr->isGRFRegAssigned(),
+                        "Input variable has no pre-assigned physical register");
 
             if (lr->getLastRef(lastRef) == NULL) {
               unsigned int curInstId = curInst->getLexicalId();
@@ -1311,7 +1310,8 @@ void LocalRA::calculateInputIntervals() {
                         curInst->getDst() != NULL &&
                         hasDstSrcOverlapPotential(curInst->getDst(),
                                                   src->asSrcRegRegion())) {
-                      inputIntervals.push_front(InputLiveRange(idx, curInstId + 1));
+                      inputIntervals.push_front(
+                          InputLiveRange(idx, curInstId + 1));
                     } else {
                       inputIntervals.push_front(InputLiveRange(idx, curInstId));
                     }
@@ -1455,7 +1455,7 @@ void LocalRA::calculateLiveIntervals(
             }
 
             vISA_ASSERT(idx > 0,
-                         "Candidate use found in first inst of basic block");
+                        "Candidate use found in first inst of basic block");
 
             if ((builder.WaDisableSendSrcDstOverlap() &&
                  ((curInst->isSend() && i == 0) ||
@@ -1519,7 +1519,7 @@ void LocalRA::printAddressTakenDecls() {
 
     if (curDcl->getAliasDeclare() != NULL) {
       vISA_ASSERT(gra.getLocalLR(curDcl) == NULL,
-                   "Local LR found for alias declare");
+                  "Local LR found for alias declare");
       continue;
     }
 
@@ -1542,7 +1542,7 @@ void LocalRA::printLocalRACandidates() {
 
     if (curDcl->getAliasDeclare() != NULL) {
       vISA_ASSERT(gra.getLocalLR(curDcl) == NULL,
-                   "Local LR found for alias declare");
+                  "Local LR found for alias declare");
       continue;
     }
 
@@ -2322,8 +2322,8 @@ void LinearScan::run(G4_BB *bb, IR_Builder &builder, LLR_USE_MAP &LLRUseMap) {
                    1;
 
       vISA_ASSERT(((unsigned int)startregnum + lr->getTopDcl()->getNumRows() -
-                    1) < numRegLRA,
-                   "Linear scan allocated unavailable physical GRF");
+                   1) < numRegLRA,
+                  "Linear scan allocated unavailable physical GRF");
 
       if (lr->getTopDcl()->getNumRows() > 1) {
         endregnum = startregnum + lr->getTopDcl()->getNumRows() - 1;
@@ -2605,8 +2605,8 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                            !(oldDcl->getElemSize() >= 8 &&
                              oldDcl->getTotalElems() >= 16)) {
                   G4_Declare *splitDcl = NULL;
-                  const char *splitDclName = builder.getNameString(
-                      builder.mem, 16, "split_%s", oldDcl->getName());
+                  const char *splitDclName =
+                      builder.getNameString(16, "split_%s", oldDcl->getName());
                   splitDcl = builder.createDeclareNoLookup(
                       splitDclName, G4_GRF, oldDcl->getNumElems(),
                       oldDcl->getNumRows(), oldDcl->getElemType());
@@ -2650,8 +2650,8 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                     bb->insertBefore(iter, splitInst2);
                   }
 
-                  const char *newDclName = builder.getNameString(
-                      builder.mem, 16, "copy_%s", oldDcl->getName());
+                  const char *newDclName =
+                      builder.getNameString(16, "copy_%s", oldDcl->getName());
                   newDcl = builder.createDeclareNoLookup(
                       newDclName, G4_GRF, oldDcl->getNumElems(),
                       oldDcl->getNumRows(), oldDcl->getElemType());
@@ -2698,7 +2698,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                   G4_Declare *aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
                   if (aliasOldSrcDcl != NULL) {
                     const char *newSrcDclName = builder.getNameString(
-                        builder.mem, 16, "copy_%s", oldSrcDcl->getName());
+                        16, "copy_%s", oldSrcDcl->getName());
                     newSrcDcl = builder.createDeclareNoLookup(
                         newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(),
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
@@ -2714,7 +2714,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                   while (aliasOldSrcDcl && aliasOldSrcDcl != oldDcl) {
                     oldSrcDcl = aliasOldSrcDcl;
                     const char *newSrcDclName = builder.getNameString(
-                        builder.mem, 16, "copy_%s", oldSrcDcl->getName());
+                        16, "copy_%s", oldSrcDcl->getName());
                     newSrcDcl = builder.createDeclareNoLookup(
                         newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(),
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
@@ -2736,7 +2736,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                   G4_Declare *aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
                   if (aliasOldSrcDcl != NULL) {
                     const char *newSrcDclName = builder.getNameString(
-                        builder.mem, 16, "copy_%s", oldSrcDcl->getName());
+                        16, "copy_%s", oldSrcDcl->getName());
                     newSrcDcl = builder.createDeclareNoLookup(
                         newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(),
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
@@ -2753,7 +2753,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                   while (aliasOldSrcDcl && aliasOldSrcDcl != oldDcl) {
                     oldSrcDcl = aliasOldSrcDcl;
                     const char *newSrcDclName = builder.getNameString(
-                        builder.mem, 16, "copy_%s", oldSrcDcl->getName());
+                        16, "copy_%s", oldSrcDcl->getName());
                     newSrcDcl = builder.createDeclareNoLookup(
                         newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(),
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
@@ -2799,8 +2799,8 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
   if (gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl())) {
     int s;
     vISA_ASSERT(lr->getPhyReg(s)->asGreg()->getRegNum() == lr->getHint() ||
-                     !lr->hasHint(),
-                 "hint not honored for child dcl");
+                    !lr->hasHint(),
+                "hint not honored for child dcl");
   }
 #endif
 
@@ -3018,8 +3018,8 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange *lr) {
   }
 
   vISA_ASSERT(!gra.getVarSplitPass()->isPartialDcl(lr->getTopDcl()) ||
-                   !lr->hasHint(),
-               "not expecting to use this allocate method for split dcl");
+                  !lr->hasHint(),
+              "not expecting to use this allocate method for split dcl");
 
 #ifdef DEBUG_VERBOSE_ON
   COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum

@@ -1890,7 +1890,7 @@ void Optimizer::reRAPostSchedule() {
         // operands with new address operands.
         G4_Declare *dstDcl = inst->getDst()->getTopDcl();
         auto name =
-            builder.getNameString(fg.mem, 16, "ADDR%d", kernel.Declares.size());
+            builder.getNameString(16, "ADDR%d", kernel.Declares.size());
         G4_Declare *newDstAddrDcl = kernel.fg.builder->createDeclareNoLookup(
             name, G4_RegFileKind::G4_ADDRESS, dstDcl->getNumElems(),
             dstDcl->getNumRows(), dstDcl->getElemType());

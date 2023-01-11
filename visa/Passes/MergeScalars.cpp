@@ -42,11 +42,11 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
                     firstEltOffset;
   uint32_t eltBytes = TypeSize(eltType);
   vISA_ASSERT((offset % eltBytes) == 0,
-               "Offset should be multiple of element size");
+              "Offset should be multiple of element size");
   offset = offset / eltBytes;
   const char *name = builder.getNameString(
-      builder.mem, 16, "InputR%d.%d",
-      input->getRegVar()->getPhyReg()->asGreg()->getRegNum(), offset);
+      16, "InputR%d.%d", input->getRegVar()->getPhyReg()->asGreg()->getRegNum(),
+      offset);
   G4_Declare *newInputDcl = builder.createDeclareNoLookup(
       name, G4_INPUT, (uint16_t)bundleSize, 1, eltType);
   newInputDcl->getRegVar()->setPhyReg(input->getRegVar()->getPhyReg(), offset);

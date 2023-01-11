@@ -3687,15 +3687,15 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder &builder) {
     const char *nameBase =
         "VCA_SAVE"; // sizeof(nameBase) = 9, including ending 0
     const int maxIdLen = 10;
-    const char *name = builder.getNameString(mem, sizeof(nameBase) + maxIdLen,
+    const char *name = builder.getNameString(sizeof(nameBase) + maxIdLen,
                                              "%s_%d", nameBase, i);
     G4_Declare *VCA = builder.createDeclareNoLookup(
         name, G4_GRF, builder.numEltPerGRF<Type_UD>(),
         builder.kernel.getCallerSaveLastGRF(), Type_UD);
-    name = builder.getNameString(mem, 50, "SA0_%d", i);
+    name = builder.getNameString(50, "SA0_%d", i);
     G4_Declare *saveA0 = builder.createDeclareNoLookup(
         name, G4_ADDRESS, (uint16_t)getNumAddrRegisters(), 1, Type_UW);
-    name = builder.getNameString(mem, 64, "SFLAG_%d", i);
+    name = builder.getNameString(64, "SFLAG_%d", i);
     G4_Declare *saveFLAG = builder.createDeclareNoLookup(
         name, G4_FLAG, (uint16_t)builder.getNumFlagRegisters(), 1, Type_UW);
     fcallToPseudoDclMap[callSite->asCFInst()] = {VCA, saveA0, saveFLAG};

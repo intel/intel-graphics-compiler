@@ -800,7 +800,7 @@ void G4_Kernel::renameAliasDeclares() {
         newName += "_" + std::to_string(offset);
       }
       dcl->setName(
-          fg.builder->getNameString(fg.mem, 64, "%s", newName.c_str()));
+          fg.builder->getNameString(64, "%s", newName.c_str()));
     }
   }
 #endif

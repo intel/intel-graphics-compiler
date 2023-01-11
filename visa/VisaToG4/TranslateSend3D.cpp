@@ -287,7 +287,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
 
   if (numOut == 0) {
     vISA_ASSERT_INPUT(vertexData->isNullReg(),
-                 "vertex payload must be null ARF when numOut is 0");
+                      "vertex payload must be null ARF when numOut is 0");
   }
 
   // header + channelMask + numOut
@@ -323,8 +323,8 @@ int IR_Builder::translateVISAURBWrite3DInst(
   G4_Declare *payloadD = NULL;
   G4_Declare *payloadUD = NULL;
   if (useSplitSend) {
-    vISA_ASSERT_INPUT(useHeader,
-                "So far, split-send is only used when header is present!");
+    vISA_ASSERT_INPUT(
+        useHeader, "So far, split-send is only used when header is present!");
     --numRows;
     if (numRows > 0) {
       unsigned int numElts =
@@ -506,9 +506,9 @@ int IR_Builder::translateVISARTWrite3DInst(
   bool FP16Data = R->getType() == Type_HF;
   if (FP16Data) {
     vISA_ASSERT_INPUT((G->isNullReg() || G->getType() == Type_HF) &&
-                     (B->isNullReg() || B->getType() == Type_HF) &&
-                     (A->isNullReg() || A->getType() == Type_HF),
-                 "R,G,B,A for RT write must have the same type");
+                          (B->isNullReg() || B->getType() == Type_HF) &&
+                          (A->isNullReg() || A->getType() == Type_HF),
+                      "R,G,B,A for RT write must have the same type");
   }
 
   auto mult = (execSize == getNativeExecSize() ? 1 : 2);
@@ -612,7 +612,7 @@ int IR_Builder::translateVISARTWrite3DInst(
 
   if (useHeader) {
     vISA_ASSERT_INPUT(r1HeaderOpnd,
-                "Second GRF for header that was passed in is NULL.");
+                      "Second GRF for header that was passed in is NULL.");
     G4_DstRegRegion *payloadRegRgn =
         createDst(msg->getRegVar(), 0, 0, 1, Type_UD);
 
@@ -985,7 +985,7 @@ int IR_Builder::translateVISARTWrite3DInst(
     extFuncCtrl |= 0x1 << NULL_RENDER_TARGET;
   }
 
-  G4_InstSend* sendInst = nullptr;
+  G4_InstSend *sendInst = nullptr;
 
   if (useSplitSend || cpsCounter) {
     G4_SendDescRaw *msgDesc = NULL;
@@ -1055,15 +1055,14 @@ int IR_Builder::translateVISARTWrite3DInst(
     G4_SrcRegRegion *m = srcToUse;
     if (useHeader)
       m = createSrcRegRegion(msg, getRegionStride1());
-    sendInst = createSendInst(pred, createNullDst(Type_UD), m, numRows,
-                   0, execSize, fc,
-                   SFID::DP_RC, useHeader, SendAccess::WRITE_ONLY, surface,
-                   NULL, instOpt, true);
+    sendInst = createSendInst(
+        pred, createNullDst(Type_UD), m, numRows, 0, execSize, fc, SFID::DP_RC,
+        useHeader, SendAccess::WRITE_ONLY, surface, NULL, instOpt, true);
   }
   if (getOption(vISA_renderTargetWriteSendReloc)) {
-      std::string symbolName{ "RTW_SEND" };
-      RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
-          GenRelocType::R_SEND);
+    std::string symbolName{"RTW_SEND"};
+    RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
+                                      GenRelocType::R_SEND);
   }
   return VISA_SUCCESS;
 }
@@ -1128,11 +1127,12 @@ static void checkCPSEnable(VISASampler3DSubOpCode op, unsigned reponseLength,
                            unsigned execSize) {
 
   vISA_ASSERT_INPUT(reponseLength > 0,
-              "CPS LOD Compensation Enable must be disabled if the "
-              "response length is zero");
+                    "CPS LOD Compensation Enable must be disabled if the "
+                    "response length is zero");
 
-  vISA_ASSERT_INPUT(execSize == 8 || execSize == 16,
-              "CPS LOD Compensation Enable only valid for SIMD8* or SIMD16*");
+  vISA_ASSERT_INPUT(
+      execSize == 8 || execSize == 16,
+      "CPS LOD Compensation Enable only valid for SIMD8* or SIMD16*");
 
   bool isCPSAvailable = op == VISA_3D_SAMPLE || op == VISA_3D_SAMPLE_B ||
                         op == VISA_3D_SAMPLE_C || op == VISA_3D_SAMPLE_B_C ||
@@ -1278,8 +1278,7 @@ int IR_Builder::splitSampleInst(
       ++tmpDstRows;
     }
 
-    const char *name =
-        getNameString(mem, 20, "%s%d", "TmpSmplDst_", TmpSmplDstID++);
+    const char *name = getNameString(20, "%s%d", "TmpSmplDst_", TmpSmplDstID++);
 
     tempDstDcl = createDeclareNoLookup(
         name, originalDstDcl->getRegFile(), originalDstDcl->getNumElems(),
@@ -1372,7 +1371,7 @@ int IR_Builder::splitSampleInst(
   G4_Declare *tempDstDcl2 = nullptr;
   if (!dst->isNullReg()) {
     const char *name =
-        getNameString(mem, 20, "%s%d", "TmpSmplDst2_", TmpSmplDstID++);
+        getNameString(20, "%s%d", "TmpSmplDst2_", TmpSmplDstID++);
 
     tempDstDcl2 = createDeclareNoLookup(
         name, originalDstDcl->getRegFile(), originalDstDcl->getNumElems(),
@@ -1771,7 +1770,7 @@ int IR_Builder::translateVISASampler3DInst(
     ++i;
   }
   vISA_ASSERT_INPUT(i == len,
-              "There's mismatching during payload source collecting!");
+                    "There's mismatching during payload source collecting!");
 
   G4_SrcRegRegion *msgs[2] = {0, 0};
   unsigned sizes[2] = {0, 0};
@@ -1795,7 +1794,7 @@ int IR_Builder::translateVISASampler3DInst(
   bool forceSplitSend = shouldForceSplitSend(surface);
   if (msgs[1] == 0 && !forceSplitSend) {
     vISA_ASSERT_INPUT(sizes[1] == 0,
-                "Expect the 2nd part of the payload has zero size!");
+                      "Expect the 2nd part of the payload has zero size!");
     G4_SendDescRaw *msgDesc =
         createSampleMsgDesc(desc, cpsEnable, 0, surface, samplerIdx);
 
@@ -1898,7 +1897,7 @@ int IR_Builder::translateVISALoad3DInst(
     ++i;
   }
   vISA_ASSERT_INPUT(i == len,
-              "There's mismatching during payload source collecting!");
+                    "There's mismatching during payload source collecting!");
 
   G4_SrcRegRegion *msgs[2] = {0, 0};
   unsigned sizes[2] = {0, 0};
@@ -2010,7 +2009,7 @@ int IR_Builder::translateVISAGather3dInst(
     ++i;
   }
   vISA_ASSERT_INPUT(i == len,
-              "There's mismatching during payload source collecting!");
+                    "There's mismatching during payload source collecting!");
 
   G4_SrcRegRegion *msgs[2] = {0, 0};
   unsigned sizes[2] = {0, 0};

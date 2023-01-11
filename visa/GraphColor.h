@@ -209,7 +209,7 @@ public:
   const bool *getForbidden() const { return forbidden; }
   void markForbidden(int reg, int numReg) {
     vISA_ASSERT(((int)getForbiddenVectorSize()) >= reg + numReg,
-                 "forbidden register is out of bound");
+                "forbidden register is out of bound");
     for (int i = reg; i < reg + numReg; ++i) {
       forbidden[i] = true;
     }
@@ -921,8 +921,7 @@ public:
       return result->second;
     }
 
-    const char *name =
-        builder.getNameString(kernel.fg.mem, 24, "RET__loc%d", retLoc);
+    const char *name = builder.getNameString(24, "RET__loc%d", retLoc);
     G4_Declare *dcl =
         builder.createDeclareNoLookup(name, G4_GRF, 2, 1, Type_UD);
 
@@ -1003,7 +1002,7 @@ public:
   void setLocalLR(G4_Declare *dcl, LocalLiveRange *lr) {
     RAVarInfo &var = allocVar(dcl);
     vISA_ASSERT(var.localLR == NULL,
-                 "Local live range already allocated for declaration");
+                "Local live range already allocated for declaration");
     var.localLR = lr;
     lr->setTopDcl(dcl);
   }
@@ -1019,7 +1018,7 @@ public:
   void setLSLR(G4_Declare *dcl, LSLiveRange *lr) {
     RAVarInfo &var = allocVar(dcl);
     vISA_ASSERT(var.LSLR == NULL,
-                 "Local live range already allocated for declaration");
+                "Local live range already allocated for declaration");
     var.LSLR = lr;
     lr->setTopDcl(dcl);
   }
@@ -1170,7 +1169,7 @@ public:
     auto &subAlign = allocVar(dcl).subAlign;
     // sub reg alignment can only be more restricted than prior setting
     vISA_ASSERT(subAlign == Any || subAlign == subAlg || subAlign % 2 == 0,
-                 ERROR_UNKNOWN);
+                ERROR_UNKNOWN);
     if (subAlign > subAlg) {
       vISA_ASSERT(subAlign % subAlg == 0, "Sub reg alignment conflict");
       // do nothing; keep the original alignment (more restricted)

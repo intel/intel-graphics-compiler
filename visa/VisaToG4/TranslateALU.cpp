@@ -183,7 +183,7 @@ int IR_Builder::translateVISACompareInst(
   G4_ExecSize exsize = toExecSize(execsize);
   G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
   const char *varName =
-      getNameString(mem, 50, "PTemp_%d", kernel.Declares.size());
+      getNameString(50, "PTemp_%d", kernel.Declares.size());
 
   uint8_t numWords = (exsize + 15) / 16;
   if (needs32BitFlag(inst_opt)) {

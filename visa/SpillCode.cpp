@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "SpillCode.h"
 #include "BuildIR.h"
 #include "FlowGraph.h"
 #include "PointsToAnalysis.h"
-#include "SpillCode.h"
 #include <vector>
 
 #ifdef _DEBUG
@@ -28,9 +28,9 @@ G4_Declare *SpillManager::createNewSpillLocDeclare(G4_Declare *dcl) {
 
   if (dcl->getRegFile() == G4_FLAG) {
     vISA_ASSERT(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W,
-                 "flag reg's type should be UW");
+                "flag reg's type should be UW");
     vISA_ASSERT(dcl->getNumElems() <= builder.getNumFlagRegisters(),
-                 "Flag reg Spill size exceeds limit");
+                "Flag reg Spill size exceeds limit");
   } else if (dcl->getRegFile() == G4_ADDRESS) {
     // if we are dealing with type other than UW, e.g., B, then we need to
     // take care different data type reg moves of spill code. For now, just
@@ -38,10 +38,10 @@ G4_Declare *SpillManager::createNewSpillLocDeclare(G4_Declare *dcl) {
     //
     G4_Type type = dcl->getElemType();
     vISA_ASSERT(type == Type_UW || type == Type_W || type == Type_UD ||
-                     type == Type_D,
-                 "addr reg's type should be UW or UD");
+                    type == Type_D,
+                "addr reg's type should be UW or UD");
     vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
-                 "Addr reg Spill size exceeds limit");
+                "Addr reg Spill size exceeds limit");
   }
   G4_Declare *sp = dcl->getSpilledDeclare();
   if (sp == NULL) // not yet created
@@ -57,14 +57,13 @@ G4_Declare *SpillManager::createNewSpillLocDeclare(G4_Declare *dcl) {
 // replicate dcl for temporary use (loading value from SPILL location)
 //
 G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl) {
-  const char *name =
-      builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
+  const char *name = builder.getNameString(16, "Temp_ADDR_%d", tempDclId++);
 
   vISA_ASSERT(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W,
-               "addr reg's type should be UW");
+              "addr reg's type should be UW");
   vISA_ASSERT(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
   vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
-               "Temp_ADDR exceeds 16 bytes");
+              "Temp_ADDR exceeds 16 bytes");
   G4_Declare *sp =
       builder.createDeclareNoLookup(name, G4_ADDRESS, dcl->getNumElems(),
                                     1, // 1 row
@@ -79,8 +78,7 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl) {
 }
 
 G4_Declare *SpillManager::createNewTempFlagDeclare(G4_Declare *dcl) {
-  const char *name =
-      builder.getNameString(builder.mem, 32, "Temp_FSPILL_%d", tempDclId++);
+  const char *name = builder.getNameString(32, "Temp_FSPILL_%d", tempDclId++);
 
   assert(dcl->getRegFile() == G4_FLAG && "dcl should be a flag");
   G4_Declare *sp = builder.createFlag(dcl->getNumberFlagElements(), name);
@@ -97,16 +95,15 @@ G4_Declare *SpillManager::createNewTempFlagDeclare(G4_Declare *dcl) {
 //
 G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
                                                    uint16_t num_reg) {
-  const char *name =
-      builder.getNameString(builder.mem, 16, "Temp_ADDR_%d", tempDclId++);
+  const char *name = builder.getNameString(16, "Temp_ADDR_%d", tempDclId++);
 
   G4_Type type = dcl->getElemType();
   vISA_ASSERT(type == Type_UW || type == Type_W || type == Type_UD ||
-                   type == Type_D,
-               "addr reg's type should be UW or UD");
+                  type == Type_D,
+              "addr reg's type should be UW or UD");
   vISA_ASSERT(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
   vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
-               "Temp_ADDR exceeds 16 bytes");
+              "Temp_ADDR exceeds 16 bytes");
   G4_Declare *sp = builder.createDeclareNoLookup(name, G4_ADDRESS, num_reg,
                                                  1, // 1 row
                                                  type);
@@ -611,9 +608,9 @@ void SpillManager::createSpillLocations(const G4_Kernel &kernel) {
     G4_Declare *dcl = lr->getVar()->getDeclare();
     dcl->setSpillFlag();
     vISA_ASSERT(lr->getPhyReg() == NULL,
-                 "Spilled Live Range shouldn't have physical reg");
+                "Spilled Live Range shouldn't have physical reg");
     vISA_ASSERT(lr->getSpillCost() < MAXSPILLCOST,
-                 "ERROR: spill live range with infinite spill cost");
+                "ERROR: spill live range with infinite spill cost");
     // create spill loc for holding spilled addr regs
     createNewSpillLocDeclare(dcl);
   }

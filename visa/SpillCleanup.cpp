@@ -20,7 +20,7 @@ namespace vISA {
 
 static bool isGRFAssigned(G4_Operand *opnd) {
   vISA_ASSERT(opnd->isSrcRegRegion() || opnd->isDstRegRegion(),
-               "expecting src/dst reg region");
+              "expecting src/dst reg region");
   auto *topDcl = opnd->getTopDcl();
   if (!topDcl)
     return false;
@@ -64,7 +64,7 @@ G4_INST *CoalesceSpillFills::generateCoalescedFill(G4_SrcRegRegion *header,
   // Generate split send instruction with specified payload size and offset
   // Construct fillDst
   const char *dclName = kernel.fg.builder->getNameString(
-      kernel.fg.mem, 32, "COAL_FILL_%d", kernel.Declares.size());
+      32, "COAL_FILL_%d", kernel.Declares.size());
   auto fillDcl = kernel.fg.builder->createDeclareNoLookup(
       dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(), dclSize, Type_UD,
       DeclareType::CoalescedFill);
@@ -153,7 +153,7 @@ CoalesceSpillFills::createCoalescedSpillDcl(unsigned int payloadSize) {
   const char *dclName = nullptr;
   G4_Declare *spillDcl = nullptr;
 
-  dclName = kernel.fg.builder->getNameString(kernel.fg.mem, 32, "COAL_SPILL_%d",
+  dclName = kernel.fg.builder->getNameString(32, "COAL_SPILL_%d",
                                              kernel.Declares.size());
   spillDcl = kernel.fg.builder->createDeclareNoLookup(
       dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(), payloadSize, Type_UD,
@@ -174,8 +174,8 @@ void CoalesceSpillFills::coalesceSpills(
   auto leadInst = *coalesceableSpills.front();
 
   vISA_ASSERT(payloadSize == 1 || payloadSize == 2 || payloadSize == 4 ||
-                   payloadSize == 8,
-               "Unsupported payload size");
+                  payloadSize == 8,
+              "Unsupported payload size");
 
   std::set<G4_Declare *> declares;
   unsigned int minRow = UINT_MAX;
@@ -185,8 +185,8 @@ void CoalesceSpillFills::coalesceSpills(
     declares.insert(src1Opnd->getTopDcl());
     minRow = minRow > curRow ? curRow : minRow;
     vISA_ASSERT((*d)->isSpillIntrinsic() &&
-                     !isGRFAssigned((*d)->asSpillIntrinsic()->getPayload()),
-                 "shouldnt coalesce spill with assigned GRF");
+                    !isGRFAssigned((*d)->asSpillIntrinsic()->getPayload()),
+                "shouldnt coalesce spill with assigned GRF");
   }
 
   G4_Declare *dcl = nullptr;
@@ -239,8 +239,8 @@ void CoalesceSpillFills::coalesceFills(
     payloadSize = 1;
 
   vISA_ASSERT(payloadSize == 1 || payloadSize == 2 || payloadSize == 4 ||
-                   payloadSize == 8,
-               "Unsupported payload size");
+                  payloadSize == 8,
+              "Unsupported payload size");
 
   // dclSize could be larger than payload size when
   // 2 variables across scratch writes are coalesced.
@@ -259,8 +259,8 @@ void CoalesceSpillFills::coalesceFills(
       dclSize = maxRow;
 
     vISA_ASSERT((*c)->isFillIntrinsic() &&
-                     !isGRFAssigned((*c)->asFillIntrinsic()->getDst()),
-                 "cannot coalesce fill with pre-assigned GRF");
+                    !isGRFAssigned((*c)->asFillIntrinsic()->getDst()),
+                "cannot coalesce fill with pre-assigned GRF");
   }
 
   auto leadInst = *coalesceableFills.front();
@@ -664,7 +664,7 @@ void CoalesceSpillFills::keepConsecutiveSpills(
       }
 
       vISA_ASSERT(coalescable.size() == allowed.size(),
-                   "Coalesced spills list missing entries");
+                  "Coalesced spills list missing entries");
       break;
     } else {
       allowed.pop_back();
@@ -756,7 +756,6 @@ CoalesceSpillFills::analyzeFillCoalescing(std::list<INST_LIST_ITER> &instList,
     instList = origInstList;
     instList.pop_front();
   }
-
 
   if (coalesceableFills.size() > 1) {
     coalesceFills(coalesceableFills, min, max, bb);
@@ -1257,7 +1256,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap() {
           // force spills. So we simply choose
           // src1 of sends.
           const char *dclName = kernel.fg.builder->getNameString(
-              kernel.fg.mem, 32, "COPY_%d", kernel.Declares.size());
+              32, "COPY_%d", kernel.Declares.size());
           G4_Declare *copyDcl = kernel.fg.builder->createDeclareNoLookup(
               dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(),
               src1->getTopDcl()->getNumRows(), Type_UD);

@@ -439,6 +439,9 @@ private:
   std::vector<Metadata *> allMDs;
   std::vector<MDNode *> allMDNodes;
 
+  // bump pointer allocator for variable and label names, used for IR dump only.
+  Mem_Manager debugNameMem;
+
 public:
   PreDefinedVars preDefVars;
   Mem_Manager &mem;           // memory for all operands and insts
@@ -595,8 +598,7 @@ public:
 
   const WA_TABLE *getPWaTable() const { return m_pWaTable; }
 
-  static const char *getNameString(Mem_Manager &mem, size_t size,
-                                   const char *format, ...);
+  const char *getNameString(size_t size, const char *format, ...);
 
   G4_Predicate_Control
   vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control,

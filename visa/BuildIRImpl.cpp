@@ -164,7 +164,7 @@ void IR_Builder::bindInputDecl(
 
 // check if an operand is aligned to <alignByte>
 bool IR_Builder::tryToAlignOperand(G4_Operand *opnd, unsigned short &offset,
-                               int alignByte) const {
+                                   int alignByte) const {
   offset = 0;
   bool isAligned = true;
 
@@ -504,10 +504,9 @@ FCPatchingInfo *IR_Builder::getFCPatchInfo() {
 }
 
 // We only keep variable/label names in debug mode or offline vISA executable.
-const char *IR_Builder::getNameString(Mem_Manager &mem, size_t size,
-                                      const char *format, ...) {
+const char *IR_Builder::getNameString(size_t size, const char *format, ...) {
 #if defined(_DEBUG) || !defined(DLL_MODE)
-  char *name = (char *)mem.alloc(size);
+  char *name = (char *)debugNameMem.alloc(size);
   va_list args;
   va_start(args, format);
   std::vsnprintf(name, size, format, args);
@@ -727,7 +726,8 @@ IR_Builder::IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
       CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0),
       CanonicalRegionStride4(4, 1, 0), mem(m),
       phyregpool(m, k.getNumRegTotal()), hashtable(m), rgnpool(m),
-      dclpool(m, *this), instList(alloc), kernel(k), metadataMem(4096) {
+      dclpool(m, *this), instList(alloc), kernel(k), metadataMem(4096),
+      debugNameMem(4096) {
   num_temp_dcl = 0;
   kernel.setBuilder(this); // kernel needs pointer to the builder
   if (!getIsPayload())
@@ -776,7 +776,7 @@ IR_Builder::cloneDeclare(std::map<G4_Declare *, G4_Declare *> &dclMap,
                          G4_Declare *dcl) {
   static int uid = 0;
   const char *newDclName =
-      getNameString(mem, 16, "copy_%d_%s", uid++, dcl->getName());
+      getNameString(16, "copy_%d_%s", uid++, dcl->getName());
   return dclpool.cloneDeclare(kernel, dclMap, newDclName, dcl);
 }
 
@@ -873,9 +873,9 @@ G4_Declare *IR_Builder::createTempVar(unsigned int numElements, G4_Type type,
                                       G4_SubReg_Align subAlign,
                                       const char *prefix, bool appendIdToName) {
   vISA_ASSERT(numElements > 0, "incorrect num elements passed");
-  const char *name =
-      appendIdToName ? getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++)
-                     : getNameString(mem, 20, "%s", prefix);
+  const char *name = appendIdToName
+                         ? getNameString(20, "%s%d", prefix, num_temp_dcl++)
+                         : getNameString(20, "%s", prefix);
 
   unsigned short dcl_width = 0, dcl_height = 1;
   const uint16_t typeSize = TypeSize(type);
@@ -899,7 +899,7 @@ G4_Declare *IR_Builder::createTempVar(unsigned int numElements, G4_Type type,
 }
 
 G4_Declare *IR_Builder::createAddrFlagSpillLoc(G4_Declare *dcl) {
-  const char *name = getNameString(mem, 16, "SP_LOC_%d", numAddrFlagSpillLoc++);
+  const char *name = getNameString(16, "SP_LOC_%d", numAddrFlagSpillLoc++);
   G4_Declare *spillLoc =
       createDeclareNoLookup(name, G4_GRF, dcl->getNumElems(), 1,
                             dcl->getElemType(), DeclareType::AddrSpill);
@@ -1029,7 +1029,7 @@ G4_INST *IR_Builder::createFill(G4_DstRegRegion *dstData, G4_ExecSize execSize,
 
 G4_Declare *IR_Builder::createTempFlag(unsigned short numberOfFlags,
                                        const char *prefix) {
-  const char *name = getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++);
+  const char *name = getNameString(20, "%s%d", prefix, num_temp_dcl++);
 
   G4_Declare *dcl =
       createDeclareNoLookup(name, G4_FLAG, numberOfFlags, 1, Type_UW);
@@ -1046,7 +1046,7 @@ G4_Declare *IR_Builder::createFlag(uint16_t numFlagElements, const char *name) {
 
 G4_Declare *IR_Builder::createTempScalar(uint16_t numFlagElements,
                                          const char *prefix) {
-  const char *name = getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++);
+  const char *name = getNameString(20, "%s%d", prefix, num_temp_dcl++);
   G4_Declare *dcl =
       createDeclareNoLookup(name, G4_SCALAR, numFlagElements, 1, Type_UB);
   return dcl;
@@ -1062,7 +1062,7 @@ G4_Declare *IR_Builder::createScalar(uint16_t numFlagElements,
 G4_Declare *IR_Builder::createPreVar(PreDefinedVarsInternal preDefVar_index,
                                      unsigned short numElements, G4_Type type) {
   vISA_ASSERT(preDefVar_index < PreDefinedVarsInternal::VAR_LAST,
-               "illegal predefined var index");
+              "illegal predefined var index");
   unsigned short dcl_width = 0, dcl_height = 1;
   auto typeSize = TypeSize(type);
   int totalByteSize = numElements * typeSize;
@@ -1419,7 +1419,7 @@ G4_INST *IR_Builder::createInternalInst(G4_Predicate *prd, G4_opcode op,
                                         G4_DstRegRegion *dst, G4_Operand *src0,
                                         G4_Operand *src1, G4_InstOpts options) {
   vISA_ASSERT(op != G4_math, "IR_Builder::createInternalInst should not be "
-                              "used to create math instructions");
+                             "used to create math instructions");
 
   auto ii =
       createInst(prd, op, mod, sat, execSize, dst, src0, src1, options, false);
@@ -1558,8 +1558,8 @@ G4_INST *IR_Builder::createInternalCFInst(G4_Predicate *prd, G4_opcode op,
                                           G4_ExecSize execSize, G4_Label *jip,
                                           G4_Label *uip, G4_InstOpts options) {
   vISA_ASSERT(G4_Inst_Table[op].instType == InstTypeFlow,
-               "IR_Builder::createInternalCFInst must be used with "
-               "InstTypeFlow instruction class");
+              "IR_Builder::createInternalCFInst must be used with "
+              "InstTypeFlow instruction class");
 
   auto ii = createCFInst(prd, op, execSize, jip, uip, options, false);
   return ii;
@@ -1570,8 +1570,8 @@ G4_INST *IR_Builder::createCFInst(G4_Predicate *prd, G4_opcode op,
                                   G4_Label *uip, G4_InstOpts options,
                                   bool addToInstList) {
   vISA_ASSERT(G4_Inst_Table[op].instType == InstTypeFlow,
-               "IR_Builder::createCFInst must be used with InstTypeFlow "
-               "instruction class");
+              "IR_Builder::createCFInst must be used with InstTypeFlow "
+              "instruction class");
 
   G4_InstCF *ii =
       new (mem) G4_InstCF(*this, prd, op, execSize, jip, uip, options);
@@ -1663,7 +1663,7 @@ G4_SrcRegRegion *IR_Builder::createScratchExDesc(uint32_t exdesc) {
   // virtual var for each exdesc
   G4_SrcRegRegion *T251 =
       createSrcRegRegion(builtinScratchSurface, getRegionScalar());
-  const char *buf = getNameString(mem, 20, "ExDesc%d", num_temp_dcl++);
+  const char *buf = getNameString(20, "ExDesc%d", num_temp_dcl++);
   G4_Declare *exDescDecl =
       createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
   exDescDecl->setSubRegAlign(Four_Word);
@@ -1685,12 +1685,12 @@ G4_INST *IR_Builder::createInst(G4_Predicate *prd, G4_opcode op,
                                 G4_Operand *src2, G4_InstOpts options,
                                 bool addToInstList) {
   vISA_ASSERT(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow,
-               "IR_Builder::createInst should not be used to create math/CF "
-               "instructions");
+              "IR_Builder::createInst should not be used to create math/CF "
+              "instructions");
 
   if (op == G4_madw) {
     vISA_ASSERT(getPlatform() >= Xe_PVC || execSize != g4::SIMD32,
-                 "SIMD32 is not supported on this platform for madw");
+                "SIMD32 is not supported on this platform for madw");
   }
 
   G4_INST *i = NULL;
@@ -1779,7 +1779,7 @@ G4_InstSend *IR_Builder::createSplitSendInst(
     // src1 may be null if we need to force generate split send (e.g., for
     // bindless surfaces)
     vISA_ASSERT(msgDesc->getSrc1LenRegs() == 0,
-                 "src1 length must be 0 if it is null");
+                "src1 length must be 0 if it is null");
     src1 = createNullSrc(Type_UD);
   }
   if (!src3 && msgDesc->isRaw()) {
@@ -2002,7 +2002,7 @@ G4_SrcRegRegion *IR_Builder::createBindlessExDesc(uint32_t exdesc) {
                            : InstOpt_NoOpt;
   // virtual var for each exdesc
   G4_SrcRegRegion *T252 = createSrcRegRegion(builtinT252, getRegionScalar());
-  const char *buf = getNameString(mem, 20, "ExDesc%d", num_temp_dcl++);
+  const char *buf = getNameString(20, "ExDesc%d", num_temp_dcl++);
   G4_Declare *exDescDecl =
       createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
   exDescDecl->setSubRegAlign(Four_Word);
@@ -2025,10 +2025,10 @@ G4_SrcRegRegion *IR_Builder::createBindlessExDesc(uint32_t exdesc) {
 static void fixSendDstType(G4_DstRegRegion *dst, G4_ExecSize execSize,
                            const IR_Builder &builder) {
   vISA_ASSERT(dst->getRegAccess() == Direct,
-               "Send dst must be a direct operand");
+              "Send dst must be a direct operand");
 
   vISA_ASSERT(dst->getSubRegOff() == 0,
-               "dst may not have a non-zero subreg offset");
+              "dst may not have a non-zero subreg offset");
 
   // normally we should create a new alias for dst's declare, but since it's a
   // send type mismatch between operand and decl should not matter
@@ -2295,7 +2295,7 @@ G4_SendDescRaw *IR_Builder::createLscMsgDesc(
       surface = nullptr;
     } else if (addr.type == LSC_ADDR_TYPE_ARG) {
       vISA_ASSERT(false,
-                   "caller should have converted LSC_ADDR_TYPE_ARG to ...BTI");
+                  "caller should have converted LSC_ADDR_TYPE_ARG to ...BTI");
     } else if (addr.type == LSC_ADDR_TYPE_BSS ||
                addr.type == LSC_ADDR_TYPE_SS) {
       if ((surfaceImm & 0x3FF) == 0) {
@@ -2439,7 +2439,7 @@ G4_InstSend *IR_Builder::createLscSendInst(
       //   mov    a0.2   SurfaceAddrImm
       auto imm = surface->asImm()->getImm();
       vISA_ASSERT((imm & 0x1F) == 0 && (imm & 0xFFFFFFFF00000000LL) == 0,
-             "ExDesc can only access [31:5]");
+                  "ExDesc can only access [31:5]");
       createMov(g4::SIMD1, addrDstOpnd, createImm(imm, Type_UD),
                 InstOpt_WriteEnable, true);
 
@@ -2447,7 +2447,8 @@ G4_InstSend *IR_Builder::createLscSendInst(
       msgDesc->setSurface(exDescOpnd); // link a0.2 to the send descriptor
     } else {
       // BTI is in ExDesc[31:24] and that is always available.
-      vISA_ASSERT(false, "BTI/FLAT should not reach this. Flat should have surface\
+      vISA_ASSERT(false,
+                  "BTI/FLAT should not reach this. Flat should have surface\
               == nullptr and BTI should either use a register for a variable BTI \
               or have folded the immediate vlaue into ExDesc (and thus \
                 surface==nullptr here)");
@@ -2528,21 +2529,21 @@ G4_InstSend *IR_Builder::createSplitSendToRenderTarget(
     descOpnd = createImm(desc, Type_UD);
   }
 
-  G4_InstSend* sendInst = createSplitSendInst(pred, send_opcode, execSize,
-                             dst, src1, src2,
-                             descOpnd, option, msgDesc, extDescOpnd, true);
+  G4_InstSend *sendInst =
+      createSplitSendInst(pred, send_opcode, execSize, dst, src1, src2,
+                          descOpnd, option, msgDesc, extDescOpnd, true);
 
   if (getOption(vISA_renderTargetWriteSendReloc)) {
-      std::string symbolName{ "RTW_SEND" };
-      RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
-          GenRelocType::R_SEND);
+    std::string symbolName{"RTW_SEND"};
+    RelocationEntry::createRelocation(kernel, *sendInst, 0, symbolName,
+                                      GenRelocType::R_SEND);
   }
   return sendInst;
 }
 
 // create a declare for send payload
 G4_Declare *IR_Builder::createSendPayloadDcl(unsigned num_elt, G4_Type type) {
-  const char *name = getNameString(mem, 16, "M%u", ++num_temp_dcl);
+  const char *name = getNameString(16, "M%u", ++num_temp_dcl);
   const uint16_t sizeOfType = TypeSize(type);
   unsigned short numRow =
       (num_elt * sizeOfType - 1) / numEltPerGRF<Type_UB>() + 1;
@@ -2808,7 +2809,8 @@ input_info_t *IR_Builder::getRetIPArg() const {
   input_info_t *RetIP = getInputArg(getInputCount() - 1);
   // More sanity check on the argument.
   vISA_ASSERT(IS_QTYPE(RetIP->dcl->getElemType()), "RetIP needs to be QWORD!");
-  vISA_ASSERT(RetIP->dcl->getNumElems() == 1, "Number of RetIP elements should be 1");
+  vISA_ASSERT(RetIP->dcl->getNumElems() == 1,
+              "Number of RetIP elements should be 1");
   return RetIP;
 }
 
@@ -3101,7 +3103,7 @@ void IR_Builder::doSimplification(G4_INST *inst) {
           // Set subreg alignment for the address variable.
           Dcl = LEA->getDst()->getBase()->asRegVar()->getDeclare();
           vISA_ASSERT(Dcl->getRegFile() == G4_ADDRESS,
-                 "Address variable is required.");
+                      "Address variable is required.");
           Dcl->setSubRegAlign(Eight_Word);
         }
       }

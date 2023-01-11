@@ -1008,24 +1008,6 @@ int LinearScanRA::linearScanRA() {
         spilledVars << dcl->getName() << "\t";
       }
     }
-/*
-    vISA_ASSERT(
-        false,
-        "ERROR: "
-            << kernel.getNumRegTotal() -
-                   builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum)
-            << " GRF registers are NOT enough to compile kernel "
-            << kernel.getName() << "!"
-            << " The maximum register pressure in the kernel is higher"
-            << " than the available physical registers in hardware (even"
-            << " with spill code)."
-            << " Please consider rewriting the kernel."
-            << " Compiling with the symbolic register option and inspecting the"
-            << " spilled registers may help in determining the region of high "
-               "pressure.\n"
-            << "The spilling virtual registers are as follows: "
-            << spilledVars.str());
-*/
     spillLRs.clear();
     return VISA_FAILURE;
   }
@@ -1345,7 +1327,7 @@ void LinearScanRA::calculateInputIntervalsGlobal(PhyRegsLocalRA &initPregs) {
             !builder.isPreDefArg(dcl) && // Not stack call associated variables
             l.isLiveAtExit(bb, dcl->getRegVar()->getId())) {
           vISA_ASSERT(dcl->getRegVar()->isPhyRegAssigned(),
-                       "Input variable has no pre-assigned physical register");
+                      "Input variable has no pre-assigned physical register");
           generateInputIntervals(dcl, bb->getInstList().back(), inputRegLastRef,
                                  initPregs, false);
         }
@@ -1522,8 +1504,8 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(
     }
 
     if (curInst->isCall() == true) {
-      const char *name = kernel.fg.builder->getNameString(
-          kernel.fg.builder->mem, 32, "SCALL_%d", funcCnt++);
+      const char *name =
+          kernel.fg.builder->getNameString(32, "SCALL_%d", funcCnt++);
       G4_Declare *scallDcl =
           kernel.fg.builder->createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UD);
       LSLiveRange *lr = CreateLocalLiveRange(scallDcl);
