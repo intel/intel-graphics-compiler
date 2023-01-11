@@ -1855,7 +1855,18 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
           func->getKernel()->fg.append(callee->fg);
         }
       }
-      void *genxBuffer = func->encodeAndEmit(genxBufferSize);
+
+      //Accumulate the performance data
+      vISA::PERF_STATS_VERBOSE perfStatus;
+      memset(&perfStatus, 0, sizeof(vISA::PERF_STATS_VERBOSE));
+      func->addFuncPerfStats(
+          &perfStatus, func->getKernel()->fg.builder->getJitInfo());
+      for (auto &&iter : subFunctionsNameMap) {
+        G4_Kernel *callee = iter.second;
+        func->addFuncPerfStats(&perfStatus, callee->fg.builder->getJitInfo());
+      }
+
+      void *genxBuffer = func->encodeAndEmit(genxBufferSize, &perfStatus);
       func->setGenxBinaryBuffer(genxBuffer, genxBufferSize);
       if (m_options.getOption(vISA_GenerateDebugInfo)) {
         func->computeAndEmitDebugInfo(subFunctions);

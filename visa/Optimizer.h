@@ -213,6 +213,8 @@ private:
   void legalizeType();
   void analyzeMove();
 
+  void staticProfiling();
+
   void removeInstrinsics();
 
   void countBankConflicts();
@@ -392,6 +394,7 @@ public:
     PI_addSWSBInfo,
     PI_expandMadwPostSchedule,
     PI_ACCSchedule,
+    PI_staticProfiling,
     PI_NUM_PASSES
   };
 

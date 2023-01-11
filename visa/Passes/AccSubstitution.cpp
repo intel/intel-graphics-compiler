@@ -1025,9 +1025,65 @@ struct AccAssignment {
 };
 
 
+void AccSubPass::CheckALUOnlyDstSrc(G4_INST *inst) {
+  if (inst->isSend() || inst->isLabel() || inst->isCFInst() || inst->isDpas() ||
+      inst->isIntrinsic()) {
+    return;
+  }
+
+  FINALIZER_INFO *jitInfo = builder.getJitInfo();
+  G4_DstRegRegion *dst = inst->getDst();
+
+  if (dst && dst->getTopDcl() != nullptr &&
+      dst->getTopDcl()->getRegFile() == G4_GRF) {
+    bool usedInSend = false;
+    for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I) {
+      auto &&use = *I;
+      G4_INST *useInst = use.first;
+      if (useInst->isSend()) {
+        usedInSend = true;
+      }
+    }
+
+    if (!usedInSend) {
+      jitInfo->statsVerbose.numALUOnlyDst++;
+    }
+  }
+
+  for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
+    G4_Operand *srcOpnd = inst->getSrc(i);
+    Gen4_Operand_Number opndNum = (Gen4_Operand_Number)(i + 1);
+    if (!srcOpnd) {
+      continue;
+    }
+    if (!srcOpnd->isSrcRegRegion() || srcOpnd->isImm() ||
+        srcOpnd->isAddrExp() ||
+        srcOpnd->asSrcRegRegion()->getRegAccess() != Direct) {
+      continue;
+    }
+    if (!srcOpnd->asSrcRegRegion()->getBase() ||
+        !srcOpnd->asSrcRegRegion()->getBase()->isRegVar()) {
+      continue;
+    }
+    if (srcOpnd->getBase()->asRegVar()->getDeclare()->getRegFile() != G4_GRF) {
+      continue;
+    }
+    bool defineInSend = false;
+    for (auto DI = inst->def_begin(), DE = inst->def_end(); DI != DE; ++DI) {
+      auto &&def = *DI;
+      if (def.second == opndNum && def.first->isSend()) {
+        defineInSend = true;
+      }
+    }
+
+    if (!defineInSend) {
+      jitInfo->statsVerbose.numALUOnlySrc++;
+    }
+  }
+}
+
 void AccSubPass::doAccSub(G4_BB *bb) {
   bb->resetLocalIds();
-
   int numGeneralAcc = kernel.getNumAcc();
   std::vector<AccInterval *> intervals;
   std::vector<AccInterval *> failIntervals;
@@ -1038,6 +1094,8 @@ void AccSubPass::doAccSub(G4_BB *bb) {
   for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd;
        ++instIter) {
     G4_INST *inst = *instIter;
+    CheckALUOnlyDstSrc(inst);
+
     if (inst->defAcc()) {
       // we should only have single def/use acc at this point, so any use would
       // kill the def
@@ -1156,14 +1214,15 @@ void AccSubPass::doAccSub(G4_BB *bb) {
   for (auto interval : intervals) {
     G4_INST *inst = interval->inst;
 
+    auto jitInfo = kernel.fg.builder->getJitInfo();
     if (!interval->isPreAssigned) {
-      numAccSubCandidateDef++;
-      numAccSubCandidateUse += (int)inst->use_size();
+      jitInfo->statsVerbose.accSubCandidateDef++;
+      jitInfo->statsVerbose.accSubCandidateUse += (unsigned)inst->use_size();
     }
     if (!interval->isPreAssigned && interval->assignedAcc != -1) {
       if (replaceDstWithAcc(inst, interval->assignedAcc)) {
-        numAccSubDef++;
-        numAccSubUse += (int)inst->use_size();
+        jitInfo->statsVerbose.accSubDef++;
+        jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
       }
 #if 0
             std::cout << "Acc sub def inst: \n";
@@ -1179,11 +1238,9 @@ void AccSubPass::doAccSub(G4_BB *bb) {
             }
 #endif
     }
-#if 1
     if (!interval->isPreAssigned && interval->assignedAcc == -1) {
       inst->addComment("ACC_Candidate");
     }
-#endif
   }
 
   for (int i = 0, end = (int)intervals.size(); i < end; ++i) {
@@ -1229,6 +1286,8 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
   for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd;
        ++instIter) {
     G4_INST *inst = *instIter;
+    CheckALUOnlyDstSrc(inst);
+
     if (inst->defAcc()) {
       // we should only have single def/use acc at this point, so any use would
       // kill the def
@@ -1502,15 +1561,16 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
 
     G4_INST *inst = interval->inst;
 
+    auto jitInfo = kernel.fg.builder->getJitInfo();
     if (!interval->isPreAssigned) {
-      numAccSubCandidateDef++;
-      numAccSubCandidateUse += (int)inst->use_size();
+      jitInfo->statsVerbose.accSubCandidateDef++;
+      jitInfo->statsVerbose.accSubCandidateUse += (unsigned)inst->use_size();
     }
 
     if (!interval->isPreAssigned && interval->assignedAcc != -1) {
       if (replaceDstWithAcc(inst, interval->assignedAcc)) {
-        numAccSubDef++;
-        numAccSubUse += (int)inst->use_size();
+        jitInfo->statsVerbose.accSubDef++;
+        jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
       }
 
 #if 0
@@ -1604,8 +1664,9 @@ void AccSubPass::accSub(G4_BB *bb) {
       instIter = subIter;
       --instIter;
 
-      numAccSubDef++;
-      numAccSubUse += (int)inst->use_size();
+    auto jitInfo = kernel.fg.builder->getJitInfo();
+    jitInfo->statsVerbose.accSubDef++;
+    jitInfo->statsVerbose.accSubUse += (unsigned)inst->use_size();
 
 #if 0
             std::cout << "Acc sub def inst: \n";

@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "Passes/LVN.hpp"
 #include "Passes/MergeScalars.hpp"
 #include "Passes/SendFusion.hpp"
+#include "Passes/StaticProfiling.hpp"
 
 #include "llvm/Support/Allocator.h"
 
@@ -1594,6 +1595,7 @@ void Optimizer::initOptimizations() {
   INITIALIZE_PASS(expandMadwPostSchedule, vISA_expandMadwPostSchedule,
                   TimerID::MISC_OPTS);
   INITIALIZE_PASS(ACCSchedule, vISA_PreSchedForAcc, TimerID::PRERA_SCHEDULING);
+  INITIALIZE_PASS(staticProfiling, vISA_staticProfiling, TimerID::MISC_OPTS);
 
   // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1959,10 +1961,6 @@ void Optimizer::accSubPostSchedule() {
 
   AccSubPass accSub(builder, kernel);
   accSub.run();
-  kernel.fg.XeBCStats.setAccSubDef(accSub.getNumAccSubDef());
-  kernel.fg.XeBCStats.setAccSubUse(accSub.getNumAccSubUse());
-  kernel.fg.XeBCStats.setAccSubCandidateDef(accSub.getNumAccSubCandidateDef());
-  kernel.fg.XeBCStats.setAccSubCandidateUse(accSub.getNumAccSubCandidateUse());
 }
 
 
@@ -1986,10 +1984,6 @@ void Optimizer::accSubBeforeRA() {
 
   AccSubPass accSub(builder, kernel);
   accSub.run();
-  kernel.fg.XeBCStats.setAccSubDef(accSub.getNumAccSubDef());
-  kernel.fg.XeBCStats.setAccSubUse(accSub.getNumAccSubUse());
-  kernel.fg.XeBCStats.setAccSubCandidateDef(accSub.getNumAccSubCandidateDef());
-  kernel.fg.XeBCStats.setAccSubCandidateUse(accSub.getNumAccSubCandidateUse());
 }
 
 bool Optimizer::R0CopyNeeded() {
@@ -2194,6 +2188,8 @@ int Optimizer::optimization() {
   //-----------------------------------------------------------------------------------------------------------------
   runPass(PI_addSWSBInfo);
 
+
+  runPass(PI_staticProfiling);
 
   if (EarlyExited) {
     return VISA_EARLY_EXIT;
@@ -10668,6 +10664,14 @@ void Optimizer::analyzeMove() {
   }
 
 #undef MOVE_TYPE
+}
+
+
+void Optimizer::staticProfiling() {
+  // NOTE: local data flow analysis can not be called because regVar info
+  // missed.
+  StaticProfiling s(builder, kernel);
+  s.run();
 }
 
 //

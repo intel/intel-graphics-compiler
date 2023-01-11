@@ -328,7 +328,8 @@ void VISAKernelImpl::compilePostOptimize() {
   }
 }
 
-void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
+void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize,
+                                    vISA::PERF_STATS_VERBOSE *m_kernelPerfStats) {
   void *binary = NULL;
 
   //
@@ -431,6 +432,7 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
   if (m_options->getOption(vISA_DebugConsoleDump)) {
     std::basic_ostringstream<char> debugBuff;
     m_kernel->emitDeviceAsm(debugBuff, nullptr, 0);
+    emitPerfStats(m_kernelPerfStats, debugBuff);
     debugBuff.flush();
     OutputDebugStringA(debugBuff.str().c_str());
   }
@@ -606,6 +608,7 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
 
   if (m_options->getOption(vISA_asmToConsole)) {
     m_kernel->emitDeviceAsm(std::cout, binary, binarySize);
+    emitPerfStats(m_kernelPerfStats, std::cout);
   } else if (m_options->getOption(vISA_outputToFile)) {
     std::stringstream ss;
     ss << m_asmName << ".asm";
@@ -616,6 +619,7 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
         std::cerr << filePath << ": failed to open file\n";
       } else {
         m_kernel->emitDeviceAsm(krnlOutput, binary, binarySize);
+        emitPerfStats(m_kernelPerfStats, krnlOutput);
       }
     }
   }
@@ -8979,4 +8983,56 @@ bool enableSrcLine(void *buf) {
 
 void VISAKernelImpl::setLocalSheduleable(bool value) {
   m_kernel->setLocalSheduleable(value);
+}
+
+void VISAKernelImpl::addFuncPerfStats(
+    vISA::PERF_STATS_VERBOSE *m_kernelPerfStats,
+    vISA::FINALIZER_INFO *jitInfo) {
+  // FIXME: These two profiling info are collected during assembly instructino
+  // emission, which happened after this function.
+  // m_kernelPerfStats.BCNum +=
+  // jitInfo->statsVerbose.BCNum;
+  // m_kernelPerfStats.numRMWs += jitInfo->statsVerbose.numRMWs;
+
+  m_kernelPerfStats->numALUInst += jitInfo->statsVerbose.numALUInst;
+  m_kernelPerfStats->numALUOnlyDst += jitInfo->statsVerbose.numALUOnlyDst;
+  m_kernelPerfStats->numALUOnlySrc += jitInfo->statsVerbose.numALUOnlySrc;
+  m_kernelPerfStats->accSubDef += jitInfo->statsVerbose.accSubDef;
+  m_kernelPerfStats->accSubUse += jitInfo->statsVerbose.accSubUse;
+  m_kernelPerfStats->accSubCandidateDef +=
+      jitInfo->statsVerbose.accSubCandidateDef;
+  m_kernelPerfStats->accSubCandidateUse +=
+      jitInfo->statsVerbose.accSubCandidateUse;
+
+  m_kernelPerfStats->syncInstCount += jitInfo->statsVerbose.syncInstCount;
+  m_kernelPerfStats->tokenReuseCount += jitInfo->statsVerbose.tokenReuseCount;
+  m_kernelPerfStats->singlePipeAtOneDistNum +=
+      jitInfo->statsVerbose.singlePipeAtOneDistNum;
+  m_kernelPerfStats->allAtOneDistNum += jitInfo->statsVerbose.allAtOneDistNum;
+  m_kernelPerfStats->AfterWriteTokenDepCount +=
+      jitInfo->statsVerbose.AfterWriteTokenDepCount;
+  m_kernelPerfStats->AfterReadTokenDepCount +=
+      jitInfo->statsVerbose.AfterReadTokenDepCount;
+}
+
+void VISAKernelImpl::emitPerfStats(vISA::PERF_STATS_VERBOSE *m_kernelPerfStats,
+                                   std::ostream & os) {
+  os << "\n\n";
+  os << "//.numALUInst: " << m_kernelPerfStats->numALUInst << "\n";
+  os << "//.numALUOnlyDst: " << m_kernelPerfStats->numALUOnlyDst << "\n";
+  os << "//.numALUOnlySrc: " << m_kernelPerfStats->numALUOnlySrc << "\n";
+  os << "//.accSubDef: " << m_kernelPerfStats->accSubDef << "\n";
+  os << "//.accSubUse: " << m_kernelPerfStats->accSubUse << "\n";
+  os << "//.accSubCandidateDef: " << m_kernelPerfStats->accSubCandidateDef << "\n";
+  os << "//.accSubCandidateUse: " << m_kernelPerfStats->accSubCandidateUse << "\n";
+  os << "//\n//\n";
+  os << "//.singlePipeAtOneDistNum: "
+     << m_kernelPerfStats->singlePipeAtOneDistNum << "\n";
+  os << "//.allAtOneDistNum: " << m_kernelPerfStats->allAtOneDistNum << "\n";
+  os << "//.syncInstCount: " << m_kernelPerfStats->syncInstCount << "\n";
+  os << "//.tokenReuseCount: " << m_kernelPerfStats->tokenReuseCount << "\n";
+  os << "//.AfterWriteTokenDepCount: "
+     << m_kernelPerfStats->AfterWriteTokenDepCount << "\n";
+  os << "//.AfterReadTokenDepCount: "
+     << m_kernelPerfStats->AfterReadTokenDepCount << "\n";
 }

@@ -247,11 +247,9 @@ void G4_BB::emitBasicInstructionComment(std::ostream &output,
             parent->builder->hasOneGRFBank16Bundles(), platform == GENX_TGLLP,
             parent->builder->has64bundleSize());
       }
-      parent->XeBCStats.addBC(BCNum);
-      parent->XeBCStats.addSameBankBC(sameBankConflicts);
-      parent->XeBCStats.add2SrcBC(twoSrcConflicts);
-      parent->XeBCStats.addSimd16RSBC(simd16SuppressionConflicts);
-      parent->numRMWs += countReadModifyWrite(output, inst);
+      auto jitInfo = getParent().getKernel()->fg.builder->getJitInfo();
+      jitInfo->statsVerbose.BCNum += BCNum;
+      jitInfo->statsVerbose.numRMWs += countReadModifyWrite(output, inst);
     }
   }
 
@@ -644,8 +642,6 @@ uint32_t G4_BB::emitBankConflictXe(std::ostream &os_output, const G4_INST *inst,
                                    bool hasReducedBundles) {
   std::stringstream output;
 
-  parent->XeBCStats.addSIMD8();
-
   if (inst->isSend() || inst->isMath() || inst->isSWSBSync() ||
       inst->isWait() || inst->isReturn() || inst->isCall()) { // Flush
     for (int i = 0; i < 4; i++) {
@@ -725,10 +721,6 @@ uint32_t G4_BB::emitBankConflictXe(std::ostream &os_output, const G4_INST *inst,
         }
       }
     }
-  }
-
-  if (isCompressedInst) {
-    parent->XeBCStats.addSIMD8();
   }
 
   // Kill previous read suppression candiadte if it wrote in DST
@@ -929,8 +921,6 @@ uint32_t G4_BB::emitBankConflictXeLP(std::ostream &os_output,
                                      int &twoSrcConflicts, int &simd16RS) {
   std::stringstream output;
 
-  parent->XeBCStats.addSIMD8();
-
   if (inst->isSend() || inst->isMath() || inst->isSWSBSync() ||
       inst->isWait() || inst->isReturn() || inst->isCall()) { // Flush
     for (int i = 0; i < 3; i++) {
@@ -1028,10 +1018,6 @@ uint32_t G4_BB::emitBankConflictXeLP(std::ostream &os_output,
         }
       }
     }
-  }
-
-  if (instSplit) {
-    parent->XeBCStats.addSIMD8();
   }
 
   // Read Suppression for current instruction
