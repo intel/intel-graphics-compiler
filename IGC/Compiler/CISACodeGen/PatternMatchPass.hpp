@@ -224,6 +224,7 @@ namespace IGC
         bool MatchBlockReadWritePointer(llvm::GenIntrinsicInst& I);
         bool MatchGradient(llvm::GenIntrinsicInst& I);
         bool MatchSampleDerivative(llvm::GenIntrinsicInst& I);
+        bool MatchDbgInstruction(llvm::DbgInfoIntrinsic& I);
         bool MatchAvg(llvm::Instruction& I);
 
         bool MatchMinMax(llvm::SelectInst& I);
