@@ -111,6 +111,16 @@ namespace IGC
         return m_InternalOptions.NoLocalToGeneric;
     }
 
+    bool OpenCLProgramContext::mustDistinguishBetweenPrivateAndGlobalPtr() const
+    {
+        return m_mustDistinguishBetweenPrivateAndGlobalPtr;
+    }
+
+    void OpenCLProgramContext::setDistinguishBetweenPrivateAndGlobalPtr(bool distinguish)
+    {
+        m_mustDistinguishBetweenPrivateAndGlobalPtr = distinguish;
+    }
+
     bool OpenCLProgramContext::enableTakeGlobalAddress() const
     {
         return m_Options.EnableTakeGlobalAddress || getModuleMetaData()->capabilities.globalVariableDecorationsINTEL;

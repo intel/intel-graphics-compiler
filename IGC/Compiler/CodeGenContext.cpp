@@ -661,6 +661,11 @@ namespace IGC
         return false;
     }
 
+    bool CodeGenContext::mustDistinguishBetweenPrivateAndGlobalPtr() const
+    {
+        return false;
+    }
+
     bool CodeGenContext::enableTakeGlobalAddress() const
     {
         return false;
