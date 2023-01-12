@@ -28,67 +28,6 @@ using namespace IGC;
 using IGCLLVM::getAlign;
 
 namespace {
-    class GenericAddressAnalysis : public FunctionPass {
-    public:
-        static char ID;
-
-        GenericAddressAnalysis()
-            : FunctionPass(ID)
-        {
-        }
-        ~GenericAddressAnalysis() = default;
-
-        virtual void getAnalysisUsage(AnalysisUsage& AU) const override
-        {
-            AU.setPreservesCFG();
-            AU.addRequired<MetaDataUtilsWrapper>();
-        }
-
-        virtual StringRef getPassName() const override
-        {
-            return "GenericAddressAnalysis";
-        }
-
-        virtual bool runOnFunction(Function& F) override;
-    };
-} // namespace
-
-// Register pass
-#define PASS_FLAG2 "igc-generic-address-analysis"
-#define PASS_DESCRIPTION2 "Finds when generic pointers are used"
-#define PASS_CFG_ONLY2 false
-#define PASS_ANALYSIS2 false
-IGC_INITIALIZE_PASS_BEGIN(GenericAddressAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
-IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASWrapperPass)
-IGC_INITIALIZE_PASS_END(GenericAddressAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
-
-char GenericAddressAnalysis::ID = 0;
-
-bool GenericAddressAnalysis::runOnFunction(Function& F)
-{
-    for (auto& BB : F.getBasicBlockList()) {
-        for (auto& Inst : BB.getInstList()) {
-            Type* Ty = Inst.getType();
-            if (auto AI = dyn_cast<AllocaInst>(&Inst))
-                Ty = AI->getAllocatedType();
-            else if (auto LI = dyn_cast<LoadInst>(&Inst))
-                Ty = LI->getPointerOperand()->getType();
-            else if (auto SI = dyn_cast<StoreInst>(&Inst))
-                Ty = SI->getPointerOperand()->getType();
-            else if (auto GEP = dyn_cast<GetElementPtrInst>(&Inst))
-                Ty = GEP->getPointerOperandType();
-            auto PT = dyn_cast<PointerType>(Ty);
-            if (PT && PT->getAddressSpace() == ADDRESS_SPACE_GENERIC) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-namespace {
     class GenericAddressDynamicResolution : public FunctionPass {
     public:
         static char ID;
@@ -521,10 +460,6 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
 }
 
 namespace IGC {
-    FunctionPass* createGenericAddressAnalysisPass()
-    {
-        return new GenericAddressAnalysis;
-    }
     FunctionPass* createGenericAddressDynamicResolutionPass()
     {
         return new GenericAddressDynamicResolution;

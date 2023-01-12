@@ -54,7 +54,6 @@ void initializeExtensionFuncsResolutionPass(llvm::PassRegistry&);
 void initializeErrorCheckPass(llvm::PassRegistry&);
 void initializePoisonFP64KernelsPass(llvm::PassRegistry&);
 void initializeReduceOptPassPass(llvm::PassRegistry&);
-void initializeGenericAddressAnalysisPass(llvm::PassRegistry&);
 void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry&);
 void initializeGenFDIVEmulationPass(llvm::PassRegistry&);
 void initializeGenIRLoweringPass(llvm::PassRegistry&);

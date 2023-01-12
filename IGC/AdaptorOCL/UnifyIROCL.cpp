@@ -491,7 +491,6 @@ static void CommonOCLBasedPasses(
     mpm.add(new ExtensionFuncsAnalysis());
     mpm.add(new ExtensionArgAnalysis());
     mpm.add(new DeviceEnqueueFuncsAnalysis());
-    mpm.add(createGenericAddressAnalysisPass());
 
     mpm.add(new BuiltinCallGraphAnalysis());
 
