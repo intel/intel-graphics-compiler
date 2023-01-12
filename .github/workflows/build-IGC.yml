@@ -26,7 +26,7 @@ jobs:
         id: get-latest-IGC-release-tag
       - name: caching downloaded OpenCL Clang # Downloading a new OpenCL Clang only after the new IGC is released
         id: cache-igc-release
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ./igc-official-release
           key: ${{ steps.get-latest-IGC-release-tag.outputs.tag }}
@@ -63,7 +63,7 @@ jobs:
             llvm_ver: 15
             experimental: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: cloning SPIRV-LLVM-Translator repository
         run: git clone --branch llvm_release_${{ matrix.llvm_ver }}0 https://github.com/KhronosGroup/SPIRV-LLVM-Translator
       - name: getting latest commit hash from SPIRV-LLVM-Translator repository
@@ -72,10 +72,10 @@ jobs:
         run: |
           SPIRV_TRANSLATOR_SHA_SHORT=$(git log -1 --pretty=format:"%h")
           echo "This is SPIRV-LLVM-Translator repository latest commit hash = ${SPIRV_TRANSLATOR_SHA_SHORT}"
-          echo "::set-output name=spirv_translator_sha_short::${SPIRV_TRANSLATOR_SHA_SHORT}"
+          echo "spirv_translator_sha_short=$SPIRV_TRANSLATOR_SHA_SHORT" >> $GITHUB_OUTPUT
       - name: caching SPIRV-LLVM-Translator deb files
         id: cache-spirv-llvm-translator
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ./build-SPIRV-LLVM-Translator
           key: ${{ steps.SPIRV-LLVM-Translator-hash.outputs.spirv_translator_sha_short }}-ubuntu${{ matrix.ubuntu_version }}-llvm${{ matrix.llvm_ver }}
@@ -127,7 +127,7 @@ jobs:
             compiler: gcc
             experimental: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
 #Get OpenCL Clang
       - uses: oprypin/find-latest-tag@v1
@@ -137,7 +137,7 @@ jobs:
         id: get-latest-IGC-release-tag
       - name: getting OpenCL Clang from cache from the previous job
         id: cache-igc-release
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ./igc-official-release
           key: ${{ steps.get-latest-IGC-release-tag.outputs.tag }}
@@ -153,40 +153,40 @@ jobs:
         run: |
           SPIRV_TRANSLATOR_SHA_SHORT=$(git log -1 --pretty=format:"%h")
           echo "This is SPIRV-LLVM-Translator hash = ${SPIRV_TRANSLATOR_SHA_SHORT}"
-          echo "::set-output name=spirv_translator_sha_short::${SPIRV_TRANSLATOR_SHA_SHORT}"
+          echo "spirv_translator_sha_short=$SPIRV_TRANSLATOR_SHA_SHORT" >> $GITHUB_OUTPUT
       - name: getting SPIRV-LLVM-Translator deb files from cache from the previous job
         id: cache-spirv-llvm-translator
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ./build-SPIRV-LLVM-Translator
           key: ${{ steps.SPIRV-LLVM-Translator-hash.outputs.spirv_translator_sha_short }}-ubuntu${{ matrix.ubuntu_version }}-llvm${{ matrix.llvm_ver }}
 
 #Build IGC
       - name:  Checkout IGC sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: workspace/igc
       - name: Checkout vc-intrinsics sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: intel/vc-intrinsics
           ref: master
           path: workspace/vc-intrinsics
       - name:  Checkout SPIRV-Headers sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: KhronosGroup/SPIRV-Headers
-          ref: master
+          ref: main
           path: workspace/SPIRV-Headers
       - name:  Checkout the SPIRV-Headers
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: KhronosGroup/SPIRV-Tools
-          ref: master
+          ref: main
           path: workspace/SPIRV-Tools
       - name: get short hash
         id: igc-current-short-Hash
-        run: echo "::set-output name=sha_short::${GITHUB_SHA::7}"
+        run: echo "sha_short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
       - name: run Docker
         run: |
           docker run --name=buildigc \
