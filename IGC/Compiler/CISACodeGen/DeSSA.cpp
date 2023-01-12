@@ -1166,6 +1166,69 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
                 }
             }
         }
+        if (InsertValueInst* IVI = dyn_cast<InsertValueInst>(I))
+        {
+            // Handle insertValue to struct.
+            //
+            // So far, those insertValue insts are internally generated.
+            // The struct's members are of non-aggregate types (simple types
+            // like integer/float or vector types, not array, not struct).
+            // They are used for argument passing of stack calls or likely
+            // for load/store instructions.
+            if (IVI->getType()->isStructTy() &&
+                isa<Constant>(IVI->getOperand(0)))
+            {
+                //  Similar to insertElement, consider the following as an
+                //  alias if all Vi, i=0, n-1 (except Vn) has a single use.
+                //     V0 = InsVal undef/const, S0, 0
+                //     V1 = InsVal V0, S1, 1
+                //     ...
+                //     Vn = InsVal Vn-1, Sn, n
+                //
+                //  As emit does not handle struct partial rewrite like the
+                //  the following:
+                //
+                //     W1 = InsVal Vn, T1, 1   <- rewrite field 1 of Vn
+                //
+                //  This should not happen for now as IGC does not generate
+                //  this (In future, variable reuses could generate this. If
+                //  so, emit should handle the partial rewrite like it does
+                //  for insElt).  For now, let dessa asserts if the partial
+                //  rewrite happens.
+                //
+                SmallVector<Value*, 16> AllIVIs;
+                InsertValueInst* Inst = IVI;
+                while (Inst && Inst->hasOneUse())
+                {
+                    AllIVIs.push_back(Inst);
+                    Inst = dyn_cast<InsertValueInst>(Inst->user_back());
+                }
+                if (Inst)
+                {
+                    // Make sure no InsVal as one of its users.
+                    for (auto UI = Inst->user_begin(), UE = Inst->user_end();
+                        UI != UE; ++UI)
+                    {
+                        Value* v = *UI;
+                        IGC_ASSERT_MESSAGE(!isa<InsertValueInst>(v),
+                            "ICE: unsupport insertValue to struct");
+                    }
+                }
+                int nelts = (int)AllIVIs.size();
+                if (nelts > 1)
+                {
+                    Value* aliasee = AllIVIs[0];
+                    AddAlias(aliasee);
+                    for (int i = 1; i < nelts; ++i) {
+                        Value* V = AllIVIs[i];
+                        AliasMap[V] = aliasee;
+
+                        // union liveness info
+                        LV->mergeUseFrom(aliasee, V);
+                    }
+                }
+            }
+        }
         else if (CastInst * CastI = dyn_cast<CastInst>(I))
         {
             Value* D = CastI;

@@ -1904,6 +1904,34 @@ auto sizeToSIMDMode = [](uint32_t size)
     }
 };
 
+// Struct layout in GRF
+//   Struct elements are laid out in SOA, ie, two consecutive elements
+//   of the struct are strided and not consecutive in GRF, just like
+//   the layout for vector value.
+//
+//   For SIMD16 example, given the following with natural alignment,
+//   'a' will take 2 bytes, 'b' 4 bytes, 'c' 4 bytes. The total is
+//   160 bytes of GRF.
+//      struct {
+//        i8    a;
+//        i16   b;
+//        i32   c;
+//      } V;
+//
+//    0 1 2 3 4 ...        29 30 32 31    (GRF bytes)
+//    ================================
+//    a   a   a            a     a        // 2 bytes for a
+//    b       b            b              // 4 bytes for b
+//    b       b            b
+//    c       c            c              // 4 bytes for c
+//    c       c            c
+//
+//  Besides, the following rules apply for now:
+//    1.  types of struct elements cannot be aggregate (no array, not struct);
+//    2.  value of vector type are laid out like a normal vector type
+//        (Can also be viewed as spliting vector into consecutive scalar
+//         elements. 4xi32 -> {i32, i32, i32, i32})
+//
 CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
 {
     IGC_ASSERT(v->getType()->isStructTy());
@@ -1922,25 +1950,44 @@ CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
 
     if (isa<InsertValueInst>(v))
     {
-        // Walk up all the `insertvalue` instructions until we get to the constant base struct.
-        // All `insertvalue` instructions that operate on the same struct should be mapped to the same CVar,
-        // so just use the first instruction to do all the mapping.
-        Value* baseV = v;
-        InsertValueInst* FirstInsertValueInst = nullptr;
-        while (InsertValueInst* II = dyn_cast<InsertValueInst>(baseV))
+        if (IGC_IS_FLAG_ENABLED(EnableDeSSA) && m_deSSA)
         {
-            baseV = II->getOperand(0);
-            FirstInsertValueInst = II;
-        }
-        if (FirstInsertValueInst)
-        {
-            // Check if it's already created
-            auto it = symbolMapping.find(FirstInsertValueInst);
+            // As struct is represented as byte (a sequence of bytes) in cvar,
+            // createAliasIfNeeded() isn't needed.
+            e_alignment pAlign = EALIGN_GRF;
+            Value* rVal = m_deSSA->getRootValue(v, &pAlign);
+            v = rVal ? rVal : v;
+            auto it = symbolMapping.find(v);
             if (it != symbolMapping.end())
             {
                 return it->second;
             }
-            v = FirstInsertValueInst;
+        }
+        else
+        {
+            // Note: liveness is not merged when coalescing insertValue's operand 0 with its dst.
+            //       This would have incorrect liveness info.
+            //
+            // Walk up all the `insertvalue` instructions until we get to the constant base struct.
+            // All `insertvalue` instructions that operate on the same struct should be mapped to the same CVar,
+            // so just use the first instruction to do all the mapping.
+            Value* baseV = v;
+            InsertValueInst* FirstInsertValueInst = nullptr;
+            while (InsertValueInst* II = dyn_cast<InsertValueInst>(baseV))
+            {
+                baseV = II->getOperand(0);
+                FirstInsertValueInst = II;
+            }
+            if (FirstInsertValueInst)
+            {
+                // Check if it's already created
+                auto it = symbolMapping.find(FirstInsertValueInst);
+                if (it != symbolMapping.end())
+                {
+                    return it->second;
+                }
+                v = FirstInsertValueInst;
+            }
         }
     }
     else if (isa<CallInst>(v) || isa<Argument>(v))
