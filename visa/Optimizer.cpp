@@ -3911,9 +3911,6 @@ void Optimizer::localCopyPropagation() {
 void Optimizer::localInstCombine() { InstCombine(builder, fg); }
 
 void Optimizer::cselPeepHoleOpt() {
-  if (!builder.hasCondModForTernary()) {
-    return;
-  }
   G4_SrcRegRegion *cmpSrc0 = NULL;
   G4_Operand *cmpSrc1 = NULL;
   for (G4_BB *bb : fg) {
@@ -4010,13 +4007,14 @@ void Optimizer::cselPeepHoleOpt() {
         G4_Operand *selSrc0 = useInst->getSrc(0);
         G4_Operand *selSrc1 = useInst->getSrc(1);
 
-        if (useInst->opcode() != G4_sel || selSrc0->isImm() ||
-            selSrc1->isImm() || selSrc0->getType() != Type_F ||
-            selSrc1->getType() != Type_F || dstUse->getType() != Type_F ||
-            // 3-src restriction
-            !builder.tryToAlignOperand(dstUse, 16) ||
-            !builder.tryToAlignOperand(selSrc0, 16) ||
-            !builder.tryToAlignOperand(selSrc1, 16)) {
+        if (useInst->opcode() != G4_sel || selSrc1->isImm() ||
+            selSrc0->getType() != Type_F || selSrc1->getType() != Type_F ||
+            dstUse->getType() != Type_F ||
+            // 3-src restriction (for legacy plarforms)
+            (builder.getPlatformGeneration() < PlatformGen::XE &&
+             (!builder.tryToAlignOperand(dstUse, 16) ||
+              !builder.tryToAlignOperand(selSrc0, 16) ||
+              !builder.tryToAlignOperand(selSrc1, 16)))) {
           canOpt = false;
           break;
         }
@@ -4102,6 +4100,16 @@ void Optimizer::cselPeepHoleOpt() {
              /*empty*/) {
           G4_INST *useInst = (*iter).first;
           G4_CondMod *mod = inst->getCondMod();
+
+          // before optimizing into csel, normalize sel's predicate state in
+          // case it is minus.
+          if (G4_PredState::PredState_Minus ==
+              useInst->getPredicate()->getState()) {
+            useInst->swapSrc(0, 1);
+            useInst->swapDefUse();
+            useInst->getPredicate()->setState(G4_PredState::PredState_Plus);
+          }
+
           useInst->setOpcode(G4_csel);
           useInst->setSrc(builder.duplicateOperand(inst->getSrc(0)), 2);
           useInst->setCondMod(builder.duplicateOperand(mod));
