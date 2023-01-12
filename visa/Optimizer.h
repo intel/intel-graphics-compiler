@@ -157,7 +157,7 @@ class Optimizer {
     }
   }
   void localSchedule() {
-    LocalScheduler lSched(kernel.fg);
+    LocalScheduler lSched(kernel.fg, mem);
     lSched.localScheduling();
   }
 

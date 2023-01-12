@@ -661,12 +661,10 @@ void VISAKernelImpl::dumpPerfStatsInJson(const std::string &filename) {
 }
 
 void VISAKernelImpl::recordFinalizerInfo() {
-  auto jitInfo = m_builder->getJitInfo();
-  if (jitInfo) {
-    jitInfo->stats.numAsmCountUnweighted = m_kernel->getAsmCount();
-    jitInfo->stats.numGRFTotal = m_kernel->getNumRegTotal();
-    jitInfo->stats.numThreads = m_kernel->getNumThreads();
-    jitInfo->BBNum = static_cast<uint32_t>(m_kernel->fg.size());
+  if (m_builder->getJitInfo()) {
+    m_builder->getJitInfo()->stats.numAsmCountUnweighted = m_kernel->getAsmCount();
+    m_builder->getJitInfo()->stats.numGRFTotal = m_kernel->getNumRegTotal();
+    m_builder->getJitInfo()->stats.numThreads = m_kernel->getNumThreads();
   }
 }
 

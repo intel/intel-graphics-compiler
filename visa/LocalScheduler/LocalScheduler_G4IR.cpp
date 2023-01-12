@@ -17,21 +17,23 @@ SPDX-License-Identifier: MIT
 #include <functional>
 #include <queue>
 #include <sstream>
-#include <vector>
 
 using namespace vISA;
 
 /* Entry to the local scheduling. */
 void LocalScheduler::localScheduling() {
   // This is controlled by options for debugging
-  if (!fg.getKernel()->isLocalSheduleable())
+  if (!fg.getKernel()->isLocalSheduleable()) {
     return;
+  }
 
-  VISA_DEBUG_VERBOSE(std::cout << "[Scheduling]: Starting...");
+  DEBUG_VERBOSE("[Scheduling]: Starting...");
   BB_LIST_ITER ib(fg.begin()), bend(fg.end());
   vISA_ASSERT(ib != bend, ERROR_SCHEDULER);
 
-  std::vector<VISA_BB_INFO> bbInfo(fg.size());
+  VISA_BB_INFO *bbInfo =
+      (VISA_BB_INFO *)mem.alloc(fg.size() * sizeof(VISA_BB_INFO));
+  memset(bbInfo, 0, fg.size() * sizeof(VISA_BB_INFO));
   int i = 0;
 
   const Options *m_options = fg.builder->getOptions();
@@ -116,26 +118,9 @@ void LocalScheduler::localScheduling() {
 
     i++;
   }
-
-  // Sum up the cycles for each BB.
-  unsigned sendStallCycle = 0;
-  unsigned staticCycle = 0;
-  unsigned loopNestedStallCycle = 0;
-  unsigned loopNestedCycle = 0;
-  for (auto &bbStat : bbInfo) {
-    sendStallCycle += bbStat.sendStallCycle;
-    staticCycle += bbStat.staticCycle;
-    // Expect that a loop runs 16 iterations.
-    auto nestingfactor = (bbStat.loopNestLevel * 4);
-    loopNestedStallCycle += (bbStat.sendStallCycle << nestingfactor);
-    loopNestedCycle += (bbStat.staticCycle << nestingfactor);
-  }
-
   FINALIZER_INFO *jitInfo = fg.builder->getJitInfo();
-  jitInfo->stats.sendStallCycle = sendStallCycle;
-  jitInfo->stats.staticCycle = staticCycle;
-  jitInfo->stats.loopNestedStallCycle = loopNestedStallCycle;
-  jitInfo->stats.loopNestedCycle = loopNestedCycle;
+  jitInfo->BBInfo = bbInfo;
+  jitInfo->BBNum = i;
   jitInfo->stats.numCycles = totalCycles;
 }
 
