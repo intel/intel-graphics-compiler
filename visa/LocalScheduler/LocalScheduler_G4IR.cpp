@@ -494,6 +494,12 @@ void DDD::getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
     case AREG_F1:
       startingBucket = FLAG1_BUCKET;
       break;
+    case AREG_F2:
+      startingBucket = FLAG2_BUCKET;
+      break;
+    case AREG_F3:
+      startingBucket = FLAG3_BUCKET;
+      break;
     case AREG_ACC0:
     case AREG_ACC1:
       startingBucket = ACC_BUCKET;
@@ -1318,7 +1324,9 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
   ACC_BUCKET = GRF_BUCKET + totalGRFNum;
   FLAG0_BUCKET = ACC_BUCKET + totalACCNum;
   FLAG1_BUCKET = FLAG0_BUCKET + 1;
-  A0_BUCKET = FLAG1_BUCKET + 1;
+  FLAG2_BUCKET = FLAG1_BUCKET + 1;
+  FLAG3_BUCKET = FLAG2_BUCKET + 1;
+  A0_BUCKET = FLAG3_BUCKET + 1;
   SEND_BUCKET = A0_BUCKET + 1;
   SCRATCH_SEND_BUCKET = SEND_BUCKET + 1;
   OTHER_ARF_BUCKET = SCRATCH_SEND_BUCKET + 1;
@@ -1494,7 +1502,10 @@ DDD::DDD(G4_BB *bb, const LatencyTable &lt, G4_Kernel *k, PointsToAnalysis &p)
             hasOverlap = (dep != NODEP);
             curKillsBucket = false;
             curKillsLive = false; // Disable kill
-          } else if (curBucket == FLAG0_BUCKET || curBucket == FLAG1_BUCKET) {
+          } else if (curBucket == FLAG0_BUCKET ||
+                     curBucket == FLAG1_BUCKET ||
+                     curBucket == FLAG2_BUCKET ||
+                     curBucket == FLAG3_BUCKET) {
             dep = getDepForOpnd(curOpnd, liveOpnd);
             curKillsBucket = false;
           } else if (curBucket == OTHER_ARF_BUCKET) {
