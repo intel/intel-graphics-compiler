@@ -4696,10 +4696,16 @@ static void convertAnnotaionsToAttributes(llvm::Function *F, const std::vector<s
         }
         else if (annotation.rfind("num-thread-per-eu", 0) == 0)
         {
-            if (const char* op = strstr(annotation.c_str(), "num-thread-per-eu"))
-            {
-                F->addFnAttr("num-thread-per-eu", op + strnlen("num-thread-per-eu ", 23));
-            }
+            std::string numThreadPerEU = annotation;
+            numThreadPerEU.erase(0, sizeof("num-thread-per-eu") - 1);
+
+            // Remove whitespaces - if they are present
+            numThreadPerEU.erase(
+                std::remove_if(numThreadPerEU.begin(), numThreadPerEU.end(),
+                    ::isspace),
+                numThreadPerEU.end());
+
+            F->addFnAttr("num-thread-per-eu", numThreadPerEU);
         }
     }
 }
