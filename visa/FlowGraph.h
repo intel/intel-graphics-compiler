@@ -198,11 +198,6 @@ class FlowGraph {
       isStackCallFunc; // indicates the function itself is a STACK_CALL function
   G4_Kernel *pKernel;  // back pointer to the kernel object
 
-  // map each BB to its local RA GRF usage summary, populated in local RA
-  std::map<G4_BB *, PhyRegSummary *> bbLocalRAMap;
-  // vector of summaries created for each BB, needed for deallocation later
-  std::vector<PhyRegSummary *> localRASummaries;
-
   // list of all BBs ever created
   // This list only grows and is freed when the FlowGraph is destroyed
   std::vector<G4_BB *> BBAllocList;
@@ -541,18 +536,6 @@ public:
   void markScope();
 
   void addSIMDEdges();
-
-  void addBBLRASummary(G4_BB *bb, PhyRegSummary *summary) {
-    bbLocalRAMap.insert(std::make_pair(bb, summary));
-    localRASummaries.push_back(summary);
-  }
-
-  void clearBBLRASummaries() { bbLocalRAMap.clear(); }
-
-  PhyRegSummary *getBBLRASummary(G4_BB *bb) const {
-    auto &&iter = bbLocalRAMap.find(bb);
-    return iter != bbLocalRAMap.end() ? iter->second : nullptr;
-  }
 
   uint32_t getNumCalls() const {
     uint32_t numCalls = 0;

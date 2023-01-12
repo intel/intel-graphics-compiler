@@ -1153,98 +1153,82 @@ BankAlign GlobalRA::getBankAlign(const G4_Declare *dcl) const {
 }
 
 void GlobalRA::emitFGWithLiveness(const LivenessAnalysis &liveAnalysis) const {
-#ifdef DEBUG_VERBOSE_ON
-  for (G4_BB *bb : kernel.fg) {
-    DEBUG_VERBOSE(
-        "\n"
-        << "-----------------------------------------------------------------");
-    DEBUG_VERBOSE("\n"
-                  << "BB" << bb->getId() << ":");
-    DEBUG_VERBOSE("\n"
-                  << "Preds: ");
-    for (const G4_BB *pred : bb->Preds) {
-      DEBUG_VERBOSE("BB" << pred->getId() << ", ");
-    }
+  VISA_DEBUG_VERBOSE({
+    for (G4_BB *bb : kernel.fg) {
+      std::cout << "\n"
+                << "-------------------------------------------------------"
+                   "----------";
+      std::cout << "\nBB" << bb->getId() << ":";
+      std::cout << "\nPreds: ";
+      for (const G4_BB *pred : bb->Preds)
+        std::cout << "BB" << pred->getId() << ", ";
+      std::cout << "\nSuccs: ";
+      for (const G4_BB *succ : bb->Succs)
+        std::cout << "BB" << succ->getId() << ", ";
 
-    DEBUG_VERBOSE("\n"
-                  << "Succs: ");
-    for (const G4_BB *succ : bb->Succs) {
-      DEBUG_VERBOSE("BB" << succ->getId() << ", ");
-    }
-
-    if (kernel.getOption(vISA_LocalRA)) {
-      if (auto summary = kernel.fg.getBBLRASummary(bb)) {
-        DEBUG_VERBOSE("\n"
-                      << "Local RA: ");
-        {
+      if (kernel.getOption(vISA_LocalRA)) {
+        if (auto summary = getBBLRASummary(bb)) {
+          std::cout << "\nLocal RA: ";
           for (unsigned i = 0; i < kernel.getNumRegTotal(); i++) {
-            if (summary->isGRFBusy(i)) {
-              DEBUG_VERBOSE("r" << i << ", ");
-            }
+            if (summary->isGRFBusy(i))
+              std::cout << "r" << i << ", ";
           }
         }
       }
-    }
 
-    DEBUG_VERBOSE("\n"
-                  << "Gen: ");
-    for (const G4_Declare *dcl : kernel.Declares) {
-      if (dcl->getAliasDeclare() != NULL)
-        continue;
+      std::cout < "\nGen: ";
+      for (const G4_Declare *dcl : kernel.Declares) {
+        if (dcl->getAliasDeclare())
+          continue;
 
-      if (dcl->getRegVar()->isRegAllocPartaker()) {
-        if (liveAnalysis.use_gen[bb->getId()].isSet(
-                dcl->getRegVar()->getId())) {
-          DEBUG_VERBOSE(dcl->getName() << ", ");
+        if (dcl->getRegVar()->isRegAllocPartaker()) {
+          if (liveAnalysis.use_gen[bb->getId()].isSet(
+                  dcl->getRegVar()->getId())) {
+            std::cout << dcl->getName() << ", ";
+          }
         }
       }
-    }
 
-    DEBUG_VERBOSE("\n"
-                  << "Kill: ");
-    for (const G4_Declare *dcl : kernel.Declares) {
-      if (dcl->getAliasDeclare() != NULL)
-        continue;
+      std::cout << "\nKill: ";
+      for (const G4_Declare *dcl : kernel.Declares) {
+        if (dcl->getAliasDeclare())
+          continue;
 
-      if (dcl->getRegVar()->isRegAllocPartaker()) {
-        if (liveAnalysis.use_kill[bb->getId()].isSet(
-                dcl->getRegVar()->getId())) {
-          DEBUG_VERBOSE(dcl->getName() << ", ");
+        if (dcl->getRegVar()->isRegAllocPartaker()) {
+          if (liveAnalysis.use_kill[bb->getId()].isSet(
+                  dcl->getRegVar()->getId())) {
+            std::cout << dcl->getName() << ", ";
+          }
         }
       }
-    }
 
-    DEBUG_VERBOSE("\n"
-                  << "Live-in: ");
-    for (const G4_Declare *dcl : kernel.Declares) {
-      if (dcl->getAliasDeclare() != NULL)
-        continue;
+      std::cout << "\nLive-in: ";
+      for (const G4_Declare *dcl : kernel.Declares) {
+        if (dcl->getAliasDeclare())
+          continue;
 
-      if (dcl->getRegVar()->isRegAllocPartaker()) {
-        if (liveAnalysis.isLiveAtEntry(bb, dcl->getRegVar()->getId())) {
-          DEBUG_VERBOSE(dcl->getName() << ", ");
+        if (dcl->getRegVar()->isRegAllocPartaker()) {
+          if (liveAnalysis.isLiveAtEntry(bb, dcl->getRegVar()->getId())) {
+            std::cout << dcl->getName() << ", ";
+          }
         }
       }
-    }
 
-    DEBUG_VERBOSE("\n"
-                  << "Live-out: ");
-    for (const G4_Declare *dcl : kernel.Declares) {
-      if (dcl->getAliasDeclare() != NULL)
-        continue;
+      std::cout << "\nLive-out: ";
+      for (const G4_Declare *dcl : kernel.Declares) {
+        if (dcl->getAliasDeclare())
+          continue;
 
-      if (dcl->getRegVar()->isRegAllocPartaker()) {
-        if (liveAnalysis.isLiveAtExit(bb, dcl->getRegVar()->getId())) {
-          DEBUG_VERBOSE(dcl->getName() << ", ");
+        if (dcl->getRegVar()->isRegAllocPartaker()) {
+          if (liveAnalysis.isLiveAtExit(bb, dcl->getRegVar()->getId())) {
+            std::cout << dcl->getName() << ", ";
+          }
         }
       }
+      std::cout << "\n";
+      bb->emit(COUT_ERROR);
     }
-
-    DEBUG_VERBOSE("\n");
-
-    bb->emit(COUT_ERROR);
-  }
-#endif
+  });
 }
 
 void GlobalRA::reportSpillInfo(const LivenessAnalysis &liveness,
@@ -4478,7 +4462,7 @@ void Augmentation::buildSummaryForCallees() {
     }
     PhyRegSummary funcSummary(kernel.fg.builder, totalGRFNum);
     for (auto &&bb : func->getBBList()) {
-      if (auto summary = kernel.fg.getBBLRASummary(bb)) {
+      if (auto summary = gra.getBBLRASummary(bb)) {
         for (int i = 0; i < totalGRFNum; i++) {
           if (summary->isGRFBusy(i)) {
             funcSummary.setGRFBusy(i);
@@ -4724,7 +4708,7 @@ void Augmentation::augmentIntfGraph() {
 }
 
 void Interference::buildInterferenceWithLocalRA(G4_BB *bb) {
-  auto LRASummary = kernel.fg.getBBLRASummary(bb);
+  auto LRASummary = gra.getBBLRASummary(bb);
   if (LRASummary == nullptr) {
     return;
   }
@@ -11337,7 +11321,7 @@ void GlobalRA::insertPhyRegDecls() {
   GRFDclsForHRA.resize(numGRF);
 
   for (auto curBB : kernel.fg) {
-    if (auto summary = kernel.fg.getBBLRASummary(curBB)) {
+    if (auto summary = getBBLRASummary(curBB)) {
       for (int i = 0; i < numGRF; i++) {
         if (summary->isGRFBusy(i)) {
           grfUsed[i] = true;

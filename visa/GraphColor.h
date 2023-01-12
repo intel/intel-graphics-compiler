@@ -16,6 +16,8 @@ SPDX-License-Identifier: MIT
 #include "SpillManagerGMRF.h"
 #include "VarSplit.h"
 
+#include "llvm/Support/Allocator.h"
+
 #include <limits>
 #include <list>
 #include <map>
@@ -806,6 +808,10 @@ private:
   // store instructions that shouldnt be rematerialized.
   std::unordered_set<G4_INST *> dontRemat;
 
+  // map each BB to its local RA GRF usage summary, populated in local RA.
+  std::map<G4_BB *, PhyRegSummary *> bbLocalRAMap;
+  llvm::SpecificBumpPtrAllocator<PhyRegSummary> PRSAlloc;
+
   RAVarInfo &allocVar(const G4_Declare *dcl) {
     auto dclid = dcl->getDeclId();
     if (dclid >= vars.size())
@@ -882,7 +888,6 @@ public:
 
   std::unordered_map<G4_Declare *, SplitResults> splitResults;
 
-public:
   G4_Kernel &kernel;
   IR_Builder &builder;
   PhyRegPool &regPool;
@@ -1335,6 +1340,22 @@ public:
 
   void setNumReservedGRFsFailSafe(unsigned int num) {
     numReservedGRFsFailSafe = num;
+  }
+
+  PhyRegSummary *createPhyRegSummary() {
+    auto PRSMem = PRSAlloc.Allocate();
+    return new (PRSMem) PhyRegSummary(&builder, kernel.getNumRegTotal());
+  }
+
+  void addBBLRASummary(G4_BB *bb, PhyRegSummary *summary) {
+    bbLocalRAMap.insert(std::make_pair(bb, summary));
+  }
+
+  void clearBBLRASummaries() { bbLocalRAMap.clear(); }
+
+  PhyRegSummary *getBBLRASummary(G4_BB *bb) const {
+    auto &&iter = bbLocalRAMap.find(bb);
+    return iter != bbLocalRAMap.end() ? iter->second : nullptr;
   }
 };
 

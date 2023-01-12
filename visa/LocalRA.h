@@ -52,7 +52,6 @@ private:
   unsigned int numRegLRA = 0;
   unsigned int globalLRSize = 0;
   bool doSplitLLR = false;
-  Mem_Manager &mem;
   std::list<InputLiveRange> inputIntervals;
   BankConflictPass &bc;
   GlobalRA &gra;
@@ -480,7 +479,6 @@ class LinearScan {
 private:
   GlobalRA &gra;
   IR_Builder &builder;
-  Mem_Manager &mem;
   PhyRegsManager &pregManager;
   PhyRegsLocalRA &initPregs;
   std::vector<LocalLiveRange *> &liveIntervals;
@@ -521,7 +519,7 @@ public:
   LinearScan(GlobalRA &g, std::vector<LocalLiveRange *> &localLiveIntervals,
              std::list<InputLiveRange> &inputLivelIntervals,
              PhyRegsManager &pregMgr, PhyRegsLocalRA &pregs,
-             Mem_Manager &memmgr, PhyRegSummary *s, unsigned int numReg,
+             PhyRegSummary *s, unsigned int numReg,
              unsigned int glrs, bool roundRobin, bool bankConflict,
              bool internalConflict, bool splitLLR, unsigned int simdS);
 
@@ -531,20 +529,16 @@ public:
 class PhyRegSummary {
 private:
   const IR_Builder *builder = nullptr;
-  uint32_t totalNumGRF = 0;
   std::vector<bool> GRFUsage;
 
 public:
   PhyRegSummary() {}
 
-  PhyRegSummary(const IR_Builder *irb, uint32_t numGRF)
-      : builder(irb), totalNumGRF(numGRF) {
-    GRFUsage.resize(totalNumGRF, false);
+  PhyRegSummary(const IR_Builder *irb, uint32_t numGRF) : builder(irb) {
+    GRFUsage.resize(numGRF, false);
   }
 
-  uint32_t getNumGRF() const { return totalNumGRF; }
-
-  void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
+  uint32_t getNumGRF() const { return GRFUsage.size(); }
 
   void markPhyRegs(G4_VarBase *pr, unsigned int words);
 

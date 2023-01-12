@@ -1917,8 +1917,6 @@ void Optimizer::reRAPostSchedule() {
     }
   }
 
-  kernel.fg.clearBBLRASummaries();
-
   gtpin->setRAPass(gtPinData::RAPass::ReRAPass);
 
   gtpin->removeUnmarkedInsts();

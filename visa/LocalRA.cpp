@@ -31,7 +31,7 @@ void getForbiddenGRFs(std::vector<unsigned int> &regNum, G4_Kernel &kernel,
 void getCallerSaveGRF(std::vector<unsigned int> &regNum, G4_Kernel *kernel);
 
 LocalRA::LocalRA(BankConflictPass &b, GlobalRA &g)
-    : kernel(g.kernel), builder(g.builder), mem(g.builder.mem), bc(b), gra(g) {}
+    : kernel(g.kernel), builder(g.builder), bc(b), gra(g) {}
 
 BankAlign LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl) {
   // FIXME: this code is rather suspicious (we return even alignment
@@ -297,45 +297,39 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR) {
   PhyRegsLocalRA localPregs = *pregs;
 
   // Iterate over each BB and perform linear scan
-#ifdef DEBUG_VERBOSE_ON
-  localPregs.printBusyRegs();
-  printAddressTakenDecls();
-  printLocalRACandidates();
-#endif
+  VISA_DEBUG_VERBOSE({
+    localPregs.printBusyRegs();
+    printAddressTakenDecls();
+    printLocalRACandidates();
+  });
 
   if (kernel.fg.funcInfoTable.empty() && !hasBackEdge()) {
     calculateInputIntervals();
   }
 
-#ifdef DEBUG_VERBOSE_ON
-  printInputLiveIntervals();
-#endif
-
-  int totalGRFNum = kernel.getNumRegTotal();
+  VISA_DEBUG_VERBOSE(printInputLiveIntervals());
   for (auto curBB : kernel.fg) {
     PhyRegsManager pregManager(builder, localPregs, doBCR);
     std::vector<LocalLiveRange *> liveIntervals;
 
-    PhyRegSummary *summary = new (mem) PhyRegSummary(&builder, totalGRFNum);
+    PhyRegSummary *summary = gra.createPhyRegSummary();
 
     calculateLiveIntervals(curBB, liveIntervals);
 
-#ifdef DEBUG_VERBOSE_ON
-    printLocalLiveIntervals(curBB, liveIntervals);
-#endif
+    VISA_DEBUG_VERBOSE(printLocalLiveIntervals(curBB, liveIntervals));
 
     LinearScan ra(gra, liveIntervals, inputIntervals, pregManager, localPregs,
-                  mem, summary, numRegLRA, globalLRSize, doRoundRobin, doBCR,
+                  summary, numRegLRA, globalLRSize, doRoundRobin, doBCR,
                   highInternalConflict, doSplitLLR, kernel.getSimdSize());
     ra.run(curBB, builder, LLRUseMap);
 
-#ifdef DEBUG_VERBOSE_ON
-    COUT_ERROR << "BB" << curBB->getId() << "\n";
-    summary->printBusyRegs();
-#endif
+    VISA_DEBUG_VERBOSE({
+      std::cout << "BB" << curBB->getId() << "\n";
+      summary->printBusyRegs();
+    });
 
     // Tag summary of physical registers used by local RA
-    kernel.fg.addBBLRASummary(curBB, summary);
+    gra.addBBLRASummary(curBB, summary);
 
     if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo)) {
       updateDebugInfo(kernel, liveIntervals);
@@ -344,11 +338,9 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR) {
 
   if (unassignedRangeFound() == false) {
     needGlobalRA = false;
-#ifdef DEBUG_VERBOSE_ON
-    DEBUG_VERBOSE(
-        "Skipping global RA because local RA allocated all live-ranges."
-        << "\n");
-#endif
+    VISA_DEBUG_VERBOSE(
+        std::cout
+        << "Skipping global RA because local RA allocated all live-ranges.\n");
   }
 
   if (builder.getOption(vISA_OptReport)) {
@@ -756,8 +748,8 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign,
     }
 
     for (auto bb : kernel.fg) {
-      PhyRegSummary *summary = kernel.fg.getBBLRASummary(bb);
-      if (summary != NULL) {
+      PhyRegSummary *summary = gra.getBBLRASummary(bb);
+      if (summary) {
         for (unsigned int i = 0; i < numRegLRA; i++) {
           if (summary->isGRFBusy(i)) {
             phyRegMgr.getAvailableRegs()->setGRFBusy(i, 1);
@@ -1039,7 +1031,7 @@ void LocalRA::undoLocalRAAssignments(bool clearInterval) {
   }
 
   // Delete summary information stored with each basic block
-  kernel.fg.clearBBLRASummaries();
+  gra.clearBBLRASummaries();
 }
 
 LocalLiveRange *GlobalRA::GetOrCreateLocalLiveRange(G4_Declare *topdcl) {
@@ -2221,13 +2213,12 @@ LinearScan::LinearScan(GlobalRA &g,
                        std::vector<LocalLiveRange *> &localLiveIntervals,
                        std::list<InputLiveRange> &inputLivelIntervals,
                        PhyRegsManager &pregMgr, PhyRegsLocalRA &pregs,
-                       Mem_Manager &memmgr, PhyRegSummary *s,
-                       unsigned int numReg, unsigned int glrs, bool roundRobin,
-                       bool bankConflict, bool internalConflict, bool splitLLR,
-                       unsigned int simdS)
-    : gra(g), builder(g.builder), mem(memmgr), pregManager(pregMgr),
-      initPregs(pregs), liveIntervals(localLiveIntervals),
-      inputIntervals(inputLivelIntervals), summary(s),
+                       PhyRegSummary *s, unsigned int numReg, unsigned int glrs,
+                       bool roundRobin, bool bankConflict,
+                       bool internalConflict, bool splitLLR, unsigned int simdS)
+    : gra(g), builder(g.builder), pregManager(pregMgr), initPregs(pregs),
+      liveIntervals(localLiveIntervals), inputIntervals(inputLivelIntervals),
+      summary(s),
       pregs(g.kernel.getNumRegTotal() * g.kernel.numEltPerGRF<Type_UW>(),
             false),
       simdSize(simdS), globalLRSize(glrs), numRegLRA(numReg),
@@ -3070,14 +3061,12 @@ void PhyRegSummary::markPhyRegs(G4_VarBase *pr, unsigned int size) {
 }
 
 void PhyRegSummary::printBusyRegs() {
-  DEBUG_VERBOSE("GRFs used: ");
-
-  for (int i = 0; i < (int)totalNumGRF; i++) {
-    if (isGRFBusy(i) == true) {
-      DEBUG_VERBOSE("r" << i << ", ");
+  VISA_DEBUG_VERBOSE({
+    std::cout << "GRFs used: ";
+    for (int i = 0, size = static_cast<int>(GRFUsage.size()); i < size; i++) {
+      if (isGRFBusy(i))
+        std::cout << "r" << i << ", ";
     }
-  }
-
-  DEBUG_VERBOSE("\n"
-                << "\n");
+    std::cout << "\n\n";
+  });
 }

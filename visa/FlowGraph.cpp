@@ -4535,9 +4535,6 @@ FlowGraph::~FlowGraph() {
   if (kernelInfo) {
     kernelInfo->~FuncInfo();
   }
-  for (auto summary : localRASummaries) {
-    summary->~PhyRegSummary();
-  }
 }
 
 RelocationEntry &
