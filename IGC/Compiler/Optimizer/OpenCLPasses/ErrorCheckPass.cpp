@@ -104,6 +104,13 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
 {
     auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
+    // This is the condition that double emulation is used.
+    if ((IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
+        (ctx->m_DriverInfo.NeedFP64(ctx->platform.getPlatformInfo().eProductFamily) && ctx->platform.hasNoFP64Inst())))
+    {
+        ctx->m_hasDPEmu = true;
+    }
+
     bool poisonFP64KernelsEnabled = false;
     if (ctx->type == ShaderType::OPENCL_SHADER)
     {
@@ -111,23 +118,18 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
         poisonFP64KernelsEnabled = OCLContext->m_InternalOptions.EnableUnsupportedFP64Poisoning;
     }
 
-    if (!ctx->m_DriverInfo.NeedFP64(ctx->platform.getPlatformInfo().eProductFamily) && ctx->platform.hasNoFP64Inst()
-        && IGC_IS_FLAG_DISABLED(ForceDPEmulation))
-    {
-        // check that input does not use double
-        // For testing purpose, this check is skipped if ForceDPEmulation is on.
-        const bool usesDouble = isFP64Operation(&I);
-        if (!usesDouble)
-            return;
+    // check that input does not use double
+    const bool usesDouble = isFP64Operation(&I);
+    if (!usesDouble)
+        return;
 
-        if (!poisonFP64KernelsEnabled) {
-            ctx->EmitError("Double type is not supported on this platform.", &I);
-            m_hasError = true;
-            return;
-        }
-        Function *F = I.getParent()->getParent();
-        F->addFnAttr("uses-fp64-math");
+    if (!poisonFP64KernelsEnabled && !ctx->m_hasDPEmu) {
+        ctx->EmitError("Double type is not supported on this platform.", &I);
+        m_hasError = true;
+        return;
     }
+    Function *F = I.getParent()->getParent();
+    F->addFnAttr("uses-fp64-math");
 }
 
 void ErrorCheck::visitCallInst(CallInst& CI)
