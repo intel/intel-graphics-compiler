@@ -125,12 +125,14 @@ static TrivialUniformity mergeUnifromity(TrivialUniformity a, TrivialUniformity 
 /* Allow only simple conversions. In case of other functions user should
  * rewrite the kernel. */
 static const char* KnownPrefixes[] = {
-    "__builtin_spirv_OpSConvert",
-    "__builtin_spirv_OpUConvert",
+#if defined(IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR)
     "__spirv_SConvert",
     "__spirv_UConvert",
+#else
+    "__builtin_spirv_OpSConvert",
+    "__builtin_spirv_OpUConvert",
+#endif
 };
-
 static bool isKnownUniformLibraryFunction(const Function* F) {
     if (F == nullptr) {
         return false;
