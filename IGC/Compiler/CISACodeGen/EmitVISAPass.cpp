@@ -8588,6 +8588,10 @@ void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast
             m_encoder->Push();
 
             // Add tag to high part
+
+            // The initial address could be in a canonical form, that means bit 47 is replicated
+            // to the upper bits. To set a tag, bits [61:63] must get zeroed before setting a tag with OR operation.
+            m_encoder->And(srcHigh, srcHigh, m_currShader->ImmToVariable(0x1fffffff, ISA_TYPE_UD));
             m_encoder->Or(srcHigh, srcHigh, m_currShader->ImmToVariable(tag << 29, ISA_TYPE_UD));
             m_encoder->Push();
 
@@ -8610,6 +8614,9 @@ void EmitPass::emitAddrSpaceToGenericCast(llvm::AddrSpaceCastInst* addrSpaceCast
             numLanes(m_currShader->m_SIMDSize),
             ISA_TYPE_UQ, m_currShader->getGRFAlignment(),
             m_destination->IsUniform(), CName::NONE);
+        // The initial address could be in a canonical form, that means bit 47 is replicated
+        // to the upper bits. To set a tag, bits [61:63] must get zeroed before setting a tag with OR operation.
+        m_encoder->And(pTempVar, srcV, m_currShader->ImmToVariable(0x1fffffffffffffff, ISA_TYPE_UQ));
         m_encoder->Or(pTempVar, srcV, m_currShader->ImmToVariable(static_cast<uint64_t>(tag) << 61, ISA_TYPE_UQ));
         m_encoder->Cast(m_destination, pTempVar);
         m_encoder->Push();
