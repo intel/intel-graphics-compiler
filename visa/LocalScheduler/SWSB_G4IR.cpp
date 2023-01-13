@@ -262,7 +262,7 @@ bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
   return false;
 }
 
-bool SBFootprint::hasGRFGrainOverlap(const SBFootprint *liveFootprint) const {
+bool SBFootprint::hasGRFGrainedOverlap(const SBFootprint *liveFootprint) const {
   vASSERT(inst != nullptr);
   const IR_Builder &irb = inst->getBuilder();
   for (const SBFootprint *curFootprintPtr = this; curFootprintPtr;
@@ -5923,8 +5923,34 @@ bool G4_BB_SB::hasExtraOverlap(G4_INST *liveInst, G4_INST *curInst,
         curInst->getSrc(1)->asSrcRegRegion()->crossGRF(*builder)) ||
        (builder->hasRMWReadSuppressionIssue() &&
         (liveInst->isMathPipeInst())))) {
-    return curFootprint->hasGRFGrainOverlap(liveFootprint);
+    return curFootprint->hasGRFGrainedOverlap(liveFootprint);
   }
+
+  return false;
+}
+
+//
+// Check if there is intra read suppression operand with curOpndNum in the
+// instruction.
+//
+bool G4_BB_SB::hasIntraReadSuppression(SBNode *node,
+                                       Gen4_Operand_Number curOpndNum,
+                                       const SBFootprint* curFP) const {
+  if (node->instVec.size() > 1) {
+    return false;
+  }
+
+  for (Gen4_Operand_Number opndNum :
+       {Opnd_src0, Opnd_src1, Opnd_src2}) {
+    if (opndNum == curOpndNum) {
+      continue;
+    }
+    const SBFootprint *fp = node->getFirstFootprint(opndNum);
+    if (fp && fp->hasGRFGrainedOverlap(curFP)) {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -6359,6 +6385,14 @@ void G4_BB_SB::SBDDD(G4_BB *bb, LiveGRFBuckets *&LB,
         if (!hasOverlap && dep == RAW) {
           hasOverlap = hasExtraOverlap(liveInst, curInst, liveFootprint,
                                        curFootprint, curOpnd, &builder);
+
+          if (!hasOverlap && builder.hasIntraReadSuppressionIssue() &&
+              distanceHonourInstruction(liveInst) &&
+              distanceHonourInstruction(curInst) &&
+              hasIntraReadSuppression(node, curOpnd, curFootprint) &&
+              curFootprint->hasGRFGrainedOverlap(liveFootprint)) {
+            hasOverlap = true;
+          }
         }
 
         if (!hasOverlap) {

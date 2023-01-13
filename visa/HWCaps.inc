@@ -662,6 +662,10 @@ bool hasDPASSrc2ReadSuppressionDepIssue() const {
   return getPlatform() == Xe_PVC;
 }
 
+bool hasIntraReadSuppressionIssue() const {
+  return getPlatform() == GENX_TGLLP;
+}
+
 bool hasMathDpasConflict() const {
   return (getPlatform() == Xe_PVC) && getOption(vISA_EnableMathDPASWA);
 }

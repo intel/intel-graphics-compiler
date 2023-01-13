@@ -165,7 +165,7 @@ struct SBFootprint {
                   unsigned short &internalOffset) const;
   bool hasOverlap(const SBFootprint *liveFootprint, bool &isRMWOverlap,
                   unsigned short &internalOffset) const;
-  bool hasGRFGrainOverlap(const SBFootprint *liveFootprint) const;
+  bool hasGRFGrainedOverlap(const SBFootprint *liveFootprint) const;
   bool isWholeOverlap(const SBFootprint *liveFootprint) const;
   bool isSameOrNoOverlap(const SBFootprint *liveFootprint) const;
 };
@@ -766,6 +766,8 @@ public:
                        const SBFootprint *liveFootprint,
                        const SBFootprint *curFootprint,
                        const Gen4_Operand_Number curOpnd, IR_Builder *builder);
+  bool hasIntraReadSuppression(SBNode *node, Gen4_Operand_Number opndNum,
+                               const SBFootprint *curFP) const;
   // Local distance dependence analysis and assignment
   void SBDDD(G4_BB *bb, LiveGRFBuckets *&LB, LiveGRFBuckets *&globalSendsLB,
              SBNODE_VECT *SBNodes, SBNODE_VECT *SBSendNodes,
