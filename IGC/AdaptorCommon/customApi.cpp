@@ -385,8 +385,13 @@ namespace IGC
 
                 char dumpPath[256];
 
-                sprintf_s(dumpPath, "c:\\Intel\\IGC\\");
+                sprintf_s(dumpPath, "c:\\Intel\\");
+                if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkdir)
+                {
+                    _mkdir(dumpPath);
+                }
 
+                sprintf_s(dumpPath, "c:\\Intel\\IGC\\");
                 if(GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkdir)
                 {
                     _mkdir(dumpPath);
