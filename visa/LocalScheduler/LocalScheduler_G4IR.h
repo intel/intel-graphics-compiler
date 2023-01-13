@@ -245,8 +245,6 @@ class DDD {
   int ACC_BUCKET;
   int FLAG0_BUCKET;
   int FLAG1_BUCKET;
-  int FLAG2_BUCKET;
-  int FLAG3_BUCKET;
   int A0_BUCKET;
   int SEND_BUCKET;
   int SCRATCH_SEND_BUCKET;
