@@ -139,6 +139,7 @@ namespace IGC
             }
             //disable tileY if walkorder cannot be changed
             m_ThreadIDLayout = ThreadIDLayout::X;
+            overrideCsKeys(is_pow2_x, is_pow2_y, is_pow2_z);
             return;
         }
 
@@ -184,8 +185,8 @@ namespace IGC
             m_enableHWGenerateLID = false;
             m_ThreadIDLayout = ThreadIDLayout::X;
             m_walkOrder = WO_XYZ;
-            return;
         }
+        overrideCsKeys(is_pow2_x, is_pow2_y, is_pow2_z);
     }
 
     Optional<CComputeShaderBase::WALK_ORDER>
@@ -263,6 +264,49 @@ namespace IGC
         }
 
         return None;
+    }
+
+    bool
+    CComputeShaderBase::enableHWGenerateLID(
+        CComputeShaderBase::WALK_ORDER walk_order,
+        bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
+    {
+        bool bEnableHWGenerateLID = false;
+
+        switch (walk_order)
+        {
+        case WO_XYZ:
+        case WO_YXZ:
+            bEnableHWGenerateLID = (is_pow2_x && is_pow2_y);
+            break;
+
+        case WO_XZY:
+        case WO_ZXY:
+            bEnableHWGenerateLID = (is_pow2_x && is_pow2_z);
+            break;
+
+        case WO_YZX:
+        case WO_ZYX:
+            bEnableHWGenerateLID = (is_pow2_y && is_pow2_z);
+            break;
+        }
+        return bEnableHWGenerateLID;
+    }
+
+    void
+    CComputeShaderBase::overrideCsKeys(
+        bool is_pow2_x, bool is_pow2_y, bool is_pow2_z)
+    {
+        if (IGC_IS_FLAG_ENABLED(OverrideCsWalkOrderEnable))
+        {
+            m_walkOrder = (WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
+            m_enableHWGenerateLID = enableHWGenerateLID(m_walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
+        }
+
+        if (IGC_IS_FLAG_ENABLED(OverrideCsTileLayoutEnable))
+        {
+            m_ThreadIDLayout = (ThreadIDLayout)IGC_IS_FLAG_ENABLED(OverrideCsTileLayout);
+        }
     }
 
     //order0: the internal walk dim

@@ -64,6 +64,11 @@ namespace IGC
         static llvm::Optional<WALK_ORDER> checkLegalWalkOrder(
             const std::array<uint32_t, 3>& Dims,
             const WorkGroupWalkOrderMD& WO);
+        static bool enableHWGenerateLID(
+            WALK_ORDER walk_order,
+            bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
+        void overrideCsKeys(
+            bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
         static WALK_ORDER getWalkOrder(uint order0, uint order1);
     };
 }
