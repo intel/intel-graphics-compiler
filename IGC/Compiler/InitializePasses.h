@@ -129,6 +129,7 @@ void initializeResolveSampledImageBuiltinsPass(llvm::PassRegistry&);
 void initializeResourceAllocatorPass(llvm::PassRegistry&);
 void initializeRewriteLocalSizePass(llvm::PassRegistry&);
 void initializeRuntimeValueLegalizationPassPass(llvm::PassRegistry&);
+void initializeRuntimeValueVectorExtractPassPass(llvm::PassRegistry&);
 void initializeSampleCmpToDiscardPass(llvm::PassRegistry&);
 void initializeSamplerPerfOptPassPass(llvm::PassRegistry&);
 void initializeScalarArgAsPointerAnalysisPass(llvm::PassRegistry&);

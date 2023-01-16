@@ -39,5 +39,5 @@ namespace IGC
 
     private:
     };
-
+    void initializeIndirectCallOptimizationPass(llvm::PassRegistry&);
 } // namespace IGC
