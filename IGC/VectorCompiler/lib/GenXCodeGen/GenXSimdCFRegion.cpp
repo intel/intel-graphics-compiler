@@ -287,15 +287,15 @@ class GenXPredToSimdCF final : public FunctionPass {
   SmallPtrSet<Instruction *, 16> InstsInThisBlock;
 
   // Local data for apply if-then pattern
-  DominatorTree *DT;
-  BranchInst *Br;
-  Module *M;
-  const DebugLoc *DL;
-  CallInst *OldCond;
-  BasicBlock *OldCondBB;
-  Value *Mask;
-  IGCLLVM::FixedVectorType *SimdTy;
-  unsigned SimdWidth;
+  DominatorTree *DT = nullptr;
+  BranchInst *Br = nullptr;
+  Module *M = nullptr;
+  const DebugLoc *DL = nullptr;
+  CallInst *OldCond = nullptr;
+  BasicBlock *OldCondBB = nullptr;
+  Value *Mask = nullptr;
+  IGCLLVM::FixedVectorType *SimdTy = nullptr;
+  unsigned SimdWidth = 0;
 
 public:
   using SimdCFRegionPtr = std::unique_ptr<SimdCFRegion>;
