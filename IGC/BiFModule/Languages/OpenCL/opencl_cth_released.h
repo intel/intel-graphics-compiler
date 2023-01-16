@@ -435,7 +435,6 @@ atomic_init_prototype(float)
 
 void __attribute__((overloadable)) atomic_work_item_fence(cl_mem_fence_flags flags, memory_order order, memory_scope scope);
 
-#if (__LLVM_VERSION_MAJOR__ < 14)
 // atomic_fetch()
 
 #define atomic_fetch_explicit_prototype_addrspace(KEY, TYPE, OPTYPE, ADDRSPACE) \
@@ -495,8 +494,6 @@ int __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_int *
 uint __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_uint *object, uint operand);
 uint __attribute__((overloadable)) atomic_fetch_max(volatile generic atomic_uint *object, int operand);
 #endif // defined(__opencl_c_atomic_order_seq_cst) && defined(__opencl_c_atomic_scope_device)
-
-#endif // (__LLVM_VERSION_MAJOR__ < 14)
 
 // atomic_store()
 

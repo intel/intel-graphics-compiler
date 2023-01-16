@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "../headers/resource.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Config/llvm-config.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -1522,8 +1521,6 @@ namespace TC
 
         optionsEx += " -D__ENDIAN_LITTLE__";
 
-        optionsEx += " -D__LLVM_VERSION_MAJOR__=" + to_string(LLVM_VERSION_MAJOR);
-
         // Workaround for Clang issue.
         // Clang always defines __IMAGE_SUPPORT__ macro for SPIR target, even if device doesn't support it.
         if (optionsEx.find("__IMAGE_SUPPORT__") == std::string::npos) {
@@ -1554,7 +1551,7 @@ namespace TC
             return false;
         }
 
-        // if -dump-opt-llvm is enabled dump the llvm output to the file.
+        // if -dump-opt-llvm is enabled dump the llvm output to the file
         size_t dumpOptPosition = options.find("-dump-opt-llvm");
         if ((0 == res) && dumpOptPosition != std::string::npos)
         {
