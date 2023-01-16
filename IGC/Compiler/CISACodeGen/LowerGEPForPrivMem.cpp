@@ -187,8 +187,6 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function& F)
         }
     }
 
-    if (!allocaToHande.empty())
-        DumpLLVMIR(m_ctx, "AfterLowerGEP");
     // IR changed only if we had alloca instruction to optimize
     return !allocaToHande.empty();
 }

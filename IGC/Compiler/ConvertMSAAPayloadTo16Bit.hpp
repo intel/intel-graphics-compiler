@@ -34,7 +34,7 @@ namespace IGC
 
         virtual llvm::StringRef getPassName() const override
         {
-            return "ConverMSAAPayloadTo16Bit";
+            return "ConvertMSAAPayloadTo16Bit";
         }
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override

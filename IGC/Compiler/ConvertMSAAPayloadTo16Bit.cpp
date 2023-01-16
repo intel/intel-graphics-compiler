@@ -23,8 +23,8 @@ using namespace llvm;
 using namespace IGC;
 
 // Register pass to igc-opt
-#define PASS_FLAG "igc-ConverMSAAPayloadTo16Bit"
-#define PASS_DESCRIPTION "Comvert normal MSAA intrinsics to 16 bit payload intrinsics"
+#define PASS_FLAG "igc-ConvertMSAAPayloadTo16Bit"
+#define PASS_DESCRIPTION "Convert normal MSAA intrinsics to 16 bit payload intrinsics"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
 IGC_INITIALIZE_PASS_BEGIN(ConvertMSAAPayloadTo16Bit, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
@@ -189,10 +189,8 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst& I)
 bool ConvertMSAAPayloadTo16Bit::runOnFunction(Function& F)
 {
     m_pCtxWrapper = &getAnalysis<CodeGenContextWrapper>();
-    CodeGenContext* cgCtx = m_pCtxWrapper->getCodeGenContext();
     IRBuilder<> builder(F.getContext());
     m_builder = &builder;
     visit(F);
-    DumpLLVMIR(cgCtx, "AfterMSAA16bitPayload");
     return true;
 }
