@@ -3072,7 +3072,6 @@
     },
     "genx_lsc_load_merge_bti": {
       "opc": "ISA_LSC_UNTYPED",
-      "gen_opc": "ISA_LSC_MERGE_UNTYPED",
       "sub_opc": [ "BYTE", 2 ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
@@ -3092,7 +3091,7 @@
       "Src0Addrs": [ "RAW", "UNSIGNED", 11 ],
       "Src1Data": [ "NULLRAW" ],
       "Src2Data": [ "NULLRAW" ],
-      "Src3Data": [ "NULLRAW" ]
+      "twoaddr": [ "TWOADDR", 13 ]
     },
     "genx_lsc_store_bti": {
       "opc": "ISA_LSC_UNTYPED",
@@ -3140,7 +3139,6 @@
     },
     "genx_lsc_load_merge_slm": {
       "opc": "ISA_LSC_UNTYPED",
-      "gen_opc": "ISA_LSC_MERGE_UNTYPED",
       "sub_opc": [ "BYTE", 2 ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
@@ -3160,7 +3158,7 @@
       "Src0Addrs": [ "RAW", "UNSIGNED", 11 ],
       "Src1Data": [ "NULLRAW" ],
       "Src2Data": [ "NULLRAW" ],
-      "Src3Data": [ "NULLRAW" ]
+      "twoaddr": [ "TWOADDR", 13 ]
     },
     "genx_lsc_store_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -3230,7 +3228,6 @@
     },
     "genx_lsc_load_merge_stateless": {
       "opc": "ISA_LSC_UNTYPED",
-      "gen_opc": "ISA_LSC_MERGE_UNTYPED",
       "sub_opc": [ "BYTE", 2 ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
@@ -3250,7 +3247,7 @@
       "Src0Addrs": [ "RAW", "UNSIGNED", 11 ],
       "Src1Data": [ "NULLRAW" ],
       "Src2Data": [ "NULLRAW" ],
-      "Src3Data": [ "NULLRAW" ]
+      "Src3Data": [ "TWOADDR", 13 ]
     },
     "genx_lsc_prefetch_bindless": {
       "opc": "ISA_LSC_UNTYPED",
@@ -3298,7 +3295,6 @@
     },
     "genx_lsc_load_merge_bindless": {
       "opc": "ISA_LSC_UNTYPED",
-      "gen_opc": "ISA_LSC_MERGE_UNTYPED",
       "sub_opc": [ "BYTE", 2 ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
@@ -3318,7 +3314,7 @@
       "Src0Addrs": [ "RAW", "UNSIGNED", 11 ],
       "Src1Data": [ "NULLRAW" ],
       "Src2Data": [ "NULLRAW" ],
-      "Src3Data": [ "NULLRAW" ]
+      "twoaddr": [ "TWOADDR", 13 ]
     },
     "genx_lsc_store_bindless": {
       "opc": "ISA_LSC_UNTYPED",
@@ -3655,7 +3651,6 @@
     },
     "genx_lsc_load_merge_quad_bti": {
       "opc": "ISA_LSC_UNTYPED",
-      "gen_opc": "ISA_LSC_MERGE_UNTYPED",
       "sub_opc": [ "BYTE", 2 ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
@@ -3675,7 +3670,7 @@
       "Src0Addrs": [ "RAW", "UNSIGNED", 11 ],
       "Src1Data": [ "NULLRAW" ],
       "Src2Data": [ "NULLRAW" ],
-      "Src3Data": [ "NULLRAW" ]
+      "twoaddr": [ "TWOADDR", 13 ]
     },
     "genx_lsc_store_quad_bti": {
       "opc": "ISA_LSC_UNTYPED",
@@ -3723,7 +3718,6 @@
     },
     "genx_lsc_load_merge_quad_slm": {
       "opc": "ISA_LSC_UNTYPED",
-      "gen_opc": "ISA_LSC_MERGE_UNTYPED",
       "sub_opc": [ "BYTE", 2 ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
@@ -3743,7 +3737,7 @@
       "Src0Addrs": [ "RAW", "UNSIGNED", 11 ],
       "Src1Data": [ "NULLRAW" ],
       "Src2Data": [ "NULLRAW" ],
-      "Src3Data": [ "NULLRAW" ]
+      "twoaddr": [ "TWOADDR", 13 ]
     },
     "genx_lsc_store_quad_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -3791,7 +3785,6 @@
     },
     "genx_lsc_load_merge_quad_stateless": {
       "opc": "ISA_LSC_UNTYPED",
-      "gen_opc": "ISA_LSC_MERGE_UNTYPED",
       "sub_opc": [ "BYTE", 2 ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
@@ -3811,7 +3804,7 @@
       "Src0Addrs": [ "RAW", "UNSIGNED", 11 ],
       "Src1Data": [ "NULLRAW" ],
       "Src2Data": [ "NULLRAW" ],
-      "Src3Data": [ "NULLRAW" ]
+      "twoaddr": [ "TWOADDR", 13 ]
     },
     "genx_lsc_store_quad_stateless": {
       "opc": "ISA_LSC_UNTYPED",
@@ -3859,7 +3852,6 @@
     },
     "genx_lsc_load_merge_quad_bindless": {
       "opc": "ISA_LSC_UNTYPED",
-      "gen_opc": "ISA_LSC_MERGE_UNTYPED",
       "sub_opc": [ "BYTE", 2 ],
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
       "pred": [ "PREDICATION", 1 ],
@@ -3879,7 +3871,7 @@
       "Src0Addrs": [ "RAW", "UNSIGNED", 11 ],
       "Src1Data": [ "NULLRAW" ],
       "Src2Data": [ "NULLRAW" ],
-      "Src3Data": [ "NULLRAW" ]
+      "twoaddr": [ "TWOADDR", 13 ]
     },
     "genx_lsc_store_quad_bindless": {
       "opc": "ISA_LSC_UNTYPED",
@@ -4028,32 +4020,6 @@
         "Src0Addrs",
         "Src1Data",
         "Src2Data"
-      ]
-    ],
-    "ISA_LSC_MERGE_UNTYPED": [
-      "LSC_DATA_SHAPE shape",
-      "shape.size = (LSC_DATA_SIZE)DataSize",
-      "shape.order = (LSC_DATA_ORDER)DataOrder",
-      "(ChMask == 0) ? (shape.elems = (LSC_DATA_ELEMS)DataElemsPerAddr) : (shape.chmask = (int)ChMask)",
-      [ "CreateLscMergeUntyped",
-        "(LSC_OP)sub_opc",
-        "LscSFID",
-        "pred",
-        "exec_size",
-        "exec_mask",
-        "{(LSC_CACHE_OPT)L1_Hints",
-        "(LSC_CACHE_OPT)L3_Hints}",
-        "{(LSC_ADDR_TYPE)address_model",
-        "(int)address_scale",
-        "(int)AddrImmOffset",
-        "(LSC_ADDR_SIZE)AddrSize}",
-        "shape",
-        "Surface",
-        "DstData",
-        "Src0Addrs",
-        "Src1Data",
-        "Src2Data",
-        "Src3Data"
       ]
     ],
     "ISA_LSC_UNTYPED_BLOCK2D": [

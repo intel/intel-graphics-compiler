@@ -3924,39 +3924,6 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         }
   };
 
-  auto CreateLscMergeUntyped =
-      [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
-          VISA_Exec_Size ExecSize, VISA_EMask_Ctrl Emask,
-          LSC_CACHE_OPTS CacheOpts, LSC_ADDR Addr, LSC_DATA_SHAPE DataShape,
-          VISA_VectorOpnd *Surface, VISA_RawOpnd *DstData,
-          VISA_RawOpnd *Src0Addr, VISA_RawOpnd *Src1Data,
-          VISA_RawOpnd *Src2Data, VISA_RawOpnd *SrcDstData) {
-        LLVM_DEBUG(dbgs() << "CreateLscUntypedMerge\n");
-        if (DL.getPointerSize() == QWordBytes && LscSfid != LSC_TGM &&
-            LscSfid != LSC_SLM &&
-            (Addr.type == LSC_ADDR_TYPE_FLAT ||
-             Addr.type == LSC_ADDR_TYPE_SS) &&
-            SubOpcode != LSC_LOAD_BLOCK2D && SubOpcode != LSC_STORE_BLOCK2D)
-          Addr.size = LSC_ADDR_SIZE_64b;
-
-        // Create mov to destination, if it fits - will be removed in finalizer
-        VISA_Exec_Size execSize = getExecSizeFromValue(ExecSize);
-        Kernel->AppendVISADataMovementInst(
-            ISA_MOV, nullptr, false, Emask, execSize,
-            createDestination(CI, DONTCARESIGNED, nullptr),
-            createSourceOperand(CI, DONTCARESIGNED, 12, BaleInfo()));
-        if (SubOpcode == LSC_LOAD_STRIDED || SubOpcode == LSC_STORE_STRIDED) {
-          Kernel->AppendVISALscUntypedStridedInst(
-              SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, Addr,
-              DataShape, Surface, DstData, Src0Addr,
-              (VISA_VectorOpnd *)Src0Addr, Src1Data);
-        } else {
-          Kernel->AppendVISALscUntypedInst(
-              SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, Addr,
-              DataShape, Surface, DstData, Src0Addr, Src1Data, Src2Data);
-        }
-  };
-
   auto CreateLscUntypedBlock2D =
       [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
           VISA_Exec_Size ExecSize, VISA_EMask_Ctrl Emask,
