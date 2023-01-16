@@ -1212,6 +1212,7 @@ void OptimizeIR(CodeGenContext* const pContext)
         }
 
         mpm.add(createExternalAAWrapperPass(&addAddressSpaceAAResult));
+        mpm.add(createScopedNoAliasAAWrapperPass());
 
         if (pContext->m_instrTypes.hasLoadStore)
         {
