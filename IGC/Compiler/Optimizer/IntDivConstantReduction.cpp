@@ -378,14 +378,7 @@ struct IntDivConstantReduction : public FunctionPass
             is32b = B.CreateICmpULE(dividend, max32);
         }
 
-#if LLVM_VERSION_MAJOR <= 7
-        // LLVM 7 and lower have the TerminatorInst
-        // later versions simplify this to Instruction
-        using TermInst = TerminatorInst;
-#else
-        using TermInst = Instruction;
-#endif
-        TermInst *thenT = nullptr, *elseT = nullptr;
+        Instruction *thenT = nullptr, *elseT = nullptr;
         SplitBlockAndInsertIfThenElse(is32b, divRem, &thenT, &elseT);
 
         ///////////////////////////////////////////////////////////////////////

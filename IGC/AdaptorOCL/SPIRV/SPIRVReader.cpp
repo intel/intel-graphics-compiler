@@ -571,7 +571,7 @@ public:
           return type->getSizeInBits();
       else if (auto DITy = dyn_cast_or_null<llvm::DIDerivedType>(type))
       {
-#if LLVM_VERSION_MAJOR <= 8
+#if LLVM_VERSION_MAJOR == 8
           auto baseType = DITy->getBaseType().resolve();
 #else
           auto baseType = DITy->getBaseType();
@@ -580,7 +580,7 @@ public:
       }
       else if (auto CTy = dyn_cast_or_null<llvm::DICompositeType>(type))
       {
-#if LLVM_VERSION_MAJOR <= 8
+#if LLVM_VERSION_MAJOR == 8
           auto baseType = CTy->getBaseType().resolve();
 #else
           auto baseType = CTy->getBaseType();
@@ -906,11 +906,7 @@ public:
       if (isa<DISubprogram>(target)) {
           // This constant matches with one used in
           // DISubprogram::getRawTemplateParams()
-#if LLVM_VERSION_MAJOR == 4
-          const unsigned TemplateParamsIndex = 8;
-#elif LLVM_VERSION_MAJOR >= 7
           const unsigned TemplateParamsIndex = 9;
-#endif
           target->replaceOperandWith(TemplateParamsIndex, TParams.get());
           IGC_ASSERT_MESSAGE(cast<DISubprogram>(target)->getRawTemplateParams() == TParams.get(), "Invalid template parameters");
           return target;
@@ -1016,10 +1012,14 @@ public:
 
       if (isa<DICompositeType>(scope) || isa<DINamespace>(scope) || isa<DIModule>(scope))
           return addMDNode(inst, Builder.createMethod(scope, name, linkageName, file, line, type,
-              isLocal, isDefinition, 0, 0, 0, nullptr, flags, isOptimized, TParamsArray));
+                                                      0, 0, nullptr, flags,
+                                                      llvm::DISubprogram::toSPFlags(isLocal, isDefinition, isOptimized),
+                                                      TParamsArray));
       else
-        return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName, file, (unsigned int)line, type,
-          isLocal, isDefinition, (unsigned int)line, flags, isOptimized, TParamsArray));
+          return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName,
+                                                                   file, (unsigned int)line, type, (unsigned int)line, flags,
+                                                                   llvm::DISubprogram::toSPFlags(isLocal, isDefinition, isOptimized),
+                                                                   TParamsArray));
   }
 
   bool isTemplateType(SPIRVExtInst* inst)
@@ -1096,13 +1096,16 @@ public:
       DISubprogram* diSP = nullptr;
       if ((isa<DICompositeType>(scope) || isa<DINamespace>(scope) || isa<DIModule>(scope)) && !isDefinition)
       {
-          diSP = Builder.createMethod(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
-              0, 0, 0, nullptr, flags, isOptimized, TParamsArray);
+          diSP = Builder.createMethod(scope, name, linkageName, file, sp.getLine(), spType,
+                                      0, 0, nullptr, flags,
+                                      llvm::DISubprogram::toSPFlags(isLocal, isDefinition, isOptimized),
+                                      TParamsArray);
       }
       else
       {
-          diSP = Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
-              sp.getScopeLine(), flags, isOptimized, TParamsArray, decl);
+          diSP = Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType,                                         isLocal, flags,
+                                        llvm::DISubprogram::toSPFlags(isLocal, isDefinition, isOptimized),
+                                        TParamsArray, decl);
       }
       FuncIDToDISP[funcSPIRVId] = diSP;
       return addMDNode(inst, diSP);
@@ -2564,11 +2567,7 @@ SPIRVToLLVM::transLifetimeInst(SPIRVInstTemplateBase* BI, BasicBlock* BB, Functi
     auto ID = (BI->getOpCode() == OpLifetimeStart) ?
         Intrinsic::lifetime_start :
         Intrinsic::lifetime_end;
-#if LLVM_VERSION_MAJOR >= 7
     auto *pFunc = Intrinsic::getDeclaration(M, ID, llvm::ArrayRef<llvm::Type*>(PointerType::getInt8PtrTy(*Context)));
-#else
-    auto *pFunc = Intrinsic::getDeclaration(M, ID);
-#endif
     auto *pPtr = transValue(BI->getOperand(0), F, BB);
 
     Value *pArgs[] =
@@ -3822,10 +3821,8 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       static_cast<SPIRVFunctionPointerCallINTEL*>(BV);
     auto func = transValue(BC->getCalledValue(), F, BB);
     auto Call = CallInst::Create(
-#if LLVM_VERSION_MAJOR > 7
         llvm::cast<llvm::FunctionType>(
             IGCLLVM::getNonOpaquePtrEltTy(func->getType())),
-#endif
         func,
         transValue(BC->getArgumentValues(), F, BB),
         BC->getName(),

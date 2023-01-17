@@ -1411,7 +1411,7 @@ Value *GenXEmulate::Emu64Expander::visitGenxFPToISat(CallInst &CI) {
     vc::diagnose(CI.getContext(), "GenXEmulate",
                  "Unsupported instruction for emulation", &CI);
 
-  SmallVector<Value *, 8> Args(IGCLLVM::args(CI));
+  SmallVector<Value *, 8> Args(CI.args());
 
   return Builder.CreateCall(Iter->second, Args);
 }

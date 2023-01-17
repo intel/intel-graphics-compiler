@@ -155,9 +155,7 @@ namespace llvm {
     }
 
     void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop* L,
-#if LLVM_VERSION_MAJOR >= 7
         ScalarEvolution& SE,
-#endif
         TTI::UnrollingPreferences& UP
 #if LLVM_VERSION_MAJOR >= 14
         , OptimizationRemarkEmitter* ORE
@@ -244,12 +242,6 @@ namespace llvm {
                 }
             }
         }
-
-#if LLVM_VERSION_MAJOR == 4
-        ScalarEvolution* SE = &dummyPass->getAnalysisIfAvailable<ScalarEvolutionWrapperPass>()->getSE();
-        if (!SE)
-            return;
-#endif
 
         unsigned sendMessage = 0;
         unsigned TripCount = 0;
@@ -522,11 +514,7 @@ namespace llvm {
         if (auto* CI = dyn_cast<CallInst>(I))
         {
             if (CI->isConvergent() &&
-#if LLVM_VERSION_MAJOR >= 7
                 CI->onlyAccessesInaccessibleMemory()
-#else
-                CI->hasFnAttr(Attribute::InaccessibleMemOnly)
-#endif
                 )
             {
                 return false;

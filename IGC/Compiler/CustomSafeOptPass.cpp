@@ -2329,7 +2329,6 @@ void CustomSafeOptPass::visitExtractElementInst(ExtractElementInst& I)
     dp4WithIdentityMatrix(I);
 }
 
-#if LLVM_VERSION_MAJOR >= 7
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // This pass removes dead local memory loads and stores. If we remove all such loads and stores, we also
 // remove all local memory fences together with barriers that follow.
@@ -2491,7 +2490,6 @@ void TrivialLocalMemoryOpsElimination::visitCallInst(CallInst& I)
         }
     }
  }
-#endif
 
 // Register pass to igc-opt
 #define PASS_FLAG2 "igc-gen-specific-pattern"
@@ -3050,17 +3048,14 @@ void GenSpecificPattern::visitOr(BinaryOperator& I)
     auto pattern1 = m_Or(
         m_And(m_Value(AndOp1), m_SpecificInt(0xFFFFFFFF)),
         m_Shl(m_Value(EltOp1), m_SpecificInt(32)));
-#if LLVM_VERSION_MAJOR >= 7
     Value* AndOp2 = nullptr, * EltOp2 = nullptr, * VecOp = nullptr;
     auto pattern2 = m_Or(
         m_And(m_Value(AndOp2), m_SpecificInt(0xFFFFFFFF)),
         m_BitCast(m_InsertElt(m_Value(VecOp), m_Value(EltOp2), m_SpecificInt(1))));
-#endif // LLVM_VERSION_MAJOR >= 7
     if (match(&I, pattern1) && AndOp1 && AndOp1->getType()->isIntegerTy(64))
     {
         createBitcastExtractInsertPattern(I, AndOp1, EltOp1, 0, 1);
     }
-#if LLVM_VERSION_MAJOR >= 7
     else if (match(&I, pattern2) && AndOp2 && AndOp2->getType()->isIntegerTy(64))
     {
         ConstantVector* cVec = dyn_cast<ConstantVector>(VecOp);
@@ -3078,7 +3073,6 @@ void GenSpecificPattern::visitOr(BinaryOperator& I)
             }
         }
     }
-#endif // LLVM_VERSION_MAJOR >= 7
     else
     {
         /*
@@ -5333,11 +5327,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst* SI)
     BasicBlock* Dest = nullptr;
     {
         const auto* CaseSucc =
-#if LLVM_VERSION_MAJOR == 4
-            SI->case_begin().getCaseSuccessor();
-#elif LLVM_VERSION_MAJOR >= 7
             SI->case_begin()->getCaseSuccessor();
-#endif
         auto* BI = dyn_cast<BranchInst>(CaseSucc->getTerminator());
 
         if (BI == nullptr)

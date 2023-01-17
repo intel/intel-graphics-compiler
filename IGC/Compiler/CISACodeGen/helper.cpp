@@ -14,11 +14,11 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/Support/KnownBits.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include <llvm/IR/InstIterator.h>
+#include <llvm/Support/KnownBits.h>
 #include "llvm/Analysis/ValueTracking.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -2286,26 +2286,12 @@ namespace IGC
         llvm::AssumptionCache* AC,
         llvm::Instruction* CxtI)
     {
-#if LLVM_VERSION_MAJOR == 4
-        bool isKnownNegative = false;
-        bool isKnownPositive = false;
-        llvm::ComputeSignBit(
-            V,
-            isKnownPositive,
-            isKnownNegative,
-            *DL,
-            0,
-            AC,
-            CxtI);
-        return isKnownPositive;
-#elif LLVM_VERSION_MAJOR >= 7
         return computeKnownBits(
             V,
             *DL,
             0,
             AC,
             CxtI).isNonNegative();
-#endif
     }
 
     void appendToUsed(llvm::Module& M, ArrayRef<GlobalValue*> Values)

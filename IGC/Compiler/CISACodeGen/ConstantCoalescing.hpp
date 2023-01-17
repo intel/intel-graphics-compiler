@@ -19,7 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/PassManager.h>
 #include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/ADT/SmallBitVector.h>
-#include <llvmWrapper/Transforms/Utils.h>
+#include <llvm/Transforms/Utils.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/IGCIRBuilder.h"
 

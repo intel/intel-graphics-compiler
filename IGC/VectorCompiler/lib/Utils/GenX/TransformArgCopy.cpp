@@ -468,7 +468,7 @@ getTransformedFuncCallArgs(CallInst &OrigCall,
   // Loop over the operands, inserting loads in the caller.
   [[maybe_unused]] unsigned OmittedCount = 0;
   for (auto &&[OrigArg, OrigArgData] :
-       zip(IGCLLVM::args(OrigCall), NewFuncInfo.getOrigArgInfo())) {
+       zip(OrigCall.args(), NewFuncInfo.getOrigArgInfo())) {
     auto Kind = OrigArgData.getKind();
     switch (Kind) {
     case ArgKind::General:
@@ -492,7 +492,7 @@ getTransformedFuncCallArgs(CallInst &OrigCall,
   }
 
   IGC_ASSERT_MESSAGE(NewCallOps.size() ==
-                         IGCLLVM::arg_size(OrigCall) - OmittedCount,
+                         OrigCall.arg_size() - OmittedCount,
                      "varargs are unexpected");
   return NewCallOps;
 }

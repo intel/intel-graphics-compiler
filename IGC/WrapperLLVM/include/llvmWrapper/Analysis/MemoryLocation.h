@@ -21,23 +21,6 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM
 {
 
-    class MemoryLocation : public llvm::MemoryLocation
-    {
-    public:
-        static inline llvm::MemoryLocation getForArgument(
-            llvm::Instruction* I, unsigned ArgIdx,
-            const llvm::TargetLibraryInfo* TLI)
-        {
-            return llvm::MemoryLocation::getForArgument(
-#if LLVM_VERSION_MAJOR <= 7
-                llvm::ImmutableCallSite(I), ArgIdx, *TLI
-#elif LLVM_VERSION_MAJOR >= 8
-                llvm::cast<llvm::CallInst>(I), ArgIdx, TLI
-#endif
-            );
-        }
-    };
-
     class LocationSize : public llvm::LocationSize
     {
     public:

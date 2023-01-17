@@ -143,10 +143,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ErrorHandling.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Transforms/IPO/FunctionAttrs.h>
-#include <llvmWrapper/Transforms/Utils.h>
+#include <llvm/Transforms/Utils.h>
 #include <llvm/Transforms/Scalar/InstSimplifyPass.h>
 #include <llvmWrapper/Transforms/Scalar.h>
-#include <llvmWrapper/Bitcode/BitcodeWriter.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <sstream>
@@ -1576,9 +1576,7 @@ void OptimizeIR(CodeGenContext* const pContext)
             mpm.add(createSROAPass());
         }
 
-#if LLVM_VERSION_MAJOR >= 7
         mpm.add(new TrivialLocalMemoryOpsElimination());
-#endif
         mpm.add(createGenSimplificationPass());
 
         if (pContext->m_instrTypes.hasLoadStore)

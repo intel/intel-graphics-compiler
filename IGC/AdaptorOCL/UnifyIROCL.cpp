@@ -24,7 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/TargetLibraryInfo.h>
 
 #include <llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h>
-#include <llvmWrapper/Transforms/Utils.h>
+#include <llvm/Transforms/Utils.h>
 
 #include "common/LLVMWarningsPop.hpp"
 

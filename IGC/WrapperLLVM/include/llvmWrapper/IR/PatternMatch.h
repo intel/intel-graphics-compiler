@@ -14,21 +14,7 @@ SPDX-License-Identifier: MIT
 
 namespace llvm {
 namespace PatternMatch {
-#if LLVM_VERSION_MAJOR < 8
-
-    template <typename Val_t, typename Idx_t>
-    inline ExtractElementClass_match<Val_t, Idx_t>
-    m_ExtractElt(const Val_t &Val, const Idx_t &Idx) {
-        return m_ExtractElement<Val_t, Idx_t>(Val, Idx);
-    }
-
-    template <typename Val_t, typename Elt_t, typename Idx_t>
-    inline InsertElementClass_match<Val_t, Elt_t, Idx_t>
-    m_InsertElt(const Val_t &Val, const Elt_t &Elt, const Idx_t &Idx) {
-        return m_InsertElement<Val_t, Elt_t, Idx_t>(Val, Elt, Idx);
-    }
-
-#elif LLVM_VERSION_MAJOR < 11
+#if LLVM_VERSION_MAJOR < 11
 
     template <typename Val_t, typename Elt_t, typename Idx_t>
     inline ThreeOps_match<Val_t, Elt_t, Idx_t, Instruction::InsertElement>

@@ -27,18 +27,18 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/PassTimingInfo.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
+#include "llvm/IR/LegacyPassManagers.h"
 
 #include <algorithm>
 
 #include "GenXUtil.h"
 
-#include "llvmWrapper/IR/LegacyPassManagers.h"
-#include "llvmWrapper/IR/PassTimingInfo.h"
 #include "llvmWrapper/IR/Value.h"
 
 #include "Probe/Assertion.h"

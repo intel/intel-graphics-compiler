@@ -142,11 +142,11 @@ namespace {
                 return MemoryLocation::get(SI);
 
             if (isa<LdRawIntrinsic>(I))
-                return IGCLLVM::MemoryLocation::getForArgument(I, 0, TLI);
+                return llvm::MemoryLocation::getForArgument(llvm::cast<llvm::CallInst>(I), 0, TLI);
 
             if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(I)) {
                 if (GInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead) {
-                    return IGCLLVM::MemoryLocation::getForArgument(I, 0, TLI);
+                    return llvm::MemoryLocation::getForArgument(llvm::cast<llvm::CallInst>(I), 0, TLI);
                 }
             }
 
@@ -1688,9 +1688,7 @@ public:
     bool isZExt() const { return getOpcode() == Instruction::ZExt; }
     bool isSExt() const { return getOpcode() == Instruction::SExt; }
 
-#if LLVM_VERSION_MAJOR >= 7
     ~ExtOperator() = delete;
-#endif
 };
 
 class OverflowingAdditiveOperator : public Operator {
@@ -1715,22 +1713,16 @@ public:
         return cast<OverflowingBinaryOperator>(this)->hasNoSignedWrap();
     }
 
-#if LLVM_VERSION_MAJOR >= 7
     ~OverflowingAdditiveOperator() = delete;
-#endif
 };
 
 class OrOperator : public ConcreteOperator<BinaryOperator, Instruction::Or>
 {
-#if LLVM_VERSION_MAJOR >= 7
     ~OrOperator() = delete;
-#endif
 };
 class BitCastOperator : public ConcreteOperator<Operator, Instruction::BitCast>
 {
-#if LLVM_VERSION_MAJOR >= 7
     ~BitCastOperator() = delete;
-#endif
 };
 
 bool MemOpt::canonicalizeGEP64(Instruction* I) const {
@@ -1967,9 +1959,7 @@ SymbolicPointer::getLinearExpression(Value* V, APInt& Scale, APInt& Offset,
 class IntToPtrOperator :
     public ConcreteOperator<Operator, Instruction::IntToPtr>
 {
-#if LLVM_VERSION_MAJOR >= 7
     ~IntToPtrOperator() = delete;
-#endif
 };
 
 bool

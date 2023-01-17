@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include <llvm/Transforms/Scalar.h>
 
-#include <llvmWrapper/Transforms/Utils.h>
+#include <llvm/Transforms/Utils.h>
 
 #include "common/LLVMWarningsPop.hpp"
 

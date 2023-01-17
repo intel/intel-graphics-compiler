@@ -154,20 +154,6 @@ namespace IGCLLVM
             return llvm::IRBuilder<T, InserterTyDef()>::CreateAlloca(Ty, AddrSpace, ArraySize, Name);
         }
 
-        inline llvm::CallInst *CreateBinaryIntrinsic(llvm::Intrinsic::ID ID, llvm::Value *LHS,
-           llvm::Value *RHS,
-           llvm::Instruction *FMFSource = nullptr,
-           const llvm::Twine &Name = "")
-        {
-#if LLVM_VERSION_MAJOR > 7
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateBinaryIntrinsic(
-              ID, LHS, RHS, FMFSource, Name);
-#else
-          return llvm::IRBuilder<T, InserterTyDef()>::CreateBinaryIntrinsic(ID, LHS,
-                                                                     RHS, Name);
-#endif
-        }
-
 #if LLVM_VERSION_MAJOR < 11
         using llvm::IRBuilder<T, InserterTyDef()>::CreateShuffleVector;
 
@@ -325,20 +311,6 @@ namespace IGCLLVM
 
         using llvm::IRBuilder<T, InserterTyDef()>::CreateConstInBoundsGEP2_64;
 
-        inline static llvm::CallInst* Create(llvm::Value* Func, llvm::ArrayRef<llvm::Value*> Args,
-            llvm::ArrayRef<llvm::OperandBundleDef> Bundles = llvm::None,
-            const llvm::Twine& NameStr = "",
-            llvm::Instruction* InsertBefore = nullptr)
-        {
-#if LLVM_VERSION_MAJOR == 7
-            return llvm::IRBuilder<T, InserterTyDef()>::Create(
-                Func, Args, Bundles, NameStr, InsertBefore);
-#else
-            return llvm::IRBuilder<T, InserterTyDef()>::Create(
-                llvm::cast<llvm::Function>(Func)->getFunctionType(),
-                Func, Args, Bundles, NameStr, InsertBefore);
-#endif
-        }
     };
 
     template <typename T = llvm::ConstantFolder,

@@ -2793,7 +2793,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
       // translate extraction of structured type from retv
       if (!UseNewStackBuilder && !CI->isInlineAsm() &&
           (vc::requiresStackCall(CI->getCalledFunction()) ||
-           IGCLLVM::isIndirectCall(*CI)))
+           CI->isIndirectCall()))
         buildExtractRetv(EVI);
     // no code generated
   } else if (auto IVI = dyn_cast<InsertValueInst>(Inst)) {
@@ -2822,7 +2822,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
   } else if (auto *CI = dyn_cast<CallInst>(Inst)) {
     if (CI->isInlineAsm())
       buildInlineAsm(CI);
-    else if (IGCLLVM::isIndirectCall(*CI)) {
+    else if (CI->isIndirectCall()) {
       IGC_ASSERT_MESSAGE(!Mod,
         "cannot bale subroutine call into anything");
       IGC_ASSERT_MESSAGE(!DstDesc.WrRegion,
@@ -6432,7 +6432,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
 
   // Check whether the called function has a predicate arg that is EM.
   int EMOperandNum = -1, EMIdx = -1;
-  for (auto &Arg : IGCLLVM::args(CI)) {
+  for (auto &Arg : CI->args()) {
     ++EMIdx;
     if (!Arg->getType()->getScalarType()->isIntegerTy(1))
       continue;
@@ -6443,7 +6443,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
   }
 
   int TotalArgSize = 0;
-  for (auto &CallArg : IGCLLVM::args(CI))
+  for (auto &CallArg : CI->args())
     TotalArgSize += getValueSize(CallArg->getType());
 
   VISA_GenVar *Sp = nullptr, *Arg = nullptr, *Ret = nullptr;
@@ -6457,7 +6457,7 @@ void GenXKernelBuilder::buildStackCall(CallInst *CI,
   uint64_t StackOff = 0;
   bool StackStarted = false;
   // pack arguments
-  for (auto &CallArg : IGCLLVM::args(CI)) {
+  for (auto &CallArg : CI->args()) {
     auto *CallArgLR = Liveness->getLiveRangeOrNull(CallArg.get());
     if (CallArgLR && CallArgLR->getCategory() == vc::RegCategory::EM)
       continue;

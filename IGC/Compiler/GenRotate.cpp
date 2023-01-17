@@ -311,12 +311,8 @@ void GenRotate::matchRotate(Instruction* I)
 
     Intrinsic::ID rotateID = isROL ? Intrinsic::fshl : Intrinsic::fshr;
     Value* Args[3] = { V, V, Amt };
-#if LLVM_VERSION_MAJOR >= 8
     Type* Ty = V->getType();
     CallInst* rotateCall = Builder.CreateIntrinsic(rotateID, Ty, Args, nullptr, "rotate");
-#else
-    CallInst* rotateCall = Builder.CreateIntrinsic(rotateID, Args, nullptr, "rotate");
-#endif
     rotateCall->setDebugLoc(I->getDebugLoc());
     I->replaceAllUsesWith(rotateCall);
     I->eraseFromParent();

@@ -29,11 +29,7 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 
 namespace {
-#if LLVM_VERSION_MAJOR == 4
-    typedef DominatorTreeBase<BasicBlock> DominatorTreeBasicBlock;
-#elif LLVM_VERSION_MAJOR >= 7
     typedef DominatorTreeBase<BasicBlock, false> DominatorTreeBasicBlock;
-#endif
 
     class DominatedSubgraph {
         DominatorTreeBasicBlock* DT;
