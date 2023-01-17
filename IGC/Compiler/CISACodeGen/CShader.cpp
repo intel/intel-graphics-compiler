@@ -3331,7 +3331,6 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst* inst)
         if (IsCoalesced(extract))
             return false;
     }
-
     return true;
 }
 
