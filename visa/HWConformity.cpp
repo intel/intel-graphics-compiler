@@ -5774,7 +5774,8 @@ void HWConformity::conformBB(G4_BB *bb) {
 #endif
   }
 
-  if (builder.hasBDstWSrc1EvenAlignIssue()) {
+  if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14017715663) ||
+      builder.hasBDstWSrc1EvenAlignIssue()) {
     i = bb->begin(), iEnd = bb->end();
     next_iter = i;
     for (; i != iEnd; i = next_iter) {
