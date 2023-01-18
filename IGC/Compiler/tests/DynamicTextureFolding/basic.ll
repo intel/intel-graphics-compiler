@@ -18,7 +18,7 @@
 
 define void @test(float %src1, float %src2, float %src3, float* %dst) {
 ; CHECK-LABEL: @test(
-; CHECK:    store float 0x36B0000000000000, float* [[DST:%.*]], align 4
+; CHECK:    store float 0.000000e+00, float* [[DST:%.*]], align 4
 ; CHECK:    store float 0.000000e+00, float* [[DST]], align 4
 ; CHECK:    store float 0.000000e+00, float* [[DST]], align 4
 ; CHECK:    store float 0.000000e+00, float* [[DST]], align 4

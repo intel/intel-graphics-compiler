@@ -54,11 +54,22 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
     bool directIdx = false;
     uint textureIndex = 0;
     DecodeAS4GFXResource(addrSpace, directIdx, textureIndex);
-
+    IRBuilder<> builder(&I);
     // if the current texture index is found in modMD as uniform texture, replace the texture load/sample as constant.
     auto it = modMD->inlineDynTextures.find(textureIndex);
     if (it != modMD->inlineDynTextures.end())
     {
+        builder.SetInsertPoint(&I);
+        // check if the array index is out of bound. The array index size is passed in from UMD
+        // we might check xyz coordinate later but skip for now
+        Value* cmpInstA = nullptr;
+        if (I.getOperand(3)->getType()->isIntOrIntVectorTy())
+            cmpInstA = builder.CreateICmp(ICmpInst::ICMP_SLE, I.getOperand(3), ConstantInt::get(Type::getInt32Ty(I.getContext()), it->second[7]));
+        else if (I.getOperand(3)->getType()->isFPOrFPVectorTy())
+            cmpInstA = builder.CreateICmp(ICmpInst::FCMP_ULE, I.getOperand(3), ConstantFP::get(Type::getFloatTy(I.getContext()), it->second[7]));
+        else
+            return;
+
         for (auto iter = I.user_begin(); iter != I.user_end(); iter++)
         {
             if (llvm::ExtractElementInst* pExtract = llvm::dyn_cast<llvm::ExtractElementInst>(*iter))
@@ -67,11 +78,17 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
                 {
                     if ((&I)->getType()->isIntOrIntVectorTy())
                     {
-                        pExtract->replaceAllUsesWith(ConstantInt::get((pExtract)->getType(), (it->second[(uint32_t)(pIdx->getZExtValue())])));
+                        llvm::Value* Zero = ConstantInt::get(Type::getInt32Ty(I.getContext()), 0);
+                        Value* IntInst = ConstantInt::get((pExtract)->getType(), (it->second[(uint32_t)(pIdx->getZExtValue())]));
+                        Value* newInst = builder.CreateSelect(cmpInstA, IntInst, Zero);
+                        pExtract->replaceAllUsesWith(newInst);
                     }
                     else if ((&I)->getType()->isFPOrFPVectorTy())
                     {
-                        pExtract->replaceAllUsesWith(ConstantFP::get((pExtract)->getType(), *(float*)&(it->second[(uint32_t)(pIdx->getZExtValue())])));
+                        llvm::Value* ZeroFP = ConstantFP::get(Type::getFloatTy(I.getContext()), 0.0);
+                        Value* fpInst = ConstantFP::get((pExtract)->getType(), *(float*)&(it->second[(uint32_t)(pIdx->getZExtValue())]));
+                        Value* newInst = builder.CreateSelect(cmpInstA, fpInst, ZeroFP);
+                        pExtract->replaceAllUsesWith(newInst);
                     }
                 }
             }

@@ -639,7 +639,7 @@ namespace IGC
         uint32_t NBarrierCnt = 0;
         RayTraceModuleInfo rtInfo;
         uint32_t CurUniqueIndirectIdx = DefaultIndirectIdx;
-        std::map<uint32_t, std::array<uint32_t, 4>> inlineDynTextures;
+        std::map<uint32_t, std::array<uint32_t, 8>> inlineDynTextures;
         std::vector<InlineResInfo> inlineResInfoData;
         ImmConstantInfo immConstant;
         std::set<llvm::GlobalVariable*> stringConstants;
