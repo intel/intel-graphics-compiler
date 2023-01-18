@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -9637,9 +9637,24 @@ void EmitPass::InitializeKernelStack(Function* pKernel)
         pSize = m_currShader->ImmToVariable(MaxPrivateSize * numLanes(m_currShader->m_dispatchSize), ISA_TYPE_UD);
     }
 
-    CVariable* pThreadOffset = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, CName::NONE);
-    m_encoder->Mul(pThreadOffset, pHWTID, pSize);
-    m_encoder->Push();
+    bool is64bitOffsetPossible = true;
+    if (pSize->IsImmediate() && (pSize->GetImmediateValue() * pCtx->platform.getMaxAddressedHWThreads()) <= (uint64_t)UINT32_MAX ) {
+        is64bitOffsetPossible = false;
+    }
+    bool isA64Private = pCtx->getRegisterPointerSizeInBits(ADDRESS_SPACE_PRIVATE) == 64;
+    bool is64bitOffset = isA64Private && is64bitOffsetPossible;
+
+    CVariable* pThreadOffset = m_currShader->GetNewVariable(1, is64bitOffset ? ISA_TYPE_UQ : ISA_TYPE_UD,
+        is64bitOffset ? EALIGN_QWORD : EALIGN_DWORD, true, 1, CName::NONE);
+    if (is64bitOffset && !m_currShader->m_Platform->hasInt64DstMul())
+    {
+        emitMul64_UDxUD(pThreadOffset, pHWTID, pSize);
+    }
+    else
+    {
+        m_encoder->Mul(pThreadOffset, pHWTID, pSize);
+        m_encoder->Push();
+    }
 
     unsigned totalAllocaSize = kernelAllocaSize * numLanes(m_currShader->m_dispatchSize);
 
@@ -17371,6 +17386,37 @@ void EmitPass::emitPushFrameToStack(unsigned& pushSize)
     }
 }
 
+void EmitPass::emitMul64_UDxUD(CVariable* Dst, CVariable* Src0, CVariable* Src1)
+{
+    IGC_ASSERT(Dst->GetType() == ISA_TYPE_UQ);
+    IGC_ASSERT(Src0->GetType() == ISA_TYPE_UD);
+    IGC_ASSERT(Src1->GetType() == ISA_TYPE_UD);
+
+    CVariable* dstLo = m_currShader->GetNewVariable(Dst->GetNumberElement(),
+        ISA_TYPE_UD, Dst->GetAlign(), Dst->IsUniform(),
+        CName(Dst->getName(), "int64Lo"));
+    CVariable* dstHi = m_currShader->GetNewVariable(Dst->GetNumberElement(),
+        ISA_TYPE_UD, Dst->GetAlign(), Dst->IsUniform(),
+        CName(Dst->getName(), "int64Hi"));
+
+    m_encoder->Mul(dstLo, Src0, Src1);
+    m_encoder->Push();
+
+    m_encoder->MulH(dstHi, Src0, Src1);
+    m_encoder->Push();
+
+    //And now, pack the result
+    CVariable* dstAsUD = m_currShader->BitCast(Dst, ISA_TYPE_UD);
+    m_encoder->SetDstRegion(2);
+    m_encoder->Copy(dstAsUD, dstLo);
+    m_encoder->Push();
+
+    m_encoder->SetDstRegion(2);
+    m_encoder->SetDstSubReg(1);
+    m_encoder->Copy(dstAsUD, dstHi);
+    m_encoder->Push();
+}
+
 void EmitPass::emitAddPointer(CVariable* Dst, CVariable* Src, CVariable* offset)
 {
     if (m_currShader->m_Platform->hasNoInt64AddInst() &&
@@ -17389,7 +17435,9 @@ void EmitPass::emitAddPointer(CVariable* Dst, CVariable* Src, CVariable* offset)
 void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
     IGC_ASSERT(Dst->GetType() == ISA_TYPE_Q || Dst->GetType() == ISA_TYPE_UQ);
     IGC_ASSERT(Src0->GetType() == ISA_TYPE_Q || Src0->GetType() == ISA_TYPE_UQ);
-    IGC_ASSERT(Src1->GetType() == ISA_TYPE_UV || Src1->GetType() == ISA_TYPE_UD || Src1->GetType() == ISA_TYPE_D);
+    IGC_ASSERT(Src1->GetType() == ISA_TYPE_Q || Src1->GetType() == ISA_TYPE_UQ ||
+        Src1->GetType() == ISA_TYPE_UV || Src1->GetType() == ISA_TYPE_UD ||
+        Src1->GetType() == ISA_TYPE_D);
 
     bool IsUniformDst = Dst->IsUniform();
 
@@ -17398,7 +17446,7 @@ void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
     bool isScalar = Mode == SIMDMode::SIMD1;
 
     VISA_Type NewType = ISA_TYPE_UD;
-    CVariable* SrcAlias = m_currShader->GetNewAlias(Src0, NewType, 0, 0);
+    CVariable* Src0Alias = m_currShader->GetNewAlias(Src0, NewType, 0, 0);
     CVariable* newVar = isScalar ?
         m_currShader->GetNewVariable(NumElts * 2, NewType, EALIGN_GRF, IsUniformDst, CName(Src0->getName(), "HiLo32")) :
         nullptr;
@@ -17416,7 +17464,7 @@ void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
             m_encoder->SetUniformSIMDSize(lanesToSIMDMode(NumElts * 2));
         }
         m_encoder->SetSrcRegion(0, 1, 1, 0);
-        m_encoder->Copy(newVar, SrcAlias);
+        m_encoder->Copy(newVar, Src0Alias);
         m_encoder->Push();
     }
     else
@@ -17431,7 +17479,7 @@ void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
             m_encoder->SetSrcRegion(0, 0, 1, 0);
         else
             m_encoder->SetSrcRegion(0, 2, 1, 0);
-        m_encoder->Copy(L0, SrcAlias);
+        m_encoder->Copy(L0, Src0Alias);
         m_encoder->Push();
         // H0 := Offset[1];
         if (IsUniformDst) {
@@ -17443,12 +17491,12 @@ void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
             m_encoder->SetSrcRegion(0, 0, 1, 0);
         else
             m_encoder->SetSrcRegion(0, 2, 1, 0);
-        m_encoder->Copy(H0, SrcAlias);
+        m_encoder->Copy(H0, Src0Alias);
         m_encoder->Push();
     }
 
-    // If rc1 is a signed type value, signed extend it to L1 and H1. Otherwise we can
-    // ignore its high-32 bit part, which will be all zeros.
+    // If Src1 is D type value, extend it to L1 and H1, if Src1 is UD type value
+    // we can ignore its high-32 bit part, which will be all zeros.
     CVariable* L1 = nullptr;
     CVariable* H1 = nullptr;
     if (Src1->GetType() == ISA_TYPE_D) {
@@ -17484,7 +17532,58 @@ void EmitPass::emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1) {
              m_encoder->SetSrcRegion(0, 1, 1, 0);
          m_encoder->IShr(H1, Src1, m_currShader->ImmToVariable(31, ISA_TYPE_UD));
          m_encoder->Push();
-     }
+    }
+    else if (Src1->GetType() == ISA_TYPE_Q || Src1->GetType() == ISA_TYPE_UQ)
+    {
+        CVariable* Src1Alias = m_currShader->GetNewAlias(Src1, NewType, 0, 0);
+        CVariable* newVar = isScalar ?
+            m_currShader->GetNewVariable(NumElts * 2, NewType, EALIGN_GRF, IsUniformDst, CName(Src1->getName(), "HiLo32")) :
+            nullptr;
+        L1 = isScalar ?
+            m_currShader->GetNewAlias(newVar, NewType, 0, 0) :
+            m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src1->getName(), "Lo32"));
+        H1 = isScalar ?
+            m_currShader->GetNewAlias(newVar, NewType, sizeof(uint32_t) * NumElts, 0) :
+            m_currShader->GetNewVariable(NumElts, NewType, EALIGN_GRF, IsUniformDst, CName(Src1->getName(), "Hi32"));
+
+        if (isScalar)
+        {
+            if (IsUniformDst) {
+                m_encoder->SetNoMask();
+                m_encoder->SetUniformSIMDSize(lanesToSIMDMode(NumElts * 2));
+            }
+            m_encoder->SetSrcRegion(0, 1, 1, 0);
+            m_encoder->Copy(newVar, Src1Alias);
+            m_encoder->Push();
+        }
+        else
+        {
+            // Split Src1 into L1 and H1
+            // L1 := Offset[0];
+            if (IsUniformDst) {
+                m_encoder->SetNoMask();
+                m_encoder->SetUniformSIMDSize(Mode);
+            }
+            if (Src1->IsUniform())
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+            else
+                m_encoder->SetSrcRegion(0, 2, 1, 0);
+            m_encoder->Copy(L1, Src1Alias);
+            m_encoder->Push();
+            // H1 := Offset[1];
+            if (IsUniformDst) {
+                m_encoder->SetNoMask();
+                m_encoder->SetUniformSIMDSize(Mode);
+            }
+            m_encoder->SetSrcSubReg(0, 1);
+            if (Src1->IsUniform())
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+            else
+                m_encoder->SetSrcRegion(0, 2, 1, 0);
+            m_encoder->Copy(H1, Src1Alias);
+            m_encoder->Push();
+        }
+    }
 
     newVar = isScalar ?
         m_currShader->GetNewVariable(NumElts * 2, NewType, EALIGN_GRF, IsUniformDst, CName(Dst->getName(), "HiLo32")) :

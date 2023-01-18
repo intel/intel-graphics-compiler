@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -708,6 +708,11 @@ bool hasInt64Add() const
     {
         return !hasNoInt64Inst();
     }
+}
+
+bool hasInt64DstMul() const
+{
+    return m_platformInfo.eProductFamily == IGFX_PVC;
 }
 
 bool hasExecSize16DPAS() const

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -406,10 +406,14 @@ public:
     void emitCopyAll(CVariable* Dst, CVariable* Src, llvm::Type* Ty);
 
     void emitPushFrameToStack(unsigned& pushSize);
+    // emitMul64 - emulate 64bit multiply by 32-bit operations.
+    // Dst must be a 64-bit type variable.
+    // Src0 and Src1 must be in 32-bit type variable/immediate
+    void emitMul64_UDxUD(CVariable* Dst, CVariable* Src0, CVariable* Src1);
     void emitAddPointer(CVariable* Dst, CVariable* Src, CVariable* offset);
     // emitAddPair - emulate 64bit addtition by 32-bit operations.
     // Dst and Src0 must be a 64-bit type variable.
-    // Src1 mist be in 32-bit type variable/immediate
+    // Src1 must be in 32/64-bit type variable/immediate
     void emitAddPair(CVariable* Dst, CVariable* Src0, CVariable* Src1);
 
     void emitSqrt(llvm::Instruction* inst);
