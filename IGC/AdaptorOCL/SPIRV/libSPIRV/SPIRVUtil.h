@@ -49,6 +49,7 @@ THE SOFTWARE.
 #define SPIRVUTIL_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <limits>
 #include <map>
