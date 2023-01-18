@@ -118,6 +118,10 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
         poisonFP64KernelsEnabled = OCLContext->m_InternalOptions.EnableUnsupportedFP64Poisoning;
     }
 
+    // chcek that has HW DP support and DP emu is disabled
+    if (!ctx->platform.hasNoFP64Inst() && !ctx->m_hasDPEmu)
+        return;
+
     // check that input does not use double
     const bool usesDouble = isFP64Operation(&I);
     if (!usesDouble)
