@@ -330,14 +330,12 @@ public:
 
 class LocalScheduler {
   FlowGraph &fg;
-  Mem_Manager &mem;
 
   // send latencies are now defined in FFLatency in LIR.cpp
   void EmitNode(Node *);
 
 public:
-  LocalScheduler(FlowGraph &flowgraph, Mem_Manager &m)
-      : fg(flowgraph), mem(m) {}
+  LocalScheduler(FlowGraph &flowgraph) : fg(flowgraph) {}
   void localScheduling();
 };
 

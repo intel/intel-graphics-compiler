@@ -61,6 +61,16 @@ public:
 
   uint32_t maxGRFPressure = 0;
 
+  // These fields are currently used by IGC.
+  // The first two are unweighted (i.e., just a sum of each basic block's
+  // estimated cycles), while the last two are weighted by loop (16 iterations
+  // per loop).
+  // Note that these stats are valid only if post-RA scheduling is enabled.
+  uint32_t sendStallCycle = 0;
+  uint32_t staticCycle = 0;
+  uint32_t loopNestedStallCycle = 0;
+  uint32_t loopNestedCycle = 0;
+
 public:
   llvm::json::Value toJSON();
 };
@@ -70,10 +80,10 @@ public:
 // queried (vISA_DumpPerfStatsVerbose)
 // TODO: This set will be disable completely in the Release build.
 struct PERF_STATS_VERBOSE {
- // The number of bank conflict.
+  // The number of bank conflict.
   unsigned BCNum = 0;
 
- // counting the number of read-modify-write
+  // counting the number of read-modify-write
   unsigned numRMWs = 0;
 
   // For the static profiling of acc regsiter substituion ratio
@@ -129,8 +139,9 @@ struct FINALIZER_INFO {
   // This information is used by legacy CMRT as well as OpenCL/L0 runtime.
   uint32_t numBarriers = 0;
 
-  // Unweighted BB cycles counts. Used by IGC for SIMD width selection.
+  // Number of basic blocks in the kernel, used by IGC for stat reporting.
   uint32_t BBNum = 0;
+  // TODO: this is no longer used, can we remove them without breaking stuff?
   VISA_BB_INFO *BBInfo = nullptr;
 
   // Whether kernel recompilation should be avoided. vISA hint for IGC.
@@ -159,7 +170,6 @@ struct FINALIZER_INFO {
   PERF_STATS stats;
   PERF_STATS_VERBOSE statsVerbose;
 };
-
 
 } // namespace vISA
 #endif // JITTERDATASTRUCT_
