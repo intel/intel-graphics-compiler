@@ -273,6 +273,8 @@ DEF_VISA_OPTION(vISA_IncSpillCostAllAddrTaken, ET_BOOL, "-allowaddrtakenspill",
                 UNUSED, false)
 DEF_VISA_OPTION(vISA_NewSpillCostFunction, ET_BOOL, "-newspillcost", UNUSED,
                 false)
+DEF_VISA_OPTION(vISA_NewSpillCostFunctionISPC, ET_BOOL, "-newspillcostispc", UNUSED,
+                false)
 
 DEF_VISA_OPTION(vISA_VerifyAugmentation, ET_BOOL, "-verifyaugmentation", UNUSED,
                 false)

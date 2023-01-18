@@ -5347,7 +5347,9 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
   // when reg pressure is not very high in iter0, use spill cost function
   // that favors allocating large variables
   bool useNewSpillCost =
-      builder.getOption(vISA_NewSpillCostFunction) && rpe &&
+      (builder.getOption(vISA_NewSpillCostFunctionISPC) ||
+       builder.getOption(vISA_NewSpillCostFunction)) &&
+      rpe &&
       !(gra.getIterNo() == 0 &&
         (float)rpe->getMaxRP() < (float)kernel.getNumRegTotal() * 0.80f);
 
