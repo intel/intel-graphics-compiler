@@ -411,7 +411,12 @@ Value* PromoteBools::getOrCreatePromotedValue(Value* value)
                     if (auto operandInst = dyn_cast<Instruction>(operand))
                     {
                         insertBefore = operandInst->getNextNode();
-                        if (!insertBefore) {
+                        while (isa<PHINode>(insertBefore))
+                        {
+                            insertBefore = insertBefore->getNextNode();
+                        }
+                        if (!insertBefore)
+                        {
                             insertBefore = operandInst->getParent()->getTerminator();
                         }
                     }
