@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -115,4 +115,33 @@ __spirv_ControlBarrierWaitINTEL(int scope, int memory_scope,
                                 int memory_semantics) {
   cm::exec::fence(memory_scope, memory_semantics);
   cm::exec::barrier_wait(scope);
+}
+
+// When __SubDeviceID is declared as an extern int, it is lowered to LLVM-IR
+// like:
+//
+// @__SubDeviceID = external addrspace(1) global i32, align 4
+//
+// This global address is being then patched by the runtime and can be set to
+// null when implicit scaling is disabled. One may wonder why `__SubDeviceID` is
+// not declared as an `extern int*` In this case this would end up as a pointer
+// to pointer in LLVM-IR. It would generate two loads and wouldn't be consistent
+// with runtime behavior.
+extern int __SubDeviceID;
+
+// This variable has to be patched by GenXInitBiFConstant pass which will
+// convert it into a constant with a target specific initialization value
+int __cm_cl_MaxHWThreadIDPerSubDevice;
+
+int __spirv_BuiltInSubDeviceIDINTEL() {
+  volatile int *P = &__SubDeviceID;
+  if (!P)
+    return 0;
+  return *P;
+}
+
+int __spirv_BuiltInGlobalHWThreadIDINTEL() {
+  int SubDeviceId = __spirv_BuiltInSubDeviceIDINTEL();
+  return cm::detail::__cm_cl_hw_thread_id() +
+         SubDeviceId * __cm_cl_MaxHWThreadIDPerSubDevice;
 }

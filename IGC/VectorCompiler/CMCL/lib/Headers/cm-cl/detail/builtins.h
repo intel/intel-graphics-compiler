@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2022 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -105,6 +105,8 @@ vector_impl<uint32_t, 3> __cm_cl_group_count();
 uint32_t __cm_cl_group_id_x();
 uint32_t __cm_cl_group_id_y();
 uint32_t __cm_cl_group_id_z();
+
+int __cm_cl_hw_thread_id();
 
 void __cm_cl_barrier();
 void __cm_cl_sbarrier(uint8_t);

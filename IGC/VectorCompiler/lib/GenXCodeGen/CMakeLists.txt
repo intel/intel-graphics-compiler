@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2021 Intel Corporation
+# Copyright (C) 2017-2023 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -41,6 +41,7 @@ set(CODEGEN_SOURCES
   GenXGEPLowering.cpp
   GenXGlobalValueLowering.cpp
   GenXIMadPostLegalization.cpp
+  GenXInitBiFConstants.cpp
   GenXInlineAsmLowering.cpp
   GenXIntrinsics.cpp
   GenXLegalization.cpp

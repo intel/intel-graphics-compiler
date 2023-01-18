@@ -156,6 +156,7 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXFixInvalidFuncNamePass(registry);
   initializeGenXGASCastWrapperPass(registry);
   initializeGenXGASDynamicResolutionPass(registry);
+  initializeGenXInitBiFConstantsPass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
 }
 
@@ -308,6 +309,7 @@ bool GenXTargetMachine::addPassesToEmitFile(PassManagerBase &PM,
   vc::addPass(PM, PassConfig);
   const GenXBackendConfig &BackendConfig = PassConfig->getBackendConfig();
 
+  vc::addPass(PM, createGenXInitBiFConstantsPass());
   vc::addPass(PM, createGenXFixInvalidFuncNamePass());
 
   // Install GenX-specific TargetTransformInfo for passes such as

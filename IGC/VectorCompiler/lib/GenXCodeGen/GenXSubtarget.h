@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -377,6 +377,20 @@ public:
   /// * getsHWTIDFromPredef - some subtargets get HWTID from
   // predefined variable instead of sr0, returns *true* for such ones.
   bool getsHWTIDFromPredef() const { return GetsHWTIDFromPredef; }
+
+  uint32_t getMaxThreadsNumPerSubDevice() const {
+    switch (TargetId) {
+    default:
+      break;
+    case XeHP:
+    case XeHPG:
+    case XeLPG:
+      return 1 << 12;
+    case XeHPC:
+      return 1 << 12;
+    }
+    return 0;
+  }
 
   // Generic helper functions...
   const Triple &getTargetTriple() const { return TargetTriple; }

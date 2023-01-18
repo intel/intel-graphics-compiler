@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -261,6 +261,7 @@ void initializeGenXDebugLegalizationPass(PassRegistry &);
 void initializeGenXFixInvalidFuncNamePass(PassRegistry &);
 void initializeGenXGASCastWrapperPass(PassRegistry &);
 void initializeGenXGASDynamicResolutionPass(PassRegistry &);
+void initializeGenXInitBiFConstantsPass(PassRegistry &);
 } // End llvm namespace
 
 #endif

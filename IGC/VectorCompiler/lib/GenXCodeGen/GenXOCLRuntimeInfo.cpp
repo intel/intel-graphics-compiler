@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -622,7 +622,7 @@ ModuleDataT::ModuleDataT(const Module &M) {
         appendGlobalVariableData(ConstString, GV, M.getDataLayout());
       else
         appendGlobalVariableData(Constant, GV, M.getDataLayout());
-    } else {
+    } else if (GV.hasInitializer()) {
       IGC_ASSERT_MESSAGE(!GV.hasAttribute(vc::PrintfStringVariable),
                          "non-const global variable cannot be a printf string");
       appendGlobalVariableData(Global, GV, M.getDataLayout());
