@@ -308,6 +308,8 @@ public:
 
   // Return the first insert position if any; otherwise return end().
   INST_LIST_ITER getFirstInsertPos();
+  // return the last insert position before terminating instruction
+  INST_LIST_ITER getLastInsertPos();
 
   void addEOTSend(G4_INST *lastInst = NULL);
 
