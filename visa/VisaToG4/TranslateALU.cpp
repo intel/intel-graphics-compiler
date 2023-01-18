@@ -182,8 +182,7 @@ int IR_Builder::translateVISACompareInst(
   G4_CondMod *condMod = NULL;
   G4_ExecSize exsize = toExecSize(execsize);
   G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
-  const char *varName =
-      getNameString(50, "PTemp_%d", kernel.Declares.size());
+  const char *varName = getNameString(50, "PTemp_%d", kernel.Declares.size());
 
   uint8_t numWords = (exsize + 15) / 16;
   if (needs32BitFlag(inst_opt)) {
@@ -191,14 +190,14 @@ int IR_Builder::translateVISACompareInst(
     numWords = 2;
   }
   // TODO: Can eliminate the flag temp creation. Might need further changes
-  G4_Declare *dcl = createDeclareNoLookup(createStringCopy(varName, mem),
-                                          G4_FLAG, numWords, 1, Type_UW);
+  G4_Declare *dcl =
+      createDeclare(varName, G4_FLAG, numWords, 1, Type_UW);
 
   condMod =
       createCondMod(Get_G4_CondModifier_From_Common_ISA_CondModifier(relOp),
                     dcl->getRegVar(), 0);
 
-  createInst(NULL, GetGenOpcodeFromVISAOpcode(opcode), condMod, g4::NOSAT,
+  createInst(nullptr, GetGenOpcodeFromVISAOpcode(opcode), condMod, g4::NOSAT,
              exsize, dstOpnd, src0Opnd, src1Opnd, inst_opt, true);
 
   return VISA_SUCCESS;

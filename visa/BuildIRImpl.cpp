@@ -534,7 +534,7 @@ void IR_Builder::createPreDefinedVars() {
       const char *name = getPredefinedVarString(i);
       switch (i) {
       case PreDefinedVarsInternal::VAR_NULL:
-        dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UD);
+        dcl = createDeclare(name, G4_GRF, 1, 1, Type_UD);
         dcl->getRegVar()->setPhyReg(phyregpool.getNullReg(), 0);
         break;
       case PreDefinedVarsInternal::TSC: {
@@ -572,15 +572,14 @@ void IR_Builder::createPreDefinedVars() {
         break;
       }
       case PreDefinedVarsInternal::ARG: {
-        dcl = createDeclareNoLookup(name, G4_INPUT, numEltPerGRF<Type_UD>(), 32,
-                                    Type_UD);
+        dcl =
+            createDeclare(name, G4_INPUT, numEltPerGRF<Type_UD>(), 32, Type_UD);
         dcl->getRegVar()->setPhyReg(phyregpool.getGreg(ArgRet_Stackcall::Arg),
                                     0);
         break;
       }
       case PreDefinedVarsInternal::RET: {
-        dcl = createDeclareNoLookup(name, G4_GRF, numEltPerGRF<Type_UD>(), 12,
-                                    Type_UD);
+        dcl = createDeclare(name, G4_GRF, numEltPerGRF<Type_UD>(), 12, Type_UD);
         dcl->getRegVar()->setPhyReg(phyregpool.getGreg(ArgRet_Stackcall::Ret),
                                     0);
         dcl->setLiveOut();
@@ -588,7 +587,7 @@ void IR_Builder::createPreDefinedVars() {
       }
       case PreDefinedVarsInternal::FE_SP: {
         unsigned int startReg = kernel.getFPSPGRF();
-        dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
+        dcl = createDeclare(name, G4_GRF, 1, 1, Type_UQ);
         dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg),
                                     SubRegs_Stackcall::FE_SP);
         break;
@@ -596,7 +595,7 @@ void IR_Builder::createPreDefinedVars() {
       case PreDefinedVarsInternal::FE_FP: {
         // PREDEFINED_FE_FP
         unsigned int startReg = kernel.getFPSPGRF();
-        dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UQ);
+        dcl = createDeclare(name, G4_GRF, 1, 1, Type_UQ);
         dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg),
                                     SubRegs_Stackcall::FE_FP);
         break;
@@ -610,20 +609,19 @@ void IR_Builder::createPreDefinedVars() {
       case PreDefinedVarsInternal::Y:
       case PreDefinedVarsInternal::COLOR: {
         // these three are size 1 UW
-        dcl = createDeclareNoLookup(
-            name, G4_GRF, 1, 1,
-            GetGenTypeFromVISAType(getPredefinedVarType(i)));
+        dcl = createDeclare(name, G4_GRF, 1, 1,
+                            GetGenTypeFromVISAType(getPredefinedVarType(i)));
         break;
       }
       case PreDefinedVarsInternal::IMPL_ARG_BUF_PTR: {
-        dcl = createDeclareNoLookup("implBufPtr", G4_GRF, 1, 1, Type_UQ);
+        dcl = createDeclare("implBufPtr", G4_GRF, 1, 1, Type_UQ);
         auto phyReg = phyregpool.getGreg(kernel.getSpillHeaderGRF());
         dcl->getRegVar()->setPhyReg(phyReg, SubRegs_ImplPtrs::ImplBufPtr);
         break;
       }
 
       case PreDefinedVarsInternal::LOCAL_ID_BUF_PTR: {
-        dcl = createDeclareNoLookup("localIdBufPtr", G4_GRF, 1, 1, Type_UQ);
+        dcl = createDeclare("localIdBufPtr", G4_GRF, 1, 1, Type_UQ);
         auto phyReg = phyregpool.getGreg(kernel.getSpillHeaderGRF());
         dcl->getRegVar()->setPhyReg(phyReg, SubRegs_ImplPtrs::LocalIdBufPtr);
         break;
@@ -647,7 +645,7 @@ void IR_Builder::createPreDefinedVars() {
 void IR_Builder::createBuiltinDecls() {
   // realR0 is always tied to physical r0
   auto numR0DW = numEltPerGRF<Type_UD>();
-  realR0 = createDeclareNoLookup("BuiltInR0", G4_INPUT, numR0DW, 1, Type_UD);
+  realR0 = createDeclare("BuiltInR0", G4_INPUT, numR0DW, 1, Type_UD);
   realR0->getRegVar()->setPhyReg(phyregpool.getGreg(0), 0);
   realR0->setBuiltin();
 
@@ -657,30 +655,30 @@ void IR_Builder::createBuiltinDecls() {
   builtinR0->setDoNotSpill();
   builtinR0->setBuiltin();
 
-  builtinA0 = createDeclareNoLookup("BuiltinA0", G4_ADDRESS, 1, 1, Type_UD);
+  builtinA0 = createDeclare("BuiltinA0", G4_ADDRESS, 1, 1, Type_UD);
   builtinA0->getRegVar()->setPhyReg(phyregpool.getAddrReg(), 0);
   builtinA0->setBuiltin();
 
-  builtinA0Dot2 = createDeclareNoLookup("BuiltinA0Dot2", // a0.2
-                                        G4_ADDRESS, 1, 1, Type_UD);
+  builtinA0Dot2 = createDeclare("BuiltinA0Dot2", // a0.2
+                                G4_ADDRESS, 1, 1, Type_UD);
   builtinA0Dot2->getRegVar()->setPhyReg(phyregpool.getAddrReg(), 2);
   builtinA0Dot2->setBuiltin();
 
-  builtinHWTID = createDeclareNoLookup("hw_tid", G4_GRF, 1, 1, Type_UD);
+  builtinHWTID = createDeclare("hw_tid", G4_GRF, 1, 1, Type_UD);
   builtinHWTID->setBuiltin();
 
 
-  builtinT252 = createDeclareNoLookup(
-      vISAPreDefSurf[PREDEFINED_SURFACE_T252].name, G4_GRF, 1, 1, Type_UD);
+  builtinT252 = createDeclare(vISAPreDefSurf[PREDEFINED_SURFACE_T252].name,
+                              G4_GRF, 1, 1, Type_UD);
   builtinT252->setBuiltin();
-  builtinBindlessSampler = createDeclareNoLookup("B_S", G4_GRF, 1, 1, Type_UD);
+  builtinBindlessSampler = createDeclare("B_S", G4_GRF, 1, 1, Type_UD);
   builtinBindlessSampler->setBuiltin();
 
-  builtinSamplerHeader = createDeclareNoLookup(
-      "samplerHeader", G4_GRF, numEltPerGRF<Type_UD>(), 1, Type_UD);
+  builtinSamplerHeader = createDeclare("samplerHeader", G4_GRF,
+                                       numEltPerGRF<Type_UD>(), 1, Type_UD);
   builtinSamplerHeader->setBuiltin();
 
-  builtinScratchSurface = createDeclareNoLookup(
+  builtinScratchSurface = createDeclare(
       vISAPreDefSurf[PREDEFINED_SURFACE_SCRATCH].name, G4_GRF, 1, 1, Type_UD);
   builtinScratchSurface->setBuiltin();
 }
@@ -780,11 +778,12 @@ IR_Builder::cloneDeclare(std::map<G4_Declare *, G4_Declare *> &dclMap,
   return dclpool.cloneDeclare(kernel, dclMap, newDclName, dcl);
 }
 
-G4_Declare *
-IR_Builder::createDeclareNoLookup(const char *name, G4_RegFileKind regFile,
-                                  unsigned short n_elems, unsigned short n_rows,
-                                  G4_Type ty, DeclareType kind, G4_RegVar *base,
-                                  G4_Operand *repRegion, G4_ExecSize execSize) {
+G4_Declare *IR_Builder::createDeclare(const char *name, G4_RegFileKind regFile,
+                                      unsigned short n_elems,
+                                      unsigned short n_rows, G4_Type ty,
+                                      DeclareType kind, G4_RegVar *base,
+                                      G4_Operand *repRegion,
+                                      G4_ExecSize execSize) {
   if (regFile == G4_FLAG) {
     vISA_ASSERT(ty == Type_UW, "flag decl must have type UW");
   }
@@ -892,8 +891,7 @@ G4_Declare *IR_Builder::createTempVar(unsigned int numElements, G4_Type type,
     }
   }
 
-  G4_Declare *dcl =
-      createDeclareNoLookup(name, G4_GRF, dcl_width, dcl_height, type);
+  G4_Declare *dcl = createDeclare(name, G4_GRF, dcl_width, dcl_height, type);
   dcl->setSubRegAlign(subAlign);
   return dcl;
 }
@@ -901,8 +899,8 @@ G4_Declare *IR_Builder::createTempVar(unsigned int numElements, G4_Type type,
 G4_Declare *IR_Builder::createAddrFlagSpillLoc(G4_Declare *dcl) {
   const char *name = getNameString(16, "SP_LOC_%d", numAddrFlagSpillLoc++);
   G4_Declare *spillLoc =
-      createDeclareNoLookup(name, G4_GRF, dcl->getNumElems(), 1,
-                            dcl->getElemType(), DeclareType::AddrSpill);
+      createDeclare(name, G4_GRF, dcl->getNumElems(), 1, dcl->getElemType(),
+                    DeclareType::AddrSpill);
   dcl->setSpilledDeclare(spillLoc);
   spillLoc->setSubRegAlign(
       dcl->getSubRegAlign()); // for simd32 flag the spill loc has to be 2-word
@@ -1031,15 +1029,14 @@ G4_Declare *IR_Builder::createTempFlag(unsigned short numberOfFlags,
                                        const char *prefix) {
   const char *name = getNameString(20, "%s%d", prefix, num_temp_dcl++);
 
-  G4_Declare *dcl =
-      createDeclareNoLookup(name, G4_FLAG, numberOfFlags, 1, Type_UW);
+  G4_Declare *dcl = createDeclare(name, G4_FLAG, numberOfFlags, 1, Type_UW);
 
   return dcl;
 }
 
 G4_Declare *IR_Builder::createFlag(uint16_t numFlagElements, const char *name) {
   uint32_t numWords = (numFlagElements + 15) / 16;
-  G4_Declare *dcl = createDeclareNoLookup(name, G4_FLAG, numWords, 1, Type_UW);
+  G4_Declare *dcl = createDeclare(name, G4_FLAG, numWords, 1, Type_UW);
   dcl->setNumberFlagElements((uint8_t)numFlagElements);
   return dcl;
 }
@@ -1047,15 +1044,13 @@ G4_Declare *IR_Builder::createFlag(uint16_t numFlagElements, const char *name) {
 G4_Declare *IR_Builder::createTempScalar(uint16_t numFlagElements,
                                          const char *prefix) {
   const char *name = getNameString(20, "%s%d", prefix, num_temp_dcl++);
-  G4_Declare *dcl =
-      createDeclareNoLookup(name, G4_SCALAR, numFlagElements, 1, Type_UB);
+  G4_Declare *dcl = createDeclare(name, G4_SCALAR, numFlagElements, 1, Type_UB);
   return dcl;
 }
 
 G4_Declare *IR_Builder::createScalar(uint16_t numFlagElements,
                                      const char *name) {
-  G4_Declare *dcl =
-      createDeclareNoLookup(name, G4_SCALAR, numFlagElements, 1, Type_UB);
+  G4_Declare *dcl = createDeclare(name, G4_SCALAR, numFlagElements, 1, Type_UB);
   return dcl;
 }
 
@@ -1664,8 +1659,7 @@ G4_SrcRegRegion *IR_Builder::createScratchExDesc(uint32_t exdesc) {
   G4_SrcRegRegion *T251 =
       createSrcRegRegion(builtinScratchSurface, getRegionScalar());
   const char *buf = getNameString(20, "ExDesc%d", num_temp_dcl++);
-  G4_Declare *exDescDecl =
-      createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
+  G4_Declare *exDescDecl = createDeclare(buf, G4_ADDRESS, 1, 1, Type_UD);
   exDescDecl->setSubRegAlign(Four_Word);
 
   G4_DstRegRegion *dst = createDstRegRegion(exDescDecl, 1);
@@ -2003,8 +1997,7 @@ G4_SrcRegRegion *IR_Builder::createBindlessExDesc(uint32_t exdesc) {
   // virtual var for each exdesc
   G4_SrcRegRegion *T252 = createSrcRegRegion(builtinT252, getRegionScalar());
   const char *buf = getNameString(20, "ExDesc%d", num_temp_dcl++);
-  G4_Declare *exDescDecl =
-      createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
+  G4_Declare *exDescDecl = createDeclare(buf, G4_ADDRESS, 1, 1, Type_UD);
   exDescDecl->setSubRegAlign(Four_Word);
   G4_DstRegRegion *dst = createDstRegRegion(exDescDecl, 1);
   if (useNewExtDescFormat()) {
@@ -2549,7 +2542,7 @@ G4_Declare *IR_Builder::createSendPayloadDcl(unsigned num_elt, G4_Type type) {
       (num_elt * sizeOfType - 1) / numEltPerGRF<Type_UB>() + 1;
   unsigned short numElt =
       (numRow == 1) ? num_elt : (numEltPerGRF<Type_UB>() / sizeOfType);
-  G4_Declare *dcl = createDeclareNoLookup(name, G4_GRF, numElt, numRow, type);
+  G4_Declare *dcl = createDeclare(name, G4_GRF, numElt, numRow, type);
   return dcl;
 }
 

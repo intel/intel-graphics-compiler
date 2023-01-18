@@ -15,8 +15,8 @@ SPDX-License-Identifier: MIT
 #include "Common_BinaryEncoding.h"
 #include "DebugInfo.h"
 #include "FlowGraph.h"
-#include "PointsToAnalysis.h"
 #include "Passes/AccSubstitution.hpp"
+#include "PointsToAnalysis.h"
 #include "Passes/InstCombine.hpp"
 #include "Passes/LVN.hpp"
 #include "Passes/MergeScalars.hpp"
@@ -1338,7 +1338,7 @@ void Optimizer::cloneSampleInst() {
         uint32_t messageType =
             sendInst->getMsgDescRaw()->getSamplerMessageType();
         vISA_ASSERT(!inst->getPredicate(),
-               "do not handle predicated sampler inst for now");
+                    "do not handle predicated sampler inst for now");
         if (!isEval && cloneSample && messageType == 0 && numParams == 3) {
           if (!hasSample) {
             hasSample = true;
@@ -1370,7 +1370,7 @@ void Optimizer::cloneSampleInst() {
           // It is enough to check send's response length to determine
           // if Pixel Null Mask feedback is enabled.
           vASSERT(inst->getExecSize() == g4::SIMD8 ||
-                 inst->getExecSize() == g4::SIMD16);
+                  inst->getExecSize() == g4::SIMD16);
           uint16_t pixelNullMaskRspLen =
               (inst->getExecSize() == g4::SIMD16 &&
                !sendInst->getMsgDescRaw()->is16BitReturn())
@@ -1624,8 +1624,7 @@ void replaceAllSpilledRegions(G4_Kernel &kernel, G4_Declare *oldDcl,
         }
       }
 
-      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc;
-           i++) {
+      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         auto src = inst->getSrc(i);
 
         if (src && src->isSrcRegRegion()) {
@@ -1718,8 +1717,7 @@ void computeGlobalFreeGRFs(G4_Kernel &kernel) {
         }
       }
 
-      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc;
-           i++) {
+      for (unsigned int i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
         auto src = inst->getSrc(i);
 
         if (!src)
@@ -1891,9 +1889,8 @@ void Optimizer::reRAPostSchedule() {
         // reg when src is G4_AddrExp type. So we replace such spilled addr
         // operands with new address operands.
         G4_Declare *dstDcl = inst->getDst()->getTopDcl();
-        auto name =
-            builder.getNameString(16, "ADDR%d", kernel.Declares.size());
-        G4_Declare *newDstAddrDcl = kernel.fg.builder->createDeclareNoLookup(
+        auto name = builder.getNameString(16, "ADDR%d", kernel.Declares.size());
+        G4_Declare *newDstAddrDcl = kernel.fg.builder->createDeclare(
             name, G4_RegFileKind::G4_ADDRESS, dstDcl->getNumElems(),
             dstDcl->getNumRows(), dstDcl->getElemType());
         replaceAllSpilledRegions(kernel, dstDcl, newDstAddrDcl);
@@ -2926,8 +2923,8 @@ static G4_DstRegRegion *buildNewDstOperand(FlowGraph &fg, G4_INST *inst,
 
         // (3) compute the final linear index.
         vISA_ASSERT(srcRegionDesc->horzStride == 0 ||
-                         colIndex % srcRegionDesc->horzStride == 0,
-                     "invalid region");
+                        colIndex % srcRegionDesc->horzStride == 0,
+                    "invalid region");
         unsigned FirstEltIndex = rowIndex * srcRegionDesc->width +
                                  (srcRegionDesc->horzStride == 0
                                       ? colIndex
@@ -3149,7 +3146,7 @@ void Optimizer::reassociateConst() {
       auto isGoodSrc0Def = [isSrc1Const](G4_INST *def, G4_INST *use,
                                          const IR_Builder &builder) {
         vISA_ASSERT(use->getSrc(0)->isSrcRegRegion(),
-               "expect src0 to be src region");
+                    "expect src0 to be src region");
         if (def->opcode() != use->opcode()) {
           return false;
         }
@@ -4168,7 +4165,7 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
 {
   G4_INST *inst = *iter;
   vISA_ASSERT(inst->isPseudoLogic(),
-               "inst must be either pseudo_and/or/xor/not");
+              "inst must be either pseudo_and/or/xor/not");
   INST_LIST_ITER newIter = iter;
 
   bool isFirstInst = iter == bb->begin();
@@ -4201,18 +4198,18 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
     G4_opcode newOpcode = G4_illegal;
     if (inst->getMaskOffset() == 16) {
       vISA_ASSERT(inst->getExecSize() == g4::SIMD16,
-                   "Only support simd16 pseudo-logic instructions");
+                  "Only support simd16 pseudo-logic instructions");
       // we have to use the upper flag bits (.1) instead
       vISA_ASSERT(inst->getSrc(0)->isSrcRegRegion() &&
-                       inst->getSrc(0)->isFlag(),
-                   "expect src0 to be flag");
+                      inst->getSrc(0)->isFlag(),
+                  "expect src0 to be flag");
       auto newSrc0 = builder.createSrcWithNewSubRegOff(
           inst->getSrc(0)->asSrcRegRegion(), 1);
       inst->setSrc(newSrc0, 0);
       if (inst->getSrc(1) != nullptr) {
         vISA_ASSERT(inst->getSrc(1)->isSrcRegRegion() &&
-                         inst->getSrc(1)->isFlag(),
-                     "expect src1 to be flag");
+                        inst->getSrc(1)->isFlag(),
+                    "expect src1 to be flag");
         auto newSrc1 = builder.createSrcWithNewSubRegOff(
             inst->getSrc(1)->asSrcRegRegion(), 1);
         inst->setSrc(newSrc1, 1);
@@ -4235,7 +4232,8 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
       newOpcode = G4_not;
       break;
     default:
-      vISA_ASSERT_UNREACHABLE("unexpected opcode for pseudo-logic instructions");
+      vISA_ASSERT_UNREACHABLE(
+          "unexpected opcode for pseudo-logic instructions");
     }
 
     inst->setOpcode(newOpcode);
@@ -4274,7 +4272,7 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
 
     if (logicSrc1 == nullptr) {
       vISA_ASSERT(inst->opcode() == G4_pseudo_not,
-                   "Must be a pseudo-not instruction");
+                  "Must be a pseudo-not instruction");
       // for not P1 P0
       // we generate
       // (P0) sel V1 1 0
@@ -4302,7 +4300,8 @@ static void expandPseudoLogic(IR_Builder &builder, G4_BB *bb,
       newOpcode = G4_xor;
       break;
     default:
-      vISA_ASSERT_UNREACHABLE("unexpected opcode for pseudo-logic instructions");
+      vISA_ASSERT_UNREACHABLE(
+          "unexpected opcode for pseudo-logic instructions");
     }
 
     G4_INST *newLogicOp = builder.createInternalInst(
@@ -5368,7 +5367,8 @@ void MSGTable::insertHeaderMovInst(G4_INST *source_send, IR_Builder &builder,
     pos = mDot2_it;
     break;
   default:
-    vISA_ASSERT_UNREACHABLE("did not catch the first def instruction correctly");
+    vISA_ASSERT_UNREACHABLE(
+        "did not catch the first def instruction correctly");
     return;
   }
 
@@ -5766,9 +5766,9 @@ void Optimizer::cleanupBindless() {
         // optimizations like LVN.
         if (header->getTopDcl() && header->getTopDcl()->getCapableOfReuse() &&
             exDesc->isSrcRegRegion() && !instVector.empty() &&
-            std::all_of(instVector.begin(), instVector.end(),
-                [&](G4_INST *i) { return i->hasOneUse() &&
-                                         i->use_front().first == inst; })) {
+            std::all_of(instVector.begin(), instVector.end(), [&](G4_INST *i) {
+              return i->hasOneUse() && i->use_front().first == inst;
+            })) {
 
           // check if we can reuse cached values.
           G4_Operand *value =
@@ -6496,7 +6496,8 @@ void getOptReportStream(std::ofstream &reportStream, const Options *opt) {
   opt->getOption(VISA_AsmFileName, asmFileName);
   std::string optReportFileName = std::string(asmFileName) + "_optreport.txt";
   reportStream.open(optReportFileName, std::ios::out | std::ios::app);
-  vISA_ASSERT(!reportStream.fail(), "Fail to open %s", optReportFileName.c_str());
+  vISA_ASSERT(!reportStream.fail(), "Fail to open %s",
+              optReportFileName.c_str());
 }
 
 void closeOptReportStream(std::ofstream &reportStream) { reportStream.close(); }
@@ -6520,7 +6521,7 @@ void Optimizer::forceNoMaskOnM0() {
       // and M16 cannot be changed to M0.
       if (I->isLogic() || I->isPseudoLogic()) {
         // Only checking dst is enough.
-        G4_DstRegRegion* dst = I->getDst();
+        G4_DstRegRegion *dst = I->getDst();
         if (dst && !dst->isNullReg() && dst->isFlag()) {
           continue;
         }
@@ -6616,7 +6617,7 @@ void Optimizer::linePlaneWA(G4_INST *inst) {
       return;
     }
     vISA_ASSERT((rd->vertStride == 0 || rd->vertStride == 4) && rd->width == 4,
-                 "Unexpected region for the first line operand.");
+                "Unexpected region for the first line operand.");
 
     // create a new rd for src0
     const RegionDesc *new_rd = builder.getRegionScalar();
@@ -6781,7 +6782,7 @@ G4_SrcRegRegion *IR_Builder::createSubSrcOperand(G4_SrcRegRegion *src,
       if (start > 0) {
         // Change a0.N to a0.(N+start)
         vISA_ASSERT((start % wd == 0),
-               "illegal starting offset and width combination");
+                    "illegal starting offset and width combination");
         uint16_t subRegOff = src->getSubRegOff() + start / wd;
         return createIndirectSrc(src->getModifier(), src->getBase(),
                                  src->getRegOff(), subRegOff, src->getRegion(),
@@ -7390,7 +7391,7 @@ void Optimizer::normalizeRegion() {
               if (srcRegion->getRegion()->isSingleNonUnitStride(
                       inst->getExecSize(), stride)) {
                 vISA_ASSERT(stride <= 4,
-                             "illegal stride for align1 ternary region");
+                            "illegal stride for align1 ternary region");
                 srcRegion->setRegion(
                     builder,
                     kernel.fg.builder->createRegionDesc(stride * 2, 2, stride));
@@ -7412,7 +7413,7 @@ void Optimizer::countGRFUsage() {
       int GRFStart = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
       int numRows = dcl->getNumRows();
       vISA_ASSERT(GRFStart >= 0 && (GRFStart + numRows) <= (int)maxGRFNum,
-                   "illegal GRF assignment");
+                  "illegal GRF assignment");
       for (int i = GRFStart; i < GRFStart + numRows; ++i) {
         GRFUse[i] = true;
       }
@@ -8582,7 +8583,8 @@ void Optimizer::insertScratchReadBeforeEOT() {
   int globalScratchOffset =
       kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
   if (builder.needFenceBeforeEOT() ||
-      (globalScratchOffset == 0 && builder.getJitInfo()->stats.spillMemUsed == 0)) {
+      (globalScratchOffset == 0 &&
+       builder.getJitInfo()->stats.spillMemUsed == 0)) {
     return;
   }
 
@@ -8697,7 +8699,7 @@ G4_Declare *Optimizer::createInstsForCallTargetOffset(InstListType &insts,
   // call dst must not be overlapped with r2 which is hardcoded as the new jump
   // target
   vASSERT((fcall->getDst()->getLinearizedStart() /
-          kernel.numEltPerGRF<Type_UB>()) != 2);
+           kernel.numEltPerGRF<Type_UB>()) != 2);
 
   // hardcoded add's dst to r2
   // the reg offset must be the same as call's dst reg, and must be 0 (HW
@@ -9541,7 +9543,7 @@ private:
       T = getLastUser()->getDst()->getType();
 
     vISA_ASSERT((IS_FTYPE(T) || IS_HFTYPE(T) || IS_INT(T)),
-           "Only F/HF/W/B types are expected here");
+                "Only F/HF/W/B types are expected here");
     return (IS_FTYPE(T) || IS_HFTYPE(T))
                ? T
                : (IS_SIGNED_INT(T) ? Type_W : Type_UW);
@@ -10513,8 +10515,9 @@ void Optimizer::legalizeType() {
           bool hasFP64 = false, hasInt64 = false;
           std::tie(hasFP64, hasInt64) = uses64bType(inst);
           if (hasFP64 && hasInt64) {
-            vISA_ASSERT(false,
-                   "can't handle inst with both FP64 and INT64 at this point");
+            vISA_ASSERT(
+                false,
+                "can't handle inst with both FP64 and INT64 at this point");
             return;
           }
           if (hasFP64 && builder.noFP64()) {
@@ -10626,7 +10629,6 @@ void Optimizer::analyzeMove() {
 
 #undef MOVE_TYPE
 }
-
 
 void Optimizer::staticProfiling() {
   // NOTE: local data flow analysis can not be called because regVar info
@@ -12068,13 +12070,14 @@ void Optimizer::applyNoMaskWA() {
     G4_INST *I = *aII;
     G4_Predicate *P = I->getPredicate();
     vISA_ASSERT((P && !I->getCondMod()),
-           "ICE: expect predicate and no flagModifier!");
+                "ICE: expect predicate and no flagModifier!");
 
     uint32_t flagBits =
         (P->getRightBound() - P->getLeftBound() + 1) + I->getMaskOffset();
-    vISA_ASSERT((16 * aFlagVar->getDeclare()->getRootDeclare()->getWordSize()) >=
-               flagBits,
-           "ICE[vISA]: WA's flagVar should not be smaller!");
+    vISA_ASSERT(
+        (16 * aFlagVar->getDeclare()->getRootDeclare()->getWordSize()) >=
+            flagBits,
+        "ICE[vISA]: WA's flagVar should not be smaller!");
 
     G4_Type Ty = (flagBits > 16) ? Type_UD : Type_UW;
 
@@ -12123,7 +12126,7 @@ void Optimizer::applyNoMaskWA() {
     G4_INST *I = *aII;
     G4_CondMod *P = I->getCondMod();
     vISA_ASSERT((P && !I->getPredicate()),
-           "ICE [sel]: expect flagModifier and no predicate!");
+                "ICE [sel]: expect flagModifier and no predicate!");
 
     G4_DstRegRegion *dst = I->getDst();
     vISA_ASSERT(!isNull(dst), "ICE: expect dst to be non-null!");
@@ -12189,7 +12192,7 @@ void Optimizer::applyNoMaskWA() {
     G4_INST *I = *aII;
     G4_CondMod *P = I->getCondMod();
     vISA_ASSERT((P && !I->getPredicate()),
-           "ICE: expect flagModifier and no predicate!");
+                "ICE: expect flagModifier and no predicate!");
 
     // sel is specially handled in a different function.
     vASSERT(!(I->opcode() == G4_sel || I->opcode() == G4_csel));
@@ -12218,9 +12221,10 @@ void Optimizer::applyNoMaskWA() {
     }
 
     const uint32_t execMask = I->getExecLaneMask();
-    vISA_ASSERT((Ty == Type_UD || (execMask & 0xFFFF0000) == 0),
-           "ICE: a flag used in an inst should not be smaller than the inst's "
-           "execMask!");
+    vISA_ASSERT(
+        (Ty == Type_UD || (execMask & 0xFFFF0000) == 0),
+        "ICE: a flag used in an inst should not be smaller than the inst's "
+        "execMask!");
     if (flagVarTy == Ty && ((execMask == 0xFFFF && Ty == Type_UW) ||
                             (execMask == 0xFFFFFFFF && Ty == Type_UD))) {
       // case 2 : entire mod is defined by 'I' !
@@ -12319,7 +12323,7 @@ void Optimizer::applyNoMaskWA() {
     G4_CondMod *M = I->getCondMod();
     vISA_ASSERT((P && M), "ICE: expect both predicate and flagModifier!");
     vISA_ASSERT(P->getTopDcl() == M->getTopDcl(),
-           "ICE: both predicate and flagMod must be the same flag!");
+                "ICE: both predicate and flagMod must be the same flag!");
 
     G4_Declare *modDcl = M->getTopDcl();
     G4_RegVar *modVar = modDcl->getRegVar();
@@ -12381,7 +12385,7 @@ void Optimizer::applyNoMaskWA() {
     G4_Predicate *P = I->getPredicate();
     G4_CondMod *M = I->getCondMod();
     vISA_ASSERT((P == nullptr && M == nullptr),
-           "ICE: expect neither pred nor condmod!");
+                "ICE: expect neither pred nor condmod!");
 
     G4_Predicate *newPred = builder.createPredicate(PredState_Plus, aFlagVar, 0,
                                                     getPredCtrl(UseAnyh));
@@ -12513,7 +12517,7 @@ void Optimizer::applyNoMaskWA() {
           bool isValid =
               FlagDefUse::getFlagRegAndSubreg(O_f, WAFreg, WAFsreg, ty);
           vISA_ASSERT(isValid,
-                 "Flag should've been assigned physical reg already!");
+                      "Flag should've been assigned physical reg already!");
 
           // WAFlag must use the other flag
           WAFreg = (WAFreg == 0 ? 1 : 0);
@@ -12523,13 +12527,14 @@ void Optimizer::applyNoMaskWA() {
                   ? (G4_Operand *)sreg
                   : (G4_Operand *)((!isNull(dreg) && dreg->isFlag()) ? dreg
                                                                      : nullptr);
-          vISA_ASSERT(O != nullptr,
-                 "ICE: inst must have flag operands if it uses all flags!");
+          vISA_ASSERT(
+              O != nullptr,
+              "ICE: inst must have flag operands if it uses all flags!");
 
           bool isValid =
               FlagDefUse::getFlagRegAndSubreg(O, WAFreg, WAFsreg, ty);
           vISA_ASSERT(isValid,
-                 "Flag should've been assigned physical reg already!");
+                      "Flag should've been assigned physical reg already!");
         }
 
         // Save the entire flag, even though only the half is used.
@@ -12566,7 +12571,7 @@ void Optimizer::applyNoMaskWA() {
           if (!isNull(O) && O->isFlag()) {
             bool isValid = FlagDefUse::getFlagRegAndSubreg(O, fr, fsr, ty);
             vISA_ASSERT(isValid,
-                   "Flag should've been assigned physical reg already!");
+                        "Flag should've been assigned physical reg already!");
 
             if (fr == WAFreg) {
               // flag : either 2bytes at roff 0 or 1; or 4 bytes at roff 0
@@ -12822,9 +12827,8 @@ void Optimizer::applyFusedCallWA() {
     // This join will never jump, thus set its JIP to nullptr.
     G4_INST *tjoin = nextBB->getFirstInst();
     if (tjoin == nullptr || tjoin->opcode() != G4_join) {
-      G4_INST *finalJoin = builder.createCFInst(nullptr, G4_join, simdsz,
-                                                nullptr,
-                                                nullptr, InstOpt_NoOpt, false);
+      G4_INST *finalJoin = builder.createCFInst(
+          nullptr, G4_join, simdsz, nullptr, nullptr, InstOpt_NoOpt, false);
       if (tjoin == nullptr) {
         nextBB->insertBefore(nextBB->end(), finalJoin);
       } else {
@@ -13191,15 +13195,15 @@ void Optimizer::expandMulPostSchedule() {
       }
 
       vISA_ASSERT(inst->getSaturate() == g4::NOSAT,
-                   "NOSAT is expected in mul/mulh expanding");
+                  "NOSAT is expected in mul/mulh expanding");
       vISA_ASSERT(inst->getCondMod() == nullptr,
-                   "DW multiply does not support conditional modifiers");
+                  "DW multiply does not support conditional modifiers");
       vISA_ASSERT(!src0->isSrcRegRegion() ||
-                       src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
-                   "no src0 modifier is expected in mul/mulh expanding");
+                      src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
+                  "no src0 modifier is expected in mul/mulh expanding");
       vISA_ASSERT(!src1->isSrcRegRegion() ||
-                       src1->asSrcRegRegion()->getModifier() == Mod_src_undef,
-                   "no src1 modifier is expected in mul/mulh expanding");
+                      src1->asSrcRegRegion()->getModifier() == Mod_src_undef,
+                  "no src1 modifier is expected in mul/mulh expanding");
 
       uint32_t origOptions = inst->getOption();
       G4_Predicate *origPredicate = inst->getPredicate();
@@ -13283,18 +13287,18 @@ void Optimizer::expandMadwPostSchedule() {
       G4_DstRegRegion *dst = inst->getDst();
 
       vISA_ASSERT(inst->getSaturate() == g4::NOSAT,
-                   "NOSAT is expected in mul/mulh/madw expanding");
+                  "NOSAT is expected in mul/mulh/madw expanding");
       vISA_ASSERT(inst->getCondMod() == nullptr,
-                   "DW multiply does not support conditional modifiers");
+                  "DW multiply does not support conditional modifiers");
       vISA_ASSERT(!src0->isSrcRegRegion() ||
-                       src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
-                   "no src0 modifier is expected in mul/mulh/madw expanding");
+                      src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
+                  "no src0 modifier is expected in mul/mulh/madw expanding");
       vISA_ASSERT(!src1->isSrcRegRegion() ||
-                       src1->asSrcRegRegion()->getModifier() == Mod_src_undef,
-                   "no src1 modifier is expected in mul/mulh/madw expanding");
+                      src1->asSrcRegRegion()->getModifier() == Mod_src_undef,
+                  "no src1 modifier is expected in mul/mulh/madw expanding");
       vISA_ASSERT(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) &&
-                       IS_DTYPE(src2->getType()),
-                   "only DW-type sources are supported");
+                      IS_DTYPE(src2->getType()),
+                  "only DW-type sources are supported");
 
       uint32_t origOptions = inst->getOption();
       G4_Predicate *origPredicate = inst->getPredicate();
@@ -13499,8 +13503,8 @@ void Optimizer::fixReadSuppressioninFPU0() {
 
 void Optimizer::prepareDPASFuseRSWA() {
   vISA_ASSERT(builder.hasDPAS() && builder.hasDPASFuseRSWA(),
-               "Expected the function is called only when WA is specified in "
-               "WATable or options");
+              "Expected the function is called only when WA is specified in "
+              "WATable or options");
 
   kernel.fg.resetLocalDataFlowData();
   kernel.fg.localDataFlowAnalysis();
@@ -13544,8 +13548,8 @@ void Optimizer::prepareDPASFuseRSWA() {
     }
   }
   vISA_ASSERT(!builder.src1FirstGRFOfLastDpas.isAllset(),
-               "Do not expect the first GRF of src1 in last dpas inst of every "
-               "BB touches all GRFs");
+              "Do not expect the first GRF of src1 in last dpas inst of every "
+              "BB touches all GRFs");
 
   for (auto I : dpasList) {
     bool found_src1_def = false;

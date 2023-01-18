@@ -684,13 +684,13 @@ void CISA_IR_Builder::LinkTimeOptimization(
         replacedArgDcl =
             replacedArgDcl
                 ? replacedArgDcl
-                : callerBuilder->createDeclareNoLookup(
+                : callerBuilder->createDeclare(
                       "newArg", G4_GRF, callerBuilder->numEltPerGRF<Type_UD>(),
                       32, Type_UD);
         replacedRetDcl =
             replacedRetDcl
                 ? replacedRetDcl
-                : callerBuilder->createDeclareNoLookup(
+                : callerBuilder->createDeclare(
                       "newRet", G4_GRF, callerBuilder->numEltPerGRF<Type_UD>(),
                       12, Type_UD);
 

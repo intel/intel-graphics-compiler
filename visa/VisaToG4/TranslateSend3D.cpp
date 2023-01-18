@@ -1280,7 +1280,7 @@ int IR_Builder::splitSampleInst(
 
     const char *name = getNameString(20, "%s%d", "TmpSmplDst_", TmpSmplDstID++);
 
-    tempDstDcl = createDeclareNoLookup(
+    tempDstDcl = createDeclare(
         name, originalDstDcl->getRegFile(), originalDstDcl->getNumElems(),
         (uint16_t)tmpDstRows, originalDstDcl->getElemType());
 
@@ -1373,7 +1373,7 @@ int IR_Builder::splitSampleInst(
     const char *name =
         getNameString(20, "%s%d", "TmpSmplDst2_", TmpSmplDstID++);
 
-    tempDstDcl2 = createDeclareNoLookup(
+    tempDstDcl2 = createDeclare(
         name, originalDstDcl->getRegFile(), originalDstDcl->getNumElems(),
         (uint16_t)tmpDstRows, originalDstDcl->getElemType());
 

@@ -3525,8 +3525,8 @@ void Augmentation::buildLiveIntervals() {
       if (inst->isCall()) {
         const char *name =
             kernel.fg.builder->getNameString(32, "SCALL_%d", funcCnt++);
-        G4_Declare *scallDcl = kernel.fg.builder->createDeclareNoLookup(
-            name, G4_GRF, 1, 1, Type_UD);
+        G4_Declare *scallDcl =
+            kernel.fg.builder->createDeclare(name, G4_GRF, 1, 1, Type_UD);
 
         updateStartInterval(scallDcl, inst);
         updateEndInterval(scallDcl, inst);
@@ -7873,8 +7873,8 @@ void GraphColor::addA0SaveRestoreCode() {
         // Insert save/restore code because the pseudo node did not get an
         // allocation
         const char *name = builder.getNameString(20, "SA0_%d", count++);
-        G4_Declare *savedDcl = builder.createDeclareNoLookup(
-            name, G4_GRF, numA0Elements, 1, Type_UW);
+        G4_Declare *savedDcl =
+            builder.createDeclare(name, G4_GRF, numA0Elements, 1, Type_UW);
 
         {
           //
@@ -7945,8 +7945,8 @@ void GraphColor::addFlagSaveRestoreCode() {
         // Insert save/restore code because the pseudo node did not get an
         // allocation
         const char *name = builder.getNameString(32, "SFLAG_%d", count++);
-        G4_Declare *savedDcl1 = builder.createDeclareNoLookup(
-            name, G4_GRF, num32BitFlags, 1, Type_UD);
+        G4_Declare *savedDcl1 =
+            builder.createDeclare(name, G4_GRF, num32BitFlags, 1, Type_UD);
         {
           //
           // (W) mov (1) TMP_GRF.0<1>:ud f0.0:ud
@@ -8605,7 +8605,7 @@ void VarSplit::createSubDcls(G4_Kernel &kernel, G4_Declare *oldDcl,
                    dclWidth, dclHeight, dclTotalSize);
     const char *splitDclName = kernel.fg.builder->getNameString(
         16, "split_%d_%s", i, oldDcl->getName());
-    splitDcl = kernel.fg.builder->createDeclareNoLookup(
+    splitDcl = kernel.fg.builder->createDeclare(
         splitDclName, G4_GRF, dclWidth, dclHeight, oldDcl->getElemType());
     gra.setSubOffset(splitDcl, leftBound);
     splitDcl->copyAlign(oldDcl);
@@ -8676,7 +8676,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel &kernel, G4_Declare *oldDcl,
                    dclWidth, dclHeight, dclTotalSize);
     const char *newDclName = kernel.fg.builder->getNameString(
         16, "copy_%d_%s", index, oldDcl->getName());
-    G4_Declare *newDcl = kernel.fg.builder->createDeclareNoLookup(
+    G4_Declare *newDcl = kernel.fg.builder->createDeclare(
         newDclName, G4_GRF, dclWidth, dclHeight, oldSrc->getType());
     newDcl->copyAlign(oldDcl);
     gra.copyAlignment(newDcl, oldDcl);
@@ -9128,7 +9128,7 @@ void VarSplit::localSplit(IR_Builder &builder, G4_BB *bb) {
       getHeightWidth(topDcl->getElemType(),
                      (rightBound - leftBound + 1) / topDcl->getElemSize(),
                      dclWidth, dclHeight, dclTotalSize);
-      G4_Declare *partialDcl = builder.createDeclareNoLookup(
+      G4_Declare *partialDcl = builder.createDeclare(
           name, G4_GRF, dclWidth, dclHeight, topDcl->getElemType());
       gra.setSubOffset(partialDcl, leftBound);
       partialDcl->setIsPartialDcl(true);
@@ -11337,9 +11337,9 @@ void GlobalRA::insertPhyRegDecls() {
   for (int i = 0; i < numGRF; i++) {
     if (grfUsed[i] == true) {
       const char *dclName = builder.getNameString(10, "r%d", i);
-      G4_Declare *phyRegDcl = builder.createDeclareNoLookup(
-          dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(), 1, Type_D, Regular,
-          NULL, NULL);
+      G4_Declare *phyRegDcl =
+          builder.createDeclare(dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(),
+                                1, Type_D, Regular, NULL, NULL);
       G4_Greg *phyReg = builder.phyregpool.getGreg(i);
       phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
       GRFDclsForHRA[i] = phyRegDcl;

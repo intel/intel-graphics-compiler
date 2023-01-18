@@ -64,10 +64,9 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl) {
   vISA_ASSERT(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
   vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
               "Temp_ADDR exceeds 16 bytes");
-  G4_Declare *sp =
-      builder.createDeclareNoLookup(name, G4_ADDRESS, dcl->getNumElems(),
-                                    1, // 1 row
-                                    Type_UW);
+  G4_Declare *sp = builder.createDeclare(name, G4_ADDRESS, dcl->getNumElems(),
+                                         1, // 1 row
+                                         Type_UW);
   gra.setBBId(sp, bbId);
   // Live range of new temp addrs is short so that there is no point spilling
   // them. indicate this is for newly created addr temp so that RA won't spill
@@ -104,9 +103,9 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
   vISA_ASSERT(dcl->getNumRows() == 1, "Temp_ADDR should be only 1 row");
   vISA_ASSERT(dcl->getNumElems() <= getNumAddrRegisters(),
               "Temp_ADDR exceeds 16 bytes");
-  G4_Declare *sp = builder.createDeclareNoLookup(name, G4_ADDRESS, num_reg,
-                                                 1, // 1 row
-                                                 type);
+  G4_Declare *sp = builder.createDeclare(name, G4_ADDRESS, num_reg,
+                                         1, // 1 row
+                                         type);
   gra.setBBId(sp, bbId);
   // Live range of new temp addrs is short so that there is no point spilling
   // them. indicate this is for newly created addr temp so that RA won't spill

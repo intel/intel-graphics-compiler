@@ -2187,12 +2187,11 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
 
   for (auto bb : *this) {
     if (bb->isEndWithFCall()) {
-      const char *n =
-          builder->getNameString(25, "FCALL_RET_LOC_%d", call_id++);
+      const char *n = builder->getNameString(25, "FCALL_RET_LOC_%d", call_id++);
 
       G4_INST *fcall = bb->back();
       // Set call dst to r125.0
-      G4_Declare *r1_dst = builder->createDeclareNoLookup(
+      G4_Declare *r1_dst = builder->createDeclare(
           n, G4_GRF, builder->numEltPerGRF<Type_UD>(), 1, Type_UD);
       r1_dst->getRegVar()->setPhyReg(
           builder->phyregpool.getGreg(builder->kernel.getFPSPGRF()),
@@ -2203,11 +2202,10 @@ void FlowGraph::setABIForStackCallFunctionCalls() {
     }
 
     if (bb->isEndWithFRet()) {
-      const char *n =
-          builder->getNameString(25, "FRET_RET_LOC_%d", ret_id++);
+      const char *n = builder->getNameString(25, "FRET_RET_LOC_%d", ret_id++);
       G4_INST *fret = bb->back();
       const RegionDesc *rd = builder->createRegionDesc(2, 2, 1);
-      G4_Declare *r1_src = builder->createDeclareNoLookup(
+      G4_Declare *r1_src = builder->createDeclare(
           n, G4_INPUT, builder->numEltPerGRF<Type_UD>(), 1, Type_UD);
       r1_src->getRegVar()->setPhyReg(
           builder->phyregpool.getGreg(builder->kernel.getFPSPGRF()),

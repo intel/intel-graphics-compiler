@@ -976,7 +976,7 @@ G4_Declare *SpillManagerGRF::createRangeDeclare(
     const char *name, G4_RegFileKind regFile, unsigned short nElems,
     unsigned short nRows, G4_Type type, DeclareType kind, G4_RegVar *base,
     G4_Operand *repRegion, G4_ExecSize execSize) {
-  G4_Declare *rangeDeclare = builder_->createDeclareNoLookup(
+  G4_Declare *rangeDeclare = builder_->createDeclare(
       name, regFile, nElems, nRows, type, kind, base, repRegion, execSize);
   rangeDeclare->getRegVar()->setId(varIdCount_ + latestImplicitVarIdCount_++);
   gra.setBBId(rangeDeclare, bbId_);
@@ -3358,7 +3358,7 @@ G4_Declare *SpillManagerGRF::getOrCreateAddrSpillFillDcl(
 
         // temp is created of sub-class G4_RegVarTmp so that is
         // assigned infinite spill cost when coloring.
-        temp = kernel->fg.builder->createDeclareNoLookup(
+        temp = kernel->fg.builder->createDeclare(
             dclName, G4_GRF, spilledAddrTakenDcl->getNumElems(),
             spilledAddrTakenDcl->getNumRows(),
             spilledAddrTakenDcl->getElemType(), DeclareType::Tmp,
@@ -5984,7 +5984,7 @@ void BoundedRA::insertPushPop(bool useLSCMsg) {
       vISA_ASSERT(reservedGRFStart != NOT_FOUND,
                   "expecting valid reserved GRF");
       auto *immOpnd = builder->createImm(off / OWORD_BYTE_SIZE, Type_UD);
-      auto *tmp = builder->createDeclareNoLookup(
+      auto *tmp = builder->createDeclare(
           "TMP", G4_GRF, kernel.numEltPerGRF<Type_UD>(), 1, Type_UD);
       tmp->getRegVar()->setPhyReg(builder->phyregpool.getGreg(reservedGRFStart),
                                   0);
@@ -6002,7 +6002,7 @@ void BoundedRA::insertPushPop(bool useLSCMsg) {
     G4_ExecSize execSize(16);
     const char *dclName = builder->getNameString(DclSize, "PUSH%d_%d",
                                                  segment.first, segment.second);
-    G4_Declare *tmp = builder->createDeclareNoLookup(
+    G4_Declare *tmp = builder->createDeclare(
         dclName, G4_GRF, kernel.numEltPerGRF<Type_D>(), segment.second, Type_D);
     tmp->getRegVar()->setPhyReg(builder->phyregpool.getGreg(segment.first), 0);
 

@@ -772,7 +772,7 @@ int VISAKernelImpl::CISABuildPreDefinedDecls() {
         decl->stateVar.dcl = m_builder->getBuiltinScratchSurface();
       } else {
         decl->stateVar.dcl =
-            m_builder->createDeclareNoLookup("", G4_GRF, 1, 1, Type_UD);
+            m_builder->createDeclare("", G4_GRF, 1, 1, Type_UD);
       }
     }
     addSurface(decl);
@@ -880,11 +880,12 @@ void VISAKernelImpl::ensureVariableNameUnique(const char *&varName) {
   varName = buf;
 }
 
-void VISAKernelImpl::generateVariableName(Common_ISA_Var_Class Ty,
+// Return true if varName is updated to be an unique one.
+bool VISAKernelImpl::generateVariableName(Common_ISA_Var_Class Ty,
                                           const char *&varName) {
   if (!m_options->getOption(vISA_GenerateISAASM) && !IsAsmWriterMode()) {
     // variable name is a don't care if we are not outputting vISA assembly
-    return;
+    return false;
   }
 
   bool asmInput = m_options->getOption(vISA_isParseMode);
@@ -893,10 +894,9 @@ void VISAKernelImpl::generateVariableName(Common_ISA_Var_Class Ty,
     // if it's not, we will suffix it
     // Note that it's not legal for asm input since we allow duplicate variable
     // names if they are in different scope {...}
-    if (!asmInput) {
+    if (!asmInput)
       ensureVariableNameUnique(varName);
-    }
-    return;
+    return !asmInput;
   }
 
   // fall back onto a generic naming scheme
@@ -935,6 +935,7 @@ void VISAKernelImpl::generateVariableName(Common_ISA_Var_Class Ty,
   // ensure that our auto-generated name is unique
   // i.e. suffix the variable if input already uses this name
   ensureVariableNameUnique(varName);
+  return true;
 }
 
 std::string VISAKernelImpl::getVarName(VISA_GenVar *decl) const {
@@ -976,7 +977,7 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *&decl, const char *varName,
   decl->type = GENERAL_VAR;
   var_info_t *info = &decl->genVar;
 
-  generateVariableName(decl->type, varName);
+  bool nameModified = generateVariableName(decl->type, varName);
 
   if (m_options->getOption(vISA_isParseMode) &&
       !setNameIndexMap(varName, decl)) {
@@ -1001,7 +1002,7 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *&decl, const char *varName,
 
   info->attribute_capacity = 0;
   info->attribute_count = 0;
-  info->attributes = NULL;
+  info->attributes = nullptr;
 
   decl->index = m_var_info_count++;
 
@@ -1012,8 +1013,11 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *&decl, const char *varName,
     getHeightWidth(type, numberElements, dclWidth, dclHeight, totalByteSize,
                    *m_builder);
 
-    info->dcl = m_builder->createDeclareNoLookup(
-        createStringCopy(varName, m_mem), G4_GRF, dclWidth, dclHeight, type);
+    // If name is modified, this means we have already created a new copy,
+    // and there's no need to create another copy.
+    auto dclName = nameModified ? varName : createStringCopy(varName, m_mem);
+    info->dcl = m_builder->createDeclare(dclName, G4_GRF, dclWidth,
+                                                 dclHeight, type);
 
     if (parentDecl) {
       var_info_t *aliasDcl = &parentDecl->genVar;
@@ -1059,7 +1063,6 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *&decl, const char *varName,
   TIME_SCOPE(VISA_BUILDER_CREATE_VAR);
 
   decl = (VISA_AddrVar *)m_mem.alloc(sizeof(VISA_AddrVar));
-  ////memset(decl, 0, sizeof(VISA_AddrVar));
   decl->type = ADDRESS_VAR;
 
   if (m_options->getOption(vISA_isParseMode) &&
@@ -1069,14 +1072,17 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *&decl, const char *varName,
   }
 
   addr_info_t *addr = &decl->addrVar;
-  generateVariableName(decl->type, varName);
+  bool nameModified = generateVariableName(decl->type, varName);
 
   m_GenVarToNameMap[decl] = varName;
 
   decl->index = m_addr_info_count++;
   if (IS_GEN_BOTH_PATH) {
-    addr->dcl = m_builder->createDeclareNoLookup(
-        createStringCopy(varName, m_mem), G4_ADDRESS, (uint16_t)numberElements,
+    // If name is modified, this means we have already created a new copy,
+    // and there's no need to create another copy.
+    auto dclName = nameModified ? varName : createStringCopy(varName, m_mem);
+    addr->dcl = m_builder->createDeclare(
+        dclName, G4_ADDRESS, (uint16_t)numberElements,
         1, Type_UW);
     addr->name_index = -1;
   }
@@ -1108,10 +1114,9 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *&decl, const char *varName,
   TIME_SCOPE(VISA_BUILDER_CREATE_VAR);
 
   decl = (VISA_PredVar *)m_mem.alloc(sizeof(VISA_PredVar));
-  ////memset(decl, 0, sizeof(VISA_PredVar));
   decl->type = PREDICATE_VAR;
 
-  const int MAX_VISA_PRED_SIZE = 32;
+  constexpr int MAX_VISA_PRED_SIZE = 32;
   vISA_ASSERT_INPUT(numberElements <= MAX_VISA_PRED_SIZE,
                "number of flags must be <= 32");
 
@@ -1120,7 +1125,7 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *&decl, const char *varName,
     vASSERT(false);
     return VISA_FAILURE;
   }
-  generateVariableName(decl->type, varName);
+  bool nameModified = generateVariableName(decl->type, varName);
 
   m_GenVarToNameMap[decl] = varName;
 
@@ -1132,8 +1137,11 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *&decl, const char *varName,
   pred->attribute_count = 0;
   pred->attributes = NULL;
   if (IS_GEN_BOTH_PATH) {
+    // If name is modified, this means we have already created a new copy,
+    // and there's no need to create another copy.
+    auto dclName = nameModified ? varName : createStringCopy(varName, m_mem);
     pred->dcl =
-        m_builder->createFlag(numberElements, createStringCopy(varName, m_mem));
+        m_builder->createFlag(numberElements, dclName);
     pred->name_index = -1;
   }
   if (IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo) ||
@@ -1158,7 +1166,6 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl,
   TIME_SCOPE(VISA_BUILDER_CREATE_VAR);
 
   decl = (CISA_GEN_VAR *)m_mem.alloc(sizeof(CISA_GEN_VAR));
-  ////memset(decl, 0, sizeof(CISA_GEN_VAR));
   decl->type = type;
 
   if (m_options->getOption(vISA_isParseMode) &&
@@ -1166,7 +1173,7 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl,
     vASSERT(false);
     return VISA_FAILURE;
   }
-  generateVariableName(decl->type, varName);
+  bool nameModified = generateVariableName(decl->type, varName);
 
   m_GenVarToNameMap[decl] = varName;
 
@@ -1176,9 +1183,11 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl,
   state->attributes = NULL;
   state->num_elements = (uint16_t)numberElements;
   if (IS_GEN_BOTH_PATH) {
-    state->dcl = m_builder->createDeclareNoLookup(
-        createStringCopy(varName, m_mem), G4_GRF, (uint16_t)numberElements, 1,
-        Type_UD);
+    // If name is modified, this means we have already created a new copy,
+    // and there's no need to create another copy.
+    auto dclName = nameModified ? varName : createStringCopy(varName, m_mem);
+    state->dcl = m_builder->createDeclare(
+        dclName, G4_GRF, (uint16_t)numberElements, 1, Type_UD);
     state->name_index = -1;
   }
 

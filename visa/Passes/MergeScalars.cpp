@@ -22,10 +22,10 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
                                    G4_Declare *input, G4_Type eltType,
                                    int bundleSize, int firstEltOffset) {
   vISA_ASSERT(input->isInput() && input->getAliasDeclare() == nullptr,
-               "Expect root input variable");
+              "Expect root input variable");
   for (auto dcl : declares) {
     vISA_ASSERT(dcl->isInput() && dcl->getAliasDeclare() == nullptr,
-                 "declare must be root input variable");
+                "declare must be root input variable");
     if (dcl->getRegVar()->getByteAddr(builder) ==
             input->getRegVar()->getByteAddr(builder) &&
         dcl->getElemType() == eltType && dcl->getTotalElems() >= bundleSize) {
@@ -47,8 +47,8 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
   const char *name = builder.getNameString(
       16, "InputR%d.%d", input->getRegVar()->getPhyReg()->asGreg()->getRegNum(),
       offset);
-  G4_Declare *newInputDcl = builder.createDeclareNoLookup(
-      name, G4_INPUT, (uint16_t)bundleSize, 1, eltType);
+  G4_Declare *newInputDcl =
+      builder.createDeclare(name, G4_INPUT, (uint16_t)bundleSize, 1, eltType);
   newInputDcl->getRegVar()->setPhyReg(input->getRegVar()->getPhyReg(), offset);
   declares.push_back(newInputDcl);
   return newInputDcl;
@@ -164,7 +164,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
     newInst->setDest(newDst);
   } else {
     vISA_ASSERT(dstPattern == OPND_PATTERN::CONTIGUOUS,
-                 "unexpected dst pattern");
+                "unexpected dst pattern");
   }
 
   for (int i = 0; i < newInst->getNumSrc(); ++i) {
@@ -181,7 +181,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       }
       for (int j = 0; j < size; ++j) {
         vISA_ASSERT(inst[j]->getSrc(i)->isSrcRegRegion(),
-                     "Src must be a region");
+                    "Src must be a region");
         G4_SrcRegRegion *src = inst[j]->getSrc(i)->asSrcRegRegion();
         G4_Declare *srcDcl = src->getTopDcl();
         if (srcDcl->getAliasDeclare() == nullptr) {
@@ -262,19 +262,22 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       // 3. check if mov execution mask is no mask SIMD1
       // 4. check if srcs in bundle are immediate values (handled in
       //    canMergeSrc)
-      // 5. check if destination type is not float (soft constraint, todo: must address)
+      // 5. check if destination type is not float (soft constraint, todo: must
+      // address)
       // 6. check is the total size of packed data type is less than equal to
       //    largest datatype size (qword).
       for (int j = 0; j < size; j++) {
-        if (!inst[j]->isMov()) return false;
+        if (!inst[j]->isMov())
+          return false;
         if (j > 0 && inst[j - 1]->getDst()->getTopDcl() !=
-                                     inst[j]->getDst()->getTopDcl()) {
+                         inst[j]->getDst()->getTopDcl()) {
           return false;
         }
       }
 
       auto packedType = dataTypeSize(newInst->getDst());
-      if (packedType == Type_UNDEF) return false;
+      if (packedType == Type_UNDEF)
+        return false;
 
       // create the packed value
       // since we also create packed values with non-motonic subregs, the
@@ -319,8 +322,9 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       // newDcl->copyAlign(newInst->getDst()->getTopDcl());
       // set the newDcl dcl alias to the instruction destination dcl
       unsigned int byteOffset =
-        newInst->getDst()->getRegOff() * builder.numEltPerGRF<Type_UB>() +
-        newInst->getDst()->getSubRegOff() * TypeSize(newInst->getDst()->getType());
+          newInst->getDst()->getRegOff() * builder.numEltPerGRF<Type_UB>() +
+          newInst->getDst()->getSubRegOff() *
+              TypeSize(newInst->getDst()->getType());
 
       newDcl->setAliasDeclare(newInst->getDst()->getTopDcl(), byteOffset);
 
@@ -332,7 +336,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       execSize = g4::SIMD1;
     } else {
       vISA_ASSERT(srcPattern[i] == OPND_PATTERN::IDENTICAL,
-                   "unexpected source pattern");
+                  "unexpected source pattern");
     }
   }
 
@@ -619,15 +623,15 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
       // no coalescing of immediate values possible
       return false;
     } else {
-      // The PACKED pattern bundle attempts to combine mov immediate instructions
-      // into a single mov instruction with the immediate value obtained from
-      // packing multiple immediate values into a single value.
-      // As a result, the packed immediate value has a wider data type.
-      // Since, select platforms support wide datatype moves, the packing optimization
+      // The PACKED pattern bundle attempts to combine mov immediate
+      // instructions into a single mov instruction with the immediate value
+      // obtained from packing multiple immediate values into a single value. As
+      // a result, the packed immediate value has a wider data type. Since,
+      // select platforms support wide datatype moves, the packing optimization
       // is only enabled for immediate value data types below qword.
       // For data types above dword, if the values are identical, then the
-      // identical pattern logic will be exercised resulting in wider SIMD moves;
-      // otherwise no optimization is performed
+      // identical pattern logic will be exercised resulting in wider SIMD
+      // moves; otherwise no optimization is performed
       if (builder.getOption(vISA_CoalesceScalarMoves) &&
           IS_TYPE_INT(src->getType()) && !IS_QTYPE(src->getType())) {
         // first check whether we have already detected an IDENTICAL or PACKED

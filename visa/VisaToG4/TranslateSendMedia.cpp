@@ -1013,7 +1013,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
   // set dst BTI, In M0.2 bits 24:31
   if (hdcMode) {
     G4_Declare *dcl_temp =
-        createDeclareNoLookup("tmp_shl_dst_bti", G4_GRF, 1, 1, Type_UD);
+        createDeclare("tmp_shl_dst_bti", G4_GRF, 1, 1, Type_UD);
 
     // Creating dst of the shift to be used in shift instruction
     // Creating src of src to use in the subsequent add instruction
@@ -1037,7 +1037,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
   // set y_offset In M0.4 16:31
   if (hdcMode) {
     G4_Declare *dcl_temp =
-        createDeclareNoLookup("tmp_shl_y_offset", G4_GRF, 1, 1, Type_UD);
+        createDeclare("tmp_shl_y_offset", G4_GRF, 1, 1, Type_UD);
 
     // Creating dst of the shift to be used in shift instruction
     // Creating src of src to use in the subsequent add instruction
@@ -1170,7 +1170,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
 
   // creating temp for intermediate computations
   G4_Declare *dcl_temp =
-      createDeclareNoLookup("tmp_shl", G4_GRF, 1, 1, Type_UD);
+      createDeclare("tmp_shl", G4_GRF, 1, 1, Type_UD);
   G4_SrcRegRegion temp_src(*this, Mod_src_undef, Direct, dcl_temp->getRegVar(),
                            0, 0, getRegionScalar(), Type_UD);
   G4_DstRegRegion temp_dst(*this, Direct, dcl_temp->getRegVar(), 0, 0, 1,

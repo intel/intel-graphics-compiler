@@ -1507,7 +1507,7 @@ void LinearScanRA::calculateCurrentBBLiveIntervals(
       const char *name =
           kernel.fg.builder->getNameString(32, "SCALL_%d", funcCnt++);
       G4_Declare *scallDcl =
-          kernel.fg.builder->createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UD);
+          kernel.fg.builder->createDeclare(name, G4_GRF, 1, 1, Type_UD);
       LSLiveRange *lr = CreateLocalLiveRange(scallDcl);
 
       liveIntervals.push_back(lr);

@@ -2598,7 +2598,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                   G4_Declare *splitDcl = NULL;
                   const char *splitDclName =
                       builder.getNameString(16, "split_%s", oldDcl->getName());
-                  splitDcl = builder.createDeclareNoLookup(
+                  splitDcl = builder.createDeclare(
                       splitDclName, G4_GRF, oldDcl->getNumElems(),
                       oldDcl->getNumRows(), oldDcl->getElemType());
                   splitDcl->copyAlign(oldDcl);
@@ -2643,7 +2643,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
 
                   const char *newDclName =
                       builder.getNameString(16, "copy_%s", oldDcl->getName());
-                  newDcl = builder.createDeclareNoLookup(
+                  newDcl = builder.createDeclare(
                       newDclName, G4_GRF, oldDcl->getNumElems(),
                       oldDcl->getNumRows(), oldDcl->getElemType());
                   newDcl->copyAlign(oldDcl);
@@ -2690,7 +2690,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                   if (aliasOldSrcDcl != NULL) {
                     const char *newSrcDclName = builder.getNameString(
                         16, "copy_%s", oldSrcDcl->getName());
-                    newSrcDcl = builder.createDeclareNoLookup(
+                    newSrcDcl = builder.createDeclare(
                         newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(),
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
                     newSrcDcl->copyAlign(oldSrcDcl);
@@ -2706,7 +2706,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                     oldSrcDcl = aliasOldSrcDcl;
                     const char *newSrcDclName = builder.getNameString(
                         16, "copy_%s", oldSrcDcl->getName());
-                    newSrcDcl = builder.createDeclareNoLookup(
+                    newSrcDcl = builder.createDeclare(
                         newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(),
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
                     newSrcDcl->copyAlign(oldSrcDcl);
@@ -2728,7 +2728,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                   if (aliasOldSrcDcl != NULL) {
                     const char *newSrcDclName = builder.getNameString(
                         16, "copy_%s", oldSrcDcl->getName());
-                    newSrcDcl = builder.createDeclareNoLookup(
+                    newSrcDcl = builder.createDeclare(
                         newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(),
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
                     newSrcDcl->copyAlign(oldSrcDcl);
@@ -2745,7 +2745,7 @@ bool LinearScan::allocateRegs(LocalLiveRange *lr, G4_BB *bb,
                     oldSrcDcl = aliasOldSrcDcl;
                     const char *newSrcDclName = builder.getNameString(
                         16, "copy_%s", oldSrcDcl->getName());
-                    newSrcDcl = builder.createDeclareNoLookup(
+                    newSrcDcl = builder.createDeclare(
                         newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(),
                         oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
                     newSrcDcl->copyAlign(oldSrcDcl);

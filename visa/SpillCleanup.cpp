@@ -65,7 +65,7 @@ G4_INST *CoalesceSpillFills::generateCoalescedFill(G4_SrcRegRegion *header,
   // Construct fillDst
   const char *dclName = kernel.fg.builder->getNameString(
       32, "COAL_FILL_%d", kernel.Declares.size());
-  auto fillDcl = kernel.fg.builder->createDeclareNoLookup(
+  auto fillDcl = kernel.fg.builder->createDeclare(
       dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(), dclSize, Type_UD,
       DeclareType::CoalescedFill);
 
@@ -155,7 +155,7 @@ CoalesceSpillFills::createCoalescedSpillDcl(unsigned int payloadSize) {
 
   dclName = kernel.fg.builder->getNameString(32, "COAL_SPILL_%d",
                                              kernel.Declares.size());
-  spillDcl = kernel.fg.builder->createDeclareNoLookup(
+  spillDcl = kernel.fg.builder->createDeclare(
       dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(), payloadSize, Type_UD,
       DeclareType::CoalescedSpill);
 
@@ -1257,7 +1257,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap() {
           // src1 of sends.
           const char *dclName = kernel.fg.builder->getNameString(
               32, "COPY_%d", kernel.Declares.size());
-          G4_Declare *copyDcl = kernel.fg.builder->createDeclareNoLookup(
+          G4_Declare *copyDcl = kernel.fg.builder->createDeclare(
               dclName, G4_GRF, kernel.numEltPerGRF<Type_UD>(),
               src1->getTopDcl()->getNumRows(), Type_UD);
 

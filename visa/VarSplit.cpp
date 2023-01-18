@@ -448,7 +448,7 @@ void VarSplitPass::split() {
 
       auto name = kernel.fg.builder->getNameString(
           50, "%s_%d_%d_%d", dstDcl->getName(), i, lb, rb);
-      auto splitDcl = kernel.fg.builder->createDeclareNoLookup(
+      auto splitDcl = kernel.fg.builder->createDeclare(
           name, G4_RegFileKind::G4_GRF, kernel.numEltPerGRF<Type_UD>(), numRows,
           Type_UD);
       splitParentDcl.insert(std::make_pair(splitDcl, dstDcl));

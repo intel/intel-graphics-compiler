@@ -1240,7 +1240,7 @@ private:
   void createReservedKeywordSet();
   bool isReservedName(const std::string &nm) const;
   void ensureVariableNameUnique(const char *&varName);
-  void generateVariableName(Common_ISA_Var_Class Ty, const char *&varName);
+  bool generateVariableName(Common_ISA_Var_Class Ty, const char *&varName);
 
   void dumpDebugFormatFile(std::vector<vISA::DebugInfoFormat> &debugSymbols,
                            std::string filename);

@@ -559,7 +559,7 @@ inline bool G4_VarBase::isRegAllocPartaker() const {
 // Inlined G4_RegVar methods.
 inline unsigned G4_RegVar::getLocId() const {
   vISA_ASSERT(type == RegVarType::AddrSpillLoc,
-               "Unexpected type in getLocId()");
+              "Unexpected type in getLocId()");
 
   G4_RegVarAddrSpillLoc *addrSpillLoc =
       static_cast<G4_RegVarAddrSpillLoc *>(const_cast<G4_RegVar *>(this));

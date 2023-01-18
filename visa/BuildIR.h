@@ -212,7 +212,7 @@ public:
 };
 
 //
-// place for hbolding all .declare
+// place for holding all declares.
 //
 class DeclarePool {
   Mem_Manager &mem;
@@ -505,7 +505,7 @@ public:
   // Getter/setter for be_sp and be_fp
   G4_Declare *getBESP() {
     if (be_sp == NULL) {
-      be_sp = createDeclareNoLookup("be_sp", G4_GRF, 1, 1, Type_UD);
+      be_sp = createDeclare("be_sp", G4_GRF, 1, 1, Type_UD);
       be_sp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()),
                                     SubRegs_Stackcall::BE_SP);
     }
@@ -515,7 +515,7 @@ public:
 
   G4_Declare *getBEFP() {
     if (be_fp == NULL) {
-      be_fp = createDeclareNoLookup("be_fp", G4_GRF, 1, 1, Type_UD);
+      be_fp = createDeclare("be_fp", G4_GRF, 1, 1, Type_UD);
       be_fp->getRegVar()->setPhyReg(phyregpool.getGreg(kernel.getFPSPGRF()),
                                     SubRegs_Stackcall::BE_FP);
     }
@@ -580,7 +580,7 @@ public:
   // the alignment
   bool tryToAlignOperand(G4_Operand *opnd, int alignByte) const;
   bool tryToAlignOperand(G4_Operand *opnd, unsigned short &offset,
-                     int alignByte) const;
+                         int alignByte) const;
 
   void setType(enum VISA_BUILD_TYPE _type) { type = _type; }
   bool getIsKernel() const { return type == VISA_BUILD_TYPE::KERNEL; }
@@ -676,13 +676,12 @@ public:
   G4_Declare *cloneDeclare(std::map<G4_Declare *, G4_Declare *> &dclMap,
                            G4_Declare *dcl);
 
-  G4_Declare *createDeclareNoLookup(const char *name, G4_RegFileKind regFile,
-                                    unsigned short n_elems,
-                                    unsigned short n_rows, G4_Type ty,
-                                    DeclareType kind = Regular,
-                                    G4_RegVar *base = NULL,
-                                    G4_Operand *repRegion = NULL,
-                                    G4_ExecSize execSize = G4_ExecSize(0));
+  G4_Declare *createDeclare(const char *name, G4_RegFileKind regFile,
+                            unsigned short n_elems, unsigned short n_rows,
+                            G4_Type ty, DeclareType kind = Regular,
+                            G4_RegVar *base = NULL,
+                            G4_Operand *repRegion = NULL,
+                            G4_ExecSize execSize = G4_ExecSize(0));
 
   G4_Declare *createPreVarDeclareNoLookup(PreDefinedVarsInternal index,
                                           unsigned short n_elems,
