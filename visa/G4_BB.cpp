@@ -1208,16 +1208,6 @@ INST_LIST_ITER G4_BB::getFirstInsertPos() {
   return II;
 }
 
-INST_LIST_ITER G4_BB::getLastInsertPos() {
-  INST_LIST_ITER II = begin();
-  for (INST_LIST_ITER IB = end(); II != IB; ++II) {
-    G4_INST *tI = (*II);
-    if (tI->isFlowControl() || tI == instList.back())
-      return II;
-  }
-  return II;
-}
-
 
 //
 //  Add an EOT send to the end of this BB.
