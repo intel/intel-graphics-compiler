@@ -27,6 +27,17 @@ entry:
   ret void
 }
 
+
+!igc.functions = !{!3}
+!IGCMetadata = !{!0}
+
+!0 = !{!"ModuleMD", !1}
+!1 = !{!"stringConstants", !2}
+!2 = !{!"stringConstantsSet[0]", i32 addrspace(1)* @c}
+!3 = !{void (i32 addrspace(1)*)* @test_program, !4}
+!4 = !{!4}
+!5 = !{!"function_type", i32 0}
+
 ; CHECK-DAG: !{!"inlineConstantBuffers", [[INLINE_CONSTANTBUFFERS_VEC0:![0-9]*]], [[INLINE_CONSTANTBUFFERS_VEC1:![0-9]*]]}
 ; CHECK-DAG: [[INLINE_CONSTANTBUFFERS_VEC0]] = !{!"inlineConstantBuffersVec[0]", [[ALIGNMENT:![0-9]*]], [[VEC0_ALLOCSIZE:![0-9]*]], [[VEC0_BUFFER:![0-9]*]]}
 ; CHECK-DAG: [[ALIGNMENT]] = !{!"alignment", i32 0}
