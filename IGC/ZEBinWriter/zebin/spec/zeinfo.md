@@ -424,7 +424,7 @@ This section defines the supported attribute for kernel_misc_info.
 This section defines the supported attribute for args_info.
 
 | Attribute | Type | Required/Optional | Default | Description |
-| ----- | ----- | ------ | ----- |
+| ----- | ----- | ------ | ----- | ----- |
 | index | int32 | Required | | argument index |
 | name | str | Optional | | argument name |
 | address_qualifier | str | Required | | |
