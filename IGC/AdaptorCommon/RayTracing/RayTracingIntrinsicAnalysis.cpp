@@ -54,11 +54,11 @@ public:
 
     static char ID;
 private:
-    bool hasGlobalPointer;
-    bool hasLocalPointer;
-    bool hasStackID;
-    bool hasInlinedData;
-    IGCMD::MetaDataUtils* pMdUtils;
+    bool hasGlobalPointer = false;
+    bool hasLocalPointer = false;
+    bool hasStackID = false;
+    bool hasInlinedData = false;
+    IGCMD::MetaDataUtils* pMdUtils = nullptr;
 };
 
 #define PASS_FLAG "raytracing-intrinsic-analysis"

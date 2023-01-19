@@ -77,8 +77,8 @@ namespace IGC
         bool checkFloatAtomicEmulation(llvm::Instruction *Val, size_t &OperandPos);
 
         bool Changed = false;
-        WIAnalysis *Wi;
-        llvm::Module *M;
+        WIAnalysis *Wi = nullptr;
+        llvm::Module *M = nullptr;
     };
 
 } // namespace IGC

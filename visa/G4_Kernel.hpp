@@ -201,14 +201,14 @@ public:
 private:
   const PlatformInfo &platformInfo;
   const char *name;
-  unsigned numRegTotal;
-  unsigned numThreads;
-  unsigned numSWSBTokens;
-  unsigned numAcc;
+  unsigned numRegTotal = 0;
+  unsigned numThreads = 0;
+  unsigned numSWSBTokens = 0;
+  unsigned numAcc = 0;
   G4_ExecSize simdSize{0u}; // must start as 0
   bool channelSliced = true;
   bool hasAddrTaken;
-  bool regSharingHeuristics;
+  bool regSharingHeuristics = false;
   bool needDPASWA = false;
   Options *m_options;
   const Attributes *m_kernelAttrs;
@@ -218,10 +218,10 @@ private:
   std::shared_ptr<KernelDebugInfo> kernelDbgInfo = nullptr;
   std::shared_ptr<gtPinData> gtPinInfo = nullptr;
 
-  uint32_t asmInstCount;
-  uint64_t kernelID;
+  uint32_t asmInstCount = 0;
+  uint64_t kernelID = 0;
 
-  unsigned callerSaveLastGRF;
+  unsigned callerSaveLastGRF = 0;
 
   bool m_hasIndirectCall = false;
 
@@ -586,7 +586,7 @@ private:
   // WA related
 private:
   // NoMaskWA under EU Fusion: passing info from preRA to postRA
-  NoMaskWAInfo *m_EUFusionNoMaskWAInfo;
+  NoMaskWAInfo *m_EUFusionNoMaskWAInfo = nullptr;
 
 public:
   void createNoMaskWAInfo(G4_Declare *aWAFlag, G4_Declare *aWATemp,

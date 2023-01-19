@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -160,7 +160,7 @@ namespace IGC
         {
             std::vector<const llvm::StoreInst*> stores;
             std::vector<const llvm::IntrinsicInst*> lifetimes;
-            bool assume_uniform;
+            bool assume_uniform = false;
         };
 
         /// @brief Update dependency relations between all values
@@ -243,9 +243,9 @@ namespace IGC
     private:
 #ifdef OCL_SPECIFIC
         // @brief pointer to Soa alloca analysis performed for this function
-        SoaAllocaAnalysis* m_soaAllocaAnalysis;
+        SoaAllocaAnalysis* m_soaAllocaAnalysis = nullptr;
         /// Runtime services pointer
-        RuntimeServices* m_rtServices;
+        RuntimeServices* m_rtServices = nullptr;
 #endif
 
         /// The WIAnalysis follows pointer arithmetic
@@ -274,13 +274,13 @@ namespace IGC
         /// </summary>
         std::vector<const llvm::Value*> m_forcedUniforms;
 
-        llvm::Function* m_func;
-        llvm::DominatorTree* DT;
-        llvm::PostDominatorTree* PDT;
-        IGC::IGCMD::MetaDataUtils* m_pMdUtils;
-        IGC::CodeGenContext* m_CGCtx;
-        IGC::ModuleMetaData* m_ModMD;
-        IGC::TranslationTable* m_TT;
+        llvm::Function* m_func = nullptr;
+        llvm::DominatorTree* DT = nullptr;
+        llvm::PostDominatorTree* PDT = nullptr;
+        IGC::IGCMD::MetaDataUtils* m_pMdUtils = nullptr;
+        IGC::CodeGenContext* m_CGCtx = nullptr;
+        IGC::ModuleMetaData* m_ModMD = nullptr;
+        IGC::TranslationTable* m_TT = nullptr;
 
         // Allow access to all the store into an alloca if we were able to track it
         llvm::DenseMap<const llvm::AllocaInst*, AllocaDep> m_allocaDepMap;
@@ -354,7 +354,7 @@ namespace IGC
 
         /// @brief Returns True if 'val' is uniform
         /// @param val llvm::Value to test
-        bool isUniform(const llvm::Value* val) const;  // Return true for any uniform
+        bool isUniform(const llvm::Value* val) const; // Return true for any uniform
         bool isWorkGroupOrGlobalUniform(const llvm::Value* val);
         bool isGlobalUniform(const llvm::Value* val);
 
@@ -384,7 +384,8 @@ namespace IGC
         }
     private:
         WIAnalysisRunner Runner;
-        bool isComputeProgram;
+        bool isComputeProgram = false;
     };
 
 } // namespace IGC
+

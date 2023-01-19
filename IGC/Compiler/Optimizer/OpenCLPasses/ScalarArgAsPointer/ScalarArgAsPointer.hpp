@@ -118,7 +118,7 @@ namespace IGC
         llvm::DenseMap<std::pair<llvm::AllocaInst*, uint64_t>, llvm::Argument*> m_allocas;
 
         /// @brief Data layout of currently analyzed module.
-        const llvm::DataLayout* DL;
+        const llvm::DataLayout* DL = nullptr;
     };
 
 } // namespace IGC

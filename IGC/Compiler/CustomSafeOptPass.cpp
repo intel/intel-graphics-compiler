@@ -248,7 +248,7 @@ void CustomSafeOptPass::visitAnd(BinaryOperator& I) {
     }
 
     Value* XorArgValue = nullptr;
-    CmpInst::Predicate Pred;
+    CmpInst::Predicate Pred = CmpInst::Predicate::FCMP_FALSE;
     auto AndPattern = m_c_And(m_c_Xor(m_Value(XorArgValue), m_SpecificInt(1)), m_ICmp(Pred, m_Value(), m_Value()));
     if (!match(&I, AndPattern)) return;
 
@@ -3568,7 +3568,7 @@ void GenSpecificPattern::visitZExtInst(ZExtInst& ZEI)
         return;
 
     using namespace llvm::PatternMatch;
-    CmpInst::Predicate pred;
+    CmpInst::Predicate pred = CmpInst::Predicate::FCMP_FALSE;
     Instruction* I1 = nullptr;
     Instruction* I2 = nullptr;
     Instruction* I3 = nullptr;
