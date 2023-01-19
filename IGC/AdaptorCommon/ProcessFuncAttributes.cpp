@@ -166,12 +166,7 @@ static bool containsImageType(llvm::Type *T)
 static bool isOptNoneBuiltin(StringRef name)
 {
     return name == "__intel_typedmemfence_optnone" ||
-           name == "__intel_memfence_optnone" ||
-#ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
-           name.startswith("__spirv_ocl_prefetch");
-#else
-           name.startswith("__builtin_spirv_OpenCL_prefetch");
-#endif
+           name == "__intel_memfence_optnone";
 }
 
 // Convert functions with recursion to stackcall, since subroutines do not support recursion
