@@ -184,12 +184,6 @@ private:
     }
   } math_wa_info;
 
-  // When double precision or Math instructions write a register, and the same
-  // register is reused by following instructions going to any pipe, the
-  // instruction is considered to occupy the full register irrespective of sub
-  // register number
-  bool needDstReadSuppressionWA(const Instruction &inst);
-
 private:
   const uint32_t MAX_GRF_BUCKETS = 128;
   // Instruction having 64-bit type destination having 14 latency

@@ -430,7 +430,7 @@ void DepSet::getDpasSrcDependency(const Instruction &inst,
     reg_range.push_back(std::make_pair(startRegNum, upperRegNum));
     // calculate extra_regs for HW workaround: treat Src2 as dpas.8x8 when
     // calculating register footpring (4 registers)
-    if (model.platform == Platform::XE_HPC) {
+    if (m_DB.needDPASSrc2WA()) {
       if (srcIx == 2 && (repeatCount != 8 || systolicDepth != 8)) {
         uint32_t extraUpBound = getDPASSrcDepUpBound(
             srcIx, tType, execSize, lowBound, 8, 8, ops_per_chan);
@@ -443,7 +443,7 @@ void DepSet::getDpasSrcDependency(const Instruction &inst,
     }
     // calculate extra_regs for HW workaround: src1 always have 8 register
     // footpring
-    if (model.platform == Platform::XE_HP) {
+    if (m_DB.needDPASSrc1WA()) {
       if (srcIx == 1) {
         uint32_t extraUpBound = lowBound + m_DB.getGRF_BYTES_PER_REG() * 8;
         uint32_t extraUpRegNum =
@@ -482,6 +482,46 @@ void DepSet::addDependency(const RegRangeListType &reg_range) {
   // Using one of the special registers to add read dependency into special
   // bucket This way it will always check that implicit dependency
   m_bucketList.push_back(m_DB.getBucketStart(RegName::ARF_CR));
+}
+
+bool DepSetBuilder::needDstReadSuppressionWA(const Instruction &inst) const {
+  if (mPlatformModel.platform != Platform::XE_HPG)
+    return false;
+
+  if (inst.getOpSpec().is(Op::MATH))
+    return true;
+
+  if (inst.isDF())
+    return true;
+
+  return false;
+}
+
+uint32_t DepSetBuilder::getBucketStart(RegName regname) const {
+  uint32_t bucket = 0;
+  switch (regname) {
+  case iga::RegName::GRF_R:
+    bucket = getGRF_START() / getBYTES_PER_BUCKET();
+    break;
+  case iga::RegName::ARF_A:
+    bucket = getARF_A_START() / getBYTES_PER_BUCKET();
+    break;
+  case iga::RegName::ARF_ACC:
+    bucket = getARF_ACC_START() / getBYTES_PER_BUCKET();
+    break;
+  case iga::RegName::ARF_F:
+    bucket = getARF_F_START() / getBYTES_PER_BUCKET();
+    break;
+  case RegName::ARF_CR:
+  case RegName::ARF_SR:
+    bucket = getARF_SPECIAL_START() / getBYTES_PER_BUCKET();
+    break;
+  default:
+    // putting rest of archtecture registers in to same bucket
+    bucket = getARF_F_START() / 32;
+    break;
+  }
+  return bucket;
 }
 
 size_t DepSetBuilder::DpasMacroBuilder::getNumberOfSuppresionGroups(
@@ -962,6 +1002,14 @@ void DepSet::setInputsSrcDep() {
     return;
   }
 
+  // Check if inst has intra-read-suppresion: If a multi-src inst has two or
+  // more src read to the same register, regardless if they are overlapping,
+  // it is considered having intra-read-suppression. Will need to force set
+  // the src's footprint to the full register when needIntraReadSuppressionWA
+  // Keep track of the touch register number in trackUseGrfNum and check
+  // during setting each src's footprint.
+  std::vector<unsigned> trackUseGrfNum;
+
   // check all the source operands
   for (unsigned srcIx = 0, numSrcs = m_instruction->getSourceCount();
        srcIx < numSrcs; srcIx++) {
@@ -1060,8 +1108,29 @@ void DepSet::setInputsSrcDep() {
           rgn = Region::SRC221;
         }
 
-        setSrcRegion(op.getDirRegName(), op.getDirRegRef(), rgn, execSize,
-                     typeSizeInBits);
+        auto useBuckets = setSrcRegion(op.getDirRegName(), op.getDirRegRef(),
+                            rgn, execSize, typeSizeInBits);
+
+        // check and add extra footprint for intra read suppression instructions.
+        // The WA only applies to GRF. In the case, bucket number is equal to
+        // GRF number.
+        if (m_DB.needIntraReadSuppressionWA() &&
+            op.getDirRegName() == RegName::GRF_R) {
+          IGA_ASSERT(useBuckets.first != m_DB.getTOTAL_BUCKETS(),
+              "SWSB: GRF src must have valid bucket number");
+          uint32_t grfNum = useBuckets.first;
+          for (uint32_t i = 0; i < useBuckets.second; ++i, ++grfNum) {
+            if (std::find(trackUseGrfNum.begin(), trackUseGrfNum.end(),
+                  useBuckets.first) != trackUseGrfNum.end()) {
+              // found the same grf use by different srcs. Set this DepSet to
+              // have full register footprint
+              addGrf(grfNum);
+            } else {
+              // no intra read to previous src
+              trackUseGrfNum.push_back(grfNum);
+            }
+          }
+        }
       }
       break;
     case Operand::Kind::MACRO: {
@@ -1371,10 +1440,11 @@ bool static const isSpecial(RegName rn) {
   return false;
 }
 
-void DepSet::setSrcRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
-                          uint32_t typeSizeBits) {
+std::pair<uint32_t, uint32_t>
+DepSet::setSrcRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
+                     uint32_t typeSizeBits) {
   // Previously we also skip acc register with subRegNum < 2 ==> WHY?
-  // The conditio is (rn == RegName::ARF_ACC && rr.subRegNum < 2)
+  // The condition is (rn == RegName::ARF_ACC && rr.subRegNum < 2)
   if (!isRegTracked(rn)) {
     // In the case that an instruction has only non-tracked register access,
     // we still want it to mark swsb if its previous instruction having
@@ -1385,7 +1455,7 @@ void DepSet::setSrcRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
     // (W) mov(1|M0)   f0.0<1>:ud    0x0 : ud        {A@1}
     // the second mov required A@1 be set
     m_bucketList.push_back(m_DB.getBucketStart(RegName::ARF_CR));
-    return;
+    return std::make_pair(m_DB.getTOTAL_BUCKETS(), 0);
   }
 
   uint32_t v = 1, w = 1, h = 0; // e.g. old-style default regions
@@ -1402,7 +1472,7 @@ void DepSet::setSrcRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
   // sets a region for a basic operand
   uint32_t rowBase = addressOf(rn, rr, typeSizeBits);
   if (rowBase >= m_DB.getTOTAL_BITS()) // tm0 or something
-    return;
+    return std::make_pair(m_DB.getTOTAL_BUCKETS(), 0);
 
   // the acc0/acc1 could have overlapping. (same as acc2/acc3, acc4/acc5, ...)
   // To be conservative we always mark them together when
@@ -1438,19 +1508,15 @@ void DepSet::setSrcRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
     }
   }
 
-  if (isRegTracked(rn)) {
-    // size_t extentTouched = upperBound - lowBound;
-    IGA_ASSERT(upperBound >= lowBound,
-               "source region footprint computation got it wrong: upperBound "
-               "is less than lowBound");
-    uint32_t startRegNum = lowBound / m_DB.getBYTES_PER_BUCKET();
-    uint32_t upperRegNum = (upperBound - 1) / m_DB.getBYTES_PER_BUCKET();
+  // size_t extentTouched = upperBound - lowBound;
+  IGA_ASSERT(upperBound >= lowBound,
+             "source region footprint computation got it wrong: upperBound "
+             "is less than lowBound");
+  uint32_t startRegNum = lowBound / m_DB.getBYTES_PER_BUCKET();
+  uint32_t upperRegNum = (upperBound - 1) / m_DB.getBYTES_PER_BUCKET();
 
-    for (uint32_t i = startRegNum; i <= upperRegNum; i++) {
-      // note: bucket start is already included in 'i' calculation
-      // used to be: m_bucketList.push_back(i + DepSet::getBucketStart(rn));
-      m_bucketList.push_back(i);
-    }
+  for (uint32_t i = startRegNum; i <= upperRegNum; i++) {
+    m_bucketList.push_back(i);
   }
 
   // Special registers has side effects so even if there is no direct
@@ -1465,6 +1531,7 @@ void DepSet::setSrcRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,
     // bucket This way it will always check that implicit dependency
     m_bucketList.push_back(m_DB.getBucketStart(RegName::ARF_CR));
   }
+  return std::make_pair(startRegNum, upperRegNum - startRegNum + 1);
 }
 
 void DepSet::setDstRegion(RegName rn, RegRef rr, Region rgn, uint32_t execSize,

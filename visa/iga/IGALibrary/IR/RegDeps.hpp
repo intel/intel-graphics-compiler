@@ -187,9 +187,16 @@ private:
 
   void setDstRegion(RegName rn, RegRef rr, Region r, uint32_t execSize,
                     uint32_t typeSizeBits);
-  void setSrcRegion(RegName rn, RegRef rr, Region r, uint32_t execSize,
-                    uint32_t typeSizeBits);
 
+  // Set DepSet::bits according to the given register information
+  // Return the start bucket number and number of buckets touched in pair,
+  // when the given register is a tracked register (DepSet::isRegTracked).
+  // Otherwise, return bucket size (getTOTAL_BUCKETS) as an invalid number.
+  // The bucket number is equal to GRF number when the register is GRF.
+  // This information can be used by the caller to check if the instruction
+  // has intra read suppression.
+  std::pair<uint32_t, uint32_t> setSrcRegion(
+    RegName rn, RegRef rr, Region r, uint32_t execSize, uint32_t typeSizeBits);
 
   // Set the bits to this DepSet with the given reg_range
   void addDependency(const RegRangeType &reg_range);
@@ -349,32 +356,30 @@ public:
     return getTOTAL_BITS() / getBYTES_PER_BUCKET() + 1;
   }
 
-  uint32_t getBucketStart(RegName regname) const {
-    uint32_t bucket = 0;
-    switch (regname) {
-    case iga::RegName::GRF_R:
-      bucket = getGRF_START() / getBYTES_PER_BUCKET();
-      break;
-    case iga::RegName::ARF_A:
-      bucket = getARF_A_START() / getBYTES_PER_BUCKET();
-      break;
-    case iga::RegName::ARF_ACC:
-      bucket = getARF_ACC_START() / getBYTES_PER_BUCKET();
-      break;
-    case iga::RegName::ARF_F:
-      bucket = getARF_F_START() / getBYTES_PER_BUCKET();
-      break;
-    case RegName::ARF_CR:
-    case RegName::ARF_SR:
-      bucket = getARF_SPECIAL_START() / getBYTES_PER_BUCKET();
-      break;
-    default:
-      // putting rest of archtecture registers in to same bucket
-      bucket = getARF_F_START() / 32;
-      break;
-    }
-    return bucket;
-  }
+  uint32_t getBucketStart(RegName regname) const;
+
+  /// ------------ HW Workaround Information ------------ ///
+  // When double precision or Math instructions write a register, and the same
+  // register is reused by following instructions going to any pipe, the
+  // instruction is considered to occupy the full register irrespective of sub
+  // register number
+  bool needDstReadSuppressionWA(const Instruction &inst) const;
+
+  // Src1 always have 8 register footpring
+  bool needDPASSrc1WA() const
+  { return mPlatformModel.platform == Platform::XE_HP; }
+
+  // Treat Dpas Src2 as dpas.8x8 when calculating register footpring
+  // (always read 4 registers)
+  bool needDPASSrc2WA() const
+  { return mPlatformModel.platform == Platform::XE_HPC; }
+
+  // When an instruction have inter-read suppression on a operand, and the same
+  // GRF register is used for intra-read suppression with another operand, then
+  // compiler must evaluate RAW dependency for the whole GRF irrespective of
+  // subregister numbers.
+  bool needIntraReadSuppressionWA() const
+  { return mPlatformModel.platform == Platform::XE; }
 
 private:
   // ASSUMES: byte-level tracking for all elements

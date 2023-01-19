@@ -874,19 +874,6 @@ void SWSBAnalyzer::addSWSBToInst(InstListIterator instIt, const SWSB &swsb,
       "Invalid swsb dist/token combination after merge");
 }
 
-bool SWSBAnalyzer::needDstReadSuppressionWA(const Instruction &inst) {
-  if (m_kernel.getModel().platform != Platform::XE_HPG)
-    return false;
-
-  if (inst.getOpSpec().is(Op::MATH))
-    return true;
-
-  if (inst.isDF())
-    return true;
-
-  return false;
-}
-
 static bool isSyncNop(const Instruction &i) {
   return i.is(Op::SYNC) && i.getSyncFc() == SyncFC::NOP;
 };
@@ -1194,7 +1181,7 @@ void SWSBAnalyzer::run() {
         inst = *instIter;
       } else {
         input = m_DB->createSrcDepSet(*inst, m_InstIdCounter, m_swsbMode);
-        if (needDstReadSuppressionWA(*inst))
+        if (m_DB->needDstReadSuppressionWA(*inst))
           output = m_DB->createDstDepSetFullGrf(*inst, m_InstIdCounter,
                                                 m_swsbMode, true);
         else
