@@ -217,7 +217,6 @@ private:
 
   void removeInstrinsics();
 
-  void countBankConflicts();
   unsigned int numBankConflicts;
 
   bool chkFwdOutputHazard(INST_LIST_ITER &, INST_LIST_ITER &);
@@ -348,7 +347,6 @@ public:
     PI_preRA_Schedule,
     PI_regAlloc,          // always
     PI_removeLifetimeOps, // always
-    PI_countBankConflicts,
     PI_removeRedundMov,       // always
     PI_removeEmptyBlocks,     // always
     PI_insertFallThroughJump, // always

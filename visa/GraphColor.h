@@ -1237,7 +1237,6 @@ public:
   void reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,
                            G4_INST *inst, G4_Declare *referencedDcl,
                            std::set<G4_Declare *> &defs,
-                           std::ofstream &optreport,
                            Gen4_Operand_Number opndNum);
   void detectNeverDefinedUses();
 

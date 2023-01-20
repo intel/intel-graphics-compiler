@@ -1176,7 +1176,7 @@ void GlobalRA::emitFGWithLiveness(const LivenessAnalysis &liveAnalysis) const {
         }
       }
 
-      std::cout < "\nGen: ";
+      std::cout << "\nGen: ";
       for (const G4_Declare *dcl : kernel.Declares) {
         if (dcl->getAliasDeclare())
           continue;
@@ -1235,20 +1235,20 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis &liveness,
                                const GraphColor &coloring) const {
   // Emit out interference graph of each spill candidate
   // and if a spill candidate is a local range, emit its
-  // start and end line number in file
-  std::ofstream optreport;
-  getOptReportStream(optreport, coloring.getOptions());
+  // start and end line number in file.
   LiveRange **lrs = coloring.getLiveRanges();
 
   for (const vISA::LiveRange *slr : coloring.getSpilledLiveRanges()) {
     if (slr->getRegKind() == G4_GRF) {
       const G4_RegVar *spillVar = slr->getVar();
-      optreport << "Spill candidate " << spillVar->getName() << " intf:";
-      optreport << "\t(" << spillVar->getDeclare()->getTotalElems()
-                << "):" << TypeSymbol(spillVar->getDeclare()->getElemType())
-                << "\n";
+      VISA_DEBUG_VERBOSE({
+        std::cout << "Spill candidate " << spillVar->getName() << " intf:";
+        std::cout << "\t(" << spillVar->getDeclare()->getTotalElems()
+                  << "):" << TypeSymbol(spillVar->getDeclare()->getElemType())
+                  << "\n";
+      });
 
-      if (getLocalLR(spillVar->getDeclare()) != NULL) {
+      if (getLocalLR(spillVar->getDeclare())) {
         if (getLocalLR(spillVar->getDeclare())->isLiveRangeLocal()) {
           int start, end;
           unsigned dummy;
@@ -1258,10 +1258,11 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis &liveness,
           end = getLocalLR(spillVar->getDeclare())
                     ->getLastRef(dummy)
                     ->getLineNo();
+          VISA_DEBUG_VERBOSE(std::cout
+                             << "(Liverange is local starting at line #"
+                             << start << " and ending at line #" << end << ")"
+                             << "\n");
 
-          optreport << "(Liverange is local starting at line #" << start
-                    << " and ending at line #" << end << ")"
-                    << "\n";
         }
       }
 
@@ -1271,26 +1272,23 @@ void GlobalRA::reportSpillInfo(const LivenessAnalysis &liveness,
       for (int i = 0; i < (int)liveness.getNumSelectedVar(); i++) {
         if (intf->interfereBetween(spillVarId, i)) {
           const G4_RegVar *intfRangeVar = lrs[i]->getVar();
+          (void)intfRangeVar;
+          VISA_DEBUG_VERBOSE(
+              std::cout << "\t" << intfRangeVar->getName() << "("
+                        << intfRangeVar->getDeclare()->getTotalElems() << "):"
+                        << TypeSymbol(
+                               intfRangeVar->getDeclare()->getElemType()));
 
-          optreport << "\t" << intfRangeVar->getName() << "("
-                    << intfRangeVar->getDeclare()->getTotalElems() << "):"
-                    << TypeSymbol(intfRangeVar->getDeclare()->getElemType());
-
-          if (lrs[i]->getPhyReg() == NULL) {
-            optreport << " --- spilled";
+          if (!lrs[i]->getPhyReg()) {
+            VISA_DEBUG_VERBOSE(std::cout << " --- spilled");
           }
-
-          optreport << ", "
-                    << "\n";
+          VISA_DEBUG_VERBOSE(std::cout << ",\n");
         }
       }
 
-      optreport << "\n"
-                << "\n";
+      VISA_DEBUG_VERBOSE(std::cout << "\n\n");
     }
   }
-
-  closeOptReportStream(optreport);
 }
 
 LiveRange::LiveRange(G4_RegVar *v, GlobalRA &g)
@@ -7483,16 +7481,12 @@ void GraphColor::getCallerSaveRegisters() {
       }
 
       gra.callerSaveRegCountMap[(*it)] = callerSaveRegCount;
-
-      if (builder.kernel.getOption(vISA_OptReport)) {
-        std::ofstream optreport;
-        getOptReportStream(optreport, builder.kernel.getOptions());
-        optreport << "Caller save size: "
+      VISA_DEBUG_VERBOSE({
+        std::cout << "Caller save size: "
                   << callerSaveRegCount * builder.getGRFSize()
                   << " bytes for fcall at cisa id "
                   << (*it)->back()->getVISAId() << "\n";
-        closeOptReportStream(optreport);
-      }
+      });
     }
   }
 }
@@ -7710,14 +7704,11 @@ void GlobalRA::addCalleeSaveRestoreCode() {
   auto byteOffset = builder.kernel.fg.calleeSaveAreaOffset * 16 +
                     calleeSaveRegsWritten * builder.getGRFSize();
   builder.kernel.fg.callerSaveAreaOffset = ROUND(byteOffset, 64) / 16;
-  if (builder.kernel.getOption(vISA_OptReport)) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, builder.kernel.getOptions());
-    optreport << "Callee save size: "
+  VISA_DEBUG({
+    std::cout << "Callee save size: "
               << calleeSaveRegCount * builder.getGRFSize() << " bytes"
               << "\n";
-    closeOptReportStream(optreport);
-  }
+  });
 }
 
 //
@@ -7771,13 +7762,8 @@ void GlobalRA::addGenxMainStackSetupCode() {
     entryBB->insertBefore(++insertIt, spIncInst);
   }
 
-  if (builder.kernel.getOption(vISA_OptReport)) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, builder.kernel.getOptions());
-    optreport << "Total frame size: " << frameSize * 16 << " bytes"
-              << "\n";
-    closeOptReportStream(optreport);
-  }
+  VISA_DEBUG(std::cout << "Total frame size: " << frameSize * 16 << " bytes"
+                       << "\n");
 }
 
 //
@@ -7845,14 +7831,8 @@ void GlobalRA::addCalleeStackSetupCode() {
 
   builder.instList.clear();
 
-  if (builder.kernel.getOption(vISA_OptReport)) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, builder.kernel.getOptions());
-    optreport << "\n"
-              << "Total frame size: " << frameSize * 16 << " bytes"
-              << "\n";
-    closeOptReportStream(optreport);
-  }
+  VISA_DEBUG(std::cout << "\nTotal frame size: " << frameSize * 16
+                       << " bytes\n");
 }
 
 //
@@ -8216,10 +8196,9 @@ void GlobalRA::addStoreRestoreToReturn() {
 void GlobalRA::reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,
                                    G4_INST *inst, G4_Declare *referencedDcl,
                                    std::set<G4_Declare *> &defs,
-                                   std::ofstream &optreport,
                                    Gen4_Operand_Number opndNum) {
   // Get topmost dcl
-  while (referencedDcl->getAliasDeclare() != NULL) {
+  while (referencedDcl->getAliasDeclare()) {
     referencedDcl = referencedDcl->getAliasDeclare();
   }
 
@@ -8231,7 +8210,6 @@ void GlobalRA::reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,
     // r[A0] = 0 <-- V1 indirectly defined
     // ... = V1 <-- Use-before-def warning for V1 skipped due to indirect def
     //
-
     return;
   }
 
@@ -8252,13 +8230,14 @@ void GlobalRA::reportUndefinedUses(LivenessAnalysis &liveAnalysis, G4_BB *bb,
     if (liveAnalysis.def_in[bb->getId()].isSet(id) == false &&
         defs.find(referencedDcl) == defs.end()) {
       // Def not found for use so report it
-      optreport << "Def not found for use " << referencedDcl->getName() << " ("
-                << opndName << ") at CISA offset " << inst->getVISAId()
-                << ", src line " << inst->getLineNo() << ":"
-                << "\n";
-      inst->emit(optreport);
-      optreport << "\n"
-                << "\n";
+      VISA_DEBUG_VERBOSE({
+        std::cout << "Def not found for use " << referencedDcl->getName()
+                  << " (" << opndName << ") at CISA offset "
+                  << inst->getVISAId() << ", src line " << inst->getLineNo()
+                  << ":\n";
+        inst->emit(std::cout);
+        std::cout << "\n\n";
+      });
     }
   }
 }
@@ -8276,32 +8255,27 @@ void GlobalRA::updateDefSet(std::set<G4_Declare *> &defs,
 void GlobalRA::detectUndefinedUses(LivenessAnalysis &liveAnalysis,
                                    G4_Kernel &kernel) {
   // This function iterates over each inst and checks whether there is
-  // a reaching def for each src operand. If not, it reports it to
-  // opt report.
-  std::ofstream optreport;
-  getOptReportStream(optreport, kernel.getOptions());
-
-  optreport << "\n";
-  if (liveAnalysis.livenessClass(G4_FLAG)) {
-    optreport << "=== Uses with reaching def - Flags ==="
-              << "\n";
-  } else if (liveAnalysis.livenessClass(G4_ADDRESS)) {
-    optreport << "=== Uses with reaching def - Address ==="
-              << "\n";
-  } else {
-    optreport << "=== Uses with reaching def - GRF ==="
-              << "\n";
-  }
-  if (kernel.getOption(vISA_LocalRA)) {
-    optreport << "(Use -nolocalra switch for accurate results of uses without "
-                 "reaching defs)"
-              << "\n";
-  }
+  // a reaching def for each src operand.
+  VISA_DEBUG_VERBOSE({
+    std::cout << "\n";
+    if (liveAnalysis.livenessClass(G4_FLAG)) {
+      std::cout << "=== Uses with reaching def - Flags ===\n";
+    } else if (liveAnalysis.livenessClass(G4_ADDRESS)) {
+      std::cout << "=== Uses with reaching def - Address ===\n";
+    } else {
+      std::cout << "=== Uses with reaching def - GRF ===\n";
+    }
+    if (kernel.getOption(vISA_LocalRA)) {
+      std::cout
+          << "(Use -nolocalra switch for accurate results of uses without "
+             "reaching defs)\n";
+    }
+  });
 
   for (G4_BB *bb : kernel.fg) {
     std::set<G4_Declare *> defs;
     std::set<G4_Declare *>::iterator defs_it;
-    G4_Declare *referencedDcl = NULL;
+    G4_Declare *referencedDcl = nullptr;
 
     for (G4_INST *inst : *bb) {
       // Src/predicate opnds are uses
@@ -8314,7 +8288,7 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis &liveAnalysis,
                             ->asRegVar()
                             ->getDeclare();
         reportUndefinedUses(liveAnalysis, bb, inst, referencedDcl, defs,
-                            optreport, Opnd_pred);
+                            Opnd_pred);
       }
 
       for (unsigned i = 0, numSrc = inst->getNumSrc(); i < numSrc; i++) {
@@ -8325,7 +8299,7 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis &liveAnalysis,
             opnd->getBase()->isRegAllocPartaker()) {
           referencedDcl = opnd->getBase()->asRegVar()->getDeclare();
           reportUndefinedUses(liveAnalysis, bb, inst, referencedDcl, defs,
-                              optreport, (Gen4_Operand_Number)(i + Opnd_src0));
+                              (Gen4_Operand_Number)(i + Opnd_src0));
         }
       }
 
@@ -8349,10 +8323,7 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis &liveAnalysis,
     }
   }
 
-  optreport << "\n"
-            << "\n";
-
-  closeOptReportStream(optreport);
+  VISA_DEBUG_VERBOSE(std::cout << "\n\n");
 }
 
 void GlobalRA::detectNeverDefinedUses() {
@@ -8419,18 +8390,12 @@ void GlobalRA::detectNeverDefinedUses() {
       }
     }
   }
-
-  std::ofstream optreport;
-  getOptReportStream(optreport, kernel.getOptions());
-  optreport << "\n"
-            << "=== Variables used but never defined ==="
-            << "\n"
-            << "\n";
+  VISA_DEBUG_VERBOSE(std::cout
+                     << "\n=== Variables used but never defined ===\n\n");
 
   for (auto dcl : kernel.Declares) {
-    while (dcl->getAliasDeclare() != NULL) {
+    while (dcl->getAliasDeclare())
       dcl = dcl->getAliasDeclare();
-    }
 
     map_it = vars.find(dcl);
     if (map_it != vars.end()) {
@@ -8438,24 +8403,22 @@ void GlobalRA::detectNeverDefinedUses() {
           dcl->getAddressed() == false) {
         // No def found for this non-input variable in
         // entire CFG so report it.
-        optreport << dcl->getName();
-        if (dcl->getRegFile() == G4_GRF) {
-          optreport << " (General)";
-        } else if (dcl->getRegFile() == G4_ADDRESS) {
-          optreport << " (Address)";
-        } else if (dcl->getRegFile() == G4_FLAG) {
-          optreport << " (Flag)";
-        }
-
-        optreport << "\n";
+        VISA_DEBUG_VERBOSE({
+          std::cout << dcl->getName();
+          if (dcl->getRegFile() == G4_GRF) {
+            std::cout << " (General)";
+          } else if (dcl->getRegFile() == G4_ADDRESS) {
+            std::cout << " (Address)";
+          } else if (dcl->getRegFile() == G4_FLAG) {
+            std::cout << " (Flag)";
+          }
+          std::cout << "\n";
+        });
       }
     }
   }
 
-  optreport << "\n"
-            << "\n";
-
-  closeOptReportStream(optreport);
+  VISA_DEBUG_VERBOSE(std::cout << "\n\n");
 }
 
 //
@@ -9209,9 +9172,7 @@ void GlobalRA::addrRegAlloc() {
              builder.kernel.fg.getIsStackCallFunc())) {
           coloring.addA0SaveRestoreCode();
         }
-        if (builder.getOption(vISA_OptReport)) {
-          detectUndefinedUses(liveAnalysis, kernel);
-        }
+        VISA_DEBUG_VERBOSE(detectUndefinedUses(liveAnalysis, kernel));
 
         break; // done with ARF allocation
       }
@@ -9303,9 +9264,7 @@ void GlobalRA::flagRegAlloc() {
 #endif
         }
 
-        if (builder.getOption(vISA_OptReport)) {
-          detectUndefinedUses(liveAnalysis, kernel);
-        }
+        VISA_DEBUG_VERBOSE(detectUndefinedUses(liveAnalysis, kernel));
 
         break; // done with FLAG allocation
       }
@@ -9472,21 +9431,16 @@ bool canDoHRA(G4_Kernel &kernel) {
 // graph coloring entry point.  returns nonzero if RA fails
 //
 int GlobalRA::coloringRegAlloc() {
-  if (kernel.getOption(vISA_OptReport)) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, builder.getOptions());
-    optreport << "\n"
-              << "=== Register Allocation ==="
-              << "\n";
+  VISA_DEBUG_VERBOSE({
+    std::cout << "\n=== Register Allocation ===\n";
     if (builder.getIsKernel() == false) {
-      optreport << "Function: " << kernel.getName() << "\n";
+      std::cout << "Function: " << kernel.getName() << "\n";
     } else {
-      optreport << "Kernel: " << kernel.getName() << "\n";
+      std::cout << "Kernel: " << kernel.getName() << "\n";
     }
-    closeOptReportStream(optreport);
 
     detectNeverDefinedUses();
-  }
+  });
 
   bool hasStackCall =
       kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
@@ -9937,9 +9891,9 @@ int GlobalRA::coloringRegAlloc() {
           GRFSpillFillCount += spilled->getRefCount();
         }
 
-        if (builder.getOption(vISA_OptReport) && iterationNo == 0) {
+        if (iterationNo == 0) {
           // Dump out interference graph information of spill candidates
-          reportSpillInfo(liveAnalysis, coloring);
+          VISA_DEBUG_VERBOSE(reportSpillInfo(liveAnalysis, coloring));
         }
 
         // vISA_AbortOnSpillThreshold is defined as [0..200]
@@ -10110,9 +10064,7 @@ int GlobalRA::coloringRegAlloc() {
 
         expandSpillFillIntrinsics(nextSpillOffset);
 
-        if (builder.getOption(vISA_OptReport)) {
-          detectUndefinedUses(liveAnalysis, kernel);
-        }
+        VISA_DEBUG_VERBOSE(detectUndefinedUses(liveAnalysis, kernel));
 
         if (nextSpillOffset) {
           switch (kernel.getRAType()) {
@@ -11347,11 +11299,7 @@ void GlobalRA::insertPhyRegDecls() {
     }
   }
 
-  if (builder.getOption(vISA_OptReport)) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, builder.getOptions());
-    optreport << "Local RA used " << numGRFsUsed << " GRFs\n";
-  }
+  VISA_DEBUG(std::cout << "Local RA used " << numGRFsUsed << " GRFs\n");
 }
 
 // compute physical register info and adjust foot print

@@ -102,7 +102,8 @@ DEF_VISA_OPTION(vISA_LocalRenameRegister, ET_BOOL, "-noregrenaming", UNUSED,
 DEF_VISA_OPTION(vISA_LocalDefHoist, ET_BOOL, "-nodefhoist", UNUSED, true)
 DEF_VISA_OPTION(vISA_FoldAddrImmed, ET_BOOL, "-nofoldaddrimmed", UNUSED, true)
 DEF_VISA_OPTION(vISA_enableCSEL, ET_BOOL, "-disablecsel", UNUSED, true)
-DEF_VISA_OPTION(vISA_OptReport, ET_BOOL, "-optreport", UNUSED, false)
+DEF_VISA_OPTION(vISA_OptReport, ET_BOOL, "-optreport", "DEPRECATED, is a nop",
+                false)
 DEF_VISA_OPTION(vISA_MergeScalar, ET_BOOL, "-nomergescalar", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableMACOpt, ET_BOOL, "-nomac", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableDCE, ET_BOOL, "-dce", UNUSED, false)

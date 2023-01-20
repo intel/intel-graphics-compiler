@@ -343,9 +343,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR) {
         << "Skipping global RA because local RA allocated all live-ranges.\n");
   }
 
-  if (builder.getOption(vISA_OptReport)) {
-    localRAOptReport();
-  }
+  VISA_DEBUG_VERBOSE(localRAOptReport());
 
   if (needGlobalRA == true &&
       !(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())) {
@@ -369,12 +367,9 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doSplitLLR) {
     undoLocalRAAssignments(true);
   }
 
-  if (needGlobalRA == false && builder.getOption(vISA_OptReport)) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, builder.getOptions());
-    optreport << "Allocated 100% GRF ranges without graph coloring."
-              << "\n";
-    closeOptReportStream(optreport);
+  if (needGlobalRA == false) {
+    VISA_DEBUG(std::cout << "Allocated 100% GRF ranges without graph coloring."
+                         << "\n");
   }
 
   return needGlobalRA;
@@ -939,20 +934,15 @@ void LocalRA::localRAOptReport() {
     }
   }
 
-  if (kernel.getOption(vISA_OptReport)) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, kernel.getOptions());
-    optreport << "\n";
-    optreport << "Total GRF ranges: " << totalRanges << "\n";
-    optreport << "GRF ranges allocated by local RA: " << localRanges << "\n";
+  VISA_DEBUG({
+    std::cout << "\n";
+    std::cout << "Total GRF ranges: " << totalRanges << "\n";
+    std::cout << "GRF ranges allocated by local RA: " << localRanges << "\n";
     if (totalRanges) {
-      optreport << (int)(localRanges * 100 / totalRanges)
-                << "% allocated by local RA"
-                << "\n"
-                << "\n";
+      std::cout << (int)(localRanges * 100 / totalRanges)
+                << "% allocated by local RA\n\n";
     }
-    closeOptReportStream(optreport);
-  }
+  });
 }
 
 // Given a src/dst reg region in opnd, traverse to its base and
@@ -996,13 +986,7 @@ unsigned int LocalRA::convertSubRegOffToWords(G4_Declare *dcl, int subregnum) {
 }
 
 void LocalRA::undoLocalRAAssignments(bool clearInterval) {
-  if (kernel.getOption(vISA_OptReport)) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, kernel.getOptions());
-    optreport << "Undoing local RA assignments"
-              << "\n";
-    closeOptReportStream(optreport);
-  }
+  VISA_DEBUG(std::cout << "Undoing local RA assignments\n");
 
   // Undo all assignments made by local RA
   for (auto dcl : kernel.Declares) {

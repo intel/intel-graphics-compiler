@@ -2492,8 +2492,6 @@ void BinaryEncodingCNL::DoAll() {
 
   int globalInstNum = 0;
   int globalHalfInstNum = 0;
-  int numCompactedInst = 0;
-  int numCompacted3SrcInst = 0;
 
   BB_LIST_ITER ib, bend(kernel.fg.end());
   for (ib = kernel.fg.begin(); ib != bend; ++ib) {
@@ -2541,11 +2539,6 @@ void BinaryEncodingCNL::DoAll() {
           }
 
           if (compacted) {
-            if (kernel.getOption(vISA_OptReport)) {
-              numCompactedInst++;
-              if (getBinInst(inst)->GetIs3Src())
-                numCompacted3SrcInst++;
-            }
             inst->setCompacted();
           }
         }
@@ -2566,8 +2559,6 @@ void BinaryEncodingCNL::DoAll() {
   kernel.setAsmCount(globalInstNum);
   SetInstCounts((uint32_t)globalHalfInstNum);
 
-  EncodingHelper::dumpOptReport(globalInstNum, numCompactedInst,
-                                numCompacted3SrcInst, kernel);
   for (auto x = offsetVector.begin(), vEnd = offsetVector.end(); x != vEnd;
        x++) {
     if (!EncodeConditionalBranches(x->inst, x->offset)) {

@@ -63,10 +63,6 @@ class G4_FillIntrinsic;
 class G4_PseudoAddrMovIntrinsic;
 } // namespace vISA
 
-// Forward declarations for global opt report related functions
-void getOptReportStream(std::ofstream &reportStream, const Options *options);
-void closeOptReportStream(std::ofstream &reportStream);
-
 vISA::G4_Declare *GetTopDclFromRegRegion(vISA::G4_Operand *opnd);
 
 typedef vISA::std_arena_based_allocator<vISA::G4_INST *>

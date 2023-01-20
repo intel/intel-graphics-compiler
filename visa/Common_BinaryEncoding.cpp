@@ -41,30 +41,6 @@ BinaryEncodingBase::Status BinaryEncodingBase::WriteToDatFile() {
   return SUCCESS;
 }
 
-void EncodingHelper::dumpOptReport(int totalInst, int numCompactedInst,
-                                   int numCompacted3SrcInst,
-                                   G4_Kernel &kernel) {
-  if (kernel.getOption(vISA_OptReport)) {
-    std::ofstream optReport;
-    getOptReportStream(optReport, kernel.fg.builder->getOptions());
-    optReport << "             === Binary Compaction ===\n";
-    optReport << std::fixed << "\n";
-    optReport << kernel.getName() << ": " << numCompactedInst << " out of "
-              << totalInst << " instructions are compacted.\n";
-    if (numCompacted3SrcInst > 0) {
-      optReport << kernel.getName() << ": " << numCompacted3SrcInst
-                << " instructions of 3 src (mad/pln) are compacted\n";
-    }
-    if (((float)(totalInst)) != 0.0) {
-      optReport << std::setprecision(0)
-                << (float)(numCompactedInst * 100) / (float)(totalInst)
-                << "% instructions of this kernel are compacted\n";
-    }
-    optReport << "\n";
-    closeOptReportStream(optReport);
-  }
-}
-
 bool BinaryEncodingBase::isBBBinInstEmpty(G4_BB *bb) {
   INST_LIST_ITER ii, iend(bb->end());
   for (ii = bb->begin(); ii != iend; ++ii) {

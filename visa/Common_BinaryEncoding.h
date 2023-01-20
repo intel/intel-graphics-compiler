@@ -1319,8 +1319,6 @@ public:
   static inline AddrMode GetDstAddrMode(G4_DstRegRegion *dst);
   static inline AddrMode GetSrcAddrMode(G4_Operand *src);
   static inline void mark3Src(G4_INST *inst, BinaryEncodingBase &encoder);
-  static void dumpOptReport(int totalInst, int numCompactedInst,
-                            int numCompacted3SrcInst, G4_Kernel &kernel);
   static inline bool hasLabelString(G4_INST *inst);
 
   static inline bool isSrcSubRegNumValid(G4_Operand *src) {

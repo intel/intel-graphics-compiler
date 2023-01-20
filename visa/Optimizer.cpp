@@ -56,15 +56,12 @@ void Optimizer::LVN() {
     numInstsRemoved += ::LVN::removeRedundantSamplerMovs(kernel, bb);
   }
 
-  if (kernel.getOption(vISA_OptReport)) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, kernel.getOptions());
-    optreport << "===== LVN ====="
+  VISA_DEBUG({
+    std::cout << "===== LVN ====="
               << "\n";
-    optreport << "Number of instructions removed: " << numInstsRemoved << "\n"
+    std::cout << "Number of instructions removed: " << numInstsRemoved << "\n"
               << "\n";
-    closeOptReportStream(optreport);
-  }
+  });
 }
 
 // helper functions
@@ -744,143 +741,6 @@ void Optimizer::addSWSBInfo() {
   return;
 }
 
-void Optimizer::countBankConflicts() {
-  std::list<G4_INST *> conflicts;
-  unsigned int numLocals = 0, numGlobals = 0;
-
-  for (auto curBB : kernel.fg) {
-    for (G4_INST *curInst : *curBB) {
-      G4_Operand *src0 = curInst->getSrc(0);
-      G4_Operand *src1 = curInst->getSrc(1);
-      G4_Operand *src2 = curInst->getSrc(2);
-
-      if (src0 == NULL || src1 == NULL || src2 == NULL)
-        continue;
-
-      if (!src0->isSrcRegRegion() || !src1->isSrcRegRegion() ||
-          !src2->isSrcRegRegion())
-        continue;
-
-      if (!src0->asSrcRegRegion()
-               ->getBase()
-               ->asRegVar()
-               ->getPhyReg()
-               ->isGreg() ||
-          !src1->asSrcRegRegion()
-               ->getBase()
-               ->asRegVar()
-               ->getPhyReg()
-               ->isGreg() ||
-          !src1->asSrcRegRegion()->getBase()->asRegVar()->getPhyReg()->isGreg())
-        continue;
-
-      // We have a 3 src instruction with each src operand a GRF register region
-      unsigned int src0grf = 0, src1grf = 0, src2grf = 0;
-
-      src0grf =
-          src0->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() +
-          src0->asSrcRegRegion()->getRegOff();
-      src1grf =
-          src1->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() +
-          src1->asSrcRegRegion()->getRegOff();
-      src2grf =
-          src2->getBase()->asRegVar()->getPhyReg()->asGreg()->getRegNum() +
-          src2->asSrcRegRegion()->getRegOff();
-
-      bool isConflict = false;
-
-      unsigned int src0partition = 0, src1partition = 0, src2partition = 0;
-
-      if (src0grf < 64) {
-        src0partition = 1;
-        if (src0grf % 2 == 0)
-          src0partition = 0;
-      } else {
-        src0partition = 3;
-        if (src0grf % 2 == 0)
-          src0partition = 2;
-      }
-
-      if (src1grf < 64) {
-        src1partition = 1;
-        if (src1grf % 2 == 0)
-          src1partition = 0;
-      } else {
-        src1partition = 3;
-        if (src1grf % 2 == 0)
-          src1partition = 2;
-      }
-
-      if (src2grf < 64) {
-        src2partition = 1;
-        if (src2grf % 2 == 0)
-          src2partition = 0;
-      } else {
-        src2partition = 3;
-        if (src2grf % 2 == 0)
-          src2partition = 2;
-      }
-
-      if (src0partition == src1partition && src1partition == src2partition)
-        isConflict = true;
-
-      if (curInst->getExecSize() == g4::SIMD16)
-        isConflict = true;
-
-      if (isConflict == true) {
-        conflicts.push_back(curInst);
-        numBankConflicts++;
-
-        auto isGlobal = [](G4_Operand *opnd, FlowGraph &fg) -> bool {
-          if (fg.globalOpndHT.isOpndGlobal(opnd))
-            return true;
-          return false;
-        };
-
-        if (!isGlobal(curInst->getSrc(0), kernel.fg) &&
-            curInst->getSrc(0)->getTopDcl()->getRegVar()->getPhyReg())
-          numLocals++;
-        else
-          numGlobals++;
-
-        if (!isGlobal(curInst->getSrc(1), kernel.fg) &&
-            curInst->getSrc(1)->getTopDcl()->getRegVar()->getPhyReg())
-          numLocals++;
-        else
-          numGlobals++;
-
-        if (!isGlobal(curInst->getSrc(2), kernel.fg) &&
-            curInst->getSrc(2)->getTopDcl()->getRegVar()->getPhyReg())
-          numLocals++;
-        else
-          numGlobals++;
-      }
-    }
-  }
-
-  if (numBankConflicts > 0) {
-    std::ofstream optreport;
-    getOptReportStream(optreport, builder.getOptions());
-
-    optreport << "\n"
-              << "\n";
-
-    optreport << "===== Bank conflicts ====="
-              << "\n";
-    optreport << "Found " << numBankConflicts << " conflicts (" << numLocals
-              << " locals, " << numGlobals
-              << " globals) in kernel: " << kernel.getName() << "\n";
-    for (G4_INST *i : conflicts) {
-      i->emit(optreport);
-    }
-
-    optreport << "\n"
-              << "\n";
-
-    closeOptReportStream(optreport);
-  }
-}
-
 void Optimizer::insertDummyCompactInst() {
   // Only for SKL+ and compaction is enabled.
   if (builder.getPlatform() < GENX_SKL || !builder.getOption(vISA_Compaction))
@@ -1540,7 +1400,6 @@ void Optimizer::initOptimizations() {
   INITIALIZE_PASS(regAlloc, vISA_EnableAlways, TimerID::TOTAL_RA);
   INITIALIZE_PASS(removeLifetimeOps, vISA_EnableAlways, TimerID::MISC_OPTS);
   INITIALIZE_PASS(postRA_HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
-  INITIALIZE_PASS(countBankConflicts, vISA_OptReport, TimerID::MISC_OPTS);
   INITIALIZE_PASS(removeRedundMov, vISA_EnableAlways, TimerID::MISC_OPTS);
   INITIALIZE_PASS(removeEmptyBlocks, vISA_EnableAlways, TimerID::MISC_OPTS);
   INITIALIZE_PASS(insertFallThroughJump, vISA_EnableAlways, TimerID::MISC_OPTS);
@@ -2083,8 +1942,6 @@ int Optimizer::optimization() {
 
   // HW workaround after RA
   runPass(PI_postRA_HWWorkaround);
-
-  runPass(PI_countBankConflicts);
 
   //
   // if a fall-through BB does not immediately follow its predecessor
@@ -3093,14 +2950,11 @@ void Optimizer::localDefHoisting() {
     }
   }
 
-  if (builder.getOption(vISA_OptReport)) {
-    std::ofstream optReport;
-    getOptReportStream(optReport, builder.getOptions());
-    optReport
+  VISA_DEBUG({
+    std::cout
         << "             === Local Definition Hoisting Optimization ===\n";
-    optReport << "Number of defs hoisted: " << numDefHoisted << "\n";
-    closeOptReportStream(optReport);
-  }
+    std::cout << "Number of defs hoisted: " << numDefHoisted << "\n";
+  });
 }
 
 //
@@ -6397,21 +6251,18 @@ void Optimizer::addEntryToMessageTable(G4_INST *inst, MSGTableList &msgList,
 
 void Optimizer::messageHeaderReport(size_t ic_before, size_t ic_after,
                                     G4_Kernel &kernel) {
-  if (builder.getOption(vISA_OptReport)) {
-    std::ofstream optReport;
-    getOptReportStream(optReport, builder.getOptions());
-    optReport << "             === Message Header Optimization ===\n";
-    optReport << std::fixed << "\n";
-    optReport << kernel.getName() << " is reduced from " << ic_before << " to "
+  VISA_DEBUG({
+    std::cout << "             === Message Header Optimization ===\n";
+    std::cout << std::fixed << "\n";
+    std::cout << kernel.getName() << " is reduced from " << ic_before << " to "
               << ic_after << " instructions.\n";
     if (((float)(ic_before)) != 0.0) {
-      optReport << std::setprecision(0)
+      std::cout << std::setprecision(0)
                 << (float)((ic_before - ic_after) * 100) / (float)(ic_before)
                 << "% instructions of this kernel are removed.\n";
     }
-    optReport << "\n";
-    closeOptReportStream(optReport);
-  }
+    std::cout << "\n";
+  });
 }
 
 //
@@ -6490,17 +6341,6 @@ void Optimizer::cleanMessageHeader() {
   msgList.clear();
 }
 //  The end of message header optimization
-
-void getOptReportStream(std::ofstream &reportStream, const Options *opt) {
-  const char *asmFileName;
-  opt->getOption(VISA_AsmFileName, asmFileName);
-  std::string optReportFileName = std::string(asmFileName) + "_optreport.txt";
-  reportStream.open(optReportFileName, std::ios::out | std::ios::app);
-  vISA_ASSERT(!reportStream.fail(), "Fail to open %s",
-              optReportFileName.c_str());
-}
-
-void closeOptReportStream(std::ofstream &reportStream) { reportStream.close(); }
 
 // For NoMask inst with non-zero mask offset, set maskoffset = 0 if possible.
 //
@@ -9427,14 +9267,11 @@ void Optimizer::mergeScalarInst() {
   // modified
   recomputeBound(modifiedDcl);
 
-  if (builder.getOption(vISA_OptReport)) {
-    std::ofstream optReport;
-    getOptReportStream(optReport, builder.getOptions());
-    optReport << "             === Merge Scalar Optimization ===\n";
-    optReport << "Number of optimized bundles:\t" << numBundles << "\n";
-    optReport << "Number of instructions saved:\t" << numDeletedInst << "\n";
-    closeOptReportStream(optReport);
-  }
+  VISA_DEBUG({
+    std::cout << "             === Merge Scalar Optimization ===\n";
+    std::cout << "Number of optimized bundles:\t" << numBundles << "\n";
+    std::cout << "Number of instructions saved:\t" << numDeletedInst << "\n";
+  });
 }
 
 static bool isMad(G4_INST *I) {

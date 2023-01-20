@@ -2489,8 +2489,6 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions() {
 
   int globalInstNum = 0;
   int globalHalfInstNum = 0;
-  int numCompactedInst = 0;
-  int numCompacted3SrcInst = 0;
   // define offsetVector to record forward jumps/calls
   std::vector<ForwardJmpOffset> offsetVector;
 
@@ -2561,11 +2559,6 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions() {
             compacted = compactOneInstruction(inst);
           }
           if (compacted) {
-            if (kernel.getOption(vISA_OptReport)) {
-              numCompactedInst++;
-              if (getBinInst(inst)->GetIs3Src())
-                numCompacted3SrcInst++;
-            }
             inst->setCompacted();
           }
         }
@@ -2586,8 +2579,6 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions() {
   kernel.setAsmCount(globalInstNum);
   SetInstCounts((uint32_t)globalHalfInstNum);
 
-  EncodingHelper::dumpOptReport(globalInstNum, numCompactedInst,
-                                numCompacted3SrcInst, kernel);
   for (auto x = offsetVector.begin(), vEnd = offsetVector.end(); x != vEnd;
        x++) {
     // calculate offsets again since labels for forward jumps/calls
