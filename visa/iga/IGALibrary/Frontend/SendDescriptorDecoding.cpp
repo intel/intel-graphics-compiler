@@ -123,7 +123,6 @@ void iga::EmitSendDescriptorInfo(Platform p, SFID sfid, ExecSize execSize,
   }
   bool hasHeaderBit = sfid != SFID::UGM && sfid != SFID::UGML &&
                       sfid != SFID::SLM && sfid != SFID::TGM;
-  bool hasEncodedDstLen = true;
   if (hasHeaderBit && desc.isImm() && getHeaderBit(desc.imm)) {
     ss << "h";
   }
@@ -139,24 +138,8 @@ void iga::EmitSendDescriptorInfo(Platform p, SFID sfid, ExecSize execSize,
   ss << ", rd:";
   if (desc.isReg()) {
     ss << "a0." << (int)desc.reg.subRegNum << "[24:20]";
-  } else if (hasEncodedDstLen) {
-    ss << dstLen;
   } else {
-    if (dstNonNull) {
-      if (dstLen < 0) {
-        PayloadLengths lens(p, sfid, execSize, desc.imm);
-        dstLen = lens.dstLen;
-      }
-      if (dstLen >= 0) {
-        ss << dstLen;
-      } else {
-        // we cannot decode this message and thus cannot infer the
-        // destination length; so we just say so
-        ss << "non-zero";
-      }
-    } else {
-      ss << "0";
-    }
+    ss << dstLen;
   }
   //
   ////////////////////////////////

@@ -175,16 +175,6 @@ struct MessageDecoderLSC : MessageDecoder {
   }
 
   ///////////////////////////////////////////////////////////////////////////
-  bool hasPayloadSizesInDesc() const {
-    return true;
-  }
-
-  int lscAddrTypeOffset() const {
-    int off = 29;
-
-    return off;
-  }
-
   void setCacheOpts(std::stringstream &sym, std::stringstream &descs,
                     CacheOpt &l1, CacheOpt &l3, CacheOpt _l1, CacheOpt _l3) {
     l1 = _l1;
@@ -308,14 +298,15 @@ struct MessageDecoderLSC : MessageDecoder {
   void decodeLscImmOff(uint32_t atBits) {
   }
 
+  static const int ADDRTYPE_LOC = 29;
+
   AddrType decodeLscAddrType(SendDesc &surfId, bool allowsFlat = true) {
     surfId = 0;
     AddrType addrType = AddrType::FLAT;
     //
-    int addrTypeLoc = lscAddrTypeOffset();
     const char *addrTypeMeaning = "?";
     //
-    const auto atBits = getDescBits(addrTypeLoc, 2);
+    const auto atBits = getDescBits(ADDRTYPE_LOC, 2);
     //
     std::stringstream surfSyntax;
     switch (atBits) {
@@ -323,7 +314,7 @@ struct MessageDecoderLSC : MessageDecoder {
       addrTypeMeaning = "Flat";
       addrType = AddrType::FLAT;
       if (!allowsFlat)
-        error(addrTypeLoc, 2, "this message may not use FLAT address type");
+        error(ADDRTYPE_LOC, 2, "this message may not use FLAT address type");
       break;
     case LSC_AT_BSS:
     case LSC_AT_SS:
@@ -368,7 +359,7 @@ struct MessageDecoderLSC : MessageDecoder {
       addrTypeMeaning = "INVALID AddrType";
       addrType = AddrType::FLAT;
       surfSyntax << "?";
-      error(addrTypeLoc, 2, "invalid address type");
+      error(ADDRTYPE_LOC, 2, "invalid address type");
       break;
     }
     result.syntax.surface = surfSyntax.str();
@@ -377,7 +368,7 @@ struct MessageDecoderLSC : MessageDecoder {
     // immediate offset
     decodeLscImmOff(atBits);
     //
-    addField("AddrType", lscAddrTypeOffset(), 2, atBits, addrTypeMeaning);
+    addField("AddrType", ADDRTYPE_LOC, 2, atBits, addrTypeMeaning);
     //
     return addrType;
   }
@@ -592,7 +583,7 @@ struct MessageDecoderLSC : MessageDecoder {
 
     setDoc(doc);
     //
-    if (hasPayloadSizesInDesc() && exDesc.isImm() && (exDesc.imm & 0x7FF)) {
+    if (exDesc.isImm() && (exDesc.imm & 0x7FF)) {
       // bit 11 may or may not be available
       error(0, 12, "ExDesc[11:0] must be 0 on this platform");
     }
