@@ -999,8 +999,8 @@ void GenXPredToSimdCF::fixPHIs(SimdCFIfRegion &R) {
         PhiIncomingID.push_back(i);
     }
     if (R.isIfRegion()) {
-      SelectInst *ifThenSelect;
-      Value *data;
+      SelectInst *ifThenSelect = nullptr;
+      Value *data = nullptr;
       if (!checkSelects(PHINode, R, ifThenSelect, data)) {
         IGC_ASSERT_UNREACHABLE();
         return;
