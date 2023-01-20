@@ -4980,24 +4980,6 @@ namespace IGC
             }
         };
         DbgInstPattern* pattern = new (m_allocator) DbgInstPattern();
-        if (DbgDeclareInst * pDbgDeclInst = dyn_cast<DbgDeclareInst>(&I))
-        {
-            if (pDbgDeclInst->getAddress())
-            {
-                MarkAsSource(pDbgDeclInst->getAddress());
-            }
-        }
-        else if (DbgValueInst * pDbgValInst = dyn_cast<DbgValueInst>(&I))
-        {
-            if (pDbgValInst->getValue())
-            {
-                MarkAsSource(pDbgValInst->getValue());
-            }
-        }
-        else
-        {
-            IGC_ASSERT_MESSAGE(0, "Unhandled Dbg intrinsic");
-        }
         AddPattern(pattern);
         return true;
     }
