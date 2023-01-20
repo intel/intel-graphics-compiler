@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -481,7 +481,8 @@ private:
   static Optional<
       std::tuple<std::vector<GetElementPtrInst *>, std::vector<PtrToIntInst *>>>
   getInstUses(Instruction &I);
-  static Optional<uint64_t> processAddInst(Instruction &I, BinaryOperator &BO);
+  static Optional<uint64_t> processAddOrInst(Instruction &I,
+                                             BinaryOperator &BO);
 
   bool processGEP(GetElementPtrInst &GEPI, const TypeToInstrMap &NewInstr,
                   InstsToSubstitute /*OUT*/ &InstToInst);
@@ -1676,14 +1677,16 @@ bool Substituter::processPTI(PtrToIntInst &PTI, const TypeToInstrMap &NewInstr,
 //
 // Callculates offset after add instruction.
 //
-Optional<uint64_t> Substituter::processAddInst(Instruction &User,
-                                               BinaryOperator &BO) {
+Optional<uint64_t> Substituter::processAddOrInst(Instruction &User,
+                                                 BinaryOperator &BO) {
+  IGC_ASSERT_EXIT(BO.getOpcode() == Instruction::Add ||
+                  BO.getOpcode() == Instruction::Or);
   // Do Ptr Offset calculation.
   uint64_t LocalPtrOffset{0};
   Value *V0 = BO.getOperand(0);
   // If the one of operands is the Instruction then the other is ptr offset.
   // It can be vector or scalar.
-  // "add V 5" or "add 5 V"
+  // "add V 5", "add 5 V", "or V 5" or "or 5 V"
   Value *ToCalculateOffset =
       dyn_cast<Instruction>(V0) != &User ? V0 : BO.getOperand(1);
   Constant *ConstantOffsets = dyn_cast<Constant>(ToCalculateOffset);
@@ -1726,10 +1729,10 @@ bool Substituter::processPTIsUses(Instruction &I,
   uint64_t LocalPtrOffset{0};
   for (const auto &U : I.uses()) {
     Instruction *User = dyn_cast<Instruction>(U.getUser());
-    if (User->getOpcode() == Instruction::FAdd ||
-        User->getOpcode() == Instruction::Add) {
+    if (User->getOpcode() == Instruction::Add ||
+        User->getOpcode() == Instruction::Or) {
       BinaryOperator *BO = dyn_cast<BinaryOperator>(User);
-      auto Offset = processAddInst(I, *BO);
+      auto Offset = processAddOrInst(I, *BO);
       if (!Offset)
         return false;
       LocalPtrOffset = std::max(LocalPtrOffset, Offset.getValue());
