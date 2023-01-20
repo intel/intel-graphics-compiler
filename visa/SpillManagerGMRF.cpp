@@ -1413,7 +1413,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_RegVar *regVar) {
     height = payloadHeaderHeight + writePayloadHeight;
     // We should not find ourselves using dword scattered write
     if (useScratchMsg_) {
-      assert(payloadHeaderHeight != DWORD_PAYLOAD_HEADER_MAX_HEIGHT);
+      vASSERT(payloadHeaderHeight != DWORD_PAYLOAD_HEADER_MAX_HEIGHT);
     }
   }
   unsigned short width = builder_->numEltPerGRF<Type_UD>();

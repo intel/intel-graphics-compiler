@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Assertions.h"
 #include "Attributes.hpp"
 #include "BuildIR.h"
 #include "common.h"
@@ -84,24 +85,24 @@ Attributes::ID Attributes::getAttributeID(const char *AttrName) {
 
 void Attributes::setKernelAttr(ID kID, bool v) {
   SAttrValue *pAV = getKernelAttrValue(kID);
-  assert(pAV->m_val.m_attrType == AttrType::Bool);
+  vASSERT(pAV->m_val.m_attrType == AttrType::Bool);
   pAV->m_val.u.m_bool = v;
   pAV->m_isSet = true;
 }
 void Attributes::setKernelAttr(ID kID, int32_t v, const IR_Builder &irb) {
   SAttrValue *pAV = getKernelAttrValue(kID);
-  assert(pAV->m_val.m_attrType == AttrType::Int32);
+  vASSERT(pAV->m_val.m_attrType == AttrType::Int32);
 
   // Verify kernel attribute
   switch (kID) {
   case ATTR_SpillMemOffset: {
-    assert((v & (irb.getGRFSize() - 1)) == 0 &&
+    vISA_ASSERT((v & (irb.getGRFSize() - 1)) == 0,
            "Kernel attribute: SpillMemOffset is mis-aligned!");
     break;
   }
   case ATTR_SimdSize: {
     // allow 0
-    assert((v == 0 || v == 8 || v == 16 || v == 32) &&
+    vISA_ASSERT((v == 0 || v == 8 || v == 16 || v == 32),
            "Kernel attribute: SimdSize must be 0|8|16|32!");
     break;
   }
@@ -114,13 +115,13 @@ void Attributes::setKernelAttr(ID kID, int32_t v, const IR_Builder &irb) {
 }
 void Attributes::setKernelAttr(ID kID, int64_t v) {
   SAttrValue *pAV = getKernelAttrValue(kID);
-  assert(pAV->m_val.m_attrType == AttrType::Int64);
+  vASSERT(pAV->m_val.m_attrType == AttrType::Int64);
   pAV->m_val.u.m_i64 = v;
   pAV->m_isSet = true;
 }
 void Attributes::setKernelAttr(ID kID, const char *v) {
   SAttrValue *pAV = getKernelAttrValue(kID);
-  assert(pAV->m_val.m_attrType == AttrType::CString);
+  vASSERT(pAV->m_val.m_attrType == AttrType::CString);
   pAV->m_val.u.m_cstr = v;
   pAV->m_isSet = true;
 }

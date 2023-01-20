@@ -323,8 +323,8 @@ int IR_Builder::translateVISAURBWrite3DInst(
   G4_Declare *payloadD = NULL;
   G4_Declare *payloadUD = NULL;
   if (useSplitSend) {
-    vISA_ASSERT_INPUT(
-        useHeader, "So far, split-send is only used when header is present!");
+    vISA_ASSERT_INPUT( useHeader,
+            "So far, split-send is only used when header is present!");
     --numRows;
     if (numRows > 0) {
       unsigned int numElts =
@@ -499,7 +499,7 @@ int IR_Builder::translateVISARTWrite3DInst(
   }
 
   if (varOffset != numParms) {
-    assert(0);
+    vASSERT(false);
     return VISA_FAILURE;
   }
 
@@ -1002,7 +1002,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         msgDesc = createSendMsgDesc(fc, 0, numRows, SFID::DP_RC, 0, extFuncCtrl,
                                     SendAccess::WRITE_ONLY, surface);
       } else {
-        assert(rtIndex->isImm() && "RTIndex must be imm at this point");
+        vISA_ASSERT_INPUT(rtIndex->isImm(), "RTIndex must be imm at this point");
         uint8_t RTIndex = (uint8_t)rtIndex->asImm()->getImm() & 0x7;
         uint32_t desc = G4_SendDescRaw::createDesc(fc, false, numRows, 0);
         uint32_t extDesc = G4_SendDescRaw::createMRTExtDesc(
@@ -1130,8 +1130,7 @@ static void checkCPSEnable(VISASampler3DSubOpCode op, unsigned reponseLength,
                     "CPS LOD Compensation Enable must be disabled if the "
                     "response length is zero");
 
-  vISA_ASSERT_INPUT(
-      execSize == 8 || execSize == 16,
+  vISA_ASSERT_INPUT(execSize == 8 || execSize == 16,
       "CPS LOD Compensation Enable only valid for SIMD8* or SIMD16*");
 
   bool isCPSAvailable = op == VISA_3D_SAMPLE || op == VISA_3D_SAMPLE_B ||

@@ -71,7 +71,7 @@ public:
 
   /// Given an attribute ID, return its name
   static const char *getAttributeName(ID aID) {
-    assert(isValid(aID));
+    vASSERT(isValid(aID));
     return AttrsInfo[(int)aID].m_attrName;
   }
 
@@ -81,28 +81,28 @@ public:
   }
 
   static bool isBool(ID aID) {
-    assert(isValid(aID));
+    vASSERT(isValid(aID));
     return AttrsInfo[(int)aID].m_defaultVal.m_attrType == AttrType::Bool;
   }
   static bool isInt32(ID aID) {
-    assert(isValid(aID));
+    vASSERT(isValid(aID));
     return AttrsInfo[(int)aID].m_defaultVal.m_attrType == AttrType::Int32;
   }
   static bool isInt64(ID aID) {
-    assert(isValid(aID));
+    vASSERT(isValid(aID));
     return AttrsInfo[(int)aID].m_defaultVal.m_attrType == AttrType::Int64;
   }
   static bool isCStr(ID aID) {
-    assert(isValid(aID));
+    vASSERT(isValid(aID));
     return AttrsInfo[(int)aID].m_defaultVal.m_attrType == AttrType::CString;
   }
   static bool isInt(ID aID) { return isInt32(aID) || isInt64(aID); }
   static bool isKernelAttr(ID aID) {
-    assert(isValid(aID));
+    vASSERT(isValid(aID));
     return (AttrsInfo[(int)aID].m_attrKind & AK_KERNEL) != 0;
   }
   static bool isVarAttr(ID aID) {
-    assert(isValid(aID));
+    vASSERT(isValid(aID));
     return (AttrsInfo[(int)aID].m_attrKind & AK_VAR) != 0;
   }
   static bool isIntKernelAttr(ID aID) {
@@ -116,7 +116,7 @@ public:
 
   // default attribute value
   static int32_t getInt32AttrDefault(ID aID) {
-    assert(isValid(aID));
+    vASSERT(isValid(aID));
     return AttrsInfo[(int)aID].m_defaultVal.u.m_i32;
   }
 
@@ -132,22 +132,22 @@ public:
   // Get Attribute's value
   bool getBoolKernelAttr(ID kID) const {
     SAttrValue *pAV = getKernelAttrValue(kID);
-    assert(pAV->m_val.m_attrType == AttrType::Bool);
+    vASSERT(pAV->m_val.m_attrType == AttrType::Bool);
     return pAV->m_val.u.m_bool;
   }
   int32_t getInt32KernelAttr(ID kID) const {
     SAttrValue *pAV = getKernelAttrValue(kID);
-    assert(pAV->m_val.m_attrType == AttrType::Int32);
+    vASSERT(pAV->m_val.m_attrType == AttrType::Int32);
     return pAV->m_val.u.m_i32;
   }
   int64_t getInt64KernelAttr(ID kID) const {
     SAttrValue *pAV = getKernelAttrValue(kID);
-    assert(pAV->m_val.m_attrType == AttrType::Int64);
+    vASSERT(pAV->m_val.m_attrType == AttrType::Int64);
     return pAV->m_val.u.m_i64;
   }
   const char *getCStrKernelAttr(ID kID) const {
     SAttrValue *pAV = getKernelAttrValue(kID);
-    assert(pAV->m_val.m_attrType == AttrType::CString);
+    vASSERT(pAV->m_val.m_attrType == AttrType::CString);
     return pAV->m_val.u.m_cstr;
   }
   bool isKernelAttrSet(ID kID) const {
@@ -163,7 +163,7 @@ private:
 
   SAttrValue *getKernelAttrValue(ID kID) const {
     auto II = m_kernelAttrs.find(kID);
-    assert(II != m_kernelAttrs.end());
+    vASSERT(II != m_kernelAttrs.end());
     SAttrValue *pAV = II->second;
     return pAV;
   }

@@ -58,7 +58,7 @@ void BitSet::create(unsigned size) {
       m_BitSetArray = ptr;
       m_Size = size;
     } else {
-      assert(0);
+      vASSERT(false);
     }
   }
 }
@@ -154,7 +154,7 @@ BitSet &BitSet::operator&=(const BitSet &other) {
 // Create a bitmask with the N right-most bits set to 1, and all other bits set
 // to 0.
 static BITSET_ARRAY_TYPE maskTrailingOnes(unsigned n) {
-  assert(n <= NUM_BITS_PER_ELT);
+  vASSERT(n <= NUM_BITS_PER_ELT);
   return n == 0 ? 0 : (BITSET_ARRAY_TYPE(-1) >> (NUM_BITS_PER_ELT - n));
 }
 
@@ -166,7 +166,7 @@ static BITSET_ARRAY_TYPE maskTrailingZeros(unsigned n) {
 
 // TODO: Use c++20 bit manipulation utility functions.
 static unsigned countTrailingZeros(BITSET_ARRAY_TYPE val) {
-  assert(val != 0);
+  vASSERT(val != 0);
   unsigned count = 0;
   while ((val & 1) == 0) {
     val >>= 1;
@@ -176,7 +176,7 @@ static unsigned countTrailingZeros(BITSET_ARRAY_TYPE val) {
 }
 
 static unsigned countLeadingZeros(BITSET_ARRAY_TYPE val) {
-  assert(val != 0);
+  vASSERT(val != 0);
   unsigned count = 0;
   while ((val & (1 << (NUM_BITS_PER_ELT - 1))) == 0) {
     val <<= 1;
@@ -186,7 +186,7 @@ static unsigned countLeadingZeros(BITSET_ARRAY_TYPE val) {
 }
 
 int BitSet::findFirstIn(unsigned begin, unsigned end) const {
-  assert(begin <= end && end <= m_Size);
+  vASSERT(begin <= end && end <= m_Size);
   if (begin == end)
     return -1;
 
@@ -214,7 +214,7 @@ int BitSet::findFirstIn(unsigned begin, unsigned end) const {
 }
 
 int BitSet::findLastIn(unsigned begin, unsigned end) const {
-  assert(begin <= end && end <= m_Size);
+  vASSERT(begin <= end && end <= m_Size);
   if (begin == end)
     return -1;
 

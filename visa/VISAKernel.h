@@ -1221,7 +1221,7 @@ public:
   }
 
   std::string getVarName(CISA_GEN_VAR *decl) const {
-    assert(m_GenVarToNameMap.count(decl) && "Can't find the decl's name");
+    vISA_ASSERT_INPUT(m_GenVarToNameMap.count(decl), "Can't find the decl's name");
     return m_GenVarToNameMap.find(decl)->second;
   }
 
@@ -1420,21 +1420,21 @@ public:
 
   uint32_t getNameIndex() const { return m_kernel->m_cisa_kernel.name_index; }
   const char *getString(uint32_t str_id) const {
-    assert(str_id < m_kernel->m_string_pool.size());
+    vASSERT(str_id < m_kernel->m_string_pool.size());
     return m_kernel->m_string_pool[str_id].c_str();
   }
   uint32_t getStringCount() const { return m_kernel->m_string_pool.size(); }
   const label_info_t *getLabel(uint32_t label_id) const {
-    assert(label_id < m_kernel->m_label_info_list.size());
+    vASSERT(label_id < m_kernel->m_label_info_list.size());
     return m_kernel->m_label_info_list[label_id];
   }
   unsigned short getLabelCount() const { return m_kernel->m_label_count; }
   const var_info_t *getPredefVar(unsigned var_id) const {
-    assert(var_id < m_kernel->m_num_pred_vars);
+    vASSERT(var_id < m_kernel->m_num_pred_vars);
     return &m_kernel->m_var_info_list[var_id]->genVar;
   }
   const var_info_t *getVar(unsigned var_id) const {
-    assert(var_id + m_kernel->m_num_pred_vars <
+    vASSERT(var_id + m_kernel->m_num_pred_vars <
            m_kernel->m_var_info_list.size());
     return &m_kernel->m_var_info_list[var_id + m_kernel->m_num_pred_vars]
                 ->genVar;
@@ -1449,21 +1449,21 @@ public:
   }
   unsigned getAttrCount() const { return m_kernel->m_attribute_count; }
   const addr_info_t *getAddr(unsigned id) const {
-    assert(id < m_kernel->m_addr_info_list.size());
+    vASSERT(id < m_kernel->m_addr_info_list.size());
     return &m_kernel->m_addr_info_list[id]->addrVar;
   }
   unsigned short getAddrCount() const { return m_kernel->m_addr_info_count; }
   const pred_info_t *getPred(unsigned id) const {
-    assert(id < m_kernel->m_pred_info_list.size());
+    vASSERT(id < m_kernel->m_pred_info_list.size());
     return &m_kernel->m_pred_info_list[id]->predVar;
   }
   unsigned short getPredCount() const { return m_kernel->m_pred_info_count; }
   const state_info_t *getPredefSurface(unsigned id) const {
-    assert(id < Get_CISA_PreDefined_Surf_Count());
+    vASSERT(id < Get_CISA_PreDefined_Surf_Count());
     return &m_kernel->m_surface_info_list[id]->stateVar;
   }
   const state_info_t *getSurface(unsigned id) const {
-    assert(id + Get_CISA_PreDefined_Surf_Count() <
+    vASSERT(id + Get_CISA_PreDefined_Surf_Count() <
            m_kernel->m_surface_info_list.size());
     return &m_kernel->m_surface_info_list[id + Get_CISA_PreDefined_Surf_Count()]
                 ->stateVar;
@@ -1472,12 +1472,12 @@ public:
     return m_kernel->m_surface_count - Get_CISA_PreDefined_Surf_Count();
   }
   const state_info_t *getSampler(unsigned id) const {
-    assert(id < m_kernel->m_sampler_info_list.size());
+    vASSERT(id < m_kernel->m_sampler_info_list.size());
     return &m_kernel->m_sampler_info_list[id]->stateVar;
   }
   unsigned char getSamplerCount() const { return m_kernel->m_sampler_count; }
   const input_info_t *getInput(unsigned id) const {
-    assert(id < m_kernel->m_input_info_list.size());
+    vASSERT(id < m_kernel->m_input_info_list.size());
     return m_kernel->m_input_info_list[id];
   }
   uint32_t getInputCount() const { return m_kernel->m_input_count; }

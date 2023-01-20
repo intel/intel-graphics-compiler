@@ -2728,7 +2728,7 @@ void CFGStructurizer::convertChildren(ANodeHG *nodehg, G4_BB *nextJoinBB) {
     {
         ++NEntries;
     }
-    assert(sz <= NEntries && "Something is wrong!");
+    vISA_ASSERT(sz <= NEntries, "Something is wrong!");
 #endif
   if (sz > 0) {
     // lastJoin will never be nullptr.

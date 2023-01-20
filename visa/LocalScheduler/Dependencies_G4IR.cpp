@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "../Assertions.h"
 #include "Dependencies_G4IR.h"
 #include "../G4_IR.hpp"
 
@@ -214,8 +215,8 @@ DepType vISA::CheckBarrier(G4_INST *inst) {
 
 // Return the dependence type {RAW,WAW,WAR,NODEP} for the given operand numbers
 DepType vISA::getDepForOpnd(Gen4_Operand_Number cur, Gen4_Operand_Number liv) {
-  assert(Opnd_dst <= cur && cur < Opnd_total_num && "bad operand #");
-  assert(Opnd_dst <= liv && liv < Opnd_total_num && "bad operand #");
+  vISA_ASSERT(Opnd_dst <= cur && cur < Opnd_total_num, "bad operand #");
+  vISA_ASSERT(Opnd_dst <= liv && liv < Opnd_total_num, "bad operand #");
   static constexpr DepType matrix[Opnd_total_num][Opnd_total_num] = {
       /*dst,         src0,        src1,        src2,        src3,        src4,
          src5,        src6,        src7,        pred,        condMod,
@@ -263,6 +264,6 @@ DepType vISA::getDepForOpnd(Gen4_Operand_Number cur, Gen4_Operand_Number liv) {
       {WAW, RAW, RAW, RAW, RAW, DEPTYPE_MAX, DEPTYPE_MAX, DEPTYPE_MAX,
        DEPTYPE_MAX, RAW, WAW, RAW, WAW},
   };
-  assert(matrix[cur][liv] != DEPTYPE_MAX && "undefined dependency");
+  vISA_ASSERT(matrix[cur][liv] != DEPTYPE_MAX, "undefined dependency");
   return matrix[cur][liv];
 }

@@ -79,7 +79,7 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl) {
 G4_Declare *SpillManager::createNewTempFlagDeclare(G4_Declare *dcl) {
   const char *name = builder.getNameString(32, "Temp_FSPILL_%d", tempDclId++);
 
-  assert(dcl->getRegFile() == G4_FLAG && "dcl should be a flag");
+  vISA_ASSERT(dcl->getRegFile() == G4_FLAG, "dcl should be a flag");
   G4_Declare *sp = builder.createFlag(dcl->getNumberFlagElements(), name);
   gra.setBBId(sp, bbId);
   sp->copyAlign(dcl);

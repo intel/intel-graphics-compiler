@@ -11577,7 +11577,7 @@ void Optimizer::prepareNoMaskWA() {
           if (I->opcode() == G4_sel || I->opcode() == G4_csel) {
             // doFlagModifierSelInstWA : temp for saving dst (could be 2GRF)
             G4_DstRegRegion *dst = I->getDst();
-            assert((dst && !dst->isNullReg()) &&
+            vISA_ASSERT((dst && !dst->isNullReg()),
                    "ICE: expect dst to be non-null!");
             (void)updateTempReserve(I->getExecSize() * dst->getHorzStride(),
                                     dst->getType(),

@@ -74,7 +74,7 @@ PlatformGen PlatformInfo::getPlatformGeneration(TARGET_PLATFORM platform) {
   if (const auto *pi = LookupPlatformInfo(platform)) {
     return pi->family;
   } else {
-    assert(false && "invalid platform");
+    vISA_ASSERT_UNREACHABLE("invalid platform");
     return PlatformGen::GEN_UNKNOWN;
   }
 }
@@ -111,7 +111,7 @@ const char *const *PlatformInfo::getGenxPlatformStrings(TARGET_PLATFORM p) {
   if (const auto *pi = LookupPlatformInfo(p)) {
     return pi->symbols;
   } else {
-    assert(false && "invalid platform");
+    vISA_ASSERT_UNREACHABLE("invalid platform");
     return nullptr;
   }
 }
@@ -134,7 +134,7 @@ int PlatformInfo::getGenxPlatformEncoding(TARGET_PLATFORM platform) {
   if (const auto *pi = LookupPlatformInfo(platform)) {
     return pi->encoding;
   } else {
-    assert(false && "invalid platform");
+    vISA_ASSERT_UNREACHABLE("invalid platform");
     return -1;
   }
 }

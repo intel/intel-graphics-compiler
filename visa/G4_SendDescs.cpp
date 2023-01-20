@@ -1644,22 +1644,22 @@ size_t G4_SendDescRaw::getDstLenBytes() const {
     // Due to VMIT-9224, comment this out!
     // Use macro fo easy testing.
     } else if (isByteScatterRW() && isDataPortRead()) {
-        assert(getExecSize() != g4::SIMD_UNDEFINED);
+        vASSERT(getExecSize() != g4::SIMD_UNDEFINED);
         uint16_t nbytes = getElemsPerAddr();
         // assume 4 at least
         nbytes = (nbytes >= 4 ? nbytes : 4);
         size_t sz = nbytes * getExecSize();
         return sz;
     } else if (isDWScatterRW() && isDataPortRead()) {
-        assert(getExecSize() != g4::SIMD_UNDEFINED);
+        vASSERT(getExecSize() != g4::SIMD_UNDEFINED);
         size_t sz = 4 * getElemsPerAddr() * getExecSize();
         return sz;
     } else if (isQWScatterRW() && isDataPortRead()) {
-        assert(getExecSize() != g4::SIMD_UNDEFINED);
+        vASSERT(getExecSize() != g4::SIMD_UNDEFINED);
         size_t sz = 8 * getElemsPerAddr() * getExecSize();
         return sz;
     } else if (isUntypedRW() && isDataPortRead()) {
-        assert(getExecSize() != g4::SIMD_UNDEFINED);
+        vASSERT(getExecSize() != g4::SIMD_UNDEFINED);
         size_t sz = 4 * getEnabledChannelNum() * getExecSize();
         return sz;
 #endif

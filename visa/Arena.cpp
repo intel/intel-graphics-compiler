@@ -20,7 +20,7 @@ int currentMallocSize = 0;
 using namespace vISA;
 
 void *ArenaHeader::AllocSpace(size_t size, size_t al) {
-  assert(DefaultAlign(size_t(_nextByte)) == size_t(_nextByte));
+  vASSERT(DefaultAlign(size_t(_nextByte)) == size_t(_nextByte));
 
   void *allocSpace = (void *)AlignAddr((size_t)_nextByte, al);
 

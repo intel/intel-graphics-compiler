@@ -2749,8 +2749,8 @@ void FlowGraph::markDivergentBBs() {
       // Temporary for debugging, toBeDelete!
       // if (pKernel->getIntKernelAttribute(Attributes::ATTR_Target) == VISA_CM)
       // {
-      //    assert((BB->isDivergent() && BB->isInSimdFlow() ||
-      //        (!BB->isDivergent() && !BB->isInSimdFlow())) && " isDivergent !=
+      //    vISA_ASSERT((BB->isDivergent() && BB->isInSimdFlow() ||
+      //        (!BB->isDivergent() && !BB->isInSimdFlow())), " isDivergent !=
       //        isInSimdFlow!");
       // }
       updateLastJoinForFwdBrInBB(IT, false);

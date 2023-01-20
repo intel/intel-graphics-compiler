@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <iostream>
 #include <stdlib.h>
 
+#include "Assertions.h"
 #include "Option.h"
 
 // #define COLLECT_ALLOCATION_STATS
@@ -51,7 +52,7 @@ public:
   }
 
   static size_t AlignAddr(size_t addr, size_t al) {
-    assert((al & (al - 1)) == 0);
+    vASSERT((al & (al - 1)) == 0);
     return (addr + (al - 1)) & ~(al - 1);
   }
   static size_t GetArenaSize(size_t dataSize) {
@@ -59,7 +60,7 @@ public:
   }
 
   unsigned char *GetArenaData() const {
-    assert(DefaultAlign(size_t(this)) == size_t(this));
+    vASSERT(DefaultAlign(size_t(this)) == size_t(this));
     return (unsigned char *)(DefaultAlign(size_t(this) + sizeof(ArenaHeader)));
   }
 
@@ -74,7 +75,7 @@ private:
       : _nextArena(0), size(dataSize) {
     _nextByte = GetArenaData();
     _lastByte = _nextByte + dataSize;
-    assert(((unsigned char *)(this) + GetArenaSize(dataSize)) == _lastByte);
+    vASSERT(((unsigned char *)(this) + GetArenaSize(dataSize)) == _lastByte);
   }
 
   ~ArenaHeader() {
@@ -121,7 +122,7 @@ private:
         space = _arenas->AllocSpace(size, al);
       }
 
-      assert(space);
+      vASSERT(space);
     }
 
 #ifdef COLLECT_ALLOCATION_STATS

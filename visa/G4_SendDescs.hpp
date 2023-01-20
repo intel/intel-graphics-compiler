@@ -535,7 +535,7 @@ public:
   // TODO: update to use types defined in this file rather than
   // these front-end vISA interface types
   LSC_OP getLscOp() const {
-    assert(isLscOp());
+    vASSERT(isLscOp());
     return static_cast<LSC_OP>(desc.value & 0x3F);
   }
   LSC_ADDR_TYPE getLscAddrType() const;
