@@ -97,8 +97,11 @@ namespace
     class AbstractLoadInst
     {
         Instruction* const m_inst;
-        AbstractLoadInst(LoadInst* LI) : m_inst(LI) {}
-        AbstractLoadInst(LdRawIntrinsic* LdRI) : m_inst(LdRI) {}
+        const DataLayout& DL;
+        AbstractLoadInst(LoadInst* LI, const DataLayout& DL) :
+            m_inst(LI), DL(DL) {}
+        AbstractLoadInst(LdRawIntrinsic* LdRI, const DataLayout& DL) :
+            m_inst(LdRI), DL(DL) {}
 
         LoadInst* getLoad() const
         {
@@ -174,23 +177,25 @@ namespace
             }
             else
             {
-                Value* offsetInBytes = builder.getInt32(offset * returnType->getScalarSizeInBits() / 8);
+                uint32_t sizeInBytes =
+                    int_cast<uint32_t>(DL.getTypeSizeInBits(returnType->getScalarType()) / 8);
+                Value* offsetInBytes = builder.getInt32(offset * sizeInBytes);
                 return builder.CreateAdd(offsetInBytes, getLdRaw()->getOffsetValue());
             }
         }
-        static Optional<AbstractLoadInst> get(llvm::Value* value)
+        static Optional<AbstractLoadInst> get(llvm::Value* value, const DataLayout &DL)
         {
             if (LoadInst * LI = dyn_cast<LoadInst>(value))
             {
-                return Optional<AbstractLoadInst>(LI);
+                return AbstractLoadInst{ LI, DL };
             }
             else if (LdRawIntrinsic * LdRI = dyn_cast<LdRawIntrinsic>(value))
             {
-                return Optional<AbstractLoadInst>(LdRI);
+                return AbstractLoadInst{ LdRI, DL };
             }
             else
             {
-                return Optional<AbstractLoadInst>();
+                return None;
             }
         }
     };
@@ -202,8 +207,11 @@ namespace
     class AbstractStoreInst
     {
         Instruction* const m_inst;
-        AbstractStoreInst(StoreInst* SI) : m_inst(SI) {}
-        AbstractStoreInst(StoreRawIntrinsic* SRI) : m_inst(SRI) {}
+        const DataLayout& DL;
+        AbstractStoreInst(StoreInst* SI, const DataLayout& DL) :
+            m_inst(SI), DL(DL) {}
+        AbstractStoreInst(StoreRawIntrinsic* SRI, const DataLayout& DL) :
+            m_inst(SRI), DL(DL) {}
 
         StoreInst* getStore() const
         {
@@ -281,21 +289,23 @@ namespace
             }
             else
             {
-                Value* offsetInBytes = builder.getInt32(offset * storedType->getScalarSizeInBits() / 8);
+                uint32_t sizeInBytes =
+                    int_cast<uint32_t>(DL.getTypeSizeInBits(storedType->getScalarType()) / 8);
+                Value* offsetInBytes = builder.getInt32(offset * sizeInBytes);
                 return builder.CreateAdd(offsetInBytes, getStoreRaw()->getArgOperand(1));
             }
         }
-        static Optional<AbstractStoreInst> get(llvm::Value* value)
+        static Optional<AbstractStoreInst> get(llvm::Value* value, const DataLayout &DL)
         {
             if (StoreInst * SI = dyn_cast<StoreInst>(value))
             {
-                return Optional<AbstractStoreInst>(SI);
+                return AbstractStoreInst{ SI, DL };
             }
             else if (StoreRawIntrinsic* SRI = dyn_cast<StoreRawIntrinsic>(value))
             {
-                return Optional<AbstractStoreInst>(SRI);
+                return AbstractStoreInst{ SRI, DL };
             }
-            return Optional<AbstractStoreInst>();
+            return None;
         }
     };
 
@@ -526,11 +536,7 @@ void VectorPreProcess::createSplitVectorTypes(
     uint32_t SplitSize,
     SmallVector<std::pair<Type*, uint32_t>, 8>& SplitInfo)
 {
-    uint32_t ebytes = (unsigned int)ETy->getPrimitiveSizeInBits() / 8;
-    if (ETy->isPointerTy())
-    {
-        ebytes = m_DL->getPointerTypeSize(ETy);
-    }
+    uint32_t ebytes = int_cast<uint32_t>(m_DL->getTypeSizeInBits(ETy) / 8);
 
     // todo: generalize splitting for cases whose element size is bigger than splitsize!
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
@@ -625,14 +631,14 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
             Type* ValueTy = nullptr;
             if (StoreRawIntrinsic* SRI = dyn_cast<StoreRawIntrinsic>(I))
             {
-                ValueTy = SRI->getArgOperand(2)->getType();
+                ValueTy = SRI->getStoreValue()->getType();
             }
             else
             {
                 ValueTy = I->getType();
             }
             IGCLLVM::FixedVectorType* vecType = dyn_cast_or_null<IGCLLVM::FixedVectorType>(ValueTy);
-            if (vecType && vecType->getScalarType()->getPrimitiveSizeInBits() == 64)
+            if (vecType && m_DL->getTypeSizeInBits(vecType->getScalarType()) == 64)
             {
                 bytes = 8;  // use QW load/store
             }
@@ -653,9 +659,7 @@ uint32_t VectorPreProcess::getSplitByteSize(Instruction* I, WIAnalysisRunner& WI
 
             bool SLM = getLoadStorePointerOperand(I)->getType()->getPointerAddressSpace()
                 == ADDRESS_SPACE_LOCAL;
-            uint32_t ebytes = (unsigned int)ETy->getPrimitiveSizeInBits() / 8;
-            if (ETy->isPointerTy())
-                ebytes = m_DL->getPointerTypeSize(ETy);
+            uint32_t ebytes = int_cast<uint32_t>(m_DL->getTypeSizeInBits(ETy) / 8);
             // Limit to DW and QW element types to avoid generating vectors that
             // are too large (ideally, should be <= 32 elements currently).
             if (ebytes == 4 || ebytes == 8)
@@ -731,11 +735,13 @@ bool VectorPreProcess::splitStore(
         Type* Ty1 = splitInfo[0].first;
         if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
         {
-            if (ETy->getPrimitiveSizeInBits() > Ty1->getScalarSizeInBits())
+            if (m_DL->getTypeSizeInBits(ETy) > m_DL->getTypeSizeInBits(Ty1->getScalarType()))
             {
                 std::vector<Value*> splitScalars;
-                IGC_ASSERT(Ty1->getScalarSizeInBits());
-                const uint32_t vectorSize = (unsigned int)ETy->getPrimitiveSizeInBits() / Ty1->getScalarSizeInBits();
+                IGC_ASSERT(m_DL->getTypeSizeInBits(Ty1->getScalarType()));
+                const uint32_t vectorSize =
+                    (unsigned int)m_DL->getTypeSizeInBits(ETy) /
+                    (unsigned int)m_DL->getTypeSizeInBits(Ty1->getScalarType());
                 Type* splitType = FixedVectorType::get(Ty1, vectorSize);
                 for (uint32_t i = 0; i < nelts; i++)
                 {
@@ -921,12 +927,12 @@ bool VectorPreProcess::splitLoad(
 
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
-        if (svals[0]->getType()->getPrimitiveSizeInBits() < ETy->getPrimitiveSizeInBits())
+        if (m_DL->getTypeSizeInBits(svals[0]->getType()) < m_DL->getTypeSizeInBits(ETy))
         {
-            const unsigned int denominator = (unsigned int)svals[0]->getType()->getPrimitiveSizeInBits();
+            const unsigned int denominator = (unsigned int)m_DL->getTypeSizeInBits(svals[0]->getType());
             IGC_ASSERT(0 < denominator);
 
-            const uint32_t scalarsPerElement = (unsigned int)ETy->getPrimitiveSizeInBits() / denominator;
+            const uint32_t scalarsPerElement = (unsigned int)m_DL->getTypeSizeInBits(ETy) / denominator;
             IGC_ASSERT(1 < scalarsPerElement);
             IGC_ASSERT((svals.size() % scalarsPerElement) == 0);
 
@@ -965,8 +971,8 @@ bool VectorPreProcess::splitLoad(
 bool VectorPreProcess::splitLoadStore(
     Instruction* Inst, V2SMap& vecToSubVec, WIAnalysisRunner& WI)
 {
-    Optional<AbstractLoadInst> ALI = AbstractLoadInst::get(Inst);
-    Optional<AbstractStoreInst> ASI = AbstractStoreInst::get(Inst);
+    Optional<AbstractLoadInst> ALI = AbstractLoadInst::get(Inst, *m_DL);
+    Optional<AbstractStoreInst> ASI = AbstractStoreInst::get(Inst, *m_DL);
     IGC_ASSERT_MESSAGE((ALI || ASI), "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
     IGCLLVM::FixedVectorType* VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
@@ -998,7 +1004,7 @@ bool VectorPreProcess::splitLoadStore(
     // has not been splitted yet, then splitting the load first
     // so that the stored value will be directly from loaded values
     // without adding insert/extract instructions.
-    Optional<AbstractLoadInst> aALI = (ASI && !isInMap) ? AbstractLoadInst::get(V) : ALI;
+    Optional<AbstractLoadInst> aALI = (ASI && !isInMap) ? AbstractLoadInst::get(V, *m_DL) : ALI;
 
     if (aALI)
     {
@@ -1021,9 +1027,9 @@ bool VectorPreProcess::splitLoadStore(
 // payloads larger than 4 DW.
 bool VectorPreProcess::splitVector3LoadStore(Instruction* Inst)
 {
-    Optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst);
+    Optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst, *m_DL);
     AbstractLoadInst* ALI = optionalALI ? optionalALI.getPointer() : nullptr;
-    Optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst);
+    Optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst, *m_DL);
     AbstractStoreInst* ASI = optionalASI ? optionalASI.getPointer() : nullptr;
     IGC_ASSERT_MESSAGE((optionalALI || optionalASI), "Inst should be either load or store");
     Type* Ty = ALI ? ALI->getInst()->getType() : ASI->getValueOperand()->getType();
@@ -1323,7 +1329,7 @@ void VectorPreProcess::getOrGenScalarValues(
 //
 Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
 {
-    if (Optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst))
+    if (Optional<AbstractLoadInst> optionalALI = AbstractLoadInst::get(Inst, *m_DL))
     {
         bool optReportEnabled = IGC_IS_FLAG_ENABLED(EnableOptReportLoadNarrowing);
         auto emitOptReport = [&](std::string report, Instruction* from, Instruction* to)
@@ -1351,7 +1357,8 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
         if (!Inst->getType()->isVectorTy() || ALI.getAlignment() < 4)
             return Inst;
 
-        unsigned NBits = Inst->getType()->getScalarSizeInBits();
+        unsigned NBits = int_cast<unsigned>(
+            m_DL->getTypeSizeInBits(Inst->getType()->getScalarType()));
         if (NBits < 32)
             return Inst;
 
@@ -1576,7 +1583,7 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
     // store <3 x float> %8, <3 x float>* %5, align 16
     //
     IGC_ASSERT(isAbstractStoreInst(Inst));
-    Optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst);
+    Optional<AbstractStoreInst> optionalASI = AbstractStoreInst::get(Inst, *m_DL);
     AbstractStoreInst& ASI = optionalASI.getValue();
     Value* Val = ASI.getValueOperand();
     if (isa<UndefValue>(Val))
@@ -1588,7 +1595,8 @@ Instruction* VectorPreProcess::simplifyLoadStore(Instruction* Inst)
     if (!Val->getType()->isVectorTy() || ASI.getAlignment() < 4)
         return Inst;
 
-    unsigned NBits = Val->getType()->getScalarSizeInBits();
+    unsigned NBits = int_cast<unsigned>(
+        m_DL->getTypeSizeInBits(Val->getType()->getScalarType()));
     if (NBits < 32)
         return Inst;
 
@@ -1696,7 +1704,8 @@ bool VectorPreProcess::processScalarLoadStore(Function& F)
             Type* Ty = inst->getOperand(0)->getType();
             if (Ty->isVectorTy())
                 continue;
-            unsigned bitSize = Ty->getScalarSizeInBits();
+            unsigned bitSize = int_cast<unsigned>(
+                m_DL->getTypeSizeInBits(Ty->getScalarType()));
             if (bitSize != 24 && bitSize != 48)
                 continue;
             IRBuilder<> Builder(inst);
@@ -1715,7 +1724,8 @@ bool VectorPreProcess::processScalarLoadStore(Function& F)
             Type* Ty = inst->getType();
             if (Ty->isVectorTy())
                 continue;
-            unsigned bitSize = Ty->getScalarSizeInBits();
+            unsigned bitSize = int_cast<unsigned>(
+                m_DL->getTypeSizeInBits(Ty->getScalarType()));
             if (bitSize != 24 && bitSize != 48)
                 continue;
             IRBuilder<> Builder(inst);
@@ -1820,7 +1830,7 @@ bool VectorPreProcess::runOnFunction(Function& F)
         for (uint32_t i = 0; i < m_Temps.size(); ++i)
         {
             Value* V = m_Temps[i];
-            Optional<AbstractLoadInst> ALI = AbstractLoadInst::get(V);
+            Optional<AbstractLoadInst> ALI = AbstractLoadInst::get(V, *m_DL);
             if (!ALI)
             {
                 continue;
