@@ -1448,7 +1448,7 @@ unsigned GenXLegalization::determineWidth(unsigned WholeWidth,
           cast<IGCLLVM::FixedVectorType>(i->Inst->getOperand(0)->getType())
               ->getNumElements(),
           &(Baling->AlignInfo));
-      if ((ThisWidth == 1 || (R.Width > 1 && R.Stride != 0)) &&
+      if (ThisWidth == 1 &&
           (R.ElementBytes != genx::ByteBytes ||
            ST->hasMultiIndirectByteRegioning()) &&
           R.Indirect && !R.isMultiIndirect()) {
