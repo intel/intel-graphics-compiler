@@ -52,40 +52,9 @@ static errno_t memcpy_s(void *dst, size_t numberOfElements, const void *src,
 /* stdint.h portability code end */
 
 /* Windows types for non-Windows start */
-#if !defined(_WIN32) && !defined(_WIN64)
-#define SUCCEED 1
-#define ERROR 0
-
-typedef char CHAR;
-typedef int INT;
-typedef short SHORT;
-typedef int32_t LONG;
-typedef int64_t LONGLONG;
-
-typedef uint32_t UINT32;
+#if !defined(_WIN32)
 typedef uint32_t DWORD;
 typedef uint16_t WORD;
-
-typedef double DOUBLE;
-typedef float FLOAT;
-
-#ifndef __LARGE_INTEGER_STRUCT_DEFINED__
-union LARGE_INTEGER {
-  struct dummy {
-    DWORD LowPart;
-    LONG HighPart;
-  };
-
-  struct u {
-    DWORD LowPart;
-    LONG HighPart;
-  };
-
-  LONGLONG QuadPart;
-};
-#define __LARGE_INTEGER_STRUCT_DEFINED__
-#endif // __LARGE_INTEGER_STRUCT_DEFINED__
-
 #endif /* Windows types for non-Windows end */
 
 // Common code for exception handling, debug messages, platform checks, etc.
@@ -99,9 +68,6 @@ union LARGE_INTEGER {
 // User has requested vISA to early exit after a pass via the -stopafter option.
 #define VISA_EARLY_EXIT (-2)
 #define VISA_SPILL (-3)
-
-// stream for error messages
-extern std::stringstream errorMsgs;
 
 #define COUT_ERROR std::cout
 

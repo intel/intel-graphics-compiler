@@ -53,14 +53,14 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-/// Output flags.
-_THREAD bool g_shortRegionPrint =
+/// Output flags to control vISA assembly printing.
+static const bool g_shortRegionPrint =
     false; /// Use shorthand names for common regions.
-_THREAD bool g_inlineTypePrint =
+static const bool g_inlineTypePrint =
     false;                         /// Print the type information with operands.
-_THREAD bool g_prettyPrint = true; /// Line up the comments.
-_THREAD bool g_ignorelocs = false; /// Ignore printing LOCs.
-_THREAD bool g_noinstid = false;   /// Ignore printing instruction id comments.
+static const bool g_prettyPrint = true; /// Line up the comments.
+static const bool g_ignorelocs = false; /// Ignore printing LOCs.
+static const bool g_noinstid = false;   /// Ignore printing instruction id comments.
 
 const char *printAsmName(const print_format_provider_t *header) {
   for (unsigned i = 0; i < header->getAttrCount(); i++) {

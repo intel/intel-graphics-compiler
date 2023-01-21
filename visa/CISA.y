@@ -74,10 +74,6 @@ VISA_RawOpnd* rawOperandArray[16];
 // The var needs to be cleared before each use.
 std::vector<attr_gen_struct*> AttrOptVar;
 
-#ifdef _MSC_VER
-#pragma warning(disable:4065; disable:4267)
-#endif
-
 %}
 
 %param {CISA_IR_Builder* pBuilder}

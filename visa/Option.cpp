@@ -22,13 +22,6 @@ SPDX-License-Identifier: MIT
 #include <sstream>
 #include <string_view>
 
-#ifdef _MSC_VER
-// MAX : Disable security enhancements warning (VC2005)
-// 4312: disable cast warning on 64bit build (option handling's macro need to be
-// re-done)
-#pragma warning(disable : 4996 4312)
-#endif
-
 // NOTE: for now when adding a new flag, please also update ::reset() so that it
 // is reset to the default value after the builder is destroyed.  We will move
 // these options to be part of the builder in the near future.

@@ -38,9 +38,9 @@ using namespace vISA;
     if (!(cond)) {                                                             \
       int sz = _scprintf(__VA_ARGS__) + 1;                                     \
       char *buf = (char *)malloc(sz);                                          \
-      vASSERT(buf != NULL);                                                     \
+      vASSERT(buf);                                                            \
       memset(buf, 0, sz);                                                      \
-      SNPRINTF(buf, sz, __VA_ARGS__);                                          \
+      sprintf_s(buf, sz, __VA_ARGS__);                                         \
       error_list.push_back(                                                    \
           createIsaError(isaHeader, header, std::string(buf), opt));           \
       free(buf);                                                               \
@@ -52,9 +52,9 @@ using namespace vISA;
     if (!(cond)) {                                                             \
       int sz = _scprintf(__VA_ARGS__) + 1;                                     \
       char *buf = (char *)malloc(sz);                                          \
-      vASSERT(buf != NULL);                                                     \
+      vASSERT(buf);                                                            \
       memset(buf, 0, sz);                                                      \
-      SNPRINTF(buf, sz, __VA_ARGS__);                                          \
+      sprintf_s(buf, sz, __VA_ARGS__);                                         \
       error_list.push_back(                                                    \
           createIsaError(isaHeader, header, std::string(buf), opt, inst));     \
       free(buf);                                                               \

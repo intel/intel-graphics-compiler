@@ -470,22 +470,10 @@ void IfConverter::analyze(std::vector<IfConvertible> &list) {
   }
 }
 
-// Combining GCC 4.9.0 and libcxx 11.01, incorrect code is generated on two
-// consecutive `pop_front()` on std::list. Add `volatile` to prevent incorrect
-// code generation during over optimization.
-#if (defined(ANDROID) && !(defined(__clang__) || defined(__INTEL_COMPILER)) && \
-     (defined(__GNUC__) || defined(__GNUG__)) && __GNUC__ == 4 &&              \
-     __GNUC_MINOR__ == 9 && __GNUC_PATCHLEVEL__ == 0 &&                        \
-     defined(_LIBCPP_VERSION) && _LIBCPP_VERSION == 1101)
-#define ANDROID_WORKAROUND volatile
-#else
-#define ANDROID_WORKAROUND
-#endif
-
 void IfConverter::fullConvert(IfConvertible &IC) {
   G4_Predicate &pred = *IC.pred;
   G4_BB *head = IC.head;
-  G4_BB *ANDROID_WORKAROUND tail = IC.tail;
+  G4_BB *tail = IC.tail;
   G4_BB *s0 = IC.succIf;
   G4_BB *s1 = IC.succElse;
 

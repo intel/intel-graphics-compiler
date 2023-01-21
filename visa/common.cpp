@@ -14,11 +14,6 @@ SPDX-License-Identifier: MIT
 #include <cctype>
 #include <vector>
 
-// for exception handling
-// FIXME: potentially not thread safe, but should be ok since it's debugging
-// code
-std::stringstream errorMsgs;
-
 using namespace vISA;
 const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
     PlatformInfo(GENX_BDW, PlatformGen::GEN8, 3, 32, "BDW", "GEN8"),

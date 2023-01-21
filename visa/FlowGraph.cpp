@@ -35,16 +35,6 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 #include <unordered_set>
 
-#if defined(WIN32)
-#define CDECLATTRIBUTE __cdecl
-#elif __GNUC__
-#ifdef __x86_64__
-#define CDECLATTRIBUTE
-#else
-#define CDECLATTRIBUTE __attribute__((__cdecl__))
-#endif
-#endif
-
 using namespace vISA;
 
 //

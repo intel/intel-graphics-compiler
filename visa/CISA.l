@@ -11,20 +11,10 @@ SPDX-License-Identifier: MIT
 #include <stdio.h>
 #include <ctype.h>
 
-#ifdef _MSC_VER
-// To disable warning for duplicate macros definitions
-// such as INT8_MAX in lex.CISA.c with one from stdint.h
-#pragma warning(disable: 4005)
-#endif
-
 #include "visa_igc_common_header.h"
 #include "Common_ISA_framework.h"
 #include "VISAKernel.h"
 #include "BuildCISAIR.h"
-
-#ifdef _MSC_VER
-#pragma warning(default: 4005)
-#endif
 
 #include "CISA.tab.hpp"
 
@@ -51,11 +41,6 @@ static unsigned char           FENCEOptions(const char* str);
 static COMMON_ISA_VME_OP_MODE  VMEType(const char *str);
 static CHANNEL_OUTPUT_FORMAT   Get_Channel_Output(const char* str);
 static void                    appendStringLiteralChar(char c, char *buf, size_t *len);
-
-#ifdef _MSC_VER
-#include <io.h>
-#pragma warning(disable:4102; disable:4244; disable:4267)
-#endif
 %}
 
 %option yylineno

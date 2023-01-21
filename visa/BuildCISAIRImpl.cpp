@@ -1405,9 +1405,8 @@ static std::mutex mtx;
 int CISA_IR_Builder::ParseVISAText(const std::string &visaText,
                                    const std::string &visaTextFile) {
   const std::lock_guard<std::mutex> lock(mtx);
-#if defined(__linux__) || defined(_WIN64) || defined(_WIN32)
   // Direct output of parser to null
-#if defined(_WIN64) || defined(_WIN32)
+#if defined(_WIN32)
   CISAout = fopen("nul", "w");
 #else
   CISAout = fopen("/dev/null", "w");
@@ -1449,17 +1448,12 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaText,
   }
 
   return status;
-#else
-  vISA_ASSERT(false, "vISA asm parsing not supported on this platform");
-  return VISA_FAILURE;
-#endif
 }
 
 // Parses inline asm file from ShaderOverride
 int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
-#if defined(__linux__) || defined(_WIN64) || defined(_WIN32)
   // Direct output of parser to null
-#if defined(_WIN64) || defined(_WIN32)
+#if defined(_WIN32)
   CISAout = fopen("nul", "w");
 #else
   CISAout = fopen("/dev/null", "w");
@@ -1480,10 +1474,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
     fclose(CISAout);
   }
   return VISA_SUCCESS;
-#else
-  vISA_ASSERT(false, "Asm parsing not supported on this platform");
-  return VISA_FAILURE;
-#endif
+
 }
 
 // default size of the kernel mem manager in bytes

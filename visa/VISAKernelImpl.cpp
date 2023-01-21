@@ -34,10 +34,6 @@ SPDX-License-Identifier: MIT
 #include "visa/include/RelocationInfo.h"
 #include "visa_igc_common_header.h"
 
-#if defined(_DEBUG) && (defined(_WIN32) || defined(_WIN64))
-#include <windows.h>
-#endif
-
 #include <cctype>
 
 using namespace CisaFramework;
@@ -428,7 +424,7 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize,
   }
   stopTimer(TimerID::ENCODE_AND_EMIT);
 
-#if defined(_DEBUG) && (defined(_WIN32) || defined(_WIN64))
+#if defined(_DEBUG) && defined(_WIN32)
   if (m_options->getOption(vISA_DebugConsoleDump)) {
     std::basic_ostringstream<char> debugBuff;
     m_kernel->emitDeviceAsm(debugBuff, nullptr, 0);
@@ -441,10 +437,6 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize,
   if (getOptions()->getOption(vISA_GenerateKernelInfo)) {
     auto kernel = getKernel();
     m_kernelInfo = new KERNEL_INFO();
-
-    // bool hasSpillFills = false;
-    // int wholeGRFbyteSize =
-    //     kernel->getGRFSize() * kernel->getNumRegTotal();
 
     for (auto decl : kernel->Declares) {
       auto regVar = decl->getRegVar();

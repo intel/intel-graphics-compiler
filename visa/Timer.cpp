@@ -17,6 +17,33 @@ SPDX-License-Identifier: MIT
 #include "Windows.h"
 #endif
 
+#if !defined(_WIN32)
+// Define Windows types for non-Windows OSes.
+// TODO: replace timer implementation with the portable std::chrono class.
+typedef int32_t LONG;
+typedef int64_t LONGLONG;
+
+typedef uint32_t DWORD;
+
+#ifndef __LARGE_INTEGER_STRUCT_DEFINED__
+union LARGE_INTEGER {
+  struct dummy {
+    DWORD LowPart;
+    LONG HighPart;
+  };
+
+  struct u {
+    DWORD LowPart;
+    LONG HighPart;
+  };
+
+  LONGLONG QuadPart;
+};
+#define __LARGE_INTEGER_STRUCT_DEFINED__
+#endif // __LARGE_INTEGER_STRUCT_DEFINED__
+
+#endif /* Windows types for non-Windows end */
+
 #undef DEF_TIMER
 #define DEF_TIMER(ENUM, DESCR) DESCR,
 static const char *timerNames[static_cast<int>(TimerID::NUM_TIMERS)] = {
@@ -30,40 +57,40 @@ static const char *timerNames[static_cast<int>(TimerID::NUM_TIMERS)] = {
 #if   !defined(_WIN32)
 bool QueryPerformanceFrequency(LARGE_INTEGER *lpFrequency) {
   struct timespec Res;
-  INT iRet;
+  int iRet;
 
   if ((iRet = clock_getres(CLOCK_TYPE, &Res)) != 0) {
-    return ERROR;
+    return false;
   }
 
   // resolution (precision) can't be in seconds for current machine and OS
   if (Res.tv_sec != 0) {
-    return ERROR;
+    return false;
   }
   lpFrequency->QuadPart = 1000000000LL / Res.tv_nsec;
 
-  return SUCCEED;
+  return true;
 }
 
 bool QueryPerformanceCounter(LARGE_INTEGER *lpPerformanceCount) {
   struct timespec Res;
   struct timespec t;
-  INT iRet;
+  int iRet;
 
   if ((iRet = clock_getres(CLOCK_TYPE, &Res)) != 0) {
-    return ERROR;
+    return false;
   }
   if (Res.tv_sec != 0) { // resolution (precision) can't be in seconds for
                          // current machine and OS
-    return ERROR;
+    return false;
   }
   if ((iRet = clock_gettime(CLOCK_TYPE, &t)) != 0) {
-    return ERROR;
+    return false;
   }
   lpPerformanceCount->QuadPart =
       (1000000000LL * t.tv_sec + t.tv_nsec) / Res.tv_nsec;
 
-  return SUCCEED;
+  return true;
 }
 
 #endif

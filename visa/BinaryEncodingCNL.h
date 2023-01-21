@@ -28,17 +28,15 @@ typedef uint64_t QWORD;
 #define BITFIELD_RANGE(startbit, endbit) ((endbit) - (startbit) + 1)
 #define BITFIELD_BIT(bit) 1
 
-#if !defined(__ANDROID__)
 #undef __CONCAT
 #define __CONCAT(x, y) x##y
-#endif
 #define __UNIQUENAME(a1, a2) __CONCAT(a1, a2)
 #define UNIQUENAME(__text) __UNIQUENAME(__text, __COUNTER__)
 #define STATIC_ASSERT(e) typedef char UNIQUENAME(STATIC_ASSERT_)[(e) ? 1 : -1]
 
 #define __CODEGEN_UNIQUE(field) UNIQUENAME(field)
 #define __CODEGEN_INLINE inline
-#define __CODEGEN_PACKED _PACKED
+#define __CODEGEN_PACKED
 #define __CODEGEN_ATTRIBUTES_STRUCTURE
 
 #define __CODEGEN_GET_MACRO()

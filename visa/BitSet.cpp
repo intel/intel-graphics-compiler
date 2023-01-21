@@ -93,21 +93,21 @@ void BitSet::invert(void) {
 }
 
 template <typename T>
-void vector_and(T *__restrict__ p1, const T *const p2, unsigned n) {
+void vector_and(T *__restrict p1, const T *const p2, unsigned n) {
   for (unsigned i = 0; i < n; ++i) {
     p1[i] &= p2[i];
   }
 }
 
 template <typename T>
-void vector_or(T *__restrict__ p1, const T *const p2, unsigned n) {
+void vector_or(T *__restrict p1, const T *const p2, unsigned n) {
   for (unsigned i = 0; i < n; ++i) {
     p1[i] |= p2[i];
   }
 }
 
 template <typename T>
-void vector_minus(T *__restrict__ p1, const T *const p2, unsigned n) {
+void vector_minus(T *__restrict p1, const T *const p2, unsigned n) {
   for (unsigned i = 0; i < n; ++i) {
     p1[i] &= ~p2[i];
   }

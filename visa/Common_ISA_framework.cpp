@@ -19,10 +19,6 @@ SPDX-License-Identifier: MIT
 #include "IsaDisassembly.h"
 #include "IsaVerification.h"
 
-#if defined(_DEBUG) && (defined(_WIN32) || defined(_WIN64))
-#include <Windows.h>
-#endif
-
 #define SIZE_VALUE m_kernel_data_size
 #define SIZE_VALUE_INST m_instruction_size
 

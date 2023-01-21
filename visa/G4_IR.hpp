@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #ifndef _GEN4_IR_HPP_
 #define _GEN4_IR_HPP_
 
-
 #include <algorithm>
 #include <array>
 #include <bitset>
@@ -42,13 +41,6 @@ SPDX-License-Identifier: MIT
 #include "Metadata.h"
 #include "Option.h"
 #include "visa_igc_common_header.h"
-
-// We use memory manager.  Memory manager will free all the space at once so
-// that there is no need to call destructor or delete to free up space.
-#ifdef _MSC_VER
-#pragma warning(disable : 4291)
-#pragma warning(disable : 4996)
-#endif
 
 namespace vISA {
 // forward declaration

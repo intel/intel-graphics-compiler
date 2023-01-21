@@ -1446,20 +1446,7 @@ void emitData(std::list<VISAKernelImpl *> &compilationUnits, T t) {
       const std::pair<const char *, unsigned int> &dclInfo =
           mapDclName.find(dcl)->second;
       std::string varName(dclInfo.first);
-      // to_string support not present prior to gcc 4.6 and is a c++11 feature
-
-#if ANDROID
-      {
-        char t_char[128];
-        snprintf(t_char, sizeof(t_char), "%d", dclInfo.second);
-        varName += std::string(t_char);
-      }
-#elif defined(_MSC_VER) && _MSC_VER < 1700
-      varName += std::to_string((_ULonglong)dclInfo.second);
-#else
       varName += std::to_string(dclInfo.second);
-#endif
-
       if (curKernel->getOptions()->getOption(vISA_UseFriendlyNameInDbg)) {
         varName = dcl->getName();
       }
