@@ -13816,12 +13816,17 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
     }
 }
 
-LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1) const
+LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1, bool EvictL1) const
 {
     LSC_FENCE_OP op = LSC_FENCE_OP_NONE;
     if (InvalidateL1)
     {
         op = LSC_FENCE_OP_INVALIDATE;
+    }
+
+    if (EvictL1)
+    {
+        op = LSC_FENCE_OP_EVICT;
     }
 
     // For experiment on XeHP SDV
@@ -13834,7 +13839,7 @@ LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool Invalidat
 
 void EmitPass::emitMemoryFence(llvm::Instruction* inst)
 {
-    static constexpr int ExpectedNumberOfArguments = 7;
+    static constexpr int ExpectedNumberOfArguments = 8;
     IGC_ASSERT(IGCLLVM::getNumArgOperands(cast<CallInst>(inst)) == ExpectedNumberOfArguments);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
@@ -13848,6 +13853,9 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     bool L3_Flush_Instructions = true;
     bool Global_Mem_Fence = true;
     bool L1_Invalidate = ctx->platform.hasL1ReadOnlyCache();
+    // Note: this flag is respected only for LSC case currently.
+    // TODO: add support for non-LSC and typed fence.
+    bool L1_Evict = true;
 
     std::array<reference_wrapper<bool>, ExpectedNumberOfArguments> MemFenceArguments{
       CommitEnable,
@@ -13857,6 +13865,7 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
       L3_Flush_Instructions,
       Global_Mem_Fence,
       L1_Invalidate,
+      L1_Evict
     };
 
     for (size_t i = 0; i < MemFenceArguments.size(); ++i) {
@@ -13896,6 +13905,13 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         LSC_SFID sfid = Global_Mem_Fence ? LSC_UGM : LSC_SLM;
         // ToDo: replace with fence instrinsics that take scope/op
         LSC_SCOPE scope = Global_Mem_Fence ? LSC_SCOPE_GPU : LSC_SCOPE_GROUP;
+        // Do L1 evict only when default L1 cache policy is write-back.
+        if (L1_Evict && m_pCtx->type == ShaderType::OPENCL_SHADER)
+        {
+            auto CLCtx = static_cast<const OpenCLProgramContext*>(m_pCtx);
+            if (CLCtx->m_InternalOptions.StoreCacheDefault != -1)
+                L1_Evict = static_cast<LSC_L1_L3_CC>(CLCtx->m_InternalOptions.StoreCacheDefault) == LSC_L1IAR_WB_L3C_WB;
+        }
         // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL
         if (scope == LSC_SCOPE_GPU &&
             !m_currShader->m_Platform->hasMultiTile() &&
@@ -13904,7 +13920,7 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         {
             scope = LSC_SCOPE_TILE;
         }
-        LSC_FENCE_OP op = getLSCMemoryFenceOp(Global_Mem_Fence, L1_Invalidate);
+        LSC_FENCE_OP op = getLSCMemoryFenceOp(Global_Mem_Fence, L1_Invalidate, L1_Evict);
         if (inst->getMetadata("forceFlushNone") || sfid == LSC_SLM)
         {
             op = LSC_FENCE_OP_NONE;
@@ -13960,7 +13976,7 @@ void EmitPass::emitTypedMemoryFence(llvm::Instruction* inst)
 
     if (shouldGenerateLSC())
     {
-        auto flushOpt = m_currShader->m_Platform->hasSamplerSupport() ? LSC_FENCE_OP_EVICT : getLSCMemoryFenceOp(true, L1_Invalidate);
+        auto flushOpt = getLSCMemoryFenceOp(true, L1_Invalidate, m_currShader->m_Platform->hasSamplerSupport());
         LSC_SCOPE scope = LSC_SCOPE_GPU;
         if (!m_currShader->m_Platform->hasMultiTile() &&
             m_currShader->m_Platform->hasL3FlushOnGPUScopeInvalidate() &&
@@ -20845,7 +20861,7 @@ void EmitPass::emitSystemMemoryFence(llvm::GenIntrinsicInst* inst)
     if (fenceTGM)
     {
         // first fence TGM with GPU scope
-        auto flushOpt = m_currShader->m_Platform->hasSamplerSupport() ? LSC_FENCE_OP_EVICT : getLSCMemoryFenceOp(true, false);
+        auto flushOpt = getLSCMemoryFenceOp(true, false, m_currShader->m_Platform->hasSamplerSupport());
         m_encoder->LSC_Fence(LSC_TGM, LSC_SCOPE_GPU, flushOpt);
         m_encoder->Push();
         // then emit the regular UGM fence
