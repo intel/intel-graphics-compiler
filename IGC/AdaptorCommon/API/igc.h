@@ -83,7 +83,7 @@ typedef struct {
 #define SetSimdSpill(MODE, stats)    (stats = (stats | (BIT_CG_SIMD##MODE) |  (BIT_CG_SPILL##MODE)))
 #define SetSimdNoSpill(MODE, stats)  (stats = (stats | (BIT_CG_SIMD##MODE) & ~(BIT_CG_SPILL##MODE)))
 
-typedef enum {
+typedef enum CG_FLAG_t {
     FLAG_CG_ALL_SIMDS = 0,
     FLAG_CG_STAGE1_FAST_COMPILE = 1,
     FLAG_CG_STAGE1_BEST_PERF = 2,
