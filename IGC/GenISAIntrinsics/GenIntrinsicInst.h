@@ -1026,6 +1026,8 @@ public:
     }
 
     Value* getGlobalBufferPointer() const { return getOperand(0); }
+    void setGlobalBufferPointer(Value* V) { return setOperand(0, V); }
+
     Value* getPayload()             const { return getOperand(1); }
 };
 

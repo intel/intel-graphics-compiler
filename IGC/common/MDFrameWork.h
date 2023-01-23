@@ -245,6 +245,8 @@ namespace IGC
 
         uint32_t RTSyncStackAddrspace = UINT_MAX;
         std::optional<uint32_t> RTSyncStackSurfaceStateOffset;
+
+        bool doSyncDispatchRays = false;
     };
 
     // Info specific to each raytracing shader
