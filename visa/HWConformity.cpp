@@ -1297,13 +1297,49 @@ void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB *bb) {
       replaceDst(iter, dst->getType(), alignment);
     }
 
+    auto canSwapSrc1Src2{[&inst]() {
+      if (inst->opcode() == G4_add3 || inst->opcode() == G4_mad)
+        return true;
+
+      if (inst->opcode() == G4_bfn) {
+        uint8_t funcCtrl = inst->asBfnInst()->getBooleanFuncCtrl();
+        for (int k = 0; k < 8; k++) {
+          auto calculateIdx{[](const int &k) {
+            int b1 = (k >> 1) & 0x1;
+            int b2 = (k >> 2) & 0x1;
+            int x = b1 ^ b2;
+            x = (x << 1) | (x << 2);
+            return (k ^ x);
+          }};
+          if (((funcCtrl >> k) ^ (funcCtrl >> calculateIdx(k))) & 0x1) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      return false;
+    }};
+
     bool canBeImm = true;
     for (int i = 0; i < inst->getNumSrc(); ++i) {
       if (!isGoodAlign1TernarySrc(inst, i, canBeImm)) {
         if (i == 2 && builder.noSrc2Regioning()) {
-          // some additional handling for src2 when src2 regioning is not
-          // available
-          fixSrc2(iter, bb, false);
+          if (canSwapSrc1Src2()) {
+            // Try swapping src1 and src2 to avoid extra mov
+            inst->swapSrc(1, 2);
+            inst->swapDefUse(Opnd_src1, Opnd_src2);
+            if (!isGoodAlign1TernarySrc(inst, 1, canBeImm) ||
+                !isGoodAlign1TernarySrc(inst, 2, canBeImm)) {
+              inst->swapSrc(1, 2);
+              inst->swapDefUse(Opnd_src1, Opnd_src2);
+              // some additional handling for src2 when src2 regioning is not
+              // available
+              fixSrc2(iter, bb, false);
+            }
+          } else {
+            fixSrc2(iter, bb, false);
+          }
         } else {
           G4_SubReg_Align subalign = (i == 2) ? Four_Word : Any;
           inst->setSrc(insertMovBefore(iter, i, inst->getSrc(i)->getType(), bb,
