@@ -46,7 +46,7 @@ entry:
 ; CHECK:   br label %init_spinlock_var.end
 
 ; CHECK: init_spinlock_var.end:
-; CHECK:   call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false)
+; CHECK:   call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 true)
 ; CHECK:   call void @llvm.genx.GenISA.threadgroupbarrier()
 
 ; ---------- LOCAL_SPINLOCK_START() --------------------
@@ -101,5 +101,5 @@ declare spir_func void @__builtin_IB_memfence(i1 zeroext, i1 zeroext, i1 zeroext
 ; CHECK: declare i32 @__builtin_IB_get_local_id_x()
 ; CHECK: declare i32 @__builtin_IB_get_local_id_y()
 ; CHECK: declare i32 @__builtin_IB_get_local_id_z()
-; CHECK: declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1)
+; CHECK: declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1)
 ; CHECK: declare void @llvm.genx.GenISA.threadgroupbarrier()

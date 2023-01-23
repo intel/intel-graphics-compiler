@@ -13834,7 +13834,7 @@ LSC_FENCE_OP EmitPass::getLSCMemoryFenceOp(bool IsGlobalMemFence, bool Invalidat
 
 void EmitPass::emitMemoryFence(llvm::Instruction* inst)
 {
-    static constexpr int ExpectedNumberOfArguments = 8;
+    static constexpr int ExpectedNumberOfArguments = 7;
     IGC_ASSERT(IGCLLVM::getNumArgOperands(cast<CallInst>(inst)) == ExpectedNumberOfArguments);
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
@@ -13848,7 +13848,6 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     bool L3_Flush_Instructions = true;
     bool Global_Mem_Fence = true;
     bool L1_Invalidate = ctx->platform.hasL1ReadOnlyCache();
-    bool Force_Thread_LSC_Scope = true;
 
     std::array<reference_wrapper<bool>, ExpectedNumberOfArguments> MemFenceArguments{
       CommitEnable,
@@ -13858,7 +13857,6 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
       L3_Flush_Instructions,
       Global_Mem_Fence,
       L1_Invalidate,
-      Force_Thread_LSC_Scope
     };
 
     for (size_t i = 0; i < MemFenceArguments.size(); ++i) {
@@ -13898,10 +13896,6 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         LSC_SFID sfid = Global_Mem_Fence ? LSC_UGM : LSC_SLM;
         // ToDo: replace with fence instrinsics that take scope/op
         LSC_SCOPE scope = Global_Mem_Fence ? LSC_SCOPE_GPU : LSC_SCOPE_GROUP;
-        // When post-atomic fence is added with L1 invalidate, we may want to limit the scope to thread.
-        if (Force_Thread_LSC_Scope) scope = LSC_SCOPE_GROUP;
-        // Fence for global memory should invalidate L1.
-        if (Global_Mem_Fence && !L3_Flush_RW_Data) L1_Invalidate = true;
         // Change the scope from `GPU` to `Tile` on single-tile platforms to avoid L3 flush on DG2 and MTL
         if (scope == LSC_SCOPE_GPU &&
             !m_currShader->m_Platform->hasMultiTile() &&

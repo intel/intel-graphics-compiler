@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "../headers/resource.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Config/llvm-config.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -1520,6 +1521,8 @@ namespace TC
         optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
 
         optionsEx += " -D__ENDIAN_LITTLE__";
+
+        optionsEx += " -D__LLVM_VERSION_MAJOR__=" + to_string(LLVM_VERSION_MAJOR);
 
         // Workaround for Clang issue.
         // Clang always defines __IMAGE_SUPPORT__ macro for SPIR target, even if device doesn't support it.

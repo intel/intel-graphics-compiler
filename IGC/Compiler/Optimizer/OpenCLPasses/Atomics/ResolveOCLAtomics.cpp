@@ -375,7 +375,6 @@ void ResolveOCLAtomics::generateLockInitilization(Function* F)
         falseValue,
         falseValue,
         trueValue,
-        falseValue
     };
     m_builder->SetInsertPoint(initSpinLockEndBB, initSpinLockEndBB->getFirstInsertionPt());
     Function* localMemFence = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_memoryfence);
