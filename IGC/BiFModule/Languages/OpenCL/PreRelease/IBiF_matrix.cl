@@ -113,8 +113,10 @@ INLINE short __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_1x16_i
 
 /* PackedA load i8 SG16 */
 INLINE short8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_8x32_i8_v8i8_pi32_i32(char *mem, int stride) {
-    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, short, 8)
-    return ARR_TO_VEC8(short, wi_contrib);
+    short8 result;
+    stride = stride / 2; // char to short
+    SUB_GROUP_LOADS_8(intel_sub_group_block_read_us, (__global ushort *)mem, stride, result)
+    return result;
 }
 
 INLINE short4 __builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_SG16_4x32_i8_v8i8_pi32_i32(char *mem, int stride) {
@@ -171,8 +173,10 @@ INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_16x16_i16_v8i
 }
 
 INLINE int8 __builtin_spriv_OpJointMatrixLoadINTEL_PackedB_PackedB_32x16_i8_v8i8_pi32_i32(char *mem, int stride) {
-    LOAD_PACKED_A_FROM_ROW_MAJOR(mem, stride, char, int, 8)
-    return ARR_TO_VEC8(int, wi_contrib);
+    int8 result;
+    stride = stride / 4; // char to int
+    SUB_GROUP_LOADS_8(intel_sub_group_block_read, (__global uint *)mem, stride, result)
+    return result;
 }
 
 /* Load accumulator is a special case of load packed A, both are row major: */
