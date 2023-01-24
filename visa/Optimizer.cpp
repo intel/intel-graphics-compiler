@@ -8259,10 +8259,11 @@ void Optimizer::insertFenceBeforeEOT() {
             case SFID::UGM: {
               hasUAVWrites = true;
               if (clearHdcWritesLSCUGM) {
-                if ((msgDesc->isAtomic() && !msgDesc->isRead())     // case 1
-                    || (!(msgDesc->getCachingL1() == Caching::WB || // case 2
-                          msgDesc->getCachingL1() == Caching::ST) &&
-                        !msgDesc->isScratchWrite())) {
+                if ((msgDesc->isAtomic() && !msgDesc->isRead()) ||  // case 1
+                    (!msgDesc->isAtomic() &&                        // case 2
+                     !msgDesc->isScratchWrite() &&
+                     !(msgDesc->getCachingL1() == Caching::WB ||
+                       msgDesc->getCachingL1() == Caching::ST))) {
                   needLscUgmFence = true;
                 }
               }

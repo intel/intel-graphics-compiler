@@ -439,9 +439,16 @@ int IR_Builder::translateLscUntypedInst(
   desc |= dstLen << 20;   // Desc[24:20]  dst len
   desc |= addrRegs << 25; // Desc[29:25]  src0 len
 
+  bool loadAccess = opInfo.isLoad();
+  bool storeAccess = opInfo.isStore();
+  if (opInfo.isAtomic()) {
+    // atomic can be both read and store
+    storeAccess = true;
+    loadAccess = !isNullOperand(dstRead);
+  }
   G4_SendDescRaw *msgDesc =
       createLscDesc(sfid, desc, exDesc, src1Len,
-                    getSendAccessType(opInfo.isLoad(), opInfo.isStore()),
+                    getSendAccessType(loadAccess, storeAccess),
                     surface, LdStAttrs::NONE);
 
   createLscSendInst(pred, dstRead, src0Addr, src1Data, execSize, msgDesc,
