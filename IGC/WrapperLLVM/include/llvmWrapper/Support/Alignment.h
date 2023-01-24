@@ -9,11 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_ALIGNMENT_H
 #define IGCLLVM_SUPPORT_ALIGNMENT_H
 
-#include <cstdint>
-#include <type_traits>
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalObject.h"
 #include "llvm/IR/Instruction.h"
-#include "llvm/Config/llvm-config.h"
+#include <cstdint>
+#include <type_traits>
 #if LLVM_VERSION_MAJOR >= 10
 #include "llvm/Support/Alignment.h"
 using namespace llvm;
@@ -134,6 +135,15 @@ namespace IGCLLVM {
         return Val.getSourceAlign();
 #else
         return Val.getSourceAlign().valueOrOne();
+#endif
+    }
+
+    inline uint64_t alignTo(uint64_t Size, Align A) {
+#if LLVM_VERSION_MAJOR < 10
+      const uint64_t Value = A;
+      return (Size + Value - 1) & ~(Value - 1U);
+#else
+      return llvm::alignTo(Size, A);
 #endif
     }
 
