@@ -378,6 +378,9 @@ static void CommonOCLBasedPasses(
 
     // OCL has built-ins so it always need to run inlining
     {
+        // We need to propagate constexpr casts to resolve pseudo indirect calls
+        mpm.add(createSCCPPass());
+
         // Estimate maximal function size in the module and disable subroutine if not profitable.
         mpm.add(createEstimateFunctionSizePass());
         mpm.add(createProcessFuncAttributesPass());

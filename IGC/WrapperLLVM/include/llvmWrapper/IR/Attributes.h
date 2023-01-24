@@ -48,6 +48,14 @@ namespace IGCLLVM {
 #endif
     }
 
+    inline bool hasParamAttr(const llvm::AttributeList &AL, unsigned ArgNo, llvm::Attribute::AttrKind Kind) {
+#if LLVM_VERSION_MAJOR >= 14
+        return AL.hasParamAttr(ArgNo, Kind);
+#else
+        return AL.hasParamAttribute(ArgNo, Kind);
+#endif
+    }
+
     inline llvm::AttributeList addAttributesAtIndex(llvm::AttributeList &Attrs, llvm::LLVMContext &C, unsigned Index, const llvm::AttrBuilder &B) {
 #if LLVM_VERSION_MAJOR >= 14
         return Attrs.addAttributesAtIndex(C, Index, B);
