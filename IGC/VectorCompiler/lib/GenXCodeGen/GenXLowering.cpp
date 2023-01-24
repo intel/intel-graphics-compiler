@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -5821,7 +5821,7 @@ bool GenXLowering::lowerF32MathIntrinsic(CallInst *CI,
 
 bool GenXLowering::lowerF32FastMathIntrinsic(CallInst *CI,
                                              GenXIntrinsic::ID GenXID) {
-  if (!CI->hasApproxFunc())
+  if (!CI->getFastMathFlags().isFast())
     vc::fatal(CI->getContext(), "GenXLowering",
               "Sorry there is only low precision native instruction", CI);
   return lowerF32MathIntrinsic(CI, GenXID);
