@@ -8971,8 +8971,6 @@ void VISAKernelImpl::computeAndEmitDebugInfo(VISAKernelImplListTy &functions) {
 #endif
 }
 
-extern "C" void freeBlock(void *ptr);
-
 // buf contains instance of gtpin_init_t
 bool enableSrcLine(void *buf) {
   if (!buf)

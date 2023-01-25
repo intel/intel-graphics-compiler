@@ -5083,7 +5083,7 @@ namespace IGC
         builderOpt = VISA_BUILDER_BOTH;
 #endif
 
-        V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
+        V(vISA::CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(),
             &m_vISAWaTable));
 
         if (IsCodePatchCandidate())
@@ -5856,7 +5856,7 @@ namespace IGC
 
             // Create a new builder for parsing the visaasm
             TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
-            V(CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, VISA_BUILDER_BOTH, VISAPlatform,
+            V(vISA::CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, VISA_BUILDER_BOTH, VISAPlatform,
                 params.size(), params.data(), &m_vISAWaTable));
             // Use the same build options as before, except that we enable vISA verifier to catch
             // potential errors in user inline assembly
@@ -6238,7 +6238,7 @@ namespace IGC
         }
         else
         {
-            freeBlock(genxbin);
+            vISA::freeBlock(genxbin);
         }
 
         void* dbgInfo = nullptr;
@@ -6276,7 +6276,7 @@ namespace IGC
 
             memcpy_s(dbgInfo, dbgSize, genxdbgInfo, dbgSize);
 
-            freeBlock(genxdbgInfo);
+            vISA::freeBlock(genxdbgInfo);
         }
 
         pOutput->m_programBin = kernel;
@@ -6421,10 +6421,10 @@ namespace IGC
     {
         if (vAsmTextBuilder != nullptr)
         {
-            V(::DestroyVISABuilder(vAsmTextBuilder));
+            V(vISA::DestroyVISABuilder(vAsmTextBuilder));
             vAsmTextBuilder = nullptr;
         }
-        V(::DestroyVISABuilder(vbuilder));
+        V(vISA::DestroyVISABuilder(vbuilder));
         vbuilder = nullptr;
     }
 

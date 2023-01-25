@@ -6773,7 +6773,7 @@ static VISABuilder *createVISABuilder(const GenXSubtarget &ST,
   // machines only we had failures, reproducible only when shader dumps are
   // off. This code is to diagnose such cases simpler.
   VISABuilder *VB = nullptr;
-  int Result = CreateVISABuilder(
+  int Result = vISA::CreateVISABuilder(
       VB, Mode, VISA_BUILDER_BOTH, Platform,
       Argv.size(), Argv.data(), BC.getWATable());
   if (Result != 0 || VB == nullptr) {
@@ -6817,7 +6817,7 @@ VISABuilder *GenXModule::GetCisaBuilder() {
 
 void GenXModule::DestroyCISABuilder() {
   if (CisaBuilder) {
-    CISA_CALL(DestroyVISABuilder(CisaBuilder));
+    CISA_CALL(vISA::DestroyVISABuilder(CisaBuilder));
     CisaBuilder = nullptr;
   }
 }
@@ -6837,7 +6837,7 @@ VISABuilder *GenXModule::GetVISAAsmReader() {
 
 void GenXModule::DestroyVISAAsmReader() {
   if (VISAAsmTextReader) {
-    CISA_CALL(DestroyVISABuilder(VISAAsmTextReader));
+    CISA_CALL(vISA::DestroyVISABuilder(VISAAsmTextReader));
     VISAAsmTextReader = nullptr;
   }
 }

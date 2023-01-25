@@ -372,12 +372,6 @@ int main(int argc, const char *argv[]) {
 }
 #endif
 
-DLL_EXPORT void freeBlock(void *ptr) {
-  if (ptr != NULL) {
-    free(ptr);
-  }
-}
-
 void *allocCodeBlock(size_t sz) {
   // allocate buffer for the Gen kernel binary.
   // for now just use malloc, but eventually runtime should provide this

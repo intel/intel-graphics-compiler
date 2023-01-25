@@ -454,7 +454,7 @@ appendFuncBinary(genx::BinaryDataAccumulator<const GlobalValue *> &GenBinary,
       "Unexpected null buffer or zero-sized kernel (compilation failed?)");
   GenBinary.append(&Func, ArrayRef<uint8_t>{static_cast<uint8_t *>(GenBin),
                                             static_cast<size_t>(GenBinSize)});
-  freeBlock(GenBin);
+  vISA::freeBlock(GenBin);
 }
 
 // Loads if it is possible external files.
@@ -477,7 +477,7 @@ static bool loadGenBinaryFromFile(
 
   GenBinary.append(&F, ArrayRef<uint8_t>{static_cast<uint8_t *>(GenBin),
                                          static_cast<size_t>(GenBinSize)});
-  freeBlock(GenBin);
+  vISA::freeBlock(GenBin);
   return true;
 }
 

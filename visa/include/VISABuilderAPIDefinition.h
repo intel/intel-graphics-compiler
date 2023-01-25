@@ -1067,8 +1067,8 @@ public:
 
   /// GetGenxBinary -- returns the GEN binary in <buffer> and update its size in
   /// <size> This function may only be called after Compile() is called If
-  /// finalization fails, buffer will be set to NULL and size will be set to 0
-  /// buffer must be de-allocated using freeBLock API.
+  /// finalization fails, buffer will be set to null and size will be set to 0.
+  /// buffer must be de-allocated using freeBlock API.
   VISA_BUILDER_API virtual int GetGenxBinary(void *&buffer,
                                              int &size) const = 0;
 
@@ -1090,8 +1090,8 @@ public:
   /// GetGenxDebugInfo -- returns the GEN debug info binary in <buffer>
   /// and its size in <size>.
   /// This function may only be called after Compile() is called
-  /// If finalization fails, buffer will be set to NULL and size will be set to
-  /// 0 buffer must be de-allocated using freeBLock API.
+  /// If finalization fails, buffer will be set to null and size will be set to
+  /// 0. buffer must be de-allocated using freeBlock API.
   VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer,
                                                 unsigned int &size) const = 0;
 
