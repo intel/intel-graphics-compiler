@@ -71,7 +71,8 @@ enum LatenciesXe : uint16_t {
   // Latency for SIMD16 SLM messages. If accessing
   // the same location, it takes 28 cycles. For the
   // sequential access pattern, it takes 26 cycles.
-  SLM = 28,
+  SLM16 = 28,
+  SLM32 = 45,
   SEND_OTHERS = 50,       // Latency for other messages.
   DP_L3 = 146,            // Dataport L3 hit
   SAMPLER_L3 = 214,       // Sampler L3 hit

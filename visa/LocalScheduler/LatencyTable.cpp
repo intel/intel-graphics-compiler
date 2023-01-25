@@ -130,7 +130,9 @@ uint16_t LatencyTable::getLatencyG12(const G4_INST *Inst) const {
     G4_SendDesc *MsgDesc = Inst->getMsgDesc();
     if (MsgDesc->isLSC()) {
       if (MsgDesc->getSFID() == SFID::SLM) {
-        return MsgDesc->isFence() ? LatenciesXe::SLM_FENCE : LatenciesXe::SLM;
+        return MsgDesc->isFence()
+                   ? LatenciesXe::SLM_FENCE
+                   : ((Sz > 16) ? LatenciesXe::SLM32 : LatenciesXe::SLM16);
       } else if (MsgDesc->isFence()) {
         return MsgDesc->isTyped() ? LatenciesXe::LSC_TYPED_FENCE
                                   : LatenciesXe::LSC_UNTYPED_FENCE;
@@ -149,7 +151,7 @@ uint16_t LatencyTable::getLatencyG12(const G4_INST *Inst) const {
     }
     if (MsgDesc->isSLM())
       return Inst->asSendInst()->isFence() ? LatenciesXe::SLM_FENCE
-                                           : LatenciesXe::SLM;
+                                           : LatenciesXe::SLM16;
     if (MsgDesc->isSampler())
       return LatenciesXe::SAMPLER_L3;
     if (MsgDesc->isHDC())
