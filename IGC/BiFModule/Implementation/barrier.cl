@@ -18,7 +18,7 @@ extern __constant int __OptDisable;
 
 // MEMFENCE IMPLEMENTATION
 
-void __attribute__((optnone)) __intel_memfence_optnone(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1)
+void OPTNONE __intel_memfence_optnone(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1)
 {
 #define MEMFENCE_IF(V1, V5, V6, V7)                                           \
 if (flushRW == V1 && isGlobal == V5 && invalidateL1 == V6 && evictL1 == V7)   \
@@ -55,7 +55,7 @@ void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1, bo
 
 // TYPEDMEMFENCE IMPLEMENTATION
 
-void __attribute__((optnone)) __intel_typedmemfence_optnone(bool invalidateL1)
+void OPTNONE __intel_typedmemfence_optnone(bool invalidateL1)
 {
     if (invalidateL1)
         __builtin_IB_typedmemfence(true);
