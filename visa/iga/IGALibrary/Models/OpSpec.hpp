@@ -318,7 +318,15 @@ struct OpSpec {
   bool supportsDebugCtrl() const { return !is(Op::ILLEGAL); }
 
   bool supportsBranchCtrl() const { return hasAttrs(Attr::SUPPORTS_BRCTL); }
-  bool supportsThreadCtrl() const { return op != Op::NOP && op != Op::ILLEGAL; }
+
+  bool supportsThreadCtrl() const {
+    if (op == Op::NOP || op == Op::ILLEGAL)
+        return false;
+    if (!isAnySendFormat())
+      return true;
+    return platform >= Platform::GEN9;
+  }
+
   bool supportsPredication() const {
     return hasAttrs(Attr::SUPPORTS_PREDICATION);
   }

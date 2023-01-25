@@ -1973,9 +1973,7 @@ void Decoder::decodeOptions(Instruction *inst) {
     }
   }
 
-  bool hasThreadCtrl = !os.isAnySendFormat() && os.supportsThreadCtrl() ||
-                       (os.isAnySendFormat() && platform() >= Platform::GEN9);
-  if (hasThreadCtrl) {
+  if (os.supportsThreadCtrl()) {
     GED_THREAD_CTRL trdCntrl = GED_THREAD_CTRL_Normal;
     GED_DECODE_RAW_TO(ThreadCtrl, trdCntrl);
     decodeThreadOptions(inst, trdCntrl);
