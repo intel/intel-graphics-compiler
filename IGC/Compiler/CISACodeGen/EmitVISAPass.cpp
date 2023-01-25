@@ -13553,6 +13553,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
                 m_encoder->SetSrcSubVar(0, i);
                 m_encoder->SetSrcSubVar(1, i);
                 m_encoder->SetSrcSubVar(2, i);
+                m_encoder->SetSrcSubVar(3, i);
                 m_encoder->SetPredicate(flag);
 
                 if (doLSC)
