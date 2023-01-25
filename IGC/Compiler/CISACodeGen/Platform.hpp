@@ -1425,11 +1425,6 @@ bool WaDisableD64ScratchMessage() const
     return getWATable().Wa_15010203763 != 0;
 }
 
-bool supportLargeGRF() const
-{
-    bool supportLargeGRF = isCoreChildOf(IGFX_XE_HPG_CORE);
-    return supportLargeGRF;
-}
 
 bool limitedBCR() const
 {
