@@ -4853,8 +4853,8 @@ namespace IGC
                 SaveOption(vISA_SpillSpaceCompression, false);
                 SaveOption(vISA_LVN, false);
                 SaveOption(vISA_QuickTokenAllocation, true);
-                if (context->getModuleMetaData()->compOpt.EnableFastestLinearScan ||
-                    IGC_IS_FLAG_ENABLED(EnableFastestLinearScan))
+                if (!context->getModuleMetaData()->compOpt.DisableFastestLinearScan &&
+                    !IGC_IS_FLAG_ENABLED(DisableFastestLinearScan))
                 {
                     SaveOption(vISA_LinearScan, true);
                 }
