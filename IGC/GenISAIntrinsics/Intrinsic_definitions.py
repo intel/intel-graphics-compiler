@@ -2735,6 +2735,11 @@ Imported_Intrinsics = \
     [(0,                                "input value")],
     "NoMem"]],
 ####################################################################################################
+"GenISA_rt_swstack_offset": ["Raytracing: Marker for SWStack offset computation",
+    [("anyint",                         "return the input"),
+    [(0,                                "input value")],
+    "NoMem"]],
+####################################################################################################
 "GenISA_FPBinaryOperator": ["Represents a generic intrinsic for fadd,fsub,fmul,fdiv",
     [("anyfloat",                       "return value of operation"),
     [(0,                                "operand 0 of binary operator"),
