@@ -7088,8 +7088,7 @@ void typedWriteZeroStoreCheck(Function& F)
                     Instruction* tyW = cast<GenIntrinsicInst>(tyWrite);
                     Instruction* tyR = cast<GenIntrinsicInst>(eeInst[0]->getOperand(0));
 
-                    int paramCnt = 5;
-                    for (int j = 0; j < paramCnt; j++)
+                    for (int j = 0; j < 5; j++)
                     {
                         if (tyR->getOperand(j) != tyW->getOperand(j))
                         {
