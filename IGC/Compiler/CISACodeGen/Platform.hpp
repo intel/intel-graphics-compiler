@@ -46,22 +46,6 @@ bool hasQWAddSupport() const
         m_platformInfo.usRevId >= REVISION_D);  // true from PVC XT B0 RevID==0x5==REVISION_D
 }
 
-//all the platforms which DONOT support 64 bit int operations
-bool hasNoInt64Inst() const {
-    return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
-        m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
-        m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
-        m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
-        m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
-        m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
-        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
-        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
-        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
-        m_platformInfo.eProductFamily == IGFX_DG1 ||
-        m_platformInfo.eProductFamily == IGFX_DG2 ||
-        m_platformInfo.eProductFamily == IGFX_METEORLAKE;
-}
-
 public:
 void setOclCaps(OCLCaps& caps) { m_OCLCaps = caps; }
 uint32_t getMaxOCLParameteSize() const {
@@ -1080,6 +1064,22 @@ bool useScratchSpaceForOCL() const
 bool supportByteALUOperation() const
 {
     return !isCoreChildOf(IGFX_XE_HPC_CORE);
+}
+
+//all the platforms which DONOT support 64 bit int operations
+bool hasNoInt64Inst() const {
+    return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
+        m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
+        m_platformInfo.eProductFamily == IGFX_ELKHARTLAKE ||
+        m_platformInfo.eProductFamily == IGFX_JASPERLAKE ||
+        m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
+        m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S ||
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
+        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N ||
+        m_platformInfo.eProductFamily == IGFX_DG1 ||
+        m_platformInfo.eProductFamily == IGFX_DG2 ||
+        m_platformInfo.eProductFamily == IGFX_METEORLAKE;
 }
 
 //all the platforms which DONOT support 64 bit float operations
