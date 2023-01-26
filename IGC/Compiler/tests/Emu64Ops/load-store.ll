@@ -39,10 +39,10 @@ define void @test_ptrs(i16 %src1) {
 ; CHECK-NEXT:    ret void
 ;
   %1 = inttoptr i16 %src1 to i64 addrspace(1)*
-  %2 = load i64, i64 addrspace(1)* %1
+  %2 = load i64, i64 addrspace(1)* %1, align 4
   call void @use.i64(i64 %2)
   %3 = ptrtoint i64 addrspace(1)* %1 to i64
-  store i64 %3, i64 addrspace(1)* %1
+  store i64 %3, i64 addrspace(1)* %1, align 4
   ret void
 }
 
