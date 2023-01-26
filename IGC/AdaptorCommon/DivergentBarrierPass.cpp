@@ -485,6 +485,29 @@ void DivergentBarrierPass::handleSpillFill(Function* F) const
 
 bool DivergentBarrierPass::processShader(Function* F)
 {
+    // if threadGroupSize == SIMD size, we will be able to remove the barriers later,
+    // so no need to add the divergent barrier WA.
+    bool skipTGbarriers = false;
+    unsigned forcedSimdSize = 0;
+    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) ||
+        m_CGCtx->getModuleMetaData()->csInfo.waveSize == 32 ||
+        m_CGCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
+    {
+        forcedSimdSize = 32;
+    }
+    else if (IGC_IS_FLAG_ENABLED(ForceCSSIMD16) ||
+        m_CGCtx->getModuleMetaData()->csInfo.waveSize == 16 ||
+        m_CGCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 16)
+    {
+        forcedSimdSize = 16;
+    }
+    ConstantInt* groupSize = dyn_cast<ConstantInt>(getGroupSize(*F));
+    if (groupSize &&
+        forcedSimdSize >= groupSize->getValue().getZExtValue())
+    {
+        skipTGbarriers = true;
+    }
+
     std::vector<Instruction*> Barriers;
     std::vector<GenIntrinsicInst*> Fences;
     for (auto& I : instructions(*F))
@@ -494,7 +517,10 @@ bool DivergentBarrierPass::processShader(Function* F)
             switch (GII->getIntrinsicID())
             {
             case GenISAIntrinsic::GenISA_threadgroupbarrier:
-                Barriers.push_back(GII);
+                if (!skipTGbarriers)
+                {
+                    Barriers.push_back(GII);
+                }
                 break;
             case GenISAIntrinsic::GenISA_memoryfence:
                 Fences.push_back(GII);
