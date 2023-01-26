@@ -63,7 +63,6 @@ void DivergentBarrierPass::updateFenceArgs(
     Args.L3_Flush_Instructions  |= update(I->getOperand(4));
     Args.Global                 |= update(I->getOperand(5));
     Args.L1_Invalidate          |= update(I->getOperand(6));
-    Args.L1_Evict               |= update(I->getOperand(7));
 }
 
 CallInst* DivergentBarrierPass::insertFence(
@@ -80,7 +79,6 @@ CallInst* DivergentBarrierPass::insertFence(
         IRB.getInt1(FA.L3_Flush_Instructions),
         IRB.getInt1(FA.Global),
         IRB.getInt1(FA.L1_Invalidate),
-        IRB.getInt1(FA.L1_Evict),
     };
     return IRB.CreateCall(FenceFn, Args);
 }

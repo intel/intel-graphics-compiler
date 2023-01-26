@@ -901,7 +901,7 @@ private:
         LSC_CACHE_OPTS cacheOpts, bool UseA32,
         ResourceDescriptor& Resource, CVariable* StoreVar, CVariable* Offset, int ImmOffset,
         uint32_t NumElts, uint32_t EltBytes, alignment_t Align);
-    LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1, bool EvictL1) const;
+    LSC_FENCE_OP getLSCMemoryFenceOp(bool IsGlobalMemFence, bool InvalidateL1) const;
     bool m_isDuplicate;
     CVariable* m_tmpDest = nullptr;
     std::set<CoalescingEngine::CCTuple*> lifetimeStartAdded;

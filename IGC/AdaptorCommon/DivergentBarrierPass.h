@@ -47,7 +47,6 @@ namespace IGC
             bool L3_Flush_Instructions  = false;
             bool Global                 = false;
             bool L1_Invalidate          = false;
-            bool L1_Evict               = false;
         };
 
         CodeGenContext* m_CGCtx = nullptr;

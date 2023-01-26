@@ -28,7 +28,7 @@ extern __constant int __HasThreadPauseSupport;
   __local int* __builtin_IB_get_local_lock();
   __global int* __builtin_IB_get_global_lock();
   void __builtin_IB_eu_thread_pause(uint value);
-  void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1);
+  void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1);
 
 #define LOCAL_SPINLOCK_START() \
   { \
@@ -59,14 +59,14 @@ extern __constant int __HasThreadPauseSupport;
   if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                         \
   {                                                                                   \
       bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
-      __intel_memfence_handler(flushL3, isGlobal, false, isGlobal);                   \
+      __intel_memfence_handler(flushL3, isGlobal, false);                             \
   }
 
 #define FENCE_POST_OP(Scope, Semantics, isGlobal)                                     \
   if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                       \
   {                                                                                   \
       bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
-      __intel_memfence_handler(flushL3, isGlobal, isGlobal, false);                   \
+      __intel_memfence_handler(flushL3, isGlobal, isGlobal);                          \
   }
 
 // This fencing scheme allows us to obey the memory model when coherency is
