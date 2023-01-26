@@ -90,7 +90,7 @@ typedef enum CG_FLAG_t {
     FLAG_CG_STAGE1_FASTEST_COMPILE = 3,
 } CG_FLAG_t;
 
-#define IsSupportedForStagedCompilation(platform) (true)
+#define IsSupportedForStagedCompilation(platform, product) (true)
 #define RequestStage2(flag, ctx_ptr) (ctx_ptr != nullptr || flag == FLAG_CG_STAGE1_FASTEST_COMPILE)
 
 #define IsStage2RestSIMDs(prev_ctx_ptr) (prev_ctx_ptr != nullptr)
