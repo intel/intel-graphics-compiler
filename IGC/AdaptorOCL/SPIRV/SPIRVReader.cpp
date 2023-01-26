@@ -4214,10 +4214,9 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
 #if LLVM_VERSION_MAJOR >= 12
      Attribute::AttrKind LLVMKind = SPIRSPIRVFuncParamAttrMap::rmap(Kind);
      Type *AttrTy = nullptr;
-     if (LLVMKind == Attribute::AttrKind::ByVal)
+     if (LLVMKind == Attribute::AttrKind::ByVal || LLVMKind == Attribute::AttrKind::StructRet)
        AttrTy = IGCLLVM::getNonOpaquePtrEltTy(I->getType());
-     else if (LLVMKind == Attribute::AttrKind::StructRet)
-       AttrTy = I->getType();
+
      // Make sure to use a correct constructor for a typed/typeless attribute
      auto A = AttrTy ? Attribute::get(*Context, LLVMKind, AttrTy)
                      : Attribute::get(*Context, LLVMKind);
