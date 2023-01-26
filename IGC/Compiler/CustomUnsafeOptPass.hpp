@@ -21,7 +21,7 @@ SPDX-License-Identifier: MIT
 namespace IGC
 {
     llvm::FunctionPass* CreateEarlyOutPatternsPass();
-    llvm::FunctionPass* CreateLowerFmaPass();
+    llvm::FunctionPass* CreateLowerFmaPass(bool respectFastMathFlags);
     llvm::FunctionPass* CreateHoistFMulInLoopPass();
 
     class CustomUnsafeOptPass : public llvm::FunctionPass, public llvm::InstVisitor<CustomUnsafeOptPass>

@@ -3784,7 +3784,17 @@ class LowerFma : public FunctionPass
 public:
     static char ID;
 
-    LowerFma() : FunctionPass(ID) { }
+    LowerFma() :
+        m_CheckAllowContractFlag(false),
+        FunctionPass(ID)
+    {
+    }
+
+    LowerFma(bool checkAllowContractFlag) :
+        m_CheckAllowContractFlag(checkAllowContractFlag),
+        FunctionPass(ID)
+    {
+    }
 
     void getAnalysisUsage(llvm::AnalysisUsage& AU) const
     {
@@ -3797,13 +3807,17 @@ public:
     }
 
     bool runOnFunction(Function& F);
+
+private:
+    // Lower fma only if it has `AllowContract` fast math flag
+    bool m_CheckAllowContractFlag;
 };
 
 char LowerFma::ID = 0;
 
-FunctionPass* IGC::CreateLowerFmaPass()
+FunctionPass* IGC::CreateLowerFmaPass(bool checkAllowContractFlag)
 {
-    return new LowerFma();
+    return new LowerFma(checkAllowContractFlag);
 }
 
 bool LowerFma::runOnFunction(Function& F)
@@ -3814,7 +3828,9 @@ bool LowerFma::runOnFunction(Function& F)
         for (auto II = BI->begin(); II != BI->end(); )
         {
             IntrinsicInst* fmad = dyn_cast<IntrinsicInst>(II++);
-            if (fmad && fmad->getIntrinsicID() == Intrinsic::fma)
+            if (fmad &&
+                fmad->getIntrinsicID() == Intrinsic::fma &&
+                (!m_CheckAllowContractFlag || fmad->hasAllowContract()))
             {
                 changed = true;
                 IRBuilder<> irb(fmad);
