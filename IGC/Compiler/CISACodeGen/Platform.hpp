@@ -740,7 +740,7 @@ bool WaPredicatedStackIDRelease() const
 // SIMD32 is still allowed and we may relax this in the future.
 SIMDMode getMaxRayQuerySIMDSize() const
 {
-    if (m_platformInfo.eProductFamily <= IGFX_PVC)
+    if (isCoreChildOf(IGFX_XE_HPG_CORE))
     {
         return SIMDMode::SIMD16;
     }
