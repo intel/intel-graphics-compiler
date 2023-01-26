@@ -1292,6 +1292,12 @@ if(NOT ANDROID)
   add_compile_definitions(CL_KHR_FP64_EXT)
 endif()
 
+if(DEFINED ENV{BUILD_ID})
+  add_compile_definitions(
+   DRIVER_BUILD_ID=$ENV{BUILD_ID}
+  )
+endif()
+
 if(DEFINED ENV{TEST_P4_CHANGELIST})
   add_compile_definitions(
     TB_BUILD_ID=$ENV{TEST_P4_CHANGELIST}

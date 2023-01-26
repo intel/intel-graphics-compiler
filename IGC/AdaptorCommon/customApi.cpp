@@ -30,8 +30,8 @@ SPDX-License-Identifier: MIT
 
 namespace {
 
-#ifndef CL_NUMBER
-#define CL_NUMBER "<undefined>"
+#ifndef DRIVER_BUILD_ID
+#define DRIVER_BUILD_ID "<undefined>"
 #endif
 
 #define _STRINGIFY(x) #x
@@ -64,7 +64,7 @@ namespace {
 // means that RELEASE builds can't be queried for their version information. There is no middle ground.
 #if defined( _DEBUG ) || defined( _INTERNAL )
 static const char g_cBuildInfo[] =
-    "CL: " STRINGIFY(CL_NUMBER) ", "
+    "BUILD ID: " STRINGIFY(DRIVER_BUILD_ID) ", "
     "CONFIGURATION: " STRINGIFY(CONFIGURATION) " " STRINGIFY(BITWIDTH) "\0";
 #else
 static const char g_cBuildInfo[] = "\0";
