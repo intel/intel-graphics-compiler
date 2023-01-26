@@ -644,18 +644,18 @@ bool ProcessElfInput(
 
                     llvm::Expected<std::unique_ptr<llvm::Module>> errorOrModule =
                     llvm::parseBitcodeFile(pInputBuffer->getMemBufferRef(), *Context.getLLVMContext());
-                    if (llvm::Error EC = errorOrModule.takeError())
+                    if (auto Err = errorOrModule.takeError())
                     {
                         success = false;
-                        std::string errMsg;
-                        llvm::handleAllErrors(std::move(EC), [&](llvm::ErrorInfoBase &EIB)
+                        llvm::handleAllErrors(std::move(Err), [&](llvm::ErrorInfoBase &EIB)
                         {
-                            llvm::SMDiagnostic(pInputBuffer->getBufferIdentifier(), llvm::SourceMgr::DK_Error,
-                                               EIB.message());
+                            SetErrorMessage(EIB.message(), OutputArgs);
                         });
-                        IGC_ASSERT_MESSAGE(errMsg.empty(), "parsing bitcode failed");
                     }
-                    LLVMBinariesToLink.push_back(std::move(errorOrModule.get()));
+                    else
+                    {
+                        LLVMBinariesToLink.push_back(std::move(errorOrModule.get()));
+                    }
                 }
 
                 if (!success)
