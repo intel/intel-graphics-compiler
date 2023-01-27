@@ -17,6 +17,8 @@ See LICENSE.TXT for details.
 
 #include "RegisterPressureEstimate.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include <Compiler/CodeGenContextWrapper.hpp>
+#include <Compiler/CodeGenPublic.h>
 #include <set>
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
@@ -47,8 +49,8 @@ namespace IGC
     void RegisterPressureEstimate::getAnalysisUsage(AnalysisUsage& AU) const
     {
         AU.setPreservesAll();
+        AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<LoopInfoWrapperPass>();
-        AU.addRequired<WIAnalysis>();
     }
 
     bool RegisterPressureEstimate::runOnFunction(Function& F)
@@ -56,9 +58,12 @@ namespace IGC
         m_DL = &F.getParent()->getDataLayout();
         m_pFunc = &F;
         LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-        WI = &getAnalysis<WIAnalysis>();
+        IGC::CodeGenContext *pCtx =
+            getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        WI = getAnalysisIfAvailable<WIAnalysis>();
 
-        if (WI->isCompute())
+        if (pCtx->type == ShaderType::COMPUTE_SHADER ||
+            pCtx->type == ShaderType::OPENCL_SHADER)
         {
             OVERALL_PRESSURE_UPBOUND = 4 * 1024;
         }
@@ -68,6 +73,11 @@ namespace IGC
         }
 
         m_available = buildLiveIntervals(true);
+
+        if (m_available && m_countTemps && pCtx->m_tempCount == 0)
+        {
+          pCtx->m_tempCount = getMaxRegisterPressure() / 4;
+        }
         return false;
     }
 

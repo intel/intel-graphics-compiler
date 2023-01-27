@@ -38,10 +38,10 @@ namespace IGC
     {
     public:
         static char ID;
-        RegisterPressureEstimate()
+        RegisterPressureEstimate(bool CountTemps = false)
             : FunctionPass(ID), m_DL(nullptr), m_pFunc(nullptr), LI(nullptr),
             WI(nullptr), m_available(false), MaxAssignedNumber(0),
-            OVERALL_PRESSURE_UPBOUND(512)
+              OVERALL_PRESSURE_UPBOUND(512), m_countTemps(CountTemps)
         {
             initializeRegisterPressureEstimatePass(*llvm::PassRegistry::getPassRegistry());
         }
@@ -270,5 +270,7 @@ namespace IGC
         unsigned int MaxAssignedNumber;
 
         llvm::DenseMap<unsigned, unsigned> m_pRegisterPressureByInstruction;
+
+        bool m_countTemps;
     };
 } // namespace IGC

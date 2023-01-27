@@ -340,11 +340,6 @@ namespace IGC
         /// dump - Dump the m_deps to dbgs().
         void dump() const;
 
-        bool isCompute()
-        {
-            return isComputeProgram;
-        }
-
     public:
         /// @brief Returns the type of dependency the instruction has on
         /// the work-item
@@ -384,7 +379,6 @@ namespace IGC
         }
     private:
         WIAnalysisRunner Runner;
-        bool isComputeProgram = false;
     };
 
 } // namespace IGC
