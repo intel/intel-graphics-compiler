@@ -7,10 +7,16 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 // Sets iga32.dll name and file description
+#ifndef WDDM_VERSION_NUMBER
+#define WDDM_VERSION_NUMBER 31
+#endif
+
+#ifndef LEGACY_D3DAPI_VERSION
+#define LEGACY_D3DAPI_VERSION 0
+#endif
 
 #include <winver.h>
 #include "..\..\..\install\intcver.h"
-
 #if defined(_WIN64)
     #define VER_ORIGINALNAME "iga64.dll"
 #else
