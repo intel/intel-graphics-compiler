@@ -37,7 +37,6 @@ SPDX-License-Identifier: MIT
 #include <string_view>
 
 using namespace vISA;
-extern "C" int64_t getTimerTicks(unsigned int idx);
 
 #define IS_GEN_PATH (mBuildOption == VISA_BUILDER_GEN)
 #define IS_BOTH_PATH (mBuildOption == VISA_BUILDER_BOTH)

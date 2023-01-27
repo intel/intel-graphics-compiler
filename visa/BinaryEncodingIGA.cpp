@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "BinaryEncodingIGA.h"
 #include "BuildIR.h"
 #include "Common_ISA_framework.h"
-#include "GTGPU_RT_ASM_Interface.h"
 #include "Timer.h"
 #include "iga/IGALibrary/Frontend/FormatterJSON.hpp"
 #include "iga/IGALibrary/api/igaEncoderWrapper.hpp"

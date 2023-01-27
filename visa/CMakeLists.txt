@@ -322,7 +322,6 @@ set(GenX_Common_Headers
   G4_SendDescs.hpp
   G4_Verifier.hpp
   G4Instruction.h
-  GTGPU_RT_ASM_Interface.h
   GraphColor.h
   HWConformity.h
   IGfxHwEuIsaCNL.h

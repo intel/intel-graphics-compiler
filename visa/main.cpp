@@ -372,13 +372,6 @@ int main(int argc, const char *argv[]) {
 }
 #endif
 
-void *allocCodeBlock(size_t sz) {
-  // allocate buffer for the Gen kernel binary.
-  // for now just use malloc, but eventually runtime should provide this
-  // function
-  return (char *)malloc(sz * sizeof(char));
-}
-
 #ifndef DLL_MODE
 
 extern int CISAparse(CISA_IR_Builder *builder);

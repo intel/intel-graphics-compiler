@@ -1466,8 +1466,6 @@ void emitData(std::list<VISAKernelImpl *> &compilationUnits, T t) {
   }
 }
 
-extern "C" void *allocCodeBlock(size_t sz);
-
 void emitDebugInfoToMem(VISAKernelImpl *kernel,
                         std::list<VISAKernelImpl *> &functions, void *&info,
                         unsigned &size) {

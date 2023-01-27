@@ -1602,3 +1602,10 @@ LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc,
   }
   return cacheOpts;
 }
+
+void *vISA::allocCodeBlock(size_t sz) {
+  // Just use vanilla malloc.
+  // Alternative would be for FE compiler to provide a callback
+  // function to perform allocation.
+  return malloc(sz);
+}
