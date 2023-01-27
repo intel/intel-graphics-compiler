@@ -366,7 +366,8 @@ private:
 #define COMPILER_TIME_INIT( pointer, statName )     \
     do                                              \
     {                                               \
-        if (pointer)                                \
+        /* Check for pointer to avoid mem leak */   \
+        if ((pointer) && !((pointer)->statName))    \
         {                                           \
             (pointer)->statName = new TimeStats();  \
         }                                           \
@@ -375,7 +376,8 @@ private:
 #define COMPILER_TIME_INIT2( pointer, statName, size)     \
     do                                              \
     {                                               \
-        if (pointer)                                \
+        /* Check for pointer to avoid mem leak */   \
+        if ((pointer) && !((pointer)->statName))    \
         {                                           \
             (pointer)->statName = new TimeStats[size];  \
         }                                           \
