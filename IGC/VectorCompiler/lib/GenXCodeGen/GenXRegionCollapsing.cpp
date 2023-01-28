@@ -454,9 +454,17 @@ void GenXRegionCollapsing::processBitCast(BitCastInst *BC)
   // Create the new bitcast.
   IGC_ASSERT(vc::getTypeSize(ElTy, DL).inBits());
   auto Input = Rd->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
-  auto NewBCTy = IGCLLVM::FixedVectorType::get(
-      ElTy, vc::getTypeSize(Input->getType(), DL).inBits() /
-                vc::getTypeSize(ElTy, DL).inBits());
+
+  auto InputSizeBits = vc::getTypeSize(Input->getType(), DL).inBits();
+  auto ElSizeBits = vc::getTypeSize(ElTy, DL).inBits();
+
+  // We cannot optimize if the input is not a multiple of new element
+  if (InputSizeBits % ElSizeBits)
+    return;
+
+  auto NewBCTy =
+      IGCLLVM::FixedVectorType::get(ElTy, InputSizeBits / ElSizeBits);
+
   auto NewBC = CastInst::Create(Instruction::BitCast, Input, NewBCTy, "", Rd);
   NewBC->takeName(BC);
   NewBC->setDebugLoc(BC->getDebugLoc());
