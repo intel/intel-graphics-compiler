@@ -155,22 +155,25 @@ namespace llvm {
             return CreateExtractElementOrPropagate(vec, this->getInt64(idx), name);
         }
 
-        inline llvm::Function* llvm_GenISA_staticConstantPatch(uint32_t stringSize) const
+        inline Function* llvm_GenISA_staticConstantPatch(Type* RetTy, Type* ArgTy)
         {
-            llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+            Module* module = this->GetInsertBlock()->getParent()->getParent();
 
-            llvm::Function* func_llvm_GenISA_staticConstantPatchValue =
-                llvm::GenISAIntrinsic::getDeclaration(
+            Type* Tys[] = { RetTy, ArgTy };
+
+            Function* func_llvm_GenISA_staticConstantPatchValue =
+                GenISAIntrinsic::getDeclaration(
                     module,
-                    llvm::GenISAIntrinsic::GenISA_staticConstantPatchValue,
-                    { ArrayType::get(llvm::IntegerType::get(module->getContext(), 8), stringSize) });
+                    GenISAIntrinsic::GenISA_staticConstantPatchValue,
+                    Tys);
             return func_llvm_GenISA_staticConstantPatchValue;
         }
 
-        inline llvm::Value* CreateStaticConstantPatch(llvm::StringRef patchName)
+        inline CallInst* CreateStaticConstantPatch(Type* RetTy, StringRef patchName, const Twine& Name = "")
         {
-            llvm::Function* func = llvm_GenISA_staticConstantPatch(patchName.size());
-            return this->CreateCall(func, llvm::ConstantDataArray::getString(func->getContext(), patchName, false));
+            auto* Arg = ConstantDataArray::getString(RetTy->getContext(), patchName, false);
+            Function* func = llvm_GenISA_staticConstantPatch(RetTy, Arg->getType());
+            return this->CreateCall(func, Arg, Name);
         }
 
     private:
