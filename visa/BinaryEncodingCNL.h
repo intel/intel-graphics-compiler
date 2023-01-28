@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #if defined(_WIN32)
 #include <windows.h>
 #endif
-#include "VISADefines.h"
 
 #if !defined(_WIN32)
 typedef unsigned char BYTE;

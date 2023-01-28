@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 #include "IsaDescription.h"
 #include "IsaVerification.h"
 #include "Mem_Manager.h"
-#include "VISADefines.h"
 #include "visa_igc_common_header.h"
 
 #define CISA_INVALID_ADDR_ID -1

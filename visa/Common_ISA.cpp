@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 
 #include "Common_ISA.h"
 #include "Mem_Manager.h"
-#include "VISADefines.h"
 
 #include "IGC/common/StringMacros.hpp"
 

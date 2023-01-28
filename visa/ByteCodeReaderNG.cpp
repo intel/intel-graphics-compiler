@@ -40,7 +40,6 @@ SPDX-License-Identifier: MIT
 #include "IsaDisassembly.h"
 #include "JitterDataStruct.h"
 #include "Mem_Manager.h"
-#include "VISADefines.h"
 #include "common.h"
 #include "visa_igc_common_header.h"
 

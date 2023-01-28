@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "PreDefinedVars.h"
-#include "VISADefines.h"
 #include "common.h"
 #include "visa_igc_common_header.h"
 

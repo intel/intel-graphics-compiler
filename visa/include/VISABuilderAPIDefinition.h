@@ -11,11 +11,11 @@ SPDX-License-Identifier: MIT
 
 #include "JitterDataStruct.h"
 #include "KernelInfo.h"
-#include "VISADefines.h"
+#include "RelocationInfo.h"
 #include "VISAOptions.h"
 #include "visa_igc_common_header.h"
 
-#include "visa/include/RelocationInfo.h"
+#define VISA_BUILDER_API
 
 class VISAKernel {
 public:

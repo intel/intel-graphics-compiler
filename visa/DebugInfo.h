@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "FlowGraph.h"
 #include "GraphColor.h"
 #include "Mem_Manager.h"
-#include "VISADefines.h"
 
 #include "llvm/Support/Allocator.h"
 
@@ -29,14 +28,8 @@ struct VarnameMap;
 namespace vISA {
 class DebugInfoState;
 }
-#if defined(_DEBUG) || defined(_INTERNAL)
-#define DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY DLL_EXPORT
-#else
-#define DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY
-#endif
 
-DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY int
-decodeAndDumpDebugInfo(char *filename, TARGET_PLATFORM platform);
+int decodeAndDumpDebugInfo(char *filename, TARGET_PLATFORM platform);
 void emitDebugInfo(VISAKernelImpl *kernel,
                    std::list<VISAKernelImpl *> &functions,
                    std::string filename);

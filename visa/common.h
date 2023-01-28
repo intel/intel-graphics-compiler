@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include <iostream>
 #include <sstream>
 
-#include "VISADefines.h"
 #include "visa_igc_common_header.h"
 
 #ifndef _WIN32

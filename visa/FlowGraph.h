@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "G4_IR.hpp"
 #include "LoopAnalysis.h"
 #include "RelocationInfo.h"
-#include "VISADefines.h"
 
 #include <list>
 #include <map>

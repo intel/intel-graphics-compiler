@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 #endif
 
 #include "Option.h"
-#include "VISADefines.h"
 
 // Timer library for the compiler
 // To collect compile time information, do the following:

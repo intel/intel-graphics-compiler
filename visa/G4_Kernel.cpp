@@ -699,10 +699,6 @@ void G4_Kernel::evalAddrExp() {
   }
 }
 
-// FIX: this needs to here because of the above static thread-local variable
-extern _THREAD const char *g4_prevFilename;
-extern _THREAD int g4_prevSrcLineNo;
-
 static std::vector<std::string> split(const std::string &str,
                                       const char *delimiter) {
   std::vector<std::string> v;
@@ -1216,10 +1212,6 @@ void G4_Kernel::emitDeviceAsm(std::ostream &os, const void *binary,
   if (!m_options->getOption(vISA_StripComments)) {
     emitDeviceAsmHeaderComment(os);
   }
-
-  // Set this to NULL to always print filename for each kernel
-  g4_prevFilename = nullptr;
-  g4_prevSrcLineNo = 0;
 
   if (!newAsm) {
     emitDeviceAsmInstructionsOldAsm(os);

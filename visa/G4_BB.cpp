@@ -138,13 +138,13 @@ G4_BB *G4_BB::fallThroughBB() {
 
 G4_BB *G4_BB::BBBeforeCall() const {
   vISA_ASSERT((getBBType() & G4_BB_RETURN_TYPE),
-         "this must be a subroutine return BB");
+              "this must be a subroutine return BB");
   return physicalPred;
 }
 
 G4_BB *G4_BB::BBAfterCall() const {
   vISA_ASSERT((getBBType() & G4_BB_CALL_TYPE),
-         "this must be a subroutine call BB");
+              "this must be a subroutine call BB");
   return physicalSucc;
 }
 
@@ -255,31 +255,33 @@ void G4_BB::emitBasicInstructionComment(std::ostream &output,
 
 }
 
-_THREAD const char *g4_prevFilename;
-_THREAD int g4_prevSrcLineNo;
-
 void G4_BB::emitInstructionSourceLineMapping(std::ostream &output,
                                              INST_LIST_ITER &it) {
-  bool emitFile = false, emitLineNo = false;
+  // We record the previous instruction's source code locations so that they are
+  // emitted only when there's a change.
+  // Using global variables is ok here since this function is for shader dumps
+  // (i.e., debugging) only.
+  static const char *prevFilename = nullptr;
+  static int prevSrcLineNo = 0;
+
   const char *curFilename = (*it)->getSrcFilename();
   int curSrcLineNo = (*it)->getLineNo();
 
-  if ((*it)->isLabel()) {
+  // Reset source locations for each function so that we will always emit them
+  // at function entry.
+  if (getParent().getEntryBB() == this) {
+    prevFilename = nullptr;
+    prevSrcLineNo = 0;
+  }
+
+  if ((*it)->isLabel())
     return;
-  }
+  bool emitFile = curFilename && (prevFilename == nullptr ||
+                                  strcmp(prevFilename, curFilename) != 0);
+  bool emitLineNo = prevSrcLineNo != curSrcLineNo && curSrcLineNo != 0;
 
-  if (curFilename && (g4_prevFilename == nullptr ||
-                      strcmp(g4_prevFilename, curFilename) != 0)) {
-    emitFile = true;
-  }
-
-  if (g4_prevSrcLineNo != curSrcLineNo && curSrcLineNo != 0) {
-    emitLineNo = true;
-  }
-
-  if (emitFile) {
+  if (emitFile)
     output << "\n// File: " << curFilename << "\n";
-  }
 
   if (emitLineNo) {
     output << "\n// Line " << curSrcLineNo;
@@ -299,13 +301,10 @@ void G4_BB::emitInstructionSourceLineMapping(std::ostream &output,
     output << "\n";
   }
 
-  if (emitFile) {
-    g4_prevFilename = curFilename;
-  }
-
-  if (emitLineNo) {
-    g4_prevSrcLineNo = curSrcLineNo;
-  }
+  if (emitFile)
+    prevFilename = curFilename;
+  if (emitLineNo)
+    prevSrcLineNo = curSrcLineNo;
 }
 
 void G4_BB::emitBankConflict(std::ostream &output, const G4_INST *inst) {
@@ -584,8 +583,7 @@ int G4_BB::getConflictTimesForTGL(std::ostream &output, int *firstRegCandidate,
         bundleID = (firstRegCandidate[i] % 16) / 2;
       }
        // Same bank and same bundle
-      if (bundles[bankID][bundleID] != -1) // Same bank and same bundle
-      {
+      if (bundles[bankID][bundleID] != -1) {
         conflictTimes++;
       }
 

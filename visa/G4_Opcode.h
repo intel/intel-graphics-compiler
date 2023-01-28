@@ -51,8 +51,6 @@ SPDX-License-Identifier: MIT
 
 #define ADDR_REG_TYPE Type_UW
 
-#include "VISADefines.h"
-
 // ToDo: move them to common.h?
 #define MAKE_ENUM(X) X,
 #define STRINGIFY(X) #X,

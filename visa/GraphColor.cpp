@@ -5066,10 +5066,7 @@ void GraphColor::getExtraInterferenceInfo() {
     m_options->getOption(VISA_AsmFileName, asmFileName);
 
     std::string str(asmFileName);
-    auto found = str.find_last_of(DIR_WIN32_SEPARATOR);
-    if (found == std::string::npos) {
-      found = str.find_last_of(DIR_UNIX_SEPARATOR);
-    }
+    auto found = str.find_last_of("\\");
 
     if (found != std::string::npos) {
       str = str.substr(found + 1);

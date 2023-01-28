@@ -431,8 +431,7 @@ int DbgDecoder::ddDbg() {
   return 0;
 }
 
-DEBUG_RELEASE_INTERNAL_DLL_EXPORT_ONLY int
-decodeAndDumpDebugInfo(char *filename, TARGET_PLATFORM platform) {
+int decodeAndDumpDebugInfo(char *filename, TARGET_PLATFORM platform) {
   DbgDecoder dd(filename, platform);
   return dd.ddDbg();
 }

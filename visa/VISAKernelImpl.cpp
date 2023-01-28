@@ -31,7 +31,7 @@ SPDX-License-Identifier: MIT
 #include "Optimizer.h"
 #include "Timer.h"
 #include "VISAKernel.h"
-#include "visa/include/RelocationInfo.h"
+#include "include/RelocationInfo.h"
 #include "visa_igc_common_header.h"
 
 #include <cctype>
@@ -1302,6 +1302,9 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *&opnd, const char *name,
 
   return VISA_SUCCESS;
 }
+
+#define DIR_WIN32_SEPARATOR "\\"
+#define DIR_UNIX_SEPARATOR "/"
 
 int VISAKernelImpl::AddKernelAttribute(const char *attrName, int size,
                                        const void *valueBuffer) {

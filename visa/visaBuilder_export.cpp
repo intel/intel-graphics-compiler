@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 #include "Common_ISA.h"
 #include "Common_ISA_framework.h"
-#include "VISADefines.h"
 #include "VISAKernel.h"
 #include "inc/common/sku_wa.h"
 #include "visa_igc_common_header.h"

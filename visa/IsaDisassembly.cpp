@@ -46,7 +46,6 @@ SPDX-License-Identifier: MIT
 #include "PlatformInfo.h"
 #include "PreDefinedVars.h"
 #include "VISABuilderAPIDefinition.h"
-#include "VISADefines.h"
 #include "VISAKernel.h"
 #include "common.h"
 #include "visa_igc_common_header.h"

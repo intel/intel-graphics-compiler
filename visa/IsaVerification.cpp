@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "Common_ISA_util.h"
 
 #include "IsaVerification.h"
-#include "VISADefines.h"
 
 #include "Attributes.hpp"
 #include "IsaDisassembly.h"
