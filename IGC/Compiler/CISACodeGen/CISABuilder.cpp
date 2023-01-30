@@ -4915,7 +4915,9 @@ namespace IGC
 
 
 
-        if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction)) {
+        if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction) ||
+            context->getCompilerOption().NewSpillCostFunction)
+        {
             SaveOption(vISA_NewSpillCostFunction, true);
         }
 

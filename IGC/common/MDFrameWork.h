@@ -416,6 +416,7 @@ namespace IGC
         bool DisableConstantCoalescing                  = false;
         bool EnableUndefAlphaOutputAsRed                = true;
         bool WaEnableALTModeVisaWA                      = false;
+        bool NewSpillCostFunction                       = false;
     };
 
     enum class ThreadIDLayout
