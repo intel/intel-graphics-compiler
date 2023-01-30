@@ -1189,7 +1189,7 @@ SpillManagerGRF::createSendFillRangeDeclare(G4_SrcRegRegion *filledRegion,
       filledRegVar, normalizedSendSrc, G4_ExecSize(width));
 
   setNewDclAlignment(gra, transientRangeDeclare,
-                     gra.isEvenAligned(filledRegVar->getDeclare()));
+                     filledRegVar->getDeclare()->isEvenAlign());
 
   if (failSafeSpill_) {
     if (!builder_->getOption(vISA_NewFailSafeRA)) {
