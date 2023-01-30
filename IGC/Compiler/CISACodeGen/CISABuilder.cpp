@@ -4698,11 +4698,7 @@ namespace IGC
             SaveOption(vISA_LSCEnableHalfSIMD, true);
         }
 
-        if (IGC_IS_FLAG_ENABLED(LscForceSpillNonStackcall) ||
-            // workaround visa issue of using legacy send on slot1
-            (m_program->m_ScratchSpaceSize > 0 &&
-             m_program->m_Platform->hasScratchSurface() &&
-             m_program->m_DriverInfo->supportsSeparatingSpillAndPrivateScratchMemorySpace()))
+        if (IGC_IS_FLAG_ENABLED(LscForceSpillNonStackcall))
         {
             SaveOption(vISA_lscNonStackSpill, true);
         }

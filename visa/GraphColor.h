@@ -780,6 +780,9 @@ private:
   void markBlockLocalVars();
   void computePhyReg();
   void fixAlignment();
+  // Updates `slot1SetR0` and `slot1ResetR0` with hword spill/fill instructions
+  // that need to update r0.5 to address slot 1 scratch space.
+  void markSlot1HwordSpillFill(G4_BB *);
   void expandSpillIntrinsic(G4_BB *);
   void expandFillIntrinsic(G4_BB *);
   void expandSpillFillIntrinsics(unsigned);
@@ -848,6 +851,15 @@ private:
   uint32_t numGRFFill = 0;
 
   unsigned int numReservedGRFsFailSafe = BoundedRA::NOT_FOUND;
+
+  // For hword scratch messages, when using separate scratch space for spills,
+  // r0.5 needs to be updated before spill/fill to point to slot 1 space.
+  // These maps mark which spills/fills need to set/reset r0.5.
+  std::unordered_set<G4_INST*> slot1SetR0;
+  std::unordered_set<G4_INST*> slot1ResetR0;
+
+  void insertSlot1HwordR0Set(G4_BB *bb, INST_LIST_ITER &instIt);
+  void insertSlot1HwordR0Reset(G4_BB *bb, INST_LIST_ITER &instIt);
 
   bool spillFillIntrinUsesLSC(G4_INST *spillFillIntrin);
   void expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt);
