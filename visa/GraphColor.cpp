@@ -29,6 +29,10 @@ SPDX-License-Identifier: MIT
 #include <list>
 #include <sstream>
 
+#include <llvm/ADT/SmallString.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Path.h>
+
 using namespace vISA;
 
 #define GRAPH_COLOR_MEM_SIZE 16 * 1024
@@ -5054,36 +5058,30 @@ G4_Declare *GraphColor::findDeclare(char *name) {
  */
 void GraphColor::getExtraInterferenceInfo() {
   // Get the file name
-  std::string m_asmName;
+  llvm::SmallString<32> intfName;
   const char *fileName =
       builder.getOptions()->getOptionCstr(vISA_ExtraIntfFile);
   if (!fileName) {
     // Without specific file name, assume the file name is the name of assembly
-    // file + ".extraintf" suffix and the file is put under path
-    // c:\Intel\IGC\ShaderOverride
-    std::string folderPath("c:\\Intel\\IGC\\ShaderOverride\\");
-    const char *asmFileName = nullptr;
-    m_options->getOption(VISA_AsmFileName, asmFileName);
-
-    std::string str(asmFileName);
-    auto found = str.find_last_of("\\");
-
-    if (found != std::string::npos) {
-      str = str.substr(found + 1);
-    }
-    m_asmName = sanitizePathString(str);
-
-    found = m_asmName.find(".asm");
-    if (found != std::string::npos) {
-      m_asmName.erase(found, m_asmName.length());
-    }
-    m_asmName = folderPath + m_asmName + ".extraintf";
-    fileName = m_asmName.c_str();
+    // file + ".extraintf" extension and the file is put under the default
+    // ShaderOverride path, i.e., c:\Intel\IGC\ShaderOverride on Windows or
+    // /tmp/IntelIGC/ShaderOverride on Linux.
+#if defined(_WIN32)
+    llvm::sys::path::append(intfName, "C:", "Intel", "IGC", "ShaderOverride");
+#else
+    llvm::sys::path::append(intfName, "/", "tmp", "IntelIGC", "ShaderOVerride");
+#endif
+    vASSERT(m_options->getOptionCstr(VISA_AsmFileName));
+    llvm::StringRef asmName = m_options->getOptionCstr(VISA_AsmFileName);
+    llvm::sys::path::append(intfName,
+        sanitizePathString(llvm::sys::path::stem(asmName).str()));
+    intfName.append(".extraintf");
+    fileName = intfName.c_str();
   }
 
   // open extra inteference info file
-  FILE *intfInput = NULL;
-  if ((intfInput = fopen(fileName, "rb")) == NULL) {
+  FILE *intfInput = nullptr;
+  if ((intfInput = fopen(fileName, "rb")) == nullptr) {
     // No file, just return;
     return;
   }

@@ -35,6 +35,8 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h"
 
 #include <cctype>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Path.h>
 
 using namespace CisaFramework;
 using namespace vISA;
@@ -1303,9 +1305,6 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *&opnd, const char *name,
   return VISA_SUCCESS;
 }
 
-#define DIR_WIN32_SEPARATOR "\\"
-#define DIR_UNIX_SEPARATOR "/"
-
 int VISAKernelImpl::AddKernelAttribute(const char *attrName, int size,
                                        const void *valueBuffer) {
   attribute_info_t *attr =
@@ -1316,31 +1315,23 @@ int VISAKernelImpl::AddKernelAttribute(const char *attrName, int size,
 
   if (attrID == Attributes::ATTR_OutputAsmPath) {
     if (m_options->getOption(vISA_AsmFileNameOverridden)) {
-      const char *asmName = nullptr;
-      m_options->getOption(VISA_AsmFileName, asmName);
-      if (asmName != nullptr) {
+      if (const char *asmName = m_options->getOptionCstr(VISA_AsmFileName)) {
         m_asmName = asmName;
       } else {
         m_asmName = "";
       }
     } else {
-      std::string str((const char *)valueBuffer);
-      if (m_options->getOption(vISA_dumpToCurrentDir)) {
-        auto found = str.find_last_of(DIR_WIN32_SEPARATOR);
-        if (found == std::string::npos) {
-          found = str.find_last_of(DIR_UNIX_SEPARATOR);
-        }
+      llvm::StringRef path = (const char *) valueBuffer;
+      llvm::SmallString<32> asmName;
+      if (m_options->getOption(vISA_dumpToCurrentDir))
+        asmName = llvm::sys::path::filename(path);
+      else
+        asmName = path;
 
-        if (found != std::string::npos) {
-          str = str.substr(found + 1);
-        }
-      }
-      m_asmName = sanitizePathString(str);
-
-      size_t found = m_asmName.find(".asm");
-      if (found != std::string::npos) {
-        m_asmName.erase(found, m_asmName.length());
-      }
+      // Drop .asm extension if any
+      if (llvm::sys::path::extension(asmName) == ".asm")
+        llvm::sys::path::replace_extension(asmName, "");
+      m_asmName = sanitizePathString(asmName.str().str());
       m_options->setOptionInternally(VISA_AsmFileName, m_asmName.c_str());
     }
   }
