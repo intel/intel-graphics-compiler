@@ -392,6 +392,40 @@ public:
     return 0;
   }
 
+  ArrayRef<std::pair<int, int>> getThreadIdReservedBits() const {
+    // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
+    switch (TargetId) {
+    case GenXSubtarget::XeHP:
+    case GenXSubtarget::XeHPG:
+    case GenXSubtarget::XeLPG: {
+      // [13:11] Slice ID.
+      // [10:9] Dual - SubSlice ID
+      // [8] SubSlice ID.
+      // [7] : EUID[2]
+      // [6] : Reserved
+      // [5:4] EUID[1:0]
+      // [3] : Reserved MBZ
+      // [2:0] : TID
+      static const std::pair<int, int> Bits[] = {{6, 1}, {3, 1}};
+      return Bits;
+    }
+    case GenXSubtarget::XeHPC: {
+      // [14:12] Slice ID.
+      // [11:9] SubSlice ID
+      // [8] : EUID[2]
+      // [7:6] : Reserved
+      // [5:4] EUID[1:0]
+      // [3] : Reserved MBZ
+      // [2:0] : TID
+      static const std::pair<int, int> Bits[] = {{6, 2}, {3, 1}};
+      return Bits;
+    }
+    default:
+      // All other platforms have pre-defined Thread ID register
+      return {};
+    }
+  }
+
   // Generic helper functions...
   const Triple &getTargetTriple() const { return TargetTriple; }
 
@@ -426,6 +460,6 @@ public:
   PreDefined_Surface stackSurface() const { return StackSurf; }
 };
 
-} // End llvm namespace
+} // namespace llvm
 
 #endif

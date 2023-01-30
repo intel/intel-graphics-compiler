@@ -649,7 +649,6 @@ private:
   void buildLoneReadVariableRegion(CallInst &CI);
   void buildLoneWriteVariableRegion(CallInst &CI);
   void buildWritePredefSurface(CallInst &CI);
-  void buildGetHWID(CallInst *CI, const DstOpndDesc &DstDesc);
   void addWriteRegionLifetimeStartInst(Instruction *WrRegion);
   void addLifetimeStartInst(Instruction *Inst);
   void AddGenVar(Register &Reg);
@@ -2874,7 +2873,7 @@ bool GenXKernelBuilder::buildMainInst(Instruction *Inst, BaleInfo BI,
         buildWritePredefSurface(*CI);
         break;
       case GenXIntrinsic::genx_get_hwid:
-        buildGetHWID(CI, DstDesc);
+        IGC_ASSERT_MESSAGE(0, "genx_get_hwid should be lowered earlier");
         break;
       case GenXIntrinsic::genx_constanti:
       case GenXIntrinsic::genx_constantf:
@@ -5546,138 +5545,6 @@ void GenXKernelBuilder::buildRet(ReturnInst *RI) {
   } else {
     CISA_CALL(Kernel->AppendVISACFRetInst(nullptr, vISA_EMASK_M1, EXEC_SIZE_1));
   }
-}
-
-void GenXKernelBuilder::buildGetHWID(CallInst *CI, const DstOpndDesc &DstDesc) {
-  IGC_ASSERT(Subtarget);
-  if (Subtarget->getsHWTIDFromPredef()) {
-    // Use predefined variable
-    VISA_GenVar *hwid = nullptr;
-    CISA_CALL(Kernel->GetPredefinedVar(hwid, PREDEFINED_HW_TID));
-
-    VISA_VectorOpnd *dst = createDestination(CI, DONTCARESIGNED, 0, DstDesc);
-    VISA_VectorOpnd *src = nullptr;
-    CISA_CALL(
-        Kernel->CreateVISASrcOperand(src, hwid, MODIFIER_NONE, 0, 1, 0, 0, 0));
-    CISA_CALL(Kernel->AppendVISADataMovementInst(
-        ISA_MOV, nullptr /*Pred*/, false /*Mod*/, vISA_EMASK_M1_NM, EXEC_SIZE_1,
-        dst, src));
-
-    return;
-  }
-
-  // Build HWTID from sr0
-
-  // Initialize temporary regs
-  VISA_GenVar *HwtidTmp0 = nullptr, *HwtidTmp1 = nullptr, *HwtidSR0 = nullptr;
-  CISA_CALL(Kernel->CreateVISAGenVar(HwtidTmp0, "hwtid_tmp0", 1, ISA_TYPE_UD,
-                                     ALIGN_DWORD));
-  CISA_CALL(Kernel->CreateVISAGenVar(HwtidTmp1, "hwtid_tmp1", 1, ISA_TYPE_UD,
-                                     ALIGN_DWORD));
-  CISA_CALL(Kernel->CreateVISAGenVar(HwtidSR0, "hwtid_sr0", 1, ISA_TYPE_UD,
-                                     ALIGN_DWORD));
-
-  // Local helper for instruction generation
-  auto generateLogicOrShift = [this](ISA_Opcode Opcode, VISA_GenVar *Dst,
-                                     VISA_GenVar *Left, uint32_t RightImm,
-                                     VISA_GenVar *Right = nullptr) -> void {
-    VISA_VectorOpnd *LeftOp = nullptr, *RightOp = nullptr, *DstOp = nullptr;
-    CISA_CALL(Kernel->CreateVISASrcOperand(LeftOp, Left, MODIFIER_NONE, 0, 1, 0,
-                                           0, 0));
-    if (Right) {
-      CISA_CALL(Kernel->CreateVISASrcOperand(RightOp, Right, MODIFIER_NONE, 0,
-                                             1, 0, 0, 0));
-    } else {
-      CISA_CALL(Kernel->CreateVISAImmediate(RightOp, &RightImm,
-                                            getVISAImmTy(ISA_TYPE_UD)));
-    }
-    CISA_CALL(Kernel->CreateVISADstOperand(DstOp, Dst, 1, 0, 0));
-    CISA_CALL(Kernel->AppendVISALogicOrShiftInst(
-        Opcode, nullptr /*Pred*/, false /*Mod*/, vISA_EMASK_M1_NM, EXEC_SIZE_1,
-        DstOp, LeftOp, RightOp));
-  };
-
-  // Local helper for masked sr0 value load
-  auto loadMaskedSR0 = [this, generateLogicOrShift,
-                        HwtidSR0](unsigned MaskBits) -> void {
-    auto SR0Mask = maskTrailingOnes<uint32_t>(MaskBits);
-
-    VISA_GenVar *sr0 = nullptr;
-    CISA_CALL(Kernel->GetPredefinedVar(sr0, PREDEFINED_SR0));
-    generateLogicOrShift(ISA_AND, HwtidSR0, sr0, SR0Mask);
-  };
-
-  // Local helper for reserved bits elimination
-  auto removeBitRange = [this, generateLogicOrShift, HwtidTmp0, HwtidTmp1,
-                         HwtidSR0](unsigned RemoveBit, unsigned Range) -> void {
-    // src = (src & mask) | ((src >> range) & ~mask)
-    auto TmpMask = maskTrailingOnes<uint32_t>(RemoveBit);
-    // tmp0 = (src & mask)
-    generateLogicOrShift(ISA_AND, HwtidTmp0, HwtidSR0, TmpMask);
-    // tmp1 = (src >> range)
-    generateLogicOrShift(ISA_SHR, HwtidTmp1, HwtidSR0, Range);
-    // tmp1 = (tmp1 & ~mask)
-    generateLogicOrShift(ISA_AND, HwtidTmp1, HwtidTmp1, ~TmpMask);
-    // src = (tmp0 | tmp1)
-    generateLogicOrShift(ISA_OR, HwtidSR0, HwtidTmp0, 0 /*RightImm*/,
-                         HwtidTmp1);
-  };
-
-  // Local helper for passing final hwtid to the dst
-  auto writeHwtidToDst = [this, &DstDesc, HwtidSR0, CI](void) -> void {
-    VISA_VectorOpnd *src = nullptr, *dst = nullptr;
-    CISA_CALL(Kernel->CreateVISASrcOperand(src, HwtidSR0, MODIFIER_NONE, 0, 1,
-                                           0, 0, 0));
-    dst = createDestination(CI, DONTCARESIGNED, 0, DstDesc);
-    CISA_CALL(Kernel->AppendVISADataMovementInst(
-        ISA_MOV, nullptr, false, vISA_EMASK_M1_NM, EXEC_SIZE_1, dst, src));
-  };
-
-  switch (Subtarget->getTargetId()) {
-  case GenXSubtarget::XeHP:
-  case GenXSubtarget::XeHPG:
-  case GenXSubtarget::XeLPG:
-    // [13:11] Slice ID.
-    // [10:9] Dual - SubSlice ID
-    // [8] SubSlice ID.
-    // [7] : EUID[2]
-    // [6] : Reserved
-    // [5:4] EUID[1:0]
-    // [3] : Reserved MBZ
-    // [2:0] : TID
-    //
-    // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
-
-    // Load sr0 with [13:0] mask
-    loadMaskedSR0(14);
-    // Remove reserved bits
-    removeBitRange(6, 1);
-    break;
-  case GenXSubtarget::XeHPC:
-    // [14:12] Slice ID.
-    // [11:9] SubSlice ID
-    // [8] : EUID[2]
-    // [7:6] : Reserved
-    // [5:4] EUID[1:0]
-    // [3] : Reserved MBZ
-    // [2:0] : TID
-    //
-    // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
-
-    // Load sr0 with [14:0] mask
-    loadMaskedSR0(15);
-    // Remove reserved bits
-    removeBitRange(6, 2);
-    break;
-  default:
-    IGC_ASSERT_EXIT_MESSAGE(0, "The platform does not support HWTID");
-  }
-
-  // Remove reserved bits
-  removeBitRange(3, 1);
-
-  // Store final value
-  writeHwtidToDst();
 }
 
 /***********************************************************************

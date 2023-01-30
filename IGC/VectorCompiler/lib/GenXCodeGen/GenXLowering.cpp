@@ -270,6 +270,7 @@ private:
   bool lowerSlmInit(CallInst *CI);
   bool lowerStackSave(CallInst *CI);
   bool lowerStackRestore(CallInst *CI);
+  bool lowerThreadID(CallInst *CI);
 
   Value *swapLowHighHalves(IRBuilder<> &Builder, Value *Arg) const;
   bool lowerByteSwap(CallInst *CI);
@@ -3421,6 +3422,8 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerStackSave(CI);
     case Intrinsic::stackrestore:
       return lowerStackRestore(CI);
+    case GenXIntrinsic::genx_get_hwid:
+      return lowerThreadID(CI);
     }
     return false;
   }
@@ -5904,6 +5907,39 @@ bool GenXLowering::lowerStackRestore(CallInst *CI) {
 
   ToErase.push_back(CI);
 
+  return true;
+}
+
+bool GenXLowering::lowerThreadID(CallInst *CI) {
+  IRBuilder<> IRB{CI};
+
+  auto *Ty = CI->getType();
+  auto *ReadPredefFunc = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GenXIntrinsic::genx_read_predef_reg, {Ty, Ty});
+
+  auto RegID = ST->getsHWTIDFromPredef() ? PreDefined_Vars::PREDEFINED_HW_TID
+                                         : PreDefined_Vars::PREDEFINED_SR0;
+  Value *Res = IRB.CreateCall(ReadPredefFunc,
+                              {IRB.getInt32(RegID), UndefValue::get(Ty)});
+
+  if (!ST->getsHWTIDFromPredef()) {
+    // Drop reserved bits
+    for (auto [Offset, Width] : ST->getThreadIdReservedBits()) {
+      auto Mask = (1 << Offset) - 1;
+
+      // res = (src & mask) | ((src >> width) & ~mask)
+      auto *Shift = IRB.CreateLShr(Res, ConstantInt::get(Ty, Width));
+      auto *And = IRB.CreateAnd(Res, ConstantInt::get(Ty, Mask));
+      auto *AndNot = IRB.CreateAnd(Shift, ConstantInt::get(Ty, ~Mask));
+      Res = IRB.CreateOr(AndNot, And);
+    }
+
+    auto *MaskC = ConstantInt::get(Ty, ST->getMaxThreadsNumPerSubDevice() - 1);
+    Res = IRB.CreateAnd(Res, MaskC);
+  }
+
+  CI->replaceAllUsesWith(Res);
+  ToErase.push_back(CI);
   return true;
 }
 

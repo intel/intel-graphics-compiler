@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -135,6 +135,14 @@ bool GenXVisaRegAlloc::runOnFunctionGroup(FunctionGroup &FGArg)
   RegStorage.emplace_back(
       vc::RegCategory::General, PreDefined_Vars::PREDEFINED_FE_FP,
       IGCLLVM::FixedVectorType::get(Type::getInt64Ty(FGArg.getContext()), 1));
+  PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_HW_TID,
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
+  PredefinedRegs.push_back(&RegStorage.back());
+  RegStorage.emplace_back(
+      vc::RegCategory::General, PreDefined_Vars::PREDEFINED_SR0,
+      IGCLLVM::FixedVectorType::get(Type::getInt32Ty(FGArg.getContext()), 1));
   PredefinedRegs.push_back(&RegStorage.back());
 
   // Reserve the reserved registers.
