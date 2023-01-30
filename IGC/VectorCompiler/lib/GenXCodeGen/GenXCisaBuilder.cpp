@@ -3650,7 +3650,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       ExecSize = VT->getNumElements();
     else
       ExecSize = GenXIntrinsicInfo::getOverridedExecSize(CI, Subtarget);
-    return getExecSizeFromValue(ExecSize);
+    return getExecSizeFromValue(ExecSize ? ExecSize : 1);
   };
 
   auto GetExecSizeFromByte = [&](II::ArgInfo AI, VISA_EMask_Ctrl *Mask) {
