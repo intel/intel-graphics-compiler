@@ -105,11 +105,7 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
     auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     // This is the condition that double emulation is used.
-    if ((IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-        (ctx->m_DriverInfo.NeedFP64(ctx->platform.getPlatformInfo().eProductFamily) && ctx->platform.hasNoFP64Inst())))
-    {
-        ctx->m_hasDPEmu = true;
-    }
+    ctx->checkDPEmulationEnabled();
 
     bool poisonFP64KernelsEnabled = false;
     if (ctx->type == ShaderType::OPENCL_SHADER)
@@ -127,6 +123,7 @@ void ErrorCheck::visitInstruction(llvm::Instruction& I)
     if (!usesDouble)
         return;
 
+    // emit msg when platform don't support DP operations
     if (!poisonFP64KernelsEnabled && !ctx->m_hasDPEmu) {
         ctx->EmitError("Double type is not supported on this platform.", &I);
         m_hasError = true;

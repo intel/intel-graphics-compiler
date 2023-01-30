@@ -297,6 +297,9 @@ static void CommonOCLBasedPasses(
     CompilerOpts.EmitZeBinVISASections =
         pContext->m_InternalOptions.EmitZeBinVISASections;
 
+    CompilerOpts.FP64GenEmulationEnabled =
+        pContext->m_InternalOptions.EnableFP64GenEmu;
+
     IGCPassManager mpmSPIR(pContext, "Unify");
 #ifdef IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
     mpmSPIR.add(new PreprocessSPVIR());
