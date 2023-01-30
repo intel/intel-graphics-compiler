@@ -119,9 +119,6 @@ namespace IGC
             // This option forces IGC to poison kernels using fp64
             // operations on platforms without HW support for fp64.
             bool EnableUnsupportedFP64Poisoning = false;
-            // This option enables FP64 emulation for platforms that
-            // cannot HW support for double operations
-            bool EnableFP64GenEmu = false;
             // Cache default. -1 menans not set (thus not used by igc);
             // Valid values are defined as enum type LSC_L1_L3_CC in
             //   visa\include\visa_igc_common_header.h, which are from

@@ -1015,7 +1015,6 @@ namespace IGC
         unsigned int getRegisterPointerSizeInBits(unsigned int AS) const;
         bool enableFunctionCall() const;
         void CheckEnableSubroutine(llvm::Module& M);
-        void checkDPEmulationEnabled();
         virtual void InitVarMetaData();
         virtual ~CodeGenContext();
         void clear();

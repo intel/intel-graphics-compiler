@@ -1122,12 +1122,6 @@ bool preferFP32IntDivRemEmu() const {
     return m_platformInfo.eProductFamily == IGFX_METEORLAKE;
 }
 
-// Platforms that haven't HW support for FP64 operations
-// and can emulate double operations
-bool emulateFP64ForPlatformsWithoutHWSupport() const {
-    return m_platformInfo.eProductFamily == IGFX_DG2;
-}
-
 bool supportMixMode() const {
     return IGC_IS_FLAG_ENABLED(ForceMixMode) ||
         (IGC_IS_FLAG_DISABLED(DisableMixMode) &&

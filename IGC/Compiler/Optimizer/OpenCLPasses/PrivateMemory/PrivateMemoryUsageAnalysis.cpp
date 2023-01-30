@@ -127,7 +127,11 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
         CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
         // OCL API checks DP emulation in ErrorCheck, this condition is used e.g. by OGL API
-        pCtx->checkDPEmulationEnabled();
+        if (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
+            (pCtx->m_DriverInfo.NeedFP64(pCtx->platform.getPlatformInfo().eProductFamily) && pCtx->platform.hasNoFP64Inst()))
+        {
+            pCtx->m_hasDPEmu = true;
+        }
 
         // This is the condition that double emulation is used.
         if (pCtx->m_hasDPEmu)
