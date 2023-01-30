@@ -320,10 +320,6 @@ bool Options::parseOptions(int argc, const char *argv[]) {
     }
   }
 
-  if (m_vISAOptions.isArgSetByUser(vISA_GetvISABinaryName)) {
-    m_vISAOptions.setBool(vISA_OutputvISABinaryName, true);
-  }
-
   if (m_vISAOptions.isArgSetByUser(vISA_LabelStr)) {
     vISA_ASSERT(std::string_view(m_vISAOptions.getCstr(vISA_LabelStr)).size() <
                     MAX_LABEL_STR_LENGTH,

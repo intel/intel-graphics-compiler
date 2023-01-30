@@ -388,7 +388,6 @@ if (UNIX OR WIN32)
   set(GenX_IR_EXE_UTILITY
     ${Jitter_Utility_Files}
     ${GenX_Utility_Files}
-    EnumFiles.hpp
     )
 
   set(GenX_IR_EXE_HEADERS

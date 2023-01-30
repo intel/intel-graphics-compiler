@@ -446,9 +446,8 @@ DEF_VISA_OPTION(vISA_ISAASMNamesFile, ET_CSTR, "-isaasmNamesOutputFile",
 DEF_VISA_OPTION(vISA_ExtraIntfFile, ET_CSTR, "-extraIntfFile",
                 "USAGE: File Name with extra interference info.\n", NULL)
 DEF_VISA_OPTION(vISA_AddExtraIntfInfo, ET_BOOL, NULLSTR, UNUSED, false)
-DEF_VISA_OPTION(vISA_GetvISABinaryName, ET_CSTR, "-outputCisaBinaryName",
+DEF_VISA_OPTION(vISA_OutputvISABinaryName, ET_CSTR, "-outputCisaBinaryName",
                 UNUSED, NULL)
-DEF_VISA_OPTION(vISA_OutputvISABinaryName, ET_BOOL, NULLSTR, UNUSED, false)
 DEF_VISA_OPTION(vISA_LabelStr, ET_CSTR, "-uniqueLabels",
                 "Label String is not provided for the -uniqueLabels option.",
                 NULL)

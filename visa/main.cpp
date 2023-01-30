@@ -21,9 +21,9 @@ SPDX-License-Identifier: MIT
 #include "VISAKernel.h"
 #include "visa_igc_common_header.h"
 
-#ifndef DLL_MODE
-#include "EnumFiles.hpp"
-#endif
+
+#include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Path.h>
 
 ///
 /// Reads byte code and calls the builder API as it does so.
@@ -34,7 +34,8 @@ extern bool readIsaBinaryNG(const char *buf, CISA_IR_Builder *builder,
                             unsigned int minorVersion);
 
 #ifndef DLL_MODE
-int parseText(std::string fileName, int argc, const char *argv[], Options &opt);
+int parseText(llvm::StringRef fileName, int argc, const char *argv[],
+              Options &opt);
 #endif
 
 #define JIT_SUCCESS 0
@@ -84,9 +85,8 @@ int parseBinary(std::string fileName, int argc, const char *argv[],
     return EXIT_FAILURE;
   std::string binFileName;
 
-  if (cisa_builder->m_options.getOption(vISA_OutputvISABinaryName)) {
-    const char *cisaBinaryName = NULL;
-    cisa_builder->m_options.getOption(vISA_GetvISABinaryName, cisaBinaryName);
+  if (auto cisaBinaryName =
+          cisa_builder->m_options.getOptionCstr(vISA_OutputvISABinaryName)) {
     binFileName = cisaBinaryName;
   }
 
@@ -215,15 +215,7 @@ DLL_EXPORT void getJITVersion(unsigned int &majorV, unsigned int &minorV) {
 
 #ifndef DLL_MODE
 
-/// Returns true if a string ends with an expected suffix.
-static bool endsWith(const std::string &str, const std::string &suf) {
-  if (str.length() < suf.length())
-    return false;
-  return 0 == str.compare(str.length() - suf.length(), suf.length(), suf);
-}
-
 int main(int argc, const char *argv[]) {
-  char fileName[256];
   std::cout << argv[0];
   for (int i = 1; i < argc; i++)
     std::cout << " " << argv[i];
@@ -242,11 +234,12 @@ int main(int argc, const char *argv[]) {
 
   int startPos = 1;
   bool parserMode = false;
-  if (endsWith(argv[startPos], ".visaasm") ||
-      endsWith(argv[startPos], ".isaasm")) {
+  llvm::StringRef input = argv[1];
+  llvm::StringRef ext = llvm::sys::path::extension(input);
+  if (ext == ".visaasm" || ext == ".isaasm") {
     startPos++;
     parserMode = true;
-  } else if (endsWith(argv[startPos], ".isa")) {
+  } else if (ext == ".isa") {
     startPos++;
   }
 
@@ -289,69 +282,29 @@ int main(int argc, const char *argv[]) {
   // for debug print lex results to stdout (default)
   // for release open "lex.out" and redirect lex results
   //
-  std::list<std::string> filesList;
+  // TODO: drop the support for vISA_ISAASMNamesFile.
   if (parserMode && opt.getOption(vISA_IsaasmNamesFileUsed)) {
-    const char *isaasmNamesFile;
-    opt.getOption(vISA_ISAASMNamesFile, isaasmNamesFile);
-    strcpy_s(fileName, 256, isaasmNamesFile);
-    filesList.push_back(fileName);
-  } else {
-    //
-    // allow input filename with any suffix or no suffix
-    //
-    std::string cmdLine = argv[1];
-    if (!PrepareInput(cmdLine, filesList)) {
-      std::cerr << "ERROR: Unable to open input file(s)."
-                << "\n";
-      return 1;
-    }
-    std::string::size_type testNameEnd = cmdLine.find_last_of(".");
-    std::string testName;
-    if (testNameEnd != std::string::npos)
-      testName = cmdLine.substr(0, testNameEnd);
-    else
-      testName = cmdLine;
-
-    std::string::size_type numChars = cmdLine.copy(fileName, std::string::npos);
-    fileName[numChars] = '\0';
+    input = opt.getOptionCstr(vISA_ISAASMNamesFile);
   }
 
-  // holds storage for file names that we automatically deduce in the loop
-  // below; memory can be deallocated later
-  std::vector<std::string> asmFileRoots;
+  // holds storage for the stem of input file.
+  std::string stem;
+
+  // If the file name is not set by the user, then use the same
+  // file name (drop path)
+  // we do not include an extension as other logic suffixes that later
+  // depending on the desired
+  //   e.g. foo/bar.visaasm ==> ./bar
+  if (!opt.isOptionSetByUser(VISA_AsmFileName)) {
+    stem = llvm::sys::path::stem(input).str();
+    opt.setOptionInternally(VISA_AsmFileName, stem.c_str());
+  }
 
   int err = VISA_SUCCESS;
-  for (auto fName : filesList) {
-    // If the file name is not set by the user, then use the same
-    // file name (drop path)
-    // we do not include an extension as other logic suffixes that later
-    // depending on the desired
-    //   e.g. foo/bar.visaasm ==> ./bar
-    if (!opt.isOptionSetByUser(VISA_AsmFileName)) {
-      auto extOff = fName.rfind('.');
-      if (extOff == std::string::npos) {
-        std::cerr << fName << ": cannot find file extension";
-        return 1;
-      }
-      size_t fileStartOff = 0;
-      for (int i = (int)extOff; i >= 0; i--) {
-        if (fName[i] == '\\' || fName[i] == '/') {
-          fileStartOff = (size_t)i + 1;
-          break;
-        }
-      }
-      auto baseRoot = fName.substr(fileStartOff, extOff - fileStartOff);
-      asmFileRoots.emplace_back(baseRoot);
-      opt.setOptionInternally(VISA_AsmFileName, asmFileRoots.back().c_str());
-    }
-
-    if (parserMode) {
-      err = parseText(fName, argc - startPos, &argv[startPos], opt);
-    } else {
-      err = parseBinary(fName, argc - startPos, &argv[startPos], opt);
-    }
-    if (err)
-      break;
+  if (parserMode) {
+    err = parseText(input, argc - startPos, &argv[startPos], opt);
+  } else {
+    err = parseBinary(input.str(), argc - startPos, &argv[startPos], opt);
   }
 
 #ifdef COLLECT_ALLOCATION_STATS
@@ -376,19 +329,19 @@ int main(int argc, const char *argv[]) {
 
 extern int CISAparse(CISA_IR_Builder *builder);
 
-int parseText(std::string fileName, int argc, const char *argv[],
+int parseText(llvm::StringRef fileName, int argc, const char *argv[],
               Options &opt) {
   int num_kernels = 0;
-  std::string testName;
 
   std::list<std::string> file_names;
   bool isaasmNamesFileUsed = false;
 
   opt.getOption(vISA_IsaasmNamesFileUsed, isaasmNamesFileUsed);
   if (isaasmNamesFileUsed) {
-    std::ifstream os(fileName, std::ios::in);
+    std::ifstream os(fileName.data(), std::ios::in);
     if (!os.is_open()) {
-      std::cerr << fileName << ": could not open an isaasm names input file.\n";
+      std::cerr << fileName.data()
+                << ": could not open an isaasm names input file.\n";
       return EXIT_FAILURE;
     }
 
@@ -403,7 +356,7 @@ int parseText(std::string fileName, int argc, const char *argv[],
     os.close();
   } else {
     num_kernels = 1;
-    file_names.push_back(fileName);
+    file_names.push_back(fileName.str());
   }
 
   // used to ignore duplicate file names
@@ -436,19 +389,6 @@ int parseText(std::string fileName, int argc, const char *argv[],
       return EXIT_FAILURE;
     }
 
-    std::string::size_type testNameEnd = vISAFileName.find_last_of('.');
-    std::string::size_type testNameStart = vISAFileName.find_last_of('\\');
-
-    if (testNameStart != std::string::npos)
-      testNameStart++;
-    else
-      testNameStart = 0;
-
-    if (testNameEnd != std::string::npos)
-      testName = vISAFileName.substr(testNameStart, testNameEnd);
-    else
-      testName = vISAFileName;
-
     CISAdebug = 0;
     int fail = CISAparse(cisa_builder);
     fclose(CISAin);
@@ -475,14 +415,13 @@ int parseText(std::string fileName, int argc, const char *argv[],
     file_names.pop_front();
   }
 
-  std::string binFileName = testName + ".isa";
-
-  bool outputCISABinaryName = false;
-  opt.getOption(vISA_OutputvISABinaryName, outputCISABinaryName);
-  if (outputCISABinaryName) {
-    char const *cisaBinaryName;
-    opt.getOption(vISA_GetvISABinaryName, cisaBinaryName);
+  std::string binFileName;
+  if (auto cisaBinaryName = opt.getOptionCstr(vISA_OutputvISABinaryName)) {
     binFileName = cisaBinaryName;
+  } else {
+    // Use VISA_AsmFileName as the stem of the final binary.
+    binFileName = opt.getOptionCstr(VISA_AsmFileName);
+    binFileName += ".isa";
   }
 
   auto compErr = cisa_builder->Compile(binFileName.c_str());
