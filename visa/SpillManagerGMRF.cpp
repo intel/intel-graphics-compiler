@@ -3156,6 +3156,58 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
   }
 }
 
+bool SpillManagerGRF::immFill(G4_SrcRegRegion *filledRegion,
+                              INST_LIST::iterator filledInstIter, G4_BB *bb,
+                              G4_Declare *spillDcl) {
+  G4_INST *inst = *filledInstIter;
+  auto sisIt = scalarImmSpill.find(spillDcl);
+  if (sisIt != scalarImmSpill.end()) {
+    G4_Declare *tempDcl = nullptr;
+    auto &nearbyFill = scalarImmFillCache[spillDcl];
+    if (!failSafeSpill_ && std::get<0>(nearbyFill) == bb &&
+        (inst->getLexicalId() - std::get<2>(nearbyFill)) <=
+            scalarImmReuseDistance) {
+      tempDcl = std::get<1>(nearbyFill)->getDst()->getTopDcl();
+    } else {
+      // re-materialize the scalar immediate value
+      auto imm = sisIt->second;
+      tempDcl = builder_->createTempVar(1, imm->getType(),
+                                        spillDcl->getSubRegAlign());
+      auto movInst = builder_->createMov(
+          g4::SIMD1, builder_->createDstRegRegion(tempDcl, 1), imm,
+          InstOpt_WriteEnable, false);
+      bb->insertBefore(filledInstIter, movInst);
+      nearbyFill = std::make_tuple(bb, movInst, inst->getLexicalId());
+      vASSERT(!filledRegion->isIndirect());
+    }
+    auto newSrc = builder_->createSrc(
+        tempDcl->getRegVar(), filledRegion->getRegOff(),
+        filledRegion->getSubRegOff(), filledRegion->getRegion(),
+        filledRegion->getType(), filledRegion->getAccRegSel());
+    int i = 0;
+    for (; i < inst->getNumSrc(); ++i) {
+      if (inst->getSrc(i) == filledRegion) {
+        break;
+      }
+    }
+    inst->setSrc(newSrc, i);
+
+    if (failSafeSpill_) {
+      if (!gra.kernel.getOption(vISA_NewFailSafeRA)) {
+        tempDcl->getRegVar()->setPhyReg(
+            builder_->phyregpool.getGreg(spillRegOffset_), 0);
+        spillRegOffset_ += 1;
+      } else {
+        tempDcl->getRegVar()->setPhyReg(
+            builder_->phyregpool.getGreg(context.getFreeGRF(1)), 0);
+      }
+    }
+
+    return true;
+  }
+  return false;
+}
+
 // Create the code to create the GRF fill range and load it to spill memory.
 void SpillManagerGRF::insertFillGRFRangeCode(G4_SrcRegRegion *filledRegion,
                                              INST_LIST::iterator filledInstIter,
@@ -3173,28 +3225,7 @@ void SpillManagerGRF::insertFillGRFRangeCode(G4_SrcRegRegion *filledRegion,
   G4_INST *fillSendInst = nullptr;
   auto spillDcl = filledRegion->getTopDcl()->getRootDeclare();
 
-  auto sisIt = scalarImmSpill.find(spillDcl);
-  if (sisIt != scalarImmSpill.end()) {
-    // re-materialize the scalar immediate value
-    auto imm = sisIt->second;
-    auto tempDcl =
-        builder_->createTempVar(1, imm->getType(), spillDcl->getSubRegAlign());
-    auto movInst =
-        builder_->createMov(g4::SIMD1, builder_->createDstRegRegion(tempDcl, 1),
-                            imm, InstOpt_WriteEnable, false);
-    bb->insertBefore(filledInstIter, movInst);
-    vASSERT(!filledRegion->isIndirect());
-    auto newSrc = builder_->createSrc(
-        tempDcl->getRegVar(), filledRegion->getRegOff(),
-        filledRegion->getSubRegOff(), filledRegion->getRegion(),
-        filledRegion->getType(), filledRegion->getAccRegSel());
-    int i = 0;
-    for (; i < inst->getNumSrc(); ++i) {
-      if (inst->getSrc(i) == filledRegion) {
-        break;
-      }
-    }
-    inst->setSrc(newSrc, i);
+  if (immFill(filledRegion, filledInstIter, bb, spillDcl)) {
     return;
   }
 
@@ -4038,11 +4069,9 @@ void SpillManagerGRF::prunePointsToLS(G4_Kernel *kernel,
   }
 }
 
-void SpillManagerGRF::runSpillAnalysis() {
-  if (failSafeSpill_) {
-    // ToDo: use the reserved GRFs to perform scalar immediate rematerialization
+void SpillManagerGRF::immMovSpillAnalysis() {
+  if (!builder_->getOption(vISA_FillConstOpt))
     return;
-  }
 
   std::unordered_set<G4_Declare *> spilledDcl;
   scalarImmSpill.clear();
@@ -4063,9 +4092,7 @@ void SpillManagerGRF::runSpillAnalysis() {
         continue;
       }
       spilledDcl.insert(dcl);
-      if (inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD1 &&
-          inst->getSrc(0)->isImm() && !inst->getPredicate() &&
-          !inst->getSaturate()) {
+      if (immFillCandidate(inst)) {
         scalarImmSpill[dcl] = inst->getSrc(0)->asImm();
       }
     }
@@ -4078,7 +4105,8 @@ void SpillManagerGRF::runSpillAnalysis() {
 // returns false if spill fails somehow
 bool SpillManagerGRF::insertSpillFillCode(G4_Kernel *kernel,
                                           PointsToAnalysis &pointsToAnalysis) {
-  // runSpillAnalysis();
+  immMovSpillAnalysis();
+
   //  Set the spill flag of all spilled regvars.
   for (const LiveRange *lr : *spilledLRs_) {
 

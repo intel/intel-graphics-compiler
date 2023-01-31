@@ -688,6 +688,11 @@ private:
   // restrictions) We rematerialize the immediate value instead of spill/fill
   // them
   std::unordered_map<G4_Declare *, G4_Imm *> scalarImmSpill;
+  // distance to reuse filled scalar imm
+  const unsigned int scalarImmReuseDistance = 10;
+  // use cache to reuse filled scalar immediates for nearby uses
+  // map spilled declare -> fill bb, fill inst, lex id for distance heuristic
+  std::unordered_map<G4_Declare*, std::tuple<G4_BB*, G4_INST*, unsigned int>> scalarImmFillCache;
 
   VarReferences refs;
 
@@ -698,7 +703,11 @@ private:
   // currently it identifies scalar imm variables that should be re-mat
   // later on we can add detection to avoid unncessary read-modify-write for
   // spills
-  void runSpillAnalysis();
+  void immMovSpillAnalysis();
+
+  bool immFill(G4_SrcRegRegion *filledRegion,
+               INST_LIST::iterator filledInstIter, G4_BB *bb,
+               G4_Declare *spillDcl);
 
   bool checkUniqueDefAligned(G4_DstRegRegion *dst, G4_BB *defBB);
   bool checkDefUseDomRel(G4_DstRegRegion *dst, G4_BB *bb);
@@ -772,6 +781,15 @@ static inline bool isPartialRegion(REGION_TYPE *region, unsigned execSize) {
   } else {
     return false;
   }
+}
+
+// Return true if inst is a simple mov with exec size == 1 and imm as src0.
+// Def of such instructions are trivially fillable.
+static bool immFillCandidate(G4_INST *inst) {
+  return inst->opcode() == G4_mov && inst->getExecSize() == g4::SIMD1 &&
+         inst->getSrc(0)->isImm() && inst->isWriteEnableInst() &&
+         inst->getDst()->getType() == inst->getSrc(0)->getType() &&
+         !inst->getPredicate() && !inst->getCondMod() && !inst->getSaturate();
 }
 
 G4_SrcRegRegion *getSpillFillHeader(IR_Builder &builder, G4_Declare *decl);

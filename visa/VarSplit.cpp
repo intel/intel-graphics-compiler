@@ -1251,6 +1251,24 @@ void LoopVarSplit::copy(G4_BB *bb, G4_Declare *dst, G4_Declare *src,
     }
   }
 
+  if (kernel.getOption(vISA_FillConstOpt) && bytesRemaining > 0) {
+    // if src is a const def then emit mov with imm src
+    auto defs = references.getDefs(src);
+    if (defs && defs->size() == 1) {
+      auto onlyDef = std::get<0>(defs->front());
+      if (immFillCandidate(onlyDef)) {
+        auto immSrc = onlyDef->getSrc(0)->asImm();
+        auto dstRgn = kernel.fg.builder->createDst(
+            dst->getRegVar(), 0, 0, 1, onlyDef->getDst()->getType());
+        auto inst = kernel.fg.builder->createMov(g4::SIMD1, dstRgn, immSrc,
+                                                 instOption, false);
+
+        insertCopy(inst);
+        bytesRemaining = 0;
+      }
+    }
+  }
+
   while (bytesRemaining > 0) {
     G4_Type type = Type_W;
     G4_ExecSize execSize = g4::SIMD16;
