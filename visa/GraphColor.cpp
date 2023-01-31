@@ -10638,7 +10638,7 @@ bool FlagSpillCleanup::regUseAnalysis(SCRATCH_ACCESS *scratchAccess,
   }
 
   // Back trace to update the reachable scratch accesses
-  if (scratchAccess->prePreScratchAccess) {
+  if (preScratchAccess && scratchAccess->prePreScratchAccess) {
     SCRATCH_ACCESS *prePreScratchAccess = preScratchAccess;
     preScratchAccess = scratchAccess;
 
