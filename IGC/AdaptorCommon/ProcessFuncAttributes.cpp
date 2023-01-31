@@ -1251,18 +1251,6 @@ bool InsertDummyKernelForSymbolTable::runOnModule(Module& M)
                 checkKernelSimdSize(F, fHandle, pMdUtils);
             }
         }
-        if (!modMD->inlineProgramScopeOffsets.empty() &&
-            getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable &&
-            fHandle->getSubGroupSize()->getSIMD_size() == 0)
-        {
-            for (auto I = M.begin(), E = M.end(); I != E; ++I)
-            {
-                Function* F = &(*I);
-                if (F->isDeclaration() || isEntryFunc(pMdUtils, F)) continue;
-                checkKernelSimdSize(F, fHandle, pMdUtils);
-                if (fHandle->getSubGroupSize()->getSIMD_size() != 0) break;
-            }
-        }
         pMdUtils->setFunctionsInfoItem(pNewFunc, fHandle);
         pMdUtils->save(M.getContext());
 
