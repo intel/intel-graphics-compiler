@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublicEnums.h"
+#include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -398,6 +399,12 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst& I)
         Value* newPtr = nullptr;
         Value* newPtrNull = nullptr;
         Value* cmpTag = nullptr;
+
+        if (targetAS == ADDRESS_SPACE_GLOBAL || targetAS == ADDRESS_SPACE_PRIVATE)
+        {
+            auto ClContext = static_cast<OpenCLProgramContext*>(m_ctx);
+            ClContext->setDistinguishBetweenPrivateAndGlobalPtr(true);
+        }
 
         // Tag was already obtained from GAS pointer, now we check its address space (AS)
         // and the target AS for this intrinsic call

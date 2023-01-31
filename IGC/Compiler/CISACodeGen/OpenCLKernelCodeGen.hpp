@@ -241,6 +241,16 @@ namespace IGC
     private:
         bool m_enableZEBinary;
 
+        // To minimize negative performance implications caused by a dynamic generic address
+        // space resolution, private memory can be allocated in the same address space as
+        // global memory. It gives a possibility to treat private memory operations as global
+        // memory operations, so there is no necessity to distinguish between them.
+        // However, when a module uses `to_global` or `to_private` OpenCL builtins, differentiating
+        // between private and global pointer is necessary to preserve conformity.
+        // Below flag is set to true when IGC detects that any of these builtins is called in
+        // a module and could not be resolved statically at compile time.
+        bool m_mustDistinguishBetweenPrivateAndGlobalPtr = false;
+
     public:
         // Additional text visaasm to link.
         std::vector<const char*> m_VISAAsmToLink;
@@ -322,6 +332,8 @@ namespace IGC
         bool forceGlobalMemoryAllocation() const override;
         bool allocatePrivateAsGlobalBuffer() const override;
         bool noLocalToGenericOptionEnabled() const override;
+        bool mustDistinguishBetweenPrivateAndGlobalPtr() const override;
+        void setDistinguishBetweenPrivateAndGlobalPtr(bool);
         bool enableTakeGlobalAddress() const override;
         int16_t getVectorCoalescingControl() const override;
         uint32_t getPrivateMemoryMinimalSizePerThread() const override;
