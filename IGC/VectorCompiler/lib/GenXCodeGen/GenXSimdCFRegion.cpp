@@ -130,14 +130,14 @@ SPDX-License-Identifier: MIT
 // NOTE: transformation is much harded in details than it is decribed above.
 // Main problem is to make this pass and SimdCFConformace be compatible.
 
-#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "vc/Utils/General/Types.h"
+#include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/RegionInfo.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Verifier.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/InitializePasses.h>
 #include <llvm/Support/CommandLine.h>
 
@@ -145,10 +145,13 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
-static cl::opt<bool> EnableSimdCFTransform("enable-simdcf-transform", cl::init(false), cl::Hidden,
-                                           cl::desc("Enable simd cf transformation."));
-static cl::opt<bool> EnableSimdCFAnalisis("enable-simdcf-analysis", cl::init(false), cl::Hidden,
-                                          cl::desc("Enable analysis for find simdcf regions."));
+static cl::opt<bool>
+    EnableSimdCFTransform("enable-simdcf-transform", cl::init(false),
+                          cl::Hidden,
+                          cl::desc("Enable simd cf transformation."));
+static cl::opt<bool>
+    EnableSimdCFAnalisis("enable-simdcf-analysis", cl::init(true), cl::Hidden,
+                         cl::desc("Enable analysis for find simdcf regions."));
 namespace llvm::genx {
 // Need declarations of this functions here because of declaration conflict
 // beetween genx::Region from GenXUtils.h and llvm::Region
@@ -159,21 +162,19 @@ class SimdCFRegion : public Region {
 protected:
   std::set<SimdCFRegion *> SubRegions; // set because subregions are unique
   Value *Mask;
-  DominatorTree *DTlocal;
 
 public:
   SimdCFRegion(BasicBlock *Entry, BasicBlock *Exit, RegionInfo *RI,
                DominatorTree *DT, SimdCFRegion *Parent = nullptr)
-      : Region(Entry, Exit, RI, DT, Parent), Mask(nullptr), DTlocal(DT) {}
+      : Region(Entry, Exit, RI, DT, Parent), Mask(nullptr) {}
   virtual ~SimdCFRegion() {}
 
   virtual bool isIfRegion() const = 0;
   virtual bool isLoopRegion() const = 0;
 
-  virtual SimdCFRegion &findSubregions() = 0;
-
   virtual bool verify() const = 0;
-  DominatorTree *getDT() { return DTlocal; };
+
+  auto *getMask() const { return Mask; }
 };
 
 class SimdCFIfRegion final : public SimdCFRegion {
@@ -185,14 +186,10 @@ public:
   bool isIfRegion() const override { return true; }
   bool isLoopRegion() const override { return false; }
 
-  SimdCFIfRegion &findSubregions() override { return *this; }
-
   bool hasElse() const { return IfElseRegion != nullptr; }
 
   Region *getIfThenRegion() const { return IfThenRegion; }
   Region *getIfElseRegion() const { return IfElseRegion; }
-
-  auto *getMask() const { return Mask; }
 
   auto *getIfSimdBranch() const { return SimdIfBranch; }
 
@@ -207,18 +204,6 @@ public:
 
   auto *getIfSimdCondition() const {
     return dyn_cast<CallInst>(getIfSimdBranch()->getCondition());
-  }
-
-  BranchInst *getElseSimdBranch() const {
-    if (!hasElse())
-      return nullptr;
-    return cast<BranchInst>(IfThenRegion->getExit()->getTerminator());
-  }
-
-  CallInst *getElseSimdCondition() const {
-    if (!hasElse())
-      return nullptr;
-    return dyn_cast<CallInst>(getElseSimdBranch()->getCondition());
   }
 
   // TODO: need to add algo to verify mask for simdcf region:
@@ -244,19 +229,28 @@ public:
 
 class SimdCFLoopRegion final : public SimdCFRegion {
   Loop *SimdLoop;
+  BranchInst *SimdLoopBranch = nullptr;
+  BasicBlock *LoopHead = nullptr;
 
 public:
   bool isIfRegion() const override { return false; }
   bool isLoopRegion() const override { return true; }
 
-  SimdCFRegion &findSubregions() override { return *this; }
-
-  BranchInst *getSimdBranch() const {
-    return cast<BranchInst>(SimdLoop->getExitingBlock()->getTerminator());
-  }
+  BranchInst *getSimdBranch() const { return SimdLoopBranch; }
 
   auto *getSimdCondition() const {
     return dyn_cast<CallInst>(getSimdBranch()->getCondition());
+  }
+
+  auto *getLoopHead() const { return LoopHead; }
+
+  auto getIdExit() const {
+    IGC_ASSERT(getSimdBranch()->isConditional());
+    IGC_ASSERT(getSimdBranch()->getNumSuccessors() == 2);
+    if (getSimdBranch()->getSuccessor(0) == getExit())
+      return 0;
+    IGC_ASSERT(getSimdBranch()->getSuccessor(1) == getExit());
+    return 1;
   }
 
   // TODO: need to add algo to verify mask for simdcf region:
@@ -270,7 +264,11 @@ public:
   SimdCFLoopRegion(BasicBlock *Entry, Loop *L, BasicBlock *Exit, RegionInfo *RI,
                    DominatorTree *DT, SimdCFRegion *Parent = nullptr)
       : SimdCFRegion(Entry, Exit, RI, DT, Parent), SimdLoop(L) {
+    SimdLoopBranch =
+        cast<BranchInst>(SimdLoop->getExitingBlock()->getTerminator());
+    IGC_ASSERT(SimdLoopBranch);
     Mask = getSimdCondition()->getArgOperand(0);
+    LoopHead = SimdLoopBranch->getSuccessor(getIdExit());
   }
 };
 } // namespace llvm::genx
@@ -283,19 +281,12 @@ class GenXPredToSimdCF final : public FunctionPass {
   std::map<Module *, GlobalVariable *> EMs;
   // Created (existed) resume-mask addresses
   std::map<BasicBlock *, AllocaInst *> RMAddrs;
-  std::map<SimdCFIfRegion *, BasicBlock *> AfterThens;
-  SmallPtrSet<Instruction *, 16> InstsInThisBlock;
+  std::map<SimdCFRegion *, BasicBlock *> JoinBlocks;
 
-  // Local data for apply if-then pattern
-  DominatorTree *DT = nullptr;
-  BranchInst *Br = nullptr;
-  Module *M = nullptr;
-  const DebugLoc *DL = nullptr;
+  BranchInst *Br = nullptr; // TODO - remove it
   CallInst *OldCond = nullptr;
-  BasicBlock *OldCondBB = nullptr;
   Value *Mask = nullptr;
-  IGCLLVM::FixedVectorType *SimdTy = nullptr;
-  unsigned SimdWidth = 0;
+  BasicBlock *JP = nullptr;
 
 public:
   using SimdCFRegionPtr = std::unique_ptr<SimdCFRegion>;
@@ -321,23 +312,26 @@ public:
 private:
   SimdCFRegionsT findSimdCFRegions(Function &F);
 
-  void insertIfGoto(SimdCFIfRegion &R);
+  void insertIfGotoJoin(SimdCFIfRegion &R);
   void removeMask(SimdCFIfRegion &R);
   void fixPHIs(SimdCFIfRegion &R);
+
+  void insertLoopGotoJoin(SimdCFLoopRegion &R);
+  void fixPHIs(SimdCFLoopRegion &R);
 
   bool transform(SimdCFRegion &R);
   bool transform(SimdCFIfRegion &R);
   bool transform(SimdCFLoopRegion &R);
 
-  void fillEntryBlock(SimdCFIfRegion &R);
-  void fillAfterThenBlock(SimdCFIfRegion &R);
+  void generateGoto(BranchInst *Br);
+  Value *generateJoin(BasicBlock *JoinBlock);
 
   Value *getEM(Module *M) {
     IGC_ASSERT(M);
     auto EM = EMs.find(M);
     if (EM == EMs.end()) {
-      auto *EMTy = IGCLLVM::FixedVectorType::get(Type::getInt1Ty(M->getContext()),
-                                                 MAX_SIMD_CF_WIDTH);
+      auto *EMTy = IGCLLVM::FixedVectorType::get(
+          Type::getInt1Ty(M->getContext()), MAX_SIMD_CF_WIDTH);
       EMs[M] = new GlobalVariable(*M, EMTy, false /*isConstant*/,
                                   GlobalValue::InternalLinkage,
                                   Constant::getAllOnesValue(EMTy), "EM");
@@ -348,8 +342,8 @@ private:
   Value *getRMAddr(BasicBlock *JP, unsigned Width = 0) {
     auto RMAddr = RMAddrs.find(JP);
     if (RMAddr == RMAddrs.end()) {
-      auto *RMTy = IGCLLVM::FixedVectorType::get(Type::getInt1Ty(JP->getContext()),
-                                                 Width);
+      auto *RMTy = IGCLLVM::FixedVectorType::get(
+          Type::getInt1Ty(JP->getContext()), Width);
       auto *InsertBefore = &JP->getParent()->front().front();
       auto *RMAddr = new AllocaInst(RMTy, 0 /*AddrSpace*/,
                                     Twine("RM.") + JP->getName(), InsertBefore);
@@ -417,9 +411,9 @@ private:
                    GenXIntrinsic::genx_all ||
                CI->getIntrinsicID() ==
 #if LLVM_VERSION_MAJOR < 12
-                  Intrinsic::experimental_vector_reduce_and;
+                   Intrinsic::experimental_vector_reduce_and;
 #else
-                  Intrinsic::vector_reduce_and;
+                   Intrinsic::vector_reduce_and;
 #endif
     return false;
   }
@@ -428,7 +422,8 @@ private:
     if (V)
       if (const CallInst *CI = dyn_cast<CallInst>(V))
         return GenXIntrinsic::getGenXIntrinsicID(V) ==
-                   GenXIntrinsic::genx_any || CI->getIntrinsicID() ==
+                   GenXIntrinsic::genx_any ||
+               CI->getIntrinsicID() ==
 #if LLVM_VERSION_MAJOR < 12
                    Intrinsic::experimental_vector_reduce_or;
 #else
@@ -747,81 +742,22 @@ GenXPredToSimdCF::findSimdCFRegions(Function &F) {
   return Regions;
 }
 
-void GenXPredToSimdCF::fillEntryBlock(SimdCFIfRegion &R) {
-  // Prepare BB
-  IRBuilder<> Builder(Br);
-
-  // TODO search already exist not-mask
-  auto *NotMask = Builder.CreateXor(Mask, Constant::getAllOnesValue(SimdTy),
-                                    Mask->getName() + ".not");
-  Value *EM = getEM(M);
-  Instruction *OldGotoEM =
-      Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EM->getType()), EM,
-                         false /*isVolatile*/, EM->getName());
-
-  auto *ThenBlock = R.getIfThenRegion()->getEntry();
-  Value *GotoRMAddr = getRMAddr(ThenBlock, SimdWidth);
-
-  Instruction *OldGotoRM = Builder.CreateLoad(
-      IGCLLVM::getNonOpaquePtrEltTy(GotoRMAddr->getType()), GotoRMAddr,
-      false /*isVolatile*/, GotoRMAddr->getName());
-
-  if (GotoRMAddr->getType() != SimdTy) {
-    OldGotoRM = CastInst::CreateZExtOrBitCast(
-        OldGotoRM, SimdTy, OldGotoRM->getName() + ".simdcast",
-        OldGotoRM->getNextNonDebugInstruction());
-  }
-
-  // Create Goto instructions
-  Type *GotoTys[] = {OldGotoEM->getType(), OldGotoRM->getType()};
-  auto *GotoDecl = GenXIntrinsic::getGenXDeclaration(
-      M, GenXIntrinsic::genx_simdcf_goto, GotoTys);
-  Value *GotoArgs[] = {OldGotoEM, OldGotoRM, NotMask};
-  CallInst *Goto = Builder.CreateCall(GotoDecl, GotoArgs, "goto");
-  Goto->setConvergent();
-
-  // Create calculation with goto
-  auto *NewGotoEM = Builder.CreateExtractValue(Goto, 0, "goto.extractem");
-
-  Builder.CreateStore(NewGotoEM, EM, false /*isVolatile*/);
-
-  Instruction *NewGotoRM = dyn_cast<Instruction>(
-      Builder.CreateExtractValue(Goto, 1, "goto.extractrm"));
-  IGC_ASSERT(GotoRMAddr->getType()->isPointerTy());
-  auto *RmTy = IGCLLVM::getNonOpaquePtrEltTy(GotoRMAddr->getType());
-  if (RmTy != SimdTy) {
-    NewGotoRM = CastInst::CreateTruncOrBitCast(
-        NewGotoRM, RmTy, NewGotoRM->getName() + ".simdcast",
-        NewGotoRM->getNextNonDebugInstruction());
-  }
-
-  Builder.CreateStore(NewGotoRM, GotoRMAddr, false /*isVolatile*/);
-  auto *LoweredGotoCond =
-      Builder.CreateExtractValue(Goto, 2, "goto.extractcond");
-
-  // Branch prepare
-  Br->setCondition(LoweredGotoCond);
-  if (OldCond->use_empty())
-    OldCond->eraseFromParent();
-}
-
-void GenXPredToSimdCF::fillAfterThenBlock(SimdCFIfRegion &R) {
-  IRBuilder<> Builder(Br);
-
+Value *GenXPredToSimdCF::generateJoin(BasicBlock *JoinBlock) {
+  auto *M = JoinBlock->getModule();
   Value *EM = getEM(M);
 
-  auto *AfterThen = AfterThens[&R];
+  auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
+  auto SimdWidth = SimdTy->getNumElements();
+  IRBuilder<> Builder(JoinBlock, JoinBlock->begin());
 
   // Fix execution mask in after-then branch
-  Builder.SetInsertPoint(AfterThen, AfterThen->begin());
-  auto *OldEM = Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EM->getType()), EM,
-                                   false /*isVolatile*/, EM->getName());
+  auto *OldEM = Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EM->getType()),
+                                   EM, false /*isVolatile*/, EM->getName());
 
-  auto *ThenBlock = R.getIfThenRegion()->getEntry();
-  auto *RMAddr = getRMAddr(ThenBlock, SimdWidth);
+  auto *RMAddr = getRMAddr(JP, SimdWidth);
   auto *RM =
-      Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(RMAddr->getType()), RMAddr,
-                         false /*isVolatile*/, RMAddr->getName());
+      Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(RMAddr->getType()),
+                         RMAddr, false /*isVolatile*/, RMAddr->getName());
 
   Type *Tys[] = {OldEM->getType(), RM->getType()};
   auto *JoinDecl = GenXIntrinsic::getGenXDeclaration(
@@ -833,48 +769,138 @@ void GenXPredToSimdCF::fillAfterThenBlock(SimdCFIfRegion &R) {
   auto *NewEM = Builder.CreateExtractValue(Join, 0, "join.extractem");
   Builder.CreateStore(NewEM, EM, false /*isVolatile*/);
   auto *JoinCond = Builder.CreateExtractValue(Join, 1, "join.extractcond");
+  return JoinCond;
+}
 
+// ...
+void GenXPredToSimdCF::generateGoto(BranchInst *Br) {
+  IRBuilder<> Builder(Br);
+
+  auto *M = Br->getModule();
+  auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
+  auto SimdWidth = SimdTy->getNumElements();
+
+  // TODO search already exist not-mask
+  auto *NotMask = Builder.CreateXor(Mask, Constant::getAllOnesValue(SimdTy),
+                                    Mask->getName() + ".not");
+  Value *EM = getEM(M);
+  Instruction *OldGotoEM =
+      Builder.CreateLoad(IGCLLVM::getNonOpaquePtrEltTy(EM->getType()), EM,
+                         false /*isVolatile*/, EM->getName());
+
+  Value *GotoRMAddr = getRMAddr(JP, SimdWidth);
+
+  Instruction *OldGotoRM = Builder.CreateLoad(
+      IGCLLVM::getNonOpaquePtrEltTy(GotoRMAddr->getType()), GotoRMAddr,
+      false /*isVolatile*/, GotoRMAddr->getName());
+
+  if (GotoRMAddr->getType() != SimdTy) {
+    OldGotoRM = CastInst::CreateZExtOrBitCast(
+        OldGotoRM, SimdTy, OldGotoRM->getName() + ".simdcast",
+        OldGotoRM->getNextNonDebugInstruction());
+  }
+  // Create Goto instructions
+  Type *GotoTys[] = {OldGotoEM->getType(), OldGotoRM->getType()};
+  auto *GotoDecl = GenXIntrinsic::getGenXDeclaration(
+      M, GenXIntrinsic::genx_simdcf_goto, GotoTys);
+  Value *GotoArgs[] = {OldGotoEM, OldGotoRM, NotMask};
+  CallInst *Goto = Builder.CreateCall(GotoDecl, GotoArgs, "goto");
+  Goto->setConvergent();
+
+  // Create calculation with goto
+  auto *NewGotoEM = Builder.CreateExtractValue(Goto, 0, "goto.extractem");
+  Builder.CreateStore(NewGotoEM, EM, false /*isVolatile*/);
+
+  Instruction *NewGotoRM = dyn_cast<Instruction>(
+      Builder.CreateExtractValue(Goto, 1, "goto.extractrm"));
+  IGC_ASSERT(GotoRMAddr->getType()->isPointerTy());
+  auto *RmTy = IGCLLVM::getNonOpaquePtrEltTy(GotoRMAddr->getType());
+  if (RmTy != SimdTy) {
+    NewGotoRM = CastInst::CreateTruncOrBitCast(
+        NewGotoRM, RmTy, NewGotoRM->getName() + ".simdcast",
+        NewGotoRM->getNextNonDebugInstruction());
+  }
+  Builder.CreateStore(NewGotoRM, GotoRMAddr, false /*isVolatile*/);
+  auto *LoweredGotoCond =
+      Builder.CreateExtractValue(Goto, 2, "goto.extractcond");
+
+  // Branch prepare
+  Br->setCondition(LoweredGotoCond);
+  if (OldCond->use_empty())
+    OldCond->eraseFromParent();
+}
+
+// Disabled because conceptually it should work, but fails on
+// GenXSimdCFConformance. Or may be not debugged enough =)
+void GenXPredToSimdCF::insertIfGotoJoin(SimdCFIfRegion &R) {
+  Br = R.getIfSimdBranch(); // TODO : auto *
+  auto *M = Br->getModule();
+  // Will be removed:
+  OldCond = R.getIfSimdCondition();
+  JP = R.getIfThenRegion()->getEntry();
+
+  generateGoto(Br);
+
+  Function *F = Br->getParent()->getParent();
+  auto *IfThenExit = R.getIfThenRegion()->getExit();
+  StringRef JoinBlockPrefix = IfThenExit->getName();
+  JoinBlockPrefix.consume_back(".then");
+  Twine JoinBlockName = JoinBlockPrefix + ".afterthen";
+  auto *JoinBlock = BasicBlock::Create(M->getContext(), JoinBlockName, F,
+                                       IfThenExit->getNextNode());
+  auto ThenId = R.getIdThen();
+  Br->setSuccessor(1 - ThenId, JoinBlock);
+  auto *IfThenExitBr = IfThenExit->getTerminator();
+  IGC_ASSERT(isa<BranchInst>(IfThenExitBr));
+  IfThenExitBr->setSuccessor(0, JoinBlock);
+
+  // Additional fix for else-branch
+  if (R.hasElse()) {
+    auto *IfEndBB = IfThenExitBr->getSuccessor(1);
+    IfThenExitBr->setSuccessor(1, JoinBlock);
+    for (auto &PHI : IfEndBB->phis()) {
+      PHI.replaceIncomingBlockWith(IfThenExit, JoinBlock);
+    }
+  }
+  JoinBlocks[&R] = JoinBlock;
+
+  auto *JoinCond = generateJoin(JoinBlock);
+
+  IRBuilder<> Builder(JoinBlock, JoinBlock->end());
   BasicBlock *JoinCondFalse =
       R.hasElse() ? R.getIfElseRegion()->getEntry() : R.getExit();
   Builder.CreateCondBr(JoinCond, R.getExit(), JoinCondFalse);
 }
 
-// Disabled because conceptually it should work, but fails on
-// GenXSimdCFConformance. Or may be not debugged enough =)
-void GenXPredToSimdCF::insertIfGoto(SimdCFIfRegion &R) {
-  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  Br = R.getIfSimdBranch();
-  M = Br->getModule();
-  DL = &Br->getDebugLoc();
-  OldCond = R.getIfSimdCondition();
-  OldCondBB = OldCond->getParent();
+void GenXPredToSimdCF::insertLoopGotoJoin(SimdCFLoopRegion &R) {
+  Br = R.getSimdBranch(); // TODO : auto *
+  auto *M = Br->getModule();
+  // Will be removed:
+  OldCond = R.getSimdCondition();
+  JP = R.getLoopHead();
 
-  fillEntryBlock(R);
+  generateGoto(Br);
 
   Function *F = Br->getParent()->getParent();
-  auto *IfThenExit = R.getIfThenRegion()->getExit();
-  StringRef AfterThenPrefix = IfThenExit->getName();
-  AfterThenPrefix.consume_back(".then");
-  Twine AfterThenName = AfterThenPrefix + ".afterthen";
-  auto *AfterThen = BasicBlock::Create(M->getContext(), AfterThenName, F,
-                                       IfThenExit->getNextNode());
-  auto ThenId = R.getIdThen();
-  Br->setSuccessor(1 - ThenId, AfterThen);
-  auto *IfThenExitBr = IfThenExit->getTerminator();
-  IGC_ASSERT(isa<BranchInst>(IfThenExitBr));
-  IfThenExitBr->setSuccessor(0, AfterThen);
+
+  auto *LastBlock = R.getSimdBranch()->getParent();
+  StringRef JoinBlockPrefix = LastBlock->getName();
+
+  Twine JoinBlockName = JoinBlockPrefix + ".join";
+  auto *JoinBlock = BasicBlock::Create(M->getContext(), JoinBlockName, F,
+                                       LastBlock->getNextNode());
+
+  IGC_ASSERT(isa<BranchInst>(Br));
+  Br->setSuccessor(R.getIdExit(), JoinBlock);
 
   // Additional fix for else-branch
-  if (R.hasElse()) {
-    auto *IfEndBB = IfThenExitBr->getSuccessor(1);
-    IfThenExitBr->setSuccessor(1, AfterThen);
-    for (auto &PHI : IfEndBB->phis()) {
-      PHI.replaceIncomingBlockWith(IfThenExit, AfterThen);
-    }
-  }
-  AfterThens[&R] = AfterThen;
+  JoinBlocks[&R] = JoinBlock;
+  generateJoin(JoinBlock);
 
-  fillAfterThenBlock(R);
+  IRBuilder<> Builder(JoinBlock, JoinBlock->end());
+  Builder.CreateBr(R.getExit());
+
+  LLVM_DEBUG(dbgs() << "Join block\n"; JoinBlock->dump());
 }
 
 void GenXPredToSimdCF::removeMask(SimdCFIfRegion &R) {
@@ -967,11 +993,11 @@ void GenXPredToSimdCF::fixPHIs(SimdCFIfRegion &R) {
   auto *EBB = R.getExit();
   if (!R.hasElse()) {
     LLVM_DEBUG(dbgs() << "Phi fixing for: "; EBB->getName());
-    Instruction *InsertPoint = AfterThens[&R]->getFirstNonPHI();
-    IGC_ASSERT(AfterThens[&R] != EBB);
+    Instruction *InsertPoint = JoinBlocks[&R]->getFirstNonPHI();
+    IGC_ASSERT(JoinBlocks[&R] != EBB);
     LLVM_DEBUG(dbgs() << "Insert to : "; InsertPoint->getName());
     LLVM_DEBUG(EBB->getName());
-    LLVM_DEBUG(AfterThens[&R]->getName());
+    LLVM_DEBUG(JoinBlocks[&R]->getName());
 
     SmallVector<PHINode *, 3> Phis;
     for (auto &PHINode : EBB->phis()) {
@@ -993,9 +1019,9 @@ void GenXPredToSimdCF::fixPHIs(SimdCFIfRegion &R) {
       auto *IV = PHINode.getIncomingValue(i);
       auto *IB = PHINode.getIncomingBlock(i);
       if (R.getIfThenRegion()->getExit() == IB)
-        PHINode.addIncoming(IV, AfterThens[&R]);
+        PHINode.addIncoming(IV, JoinBlocks[&R]);
 
-      if (AfterThens[&R] == PHINode.getIncomingBlock(i))
+      if (JoinBlocks[&R] == PHINode.getIncomingBlock(i))
         PhiIncomingID.push_back(i);
     }
     if (R.isIfRegion()) {
@@ -1010,13 +1036,13 @@ void GenXPredToSimdCF::fixPHIs(SimdCFIfRegion &R) {
       // Find edge from after-then block
 
       if (Constant *ConstOperandV1 = dyn_cast<Constant>(data)) {
-        // for (AfterThens[&R]->)
+        // for (JoinBlocks[&R]->)
         //  Create phi with const input in after-then block
-        IRBuilder<> Builder(&AfterThens[&R]->front());
+        IRBuilder<> Builder(&JoinBlocks[&R]->front());
         auto Ty = ConstOperandV1->getType();
         auto *PHI = Builder.CreatePHI(Ty, 2, "afterthenPHI");
-        for (auto it = pred_begin(AfterThens[&R]),
-                  et = pred_end(AfterThens[&R]);
+        for (auto it = pred_begin(JoinBlocks[&R]),
+                  et = pred_end(JoinBlocks[&R]);
              it != et; ++it) {
           if (R.getIfThenRegion()->getExit() == *it)
             PHI->addIncoming(VForFix, R.getIfThenRegion()->getExit());
@@ -1024,9 +1050,9 @@ void GenXPredToSimdCF::fixPHIs(SimdCFIfRegion &R) {
             PHI->addIncoming(ConstOperandV1, *it);
         }
         // Restore incoming id
-        for (auto &ID : PhiIncomingID) {
-          PHINode.setIncomingValue(ID, PHI);
-          PHINode.setIncomingBlock(ID, AfterThens[&R]);
+        for (auto &IncID : PhiIncomingID) {
+          PHINode.setIncomingValue(IncID, PHI);
+          PHINode.setIncomingBlock(IncID, JoinBlocks[&R]);
         }
       } else {
         // TODO support non-consts
@@ -1039,19 +1065,31 @@ void GenXPredToSimdCF::fixPHIs(SimdCFIfRegion &R) {
   }
 }
 
+void GenXPredToSimdCF::fixPHIs(SimdCFLoopRegion &R) {
+  auto *EBB = R.getExit();
+  auto *LoopEnd = R.getSimdBranch()->getParent();
+
+  LLVM_DEBUG(dbgs() << "Phi fixing for: "; EBB->getName());
+  Instruction *InsertPoint = JoinBlocks[&R]->getFirstNonPHI();
+  IGC_ASSERT(JoinBlocks[&R] != EBB);
+  LLVM_DEBUG(dbgs() << "Insert to : "; InsertPoint->getName());
+  LLVM_DEBUG(EBB->getName());
+  LLVM_DEBUG(JoinBlocks[&R]->getName());
+
+  for (auto &PHINode : EBB->phis()) {
+    // PHINode->moveBefore(InsertPoint);
+    for (unsigned i = 0, e = PHINode.getNumIncomingValues(); i != e; i++) {
+      auto *IB = PHINode.getIncomingBlock(i);
+      if (LoopEnd == IB)
+        PHINode.setIncomingBlock(i, JoinBlocks[&R]);
+    }
+    LLVM_DEBUG(PHINode.dump());
+  }
+}
+
 bool GenXPredToSimdCF::transform(SimdCFIfRegion &R) {
-  if (!EnableSimdCFTransform)
-    return false;
-
-  Mask = R.getMask();
-  SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
-  IGC_ASSERT(SimdTy);
-  SimdWidth = SimdTy->getNumElements();
-  if (SimdWidth <= 1)
-    return false;
-
   LLVM_DEBUG(dbgs() << "Insert if goto\n");
-  insertIfGoto(R);
+  insertIfGotoJoin(R);
 
   LLVM_DEBUG(dbgs() << "Fixing PHIs\n");
   fixPHIs(R);
@@ -1062,13 +1100,27 @@ bool GenXPredToSimdCF::transform(SimdCFIfRegion &R) {
   return true;
 }
 
-// TODO: implement simd loop transformation:
 bool GenXPredToSimdCF::transform(SimdCFLoopRegion &R) {
-  LLVM_DEBUG(dbgs() << "Loop region is still not supported");
-  return false;
+  LLVM_DEBUG(dbgs() << "Insert if goto\n");
+  insertLoopGotoJoin(R);
+
+  LLVM_DEBUG(dbgs() << "Fixing PHIs\n");
+  fixPHIs(R);
+
+  return true;
 }
 
 bool GenXPredToSimdCF::transform(SimdCFRegion &R) {
+  if (!EnableSimdCFTransform)
+    return false;
+
+  Mask = R.getMask();
+  auto SimdTy = cast<IGCLLVM::FixedVectorType>(Mask->getType());
+  IGC_ASSERT(SimdTy);
+  auto SimdWidth = SimdTy->getNumElements();
+  if (SimdWidth <= 1)
+    return false;
+
   if (R.isIfRegion())
     return transform(static_cast<SimdCFIfRegion &>(R));
 
