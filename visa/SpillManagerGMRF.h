@@ -315,11 +315,7 @@ private:
 
   bool isMultiRegComprSource(G4_SrcRegRegion *src, G4_INST *inst) const;
 
-  unsigned getSendRspLengthBitOffset() const;
-
   unsigned getSendMaxResponseLength() const;
-
-  static unsigned getSendMsgLengthBitOffset();
 
   unsigned getSendMaxMessageLength() const;
 

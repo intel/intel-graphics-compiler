@@ -29,7 +29,7 @@ SPDX-License-Identifier: MIT
 #include "Attributes.hpp"
 #include "BitSet.h"
 #include "Common_GEN.h"
-#include "Common_ISA.h"
+#include "Common_ISA.h" // for GenPrecisionTable
 #include "G4_Declare.h"
 #include "G4_Opcode.h"
 #include "G4_Operand.h"

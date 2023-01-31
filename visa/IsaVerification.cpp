@@ -60,6 +60,11 @@ using namespace vISA;
     }                                                                          \
   while (0)
 
+#define COMMON_ISA_MAX_SURFACE_SIZE 128
+#define COMMON_ISA_MAX_SAMPLER_SIZE 128
+#define COMMON_ISA_MAX_MEDIA_BLOCK_WIDTH_BDW_PLUS 64
+#define COMMON_ISA_MAX_MEDIA_BLOCK_HEIGHT 64
+
 std::string raw_opnd::toString() const {
   std::stringstream sstr;
   sstr << "V" << index;
@@ -134,7 +139,7 @@ diagDumpInstructionOperandDecls(const common_isa_header &isaHeader,
           break;
         case OPERAND_ADDRESS:
         case OPERAND_INDIRECT:
-          sstr << printAddressDecl(isaHeader, header, index);
+          sstr << printAddressDecl(header, index);
           break;
         case OPERAND_PREDICATE:
           sstr << printPredicateDecl(header, index);
@@ -301,7 +306,7 @@ void vISAVerifier::verifyPredicateDecl(unsigned declID) {
 
 void vISAVerifier::verifyAddressDecl(unsigned declID) {
   std::string declError = std::string(" Error in address variable decl: ") +
-                          printAddressDecl(isaHeader, header, declID);
+                          printAddressDecl(header, declID);
 
   REPORT_HEADER(options,
                 header->getAddr(declID)->name_index < header->getStringCount(),

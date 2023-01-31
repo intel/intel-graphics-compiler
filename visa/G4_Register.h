@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #define G4_REGISTER_H
 
 #include "Assertions.h"
-#include "Common_ISA.h"
 #include "G4_Declare.h"
 #include "G4_Opcode.h"
 

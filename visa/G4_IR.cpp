@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "Assertions.h"
 #include "BinaryEncodingIGA.h"
 #include "BuildIR.h"
-#include "Common_ISA.h"
 #include "Common_ISA_framework.h"
 #include "Common_ISA_util.h"
 #include "IGC/common/StringMacros.hpp"

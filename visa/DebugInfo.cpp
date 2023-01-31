@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo.h"
 #include "BitSet.h"
 #include "BuildIR.h"
-#include "Common_ISA.h"
 #include "Common_ISA_framework.h"
 #include "FlowGraph.h"
 #include "G4_IR.hpp"

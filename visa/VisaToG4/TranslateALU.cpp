@@ -248,7 +248,7 @@ int IR_Builder::translateVISALogicInst(
 
   G4_ExecSize exsize = toExecSize(executionSize);
   G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
-  G4_Operand *g4Srcs[COMMON_ISA_MAX_NUM_SRC] = {src0, src1, src2, src3};
+  G4_Operand *g4Srcs[] = {src0, src1, src2, src3};
 
   G4_opcode g4_op = GetGenOpcodeFromVISAOpcode(opcode);
   if (dst->getBase() && dst->getBase()->isFlag()) {

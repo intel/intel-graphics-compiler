@@ -2171,6 +2171,8 @@ int IR_Builder::translateByteScatterInst(
   return VISA_SUCCESS;
 }
 
+#define SEND_GT_MSG_TYPE_BIT 14
+
 ///
 /// Bits 31-29: Reserved
 /// Bits 28-25: Message Length: Total 256bit registers expected to be sent.

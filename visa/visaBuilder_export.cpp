@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Common_ISA.h"
 #include "Common_ISA_framework.h"
 #include "VISAKernel.h"
 #include "inc/common/sku_wa.h"

@@ -17,6 +17,19 @@ SPDX-License-Identifier: MIT
 
 #define VISA_BUILDER_API
 
+// Forward declares of vISA variable and operand types.
+struct VISA_GenVar;
+struct VISA_AddrVar;
+struct VISA_PredVar;
+struct VISA_SamplerVar;
+struct VISA_SurfaceVar;
+
+struct VISA_LabelOpnd;
+struct VISA_VectorOpnd;
+struct VISA_RawOpnd;
+struct VISA_PredOpnd;
+struct VISA_StateOpndHandle;
+
 class VISAKernel {
 public:
   /********** CREATE VARIABLE APIS START ******************/
@@ -1137,9 +1150,6 @@ public:
   /// Gets declaration id VISA_SurfaceVar
   VISA_BUILDER_API virtual int
   getDeclarationID(VISA_SurfaceVar *decl) const = 0;
-
-  /// Gets declaration id VISA_LabelVar
-  VISA_BUILDER_API virtual int getDeclarationID(VISA_LabelVar *decl) const = 0;
 
   /// Gets visa instruction counter value
   VISA_BUILDER_API virtual unsigned getvIsaInstCount() const = 0;

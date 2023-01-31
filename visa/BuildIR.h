@@ -18,7 +18,6 @@ SPDX-License-Identifier: MIT
 
 #include "Assertions.h"
 #include "BitSet.h"
-#include "Common_ISA.h"
 #include "Common_ISA_util.h"
 #include "G4_IR.hpp"
 #include "G4_Kernel.hpp"

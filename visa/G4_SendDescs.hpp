@@ -9,8 +9,6 @@ SPDX-License-Identifier: MIT
 #ifndef G4_SEND_DESCS_HPP
 #define G4_SEND_DESCS_HPP
 
-#include "Common_ISA.h"
-
 #include <optional>
 #include <ostream>
 #include <string>

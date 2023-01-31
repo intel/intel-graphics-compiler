@@ -99,6 +99,8 @@ int parseBinary(std::string fileName, int argc, const char *argv[],
 }
 #endif
 
+#define COMMON_ISA_MAX_KERNEL_NAME_LEN 255
+
 int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
                          unsigned int kernelIsaSize, void *&genBinary,
                          unsigned int &genBinarySize, const char *platformStr,

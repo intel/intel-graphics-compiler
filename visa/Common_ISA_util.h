@@ -76,11 +76,13 @@ inline unsigned int Get_CISA_PreDefined_Surf_Count() {
   return COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1;
 }
 
+#define SEND_GT_MSG_LENGTH_BIT_OFFSET 25
+#define SEND_GT_RSP_LENGTH_BIT_OFFSET 20
+#define SEND_GT_MSG_HEADER_PRESENT_BIT_OFFSET 19
+
 inline unsigned getSendRspLengthBitOffset() {
   return SEND_GT_RSP_LENGTH_BIT_OFFSET;
 }
-
-// Send message information query
 
 inline unsigned getSendMsgLengthBitOffset() {
   return SEND_GT_MSG_LENGTH_BIT_OFFSET;

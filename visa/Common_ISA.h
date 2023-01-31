@@ -30,12 +30,7 @@ class G4_Declare;
 #define COMMON_ISA_MAJOR_VER 4
 #define COMMON_ISA_MINOR_VER 1
 
-#define COMMON_ISA_MAX_ADDRESS_SIZE 16
-#define COMMON_ISA_MAX_SURFACE_SIZE 128
-#define COMMON_ISA_MAX_SAMPLER_SIZE 128
-#define COMMON_ISA_MAX_NUM_SURFACES 256
 #define COMMON_ISA_MAX_NUM_SAMPLERS 32
-#define COMMON_ISA_MAX_NUM_INPUTS 256
 
 // V0-V31 are reserved
 #define COMMON_ISA_NUM_PREDEFINED_VAR_VER_3 32
@@ -45,27 +40,7 @@ class G4_Declare;
 // Reserve T0-T5 as special surfaces
 #define COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1 6
 
-// bfi can have 7 operands
-#define COMMON_ISA_MAX_NUM_OPND_ARITH_LOGIC 7
-#define COMMON_ISA_MAX_NUM_DST 2
-#define COMMON_ISA_MAX_NUM_SRC 4
-
-#define COMMON_ISA_MAX_MEDIA_BLOCK_WIDTH_BDW_PLUS 64
-#define COMMON_ISA_MAX_MEDIA_BLOCK_WIDTH 32
-#define COMMON_ISA_MAX_MEDIA_BLOCK_HEIGHT 64
-
-#define COMMON_ISA_MAX_FILENAME_LENGTH 1023
-
-#define COMMON_ISA_MAX_KERNEL_NAME_LEN 255
-
-#define SEND_GT_MSG_TYPE_BIT 14
-#define SEND_GT_MSG_LENGTH_BIT_OFFSET 25
-#define SEND_GT_RSP_LENGTH_BIT_OFFSET 20
-#define SEND_GT_MAX_RESPONSE_LENGTH 16
-#define SEND_GT_MAX_MESSAGE_LENGTH 15
-#define SEND_GT_MSG_HEADER_PRESENT_BIT_OFFSET 19
-
-typedef enum {
+enum Common_ISA_Var_Class {
   GENERAL_VAR,
   ADDRESS_VAR,
   PREDICATE_VAR,
@@ -73,27 +48,27 @@ typedef enum {
   SURFACE_VAR,
   LABEL_VAR,
   NUM_VAR_CLASS
-} Common_ISA_Var_Class;
+};
 
-typedef enum {
+enum Common_ISA_Input_Class {
   INPUT_GENERAL = 0x0,
   INPUT_SAMPLER = 0x1,
   INPUT_SURFACE = 0x2,
   INPUT_UNKNOWN
-} Common_ISA_Input_Class;
+};
 
-typedef enum {
+enum Common_ISA_Implicit_Input_Kind {
   INPUT_EXPLICIT = 0x0,
   LOCAL_SIZE = 0x1,
   GROUP_COUNT = 0x2,
   LOCAL_ID = 0x3,
   PSEUDO_INPUT = 0x10,
   IMPLICIT_INPUT_COUNT = 0x5
-} Common_ISA_Implicit_Input_Kind;
+};
 
 extern const char *implictKindStrings[IMPLICIT_INPUT_COUNT];
 
-typedef enum {
+enum Common_ISA_Operand_Class {
   OPERAND_GENERAL = 0x0,
   OPERAND_ADDRESS = 0x1,
   OPERAND_PREDICATE = 0x2,
@@ -102,9 +77,9 @@ typedef enum {
   OPERAND_IMMEDIATE = 0x5,
   OPERAND_STATE = 0x6,
   NUM_OPERAND_CLASS
-} Common_ISA_Operand_Class;
+};
 
-typedef enum {
+enum Common_ISA_Region_Val {
   REGION_NULL = 0x0,
   REGION_0 = 0x1,
   REGION_1 = 0x2,
@@ -114,46 +89,30 @@ typedef enum {
   REGION_16 = 0x6,
   REGION_32 = 0x7,
   NUM_REGION = 0x8
-} Common_ISA_Region_Val;
+};
 
 extern const char *Rel_op_str[ISA_CMP_UNDEF + 1];
-
 extern const char *media_ld_mod_str[MEDIA_LD_Mod_NUM];
 
 // media store inst modifiers
-typedef enum {
+enum MEDIA_ST_mod {
   MEDIA_ST_nomod = 0x0,
   MEDIA_ST_reserved = 0x1,
   MEDIA_ST_top = 0x2,
   MEDIA_ST_bottom = 0x3,
   MEDIA_ST_Mod_NUM
-} MEDIA_ST_mod;
-
-extern const char *media_st_mod_str[MEDIA_ST_Mod_NUM];
-
-extern const char *channel_mask_str[CHANNEL_MASK_NUM];
-
-extern const char *channel_mask_slm_str[CHANNEL_MASK_NUM];
+};
 
 extern const char *sampler_channel_output_str[4];
-
 extern const char *vme_op_mode_str[VME_OP_MODE_NUM];
-
-typedef enum {
-  S_OPND_ERROR = 0x0,
-  S_OPND_SAMPLER = 0x1,
-  S_OPND_SURFACE = 0x2,
-  S_OPND_NUM = 0x3
-} Common_ISA_State_Opnd;
-
 extern const char *emask_str[];
 
-typedef enum {
+enum Common_ISA_State_Opnd_Class {
   NOT_A_STATE_OPND = -1,
   STATE_OPND_SURFACE = 0,
   STATE_OPND_SAMPLER,
   STATE_OPND_NUM
-} Common_ISA_State_Opnd_Class;
+};
 
 /*
  *  Pseudo-strcutures describing the format of the symbol tables and kernel
@@ -261,15 +220,6 @@ struct state_info_t {
   int getSizeInBinary() const;
 };
 
-// work around for g++
-namespace patch {
-template <typename T> std::string to_string(const T &n) {
-  std::ostringstream stm;
-  stm << n;
-  return stm.str();
-}
-} // namespace patch
-
 struct input_info_t {
   // bits 0-2, category kind
   // bits 3-7, implicit argument kind
@@ -300,7 +250,7 @@ struct input_info_t {
       kindString.append(implictKindStrings[4]);
     } else if (kind >= IMPLICIT_INPUT_COUNT) {
       kindString.append("UNDEFINED_");
-      kindString.append(patch::to_string(kind));
+      kindString.append(std::to_string(kind));
     } else {
       kindString.append(implictKindStrings[kind]);
     }
@@ -314,29 +264,23 @@ struct input_info_t {
   int getSizeInBinary() const;
 };
 
-typedef struct {
-  char kind;
-  unsigned short id;
-  short offset;
-  unsigned short size;
-} parameter_info_t;
-
-typedef struct {
+struct reloc_sym {
   unsigned short symbolic_index;
   unsigned short resolved_index;
-} reloc_sym;
+};
 
-typedef struct {
+struct reloc_symtab {
   unsigned short num_syms;
   reloc_sym *reloc_syms;
-} reloc_symtab;
+};
 
-typedef struct {
+struct gen_binary_info {
   unsigned char platform;
   unsigned int binary_offset;
   unsigned int binary_size;
-} gen_binary_info;
+};
 
+// Used for vISA binary only.
 struct kernel_info_t {
   unsigned short name_len;
   char *name;
@@ -351,14 +295,14 @@ struct kernel_info_t {
                                       // old vISA binary
   unsigned char num_gen_binaries;
   gen_binary_info *gen_binaries;
-  // Auxillary data
-  //   for cisa binary emmission
+  // Auxillary data for cisa binary emmission
   char *cisa_binary_buffer;
   char *genx_binary_buffer;
 
   uint32_t getSizeInBinary() const;
 };
 
+// Used for vISA binary only.
 struct function_info_t {
   unsigned char linkage;
   unsigned short name_len;
@@ -377,13 +321,7 @@ struct function_info_t {
   uint32_t getSizeInBinary() const;
 };
 
-/*
- *  Format of the common ISA kernel binary.
- *  We do not directly output the kernel struct because the kernel binary is a
- * byte stream with no padding and alignment for the fields, and because the
- * tables have dynamic length
- *
- */
+// Used for vISA binary only.
 struct common_isa_header {
   unsigned int magic_number;
   unsigned char major_version;
@@ -397,7 +335,8 @@ struct common_isa_header {
   uint32_t getSizeInBinary() const;
 };
 
-typedef struct {
+// Used for vISA binary only.
+struct kernel_format_t {
   uint32_t string_count;
   const char **strings;
   uint32_t name_index;
@@ -424,14 +363,13 @@ typedef struct {
   unsigned short attribute_count;
   attribute_info_t *attributes;
   bool *surface_attrs;
-} kernel_format_t;
-typedef kernel_format_t function_format_t;
+};
 
-typedef struct {
+struct GenPrecision_Info_t {
   GenPrecision Prec;
   unsigned int BitSize;
   const char *Name;
-} GenPrecision_Info_t;
+};
 extern GenPrecision_Info_t
     GenPrecisionTable[(unsigned int)GenPrecision::TOTAL_NUM];
 
@@ -467,15 +405,6 @@ public:
 
   virtual const input_info_t *getInput(unsigned id) const = 0;
   virtual uint32_t getInputCount() const = 0;
-};
-
-struct print_decl_index_t {
-  unsigned var_index = 0;
-  unsigned addr_index = 0;
-  unsigned pred_index = 0;
-  unsigned sampler_index = 0;
-  unsigned surface_index = 0;
-  unsigned input_index = 0;
 };
 
 struct vector_opnd {
@@ -544,7 +473,7 @@ struct vector_opnd {
     vISA_ASSERT(isImmediate(), "immediate constant expected");
     VISA_Type type = (VISA_Type)(opnd_val.const_opnd.type & 0xF);
     vISA_ASSERT(type < ISA_TYPE_NUM && type != ISA_TYPE_BOOL,
-                 "invalid immediate constant type");
+                "invalid immediate constant type");
     return type;
   }
 
@@ -574,20 +503,20 @@ struct vector_opnd {
   int getSizeInBinary() const;
 };
 
-typedef struct _raw_opnd {
+struct raw_opnd {
   uint32_t index;
   unsigned short offset;
 
   std::string toString() const;
-} raw_opnd;
+};
 
-typedef enum {
+enum CISA_opnd_type {
   CISA_OPND_VECTOR = 0,
   CISA_OPND_RAW = 1,
   CISA_OPND_OTHER = 2
-} CISA_opnd_type;
+};
 
-typedef struct _CISA_GEN_VAR {
+struct CISA_GEN_VAR {
   Common_ISA_Var_Class type;
   unsigned int index; // index into respective symbol tables
   union {
@@ -597,20 +526,21 @@ typedef struct _CISA_GEN_VAR {
     state_info_t stateVar;
     label_info_t labelVar;
   };
-} CISA_GEN_VAR;
 
-typedef struct _VISA_GenVar : CISA_GEN_VAR {
-} VISA_GenVar;
-typedef struct _VISA_AddrVar : CISA_GEN_VAR {
-} VISA_AddrVar;
-typedef struct _VISA_PredVar : CISA_GEN_VAR {
-} VISA_PredVar;
-typedef struct _VISA_SamplerVar : CISA_GEN_VAR {
-} VISA_SamplerVar;
-typedef struct _VISA_SurfaceVar : CISA_GEN_VAR {
-} VISA_SurfaceVar;
-typedef struct _VISA_LabelVar : CISA_GEN_VAR {
-} VISA_LabelVar;
+  CISA_GEN_VAR(const CISA_GEN_VAR &) = delete;
+};
+
+// vISA variables share the same implementation, but are distinct types
+// at the API level.
+// TODO: It may be better to make VISA_GenVar an int instead. This allows us to
+// separate vISA variables from G4_declares (right now G4_declare is part of
+// CISA_GEN_VAR, which means we must create a copy of CISA_GEN_VAR even if we
+// never use vISA IR).
+struct VISA_GenVar : CISA_GEN_VAR {};
+struct VISA_AddrVar : CISA_GEN_VAR {};
+struct VISA_PredVar : CISA_GEN_VAR {};
+struct VISA_SamplerVar : CISA_GEN_VAR {};
+struct VISA_SurfaceVar : CISA_GEN_VAR {};
 
 // unfortunately vISA binary restricts the max number of predicates to 4K so
 // that we could pack pred id + control into 2 bytes. It seemed like a good idea
@@ -647,7 +577,7 @@ public:
   static PredicateOpnd getNullPred() { return PredicateOpnd(); }
 };
 
-typedef struct _CISA_opnd {
+struct VISA_opnd {
   CISA_opnd_type opnd_type;
   unsigned char tag;   // from opnd description tag
   unsigned short size; // size of the operand
@@ -665,9 +595,17 @@ typedef struct _CISA_opnd {
     vASSERT(_opnd.v_opnd.getOperandClass() == OPERAND_PREDICATE);
     return PredicateOpnd(index, _opnd.v_opnd.opnd_val.pred_opnd.index);
   }
-} VISA_opnd;
+};
 
-typedef struct _CISA_INST {
+// vISA operands share the same implementation, but are distinct types
+// at the API level.
+struct VISA_PredOpnd : VISA_opnd {};
+struct VISA_RawOpnd : VISA_opnd {};
+struct VISA_VectorOpnd : VISA_opnd {};
+struct VISA_LabelOpnd : VISA_opnd {};
+struct VISA_StateOpndHandle : VISA_opnd {};
+
+struct CISA_INST {
   unsigned char opcode;
   unsigned char execsize;
   unsigned char modifier; /// Mainly used for media ld/store.
@@ -684,30 +622,11 @@ typedef struct _CISA_INST {
   VISA_EMask_Ctrl getExecMask() const {
     return (VISA_EMask_Ctrl)(execsize >> 4);
   }
-
-} CISA_INST;
-
-#define READ_FIELD_FROM_BUF(dst, type)                                         \
-  dst = *((type *)&buf[byte_pos]);                                             \
-  byte_pos += sizeof(type);
-
-#define STRING_LEN 1024
-
-struct Common_ISA_Attribute {
-  char *name;
-  char *value;
 };
-
-typedef struct _string_pool_entry {
-  Common_ISA_Var_Class type;
-  VISA_Type data_type;
-  char *value;
-  struct _string_pool_entry *next;
-} string_pool_entry;
 
 extern const char *CISAAtomicOpNames[];
 
-typedef enum {
+enum GenAtomicOp {
   // integer operations
   GEN_ATOMIC_CMPWR_2W = 0x0, // AOP_CMPWR_2W
   GEN_ATOMIC_AND = 0x1,      // AOP_AND
@@ -732,131 +651,12 @@ typedef enum {
   GEN_ATOMIC_FADD = 0x4,   // FOP_FADD
   GEN_ATOMIC_FSUB = 0x5,   // FOP_FSUB
   GEN7_ATOMIC_UNDEF = 0xFF
-} GenAtomicOp;
-
-extern const char *va_sub_names[26];
-
-extern const char *pixel_size_str[2];
-
-extern const char *lbp_creation_mode[3];
+};
 
 extern const char *avs_control_str[4];
-
 extern const char *avs_exec_mode[3];
 
-extern const char *mmf_exec_mode[4];
-
-extern const char *mmf_enable_mode[3];
-
-extern const char *ed_exec_mode[4];
-
-extern const char *conv_exec_mode[4];
-
-extern unsigned format_control_byteSize2[4];
-
-extern unsigned ed_exec_mode_byte_size[4];
-
-extern unsigned conv_exec_mode_size[4];
-
-extern unsigned mmf_exec_mode_size[4];
-
-extern unsigned lbp_creation_exec_mode_size[3];
-
-extern unsigned lbp_correlation_mode_size[3];
-
-extern unsigned mmf_exec_mode_bit_size[4];
-
-extern unsigned output_format_control_size[4];
-
-#define HASH_TABLE_SIZE 59
-
-typedef struct {
-  PreDefined_Vars id;
-  VISA_Type type;
-  unsigned char majorVersion; // CISA major version when this becomes available
-  bool isInR0;      // whether the variable value is stored in r0 or is
-                    // appended after kernel input
-  short byteOffset; // byte offset of the variable's value
-  unsigned num_elements;
-  const char *str;
-} CISA_PreDefined_Var_Info;
-
-namespace vISA {
-enum class SFID {
-  NULL_SFID = 0,
-  SAMPLER = 2,
-  GATEWAY = 3,
-  DP_DC2 = 4,
-  DP_RC = 5,   // RENDER TARGET
-  URB = 6,     // URB
-  SPAWNER = 7, // THREAD SPAWNER
-  VME = 8,     // VIDEO MOTION ESTIMATION
-  DP_CC = 9,   // CONSTANT CACHE DATAPORT
-  DP_DC0 = 10, // DATA CACHE DATAPORT
-  DP_PI = 11,  // PIXEL INTERPOLATOR
-  DP_DC1 = 12, // DATA CACHE DATAPORT1
-  CRE = 13,    // CHECK & REFINEMENT ENGINE
-  BTD = 16,    // bindless thread dispatcher
-  RTHW = 17,   // ray trace HW accelerator
-  TGM = 18,    // typed global memory
-  SLM = 19,    // untyped shared local memory
-  UGM = 20,    // untyped global memory
-  UGML = 21,   // untyped global memory (low bandwidth)
-};
-
-inline int SFIDtoInt(SFID id) {
-  if (id == SFID::BTD) {
-    return 0x7;
-  } else if (id == SFID::RTHW) {
-    return 0x8;
-  } else if (id == SFID::TGM) {
-    return 0xD;
-  } else if (id == SFID::SLM) {
-    return 0xE;
-  } else if (id == SFID::UGM) {
-    return 0xF;
-  }
-  return static_cast<int>(id);
-};
-
-inline SFID intToSFID(int id, TARGET_PLATFORM platform) {
-  if (platform >= Xe_DG2) {
-    switch (id) {
-    case 0x7:
-      return SFID::BTD;
-    case 0x8:
-      return SFID::RTHW;
-    case 0xD:
-      return SFID::TGM;
-    case 0xE:
-      return SFID::SLM;
-    case 0xF:
-      return SFID::UGM;
-    default:
-      // fall through
-      break;
-    }
-  }
-  return static_cast<SFID>(id);
-};
-inline SFID LSC_SFID_To_SFID(LSC_SFID lscId) {
-  switch (lscId) {
-  case LSC_UGM:
-    return SFID::UGM;
-  case LSC_UGML:
-    return SFID::UGML;
-  case LSC_TGM:
-    return SFID::TGM;
-  case LSC_SLM:
-    return SFID::SLM;
-  default:
-    vISA_ASSERT_UNREACHABLE("invalid SFID for untyped LSC message");
-    return SFID::NULL_SFID;
-  }
-};
-}; // namespace vISA
-
-typedef enum {
+enum PREDEFINED_SURF {
   PREDEF_SURF_0 = 254,
   PREDEF_SURF_1 = 1,
   PREDEF_SURF_2 = 2,
@@ -868,20 +668,16 @@ typedef enum {
   PREDEF_SURF_253 =
       253, // this is only used internally and should not be set by the user
   PREDEF_SURF_255 = 255
-} PREDEFINED_SURF;
+};
 
-typedef struct {
+struct vISAPreDefinedSurface {
   int vISAId; // their id in vISA binary (0-5)
   PREDEFINED_SURF genId;
   const char *name; // name in vISA asm
-} vISAPreDefinedSurface;
+};
 
 extern vISAPreDefinedSurface
     vISAPreDefSurf[COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1];
-
-// bindless sampler field
-const int BINDLESS_SAMPLER_ID = 31;
-static const char *BINDLESS_SAMPLER_NAME = "S31";
 
 const char *getSampleOp3DName(VISASampler3DSubOpCode opcode,
                               TARGET_PLATFORM platform);
@@ -1069,17 +865,6 @@ public:
   bool operator==(Encoding other) const { return Value == other; }
 };
 
-struct VISAFenceMask {
-  uint8_t commitEnable : 1;
-  uint8_t flushICache : 1;
-  uint8_t flushSCache : 1;
-  uint8_t flushCCache : 1;
-  uint8_t flushRWCache : 1;
-  uint8_t isGlobal : 1;
-  uint8_t flushL1Cache : 1;
-  uint8_t SWFence : 1;
-};
-
 struct VISA3DSamplerOp {
   VISASampler3DSubOpCode opcode;
   bool pixelNullMask;
@@ -1115,15 +900,5 @@ struct VISA3DSamplerOp {
     return op;
   }
 };
-namespace vISA {
-class Mem_Manager;
-}
-
-extern int processCommonISAHeader(common_isa_header &cisaHdr,
-                                  unsigned &byte_pos, const void *isaBuffer,
-                                  vISA::Mem_Manager *mem);
-
-/// Use the following lengthOf macro ONLY for fixed size arrays (no pointers).
-#define lengthOf(a) (sizeof(a) / sizeof(a[0]))
 
 #endif /* COMMON_ISA_OPCODE_INCLUDED */

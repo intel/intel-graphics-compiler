@@ -3695,41 +3695,6 @@ void CISA_IR_Builder::CISA_pop_decl_scope() {
   m_kernel->popIndexMapScopeLevel();
 }
 
-unsigned short CISA_IR_Builder::get_hash_key(const char *str) {
-  const char *str_pt = str;
-  unsigned short key = 0;
-  unsigned char c;
-  while ((c = *str_pt++) != '\0')
-    key = (key + c) << 1;
-
-  return key % HASH_TABLE_SIZE;
-}
-string_pool_entry **CISA_IR_Builder::new_string_pool() {
-  string_pool_entry **sp = (string_pool_entry **)m_mem.alloc(
-      sizeof(string_pool_entry *) * HASH_TABLE_SIZE);
-  memset(sp, 0, sizeof(string_pool_entry *) * HASH_TABLE_SIZE);
-
-  return sp;
-}
-
-string_pool_entry *
-CISA_IR_Builder::string_pool_lookup(string_pool_entry **spool,
-                                    const char *str) {
-  unsigned short key = 0;
-  string_pool_entry *entry;
-  char *s;
-
-  key = get_hash_key(str);
-
-  for (entry = spool[key]; entry != NULL; entry = entry->next) {
-    s = (char *)entry->value;
-    if (!strcmp(s, str))
-      return entry;
-  }
-
-  return NULL;
-}
-
 bool CISA_IR_Builder::addAllVarAttributes(CISA_GEN_VAR *GenVar,
                                           std::vector<attr_gen_struct *> &Attrs,
                                           int lineNum) {

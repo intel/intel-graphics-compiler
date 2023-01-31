@@ -560,6 +560,17 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask) {
   } break;
   case ISA_FENCE: {
     const uint32_t GLOBAL_MASK = 0x20;
+    struct VISAFenceMask {
+      uint8_t commitEnable : 1;
+      uint8_t flushICache : 1;
+      uint8_t flushSCache : 1;
+      uint8_t flushCCache : 1;
+      uint8_t flushRWCache : 1;
+      uint8_t isGlobal : 1;
+      uint8_t flushL1Cache : 1;
+      uint8_t SWFence : 1;
+    };
+
     union fenceParam {
       VISAFenceMask mask;
       uint8_t data;

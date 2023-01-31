@@ -33,8 +33,7 @@ std::string printPredicateDecl(const print_format_provider_t *header,
                                unsigned declID);
 std::string printVariableDecl(const print_format_provider_t *header,
                               unsigned declID, const Options *options);
-std::string printAddressDecl(const common_isa_header &isaHeader,
-                             const print_format_provider_t *header,
+std::string printAddressDecl(const print_format_provider_t *header,
                              unsigned declID);
 std::string printSamplerDecl(const print_format_provider_t *header,
                              unsigned declID);

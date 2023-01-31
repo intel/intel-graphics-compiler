@@ -14,10 +14,11 @@ SPDX-License-Identifier: MIT
  * external linkage alone with their associated enums.
  */
 
-#include "Assertions.h"
 #include "IsaDescription.h"
-#include "Common_ISA.h"
+#include "Assertions.h"
 #include "IGC/common/StringMacros.hpp"
+
+#include <cstring>
 
 struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] = {
     {ISA_RESERVED_0, ISA_Inst_Reserved, "reserved0", 0, 0},

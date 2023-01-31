@@ -785,7 +785,7 @@ void VISAKernelImpl::createBindlessSampler() {
   m_bindlessSampler->stateVar.attribute_count = 0;
 
   if (IS_VISA_BOTH_PATH) {
-    const char *name = BINDLESS_SAMPLER_NAME;
+    const char *name = "S31";
     m_bindlessSampler->stateVar.name_index = addStringPool(std::string(name));
     setNameIndexMap(std::string(name), m_bindlessSampler, true);
   }
@@ -1094,8 +1094,7 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *&decl, const char *varName,
     if (IsAsmWriterMode()) {
       VISAKernel_format_provider fmt(this);
       m_CISABuilder->m_ssIsaAsm
-          << printAddressDecl(m_CISABuilder->m_header, &fmt,
-                              m_printDeclIndex.addr_index++)
+          << printAddressDecl(&fmt, m_printDeclIndex.addr_index++)
           << "\n";
     }
   }
@@ -3933,6 +3932,9 @@ int VISAKernelImpl::AppendVISASurfAccessMediaLoadStoreInst(
   return status;
 }
 
+/// Use the following lengthOf macro ONLY for fixed size arrays (no pointers).
+#define lengthOf(a) (sizeof(a) / sizeof(a[0]))
+
 static CisaFramework::CisaInst *
 AppendVISASvmGeneralBlockInst(VISA_Oword_Num size, bool unaligned,
                               VISA_VectorOpnd *address, VISA_RawOpnd *srcDst,
@@ -5777,6 +5779,13 @@ int VISAKernelImpl::AppendVISAVACentroid(VISA_StateOpndHandle *surface,
   return status;
 }
 
+constexpr unsigned conv_exec_mode_size[4] = {
+    16 * 4, /// 16x4
+    1,      /// invalid
+    16 * 1, /// 16x1
+    1       /// 1x1 1pixelconvovle only
+};
+
 int VISAKernelImpl::AppendVISAVAConvolve(VISA_StateOpndHandle *sampler,
                                          VISA_StateOpndHandle *surface,
                                          VISA_VectorOpnd *uOffset,
@@ -5853,6 +5862,13 @@ int VISAKernelImpl::AppendVISAVAErodeDilate(
   }
 
   if (IS_GEN_BOTH_PATH) {
+   constexpr unsigned ed_exec_mode_byte_size[4] = {
+        64 * 4 / 8, /// VA_ED_64x4
+        32 * 4 / 8, /// VA_ED_32x4
+        64 * 1 / 8, /// VA_ED_64x1
+        32 * 1 / 8  /// VA_ED_32x1
+    };
+
     CreateGenRawDstOperand(dst);
     G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
     unsigned int dstSize = ed_exec_mode_byte_size[execMode];
@@ -5964,6 +5980,19 @@ int VISAKernelImpl::AppendVISAVAMinMaxFilter(
   }
 
   if (IS_GEN_BOTH_PATH) {
+    constexpr unsigned mmf_exec_mode_size[4] = {
+        16 * 4, /// 16x4
+        1,      /// invalid
+        16 * 1, /// 16x1
+        1 * 1   /// 1x1
+    };
+    constexpr unsigned format_control_byteSize2[4] = {
+        4, /// AVS_16_FULL
+        2, /// AVS_16_DOWN_SAMPLE NOT VALID
+        2, /// AVS_8_FULL
+        1  /// AVS_8_DOWN_SAMPLE NOT VALID
+    };
+
     CreateGenRawDstOperand(dst);
     G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
     unsigned dstSize =
@@ -6198,6 +6227,11 @@ int VISAKernelImpl::AppendVISAVALBPCorrelation(VISA_StateOpndHandle *surface,
   ISA_VA_Sub_Opcode subOp = VA_OP_CODE_LBP_CORRELATION;
 
   if (IS_GEN_BOTH_PATH) {
+    constexpr unsigned lbp_correlation_mode_size[3] = {
+        16 * 4, /// 16x4
+        1,      /// invalid
+        16 * 1  /// 16x1
+    };
     uint8_t execMode = 0;
     uint8_t functionality = 0x3; /*reserved*/
 
@@ -6280,6 +6314,12 @@ int VISAKernelImpl::AppendVISAVALBPCreation(VISA_StateOpndHandle *surface,
   ISA_VA_Sub_Opcode subOp = VA_OP_CODE_LBP_CREATION;
 
   if (IS_GEN_BOTH_PATH) {
+    constexpr unsigned lbp_creation_exec_mode_size[3] = {
+        16 * 8, /// BOTH
+        16 * 4, /// 3x3
+        16 * 4  /// 5x5
+    };
+
     uint8_t execMode = 0;
     uint8_t functionality = mode; /*reserved*/
 
@@ -8389,23 +8429,6 @@ void VISAKernelImpl::popIndexMapScopeLevel() {
   m_GenNamedVarMap.pop_back();
 }
 
-unsigned short VISAKernelImpl::get_hash_key(const char *str) {
-  const char *str_pt = str;
-  unsigned short key = 0;
-  unsigned char c;
-  while ((c = *str_pt++) != '\0')
-    key = (key + c) << 1;
-
-  return key % HASH_TABLE_SIZE;
-}
-string_pool_entry **VISAKernelImpl::new_string_pool() {
-  string_pool_entry **sp = (string_pool_entry **)m_mem.alloc(
-      sizeof(string_pool_entry *) * HASH_TABLE_SIZE);
-  // memset(sp, 0, sizeof(string_pool_entry *) * HASH_TABLE_SIZE);
-
-  return sp;
-}
-
 VISAKernelImpl::~VISAKernelImpl() {
   std::list<CisaFramework::CisaInst *>::iterator iter =
       m_instruction_list.begin();
@@ -8864,11 +8887,6 @@ int VISAKernelImpl::getDeclarationID(VISA_SamplerVar *decl) const {
 
 /// Gets declaration id VISA_SurfaceVar
 int VISAKernelImpl::getDeclarationID(VISA_SurfaceVar *decl) const {
-  return decl->index;
-}
-
-/// Gets declaration id VISA_LabelVar
-int VISAKernelImpl::getDeclarationID(VISA_LabelVar *decl) const {
   return decl->index;
 }
 

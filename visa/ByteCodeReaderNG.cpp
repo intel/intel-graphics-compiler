@@ -47,6 +47,10 @@ SPDX-License-Identifier: MIT
 
 #include <list>
 
+// bfi can have 7 operands
+#define COMMON_ISA_MAX_NUM_OPND_ARITH_LOGIC 7
+#define STRING_LEN 1024
+
 using namespace vISA;
 
 struct RoutineContainer {
@@ -2751,7 +2755,8 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
                        var->attributes);
     container.samplerVarDecls[i] = decl;
   }
-
+  // bindless sampler field
+  constexpr int BINDLESS_SAMPLER_ID = 31;
   kernelBuilderImpl->GetBindlessSampler(
       container.samplerVarDecls[BINDLESS_SAMPLER_ID]);
 
@@ -2900,6 +2905,126 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
   for (unsigned i = 0; bytePos < kernelEnd; i++) {
     readInstructionNG(bytePos, buf, container, i);
   }
+}
+
+#define READ_FIELD_FROM_BUF(dst, type)                                         \
+  dst = *((type *)&buf[byte_pos]);                                             \
+  byte_pos += sizeof(type);
+
+static int processCommonISAHeader(common_isa_header &cisaHdr,
+                                  unsigned &byte_pos, const void *cisaBuffer,
+                                  vISA::Mem_Manager *mem) {
+  const char *buf = (const char *)cisaBuffer;
+  READ_FIELD_FROM_BUF(cisaHdr.magic_number, uint32_t);
+  READ_FIELD_FROM_BUF(cisaHdr.major_version, uint8_t);
+  READ_FIELD_FROM_BUF(cisaHdr.minor_version, uint8_t);
+  READ_FIELD_FROM_BUF(cisaHdr.num_kernels, uint16_t);
+
+  vISA_ASSERT(cisaHdr.major_version >= 3,
+              "only vISA version 3.0 and above are supported");
+
+  if (cisaHdr.num_kernels) {
+    cisaHdr.kernels = (kernel_info_t *)mem->alloc(sizeof(kernel_info_t) *
+                                                  cisaHdr.num_kernels);
+    vASSERT(cisaHdr.kernels != nullptr);
+  } else {
+    cisaHdr.kernels = NULL;
+  }
+
+  for (int i = 0; i < cisaHdr.num_kernels; i++) {
+    if (cisaHdr.major_version == 3 && cisaHdr.minor_version < 7) {
+      READ_FIELD_FROM_BUF(cisaHdr.kernels[i].name_len, uint8_t);
+    } else {
+      READ_FIELD_FROM_BUF(cisaHdr.kernels[i].name_len, uint16_t);
+    }
+    cisaHdr.kernels[i].name =
+        (char *)mem->alloc(cisaHdr.kernels[i].name_len + 1);
+    memcpy_s(cisaHdr.kernels[i].name,
+             cisaHdr.kernels[i].name_len * sizeof(uint8_t), &buf[byte_pos],
+             cisaHdr.kernels[i].name_len * sizeof(uint8_t));
+    cisaHdr.kernels[i].name[cisaHdr.kernels[i].name_len] = '\0';
+    byte_pos += cisaHdr.kernels[i].name_len;
+    READ_FIELD_FROM_BUF(cisaHdr.kernels[i].offset, uint32_t);
+    READ_FIELD_FROM_BUF(cisaHdr.kernels[i].size, uint32_t);
+    READ_FIELD_FROM_BUF(cisaHdr.kernels[i].input_offset, uint32_t);
+
+    READ_FIELD_FROM_BUF(cisaHdr.kernels[i].variable_reloc_symtab.num_syms,
+                        uint16_t);
+    vISA_ASSERT(cisaHdr.kernels[i].variable_reloc_symtab.num_syms == 0,
+                "relocation symbols not allowed");
+    cisaHdr.kernels[i].variable_reloc_symtab.reloc_syms = nullptr;
+
+    READ_FIELD_FROM_BUF(cisaHdr.kernels[i].function_reloc_symtab.num_syms,
+                        uint16_t);
+
+    vISA_ASSERT(cisaHdr.kernels[i].function_reloc_symtab.num_syms == 0,
+                "relocation symbols not allowed");
+    cisaHdr.kernels[i].function_reloc_symtab.reloc_syms = nullptr;
+    READ_FIELD_FROM_BUF(cisaHdr.kernels[i].num_gen_binaries, uint8_t);
+    cisaHdr.kernels[i].gen_binaries = (gen_binary_info *)mem->alloc(
+        cisaHdr.kernels[i].num_gen_binaries * sizeof(gen_binary_info));
+    for (int j = 0; j < cisaHdr.kernels[i].num_gen_binaries; j++) {
+      READ_FIELD_FROM_BUF(cisaHdr.kernels[i].gen_binaries[j].platform, uint8_t);
+      READ_FIELD_FROM_BUF(cisaHdr.kernels[i].gen_binaries[j].binary_offset,
+                          uint32_t);
+      READ_FIELD_FROM_BUF(cisaHdr.kernels[i].gen_binaries[j].binary_size,
+                          uint32_t);
+    }
+
+    cisaHdr.kernels[i].cisa_binary_buffer = NULL;
+    cisaHdr.kernels[i].genx_binary_buffer = NULL;
+  }
+
+  READ_FIELD_FROM_BUF(cisaHdr.num_filescope_variables, uint16_t);
+  vISA_ASSERT(cisaHdr.num_filescope_variables == 0,
+              "file scope variables are no longer supported");
+
+  READ_FIELD_FROM_BUF(cisaHdr.num_functions, uint16_t);
+
+  if (cisaHdr.num_functions) {
+    cisaHdr.functions = (function_info_t *)mem->alloc(sizeof(function_info_t) *
+                                                      cisaHdr.num_functions);
+    vASSERT(cisaHdr.functions != nullptr);
+  } else {
+    cisaHdr.functions = NULL;
+  }
+
+  for (int i = 0; i < cisaHdr.num_functions; i++) {
+    // field is deprecated
+    READ_FIELD_FROM_BUF(cisaHdr.functions[i].linkage, uint8_t);
+
+    if (cisaHdr.major_version == 3 && cisaHdr.minor_version < 7) {
+      READ_FIELD_FROM_BUF(cisaHdr.functions[i].name_len, uint8_t);
+    } else {
+      READ_FIELD_FROM_BUF(cisaHdr.functions[i].name_len, uint16_t);
+    }
+    cisaHdr.functions[i].name =
+        (char *)mem->alloc(cisaHdr.functions[i].name_len + 1);
+    memcpy_s(cisaHdr.functions[i].name,
+             cisaHdr.functions[i].name_len * sizeof(uint8_t), &buf[byte_pos],
+             cisaHdr.functions[i].name_len * sizeof(uint8_t));
+    cisaHdr.functions[i].name[cisaHdr.functions[i].name_len] = '\0';
+    byte_pos += cisaHdr.functions[i].name_len;
+    READ_FIELD_FROM_BUF(cisaHdr.functions[i].offset, uint32_t);
+    READ_FIELD_FROM_BUF(cisaHdr.functions[i].size, uint32_t);
+
+    READ_FIELD_FROM_BUF(cisaHdr.functions[i].variable_reloc_symtab.num_syms,
+                        uint16_t);
+    vISA_ASSERT(cisaHdr.functions[i].variable_reloc_symtab.num_syms == 0,
+                "variable relocation not supported");
+    cisaHdr.functions[i].variable_reloc_symtab.reloc_syms = nullptr;
+
+    READ_FIELD_FROM_BUF(cisaHdr.functions[i].function_reloc_symtab.num_syms,
+                        uint16_t);
+    vISA_ASSERT(cisaHdr.functions[i].function_reloc_symtab.num_syms == 0,
+                "function relocation not supported");
+    cisaHdr.functions[i].function_reloc_symtab.reloc_syms = nullptr;
+
+    cisaHdr.functions[i].cisa_binary_buffer = NULL;
+    cisaHdr.functions[i].genx_binary_buffer = NULL;
+  }
+
+  return 0;
 }
 
 //

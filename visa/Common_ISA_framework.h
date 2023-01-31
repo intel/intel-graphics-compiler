@@ -51,23 +51,13 @@ struct attr_gen_struct {
   bool attr_set;
 };
 
-typedef struct _VISA_PredOpnd : VISA_opnd {
-} VISA_PredOpnd;
-typedef struct _VISA_RawOpnd : VISA_opnd {
-} VISA_RawOpnd;
-typedef struct _VISA_VectorOpnd : VISA_opnd {
-} VISA_VectorOpnd;
-typedef struct _VISA_LabelOpnd : VISA_opnd {
-} VISA_LabelOpnd;
-typedef struct _VISA_StateOpndHandle : VISA_opnd {
-} VISA_StateOpndHandle;
-
 class VISAKernel;
 class VISAKernelImpl;
 class CISA_IR_Builder;
 
 namespace CisaFramework {
 
+// Wrapper for CISA_INST that also keeps track of its size in vISA binary.
 class CisaInst {
 public:
   CisaInst(vISA::Mem_Manager &mem) : m_mem(mem), m_size(0) {
@@ -87,26 +77,11 @@ public:
                             vISAVerifier *verifier = nullptr);
 
   int getSize() const { return m_size; }
-
   CISA_INST *getCISAInst() { return &m_cisa_instruction; }
   const VISA_INST_Desc *getCISAInstDesc() const { return m_inst_desc; }
-
-  VISA_opnd *getOperand(unsigned index) const {
-    return m_cisa_instruction.opnd_array[index];
-  }
-
-  unsigned char getOpcode() const { return m_cisa_instruction.opcode; }
-  unsigned char getModifier() const { return m_cisa_instruction.modifier; }
-  unsigned getOperandCount() const { return m_cisa_instruction.opnd_num; }
-  VISA_Exec_Size getExecSize() const {
-    return (VISA_Exec_Size)(m_cisa_instruction.execsize & 0xF);
-  }
-
   void *operator new(size_t sz, vISA::Mem_Manager &m) { return m.alloc(sz); }
 
 private:
-  char *m_inline_cisa;
-
   vISA::Mem_Manager &m_mem;
   short m_size;
 };

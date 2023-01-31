@@ -865,22 +865,13 @@ bool SpillManagerGRF::isMultiRegComprSource(G4_SrcRegRegion *src,
 }
 
 // Send message information query
-unsigned SpillManagerGRF::getSendRspLengthBitOffset() const {
-  return SEND_GT_RSP_LENGTH_BIT_OFFSET;
-}
-
-// Send message information query
 unsigned SpillManagerGRF::getSendMaxResponseLength() const {
-  // return SEND_GT_MAX_RESPONSE_LENGTH;
   return 8;
 }
 
-// Send message information query
-unsigned SpillManagerGRF::getSendMsgLengthBitOffset() {
-  return SEND_GT_MSG_LENGTH_BIT_OFFSET;
-}
 
 // Send message information query
+#define SEND_GT_MAX_MESSAGE_LENGTH 15
 unsigned SpillManagerGRF::getSendMaxMessageLength() const {
   return SEND_GT_MAX_MESSAGE_LENGTH;
 }

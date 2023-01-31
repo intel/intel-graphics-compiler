@@ -78,6 +78,15 @@ struct KERNEL_PERF_STATS {
   unsigned AfterReadTokenDepCount = 0;
 };
 
+struct print_decl_index_t {
+  unsigned var_index = 0;
+  unsigned addr_index = 0;
+  unsigned pred_index = 0;
+  unsigned sampler_index = 0;
+  unsigned surface_index = 0;
+  unsigned input_index = 0;
+};
+
 // Class hierarchy is as follows:
 // VISAKernel -> Abstract class that declares virtual functions to build a
 // kernel object VISAFunction : VISAKernel -> Abstract class that declares
@@ -168,8 +177,6 @@ public:
 
   void setName(const char *n);
   const char *getName() const { return m_name.c_str(); }
-  string_pool_entry **new_string_pool();
-  unsigned short get_hash_key(const char *str);
 
   const kernel_format_t *getKernelFormat() const { return &m_cisa_kernel; }
   /***************** START HELPER FUNCTIONS ********************/
@@ -1030,9 +1037,6 @@ public:
 
   /// Gets declaration id VISA_SurfaceVar
   VISA_BUILDER_API int getDeclarationID(VISA_SurfaceVar *decl) const override;
-
-  /// Gets declaration id VISA_LabelVar
-  VISA_BUILDER_API int getDeclarationID(VISA_LabelVar *decl) const override;
 
   /// Gets gen binary offset
   VISA_BUILDER_API int64_t getGenOffset() const override;

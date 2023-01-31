@@ -162,7 +162,6 @@ std::vector<attr_gen_struct*> AttrOptVar;
     VISA_opnd * RawVar;
 
     struct {
-        Common_ISA_State_Opnd type;
         unsigned char offset;
         VISA_opnd * cisa_gen_opnd;
     } StateVar;

@@ -100,7 +100,6 @@ public:
 
   /**************END VISA BUILDER API*************************/
 
-  string_pool_entry **branch_targets;
   common_isa_header m_header{};
 
   // the current vISA kernel/function being processed
@@ -549,11 +548,6 @@ public:
 
   void CISA_push_decl_scope();
   void CISA_pop_decl_scope();
-
-  unsigned short get_hash_key(const char *str);
-  string_pool_entry **new_string_pool();
-  string_pool_entry *string_pool_lookup(string_pool_entry **spool,
-                                        const char *str);
 
   // getKernels - get all kernels and functions added into this builder
   std::list<VISAKernelImpl *> &getKernels() { return m_kernelsAndFunctions; }

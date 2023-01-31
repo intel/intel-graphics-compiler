@@ -117,4 +117,79 @@ enum SamplerSIMDMode { SIMD8 = 1, SIMD16 = 2, SIMD32 = 3 };
 
 #define A64_BLOCK_MSG_SUBTYPE_OFFSET 11
 
+namespace vISA {
+enum class SFID {
+  NULL_SFID = 0,
+  SAMPLER = 2,
+  GATEWAY = 3,
+  DP_DC2 = 4,
+  DP_RC = 5,   // RENDER TARGET
+  URB = 6,     // URB
+  SPAWNER = 7, // THREAD SPAWNER
+  VME = 8,     // VIDEO MOTION ESTIMATION
+  DP_CC = 9,   // CONSTANT CACHE DATAPORT
+  DP_DC0 = 10, // DATA CACHE DATAPORT
+  DP_PI = 11,  // PIXEL INTERPOLATOR
+  DP_DC1 = 12, // DATA CACHE DATAPORT1
+  CRE = 13,    // CHECK & REFINEMENT ENGINE
+  BTD = 16,    // bindless thread dispatcher
+  RTHW = 17,   // ray trace HW accelerator
+  TGM = 18,    // typed global memory
+  SLM = 19,    // untyped shared local memory
+  UGM = 20,    // untyped global memory
+  UGML = 21,   // untyped global memory (low bandwidth)
+};
+
+inline int SFIDtoInt(SFID id) {
+  if (id == SFID::BTD) {
+    return 0x7;
+  } else if (id == SFID::RTHW) {
+    return 0x8;
+  } else if (id == SFID::TGM) {
+    return 0xD;
+  } else if (id == SFID::SLM) {
+    return 0xE;
+  } else if (id == SFID::UGM) {
+    return 0xF;
+  }
+  return static_cast<int>(id);
+};
+
+inline SFID intToSFID(int id, TARGET_PLATFORM platform) {
+  if (platform >= Xe_DG2) {
+    switch (id) {
+    case 0x7:
+      return SFID::BTD;
+    case 0x8:
+      return SFID::RTHW;
+    case 0xD:
+      return SFID::TGM;
+    case 0xE:
+      return SFID::SLM;
+    case 0xF:
+      return SFID::UGM;
+    default:
+      // fall through
+      break;
+    }
+  }
+  return static_cast<SFID>(id);
+};
+inline SFID LSC_SFID_To_SFID(LSC_SFID lscId) {
+  switch (lscId) {
+  case LSC_UGM:
+    return SFID::UGM;
+  case LSC_UGML:
+    return SFID::UGML;
+  case LSC_TGM:
+    return SFID::TGM;
+  case LSC_SLM:
+    return SFID::SLM;
+  default:
+    vISA_ASSERT_UNREACHABLE("invalid SFID for untyped LSC message");
+    return SFID::NULL_SFID;
+  }
+};
+
+}; // namespace vISA
 #endif // COMMON_GEN_H

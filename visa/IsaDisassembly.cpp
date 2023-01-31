@@ -464,8 +464,7 @@ std::string printPredicateDecl(const print_format_provider_t *header,
   return sstr.str();
 }
 
-std::string printAddressDecl(const common_isa_header &isaHeader,
-                             const print_format_provider_t *header,
+std::string printAddressDecl(const print_format_provider_t *header,
                              unsigned declID) {
   vISA_ASSERT_INPUT(header, "Argument Exception: argument header is NULL.");
   std::stringstream sstr;
@@ -650,6 +649,25 @@ static void printAtomicSubOpc(std::stringstream &sstr, uint8_t value) {
     sstr << ".64";
   }
 }
+
+constexpr const char *channel_mask_str[CHANNEL_MASK_NUM] = {
+    "",    // 0000
+    "R",   // 0001
+    "G",   // 0010
+    "RG",  // 0011
+    "B",   // 0100
+    "RB",  // 0101
+    "GB",  // 0110
+    "RGB", // 0111
+    "A",   // 1000
+    "RA",  // 1001
+    "GA",  // 1010
+    "RGA", // 1011
+    "BA",  // 1100
+    "RBA", // 1101
+    "GBA", // 1110
+    "RGBA" // 1111
+};
 
 static std::string printInstructionSVM(const print_format_provider_t *header,
                                        const CISA_INST *inst,
@@ -1350,6 +1368,41 @@ static VISA3DSamplerOp getSamplerSubOpcode(const common_isa_header &isaHeader,
   return VISA3DSamplerOp::extractSamplerOp(val);
 }
 
+constexpr const char *mmf_enable_mode[3] = {"VA_MINMAX_ENABLE", "VA_MAX_ENABLE",
+                                            "VA_MIN_ENABLE"};
+
+constexpr const char *va_sub_names[26] = {
+    "avs",                 // 0x0
+    "convolve",            // 0x1
+    "minmax",              // 0x2
+    "minmaxfilter",        // 0x3
+    "erode",               // 0x4
+    "dilate",              // 0x5
+    "boolcentroid",        // 0x6
+    "centroid",            // 0x7
+    "CONV_1D_HORIZONTAL",  // 0x8
+    "CONV_1D_VERTICAL",    // 0x9
+    "CONV_1PIXEL",         // 0x10
+    "FLOOD_FILL",          // 0x11
+    "LBP_CREATION",        // 0x12
+    "LBP_CORRELATION",     // 0x13
+    "",                    // 0x14
+    "CORRELATION_SEARCH",  // 0x15
+    "HDC_CONVOLVE_2D",     // 0x10
+    "HDC_MIN_MAX_FILTER",  // 0x11
+    "HDC_ERODE",           // 0x12
+    "HDC_DILATE",          // 0x13
+    "HDC_LBP_CORRELATION", // 0x14
+    "HDC_LBP_CREATION",    // 0x15
+    "HDC_CONVOLVE_1D_H",   // 0x16
+    "HDC_CONVOLVE_1D_V",   // 0x17
+    "HDC_CONVOLVE_1P",     // 0x18
+    "UNDEFINED"            // 0x19
+};
+
+constexpr const char *lbp_creation_mode[3] = {"VA_5x5_mode", "VA_3x3_mode",
+                                    "VA_BOTH_mode"};
+
 static std::string
 printInstructionSampler(const common_isa_header &isaHeader,
                         const print_format_provider_t *header,
@@ -1687,6 +1740,8 @@ printInstructionSampler(const common_isa_header &isaHeader,
       break;
     }
     case MINMAXFILTER_FOPCODE: {
+      constexpr const char *mmf_exec_mode[4] = {"VA_MMF_16x4", "VA_MMF_INVALID",
+                                                "VA_MMF_16x1", "VA_MMF_1x1"};
       uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
       uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
@@ -1740,6 +1795,10 @@ printInstructionSampler(const common_isa_header &isaHeader,
     case Convolve_FOPCODE:
     case Dilate_FOPCODE:
     case ERODE_FOPCODE: {
+      constexpr const char *conv_exec_mode[4] = {
+          "VA_CONV_16x4", "VA_CONV_INVALID", "VA_CONV_16x1", "VA_CONV_1x1"};
+      constexpr const char *ed_exec_mode[4] = {"VA_ED_64x4", "VA_ED_32x4",
+                                               "VA_ED_64x1", "VA_ED_32x1"};
       uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
       uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
@@ -1950,6 +2009,8 @@ printInstructionSampler(const common_isa_header &isaHeader,
         // pixel size
         uint8_t pixel_size = getPrimitiveOperand<uint8_t>(inst, i++);
         int isBigKernel = 0;
+        constexpr const char *pixel_size_str[2] = {"VA_Y16_FORMAT",
+                                                   "VA_Y8_FORMAT"};
 
         if (subOpcode == ISA_HDC_CONV) {
           isBigKernel = (pixel_size & (1 << 4));
@@ -2055,6 +2116,11 @@ printInstructionDataport(const print_format_provider_t *header,
     if (ISA_MEDIA_LD == opcode || ISA_MEDIA_ST == opcode) {
       plane = getPrimitiveOperand<uint8_t>(inst, i++);
     }
+
+    constexpr const char *media_st_mod_str[MEDIA_ST_Mod_NUM] = {
+        "nomod",
+        "reserved", // this is useless since it is for MEDIA_ST_reserved
+        "top", "bottom"};
 
     if (opcode == ISA_MEDIA_LD)
       sstr << "." << media_ld_mod_str[modifier];
@@ -3123,7 +3189,7 @@ std::string VISAKernel_format_provider::printKernelHeader(
   }
   // address decls
   for (unsigned i = 0; i < getAddrCount(); i++) {
-    sstr << "\n" << printAddressDecl(isaHeader, this, i);
+    sstr << "\n" << printAddressDecl(this, i);
   }
   // pred decls
   for (unsigned i = 0; i < getPredCount(); i++) {
