@@ -548,6 +548,7 @@ public:
   uint16_t ResponseLength() const;
   uint16_t MessageLength() const { return desc.layout.msgLength; }
   uint16_t extMessageLength() const { return (uint16_t)src1Len; }
+  void setExtMessageLength(uint16_t l) { src1Len = l; }
   bool isDataPortRead() const { return accessType != SendAccess::WRITE_ONLY; }
   bool isDataPortWrite() const { return accessType != SendAccess::READ_ONLY; }
   SendAccess getAccess() const { return accessType; }
