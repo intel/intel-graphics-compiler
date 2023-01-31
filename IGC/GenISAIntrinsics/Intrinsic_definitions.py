@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2021 Intel Corporation
+# Copyright (C) 2017-2023 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -1059,6 +1059,16 @@ Imported_Intrinsics = \
     [("anyint",                        "result"),
     [("anyfloat",                      "input")],
     "NoMem"]],
+####################################################################################################
+"GenISA_setRoundingModeFP": ["switches the FPU rounding mode",
+    [("void",                          ""),
+    [("int",                           "Rounding mode (ERoundingMode)")],
+    "None"]],
+####################################################################################################
+"GenISA_resetRoundingMode": ["resets the FPU rounding mode",
+    [("void",                          ""),
+    [],
+    "None"]],
 ####################################################################################################
 "GenISA_gather4Cptr": ["",
     [("anyvector",                     "result"),

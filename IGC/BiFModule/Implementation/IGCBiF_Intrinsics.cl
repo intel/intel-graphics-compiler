@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -840,6 +840,17 @@ float __builtin_IB_fma_rtz_f32(float x, float y, float z) __attribute__((const))
 double __builtin_IB_fma_rtp_f64(double x, double y, double z) __attribute__((const));
 // x * y + z, using round-to-negative-infinity
 double __builtin_IB_fma_rtn_f64(double x, double y, double z) __attribute__((const));
+
+// Rounding mode
+enum RoundingMode {
+    ROUND_TO_NEAREST_EVEN,
+    ROUND_TO_POSITIVE,
+    ROUND_TO_NEGATIVE,
+    ROUND_TO_ZERO,
+    ROUND_TO_ANY
+};
+void __builtin_IB_set_rounding_mode_fp(enum RoundingMode mode);
+void __builtin_IB_reset_rounding_mode();
 
 // 2d block read
 ushort2  __builtin_IB_subgroup_block_read_flat_u8_m1k32v2(long baseoffset, int width_minus_one, int height_minus_one, int pitch_minus_one, int2 coord);
