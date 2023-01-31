@@ -282,10 +282,6 @@ int main(int argc, const char *argv[]) {
   // for debug print lex results to stdout (default)
   // for release open "lex.out" and redirect lex results
   //
-  // TODO: drop the support for vISA_ISAASMNamesFile.
-  if (parserMode && opt.getOption(vISA_IsaasmNamesFileUsed)) {
-    input = opt.getOptionCstr(vISA_ISAASMNamesFile);
-  }
 
   // holds storage for the stem of input file.
   std::string stem;
@@ -331,37 +327,6 @@ extern int CISAparse(CISA_IR_Builder *builder);
 
 int parseText(llvm::StringRef fileName, int argc, const char *argv[],
               Options &opt) {
-  int num_kernels = 0;
-
-  std::list<std::string> file_names;
-  bool isaasmNamesFileUsed = false;
-
-  opt.getOption(vISA_IsaasmNamesFileUsed, isaasmNamesFileUsed);
-  if (isaasmNamesFileUsed) {
-    std::ifstream os(fileName.data(), std::ios::in);
-    if (!os.is_open()) {
-      std::cerr << fileName.data()
-                << ": could not open an isaasm names input file.\n";
-      return EXIT_FAILURE;
-    }
-
-    std::string line;
-    while (!os.eof()) {
-      std::getline(os, line);
-      if (line == "")
-        continue;
-      file_names.push_back(line);
-      num_kernels++;
-    }
-    os.close();
-  } else {
-    num_kernels = 1;
-    file_names.push_back(fileName.str());
-  }
-
-  // used to ignore duplicate file names
-  std::map<std::string, bool> files_parsed;
-
   TARGET_PLATFORM platform =
       static_cast<TARGET_PLATFORM>(opt.getuInt32Option(vISA_PlatformSet));
   VISA_BUILDER_OPTION builderOption =
@@ -374,45 +339,33 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
   if (err)
     return EXIT_FAILURE;
 
-  for (int i = 0; i < num_kernels; i++) {
-    if (files_parsed.find(file_names.front()) != files_parsed.end()) {
-      file_names.pop_front();
-      continue;
+  CISAin = fopen(fileName.data(), "r");
+  if (!CISAin) {
+    std::cerr << fileName.data() << ": cannot open vISA assembly file\n";
+    return EXIT_FAILURE;
+  }
+
+  CISAdebug = 0;
+  int fail = CISAparse(cisa_builder);
+  fclose(CISAin);
+  if (fail) {
+    if (cisa_builder->HasParseError()) {
+      std::cerr << cisa_builder->GetParseError() << "\n";
     } else {
-      files_parsed[file_names.front()] = true;
+      std::cerr << "error during parsing: CISAparse() returned " << fail
+                << "\n";
     }
+    return EXIT_FAILURE;
+  }
 
-    auto vISAFileName = file_names.front();
-    CISAin = fopen(vISAFileName.c_str(), "r");
-    if (!CISAin) {
-      std::cerr << vISAFileName << ": cannot open vISA assembly file\n";
-      return EXIT_FAILURE;
-    }
-
-    CISAdebug = 0;
-    int fail = CISAparse(cisa_builder);
-    fclose(CISAin);
-    if (fail) {
-      if (cisa_builder->HasParseError()) {
-        std::cerr << cisa_builder->GetParseError() << "\n";
-      } else {
-        std::cerr << "error during parsing: CISAparse() returned " << fail
-                  << "\n";
-      }
-      return EXIT_FAILURE;
-    }
-
-    // If the input text lacks "OutputAsmPath" (and it should),
-    // then we can override it with the implied name here.
-    auto k = cisa_builder->get_kernel();
-    if (k->getOutputAsmPath().empty()) {
-      const char *outputPrefix = opt.getOptionCstr(VISA_AsmFileName);
-      k->setOutputAsmPath(outputPrefix);
-      cisa_builder->getOptions()->setOptionInternally(VISA_AsmFileName,
-                                                      outputPrefix);
-    }
-
-    file_names.pop_front();
+  // If the input text lacks "OutputAsmPath" (and it should), then we can
+  // override it with the implied name here.
+  auto k = cisa_builder->get_kernel();
+  if (k->getOutputAsmPath().empty()) {
+    const char *outputPrefix = opt.getOptionCstr(VISA_AsmFileName);
+    k->setOutputAsmPath(outputPrefix);
+    cisa_builder->getOptions()->setOptionInternally(VISA_AsmFileName,
+                                                    outputPrefix);
   }
 
   std::string binFileName;

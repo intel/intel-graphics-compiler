@@ -375,17 +375,11 @@ int CisaBinary::dumpToFile(std::string binFileName) {
   return result;
 }
 
-void CisaBinary::writeIsaAsmFile(std::string filename,
-                                 std::string isaasmStr) const {
-  std::ofstream isaasm;
-  isaasm.open(filename.c_str());
-
-  if (isaasm.fail()) {
-    vISA_ASSERT(false, "Failed to write CISA ASM to file");
-  }
-
+void CisaBinary::writeIsaAsmFile(const std::string &filename,
+                                 const std::string &isaasmStr) const {
+  std::ofstream isaasm(filename);
+  vISA_ASSERT(!isaasm.fail(), "Failed to write CISA ASM to file");
   isaasm << isaasmStr;
-  isaasm.close();
 }
 
 void CisaBinary::patchKernel(int index, unsigned int genxBufferSize,
@@ -501,86 +495,59 @@ int CisaBinary::isaDump(const std::list<VISAKernelImpl *> &kernels,
 #ifdef IS_RELEASE_DLL
   return VISA_SUCCESS;
 #else
-  bool dump = m_options->getOption(vISA_GenerateISAASM);
-  if (!dump)
+  if (!m_options->getOption(vISA_GenerateISAASM))
     return VISA_SUCCESS;
 
-  struct ScopedFile {
-    FILE *isaasmListFile = nullptr;
-    ~ScopedFile() {
-      if (isaasmListFile)
-        fclose(isaasmListFile);
-    }
-  } ILFile;
-
-  if (options->getOption(vISA_GenerateISAASM) &&
-      options->getOption(vISA_GenIsaAsmList)) {
-    if (options->getOption(vISA_IsaasmNamesFileUsed)) {
-      const char *isaasmNamesFile = nullptr;
-      options->getOption(vISA_ISAASMNamesFile, isaasmNamesFile);
-      if (isaasmNamesFile &&
-          (ILFile.isaasmListFile = fopen(isaasmNamesFile, "w")) == nullptr) {
-        std::cerr << "Cannot open file " << isaasmNamesFile << "\n";
-        return VISA_FAILURE;
-      }
-    } else {
-      if ((ILFile.isaasmListFile = fopen("isaasmListFile.txt", "w")) ==
-          nullptr) {
-        std::cerr << "Cannot open isaasmListFile.txt\n";
-        return VISA_FAILURE;
-      }
+  std::ofstream isaasmNameList;
+  if (auto isaasmNamesFile = options->getOptionCstr(vISA_ISAASMNamesFile)) {
+    isaasmNameList.open(isaasmNamesFile);
+    if (!isaasmNameList) {
+      std::cerr << "Cannot open file " << isaasmNamesFile << "\n";
+      return VISA_FAILURE;
     }
   }
 
-  std::vector<std::string> failedFiles;
+  if (options->getOption(vISA_DumpvISA) &&
+      options->isOptionSetByUser(vISA_ISAASMNamesFile))
+    return VISA_SUCCESS;
+
   VISAKernelImpl *mainKernel = kernels.front();
   for (VISAKernelImpl *kTemp : kernels) {
-    unsigned funcId = 0;
-    if (!(m_options->getOption(vISA_DumpvISA) &&
-          m_options->getOption(vISA_IsaasmNamesFileUsed))) {
-      std::stringstream sstr;
-      std::stringstream asmName;
-
-      if (kTemp->getIsKernel()) {
-        mainKernel = kTemp;
-        asmName << kTemp->getOutputAsmPath();
-      } else if (kTemp->getIsFunction()) {
-        // function 0 has kernel_f0.visaasm
-        kTemp->GetFunctionId(funcId);
-        if (mainKernel) {
-          asmName << mainKernel->getOutputAsmPath();
-        } else {
-          // No mainKernel, use the function name instead
-          asmName << kTemp->getName();
-        }
-
-        asmName << "_f";
-        asmName << funcId;
-      } else {
-        vASSERT(kTemp->getIsPayload());
+    std::stringstream asmName;
+    if (kTemp->getIsKernel()) {
+      mainKernel = kTemp;
+      asmName << kTemp->getOutputAsmPath();
+    } else if (kTemp->getIsFunction()) {
+      // function 0 has kernel_f0.visaasm
+      unsigned funcId = 0;
+      kTemp->GetFunctionId(funcId);
+      if (mainKernel) {
         asmName << mainKernel->getOutputAsmPath();
-        asmName << "_payload";
+      } else {
+        // No mainKernel, use the function name instead
+        asmName << kTemp->getName();
       }
-      asmName << ".visaasm";
-      if (ILFile.isaasmListFile && m_options->getOption(vISA_GenIsaAsmList))
-        fputs(std::string(asmName.str() + "\n").c_str(), ILFile.isaasmListFile);
+      asmName << "_f";
+      asmName << funcId;
+    } else {
+      vASSERT(kTemp->getIsPayload());
+      asmName << mainKernel->getOutputAsmPath();
+      asmName << "_payload";
+    }
+    asmName << ".visaasm";
+    std::string asmFileName = sanitizePathString(asmName.str());
+    if (isaasmNameList.is_open()) {
+      isaasmNameList << asmFileName << "\n";
+    }
 
+    // from other shader dumps we sometimes get non-existent paths fallback to
+    // a default file name in the current working directory for that case
+    if (allowDump(*m_options, asmFileName)) {
+      if (!std::ofstream(asmFileName)) {
+        asmFileName = "default.visaasm";
+      }
       VISAKernelImpl *fmtKernel = kTemp->getIsPayload() ? mainKernel : kTemp;
-      sstr << isaDump(kTemp, fmtKernel);
-
-      // from other shader dumps we sometimes get non-existent paths
-      // fallback to a default file name in the current working directory
-      // for that case
-      std::string asmFileName = asmName.str();
-      if (allowDump(*m_options, asmFileName)) {
-        FILE *f = fopen(asmFileName.c_str(), "w");
-        if (f) {
-          fclose(f);
-        } else {
-          asmFileName = "default.visaasm";
-        }
-        writeIsaAsmFile(asmFileName, sstr.str());
-      }
+      writeIsaAsmFile(asmFileName, isaDump(kTemp, fmtKernel));
     }
   }
 

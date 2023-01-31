@@ -41,20 +41,16 @@ static std::string makePlatformsString() {
   return ss.str();
 }
 
-/*
-    All arguments should be valid BE options.
-    When invoked from main the 0 argument which is a name of the program
-    should be skipped when passed in.
-
-    If the first argument passed in is *.isaasm or -CISAbinary it
-    will go through parser mode in which it will parse *.isaasm files and create
-   either regular or fat .isa file. User can either pass in individual *.isaasm
-   file, or multiple files in a text file using -CISAbinary option. Either one
-   or the other method is allowed, but not both on the same command line.
-
-    If first name that is passed in ends with *.isa it treats it as an offline
-   compilation of .isa file.
-*/
+// All arguments should be valid BE options.  When invoked from main the
+// 0 argument which is a name of the program should be skipped when passed in.
+//
+// If the first argument passed in is a .isaasm/.visaasm file it will go
+// through parser mode in which it will parse the .isaasm/.visaasm and create
+// either regular or fat .isa file. GenX_IR can only accept a single
+// .isaasm/.visaasm input on the command line.
+//
+// If first name that is passed in ends with *.isa it treats it as an offline
+// compilation of .isa file.
 bool Options::parseOptions(int argc, const char *argv[]) {
   int startPos = 0;
   vISA_ASSERT(!argToOption.empty(), "Must be initialized first!");
@@ -287,17 +283,9 @@ bool Options::parseOptions(int argc, const char *argv[]) {
     m_vISAOptions.setBool(vISA_InsertHashMovs, true);
   }
 
-  if (m_vISAOptions.isArgSetByUser(vISA_CISAbinary)) {
-    const char *cisaBinary = m_vISAOptions.getCstr(vISA_CISAbinary);
-    m_vISAOptions.setCstr(vISA_ISAASMNamesFile, cisaBinary);
-    m_vISAOptions.setBool(vISA_IsaasmNamesFileUsed, true);
-    m_vISAOptions.setBool(vISA_isParseMode, true);
-  }
-
-  if (m_vISAOptions.isArgSetByUser(vISA_ISAASMNamesFile)) {
-    m_vISAOptions.setBool(vISA_GenIsaAsmList, true);
-    m_vISAOptions.setBool(vISA_IsaasmNamesFileUsed, true);
-  }
+  if (m_vISAOptions.isArgSetByUser(vISA_GenIsaAsmList) &&
+      !m_vISAOptions.isArgSetByUser(vISA_ISAASMNamesFile))
+    m_vISAOptions.setCstr(vISA_ISAASMNamesFile, "isaasmListFile.txt");
 
   if (m_vISAOptions.isArgSetByUser(vISA_Platform)) {
     const char *platformStr = m_vISAOptions.getCstr(vISA_Platform);

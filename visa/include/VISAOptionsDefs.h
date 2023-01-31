@@ -429,11 +429,11 @@ DEF_VISA_OPTION(vISA_GenerateBinary, ET_BOOL, "-binary", UNUSED, false)
 DEF_VISA_OPTION(vISA_GenerateISAASM, ET_BOOL, "-dumpcommonisa", UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpIsaVarNames, ET_BOOL, "-dumpisavarnames", UNUSED, true)
 DEF_VISA_OPTION(vISA_GenIsaAsmList, ET_BOOL, "-genIsaasmList", UNUSED, false)
+DEF_VISA_OPTION(vISA_ISAASMNamesFile, ET_CSTR, "-isaasmNamesOutputFile",
+                "USAGE: output file name used to emit isaasm paths.\n", NULL)
 DEF_VISA_OPTION(vISA_UniqueLabels, ET_BOOL, "-uniqueLabel", UNUSED, false)
 DEF_VISA_OPTION(vISA_ShaderDumpFilter, ET_CSTR, "-shaderDumpFilter",
                 "USAGE: -shaderDumpFilter <regex>\n", NULL)
-//   specifies a file containing isaasm paths/names to parse
-DEF_VISA_OPTION(vISA_IsaasmNamesFileUsed, ET_BOOL, NULLSTR, UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpvISA, ET_BOOL, "-dumpvisa", UNUSED, false)
 DEF_VISA_OPTION(vISA_StripComments, ET_BOOL, "-stripcomments", UNUSED, false)
 DEF_VISA_OPTION(vISA_dumpNewSyntax, ET_BOOL, "-disableIGASyntax", UNUSED, true)
@@ -441,8 +441,6 @@ DEF_VISA_OPTION(vISA_NumGenBinariesWillBePatched, ET_INT32,
                 "-numGenBinariesWillBePatched",
                 "USAGE: missing number of gen binaries that will be patched.\n",
                 0)
-DEF_VISA_OPTION(vISA_ISAASMNamesFile, ET_CSTR, "-isaasmNamesOutputFile",
-                "USAGE: File Name with isaasm paths.\n", NULL)
 DEF_VISA_OPTION(vISA_ExtraIntfFile, ET_CSTR, "-extraIntfFile",
                 "USAGE: File Name with extra interference info.\n", NULL)
 DEF_VISA_OPTION(vISA_AddExtraIntfInfo, ET_BOOL, NULLSTR, UNUSED, false)
@@ -458,8 +456,6 @@ DEF_VISA_OPTION(vISA_DecodeDbg, ET_CSTR, "-decodedbg",
 DEF_VISA_OPTION(vISA_encoderFile, ET_CSTR, "-encoderStatisticsFile",
                 "USAGE: -encoderStatisticsFile <reloc file>\n",
                 "encoderStatistics.csv")
-DEF_VISA_OPTION(vISA_CISAbinary, ET_CSTR, "-CISAbinary",
-                "USAGE: File Name with isaasm paths. ", NULL)
 DEF_VISA_OPTION(vISA_DumpRegInfo, ET_BOOL, "-dumpRegInfo", UNUSED, false)
 DEF_VISA_OPTION(vISA_PrintHexFloatInAsm, ET_BOOL, "-printHexFloatInAsm", UNUSED,
                 false)
