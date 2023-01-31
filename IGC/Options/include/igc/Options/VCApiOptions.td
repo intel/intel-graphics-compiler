@@ -88,11 +88,13 @@ def vc_disable_indvars_opt :
   HelpText<"Disable induction variable optimization">;
 
 // Compatibility alias.
-def : PlainFlag<"doubleGRF">, Alias<large_GRF>,
+def : PlainFlag<"doubleGRF">,
+  Alias<register_file_size>, AliasArgs<["256"]>,
   HelpText<"Alias for -ze-opt-large-register-file"> {
   let Flags = ApiHelper.VCBackwardCompatFlags;
 }
-def : PlainFlag<"double-GRF">, Alias<large_GRF>,
+def : PlainFlag<"double-GRF">,
+  Alias<register_file_size>, AliasArgs<["256"]>,
   HelpText<"Alias for -ze-opt-large-register-file">;
 }
 // }} VC API options

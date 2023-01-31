@@ -23,9 +23,6 @@ def gtpin_scratch_area_size : ZeSeparate<"gtpin-scratch-area-size">,
 def : ZeJoined<"gtpin-scratch-area-size=">, Alias<gtpin_scratch_area_size>,
   HelpText<"Alias for -ze-gtpin-scratch-area-size">;
 
-def large_GRF : ZeFlag<"opt-large-register-file">,
-  HelpText<"Increase number of available GRF">;
-
 def emit_debug : PlainFlag<"g">,
   HelpText<"Enable generation of debug information and enables kernel debug">;
 // These are coming from NEO when run under debugger.
@@ -45,6 +42,15 @@ defm disable_zebin : CommonFlag<"disable-zebin">,
 def intel_disable_zebin : ClFlag<"intel-disable-zebin">,
   Alias<disable_zebin_ze>,
   HelpText<"Alias for -cl-disable-zebin">;
+
+def register_file_size : ZeSeparate<"exp-register-file-size">,
+  HelpText<"Set amount of registers used by regalloc">;
+def : ZeJoined<"exp-register-file-size=">, Alias<register_file_size>,
+  HelpText<"Alias for -ze-exp-register-file-size">;
+
+def large_GRF : ZeFlag<"opt-large-register-file">,
+  Alias<register_file_size>, AliasArgs<["256"]>,
+  HelpText<"Increase number of available GRF">;
 
 }
 // }} Common API options

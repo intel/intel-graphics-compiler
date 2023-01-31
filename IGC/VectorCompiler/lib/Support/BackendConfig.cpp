@@ -106,8 +106,7 @@ static cl::opt<FunctionControl> FunctionControlOpt(
                clEnumValN(FunctionControl::StackCall, "stackcall",
                           "Stackcall")));
 
-static cl::opt<bool> LargeGRFModeOpt("vc-large-grf",
-                                     cl::desc("Enable large GRF mode"));
+static cl::opt<unsigned> GRFSizeOpt("vc-grf-size", cl::desc("Set GRF size"));
 
 static cl::opt<bool> UseBindlessBuffersOpt("vc-use-bindless-buffers",
                                            cl::desc("Use bindless buffers"));
@@ -179,7 +178,7 @@ void GenXBackendOptions::enforceLLVMOptions() {
                            DisableNonOverlappingRegionOptOpt);
   enforceOptionIfSpecified(DisableIndvarsOpt, DisableIndvarsOptOpt);
   enforceOptionIfSpecified(FCtrl, FunctionControlOpt);
-  enforceOptionIfSpecified(IsLargeGRFMode, LargeGRFModeOpt);
+  enforceOptionIfSpecified(GRFSize, GRFSizeOpt);
   enforceOptionIfSpecified(UseBindlessBuffers, UseBindlessBuffersOpt);
   enforceOptionIfSpecified(StatelessPrivateMemSize, StatelessPrivateMemSizeOpt);
   enforceOptionIfSpecified(SaveStackCallLinkage, SaveStackCallLinkageOpt);

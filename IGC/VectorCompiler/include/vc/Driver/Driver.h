@@ -107,9 +107,10 @@ struct CompileOptions {
   OptimizerLevel CodegenOptLevel = OptimizerLevel::Full;
 
   llvm::Optional<unsigned> StackMemSize;
+  llvm::Optional<unsigned> GRFSize;
+
   bool ForceLiveRangesLocalizationForAccUsage = false;
   bool ForceDisableNonOverlappingRegionOpt = false;
-  bool IsLargeGRFMode = false;
   bool ForceDisableIndvarsOpt = false;
 
   DisableLRCoalescingControl DisableLRCoalescingMode =

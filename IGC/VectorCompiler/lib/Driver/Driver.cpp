@@ -243,7 +243,8 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
     BackendOpts.DisableIndvarsOpt = true;
   BackendOpts.FCtrl = Opts.FCtrl;
   BackendOpts.WATable = Opts.WATable;
-  BackendOpts.IsLargeGRFMode = Opts.IsLargeGRFMode;
+  if (Opts.GRFSize)
+    BackendOpts.GRFSize = Opts.GRFSize.getValue();
   BackendOpts.UseBindlessBuffers = Opts.UseBindlessBuffers;
   if (Opts.SaveStackCallLinkage)
     BackendOpts.SaveStackCallLinkage = true;
@@ -711,8 +712,6 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.TranslateLegacyMemoryIntrinsics = true;
   if (ApiOptions.hasArg(OPT_vc_disable_finalizer_msg))
     Opts.DisableFinalizerMsg = true;
-  if (ApiOptions.hasArg(OPT_large_GRF))
-    Opts.IsLargeGRFMode = true;
   if (ApiOptions.hasArg(OPT_vc_use_plain_2d_images))
     Opts.UsePlain2DImages = true;
   if (ApiOptions.hasArg(OPT_vc_enable_preemption))
@@ -723,6 +722,17 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.ForceDisableNonOverlappingRegionOpt = true;
   if (ApiOptions.hasArg(OPT_vc_disable_indvars_opt))
     Opts.ForceDisableIndvarsOpt = true;
+
+  if (opt::Arg *A = ApiOptions.getLastArg(OPT_register_file_size)) {
+    StringRef V = A->getValue();
+    auto MaybeGRFSize = StringSwitch<Optional<unsigned>>(V)
+                            .Case("128", 128)
+                            .Case("256", 256)
+                            .Default(None);
+    if (!MaybeGRFSize)
+      return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
+    Opts.GRFSize = MaybeGRFSize;
+  }
 
   if (opt::Arg *A =
           ApiOptions.getLastArg(OPT_enable_zebin_ze, OPT_disable_zebin_ze))

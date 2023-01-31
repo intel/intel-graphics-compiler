@@ -120,7 +120,9 @@ struct GenXBackendOptions {
   // Non-owning pointer to workaround table.
   const WA_TABLE *WATable = nullptr;
 
-  bool IsLargeGRFMode = false;
+  // Number of general-purpose registers available for a kernel thread, 0 is to
+  // use default value.
+  unsigned GRFSize = 0;
 
   // Use bindless mode for buffers.
   bool UseBindlessBuffers = false;
@@ -331,7 +333,7 @@ public:
 
   FunctionControl getFCtrl() const { return Options.FCtrl; }
 
-  bool isLargeGRFMode() const { return Options.IsLargeGRFMode; }
+  unsigned getGRFSize() const { return Options.GRFSize; }
 
   // Return pointer to WA_TABLE. Can be null.
   const WA_TABLE *getWATable() const {

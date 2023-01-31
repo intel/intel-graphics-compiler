@@ -6583,10 +6583,13 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   }
   if (ST.needsWANoMaskFusedEU() && !DisableNoMaskWA)
     addArgument("-noMaskWA");
-  if (BC.isLargeGRFMode()) {
+
+  unsigned GRFSize = BC.getGRFSize();
+  if (GRFSize > 0) {
     addArgument("-TotalGRFNum");
-    addArgument("256");
+    addArgument(to_string(GRFSize));
   }
+
   if (ST.hasFusedEU()) {
     addArgument("-fusedCallWA");
     if (WATable && WATable->Wa_14016243945)
