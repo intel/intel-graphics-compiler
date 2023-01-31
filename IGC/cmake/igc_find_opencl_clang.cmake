@@ -15,6 +15,8 @@
 # If defined CCLANG_INSTALL_PREBUILDS_DIR, opencl-clang will be force
 # installed from the given location. BiF compilation still follows
 # scheme above
+#
+# IGC_OPTION__OPENCL_HEADER_PATH - Specify path to opencl-c.h header
 
 if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
   set(COMMON_CLANG_LIBRARY_NAME opencl-clang)
@@ -102,14 +104,23 @@ if(CCLANG_FROM_SYSTEM)
     set_property(TARGET clang-tool PROPERTY "IMPORTED_LOCATION" "${CLANG_EXE}")
     set(CL_OPTIONS "-finclude-default-header")
 
-    # Get parent dir of the location of CLANG_EXE
-    get_filename_component(CLANG_EXE_PARENT_DIR ${CLANG_EXE} DIRECTORY)
-    file(GLOB_RECURSE opencl-header ${CLANG_EXE_PARENT_DIR}/../*opencl-c.h)
-    if(opencl-header)
+    if(DEFINED IGC_OPTION__OPENCL_HEADER_PATH)
+      message(STATUS "[IGC] : IGC_OPTION__OPENCL_HEADER_PATH is set to ${IGC_OPTION__OPENCL_HEADER_PATH} therefore try to search in user defined path")
+      if(NOT EXISTS "${IGC_OPTION__OPENCL_HEADER_PATH}")
+        message(FATAL_ERROR "[IGC] : couldn't find opencl-c.h in user defined path IGC_OPTION__OPENCL_HEADER_PATH=${IGC_OPTION__OPENCL_HEADER_PATH}")
+      endif() # NOT EXISTS "${IGC_OPTION__OPENCL_HEADER_PATH}"
+      set(opencl-header "${IGC_OPTION__OPENCL_HEADER_PATH}")
       message(STATUS "[IGC] Found opencl-c.h: ${opencl-header}")
-    else(opencl-header)
-      message(FATAL_ERROR "[IGC] : Couldn't find opencl-c.h, please provide it.")
-    endif(opencl-header)
+    else(DEFINED IGC_OPTION__OPENCL_HEADER_PATH)
+      # Get path to opencl-c.h based on the location of CLANG_EXE
+      get_filename_component(CLANG_EXE_PARENT_DIR ${CLANG_EXE} DIRECTORY)
+      file(GLOB_RECURSE opencl-header ${CLANG_EXE_PARENT_DIR}/../*opencl-c.h)
+      if(opencl-header)
+        message(STATUS "[IGC] Found opencl-c.h: ${opencl-header}")
+      else(opencl-header)
+        message(FATAL_ERROR "[IGC] : Couldn't find opencl-c.h, please provide it.")
+      endif(opencl-header)
+    endif() # DEFINED IGC_OPTION__OPENCL_HEADER_PATH
   else(CLANG_EXE)
     message(FATAL_ERROR "[IGC] : Couldn't find clang-${LLVM_VERSION_MAJOR} executable, please install it.")
   endif(CLANG_EXE)
