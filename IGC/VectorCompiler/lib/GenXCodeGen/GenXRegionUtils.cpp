@@ -540,6 +540,17 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
   if (R.isMultiIndirect() && R.ElementBytes == genx::ByteBytes &&
       !ST.hasMultiIndirectByteRegioning())
     ValidWidth = 1;
+
+  // Each source region with indirect addressing can potentially cross GRF
+  // boundary with a row. 1D regions are handled in CISABuilder but 2Ds have to
+  // be splitted into 1Ds. To force the splits reported valid width is reduced
+  // to the biggest power of 2 less than region width. Multi indirect
+  // regions which could cross GRF boundary are already reported with valid
+  // width of 1 so they don't have to be handled here
+  if (R.Indirect && !R.isMultiIndirect() && R.is2D()) {
+    ValidWidth = std::min(ValidWidth, 1U << genx::log2(R.Width - Idx % R.Width));
+  }
+
   return ValidWidth;
 }
 
