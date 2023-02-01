@@ -493,7 +493,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
     : platformInfo(pInfo), m_options(options), m_kernelAttrs(anAttr),
       m_function_id(funcId), RAType(RA_Type::UNKNOWN_RA), asmInstCount(0),
       kernelID(0), fg(alloc, this, m), major_version(major),
-      minor_version(minor) {
+      minor_version(minor), grfMode(pInfo.platform) {
   vISA_ASSERT(major < COMMON_ISA_MAJOR_VER || (major == COMMON_ISA_MAJOR_VER &&
                                                minor <= COMMON_ISA_MINOR_VER),
               "CISA version not supported by this JIT-compiler");
@@ -908,13 +908,14 @@ unsigned G4_Kernel::getLargestInputRegister() {
 }
 
 void G4_Kernel::setKernelParameters() {
-  unsigned overrideGRFNum = 0;
-  unsigned overrideNumThreads = 0;
+  unsigned overrideGRFNum = 0, overrideNumThreads = 0, overrideNumSWSB = 0,
+           overrideNumAcc = 0;
 
-  TARGET_PLATFORM platform = getPlatform();
   overrideGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
-
   overrideNumThreads = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
+  overrideNumSWSB = m_options->getuInt32Option(vISA_SWSBTokenNum);
+  overrideNumAcc = m_options->getuInt32Option(vISA_numGeneralAcc);
+  regSharingHeuristics = m_options->getOption(vISA_RegSharingHeuristics);
 
   //
   // Number of threads/GRF can currently be set by:
@@ -924,209 +925,36 @@ void G4_Kernel::setKernelParameters() {
   //      2.2 kernel function
   // 3.- Compiler heuristics
   //
-  if (m_options->getuInt32Option(vISA_ForceHWThreadNumberPerEU)) {
-    numThreads = m_options->getuInt32Option(vISA_ForceHWThreadNumberPerEU);
-  }
-  regSharingHeuristics = m_options->getOption(vISA_RegSharingHeuristics);
-  if (overrideNumThreads || regSharingHeuristics) {
+
+  if (overrideNumThreads > 0) {
+    grfMode.setModeByNumThreads(overrideNumThreads);
     overrideGRFNum = 0;
-    if (numThreads > 0) {
-      overrideNumThreads = numThreads;
-    }
+  } else if (overrideGRFNum != grfMode.getDefaultGRF()) {
+    grfMode.setModeByNumGRFs(overrideGRFNum);
+  } else if (regSharingHeuristics) {
+    // GRFMode is set to default mode when kernel is created
+    // During compilation GRFMode may change by updating numThreads
+    if (numThreads > 0)
+      grfMode.setModeByNumThreads(numThreads);
+    overrideGRFNum = 0;
   }
 
-  // Set the number of GRFs
-  if (overrideGRFNum > 0) {
-    numRegTotal = overrideGRFNum;
-    callerSaveLastGRF = ((overrideGRFNum - 8) / 2) - 1;
-  }
-  else if (overrideNumThreads > 0) {
-    switch (platform) {
-    case Xe_XeHPSDV:
-    case Xe_DG2:
-    case Xe_MTL:
-      switch (overrideNumThreads) {
-      case 4:
-        numRegTotal = 256;
-        break;
-      default:
-        numRegTotal = 128;
-      }
-      break;
-    case Xe_PVC:
-    case Xe_PVCXT:
-      switch (overrideNumThreads) {
-      case 4:
-        numRegTotal = 256;
-        break;
-      case 5:
-        numRegTotal = 192;
-        break;
-      case 6:
-        numRegTotal = 160;
-        break;
-      case 7:
-        numRegTotal = 144;
-        break;
-      case 8:
-        numRegTotal = 128;
-        break;
-      case 9:
-        numRegTotal = 112;
-        break;
-      case 10:
-        numRegTotal = 96;
-        break;
-      case 12:
-        numRegTotal = 80;
-        break;
-      default:
-        numRegTotal = 128;
-      }
-      break;
-    default:
-      numRegTotal = 128;
-    }
-    callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
-  } else {
-    numRegTotal = 128;
-    callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
-  }
-  // For safety update TotalGRFNum, there may be some uses for this vISA option
-  m_options->setOption(vISA_TotalGRFNum, numRegTotal);
+  // Set number of GRFs
+  numRegTotal = overrideGRFNum ? overrideGRFNum : grfMode.getNumGRF();
+  callerSaveLastGRF = ((numRegTotal - 8) / 2) - 1;
+
+  // Set number of threads
+  numThreads = grfMode.getNumThreads();
 
   // Set the number of SWSB tokens
-  unsigned overrideNumSWSB = m_options->getuInt32Option(vISA_SWSBTokenNum);
-  if (overrideNumSWSB > 0) {
-    // User-provided number of SWSB tokens
-    numSWSBTokens = overrideNumSWSB;
-  } else if (overrideNumThreads > 0) {
-    switch (platform) {
-    case Xe_PVC:
-    case Xe_PVCXT:
-      switch (overrideNumThreads) {
-      case 4:
-        numSWSBTokens = 32;
-        break;
-      default:
-        numSWSBTokens = 16;
-      }
-      break;
-    default:
-      numSWSBTokens = 16;
-    }
-  } else {
-    // Default value based on platform
-    switch (platform) {
-    case Xe_PVC:
-    case Xe_PVCXT:
-      numSWSBTokens = 16;
-      if (numRegTotal == 256) {
-        numSWSBTokens *= 2;
-      }
-      break;
-    default:
-      numSWSBTokens = 16;
-    }
-  }
+  numSWSBTokens =
+      overrideNumSWSB ? overrideNumSWSB : grfMode.getNumSWSBTokens();
 
-  // Set the number of Acc. They are in the unit of GRFs (i.e., 1 accumulator is
-  // the same size as 1 GRF)
-  unsigned overrideNumAcc = m_options->getuInt32Option(vISA_numGeneralAcc);
-  if (overrideNumAcc > 0) {
-    // User-provided number of Acc
-    numAcc = overrideNumAcc;
-  } else if (overrideNumThreads > 0) {
-    switch (platform) {
-    case Xe_XeHPSDV:
-    case Xe_DG2:
-    case Xe_MTL:
-    case Xe_PVC:
-    case Xe_PVCXT:
-      switch (overrideNumThreads) {
-      case 4:
-        numAcc = 8;
-        break;
-      default:
-        numAcc = 4;
-      }
-      break;
-    default:
-      numAcc = 4;
-    }
-  } else {
-    // Default value based on platform
-    switch (platform) {
-    case Xe_XeHPSDV:
-    case Xe_DG2:
-    case Xe_MTL:
-    case Xe_PVC:
-    case Xe_PVCXT:
-      numAcc = 4;
-      if (numRegTotal == 256) {
-        numAcc *= 2;
-      }
-      break;
-    default:
-      numAcc = 2;
-    }
-  }
+  // Set the number of Acc
+  numAcc = overrideNumAcc ? overrideNumAcc : grfMode.getNumAcc();
 
-  // Set number of threads if it was not defined before
-  if (numThreads == 0) {
-    if (overrideNumThreads > 0) {
-      numThreads = overrideNumThreads;
-    } else {
-      switch (platform) {
-      case Xe_XeHPSDV:
-      case Xe_DG2:
-      case Xe_MTL:
-        switch (numRegTotal) {
-        case 256:
-          numThreads = 4;
-          break;
-        default:
-          numThreads = 8;
-        }
-        break;
-      case Xe_PVC:
-      case Xe_PVCXT:
-        switch (numRegTotal) {
-        case 256:
-          numThreads = 4;
-          break;
-        case 192:
-          numThreads = 5;
-          break;
-        case 160:
-          numThreads = 6;
-          break;
-        case 144:
-          numThreads = 7;
-          break;
-        case 128:
-          numThreads = 8;
-          break;
-        case 112:
-          numThreads = 9;
-          break;
-        case 96:
-          numThreads = 10;
-          break;
-        case 80:
-        case 64:
-          numThreads = 12;
-          break;
-        default:
-          numThreads = 8;
-        }
-        break;
-      default:
-        numThreads = 7;
-      }
-    }
-  }
 
+  // Special configurations go here
   if (m_options->getOption(vISA_hasDoubleAcc)) {
     numAcc = 16;
   }
@@ -2080,4 +1908,33 @@ unsigned G4_Kernel::getComputeFFIDGP1NextOff() const {
   vISA_ASSERT(fg.getNumBB() > 1, "expect at least one prolog BB");
   G4_BB *next = getNextBB(computeFFIDGP1);
   return getBinOffsetOfBB(next);
+}
+
+// GRF modes supported by HW
+GRFMode::GRFMode(const TARGET_PLATFORM platform) {
+  switch (platform) {
+  case Xe_XeHPSDV:
+  case Xe_DG2:
+  case Xe_MTL:
+    configs.resize(2);
+    // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
+    configs[0] = {128, 8, 16, 4};
+    configs[1] = {256, 4, 16, 8};
+    defaultMode = 0;
+    break;
+  case Xe_PVC:
+  case Xe_PVCXT:
+    configs.resize(2);
+    // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
+    configs[0] = {128, 8, 16, 4};
+    configs[1] = {256, 4, 32, 8};
+    defaultMode = 0;
+    break;
+  default:
+    configs.resize(1);
+    // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
+    configs[0] = {128, 8, 16, 2};
+    defaultMode = 0;
+  }
+  currentMode = defaultMode;
 }

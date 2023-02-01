@@ -134,6 +134,71 @@ class KernelDebugInfo;
 class VarSplitPass;
 
 
+// Handles information for GRF selection
+class GRFMode {
+public:
+  GRFMode(const TARGET_PLATFORM platform);
+
+  void setModeByNumGRFs(unsigned grfs) {
+    unsigned size = configs.size();
+    for (unsigned i = 0; i < size; i++) {
+      if (configs[i].numGRF == grfs) {
+        currentMode = i;
+        break;
+      }
+    }
+  }
+  void setModeByNumThreads(unsigned nthreads) {
+    unsigned size = configs.size();
+    for (unsigned i = 0; i < size; i++) {
+      if (configs[i].numThreads == nthreads) {
+        currentMode = i;
+        break;
+      }
+    }
+  }
+
+  unsigned getNumGRF() const { return configs[currentMode].numGRF; }
+  unsigned getMinGRF() const { return configs[0].numGRF; }
+  unsigned getMaxGRF() const {
+    return configs[configs.size() - 1].numGRF;
+  }
+  unsigned getDefaultGRF() const { return configs[defaultMode].numGRF; }
+
+  unsigned getNumThreads() const { return configs[currentMode].numThreads; }
+  unsigned getMinNumThreads() const {
+    return configs[configs.size() - 1].numThreads;
+  }
+  unsigned getMaxNumThreads() const { return configs[0].numThreads; }
+  unsigned getDefaultNumThreads() const {
+    return configs[defaultMode].numThreads;
+  }
+
+  unsigned getNumSWSBTokens() const {
+    return configs[currentMode].numSWSB;
+  }
+
+  unsigned getNumAcc() const { return configs[currentMode].numAcc; }
+
+private:
+  // Parameters associated to a GRF mode
+  struct Config {
+    unsigned numGRF;
+    unsigned numThreads;
+    unsigned numSWSB;
+    unsigned numAcc;
+  };
+  // Vector configs maintains all the GRF modes available for the platform
+  // being compiled.
+  //   defaultMode: vector index with the default GRF mode
+  //   currentMode: vector index with the current GRF mode that could change
+  //                during compilation.
+  std::vector<Config> configs;
+  unsigned defaultMode;
+  unsigned currentMode;
+};
+
+
 // NoMask WA Information
 class NoMaskWAInfo {
 public:
@@ -226,6 +291,7 @@ private:
   bool m_hasIndirectCall = false;
 
   VarSplitPass *varSplitPass = nullptr;
+  GRFMode grfMode;
 
   // map key is filename string with complete path.
   // if first elem of pair is false, the file wasn't found.
@@ -622,6 +688,7 @@ public:
   // end of WA related
 
 };     // G4_Kernel
+
 } // namespace vISA
 
 #endif // G4_KERNEL_HPP

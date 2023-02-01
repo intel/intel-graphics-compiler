@@ -364,31 +364,6 @@ private:
   Options *m_options;
 };
 
-class GRFMode {
-public:
-  GRFMode(TARGET_PLATFORM platform);
-  void setCurrentMode(unsigned newMode) { currentMode = newMode; }
-  unsigned getNumThreads() const { return configurations[currentMode].second; }
-  unsigned getMinGRF() const { return configurations[0].first; }
-  unsigned getMaxGRF() const {
-    return configurations[configurations.size() - 1].first;
-  }
-  unsigned getDefaultGRF() const { return configurations[defaultMode].first; }
-  unsigned getMinNumThreads() const {
-    return configurations[configurations.size() - 1].second;
-  }
-  unsigned getMaxNumThreads() const { return configurations[0].second; }
-  unsigned getDefaultNumThreads() const {
-    return configurations[defaultMode].second;
-  }
-
-private:
-  // Store all configurations <GRF, numThreads> for current platform
-  std::vector<std::pair<unsigned, unsigned>> configurations;
-  unsigned defaultMode;
-  unsigned currentMode;
-};
-
 class preRA_RegSharing {
 public:
   preRA_RegSharing(G4_Kernel &k, RPE *rpe);

@@ -4478,7 +4478,8 @@ namespace IGC
         }
         if (IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU) != 0)
         {
-            SaveOption(vISA_ForceHWThreadNumberPerEU, IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU));
+            SaveOption(vISA_HWThreadNumberPerEU,
+                       IGC_GET_FLAG_VALUE(ForceHWThreadNumberPerEU));
         }
         else if (m_program->m_Platform->supportsAutoGRFSelection() &&
             context->m_DriverInfo.supportsAutoGRFSelection() &&

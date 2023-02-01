@@ -342,9 +342,6 @@ DEF_VISA_OPTION(vISA_SchedulerWindowSize, ET_INT32, "-schedulerwindow",
                 "USAGE: -schedulerwindow <window-size>\n", 4096)
 DEF_VISA_OPTION(vISA_HWThreadNumberPerEU, ET_INT32, "-HWThreadNumberPerEU",
                 "USAGE: -HWThreadNumberPerEU <num>\n", 0)
-DEF_VISA_OPTION(vISA_ForceHWThreadNumberPerEU, ET_INT32,
-                "-forceHWThreadNumberPerEU",
-                "USAGE: -forceHWThreadNumberPerEU <num>\n", 0)
 DEF_VISA_OPTION(vISA_NoAtomicSend, ET_BOOL, "-noAtomicSend", UNUSED, false)
 DEF_VISA_OPTION(vISA_ReadSuppressionDepth, ET_INT32, "-readSuppressionDepth",
                 UNUSED, 0)

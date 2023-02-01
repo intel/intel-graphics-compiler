@@ -613,27 +613,6 @@ bool preRA_Scheduler::run() {
   return Changed;
 }
 
-// Automatic selection of GRF mode
-GRFMode::GRFMode(TARGET_PLATFORM platform) {
-  switch (platform) {
-  case Xe_DG2:
-  case Xe_PVC:
-  case Xe_PVCXT:
-  case Xe_MTL:
-    configurations.resize(2);
-    // Configurations for this platform <GRF, numThreads>
-    configurations[0] = std::make_pair(128, 8);
-    configurations[1] = std::make_pair(256, 4);
-    defaultMode = 0; // default GRF mode
-    break;
-  default:
-    configurations.resize(1);
-    configurations[0] = std::make_pair(128, 8);
-    defaultMode = 0; // default GRF mode
-  }
-  currentMode = 0;
-}
-
 preRA_RegSharing::preRA_RegSharing(G4_Kernel &k, RPE *rpe)
     : kernel(k), rpe(rpe) {}
 
@@ -688,7 +667,7 @@ bool preRA_RegSharing::run() {
   // Obs: Heuristic considering PVC with 2 GRF modes as of 03/2020
   // If maximum register pressure is higher than default GRF mode,
   // assign the smallest number of threads to this kernel.
-  if (!kernel.getOptions()->getuInt32Option(vISA_ForceHWThreadNumberPerEU) &&
+  if (!kernel.getOptions()->getuInt32Option(vISA_HWThreadNumberPerEU) &&
       (KernelPressure > getRPThresholdHigh(kernel.getNumRegTotal() -
                                            kernel.getOptions()->getuInt32Option(
                                                vISA_ReservedGRFNum)))) {
