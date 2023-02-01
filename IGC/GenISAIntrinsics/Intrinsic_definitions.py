@@ -2162,7 +2162,7 @@ Imported_Intrinsics = \
 "GenISA_staticConstantPatchValue": ["GenISA_staticConstantPatchValue returns a static constant patch value as an integer.",
     [("anyint",                       "symbol value"),
     [("any",                          "symbol name")],
-    "None"]],
+    "NoMem"]],
 ####################################################################################################
 "GenISA_HDCCCSFastClear": ["Fast Clearing CCS Surface using HDC Send",
     [("void",                          ""),

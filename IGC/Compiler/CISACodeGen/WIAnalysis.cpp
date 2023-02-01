@@ -1353,7 +1353,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
         GII_id == GenISAIntrinsic::GenISA_getStageInGridSize ||
         GII_id == GenISAIntrinsic::GenISA_getSyncBuffer ||
         GII_id == GenISAIntrinsic::GenISA_GetImplicitBufferPtr ||
-        GII_id == GenISAIntrinsic::GenISA_GetLocalIdBufferPtr)
+        GII_id == GenISAIntrinsic::GenISA_GetLocalIdBufferPtr  ||
+        GII_id == GenISAIntrinsic::GenISA_staticConstantPatchValue)
     {
         switch (GII_id)
         {
@@ -1544,6 +1545,11 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst* inst)
             WIAnalysis::WIDependancy dep1 = getDependency(op0);
             // Select worse one
             return select_conversion[dep0][dep1];
+        }
+
+        if (GII_id == GenISAIntrinsic::GenISA_staticConstantPatchValue)
+        {
+            return WIAnalysis::UNIFORM_GLOBAL;
         }
 
         if (intrinsic_name == llvm_waveBallot || intrinsic_name == llvm_waveAll)
