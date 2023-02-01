@@ -35,6 +35,7 @@ namespace IGC
         {
             AU.addRequired<WIAnalysis>();
             AU.setPreservesCFG();
+            // expect to run WIA again after this pass puts annotations on uniform alloca
         }
 
         virtual bool runOnFunction(llvm::Function& F) override;

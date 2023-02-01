@@ -51,6 +51,10 @@ namespace IGC
         AU.setPreservesAll();
         AU.addRequired<CodeGenContextWrapper>();
         AU.addRequired<LoopInfoWrapperPass>();
+        if (m_requireWIA)
+        {
+            AU.addRequired<WIAnalysis>();
+        }
     }
 
     bool RegisterPressureEstimate::runOnFunction(Function& F)
@@ -63,7 +67,8 @@ namespace IGC
         WI = getAnalysisIfAvailable<WIAnalysis>();
 
         if (pCtx->type == ShaderType::COMPUTE_SHADER ||
-            pCtx->type == ShaderType::OPENCL_SHADER)
+            pCtx->type == ShaderType::OPENCL_SHADER ||
+            m_countTemps)
         {
             OVERALL_PRESSURE_UPBOUND = 4 * 1024;
         }
