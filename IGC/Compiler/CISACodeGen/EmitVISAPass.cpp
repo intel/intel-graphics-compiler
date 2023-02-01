@@ -921,6 +921,7 @@ bool EmitPass::runOnFunction(llvm::Function& F)
         !m_currShader->GetContext()->m_retryManager.AllowSimd32Slicing() ||
         m_currShader->GetContext()->getModuleMetaData()->compOpt.OptDisable ||
         m_currShader->GetShaderType() != ShaderType::COMPUTE_SHADER ||
+        m_currShader->GetContext()->getModuleMetaData()->csInfo.disableSimd32Slicing ||
         m_pattern->m_samplertoRenderTargetEnable;
 
     IGC::Debug::Dump* llvmtoVISADump = nullptr;
