@@ -194,13 +194,22 @@ MoveEntryPointModuleToTheEnd(
     }
   }
 
-  if (!HasEntryPointModule) {
+  bool IsLibraryCompilation = false;
+  auto OptionsOfLastModule = RetPairs[RetPairs.size() - 1].second.pOptions;
+  if (OptionsOfLastModule &&
+      strstr(OptionsOfLastModule, "-library-compilation")) {
+    IsLibraryCompilation = true;
+  }
+
+  if (!HasEntryPointModule && !IsLibraryCompilation) {
     return llvm::createStringError(llvm::inconvertibleErrorCode(),
                                    "The list of SPIR-V modules did not contain "
                                    "any module with an entry point!");
   }
 
-  RetPairs.push_back(EntryPointPair);
+  if (HasEntryPointModule) {
+    RetPairs.push_back(EntryPointPair);
+  }
 
   return RetPairs;
 }
