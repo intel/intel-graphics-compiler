@@ -755,11 +755,7 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
 
     // Check if DP emulation is used and the function uses DP operations. Emulation needs r0 and private_base
     // implicit args, so these args have to exist. r0 and private_base args are adding by analysis passes.
-    bool needImplicitArgs = false;
-    if (pCtx->type == ShaderType::OPENCL_SHADER)
-    {
-        needImplicitArgs = pCtx->m_hasDPEmu && f->hasFnAttribute("uses-fp64-math");
-    }
+    bool needImplicitArgs = pCtx->type == ShaderType::OPENCL_SHADER && pCtx->m_hasDPEmu && f->hasFnAttribute("uses-fp64-math");
 
     for (const auto& A : data.ArgsMaps)
     {

@@ -446,10 +446,11 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(new ProgramScopeConstantResolution());
     }
 
-    bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-        (ctx.m_DriverInfo.NeedFP64(ctx.platform.getPlatformInfo().eProductFamily) && ctx.platform.hasNoFP64Inst()));
+    // This is the condition that double emulation is used.
+    ctx.checkDPEmulationEnabled();
+
     bool hasDPDivSqrtEmu = !ctx.platform.hasNoFP64Inst() && !ctx.platform.hasCorrectlyRoundedMacros() && ctx.m_DriverInfo.NeedFP64DivSqrt();
-    uint32_t theEmuKind = (needDPEmu ? EmuKind::EMU_DP : 0);
+    uint32_t theEmuKind = (ctx.m_hasDPEmu ? EmuKind::EMU_DP : 0);
     theEmuKind |= (hasDPDivSqrtEmu ? EmuKind::EMU_DP_DIV_SQRT : 0);
     theEmuKind |= (ctx.m_DriverInfo.NeedI64BitDivRem() ? EmuKind::EMU_I64DIVREM : 0);
     theEmuKind |=
@@ -896,9 +897,9 @@ void AddLegalizationPasses(CodeGenContext& ctx, IGCPassManager& mpm, PSSignature
         mpm.add(new AtomicOptPass());
     }
 
-    // When needDPEmu is true, enable Emu64Ops as well for now until
+    // When m_hasDPEmu is true, enable Emu64Ops as well for now until
     // DPEmu is able to get rid of all 64bit integer ops fully.
-    if ((needDPEmu && IGC_IS_FLAG_ENABLED(DPEmuNeedI64Emu)) ||
+    if ((ctx.m_hasDPEmu && IGC_IS_FLAG_ENABLED(DPEmuNeedI64Emu)) ||
         (ctx.m_DriverInfo.Enable64BitEmu() &&
             (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
             (IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform) &&
