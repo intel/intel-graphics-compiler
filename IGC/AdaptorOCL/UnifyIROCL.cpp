@@ -116,6 +116,7 @@ SPDX-License-Identifier: MIT
 #include "preprocess_spvir/PromoteBools.cpp"
 #endif // IGC_SCALAR_USE_KHRONOS_SPIRV_TRANSLATOR
 #include "LowerInvokeSIMD.hpp"
+#include "ResolveConstExprCalls.h"
 #include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 
 #include "common/debug/Debug.hpp"
@@ -380,6 +381,7 @@ static void CommonOCLBasedPasses(
     {
         // We need to propagate constexpr casts to resolve pseudo indirect calls
         mpm.add(createSCCPPass());
+        mpm.add(new ResolveConstExprCalls());
 
         // Estimate maximal function size in the module and disable subroutine if not profitable.
         mpm.add(createEstimateFunctionSizePass());

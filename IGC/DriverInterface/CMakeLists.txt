@@ -31,6 +31,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/LowerInvokeSIMD.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ResolveConstExprCalls.cpp"
   )
 
 if(IGC_OPTION__USE_KHRONOS_SPIRV_TRANSLATOR_IN_SC)
@@ -109,6 +110,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/LowerInvokeSIMD.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ResolveConstExprCalls.h"
 
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/ErrorCode.h"
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/SurfaceFormats.h"

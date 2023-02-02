@@ -18,6 +18,7 @@ set(IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerInvokeSIMD.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ResolveConstExprCalls.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteBools.cpp"
   )
@@ -128,6 +129,7 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerInvokeSIMD.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ResolveConstExprCalls.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteBools.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.h"
 
