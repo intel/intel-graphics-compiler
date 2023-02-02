@@ -71,9 +71,9 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst& I)
             // check if the array index is out of bound. The array index size is passed in from UMD
             // we might check xyz coordinate later but skip for now
             if (I.getOperand(3)->getType()->isIntOrIntVectorTy())
-                cmpInstA = builder.CreateICmp(ICmpInst::ICMP_SLE, I.getOperand(3), ConstantInt::get(Type::getInt32Ty(I.getContext()), it->second[7]));
+                cmpInstA = builder.CreateICmp(ICmpInst::ICMP_SLT, I.getOperand(3), ConstantInt::get(Type::getInt32Ty(I.getContext()), it->second[7]));
             else if (I.getOperand(3)->getType()->isFPOrFPVectorTy())
-                cmpInstA = builder.CreateFCmp(FCmpInst::FCMP_ULE, I.getOperand(3), ConstantFP::get(Type::getFloatTy(I.getContext()), it->second[7]));
+                cmpInstA = builder.CreateFCmp(FCmpInst::FCMP_ULT, I.getOperand(3), ConstantFP::get(Type::getFloatTy(I.getContext()), it->second[7]));
             else
                 return;
         }
