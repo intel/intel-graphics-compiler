@@ -46,9 +46,7 @@ else()
 endif()
 include_directories(${GED_INCLUDE} "../GEDLibrary/${GED_BRANCH}/Source/common")
 
-if (NOT IGC_BUILD)
-    include_directories("../../../inc")
-endif()
+include_directories("../../../inc")
 
 ##############################################
 # Add subdirectories with all the various IGA sources

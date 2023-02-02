@@ -28,6 +28,7 @@ set (CMAKE_CXX_STANDARD 14)
 set(LINK_AS_STATIC_LIB TRUE)
 
 include_directories(include)
+include_directories("../../inc")
 
 set(GED_BRANCH GED_external)
 
