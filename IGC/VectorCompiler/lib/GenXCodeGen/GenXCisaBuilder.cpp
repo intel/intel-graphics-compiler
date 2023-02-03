@@ -626,7 +626,6 @@ private:
   void buildPhiNode(PHINode *Phi);
   void buildGoto(CallInst *Goto, BranchInst *Branch);
   void buildCall(CallInst *CI, const DstOpndDesc &DstDesc);
-  void buildStackCall(CallInst *CI, const DstOpndDesc &DstDesc);
   void buildStackCallLight(CallInst *CI, const DstOpndDesc &DstDesc);
   void buildInlineAsm(CallInst *CI);
   void buildPrintIndex(CallInst *CI, unsigned IntrinID, unsigned Mod,
@@ -5485,10 +5484,7 @@ void GenXKernelBuilder::buildCall(CallInst *CI, const DstOpndDesc &DstDesc) {
   LLVM_DEBUG(dbgs() << CI << "\n");
   Function *Callee = CI->getCalledFunction();
   if (!Callee || vc::requiresStackCall(Callee)) {
-    if (UseNewStackBuilder)
-      buildStackCallLight(CI, DstDesc);
-    else
-      buildStackCall(CI, DstDesc);
+    buildStackCallLight(CI, DstDesc);
     return;
   }
 
@@ -6288,191 +6284,6 @@ void GenXKernelBuilder::buildStackCallLight(CallInst *CI,
     CISA_CALL(Kernel->AppendVISACFIndirectFuncCallInst(
         Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), StackCallExecSize, FuncAddr,
         ArgSize, RetSize));
-  }
-}
-
-void GenXKernelBuilder::buildStackCall(CallInst *CI,
-                                       const DstOpndDesc &DstDesc) {
-  LLVM_DEBUG(dbgs() << "Build stack call " << *CI << "\n");
-  Function *Callee = CI->getCalledFunction();
-  auto *FuncTy = CI->getFunctionType();
-
-  // Check whether the called function has a predicate arg that is EM.
-  int EMOperandNum = -1, EMIdx = -1;
-  for (auto &Arg : CI->args()) {
-    ++EMIdx;
-    if (!Arg->getType()->getScalarType()->isIntegerTy(1))
-      continue;
-    if (Liveness->getLiveRange(Arg)->getCategory() == vc::RegCategory::EM) {
-      EMOperandNum = EMIdx;
-      break;
-    }
-  }
-
-  int TotalArgSize = 0;
-  for (auto &CallArg : CI->args())
-    TotalArgSize += getValueSize(CallArg->getType());
-
-  VISA_GenVar *Sp = nullptr, *Arg = nullptr, *Ret = nullptr;
-  CISA_CALL(Kernel->GetPredefinedVar(Sp, PREDEFINED_FE_SP));
-  CISA_CALL(Kernel->GetPredefinedVar(Arg, PREDEFINED_ARG));
-  CISA_CALL(Kernel->GetPredefinedVar(Ret, PREDEFINED_RET));
-
-  unsigned ColOff = 0, RowOff = 0, SrcRowOff = 0, SrcColOff = 0;
-
-  int Sz = 0, NoStackSize = 0, StackArgSz = 0;
-  uint64_t StackOff = 0;
-  bool StackStarted = false;
-  // pack arguments
-  for (auto &CallArg : CI->args()) {
-    auto *CallArgLR = Liveness->getLiveRangeOrNull(CallArg.get());
-    if (CallArgLR && CallArgLR->getCategory() == vc::RegCategory::EM)
-      continue;
-
-    IGC_ASSERT(!CallArg->getType()->isAggregateType());
-    SrcRowOff = 0, SrcColOff = 0;
-    unsigned ArgSize = getValueSize(CallArg->getType());
-
-    if (ColOff && (CallArg->getType()->isVectorTy() ||
-                   ArgSize > (GrfByteSize - ColOff))) {
-      RowOff++;
-      ColOff = 0;
-      // adjust size if we use only a part the last used GRF
-      NoStackSize++;
-    }
-
-    bool IsUndef = isa<UndefValue>(CallArg);
-    auto *ArgVar = &CisaVars[Kernel].at("argv");
-    if ((int)ArgVar->getByteSize() - RowOff * GrfByteSize >= ArgSize &&
-        !StackStarted) {
-      IGC_ASSERT_MESSAGE(ArgSize <= Sz - ArgVar->getByteSize(),
-        "cannot pass arg via stack and %arg as well");
-
-      SrcRowOff = 0, SrcColOff = 0;
-      if (!IsUndef && CallArgLR->getCategory() == vc::RegCategory::Predicate) {
-        VISA_VectorOpnd *PredDst = nullptr;
-        Kernel->CreateVISADstOperand(
-            PredDst,
-            ArgVar->getAlias(llvmToVisaType(CallArg->getType()), Kernel)
-                ->getGenVar(),
-            1, RowOff, ColOff);
-        auto PReg = getRegForValueOrNullAndSaveAlias(SimpleValue(CallArg));
-        IGC_ASSERT(PReg);
-        Kernel->AppendVISAPredicateMove(PredDst,
-                                        PReg->GetVar<VISA_PredVar>(Kernel));
-        ColOff += ArgSize;
-      } else
-        emitVectorCopy<CisaVariable, Value>(
-            ArgVar->getAlias(CallArg, Kernel), CallArg, RowOff, ColOff,
-            SrcRowOff, SrcColOff, getValueSize(CallArg), !IsUndef);
-      Sz += ArgSize;
-      NoStackSize = RowOff;
-    } else {
-      StackStarted = true;
-      RowOff = ColOff = 0;
-      SrcRowOff = SrcColOff = 0;
-      VISA_StateOpndHandle *StackSurfOp = nullptr;
-      VISA_SurfaceVar *StackSurfVar = nullptr;
-      CISA_CALL(
-          Kernel->GetPredefinedSurface(StackSurfVar, StackSurf));
-      CISA_CALL(Kernel->CreateVISAStateOperandHandle(StackSurfOp, StackSurfVar));
-      pushStackArg(StackSurfOp, CallArg, ArgSize, RowOff, ColOff, SrcRowOff,
-                   SrcColOff, !IsUndef);
-
-      StackArgSz += (ArgSize / visa::BytesPerOword) +
-                    (ArgSize % visa::BytesPerOword ? 1 : 0);
-      StackOff = -StackArgSz;
-    }
-  }
-  if (!StackStarted && ColOff)
-    NoStackSize++;
-
-  VISA_VectorOpnd *SpOpSrc = nullptr, *SpOpDst = nullptr, *Imm = nullptr;
-  if (StackOff) {
-    CISA_CALL(Kernel->CreateVISADstOperand(SpOpDst, Sp, 1, 0, 0));
-    CISA_CALL(Kernel->CreateVISASrcOperand(SpOpSrc, Sp, MODIFIER_NONE, 0, 1, 0,
-                                           0, 0));
-    CISA_CALL(Kernel->CreateVISAImmediate(Imm, &StackOff, ISA_TYPE_UQ));
-    CISA_CALL(Kernel->AppendVISAArithmeticInst(
-        ISA_ADD, nullptr, false, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
-        EXEC_SIZE_1, SpOpDst, SpOpSrc, Imm));
-  }
-
-  VISA_PredOpnd *Pred = nullptr;
-  VISA_Exec_Size ExecSize = StackCallExecSize;
-  if (EMOperandNum >= 0) {
-    Pred = createPred(CI, BaleInfo(), EMOperandNum);
-    auto *VTy = cast<IGCLLVM::FixedVectorType>(
-        CI->getArgOperand(EMOperandNum)->getType());
-    ExecSize = getExecSizeFromValue(VTy->getNumElements());
-  }
-
-  auto *RetVar = &CisaVars[Kernel].at("retv");
-  bool ProcessRet = !FuncTy->getReturnType()->isVoidTy() &&
-                    !FuncTy->getReturnType()->isAggregateType() &&
-                    !(FuncTy->getReturnType()->isVectorTy() &&
-                      cast<VectorType>(FuncTy->getReturnType())
-                          ->getElementType()
-                          ->isIntegerTy(1));
-
-  // cannot use processRet here since aggr/em args should be co
-  int RetSize =
-      (FuncTy->getReturnType()->isVoidTy() ||
-       getValueSize(FuncTy->getReturnType()) > RetVar->getByteSize())
-          ? 0
-          : (getValueSize(FuncTy->getReturnType()) + GrfByteSize - 1) /
-                GrfByteSize;
-  if (Callee) {
-    CISA_CALL(Kernel->AppendVISACFFunctionCallInst(
-        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), ExecSize,
-        Callee->getName().str(), NoStackSize, RetSize));
-  } else {
-    auto *FuncAddr = createSource(IGCLLVM::getCalledValue(CI), DONTCARESIGNED);
-    IGC_ASSERT(FuncAddr);
-    CISA_CALL(Kernel->AppendVISACFIndirectFuncCallInst(
-        Pred, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1), ExecSize, FuncAddr,
-        NoStackSize, RetSize));
-  }
-
-  unsigned StackRetSz = 0;
-  if (!FuncTy->getReturnType()->isVoidTy() &&
-      getValueSize(FuncTy->getReturnType()) > RetVar->getByteSize())
-    StackRetSz = (getValueSize(FuncTy->getReturnType(), visa::BytesPerOword) /
-                      visa::BytesPerOword +
-                  ((getValueSize(FuncTy->getReturnType(), visa::BytesPerOword) %
-                    visa::BytesPerOword)
-                       ? 1
-                       : 0));
-  // unpack retval
-  if (ProcessRet && Liveness->getLiveRange(CI) &&
-      Liveness->getLiveRange(CI)->getCategory() != vc::RegCategory::EM) {
-    unsigned RowOff = 0, ColOff = 0, SrcRowOff = 0, SrcColOff = 0;
-    if (getValueSize(FuncTy->getReturnType()) <= RetVar->getByteSize()) {
-      emitVectorCopy(CI, RetVar->getAlias(CI, Kernel), RowOff, ColOff,
-                     SrcRowOff, SrcColOff, getValueSize(CI));
-    } else {
-      int StackOffVal = -StackRetSz;
-      VISA_StateOpndHandle *StackSurfOp = nullptr;
-      VISA_SurfaceVar *StackSurfVar = nullptr;
-      CISA_CALL(
-          Kernel->GetPredefinedSurface(StackSurfVar, StackSurf));
-      CISA_CALL(Kernel->CreateVISAStateOperandHandle(StackSurfOp, StackSurfVar));
-      popStackArg(CI, StackSurfOp, getValueSize(Callee->getReturnType()), RowOff,
-                  ColOff, SrcRowOff, SrcColOff, StackOffVal);
-    }
-  }
-  // restore Sp
-  CISA_CALL(
-      Kernel->CreateVISASrcOperand(SpOpSrc, Sp, MODIFIER_NONE, 0, 1, 0, 0, 0));
-  CISA_CALL(Kernel->CreateVISADstOperand(SpOpDst, Sp, 1, 0, 0));
-  uint64_t OffVal = -StackRetSz;
-  IGC_ASSERT(OffVal <= std::numeric_limits<uint32_t>::max());
-
-  if (OffVal) {
-    CISA_CALL(Kernel->CreateVISAImmediate(Imm, &OffVal, ISA_TYPE_UD));
-    CISA_CALL(Kernel->AppendVISAArithmeticInst(
-      ISA_ADD, nullptr, false, (NoMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1),
-      EXEC_SIZE_1, SpOpDst, SpOpSrc, Imm));
   }
 }
 
