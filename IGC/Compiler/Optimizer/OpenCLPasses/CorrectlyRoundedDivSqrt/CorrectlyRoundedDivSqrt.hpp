@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -43,6 +44,7 @@ namespace IGC
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
         /// @brief  replace given divide instruction with a call to a correctly rounded version.
@@ -67,6 +69,9 @@ namespace IGC
         bool m_hasHalfTy;
 
         bool m_IsCorrectlyRounded;
+
+        /// @brief A flag signaling if the platform has partial fp64 emulation
+        bool m_hasDPDivSqrtEmu = false;
 
         llvm::Module* m_module = nullptr;
 

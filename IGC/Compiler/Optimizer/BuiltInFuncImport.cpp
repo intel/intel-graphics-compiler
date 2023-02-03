@@ -1028,6 +1028,7 @@ void BIImport::InitializeBIFlags(Module& M)
     initializeVarWithValue("__hasHWLocalThreadID", pCtx->platform.hasHWLocalThreadID() ? 1 : 0);
     initializeVarWithValue("__CRMacros",
         pCtx->platform.hasCorrectlyRoundedMacros() ? 1 : 0);
+    initializeVarWithValue("__NeedFP64DivSqrt", pCtx->m_DriverInfo.NeedFP64DivSqrt() ? 1 : 0);
 
     if (StringRef(pCtx->getModule()->getTargetTriple()).size() > 0)
     {

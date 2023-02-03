@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/CorrectlyRoundedDivSqrt/CorrectlyRoundedDivSqrt.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -30,6 +31,7 @@ using namespace IGC::IGCMD;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(CorrectlyRoundedDivSqrt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(CorrectlyRoundedDivSqrt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char CorrectlyRoundedDivSqrt::ID = 0;
@@ -50,6 +52,13 @@ bool CorrectlyRoundedDivSqrt::runOnModule(Module& M)
 {
     // Was the module compiled with the CR flag on?
     m_IsCorrectlyRounded = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.CorrectlyRoundedDivSqrt;
+
+    // Double precision divide and sqrt must always be correctly rounded.
+    // For platforms with partial fp64 emulation swap to builtins to get
+    // correct implementation.
+    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_hasDPDivSqrtEmu = !pCtx->platform.hasNoFP64Inst() && !pCtx->platform.hasCorrectlyRoundedMacros() && pCtx->m_DriverInfo.NeedFP64DivSqrt();
+    m_IsCorrectlyRounded |= m_hasDPDivSqrtEmu;
 
     // Even if it wasn't, it's possible that CR was requested through a build-time option
     // (This is relevant at least for SPIR)
@@ -116,7 +125,8 @@ Value* CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator* I, Value* Op0, Va
 {
     Type* Ty = Op0->getType();
     IRBuilder<> IRB(I);
-    std::string FuncName = "__builtin_spirv_divide_cr_f32_f32";
+    std::string FuncName = Ty->getScalarType()->isFloatTy() ?
+        "__builtin_spirv_divide_cr_f32_f32" : "__builtin_spirv_divide_cr_f64_f64";
     SmallVector<Type*, 2> ArgsTypes{ Ty->getScalarType(), Ty->getScalarType() };
     auto FT = FunctionType::get(Ty->getScalarType(), ArgsTypes, false);
     auto IEEEDivide = m_module->getOrInsertFunction(FuncName, FT);
@@ -149,10 +159,16 @@ void CorrectlyRoundedDivSqrt::visitFDiv(BinaryOperator& I)
 {
     Type* Ty = I.getType();
 
-    if (Ty->getScalarType()->isFloatTy())
-    {
-        auto* Divide = emitIEEEDivide(&I, I.getOperand(0), I.getOperand(1));
+    Value* Divide = nullptr;
 
+    if (Ty->getScalarType()->isFloatTy())
+        Divide = emitIEEEDivide(&I, I.getOperand(0), I.getOperand(1));
+
+    if (m_hasDPDivSqrtEmu && Ty->getScalarType()->isDoubleTy())
+        Divide = emitIEEEDivide(&I, I.getOperand(0), I.getOperand(1));
+
+    if (Divide)
+    {
         I.replaceAllUsesWith(Divide);
         I.eraseFromParent();
         m_changed = true;
