@@ -729,10 +729,13 @@ namespace IGC
         return false;
     }
 
-    bool GetStatelessBufferInfo(Value* src, unsigned& bufIdOrGRFOffset,
+    bool GetStatelessBufferInfo(Value* pointer, unsigned& bufIdOrGRFOffset,
             BufferType & bufferTy, Value*& bufferSrcPtr, bool& isDirectBuf)
     {
         isDirectBuf = false;
+        // If the buffer info is not encoded in the address space, we can still find it by
+        // tracing the pointer to where it's created.
+        Value * src = IGC::TracePointerSource(pointer);
         BufferAccessType accType;
         bool needBufferOffset;  // Unused
         if (!src)   return false;
@@ -862,21 +865,16 @@ namespace IGC
         unsigned int& eltId = cl.eltId;
         unsigned int& size_in_bytes = cl.size;
         const llvm::DataLayout DL = pContext->getModule()->getDataLayout();
-        Instruction* Inst = &I;
-        if (dyn_cast<BitCastInst>(Inst))
-        {
-            if (auto bc0 = dyn_cast<Instruction>(Inst->getOperand(0)))
-                Inst = bc0;
-        }
+
         // Only load and ldRaw instructions handled, rest should return
-        if (LoadInst* load = llvm::dyn_cast<LoadInst> (Inst))
+        if (LoadInst* load = llvm::dyn_cast<LoadInst> (&I))
         {
             as = load->getPointerAddressSpace();
             ptrVal = load->getPointerOperand();
             offsetVal = ptrVal;
             statelessBuf = (as == ADDRESS_SPACE_CONSTANT);
         }
-        else if (LdRawIntrinsic* ldRaw = dyn_cast<LdRawIntrinsic>(Inst))
+        else if (LdRawIntrinsic* ldRaw = dyn_cast<LdRawIntrinsic>(&I))
         {
             as = ldRaw->getResourceValue()->getType()->getPointerAddressSpace();
             ptrVal = ldRaw->getResourceValue();
@@ -892,12 +890,9 @@ namespace IGC
 
         if (statelessBuf || bindlessBuf)
         {
-            llvm::SmallSet<PHINode*, 8> visitedPHIs; // unused
-            std::vector<Value*> instList;
-            Value* srcPtr = TracePointerSource(ptrVal, false, true, true, instList, visitedPHIs);
             // If the buffer info is not encoded in the address space, we can still find it by
             // tracing the pointer to where it's created.
-            if (!GetStatelessBufferInfo(srcPtr, bufIdOrGRFOffset, bufType, pointerSrc, directBuf))
+            if (!GetStatelessBufferInfo(ptrVal, bufIdOrGRFOffset, bufType, pointerSrc, directBuf))
             {
                 return false;
             }
