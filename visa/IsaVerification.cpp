@@ -1771,6 +1771,10 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
     VISA_Modifier srcModifier = src.getOperandModifier();
 
     REPORT_INSTRUCTION(
+        options, opcode != ISA_LZD || srcModifier == MODIFIER_NONE,
+        "lzd does not support source modifier");
+
+    REPORT_INSTRUCTION(
         options, srcModifier != MODIFIER_SAT && srcModifier != MODIFIER_NOT,
         "unsupported source modifier for arithmetic instruction");
 
