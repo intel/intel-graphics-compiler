@@ -9,13 +9,7 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-#if defined(cl_khr_fp64)
-    #include "../IMF/FP64/sqrt_d_ha.cl"
-#endif // defined(cl_khr_fp64)
-
 extern __constant int __Native64Bit;
-extern __constant int __UseNative64BitFloatBuiltin;
-extern __constant int __NeedFP64DivSqrt;
 
 #if defined(cl_khr_fp16)
 
@@ -116,15 +110,7 @@ float SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f32, )( float a )
 
 INLINE double SPIRV_OVERLOADABLE SPIRV_OCL_BUILTIN(sqrt_cr, _f64, )( double x )
 {
-    if (__UseNative64BitFloatBuiltin && !__CRMacros && __NeedFP64DivSqrt)
-    {
-        // for platforms with partial f64 support
-        return __ocl_svml_sqrt_ha(x);
-    }
-    else
-    {
         return SPIRV_OCL_BUILTIN(sqrt, _f64, )(x);
-    }
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sqrt_cr, double, double, f64 )

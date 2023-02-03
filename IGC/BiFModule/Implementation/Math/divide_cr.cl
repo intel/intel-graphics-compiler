@@ -9,13 +9,6 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-#if defined(cl_khr_fp64)
-    #include "../IMF/FP64/div_d_ha.cl"
-#endif // defined(cl_khr_fp64)
-
-extern __constant int __UseNative64BitFloatBuiltin;
-extern __constant int __NeedFP64DivSqrt;
-
 float __builtin_spirv_divide_cr_f32_f32( float a,
                                          float b )
 {
@@ -191,15 +184,7 @@ float16 __builtin_spirv_divide_cr_v16f32_v16f32( float16 a,
 double __builtin_spirv_divide_cr_f64_f64( double a,
                                           double b )
 {
-    if (__UseNative64BitFloatBuiltin && !__CRMacros && __NeedFP64DivSqrt)
-    {
-        // for platforms with partial f64 support
-        return __ocl_svml_div_ha(a, b);
-    }
-    else
-    {
-        return FDIV_IEEE_DOUBLE(a, b);
-    }
+    return FDIV_IEEE_DOUBLE(a, b);
 }
 
 #endif //defined(cl_khr_fp64)
