@@ -3812,6 +3812,7 @@ bool CISA_IR_Builder::CISA_create_lsc_untyped_inst(
     LSC_DATA_SHAPE dataShape, VISA_opnd *surface, VISA_opnd *dstData,
     VISA_opnd *src0Addr, VISA_opnd *src1Data, VISA_opnd *src2Data,
     int lineNum) {
+
   VISA_CALL_TO_BOOL(AppendVISALscUntypedInst, opcode, sfid,
                     static_cast<VISA_PredOpnd *>(pred), execSize, emask,
                     caching, addr, dataShape,

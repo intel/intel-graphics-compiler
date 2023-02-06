@@ -405,10 +405,44 @@ public:
       VISA_RawOpnd *dstReadBack, VISA_RawOpnd *src0Addr,
       VISA_RawOpnd *src1AtomOpnd1 = nullptr,
       VISA_RawOpnd *src2AtomOpnd2 = nullptr) = 0;
+
+  VISA_BUILDER_API virtual int
+  AppendVISALscUntypedLoad(LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
+                           VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
+                           LSC_CACHE_OPTS cacheOpts, LSC_ADDR addr,
+                           LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
+                           int surfaceIndex, VISA_RawOpnd *dstData,
+                           VISA_RawOpnd *src0Addr) = 0;
+  /// append an *untyped* LSC store operation
+  VISA_BUILDER_API virtual int AppendVISALscUntypedStore(
+      LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
+      VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
+      LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
+      int surfaceIndex, VISA_RawOpnd *src0Addr, VISA_RawOpnd *src1Data) = 0;
+  /// append an *untyped* LSC atomic operation
+  //
+  /// atomic unary operations (e.g. lsc_atomic_iinc) take no extra data
+  /// parameters and can be passed nullptr; atomic binary operations
+  /// (e.g. lsc_atomic_add) takes src1AtomOpnd1 and leaves src2 nullptr.
+  /// Atomic ternary (lsc_atomic_{i,f}cas) takes both extra src parameters.
+  VISA_BUILDER_API virtual int AppendVISALscUntypedAtomic(
+      LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
+      VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts,
+      LSC_ADDR addr, LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
+      int surfaceIndex, VISA_RawOpnd *dstReadBack, VISA_RawOpnd *src0Addr,
+      VISA_RawOpnd *src1AtomOpnd1 = nullptr,
+      VISA_RawOpnd *src2AtomOpnd2 = nullptr) = 0;
   //
   /// A generic constructor for untyped LSC operations.  Prefer the explicit
   /// functions above when possible.  The SFID passed in must not be LSC_TGM.
   /// (use AppendVISALscTyped* for typed).
+  VISA_BUILDER_API virtual int
+  AppendVISALscUntypedInst(LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
+                           VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
+                           LSC_CACHE_OPTS cacheOpts, LSC_ADDR addr,
+                           LSC_DATA_SHAPE data, VISA_VectorOpnd *surface,
+                           int surfaceIndex, VISA_RawOpnd *dst, VISA_RawOpnd *src0,
+                           VISA_RawOpnd *src1, VISA_RawOpnd *src2) = 0;
   VISA_BUILDER_API virtual int
   AppendVISALscUntypedInst(LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
                            VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
