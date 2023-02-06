@@ -720,4 +720,18 @@ bool hasBDstWSrc1EvenAlignIssue() const {
   return getPlatform() == Xe_PVCXT;
 }
 
+
+bool needBothAcc(G4_Operand *opnd) const {
+  switch (opnd->getType()) {
+  case Type_UD:
+  case Type_D:
+  case Type_W:
+  case Type_UW:
+    return true;
+  default:
+    return (((unsigned)opnd->getInst()->getExecSize() * opnd->getTypeSize())
+        > getACCSize());
+  }
+}
+
 // end HW capabilities

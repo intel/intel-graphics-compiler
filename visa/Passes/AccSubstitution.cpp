@@ -59,22 +59,6 @@ struct AccInterval {
             std::pow((double)dist, 2));
   }
 
-  // see if this interval needs both halves of the acc
-  bool needBothAcc(IR_Builder &builder) const {
-    switch (inst->getDst()->getType()) {
-    case Type_F:
-      return inst->getExecSize() ==
-             G4_ExecSize(builder.getNativeExecSize() * 2);
-    case Type_HF:
-    case Type_BF:
-      return false;
-    case Type_DF:
-      return inst->getExecSize() > G4_ExecSize(builder.getNativeExecSize() / 2);
-    default:
-      return true;
-    }
-  }
-
   void dump() {
     std::cerr << "[" << inst->getLocalId() << ", " << lastUse << "] : ";
     if (assignedAcc != -1) {
@@ -869,7 +853,7 @@ struct AccAssignment {
         vISA_ASSERT(!freeAccs[active->assignedAcc],
                "active interval's acc should not be free");
         freeAccs[active->assignedAcc] = true;
-        if (active->needBothAcc(builder)) {
+        if (builder.needBothAcc(active->inst->getDst())) {
           vISA_ASSERT(!freeAccs[active->assignedAcc + 1],
                  "active interval's acc should not be free");
           freeAccs[active->assignedAcc + 1] = true;
@@ -898,7 +882,7 @@ struct AccAssignment {
     spillInterval->assignedAcc = -1;
     activeIntervals.erase(acc0Iter);
     freeAccs[accID] = true;
-    if (spillInterval->needBothAcc(builder)) {
+    if (builder.needBothAcc(spillInterval->inst->getDst())) {
       vISA_ASSERT(accID % 2 == 0, "accID must be even-aligned in this case");
       freeAccs[accID + 1] = true;
     }
@@ -913,7 +897,7 @@ struct AccAssignment {
     }
     freeAccs[interval->assignedAcc] = false;
 
-    if (interval->needBothAcc(builder)) {
+    if (builder.needBothAcc(interval->inst->getDst())) {
       vISA_ASSERT(interval->assignedAcc == 0, "Total 2 acc support right now");
       if (!freeAccs[interval->assignedAcc + 1]) // && activeIntervals.size()
       {
@@ -931,11 +915,12 @@ struct AccAssignment {
       if (forbidden & (1 << i)) {
         continue;
       }
-      if (freeAccs[i] && (!interval->needBothAcc(builder) ||
-                          ((i + 1 < endReg) && freeAccs[i + 1]))) {
+      if (freeAccs[i] &&
+        (!builder.needBothAcc(interval->inst->getDst()) ||
+        ((i + 1 < endReg) && freeAccs[i + 1]))) {
         interval->assignedAcc = i;
         freeAccs[i] = false;
-        if (interval->needBothAcc(builder)) {
+        if (builder.needBothAcc(interval->inst->getDst())) {
           freeAccs[i + 1] = false;
         }
 
@@ -955,7 +940,8 @@ struct AccAssignment {
       return true;
     }
 
-    int step = interval->needBothAcc(builder) ? 2 : 1;
+    int step =
+        builder.needBothAcc(interval->inst->getDst()) ? 2 : 1;
     int startReg = 0;
     if (builder.getOption(vISA_EnableRRAccSub)) {
       startReg = curAcc;
@@ -1149,7 +1135,7 @@ void AccSubPass::doAccSub(G4_BB *bb) {
 
         tmpAssignValue[0] = accAssign.freeAccs[spillCandidate->assignedAcc];
         accAssign.freeAccs[spillCandidate->assignedAcc] = true;
-        if (spillCandidate->needBothAcc(builder)) {
+        if (builder.needBothAcc(spillCandidate->inst->getDst())) {
           tmpAssignValue[1] =
               accAssign.freeAccs[spillCandidate->assignedAcc + 1];
           accAssign.freeAccs[spillCandidate->assignedAcc + 1] = true;
@@ -1168,7 +1154,7 @@ void AccSubPass::doAccSub(G4_BB *bb) {
           accAssign.activeIntervals.erase(spillIter);
         } else {
           accAssign.freeAccs[spillCandidate->assignedAcc] = tmpAssignValue[0];
-          if (spillCandidate->needBothAcc(builder)) {
+          if (builder.needBothAcc(spillCandidate->inst->getDst())) {
             accAssign.freeAccs[spillCandidate->assignedAcc + 1] =
                 tmpAssignValue[1];
           }
@@ -1194,7 +1180,7 @@ void AccSubPass::doAccSub(G4_BB *bb) {
     for (auto spillInterval : spillIntervals) {
       AccAssignment accAssign(numGeneralAcc, builder, false);
       accAssign.freeAccs[spillInterval->spilledAcc] = true;
-      if (spillInterval->needBothAcc(builder)) {
+      if (builder.needBothAcc(spillInterval->inst->getDst())) {
         accAssign.freeAccs[spillInterval->spilledAcc + 1] = true;
       }
 
@@ -1491,7 +1477,7 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
 
         tmpAssignValue[0] = accAssign.freeAccs[spillCandidate->assignedAcc];
         accAssign.freeAccs[spillCandidate->assignedAcc] = true;
-        if (spillCandidate->needBothAcc(builder)) {
+        if (builder.needBothAcc(spillCandidate->inst->getDst())) {
           tmpAssignValue[1] =
               accAssign.freeAccs[spillCandidate->assignedAcc + 1];
           accAssign.freeAccs[spillCandidate->assignedAcc + 1] = true;
@@ -1510,7 +1496,7 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
           accAssign.activeIntervals.erase(spillIter);
         } else {
           accAssign.freeAccs[spillCandidate->assignedAcc] = tmpAssignValue[0];
-          if (spillCandidate->needBothAcc(builder)) {
+          if (builder.needBothAcc(spillCandidate->inst->getDst())) {
             accAssign.freeAccs[spillCandidate->assignedAcc + 1] =
                 tmpAssignValue[1];
           }
@@ -1536,7 +1522,7 @@ void AccSubPass::multiAccSub(G4_BB *bb) {
     for (auto spillInterval : spillIntervals) {
       AccAssignment accAssign(numGeneralAcc, builder, false);
       accAssign.freeAccs[spillInterval->spilledAcc] = true;
-      if (spillInterval->needBothAcc(builder)) {
+      if (builder.needBothAcc(spillInterval->inst->getDst())) {
         accAssign.freeAccs[spillInterval->spilledAcc + 1] = true;
       }
 

@@ -1121,20 +1121,6 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
   return footprint;
 }
 
-bool needBothAcc(IR_Builder &builder, G4_INST *inst, G4_Operand *opnd) {
-  switch (opnd->getType()) {
-  case Type_F:
-    return inst->getExecSize() == G4_ExecSize(builder.getNativeExecSize() * 2);
-  case Type_HF:
-  case Type_BF:
-    return false;
-  case Type_DF:
-    return inst->getExecSize() > G4_ExecSize(builder.getNativeExecSize() / 2);
-  default:
-    return true;
-  }
-}
-
 static SB_INST_PIPE getInstructionPipeXe(G4_INST *inst) {
 
   if (inst->isLongPipeInstructionXe()) {
@@ -1193,7 +1179,7 @@ SBFootprint *G4_BB_SB::getFootprintForACC(G4_Operand *opnd,
     vISA_ASSERT_UNREACHABLE("Bad opnd");
   }
 
-  if (needBothAcc(builder, inst, opnd)) {
+  if (builder.needBothAcc(opnd)) {
     if (((RB - LB + 1) / builder.numEltPerGRF<Type_UB>()) < 2) {
       RB = LB + builder.numEltPerGRF<Type_UB>() * 2 - 1;
     }

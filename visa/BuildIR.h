@@ -643,6 +643,7 @@ public:
   const char *getGenxPlatformString() const {
     return kernel.getGenxPlatformString();
   }
+  unsigned getACCSize() const { return getGRFSize(); }
   unsigned char getGRFSize() const { return kernel.getGRFSize(); }
   template <G4_Type T> unsigned numEltPerGRF() const {
     return kernel.numEltPerGRF<T>();

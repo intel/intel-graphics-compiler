@@ -5437,7 +5437,7 @@ void G4_SrcRegRegion::computeLeftBound(const IR_Builder &builder) {
   else if (base != NULL && base->isAccReg()) {
     left_bound = subRegOff * TypeSize(type);
     if (base->asAreg()->getArchRegType() == AREG_ACC1) {
-      left_bound += 32; // TODO: size of ACC is assumed to be 32 BYTEs.
+      left_bound += builder.getACCSize();
     }
     byteOffset = left_bound;
   } else if (top_dcl) {
@@ -6539,7 +6539,9 @@ bool G4_INST::supportsNullDst() const {
     // null:b not supported
     return false;
   }
-  return getNumSrc() != 3 && !(op == G4_pln && !builder.doPlane());
+  {
+    return getNumSrc() != 3 && !(op == G4_pln && !builder.doPlane());
+  }
 }
 
 bool G4_INST::isAlign1Ternary() const {
