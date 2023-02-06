@@ -14424,6 +14424,7 @@ bool EmitPass::ignoreRoundingMode(llvm::Instruction* inst) const
         isa<ExtractElementInst>(inst) ||
         isa<BitCastInst>(inst) ||
         isa<ICmpInst>(inst) ||
+        isa<FPExtInst>(inst) ||
         isa<FCmpInst>(inst) ||
         isa<SelectInst>(inst) ||
         isa<TruncInst>(inst) ||
