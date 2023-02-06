@@ -458,17 +458,6 @@ namespace IGC
         m_hasStackCalls = EnableStackFuncs;
     }
 
-    // check if DP emu is required
-    void CodeGenContext::checkDPEmulationEnabled()
-    {
-        if ((IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-            (m_DriverInfo.NeedFP64(platform.getPlatformInfo().eProductFamily) && platform.hasNoFP64Inst())) ||
-            (getCompilerOption().FP64GenEmulationEnabled && platform.emulateFP64ForPlatformsWithoutHWSupport()))
-        {
-            m_hasDPEmu = true;
-        }
-    }
-
     void CodeGenContext::InitVarMetaData() {}
 
     CodeGenContext::~CodeGenContext()

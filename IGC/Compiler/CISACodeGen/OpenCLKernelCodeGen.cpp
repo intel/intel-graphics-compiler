@@ -592,14 +592,6 @@ namespace IGC
                 // operations on platforms without HW support for fp64.
                 EnableUnsupportedFP64Poisoning = true;
             }
-            // -cl-fp64-gen-emu
-            // -ze-fp64-gen-emu
-            else if (suffix.equals("-fp64-gen-emu"))
-            {
-                // This option enables FP64 emulation for platforms that
-                // cannot HW support for double operations
-                EnableFP64GenEmu = true;
-            }
             // *-private-memory-minimal-size-per-thread <SIZE>
             // SIZE >= 0
             else if (suffix.equals("-private-memory-minimal-size-per-thread"))
