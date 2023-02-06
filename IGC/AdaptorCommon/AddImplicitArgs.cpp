@@ -747,15 +747,10 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(
 
 void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDetail& data, Function * f)
 {
-    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(f);
     funcInfo->clearImplicitArgInfoList();
 
     bool isEntry = isEntryFunc(m_pMdUtils, f);
-
-    // Check if DP emulation is used and the function uses DP operations. Emulation needs r0 and private_base
-    // implicit args, so these args have to exist. r0 and private_base args are adding by analysis passes.
-    bool needImplicitArgs = pCtx->m_hasDPEmu && f->hasFnAttribute("uses-fp64-math");
 
     for (const auto& A : data.ArgsMaps)
     {
@@ -763,9 +758,8 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
         // they do not require to be added as explicit arguments other than in the caller kernel.
         // Always add metadata for stackcalls to provide info for inlining. They won't be added
         // to function argument list.
-        // For DP emulation the implicit args are required
         ImplicitArg::ArgType argId = A.first;
-        if (!isEntry && ImplicitArgs::hasIntrinsicSupport(argId) && !needImplicitArgs)
+        if (!isEntry && ImplicitArgs::hasIntrinsicSupport(argId))
         {
             bool isStackCall = f->hasFnAttribute("visaStackCall");
             if (!isStackCall && IGC_IS_FLAG_ENABLED(EnableImplicitArgAsIntrinsic))
