@@ -6509,7 +6509,7 @@ bool SinkLoadOpt::sinkLoadInstruction(Function& F)
                             if (eeTemp && eeTemp->hasOneUse())
                             {
                                 Instruction* useInst = dyn_cast<Instruction>(*(eeTemp->user_begin()));
-                                if (useInst && useInst->getParent() != CI->getParent()
+                                if (useInst && useInst->getParent() == CI->getParent()
                                     && (!useBlock || useInst->getParent() == useBlock)
                                     && !isa<PHINode>(useInst))
                                 {
