@@ -132,14 +132,12 @@ public:
   virtual bool isSpecConstantSpecialized(SPIRVWord) const = 0;
   virtual uint64_t getSpecConstant(SPIRVWord) = 0;
   virtual void setSpecConstantMap(SPIRVSpecConstantMap *) = 0;
-  virtual SPIRVFunction *getEntryPoint(SPIRVExecutionModelKind, unsigned) const = 0;
   virtual std::set<std::string> &getExtension() = 0;
   virtual SPIRVFunction *getFunction(unsigned) const = 0;
   virtual SPIRVAsmINTEL *getAsm(unsigned) const = 0;
   virtual SPIRVVariable *getVariable(unsigned) const = 0;
   virtual SPIRVMemoryModelKind getMemoryModel() = 0;
   virtual unsigned getNumFunctions() const = 0;
-  virtual unsigned getNumEntryPoints(SPIRVExecutionModelKind) const = 0;
   virtual unsigned getNumVariables() const = 0;
   virtual SpvSourceLanguage getSourceLanguage(SPIRVWord *) const = 0;
   virtual std::set<std::string> &getSourceExtension() = 0;
@@ -180,7 +178,9 @@ public:
       SPIRVDecorationGroup *Group, const std::vector<SPIRVEntry *> &Targets) = 0;
   virtual SPIRVGroupDecorateGeneric *addGroupDecorateGeneric(
       SPIRVGroupDecorateGeneric *GDec) = 0;
-  virtual void addEntryPoint(SPIRVExecutionModelKind, SPIRVId) = 0;
+  virtual void addEntryPoint(SPIRVExecutionModelKind, SPIRVId,
+                             const std::string&,
+                             const std::vector<SPIRVId>&) = 0;
   virtual SPIRVForward *addForward(SPIRVType *Ty) = 0;
   virtual SPIRVForward *addForward(SPIRVId, SPIRVType *Ty) = 0;
   virtual SPIRVFunction *addFunction(SPIRVFunction *) = 0;
@@ -222,7 +222,6 @@ public:
 class SPIRVDbgInfo {
 public:
   SPIRVDbgInfo(SPIRVModule *TM);
-  std::string getEntryPointFileStr(SPIRVExecutionModelKind, unsigned);
   std::string getFunctionFileStr(SPIRVFunction *);
   unsigned getFunctionLineNo(SPIRVFunction *);
 private:

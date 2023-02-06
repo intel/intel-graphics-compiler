@@ -406,8 +406,10 @@ public:
 
 class SPIRVEntryPoint:public SPIRVAnnotation<OpEntryPoint> {
 public:
+  static const SPIRVWord FixedWC = 4;
   SPIRVEntryPoint(SPIRVModule *TheModule, SPIRVExecutionModelKind,
-      SPIRVId TheId, const std::string &TheName);
+                  SPIRVId TheId, const std::string& TheName,
+                  std::vector<SPIRVId> Variables);
   SPIRVEntryPoint():ExecModel(ExecutionModelKernel){}
   _SPIRV_DCL_DEC
 protected:
@@ -416,6 +418,8 @@ protected:
   CapVec getRequiredCapability() const {
     return getVec(getCapability(ExecModel));
   }
+private:
+  std::vector<SPIRVId> Variables;
 };
 
 
