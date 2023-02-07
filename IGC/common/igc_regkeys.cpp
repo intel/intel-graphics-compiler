@@ -671,7 +671,24 @@ static void setRegkeyFromOption(
 static const std::string GetOptionFilePath()
 {
 #if defined(_WIN64) || defined(_WIN32)
-    return "c:\\Intel\\IGC\\debugFlags\\";
+    char path[256] = "c:\\Intel\\IGC\\debugFlags\\";
+    std::string testFilename = std::string(path) + "testfile";
+    HANDLE testFile =
+       CreateFileA(testFilename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE, NULL);
+    if (testFile == INVALID_HANDLE_VALUE)
+    {
+        char temppath[256];
+        if (GetTempPathA(sizeof(temppath), temppath) != 0)
+        {
+            sprintf_s(path, "%sIGC\\debugFlags\\", temppath);
+        }
+    }
+    else
+    {
+        CloseHandle(testFile);
+    }
+
+    return path;
 #else
     return "/tmp/IntelIGC/debugFlags/";
 #endif
