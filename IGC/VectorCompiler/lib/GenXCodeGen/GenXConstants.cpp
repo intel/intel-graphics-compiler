@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -93,7 +93,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/ValueMap.h"
 #include "llvm/Support/Casting.h"
@@ -103,6 +102,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/MathExtras.h"
 #include "llvmWrapper/Support/TypeSize.h"
 
@@ -1736,17 +1736,32 @@ void ConstantLoader::analyze() {
 }
 
 void ConstantLoader::analyzeForPackedInt(unsigned NumElements) {
-  // Get element values.
-  int64_t Min = INT64_MAX;
-  int64_t Max = INT64_MIN;
+  int64_t Min = std::numeric_limits<int64_t>::max();
+  int64_t Max = std::numeric_limits<int64_t>::min();
+
   SmallVector<int64_t, 32> Elements;
   Constant *SomeDefinedElement = nullptr;
+
+  // Get element values.
   for (unsigned i = 0; i != NumElements; ++i) {
     auto El = C->getAggregateElement(i);
     if (isa<UndefValue>(El))
       continue;
     SomeDefinedElement = El;
+
     int64_t Element = cast<ConstantInt>(El)->getSExtValue();
+
+    // ConstantLoader cannot load real 64-bit packed integer constants because
+    // it only emits 32-bit arithmetic operations. So we should reject such
+    // constants here.
+    //
+    // TODO: convert <N x i64> vectors into <2N x i32> ones and bitcast the
+    // const loading result back to <N x i64>
+    constexpr int64_t AllowedMax = std::numeric_limits<int32_t>::max();
+    constexpr int64_t AllowedMin = std::numeric_limits<int32_t>::min();
+    if (Element < AllowedMin || Element > AllowedMax)
+      return;
+
     Elements.push_back(Element);
     Min = std::min(Min, Element);
     Max = std::max(Max, Element);
