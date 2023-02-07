@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -45,9 +45,4 @@ SPDX-License-Identifier: MIT
 // DP4A Dot product extensions
 //*****************************************************************************/
 #include "IBiF_Dot_Product.cl"
-
-//*****************************************************************************/
-// Intel validation raytracing extension
-//*****************************************************************************/
-#include "IBiF_intel_rt_validation.cl"
 

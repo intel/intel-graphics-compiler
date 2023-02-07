@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2021 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -73,7 +73,7 @@ SPDX-License-Identifier: MIT
 #include "IBiF_Atomics.cl"
 
 //*****************************************************************************/
-// Intel production raytracing extension
+// Intel raytracing extension
 //*****************************************************************************/
 #include "IBiF_intel_rt_production.cl"
 

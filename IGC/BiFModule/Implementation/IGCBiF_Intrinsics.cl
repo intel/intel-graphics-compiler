@@ -872,11 +872,7 @@ void  __builtin_IB_system_memfence(bool fence_typed_memory);
 // i64 CAS SLM atomic (PVC+)
 long  __builtin_IB_atomic_cmpxchg_local_i64(__local long*, long, long);
 
-#if defined(cl_intel_pvc_rt_validation) || defined(cl_intel_rt_production)
-struct rtglobals_t;
-typedef __global struct rtglobals_t *rtglobals_t;
-struct rtfence_t;
-typedef __private struct rtfence_t *rtfence_t;
+// -----------------helpers for intel_rt_production--------------------
 
 rtfence_t __builtin_IB_intel_query_rt_fence(intel_ray_query_t rayquery);
 rtglobals_t __builtin_IB_intel_query_rt_globals(intel_ray_query_t rayquery);
@@ -899,14 +895,25 @@ void __builtin_IB_intel_update_ray_query(
     uint ctrl,
     uint bvhLevel);
 
+// --------------------------------------------------------------------
+
+#ifdef cl_intel_pvc_rt_validation
+// PVC raytracing extensions
+
+struct rtglobals_t;
+typedef __global struct rtglobals_t *rtglobals_t;
+struct rtfence_t;
+typedef __private struct rtfence_t *rtfence_t;
+
 void* __builtin_IB_intel_get_rt_stack(rtglobals_t rt_dispatch_globals);
 void* __builtin_IB_intel_get_thread_btd_stack(rtglobals_t rt_dispatch_globals);
+void* __builtin_IB_intel_get_global_btd_stack(rtglobals_t rt_dispatch_globals);
 void* __builtin_IB_intel_get_global_btd_stack(rtglobals_t rt_dispatch_globals);
 rtfence_t __builtin_IB_intel_dispatch_trace_ray_query(
   rtglobals_t rt_dispatch_globals, uint bvh_level, uint traceTayCtrl);
 void __builtin_IB_intel_rt_sync(rtfence_t fence);
 global void* __builtin_IB_intel_get_implicit_dispatch_globals();
-#endif // defined(cl_intel_pvc_rt_validation) || defined(cl_intel_rt_production)
+#endif // cl_intel_pvc_rt_validation
 
 void    __builtin_IB_hdc_uncompressed_write_uchar(__global uchar *buf, uchar val);
 
