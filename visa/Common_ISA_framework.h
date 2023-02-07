@@ -144,8 +144,6 @@ public:
                       const VISAKernelImpl *fmtKernel) const;
   int isaDump(const std::list<VISAKernelImpl *> &,
               const Options *options) const;
-  void writeIsaAsmFile(const std::string &filename,
-                       const std::string &isaasmStr) const;
 
   unsigned long getKernelVisaBinarySize(int i) {
     return m_header.kernels[i].size;

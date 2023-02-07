@@ -283,10 +283,6 @@ bool Options::parseOptions(int argc, const char *argv[]) {
     m_vISAOptions.setBool(vISA_InsertHashMovs, true);
   }
 
-  if (m_vISAOptions.isArgSetByUser(vISA_GenIsaAsmList) &&
-      !m_vISAOptions.isArgSetByUser(vISA_ISAASMNamesFile))
-    m_vISAOptions.setCstr(vISA_ISAASMNamesFile, "isaasmListFile.txt");
-
   if (m_vISAOptions.isArgSetByUser(vISA_Platform)) {
     const char *platformStr = m_vISAOptions.getCstr(vISA_Platform);
     if (platformStr == nullptr) {

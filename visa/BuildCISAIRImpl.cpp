@@ -1517,7 +1517,8 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
     if (m_options.getOption(vISA_GenerateISAASM)) {
       status = m_cisaBinary->isaDump(m_kernelsAndFunctions, &m_options);
       if (status != VISA_SUCCESS) {
-        return status;
+        // Treat VISA_EARLY_EXIT as VISA_SUCCESS.
+        return status == VISA_EARLY_EXIT ? VISA_SUCCESS : status;
       }
     }
 

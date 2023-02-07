@@ -375,13 +375,6 @@ int CisaBinary::dumpToFile(std::string binFileName) {
   return result;
 }
 
-void CisaBinary::writeIsaAsmFile(const std::string &filename,
-                                 const std::string &isaasmStr) const {
-  std::ofstream isaasm(filename);
-  vISA_ASSERT(!isaasm.fail(), "Failed to write CISA ASM to file");
-  isaasm << isaasmStr;
-}
-
 void CisaBinary::patchKernel(int index, unsigned int genxBufferSize,
                              void *buffer, int platform) {
   int copySize = 0;
@@ -498,18 +491,7 @@ int CisaBinary::isaDump(const std::list<VISAKernelImpl *> &kernels,
   if (!m_options->getOption(vISA_GenerateISAASM))
     return VISA_SUCCESS;
 
-  std::ofstream isaasmNameList;
-  if (auto isaasmNamesFile = options->getOptionCstr(vISA_ISAASMNamesFile)) {
-    isaasmNameList.open(isaasmNamesFile);
-    if (!isaasmNameList) {
-      std::cerr << "Cannot open file " << isaasmNamesFile << "\n";
-      return VISA_FAILURE;
-    }
-  }
-
-  if (options->getOption(vISA_DumpvISA) &&
-      options->isOptionSetByUser(vISA_ISAASMNamesFile))
-    return VISA_SUCCESS;
+  const bool isaasmToConsole = options->getOption(vISA_ISAASMToConsole);
 
   VISAKernelImpl *mainKernel = kernels.front();
   for (VISAKernelImpl *kTemp : kernels) {
@@ -536,22 +518,21 @@ int CisaBinary::isaDump(const std::list<VISAKernelImpl *> &kernels,
     }
     asmName << ".visaasm";
     std::string asmFileName = sanitizePathString(asmName.str());
-    if (isaasmNameList.is_open()) {
-      isaasmNameList << asmFileName << "\n";
-    }
 
-    // from other shader dumps we sometimes get non-existent paths fallback to
-    // a default file name in the current working directory for that case
     if (allowDump(*m_options, asmFileName)) {
-      if (!std::ofstream(asmFileName)) {
-        asmFileName = "default.visaasm";
-      }
       VISAKernelImpl *fmtKernel = kTemp->getIsPayload() ? mainKernel : kTemp;
-      writeIsaAsmFile(asmFileName, isaDump(kTemp, fmtKernel));
+      if (isaasmToConsole) {
+        std::cout << isaDump(kTemp, fmtKernel);
+      } else {
+        std::ofstream out(asmFileName);
+        out << isaDump(kTemp, fmtKernel);
+        vISA_ASSERT(!out.fail(), "Failed to write CISA ASM to file");
+      }
     }
   }
 
-  return VISA_SUCCESS;
+  // Return early exit if emitting isaasm to console.
+  return isaasmToConsole? VISA_EARLY_EXIT : VISA_SUCCESS;
 #endif // IS_RELEASE_DLL
 }
 
