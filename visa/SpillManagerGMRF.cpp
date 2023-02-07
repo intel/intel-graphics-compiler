@@ -3184,6 +3184,7 @@ bool SpillManagerGRF::immFill(G4_SrcRegRegion *filledRegion,
         tempDcl->getRegVar(), filledRegion->getRegOff(),
         filledRegion->getSubRegOff(), filledRegion->getRegion(),
         filledRegion->getType(), filledRegion->getAccRegSel());
+    newSrc->setModifier(filledRegion->getModifier());
     int i = 0;
     for (; i < inst->getNumSrc(); ++i) {
       if (inst->getSrc(i) == filledRegion) {
