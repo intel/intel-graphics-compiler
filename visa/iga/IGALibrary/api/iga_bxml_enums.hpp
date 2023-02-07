@@ -233,8 +233,8 @@ struct Subfunction {
     SyncFC sync;         // op == Op::SYNC
     BfnFC bfn;           // BFN subfunction index (low 8 bits are relevent)
     DpasFC dpas;         // op == Op::DPAS || op == Op::DPASW
-                    // NOTE: this does *not* correspond to any direct encoding
-                    // since that can vary from platform to platform.
+    // NOTE: this does *not* correspond to any direct encoding
+    // since that can vary from platform to platform.
     uint32_t bits;
   };
   constexpr Subfunction() : Subfunction(InvalidFC::INVALID) {}

@@ -953,7 +953,6 @@ void G4_Kernel::setKernelParameters() {
   // Set the number of Acc
   numAcc = overrideNumAcc ? overrideNumAcc : grfMode.getNumAcc();
 
-
   // Special configurations go here
   if (m_options->getOption(vISA_hasDoubleAcc)) {
     numAcc = 16;

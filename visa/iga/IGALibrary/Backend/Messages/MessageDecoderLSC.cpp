@@ -566,7 +566,6 @@ struct MessageDecoderLSC : MessageDecoder {
     addField("CompEn", 12, 4, chEn, vsym.str());
   }
 
-
   ///////////////////////////////////////////////////////////////////////////
   void decodeLscMessage(const char *doc, std::string msgDesc, SendOp lscOp) {
     const std::string symbol = ToSyntax(lscOp);

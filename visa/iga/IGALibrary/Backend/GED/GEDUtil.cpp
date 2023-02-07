@@ -47,6 +47,7 @@ iga::SFMessageType iga::getMessageType(Platform p, SFID sfid, uint32_t desc) {
   GED_MESSAGE_TYPE msgType = GED_MESSAGE_TYPE_INVALID;
   GED_MODEL gedP = lowerPlatform(p);
 
+
   if (gedSFID != GED_SFID_INVALID && gedSFID != GED_SFID_NULL) {
     switch (gedSFID) {
     case GED_SFID_SAMPLER: ///< all

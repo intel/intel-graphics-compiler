@@ -149,6 +149,7 @@ DEFINE_SAMPLE_OP(SAMPLE, "sample", "sampler fetch", ATTRS_NONE)
 DEFINE_OTHER_OP(RENDER_READ, "render_read", "render read", ATTRS_NONE)
 DEFINE_OTHER_OP(RENDER_WRITE, "render_write", "render write", ATTRS_NONE)
 
+//
 
 #undef ATTRS_NONE
 #undef ATTRS_SCALARADDR

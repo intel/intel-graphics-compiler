@@ -307,7 +307,7 @@ void Decoder::decodeInstructions(Kernel &kernel, const void *binaryStart,
       inst = createErrorInstruction(kernel, "GED error decoding instruction",
                                     binary, iLen);
     } else {
-      const auto gedOp = GED_GetOpcode(&m_currGedInst);
+      const GED_OPCODE gedOp = GED_GetOpcode(&m_currGedInst);
       const Op op = translate(gedOp);
       m_opSpec = decodeOpSpec(op);
       if (!m_opSpec->isValid()) {
@@ -315,8 +315,13 @@ void Decoder::decodeInstructions(Kernel &kernel, const void *binaryStart,
         // or if it's an unmapped subfunction (e.g. math function)
         auto os = m_model.lookupOpSpec(op);
         std::stringstream ss;
-        ss << "GED_OPCODE 0x" << iga::hex((unsigned)op, 2)
-           << ": unsupported opcode on this platform";
+        if (os.isValid()) {
+          ss << " invalid subfuction under " << os.mnemonic.str()
+             << ": unsupported opcode on this platform";
+        } else {
+          ss << " ISA opcode 0x" << iga::hex((unsigned)*(const uint8_t *)binary, 2) << ""
+             << ": unsupported opcode on this platform";
+        }
         std::string str = ss.str();
         errorT(str);
         inst = createErrorInstruction(kernel, str.c_str(), binary, iLen);

@@ -268,8 +268,8 @@ extern "C" int iga_main(int argc, const char **argv) {
       " This is a best effort and not all messages or platforms are "
       "supported.\n"
       "The format (arguments) are:\n"
-      "  <XE:   -Xdsd      ExecSize? ExDesc Desc\n"
-      "  >=XE:  -Xdsd SFID ExecSize? ExDesc Desc\n"
+      "  <XE:     -Xdsd      ExecSize? ExDesc Desc\n"
+      "  >=XE:    -Xdsd SFID ExecSize? ExDesc Desc\n"
       "\n"
       "  SFIDS are: BTD, DC0, DC1, DC2, DCRO, GTWY, RTA, RC, "
       "SLM, SMPL, TGM, TS, UGML, UGM, URB, VME\n"
@@ -287,11 +287,11 @@ extern "C" int iga_main(int argc, const char **argv) {
       "  % iga -p=xe -Xdsd dc1 (8) a0.2 0x04025C01\n"
       "    decodes message info for a XE descriptor on SFID (DC1)\n"
       "    the latter illustrates with ExecSize of 8 and ExDesc of a0.2\n"
-      "  % iga -p=xehpg -Xdsd  ugm         0x0   0x08200580\n"
-      "  % iga -p=xehpg -Xdsd  ugm  \"(8)\"  a0.2  0x620A3484\n"
-      "  % iga -p=xehpg -Xdsd  ugm         0x0   0x30607502\n"
-      "  % iga -p=xehpg -Xdsd  ugm  \"(1)\"  0x0   0x0200D504\n"
-      "  % iga -p=xehpc -Xdsd  ugm         0x0   0x30607502\n"
+      "  % iga -p=xehpg  -Xdsd  ugm         0x0   0x08200580\n"
+      "  % iga -p=xehpg  -Xdsd  ugm  \"(8)\"  a0.2  0x620A3484\n"
+      "  % iga -p=xehpg  -Xdsd  ugm         0x0   0x30607502\n"
+      "  % iga -p=xehpg  -Xdsd  ugm  \"(1)\"  0x0   0x0200D504\n"
+      "  % iga -p=xehpc  -Xdsd  ugm         0x0   0x30607502\n"
       "",
       opts::OptAttrs::ALLOW_UNSET,
       [](const char *, const opts::ErrorHandler &, Opts &baseOpts) {

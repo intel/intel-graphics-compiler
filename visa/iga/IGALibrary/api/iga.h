@@ -95,16 +95,15 @@ typedef enum {
   IGA_GEN9lp = GEN_VER(9, 1),
   IGA_GEN9p5 = GEN_VER(9, 5),
   IGA_GEN10 = GEN_VER(10, 0),
-  IGA_GEN11 = GEN_VER(11, 0)
+  IGA_GEN11 = GEN_VER(11, 0),
+  //
   // XE versions
-  ,
-  IGA_XE = XE_VER(1, 0) // TGL
-  ,
+  IGA_XE = XE_VER(1, 0), // TGL
   IGA_XE_HP = XE_VER(1, 1),
   IGA_XE_HPG = XE_VER(1, 2),
   IGA_XE_HPC = XE_VER(1, 4)
 
-  // TO BE DEPRECATED
+  // DEPRECATED
   // Preserve the old values to maintain the binary compatibility
   // The value should not be used anymore
   ,
