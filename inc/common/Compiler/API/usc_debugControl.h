@@ -33,13 +33,13 @@ namespace USC
 \*****************************************************************************/
 struct SDebugLevel
 {
-    unsigned int   Critical              : 1;    
-    unsigned int   Normal                : 1;     
-    unsigned int   Verbose               : 1;    
+    unsigned int   Critical              : 1;
+    unsigned int   Normal                : 1;
+    unsigned int   Verbose               : 1;
     unsigned int   VerboseVerbosity      : 1;
 
-    unsigned int   : 4;   
-    
+    unsigned int   : 4;
+
     unsigned int   : 4;
 
     unsigned int   CompilerLirDump       : 1;
@@ -67,7 +67,7 @@ struct SDebugControl
 
     union
     {
-        unsigned int       MsgLevelValue; 
+        unsigned int       MsgLevelValue;
         SDebugLevel MsgLevel;
     };
 };
@@ -138,7 +138,7 @@ struct SDebugVariables
     unsigned int   ForceSampler2x2                         : 1;
     unsigned int   DisableRenderTargetSurfaceState         : 1;
     unsigned int   ForceSampleCToSample                    : 1;
-    unsigned int   IllegalInstructionAfterEOTEnable        : 1; 
+    unsigned int   IllegalInstructionAfterEOTEnable        : 1;
     unsigned int   ResetUninitializedVariablesEnable       : 1;
     unsigned int   CompilerLogsInReleaseBuildEnable        : 1;
 
@@ -237,7 +237,7 @@ struct SDebugVariables
     unsigned int   OCLSIMD32LIRThreshold;
     unsigned int   OCLSIMD32TPMThreshold;
     unsigned int   MaxSIMD16ComputeShaderInstructionCount;
-    unsigned int   MaxSIMD32ComputeShaderInstructionCount;  
+    unsigned int   MaxSIMD32ComputeShaderInstructionCount;
 
     unsigned int   SamplerOffsetWorkaroundMinSampleCount;
     unsigned int   L3WAMaxShortVSLength;
@@ -355,7 +355,7 @@ struct SDebugVariables
     unsigned int    WaDisableMixedModeLog;
     unsigned int    WaDisableMixedModePow;
     unsigned int    WaDisableMixedModeFdiv;
-    unsigned int    WaFloatMixedModeSelNotAllowedWithPackedDestination;  
+    unsigned int    WaFloatMixedModeSelNotAllowedWithPackedDestination;
     unsigned int    WaDisableNativeDWxDWMultiplication;
     unsigned int    WaForceMinMaxGSThreadCount;
     unsigned int    WaIntegerDivisionSourceModifierNotSupported;
@@ -375,7 +375,7 @@ USC_API extern SDebugVariables g_DebugVariables;
 
 /*****************************************************************************\
 MACRO: USC_RV_Declare
-PURPOSE: Declares a new entry in the global registry table.  
+PURPOSE: Declares a new entry in the global registry table.
 \*****************************************************************************/
 #define USC_RV_Declare(type, name, value, subkey, description)                             \
 struct SRegistryEntry##name : public SRegistryEntry                                            \
@@ -415,19 +415,19 @@ PURPOSE: Defines data for holding/defining registry variables
 struct SRegistryEntry
 {
     SRegistryEntry(
-        unsigned int in_value, 
-        bool         in_isSet, 
-        const char*  in_pName, 
+        unsigned int in_value,
+        bool         in_isSet,
+        const char*  in_pName,
         const char*  in_pSubKey,
-        const char*  in_pType, 
-        const char*  in_pDescription, 
+        const char*  in_pType,
+        const char*  in_pDescription,
         const char*  in_pGroup)
-        : Value(in_value), 
-        IsSet(in_isSet), 
-        pName(in_pName), 
-        pSubKey(in_pSubKey), 
-        pType(in_pType), 
-        pDescription(in_pDescription), 
+        : Value(in_value),
+        IsSet(in_isSet),
+        pName(in_pName),
+        pSubKey(in_pSubKey),
+        pType(in_pType),
+        pDescription(in_pDescription),
         pGroup(in_pGroup)
     {
     }
@@ -445,8 +445,8 @@ STRUCT: Global definition for the USC registry variables.
 \*****************************************************************************/
 struct SUSCRegistryVariables
 {
-    // Only use USC_RV_Declare macros in this structure.  Any other data declaration will break the 
-    // functionality when parsing this data.  
+    // Only use USC_RV_Declare macros in this structure.  Any other data declaration will break the
+    // functionality when parsing this data.
 
 #define USC_RV_SetGroup "DebugVariables"
     USC_RV_Declare( bool, PassThroughVertexShaderEnable, false, "", " Doesn't do anything, just pass through the default values" );
@@ -519,7 +519,7 @@ struct SUSCRegistryVariables
     USC_RV_Declare( bool, CSSIMD32CompileForce, false, "", "Forces SIMD32 compilation of compute shaders (may result in spill-fills)." );
     USC_RV_Declare( bool, CSSIMD16CompileForce, false, "", "Forces SIMD16 compilation of compute shaders (may result in spill-fills)." );
     USC_RV_Declare( bool, CSSIMD8CompileForce, false, "", "Forces SIMD8 compilation of compute shaders (may result in spill-fills)." );
-    USC_RV_Declare( bool, HeaderBypassDisable, false, "", "" );    
+    USC_RV_Declare( bool, HeaderBypassDisable, false, "", "" );
     USC_RV_Declare( bool, DisableOptimizeDependencies, false, "", "" );
     USC_RV_Declare( bool, DisableMergePatchConstantShaders, false, "", "Set to disable merging Patch Constant Hull Shaders" );
     USC_RV_Declare( bool, DisableInstanceUnroll, false, "", "Set to disable Hull Shader instance unrolling optimization" );
@@ -570,7 +570,7 @@ struct SUSCRegistryVariables
     USC_RV_Declare( bool, EnableRegSizeConsistencyCheck, true, "","Enables RegSizeConsistencyCheck");
     USC_RV_Declare( bool, EnableUntypedSrfRead, false, "", "Common optimization for all shaders. Use untyped surface read message to load scattered constant buffer.");
     USC_RV_Declare( bool, DisableHSBarrierRead, false, "", "Removes pre-barrier URB read intended to force URB sync." );
-    USC_RV_Declare( bool, ClearVHEnable, false, "", "Clear VH DW0..DW7 for VS,DS,GS." );    
+    USC_RV_Declare( bool, ClearVHEnable, false, "", "Clear VH DW0..DW7 for VS,DS,GS." );
     USC_RV_Declare( bool, ForceSamplerPointer, false, "", "Forces sampler instructions to use sampler table pointer " );
     USC_RV_Declare( bool, ForceDoubleSamplerSlots, false, "", "Forces sampler instructions to use double spaced slots in sampler table access" );
     USC_RV_Declare( bool, URBPaddingSIMD8Disable, false, "", "Disables URB padding for shaders compiled in SIMD8 mode." );
@@ -685,8 +685,8 @@ struct SUSCRegistryVariables
     USC_RV_USCWAOverrideControl( WaFloatMixedModeSelNotAllowedWithPackedDestination );
     USC_RV_USCWAOverrideControl( WaDisableNativeDWxDWMultiplication );
     USC_RV_USCWAOverrideControl( WaForceMinMaxGSThreadCount );
-    USC_RV_USCWAOverrideControl( WaIntegerDivisionSourceModifierNotSupported ); 
-    USC_RV_USCWAOverrideControl( WaDisableLowPrecisionWriteRTRepData ); 
+    USC_RV_USCWAOverrideControl( WaIntegerDivisionSourceModifierNotSupported );
+    USC_RV_USCWAOverrideControl( WaDisableLowPrecisionWriteRTRepData );
     USC_RV_USCWAOverrideControl( WADisableWriteCommitForPageFault );
     USC_RV_USCWAOverrideControl( WaDisableDeepLoopsUnrolling );
 #undef USC_RV_SetGroup
@@ -724,7 +724,7 @@ struct SUSCRegistryVariables
 #define USC_RV_SetGroup "SShaderPatternMatchControls"
     USC_RV_DeclareCompilerControl( bool,    FMulFAddToFMad,                       false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    MovFCmpBranchToMovFCmp,               false, "", "" );
-    USC_RV_DeclareCompilerControl( bool,    MovCndToMov,                          false, "", "" );     
+    USC_RV_DeclareCompilerControl( bool,    MovCndToMov,                          false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    LDStructuredScalarToVector,           false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    FLogFExp2ScalarToVector,              false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    MovFCmpToFMax,                        false, "", "" );
@@ -762,13 +762,13 @@ struct SUSCRegistryVariables
     USC_RV_DeclareCompilerControl( dword,   MulWeightOfInvInstructionInPowUnwind,    2,  "", "" );
     USC_RV_DeclareCompilerControl( bool,    OptimizeResourceLoadsEnable,          false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    ISASchedulingEnable,                  false, "", "" );
-    USC_RV_DeclareCompilerControl( bool,    Reduce64To32ALUBitEnable,             false, "", "" );    
+    USC_RV_DeclareCompilerControl( bool,    Reduce64To32ALUBitEnable,             false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    Reduce32To8ALUBitEnable,              false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    Reduce64To32ALUTopDownPassBitEnable,  false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    Reduce64To32ALUBottomUpPassBitEnable, false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    Reduce64To32ALUSplitPassBitEnable,    false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    MergeSplitJoinDpEnable,               false, "", "" );
-    USC_RV_DeclareCompilerControl( bool,    FoldUnpacksEnable,                    false, "", "" );    
+    USC_RV_DeclareCompilerControl( bool,    FoldUnpacksEnable,                    false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    ConstantFoldingEnable,                false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    LoopInvariantCodeMotionEnable,        false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    InputMarkingEnable,                   false, "", "" );
@@ -808,7 +808,7 @@ struct SUSCRegistryVariables
     USC_RV_DeclareCompilerControl( bool,    GotoAroundGotoMergeEnable,            false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    StatefulCompilationEnable,            false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    AtomicDstRemovalEnable,               false, "", "" );
-    USC_RV_DeclareCompilerControl( bool,    MergeSimd8SamplerCBLoadsToSimd16Enable, false, "", "" );        
+    USC_RV_DeclareCompilerControl( bool,    MergeSimd8SamplerCBLoadsToSimd16Enable, false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    SoftwareFp16PayloadEnable,              false, "", "");
     USC_RV_DeclareCompilerControl( bool,    SplitQuadTo32bitForALUEnable,           false, "", "" );
     USC_RV_DeclareCompilerControl( bool,    SIMD32DivergentLoopHeuristicEnable,     false, "", "" );
@@ -877,7 +877,7 @@ const unsigned int NUM_REGISTRY_VARIABLES = sizeof(SUSCRegistryVariables) / size
 /*****************************************************************************\
 DEFINE: GHAL3D_OUTPUT_DIRECTORY and USC_ISA_INJECTION_DIRECTORY
 \*****************************************************************************/
-#if defined(_WIN32)  
+#if defined(_WIN32)
     #define GHAL3D_OUTPUT_DIRECTORY "\\Intel\\USC\\"
 #elif defined(ANDROID)
     #define GHAL3D_OUTPUT_DIRECTORY "/sdcard/IntelUSC/"

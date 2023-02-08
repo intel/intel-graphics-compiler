@@ -115,7 +115,6 @@ set(IGC_BUILD__SRC__Compiler
     ${IGC_BUILD__SRC__Compiler_MetaDataApi}
     ${IGC_BUILD__SRC__Compiler_Optimizer}
   )
-
 set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__SRC__Compiler}"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_workaround_linux.cpp"
