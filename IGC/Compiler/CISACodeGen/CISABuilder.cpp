@@ -4957,6 +4957,10 @@ namespace IGC
         {
             SaveOption(vISA_LSCFenceWA, true);
         }
+
+        if (context->getModuleMetaData()->csInfo.disableSplitOnSpill) {
+          SaveOption(vISA_DoSplitOnSpill, false);
+        }
     } // InitVISABuilderOptions
 
     // Get a unqiue label for inline asm instruction blocks at the module level.

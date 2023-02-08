@@ -441,6 +441,7 @@ namespace IGC
         unsigned int SetLoopUnrollThreshold = 0; // 0 means use the default
         bool allowLowerSimd = false;
         bool disableSimd32Slicing = false;
+        bool disableSplitOnSpill = false;
         bool forcedVISAPreRAScheduler = false;
         // disables dispatch along y and tiled order optimizations
         bool disableLocalIdOrderOptimizations = false;
