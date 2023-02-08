@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -189,6 +189,7 @@ private:
   bool simplifyRdRegion(CallInst* Inst);
   bool simplifyTruncSat(CallInst *Inst);
   bool simplifySelect(Function *F);
+  bool mergeLscLoad(Function *F);
   bool simplifyVolatileGlobals(Function *F);
   bool decomposeSelect(Function *F);
   // Preprocessing to help generate integer MAD.
@@ -248,6 +249,8 @@ bool GenXPatternMatch::runOnFunction(Function &F) {
     Changed |= simplifySelect(&F);
     // Break big predicate variables and run after min/max pattern match.
     Changed |= decomposeSelect(&F);
+
+    Changed |= mergeLscLoad(&F);
 
     // Simplify instructions after select decomposition and clear dead ones.
     for (auto& BB : F)
@@ -562,18 +565,22 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case GenXIntrinsic::genx_lsc_load_stateless:
   case GenXIntrinsic::genx_lsc_load_bindless:
   case GenXIntrinsic::genx_lsc_load_bti:
-  case GenXIntrinsic::genx_lsc_load_merge_slm:
-  case GenXIntrinsic::genx_lsc_load_merge_stateless:
-  case GenXIntrinsic::genx_lsc_load_merge_bindless:
-  case GenXIntrinsic::genx_lsc_load_merge_bti:
-  case GenXIntrinsic::genx_lsc_prefetch_slm:
-  case GenXIntrinsic::genx_lsc_prefetch_bti:
-  case GenXIntrinsic::genx_lsc_prefetch_stateless:
-  case GenXIntrinsic::genx_lsc_prefetch_bindless:
   case GenXIntrinsic::genx_lsc_load_quad_slm:
   case GenXIntrinsic::genx_lsc_load_quad_stateless:
   case GenXIntrinsic::genx_lsc_load_quad_bindless:
   case GenXIntrinsic::genx_lsc_load_quad_bti:
+  case GenXIntrinsic::genx_lsc_load_merge_slm:
+  case GenXIntrinsic::genx_lsc_load_merge_stateless:
+  case GenXIntrinsic::genx_lsc_load_merge_bindless:
+  case GenXIntrinsic::genx_lsc_load_merge_bti:
+  case GenXIntrinsic::genx_lsc_load_merge_quad_slm:
+  case GenXIntrinsic::genx_lsc_load_merge_quad_stateless:
+  case GenXIntrinsic::genx_lsc_load_merge_quad_bindless:
+  case GenXIntrinsic::genx_lsc_load_merge_quad_bti:
+  case GenXIntrinsic::genx_lsc_prefetch_slm:
+  case GenXIntrinsic::genx_lsc_prefetch_bti:
+  case GenXIntrinsic::genx_lsc_prefetch_stateless:
+  case GenXIntrinsic::genx_lsc_prefetch_bindless:
   case GenXIntrinsic::genx_lsc_store_slm:
   case GenXIntrinsic::genx_lsc_store_stateless:
   case GenXIntrinsic::genx_lsc_store_bindless:
@@ -3188,6 +3195,92 @@ bool GenXPatternMatch::decomposeSelect(Function *F) {
         SD.addStartSelect(&Inst);
 
   return SD.run();
+}
+
+static inline GenXIntrinsic::ID getMergeID(CallInst *Inst) {
+  unsigned ID = GenXIntrinsic::getGenXIntrinsicID(Inst);
+  if (!GenXIntrinsic::isGenXIntrinsic(ID))
+    return GenXIntrinsic::not_any_intrinsic;
+  switch (ID) {
+  default:
+    return GenXIntrinsic::not_any_intrinsic;
+  case GenXIntrinsic::genx_lsc_load_merge_slm:
+  case GenXIntrinsic::genx_lsc_load_slm:
+    return GenXIntrinsic::genx_lsc_load_merge_slm;
+  case GenXIntrinsic::genx_lsc_load_merge_stateless:
+  case GenXIntrinsic::genx_lsc_load_stateless:
+    return GenXIntrinsic::genx_lsc_load_merge_stateless;
+  case GenXIntrinsic::genx_lsc_load_merge_bindless:
+  case GenXIntrinsic::genx_lsc_load_bindless:
+    return GenXIntrinsic::genx_lsc_load_merge_bindless;
+  case GenXIntrinsic::genx_lsc_load_merge_bti:
+  case GenXIntrinsic::genx_lsc_load_bti:
+    return GenXIntrinsic::genx_lsc_load_merge_bti;
+  case GenXIntrinsic::genx_lsc_load_merge_quad_slm:
+  case GenXIntrinsic::genx_lsc_load_quad_slm:
+    return GenXIntrinsic::genx_lsc_load_merge_quad_slm;
+  case GenXIntrinsic::genx_lsc_load_merge_quad_stateless:
+  case GenXIntrinsic::genx_lsc_load_quad_stateless:
+    return GenXIntrinsic::genx_lsc_load_merge_quad_stateless;
+  case GenXIntrinsic::genx_lsc_load_merge_quad_bindless:
+  case GenXIntrinsic::genx_lsc_load_quad_bindless:
+    return GenXIntrinsic::genx_lsc_load_merge_quad_bindless;
+  case GenXIntrinsic::genx_lsc_load_merge_quad_bti:
+  case GenXIntrinsic::genx_lsc_load_quad_bti:
+    return GenXIntrinsic::genx_lsc_load_merge_quad_bti;
+  }
+}
+
+bool mergeApply(CallInst *CI) {
+  auto MergeID = getMergeID(CI);
+  // GenX intrinsics fits and do not have special uses
+  if (MergeID == GenXIntrinsic::not_any_intrinsic || !CI->hasNUses(1))
+    return false;
+
+  auto *Select = dyn_cast<SelectInst>(*CI->user_begin());
+  if (!Select)
+    return false;
+
+  auto *Pred = dyn_cast<Instruction>(CI->getOperand(0));
+  // Select and lsc-load must have same predicates
+  // TODO: Check opposite predicate, and add
+  // select-true varant
+  if (Select->getCondition() != Pred || Select->getTrueValue() != CI)
+    return false;
+
+  IRBuilder<> Builder(CI);
+  // All Lsc-load messages have same operands
+  auto *PredTy = CI->getArgOperand(0)->getType();
+  auto *AddrTy = CI->getArgOperand(10)->getType();
+
+  Value *InputData = Select->getFalseValue();
+  auto *Func = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), MergeID, {InputData->getType(), PredTy, AddrTy});
+
+  SmallVector<Value *, 13> Args(CI->args());
+  Args.push_back(InputData);
+  auto *Load = Builder.CreateCall(Func, Args);
+  Select->replaceAllUsesWith(Load);
+  // Select and lsc.load will be removed in dce
+  return true;
+}
+
+// Optimization pattern:
+//  %lsc_load = tail call <16 x i32> @llvm.genx.lsc.load.*( %pred, ...)
+//  %merge_result = select %pred, %lsc_load, %merge_data
+// To:
+//  %lsc_load_merge = tail call <16 x i32> @llvm.genx.lsc.load.merge.*( %pred,
+//  ..., %merge_data)
+bool GenXPatternMatch::mergeLscLoad(Function *F) {
+  bool Changed = false;
+  for (auto &BB : F->getBasicBlockList()) {
+    for (auto &Inst : BB.getInstList()) {
+      if (auto *CI = dyn_cast<CallInst>(&Inst)) {
+        Changed |= mergeApply(CI);
+      }
+    }
+  }
+  return Changed;
 }
 
 bool GenXPatternMatch::reassociateIntegerMad(Function *F) {
