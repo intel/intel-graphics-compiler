@@ -642,7 +642,7 @@ bool preRA_RegSharing::run() {
       kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleCtrl);
   SchedConfig config(SchedCtrl);
 
-  GRFMode GrfMode(kernel.getPlatform());
+  GRFMode GrfMode(kernel.getPlatform(), kernel.getOptions());
   RegisterPressure rp(kernel, rpe);
 
   std::unordered_map<G4_BB *, unsigned int> rpBB;

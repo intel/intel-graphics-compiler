@@ -137,7 +137,7 @@ class VarSplitPass;
 // Handles information for GRF selection
 class GRFMode {
 public:
-  GRFMode(const TARGET_PLATFORM platform);
+  GRFMode(const TARGET_PLATFORM platform, Options *op);
 
   void setModeByNumGRFs(unsigned grfs) {
     unsigned size = configs.size();
@@ -196,6 +196,7 @@ private:
   std::vector<Config> configs;
   unsigned defaultMode;
   unsigned currentMode;
+  Options *options;
 };
 
 

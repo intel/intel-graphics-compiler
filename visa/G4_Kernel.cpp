@@ -493,7 +493,7 @@ G4_Kernel::G4_Kernel(const PlatformInfo &pInfo, INST_LIST_NODE_ALLOCATOR &alloc,
     : platformInfo(pInfo), m_options(options), m_kernelAttrs(anAttr),
       m_function_id(funcId), RAType(RA_Type::UNKNOWN_RA), asmInstCount(0),
       kernelID(0), fg(alloc, this, m), major_version(major),
-      minor_version(minor), grfMode(pInfo.platform) {
+      minor_version(minor), grfMode(pInfo.platform, options) {
   vISA_ASSERT(major < COMMON_ISA_MAJOR_VER || (major == COMMON_ISA_MAJOR_VER &&
                                                minor <= COMMON_ISA_MINOR_VER),
               "CISA version not supported by this JIT-compiler");
@@ -1910,7 +1910,7 @@ unsigned G4_Kernel::getComputeFFIDGP1NextOff() const {
 }
 
 // GRF modes supported by HW
-GRFMode::GRFMode(const TARGET_PLATFORM platform) {
+GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
   switch (platform) {
   case Xe_XeHPSDV:
   case Xe_DG2:
