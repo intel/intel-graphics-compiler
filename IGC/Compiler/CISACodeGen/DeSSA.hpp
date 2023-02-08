@@ -294,6 +294,7 @@ namespace IGC {
         int checkInsertElementAlias(
             llvm::InsertElementInst* IEI,
             llvm::SmallVector<llvm::Value*, 16> & AllIEIs);
+        void coalesceAliasInsertValue(llvm::InsertValueInst* theIVI);
 
         // Add Val->Val into aliasMap if it is not in the map yet.
         // Return Val's aliasee.

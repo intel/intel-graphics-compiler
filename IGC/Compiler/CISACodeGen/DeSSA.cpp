@@ -1116,6 +1116,193 @@ void DeSSA::getAllValuesInCongruentClass(
     return;
 }
 
+void DeSSA::coalesceAliasInsertValue(InsertValueInst* theIVI)
+{
+    // Find a chain of insertvalue, and return the last one.
+    auto getInsValChain = [](InsertValueInst* aIVI,
+        SmallVector<Value*, 8>& IVIs)
+    {
+        InsertValueInst* Inst = aIVI;
+        while (Inst && Inst->hasOneUse())
+        {
+            IVIs.push_back(Inst);
+            Inst = dyn_cast<InsertValueInst>(Inst->user_back());
+        }
+        if (Inst)
+        {
+            // last one
+            IVIs.push_back(Inst);
+        }
+        return Inst;
+    };
+
+    auto setInsValAlias = [this](SmallVector<Value*, 8>& IVIs)
+    {
+        int nelts = (int)IVIs.size();
+        if (nelts > 1)
+        {
+            Value* aliasee = IVIs[0];
+            AddAlias(aliasee);
+            for (int i = 1; i < nelts; ++i) {
+                Value* V = IVIs[i];
+                AliasMap[V] = aliasee;
+
+                // union liveness info
+                LV->mergeUseFrom(aliasee, V);
+            }
+        }
+    };
+
+    // Get all fields' index if there are only one-level fields
+    auto getIndex = [](DenseSet<int>& aFields, SmallVector<Value*, 8>& IVIs)
+    {
+        int nelts = (int)IVIs.size();
+        for (int i = 0; i < nelts; ++i)
+        {
+            InsertValueInst* tI = cast<InsertValueInst>(IVIs[i]);
+            if (tI->getNumIndices() != 1)
+            {
+                aFields.clear();
+                return;
+            }
+            uint32_t ix = tI->getIndices().front();
+            aFields.insert((int)ix);
+        }
+    };
+
+    auto isDisjoin = [](DenseSet<int>& RHS, DenseSet<int>& LHS)
+    {
+        for (auto II : LHS)
+        {
+            int e = II;
+            if (RHS.find(e) != RHS.end())
+            {
+                return false;
+            }
+        }
+        return true;
+    };
+
+
+    // InsertValueInst chain:
+    //        V0 = InsVal undef/const, S0, 0
+    //        V1 = InsVal V0, S1, 1
+    //        ...
+    //        Vn = InsVal Vn-1, Sn,
+    //  where all Vi, i=0, n-1 has a single use. This sequence is called
+    //  InsertValueInst chain (IVI Chain). And they are set to alias each
+    //  other.
+    //
+    //  Start finding IVI chains from an inst (called Root) that cannot
+    //  be an operand of the other InsertValueInst. It's possible to have
+    //  several IVI chains. For example,
+    //       Chain0:   V0 = insval undef
+    //                 V1 = insVal V0
+    //       Chain1:   V2 = insVal V1
+    //                 V3 = insVal V2
+    //       Chain2:   V4 = insVal V1
+    //       Chain3:   V5 = insVal V4
+    //       Chain4:   V6 = insVal V4
+    //  This can be viewed as a tree of IVI chains, rooted at V0, with edge
+    //  denoting def-use relation between two chains. The tree for the above
+    //  is as below:
+    //
+    //           Chain0
+    //          /      \
+    //      Chain1    Chain2
+    //                /     \
+    //            Chain3   Chain4
+    //
+    // The algorithm does the following:
+    //   1. Find all chains, within which all insts are aliased to each other.
+    //   2. Do aggressive aliasing : alias several chains along one path from
+    //      root to a leaf node, assuming that no struct field is defined by
+    //      more than one chains, which implies this can be applied if Root
+    //      has undefValue as its operand like the following:
+    //          V0 = insval undef, s, 10
+    //
+    const Value* Oprd0 = theIVI->getOperand(0);
+    if (theIVI->getType()->isStructTy() &&
+        (isa<Constant>(Oprd0) ||
+         isa<Argument>(Oprd0) ||
+         isa<PHINode>(Oprd0)))
+    {
+        SmallVector<Value*, 8> IVIChain;
+        InsertValueInst* Inst = getInsValChain(theIVI, IVIChain);
+        setInsValAlias(IVIChain);
+
+        if (Inst == nullptr)
+        {
+            return;
+        }
+
+        // For aggressive aliasing. 'ChainInst' is the last inst
+        // of a chain, which is used to identify its successor
+        // chain in the chain tree.
+        bool aggressiveAliasing = false;
+        DenseSet<int> commonFields;
+        InsertValueInst* chainInst = Inst;
+        Value* theAliasee = getAliasee(Inst);
+        if (isa<UndefValue>(Oprd0))
+        {
+            getIndex(commonFields, IVIChain);
+            if (!commonFields.empty())
+            {
+                aggressiveAliasing = true;
+            }
+        }
+
+        // Make sure every sub-chains rooted at theIVI are processed.
+        std::list<InsertValueInst*> worklist;
+        worklist.push_back(Inst);
+        while (!worklist.empty())
+        {
+            InsertValueInst* aI = worklist.front();
+            worklist.pop_front();
+            for (auto UI = aI->user_begin(), UE = aI->user_end();
+                UI != UE; ++UI)
+            {
+                Value* v = *UI;
+                InsertValueInst* I = dyn_cast<InsertValueInst>(v);
+                if (!I)
+                {
+                    continue;
+                }
+                IVIChain.clear();
+                InsertValueInst* tI = getInsValChain(I, IVIChain);
+                setInsValAlias(IVIChain);
+                if (tI)
+                {
+                    worklist.push_back(tI);
+                }
+
+                if (aggressiveAliasing && chainInst == aI)
+                {
+                    DenseSet<int> fields;
+                    getIndex(fields, IVIChain);
+                    if (!fields.empty() &&
+                        isDisjoin(commonFields, fields))
+                    {
+                        chainInst = tI;
+                        commonFields.insert(fields.begin(), fields.end());
+
+                        // update alias
+                        AddAlias(theAliasee);
+                        for (auto II : IVIChain)
+                        {
+                            Value* V = II;
+                            AliasMap[V] = theAliasee;
+
+                            // union liveness info
+                            LV->mergeUseFrom(theAliasee, V);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
 {
     for (BasicBlock::iterator BBI = Blk->begin(), BBE = Blk->end();
@@ -1170,64 +1357,14 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock* Blk)
         {
             // Handle insertValue to struct.
             //
-            // So far, those insertValue insts are internally generated.
-            // The struct's members are of non-aggregate types (simple types
-            // like integer/float or vector types, not array, not struct).
-            // They are used for argument passing of stack calls or likely
-            // for load/store instructions.
-            if (IVI->getType()->isStructTy() &&
-                isa<Constant>(IVI->getOperand(0)))
-            {
-                //  Similar to insertElement, consider the following as an
-                //  alias if all Vi, i=0, n-1 (except Vn) has a single use.
-                //     V0 = InsVal undef/const, S0, 0
-                //     V1 = InsVal V0, S1, 1
-                //     ...
-                //     Vn = InsVal Vn-1, Sn, n
-                //
-                //  As emit does not handle struct partial rewrite like the
-                //  the following:
-                //
-                //     W1 = InsVal Vn, T1, 1   <- rewrite field 1 of Vn
-                //
-                //  This should not happen for now as IGC does not generate
-                //  this (In future, variable reuses could generate this. If
-                //  so, emit should handle the partial rewrite like it does
-                //  for insElt).  For now, let dessa asserts if the partial
-                //  rewrite happens.
-                //
-                SmallVector<Value*, 16> AllIVIs;
-                InsertValueInst* Inst = IVI;
-                while (Inst && Inst->hasOneUse())
-                {
-                    AllIVIs.push_back(Inst);
-                    Inst = dyn_cast<InsertValueInst>(Inst->user_back());
-                }
-                if (Inst)
-                {
-                    // Make sure no InsVal as one of its users.
-                    for (auto UI = Inst->user_begin(), UE = Inst->user_end();
-                        UI != UE; ++UI)
-                    {
-                        Value* v = *UI;
-                        IGC_ASSERT_MESSAGE(!isa<InsertValueInst>(v),
-                            "ICE: unsupport insertValue to struct");
-                    }
-                }
-                int nelts = (int)AllIVIs.size();
-                if (nelts > 1)
-                {
-                    Value* aliasee = AllIVIs[0];
-                    AddAlias(aliasee);
-                    for (int i = 1; i < nelts; ++i) {
-                        Value* V = AllIVIs[i];
-                        AliasMap[V] = aliasee;
-
-                        // union liveness info
-                        LV->mergeUseFrom(aliasee, V);
-                    }
-                }
-            }
+            // insertvalue exists when
+            //   1. there are calls to functions with struct-type arguments
+            //      and struct is simple (for example, no struct type as its
+            //      field type) and its size is small (<= 16 bytes ?) so that
+            //      it will be  passed as struct. (Normally, FE will turn a
+            //      larger/not-simple struct arg into a "byval" pointer.)
+            //   2. igc generates it internally
+            coalesceAliasInsertValue(IVI);
         }
         else if (CastInst * CastI = dyn_cast<CastInst>(I))
         {
@@ -1346,8 +1483,8 @@ bool DeSSA::isAliasee(Value* V) const
 }
 
 // If V is neither InsElt'ed, nor phi-coalesced, it is said to be
-// single valued. In another word, if it is at most aliased only,
-// it will have a single value during V's lifetime.
+// single valued. In another word, if it is aliased only, it will
+// have a single value during V's lifetime.
 bool DeSSA::isSingleValued(llvm::Value* V) const
 {
     Value* aliasee = getAliasee(V);
