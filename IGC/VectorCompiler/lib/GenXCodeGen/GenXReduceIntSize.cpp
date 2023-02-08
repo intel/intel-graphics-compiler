@@ -845,9 +845,8 @@ Instruction *GenXReduceIntSize::forwardProcessInst(Instruction *Inst) {
         }
         TruncBits = ResTy->getScalarType()->getPrimitiveSizeInBits();
         Type *Tys[] = { ResTy, Opnd0->getType() };
-        Function *Decl = GenXIntrinsic::getGenXDeclaration(
-            Inst->getParent()->getParent()->getParent(),
-            IID, Tys);
+        Function *Decl =
+            GenXIntrinsic::getGenXDeclaration(Inst->getModule(), IID, Tys);
         Value *Args[] = { Opnd0, Opnd1 };
         NewInst = CallInst::Create(Decl, Args, "", InsertBefore);
       }

@@ -596,8 +596,7 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
         if (auto VArg = dyn_cast<Argument>(SV.getValue()))
           ContainingFunc = VArg->getParent();
         else
-          ContainingFunc = cast<Instruction>(SV.getValue())
-              ->getParent()->getParent();
+          ContainingFunc = cast<Instruction>(SV.getValue())->getFunction();
       }
       if (!FuncMap[ContainingFunc])
         OutsidePile.push_back(SV);
@@ -662,8 +661,8 @@ bool GenXArgIndirection::processArgLR(LiveRange *ArgLR)
     Instruction *Inst = *bi;
     Bale B;
     Baling->buildBale(Inst, &B);
-    auto argIter = Inst->getParent()->getParent()->arg_begin();
-    std::advance(argIter, Inst->getParent()->getParent()->arg_size() - 1);
+    auto argIter = Inst->getFunction()->arg_begin();
+    std::advance(argIter, Inst->getFunction()->arg_size() - 1);
     Argument *AddressArg = &*argIter;
     indirectBale(&B, ArgLR, AddressArg);
   }
@@ -739,7 +738,7 @@ Indirectability SubroutineArg::checkIndirectability()
         continue; // it's an arg, not an instruction
       Function *Func = Pass->Liveness->isUnifiedRet(Inst);
       if (!Func)
-        Func = Inst->getParent()->getParent();
+        Func = Inst->getFunction();
       else
         continue;
       if (Pass->FuncMap.find(Func) == Pass->FuncMap.end())
@@ -794,7 +793,7 @@ ArgIndCallSite *SubroutineArg::createCallSite(CallInst *CI) {
   const DataLayout &DL = CI->getModule()->getDataLayout();
   // Check if this call site is in a function that is itself indirecting the
   // arg.
-  if (auto SubrArg = Pass->FuncMap[CI->getParent()->getParent()])
+  if (auto SubrArg = Pass->FuncMap[CI->getFunction()])
     return new CallerIndirectingCallSite(CI, SubrArg);
   // Look at the call arg.
   Value *V = CI->getArgOperand(Arg->getArgNo());
@@ -1017,7 +1016,7 @@ bool GenXArgIndirection::gatherBalesToModify(LiveRange *ArgLR, Alignment Align)
       // failure occurred.
       auto *Inst = B.getHead()->Inst;
       IGC_ASSERT(Inst);
-      Argument *Arg = getArgForFunction(ArgLR, Inst->getParent()->getParent());
+      Argument *Arg = getArgForFunction(ArgLR, Inst->getFunction());
       vc::warn(Inst->getContext(), "GenXArgIndirection",
                "Use of argument cannot be indirected", Arg);
       return false;
@@ -1043,7 +1042,7 @@ void SubroutineArg::gatherBalesToModify(Alignment Align)
     if (Pass->Liveness->isUnifiedRet(V))
       continue; // ignore unified ret
     if (auto Inst = dyn_cast<Instruction>(V)) {
-      if (Inst->getParent()->getParent() != F)
+      if (Inst->getFunction() != F)
         continue; // ignore instruction in wrong function
       // Add the def to the list of bales that will need modifying, unless
       // it is a phi node or coalesced bitcast or insert/extract in struct
@@ -1608,7 +1607,7 @@ void SubroutineArg::coalesceAddressArgs()
     // subroutine where we are indirecting the arg -- the new address args
     // for each subroutine should coalesce together.
     LLVM_DEBUG(dbgs() << "Failed to coalesce:\n " << *AddressLR << "\n " << *CallArgLR << "\n");
-    IGC_ASSERT_MESSAGE(!Pass->FuncMap[CS->CI->getParent()->getParent()],
+    IGC_ASSERT_MESSAGE(!Pass->FuncMap[CS->CI->getFunction()],
                        "new address args should coalesce together");
     // We need to insert a copy, in the address arg's pre-copy slot. An address
     // copy is done with a genx.convert, even though it is not actually doing a

@@ -155,7 +155,7 @@ struct LoopPassPrinter : public LoopPass {
 
     // Get and print pass...
     getAnalysisID<Pass>(PassToPrint->getTypeInfo())
-        .print(Out, L->getHeader()->getParent()->getParent());
+        .print(Out, L->getHeader()->getModule());
     return false;
   }
 
@@ -187,7 +187,7 @@ struct RegionPassPrinter : public RegionPass {
         << R->getEntry()->getParent()->getName() << "':\n";
     // Get and print pass...
     getAnalysisID<Pass>(PassToPrint->getTypeInfo())
-        .print(Out, R->getEntry()->getParent()->getParent());
+        .print(Out, R->getEntry()->getModule());
     return false;
   }
 

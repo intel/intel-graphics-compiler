@@ -751,8 +751,8 @@ CallInst *vc::FuncUsersUpdater::updateFuncDirectUser(CallInst &OrigCall) {
   NewCall->takeName(&OrigCall);
 
   // Update the callgraph to know that the callsite has been transformed.
-  auto CalleeNode = static_cast<IGCLLVM::CallGraphNode *>(
-      CG[OrigCall.getParent()->getParent()]);
+  auto CalleeNode =
+      static_cast<IGCLLVM::CallGraphNode *>(CG[OrigCall.getFunction()]);
   CalleeNode->replaceCallEdge(
 #if LLVM_VERSION_MAJOR <= 10
       CallSite(&OrigCall), NewCall,

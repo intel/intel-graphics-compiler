@@ -1283,7 +1283,7 @@ void ArgRefPattern::process(DominatorTree &DT) {
         IGCLLVM::getNonOpaquePtrEltTy(BaseAlloca->getType()), BaseAlloca);
     // Always use copy-in region arguments as copy-out region
     // arguments do not dominate this store.
-    auto M = ST->getParent()->getParent()->getParent();
+    auto M = ST->getModule();
     Value *Args[] = {OldVal,
                      ST->getArgOperand(0),
                      CopyInRegion->getArgOperand(1), // vstride

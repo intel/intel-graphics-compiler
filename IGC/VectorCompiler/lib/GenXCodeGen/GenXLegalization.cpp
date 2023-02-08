@@ -1097,7 +1097,7 @@ bool GenXLegalization::processAllAny(Instruction *Inst,
     auto Part = Region::createRdPredRegionOrConst(
         Pred, StartIdx, PP.Size, Pred->getName() + ".split" + Twine(StartIdx),
         InsertBefore, DL);
-    Module *M = InsertBefore->getParent()->getParent()->getParent();
+    Module *M = InsertBefore->getModule();
     Function *Decl =
         GenXIntrinsic::getAnyDeclaration(M, IID, Part->getType());
     Instruction *NewAllAny = nullptr;
@@ -2347,7 +2347,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
     if (GenXIntrinsic::isOverloadedArg((GenXIntrinsic::ID)IntrinID, i))
       OverloadedTypes.push_back(Args[i]->getType());
   }
-  Module *M = InsertBefore->getParent()->getParent()->getParent();
+  Module *M = InsertBefore->getModule();
   Function *Decl =
       GenXIntrinsic::getAnyDeclaration(M, IntrinID, OverloadedTypes);
   auto Name = isLSCWithoutReturn(BInst.Inst) ? "" : ".split" + Twine(StartIdx);

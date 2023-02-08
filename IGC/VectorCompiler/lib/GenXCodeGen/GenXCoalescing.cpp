@@ -1641,7 +1641,7 @@ void GenXCoalescing::coalesceCallables() {
                    "Callable Call must be right before function return",
                    DS_Type, vc::WarningName::Generic, CI);
     }
-    Function *F = CI->getParent()->getParent();
+    Function *F = CI->getFunction();
     IGC_ASSERT(vc::isKernel(F));
     vc::KernelMetadata KM{F};
     unsigned Idx = 0; // kernel argument index
@@ -1699,7 +1699,7 @@ void GenXCoalescing::coalesceGlobalLoads(FunctionGroup *FG) {
     for (auto UI : GV.users()) {
       if (auto LI = dyn_cast<LoadInst>(UI)) {
         IGC_ASSERT(LI->getPointerOperand() == &GV);
-        auto Fn = LI->getParent()->getParent();
+        auto Fn = LI->getFunction();
         // Check this load is inside the group.
         if (std::find(FG->begin(), FG->end(), Fn) != FG->end())
           LoadsInGroup.insert(LI);
@@ -1709,7 +1709,7 @@ void GenXCoalescing::coalesceGlobalLoads(FunctionGroup *FG) {
         continue;
       for (auto U : UI->users())
         if (auto LI = dyn_cast<LoadInst>(U)) {
-          auto Fn = LI->getParent()->getParent();
+          auto Fn = LI->getFunction();
           // Check this load is inside the group.
           if (std::find(FG->begin(), FG->end(), Fn) != FG->end())
             LoadsInGroup.insert(LI);

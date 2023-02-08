@@ -784,7 +784,7 @@ void GenXPatternMatch::visitICmpInst(ICmpInst &I) {
       }
       simplifyCmp(Cmp);
       // Call 'all'.
-      auto M = I.getParent()->getParent()->getParent();
+      auto M = I.getModule();
       auto Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_all, VTy);
       auto NewVal = Builder.CreateCall(Fn, Cmp);
       I.replaceAllUsesWith(NewVal);
@@ -1527,7 +1527,7 @@ bool MadMatcher::emit() {
                                             VTy->getNumElements());
       if (V0 && V1) {
         auto IID = GenXIntrinsic::getGenXMulIID(S0, S1);
-        Module *M = AInst->getParent()->getParent()->getParent();
+        Module *M = AInst->getModule();
         Type *Tys[2] = {VTy, V0->getType()};
         Function *Fn = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
         IGC_ASSERT(V0->getType() == V1->getType());
@@ -1611,7 +1611,7 @@ bool MadMatcher::emit() {
 
   Function *Fn = nullptr;
   {
-    Module *M = AInst->getParent()->getParent()->getParent();
+    Module *M = AInst->getModule();
     if (AInst->getType()->isFPOrFPVectorTy())
       Fn = GenXIntrinsic::getAnyDeclaration(M, ID, AInst->getType());
     else {
@@ -1808,7 +1808,7 @@ bool Add3Matcher::emit() {
 
   Function *Fn = nullptr;
   {
-    Module *M = AInst->getParent()->getParent()->getParent();
+    Module *M = AInst->getModule();
     Type *Tys[2] = {AInst->getType(), Vals[0]->getType()};
     Fn = GenXIntrinsic::getAnyDeclaration(M, ID, Tys);
   }
@@ -1896,7 +1896,7 @@ bool BfnMatcher::emit() {
   // create the BFN call
   Function *Fn = nullptr;
   {
-    Module *M = MainBfnInst->getParent()->getParent()->getParent();
+    Module *M = MainBfnInst->getModule();
     Type *Tys[2] = {MainBfnInst->getType(), Srcs[0]->getType()};
     Fn = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_bfn, Tys);
   }
@@ -2074,7 +2074,7 @@ bool MinMaxMatcher::emit() {
     return false;
 
   IRBuilder<> Builder(SelInst);
-  Module *M = SelInst->getParent()->getParent()->getParent();
+  Module *M = SelInst->getModule();
   Type *Tys[2] = {SelInst->getType(), Srcs[0]->getType()};
   Function *Fn = GenXIntrinsic::getAnyDeclaration(M, ID, Tys);
   CallInst *CI = Builder.CreateCall(Fn, Srcs, Annotation);
@@ -2186,7 +2186,7 @@ static Value *getReciprocal(IRBuilder<> &IRB, Value *V,
   if (!HasAllowReciprocal)
     return nullptr;
 
-  Module *M = IRB.GetInsertBlock()->getParent()->getParent();
+  Module *M = IRB.GetInsertBlock()->getModule();
   Twine Name = V->getName() + ".inv";
   auto Func = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_inv,
                                                 V->getType());
@@ -2662,7 +2662,7 @@ bool GenXPatternMatch::simplifyTruncSat(CallInst *Inst) {
     IGC_ASSERT_EXIT_MESSAGE(0, "Unknown intrinsic!");
   }
 
-  Module *M = Inst->getParent()->getParent()->getParent();
+  Module *M = Inst->getModule();
   Type *Tys[2] = {Inst->getType(), Src->getType()};
   Function *Fn = GenXIntrinsic::getGenXDeclaration(M, IID, Tys);
 
@@ -3538,7 +3538,7 @@ static Instruction *insertConstantLoad(Constant *C, Instruction *InsertBefore) {
   auto IntrinsicID = GenXIntrinsic::genx_constanti;
   if (C->getType()->isFPOrFPVectorTy())
     IntrinsicID = GenXIntrinsic::genx_constantf;
-  Module *M = InsertBefore->getParent()->getParent()->getParent();
+  Module *M = InsertBefore->getModule();
   Function *F = GenXIntrinsic::getGenXDeclaration(M, IntrinsicID, Ty);
   Instruction *Inst = CallInst::Create(F, Args, "constant", InsertBefore);
   Inst->setDebugLoc(InsertBefore->getDebugLoc());
@@ -3585,7 +3585,7 @@ bool GenXPatternMatch::placeConstants(Function *F) {
 
         for (auto &U : C->uses()) {
           auto I = dyn_cast<Instruction>(U.getUser());
-          if (!I || I->getParent()->getParent() != F)
+          if (!I || I->getFunction() != F)
             continue;
           ConstantUses.push_back(&U);
           ConstantUsers.insert(I);

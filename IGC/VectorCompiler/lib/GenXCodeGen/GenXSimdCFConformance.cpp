@@ -716,8 +716,8 @@ void GenXSimdCFConformance::gatherGotoJoinEMVals(bool IncludeIncoming)
         auto GotoJoin = dyn_cast<CallInst>(ui->getUser());
         if (!GotoJoin)
           continue;
-        if (FG && (FGA->getGroup(GotoJoin->getParent()->getParent()) != FG
-            || ui->getOperandNo() != IGCLLVM::getNumArgOperands(GotoJoin)))
+        if (FG && (FGA->getGroup(GotoJoin->getFunction()) != FG ||
+                   ui->getOperandNo() != IGCLLVM::getNumArgOperands(GotoJoin)))
           continue;
         // We have a goto/join (in our function group in the case of the late
         // pass).  Add the EM value (struct index 0) to EMVals.
@@ -748,7 +748,7 @@ void GenXSimdCFConformance::gatherEMVals()
     auto Savemask = dyn_cast<CallInst>(ui->getUser());
     if (!Savemask)
       continue;
-    if (FG && (FGA->getGroup(Savemask->getParent()->getParent()) != FG ||
+    if (FG && (FGA->getGroup(Savemask->getFunction()) != FG ||
                ui->getOperandNo() != IGCLLVM::getNumArgOperands(Savemask)))
       continue;
       lowerSimdCF = true;
@@ -764,7 +764,7 @@ void GenXSimdCFConformance::gatherEMVals()
     auto Unmask = dyn_cast<CallInst>(ui->getUser());
     if (!Unmask)
       continue;
-    if (FG && (FGA->getGroup(Unmask->getParent()->getParent()) != FG ||
+    if (FG && (FGA->getGroup(Unmask->getFunction()) != FG ||
                ui->getOperandNo() != IGCLLVM::getNumArgOperands(Unmask)))
       continue;
       lowerSimdCF = true;
@@ -778,7 +778,7 @@ void GenXSimdCFConformance::gatherEMVals()
     auto Remask = dyn_cast<CallInst>(ui->getUser());
     if (!Remask)
       continue;
-    if (FG && (FGA->getGroup(Remask->getParent()->getParent()) != FG ||
+    if (FG && (FGA->getGroup(Remask->getFunction()) != FG ||
                ui->getOperandNo() != IGCLLVM::getNumArgOperands(Remask)))
       continue;
       lowerSimdCF = true;
@@ -1060,7 +1060,9 @@ void GenXSimdCFConformance::handleNoCondEVCase(GenXSimdCFConformance::GotoJoinEV
       return;
     }
     // We are turning unconditional branch into conditional one
-    BasicBlock *Split = BasicBlock::Create(CondEV->getContext(), "goto_split", CondEV->getParent()->getParent(), Br->getSuccessor(0));
+    BasicBlock *Split =
+        BasicBlock::Create(CondEV->getContext(), "goto_split",
+                           CondEV->getFunction(), Br->getSuccessor(0));
     BranchInst::Create(Br->getSuccessor(0), Split);
     BranchInst::Create(Br->getSuccessor(0), Split, CondEV, Br);
 
@@ -1077,8 +1079,9 @@ void GenXSimdCFConformance::handleNoCondEVCase(GenXSimdCFConformance::GotoJoinEV
     LLVM_DEBUG(dbgs() << "Created " << TrueSucc->getName() << " to handle missing conditional branch\n");
 
     // False block: need to create new one
-    BasicBlock *FalseSucc = BasicBlock::Create(CondEV->getContext(), "cond_ev_false_split", CondEV->getParent()->getParent(),
-      TrueSucc);
+    BasicBlock *FalseSucc =
+        BasicBlock::Create(CondEV->getContext(), "cond_ev_false_split",
+                           CondEV->getFunction(), TrueSucc);
     LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName() << " to handle missing conditional branch\n");
 
     // Link blocks
@@ -1088,8 +1091,8 @@ void GenXSimdCFConformance::handleNoCondEVCase(GenXSimdCFConformance::GotoJoinEV
 
   // CFG changed: update DomTree.
   // TODO: there must be workaround to do it in a more optimal way
-  DominatorTree *domTree = getDomTree(CondEV->getParent()->getParent());
-  domTree->recalculate(*CondEV->getParent()->getParent());
+  DominatorTree *domTree = getDomTree(CondEV->getFunction());
+  domTree->recalculate(*CondEV->getFunction());
 }
 
 /**
@@ -1125,8 +1128,8 @@ void GenXSimdCFConformance::handleOptimizedBranchCase(GenXSimdCFConformance::Got
   LLVM_DEBUG(dbgs() << "Created " << TrueSucc->getName() << " to handle missing conditional branch\n");
   CondEV->getParent()->getTerminator()->eraseFromParent();
   // False block: need to create new one
-  FalseSucc = BasicBlock::Create(CondEV->getContext(), "cond_ev_false_split", CondEV->getParent()->getParent(),
-    TrueSucc);
+  FalseSucc = BasicBlock::Create(CondEV->getContext(), "cond_ev_false_split",
+                                 CondEV->getFunction(), TrueSucc);
   LLVM_DEBUG(dbgs() << "Created " << FalseSucc->getName() << " to handle missing conditional branch\n");
   // Link blocks
   BranchInst::Create(TrueSucc, FalseSucc, CondEV, CondEV->getParent());
@@ -1138,8 +1141,8 @@ void GenXSimdCFConformance::handleOptimizedBranchCase(GenXSimdCFConformance::Got
 
   // CFG changed: update DomTree.
   // TODO: there must be workaround to do it in a more optimal way
-  DominatorTree *domTree = getDomTree(CondEV->getParent()->getParent());
-  domTree->recalculate(*CondEV->getParent()->getParent());
+  DominatorTree *domTree = getDomTree(CondEV->getFunction());
+  domTree->recalculate(*CondEV->getFunction());
 }
 
 /**
@@ -1161,8 +1164,8 @@ void GenXSimdCFConformance::handleExistingBranchCase(GenXSimdCFConformance::Goto
 
   if (TrueSucc == FalseSucc) {
     // We need to simply introduce new BB to get CondEV
-    FalseSucc = BasicBlock::Create(CondEV->getContext(), "cond_ev_split", CondEV->getParent()->getParent(),
-      TrueSucc);
+    FalseSucc = BasicBlock::Create(CondEV->getContext(), "cond_ev_split",
+                                   CondEV->getFunction(), TrueSucc);
     BranchInst::Create(TrueSucc, FalseSucc);
     ExistingBranch->setSuccessor(1, FalseSucc);
 
@@ -1173,8 +1176,8 @@ void GenXSimdCFConformance::handleExistingBranchCase(GenXSimdCFConformance::Goto
 
     // CFG changed: update DomTree.
     // TODO: there must be workaround to do it in a more optimal way
-    DominatorTree *domTree = getDomTree(CondEV->getParent()->getParent());
-    domTree->recalculate(*CondEV->getParent()->getParent());
+    DominatorTree *domTree = getDomTree(CondEV->getFunction());
+    domTree->recalculate(*CondEV->getFunction());
   }
 }
 
@@ -1254,8 +1257,8 @@ void GenXSimdCFConformance::splitGotoJoinBlocks() {
       SplitPoint->getParent()->splitBasicBlock(SplitPoint, "split_for_join");
       // CFG changed: update DomTree.
       // TODO: there must be workaround to do it in a more optimal way
-      DominatorTree *domTree = getDomTree(SplitPoint->getParent()->getParent());
-      domTree->recalculate(*SplitPoint->getParent()->getParent());
+      DominatorTree *domTree = getDomTree(SplitPoint->getFunction());
+      domTree->recalculate(*SplitPoint->getFunction());
     }
   }
 
@@ -1339,8 +1342,8 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto, uns
     FalseSucc = Splitter;
     // CFG changed: update DomTree.
     // TODO: there must be workaround to do it in a more optimal way
-    DominatorTree *domTree = getDomTree(CondEV->getParent()->getParent());
-    domTree->recalculate(*CondEV->getParent()->getParent());
+    DominatorTree *domTree = getDomTree(CondEV->getFunction());
+    domTree->recalculate(*CondEV->getFunction());
   }
 
   // Copy instruction and set the value for true block. Place it before goto.
@@ -2686,7 +2689,7 @@ bool GenXSimdCFConformance::getConnectedVals(
       // about that.
       auto ValTy = IndexFlattener::getElementType(
           Val.getType(), Val.getIndex());
-      auto F = User->getParent()->getParent();
+      auto F = User->getFunction();
       bool Lower = false;
       for (auto ai = F->arg_begin(), ae = F->arg_end(); ; ++ai) {
         if (ai == ae) {
@@ -4563,8 +4566,8 @@ void GenXSimdCFConformance::GotoJoinEVs::hoistEVs() const{
 void DiagnosticInfoSimdCF::emit(Instruction *Inst, StringRef Msg,
         DiagnosticSeverity Severity)
 {
-  DiagnosticInfoSimdCF Err(Severity, *Inst->getParent()->getParent(),
-      Inst->getDebugLoc(), Msg);
+  DiagnosticInfoSimdCF Err(Severity, *Inst->getFunction(), Inst->getDebugLoc(),
+                           Msg);
   Inst->getContext().diagnose(Err);
 }
 

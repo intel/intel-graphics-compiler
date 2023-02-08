@@ -586,7 +586,7 @@ void GenXUnbaling::processTwoAddrOrPhi(Instruction *Inst,
     if (isa<PHINode>(InsertBefore))
       InsertBefore = InsertBefore->getParent()->getFirstNonPHI();
   } else
-    InsertBefore = Inst->getParent()->getParent()->front().getFirstNonPHI();
+    InsertBefore = Inst->getFunction()->front().getFirstNonPHI();
   SmallVector<Instruction *, 4> BitCastQueue;
   for (unsigned bci = 0;;) {
     // For this value, find uses that are bitcast and save them.

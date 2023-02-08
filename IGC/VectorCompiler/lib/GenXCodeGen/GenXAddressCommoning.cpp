@@ -117,8 +117,8 @@ bool testDuplicates(const llvm::ArrayRef<llvm::Instruction *> &Addrs,
   auto compareParent = [F](const llvm::Instruction *const I) {
     IGC_ASSERT(I);
     IGC_ASSERT(I->getParent());
-    IGC_ASSERT(I->getParent()->getParent());
-    const bool Result = (F == I->getParent()->getParent());
+    IGC_ASSERT(I->getFunction());
+    const bool Result = (F == I->getFunction());
     IGC_ASSERT(Result);
     return Result;
   };

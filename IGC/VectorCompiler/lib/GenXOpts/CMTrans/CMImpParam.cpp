@@ -775,8 +775,7 @@ void CMImpParam::replaceWithGlobal(CallInst *CI) {
   IGC_ASSERT_MESSAGE(GenXIntrinsic::isGenXIntrinsic(CI),
                      "genx intrinsic is expected");
   auto IID = GenXIntrinsic::getGenXIntrinsicID(CI->getCalledFunction());
-  GlobalVariable *GV =
-      getOrCreateGlobalForIID(CI->getParent()->getParent(), IID);
+  GlobalVariable *GV = getOrCreateGlobalForIID(CI->getFunction(), IID);
   LoadInst *Load = new LoadInst(IGCLLVM::getNonOpaquePtrEltTy(GV->getType()), GV, "",
                                 /* isVolatile */ false,
                                 IGCLLVM::getCorrectAlign(GV->getAlignment()), CI);

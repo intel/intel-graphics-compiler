@@ -193,8 +193,8 @@ CallInst &vc::createPrintFormatIndex(Value &Pointer, Instruction &InsertionPt) {
       "wrong argument: genx.print.format.index operand must be a pointer");
   IRBuilder<> IRB{&InsertionPt};
   auto *Decl = GenXIntrinsic::getGenXDeclaration(
-      IRB.GetInsertBlock()->getParent()->getParent(),
-      GenXIntrinsic::genx_print_format_index, Pointer.getType());
+      IRB.GetInsertBlock()->getModule(), GenXIntrinsic::genx_print_format_index,
+      Pointer.getType());
   return *IRB.CreateCall(Decl, &Pointer);
 }
 

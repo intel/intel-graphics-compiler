@@ -1862,7 +1862,7 @@ void genx::CallGraph::build(GenXLiveness *Liveness) {
       // TODO: deduce possible callsites thru cast chains
       if (isa<CallInst>(ui->getUser())) {
         auto Call = cast<CallInst>(ui->getUser());
-        auto Caller = Call->getParent()->getParent();
+        auto Caller = Call->getFunction();
         // do not add edges for indirect, recursive and intrinsic calls
         if (Call->getCalledFunction() &&
             !GenXIntrinsic::isAnyNonTrivialIntrinsic(Call->getCalledFunction()) &&

@@ -296,7 +296,7 @@ Instruction *CMRegion::createRdRegion(Value *Input, const Twine &Name,
           cast<IGCLLVM::FixedVectorType>(Args[0]->getType())->getElementType(),
       "Region and rdregion input operand types mismatch");
   Type *RegionTy = getRegionType(!AllowScalar);
-  Module *M = InsertBefore->getParent()->getParent()->getParent();
+  Module *M = InsertBefore->getModule();
   auto IID = ElementTy->isFloatingPointTy() ? GenXIntrinsic::genx_rdregionf
                                             : GenXIntrinsic::genx_rdregioni;
   Function *Decl = getGenXRegionDeclaration(M, IID, RegionTy, Args);
@@ -377,7 +377,7 @@ Instruction *CMRegion::createWrCommonRegion(GenXIntrinsic::ID IID,
       ParentWidthArg, // parent width (if variable start index)
       MaskArg // mask
   };
-  Module *M = InsertBefore->getParent()->getParent()->getParent();
+  Module *M = InsertBefore->getModule();
   Function *Decl = getGenXRegionDeclaration(M, IID, nullptr, Args);
   Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
   NewInst->setDebugLoc(DL);
@@ -412,7 +412,7 @@ Instruction *CMRegion::createRdPredRegion(Value *Input, unsigned Index,
   };
   auto RetTy =
       IGCLLVM::FixedVectorType::get(Args[0]->getType()->getScalarType(), Size);
-  Module *M = InsertBefore->getParent()->getParent()->getParent();
+  Module *M = InsertBefore->getModule();
   Function *Decl = getGenXRegionDeclaration(M, GenXIntrinsic::genx_rdpredregion,
       RetTy, Args);
   Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
@@ -505,7 +505,7 @@ Instruction *CMRegion::createWrPredRegion(Value *OldVal, Value *Input,
       Input, // value to write into subregion
       ConstantInt::get(I32Ty, Index), // start index
   };
-  Module *M = InsertBefore->getParent()->getParent()->getParent();
+  Module *M = InsertBefore->getModule();
   Function *Decl = getGenXRegionDeclaration(M, GenXIntrinsic::genx_wrpredregion,
       nullptr, Args);
   Instruction *NewInst = CallInst::Create(Decl, Args, Name, InsertBefore);
@@ -535,8 +535,7 @@ Instruction *CMRegion::createWrPredPredRegion(Value *OldVal, Value *Input,
 {
   Type *Tys[] = { OldVal->getType(), Input->getType() };
   Function *CalledFunc = GenXIntrinsic::getGenXDeclaration(
-      InsertBefore->getParent()->getParent()->getParent(),
-      GenXIntrinsic::genx_wrpredpredregion, Tys);
+      InsertBefore->getModule(), GenXIntrinsic::genx_wrpredpredregion, Tys);
   Value *Args[] = { OldVal, Input,
       ConstantInt::get(Type::getInt32Ty(InsertBefore->getContext()), Index),
       Pred };
@@ -560,8 +559,7 @@ void CMRegion::setRegionCalledFunc(Instruction *Inst)
   for (unsigned i = 0, e = IGCLLVM::getNumArgOperands(CI); i != e; ++i)
     Opnds.push_back(CI->getOperand(i));
   Function *Decl = getGenXRegionDeclaration(
-      Inst->getParent()->getParent()->getParent(),
-      GenXIntrinsic::getGenXIntrinsicID(Inst),
+      Inst->getModule(), GenXIntrinsic::getGenXIntrinsicID(Inst),
       Inst->getType(), Opnds);
   CI->setOperand(IGCLLVM::getNumArgOperands(CI), Decl);
 }

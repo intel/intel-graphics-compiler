@@ -68,7 +68,7 @@ CallInst *genx::createConvert(Value *In, const Twine &Name,
     Instruction *InsertBefore, Module *M)
 {
   if (!M)
-    M = InsertBefore->getParent()->getParent()->getParent();
+    M = InsertBefore->getModule();
   Function *Decl = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_convert,
       In->getType());
   return CallInst::Create(Decl, In, Name, InsertBefore);
@@ -87,7 +87,7 @@ CallInst *genx::createConvertAddr(Value *In, int Offset, const Twine &Name,
     Instruction *InsertBefore, Module *M)
 {
   if (!M)
-    M = InsertBefore->getParent()->getParent()->getParent();
+    M = InsertBefore->getModule();
   auto OffsetVal = ConstantInt::get(In->getType()->getScalarType(), Offset);
   Function *Decl = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_convert_addr,
       In->getType());
@@ -105,7 +105,7 @@ CallInst *genx::createAddAddr(Value *Lhs, Value *Rhs, const Twine &Name,
     Instruction *InsertBefore, Module *M)
 {
   if (!M)
-    M = InsertBefore->getParent()->getParent()->getParent();
+    M = InsertBefore->getModule();
   Value *Args[] = {Lhs, Rhs};
   Type *Tys[] = {Rhs->getType(), Lhs->getType()};
   Function *Decl = GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_add_addr, Tys);

@@ -329,7 +329,7 @@ void GenXVectorCombiner::createNewInstruction(
     IRBuilder<> Builder{InsteadOf};
     Function *Fn = nullptr;
     GenXIntrinsic::ID IdCode = GenXIntrinsic::getGenXIntrinsicID(Operation);
-    Module *M = Operation->getParent()->getParent()->getParent();
+    Module *M = Operation->getModule();
     switch (IdCode) {
     case GenXIntrinsic::genx_absf:
     case GenXIntrinsic::genx_absi:

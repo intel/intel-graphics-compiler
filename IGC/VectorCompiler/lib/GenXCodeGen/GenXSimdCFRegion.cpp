@@ -841,7 +841,7 @@ void GenXPredToSimdCF::insertIfGotoJoin(SimdCFIfRegion &R) {
 
   generateGoto(Br);
 
-  Function *F = Br->getParent()->getParent();
+  Function *F = Br->getFunction();
   auto *IfThenExit = R.getIfThenRegion()->getExit();
   StringRef JoinBlockPrefix = IfThenExit->getName();
   JoinBlockPrefix.consume_back(".then");
@@ -881,7 +881,7 @@ void GenXPredToSimdCF::insertLoopGotoJoin(SimdCFLoopRegion &R) {
 
   generateGoto(Br);
 
-  Function *F = Br->getParent()->getParent();
+  Function *F = Br->getFunction();
 
   auto *LastBlock = R.getSimdBranch()->getParent();
   StringRef JoinBlockPrefix = LastBlock->getName();

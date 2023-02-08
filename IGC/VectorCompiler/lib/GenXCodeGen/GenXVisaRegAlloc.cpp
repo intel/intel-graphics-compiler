@@ -1009,8 +1009,8 @@ void GenXVisaRegAlloc::print(raw_ostream &OS, const FunctionGroup *FG) const {
       if (Pressure[n] != Last)
         HadInst = false;
       if (Pressure[n] != Last || (!HadInst && Inst)) {
-        if (Inst && Inst->getParent()->getParent() != LastFunc) {
-          LastFunc = Inst->getParent()->getParent();
+        if (Inst && Inst->getFunction() != LastFunc) {
+          LastFunc = Inst->getFunction();
           OS << "In " << LastFunc->getName() << "\n";
         }
         Last = Pressure[n];

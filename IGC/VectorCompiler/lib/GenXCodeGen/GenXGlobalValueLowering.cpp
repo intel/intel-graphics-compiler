@@ -293,7 +293,7 @@ void GenXGlobalValueLowering::fillWorkListForGVInstUse(Use &GVUse,
                      "inserted it before");
   // Do not skip direct calls as an indirectly-called function can be called
   // only indirectly. See GenXCloneIndirectFunctions
-  Function *Func = Usr->getParent()->getParent();
+  Function *Func = Usr->getFunction();
   WorkList[Func].Users.insert({Usr, GVUse.getOperandNo()});
   WorkList[Func].Replacement[ConstWithGV] = nullptr;
 

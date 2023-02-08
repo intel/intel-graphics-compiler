@@ -319,8 +319,8 @@ bool genx::loadConstants(Instruction *Inst, const GenXSubtarget &Subtarget,
   if (auto Ret = dyn_cast<ReturnInst>(Inst)) {
     // Return: disallow constant return value in a subroutine (internal
     // linkage).
-    if (Ret->getNumOperands() && Ret->getParent()->getParent()->getLinkage()
-          == GlobalValue::InternalLinkage) {
+    if (Ret->getNumOperands() &&
+        Ret->getFunction()->getLinkage() == GlobalValue::InternalLinkage) {
       if (auto C = dyn_cast<Constant>(Ret->getOperand(0))) {
         if (!C->getType()->isVoidTy() && !isa<UndefValue>(C)) {
           Ret->setOperand(0, ConstantLoader(C, Subtarget, DL).load(Ret));
@@ -696,7 +696,7 @@ static bool checkApplyAddPattern(CallVecIterator &I, CallVecIterator &J,
       ConstantVector::getSplat(IGCLLVM::getElementCount(N), SplatVal);
 
   Type *OverloadedTypes[] = {IFirst->getType()};
-  Module *M = (*I)->getParent()->getParent()->getParent();
+  Module *M = (*I)->getModule();
   Function *Decl = GenXIntrinsic::getGenXDeclaration(
       M, GenXIntrinsic::genx_constanti, OverloadedTypes);
   Instruction *NewInst = CallInst::Create(Decl, NewConst, "pre_consts_add", *J);
@@ -1435,7 +1435,7 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore) {
     IntrinsicID = GenXIntrinsic::genx_constantf;
   else if (C->getType()->getScalarType()->isIntegerTy(1))
     IntrinsicID = GenXIntrinsic::genx_constantpred;
-  Module *M = InsertBefore->getParent()->getParent()->getParent();
+  Module *M = InsertBefore->getModule();
   Function *Decl = GenXIntrinsic::getGenXDeclaration(M, IntrinsicID, OverloadedTypes);
   Instruction *NewInst = CallInst::Create(Decl, Args, "constant", InsertBefore);
   if (AddedInstructions)
