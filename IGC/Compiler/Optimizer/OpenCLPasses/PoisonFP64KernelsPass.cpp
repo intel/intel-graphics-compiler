@@ -52,6 +52,13 @@ bool PoisonFP64Kernels::doInitialization(CallGraph &CG) {
 }
 
 bool PoisonFP64Kernels::runOnSCC(CallGraphSCC &SCC) {
+    auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    // If DP emu is enabled we don't need poison fp64 pass
+    if (ctx->m_hasDPEmu)
+    {
+        return false;
+    }
+
     bool modified = false;
     for (CallGraphNode *Node : SCC) {
         Function *F = Node->getFunction();

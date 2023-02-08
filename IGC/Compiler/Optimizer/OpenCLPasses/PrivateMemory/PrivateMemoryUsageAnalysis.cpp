@@ -125,9 +125,11 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function& F)
     if (!m_hasPrivateMem)
     {
         CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
         // This is the condition that double emulation is used.
-        if ((IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
-            (pCtx->m_DriverInfo.NeedFP64(pCtx->platform.getPlatformInfo().eProductFamily) && pCtx->platform.hasNoFP64Inst())))
+        pCtx->checkDPEmulationEnabled();
+
+        if (pCtx->m_hasDPEmu)
         {
             m_hasPrivateMem = true;
         }
