@@ -95,7 +95,7 @@ DECLARE_IGC_REGKEY(bool, EnableQWRotateInstructions,    true, "Enable QW type su
 DECLARE_IGC_REGKEY(bool, DPASTokenReduction,            false, "optimization to reduce the tokens used for DPAS instruction.", true)
 DECLARE_IGC_REGKEY(bool, EnableAdd3,                    true,  "Enable Add3. XeHP+ only", true)
 DECLARE_IGC_REGKEY(bool, EnableBfn,                     true,  "Enable Bfn. XeHP+ only", true)
-DECLARE_IGC_REGKEY(bool, SeparateSpillPvtScratchSpace,  true,  "Separate scratch spaces for spillfill and privatememory. XeHP and above only. Test only. Remove it once stabalized.", true)
+DECLARE_IGC_REGKEY(bool, SeparateSpillPvtScratchSpace,  false,  "Separate scratch spaces for spillfill and privatememory. XeHP and above only. Test only. Remove it once stabalized.", true)
 DECLARE_IGC_REGKEY(bool, DisableThreeALUPipes,          false,  "Disable three ALU Pipelines. XeHP only", true)
 DECLARE_IGC_REGKEY(bool, Enable16DWURBWrite,            false, "Enable 16 Dword URB Write messages", true)
 DECLARE_IGC_REGKEY(bool, Enable16OWSLMBlockRW,          true,  "Enable 16 OWord (8 GRF) SLM block read/write message", true)
