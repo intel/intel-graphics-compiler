@@ -44,7 +44,7 @@ function(igc_resource_embed_file symbolFilesVarName symbolName embeddedFilePath)
     set(_dependency "${embeddedFilePath}")
   endif()
 
-  find_program(IGC_PYTHON NAMES "python2" "python")
+  find_program(IGC_PYTHON NAMES "python3" "python")
 
   add_custom_command(OUTPUT "${_symbolFilePath}"
                             COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_EMBEDDER_DIR}"
