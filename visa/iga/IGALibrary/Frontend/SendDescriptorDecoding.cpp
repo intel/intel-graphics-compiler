@@ -89,19 +89,16 @@ static void appendUVR(Platform p, SFID sfid, int src0Len,
     // bits for a full vector's worth of U's, V's, etc....
     const int regsPerCoord = std::max<int>(
         1, dr.info.execWidth * dr.info.addrSizeBits / BITS_PER_REG);
-    switch (src0Len / regsPerCoord) {
-    case 1:
-      ss << "; u";
-      break;
-    case 2:
-      ss << "; u,v";
-      break;
-    case 3:
-      ss << "; u,v,r";
-      break;
-    case 4:
-      ss << "; u,v,r,lod";
-      break;
+    static const char *coordTableUVRL[5] {
+      "?", "u", "u,v", "u,v,r", "u,v,r,lod"
+    };
+    static const char **coordTable = coordTableUVRL;
+    int nCoords = src0Len / regsPerCoord;
+    ss << "; ";
+    if (nCoords <= 4) {
+      ss << coordTable[nCoords];
+    } else {
+      ss << "???";
     }
   } // U,V,R,LOD
 }

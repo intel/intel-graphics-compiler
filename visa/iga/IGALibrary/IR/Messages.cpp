@@ -526,7 +526,7 @@ const SendOpDefinition &iga::lookupSendOp(const char *mnemonic) {
     return lookupSendOp(SendOp::STORE_QUAD);
   else if (mne == "store_block")
     return lookupSendOp(SendOp::STORE_STRIDED);
-  static constexpr SendOpDefinition INVALID(SendOp::INVALID, "?", "?");
+  static constexpr SendOpDefinition INVALID {SendOp::INVALID, "?", "?"};
   return INVALID;
 }
 

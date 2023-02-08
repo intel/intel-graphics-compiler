@@ -4154,7 +4154,8 @@ bool KernelParser::ParseLdStInst() {
   bool checkAddrPayloadSize = true;
   bool hasUvrl =
       vma.sfid == SFID::TGM && (vma.op == SendOp::LOAD_QUAD ||
-                                vma.op == SendOp::STORE_QUAD || vma.isAtomic());
+                                vma.op == SendOp::STORE_QUAD ||
+                                vma.isAtomic());
   hasUvrl |= vma.sfid == SFID::TGM && vma.op == SendOp::STORE_UNCOMPRESSED_QUAD;
   bool addrLenIsCorrect = src0Addr.payload.regLen == expectedAddrRegs;
   addrLenIsCorrect |=

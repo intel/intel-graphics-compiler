@@ -571,9 +571,11 @@ struct MessageDecoderLSC : MessageDecoder {
     const std::string symbol = ToSyntax(lscOp);
     op = lscOp;
 
+    const SendOpDefinition &opInfo = lookupSendOp(lscOp);
     bool opSupportsUvr = lscOp == SendOp::LOAD_QUAD ||
                          lscOp == SendOp::STORE_QUAD ||
-                         lscOp == SendOp::STORE_UNCOMPRESSED_QUAD;
+                         lscOp == SendOp::STORE_UNCOMPRESSED_QUAD ||
+                         opInfo.isAtomic();
     if (sfid == SFID::TGM && opSupportsUvr) {
       extraAttrs |= MessageInfo::Attr::HAS_UVRLOD;
     }
@@ -611,7 +613,6 @@ struct MessageDecoderLSC : MessageDecoder {
       extraAttrs |= MessageInfo::Attr::SLM;
     //
     CacheOpt l1 = CacheOpt::DEFAULT, l3 = CacheOpt::DEFAULT;
-    const auto &opInfo = lookupSendOp(op);
     bool hasCc = opInfo.isLoad() || opInfo.isStore() || opInfo.isAtomic();
     if (sfid != SFID::SLM && hasCc) {
       decodeCacheControl(op, l1, l3);

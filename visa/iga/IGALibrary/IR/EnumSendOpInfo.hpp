@@ -75,19 +75,18 @@ DEFINE_LOAD_OP(LOAD_QUAD, "load_quad", "load quad",
 DEFINE_LOAD_OP(LOAD_STATUS, "load_status", "load status", ATTRS_NONE)
 DEFINE_LOAD_OP(LOAD_BLOCK2D, "load_block2d", "load array of 2d blocks",
                ATTRS_SCALARADDR)
-
 DEFINE_STORE_OP(STORE, "store", "store", ATTRS_NONE)
 DEFINE_STORE_OP(STORE_STRIDED, "store_strided", "store strided",
                 ATTRS_SCALARADDR) // AKA store_block
 DEFINE_STORE_OP(STORE_QUAD, "store_quad", "store quad",
                 ATTRS_CMASK) // AKA store_cmask
+
 DEFINE_STORE_OP(STORE_BLOCK2D, "store_block2d", "store 2d block",
                 ATTRS_SCALARADDR)
 DEFINE_STORE_OP(STORE_UNCOMPRESSED, "store_uncompressed", "uncompressed store",
                 ATTRS_NONE)
 DEFINE_STORE_OP(STORE_UNCOMPRESSED_QUAD, "store_uncompressed_quad",
                 "uncompressed quad store", ATTRS_CMASK)
-
 DEFINE_ATOMIC_UNARY_OP(ATOMIC_LOAD, "atomic_load", "atomic load")
 DEFINE_ATOMIC_BINARY_OP(ATOMIC_STORE, "atomic_store", "atomic store")
 //
