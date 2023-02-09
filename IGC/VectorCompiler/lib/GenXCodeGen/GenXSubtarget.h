@@ -265,6 +265,8 @@ public:
 
   int getNumElementsInAddrReg() const { return GRFByteSize / 4; }
 
+  bool hasLSCMessages() const { return HasLSCMessages; }
+
   bool translateLegacyMessages() const {
     return (HasLSCMessages && TranslateLegacyMessages);
   }
