@@ -127,14 +127,14 @@ __spirv_ControlBarrierWaitINTEL(int scope, int memory_scope,
 // not declared as an `extern int*` In this case this would end up as a pointer
 // to pointer in LLVM-IR. It would generate two loads and wouldn't be consistent
 // with runtime behavior.
-__global extern int __SubDeviceID;
+extern int __SubDeviceID;
 
 // This variable has to be patched by GenXInitBiFConstant pass which will
 // convert it into a constant with a target specific initialization value
 int __cm_cl_MaxHWThreadIDPerSubDevice;
 
 int __spirv_BuiltInSubDeviceIDINTEL() {
-  __global volatile int *P = &__SubDeviceID;
+  volatile int *P = &__SubDeviceID;
   if (!P)
     return 0;
   return *P;
