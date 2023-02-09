@@ -402,6 +402,7 @@ struct ModuleDataT {
   RawSectionInfo Constant;
   RawSectionInfo Global;
   RawSectionInfo ConstString;
+  GenXOCLRuntimeInfo::SymbolSeq ExternalGlobals;
 
   ModuleDataT() = default;
   ModuleDataT(const Module &M);
@@ -607,6 +608,7 @@ static GenXDebugInfo::ElfBin getDebugInfoForIndirectFunctions(
 }
 
 ModuleDataT::ModuleDataT(const Module &M) {
+  auto &DL = M.getDataLayout();
   auto RealGlobals =
       make_filter_range(M.globals(), [](const GlobalVariable &GV) {
         return vc::isRealGlobalVariable(GV);
@@ -619,13 +621,17 @@ ModuleDataT::ModuleDataT(const Module &M) {
         // and real globals. Only indexed globals are left marked as printf
         // strings but indexed strings aren't real global variables so they're
         // skipped here. Indexed strings are handled separately.
-        appendGlobalVariableData(ConstString, GV, M.getDataLayout());
+        appendGlobalVariableData(ConstString, GV, DL);
       else
-        appendGlobalVariableData(Constant, GV, M.getDataLayout());
+        appendGlobalVariableData(Constant, GV, DL);
     } else if (GV.hasInitializer()) {
       IGC_ASSERT_MESSAGE(!GV.hasAttribute(vc::PrintfStringVariable),
                          "non-const global variable cannot be a printf string");
-      appendGlobalVariableData(Global, GV, M.getDataLayout());
+      appendGlobalVariableData(Global, GV, DL);
+    } else {
+      // External global variables
+      auto Name = GV.getName().str();
+      ExternalGlobals.emplace_back(vISA::S_UNDEF, 0, 0, Name.c_str());
     }
   }
 }
@@ -643,6 +649,9 @@ static GenXOCLRuntimeInfo::ModuleInfoT getModuleInfo(const Module &M) {
   constructSymbols<vISA::GenSymType::S_GLOBAL_VAR_CONST>(
       ModuleData.ConstString.Data.begin(), ModuleData.ConstString.Data.end(),
       std::back_inserter(ModuleInfo.ConstString.Symbols));
+
+  llvm::copy(ModuleData.ExternalGlobals,
+             std::back_inserter(ModuleInfo.Global.Symbols));
 
   ModuleInfo.Constant.Relocations = std::move(ModuleData.Constant.Relocations);
   ModuleInfo.Global.Relocations = std::move(ModuleData.Global.Relocations);

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -196,6 +196,7 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   iOpenCL::ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
                                      *m_programInfo, SpirvData, SpirvSize,
                                      nullptr, 0, OptsData, OptsSize);
+  zebuilder.setProductFamily(m_Platform.eProductFamily);
   zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
 
   for (const auto &kernel : m_kernels) {
