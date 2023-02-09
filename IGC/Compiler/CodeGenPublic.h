@@ -1034,6 +1034,7 @@ namespace IGC
         CompOptions& getCompilerOption();
         virtual void resetOnRetry();
         virtual uint32_t getNumThreadsPerEU() const;
+        virtual uint32_t getExpGRFSize() const;
         virtual uint32_t getNumGRFPerThread(bool returnDefault = true);
         virtual void setNumGRFPerThread(uint32_t value) { m_NumGRFPerThread = value; }
         virtual bool forceGlobalMemoryAllocation() const;

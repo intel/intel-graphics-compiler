@@ -103,6 +103,8 @@ namespace IGC
             bool Intel256GRFPerThread = false;
             bool IntelNumThreadPerEU = false;
             uint32_t numThreadsPerEU = 0;
+            bool IntelExpGRFSize = false;
+            uint32_t expGRFSize = 0;
             std::vector<std::string> LargeGRFKernels;
             std::vector<std::string> RegularGRFKernels;
             // IntelForceInt32DivRemEmu is used only if fp64 is supported natively.
@@ -332,6 +334,7 @@ namespace IGC
         float getProfilingTimerResolution();
         uint32_t getNumGRFPerThread(bool returnDefault = true) override;
         uint32_t getNumThreadsPerEU() const override;
+        uint32_t getExpGRFSize() const override;
         bool forceGlobalMemoryAllocation() const override;
         bool allocatePrivateAsGlobalBuffer() const override;
         bool noLocalToGenericOptionEnabled() const override;

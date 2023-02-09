@@ -4464,6 +4464,9 @@ namespace IGC
                 {
                     // Number of threads per EU is set per module (by compiler option)
                     SaveOption(vISA_HWThreadNumberPerEU, ClContext->getNumThreadsPerEU());
+                } else if (ClContext->getExpGRFSize() > 0) {
+                    // Explicit GRF size set per module (by compiler option)
+                    SaveOption(vISA_TotalGRFNum, ClContext->getExpGRFSize());
                 }
                 else if (m_program->m_Platform->supportsAutoGRFSelection() &&
                     (context->m_DriverInfo.supportsAutoGRFSelection() ||
@@ -4473,6 +4476,28 @@ namespace IGC
                 {
                     // When user hasn't specified number of threads, we can rely on compiler heuristics
                     SaveOption(vISA_RegSharingHeuristics, true);
+                }
+
+                // Emit warnings if mismatch is found in user input
+                // Mismatch between number of threads and GRF size (per module)
+                if (ClContext->getNumThreadsPerEU() > 0 &&  ClContext->getExpGRFSize() > 0 &&
+                    ((ClContext->getNumThreadsPerEU() == 4 && ClContext->getExpGRFSize() == 128) ||
+                     (ClContext->getNumThreadsPerEU() == 8 && ClContext->getExpGRFSize() == 256))) {
+                    context->EmitWarning("Mismatch between the GRF and number of threads in compiler option");
+                }
+
+                // Mismatch between number of threads and regular GRF size (per kernel)
+                if (m_program->IsRegularGRFRequested() && m_program->getAnnotatedNumThreads() > 0 &&
+                    m_program->getAnnotatedNumThreads() != 8) {
+                    context->EmitWarning(
+                        "Mismatch between the regular GRF and annotated number of threads");
+                }
+
+                // Mismatch between number of threads and large GRF size (per kernel)
+                if (m_program->IsLargeGRFRequested() && m_program->getAnnotatedNumThreads() > 0 &&
+                    m_program->getAnnotatedNumThreads() != 4) {
+                    context->EmitWarning(
+                        "Mismatch between the large GRF and annotated number of threads");
                 }
             }
         }

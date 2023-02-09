@@ -698,6 +698,11 @@ namespace IGC
         return 0;
     }
 
+    uint32_t CodeGenContext::getExpGRFSize() const
+    {
+        return 0;
+    }
+
     bool CodeGenContext::enableZEBinary() const
     {
         return false;

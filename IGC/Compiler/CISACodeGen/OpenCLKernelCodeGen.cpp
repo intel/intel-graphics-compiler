@@ -77,6 +77,14 @@ namespace IGC
         return 0;
     }
 
+    uint32_t OpenCLProgramContext::getExpGRFSize() const {
+        if (m_InternalOptions.IntelExpGRFSize) {
+            return m_InternalOptions.expGRFSize;
+        }
+
+        return 0;
+    }
+
     uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault)
     {
         if (platform.supportsStaticRegSharing())
@@ -385,6 +393,20 @@ namespace IGC
                 llvm::StringRef valStr = opts.substr(valStart, valEnd - valStart);
                 if (valStr.getAsInteger(10, numThreadsPerEU))
                 {
+                    IGC_ASSERT(0);
+                }
+                Pos = valEnd;
+                continue;
+            } else if (suffix.equals("-exp-register-file-size")) {
+                IntelExpGRFSize = true;
+
+                // Take an integer value after this option:
+                //   <flag> <number>
+                size_t valStart = opts.find_first_not_of(' ', ePos + 1);
+                size_t valEnd = opts.find_first_of(' ', valStart);
+                llvm::StringRef valStr =
+                    opts.substr(valStart, valEnd - valStart);
+                if (valStr.getAsInteger(10, expGRFSize)) {
                     IGC_ASSERT(0);
                 }
                 Pos = valEnd;
