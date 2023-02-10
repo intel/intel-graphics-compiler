@@ -423,7 +423,7 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
     if (showDataPayload) {
       os << "\n";
       os << "DATA PAYLOAD\n";
-      int grfSize = opts.platform >= IGA_XE_HPC ? 64 : 32;
+      const int grfSize = opts.platform >= IGA_XE_HPC ? 64 : 32;
       if (mi.hasAttr(iga::MessageInfo::Attr::TRANSPOSED)) {
         // formatSIMD(opts, os, msgInfo, grfSize);
         formatSIMD(opts, os, mi, grfSize);

@@ -133,7 +133,7 @@ struct MessageInfo {
   enum class Attr : uint32_t {
     NONE = 0x0,
     //
-    // Set on atomic operations that return data
+    // Set on atomic operations that return data.
     ATOMIC_RETURNS = 1 << 0,
     //
     // For messages that uncompress data, expand into the high unit
@@ -146,20 +146,23 @@ struct MessageInfo {
     //
     // Indicates the message is has U, V, R, and LOD coordinates
     // as part of the address payloads.
+    // Otherw messages may have a different coordinate layout.
     HAS_UVRLOD = 1 << 3,
     //
     // Indicates a scratch message
     SCRATCH = 1 << 4,
     //
-    // Indicates SLM
+    // Indicates the message is to SLM (shared local memory)
     SLM = 1 << 5,
     //
-    // Indicates the data is transposed during load or store
+    // Indicates the data is transposed during load or store.
     TRANSPOSED = 1 << 6,
     //
-    // Indicates the message is a typed operation
+    // Indicates the message is a typed operation.
+    // In later platforms this implies the operation is to SFID TGM.
     TYPED = 1 << 7,
     //
+    // Indicates the message decode info is valid.
     VALID = 0x80000000,
   };
 
@@ -222,9 +225,9 @@ struct MessageInfo {
   //
   // The surface identifier (if applicable).  E.g. BTI.
   SendDesc surfaceId;
-       //
-       // Possible immediate offset (if the encoding supports it)
-       // This is in bytes not elements
+  //
+  // Possible immediate offset (if the encoding supports it)
+  // This is in bytes not elements
   int immediateOffset = 0;
   //
   // same as the above but only for block2d (mutally exclusive with above)

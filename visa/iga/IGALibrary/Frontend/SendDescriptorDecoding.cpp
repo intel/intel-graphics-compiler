@@ -92,7 +92,7 @@ static void appendUVR(Platform p, SFID sfid, int src0Len,
     static const char *coordTableUVRL[5] {
       "?", "u", "u,v", "u,v,r", "u,v,r,lod"
     };
-    static const char **coordTable = coordTableUVRL;
+    const char **coordTable = coordTableUVRL;
     int nCoords = src0Len / regsPerCoord;
     ss << "; ";
     if (nCoords <= 4) {
