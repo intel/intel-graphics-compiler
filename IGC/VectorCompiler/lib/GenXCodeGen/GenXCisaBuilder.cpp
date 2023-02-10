@@ -3649,7 +3649,7 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       ExecSize = VT->getNumElements();
     else
       ExecSize = GenXIntrinsicInfo::getOverridedExecSize(CI, Subtarget);
-    return getExecSizeFromValue(ExecSize ? ExecSize : 1);
+    return getExecSizeFromValue(ExecSize);
   };
 
   auto GetExecSizeFromByte = [&](II::ArgInfo AI, VISA_EMask_Ctrl *Mask) {
@@ -3904,32 +3904,23 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
           VISA_RawOpnd *Src0Addr, VISA_RawOpnd *Src1Data,
           VISA_RawOpnd *Src2Data) {
         LLVM_DEBUG(dbgs() << "CreateLscUntyped\n");
-        IGC_ASSERT_EXIT(SubOpcode != LSC_LOAD_STRIDED &&
-                        SubOpcode != LSC_STORE_STRIDED);
-        constexpr unsigned AddressOperandNum = 10;
-
-        auto *AddrV = CI->getArgOperand(AddressOperandNum);
-        auto *AddrTy = AddrV->getType();
-        if (auto *AddrVTy = dyn_cast<IGCLLVM::FixedVectorType>(AddrTy))
-          AddrTy = AddrVTy->getElementType();
-
-        switch (AddrTy->getIntegerBitWidth()) {
-        case 32:
-          Addr.size = LSC_ADDR_SIZE_32b;
-          break;
-        case 64:
-          IGC_ASSERT_EXIT(LscSfid != LSC_SLM);
-          IGC_ASSERT_EXIT(Addr.type == LSC_ADDR_TYPE_FLAT);
+        if (DL.getPointerSize() == QWordBytes && LscSfid != LSC_TGM &&
+            LscSfid != LSC_SLM &&
+            (Addr.type == LSC_ADDR_TYPE_FLAT ||
+             Addr.type == LSC_ADDR_TYPE_SS) &&
+            SubOpcode != LSC_LOAD_BLOCK2D && SubOpcode != LSC_STORE_BLOCK2D)
           Addr.size = LSC_ADDR_SIZE_64b;
-          break;
-        default:
-          IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported address type");
+        if (SubOpcode == LSC_LOAD_STRIDED || SubOpcode == LSC_STORE_STRIDED) {
+          Kernel->AppendVISALscUntypedStridedInst(
+              SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, Addr,
+              DataShape, Surface, DstData, Src0Addr,
+              (VISA_VectorOpnd *)Src0Addr, Src1Data);
+        } else {
+          Kernel->AppendVISALscUntypedInst(
+              SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, Addr,
+              DataShape, Surface, DstData, Src0Addr, Src1Data, Src2Data);
         }
-
-        Kernel->AppendVISALscUntypedInst(
-            SubOpcode, LscSfid, Pred, ExecSize, Emask, CacheOpts, Addr,
-            DataShape, Surface, DstData, Src0Addr, Src1Data, Src2Data);
-      };
+  };
 
   auto CreateLscUntypedBlock2D =
       [&](LSC_OP SubOpcode, LSC_SFID LscSfid, VISA_PredOpnd *Pred,
