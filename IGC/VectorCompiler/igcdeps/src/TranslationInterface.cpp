@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -330,9 +330,19 @@ static void adjustDumpOptions(vc::CompileOptions &Opts) {
   }
 }
 
+static void adjustHashOptions(vc::CompileOptions &Opts,
+                              const ShaderHash &Hash) {
+  Opts.EnableHashMovs =
+      IGC_IS_FLAG_DISABLED(ForceDisableShaderDebugHashCodeInKernel) &&
+      IGC_IS_FLAG_ENABLED(ShaderDebugHashCodeInKernel);
+  Opts.EnableHashMovsAtPrologue = IGC_IS_FLAG_ENABLED(EnableHashMovsAtPrologue);
+  Opts.AsmHash = Hash.getAsmHash();
+}
+
 static void adjustOptions(const IGC::CPlatform &IGCPlatform,
                           TC::TB_DATA_FORMAT DataFormat,
-                          vc::CompileOptions &Opts, BuildDiag &Diag) {
+                          vc::CompileOptions &Opts, BuildDiag &Diag,
+                          const ShaderHash &Hash) {
   adjustPlatform(IGCPlatform, Opts);
   adjustFileType(DataFormat, Opts);
   adjustOptLevel(Opts);
@@ -340,6 +350,7 @@ static void adjustOptions(const IGC::CPlatform &IGCPlatform,
   adjustDumpOptions(Opts);
   adjustStackCalls(Opts, Diag);
   adjustDebugStrippingPolicy(Opts);
+  adjustHashOptions(Opts, Hash);
 
   adjustTransformationsAndOptimizations(Opts);
 }
@@ -617,7 +628,7 @@ std::error_code vc::translateBuild(const TC::STB_TranslateInputArgs *InputArgs,
 
   BuildDiag Diag;
   vc::CompileOptions &Opts = ExpOptions.get();
-  adjustOptions(IGCPlatform, InputDataFormatTemp, Opts, Diag);
+  adjustOptions(IGCPlatform, InputDataFormatTemp, Opts, Diag, Hash);
 
   // here we have Opts set and can dump what we got from runtime and how
   // we understood it. We need to do it before output error on unknown platform

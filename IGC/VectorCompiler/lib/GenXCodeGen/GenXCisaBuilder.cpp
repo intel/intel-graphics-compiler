@@ -6414,6 +6414,20 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   }
   if (WATable && WATable->Wa_14012437816)
     addArgument("-LSCFenceWA");
+
+  if (BC.isHashMovsEnabled()) {
+    uint64_t Hash = BC.getAsmHash();
+    uint32_t HashLo = Hash;
+    uint32_t HashHi = Hash >> 32;
+
+    addArgument("-hashmovs");
+    addArgument(to_string(HashHi));
+    addArgument(to_string(HashLo));
+
+    if (BC.isHashMovsAtPrologueEnabled())
+      addArgument("-hashatprologue");
+  }
+
   return Argv;
 }
 

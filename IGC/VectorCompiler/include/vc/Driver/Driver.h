@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -152,6 +152,7 @@ struct CompileOptions {
   bool HasGPUFenceScopeOnSingleTileGPUs = false;
   bool HasHalfSIMDLSC = false;
   bool EmitVisaOnly = false;
+
   // from IGC_XXX env
   FunctionControl FCtrl = FunctionControl::Default;
   bool DirectCallsOnly = false;
@@ -159,6 +160,10 @@ struct CompileOptions {
   unsigned ForceLoopUnrollThreshold = 0;
   bool IgnoreLoopUnrollThresholdOnPragma = false;
   unsigned InteropSubgroupSize = 16;
+
+  bool EnableHashMovs = false;
+  bool EnableHashMovsAtPrologue = false;
+  uint64_t AsmHash = 0;
 };
 
 struct ExternalData {

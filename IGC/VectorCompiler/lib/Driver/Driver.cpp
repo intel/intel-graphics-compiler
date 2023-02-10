@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -273,6 +273,10 @@ static GenXBackendOptions createBackendOptions(const vc::CompileOptions &Opts) {
 
   BackendOpts.enforceLLVMOptions();
   BackendOpts.EmitVisaOnly = Opts.EmitVisaOnly;
+
+  BackendOpts.EnableHashMovs = Opts.EnableHashMovs;
+  BackendOpts.EnableHashMovsAtPrologue = Opts.EnableHashMovsAtPrologue;
+  BackendOpts.AsmHash = Opts.AsmHash;
 
   return BackendOpts;
 }

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2022 Intel Corporation
+Copyright (C) 2020-2023 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -171,6 +171,10 @@ struct GenXBackendOptions {
 
   // Compile until vISA stage only.
   bool EmitVisaOnly = false;
+
+  bool EnableHashMovs = false;
+  bool EnableHashMovsAtPrologue = false;
+  uint64_t AsmHash = 0;
 
   // Calling enforceLLVMOptions queries the state of LLVM options and
   // updates BackendOptions accordingly.
@@ -369,6 +373,13 @@ public:
   unsigned getInteropSubgroupSize() const {
     return Options.InteropSubgroupSize;
   }
+
+  bool isHashMovsEnabled() const { return Options.EnableHashMovs; }
+  bool isHashMovsAtPrologueEnabled() const {
+    return Options.EnableHashMovsAtPrologue;
+  }
+
+  uint64_t getAsmHash() const { return Options.AsmHash; }
 
   vc::BinaryKind getBinaryFormat() const { return Options.Binary; }
 };
