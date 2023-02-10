@@ -59,6 +59,11 @@ enum {
     // attribute and section changes. The content is stored in a nul-terminated
     // string and the format is "<Major number>.<Minor number>".
     NT_INTELGT_ZEBIN_VERSION = 4,
+    // The description is stored in a 4-byte ELF word and is used instead
+    // of NT_INTELGT_PRODUCT_FAMILY, NT_INTELGT_GFXCORE_FAMILY and
+    // NT_INTELGT_TARGET_METADATA because it contains all required info to
+    // validate program for a target device
+    NT_INTELGT_PRODUCT_CONFIG = 5,
 };
 
 struct TargetMetadata {

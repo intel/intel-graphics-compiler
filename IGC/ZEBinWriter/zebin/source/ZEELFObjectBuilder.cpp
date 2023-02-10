@@ -630,6 +630,12 @@ std::pair<uint64_t, uint64_t> ELFWriter::writeCompatibilityNote() {
     writeOneStrNote("IntelGT",
                     PreDefinedAttrGetter::getVersionNumber(),
                     NT_INTELGT_ZEBIN_VERSION);
+
+    // write NT_INTELGT_PRODUCT_CONFIG
+    writeOneNote("IntelGT",
+                 m_ObjBuilder.m_gmdID.Value,
+                 NT_INTELGT_PRODUCT_CONFIG);
+
     return std::make_pair(start_off, m_W.OS.tell() - start_off);
 }
 

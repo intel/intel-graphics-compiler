@@ -64,6 +64,11 @@ void ZEBinaryBuilder::setGfxCoreFamily(GFXCORE_FAMILY value)
     mBuilder.setGfxCoreFamily(value);
 }
 
+void ZEBinaryBuilder::setGmdID(GFX_GMD_ID value)
+{
+    mBuilder.setGmdID(value);
+}
+
 void ZEBinaryBuilder::createKernel(
     const char*  rawIsaBinary,
     unsigned int rawIsaBinarySize,
