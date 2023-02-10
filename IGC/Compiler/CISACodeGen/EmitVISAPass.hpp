@@ -131,8 +131,8 @@ public:
     void emitMulAdd16(llvm::Instruction* I, const SSource source[2], const DstModifier& dstMod);
     void emitCall(llvm::CallInst* inst);
     void emitReturn(llvm::ReturnInst* inst);
-    void EmitInsertValueToStruct(llvm::InsertValueInst* II, bool forceVectorInit, const DstModifier& DstMod);
-    void EmitExtractValueFromStruct(llvm::ExtractValueInst* EI, const DstModifier& DstMod);
+    void EmitInsertValueToStruct(llvm::InsertValueInst* II);
+    void EmitExtractValueFromStruct(llvm::ExtractValueInst* EI);
 
     /// stack-call code-gen functions
     void emitStackCall(llvm::CallInst* inst);

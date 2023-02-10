@@ -1932,16 +1932,11 @@ auto sizeToSIMDMode = [](uint32_t size)
 //        (Can also be viewed as spliting vector into consecutive scalar
 //         elements. 4xi32 -> {i32, i32, i32, i32})
 //
-CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
+CVariable* CShader::GetStructVariable(llvm::Value* v)
 {
     IGC_ASSERT(v->getType()->isStructTy());
 
-    auto isConstBase = [](Value* v)->bool
-    {
-        return isa<Constant>(v) || v->getValueID() == Value::UndefValueVal;
-    };
-
-    IGC_ASSERT_MESSAGE(isConstBase(v) ||
+    IGC_ASSERT_MESSAGE(isa<Constant>(v) ||
         isa<InsertValueInst>(v) ||
         isa<CallInst>(v) ||
         isa<Argument>(v) ||
@@ -1999,13 +1994,13 @@ CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
             return it->second;
         }
     }
-    else if (isConstBase(v))
+    else if (isa<Constant>(v))
     {
         // Const cannot be mapped
         IGC_ASSERT(symbolMapping.find(v) == symbolMapping.end());
     }
 
-    bool isUniform = forceVectorInit ? false : m_WI->isUniform(v);
+    bool isUniform = m_WI->isUniform(v);
     StructType* sTy = cast<StructType>(v->getType());
     auto& DL = entry->getParent()->getDataLayout();
     const StructLayout* SL = DL.getStructLayout(sTy);
@@ -2016,7 +2011,8 @@ CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
     CVariable* cVar = GetNewVariable(structSizeInBytes * lanes, ISA_TYPE_B, EALIGN_GRF, isUniform, "StructV");
 
     // Initialize the struct default value if it has one
-    if (Constant* C = dyn_cast<Constant>(v))
+    Constant* C = dyn_cast<Constant>(v);
+    if (C && !isa<UndefValue>(v))
     {
         for (unsigned i = 0; i < sTy->getNumElements(); i++)
         {
@@ -2024,7 +2020,8 @@ CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
             if (!elementSrc->IsUndef())
             {
                 unsigned elementOffset = (unsigned)SL->getElementOffset(i);
-                CVariable* elementDst = GetNewAlias(cVar, elementSrc->GetType(), elementOffset * lanes, elementSrc->GetNumberElement() * lanes);
+                CVariable* elementDst = GetNewAlias(cVar, elementSrc->GetType(),
+                    elementOffset * lanes, elementSrc->GetNumberElement() * lanes);
                 GetEncoder().Copy(elementDst, elementSrc);
                 GetEncoder().Push();
             }
@@ -2033,7 +2030,7 @@ CVariable* CShader::GetStructVariable(llvm::Value* v, bool forceVectorInit)
 
     // Map the original llvm value to this new CVar.
     // The original value cannot be const, since we cannot map them. They will need to be initialized each time.
-    if (!isConstBase(v))
+    if (!isa<Constant>(v))
         symbolMapping[v] = cVar;
 
     return cVar;

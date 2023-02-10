@@ -1348,7 +1348,6 @@ namespace IGC
         {
         case Instruction::Alloca:
         case Instruction::Load:
-        case Instruction::ExtractValue:
             match = MatchSingleInstruction(I);
             break;
 #if LLVM_VERSION_MAJOR >= 10
@@ -1518,14 +1517,6 @@ namespace IGC
         MatchDbgInstruction(I);
     }
 
-    void CodeGenPatternMatch::visitInsertValueInst(InsertValueInst& I)
-    {
-        if (!MatchInsertToStruct(&I))
-        {
-            IGC_ASSERT_MESSAGE(0, "Unknown `insertvalue` instruction!");
-        }
-    }
-
     void CodeGenPatternMatch::visitExtractValueInst(ExtractValueInst& I) {
         bool Match = false;
 
@@ -1543,96 +1534,9 @@ namespace IGC
             matchSubPair(&I) ||
             matchMulPair(&I) ||
             matchPtrToPair(&I) ||
-            MatchExtractFromStruct(&I);
+            MatchSingleInstruction(I);
 
         IGC_ASSERT_MESSAGE(Match, "Unknown `extractvalue` instruction!");
-    }
-
-    bool CodeGenPatternMatch::MatchInsertToStruct(InsertValueInst* II)
-    {
-        if (II->getNumIndices() != 1)
-            return false;
-
-        // Match the following pattern(s):
-        //
-        // %2 = insertvalue % struct.t undef, i32 5, 0
-        // %3 = insertvalue % struct.t %2, i32 5, 1
-        //  OR
-        // %2 = insertvalue % struct.t{ i32 10, i32 undef }, i32 5, 1
-        //
-        // In both cases, the first `insertvalue` should allocate the struct and initializes it if needed, and
-        // subsequent `insertvalue`s should insert into the base struct allocation.
-        // In EmitVISAPass, we only allocate the CVariable for the struct if it is the base value. For any other
-        // `insertvalue` instructions, we walk up the calls until we get to the base.
-
-        Value* structOperand = II->getOperand(0);
-        bool isBaseStruct = (isa<Constant>(structOperand) || structOperand->getValueID() == Value::UndefValueVal);
-        bool forceVecInit = false;
-
-        // If the first insert is to a const struct value, we will initialize it as an uniform value, but
-        // if a subsequent insert value is non-uniform, we need to let EmitVISA know to create a vector
-        // variable to initialize the struct.
-        // Check all "insertvalue" users to see if there are non-uniform values being inserted.
-        if (isBaseStruct)
-        {
-            // Do DFS on all InsertValue users and check their values
-            std::function<bool(InsertValueInst*, WIAnalysis*)> HasNonUniformInsertValue =
-                [&HasNonUniformInsertValue](InsertValueInst* II, WIAnalysis* WI)->bool
-            {
-                if (!WI->isUniform(II->getOperand(1)))
-                    return true;
-
-                for (auto user : II->users())
-                {
-                    if (InsertValueInst* inst = dyn_cast<InsertValueInst>(user))
-                    {
-                        return HasNonUniformInsertValue(inst, WI);
-                    }
-                }
-                return false;
-            };
-
-            forceVecInit = HasNonUniformInsertValue(II, m_WI);
-        }
-
-        struct AddCopyStructPattern : public Pattern {
-            InsertValueInst* II;
-            bool forceVectorInit; // force allocating a non-uniform CVar reguardless of uniform analysis
-            virtual void Emit(EmitPass* Pass, const DstModifier& DstMod) {
-                Pass->EmitInsertValueToStruct(II, forceVectorInit, DstMod);
-            }
-        };
-
-        AddCopyStructPattern* Pat = new (m_allocator) AddCopyStructPattern();
-        Pat->II = II;
-        Pat->forceVectorInit = forceVecInit;
-        AddPattern(Pat);
-
-        MarkAsSource(II->getOperand(0));
-        MarkAsSource(II->getOperand(1));
-        return true;
-    }
-
-    bool CodeGenPatternMatch::MatchExtractFromStruct(ExtractValueInst* EI)
-    {
-        if (EI->getNumIndices() != 1)
-            return false;
-        if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(EI->getOperand(0)))
-            return false;
-
-        struct AddReadStructPattern : public Pattern {
-            ExtractValueInst* EI;
-            virtual void Emit(EmitPass* Pass, const DstModifier& DstMod) {
-                Pass->EmitExtractValueFromStruct(EI, DstMod);
-            }
-        };
-
-        AddReadStructPattern* Pat = new (m_allocator) AddReadStructPattern();
-        Pat->EI = EI;
-        AddPattern(Pat);
-
-        MarkAsSource(EI->getOperand(0));
-        return true;
     }
 
     bool CodeGenPatternMatch::matchAddPair(ExtractValueInst* Ex) {

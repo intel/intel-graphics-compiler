@@ -2531,58 +2531,170 @@ void EmitPass::EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const
     m_encoder->Push();
 }
 
-void EmitPass::EmitInsertValueToStruct(llvm::InsertValueInst* II, bool forceVectorInit, const DstModifier& DstMod)
+void EmitPass::EmitInsertValueToStruct(InsertValueInst* inst)
 {
-    Value* structOp = II->getOperand(0);
-    StructType* sTy = dyn_cast<StructType>(structOp->getType());
-    auto& DL = II->getParent()->getParent()->getParent()->getDataLayout();
-    const StructLayout* SL = DL.getStructLayout(sTy);
+    StructType* sTy = dyn_cast<StructType>(inst->getType());
+    IGC_ASSERT_MESSAGE(sTy != nullptr,
+        "ICE: invertvalue - only struct type is supported!");
 
-    // Get the source operand to insert
-    CVariable* SrcV = GetSymbol(II->getOperand(1));
+    auto& DL = inst->getParent()->getParent()->getParent()->getDataLayout();
 
-    if (forceVectorInit)
+    Value* src0 = inst->getOperand(0);
+    Value* src1 = inst->getOperand(1);
+    CVariable* EltV = GetSymbol(src1);
+    CVariable* DstV = GetSymbol(inst);
+
+    // For now, do not support uniform dst and non-uniform src1
+    IGC_ASSERT_MESSAGE((!EltV->IsUniform() && DstV->IsUniform()) == false,
+        "Can't insert vector value into a scalar struct!");
+
+    auto getFieldByteOffsetAndType = [&DL](StructType* const StTy,
+        const ArrayRef<unsigned>& Indices, uint32_t& ByteOffset, Type*& Ty)
     {
-        IGC_ASSERT(isa<Constant>(structOp) || structOp->getValueID() == Value::UndefValueVal);
+        IGC_ASSERT_MESSAGE(Indices.size() == 1,
+            "ICE: nested struct not supported!");
+        const StructLayout* aSL = DL.getStructLayout(StTy);
+        uint32_t ix = Indices.front();
+        ByteOffset = (uint32_t)aSL->getElementOffset(ix);
+        Ty = StTy->getElementType(ix);
+        return;
+    };
+
+    // Get all fields that need to be copied.
+    //   If all initialized fields of 'stVal' are known, just copy those
+    //   fields; otherwise, copy all its fields.
+    auto getFieldsToBeCopied = [](Value* stVal,
+        std::list<ArrayRef<unsigned>>& fieldsTBC)
+    {
+        Value* V = stVal;
+        while (isa<InsertValueInst>(V))
+        {
+            InsertValueInst* I = cast<InsertValueInst>(V);
+            fieldsTBC.push_front(I->getIndices());
+            V = I->getOperand(0);
+        }
+        if (!isa<UndefValue>(V))
+        {
+            // copy all fields
+            fieldsTBC.clear();
+            StructType* stTy = cast<StructType>(stVal->getType());
+            fieldsTBC.insert(fieldsTBC.end(), 0, stTy->getNumElements() - 1);
+        }
+    };
+
+    const uint32_t nLanes = numLanes(m_currShader->m_dispatchSize);
+    // Constants:
+    //  1.  %8 = insval undef, float %2, 0
+    //  2.  %8 = insval { i32 16, i32 undef, i32 undef, i32 undef }, i32 %2, 1
+    if (Constant* CSt = dyn_cast<Constant>(src0))
+    {
+        if (!isa<UndefValue>(CSt))
+        {
+            const StructLayout* SL = DL.getStructLayout(sTy);
+            // copy all valid const elements
+            for (uint32_t i = 0; i < (uint32_t)sTy->getNumElements(); i++)
+            {
+                CVariable* eltSrc = GetSymbol(CSt->getAggregateElement(i));
+                if (!eltSrc->IsUndef())
+                {
+                    Type* ty = sTy->getElementType(i);
+                    uint32_t byteOffset = (uint32_t)SL->getElementOffset(i);
+                    // eltDst's ty = eltSrc's ty
+                    CVariable* eltDst = m_currShader->GetNewAlias(
+                        DstV,
+                        eltSrc->GetType(),
+                        byteOffset * (DstV->IsUniform() ? 1 : nLanes),
+                        eltSrc->GetNumberElement() * (DstV->IsUniform() ? 1 : nLanes));
+                    emitCopyAll(eltDst, eltSrc, ty);
+                }
+            }
+        }
     }
-    // Get the dst struct variable, or create one with constant values initialized if it does not exist
-    CVariable* DstV = m_currShader->GetStructVariable(II, forceVectorInit);
-
-    IGC_ASSERT_MESSAGE((!SrcV->IsUniform() && DstV->IsUniform()) == false, "Can't insert vector value into a scalar struct!");
-
-    // Copy source value into the struct offset
-    unsigned idx = *II->idx_begin();
-    unsigned elementOffset = (unsigned)SL->getElementOffset(idx);
-    unsigned nLanes = DstV->IsUniform() ? 1 : numLanes(m_currShader->m_dispatchSize);
-    CVariable* elementDst = nullptr;
-    if (SrcV->IsUniform())
-        elementDst = m_currShader->GetNewAlias(DstV, SrcV->GetType(), elementOffset * nLanes, SrcV->GetNumberElement() * nLanes);
     else
-        elementDst = m_currShader->GetNewAlias(DstV, SrcV->GetType(), elementOffset * nLanes, SrcV->GetNumberElement());
+    {
+        CVariable* SrcV = GetSymbol(src0);
+        if (DstV != SrcV)
+        {
+            // Only copy SrcV's elements that have been initialized already.
+            // For the example, DstV = %13, SrcV = %9;
+            // 'toBeCopied' will be field {0, 1}, not {0,1,2,3}.
+            //
+            //  %8 = insertvalue undef, i32 %3, 0
+            //  %9 = insertvalue %8, i32 % 4, 1
+            //  ......
+            //  %13 = insertvalue %9, i32 %scalar40, 2
+            //  %14 = insertvalue %13, i32 %scalar41, 3
+            //
+            std::list<ArrayRef<unsigned>> toBeCopied;
+            getFieldsToBeCopied(src0, toBeCopied);
+            for (auto II : toBeCopied)
+            {
+                Type* ty;
+                uint32_t byteOffset;
+                getFieldByteOffsetAndType(sTy, II, byteOffset, ty);
+                CVariable* eltDst = m_currShader->GetNewAlias(
+                    DstV,
+                    m_currShader->GetType(ty),
+                    byteOffset * (DstV->IsUniform() ? 1 : nLanes),
+                    EltV->GetNumberElement() * (DstV->IsUniform() ? 1 : nLanes));
+                CVariable* eltSrc = m_currShader->GetNewAlias(
+                    SrcV,
+                    m_currShader->GetType(ty),
+                    byteOffset * (SrcV->IsUniform() ? 1 : nLanes),
+                    EltV->GetNumberElement() * (SrcV->IsUniform() ? 1 : nLanes));
+                emitCopyAll(eltDst, eltSrc, ty);
+            }
+        }
+    }
 
-    emitCopyAll(elementDst, SrcV, sTy->getStructElementType(idx));
+    Type* ty;
+    uint32_t byteOffset;
+    getFieldByteOffsetAndType(sTy, inst->getIndices(), byteOffset, ty);
+    CVariable* eltDst = m_currShader->GetNewAlias(
+        DstV,
+        EltV->GetType(),
+        byteOffset * (DstV->IsUniform() ? 1 : nLanes),
+        EltV->GetNumberElement() * (DstV->IsUniform() ? 1 : nLanes));
+    emitCopyAll(eltDst, EltV, src1->getType());
 }
 
-void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI, const DstModifier& DstMod)
+void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst* EI)
 {
-    CVariable* SrcV = GetSymbol(EI->getOperand(0));
+    Value* src0 = EI->getOperand(0);
+    IGC_ASSERT(src0->getType()->isStructTy());
     unsigned idx = *EI->idx_begin();
-    StructType* sTy = dyn_cast<StructType>(EI->getOperand(0)->getType());
+    StructType* sTy = cast<StructType>(src0->getType());
     auto& DL = m_currShader->entry->getParent()->getDataLayout();
     const StructLayout* SL = DL.getStructLayout(sTy);
 
-    // For extract value, src and dest should share uniformity
-    IGC_ASSERT(nullptr != m_destination);
-    IGC_ASSERT(nullptr != SrcV);
-    IGC_ASSERT(m_destination->IsUniform() == SrcV->IsUniform());
+    if (Constant* C = dyn_cast<Constant>(src0))
+    {
+        if (!isa<UndefValue>(C))
+        {
+            const bool dstUniform = m_destination->IsUniform();
+            const unsigned lanes = numLanes(m_currShader->m_dispatchSize);
+            CVariable* elementSrc = GetSymbol(C->getAggregateElement(idx));
+            Type* ty = sTy->getStructElementType(idx);
+            emitCopyAll(m_destination, elementSrc, ty);
+        }
+        return;
+    }
 
-    bool isUniform = SrcV->IsUniform();
-    unsigned nLanes = isUniform ? 1 : numLanes(m_currShader->m_dispatchSize);
-    unsigned elementOffset = (unsigned)SL->getElementOffset(idx) * nLanes;
-    SrcV = m_currShader->GetNewAlias(SrcV, m_destination->GetType(), elementOffset, m_destination->GetNumberElement(), isUniform);
+    CVariable* SrcV = GetSymbol(EI->getOperand(0));
+    const bool srcUniform = SrcV->IsUniform();
+    // For now, do not support uniform dst and non-uniform src
+    IGC_ASSERT(!(m_destination->IsUniform() && !srcUniform));
+    const unsigned nLanes =
+        (srcUniform ? 1 : numLanes(m_currShader->m_dispatchSize));
+    unsigned elementOffset = (unsigned)SL->getElementOffset(idx);
+    CVariable* EltV = m_currShader->GetNewAlias(
+        SrcV,
+        m_destination->GetType(),
+        elementOffset * nLanes,
+        m_destination->GetNumberElement() * nLanes);
 
     // Copy from struct to dest
-    emitCopyAll(m_destination, SrcV, sTy->getStructElementType(idx));
+    emitCopyAll(m_destination, EltV, sTy->getStructElementType(idx));
 }
 
 void EmitPass::EmitAddPair(GenIntrinsicInst* GII, const SSource Sources[4], const DstModifier& DstMod) {
@@ -9444,6 +9556,12 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
         break;
     case Instruction::ExtractElement:
         emitExtract(cast<ExtractElementInst>(inst));
+        break;
+    case Instruction::InsertValue:
+        EmitInsertValueToStruct(cast<InsertValueInst>(inst));
+        break;
+    case Instruction::ExtractValue:
+        EmitExtractValueFromStruct(cast<ExtractValueInst>(inst));
         break;
     case Instruction::Unreachable:
         break;
