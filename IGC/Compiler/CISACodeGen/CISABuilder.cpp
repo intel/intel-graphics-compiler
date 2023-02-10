@@ -5677,9 +5677,12 @@ namespace IGC
         V(pMainKernel->GetRelocations(relocations));
     }
 
-    void CEncoder::CreateFuncAttributeTable(VISAKernel* pMainKernel, void*& buffer, unsigned& bufferSize,
-        unsigned& tableEntries, SProgramOutput::FuncAttrListTy& attrs)
-    {
+    void CEncoder::CreateFuncAttributeTable(VISAKernel* pMainKernel) {
+        SProgramOutput *pOutput = m_program->ProgramOutput();
+        void *&buffer = pOutput->m_funcAttributeTable;
+        unsigned &bufferSize = pOutput->m_funcAttributeTableSize;
+        unsigned &tableEntries = pOutput->m_funcAttributeTableEntries;
+        SProgramOutput::FuncAttrListTy &attrs = pOutput->m_funcAttrs;
         buffer = nullptr;
         bufferSize = 0;
         tableEntries = 0;
@@ -5775,6 +5778,198 @@ namespace IGC
         }
     }
 
+    bool CEncoder::shaderOverrideVISAFirstPass(
+        std::vector<std::string> &visaOverrideFiles, std::string& kernelName) {
+        // Kernel count is one per visaBuilder
+        // Function count depends on stackFuncMap size
+        int kernelCount = 1;
+        int functionCount = stackFuncMap.size();
+        int count = kernelCount + functionCount;
+        IGC::Debug::OutputFolderName folder = IGC::Debug::GetShaderOverridePath();
+        Debug::DumpName name = IGC::Debug::GetDumpNameObj(m_program, "visaasm");
+        kernelName = m_program->entry->getName().str();
+        visaOverrideFiles.push_back(name.AbsolutePath(folder));
+        bool visaAsmOverride = false;
+        for (int i = 0; i < functionCount; i++)
+        {
+            std::string tmpVisaFile = name.AbsolutePath(folder);
+            std::string::size_type asmNameEnd = tmpVisaFile.find_last_of('.');
+            tmpVisaFile = tmpVisaFile.substr(0, asmNameEnd);
+            std::stringstream asmName;
+            asmName << tmpVisaFile;
+            asmName << "_f";
+            asmName << i;
+            asmName << ".visaasm";
+            visaOverrideFiles.push_back(asmName.str());
+        }
+
+        if (visaOverrideFiles.size() == count)
+        {
+            for (const std::string& file : visaOverrideFiles)
+            {
+                FILE*  tempFile = fopen(file.c_str(), "r");
+                if (tempFile)
+                {
+                    visaAsmOverride = true;
+                    fclose(tempFile);
+                }
+                else
+                {
+                    visaAsmOverride = false;
+                    if (functionCount > 0)
+                    {
+                        std::string message = "Cannot open overridden file! Put all .visaasm files in ShaderOverride dir.";
+                        appendToShaderOverrideLogFile(message, "WARNING: ");
+                    }
+                    break;
+                }
+            }
+        }
+        return visaAsmOverride;
+    }
+
+    VISAKernel* CEncoder::shaderOverrideVISASecondPassOrInlineAsm(
+        int &vIsaCompile, std::stringstream& visaStream,
+        bool visaAsmOverride, bool hasSymbolTable, bool emitVisaOnly,
+        const std::vector<const char *> *additionalVISAAsmToLink,
+        const std::vector<std::string> &visaOverrideFiles,
+        const std::string kernelName)
+    {
+        llvm::SmallVector<const char *, 10> params;
+        llvm::SmallVector<std::unique_ptr<char, std::function<void(char *)>>, 10>
+            params2;
+        InitBuildParams(params2);
+        for (const auto &ptr : params2) {
+            params.push_back(ptr.get());
+        }
+
+        // Create a new builder for parsing the visaasm
+        CodeGenContext *const context = m_program->GetContext();
+        TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
+        V(vISA::CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER,
+                                  VISA_BUILDER_BOTH, VISAPlatform, params.size(),
+                                  params.data(), &m_vISAWaTable));
+        // Use the same build options as before, except that we enable vISA
+        // verifier to catch potential errors in user inline assembly
+        SetBuilderOptions(vAsmTextBuilder);
+        vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, false);
+
+        bool vISAAsmParseError = false;
+        // Parse the generated VISA text
+        if (visaAsmOverride) {
+            for (const std::string &tmpVisaFile : visaOverrideFiles) {
+                llvm::SmallVector<char, 1024> visaAsmNameVector;
+                std::string visaAsmName = GetDumpFileName("");
+
+                StringRef visaAsmNameRef(visaAsmName.c_str());
+                StringRef tmpVisaFileRef(tmpVisaFile.c_str());
+                StringRef directory = llvm::sys::path::parent_path(visaAsmNameRef);
+                StringRef filename = llvm::sys::path::filename(tmpVisaFileRef);
+
+                llvm::sys::path::append(visaAsmNameVector, directory, filename);
+                visaAsmName =
+                    std::string(visaAsmNameVector.begin(), visaAsmNameVector.end());
+
+                auto result = vAsmTextBuilder->ParseVISAText(tmpVisaFile.c_str());
+                appendToShaderOverrideLogFile(visaAsmName, "OVERRIDEN: ");
+                vISAAsmParseError = (result != 0);
+                if (vISAAsmParseError) {
+                    IGC_ASSERT_MESSAGE(0, "visaasm file parse error!");
+                    break;
+                }
+            }
+        } else {
+            int result = 0;
+            if (m_hasInlineAsm) {
+                std::string parseTextFile = GetDumpFileName("inline.visaasm");
+                result = vAsmTextBuilder->ParseVISAText(
+                    vbuilder->GetAsmTextStream().str(), parseTextFile);
+            }
+
+            if (result == 0 && additionalVISAAsmToLink) {
+                std::stringstream ss;
+                result = vAsmTextBuilder->ParseVISAText(
+                    vbuilder->GetAsmTextStream().str(), "");
+                for (auto visaAsm : *additionalVISAAsmToLink) {
+                    result = (result == 0) ? vAsmTextBuilder->ParseVISAText(visaAsm, "")
+                                           : result;
+                }
+
+                if (result == 0) {
+                    // Mark invoke_simd targets with LTO_InvokeOptTarget attribute.
+                    IGC_ASSERT(m_program && m_program->GetContext() &&
+                               m_program->GetContext()->getModule());
+                    for (auto &F : m_program->GetContext()->getModule()->getFunctionList()) {
+                        if (F.hasFnAttribute("invoke_simd_target")) {
+                            auto vFunc = vAsmTextBuilder->GetVISAKernel(F.getName().data());
+                            IGC_ASSERT(vFunc);
+                            bool enabled = true;
+                            vFunc->AddKernelAttribute("LTO_InvokeOptTarget", 1, &enabled);
+                        }
+                    }
+                }
+            }
+
+            if (result != 0) {
+                std::string output;
+                raw_string_ostream S(output);
+                S << "parsing vISA inline assembly failed:\n"
+                  << vAsmTextBuilder->GetCriticalMsg();
+                S.flush();
+                context->EmitError(output.c_str(), nullptr);
+                vISAAsmParseError = true;
+            }
+        }
+
+        // We need to update stackFuncMap for the symbol table for the overridden
+        // object, because stackFuncMap contains information about functions for
+        // original object. Only the IndirectlyCalled functions should be updated,
+        // because these functions can be used in CreateSymbolTable.
+        // Other normal stack call functions aren't used in CreateSymbolTable.
+        if (hasSymbolTable && stackFuncMap.size() > 0) {
+            Module *pModule = m_program->GetContext()->getModule();
+            for (auto &F : pModule->getFunctionList()) {
+                if (F.hasFnAttribute("referenced-indirectly") &&
+                    (!F.isDeclaration() || !F.use_empty())) {
+                  auto Iter = stackFuncMap.find(&F);
+                  IGC_ASSERT_MESSAGE(Iter != stackFuncMap.end(),
+                                     "vISA function not found");
+
+                  VISAFunction *original = Iter->second;
+                  stackFuncMap[&F] = static_cast<VISAFunction *>(
+                      vAsmTextBuilder->GetVISAKernel(original->getFunctionName()));
+              }
+            }
+        }
+
+        if (vISAAsmParseError) {
+            COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
+            return nullptr;
+        }
+
+        if (!visaAsmOverride) {
+            // vISA verifier is already invoked in ParseVISAText earlier
+            vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, true);
+        }
+
+        if (visaAsmOverride) {
+            // After call to ParseVISAText, we have new VISAKernel, which don't
+            // have asm path set. So we need to set the OutputAsmPath attribute of
+            // overridden kernel, otherwise, we will not get .visaasm dump and
+            // .asm file dump
+            std::string asmName = GetDumpFileName("asm");
+            auto vKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
+            vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(),
+                                        asmName.c_str());
+        }
+        VISAKernel *pMainKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
+        vIsaCompile = vAsmTextBuilder->Compile(
+            m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", &visaStream,
+            emitVisaOnly);
+
+        return pMainKernel;
+    }
+
     void CEncoder::Compile(bool hasSymbolTable)
     {
         IGC_ASSERT(nullptr != m_program);
@@ -5814,189 +6009,17 @@ namespace IGC
         std::string kernelName;
         if (IGC_IS_FLAG_ENABLED(ShaderOverride))
         {
-            // Kernel count is one per visaBuilder
-            // Function count depends on stackFuncMap size
-            int kernelCount = 1;
-            int functionCount = stackFuncMap.size();
-            int count = kernelCount + functionCount;
-            IGC::Debug::OutputFolderName folder = IGC::Debug::GetShaderOverridePath();
-            Debug::DumpName name = IGC::Debug::GetDumpNameObj(m_program, "visaasm");
-            kernelName = m_program->entry->getName().str();
-
-            visaOverrideFiles.push_back(name.AbsolutePath(folder));
-
-            for (int i = 0; i < functionCount; i++)
-            {
-                std::string tmpVisaFile = name.AbsolutePath(folder);
-                std::string::size_type asmNameEnd = tmpVisaFile.find_last_of('.');
-                tmpVisaFile = tmpVisaFile.substr(0, asmNameEnd);
-                std::stringstream asmName;
-                asmName << tmpVisaFile;
-                asmName << "_f";
-                asmName << i;
-                asmName << ".visaasm";
-                visaOverrideFiles.push_back(asmName.str());
-            }
-
-            if (visaOverrideFiles.size() == count)
-            {
-                for (const std::string& file : visaOverrideFiles)
-                {
-                    FILE*  tempFile = fopen(file.c_str(), "r");
-                    if (tempFile)
-                    {
-                        visaAsmOverride = true;
-                        fclose(tempFile);
-                    }
-                    else
-                    {
-                        visaAsmOverride = false;
-                        if (functionCount > 0)
-                        {
-                            std::string message = "Cannot open overridden file! Put all .visaasm files in ShaderOverride dir.";
-                            appendToShaderOverrideLogFile(message, "WARNING: ");
-                        }
-                        break;
-
-                    }
-                }
-            }
+            visaAsmOverride =
+              shaderOverrideVISAFirstPass(visaOverrideFiles, kernelName);
         }
 
         // Compile generated VISA text string for inlineAsm
         if (m_hasInlineAsm || visaAsmOverride || additionalVISAAsmToLink)
         {
-            llvm::SmallVector<const char*, 10> params;
-            llvm::SmallVector<std::unique_ptr< char, std::function<void(char*)>>, 10> params2;
-            InitBuildParams(params2);
-            for (const auto &ptr : params2)
-            {
-                params.push_back(ptr.get());
-            }
-
-            // Create a new builder for parsing the visaasm
-            TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
-            V(vISA::CreateVISABuilder(vAsmTextBuilder, vISA_ASM_READER, VISA_BUILDER_BOTH, VISAPlatform,
-                params.size(), params.data(), &m_vISAWaTable));
-            // Use the same build options as before, except that we enable vISA verifier to catch
-            // potential errors in user inline assembly
-            SetBuilderOptions(vAsmTextBuilder);
-            vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, false);
-
-            bool vISAAsmParseError = false;
-            // Parse the generated VISA text
-            if (visaAsmOverride)
-            {
-                for (const std::string& tmpVisaFile : visaOverrideFiles)
-                {
-                    llvm::SmallVector<char, 1024> visaAsmNameVector;
-                    std::string visaAsmName = GetDumpFileName("");
-
-                    StringRef visaAsmNameRef(visaAsmName.c_str());
-                    StringRef tmpVisaFileRef(tmpVisaFile.c_str());
-                    StringRef directory = llvm::sys::path::parent_path(visaAsmNameRef);
-                    StringRef filename = llvm::sys::path::filename(tmpVisaFileRef);
-
-                    llvm::sys::path::append(visaAsmNameVector, directory, filename);
-                    visaAsmName = std::string(visaAsmNameVector.begin(), visaAsmNameVector.end());
-
-                    auto result = vAsmTextBuilder->ParseVISAText(tmpVisaFile.c_str());
-                    appendToShaderOverrideLogFile(visaAsmName, "OVERRIDEN: ");
-                    vISAAsmParseError = (result != 0);
-                    if (vISAAsmParseError) {
-                        IGC_ASSERT_MESSAGE(0, "visaasm file parse error!");
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                int result = 0;
-                if (m_hasInlineAsm) {
-                    std::string parseTextFile = GetDumpFileName("inline.visaasm");
-                    result = vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextStream().str(), parseTextFile);
-                }
-
-                if (result == 0 && additionalVISAAsmToLink) {
-                    std::stringstream ss;
-                    result = vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextStream().str(), "");
-                    for(auto visaAsm : *additionalVISAAsmToLink) {
-                        result = (result == 0) ? vAsmTextBuilder->ParseVISAText(visaAsm, "") : result;
-                    }
-
-                    if (result == 0) {
-                        // Mark invoke_simd targets with LTO_InvokeOptTarget attribute.
-                        IGC_ASSERT(m_program && m_program->GetContext() && m_program->GetContext()->getModule());
-                        for (auto& F : m_program->GetContext()->getModule()->getFunctionList())
-                        {
-                            if (F.hasFnAttribute("invoke_simd_target")) {
-                                auto vFunc = vAsmTextBuilder->GetVISAKernel(F.getName().data());
-                                IGC_ASSERT(vFunc);
-                                bool enabled = true;
-                                vFunc->AddKernelAttribute("LTO_InvokeOptTarget", 1, &enabled);
-                            }
-                        }
-                    }
-                }
-
-                if (result != 0)
-                {
-                    std::string output;
-                    raw_string_ostream S(output);
-                    S << "parsing vISA inline assembly failed:\n" << vAsmTextBuilder->GetCriticalMsg();
-                    S.flush();
-                    context->EmitError(output.c_str(), nullptr);
-                    vISAAsmParseError = true;
-                }
-            }
-
-            // We need to update stackFuncMap for the symbol table for the overridden object,
-            // because stackFuncMap contains information about functions for original object.
-            // Only the IndirectlyCalled functions should be updated,
-            // because these functions can be used in CreateSymbolTable.
-            // Other normal stack call functions aren't used in CreateSymbolTable.
-            if (hasSymbolTable && stackFuncMap.size() > 0)
-            {
-                Module* pModule = m_program->GetContext()->getModule();
-                for (auto& F : pModule->getFunctionList())
-                {
-                    if (F.hasFnAttribute("referenced-indirectly") && (!F.isDeclaration() || !F.use_empty()))
-                    {
-                        auto Iter = stackFuncMap.find(&F);
-                        IGC_ASSERT_MESSAGE(Iter != stackFuncMap.end(), "vISA function not found");
-
-                        VISAFunction* original = Iter->second;
-                        stackFuncMap[&F] = static_cast<VISAFunction*>(vAsmTextBuilder->GetVISAKernel(original->getFunctionName()));
-                    }
-                }
-            }
-
-            if (vISAAsmParseError)
-            {
-                COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
-                return;
-            }
-            else
-            {
-                if (!visaAsmOverride)
-                {
-                    // vISA verifier is already invoked in ParseVISAText earlier
-                    vAsmTextBuilder->SetOption(vISA_NoVerifyvISA, true);
-                }
-
-                if (visaAsmOverride) {
-                    // After call to ParseVISAText, we have new VISAKernel, which don't have asm path set.
-                    // So we need to set the OutputAsmPath attribute of overridden kernel,
-                    // otherwise, we will not get .visaasm dump and .asm file dump
-                    std::string asmName = GetDumpFileName("asm");
-                    auto vKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
-                    vKernel->AddKernelAttribute("OutputAsmPath", asmName.length(), asmName.c_str());
-                }
-
-                pMainKernel = vAsmTextBuilder->GetVISAKernel(kernelName);
-                vIsaCompile = vAsmTextBuilder->Compile(
-                    m_enableVISAdump ? GetDumpFileName("isa").c_str() : "", &visaStream, emitVisaOnly);
-            }
+            pMainKernel = shaderOverrideVISASecondPassOrInlineAsm(
+              vIsaCompile, visaStream,
+              visaAsmOverride, hasSymbolTable, emitVisaOnly,
+              additionalVISAAsmToLink, visaOverrideFiles, kernelName);
         }
         //Compile to generate the V-ISA binary
         else
@@ -6015,6 +6038,7 @@ namespace IGC
             context->m_compilerTimeStats->recordVISATimers();
         }
 #endif
+
         KERNEL_INFO* vISAstats;
         pMainKernel->GetKernelInfo(vISAstats);
         // Collect metrics from vISA
@@ -6098,78 +6122,7 @@ namespace IGC
         m_program->m_loopNestedStallCycle = jitInfo->stats.loopNestedStallCycle;
         m_program->m_loopNestedCycle = jitInfo->stats.loopNestedCycle;
 
-        bool isStackCallProgram = m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
-        bool noRetry = jitInfo->avoidRetry;
-
-        if (jitInfo->isSpill && noRetry)
-        {
-            context->m_retryManager.Disable();
-            context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
-        }
-        else if (isStackCallProgram && !context->HasFuncExpensiveLoop(m_program->entry))
-        {
-            // Get the spill threshold
-            float threshold = 0.0f;
-            if (context->type == ShaderType::OPENCL_SHADER)
-            {
-                auto oclCtx = static_cast<OpenCLProgramContext*>(context);
-                threshold = oclCtx->GetSpillThreshold(m_program->m_dispatchSize);
-            }
-            // Check all functions for spills, if there are any large spills, retry for entire program
-            bool noRetryForStack = true;
-            if (m_program->m_spillCost > threshold)
-            {
-                // First check the kernel
-                noRetryForStack = false;
-            }
-            for (auto& func : stackFuncMap)
-            {
-                vISA::FINALIZER_INFO* f_jitInfo = nullptr;
-                func.second->GetJitInfo(f_jitInfo);
-                float spillCost = float(f_jitInfo->stats.numGRFSpillFillWeighted) / f_jitInfo->stats.numAsmCountUnweighted;
-                if (spillCost > threshold || context->HasFuncExpensiveLoop(func.first))
-                {
-                    // Check each stackcall function
-                    noRetryForStack = false;
-                }
-            }
-            if (noRetryForStack)
-            {
-                context->m_retryManager.Disable();
-                context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
-            }
-        }
-
-        if (jitInfo->isSpill &&
-            (noRetry || context->m_retryManager.IsLastTry()) &&
-            !isStackCallProgram)
-        {
-            // report a spill warning to build log only if we:
-            //   - spilled
-            //   - are not retrying (IsLastTry() wasn't considered above
-            //     in prev. code for some odd reason; keeping consistent)
-            //   - not using stack calls or the dummy function pointer program
-            std::stringstream ss;
-            ss << "kernel ";
-            const auto name = m_program->entry->getName();
-            if (!name.empty()) {
-                ss << name.str() << " ";
-            } else {
-                ss << "?";
-            }
-
-            ss << " compiled SIMD" <<
-              (m_program->m_dispatchSize == SIMDMode::SIMD32 ? 32 :
-                m_program->m_dispatchSize == SIMDMode::SIMD16 ? 16 : 8);
-            ss << " allocated " << jitInfo->stats.numGRFTotal << " regs";
-            if (jitInfo->isSpill) {
-                auto spilledRegs = std::max<unsigned>(1,
-                    (jitInfo->stats.spillMemUsed + getGRFSize() - 1) / getGRFSize());
-                ss << " and spilled around " << spilledRegs;
-            }
-
-            context->EmitWarning(ss.str().c_str());
-        }
+        checkForNoRetry(jitInfo);
 
 #if (GET_SHADER_STATS && !PRINT_DETAIL_SHADER_STATS)
         if (m_program->m_dispatchSize == SIMDMode::SIMD8)
@@ -6310,8 +6263,141 @@ namespace IGC
 
         pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
-        bool ZEBinEnabled = context->enableZEBinary();
+        createSymbolAndGlobalHostAccessTables(hasSymbolTable, *pMainKernel);
+        createRelocationTables(*pMainKernel);
+        if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching) ||
+            context->enableZEBinary())
+            CreateFuncAttributeTable(pMainKernel);
 
+        if (jitInfo->isSpill == true)
+        {
+            pOutput->m_scratchSpaceUsedBySpills = jitInfo->stats.spillMemUsed;
+            pOutput->m_numGRFSpillFill = jitInfo->stats.numGRFSpillFillWeighted;
+        }
+
+        pOutput->setScratchSpaceUsedByShader(m_program->m_ScratchSpaceSize);
+
+        pOutput->m_scratchSpaceUsedByGtpin = jitInfo->numBytesScratchGtpin;
+
+        pOutput->m_offsetToSkipPerThreadDataLoad = jitInfo->offsetToSkipPerThreadDataLoad;
+
+        pOutput->m_offsetToSkipSetFFIDGP = jitInfo->offsetToSkipSetFFIDGP;
+
+        pOutput->m_numGRFTotal = jitInfo->stats.numGRFTotal;
+        pOutput->m_numThreads = jitInfo->stats.numThreads;
+    }
+
+    void CEncoder::createRelocationTables(VISAKernel &pMainKernel)
+    {
+        CodeGenContext *context = m_program->GetContext();
+        SProgramOutput *pOutput = m_program->ProgramOutput();
+        bool ZEBinEnabled = context->enableZEBinary();
+        if (ZEBinEnabled)
+        {
+            CreateRelocationTable(&pMainKernel, pOutput->m_relocs);
+            for (const auto& reloc : pOutput->m_relocs)
+            {
+                if (reloc.r_symbol == vISA::CROSS_THREAD_OFF_R0_RELOCATION_NAME)
+                {
+                    IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
+                    auto cl_context = static_cast<OpenCLProgramContext*>(context);
+                    cl_context->m_programInfo.m_hasCrossThreadOffsetRelocations = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            CreateRelocationTable(&pMainKernel,
+                pOutput->m_funcRelocationTable,
+                pOutput->m_funcRelocationTableSize,
+                pOutput->m_funcRelocationTableEntries);
+        }
+    }
+
+    void CEncoder::checkForNoRetry(const vISA::FINALIZER_INFO *jitInfo)
+    {
+        bool isStackCallProgram = m_program->HasStackCalls() || m_program->IsIntelSymbolTableVoidProgram();
+        bool noRetry = jitInfo->avoidRetry;
+        CodeGenContext *context = m_program->GetContext();
+
+        if (jitInfo->isSpill && noRetry)
+        {
+            context->m_retryManager.Disable();
+            context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
+        }
+        else if (isStackCallProgram && !context->HasFuncExpensiveLoop(m_program->entry))
+        {
+            // Get the spill threshold
+            float threshold = 0.0f;
+            if (context->type == ShaderType::OPENCL_SHADER)
+            {
+                auto oclCtx = static_cast<OpenCLProgramContext*>(context);
+                threshold = oclCtx->GetSpillThreshold(m_program->m_dispatchSize);
+            }
+            // Check all functions for spills, if there are any large spills, retry for entire program
+            bool noRetryForStack = true;
+            if (m_program->m_spillCost > threshold)
+            {
+                // First check the kernel
+                noRetryForStack = false;
+            }
+            for (auto& func : stackFuncMap)
+            {
+                vISA::FINALIZER_INFO* f_jitInfo = nullptr;
+                func.second->GetJitInfo(f_jitInfo);
+                float spillCost = float(f_jitInfo->stats.numGRFSpillFillWeighted) / f_jitInfo->stats.numAsmCountUnweighted;
+                if (spillCost > threshold || context->HasFuncExpensiveLoop(func.first))
+                {
+                    // Check each stackcall function
+                    noRetryForStack = false;
+                }
+            }
+            if (noRetryForStack)
+            {
+                context->m_retryManager.Disable();
+                context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
+            }
+        }
+
+        if (jitInfo->isSpill &&
+            (noRetry || context->m_retryManager.IsLastTry()) &&
+            !isStackCallProgram)
+        {
+            // report a spill warning to build log only if we:
+            //   - spilled
+            //   - are not retrying (IsLastTry() wasn't considered above
+            //     in prev. code for some odd reason; keeping consistent)
+            //   - not using stack calls or the dummy function pointer program
+            std::stringstream ss;
+            ss << "kernel ";
+            const auto name = m_program->entry->getName();
+            if (!name.empty()) {
+                ss << name.str() << " ";
+            } else {
+                ss << "?";
+            }
+
+            ss << " compiled SIMD" <<
+              (m_program->m_dispatchSize == SIMDMode::SIMD32 ? 32 :
+                m_program->m_dispatchSize == SIMDMode::SIMD16 ? 16 : 8);
+            ss << " allocated " << jitInfo->stats.numGRFTotal << " regs";
+            if (jitInfo->isSpill) {
+                auto spilledRegs = std::max<unsigned>(1,
+                    (jitInfo->stats.spillMemUsed + getGRFSize() - 1) / getGRFSize());
+                ss << " and spilled around " << spilledRegs;
+            }
+            context->EmitWarning(ss.str().c_str());
+        }
+    }
+
+    void CEncoder::createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKernel& pMainKernel)
+    {
+        CodeGenContext *context = m_program->GetContext();
+        SProgramOutput *pOutput = m_program->ProgramOutput();
+        bool ZEBinEnabled = context->enableZEBinary();
+        vISA::FINALIZER_INFO *jitInfo = nullptr;
+        pMainKernel.GetJitInfo(jitInfo);
         if (hasSymbolTable)
         {
             if (ZEBinEnabled)
@@ -6331,7 +6417,6 @@ namespace IGC
                         pOutput->m_FuncGTPinInfoList.push_back({sym.s_name, buffer, size});
                     }
                 }
-
                 CreateGlobalHostAccessTable(cl_context->m_programInfo.m_zebinGlobalHostAccessTable);
             }
             else
@@ -6352,7 +6437,7 @@ namespace IGC
             // The kernel Symbol has the same name as the kernel, and offset
             // pointed to 0.
             CreateLocalSymbol(m_program->entry->getName().str(), vISA::GenSymType::S_KERNEL,
-                0, (unsigned)pMainKernel->getGenSize(), pOutput->m_symbols);
+                0, (unsigned)pMainKernel.getGenSize(), pOutput->m_symbols);
 
             // Emit symbol "_entry' as the actual kernel start. Maybe we can
             // consider to use the value of the _main label in this case. Now
@@ -6363,7 +6448,7 @@ namespace IGC
                                   jitInfo->offsetToSkipCrossThreadDataLoad),
                          jitInfo->offsetToSkipSetFFIDGP1);
             CreateLocalSymbol("_entry", vISA::GenSymType::S_FUNC, actual_kernel_start_off,
-                (unsigned)pMainKernel->getGenSize() - actual_kernel_start_off,
+                (unsigned)pMainKernel.getGenSize() - actual_kernel_start_off,
                 pOutput->m_symbols);
 
             // Create local function symbols for direct stackcall functions.
@@ -6387,54 +6472,6 @@ namespace IGC
                 pOutput->m_FuncGTPinInfoList.push_back({funcName, buffer, size});
             }
         }
-
-        if (ZEBinEnabled)
-        {
-            CreateRelocationTable(pMainKernel, pOutput->m_relocs);
-            for (const auto& reloc : pOutput->m_relocs)
-            {
-                if (reloc.r_symbol == vISA::CROSS_THREAD_OFF_R0_RELOCATION_NAME)
-                {
-                    IGC_ASSERT(context->type == ShaderType::OPENCL_SHADER);
-                    auto cl_context = static_cast<OpenCLProgramContext*>(context);
-                    cl_context->m_programInfo.m_hasCrossThreadOffsetRelocations = true;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            CreateRelocationTable(pMainKernel,
-                pOutput->m_funcRelocationTable,
-                pOutput->m_funcRelocationTableSize,
-                pOutput->m_funcRelocationTableEntries);
-        }
-
-        if (IGC_IS_FLAG_ENABLED(EnableRuntimeFuncAttributePatching) || ZEBinEnabled)
-        {
-            CreateFuncAttributeTable(pMainKernel,
-                pOutput->m_funcAttributeTable,
-                pOutput->m_funcAttributeTableSize,
-                pOutput->m_funcAttributeTableEntries,
-                pOutput->m_funcAttrs);
-        }
-
-        if (jitInfo->isSpill == true)
-        {
-            pOutput->m_scratchSpaceUsedBySpills = jitInfo->stats.spillMemUsed;
-            pOutput->m_numGRFSpillFill = jitInfo->stats.numGRFSpillFillWeighted;
-        }
-
-        pOutput->setScratchSpaceUsedByShader(m_program->m_ScratchSpaceSize);
-
-        pOutput->m_scratchSpaceUsedByGtpin = jitInfo->numBytesScratchGtpin;
-
-        pOutput->m_offsetToSkipPerThreadDataLoad = jitInfo->offsetToSkipPerThreadDataLoad;
-
-        pOutput->m_offsetToSkipSetFFIDGP = jitInfo->offsetToSkipSetFFIDGP;
-
-        pOutput->m_numGRFTotal = jitInfo->stats.numGRFTotal;
-        pOutput->m_numThreads = jitInfo->stats.numThreads;
     }
 
     void CEncoder::DestroyVISABuilder()

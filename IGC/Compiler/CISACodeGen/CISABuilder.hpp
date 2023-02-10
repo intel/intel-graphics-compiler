@@ -622,7 +622,7 @@ namespace IGC
         void CreateRelocationTable(VISAKernel* pMainKernel, SProgramOutput::RelocListTy& relocations);
 
         // CreateFuncAttributeTable
-        void CreateFuncAttributeTable(VISAKernel* pMainKernel, void*& buffer, unsigned& bufferSize, unsigned& tableEntries, SProgramOutput::FuncAttrListTy& attrs);
+        void CreateFuncAttributeTable(VISAKernel* pMainKernel);
 
         // CreateGlobalHostAccessTable
         typedef std::vector<vISA::HostAccessEntry> HostAccessList;
@@ -681,6 +681,33 @@ namespace IGC
         void SaveOption(vISAOptions option, uint32_t val);
         void SaveOption(vISAOptions option, const char* val);
         void SetBuilderOptions(VISABuilder* pbuilder);
+
+    private:
+        // helper functions for compile flow
+        /// shaderOverrideVISAFirstPass - pre-process shader overide dir for visa shader override.
+        /// return if there are visa files to be overriden
+        bool shaderOverrideVISAFirstPass(
+            std::vector<std::string> &visaOverrideFiles, std::string& kernelName);
+
+        /// shaderOverrideVISASecondPassOrInlineAsm - handle visa inputs of shader override
+        /// or inline asm
+        VISAKernel* shaderOverrideVISASecondPassOrInlineAsm(
+            int &vIsaCompile, std::stringstream& visaStream,
+            bool visaAsmOverride, bool hasSymbolTable, bool emitVisaOnly,
+            const std::vector<const char *> *additionalVISAAsmToLink,
+            const std::vector<std::string> &visaOverrideFiles,
+            const std::string kernelName);
+
+        // setup m_retryManager according to jitinfo and other factors
+        void checkForNoRetry(const vISA::FINALIZER_INFO *jitInfo);
+
+        /// create symbol tables and GlobalHostAccessTable according to if it's zebin
+        /// or patch-token formats
+        void createSymbolAndGlobalHostAccessTables(bool hasSymbolTable,
+                                                   VISAKernel &pMainKernel);
+
+        /// create relocation according to if it's zebin or patch-token formats
+        void createRelocationTables(VISAKernel &pMainKernel);
 
     protected:
         // encoder states

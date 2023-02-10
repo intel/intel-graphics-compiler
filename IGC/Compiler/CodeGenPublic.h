@@ -97,7 +97,7 @@ namespace IGC
         unsigned int    m_programSize = 0;    //<! Number of bytes of program data (including padding)
         unsigned int    m_unpaddedProgramSize = 0;      //<! program size without padding used for binary linking
         unsigned int    m_startReg = 0;                 //<! Which GRF to start with
-        unsigned int    m_scratchSpaceUsedBySpills = 0; //<! amount of scratch space needed for shader spilling
+        unsigned int    m_scratchSpaceUsedBySpills = 0; //<! amount of scratch space needed for BE stack (spilling and call)
         unsigned int    m_scratchSpaceUsedByShader = 0; //<! amount of scratch space needed by shader
         unsigned int    m_scratchSpaceUsedByGtpin = 0; //<! amount of scratch space used by gtpin
         void*           m_debugData = nullptr;      //<! elf file containing debug information for the kernel (source->genIsa)
