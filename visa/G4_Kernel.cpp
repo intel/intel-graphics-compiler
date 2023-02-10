@@ -1930,9 +1930,10 @@ GRFMode::GRFMode(const TARGET_PLATFORM platform, Options *op) : options(op) {
     defaultMode = 0;
     break;
   default:
+    // platforms <= TGL
     configs.resize(1);
     // Configurations with <numGRF, numThreads, SWSBTokens, numAcc>
-    configs[0] = {128, 8, 16, 2};
+    configs[0] = {128, 7, 16, 2};
     defaultMode = 0;
   }
   currentMode = defaultMode;
