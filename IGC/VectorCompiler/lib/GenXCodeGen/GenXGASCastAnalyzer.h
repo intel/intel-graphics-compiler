@@ -30,49 +30,62 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 
 namespace llvm {
-
 class GenXGASCastWrapper;
 
-namespace genx {
-enum {
-  HasLocalToGenericCast = 1 << 0,
-};
 class GASInfo {
 public:
+  enum {
+    HasPrivateToGeneric = 1 << 0,
+    HasLocalToGeneric = 1 << 1,
+    HasGlobalToGeneric = 1 << 2
+  };
+
+public:
+  bool canGenericPointToPrivate(Function &F) const {
+    auto E = FunctionMap.find(&F);
+    if (E == FunctionMap.end())
+      return true;
+    return E->second & HasPrivateToGeneric;
+  }
   bool canGenericPointToLocal(Function &F) const {
     auto E = FunctionMap.find(&F);
     if (E == FunctionMap.end())
       return true;
-    return E->second & HasLocalToGenericCast;
+    return E->second & HasLocalToGeneric;
+  }
+  bool canGenericPointToGlobal(Function &F) const {
+    auto E = FunctionMap.find(&F);
+    if (E == FunctionMap.end())
+      return true;
+    return E->second & HasGlobalToGeneric;
   }
 
 private:
   DenseMap<const Function *, unsigned> FunctionMap;
   friend class llvm::GenXGASCastWrapper;
 };
-} // end namespace genx
 
 class GenXGASCastWrapper : public ModulePass {
 public:
   static char ID;
-  GenXGASCastWrapper() : ModulePass(ID) {}
-  ~GenXGASCastWrapper() = default;
+  explicit GenXGASCastWrapper() : ModulePass(ID) {}
   StringRef getPassName() const override { return "Cast To GAS Analysis"; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnModule(Module &M) override;
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.setPreservesAll();
-    AU.addRequired<CallGraphWrapperPass>();
-  }
-  genx::GASInfo &getGASInfo() { return GI; }
+
+public:
+  GASInfo &getGASInfo() { return GI; }
 
 private:
-  genx::GASInfo GI;
-  DenseMap<const Function *, unsigned> CastInfoCache;
   void setInfoForFG(SmallPtrSetImpl<const Function *> &FG, unsigned CastInfo);
-  unsigned hasLocalCastsToGeneric(const Function *F);
-  void getFunctionGroup(const Function *F, CallGraph &CG,
-                        SmallPtrSetImpl<const Function *> &FG,
-                        bool &HasIndirectCall) const;
+  void traverseCallGraph(const Function *F, CallGraph &CG,
+                         SmallPtrSetImpl<const Function *> &FG,
+                         bool &HasIndirectCall) const;
+  unsigned hasCastsToGeneric(const Function &F);
+
+private:
+  DenseMap<const Function *, unsigned> CastInfoCache;
+  GASInfo GI;
 };
 } // end namespace llvm
 

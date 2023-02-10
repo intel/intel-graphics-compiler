@@ -95,4 +95,18 @@ Imported_Intrinsics = \
                                 "attributes" : "WriteMem",
                               },
 
+## ``llvm.vc.internal.cast.to.ptr.explicit`` : convert ptr_generic to
+## private/local/global ptr.
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: generic pointer
+##
+## * Return value: private/local/global pointer
+##
+## This intrisic attempts to explicitly convert a generic ptr to a
+##  private/local/global ptr. If the cast fails the intrisic returns null pointer.
+    "cast_to_ptr_explicit" : { "result": "anyptr",
+                               "arguments": ["ptr_generic"],
+                               "attributes": "NoMem",
+                             },
 }
