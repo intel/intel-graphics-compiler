@@ -81,43 +81,43 @@ public:
 // TODO: This set will be disable completely in the Release build.
 struct PERF_STATS_VERBOSE {
   // The number of bank conflict.
-  unsigned BCNum = 0;
+  uint32_t BCNum = 0;
 
   // counting the number of read-modify-write
-  unsigned numRMWs = 0;
+  uint32_t numRMWs = 0;
 
   // For the static profiling of acc regsiter substituion ratio
   // ALU instruction number
-  unsigned numALUInst = 0;
+  uint32_t numALUInst = 0;
   // ALU instruction destination operand number, which is not used in non-ALU
   // instruction
-  unsigned numALUOnlyDst = 0;
+  uint32_t numALUOnlyDst = 0;
   // ALU instruction source operand number, which is not defined in non-ALU
   // instruction
-  unsigned numALUOnlySrc = 0;
+  uint32_t numALUOnlySrc = 0;
 
   // The number of the operand which uses acc register
   // Def:dst operand, Use:src operand
-  unsigned accSubDef = 0;
-  unsigned accSubUse = 0;
+  uint32_t accSubDef = 0;
+  uint32_t accSubUse = 0;
 
   // Candidates, which may be substituted with acc, or not because of spill
-  unsigned accSubCandidateDef = 0;
-  unsigned accSubCandidateUse = 0;
+  uint32_t accSubCandidateDef = 0;
+  uint32_t accSubCandidateUse = 0;
 
   // The number of sync instructions.
-  unsigned syncInstCount = 0;
+  uint32_t syncInstCount = 0;
   // The token reuse times
-  unsigned tokenReuseCount = 0;
+  uint32_t tokenReuseCount = 0;
   // The number of @1 distance in single ALU pipeline, it can be L@1,
   // I@1, F@1 or @1 of TGL.
-  unsigned singlePipeAtOneDistNum = 0;
+  uint32_t singlePipeAtOneDistNum = 0;
   // A@1 number
-  unsigned allAtOneDistNum = 0;
+  uint32_t allAtOneDistNum = 0;
   // The number of $x.dst, after write token dependence
-  unsigned AfterWriteTokenDepCount = 0;
+  uint32_t AfterWriteTokenDepCount = 0;
   // The number of $x.src, after read token dependence
-  unsigned AfterReadTokenDepCount = 0;
+  uint32_t AfterReadTokenDepCount = 0;
 
 public:
   llvm::json::Value toJSON();

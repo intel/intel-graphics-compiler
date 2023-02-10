@@ -1766,11 +1766,11 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
     // 1. vISA_noStitchExternFunc == false
     //    Stitch all non-kernel functions to all kernels
     // 2. vISA_noStitchExternFunc == true
-    //    Stitch only non-external functions. Stich them to all kernels and
+    //    Stitch only non-external functions. Stitch them to all kernels and
     //    external functions
 
-    // mainFunctions: functions or kernels those will be stiched by others
-    // Thses functions/kernels will be the unit of compilePostOptimize
+    // mainFunctions: functions or kernels those will be stitched by others
+    // These functions/kernels will be the unit of compilePostOptimize
     VISAKernelImpl::VISAKernelImplListTy mainFunctions;
     // subFunctions: functions those will stitch to others
     VISAKernelImpl::VISAKernelImplListTy subFunctions;
@@ -1847,9 +1847,8 @@ int CISA_IR_Builder::Compile(const char *nameInput, std::ostream *os,
         }
       }
 
-      //Accumulate the performance data
+      // Accumulate the performance data
       vISA::PERF_STATS_VERBOSE perfStatus;
-      memset(&perfStatus, 0, sizeof(vISA::PERF_STATS_VERBOSE));
       func->addFuncPerfStats(
           &perfStatus, func->getKernel()->fg.builder->getJitInfo());
       for (auto &&iter : subFunctionsNameMap) {

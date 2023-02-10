@@ -12,19 +12,37 @@ using namespace vISA;
 
 llvm::json::Value PERF_STATS::toJSON() {
   // llvm Json cannot support u64 type, force to print string for binaryHash
-  return llvm::json::Object{{"binaryHash", std::to_string(binaryHash)},
-                            {"numGRFUsed", numGRFUsed},
-                            {"numGRFTotal", numGRFTotal},
-                            {"numThreads", numThreads},
-                            {"numAsmCount", numAsmCountUnweighted},
-                            {"numFlagSpillStore", numFlagSpillStore},
-                            {"numFlagSpillLoad", numFlagSpillLoad},
-                            {"numGRFSpillFill", numGRFSpillFillWeighted},
-                            {"GRFSpillSize", spillMemUsed},
-                            {"numCycles", numCycles},
-                            {"maxGRFPressure", maxGRFPressure}};
+  return llvm::json::Object{
+    {"binaryHash", std::to_string(binaryHash)},
+    {"numGRFUsed", numGRFUsed},
+    {"numGRFTotal", numGRFTotal},
+    {"numThreads", numThreads},
+    {"numAsmCount", numAsmCountUnweighted},
+    {"numFlagSpillStore", numFlagSpillStore},
+    {"numFlagSpillLoad", numFlagSpillLoad},
+    {"numGRFSpillFill", numGRFSpillFillWeighted},
+    {"GRFSpillSize", spillMemUsed},
+    {"numCycles", numCycles},
+    {"maxGRFPressure", maxGRFPressure}
+  };
 }
 
 llvm::json::Value PERF_STATS_VERBOSE::toJSON() {
-  return llvm::json::Object();
+  return llvm::json::Object{
+    {"BCNum", BCNum},
+    {"numRMWs", numRMWs},
+    {"numALUInst", numALUInst},
+    {"numALUOnlyDst", numALUOnlyDst},
+    {"numALUOnlySrc", numALUOnlySrc},
+    {"accSubDef", accSubDef},
+    {"accSubUse", accSubUse},
+    {"accSubCandidateDef", accSubCandidateDef},
+    {"accSubCandidateUse", accSubCandidateUse},
+    {"syncInstCount", syncInstCount},
+    {"tokenReuseCount", tokenReuseCount},
+    {"singlePipeAtOneDistNum", singlePipeAtOneDistNum},
+    {"allAtOneDistNum", allAtOneDistNum},
+    {"AfterWriteTokenDepCount", AfterWriteTokenDepCount},
+    {"AfterReadTokenDepCount", AfterReadTokenDepCount},
+  };
 }
