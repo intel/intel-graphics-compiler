@@ -446,7 +446,7 @@ private:
 #include "AutoGenRTStackAccess.h"
 public:
     static Type* getRTStack2PtrTy(const IGC::CodeGenContext& Ctx, RTMemoryAccessMode Mode, bool async = true);
-    static Type* getRayDispatchGlobalDataPtrTy(Module &M);
+    Type* getRayDispatchGlobalDataPtrTy(Module &M);
     static Type* getInstanceLeafPtrTy(Module &M);
     static Type* getQuadLeafPtrTy(Module &M);
     static Type* getProceduralLeafPtrTy(Module &M);

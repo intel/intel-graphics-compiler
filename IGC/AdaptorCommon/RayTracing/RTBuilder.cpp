@@ -2107,6 +2107,10 @@ Type* RTBuilder::getRTStack2PtrTy(
 
 Type* RTBuilder::getRayDispatchGlobalDataPtrTy(Module &M)
 {
+    uint32_t Addrspace = (Ctx.type == ShaderType::OPENCL_SHADER) ?
+        ADDRESS_SPACE_GLOBAL :
+        ADDRESS_SPACE_CONSTANT;
+
     auto addTy = [&](NamedMDNode *TypesMD, RaytracingType Idx) {
         auto* Ty = _gettype_RayDispatchGlobalData(M);
         return setRTTypeMD(
@@ -2115,7 +2119,7 @@ Type* RTBuilder::getRayDispatchGlobalDataPtrTy(Module &M)
             TypesMD,
             Ty,
             sizeof(RayDispatchGlobalData),
-            ADDRESS_SPACE_GLOBAL);
+            Addrspace);
     };
 
     return lazyGetRTType(M, RaytracingType::RayDispatchGlobalData, addTy);
