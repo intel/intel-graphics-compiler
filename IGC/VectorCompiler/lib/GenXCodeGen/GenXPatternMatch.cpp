@@ -1028,7 +1028,7 @@ applyLscAddrFolding(Value *Offsets, APInt& Scale, APInt& Offset) {
       if (Imm.getMinSignedBits() > Offset.getBitWidth())
         return false;
       Imm = Imm.sextOrTrunc(Offset.getBitWidth())
-               .smul_ov(Scale.zext(Imm.getBitWidth()), Overflow);
+                .smul_ov(Scale.zext(Offset.getBitWidth()), Overflow);
       if (Overflow)
         return false;
       if (BinOp->getOpcode() == Instruction::Add)
