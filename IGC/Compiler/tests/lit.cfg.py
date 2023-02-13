@@ -57,6 +57,7 @@ if int(config.llvm_version) < 14:
   config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', 'CHECK-PRE-LLVM-14'))
 else:
   config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', 'CHECK-LLVM-14-PLUS'))
+  config.available_features.add('llvm-14-plus')
 
 if config.use_khronos_spirv_translator_in_sc == "1":
   config.substitutions.append(('%SPV_CHECK_PREFIX%', 'CHECK-KHR'))

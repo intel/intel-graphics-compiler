@@ -1201,7 +1201,11 @@ void OptimizeIR(CodeGenContext* const pContext)
         {
             mpm.add(new CodeSinking(true));
         }
+#if LLVM_VERSION_MAJOR >= 12
+        mpm.add(llvm::createCFGSimplificationPass(SimplifyCFGOptions().hoistCommonInsts(true)));
+#else
         mpm.add(llvm::createCFGSimplificationPass());
+#endif
 
         mpm.add(llvm::createBasicAAWrapperPass());
         mpm.add(createAddressSpaceAAWrapperPass());
