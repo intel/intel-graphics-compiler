@@ -570,6 +570,7 @@ public:
   void setVISAId(int offset) { vISAInstId = offset; }
   int getVISAId() const { return vISAInstId; }
   bool isVISAIdValid() const { return getVISAId() != UndefinedCisaOffset; }
+  void invalidateVISAId() { setVISAId(UndefinedCisaOffset); }
 
   bool isOptBarrier() const;
   bool hasImplicitAccSrc() const {

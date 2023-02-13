@@ -8089,6 +8089,8 @@ void Optimizer::loadThreadPayload() {
                      numPerThreadGRF * builder.numEltPerGRF<Type_UD>());
     }
     perThreadBB = kernel.fg.createNewBB();
+    std::for_each(instBuffer.begin(), instBuffer.end(),
+                  [](G4_INST *inst) { inst->invalidateVISAId(); });
     perThreadBB->insert(perThreadBB->begin(), instBuffer.begin(),
                         instBuffer.end());
     instBuffer.clear();
@@ -8132,6 +8134,9 @@ void Optimizer::loadThreadPayload() {
         loadFromMemory(rtail, crossThreadLoadStartGRF, numCrossThreadDW);
       }
     }
+
+    std::for_each(instBuffer.begin(), instBuffer.end(),
+                  [](G4_INST *inst) { inst->invalidateVISAId(); });
 
     // create separate blocks instead of directly inserting to the old entryBB
     // This is for the situation where the entry BB is part of a loop, as we
