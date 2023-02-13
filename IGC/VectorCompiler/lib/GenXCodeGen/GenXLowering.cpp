@@ -2042,6 +2042,7 @@ static void ComputeScatterAddress(CallInst *CI, unsigned ScaleIdx,
 //      N x i8 -> (N / 4) x i32
 //      N x i16 -> (N / 2) x i32
 //      N x half -> N x i16 -> (N / 2) x i32
+//      N x i64 -> (2 * N) x i32
 //
 // if it is possible. D8 and D16 often illegal in LSC
 IGCLLVM::FixedVectorType *
@@ -2053,7 +2054,7 @@ GenXLowering::adjustVTForTransposedMessage(IGCLLVM::FixedVectorType *VT) {
     return VT;
 
   unsigned EltSize = DL->getTypeSizeInBits(ElementType);
-  if ((EltSize != 16) && (EltSize != 8))
+  if (EltSize == 32)
     return VT;
 
   unsigned EltCount = VT->getNumElements();
@@ -2070,6 +2071,9 @@ GenXLowering::adjustVTForTransposedMessage(IGCLLVM::FixedVectorType *VT) {
     break;
   case 16:
     EltCount = EltCount / 2;
+    break;
+  case 64:
+    EltCount *= 2;
     break;
   default:
     IGC_ASSERT_MESSAGE(0, "We shall not be there");
