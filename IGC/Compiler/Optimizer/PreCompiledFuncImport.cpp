@@ -282,11 +282,15 @@ bool PreCompiledFuncImport::preProcessDouble()
                         // z = max/min(x,y) sementics:
                         //     If either operand is NaN, return the other one (both are NaN,
                         //     return NaN); otherwise, return normal max/min.
+                        //     isnan should be created with fcmp_une condition because unordered checks if either operand may be a NaN
+                        //     while ordered means that neither operand is NaN (and return false).
+                        //     In result of fcmp_une condition will be a comparison that return true if any of the operands is NaN.
+                        //     Then we return other operand than NaN.
                         //
                         // Convert it to:
                         //   cond =  x >= y [x < y]  || x&y is unordered   (fcmp_uge|fcmp_ult)
                         //   t = cond ? x : y
-                        //   op0_isnan = (x != x)    (fcmp_one)
+                        //   op0_isnan = (x != x)    (fcmp_une)
                         //   res = op0_isnan ? y : t
                         //
                         Instruction* cond = FCmpInst::Create(
@@ -298,7 +302,7 @@ bool PreCompiledFuncImport::preProcessDouble()
                         sel->setDebugLoc(CallI->getDebugLoc());
 
                         Instruction* isnan = FCmpInst::Create(
-                            Instruction::FCmp, FCmpInst::FCMP_ONE, Oprd0, Oprd0, "", CallI);
+                            Instruction::FCmp, FCmpInst::FCMP_UNE, Oprd0, Oprd0, "", CallI);
                         res = SelectInst::Create(isnan, Oprd1, sel, "", CallI);
                         res->setDebugLoc(CallI->getDebugLoc());
                     }
