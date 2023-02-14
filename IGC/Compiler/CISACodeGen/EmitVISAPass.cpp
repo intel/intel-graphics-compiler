@@ -614,10 +614,8 @@ bool EmitPass::runOnFunction(llvm::Function& F)
     m_currShader->SetFunctionGroupAnalysis(m_FGA);
     m_currShader->SetPushInfoHelper(&(m_moduleMD->pushInfo));
     m_currShader->SetVariableReuseAnalysis(m_VRA);
-    if (IGC_IS_FLAG_ENABLED(EnableDeSSA))
-    {
-        m_currShader->SetDeSSAHelper(m_deSSA);
-    }
+    m_currShader->SetDeSSAHelper(m_deSSA);
+
     //Add CCtuple root variables.
     if (IGC_IS_FLAG_DISABLED(DisablePayloadCoalescing)) {
         m_currShader->SetCoalescingEngineHelper(m_CE);

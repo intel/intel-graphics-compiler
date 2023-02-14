@@ -308,6 +308,12 @@ void DeSSA::dump() const {
 
 bool DeSSA::runOnFunction(Function& MF)
 {
+    if (IGC_IS_FLAG_DISABLED(EnableDeSSA))
+    {
+        // getRootValue(), isIsolated(), etc still works.
+        return false;
+    }
+
     m_F = &MF;
     CurrColor = 0;
     MetaDataUtils* pMdUtils = nullptr;
