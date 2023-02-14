@@ -44,6 +44,7 @@ CShader::CShader(Function* pFunc, CShaderProgram* pProgram)
     m_shaderStats = nullptr;
     m_constantBufferMask = 0;
     m_constantBufferLoaded = 0;
+    m_ConstantBufferLength = 0;
     m_uavLoaded = 0;
     for (int i = 0; i < 4; i++)
     {
