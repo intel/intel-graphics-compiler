@@ -691,6 +691,8 @@ namespace IGC
 
         /// shaderOverrideVISASecondPassOrInlineAsm - handle visa inputs of shader override
         /// or inline asm
+        /// Return the VISAKernel built from overrided visa or inline asm. Return nullptr if
+        /// failed to create VISAKernel
         VISAKernel* shaderOverrideVISASecondPassOrInlineAsm(
             int &vIsaCompile, std::stringstream& visaStream,
             bool visaAsmOverride, bool hasSymbolTable, bool emitVisaOnly,

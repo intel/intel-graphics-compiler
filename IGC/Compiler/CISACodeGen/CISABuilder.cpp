@@ -6024,6 +6024,9 @@ namespace IGC
               vIsaCompile, visaStream,
               visaAsmOverride, hasSymbolTable, emitVisaOnly,
               additionalVISAAsmToLink, visaOverrideFiles, kernelName);
+            // return immediately if there is error during parsing visaasm
+            if (pMainKernel == nullptr)
+                return;
         }
         //Compile to generate the V-ISA binary
         else
