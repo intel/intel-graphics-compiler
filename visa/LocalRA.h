@@ -437,11 +437,13 @@ public:
 
   bool findFreeMultipleRegsForward(int regIdx, BankAlign align, int &regnum,
                                    int nrows, int lastRowSize, int endReg,
-                                   int instID, const bool *forbidden);
+                                   int instID,
+                                   std::vector<bool> &forbidden);
 
   bool findFreeSingleReg(int regIdx, int size, BankAlign align,
                          G4_SubReg_Align subalign, int &regnum, int &subregnum,
-                         int endReg, const bool *forbidden);
+                         int endReg,
+                         std::vector<bool> &forbidden);
 };
 
 class PhyRegsManager {
@@ -472,7 +474,8 @@ public:
                    std::unordered_set<unsigned int> &forbidden);
   int findFreeRegs(int size, BankAlign align, G4_SubReg_Align subalign,
                    int &regnum, int &subregnum, int startRegNum, int endRegNum,
-                   unsigned int instID, const bool *forbidden);
+                   unsigned int instID,
+                   std::vector<bool> &forbidden);
 };
 
 class LinearScan {

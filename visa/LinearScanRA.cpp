@@ -33,27 +33,15 @@ LinearScanRA::LinearScanRA(BankConflictPass &b, GlobalRA &g,
 }
 
 void LinearScanRA::allocForbiddenVector(LSLiveRange *lr) {
-  unsigned size = kernel.getNumRegTotal();
-  bool *forbidden = (bool *)LSMem.alloc(sizeof(bool) * size);
-  memset(forbidden, false, size);
-  lr->setForbidden(forbidden);
-
+  lr->getForbidden().resize(kernel.getNumRegTotal());
   if (builder.kernel.getOptions()->getOption(vISA_AvoidUsingR0R1)) {
     lr->addForbidden(0);
     lr->addForbidden(1);
   }
 }
 
-void globalLinearScan::allocRetRegsVector(LSLiveRange *lr) {
-  unsigned size = builder.kernel.getNumRegTotal();
-  bool *forbidden = (bool *)GLSMem.alloc(sizeof(bool) * size);
-  memset(forbidden, false, size);
-  lr->setRegGRFs(forbidden);
-}
-
 LSLiveRange *LinearScanRA::GetOrCreateLocalLiveRange(G4_Declare *topdcl) {
   LSLiveRange *lr = gra.getLSLR(topdcl);
-
   // Check topdcl of operand and setup a new live range if required
   if (!lr) {
     lr = new (LSMem) LSLiveRange();
@@ -691,7 +679,7 @@ void LinearScanRA::getCalleeSaveRegisters() {
 
   G4_Declare *dcl = builder.kernel.fg.pseudoVCEDcl;
   LSLiveRange *lr = gra.getLSLR(dcl);
-  const bool *forbidden = lr->getForbidden();
+  auto forbidden = lr->getForbidden();
   unsigned int startCalleeSave = builder.kernel.getCallerSaveLastGRF() + 1;
   unsigned int endCalleeSave =
       startCalleeSave + builder.kernel.getNumCalleeSaveRegs() - 1;
@@ -723,7 +711,7 @@ void LinearScanRA::getCallerSaveRegisters() {
               ->getDeclare();
       LSLiveRange *lr = gra.getLSLR(dcl);
 
-      const bool *forbidden = lr->getForbidden();
+      auto forbidden = lr->getForbidden();
       unsigned int startCalleeSave = 1;
       unsigned int endCalleeSave =
           startCalleeSave + builder.kernel.getCallerSaveLastGRF();
@@ -737,8 +725,8 @@ void LinearScanRA::getCallerSaveRegisters() {
       }
 
       // ret
-      const bool *rRegs = lr->getRetGRFs();
-      if (rRegs != nullptr) {
+      auto rRegs = lr->getRetGRFs();
+      if (rRegs.size()) {
         for (unsigned i = 0; i < builder.kernel.getNumRegTotal(); i++) {
           if (rRegs[i]) {
             if (i >= startCalleeSave && i < endCalleeSave) {
@@ -747,7 +735,6 @@ void LinearScanRA::getCallerSaveRegisters() {
           }
         }
       }
-
       gra.callerSaveRegCountMap[(*it)] = callerSaveRegCount;
     }
   }
@@ -1197,7 +1184,6 @@ void LinearScanRA::setSrcReferences(
     std::vector<LSLiveRange *> &eotLiveIntervals) {
   G4_INST *curInst = (*inst_it);
   LSLiveRange *lr = gra.getLSLR(dcl);
-
   if (!lr && dcl->getRegFile() == G4_GRF) {
     lr = CreateLocalLiveRange(dcl);
   }
@@ -1985,8 +1971,8 @@ bool globalLinearScan::runLinearScan(IR_Builder &builder,
       }
       for (unsigned int i = 0; i < regRegs.size(); i++) {
         unsigned int callerSaveReg = regRegs[i];
-        if (lr->getRetGRFs() == nullptr) {
-          allocRetRegsVector(lr);
+        if (lr->getRetGRFs().size() == 0) {
+          lr->getRetGRFs().resize(gra.kernel.getNumRegTotal());
         }
         lr->addRetRegs(callerSaveReg);
       }
@@ -2005,8 +1991,8 @@ bool globalLinearScan::runLinearScan(IR_Builder &builder,
         }
         for (unsigned int i = 0; i < regRegs.size(); i++) {
           unsigned int callerSaveReg = regRegs[i];
-          if (lr->getRetGRFs() == nullptr) {
-            allocRetRegsVector(lr);
+          if (lr->getRetGRFs().size() == 0) {
+            lr->getRetGRFs().resize(gra.kernel.getNumRegTotal());
           }
           lr->addRetRegs(callerSaveReg);
         }
@@ -2239,7 +2225,8 @@ int globalLinearScan::findSpillCandidate(LSLiveRange *tlr) {
 
     // Check the following adjacent registers
     for (int k = i; k < i + requiredRows; k++) {
-      if (activeGRF[k].activeInput.size() || tlr->getForbidden()[k]) {
+      if (activeGRF[k].activeInput.size() ||
+          (tlr->getForbidden()[k])) {
         i = k;
         canBeFree = false;
         break;
@@ -2256,7 +2243,8 @@ int globalLinearScan::findSpillCandidate(LSLiveRange *tlr) {
 
           analyzedLV = lr;
 
-          if (!canBeSpilledLR(lr) || lr->getForbidden()[k]) {
+          if (!canBeSpilledLR(lr) ||
+              (lr->getForbidden()[k])) {
             int startsregnum = 0;
             G4_VarBase *op = lr->getPhyReg(startsregnum);
             unsigned startregnum = op->asGreg()->getRegNum();
@@ -2574,11 +2562,9 @@ bool globalLinearScan::allocateRegsLinearScan(LSLiveRange *lr,
   return false;
 }
 
-bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align,
-                                                 int &regnum, int nrows,
-                                                 int lastRowSize, int endReg,
-                                                 int instID,
-                                                 const bool *forbidden) {
+bool PhyRegsLocalRA::findFreeMultipleRegsForward(
+    int regIdx, BankAlign align, int &regnum, int nrows, int lastRowSize,
+    int endReg, int instID, std::vector<bool> &forbidden) {
   int foundItem = 0;
   int startReg = 0;
   int i = regIdx;
@@ -2595,7 +2581,8 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align,
 
   startReg = i;
   while (i <= endReg + nrows - 1) {
-    if (isGRFAvailable(i) && !forbidden[i] && regBusyVector[i] == 0) {
+    if (isGRFAvailable(i) && (!forbidden[i]) &&
+        regBusyVector[i] == 0) {
       foundItem++;
     } else if (foundItem < grfRows) {
       foundItem = 0;
@@ -2611,7 +2598,8 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align,
         return true;
       } else {
         if (i + 1 <= endReg + nrows - 1 && isGRFAvailable(i + 1) &&
-            !forbidden[i + 1] && (isWordBusy(i + 1, 0, lastRowSize) == false)) {
+            !forbidden[i + 1] &&
+            (isWordBusy(i + 1, 0, lastRowSize) == false)) {
           regnum = startReg;
           return true;
         } else {
@@ -2633,7 +2621,7 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, BankAlign align,
 bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, int size, BankAlign align,
                                        G4_SubReg_Align subalign, int &regnum,
                                        int &subregnum, int endReg,
-                                       const bool *forbidden) {
+                                        std::vector<bool> &forbidden) {
   int i = regIdx;
   bool found = false;
 
@@ -2671,7 +2659,8 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, int size, BankAlign align,
 int PhyRegsManager::findFreeRegs(int size, BankAlign align,
                                  G4_SubReg_Align subalign, int &regnum,
                                  int &subregnum, int startRegNum, int endRegNum,
-                                 unsigned int instID, const bool *forbidden) {
+                                 unsigned int instID,
+                                 std::vector<bool> &forbidden) {
   int nrows = 0;
   int lastRowSize = 0;
   LocalRA::getRowInfo(size, nrows, lastRowSize, builder);
