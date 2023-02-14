@@ -4094,7 +4094,7 @@ void G4_DstRegRegion::computeLeftBound(const IR_Builder &builder) {
   else if (base != NULL && base->isAccReg()) {
     left_bound = subRegOff * TypeSize(type);
     if (base->asAreg()->getArchRegType() == AREG_ACC1 || regOff == 1) {
-      left_bound += builder.getGRFSize();
+      left_bound += builder.getACCSize();
     }
     byteOffset = left_bound;
   } else if (top_dcl) {
@@ -5862,7 +5862,7 @@ void G4_RegVar::setSubRegAlignment(G4_SubReg_Align subAlg) {
 // and updates left bound only.
 //
 void G4_INST::computeLeftBoundForImplAcc(G4_Operand *opnd) {
-  if (opnd != NULL) {
+  if (opnd) {
     G4_Type extype;
     int extypesize;
     extype = getOpExecType(extypesize);

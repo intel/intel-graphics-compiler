@@ -33,6 +33,8 @@ struct AccInterval {
     }
   }
 
+  void setAssignedAcc(int value) { assignedAcc = value; }
+
   double getSpillCost() const {
     if (isPreAssigned) {
       // don't spill pre-assigned
@@ -1091,6 +1093,13 @@ void AccSubPass::doAccSub(G4_BB *bb) {
       int lastUseId = useIter == instEnd ? bb->back()->getLocalId()
                                          : (*useIter)->getLocalId();
       AccInterval *newInterval = new AccInterval(inst, lastUseId, true);
+
+      if (inst->getImplAccDst() &&
+          inst->getImplAccDst()->getBase()->asAreg()->getArchRegType() ==
+              AREG_ACC1) {
+        newInterval->setAssignedAcc(1);
+      }
+
       intervals.push_back(newInterval);
     } else {
       int lastUseId = 0;
