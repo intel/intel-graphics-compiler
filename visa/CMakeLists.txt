@@ -348,7 +348,6 @@ set(GenX_Common_Headers
   HWCaps.inc
   include/JitterDataStruct.h
   include/KernelInfo.h
-  include/RT_Jitter_Interface.h
   include/VISABuilderAPIDefinition.h
   include/VISADefines.h
   include/gtpin_IGC_interface.h
