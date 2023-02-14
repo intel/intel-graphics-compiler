@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // This file defines internal options accepted by vector compiler.
 
 // VC internal options {{
-let Flags = [VectorCompilerInternalOption] in {
+let Flags = [VCInternalOption] in {
 
 def dump_llvm_ir : PlainFlag<"dump-llvm-ir">,
   HelpText<"Dump llvm IR after SPIRV reading, optimizations and codegen">;

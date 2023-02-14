@@ -13,26 +13,26 @@ SPDX-License-Identifier: MIT
 include "llvm/Option/OptParser.td"
 
 // Option kinds {{
-// Vector Compiler options accessible using public API.
-def VectorCompilerApiOption : OptionFlag;
+// VC options accessible using public API.
+def VCApiOption : OptionFlag;
 
 // Api options compatible with igcmc.
 // These are used only when -cmc is present in api options.
 def IgcmcApiOption : OptionFlag;
 
-// Scalar Compiler options accessible using public API.
-def ScalarCompilerApiOption : OptionFlag;
+// IGC options accessible using public API.
+def IGCApiOption : OptionFlag;
 // }} Option kinds
 
 // Helpers {{
 def ApiHelper {
-  list<OptionFlag> VCBackwardCompatFlags = [VectorCompilerApiOption, IgcmcApiOption];
-  list<OptionFlag> CommonApiFlags = [VectorCompilerApiOption, ScalarCompilerApiOption];
+  list<OptionFlag> VCBackwardCompatFlags = [VCApiOption, IgcmcApiOption];
+  list<OptionFlag> CommonApiFlags = [VCApiOption, IGCApiOption];
 }
 
 include "OptionHelpers.td"
 // }} Helpers
 
 include "CommonApiOptions.td"
-include "VectorCompilerApiOptions.td"
-include "ScalarCompilerApiOptions.td"
+include "VCApiOptions.td"
+include "IGCApiOptions.td"

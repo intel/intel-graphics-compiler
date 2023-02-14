@@ -596,7 +596,7 @@ template <typename ID, ID... UnknownIDs>
 static Expected<opt::InputArgList>
 parseOptions(const SmallVectorImpl<const char *> &Argv, unsigned FlagsToInclude,
              const opt::OptTable &Options, bool IsStrictMode) {
-  const bool IsInternal = FlagsToInclude & IGC::options::VectorCompilerInternalOption;
+  const bool IsInternal = FlagsToInclude & IGC::options::VCInternalOption;
 
   unsigned MissingArgIndex = 0;
   unsigned MissingArgCount = 0;
@@ -637,7 +637,7 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
       Options.getOption(OPT_vc_codegen).getPrefixedName();
   if (HasOption(VCCodeGenOptName)) {
     const unsigned FlagsToInclude =
-        IGC::options::VectorCompilerApiOption | IGC::options::ScalarCompilerApiOption;
+        IGC::options::VCApiOption | IGC::options::IGCApiOption;
     return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(Argv, FlagsToInclude,
                                                     Options, IsStrictMode);
   }
@@ -650,7 +650,7 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
         << "' option is deprecated and will be removed in the future release. "
            "Use -vc-codegen instead for compiling from SPIRV.\n";
     const unsigned FlagsToInclude =
-        IGC::options::IgcmcApiOption | IGC::options::ScalarCompilerApiOption;
+        IGC::options::IgcmcApiOption | IGC::options::IGCApiOption;
     return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(Argv, FlagsToInclude,
                                                     Options, IsStrictMode);
   }
@@ -668,7 +668,7 @@ parseInternalOptions(StringSaver &Saver, StringRef InternalOptions) {
   constexpr bool IsStrictMode = false;
   const opt::OptTable &Options = IGC::getInternalOptTable();
   const unsigned FlagsToInclude =
-      IGC::options::VectorCompilerInternalOption | IGC::options::ScalarCompilerInternalOption;
+      IGC::options::VCInternalOption | IGC::options::IGCInternalOption;
   return parseOptions<ID, OPT_UNKNOWN, OPT_INPUT>(Argv, FlagsToInclude, Options,
                                                   IsStrictMode);
 }
@@ -695,7 +695,7 @@ deriveOptimizationLevel(opt::Arg *A, OptSpecifier PrimaryOpt) {
     StringRef Val = A->getValue();
     return parseOptimizationLevelString(Val);
   } else {
-    IGC_ASSERT(A->getOption().matches(OPT_opt_disable__common));
+    IGC_ASSERT(A->getOption().matches(OPT_opt_disable_ze));
     return vc::OptimizerLevel::None;
   }
 }
@@ -720,7 +720,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
     Opts.UsePlain2DImages = true;
   if (ApiOptions.hasArg(OPT_vc_enable_preemption))
     Opts.EnablePreemption = true;
-  if (ApiOptions.hasArg(OPT_library_compilation__common))
+  if (ApiOptions.hasArg(OPT_library_compilation_ze))
     Opts.SaveStackCallLinkage = true;
   if (ApiOptions.hasArg(OPT_vc_disable_non_overlapping_region_opt))
     Opts.ForceDisableNonOverlappingRegionOpt = true;
@@ -739,12 +739,12 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   }
 
   if (opt::Arg *A =
-          ApiOptions.getLastArg(OPT_enable_zebin__common, OPT_disable_zebin__common))
+          ApiOptions.getLastArg(OPT_enable_zebin_ze, OPT_disable_zebin_ze))
     switch (A->getOption().getID()) {
-    case OPT_enable_zebin__common:
+    case OPT_enable_zebin_ze:
       Opts.Binary = vc::BinaryKind::ZE;
       break;
-    case OPT_disable_zebin__common:
+    case OPT_disable_zebin_ze:
       Opts.Binary = vc::BinaryKind::OpenCL;
       break;
     default:
@@ -765,7 +765,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   }
 
   if (opt::Arg *A =
-          ApiOptions.getLastArg(OPT_vc_optimize, OPT_opt_disable__common)) {
+          ApiOptions.getLastArg(OPT_vc_optimize, OPT_opt_disable_ze)) {
     auto MaybeLevel = deriveOptimizationLevel(A, OPT_vc_optimize);
     if (!MaybeLevel)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
@@ -777,7 +777,7 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
   }
 
   if (opt::Arg *A =
-          ApiOptions.getLastArg(OPT_vc_codegen_optimize, OPT_opt_disable__common)) {
+          ApiOptions.getLastArg(OPT_vc_codegen_optimize, OPT_opt_disable_ze)) {
     auto MaybeLevel = deriveOptimizationLevel(A, OPT_vc_codegen_optimize);
     if (!MaybeLevel)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
@@ -814,7 +814,7 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   if (InternalOptions.hasArg(OPT_freset_llvm_stats))
     Opts.ResetLLVMStats = true;
   Opts.StatsFile = InternalOptions.getLastArgValue(OPT_stats_file).str();
-  if (InternalOptions.hasArg(OPT_use_bindless_buffers__common))
+  if (InternalOptions.hasArg(OPT_intel_use_bindless_buffers_ze))
     Opts.UseBindlessBuffers = true;
   if (InternalOptions.hasArg(OPT_emit_zebin_visa_sections))
     Opts.EmitZebinVisaSections = true;
@@ -842,12 +842,12 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   }
 
   if (opt::Arg *A = InternalOptions.getLastArg(
-          OPT_binary_format, OPT_allow_zebin__common, OPT_disable_zebin__common)) {
+          OPT_binary_format, OPT_allow_zebin_ze, OPT_disable_zebin_ze)) {
     auto OptID = A->getOption().getID();
 
-    if (OptID == OPT_allow_zebin__common)
+    if (OptID == OPT_allow_zebin_ze)
       Opts.Binary = vc::BinaryKind::ZE;
-    else if (OptID == OPT_disable_zebin__common)
+    else if (OptID == OPT_disable_zebin_ze)
       Opts.Binary = vc::BinaryKind::OpenCL;
     else {
       StringRef Val = A->getValue();
@@ -873,7 +873,7 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
   if (InternalOptions.hasArg(OPT_help)) {
     constexpr const char *Usage = "-options \"-vc-codegen [options]\"";
     constexpr const char *Title = "Vector compiler options";
-    constexpr unsigned FlagsToInclude = IGC::options::VectorCompilerApiOption;
+    constexpr unsigned FlagsToInclude = IGC::options::VCApiOption;
     constexpr unsigned FlagsToExclude = 0;
     constexpr bool ShowAllAliases = false;
     IGCLLVM::printHelp(IGC::getApiOptTable(), llvm::errs(), Usage, Title,
@@ -883,7 +883,7 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
     constexpr const char *Usage =
         "-options \"-vc-codegen\" -internal_options \"[options]\"";
     constexpr const char *Title = "Vector compiler internal options";
-    constexpr unsigned FlagsToInclude = IGC::options::VectorCompilerInternalOption;
+    constexpr unsigned FlagsToInclude = IGC::options::VCInternalOption;
     constexpr unsigned FlagsToExclude = 0;
     constexpr bool ShowAllAliases = false;
     IGCLLVM::printHelp(IGC::getInternalOptTable(), llvm::errs(), Usage, Title,
@@ -981,7 +981,7 @@ opt::DerivedArgList filterApiOptions(opt::InputArgList &InputArgs) {
   if (InputArgs.hasArg(IGC::options::api::OPT_igcmc))
     return filterUsedOptions(InputArgs, IGC::options::IgcmcApiOption);
 
-  return filterUsedOptions(InputArgs, IGC::options::VectorCompilerApiOption);
+  return filterUsedOptions(InputArgs, IGC::options::VCApiOption);
 }
 
 llvm::Expected<vc::CompileOptions>
@@ -1000,7 +1000,7 @@ vc::ParseOptions(llvm::StringRef ApiOptions, llvm::StringRef InternalOptions,
     return ExpInternalArgList.takeError();
   opt::InputArgList &InternalArgs = ExpInternalArgList.get();
   const opt::DerivedArgList VCInternalArgs =
-      filterUsedOptions(InternalArgs, IGC::options::VectorCompilerInternalOption);
+      filterUsedOptions(InternalArgs, IGC::options::VCInternalOption);
 
   return fillOptions(VCApiArgs, VCInternalArgs);
 }

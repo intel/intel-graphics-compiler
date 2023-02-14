@@ -13,21 +13,21 @@ SPDX-License-Identifier: MIT
 include "llvm/Option/OptParser.td"
 
 // Option kinds {{
-// Vector Compiler internal options.
-def VectorCompilerInternalOption : OptionFlag;
+// VC internal options.
+def VCInternalOption : OptionFlag;
 
-// Scalar Compiler internal options.
-def ScalarCompilerInternalOption : OptionFlag;
+// IGC internal options.
+def IGCInternalOption : OptionFlag;
 // }} Option kinds
 
 // Helpers {{
 def InternalHelper {
-  list<OptionFlag> CommonInternalFlags = [VectorCompilerInternalOption, ScalarCompilerInternalOption];
+  list<OptionFlag> CommonInternalFlags = [VCInternalOption, IGCInternalOption];
 }
 
 include "OptionHelpers.td"
 // }} Helpers
 
 include "CommonInternalOptions.td"
-include "VectorCompilerInternalOptions.td"
-include "ScalarCompilerInternalOptions.td"
+include "VCInternalOptions.td"
+include "IGCInternalOptions.td"
