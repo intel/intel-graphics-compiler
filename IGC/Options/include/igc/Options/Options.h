@@ -17,14 +17,14 @@ namespace options {
 constexpr unsigned FirstNonBuiltinFlagNum = 4;
 
 enum Flags {
-  // VC backend specific options.
-  VCApiOption = (1 << FirstNonBuiltinFlagNum),
-  VCInternalOption = (VCApiOption << 1),
-  IgcmcApiOption = (VCInternalOption << 1),
+  // Vector Compiler backend specific options.
+  VectorCompilerApiOption = (1 << FirstNonBuiltinFlagNum),
+  VectorCompilerInternalOption = (VectorCompilerApiOption << 1),
+  IgcmcApiOption = (VectorCompilerInternalOption << 1),
 
-  // Scalar IGC backend specific options.
-  IGCApiOption = (IgcmcApiOption << 1),
-  IGCInternalOption = (IGCApiOption << 1),
+  // Scalar Compiler backend specific options.
+  ScalarCompilerApiOption = (IgcmcApiOption << 1),
+  ScalarCompilerInternalOption = (ScalarCompilerApiOption << 1),
 };
 
 namespace api {

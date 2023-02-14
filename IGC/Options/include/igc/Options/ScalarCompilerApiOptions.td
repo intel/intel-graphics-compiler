@@ -8,10 +8,41 @@ SPDX-License-Identifier: MIT
 
 // This file defines API options accepted by scalar compiler.
 
-// IGC API options {{
-let Flags = [IGCApiOption] in {
+// Scakar Compiler API options {{
+let Flags = [ScalarCompilerApiOption] in {
 
 // Backend API options {{
+defm fp32_correctly_rounded_divide_sqrt :
+  CommonFlag<"fp32-correctly-rounded-divide-sqrt">,
+  HelpText<"Allows an application to specify that single precision floating-point divide (x/y and 1/x) and sqrt used in the program source are correctly rounded. If this build option is not specified, the minimum numerical accuracy of single precision floating-point divide and sqrt are as defined in section 7.4 of the OpenCL specification.">;
+
+defm no_subgroup_ifp :
+  CommonFlag<"no-subgroup-ifp">,
+  HelpText<"Lack of description">;
+
+defm uniform_work_group_size :
+  CommonFlag<"uniform-work-group-size">,
+  HelpText<"This requires that the global work-size be a multiple of the work-group size specified to clEnqueueNDRangeKernel. Allow optimizations that are made possible by this restriction.">;
+
+defm take_global_address :
+  CommonFlag<"take-global-address">,
+  HelpText<"Lack of description">;
+
+defm emit_lib_compile_errors :
+  CommonFlag<"emit-lib-compile-errors">,
+  HelpText<"Lack of description">;
+
+defm required_thread_count :
+  CommonSeparate<"reqd-eu-thread-count">,
+  HelpText<"Lack of description">;
+defm : CommonJoined<"reqd-eu-thread-count=">,
+  Alias<required_thread_count__common>,
+  HelpText<"Lack of description">;
+
+defm enable_auto_large_GRF_mode :
+  CommonFlag<"enable-auto-large-GRF-mode">,
+  HelpText<"Lack of description">;
+
 def : ClFlag<"intel-gtpin-rera">, Alias<gtpin_rera>,
   HelpText<"Alias for -ze-gtpin-rera">;
 
@@ -25,14 +56,6 @@ def : ClJoined<"intel-gtpin-scratch-area-size=">,
   Alias<gtpin_scratch_area_size>,
   HelpText<"Alias for -ze-gtpin-scratch-area-size">;
 
-defm fp32_correctly_rounded_divide_sqrt :
-  CommonFlag<"fp32-correctly-rounded-divide-sqrt">;
-
-defm no_subgroup_ifp : CommonFlag<"no-subgroup-ifp">;
-
-defm uniform_work_group_size : CommonFlag<"uniform-work-group-size">;
-
-defm take_global_address : CommonFlag<"take-global-address">;
 // }} Backend API options
 
 // API options from source translation {{

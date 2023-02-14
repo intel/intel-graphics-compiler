@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 // Common internal options {{
 let Flags = InternalHelper.CommonInternalFlags in {
 
-defm intel_use_bindless_buffers : CommonFlag<"intel-use-bindless-buffers">,
+defm use_bindless_buffers : CommonFlag<"use-bindless-buffers">,
   HelpText<"Use bindless mode for buffers">;
 
 def emit_zebin_visa_sections : PlainFlag<"emit-zebin-visa-sections">,
@@ -23,13 +23,9 @@ def emit_visa_only : PlainFlag<"emit-visa-only">,
 
 defm allow_zebin : CommonFlag<"allow-zebin">,
   HelpText<"Emit level zero binary">;
-def intel_allow_zebin : ClFlag<"intel-allow-zebin">,
-  Alias<allow_zebin_ze>;
 
 defm disable_zebin : CommonFlag<"disable-zebin">,
   HelpText<"Emit binary in legacy format">;
-def intel_disable_zebin : ClFlag<"intel-disable-zebin">,
-  Alias<disable_zebin_ze>;
 
 }
 // }} Common internal options

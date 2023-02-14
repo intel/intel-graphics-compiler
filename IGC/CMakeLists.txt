@@ -1369,6 +1369,10 @@ include_directories(
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL/ocl_igc_shared/executable_format"
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL"
     "${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/ocl_igc_interface/impl"
+
+    "${IGC_BUILD__IGC_SRC_DIR}/Options"
+    "${IGC_BUILD__IGC_SRC_DIR}/Options/include"
+    "${CMAKE_CURRENT_BINARY_DIR}/Options/include"
     )
 
 
@@ -1728,6 +1732,8 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
 
 list(APPEND _targetLinkLineCommon zebinlib)
 
+list(APPEND _targetLinkLineCommon IGCOptions)
+
 list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
 
 
@@ -1834,6 +1840,8 @@ if (FCL_ENABLED)
   unset(_targetType)
 
   set(_targetLinkLine)
+
+  list(APPEND _targetLinkLine IGCOptions)
 
   # Generated link line for IGC/IGC RS static library allows to properly use it in other projects.
   if(_targetIsStatic)
