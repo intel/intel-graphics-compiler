@@ -505,7 +505,7 @@ bool GenXCodeGenModule::runOnModule(Module& M)
         for (auto GI = FGA->begin(), GE = FGA->end(); GI != GE; ++GI)
         {
             FunctionGroup* FG = *GI;
-            if (!FG->isSingle() || FG->hasStackCall())
+            if (!FG->isSingle() || FG->hasStackCall() || IGC::isIntelSymbolTableVoidProgram(FG->getHead()))
             {
                 Function* Kernel = FG->getHead();
                 IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(Kernel);
