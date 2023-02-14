@@ -1607,6 +1607,10 @@ bool G4_INST::isFloatOnly() const {
 bool G4_INST::isSignSensitive(Gen4_Operand_Number opndNum) const {
   const G4_Operand *use = getOperand(opndNum);
   G4_Type useType = use->getType();
+
+  if (hasNULLDst()) {
+    return (op == G4_cmp || op == G4_cmpn);
+  }
   G4_Type dstType = dst->getType();
 
   // If extending is required, most of insts are sign sensitive.
