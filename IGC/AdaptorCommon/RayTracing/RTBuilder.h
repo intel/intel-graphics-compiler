@@ -443,7 +443,9 @@ private:
 
 
 private:
-#include "AutoGenRTStackAccess.h"
+#include "AutoGenRTStackAccessPrivateOS.h"
+public:
+#include "AutoGenRTStackAccessPublicOS.h"
 public:
     static Type* getRTStack2PtrTy(const IGC::CodeGenContext& Ctx, RTMemoryAccessMode Mode, bool async = true);
     Type* getRayDispatchGlobalDataPtrTy(Module &M);
