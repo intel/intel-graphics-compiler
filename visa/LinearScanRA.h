@@ -185,6 +185,9 @@ private:
   unsigned int numRefs;
   G4_BB *prevBBRef;
 
+  bool *forbidden = nullptr;
+  bool *retGRFs = nullptr;
+
   bool isIndirectAccess;
   bool eot;
   bool assigned;
@@ -195,8 +198,8 @@ private:
   bool _isCallSite;
   bool valid;
 
-  std::vector<bool> forbiddenGRFs;
-  std::vector<bool> retGRFs;
+  // std::unordered_set<unsigned int> forbiddenGRFs;
+  // std::unordered_set<unsigned int> retGRFs;
 public:
   LSLiveRange() {
     topdcl = NULL;
@@ -221,8 +224,10 @@ public:
 
   void setActiveLR(bool a) { isActive = a; }
   bool isActiveLR() { return isActive; }
-  std::vector<bool> &getForbidden() { return forbiddenGRFs; }
-  std::vector<bool> &getRetGRFs() { return retGRFs; }
+  const bool *getForbidden() { return forbidden; }
+  void setForbidden(bool *f) { forbidden = f; }
+  void setRegGRFs(bool *f) { retGRFs = f; }
+
   void setUseUnAvailableReg(bool avail) { useUnAvailableReg = avail; }
   bool isUseUnAvailableReg() { return useUnAvailableReg; }
   void setPushed(bool p) { pushed = p; }
@@ -312,17 +317,16 @@ public:
   void markEOT() { eot = true; }
   bool isEOT() { return eot; }
 
-  void addForbidden(unsigned int f) {
-    forbiddenGRFs[f] = true;
+  void addForbidden(unsigned int f) { /*forbiddenGRFs.insert(f);*/
+    forbidden[f] = true;
   }
-  void addRetRegs(unsigned int f) { retGRFs[f] = true;}
-  void clearForbiddenGRF(unsigned GRFNum) {
-    unsigned size = retGRFs.size();
-    retGRFs.clear();
-    retGRFs.resize(size);
-    size = forbiddenGRFs.size();
-    forbiddenGRFs.clear();
-    forbiddenGRFs.resize(size);
+  void addRetRegs(unsigned int f) { retGRFs[f] = true; }
+  const bool *getRetGRFs() { return retGRFs; }
+  void clearForbiddenGRF(unsigned GRFSize) {
+    if (retGRFs) {
+      memset(retGRFs, false, GRFSize);
+    }
+    memset(forbidden, false, GRFSize);
   }
 };
 
@@ -376,6 +380,7 @@ private:
   void expireInputRanges(unsigned int global_idx);
   BankAlign getBankAlign(LSLiveRange *lr);
   bool allocateRegsLinearScan(LSLiveRange *lr, IR_Builder &builder);
+  void allocRetRegsVector(LSLiveRange *lr);
   void freeAllocedRegs(LSLiveRange *, bool);
   void updateGlobalActiveList(LSLiveRange *lr);
   bool insertLiveRange(std::list<LSLiveRange *> *liveIntervals,
