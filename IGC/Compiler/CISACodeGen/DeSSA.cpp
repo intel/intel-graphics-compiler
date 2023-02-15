@@ -310,7 +310,9 @@ bool DeSSA::runOnFunction(Function& MF)
 {
     if (IGC_IS_FLAG_DISABLED(EnableDeSSA))
     {
-        // getRootValue(), isIsolated(), etc still works.
+        LV = nullptr;
+        WIA = nullptr;
+        // getRootValue(), isIsolated(), getLiveVars(), etc. still work.
         return false;
     }
 

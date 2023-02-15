@@ -149,7 +149,8 @@ static unsigned getMaxReuseDistance(uint16_t size) {
 
 bool VariableReuseAnalysis::checkUseInst(Instruction* UseInst, LiveVars* LV) {
     BasicBlock* CurBB = UseInst->getParent();
-    if (UseInst->isUsedOutsideOfBlock(CurBB))
+    // If dessa is disabled (LV = null), skip.
+    if (UseInst->isUsedOutsideOfBlock(CurBB) || LV == nullptr)
         return false;
 
     // This situation can occur:
@@ -193,7 +194,8 @@ bool VariableReuseAnalysis::checkDefInst(Instruction* DefInst,
     Instruction* UseInst, LiveVars* LV) {
     IGC_ASSERT(nullptr != DefInst);
     IGC_ASSERT(nullptr != UseInst);
-    if (isa<PHINode>(DefInst))
+    // If dessa is disabled (LV = null), skip
+    if (isa<PHINode>(DefInst) || LV == nullptr)
         return false;
 
     if (auto CI = dyn_cast<CallInst>(DefInst)) {

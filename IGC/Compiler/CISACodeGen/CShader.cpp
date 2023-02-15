@@ -1964,14 +1964,20 @@ CVariable* CShader::GetStructVariable(llvm::Value* v)
             //       This would have incorrect liveness info.
             //
             // Walk up all the `insertvalue` instructions until we get to the constant base struct.
-            // All `insertvalue` instructions that operate on the same struct should be mapped to the same CVar,
-            // so just use the first instruction to do all the mapping.
+            // All `insertvalue` instructions that operate on the same struct should be mapped to the
+            // same CVar, so just use the first instruction to do all the mapping.
+            // If operand 0 isn't the sole user, stop; otherwise it might coalesce two structs whose
+            // live range overlaps.
             Value* baseV = v;
             InsertValueInst* FirstInsertValueInst = nullptr;
-            while (InsertValueInst* II = dyn_cast<InsertValueInst>(baseV))
+            while (InsertValueInst* II = dyn_cast_or_null<InsertValueInst>(baseV))
             {
                 baseV = II->getOperand(0);
                 FirstInsertValueInst = II;
+                if (!baseV->hasOneUse())
+                {
+                    baseV = nullptr;
+                }
             }
             if (FirstInsertValueInst)
             {
